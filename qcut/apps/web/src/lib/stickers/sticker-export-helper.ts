@@ -92,6 +92,10 @@ export class StickerExportHelper {
     const width = (sticker.size.width / 100) * canvasWidth;
     const height = (sticker.size.height / 100) * canvasHeight;
 
+    // STICKER DRAW DEBUG: Log drawing details
+    debugLog(`[STICKER_DRAW] Drawing sticker ${sticker.id} at (${x.toFixed(1)}, ${y.toFixed(1)}) size ${width.toFixed(1)}x${height.toFixed(1)}`);
+    debugLog(`[STICKER_DRAW] Image loaded:`, img.complete, 'Image src:', img.src.substring(0, 50) + '...');
+
     // Save context state
     ctx.save();
 
@@ -110,6 +114,9 @@ export class StickerExportHelper {
 
     // Draw image centered at origin
     ctx.drawImage(img, -width / 2, -height / 2, width, height);
+
+    // STICKER DRAW DEBUG: Confirm drawing completion
+    debugLog(`[STICKER_DRAW] ✅ Drew sticker ${sticker.id} to canvas`);
 
     // Restore context state
     ctx.restore();

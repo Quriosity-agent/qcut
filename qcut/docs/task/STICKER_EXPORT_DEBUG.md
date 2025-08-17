@@ -120,14 +120,14 @@ if (file.type === 'image/svg+xml' || file.name.toLowerCase().endsWith('.svg')) {
 }
 ```
 
-### Fix 4: 🚧 IN PROGRESS - Frame-by-Frame Canvas Debugging
-**Next Step**: Add detailed canvas drawing verification for each frame
+### Fix 4: ✅ COMPLETED - Frame-by-Frame Canvas Debugging
+**Status**: Added comprehensive frame-by-frame debugging to track every step of sticker rendering
 
-**Required Debug Additions**:
-1. Frame progression logging in `renderFrame()`
-2. Canvas content validation after sticker drawing  
-3. Individual sticker draw verification in `sticker-export-helper.ts`
-4. Image loading status tracking during export
+**Debug Additions Implemented**:
+1. ✅ Frame progression logging in `export-engine.ts:678`
+2. ✅ Canvas content validation after sticker drawing in `export-engine.ts:420-425`
+3. ✅ Individual sticker draw verification in `sticker-export-helper.ts:95-97, 118-119`
+4. ✅ Enhanced sticker frame detection in `export-engine.ts:392-394`
 
 ## Current Testing Strategy
 
@@ -174,18 +174,36 @@ if (file.type === 'image/svg+xml' || file.name.toLowerCase().endsWith('.svg')) {
 4. ✅ `qcut/apps/web/src/stores/media-store.ts:351-369` - Fixed SVG data URLs
 5. ✅ `qcut/apps/web/src/lib/image-utils.ts:24-57` - Fixed SVG image loading
 
-## Next Investigation Steps
+## Frame-by-Frame Debugging IMPLEMENTED ✅
 
-**Add to export-engine.ts around line 667 (renderFrame method)**:
-```typescript
-debugLog(`[FRAME_DEBUG] Frame ${frame + 1}/${totalFrames} at time ${currentTime.toFixed(3)}s`);
+All debugging has been successfully implemented and build tested:
+
+### **Debug Logs Now Available During Export:**
+
+1. **Frame Progression**: `[FRAME_DEBUG] Frame X/Y at time Z.ZZZs`
+2. **Sticker Detection**: `[STICKER_FRAME] Found X stickers for this frame`
+3. **Sticker IDs**: `[STICKER_FRAME] Sticker IDs: ['id1', 'id2']`
+4. **Drawing Process**: `[STICKER_DRAW] Drawing sticker ID at (x, y) size WxH`
+5. **Image Status**: `[STICKER_DRAW] Image loaded: true/false`
+6. **Draw Completion**: `[STICKER_DRAW] ✅ Drew sticker ID to canvas`
+7. **Canvas Validation**: `[FRAME_CANVAS] Canvas has visible content: true/false`
+
+### **How to Use:**
+1. Open browser dev tools console
+2. Start video export with stickers
+3. Monitor console for the debug patterns above
+4. Identify exactly where sticker rendering fails
+
+### **Expected Console Output Pattern:**
+```
+[FRAME_DEBUG] Frame 1/90 at time 0.000s
+[STICKER_FRAME] Frame time: 0.000s
+[STICKER_FRAME] Found 1 stickers for this frame
+[STICKER_FRAME] Sticker IDs: ['sticker-12345']
+[STICKER_DRAW] Drawing sticker sticker-12345 at (250.0, 150.0) size 64.0x64.0
+[STICKER_DRAW] Image loaded: true Image src: data:image/svg+xml;base64,PHN2ZyB4bWxu...
+[STICKER_DRAW] ✅ Drew sticker sticker-12345 to canvas
+[FRAME_CANVAS] Canvas has visible content after stickers: true
 ```
 
-**Add to sticker-export-helper.ts renderSticker method around line 79**:
-```typescript  
-debugLog(`[STICKER_DRAW] Drawing sticker ${sticker.id} at (${x.toFixed(1)}, ${y.toFixed(1)}) size ${width.toFixed(1)}x${height.toFixed(1)}`);
-// After drawImage call:
-debugLog(`[STICKER_DRAW] ✅ Drew sticker ${sticker.id} to canvas`);
-```
-
-This will show exactly where the sticker rendering breaks down during export.
+This comprehensive debugging will pinpoint exactly where the sticker export pipeline breaks down.
