@@ -22,7 +22,12 @@ export class CLIExportEngine extends ExportEngine {
     this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
     const activeElements = this.getActiveElementsCLI(currentTime);
-    debugLog(`[CLI_FRAME_DEBUG] Found ${activeElements.length} active elements`);
+    
+    // Only log every 30 frames (1 second) to reduce spam
+    if (Math.round(currentTime * 30) % 30 === 0) {
+      const elementTypes = activeElements.map(el => el.element.type);
+      debugLog(`📊 Frame ${currentTime.toFixed(1)}s: ${activeElements.length} elements: ${elementTypes.join(', ')}`);
+    }
 
     // Sort elements by track type (render bottom to top)
     const sortedElements = activeElements.sort((a, b) => {
@@ -465,6 +470,13 @@ export class CLIExportEngine extends ExportEngine {
 
       // Render frame to canvas
       await this.renderFrame(currentTime);
+
+      // CRITICAL: Check if stickers are in canvas before capture
+      const imageData = this.ctx.getImageData(960, 540, 50, 50); // Check sticker area
+      const hasStickers = Array.from(imageData.data).some((value, index) => 
+        index % 4 !== 3 && value !== 0 // Check for non-black pixels where stickers should be
+      );
+      debugLog(`🚨 FRAME ${frame}: Canvas has stickers: ${hasStickers}`);
 
       // Save frame to disk
       const framePath = `frame-${frame.toString().padStart(4, "0")}.png`;
