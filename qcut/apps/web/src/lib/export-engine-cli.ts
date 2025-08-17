@@ -12,6 +12,8 @@ export class CLIExportEngine extends ExportEngine {
 
   // Override parent's renderFrame to skip video validation issues
   async renderFrame(currentTime: number): Promise<void> {
+    debugLog(`[CLI_FRAME_DEBUG] Rendering frame at time ${currentTime.toFixed(3)}s`);
+    
     // Clear canvas
     this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
@@ -20,6 +22,7 @@ export class CLIExportEngine extends ExportEngine {
     this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
     const activeElements = this.getActiveElementsCLI(currentTime);
+    debugLog(`[CLI_FRAME_DEBUG] Found ${activeElements.length} active elements`);
 
     // Sort elements by track type (render bottom to top)
     const sortedElements = activeElements.sort((a, b) => {
@@ -50,6 +53,9 @@ export class CLIExportEngine extends ExportEngine {
       await this.renderMediaElementCLI(element, mediaItem, elementTimeOffset);
     } else if (element.type === "text") {
       this.renderTextElementCLI(element);
+    } else if (element.type === "sticker") {
+      debugLog(`[CLI_STICKER_DEBUG] Found sticker element: ${element.id} at time ${currentTime}`);
+      await this.renderStickerElementCLI(element, mediaItem, currentTime);
     }
   }
 
@@ -259,6 +265,48 @@ export class CLIExportEngine extends ExportEngine {
     const y = element.y || 50;
 
     this.ctx.fillText(element.content, x, y);
+  }
+
+  // CLI sticker rendering using overlay sticker system
+  private async renderStickerElementCLI(element: any, mediaItem: any, currentTime: number): Promise<void> {
+    debugLog(`[CLI_STICKER_DEBUG] Starting sticker render for element ${element.id}`);
+    
+    try {
+      // Import stickers overlay store dynamically
+      const { useStickersOverlayStore } = await import("@/stores/stickers-overlay-store");
+      const { useMediaStore } = await import("@/stores/media-store");
+      
+      // Get visible stickers at current time
+      const stickersStore = useStickersOverlayStore.getState();
+      const visibleStickers = stickersStore.getVisibleStickersAtTime(currentTime);
+      
+      debugLog(`[CLI_STICKER_DEBUG] Found ${visibleStickers.length} overlay stickers at time ${currentTime}`);
+      
+      if (visibleStickers.length === 0) {
+        debugLog(`[CLI_STICKER_DEBUG] No overlay stickers to render`);
+        return;
+      }
+      
+      // Get media items map
+      const mediaStore = useMediaStore.getState();
+      const mediaItemsMap = new Map(mediaStore.mediaItems.map((item) => [item.id, item]));
+      
+      // Use the existing sticker export helper
+      const { getStickerExportHelper } = await import("@/lib/stickers/sticker-export-helper");
+      const stickerHelper = getStickerExportHelper();
+      
+      debugLog(`[CLI_STICKER_DEBUG] Rendering stickers to canvas...`);
+      await stickerHelper.renderStickersToCanvas(this.ctx, visibleStickers, mediaItemsMap, {
+        canvasWidth: this.canvas.width,
+        canvasHeight: this.canvas.height,
+        currentTime,
+      });
+      
+      debugLog(`[CLI_STICKER_DEBUG] ✅ Successfully rendered ${visibleStickers.length} stickers`);
+      
+    } catch (error) {
+      debugError(`[CLI_STICKER_DEBUG] Failed to render stickers:`, error);
+    }
   }
 
   // Helper methods for video caching (CLI-specific cache)

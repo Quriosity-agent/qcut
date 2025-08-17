@@ -82,7 +82,14 @@ export class ExportEngineFactory {
     const capabilities = await this.detectCapabilities();
 
     // 🚀 FORCE CLI FFmpeg in Electron - most stable and performant
-    if (this.isElectron()) {
+    // DEBUG OVERRIDE: Allow forcing regular engine for sticker debugging
+    const forceRegularEngine = localStorage.getItem("qcut_force_regular_engine") === "true";
+    
+    if (forceRegularEngine) {
+      debugLog("[ExportEngineFactory] 🔧 DEBUG OVERRIDE: Forcing regular export engine for sticker debugging");
+    }
+    
+    if (this.isElectron() && !forceRegularEngine) {
       debugLog(
         "[ExportEngineFactory] 🖥️  Electron detected - using CLI FFmpeg (most stable)"
       );
