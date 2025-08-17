@@ -476,7 +476,11 @@ export class CLIExportEngine extends ExportEngine {
       const hasStickers = Array.from(imageData.data).some((value, index) => 
         index % 4 !== 3 && value !== 0 // Check for non-black pixels where stickers should be
       );
-      debugLog(`🚨 FRAME ${frame}: Canvas has stickers: ${hasStickers}`);
+      
+      // CANVAS VALIDATION: Check if canvas content actually changes
+      const canvasDataUrl = this.canvas.toDataURL("image/png", 1.0);
+      const dataHash = canvasDataUrl.substring(22, 72); // 50 char hash from data section
+      debugLog(`🚨 FRAME ${frame}: Canvas has stickers: ${hasStickers}, Data hash: ${dataHash}`);
 
       // Save frame to disk
       const framePath = `frame-${frame.toString().padStart(4, "0")}.png`;
