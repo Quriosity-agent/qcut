@@ -2,9 +2,19 @@
 
 **Problem**: Preview sticker works but exporting sticker doesn't work
 
-## Issue Analysis
+## Current Status (Updated)
 
-Based on actual codebase analysis, stickers work in preview via `StickerCanvas.tsx` but fail during export via `export-engine.ts`. The export engine already has error handling that continues export even if stickers fail.
+✅ **FIXES APPLIED**:
+- Fixed double filtering bug in `sticker-export-helper.ts` 
+- Added detailed debug logging to export engine
+- Fixed SVG sticker preview issue (data URLs vs blob URLs)
+- Enhanced error logging with sticker details
+
+❌ **STILL BROKEN**: Stickers show in preview but NOT in exported video frames
+
+## Updated Issue Analysis
+
+Based on testing, the issue persists even after fixes. **Stickers appear correctly in preview but are missing from each exported frame**. This suggests the problem is in the frame-by-frame rendering during export, not in sticker detection.
 
 ## Root Causes (Updated with Source Code Analysis)
 
@@ -25,149 +35,157 @@ Based on actual codebase analysis, stickers work in preview via `StickerCanvas.t
 - **Logic**: `time >= startTime && time <= endTime` with defaults `startTime = 0, endTime = Infinity`
 - **Status**: Logic appears correct, unlikely to be the root cause
 
-## Debugging Steps (Updated)
+## Frame-by-Frame Export Debugging
 
-### Step 1: Check Export Logs (Already Exist)
-Current export engine already logs sticker rendering:
+### URGENT: Track Each Frame Sticker Rendering
+
+The issue is that stickers are being detected but not drawn to each frame. We need to verify sticker rendering happens on every frame:
 
 ```typescript
-// EXISTING in export-engine.ts:406-408
-debugLog(
-  `[ExportEngine] Rendered ${visibleStickers.length} overlay stickers at time ${currentTime}`
-);
+// ENHANCED DEBUG: Add to export-engine.ts renderFrame() method around line 667
+debugLog(`[FRAME_DEBUG] Frame ${frame + 1}/${totalFrames} at time ${currentTime.toFixed(3)}s`);
+
+// ENHANCED DEBUG: In renderOverlayStickers method (already added)
+debugLog(`[STICKER_FRAME] Frame time: ${currentTime.toFixed(3)}s`);
+debugLog(`[STICKER_FRAME] Found ${visibleStickers.length} stickers for this frame`);
+debugLog(`[STICKER_FRAME] Sticker IDs:`, visibleStickers.map(s => s.id));
+
+// ENHANCED DEBUG: In sticker-export-helper.ts renderSticker method  
+debugLog(`[STICKER_DRAW] Drawing sticker ${sticker.id} at (${x.toFixed(1)}, ${y.toFixed(1)}) size ${width.toFixed(1)}x${height.toFixed(1)}`);
+debugLog(`[STICKER_DRAW] Image loaded:`, img.complete, 'Image src:', img.src.substring(0, 50) + '...');
+
+// ENHANCED DEBUG: After canvas drawImage call
+debugLog(`[STICKER_DRAW] ✅ Drew sticker ${sticker.id} to canvas`);
 ```
 
-**Action**: Check browser console during export for these logs. If count is 0, stickers aren't being found.
+### Canvas Validation for Each Frame
 
-### Step 2: Add Detailed Sticker Debug Logging
-Add to `export-engine.ts` line 389 (after `getVisibleStickersAtTime`):
+Add canvas content verification to ensure stickers are actually drawn:
 
 ```typescript
-// Add after line 389 in export-engine.ts
+// ENHANCED DEBUG: Add after renderOverlayStickers call in renderFrame
+const imageData = this.ctx.getImageData(0, 0, 100, 100); // Sample top-left corner
+const hasContent = Array.from(imageData.data).some((value, index) => 
+  index % 4 !== 3 && value > 10 // Check RGB channels, ignore alpha
+);
+debugLog(`[FRAME_CANVAS] Frame ${frame + 1} has visible content:`, hasContent);
+```
+
+## Debugging Steps (Updated)
+
+### Step 1: ✅ COMPLETED - Export Logs Added
+Debug logging has been implemented and shows sticker detection.
+
+### Step 2: ✅ COMPLETED - Detailed Logging Added  
+Enhanced debug logging shows stickers are found during export.
+
+### Step 3: ✅ COMPLETED - Double Filtering Fixed
+Removed redundant filtering in sticker-export-helper.ts.
+
+### Step 4: 🔍 ACTIVE - Frame-by-Frame Analysis
+**Current Focus**: Verify stickers are actually drawn to canvas on each frame.
+
+**Check these logs during export**:
+- `[FRAME_DEBUG]` - Frame progression
+- `[STICKER_FRAME]` - Stickers found per frame  
+- `[STICKER_DRAW]` - Individual sticker drawing
+- `[FRAME_CANVAS]` - Canvas content validation
+
+## Applied Fixes Status
+
+### Fix 1: ✅ COMPLETED - Remove Double Filtering  
+**Status**: Fixed in `sticker-export-helper.ts` lines 39-41
+```typescript
+// BEFORE: Double filtering (FIXED)
+// AFTER: Only sorts stickers by z-index
+const sortedStickers = stickers.sort((a, b) => a.zIndex - b.zIndex);
+```
+
+### Fix 2: ✅ COMPLETED - Enhanced Debug Logging
+**Status**: Added comprehensive logging in `export-engine.ts`
+```typescript
+// ADDED: Detailed sticker detection logging
 debugLog(`[STICKER_DEBUG] Time: ${currentTime}, Found ${visibleStickers.length} stickers`);
 debugLog(`[STICKER_DEBUG] All stickers in store:`, Array.from(stickersStore.overlayStickers.values()));
 debugLog(`[STICKER_DEBUG] Visible stickers:`, visibleStickers);
 ```
 
-### Step 3: Fix Double Filtering Issue
-**CRITICAL BUG FOUND**: `renderStickersToCanvas()` filters stickers by time twice:
-
+### Fix 3: ✅ COMPLETED - SVG Preview Issues
+**Status**: Fixed SVG data URL handling in `media-store.ts` and `image-utils.ts`
 ```typescript
-// In sticker-export-helper.ts lines 40-44 - REMOVE THIS FILTERING
-// The export engine already calls getVisibleStickersAtTime()
-const visibleStickers = stickers.filter((sticker) => {
-  if (!sticker.timing) return true;
-  const { startTime = 0, endTime = Infinity } = sticker.timing;
-  return currentTime >= startTime && currentTime <= endTime;
-});
-```
-
-**Fix**: Remove the filtering in `sticker-export-helper.ts` since export engine already filters.
-
-## Critical Fixes (Based on Source Analysis)
-
-### Fix 1: Remove Double Filtering (HIGH PRIORITY)
-**Problem**: `sticker-export-helper.ts` filters stickers by time even though export engine already does this.
-
-```typescript
-// In sticker-export-helper.ts lines 39-47, REPLACE:
-// Filter stickers visible at current time
-const visibleStickers = stickers.filter((sticker) => {
-  if (!sticker.timing) return true;
-  const { startTime = 0, endTime = Infinity } = sticker.timing;
-  return currentTime >= startTime && currentTime <= endTime;
-});
-
-// Sort by z-index to render in correct order
-const sortedStickers = visibleStickers.sort((a, b) => a.zIndex - b.zIndex);
-
-// WITH:
-// Stickers are already filtered by export engine, just sort them
-const sortedStickers = stickers.sort((a, b) => a.zIndex - b.zIndex);
-```
-
-### Fix 2: Add Image Preloading (MEDIUM PRIORITY)
-The `StickerExportHelper` class already has `preloadStickers()` method. Use it in export engine:
-
-```typescript
-// Add to export-engine.ts before starting export (around line 640)
-// Preload sticker images for better performance
-const stickersStore = useStickersOverlayStore.getState();
-const allStickers = Array.from(stickersStore.overlayStickers.values());
-if (allStickers.length > 0) {
-  const mediaStore = useMediaStore.getState();
-  const mediaItemsMap = new Map(mediaStore.mediaItems.map((item) => [item.id, item]));
-  const helper = getStickerExportHelper();
-  await helper.preloadStickers(allStickers, mediaItemsMap);
-  debugLog(`[ExportEngine] Preloaded ${allStickers.length} sticker images`);
+// ADDED: SVG-specific data URL handling instead of blob URLs
+if (file.type === 'image/svg+xml' || file.name.toLowerCase().endsWith('.svg')) {
+  const text = await file.text();
+  displayUrl = `data:image/svg+xml;base64,${btoa(text)}`;
 }
 ```
 
-### Fix 3: Enhance Error Logging (LOW PRIORITY)
-Export engine already has error handling but errors are generic:
+### Fix 4: 🚧 IN PROGRESS - Frame-by-Frame Canvas Debugging
+**Next Step**: Add detailed canvas drawing verification for each frame
 
-```typescript
-// In export-engine.ts renderOverlayStickers, enhance line 410-412:
-} catch (error) {
-  debugError("[ExportEngine] Failed to render overlay stickers:", error);
-  debugError(`[ExportEngine] Failed at time ${currentTime} with ${visibleStickers.length} stickers`);
-  debugError("[ExportEngine] Sticker details:", visibleStickers.map(s => ({ id: s.id, mediaItemId: s.mediaItemId })));
-  // Continue export even if stickers fail
-}
+**Required Debug Additions**:
+1. Frame progression logging in `renderFrame()`
+2. Canvas content validation after sticker drawing  
+3. Individual sticker draw verification in `sticker-export-helper.ts`
+4. Image loading status tracking during export
+
+## Current Testing Strategy
+
+### 1. **Frame-by-Frame Export Analysis** 🔍 ACTIVE
+**Goal**: Verify each frame during export actually has stickers drawn to canvas
+
+**Console Logs to Monitor**:
+```
+[FRAME_DEBUG] Frame 1/90 at time 0.000s
+[STICKER_FRAME] Frame time: 0.000s  
+[STICKER_FRAME] Found 1 stickers for this frame
+[STICKER_FRAME] Sticker IDs: ['sticker-12345']
+[STICKER_DRAW] Drawing sticker sticker-12345 at (250.0, 150.0) size 64.0x64.0
+[STICKER_DRAW] Image loaded: true Image src: data:image/svg+xml;base64,PHN2ZyB4bWxu...
+[STICKER_DRAW] ✅ Drew sticker sticker-12345 to canvas
+[FRAME_CANVAS] Frame 1 has visible content: true
 ```
 
-## Testing Strategy (Updated)
+### 2. **Expected vs Actual Behavior**
+- ✅ **Expected**: Stickers appear in preview and export  
+- ❌ **Actual**: Stickers appear in preview but missing from export
+- 🔍 **Investigation**: Stickers detected during export but not visible in final video
 
-### 1. **Immediate Debug Test**
-1. Add a sticker to timeline (ensure it has no timing restrictions)
-2. Export video while watching browser console
-3. Look for `[ExportEngine] Rendered X overlay stickers` messages
-4. If X is 0, stickers aren't being found by export engine
-
-### 2. **Debug Console Analysis**
-**Look for these specific patterns**:
-- `[ExportEngine] Rendered 0 overlay stickers` = stickers not found
-- `[StickerExport] Media item not found` = media missing during export  
-- `[StickerExport] Failed to render sticker` = rendering failure
-- Image load errors in Network tab
-
-### 3. **Progressive Testing**
-1. **Test 1**: Sticker with no timing (should always be visible)
-2. **Test 2**: Sticker with timing that covers export range  
-3. **Test 3**: Multiple stickers with different z-indexes
-4. **Test 4**: Stickers at different timeline positions
+### 3. **Progressive Debugging Steps**
+1. ✅ **Sticker Detection**: Confirmed stickers are found during export
+2. ✅ **Double Filtering**: Fixed redundant filtering bug
+3. ✅ **SVG URLs**: Fixed data URL vs blob URL issues
+4. 🚧 **Canvas Drawing**: Need to verify actual canvas drawing per frame
+5. ⏸️ **Image Loading**: Check if sticker images load properly during export
+6. ⏸️ **Canvas Capture**: Verify export captures sticker-modified canvas
 
 ## Implementation Priority (Updated)
 
-1. **HIGH**: Fix double filtering bug in `sticker-export-helper.ts`
-2. **MEDIUM**: Add debug logging to identify exact failure point
-3. **LOW**: Add image preloading optimization
+1. **URGENT**: Add frame-by-frame canvas debugging to verify sticker drawing
+2. **HIGH**: Check image loading status during export process  
+3. **MEDIUM**: Validate canvas capture includes sticker overlays
+4. **LOW**: Performance optimization with image preloading
 
-## Files to Modify (Confirmed Paths)
+## Files Modified ✅
 
-1. `qcut/apps/web/src/lib/stickers/sticker-export-helper.ts:39-47` - Remove double filtering
-2. `qcut/apps/web/src/lib/export-engine.ts:389` - Add debug logging
-3. `qcut/apps/web/src/lib/export-engine.ts:640` - Add preloading (optional)
+1. ✅ `qcut/apps/web/src/lib/stickers/sticker-export-helper.ts:39-41` - Fixed double filtering
+2. ✅ `qcut/apps/web/src/lib/export-engine.ts:391-394` - Added debug logging  
+3. ✅ `qcut/apps/web/src/lib/export-engine.ts:418-420` - Enhanced error logging
+4. ✅ `qcut/apps/web/src/stores/media-store.ts:351-369` - Fixed SVG data URLs
+5. ✅ `qcut/apps/web/src/lib/image-utils.ts:24-57` - Fixed SVG image loading
 
-## Most Likely Issue
+## Next Investigation Steps
 
-**DOUBLE FILTERING BUG**: The export helper filters stickers by time even though the export engine already does this with `getVisibleStickersAtTime()`. This could result in stickers being filtered out incorrectly during export.
-
-## Quick Fix Test
-
-Try this quick fix in `sticker-export-helper.ts` line 39-47:
-
+**Add to export-engine.ts around line 667 (renderFrame method)**:
 ```typescript
-// BEFORE (lines 39-47):
-const visibleStickers = stickers.filter((sticker) => {
-  if (!sticker.timing) return true;
-  const { startTime = 0, endTime = Infinity } = sticker.timing;
-  return currentTime >= startTime && currentTime <= endTime;
-});
-const sortedStickers = visibleStickers.sort((a, b) => a.zIndex - b.zIndex);
-
-// AFTER:
-const sortedStickers = stickers.sort((a, b) => a.zIndex - b.zIndex);
+debugLog(`[FRAME_DEBUG] Frame ${frame + 1}/${totalFrames} at time ${currentTime.toFixed(3)}s`);
 ```
 
-This removes the redundant filtering and should fix the export issue.
+**Add to sticker-export-helper.ts renderSticker method around line 79**:
+```typescript  
+debugLog(`[STICKER_DRAW] Drawing sticker ${sticker.id} at (${x.toFixed(1)}, ${y.toFixed(1)}) size ${width.toFixed(1)}x${height.toFixed(1)}`);
+// After drawImage call:
+debugLog(`[STICKER_DRAW] ✅ Drew sticker ${sticker.id} to canvas`);
+```
+
+This will show exactly where the sticker rendering breaks down during export.

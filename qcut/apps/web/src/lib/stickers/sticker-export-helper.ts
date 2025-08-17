@@ -36,15 +36,9 @@ export class StickerExportHelper {
   ): Promise<void> {
     const { canvasWidth, canvasHeight, currentTime = 0 } = options;
 
-    // Filter stickers visible at current time
-    const visibleStickers = stickers.filter((sticker) => {
-      if (!sticker.timing) return true;
-      const { startTime = 0, endTime = Infinity } = sticker.timing;
-      return currentTime >= startTime && currentTime <= endTime;
-    });
-
-    // Sort by z-index to render in correct order
-    const sortedStickers = visibleStickers.sort((a, b) => a.zIndex - b.zIndex);
+    // Stickers are already filtered by export engine via getVisibleStickersAtTime()
+    // No need to filter again - just sort by z-index to render in correct order
+    const sortedStickers = stickers.sort((a, b) => a.zIndex - b.zIndex);
 
     // Render each sticker
     for (const sticker of sortedStickers) {

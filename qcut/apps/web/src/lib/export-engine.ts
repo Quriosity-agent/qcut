@@ -382,13 +382,21 @@ export class ExportEngine {
   // Render text elements
   // Render overlay stickers on top of video
   private async renderOverlayStickers(currentTime: number): Promise<void> {
+    let visibleStickers: any[] = [];
     try {
       // Get stickers from store
       const stickersStore = useStickersOverlayStore.getState();
-      const visibleStickers =
-        stickersStore.getVisibleStickersAtTime(currentTime);
+      visibleStickers = stickersStore.getVisibleStickersAtTime(currentTime);
 
-      if (visibleStickers.length === 0) return;
+      // Debug logging for sticker export
+      debugLog(`[STICKER_DEBUG] Time: ${currentTime}, Found ${visibleStickers.length} stickers`);
+      debugLog(`[STICKER_DEBUG] All stickers in store:`, Array.from(stickersStore.overlayStickers.values()));
+      debugLog(`[STICKER_DEBUG] Visible stickers:`, visibleStickers);
+
+      if (visibleStickers.length === 0) {
+        debugLog(`[STICKER_DEBUG] No visible stickers at time ${currentTime}, skipping render`);
+        return;
+      }
 
       // Get media items for stickers
       const mediaStore = useMediaStore.getState();
@@ -408,6 +416,8 @@ export class ExportEngine {
       );
     } catch (error) {
       debugError("[ExportEngine] Failed to render overlay stickers:", error);
+      debugError(`[ExportEngine] Failed at time ${currentTime} with ${visibleStickers?.length || 0} stickers`);
+      debugError("[ExportEngine] Sticker details:", visibleStickers?.map((s: any) => ({ id: s.id, mediaItemId: s.mediaItemId })) || []);
       // Continue export even if stickers fail
     }
   }

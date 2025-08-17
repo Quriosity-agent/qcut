@@ -16,9 +16,22 @@ export interface ImageInfo {
  * Get image information from a File
  */
 export async function getImageInfo(file: File): Promise<ImageInfo> {
-  return new Promise((resolve, reject) => {
+  return new Promise(async (resolve, reject) => {
     const img = new Image();
-    const url = URL.createObjectURL(file);
+    
+    // Use data URL for SVG files to avoid blob URL issues in Electron
+    let url: string;
+    if (file.type === 'image/svg+xml' || file.name.toLowerCase().endsWith('.svg')) {
+      try {
+        const text = await file.text();
+        url = `data:image/svg+xml;base64,${btoa(text)}`;
+      } catch (error) {
+        console.warn(`[ImageUtils] Failed to create data URL for SVG ${file.name}, falling back to blob URL:`, error);
+        url = URL.createObjectURL(file);
+      }
+    } else {
+      url = URL.createObjectURL(file);
+    }
 
     img.onload = () => {
       const info: ImageInfo = {
@@ -28,12 +41,18 @@ export async function getImageInfo(file: File): Promise<ImageInfo> {
         type: file.type,
         aspectRatio: img.naturalWidth / img.naturalHeight,
       };
-      URL.revokeObjectURL(url);
+      // Only revoke blob URLs, not data URLs
+      if (url.startsWith('blob:')) {
+        URL.revokeObjectURL(url);
+      }
       resolve(info);
     };
 
     img.onerror = () => {
-      URL.revokeObjectURL(url);
+      // Only revoke blob URLs, not data URLs
+      if (url.startsWith('blob:')) {
+        URL.revokeObjectURL(url);
+      }
       reject(new Error("Failed to load image"));
     };
 
