@@ -13,7 +13,7 @@ import {
   X,
   Check,
 } from "lucide-react";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, memo } from "react";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
@@ -39,7 +39,7 @@ import { useAIHistory } from "./use-ai-history";
 import { AI_MODELS, ERROR_MESSAGES, UPLOAD_CONSTANTS } from "./ai-constants";
 import type { AIActiveTab } from "./ai-types";
 
-export function AiView() {
+function AiViewComponent() {
   // UI-only state (not related to generation logic)
   const [prompt, setPrompt] = useState("");
   const [selectedModels, setSelectedModels] = useState<string[]>([]);
@@ -608,3 +608,5 @@ export function AiView() {
     </div>
   );
 }
+
+export const AiView = memo(AiViewComponent);
