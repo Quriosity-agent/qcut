@@ -36,6 +36,7 @@ try {
   }
 }
 const { setupFFmpegIPC } = require("./ffmpeg-handler.js");
+const { setupSoundIPC } = require("./sound-handler.js");
 
 let mainWindow;
 let staticServer;
@@ -214,6 +215,7 @@ app.whenReady().then(() => {
 
   createWindow();
   setupFFmpegIPC(); // Add FFmpeg CLI support
+  setupSoundIPC(); // Add sound search support
 
   // Configure auto-updater for production builds
   if (app.isPackaged) {
