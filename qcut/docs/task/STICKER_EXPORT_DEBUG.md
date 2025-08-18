@@ -144,24 +144,32 @@ The issue is likely:
 - ✅ `🚨 FRAME X: Canvas has stickers: true` - Canvas validation passes  
 - ❌ `Data hash: iVBORw0KGgoAAAANSUhEUgAAB4AAAAQ4CAYAAADo08FDAAAAAX` - **IDENTICAL EVERY FRAME**
 
-**🔍 CONFIRMED**: Canvas capture mechanism was broken - `toDataURL()` produced same PNG data despite different canvas content
+**🔍 ANALYSIS**: Log v5 shows different hashes between frames, but this could be from video content changes, NOT sticker capture
 
-**✅ SOLUTION IMPLEMENTED**: Fixed canvas synchronization with flush + verification in `export-engine-cli.ts:506-544`
+**❌ CRITICAL ISSUE**: Need to verify stickers are actually captured by comparing canvas BEFORE vs AFTER sticker drawing
 
-## New Verification Logs (Post-Fix)
+## ✅ IMPLEMENTED: Before/After Sticker Comparison
 
-**🔧 CANVAS SYNCHRONIZATION LOGS** (to monitor in next test):
+**🎯 FIX DEPLOYED**: Now comparing canvas state BEFORE and AFTER sticker rendering on each frame
+
+**Implementation Details**:
+1. Render frame WITHOUT overlay stickers (`renderFrameWithoutStickers`)
+2. Capture PRE-STICKER canvas hash
+3. Render frame WITH overlay stickers (`renderFrame`)
+4. Capture POST-STICKER canvas hash
+5. Compare hashes to verify sticker impact
+
+**Expected Console Pattern** (NOW ACTIVE):
 ```
-🔧 CANVAS_SYNC: Forced canvas flush for frame-XXXX.png, pixel data length: 4
-🔧 CANVAS_STATE: frame-XXXX.png - Size: 1920x1080, Context: true
-🔧 CANVAS_PIXELS: frame-XXXX.png - Center: [R,G,B,A]
-🔧 CANVAS_PIXELS: frame-XXXX.png - Corner: [R,G,B,A]  
-🔧 CANVAS_PIXELS: frame-XXXX.png - Sticker: [R,G,B,A]
-🔧 CAPTURE_HASH: frame-XXXX.png - Hash: [100-char hash]
-🔧 CAPTURE_SIZE: frame-XXXX.png - Base64 length: XXXXX chars
+[CLI_FRAME_DEBUG] Rendering frame at time 0.000s
+🔧 PRE_STICKER: frame-0000.png - Hash: iVBORw0KGgoAAAANSUhEUgAAB4AAAAQ4CAYAAA...
+[STICKER_DRAW] ✅ Drew sticker X to canvas
+🔧 POST_STICKER: frame-0000.png - Hash: iVBORw0KGgoAAAANSUhEUgAAB4AAAAQ4CAYAAB...
+🔧 STICKER_IMPACT: frame-0000.png - Hashes different: true
+✅ STICKER_CAPTURE_SUCCESS: frame-0000.png - Size diff: 1234 chars
 ```
 
-**📊 SUCCESS INDICATORS**:
-- ✅ Different `CAPTURE_HASH` values per frame
-- ✅ Different `CANVAS_PIXELS` values in sticker area
-- ✅ `CANVAS_STATE` shows consistent canvas dimensions
+**📊 SUCCESS VERIFICATION**:
+- ✅ If `Hashes different: true` → Stickers ARE captured in PNG
+- ❌ If `Hashes different: false` → Stickers NOT captured (PROBLEM!)
+- ✅ Size difference shows actual impact on PNG data

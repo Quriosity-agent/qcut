@@ -272,6 +272,66 @@ export class CLIExportEngine extends ExportEngine {
     this.ctx.fillText(element.content, x, y);
   }
 
+
+  // Render frame without stickers for before/after comparison
+  private async renderFrameWithoutStickers(currentTime: number): Promise<void> {
+    // Use the base class renderFrame but we'll capture before overlay stickers are added
+    // This is a simplified approach - just render everything except overlay stickers
+    
+    // Clear canvas
+    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
+    // Fill with background color (black for now)
+    this.ctx.fillStyle = "#000000";
+    this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
+    // Render all timeline elements (media, text, sticker elements)
+    // but WITHOUT the overlay stickers
+    const activeElements = [];
+    
+    for (const track of this.tracks) {
+      for (const element of track.elements) {
+        // Calculate element timing (track doesn't have startTime in this version)
+        const elementStartTime = element.startTime;
+        const elementEndTime = elementStartTime + element.duration;
+
+        if (currentTime >= elementStartTime && currentTime <= elementEndTime) {
+          // Find media item - handle both potential ID fields
+          const mediaItem = this.mediaItems.find(item => {
+            // Check various ID fields that might exist
+            return item.id === element.id || 
+                   (element as any).mediaItemId === item.id;
+          }) || null;
+          
+          activeElements.push({ element, track, mediaItem });
+        }
+      }
+    }
+
+    // Sort elements by track type (render bottom to top)
+    const sortedElements = activeElements.sort((a, b) => {
+      // Text tracks on top
+      if (a.track.type === "text" && b.track.type !== "text") return 1;
+      if (b.track.type === "text" && a.track.type !== "text") return -1;
+      // Audio tracks at bottom
+      if (a.track.type === "audio" && b.track.type !== "audio") return -1;
+      if (b.track.type === "audio" && a.track.type !== "audio") return 1;
+      return 0;
+    });
+
+    // Render each active element using CLI methods
+    for (const { element, mediaItem } of sortedElements) {
+      try {
+        const elementTimeOffset = currentTime - element.startTime;
+        await this.renderElementCLI(element, mediaItem, elementTimeOffset);
+      } catch (error) {
+        debugError(`[CLI] Error rendering element ${element.id}:`, error);
+      }
+    }
+    
+    // NOTE: We deliberately skip renderOverlayStickers() here for comparison
+  }
+
   // CLI sticker rendering using overlay sticker system
   private async renderStickerElementCLI(element: any, mediaItem: any, currentTime: number): Promise<void> {
     debugLog(`[CLI_STICKER_DEBUG] Starting sticker render for element ${element.id}`);
@@ -467,20 +527,39 @@ export class CLIExportEngine extends ExportEngine {
       }
 
       const currentTime = frame * frameTime;
+      const frameName = `frame-${frame.toString().padStart(4, "0")}.png`;
 
-      // Render frame to canvas
-      await this.renderFrame(currentTime);
+      debugLog(`[CLI_FRAME_DEBUG] Rendering frame at time ${currentTime.toFixed(3)}s`);
 
-      // CRITICAL: Check if stickers are in canvas before capture
-      const imageData = this.ctx.getImageData(960, 540, 50, 50); // Check sticker area
-      const hasStickers = Array.from(imageData.data).some((value, index) => 
-        index % 4 !== 3 && value !== 0 // Check for non-black pixels where stickers should be
-      );
+      // 🔧 BEFORE/AFTER STICKER COMPARISON: Capture canvas state before and after sticker rendering
       
-      // CANVAS VALIDATION: Check if canvas content actually changes
-      const canvasDataUrl = this.canvas.toDataURL("image/png", 1.0);
-      const dataHash = canvasDataUrl.substring(22, 72); // 50 char hash from data section
-      debugLog(`🚨 FRAME ${frame}: Canvas has stickers: ${hasStickers}, Data hash: ${dataHash}`);
+      // First render without overlay stickers
+      await this.renderFrameWithoutStickers(currentTime);
+      
+      // Capture PRE-STICKER canvas state
+      const preDataUrl = this.canvas.toDataURL("image/png", 1.0);
+      const preHash = preDataUrl.substring(22, 122); // 100-char hash
+      debugLog(`🔧 PRE_STICKER: ${frameName} - Hash: ${preHash.substring(0, 50)}...`);
+      
+      // Now render WITH overlay stickers (full frame)
+      await this.renderFrame(currentTime);
+      
+      // Capture POST-STICKER canvas state  
+      const postDataUrl = this.canvas.toDataURL("image/png", 1.0);
+      const postHash = postDataUrl.substring(22, 122); // 100-char hash
+      debugLog(`🔧 POST_STICKER: ${frameName} - Hash: ${postHash.substring(0, 50)}...`);
+      
+      // Compare hashes to verify sticker impact
+      const hashesAreDifferent = preHash !== postHash;
+      debugLog(`🔧 STICKER_IMPACT: ${frameName} - Hashes different: ${hashesAreDifferent}`);
+      
+      if (!hashesAreDifferent) {
+        debugLog(`❌ STICKER_CAPTURE_FAILED: ${frameName} - Stickers not affecting canvas!`);
+      } else {
+        // Additional verification: check if the difference is significant
+        const sizeDiff = Math.abs(preDataUrl.length - postDataUrl.length);
+        debugLog(`✅ STICKER_CAPTURE_SUCCESS: ${frameName} - Size diff: ${sizeDiff} chars`);
+      }
 
       // Save frame to disk
       const framePath = `frame-${frame.toString().padStart(4, "0")}.png`;
