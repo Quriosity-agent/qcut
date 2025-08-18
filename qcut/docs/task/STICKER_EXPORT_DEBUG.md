@@ -148,35 +148,49 @@ The issue is likely:
 
 **❌ CRITICAL ISSUE**: Need to verify stickers are actually captured by comparing canvas BEFORE vs AFTER sticker drawing
 
-## ✅ IMPLEMENTED: Before/After Sticker Comparison
+## ❌ CRITICAL BUG CONFIRMED: Stickers Not Captured
 
-**🎯 FIX DEPLOYED**: Now comparing canvas state BEFORE and AFTER sticker rendering on each frame
+**🚨 TEST RESULTS**: Before/after comparison shows **IDENTICAL HASHES** despite stickers being drawn
 
-**Implementation Details**:
-1. Render frame WITHOUT overlay stickers (`renderFrameWithoutStickers`)
-2. Capture PRE-STICKER canvas hash
-3. Render frame WITH overlay stickers (`renderFrame`)
-4. Capture POST-STICKER canvas hash
-5. Compare hashes to verify sticker impact
-
-**Expected Console Pattern** (NOW ACTIVE):
+**Evidence from logs**:
 ```
-[CLI_FRAME_DEBUG] Rendering frame at time 0.000s
-🔧 PRE_STICKER: frame-0000.png - Hash: iVBORw0KGgoAAAANSUhEUgAAB4AAAAQ4CAYAAA...
-🔧 SAVED_PRE_STICKER: frame-0000-PRE.png
-[STICKER_DRAW] ✅ Drew sticker X to canvas
-🔧 POST_STICKER: frame-0000.png - Hash: iVBORw0KGgoAAAANSUhEUgAAB4AAAAQ4CAYAAB...
-🔧 SAVED_POST_STICKER: frame-0000-POST.png
-🔧 STICKER_IMPACT: frame-0000.png - Hashes different: true
-✅ STICKER_CAPTURE_SUCCESS: frame-0000.png - Size diff: 1234 chars
+🔧 PRE_STICKER: frame-0039.png - Hash: iVBORw0KGgoAAAANSUhEUgAAA1YAAAHgCAYAAACmUPwqAAAAAX...
+[STICKER_DRAW] ✅ Drew sticker sticker-1755425297391-q1f4lbvag to canvas
+[STICKER_DRAW] ✅ Drew sticker sticker-1755427490534-s9ton1ezd to canvas
+🔧 POST_STICKER: frame-0039.png - Hash: iVBORw0KGgoAAAANSUhEUgAAA1YWAAHgCAYAAACmUPwqAAAAAX...
+🔧 STICKER_IMPACT: frame-0039.png - Hashes different: false
+❌ STICKER_CAPTURE_FAILED: frame-0039.png - Stickers not affecting canvas!
 ```
 
-**📁 OUTPUT FILES** (in export folder):
-- `frame-XXXX-PRE.png` - Frame WITHOUT stickers
-- `frame-XXXX-POST.png` - Frame WITH stickers  
-- `frame-XXXX.png` - Final frame (same as POST)
+## Enhanced Pixel-Level Debugging (IMPLEMENTED)
 
-**📊 SUCCESS VERIFICATION**:
-- ✅ If `Hashes different: true` → Stickers ARE captured in PNG
-- ❌ If `Hashes different: false` → Stickers NOT captured (PROBLEM!)
-- ✅ Size difference shows actual impact on PNG data
+**New debugging logs to identify the issue**:
+```
+[STICKER_CTX] Context canvas size: 854x480
+[STICKER_CTX] Drawing to context: true, Has canvas: true
+[STICKER_PIXEL_BEFORE] at (427,240): [R,G,B,A]
+[STICKER_DRAW] Drawing sticker at (427.0, 240.0) size 68.3x38.4
+[STICKER_PIXEL_AFTER] at (427,240): [R,G,B,A]
+[STICKER_PIXEL_CHANGE] Pixel changed after draw: true/false
+```
+
+**Additional verification**:
+- `🔧 PRE_STICKER_PIXEL at (427,240)`: Pixel value before sticker
+- `🔧 POST_STICKER_PIXEL at (427,240)`: Pixel value after sticker
+- `🔧 PIXEL_CHANGED at sticker location`: Should be true if sticker rendered
+- `🔧 CANVAS_CHECK`: Verifies canvas dimensions match
+- `🔧 CONTEXT_CHECK`: Verifies context is bound to correct canvas
+- `🔧 TEST_RECT_DRAWN`: Tests if canvas capture works at all
+
+## Potential Root Causes
+
+1. **Wrong Canvas Reference**: Stickers drawn to different canvas than being captured
+2. **Context Mismatch**: `ctx` not pointing to the right canvas
+3. **Async Timing**: Canvas captured before sticker drawing completes
+4. **Canvas State Issue**: Canvas state not properly preserved between operations
+5. **Image Loading**: Sticker images not actually being drawn despite logs
+
+## Files Tracking Issue
+
+- `export-engine-cli.ts:534-603` - Before/after comparison with pixel debugging
+- `sticker-export-helper.ts:95-137` - Pixel-level sticker drawing verification

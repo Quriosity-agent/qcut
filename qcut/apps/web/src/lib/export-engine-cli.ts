@@ -319,9 +319,15 @@ export class CLIExportEngine extends ExportEngine {
       return 0;
     });
 
-    // Render each active element using CLI methods
+    // Render each active element using CLI methods EXCEPT stickers
     for (const { element, mediaItem } of sortedElements) {
       try {
+        // CRITICAL: Skip sticker elements for the "without stickers" comparison
+        if (element.type === "sticker") {
+          debugLog(`[PRE_STICKER_SKIP] Skipping sticker element ${element.id} for pre-sticker render`);
+          continue;
+        }
+        
         const elementTimeOffset = currentTime - element.startTime;
         await this.renderElementCLI(element, mediaItem, elementTimeOffset);
       } catch (error) {

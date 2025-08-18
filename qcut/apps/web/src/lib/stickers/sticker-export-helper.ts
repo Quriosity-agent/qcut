@@ -121,7 +121,23 @@ export class StickerExportHelper {
     }
 
     // Draw image centered at origin
-    ctx.drawImage(img, -width / 2, -height / 2, width, height);
+    try {
+      // DEBUG: Verify image is ready
+      if (!img.complete || img.naturalWidth === 0) {
+        debugLog(`❌ [STICKER_IMG_ERROR] Image not ready: complete=${img.complete}, naturalWidth=${img.naturalWidth}`);
+      }
+      
+      // DEBUG: Test if drawImage actually works
+      ctx.drawImage(img, -width / 2, -height / 2, width, height);
+      
+      // DEBUG: Draw a colored rectangle to verify drawing works
+      ctx.fillStyle = 'rgba(255, 0, 0, 0.5)'; // Semi-transparent red
+      ctx.fillRect(-width / 2, -height / 2, 10, 10); // Small red square at corner
+      debugLog(`🔧 [STICKER_TEST] Drew red test rectangle at sticker position`);
+      
+    } catch (error) {
+      debugLog(`❌ [STICKER_DRAW_ERROR] Failed to draw image: ${error}`);
+    }
     
     // Restore context state
     ctx.restore();
@@ -143,7 +159,9 @@ export class StickerExportHelper {
   private async loadImage(url: string): Promise<HTMLImageElement> {
     // Check cache first
     if (this.imageCache.has(url)) {
-      return this.imageCache.get(url)!;
+      const cached = this.imageCache.get(url)!;
+      debugLog(`[STICKER_IMG_CACHE] Using cached image: complete=${cached.complete}, size=${cached.naturalWidth}x${cached.naturalHeight}`);
+      return cached;
     }
 
     // Load new image
@@ -152,6 +170,7 @@ export class StickerExportHelper {
       img.crossOrigin = "anonymous";
 
       img.onload = () => {
+        debugLog(`[STICKER_IMG_LOADED] Image loaded: size=${img.naturalWidth}x${img.naturalHeight}, url=${url.substring(0, 100)}...`);
         this.imageCache.set(url, img);
         resolve(img);
       };
@@ -161,6 +180,8 @@ export class StickerExportHelper {
         reject(new Error(`Failed to load image: ${url}`));
       };
 
+      // DEBUG: Log what we're trying to load
+      debugLog(`[STICKER_IMG_LOADING] Starting to load image from: ${url.substring(0, 100)}...`);
       img.src = url;
     });
   }
