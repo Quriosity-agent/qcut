@@ -278,70 +278,6 @@ export class CLIExportEngine extends ExportEngine {
   }
 
 
-  // Render frame without stickers for before/after comparison
-  private async renderFrameWithoutStickers(currentTime: number): Promise<void> {
-    // Use the base class renderFrame but we'll capture before overlay stickers are added
-    // This is a simplified approach - just render everything except overlay stickers
-    
-    // Clear canvas
-    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-
-    // Fill with background color (black for now)
-    this.ctx.fillStyle = "#000000";
-    this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-
-    // Render all timeline elements (media, text, sticker elements)
-    // but WITHOUT the overlay stickers
-    const activeElements = [];
-    
-    for (const track of this.tracks) {
-      for (const element of track.elements) {
-        // Calculate element timing (track doesn't have startTime in this version)
-        const elementStartTime = element.startTime;
-        const elementEndTime = elementStartTime + element.duration;
-
-        if (currentTime >= elementStartTime && currentTime <= elementEndTime) {
-          // Find media item - handle both potential ID fields
-          const mediaItem = this.mediaItems.find(item => {
-            // Check various ID fields that might exist
-            return item.id === element.id || 
-                   (element as any).mediaItemId === item.id;
-          }) || null;
-          
-          activeElements.push({ element, track, mediaItem });
-        }
-      }
-    }
-
-    // Sort elements by track type (render bottom to top)
-    const sortedElements = activeElements.sort((a, b) => {
-      // Text tracks on top
-      if (a.track.type === "text" && b.track.type !== "text") return 1;
-      if (b.track.type === "text" && a.track.type !== "text") return -1;
-      // Audio tracks at bottom
-      if (a.track.type === "audio" && b.track.type !== "audio") return -1;
-      if (b.track.type === "audio" && a.track.type !== "audio") return 1;
-      return 0;
-    });
-
-    // Render each active element using CLI methods EXCEPT stickers
-    for (const { element, mediaItem } of sortedElements) {
-      try {
-        // CRITICAL: Skip sticker elements for the "without stickers" comparison
-        if (element.type === "sticker") {
-          debugLog(`[PRE_STICKER_SKIP] Skipping sticker element ${element.id} for pre-sticker render`);
-          continue;
-        }
-        
-        const elementTimeOffset = currentTime - element.startTime;
-        await this.renderElementCLI(element, mediaItem, elementTimeOffset);
-      } catch (error) {
-        debugError(`[CLI] Error rendering element ${element.id}:`, error);
-      }
-    }
-    
-    // NOTE: We deliberately skip renderOverlayStickers() here for comparison
-  }
 
   // CLI sticker rendering using overlay sticker system
   private async renderStickerElementCLI(element: any, mediaItem: any, currentTime: number): Promise<void> {
@@ -540,78 +476,11 @@ export class CLIExportEngine extends ExportEngine {
       const currentTime = frame * frameTime;
       const frameName = `frame-${frame.toString().padStart(4, "0")}.png`;
 
-      debugLog(`[CLI_FRAME_DEBUG] Rendering frame at time ${currentTime.toFixed(3)}s`);
-
-      // 🔧 BEFORE/AFTER STICKER COMPARISON: Capture canvas state before and after sticker rendering
-      
-      // First render without overlay stickers
-      await this.renderFrameWithoutStickers(currentTime);
-      
-      // Sample specific pixel where sticker should be (based on logs: position 427,240)
-      const preStickerPixel = this.ctx.getImageData(427, 240, 1, 1);
-      debugLog(`🔧 PRE_STICKER_PIXEL at (427,240): [${Array.from(preStickerPixel.data).join(',')}]`);
-      
-      // Capture PRE-STICKER canvas state
-      const preDataUrl = this.canvas.toDataURL("image/png", 1.0);
-      const preHash = preDataUrl.substring(22, 122); // 100-char hash
-      debugLog(`🔧 PRE_STICKER: ${frameName} - Hash: ${preHash.substring(0, 50)}...`);
-      
-      // 🔧 SAVE PRE-STICKER IMAGE for comparison
-      const preFramePath = `frame-${frame.toString().padStart(4, "0")}-PRE.png`;
-      await this.saveFrameToDisk(preFramePath);
-      debugLog(`🔧 SAVED_PRE_STICKER: ${preFramePath}`);
-      
-      // Now render WITH overlay stickers (full frame)
+      // Render frame with all elements including stickers
       await this.renderFrame(currentTime);
       
-      // Sample the same pixel after sticker rendering
-      const postStickerPixel = this.ctx.getImageData(427, 240, 1, 1);
-      debugLog(`🔧 POST_STICKER_PIXEL at (427,240): [${Array.from(postStickerPixel.data).join(',')}]`);
-      
-      // Check if pixel actually changed
-      const pixelChanged = !preStickerPixel.data.every((val, i) => val === postStickerPixel.data[i]);
-      debugLog(`🔧 PIXEL_CHANGED at sticker location: ${pixelChanged}`);
-      
-      // Debug: Check what canvas/context the stickers are using
-      debugLog(`🔧 CANVAS_CHECK: Canvas width=${this.canvas.width}, height=${this.canvas.height}`);
-      debugLog(`🔧 CONTEXT_CHECK: Context exists=${!!this.ctx}, same canvas=${this.ctx.canvas === this.canvas}`);
-      
-      // Capture POST-STICKER canvas state  
-      const postDataUrl = this.canvas.toDataURL("image/png", 1.0);
-      const postHash = postDataUrl.substring(22, 122); // 100-char hash
-      debugLog(`🔧 POST_STICKER: ${frameName} - Hash: ${postHash.substring(0, 50)}...`);
-      
-      // 🔧 SAVE POST-STICKER IMAGE for comparison
-      const postFramePath = `frame-${frame.toString().padStart(4, "0")}-POST.png`;
-      await this.saveFrameToDisk(postFramePath);
-      debugLog(`🔧 SAVED_POST_STICKER: ${postFramePath}`);
-      
-      // Compare hashes to verify sticker impact
-      const hashesAreDifferent = preHash !== postHash;
-      debugLog(`🔧 STICKER_IMPACT: ${frameName} - Hashes different: ${hashesAreDifferent}`);
-      
-      if (!hashesAreDifferent) {
-        debugLog(`❌ STICKER_CAPTURE_FAILED: ${frameName} - Stickers not affecting canvas!`);
-        
-        // Additional debug: Force draw a test rectangle to verify canvas is working
-        this.ctx.fillStyle = 'red';
-        this.ctx.fillRect(10, 10, 50, 50);
-        const testDataUrl = this.canvas.toDataURL("image/png", 1.0);
-        const testHash = testDataUrl.substring(22, 122);
-        const testChanged = testHash !== postHash;
-        debugLog(`🔧 TEST_RECT_DRAWN: Hash changed=${testChanged}`);
-        
-        // Clear the test rectangle
-        await this.renderFrame(currentTime);
-      } else {
-        // Additional verification: check if the difference is significant
-        const sizeDiff = Math.abs(preDataUrl.length - postDataUrl.length);
-        debugLog(`✅ STICKER_CAPTURE_SUCCESS: ${frameName} - Size diff: ${sizeDiff} chars`);
-      }
-
-      // Also save the final frame with standard naming for video compilation
-      const framePath = `frame-${frame.toString().padStart(4, "0")}.png`;
-      await this.saveFrameToDisk(framePath);
+      // Save frame for video compilation
+      await this.saveFrameToDisk(frameName);
 
       // Progress update (15% to 80% for frame rendering)
       const progress = 15 + (frame / totalFrames) * 65;
@@ -630,59 +499,21 @@ export class CLIExportEngine extends ExportEngine {
     }
 
     try {
-      // 🔧 FIX: Force canvas synchronization before capture
-      // Ensure all drawing operations are completed
-      await new Promise(resolve => {
-        if (this.canvas.width && this.canvas.height) {
-          // Force a repaint by reading a pixel (flushes the rendering pipeline)
-          const imageData = this.ctx.getImageData(0, 0, 1, 1);
-          debugLog(`🔧 CANVAS_SYNC: Forced canvas flush for ${frameName}, pixel data length: ${imageData.data.length}`);
-        }
-        requestAnimationFrame(resolve);
-      });
-
-      // 🔧 FIX: Add canvas state verification before capture
-      const canvasWidth = this.canvas.width;
-      const canvasHeight = this.canvas.height;
-      const hasContext = !!this.ctx;
-      debugLog(`🔧 CANVAS_STATE: ${frameName} - Size: ${canvasWidth}x${canvasHeight}, Context: ${hasContext}`);
-
-      // 🔧 FIX: Sample different areas to verify canvas content
-      const centerSample = this.ctx.getImageData(canvasWidth/2, canvasHeight/2, 1, 1);
-      const cornerSample = this.ctx.getImageData(0, 0, 1, 1);
-      const stickerAreaSample = this.ctx.getImageData(960, 540, 1, 1); // Where stickers are drawn
-      
-      debugLog(`🔧 CANVAS_PIXELS: ${frameName} - Center: [${Array.from(centerSample.data).join(',')}]`);
-      debugLog(`🔧 CANVAS_PIXELS: ${frameName} - Corner: [${Array.from(cornerSample.data).join(',')}]`);
-      debugLog(`🔧 CANVAS_PIXELS: ${frameName} - Sticker: [${Array.from(stickerAreaSample.data).join(',')}]`);
-
       // Convert canvas to base64
-      const dataUrl = this.canvas.toDataURL("image/png", 1.0); // Max quality
+      const dataUrl = this.canvas.toDataURL("image/png", 1.0);
       const base64Data = dataUrl.replace(/^data:image\/png;base64,/, "");
-
-      // 🔧 VERIFICATION: Log detailed capture info
-      const captureHash = base64Data.substring(0, 100); // Longer hash for better differentiation
-      debugLog(`🔧 CAPTURE_HASH: ${frameName} - Hash: ${captureHash}`);
-      debugLog(`🔧 CAPTURE_SIZE: ${frameName} - Base64 length: ${base64Data.length} chars`);
 
       // Validate base64 data
       if (!base64Data || base64Data.length < 100) {
         throw new Error(`Invalid PNG data: ${base64Data.length} chars`);
       }
 
-      // Save via IPC using existing API structure
+      // Save via IPC
       await window.electronAPI.invoke("save-frame", {
         sessionId: this.sessionId,
         frameName,
         data: base64Data,
       });
-
-      // Log success for debugging
-      if (frameName === "frame-0000.png" || frameName === "frame-0001.png") {
-        debugLog(
-          `[CLIExportEngine] Saved ${frameName} (${base64Data.length} chars)`
-        );
-      }
     } catch (error) {
       debugError(`[CLIExportEngine] Failed to save frame ${frameName}:`, error);
       throw error;

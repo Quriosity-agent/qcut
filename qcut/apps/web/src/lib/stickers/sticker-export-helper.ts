@@ -7,7 +7,6 @@
 
 import type { OverlaySticker } from "@/types/sticker-overlay";
 import type { MediaItem } from "@/stores/media-store-types";
-import { debugLog, debugError } from "@/lib/debug-config";
 
 /**
  * Interface for sticker render options
@@ -44,9 +43,6 @@ export class StickerExportHelper {
     for (const sticker of sortedStickers) {
       const mediaItem = mediaItems.get(sticker.mediaItemId);
       if (!mediaItem) {
-        debugLog(
-          `[StickerExport] Media item not found for sticker: ${sticker.id}`
-        );
         continue;
       }
 
@@ -59,10 +55,6 @@ export class StickerExportHelper {
           canvasHeight
         );
       } catch (error) {
-        debugError(
-          `[StickerExport] Failed to render sticker ${sticker.id}:`,
-          error
-        );
       }
     }
   }
@@ -79,7 +71,6 @@ export class StickerExportHelper {
   ): Promise<void> {
     // Skip if no URL
     if (!mediaItem.url) {
-      debugLog(`[StickerExport] No URL for media item: ${mediaItem.id}`);
       return;
     }
 
@@ -102,17 +93,6 @@ export class StickerExportHelper {
     const x = centerX - width / 2;
     const y = centerY - height / 2;
 
-    // STICKER DRAW DEBUG: Log drawing details
-    debugLog(`[STICKER_DRAW] Drawing sticker ${sticker.id} at (${x.toFixed(1)}, ${y.toFixed(1)}) size ${width.toFixed(1)}x${height.toFixed(1)}`);
-    debugLog(`[STICKER_DRAW] Image loaded:`, img.complete, 'Image src:', img.src.substring(0, 50) + '...');
-    
-    // DEBUG: Verify context and canvas
-    debugLog(`[STICKER_CTX] Context canvas size: ${ctx.canvas.width}x${ctx.canvas.height}`);
-    debugLog(`[STICKER_CTX] Drawing to context: ${!!ctx}, Has canvas: ${!!ctx.canvas}`);
-    
-    // DEBUG: Check pixel before drawing
-    const beforePixel = ctx.getImageData(Math.floor(x), Math.floor(y), 1, 1);
-    debugLog(`[STICKER_PIXEL_BEFORE] at (${Math.floor(x)},${Math.floor(y)}): [${Array.from(beforePixel.data).join(',')}]`);
 
     // Save context state
     ctx.save();
@@ -131,35 +111,14 @@ export class StickerExportHelper {
 
     // Draw image centered at origin
     try {
-      // DEBUG: Verify image is ready
-      if (!img.complete || img.naturalWidth === 0) {
-        debugLog(`❌ [STICKER_IMG_ERROR] Image not ready: complete=${img.complete}, naturalWidth=${img.naturalWidth}`);
-      }
-      
-      // DEBUG: Test if drawImage actually works
       ctx.drawImage(img, -width / 2, -height / 2, width, height);
       
-      // DEBUG: Draw a colored rectangle to verify drawing works
-      ctx.fillStyle = 'rgba(255, 0, 0, 0.5)'; // Semi-transparent red
-      ctx.fillRect(-width / 2, -height / 2, 10, 10); // Small red square at corner
-      debugLog(`🔧 [STICKER_TEST] Drew red test rectangle at sticker position`);
-      
     } catch (error) {
-      debugLog(`❌ [STICKER_DRAW_ERROR] Failed to draw image: ${error}`);
     }
     
     // Restore context state
     ctx.restore();
     
-    // DEBUG: Check pixel after drawing to verify it changed
-    const afterPixel = ctx.getImageData(Math.floor(x), Math.floor(y), 1, 1);
-    debugLog(`[STICKER_PIXEL_AFTER] at (${Math.floor(x)},${Math.floor(y)}): [${Array.from(afterPixel.data).join(',')}]`);
-    
-    const pixelChanged = !beforePixel.data.every((val, i) => val === afterPixel.data[i]);
-    debugLog(`[STICKER_PIXEL_CHANGE] Pixel changed after draw: ${pixelChanged}`);
-
-    // STICKER DRAW DEBUG: Confirm drawing completion
-    debugLog(`[STICKER_DRAW] ✅ Drew sticker ${sticker.id} to canvas`);
   }
 
   /**
@@ -169,7 +128,6 @@ export class StickerExportHelper {
     // Check cache first
     if (this.imageCache.has(url)) {
       const cached = this.imageCache.get(url)!;
-      debugLog(`[STICKER_IMG_CACHE] Using cached image: complete=${cached.complete}, size=${cached.naturalWidth}x${cached.naturalHeight}`);
       return cached;
     }
 
@@ -179,18 +137,14 @@ export class StickerExportHelper {
       img.crossOrigin = "anonymous";
 
       img.onload = () => {
-        debugLog(`[STICKER_IMG_LOADED] Image loaded: size=${img.naturalWidth}x${img.naturalHeight}, url=${url.substring(0, 100)}...`);
         this.imageCache.set(url, img);
         resolve(img);
       };
 
       img.onerror = (error) => {
-        debugError(`[StickerExport] Failed to load image: ${url}`, error);
         reject(new Error(`Failed to load image: ${url}`));
       };
 
-      // DEBUG: Log what we're trying to load
-      debugLog(`[STICKER_IMG_LOADING] Starting to load image from: ${url.substring(0, 100)}...`);
       img.src = url;
     });
   }
@@ -221,12 +175,10 @@ export class StickerExportHelper {
     // Load all images in parallel
     const loadPromises = Array.from(uniqueUrls).map((url) =>
       this.loadImage(url).catch((error) => {
-        debugError(`[StickerExport] Failed to preload: ${url}`, error);
       })
     );
 
     await Promise.all(loadPromises);
-    debugLog(`[StickerExport] Preloaded ${uniqueUrls.size} sticker images`);
   }
 }
 

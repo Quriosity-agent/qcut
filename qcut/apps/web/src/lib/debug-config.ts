@@ -25,8 +25,8 @@ export function isDebugEnabled(): boolean {
     return import.meta.env.VITE_DEBUG_MODE === "true";
   }
 
-  // Default to true in development for debugging
-  return true;
+  // Default to false for production
+  return false;
 }
 
 /**
