@@ -503,9 +503,40 @@ export class CLIExportEngine extends ExportEngine {
     }
 
     try {
+      // 🔧 FIX: Force canvas synchronization before capture
+      // Ensure all drawing operations are completed
+      await new Promise(resolve => {
+        if (this.canvas.width && this.canvas.height) {
+          // Force a repaint by reading a pixel (flushes the rendering pipeline)
+          const imageData = this.ctx.getImageData(0, 0, 1, 1);
+          debugLog(`🔧 CANVAS_SYNC: Forced canvas flush for ${frameName}, pixel data length: ${imageData.data.length}`);
+        }
+        requestAnimationFrame(resolve);
+      });
+
+      // 🔧 FIX: Add canvas state verification before capture
+      const canvasWidth = this.canvas.width;
+      const canvasHeight = this.canvas.height;
+      const hasContext = !!this.ctx;
+      debugLog(`🔧 CANVAS_STATE: ${frameName} - Size: ${canvasWidth}x${canvasHeight}, Context: ${hasContext}`);
+
+      // 🔧 FIX: Sample different areas to verify canvas content
+      const centerSample = this.ctx.getImageData(canvasWidth/2, canvasHeight/2, 1, 1);
+      const cornerSample = this.ctx.getImageData(0, 0, 1, 1);
+      const stickerAreaSample = this.ctx.getImageData(960, 540, 1, 1); // Where stickers are drawn
+      
+      debugLog(`🔧 CANVAS_PIXELS: ${frameName} - Center: [${Array.from(centerSample.data).join(',')}]`);
+      debugLog(`🔧 CANVAS_PIXELS: ${frameName} - Corner: [${Array.from(cornerSample.data).join(',')}]`);
+      debugLog(`🔧 CANVAS_PIXELS: ${frameName} - Sticker: [${Array.from(stickerAreaSample.data).join(',')}]`);
+
       // Convert canvas to base64
       const dataUrl = this.canvas.toDataURL("image/png", 1.0); // Max quality
       const base64Data = dataUrl.replace(/^data:image\/png;base64,/, "");
+
+      // 🔧 VERIFICATION: Log detailed capture info
+      const captureHash = base64Data.substring(0, 100); // Longer hash for better differentiation
+      debugLog(`🔧 CAPTURE_HASH: ${frameName} - Hash: ${captureHash}`);
+      debugLog(`🔧 CAPTURE_SIZE: ${frameName} - Base64 length: ${base64Data.length} chars`);
 
       // Validate base64 data
       if (!base64Data || base64Data.length < 100) {
