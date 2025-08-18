@@ -155,25 +155,27 @@ useEffect(() => {
 - ✅ AudioWaveform cleanup and memoization
 - ✅ AiView component memoization
 
-### ✅ Components Verified SAFE (from v4 console):
-- **Timeline**: 11 renders total (SAFE ✅)
+### ✅ Components Verified SAFE (from v5 console logs):
+- **Timeline**: 10 renders total (SAFE ✅)
+- **MediaPanel**: 7 renders total (SAFE ✅)
 - **PreviewPanel**: 12 renders total (SAFE ✅)
 - **PropertiesPanel**: 11 renders total (SAFE ✅)
 - **PreviewToolbar**: 11 renders total (SAFE ✅)
-- **MediaPanel**: 7 renders total (SAFE ✅)
 - **AudioPlayer**: 3 renders total (SAFE ✅)
-- **FullscreenToolbar**: Not rendering (conditional)
-- **FullscreenPreview**: Not rendering (conditional)
-- **VideoPlayer**: Not rendering (no media)
+- **TimelineTrack** (multiple instances): 2-6 renders each (SAFE ✅)
+- **AudioWaveform**: 3 renders total (SAFE ✅)
+- **SoundsView**: Not rendering (not active tab)
+- **AiView**: Not rendering (not active tab)
 
 ### 🔴 Still Has Infinite Loop:
 ```
 Warning: Maximum update depth exceeded at fl 
-(file:///editor._project_id.lazy-CI6H3gdH.js:13:102912)
+(file:///editor._project_id.lazy-DKU_D8sd.js:13:102893)
 ```
-- Component `fl` is NOT any of the tested components
-- Error occurs at render #3 (very early)
-- Must be a child component not yet instrumented
+- **CRITICAL**: Component `fl` is NOT any of the major components we've tested
+- All tested components show normal render counts (2-12 renders)
+- Error occurs early in render cycle (around render #3)
+- **`fl` must be a smaller/child component we haven't instrumented yet**
 
 ## Complete List of Files with useEffect Hooks
 

@@ -34,6 +34,31 @@ export function TimelinePlayhead({
   playheadRef: externalPlayheadRef,
   isSnappingToPlayhead = false,
 }: TimelinePlayheadProps) {
+  // Debug: Track render count to detect infinite loops
+  const componentName = "TimelinePlayhead";
+  const renderCount = useRef(0);
+  const lastRenderTime = useRef(Date.now());
+  
+  useEffect(() => {
+    renderCount.current++;
+    const now = Date.now();
+    const timeSince = now - lastRenderTime.current;
+    lastRenderTime.current = now;
+    
+    console.log(`[${componentName}] Render #${renderCount.current} at ${new Date().toISOString()} (${timeSince}ms since last)`);
+    
+    if (timeSince < 50) {
+      console.warn(`[${componentName}] ⚠️ Rapid re-rendering detected! Only ${timeSince}ms between renders`);
+    }
+    
+    if (renderCount.current > 100) {
+      console.error(`[${componentName}] ❌ EXCESSIVE RENDERS: ${renderCount.current} renders detected!`);
+      if (renderCount.current === 101) {
+        console.trace();
+      }
+    }
+  });
+
   const internalPlayheadRef = useRef<HTMLDivElement>(null);
   const playheadRef = externalPlayheadRef || internalPlayheadRef;
   const [scrollLeft, setScrollLeft] = useState(0);
