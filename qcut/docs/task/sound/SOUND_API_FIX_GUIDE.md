@@ -9,22 +9,24 @@ The sound search functionality is failing with:
 
 This error occurs because:
 1. The app is trying to fetch from `/api/sounds/search` (Next.js API route pattern)
-2. However, QCut is a **Vite + Electron** application, not Next.js
-3. In Electron, there's no backend server to handle `/api/` routes
+2. However, QCut uses a **hybrid Vite + TanStack Router + Electron** architecture
+3. While Next.js API routes exist in the codebase, **Vite does not execute them**
 4. The fetch is being treated as a file system path, hence `net::ERR_FILE_NOT_FOUND`
 
 ## Root Cause Analysis
 
-### Current Architecture Issue
-- **Frontend**: Vite + TanStack Router (client-side only)
-- **Backend**: None (pure frontend app packaged with Electron)
+### Hybrid Architecture Reality
+- **Primary Frontend**: Vite + TanStack Router (`src/routes/`)
+- **Secondary Structure**: Next.js-style pages (`src/app/`) - legacy/compatibility
+- **API Routes**: Next.js format (`src/app/api/`) - **⚠️ Non-functional in Vite**
+- **Desktop**: Electron with IPC handlers
 - **Sound Hook**: `use-sound-search.ts` calls `fetch('/api/sounds/search')` 
-- **API Route**: `apps/web/src/app/api/sounds/search/route.ts` exists but won't work in Vite
 
 ### Why This Happens
-1. The sound search hook was designed for Next.js (which has API routes)
-2. QCut uses Vite, which doesn't support server-side API routes
-3. Electron apps need IPC (Inter-Process Communication) for backend functionality
+1. **Dual Architecture Confusion**: API routes exist but are inactive in Vite environment
+2. **Build System**: Vite dev server doesn't execute Next.js API routes (only Next.js does)
+3. **Migration State**: Project appears to be in transition from Next.js to Vite + TanStack Router
+4. **Solution**: Electron IPC is the correct pattern for backend functionality in this architecture
 
 ## Solution Options
 
@@ -37,13 +39,17 @@ This error occurs because:
 2. **Create IPC handler for sound search**
 3. **Update frontend hook to use IPC instead of fetch**
 
-### Option 2: External Backend Service
-**Pros**: Could work for web deployment later
-**Cons**: Requires separate server, API key exposure risk
+### Option 2: Migrate to Next.js (Not Recommended)
+**Pros**: API routes would work as designed
+**Cons**: Requires major architecture changes, disrupts TanStack Router, complex migration
 
-### Option 3: Direct Frontend API Calls
+### Option 3: External Backend Service
+**Pros**: Could work for web deployment later
+**Cons**: Requires separate server, API key exposure risk, added complexity
+
+### Option 4: Direct Frontend API Calls  
 **Pros**: Simple to implement
-**Cons**: Exposes API key, CORS issues, security risk
+**Cons**: Exposes API key, CORS issues, major security risk
 
 ## Recommended Fix (Option 1: Electron IPC)
 
@@ -170,11 +176,37 @@ console.log("IPC call received:", searchParams);
 
 ## Alternative Architectures (Future)
 
-If QCut ever moves to a different architecture:
-- **Next.js**: Current API route would work as-is
+If QCut's architecture changes:
+- **Pure Next.js**: Existing API route (`src/app/api/sounds/search/route.ts`) would work as-is
 - **Express + Vite**: Create Express server with `/api/sounds/search` endpoint  
 - **Tauri**: Use Tauri commands instead of Electron IPC
 - **PWA**: Use service worker for API proxy (with CORS considerations)
+- **Vite + Backend**: Separate Node.js/Deno server with API endpoints
+
+## Understanding the Current Hybrid State
+
+### File Structure Evidence:
+```
+src/
+├── app/                 # Next.js-style (inactive in Vite)
+│   ├── api/            # API routes exist but non-functional  
+│   └── */page.tsx      # Page components (legacy)
+├── routes/             # TanStack Router (active)
+│   └── *.tsx          # Active route components
+└── routeTree.gen.ts    # Generated router configuration
+```
+
+### Development Commands Evidence:
+```json
+{
+  "scripts": {
+    "dev": "vite",           // Uses Vite dev server
+    "build": "tsc && vite build"  // Uses Vite build
+  }
+}
+```
+
+This confirms the hybrid nature: **Next.js structures exist but Vite is the active build system.**
 
 ## Resources
 
