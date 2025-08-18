@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, memo } from "react";
 import WaveSurfer from "wavesurfer.js";
 
 interface AudioWaveformProps {
@@ -19,18 +19,14 @@ const AudioWaveform: React.FC<AudioWaveformProps> = ({
 
   useEffect(() => {
     let mounted = true;
-    const ws = wavesurfer.current;
+    let abortController = new AbortController();
 
     const initWaveSurfer = async () => {
       if (!waveformRef.current || !audioUrl) return;
 
       try {
-        // Clear any existing instance safely
-        if (ws) {
-          // Instead of immediately destroying, just set to null
-          // We'll destroy it outside this function
-          wavesurfer.current = null;
-        }
+        setIsLoading(true);
+        setError(false);
 
         // Create a fresh instance
         const newWaveSurfer = WaveSurfer.create({
@@ -45,28 +41,22 @@ const AudioWaveform: React.FC<AudioWaveformProps> = ({
           interact: false,
         });
 
-        // Assign to ref only if component is still mounted
-        if (mounted) {
-          wavesurfer.current = newWaveSurfer;
-        } else {
-          // Component unmounted during initialization, clean up
-          try {
-            newWaveSurfer.destroy();
-          } catch (e) {
-            // Ignore destroy errors
-          }
-          return;
-        }
+        // Store the instance
+        wavesurfer.current = newWaveSurfer;
 
         // Event listeners
         newWaveSurfer.on("ready", () => {
-          if (mounted) {
+          if (mounted && !abortController.signal.aborted) {
             setIsLoading(false);
             setError(false);
           }
         });
 
         newWaveSurfer.on("error", (err) => {
+          // Ignore abort errors
+          if (err.name === 'AbortError' || abortController.signal.aborted) {
+            return;
+          }
           console.error("WaveSurfer error:", err);
           if (mounted) {
             setError(true);
@@ -74,8 +64,15 @@ const AudioWaveform: React.FC<AudioWaveformProps> = ({
           }
         });
 
-        await newWaveSurfer.load(audioUrl);
-      } catch (err) {
+        // Check if component is still mounted before loading
+        if (mounted && !abortController.signal.aborted) {
+          await newWaveSurfer.load(audioUrl);
+        }
+      } catch (err: any) {
+        // Ignore abort errors
+        if (err?.name === 'AbortError' || abortController.signal.aborted) {
+          return;
+        }
         console.error("Failed to initialize WaveSurfer:", err);
         if (mounted) {
           setError(true);
@@ -84,53 +81,25 @@ const AudioWaveform: React.FC<AudioWaveformProps> = ({
       }
     };
 
-    // First safely destroy previous instance if it exists
-    if (ws) {
-      // Use this pattern to safely destroy the previous instance
-      const wsToDestroy = ws;
-      // Detach from ref immediately
-      wavesurfer.current = null;
-
-      // Wait a tick to destroy so any pending operations can complete
-      requestAnimationFrame(() => {
-        try {
-          wsToDestroy.destroy();
-        } catch (e) {
-          // Ignore errors during destroy
-        }
-        // Only initialize new instance after destroying the old one
-        if (mounted) {
-          initWaveSurfer();
-        }
-      });
-    } else {
-      // No previous instance to clean up, initialize directly
-      initWaveSurfer();
-    }
+    // Initialize WaveSurfer
+    initWaveSurfer();
 
     return () => {
       // Mark component as unmounted
       mounted = false;
+      abortController.abort();
 
-      // Store reference to current wavesurfer instance
-      const wsToDestroy = wavesurfer.current;
-
-      // Immediately clear the ref to prevent accessing it after unmount
-      wavesurfer.current = null;
-
-      // If we have an instance to clean up, do it safely
-      if (wsToDestroy) {
-        // Delay destruction to avoid race conditions
-        requestAnimationFrame(() => {
-          try {
-            wsToDestroy.destroy();
-          } catch (e) {
-            // Ignore destroy errors - they're expected
-          }
-        });
+      // Clean up WaveSurfer instance
+      if (wavesurfer.current) {
+        try {
+          wavesurfer.current.destroy();
+        } catch (e) {
+          // Ignore destroy errors - they're expected during cleanup
+        }
+        wavesurfer.current = null;
       }
     };
-  }, [audioUrl, height]);
+  }, [audioUrl]); // Remove height from dependencies to prevent unnecessary re-renders
 
   if (error) {
     return (
@@ -159,4 +128,4 @@ const AudioWaveform: React.FC<AudioWaveformProps> = ({
   );
 };
 
-export default AudioWaveform;
+export default memo(AudioWaveform);

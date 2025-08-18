@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, memo } from "react";
 import { Button } from "../../ui/button";
 import {
   MoreVertical,
@@ -62,7 +62,7 @@ import {
   ContextMenuTrigger,
 } from "../../ui/context-menu";
 
-export function TimelineElement({
+function TimelineElementComponent({
   element,
   track,
   zoomLevel,
@@ -519,3 +519,5 @@ export function TimelineElement({
     </ContextMenu>
   );
 }
+
+export const TimelineElement = memo(TimelineElementComponent);
