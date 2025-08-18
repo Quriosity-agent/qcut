@@ -93,15 +93,16 @@ export function useAIGeneration(props: UseAIGenerationProps) {
     error: mediaStoreError,
   } = useAsyncMediaStoreActions();
 
-  // Client-side elapsed time timer
+  // Client-side elapsed time timer - reduced frequency to avoid excessive re-renders
   useEffect(() => {
     let interval: NodeJS.Timeout | null = null;
 
     if (isGenerating && generationStartTime) {
+      // Update less frequently to reduce re-renders (every 5 seconds)
       interval = setInterval(() => {
         const elapsed = Math.floor((Date.now() - generationStartTime) / 1000);
         setElapsedTime(elapsed);
-      }, 1000);
+      }, 5000);
     }
 
     return () => {

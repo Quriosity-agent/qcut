@@ -326,7 +326,7 @@ function TimelineComponent() {
     const totalDuration = getTotalDuration();
     const newDuration = Math.max(totalDuration, 10); // Minimum 10 seconds for empty timeline
     setDuration(newDuration);
-  }, [getTotalDuration, setDuration]); // Dependencies for the effect
+  }, [tracks, getTotalDuration, setDuration]); // Safe dependencies - tracks changes trigger recalc
 
   // Old marquee system removed - using new SelectionBox component instead
 
