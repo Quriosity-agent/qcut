@@ -149,65 +149,87 @@ useEffect(() => {
 
 ## Current Status
 
-### Fixed Issues:
-- ✅ AI generation elapsed time timer (reduced frequency)
-- ✅ Timeline getTotalDuration dependency (using tracks instead)
+### ✅ Fixed Issues:
+- ✅ AI generation elapsed time timer (reduced from 1s to 5s)
+- ✅ Timeline getTotalDuration dependency (using tracks instead of function)
 - ✅ AudioWaveform cleanup and memoization
 - ✅ AiView component memoization
-- ✅ Timeline component verified (only 10 renders - NOT the issue)
 
-### Console Output Analysis:
-```
-[Timeline] Render #1-#3: Initial renders (normal)
-[Timeline] Duration update from 0 to 10 (expected)
-Maximum update depth exceeded at fl (minified component)
-[Timeline] Render #4-#10: Normal stabilization
-```
+### ✅ Components Verified SAFE (from v3 console):
+- **Timeline**: 11 renders total (normal)
+- **PreviewPanel**: 12 renders total (normal)
+- **PropertiesPanel**: 11 renders total (normal)
+- **PreviewToolbar**: 11 renders total (normal)
+- **FullscreenToolbar**: Not rendering (conditional)
+- **FullscreenPreview**: Not rendering (conditional)
+- **VideoPlayer**: Not rendering (no media)
+- **AudioPlayer**: Logging added, needs testing
+- **MediaPanel**: Logging added, needs testing
 
-### Pending Investigation:
-- ⚠️ Component `fl` in minified build still showing errors (NOT Timeline)
-- ⚠️ Need to identify what `fl` maps to in source code
-- ⚠️ Error occurs AFTER Timeline renders, suggesting different component
+### 🔴 Still Has Infinite Loop:
+```
+Warning: Maximum update depth exceeded at fl 
+(file:///editor._project_id.lazy-CI6H3gdH.js:13:102912)
+```
+- Component `fl` is NOT any of the tested components
+- Error occurs at render #3 (very early)
+- Must be a child component not yet instrumented
 
 ## Complete List of Files with useEffect Hooks
 
-### High Priority Files (Core Editor Components)
-1. [ ] `components/editor/timeline/index.tsx` - **Main timeline component**
-2. [ ] `components/editor/timeline/timeline-track.tsx` - Track rendering
-3. [ ] `components/editor/timeline/timeline-playhead.tsx` - Playhead updates
-4. [ ] `components/editor/preview-panel.tsx` - Video preview updates
-5. [ ] `components/editor/audio-waveform.tsx` - Audio visualization
-6. [ ] `routes/editor.$project_id.lazy.tsx` - Main editor route
+### ✅ TESTED - NOT THE PROBLEM (10-12 renders max)
+1. [x] ✅ `components/editor/timeline/index.tsx` - **11 renders (SAFE)**
+2. [x] ✅ `components/editor/preview-panel.tsx` - **12 renders (SAFE)**
+3. [x] ✅ `components/editor/preview-panel-components.tsx` - **All 3 components SAFE**
+   - FullscreenToolbar: Normal renders
+   - FullscreenPreview: Normal renders  
+   - PreviewToolbar: 11 renders
+4. [x] ✅ `components/editor/properties-panel/index.tsx` - **11 renders (SAFE)**
+5. [x] ✅ `components/ui/video-player.tsx` - **No logs (not rendering)**
+6. [x] ✅ `components/ui/audio-player.tsx` - **Added logging, awaiting test**
+7. [x] ✅ `components/editor/media-panel/index.tsx` - **Added logging, awaiting test**
 
-### Medium Priority Files (Media Panel)
-7. [ ] `components/editor/media-panel/views/ai.tsx` - AI generation view
-8. [ ] `components/editor/media-panel/views/use-ai-generation.ts` - AI hook
-9. [ ] `components/editor/media-panel/views/use-ai-history.ts` - AI history
-10. [ ] `components/editor/media-panel/views/sounds.tsx` - Sound effects
-11. [ ] `components/editor/media-panel/views/media.tsx` - Media library
-12. [ ] `components/editor/media-panel/views/stickers.tsx` - Stickers panel
+### ⚠️ HIGH PRIORITY - NOT YET TESTED
+1. [ ] `components/editor/timeline/timeline-track.tsx` - Track rendering
+2. [ ] `components/editor/timeline/timeline-playhead.tsx` - Playhead updates
+3. [ ] `components/editor/audio-waveform.tsx` - Audio visualization
+4. [ ] `routes/editor.$project_id.lazy.tsx` - Main editor route
 
-### Hooks with useEffect (Check for Infinite Loops)
-13. [ ] `hooks/use-timeline-playhead.ts` - **Playhead position updates**
-14. [ ] `hooks/use-timeline-element-resize.ts` - Element resize handling
-15. [ ] `hooks/use-timeline-zoom.ts` - Zoom level changes
-16. [ ] `hooks/use-async-media-store.ts` - Media store loading
-17. [ ] `hooks/use-async-ffmpeg.ts` - FFmpeg initialization
-18. [ ] `hooks/use-sound-search.ts` - Sound search API calls
-19. [ ] `hooks/use-export-settings.ts` - Export configuration
-20. [ ] `hooks/use-debounce.ts` - Debounced values
-21. [ ] `hooks/use-blob-image.ts` - Blob URL management
+### ⚠️ MEDIA PANEL VIEWS - NEED TESTING
+5. [ ] `components/editor/media-panel/views/ai.tsx` - AI generation view (has memo)
+6. [ ] `components/editor/media-panel/views/use-ai-generation.ts` - AI hook (timer reduced)
+7. [ ] `components/editor/media-panel/views/use-ai-history.ts` - AI history
+8. [ ] `components/editor/media-panel/views/sounds.tsx` - Sound effects
+9. [ ] `components/editor/media-panel/views/media.tsx` - Media library
+10. [ ] `components/editor/media-panel/views/stickers.tsx` - Stickers panel
 
-### Stickers Overlay Components
-22. [ ] `components/editor/stickers-overlay/StickerCanvas.tsx`
-23. [ ] `components/editor/stickers-overlay/AutoSave.tsx`
-24. [ ] `components/editor/stickers-overlay/hooks/useStickerDrag.ts`
+### ⚠️ HOOKS - NEED TESTING
+11. [ ] `hooks/use-timeline-playhead.ts` - **Playhead position updates**
+12. [ ] `hooks/use-timeline-element-resize.ts` - Element resize handling
+13. [ ] `hooks/use-timeline-zoom.ts` - Zoom level changes
+14. [ ] `hooks/use-async-media-store.ts` - Media store loading
+15. [ ] `hooks/use-async-ffmpeg.ts` - FFmpeg initialization
+16. [ ] `hooks/use-sound-search.ts` - Sound search API calls
+17. [ ] `hooks/use-export-settings.ts` - Export configuration
+18. [ ] `hooks/use-debounce.ts` - Debounced values
+19. [ ] `hooks/use-blob-image.ts` - Blob URL management
 
-### Other Components to Check
-25. [ ] `components/storage-provider.tsx` - Storage initialization
-26. [ ] `components/editor-provider.tsx` - Editor context
-27. [ ] `components/onboarding.tsx` - Onboarding flow
-28. [ ] `components/export-canvas.tsx` - Export rendering
+### ⚠️ STICKERS OVERLAY - NEED TESTING
+20. [ ] `components/editor/stickers-overlay/StickerCanvas.tsx`
+21. [ ] `components/editor/stickers-overlay/AutoSave.tsx`
+22. [ ] `components/editor/stickers-overlay/hooks/useStickerDrag.ts`
+
+### ⚠️ OTHER COMPONENTS - NEED TESTING
+23. [ ] `components/storage-provider.tsx` - Storage initialization
+24. [ ] `components/editor-provider.tsx` - Editor context
+25. [ ] `components/onboarding.tsx` - Onboarding flow
+26. [ ] `components/export-canvas.tsx` - Export rendering
+
+## 🔴 IMPORTANT: Component 'fl' Status
+- **Still unidentified** - not in any tested component
+- Error occurs at line `editor._project_id.lazy-CI6H3gdH.js:13:102912`
+- Happens very early (render #3) before components stabilize
+- Must be a child component we haven't logged yet
 
 ## Verification Script
 
