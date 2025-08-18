@@ -19,7 +19,7 @@ const AudioWaveform: React.FC<AudioWaveformProps> = ({
 
   useEffect(() => {
     let mounted = true;
-    let abortController = new AbortController();
+    const abortController = new AbortController();
 
     const initWaveSurfer = async () => {
       if (!waveformRef.current || !audioUrl) return;
@@ -54,7 +54,7 @@ const AudioWaveform: React.FC<AudioWaveformProps> = ({
 
         newWaveSurfer.on("error", (err) => {
           // Ignore abort errors
-          if (err.name === 'AbortError' || abortController.signal.aborted) {
+          if (err.name === "AbortError" || abortController.signal.aborted) {
             return;
           }
           console.error("WaveSurfer error:", err);
@@ -70,7 +70,7 @@ const AudioWaveform: React.FC<AudioWaveformProps> = ({
         }
       } catch (err: any) {
         // Ignore abort errors
-        if (err?.name === 'AbortError' || abortController.signal.aborted) {
+        if (err?.name === "AbortError" || abortController.signal.aborted) {
           return;
         }
         console.error("Failed to initialize WaveSurfer:", err);
@@ -99,7 +99,7 @@ const AudioWaveform: React.FC<AudioWaveformProps> = ({
         wavesurfer.current = null;
       }
     };
-  }, [audioUrl]); // Remove height from dependencies to prevent unnecessary re-renders
+  }, [audioUrl, height]);
 
   if (error) {
     return (
