@@ -12,8 +12,10 @@ export class CLIExportEngine extends ExportEngine {
 
   // Override parent's renderFrame to skip video validation issues
   async renderFrame(currentTime: number): Promise<void> {
-    debugLog(`[CLI_FRAME_DEBUG] Rendering frame at time ${currentTime.toFixed(3)}s`);
-    
+    debugLog(
+      `[CLI_FRAME_DEBUG] Rendering frame at time ${currentTime.toFixed(3)}s`
+    );
+
     // Clear canvas
     this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
@@ -22,11 +24,13 @@ export class CLIExportEngine extends ExportEngine {
     this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
     const activeElements = this.getActiveElementsCLI(currentTime);
-    
+
     // Only log every 30 frames (1 second) to reduce spam
     if (Math.round(currentTime * 30) % 30 === 0) {
-      const elementTypes = activeElements.map(el => el.element.type);
-      debugLog(`📊 Frame ${currentTime.toFixed(1)}s: ${activeElements.length} elements: ${elementTypes.join(', ')}`);
+      const elementTypes = activeElements.map((el) => el.element.type);
+      debugLog(
+        `📊 Frame ${currentTime.toFixed(1)}s: ${activeElements.length} elements: ${elementTypes.join(", ")}`
+      );
     }
 
     // Sort elements by track type (render bottom to top)
@@ -44,10 +48,12 @@ export class CLIExportEngine extends ExportEngine {
     for (const { element, mediaItem } of sortedElements) {
       await this.renderElementCLI(element, mediaItem, currentTime);
     }
-    
+
     // CRITICAL: Render overlay stickers (separate from timeline elements)
     // Use the parent class's renderOverlayStickers method
-    debugLog(`[CLI_OVERLAY_STICKERS] Calling parent renderOverlayStickers at time ${currentTime}`);
+    debugLog(
+      `[CLI_OVERLAY_STICKERS] Calling parent renderOverlayStickers at time ${currentTime}`
+    );
     await this.renderOverlayStickers(currentTime);
   }
 
@@ -64,7 +70,9 @@ export class CLIExportEngine extends ExportEngine {
     } else if (element.type === "text") {
       this.renderTextElementCLI(element);
     } else if (element.type === "sticker") {
-      debugLog(`[CLI_STICKER_DEBUG] Found sticker element: ${element.id} at time ${currentTime}`);
+      debugLog(
+        `[CLI_STICKER_DEBUG] Found sticker element: ${element.id} at time ${currentTime}`
+      );
       await this.renderStickerElementCLI(element, mediaItem, currentTime);
     }
   }
@@ -277,47 +285,66 @@ export class CLIExportEngine extends ExportEngine {
     this.ctx.fillText(element.content, x, y);
   }
 
-
-
   // CLI sticker rendering using overlay sticker system
-  private async renderStickerElementCLI(element: any, mediaItem: any, currentTime: number): Promise<void> {
-    debugLog(`[CLI_STICKER_DEBUG] Starting sticker render for element ${element.id}`);
-    
+  private async renderStickerElementCLI(
+    element: any,
+    mediaItem: any,
+    currentTime: number
+  ): Promise<void> {
+    debugLog(
+      `[CLI_STICKER_DEBUG] Starting sticker render for element ${element.id}`
+    );
+
     try {
       // Import stickers overlay store dynamically
-      const { useStickersOverlayStore } = await import("@/stores/stickers-overlay-store");
+      const { useStickersOverlayStore } = await import(
+        "@/stores/stickers-overlay-store"
+      );
       const { useMediaStore } = await import("@/stores/media-store");
-      
+
       // Get visible stickers at current time
       const stickersStore = useStickersOverlayStore.getState();
-      const visibleStickers = stickersStore.getVisibleStickersAtTime(currentTime);
-      
-      debugLog(`[CLI_STICKER_DEBUG] Found ${visibleStickers.length} overlay stickers at time ${currentTime}`);
-      
+      const visibleStickers =
+        stickersStore.getVisibleStickersAtTime(currentTime);
+
+      debugLog(
+        `[CLI_STICKER_DEBUG] Found ${visibleStickers.length} overlay stickers at time ${currentTime}`
+      );
+
       if (visibleStickers.length === 0) {
-        debugLog(`[CLI_STICKER_DEBUG] No overlay stickers to render`);
+        debugLog("[CLI_STICKER_DEBUG] No overlay stickers to render");
         return;
       }
-      
+
       // Get media items map
       const mediaStore = useMediaStore.getState();
-      const mediaItemsMap = new Map(mediaStore.mediaItems.map((item) => [item.id, item]));
-      
+      const mediaItemsMap = new Map(
+        mediaStore.mediaItems.map((item) => [item.id, item])
+      );
+
       // Use the existing sticker export helper
-      const { getStickerExportHelper } = await import("@/lib/stickers/sticker-export-helper");
+      const { getStickerExportHelper } = await import(
+        "@/lib/stickers/sticker-export-helper"
+      );
       const stickerHelper = getStickerExportHelper();
-      
-      debugLog(`[CLI_STICKER_DEBUG] Rendering stickers to canvas...`);
-      await stickerHelper.renderStickersToCanvas(this.ctx, visibleStickers, mediaItemsMap, {
-        canvasWidth: this.canvas.width,
-        canvasHeight: this.canvas.height,
-        currentTime,
-      });
-      
-      debugLog(`[CLI_STICKER_DEBUG] ✅ Successfully rendered ${visibleStickers.length} stickers`);
-      
+
+      debugLog("[CLI_STICKER_DEBUG] Rendering stickers to canvas...");
+      await stickerHelper.renderStickersToCanvas(
+        this.ctx,
+        visibleStickers,
+        mediaItemsMap,
+        {
+          canvasWidth: this.canvas.width,
+          canvasHeight: this.canvas.height,
+          currentTime,
+        }
+      );
+
+      debugLog(
+        `[CLI_STICKER_DEBUG] ✅ Successfully rendered ${visibleStickers.length} stickers`
+      );
     } catch (error) {
-      debugError(`[CLI_STICKER_DEBUG] Failed to render stickers:`, error);
+      debugError("[CLI_STICKER_DEBUG] Failed to render stickers:", error);
     }
   }
 
@@ -478,7 +505,7 @@ export class CLIExportEngine extends ExportEngine {
 
       // Render frame with all elements including stickers
       await this.renderFrame(currentTime);
-      
+
       // Save frame for video compilation
       await this.saveFrameToDisk(frameName);
 

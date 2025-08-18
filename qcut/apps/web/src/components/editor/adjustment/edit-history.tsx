@@ -39,7 +39,7 @@ export function EditHistory() {
         .slice(0, 19)
         .replace(/[:.]/g, "-");
       const filename = `edit-${index + 1}-${item.model}-${timestamp}.png`;
-      
+
       // Dynamically import image utilities
       const { downloadImage } = await import("@/lib/image-utils");
       await downloadImage(item.editedUrl, filename);

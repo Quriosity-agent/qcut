@@ -38,16 +38,23 @@ export default defineConfig({
         entryFileNames: "assets/[name]-[hash].js",
         manualChunks: (id) => {
           // Core React ecosystem - keep together to avoid context issues
-          if (id.includes('react') || id.includes('react-dom') || 
-              id.includes('@radix-ui') || id.includes('@tanstack/react-router')) {
-            return 'vendor-react';
+          if (
+            id.includes("react") ||
+            id.includes("react-dom") ||
+            id.includes("@radix-ui") ||
+            id.includes("@tanstack/react-router")
+          ) {
+            return "vendor-react";
           }
 
           // UI utilities and styling libraries (non-React dependent)
-          if (id.includes('lucide-react') || 
-              id.includes('class-variance-authority') ||
-              id.includes('clsx') || id.includes('tailwind-merge')) {
-            return 'vendor-ui';
+          if (
+            id.includes("lucide-react") ||
+            id.includes("class-variance-authority") ||
+            id.includes("clsx") ||
+            id.includes("tailwind-merge")
+          ) {
+            return "vendor-ui";
           }
 
           // Video/Media processing kept in main bundle to avoid dependency issues
@@ -92,36 +99,50 @@ export default defineConfig({
           // }
 
           // Form and validation libraries
-          if (id.includes('react-hook-form') || id.includes('zod') ||
-              id.includes('@hookform')) {
-            return 'vendor-forms';
+          if (
+            id.includes("react-hook-form") ||
+            id.includes("zod") ||
+            id.includes("@hookform")
+          ) {
+            return "vendor-forms";
           }
 
           // Charts and data visualization
-          if (id.includes('recharts') || id.includes('embla-carousel')) {
-            return 'vendor-charts';
+          if (id.includes("recharts") || id.includes("embla-carousel")) {
+            return "vendor-charts";
           }
 
           // Motion and animation libraries
-          if (id.includes('framer-motion') || id.includes('motion') || 
-              id.includes('@hello-pangea/dnd')) {
-            return 'vendor-motion';
+          if (
+            id.includes("framer-motion") ||
+            id.includes("motion") ||
+            id.includes("@hello-pangea/dnd")
+          ) {
+            return "vendor-motion";
           }
 
           // Markdown processing libraries
-          if (id.includes('react-markdown') || id.includes('rehype') || 
-              id.includes('unified') || id.includes('remark')) {
-            return 'vendor-markdown';
+          if (
+            id.includes("react-markdown") ||
+            id.includes("rehype") ||
+            id.includes("unified") ||
+            id.includes("remark")
+          ) {
+            return "vendor-markdown";
           }
 
           // Authentication and database
-          if (id.includes('better-auth') || id.includes('drizzle') ||
-              id.includes('@opencut/auth') || id.includes('@opencut/db')) {
-            return 'vendor-auth';
+          if (
+            id.includes("better-auth") ||
+            id.includes("drizzle") ||
+            id.includes("@opencut/auth") ||
+            id.includes("@opencut/db")
+          ) {
+            return "vendor-auth";
           }
 
           // Everything else stays in main chunk
-          return undefined;
+          return;
         },
       },
     },

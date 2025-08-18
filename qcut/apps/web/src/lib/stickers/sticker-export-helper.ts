@@ -54,8 +54,7 @@ export class StickerExportHelper {
           canvasWidth,
           canvasHeight
         );
-      } catch (error) {
-      }
+      } catch (error) {}
     }
   }
 
@@ -82,17 +81,16 @@ export class StickerExportHelper {
     const baseSize = Math.min(canvasWidth, canvasHeight);
     const width = (sticker.size.width / 100) * baseSize;
     const height = (sticker.size.height / 100) * baseSize;
-    
+
     // Calculate pixel position from percentage
     // IMPORTANT: position.x and position.y represent the CENTER of the sticker (not top-left)
     // This matches the preview which uses transform: translate(-50%, -50%)
     const centerX = (sticker.position.x / 100) * canvasWidth;
     const centerY = (sticker.position.y / 100) * canvasHeight;
-    
+
     // Calculate top-left corner for positioning
     const x = centerX - width / 2;
     const y = centerY - height / 2;
-
 
     // Save context state
     ctx.save();
@@ -112,13 +110,10 @@ export class StickerExportHelper {
     // Draw image centered at origin
     try {
       ctx.drawImage(img, -width / 2, -height / 2, width, height);
-      
-    } catch (error) {
-    }
-    
+    } catch (error) {}
+
     // Restore context state
     ctx.restore();
-    
   }
 
   /**
@@ -174,8 +169,7 @@ export class StickerExportHelper {
 
     // Load all images in parallel
     const loadPromises = Array.from(uniqueUrls).map((url) =>
-      this.loadImage(url).catch((error) => {
-      })
+      this.loadImage(url).catch((error) => {})
     );
 
     await Promise.all(loadPromises);

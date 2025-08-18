@@ -110,7 +110,7 @@ export function MediaView() {
 
       // Process files (extract metadata, generate thumbnails, etc.)
       console.log("[Media View] 🔧 Calling processMediaFiles...");
-      
+
       // Dynamically import media processing utilities
       const { processMediaFiles } = await import("@/lib/media-processing");
       const processedItems = await processMediaFiles(files, (p) => {
@@ -199,7 +199,8 @@ export function MediaView() {
 
     try {
       // Set the original image in the adjustment store
-      const imageUrl = item.url || item.thumbnailUrl || URL.createObjectURL(item.file);
+      const imageUrl =
+        item.url || item.thumbnailUrl || URL.createObjectURL(item.file);
       setOriginalImage(item.file, imageUrl);
 
       // Switch to adjustment tab

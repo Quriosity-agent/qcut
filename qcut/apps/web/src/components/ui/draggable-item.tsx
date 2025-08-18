@@ -67,8 +67,8 @@ export function DraggableMediaItem({
 
   const handleDragStart = (e: React.DragEvent) => {
     // Simple check for problematic blob URLs
-    if (dragData.url?.startsWith('blob:file:///')) {
-      console.error('❌ Dragging problematic blob URL:', dragData.url);
+    if (dragData.url?.startsWith("blob:file:///")) {
+      console.error("❌ Dragging problematic blob URL:", dragData.url);
     }
 
     e.dataTransfer.setDragImage(emptyImg, 0, 0);

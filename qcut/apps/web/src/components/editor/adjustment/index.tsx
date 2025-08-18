@@ -132,10 +132,12 @@ export function AdjustmentPanel() {
           const filename = `edited_${selectedModel}_${timestamp}.jpg`;
 
           debugLog("🔄 Starting download process...", { filename });
-          
+
           // Dynamically import image utilities
-          const { downloadImageAsFile, getImageInfo } = await import("@/lib/image-utils");
-          
+          const { downloadImageAsFile, getImageInfo } = await import(
+            "@/lib/image-utils"
+          );
+
           const downloadedFile = await downloadImageAsFile(
             result.result_url,
             filename

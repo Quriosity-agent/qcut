@@ -349,7 +349,10 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
         let displayUrl = processedUrl;
         if (file.size > 0) {
           // Special handling for SVG files - use data URL instead of blob URL
-          if (file.type === 'image/svg+xml' || file.name.toLowerCase().endsWith('.svg')) {
+          if (
+            file.type === "image/svg+xml" ||
+            file.name.toLowerCase().endsWith(".svg")
+          ) {
             try {
               const text = await file.text();
               displayUrl = `data:image/svg+xml;base64,${btoa(text)}`;
@@ -357,7 +360,10 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
                 `[MediaStore] Created data URL for SVG: ${file.name}`
               );
             } catch (error) {
-              console.warn(`[MediaStore] Failed to create data URL for SVG ${file.name}, falling back to blob URL:`, error);
+              console.warn(
+                `[MediaStore] Failed to create data URL for SVG ${file.name}, falling back to blob URL:`,
+                error
+              );
               displayUrl = URL.createObjectURL(file);
             }
           } else {

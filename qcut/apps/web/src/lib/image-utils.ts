@@ -16,22 +16,28 @@ export interface ImageInfo {
  * Get image information from a File
  */
 export async function getImageInfo(file: File): Promise<ImageInfo> {
-  return new Promise(async (resolve, reject) => {
-    const img = new Image();
-    
-    // Use data URL for SVG files to avoid blob URL issues in Electron
-    let url: string;
-    if (file.type === 'image/svg+xml' || file.name.toLowerCase().endsWith('.svg')) {
-      try {
-        const text = await file.text();
-        url = `data:image/svg+xml;base64,${btoa(text)}`;
-      } catch (error) {
-        console.warn(`[ImageUtils] Failed to create data URL for SVG ${file.name}, falling back to blob URL:`, error);
-        url = URL.createObjectURL(file);
-      }
-    } else {
+  // Prepare URL outside of Promise executor
+  let url: string;
+  if (
+    file.type === "image/svg+xml" ||
+    file.name.toLowerCase().endsWith(".svg")
+  ) {
+    try {
+      const text = await file.text();
+      url = `data:image/svg+xml;base64,${btoa(text)}`;
+    } catch (error) {
+      console.warn(
+        `[ImageUtils] Failed to create data URL for SVG ${file.name}, falling back to blob URL:`,
+        error
+      );
       url = URL.createObjectURL(file);
     }
+  } else {
+    url = URL.createObjectURL(file);
+  }
+
+  return new Promise((resolve, reject) => {
+    const img = new Image();
 
     img.onload = () => {
       const info: ImageInfo = {
@@ -42,7 +48,7 @@ export async function getImageInfo(file: File): Promise<ImageInfo> {
         aspectRatio: img.naturalWidth / img.naturalHeight,
       };
       // Only revoke blob URLs, not data URLs
-      if (url.startsWith('blob:')) {
+      if (url.startsWith("blob:")) {
         URL.revokeObjectURL(url);
       }
       resolve(info);
@@ -50,7 +56,7 @@ export async function getImageInfo(file: File): Promise<ImageInfo> {
 
     img.onerror = () => {
       // Only revoke blob URLs, not data URLs
-      if (url.startsWith('blob:')) {
+      if (url.startsWith("blob:")) {
         URL.revokeObjectURL(url);
       }
       reject(new Error("Failed to load image"));
@@ -236,16 +242,19 @@ export async function convertToBlob(url: string): Promise<string> {
     const blobUrl = URL.createObjectURL(blob);
 
     // ENHANCED LOGGING for blob URL debugging
-    console.error('🔍 [IMAGE-UTILS] Created blob URL:', {
+    console.error("🔍 [IMAGE-UTILS] Created blob URL:", {
       originalUrl: url,
       blobUrl,
-      isProblematic: blobUrl.startsWith('blob:file:///'),
+      isProblematic: blobUrl.startsWith("blob:file:///"),
       blobSize: blob.size,
-      blobType: blob.type
+      blobType: blob.type,
     });
 
-    if (blobUrl.startsWith('blob:file:///')) {
-      console.error('❌❌❌ [IMAGE-UTILS] PROBLEMATIC BLOB URL CREATED:', blobUrl);
+    if (blobUrl.startsWith("blob:file:///")) {
+      console.error(
+        "❌❌❌ [IMAGE-UTILS] PROBLEMATIC BLOB URL CREATED:",
+        blobUrl
+      );
       alert(`IMAGE-UTILS CREATED BAD BLOB: ${blobUrl.substring(0, 50)}...`);
     }
 

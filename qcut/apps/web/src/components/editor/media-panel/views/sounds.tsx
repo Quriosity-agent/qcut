@@ -201,10 +201,9 @@ function SoundEffectsView() {
             )}
             {searchError && searchQuery && (
               <div className="text-destructive text-sm">
-                {searchError.includes("API key") 
+                {searchError.includes("API key")
                   ? "API key not configured. Please add your Freesound API key to enable sound search."
-                  : `Search error: ${searchError}`
-                }
+                  : `Search error: ${searchError}`}
               </div>
             )}
             {displayedSounds.map((sound) => (
@@ -217,11 +216,16 @@ function SoundEffectsView() {
                 onToggleSaved={() => toggleSavedSound(sound)}
               />
             ))}
-            {!isLoading && !isSearching && !searchError && displayedSounds.length === 0 && (
-              <div className="text-muted-foreground text-sm">
-                {searchQuery ? "No sounds found" : "Enter a search term to find sounds"}
-              </div>
-            )}
+            {!isLoading &&
+              !isSearching &&
+              !searchError &&
+              displayedSounds.length === 0 && (
+                <div className="text-muted-foreground text-sm">
+                  {searchQuery
+                    ? "No sounds found"
+                    : "Enter a search term to find sounds"}
+                </div>
+              )}
             {isLoadingMore && (
               <div className="text-muted-foreground text-sm text-center py-4">
                 Loading more sounds...
@@ -378,9 +382,7 @@ function SavedSoundsView() {
 
 function SongsView() {
   return (
-    <div className="p-4 text-muted-foreground">
-      Songs view coming soon...
-    </div>
+    <div className="p-4 text-muted-foreground">Songs view coming soon...</div>
   );
 }
 

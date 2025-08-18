@@ -47,8 +47,10 @@ export function useExportSettings() {
       const getRecommendation = async () => {
         try {
           // Dynamically import export engine factory
-          const { ExportEngineFactory, ExportEngineType } = await import("@/lib/export-engine-factory");
-          
+          const { ExportEngineFactory, ExportEngineType } = await import(
+            "@/lib/export-engine-factory"
+          );
+
           const factory = ExportEngineFactory.getInstance();
           const recommendation = await factory.getEngineRecommendation(
             {

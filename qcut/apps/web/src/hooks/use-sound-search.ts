@@ -50,31 +50,37 @@ export function useSoundSearch(query: string, commercialOnly: boolean) {
       }
 
       searchParams.set("commercial_only", commercialOnly.toString());
-      
+
       // Try IPC first (Electron), fallback to fetch if not available
       let response;
       try {
         if (window.electronAPI?.invoke) {
           console.log("🔄 [Sound Search] Trying IPC for load more...");
-          const ipcResult = await window.electronAPI.invoke('sounds:search', {
+          const ipcResult = await window.electronAPI.invoke("sounds:search", {
             q: query.trim() || undefined,
             type: "effects",
             page: nextPage,
             page_size: 20,
             commercial_only: commercialOnly,
           });
-          
+
           if (ipcResult.success) {
             console.log("✅ [Sound Search] IPC load more successful");
-            response = { ok: true, json: () => Promise.resolve(ipcResult.data) };
+            response = {
+              ok: true,
+              json: () => Promise.resolve(ipcResult.data),
+            };
           } else {
-            throw new Error(ipcResult.error || 'IPC search failed');
+            throw new Error(ipcResult.error || "IPC search failed");
           }
         } else {
-          throw new Error('No IPC available');
+          throw new Error("No IPC available");
         }
       } catch (ipcError) {
-        console.log("⚠️ [Sound Search] IPC load more failed, falling back to fetch:", ipcError);
+        console.log(
+          "⚠️ [Sound Search] IPC load more failed, falling back to fetch:",
+          ipcError
+        );
         response = await fetch(`/api/sounds/search?${searchParams.toString()}`);
       }
 
@@ -128,25 +134,31 @@ export function useSoundSearch(query: string, commercialOnly: boolean) {
         try {
           if (window.electronAPI?.invoke) {
             console.log("🔄 [Sound Search] Trying IPC for search:", query);
-            const ipcResult = await window.electronAPI.invoke('sounds:search', {
+            const ipcResult = await window.electronAPI.invoke("sounds:search", {
               q: query,
               type: "effects",
               page: 1,
               page_size: 20,
               commercial_only: commercialOnly,
             });
-            
+
             if (ipcResult.success) {
               console.log("✅ [Sound Search] IPC search successful");
-              response = { ok: true, json: () => Promise.resolve(ipcResult.data) };
+              response = {
+                ok: true,
+                json: () => Promise.resolve(ipcResult.data),
+              };
             } else {
-              throw new Error(ipcResult.error || 'IPC search failed');
+              throw new Error(ipcResult.error || "IPC search failed");
             }
           } else {
-            throw new Error('No IPC available');
+            throw new Error("No IPC available");
           }
         } catch (ipcError) {
-          console.log("⚠️ [Sound Search] IPC search failed, falling back to fetch:", ipcError);
+          console.log(
+            "⚠️ [Sound Search] IPC search failed, falling back to fetch:",
+            ipcError
+          );
           response = await fetch(
             `/api/sounds/search?q=${encodeURIComponent(query)}&type=effects&page=1&commercial_only=${commercialOnly}`
           );
