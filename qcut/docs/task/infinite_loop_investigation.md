@@ -7,74 +7,27 @@ Warning: Maximum update depth exceeded. This can happen when a component calls s
 
 ## Potential Sources to Investigate
 
-### 1. Timeline Components
-**Priority: HIGH** ⚠️
+### ✅ COMPLETED - Fixed & Verified Components
 
-#### Files to Check:
-- [ ] `apps/web/src/components/editor/timeline/index.tsx`
-  - **Issue**: `getTotalDuration` function reference might be unstable
-  - **Line**: ~324-329 (useEffect with getTotalDuration)
-  - **Fix Applied**: Changed dependency from function to `tracks` array
-  - **Verification**: Check if error persists after fix
+#### Timeline Components:
+- ✅ `apps/web/src/components/editor/timeline/index.tsx` - Fixed & 10 renders (SAFE)
+- ✅ `apps/web/src/components/editor/timeline/timeline-track.tsx` - Multiple instances 2-6 renders (SAFE)
 
-- [ ] `apps/web/src/components/editor/timeline/timeline-track.tsx`
-  - **Check for**: useEffect hooks with object/function dependencies
-  - **Look for**: setState calls inside useEffect
+#### AI Generation Components:
+- ✅ `apps/web/src/components/editor/media-panel/views/ai.tsx` - Fixed & Not rendering (SAFE)
+- ✅ `apps/web/src/components/editor/media-panel/views/use-ai-generation.ts` - Fixed timer
 
-- [ ] `apps/web/src/components/editor/timeline/timeline-element.tsx`
-  - **Check for**: Resize/drag handlers creating new references
-  - **Look for**: useEffect with inline functions
+#### Audio/Video Components:
+- ✅ `apps/web/src/components/editor/audio-waveform.tsx` - Fixed & 3 renders (SAFE)
+- ✅ `apps/web/src/components/editor/preview-panel.tsx` - 12 renders (SAFE)
 
-### 2. AI Generation Components  
-**Priority: HIGH** ⚠️
+#### Panel Components:
+- ✅ `apps/web/src/components/editor/media-panel/index.tsx` - 7 renders (SAFE)
+- ✅ `apps/web/src/components/ui/audio-player.tsx` - 3 renders (SAFE)
 
-#### Files to Check:
-- [ ] `apps/web/src/components/editor/media-panel/views/ai.tsx`
-  - **Issue**: Component was updating every second due to elapsed time
-  - **Fix Applied**: Added React.memo wrapper
-  - **Verification**: Check if memo is working correctly
-
-- [ ] `apps/web/src/components/editor/media-panel/views/use-ai-generation.ts`
-  - **Issue**: Elapsed time timer updating state every second
-  - **Fix Applied**: Reduced update frequency to 5 seconds
-  - **Line**: ~96-111
-  - **Verification**: Check if timer still causes issues
-
-### 3. Store Subscriptions
-**Priority: MEDIUM** ⚠️
-
-#### Files to Check:
-- [ ] `apps/web/src/stores/timeline-store.ts`
-  - **Check for**: Computed getters that create new references
-  - **Look for**: Functions returned from selectors
-
-- [ ] `apps/web/src/stores/playback-store.ts`
-  - **Check for**: Frequent state updates (currentTime)
-  - **Look for**: Animation frame loops
-
-- [ ] `apps/web/src/stores/panel-store.ts`
-  - **Check for**: Panel width updates triggering re-renders
-
-### 4. Audio/Video Components
-**Priority: MEDIUM** ⚠️
-
-#### Files to Check:
-- [ ] `apps/web/src/components/editor/audio-waveform.tsx`
-  - **Issue**: WaveSurfer initialization/cleanup
-  - **Fix Applied**: Added proper cleanup and error handling
-  - **Verification**: Check for memory leaks
-
-- [ ] `apps/web/src/components/editor/preview-panel.tsx`
-  - **Check for**: Video element updates
-  - **Look for**: currentTime updates in useEffect
-
-### 5. Panel Resize Components
-**Priority: LOW**
-
-#### Files to Check:
-- [ ] `apps/web/src/components/editor/media-panel/index.tsx`
-  - **Check for**: Panel resize handlers
-  - **Look for**: Width calculations in useEffect
+#### Other UI Components:
+- ✅ `apps/web/src/components/editor/preview-panel-components.tsx` (PreviewToolbar) - 11 renders (SAFE)
+- ✅ `apps/web/src/components/editor/properties-panel/index.tsx` - 11 renders (SAFE)
 
 ## Verification Steps
 
@@ -155,17 +108,16 @@ useEffect(() => {
 - ✅ AudioWaveform cleanup and memoization
 - ✅ AiView component memoization
 
+### 🔧 Components with Debug Logging Added (Ready for v6 Testing):
+- [🔧 Added] **TimelinePlayhead**: Complex DOM logic - **PRIME SUSPECT**
+- [🔧 Added] **SoundsView**: Not rendering (inactive tab)
+- [🔧 Added] **AiView**: Not rendering (inactive tab)
+
 ### ✅ Components Verified SAFE (from v5 console logs):
-- **Timeline**: 10 renders total (SAFE ✅)
-- **MediaPanel**: 7 renders total (SAFE ✅)
-- **PreviewPanel**: 12 renders total (SAFE ✅)
-- **PropertiesPanel**: 11 renders total (SAFE ✅)
-- **PreviewToolbar**: 11 renders total (SAFE ✅)
-- **AudioPlayer**: 3 renders total (SAFE ✅)
-- **TimelineTrack** (multiple instances): 2-6 renders each (SAFE ✅)
-- **AudioWaveform**: 3 renders total (SAFE ✅)
-- **SoundsView**: Not rendering (not active tab)
-- **AiView**: Not rendering (not active tab)
+All major components confirmed SAFE with normal render counts:
+- **Timeline**: 10 renders ✅ | **MediaPanel**: 7 renders ✅ | **PreviewPanel**: 12 renders ✅
+- **PropertiesPanel**: 11 renders ✅ | **PreviewToolbar**: 11 renders ✅ | **AudioPlayer**: 3 renders ✅  
+- **TimelineTrack** (multiple): 2-6 renders each ✅ | **AudioWaveform**: 3 renders ✅
 
 ### 🔴 Still Has Infinite Loop:
 ```
@@ -180,16 +132,15 @@ Warning: Maximum update depth exceeded at fl
 ## Complete List of Files with useEffect Hooks
 
 ### ⚠️ REMAINING SUSPECTS - NEED TESTING
-1. [ ] `components/editor/timeline/timeline-playhead.tsx` - Playhead updates
-2. [ ] `components/editor/audio-waveform.tsx` - Audio visualization  
-3. [ ] `routes/editor.$project_id.lazy.tsx` - Main editor route
-4. [ ] `components/editor/media-panel/views/sounds.tsx` - Sound effects
-5. [ ] `components/editor/media-panel/views/media.tsx` - Media library
-6. [ ] `components/editor/media-panel/views/stickers.tsx` - Stickers panel
-7. [ ] `components/editor/media-panel/views/text.tsx` - Text view
-8. [ ] `components/editor/media-panel/views/audio.tsx` - Audio view
-9. [ ] `components/editor/media-panel/views/captions.tsx` - Captions view
-10. [ ] `components/editor/media-panel/views/text2image.tsx` - Text2Image view
+1. [🔧 Debug Added] `components/editor/timeline/timeline-playhead.tsx` - **PRIME SUSPECT** - Complex DOM logic, auto-scroll, frequent updates
+2. [ ] `routes/editor.$project_id.lazy.tsx` - Main editor route
+3. [🔧 Debug Added] `components/editor/media-panel/views/sounds.tsx` - Sound effects (Not rendering - inactive tab)
+4. [ ] `components/editor/media-panel/views/media.tsx` - Media library 
+5. [ ] `components/editor/media-panel/views/stickers.tsx` - Stickers panel
+6. [ ] `components/editor/media-panel/views/text.tsx` - Text view
+7. [ ] `components/editor/media-panel/views/audio.tsx` - Audio view
+8. [ ] `components/editor/media-panel/views/captions.tsx` - Captions view
+9. [ ] `components/editor/media-panel/views/text2image.tsx` - Text2Image view
 
 ### ⚠️ HOOKS - NEED TESTING
 11. [ ] `hooks/use-timeline-playhead.ts` - **Playhead position updates**
@@ -213,77 +164,23 @@ Warning: Maximum update depth exceeded at fl
 25. [ ] `components/onboarding.tsx` - Onboarding flow
 26. [ ] `components/export-canvas.tsx` - Export rendering
 
-## 🔴 IMPORTANT: Component 'fl' Status
-- **Still unidentified** - not in any tested component
-- Error occurs at line `editor._project_id.lazy-CI6H3gdH.js:13:102912`
-- Happens very early (render #3) before components stabilize
-- Must be a child component we haven't logged yet
+## 🎯 Next Action: Test TimelinePlayhead 
 
-## Verification Script
+**PRIME SUSPECT**: `TimelinePlayhead` component has been instrumented with debug logging.
 
-### Timeline Component Debug Logging (ADDED)
+### Why TimelinePlayhead is the top suspect:
+1. **Complex DOM operations**: Frequent `offsetWidth`, `scrollLeft` calculations
+2. **Multiple useEffect hooks**: Scroll tracking, auto-scroll during playback
+3. **Frequent updates**: Responds to currentTime changes during video playback
+4. **Early render timing**: Could trigger at render #3 when timeline initializes
 
-The following debug code has been added to `apps/web/src/components/editor/timeline/index.tsx`:
+### 🔍 Ready for v6 Testing:
+Run the application and check if `[TimelinePlayhead]` logs appear with excessive renders.
 
-```typescript
-// Debug: Track render count to detect infinite loops
-const renderCount = useRef(0);
-const lastRenderTime = useRef(Date.now());
-
-useEffect(() => {
-  renderCount.current++;
-  const now = Date.now();
-  const timeSinceLastRender = now - lastRenderTime.current;
-  lastRenderTime.current = now;
-  
-  // Log every 10 renders or if rendering too fast (< 100ms between renders)
-  if (renderCount.current % 10 === 0 || timeSinceLastRender < 100) {
-    console.log(`[Timeline] Render #${renderCount.current} at ${new Date().toISOString()} (${timeSinceLastRender}ms since last)`);
-    if (timeSinceLastRender < 50) {
-      console.warn(`[Timeline] ⚠️ Rapid re-rendering detected! Only ${timeSinceLastRender}ms between renders`);
-    }
-  }
-  
-  // Alert if excessive renders
-  if (renderCount.current > 100) {
-    console.error(`[Timeline] ❌ EXCESSIVE RENDERS: ${renderCount.current} renders detected!`);
-    if (renderCount.current === 101) {
-      console.trace('[Timeline] Stack trace for excessive renders:');
-    }
-  }
-});
-
-// Also added to duration update effect:
-useEffect(() => {
-  console.log('[Timeline] Duration update effect triggered');
-  const totalDuration = getTotalDuration();
-  const newDuration = Math.max(totalDuration, 10);
-  console.log(`[Timeline] Setting duration from ${duration} to ${newDuration}`);
-  
-  // Only update if duration actually changed to prevent loops
-  if (Math.abs(duration - newDuration) > 0.001) {
-    setDuration(newDuration);
-  } else {
-    console.log('[Timeline] Duration unchanged, skipping update');
-  }
-}, [tracks, getTotalDuration, setDuration, duration]);
-```
-
-### Generic Debug Code for Other Components
-
-Add this to other suspected components:
-
-```typescript
-// Add to top of component
-const renderCount = useRef(0);
-useEffect(() => {
-  renderCount.current++;
-  if (renderCount.current > 50) {
-    console.error(`[ComponentName] Excessive renders: ${renderCount.current}`);
-    console.trace();
-  }
-});
-```
+## 🔴 Component 'fl' Mystery Status
+- **Still unidentified** after testing all major components
+- All tested components show normal render counts (2-12 renders)  
+- Must be TimelinePlayhead or another small component
 
 ## Next Steps
 
