@@ -86,15 +86,21 @@ export class StickerExportHelper {
     // Load image from cache or create new
     const img = await this.loadImage(mediaItem.url);
 
-    // Calculate pixel position from percentage
-    const x = (sticker.position.x / 100) * canvasWidth;
-    const y = (sticker.position.y / 100) * canvasHeight;
-    
     // FIX: Calculate dimensions preserving aspect ratio
     // Use the smaller dimension (height) as reference to maintain square aspect ratio for stickers
     const baseSize = Math.min(canvasWidth, canvasHeight);
     const width = (sticker.size.width / 100) * baseSize;
     const height = (sticker.size.height / 100) * baseSize;
+    
+    // Calculate pixel position from percentage
+    // IMPORTANT: position.x and position.y represent the CENTER of the sticker (not top-left)
+    // This matches the preview which uses transform: translate(-50%, -50%)
+    const centerX = (sticker.position.x / 100) * canvasWidth;
+    const centerY = (sticker.position.y / 100) * canvasHeight;
+    
+    // Calculate top-left corner for positioning
+    const x = centerX - width / 2;
+    const y = centerY - height / 2;
 
     // STICKER DRAW DEBUG: Log drawing details
     debugLog(`[STICKER_DRAW] Drawing sticker ${sticker.id} at (${x.toFixed(1)}, ${y.toFixed(1)}) size ${width.toFixed(1)}x${height.toFixed(1)}`);
@@ -115,8 +121,7 @@ export class StickerExportHelper {
     ctx.globalAlpha = sticker.opacity;
 
     // Translate to center of sticker for rotation
-    const centerX = x + width / 2;
-    const centerY = y + height / 2;
+    // (centerX and centerY already calculated above from position percentages)
     ctx.translate(centerX, centerY);
 
     // Apply rotation

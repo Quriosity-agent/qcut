@@ -7,16 +7,26 @@
 ✅ **STICKERS NOW EXPORT**: Overlay stickers successfully appear in exported videos!
 ✅ **ASPECT RATIO FIXED**: Stickers now maintain proper proportions (no stretching)
 
-## The Real Issue (FIXED)
+## Issues Found and Fixed
 
-**THE BUG**: The CLI export engine's `renderFrame()` method was ONLY rendering timeline elements (media, text, sticker elements) but **NOT rendering overlay stickers** from the stickers overlay store!
+### Issue 1: Overlay Stickers Not Rendering (FIXED)
+**THE BUG**: The CLI export engine's `renderFrame()` method was ONLY rendering timeline elements but **NOT overlay stickers**.
 
-**THE FIX**: Added `renderOverlayStickers()` call to `renderFrame()` method to explicitly render overlay stickers after timeline elements.
-
+**THE FIX**: Added `renderOverlayStickers()` call to `renderFrame()`:
 ```typescript
 // In renderFrame() - line 48-49
-// CRITICAL: Render overlay stickers (separate from timeline elements)
 await this.renderOverlayStickers(currentTime);
+```
+
+### Issue 2: Stickers Stretched Horizontally (FIXED)
+**THE BUG**: Stickers were being stretched because width was calculated from canvas width and height from canvas height, distorting non-square canvases.
+
+**THE FIX**: Use minimum dimension as base to preserve aspect ratio:
+```typescript
+// In sticker-export-helper.ts - lines 93-97
+const baseSize = Math.min(canvasWidth, canvasHeight);
+const width = (sticker.size.width / 100) * baseSize;
+const height = (sticker.size.height / 100) * baseSize;
 ```
 
 ## Root Cause Analysis (CONFIRMED)
