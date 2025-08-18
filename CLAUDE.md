@@ -34,7 +34,7 @@ frontend: UI/UX and user-facing development
 
 ## Project Overview
 
-QCut is a desktop video editor built with Vite + TanStack Router + Electron. The project has been successfully migrated from Next.js and now runs as a native desktop application. It uses a monorepo structure with Bun as the package manager.
+QCut is a desktop video editor built with a **hybrid architecture** combining Vite + TanStack Router + Electron. The project maintains both Next.js-style and TanStack Router structures, indicating either an ongoing migration or dual compatibility design. It uses a monorepo structure with Bun as the package manager.
 
 ## Key Architecture
 
@@ -48,10 +48,30 @@ QCut is a desktop video editor built with Vite + TanStack Router + Electron. The
 - **UI Components**: Radix UI primitives
 - **Monorepo**: Turborepo with Bun
 
+### **🏗️ Hybrid Architecture Details**
+
+**Dual Routing System:**
+- **Primary**: TanStack Router (`src/routes/` + `routeTree.gen.ts`)
+- **Secondary**: Next.js-style structure (`src/app/` with page.tsx files)
+- **API Routes**: Next.js format (`src/app/api/` with route.ts files) - **⚠️ Non-functional in Vite**
+
+**Key Implications:**
+- Vite dev server **does not execute** Next.js API routes
+- API calls to `/api/sounds/search` will fail with `net::ERR_FILE_NOT_FOUND`
+- Use **Electron IPC** for backend functionality instead of API routes
+
 ### Project Structure
 ```
 qcut/
 ├── apps/web/                    # Main Vite app
+│   └── src/
+│       ├── app/                 # Next.js-style structure (legacy/compatibility)
+│       │   ├── api/            # ⚠️ API routes exist but non-functional in Vite
+│       │   └── */page.tsx      # Next.js-style pages
+│       ├── routes/             # ✅ Active TanStack Router routes
+│       │   ├── __root.tsx
+│       │   └── *.tsx
+│       └── routeTree.gen.ts    # Generated router tree
 ├── packages/
 │   ├── auth/                    # @opencut/auth
 │   └── db/                      # @opencut/db
@@ -186,9 +206,33 @@ These ten rules catch the most frequent and most critical a11y bugs in a React +
 2. Limited error handling
 3. No performance monitoring
 4. Basic export functionality (needs enhancement)
+5. **Hybrid architecture complexity** - dual routing and API systems
 
 ## When Working on Features
 1. Always test both `bun run electron:dev` (development) and `bun run electron` (production)
 2. Test EXE builds with `npx electron-packager` after major changes
 3. Ensure FFmpeg paths work in both dev and packaged environments
 4. Use Electron IPC for all file system operations
+5. **⚠️ CRITICAL: Never rely on Next.js API routes** - they don't work in Vite environment
+
+## Architecture Guidelines
+
+### ✅ **DO** - Recommended Patterns
+- **Routing**: Use TanStack Router (`src/routes/`) for new features
+- **Backend Logic**: Implement via Electron IPC handlers in `electron/main.js`
+- **State Management**: Use Zustand stores in `src/stores/`
+- **Environment Variables**: Use `VITE_` prefix for client-side variables
+- **Image Components**: Consider dual Next.js/Vite compatibility when needed
+
+### ❌ **DON'T** - Avoid These Patterns  
+- **API Routes**: Don't expect `src/app/api/` routes to work in Vite
+- **Server-side Logic**: Don't put backend logic in client-side components
+- **process.env**: Don't use `process.env` in client code (use `import.meta.env`)
+- **Next.js Dependencies**: Don't add features that require Next.js runtime
+
+### 🔧 **Migration Strategy**
+When encountering Next.js patterns that don't work in Vite:
+1. **API Routes** → Convert to Electron IPC handlers
+2. **Server Components** → Convert to client components with IPC calls
+3. **process.env** → Convert to `import.meta.env.VITE_*`
+4. **Next.js Image** → Use regular `<img>` or create compatibility wrapper
