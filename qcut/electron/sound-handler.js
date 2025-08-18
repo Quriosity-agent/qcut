@@ -16,8 +16,10 @@ function setupSoundIPC() {
 
   // Handle sound search requests
   ipcMain.handle("sounds:search", async (event, searchParams) => {
+    console.log("🔍 [Sound Handler] Search request received:", searchParams);
     try {
       const FREESOUND_API_KEY = process.env.FREESOUND_API_KEY;
+      console.log("🔑 [Sound Handler] API key available:", !!FREESOUND_API_KEY);
       if (!FREESOUND_API_KEY) {
         return { success: false, error: "Freesound API key not configured" };
       }
@@ -47,6 +49,7 @@ function setupSoundIPC() {
       }
       
       const finalUrl = `${baseUrl}?${params.toString()}`;
+      console.log("📡 [Sound Handler] Making request to:", finalUrl.replace(FREESOUND_API_KEY, '***'));
       
       // Make HTTPS request
       const response = await new Promise((resolve, reject) => {
@@ -70,8 +73,11 @@ function setupSoundIPC() {
       });
       
       if (!response.ok) {
+        console.error("❌ [Sound Handler] API request failed:", response.statusCode, response.body);
         return { success: false, error: "Failed to search sounds", status: response.statusCode };
       }
+      
+      console.log("✅ [Sound Handler] API request successful, parsing response...");
       
       const rawData = JSON.parse(response.body);
       
@@ -112,9 +118,11 @@ function setupSoundIPC() {
         minRating: searchParams.min_rating || 3,
       };
       
+      console.log("🎉 [Sound Handler] Returning", transformedResults.length, "results");
       return { success: true, data: responseData };
       
     } catch (error) {
+      console.error("💥 [Sound Handler] Error occurred:", error);
       return { success: false, error: "Internal server error: " + error.message };
     }
   });
