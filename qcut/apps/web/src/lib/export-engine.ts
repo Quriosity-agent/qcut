@@ -381,7 +381,7 @@ export class ExportEngine {
 
   // Render text elements
   // Render overlay stickers on top of video
-  private async renderOverlayStickers(currentTime: number): Promise<void> {
+  protected async renderOverlayStickers(currentTime: number): Promise<void> {
     let visibleStickers: any[] = [];
     try {
       // Get stickers from store

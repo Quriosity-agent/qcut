@@ -89,8 +89,12 @@ export class StickerExportHelper {
     // Calculate pixel position from percentage
     const x = (sticker.position.x / 100) * canvasWidth;
     const y = (sticker.position.y / 100) * canvasHeight;
-    const width = (sticker.size.width / 100) * canvasWidth;
-    const height = (sticker.size.height / 100) * canvasHeight;
+    
+    // FIX: Calculate dimensions preserving aspect ratio
+    // Use the smaller dimension (height) as reference to maintain square aspect ratio for stickers
+    const baseSize = Math.min(canvasWidth, canvasHeight);
+    const width = (sticker.size.width / 100) * baseSize;
+    const height = (sticker.size.height / 100) * baseSize;
 
     // STICKER DRAW DEBUG: Log drawing details
     debugLog(`[STICKER_DRAW] Drawing sticker ${sticker.id} at (${x.toFixed(1)}, ${y.toFixed(1)}) size ${width.toFixed(1)}x${height.toFixed(1)}`);

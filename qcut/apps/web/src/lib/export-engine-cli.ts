@@ -44,6 +44,11 @@ export class CLIExportEngine extends ExportEngine {
     for (const { element, mediaItem } of sortedElements) {
       await this.renderElementCLI(element, mediaItem, currentTime);
     }
+    
+    // CRITICAL: Render overlay stickers (separate from timeline elements)
+    // Use the parent class's renderOverlayStickers method
+    debugLog(`[CLI_OVERLAY_STICKERS] Calling parent renderOverlayStickers at time ${currentTime}`);
+    await this.renderOverlayStickers(currentTime);
   }
 
   // CLI-specific element rendering without black frame validation

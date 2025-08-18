@@ -2,16 +2,22 @@
 
 **Problem**: Preview sticker works but exporting sticker doesn't work
 
-## Current Status (CONFIRMED)
+## Current Status (WORKING WITH ASPECT RATIO FIX)
 
-✅ **ROOT CAUSE CONFIRMED**: Canvas capture mechanism is broken!
+✅ **STICKERS NOW EXPORT**: Overlay stickers successfully appear in exported videos!
+✅ **ASPECT RATIO FIXED**: Stickers now maintain proper proportions (no stretching)
 
-**🚨 EVIDENCE FROM LOG v4**:
-- ✅ Stickers render successfully: `[STICKER_DRAW] ✅ Drew sticker X to canvas`
-- ✅ Canvas validation passes: `🚨 FRAME X: Canvas has stickers: true`
-- ❌ **IDENTICAL DATA HASH**: Every frame = `iVBORw0KGgoAAAANSUhEUgAAB4AAAAQ4CAYAAADo08FDAAAAAX`
+## The Real Issue (FIXED)
 
-**Issue**: `canvas.toDataURL()` in CLI export engine captures **identical PNG data every frame** despite different canvas content
+**THE BUG**: The CLI export engine's `renderFrame()` method was ONLY rendering timeline elements (media, text, sticker elements) but **NOT rendering overlay stickers** from the stickers overlay store!
+
+**THE FIX**: Added `renderOverlayStickers()` call to `renderFrame()` method to explicitly render overlay stickers after timeline elements.
+
+```typescript
+// In renderFrame() - line 48-49
+// CRITICAL: Render overlay stickers (separate from timeline elements)
+await this.renderOverlayStickers(currentTime);
+```
 
 ## Root Cause Analysis (CONFIRMED)
 
