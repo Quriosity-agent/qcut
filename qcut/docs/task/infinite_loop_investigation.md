@@ -155,16 +155,16 @@ useEffect(() => {
 - ✅ AudioWaveform cleanup and memoization
 - ✅ AiView component memoization
 
-### ✅ Components Verified SAFE (from v3 console):
-- **Timeline**: 11 renders total (normal)
-- **PreviewPanel**: 12 renders total (normal)
-- **PropertiesPanel**: 11 renders total (normal)
-- **PreviewToolbar**: 11 renders total (normal)
+### ✅ Components Verified SAFE (from v4 console):
+- **Timeline**: 11 renders total (SAFE ✅)
+- **PreviewPanel**: 12 renders total (SAFE ✅)
+- **PropertiesPanel**: 11 renders total (SAFE ✅)
+- **PreviewToolbar**: 11 renders total (SAFE ✅)
+- **MediaPanel**: 7 renders total (SAFE ✅)
+- **AudioPlayer**: 3 renders total (SAFE ✅)
 - **FullscreenToolbar**: Not rendering (conditional)
 - **FullscreenPreview**: Not rendering (conditional)
 - **VideoPlayer**: Not rendering (no media)
-- **AudioPlayer**: Logging added, needs testing
-- **MediaPanel**: Logging added, needs testing
 
 ### 🔴 Still Has Infinite Loop:
 ```
@@ -177,31 +177,17 @@ Warning: Maximum update depth exceeded at fl
 
 ## Complete List of Files with useEffect Hooks
 
-### ✅ TESTED - NOT THE PROBLEM (10-12 renders max)
-1. [x] ✅ `components/editor/timeline/index.tsx` - **11 renders (SAFE)**
-2. [x] ✅ `components/editor/preview-panel.tsx` - **12 renders (SAFE)**
-3. [x] ✅ `components/editor/preview-panel-components.tsx` - **All 3 components SAFE**
-   - FullscreenToolbar: Normal renders
-   - FullscreenPreview: Normal renders  
-   - PreviewToolbar: 11 renders
-4. [x] ✅ `components/editor/properties-panel/index.tsx` - **11 renders (SAFE)**
-5. [x] ✅ `components/ui/video-player.tsx` - **No logs (not rendering)**
-6. [x] ✅ `components/ui/audio-player.tsx` - **Added logging, awaiting test**
-7. [x] ✅ `components/editor/media-panel/index.tsx` - **Added logging, awaiting test**
-
-### ⚠️ HIGH PRIORITY - NOT YET TESTED
-1. [ ] `components/editor/timeline/timeline-track.tsx` - Track rendering
-2. [ ] `components/editor/timeline/timeline-playhead.tsx` - Playhead updates
-3. [ ] `components/editor/audio-waveform.tsx` - Audio visualization
-4. [ ] `routes/editor.$project_id.lazy.tsx` - Main editor route
-
-### ⚠️ MEDIA PANEL VIEWS - NEED TESTING
-5. [ ] `components/editor/media-panel/views/ai.tsx` - AI generation view (has memo)
-6. [ ] `components/editor/media-panel/views/use-ai-generation.ts` - AI hook (timer reduced)
-7. [ ] `components/editor/media-panel/views/use-ai-history.ts` - AI history
-8. [ ] `components/editor/media-panel/views/sounds.tsx` - Sound effects
-9. [ ] `components/editor/media-panel/views/media.tsx` - Media library
-10. [ ] `components/editor/media-panel/views/stickers.tsx` - Stickers panel
+### ⚠️ REMAINING SUSPECTS - NEED TESTING
+1. [ ] `components/editor/timeline/timeline-playhead.tsx` - Playhead updates
+2. [ ] `components/editor/audio-waveform.tsx` - Audio visualization  
+3. [ ] `routes/editor.$project_id.lazy.tsx` - Main editor route
+4. [ ] `components/editor/media-panel/views/sounds.tsx` - Sound effects
+5. [ ] `components/editor/media-panel/views/media.tsx` - Media library
+6. [ ] `components/editor/media-panel/views/stickers.tsx` - Stickers panel
+7. [ ] `components/editor/media-panel/views/text.tsx` - Text view
+8. [ ] `components/editor/media-panel/views/audio.tsx` - Audio view
+9. [ ] `components/editor/media-panel/views/captions.tsx` - Captions view
+10. [ ] `components/editor/media-panel/views/text2image.tsx` - Text2Image view
 
 ### ⚠️ HOOKS - NEED TESTING
 11. [ ] `hooks/use-timeline-playhead.ts` - **Playhead position updates**
