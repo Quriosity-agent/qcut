@@ -163,11 +163,18 @@ The issue is likely:
 ```
 [CLI_FRAME_DEBUG] Rendering frame at time 0.000s
 🔧 PRE_STICKER: frame-0000.png - Hash: iVBORw0KGgoAAAANSUhEUgAAB4AAAAQ4CAYAAA...
+🔧 SAVED_PRE_STICKER: frame-0000-PRE.png
 [STICKER_DRAW] ✅ Drew sticker X to canvas
 🔧 POST_STICKER: frame-0000.png - Hash: iVBORw0KGgoAAAANSUhEUgAAB4AAAAQ4CAYAAB...
+🔧 SAVED_POST_STICKER: frame-0000-POST.png
 🔧 STICKER_IMPACT: frame-0000.png - Hashes different: true
 ✅ STICKER_CAPTURE_SUCCESS: frame-0000.png - Size diff: 1234 chars
 ```
+
+**📁 OUTPUT FILES** (in export folder):
+- `frame-XXXX-PRE.png` - Frame WITHOUT stickers
+- `frame-XXXX-POST.png` - Frame WITH stickers  
+- `frame-XXXX.png` - Final frame (same as POST)
 
 **📊 SUCCESS VERIFICATION**:
 - ✅ If `Hashes different: true` → Stickers ARE captured in PNG

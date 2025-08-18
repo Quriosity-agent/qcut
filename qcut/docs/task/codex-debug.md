@@ -14,8 +14,17 @@ This guide adds precise, low-noise instrumentation to prove whether stickers aff
 - Probe a few known pixels under stickers pre/post.
 - Optionally snapshot pre/post PNGs for a single frame.
 
+## Where To Edit
+- `qcut/apps/web/src/…/export-engine-cli.ts` (or your export engine): inside `saveFrameToDisk()` near capture (around lines 506–544 mentioned in STICKER_EXPORT_DEBUG.md).
+- `renderStickersToCanvas()` and `renderStickerElementCLI()` are the sticker draw sites.
+- `sticker-export-helper.ts` (around line 41) had time filtering changes; keep it as-is while you instrument capture.
+- `media-store.ts` (around 362–365) handles SVG data URLs; keep this fix intact.
+- `debug-config.ts` controls debug mode; ensure it’s on while testing.
+
+Tip: Match existing log style to keep logs coherent: use `[CLI_STICKER_DEBUG]`, `[STICKER_DRAW]`, and prefix capture lines with `🚨`/`🔧`.
+
 ## Minimal Instrumentation (TypeScript)
-Paste into the CLI export path where a single frame is rendered and saved (e.g., `saveFrameToDisk(frame)` in `export-engine-cli.ts`). Names may differ — adapt to your engine's entry points (`renderStickersToCanvas`, `renderStickerElementCLI`, etc.).
+Paste into the CLI export path where a single frame is rendered and saved (e.g., `saveFrameToDisk(frame)` in `export-engine-cli.ts`). Names may differ — adapt to your engine's entry points (`renderStickersToCanvas`, `renderStickerElementCLI`, etc.). Use your existing `debugLog()` helper if present.
 
 ```ts
 // --- Debug toggles ---
@@ -57,9 +66,9 @@ function sameCanvasDiagnostics(captureCanvas: HTMLCanvasElement | OffscreenCanva
     const w = (cAny.width ?? 0), h = (cAny.height ?? 0);
     const ctx = (cAny.getContext ? cAny.getContext('2d') : undefined) as CanvasRenderingContext2D | undefined;
     const ctxOk = !!ctx && typeof ctx.drawImage === 'function';
-    console.debug(`[CAPTURE] CANVAS_REF same:${sameRef} size:${w}x${h} ctx2d:${ctxOk}`);
+    debugLog(`[CAPTURE] CANVAS_REF same:${sameRef} size:${w}x${h} ctx2d:${ctxOk}`);
   } catch (e) {
-    console.debug(`[CAPTURE] CANVAS_REF error:`, e);
+    debugLog(`[CAPTURE] CANVAS_REF error: ${String(e)}`);
   }
 }
 
@@ -91,7 +100,7 @@ async function saveFrameWithStickerDebug(
   const prePixels = probePixels(ctx, samplePoints);
   const preUrl = (canvas as any).toDataURL('image/png', 1.0);
   const preHash = pngHash(preUrl);
-  console.debug(`🔧 PRE_STICKER f=${frameIndex} t=${timeMs} hash=${preHash} px=${JSON.stringify(prePixels)}`);
+  debugLog(`🔧 PRE_STICKER f=${frameIndex} t=${timeMs} hash=${preHash} px=${JSON.stringify(prePixels)}`);
 
   // Draw stickers for this frame
   await renderStickersForFrame(timeMs);
@@ -105,17 +114,17 @@ async function saveFrameWithStickerDebug(
   const postHash = pngHash(postUrl);
   const impact = preHash !== postHash;
   const pixelsChanged = JSON.stringify(prePixels) !== JSON.stringify(postPixels);
-  console.debug(`🔧 POST_STICKER f=${frameIndex} t=${timeMs} hash=${postHash} px=${JSON.stringify(postPixels)}`);
-  console.debug(`🔧 STICKER_IMPACT f=${frameIndex} hashChanged=${impact} pixelsChanged=${pixelsChanged}`);
+  debugLog(`🔧 POST_STICKER f=${frameIndex} t=${timeMs} hash=${postHash} px=${JSON.stringify(postPixels)}`);
+  debugLog(`🔧 STICKER_IMPACT f=${frameIndex} hashChanged=${impact} pixelsChanged=${pixelsChanged}`);
 
   // Optional: one-frame snapshot to disk for visual diff
   if (frameIndex === DEBUG_SNAPSHOT_FRAME) {
     try {
       await writePng(`pre-sticker-f${String(frameIndex).padStart(4, '0')}.png`, preUrl);
       await writePng(`post-sticker-f${String(frameIndex).padStart(4, '0')}.png`, postUrl);
-      console.debug(`🔧 SNAPSHOT wrote pre/post PNGs for frame ${frameIndex}`);
+      debugLog(`🔧 SNAPSHOT wrote pre/post PNGs for frame ${frameIndex}`);
     } catch (e) {
-      console.debug(`🔧 SNAPSHOT error:`, e);
+      debugLog(`🔧 SNAPSHOT error: ${String(e)}`);
     }
   }
 
@@ -156,6 +165,12 @@ async function saveFrameToDisk(frame: number, tMs: number) {
     renderStickersForFrame,
     writePng,
   );
+
+  // Optional: keep legacy single-line frame log for continuity
+  const hasStickers = true; // or derive from your sticker query for this frame
+  const postDataUrl = (canvas as any).toDataURL('image/png', 1.0);
+  const postHash = pngHash(postDataUrl);
+  debugLog(`🚨 FRAME ${frame}: Canvas has stickers: ${hasStickers}, Data hash: ${postHash}`);
 }
 ```
 
@@ -175,6 +190,14 @@ async function saveFrameToDisk(frame: number, tMs: number) {
 - Clear/overdraw: confirm a clear/compose step isn’t overwriting stickers before capture.
 - API path: in Node-canvas, compare `toDataURL('image/png')` vs `toBuffer('image/png')`. In OffscreenCanvas, try `convertToBlob()` and encode via `Buffer`.
 
+Example (Node-canvas):
+```ts
+const buf = (canvas as any).toBuffer?.('image/png');
+if (buf) {
+  await fs.promises.writeFile(path.join(this.framesOutDir, `frame-${String(frameIndex).padStart(4,'0')}.png`), buf);
+}
+```
+
 ## One-Frame Visual Truth
 For `frame === 0` (or your chosen `DEBUG_SNAPSHOT_FRAME`), open `pre-sticker-*.png` and `post-sticker-*.png` to visually confirm sticker presence. This grounds logs in something human-verifiable.
 
@@ -186,4 +209,3 @@ For `frame === 0` (or your chosen `DEBUG_SNAPSHOT_FRAME`), open `pre-sticker-*.p
 ## Clean Up
 - Remove the debug helper and console logs once verified.
 - Keep a tiny `flushAndYield()` near capture if your runtime benefits from it.
-

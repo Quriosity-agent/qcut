@@ -536,18 +536,44 @@ export class CLIExportEngine extends ExportEngine {
       // First render without overlay stickers
       await this.renderFrameWithoutStickers(currentTime);
       
+      // Sample specific pixel where sticker should be (based on logs: position 427,240)
+      const preStickerPixel = this.ctx.getImageData(427, 240, 1, 1);
+      debugLog(`🔧 PRE_STICKER_PIXEL at (427,240): [${Array.from(preStickerPixel.data).join(',')}]`);
+      
       // Capture PRE-STICKER canvas state
       const preDataUrl = this.canvas.toDataURL("image/png", 1.0);
       const preHash = preDataUrl.substring(22, 122); // 100-char hash
       debugLog(`🔧 PRE_STICKER: ${frameName} - Hash: ${preHash.substring(0, 50)}...`);
       
+      // 🔧 SAVE PRE-STICKER IMAGE for comparison
+      const preFramePath = `frame-${frame.toString().padStart(4, "0")}-PRE.png`;
+      await this.saveFrameToDisk(preFramePath);
+      debugLog(`🔧 SAVED_PRE_STICKER: ${preFramePath}`);
+      
       // Now render WITH overlay stickers (full frame)
       await this.renderFrame(currentTime);
+      
+      // Sample the same pixel after sticker rendering
+      const postStickerPixel = this.ctx.getImageData(427, 240, 1, 1);
+      debugLog(`🔧 POST_STICKER_PIXEL at (427,240): [${Array.from(postStickerPixel.data).join(',')}]`);
+      
+      // Check if pixel actually changed
+      const pixelChanged = !preStickerPixel.data.every((val, i) => val === postStickerPixel.data[i]);
+      debugLog(`🔧 PIXEL_CHANGED at sticker location: ${pixelChanged}`);
+      
+      // Debug: Check what canvas/context the stickers are using
+      debugLog(`🔧 CANVAS_CHECK: Canvas width=${this.canvas.width}, height=${this.canvas.height}`);
+      debugLog(`🔧 CONTEXT_CHECK: Context exists=${!!this.ctx}, same canvas=${this.ctx.canvas === this.canvas}`);
       
       // Capture POST-STICKER canvas state  
       const postDataUrl = this.canvas.toDataURL("image/png", 1.0);
       const postHash = postDataUrl.substring(22, 122); // 100-char hash
       debugLog(`🔧 POST_STICKER: ${frameName} - Hash: ${postHash.substring(0, 50)}...`);
+      
+      // 🔧 SAVE POST-STICKER IMAGE for comparison
+      const postFramePath = `frame-${frame.toString().padStart(4, "0")}-POST.png`;
+      await this.saveFrameToDisk(postFramePath);
+      debugLog(`🔧 SAVED_POST_STICKER: ${postFramePath}`);
       
       // Compare hashes to verify sticker impact
       const hashesAreDifferent = preHash !== postHash;
@@ -555,13 +581,24 @@ export class CLIExportEngine extends ExportEngine {
       
       if (!hashesAreDifferent) {
         debugLog(`❌ STICKER_CAPTURE_FAILED: ${frameName} - Stickers not affecting canvas!`);
+        
+        // Additional debug: Force draw a test rectangle to verify canvas is working
+        this.ctx.fillStyle = 'red';
+        this.ctx.fillRect(10, 10, 50, 50);
+        const testDataUrl = this.canvas.toDataURL("image/png", 1.0);
+        const testHash = testDataUrl.substring(22, 122);
+        const testChanged = testHash !== postHash;
+        debugLog(`🔧 TEST_RECT_DRAWN: Hash changed=${testChanged}`);
+        
+        // Clear the test rectangle
+        await this.renderFrame(currentTime);
       } else {
         // Additional verification: check if the difference is significant
         const sizeDiff = Math.abs(preDataUrl.length - postDataUrl.length);
         debugLog(`✅ STICKER_CAPTURE_SUCCESS: ${frameName} - Size diff: ${sizeDiff} chars`);
       }
 
-      // Save frame to disk
+      // Also save the final frame with standard naming for video compilation
       const framePath = `frame-${frame.toString().padStart(4, "0")}.png`;
       await this.saveFrameToDisk(framePath);
 

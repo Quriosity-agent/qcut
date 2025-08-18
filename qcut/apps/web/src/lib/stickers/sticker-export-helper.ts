@@ -95,6 +95,14 @@ export class StickerExportHelper {
     // STICKER DRAW DEBUG: Log drawing details
     debugLog(`[STICKER_DRAW] Drawing sticker ${sticker.id} at (${x.toFixed(1)}, ${y.toFixed(1)}) size ${width.toFixed(1)}x${height.toFixed(1)}`);
     debugLog(`[STICKER_DRAW] Image loaded:`, img.complete, 'Image src:', img.src.substring(0, 50) + '...');
+    
+    // DEBUG: Verify context and canvas
+    debugLog(`[STICKER_CTX] Context canvas size: ${ctx.canvas.width}x${ctx.canvas.height}`);
+    debugLog(`[STICKER_CTX] Drawing to context: ${!!ctx}, Has canvas: ${!!ctx.canvas}`);
+    
+    // DEBUG: Check pixel before drawing
+    const beforePixel = ctx.getImageData(Math.floor(x), Math.floor(y), 1, 1);
+    debugLog(`[STICKER_PIXEL_BEFORE] at (${Math.floor(x)},${Math.floor(y)}): [${Array.from(beforePixel.data).join(',')}]`);
 
     // Save context state
     ctx.save();
@@ -114,12 +122,19 @@ export class StickerExportHelper {
 
     // Draw image centered at origin
     ctx.drawImage(img, -width / 2, -height / 2, width, height);
+    
+    // Restore context state
+    ctx.restore();
+    
+    // DEBUG: Check pixel after drawing to verify it changed
+    const afterPixel = ctx.getImageData(Math.floor(x), Math.floor(y), 1, 1);
+    debugLog(`[STICKER_PIXEL_AFTER] at (${Math.floor(x)},${Math.floor(y)}): [${Array.from(afterPixel.data).join(',')}]`);
+    
+    const pixelChanged = !beforePixel.data.every((val, i) => val === afterPixel.data[i]);
+    debugLog(`[STICKER_PIXEL_CHANGE] Pixel changed after draw: ${pixelChanged}`);
 
     // STICKER DRAW DEBUG: Confirm drawing completion
     debugLog(`[STICKER_DRAW] ✅ Drew sticker ${sticker.id} to canvas`);
-
-    // Restore context state
-    ctx.restore();
   }
 
   /**
