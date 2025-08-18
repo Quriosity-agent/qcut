@@ -1,5 +1,6 @@
 "use client";
 
+import { useRef, useEffect } from "react";
 import { FPS_PRESETS } from "@/constants/timeline-constants";
 import { useAspectRatio } from "@/hooks/use-aspect-ratio";
 import { useAsyncMediaItems } from "@/hooks/use-async-media-store";
@@ -27,6 +28,31 @@ import { useExportStore } from "@/stores/export-store";
 import { ExportPanelContent } from "./export-panel-content";
 
 export function PropertiesPanel() {
+  // Debug: Track render count to detect infinite loops
+  const componentName = "PropertiesPanel";
+  const renderCount = useRef(0);
+  const lastRenderTime = useRef(Date.now());
+  
+  useEffect(() => {
+    renderCount.current++;
+    const now = Date.now();
+    const timeSince = now - lastRenderTime.current;
+    lastRenderTime.current = now;
+    
+    console.log(`[${componentName}] Render #${renderCount.current} at ${new Date().toISOString()} (${timeSince}ms since last)`);
+    
+    if (timeSince < 50) {
+      console.warn(`[${componentName}] ⚠️ Rapid re-rendering detected! Only ${timeSince}ms between renders`);
+    }
+    
+    if (renderCount.current > 100) {
+      console.error(`[${componentName}] ❌ EXCESSIVE RENDERS: ${renderCount.current} renders detected!`);
+      if (renderCount.current === 101) {
+        console.trace();
+      }
+    }
+  });
+
   const { activeProject, updateProjectFps } = useProjectStore();
   const { getDisplayName, canvasSize } = useAspectRatio();
   const { selectedElements, tracks } = useTimelineStore();

@@ -69,6 +69,33 @@ function TimelineComponent() {
   // Fixed infinite loop: replaced object selectors with individual selectors
   // using individual selectors to keep snapshots stable
 
+  // Debug: Track render count to detect infinite loops
+  const renderCount = useRef(0);
+  const lastRenderTime = useRef(Date.now());
+  
+  useEffect(() => {
+    renderCount.current++;
+    const now = Date.now();
+    const timeSinceLastRender = now - lastRenderTime.current;
+    lastRenderTime.current = now;
+    
+    // Log every 10 renders or if rendering too fast (< 100ms between renders)
+    if (renderCount.current % 10 === 0 || timeSinceLastRender < 100) {
+      console.log(`[Timeline] Render #${renderCount.current} at ${new Date().toISOString()} (${timeSinceLastRender}ms since last)`);
+      if (timeSinceLastRender < 50) {
+        console.warn(`[Timeline] ⚠️ Rapid re-rendering detected! Only ${timeSinceLastRender}ms between renders`);
+      }
+    }
+    
+    // Alert if excessive renders
+    if (renderCount.current > 100) {
+      console.error(`[Timeline] ❌ EXCESSIVE RENDERS: ${renderCount.current} renders detected!`);
+      if (renderCount.current === 101) {
+        console.trace('[Timeline] Stack trace for excessive renders:');
+      }
+    }
+  });
+
   // Individual selectors to prevent infinite loops with useSyncExternalStore
   const tracks = useTimelineStore((s) => s.tracks);
   const getTotalDuration = useTimelineStore((s) => s.getTotalDuration);
@@ -322,11 +349,19 @@ function TimelineComponent() {
 
   // Update timeline duration when tracks change
   useEffect(() => {
+    console.log('[Timeline] Duration update effect triggered');
     // Only update if tracks actually change
     const totalDuration = getTotalDuration();
     const newDuration = Math.max(totalDuration, 10); // Minimum 10 seconds for empty timeline
-    setDuration(newDuration);
-  }, [tracks, getTotalDuration, setDuration]); // Safe dependencies - tracks changes trigger recalc
+    console.log(`[Timeline] Setting duration from ${duration} to ${newDuration}`);
+    
+    // Only update if duration actually changed to prevent loops
+    if (Math.abs(duration - newDuration) > 0.001) {
+      setDuration(newDuration);
+    } else {
+      console.log('[Timeline] Duration unchanged, skipping update');
+    }
+  }, [tracks, getTotalDuration, setDuration, duration]); // Safe dependencies - tracks changes trigger recalc
 
   // Old marquee system removed - using new SelectionBox component instead
 
