@@ -41,7 +41,7 @@ import { useProjectStore } from "@/stores/project-store";
 import { useTimelineZoom } from "@/hooks/use-timeline-zoom";
 // Media processing utilities will be imported dynamically when needed
 import { toast } from "sonner";
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, memo } from "react";
 import { TimelineTrackContent } from "./timeline-track";
 import {
   TimelinePlayhead,
@@ -61,7 +61,7 @@ import {
 } from "@/constants/timeline-constants";
 import { Slider } from "@/components/ui/slider";
 
-export function Timeline() {
+function TimelineComponent() {
   // Timeline shows all tracks (video, audio, effects) and their elements.
   // You can drag media here to add it to your project.
   // elements can be trimmed, deleted, and moved.
@@ -322,9 +322,11 @@ export function Timeline() {
 
   // Update timeline duration when tracks change
   useEffect(() => {
+    // Only update if tracks actually change
     const totalDuration = getTotalDuration();
-    setDuration(Math.max(totalDuration, 10)); // Minimum 10 seconds for empty timeline
-  }, [setDuration, getTotalDuration]);
+    const newDuration = Math.max(totalDuration, 10); // Minimum 10 seconds for empty timeline
+    setDuration(newDuration);
+  }, [tracks.length, getTotalDuration, setDuration]); // Dependencies for the effect
 
   // Old marquee system removed - using new SelectionBox component instead
 
@@ -1264,3 +1266,5 @@ function TimelineToolbar({
     </div>
   );
 }
+
+export const Timeline = memo(TimelineComponent);
