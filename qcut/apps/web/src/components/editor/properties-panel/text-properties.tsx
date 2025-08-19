@@ -7,7 +7,7 @@ import { useEditorStore } from "@/stores/editor-store";
 import { Slider } from "@/components/ui/slider";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   PropertyItem,
   PropertyItemLabel,
@@ -35,6 +35,15 @@ export function TextProperties({
   const [xInput, setXInput] = useState((element.x || 0).toString());
   const [yInput, setYInput] = useState((element.y || 0).toString());
   const [rotationInput, setRotationInput] = useState((element.rotation || 0).toString());
+
+  // Sync inputs when element changes externally (e.g., by dragging or other external updates)
+  useEffect(() => {
+    setFontSizeInput(element.fontSize.toString());
+    setOpacityInput(Math.round(element.opacity * 100).toString());
+    setXInput((element.x ?? 0).toString());
+    setYInput((element.y ?? 0).toString());
+    setRotationInput((element.rotation ?? 0).toString());
+  }, [element.id, element.fontSize, element.opacity, element.x, element.y, element.rotation]);
 
   // Generic handler for slider changes to reduce code duplication
   const handleSliderChange = (prop: 'x' | 'y' | 'rotation', value: number) => {
