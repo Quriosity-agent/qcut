@@ -1,8 +1,8 @@
 {
-  "name": "opencut",
-  "version": "0.1.0",
-  "description": "Open-source video editor",
-  "author": "OpenCut Team",
+  "name": "qcut",
+  "version": "0.2.0",
+  "description": "QCut - Open-source video editor",
+  "author": "QCut Team",
   "main": "electron/main.js",
   "packageManager": "bun@1.2.18",
   "devDependencies": {

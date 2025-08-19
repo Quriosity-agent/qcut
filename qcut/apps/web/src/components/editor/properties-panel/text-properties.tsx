@@ -11,6 +11,7 @@ import {
   PropertyItem,
   PropertyItemLabel,
   PropertyItemValue,
+  PropertyGroup,
 } from "./property-item";
 
 export function TextProperties({
@@ -96,180 +97,193 @@ export function TextProperties({
           updateTextElement(trackId, element.id, { content: e.target.value })
         }
       />
-      <PropertyItem direction="row">
-        <PropertyItemLabel>Font</PropertyItemLabel>
-        <PropertyItemValue>
-          <FontPicker
-            defaultValue={element.fontFamily}
-            onValueChange={(value: FontFamily) =>
-              updateTextElement(trackId, element.id, { fontFamily: value })
-            }
-          />
-        </PropertyItemValue>
-      </PropertyItem>
-      <PropertyItem direction="column">
+      
+      <PropertyGroup title="Font" defaultExpanded={true}>
         <PropertyItem direction="row">
-          <PropertyItemLabel>Style</PropertyItemLabel>
+          <PropertyItemLabel>Font</PropertyItemLabel>
+          <PropertyItemValue>
+            <FontPicker
+              aria-label="Font family"
+              defaultValue={element.fontFamily}
+              onValueChange={(value: FontFamily) =>
+                updateTextElement(trackId, element.id, { fontFamily: value })
+              }
+            />
+          </PropertyItemValue>
+        </PropertyItem>
+        <PropertyItem direction="column">
+          <PropertyItem direction="row">
+            <PropertyItemLabel>Style</PropertyItemLabel>
+            <PropertyItemValue>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant={element.fontWeight === "bold" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() =>
+                    updateTextElement(trackId, element.id, {
+                      fontWeight:
+                        element.fontWeight === "bold" ? "normal" : "bold",
+                    })
+                  }
+                  className="h-8 px-3 font-bold"
+                >
+                  B
+                </Button>
+                <Button
+                  variant={element.fontStyle === "italic" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() =>
+                    updateTextElement(trackId, element.id, {
+                      fontStyle:
+                        element.fontStyle === "italic" ? "normal" : "italic",
+                    })
+                  }
+                  className="h-8 px-3 italic"
+                >
+                  I
+                </Button>
+                <Button
+                  variant={
+                    element.textDecoration === "underline" ? "default" : "outline"
+                  }
+                  size="sm"
+                  onClick={() =>
+                    updateTextElement(trackId, element.id, {
+                      textDecoration:
+                        element.textDecoration === "underline"
+                          ? "none"
+                          : "underline",
+                    })
+                  }
+                  className="h-8 px-3 underline"
+                >
+                  U
+                </Button>
+                <Button
+                  variant={
+                    element.textDecoration === "line-through"
+                      ? "default"
+                      : "outline"
+                  }
+                  size="sm"
+                  onClick={() =>
+                    updateTextElement(trackId, element.id, {
+                      textDecoration:
+                        element.textDecoration === "line-through"
+                          ? "none"
+                          : "line-through",
+                    })
+                  }
+                  className="h-8 px-3 line-through"
+                >
+                  S
+                </Button>
+              </div>
+            </PropertyItemValue>
+          </PropertyItem>
+          <PropertyItemLabel>Font size</PropertyItemLabel>
           <PropertyItemValue>
             <div className="flex items-center gap-2">
-              <Button
-                variant={element.fontWeight === "bold" ? "default" : "outline"}
-                size="sm"
-                onClick={() =>
-                  updateTextElement(trackId, element.id, {
-                    fontWeight:
-                      element.fontWeight === "bold" ? "normal" : "bold",
-                  })
-                }
-                className="h-8 px-3 font-bold"
-              >
-                B
-              </Button>
-              <Button
-                variant={element.fontStyle === "italic" ? "default" : "outline"}
-                size="sm"
-                onClick={() =>
-                  updateTextElement(trackId, element.id, {
-                    fontStyle:
-                      element.fontStyle === "italic" ? "normal" : "italic",
-                  })
-                }
-                className="h-8 px-3 italic"
-              >
-                I
-              </Button>
-              <Button
-                variant={
-                  element.textDecoration === "underline" ? "default" : "outline"
-                }
-                size="sm"
-                onClick={() =>
-                  updateTextElement(trackId, element.id, {
-                    textDecoration:
-                      element.textDecoration === "underline"
-                        ? "none"
-                        : "underline",
-                  })
-                }
-                className="h-8 px-3 underline"
-              >
-                U
-              </Button>
-              <Button
-                variant={
-                  element.textDecoration === "line-through"
-                    ? "default"
-                    : "outline"
-                }
-                size="sm"
-                onClick={() =>
-                  updateTextElement(trackId, element.id, {
-                    textDecoration:
-                      element.textDecoration === "line-through"
-                        ? "none"
-                        : "line-through",
-                  })
-                }
-                className="h-8 px-3 line-through"
-              >
-                S
-              </Button>
+              <Slider
+                aria-label="Font size"
+                value={[element.fontSize]}
+                min={8}
+                max={300}
+                step={1}
+                onValueChange={([value]) => {
+                  updateTextElement(trackId, element.id, { fontSize: value });
+                  setFontSizeInput(value.toString());
+                }}
+                className="w-full"
+              />
+              <Input
+                type="number"
+                aria-label="Font size (number)"
+                value={fontSizeInput}
+                min={8}
+                max={300}
+                onChange={(e) => handleFontSizeChange(e.target.value)}
+                onBlur={handleFontSizeBlur}
+                className="w-12 !text-xs h-7 rounded-sm text-center
+                 [appearance:textfield]
+                 [&::-webkit-outer-spin-button]:appearance-none
+                 [&::-webkit-inner-spin-button]:appearance-none"
+              />
             </div>
           </PropertyItemValue>
         </PropertyItem>
-        <PropertyItemLabel>Font size</PropertyItemLabel>
-        <PropertyItemValue>
-          <div className="flex items-center gap-2">
-            <Slider
-              value={[element.fontSize]}
-              min={8}
-              max={300}
-              step={1}
-              onValueChange={([value]) => {
-                updateTextElement(trackId, element.id, { fontSize: value });
-                setFontSizeInput(value.toString());
-              }}
-              className="w-full"
-            />
+      </PropertyGroup>
+      
+      <PropertyGroup title="Appearance" defaultExpanded={true}>
+        <PropertyItem direction="row">
+          <PropertyItemLabel>Color</PropertyItemLabel>
+          <PropertyItemValue>
             <Input
-              type="number"
-              value={fontSizeInput}
-              min={8}
-              max={300}
-              onChange={(e) => handleFontSizeChange(e.target.value)}
-              onBlur={handleFontSizeBlur}
-              className="w-12 !text-xs h-7 rounded-sm text-center
-               [appearance:textfield]
-               [&::-webkit-outer-spin-button]:appearance-none
-               [&::-webkit-inner-spin-button]:appearance-none"
-            />
-          </div>
-        </PropertyItemValue>
-      </PropertyItem>
-      <PropertyItem direction="row">
-        <PropertyItemLabel>Color</PropertyItemLabel>
-        <PropertyItemValue>
-          <Input
-            type="color"
-            value={element.color || "#ffffff"}
-            onChange={(e) => {
-              const color = e.target.value;
-              updateTextElement(trackId, element.id, { color });
-            }}
-            className="w-full cursor-pointer rounded-full"
-          />
-        </PropertyItemValue>
-      </PropertyItem>
-      <PropertyItem direction="row">
-        <PropertyItemLabel>Background</PropertyItemLabel>
-        <PropertyItemValue>
-          <Input
-            type="color"
-            value={
-              element.backgroundColor === "transparent"
-                ? "#000000"
-                : element.backgroundColor || "#000000"
-            }
-            onChange={(e) => {
-              const backgroundColor = e.target.value;
-              updateTextElement(trackId, element.id, { backgroundColor });
-            }}
-            className="w-full cursor-pointer rounded-full"
-          />
-        </PropertyItemValue>
-      </PropertyItem>
-      <PropertyItem direction="column">
-        <PropertyItemLabel>Opacity</PropertyItemLabel>
-        <PropertyItemValue>
-          <div className="flex items-center gap-2">
-            <Slider
-              value={[element.opacity * 100]}
-              min={0}
-              max={100}
-              step={1}
-              onValueChange={([value]) => {
-                updateTextElement(trackId, element.id, {
-                  opacity: value / 100,
-                });
-                setOpacityInput(value.toString());
+              type="color"
+              aria-label="Text color"
+              value={element.color || "#ffffff"}
+              onChange={(e) => {
+                const color = e.target.value;
+                updateTextElement(trackId, element.id, { color });
               }}
-              className="w-full"
+              className="w-full cursor-pointer rounded-full"
             />
+          </PropertyItemValue>
+        </PropertyItem>
+        <PropertyItem direction="row">
+          <PropertyItemLabel>Background</PropertyItemLabel>
+          <PropertyItemValue>
             <Input
-              type="number"
-              value={opacityInput}
-              min={0}
-              max={100}
-              onChange={(e) => handleOpacityChange(e.target.value)}
-              onBlur={handleOpacityBlur}
-              className="w-12 !text-xs h-7 rounded-sm text-center
-               [appearance:textfield]
-               [&::-webkit-outer-spin-button]:appearance-none
-               [&::-webkit-inner-spin-button]:appearance-none"
+              type="color"
+              aria-label="Background color"
+              value={
+                element.backgroundColor === "transparent"
+                  ? "#000000"
+                  : element.backgroundColor || "#000000"
+              }
+              onChange={(e) => {
+                const backgroundColor = e.target.value;
+                updateTextElement(trackId, element.id, { backgroundColor });
+              }}
+              className="w-full cursor-pointer rounded-full"
             />
-          </div>
-        </PropertyItemValue>
-      </PropertyItem>
+          </PropertyItemValue>
+        </PropertyItem>
+        <PropertyItem direction="column">
+          <PropertyItemLabel>Opacity</PropertyItemLabel>
+          <PropertyItemValue>
+            <div className="flex items-center gap-2">
+              <Slider
+                aria-label="Opacity"
+                value={[element.opacity * 100]}
+                min={0}
+                max={100}
+                step={1}
+                onValueChange={([value]) => {
+                  updateTextElement(trackId, element.id, {
+                    opacity: value / 100,
+                  });
+                  setOpacityInput(value.toString());
+                }}
+                className="w-full"
+              />
+              <Input
+                type="number"
+                aria-label="Opacity percent"
+                value={opacityInput}
+                min={0}
+                max={100}
+                onChange={(e) => handleOpacityChange(e.target.value)}
+                onBlur={handleOpacityBlur}
+                className="w-12 !text-xs h-7 rounded-sm text-center
+                 [appearance:textfield]
+                 [&::-webkit-outer-spin-button]:appearance-none
+                 [&::-webkit-inner-spin-button]:appearance-none"
+              />
+            </div>
+          </PropertyItemValue>
+        </PropertyItem>
+      </PropertyGroup>
     </div>
   );
 }

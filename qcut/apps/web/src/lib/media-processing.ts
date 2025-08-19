@@ -12,36 +12,46 @@ export async function processMediaFiles(
   files: FileList | File[],
   onProgress?: (progress: number) => void
 ): Promise<ProcessedMediaItem[]> {
-  debugLog(
-    "[Media Processing] 🚀 Starting processMediaFiles with",
-    files.length,
-    "files"
-  );
-  const fileArray = Array.from(files);
-  const processedItems: ProcessedMediaItem[] = [];
-
-  // Load utilities dynamically
-  const mediaUtils = await getMediaStoreUtils();
-  const ffmpegUtils = await getFFmpegUtilFunctions();
-
-  const total = fileArray.length;
-  let completed = 0;
-
-  for (const file of fileArray) {
+  try {
     debugLog(
-      `[Media Processing] 🎬 Processing file: ${file.name} (${file.type}, ${(file.size / 1024 / 1024).toFixed(2)} MB)`
+      "[Media Processing] Starting processMediaFiles with",
+      files?.length || 0,
+      "files"
     );
+    
+    const fileArray = Array.from(files || []);
+    const processedItems: ProcessedMediaItem[] = [];
 
-    const fileType = mediaUtils.getFileType(file);
-    debugLog(`[Media Processing] 📝 Detected file type: ${fileType}`);
+    // Load utilities dynamically
+    debugLog("[Media Processing] Loading media store utilities...");
+    const mediaUtils = await getMediaStoreUtils();
+    debugLog("[Media Processing] Media store utilities loaded");
+    
+    debugLog("[Media Processing] Loading FFmpeg utilities...");
+    const ffmpegUtils = await getFFmpegUtilFunctions();
+    debugLog("[Media Processing] FFmpeg utilities loaded");
+
+    const total = fileArray.length;
+    let completed = 0;
+
+    for (const file of fileArray) {
+      debugLog(
+        `[Media Processing] Processing file: ${file.name} (${file.type}, ${(file.size / 1024 / 1024).toFixed(2)} MB)`
+      );
+
+      const fileType = mediaUtils.getFileType(file);
+      debugLog(`[Media Processing] Detected file type: ${fileType} for file: ${file.name} (${file.type})`);
 
     if (!fileType) {
       debugWarn(
         `[Media Processing] ❌ Unsupported file type: ${file.name} (${file.type})`
       );
       toast.error(`Unsupported file type: ${file.name}`);
+      debugLog("[Media Processing] 📊 Skipping file, processedItems length:", processedItems.length);
       continue;
     }
+
+    debugLog("[Media Processing] ✅ File type detected successfully, proceeding with processing");
 
     // Create URL that works in both web and Electron environments
     let url: string;
@@ -231,6 +241,7 @@ export async function processMediaFiles(
       });
 
       processedItems.push(processedItem);
+      debugLog("[Media Processing] 📊 After adding item, processedItems length:", processedItems.length);
 
       // Yield back to the event loop to keep the UI responsive
       await new Promise((resolve) => setTimeout(resolve, 0));
@@ -252,7 +263,8 @@ export async function processMediaFiles(
 
       // Don't completely abort - try to add the file with minimal info
       try {
-        processedItems.push({
+        debugLog("[Media Processing] 🔧 Attempting to add file with minimal processing:", file.name);
+        const minimalItem = {
           name: file.name,
           type: fileType,
           file,
@@ -265,7 +277,10 @@ export async function processMediaFiles(
           height:
             fileType === "video" || fileType === "image" ? 1080 : undefined,
           fps: fileType === "video" ? 30 : undefined,
-        });
+        };
+        
+        processedItems.push(minimalItem);
+        debugLog("[Media Processing] 📊 After minimal processing, processedItems length:", processedItems.length);
 
         debugLog(
           "[Media Processing] ✅ Added file with minimal processing:",
@@ -283,7 +298,14 @@ export async function processMediaFiles(
     }
   }
 
-  return processedItems;
+    debugLog("[Media Processing] Final processedItems length before return:", processedItems.length);
+    debugLog("[Media Processing] Final processedItems:", processedItems.map(item => ({ name: item.name, type: item.type })));
+    return processedItems;
+    
+  } catch (globalError) {
+    debugError("[Media Processing] GLOBAL ERROR in processMediaFiles:", globalError);
+    return [];
+  }
 }
 
 /**

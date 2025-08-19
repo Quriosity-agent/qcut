@@ -20,11 +20,14 @@ import {
   PropertyItem,
   PropertyItemLabel,
   PropertyItemValue,
+  PropertyGroup,
 } from "./property-item";
 import { TextProperties } from "./text-properties";
 import { PanelTabs } from "./panel-tabs";
 import { useExportStore } from "@/stores/export-store";
 import { ExportPanelContent } from "./export-panel-content";
+import { SettingsView } from "./settings-view";
+import { PanelView } from "@/types/panel";
 
 export function PropertiesPanel() {
   const { activeProject, updateProjectFps } = useProjectStore();
@@ -48,8 +51,7 @@ export function PropertiesPanel() {
 
   const emptyView = (
     <div className="space-y-4 p-5">
-      {/* Media Properties */}
-      <div className="flex flex-col gap-3">
+      <PropertyGroup title="Project Information" defaultExpanded={true}>
         <PropertyItem direction="column">
           <PropertyItemLabel className="text-xs text-muted-foreground">
             Name:
@@ -92,7 +94,7 @@ export function PropertiesPanel() {
             </SelectContent>
           </Select>
         </div>
-      </div>
+      </PropertyGroup>
     </div>
   );
 
@@ -131,8 +133,10 @@ export function PropertiesPanel() {
     <div className="h-full flex flex-col">
       <PanelTabs activeTab={panelView} onTabChange={setPanelView} />
       <div className="flex-1 overflow-auto">
-        {panelView === "export" ? (
+        {panelView === PanelView.EXPORT ? (
           <ExportPanelContent />
+        ) : panelView === PanelView.SETTINGS ? (
+          <SettingsView />
         ) : (
           <ScrollArea className="h-full bg-panel rounded-sm">
             {selectedElements.length > 0
@@ -156,13 +160,17 @@ export function PropertiesPanel() {
 
                     if (mediaItem?.type === "audio") {
                       return (
-                        <AudioProperties key={elementId} element={element} />
+                        <AudioProperties 
+                          key={elementId} 
+                          element={element} 
+                          trackId={trackId}
+                        />
                       );
                     }
 
                     return (
                       <div key={elementId}>
-                        <MediaProperties element={element} />
+                        <MediaProperties element={element} trackId={trackId} />
                       </div>
                     );
                   }

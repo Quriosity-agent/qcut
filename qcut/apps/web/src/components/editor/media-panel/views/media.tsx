@@ -7,6 +7,7 @@ import type { MediaItem } from "@/stores/media-store-types";
 import { Image, Loader2, Music, Plus, Video, Edit, Layers } from "lucide-react";
 import { useEffect, useRef, useState, useMemo } from "react";
 import { toast } from "sonner";
+import { debugLog, debugError } from "@/lib/debug-config";
 import { Button } from "@/components/ui/button";
 import { MediaDragOverlay } from "@/components/editor/media-panel/drag-overlay";
 import {
@@ -78,77 +79,40 @@ export function MediaView() {
   }, [mediaItems, mediaFilter, searchQuery]);
 
   const processFiles = async (files: FileList | File[]) => {
-    console.log(
-      "[Media View] 🚀 processFiles called with",
-      files?.length || 0,
-      "files"
-    );
-
     if (!files || files.length === 0) {
-      console.log("[Media View] ❌ No files provided");
       return;
     }
     if (!activeProject) {
-      console.log("[Media View] ❌ No active project");
       toast.error("No active project");
       return;
     }
 
-    console.log(
-      "[Media View] ▶️ Starting upload process for project:",
-      activeProject.id
-    );
     setIsProcessing(true);
     setProgress(0);
 
     try {
-      console.log("[Media View] 📋 File details:");
-      Array.from(files).forEach((file, i) => {
-        console.log(
-          `  ${i + 1}. ${file.name} (${file.type}, ${(file.size / 1024 / 1024).toFixed(2)} MB)`
-        );
-      });
-
-      // Process files (extract metadata, generate thumbnails, etc.)
-      console.log("[Media View] 🔧 Calling processMediaFiles...");
+      // WORKAROUND: Convert FileList to Array immediately to prevent data loss
+      const filesArray = Array.from(files);
       
       // Dynamically import media processing utilities
       const { processMediaFiles } = await import("@/lib/media-processing");
-      const processedItems = await processMediaFiles(files, (p) => {
-        console.log(`[Media View] 📊 Upload progress: ${p}%`);
+      const processedItems = await processMediaFiles(filesArray, (p) => {
         setProgress(p);
       });
 
-      console.log(
-        "[Media View] ✅ processMediaFiles completed, got",
-        processedItems.length,
-        "processed items"
+      // Add processed media items to the store in parallel
+      if (!addMediaItem) {
+        throw new Error("Media store not ready");
+      }
+      await Promise.all(
+        processedItems.map((item) => addMediaItem(activeProject.id, item))
       );
 
-      // Add each processed media item to the store
-      console.log("[Media View] 💾 Adding items to media store...");
-      for (const [index, item] of processedItems.entries()) {
-        console.log(
-          `[Media View] ➕ Adding item ${index + 1}/${processedItems.length}:`,
-          item.name
-        );
-        if (!addMediaItem) {
-          throw new Error("Media store not ready");
-        }
-        const newItemId = await addMediaItem(activeProject.id, item);
-        console.log(
-          `[Media View] ✅ Item ${index + 1} added successfully with ID: ${newItemId}`
-        );
-      }
-
-      console.log("[Media View] 🎉 Upload process completed successfully!");
       toast.success(`Successfully uploaded ${processedItems.length} file(s)`);
     } catch (error) {
-      // Show error toast if processing fails
-      console.error("[Media View] ❌ Upload process failed:", error);
+      debugError("[Media View] Upload process failed:", error);
       toast.error("Failed to process files");
     } finally {
-      console.log("[Media View] 🏁 Cleaning up upload process...");
       setIsProcessing(false);
       setProgress(0);
     }
@@ -208,7 +172,7 @@ export function MediaView() {
 
       toast.success(`"${item.name}" loaded in adjustment panel`);
     } catch (error) {
-      console.error("Failed to load image for editing:", error);
+      debugError("Failed to load image for editing:", error);
       toast.error("Failed to load image for editing");
     }
   };
