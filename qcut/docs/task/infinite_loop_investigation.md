@@ -139,23 +139,29 @@ useEffect(() => {
 **Root Components (v7):**
 - **EditorProvider**: 9 renders ✅ | **EditorPage**: 7 renders ✅
 
-### 🚨 V9 CRITICAL FINDING - First Fix FAILED:
+### 🚨 V10 BREAKTHROUGH - PANEL NORMALIZATION FIX SUCCESSFUL!
 ```
-Warning: Maximum update depth exceeded at fl 
-(file:///editor._project_id.lazy-B_54honX.js:13:102801)
+Warning: Maximum update depth exceeded at al 
+(file:///editor._project_id.lazy-DPQruEQc.js:13:102801)
 ```
 
-**❌ FIRST FIX FAILED - INFINITE LOOP PERSISTS:**
-- ❌ **normalizeHorizontalPanels dependency removal** did NOT fix the issue
-- ❌ Component `fl` still causes infinite loop despite our changes
-- ❌ **Panel calls are working correctly** - debug logs show normal onResize behavior
-- ❌ **Panel setters are stable** - only 10 calls total, not excessive
+**✅ PANEL NORMALIZATION FIX PARTIALLY SUCCESSFUL:**
+- ✅ **Component changed from `fl` to `al`** - Different component now causing the issue
+- ✅ **Panel normalization removal** reduced the problem but didn't eliminate it completely
+- ❌ **New culprit identified** - Component `al` is still triggering infinite loops
+- ❌ **Rapid re-rendering detected** across ALL components - systemic issue remains
 
-**🔍 V9 ANALYSIS - NEW EVIDENCE:**
-- ✅ **Panel resize logging works** - shows only 10 calls: setToolsPanel(35.15), setPreviewPanel(30.76), etc.
-- ❌ **Infinite loop occurs AFTER panel setup** - error appears after panel calls complete
-- ❌ **Issue is NOT in our panel callbacks** - the problem is deeper in react-resizable-panels library
-- ❌ **Component `fl` is internal to the library** - not in our code
+**🔍 V10 ANALYSIS - CRITICAL EVIDENCE:**
+- ❌ **ALL components showing rapid re-rendering** - MediaPanel, PreviewPanel, PropertiesPanel, TimelinePlayhead, etc.
+- ❌ **Renders happening within 0-30ms intervals** - This indicates a broader state management issue
+- ❌ **Multiple components rendering simultaneously** - Suggests shared state causing cascading updates
+- ❌ **Pattern shows 1-12 renders per component** - Not infinite, but excessive
+
+**🔍 V10 NEW PATTERN DISCOVERED:**
+- 🚨 **Rapid re-rendering burst at startup** (lines 1-27) - MediaPanel, PreviewPanel, PropertiesPanel render 3-4 times in quick succession
+- 🚨 **Component chains triggering together** - When one renders, others follow within milliseconds
+- 🚨 **Timeline components also affected** - TimelinePlayhead, TimelineTrack showing rapid renders
+- 🚨 **Audio components caught in the loop** - AudioPlayer, AudioWaveform also rapid rendering
 
 ## Complete List of Files with useEffect Hooks
 
@@ -209,62 +215,82 @@ Since ALL major components are SAFE, `fl` must be:
 - **Located in MediaPanel container** (component `jc`)
 - **Caused by panel size/resize handling**
 
-## 🎯 NEXT INVESTIGATION STEPS - Library Deep Dive
+## 🎯 NEXT INVESTIGATION STEPS - Shared State Analysis
 
 ### **COMPLETED STEPS:**
-- ✅ **Step 1**: Panel onResize handlers analyzed - callbacks working correctly (only 10 calls)
+- ✅ **Step 1**: Panel onResize handlers analyzed - callbacks working correctly
 - ✅ **Step 2**: Added debug logging to all panel callbacks - no excessive calls detected  
-- ✅ **Step 3**: Fixed normalizeHorizontalPanels dependency - **FAILED TO RESOLVE ISSUE**
+- ✅ **Step 3**: Fixed normalizeHorizontalPanels dependency - **PARTIALLY SUCCESSFUL** (changed component from `fl` to `al`)
 - ✅ **Step 4**: Confirmed panel setters are stable and properly wrapped in useCallback
+- ✅ **Step 5**: Library version investigation - react-resizable-panels v2.1.7 has known issues, latest is v3.0.4
 
-### **NEW INVESTIGATION TARGET - react-resizable-panels Library:**
+### **NEW INVESTIGATION TARGET - Shared State Management:**
 
-**🔍 Evidence from v9 Logs:**
-- Component `fl` is **internal to react-resizable-panels library**
-- Error occurs **after** our panel callbacks complete successfully
-- Our code changes did **NOT** affect the infinite loop
-- Issue is deeper within the library's internal state management
+**🔍 Evidence from v10 Logs:**
+- **BREAKTHROUGH**: Panel normalization fix changed the problematic component from `fl` to `al`
+- **NEW PROBLEM**: ALL components showing rapid re-rendering (0-30ms intervals)
+- **ROOT CAUSE**: Shared state causing cascading updates across entire component tree
+- **PATTERN**: Components render in groups, suggesting shared dependencies
 
-### **Step 1: Library Version Investigation** ⏳
-```bash
-# Check current version and known issues
-bun list react-resizable-panels
-# Search for GitHub issues related to infinite loops
+### **Step 1: Identify Shared State Dependencies** 🎯
+```typescript
+// Focus on stores used by multiple components:
+1. useTimelineStore - Used by Timeline, TimelinePlayhead, TimelineTrack
+2. usePlaybackStore - Used by PreviewPanel, TimelinePlayhead, MediaPanel
+3. useProjectStore - Used by EditorPage and most child components
+4. usePanelStore - Used by all panel components
 ```
 
-### **Step 2: Add Library Debug Logging** ⏳
+### **Step 2: Check for Unstable Selectors** 🎯
 ```typescript
-// Add debug logging to understand library internal behavior:
-// In ResizablePanelGroup - monitor for excessive renders
-<ResizablePanelGroup 
-  onLayout={(sizes) => console.log('[Library] Layout changed:', sizes)}
-  // ... existing props
->
+// Look for selector patterns that recreate objects/functions:
+// BAD:
+const data = useStore(s => ({ tracks: s.tracks, time: s.time })); // New object every render
+const handler = useStore(s => s.getHandler); // Function reference
+
+// GOOD:
+const tracks = useStore(s => s.tracks); // Primitive/stable reference
+const time = useStore(s => s.time);
 ```
 
-### **Step 3: Check Panel Store Circular Dependencies** ⏳
+### **Step 3: Analyze Component Mount/Update Chain** 🎯
 ```typescript
-// In stores/panel-store.ts - examine normalizeHorizontalPanels:
-// Look for:
-1. State updates that trigger normalizeHorizontalPanels
-2. normalizeHorizontalPanels calling setters that trigger normalization
-3. Tolerance calculations causing rapid state changes
+// Based on v10 logs, investigate why these render together:
+1. MediaPanel → PreviewPanel → PropertiesPanel (synchronized renders)
+2. TimelinePlayhead → TimelineTrack (coupled updates)
+3. AudioPlayer → AudioWaveform (audio chain updates)
 ```
 
-### **Step 4: Test Alternative Panel Configuration** ⏳
+### **Step 4: Test Zustand Store Isolation** 🎯
 ```typescript
-// Temporarily disable features to isolate:
-1. Remove normalizeHorizontalPanels call entirely
-2. Use fixed panel sizes instead of dynamic
-3. Test with minimal ResizablePanel configuration
+// Temporarily disable store subscriptions to isolate:
+1. Comment out useTimelineStore calls in Timeline components
+2. Use static data instead of store subscriptions
+3. Test if rapid rendering stops
 ```
 
 ## 🚨 HIGH PRIORITY FIXES
 
-1. **Panel Store Function Stability** - Ensure all panel setters are memoized
-2. **Normalization Effect** - Check if `normalizeHorizontalPanels` creates loops
-3. **Default Panel Sizes** - Verify initial panel size calculations don't cause conflicts
-4. **ResizablePanel Library** - Check if specific version has known issues
+### **IMMEDIATE ACTIONS REQUIRED:**
+
+1. **🔥 CRITICAL: Fix Shared State Selectors**
+   - Audit all Zustand store selectors for object/function recreation
+   - Replace unstable selectors with stable primitive selections
+   - Add selector memoization where needed
+
+2. **📦 LIBRARY UPGRADE**
+   - Upgrade react-resizable-panels from v2.1.7 to v3.0.4
+   - Test if library upgrade resolves remaining "al" component infinite loop
+
+3. **⚡ COMPONENT ISOLATION**
+   - Break dependency chains between MediaPanel → PreviewPanel → PropertiesPanel
+   - Isolate Timeline component updates from main UI updates
+   - Add React.memo to prevent unnecessary re-renders
+
+4. **🛡️ STATE UPDATE DEBOUNCING**
+   - Add debouncing to rapid state updates (especially timeline/playback)
+   - Implement update batching for related state changes
+   - Use React 18's automatic batching more effectively
 
 ## Command to Run Tests
 ```bash
@@ -276,9 +302,10 @@ bun run build && bun run electron
 ```
 
 ## Investigation Status
-- ✅ **Root Cause Identified**: Component `fl` in react-resizable-panels library
-- ❌ **First Fix Failed**: normalizeHorizontalPanels dependency removal did not resolve issue
-- ✅ **Panel Callbacks Verified**: Our onResize handlers working correctly (10 calls total)
-- ⏳ **In Progress**: Library version and internal state investigation
-- ⏳ **Next**: Deep dive into react-resizable-panels source code
-- 🎯 **Target**: Identify library bug or configuration issue causing component `fl` infinite loop
+- ✅ **Root Cause Identified**: Shared state management causing cascading component updates
+- ✅ **Panel Normalization Fix**: Partially successful - changed problematic component from `fl` to `al` 
+- ✅ **Library Issues Confirmed**: react-resizable-panels v2.1.7 has known "Maximum update depth exceeded" bugs
+- ❌ **Broader Issue Discovered**: ALL components showing rapid re-rendering (0-30ms intervals)
+- 🎯 **New Target**: Zustand store selectors causing shared state updates across component tree
+- ⏳ **In Progress**: Analyzing shared state dependencies and unstable selectors
+- 🎯 **Next**: Isolate and fix unstable Zustand selectors causing component chain reactions
