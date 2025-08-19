@@ -129,12 +129,21 @@ Since the settings feature is in the tagged release `v0.2.0-settings-and-media-f
 
 ## Testing Checklist
 
+### Accessibility (Button Elements)
 - [ ] **Keyboard Navigation**: All interactive elements accessible via Tab key
 - [ ] **Screen Reader**: NVDA/JAWS properly announce button states
 - [ ] **Focus Management**: Clear focus indicators on all buttons  
 - [ ] **Functionality**: All click handlers work identically to div version
 - [ ] **Styling**: Visual appearance unchanged from div implementation
 - [ ] **Performance**: No performance regression from div→button conversion
+
+### Form Controls (Select Components)  
+- [ ] **Value Binding**: Select value matches SelectItem values exactly
+- [ ] **Selection State**: Current selection highlights properly in dropdown
+- [ ] **Change Handling**: onValueChange receives correct preset name
+- [ ] **Screen Reader**: Proper announcement of current and selected values
+- [ ] **Keyboard Navigation**: Arrow keys navigate options correctly
+- [ ] **Hook Integration**: useAspectRatio hook exposes currentPreset properly
 
 ## Backward Compatibility
 
@@ -146,3 +155,85 @@ Since the settings feature is in the tagged release `v0.2.0-settings-and-media-f
 - Existing functionality
 
 The improvements are purely semantic HTML and ARIA enhancements.
+
+## Form Control Value Binding Issue
+
+### 4. Aspect Ratio Select Component
+**Problem**: Select component's `value` prop uses display function instead of matching SelectItem values.
+
+**Current:**
+```tsx
+function ProjectInfoView() {
+  const { getDisplayName } = useAspectRatio();
+  
+  return (
+    <Select
+      value={getDisplayName()}
+      onValueChange={handleAspectRatioChange}
+    >
+      <SelectContent>
+        {canvasPresets.map((preset) => (
+          <SelectItem key={preset.name} value={preset.name}>
+            {preset.name}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+}
+```
+
+**Issue**: `value={getDisplayName()}` returns a display string, but `SelectItem` uses `value={preset.name}`. This mismatch can cause:
+- Incorrect selection highlighting
+- Form validation issues
+- Accessibility problems with screen readers
+
+**Improved:**
+```tsx
+function ProjectInfoView() {
+  const { getDisplayName, currentPreset } = useAspectRatio();
+  
+  return (
+    <Select
+      value={currentPreset?.name}
+      onValueChange={handleAspectRatioChange}
+    >
+      <SelectContent>
+        {canvasPresets.map((preset) => (
+          <SelectItem key={preset.name} value={preset.name}>
+            {preset.name}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+}
+```
+
+**Benefits:**
+- ✅ **Correct Value Binding**: Select value matches SelectItem values
+- ✅ **Proper Selection State**: Current selection highlights correctly
+- ✅ **Screen Reader Support**: Proper announcement of selected value
+- ✅ **Form Validation**: Select component validates correctly
+
+**Required Hook Update:**
+The `useAspectRatio` hook needs to expose `currentPreset`:
+```tsx
+export function useAspectRatio() {
+  const { canvasSize, canvasPresets } = useEditorStore();
+  
+  const currentPreset = canvasPresets.find(
+    preset => preset.width === canvasSize.width && preset.height === canvasSize.height
+  );
+  
+  const getDisplayName = () => {
+    return currentPreset?.name || `${canvasSize.width}×${canvasSize.height}`;
+  };
+  
+  return {
+    getDisplayName,
+    currentPreset, // Add this
+    canvasSize
+  };
+}
+```
