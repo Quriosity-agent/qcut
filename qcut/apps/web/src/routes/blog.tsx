@@ -36,7 +36,7 @@ function BlogPage() {
               Blog
             </h1>
             <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto leading-relaxed">
-              Read the latest news and updates about OpenCut, the free and
+              Read the latest news and updates about QCut, the free and
               open-source video editor.
             </p>
           </div>

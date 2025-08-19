@@ -7,13 +7,13 @@ import { Footer } from "@/components/footer";
 import { Header } from "@/components/header";
 
 export const metadata: Metadata = {
-  title: "Terms of Service - OpenCut",
+  title: "Terms of Service - QCut",
   description:
-    "OpenCut's Terms of Service. Fair, transparent terms for our free and open-source video editor.",
+    "QCut's Terms of Service. Fair, transparent terms for our free and open-source video editor.",
   openGraph: {
-    title: "Terms of Service - OpenCut",
+    title: "Terms of Service - QCut",
     description:
-      "OpenCut's Terms of Service. Fair, transparent terms for our free and open-source video editor.",
+      "QCut's Terms of Service. Fair, transparent terms for our free and open-source video editor.",
     type: "website",
   },
 };
@@ -51,10 +51,10 @@ export default function TermsPage() {
               <CardContent className="p-8 text-base leading-relaxed space-y-8">
                 <section>
                   <h2 className="text-2xl font-semibold mb-4">
-                    Welcome to OpenCut
+                    Welcome to QCut
                   </h2>
                   <p className="mb-4">
-                    OpenCut is a free, open-source video editor that runs in
+                    QCut is a free, open-source video editor that runs in
                     your browser. By using our service, you agree to these
                     terms. We've designed these terms to be fair and protect
                     both you and our project.
@@ -70,11 +70,11 @@ export default function TermsPage() {
                     Your Content, Your Rights
                   </h2>
                   <p className="mb-4">
-                    <strong>You own everything you create.</strong> OpenCut
+                    <strong>You own everything you create.</strong> QCut
                     processes your videos locally on your device, so we never
                     have access to your content. We make no claims to ownership,
                     licensing, or rights over your videos, projects, or any
-                    content you create using OpenCut.
+                    content you create using QCut.
                   </p>
                   <ul className="list-disc pl-6 mb-4 space-y-2">
                     <li>
@@ -89,32 +89,32 @@ export default function TermsPage() {
                       You can export and use your content however you choose
                     </li>
                     <li>
-                      No watermarks, no licensing restrictions from OpenCut
+                      No watermarks, no licensing restrictions from QCut
                     </li>
                   </ul>
                 </section>
 
                 <section>
                   <h2 className="text-2xl font-semibold mb-4">
-                    How You Can Use OpenCut
+                    How You Can Use QCut
                   </h2>
                   <p className="mb-4">
-                    OpenCut is free for personal and commercial use. You can:
+                    QCut is free for personal and commercial use. You can:
                   </p>
                   <ul className="list-disc pl-6 mb-4 space-y-2">
                     <li>
                       Create videos for personal, educational, or commercial
                       purposes
                     </li>
-                    <li>Use OpenCut for client work and paid projects</li>
-                    <li>Share and distribute videos created with OpenCut</li>
+                    <li>Use QCut for client work and paid projects</li>
+                    <li>Share and distribute videos created with QCut</li>
                     <li>
-                      Modify and distribute the OpenCut software (under MIT
+                      Modify and distribute the QCut software (under MIT
                       license)
                     </li>
                   </ul>
                   <p>
-                    <strong>What we ask:</strong> Don't use OpenCut for illegal
+                    <strong>What we ask:</strong> Don't use QCut for illegal
                     activities, harassment, or creating harmful content. Be
                     respectful of others and follow applicable laws.
                   </p>
@@ -136,7 +136,7 @@ export default function TermsPage() {
                     <li>You can delete your account at any time</li>
                   </ul>
                   <p>
-                    OpenCut is provided "as is" without warranties. While we
+                    QCut is provided "as is" without warranties. While we
                     strive for reliability, we can't guarantee uninterrupted
                     service.
                   </p>
@@ -147,13 +147,13 @@ export default function TermsPage() {
                     Open Source Benefits
                   </h2>
                   <p className="mb-4">
-                    Because OpenCut is open source, you have additional rights:
+                    Because QCut is open source, you have additional rights:
                   </p>
                   <ul className="list-disc pl-6 mb-4 space-y-2">
                     <li>
                       Review our code to see exactly how we handle your data
                     </li>
-                    <li>Self-host OpenCut on your own servers</li>
+                    <li>Self-host QCut on your own servers</li>
                     <li>Modify the software to suit your needs</li>
                     <li>Contribute improvements back to the community</li>
                   </ul>
@@ -176,7 +176,7 @@ export default function TermsPage() {
                     Third-Party Content
                   </h2>
                   <p className="mb-4">
-                    When using OpenCut, make sure you have the right to use any
+                    When using QCut, make sure you have the right to use any
                     content you import:
                   </p>
                   <ul className="list-disc pl-6 mb-4 space-y-2">
@@ -202,7 +202,7 @@ export default function TermsPage() {
                     Limitations and Liability
                   </h2>
                   <p className="mb-4">
-                    OpenCut is provided free of charge. To the extent permitted
+                    QCut is provided free of charge. To the extent permitted
                     by law:
                   </p>
                   <ul className="list-disc pl-6 mb-4 space-y-2">
@@ -228,7 +228,7 @@ export default function TermsPage() {
                   <h2 className="text-2xl font-semibold mb-4">
                     Service Changes
                   </h2>
-                  <p className="mb-4">We may update OpenCut and these terms:</p>
+                  <p className="mb-4">We may update QCut and these terms:</p>
                   <ul className="list-disc pl-6 mb-4 space-y-2">
                     <li>
                       We'll notify you of significant changes to these terms
@@ -247,13 +247,13 @@ export default function TermsPage() {
                 <section>
                   <h2 className="text-2xl font-semibold mb-4">Termination</h2>
                   <p className="mb-4">
-                    You can stop using OpenCut at any time:
+                    You can stop using QCut at any time:
                   </p>
                   <ul className="list-disc pl-6 mb-4 space-y-2">
                     <li>Delete your account through your profile settings</li>
                     <li>Clear your browser data to remove local projects</li>
                     <li>
-                      Your content remains yours even if you stop using OpenCut
+                      Your content remains yours even if you stop using QCut
                     </li>
                     <li>
                       We may suspend accounts for violations of these terms
@@ -280,10 +280,10 @@ export default function TermsPage() {
                     </a>
                     , email us at{" "}
                     <a
-                      href="mailto:oss@opencut.app"
+                      href="mailto:oss@qcut.app"
                       className="text-primary hover:underline"
                     >
-                      oss@opencut.app
+                      oss@qcut.app
                     </a>
                     , or reach out on{" "}
                     <a

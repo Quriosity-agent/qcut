@@ -160,7 +160,7 @@ export const useKeybindingsStore = create<KeybindingsState>()(
       },
     }),
     {
-      name: "opencut-keybindings",
+      name: "qcut-keybindings",
       version: 1,
     }
   )

@@ -1,4 +1,4 @@
-/* An `action` is a unique verb that is associated with certain thing that can be done on OpenCut.
+/* An `action` is a unique verb that is associated with certain thing that can be done on QCut.
  * For example, toggling playback or seeking.
  */
 

@@ -48,7 +48,7 @@ function PrivacyPage() {
                   </h2>
                   <p className="mb-4">
                     <strong>
-                      OpenCut processes all videos locally on your device.
+                      QCut processes all videos locally on your device.
                     </strong>{" "}
                     We never upload, store, or have access to your video files.
                     Your content remains completely private and under your
@@ -110,7 +110,7 @@ function PrivacyPage() {
                       Databuddy
                     </a>{" "}
                     for completely anonymized and non-invasive analytics to
-                    understand how people use OpenCut.
+                    understand how people use QCut.
                   </p>
                   <p>
                     This helps us improve the editor, but we never collect
@@ -142,7 +142,7 @@ function PrivacyPage() {
                     Third-Party Services
                   </h2>
                   <p className="mb-4">
-                    OpenCut integrates with these services:
+                    QCut integrates with these services:
                   </p>
                   <ul className="list-disc pl-6 mb-4 space-y-2">
                     <li>
@@ -178,7 +178,7 @@ function PrivacyPage() {
                     Open Source Transparency
                   </h2>
                   <p className="mb-4">
-                    OpenCut is completely open source. You can review our code,
+                    QCut is completely open source. You can review our code,
                     see exactly how we handle data, and even self-host the
                     application if you prefer.
                   </p>
@@ -214,10 +214,10 @@ function PrivacyPage() {
                     </a>
                     , email us at{" "}
                     <a
-                      href="mailto:oss@opencut.app"
+                      href="mailto:oss@qcut.app"
                       className="text-primary hover:underline"
                     >
-                      oss@opencut.app
+                      oss@qcut.app
                     </a>
                     , or reach out on{" "}
                     <a

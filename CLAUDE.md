@@ -73,8 +73,8 @@ qcut/
 │       │   └── *.tsx
 │       └── routeTree.gen.ts    # Generated router tree
 ├── packages/
-│   ├── auth/                    # @opencut/auth
-│   └── db/                      # @opencut/db
+│   ├── auth/                    # @qcut/auth
+│   └── db/                      # @qcut/db
 ├── electron/                    # Electron main and preload scripts
 └── docs/task/                   # Migration documentation
 ```

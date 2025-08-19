@@ -1,7 +1,7 @@
 import { useCallback, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 // Temporarily disabled for Electron build - auth requires server
-// import { signIn } from "@opencut/auth/client";
+// import { signIn } from "@qcut/auth/client";
 
 export function useLogin() {
   const navigate = useNavigate();

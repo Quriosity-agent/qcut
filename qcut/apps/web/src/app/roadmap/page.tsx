@@ -90,28 +90,28 @@ const roadmapItems: {
 ];
 
 export const metadata: Metadata = {
-  title: "Roadmap - OpenCut",
+  title: "Roadmap - QCut",
   description:
-    "See what's coming next for OpenCut - the free, open-source video editor that respects your privacy.",
+    "See what's coming next for QCut - the free, open-source video editor that respects your privacy.",
   openGraph: {
-    title: "OpenCut Roadmap - What's Coming Next",
+    title: "QCut Roadmap - What's Coming Next",
     description:
-      "See what's coming next for OpenCut - the free, open-source video editor that respects your privacy.",
+      "See what's coming next for QCut - the free, open-source video editor that respects your privacy.",
     type: "website",
     images: [
       {
         url: "/open-graph/roadmap.jpg",
         width: 1200,
         height: 630,
-        alt: "OpenCut Roadmap",
+        alt: "QCut Roadmap",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "OpenCut Roadmap - What's Coming Next",
+    title: "QCut Roadmap - What's Coming Next",
     description:
-      "See what's coming next for OpenCut - the free, open-source video editor that respects your privacy.",
+      "See what's coming next for QCut - the free, open-source video editor that respects your privacy.",
     images: ["/open-graph/roadmap.jpg"],
   },
 };
@@ -141,7 +141,7 @@ export default function RoadmapPage() {
                 Roadmap
               </h1>
               <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto leading-relaxed">
-                What's coming next for OpenCut (last updated: July 14, 2025)
+                What's coming next for QCut (last updated: July 14, 2025)
               </p>
             </div>
             <div className="space-y-6">
@@ -205,7 +205,7 @@ export default function RoadmapPage() {
               <div className="text-center space-y-4">
                 <h3 className="text-xl font-semibold">Want to Help?</h3>
                 <p className="text-muted-foreground max-w-2xl mx-auto">
-                  OpenCut is open source and built by the community. Every
+                  QCut is open source and built by the community. Every
                   contribution, no matter how small, helps us build the best
                   free video editor possible.
                 </p>

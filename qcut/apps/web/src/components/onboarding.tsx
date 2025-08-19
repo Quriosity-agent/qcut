@@ -62,7 +62,7 @@ export function Onboarding() {
             <div className="space-y-3">
               <Title title={getStepTitle()} />
               <Description description="QCut started just one month ago. There's still a ton of things to do to make this editor amazing." />
-              <Description description="If you're curious, check out our roadmap [here](https://opencut.app/roadmap)" />
+              <Description description="If you're curious, check out our roadmap [here](https://qcut.app/roadmap)" />
             </div>
             <NextButton onClick={handleNext}>Next</NextButton>
           </div>

@@ -1,7 +1,7 @@
 # Auto-Captions Transcription Setup Guide
 
 ## Overview
-This guide provides step-by-step instructions for setting up a transcription system using Modal and Python for OpenCut's auto-captions feature.
+This guide provides step-by-step instructions for setting up a transcription system using Modal and Python for QCut's auto-captions feature.
 
 ## Prerequisites
 - Complete prerequisites from main README
@@ -45,16 +45,16 @@ Set up required Cloudflare R2 secrets in Modal to keep credentials secure:
 
 ```bash
 # Create Modal secret with R2 credentials
-modal secret set opencut-r2-secrets \
+modal secret set qcut-r2-secrets \
   R2_ACCESS_KEY_ID=your_r2_access_key \
   R2_SECRET_ACCESS_KEY=your_r2_secret_key \
   CLOUDFLARE_ACCOUNT_ID=your_cloudflare_account_id \
-  R2_BUCKET_NAME=opencut-transcription
+  R2_BUCKET_NAME=qcut-transcription
 ```
 
 **Security Note**: These secrets are loaded at runtime in `transcription.py` via:
 ```python
-secrets=[modal.Secret.from_name("opencut-r2-secrets")]
+secrets=[modal.Secret.from_name("qcut-r2-secrets")]
 ```
 
 This approach keeps credentials:

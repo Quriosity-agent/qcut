@@ -116,7 +116,7 @@ export default defineConfig({
 
           // Authentication and database
           if (id.includes('better-auth') || id.includes('drizzle') ||
-              id.includes('@opencut/auth') || id.includes('@opencut/db')) {
+              id.includes('@qcut/auth') || id.includes('@qcut/db')) {
             return 'vendor-auth';
           }
 

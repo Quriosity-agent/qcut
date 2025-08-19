@@ -131,7 +131,7 @@ export class ZipManager {
       },
       // Ensure proper Unicode handling
       platform: "UNIX", // Better Unicode support than DOS
-      comment: "Created by OpenCut",
+      comment: "Created by QCut",
     });
   }
 

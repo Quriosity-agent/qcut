@@ -5,6 +5,6 @@
 # Redirects for domain migration
 [[redirects]]
   from = "https://appcut.app/*"
-  to = "https://opencut.app/:splat"
+  to = "https://qcut.app/:splat"
   status = 301
   force = true
