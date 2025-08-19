@@ -9,11 +9,12 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { Play, Pause, Expand, SkipBack, SkipForward } from "lucide-react";
-import { useState, useRef, useEffect, useCallback, useMemo } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo, memo } from "react";
 import { usePlaybackStore } from "@/stores/playback-store";
 import { useEditorStore } from "@/stores/editor-store";
 import { useProjectStore } from "@/stores/project-store";
 import { useAspectRatio } from "@/hooks/use-aspect-ratio"; // 🔴 CRITICAL - WAS MISSING
+import { useUIPlayback } from "@/hooks/use-debounced-playback";
 import { cn } from "@/lib/utils";
 import { formatTimeCode } from "@/lib/time";
 import { EditableTimecode } from "@/components/ui/editable-timecode";
@@ -327,7 +328,7 @@ export function FullscreenPreview({
 }
 
 // Component 3: PreviewToolbar (depends on FullscreenToolbar)
-export function PreviewToolbar({
+export const PreviewToolbar = memo(function PreviewToolbar({
   hasAnyElements,
   onToggleExpanded,
   isExpanded,
@@ -527,4 +528,4 @@ export function PreviewToolbar({
       </div>
     </div>
   );
-}
+});

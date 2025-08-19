@@ -322,12 +322,33 @@ The v11 logs reveal that **Tasks 1-6 implementation FAILED** - the optimization 
 ### Immediate Priority
 **URGENT**: Revert all store selector changes from Tasks 1-6 and find the **actual source** of the infinite loops before attempting optimization.
 
+## v12 Analysis - POST-REVERT: Original Problem Confirmed, Component Pattern Identified
+
+The v12 logs confirm that **reverting Tasks 1-6 was successful** - we're back to the original problem state without the fatal React crashes.
+
+### Key Findings
+1. **Maximum update depth warning returned** (line 1): Back to `al` component warnings, not fatal crashes
+2. **Original rapid re-rendering pattern restored** (lines 55-136): Multiple components rendering 1-50ms intervals
+3. **Component interaction pattern identified**: PreviewToolbar → TimelinePlayhead → TimelineTrack cascade
+
+### Specific Component Behavior Observed
+- **PreviewToolbar**: 11 renders in rapid succession (12-33ms intervals)
+- **TimelinePlayhead**: 4 renders triggered by PreviewToolbar changes
+- **TimelineTrack**: Multiple track instances showing synchronized rendering (0-38ms intervals)
+- **AudioPlayer**: 2 renders during component cascade
+
+### Critical Pattern Discovery
+**Component Chain Reaction**: PreviewToolbar renders trigger TimelinePlayhead, which triggers TimelineTrack instances, creating a cascade effect where each component change triggers others in rapid succession.
+
+### Root Cause Narrowed Down
+The issue is **NOT in store selectors** but in **component interdependencies** - when one timeline component updates, it triggers a chain reaction across related components.
+
 ## Investigation Status
 - ✅ **Root Cause Identified**: Shared state management causing cascading component updates
 - ✅ **Panel Normalization Fix**: Partially successful - changed problematic component from `fl` to `al` 
 - ✅ **Library Issues Confirmed**: react-resizable-panels v2.1.7 has known "Maximum update depth exceeded" bugs
 - ❌ **Broader Issue Discovered**: ALL components showing rapid re-rendering (0-30ms intervals)
-- 🚨 **CRITICAL FAILURE**: Tasks 1-6 implementation made infinite loops WORSE, causing React crashes
-- 🎯 **New Target**: Zustand store selectors causing shared state updates across component tree
-- ⏳ **URGENT**: Revert failed optimization attempts and identify root cause
-- 🎯 **Next**: Find actual source of infinite loops before attempting any more fixes
+- ✅ **REVERT SUCCESSFUL**: Tasks 1-6 reverted, back to original problem state without crashes
+- 🎯 **NEW DISCOVERY**: Component chain reaction pattern identified (PreviewToolbar → TimelinePlayhead → TimelineTrack)
+- 🎯 **REFINED TARGET**: Component interdependencies causing cascade re-rendering, not store selectors
+- 🎯 **Next**: Break component dependency chain to prevent cascade re-rendering
