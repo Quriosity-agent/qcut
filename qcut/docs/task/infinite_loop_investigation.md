@@ -108,39 +108,39 @@ useEffect(() => {
 - ✅ AudioWaveform cleanup and memoization
 - ✅ AiView component memoization
 
-### 🔧 Components with Debug Logging Added (Ready for v6 Testing):
-- [🔧 Added] **TimelinePlayhead**: Complex DOM logic - **PRIME SUSPECT**
-- [🔧 Added] **SoundsView**: Not rendering (inactive tab)
-- [🔧 Added] **AiView**: Not rendering (inactive tab)
+### ✅ ALL Major Components Verified SAFE (v5-v7 console logs):
 
-### ✅ Components Verified SAFE (from v5 console logs):
-All major components confirmed SAFE with normal render counts:
+**UI Components (v5):**
 - **Timeline**: 10 renders ✅ | **MediaPanel**: 7 renders ✅ | **PreviewPanel**: 12 renders ✅
 - **PropertiesPanel**: 11 renders ✅ | **PreviewToolbar**: 11 renders ✅ | **AudioPlayer**: 3 renders ✅  
-- **TimelineTrack** (multiple): 2-6 renders each ✅ | **AudioWaveform**: 3 renders ✅
+- **TimelineTrack** (multiple): 2-8 renders each ✅ | **AudioWaveform**: 3 renders ✅
 
-### 🔴 Still Has Infinite Loop:
+**Complex Components (v6):**
+- **TimelinePlayhead**: 12 renders ✅ (NOT the culprit despite complex logic!)
+
+**Root Components (v7):**
+- **EditorProvider**: 9 renders ✅ | **EditorPage**: 7 renders ✅
+
+### 🔴 Still Has Infinite Loop - Component 'fl' Mystery:
 ```
 Warning: Maximum update depth exceeded at fl 
-(file:///editor._project_id.lazy-DKU_D8sd.js:13:102893)
+(file:///editor._project_id.lazy-CbOJ0Xqf.js:13:102893)
 ```
-- **CRITICAL**: Component `fl` is NOT any of the major components we've tested
-- All tested components show normal render counts (2-12 renders)
-- Error occurs early in render cycle (around render #3)
-- **`fl` must be a smaller/child component we haven't instrumented yet**
+
+**CRITICAL FINDINGS:**
+- ❌ Component `fl` is NOT any tested component (all show normal 2-12 renders)
+- ❌ Error appears AFTER EditorProvider renders 5 times (v7 line 63-66)
+- ❌ Must be a tiny utility component or third-party wrapper
+- ❌ Likely candidates: Resizable panels, Dialog components, or small UI utilities
 
 ## Complete List of Files with useEffect Hooks
 
-### ⚠️ REMAINING SUSPECTS - NEED TESTING
-1. [🔧 Debug Added] `components/editor/timeline/timeline-playhead.tsx` - **PRIME SUSPECT** - Complex DOM logic, auto-scroll, frequent updates
-2. [ ] `routes/editor.$project_id.lazy.tsx` - Main editor route
-3. [🔧 Debug Added] `components/editor/media-panel/views/sounds.tsx` - Sound effects (Not rendering - inactive tab)
-4. [ ] `components/editor/media-panel/views/media.tsx` - Media library 
-5. [ ] `components/editor/media-panel/views/stickers.tsx` - Stickers panel
-6. [ ] `components/editor/media-panel/views/text.tsx` - Text view
-7. [ ] `components/editor/media-panel/views/audio.tsx` - Audio view
-8. [ ] `components/editor/media-panel/views/captions.tsx` - Captions view
-9. [ ] `components/editor/media-panel/views/text2image.tsx` - Text2Image view
+### ⚠️ NEW SUSPECTS - Small/Utility Components:
+Since ALL major components are SAFE, `fl` must be:
+1. **Resizable Panel Components** - Used throughout the layout
+2. **Dialog/Modal Components** - Onboarding, alerts, etc.
+3. **Small UI Utilities** - Tooltips, dropdowns, etc.
+4. **Third-party library wrappers** - Radix UI, etc.
 
 ### ⚠️ HOOKS - NEED TESTING
 11. [ ] `hooks/use-timeline-playhead.ts` - **Playhead position updates**
@@ -164,23 +164,20 @@ Warning: Maximum update depth exceeded at fl
 25. [ ] `components/onboarding.tsx` - Onboarding flow
 26. [ ] `components/export-canvas.tsx` - Export rendering
 
-## 🎯 Next Action: Test TimelinePlayhead 
+## 🎯 Next Investigation Strategy:
 
-**PRIME SUSPECT**: `TimelinePlayhead` component has been instrumented with debug logging.
+Since ALL major components are verified SAFE, we need to:
 
-### Why TimelinePlayhead is the top suspect:
-1. **Complex DOM operations**: Frequent `offsetWidth`, `scrollLeft` calculations
-2. **Multiple useEffect hooks**: Scroll tracking, auto-scroll during playback
-3. **Frequent updates**: Responds to currentTime changes during video playback
-4. **Early render timing**: Could trigger at render #3 when timeline initializes
+1. **Build with source maps**: `bun run build --sourcemap` to identify `fl`
+2. **Check Resizable components** - They're used everywhere in the layout
+3. **Check Dialog/Modal components** - Could be Onboarding or other dialogs
+4. **Look for components with 2-letter names** that minify to `fl`
 
-### 🔍 Ready for v6 Testing:
-Run the application and check if `[TimelinePlayhead]` logs appear with excessive renders.
-
-## 🔴 Component 'fl' Mystery Status
-- **Still unidentified** after testing all major components
-- All tested components show normal render counts (2-12 renders)  
-- Must be TimelinePlayhead or another small component
+## 🔴 Component 'fl' Profile:
+- **Renders early** (error at EditorProvider render #5)
+- **Very small component** (short minified name)
+- **NOT a major UI component** (all tested and safe)
+- **Likely a utility or wrapper component**
 
 ## Next Steps
 
