@@ -29,8 +29,17 @@ export function StickerItem({
     setHasError(false);
 
     try {
+      // Prefer high-contrast preview color based on theme
+      let preferredColor = "#111111"; // light theme default
+      try {
+        const isDark =
+          document.documentElement.classList.contains("dark") ||
+          window.matchMedia?.("(prefers-color-scheme: dark)")?.matches;
+        preferredColor = isDark ? "#FFFFFF" : "#111111";
+      } catch {}
+
       const svgUrl = buildIconSvgUrl(collection, icon, {
-        // Remove color to keep transparency
+        color: preferredColor,
         width: 32,
         height: 32,
       });
@@ -56,11 +65,12 @@ export function StickerItem({
         <button
           type="button"
           className={cn(
-            "relative flex h-16 w-16 flex-col items-center justify-center rounded-lg border-2 border-border bg-background transition-all hover:border-primary hover:bg-accent",
+            "relative flex h-16 w-16 flex-col items-center justify-center rounded-lg border border-muted bg-card/40 transition-colors hover:border-primary hover:bg-accent overflow-hidden",
             isSelected && "border-primary bg-accent"
           )}
           onClick={handleClick}
           disabled={hasError || !imageUrl}
+          aria-label={(name || icon) + " (" + collection + ")"}
         >
           {isLoading && (
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -72,10 +82,7 @@ export function StickerItem({
             <img
               src={imageUrl}
               alt={name || icon}
-              className={cn(
-                "h-8 w-8 object-contain",
-                (isLoading || hasError) && "hidden"
-              )}
+              className={cn("h-8 w-8 object-contain", (isLoading || hasError) && "hidden")}
               onLoad={() => setIsLoading(false)}
               onError={() => {
                 setHasError(true);
