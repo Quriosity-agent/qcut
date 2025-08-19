@@ -133,7 +133,7 @@ export function StickersCollection({
 
   return (
     <TooltipProvider>
-      <div className="grid grid-cols-5 gap-3 p-4 sm:grid-cols-7 md:grid-cols-9 lg:grid-cols-12 [mask-image:linear-gradient(to_bottom,black_90%,transparent)]">
+      <div className="grid grid-cols-6 gap-2.5 p-3 sm:grid-cols-8 md:grid-cols-10 lg:grid-cols-12 [mask-image:linear-gradient(to_bottom,black_92%,transparent)]">
         {collectionIcons.map((iconName) => (
           <StickerItem
             key={`${collectionPrefix}:${iconName}`}

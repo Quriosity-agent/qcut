@@ -64,8 +64,8 @@ function StickerItem({
       const svgUrl = buildIconSvgUrl(collection, icon, {
         // Force white for maximum contrast in dark UI
         color: "#FFFFFF",
-        width: 40,
-        height: 40,
+        width: 32,
+        height: 32,
       });
       console.log("[StickerItem] Built SVG URL:", { collection, icon, svgUrl });
       setImageUrl(svgUrl);
@@ -88,8 +88,8 @@ function StickerItem({
           <button
             type="button"
             className={cn(
-              "relative flex h-16 w-16 flex-col items-center justify-center rounded-md border border-border/80 bg-slate-800/60 transition-colors hover:border-primary hover:bg-slate-700/80 overflow-hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
-              isSelected && "border-primary bg-slate-700/80"
+              "relative flex h-14 w-14 flex-col items-center justify-center rounded-md border border-border/80 bg-slate-800/50 transition-colors hover:border-primary hover:bg-slate-700/70 overflow-hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
+              isSelected && "border-primary bg-slate-700/70"
             )}
             onClick={handleClick}
             disabled={hasError || !imageUrl}
@@ -105,7 +105,7 @@ function StickerItem({
                 src={imageUrl}
                 alt={name || icon}
                 className={cn(
-                  "h-10 w-10 object-contain",
+                  "h-8 w-8 object-contain",
                   (isLoading || hasError) && "hidden"
                 )}
                 onLoad={() => {
@@ -253,7 +253,7 @@ function CollectionContent({
   }
 
   return (
-    <div className="grid grid-cols-5 gap-3 p-4 sm:grid-cols-7 md:grid-cols-9 lg:grid-cols-12 [mask-image:linear-gradient(to_bottom,black_90%,transparent)]">
+    <div className="grid grid-cols-6 gap-2.5 p-3 sm:grid-cols-8 md:grid-cols-10 lg:grid-cols-12 [mask-image:linear-gradient(to_bottom,black_92%,transparent)]">
       {collectionIcons.map((iconName) => (
         <StickerItem
           key={`${collectionPrefix}:${iconName}`}
@@ -384,7 +384,7 @@ export function StickersView() {
     }
 
     return (
-      <div className="grid grid-cols-5 gap-3 p-4 sm:grid-cols-7 md:grid-cols-9 lg:grid-cols-12 [mask-image:linear-gradient(to_bottom,black_90%,transparent)]">
+      <div className="grid grid-cols-6 gap-2.5 p-3 sm:grid-cols-8 md:grid-cols-10 lg:grid-cols-12 [mask-image:linear-gradient(to_bottom,black_92%,transparent)]">
         {searchResults.map((result) => {
           const [collection, iconName] = result.split(":");
           return (
@@ -414,7 +414,7 @@ export function StickersView() {
     }
 
     return (
-      <div className="grid grid-cols-5 gap-3 p-4 sm:grid-cols-7 md:grid-cols-9 lg:grid-cols-12 [mask-image:linear-gradient(to_bottom,black_90%,transparent)]">
+      <div className="grid grid-cols-6 gap-2.5 p-3 sm:grid-cols-8 md:grid-cols-10 lg:grid-cols-12 [mask-image:linear-gradient(to_bottom,black_92%,transparent)]">
         {recentStickers.map((sticker) => {
           const [collection, iconName] = sticker.iconId.split(":");
           return (
