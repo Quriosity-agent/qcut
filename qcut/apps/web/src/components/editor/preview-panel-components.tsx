@@ -52,25 +52,26 @@ export function FullscreenToolbar({
   const renderCount = useRef(0);
   const lastRenderTime = useRef(Date.now());
   
-  useEffect(() => {
-    renderCount.current++;
-    const now = Date.now();
-    const timeSince = now - lastRenderTime.current;
-    lastRenderTime.current = now;
+  // Debug logging disabled to fix infinite loop
+  // useEffect(() => {
+  //   renderCount.current++;
+  //   const now = Date.now();
+  //   const timeSince = now - lastRenderTime.current;
+  //   lastRenderTime.current = now;
     
-    console.log(`[${componentName}] Render #${renderCount.current} at ${new Date().toISOString()} (${timeSince}ms since last)`);
+  //   console.log(`[${componentName}] Render #${renderCount.current} at ${new Date().toISOString()} (${timeSince}ms since last)`);
     
-    if (timeSince < 50) {
-      console.warn(`[${componentName}] ⚠️ Rapid re-rendering detected! Only ${timeSince}ms between renders`);
-    }
+  //   if (timeSince < 50) {
+  //     console.warn(`[${componentName}] ⚠️ Rapid re-rendering detected! Only ${timeSince}ms between renders`);
+  //   }
     
-    if (renderCount.current > 100) {
-      console.error(`[${componentName}] ❌ EXCESSIVE RENDERS: ${renderCount.current} renders detected!`);
-      if (renderCount.current === 101) {
-        console.trace();
-      }
-    }
-  });
+  //   if (renderCount.current > 100) {
+  //     console.error(`[${componentName}] ❌ EXCESSIVE RENDERS: ${renderCount.current} renders detected!`);
+  //     if (renderCount.current === 101) {
+  //       console.trace();
+  //     }
+  //   }
+  // });
 
   const { isPlaying, seek } = usePlaybackStore();
   const { activeProject } = useProjectStore();
@@ -257,25 +258,26 @@ export function FullscreenPreview({
   const renderCount = useRef(0);
   const lastRenderTime = useRef(Date.now());
   
-  useEffect(() => {
-    renderCount.current++;
-    const now = Date.now();
-    const timeSince = now - lastRenderTime.current;
-    lastRenderTime.current = now;
+  // Debug logging disabled to fix infinite loop
+  // useEffect(() => {
+  //   renderCount.current++;
+  //   const now = Date.now();
+  //   const timeSince = now - lastRenderTime.current;
+  //   lastRenderTime.current = now;
     
-    console.log(`[${componentName}] Render #${renderCount.current} at ${new Date().toISOString()} (${timeSince}ms since last)`);
+  //   console.log(`[${componentName}] Render #${renderCount.current} at ${new Date().toISOString()} (${timeSince}ms since last)`);
     
-    if (timeSince < 50) {
-      console.warn(`[${componentName}] ⚠️ Rapid re-rendering detected! Only ${timeSince}ms between renders`);
-    }
+  //   if (timeSince < 50) {
+  //     console.warn(`[${componentName}] ⚠️ Rapid re-rendering detected! Only ${timeSince}ms between renders`);
+  //   }
     
-    if (renderCount.current > 100) {
-      console.error(`[${componentName}] ❌ EXCESSIVE RENDERS: ${renderCount.current} renders detected!`);
-      if (renderCount.current === 101) {
-        console.trace();
-      }
-    }
-  });
+  //   if (renderCount.current > 100) {
+  //     console.error(`[${componentName}] ❌ EXCESSIVE RENDERS: ${renderCount.current} renders detected!`);
+  //     if (renderCount.current === 101) {
+  //       console.trace();
+  //     }
+  //   }
+  // });
 
   return (
     <div className="fixed inset-0 z-9999 flex flex-col">
@@ -350,25 +352,26 @@ export const PreviewToolbar = memo(function PreviewToolbar({
   const renderCount = useRef(0);
   const lastRenderTime = useRef(Date.now());
   
-  useEffect(() => {
-    renderCount.current++;
-    const now = Date.now();
-    const timeSince = now - lastRenderTime.current;
-    lastRenderTime.current = now;
+  // Debug logging disabled to fix infinite loop
+  // useEffect(() => {
+  //   renderCount.current++;
+  //   const now = Date.now();
+  //   const timeSince = now - lastRenderTime.current;
+  //   lastRenderTime.current = now;
     
-    console.log(`[${componentName}] Render #${renderCount.current} at ${new Date().toISOString()} (${timeSince}ms since last)`);
+  //   console.log(`[${componentName}] Render #${renderCount.current} at ${new Date().toISOString()} (${timeSince}ms since last)`);
     
-    if (timeSince < 50) {
-      console.warn(`[${componentName}] ⚠️ Rapid re-rendering detected! Only ${timeSince}ms between renders`);
-    }
+  //   if (timeSince < 50) {
+  //     console.warn(`[${componentName}] ⚠️ Rapid re-rendering detected! Only ${timeSince}ms between renders`);
+  //   }
     
-    if (renderCount.current > 100) {
-      console.error(`[${componentName}] ❌ EXCESSIVE RENDERS: ${renderCount.current} renders detected!`);
-      if (renderCount.current === 101) {
-        console.trace();
-      }
-    }
-  });
+  //   if (renderCount.current > 100) {
+  //     console.error(`[${componentName}] ❌ EXCESSIVE RENDERS: ${renderCount.current} renders detected!`);
+  //     if (renderCount.current === 101) {
+  //       console.trace();
+  //     }
+  //   }
+  // });
 
   const { isPlaying, seek } = usePlaybackStore();
   const { setCanvasSize, setCanvasSizeToOriginal } = useEditorStore();

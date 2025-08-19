@@ -208,6 +208,7 @@
     "next": "^15.3.4",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "react-resizable-panels": "^3.0.4",
     "wavesurfer.js": "^7.9.8"
   },
   "trustedDependencies": [
