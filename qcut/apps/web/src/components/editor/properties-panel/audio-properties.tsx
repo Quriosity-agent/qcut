@@ -2,9 +2,20 @@ import { MediaElement } from "@/types/timeline";
 import { PropertyGroup, PropertyItem, PropertyItemLabel, PropertyItemValue } from "./property-item";
 import { Slider } from "@/components/ui/slider";
 import { useState } from "react";
+import { useTimelineStore } from "@/stores/timeline-store";
 
-export function AudioProperties({ element }: { element: MediaElement }) {
-  const [volume, setVolume] = useState(100);
+export function AudioProperties({ 
+  element, 
+  trackId 
+}: { 
+  element: MediaElement; 
+  trackId: string;
+}) {
+  const { updateMediaElement } = useTimelineStore();
+  // Initialize volume from element or default to 100%
+  const [volume, setVolume] = useState(
+    element.volume !== undefined ? Math.round(element.volume * 100) : 100
+  );
   
   return (
     <div className="space-y-4 p-5">
@@ -18,7 +29,10 @@ export function AudioProperties({ element }: { element: MediaElement }) {
                 min={0}
                 max={100}
                 step={1}
-                onValueChange={([value]) => setVolume(value)}
+                onValueChange={([value]) => {
+                  setVolume(value);
+                  updateMediaElement(trackId, element.id, { volume: value / 100 });
+                }}
                 className="w-full"
               />
               <span className="text-xs w-12">{volume}%</span>

@@ -18,6 +18,7 @@ interface BaseTimelineElement {
 export interface MediaElement extends BaseTimelineElement {
   type: "media";
   mediaId: string;
+  volume?: number; // 0-1, default 1 (100%)
 }
 
 // Text element with embedded text data
