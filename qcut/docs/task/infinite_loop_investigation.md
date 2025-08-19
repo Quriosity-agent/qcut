@@ -400,4 +400,73 @@ The debouncing helped but didn't eliminate the issue. The problem appears to be 
 - ✅ **PARTIAL FIX SUCCESSFUL**: Phases 1-4 broke playback render chain, eliminated TimelinePlayhead and AudioPlayer from cascade
 - ⚠️ **DEBOUNCING ATTEMPTED**: Added resize handler debouncing but initialization issue persists
 - 🚨 **REMAINING ISSUE**: Component `al` still causing maximum update depth during initialization
-- 🎯 **Next**: Upgrade react-resizable-panels from v2.1.7 to v3.0.4 to fix known library bugs
+- ✅ **v15 FIXES APPLIED**: 
+  - Commented out debug logging useEffects in PreviewToolbar and TimelineTrack (missing dependency arrays)
+  - Fixed ResizablePanel props: Changed `onResizeEnd` to `onResize`
+  - Upgraded react-resizable-panels from v2.1.7 to v3.0.4
+- ❌ **v16 RESULT**: Issue persists - component `al` still triggering maximum update depth warning
+
+## v16 Analysis - LIBRARY UPGRADE INCOMPLETE: Issue Persists After Fixes
+
+Despite upgrading react-resizable-panels to v3.0.4 and fixing debug logging, the issue persists.
+
+### Current State After v15 Fixes:
+1. **Maximum update depth warning continues** (line 1): Component `al` still triggering
+2. **Library upgraded but issue remains**: v3.0.4 didn't resolve the infinite loop
+3. **Debug logging disabled**: Removed problematic useEffects without dependency arrays
+4. **Props corrected**: Fixed `onResizeEnd` → `onResize` in ResizablePanel components
+
+### Critical Observation:
+The minified component `al` is still unidentified. Since the library upgrade didn't fix it, the issue might be:
+1. A different component entirely (not ResizablePanel)
+2. A custom hook or store subscription
+3. An interaction between the new library version and existing code
+
+## 🎯 NEXT INVESTIGATION STEPS - Find Component `al`
+
+### Step 1: Source Map Analysis
+```bash
+# Generate source maps for better debugging
+cd qcut && bun run build --sourcemap
+```
+
+### Step 2: Add Development Build Debugging
+```typescript
+// In vite.config.ts, ensure development builds aren't minified:
+build: {
+  minify: false, // Temporarily disable for debugging
+  sourcemap: true
+}
+```
+
+### Step 3: Component Identification Strategy
+1. **Use React DevTools Profiler** to identify which component is rendering excessively
+2. **Add console.trace()** at the start of suspected components
+3. **Binary search approach**: Comment out half the UI at a time to isolate
+
+### Step 4: Check Panel Resize Handlers
+Since the issue persists after library upgrade, examine the resize handler implementations:
+```typescript
+// Look for patterns like:
+const handleResize = (sizes: number[]) => {
+  // Check if this causes state updates that trigger re-renders
+  setPanelSizes(sizes); // Could cause infinite loop if not properly memoized
+};
+```
+
+### Step 5: Investigate Store Subscriptions
+Component `al` might be a store subscriber with unstable selectors:
+```typescript
+// Check all useStore calls for:
+1. Object/array returns without shallow comparison
+2. Function selectors that recreate on each call
+3. Computed values in selectors
+```
+
+## 🚨 URGENT NEXT ACTIONS
+
+1. **Build with source maps** to identify component `al`
+2. **Use React DevTools** to profile and find the problematic component
+3. **Check all onResize handlers** for state updates causing loops
+4. **Audit store subscriptions** for unstable selectors
+5. **Consider reverting to v2.1.7** and applying a different fix if v3.0.4 introduced new issues
