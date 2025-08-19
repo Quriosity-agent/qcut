@@ -25,6 +25,7 @@ export function AudioProperties({
           <PropertyItemValue>
             <div className="flex items-center gap-2">
               <Slider
+                aria-label="Volume"
                 value={[volume]}
                 min={0}
                 max={100}

@@ -103,6 +103,7 @@ export function TextProperties({
           <PropertyItemLabel>Font</PropertyItemLabel>
           <PropertyItemValue>
             <FontPicker
+              aria-label="Font family"
               defaultValue={element.fontFamily}
               onValueChange={(value: FontFamily) =>
                 updateTextElement(trackId, element.id, { fontFamily: value })
@@ -184,6 +185,7 @@ export function TextProperties({
           <PropertyItemValue>
             <div className="flex items-center gap-2">
               <Slider
+                aria-label="Font size"
                 value={[element.fontSize]}
                 min={8}
                 max={300}
@@ -196,6 +198,7 @@ export function TextProperties({
               />
               <Input
                 type="number"
+                aria-label="Font size (number)"
                 value={fontSizeInput}
                 min={8}
                 max={300}
@@ -217,6 +220,7 @@ export function TextProperties({
           <PropertyItemValue>
             <Input
               type="color"
+              aria-label="Text color"
               value={element.color || "#ffffff"}
               onChange={(e) => {
                 const color = e.target.value;
@@ -231,6 +235,7 @@ export function TextProperties({
           <PropertyItemValue>
             <Input
               type="color"
+              aria-label="Background color"
               value={
                 element.backgroundColor === "transparent"
                   ? "#000000"
@@ -249,6 +254,7 @@ export function TextProperties({
           <PropertyItemValue>
             <div className="flex items-center gap-2">
               <Slider
+                aria-label="Opacity"
                 value={[element.opacity * 100]}
                 min={0}
                 max={100}
@@ -263,6 +269,7 @@ export function TextProperties({
               />
               <Input
                 type="number"
+                aria-label="Opacity percent"
                 value={opacityInput}
                 min={0}
                 max={100}
