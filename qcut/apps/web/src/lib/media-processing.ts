@@ -12,11 +12,13 @@ export async function processMediaFiles(
   files: FileList | File[],
   onProgress?: (progress: number) => void
 ): Promise<ProcessedMediaItem[]> {
-  console.log("[Media Processing] 🚀 Starting processMediaFiles with", files?.length || 'undefined', "files");
+  const fileLength = files && ('length' in files) ? files.length : 'no-length-property';
+  console.log("[Media Processing] 🚀 Starting processMediaFiles with", fileLength, "files");
   console.log("[Media Processing] 🔍 Files parameter:", files);
   console.log("[Media Processing] 🔍 Files type:", typeof files);
   console.log("[Media Processing] 🔍 Files is FileList?:", files instanceof FileList);
   console.log("[Media Processing] 🔍 Files is Array?:", Array.isArray(files));
+  console.log("[Media Processing] 🔍 Files.length direct access:", files.length);
   
   try {
   debugLog(
@@ -24,7 +26,11 @@ export async function processMediaFiles(
     files?.length || 0,
     "files"
   );
+  console.log("[Media Processing] 🔄 Converting FileList to Array...");
   const fileArray = Array.from(files || []);
+  console.log("[Media Processing] ✅ FileArray created with length:", fileArray.length);
+  console.log("[Media Processing] 📋 FileArray contents:", fileArray.map(f => f.name));
+  
   const processedItems: ProcessedMediaItem[] = [];
 
   console.log("[Media Processing] 📊 Initial processedItems array length:", processedItems.length);
