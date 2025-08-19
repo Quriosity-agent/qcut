@@ -12,15 +12,19 @@ export async function processMediaFiles(
   files: FileList | File[],
   onProgress?: (progress: number) => void
 ): Promise<ProcessedMediaItem[]> {
-  console.log("[Media Processing] 🚀 Starting processMediaFiles with", files.length, "files");
+  console.log("[Media Processing] 🚀 Starting processMediaFiles with", files?.length || 'undefined', "files");
+  console.log("[Media Processing] 🔍 Files parameter:", files);
+  console.log("[Media Processing] 🔍 Files type:", typeof files);
+  console.log("[Media Processing] 🔍 Files is FileList?:", files instanceof FileList);
+  console.log("[Media Processing] 🔍 Files is Array?:", Array.isArray(files));
   
   try {
   debugLog(
     "[Media Processing] 🚀 Starting processMediaFiles with",
-    files.length,
+    files?.length || 0,
     "files"
   );
-  const fileArray = Array.from(files);
+  const fileArray = Array.from(files || []);
   const processedItems: ProcessedMediaItem[] = [];
 
   console.log("[Media Processing] 📊 Initial processedItems array length:", processedItems.length);

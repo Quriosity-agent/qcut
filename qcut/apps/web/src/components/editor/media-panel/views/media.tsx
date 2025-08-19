@@ -111,6 +111,11 @@ export function MediaView() {
 
       // Process files (extract metadata, generate thumbnails, etc.)
       console.log("[Media View] 🔧 Calling processMediaFiles...");
+      console.log("[Media View] 🔍 Files parameter before processMediaFiles:", files);
+      console.log("[Media View] 🔍 Files length before processMediaFiles:", files?.length || 'undefined');
+      console.log("[Media View] 🔍 Files type:", typeof files);
+      console.log("[Media View] 🔍 Files is FileList?:", files instanceof FileList);
+      console.log("[Media View] 🔍 Files is Array?:", Array.isArray(files));
       
       // Dynamically import media processing utilities
       const { processMediaFiles } = await import("@/lib/media-processing");
