@@ -3,10 +3,11 @@ import { FontPicker } from "@/components/ui/font-picker";
 import { FontFamily } from "@/constants/font-constants";
 import { TextElement } from "@/types/timeline";
 import { useTimelineStore } from "@/stores/timeline-store";
+import { useEditorStore } from "@/stores/editor-store";
 import { Slider } from "@/components/ui/slider";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   PropertyItem,
   PropertyItemLabel,
@@ -22,6 +23,7 @@ export function TextProperties({
   trackId: string;
 }) {
   const { updateTextElement } = useTimelineStore();
+  const { canvasSize } = useEditorStore();
 
   // Local state for input values to allow temporary empty/invalid states
   const [fontSizeInput, setFontSizeInput] = useState(
@@ -30,14 +32,39 @@ export function TextProperties({
   const [opacityInput, setOpacityInput] = useState(
     Math.round(element.opacity * 100).toString()
   );
+  const [xInput, setXInput] = useState((element.x || 0).toString());
+  const [yInput, setYInput] = useState((element.y || 0).toString());
+  const [rotationInput, setRotationInput] = useState((element.rotation || 0).toString());
 
-  const parseAndValidateNumber = (
+  // Sync inputs when element changes externally (e.g., by dragging or other external updates)
+  useEffect(() => {
+    setFontSizeInput(element.fontSize.toString());
+    setOpacityInput(Math.round(element.opacity * 100).toString());
+    setXInput((element.x ?? 0).toString());
+    setYInput((element.y ?? 0).toString());
+    setRotationInput((element.rotation ?? 0).toString());
+  }, [element.id, element.fontSize, element.opacity, element.x, element.y, element.rotation]);
+
+  // Generic handler for slider changes to reduce code duplication
+  const handleSliderChange = (prop: 'x' | 'y' | 'rotation', value: number) => {
+    const setter = { 
+      x: setXInput, 
+      y: setYInput, 
+      rotation: setRotationInput 
+    }[prop];
+    updateTextElement(trackId, element.id, { [prop]: value });
+    setter(value.toString());
+  };
+
+  // Generic validation function that handles both integers and floats
+  const parseAndValidateValue = (
     value: string,
     min: number,
     max: number,
-    fallback: number
+    fallback: number,
+    isInteger: boolean = false
   ): number => {
-    const parsed = parseInt(value, 10);
+    const parsed = isInteger ? parseInt(value, 10) : parseFloat(value);
     if (isNaN(parsed)) return fallback;
     return Math.max(min, Math.min(max, parsed));
   };
@@ -46,17 +73,18 @@ export function TextProperties({
     setFontSizeInput(value);
 
     if (value.trim() !== "") {
-      const fontSize = parseAndValidateNumber(value, 8, 300, element.fontSize);
+      const fontSize = parseAndValidateValue(value, 8, 300, element.fontSize, true);
       updateTextElement(trackId, element.id, { fontSize });
     }
   };
 
   const handleFontSizeBlur = () => {
-    const fontSize = parseAndValidateNumber(
+    const fontSize = parseAndValidateValue(
       fontSizeInput,
       8,
       300,
-      element.fontSize
+      element.fontSize,
+      true
     );
     setFontSizeInput(fontSize.toString());
     updateTextElement(trackId, element.id, { fontSize });
@@ -66,26 +94,95 @@ export function TextProperties({
     setOpacityInput(value);
 
     if (value.trim() !== "") {
-      const opacityPercent = parseAndValidateNumber(
+      const opacityPercent = parseAndValidateValue(
         value,
         0,
         100,
-        Math.round(element.opacity * 100)
+        Math.round(element.opacity * 100),
+        true
       );
       updateTextElement(trackId, element.id, { opacity: opacityPercent / 100 });
     }
   };
 
   const handleOpacityBlur = () => {
-    const opacityPercent = parseAndValidateNumber(
+    const opacityPercent = parseAndValidateValue(
       opacityInput,
       0,
       100,
-      Math.round(element.opacity * 100)
+      Math.round(element.opacity * 100),
+      true
     );
     setOpacityInput(opacityPercent.toString());
     updateTextElement(trackId, element.id, { opacity: opacityPercent / 100 });
   };
+
+  // Generic handlers for position and rotation properties
+  type PositionProp = 'x' | 'y' | 'rotation';
+  
+  const getPropertyConfig = (prop: PositionProp) => {
+    const configs = {
+      x: {
+        input: xInput,
+        setter: setXInput,
+        min: -canvasSize.width / 2,
+        max: canvasSize.width / 2,
+        fallback: element.x || 0
+      },
+      y: {
+        input: yInput,
+        setter: setYInput,
+        min: -canvasSize.height / 2,
+        max: canvasSize.height / 2,
+        fallback: element.y || 0
+      },
+      rotation: {
+        input: rotationInput,
+        setter: setRotationInput,
+        min: -180,
+        max: 180,
+        fallback: element.rotation || 0
+      }
+    };
+    return configs[prop];
+  };
+
+  const handlePropertyChange = (prop: PositionProp, value: string) => {
+    const config = getPropertyConfig(prop);
+    config.setter(value);
+
+    if (value.trim() !== "") {
+      const validatedValue = parseAndValidateValue(
+        value,
+        config.min,
+        config.max,
+        config.fallback,
+        false
+      );
+      updateTextElement(trackId, element.id, { [prop]: validatedValue });
+    }
+  };
+
+  const handlePropertyBlur = (prop: PositionProp) => {
+    const config = getPropertyConfig(prop);
+    const validatedValue = parseAndValidateValue(
+      config.input,
+      config.min,
+      config.max,
+      config.fallback,
+      false
+    );
+    config.setter(validatedValue.toString());
+    updateTextElement(trackId, element.id, { [prop]: validatedValue });
+  };
+
+  // Create specific handlers using the generic functions
+  const handleXChange = (value: string) => handlePropertyChange('x', value);
+  const handleXBlur = () => handlePropertyBlur('x');
+  const handleYChange = (value: string) => handlePropertyChange('y', value);
+  const handleYBlur = () => handlePropertyBlur('y');
+  const handleRotationChange = (value: string) => handlePropertyChange('rotation', value);
+  const handleRotationBlur = () => handlePropertyBlur('rotation');
 
   return (
     <div className="space-y-6 p-5">
@@ -288,6 +385,94 @@ export function TextProperties({
                  [&::-webkit-outer-spin-button]:appearance-none
                  [&::-webkit-inner-spin-button]:appearance-none"
               />
+            </div>
+          </PropertyItemValue>
+        </PropertyItem>
+      </PropertyGroup>
+
+      <PropertyGroup title="Position" defaultExpanded={true}>
+        <PropertyItem direction="column">
+          <PropertyItemLabel>X Position</PropertyItemLabel>
+          <PropertyItemValue>
+            <div className="flex items-center gap-2">
+              <Slider
+                aria-label="X Position"
+                value={[element.x || 0]}
+                min={-canvasSize.width / 2}
+                max={canvasSize.width / 2}
+                step={1}
+                onValueChange={([value]) => handleSliderChange('x', value)}
+                className="w-full"
+              />
+              <Input
+                type="number"
+                aria-label="X Position (number)"
+                value={xInput}
+                onChange={(e) => handleXChange(e.target.value)}
+                onBlur={handleXBlur}
+                className="w-12 !text-xs h-7 rounded-sm text-center
+                 [appearance:textfield]
+                 [&::-webkit-outer-spin-button]:appearance-none
+                 [&::-webkit-inner-spin-button]:appearance-none"
+              />
+            </div>
+          </PropertyItemValue>
+        </PropertyItem>
+        <PropertyItem direction="column">
+          <PropertyItemLabel>Y Position</PropertyItemLabel>
+          <PropertyItemValue>
+            <div className="flex items-center gap-2">
+              <Slider
+                aria-label="Y Position"
+                value={[element.y || 0]}
+                min={-canvasSize.height / 2}
+                max={canvasSize.height / 2}
+                step={1}
+                onValueChange={([value]) => handleSliderChange('y', value)}
+                className="w-full"
+              />
+              <Input
+                type="number"
+                aria-label="Y Position (number)"
+                value={yInput}
+                onChange={(e) => handleYChange(e.target.value)}
+                onBlur={handleYBlur}
+                className="w-12 !text-xs h-7 rounded-sm text-center
+                 [appearance:textfield]
+                 [&::-webkit-outer-spin-button]:appearance-none
+                 [&::-webkit-inner-spin-button]:appearance-none"
+              />
+            </div>
+          </PropertyItemValue>
+        </PropertyItem>
+      </PropertyGroup>
+
+      <PropertyGroup title="Transform" defaultExpanded={true}>
+        <PropertyItem direction="column">
+          <PropertyItemLabel>Rotation</PropertyItemLabel>
+          <PropertyItemValue>
+            <div className="flex items-center gap-2">
+              <Slider
+                aria-label="Rotation"
+                value={[element.rotation || 0]}
+                min={-180}
+                max={180}
+                step={1}
+                onValueChange={([value]) => handleSliderChange('rotation', value)}
+                className="w-full"
+              />
+              <Input
+                type="number"
+                aria-label="Rotation (degrees)"
+                value={rotationInput}
+                onChange={(e) => handleRotationChange(e.target.value)}
+                onBlur={handleRotationBlur}
+                className="w-12 !text-xs h-7 rounded-sm text-center
+                 [appearance:textfield]
+                 [&::-webkit-outer-spin-button]:appearance-none
+                 [&::-webkit-inner-spin-button]:appearance-none"
+              />
+              <span className="text-xs text-muted-foreground">°</span>
             </div>
           </PropertyItemValue>
         </PropertyItem>
