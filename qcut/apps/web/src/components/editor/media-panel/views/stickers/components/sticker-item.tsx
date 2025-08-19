@@ -34,14 +34,14 @@ export function StickerItem({
       try {
         const isDark =
           document.documentElement.classList.contains("dark") ||
-          window.matchMedia?.("(prefers-color-scheme: dark)")?.matches;
+          window.matchMedia?.("(prefers-color-scheme: dark)")?.matches === true;
         preferredColor = isDark ? "#FFFFFF" : "#111111";
       } catch {}
 
       const svgUrl = buildIconSvgUrl(collection, icon, {
         color: preferredColor,
-        width: 32,
-        height: 32,
+        width: 40,
+        height: 40,
       });
       setImageUrl(svgUrl);
     } catch (error) {
@@ -65,11 +65,12 @@ export function StickerItem({
         <button
           type="button"
           className={cn(
-            "relative flex h-16 w-16 flex-col items-center justify-center rounded-lg border border-muted bg-card/40 transition-colors hover:border-primary hover:bg-accent overflow-hidden",
+            "relative flex h-16 w-16 flex-col items-center justify-center rounded-md border border-border/80 bg-muted/40 transition-colors hover:border-primary hover:bg-accent overflow-hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
             isSelected && "border-primary bg-accent"
           )}
           onClick={handleClick}
           disabled={hasError || !imageUrl}
+          aria-pressed={Boolean(isSelected)}
           aria-label={(name || icon) + " (" + collection + ")"}
         >
           {isLoading && (
@@ -82,7 +83,7 @@ export function StickerItem({
             <img
               src={imageUrl}
               alt={name || icon}
-              className={cn("h-8 w-8 object-contain", (isLoading || hasError) && "hidden")}
+              className={cn("h-10 w-10 object-contain", (isLoading || hasError) && "hidden")}
               onLoad={() => setIsLoading(false)}
               onError={() => {
                 setHasError(true);
