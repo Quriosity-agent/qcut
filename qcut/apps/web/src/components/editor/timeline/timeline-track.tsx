@@ -693,6 +693,12 @@ export const TimelineTrackContent = memo(function TimelineTrackContent({
     e.stopPropagation();
 
     // Drop handling
+        message: "Drop event started in timeline track",
+        dataTransferTypes: Array.from(e.dataTransfer.types),
+        trackId: track.id,
+        trackType: track.type,
+      })
+    );
 
     // Reset all drag states
     dragCounterRef.current = 0;

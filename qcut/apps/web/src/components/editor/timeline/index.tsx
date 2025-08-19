@@ -331,7 +331,7 @@ function TimelineComponent() {
     if (Math.abs(duration - newDuration) > 0.001) {
       setDuration(newDuration);
     }
-  }, [tracks, totalDuration, setDuration, duration]); // Safe dependencies - tracks changes trigger recalc
+  }, [tracks, getTotalDuration, setDuration, duration]); // Safe dependencies - tracks changes trigger recalc
 
   // Old marquee system removed - using new SelectionBox component instead
 
