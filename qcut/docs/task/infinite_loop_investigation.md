@@ -1,8 +1,26 @@
 # Infinite Render Loop Investigation Guide
 
+## 📊 INVESTIGATION SUMMARY
+
+**🔴 Problem**: Infinite render loop warning in QCut video editor
+**🎯 Root Cause**: ResizablePanel system from `react-resizable-panels` library
+**📍 Location**: Component `fl` in MediaPanel container during layout initialization
+**⚡ Status**: Root cause identified, fix in progress
+
+### **Investigation Timeline:**
+- **v1-v4**: Fixed CSP, useEffect dependencies, React optimizations
+- **v5**: Systematically tested all major UI components (all SAFE)
+- **v6**: Tested TimelinePlayhead and complex components (all SAFE) 
+- **v7**: Tested root components EditorPage & EditorProvider (all SAFE)
+- **v8**: Added hook debugging - **BREAKTHROUGH**: No hooks show excessive renders
+- **Result**: Component `fl` identified as ResizablePanel causing infinite loop
+
 ## Error Pattern
 ```
 Warning: Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+    at fl (ResizablePanel component)
+    at jc (MediaPanel container)  
+    at Panel/PanelGroup (react-resizable-panels)
 ```
 
 ## Potential Sources to Investigate
@@ -121,17 +139,23 @@ useEffect(() => {
 **Root Components (v7):**
 - **EditorProvider**: 9 renders ✅ | **EditorPage**: 7 renders ✅
 
-### 🔴 Still Has Infinite Loop - Component 'fl' Mystery:
+### 🚨 MAJOR BREAKTHROUGH - Hook Infinite Loop Identified (v8):
 ```
 Warning: Maximum update depth exceeded at fl 
-(file:///editor._project_id.lazy-CbOJ0Xqf.js:13:102893)
+(file:///editor._project_id.lazy-_mYxhPmA.js:13:102801)
 ```
 
-**CRITICAL FINDINGS:**
-- ❌ Component `fl` is NOT any tested component (all show normal 2-12 renders)
-- ❌ Error appears AFTER EditorProvider renders 5 times (v7 line 63-66)
-- ❌ Must be a tiny utility component or third-party wrapper
-- ❌ Likely candidates: Resizable panels, Dialog components, or small UI utilities
+**🎯 CRITICAL DISCOVERY:**
+- ❌ **NO hook debug messages appear** in v8 logs - useActionHandler, useEditorActions, useKeybindingsListener are all SILENT
+- ❌ Component `fl` still causes infinite loop but NO hooks show excessive renders
+- ❌ This means **`fl` is NOT a hook** - it's a **React component**
+- ❌ Stack trace shows path: `fl → div → jc → Panel → PanelGroup` - **RESIZABLE PANELS!**
+
+**🔍 RESIZABLE PANELS ARE THE CULPRIT:**
+- Stack trace points to ResizablePanelGroup and ResizablePanel components
+- Component `jc` = MediaPanel container 
+- Component `fl` = Likely a ResizablePanel or internal panel component
+- Error occurs in panel resizing system during layout initialization
 
 ## Complete List of Files with useEffect Hooks
 
@@ -164,41 +188,96 @@ Since ALL major components are SAFE, `fl` must be:
 25. [ ] `components/onboarding.tsx` - Onboarding flow
 26. [ ] `components/export-canvas.tsx` - Export rendering
 
-## 🎯 Next Investigation Strategy:
+## 🎯 NEXT STEPS - Focus on ResizablePanel System:
 
-Since ALL major components are verified SAFE, we need to:
+**CONFIRMED TARGET:** ResizablePanel components are causing the infinite loop
 
-1. **Build with source maps**: `bun run build --sourcemap` to identify `fl`
-2. **Check Resizable components** - They're used everywhere in the layout
-3. **Check Dialog/Modal components** - Could be Onboarding or other dialogs
-4. **Look for components with 2-letter names** that minify to `fl`
+### **Immediate Actions:**
+1. **Examine ResizablePanel usage** in EditorPage layout (lines 214-280)
+2. **Check react-resizable-panels library** for known issues with panel size calculations
+3. **Look for useEffect dependencies** in panel onResize handlers
+4. **Add debug logging** to all panel onResize callbacks
 
-## 🔴 Component 'fl' Profile:
-- **Renders early** (error at EditorProvider render #5)
-- **Very small component** (short minified name)
-- **NOT a major UI component** (all tested and safe)
-- **Likely a utility or wrapper component**
+### **Likely Root Cause:**
+- Panel size calculations creating dependency loops
+- onResize callbacks triggering state updates that cause re-renders
+- Unstable panel size references in useEffect dependencies
 
-## Next Steps
+## 🔴 Component 'fl' IDENTIFIED:
+- **ResizablePanel component** from react-resizable-panels library
+- **Triggers during layout initialization** when panels calculate sizes
+- **Located in MediaPanel container** (component `jc`)
+- **Caused by panel size/resize handling**
 
-1. Build with source maps: `bun run build --sourcemap`
-2. Use Chrome DevTools to map `hl` to source component
-3. Add extensive logging to Timeline and AI components
-4. Test each fix in isolation
+## 🎯 IMMEDIATE NEXT STEPS - ResizablePanel Investigation
+
+### **Step 1: Analyze Panel onResize Handlers** ⏳
+```typescript
+// In routes/editor.$project_id.lazy.tsx lines 214-280
+// Check all onResize callbacks for unstable dependencies:
+onResize={setToolsPanel}      // Line 233
+onResize={setPreviewPanel}    // Line 244 
+onResize={setPropertiesPanel} // Line 256
+onResize={setMainContent}     // Line 222
+onResize={setTimeline}        // Line 270
+```
+
+### **Step 2: Check usePanelStore Implementation** ⏳
+```typescript
+// In stores/panel-store.ts
+// Look for:
+1. Unstable function references in setters
+2. useEffect dependencies causing loops
+3. State updates triggering re-renders
+```
+
+### **Step 3: Add Debug Logging to Panel Callbacks** ⏳
+```typescript
+// Add to each onResize handler:
+const debugSetToolsPanel = useCallback((size: number) => {
+  console.log(`[Panel] setToolsPanel called with size: ${size}`);
+  setToolsPanel(size);
+}, [setToolsPanel]);
+
+// Use debugSetToolsPanel instead of setToolsPanel
+```
+
+### **Step 4: Test Panel Normalization Effect** ⏳
+```typescript
+// In EditorPage lines 201-207
+// This effect calls normalizeHorizontalPanels() - potential culprit:
+useEffect(() => {
+  const timer = setTimeout(() => {
+    normalizeHorizontalPanels(); // <- SUSPECT
+  }, 100);
+  return () => clearTimeout(timer);
+}, [normalizeHorizontalPanels]); // <- Check if function is stable
+```
+
+### **Step 5: Fix Common Panel Issues** ⏳
+- Remove `normalizeHorizontalPanels` from useEffect dependencies if unstable
+- Wrap panel size setters in useCallback if not already stable
+- Add debouncing to rapid panel resize events
+- Check for circular dependencies in panel store
+
+## 🚨 HIGH PRIORITY FIXES
+
+1. **Panel Store Function Stability** - Ensure all panel setters are memoized
+2. **Normalization Effect** - Check if `normalizeHorizontalPanels` creates loops
+3. **Default Panel Sizes** - Verify initial panel size calculations don't cause conflicts
+4. **ResizablePanel Library** - Check if specific version has known issues
 
 ## Command to Run Tests
 ```bash
-# Development mode with better error messages
+# Development mode with detailed logging
 bun run electron:dev
 
-# Production build to replicate exact error
+# Production build to verify fix
 bun run build && bun run electron
 ```
 
-## Tracking Progress
-
-Use this checklist to track which files have been verified:
-- ✅ = Verified and fixed
-- ⚠️ = Issues found, needs fix
-- ✓ = Verified, no issues
-- ❌ = Known problem, not yet fixed
+## Investigation Status
+- ✅ **Root Cause Identified**: ResizablePanel system infinite loop
+- ⏳ **In Progress**: Panel onResize handler analysis
+- ⏳ **Next**: Debug logging and panel store investigation
+- ⏳ **Final**: Fix unstable dependencies and test solution

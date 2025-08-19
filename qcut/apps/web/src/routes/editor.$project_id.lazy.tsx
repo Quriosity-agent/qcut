@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useCallback } from "react";
 import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
 import {
   ResizablePanelGroup,
@@ -217,19 +217,48 @@ function EditorPage() {
   const setMainContent = usePanelStore((s) => s.setMainContent);
   const setTimeline = usePanelStore((s) => s.setTimeline);
 
+  // Debug: Track panel resize calls to identify infinite loops
+  const renderCount = useRef(0);
+  const debugSetToolsPanel = useCallback((size: number) => {
+    renderCount.current++;
+    console.log(`[Panel] setToolsPanel #${renderCount.current} called with size: ${size}`);
+    setToolsPanel(size);
+  }, [setToolsPanel]);
+
+  const debugSetPreviewPanel = useCallback((size: number) => {
+    renderCount.current++;
+    console.log(`[Panel] setPreviewPanel #${renderCount.current} called with size: ${size}`);
+    setPreviewPanel(size);
+  }, [setPreviewPanel]);
+
+  const debugSetPropertiesPanel = useCallback((size: number) => {
+    renderCount.current++;
+    console.log(`[Panel] setPropertiesPanel #${renderCount.current} called with size: ${size}`);
+    setPropertiesPanel(size);
+  }, [setPropertiesPanel]);
+
+  const debugSetMainContent = useCallback((size: number) => {
+    renderCount.current++;
+    console.log(`[Panel] setMainContent #${renderCount.current} called with size: ${size}`);
+    setMainContent(size);
+  }, [setMainContent]);
+
+  const debugSetTimeline = useCallback((size: number) => {
+    renderCount.current++;
+    console.log(`[Panel] setTimeline #${renderCount.current} called with size: ${size}`);
+    setTimeline(size);
+  }, [setTimeline]);
+
   usePlaybackControls();
 
-  // Ensure panels are normalized on mount
-  const normalizeHorizontalPanels = usePanelStore(
-    (s) => s.normalizeHorizontalPanels
-  );
+  // Ensure panels are normalized on mount - FIXED: Remove unstable function dependency
   useEffect(() => {
     // Normalize panels after a short delay to ensure they're initialized
     const timer = setTimeout(() => {
-      normalizeHorizontalPanels();
+      usePanelStore.getState().normalizeHorizontalPanels();
     }, 100);
     return () => clearTimeout(timer);
-  }, [normalizeHorizontalPanels]);
+  }, []); // FIXED: Empty dependency array to prevent infinite loops
 
   return (
     <EditorProvider>
@@ -244,7 +273,7 @@ function EditorPage() {
               defaultSize={mainContent}
               minSize={30}
               maxSize={85}
-              onResize={setMainContent}
+              onResize={debugSetMainContent}
               className="min-h-0"
             >
               <ResizablePanelGroup
@@ -255,7 +284,7 @@ function EditorPage() {
                   defaultSize={toolsPanel}
                   minSize={15}
                   maxSize={40}
-                  onResize={setToolsPanel}
+                  onResize={debugSetToolsPanel}
                   className="min-w-0"
                 >
                   <MediaPanel />
@@ -266,7 +295,7 @@ function EditorPage() {
                 <ResizablePanel
                   defaultSize={previewPanel}
                   minSize={30}
-                  onResize={setPreviewPanel}
+                  onResize={debugSetPreviewPanel}
                   className="min-w-0 min-h-0 flex-1"
                 >
                   <PreviewPanel />
@@ -278,7 +307,7 @@ function EditorPage() {
                   defaultSize={propertiesPanel}
                   minSize={15}
                   maxSize={40}
-                  onResize={setPropertiesPanel}
+                  onResize={debugSetPropertiesPanel}
                   className="min-w-0"
                 >
                   <PropertiesPanel />
@@ -292,7 +321,7 @@ function EditorPage() {
               defaultSize={timeline}
               minSize={15}
               maxSize={70}
-              onResize={setTimeline}
+              onResize={debugSetTimeline}
               className="min-h-0 px-2 pb-2"
             >
               <Timeline />
