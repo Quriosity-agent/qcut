@@ -20,6 +20,7 @@ import {
   PropertyItem,
   PropertyItemLabel,
   PropertyItemValue,
+  PropertyGroup,
 } from "./property-item";
 import { TextProperties } from "./text-properties";
 import { PanelTabs } from "./panel-tabs";
@@ -50,8 +51,7 @@ export function PropertiesPanel() {
 
   const emptyView = (
     <div className="space-y-4 p-5">
-      {/* Media Properties */}
-      <div className="flex flex-col gap-3">
+      <PropertyGroup title="Project Information" defaultExpanded={true}>
         <PropertyItem direction="column">
           <PropertyItemLabel className="text-xs text-muted-foreground">
             Name:
@@ -94,7 +94,7 @@ export function PropertiesPanel() {
             </SelectContent>
           </Select>
         </div>
-      </div>
+      </PropertyGroup>
     </div>
   );
 

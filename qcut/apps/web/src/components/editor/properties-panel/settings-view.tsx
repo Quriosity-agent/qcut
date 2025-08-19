@@ -14,6 +14,7 @@ import {
   PropertyItem,
   PropertyItemLabel,
   PropertyItemValue,
+  PropertyGroup,
 } from "./property-item";
 import { FPS_PRESETS } from "@/constants/timeline-constants";
 import { useProjectStore } from "@/stores/project-store";
@@ -221,24 +222,19 @@ function BackgroundView() {
   );
 
   return (
-    <div className="flex flex-col gap-4">
-      <PropertyItem direction="column" className="gap-2">
-        <PropertyItemLabel>Blur</PropertyItemLabel>
-        <PropertyItemValue>
-          <div className="grid grid-cols-4 gap-2 w-full">{blurPreviews}</div>
-        </PropertyItemValue>
-      </PropertyItem>
-      <PropertyItem direction="column" className="gap-2">
-        <PropertyItemLabel>Color</PropertyItemLabel>
-        <PropertyItemValue>
-          <div className="grid grid-cols-4 gap-2 w-full">
-            <div className="w-full aspect-square rounded-sm cursor-pointer border border-foreground/15 hover:border-primary flex items-center justify-center">
-              <PipetteIcon className="size-4" />
-            </div>
-            {colorPreviews}
+    <div className="flex flex-col gap-5">
+      <PropertyGroup title="Blur">
+        <div className="grid grid-cols-4 gap-2 w-full">{blurPreviews}</div>
+      </PropertyGroup>
+
+      <PropertyGroup title="Color">
+        <div className="grid grid-cols-4 gap-2 w-full">
+          <div className="w-full aspect-square rounded-sm cursor-pointer border border-foreground/15 hover:border-primary flex items-center justify-center">
+            <PipetteIcon className="size-4" />
           </div>
-        </PropertyItemValue>
-      </PropertyItem>
+          {colorPreviews}
+        </div>
+      </PropertyGroup>
     </div>
   );
 }
