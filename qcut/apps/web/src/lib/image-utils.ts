@@ -16,28 +16,28 @@ export interface ImageInfo {
  * Get image information from a File
  */
 export async function getImageInfo(file: File): Promise<ImageInfo> {
-  return new Promise(async (resolve, reject) => {
-    const img = new Image();
-
-    // Use data URL for SVG files to avoid blob URL issues in Electron
-    let url: string;
-    if (
-      file.type === "image/svg+xml" ||
-      file.name.toLowerCase().endsWith(".svg")
-    ) {
-      try {
-        const text = await file.text();
-        url = `data:image/svg+xml;base64,${btoa(text)}`;
-      } catch (error) {
-        console.warn(
-          `[ImageUtils] Failed to create data URL for SVG ${file.name}, falling back to blob URL:`,
-          error
-        );
-        url = URL.createObjectURL(file);
-      }
-    } else {
+  // Use data URL for SVG files to avoid blob URL issues in Electron
+  let url: string;
+  if (
+    file.type === "image/svg+xml" ||
+    file.name.toLowerCase().endsWith(".svg")
+  ) {
+    try {
+      const text = await file.text();
+      url = `data:image/svg+xml;base64,${btoa(text)}`;
+    } catch (error) {
+      console.warn(
+        `[ImageUtils] Failed to create data URL for SVG ${file.name}, falling back to blob URL:`,
+        error
+      );
       url = URL.createObjectURL(file);
     }
+  } else {
+    url = URL.createObjectURL(file);
+  }
+
+  return new Promise((resolve, reject) => {
+    const img = new Image();
 
     img.onload = () => {
       const info: ImageInfo = {

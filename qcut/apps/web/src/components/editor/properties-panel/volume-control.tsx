@@ -88,7 +88,6 @@ export function VolumeControl({ element, trackId }: VolumeControlProps) {
             onPointerDown={handleStart}
             onPointerUp={handleEnd}
             onKeyUp={handleKeyUp}
-            tabIndex={0}
           >
             <Slider
               aria-label="Volume"

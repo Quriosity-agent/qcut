@@ -7,7 +7,7 @@ import { useProjectStore } from "./project-store";
 import { usePlaybackStore } from "./playback-store";
 
 // Illegal filename characters for file system safety
-const ILLEGAL_FILENAME_CHARS = /[<>:"/\\|?*\x00-\x1f]/g;
+const ILLEGAL_FILENAME_CHARS = /[<>:"/\\|?*\u0000-\u001f]/g;
 
 // Constants for localStorage
 const SAVED_SOUNDS_KEY = "qcut-saved-sounds";

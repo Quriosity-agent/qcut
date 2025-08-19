@@ -390,13 +390,23 @@ export class ExportEngine {
 
       // Debug logging for sticker export
       debugLog(`[STICKER_FRAME] Frame time: ${currentTime.toFixed(3)}s`);
-      debugLog(`[STICKER_FRAME] Found ${visibleStickers.length} stickers for this frame`);
-      debugLog("[STICKER_FRAME] Sticker IDs:", visibleStickers.map(s => s.id));
-      debugLog("[STICKER_DEBUG] All stickers in store:", Array.from(stickersStore.overlayStickers.values()));
+      debugLog(
+        `[STICKER_FRAME] Found ${visibleStickers.length} stickers for this frame`
+      );
+      debugLog(
+        "[STICKER_FRAME] Sticker IDs:",
+        visibleStickers.map((s) => s.id)
+      );
+      debugLog(
+        "[STICKER_DEBUG] All stickers in store:",
+        Array.from(stickersStore.overlayStickers.values())
+      );
       debugLog("[STICKER_DEBUG] Visible stickers:", visibleStickers);
 
       if (visibleStickers.length === 0) {
-        debugLog(`[STICKER_DEBUG] No visible stickers at time ${currentTime}, skipping render`);
+        debugLog(
+          `[STICKER_DEBUG] No visible stickers at time ${currentTime}, skipping render`
+        );
         return;
       }
 
@@ -419,14 +429,25 @@ export class ExportEngine {
 
       // CANVAS DEBUG: Validate canvas content after sticker rendering
       const imageData = this.ctx.getImageData(0, 0, 100, 100); // Sample top-left corner
-      const hasContent = Array.from(imageData.data).some((value, index) => 
-        index % 4 !== 3 && value > 10 // Check RGB channels, ignore alpha
+      const hasContent = Array.from(imageData.data).some(
+        (value, index) => index % 4 !== 3 && value > 10 // Check RGB channels, ignore alpha
       );
-      debugLog("[FRAME_CANVAS] Canvas has visible content after stickers:", hasContent);
+      debugLog(
+        "[FRAME_CANVAS] Canvas has visible content after stickers:",
+        hasContent
+      );
     } catch (error) {
       debugError("[ExportEngine] Failed to render overlay stickers:", error);
-      debugError(`[ExportEngine] Failed at time ${currentTime} with ${visibleStickers?.length || 0} stickers`);
-      debugError("[ExportEngine] Sticker details:", visibleStickers?.map((s: any) => ({ id: s.id, mediaItemId: s.mediaItemId })) || []);
+      debugError(
+        `[ExportEngine] Failed at time ${currentTime} with ${visibleStickers?.length || 0} stickers`
+      );
+      debugError(
+        "[ExportEngine] Sticker details:",
+        visibleStickers?.map((s: any) => ({
+          id: s.id,
+          mediaItemId: s.mediaItemId,
+        })) || []
+      );
       // Continue export even if stickers fail
     }
   }
@@ -684,7 +705,9 @@ export class ExportEngine {
         const currentTime = frame * frameTime;
 
         // FRAME DEBUG: Track each frame progression during export
-        debugLog(`[FRAME_DEBUG] Frame ${frame + 1}/${totalFrames} at time ${currentTime.toFixed(3)}s`);
+        debugLog(
+          `[FRAME_DEBUG] Frame ${frame + 1}/${totalFrames} at time ${currentTime.toFixed(3)}s`
+        );
 
         // Render frame to canvas
         await this.renderFrame(currentTime);

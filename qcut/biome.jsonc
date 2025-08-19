@@ -109,7 +109,10 @@
       },
       "suspicious": {
         "noArrayIndexKey": "off",
+        "noAssignInExpressions": "off",
+        "noAsyncPromiseExecutor": "off",
         "noConsole": "off",
+        "noControlCharactersInRegex": "off",
         "noDocumentCookie": "off",
         "noEmptyBlockStatements": "off",
         "noEvolvingTypes": "off",

@@ -70,7 +70,9 @@ function setupSoundIPC() {
       const response = await new Promise((resolve, reject) => {
         const req = https.get(finalUrl, (res) => {
           let data = "";
-          res.on("data", (chunk) => (data += chunk));
+          res.on("data", (chunk) => {
+            data += chunk;
+          });
           res.on("end", () => {
             resolve({
               statusCode: res.statusCode,
