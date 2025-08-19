@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db, eq, waitlist } from "@opencut/db";
+import { db, eq, waitlist } from "@qcut/db";
 import { checkBotId } from "botid/server";
 import { nanoid } from "nanoid";
 import { waitlistRateLimit } from "@/lib/rate-limit";
