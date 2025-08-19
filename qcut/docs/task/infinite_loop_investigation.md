@@ -366,6 +366,29 @@ The v13 logs show **significant improvement** but the root panel issue persists.
 ### Key Achievement
 **Playback performance improved** - The optimization successfully removed the 60fps re-render cascade during playback. The remaining issues are initialization/mount related, not playback related.
 
+## v14 Analysis - PROGRESS BUT NOT RESOLVED: Initialization Issue Persists
+
+The v14 logs show that despite our debouncing efforts, the initialization issue persists.
+
+### Current State
+1. **Maximum update depth warning still present** (line 3): Component `al` still triggering
+2. **Improved playback performance**: TimelinePlayhead and AudioPlayer no longer in logs
+3. **Initialization cascade continues**: PreviewToolbar renders 11 times, TimelineTrack multiple times
+4. **Pattern unchanged**: Rapid re-renders during mount (1-48ms intervals)
+
+### What's Working
+- **Playback optimizations successful**: RAF animations preventing 60fps re-renders
+- **AudioPlayer isolated**: No longer part of the render cascade
+- **TimelinePlayhead optimized**: Using RAF, not appearing in render logs
+
+### What's NOT Working
+- **Panel resize debouncing insufficient**: Still getting rapid updates during initialization
+- **Component `al` unresolved**: Maximum update depth warning persists
+- **ResizablePanel library issue**: Likely the root cause, as it's part of the react-resizable-panels v2.1.7
+
+### Critical Finding
+The debouncing helped but didn't eliminate the issue. The problem appears to be deeper in the ResizablePanel library itself, which has known issues with infinite loops in v2.1.7. The library upgrade to v3.0.4 may be necessary.
+
 ## Investigation Status
 - ✅ **Root Cause Identified**: Shared state management causing cascading component updates
 - ✅ **Panel Normalization Fix**: Partially successful - changed problematic component from `fl` to `al` 
@@ -375,5 +398,6 @@ The v13 logs show **significant improvement** but the root panel issue persists.
 - 🎯 **NEW DISCOVERY**: Component chain reaction pattern identified (PreviewToolbar → TimelinePlayhead → TimelineTrack)
 - 🎯 **REFINED TARGET**: Component interdependencies causing cascade re-rendering, not store selectors
 - ✅ **PARTIAL FIX SUCCESSFUL**: Phases 1-4 broke playback render chain, eliminated TimelinePlayhead and AudioPlayer from cascade
+- ⚠️ **DEBOUNCING ATTEMPTED**: Added resize handler debouncing but initialization issue persists
 - 🚨 **REMAINING ISSUE**: Component `al` still causing maximum update depth during initialization
-- 🎯 **Next**: Identify and fix component `al` (likely in MediaPanel) to resolve remaining infinite loop
+- 🎯 **Next**: Upgrade react-resizable-panels from v2.1.7 to v3.0.4 to fix known library bugs
