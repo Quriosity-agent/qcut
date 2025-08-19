@@ -20,9 +20,16 @@ export async function processMediaFiles(
   const fileArray = Array.from(files);
   const processedItems: ProcessedMediaItem[] = [];
 
+  debugLog("[Media Processing] 📊 Initial processedItems array length:", processedItems.length);
+
   // Load utilities dynamically
+  debugLog("[Media Processing] 📦 Loading media store utilities...");
   const mediaUtils = await getMediaStoreUtils();
+  debugLog("[Media Processing] ✅ Media store utilities loaded");
+  
+  debugLog("[Media Processing] 📦 Loading FFmpeg utilities...");
   const ffmpegUtils = await getFFmpegUtilFunctions();
+  debugLog("[Media Processing] ✅ FFmpeg utilities loaded");
 
   const total = fileArray.length;
   let completed = 0;
@@ -32,16 +39,20 @@ export async function processMediaFiles(
       `[Media Processing] 🎬 Processing file: ${file.name} (${file.type}, ${(file.size / 1024 / 1024).toFixed(2)} MB)`
     );
 
+    debugLog("[Media Processing] 🔍 About to call getFileType for:", file.name, "Type:", typeof mediaUtils.getFileType);
     const fileType = mediaUtils.getFileType(file);
-    debugLog(`[Media Processing] 📝 Detected file type: ${fileType}`);
+    debugLog(`[Media Processing] 📝 Detected file type: ${fileType} for file: ${file.name} (${file.type})`);
 
     if (!fileType) {
       debugWarn(
         `[Media Processing] ❌ Unsupported file type: ${file.name} (${file.type})`
       );
       toast.error(`Unsupported file type: ${file.name}`);
+      debugLog("[Media Processing] 📊 Skipping file, processedItems length:", processedItems.length);
       continue;
     }
+
+    debugLog("[Media Processing] ✅ File type detected successfully, proceeding with processing");
 
     // Create URL that works in both web and Electron environments
     let url: string;
@@ -231,6 +242,7 @@ export async function processMediaFiles(
       });
 
       processedItems.push(processedItem);
+      debugLog("[Media Processing] 📊 After adding item, processedItems length:", processedItems.length);
 
       // Yield back to the event loop to keep the UI responsive
       await new Promise((resolve) => setTimeout(resolve, 0));
@@ -252,7 +264,8 @@ export async function processMediaFiles(
 
       // Don't completely abort - try to add the file with minimal info
       try {
-        processedItems.push({
+        debugLog("[Media Processing] 🔧 Attempting to add file with minimal processing:", file.name);
+        const minimalItem = {
           name: file.name,
           type: fileType,
           file,
@@ -265,7 +278,10 @@ export async function processMediaFiles(
           height:
             fileType === "video" || fileType === "image" ? 1080 : undefined,
           fps: fileType === "video" ? 30 : undefined,
-        });
+        };
+        
+        processedItems.push(minimalItem);
+        debugLog("[Media Processing] 📊 After minimal processing, processedItems length:", processedItems.length);
 
         debugLog(
           "[Media Processing] ✅ Added file with minimal processing:",
@@ -283,6 +299,8 @@ export async function processMediaFiles(
     }
   }
 
+  debugLog("[Media Processing] 🏁 Final processedItems length before return:", processedItems.length);
+  debugLog("[Media Processing] 📋 Final processedItems:", processedItems.map(item => ({ name: item.name, type: item.type })));
   return processedItems;
 }
 
