@@ -205,7 +205,8 @@ interface TimelineStore {
   updateMediaElement: (
     trackId: string,
     elementId: string,
-    updates: Partial<Pick<MediaElement, "volume">>
+    updates: Partial<Pick<MediaElement, "volume">>,
+    pushHistory?: boolean
   ) => void;
   checkElementOverlap: (
     trackId: string,
@@ -931,8 +932,10 @@ export const useTimelineStore = create<TimelineStore>((set, get) => {
       );
     },
 
-    updateMediaElement: (trackId, elementId, updates) => {
-      get().pushHistory();
+    updateMediaElement: (trackId, elementId, updates, pushHistory = true) => {
+      if (pushHistory) {
+        get().pushHistory();
+      }
       updateTracksAndSave(
         get()._tracks.map((track) =>
           track.id === trackId

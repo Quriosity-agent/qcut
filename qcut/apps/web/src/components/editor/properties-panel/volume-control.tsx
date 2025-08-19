@@ -21,7 +21,13 @@ export function VolumeControl({ element, trackId }: VolumeControlProps) {
 
   const handleVolumeChange = useCallback((newVolume: number) => {
     setVolume(newVolume);
-    updateMediaElement(trackId, element.id, { volume: newVolume / 100 });
+    // Live update without history for smooth slider interaction
+    updateMediaElement(trackId, element.id, { volume: newVolume / 100 }, false);
+  }, [updateMediaElement, trackId, element.id]);
+
+  const handleVolumeCommit = useCallback((value: number[]) => {
+    // Commit to history when user finishes dragging
+    updateMediaElement(trackId, element.id, { volume: value[0] / 100 }, true);
   }, [updateMediaElement, trackId, element.id]);
 
   return (
@@ -37,6 +43,7 @@ export function VolumeControl({ element, trackId }: VolumeControlProps) {
               max={100}
               step={1}
               onValueChange={([value]) => handleVolumeChange(value)}
+              onValueCommit={handleVolumeCommit}
               className="w-full"
             />
             <span className="text-xs w-12">{volume}%</span>
