@@ -323,17 +323,13 @@ function TimelineComponent() {
 
   // Update timeline duration when tracks change
   useEffect(() => {
-    console.log('[Timeline] Duration update effect triggered');
     // Only update if tracks actually change
     const totalDuration = getTotalDuration();
     const newDuration = Math.max(totalDuration, 10); // Minimum 10 seconds for empty timeline
-    console.log(`[Timeline] Setting duration from ${duration} to ${newDuration}`);
     
     // Only update if duration actually changed to prevent loops
     if (Math.abs(duration - newDuration) > 0.001) {
       setDuration(newDuration);
-    } else {
-      console.log('[Timeline] Duration unchanged, skipping update');
     }
   }, [tracks, getTotalDuration, setDuration, duration]); // Safe dependencies - tracks changes trigger recalc
 
