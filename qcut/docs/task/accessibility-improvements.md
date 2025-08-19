@@ -11,6 +11,8 @@ This document outlines accessibility improvements for the project settings featu
 ## Specific Improvements
 
 ### 1. Blur Preview Tiles
+
+#### Option A: Button Elements (Recommended)
 **Current (in tag v0.2.0-settings-and-media-fix):**
 ```tsx
 <div
@@ -24,7 +26,7 @@ This document outlines accessibility improvements for the project settings featu
 </div>
 ```
 
-**Improved:**
+**Improved with Button:**
 ```tsx
 <button
   type="button"
@@ -40,7 +42,33 @@ This document outlines accessibility improvements for the project settings featu
 </button>
 ```
 
+#### Option B: Div with ARIA Role (Alternative)
+**Improved with ARIA:**
+```tsx
+<div
+  role="button"
+  tabIndex={0}
+  aria-pressed={isSelected}
+  aria-label={`Select ${blur.label} blur level`}
+  className={cn(
+    "w-full aspect-square rounded-sm cursor-pointer hover:outline-2 hover:outline-primary relative overflow-hidden",
+    isSelected && "outline-2 outline-primary"
+  )}
+  onClick={onSelect}
+  onKeyDown={(e) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      onSelect();
+    }
+  }}
+>
+  {/* content */}
+</div>
+```
+
 ### 2. Color Selection Tiles
+
+#### Option A: Button Elements (Recommended)
 **Current:**
 ```tsx
 <div
@@ -56,7 +84,7 @@ This document outlines accessibility improvements for the project settings featu
 />
 ```
 
-**Improved:**
+**Improved with Button:**
 ```tsx
 <button
   type="button"
@@ -73,6 +101,36 @@ This document outlines accessibility improvements for the project settings featu
   onClick={() => handleColorSelect(color)}
 />
 ```
+
+#### Option B: Div with ARIA Role (Alternative)
+**Improved with ARIA:**
+```tsx
+<div
+  role="button"
+  tabIndex={0}
+  aria-pressed={isColorBackground && color === currentBackgroundColor}
+  aria-label={`Select background color ${color}`}
+  key={color}
+  className={cn(
+    "w-full aspect-square rounded-sm cursor-pointer hover:border-2 hover:border-primary",
+    isColorBackground &&
+      color === currentBackgroundColor &&
+      "border-2 border-primary"
+  )}
+  style={{ backgroundColor: color }}
+  onClick={() => handleColorSelect(color)}
+  onKeyDown={(e) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      handleColorSelect(color);
+    }
+  }}
+/>
+```
+
+**Comparison:**
+- **Option A (Button)**: Simpler, native keyboard support, better semantics
+- **Option B (ARIA Div)**: More control, requires manual keyboard handling
 
 ### 3. Custom Color Picker Button
 **Current:**

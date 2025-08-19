@@ -102,9 +102,13 @@ function ColorView({
     <div className="w-full h-full">
       <div className="absolute top-8 left-0 w-[calc(100%-1rem)] h-12 bg-linear-to-b from-popover to-transparent pointer-events-none" />
       <div className="grid grid-cols-4 gap-2 w-full h-full p-3 pt-0 overflow-auto">
-        <div className="w-full aspect-square rounded-sm cursor-pointer border border-foreground/15 hover:border-primary flex items-center justify-center">
+        <button
+          type="button"
+          aria-label="Pick a custom color"
+          className="w-full aspect-square rounded-sm cursor-pointer border border-foreground/15 hover:border-primary flex items-center justify-center"
+        >
           <PipetteIcon className="size-4" />
-        </div>
+        </button>
         {colors.map((color) => (
           <ColorItem
             key={color}
@@ -128,7 +132,10 @@ function ColorItem({
   onClick: () => void;
 }) {
   return (
-    <div
+    <button
+      type="button"
+      aria-pressed={isSelected}
+      aria-label={`Select color ${color}`}
       className={cn(
         "w-full aspect-square rounded-sm cursor-pointer hover:border-2 hover:border-primary",
         isSelected && "border-2 border-primary"
@@ -157,8 +164,11 @@ function BlurView({
   return (
     <div className="grid grid-cols-3 gap-2 w-full p-3 pt-0">
       {blurLevels.map((blur) => (
-        <div
+        <button
           key={blur.value}
+          type="button"
+          aria-pressed={selectedBlur === blur.value}
+          aria-label={`Select ${blur.label} blur level`}
           className={cn(
             "w-full aspect-square rounded-sm cursor-pointer hover:border-2 hover:border-primary relative overflow-hidden",
             selectedBlur === blur.value && "border-2 border-primary"
@@ -177,7 +187,7 @@ function BlurView({
               {blur.label}
             </span>
           </div>
-        </div>
+        </button>
       ))}
     </div>
   );
