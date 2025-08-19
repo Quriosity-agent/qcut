@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import { invokeAction } from "../constants/actions";
 import { useKeybindingsStore } from "@/stores/keybindings-store";
 
@@ -8,17 +8,6 @@ import { useKeybindingsStore } from "@/stores/keybindings-store";
  * the appropriate actions based on keybindings
  */
 export function useKeybindingsListener() {
-  // Debug: Track render count
-  const renderCount = useRef(0);
-  useEffect(() => {
-    renderCount.current++;
-    if (renderCount.current > 50) {
-      console.error(`[useKeybindingsListener] EXCESSIVE RENDERS: ${renderCount.current}`);
-      if (renderCount.current === 51) {
-        console.trace();
-      }
-    }
-  });
   const { keybindings, getKeybindingString, keybindingsEnabled, isRecording } =
     useKeybindingsStore();
 

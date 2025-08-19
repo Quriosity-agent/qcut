@@ -193,18 +193,6 @@ export function useActionHandler<A extends Action>(
   handler: ActionFunc<A>,
   isActive: MutableRefObject<boolean> | boolean | undefined
 ) {
-  // Debug: Track how many times this hook is called
-  const renderCount = useRef(0);
-  useEffect(() => {
-    renderCount.current++;
-    if (renderCount.current > 50) {
-      console.error(`[useActionHandler:${action}] EXCESSIVE RENDERS: ${renderCount.current}`);
-      if (renderCount.current === 51) {
-        console.trace();
-      }
-    }
-  });
-
   const handlerRef = useRef(handler);
   const [isBound, setIsBound] = useState(false);
 

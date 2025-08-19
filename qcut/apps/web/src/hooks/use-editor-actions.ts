@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import { useActionHandler } from "@/constants/actions";
 import { useTimelineStore } from "@/stores/timeline-store";
 import { usePlaybackStore } from "@/stores/playback-store";
@@ -8,17 +8,6 @@ import { useProjectStore } from "@/stores/project-store";
 import { toast } from "sonner";
 
 export function useEditorActions() {
-  // Debug: Track render count
-  const renderCount = useRef(0);
-  useEffect(() => {
-    renderCount.current++;
-    if (renderCount.current > 50) {
-      console.error(`[useEditorActions] EXCESSIVE RENDERS: ${renderCount.current}`);
-      if (renderCount.current === 51) {
-        console.trace();
-      }
-    }
-  });
   const {
     tracks,
     selectedElements,
