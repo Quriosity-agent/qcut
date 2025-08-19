@@ -57,7 +57,7 @@ function ProjectSettingsTabs() {
 function ProjectInfoView() {
   const { activeProject, updateProjectFps } = useProjectStore();
   const { canvasSize, canvasPresets, setCanvasSize } = useEditorStore();
-  const { getDisplayName } = useAspectRatio();
+  const { getDisplayName, currentPreset } = useAspectRatio();
 
   const handleAspectRatioChange = useCallback((value: string) => {
     const preset = canvasPresets.find((p) => p.name === value);
@@ -86,11 +86,11 @@ function ProjectInfoView() {
         <PropertyItemLabel>Aspect ratio</PropertyItemLabel>
         <PropertyItemValue>
           <Select
-            value={getDisplayName()}
+            value={currentPreset?.name}
             onValueChange={handleAspectRatioChange}
           >
             <SelectTrigger className="bg-panel-accent">
-              <SelectValue placeholder="Select an aspect ratio" />
+              <SelectValue placeholder={getDisplayName()} />
             </SelectTrigger>
             <SelectContent>
               {canvasPresets.map((preset) => (

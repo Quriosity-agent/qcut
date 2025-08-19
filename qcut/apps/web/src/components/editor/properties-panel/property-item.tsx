@@ -65,15 +65,17 @@ export function PropertyGroup({
 
   return (
     <PropertyItem direction="column" className={cn("gap-3", className)}>
-      <div
-        className="flex items-center gap-1.5 cursor-pointer"
-        onClick={() => setIsExpanded(!isExpanded)}
+      <button
+        type="button"
+        className="flex items-center gap-1.5"
+        onClick={() => setIsExpanded((v) => !v)}
+        aria-expanded={isExpanded}
       >
-        <PropertyItemLabel className="cursor-pointer">
-          {title}
-        </PropertyItemLabel>
-        <ChevronDown className={cn("size-3", !isExpanded && "-rotate-90")} />
-      </div>
+        <span className="text-xs">{title}</span>
+        <ChevronDown
+          className={cn("size-3 transition-transform", !isExpanded && "-rotate-90")}
+        />
+      </button>
       {isExpanded && <PropertyItemValue>{children}</PropertyItemValue>}
     </PropertyItem>
   );
