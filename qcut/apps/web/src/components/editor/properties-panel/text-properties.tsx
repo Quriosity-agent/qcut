@@ -36,6 +36,17 @@ export function TextProperties({
   const [yInput, setYInput] = useState((element.y || 0).toString());
   const [rotationInput, setRotationInput] = useState((element.rotation || 0).toString());
 
+  // Generic handler for slider changes to reduce code duplication
+  const handleSliderChange = (prop: 'x' | 'y' | 'rotation', value: number) => {
+    const setter = { 
+      x: setXInput, 
+      y: setYInput, 
+      rotation: setRotationInput 
+    }[prop];
+    updateTextElement(trackId, element.id, { [prop]: value });
+    setter(value.toString());
+  };
+
   const parseAndValidateNumber = (
     value: string,
     min: number,
@@ -392,10 +403,7 @@ export function TextProperties({
                 min={-canvasSize.width / 2}
                 max={canvasSize.width / 2}
                 step={1}
-                onValueChange={([value]) => {
-                  updateTextElement(trackId, element.id, { x: value });
-                  setXInput(value.toString());
-                }}
+                onValueChange={([value]) => handleSliderChange('x', value)}
                 className="w-full"
               />
               <Input
@@ -422,10 +430,7 @@ export function TextProperties({
                 min={-canvasSize.height / 2}
                 max={canvasSize.height / 2}
                 step={1}
-                onValueChange={([value]) => {
-                  updateTextElement(trackId, element.id, { y: value });
-                  setYInput(value.toString());
-                }}
+                onValueChange={([value]) => handleSliderChange('y', value)}
                 className="w-full"
               />
               <Input
@@ -455,10 +460,7 @@ export function TextProperties({
                 min={-180}
                 max={180}
                 step={1}
-                onValueChange={([value]) => {
-                  updateTextElement(trackId, element.id, { rotation: value });
-                  setRotationInput(value.toString());
-                }}
+                onValueChange={([value]) => handleSliderChange('rotation', value)}
                 className="w-full"
               />
               <Input
