@@ -18,11 +18,12 @@ Based on v10 log analysis, this plan addresses the systemic rapid re-rendering i
 **Problem**: Timeline store likely has unstable selectors causing TimelinePlayhead and TimelineTrack rapid renders
 
 **Action**:
-- Review all selector functions for object/array recreation
-- Look for functions returned from selectors
-- Check for computed values that recreate on every access
+- Review store getters like `tracks` (computed from `_tracks`)
+- Check for any function selectors that recreate on access
+- Look for computed properties that may cause re-renders
+- Focus on `getTotalDuration` and similar computed values
 
-**Expected Fix**: Identify 3-5 unstable selectors that need memoization
+**Expected Fix**: Identify 2-3 computed properties that need memoization or stability fixes
 
 ---
 
@@ -32,22 +33,15 @@ Based on v10 log analysis, this plan addresses the systemic rapid re-rendering i
 - `apps/web/src/components/editor/timeline/timeline-playhead.tsx` 
 - `apps/web/src/components/editor/timeline/timeline-track.tsx`
 
-**Problem**: Components using unstable selectors from timeline store
+**Problem**: Timeline components may have function selectors causing instability
 
 **Action**:
-```typescript
-// BEFORE (creates new object every render)
-const { tracks, selectedElements } = useTimelineStore(s => ({ 
-  tracks: s.tracks, 
-  selectedElements: s.selectedElements 
-}));
+- Review timeline/index.tsx selectors (lines 74-79 already use individual selectors - GOOD!)
+- Check timeline-playhead.tsx for any store subscriptions
+- Verify timeline-track.tsx selector patterns
+- Look for `getTotalDuration` function calls that should be memoized
 
-// AFTER (stable primitive selections)
-const tracks = useTimelineStore(s => s.tracks);
-const selectedElements = useTimelineStore(s => s.selectedElements);
-```
-
-**Expected Fix**: Replace 5-8 object destructuring selectors with stable primitives
+**Expected Fix**: Timeline components appear well-structured already - may need minimal changes
 
 ---
 
@@ -136,21 +130,15 @@ bun add react-resizable-panels@^3.0.4
 ### **Task 7: Add Debouncing to Timeline Updates (10 min)**
 **File**: `apps/web/src/hooks/use-timeline-playhead.ts`
 
-**Problem**: Timeline updates triggering too frequently causing render cascades
+**Problem**: Timeline playhead updates triggering too frequently causing render cascades
 
 **Action**:
-```typescript
-import { useDeferredValue } from 'react';
+- Review the actual use-timeline-playhead.ts implementation
+- Add useDeferredValue or custom debouncing for rapid updates
+- Focus on timeline scrubbing/dragging performance
+- Ensure playhead position updates don't trigger excessive renders
 
-// BEFORE
-const currentTime = usePlaybackStore(s => s.currentTime);
-
-// AFTER (debounced updates)
-const currentTimeRaw = usePlaybackStore(s => s.currentTime);
-const currentTime = useDeferredValue(currentTimeRaw);
-```
-
-**Expected Fix**: Reduce timeline update frequency by 50-70%
+**Expected Fix**: Reduce timeline playhead update frequency and smooth dragging performance
 
 ---
 
@@ -162,9 +150,11 @@ const currentTime = useDeferredValue(currentTimeRaw);
 **Problem**: Audio components caught in main UI render cycles
 
 **Action**:
-- Move audio-specific state to local useState instead of global stores
+- Review audio-waveform.tsx for store dependencies
+- Check audio-player.tsx for excessive playback store subscriptions
+- Add React.memo to audio components
 - Use useCallback for audio event handlers
-- Add useMemo for expensive audio calculations
+- Consider local state for audio UI state vs global playback state
 
 **Expected Fix**: Isolate audio renders from main UI update cycles
 
@@ -215,13 +205,13 @@ const currentTime = useDeferredValue(currentTimeRaw);
 | Component | File Path | Task |
 |-----------|-----------|------|
 | Timeline Store | `apps/web/src/stores/timeline-store.ts` | Task 1 |
-| Timeline Components | `apps/web/src/components/editor/timeline/*.tsx` | Task 2 |
+| Timeline Components | `apps/web/src/components/editor/timeline/index.tsx`<br>`apps/web/src/components/editor/timeline/timeline-playhead.tsx`<br>`apps/web/src/components/editor/timeline/timeline-track.tsx` | Task 2 |
 | Playback Store | `apps/web/src/stores/playback-store.ts` | Task 3 |
-| Panel Components | `apps/web/src/components/editor/*-panel/*.tsx` | Task 4 |
-| High-Render Components | `apps/web/src/components/editor/timeline/*.tsx` | Task 5 |
+| Panel Components | `apps/web/src/components/editor/media-panel/index.tsx`<br>`apps/web/src/components/editor/preview-panel.tsx`<br>`apps/web/src/components/editor/properties-panel/index.tsx` | Task 4 |
+| High-Render Components | Timeline + Audio components for React.memo | Task 5 |
 | Package Dependencies | `apps/web/package.json` | Task 6 |
 | Timeline Hooks | `apps/web/src/hooks/use-timeline-playhead.ts` | Task 7 |
-| Audio Components | `apps/web/src/components/*/audio*.tsx` | Task 8 |
+| Audio Components | `apps/web/src/components/editor/audio-waveform.tsx`<br>`apps/web/src/components/ui/audio-player.tsx` | Task 8 |
 | All Modified Files | Various | Task 9 |
 
 ---
