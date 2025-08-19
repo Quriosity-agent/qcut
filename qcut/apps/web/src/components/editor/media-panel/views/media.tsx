@@ -78,88 +78,40 @@ export function MediaView() {
   }, [mediaItems, mediaFilter, searchQuery]);
 
   const processFiles = async (files: FileList | File[]) => {
-    console.log(
-      "[Media View] 🚀 processFiles called with",
-      files?.length || 0,
-      "files"
-    );
-
     if (!files || files.length === 0) {
-      console.log("[Media View] ❌ No files provided");
       return;
     }
     if (!activeProject) {
-      console.log("[Media View] ❌ No active project");
       toast.error("No active project");
       return;
     }
 
-    console.log(
-      "[Media View] ▶️ Starting upload process for project:",
-      activeProject.id
-    );
     setIsProcessing(true);
     setProgress(0);
 
     try {
-      console.log("[Media View] 📋 File details:");
-      Array.from(files).forEach((file, i) => {
-        console.log(
-          `  ${i + 1}. ${file.name} (${file.type}, ${(file.size / 1024 / 1024).toFixed(2)} MB)`
-        );
-      });
-
-      // Process files (extract metadata, generate thumbnails, etc.)
-      console.log("[Media View] 🔧 Calling processMediaFiles...");
-      console.log("[Media View] 🔍 Files parameter before processMediaFiles:", files);
-      console.log("[Media View] 🔍 Files length before processMediaFiles:", files?.length || 'undefined');
-      console.log("[Media View] 🔍 Files type:", typeof files);
-      console.log("[Media View] 🔍 Files is FileList?:", files instanceof FileList);
-      console.log("[Media View] 🔍 Files is Array?:", Array.isArray(files));
-      
       // WORKAROUND: Convert FileList to Array immediately to prevent data loss
-      console.log("[Media View] 🔄 Converting FileList to Array to prevent data loss...");
       const filesArray = Array.from(files);
-      console.log("[Media View] ✅ Converted to Array with length:", filesArray.length);
-      console.log("[Media View] 📋 Array contents:", filesArray.map(f => f.name));
       
       // Dynamically import media processing utilities
       const { processMediaFiles } = await import("@/lib/media-processing");
       const processedItems = await processMediaFiles(filesArray, (p) => {
-        console.log(`[Media View] 📊 Upload progress: ${p}%`);
         setProgress(p);
       });
 
-      console.log(
-        "[Media View] ✅ processMediaFiles completed, got",
-        processedItems.length,
-        "processed items"
-      );
-
       // Add each processed media item to the store
-      console.log("[Media View] 💾 Adding items to media store...");
-      for (const [index, item] of processedItems.entries()) {
-        console.log(
-          `[Media View] ➕ Adding item ${index + 1}/${processedItems.length}:`,
-          item.name
-        );
+      for (const item of processedItems) {
         if (!addMediaItem) {
           throw new Error("Media store not ready");
         }
-        const newItemId = await addMediaItem(activeProject.id, item);
-        console.log(
-          `[Media View] ✅ Item ${index + 1} added successfully with ID: ${newItemId}`
-        );
+        await addMediaItem(activeProject.id, item);
       }
 
-      console.log("[Media View] 🎉 Upload process completed successfully!");
       toast.success(`Successfully uploaded ${processedItems.length} file(s)`);
     } catch (error) {
-      // Show error toast if processing fails
-      console.error("[Media View] ❌ Upload process failed:", error);
+      console.error("[Media View] Upload process failed:", error);
       toast.error("Failed to process files");
     } finally {
-      console.log("[Media View] 🏁 Cleaning up upload process...");
       setIsProcessing(false);
       setProgress(0);
     }

@@ -12,56 +12,35 @@ export async function processMediaFiles(
   files: FileList | File[],
   onProgress?: (progress: number) => void
 ): Promise<ProcessedMediaItem[]> {
-  const fileLength = files && ('length' in files) ? files.length : 'no-length-property';
-  console.log("[Media Processing] 🚀 Starting processMediaFiles with", fileLength, "files");
-  console.log("[Media Processing] 🔍 Files parameter:", files);
-  console.log("[Media Processing] 🔍 Files type:", typeof files);
-  console.log("[Media Processing] 🔍 Files is FileList?:", files instanceof FileList);
-  console.log("[Media Processing] 🔍 Files is Array?:", Array.isArray(files));
-  console.log("[Media Processing] 🔍 Files.length direct access:", files.length);
-  
   try {
-  debugLog(
-    "[Media Processing] 🚀 Starting processMediaFiles with",
-    files?.length || 0,
-    "files"
-  );
-  console.log("[Media Processing] 🔄 Converting FileList to Array...");
-  const fileArray = Array.from(files || []);
-  console.log("[Media Processing] ✅ FileArray created with length:", fileArray.length);
-  console.log("[Media Processing] 📋 FileArray contents:", fileArray.map(f => f.name));
-  
-  const processedItems: ProcessedMediaItem[] = [];
-
-  console.log("[Media Processing] 📊 Initial processedItems array length:", processedItems.length);
-  debugLog("[Media Processing] 📊 Initial processedItems array length:", processedItems.length);
-
-  // Load utilities dynamically
-  console.log("[Media Processing] 📦 Loading media store utilities...");
-  debugLog("[Media Processing] 📦 Loading media store utilities...");
-  const mediaUtils = await getMediaStoreUtils();
-  console.log("[Media Processing] ✅ Media store utilities loaded");
-  debugLog("[Media Processing] ✅ Media store utilities loaded");
-  
-  console.log("[Media Processing] 📦 Loading FFmpeg utilities...");
-  debugLog("[Media Processing] 📦 Loading FFmpeg utilities...");
-  const ffmpegUtils = await getFFmpegUtilFunctions();
-  console.log("[Media Processing] ✅ FFmpeg utilities loaded");
-  debugLog("[Media Processing] ✅ FFmpeg utilities loaded");
-
-  const total = fileArray.length;
-  let completed = 0;
-
-  for (const file of fileArray) {
     debugLog(
-      `[Media Processing] 🎬 Processing file: ${file.name} (${file.type}, ${(file.size / 1024 / 1024).toFixed(2)} MB)`
+      "[Media Processing] Starting processMediaFiles with",
+      files?.length || 0,
+      "files"
     );
+    
+    const fileArray = Array.from(files || []);
+    const processedItems: ProcessedMediaItem[] = [];
 
-    console.log("[Media Processing] 🔍 About to call getFileType for:", file.name, "Type:", typeof mediaUtils.getFileType);
-    debugLog("[Media Processing] 🔍 About to call getFileType for:", file.name, "Type:", typeof mediaUtils.getFileType);
-    const fileType = mediaUtils.getFileType(file);
-    console.log(`[Media Processing] 📝 Detected file type: ${fileType} for file: ${file.name} (${file.type})`);
-    debugLog(`[Media Processing] 📝 Detected file type: ${fileType} for file: ${file.name} (${file.type})`);
+    // Load utilities dynamically
+    debugLog("[Media Processing] Loading media store utilities...");
+    const mediaUtils = await getMediaStoreUtils();
+    debugLog("[Media Processing] Media store utilities loaded");
+    
+    debugLog("[Media Processing] Loading FFmpeg utilities...");
+    const ffmpegUtils = await getFFmpegUtilFunctions();
+    debugLog("[Media Processing] FFmpeg utilities loaded");
+
+    const total = fileArray.length;
+    let completed = 0;
+
+    for (const file of fileArray) {
+      debugLog(
+        `[Media Processing] Processing file: ${file.name} (${file.type}, ${(file.size / 1024 / 1024).toFixed(2)} MB)`
+      );
+
+      const fileType = mediaUtils.getFileType(file);
+      debugLog(`[Media Processing] Detected file type: ${fileType} for file: ${file.name} (${file.type})`);
 
     if (!fileType) {
       debugWarn(
@@ -319,15 +298,12 @@ export async function processMediaFiles(
     }
   }
 
-  console.log("[Media Processing] 🏁 Final processedItems length before return:", processedItems.length);
-  console.log("[Media Processing] 📋 Final processedItems:", processedItems.map(item => ({ name: item.name, type: item.type })));
-  debugLog("[Media Processing] 🏁 Final processedItems length before return:", processedItems.length);
-  debugLog("[Media Processing] 📋 Final processedItems:", processedItems.map(item => ({ name: item.name, type: item.type })));
-  return processedItems;
-  
+    debugLog("[Media Processing] Final processedItems length before return:", processedItems.length);
+    debugLog("[Media Processing] Final processedItems:", processedItems.map(item => ({ name: item.name, type: item.type })));
+    return processedItems;
+    
   } catch (globalError) {
-    console.error("[Media Processing] 🚨 GLOBAL ERROR in processMediaFiles:", globalError);
-    debugError("[Media Processing] 🚨 GLOBAL ERROR in processMediaFiles:", globalError);
+    debugError("[Media Processing] GLOBAL ERROR in processMediaFiles:", globalError);
     return [];
   }
 }
