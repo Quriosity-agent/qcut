@@ -477,7 +477,7 @@ export function PreviewPanel() {
           >
             <div className="text-center">
               <div className="text-2xl mb-2">🎬</div>
-              <p className="text-xs text-white">{element.name}</p>
+              <p className="text-xs text-foreground">{element.name}</p>
             </div>
           </div>
         );
@@ -615,7 +615,7 @@ export function PreviewPanel() {
               {activeProject?.backgroundType === "blur" &&
                 blurBackgroundElements.length === 0 &&
                 activeElements.length > 0 && (
-                  <div className="absolute bottom-2 left-2 right-2 bg-black/70 text-white text-xs p-2 rounded">
+                  <div className="absolute bottom-2 left-2 right-2 bg-background/70 text-foreground text-xs p-2 rounded">
                     Add a video or image to use blur background
                   </div>
                 )}

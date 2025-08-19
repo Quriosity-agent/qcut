@@ -53,42 +53,41 @@ export async function processMediaFiles(
 
     debugLog("[Media Processing] ✅ File type detected successfully, proceeding with processing");
 
-    // Create URL that works in both web and Electron environments
-    let url: string;
-    const isFileProtocol =
-      typeof window !== "undefined" && window.location.protocol === "file:";
-    if (isFileProtocol && fileType === "image") {
-      // For images in Electron, use data URL for better compatibility
-      debugLog(
-        `[Media Processing] Using data URL for image in Electron: ${file.name}`
-      );
-      url = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => {
-          if (typeof reader.result === "string") {
-            resolve(reader.result);
-          } else {
-            reject(new Error("Failed to read file as data URL"));
-          }
-        };
-        reader.onerror = () => reject(reader.error);
-        reader.readAsDataURL(file);
-      });
-    } else {
-      // Use blob URL for web environment or non-image files
-      debugLog(
-        `[Media Processing] Using blob URL for ${fileType}: ${file.name}`
-      );
-      url = URL.createObjectURL(file);
-    }
-
     let thumbnailUrl: string | undefined;
     let duration: number | undefined;
     let width: number | undefined;
     let height: number | undefined;
     let fps: number | undefined;
+    let url: string | undefined;
 
     try {
+      // Create URL that works in both web and Electron environments
+      const isFileProtocol =
+        typeof window !== "undefined" && window.location.protocol === "file:";
+      if (isFileProtocol && fileType === "image") {
+        // For images in Electron, use data URL for better compatibility
+        debugLog(
+          `[Media Processing] Using data URL for image in Electron: ${file.name}`
+        );
+        url = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => {
+            if (typeof reader.result === "string") {
+              resolve(reader.result);
+            } else {
+              reject(new Error("Failed to read file as data URL"));
+            }
+          };
+          reader.onerror = () => reject(reader.error);
+          reader.readAsDataURL(file);
+        });
+      } else {
+        // Use blob URL for web environment or non-image files
+        debugLog(
+          `[Media Processing] Using blob URL for ${fileType}: ${file.name}`
+        );
+        url = URL.createObjectURL(file);
+      }
       if (fileType === "image") {
         debugLog(`[Media Processing] 🖼️ Processing image: ${file.name}`);
         // Get image dimensions
@@ -264,6 +263,10 @@ export async function processMediaFiles(
       // Don't completely abort - try to add the file with minimal info
       try {
         debugLog("[Media Processing] 🔧 Attempting to add file with minimal processing:", file.name);
+        // Create URL for fallback case if it wasn't created yet
+        if (!url) {
+          url = URL.createObjectURL(file);
+        }
         const minimalItem = {
           name: file.name,
           type: fileType,
@@ -293,7 +296,9 @@ export async function processMediaFiles(
           addError
         );
         toast.error(`Failed to process ${file.name}`);
-        URL.revokeObjectURL(url); // Clean up on complete failure
+        if (url) {
+          URL.revokeObjectURL(url); // Clean up on complete failure
+        }
       }
     }
   }

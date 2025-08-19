@@ -42,7 +42,7 @@ export function AIHistoryPanel({
   return (
     <>
       {/* Backdrop */}
-      <div className="fixed inset-0 bg-black/20 z-40" onClick={onClose} />
+      <div className="fixed inset-0 bg-background/20 z-40" onClick={onClose} />
 
       {/* Sliding Panel */}
       <div
@@ -84,7 +84,7 @@ export function AIHistoryPanel({
                   className="bg-panel-accent rounded-lg border p-3"
                 >
                   {/* Video Thumbnail/Preview */}
-                  <div className="aspect-video bg-black rounded-lg mb-3 relative overflow-hidden">
+                  <div className="aspect-video bg-background rounded-lg mb-3 relative overflow-hidden">
                     <video
                       src={video.videoUrl}
                       className="w-full h-full object-cover"
@@ -93,8 +93,8 @@ export function AIHistoryPanel({
                     >
                       Your browser does not support the video tag.
                     </video>
-                    <div className="absolute inset-0 bg-black/20 flex items-center justify-center">
-                      <Play className="size-8 text-white opacity-80" />
+                    <div className="absolute inset-0 bg-background/20 flex items-center justify-center">
+                      <Play className="size-8 text-foreground opacity-80" />
                     </div>
                   </div>
 

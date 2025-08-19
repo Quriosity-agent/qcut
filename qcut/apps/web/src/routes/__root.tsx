@@ -7,7 +7,7 @@ import { StorageProvider } from "@/components/storage-provider";
 
 export const Route = createRootRoute({
   component: () => (
-    <ThemeProvider attribute="class" forcedTheme="dark">
+    <ThemeProvider attribute="class" defaultTheme="dark">
       <TooltipProvider>
         <StorageProvider>
           <Outlet />
