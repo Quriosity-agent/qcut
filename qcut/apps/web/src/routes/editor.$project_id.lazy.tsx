@@ -191,6 +191,60 @@ function EditorPage() {
   const setPropertiesPanel = usePanelStore((s) => s.setPropertiesPanel);
   const setMainContent = usePanelStore((s) => s.setMainContent);
   const setTimeline = usePanelStore((s) => s.setTimeline);
+  
+  // Create debounced resize handlers to prevent rapid updates during initialization
+  const resizeTimeoutRefs = useRef<{
+    tools?: NodeJS.Timeout;
+    preview?: NodeJS.Timeout;
+    properties?: NodeJS.Timeout;
+    main?: NodeJS.Timeout;
+    timeline?: NodeJS.Timeout;
+  }>({});
+  
+  const handleToolsResize = useCallback((size: number) => {
+    if (resizeTimeoutRefs.current.tools) {
+      clearTimeout(resizeTimeoutRefs.current.tools);
+    }
+    resizeTimeoutRefs.current.tools = setTimeout(() => {
+      setToolsPanel(size);
+    }, 50);
+  }, [setToolsPanel]);
+  
+  const handlePreviewResize = useCallback((size: number) => {
+    if (resizeTimeoutRefs.current.preview) {
+      clearTimeout(resizeTimeoutRefs.current.preview);
+    }
+    resizeTimeoutRefs.current.preview = setTimeout(() => {
+      setPreviewPanel(size);
+    }, 50);
+  }, [setPreviewPanel]);
+  
+  const handlePropertiesResize = useCallback((size: number) => {
+    if (resizeTimeoutRefs.current.properties) {
+      clearTimeout(resizeTimeoutRefs.current.properties);
+    }
+    resizeTimeoutRefs.current.properties = setTimeout(() => {
+      setPropertiesPanel(size);
+    }, 50);
+  }, [setPropertiesPanel]);
+  
+  const handleMainResize = useCallback((size: number) => {
+    if (resizeTimeoutRefs.current.main) {
+      clearTimeout(resizeTimeoutRefs.current.main);
+    }
+    resizeTimeoutRefs.current.main = setTimeout(() => {
+      setMainContent(size);
+    }, 50);
+  }, [setMainContent]);
+  
+  const handleTimelineResize = useCallback((size: number) => {
+    if (resizeTimeoutRefs.current.timeline) {
+      clearTimeout(resizeTimeoutRefs.current.timeline);
+    }
+    resizeTimeoutRefs.current.timeline = setTimeout(() => {
+      setTimeline(size);
+    }, 50);
+  }, [setTimeline]);
 
 
   usePlaybackControls();
@@ -217,7 +271,7 @@ function EditorPage() {
               defaultSize={mainContent}
               minSize={30}
               maxSize={85}
-              onResize={setMainContent}
+              onResize={handleMainResize}
               className="min-h-0"
             >
               <ResizablePanelGroup
@@ -228,7 +282,7 @@ function EditorPage() {
                   defaultSize={toolsPanel}
                   minSize={15}
                   maxSize={40}
-                  onResize={setToolsPanel}
+                  onResize={handleToolsResize}
                   className="min-w-0"
                 >
                   <MediaPanel />
@@ -239,7 +293,7 @@ function EditorPage() {
                 <ResizablePanel
                   defaultSize={previewPanel}
                   minSize={30}
-                  onResize={setPreviewPanel}
+                  onResize={handlePreviewResize}
                   className="min-w-0 min-h-0 flex-1"
                 >
                   <PreviewPanel />
@@ -251,7 +305,7 @@ function EditorPage() {
                   defaultSize={propertiesPanel}
                   minSize={15}
                   maxSize={40}
-                  onResize={setPropertiesPanel}
+                  onResize={handlePropertiesResize}
                   className="min-w-0"
                 >
                   <PropertiesPanel />
@@ -265,7 +319,7 @@ function EditorPage() {
               defaultSize={timeline}
               minSize={15}
               maxSize={70}
-              onResize={setTimeline}
+              onResize={handleTimelineResize}
               className="min-h-0 px-2 pb-2"
             >
               <Timeline />

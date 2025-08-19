@@ -262,8 +262,10 @@ export const usePanelStore = create<PanelState>()(
           const total =
             state.toolsPanel + state.previewPanel + state.propertiesPanel;
           if (Math.abs(total - 100) > SIZE_TOLERANCE) {
-            // Immediately normalize if total is not 100%
-            state.normalizeHorizontalPanels();
+            // Use setTimeout to defer normalization and avoid sync state updates during hydration
+            setTimeout(() => {
+              state.normalizeHorizontalPanels();
+            }, 0);
           }
         }
       },
