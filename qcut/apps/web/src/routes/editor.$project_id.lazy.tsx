@@ -201,13 +201,14 @@ function EditorPage() {
     timeline?: NodeJS.Timeout;
   }>({});
   
+  // Use longer debounce to prevent feedback loops during initialization
   const handleToolsResize = useCallback((size: number) => {
     if (resizeTimeoutRefs.current.tools) {
       clearTimeout(resizeTimeoutRefs.current.tools);
     }
     resizeTimeoutRefs.current.tools = setTimeout(() => {
       setToolsPanel(size);
-    }, 50);
+    }, 100);  // Increased from 50ms to 100ms
   }, [setToolsPanel]);
   
   const handlePreviewResize = useCallback((size: number) => {
@@ -216,7 +217,7 @@ function EditorPage() {
     }
     resizeTimeoutRefs.current.preview = setTimeout(() => {
       setPreviewPanel(size);
-    }, 50);
+    }, 100);
   }, [setPreviewPanel]);
   
   const handlePropertiesResize = useCallback((size: number) => {
@@ -225,7 +226,7 @@ function EditorPage() {
     }
     resizeTimeoutRefs.current.properties = setTimeout(() => {
       setPropertiesPanel(size);
-    }, 50);
+    }, 100);
   }, [setPropertiesPanel]);
   
   const handleMainResize = useCallback((size: number) => {
@@ -234,7 +235,7 @@ function EditorPage() {
     }
     resizeTimeoutRefs.current.main = setTimeout(() => {
       setMainContent(size);
-    }, 50);
+    }, 100);
   }, [setMainContent]);
   
   const handleTimelineResize = useCallback((size: number) => {
@@ -243,7 +244,7 @@ function EditorPage() {
     }
     resizeTimeoutRefs.current.timeline = setTimeout(() => {
       setTimeline(size);
-    }, 50);
+    }, 100);
   }, [setTimeline]);
 
 

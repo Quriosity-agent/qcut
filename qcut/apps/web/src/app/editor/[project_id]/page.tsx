@@ -162,7 +162,7 @@ export default function Editor() {
               defaultSize={mainContent}
               minSize={30}
               maxSize={85}
-              onResize={setMainContent}
+              onResizeEnd={setMainContent}
               className="min-h-0"
             >
               {/* Main content area */}
@@ -175,7 +175,7 @@ export default function Editor() {
                   defaultSize={toolsPanel}
                   minSize={15}
                   maxSize={40}
-                  onResize={setToolsPanel}
+                  onResizeEnd={setToolsPanel}
                   className="min-w-0"
                 >
                   <MediaPanel />
@@ -187,7 +187,7 @@ export default function Editor() {
                 <ResizablePanel
                   defaultSize={previewPanel}
                   minSize={30}
-                  onResize={setPreviewPanel}
+                  onResizeEnd={setPreviewPanel}
                   className="min-w-0 min-h-0 flex-1"
                 >
                   <PreviewPanel />
@@ -199,7 +199,7 @@ export default function Editor() {
                   defaultSize={propertiesPanel}
                   minSize={15}
                   maxSize={40}
-                  onResize={setPropertiesPanel}
+                  onResizeEnd={setPropertiesPanel}
                   className="min-w-0"
                 >
                   <PropertiesPanel />
@@ -214,7 +214,7 @@ export default function Editor() {
               defaultSize={timeline}
               minSize={15}
               maxSize={70}
-              onResize={setTimeline}
+              onResizeEnd={setTimeline}
               className="min-h-0 px-2 pb-2"
             >
               <Timeline />
