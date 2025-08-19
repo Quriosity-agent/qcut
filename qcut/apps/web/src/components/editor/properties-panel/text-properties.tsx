@@ -47,24 +47,15 @@ export function TextProperties({
     setter(value.toString());
   };
 
-  const parseAndValidateNumber = (
+  // Generic validation function that handles both integers and floats
+  const parseAndValidateValue = (
     value: string,
     min: number,
     max: number,
-    fallback: number
+    fallback: number,
+    isInteger: boolean = false
   ): number => {
-    const parsed = parseInt(value, 10);
-    if (isNaN(parsed)) return fallback;
-    return Math.max(min, Math.min(max, parsed));
-  };
-
-  const parseAndValidatePosition = (
-    value: string,
-    min: number,
-    max: number,
-    fallback: number
-  ): number => {
-    const parsed = parseFloat(value);
+    const parsed = isInteger ? parseInt(value, 10) : parseFloat(value);
     if (isNaN(parsed)) return fallback;
     return Math.max(min, Math.min(max, parsed));
   };
@@ -73,17 +64,18 @@ export function TextProperties({
     setFontSizeInput(value);
 
     if (value.trim() !== "") {
-      const fontSize = parseAndValidateNumber(value, 8, 300, element.fontSize);
+      const fontSize = parseAndValidateValue(value, 8, 300, element.fontSize, true);
       updateTextElement(trackId, element.id, { fontSize });
     }
   };
 
   const handleFontSizeBlur = () => {
-    const fontSize = parseAndValidateNumber(
+    const fontSize = parseAndValidateValue(
       fontSizeInput,
       8,
       300,
-      element.fontSize
+      element.fontSize,
+      true
     );
     setFontSizeInput(fontSize.toString());
     updateTextElement(trackId, element.id, { fontSize });
@@ -93,22 +85,24 @@ export function TextProperties({
     setOpacityInput(value);
 
     if (value.trim() !== "") {
-      const opacityPercent = parseAndValidateNumber(
+      const opacityPercent = parseAndValidateValue(
         value,
         0,
         100,
-        Math.round(element.opacity * 100)
+        Math.round(element.opacity * 100),
+        true
       );
       updateTextElement(trackId, element.id, { opacity: opacityPercent / 100 });
     }
   };
 
   const handleOpacityBlur = () => {
-    const opacityPercent = parseAndValidateNumber(
+    const opacityPercent = parseAndValidateValue(
       opacityInput,
       0,
       100,
-      Math.round(element.opacity * 100)
+      Math.round(element.opacity * 100),
+      true
     );
     setOpacityInput(opacityPercent.toString());
     updateTextElement(trackId, element.id, { opacity: opacityPercent / 100 });
@@ -119,22 +113,24 @@ export function TextProperties({
     setXInput(value);
 
     if (value.trim() !== "") {
-      const x = parseAndValidatePosition(
+      const x = parseAndValidateValue(
         value,
         -canvasSize.width / 2,
         canvasSize.width / 2,
-        element.x || 0
+        element.x || 0,
+        false
       );
       updateTextElement(trackId, element.id, { x });
     }
   };
 
   const handleXBlur = () => {
-    const x = parseAndValidatePosition(
+    const x = parseAndValidateValue(
       xInput,
       -canvasSize.width / 2,
       canvasSize.width / 2,
-      element.x || 0
+      element.x || 0,
+      false
     );
     setXInput(x.toString());
     updateTextElement(trackId, element.id, { x });
@@ -144,22 +140,24 @@ export function TextProperties({
     setYInput(value);
 
     if (value.trim() !== "") {
-      const y = parseAndValidatePosition(
+      const y = parseAndValidateValue(
         value,
         -canvasSize.height / 2,
         canvasSize.height / 2,
-        element.y || 0
+        element.y || 0,
+        false
       );
       updateTextElement(trackId, element.id, { y });
     }
   };
 
   const handleYBlur = () => {
-    const y = parseAndValidatePosition(
+    const y = parseAndValidateValue(
       yInput,
       -canvasSize.height / 2,
       canvasSize.height / 2,
-      element.y || 0
+      element.y || 0,
+      false
     );
     setYInput(y.toString());
     updateTextElement(trackId, element.id, { y });
@@ -170,17 +168,18 @@ export function TextProperties({
     setRotationInput(value);
 
     if (value.trim() !== "") {
-      const rotation = parseAndValidatePosition(value, -180, 180, element.rotation || 0);
+      const rotation = parseAndValidateValue(value, -180, 180, element.rotation || 0, false);
       updateTextElement(trackId, element.id, { rotation });
     }
   };
 
   const handleRotationBlur = () => {
-    const rotation = parseAndValidatePosition(
+    const rotation = parseAndValidateValue(
       rotationInput,
       -180,
       180,
-      element.rotation || 0
+      element.rotation || 0,
+      false
     );
     setRotationInput(rotation.toString());
     updateTextElement(trackId, element.id, { rotation });
