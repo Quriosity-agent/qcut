@@ -1,9 +1,10 @@
 "use client";
 
-import { useRef, useState, useEffect, memo } from "react";
+import { useRef, useState, useEffect, memo, useCallback } from "react";
 import { TimelineTrack } from "@/types/timeline";
 import { TIMELINE_CONSTANTS } from "@/constants/timeline-constants";
 import { useTimelinePlayhead } from "@/hooks/use-timeline-playhead";
+import { usePlaybackStore } from "@/stores/playback-store";
 
 interface TimelinePlayheadProps {
   currentTime: number;
@@ -21,7 +22,7 @@ interface TimelinePlayheadProps {
 }
 
 export const TimelinePlayhead = memo(function TimelinePlayhead({
-  currentTime,
+  currentTime: initialTime,
   duration,
   zoomLevel,
   tracks,
@@ -34,37 +35,20 @@ export const TimelinePlayhead = memo(function TimelinePlayhead({
   playheadRef: externalPlayheadRef,
   isSnappingToPlayhead = false,
 }: TimelinePlayheadProps) {
-  // Debug: Track render count to detect infinite loops
-  const componentName = "TimelinePlayhead";
-  const renderCount = useRef(0);
-  const lastRenderTime = useRef(Date.now());
-  
-  useEffect(() => {
-    renderCount.current++;
-    const now = Date.now();
-    const timeSince = now - lastRenderTime.current;
-    lastRenderTime.current = now;
-    
-    console.log(`[${componentName}] Render #${renderCount.current} at ${new Date().toISOString()} (${timeSince}ms since last)`);
-    
-    if (timeSince < 50) {
-      console.warn(`[${componentName}] ⚠️ Rapid re-rendering detected! Only ${timeSince}ms between renders`);
-    }
-    
-    if (renderCount.current > 100) {
-      console.error(`[${componentName}] ❌ EXCESSIVE RENDERS: ${renderCount.current} renders detected!`);
-      if (renderCount.current === 101) {
-        console.trace();
-      }
-    }
-  });
-
   const internalPlayheadRef = useRef<HTMLDivElement>(null);
   const playheadRef = externalPlayheadRef || internalPlayheadRef;
-  const [scrollLeft, setScrollLeft] = useState(0);
-
+  
+  // Use RAF to update position without re-renders
+  const rafRef = useRef<number>();
+  const scrollLeftRef = useRef(0);
+  const currentTimeRef = useRef(initialTime);
+  const isPlayingRef = useRef(false);
+  
+  // Only track if we're dragging, not the position
+  const [isDragging, setIsDragging] = useState(false);
+  
   const { playheadPosition, handlePlayheadMouseDown } = useTimelinePlayhead({
-    currentTime,
+    currentTime: currentTimeRef.current,
     duration,
     zoomLevel,
     seek,
@@ -74,7 +58,21 @@ export const TimelinePlayhead = memo(function TimelinePlayhead({
     playheadRef,
   });
 
-  // Track scroll position to lock playhead to frame
+  // Update refs without re-rendering
+  useEffect(() => {
+    currentTimeRef.current = initialTime;
+  }, [initialTime]);
+
+  // Subscribe to playback state separately
+  useEffect(() => {
+    const unsubscribe = usePlaybackStore.subscribe((state) => {
+      isPlayingRef.current = state.isPlaying;
+      return state.isPlaying;
+    });
+    return unsubscribe;
+  }, []);
+
+  // Track scroll position using passive listener
   useEffect(() => {
     const tracksViewport = (tracksScrollRef.current?.querySelector(
       "[data-radix-scroll-area-viewport]"
@@ -83,71 +81,156 @@ export const TimelinePlayhead = memo(function TimelinePlayhead({
     if (!tracksViewport) return;
 
     const handleScroll = () => {
-      setScrollLeft(tracksViewport.scrollLeft);
+      scrollLeftRef.current = tracksViewport.scrollLeft;
     };
 
     // Set initial scroll position
-    setScrollLeft(tracksViewport.scrollLeft);
+    scrollLeftRef.current = tracksViewport.scrollLeft;
 
-    tracksViewport.addEventListener("scroll", handleScroll);
+    tracksViewport.addEventListener("scroll", handleScroll, { passive: true });
     return () => tracksViewport.removeEventListener("scroll", handleScroll);
   }, [tracksScrollRef]);
 
-  // Use timeline container height minus a few pixels for breathing room
-  const timelineContainerHeight = timelineRef.current?.offsetHeight || 400;
-  const totalHeight = timelineContainerHeight - 8; // 8px padding from edges
+  // Update playhead position using RAF for smooth animation
+  const updatePlayheadPosition = useCallback(() => {
+    if (!playheadRef.current) return;
+    
+    const timelineContainerHeight = timelineRef.current?.offsetHeight || 400;
+    const totalHeight = timelineContainerHeight - 8;
+    
+    const trackLabelsWidth =
+      tracks.length > 0 && trackLabelsRef?.current
+        ? trackLabelsRef.current.offsetWidth
+        : 0;
+    
+    // Use current time from ref (updated by store subscription)
+    const currentTime = isDragging ? playheadPosition : currentTimeRef.current;
+    const timelinePosition =
+      currentTime * TIMELINE_CONSTANTS.PIXELS_PER_SECOND * zoomLevel;
+    const rawLeftPosition = trackLabelsWidth + timelinePosition - scrollLeftRef.current;
+    
+    const timelineContentWidth =
+      duration * TIMELINE_CONSTANTS.PIXELS_PER_SECOND * zoomLevel;
+    const tracksViewport = (tracksScrollRef.current?.querySelector(
+      "[data-radix-scroll-area-viewport]"
+    ) || tracksScrollRef.current) as HTMLElement;
+    const viewportWidth = tracksViewport?.clientWidth || 1000;
+    
+    const leftBoundary = trackLabelsWidth;
+    const rightBoundary = Math.min(
+      trackLabelsWidth + timelineContentWidth - scrollLeftRef.current,
+      trackLabelsWidth + viewportWidth
+    );
+    
+    const leftPosition = Math.max(
+      leftBoundary,
+      Math.min(rightBoundary, rawLeftPosition)
+    );
+    
+    // Update DOM directly without React re-render
+    playheadRef.current.style.transform = `translateX(${leftPosition}px)`;
+    playheadRef.current.style.height = `${totalHeight}px`;
+  }, [
+    playheadRef,
+    timelineRef,
+    tracks.length,
+    trackLabelsRef,
+    tracksScrollRef,
+    duration,
+    zoomLevel,
+    isDragging,
+    playheadPosition,
+  ]);
 
-  // Get dynamic track labels width, fallback to 0 if no tracks or no ref
-  const trackLabelsWidth =
-    tracks.length > 0 && trackLabelsRef?.current
-      ? trackLabelsRef.current.offsetWidth
-      : 0;
+  // Use RAF loop for smooth updates during playback
+  useEffect(() => {
+    const animate = () => {
+      updatePlayheadPosition();
+      
+      // Continue animation if playing
+      if (isPlayingRef.current) {
+        rafRef.current = requestAnimationFrame(animate);
+      }
+    };
+    
+    // Start animation if playing
+    if (isPlayingRef.current) {
+      rafRef.current = requestAnimationFrame(animate);
+    } else {
+      // Single update when not playing
+      updatePlayheadPosition();
+    }
+    
+    return () => {
+      if (rafRef.current) {
+        cancelAnimationFrame(rafRef.current);
+      }
+    };
+  }, [updatePlayheadPosition]);
 
-  // Calculate position locked to timeline content (accounting for scroll)
-  const timelinePosition =
-    playheadPosition * TIMELINE_CONSTANTS.PIXELS_PER_SECOND * zoomLevel;
-  const rawLeftPosition = trackLabelsWidth + timelinePosition - scrollLeft;
+  // Update on scroll or resize
+  useEffect(() => {
+    updatePlayheadPosition();
+  }, [updatePlayheadPosition]);
 
-  // Get the timeline content width and viewport width for right boundary
-  const timelineContentWidth =
-    duration * TIMELINE_CONSTANTS.PIXELS_PER_SECOND * zoomLevel;
-  const tracksViewport = (tracksScrollRef.current?.querySelector(
-    "[data-radix-scroll-area-viewport]"
-  ) || tracksScrollRef.current) as HTMLElement;
-  const viewportWidth = tracksViewport?.clientWidth || 1000;
+  // Subscribe to exact currentTime updates
+  useEffect(() => {
+    const unsubscribe = usePlaybackStore.subscribe((state) => {
+      currentTimeRef.current = state.currentTime;
+      // Only update if not playing (RAF handles it during playback)
+      if (!isPlayingRef.current) {
+        updatePlayheadPosition();
+      }
+      return state.currentTime;
+    });
+    return unsubscribe;
+  }, [updatePlayheadPosition]);
 
-  // Constrain playhead to never appear outside the timeline area
-  const leftBoundary = trackLabelsWidth;
-  const rightBoundary = Math.min(
-    trackLabelsWidth + timelineContentWidth - scrollLeft, // Don't go beyond timeline content
-    trackLabelsWidth + viewportWidth // Don't go beyond viewport
+  const handleMouseDown = useCallback(
+    (e: React.MouseEvent) => {
+      setIsDragging(true);
+      handlePlayheadMouseDown(e);
+    },
+    [handlePlayheadMouseDown]
   );
 
-  const leftPosition = Math.max(
-    leftBoundary,
-    Math.min(rightBoundary, rawLeftPosition)
-  );
+  useEffect(() => {
+    const handleMouseUp = () => {
+      setIsDragging(false);
+    };
+    
+    if (isDragging) {
+      window.addEventListener("mouseup", handleMouseUp);
+      return () => window.removeEventListener("mouseup", handleMouseUp);
+    }
+  }, [isDragging]);
 
   return (
     <div
       ref={playheadRef}
       className="absolute pointer-events-auto z-150"
       style={{
-        left: `${leftPosition}px`,
+        left: 0,
         top: 0,
-        height: `${totalHeight}px`,
-        width: "2px", // Slightly wider for better click target
+        width: "2px",
+        transform: "translateX(0px)", // Will be updated by RAF
       }}
-      onMouseDown={handlePlayheadMouseDown}
+      onMouseDown={handleMouseDown}
     >
       {/* The playhead line spanning full height */}
       <div
-        className={`absolute left-0 w-0.5 cursor-col-resize h-full ${isSnappingToPlayhead ? "bg-primary" : "bg-foreground"}`}
+        className={`absolute left-0 w-0.5 cursor-col-resize h-full ${
+          isSnappingToPlayhead ? "bg-primary" : "bg-foreground"
+        }`}
       />
 
       {/* Playhead dot indicator at the top (in ruler area) */}
       <div
-        className={`absolute top-1 left-1/2 transform -translate-x-1/2 w-3 h-3 rounded-full border-2 shadow-xs ${isSnappingToPlayhead ? "bg-primary border-primary" : "bg-foreground border-foreground"}`}
+        className={`absolute top-1 left-1/2 transform -translate-x-1/2 w-3 h-3 rounded-full border-2 shadow-xs ${
+          isSnappingToPlayhead
+            ? "bg-primary border-primary"
+            : "bg-foreground border-foreground"
+        }`}
       />
     </div>
   );
