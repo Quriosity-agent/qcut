@@ -68,7 +68,9 @@ function ProjectInfoView() {
 
   const handleFpsChange = (value: string) => {
     const fps = parseFloat(value);
-    updateProjectFps(fps);
+    if (!isNaN(fps) && fps > 0) {
+      updateProjectFps(fps);
+    }
   };
 
   return (
