@@ -139,23 +139,23 @@ useEffect(() => {
 **Root Components (v7):**
 - **EditorProvider**: 9 renders ✅ | **EditorPage**: 7 renders ✅
 
-### 🚨 MAJOR BREAKTHROUGH - Hook Infinite Loop Identified (v8):
+### 🚨 V9 CRITICAL FINDING - First Fix FAILED:
 ```
 Warning: Maximum update depth exceeded at fl 
-(file:///editor._project_id.lazy-_mYxhPmA.js:13:102801)
+(file:///editor._project_id.lazy-B_54honX.js:13:102801)
 ```
 
-**🎯 CRITICAL DISCOVERY:**
-- ❌ **NO hook debug messages appear** in v8 logs - useActionHandler, useEditorActions, useKeybindingsListener are all SILENT
-- ❌ Component `fl` still causes infinite loop but NO hooks show excessive renders
-- ❌ This means **`fl` is NOT a hook** - it's a **React component**
-- ❌ Stack trace shows path: `fl → div → jc → Panel → PanelGroup` - **RESIZABLE PANELS!**
+**❌ FIRST FIX FAILED - INFINITE LOOP PERSISTS:**
+- ❌ **normalizeHorizontalPanels dependency removal** did NOT fix the issue
+- ❌ Component `fl` still causes infinite loop despite our changes
+- ❌ **Panel calls are working correctly** - debug logs show normal onResize behavior
+- ❌ **Panel setters are stable** - only 10 calls total, not excessive
 
-**🔍 RESIZABLE PANELS ARE THE CULPRIT:**
-- Stack trace points to ResizablePanelGroup and ResizablePanel components
-- Component `jc` = MediaPanel container 
-- Component `fl` = Likely a ResizablePanel or internal panel component
-- Error occurs in panel resizing system during layout initialization
+**🔍 V9 ANALYSIS - NEW EVIDENCE:**
+- ✅ **Panel resize logging works** - shows only 10 calls: setToolsPanel(35.15), setPreviewPanel(30.76), etc.
+- ❌ **Infinite loop occurs AFTER panel setup** - error appears after panel calls complete
+- ❌ **Issue is NOT in our panel callbacks** - the problem is deeper in react-resizable-panels library
+- ❌ **Component `fl` is internal to the library** - not in our code
 
 ## Complete List of Files with useEffect Hooks
 
@@ -209,56 +209,55 @@ Since ALL major components are SAFE, `fl` must be:
 - **Located in MediaPanel container** (component `jc`)
 - **Caused by panel size/resize handling**
 
-## 🎯 IMMEDIATE NEXT STEPS - ResizablePanel Investigation
+## 🎯 NEXT INVESTIGATION STEPS - Library Deep Dive
 
-### **Step 1: Analyze Panel onResize Handlers** ⏳
-```typescript
-// In routes/editor.$project_id.lazy.tsx lines 214-280
-// Check all onResize callbacks for unstable dependencies:
-onResize={setToolsPanel}      // Line 233
-onResize={setPreviewPanel}    // Line 244 
-onResize={setPropertiesPanel} // Line 256
-onResize={setMainContent}     // Line 222
-onResize={setTimeline}        // Line 270
+### **COMPLETED STEPS:**
+- ✅ **Step 1**: Panel onResize handlers analyzed - callbacks working correctly (only 10 calls)
+- ✅ **Step 2**: Added debug logging to all panel callbacks - no excessive calls detected  
+- ✅ **Step 3**: Fixed normalizeHorizontalPanels dependency - **FAILED TO RESOLVE ISSUE**
+- ✅ **Step 4**: Confirmed panel setters are stable and properly wrapped in useCallback
+
+### **NEW INVESTIGATION TARGET - react-resizable-panels Library:**
+
+**🔍 Evidence from v9 Logs:**
+- Component `fl` is **internal to react-resizable-panels library**
+- Error occurs **after** our panel callbacks complete successfully
+- Our code changes did **NOT** affect the infinite loop
+- Issue is deeper within the library's internal state management
+
+### **Step 1: Library Version Investigation** ⏳
+```bash
+# Check current version and known issues
+bun list react-resizable-panels
+# Search for GitHub issues related to infinite loops
 ```
 
-### **Step 2: Check usePanelStore Implementation** ⏳
+### **Step 2: Add Library Debug Logging** ⏳
 ```typescript
-// In stores/panel-store.ts
+// Add debug logging to understand library internal behavior:
+// In ResizablePanelGroup - monitor for excessive renders
+<ResizablePanelGroup 
+  onLayout={(sizes) => console.log('[Library] Layout changed:', sizes)}
+  // ... existing props
+>
+```
+
+### **Step 3: Check Panel Store Circular Dependencies** ⏳
+```typescript
+// In stores/panel-store.ts - examine normalizeHorizontalPanels:
 // Look for:
-1. Unstable function references in setters
-2. useEffect dependencies causing loops
-3. State updates triggering re-renders
+1. State updates that trigger normalizeHorizontalPanels
+2. normalizeHorizontalPanels calling setters that trigger normalization
+3. Tolerance calculations causing rapid state changes
 ```
 
-### **Step 3: Add Debug Logging to Panel Callbacks** ⏳
+### **Step 4: Test Alternative Panel Configuration** ⏳
 ```typescript
-// Add to each onResize handler:
-const debugSetToolsPanel = useCallback((size: number) => {
-  console.log(`[Panel] setToolsPanel called with size: ${size}`);
-  setToolsPanel(size);
-}, [setToolsPanel]);
-
-// Use debugSetToolsPanel instead of setToolsPanel
+// Temporarily disable features to isolate:
+1. Remove normalizeHorizontalPanels call entirely
+2. Use fixed panel sizes instead of dynamic
+3. Test with minimal ResizablePanel configuration
 ```
-
-### **Step 4: Test Panel Normalization Effect** ⏳
-```typescript
-// In EditorPage lines 201-207
-// This effect calls normalizeHorizontalPanels() - potential culprit:
-useEffect(() => {
-  const timer = setTimeout(() => {
-    normalizeHorizontalPanels(); // <- SUSPECT
-  }, 100);
-  return () => clearTimeout(timer);
-}, [normalizeHorizontalPanels]); // <- Check if function is stable
-```
-
-### **Step 5: Fix Common Panel Issues** ⏳
-- Remove `normalizeHorizontalPanels` from useEffect dependencies if unstable
-- Wrap panel size setters in useCallback if not already stable
-- Add debouncing to rapid panel resize events
-- Check for circular dependencies in panel store
 
 ## 🚨 HIGH PRIORITY FIXES
 
@@ -277,7 +276,9 @@ bun run build && bun run electron
 ```
 
 ## Investigation Status
-- ✅ **Root Cause Identified**: ResizablePanel system infinite loop
-- ⏳ **In Progress**: Panel onResize handler analysis
-- ⏳ **Next**: Debug logging and panel store investigation
-- ⏳ **Final**: Fix unstable dependencies and test solution
+- ✅ **Root Cause Identified**: Component `fl` in react-resizable-panels library
+- ❌ **First Fix Failed**: normalizeHorizontalPanels dependency removal did not resolve issue
+- ✅ **Panel Callbacks Verified**: Our onResize handlers working correctly (10 calls total)
+- ⏳ **In Progress**: Library version and internal state investigation
+- ⏳ **Next**: Deep dive into react-resizable-panels source code
+- 🎯 **Target**: Identify library bug or configuration issue causing component `fl` infinite loop

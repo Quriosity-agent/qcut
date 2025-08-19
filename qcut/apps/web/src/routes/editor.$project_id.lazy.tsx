@@ -226,14 +226,14 @@ function EditorPage() {
 
   usePlaybackControls();
 
-  // Ensure panels are normalized on mount - FIXED: Remove unstable function dependency
-  useEffect(() => {
-    // Normalize panels after a short delay to ensure they're initialized
-    const timer = setTimeout(() => {
-      usePanelStore.getState().normalizeHorizontalPanels();
-    }, 100);
-    return () => clearTimeout(timer);
-  }, []); // FIXED: Empty dependency array to prevent infinite loops
+  // TEMP FIX: Disable panel normalization to test if it causes infinite loops
+  // useEffect(() => {
+  //   // Normalize panels after a short delay to ensure they're initialized
+  //   const timer = setTimeout(() => {
+  //     usePanelStore.getState().normalizeHorizontalPanels();
+  //   }, 100);
+  //   return () => clearTimeout(timer);
+  // }, []); // FIXED: Empty dependency array to prevent infinite loops
 
   return (
     <EditorProvider>

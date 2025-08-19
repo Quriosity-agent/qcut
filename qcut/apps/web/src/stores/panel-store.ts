@@ -241,9 +241,10 @@ function setPanelSize<
       action: "TOLERANCE-FIX-ALLOWED",
     });
     usePanelStore.setState({ [key]: clamped } as Pick<PanelState, K>);
-    debouncedNormalize(() =>
-      usePanelStore.getState().normalizeHorizontalPanels()
-    );
+    // TEMP FIX: Disable automatic normalization to prevent infinite loops
+    // debouncedNormalize(() =>
+    //   usePanelStore.getState().normalizeHorizontalPanels()
+    // );
   } else {
     tracePanelUpdate(`${source}:SKIP`, {
       current,
