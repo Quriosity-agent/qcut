@@ -88,7 +88,15 @@ export const TimelineTrackContent = memo(function TimelineTrackContent({
   const rippleEditingEnabled = useTimelineStore((s) => s.rippleEditingEnabled);
   const splitElement = useTimelineStore((s) => s.splitElement);
 
-  const currentTime = usePlaybackStore((s) => s.currentTime);
+  // Only subscribe to currentTime when dragging or for split operations
+  // This prevents re-renders at 60fps during playback
+  const isDragging = dragState.isDragging;
+  const currentTime = usePlaybackStore((s) => 
+    isDragging ? s.currentTime : 0
+  );
+  
+  // Get current time only when needed for split operations
+  const getCurrentTimeForSplit = () => usePlaybackStore.getState().currentTime;
 
   // Initialize snapping hook
   const { snapElementPosition, snapElementEdge } = useTimelineSnapping({
@@ -1163,7 +1171,7 @@ export const TimelineTrackContent = memo(function TimelineTrackContent({
               );
 
               const handleElementSplit = () => {
-                const splitTime = currentTime;
+                const splitTime = getCurrentTimeForSplit();
                 const effectiveStart = element.startTime;
                 const effectiveEnd =
                   element.startTime +

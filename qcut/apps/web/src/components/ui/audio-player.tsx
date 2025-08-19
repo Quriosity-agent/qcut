@@ -22,71 +22,158 @@ export const AudioPlayer = memo(function AudioPlayer({
   clipDuration,
   trackMuted = false,
 }: AudioPlayerProps) {
-  // Debug: Track render count to detect infinite loops
-  const componentName = "AudioPlayer";
-  const renderCount = useRef(0);
-  const lastRenderTime = useRef(Date.now());
-  
-  useEffect(() => {
-    renderCount.current++;
-    const now = Date.now();
-    const timeSince = now - lastRenderTime.current;
-    lastRenderTime.current = now;
-    
-    console.log(`[${componentName}] Render #${renderCount.current} at ${new Date().toISOString()} (${timeSince}ms since last)`);
-    
-    if (timeSince < 50) {
-      console.warn(`[${componentName}] ⚠️ Rapid re-rendering detected! Only ${timeSince}ms between renders`);
-    }
-    
-    if (renderCount.current > 100) {
-      console.error(`[${componentName}] ❌ EXCESSIVE RENDERS: ${renderCount.current} renders detected!`);
-      if (renderCount.current === 101) {
-        console.trace();
-      }
-    }
-  });
-
   const audioRef = useRef<HTMLAudioElement>(null);
-  const { isPlaying, currentTime, volume, speed, muted } = usePlaybackStore();
+  
+  // Use refs to avoid re-renders
+  const clipStartTimeRef = useRef(clipStartTime);
+  const trimStartRef = useRef(trimStart);
+  const trimEndRef = useRef(trimEnd);
+  const clipDurationRef = useRef(clipDuration);
+  const trackMutedRef = useRef(trackMuted);
+  const isPlayingRef = useRef(false);
+  const currentTimeRef = useRef(0);
+  
+  // Update refs when props change
+  useEffect(() => {
+    clipStartTimeRef.current = clipStartTime;
+    trimStartRef.current = trimStart;
+    trimEndRef.current = trimEnd;
+    clipDurationRef.current = clipDuration;
+    trackMutedRef.current = trackMuted;
+  }, [clipStartTime, trimStart, trimEnd, clipDuration, trackMuted]);
 
-  // Calculate if we're within this clip's timeline range
-  const clipEndTime = clipStartTime + (clipDuration - trimStart - trimEnd);
-  const isInClipRange =
-    currentTime >= clipStartTime && currentTime < clipEndTime;
+  // Subscribe to playback state without re-rendering
+  useEffect(() => {
+    const unsubscribeIsPlaying = usePlaybackStore.subscribe((state) => {
+      const prevIsPlaying = isPlayingRef.current;
+      isPlayingRef.current = state.isPlaying;
+      
+      // Handle play/pause changes
+      if (prevIsPlaying !== state.isPlaying) {
+        const audio = audioRef.current;
+        if (!audio) return;
+        
+        const clipEndTime = clipStartTimeRef.current + 
+          (clipDurationRef.current - trimStartRef.current - trimEndRef.current);
+        const isInClipRange = currentTimeRef.current >= clipStartTimeRef.current && 
+          currentTimeRef.current < clipEndTime;
+        
+        if (state.isPlaying && isInClipRange && !trackMutedRef.current) {
+          audio.play().catch(() => {});
+        } else {
+          audio.pause();
+        }
+      }
+      
+      return state.isPlaying;
+    });
+    
+    return unsubscribeIsPlaying;
+  }, []);
+  
+  // Subscribe to currentTime without re-rendering
+  useEffect(() => {
+    let rafId: number;
+    
+    const updateAudioPosition = () => {
+      const state = usePlaybackStore.getState();
+      const audio = audioRef.current;
+      if (!audio) return;
+      
+      currentTimeRef.current = state.currentTime;
+      
+      const clipEndTime = clipStartTimeRef.current + 
+        (clipDurationRef.current - trimStartRef.current - trimEndRef.current);
+      const isInClipRange = state.currentTime >= clipStartTimeRef.current && 
+        state.currentTime < clipEndTime;
+      
+      if (isInClipRange) {
+        const targetTime = Math.max(
+          trimStartRef.current,
+          Math.min(
+            clipDurationRef.current - trimEndRef.current,
+            state.currentTime - clipStartTimeRef.current + trimStartRef.current
+          )
+        );
+        
+        // Only update if significantly out of sync
+        if (Math.abs(audio.currentTime - targetTime) > 0.1) {
+          audio.currentTime = targetTime;
+        }
+        
+        // Start playing if needed
+        if (isPlayingRef.current && audio.paused && !trackMutedRef.current) {
+          audio.play().catch(() => {});
+        }
+      } else {
+        // Stop if outside range
+        if (!audio.paused) {
+          audio.pause();
+        }
+      }
+      
+      // Continue updating if playing
+      if (isPlayingRef.current) {
+        rafId = requestAnimationFrame(updateAudioPosition);
+      }
+    };
+    
+    // Start RAF loop if playing
+    const unsubscribe = usePlaybackStore.subscribe((state) => {
+      if (state.isPlaying && !rafId) {
+        rafId = requestAnimationFrame(updateAudioPosition);
+      } else if (!state.isPlaying && rafId) {
+        cancelAnimationFrame(rafId);
+        rafId = 0;
+      }
+      return state.isPlaying;
+    });
+    
+    return () => {
+      if (rafId) cancelAnimationFrame(rafId);
+      unsubscribe();
+    };
+  }, []);
+  
+  // Subscribe to volume/speed/muted without re-rendering
+  useEffect(() => {
+    const unsubscribeVolume = usePlaybackStore.subscribe((state) => {
+      const audio = audioRef.current;
+      if (audio) {
+        audio.volume = state.volume;
+        audio.playbackRate = state.speed;
+        audio.muted = state.muted || trackMutedRef.current;
+      }
+      return { volume: state.volume, speed: state.speed, muted: state.muted };
+    });
+    
+    return unsubscribeVolume;
+  }, []);
+  
+  // Handle track mute changes
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (audio) {
+      audio.muted = usePlaybackStore.getState().muted || trackMuted;
+    }
+  }, [trackMuted]);
 
   // Sync playback events
   useEffect(() => {
     const audio = audioRef.current;
-    if (!audio || !isInClipRange) return;
+    if (!audio) return;
 
     const handleSeekEvent = (e: CustomEvent) => {
-      // Always update audio time, even if outside clip range
       const timelineTime = e.detail.time;
       const audioTime = Math.max(
-        trimStart,
+        trimStartRef.current,
         Math.min(
-          clipDuration - trimEnd,
-          timelineTime - clipStartTime + trimStart
+          clipDurationRef.current - trimEndRef.current,
+          timelineTime - clipStartTimeRef.current + trimStartRef.current
         )
       );
       audio.currentTime = audioTime;
-    };
-
-    const handleUpdateEvent = (e: CustomEvent) => {
-      // Always update audio time, even if outside clip range
-      const timelineTime = e.detail.time;
-      const targetTime = Math.max(
-        trimStart,
-        Math.min(
-          clipDuration - trimEnd,
-          timelineTime - clipStartTime + trimStart
-        )
-      );
-
-      if (Math.abs(audio.currentTime - targetTime) > 0.5) {
-        audio.currentTime = targetTime;
-      }
+      currentTimeRef.current = timelineTime;
     };
 
     const handleSpeed = (e: CustomEvent) => {
@@ -94,49 +181,13 @@ export const AudioPlayer = memo(function AudioPlayer({
     };
 
     window.addEventListener("playback-seek", handleSeekEvent as EventListener);
-    window.addEventListener(
-      "playback-update",
-      handleUpdateEvent as EventListener
-    );
     window.addEventListener("playback-speed", handleSpeed as EventListener);
 
     return () => {
-      window.removeEventListener(
-        "playback-seek",
-        handleSeekEvent as EventListener
-      );
-      window.removeEventListener(
-        "playback-update",
-        handleUpdateEvent as EventListener
-      );
-      window.removeEventListener(
-        "playback-speed",
-        handleSpeed as EventListener
-      );
+      window.removeEventListener("playback-seek", handleSeekEvent as EventListener);
+      window.removeEventListener("playback-speed", handleSpeed as EventListener);
     };
-  }, [clipStartTime, trimStart, trimEnd, clipDuration, isInClipRange]);
-
-  // Sync playback state
-  useEffect(() => {
-    const audio = audioRef.current;
-    if (!audio) return;
-
-    if (isPlaying && isInClipRange && !trackMuted) {
-      audio.play().catch(() => {});
-    } else {
-      audio.pause();
-    }
-  }, [isPlaying, isInClipRange, trackMuted]);
-
-  // Sync volume and speed
-  useEffect(() => {
-    const audio = audioRef.current;
-    if (!audio) return;
-
-    audio.volume = volume;
-    audio.muted = muted || trackMuted;
-    audio.playbackRate = speed;
-  }, [volume, speed, muted, trackMuted]);
+  }, []);
 
   return (
     <audio
@@ -145,7 +196,7 @@ export const AudioPlayer = memo(function AudioPlayer({
       className={className}
       preload="auto"
       controls={false}
-      style={{ display: "none" }} // Audio elements don't need visual representation
+      style={{ display: "none" }}
       onContextMenu={(e) => e.preventDefault()}
     />
   );
