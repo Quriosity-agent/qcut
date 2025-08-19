@@ -170,7 +170,7 @@ export function PropertiesPanel() {
 
                     return (
                       <div key={elementId}>
-                        <MediaProperties element={element} />
+                        <MediaProperties element={element} trackId={trackId} />
                       </div>
                     );
                   }
