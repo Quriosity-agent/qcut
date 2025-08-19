@@ -2,61 +2,6 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { debugLog, debugError, isDebugEnabled } from "@/lib/debug-config";
 
-// DEBUG: Trace infinite loop on project click
-let updateCounter = 0;
-let lastUpdateTime = Date.now();
-const updateHistory: string[] = [];
-
-// Trace configuration constants
-const RAPID_UPDATE_WINDOW_MS = 10;
-const RAPID_UPDATE_THRESHOLD = 5;
-const INACTIVITY_RESET_MS = 1000;
-const MAX_HISTORY_SIZE = 200;
-
-/**
- * Trace panel-related updates when debug mode is enabled.
- * Adds an entry to update history and detects rapid update bursts.
- * @param source Short identifier for the caller.
- * @param data Optional payload to log with the trace line.
- */
-const tracePanelUpdate = (source: string, data?: unknown) => {
-  if (!isDebugEnabled()) return;
-
-  const now = Date.now();
-  const timeDiff = now - lastUpdateTime;
-
-  // Reset counter after inactivity period
-  if (timeDiff > INACTIVITY_RESET_MS) {
-    updateCounter = 0;
-    updateHistory.length = 0;
-  }
-  updateCounter++;
-
-  const logEntry = `[${updateCounter}] ${source} +${timeDiff}ms`;
-  updateHistory.push(logEntry);
-
-  // Cap history to prevent unbounded growth
-  if (updateHistory.length > MAX_HISTORY_SIZE) {
-    updateHistory.splice(0, updateHistory.length - MAX_HISTORY_SIZE);
-  }
-
-  debugLog(`🔍 [PanelStore] ${logEntry}`, data ?? "");
-
-  // Detect rapid updates
-  if (
-    timeDiff < RAPID_UPDATE_WINDOW_MS &&
-    updateCounter > RAPID_UPDATE_THRESHOLD
-  ) {
-    debugError("⚠️ RAPID UPDATES DETECTED!", {
-      count: updateCounter,
-      history: updateHistory.slice(-10),
-      source,
-    });
-  }
-
-  // Reset handled above to ensure the first post-inactivity event is [1]
-  lastUpdateTime = now;
-};
 
 // Circuit breaker for infinite loops
 let emergencyStop = false;
@@ -217,41 +162,19 @@ function setPanelSize<
   K extends "toolsPanel" | "previewPanel" | "propertiesPanel",
 >(key: K, size: number, source: string) {
   if (checkCircuitBreaker(source)) return;
-  if (!Number.isFinite(size)) {
-    tracePanelUpdate(`${source}:INVALID`, { size });
-    return;
-  }
+  if (!Number.isFinite(size)) return;
 
   const state = usePanelStore.getState();
-  tracePanelUpdate(`${source}:START`, {
-    incoming: size,
-    current: state[key],
-    diff: Math.abs(state[key] - size),
-  });
-
   const rounded = Math.round(size * 100) / 100;
   const clamped = Math.max(MIN_PANEL_SIZE, Math.min(MAX_PANEL_SIZE, rounded));
   const current = state[key];
 
   if (Math.abs(current - clamped) > SIZE_TOLERANCE) {
-    tracePanelUpdate(`${source}:UPDATE`, {
-      from: current,
-      to: clamped,
-      diff: Math.abs(current - clamped),
-      action: "TOLERANCE-FIX-ALLOWED",
-    });
     usePanelStore.setState({ [key]: clamped } as Pick<PanelState, K>);
     // TEMP FIX: Disable automatic normalization to prevent infinite loops
     // debouncedNormalize(() =>
     //   usePanelStore.getState().normalizeHorizontalPanels()
     // );
-  } else {
-    tracePanelUpdate(`${source}:SKIP`, {
-      current,
-      attempted: clamped,
-      diff: Math.abs(current - clamped),
-      reason: "TOLERANCE-FIX-BLOCKED",
-    });
   }
 }
 
@@ -290,10 +213,6 @@ export const usePanelStore = create<PanelState>()(
        * Uses SIZE_TOLERANCE to avoid churn; applies severe reset when totals are way off.
        */
       normalizeHorizontalPanels: () => {
-        tracePanelUpdate("normalizeHorizontalPanels:START", {
-          isNormalizing,
-        });
-
         const state = get();
         const totalRaw =
           state.toolsPanel + state.previewPanel + state.propertiesPanel;
@@ -301,21 +220,8 @@ export const usePanelStore = create<PanelState>()(
         // Round the total to 2 decimals to avoid floating point drift like 99.9899999999
         const total = Math.round(totalRaw * 100) / 100;
 
-        tracePanelUpdate("normalizeHorizontalPanels:CHECK", {
-          toolsPanel: state.toolsPanel,
-          previewPanel: state.previewPanel,
-          propertiesPanel: state.propertiesPanel,
-          total,
-        });
-
         // Use a larger tolerance to avoid constant corrections from floating-point precision issues
         if (Math.abs(total - 100) > SIZE_TOLERANCE) {
-          tracePanelUpdate("normalizeHorizontalPanels:NORMALIZE_NEEDED", {
-            total,
-            deviation: total - 100,
-          });
-          // Suppress console warnings; normalize silently
-
           // If the values are way off, reset to defaults
           if (total < 50 || total > 150) {
             debugError(
