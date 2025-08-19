@@ -45,7 +45,7 @@ interface TimelineStore {
   history: TimelineTrack[][];
   redoStack: TimelineTrack[][];
 
-  // Always returns properly ordered tracks with main track ensured (computed getter)
+  // Always returns properly ordered tracks with main track ensured
   tracks: TimelineTrack[];
 
   // Manual method if you need to force recomputation
@@ -218,8 +218,10 @@ export const useTimelineStore = create<TimelineStore>((set, get) => {
   // Helper to update tracks and maintain ordering
   const updateTracks = (newTracks: TimelineTrack[]) => {
     const tracksWithMain = ensureMainTrack(newTracks);
+    const sortedTracks = sortTracksByOrder(tracksWithMain);
     set({
       _tracks: tracksWithMain,
+      tracks: sortedTracks,
     });
   };
 
@@ -249,14 +251,11 @@ export const useTimelineStore = create<TimelineStore>((set, get) => {
 
   // Initialize with proper track ordering
   const initialTracks = ensureMainTrack([]);
+  const sortedInitialTracks = sortTracksByOrder(initialTracks);
 
   return {
     _tracks: initialTracks,
-    
-    // Computed getter - always returns stable sorted tracks
-    get tracks() {
-      return sortTracksByOrder(ensureMainTrack(get()._tracks));
-    },
+    tracks: sortedInitialTracks,
     history: [],
     redoStack: [],
     selectedElements: [],
@@ -1263,21 +1262,18 @@ export const useTimelineStore = create<TimelineStore>((set, get) => {
       const { _tracks } = get();
       if (_tracks.length === 0) return 0;
 
-      let maxDuration = 0;
-      for (const track of _tracks) {
-        for (const element of track.elements) {
+      const trackEndTimes = _tracks.map((track) =>
+        track.elements.reduce((maxEnd, element) => {
           const elementEnd =
             element.startTime +
             element.duration -
             element.trimStart -
             element.trimEnd;
-          if (elementEnd > maxDuration) {
-            maxDuration = elementEnd;
-          }
-        }
-      }
+          return Math.max(maxEnd, elementEnd);
+        }, 0)
+      );
 
-      return maxDuration;
+      return Math.max(...trackEndTimes, 0);
     },
 
     getProjectThumbnail: async (projectId) => {

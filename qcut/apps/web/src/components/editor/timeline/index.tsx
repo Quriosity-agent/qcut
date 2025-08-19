@@ -72,7 +72,7 @@ function TimelineComponent() {
 
   // Individual selectors to prevent infinite loops with useSyncExternalStore
   const tracks = useTimelineStore((s) => s.tracks);
-  const totalDuration = useTimelineStore((s) => s.getTotalDuration());
+  const getTotalDuration = useTimelineStore((s) => s.getTotalDuration);
   const clearSelectedElements = useTimelineStore(
     (s) => s.clearSelectedElements
   );
@@ -324,7 +324,7 @@ function TimelineComponent() {
   // Update timeline duration when tracks change
   useEffect(() => {
     // Only update if tracks actually change
-    // totalDuration is now selected directly from store
+    const totalDuration = getTotalDuration();
     const newDuration = Math.max(totalDuration, 10); // Minimum 10 seconds for empty timeline
     
     // Only update if duration actually changed to prevent loops

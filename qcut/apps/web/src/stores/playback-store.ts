@@ -9,10 +9,6 @@ interface PlaybackStore extends PlaybackState, PlaybackControls {
 }
 
 let playbackTimer: number | null = null;
-let cachedContentDuration = 0;
-let lastDurationCheck = 0;
-let cachedProjectFps = 30; // Default fallback
-const DURATION_CHECK_INTERVAL = 1000; // Check content duration once per second
 
 const startTimer = (store: () => PlaybackStore) => {
   if (playbackTimer) cancelAnimationFrame(playbackTimer);
@@ -27,20 +23,23 @@ const startTimer = (store: () => PlaybackStore) => {
 
       const newTime = state.currentTime + delta * state.speed;
 
-      // Cache content duration and project FPS, only update occasionally to prevent excessive store calls
-      if (now - lastDurationCheck > DURATION_CHECK_INTERVAL) {
-        cachedContentDuration = useTimelineStore.getState().getTotalDuration();
-        cachedProjectFps = useProjectStore.getState().activeProject?.fps ?? 30;
-        lastDurationCheck = now;
-      }
+      // Get actual content duration from timeline store
+      const actualContentDuration = useTimelineStore
+        .getState()
+        .getTotalDuration();
 
       // Stop at actual content end, not timeline duration (which has 10s minimum)
+      // It was either this or reducing default min timeline to 1 second
       const effectiveDuration =
-        cachedContentDuration > 0 ? cachedContentDuration : state.duration;
+        actualContentDuration > 0 ? actualContentDuration : state.duration;
 
       if (newTime >= effectiveDuration) {
         // When content completes, pause just before the end so we can see the last frame
-        const frameOffset = 1 / cachedProjectFps; // Stop 1 frame before end based on cached project FPS
+        const projectFps = useProjectStore.getState().activeProject?.fps;
+        if (!projectFps)
+          console.error("Project FPS is not set, assuming 30fps");
+
+        const frameOffset = 1 / (projectFps ?? 30); // Stop 1 frame before end based on project FPS
         const stopTime = Math.max(0, effectiveDuration - frameOffset);
 
         state.pause();

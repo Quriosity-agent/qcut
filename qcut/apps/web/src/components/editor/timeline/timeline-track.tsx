@@ -33,6 +33,30 @@ export const TimelineTrackContent = memo(function TimelineTrackContent({
   zoomLevel: number;
   onSnapPointChange?: (snapPoint: SnapPoint | null) => void;
 }) {
+  // Debug: Track render count to detect infinite loops
+  const componentName = `TimelineTrack-${track.id}`;
+  const renderCount = useRef(0);
+  const lastRenderTime = useRef(Date.now());
+  
+  useEffect(() => {
+    renderCount.current++;
+    const now = Date.now();
+    const timeSince = now - lastRenderTime.current;
+    lastRenderTime.current = now;
+    
+    console.log(`[${componentName}] Render #${renderCount.current} at ${new Date().toISOString()} (${timeSince}ms since last)`);
+    
+    if (timeSince < 50) {
+      console.warn(`[${componentName}] ⚠️ Rapid re-rendering detected! Only ${timeSince}ms between renders`);
+    }
+    
+    if (renderCount.current > 100) {
+      console.error(`[${componentName}] ❌ EXCESSIVE RENDERS: ${renderCount.current} renders detected!`);
+      if (renderCount.current === 101) {
+        console.trace();
+      }
+    }
+  });
 
   const {
     mediaItems,
@@ -692,7 +716,9 @@ export const TimelineTrackContent = memo(function TimelineTrackContent({
     e.preventDefault();
     e.stopPropagation();
 
-    // Drop handling
+    // Debug logging
+    console.log(
+      JSON.stringify({
         message: "Drop event started in timeline track",
         dataTransferTypes: Array.from(e.dataTransfer.types),
         trackId: track.id,
@@ -933,8 +959,23 @@ export const TimelineTrackContent = memo(function TimelineTrackContent({
           });
         } else {
           // Handle media items
-          // Processing media item drop
+          console.log("[TimelineTrack] Processing media item drop:", {
+            dragDataId: dragData.id,
+            dragDataType: dragData.type,
+            dragDataName: dragData.name,
+            mediaItemsCount: mediaItems.length,
+          });
+
           const mediaItem = mediaItems.find((item) => item.id === dragData.id);
+
+          console.log("[TimelineTrack] Found media item:", {
+            found: !!mediaItem,
+            mediaItemId: mediaItem?.id,
+            mediaItemUrl: mediaItem?.url,
+            isBlobUrl: mediaItem?.url?.startsWith("blob:"),
+            mediaItemType: mediaItem?.type,
+            mediaItemName: mediaItem?.name,
+          });
 
           if (!mediaItem) {
             toast.error("Media item not found");
