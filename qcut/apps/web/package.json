@@ -1,6 +1,6 @@
 {
-  "name": "opencut",
-  "version": "0.1.0",
+  "name": "qcut",
+  "version": "0.2.0",
   "private": true,
   "packageManager": "bun@1.2.18",
   "scripts": {

@@ -1,46 +1,10 @@
 import { MediaElement } from "@/types/timeline";
 import { PropertyGroup, PropertyItem, PropertyItemLabel, PropertyItemValue } from "./property-item";
 import { Slider } from "@/components/ui/slider";
-import { Input } from "@/components/ui/input";
 import { useState } from "react";
-import { useTimelineStore } from "@/stores/timeline-store";
 
-export function AudioProperties({ element, trackId }: { element: MediaElement; trackId: string }) {
-  const { updateMediaElement } = useTimelineStore();
-  const [volumeInput, setVolumeInput] = useState(
-    Math.round((element.volume || 1) * 100).toString()
-  );
-  
-  const parseAndValidateNumber = (
-    value: string,
-    min: number,
-    max: number,
-    fallback: number
-  ): number => {
-    const parsed = parseInt(value, 10);
-    if (isNaN(parsed)) return fallback;
-    return Math.max(min, Math.min(max, parsed));
-  };
-
-  const handleVolumeChange = (value: string) => {
-    setVolumeInput(value);
-    
-    if (value.trim() !== "") {
-      const volumePercent = parseAndValidateNumber(value, 0, 100, Math.round((element.volume || 1) * 100));
-      updateMediaElement(trackId, element.id, { volume: volumePercent / 100 });
-    }
-  };
-
-  const handleVolumeBlur = () => {
-    const volumePercent = parseAndValidateNumber(
-      volumeInput,
-      0,
-      100,
-      Math.round((element.volume || 1) * 100)
-    );
-    setVolumeInput(volumePercent.toString());
-    updateMediaElement(trackId, element.id, { volume: volumePercent / 100 });
-  };
+export function AudioProperties({ element }: { element: MediaElement }) {
+  const [volume, setVolume] = useState(100);
   
   return (
     <div className="space-y-4 p-5">
@@ -50,29 +14,30 @@ export function AudioProperties({ element, trackId }: { element: MediaElement; t
           <PropertyItemValue>
             <div className="flex items-center gap-2">
               <Slider
-                value={[(element.volume || 1) * 100]}
+                value={[volume]}
                 min={0}
                 max={100}
                 step={1}
-                onValueChange={([value]) => {
-                  updateMediaElement(trackId, element.id, { volume: value / 100 });
-                  setVolumeInput(value.toString());
-                }}
+                onValueChange={([value]) => setVolume(value)}
                 className="w-full"
               />
-              <Input
-                type="number"
-                value={volumeInput}
-                min={0}
-                max={100}
-                onChange={(e) => handleVolumeChange(e.target.value)}
-                onBlur={handleVolumeBlur}
-                className="w-12 !text-xs h-7 rounded-sm text-center
-                 [appearance:textfield]
-                 [&::-webkit-outer-spin-button]:appearance-none
-                 [&::-webkit-inner-spin-button]:appearance-none"
-              />
+              <span className="text-xs w-12">{volume}%</span>
             </div>
+          </PropertyItemValue>
+        </PropertyItem>
+      </PropertyGroup>
+      
+      <PropertyGroup title="Audio Info" defaultExpanded={false}>
+        <PropertyItem direction="column">
+          <PropertyItemLabel>Element Name</PropertyItemLabel>
+          <PropertyItemValue>
+            <span className="text-xs">{element.name}</span>
+          </PropertyItemValue>
+        </PropertyItem>
+        <PropertyItem direction="column">
+          <PropertyItemLabel>Duration</PropertyItemLabel>
+          <PropertyItemValue>
+            <span className="text-xs">{(element.duration / 1000).toFixed(2)}s</span>
           </PropertyItemValue>
         </PropertyItem>
       </PropertyGroup>
