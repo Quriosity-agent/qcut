@@ -7,6 +7,7 @@ import type { MediaItem } from "@/stores/media-store-types";
 import { Image, Loader2, Music, Plus, Video, Edit, Layers } from "lucide-react";
 import { useEffect, useRef, useState, useMemo } from "react";
 import { toast } from "sonner";
+import { debugLog, debugError } from "@/lib/debug-config";
 import { Button } from "@/components/ui/button";
 import { MediaDragOverlay } from "@/components/editor/media-panel/drag-overlay";
 import {
@@ -99,17 +100,17 @@ export function MediaView() {
         setProgress(p);
       });
 
-      // Add each processed media item to the store
-      for (const item of processedItems) {
-        if (!addMediaItem) {
-          throw new Error("Media store not ready");
-        }
-        await addMediaItem(activeProject.id, item);
+      // Add processed media items to the store in parallel
+      if (!addMediaItem) {
+        throw new Error("Media store not ready");
       }
+      await Promise.all(
+        processedItems.map((item) => addMediaItem(activeProject.id, item))
+      );
 
       toast.success(`Successfully uploaded ${processedItems.length} file(s)`);
     } catch (error) {
-      console.error("[Media View] Upload process failed:", error);
+      debugError("[Media View] Upload process failed:", error);
       toast.error("Failed to process files");
     } finally {
       setIsProcessing(false);
@@ -171,7 +172,7 @@ export function MediaView() {
 
       toast.success(`"${item.name}" loaded in adjustment panel`);
     } catch (error) {
-      console.error("Failed to load image for editing:", error);
+      debugError("Failed to load image for editing:", error);
       toast.error("Failed to load image for editing");
     }
   };
