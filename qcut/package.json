@@ -1,6 +1,6 @@
 {
   "name": "opencut",
-  "version": "0.1.0",
+  "version": "0.2.1",
   "description": "Open-source video editor",
   "author": "OpenCut Team",
   "main": "electron/main.js",

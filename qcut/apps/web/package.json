@@ -1,6 +1,6 @@
 {
-  "name": "opencut",
-  "version": "0.1.0",
+  "name": "@opencut/web",
+  "version": "0.2.1",
   "private": true,
   "packageManager": "bun@1.2.18",
   "scripts": {
