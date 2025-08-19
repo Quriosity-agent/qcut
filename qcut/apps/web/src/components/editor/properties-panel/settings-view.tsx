@@ -59,19 +59,19 @@ function ProjectInfoView() {
   const { canvasSize, canvasPresets, setCanvasSize } = useEditorStore();
   const { getDisplayName } = useAspectRatio();
 
-  const handleAspectRatioChange = (value: string) => {
+  const handleAspectRatioChange = useCallback((value: string) => {
     const preset = canvasPresets.find((p) => p.name === value);
     if (preset) {
       setCanvasSize({ width: preset.width, height: preset.height });
     }
-  };
+  }, [canvasPresets, setCanvasSize]);
 
-  const handleFpsChange = (value: string) => {
+  const handleFpsChange = useCallback((value: string) => {
     const fps = parseFloat(value);
     if (!isNaN(fps) && fps > 0) {
       updateProjectFps(fps);
     }
-  };
+  }, [updateProjectFps]);
 
   return (
     <div className="flex flex-col gap-4">
