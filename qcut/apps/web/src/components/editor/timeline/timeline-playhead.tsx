@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useEffect } from "react";
+import { useRef, useState, useEffect, memo } from "react";
 import { TimelineTrack } from "@/types/timeline";
 import { TIMELINE_CONSTANTS } from "@/constants/timeline-constants";
 import { useTimelinePlayhead } from "@/hooks/use-timeline-playhead";
@@ -20,7 +20,7 @@ interface TimelinePlayheadProps {
   isSnappingToPlayhead?: boolean;
 }
 
-export function TimelinePlayhead({
+export const TimelinePlayhead = memo(function TimelinePlayhead({
   currentTime,
   duration,
   zoomLevel,
@@ -127,7 +127,7 @@ export function TimelinePlayhead({
       />
     </div>
   );
-}
+});
 
 // Also export a hook for getting ruler handlers
 export function useTimelinePlayheadRuler({

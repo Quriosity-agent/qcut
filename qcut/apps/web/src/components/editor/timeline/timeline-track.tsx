@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useEffect } from "react";
+import { useRef, useState, useEffect, memo } from "react";
 import { useTimelineStore } from "@/stores/timeline-store";
 import { useAsyncMediaItems } from "@/hooks/use-async-media-store";
 import { toast } from "sonner";
@@ -24,7 +24,7 @@ import {
 import { useProjectStore } from "@/stores/project-store";
 import { useTimelineSnapping, SnapPoint } from "@/hooks/use-timeline-snapping";
 
-export function TimelineTrackContent({
+export const TimelineTrackContent = memo(function TimelineTrackContent({
   track,
   zoomLevel,
   onSnapPointChange,
@@ -1171,4 +1171,4 @@ export function TimelineTrackContent({
       </div>
     </div>
   );
-}
+});

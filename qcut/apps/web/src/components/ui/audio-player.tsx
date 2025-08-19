@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, memo } from "react";
 import { usePlaybackStore } from "@/stores/playback-store";
 
 interface AudioPlayerProps {
@@ -13,7 +13,7 @@ interface AudioPlayerProps {
   trackMuted?: boolean;
 }
 
-export function AudioPlayer({
+export const AudioPlayer = memo(function AudioPlayer({
   src,
   className = "",
   clipStartTime,
@@ -149,4 +149,4 @@ export function AudioPlayer({
       onContextMenu={(e) => e.preventDefault()}
     />
   );
-}
+});

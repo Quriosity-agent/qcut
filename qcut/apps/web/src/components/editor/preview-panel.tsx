@@ -45,39 +45,20 @@ interface ActiveElement {
 }
 
 export function PreviewPanel() {
-  // Debug: Track render count to detect infinite loops
-  const componentName = "PreviewPanel";
-  const renderCount = useRef(0);
-  const lastRenderTime = useRef(Date.now());
-  
-  useEffect(() => {
-    renderCount.current++;
-    const now = Date.now();
-    const timeSince = now - lastRenderTime.current;
-    lastRenderTime.current = now;
-    
-    console.log(`[${componentName}] Render #${renderCount.current} at ${new Date().toISOString()} (${timeSince}ms since last)`);
-    
-    if (timeSince < 50) {
-      console.warn(`[${componentName}] ⚠️ Rapid re-rendering detected! Only ${timeSince}ms between renders`);
-    }
-    
-    if (renderCount.current > 100) {
-      console.error(`[${componentName}] ❌ EXCESSIVE RENDERS: ${renderCount.current} renders detected!`);
-      if (renderCount.current === 101) {
-        console.trace();
-      }
-    }
-  });
-
-  const { tracks, getTotalDuration, updateTextElement } = useTimelineStore();
+  // Individual selectors to prevent object recreation on every render
+  const tracks = useTimelineStore((s) => s.tracks);
+  const totalDuration = useTimelineStore((s) => s.getTotalDuration());
+  const updateTextElement = useTimelineStore((s) => s.updateTextElement);
   const {
     mediaItems,
     loading: mediaItemsLoading,
     error: mediaItemsError,
   } = useAsyncMediaItems();
-  const { currentTime, toggle, setCurrentTime, isPlaying } = usePlaybackStore();
-  const { canvasSize } = useEditorStore();
+  const currentTime = usePlaybackStore((s) => s.currentTime);
+  const toggle = usePlaybackStore((s) => s.toggle);
+  const setCurrentTime = usePlaybackStore((s) => s.setCurrentTime);
+  const isPlaying = usePlaybackStore((s) => s.isPlaying);
+  const canvasSize = useEditorStore((s) => s.canvasSize);
   const previewRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [previewDimensions, setPreviewDimensions] = useState({
@@ -670,7 +651,7 @@ export function PreviewPanel() {
             currentTime={currentTime}
             setCurrentTime={setCurrentTime}
             toggle={toggle}
-            getTotalDuration={getTotalDuration}
+            getTotalDuration={() => totalDuration}
           />
         </div>
       </div>
@@ -688,7 +669,7 @@ export function PreviewPanel() {
           currentTime={currentTime}
           setCurrentTime={setCurrentTime}
           toggle={toggle}
-          getTotalDuration={getTotalDuration}
+          getTotalDuration={() => totalDuration}
         />
       )}
     </>
