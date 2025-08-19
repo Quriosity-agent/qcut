@@ -301,11 +301,33 @@ bun run electron:dev
 bun run build && bun run electron
 ```
 
+## v11 Analysis - CRITICAL: Tasks 1-6 Failed, Maximum Update Depth Error
+
+The v11 logs reveal that **Tasks 1-6 implementation FAILED** - the optimization attempts have escalated the issue to React's maximum update depth limit.
+
+### Critical Errors Found
+1. **Maximum update depth exceeded** (line 54): React threw fatal error due to infinite setState calls
+2. **getSnapshot infinite loop warning** (line 3): Still occurring despite selector fixes
+3. **useEffect dependency array issue** (line 65): "Maximum update depth" in useEffect with changing dependencies
+
+### Failure Analysis
+- **Tasks 1-6 made the problem WORSE**, not better
+- The store selector fixes created **NEW infinite loops** instead of fixing existing ones
+- React is now **crashing with fatal errors** instead of just warnings
+
+### Root Cause Evolution
+**Original**: Panel library rapid re-rendering (0-30ms intervals)
+**Current**: Store selector infinite loops causing React to hit maximum update depth
+
+### Immediate Priority
+**URGENT**: Revert all store selector changes from Tasks 1-6 and find the **actual source** of the infinite loops before attempting optimization.
+
 ## Investigation Status
 - ✅ **Root Cause Identified**: Shared state management causing cascading component updates
 - ✅ **Panel Normalization Fix**: Partially successful - changed problematic component from `fl` to `al` 
 - ✅ **Library Issues Confirmed**: react-resizable-panels v2.1.7 has known "Maximum update depth exceeded" bugs
 - ❌ **Broader Issue Discovered**: ALL components showing rapid re-rendering (0-30ms intervals)
+- 🚨 **CRITICAL FAILURE**: Tasks 1-6 implementation made infinite loops WORSE, causing React crashes
 - 🎯 **New Target**: Zustand store selectors causing shared state updates across component tree
-- ⏳ **In Progress**: Analyzing shared state dependencies and unstable selectors
-- 🎯 **Next**: Isolate and fix unstable Zustand selectors causing component chain reactions
+- ⏳ **URGENT**: Revert failed optimization attempts and identify root cause
+- 🎯 **Next**: Find actual source of infinite loops before attempting any more fixes
