@@ -12,12 +12,26 @@ export async function processMediaFiles(
   files: FileList | File[],
   onProgress?: (progress: number) => void
 ): Promise<ProcessedMediaItem[]> {
-  debugLog(
+  console.log(
+    "[Media Processing] 🔍 Received files parameter:",
+    files,
+    "Type:",
+    typeof files,
+    "Length:",
+    files?.length
+  );
+  console.log(
     "[Media Processing] 🚀 Starting processMediaFiles with",
-    files.length,
+    files?.length || 0,
     "files"
   );
-  const fileArray = Array.from(files);
+  debugLog(
+    "[Media Processing] 🚀 Starting processMediaFiles with",
+    files?.length || 0,
+    "files"
+  );
+  const fileArray = Array.from(files || []);
+  console.log("[Media Processing] 📝 Converted to array:", fileArray, "Length:", fileArray.length);
   const processedItems: ProcessedMediaItem[] = [];
 
   // Load utilities dynamically
@@ -28,11 +42,15 @@ export async function processMediaFiles(
   let completed = 0;
 
   for (const file of fileArray) {
+    console.log(
+      `[Media Processing] 🎬 Processing file: ${file.name} (${file.type}, ${(file.size / 1024 / 1024).toFixed(2)} MB)`
+    );
     debugLog(
       `[Media Processing] 🎬 Processing file: ${file.name} (${file.type}, ${(file.size / 1024 / 1024).toFixed(2)} MB)`
     );
 
     const fileType = mediaUtils.getFileType(file);
+    console.log(`[Media Processing] 📝 Detected file type: ${fileType}`);
     debugLog(`[Media Processing] 📝 Detected file type: ${fileType}`);
 
     if (!fileType) {
@@ -230,6 +248,7 @@ export async function processMediaFiles(
         fps: processedItem.fps,
       });
 
+      console.log("[Media Processing] ✅ Successfully processed item:", processedItem.name);
       processedItems.push(processedItem);
 
       // Yield back to the event loop to keep the UI responsive
@@ -244,6 +263,11 @@ export async function processMediaFiles(
         );
       }
     } catch (error) {
+      console.error(
+        "[Media Processing] ❌ Critical error processing file:",
+        file.name,
+        error
+      );
       debugError(
         "[Media Processing] ❌ Critical error processing file:",
         file.name,
@@ -283,6 +307,7 @@ export async function processMediaFiles(
     }
   }
 
+  console.log("[Media Processing] 📦 Returning", processedItems.length, "processed items");
   return processedItems;
 }
 

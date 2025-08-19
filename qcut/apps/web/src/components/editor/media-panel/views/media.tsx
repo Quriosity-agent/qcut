@@ -5,7 +5,7 @@ import { useDragDrop } from "@/hooks/use-drag-drop";
 import { useAsyncMediaStore } from "@/hooks/use-async-media-store";
 import type { MediaItem } from "@/stores/media-store-types";
 import { Image, Loader2, Music, Plus, Video, Edit, Layers } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useMemo } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { MediaDragOverlay } from "@/components/editor/media-panel/drag-overlay";
@@ -39,7 +39,8 @@ export function MediaView() {
     loading: mediaStoreLoading,
     error: mediaStoreError,
   } = useAsyncMediaStore();
-  const mediaItems = mediaStore?.mediaItems || [];
+  // Memoize mediaItems to ensure stable reference
+  const mediaItems = useMemo(() => mediaStore?.mediaItems || [], [mediaStore?.mediaItems]);
   const addMediaItem = mediaStore?.addMediaItem;
   const removeMediaItem = mediaStore?.removeMediaItem;
   const { activeProject } = useProjectStore();
@@ -50,7 +51,7 @@ export function MediaView() {
   const [progress, setProgress] = useState(0);
   const [searchQuery, setSearchQuery] = useState("");
   const [mediaFilter, setMediaFilter] = useState("all");
-  const [filteredMediaItems, setFilteredMediaItems] = useState(mediaItems);
+  const [filteredMediaItems, setFilteredMediaItems] = useState<MediaItem[]>([]);
 
   // Media store state monitoring (debug removed)
   // useEffect(() => {
@@ -113,6 +114,7 @@ export function MediaView() {
 
       // Dynamically import media processing utilities
       const { processMediaFiles } = await import("@/lib/media-processing");
+      console.log("[Media View] 📦 Files to pass:", files, "Length:", files.length, "Type:", typeof files);
       const processedItems = await processMediaFiles(files, (p) => {
         console.log(`[Media View] 📊 Upload progress: ${p}%`);
         setProgress(p);
