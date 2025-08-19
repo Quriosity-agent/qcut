@@ -117,9 +117,15 @@ export function MediaView() {
       console.log("[Media View] 🔍 Files is FileList?:", files instanceof FileList);
       console.log("[Media View] 🔍 Files is Array?:", Array.isArray(files));
       
+      // WORKAROUND: Convert FileList to Array immediately to prevent data loss
+      console.log("[Media View] 🔄 Converting FileList to Array to prevent data loss...");
+      const filesArray = Array.from(files);
+      console.log("[Media View] ✅ Converted to Array with length:", filesArray.length);
+      console.log("[Media View] 📋 Array contents:", filesArray.map(f => f.name));
+      
       // Dynamically import media processing utilities
       const { processMediaFiles } = await import("@/lib/media-processing");
-      const processedItems = await processMediaFiles(files, (p) => {
+      const processedItems = await processMediaFiles(filesArray, (p) => {
         console.log(`[Media View] 📊 Upload progress: ${p}%`);
         setProgress(p);
       });
