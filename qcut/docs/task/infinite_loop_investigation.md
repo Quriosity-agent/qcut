@@ -343,6 +343,29 @@ The v12 logs confirm that **reverting Tasks 1-6 was successful** - we're back to
 ### Root Cause Narrowed Down
 The issue is **NOT in store selectors** but in **component interdependencies** - when one timeline component updates, it triggers a chain reaction across related components.
 
+## v13 Analysis - PARTIAL SUCCESS: Component Chain Broken, Core Issue Remains
+
+The v13 logs show **significant improvement** but the root panel issue persists.
+
+### Optimization Results
+1. **Component chain partially broken** - TimelinePlayhead no longer in debug logs (RAF optimization working!)
+2. **AudioPlayer removed from cascade** - No AudioPlayer warnings (ref-based sync successful!)
+3. **Reduced rapid re-rendering** - PreviewToolbar and TimelineTrack still show warnings but less frequent
+4. **Maximum update depth still present** - Component `al` still triggering warnings (lines 3, 57)
+
+### What's Working
+- **TimelinePlayhead**: Successfully using RAF animation, no re-renders during playback
+- **AudioPlayer**: Ref-based sync eliminated re-renders
+- **TimelineTrack**: Only re-rendering during initialization, not during playback
+
+### What Still Needs Fixing
+- **Component `al`**: Still causing maximum update depth warnings (likely in MediaPanel)
+- **Initial render cascade**: Components still rapidly re-render during mount (lines 111-179)
+- **PreviewToolbar**: Still showing 11 rapid renders during initialization
+
+### Key Achievement
+**Playback performance improved** - The optimization successfully removed the 60fps re-render cascade during playback. The remaining issues are initialization/mount related, not playback related.
+
 ## Investigation Status
 - ✅ **Root Cause Identified**: Shared state management causing cascading component updates
 - ✅ **Panel Normalization Fix**: Partially successful - changed problematic component from `fl` to `al` 
@@ -351,4 +374,6 @@ The issue is **NOT in store selectors** but in **component interdependencies** -
 - ✅ **REVERT SUCCESSFUL**: Tasks 1-6 reverted, back to original problem state without crashes
 - 🎯 **NEW DISCOVERY**: Component chain reaction pattern identified (PreviewToolbar → TimelinePlayhead → TimelineTrack)
 - 🎯 **REFINED TARGET**: Component interdependencies causing cascade re-rendering, not store selectors
-- 🎯 **Next**: Break component dependency chain to prevent cascade re-rendering
+- ✅ **PARTIAL FIX SUCCESSFUL**: Phases 1-4 broke playback render chain, eliminated TimelinePlayhead and AudioPlayer from cascade
+- 🚨 **REMAINING ISSUE**: Component `al` still causing maximum update depth during initialization
+- 🎯 **Next**: Identify and fix component `al` (likely in MediaPanel) to resolve remaining infinite loop
