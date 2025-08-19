@@ -64,9 +64,6 @@ export function useSoundSearch(query: string, commercialOnly: boolean) {
             commercial_only: commercialOnly,
           });
           
-          // Check if we should ignore the result after async operation
-          if (ignore) return;
-          
           if (ipcResult.success) {
             console.log("✅ [Sound Search] IPC load more successful");
             response = { ok: true, json: () => Promise.resolve(ipcResult.data) };
