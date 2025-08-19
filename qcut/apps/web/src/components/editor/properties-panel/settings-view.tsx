@@ -142,10 +142,8 @@ const BlurPreview = memo(
       )}
       onClick={onSelect}
     >
-      <img
-        src="https://images.unsplash.com/photo-1501785888041-af3ef285b470?q=80&w=1470&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
-        alt={`Blur preview ${blur.label}`}
-        className="absolute inset-0 w-full h-full object-cover"
+      <div
+        className="absolute inset-0 w-full h-full bg-gradient-to-br from-blue-400 via-purple-500 to-pink-400"
         style={{ filter: `blur(${blur.value}px)` }}
       />
       <div className="absolute bottom-1 left-1 right-1 text-center">
