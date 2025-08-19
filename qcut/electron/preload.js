@@ -24,6 +24,14 @@ contextBridge.exposeInMainWorld("electronAPI", {
     clear: () => ipcRenderer.invoke("storage:clear"),
   },
 
+  // Theme operations
+  theme: {
+    get: () => ipcRenderer.invoke("theme:get"),
+    set: (theme) => ipcRenderer.invoke("theme:set", theme),
+    toggle: () => ipcRenderer.invoke("theme:toggle"),
+    isDark: () => ipcRenderer.invoke("theme:isDark"),
+  },
+
   // Generic IPC invoke method
   invoke: (channel, ...args) => ipcRenderer.invoke(channel, ...args),
 
