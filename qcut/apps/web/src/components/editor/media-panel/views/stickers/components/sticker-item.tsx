@@ -29,17 +29,9 @@ export function StickerItem({
     setHasError(false);
 
     try {
-      // Prefer high-contrast preview color based on theme
-      let preferredColor = "#111111"; // light theme default
-      try {
-        const isDark =
-          document.documentElement.classList.contains("dark") ||
-          window.matchMedia?.("(prefers-color-scheme: dark)")?.matches === true;
-        preferredColor = isDark ? "#FFFFFF" : "#111111";
-      } catch {}
-
+      // Force white icons for maximum contrast on dark UI
       const svgUrl = buildIconSvgUrl(collection, icon, {
-        color: preferredColor,
+        color: "#FFFFFF",
         width: 40,
         height: 40,
       });
@@ -65,8 +57,8 @@ export function StickerItem({
         <button
           type="button"
           className={cn(
-            "relative flex h-16 w-16 flex-col items-center justify-center rounded-md border border-border/80 bg-muted/40 transition-colors hover:border-primary hover:bg-accent overflow-hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
-            isSelected && "border-primary bg-accent"
+            "relative flex h-16 w-16 flex-col items-center justify-center rounded-md border border-border/80 bg-slate-800/60 transition-colors hover:border-primary hover:bg-slate-700/80 overflow-hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
+            isSelected && "border-primary bg-slate-700/80"
           )}
           onClick={handleClick}
           disabled={hasError || !imageUrl}
