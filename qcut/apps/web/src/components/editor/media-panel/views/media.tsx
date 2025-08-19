@@ -88,6 +88,11 @@ export function MediaView() {
       console.log("[Media View] ❌ No files provided");
       return;
     }
+    
+    // Convert FileList to array immediately to prevent it from being cleared
+    const fileArray = Array.from(files);
+    console.log("[Media View] 🔄 Converted to array immediately:", fileArray.length, "files");
+    
     if (!activeProject) {
       console.log("[Media View] ❌ No active project");
       toast.error("No active project");
@@ -103,7 +108,7 @@ export function MediaView() {
 
     try {
       console.log("[Media View] 📋 File details:");
-      Array.from(files).forEach((file, i) => {
+      fileArray.forEach((file, i) => {
         console.log(
           `  ${i + 1}. ${file.name} (${file.type}, ${(file.size / 1024 / 1024).toFixed(2)} MB)`
         );
@@ -114,8 +119,8 @@ export function MediaView() {
 
       // Dynamically import media processing utilities
       const { processMediaFiles } = await import("@/lib/media-processing");
-      console.log("[Media View] 📦 Files to pass:", files, "Length:", files.length, "Type:", typeof files);
-      const processedItems = await processMediaFiles(files, (p) => {
+      console.log("[Media View] 📦 Files to pass:", fileArray, "Length:", fileArray.length, "Type:", typeof fileArray);
+      const processedItems = await processMediaFiles(fileArray, (p) => {
         console.log(`[Media View] 📊 Upload progress: ${p}%`);
         setProgress(p);
       });
