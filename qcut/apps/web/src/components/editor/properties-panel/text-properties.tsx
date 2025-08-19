@@ -108,82 +108,72 @@ export function TextProperties({
     updateTextElement(trackId, element.id, { opacity: opacityPercent / 100 });
   };
 
-  // Position handlers
-  const handleXChange = (value: string) => {
-    setXInput(value);
+  // Generic handlers for position and rotation properties
+  type PositionProp = 'x' | 'y' | 'rotation';
+  
+  const getPropertyConfig = (prop: PositionProp) => {
+    const configs = {
+      x: {
+        input: xInput,
+        setter: setXInput,
+        min: -canvasSize.width / 2,
+        max: canvasSize.width / 2,
+        fallback: element.x || 0
+      },
+      y: {
+        input: yInput,
+        setter: setYInput,
+        min: -canvasSize.height / 2,
+        max: canvasSize.height / 2,
+        fallback: element.y || 0
+      },
+      rotation: {
+        input: rotationInput,
+        setter: setRotationInput,
+        min: -180,
+        max: 180,
+        fallback: element.rotation || 0
+      }
+    };
+    return configs[prop];
+  };
+
+  const handlePropertyChange = (prop: PositionProp, value: string) => {
+    const config = getPropertyConfig(prop);
+    config.setter(value);
 
     if (value.trim() !== "") {
-      const x = parseAndValidateValue(
+      const validatedValue = parseAndValidateValue(
         value,
-        -canvasSize.width / 2,
-        canvasSize.width / 2,
-        element.x || 0,
+        config.min,
+        config.max,
+        config.fallback,
         false
       );
-      updateTextElement(trackId, element.id, { x });
+      updateTextElement(trackId, element.id, { [prop]: validatedValue });
     }
   };
 
-  const handleXBlur = () => {
-    const x = parseAndValidateValue(
-      xInput,
-      -canvasSize.width / 2,
-      canvasSize.width / 2,
-      element.x || 0,
+  const handlePropertyBlur = (prop: PositionProp) => {
+    const config = getPropertyConfig(prop);
+    const validatedValue = parseAndValidateValue(
+      config.input,
+      config.min,
+      config.max,
+      config.fallback,
       false
     );
-    setXInput(x.toString());
-    updateTextElement(trackId, element.id, { x });
+    config.setter(validatedValue.toString());
+    updateTextElement(trackId, element.id, { [prop]: validatedValue });
   };
 
-  const handleYChange = (value: string) => {
-    setYInput(value);
-
-    if (value.trim() !== "") {
-      const y = parseAndValidateValue(
-        value,
-        -canvasSize.height / 2,
-        canvasSize.height / 2,
-        element.y || 0,
-        false
-      );
-      updateTextElement(trackId, element.id, { y });
-    }
-  };
-
-  const handleYBlur = () => {
-    const y = parseAndValidateValue(
-      yInput,
-      -canvasSize.height / 2,
-      canvasSize.height / 2,
-      element.y || 0,
-      false
-    );
-    setYInput(y.toString());
-    updateTextElement(trackId, element.id, { y });
-  };
-
-  // Rotation handlers
-  const handleRotationChange = (value: string) => {
-    setRotationInput(value);
-
-    if (value.trim() !== "") {
-      const rotation = parseAndValidateValue(value, -180, 180, element.rotation || 0, false);
-      updateTextElement(trackId, element.id, { rotation });
-    }
-  };
-
-  const handleRotationBlur = () => {
-    const rotation = parseAndValidateValue(
-      rotationInput,
-      -180,
-      180,
-      element.rotation || 0,
-      false
-    );
-    setRotationInput(rotation.toString());
-    updateTextElement(trackId, element.id, { rotation });
-  };
+  // Create specific handlers using the generic functions
+  const handleXChange = (value: string) => handlePropertyChange('x', value);
+  const handleXBlur = () => handlePropertyBlur('x');
+  const handleYChange = (value: string) => handlePropertyChange('y', value);
+  const handleYBlur = () => handlePropertyBlur('y');
+  const handleRotationChange = (value: string) => handlePropertyChange('rotation', value);
+  const handleRotationBlur = () => handlePropertyBlur('rotation');
 
   return (
     <div className="space-y-6 p-5">
