@@ -146,7 +146,7 @@ export function TimelineElement({
     (element.type === "media" || element.type === "sticker")
   ) {
     return (
-      <div className="absolute bg-gray-100 border border-gray-300 rounded text-gray-600 text-xs p-1">
+      <div className="absolute bg-card border border-border rounded text-muted-foreground text-xs p-1">
         Loading media...
       </div>
     );
@@ -445,11 +445,11 @@ export function TimelineElement({
             </div>
 
             {element.hidden && (
-              <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center pointer-events-none">
+              <div className="absolute inset-0 bg-background/50 flex items-center justify-center pointer-events-none">
                 {isAudio ? (
-                  <VolumeX className="h-6 w-6 text-white" />
+                  <VolumeX className="h-6 w-6 text-foreground" />
                 ) : (
-                  <EyeOff className="h-6 w-6 text-white" />
+                  <EyeOff className="h-6 w-6 text-foreground" />
                 )}
               </div>
             )}

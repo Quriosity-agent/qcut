@@ -188,7 +188,7 @@ export function Text2ImageView() {
                 </FloatingActionPanelTrigger>
 
                 {open && (
-                  <div className="w-full border rounded-md bg-white/90 dark:bg-zinc-800/90 backdrop-blur-sm max-h-[250px] overflow-y-auto shadow-md mt-1">
+                  <div className="w-full border rounded-md bg-background/90 backdrop-blur-sm max-h-[250px] overflow-y-auto shadow-md mt-1">
                     <div className="p-2 space-y-1">
                       {Object.entries(TEXT2IMAGE_MODELS).map(([key, model]) => (
                         <FloatingActionPanelModelOption
@@ -254,44 +254,44 @@ export function Text2ImageView() {
               <Select value={imageSize} onValueChange={setImageSize}>
                 <SelectTrigger
                   id="size"
-                  className="justify-between text-zinc-900 dark:text-zinc-100"
+                  className="justify-between text-foreground"
                 >
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="z-[9999] bg-white dark:bg-zinc-800 border shadow-lg">
+                <SelectContent className="z-[9999] bg-background border shadow-lg">
                   <SelectItem
                     value="square"
-                    className="text-zinc-900 dark:text-zinc-100"
+                    className="text-foreground"
                   >
                     Square
                   </SelectItem>
                   <SelectItem
                     value="square_hd"
-                    className="text-zinc-900 dark:text-zinc-100"
+                    className="text-foreground"
                   >
                     Square HD
                   </SelectItem>
                   <SelectItem
                     value="landscape_4_3"
-                    className="text-zinc-900 dark:text-zinc-100"
+                    className="text-foreground"
                   >
                     Landscape (4:3)
                   </SelectItem>
                   <SelectItem
                     value="landscape_16_9"
-                    className="text-zinc-900 dark:text-zinc-100"
+                    className="text-foreground"
                   >
                     Landscape (16:9)
                   </SelectItem>
                   <SelectItem
                     value="portrait_4_3"
-                    className="text-zinc-900 dark:text-zinc-100"
+                    className="text-foreground"
                   >
                     Portrait (4:3)
                   </SelectItem>
                   <SelectItem
                     value="portrait_16_9"
-                    className="text-zinc-900 dark:text-zinc-100"
+                    className="text-foreground"
                   >
                     Portrait (16:9)
                   </SelectItem>

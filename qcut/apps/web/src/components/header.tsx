@@ -4,18 +4,20 @@ import { Link } from "@tanstack/react-router";
 import { Button } from "./ui/button";
 import { ArrowRight } from "lucide-react";
 import { HeaderBase } from "./header-base";
+import { ThemeToggle } from "./ui/theme-toggle";
 
 export function Header() {
   const leftContent = (
     <Link to="/" className="flex items-center gap-3">
-      <img src="./logo.svg" alt="QCut Logo" width={32} height={32} />
+      <img src="./logo.svg" alt="QCut Logo" className="invert dark:invert-0" width={32} height={32} />
       <span className="text-xl font-medium hidden md:block">QCut</span>
     </Link>
   );
 
   const rightContent = (
     <nav className="flex items-center gap-1">
-      <div className="flex items-center gap-4">
+      <ThemeToggle />
+      <div className="flex items-center gap-4 ml-2">
         <Link
           to="/blog"
           className="text-sm p-0 text-muted-foreground hover:text-foreground transition-colors"
@@ -41,7 +43,7 @@ export function Header() {
   return (
     <div className="mx-4 md:mx-0">
       <HeaderBase
-        className="bg-accent border rounded-2xl max-w-3xl mx-auto mt-4 pl-4 pr-[14px]"
+        className="bg-background border rounded-2xl max-w-3xl mx-auto mt-4 pl-4 pr-[14px]"
         leftContent={leftContent}
         rightContent={rightContent}
       />

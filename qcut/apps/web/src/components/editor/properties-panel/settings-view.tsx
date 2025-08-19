@@ -149,7 +149,7 @@ const BlurPreview = memo(
         style={{ filter: `blur(${blur.value}px)` }}
       />
       <div className="absolute bottom-1 left-1 right-1 text-center">
-        <span className="text-xs text-white bg-black/50 px-1 rounded">
+        <span className="text-xs text-foreground bg-background/50 px-1 rounded">
           {blur.label}
         </span>
       </div>
