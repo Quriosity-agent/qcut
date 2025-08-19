@@ -82,7 +82,7 @@ export const useExportStore = create<ExportStore>()(
     (set, get) => ({
       // Initial state
       isDialogOpen: false,
-      panelView: "properties",
+      panelView: "settings",
       settings: getDefaultSettings(),
       progress: getDefaultProgress(),
       error: null,
