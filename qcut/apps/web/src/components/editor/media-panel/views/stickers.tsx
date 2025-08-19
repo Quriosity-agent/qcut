@@ -67,7 +67,7 @@ function StickerItem({
         width: 32,
         height: 32,
       });
-      console.log("[StickerItem] Built SVG URL:", { collection, icon, svgUrl });
+      // debugLog("[StickerItem] Built SVG URL:", { collection, icon, svgUrl });
       setImageUrl(svgUrl);
     } catch (error) {
       console.error("[StickerItem] Error building SVG URL:", error);
@@ -109,15 +109,9 @@ function StickerItem({
                   (isLoading || hasError) && "hidden"
                 )}
                 onLoad={() => {
-                  console.log("[StickerItem] Image loaded successfully:", imageUrl);
                   setIsLoading(false);
                 }}
-                onError={(e) => {
-                  console.error("[StickerItem] Image failed to load:", {
-                    url: imageUrl,
-                    error: e,
-                    target: e.currentTarget.src
-                  });
+                onError={() => {
                   setHasError(true);
                   setIsLoading(false);
                 }}
