@@ -117,6 +117,8 @@ export function TextProperties({
             <PropertyItemValue>
               <div className="flex items-center gap-2">
                 <Button
+                  type="button"
+                  aria-pressed={element.fontWeight === "bold"}
                   variant={element.fontWeight === "bold" ? "default" : "outline"}
                   size="sm"
                   onClick={() =>
@@ -130,6 +132,8 @@ export function TextProperties({
                   B
                 </Button>
                 <Button
+                  type="button"
+                  aria-pressed={element.fontStyle === "italic"}
                   variant={element.fontStyle === "italic" ? "default" : "outline"}
                   size="sm"
                   onClick={() =>
@@ -143,6 +147,8 @@ export function TextProperties({
                   I
                 </Button>
                 <Button
+                  type="button"
+                  aria-pressed={element.textDecoration === "underline"}
                   variant={
                     element.textDecoration === "underline" ? "default" : "outline"
                   }
@@ -160,6 +166,8 @@ export function TextProperties({
                   U
                 </Button>
                 <Button
+                  type="button"
+                  aria-pressed={element.textDecoration === "line-through"}
                   variant={
                     element.textDecoration === "line-through"
                       ? "default"
