@@ -72,7 +72,6 @@ export const useStickersStore = create<StickersStore>()(
 
           // console.log('[STICKER DEBUG] fetchCollections received collections:', collectionsArray.length);
 
-
           // Sort by popularity (total icons)
           collectionsArray.sort((a, b) => b.total - a.total);
 
@@ -90,7 +89,6 @@ export const useStickersStore = create<StickersStore>()(
               : "Failed to load collections";
 
           // console.log('[STICKER DEBUG] fetchCollections failed:', error);
-
 
           set({
             error: errorMessage,
@@ -140,7 +138,6 @@ export const useStickersStore = create<StickersStore>()(
             error instanceof Error ? error.message : "Search failed";
 
           // console.log('[STICKER DEBUG] searchIcons failed:', error);
-
 
           set({
             error: errorMessage,

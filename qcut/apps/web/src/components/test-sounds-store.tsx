@@ -1,15 +1,15 @@
-import { useSoundsStore } from '@/stores/sounds-store';
-import { useEffect } from 'react';
+import { useSoundsStore } from "@/stores/sounds-store";
+import { useEffect } from "react";
 
 export function TestSoundsStore() {
   const store = useSoundsStore();
-  
+
   useEffect(() => {
-    console.log('Sounds store loaded successfully:', {
+    console.log("Sounds store loaded successfully:", {
       hasStore: !!store,
       searchQuery: store.searchQuery,
       isLoading: store.isLoading,
-      savedSounds: store.savedSounds.length
+      savedSounds: store.savedSounds.length,
     });
   }, [store]);
 

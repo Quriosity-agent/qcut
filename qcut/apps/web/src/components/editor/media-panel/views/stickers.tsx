@@ -310,8 +310,11 @@ export function StickersView() {
 
   const handleStickerSelect = useCallback(
     async (iconId: string, name: string) => {
-      console.log("[StickersView] handleStickerSelect called:", { iconId, name });
-      
+      console.log("[StickersView] handleStickerSelect called:", {
+        iconId,
+        name,
+      });
+
       if (!activeProject) {
         console.error("[StickersView] No active project");
         toast.error("No project selected");
@@ -322,16 +325,19 @@ export function StickersView() {
         // Download sticker as File object (no blob URLs!)
         console.log("[StickersView] Downloading sticker as File:", iconId);
         const svgFile = await downloadStickerAsFile(iconId, name);
-        
+
         console.log("[StickersView] Sticker downloaded as File:", {
           name: svgFile.name,
           size: svgFile.size,
-          type: svgFile.type
+          type: svgFile.type,
         });
 
         // Add media item directly with File object
         // No URL needed - storage service will handle data URL conversion
-        console.log("[StickersView] Adding media item to project:", activeProject.id);
+        console.log(
+          "[StickersView] Adding media item to project:",
+          activeProject.id
+        );
         await addMediaItem(activeProject.id, {
           name: svgFile.name,
           type: "image",

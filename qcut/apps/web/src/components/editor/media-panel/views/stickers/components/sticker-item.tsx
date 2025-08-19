@@ -75,7 +75,10 @@ export function StickerItem({
             <img
               src={imageUrl}
               alt={name || icon}
-              className={cn("h-8 w-8 object-contain", (isLoading || hasError) && "hidden")}
+              className={cn(
+                "h-8 w-8 object-contain",
+                (isLoading || hasError) && "hidden"
+              )}
               onLoad={() => setIsLoading(false)}
               onError={() => {
                 setHasError(true);

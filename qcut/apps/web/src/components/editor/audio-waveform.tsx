@@ -69,7 +69,9 @@ const AudioWaveform: React.FC<AudioWaveformProps> = ({
         newWaveSurfer.on("error", (err) => {
           // Ignore expected abort errors triggered during cleanup/destroy
           const message = String(err?.message || err || "");
-          const isAbort = (err && (err.name === "AbortError")) || message.toLowerCase().includes("abort");
+          const isAbort =
+            (err && err.name === "AbortError") ||
+            message.toLowerCase().includes("abort");
           if (isAbort) {
             return;
           }
@@ -83,7 +85,9 @@ const AudioWaveform: React.FC<AudioWaveformProps> = ({
       } catch (err) {
         // Ignore expected AbortError during rapid unmount/re-init cycles
         const message = String((err as Error)?.message || err || "");
-        const isAbort = (err && (err as Error & { name?: string }).name === "AbortError") || message.toLowerCase().includes("abort");
+        const isAbort =
+          (err && (err as Error & { name?: string }).name === "AbortError") ||
+          message.toLowerCase().includes("abort");
         if (!isAbort && mounted) {
           setError(true);
           setIsLoading(false);

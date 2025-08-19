@@ -59,19 +59,25 @@ function ProjectInfoView() {
   const { canvasSize, canvasPresets, setCanvasSize } = useEditorStore();
   const { getDisplayName, currentPreset } = useAspectRatio();
 
-  const handleAspectRatioChange = useCallback((value: string) => {
-    const preset = canvasPresets.find((p) => p.name === value);
-    if (preset) {
-      setCanvasSize({ width: preset.width, height: preset.height });
-    }
-  }, [canvasPresets, setCanvasSize]);
+  const handleAspectRatioChange = useCallback(
+    (value: string) => {
+      const preset = canvasPresets.find((p) => p.name === value);
+      if (preset) {
+        setCanvasSize({ width: preset.width, height: preset.height });
+      }
+    },
+    [canvasPresets, setCanvasSize]
+  );
 
-  const handleFpsChange = useCallback((value: string) => {
-    const fps = parseFloat(value);
-    if (!isNaN(fps) && fps > 0) {
-      updateProjectFps(fps);
-    }
-  }, [updateProjectFps]);
+  const handleFpsChange = useCallback(
+    (value: string) => {
+      const fps = parseFloat(value);
+      if (!isNaN(fps) && fps > 0) {
+        updateProjectFps(fps);
+      }
+    },
+    [updateProjectFps]
+  );
 
   return (
     <div className="flex flex-col gap-4">

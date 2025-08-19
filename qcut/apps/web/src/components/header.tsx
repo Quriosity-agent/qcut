@@ -9,7 +9,13 @@ import { ThemeToggle } from "./ui/theme-toggle";
 export function Header() {
   const leftContent = (
     <Link to="/" className="flex items-center gap-3">
-      <img src="./logo.svg" alt="QCut Logo" className="invert dark:invert-0" width={32} height={32} />
+      <img
+        src="./logo.svg"
+        alt="QCut Logo"
+        className="invert dark:invert-0"
+        width={32}
+        height={32}
+      />
       <span className="text-xl font-medium hidden md:block">QCut</span>
     </Link>
   );

@@ -391,9 +391,9 @@ export class ExportEngine {
       // Debug logging for sticker export
       debugLog(`[STICKER_FRAME] Frame time: ${currentTime.toFixed(3)}s`);
       debugLog(`[STICKER_FRAME] Found ${visibleStickers.length} stickers for this frame`);
-      debugLog(`[STICKER_FRAME] Sticker IDs:`, visibleStickers.map(s => s.id));
-      debugLog(`[STICKER_DEBUG] All stickers in store:`, Array.from(stickersStore.overlayStickers.values()));
-      debugLog(`[STICKER_DEBUG] Visible stickers:`, visibleStickers);
+      debugLog("[STICKER_FRAME] Sticker IDs:", visibleStickers.map(s => s.id));
+      debugLog("[STICKER_DEBUG] All stickers in store:", Array.from(stickersStore.overlayStickers.values()));
+      debugLog("[STICKER_DEBUG] Visible stickers:", visibleStickers);
 
       if (visibleStickers.length === 0) {
         debugLog(`[STICKER_DEBUG] No visible stickers at time ${currentTime}, skipping render`);
@@ -422,7 +422,7 @@ export class ExportEngine {
       const hasContent = Array.from(imageData.data).some((value, index) => 
         index % 4 !== 3 && value > 10 // Check RGB channels, ignore alpha
       );
-      debugLog(`[FRAME_CANVAS] Canvas has visible content after stickers:`, hasContent);
+      debugLog("[FRAME_CANVAS] Canvas has visible content after stickers:", hasContent);
     } catch (error) {
       debugError("[ExportEngine] Failed to render overlay stickers:", error);
       debugError(`[ExportEngine] Failed at time ${currentTime} with ${visibleStickers?.length || 0} stickers`);

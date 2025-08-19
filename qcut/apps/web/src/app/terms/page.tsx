@@ -54,10 +54,10 @@ export default function TermsPage() {
                     Welcome to QCut
                   </h2>
                   <p className="mb-4">
-                    QCut is a free, open-source video editor that runs in
-                    your browser. By using our service, you agree to these
-                    terms. We've designed these terms to be fair and protect
-                    both you and our project.
+                    QCut is a free, open-source video editor that runs in your
+                    browser. By using our service, you agree to these terms.
+                    We've designed these terms to be fair and protect both you
+                    and our project.
                   </p>
                   <p>
                     <strong>Key principle:</strong> Your content stays on your
@@ -88,9 +88,7 @@ export default function TermsPage() {
                     <li>
                       You can export and use your content however you choose
                     </li>
-                    <li>
-                      No watermarks, no licensing restrictions from QCut
-                    </li>
+                    <li>No watermarks, no licensing restrictions from QCut</li>
                   </ul>
                 </section>
 
@@ -136,9 +134,8 @@ export default function TermsPage() {
                     <li>You can delete your account at any time</li>
                   </ul>
                   <p>
-                    QCut is provided "as is" without warranties. While we
-                    strive for reliability, we can't guarantee uninterrupted
-                    service.
+                    QCut is provided "as is" without warranties. While we strive
+                    for reliability, we can't guarantee uninterrupted service.
                   </p>
                 </section>
 
@@ -202,8 +199,8 @@ export default function TermsPage() {
                     Limitations and Liability
                   </h2>
                   <p className="mb-4">
-                    QCut is provided free of charge. To the extent permitted
-                    by law:
+                    QCut is provided free of charge. To the extent permitted by
+                    law:
                   </p>
                   <ul className="list-disc pl-6 mb-4 space-y-2">
                     <li>We're not liable for any loss of data or content</li>
@@ -246,9 +243,7 @@ export default function TermsPage() {
 
                 <section>
                   <h2 className="text-2xl font-semibold mb-4">Termination</h2>
-                  <p className="mb-4">
-                    You can stop using QCut at any time:
-                  </p>
+                  <p className="mb-4">You can stop using QCut at any time:</p>
                   <ul className="list-disc pl-6 mb-4 space-y-2">
                     <li>Delete your account through your profile settings</li>
                     <li>Clear your browser data to remove local projects</li>

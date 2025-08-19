@@ -259,22 +259,13 @@ export function Text2ImageView() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="z-[9999] bg-background border shadow-lg">
-                  <SelectItem
-                    value="square"
-                    className="text-foreground"
-                  >
+                  <SelectItem value="square" className="text-foreground">
                     Square
                   </SelectItem>
-                  <SelectItem
-                    value="square_hd"
-                    className="text-foreground"
-                  >
+                  <SelectItem value="square_hd" className="text-foreground">
                     Square HD
                   </SelectItem>
-                  <SelectItem
-                    value="landscape_4_3"
-                    className="text-foreground"
-                  >
+                  <SelectItem value="landscape_4_3" className="text-foreground">
                     Landscape (4:3)
                   </SelectItem>
                   <SelectItem
@@ -283,16 +274,10 @@ export function Text2ImageView() {
                   >
                     Landscape (16:9)
                   </SelectItem>
-                  <SelectItem
-                    value="portrait_4_3"
-                    className="text-foreground"
-                  >
+                  <SelectItem value="portrait_4_3" className="text-foreground">
                     Portrait (4:3)
                   </SelectItem>
-                  <SelectItem
-                    value="portrait_16_9"
-                    className="text-foreground"
-                  >
+                  <SelectItem value="portrait_16_9" className="text-foreground">
                     Portrait (16:9)
                   </SelectItem>
                 </SelectContent>

@@ -938,18 +938,18 @@ export function TimelineTrackContent({
             dragDataId: dragData.id,
             dragDataType: dragData.type,
             dragDataName: dragData.name,
-            mediaItemsCount: mediaItems.length
+            mediaItemsCount: mediaItems.length,
           });
-          
+
           const mediaItem = mediaItems.find((item) => item.id === dragData.id);
-          
+
           console.log("[TimelineTrack] Found media item:", {
             found: !!mediaItem,
             mediaItemId: mediaItem?.id,
             mediaItemUrl: mediaItem?.url,
-            isBlobUrl: mediaItem?.url?.startsWith('blob:'),
+            isBlobUrl: mediaItem?.url?.startsWith("blob:"),
             mediaItemType: mediaItem?.type,
-            mediaItemName: mediaItem?.name
+            mediaItemName: mediaItem?.name,
           });
 
           if (!mediaItem) {

@@ -13,7 +13,8 @@ export function ThemeToggle() {
     setMounted(true);
   }, []);
 
-  if (!mounted) return <Button variant="text" size="icon" disabled className="opacity-0" />;
+  if (!mounted)
+    return <Button variant="text" size="icon" disabled className="opacity-0" />;
 
   return (
     <Button

@@ -141,9 +141,7 @@ function PrivacyPage() {
                   <h2 className="text-2xl font-semibold mb-4">
                     Third-Party Services
                   </h2>
-                  <p className="mb-4">
-                    QCut integrates with these services:
-                  </p>
+                  <p className="mb-4">QCut integrates with these services:</p>
                   <ul className="list-disc pl-6 mb-4 space-y-2">
                     <li>
                       <strong>Google OAuth:</strong> For optional Google sign-in
@@ -178,8 +176,8 @@ function PrivacyPage() {
                     Open Source Transparency
                   </h2>
                   <p className="mb-4">
-                    QCut is completely open source. You can review our code,
-                    see exactly how we handle data, and even self-host the
+                    QCut is completely open source. You can review our code, see
+                    exactly how we handle data, and even self-host the
                     application if you prefer.
                   </p>
                   <p>

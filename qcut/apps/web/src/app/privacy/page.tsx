@@ -30,10 +30,7 @@ export default function PrivacyPage() {
         <div className="relative container mx-auto px-4 py-16">
           <div className="max-w-4xl mx-auto">
             <div className="text-center mb-10">
-              <Link
-                href="https://github.com/QCut-app/QCut"
-                target="_blank"
-              >
+              <Link href="https://github.com/QCut-app/QCut" target="_blank">
                 <Badge variant="secondary" className="gap-2 mb-6">
                   <GithubIcon className="h-3 w-3" />
                   Open Source
@@ -148,9 +145,7 @@ export default function PrivacyPage() {
                   <h2 className="text-2xl font-semibold mb-4">
                     Third-Party Services
                   </h2>
-                  <p className="mb-4">
-                    QCut integrates with these services:
-                  </p>
+                  <p className="mb-4">QCut integrates with these services:</p>
                   <ul className="list-disc pl-6 mb-4 space-y-2">
                     <li>
                       <strong>Google OAuth:</strong> For optional Google sign-in
@@ -185,8 +180,8 @@ export default function PrivacyPage() {
                     Open Source Transparency
                   </h2>
                   <p className="mb-4">
-                    QCut is completely open source. You can review our code,
-                    see exactly how we handle data, and even self-host the
+                    QCut is completely open source. You can review our code, see
+                    exactly how we handle data, and even self-host the
                     application if you prefer.
                   </p>
                   <p>
