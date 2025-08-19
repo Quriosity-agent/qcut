@@ -137,12 +137,15 @@ const BlurPreview = memo(
     isSelected: boolean;
     onSelect: () => void;
   }) => (
-    <div
+    <button
+      type="button"
       className={cn(
-        "w-full aspect-square rounded-sm cursor-pointer hover:outline-2 hover:outline-primary relative overflow-hidden",
+        "w-full aspect-square rounded-sm cursor-pointer hover:outline-2 hover:outline-primary relative overflow-hidden focus-visible:outline-2 focus-visible:outline-primary",
         isSelected && "outline-2 outline-primary"
       )}
       onClick={onSelect}
+      aria-pressed={isSelected}
+      aria-label={`Select ${blur.label.toLowerCase()} blur`}
     >
       <div
         className="absolute inset-0 w-full h-full bg-gradient-to-br from-blue-400 via-purple-500 to-pink-400"
@@ -153,7 +156,7 @@ const BlurPreview = memo(
           {blur.label}
         </span>
       </div>
-    </div>
+    </button>
   )
 );
 
@@ -206,16 +209,20 @@ function BackgroundView() {
   const colorPreviews = useMemo(
     () =>
       colors.map((color) => (
-        <div
+        <button
+          type="button"
           key={color}
           className={cn(
-            "w-full aspect-square rounded-sm cursor-pointer hover:border-2 hover:border-primary",
+            "w-full aspect-square rounded-sm cursor-pointer hover:border-2 hover:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
             isColorBackground &&
               color === currentBackgroundColor &&
               "border-2 border-primary"
           )}
           style={{ backgroundColor: color }}
           onClick={() => handleColorSelect(color)}
+          aria-pressed={isColorBackground && color === currentBackgroundColor}
+          aria-label={`Select color ${color}`}
+          title={`Select color ${color}`}
         />
       )),
     [isColorBackground, currentBackgroundColor, handleColorSelect]
@@ -229,9 +236,14 @@ function BackgroundView() {
 
       <PropertyGroup title="Color">
         <div className="grid grid-cols-4 gap-2 w-full">
-          <div className="w-full aspect-square rounded-sm cursor-pointer border border-foreground/15 hover:border-primary flex items-center justify-center">
+          <button
+            type="button"
+            className="w-full aspect-square rounded-sm cursor-pointer border border-foreground/15 hover:border-primary flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            aria-label="Pick a custom color"
+            title="Pick a custom color"
+          >
             <PipetteIcon className="size-4" />
-          </div>
+          </button>
           {colorPreviews}
         </div>
       </PropertyGroup>
