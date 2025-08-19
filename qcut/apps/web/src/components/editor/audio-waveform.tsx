@@ -67,7 +67,12 @@ const AudioWaveform: React.FC<AudioWaveformProps> = ({
         });
 
         newWaveSurfer.on("error", (err) => {
-          console.error("WaveSurfer error:", err);
+          // Ignore expected abort errors triggered during cleanup/destroy
+          const message = String(err?.message || err || "");
+          const isAbort = (err && (err.name === "AbortError")) || message.toLowerCase().includes("abort");
+          if (isAbort) {
+            return;
+          }
           if (mounted) {
             setError(true);
             setIsLoading(false);
@@ -76,8 +81,10 @@ const AudioWaveform: React.FC<AudioWaveformProps> = ({
 
         await newWaveSurfer.load(audioUrl);
       } catch (err) {
-        console.error("Failed to initialize WaveSurfer:", err);
-        if (mounted) {
+        // Ignore expected AbortError during rapid unmount/re-init cycles
+        const message = String((err as Error)?.message || err || "");
+        const isAbort = (err && (err as Error & { name?: string }).name === "AbortError") || message.toLowerCase().includes("abort");
+        if (!isAbort && mounted) {
           setError(true);
           setIsLoading(false);
         }

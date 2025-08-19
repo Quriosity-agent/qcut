@@ -235,18 +235,24 @@ export async function convertToBlob(url: string): Promise<string> {
     const blob = await response.blob();
     const blobUrl = URL.createObjectURL(blob);
 
-    // ENHANCED LOGGING for blob URL debugging
-    console.error('🔍 [IMAGE-UTILS] Created blob URL:', {
-      originalUrl: url,
-      blobUrl,
-      isProblematic: blobUrl.startsWith('blob:file:///'),
-      blobSize: blob.size,
-      blobType: blob.type
-    });
+    // ENHANCED LOGGING for blob URL debugging (dev only)
+    const isElectron =
+      typeof navigator !== 'undefined' &&
+      navigator.userAgent?.toLowerCase().includes('electron');
+    const isFileProtocol = typeof location !== 'undefined' && location.protocol === 'file:';
+    const isProblematic = blobUrl.startsWith('blob:file:///') && !isElectron && !isFileProtocol;
 
-    if (blobUrl.startsWith('blob:file:///')) {
-      console.error('❌❌❌ [IMAGE-UTILS] PROBLEMATIC BLOB URL CREATED:', blobUrl);
-      alert(`IMAGE-UTILS CREATED BAD BLOB: ${blobUrl.substring(0, 50)}...`);
+    if (import.meta.env.DEV) {
+      debugLog('🔍 [IMAGE-UTILS] Created blob URL', {
+        originalUrl: url,
+        blobUrl,
+        isProblematic,
+        blobSize: blob.size,
+        blobType: blob.type,
+      });
+      if (isProblematic) {
+        debugError('❌ [IMAGE-UTILS] Unexpected file:// blob URL in web context', blobUrl);
+      }
     }
 
     // Cache the blob URL

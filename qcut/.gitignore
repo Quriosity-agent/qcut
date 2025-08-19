@@ -76,3 +76,6 @@ turbo.log
 
 # Reference version (local development only)
 docs/completed/reference-version/
+
+# Test files with API keys
+docs/task/sound/test-api.js

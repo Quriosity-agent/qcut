@@ -29,8 +29,9 @@ export function StickerItem({
     setHasError(false);
 
     try {
+      // Force white icons for maximum contrast on dark UI
       const svgUrl = buildIconSvgUrl(collection, icon, {
-        // Remove color to keep transparency
+        color: "#FFFFFF",
         width: 32,
         height: 32,
       });
@@ -56,11 +57,13 @@ export function StickerItem({
         <button
           type="button"
           className={cn(
-            "relative flex h-16 w-16 flex-col items-center justify-center rounded-lg border-2 border-border bg-background transition-all hover:border-primary hover:bg-accent",
-            isSelected && "border-primary bg-accent"
+            "relative flex h-14 w-14 flex-col items-center justify-center rounded-md border border-border/80 bg-slate-800/50 transition-colors hover:border-primary hover:bg-slate-700/70 overflow-hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
+            isSelected && "border-primary bg-slate-700/70"
           )}
           onClick={handleClick}
           disabled={hasError || !imageUrl}
+          aria-pressed={Boolean(isSelected)}
+          aria-label={(name || icon) + " (" + collection + ")"}
         >
           {isLoading && (
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -72,10 +75,7 @@ export function StickerItem({
             <img
               src={imageUrl}
               alt={name || icon}
-              className={cn(
-                "h-8 w-8 object-contain",
-                (isLoading || hasError) && "hidden"
-              )}
+              className={cn("h-8 w-8 object-contain", (isLoading || hasError) && "hidden")}
               onLoad={() => setIsLoading(false)}
               onError={() => {
                 setHasError(true);

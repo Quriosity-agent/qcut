@@ -62,11 +62,12 @@ function StickerItem({
 
     try {
       const svgUrl = buildIconSvgUrl(collection, icon, {
-        color: "currentColor",
+        // Force white for maximum contrast in dark UI
+        color: "#FFFFFF",
         width: 32,
         height: 32,
       });
-      console.log("[StickerItem] Built SVG URL:", { collection, icon, svgUrl });
+      // debugLog("[StickerItem] Built SVG URL:", { collection, icon, svgUrl });
       setImageUrl(svgUrl);
     } catch (error) {
       console.error("[StickerItem] Error building SVG URL:", error);
@@ -87,8 +88,8 @@ function StickerItem({
           <button
             type="button"
             className={cn(
-              "relative flex h-16 w-16 flex-col items-center justify-center rounded-lg border-2 border-border bg-background transition-all hover:border-primary hover:bg-accent",
-              isSelected && "border-primary bg-accent"
+              "relative flex h-14 w-14 flex-col items-center justify-center rounded-md border border-border/80 bg-slate-800/50 transition-colors hover:border-primary hover:bg-slate-700/70 overflow-hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
+              isSelected && "border-primary bg-slate-700/70"
             )}
             onClick={handleClick}
             disabled={hasError || !imageUrl}
@@ -108,15 +109,9 @@ function StickerItem({
                   (isLoading || hasError) && "hidden"
                 )}
                 onLoad={() => {
-                  console.log("[StickerItem] Image loaded successfully:", imageUrl);
                   setIsLoading(false);
                 }}
-                onError={(e) => {
-                  console.error("[StickerItem] Image failed to load:", {
-                    url: imageUrl,
-                    error: e,
-                    target: e.currentTarget.src
-                  });
+                onError={() => {
                   setHasError(true);
                   setIsLoading(false);
                 }}
@@ -252,7 +247,7 @@ function CollectionContent({
   }
 
   return (
-    <div className="grid grid-cols-6 gap-2 p-4 sm:grid-cols-8 md:grid-cols-10 lg:grid-cols-12">
+    <div className="grid grid-cols-6 gap-2.5 p-3 sm:grid-cols-8 md:grid-cols-10 lg:grid-cols-12 [mask-image:linear-gradient(to_bottom,black_92%,transparent)]">
       {collectionIcons.map((iconName) => (
         <StickerItem
           key={`${collectionPrefix}:${iconName}`}
@@ -383,7 +378,7 @@ export function StickersView() {
     }
 
     return (
-      <div className="grid grid-cols-6 gap-2 p-4 sm:grid-cols-8 md:grid-cols-10 lg:grid-cols-12">
+      <div className="grid grid-cols-6 gap-2.5 p-3 sm:grid-cols-8 md:grid-cols-10 lg:grid-cols-12 [mask-image:linear-gradient(to_bottom,black_92%,transparent)]">
         {searchResults.map((result) => {
           const [collection, iconName] = result.split(":");
           return (
@@ -413,7 +408,7 @@ export function StickersView() {
     }
 
     return (
-      <div className="grid grid-cols-6 gap-2 p-4 sm:grid-cols-8 md:grid-cols-10 lg:grid-cols-12">
+      <div className="grid grid-cols-6 gap-2.5 p-3 sm:grid-cols-8 md:grid-cols-10 lg:grid-cols-12 [mask-image:linear-gradient(to_bottom,black_92%,transparent)]">
         {recentStickers.map((sticker) => {
           const [collection, iconName] = sticker.iconId.split(":");
           return (
