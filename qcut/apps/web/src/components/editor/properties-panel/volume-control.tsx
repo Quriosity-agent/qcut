@@ -1,7 +1,7 @@
 import { MediaElement } from "@/types/timeline";
 import { PropertyGroup, PropertyItem, PropertyItemLabel, PropertyItemValue } from "./property-item";
 import { Slider } from "@/components/ui/slider";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useTimelineStore } from "@/stores/timeline-store";
 
 interface VolumeControlProps {
@@ -14,6 +14,10 @@ export function VolumeControl({ element, trackId }: VolumeControlProps) {
   const [volume, setVolume] = useState(
     element.volume !== undefined ? Math.round(element.volume * 100) : 100
   );
+
+  useEffect(() => {
+    setVolume(element.volume !== undefined ? Math.round(element.volume * 100) : 100);
+  }, [element.volume]);
 
   const handleVolumeChange = useCallback((newVolume: number) => {
     setVolume(newVolume);
