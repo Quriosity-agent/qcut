@@ -17,6 +17,13 @@ const PRESET_LABELS: Record<PanelPreset, string> = {
   "vertical-preview": "Vertical Preview",
 };
 
+const PRESET_DESCRIPTIONS: Record<PanelPreset, string> = {
+  default: "Media, preview, and inspector on top row, timeline on bottom",
+  media: "Full height media on left, preview and inspector on top row",
+  inspector: "Full height inspector on right, media and preview on top row",
+  "vertical-preview": "Full height preview on right for vertical videos",
+};
+
 export function PanelPresetSelector() {
   const { activePreset, setActivePreset } = usePanelStore();
 
@@ -34,8 +41,12 @@ export function PanelPresetSelector() {
           <DropdownMenuItem
             key={preset}
             onClick={() => setActivePreset(preset)}
+            className="flex flex-col items-start py-2"
           >
-            {PRESET_LABELS[preset]}
+            <div className="font-medium">{PRESET_LABELS[preset]}</div>
+            <div className="text-xs text-muted-foreground">
+              {PRESET_DESCRIPTIONS[preset]}
+            </div>
             {activePreset === preset && " ✓"}
           </DropdownMenuItem>
         ))}
