@@ -30,7 +30,6 @@ async function getContributors(): Promise<Contributor[]> {
       {
         headers: {
           Accept: "application/vnd.github.v3+json",
-          "User-Agent": "QCut-Web-App",
         },
       }
     );

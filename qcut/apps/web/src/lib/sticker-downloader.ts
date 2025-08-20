@@ -6,6 +6,7 @@
  */
 
 import { downloadIconSvg } from "./iconify-api";
+import { debugLog, debugError, debugWarn } from "./debug-config";
 
 /**
  * Downloads a sticker from Iconify API and returns it as a File object
@@ -56,7 +57,7 @@ export async function downloadStickerAsFile(
     });
 
     // Log for debugging (can be removed in production)
-    console.log(`[Sticker Downloader] Downloaded ${iconId} as File:`, {
+    debugLog(`[Sticker Downloader] Downloaded ${iconId} as File:`, {
       name: svgFile.name,
       size: svgFile.size,
       type: svgFile.type,
@@ -68,7 +69,7 @@ export async function downloadStickerAsFile(
     const errorMessage =
       error instanceof Error ? error.message : "Unknown error occurred";
 
-    console.error(`[Sticker Downloader] Failed to download ${iconId}:`, error);
+    debugError(`[Sticker Downloader] Failed to download ${iconId}:`, error);
 
     // Re-throw with more context
     throw new Error(`Failed to download sticker "${iconId}": ${errorMessage}`);
@@ -90,13 +91,13 @@ export async function downloadMultipleStickersAsFiles(
     );
     const files = await Promise.all(downloadPromises);
 
-    console.log(
+    debugLog(
       `[Sticker Downloader] Downloaded ${files.length} stickers as Files`
     );
 
     return files;
   } catch (error) {
-    console.error(
+    debugError(
       "[Sticker Downloader] Failed to download multiple stickers:",
       error
     );
@@ -126,7 +127,7 @@ export async function validateStickerExists(iconId: string): Promise<boolean> {
 
     return !!svgContent && svgContent.length > 0;
   } catch (error) {
-    console.warn(
+    debugWarn(
       `[Sticker Downloader] Icon ${iconId} validation failed:`,
       error
     );
