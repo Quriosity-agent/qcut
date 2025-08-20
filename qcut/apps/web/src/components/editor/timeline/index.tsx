@@ -420,9 +420,12 @@ export function Timeline() {
                 // Add to media store
                 if (addMediaItem) {
                   const newItemId = await addMediaItem(activeProject.id, mediaItem);
-                  const currentMediaItems = mediaStore?.mediaItems || [];
-                  const addedItem = currentMediaItems.find(
-                    (item) => item.id === newItemId
+                  // Get the latest state from the dynamically imported store to avoid stale closure
+                  const { getMediaStore } = await import("@/utils/lazy-stores");
+                  const MediaStore = await getMediaStore();
+                  const currentState = MediaStore.getState();
+                  const addedItem = currentState.mediaItems.find(
+                    (item: any) => item.id === newItemId
                   );
                   if (addedItem) {
                     useTimelineStore.getState().addMediaToNewTrack(addedItem);
@@ -473,9 +476,12 @@ export function Timeline() {
             throw new Error("Media store not ready");
           }
           const newItemId = await addMediaItem(activeProject.id, processedItem);
-          const currentMediaItems = mediaStore?.mediaItems || [];
-          const addedItem = currentMediaItems.find(
-            (item) => item.id === newItemId
+          // Get the latest state from the dynamically imported store to avoid stale closure
+          const { getMediaStore } = await import("@/utils/lazy-stores");
+          const MediaStore = await getMediaStore();
+          const currentState = MediaStore.getState();
+          const addedItem = currentState.mediaItems.find(
+            (item: any) => item.id === newItemId
           );
           if (addedItem) {
             useTimelineStore.getState().addMediaToNewTrack(addedItem);
