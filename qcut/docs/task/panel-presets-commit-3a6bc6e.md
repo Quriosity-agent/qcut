@@ -13,33 +13,41 @@ This commit introduces a comprehensive panel preset system that allows users to 
 ## Key Features Added
 
 ### 1. Panel Preset Selector Component
-- **File**: `src/components/panel-preset-selector.tsx`
-- **Purpose**: Dropdown interface for selecting panel layout presets
+- **File**: `apps/web/src/components/panel-preset-selector.tsx`
+- **Purpose**: Dropdown interface for selecting panel layout presets with descriptions
 - **Presets Available**:
-  - **Media**: Optimized for media management and preview
-  - **Inspector**: Focused on detailed property inspection
-  - **Vertical Preview**: Vertical-oriented preview layout
+  - **Default**: "Media, preview, and inspector on top row, timeline on bottom"
+  - **Media**: "Full height media on left, preview and inspector on top row"
+  - **Inspector**: "Full height inspector on right, media and preview on top row"
+  - **Vertical Preview**: "Full height preview on right for vertical videos"
 
 ### 2. Panel Store Enhancements
-- **File**: `src/stores/panel-store.ts`
-- **New Types**: `PanelPreset` interface
+- **File**: `apps/web/src/stores/panel-store.ts`
+- **New Types**: `PanelPreset` interface with union type: `"default" | "media" | "inspector" | "vertical-preview"`
+- **New State Properties**:
+  - `activePreset`: Tracks currently selected preset
+  - `resetCounter`: Forces re-render when resetting presets
 - **New Methods**:
   - `setActivePreset()`: Switch between preset configurations
-  - `resetPreset()`: Reset to default layout
+  - `resetPreset()`: Reset specific preset to default layout
 - **State Management**: Centralized preset configuration management
 
 ### 3. Editor Layout Refactoring
-- **File**: `src/app/editor/[project_id]/page.tsx`
+- **File**: `apps/web/src/app/editor/[project_id]/page.tsx`
 - **Changes**:
-  - Conditional rendering based on `activePreset`
-  - Dynamic panel size configuration
-  - Responsive layout switching
-  - Integration with ResizablePanelGroup
+  - Complete conditional rendering based on `activePreset` with 4 distinct layouts
+  - Each preset has unique `ResizablePanelGroup` structure
+  - Key prop includes `resetCounter` to force re-render on reset
+  - Different panel arrangements for each preset:
+    - **Media**: Horizontal layout with full-height media panel on left
+    - **Inspector**: Horizontal layout with full-height inspector panel on right  
+    - **Vertical Preview**: Horizontal layout with full-height preview panel on right
+    - **Default**: Traditional vertical layout with all panels on top row
 
 ### 4. Header Integration
-- **File**: `src/components/editor-header.tsx`
-- **Addition**: `<PanelPresetSelector />` component in editor header
-- **UX**: Easy access to layout switching from top navigation
+- **File**: `apps/web/src/components/editor-header.tsx`
+- **Addition**: `<PanelPresetSelector />` component in editor header navigation
+- **UX**: Easy access to layout switching with visual preset selector dropdown
 
 ## Technical Implementation
 
@@ -47,17 +55,43 @@ This commit introduces a comprehensive panel preset system that allows users to 
 The implementation uses conditional rendering to switch between different `ResizablePanelGroup` configurations:
 
 ```typescript
-// Conditional rendering based on activePreset
-{activePreset === "media" && (
-  // Media-optimized layout
-)}
-{activePreset === "inspector" && (
-  // Inspector-focused layout
-)}
-{activePreset === "vertical-preview" && (
-  // Vertical preview layout
+// Conditional rendering based on activePreset with resetCounter for forced re-renders
+{activePreset === "media" ? (
+  <ResizablePanelGroup
+    key={`media-${activePreset}-${resetCounter}`}
+    direction="horizontal"
+    className="h-full w-full gap-[0.18rem] px-3 pb-3"
+  >
+    // Media-optimized layout: Full-height media panel on left
+  </ResizablePanelGroup>
+) : activePreset === "inspector" ? (
+  <ResizablePanelGroup
+    key={`inspector-${activePreset}-${resetCounter}`}
+    direction="horizontal"
+    className="h-full w-full gap-[0.18rem] px-3 pb-3"
+  >
+    // Inspector-focused layout: Full-height inspector panel on right
+  </ResizablePanelGroup>
+) : activePreset === "vertical-preview" ? (
+  <ResizablePanelGroup
+    key={`vertical-preview-${activePreset}-${resetCounter}`}
+    direction="horizontal"
+    className="h-full w-full gap-[0.18rem] px-3 pb-3"
+  >
+    // Vertical preview layout: Full-height preview panel on right
+  </ResizablePanelGroup>
+) : (
+  // Default layout: Traditional vertical layout
 )}
 ```
+
+### Component Structure
+The `PanelPresetSelector` component features:
+- Dropdown menu with `ChevronDown` and `LayoutPanelTop` icons
+- Individual reset buttons for each preset using `RotateCcw` icon
+- Visual active state indicators (colored dot)
+- Descriptive text for each preset option
+- Event propagation handling to prevent conflicts
 
 ### State Management
 - Uses Zustand store pattern for state management
@@ -98,10 +132,52 @@ The implementation uses conditional rendering to switch between different `Resiz
 
 | File | Type | Description |
 |------|------|-------------|
-| `src/components/panel-preset-selector.tsx` | New | Preset selection dropdown component |
-| `src/stores/panel-store.ts` | Modified | Added preset state management |
-| `src/app/editor/[project_id]/page.tsx` | Modified | Conditional layout rendering |
-| `src/components/editor-header.tsx` | Modified | Added preset selector to header |
+| `apps/web/src/components/panel-preset-selector.tsx` | **New** | 91-line dropdown component with preset selection and reset functionality |
+| `apps/web/src/stores/panel-store.ts` | **Modified** | +200 lines - Added `PanelPreset` type, `activePreset`, `resetCounter`, preset management methods |
+| `apps/web/src/app/editor/[project_id]/page.tsx` | **Modified** | +343 lines - Complete layout refactoring with 4 conditional preset layouts |
+| `apps/web/src/components/editor-header.tsx` | **Modified** | +2 lines - Added `PanelPresetSelector` import and component |
+| `apps/web/src/components/editor/audio-waveform.tsx` | **Modified** | Code formatting changes |
+| `apps/web/src/components/editor/media-panel/tabbar.tsx` | **Modified** | Code formatting changes |
+| `apps/web/src/components/editor/preview-panel.tsx` | **Modified** | Code formatting changes |
+| `apps/web/src/components/keyboard-shortcuts-help.tsx` | **Modified** | Code formatting changes |
+| `apps/web/src/components/ui/editable-timecode.tsx` | **Modified** | Code formatting changes |
+| `apps/web/src/data/colors/syntax-ui.tsx` | **Modified** | Code formatting changes |
+
+**Total Changes**: 10 files changed, 749 insertions(+), 261 deletions(-)
+
+## Actual Implementation Details
+
+### Component Features
+The `PanelPresetSelector` includes:
+```typescript
+const PRESET_LABELS: Record<PanelPreset, string> = {
+  default: "Default",
+  media: "Media", 
+  inspector: "Inspector",
+  "vertical-preview": "Vertical Preview",
+};
+
+const PRESET_DESCRIPTIONS: Record<PanelPreset, string> = {
+  default: "Media, preview, and inspector on top row, timeline on bottom",
+  media: "Full height media on left, preview and inspector on top row",
+  inspector: "Full height inspector on right, media and preview on top row",
+  "vertical-preview": "Full height preview on right for vertical videos",
+};
+```
+
+### Layout Variations
+Each preset creates a fundamentally different layout structure:
+
+1. **Media Preset**: Horizontal root layout with media panel taking full height on the left
+2. **Inspector Preset**: Horizontal root layout with inspector panel taking full height on the right
+3. **Vertical Preview Preset**: Horizontal root layout with preview panel taking full height on the right
+4. **Default Preset**: Traditional vertical layout with all editing panels in the top section
+
+### Key Implementation Notes
+- Uses `key` prop with `resetCounter` to force complete re-render on preset reset
+- Each layout maintains the same panel components but arranges them differently
+- Preserves existing panel size state variables (`toolsPanel`, `previewPanel`, etc.)
+- All preset layouts include proper `ResizableHandle` components for user customization
 
 ## Future Enhancements
 
