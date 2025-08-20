@@ -24,6 +24,8 @@ export interface DraggableMediaItemProps {
   showPlusOnDrag?: boolean;
   showLabel?: boolean;
   rounded?: boolean;
+  variant?: "default" | "card";
+  isDraggable?: boolean;
 }
 
 export function DraggableMediaItem({
@@ -37,6 +39,8 @@ export function DraggableMediaItem({
   showPlusOnDrag = true,
   showLabel = true,
   rounded = true,
+  variant = "default",
+  isDraggable = true,
 }: DraggableMediaItemProps) {
   const [isDragging, setIsDragging] = useState(false);
   const [dragPosition, setDragPosition] = useState({ x: 0, y: 0 });
@@ -95,7 +99,11 @@ export function DraggableMediaItem({
     <>
       <div ref={dragRef} className="relative group w-28 h-28">
         <div
-          className={`flex flex-col gap-1 p-0 h-auto w-full relative cursor-default ${className}`}
+          className={cn(
+            "flex flex-col gap-1 p-0 h-auto w-full relative cursor-default",
+            variant === "card" && "bg-card border rounded-md p-2",
+            className
+          )}
         >
           <AspectRatio
             ratio={aspectRatio}
@@ -104,9 +112,9 @@ export function DraggableMediaItem({
               rounded && "rounded-md",
               "[&::-webkit-drag-ghost]:opacity-0" // Webkit-specific ghost hiding
             )}
-            draggable={true}
-            onDragStart={handleDragStart}
-            onDragEnd={handleDragEnd}
+            draggable={isDraggable}
+            onDragStart={isDraggable ? handleDragStart : undefined}
+            onDragEnd={isDraggable ? handleDragEnd : undefined}
           >
             {preview}
             {!isDragging && (
