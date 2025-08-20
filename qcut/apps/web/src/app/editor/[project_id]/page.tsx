@@ -257,6 +257,36 @@ export default function Editor() {
                 <PropertiesPanel />
               </ResizablePanel>
             </ResizablePanelGroup>
+          ) : activePreset === "vertical-preview" ? (
+            <ResizablePanelGroup
+              key={`vertical-preview-${resetCounter}`}
+              direction="horizontal"
+              className="h-full w-full gap-[0.18rem] px-3 pb-3"
+            >
+              <ResizablePanel defaultSize={100 - previewPanel} minSize={60}>
+                <ResizablePanelGroup direction="vertical" className="h-full w-full gap-[0.18rem]">
+                  <ResizablePanel defaultSize={mainContent} minSize={30}>
+                    <ResizablePanelGroup direction="horizontal" className="h-full w-full gap-[0.19rem]">
+                      <ResizablePanel defaultSize={toolsPanel} minSize={15} maxSize={40}>
+                        <MediaPanel />
+                      </ResizablePanel>
+                      <ResizableHandle withHandle />
+                      <ResizablePanel defaultSize={propertiesPanel} minSize={15} maxSize={40}>
+                        <PropertiesPanel />
+                      </ResizablePanel>
+                    </ResizablePanelGroup>
+                  </ResizablePanel>
+                  <ResizableHandle withHandle />
+                  <ResizablePanel defaultSize={timeline} minSize={15} maxSize={70}>
+                    <Timeline />
+                  </ResizablePanel>
+                </ResizablePanelGroup>
+              </ResizablePanel>
+              <ResizableHandle withHandle />
+              <ResizablePanel defaultSize={previewPanel} minSize={30}>
+                <PreviewPanel />
+              </ResizablePanel>
+            </ResizablePanelGroup>
           ) : (
             // Keep existing default layout
             <ResizablePanelGroup
