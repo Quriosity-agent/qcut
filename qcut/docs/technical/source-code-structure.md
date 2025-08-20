@@ -4,8 +4,8 @@
 
 This document provides a comprehensive overview of the QCut source code structure, including folder organization and line counts for all TypeScript/JavaScript source files.
 
-**Generated:** 2025-08-07  
-**Total Source Files:** 237 files (232 in src/ + 5 in electron/)  
+**Generated:** 2025-08-20  
+**Total Source Files:** 280+ files (270+ in src/ + 6 in electron/)  
 **Main Source Directory:** `apps/web/src/`
 
 ## Project Architecture
@@ -32,12 +32,14 @@ apps/web/
 
 ### Main Source Directory: `apps/web/src/`
 
-#### 📁 **Routes** (`src/routes/`) - 13 files
+#### 📁 **Routes** (`src/routes/`) - 15 files
 Main application routing using TanStack Router:
 - `__root.tsx` - Root layout component
 - `index.tsx` - Home page route  
 - `editor.$project_id.tsx` - Main editor route
+- `editor.$project_id.lazy.tsx` - Lazy-loaded editor components
 - `projects.tsx` - Projects list route
+- `projects.lazy.tsx` - Lazy-loaded projects components
 - `blog.tsx` + `blog.$slug.tsx` - Blog functionality
 - `login.tsx` + `signup.tsx` - Authentication routes
 - `contributors.tsx` - Contributors page
@@ -97,6 +99,11 @@ Core video editor interface:
 - `media-panel/views/media.tsx` - Media file browser
 - `media-panel/views/text.tsx` - Text creation tools
 - `media-panel/views/ai.tsx` - AI generation tools
+- `media-panel/views/audio.tsx` - Audio library and tools
+- `media-panel/views/sounds.tsx` - Sound effects library
+- `media-panel/views/captions.tsx` - Caption generation and editing
+- `media-panel/views/stickers.tsx` - Sticker library with search
+- `media-panel/views/text2image.tsx` - Text to image generation
 
 **Adjustment Panel (1,104 lines):**
 - `adjustment/index.tsx` - Image adjustment interface (338 lines)
@@ -106,28 +113,47 @@ Core video editor interface:
 - `adjustment/image-uploader.tsx` - Image upload interface (135 lines)
 - `adjustment/model-selector.tsx` - AI model selection (63 lines)
 
-**Other Editor Components (1,255 lines):**
-- `preview-panel.tsx` - Video preview window (588 lines)
-- `preview-panel-components.tsx` - Preview sub-components (450 lines)
-- `audio-waveform.tsx` - Audio visualization (162 lines)
-- `snap-indicator.tsx` - Snapping visual feedback (79 lines)
-- `selection-box.tsx` - Multi-selection tool (55 lines)
-- `speed-control.tsx` - Playback speed controls (46 lines)
+**Other Editor Components:**
+- `preview-panel.tsx` - Video preview window
+- `preview-panel-components.tsx` - Preview sub-components
+- `audio-waveform.tsx` - Audio visualization
+- `snap-indicator.tsx` - Snapping visual feedback
+- `selection-box.tsx` - Multi-selection tool
+- `speed-control.tsx` - Playback speed controls
+- `panel-layouts.tsx` - Panel layout management
 
-##### Application Components (`src/components/`) - 15+ files
+**Stickers Overlay System:**
+- `stickers-overlay/index.ts` - Sticker overlay management
+- `stickers-overlay/StickerCanvas.tsx` - Canvas for sticker rendering
+- `stickers-overlay/StickerElement.tsx` - Individual sticker elements
+- `stickers-overlay/StickerControls.tsx` - Sticker manipulation controls
+- `stickers-overlay/ResizeHandles.tsx` - Resize handles for stickers
+- `stickers-overlay/AutoSave.tsx` - Auto-save functionality
+- `stickers-overlay/hooks/useStickerDrag.ts` - Drag handling hook
+
+**Captions Components:**
+- `captions/captions-display.tsx` - Caption display interface
+- `captions/language-select.tsx` - Language selection
+- `captions/upload-progress.tsx` - Upload progress indicator
+
+##### Application Components (`src/components/`) - 20+ files
 - `header-base.tsx`, `header.tsx` - Application headers
+- `editor-header.tsx` - Editor-specific header
 - `editor-provider.tsx` - Editor context provider
 - `storage-provider.tsx` - Storage abstraction context
 - `background-settings.tsx` - Project settings
 - `delete-project-dialog.tsx`, `rename-project-dialog.tsx` - Project management
 - `export-dialog.tsx`, `export-canvas.tsx` - Export functionality
+- `export-icons.tsx` - Export-related icons
 - `keyboard-shortcuts-help.tsx` - Help system
 - `onboarding.tsx` - User onboarding
+- `panel-preset-selector.tsx` - Panel layout presets
 - `icons.tsx` - Icon definitions
 - `footer.tsx` - Application footer
 - `landing/hero.tsx`, `landing/handlebars.tsx` - Landing page components
+- `test-sounds-store.tsx` - Testing component for sounds store
 
-#### 📁 **Stores** (`src/stores/`) - 12 files
+#### 📁 **Stores** (`src/stores/`) - 16 files
 Zustand state management:
 
 **Core Stores:**
@@ -143,6 +169,10 @@ Zustand state management:
 - `adjustment-store.ts` - Image adjustment tools
 - `keybindings-store.ts` - Keyboard shortcut management
 - `panel-store.ts` - UI panel visibility and layout
+- `captions-store.ts` - Caption management and state
+- `sounds-store.ts` - Sound effects library state
+- `stickers-store.ts` - Sticker library and state
+- `stickers-overlay-store.ts` - Sticker overlay management
 
 **Supporting Files:**
 - `media-store-types.ts` - Media type definitions
@@ -188,17 +218,31 @@ Core functionality and utilities:
 - `time.ts` - Time formatting and parsing
 - `timeline.ts` - Timeline calculation utilities
 - `utils.ts` - General utility functions
+- `asset-path.ts` - Asset path resolution helper
 - `image-utils.ts` - Image processing helpers
 - `memory-utils.ts` - Memory management utilities
 - `zip-manager.ts` - ZIP file handling
 - `font-config.ts` - Font configuration
 - `debug-logger.ts` - Debug logging system
+- `debug-config.ts` - Debug configuration
 - `blog-query.ts` - Blog content queries
 - `waitlist.ts` - Waitlist management
 - `rate-limit.ts` - API rate limiting
 - `fetch-github-stars.ts` - GitHub integration
+- `iconify-api.ts` - Iconify icon service
+- `sticker-downloader.ts` - Sticker download utility
 
-#### 📁 **Hooks** (`src/hooks/`) - 21+ files
+**Caption Processing:**
+- `captions/caption-export.ts` - Caption export functionality
+
+**Transcription System:**
+- `transcription/transcription-utils.ts` - Transcription utilities
+- `transcription/zk-encryption.ts` - Zero-knowledge encryption
+
+**Stickers Support:**
+- `stickers/sticker-export-helper.ts` - Sticker export utilities
+
+#### 📁 **Hooks** (`src/hooks/`) - 30+ files
 Custom React hooks:
 
 **Timeline & Editor Hooks:**
@@ -217,6 +261,8 @@ Custom React hooks:
 - `use-async-module-loading.tsx` - Dynamic module loading
 - `use-blob-image.ts` - Blob URL image handling
 - `use-aspect-ratio.ts` - Aspect ratio calculations
+- `use-sound-search.ts` - Sound search functionality
+- `use-infinite-scroll.ts` - Infinite scrolling support
 
 **UI & Interaction Hooks:**
 - `use-keybindings.ts` - Keyboard shortcut handling
@@ -224,16 +270,23 @@ Custom React hooks:
 - `use-keyboard-shortcuts-help.ts` - Help system integration
 - `use-mobile.tsx` - Mobile device detection
 - `use-toast.ts` - Toast notification system
+- `use-debounce.ts` - Debounce functionality
 
-**Utility & Export Hooks:**
+**Export Hooks:**
+- `use-export-presets.ts` - Export preset management
+- `use-export-progress.ts` - Export progress tracking
+- `use-export-settings.ts` - Export settings management
+- `use-export-validation.ts` - Export validation logic
 - `use-zip-export.ts` - Project export to ZIP
+
+**Utility Hooks:**
 - `useElectron.ts` - Electron integration
 
 **Authentication Hooks:**
 - `auth/useLogin.ts` - User login functionality
 - `auth/useSignUp.ts` - User registration
 
-#### 📁 **Types** (`src/types/`) - 7 files
+#### 📁 **Types** (`src/types/`) - 11 files
 TypeScript type definitions:
 - `timeline.ts` - Timeline data structures and interfaces
 - `editor.ts` - Editor state and component interfaces
@@ -242,6 +295,10 @@ TypeScript type definitions:
 - `keybinding.ts` - Keyboard shortcut definitions
 - `export.ts` - Export configuration types
 - `post.ts` - Blog post data structures
+- `captions.ts` - Caption data structures
+- `sounds.ts` - Sound effect type definitions
+- `sticker-overlay.ts` - Sticker overlay types
+- `panel.ts` - Panel layout type definitions
 - `electron.d.ts` - Electron API type extensions
 
 #### 📁 **Constants** (`src/constants/`) - 4 files
@@ -255,28 +312,45 @@ Application constants:
 Static data:
 - `colors.ts` - Application color palette definitions (244 lines)
 
-#### 📁 **Main Source Files** - 6 files, 418 lines
+#### 📁 **Utilities** (`src/utils/`) - 1 file
+- `lazy-stores.ts` - Lazy loading for stores
+
+#### 📁 **Main Source Files** - 6 files
 Core application bootstrap files:
-- `routeTree.gen.ts` - Generated TanStack Router tree (302 lines)
-- `App.tsx` - Main application component (56 lines)
-- `middleware.ts` - Application middleware (24 lines)
-- `env.ts` - Environment configuration (16 lines)
-- `env.client.ts` - Client-side environment (10 lines)
-- `main.tsx` - Application entry point (10 lines)
+- `routeTree.gen.ts` - Generated TanStack Router tree
+- `App.tsx` - Main application component
+- `middleware.ts` - Application middleware
+- `env.ts` - Environment configuration
+- `env.client.ts` - Client-side environment
+- `main.tsx` - Application entry point
 
 ### Electron Integration
 
-#### Main Process (`electron/`) - 4 files
+#### Main Process (`electron/`) - 6 files
 - `main.js` - Electron main process and window management
 - `preload.js` - Preload script for secure IPC communication
 - `ffmpeg-handler.js` - FFmpeg CLI integration and processing
 - `temp-manager.js` - Temporary file management
+- `sound-handler.js` - Sound effects handling
+- `theme-handler.js` - Theme management
 
-## File Size Analysis
+#### Resources (`electron/resources/`)
+- `ffmpeg.exe`, `ffplay.exe`, `ffprobe.exe` - FFmpeg binaries
+- `avcodec-62.dll`, `avdevice-62.dll`, etc. - FFmpeg dependencies
+- `ffmpeg/` - FFmpeg WebAssembly files
 
-### File Size Analysis
+## Architecture Updates (2025-08-20)
 
-**Key Implementation Files:**
+### New Features Added Since Last Documentation:
+1. **Stickers System** - Complete sticker library with search, overlay management, and export
+2. **Captions Support** - Caption generation, editing, and export functionality
+3. **Sounds Library** - Sound effects integration with search and preview
+4. **Enhanced Export** - Export presets, progress tracking, and validation
+5. **Panel Layouts** - Flexible panel management with preset configurations
+6. **Asset Path Helper** - Improved asset resolution for Electron compatibility
+7. **Transcription System** - Audio transcription with encryption support
+
+### Key Implementation Files:
 The codebase contains several substantial files that form the core of the application:
 
 - **Timeline Store** - Comprehensive timeline state management
@@ -285,12 +359,16 @@ The codebase contains several substantial files that form the core of the applic
 - **Media Processing** - FFmpeg integration and utilities
 - **Storage System** - Multi-adapter storage abstraction
 - **Electron Main Process** - Desktop application lifecycle
+- **Stickers Overlay** - Advanced sticker manipulation system
+- **Captions Processing** - Multi-language caption support
 
 **Architecture Highlights:**
 - Modular export system with multiple engine implementations
 - Comprehensive AI integration for video and image processing
 - Robust storage abstraction supporting multiple backends
 - Extensive timeline management with complex state handling
+- New media panel views for stickers, sounds, and captions
+- Enhanced Electron integration with dedicated handlers
 
 ### Medium Files (100-299 lines)
 - Timeline components and hooks
