@@ -23,20 +23,35 @@
 - **Multi-track support** - Audio and video tracks with drag-and-drop
 - **Real-time preview** - Instant feedback while editing
 - **FFmpeg Integration** - Professional-grade video processing via WebAssembly
+- **AI-Powered Features** - Text-to-image generation, background removal, and more
+- **Sound Library** - Integrated library with search and commercial-use filtering
+- **Stickers & Graphics** - Rich icon library with Iconify integration
+- **Text Overlays** - Customizable text elements with positioning and animations
 - **Local File System** - Native file dialogs and direct file access
 - **No watermarks or subscriptions** - Completely free forever
 - **Privacy-first** - All processing happens locally on your device
 
 ## Project Structure
 
-- `apps/web/` – Main Vite + React application (migrated from Next.js)
-- `electron/` – Electron main process and preload scripts
-- `src/components/` – UI and editor components
-- `src/hooks/` – Custom React hooks including Electron integration
-- `src/lib/` – Utility and API logic including FFmpeg
-- `src/stores/` – State management (Zustand, etc.)
-- `src/types/` – TypeScript types including Electron APIs
-- `src/routes/` – TanStack Router file-based routing
+```
+qcut/
+├── apps/web/                    # Main Vite + React application
+│   └── src/
+│       ├── components/          # UI and editor components
+│       │   ├── editor/         # Video editor components
+│       │   └── ui/             # Reusable UI components
+│       ├── hooks/              # Custom React hooks
+│       ├── lib/                # Utilities, FFmpeg, and helpers
+│       ├── routes/             # TanStack Router pages
+│       ├── stores/             # Zustand state management
+│       └── types/              # TypeScript definitions
+├── electron/                    # Electron main and preload scripts
+│   ├── main.js                 # Main process
+│   └── preload.js              # Preload script for IPC
+├── packages/                    # Shared packages (monorepo)
+│   ├── auth/                   # Authentication logic
+│   └── db/                     # Database utilities
+└── docs/                       # Documentation and guides
 
 ## Getting Started
 
@@ -63,21 +78,26 @@ Before you begin, ensure you have the following installed on your system:
    bun install
    ```
 
-3. **Build the Vite application:**
+3. **Build and run the desktop app:**
    ```bash
-   cd apps/web
+   # Build the web app
+   cd qcut/apps/web
    bun run build
-   ```
-
-4. **Run the Electron desktop app:**
-   ```bash
-   cd ../..  # Back to project root
+   
+   # Run the Electron app
+   cd ../..
    bun run electron
    ```
 
-   **Or use this single command to build and run:**
+   **Or use development mode for hot reload:**
    ```bash
-   cd "apps/web" && bun run build && cd .. && npx electron .
+   # Terminal 1: Start Vite dev server
+   cd qcut/apps/web
+   bun run dev
+   
+   # Terminal 2: Run Electron in dev mode
+   cd qcut
+   bun run electron:dev
    ```
 
 The QCut desktop application will launch with the complete video editing interface!
@@ -90,56 +110,65 @@ For developing the Electron desktop application:
 
 1. **Start the Vite development server:**
    ```bash
-   cd apps/web
+   cd qcut/apps/web
    bun run dev
    ```
-   The dev server will start at `http://localhost:5174`
+   The dev server will start at `http://localhost:5173`
 
 2. **In another terminal, run Electron in development mode:**
    ```bash
-   cd ..  # Back to project root
-   NODE_ENV=development bun run electron
+   cd qcut
+   bun run electron:dev
    ```
 
 This will launch Electron with hot reload capabilities for development.
 
 ### Available Scripts
 
-From the project root:
+From the project root (`qcut/`):
 - `bun run electron` - Run the Electron app in production mode
-- `NODE_ENV=development bun run electron` - Run Electron in development mode
+- `bun run electron:dev` - Run Electron in development mode
+- `bun run dist:win` - Build Windows installer (.exe)
+- `bun run lint` - Run linting with Biome
+- `bun run format` - Auto-format code with Biome
 
-From `apps/web/`:
-- `bun run dev` - Start Vite development server
+From `qcut/apps/web/`:
+- `bun run dev` - Start Vite development server (port 5173)
 - `bun run build` - Build the production bundle
 - `bun run preview` - Preview the production build
+- `bun run lint:fix` - Auto-fix linting issues
 
 ### Building for Distribution
 
-To create a Windows installer:
+To create a Windows executable:
 
 ```bash
-# Build the web app
-cd apps/web
-bun run build
+# Option 1: Using electron-packager (recommended for development)
+cd qcut
+npx electron-packager . QCut --platform=win32 --arch=x64 --out=dist-packager --overwrite
 
-# Return to root and build Windows installer
+# Option 2: Using electron-builder (for production installer)
+cd qcut/apps/web
+bun run build
 cd ../..
 bun run dist:win
 ```
 
-> **Note:** The installer will be created in the `dist-electron/` directory.
+> **Note:** The packaged app will be created in the `dist-packager/` directory, and the installer in the `dist-electron/` directory.
 
 ## Architecture
 
 QCut uses a modern desktop application stack:
 
-- **Frontend**: Vite + React + TanStack Router
-- **Desktop**: Electron with secure IPC communication
-- **Video Processing**: FFmpeg via WebAssembly
-- **Styling**: Tailwind CSS with dark theme
-- **State Management**: Zustand stores
+- **Frontend**: Vite 7 + React 19 + TanStack Router (hash-based routing)
+- **Desktop**: Electron 37 with secure IPC communication
+- **Video Processing**: FFmpeg via WebAssembly (@ffmpeg/ffmpeg)
+- **Styling**: Tailwind CSS 4 with custom dark theme
+- **State Management**: Zustand stores (editor, timeline, project, media)
 - **File System**: Native Electron file dialogs and operations
+- **Storage**: Multi-tier (Electron IPC → IndexedDB → localStorage)
+- **UI Components**: Radix UI primitives + custom components
+- **Monorepo**: Turborepo with Bun workspaces
 
 ## Contributing
 
@@ -153,17 +182,24 @@ We welcome contributions! The project has been successfully migrated to a deskto
 
 ## Technical Notes
 
-### Migration from Next.js to Electron
+### Key Technologies
 
-This project was successfully migrated from a Next.js web application to a native Windows desktop application using:
+- **Hybrid Architecture**: Maintains compatibility with both Next.js patterns and TanStack Router
+- **Dynamic Imports**: Lazy loading for better performance (stores, components)
+- **WebAssembly FFmpeg**: Client-side video processing without server dependencies
+- **Electron IPC**: Secure communication between renderer and main process
+- **File Handling**: Native drag-and-drop, file dialogs, and direct file system access
 
-- **Vite** for fast bundling and development
-- **TanStack Router** for file-based routing
-- **Electron** for native desktop capabilities
+### Performance Optimizations
 
-Key improvements in the desktop version:
-- Faster startup and build times
-- Native file system access
-- Offline operation
-- Better performance for video processing
-- No server dependencies
+- Lazy-loaded stores and components
+- Virtual scrolling for large lists
+- Optimized timeline rendering
+- Efficient media caching
+- WebAssembly for compute-intensive tasks
+
+### Known Limitations
+
+- API routes from Next.js structure are non-functional (use Electron IPC instead)
+- Some features require packaging adjustments for production builds
+- FFmpeg WebAssembly files need special handling in linting
