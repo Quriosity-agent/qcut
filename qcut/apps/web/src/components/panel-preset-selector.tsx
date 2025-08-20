@@ -9,21 +9,7 @@ import {
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
 import { ChevronDown, LayoutPanelTop, RotateCcw } from "lucide-react";
-import { usePanelStore, type PanelPreset } from "@/stores/panel-store";
-
-const PRESET_LABELS: Record<PanelPreset, string> = {
-  default: "Default",
-  media: "Media",
-  inspector: "Inspector",
-  "vertical-preview": "Vertical Preview",
-};
-
-const PRESET_DESCRIPTIONS: Record<PanelPreset, string> = {
-  default: "Media, preview, and inspector on top row, timeline on bottom",
-  media: "Full height media on left, preview and inspector on top row",
-  inspector: "Full height inspector on right, media and preview on top row",
-  "vertical-preview": "Full height preview on right for vertical videos",
-};
+import { usePanelStore, type PanelPreset, PRESET_LABELS, PRESET_DESCRIPTIONS } from "@/stores/panel-store";
 
 export function PanelPresetSelector() {
   const { activePreset, setActivePreset, resetPreset } = usePanelStore();

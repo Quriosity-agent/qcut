@@ -211,8 +211,22 @@ const PRESET_CONFIGS: Record<PanelPreset, PanelSizes> = {
   },
 };
 
+const PRESET_LABELS: Record<PanelPreset, string> = {
+  default: "Default",
+  media: "Media",
+  inspector: "Inspector",
+  "vertical-preview": "Vertical Preview",
+};
+
+const PRESET_DESCRIPTIONS: Record<PanelPreset, string> = {
+  default: "Media, preview, and inspector on top row, timeline on bottom",
+  media: "Full height media on left, preview and inspector on top row",
+  inspector: "Full height inspector on right, media and preview on top row",
+  "vertical-preview": "Full height preview on right for vertical videos",
+};
+
 // Export for use in other components  
-export { PRESET_CONFIGS };
+export { PRESET_CONFIGS, PRESET_LABELS, PRESET_DESCRIPTIONS };
 
 interface PanelState {
   // Panel sizes as percentages
@@ -226,7 +240,7 @@ interface PanelState {
 
   // Panel presets
   activePreset: PanelPreset;
-  presetCustomSizes: Record<PanelPreset, Partial<Pick<PanelState, 'toolsPanel' | 'previewPanel' | 'propertiesPanel' | 'mainContent' | 'timeline'>>>;
+  presetCustomSizes: Record<PanelPreset, Partial<PanelSizes>>;
   resetCounter: number;
 
   // Actions
@@ -241,7 +255,7 @@ interface PanelState {
   // Preset actions
   setActivePreset: (preset: PanelPreset) => void;
   resetPreset: (preset: PanelPreset) => void;
-  getCurrentPresetSizes: () => Pick<PanelState, 'toolsPanel' | 'previewPanel' | 'propertiesPanel' | 'mainContent' | 'timeline'>;
+  getCurrentPresetSizes: () => PanelSizes;
 }
 
 // Debounce normalization to avoid excessive calls during resize
@@ -424,28 +438,14 @@ export const usePanelStore = create<PanelState>()(
       setActivePreset: (preset) => {
         const { 
           activePreset: currentPreset, 
-          presetCustomSizes, 
-          toolsPanel, 
-          previewPanel, 
-          propertiesPanel, 
-          mainContent, 
-          timeline,
-          aiPanelWidth,
-          aiPanelMinWidth
+          presetCustomSizes,
+          getCurrentPresetSizes
         } = get();
         
         // Save current preset sizes before switching
         const updatedPresetCustomSizes = {
           ...presetCustomSizes,
-          [currentPreset]: {
-            toolsPanel,
-            previewPanel,
-            propertiesPanel,
-            mainContent,
-            timeline,
-            aiPanelWidth,
-            aiPanelMinWidth,
-          },
+          [currentPreset]: getCurrentPresetSizes(),
         };
         
         // Load new preset sizes
