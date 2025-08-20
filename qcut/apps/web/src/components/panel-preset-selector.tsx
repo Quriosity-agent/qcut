@@ -7,7 +7,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
-import { ChevronDown, LayoutPanelTop } from "lucide-react";
+import { ChevronDown, LayoutPanelTop, RotateCcw } from "lucide-react";
 import { usePanelStore, type PanelPreset } from "@/stores/panel-store";
 
 const PRESET_LABELS: Record<PanelPreset, string> = {
@@ -25,7 +25,12 @@ const PRESET_DESCRIPTIONS: Record<PanelPreset, string> = {
 };
 
 export function PanelPresetSelector() {
-  const { activePreset, setActivePreset } = usePanelStore();
+  const { activePreset, setActivePreset, resetPreset } = usePanelStore();
+
+  const handleResetPreset = (preset: PanelPreset, event: React.MouseEvent) => {
+    event.stopPropagation();
+    resetPreset(preset);
+  };
 
   return (
     <DropdownMenu>
