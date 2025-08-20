@@ -3,6 +3,7 @@ import { useState, useMemo, useRef, useEffect } from "react";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useInfiniteScroll } from "@/hooks/use-infinite-scroll";
 import {
   PlayIcon,
   PauseIcon,
@@ -86,8 +87,13 @@ function SoundEffectsView() {
     null
   );
 
-  // Scroll position persistence
-  const scrollAreaRef = useRef<HTMLDivElement>(null);
+  // Use infinite scroll hook
+  const { scrollAreaRef, handleScroll: handleInfiniteScroll } = useInfiniteScroll({
+    onLoadMore: loadMore,
+    hasMore: hasNextPage,
+    isLoading: isLoadingMore || isSearching,
+    threshold: 200,
+  });
 
   // Load saved sounds and restore scroll position when component mounts
   useEffect(() => {
@@ -95,7 +101,12 @@ function SoundEffectsView() {
 
     if (scrollAreaRef.current && scrollPosition > 0) {
       const timeoutId = setTimeout(() => {
-        scrollAreaRef.current?.scrollTo({ top: scrollPosition });
+        const viewport = scrollAreaRef.current?.querySelector(
+          "[data-radix-scroll-area-viewport]"
+        ) as HTMLElement;
+        if (viewport) {
+          viewport.scrollTop = scrollPosition;
+        }
       }, 100); // Small delay to ensure content is rendered
 
       return () => clearTimeout(timeoutId);
@@ -104,14 +115,9 @@ function SoundEffectsView() {
 
   // Track scroll position changes and handle infinite scroll
   const handleScroll = (event: React.UIEvent<HTMLDivElement>) => {
-    const { scrollTop, scrollHeight, clientHeight } = event.currentTarget;
+    const { scrollTop } = event.currentTarget;
     setScrollPosition(scrollTop);
-
-    // Trigger loadMore when scrolled to within 200px of bottom
-    const nearBottom = scrollTop + clientHeight >= scrollHeight - 200;
-    if (nearBottom && hasNextPage && !isLoadingMore && !isSearching) {
-      loadMore();
-    }
+    handleInfiniteScroll(event);
   };
 
   // Use your existing design, just swap the data source
