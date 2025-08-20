@@ -3,6 +3,9 @@
 ## Overview
 This guide covers all available build commands for QCut, from development to production releases.
 
+**Last Updated:** 2025-08-20  
+**QCut Version:** 0.2.0
+
 ## Prerequisites
 
 ### System Requirements
@@ -14,7 +17,7 @@ This guide covers all available build commands for QCut, from development to pro
 ### Initial Setup
 ```bash
 # Clone the repository
-git clone https://github.com/your-org/qcut.git
+git clone https://github.com/donghaozhang/qcut.git
 cd qcut
 
 # Install dependencies
@@ -82,20 +85,35 @@ bun run build
 **Output**: `d:/AI_play/AI_Code/build_qcut/win-unpacked/`
 ```bash
 bun run dist:dir
+# electron-builder --dir
 # - No installer created
 # - Fastest Electron build
 # - Good for testing packaging
 # - Output: QCut Video Editor.exe in win-unpacked/
 ```
 
+#### `bun run dist:win`
+**Purpose**: Windows build with code signing disabled
+**Time**: ~8-10 minutes
+**Output**: Full installer
+```bash
+bun run dist:win
+# electron-builder --win -c.win.forceCodeSigning=false
+# - Creates Windows NSIS installer
+# - Code signing disabled
+# - Standard compression
+```
+
 #### `bun run dist:win:fast`
-**Purpose**: Fast Windows installer (minimal compression)
+**Purpose**: Fast Windows installer (no compression)
 **Time**: ~5-7 minutes
 **Output**: Installer + unpacked app
 ```bash
 bun run dist:win:fast
+# electron-builder --win --config.win.forceCodeSigning=false --config.compression=store --config.nsis.differentialPackage=false
 # - Creates Windows installer
-# - Minimal compression (larger file)
+# - No compression (store mode - larger file)
+# - Differential package disabled
 # - Faster build time
 # - Good for testing installer
 ```
@@ -106,10 +124,11 @@ bun run dist:win:fast
 **Output**: Full installer with optimizations
 ```bash
 bun run dist:win:unsigned
+# electron-builder --win --config.win.forceCodeSigning=false --config.win.verifyUpdateCodeSignature=false
 # - Full compression and optimizations
 # - Complete NSIS installer
 # - File associations included
-# - No code signing
+# - No code signing or signature verification
 # - Good for final testing
 ```
 
@@ -119,30 +138,94 @@ bun run dist:win:unsigned
 **Output**: Production installer with auto-updater metadata
 ```bash
 bun run dist:win:release
+# electron-builder --win --config.win.forceCodeSigning=false --config.win.verifyUpdateCodeSignature=false
 # - Maximum optimizations
 # - Auto-updater metadata (latest.yml)
 # - All production features
 # - Ready for GitHub releases
+# Note: Same command as dist:win:unsigned (may need differentiation)
 ```
 
-### Legacy Command (Fallback)
+### Alternative Packaging Commands
 
 #### `bun run package:win`
-**Purpose**: electron-packager fallback
+**Purpose**: electron-packager alternative build
 **Time**: ~3-5 minutes
-**Output**: Different output directory
+**Output**: `dist-packager-new/QCut-win32-x64/`
 ```bash
 bun run package:win
+# electron-packager . QCut --platform=win32 --arch=x64 --out=dist-packager-new --overwrite
 # - Uses electron-packager instead of electron-builder
-# - Different output location
+# - Different output location (dist-packager-new)
 # - Simpler packaging
 # - No installer, just executable
+# - Includes PowerShell script to copy FFmpeg resources
+```
+
+#### `bun run build:exe`
+**Purpose**: Combined web build + electron-packager
+**Time**: ~5-8 minutes
+**Output**: Complete packaged app
+```bash
+bun run build:exe
+# npm run build && npm run package:win
+# - Builds web app first
+# - Then packages with electron-packager
+# - Ensures fresh build before packaging
+```
+
+### Version Management Commands
+
+#### `bun run version:patch`
+**Purpose**: Increment patch version (0.2.0 → 0.2.1)
+```bash
+bun run version:patch
+# npm version patch --no-git-tag-version
+```
+
+#### `bun run version:minor`
+**Purpose**: Increment minor version (0.2.0 → 0.3.0)
+```bash
+bun run version:minor
+# npm version minor --no-git-tag-version
+```
+
+#### `bun run version:major`
+**Purpose**: Increment major version (0.2.0 → 1.0.0)
+```bash
+bun run version:major
+# npm version major --no-git-tag-version
+```
+
+### Release Commands
+
+#### `bun run release:patch`
+**Purpose**: Create patch release with version bump
+```bash
+bun run release:patch
+# node scripts/release.js patch
+```
+
+#### `bun run release:minor`
+**Purpose**: Create minor release with version bump
+```bash
+bun run release:minor
+# node scripts/release.js minor
+```
+
+#### `bun run release:major`
+**Purpose**: Create major release with version bump
+```bash
+bun run release:major
+# node scripts/release.js major
 ```
 
 ## Build Outputs
 
 ### File Locations
-All electron-builder outputs go to: `d:/AI_play/AI_Code/build_qcut/`
+
+**Electron-builder outputs:** `d:/AI_play/AI_Code/build_qcut/`
+**Electron-packager outputs:** `dist-packager-new/`
 
 ```
 d:/AI_play/AI_Code/build_qcut/
@@ -150,12 +233,20 @@ d:/AI_play/AI_Code/build_qcut/
 │   ├── QCut Video Editor.exe              # Main executable
 │   ├── resources/                         # App resources
 │   │   ├── app.asar                       # Packed app files
-│   │   └── ffmpeg/                        # FFmpeg binaries
+│   │   ├── ffmpeg.exe                     # FFmpeg binary
+│   │   ├── ffplay.exe                     # FFplay binary
+│   │   ├── ffprobe.exe                    # FFprobe binary
+│   │   └── *.dll                          # FFmpeg DLL files
 │   └── [electron files]                   # Electron runtime
-├── QCut Video Editor Setup 0.1.0.exe      # Windows installer
-├── QCut Video Editor Setup 0.1.0.exe.blockmap  # Update metadata
+├── QCut-Video-Editor-Setup-0.2.0.exe      # Windows installer (name format changed)
+├── QCut-Video-Editor-Setup-0.2.0.exe.blockmap  # Update metadata
 ├── latest.yml                             # Auto-updater metadata
 └── builder-debug.yml                      # Build debug info
+
+dist-packager-new/                         # Electron-packager output
+└── QCut-win32-x64/
+    ├── QCut.exe                           # Main executable
+    └── resources/                         # FFmpeg resources (copied via PowerShell)
 ```
 
 ### File Sizes (Approximate)
@@ -247,6 +338,9 @@ jobs:
       - name: Build web app
         run: bun run build
         
+      - name: Lint code
+        run: bun lint:clean
+        
       - name: Build Electron app
         run: bun run dist:win:release
         
@@ -254,7 +348,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: QCut-Windows
-          path: d:/AI_play/AI_Code/build_qcut/*.exe
+          path: |
+            d:/AI_play/AI_Code/build_qcut/*.exe
+            d:/AI_play/AI_Code/build_qcut/latest.yml
 ```
 
 ## Environment Variables
@@ -315,6 +411,31 @@ bun run dist:win:fast
 - FFmpeg paths need adjustment for installed version
 - App still functions for most features
 
+### Linting and Code Quality Commands
+
+#### `bun lint`
+**Purpose**: Run Ultracite linting (shows all errors)
+```bash
+bun lint
+# npx ultracite@latest lint
+# Shows all errors including unfixable FFmpeg files
+```
+
+#### `bun lint:clean`
+**Purpose**: Run clean linting (recommended)
+```bash
+bun lint:clean
+# npx @biomejs/biome check --skip-parse-errors .
+# Skips parse errors from FFmpeg WebAssembly files
+```
+
+#### `bun format`
+**Purpose**: Auto-fix formatting issues
+```bash
+bun format
+# npx ultracite@latest format
+```
+
 ## Quick Reference
 
 ### Most Common Commands
@@ -330,21 +451,30 @@ bun run dist:win:fast
 
 # Production release
 bun run dist:win:release
+
+# Linting (clean)
+bun lint:clean
+
+# Format code
+bun format
 ```
 
 ### File Sizes
 | Command | Time | Installer Size | Use Case |
 |---------|------|----------------|----------|
 | `dist:dir` | 2-3min | No installer | Testing |
-| `dist:win:fast` | 5-7min | ~200MB | Quick testing |
+| `dist:win` | 8-10min | ~150MB | Standard build |
+| `dist:win:fast` | 5-7min | ~200-250MB | Quick testing |
 | `dist:win:unsigned` | 8-12min | ~150MB | Full testing |
 | `dist:win:release` | 10-15min | ~150MB | Production |
+| `package:win` | 3-5min | No installer | Alternative packaging |
 
 ### Output Locations
 - **Development**: `apps/web/dist/` (web build)
-- **Electron builds**: `d:/AI_play/AI_Code/build_qcut/`
-- **Executables**: `win-unpacked/QCut Video Editor.exe`
-- **Installers**: `QCut Video Editor Setup 0.1.0.exe`
+- **Electron-builder**: `d:/AI_play/AI_Code/build_qcut/`
+- **Electron-packager**: `dist-packager-new/QCut-win32-x64/`
+- **Executables**: `win-unpacked/QCut Video Editor.exe` or `QCut.exe`
+- **Installers**: `QCut-Video-Editor-Setup-0.2.0.exe`
 
 ---
 
