@@ -1,14 +1,5 @@
 import React, { useEffect, useRef } from "react";
 import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
-import {
-  ResizablePanelGroup,
-  ResizablePanel,
-  ResizableHandle,
-} from "@/components/ui/resizable";
-import { MediaPanel } from "@/components/editor/media-panel";
-import { PropertiesPanel } from "@/components/editor/properties-panel";
-import { Timeline } from "@/components/editor/timeline";
-import { PreviewPanel } from "@/components/editor/preview-panel";
 import { EditorHeader } from "@/components/editor-header";
 import { usePanelStore } from "@/stores/panel-store";
 import { EditorProvider } from "@/components/editor-provider";
@@ -16,6 +7,12 @@ import { useProjectStore, NotFoundError } from "@/stores/project-store";
 import { usePlaybackControls } from "@/hooks/use-playback-controls";
 import { Onboarding } from "@/components/onboarding";
 import { debugError, debugLog } from "@/lib/debug-config";
+import {
+  DefaultLayout,
+  MediaLayout,
+  InspectorLayout,
+  VerticalPreviewLayout,
+} from "@/components/editor/panel-layouts";
 
 export const Route = createLazyFileRoute("/editor/$project_id")({
   component: EditorPage,
@@ -180,99 +177,29 @@ function EditorPage() {
     navigate,
   ]);
 
-  // Use selector-based subscriptions to minimize re-renders with fallback defaults
-  const toolsPanel = usePanelStore((s) => s.toolsPanel) ?? 20;
-  const previewPanel = usePanelStore((s) => s.previewPanel) ?? 55;
-  const propertiesPanel = usePanelStore((s) => s.propertiesPanel) ?? 25;
-  const mainContent = usePanelStore((s) => s.mainContent) ?? 70;
-  const timeline = usePanelStore((s) => s.timeline) ?? 30;
-  const setToolsPanel = usePanelStore((s) => s.setToolsPanel);
-  const setPreviewPanel = usePanelStore((s) => s.setPreviewPanel);
-  const setPropertiesPanel = usePanelStore((s) => s.setPropertiesPanel);
-  const setMainContent = usePanelStore((s) => s.setMainContent);
-  const setTimeline = usePanelStore((s) => s.setTimeline);
+  // Get active preset and reset counter for panel layouts
+  const activePreset = usePanelStore((s) => s.activePreset) ?? "default";
+  const resetCounter = usePanelStore((s) => s.resetCounter) ?? 0;
 
   usePlaybackControls();
 
-  // Ensure panels are normalized on mount
-  const normalizeHorizontalPanels = usePanelStore(
-    (s) => s.normalizeHorizontalPanels
-  );
-  useEffect(() => {
-    // Normalize panels after a short delay to ensure they're initialized
-    const timer = setTimeout(() => {
-      normalizeHorizontalPanels();
-    }, 100);
-    return () => clearTimeout(timer);
-  }, [normalizeHorizontalPanels]);
+  const layouts = {
+    media: <MediaLayout resetCounter={resetCounter} />,
+    inspector: <InspectorLayout resetCounter={resetCounter} />,
+    "vertical-preview": <VerticalPreviewLayout resetCounter={resetCounter} />,
+    default: <DefaultLayout resetCounter={resetCounter} />,
+  };
+
+  console.log("🎭 EditorPage: activePreset =", activePreset, "resetCounter =", resetCounter);
+  const selectedLayout = layouts[activePreset] || layouts.default;
+  console.log("🎭 EditorPage: Rendering layout:", activePreset in layouts ? activePreset : "default (fallback)");
 
   return (
     <EditorProvider>
       <div className="h-screen w-screen flex flex-col bg-background overflow-hidden">
         <EditorHeader />
         <div className="flex-1 min-h-0 min-w-0">
-          <ResizablePanelGroup
-            direction="vertical"
-            className="h-full w-full gap-[0.18rem]"
-          >
-            <ResizablePanel
-              defaultSize={mainContent}
-              minSize={30}
-              maxSize={85}
-              onResize={setMainContent}
-              className="min-h-0"
-            >
-              <ResizablePanelGroup
-                direction="horizontal"
-                className="h-full w-full gap-[0.19rem] px-2"
-              >
-                <ResizablePanel
-                  defaultSize={toolsPanel}
-                  minSize={15}
-                  maxSize={40}
-                  onResize={setToolsPanel}
-                  className="min-w-0"
-                >
-                  <MediaPanel />
-                </ResizablePanel>
-
-                <ResizableHandle withHandle />
-
-                <ResizablePanel
-                  defaultSize={previewPanel}
-                  minSize={30}
-                  onResize={setPreviewPanel}
-                  className="min-w-0 min-h-0 flex-1"
-                >
-                  <PreviewPanel />
-                </ResizablePanel>
-
-                <ResizableHandle withHandle />
-
-                <ResizablePanel
-                  defaultSize={propertiesPanel}
-                  minSize={15}
-                  maxSize={40}
-                  onResize={setPropertiesPanel}
-                  className="min-w-0"
-                >
-                  <PropertiesPanel />
-                </ResizablePanel>
-              </ResizablePanelGroup>
-            </ResizablePanel>
-
-            <ResizableHandle withHandle />
-
-            <ResizablePanel
-              defaultSize={timeline}
-              minSize={15}
-              maxSize={70}
-              onResize={setTimeline}
-              className="min-h-0 px-2 pb-2"
-            >
-              <Timeline />
-            </ResizablePanel>
-          </ResizablePanelGroup>
+          {selectedLayout}
         </div>
         <Onboarding />
       </div>
