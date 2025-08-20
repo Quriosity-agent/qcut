@@ -4,13 +4,20 @@
 This guide breaks down the panel presets feature into small, manageable tasks that can be implemented in under 10 minutes each. Each task is designed to be non-breaking and can reuse existing code patterns.
 
 ## Prerequisites
-- Existing `usePanelStore` with basic panel size management
-- `ResizablePanelGroup` components already in use
-- Basic dropdown menu components available
+- ✅ Existing `usePanelStore` with complex state management, debug logging, and circuit breakers
+- ✅ `ResizablePanelGroup` components already in use in vertical/horizontal layout
+- ✅ Dropdown menu components available (Radix UI)
+- ✅ Current panel state includes: `toolsPanel`, `previewPanel`, `propertiesPanel`, `mainContent`, `timeline`, `aiPanelWidth`, `aiPanelMinWidth`
+
+## Current QCut Codebase Structure
+- **Panel Store**: Complex Zustand store with circuit breaker, debug logging, normalization
+- **Editor Layout**: Vertical split (main content + timeline) with horizontal split (tools + preview + properties)
+- **Default Sizes**: tools: 20%, preview: 55%, properties: 25%, mainContent: 70%, timeline: 30%
+- **Persistence**: Version 7 with migration and validation
 
 ---
 
-## Task 1: Add Panel Preset Types (5 minutes)
+## Task 1: Add Panel Preset Types (3 minutes)
 
 **Objective**: Add TypeScript types for panel presets to the existing panel store.
 
@@ -19,116 +26,193 @@ This guide breaks down the panel presets feature into small, manageable tasks th
 
 **Implementation**:
 ```typescript
-// Add at the top of panel-store.ts after existing imports
+// Add at line 4 after debug imports
 export type PanelPreset = "default" | "media" | "inspector" | "vertical-preview";
 
-// Add to existing PanelState interface
-interface PanelState extends PanelSizes {
-  // ... existing properties
+// Add to existing PanelState interface (around line 163)
+interface PanelState {
+  // ... existing properties (toolsPanel, previewPanel, etc.)
   activePreset: PanelPreset;
+  presetCustomSizes: Record<PanelPreset, Partial<Pick<PanelState, 'toolsPanel' | 'previewPanel' | 'propertiesPanel' | 'mainContent' | 'timeline'>>>;
   resetCounter: number;
-  
-  // ... existing methods
+
+  // ... existing actions
   setActivePreset: (preset: PanelPreset) => void;
   resetPreset: (preset: PanelPreset) => void;
+  getCurrentPresetSizes: () => Pick<PanelState, 'toolsPanel' | 'previewPanel' | 'propertiesPanel' | 'mainContent' | 'timeline'>;
 }
 ```
 
 **Testing**: TypeScript should compile without errors. No UI changes yet.
 
+**⚠️ Breaking Changes**: None - only adds new optional properties.
+
 ---
 
-## Task 2: Add Preset Configurations (8 minutes)
+## Task 2: Add Preset Configurations (5 minutes)
 
-**Objective**: Define default panel sizes for each preset layout.
+**Objective**: Define default panel sizes for each preset layout matching current QCut defaults.
 
 **Files to modify**:
 - `apps/web/src/stores/panel-store.ts`
 
 **Implementation**:
 ```typescript
-// Add before the store creation
+// Add after DEFAULT_PANEL_SIZES constant (around line 162)
+interface PanelSizes {
+  toolsPanel: number;
+  previewPanel: number;
+  propertiesPanel: number;
+  mainContent: number;
+  timeline: number;
+  aiPanelWidth: number;
+  aiPanelMinWidth: number;
+}
+
 const PRESET_CONFIGS: Record<PanelPreset, PanelSizes> = {
   default: {
-    toolsPanel: 25,
-    previewPanel: 50,
-    propertiesPanel: 25,
-    mainContent: 70,
-    timeline: 30,
+    toolsPanel: 20,     // Match current DEFAULT_PANEL_SIZES
+    previewPanel: 55,   // Match current DEFAULT_PANEL_SIZES  
+    propertiesPanel: 25, // Match current DEFAULT_PANEL_SIZES
+    mainContent: 70,    // Match current DEFAULT_PANEL_SIZES
+    timeline: 30,       // Match current DEFAULT_PANEL_SIZES
+    aiPanelWidth: 22,   // Match current DEFAULT_PANEL_SIZES
+    aiPanelMinWidth: 4, // Match current DEFAULT_PANEL_SIZES
   },
   media: {
-    toolsPanel: 30,
-    previewPanel: 45,
+    toolsPanel: 30,     // Larger media panel focus
+    previewPanel: 45,   
     propertiesPanel: 25,
-    mainContent: 100,
-    timeline: 25,
+    mainContent: 100,   // Full height layout
+    timeline: 25,       // Smaller timeline
+    aiPanelWidth: 22,
+    aiPanelMinWidth: 4,
   },
   inspector: {
-    toolsPanel: 25,
-    previewPanel: 50,
+    toolsPanel: 20,
+    previewPanel: 55,
     propertiesPanel: 25,
-    mainContent: 100,
-    timeline: 25,
+    mainContent: 100,   // Full height layout
+    timeline: 25,       // Smaller timeline
+    aiPanelWidth: 22,
+    aiPanelMinWidth: 4,
   },
   "vertical-preview": {
     toolsPanel: 25,
-    previewPanel: 40,
-    propertiesPanel: 35,
-    mainContent: 100,
+    previewPanel: 40,   // Optimized for vertical videos
+    propertiesPanel: 35, // Larger properties panel
+    mainContent: 100,   // Full height layout
     timeline: 25,
+    aiPanelWidth: 22,
+    aiPanelMinWidth: 4,
   },
 };
 
-// Export for use in other components
+// Export for use in other components  
 export { PRESET_CONFIGS };
 ```
 
 **Testing**: Import `PRESET_CONFIGS` in a test file to verify export works.
 
+**⚠️ Breaking Changes**: None - only adds new constants.
+
 ---
 
 ## Task 3: Add Basic Preset State Management (10 minutes)
 
-**Objective**: Add preset state to the store without breaking existing functionality.
+**Objective**: Add preset state to the store without breaking existing complex functionality.
 
 **Files to modify**:
 - `apps/web/src/stores/panel-store.ts`
 
 **Implementation**:
 ```typescript
-// Add to store initialization (in the object passed to create())
+// Add to store initialization (around line 261, in the object passed to create())
 {
   // ... existing state
   activePreset: "default" as PanelPreset,
+  presetCustomSizes: {
+    default: {},
+    media: {},
+    inspector: {},
+    "vertical-preview": {},
+  },
   resetCounter: 0,
+
+  // ... existing actions (keep all existing setters)
   
-  // ... existing methods
+  // Add new preset methods at the end, before the closing brace
   setActivePreset: (preset) => {
+    const { 
+      activePreset: currentPreset, 
+      presetCustomSizes, 
+      toolsPanel, 
+      previewPanel, 
+      propertiesPanel, 
+      mainContent, 
+      timeline,
+      aiPanelWidth,
+      aiPanelMinWidth
+    } = get();
+    
+    // Save current preset sizes before switching
+    const updatedPresetCustomSizes = {
+      ...presetCustomSizes,
+      [currentPreset]: {
+        toolsPanel,
+        previewPanel,
+        propertiesPanel,
+        mainContent,
+        timeline,
+        aiPanelWidth,
+        aiPanelMinWidth,
+      },
+    };
+    
+    // Load new preset sizes
     const defaultSizes = PRESET_CONFIGS[preset];
+    const customSizes = updatedPresetCustomSizes[preset] || {};
+    const finalSizes = { ...defaultSizes, ...customSizes };
+    
     set({
       activePreset: preset,
-      ...defaultSizes,
+      presetCustomSizes: updatedPresetCustomSizes,
+      ...finalSizes,
     });
   },
   
   resetPreset: (preset) => {
-    const { activePreset, resetCounter } = get();
+    const { presetCustomSizes, activePreset, resetCounter } = get();
     const defaultSizes = PRESET_CONFIGS[preset];
     
+    const newPresetCustomSizes = {
+      ...presetCustomSizes,
+      [preset]: {},
+    };
+    
     const updates: Partial<PanelState> = {
+      presetCustomSizes: newPresetCustomSizes,
       resetCounter: resetCounter + 1,
     };
     
+    // If resetting the currently active preset, apply the default sizes
     if (preset === activePreset) {
       Object.assign(updates, defaultSizes);
     }
     
     set(updates);
   },
+  
+  getCurrentPresetSizes: () => {
+    const { toolsPanel, previewPanel, propertiesPanel, mainContent, timeline, aiPanelWidth, aiPanelMinWidth } = get();
+    return { toolsPanel, previewPanel, propertiesPanel, mainContent, timeline, aiPanelWidth, aiPanelMinWidth };
+  },
 }
 ```
 
-**Testing**: Check that existing panel resizing still works. Preset switching should work in browser dev tools.
+**Testing**: Check that existing panel resizing still works. Preset switching should work in browser dev tools: `usePanelStore.getState().setActivePreset('media')`
+
+**⚠️ Breaking Changes**: None - existing functionality preserved with circuit breaker and debug logging intact.
 
 ---
 
@@ -219,59 +303,117 @@ const rightContent = (
 
 ## Task 6: Add Media Preset Layout (10 minutes)
 
-**Objective**: Implement the media preset layout with horizontal arrangement.
+**Objective**: Implement the media preset layout with horizontal arrangement to match actual QCut structure.
 
 **Files to modify**:
 - `apps/web/src/app/editor/[project_id]/page.tsx`
 
 **Implementation**:
 ```typescript
-// Add to imports
-import { usePanelStore } from "@/stores/panel-store";
+// Update imports (activePreset and resetCounter already imported via usePanelStore)
+const {
+  toolsPanel,
+  previewPanel,
+  mainContent,
+  timeline,
+  setToolsPanel,
+  setPreviewPanel,
+  setMainContent,
+  setTimeline,
+  propertiesPanel,
+  setPropertiesPanel,
+  activePreset, // Add this
+  resetCounter, // Add this
+} = usePanelStore();
 
-// Get activePreset from store
-const { activePreset, resetCounter } = usePanelStore();
+// Replace the existing <div className="flex-1 min-h-0 min-w-0"> content with:
+<div className="flex-1 min-h-0 min-w-0">
+  {activePreset === "media" ? (
+    <ResizablePanelGroup
+      key={`media-${resetCounter}`}
+      direction="horizontal"
+      className="h-full w-full gap-[0.18rem]"
+    >
+      {/* Full-height media panel on left */}
+      <ResizablePanel
+        defaultSize={toolsPanel}
+        minSize={15}
+        maxSize={40}
+        onResize={setToolsPanel}
+        className="min-w-0"
+      >
+        <MediaPanel />
+      </ResizablePanel>
 
-// Replace existing ResizablePanelGroup with conditional rendering
-{activePreset === "media" ? (
-  <ResizablePanelGroup
-    key={`media-${resetCounter}`}
-    direction="horizontal"
-    className="h-full w-full gap-[0.18rem] px-3 pb-3"
-  >
-    <ResizablePanel defaultSize={toolsPanel} minSize={15} maxSize={40}>
-      <MediaPanel />
-    </ResizablePanel>
-    <ResizableHandle withHandle />
-    <ResizablePanel defaultSize={100 - toolsPanel} minSize={60}>
-      <ResizablePanelGroup direction="vertical" className="h-full w-full gap-[0.18rem]">
-        <ResizablePanel defaultSize={mainContent} minSize={30}>
-          <ResizablePanelGroup direction="horizontal" className="h-full w-full gap-[0.19rem]">
-            <ResizablePanel defaultSize={previewPanel} minSize={30}>
-              <PreviewPanel />
-            </ResizablePanel>
-            <ResizableHandle withHandle />
-            <ResizablePanel defaultSize={propertiesPanel} minSize={15} maxSize={40}>
-              <PropertiesPanel />
-            </ResizablePanel>
-          </ResizablePanelGroup>
-        </ResizablePanel>
-        <ResizableHandle withHandle />
-        <ResizablePanel defaultSize={timeline} minSize={15} maxSize={70}>
-          <Timeline />
-        </ResizablePanel>
-      </ResizablePanelGroup>
-    </ResizablePanel>
-  </ResizablePanelGroup>
-) : (
-  // Keep existing default layout here as fallback
-  <ResizablePanelGroup direction="vertical" className="h-full w-full gap-[0.18rem]">
-    {/* ... existing layout */}
-  </ResizablePanelGroup>
-)}
+      <ResizableHandle withHandle />
+
+      {/* Right side: preview + properties + timeline */}
+      <ResizablePanel
+        defaultSize={100 - toolsPanel}
+        minSize={60}
+        className="min-w-0 min-h-0"
+      >
+        <ResizablePanelGroup direction="vertical" className="h-full w-full gap-[0.18rem]">
+          <ResizablePanel
+            defaultSize={mainContent}
+            minSize={30}
+            maxSize={85}
+            onResize={setMainContent}
+            className="min-h-0"
+          >
+            <ResizablePanelGroup direction="horizontal" className="h-full w-full gap-[0.19rem] px-2">
+              <ResizablePanel
+                defaultSize={previewPanel}
+                minSize={30}
+                onResize={setPreviewPanel}
+                className="min-w-0 min-h-0 flex-1"
+              >
+                <PreviewPanel />
+              </ResizablePanel>
+
+              <ResizableHandle withHandle />
+
+              <ResizablePanel
+                defaultSize={propertiesPanel}
+                minSize={15}
+                maxSize={40}
+                onResize={setPropertiesPanel}
+                className="min-w-0"
+              >
+                <PropertiesPanel />
+              </ResizablePanel>
+            </ResizablePanelGroup>
+          </ResizablePanel>
+
+          <ResizableHandle withHandle />
+
+          <ResizablePanel
+            defaultSize={timeline}
+            minSize={15}
+            maxSize={70}
+            onResize={setTimeline}
+            className="min-h-0 px-2 pb-2"
+          >
+            <Timeline />
+          </ResizablePanel>
+        </ResizablePanelGroup>
+      </ResizablePanel>
+    </ResizablePanelGroup>
+  ) : (
+    // Keep existing default layout (copy the current layout exactly)
+    <ResizablePanelGroup
+      direction="vertical"
+      className="h-full w-full gap-[0.18rem]"
+    >
+      {/* ... copy existing layout exactly as fallback ... */}
+    </ResizablePanelGroup>
+  )}
+</div>
 ```
 
 **Testing**: Media preset should show full-height media panel on left. Default should work unchanged.
+
+**⚠️ Breaking Changes**: None - wraps existing layout in conditional rendering.
 
 ---
 
@@ -449,10 +591,35 @@ const handleResetPreset = (preset: PanelPreset, event: React.MouseEvent) => {
 
 ---
 
+## Missing Features Analysis
+
+After comparing with the actual source files, the integration guide now accounts for:
+
+### ✅ **Included in Guide**
+- Complex panel store with debug logging and circuit breakers
+- Current QCut panel size defaults (20%, 55%, 25%, 70%, 30%)
+- `aiPanelWidth` and `aiPanelMinWidth` properties
+- Proper state management with custom size persistence per preset
+- Actual editor layout structure (vertical → horizontal split)
+- Existing normalization and validation logic
+
+### ⚠️ **Advanced Features from Source (Optional)**
+- Enhanced preset selector with `DropdownMenuSeparator`
+- Visual active state indicators (colored dot)
+- More sophisticated preset size persistence
+- Individual preset custom size tracking
+- Advanced event propagation handling
+
+### 🔧 **QCut-Specific Considerations**
+- Must preserve existing circuit breaker functionality
+- Must not interfere with debug logging
+- Must respect panel size tolerance and validation
+- Must work with current Zustand persistence version 7
+
 ## Implementation Checklist
 
-- [ ] Task 1: Panel preset types (5min)
-- [ ] Task 2: Preset configurations (8min)  
+- [ ] Task 1: Panel preset types (3min)
+- [ ] Task 2: Preset configurations (5min)  
 - [ ] Task 3: Basic preset state management (10min)
 - [ ] Task 4: Basic preset selector component (10min)
 - [ ] Task 5: Add selector to header (3min)
@@ -462,26 +629,47 @@ const handleResetPreset = (preset: PanelPreset, event: React.MouseEvent) => {
 - [ ] Task 9: Enhanced descriptions (5min)
 - [ ] Task 10: Reset functionality (10min)
 
-**Total estimated time**: 77 minutes across 10 tasks
+**Total estimated time**: 72 minutes across 10 tasks
 
 ## Safety Guidelines
 
-1. **Test after each task** - Ensure existing functionality still works
-2. **Use feature flags** - Wrap new code in conditionals if needed
-3. **Preserve existing layouts** - Default preset should match current behavior
-4. **Incremental rollout** - Can enable presets gradually
-5. **Fallback handling** - Always have a default case in conditional rendering
+1. **Test after each task** - Ensure existing panel resizing, debug logging, and circuit breakers still work
+2. **Preserve QCut complexity** - Don't simplify existing debug/validation logic
+3. **Match current defaults** - Default preset must use exact current panel sizes (20%, 55%, 25%, 70%, 30%)
+4. **Respect circuit breakers** - Don't bypass existing update throttling and tolerance checking
+5. **Incremental rollout** - Can wrap entire feature behind feature flag: `if (enablePresets)`
+6. **Fallback handling** - Always have exact copy of current layout as default case
+7. **Persistence compatibility** - Work with existing Zustand version 7 persistence
+
+## QCut-Specific Testing
+
+After each task, test:
+- ✅ **Panel resizing works** - Drag panel boundaries
+- ✅ **Debug logging works** - Check browser console for panel traces
+- ✅ **Circuit breaker active** - Rapid resizing should trigger protection
+- ✅ **Normalization works** - Panel percentages should add to 100%
+- ✅ **Persistence works** - Refresh browser, sizes should restore
+- ✅ **Existing editor features** - Timeline, preview, media panel functionality
 
 ## Troubleshooting
 
 **Issue**: Panel sizes don't persist
-- **Solution**: Check Zustand persist middleware is working
+- **Solution**: Check Zustand persist middleware version 7 compatibility
+
+**Issue**: Circuit breaker triggers constantly
+- **Solution**: Ensure preset switching doesn't trigger rapid update detection
 
 **Issue**: Layout breaks on preset switch  
 - **Solution**: Ensure `key` prop includes `resetCounter` for forced re-render
 
+**Issue**: Debug logging breaks
+- **Solution**: Don't modify `tracePanelUpdate` or debug imports
+
+**Issue**: Normalization fails
+- **Solution**: Ensure preset configs total 100% for horizontal panels
+
 **Issue**: TypeScript errors
-- **Solution**: Update interface exports and imports
+- **Solution**: Match existing `PanelState` interface structure exactly
 
 **Issue**: UI components missing
-- **Solution**: Install required Lucide React icons or use alternatives
+- **Solution**: QCut already has Radix UI and Lucide React installed
