@@ -145,6 +145,23 @@ The `PanelPresetSelector` component features:
 
 **Total Changes**: 10 files changed, 749 insertions(+), 261 deletions(-)
 
+## Extracted Source Files
+
+The following files have been fetched and saved in this task folder:
+
+| File | Description | Lines |
+|------|-------------|-------|
+| `panel-preset-selector.tsx` | Complete dropdown component with preset selection UI | 91 |
+| `panel-store.ts` | Complete Zustand store with preset management logic | ~200 |
+| `editor-header-snippet.tsx` | Header integration showing PanelPresetSelector placement | 25 |
+| `PRESET_CONFIGS.ts` | Panel size configurations for all 4 presets | 35 |
+
+### Source File Contents
+- **Complete component implementations** from the actual commit
+- **Real panel size configurations** with detailed comments
+- **State management patterns** using Zustand with persistence
+- **UI integration patterns** showing header placement
+
 ## Actual Implementation Details
 
 ### Component Features
@@ -178,6 +195,46 @@ Each preset creates a fundamentally different layout structure:
 - Each layout maintains the same panel components but arranges them differently
 - Preserves existing panel size state variables (`toolsPanel`, `previewPanel`, etc.)
 - All preset layouts include proper `ResizableHandle` components for user customization
+
+### Complete Panel Size Configurations
+```typescript
+const PRESET_CONFIGS: Record<PanelPreset, PanelSizes> = {
+  default: {
+    toolsPanel: 25,      // 25% tools panel width
+    previewPanel: 50,    // 50% preview panel width  
+    propertiesPanel: 25, // 25% properties panel width
+    mainContent: 70,     // 70% main content height
+    timeline: 30,        // 30% timeline height
+  },
+  media: {
+    toolsPanel: 30,      // 30% tools panel width (larger for media focus)
+    previewPanel: 45,    // 45% preview panel width
+    propertiesPanel: 25, // 25% properties panel width
+    mainContent: 100,    // 100% main content height (no timeline split)
+    timeline: 25,        // 25% timeline height
+  },
+  inspector: {
+    toolsPanel: 25,      // 25% tools panel width
+    previewPanel: 50,    // 50% preview panel width
+    propertiesPanel: 25, // 25% properties panel width
+    mainContent: 100,    // 100% main content height
+    timeline: 25,        // 25% timeline height
+  },
+  "vertical-preview": {
+    toolsPanel: 25,      // 25% tools panel width
+    previewPanel: 40,    // 40% preview panel width (optimized for vertical videos)
+    propertiesPanel: 35, // 35% properties panel width (larger)
+    mainContent: 100,    // 100% main content height
+    timeline: 25,        // 25% timeline height
+  },
+};
+```
+
+### Advanced State Management Features
+- **Custom Size Persistence**: Each preset stores user-customized panel sizes separately
+- **Automatic Preset Switching**: When changing presets, current sizes are saved to the old preset
+- **Reset Functionality**: Individual presets can be reset to default configurations
+- **Zustand Persistence**: All panel states are persisted across browser sessions
 
 ## Future Enhancements
 
