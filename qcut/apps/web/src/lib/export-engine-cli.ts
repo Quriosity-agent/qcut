@@ -298,8 +298,8 @@ export class CLIExportEngine extends ExportEngine {
 
   // CLI sticker rendering using overlay sticker system
   private async renderStickerElementCLI(
-    element: any,
-    mediaItem: any,
+    element: TimelineElement,
+    mediaItem: MediaItem | null,
     currentTime: number
   ): Promise<void> {
     debugLog(
@@ -307,11 +307,13 @@ export class CLIExportEngine extends ExportEngine {
     );
 
     try {
-      // Import stickers overlay store dynamically
-      const { useStickersOverlayStore } = await import(
+      // Import stickers overlay store dynamically (cached)
+      const { useStickersOverlayStore } = await (stickersModulePromise ||= import(
         "@/stores/stickers-overlay-store"
-      );
-      const { useMediaStore } = await import("@/stores/media-store");
+      ));
+      const { useMediaStore } = await (mediaModulePromise ||= import(
+        "@/stores/media-store"
+      ));
 
       // Get visible stickers at current time
       const stickersStore = useStickersOverlayStore.getState();
@@ -333,10 +335,10 @@ export class CLIExportEngine extends ExportEngine {
         mediaStore.mediaItems.map((item) => [item.id, item])
       );
 
-      // Use the existing sticker export helper
-      const { getStickerExportHelper } = await import(
+      // Use the existing sticker export helper (cached)
+      const { getStickerExportHelper } = await (stickerHelperModulePromise ||= import(
         "@/lib/stickers/sticker-export-helper"
-      );
+      ));
       const stickerHelper = getStickerExportHelper();
 
       debugLog("[CLI_STICKER_DEBUG] Rendering stickers to canvas...");
