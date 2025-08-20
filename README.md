@@ -1,7 +1,7 @@
 <table width="100%">
   <tr>
     <td align="left" width="120">
-      <img src="assets/logo-v3.png" alt="QCut Logo" width="100" />
+      <img src="assets/logo-v4.png" alt="QCut Logo" width="100" />
     </td>
     <td align="right">
       <h1>QCut <span style="font-size: 0.7em; font-weight: normal;"></span></h1>
