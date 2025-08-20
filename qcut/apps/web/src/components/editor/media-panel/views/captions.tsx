@@ -39,6 +39,16 @@ import { encryptWithRandomKey } from "@/lib/transcription/zk-encryption";
 import { useTimelineStore } from "@/stores/timeline-store";
 import { useCaptionsStore } from "@/stores/captions-store";
 
+// Helper function to convert ArrayBuffer to base64 for JSON serialization
+function arrayBufferToBase64(ab: ArrayBuffer): string {
+  const bytes = new Uint8Array(ab);
+  let binary = "";
+  for (let i = 0; i < bytes.length; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary);
+}
+
 interface TranscriptionState {
   isUploading: boolean;
   isTranscribing: boolean;
@@ -200,6 +210,9 @@ export function CaptionsView() {
         const { encryptedData, key, iv } = await encryptWithRandomKey(
           await audioFile.arrayBuffer()
         );
+        // Convert key and IV to base64 for JSON transport
+        const keyB64 = arrayBufferToBase64(key);
+        const ivB64 = arrayBufferToBase64(iv);
         updateState({ uploadProgress: 50 });
 
         // Step 3: Upload encrypted file to server
@@ -256,8 +269,8 @@ export function CaptionsView() {
           body: JSON.stringify({
             filename: r2Key,
             language: selectedLanguage,
-            decryptionKey: key,
-            iv,
+            decryptionKey: keyB64,
+            iv: ivB64,
           }),
         });
 
