@@ -30,7 +30,11 @@ export default function PrivacyPage() {
         <div className="relative container mx-auto px-4 py-16">
           <div className="max-w-4xl mx-auto">
             <div className="text-center mb-10">
-              <Link href="https://github.com/QCut-app/QCut" target="_blank">
+              <Link
+                href="https://github.com/qcut-app/qcut"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
                 <Badge variant="secondary" className="gap-2 mb-6">
                   <GithubIcon className="h-3 w-3" />
                   Open Source
@@ -187,9 +191,9 @@ export default function PrivacyPage() {
                   <p>
                     View our source code on{" "}
                     <a
-                      href="https://github.com/QCut-app/QCut"
+                      href="https://github.com/qcut-app/qcut"
                       target="_blank"
-                      rel="noopener"
+                      rel="noopener noreferrer"
                       className="text-primary hover:underline"
                     >
                       GitHub
@@ -207,9 +211,9 @@ export default function PrivacyPage() {
                   <p>
                     Open an issue on our{" "}
                     <a
-                      href="https://github.com/QCut-app/QCut/issues"
+                      href="https://github.com/qcut-app/qcut/issues"
                       target="_blank"
-                      rel="noopener"
+                      rel="noopener noreferrer"
                       className="text-primary hover:underline"
                     >
                       GitHub repository
