@@ -46,13 +46,24 @@ export function PanelPresetSelector() {
           <DropdownMenuItem
             key={preset}
             onClick={() => setActivePreset(preset)}
-            className="flex flex-col items-start py-2"
+            className="flex items-start justify-between gap-2 py-2"
           >
-            <div className="font-medium">{PRESET_LABELS[preset]}</div>
-            <div className="text-xs text-muted-foreground">
-              {PRESET_DESCRIPTIONS[preset]}
+            <div className="flex-1">
+              <div className="font-medium">{PRESET_LABELS[preset]}</div>
+              <div className="text-xs text-muted-foreground">
+                {PRESET_DESCRIPTIONS[preset]}
+              </div>
+              {activePreset === preset && " ✓"}
             </div>
-            {activePreset === preset && " ✓"}
+            <Button
+              variant="secondary"
+              size="icon"
+              className="h-6 w-6 opacity-60 hover:opacity-100"
+              onClick={(e) => handleResetPreset(preset, e)}
+              title={`Reset ${PRESET_LABELS[preset]} preset`}
+            >
+              <RotateCcw className="h-3 w-3" />
+            </Button>
           </DropdownMenuItem>
         ))}
       </DropdownMenuContent>
