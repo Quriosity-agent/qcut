@@ -1,8 +1,19 @@
 import { ExportEngine } from "./export-engine";
 import { ExportSettings } from "@/types/export";
-import { TimelineTrack } from "@/types/timeline";
+import { TimelineTrack, TimelineElement } from "@/types/timeline";
 import { MediaItem } from "@/stores/media-store";
 import { debugLog, debugError, debugWarn } from "@/lib/debug-config";
+
+// Module-level cached dynamic imports to avoid per-frame overhead
+let stickersModulePromise:
+  | Promise<typeof import("@/stores/stickers-overlay-store")>
+  | null = null;
+let mediaModulePromise:
+  | Promise<typeof import("@/stores/media-store")>
+  | null = null;
+let stickerHelperModulePromise:
+  | Promise<typeof import("@/lib/stickers/sticker-export-helper")>
+  | null = null;
 
 export type ProgressCallback = (progress: number, message: string) => void;
 
