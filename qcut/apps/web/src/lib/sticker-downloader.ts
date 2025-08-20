@@ -46,7 +46,7 @@ export async function downloadStickerAsFile(
     const fileName = name ? `${name}.svg` : `${collection}-${icon}.svg`;
 
     // Sanitize filename (remove special characters that could cause issues)
-    const sanitizedFileName = fileName.replace(/[^a-zA-Z0-9-_.]/g, "-");
+    const sanitizedFileName = fileName.replace(/[^a-zA-Z0-9._-]/g, "-");
 
     // Create File object from SVG content
     // Using Blob constructor first, then File to ensure proper MIME type
