@@ -413,7 +413,7 @@ export function Timeline() {
                   url: URL.createObjectURL(file),
                   width: 200,
                   height: 200,
-                  duration: 5000, // 5 seconds default
+                  duration: 5, // 5 seconds default
                   ephemeral: false, // Stickers added to timeline are not ephemeral
                 };
                 

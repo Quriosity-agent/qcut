@@ -37,7 +37,7 @@ export function InputWithBack({
   return (
     <div ref={setContainerRef} className="relative w-full">
       <motion.div
-        className="absolute left-0 top-1/2 -translate-y-1/2 cursor-pointer hover:opacity-75 transition-opacity z-10"
+        className="absolute left-0 top-1/2 -translate-y-1/2 z-10"
         initial={{
           x: isExpanded ? 0 : buttonOffset,
           opacity: isExpanded ? 1 : 0.5,
@@ -47,13 +47,15 @@ export function InputWithBack({
           opacity: isExpanded ? 1 : 0.5,
         }}
         transition={smoothTransition}
-        onClick={() => setIsExpanded(!isExpanded)}
       >
         <Button
           variant="outline"
-          className="!size-9 rounded-full bg-panel-accent"
+          className="!size-9 rounded-full bg-panel-accent hover:opacity-75 transition-opacity cursor-pointer"
+          type="button"
+          aria-label={isExpanded ? "Collapse search" : "Back"}
+          onClick={() => setIsExpanded(!isExpanded)}
         >
-          <ArrowLeft />
+          <ArrowLeft aria-hidden="true" />
         </Button>
       </motion.div>
       <div
