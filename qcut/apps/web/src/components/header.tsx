@@ -10,11 +10,9 @@ export function Header() {
   const leftContent = (
     <Link to="/" className="flex items-center gap-3">
       <img
-        src="./logo.svg"
+        src="/assets/logo-v4.png"
         alt="QCut Logo"
-        className="invert dark:invert-0"
-        width={32}
-        height={32}
+        className="h-8 w-8"
       />
       <span className="text-xl font-medium hidden md:block">QCut</span>
     </Link>

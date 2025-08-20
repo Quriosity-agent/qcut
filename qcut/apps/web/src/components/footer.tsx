@@ -35,7 +35,7 @@ export function Footer() {
           {/* Brand Section */}
           <div className="md:col-span-1 max-w-sm">
             <div className="flex justify-start items-center gap-2 mb-4">
-              <img src="./logo.svg" alt="QCut" width={24} height={24} />
+              <img src="/assets/logo-v4.png" alt="QCut" className="h-6 w-6" />
               <span className="font-bold text-lg">QCut</span>
             </div>
             <p className="text-sm md:text-left text-muted-foreground mb-5">
