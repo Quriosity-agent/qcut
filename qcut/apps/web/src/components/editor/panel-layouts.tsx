@@ -29,6 +29,17 @@ export function DefaultLayout({ resetCounter }: LayoutProps) {
     setPropertiesPanel,
   } = usePanelStore();
 
+  // Debug logging for Default layout
+  console.log("🔍 DefaultLayout Panel Sizes:", {
+    toolsPanel,
+    previewPanel,
+    propertiesPanel,
+    mainContent,
+    timeline,
+    "horizontal sum": toolsPanel + previewPanel + propertiesPanel,
+    "vertical sum": mainContent + timeline,
+  });
+
   return (
     <ResizablePanelGroup
       key={`default-${resetCounter}`}
@@ -109,6 +120,17 @@ export function MediaLayout({ resetCounter }: LayoutProps) {
     setTimeline,
     setPropertiesPanel,
   } = usePanelStore();
+
+  // Debug logging for Media layout
+  console.log("🔍 MediaLayout Panel Sizes:", {
+    toolsPanel,
+    previewPanel,
+    propertiesPanel,
+    mainContent,
+    timeline,
+    "horizontal sum": toolsPanel + previewPanel + propertiesPanel,
+    "vertical sum": mainContent + timeline,
+  });
 
   return (
     <ResizablePanelGroup
@@ -196,6 +218,18 @@ export function InspectorLayout({ resetCounter }: LayoutProps) {
     setPropertiesPanel,
   } = usePanelStore();
 
+  // Debug logging for Inspector layout
+  console.log("🔍 InspectorLayout Panel Sizes:", {
+    toolsPanel,
+    previewPanel,
+    propertiesPanel,
+    mainContent,
+    timeline,
+    "toolsPanel + previewPanel": toolsPanel + previewPanel,
+    "mainContent + timeline": mainContent + timeline,
+    "total horizontal": toolsPanel + previewPanel + propertiesPanel,
+  });
+
   // Calculate relative sizes for nested panels
   // The left group contains tools + preview and its total width is (100 - propertiesPanel)
   const leftGroupTotal = Math.max(1, 100 - propertiesPanel);
@@ -203,6 +237,13 @@ export function InspectorLayout({ resetCounter }: LayoutProps) {
   // Convert from global percentages to left group percentages
   const toolsPanelRelative = (toolsPanel / leftGroupTotal) * 100;
   const previewPanelRelative = (previewPanel / leftGroupTotal) * 100;
+  
+  console.log("🔍 InspectorLayout Relative Calculations:", {
+    leftGroupTotal,
+    toolsPanelRelative,
+    previewPanelRelative,
+    "sum of relatives": toolsPanelRelative + previewPanelRelative,
+  });
   
   // Convert from left group percentage back to global percentage
   const toGlobalTools = (leftGroupPct: number) => (leftGroupPct * leftGroupTotal) / 100;
@@ -263,6 +304,18 @@ export function VerticalPreviewLayout({ resetCounter }: LayoutProps) {
     setPropertiesPanel,
   } = usePanelStore();
 
+  // Debug logging for VerticalPreview layout
+  console.log("🔍 VerticalPreviewLayout Panel Sizes:", {
+    toolsPanel,
+    previewPanel,
+    propertiesPanel,
+    mainContent,
+    timeline,
+    "toolsPanel + propertiesPanel": toolsPanel + propertiesPanel,
+    "mainContent + timeline": mainContent + timeline,
+    "total horizontal": toolsPanel + propertiesPanel + previewPanel,
+  });
+
   // Calculate relative sizes for nested panels
   // The left group contains tools + properties and its total width is (100 - previewPanel)
   const leftGroupTotal = Math.max(1, 100 - previewPanel);
@@ -270,6 +323,13 @@ export function VerticalPreviewLayout({ resetCounter }: LayoutProps) {
   // Convert from global percentages to left group percentages
   const toolsPanelRelative = (toolsPanel / leftGroupTotal) * 100;
   const propertiesPanelRelative = (propertiesPanel / leftGroupTotal) * 100;
+  
+  console.log("🔍 VerticalPreviewLayout Relative Calculations:", {
+    leftGroupTotal,
+    toolsPanelRelative,
+    propertiesPanelRelative,
+    "sum of relatives": toolsPanelRelative + propertiesPanelRelative,
+  });
   
   // Convert from left group percentage back to global percentage
   const toGlobalTools = (leftGroupPct: number) => (leftGroupPct * leftGroupTotal) / 100;
