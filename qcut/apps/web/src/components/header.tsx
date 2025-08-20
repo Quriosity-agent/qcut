@@ -5,12 +5,13 @@ import { Button } from "./ui/button";
 import { ArrowRight } from "lucide-react";
 import { HeaderBase } from "./header-base";
 import { ThemeToggle } from "./ui/theme-toggle";
+import { getAssetPath } from "@/lib/asset-path";
 
 export function Header() {
   const leftContent = (
     <Link to="/" className="flex items-center gap-3">
       <img
-        src="/assets/logo-v4.png"
+        src={getAssetPath("assets/logo-v4.png")}
         alt="QCut Logo"
         className="h-8 w-8"
       />
