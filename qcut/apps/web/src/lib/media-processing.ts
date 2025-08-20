@@ -53,6 +53,16 @@ export async function processMediaFiles(
           "[Media Processing] 📊 Skipping file, processedItems length:",
           processedItems.length
         );
+        // Advance progress even when skipping unsupported files
+        await new Promise((resolve) => setTimeout(resolve, 0));
+        completed += 1;
+        if (onProgress) {
+          const percent = Math.round((completed / total) * 100);
+          onProgress(percent);
+          debugLog(
+            `[Media Processing] 📊 Progress: ${percent}% (${completed}/${total})`
+          );
+        }
         continue;
       }
 
@@ -177,7 +187,12 @@ export async function processMediaFiles(
                 "[Media Processing] 🖼️ Generating thumbnail with FFmpeg..."
               );
               // Skip FFmpeg thumbnail generation if video dimensions are invalid
-              if (width === 0 || height === 0) {
+              if (
+                width === undefined ||
+                height === undefined ||
+                width <= 0 ||
+                height <= 0
+              ) {
                 debugWarn(
                   `[Media Processing] ⚠️ Skipping FFmpeg thumbnail due to invalid dimensions (${width}x${height})`
                 );

@@ -68,6 +68,7 @@ export function useSoundSearch(query: string, commercialOnly: boolean) {
             console.log("✅ [Sound Search] IPC load more successful");
             response = {
               ok: true,
+              status: 200,
               json: () => Promise.resolve(ipcResult.data),
             };
           } else {
@@ -81,6 +82,7 @@ export function useSoundSearch(query: string, commercialOnly: boolean) {
           "⚠️ [Sound Search] IPC load more failed, falling back to fetch:",
           ipcError
         );
+        searchParams.set("page_size", "20");
         response = await fetch(`/api/sounds/search?${searchParams.toString()}`);
       }
 
@@ -149,6 +151,7 @@ export function useSoundSearch(query: string, commercialOnly: boolean) {
               console.log("✅ [Sound Search] IPC search successful");
               response = {
                 ok: true,
+                status: 200,
                 json: () => Promise.resolve(ipcResult.data),
               };
             } else {
@@ -163,7 +166,7 @@ export function useSoundSearch(query: string, commercialOnly: boolean) {
             ipcError
           );
           response = await fetch(
-            `/api/sounds/search?q=${encodeURIComponent(query)}&type=effects&page=1&commercial_only=${commercialOnly}`
+            `/api/sounds/search?q=${encodeURIComponent(query)}&type=effects&page=1&page_size=20&commercial_only=${commercialOnly}`
           );
         }
 

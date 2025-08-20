@@ -20,6 +20,20 @@ const { execSync } = require("child_process");
 
 const RELEASE_TYPES = ["patch", "minor", "major"];
 
+/**
+ * Resolves the build output directory based on environment
+ * @returns {string} The build output directory path
+ */
+function resolveBuildOutputDir() {
+  // Check for environment variable first (CI/CD)
+  if (process.env.BUILD_OUTPUT_DIR) {
+    return process.env.BUILD_OUTPUT_DIR;
+  }
+  
+  // Default to dist folder in project root
+  return path.join(__dirname, "..", "dist");
+}
+
 function main() {
   const releaseType = process.argv[2];
 
@@ -127,7 +141,7 @@ function buildElectronApp() {
 }
 
 function generateChecksums() {
-  const buildDir = "d:/AI_play/AI_Code/build_qcut";
+  const buildDir = resolveBuildOutputDir();
   const installerPattern = /QCut.*Setup.*\.exe$/;
 
   try {
@@ -184,7 +198,7 @@ function createGitTag(version) {
 }
 
 function generateReleaseNotes(version) {
-  const buildDir = "d:/AI_play/AI_Code/build_qcut";
+  const buildDir = resolveBuildOutputDir();
   const installerPattern = /QCut.*Setup.*\.exe$/;
 
   try {
