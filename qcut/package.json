@@ -55,7 +55,7 @@
     "productName": "QCut Video Editor",
     "copyright": "Copyright © 2024 QCut Team",
     "directories": {
-      "output": "d:/AI_play/AI_Code/build_opencut",
+      "output": "d:/AI_play/AI_Code/build_qcut",
       "buildResources": "build"
     },
     "publish": {

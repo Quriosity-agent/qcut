@@ -3,15 +3,15 @@ services:
     image: postgres:17
     restart: unless-stopped
     environment:
-      POSTGRES_USER: opencut
-      POSTGRES_PASSWORD: opencutthegoat
-      POSTGRES_DB: opencut
+      POSTGRES_USER: qcut
+      POSTGRES_PASSWORD: qcutthegoat
+      POSTGRES_DB: qcut
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
       - "5432:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U opencut"]
+      test: ["CMD-SHELL", "pg_isready -U qcut"]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -55,7 +55,7 @@ services:
       - "3100:3000" # app is running on 3000 so we run this at 3100
     environment:
       - NODE_ENV=production
-      - DATABASE_URL=postgresql://opencut:opencutthegoat@db:5432/opencut
+      - DATABASE_URL=postgresql://qcut:qcutthegoat@db:5432/qcut
       - BETTER_AUTH_URL=http://localhost:3000
       - BETTER_AUTH_SECRET=your-production-secret-key-here
       - UPSTASH_REDIS_REST_URL=http://serverless-redis-http:80
@@ -77,4 +77,4 @@ volumes:
 
 networks:  
   default:  
-    name: opencut-network
+    name: qcut-network

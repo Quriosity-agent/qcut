@@ -73,7 +73,10 @@ export function PropertyGroup({
       >
         <span className="text-xs">{title}</span>
         <ChevronDown
-          className={cn("size-3 transition-transform", !isExpanded && "-rotate-90")}
+          className={cn(
+            "size-3 transition-transform",
+            !isExpanded && "-rotate-90"
+          )}
         />
       </button>
       {isExpanded && <PropertyItemValue>{children}</PropertyItemValue>}

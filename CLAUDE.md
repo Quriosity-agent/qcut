@@ -73,8 +73,8 @@ qcut/
 │       │   └── *.tsx
 │       └── routeTree.gen.ts    # Generated router tree
 ├── packages/
-│   ├── auth/                    # @opencut/auth
-│   └── db/                      # @opencut/db
+│   ├── auth/                    # @qcut/auth
+│   └── db/                      # @qcut/db
 ├── electron/                    # Electron main and preload scripts
 └── docs/task/                   # Migration documentation
 ```
@@ -86,6 +86,14 @@ qcut/
 - **State Management**: Multiple Zustand stores for separation of concerns
 - **Storage**: Abstraction layer supporting IndexedDB and OPFS
 - **Media Processing**: Client-side FFmpeg with WebAssembly
+
+## Git Commit Guidelines
+
+**IMPORTANT**: When creating git commits:
+- DO NOT include "Co-Authored-By: Claude" attribution
+- DO NOT include the 🤖 emoji or "Generated with Claude Code" message
+- Use conventional commit format: `type: description`
+- Keep commit messages concise and descriptive
 
 ## Development Commands
 

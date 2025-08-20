@@ -19,7 +19,7 @@ export type SoundEffect = {
   downloads: number;
   rating: number;
   ratingCount: number;
-}
+};
 
 export type SavedSound = {
   id: number; // freesound id
@@ -31,9 +31,9 @@ export type SavedSound = {
   tags: string[];
   license: string;
   savedAt: string; // iso date string
-}
+};
 
 export type SavedSoundsData = {
   sounds: SavedSound[];
   lastModified: string;
-}
+};

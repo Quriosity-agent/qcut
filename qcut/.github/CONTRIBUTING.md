@@ -1,6 +1,6 @@
-# Contributing to OpenCut
+# Contributing to QCut
 
-Thank you for your interest in contributing to OpenCut! This document provides guidelines and instructions for contributing.
+Thank you for your interest in contributing to QCut! This document provides guidelines and instructions for contributing.
 
 ## Getting Started
 
@@ -98,7 +98,7 @@ If you're unsure whether your idea falls into the preview category, feel free to
 
    ```bash
    # Database (matches docker-compose.yaml)
-   DATABASE_URL="postgresql://opencut:opencutthegoat@localhost:5432/opencut"
+   DATABASE_URL="postgresql://qcut:qcutthegoat@localhost:5432/qcut"
 
    # Generate a secure secret for Better Auth
    BETTER_AUTH_SECRET="your-generated-secret-here"

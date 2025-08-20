@@ -13,12 +13,23 @@ export function ThemeToggle() {
     setMounted(true);
   }, []);
 
-  if (!mounted) return <Button variant="text" size="icon" disabled className="opacity-0" />;
+  if (!mounted)
+    return (
+      <Button
+        variant="text"
+        size="icon"
+        type="button"
+        disabled
+        aria-hidden="true"
+        className="opacity-0"
+      />
+    );
 
   return (
     <Button
       variant="text"
       size="icon"
+      type="button"
       onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
       aria-label="Toggle theme"
     >

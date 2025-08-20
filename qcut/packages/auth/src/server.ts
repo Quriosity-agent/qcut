@@ -1,6 +1,6 @@
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { db } from "@opencut/db";
+import { db } from "@qcut/db";
 import { keys } from "./keys";
 
 const { NEXT_PUBLIC_BETTER_AUTH_URL, BETTER_AUTH_SECRET } = keys();
@@ -20,7 +20,7 @@ export const auth = betterAuth({
     enabled: true,
   },
   baseURL: NEXT_PUBLIC_BETTER_AUTH_URL,
-  appName: "OpenCut",
+  appName: "QCut",
   trustedOrigins: ["http://localhost:3000"],
 });
 

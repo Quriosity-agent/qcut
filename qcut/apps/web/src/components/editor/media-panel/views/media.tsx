@@ -41,7 +41,10 @@ export function MediaView() {
     error: mediaStoreError,
   } = useAsyncMediaStore();
   // Memoize to prevent infinite loops
-  const mediaItems = useMemo(() => mediaStore?.mediaItems || [], [mediaStore?.mediaItems]);
+  const mediaItems = useMemo(
+    () => mediaStore?.mediaItems || [],
+    [mediaStore?.mediaItems]
+  );
   const addMediaItem = mediaStore?.addMediaItem;
   const removeMediaItem = mediaStore?.removeMediaItem;
   const { activeProject } = useProjectStore();
@@ -93,7 +96,7 @@ export function MediaView() {
     try {
       // WORKAROUND: Convert FileList to Array immediately to prevent data loss
       const filesArray = Array.from(files);
-      
+
       // Dynamically import media processing utilities
       const { processMediaFiles } = await import("@/lib/media-processing");
       const processedItems = await processMediaFiles(filesArray, (p) => {
@@ -164,7 +167,8 @@ export function MediaView() {
 
     try {
       // Set the original image in the adjustment store
-      const imageUrl = item.url || item.thumbnailUrl || URL.createObjectURL(item.file);
+      const imageUrl =
+        item.url || item.thumbnailUrl || URL.createObjectURL(item.file);
       setOriginalImage(item.file, imageUrl);
 
       // Switch to adjustment tab

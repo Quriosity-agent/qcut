@@ -17,7 +17,7 @@ function WhyNotCapcutPage() {
             Why Not CapCut?
           </h1>
           <p className="text-xl text-muted-foreground mb-8">
-            Why choose OpenCut over CapCut and other video editors.
+            Why choose QCut over CapCut and other video editors.
           </p>
           <div className="prose prose-lg max-w-none">
             <p>Comparison content will be added here.</p>

@@ -7,13 +7,13 @@ import { getPosts } from "@/lib/blog-query";
 import Image from "next/image";
 
 export const metadata: Metadata = {
-  title: "Blog - OpenCut",
+  title: "Blog - QCut",
   description:
-    "Read the latest news and updates about OpenCut, the free and open-source video editor.",
+    "Read the latest news and updates about QCut, the free and open-source video editor.",
   openGraph: {
-    title: "Blog - OpenCut",
+    title: "Blog - QCut",
     description:
-      "Read the latest news and updates about OpenCut, the free and open-source video editor.",
+      "Read the latest news and updates about QCut, the free and open-source video editor.",
     type: "website",
   },
 };
@@ -38,7 +38,7 @@ export default async function BlogPage() {
               Blog
             </h1>
             <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto leading-relaxed">
-              Read the latest news and updates about OpenCut, the free and
+              Read the latest news and updates about QCut, the free and
               open-source video editor.
             </p>
           </div>

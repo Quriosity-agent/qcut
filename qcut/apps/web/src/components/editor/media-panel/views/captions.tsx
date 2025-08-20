@@ -39,6 +39,16 @@ import { encryptWithRandomKey } from "@/lib/transcription/zk-encryption";
 import { useTimelineStore } from "@/stores/timeline-store";
 import { useCaptionsStore } from "@/stores/captions-store";
 
+// Helper function to convert ArrayBuffer to base64 for JSON serialization
+function arrayBufferToBase64(ab: ArrayBuffer): string {
+  const bytes = new Uint8Array(ab);
+  let binary = "";
+  for (let i = 0; i < bytes.length; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary);
+}
+
 interface TranscriptionState {
   isUploading: boolean;
   isTranscribing: boolean;
@@ -141,201 +151,222 @@ export function CaptionsView() {
     []
   );
 
-  const startTranscription = useCallback(async (file: File, fileKey?: string) => {
-    if (!configured) {
-      toast.error(
-        `Transcription not configured. Missing: ${missingVars.join(", ")}`
-      );
-      return;
-    }
-
-    updateState({
-      isUploading: true,
-      uploadProgress: 0,
-      error: null,
-      result: null,
-      currentFile: file,
-    });
-
-    try {
-      // Start transcription job in store
-      const jobId = startTranscriptionJob({
-        fileName: file.name,
-        language: selectedLanguage,
-      });
-
-      // Step 1: Extract audio from video file (if needed)
-      let audioFile: File;
-      if (file.type.startsWith("video/")) {
-        // Validate supported video formats
-        const supportedVideoTypes = [
-          "video/mp4",
-          "video/webm",
-          "video/quicktime", // .mov
-          "video/avi",
-          "video/x-msvideo", // .avi alternative MIME
-          "video/x-matroska", // .mkv
-        ];
-
-        if (!supportedVideoTypes.includes(file.type)) {
-          throw new Error(`Unsupported video format: ${file.type}`);
-        }
-
-        toast.info("Extracting audio from video...");
-        updateState({ uploadProgress: 10 });
-
-        const audioBlob = await extractAudio(file, "wav");
-        audioFile = new File([audioBlob], `${file.name}.wav`, {
-          type: "audio/wav",
-        });
-        updateState({ uploadProgress: 30 });
-      } else {
-        audioFile = file;
-        updateState({ uploadProgress: 20 });
+  const startTranscription = useCallback(
+    async (file: File, fileKey?: string) => {
+      if (!configured) {
+        toast.error(
+          `Transcription not configured. Missing: ${missingVars.join(", ")}`
+        );
+        return;
       }
 
-      // Step 2: Encrypt the audio file using zero-knowledge encryption
-      toast.info("Encrypting audio file...");
-      const { encryptedData, key, iv } = await encryptWithRandomKey(
-        await audioFile.arrayBuffer()
-      );
-      updateState({ uploadProgress: 50 });
-
-      // Step 3: Upload encrypted file to server
-      toast.info("Uploading to secure storage...");
-      // Generate unique key for the audio file
-      const timestamp = Date.now();
-      const random = Math.random().toString(36).substring(2, 15);
-      const lastDotIndex = audioFile.name.lastIndexOf(".");
-      const extension = lastDotIndex > 0 ? audioFile.name.slice(lastDotIndex + 1) : "wav";
-      const r2Key = `transcription/${timestamp}-${random}.${extension}`;
-
-      // Upload to server via API using multipart form-data
-      const form = new FormData();
-      form.append("filename", r2Key);
-      form.append("file", new Blob([encryptedData], { type: "application/octet-stream" }), r2Key);
-      const uploadResponse = await fetch("/api/upload-audio", {
-        method: "POST",
-        body: form,
-      });
-
-      if (!uploadResponse.ok) {
-        let message = "Upload failed";
-        try {
-          const uploadError = await uploadResponse.json();
-          message = uploadError.message || message;
-        } catch {
-          const text = await uploadResponse.text();
-          if (text) message = text;
-        }
-        throw new Error(message);
-      }
-
-      updateState({ uploadProgress: 70 });
-
-      // Step 4: Call transcription API
-      toast.info("Starting transcription...");
       updateState({
-        isUploading: false,
-        uploadProgress: 100,
-        isTranscribing: true,
-        transcriptionProgress: 10,
+        isUploading: true,
+        uploadProgress: 0,
+        error: null,
+        result: null,
+        currentFile: file,
       });
 
-      const response = await fetch("/api/transcribe", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          filename: r2Key,
+      try {
+        // Start transcription job in store
+        const jobId = startTranscriptionJob({
+          fileName: file.name,
           language: selectedLanguage,
-          decryptionKey: key,
-          iv,
-        }),
-      });
+        });
 
-      if (!response.ok) {
-        let message = "Transcription failed";
-        try {
-          const errorData = await response.json();
-          message = errorData.message || message;
-        } catch {
-          const text = await response.text();
-          if (text) message = text;
+        // Step 1: Extract audio from video file (if needed)
+        let audioFile: File;
+        if (file.type.startsWith("video/")) {
+          // Validate supported video formats
+          const supportedVideoTypes = [
+            "video/mp4",
+            "video/webm",
+            "video/quicktime", // .mov
+            "video/avi",
+            "video/x-msvideo", // .avi alternative MIME
+            "video/x-matroska", // .mkv
+          ];
+
+          if (!supportedVideoTypes.includes(file.type)) {
+            throw new Error(`Unsupported video format: ${file.type}`);
+          }
+
+          toast.info("Extracting audio from video...");
+          updateState({ uploadProgress: 10 });
+
+          const audioBlob = await extractAudio(file, "wav");
+          audioFile = new File([audioBlob], `${file.name}.wav`, {
+            type: "audio/wav",
+          });
+          updateState({ uploadProgress: 30 });
+        } else {
+          audioFile = file;
+          updateState({ uploadProgress: 20 });
         }
-        throw new Error(message);
-      }
 
-      updateState({ transcriptionProgress: 90 });
+        // Step 2: Encrypt the audio file using zero-knowledge encryption
+        toast.info("Encrypting audio file...");
+        const { encryptedData, key, iv } = await encryptWithRandomKey(
+          await audioFile.arrayBuffer()
+        );
+        // Convert key and IV to base64 for JSON transport
+        const keyB64 = arrayBufferToBase64(key);
+        const ivB64 = arrayBufferToBase64(iv);
+        updateState({ uploadProgress: 50 });
 
-      const result: TranscriptionResult = await response.json();
+        // Step 3: Upload encrypted file to server
+        toast.info("Uploading to secure storage...");
+        // Generate unique key for the audio file
+        const timestamp = Date.now();
+        const random = Math.random().toString(36).substring(2, 15);
+        const lastDotIndex = audioFile.name.lastIndexOf(".");
+        const extension =
+          lastDotIndex > 0 ? audioFile.name.slice(lastDotIndex + 1) : "wav";
+        const r2Key = `transcription/${timestamp}-${random}.${extension}`;
 
-      // Complete transcription job in store
-      completeTranscriptionJob(jobId, result);
+        // Upload to server via API using multipart form-data
+        const form = new FormData();
+        form.append("filename", r2Key);
+        form.append(
+          "file",
+          new Blob([encryptedData], { type: "application/octet-stream" }),
+          r2Key
+        );
+        const uploadResponse = await fetch("/api/upload-audio", {
+          method: "POST",
+          body: form,
+        });
 
-      updateState({
-        isTranscribing: false,
-        transcriptionProgress: 100,
-        result,
-      });
+        if (!uploadResponse.ok) {
+          let message = "Upload failed";
+          try {
+            const uploadError = await uploadResponse.json();
+            message = uploadError.message || message;
+          } catch {
+            const text = await uploadResponse.text();
+            if (text) message = text;
+          }
+          throw new Error(message);
+        }
 
-      toast.success(
-        `Transcription completed! Found ${result.segments.length} segments.`
-      );
+        updateState({ uploadProgress: 70 });
 
-      // Performance: Cache the result for future use
-      if (fileKey) {
-        try {
-          const cacheData = { result, timestamp: Date.now() };
-          localStorage.setItem(
-            `transcription-${fileKey}`,
-            JSON.stringify(cacheData)
+        // Step 4: Call transcription API
+        toast.info("Starting transcription...");
+        updateState({
+          isUploading: false,
+          uploadProgress: 100,
+          isTranscribing: true,
+          transcriptionProgress: 10,
+        });
+
+        const response = await fetch("/api/transcribe", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            filename: r2Key,
+            language: selectedLanguage,
+            decryptionKey: keyB64,
+            iv: ivB64,
+          }),
+        });
+
+        if (!response.ok) {
+          let message = "Transcription failed";
+          try {
+            const errorData = await response.json();
+            message = errorData.message || message;
+          } catch {
+            const text = await response.text();
+            if (text) message = text;
+          }
+          throw new Error(message);
+        }
+
+        updateState({ transcriptionProgress: 90 });
+
+        const result: TranscriptionResult = await response.json();
+
+        // Complete transcription job in store
+        completeTranscriptionJob(jobId, result);
+
+        updateState({
+          isTranscribing: false,
+          transcriptionProgress: 100,
+          result,
+        });
+
+        toast.success(
+          `Transcription completed! Found ${result.segments.length} segments.`
+        );
+
+        // Performance: Cache the result for future use
+        if (fileKey) {
+          try {
+            const cacheData = { result, timestamp: Date.now() };
+            localStorage.setItem(
+              `transcription-${fileKey}`,
+              JSON.stringify(cacheData)
+            );
+          } catch (error) {
+            console.warn("Failed to cache transcription:", error);
+          }
+        }
+      } catch (error) {
+        console.error("Transcription error:", error);
+        const errorMessage =
+          error instanceof Error ? error.message : "Transcription failed";
+
+        updateState({
+          isUploading: false,
+          isTranscribing: false,
+          error: errorMessage,
+        });
+
+        // Enhanced error messaging with actionable suggestions
+        if (
+          errorMessage.includes("rate limit") ||
+          errorMessage.includes("429")
+        ) {
+          toast.error(
+            "Rate limit exceeded. Please wait a moment before trying again."
           );
-        } catch (error) {
-          console.warn("Failed to cache transcription:", error);
+        } else if (
+          errorMessage.includes("503") ||
+          errorMessage.includes("not configured")
+        ) {
+          toast.error(
+            "Transcription service not configured. Check environment variables."
+          );
+        } else if (
+          errorMessage.includes("network") ||
+          errorMessage.includes("fetch")
+        ) {
+          toast.error(
+            "Network error. Check your internet connection and try again."
+          );
+        } else if (
+          errorMessage.includes("413") ||
+          errorMessage.includes("too large")
+        ) {
+          toast.error("File too large. Please use a file smaller than 100MB.");
+        } else {
+          toast.error(`Transcription failed: ${errorMessage}`);
         }
       }
-    } catch (error) {
-      console.error("Transcription error:", error);
-      const errorMessage =
-        error instanceof Error ? error.message : "Transcription failed";
-
-      updateState({
-        isUploading: false,
-        isTranscribing: false,
-        error: errorMessage,
-      });
-
-      // Enhanced error messaging with actionable suggestions
-      if (errorMessage.includes("rate limit") || errorMessage.includes("429")) {
-        toast.error(
-          "Rate limit exceeded. Please wait a moment before trying again."
-        );
-      } else if (
-        errorMessage.includes("503") ||
-        errorMessage.includes("not configured")
-      ) {
-        toast.error(
-          "Transcription service not configured. Check environment variables."
-        );
-      } else if (
-        errorMessage.includes("network") ||
-        errorMessage.includes("fetch")
-      ) {
-        toast.error(
-          "Network error. Check your internet connection and try again."
-        );
-      } else if (
-        errorMessage.includes("413") ||
-        errorMessage.includes("too large")
-      ) {
-        toast.error("File too large. Please use a file smaller than 100MB.");
-      } else {
-        toast.error(`Transcription failed: ${errorMessage}`);
-      }
-    }
-  }, [configured, missingVars, updateState, startTranscriptionJob, completeTranscriptionJob, selectedLanguage]);
+    },
+    [
+      configured,
+      missingVars,
+      updateState,
+      startTranscriptionJob,
+      completeTranscriptionJob,
+      selectedLanguage,
+    ]
+  );
 
   const handleFileSelect = useCallback(
     (files: FileList) => {

@@ -2,7 +2,7 @@
  * Image utility functions for the adjustment panel
  */
 
-import { debugLog, debugError } from "@/lib/debug-config";
+import { debugLog, debugError, debugWarn } from "@/lib/debug-config";
 
 export interface ImageInfo {
   width: number;
@@ -16,22 +16,30 @@ export interface ImageInfo {
  * Get image information from a File
  */
 export async function getImageInfo(file: File): Promise<ImageInfo> {
-  return new Promise(async (resolve, reject) => {
-    const img = new Image();
-    
-    // Use data URL for SVG files to avoid blob URL issues in Electron
-    let url: string;
-    if (file.type === 'image/svg+xml' || file.name.toLowerCase().endsWith('.svg')) {
-      try {
-        const text = await file.text();
-        url = `data:image/svg+xml;base64,${btoa(text)}`;
-      } catch (error) {
-        console.warn(`[ImageUtils] Failed to create data URL for SVG ${file.name}, falling back to blob URL:`, error);
-        url = URL.createObjectURL(file);
-      }
-    } else {
+  // Use data URL for SVG files to avoid blob URL issues in Electron
+  let url: string;
+  if (
+    file.type === "image/svg+xml" ||
+    file.name.toLowerCase().endsWith(".svg")
+  ) {
+    try {
+      const text = await file.text();
+      // Use UTF-8 charset with URI encoding to safely embed Unicode SVGs
+      const encoded = encodeURIComponent(text);
+      url = `data:image/svg+xml;charset=utf-8,${encoded}`;
+    } catch (error) {
+      debugWarn(
+        `[ImageUtils] Failed to create data URL for SVG ${file.name}, falling back to blob URL:`,
+        error
+      );
       url = URL.createObjectURL(file);
     }
+  } else {
+    url = URL.createObjectURL(file);
+  }
+
+  return new Promise((resolve, reject) => {
+    const img = new Image();
 
     img.onload = () => {
       const info: ImageInfo = {
@@ -42,7 +50,7 @@ export async function getImageInfo(file: File): Promise<ImageInfo> {
         aspectRatio: img.naturalWidth / img.naturalHeight,
       };
       // Only revoke blob URLs, not data URLs
-      if (url.startsWith('blob:')) {
+      if (url.startsWith("blob:")) {
         URL.revokeObjectURL(url);
       }
       resolve(info);
@@ -50,7 +58,7 @@ export async function getImageInfo(file: File): Promise<ImageInfo> {
 
     img.onerror = () => {
       // Only revoke blob URLs, not data URLs
-      if (url.startsWith('blob:')) {
+      if (url.startsWith("blob:")) {
         URL.revokeObjectURL(url);
       }
       reject(new Error("Failed to load image"));
@@ -237,13 +245,15 @@ export async function convertToBlob(url: string): Promise<string> {
 
     // ENHANCED LOGGING for blob URL debugging (dev only)
     const isElectron =
-      typeof navigator !== 'undefined' &&
-      navigator.userAgent?.toLowerCase().includes('electron');
-    const isFileProtocol = typeof location !== 'undefined' && location.protocol === 'file:';
-    const isProblematic = blobUrl.startsWith('blob:file:///') && !isElectron && !isFileProtocol;
+      typeof navigator !== "undefined" &&
+      navigator.userAgent?.toLowerCase().includes("electron");
+    const isFileProtocol =
+      typeof location !== "undefined" && location.protocol === "file:";
+    const isProblematic =
+      blobUrl.startsWith("blob:file:///") && !isElectron && !isFileProtocol;
 
     if (import.meta.env.DEV) {
-      debugLog('🔍 [IMAGE-UTILS] Created blob URL', {
+      debugLog("🔍 [IMAGE-UTILS] Created blob URL", {
         originalUrl: url,
         blobUrl,
         isProblematic,
@@ -251,7 +261,10 @@ export async function convertToBlob(url: string): Promise<string> {
         blobType: blob.type,
       });
       if (isProblematic) {
-        debugError('❌ [IMAGE-UTILS] Unexpected file:// blob URL in web context', blobUrl);
+        debugError(
+          "❌ [IMAGE-UTILS] Unexpected file:// blob URL in web context",
+          blobUrl
+        );
       }
     }
 

@@ -34,7 +34,9 @@ export function TextProperties({
   );
   const [xInput, setXInput] = useState((element.x || 0).toString());
   const [yInput, setYInput] = useState((element.y || 0).toString());
-  const [rotationInput, setRotationInput] = useState((element.rotation || 0).toString());
+  const [rotationInput, setRotationInput] = useState(
+    (element.rotation || 0).toString()
+  );
 
   // Sync inputs when element changes externally (e.g., by dragging or other external updates)
   useEffect(() => {
@@ -43,14 +45,21 @@ export function TextProperties({
     setXInput((element.x ?? 0).toString());
     setYInput((element.y ?? 0).toString());
     setRotationInput((element.rotation ?? 0).toString());
-  }, [element.id, element.fontSize, element.opacity, element.x, element.y, element.rotation]);
+  }, [
+    element.id,
+    element.fontSize,
+    element.opacity,
+    element.x,
+    element.y,
+    element.rotation,
+  ]);
 
   // Generic handler for slider changes to reduce code duplication
-  const handleSliderChange = (prop: 'x' | 'y' | 'rotation', value: number) => {
-    const setter = { 
-      x: setXInput, 
-      y: setYInput, 
-      rotation: setRotationInput 
+  const handleSliderChange = (prop: "x" | "y" | "rotation", value: number) => {
+    const setter = {
+      x: setXInput,
+      y: setYInput,
+      rotation: setRotationInput,
     }[prop];
     updateTextElement(trackId, element.id, { [prop]: value });
     setter(value.toString());
@@ -62,7 +71,7 @@ export function TextProperties({
     min: number,
     max: number,
     fallback: number,
-    isInteger: boolean = false
+    isInteger = false
   ): number => {
     const parsed = isInteger ? parseInt(value, 10) : parseFloat(value);
     if (isNaN(parsed)) return fallback;
@@ -73,7 +82,13 @@ export function TextProperties({
     setFontSizeInput(value);
 
     if (value.trim() !== "") {
-      const fontSize = parseAndValidateValue(value, 8, 300, element.fontSize, true);
+      const fontSize = parseAndValidateValue(
+        value,
+        8,
+        300,
+        element.fontSize,
+        true
+      );
       updateTextElement(trackId, element.id, { fontSize });
     }
   };
@@ -118,8 +133,8 @@ export function TextProperties({
   };
 
   // Generic handlers for position and rotation properties
-  type PositionProp = 'x' | 'y' | 'rotation';
-  
+  type PositionProp = "x" | "y" | "rotation";
+
   const getPropertyConfig = (prop: PositionProp) => {
     const configs = {
       x: {
@@ -127,22 +142,22 @@ export function TextProperties({
         setter: setXInput,
         min: -canvasSize.width / 2,
         max: canvasSize.width / 2,
-        fallback: element.x || 0
+        fallback: element.x || 0,
       },
       y: {
         input: yInput,
         setter: setYInput,
         min: -canvasSize.height / 2,
         max: canvasSize.height / 2,
-        fallback: element.y || 0
+        fallback: element.y || 0,
       },
       rotation: {
         input: rotationInput,
         setter: setRotationInput,
         min: -180,
         max: 180,
-        fallback: element.rotation || 0
-      }
+        fallback: element.rotation || 0,
+      },
     };
     return configs[prop];
   };
@@ -177,12 +192,13 @@ export function TextProperties({
   };
 
   // Create specific handlers using the generic functions
-  const handleXChange = (value: string) => handlePropertyChange('x', value);
-  const handleXBlur = () => handlePropertyBlur('x');
-  const handleYChange = (value: string) => handlePropertyChange('y', value);
-  const handleYBlur = () => handlePropertyBlur('y');
-  const handleRotationChange = (value: string) => handlePropertyChange('rotation', value);
-  const handleRotationBlur = () => handlePropertyBlur('rotation');
+  const handleXChange = (value: string) => handlePropertyChange("x", value);
+  const handleXBlur = () => handlePropertyBlur("x");
+  const handleYChange = (value: string) => handlePropertyChange("y", value);
+  const handleYBlur = () => handlePropertyBlur("y");
+  const handleRotationChange = (value: string) =>
+    handlePropertyChange("rotation", value);
+  const handleRotationBlur = () => handlePropertyBlur("rotation");
 
   return (
     <div className="space-y-6 p-5">
@@ -194,7 +210,7 @@ export function TextProperties({
           updateTextElement(trackId, element.id, { content: e.target.value })
         }
       />
-      
+
       <PropertyGroup title="Font" defaultExpanded={true}>
         <PropertyItem direction="row">
           <PropertyItemLabel>Font</PropertyItemLabel>
@@ -216,7 +232,9 @@ export function TextProperties({
                 <Button
                   type="button"
                   aria-pressed={element.fontWeight === "bold"}
-                  variant={element.fontWeight === "bold" ? "default" : "outline"}
+                  variant={
+                    element.fontWeight === "bold" ? "default" : "outline"
+                  }
                   size="sm"
                   onClick={() =>
                     updateTextElement(trackId, element.id, {
@@ -231,7 +249,9 @@ export function TextProperties({
                 <Button
                   type="button"
                   aria-pressed={element.fontStyle === "italic"}
-                  variant={element.fontStyle === "italic" ? "default" : "outline"}
+                  variant={
+                    element.fontStyle === "italic" ? "default" : "outline"
+                  }
                   size="sm"
                   onClick={() =>
                     updateTextElement(trackId, element.id, {
@@ -247,7 +267,9 @@ export function TextProperties({
                   type="button"
                   aria-pressed={element.textDecoration === "underline"}
                   variant={
-                    element.textDecoration === "underline" ? "default" : "outline"
+                    element.textDecoration === "underline"
+                      ? "default"
+                      : "outline"
                   }
                   size="sm"
                   onClick={() =>
@@ -318,7 +340,7 @@ export function TextProperties({
           </PropertyItemValue>
         </PropertyItem>
       </PropertyGroup>
-      
+
       <PropertyGroup title="Appearance" defaultExpanded={true}>
         <PropertyItem direction="row">
           <PropertyItemLabel>Color</PropertyItemLabel>
@@ -401,7 +423,7 @@ export function TextProperties({
                 min={-canvasSize.width / 2}
                 max={canvasSize.width / 2}
                 step={1}
-                onValueChange={([value]) => handleSliderChange('x', value)}
+                onValueChange={([value]) => handleSliderChange("x", value)}
                 className="w-full"
               />
               <Input
@@ -428,7 +450,7 @@ export function TextProperties({
                 min={-canvasSize.height / 2}
                 max={canvasSize.height / 2}
                 step={1}
-                onValueChange={([value]) => handleSliderChange('y', value)}
+                onValueChange={([value]) => handleSliderChange("y", value)}
                 className="w-full"
               />
               <Input
@@ -458,7 +480,9 @@ export function TextProperties({
                 min={-180}
                 max={180}
                 step={1}
-                onValueChange={([value]) => handleSliderChange('rotation', value)}
+                onValueChange={([value]) =>
+                  handleSliderChange("rotation", value)
+                }
                 className="w-full"
               />
               <Input

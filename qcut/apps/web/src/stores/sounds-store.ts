@@ -7,10 +7,10 @@ import { useProjectStore } from "./project-store";
 import { usePlaybackStore } from "./playback-store";
 
 // Illegal filename characters for file system safety
-const ILLEGAL_FILENAME_CHARS = /[<>:"/\\|?*\x00-\x1f]/g;
+const ILLEGAL_FILENAME_CHARS = /[<>:"/\\|?*\u0000-\u001f]/g;
 
 // Constants for localStorage
-const SAVED_SOUNDS_KEY = 'qcut-saved-sounds';
+const SAVED_SOUNDS_KEY = "qcut-saved-sounds";
 
 // Browser detection for SSR safety
 const isBrowser = typeof window !== "undefined";
@@ -157,7 +157,7 @@ export const useSoundsStore = create<SoundsStore>((set, get) => ({
     try {
       set({ isLoadingSavedSounds: true, savedSoundsError: null });
       const savedSoundsJson = localStorage.getItem(SAVED_SOUNDS_KEY);
-      
+
       let savedSounds: SavedSound[] = [];
       if (savedSoundsJson) {
         try {
@@ -168,7 +168,7 @@ export const useSoundsStore = create<SoundsStore>((set, get) => ({
           localStorage.removeItem(SAVED_SOUNDS_KEY);
         }
       }
-      
+
       set({
         savedSounds,
         isSavedSoundsLoaded: true,
@@ -219,7 +219,9 @@ export const useSoundsStore = create<SoundsStore>((set, get) => ({
   removeSavedSound: async (soundId: number) => {
     try {
       const currentSounds = get().savedSounds;
-      const updatedSounds = currentSounds.filter((sound) => sound.id !== soundId);
+      const updatedSounds = currentSounds.filter(
+        (sound) => sound.id !== soundId
+      );
       if (isBrowser) {
         localStorage.setItem(SAVED_SOUNDS_KEY, JSON.stringify(updatedSounds));
       }
@@ -289,20 +291,26 @@ export const useSoundsStore = create<SoundsStore>((set, get) => ({
       const ext = contentType.includes("ogg")
         ? "ogg"
         : contentType.includes("wav")
-        ? "wav"
-        : "mp3";
-      const safeName = sound.name.replace(ILLEGAL_FILENAME_CHARS, "_").slice(0, 100);
-      const file = new File([blob], `${safeName}.${ext}`, { type: contentType });
+          ? "wav"
+          : "mp3";
+      const safeName = sound.name
+        .replace(ILLEGAL_FILENAME_CHARS, "_")
+        .slice(0, 100);
+      const file = new File([blob], `${safeName}.${ext}`, {
+        type: contentType,
+      });
 
       objectUrl = URL.createObjectURL(file);
 
-      const mediaId = await useMediaStore.getState().addMediaItem(activeProject.id, {
-        name: sound.name,
-        type: "audio",
-        file,
-        duration: sound.duration,
-        url: objectUrl,
-      });
+      const mediaId = await useMediaStore
+        .getState()
+        .addMediaItem(activeProject.id, {
+          name: sound.name,
+          type: "audio",
+          file,
+          duration: sound.duration,
+          url: objectUrl,
+        });
 
       const mediaItem = useMediaStore
         .getState()

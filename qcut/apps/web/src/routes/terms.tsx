@@ -17,7 +17,7 @@ function TermsPage() {
             Terms of Service
           </h1>
           <p className="text-xl text-muted-foreground mb-8">
-            Terms and conditions for using OpenCut.
+            Terms and conditions for using QCut.
           </p>
           <div className="prose prose-lg max-w-none">
             <p>Terms of Service content will be added here.</p>

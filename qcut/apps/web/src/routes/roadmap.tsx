@@ -17,7 +17,7 @@ function RoadmapPage() {
             Roadmap
           </h1>
           <p className="text-xl text-muted-foreground mb-8">
-            Our plans for the future of OpenCut.
+            Our plans for the future of QCut.
           </p>
           <div className="prose prose-lg max-w-none">
             <p>Roadmap content will be added here.</p>

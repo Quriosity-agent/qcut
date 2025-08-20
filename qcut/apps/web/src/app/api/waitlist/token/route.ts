@@ -8,7 +8,7 @@ const TOKEN_EXPIRY = 60 * 60 * 1000;
 const allowedHosts =
   env.NODE_ENV === "development"
     ? ["localhost:3000", "127.0.0.1:3000"]
-    : ["opencut.app", "www.opencut.app"];
+    : ["qcut.app", "www.qcut.app"];
 
 export async function GET(request: NextRequest) {
   const referer = request.headers.get("referer");

@@ -311,12 +311,15 @@ export function TimelineElement({
                 pointerEvents: "none",
               }}
               onError={(e) => {
-                console.error("[TimelineElement] Background image failed to load:", {
-                  url: mediaItemUrl,
-                  elementId: element.id,
-                  mediaId: element.mediaId,
-                  error: e
-                });
+                console.error(
+                  "[TimelineElement] Background image failed to load:",
+                  {
+                    url: mediaItemUrl,
+                    elementId: element.id,
+                    mediaId: element.mediaId,
+                    error: e,
+                  }
+                );
               }}
               aria-label={`Tiled background of ${mediaItem.name}`}
             />

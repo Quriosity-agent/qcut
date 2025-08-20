@@ -7,13 +7,13 @@ import { Footer } from "@/components/footer";
 import { Header } from "@/components/header";
 
 export const metadata: Metadata = {
-  title: "Privacy Policy - OpenCut",
+  title: "Privacy Policy - QCut",
   description:
-    "Learn how OpenCut handles your data and privacy. Our commitment to protecting your information while you edit videos.",
+    "Learn how QCut handles your data and privacy. Our commitment to protecting your information while you edit videos.",
   openGraph: {
-    title: "Privacy Policy - OpenCut",
+    title: "Privacy Policy - QCut",
     description:
-      "Learn how OpenCut handles your data and privacy. Our commitment to protecting your information while you edit videos.",
+      "Learn how QCut handles your data and privacy. Our commitment to protecting your information while you edit videos.",
     type: "website",
   },
 };
@@ -31,8 +31,9 @@ export default function PrivacyPage() {
           <div className="max-w-4xl mx-auto">
             <div className="text-center mb-10">
               <Link
-                href="https://github.com/OpenCut-app/OpenCut"
+                href="https://github.com/qcut-app/qcut"
                 target="_blank"
+                rel="noopener noreferrer"
               >
                 <Badge variant="secondary" className="gap-2 mb-6">
                   <GithubIcon className="h-3 w-3" />
@@ -55,7 +56,7 @@ export default function PrivacyPage() {
                   </h2>
                   <p className="mb-4">
                     <strong>
-                      OpenCut processes all videos locally on your device.
+                      QCut processes all videos locally on your device.
                     </strong>{" "}
                     We never upload, store, or have access to your video files.
                     Your content remains completely private and under your
@@ -117,7 +118,7 @@ export default function PrivacyPage() {
                       Databuddy
                     </a>{" "}
                     for completely anonymized and non-invasive analytics to
-                    understand how people use OpenCut.
+                    understand how people use QCut.
                   </p>
                   <p>
                     This helps us improve the editor, but we never collect
@@ -148,9 +149,7 @@ export default function PrivacyPage() {
                   <h2 className="text-2xl font-semibold mb-4">
                     Third-Party Services
                   </h2>
-                  <p className="mb-4">
-                    OpenCut integrates with these services:
-                  </p>
+                  <p className="mb-4">QCut integrates with these services:</p>
                   <ul className="list-disc pl-6 mb-4 space-y-2">
                     <li>
                       <strong>Google OAuth:</strong> For optional Google sign-in
@@ -185,16 +184,16 @@ export default function PrivacyPage() {
                     Open Source Transparency
                   </h2>
                   <p className="mb-4">
-                    OpenCut is completely open source. You can review our code,
-                    see exactly how we handle data, and even self-host the
+                    QCut is completely open source. You can review our code, see
+                    exactly how we handle data, and even self-host the
                     application if you prefer.
                   </p>
                   <p>
                     View our source code on{" "}
                     <a
-                      href="https://github.com/OpenCut-app/OpenCut"
+                      href="https://github.com/qcut-app/qcut"
                       target="_blank"
-                      rel="noopener"
+                      rel="noopener noreferrer"
                       className="text-primary hover:underline"
                     >
                       GitHub
@@ -212,23 +211,23 @@ export default function PrivacyPage() {
                   <p>
                     Open an issue on our{" "}
                     <a
-                      href="https://github.com/OpenCut-app/OpenCut/issues"
+                      href="https://github.com/qcut-app/qcut/issues"
                       target="_blank"
-                      rel="noopener"
+                      rel="noopener noreferrer"
                       className="text-primary hover:underline"
                     >
                       GitHub repository
                     </a>
                     , email us at{" "}
                     <a
-                      href="mailto:oss@opencut.app"
+                      href="mailto:oss@qcut.app"
                       className="text-primary hover:underline"
                     >
-                      oss@opencut.app
+                      oss@qcut.app
                     </a>
                     , or reach out on{" "}
                     <a
-                      href="https://x.com/opencutapp"
+                      href="https://x.com/qcutapp"
                       target="_blank"
                       rel="noopener"
                       className="text-primary hover:underline"

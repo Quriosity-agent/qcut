@@ -30,7 +30,6 @@ async function getContributors(): Promise<Contributor[]> {
       {
         headers: {
           Accept: "application/vnd.github.v3+json",
-          "User-Agent": "OpenCut-Web-App",
         },
       }
     );
@@ -176,7 +175,7 @@ function ContributorsPage() {
                     All Contributors
                   </h2>
                   <p className="text-muted-foreground">
-                    Everyone who makes OpenCut better
+                    Everyone who makes QCut better
                   </p>
                 </div>
 
@@ -245,7 +244,7 @@ function ContributorsPage() {
               <div className="text-center mb-12">
                 <h2 className="text-2xl font-semibold mb-2">External Tools</h2>
                 <p className="text-muted-foreground">
-                  Tools we use to build OpenCut
+                  Tools we use to build QCut
                 </p>
               </div>
 
@@ -295,9 +294,9 @@ function ContributorsPage() {
               <div className="max-w-2xl mx-auto">
                 <h2 className="text-3xl font-bold mb-4">Join the community</h2>
                 <p className="text-lg text-muted-foreground mb-10 leading-relaxed">
-                  OpenCut is built by developers like you. Every contribution,
-                  no matter how small, helps make video editing more accessible
-                  for everyone.
+                  QCut is built by developers like you. Every contribution, no
+                  matter how small, helps make video editing more accessible for
+                  everyone.
                 </p>
 
                 <div className="flex flex-col sm:flex-row gap-4 justify-center">
