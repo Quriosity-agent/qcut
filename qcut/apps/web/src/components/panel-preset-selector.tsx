@@ -11,6 +11,8 @@ import {
 import { ChevronDown, LayoutPanelTop, RotateCcw } from "lucide-react";
 import { usePanelStore, type PanelPreset, PRESET_LABELS, PRESET_DESCRIPTIONS } from "@/stores/panel-store";
 
+const presets = Object.keys(PRESET_LABELS) as PanelPreset[];
+
 export function PanelPresetSelector() {
   const { activePreset, setActivePreset, resetPreset } = usePanelStore();
 
@@ -29,13 +31,13 @@ export function PanelPresetSelector() {
           className="h-8 px-2 text-xs"
           title="Panel Presets"
         >
-          <LayoutPanelTop className="h-4 w-4 mr-1" title="Panel presets" />
+          <LayoutPanelTop className="h-4 w-4 mr-1" aria-label="Panel presets" />
           {PRESET_LABELS[activePreset]}
-          <ChevronDown className="h-3 w-3 ml-1" title="Open presets menu" />
+          <ChevronDown className="h-3 w-3 ml-1" aria-label="Open presets menu" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent>
-        {(Object.keys(PRESET_LABELS) as PanelPreset[]).map((preset) => (
+        {presets.map((preset) => (
           <DropdownMenuItem
             key={preset}
             onClick={() => setActivePreset(preset)}
@@ -57,7 +59,7 @@ export function PanelPresetSelector() {
               title={`Reset ${PRESET_LABELS[preset]} preset`}
               aria-label={`Reset ${PRESET_LABELS[preset]} preset`}
             >
-              <RotateCcw className="h-3 w-3" title="Reset preset" />
+              <RotateCcw className="h-3 w-3" aria-label="Reset preset" />
             </Button>
           </DropdownMenuItem>
         ))}

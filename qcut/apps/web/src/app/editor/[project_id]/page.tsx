@@ -235,25 +235,25 @@ export default function Editor() {
             >
               <ResizablePanel defaultSize={100 - propertiesPanel} minSize={60}>
                 <ResizablePanelGroup direction="vertical" className="h-full w-full gap-[0.18rem]">
-                  <ResizablePanel defaultSize={mainContent} minSize={30}>
+                  <ResizablePanel defaultSize={mainContent} minSize={30} onResize={setMainContent}>
                     <ResizablePanelGroup direction="horizontal" className="h-full w-full gap-[0.19rem]">
-                      <ResizablePanel defaultSize={toolsPanel} minSize={15} maxSize={40}>
+                      <ResizablePanel defaultSize={toolsPanel} minSize={15} maxSize={40} onResize={setToolsPanel}>
                         <MediaPanel />
                       </ResizablePanel>
                       <ResizableHandle withHandle />
-                      <ResizablePanel defaultSize={previewPanel} minSize={30}>
+                      <ResizablePanel defaultSize={previewPanel} minSize={30} onResize={setPreviewPanel}>
                         <PreviewPanel />
                       </ResizablePanel>
                     </ResizablePanelGroup>
                   </ResizablePanel>
                   <ResizableHandle withHandle />
-                  <ResizablePanel defaultSize={timeline} minSize={15} maxSize={70}>
+                  <ResizablePanel defaultSize={timeline} minSize={15} maxSize={70} onResize={setTimeline}>
                     <Timeline />
                   </ResizablePanel>
                 </ResizablePanelGroup>
               </ResizablePanel>
               <ResizableHandle withHandle />
-              <ResizablePanel defaultSize={propertiesPanel} minSize={15} maxSize={40}>
+              <ResizablePanel defaultSize={propertiesPanel} minSize={15} maxSize={40} onResize={setPropertiesPanel}>
                 <PropertiesPanel />
               </ResizablePanel>
             </ResizablePanelGroup>
@@ -265,31 +265,32 @@ export default function Editor() {
             >
               <ResizablePanel defaultSize={100 - previewPanel} minSize={60}>
                 <ResizablePanelGroup direction="vertical" className="h-full w-full gap-[0.18rem]">
-                  <ResizablePanel defaultSize={mainContent} minSize={30}>
+                  <ResizablePanel defaultSize={mainContent} minSize={30} onResize={setMainContent}>
                     <ResizablePanelGroup direction="horizontal" className="h-full w-full gap-[0.19rem]">
-                      <ResizablePanel defaultSize={toolsPanel} minSize={15} maxSize={40}>
+                      <ResizablePanel defaultSize={toolsPanel} minSize={15} maxSize={40} onResize={setToolsPanel}>
                         <MediaPanel />
                       </ResizablePanel>
                       <ResizableHandle withHandle />
-                      <ResizablePanel defaultSize={propertiesPanel} minSize={15} maxSize={40}>
+                      <ResizablePanel defaultSize={propertiesPanel} minSize={15} maxSize={40} onResize={setPropertiesPanel}>
                         <PropertiesPanel />
                       </ResizablePanel>
                     </ResizablePanelGroup>
                   </ResizablePanel>
                   <ResizableHandle withHandle />
-                  <ResizablePanel defaultSize={timeline} minSize={15} maxSize={70}>
+                  <ResizablePanel defaultSize={timeline} minSize={15} maxSize={70} onResize={setTimeline}>
                     <Timeline />
                   </ResizablePanel>
                 </ResizablePanelGroup>
               </ResizablePanel>
               <ResizableHandle withHandle />
-              <ResizablePanel defaultSize={previewPanel} minSize={30}>
+              <ResizablePanel defaultSize={previewPanel} minSize={30} onResize={setPreviewPanel}>
                 <PreviewPanel />
               </ResizablePanel>
             </ResizablePanelGroup>
           ) : (
             // Keep existing default layout
             <ResizablePanelGroup
+              key={`default-${resetCounter}`}
               direction="vertical"
               className="h-full w-full gap-[0.18rem]"
             >
