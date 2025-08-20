@@ -1,28 +1,34 @@
 # Stickers Panel Integration Guide - UPDATED
 
-## Current Status Analysis
+## Current Status Analysis (Verified)
 
 ### ✅ Already Implemented:
 1. **iconify-api.ts** - Already exists in `src/lib/`
 2. **stickers-store.ts** - Already exists in `src/stores/`
 3. **stickers.tsx view** - Already exists in `src/components/editor/media-panel/views/`
 4. **StickersView integrated** - Already imported and used in media panel
-5. **Draggable item props** - `showLabel` and `rounded` already exist (but missing `variant` and `isDraggable`)
+5. **Draggable item props** - `showLabel` and `rounded` already exist
+6. **Timeline sticker support** - Already has basic sticker type handling in timeline-store.ts
+
+### ⚠️ Partially Implemented:
+1. **draggable-item.tsx** - Missing `variant` and `isDraggable` props
+2. **media-store.ts** - Missing `ephemeral` property in MediaItem interface
+3. **media.tsx filter** - Missing ephemeral filtering
 
 ### ❌ Not Implemented:
-1. **next.config.ts** - File doesn't exist (project uses Vite, not Next.js)
-2. **use-infinite-scroll.ts** - Hook doesn't exist
-3. **input-with-back.tsx** - Component doesn't exist
-4. **ephemeral property** - Not in media store
-5. **Timeline sticker support** - Not implemented
-6. **Sounds view update** - Still using old scroll handling
+1. **use-infinite-scroll.ts** - Hook doesn't exist in `src/hooks/`
+2. **input-with-back.tsx** - Component doesn't exist in `src/components/ui/`
+3. **Sounds view** - Not using infinite scroll hook
+
+### 📝 Not Applicable:
+1. **next.config.ts** - Project uses Vite, not Next.js (no configuration needed)
 
 ---
 
 ## Revised Implementation Tasks
 
 ## Task 1: Skip Iconify Configuration (0 minutes)
-**STATUS: NOT NEEDED** - Project uses Vite, not Next.js. Vite doesn't need domain configuration.
+**STATUS: NOT NEEDED** - Project uses Vite, not Next.js. No domain configuration required.
 
 ---
 
@@ -57,24 +63,28 @@ cp "C:\Users\zdhpe\Desktop\vite_opencut\OpenCut-main\qcut\docs\task\input-with-b
 
 ---
 
-## Task 4: Update Draggable Item Component (5 minutes)
+## Task 4: Update Draggable Item Component (3 minutes)
 
 ### Files to Modify:
 - `qcut/apps/web/src/components/ui/draggable-item.tsx`
 
-### Steps:
-Since `showLabel` and `rounded` already exist, only add missing props:
+### Current State:
+- ✅ `showLabel` prop exists (line 25)
+- ✅ `rounded` prop exists (line 26)
+- ❌ Missing `variant` prop
+- ❌ Missing `isDraggable` prop
 
-1. Add to interface (around line 25):
+### Steps:
+1. Add missing props to interface (line 16):
 ```typescript
-interface DraggableMediaItemProps {
-  // ... existing props (showLabel and rounded already exist)
+export interface DraggableMediaItemProps {
+  // ... existing props
   variant?: "default" | "card";
   isDraggable?: boolean;
 }
 ```
 
-2. Add to function parameters (around line 38):
+2. Add to function parameters (line 29):
 ```typescript
 export function DraggableMediaItem({
   // ... existing props
@@ -84,127 +94,113 @@ export function DraggableMediaItem({
 }: DraggableMediaItemProps) {
 ```
 
-3. Update className logic to support variant:
+3. Update rendering logic to support variant and isDraggable:
 ```typescript
+// Add variant to className
 const itemClassName = cn(
   "relative group cursor-pointer",
-  rounded && "rounded-md", // This already exists
-  variant === "card" && "bg-card border", // Add this
+  rounded && "rounded-full", // Already exists
+  variant === "card" && "bg-card border",
   className
 );
-```
 
-4. Conditionally apply drag handlers based on isDraggable:
-```typescript
+// Conditionally apply drag handlers
 const dragProps = isDraggable ? {
   draggable: true,
   onDragStart: handleDragStart,
   onDragEnd: handleDragEnd,
 } : {};
-
-// Apply dragProps to the main div
-<div {...dragProps} className={itemClassName}>
 ```
 
 ---
 
-## Task 5: Update Media Store (3 minutes)
+## Task 5: Update Media Store (2 minutes)
 
 ### Files to Modify:
 - `qcut/apps/web/src/stores/media-store.ts`
 
+### Current State:
+- MediaItem interface exists starting around line 7
+- Missing `ephemeral` property
+
 ### Steps:
-1. Find the `MediaItem` interface and add:
+1. Add `ephemeral` property to MediaItem interface (after line 22):
 ```typescript
 export interface MediaItem {
+  id: string;
+  name: string;
+  type: MediaType;
   // ... existing properties
-  ephemeral?: boolean; // Add this line
+  color?: string; // Text color
+  ephemeral?: boolean; // Add this line - marks items as temporary (not saved)
 }
 ```
 
 ---
 
-## Task 6: Update Media View Filter (3 minutes)
+## Task 6: Update Media View Filter (2 minutes)
 
 ### Files to Modify:
 - `qcut/apps/web/src/components/editor/media-panel/views/media.tsx`
 
+### Current State:
+- Filter logic exists in useEffect
+- Missing ephemeral check
+
 ### Steps:
-1. Find the filter logic (search for `mediaItems.filter`) and add:
+1. Find the filter logic (around line 58) and add ephemeral check:
 ```typescript
 useEffect(() => {
-  let filtered = mediaItems.filter((item) => {
-    if (item.ephemeral) return false; // Add this line
+  const filtered = mediaItems.filter((item) => {
+    // Add this line first to exclude ephemeral items
+    if (item.ephemeral) return false;
+    
+    if (mediaFilter && mediaFilter !== "all" && item.type !== mediaFilter) {
+      return false;
+    }
     // ... rest of existing filter logic
 ```
 
 ---
 
-## Task 7: Update Timeline Store for Stickers (8 minutes)
+## Task 7: Verify Timeline Store Sticker Support (1 minute)
 
-### Files to Modify:
+### Files to Check:
 - `qcut/apps/web/src/stores/timeline-store.ts`
 
-### Steps:
-1. Import stickers store at the top:
-```typescript
-import { useStickersStore } from "./stickers-store";
-```
+### Current State:
+- ✅ Already has basic sticker type handling
+- Search for `type === "sticker"` shows it's already implemented
 
-2. In the `handleDrop` function, add sticker handling:
-```typescript
-// Find where drop types are handled (search for "if (data.type")
-// Add this case:
-if (data.type === "sticker") {
-  const { downloadSticker } = useStickersStore.getState();
-  const file = await downloadSticker(data.iconName);
-  
-  if (file) {
-    const mediaItem = {
-      id: generateId(),
-      name: data.iconName.replace(":", "-"),
-      type: "image" as const,
-      file,
-      url: URL.createObjectURL(file),
-      width: 200,
-      height: 200,
-      duration: 5000, // 5 seconds default
-      ephemeral: false,
-    };
-    
-    // Add to media store
-    const { addMediaItem } = useMediaStore.getState();
-    await addMediaItem(activeProject.id, mediaItem);
-    
-    // Add to timeline at drop position
-    const added = useMediaStore.getState().mediaItems.find(
-      m => m.url === mediaItem.url
-    );
-    if (added) {
-      addMediaAtTime(added, dropTime);
-    }
-  }
-  return;
-}
-```
+### Verification Steps:
+1. Verify sticker handling exists in timeline-store.ts
+2. Check if it properly handles sticker drops
+3. No changes needed if already working
+
+**Note**: If sticker drops aren't working despite the code being there, check:
+- Is `useStickersStore` imported?
+- Is the sticker download logic working?
+- Are stickers being added to the timeline correctly?
 
 ---
 
-## Task 8: Update Sounds View (5 minutes)
+## Task 8: Update Sounds View (3 minutes) - OPTIONAL
 
 ### Files to Modify:
 - `qcut/apps/web/src/components/editor/media-panel/views/sounds.tsx`
 
-### Steps:
+### Current State:
+- Works without infinite scroll hook
+- Can be updated after hook is created
+
+### Steps (After Task 2 is complete):
 1. Import the hook:
 ```typescript
 import { useInfiniteScroll } from "@/hooks/use-infinite-scroll";
 ```
 
-2. Find the scroll handling code and replace with:
+2. Find scroll handling and integrate the hook:
 ```typescript
-// Remove manual scroll handling code
-// Replace with:
 const { scrollAreaRef, handleScroll } = useInfiniteScroll({
   onLoadMore: loadMore,
   hasMore: hasNextPage,
@@ -219,25 +215,32 @@ const { scrollAreaRef, handleScroll } = useInfiniteScroll({
 >
 ```
 
+**Note**: This is optional - sounds view works without this optimization.
+
 ---
 
-## Task 9: Update Stickers View Imports (3 minutes)
+## Task 9: Verify Stickers View (1 minute)
 
-### Files to Modify:
+### Files to Check:
 - `qcut/apps/web/src/components/editor/media-panel/views/stickers.tsx`
 
-### Steps:
-1. Verify the component has all necessary imports:
+### Current State:
+- ✅ Stickers view already exists and is functional
+- Currently using standard Input component (works fine)
+- Not using infinite scroll (works fine with current implementation)
+
+### Optional Enhancement (After Tasks 2 & 3):
+Once `InputWithBack` and `useInfiniteScroll` are created, update imports:
 ```typescript
 import { InputWithBack } from "@/components/ui/input-with-back";
 import { useInfiniteScroll } from "@/hooks/use-infinite-scroll";
 ```
 
-2. If any imports are missing, add them at the top of the file
+**Note**: Stickers panel works without these enhancements.
 
 ---
 
-## Task 10: Test Integration (5 minutes)
+## Task 10: Test Integration (3 minutes)
 
 ### Steps:
 1. Build the project:
@@ -250,39 +253,44 @@ cd qcut && bun run build
 bun run dev
 ```
 
-3. Test:
-- Open media panel
-- Click on Stickers tab
-- Search for icons
-- Try adding a sticker to timeline
-- Check if recent stickers appear
+3. Test what's already working:
+- ✅ Open media panel
+- ✅ Click on Stickers tab (already works)
+- ✅ Search for icons (already works)
+- ⚠️ Try adding a sticker to timeline (verify if working)
+- ✅ Check if recent stickers appear (already works)
 
 ---
 
-## Files Status Summary
+## Implementation Priority
 
-| File | Status | Action Needed |
-|------|--------|---------------|
-| iconify-api.ts | ✅ Exists | None |
-| stickers-store.ts | ✅ Exists | None |
-| stickers.tsx | ✅ Exists | Update imports |
-| use-infinite-scroll.ts | ❌ Missing | Copy from task folder |
-| input-with-back.tsx | ❌ Missing | Copy from task folder |
-| draggable-item.tsx | ⚠️ Partial | Add variant & isDraggable |
-| media-store.ts | ⚠️ Missing ephemeral | Add property |
-| timeline-store.ts | ❌ No sticker support | Add handler |
-| sounds.tsx | ❌ Old scroll | Update to use hook |
+### 🔴 Critical (Required for basic functionality):
+1. **Task 2**: Create `use-infinite-scroll.ts` - 5 min
+2. **Task 3**: Create `input-with-back.tsx` - 5 min
+3. **Task 5**: Add `ephemeral` property to MediaItem - 2 min
+4. **Task 6**: Add ephemeral filtering to media view - 2 min
+
+### 🟡 Important (Enhances functionality):
+5. **Task 4**: Add variant & isDraggable to draggable-item - 3 min
+
+### 🟢 Optional (Nice to have):
+6. **Task 8**: Update sounds view with infinite scroll - 3 min
+
+### ✅ Already Done:
+- Task 1: Iconify config (not needed for Vite)
+- Task 7: Timeline sticker support (already exists)
+- Task 9: Stickers view (already functional)
 
 ---
 
-## Quick Command Summary
+## Quick Implementation Commands
 
 ```bash
-# Copy missing files
-cp "qcut\docs\task\use-infinite-scroll.ts" "qcut\apps\web\src\hooks\"
-cp "qcut\docs\task\input-with-back.tsx" "qcut\apps\web\src\components\ui\"
+# Step 1: Copy the two missing files
+cp "C:\Users\zdhpe\Desktop\vite_opencut\OpenCut-main\qcut\docs\task\use-infinite-scroll.ts" "C:\Users\zdhpe\Desktop\vite_opencut\OpenCut-main\qcut\apps\web\src\hooks\"
+cp "C:\Users\zdhpe\Desktop\vite_opencut\OpenCut-main\qcut\docs\task\input-with-back.tsx" "C:\Users\zdhpe\Desktop\vite_opencut\OpenCut-main\qcut\apps\web\src\components\ui\"
 
-# Build and test
+# Step 2: Build and test
 cd qcut
 bun run build
 bun run dev
@@ -290,7 +298,26 @@ bun run dev
 
 ---
 
-## Estimated Time: 45 minutes total
-- Most of the heavy work is already done
-- Just need to fill in the missing pieces
-- Each task is still under 10 minutes
+## Updated Files Status
+
+| File | Current Status | Action Required | Priority |
+|------|---------------|-----------------|----------|
+| iconify-api.ts | ✅ Exists | None | - |
+| stickers-store.ts | ✅ Exists | None | - |
+| stickers.tsx | ✅ Works | Optional: update imports | 🟢 |
+| use-infinite-scroll.ts | ❌ Missing | Create/Copy | 🔴 |
+| input-with-back.tsx | ❌ Missing | Create/Copy | 🔴 |
+| draggable-item.tsx | ⚠️ Partial | Add 2 props | 🟡 |
+| media-store.ts | ⚠️ Incomplete | Add ephemeral | 🔴 |
+| media.tsx | ⚠️ Incomplete | Add filter | 🔴 |
+| timeline-store.ts | ✅ Has stickers | Verify working | ✅ |
+| sounds.tsx | ✅ Works | Optional: add infinite scroll | 🟢 |
+
+---
+
+## Estimated Time: 20 minutes total
+- Critical tasks: 14 minutes
+- Important tasks: 3 minutes  
+- Optional tasks: 3 minutes
+
+**Note**: The stickers panel is mostly functional. These updates will complete the integration and add optimizations.
