@@ -223,7 +223,7 @@ export default function PrivacyPage() {
                     </a>
                     , or reach out on{" "}
                     <a
-                      href="https://x.com/opencutapp"
+                      href="https://x.com/qcutapp"
                       target="_blank"
                       rel="noopener"
                       className="text-primary hover:underline"

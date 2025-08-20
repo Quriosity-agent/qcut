@@ -44,7 +44,7 @@ export function Footer() {
             </p>
             <div className="flex justify-start gap-3">
               <a
-                href="https://github.com/OpenCut-app/OpenCut"
+                href="https://github.com/qcut-app/qcut"
                 className="text-muted-foreground hover:text-foreground transition-colors"
                 target="_blank"
                 rel="noopener noreferrer"
@@ -115,7 +115,7 @@ export function Footer() {
                 </li>
                 <li>
                   <a
-                    href="https://github.com/OpenCut-app/OpenCut/blob/main/README.md"
+                    href="https://github.com/qcut-app/qcut/blob/main/README.md"
                     className="text-muted-foreground hover:text-foreground transition-colors"
                     target="_blank"
                     rel="noopener noreferrer"

@@ -23,7 +23,7 @@ function PrivacyPage() {
           <div className="max-w-4xl mx-auto">
             <div className="text-center mb-10">
               <a
-                href="https://github.com/OpenCut-app/OpenCut"
+                href="https://github.com/qcut-app/qcut"
                 target="_blank"
                 rel="noopener noreferrer"
               >
@@ -183,7 +183,7 @@ function PrivacyPage() {
                   <p>
                     View our source code on{" "}
                     <a
-                      href="https://github.com/OpenCut-app/OpenCut"
+                      href="https://github.com/qcut-app/qcut"
                       target="_blank"
                       rel="noopener"
                       className="text-primary hover:underline"
@@ -203,7 +203,7 @@ function PrivacyPage() {
                   <p>
                     Open an issue on our{" "}
                     <a
-                      href="https://github.com/OpenCut-app/OpenCut/issues"
+                      href="https://github.com/qcut-app/qcut/issues"
                       target="_blank"
                       rel="noopener"
                       className="text-primary hover:underline"
@@ -219,7 +219,7 @@ function PrivacyPage() {
                     </a>
                     , or reach out on{" "}
                     <a
-                      href="https://x.com/opencutapp"
+                      href="https://x.com/qcutapp"
                       target="_blank"
                       rel="noopener"
                       className="text-primary hover:underline"

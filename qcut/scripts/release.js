@@ -127,7 +127,7 @@ function buildElectronApp() {
 }
 
 function generateChecksums() {
-  const buildDir = "d:/AI_play/AI_Code/build_opencut";
+  const buildDir = "d:/AI_play/AI_Code/build_qcut";
   const installerPattern = /QCut.*Setup.*\.exe$/;
 
   try {
@@ -184,7 +184,7 @@ function createGitTag(version) {
 }
 
 function generateReleaseNotes(version) {
-  const buildDir = "d:/AI_play/AI_Code/build_opencut";
+  const buildDir = "d:/AI_play/AI_Code/build_qcut";
   const installerPattern = /QCut.*Setup.*\.exe$/;
 
   try {

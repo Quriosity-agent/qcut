@@ -5,6 +5,8 @@
  * conflicting with static imports in other parts of the application.
  */
 
+import { debugLogger } from "@/lib/debug-logger";
+
 // Cache for loaded stores to avoid repeated imports
 const storeCache = new Map<string, any>();
 
@@ -24,7 +26,11 @@ export async function getMediaStore() {
     storeCache.set(cacheKey, useMediaStore);
     return useMediaStore;
   } catch (error) {
-    console.error("Failed to lazy load media store:", error);
+    debugLogger.error(
+      "lazy-stores",
+      "Failed to lazy load media store",
+      error
+    );
     // Fallback to direct import if dynamic import fails
     const { useMediaStore } = await import("@/stores/media-store");
     return useMediaStore;
@@ -47,7 +53,11 @@ export async function getTimelineStore() {
     storeCache.set(cacheKey, useTimelineStore);
     return useTimelineStore;
   } catch (error) {
-    console.error("Failed to lazy load timeline store:", error);
+    debugLogger.error(
+      "lazy-stores",
+      "Failed to lazy load timeline store",
+      error
+    );
     // Fallback to direct import if dynamic import fails
     const { useTimelineStore } = await import("@/stores/timeline-store");
     return useTimelineStore;
@@ -70,7 +80,11 @@ export async function getProjectStore() {
     storeCache.set(cacheKey, useProjectStore);
     return useProjectStore;
   } catch (error) {
-    console.error("Failed to lazy load project store:", error);
+    debugLogger.error(
+      "lazy-stores",
+      "Failed to lazy load project store",
+      error
+    );
     // Fallback to direct import if dynamic import fails
     const { useProjectStore } = await import("@/stores/project-store");
     return useProjectStore;
@@ -86,7 +100,11 @@ export async function preloadCriticalStores() {
     // Preload the most commonly used stores
     await Promise.all([getMediaStore(), getTimelineStore(), getProjectStore()]);
   } catch (error) {
-    console.error("Failed to preload stores:", error);
+    debugLogger.error(
+      "lazy-stores",
+      "Failed to preload stores",
+      error
+    );
   }
 }
 

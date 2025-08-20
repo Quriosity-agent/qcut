@@ -31,7 +31,7 @@ export default function TermsPage() {
           <div className="max-w-4xl mx-auto">
             <div className="text-center mb-10">
               <Link
-                href="https://github.com/OpenCut-app/OpenCut"
+                href="https://github.com/qcut-app/qcut"
                 target="_blank"
               >
                 <Badge variant="secondary" className="gap-2 mb-6">
@@ -157,7 +157,7 @@ export default function TermsPage() {
                   <p>
                     View our source code and license on{" "}
                     <a
-                      href="https://github.com/OpenCut-app/OpenCut"
+                      href="https://github.com/qcut-app/qcut"
                       target="_blank"
                       rel="noopener"
                       className="text-primary hover:underline"
@@ -266,7 +266,7 @@ export default function TermsPage() {
                   <p className="mb-4">
                     Contact us through our{" "}
                     <a
-                      href="https://github.com/OpenCut-app/OpenCut/issues"
+                      href="https://github.com/qcut-app/qcut/issues"
                       target="_blank"
                       rel="noopener"
                       className="text-primary hover:underline"
@@ -282,7 +282,7 @@ export default function TermsPage() {
                     </a>
                     , or reach out on{" "}
                     <a
-                      href="https://x.com/opencutapp"
+                      href="https://x.com/qcutapp"
                       target="_blank"
                       rel="noopener"
                       className="text-primary hover:underline"

@@ -6,6 +6,23 @@ import { ActionWithOptionalArgs } from "@/constants/actions";
 import { isAppleDevice, isDOMElement, isTypableElement } from "@/lib/utils";
 import { KeybindingConfig, ShortcutKey } from "@/types/keybinding";
 
+// One-time migration: copy opencut-keybindings → qcut-keybindings
+if (typeof window !== "undefined") {
+  try {
+    const OLD_KEY = "opencut-keybindings";
+    const NEW_KEY = "qcut-keybindings";
+    if (!localStorage.getItem(NEW_KEY)) {
+      const legacy = localStorage.getItem(OLD_KEY);
+      if (legacy) {
+        localStorage.setItem(NEW_KEY, legacy);
+        localStorage.removeItem(OLD_KEY);
+      }
+    }
+  } catch {
+    /* best-effort migration */
+  }
+}
+
 // Default keybindings configuration
 export const defaultKeybindings: KeybindingConfig = {
   space: "toggle-play",

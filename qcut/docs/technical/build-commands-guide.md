@@ -79,7 +79,7 @@ bun run build
 #### `bun run dist:dir`
 **Purpose**: Create unpacked Electron app (testing)
 **Time**: ~2-3 minutes
-**Output**: `d:/AI_play/AI_Code/build_opencut/win-unpacked/`
+**Output**: `d:/AI_play/AI_Code/build_qcut/win-unpacked/`
 ```bash
 bun run dist:dir
 # - No installer created
@@ -142,10 +142,10 @@ bun run package:win
 ## Build Outputs
 
 ### File Locations
-All electron-builder outputs go to: `d:/AI_play/AI_Code/build_opencut/`
+All electron-builder outputs go to: `d:/AI_play/AI_Code/build_qcut/`
 
 ```
-d:/AI_play/AI_Code/build_opencut/
+d:/AI_play/AI_Code/build_qcut/
 ├── win-unpacked/                          # Unpacked application
 │   ├── QCut Video Editor.exe              # Main executable
 │   ├── resources/                         # App resources
@@ -216,10 +216,10 @@ bun run build  # Run before Electron builds
 **If builds take >15 minutes:**
 ```bash
 # Check disk space
-dir "d:/AI_play/AI_Code/build_opencut"
+dir "d:/AI_play/AI_Code/build_qcut"
 
 # Clean old builds
-rmdir /s "d:/AI_play/AI_Code/build_opencut/win-unpacked"
+rmdir /s "d:/AI_play/AI_Code/build_qcut/win-unpacked"
 
 # Use faster build
 bun run dist:win:fast
@@ -254,14 +254,14 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: QCut-Windows
-          path: d:/AI_play/AI_Code/build_opencut/*.exe
+          path: d:/AI_play/AI_Code/build_qcut/*.exe
 ```
 
 ## Environment Variables
 
 ### Optional Configuration
 ```env
-# Build output directory (default: d:/AI_play/AI_Code/build_opencut)
+# Build output directory (default: d:/AI_play/AI_Code/build_qcut)
 ELECTRON_BUILDER_OUTPUT_DIR=custom/output/path
 
 # Enable/disable auto-updater (default: enabled in packaged builds)
@@ -342,7 +342,7 @@ bun run dist:win:release
 
 ### Output Locations
 - **Development**: `apps/web/dist/` (web build)
-- **Electron builds**: `d:/AI_play/AI_Code/build_opencut/`
+- **Electron builds**: `d:/AI_play/AI_Code/build_qcut/`
 - **Executables**: `win-unpacked/QCut Video Editor.exe`
 - **Installers**: `QCut Video Editor Setup 0.1.0.exe`
 
