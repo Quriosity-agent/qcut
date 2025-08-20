@@ -196,27 +196,47 @@ export function InspectorLayout({ resetCounter }: LayoutProps) {
     setPropertiesPanel,
   } = usePanelStore();
 
+  // Calculate relative sizes for nested panels
+  // The left group contains tools + preview and its total width is (100 - propertiesPanel)
+  const leftGroupTotal = Math.max(1, 100 - propertiesPanel);
+  
+  // Convert from global percentages to left group percentages
+  const toolsPanelRelative = (toolsPanel / leftGroupTotal) * 100;
+  const previewPanelRelative = (previewPanel / leftGroupTotal) * 100;
+  
+  // Convert from left group percentage back to global percentage
+  const toGlobalTools = (leftGroupPct: number) => (leftGroupPct * leftGroupTotal) / 100;
+  const toGlobalPreview = (leftGroupPct: number) => (leftGroupPct * leftGroupTotal) / 100;
+
   return (
     <ResizablePanelGroup
       key={`inspector-${resetCounter}`}
       direction="horizontal"
       className="h-full w-full gap-[0.18rem] px-3 pb-3"
     >
-      <ResizablePanel defaultSize={100 - propertiesPanel} minSize={60}>
+      <ResizablePanel defaultSize={toolsPanel + previewPanel} minSize={60}>
         <ResizablePanelGroup direction="vertical" className="h-full w-full gap-[0.18rem]">
           <ResizablePanel defaultSize={mainContent} minSize={30} onResize={setMainContent}>
             <ResizablePanelGroup direction="horizontal" className="h-full w-full gap-[0.19rem]">
-              <ResizablePanel defaultSize={toolsPanel} minSize={15} maxSize={40} onResize={setToolsPanel}>
+              <ResizablePanel 
+                defaultSize={toolsPanelRelative} 
+                minSize={15} 
+                onResize={(pct) => setToolsPanel(toGlobalTools(pct))}
+              >
                 <MediaPanel />
               </ResizablePanel>
               <ResizableHandle withHandle />
-              <ResizablePanel defaultSize={previewPanel} minSize={30} onResize={setPreviewPanel}>
+              <ResizablePanel 
+                defaultSize={previewPanelRelative} 
+                minSize={30} 
+                onResize={(pct) => setPreviewPanel(toGlobalPreview(pct))}
+              >
                 <PreviewPanel />
               </ResizablePanel>
             </ResizablePanelGroup>
           </ResizablePanel>
           <ResizableHandle withHandle />
-          <ResizablePanel defaultSize={timeline} minSize={15} maxSize={70} onResize={setTimeline}>
+          <ResizablePanel defaultSize={timeline} minSize={15} onResize={setTimeline}>
             <Timeline />
           </ResizablePanel>
         </ResizablePanelGroup>
@@ -243,27 +263,47 @@ export function VerticalPreviewLayout({ resetCounter }: LayoutProps) {
     setPropertiesPanel,
   } = usePanelStore();
 
+  // Calculate relative sizes for nested panels
+  // The left group contains tools + properties and its total width is (100 - previewPanel)
+  const leftGroupTotal = Math.max(1, 100 - previewPanel);
+  
+  // Convert from global percentages to left group percentages
+  const toolsPanelRelative = (toolsPanel / leftGroupTotal) * 100;
+  const propertiesPanelRelative = (propertiesPanel / leftGroupTotal) * 100;
+  
+  // Convert from left group percentage back to global percentage
+  const toGlobalTools = (leftGroupPct: number) => (leftGroupPct * leftGroupTotal) / 100;
+  const toGlobalProperties = (leftGroupPct: number) => (leftGroupPct * leftGroupTotal) / 100;
+
   return (
     <ResizablePanelGroup
       key={`vertical-preview-${resetCounter}`}
       direction="horizontal"
       className="h-full w-full gap-[0.18rem] px-3 pb-3"
     >
-      <ResizablePanel defaultSize={100 - previewPanel} minSize={60}>
+      <ResizablePanel defaultSize={toolsPanel + propertiesPanel} minSize={60}>
         <ResizablePanelGroup direction="vertical" className="h-full w-full gap-[0.18rem]">
           <ResizablePanel defaultSize={mainContent} minSize={30} onResize={setMainContent}>
             <ResizablePanelGroup direction="horizontal" className="h-full w-full gap-[0.19rem]">
-              <ResizablePanel defaultSize={toolsPanel} minSize={15} maxSize={40} onResize={setToolsPanel}>
+              <ResizablePanel 
+                defaultSize={toolsPanelRelative} 
+                minSize={25} 
+                onResize={(pct) => setToolsPanel(toGlobalTools(pct))}
+              >
                 <MediaPanel />
               </ResizablePanel>
               <ResizableHandle withHandle />
-              <ResizablePanel defaultSize={propertiesPanel} minSize={15} maxSize={40} onResize={setPropertiesPanel}>
+              <ResizablePanel 
+                defaultSize={propertiesPanelRelative} 
+                minSize={25} 
+                onResize={(pct) => setPropertiesPanel(toGlobalProperties(pct))}
+              >
                 <PropertiesPanel />
               </ResizablePanel>
             </ResizablePanelGroup>
           </ResizablePanel>
           <ResizableHandle withHandle />
-          <ResizablePanel defaultSize={timeline} minSize={15} maxSize={70} onResize={setTimeline}>
+          <ResizablePanel defaultSize={timeline} minSize={15} onResize={setTimeline}>
             <Timeline />
           </ResizablePanel>
         </ResizablePanelGroup>
