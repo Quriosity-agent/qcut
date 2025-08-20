@@ -64,6 +64,11 @@ export function MediaView() {
 
   useEffect(() => {
     const filtered = mediaItems.filter((item) => {
+      // Filter out ephemeral items
+      if (item.ephemeral) {
+        return false;
+      }
+
       if (mediaFilter && mediaFilter !== "all" && item.type !== mediaFilter) {
         return false;
       }
