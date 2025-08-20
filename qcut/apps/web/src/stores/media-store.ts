@@ -4,34 +4,10 @@ import { storageService } from "@/lib/storage/storage-service";
 import { useTimelineStore } from "./timeline-store";
 import { generateUUID, generateFileBasedId } from "@/lib/utils";
 import { getVideoInfo, generateThumbnail } from "@/lib/ffmpeg-utils";
+import type { MediaItem, MediaType } from "./media-store-types";
 
-export type MediaType = "image" | "video" | "audio";
-
-export interface MediaItem {
-  id: string;
-  name: string;
-  type: MediaType;
-  file: File;
-  url?: string; // Object URL for preview
-  thumbnailUrl?: string; // For video thumbnails
-  duration?: number; // For video/audio duration
-  width?: number; // For video/image width
-  height?: number; // For video/image height
-  fps?: number; // For video frame rate
-  // Text-specific properties
-  content?: string; // Text content
-  fontSize?: number; // Font size
-  fontFamily?: string; // Font family
-  color?: string; // Text color
-  backgroundColor?: string; // Background color
-  textAlign?: "left" | "center" | "right"; // Text alignment
-  ephemeral?: boolean; // Marks items as temporary (not saved)
-  // Metadata for various sources (AI generated, etc.)
-  metadata?: {
-    source?: string; // e.g., 'text2image', 'upload', etc.
-    [key: string]: any; // Allow other metadata
-  };
-}
+// Re-export types for backward compatibility
+export type { MediaItem, MediaType };
 
 interface MediaStore {
   mediaItems: MediaItem[];
