@@ -1,5 +1,6 @@
 "use client";
 
+import { generateUUID } from "@/lib/utils";
 import { ScrollArea } from "../../ui/scroll-area";
 import { Button } from "../../ui/button";
 import {
@@ -381,6 +382,55 @@ export function Timeline() {
         if (dragData.type === "text") {
           // Always create new text track to avoid overlaps
           useTimelineStore.getState().addTextToNewTrack(dragData);
+        } else if (dragData.type === "sticker") {
+          // Handle sticker drops
+          const handleStickerDrop = async () => {
+            try {
+              // Import stickers store dynamically
+              const { useStickersStore } = await import("@/stores/stickers-store");
+              const { downloadSticker } = useStickersStore.getState();
+              
+              // Download the sticker as a blob
+              const [collection, icon] = dragData.iconName.split(":");
+              const blob = await downloadSticker(collection, icon);
+              
+              if (blob && activeProject) {
+                // Convert blob to File
+                const fileName = `${dragData.iconName.replace(":", "-")}.svg`;
+                const file = new File([blob], fileName, { type: "image/svg+xml" });
+                
+                // Create media item from sticker
+                const mediaItem = {
+                  id: generateUUID(),
+                  name: dragData.iconName.replace(":", "-"),
+                  type: "image" as const,
+                  file,
+                  url: URL.createObjectURL(file),
+                  width: 200,
+                  height: 200,
+                  duration: 5000, // 5 seconds default
+                  ephemeral: false, // Stickers added to timeline are not ephemeral
+                };
+                
+                // Add to media store
+                if (addMediaItem) {
+                  const newItemId = await addMediaItem(activeProject.id, mediaItem);
+                  const currentMediaItems = mediaStore?.mediaItems || [];
+                  const addedItem = currentMediaItems.find(
+                    (item) => item.id === newItemId
+                  );
+                  if (addedItem) {
+                    useTimelineStore.getState().addMediaToNewTrack(addedItem);
+                  }
+                }
+              }
+            } catch (error) {
+              console.error("Error handling sticker drop:", error);
+              toast.error("Failed to add sticker to timeline");
+            }
+          };
+          
+          handleStickerDrop();
         } else {
           // Handle media items
           const mediaItem = mediaItems.find(

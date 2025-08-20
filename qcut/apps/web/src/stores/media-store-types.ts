@@ -20,6 +20,7 @@ export interface MediaItem {
   color?: string; // Text color
   backgroundColor?: string; // Background color
   textAlign?: "left" | "center" | "right"; // Text alignment
+  ephemeral?: boolean; // Marks items as temporary (not saved)
   // Metadata for various sources (AI generated, etc.)
   metadata?: {
     source?: string; // e.g., 'text2image', 'upload', etc.

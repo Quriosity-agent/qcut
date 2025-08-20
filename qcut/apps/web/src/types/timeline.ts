@@ -104,7 +104,14 @@ export interface TextItemDragData {
   content: string;
 }
 
-export type DragData = MediaItemDragData | TextItemDragData;
+export interface StickerItemDragData {
+  id: string;
+  type: "sticker";
+  name: string;
+  iconName: string;
+}
+
+export type DragData = MediaItemDragData | TextItemDragData | StickerItemDragData;
 
 export interface TimelineTrack {
   id: string;
