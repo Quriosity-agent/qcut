@@ -186,8 +186,8 @@ const PRESET_CONFIGS: Record<PanelPreset, PanelSizes> = {
     toolsPanel: 30,     // Larger media panel focus
     previewPanel: 45,   
     propertiesPanel: 25,
-    mainContent: 100,   // Full height layout
-    timeline: 25,       // Smaller timeline
+    mainContent: 75,    // 75% main content height
+    timeline: 25,       // 25% timeline height (75 + 25 = 100)
     aiPanelWidth: 22,
     aiPanelMinWidth: 4,
   },
@@ -195,8 +195,8 @@ const PRESET_CONFIGS: Record<PanelPreset, PanelSizes> = {
     toolsPanel: 20,
     previewPanel: 55,
     propertiesPanel: 25,
-    mainContent: 100,   // Full height layout
-    timeline: 25,       // Smaller timeline
+    mainContent: 75,    // 75% main content height
+    timeline: 25,       // 25% timeline height (75 + 25 = 100)
     aiPanelWidth: 22,
     aiPanelMinWidth: 4,
   },
@@ -204,8 +204,8 @@ const PRESET_CONFIGS: Record<PanelPreset, PanelSizes> = {
     toolsPanel: 25,
     previewPanel: 40,   // Optimized for vertical videos
     propertiesPanel: 35, // Larger properties panel
-    mainContent: 100,   // Full height layout
-    timeline: 25,
+    mainContent: 75,    // 75% main content height
+    timeline: 25,       // 25% timeline height (75 + 25 = 100)
     aiPanelWidth: 22,
     aiPanelMinWidth: 4,
   },

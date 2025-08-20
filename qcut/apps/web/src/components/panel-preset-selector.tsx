@@ -35,10 +35,16 @@ export function PanelPresetSelector() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="secondary" size="sm" className="h-8 px-2 text-xs">
-          <LayoutPanelTop className="h-4 w-4 mr-1" />
+        <Button 
+          type="button"
+          variant="secondary" 
+          size="sm" 
+          className="h-8 px-2 text-xs"
+          title="Panel Presets"
+        >
+          <LayoutPanelTop className="h-4 w-4 mr-1" title="Panel presets" />
           {PRESET_LABELS[activePreset]}
-          <ChevronDown className="h-3 w-3 ml-1" />
+          <ChevronDown className="h-3 w-3 ml-1" title="Open presets menu" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent>
@@ -56,13 +62,15 @@ export function PanelPresetSelector() {
               {activePreset === preset && " ✓"}
             </div>
             <Button
+              type="button"
               variant="secondary"
               size="icon"
               className="h-6 w-6 opacity-60 hover:opacity-100"
               onClick={(e) => handleResetPreset(preset, e)}
               title={`Reset ${PRESET_LABELS[preset]} preset`}
+              aria-label={`Reset ${PRESET_LABELS[preset]} preset`}
             >
-              <RotateCcw className="h-3 w-3" />
+              <RotateCcw className="h-3 w-3" title="Reset preset" />
             </Button>
           </DropdownMenuItem>
         ))}
