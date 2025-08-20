@@ -46,6 +46,7 @@ export function TextProperties({
     setYInput((element.y ?? 0).toString());
     setRotationInput((element.rotation ?? 0).toString());
   }, [
+    element.id,
     element.fontSize,
     element.opacity,
     element.x,
