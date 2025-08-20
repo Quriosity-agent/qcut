@@ -391,7 +391,12 @@ export function Timeline() {
               const { downloadSticker } = useStickersStore.getState();
               
               // Download the sticker as a blob
-              const [collection, icon] = dragData.iconName.split(":");
+              const parts = dragData.iconName.split(":");
+              if (parts.length !== 2) {
+                toast.error("Invalid sticker identifier format");
+                return;
+              }
+              const [collection, icon] = parts;
               const blob = await downloadSticker(collection, icon);
               
               if (blob && activeProject) {
