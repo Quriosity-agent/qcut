@@ -316,6 +316,17 @@ export async function processMediaFiles(
             URL.revokeObjectURL(url); // Clean up on complete failure
           }
         }
+        
+        // Ensure progress advances even on failure paths
+        await new Promise((resolve) => setTimeout(resolve, 0));
+        completed += 1;
+        if (onProgress) {
+          const percent = Math.round((completed / total) * 100);
+          onProgress(percent);
+          debugLog(
+            `[Media Processing] 📊 Progress: ${percent}% (${completed}/${total})`
+          );
+        }
       }
     }
 

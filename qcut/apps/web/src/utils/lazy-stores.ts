@@ -29,7 +29,7 @@ export async function getMediaStore() {
     debugLogger.error(
       "lazy-stores",
       "Failed to lazy load media store",
-      error
+      error instanceof Error ? error : String(error)
     );
     // Fallback to direct import if dynamic import fails
     const { useMediaStore } = await import("@/stores/media-store");
@@ -56,7 +56,7 @@ export async function getTimelineStore() {
     debugLogger.error(
       "lazy-stores",
       "Failed to lazy load timeline store",
-      error
+      error instanceof Error ? error : String(error)
     );
     // Fallback to direct import if dynamic import fails
     const { useTimelineStore } = await import("@/stores/timeline-store");
@@ -83,7 +83,7 @@ export async function getProjectStore() {
     debugLogger.error(
       "lazy-stores",
       "Failed to lazy load project store",
-      error
+      error instanceof Error ? error : String(error)
     );
     // Fallback to direct import if dynamic import fails
     const { useProjectStore } = await import("@/stores/project-store");
@@ -103,7 +103,7 @@ export async function preloadCriticalStores() {
     debugLogger.error(
       "lazy-stores",
       "Failed to preload stores",
-      error
+      error instanceof Error ? error : String(error)
     );
   }
 }
