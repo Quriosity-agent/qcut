@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { debugLog, debugError } from "@/lib/debug-config";
 import {
   AlertCircle,
   Clock,
@@ -70,7 +71,7 @@ function StickerItem({
       // debugLog("[StickerItem] Built SVG URL:", { collection, icon, svgUrl });
       setImageUrl(svgUrl);
     } catch (error) {
-      console.error("[StickerItem] Error building SVG URL:", error);
+      debugError("[StickerItem] Error building SVG URL:", error);
       setHasError(true);
       setIsLoading(false);
     }
@@ -310,23 +311,23 @@ export function StickersView() {
 
   const handleStickerSelect = useCallback(
     async (iconId: string, name: string) => {
-      console.log("[StickersView] handleStickerSelect called:", {
+      debugLog("[StickersView] handleStickerSelect called:", {
         iconId,
         name,
       });
 
       if (!activeProject) {
-        console.error("[StickersView] No active project");
+        debugError("[StickersView] No active project");
         toast.error("No project selected");
         return;
       }
 
       try {
         // Download sticker as File object (no blob URLs!)
-        console.log("[StickersView] Downloading sticker as File:", iconId);
+        debugLog("[StickersView] Downloading sticker as File:", iconId);
         const svgFile = await downloadStickerAsFile(iconId, name);
 
-        console.log("[StickersView] Sticker downloaded as File:", {
+        debugLog("[StickersView] Sticker downloaded as File:", {
           name: svgFile.name,
           size: svgFile.size,
           type: svgFile.type,
@@ -334,7 +335,7 @@ export function StickersView() {
 
         // Add media item directly with File object
         // No URL needed - storage service will handle data URL conversion
-        console.log(
+        debugLog(
           "[StickersView] Adding media item to project:",
           activeProject.id
         );
@@ -347,15 +348,15 @@ export function StickersView() {
           height: 512,
           duration: 0,
         });
-        console.log("[StickersView] Media item added successfully");
+        debugLog("[StickersView] Media item added successfully");
 
         // Add to recent stickers
         addRecentSticker(iconId, name);
-        console.log("[StickersView] Added to recent stickers");
+        debugLog("[StickersView] Added to recent stickers");
 
         toast.success(`Added ${name} to project`);
       } catch (error) {
-        console.error("[StickersView] Error adding sticker:", error);
+        debugError("[StickersView] Error adding sticker:", error);
         toast.error("Failed to add sticker to project");
       }
     },

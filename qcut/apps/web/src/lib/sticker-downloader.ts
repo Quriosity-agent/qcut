@@ -127,10 +127,7 @@ export async function validateStickerExists(iconId: string): Promise<boolean> {
 
     return !!svgContent && svgContent.length > 0;
   } catch (error) {
-    debugWarn(
-      `[Sticker Downloader] Icon ${iconId} validation failed:`,
-      error
-    );
+    debugWarn(`[Sticker Downloader] Icon ${iconId} validation failed:`, error);
     return false;
   }
 }

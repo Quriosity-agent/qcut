@@ -2,7 +2,7 @@
  * Image utility functions for the adjustment panel
  */
 
-import { debugLog, debugError } from "@/lib/debug-config";
+import { debugLog, debugError, debugWarn } from "@/lib/debug-config";
 
 export interface ImageInfo {
   width: number;
@@ -24,9 +24,11 @@ export async function getImageInfo(file: File): Promise<ImageInfo> {
   ) {
     try {
       const text = await file.text();
-      url = `data:image/svg+xml;base64,${btoa(text)}`;
+      // Use UTF-8 charset with URI encoding to safely embed Unicode SVGs
+      const encoded = encodeURIComponent(text);
+      url = `data:image/svg+xml;charset=utf-8,${encoded}`;
     } catch (error) {
-      console.warn(
+      debugWarn(
         `[ImageUtils] Failed to create data URL for SVG ${file.name}, falling back to blob URL:`,
         error
       );

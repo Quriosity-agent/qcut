@@ -316,7 +316,7 @@ export async function processMediaFiles(
             URL.revokeObjectURL(url); // Clean up on complete failure
           }
         }
-        
+
         // Ensure progress advances even on failure paths
         await new Promise((resolve) => setTimeout(resolve, 0));
         completed += 1;

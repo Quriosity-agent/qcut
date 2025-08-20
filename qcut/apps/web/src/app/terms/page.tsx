@@ -30,10 +30,7 @@ export default function TermsPage() {
         <div className="relative container mx-auto px-4 py-16">
           <div className="max-w-4xl mx-auto">
             <div className="text-center mb-10">
-              <Link
-                href="https://github.com/qcut-app/qcut"
-                target="_blank"
-              >
+              <Link href="https://github.com/qcut-app/qcut" target="_blank">
                 <Badge variant="secondary" className="gap-2 mb-6">
                   <GithubIcon className="h-3 w-3" />
                   Open Source
