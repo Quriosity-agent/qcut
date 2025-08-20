@@ -4,6 +4,11 @@ import { ArrowLeft, Search } from "lucide-react";
 import { motion } from "motion/react";
 import { useState, useEffect } from "react";
 
+// Constants for button positioning
+const BUTTON_WIDTH = 36; // Width of the button (size-9 = 36px)
+const BUTTON_MARGIN = 12; // Additional margin for visual spacing
+const BUTTON_EXTRA_OFFSET = BUTTON_WIDTH + BUTTON_MARGIN; // Total offset needed (48px)
+
 interface InputWithBackProps {
   isExpanded: boolean;
   setIsExpanded: (isExpanded: boolean) => void;
@@ -30,7 +35,8 @@ export function InputWithBack({
   useEffect(() => {
     if (containerRef) {
       const rect = containerRef.getBoundingClientRect();
-      setButtonOffset(-rect.left - 48);
+      // Position button to the left of the container when collapsed
+      setButtonOffset(-rect.left - BUTTON_EXTRA_OFFSET);
     }
   }, [containerRef]);
 
