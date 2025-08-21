@@ -13,6 +13,7 @@
 /build/
 dist-electron/
 dist-packager*/
+build_exe/
 
 # Temporary files and scripts
 *.ps1.tmp
