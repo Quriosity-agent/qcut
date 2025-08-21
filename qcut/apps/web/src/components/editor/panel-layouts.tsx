@@ -121,6 +121,18 @@ export function MediaLayout({ resetCounter }: LayoutProps) {
     setPropertiesPanel,
   } = usePanelStore();
 
+  // Calculate relative sizes for nested panels
+  // The right group contains preview + properties and its total width is (100 - toolsPanel)
+  const rightGroupTotal = Math.max(1, 100 - toolsPanel);
+  
+  // Convert from global percentages to right group percentages
+  const previewPanelRelative = (previewPanel / rightGroupTotal) * 100;
+  const propertiesPanelRelative = (propertiesPanel / rightGroupTotal) * 100;
+  
+  // Convert from right group percentage back to global percentage
+  const toGlobalPreview = (rightGroupPct: number) => (rightGroupPct * rightGroupTotal) / 100;
+  const toGlobalProperties = (rightGroupPct: number) => (rightGroupPct * rightGroupTotal) / 100;
+
   // Debug logging for Media layout
   console.log("🔍 MediaLayout Panel Sizes:", {
     toolsPanel,
@@ -128,6 +140,10 @@ export function MediaLayout({ resetCounter }: LayoutProps) {
     propertiesPanel,
     mainContent,
     timeline,
+    rightGroupTotal,
+    previewPanelRelative,
+    propertiesPanelRelative,
+    "relative sum": previewPanelRelative + propertiesPanelRelative,
     "horizontal sum": toolsPanel + previewPanel + propertiesPanel,
     "vertical sum": mainContent + timeline,
   });
@@ -165,9 +181,9 @@ export function MediaLayout({ resetCounter }: LayoutProps) {
           >
             <ResizablePanelGroup direction="horizontal" className="h-full w-full gap-[0.19rem] px-2">
               <ResizablePanel
-                defaultSize={previewPanel}
+                defaultSize={previewPanelRelative}
                 minSize={30}
-                onResize={setPreviewPanel}
+                onResize={(pct) => setPreviewPanel(toGlobalPreview(pct))}
                 className="min-w-0 min-h-0 flex-1"
               >
                 <PreviewPanel />
@@ -176,10 +192,10 @@ export function MediaLayout({ resetCounter }: LayoutProps) {
               <ResizableHandle withHandle />
 
               <ResizablePanel
-                defaultSize={propertiesPanel}
+                defaultSize={propertiesPanelRelative}
                 minSize={15}
                 maxSize={40}
-                onResize={setPropertiesPanel}
+                onResize={(pct) => setPropertiesPanel(toGlobalProperties(pct))}
                 className="min-w-0"
               >
                 <PropertiesPanel />
