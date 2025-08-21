@@ -1,21 +1,27 @@
 const sharp = require('sharp');
-const fs = require('fs');
+const fs = require('fs').promises;
 const path = require('path');
-const icoEndec = require('ico-endec');
+const toIco = require('to-ico');
 
 async function createIcon() {
   const inputPath = path.join(__dirname, '../apps/web/public/assets/logo-v4.png');
-  const outputPath = path.join(__dirname, '../build/icon.ico');
+  const icoPath = path.join(__dirname, '../build/icon.ico');
   
-  // Backup existing icon
-  if (fs.existsSync(outputPath)) {
-    fs.renameSync(outputPath, path.join(__dirname, '../build/icon-backup.ico'));
-    console.log('Backed up existing icon to icon-backup.ico');
+  // Ensure build directory exists
+  const buildDir = path.dirname(icoPath);
+  await fs.mkdir(buildDir, { recursive: true });
+  
+  // Backup existing icon if it exists
+  try {
+    await fs.access(icoPath);
+    await fs.rename(icoPath, path.join(buildDir, 'icon-backup.ico'));
+  } catch {
+    // Icon doesn't exist, no backup needed
   }
   
-  // Create multiple sizes for ICO
+  // Create multiple sizes for ICO - Windows standard sizes
   const sizes = [16, 32, 48, 64, 128, 256];
-  const images = [];
+  const pngBuffers = [];
   
   for (const size of sizes) {
     const buffer = await sharp(inputPath)
@@ -26,20 +32,15 @@ async function createIcon() {
       .png()
       .toBuffer();
     
-    images.push({
-      buffer: buffer,
-      width: size,
-      height: size,
-      bpp: 32
-    });
-    console.log(`Created ${size}x${size} image`);
+    pngBuffers.push(buffer);
   }
   
-  // Create ICO file
-  const icoBuffer = icoEndec.encode(images);
-  fs.writeFileSync(outputPath, icoBuffer);
-  
-  console.log('ICO file created successfully at:', outputPath);
+  // Convert PNG buffers to ICO using to-ico
+  const icoBuffer = await toIco(pngBuffers);
+  await fs.writeFile(icoPath, icoBuffer);
 }
 
-createIcon().catch(console.error);
+createIcon().catch((err) => {
+  process.stderr.write(`create-logo-ico failed: ${err?.message || err}\n`);
+  process.exitCode = 1;
+});

@@ -26,6 +26,7 @@ async function fixExeIcon() {
   // Check platform - this script is Windows-only
   if (process.platform !== 'win32') {
     process.stderr.write('This script is intended for Windows only.\n');
+    process.exitCode = 1;
     return;
   }
   
@@ -35,11 +36,13 @@ async function fixExeIcon() {
   // Check if files exist
   if (!fs.existsSync(exePath)) {
     process.stderr.write(`Executable not found at: ${exePath}\n`);
+    process.exitCode = 1;
     return;
   }
   
   if (!fs.existsSync(icoPath)) {
     process.stderr.write(`Icon not found at: ${icoPath}\n`);
+    process.exitCode = 1;
     return;
   }
   
@@ -99,6 +102,7 @@ async function fixExeIcon() {
   execFile(rceditPath, [exePath, '--set-icon', icoPath], (error, stdout, stderr) => {
     if (error) {
       process.stderr.write(`Error setting icon: ${error}\n`);
+      process.exitCode = 1;
       return;
     }
     process.stdout.write('Icon set successfully!\n');

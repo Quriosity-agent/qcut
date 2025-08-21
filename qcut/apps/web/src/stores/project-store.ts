@@ -483,7 +483,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
       const [key, order] = sortOption.split("-");
 
       if (key !== "createdAt" && key !== "name") {
-        console.warn(`Invalid sort key: ${key}`);
+        // Invalid sort key
         return 0;
       }
 

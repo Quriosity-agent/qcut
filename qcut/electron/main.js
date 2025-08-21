@@ -14,7 +14,7 @@ let log = null;
 try {
   log = require("electron-log");
 } catch (error) {
-  console.warn("⚠️ [Logger] electron-log not available:", error.message);
+  // electron-log not available, will use fallback
 }
 const logger = log || console;
 

@@ -37,7 +37,7 @@ const startTimer = (store: () => PlaybackStore) => {
         // When content completes, pause just before the end so we can see the last frame
         const projectFps = useProjectStore.getState().activeProject?.fps;
         if (!projectFps)
-          console.error("Project FPS is not set, assuming 30fps");
+          // Project FPS is not set, assuming 30fps
 
         const frameOffset = 1 / (projectFps ?? 30); // Stop 1 frame before end based on project FPS
         const stopTime = Math.max(0, effectiveDuration - frameOffset);

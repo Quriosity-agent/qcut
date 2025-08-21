@@ -38,49 +38,49 @@ function main() {
   const releaseType = process.argv[2];
 
   if (!releaseType || !RELEASE_TYPES.includes(releaseType)) {
-    console.error("❌ Usage: node scripts/release.js <patch|minor|major>");
+    process.stderr.write("❌ Usage: node scripts/release.js <patch|minor|major>\n");
     process.exit(1);
   }
 
-  console.log(`🚀 Starting ${releaseType} release process...\n`);
+  process.stdout.write(`🚀 Starting ${releaseType} release process...\n\n`);
 
   try {
     // Step 1: Check working directory is clean
-    console.log("📋 Step 1: Checking git status...");
+    process.stdout.write("📋 Step 1: Checking git status...\n");
     checkGitStatus();
 
     // Step 2: Bump version
-    console.log("📋 Step 2: Bumping version...");
+    process.stdout.write("📋 Step 2: Bumping version...\n");
     const newVersion = bumpVersion(releaseType);
 
     // Step 3: Build web application
-    console.log("📋 Step 3: Building web application...");
+    process.stdout.write("📋 Step 3: Building web application...\n");
     buildWebApp();
 
     // Step 4: Build Electron application
-    console.log("📋 Step 4: Building Electron application...");
+    process.stdout.write("📋 Step 4: Building Electron application...\n");
     buildElectronApp();
 
     // Step 5: Generate checksums
-    console.log("📋 Step 5: Generating checksums...");
+    process.stdout.write("📋 Step 5: Generating checksums...\n");
     generateChecksums();
 
     // Step 6: Create git tag
-    console.log("📋 Step 6: Creating git tag...");
+    process.stdout.write("📋 Step 6: Creating git tag...\n");
     createGitTag(newVersion);
 
     // Step 7: Generate release notes template
-    console.log("📋 Step 7: Generating release notes...");
+    process.stdout.write("📋 Step 7: Generating release notes...\n");
     generateReleaseNotes(newVersion);
 
-    console.log(`\n✅ Release v${newVersion} prepared successfully!`);
-    console.log("\n📋 Next steps:");
-    console.log("1. Review the generated files");
-    console.log("2. Push the tag: git push origin v" + newVersion);
-    console.log("3. Create GitHub release with the installer");
-    console.log("4. Use the generated release notes template");
+    process.stdout.write(`\n✅ Release v${newVersion} prepared successfully!\n`);
+    process.stdout.write("\n📋 Next steps:\n");
+    process.stdout.write("1. Review the generated files\n");
+    process.stdout.write("2. Push the tag: git push origin v" + newVersion + "\n");
+    process.stdout.write("3. Create GitHub release with the installer\n");
+    process.stdout.write("4. Use the generated release notes template\n");
   } catch (error) {
-    console.error("\n❌ Release process failed:", error.message);
+    process.stderr.write(`\n❌ Release process failed: ${error.message}\n`);
     process.exit(1);
   }
 }
@@ -92,7 +92,7 @@ function checkGitStatus() {
       "Working directory is not clean. Please commit your changes first."
     );
   }
-  console.log("✅ Working directory is clean");
+  process.stdout.write("✅ Working directory is clean\n");
 }
 
 function bumpVersion(releaseType) {
@@ -118,14 +118,14 @@ function bumpVersion(releaseType) {
   packageJson.version = newVersion;
   fs.writeFileSync(packagePath, JSON.stringify(packageJson, null, 2) + "\n");
 
-  console.log(`✅ Version bumped: ${currentVersion} -> ${newVersion}`);
+  process.stdout.write(`✅ Version bumped: ${currentVersion} -> ${newVersion}\n`);
   return newVersion;
 }
 
 function buildWebApp() {
   try {
     execSync("bun run build", { stdio: "inherit" });
-    console.log("✅ Web application built successfully");
+    process.stdout.write("✅ Web application built successfully\n");
   } catch (error) {
     throw new Error("Failed to build web application");
   }
@@ -134,7 +134,7 @@ function buildWebApp() {
 function buildElectronApp() {
   try {
     execSync("bun run dist:win:release", { stdio: "inherit" });
-    console.log("✅ Electron application built successfully");
+    process.stdout.write("✅ Electron application built successfully\n");
   } catch (error) {
     throw new Error("Failed to build Electron application");
   }
@@ -174,7 +174,7 @@ Verification:
 `;
 
     fs.writeFileSync(path.join(buildDir, "SHA256SUMS.txt"), checksumContent);
-    console.log(`✅ Checksums generated for ${installerFile}`);
+    process.stdout.write(`✅ Checksums generated for ${installerFile}\n`);
   } catch (error) {
     throw new Error("Failed to generate checksums: " + error.message);
   }
@@ -191,7 +191,7 @@ function createGitTag(version) {
     // Create tag
     execSync(`git tag -a v${version} -m "Release v${version}"`);
 
-    console.log(`✅ Git tag v${version} created`);
+    process.stdout.write(`✅ Git tag v${version} created\n`);
   } catch (error) {
     throw new Error("Failed to create git tag: " + error.message);
   }
@@ -277,10 +277,10 @@ This version includes auto-update functionality:
 `;
 
     fs.writeFileSync(path.join(buildDir, "RELEASE_NOTES.md"), releaseNotes);
-    console.log("✅ Release notes template generated");
+    process.stdout.write("✅ Release notes template generated\n");
   } catch (error) {
-    console.log(
-      "⚠️  Could not generate full release notes template, creating basic version"
+    process.stdout.write(
+      "⚠️  Could not generate full release notes template, creating basic version\n"
     );
 
     const basicNotes = `# QCut Video Editor v${version}

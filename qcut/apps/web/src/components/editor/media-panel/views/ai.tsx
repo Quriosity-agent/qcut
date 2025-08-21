@@ -328,7 +328,7 @@ export function AiView() {
                     <div className="relative flex flex-col items-center justify-center h-full">
                       <img
                         src={imagePreview}
-                        alt="Selected"
+                        alt={selectedImage?.name ?? "File preview"}
                         className="max-w-full max-h-32 mx-auto rounded object-contain"
                       />
                       <Button

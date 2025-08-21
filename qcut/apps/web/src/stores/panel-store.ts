@@ -442,7 +442,7 @@ export const usePanelStore = create<PanelState>()(
           getCurrentPresetSizes
         } = get();
         
-        console.log("🎨 Switching preset from", currentPreset, "to", preset);
+        // Switching preset
         
         // Save current preset sizes before switching
         const updatedPresetCustomSizes = {
@@ -455,13 +455,7 @@ export const usePanelStore = create<PanelState>()(
         const customSizes = updatedPresetCustomSizes[preset] || {};
         const finalSizes = { ...defaultSizes, ...customSizes };
         
-        console.log("🎨 Preset sizes being applied:", {
-          preset,
-          defaultSizes,
-          customSizes,
-          finalSizes,
-          "horizontal sum": finalSizes.toolsPanel + finalSizes.previewPanel + finalSizes.propertiesPanel,
-          "vertical sum": finalSizes.mainContent + finalSizes.timeline,
+        // Applying preset sizes
         });
         
         set({

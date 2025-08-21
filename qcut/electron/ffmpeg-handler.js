@@ -12,7 +12,7 @@ function setupFFmpegIPC() {
     try {
       return getFFmpegPath();
     } catch (error) {
-      console.error("[FFmpeg] Error getting FFmpeg path:", error);
+      // Error getting FFmpeg path
       throw error;
     }
   });
@@ -41,21 +41,19 @@ function setupFFmpegIPC() {
           0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a,
         ]);
         if (!buffer.subarray(0, 8).equals(pngSignature)) {
-          console.warn("[FFmpeg] Warning: Invalid PNG signature in", frameName);
+          // Warning: Invalid PNG signature
         }
 
         fs.writeFileSync(framePath, buffer);
 
         // Log first few frames for debugging
         if (frameName === "frame-0000.png" || frameName === "frame-0001.png") {
-          console.log(
-            `[FFmpeg] Saved ${frameName} (${buffer.length} bytes) to ${framePath}`
-          );
+          // Saved frame to disk
         }
 
         return framePath;
       } catch (error) {
-        console.error("[FFmpeg] Error saving frame:", error);
+        // Error saving frame
         throw error;
       }
     }
@@ -100,9 +98,7 @@ function setupFFmpegIPC() {
         quality
       );
 
-      console.log("[FFmpeg CLI] FFmpeg path:", ffmpegPath);
-      console.log("[FFmpeg CLI] Arguments:", JSON.stringify(args, null, 2));
-      console.log("[FFmpeg CLI] Full command:", ffmpegPath, args.join(" "));
+      // FFmpeg CLI configuration ready
 
       // Verify input directory exists and has frames
       const fs = require("fs");
@@ -113,7 +109,7 @@ function setupFFmpegIPC() {
       const frameFiles = fs
         .readdirSync(frameDir)
         .filter((f) => f.startsWith("frame-") && f.endsWith(".png"));
-      console.log("[FFmpeg CLI] Found", frameFiles.length, "frame files");
+      // Found frame files for export
       if (frameFiles.length === 0) {
         throw new Error(`No frame files found in: ${frameDir}`);
       }
@@ -159,18 +155,18 @@ function setupFFmpegIPC() {
             event.sender?.send?.("ffmpeg-progress", progress);
           }
           if (process.env.DEBUG_FFMPEG) {
-            console.log("[FFmpeg stderr]", text);
+            // FFmpeg debug output
           }
         });
 
         ffmpegProc.on("error", (err) => {
-          console.error("[FFmpeg CLI] Spawn error:", err);
+          // FFmpeg spawn error
           reject(err);
         });
 
         ffmpegProc.on("close", (code) => {
           if (code === 0) {
-            console.log("[FFmpeg CLI] ✅ Finished via spawn");
+            // FFmpeg finished successfully
             resolve({ success: true, outputFile, method: "spawn" });
           } else {
             reject(new Error(`FFmpeg exited with code ${code}`));
@@ -180,10 +176,7 @@ function setupFFmpegIPC() {
         // If spawn succeeded we exit early and skip manual fallback logic below.
         return;
       } catch (spawnErr) {
-        console.warn(
-          "[FFmpeg CLI] Direct spawn failed, will fall back to manual instructions",
-          spawnErr
-        );
+        // Direct spawn failed, falling back to manual instructions
       }
       const batchFile = path.join(
         tempManager.getOutputDir(sessionId),
@@ -200,30 +193,19 @@ ${ffmpegExe} -y -framerate 30 -i "${inputPattern}" -c:v libx264 -preset fast -cr
 echo FFmpeg exit code: %ERRORLEVEL%
 exit /b %ERRORLEVEL%`;
 
-      console.log("[FFmpeg CLI] Creating batch file workaround");
-      console.log("[FFmpeg CLI] Batch file:", batchFile);
-      console.log("[FFmpeg CLI] Batch content:", batchContent);
+      // Creating batch file workaround
 
       // Write batch file
       fs.writeFileSync(batchFile, batchContent);
 
       // Since Electron process spawning is restricted on Windows, provide manual export option
-      console.log(
-        "[FFmpeg CLI] ⚠️  Windows process spawning restricted in Electron"
-      );
-      console.log(`[FFmpeg CLI] 📁 Frames are ready at: ${frameDir}`);
-      console.log("[FFmpeg CLI] 🎬 Manual FFmpeg command:");
-      console.log(
-        `[FFmpeg CLI] cd "${path.dirname(ffmpegPath)}" && ${path.basename(ffmpegPath)} -y -framerate 30 -i "${inputPattern}" -c:v libx264 -preset fast -crf 23 -t 5 -pix_fmt yuv420p -movflags +faststart "${outputFile}"`
-      );
+      // Windows process spawning restricted, frames ready for manual export
 
       // Check if user has already created the video manually
       const checkForManualVideo = () => {
         if (fs.existsSync(outputFile)) {
           const stats = fs.statSync(outputFile);
-          console.log(
-            `[FFmpeg CLI] ✅ Found manually created video! Size: ${stats.size} bytes`
-          );
+          // Found manually created video
           resolve({
             success: true,
             outputFile,
@@ -289,7 +271,7 @@ function getFFmpegPath() {
     throw new Error(`FFmpeg not found at: ${ffmpegPath}`);
   }
 
-  console.log(`[FFmpeg] Using FFmpeg at: ${ffmpegPath}`);
+  // FFmpeg path resolved
   return ffmpegPath;
 }
 

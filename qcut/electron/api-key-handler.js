@@ -29,7 +29,7 @@ function setupApiKeyIPC() {
           const decryptedFal = safeStorage.decryptString(Buffer.from(encryptedData.falApiKey, "base64"));
           result.falApiKey = decryptedFal;
         } catch (error) {
-          console.warn("Failed to decrypt FAL API key:", error.message);
+          // Failed to decrypt FAL API key, falling back to plain text
           // Fallback: treat stored value as plain text
           result.falApiKey = encryptedData.falApiKey || "";
         }
@@ -42,7 +42,7 @@ function setupApiKeyIPC() {
           const decryptedFreesound = safeStorage.decryptString(Buffer.from(encryptedData.freesoundApiKey, "base64"));
           result.freesoundApiKey = decryptedFreesound;
         } catch (error) {
-          console.warn("Failed to decrypt Freesound API key:", error.message);
+          // Failed to decrypt Freesound API key, falling back to plain text
           // Fallback: treat stored value as plain text
           result.freesoundApiKey = encryptedData.freesoundApiKey || "";
         }
@@ -52,7 +52,7 @@ function setupApiKeyIPC() {
 
       return result;
     } catch (error) {
-      console.error("Failed to load API keys:", error);
+      // Failed to load API keys
       return { falApiKey: "", freesoundApiKey: "" };
     }
   });
@@ -83,7 +83,7 @@ function setupApiKeyIPC() {
         }
       } else {
         // Fallback to plain text storage if encryption is not available
-        console.warn("⚠️ Encryption not available, storing API keys as plain text");
+        // Encryption not available, storing API keys as plain text
         dataToStore.falApiKey = falApiKey;
         dataToStore.freesoundApiKey = freesoundApiKey;
       }
@@ -97,10 +97,10 @@ function setupApiKeyIPC() {
       // Write encrypted data to file
       fs.writeFileSync(apiKeysFilePath, JSON.stringify(dataToStore, null, 2));
       
-      console.log("✅ API keys saved successfully");
+      // API keys saved successfully
       return true;
     } catch (error) {
-      console.error("❌ Failed to save API keys:", error);
+      // Failed to save API keys
       throw new Error(`Failed to save API keys: ${error.message}`);
     }
   });
@@ -113,10 +113,10 @@ function setupApiKeyIPC() {
       if (fs.existsSync(apiKeysFilePath)) {
         fs.unlinkSync(apiKeysFilePath);
       }
-      console.log("✅ API keys cleared successfully");
+      // API keys cleared successfully
       return true;
     } catch (error) {
-      console.error("❌ Failed to clear API keys:", error);
+      // Failed to clear API keys
       throw new Error(`Failed to clear API keys: ${error.message}`);
     }
   });
