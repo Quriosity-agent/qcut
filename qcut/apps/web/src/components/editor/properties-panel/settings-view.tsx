@@ -23,8 +23,10 @@ import { useAspectRatio } from "@/hooks/use-aspect-ratio";
 // import Image from "next/image"; // Not needed in Vite
 import { cn } from "@/lib/utils";
 import { colors } from "@/data/colors";
-import { PipetteIcon } from "lucide-react";
-import { useMemo, memo, useCallback } from "react";
+import { PipetteIcon, KeyIcon, EyeIcon, EyeOffIcon } from "lucide-react";
+import { useMemo, memo, useCallback, useState, useEffect } from "react";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 
 export function SettingsView() {
   return <ProjectSettingsTabs />;
@@ -38,6 +40,7 @@ function ProjectSettingsTabs() {
           <TabsList>
             <TabsTrigger value="project-info">Project info</TabsTrigger>
             <TabsTrigger value="background">Background</TabsTrigger>
+            <TabsTrigger value="api-keys">API Keys</TabsTrigger>
           </TabsList>
         </div>
         <Separator className="my-4" />
@@ -47,6 +50,9 @@ function ProjectSettingsTabs() {
           </TabsContent>
           <TabsContent value="background" className="p-4 pt-0">
             <BackgroundView />
+          </TabsContent>
+          <TabsContent value="api-keys" className="p-5 pt-0 mt-0">
+            <ApiKeysView />
           </TabsContent>
         </ScrollArea>
       </Tabs>
@@ -253,6 +259,148 @@ function BackgroundView() {
           {colorPreviews}
         </div>
       </PropertyGroup>
+    </div>
+  );
+}
+
+function ApiKeysView() {
+  const [falApiKey, setFalApiKey] = useState("");
+  const [freesoundApiKey, setFreesoundApiKey] = useState("");
+  const [showFalKey, setShowFalKey] = useState(false);
+  const [showFreesoundKey, setShowFreesoundKey] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Load API keys on component mount
+  const loadApiKeys = useCallback(async () => {
+    try {
+      if (window.electronAPI?.invoke) {
+        const keys = await window.electronAPI.invoke("api-keys:get");
+        if (keys) {
+          setFalApiKey(keys.falApiKey || "");
+          setFreesoundApiKey(keys.freesoundApiKey || "");
+        }
+      }
+    } catch (error) {
+      console.error("Failed to load API keys:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  // Save API keys
+  const saveApiKeys = useCallback(async () => {
+    try {
+      if (window.electronAPI?.invoke) {
+        await window.electronAPI.invoke("api-keys:set", {
+          falApiKey: falApiKey.trim(),
+          freesoundApiKey: freesoundApiKey.trim(),
+        });
+        console.log("✅ API keys saved successfully");
+      }
+    } catch (error) {
+      console.error("❌ Failed to save API keys:", error);
+    }
+  }, [falApiKey, freesoundApiKey]);
+
+  // Load keys on mount
+  useEffect(() => {
+    loadApiKeys();
+  }, [loadApiKeys]);
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-col gap-4">
+        <div className="text-sm text-muted-foreground">Loading API keys...</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-6">
+      <div className="text-sm text-muted-foreground">
+        Configure API keys for enhanced features like AI image generation and sound effects.
+      </div>
+
+      {/* FAL API Key */}
+      <PropertyGroup title="FAL AI API Key">
+        <div className="flex flex-col gap-2">
+          <div className="text-xs text-muted-foreground">
+            For AI image generation. Get your key at{" "}
+            <span className="font-mono">fal.ai</span>
+          </div>
+          <div className="flex gap-2">
+            <div className="flex-1 relative">
+              <Input
+                type={showFalKey ? "text" : "password"}
+                placeholder="Enter your FAL API key"
+                value={falApiKey}
+                onChange={(e) => setFalApiKey(e.target.value)}
+                className="bg-panel-accent pr-10"
+              />
+              <Button
+                type="button"
+                variant="text"
+                size="sm"
+                className="absolute right-0 top-0 h-full px-3"
+                onClick={() => setShowFalKey(!showFalKey)}
+              >
+                {showFalKey ? (
+                  <EyeOffIcon className="h-4 w-4" />
+                ) : (
+                  <EyeIcon className="h-4 w-4" />
+                )}
+              </Button>
+            </div>
+          </div>
+        </div>
+      </PropertyGroup>
+
+      {/* Freesound API Key */}
+      <PropertyGroup title="Freesound API Key">
+        <div className="flex flex-col gap-2">
+          <div className="text-xs text-muted-foreground">
+            For sound effects library. Get your key at{" "}
+            <span className="font-mono">freesound.org/help/developers</span>
+          </div>
+          <div className="flex gap-2">
+            <div className="flex-1 relative">
+              <Input
+                type={showFreesoundKey ? "text" : "password"}
+                placeholder="Enter your Freesound API key"
+                value={freesoundApiKey}
+                onChange={(e) => setFreesoundApiKey(e.target.value)}
+                className="bg-panel-accent pr-10"
+              />
+              <Button
+                type="button"
+                variant="text"
+                size="sm"
+                className="absolute right-0 top-0 h-full px-3"
+                onClick={() => setShowFreesoundKey(!showFreesoundKey)}
+              >
+                {showFreesoundKey ? (
+                  <EyeOffIcon className="h-4 w-4" />
+                ) : (
+                  <EyeIcon className="h-4 w-4" />
+                )}
+              </Button>
+            </div>
+          </div>
+        </div>
+      </PropertyGroup>
+
+      {/* Save Button */}
+      <div className="flex justify-end">
+        <Button onClick={saveApiKeys} className="gap-2">
+          <KeyIcon className="h-4 w-4" />
+          Save API Keys
+        </Button>
+      </div>
+
+      <div className="text-xs text-muted-foreground border-t pt-4">
+        <strong>Note:</strong> API keys are stored securely on your device and never shared. 
+        Restart the application after saving for changes to take effect.
+      </div>
     </div>
   );
 }
