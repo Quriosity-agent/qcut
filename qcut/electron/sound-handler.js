@@ -1,7 +1,19 @@
 const { ipcMain } = require("electron");
 const https = require("https");
 const path = require("path");
-const log = require("electron-log");
+
+// Try to load electron-log, fallback to console if not available
+let log;
+try {
+  log = require("electron-log");
+} catch (error) {
+  // Fallback to console for packaged apps where electron-log might not be available
+  log = {
+    info: console.log,
+    warn: console.warn,
+    error: console.error
+  };
+}
 
 /**
  * Setup sound search IPC handlers
