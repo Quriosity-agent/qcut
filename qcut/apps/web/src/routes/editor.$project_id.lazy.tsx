@@ -190,9 +190,7 @@ function EditorPage() {
     default: <DefaultLayout resetCounter={resetCounter} />,
   };
 
-  console.log("🎭 EditorPage: activePreset =", activePreset, "resetCounter =", resetCounter);
   const selectedLayout = layouts[activePreset] || layouts.default;
-  console.log("🎭 EditorPage: Rendering layout:", activePreset in layouts ? activePreset : "default (fallback)");
 
   return (
     <EditorProvider>
