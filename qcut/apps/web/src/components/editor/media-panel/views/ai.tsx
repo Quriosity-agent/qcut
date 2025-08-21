@@ -313,8 +313,10 @@ export function AiView() {
 
                 <label
                   htmlFor="ai-image-input"
-                  className={`border-2 border-dashed border-muted-foreground/25 rounded-lg p-4 text-center cursor-pointer hover:border-muted-foreground/50 transition-colors ${
-                    selectedImage ? "border-primary/50" : ""
+                  className={`block border-2 border-dashed rounded-lg cursor-pointer transition-colors min-h-[120px] ${
+                    selectedImage 
+                      ? "border-primary/50 bg-primary/5 p-2" 
+                      : "border-muted-foreground/25 hover:border-muted-foreground/50 p-4"
                   }`}
                   aria-label={
                     selectedImage
@@ -323,11 +325,11 @@ export function AiView() {
                   }
                 >
                   {selectedImage && imagePreview ? (
-                    <div className="relative">
+                    <div className="relative flex flex-col items-center justify-center h-full">
                       <img
                         src={imagePreview}
                         alt="Selected"
-                        className="max-w-full max-h-32 mx-auto rounded"
+                        className="max-w-full max-h-32 mx-auto rounded object-contain"
                       />
                       <Button
                         type="button"
@@ -337,17 +339,17 @@ export function AiView() {
                           e.stopPropagation();
                           clearImage();
                         }}
-                        className="absolute top-1 right-1 h-6 w-6 p-0"
+                        className="absolute top-1 right-1 h-6 w-6 p-0 flex items-center justify-center bg-red-500 hover:bg-red-600 text-white rounded-full shadow-sm"
                       >
                         <X className="h-3 w-3" />
                       </Button>
-                      <div className="mt-2 text-xs text-muted-foreground">
+                      <div className="mt-2 text-xs text-muted-foreground text-center">
                         {selectedImage.name}
                       </div>
                     </div>
                   ) : (
-                    <div className="space-y-2">
-                      <Upload className="size-8 mx-auto text-muted-foreground" />
+                    <div className="flex flex-col items-center justify-center h-full space-y-2 text-center">
+                      <Upload className="size-8 text-muted-foreground" />
                       <div className="text-xs text-muted-foreground">
                         Click to upload an image
                       </div>
