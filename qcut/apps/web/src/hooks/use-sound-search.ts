@@ -78,12 +78,11 @@ export function useSoundSearch(query: string, commercialOnly: boolean) {
           throw new Error("No IPC available");
         }
       } catch (ipcError) {
-        console.log(
-          "⚠️ [Sound Search] IPC load more failed, falling back to fetch:",
+        console.error(
+          "❌ [Sound Search] IPC load more failed - no fallback available:",
           ipcError
         );
-        searchParams.set("page_size", "20");
-        response = await fetch(`/api/sounds/search?${searchParams.toString()}`);
+        throw new Error("Sound search unavailable - Electron IPC required");
       }
 
       if (response.ok) {
@@ -161,13 +160,11 @@ export function useSoundSearch(query: string, commercialOnly: boolean) {
             throw new Error("No IPC available");
           }
         } catch (ipcError) {
-          console.log(
-            "⚠️ [Sound Search] IPC search failed, falling back to fetch:",
+          console.error(
+            "❌ [Sound Search] IPC search failed - no fallback available:",
             ipcError
           );
-          response = await fetch(
-            `/api/sounds/search?q=${encodeURIComponent(query)}&type=effects&page=1&page_size=20&commercial_only=${commercialOnly}`
-          );
+          throw new Error("Sound search unavailable - Electron IPC required");
         }
 
         if (!ignore) {

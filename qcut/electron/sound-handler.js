@@ -9,9 +9,22 @@ const path = require("path");
 function setupSoundIPC() {
   // Load environment variables if not already loaded
   try {
-    require("dotenv").config({
-      path: path.join(__dirname, "../apps/web/.env.local"),
-    });
+    // Try multiple possible env file locations
+    const envPaths = [
+      path.join(__dirname, "../apps/web/.env.local"),
+      path.join(__dirname, "../.env.local"),
+      path.join(__dirname, "../../apps/web/.env.local"),
+    ];
+    
+    for (const envPath of envPaths) {
+      try {
+        require("dotenv").config({ path: envPath });
+        console.log("✅ [Sound Handler] Loaded env from:", envPath);
+        break;
+      } catch (err) {
+        console.log("⚠️ [Sound Handler] Failed to load env from:", envPath);
+      }
+    }
   } catch (error) {
     console.warn("⚠️ [Sound Handler] dotenv not available:", error.message);
   }
