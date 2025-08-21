@@ -38,6 +38,7 @@ try {
 const { setupFFmpegIPC } = require("./ffmpeg-handler.js");
 const { setupSoundIPC } = require("./sound-handler.js");
 const { setupThemeIPC } = require("./theme-handler.js");
+const { setupApiKeyIPC } = require("./api-key-handler.js");
 
 let mainWindow;
 let staticServer;
@@ -219,6 +220,7 @@ app.whenReady().then(() => {
   setupFFmpegIPC(); // Add FFmpeg CLI support
   setupSoundIPC(); // Add sound search support
   setupThemeIPC(); // Add theme switching support
+  setupApiKeyIPC(); // Add API key management support
 
   // Configure auto-updater for production builds
   if (app.isPackaged) {
