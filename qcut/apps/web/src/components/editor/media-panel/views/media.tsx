@@ -416,7 +416,7 @@ export function MediaView() {
                       {item.type === "image" && (
                         <ContextMenuItem onClick={(e) => handleEdit(e, item)}>
                           <Edit className="h-4 w-4 mr-2" />
-                          Edit
+                          Image edit
                         </ContextMenuItem>
                       )}
                       <ContextMenuItem

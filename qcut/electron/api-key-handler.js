@@ -30,7 +30,8 @@ function setupApiKeyIPC() {
           result.falApiKey = decryptedFal;
         } catch (error) {
           console.warn("Failed to decrypt FAL API key:", error.message);
-          result.falApiKey = "";
+          // Fallback: treat stored value as plain text
+          result.falApiKey = encryptedData.falApiKey || "";
         }
       } else {
         result.falApiKey = encryptedData.falApiKey || "";
@@ -42,7 +43,8 @@ function setupApiKeyIPC() {
           result.freesoundApiKey = decryptedFreesound;
         } catch (error) {
           console.warn("Failed to decrypt Freesound API key:", error.message);
-          result.freesoundApiKey = "";
+          // Fallback: treat stored value as plain text
+          result.freesoundApiKey = encryptedData.freesoundApiKey || "";
         }
       } else {
         result.freesoundApiKey = encryptedData.freesoundApiKey || "";

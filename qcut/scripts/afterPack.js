@@ -3,22 +3,22 @@ const { exec } = require('child_process');
 const fs = require('fs');
 
 exports.default = async function(context) {
-  console.log('Running afterPack hook to fix icon...');
+  process.stdout.write('Running afterPack hook to fix icon...\n');
   
   const appOutDir = context.appOutDir;
   const exePath = path.join(appOutDir, 'QCut Video Editor.exe');
   const icoPath = path.join(context.packager.projectDir, 'build', 'icon.ico');
   
-  console.log('Executable path:', exePath);
-  console.log('Icon path:', icoPath);
+  process.stdout.write(`Executable path: ${exePath}\n`);
+  process.stdout.write(`Icon path: ${icoPath}\n`);
   
   if (!fs.existsSync(exePath)) {
-    console.error('Executable not found:', exePath);
+    process.stderr.write(`Executable not found: ${exePath}\n`);
     return;
   }
   
   if (!fs.existsSync(icoPath)) {
-    console.error('Icon not found:', icoPath);
+    process.stderr.write(`Icon not found: ${icoPath}\n`);
     return;
   }
   
@@ -34,20 +34,20 @@ exports.default = async function(context) {
   }
   
   if (fs.existsSync(rceditPath)) {
-    console.log('Using rcedit from:', rceditPath);
+    process.stdout.write(`Using rcedit from: ${rceditPath}\n`);
     
     return new Promise((resolve, reject) => {
       exec(`"${rceditPath}" "${exePath}" --set-icon "${icoPath}"`, (error, stdout, stderr) => {
         if (error) {
-          console.error('Error setting icon:', error);
+          process.stderr.write(`Error setting icon: ${error}\n`);
           reject(error);
         } else {
-          console.log('Icon successfully embedded into executable!');
+          process.stdout.write('Icon successfully embedded into executable!\n');
           resolve();
         }
       });
     });
   } else {
-    console.log('rcedit not found in electron-builder cache, icon should be set by electron-builder');
+    process.stdout.write('rcedit not found in electron-builder cache, icon should be set by electron-builder\n');
   }
 };
