@@ -1,24 +1,24 @@
-import React from "react";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import React, { useEffect } from "react";
+import { createFileRoute } from "@tanstack/react-router";
 import { Header } from "@/components/header";
-import { Card, CardContent } from "@/components/ui/card";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { getPosts } from "@/lib/blog-query";
+import { Button } from "@/components/ui/button";
+import { ExternalLink } from "lucide-react";
 
 export const Route = createFileRoute("/blog")({
   component: BlogPage,
-  loader: async () => {
-    const data = await getPosts();
-    return { posts: data?.posts || [] };
-  },
 });
 
 function BlogPage() {
-  const { posts } = Route.useLoaderData();
-
-  if (!posts || posts.length === 0) {
-    return <div>No posts yet</div>;
-  }
+  const handleRedirectToGitHub = () => {
+    if (typeof window !== 'undefined' && window.require) {
+      // Running in Electron
+      const { shell } = window.require('electron');
+      shell.openExternal('https://github.com/donghaozhang/qcut');
+    } else {
+      // Running in browser
+      window.open('https://github.com/donghaozhang/qcut', '_blank');
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -31,62 +31,27 @@ function BlogPage() {
         </div>
 
         <div className="relative container max-w-3xl mx-auto px-4 py-16">
-          <div className="text-center mb-20">
+          <div className="text-center">
             <h1 className="text-5xl md:text-6xl font-bold tracking-tight mb-6">
-              Blog
+              Latest Updates
             </h1>
             <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto leading-relaxed">
-              Read the latest news and updates about QCut, the free and
-              open-source video editor.
+              Stay up to date with the latest news, features, and updates about QCut on our GitHub repository.
             </p>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {posts.map((post: any) => (
-              <Link key={post.id} to="/blog/$slug" params={{ slug: post.slug }}>
-                <Card className="h-full hover:shadow-lg transition-shadow overflow-hidden">
-                  {post.coverImage && (
-                    <div className="relative aspect-video">
-                      <img
-                        src={post.coverImage}
-                        alt={post.title}
-                        className="w-full h-full object-cover rounded-xl"
-                      />
-                    </div>
-                  )}
-
-                  <CardContent className="p-6">
-                    {post.authors && post.authors.length > 0 && (
-                      <div className="flex items-center gap-2 mb-4">
-                        {post.authors.map((author: any, index: number) => (
-                          <div
-                            key={author.id}
-                            className="flex items-center gap-2"
-                          >
-                            <Avatar className="w-6 h-6">
-                              <AvatarImage
-                                src={author.image}
-                                alt={author.name}
-                              />
-                              <AvatarFallback className="text-xs">
-                                {author.name.charAt(0).toUpperCase()}
-                              </AvatarFallback>
-                            </Avatar>
-                            <span className="text-sm text-muted-foreground">
-                              {author.name}
-                            </span>
-                            {index < post.authors.length - 1 && (
-                              <span className="text-muted-foreground">•</span>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                    <h2 className="text-xl font-semibold mb-2">{post.title}</h2>
-                    <p className="text-muted-foreground">{post.description}</p>
-                  </CardContent>
-                </Card>
-              </Link>
-            ))}
+            
+            <Button 
+              onClick={handleRedirectToGitHub}
+              size="lg"
+              className="gap-2"
+            >
+              <ExternalLink className="w-4 h-4" />
+              Visit QCut on GitHub
+            </Button>
+            
+            <p className="text-sm text-muted-foreground mt-4">
+              Find release notes, documentation, and discussions at<br />
+              <span className="font-mono">github.com/donghaozhang/qcut</span>
+            </p>
           </div>
         </div>
       </main>
