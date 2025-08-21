@@ -30,8 +30,18 @@ async function fixExeIcon() {
     return;
   }
   
-  const exePath = 'd:/AI_play/AI_Code/build_qcut/win-unpacked/QCut Video Editor.exe';
-  const icoPath = path.join(__dirname, '../build/icon.ico');
+  const getArg = (flag) => {
+    const i = process.argv.indexOf(flag);
+    return i !== -1 ? process.argv[i + 1] : undefined;
+  };
+  const getArg = (flag) => {
+    const i = process.argv.indexOf(flag);
+    return i !== -1 ? process.argv[i + 1] : undefined;
+  };
+  const exePath =
+    getArg('--exe') || path.resolve(process.cwd(), 'dist', 'win-unpacked', 'QCut Video Editor.exe');
+  const icoPath =
+    getArg('--ico') || path.resolve(process.cwd(), 'build', 'icon.ico');
   
   // Check if files exist
   if (!fs.existsSync(exePath)) {
@@ -101,7 +111,7 @@ async function fixExeIcon() {
   // Use execFile instead of exec for better security
   execFile(rceditPath, [exePath, '--set-icon', icoPath], (error, stdout, stderr) => {
     if (error) {
-      process.stderr.write(`Error setting icon: ${error}\n`);
+      process.stderr.write(`Error setting icon: ${error?.stack || error}\n`);
       process.exitCode = 1;
       return;
     }

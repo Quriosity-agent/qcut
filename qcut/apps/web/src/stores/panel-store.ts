@@ -456,7 +456,6 @@ export const usePanelStore = create<PanelState>()(
         const finalSizes = { ...defaultSizes, ...customSizes };
         
         // Applying preset sizes
-        });
         
         set({
           activePreset: preset,
