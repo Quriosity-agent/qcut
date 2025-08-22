@@ -7,7 +7,7 @@
 
 import React, { useRef, useEffect, memo } from "react";
 import { useStickersOverlayStore } from "@/stores/stickers-overlay-store";
-import { useMediaStore } from "@/stores/media-store";
+import { useAsyncMediaStore } from "@/hooks/use-async-media-store";
 import { cn } from "@/lib/utils";
 import { debugLog } from "@/lib/debug-config";
 import { StickerElement } from "./StickerElement";
@@ -36,7 +36,12 @@ export const StickerCanvas: React.FC<{
     getVisibleStickersAtTime,
   } = useStickersOverlayStore();
 
-  const { mediaItems } = useMediaStore();
+  const {
+    store: mediaStore,
+    loading: mediaStoreLoading,
+    error: mediaStoreError,
+  } = useAsyncMediaStore();
+  const mediaItems = mediaStore?.mediaItems || [];
   const { activeProject } = useProjectStore();
   const { currentTime } = usePlaybackStore();
 
@@ -213,6 +218,29 @@ export const StickerCanvas: React.FC<{
 
   // Get only visible stickers at current time
   const visibleStickers = getVisibleStickersAtTime(currentTime);
+  
+  // Debug logging for sticker visibility
+  useEffect(() => {
+    console.log(`[StickerCanvas] State check:`, {
+      totalStickers: overlayStickers.size,
+      visibleStickers: visibleStickers.length,
+      currentTime,
+      mediaItemsCount: mediaItems.length,
+      mediaStoreLoading,
+      mediaStoreError: !!mediaStoreError,
+    });
+    
+    if (overlayStickers.size > 0) {
+      const stickerDetails = Array.from(overlayStickers.values()).map(sticker => ({
+        id: sticker.id,
+        mediaItemId: sticker.mediaItemId,
+        timing: sticker.timing,
+        position: sticker.position,
+        hasMediaItem: mediaItems.some(item => item.id === sticker.mediaItemId),
+      }));
+      console.log(`[StickerCanvas] Sticker details:`, stickerDetails);
+    }
+  }, [overlayStickers.size, visibleStickers.length, currentTime, mediaItems.length, mediaStoreLoading, mediaStoreError]);
 
   return (
     <>
