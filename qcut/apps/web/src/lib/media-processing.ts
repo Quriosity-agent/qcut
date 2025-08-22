@@ -133,103 +133,23 @@ export async function processMediaFiles(
             // Set default FPS for browser processing (FFmpeg can override later if needed)
             fps = 30;
 
-            // Optionally try to enhance with FFmpeg data if available (non-blocking)
-            try {
-              debugLog(
-                "[Media Processing] 🔧 Attempting to enhance with FFmpeg data..."
-              );
-              const videoInfo = await Promise.race([
-                ffmpegUtils.getVideoInfo(file),
-                new Promise<never>((_, reject) =>
-                  setTimeout(
-                    () => reject(new Error("FFmpeg enhancement timeout")),
-                    5000
-                  )
-                ),
-              ]);
-              debugLog(
-                "[Media Processing] ✅ FFmpeg enhancement successful:",
-                videoInfo
-              );
-              // Only override FPS from FFmpeg, keep browser-generated thumbnail and dimensions
-              fps = videoInfo.fps || fps;
-            } catch (ffmpegError) {
-              debugLog(
-                "[Media Processing] ℹ️ FFmpeg enhancement failed (using browser data):",
-                ffmpegError instanceof Error
-                  ? ffmpegError.message
-                  : String(ffmpegError)
-              );
-              // Continue with browser-generated data - this is not an error
-            }
+            // Skip FFmpeg enhancement to avoid timeout issues
+            debugLog("[Media Processing] ℹ️ Using browser data only to avoid FFmpeg timeout");
           } catch (error) {
             debugWarn(
               "[Media Processing] Browser processing failed, falling back to FFmpeg:",
               error
             );
 
-            // Fallback to FFmpeg processing
-            try {
-              debugLog(
-                "[Media Processing] 🔧 Attempting FFmpeg fallback processing..."
-              );
-              const videoInfo = await ffmpegUtils.getVideoInfo(file);
-              debugLog(
-                "[Media Processing] ✅ FFmpeg getVideoInfo successful:",
-                videoInfo
-              );
-              duration = videoInfo.duration;
-              width = videoInfo.width;
-              height = videoInfo.height;
-              fps = videoInfo.fps;
-
-              debugLog(
-                "[Media Processing] 🖼️ Generating thumbnail with FFmpeg..."
-              );
-              // Skip FFmpeg thumbnail generation if video dimensions are invalid
-              if (
-                width === undefined ||
-                height === undefined ||
-                width <= 0 ||
-                height <= 0
-              ) {
-                debugWarn(
-                  `[Media Processing] ⚠️ Skipping FFmpeg thumbnail due to invalid dimensions (${width}x${height})`
-                );
-                throw new Error(
-                  "Invalid video dimensions for thumbnail generation"
-                );
-              }
-              // Generate thumbnail using FFmpeg
-              thumbnailUrl = await ffmpegUtils.generateThumbnail(file, 1);
-              debugLog(
-                "[Media Processing] ✅ FFmpeg fallback processing successful"
-              );
-            } catch (ffmpegError) {
-              debugWarn(
-                "[Media Processing] ⚠️ FFmpeg fallback also failed, using minimal processing:",
-                ffmpegError
-              );
-
-              // Minimal processing - just basic file info
-              try {
-                duration = await mediaUtils.getMediaDuration(file);
-              } catch (durationError) {
-                debugWarn(
-                  "[Media Processing] ⚠️ Duration extraction failed:",
-                  durationError
-                );
-                duration = 0; // Default duration
-              }
-
-              // Set default dimensions for failed processing
-              width = 1920;
-              height = 1080;
-              fps = 30;
-              thumbnailUrl = undefined;
-
-              debugLog("[Media Processing] ✅ Minimal processing completed");
-            }
+            // Skip FFmpeg fallback to avoid 60s timeout - use defaults instead
+            debugLog(
+              "[Media Processing] ℹ️ Using default values instead of FFmpeg fallback to avoid timeout"
+            );
+            duration = 0; // Default duration
+            width = 1920; // Default width
+            height = 1080; // Default height
+            fps = 30; // Default fps
+            thumbnailUrl = undefined;
           }
         } else if (fileType === "audio") {
           debugLog(`[Media Processing] 🎵 Processing audio: ${file.name}`);
