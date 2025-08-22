@@ -391,7 +391,6 @@ export function MediaView() {
                           aria-label="Add as overlay"
                           onClick={(e) => {
                             e.stopPropagation();
-                            console.log(`[MediaView] ADD OVERLAY CLICKED for item:`, item);
                             
                             const { addOverlaySticker } =
                               useStickersOverlayStore.getState();
@@ -400,10 +399,6 @@ export function MediaView() {
                               useTimelineStore.getState();
                             const totalDuration = getTotalDuration();
                             
-                            console.log(`[MediaView] Current playback state:`, {
-                              currentTime,
-                              totalDuration,
-                            });
                             
                             const start = Math.max(
                               0,
@@ -418,22 +413,13 @@ export function MediaView() {
                               },
                             };
                             
-                            console.log(`[MediaView] Calling addOverlaySticker with:`, {
-                              mediaItemId: item.id,
-                              overlayData,
-                            });
                             
                             const stickerId = addOverlaySticker(item.id, overlayData);
                             
-                            console.log(`[MediaView] addOverlaySticker returned stickerId:`, stickerId);
                             
                             // Check store state after adding
                             const storeState = useStickersOverlayStore.getState();
-                            console.log(`[MediaView] Store state after adding:`, {
-                              totalStickers: storeState.overlayStickers.size,
-                              selectedStickerId: storeState.selectedStickerId,
-                              newStickerExists: storeState.overlayStickers.has(stickerId),
-                            });
+                            const newSticker = storeState.overlayStickers.get(stickerId);
                             
                             toast.success(`Added "${item.name}" as overlay`);
                           }}

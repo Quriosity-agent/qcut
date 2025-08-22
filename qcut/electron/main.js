@@ -431,7 +431,7 @@ ipcMain.handle("validate-audio-file", async (event, filePath) => {
     const { getFFmpegPath } = require('./ffmpeg-handler.js');
     const ffmpegPath = getFFmpegPath();
     const ffmpegDir = path.dirname(ffmpegPath);
-    const ffprobePath = path.join(ffmpegDir, 'ffprobe.exe');
+    const ffprobePath = path.join(ffmpegDir, process.platform === 'win32' ? 'ffprobe.exe' : 'ffprobe');
     
     return new Promise((resolve) => {
       console.log(`[Main] Running ffprobe on: ${filePath}`);

@@ -221,22 +221,24 @@ export const StickerCanvas: React.FC<{
   
   // Debug logging for sticker visibility
   useEffect(() => {
-    console.log(`[StickerCanvas] State check:`, {
-      totalStickers: overlayStickers.size,
-      visibleStickers: visibleStickers.length,
-      currentTime,
-      mediaItemsCount: mediaItems.length,
-      mediaStoreLoading,
-      mediaStoreError: !!mediaStoreError,
-    });
-    
     if (overlayStickers.size > 0) {
+      console.log(`[StickerCanvas] State check:`, {
+        totalStickers: overlayStickers.size,
+        visibleStickers: visibleStickers.length,
+        currentTime,
+        mediaItemsCount: mediaItems.length,
+        mediaStoreLoading,
+        mediaStoreError: !!mediaStoreError,
+      });
+      
       const stickerDetails = Array.from(overlayStickers.values()).map(sticker => ({
         id: sticker.id,
         mediaItemId: sticker.mediaItemId,
         timing: sticker.timing,
         position: sticker.position,
         hasMediaItem: mediaItems.some(item => item.id === sticker.mediaItemId),
+        isVisible: currentTime >= (sticker.timing?.startTime || 0) && 
+                  currentTime <= (sticker.timing?.endTime || Infinity),
       }));
       console.log(`[StickerCanvas] Sticker details:`, stickerDetails);
     }
