@@ -418,21 +418,21 @@ export function ExportDialog() {
               >
                 <div className="flex items-start space-x-2">
                   <RadioGroupItem value="standard" id="standard" className="mt-0.5" />
-                  <Label htmlFor="standard" className="text-sm cursor-pointer flex-1">
+                  <Label htmlFor="standard" className="text-sm cursor-pointer flex-1 min-w-0">
                     <div className="flex items-center gap-1">
-                      <span>📹</span>
-                      <span>Standard MediaRecorder</span>
+                      <span className="flex-shrink-0">📹</span>
+                      <span className="truncate">Standard MediaRecorder</span>
                     </div>
                   </Label>
                 </div>
                 {exportSettings.ffmpegAvailable && (
                   <div className="flex items-start space-x-2">
                     <RadioGroupItem value="ffmpeg" id="ffmpeg" className="mt-0.5" />
-                    <Label htmlFor="ffmpeg" className="text-sm cursor-pointer flex-1">
+                    <Label htmlFor="ffmpeg" className="text-sm cursor-pointer flex-1 min-w-0">
                       <div className="flex items-center gap-1 flex-wrap">
-                        <span>🚀</span>
-                        <span>FFmpeg WASM</span>
-                        <span className="text-xs text-muted-foreground">(5x faster)</span>
+                        <span className="flex-shrink-0">🚀</span>
+                        <span className="whitespace-nowrap">FFmpeg WASM</span>
+                        <span className="text-xs text-muted-foreground whitespace-nowrap">(5x faster)</span>
                       </div>
                     </Label>
                   </div>
@@ -440,11 +440,11 @@ export function ExportDialog() {
                 {isElectron() && (
                   <div className="flex items-start space-x-2">
                     <RadioGroupItem value="cli" id="cli" className="mt-0.5" />
-                    <Label htmlFor="cli" className="text-sm cursor-pointer flex-1">
+                    <Label htmlFor="cli" className="text-sm cursor-pointer flex-1 min-w-0">
                       <div className="flex items-center gap-1 flex-wrap">
-                        <span>⚡</span>
-                        <span>Native FFmpeg CLI</span>
-                        <span className="text-xs text-muted-foreground">(10x faster)</span>
+                        <span className="flex-shrink-0">⚡</span>
+                        <span className="whitespace-nowrap">Native FFmpeg CLI</span>
+                        <span className="text-xs text-muted-foreground whitespace-nowrap">(10x faster)</span>
                       </div>
                     </Label>
                   </div>
@@ -497,22 +497,23 @@ export function ExportDialog() {
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="space-y-2 text-sm">
-                <div className="flex justify-between items-center">
-                  <span className="font-medium">Resolution:</span>
-                  <span className="text-muted-foreground">
+                <div className="flex justify-between items-center gap-2">
+                  <span className="font-medium flex-shrink-0">Resolution:</span>
+                  <span className="text-muted-foreground text-right truncate">
                     {exportSettings.resolution?.label || "N/A"}
                   </span>
                 </div>
-                <div className="flex justify-between items-center">
-                  <span className="font-medium">Est. size:</span>
-                  <span className="text-muted-foreground">
+                <div className="flex justify-between items-center gap-2">
+                  <span className="font-medium flex-shrink-0">Est. size:</span>
+                  <span className="text-muted-foreground text-right truncate">
                     {exportSettings.estimatedSize}
                   </span>
                 </div>
-                <div className="flex justify-between items-center">
-                  <span className="font-medium">Duration:</span>
+                <div className="flex justify-between items-center gap-2">
+                  <span className="font-medium flex-shrink-0">Duration:</span>
                   <span
                     className={cn(
+                      "text-right truncate",
                       exportSettings.timelineDuration === 0
                         ? "text-red-500"
                         : "text-muted-foreground"
@@ -523,16 +524,16 @@ export function ExportDialog() {
                       : `${exportSettings.timelineDuration.toFixed(2)}s`}
                   </span>
                 </div>
-                <div className="flex justify-between items-center">
-                  <span className="font-medium">Format:</span>
-                  <span className="text-muted-foreground">
+                <div className="flex justify-between items-center gap-2">
+                  <span className="font-medium flex-shrink-0">Format:</span>
+                  <span className="text-muted-foreground text-right truncate">
                     {FORMAT_INFO[exportSettings.format].label}
                   </span>
                 </div>
                 {exportSettings.engineRecommendation && (
-                  <div className="flex justify-between items-center">
-                    <span className="font-medium">Engine:</span>
-                    <span className="text-muted-foreground">
+                  <div className="flex justify-between items-center gap-2">
+                    <span className="font-medium flex-shrink-0">Engine:</span>
+                    <span className="text-muted-foreground text-right truncate">
                       {exportSettings.engineRecommendation}
                     </span>
                   </div>

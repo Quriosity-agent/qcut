@@ -33,14 +33,7 @@ const checkEnvironment = () => {
   const hasSharedArrayBuffer = typeof SharedArrayBuffer !== "undefined";
   const hasWorker = typeof Worker !== "undefined";
 
-  console.log("[FFmpeg Utils] 🧪 Environment check:", {
-    SharedArrayBuffer: hasSharedArrayBuffer,
-    Worker: hasWorker,
-    isElectron: isElectron(),
-    isPackagedElectron: isPackagedElectron(),
-    userAgent: typeof navigator !== "undefined" ? navigator.userAgent : "N/A",
-    location: typeof window !== "undefined" ? window.location.href : "N/A",
-  });
+  // Environment check removed for production
 
   if (!hasSharedArrayBuffer) {
     console.warn(

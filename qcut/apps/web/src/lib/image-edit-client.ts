@@ -6,13 +6,7 @@
 const FAL_API_KEY = import.meta.env.VITE_FAL_API_KEY;
 const FAL_API_BASE = "https://fal.run";
 
-// Temporary test - Environment loading verification
-console.log("Environment check:", {
-  hasApiKey: !!import.meta.env.VITE_FAL_API_KEY,
-  keyLength: import.meta.env.VITE_FAL_API_KEY?.length || 0,
-  keyPreview:
-    import.meta.env.VITE_FAL_API_KEY?.substring(0, 8) + "..." || "Not found",
-});
+// Environment check removed for production
 
 export interface ImageEditRequest {
   imageUrl: string;
