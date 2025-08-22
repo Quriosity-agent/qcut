@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { debugLog } from "@/lib/debug-config";
+import { debugLog, debugError } from "@/lib/debug-config";
 import { storageService } from "@/lib/storage/storage-service";
 import { useTimelineStore } from "./timeline-store";
 import { generateUUID, generateFileBasedId } from "@/lib/utils";
@@ -284,6 +284,14 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
       id,
     };
     
+    // Debug logging for ID generation (Task 1.3)
+    console.log(`[MediaStore] Generated ID for ${newItem.name}:`, {
+      id: newItem.id,
+      hasFile: !!newItem.file,
+      providedId: item.id,
+      generatedNew: !item.id && item.file
+    });
+    
 
     // Add to local state immediately for UI responsiveness
     set((state) => ({
@@ -539,6 +547,18 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
 
     // Clear local state
     set({ mediaItems: [] });
+    
+    // Also clean up orphaned stickers when media is cleared
+    try {
+      const { useStickersOverlayStore } = await import("@/stores/stickers-overlay-store");
+      const stickerStore = useStickersOverlayStore.getState();
+      if (stickerStore.overlayStickers.size > 0) {
+        console.log(`[MediaStore] Media cleared, cleaning up ${stickerStore.overlayStickers.size} orphaned stickers`);
+        stickerStore.cleanupInvalidStickers([]); // Empty array = all stickers are invalid
+      }
+    } catch (error) {
+      debugError("[MediaStore] Failed to cleanup stickers after media clear:", error);
+    }
 
     // Clear persistent storage
     try {

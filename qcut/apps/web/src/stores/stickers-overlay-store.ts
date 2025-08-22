@@ -121,6 +121,14 @@ export const useStickersOverlayStore = create<StickerOverlayStore>()(
           `[StickerStore] 🎯 addOverlaySticker called with mediaItemId: ${mediaItemId}, options:`,
           options
         );
+        
+        // Debug logging for sticker creation (Task 1.3)
+        console.log(`[StickerStore] Creating overlay with mediaItemId:`, {
+          mediaItemId,
+          timestamp: new Date().toISOString(),
+          options
+        });
+        
         const id = generateStickerId();
         const state = get();
 
@@ -593,29 +601,59 @@ export const useStickersOverlayStore = create<StickerOverlayStore>()(
       addStickerToTimeline: async (sticker: OverlaySticker) => {
         try {
           const { useTimelineStore } = await import("./timeline-store");
-          const timelineStore = useTimelineStore.getState();
+          
+          // Get fresh state for initial check
+          let timelineStore = useTimelineStore.getState();
           debugLog(
             "[StickerStore] Timeline integration - checking timing:",
             sticker.timing
           );
 
+          console.log("[StickerStore] Current timeline tracks:", timelineStore.tracks.map(t => ({id: t.id, type: t.type})));
+          
           let stickerTrack = timelineStore.tracks.find(
             (track) => track.type === "sticker"
           );
 
           if (stickerTrack) {
-            debugLog(
+            console.log(
               `[StickerStore] Found existing sticker track: ${stickerTrack.id}`
             );
           } else {
-            debugLog("[StickerStore] Creating new sticker timeline track");
+            console.log("[StickerStore] No sticker track found, creating new one...");
+            console.log("[StickerStore] Calling addTrack('sticker')...");
+            
             const trackId = timelineStore.addTrack("sticker");
+            console.log(`[StickerStore] addTrack returned trackId: ${trackId}`);
+            
+            // IMPORTANT: Get fresh state after mutation
+            timelineStore = useTimelineStore.getState();
+            console.log(`[StickerStore] Fresh timeline state after addTrack:`, timelineStore.tracks.map(t => ({id: t.id, type: t.type})));
+            
+            // Look for the track in both _tracks and tracks arrays
             stickerTrack = timelineStore.tracks.find(
               (track) => track.id === trackId
             );
-            debugLog(
-              `[StickerStore] Created sticker track with ID: ${trackId}`
+            
+            // If not found in sorted tracks, check _tracks
+            if (!stickerTrack && timelineStore._tracks) {
+              console.log("[StickerStore] Checking _tracks array...");
+              const trackIn_tracks = timelineStore._tracks.find(
+                (track) => track.id === trackId
+              );
+              if (trackIn_tracks) {
+                console.log("[StickerStore] Found track in _tracks but not in sorted tracks - possible sorting issue");
+                stickerTrack = trackIn_tracks;
+              }
+            }
+            
+            console.log(
+              `[StickerStore] After creation, stickerTrack:`, 
+              stickerTrack ? {id: stickerTrack.id, type: stickerTrack.type} : 'NOT FOUND'
             );
+            
+            // Also check all tracks again
+            console.log("[StickerStore] All tracks after creation:", timelineStore.tracks.map(t => ({id: t.id, type: t.type})));
           }
 
           debugLog(
@@ -628,11 +666,11 @@ export const useStickersOverlayStore = create<StickerOverlayStore>()(
             sticker.timing?.endTime !== undefined
           ) {
             const duration = sticker.timing.endTime - sticker.timing.startTime;
-            debugLog(
-              `[StickerStore] Adding sticker to timeline with duration: ${duration}s`
+            console.log(
+              `[StickerStore] Adding sticker to timeline with duration: ${duration}s, track: ${stickerTrack.id}`
             );
 
-            timelineStore.addElementToTrack(stickerTrack.id, {
+            const result = timelineStore.addElementToTrack(stickerTrack.id, {
               type: "sticker",
               stickerId: sticker.id,
               mediaId: sticker.mediaItemId,
@@ -642,12 +680,22 @@ export const useStickersOverlayStore = create<StickerOverlayStore>()(
               trimStart: 0,
               trimEnd: 0,
             });
+            console.log(
+              `[StickerStore] Timeline addElementToTrack result:`, result
+            );
             debugLog(
               `[StickerStore] ✅ Added sticker to timeline track: ${duration}s duration`
             );
           } else {
-            debugLog(
-              "[StickerStore] ❌ Failed to add sticker to timeline - missing requirements"
+            console.log(
+              "[StickerStore] ❌ Failed to add sticker to timeline - missing requirements:",
+              {
+                hasStickerTrack: !!stickerTrack,
+                stickerTrackId: stickerTrack?.id,
+                hasTiming: !!sticker.timing,
+                startTime: sticker.timing?.startTime,
+                endTime: sticker.timing?.endTime
+              }
             );
           }
         } catch (error) {

@@ -45,6 +45,30 @@ export const StickerCanvas: React.FC<{
   const { activeProject } = useProjectStore();
   const { currentTime } = usePlaybackStore();
 
+  // Debug state tracking for timing analysis (Task 2.1)
+  useEffect(() => {
+    if (overlayStickers.size > 0) {
+      console.log(`[StickerCanvas] Media availability check:`, {
+        mediaItemsLoaded: mediaItems.length,
+        mediaIds: mediaItems.map(m => ({ id: m.id, name: m.name })),
+        stickersWaitingForMedia: Array.from(overlayStickers.values()).filter(s => 
+          !mediaItems.find(m => m.id === s.mediaItemId)
+        ).length,
+        timestamp: new Date().toISOString()
+      });
+      
+      // Additional timing debug
+      console.log(`[StickerCanvas] Timing Debug:`, {
+        timestamp: new Date().toISOString(),
+        mediaStoreReady: !mediaStoreLoading,
+        mediaCount: mediaItems.length,
+        stickerCount: overlayStickers.size,
+        currentTime,
+        visibleStickersCount: getVisibleStickersAtTime(currentTime).length
+      });
+    }
+  }, [mediaItems.length, overlayStickers.size, mediaStoreLoading, currentTime, getVisibleStickersAtTime]);
+
   // Migration: Fix media items with wrong MIME type
   useEffect(() => {
     const fixMimeTypes = () => {
@@ -162,9 +186,16 @@ export const StickerCanvas: React.FC<{
         // This helps prevent premature cleanup during initial load
         if (mediaItems.length > 0) {
           cleanupInvalidStickers(mediaIds);
+        } else if (overlayStickers.size > 0 && !mediaStoreLoading) {
+          // If we have stickers but no media and store is not loading,
+          // these are likely orphaned stickers that should be cleaned up
+          console.log(
+            `[StickerCanvas] Found ${overlayStickers.size} stickers with no media items - cleaning up orphaned stickers`
+          );
+          cleanupInvalidStickers([]);
         } else {
           debugLog(
-            "[StickerCanvas] Skipping cleanup - no media items loaded yet"
+            "[StickerCanvas] Skipping cleanup - no media items loaded yet or store is loading"
           );
         }
       }, 2000); // Increased to 2 seconds to ensure media is fully loaded

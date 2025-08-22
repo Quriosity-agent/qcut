@@ -7,6 +7,7 @@ import { useProjectStore, NotFoundError } from "@/stores/project-store";
 import { usePlaybackControls } from "@/hooks/use-playback-controls";
 import { Onboarding } from "@/components/onboarding";
 import { debugError, debugLog } from "@/lib/debug-config";
+import "@/lib/debug-sticker-overlay"; // Load debug utilities
 import {
   DefaultLayout,
   MediaLayout,

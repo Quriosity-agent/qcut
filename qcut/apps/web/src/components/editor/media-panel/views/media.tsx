@@ -392,6 +392,19 @@ export function MediaView() {
                           onClick={(e) => {
                             e.stopPropagation();
                             
+                            // Debug logging for overlay creation (Task 2.2)
+                            // Note: We use filteredMediaItems which is already available from the hook
+                            const mediaExists = filteredMediaItems.some((m: any) => m.id === item.id);
+                            
+                            console.log(`[MediaPanel] Overlay creation check:`, {
+                              targetItemId: item.id,
+                              targetItemName: item.name,
+                              mediaExists,
+                              totalMediaItems: filteredMediaItems.length,
+                              availableMediaIds: filteredMediaItems.map((m: any) => m.id),
+                              timestamp: new Date().toISOString()
+                            });
+                            
                             const { addOverlaySticker } =
                               useStickersOverlayStore.getState();
                             const { currentTime } = usePlaybackStore.getState();

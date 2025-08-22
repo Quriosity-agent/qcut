@@ -132,6 +132,19 @@ useEffect(() => {
 
 2. Test rapid overlay creation after media upload
 
+**Additional Console Logging**:
+```typescript
+// Add this to track timing issues
+console.log(`[StickerCanvas] Timing Debug:`, {
+  timestamp: new Date().toISOString(),
+  mediaStoreReady: !mediaStoreLoading,
+  mediaCount: mediaItems.length,
+  stickerCount: overlayStickers.size,
+  currentTime,
+  visibleStickersCount: visibleStickers.length
+});
+```
+
 **Success Criteria**: Determine if timing/race condition causes the mismatch
 
 ---
@@ -287,7 +300,22 @@ onClick={(e) => {
 4. Test overlay interaction (drag, resize)
 5. Test overlay timing (visibility at correct time ranges)
 
-**Success Criteria**: Complete overlay workflow functions properly
+**Final Console Validation Commands**:
+```javascript
+// Run these in browser console to verify fix
+console.log('=== FINAL VALIDATION ===');
+console.log('Total Media Items:', useAsyncMediaStore.getState().store?.mediaItems?.length || 0);
+console.log('Total Overlay Stickers:', useStickersOverlayStore.getState().overlayStickers.size);
+console.log('Missing Media Count:', 
+  Array.from(useStickersOverlayStore.getState().overlayStickers.values())
+    .filter(s => !useAsyncMediaStore.getState().store?.mediaItems?.find(m => m.id === s.mediaItemId))
+    .length
+);
+console.log('Success: All stickers have matching media items!');
+console.log('======================');
+```
+
+**Success Criteria**: Complete overlay workflow functions properly with console showing 0 missing media items
 
 ---
 
@@ -307,9 +335,45 @@ If any task breaks existing functionality:
 - ✅ Existing drag/drop and direct overlay functionality unchanged
 - ✅ Performance impact < 50ms for overlay creation
 
+## Console Commands Reference
+
+### Quick Debugging Commands
+```javascript
+// 1. Check current state snapshot
+console.log('=== STATE SNAPSHOT ===');
+console.log('Media Items:', useAsyncMediaStore.getState().store?.mediaItems?.map(m => ({id: m.id, name: m.name})));
+console.log('Overlay Stickers:', Array.from(useStickersOverlayStore.getState().overlayStickers.values()).map(s => ({id: s.id, mediaItemId: s.mediaItemId})));
+
+// 2. Find orphaned stickers (stickers without matching media)
+const orphanedStickers = Array.from(useStickersOverlayStore.getState().overlayStickers.values())
+  .filter(sticker => !useAsyncMediaStore.getState().store?.mediaItems?.find(media => media.id === sticker.mediaItemId));
+console.log('Orphaned Stickers:', orphanedStickers);
+
+// 3. Check timing and visibility
+console.log('Current Time:', usePlaybackStore.getState().currentTime);
+console.log('Visible Stickers:', useStickersOverlayStore.getState().getVisibleStickersAtTime(usePlaybackStore.getState().currentTime));
+
+// 4. Clear all stickers (emergency reset)
+// useStickersOverlayStore.getState().clearAllStickers();
+```
+
+### Performance Monitoring
+```javascript
+// Monitor overlay creation performance
+console.time('overlay-creation');
+// ... perform overlay creation
+console.timeEnd('overlay-creation');
+
+// Monitor media lookup performance
+console.time('media-lookup');
+const mediaItem = mediaItems.find(item => item.id === targetId);
+console.timeEnd('media-lookup');
+```
+
 ## Notes
 
 - Each task is designed to be non-breaking and easily reversible
-- Console logging provides clear diagnostic trail
+- Console logging provides clear diagnostic trail with timestamp tracking
 - Progressive enhancement approach - each fix builds on previous understanding
 - Focus on timing and synchronization issues rather than major architectural changes
+- Use console commands above for quick debugging during investigation
