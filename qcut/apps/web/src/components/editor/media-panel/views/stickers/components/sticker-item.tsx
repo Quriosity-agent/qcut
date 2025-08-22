@@ -48,6 +48,18 @@ export function StickerItem({
 
   const handleClick = () => {
     const iconId = `${collection}:${icon}`;
+    console.log(`[StickerItem] Sticker clicked: ${iconId}`, {
+      name: name || icon,
+      imageUrl,
+      hasError,
+      isLoading
+    });
+    debugLog(`[StickerItem] Sticker clicked: ${iconId}`, {
+      name: name || icon,
+      imageUrl,
+      hasError,
+      isLoading
+    });
     onSelect(iconId, name || icon);
   };
 

@@ -311,12 +311,17 @@ export function StickersView() {
 
   const handleStickerSelect = useCallback(
     async (iconId: string, name: string) => {
+      console.log("[StickersView] handleStickerSelect called:", {
+        iconId,
+        name,
+      });
       debugLog("[StickersView] handleStickerSelect called:", {
         iconId,
         name,
       });
 
       if (!activeProject) {
+        console.error("[StickersView] No active project");
         debugError("[StickersView] No active project");
         toast.error("No project selected");
         return;
@@ -324,9 +329,15 @@ export function StickersView() {
 
       try {
         // Download sticker as File object (no blob URLs!)
+        console.log("[StickersView] Downloading sticker as File:", iconId);
         debugLog("[StickersView] Downloading sticker as File:", iconId);
         const svgFile = await downloadStickerAsFile(iconId, name);
 
+        console.log("[StickersView] Sticker downloaded as File:", {
+          name: svgFile.name,
+          size: svgFile.size,
+          type: svgFile.type
+        });
         debugLog("[StickersView] Sticker downloaded as File:", {
           name: svgFile.name,
           size: svgFile.size,
@@ -334,20 +345,31 @@ export function StickersView() {
         });
 
         // Add media item directly with File object
-        // No URL needed - storage service will handle data URL conversion
+        // Create URL from the File object for immediate preview
+        const fileUrl = URL.createObjectURL(svgFile);
+        console.log("[StickersView] Created file URL:", fileUrl);
+        
+        const mediaItemData = {
+          name: svgFile.name,
+          type: "image" as const,
+          file: svgFile,
+          url: fileUrl,
+          thumbnailUrl: fileUrl,
+          width: 512,
+          height: 512,
+          duration: 0,
+        };
+        
+        console.log("[StickersView] Adding media item to project:", activeProject.id);
+        console.log("[StickersView] Media item data:", mediaItemData);
         debugLog(
           "[StickersView] Adding media item to project:",
           activeProject.id
         );
-        await addMediaItem(activeProject.id, {
-          name: svgFile.name,
-          type: "image",
-          file: svgFile,
-          // No url or thumbnailUrl - let storage service handle it
-          width: 512,
-          height: 512,
-          duration: 0,
-        });
+        
+        await addMediaItem(activeProject.id, mediaItemData);
+        
+        console.log("[StickersView] Media item added successfully");
         debugLog("[StickersView] Media item added successfully");
 
         // Add to recent stickers

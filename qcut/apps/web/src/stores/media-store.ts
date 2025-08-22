@@ -284,18 +284,25 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
       ...item,
       id,
     };
+    
+    console.log(`[MediaStore] Creating new media item:`, newItem);
+    console.log(`[MediaStore] Item URL: ${newItem.url}`);
+    console.log(`[MediaStore] Item thumbnailUrl: ${newItem.thumbnailUrl}`);
 
     // Add to local state immediately for UI responsiveness
     set((state) => ({
       mediaItems: [...state.mediaItems, newItem],
     }));
+    
+    console.log(`[MediaStore] Added to local state, saving to storage...`);
 
     // Save to persistent storage in background
     try {
       await storageService.saveMediaItem(projectId, newItem);
+      console.log(`[MediaStore] Successfully saved to storage: ${newItem.id}`);
       return newItem.id;
     } catch (error) {
-      console.error("Failed to save media item:", error);
+      console.error("[MediaStore] Failed to save media item:", error);
       // Remove from local state if save failed
       set((state) => ({
         mediaItems: state.mediaItems.filter((media) => media.id !== newItem.id),
@@ -501,10 +508,13 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
 
   loadProjectMedia: async (projectId) => {
     set({ isLoading: true });
+    console.log(`[MediaStore] Loading media for project: ${projectId}`);
     debugLog(`[MediaStore] Loading media for project: ${projectId}`);
 
     try {
       const mediaItems = await storageService.loadAllMediaItems(projectId);
+      console.log(`[MediaStore] Loaded ${mediaItems.length} media items from storage`);
+      console.log(`[MediaStore] Raw loaded items:`, mediaItems);
       debugLog(
         `[MediaStore] Loaded ${mediaItems.length} media items from storage`
       );
@@ -549,7 +559,9 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
         })
       );
 
+      console.log(`[MediaStore] Final processed items:`, updatedMediaItems);
       set({ mediaItems: updatedMediaItems });
+      console.log(`[MediaStore] ✅ Media loading complete: ${updatedMediaItems.length} items`);
       debugLog(
         `[MediaStore] ✅ Media loading complete: ${updatedMediaItems.length} items`
       );

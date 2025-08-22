@@ -636,19 +636,46 @@ export class CLIExportEngine extends ExportEngine {
     // Progress: 10% - Starting video compilation
     progressCallback?.(10, "Starting video compilation...");
 
-    // Note: Progress updates would need to be added to electronAPI
-    // For now, use basic invoke without progress tracking
-
-    const result = await window.electronAPI.invoke("export-video-cli", {
+    const exportOptions = {
       sessionId: this.sessionId,
       width: this.canvas.width,
       height: this.canvas.height,
       fps: 30,
       quality: this.settings.quality || "medium",
       audioFiles, // Pass audio files to FFmpeg handler
-    });
+    };
+    
+    console.log('[CLI Export] Starting FFmpeg export with options:', exportOptions);
+    console.log('[CLI Export] Audio files details:', audioFiles.map(f => ({
+      path: f.path,
+      startTime: f.startTime,
+      volume: f.volume,
+      type: typeof f.path,
+      isBlob: f.path?.startsWith('blob:'),
+      isData: f.path?.startsWith('data:'),
+      length: f.path?.length
+    })));
+    
+    // Log full audio files object for debugging
+    console.log('[CLI Export] Full audio files array:', audioFiles);
 
-    return result.outputFile;
+    // Note: Progress updates would need to be added to electronAPI
+    // For now, use basic invoke without progress tracking
+    
+    try {
+      const result = await window.electronAPI.invoke("export-video-cli", exportOptions);
+      console.log('[CLI Export] FFmpeg export completed successfully:', result);
+      return result.outputFile;
+    } catch (error) {
+      console.error('[CLI Export] FFmpeg export failed:', error);
+      console.error('[CLI Export] Error details:', {
+        message: error instanceof Error ? error.message : String(error),
+        code: (error as any)?.code,
+        stderr: (error as any)?.stderr,
+        stdout: (error as any)?.stdout
+      });
+      throw error;
+    }
   }
 
   private async readOutputFile(outputPath: string): Promise<Blob> {

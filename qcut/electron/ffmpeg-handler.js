@@ -80,15 +80,34 @@ function setupFFmpegIPC() {
   // Export video with CLI
   ipcMain.handle("export-video-cli", async (event, options) => {
     const { sessionId, width, height, fps, quality, audioFiles = [] } = options;
+    
+    console.log('[FFmpeg] Starting video export with options:', {
+      sessionId, width, height, fps, quality, 
+      audioFilesCount: audioFiles.length,
+      audioFiles: audioFiles.map(f => ({ path: f.path, startTime: f.startTime, volume: f.volume }))
+    });
 
     return new Promise((resolve, reject) => {
       // Get session directories
       const frameDir = tempManager.getFrameDir(sessionId);
       const outputDir = tempManager.getOutputDir(sessionId);
       const outputFile = path.join(outputDir, "output.mp4");
+      
+      console.log('[FFmpeg] Session directories:', {
+        frameDir, outputDir, outputFile
+      });
 
       // Construct FFmpeg arguments
-      const ffmpegPath = getFFmpegPath();
+      let ffmpegPath;
+      try {
+        ffmpegPath = getFFmpegPath();
+        console.log('[FFmpeg] FFmpeg path resolved:', ffmpegPath);
+      } catch (error) {
+        console.error('[FFmpeg] Failed to get FFmpeg path:', error);
+        reject(error);
+        return;
+      }
+      
       const args = buildFFmpegArgs(
         frameDir,
         outputFile,
@@ -98,28 +117,41 @@ function setupFFmpegIPC() {
         quality,
         audioFiles
       );
+      
+      console.log('[FFmpeg] Generated arguments:', args);
+      console.log('[FFmpeg] Full command:', ffmpegPath, args.join(' '));
 
       // FFmpeg CLI configuration ready
 
       // Verify input directory exists and has frames
       const fs = require("fs");
       if (!fs.existsSync(frameDir)) {
-        throw new Error(`Frame directory does not exist: ${frameDir}`);
+        const error = `Frame directory does not exist: ${frameDir}`;
+        console.error('[FFmpeg]', error);
+        reject(new Error(error));
+        return;
       }
 
       const frameFiles = fs
         .readdirSync(frameDir)
         .filter((f) => f.startsWith("frame-") && f.endsWith(".png"));
-      // Found frame files for export
+      console.log(`[FFmpeg] Found ${frameFiles.length} frame files`);
+      console.log('[FFmpeg] First few frames:', frameFiles.slice(0, 5));
+      
       if (frameFiles.length === 0) {
-        throw new Error(`No frame files found in: ${frameDir}`);
+        const error = `No frame files found in: ${frameDir}`;
+        console.error('[FFmpeg]', error);
+        reject(new Error(error));
+        return;
       }
 
       // Ensure output directory exists
       const outputDirPath = require("path").dirname(outputFile);
       if (!fs.existsSync(outputDirPath)) {
+        console.log('[FFmpeg] Creating output directory:', outputDirPath);
         fs.mkdirSync(outputDirPath, { recursive: true });
       }
+      console.log('[FFmpeg] Output directory ready:', outputDirPath);
 
       // Test simple command first: create 1-second video from first frame only
       const simpleArgs = [
@@ -144,33 +176,55 @@ function setupFFmpegIPC() {
       // Try to run FFmpeg directly
       // =============================
       try {
+        console.log('[FFmpeg] Spawning FFmpeg process...');
         const ffmpegProc = spawn(ffmpegPath, args, {
           windowsHide: true,
           stdio: ["ignore", "pipe", "pipe"],
         });
+        
+        console.log('[FFmpeg] FFmpeg process spawned with PID:', ffmpegProc.pid);
+        
+        let stderrOutput = '';
+        let stdoutOutput = '';
+
+        ffmpegProc.stdout.on("data", (chunk) => {
+          const text = chunk.toString();
+          stdoutOutput += text;
+          console.log('[FFmpeg STDOUT]', text);
+        });
 
         ffmpegProc.stderr.on("data", (chunk) => {
           const text = chunk.toString();
+          stderrOutput += text;
+          console.log('[FFmpeg STDERR]', text);
+          
           const progress = parseProgress(text);
           if (progress) {
             event.sender?.send?.("ffmpeg-progress", progress);
           }
-          if (process.env.DEBUG_FFMPEG) {
-            // FFmpeg debug output
-          }
         });
 
         ffmpegProc.on("error", (err) => {
-          // FFmpeg spawn error
+          console.error('[FFmpeg] Process spawn error:', err);
           reject(err);
         });
 
-        ffmpegProc.on("close", (code) => {
+        ffmpegProc.on("close", (code, signal) => {
+          console.log(`[FFmpeg] Process closed with code: ${code}, signal: ${signal}`);
+          console.log('[FFmpeg] Full stderr output:', stderrOutput);
+          console.log('[FFmpeg] Full stdout output:', stdoutOutput);
+          
           if (code === 0) {
-            // FFmpeg finished successfully
+            console.log('[FFmpeg] Export completed successfully');
             resolve({ success: true, outputFile, method: "spawn" });
           } else {
-            reject(new Error(`FFmpeg exited with code ${code}`));
+            const error = new Error(`FFmpeg exited with code ${code}`);
+            error.code = code;
+            error.signal = signal;
+            error.stderr = stderrOutput;
+            error.stdout = stdoutOutput;
+            console.error('[FFmpeg] Export failed with error:', error);
+            reject(error);
           }
         });
 
@@ -277,6 +331,11 @@ function getFFmpegPath() {
 }
 
 function buildFFmpegArgs(inputDir, outputFile, width, height, fps, quality, audioFiles = []) {
+  console.log('[FFmpeg Args] Building arguments with:', {
+    inputDir, outputFile, width, height, fps, quality, 
+    audioFilesCount: audioFiles.length
+  });
+  
   const qualitySettings = {
     "high": { crf: "18", preset: "slow" },
     "medium": { crf: "23", preset: "fast" },
@@ -284,9 +343,11 @@ function buildFFmpegArgs(inputDir, outputFile, width, height, fps, quality, audi
   };
 
   const { crf, preset } = qualitySettings[quality] || qualitySettings.medium;
+  console.log('[FFmpeg Args] Quality settings:', { crf, preset });
 
   // Use exact same format that worked manually
   const inputPattern = path.join(inputDir, "frame-%04d.png");
+  console.log('[FFmpeg Args] Input pattern:', inputPattern);
 
   const args = [
     "-y", // Overwrite output
@@ -298,8 +359,10 @@ function buildFFmpegArgs(inputDir, outputFile, width, height, fps, quality, audi
 
   // Add audio inputs if provided
   if (audioFiles && audioFiles.length > 0) {
+    console.log('[FFmpeg Args] Adding audio files:', audioFiles);
     // Add each audio file as input
-    audioFiles.forEach(audioFile => {
+    audioFiles.forEach((audioFile, index) => {
+      console.log(`[FFmpeg Args] Adding audio file ${index}:`, audioFile.path);
       args.push("-i", audioFile.path);
     });
 
@@ -386,7 +449,8 @@ function buildFFmpegArgs(inputDir, outputFile, width, height, fps, quality, audi
     "+faststart",
     outputFile
   );
-
+  
+  console.log('[FFmpeg Args] Final arguments:', args);
   return args;
 }
 

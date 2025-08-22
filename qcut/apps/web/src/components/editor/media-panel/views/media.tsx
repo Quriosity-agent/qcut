@@ -220,14 +220,42 @@ export function MediaView() {
 
   const renderPreview = (item: MediaItem) => {
     // Render a preview for each media type (image, video, audio, unknown)
+    console.log(`[MediaView] Rendering preview for ${item.name} (${item.type})`, {
+      url: item.url,
+      thumbnailUrl: item.thumbnailUrl,
+      hasFile: !!item.file
+    });
+    debugLog(`[MediaView] Rendering preview for ${item.name} (${item.type})`, {
+      url: item.url,
+      thumbnailUrl: item.thumbnailUrl,
+      hasFile: !!item.file
+    });
+    
     if (item.type === "image") {
+      const imageUrl = item.url || item.thumbnailUrl;
+      debugLog(`[MediaView] Image preview URL: ${imageUrl}`);
+      
       return (
         <div className="w-full h-full flex items-center justify-center">
           <img
-            src={item.url || item.thumbnailUrl}
+            src={imageUrl}
             alt={item.name}
             className="max-w-full max-h-full object-contain"
             loading="lazy"
+            onLoad={() => {
+              console.log(`[MediaView] Image loaded successfully: ${item.name}`);
+              debugLog(`[MediaView] Image loaded successfully: ${item.name}`);
+            }}
+            onError={(e) => {
+              console.error(`[MediaView] Image failed to load: ${item.name}`, {
+                url: imageUrl,
+                error: e
+              });
+              debugError(`[MediaView] Image failed to load: ${item.name}`, {
+                url: imageUrl,
+                error: e
+              });
+            }}
           />
         </div>
       );
