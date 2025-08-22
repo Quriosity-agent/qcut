@@ -271,7 +271,7 @@ export function TimelineElement({
               <img 
                 src={thumbnailUrl}
                 alt={element.name}
-                className="h-[calc(100%-8px)] w-auto object-contain rounded"
+                className="h-[calc(100%-8px)] w-auto object-contain rounded pointer-events-none select-none bg-white/10 p-0.5"
                 onError={(e) => {
                   // Hide image on error and show text fallback
                   e.currentTarget.style.display = 'none';
