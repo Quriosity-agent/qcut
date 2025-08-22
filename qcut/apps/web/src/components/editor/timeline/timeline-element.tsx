@@ -261,11 +261,31 @@ export function TimelineElement({
     }
 
     if (element.type === "sticker") {
+      // Safe fallback: mediaItem is already fetched at line 119
+      const thumbnailUrl = mediaItem?.thumbnailUrl || mediaItem?.url;
+      
       return (
-        <div className="w-full h-full flex items-center justify-start pl-2">
-          <span className="text-xs text-foreground/80 truncate">
-            {element.name}
-          </span>
+        <div className="w-full h-full flex items-center justify-start pl-2 gap-2">
+          {thumbnailUrl ? (
+            <>
+              <img 
+                src={thumbnailUrl}
+                alt={element.name}
+                className="h-[calc(100%-8px)] w-auto object-contain rounded"
+                onError={(e) => {
+                  // Hide image on error and show text fallback
+                  e.currentTarget.style.display = 'none';
+                }}
+              />
+              <span className="text-xs text-foreground/80 truncate flex-1">
+                {element.name}
+              </span>
+            </>
+          ) : (
+            <span className="text-xs text-foreground/80 truncate">
+              {element.name}
+            </span>
+          )}
         </div>
       );
     }
