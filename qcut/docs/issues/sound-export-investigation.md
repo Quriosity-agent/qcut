@@ -348,3 +348,480 @@ The app should detect the environment and use the best available option:
 3. **Timing information missing** - Audio start times not passed to export
    - Timeline store has timing but not connected to export
    - Need to calculate offsets for each audio element
+
+## Detailed Integration Plans
+
+### Option A: Web Audio API Integration Plan
+
+**Total time: ~2-3 hours | Risk: Low | No breaking changes**
+
+#### Task A1: Create Audio Mixer Utility (10 min)
+**File to create:** `src/lib/audio-mixer.ts`
+```typescript
+export class AudioMixer {
+  private audioContext: AudioContext | null = null;
+  private destination: MediaStreamAudioDestinationNode | null = null;
+  
+  async initialize() {
+    this.audioContext = new AudioContext();
+    this.destination = this.audioContext.createMediaStreamDestination();
+  }
+  
+  getAudioTrack(): MediaStreamTrack | null {
+    return this.destination?.stream.getAudioTracks()[0] || null;
+  }
+}
+```
+**Testing:** Create instance, verify audio context creation
+
+#### Task A2: Add Method to Get Audio Elements (10 min)
+**File to modify:** `src/stores/timeline-store.ts`
+```typescript
+// Add around line 150
+getAudioElements: () => {
+  const elements = [];
+  get().tracks.forEach(track => {
+    track.elements.forEach(element => {
+      if (element.type === 'media' || element.type === 'audio') {
+        elements.push({
+          ...element,
+          trackId: track.id,
+          absoluteStart: element.start
+        });
+      }
+    });
+  });
+  return elements;
+}
+```
+**Testing:** Add audio to timeline, verify method returns elements
+
+#### Task A3: Load Audio URLs into Buffers (10 min)
+**File to modify:** `src/lib/audio-mixer.ts`
+```typescript
+async loadAudioBuffer(url: string): Promise<AudioBuffer> {
+  const response = await fetch(url);
+  const arrayBuffer = await response.arrayBuffer();
+  return await this.audioContext!.decodeAudioData(arrayBuffer);
+}
+```
+**Testing:** Load a single audio file, verify buffer creation
+
+#### Task A4: Schedule Audio Playback (10 min)
+**File to modify:** `src/lib/audio-mixer.ts`
+```typescript
+scheduleAudio(buffer: AudioBuffer, startTime: number, volume: number = 1) {
+  const source = this.audioContext!.createBufferSource();
+  const gainNode = this.audioContext!.createGain();
+  
+  source.buffer = buffer;
+  gainNode.gain.value = volume;
+  
+  source.connect(gainNode);
+  gainNode.connect(this.destination!);
+  
+  source.start(startTime);
+  return source;
+}
+```
+**Testing:** Schedule single audio, verify it connects
+
+#### Task A5: Integrate Mixer with Export Engine (10 min)
+**File to modify:** `src/lib/export-engine.ts` (line ~523)
+```typescript
+private async setupMediaRecorder(existingStream?: MediaStream): Promise<void> {
+  // Add before line 537
+  const audioMixer = new AudioMixer();
+  await audioMixer.initialize();
+  
+  const audioElements = useTimelineStore.getState().getAudioElements();
+  
+  // Load and schedule all audio
+  for (const element of audioElements) {
+    const mediaItem = useMediaStore.getState().mediaItems.find(m => m.id === element.mediaId);
+    if (mediaItem?.url) {
+      const buffer = await audioMixer.loadAudioBuffer(mediaItem.url);
+      audioMixer.scheduleAudio(buffer, element.absoluteStart, element.volume || 1);
+    }
+  }
+  
+  // Get the mixed audio track
+  const audioTrack = audioMixer.getAudioTrack();
+  
+  // Original code continues...
+  const stream = existingStream || this.canvas.captureStream(0);
+  
+  // Add audio track to stream
+  if (audioTrack) {
+    stream.addTrack(audioTrack);
+  }
+}
+```
+**Testing:** Export with single audio track, verify audio included
+
+#### Task A6: Handle CORS for External Audio (10 min)
+**File to modify:** `src/lib/audio-mixer.ts`
+```typescript
+async loadAudioBuffer(url: string): Promise<AudioBuffer> {
+  try {
+    // For blob URLs and same-origin, direct fetch
+    if (url.startsWith('blob:') || url.startsWith(window.location.origin)) {
+      const response = await fetch(url);
+      const arrayBuffer = await response.arrayBuffer();
+      return await this.audioContext!.decodeAudioData(arrayBuffer);
+    }
+    
+    // For external URLs, may need proxy or stored blob
+    console.warn('External audio URL may have CORS issues:', url);
+    // Fallback to silent audio if CORS fails
+    return this.createSilentBuffer(1); // 1 second of silence
+  } catch (error) {
+    console.error('Failed to load audio:', error);
+    return this.createSilentBuffer(1);
+  }
+}
+```
+**Testing:** Test with Freesound URL, handle CORS gracefully
+
+#### Task A7: Add Cleanup (5 min)
+**File to modify:** `src/lib/audio-mixer.ts`
+```typescript
+dispose() {
+  if (this.audioContext) {
+    this.audioContext.close();
+    this.audioContext = null;
+  }
+  this.destination = null;
+}
+```
+**Testing:** Call dispose after export, verify cleanup
+
+---
+
+### Option B: FFmpeg CLI Integration Plan
+
+**Total time: ~3-4 hours | Risk: Medium | Electron only**
+
+#### Task B1: Add Audio File Tracking (10 min)
+**File to modify:** `src/stores/media-store.ts` (line ~307)
+```typescript
+// When adding media item, preserve original URL
+addMediaItem: async (projectId, mediaData) => {
+  // ... existing code ...
+  const item = {
+    // ... existing fields ...
+    originalUrl: mediaData.url, // Add this to preserve URL
+    localPath: null, // Will be set for Electron
+  };
+}
+```
+**Testing:** Add audio, verify originalUrl is preserved
+
+#### Task B2: Create Temp Audio Files in Electron (10 min)
+**File to create:** `electron/audio-temp-handler.js`
+```javascript
+const fs = require('fs');
+const path = require('path');
+const { app } = require('electron');
+
+async function saveAudioToTemp(audioData, filename) {
+  const tempDir = path.join(app.getPath('temp'), 'qcut-audio');
+  if (!fs.existsSync(tempDir)) {
+    fs.mkdirSync(tempDir, { recursive: true });
+  }
+  
+  const filePath = path.join(tempDir, filename);
+  fs.writeFileSync(filePath, Buffer.from(audioData));
+  return filePath;
+}
+
+module.exports = { saveAudioToTemp };
+```
+**Testing:** Save single audio file, verify file creation
+
+#### Task B3: Add IPC Handler for Audio Files (10 min)
+**File to modify:** `electron/main.js` (add after line 285)
+```javascript
+ipcMain.handle('save-audio-for-export', async (event, { audioData, filename }) => {
+  const { saveAudioToTemp } = require('./audio-temp-handler.js');
+  return await saveAudioToTemp(audioData, filename);
+});
+```
+**Testing:** Call from renderer, verify IPC works
+
+#### Task B4: Collect Audio Files for Export (10 min)
+**File to modify:** `src/lib/export-engine-cli.ts` (add method around line 400)
+```typescript
+private async prepareAudioFiles(): Promise<Array<{path: string, startTime: number}>> {
+  const audioFiles = [];
+  const audioElements = useTimelineStore.getState().getAudioElements();
+  
+  for (const element of audioElements) {
+    const mediaItem = useMediaStore.getState().mediaItems.find(m => m.id === element.mediaId);
+    if (mediaItem?.url) {
+      // Fetch audio data
+      const response = await fetch(mediaItem.url);
+      const arrayBuffer = await response.arrayBuffer();
+      
+      // Save to temp file via IPC
+      const tempPath = await window.electronAPI.invoke('save-audio-for-export', {
+        audioData: arrayBuffer,
+        filename: `audio_${element.id}.mp3`
+      });
+      
+      audioFiles.push({
+        path: tempPath,
+        startTime: element.start
+      });
+    }
+  }
+  
+  return audioFiles;
+}
+```
+**Testing:** Prepare audio files, verify temp files created
+
+#### Task B5: Pass Audio Files to FFmpeg Handler (10 min)
+**File to modify:** `src/lib/export-engine-cli.ts` (line ~573)
+```typescript
+private async exportWithCLI(progressCallback?: ProgressCallback): Promise<string> {
+  // ... existing code ...
+  
+  // Add audio file preparation
+  const audioFiles = await this.prepareAudioFiles();
+  
+  const result = await window.electronAPI.invoke("export-video-cli", {
+    sessionId: this.sessionId,
+    width: this.canvas.width,
+    height: this.canvas.height,
+    fps: 30,
+    quality: this.settings.quality || "medium",
+    audioFiles: audioFiles // Add this
+  });
+  
+  return result.outputFile;
+}
+```
+**Testing:** Pass audio files array, verify IPC receives it
+
+#### Task B6: Update FFmpeg Command Builder (10 min)
+**File to modify:** `electron/ffmpeg-handler.js` (line 278)
+```javascript
+function buildFFmpegArgs(inputDir, outputFile, width, height, fps, quality, audioFiles = []) {
+  const qualitySettings = {
+    "high": { crf: "18", preset: "slow" },
+    "medium": { crf: "23", preset: "fast" },
+    "low": { crf: "28", preset: "veryfast" },
+  };
+
+  const { crf, preset } = qualitySettings[quality] || qualitySettings.medium;
+  const inputPattern = path.join(inputDir, "frame-%04d.png");
+
+  const args = ["-y"];
+  
+  // Add video input
+  args.push("-framerate", String(fps), "-i", inputPattern);
+  
+  // Add audio inputs with timing offsets
+  audioFiles.forEach((audio, index) => {
+    if (audio.startTime > 0) {
+      args.push("-itsoffset", String(audio.startTime));
+    }
+    args.push("-i", audio.path);
+  });
+  
+  // Video encoding settings
+  args.push("-c:v", "libx264", "-preset", preset, "-crf", crf);
+  
+  // Audio mixing if we have audio files
+  if (audioFiles.length > 0) {
+    if (audioFiles.length === 1) {
+      args.push("-c:a", "aac", "-b:a", "192k");
+    } else {
+      // Mix multiple audio streams
+      const filterInputs = audioFiles.map((_, i) => `[${i + 1}:a]`).join('');
+      args.push("-filter_complex", 
+        `${filterInputs}amix=inputs=${audioFiles.length}:duration=longest[aout]`,
+        "-map", "0:v", "-map", "[aout]"
+      );
+    }
+  } else {
+    // No audio - add silent track
+    args.push("-f", "lavfi", "-i", "anullsrc=r=48000:cl=stereo", "-shortest");
+  }
+  
+  args.push("-pix_fmt", "yuv420p", "-movflags", "+faststart", outputFile);
+  
+  return args;
+}
+```
+**Testing:** Build command with audio, verify correct FFmpeg syntax
+
+#### Task B7: Update IPC Handler (10 min)
+**File to modify:** `electron/ffmpeg-handler.js` (line 81)
+```javascript
+ipcMain.handle("export-video-cli", async (event, options) => {
+  const { sessionId, width, height, fps, quality, audioFiles = [] } = options; // Add audioFiles
+  
+  return new Promise((resolve, reject) => {
+    const frameDir = tempManager.getFrameDir(sessionId);
+    const outputDir = tempManager.getOutputDir(sessionId);
+    const outputFile = path.join(outputDir, "output.mp4");
+    
+    const ffmpegPath = getFFmpegPath();
+    const args = buildFFmpegArgs(
+      frameDir,
+      outputFile,
+      width,
+      height,
+      fps,
+      quality,
+      audioFiles // Pass to builder
+    );
+    
+    // ... rest of existing code ...
+  });
+});
+```
+**Testing:** Export with audio, verify FFmpeg receives audio inputs
+
+#### Task B8: Cleanup Temp Audio Files (5 min)
+**File to modify:** `electron/audio-temp-handler.js`
+```javascript
+function cleanupAudioFiles(sessionId) {
+  const tempDir = path.join(app.getPath('temp'), 'qcut-audio');
+  if (fs.existsSync(tempDir)) {
+    fs.readdirSync(tempDir).forEach(file => {
+      if (file.startsWith(`audio_${sessionId}`)) {
+        fs.unlinkSync(path.join(tempDir, file));
+      }
+    });
+  }
+}
+```
+**Testing:** Call cleanup, verify temp files removed
+
+---
+
+### Option C: Silent Audio Track Integration Plan
+
+**Total time: ~30 minutes | Risk: Very Low | No breaking changes**
+
+#### Task C1: Create Silent Audio Generator (10 min)
+**File to create:** `src/lib/silent-audio.ts`
+```typescript
+export class SilentAudioGenerator {
+  private audioContext: AudioContext | null = null;
+  
+  async createSilentTrack(duration: number = 10): Promise<MediaStreamTrack> {
+    this.audioContext = new AudioContext();
+    const destination = this.audioContext.createMediaStreamDestination();
+    
+    // Create oscillator with 0 frequency (silent)
+    const oscillator = this.audioContext.createOscillator();
+    oscillator.frequency.value = 0;
+    oscillator.connect(destination);
+    oscillator.start();
+    
+    // Stop after duration
+    setTimeout(() => oscillator.stop(), duration * 1000);
+    
+    return destination.stream.getAudioTracks()[0];
+  }
+  
+  dispose() {
+    if (this.audioContext) {
+      this.audioContext.close();
+      this.audioContext = null;
+    }
+  }
+}
+```
+**Testing:** Generate silent track, verify it exists
+
+#### Task C2: Integrate with Export Engine (10 min)
+**File to modify:** `src/lib/export-engine.ts` (line ~537)
+```typescript
+private async setupMediaRecorder(existingStream?: MediaStream): Promise<void> {
+  // ... existing code ...
+  
+  const stream = existingStream || this.canvas.captureStream(0);
+  
+  // Add silent audio track if no audio exists
+  if (stream.getAudioTracks().length === 0) {
+    const silentGen = new SilentAudioGenerator();
+    const silentTrack = await silentGen.createSilentTrack(this.totalDuration);
+    stream.addTrack(silentTrack);
+    
+    // Clean up when export is done
+    this.cleanupCallbacks.push(() => silentGen.dispose());
+  }
+  
+  // ... rest of existing code ...
+}
+```
+**Testing:** Export video, verify audio track exists (even if silent)
+
+#### Task C3: Add Cleanup Array (5 min)
+**File to modify:** `src/lib/export-engine.ts` (add around line 60)
+```typescript
+export class ExportEngine {
+  // ... existing properties ...
+  private cleanupCallbacks: Array<() => void> = [];
+  
+  // Add cleanup method around line 800
+  async cleanup(): Promise<void> {
+    this.cleanupCallbacks.forEach(callback => {
+      try {
+        callback();
+      } catch (error) {
+        console.warn('Cleanup error:', error);
+      }
+    });
+    this.cleanupCallbacks = [];
+    
+    // ... existing cleanup code ...
+  }
+}
+```
+**Testing:** Call cleanup after export, verify no memory leaks
+
+#### Task C4: Test All Export Engines (5 min)
+**Files to test:**
+- Standard MediaRecorder export
+- FFmpeg WASM export  
+- FFmpeg CLI export
+
+**Testing:** Export with each engine, verify all produce videos with audio tracks
+
+---
+
+## Implementation Order Recommendation
+
+1. **Start with Option C** (30 min)
+   - Immediate fix
+   - Prevents "no audio" errors
+   - Safe fallback for other options
+
+2. **Then implement Option A** (2-3 hours)
+   - Works for all users
+   - Good baseline solution
+   - Can be enhanced later
+
+3. **Finally add Option B** (3-4 hours)
+   - Best quality for desktop
+   - Optional enhancement
+   - Can be done incrementally
+
+## Testing Checklist
+
+- [ ] Export with no audio - should have silent track
+- [ ] Export with single audio track
+- [ ] Export with multiple audio tracks  
+- [ ] Export with video that has embedded audio
+- [ ] Test volume levels are applied
+- [ ] Test audio timing/sync
+- [ ] Test with each export engine
+- [ ] Test in browser vs Electron
+- [ ] Test memory cleanup after export
+- [ ] Test CORS handling for external audio
