@@ -79,7 +79,7 @@ function setupFFmpegIPC() {
 
   // Export video with CLI
   ipcMain.handle("export-video-cli", async (event, options) => {
-    const { sessionId, width, height, fps, quality } = options;
+    const { sessionId, width, height, fps, quality, audioFiles = [] } = options;
 
     return new Promise((resolve, reject) => {
       // Get session directories
@@ -95,7 +95,8 @@ function setupFFmpegIPC() {
         width,
         height,
         fps,
-        quality
+        quality,
+        audioFiles
       );
 
       // FFmpeg CLI configuration ready
@@ -275,7 +276,7 @@ function getFFmpegPath() {
   return ffmpegPath;
 }
 
-function buildFFmpegArgs(inputDir, outputFile, width, height, fps, quality) {
+function buildFFmpegArgs(inputDir, outputFile, width, height, fps, quality, audioFiles = []) {
   const qualitySettings = {
     "high": { crf: "18", preset: "slow" },
     "medium": { crf: "23", preset: "fast" },
@@ -287,12 +288,90 @@ function buildFFmpegArgs(inputDir, outputFile, width, height, fps, quality) {
   // Use exact same format that worked manually
   const inputPattern = path.join(inputDir, "frame-%04d.png");
 
-  return [
+  const args = [
     "-y", // Overwrite output
     "-framerate",
     String(fps),
     "-i",
     inputPattern,
+  ];
+
+  // Add audio inputs if provided
+  if (audioFiles && audioFiles.length > 0) {
+    // Add each audio file as input
+    audioFiles.forEach(audioFile => {
+      args.push("-i", audioFile.path);
+    });
+
+    // Build complex filter for audio mixing with timing
+    if (audioFiles.length === 1) {
+      // Single audio file - apply delay if needed
+      const audioFile = audioFiles[0];
+      if (audioFile.startTime > 0) {
+        args.push(
+          "-filter_complex",
+          `[1:a]adelay=${Math.round(audioFile.startTime * 1000)}|${Math.round(audioFile.startTime * 1000)}[audio]`,
+          "-map", "0:v",
+          "-map", "[audio]"
+        );
+      } else {
+        // No delay needed
+        args.push("-map", "0:v", "-map", "1:a");
+      }
+    } else {
+      // Multiple audio files - mix them together
+      let filterParts = [];
+      let inputMaps = [];
+      
+      audioFiles.forEach((audioFile, index) => {
+        const inputIndex = index + 1; // +1 because video is input 0
+        let audioFilter = `[${inputIndex}:a]`;
+        
+        // Apply volume if specified
+        if (audioFile.volume !== undefined && audioFile.volume !== 1.0) {
+          audioFilter += `volume=${audioFile.volume}[a${index}]`;
+          inputMaps.push(`[a${index}]`);
+        } else {
+          inputMaps.push(audioFilter);
+        }
+        
+        // Apply delay if needed
+        if (audioFile.startTime > 0) {
+          const delayMs = Math.round(audioFile.startTime * 1000);
+          if (audioFile.volume !== undefined && audioFile.volume !== 1.0) {
+            audioFilter += `; [a${index}]adelay=${delayMs}|${delayMs}[ad${index}]`;
+            inputMaps[inputMaps.length - 1] = `[ad${index}]`;
+          } else {
+            audioFilter += `adelay=${delayMs}|${delayMs}[ad${index}]`;
+            inputMaps[inputMaps.length - 1] = `[ad${index}]`;
+          }
+        }
+        
+        if (audioFilter !== `[${inputIndex}:a]`) {
+          filterParts.push(audioFilter);
+        }
+      });
+      
+      // Mix all audio inputs
+      const mixFilter = `${inputMaps.join('')}amix=inputs=${audioFiles.length}:duration=longest[audio]`;
+      
+      const fullFilter = filterParts.length > 0 
+        ? `${filterParts.join('; ')}; ${mixFilter}`
+        : mixFilter;
+      
+      args.push(
+        "-filter_complex", fullFilter,
+        "-map", "0:v",
+        "-map", "[audio]"
+      );
+    }
+    
+    // Audio codec settings
+    args.push("-c:a", "aac", "-b:a", "128k");
+  }
+
+  // Video codec settings
+  args.push(
     "-c:v",
     "libx264",
     "-preset",
@@ -305,8 +384,10 @@ function buildFFmpegArgs(inputDir, outputFile, width, height, fps, quality) {
     "yuv420p",
     "-movflags",
     "+faststart",
-    outputFile,
-  ];
+    outputFile
+  );
+
+  return args;
 }
 
 function parseProgress(output) {

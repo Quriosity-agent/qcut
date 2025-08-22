@@ -539,10 +539,10 @@ export class CLIExportEngine extends ExportEngine {
         );
       })();
 
-      // Uncomment this line to cleanup as normal:
-      // if (this.sessionId) {
-      //   await this.cleanup();
-      // }
+      // Clean up temporary files including audio
+      if (this.sessionId) {
+        await this.cleanup();
+      }
     }
   }
 
@@ -699,5 +699,21 @@ export class CLIExportEngine extends ExportEngine {
     };
 
     video.src = url;
+  }
+
+  /**
+   * Clean up temporary files for this export session
+   */
+  private async cleanup(): Promise<void> {
+    if (!window.electronAPI || !this.sessionId) {
+      return;
+    }
+
+    try {
+      await window.electronAPI.invoke("cleanup-export-session", this.sessionId);
+      debugLog(`[CLIExportEngine] 🧹 Cleaned up export session: ${this.sessionId}`);
+    } catch (error) {
+      debugWarn(`[CLIExportEngine] ⚠️  Failed to cleanup session ${this.sessionId}:`, error);
+    }
   }
 }
