@@ -21,9 +21,7 @@ async function saveAudioToTemp(audioData, filename) {
   try {
     // Create temp directory for audio files
     const tempDir = path.join(app.getPath('temp'), 'qcut-audio');
-    if (!fs.existsSync(tempDir)) {
-      fs.mkdirSync(tempDir, { recursive: true });
-    }
+    await fs.promises.mkdir(tempDir, { recursive: true });
     
     // Generate unique filename if needed
     const safeName = filename.replace(/[^a-zA-Z0-9._-]/g, '_');
@@ -34,10 +32,9 @@ async function saveAudioToTemp(audioData, filename) {
       ? audioData 
       : Buffer.from(audioData);
     
-    // Write file
-    fs.writeFileSync(filePath, buffer);
-    
-    logger.log(`[Audio Temp] Saved audio file: ${filePath} (${buffer.length} bytes)`);
+    // Write file (async)
+    await fs.promises.writeFile(filePath, buffer);
+    logger.info(`[Audio Temp] Saved audio file: ${filePath} (${buffer.length} bytes)`);
     return filePath;
   } catch (error) {
     logger.error('[Audio Temp] Failed to save audio file:', error);

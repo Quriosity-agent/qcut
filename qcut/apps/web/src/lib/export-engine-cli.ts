@@ -403,59 +403,62 @@ export class CLIExportEngine extends ExportEngine {
     return activeElements;
   }
 
-  private async prepareAudioFiles(): Promise<Array<{path: string, startTime: number, volume: number}>> {
-    const audioFiles: Array<{path: string, startTime: number, volume: number}> = [];
+  private async prepareAudioFiles(): Promise<Array<{ path: string; startTime: number; volume: number }>> {
+    const results: Array<{ path: string; startTime: number; volume: number }> = [];
     const { useTimelineStore } = await import("@/stores/timeline-store");
     const { useMediaStore } = await import("@/stores/media-store");
     
     const audioElements = useTimelineStore.getState().getAudioElements();
-    
-    for (const audioElement of audioElements) {
-      const mediaItem = useMediaStore.getState().mediaItems.find(
-        m => m.id === (audioElement.element as any).mediaId
-      );
-      
-      if (mediaItem?.url) {
+    const concurrency = 4;
+    const queue = [...audioElements];
+    const workers = Array.from({ length: concurrency }, async () => {
+      while (queue.length) {
+        const audioElement = queue.shift()!;
+        const mediaItem = useMediaStore.getState().mediaItems.find(
+          (m) => m.id === (audioElement.element as any).mediaId
+        );
+        if (!mediaItem?.url) continue;
         try {
-          // Fetch audio data from blob URL or original URL
-          const urlToFetch = mediaItem.url; // Use blob URL which is already loaded
-          const response = await fetch(urlToFetch);
-          
+          const response = await fetch(mediaItem.url);
           if (!response.ok) {
             debugWarn(`[CLIExportEngine] Failed to fetch audio: ${mediaItem.name}`);
             continue;
           }
-          
           const arrayBuffer = await response.arrayBuffer();
-          
-          // Generate unique filename
-          const ext = mediaItem.name.split('.').pop() || 'mp3';
-          const filename = `audio_${this.sessionId}_${audioElement.element.id}.${ext}`;
-          
-          // Save to temp file via IPC
-          const result = await window.electronAPI?.invoke('save-audio-for-export', {
+          const guessExt = () => {
+            const fromName = mediaItem.name.split(".").pop();
+            if (fromName && fromName.length <= 5) return fromName.toLowerCase();
+            // basic mime fallback
+            const mt = (mediaItem as any).file?.type as string | undefined;
+            if (mt?.includes("wav")) return "wav";
+            if (mt?.includes("mpeg")) return "mp3";
+            if (mt?.includes("ogg")) return "ogg";
+            return "mp3";
+          };
+          const ext = guessExt();
+          const filename = `audio_${this.sessionId}_${(audioElement.element as any).id}.${ext}`;
+          const result = await window.electronAPI?.invoke("save-audio-for-export", {
             audioData: arrayBuffer,
-            filename: filename
+            filename,
           });
-          
-          if (result.success) {
-            audioFiles.push({
+          if (result?.success) {
+            results.push({
               path: result.path,
-              startTime: audioElement.absoluteStart,
-              volume: (audioElement.element as any).volume || 1.0
+              startTime: audioElement.absoluteStart ?? 0,
+              volume: (audioElement.element as any).volume ?? 1.0,
             });
             debugLog(`[CLIExportEngine] Prepared audio file: ${filename} at ${audioElement.absoluteStart}s`);
           } else {
-            debugWarn(`[CLIExportEngine] Failed to save audio file: ${result.error}`);
+            debugWarn(`[CLIExportEngine] Failed to save audio file: ${result?.error}`);
           }
         } catch (error) {
           debugError(`[CLIExportEngine] Error preparing audio file:`, error);
         }
       }
-    }
-    
-    debugLog(`[CLIExportEngine] Prepared ${audioFiles.length} audio files for export`);
-    return audioFiles;
+    });
+    await Promise.all(workers);
+    debugLog(`[CLIExportEngine] Prepared ${results.length} audio files for export`);
+    return results;
   }
 
   async export(progressCallback?: ProgressCallback): Promise<Blob> {

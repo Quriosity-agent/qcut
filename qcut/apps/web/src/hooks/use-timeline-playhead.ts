@@ -58,8 +58,6 @@ export function useTimelinePlayhead({
       const projectFps = projectStore.activeProject?.fps || 30;
       const time = snapTimeToFrame(rawTime, projectFps);
 
-      // Debug logging removed for production
-
       setScrubTime(time);
       seek(time); // update video preview in real time
 
