@@ -147,6 +147,13 @@ interface TimelineStore {
     splitTime: number
   ) => void;
   separateAudio: (trackId: string, elementId: string) => string | null;
+  
+  // Get all audio elements for export
+  getAudioElements: () => Array<{
+    element: TimelineElement;
+    trackId: string;
+    absoluteStart: number;
+  }>;
 
   // Replace media for an element
   replaceElementMedia: (
@@ -1085,6 +1092,34 @@ export const useTimelineStore = create<TimelineStore>((set, get) => {
             : track
         )
       );
+    },
+
+    // Get all audio elements for export
+    getAudioElements: () => {
+      const { tracks } = get();
+      const audioElements: Array<{
+        element: TimelineElement;
+        trackId: string;
+        absoluteStart: number;
+      }> = [];
+      
+      tracks.forEach(track => {
+        // Include audio tracks and media tracks that may have audio
+        if (track.type === 'audio' || track.type === 'media') {
+          track.elements.forEach(element => {
+            // Include media elements (videos with audio) and audio elements
+            if (element.type === 'media' || element.type === 'audio') {
+              audioElements.push({
+                element,
+                trackId: track.id,
+                absoluteStart: element.start
+              });
+            }
+          });
+        }
+      });
+      
+      return audioElements;
     },
 
     // Extract audio from video element to an audio track

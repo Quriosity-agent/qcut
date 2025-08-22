@@ -403,6 +403,61 @@ export class CLIExportEngine extends ExportEngine {
     return activeElements;
   }
 
+  private async prepareAudioFiles(): Promise<Array<{path: string, startTime: number, volume: number}>> {
+    const audioFiles: Array<{path: string, startTime: number, volume: number}> = [];
+    const { useTimelineStore } = await import("@/stores/timeline-store");
+    const { useMediaStore } = await import("@/stores/media-store");
+    
+    const audioElements = useTimelineStore.getState().getAudioElements();
+    
+    for (const audioElement of audioElements) {
+      const mediaItem = useMediaStore.getState().mediaItems.find(
+        m => m.id === (audioElement.element as any).mediaId
+      );
+      
+      if (mediaItem?.url) {
+        try {
+          // Fetch audio data from blob URL or original URL
+          const urlToFetch = mediaItem.url; // Use blob URL which is already loaded
+          const response = await fetch(urlToFetch);
+          
+          if (!response.ok) {
+            debugWarn(`[CLIExportEngine] Failed to fetch audio: ${mediaItem.name}`);
+            continue;
+          }
+          
+          const arrayBuffer = await response.arrayBuffer();
+          
+          // Generate unique filename
+          const ext = mediaItem.name.split('.').pop() || 'mp3';
+          const filename = `audio_${this.sessionId}_${audioElement.element.id}.${ext}`;
+          
+          // Save to temp file via IPC
+          const result = await window.electronAPI.invoke('save-audio-for-export', {
+            audioData: arrayBuffer,
+            filename: filename
+          });
+          
+          if (result.success) {
+            audioFiles.push({
+              path: result.path,
+              startTime: audioElement.absoluteStart,
+              volume: (audioElement.element as any).volume || 1.0
+            });
+            debugLog(`[CLIExportEngine] Prepared audio file: ${filename} at ${audioElement.absoluteStart}s`);
+          } else {
+            debugWarn(`[CLIExportEngine] Failed to save audio file: ${result.error}`);
+          }
+        } catch (error) {
+          debugError(`[CLIExportEngine] Error preparing audio file:`, error);
+        }
+      }
+    }
+    
+    debugLog(`[CLIExportEngine] Prepared ${audioFiles.length} audio files for export`);
+    return audioFiles;
+  }
+
   async export(progressCallback?: ProgressCallback): Promise<Blob> {
     debugLog("[CLIExportEngine] Starting CLI export...");
 
@@ -567,6 +622,17 @@ export class CLIExportEngine extends ExportEngine {
       throw new Error("CLI export only available in Electron");
     }
 
+    // Progress: 5% - Preparing audio files
+    progressCallback?.(5, "Preparing audio files...");
+    
+    // Prepare audio files for FFmpeg
+    const audioFiles = await this.prepareAudioFiles();
+    
+    debugLog(`[CLI] Prepared ${audioFiles.length} audio files for export`);
+
+    // Progress: 10% - Starting video compilation
+    progressCallback?.(10, "Starting video compilation...");
+
     // Note: Progress updates would need to be added to electronAPI
     // For now, use basic invoke without progress tracking
 
@@ -576,6 +642,7 @@ export class CLIExportEngine extends ExportEngine {
       height: this.canvas.height,
       fps: 30,
       quality: this.settings.quality || "medium",
+      audioFiles, // Pass audio files to FFmpeg handler
     });
 
     return result.outputFile;
