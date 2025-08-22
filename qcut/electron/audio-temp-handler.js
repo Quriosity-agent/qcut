@@ -92,22 +92,9 @@ function cleanupAllAudioFiles() {
       return;
     }
     
-    const files = fs.readdirSync(tempDir);
-    files.forEach(file => {
-      try {
-        fs.unlinkSync(path.join(tempDir, file));
-      } catch (err) {
-        // Ignore errors during cleanup
-      }
-    });
-    
-    // Try to remove the directory itself
-    try {
-      fs.rmdirSync(tempDir);
-      logger.log('[Audio Temp] Cleaned up all audio files and removed temp directory');
-    } catch (err) {
-      // Directory might not be empty or in use
-    }
+    // Use rmSync with recursive and force options
+    fs.rmSync(tempDir, { recursive: true, force: true });
+    logger.info('[Audio Temp] Cleaned up all audio files and removed temp directory');
   } catch (error) {
     logger.error('[Audio Temp] Failed to clean all audio files:', error);
   }
