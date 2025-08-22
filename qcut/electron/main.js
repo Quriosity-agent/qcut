@@ -413,6 +413,89 @@ ipcMain.handle("write-file", async (event, filePath, data) => {
   }
 });
 
+ipcMain.handle("file-exists", async (event, filePath) => {
+  try {
+    await fs.promises.access(filePath, fs.constants.F_OK);
+    return true;
+  } catch (error) {
+    return false;
+  }
+});
+
+ipcMain.handle("validate-audio-file", async (event, filePath) => {
+  const { spawn } = require('child_process');
+  const path = require('path');
+  
+  try {
+    // Get ffprobe path (should be in same directory as ffmpeg)
+    const { getFFmpegPath } = require('./ffmpeg-handler.js');
+    const ffmpegPath = getFFmpegPath();
+    const ffmpegDir = path.dirname(ffmpegPath);
+    const ffprobePath = path.join(ffmpegDir, 'ffprobe.exe');
+    
+    return new Promise((resolve) => {
+      const ffprobe = spawn(ffprobePath, [
+        '-v', 'quiet',
+        '-print_format', 'json',
+        '-show_format',
+        '-show_streams',
+        filePath
+      ], { windowsHide: true });
+      
+      let stdout = '';
+      let stderr = '';
+      
+      ffprobe.stdout.on('data', (data) => {
+        stdout += data.toString();
+      });
+      
+      ffprobe.stderr.on('data', (data) => {
+        stderr += data.toString();
+      });
+      
+      ffprobe.on('close', (code) => {
+        if (code === 0 && stdout) {
+          try {
+            const info = JSON.parse(stdout);
+            const hasAudio = info.streams && info.streams.some(s => s.codec_type === 'audio');
+            
+            resolve({
+              valid: true,
+              info: info,
+              hasAudio: hasAudio,
+              duration: info.format?.duration || 0
+            });
+          } catch (parseError) {
+            resolve({
+              valid: false,
+              error: `Failed to parse ffprobe output: ${parseError.message}`,
+              stderr: stderr
+            });
+          }
+        } else {
+          resolve({
+            valid: false,
+            error: `ffprobe failed with code ${code}`,
+            stderr: stderr
+          });
+        }
+      });
+      
+      ffprobe.on('error', (error) => {
+        resolve({
+          valid: false,
+          error: `ffprobe spawn error: ${error.message}`
+        });
+      });
+    });
+  } catch (error) {
+    return {
+      valid: false,
+      error: `Validation setup failed: ${error.message}`
+    };
+  }
+});
+
 ipcMain.handle("get-file-info", async (event, filePath) => {
   try {
     const stats = await fs.promises.stat(filePath);

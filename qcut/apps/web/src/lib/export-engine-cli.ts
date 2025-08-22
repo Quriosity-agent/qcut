@@ -646,18 +646,67 @@ export class CLIExportEngine extends ExportEngine {
     };
     
     console.log('[CLI Export] Starting FFmpeg export with options:', exportOptions);
-    console.log('[CLI Export] Audio files details:', audioFiles.map(f => ({
-      path: f.path,
-      startTime: f.startTime,
-      volume: f.volume,
-      type: typeof f.path,
-      isBlob: f.path?.startsWith('blob:'),
-      isData: f.path?.startsWith('data:'),
-      length: f.path?.length
-    })));
+    // Force detailed logging of audio files
+    audioFiles.forEach((audioFile, index) => {
+      console.log(`[CLI Export] Audio file ${index}:`, {
+        path: audioFile.path,
+        startTime: audioFile.startTime,
+        volume: audioFile.volume,
+        isBlob: audioFile.path?.startsWith('blob:'),
+        isData: audioFile.path?.startsWith('data:'),
+        pathType: typeof audioFile.path,
+        pathLength: audioFile.path?.length
+      });
+      console.log(`[CLI Export] Audio file ${index} raw path:`, audioFile.path);
+    });
     
-    // Log full audio files object for debugging
-    console.log('[CLI Export] Full audio files array:', audioFiles);
+    console.log(`[CLI Export] Total audio files: ${audioFiles.length}`);
+    
+    // CRITICAL: Check if audio files exist before sending to FFmpeg
+    for (let i = 0; i < audioFiles.length; i++) {
+      const audioFile = audioFiles[i];
+      console.log(`[CLI Export] Checking if audio file ${i} exists via Electron...`);
+      
+      try {
+        // Use Electron to check if the file exists
+        const exists = await window.electronAPI.invoke('file-exists', audioFile.path);
+        console.log(`[CLI Export] Audio file ${i} exists: ${exists}`);
+        
+        if (!exists) {
+          const error = `Audio file does not exist: ${audioFile.path}`;
+          console.error(`[CLI Export] ${error}`);
+          throw new Error(error);
+        }
+        
+        // Also check the file size to ensure it's not empty/corrupted
+        try {
+          const fileInfo = await window.electronAPI.invoke('get-file-info', audioFile.path);
+          console.log(`[CLI Export] Audio file ${i} size: ${fileInfo.size} bytes`);
+          
+          if (fileInfo.size === 0) {
+            const error = `Audio file is empty: ${audioFile.path}`;
+            console.error(`[CLI Export] ${error}`);
+            throw new Error(error);
+          }
+          
+          // CRITICAL: Validate audio file format with ffprobe
+          console.log(`[CLI Export] Validating audio file format with ffprobe...`);
+          const audioValidation = await window.electronAPI.invoke('validate-audio-file', audioFile.path);
+          console.log(`[CLI Export] Audio validation result:`, audioValidation);
+          
+          if (!audioValidation.valid) {
+            const error = `Invalid audio file format: ${audioFile.path} - ${audioValidation.error}`;
+            console.error(`[CLI Export] ${error}`);
+            throw new Error(error);
+          }
+        } catch (infoError) {
+          console.error(`[CLI Export] Failed to get audio file info:`, infoError);
+        }
+      } catch (checkError) {
+        console.error(`[CLI Export] Failed to check audio file existence:`, checkError);
+        throw new Error(`Failed to validate audio file: ${audioFile.path}`);
+      }
+    }
 
     // Note: Progress updates would need to be added to electronAPI
     // For now, use basic invoke without progress tracking

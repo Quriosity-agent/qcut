@@ -363,6 +363,16 @@ function buildFFmpegArgs(inputDir, outputFile, width, height, fps, quality, audi
     // Add each audio file as input
     audioFiles.forEach((audioFile, index) => {
       console.log(`[FFmpeg Args] Adding audio file ${index}:`, audioFile.path);
+      
+      // CRITICAL: Check if audio file actually exists
+      const fs = require('fs');
+      if (!fs.existsSync(audioFile.path)) {
+        console.error(`[FFmpeg Args] ERROR: Audio file does not exist: ${audioFile.path}`);
+        throw new Error(`Audio file not found: ${audioFile.path}`);
+      } else {
+        console.log(`[FFmpeg Args] Audio file exists, size: ${fs.statSync(audioFile.path).size} bytes`);
+      }
+      
       args.push("-i", audioFile.path);
     });
 
@@ -468,4 +478,4 @@ function parseProgress(output) {
   return null;
 }
 
-module.exports = { setupFFmpegIPC };
+module.exports = { setupFFmpegIPC, getFFmpegPath };
