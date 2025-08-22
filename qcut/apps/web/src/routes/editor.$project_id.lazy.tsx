@@ -8,6 +8,8 @@ import { usePlaybackControls } from "@/hooks/use-playback-controls";
 import { Onboarding } from "@/components/onboarding";
 import { debugError, debugLog } from "@/lib/debug-config";
 import "@/lib/debug-sticker-overlay"; // Load debug utilities
+import "@/lib/sticker-test-helper"; // Load sticker test helper
+import "@/lib/sticker-persistence-debug"; // Load persistence debug
 import {
   DefaultLayout,
   MediaLayout,

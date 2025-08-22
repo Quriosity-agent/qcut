@@ -180,10 +180,19 @@ export const useStickersOverlayStore = create<StickerOverlayStore>()(
         });
 
         // Add to timeline if timing is specified (async)
-        const addToTimelinePromise = get().addStickerToTimeline(newSticker);
-        addToTimelinePromise.catch((error: unknown) => {
+        // Using modular integration for better maintainability
+        import("@/lib/timeline-sticker-integration").then(({ addStickerToTimeline }) => {
+          addStickerToTimeline(newSticker).then(result => {
+            if (!result.success) {
+              debugLog(
+                "[StickerStore] ❌ Failed to add sticker to timeline:",
+                result.error
+              );
+            }
+          });
+        }).catch(error => {
           debugLog(
-            "[StickerStore] ❌ Failed to add sticker to timeline:",
+            "[StickerStore] ❌ Failed to load timeline integration:",
             error
           );
         });
@@ -514,6 +523,13 @@ export const useStickersOverlayStore = create<StickerOverlayStore>()(
         let data: OverlaySticker[] = [];
 
         debugLog(`[StickerStore] Loading stickers for project ${projectId}`);
+        
+        // Check media store to validate sticker references
+        const { useMediaStore } = await import("./media-store");
+        const mediaStore = useMediaStore.getState();
+        const availableMediaIds = mediaStore.mediaItems.map(item => item.id);
+        
+        debugLog(`[StickerStore] Available media IDs: ${availableMediaIds.length}`, availableMediaIds);
 
         try {
           if (window.electronAPI?.storage) {
@@ -532,8 +548,25 @@ export const useStickersOverlayStore = create<StickerOverlayStore>()(
             }
           }
 
+          // Filter out stickers with invalid media references
+          const validData = data.filter(sticker => {
+            const isValid = availableMediaIds.includes(sticker.mediaItemId);
+            if (!isValid) {
+              console.warn(
+                `[StickerStore] Filtering out sticker ${sticker.id} with invalid mediaItemId: ${sticker.mediaItemId}`
+              );
+            }
+            return isValid;
+          });
+          
+          if (validData.length < data.length) {
+            debugLog(
+              `[StickerStore] Filtered ${data.length - validData.length} stickers with missing media references`
+            );
+          }
+          
           // Validate and convert sticker data to Map
-          const stickersMap = validateAndLoadStickers(data);
+          const stickersMap = validateAndLoadStickers(validData);
           set({
             overlayStickers: stickersMap,
             selectedStickerId: null,
