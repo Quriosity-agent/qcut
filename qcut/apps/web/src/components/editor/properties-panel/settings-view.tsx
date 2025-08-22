@@ -269,6 +269,10 @@ function ApiKeysView() {
   const [showFalKey, setShowFalKey] = useState(false);
   const [showFreesoundKey, setShowFreesoundKey] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [isTestingFreesound, setIsTestingFreesound] = useState(false);
+  const [freesoundTestResult, setFreesoundTestResult] = useState<{success: boolean; message: string} | null>(null);
+  const [isTestingFal, setIsTestingFal] = useState(false);
+  const [falTestResult, setFalTestResult] = useState<{success: boolean; message: string} | null>(null);
 
   // Load API keys on component mount
   const loadApiKeys = useCallback(async () => {
@@ -296,11 +300,30 @@ function ApiKeysView() {
           freesoundApiKey: freesoundApiKey.trim(),
         });
         console.log("✅ API keys saved successfully");
+        // Clear test results after saving
+        setFreesoundTestResult(null);
+        setFalTestResult(null);
       }
     } catch (error) {
       console.error("❌ Failed to save API keys:", error);
     }
   }, [falApiKey, freesoundApiKey]);
+
+  // Test Freesound API key
+  const testFreesoundKey = useCallback(async () => {
+    setIsTestingFreesound(true);
+    setFreesoundTestResult(null);
+    try {
+      if (window.electronAPI?.invoke) {
+        const result = await window.electronAPI.invoke("sounds:test-key", freesoundApiKey.trim());
+        setFreesoundTestResult(result);
+      }
+    } catch (error) {
+      setFreesoundTestResult({ success: false, message: "Test failed" });
+    } finally {
+      setIsTestingFreesound(false);
+    }
+  }, [freesoundApiKey]);
 
   // Load keys on mount
   useEffect(() => {
@@ -368,7 +391,10 @@ function ApiKeysView() {
                 type={showFreesoundKey ? "text" : "password"}
                 placeholder="Enter your Freesound API key"
                 value={freesoundApiKey}
-                onChange={(e) => setFreesoundApiKey(e.target.value)}
+                onChange={(e) => {
+                  setFreesoundApiKey(e.target.value);
+                  setFreesoundTestResult(null); // Clear test result on change
+                }}
                 className="bg-panel-accent pr-10"
               />
               <Button
@@ -385,7 +411,20 @@ function ApiKeysView() {
                 )}
               </Button>
             </div>
+            <Button
+              onClick={testFreesoundKey}
+              disabled={!freesoundApiKey || isTestingFreesound}
+              variant="outline"
+              size="sm"
+            >
+              {isTestingFreesound ? "Testing..." : "Test"}
+            </Button>
           </div>
+          {freesoundTestResult && (
+            <div className={`text-xs ${freesoundTestResult.success ? 'text-green-600' : 'text-red-600'}`}>
+              {freesoundTestResult.message}
+            </div>
+          )}
         </div>
       </PropertyGroup>
 
