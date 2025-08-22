@@ -78,52 +78,75 @@ export const getImageDimensions = (
   });
 };
 
-// Enhanced video processing with browser APIs first, FFmpeg as fallback
+// Instant video processing with defaults first, background metadata extraction
 export const processVideoFile = async (file: File) => {
+  // Return immediate defaults for instant UI response
+  const defaultResult = {
+    thumbnailUrl: undefined,
+    width: 1920,
+    height: 1080, 
+    duration: 0,
+    fps: 30,
+    processingMethod: "immediate" as const,
+    error: undefined,
+  };
+
+  // Start background metadata extraction (don't await)
+  extractVideoMetadataBackground(file);
+
+  return defaultResult;
+};
+
+// Background metadata extraction without blocking UI
+const extractVideoMetadataBackground = async (file: File) => {
   try {
-    // Try browser processing first - it's fast, reliable, and doesn't timeout
+    // Try browser processing first - it's fast and reliable
     const [thumbnailData, duration] = await Promise.all([
       generateVideoThumbnailBrowser(file),
       getMediaDuration(file),
     ]);
 
-    return {
+    const result = {
       thumbnailUrl: thumbnailData.thumbnailUrl,
       width: thumbnailData.width,
       height: thumbnailData.height,
       duration,
-      fps: 30, // Default FPS for browser method
-      processingMethod: "browser",
+      fps: 30,
+      processingMethod: "browser" as const,
     };
-  } catch (browserError) {
-    // Fallback to FFmpeg processing (for edge cases or special codecs)
-    try {
-      const [videoInfo, thumbnailUrl] = await Promise.all([
-        getVideoInfo(file),
-        generateThumbnail(file, 1), // Generate thumbnail at 1 second
-      ]);
 
+    // Update the media item with real metadata
+    updateMediaMetadata(file, result);
+    return result;
+  } catch (browserError) {
+    console.warn("[Media Store] Browser processing failed, skipping FFmpeg fallback:", browserError);
+    // Skip FFmpeg entirely to avoid the 60s timeout
+    // Users get instant response with defaults, which is better UX
+  }
+};
+
+// Helper to update media item metadata after background processing
+const updateMediaMetadata = async (file: File, metadata: any) => {
+  const mediaStore = useMediaStore.getState();
+  const fileId = await generateFileBasedId(file);
+  
+  // Find and update the media item
+  const updatedItems = mediaStore.mediaItems.map(item => {
+    if (item.id === fileId) {
       return {
-        thumbnailUrl,
-        width: videoInfo.width,
-        height: videoInfo.height,
-        duration: videoInfo.duration,
-        fps: videoInfo.fps,
-        processingMethod: "ffmpeg",
-      };
-    } catch (ffmpegError) {
-      // Return minimal data to prevent complete failure
-      return {
-        thumbnailUrl: undefined,
-        width: 1920, // Default resolution
-        height: 1080,
-        duration: 0,
-        fps: 30,
-        processingMethod: "fallback",
-        error: `Processing failed: ${ffmpegError instanceof Error ? ffmpegError.message : String(ffmpegError)}`,
+        ...item,
+        width: metadata.width,
+        height: metadata.height,
+        duration: metadata.duration,
+        fps: metadata.fps,
+        thumbnailUrl: metadata.thumbnailUrl,
       };
     }
-  }
+    return item;
+  });
+  
+  // Update the store
+  useMediaStore.setState({ mediaItems: updatedItems });
 };
 
 // Helper function to generate video thumbnail using browser APIs (primary method)
@@ -503,9 +526,6 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
                 metadata: {
                   ...item.metadata,
                   processingMethod: processResult.processingMethod,
-                  ...(processResult.error && {
-                    processingError: processResult.error,
-                  }),
                 },
               };
             } catch (error) {

@@ -55,6 +55,9 @@ protocol.registerSchemesAsPrivileged([
       standard: true,
       supportFetchAPI: true,
       corsEnabled: true,
+      bypassCSP: false,
+      allowServiceWorkers: true,
+      stream: true,
     },
   },
 ]);
@@ -168,7 +171,9 @@ function createWindow() {
       nodeIntegration: false,
       contextIsolation: true,
       preload: path.join(__dirname, "preload.js"),
-      // 移除 webSecurity: false 和 allowRunningInsecureContent，让CSP正确工作
+      webSecurity: true,
+      // Allow CORS for external APIs while maintaining security
+      webviewTag: false,
     },
   });
 
@@ -177,7 +182,8 @@ function createWindow() {
   if (isDev) {
     mainWindow.loadURL("http://localhost:5173");
   } else {
-    mainWindow.loadFile(path.join(__dirname, "../apps/web/dist/index.html"));
+    // Use custom app protocol to avoid file:// restrictions
+    mainWindow.loadURL("app://./index.html");
   }
 
   // Open DevTools in development
@@ -189,7 +195,25 @@ function createWindow() {
 app.whenReady().then(() => {
   // Register custom protocol for serving static files
   protocol.registerFileProtocol("app", (request, callback) => {
-    const url = request.url.replace("app://", "");
+    let url = request.url.replace("app://", "").replace("app:/", "");
+    
+    // Clean up the URL
+    if (url.startsWith("./")) {
+      url = url.substring(2);
+    }
+    if (url.startsWith("/")) {
+      url = url.substring(1);
+    }
+    
+    // Default to index.html for root
+    if (!url || url === "") {
+      url = "index.html";
+    }
+
+    // Determine base path based on whether app is packaged
+    const basePath = app.isPackaged
+      ? path.join(app.getAppPath(), "apps/web/dist")
+      : path.join(__dirname, "../apps/web/dist");
 
     // Handle FFmpeg resources specifically
     if (url.startsWith("ffmpeg/")) {
@@ -203,12 +227,12 @@ app.whenReady().then(() => {
         return;
       }
 
-      // Development fallback - try dist directory
-      const distPath = path.join(__dirname, "../apps/web/dist", url);
+      // Fallback to dist directory
+      const distPath = path.join(basePath, "ffmpeg", filename);
       callback(distPath);
     } else {
-      // Handle other resources normally
-      const filePath = path.join(__dirname, "../apps/web/dist", url);
+      // Handle other resources
+      const filePath = path.join(basePath, url);
       callback(filePath);
     }
   });
@@ -226,6 +250,39 @@ app.whenReady().then(() => {
   if (app.isPackaged) {
     setupAutoUpdater();
   }
+  
+  // Add IPC handler for GitHub API requests to bypass CORS
+  ipcMain.handle("fetch-github-stars", async () => {
+    try {
+      const https = require("https");
+      return new Promise((resolve, reject) => {
+        https.get("https://api.github.com/repos/donghaozhang/qcut", {
+          headers: {
+            "User-Agent": "QCut-Video-Editor"
+          }
+        }, (res) => {
+          let data = "";
+          res.on("data", (chunk) => {
+            data += chunk;
+          });
+          res.on("end", () => {
+            try {
+              const parsed = JSON.parse(data);
+              resolve({ stars: parsed.stargazers_count || 0 });
+            } catch (error) {
+              resolve({ stars: 0 });
+            }
+          });
+        }).on("error", (error) => {
+          logger.error("Failed to fetch GitHub stars:", error);
+          resolve({ stars: 0 });
+        });
+      });
+    } catch (error) {
+      logger.error("Error fetching GitHub stars:", error);
+      return { stars: 0 };
+    }
+  });
 });
 
 app.on("window-all-closed", () => {

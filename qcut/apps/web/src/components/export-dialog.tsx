@@ -416,35 +416,46 @@ export function ExportDialog() {
                 }
                 disabled={exportProgress.progress.isExporting}
               >
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="standard" id="standard" />
-                  <Label htmlFor="standard" className="text-sm cursor-pointer">
-                    📹 Standard MediaRecorder
+                <div className="flex items-start space-x-2">
+                  <RadioGroupItem value="standard" id="standard" className="mt-0.5" />
+                  <Label htmlFor="standard" className="text-sm cursor-pointer flex-1">
+                    <div className="flex items-center gap-1">
+                      <span>📹</span>
+                      <span>Standard MediaRecorder</span>
+                    </div>
                   </Label>
                 </div>
                 {exportSettings.ffmpegAvailable && (
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="ffmpeg" id="ffmpeg" />
-                    <Label htmlFor="ffmpeg" className="text-sm cursor-pointer">
-                      🚀 FFmpeg WASM (5x faster)
+                  <div className="flex items-start space-x-2">
+                    <RadioGroupItem value="ffmpeg" id="ffmpeg" className="mt-0.5" />
+                    <Label htmlFor="ffmpeg" className="text-sm cursor-pointer flex-1">
+                      <div className="flex items-center gap-1 flex-wrap">
+                        <span>🚀</span>
+                        <span>FFmpeg WASM</span>
+                        <span className="text-xs text-muted-foreground">(5x faster)</span>
+                      </div>
                     </Label>
                   </div>
                 )}
                 {isElectron() && (
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="cli" id="cli" />
-                    <Label htmlFor="cli" className="text-sm cursor-pointer">
-                      ⚡ Native FFmpeg CLI (10x faster)
+                  <div className="flex items-start space-x-2">
+                    <RadioGroupItem value="cli" id="cli" className="mt-0.5" />
+                    <Label htmlFor="cli" className="text-sm cursor-pointer flex-1">
+                      <div className="flex items-center gap-1 flex-wrap">
+                        <span>⚡</span>
+                        <span>Native FFmpeg CLI</span>
+                        <span className="text-xs text-muted-foreground">(10x faster)</span>
+                      </div>
                     </Label>
                   </div>
                 )}
               </RadioGroup>
-              <p className="text-xs text-muted-foreground mt-2">
+              <p className="text-xs text-muted-foreground mt-2 break-words">
                 {exportSettings.engineType === "cli"
-                  ? "⚡ Native FFmpeg CLI provides maximum performance with hardware acceleration"
+                  ? "Native FFmpeg CLI provides maximum performance with hardware acceleration"
                   : exportSettings.engineType === "ffmpeg"
-                    ? "🚀 FFmpeg WASM provides 5x faster encoding than standard MediaRecorder"
-                    : "📹 Standard MediaRecorder (compatible with all browsers)"}
+                    ? "FFmpeg WASM provides 5x faster encoding than standard MediaRecorder"
+                    : "Standard MediaRecorder (compatible with all browsers)"}
               </p>
             </CardContent>
           </Card>

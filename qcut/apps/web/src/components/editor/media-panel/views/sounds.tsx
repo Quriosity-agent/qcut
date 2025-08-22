@@ -126,7 +126,7 @@ function SoundEffectsView() {
     return sounds;
   }, [searchQuery, searchResults, topSoundEffects]);
 
-  const playSound = (sound: SoundEffect) => {
+  const playSound = async (sound: SoundEffect) => {
     if (playingId === sound.id) {
       audioElement?.pause();
       setPlayingId(null);
@@ -137,21 +137,43 @@ function SoundEffectsView() {
     audioElement?.pause();
 
     if (sound.previewUrl) {
-      const audio = new Audio(sound.previewUrl);
-      audio.addEventListener("ended", () => {
-        setPlayingId(null);
-      });
-      audio.addEventListener("error", (e) => {
-        console.warn("Audio playback error:", e);
-        setPlayingId(null);
-      });
-      audio.play().catch((error) => {
+      try {
+        let audioUrl = sound.previewUrl;
+        
+        // If in Electron, download preview first to avoid CORS issues
+        if (window.electronAPI?.invoke) {
+          console.log("Downloading preview for local playback...");
+          const result = await window.electronAPI.invoke("sounds:download-preview", {
+            url: sound.previewUrl,
+            id: sound.id
+          });
+          
+          if (result.success) {
+            audioUrl = result.path;
+            console.log("Playing from local file:", audioUrl);
+          } else {
+            console.error("Preview download failed:", result.error);
+            // Try direct playback as fallback
+          }
+        }
+        
+        const audio = new Audio(audioUrl);
+        audio.addEventListener("ended", () => {
+          setPlayingId(null);
+        });
+        audio.addEventListener("error", (e) => {
+          console.warn("Audio playback error:", e);
+          setPlayingId(null);
+        });
+        
+        await audio.play();
+        
+        setAudioElement(audio);
+        setPlayingId(sound.id);
+      } catch (error) {
         console.warn("Audio play failed:", error);
         setPlayingId(null);
-      });
-
-      setAudioElement(audio);
-      setPlayingId(sound.id);
+      }
     }
   };
 

@@ -1,17 +1,27 @@
 export async function getStars(): Promise<string> {
   try {
-    const res = await fetch("https://api.github.com/repos/donghaozhang/qcut", {
-      // Cache for 1 hour
-      headers: {
-        "Cache-Control": "max-age=3600",
-      },
-    });
+    let count: number;
+    
+    // Check if we're in Electron environment
+    if (typeof window !== "undefined" && window.electronAPI?.invoke) {
+      // Use IPC to fetch GitHub stars through Electron main process
+      const result = await window.electronAPI.invoke("fetch-github-stars");
+      count = result.stars || 0;
+    } else {
+      // Fallback to direct fetch (for web/dev environment)
+      const res = await fetch("https://api.github.com/repos/donghaozhang/qcut", {
+        // Remove problematic Cache-Control header
+        headers: {
+          "Accept": "application/vnd.github.v3+json",
+        },
+      });
 
-    if (!res.ok) {
-      throw new Error(`GitHub API error: ${res.status} ${res.statusText}`);
+      if (!res.ok) {
+        throw new Error(`GitHub API error: ${res.status} ${res.statusText}`);
+      }
+      const data = (await res.json()) as { stargazers_count: number };
+      count = data.stargazers_count;
     }
-    const data = (await res.json()) as { stargazers_count: number };
-    const count = data.stargazers_count;
 
     if (typeof count !== "number") {
       throw new Error("Invalid stargazers_count from GitHub API");

@@ -1,6 +1,6 @@
 {
   "name": "qcut",
-  "version": "0.2.0",
+  "version": "0.2.4",
   "description": "QCut - Open-source video editor",
   "author": "QCut Team",
   "main": "electron/main.js",
@@ -72,6 +72,7 @@
     "generateUpdatesFilesForAllChannels": true,
     "files": [
       "electron/**/*",
+      "electron/config/**/*",
       "apps/web/dist/**/*",
       "node_modules/electron-updater/**/*",
       "!**/node_modules/*/{CHANGELOG.md,README.md,README,readme.md,readme}",
