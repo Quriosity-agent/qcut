@@ -2,6 +2,15 @@ const fs = require("fs");
 const path = require("path");
 const { app } = require("electron");
 
+// Initialize electron-log early
+let log = null;
+try {
+  log = require("electron-log");
+} catch (error) {
+  // electron-log not available, will use fallback
+}
+const logger = log || console;
+
 class TempManager {
   constructor() {
     this.tempDir = path.join(app.getPath("temp"), "qcut-export");
@@ -38,7 +47,7 @@ class TempManager {
       const { cleanupAudioFiles } = require('./audio-temp-handler.js');
       cleanupAudioFiles(sessionId);
     } catch (error) {
-      console.warn('Failed to cleanup audio files for session:', sessionId, error.message);
+      logger.warn('Failed to cleanup audio files for session:', sessionId, error.message);
     }
     
     // Clean up session directory

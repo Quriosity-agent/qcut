@@ -2,6 +2,15 @@ const fs = require('fs');
 const path = require('path');
 const { app } = require('electron');
 
+// Initialize electron-log early
+let log = null;
+try {
+  log = require("electron-log");
+} catch (error) {
+  // electron-log not available, will use fallback
+}
+const logger = log || console;
+
 /**
  * Save audio data to a temporary file for FFmpeg processing
  * @param {Buffer|ArrayBuffer} audioData - The audio data to save
@@ -28,10 +37,10 @@ async function saveAudioToTemp(audioData, filename) {
     // Write file
     fs.writeFileSync(filePath, buffer);
     
-    console.log(`[Audio Temp] Saved audio file: ${filePath} (${buffer.length} bytes)`);
+    logger.log(`[Audio Temp] Saved audio file: ${filePath} (${buffer.length} bytes)`);
     return filePath;
   } catch (error) {
-    console.error('[Audio Temp] Failed to save audio file:', error);
+    logger.error('[Audio Temp] Failed to save audio file:', error);
     throw error;
   }
 }
@@ -59,16 +68,16 @@ function cleanupAudioFiles(sessionId) {
           fs.unlinkSync(filePath);
           cleaned++;
         } catch (err) {
-          console.warn(`[Audio Temp] Failed to delete ${file}:`, err.message);
+          logger.warn(`[Audio Temp] Failed to delete ${file}:`, err.message);
         }
       }
     });
     
     if (cleaned > 0) {
-      console.log(`[Audio Temp] Cleaned up ${cleaned} audio files for session ${sessionId}`);
+      logger.log(`[Audio Temp] Cleaned up ${cleaned} audio files for session ${sessionId}`);
     }
   } catch (error) {
-    console.error('[Audio Temp] Cleanup error:', error);
+    logger.error('[Audio Temp] Cleanup error:', error);
   }
 }
 
@@ -95,12 +104,12 @@ function cleanupAllAudioFiles() {
     // Try to remove the directory itself
     try {
       fs.rmdirSync(tempDir);
-      console.log('[Audio Temp] Cleaned up all audio files and removed temp directory');
+      logger.log('[Audio Temp] Cleaned up all audio files and removed temp directory');
     } catch (err) {
       // Directory might not be empty or in use
     }
   } catch (error) {
-    console.error('[Audio Temp] Failed to clean all audio files:', error);
+    logger.error('[Audio Temp] Failed to clean all audio files:', error);
   }
 }
 
