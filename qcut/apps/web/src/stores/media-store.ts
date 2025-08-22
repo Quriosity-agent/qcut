@@ -119,7 +119,6 @@ const extractVideoMetadataBackground = async (file: File) => {
     updateMediaMetadata(file, result);
     return result;
   } catch (browserError) {
-    console.warn("[Media Store] Browser processing failed, skipping FFmpeg fallback:", browserError);
     // Skip FFmpeg entirely to avoid the 60s timeout
     // Users get instant response with defaults, which is better UX
   }
@@ -285,24 +284,18 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
       id,
     };
     
-    console.log(`[MediaStore] Creating new media item:`, newItem);
-    console.log(`[MediaStore] Item URL: ${newItem.url}`);
-    console.log(`[MediaStore] Item thumbnailUrl: ${newItem.thumbnailUrl}`);
 
     // Add to local state immediately for UI responsiveness
     set((state) => ({
       mediaItems: [...state.mediaItems, newItem],
     }));
     
-    console.log(`[MediaStore] Added to local state, saving to storage...`);
 
     // Save to persistent storage in background
     try {
       await storageService.saveMediaItem(projectId, newItem);
-      console.log(`[MediaStore] Successfully saved to storage: ${newItem.id}`);
       return newItem.id;
     } catch (error) {
-      console.error("[MediaStore] Failed to save media item:", error);
       // Remove from local state if save failed
       set((state) => ({
         mediaItems: state.mediaItems.filter((media) => media.id !== newItem.id),
@@ -316,7 +309,6 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
     const { convertToBlob, needsBlobConversion, downloadImageAsFile } =
       await import("@/lib/image-utils");
 
-    console.log("[MediaStore] Adding generated images:", items.length);
 
     const newItems: MediaItem[] = await Promise.all(
       items.map(async (item) => {
@@ -326,26 +318,12 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
         try {
           // Convert fal.media URLs to blob URLs to bypass COEP restrictions
           if (needsBlobConversion(item.url)) {
-            console.log(
-              `[MediaStore] Converting fal.media URL to blob: ${item.url}`
-            );
             processedUrl = await convertToBlob(item.url);
-            console.log(
-              `[MediaStore] Successfully converted to blob: ${processedUrl}`
-            );
           }
 
           // Download the image as a proper File object for storage
-          console.log(`[MediaStore] Downloading image as file: ${item.name}`);
           file = await downloadImageAsFile(item.url, item.name);
-          console.log(
-            `[MediaStore] Successfully downloaded file: ${file.name} (${file.size} bytes)`
-          );
         } catch (error) {
-          console.error(
-            `[MediaStore] Failed to process image: ${item.url}`,
-            error
-          );
           // Create empty file as fallback
           file = new File([], item.name, { type: "image/jpeg" });
           // Keep original URL as fallback
@@ -363,21 +341,11 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
             try {
               const text = await file.text();
               displayUrl = `data:image/svg+xml;base64,${btoa(text)}`;
-              console.log(
-                `[MediaStore] Created data URL for SVG: ${file.name}`
-              );
             } catch (error) {
-              console.warn(
-                `[MediaStore] Failed to create data URL for SVG ${file.name}, falling back to blob URL:`,
-                error
-              );
               displayUrl = URL.createObjectURL(file);
             }
           } else {
             displayUrl = URL.createObjectURL(file);
-            console.log(
-              `[MediaStore] Created object URL for display: ${displayUrl}`
-            );
           }
         }
 
@@ -396,7 +364,6 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
       })
     );
 
-    console.log("[MediaStore] Created media items:", newItems);
 
     // Add to local state immediately
     set((state) => ({
@@ -410,31 +377,17 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
       const currentProject = useProjectStore.getState().activeProject;
 
       if (currentProject) {
-        console.log("[MediaStore] Saving generated images to storage...");
         await Promise.all(
           newItems.map(async (item) => {
             try {
               await storageService.saveMediaItem(currentProject.id, item);
-              console.log(`[MediaStore] Saved generated image: ${item.name}`);
             } catch (error) {
-              console.error(
-                `[MediaStore] Failed to save generated image ${item.name}:`,
-                error
-              );
             }
           })
         );
-        console.log("[MediaStore] All generated images saved to storage");
       } else {
-        console.warn(
-          "[MediaStore] No active project found, generated images won't persist"
-        );
       }
     } catch (error) {
-      console.error(
-        "[MediaStore] Failed to save generated images to storage:",
-        error
-      );
     }
   },
 
@@ -502,19 +455,15 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
     try {
       await storageService.deleteMediaItem(projectId, id);
     } catch (error) {
-      console.error("Failed to delete media item:", error);
     }
   },
 
   loadProjectMedia: async (projectId) => {
     set({ isLoading: true });
-    console.log(`[MediaStore] Loading media for project: ${projectId}`);
     debugLog(`[MediaStore] Loading media for project: ${projectId}`);
 
     try {
       const mediaItems = await storageService.loadAllMediaItems(projectId);
-      console.log(`[MediaStore] Loaded ${mediaItems.length} media items from storage`);
-      console.log(`[MediaStore] Raw loaded items:`, mediaItems);
       debugLog(
         `[MediaStore] Loaded ${mediaItems.length} media items from storage`
       );
@@ -539,10 +488,6 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
                 },
               };
             } catch (error) {
-              console.error(
-                `[Media Store] ❌ Failed to process video ${item.id}:`,
-                error
-              );
 
               // Return item with error metadata to prevent complete failure
               return {
@@ -559,14 +504,11 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
         })
       );
 
-      console.log(`[MediaStore] Final processed items:`, updatedMediaItems);
       set({ mediaItems: updatedMediaItems });
-      console.log(`[MediaStore] ✅ Media loading complete: ${updatedMediaItems.length} items`);
       debugLog(
         `[MediaStore] ✅ Media loading complete: ${updatedMediaItems.length} items`
       );
     } catch (error) {
-      console.error("[Media Store] ❌ Failed to load media items:", error);
 
       // Set empty array to prevent undefined state
       set({ mediaItems: [] });
@@ -608,7 +550,6 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
         `[Cleanup] Cleared ${mediaIds.length} media items from persistent storage for project ${projectId}`
       );
     } catch (error) {
-      console.error("Failed to clear project media from storage:", error);
     }
   },
 

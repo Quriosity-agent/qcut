@@ -18,11 +18,9 @@ export function useStickerSelect() {
 
   const handleStickerSelect = useCallback(
     async (iconId: string, name: string): Promise<string | undefined> => {
-      console.log(`[StickerSelect] Starting selection for ${iconId} (${name})`);
       debugLog(`[StickerSelect] Starting selection for ${iconId} (${name})`);
       
       if (!activeProject) {
-        console.error("[StickerSelect] No project selected");
         debugError("[StickerSelect] No project selected");
         toast.error("No project selected");
         return;
@@ -39,52 +37,41 @@ export function useStickerSelect() {
           return;
         }
         
-        console.log(`[StickerSelect] Downloading SVG for ${collection}:${icon}`);
         debugLog(`[StickerSelect] Downloading SVG for ${collection}:${icon}`);
         const svgContent = await downloadIconSvg(collection, icon, {
           // No color specified to maintain transparency
           width: 512,
           height: 512,
         });
-        console.log(`[StickerSelect] SVG downloaded, length: ${svgContent.length}`);
-        console.log(`[StickerSelect] SVG content preview:`, svgContent.substring(0, 200) + '...');
         debugLog(`[StickerSelect] SVG downloaded, length: ${svgContent.length}`);
         
         if (!svgContent || svgContent.trim().length === 0) {
-          console.error(`[StickerSelect] Empty SVG content for ${iconId}`);
           throw new Error('Empty SVG content');
         }
 
         // Create a Blob from the downloaded SVG content
-        console.log(`[StickerSelect] Creating SVG blob from content, length: ${svgContent.length}`);
         const svgBlob = createSvgBlob(svgContent);
-        console.log(`[StickerSelect] SVG blob created:`, svgBlob);
         
         const svgFile = new File([svgBlob], `${name}.svg`, {
           type: "image/svg+xml;charset=utf-8",
         });
-        console.log(`[StickerSelect] Created SVG file: ${svgFile.name}, size: ${svgFile.size}`);
         debugLog(`[StickerSelect] Created SVG file: ${svgFile.name}, size: ${svgFile.size}`);
 
         // For Electron (file:// protocol), use data URL instead of blob URL
         let imageUrl: string;
-        console.log(`[StickerSelect] Current protocol: ${window.location.protocol}`);
 
         if (window.location.protocol === "file:") {
           // Use URL-encoded data URL to support non-ASCII SVG content
           const encoded = encodeURIComponent(svgContent);
           imageUrl = `data:image/svg+xml;charset=utf-8,${encoded}`;
-          console.log(`[StickerSelect] Using data URL (Electron), length: ${imageUrl.length}`);
           debugLog(`[StickerSelect] Using data URL (Electron), length: ${imageUrl.length}`);
         } else {
           // Use blob URL for web environment
           createdObjectUrl = URL.createObjectURL(svgBlob);
           imageUrl = createdObjectUrl;
           objectUrlsRef.current.add(imageUrl);
-          console.log(`[StickerSelect] Using blob URL (Web): ${imageUrl}`);
           debugLog(`[StickerSelect] Using blob URL (Web): ${imageUrl}`);
         }
-        console.log(`[StickerSelect] Final imageUrl: ${imageUrl}`);
 
         const mediaItem = {
           name: `${name}.svg`,
@@ -96,11 +83,9 @@ export function useStickerSelect() {
           height: 512,
           duration: 0,
         };
-        console.log(`[StickerSelect] Adding media item:`, mediaItem);
         debugLog(`[StickerSelect] Adding media item:`, mediaItem);
         
         const mediaItemId = await addMediaItem(activeProject.id, mediaItem);
-        console.log(`[StickerSelect] Media item added with ID: ${mediaItemId}`);
         debugLog(`[StickerSelect] Media item added with ID: ${mediaItemId}`);
 
         // Add to recent stickers
