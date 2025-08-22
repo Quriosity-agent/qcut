@@ -433,7 +433,7 @@ export class CLIExportEngine extends ExportEngine {
           const filename = `audio_${this.sessionId}_${audioElement.element.id}.${ext}`;
           
           // Save to temp file via IPC
-          const result = await window.electronAPI.invoke('save-audio-for-export', {
+          const result = await window.electronAPI?.invoke('save-audio-for-export', {
             audioData: arrayBuffer,
             filename: filename
           });

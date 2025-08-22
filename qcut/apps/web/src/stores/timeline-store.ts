@@ -1102,23 +1102,20 @@ export const useTimelineStore = create<TimelineStore>((set, get) => {
         trackId: string;
         absoluteStart: number;
       }> = [];
-      
-      tracks.forEach(track => {
-        // Include audio tracks and media tracks that may have audio
-        if (track.type === 'audio' || track.type === 'media') {
-          track.elements.forEach(element => {
-            // Include media elements (videos with audio) and audio elements
-            if (element.type === 'media' || element.type === 'audio') {
+      for (const track of tracks) {
+        if (track.type === "audio" || track.type === "media") {
+          for (const element of track.elements) {
+            // Only media elements carry audio
+            if (element.type === "media") {
               audioElements.push({
                 element,
                 trackId: track.id,
-                absoluteStart: element.start
+                absoluteStart: element.startTime,
               });
             }
-          });
+          }
         }
-      });
-      
+      }
       return audioElements;
     },
 
