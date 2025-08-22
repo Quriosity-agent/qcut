@@ -268,8 +268,13 @@ export const StickerCanvas: React.FC<{
 
           // Show placeholder if media item not found (it might still be loading)
           if (!mediaItem) {
-            debugLog(
-              `[StickerCanvas] ⚠️ MEDIA MISSING: Media item not found for sticker ${sticker.id}, mediaItemId: ${sticker.mediaItemId}. Available media: ${mediaItems.length}`
+            console.error(
+              `[StickerCanvas] ⚠️ MEDIA MISSING: Media item not found for sticker ${sticker.id}, mediaItemId: ${sticker.mediaItemId}. Available media: ${mediaItems.length}`,
+              {
+                stickerMediaId: sticker.mediaItemId,
+                availableMediaIds: mediaItems.map(m => ({ id: m.id, name: m.name })),
+                sticker
+              }
             );
             // Show a placeholder to indicate missing media
             return (
