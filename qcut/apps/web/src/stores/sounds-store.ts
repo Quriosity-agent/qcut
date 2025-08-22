@@ -310,6 +310,7 @@ export const useSoundsStore = create<SoundsStore>((set, get) => ({
           file,
           duration: sound.duration,
           url: objectUrl,
+          originalUrl: audioUrl, // Preserve original URL for export
         });
 
       const mediaItem = useMediaStore

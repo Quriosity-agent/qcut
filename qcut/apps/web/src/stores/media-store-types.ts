@@ -8,6 +8,8 @@ export interface MediaItem {
   type: MediaType;
   file: File;
   url?: string; // Object URL for preview
+  originalUrl?: string; // Original URL before blob conversion (for audio export)
+  localPath?: string; // Local file path for Electron (for FFmpeg CLI)
   thumbnailUrl?: string; // For video thumbnails
   duration?: number; // For video/audio duration
   width?: number; // For video/image width

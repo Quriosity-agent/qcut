@@ -251,6 +251,18 @@ app.whenReady().then(() => {
     setupAutoUpdater();
   }
   
+  // Add IPC handler for saving audio files for export
+  ipcMain.handle('save-audio-for-export', async (event, { audioData, filename }) => {
+    const { saveAudioToTemp } = require('./audio-temp-handler.js');
+    try {
+      const filePath = await saveAudioToTemp(audioData, filename);
+      return { success: true, path: filePath };
+    } catch (error) {
+      logger.error('Failed to save audio file:', error);
+      return { success: false, error: error.message };
+    }
+  });
+  
   // Add IPC handler for GitHub API requests to bypass CORS
   ipcMain.handle("fetch-github-stars", async () => {
     try {
@@ -287,6 +299,10 @@ app.whenReady().then(() => {
 
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") {
+    // Clean up audio temp files
+    const { cleanupAllAudioFiles } = require('./audio-temp-handler.js');
+    cleanupAllAudioFiles();
+    
     // Close the static server when quitting
     if (staticServer) {
       staticServer.close();
