@@ -691,13 +691,35 @@ export class CLIExportEngine extends ExportEngine {
           
           // CRITICAL: Validate audio file format with ffprobe
           console.log(`[CLI Export] Validating audio file format with ffprobe...`);
-          const audioValidation = await window.electronAPI.invoke('validate-audio-file', audioFile.path);
-          console.log(`[CLI Export] Audio validation result:`, audioValidation);
-          
-          if (!audioValidation.valid) {
-            const error = `Invalid audio file format: ${audioFile.path} - ${audioValidation.error}`;
-            console.error(`[CLI Export] ${error}`);
-            throw new Error(error);
+          try {
+            const audioValidation = await window.electronAPI.invoke('validate-audio-file', audioFile.path);
+            console.log(`[CLI Export] Audio validation result:`, audioValidation);
+            
+            if (!audioValidation.valid) {
+              const error = `Invalid audio file format: ${audioFile.path} - ${audioValidation.error}`;
+              console.error(`[CLI Export] ${error}`);
+              throw new Error(error);
+            }
+            
+            console.log(`[CLI Export] Audio file validated successfully:`, {
+              hasAudio: audioValidation.hasAudio,
+              duration: audioValidation.duration,
+              streams: audioValidation.info?.streams?.length || 0
+            });
+            
+            // CRITICAL FIX: Skip files that have no audio streams
+            if (!audioValidation.hasAudio) {
+              console.warn(`[CLI Export] SKIPPING: File has no audio streams: ${audioFile.path}`);
+              console.log(`[CLI Export] Removing audio file from export list...`);
+              // Remove this audio file from the array
+              audioFiles.splice(i, 1);
+              i--; // Adjust index since we removed an item
+              continue;
+            }
+          } catch (validationError) {
+            console.error(`[CLI Export] Audio validation failed:`, validationError);
+            // Continue anyway for now - don't block the export
+            console.log(`[CLI Export] Continuing with export despite validation failure...`);
           }
         } catch (infoError) {
           console.error(`[CLI Export] Failed to get audio file info:`, infoError);

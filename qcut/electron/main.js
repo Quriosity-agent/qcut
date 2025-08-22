@@ -434,6 +434,9 @@ ipcMain.handle("validate-audio-file", async (event, filePath) => {
     const ffprobePath = path.join(ffmpegDir, 'ffprobe.exe');
     
     return new Promise((resolve) => {
+      console.log(`[Main] Running ffprobe on: ${filePath}`);
+      console.log(`[Main] ffprobe path: ${ffprobePath}`);
+      
       const ffprobe = spawn(ffprobePath, [
         '-v', 'quiet',
         '-print_format', 'json',
@@ -441,6 +444,16 @@ ipcMain.handle("validate-audio-file", async (event, filePath) => {
         '-show_streams',
         filePath
       ], { windowsHide: true });
+      
+      // Add timeout
+      const timeout = setTimeout(() => {
+        console.log(`[Main] ffprobe timeout, killing process`);
+        ffprobe.kill();
+        resolve({
+          valid: false,
+          error: 'ffprobe timeout after 10 seconds'
+        });
+      }, 10000);
       
       let stdout = '';
       let stderr = '';
@@ -454,6 +467,11 @@ ipcMain.handle("validate-audio-file", async (event, filePath) => {
       });
       
       ffprobe.on('close', (code) => {
+        clearTimeout(timeout);
+        console.log(`[Main] ffprobe finished with code: ${code}`);
+        console.log(`[Main] ffprobe stdout length: ${stdout.length}`);
+        console.log(`[Main] ffprobe stderr: ${stderr}`);
+        
         if (code === 0 && stdout) {
           try {
             const info = JSON.parse(stdout);
@@ -482,6 +500,8 @@ ipcMain.handle("validate-audio-file", async (event, filePath) => {
       });
       
       ffprobe.on('error', (error) => {
+        clearTimeout(timeout);
+        console.log(`[Main] ffprobe spawn error: ${error.message}`);
         resolve({
           valid: false,
           error: `ffprobe spawn error: ${error.message}`
