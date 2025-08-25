@@ -19,7 +19,7 @@ export function useStickerSelect() {
   const handleStickerSelect = useCallback(
     async (iconId: string, name: string): Promise<string | undefined> => {
       debugLog(`[StickerSelect] Starting selection for ${iconId} (${name})`);
-      
+
       if (!activeProject) {
         debugError("[StickerSelect] No project selected");
         toast.error("No project selected");
@@ -36,26 +36,30 @@ export function useStickerSelect() {
           toast.error("Invalid sticker ID format");
           return;
         }
-        
+
         debugLog(`[StickerSelect] Downloading SVG for ${collection}:${icon}`);
         const svgContent = await downloadIconSvg(collection, icon, {
           // No color specified to maintain transparency
           width: 512,
           height: 512,
         });
-        debugLog(`[StickerSelect] SVG downloaded, length: ${svgContent.length}`);
-        
+        debugLog(
+          `[StickerSelect] SVG downloaded, length: ${svgContent.length}`
+        );
+
         if (!svgContent || svgContent.trim().length === 0) {
-          throw new Error('Empty SVG content');
+          throw new Error("Empty SVG content");
         }
 
         // Create a Blob from the downloaded SVG content
         const svgBlob = createSvgBlob(svgContent);
-        
+
         const svgFile = new File([svgBlob], `${name}.svg`, {
           type: "image/svg+xml;charset=utf-8",
         });
-        debugLog(`[StickerSelect] Created SVG file: ${svgFile.name}, size: ${svgFile.size}`);
+        debugLog(
+          `[StickerSelect] Created SVG file: ${svgFile.name}, size: ${svgFile.size}`
+        );
 
         // For Electron (file:// protocol), use data URL instead of blob URL
         let imageUrl: string;
@@ -64,7 +68,9 @@ export function useStickerSelect() {
           // Use URL-encoded data URL to support non-ASCII SVG content
           const encoded = encodeURIComponent(svgContent);
           imageUrl = `data:image/svg+xml;charset=utf-8,${encoded}`;
-          debugLog(`[StickerSelect] Using data URL (Electron), length: ${imageUrl.length}`);
+          debugLog(
+            `[StickerSelect] Using data URL (Electron), length: ${imageUrl.length}`
+          );
         } else {
           // Use blob URL for web environment
           createdObjectUrl = URL.createObjectURL(svgBlob);
@@ -83,8 +89,8 @@ export function useStickerSelect() {
           height: 512,
           duration: 0,
         };
-        debugLog(`[StickerSelect] Adding media item:`, mediaItem);
-        
+        debugLog("[StickerSelect] Adding media item:", mediaItem);
+
         const mediaItemId = await addMediaItem(activeProject.id, mediaItem);
         debugLog(`[StickerSelect] Media item added with ID: ${mediaItemId}`);
 

@@ -270,9 +270,15 @@ function ApiKeysView() {
   const [showFreesoundKey, setShowFreesoundKey] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isTestingFreesound, setIsTestingFreesound] = useState(false);
-  const [freesoundTestResult, setFreesoundTestResult] = useState<{success: boolean; message: string} | null>(null);
+  const [freesoundTestResult, setFreesoundTestResult] = useState<{
+    success: boolean;
+    message: string;
+  } | null>(null);
   const [isTestingFal, setIsTestingFal] = useState(false);
-  const [falTestResult, setFalTestResult] = useState<{success: boolean; message: string} | null>(null);
+  const [falTestResult, setFalTestResult] = useState<{
+    success: boolean;
+    message: string;
+  } | null>(null);
 
   // Load API keys on component mount
   const loadApiKeys = useCallback(async () => {
@@ -315,7 +321,10 @@ function ApiKeysView() {
     setFreesoundTestResult(null);
     try {
       if (window.electronAPI?.invoke) {
-        const result = await window.electronAPI.invoke("sounds:test-key", freesoundApiKey.trim());
+        const result = await window.electronAPI.invoke(
+          "sounds:test-key",
+          freesoundApiKey.trim()
+        );
         setFreesoundTestResult(result);
       }
     } catch (error) {
@@ -341,7 +350,8 @@ function ApiKeysView() {
   return (
     <div className="flex flex-col gap-6">
       <div className="text-sm text-muted-foreground">
-        Configure API keys for enhanced features like AI image generation and sound effects.
+        Configure API keys for enhanced features like AI image generation and
+        sound effects.
       </div>
 
       {/* FAL API Key */}
@@ -421,7 +431,9 @@ function ApiKeysView() {
             </Button>
           </div>
           {freesoundTestResult && (
-            <div className={`text-xs ${freesoundTestResult.success ? 'text-green-600' : 'text-red-600'}`}>
+            <div
+              className={`text-xs ${freesoundTestResult.success ? "text-green-600" : "text-red-600"}`}
+            >
               {freesoundTestResult.message}
             </div>
           )}
@@ -437,8 +449,9 @@ function ApiKeysView() {
       </div>
 
       <div className="text-xs text-muted-foreground border-t pt-4">
-        <strong>Note:</strong> API keys are stored securely on your device and never shared. 
-        Restart the application after saving for changes to take effect.
+        <strong>Note:</strong> API keys are stored securely on your device and
+        never shared. Restart the application after saving for changes to take
+        effect.
       </div>
     </div>
   );

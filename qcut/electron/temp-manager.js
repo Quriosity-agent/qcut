@@ -44,12 +44,16 @@ class TempManager {
   cleanup(sessionId) {
     // Clean up audio files first
     try {
-      const { cleanupAudioFiles } = require('./audio-temp-handler.js');
+      const { cleanupAudioFiles } = require("./audio-temp-handler.js");
       cleanupAudioFiles(sessionId);
     } catch (error) {
-      logger.warn('Failed to cleanup audio files for session:', sessionId, error.message);
+      logger.warn(
+        "Failed to cleanup audio files for session:",
+        sessionId,
+        error.message
+      );
     }
-    
+
     // Clean up session directory
     const sessionDir = path.join(this.tempDir, sessionId);
     if (fs.existsSync(sessionDir)) {

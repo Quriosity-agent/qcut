@@ -131,7 +131,7 @@ export const useAdjustmentStore = create<AdjustmentStore>()(
     setOriginalImage: (file, url) => {
       // Before setting the new URL, clean up the old one
       const prevUrl = get().originalImageUrl;
-      if (prevUrl?.startsWith('blob:')) {
+      if (prevUrl?.startsWith("blob:")) {
         URL.revokeObjectURL(prevUrl);
       }
       set({
@@ -146,10 +146,10 @@ export const useAdjustmentStore = create<AdjustmentStore>()(
     clearImage: () => {
       // Clean up blob URLs before clearing
       const { originalImageUrl, currentEditedUrl } = get();
-      if (originalImageUrl?.startsWith('blob:')) {
+      if (originalImageUrl?.startsWith("blob:")) {
         URL.revokeObjectURL(originalImageUrl);
       }
-      if (currentEditedUrl?.startsWith('blob:')) {
+      if (currentEditedUrl?.startsWith("blob:")) {
         URL.revokeObjectURL(currentEditedUrl);
       }
       set({
@@ -255,12 +255,12 @@ export const useAdjustmentStore = create<AdjustmentStore>()(
     clearHistory: () => {
       // Clean up blob URLs from edit history
       const { editHistory, currentEditedUrl } = get();
-      editHistory.forEach(item => {
-        if (item.editedUrl?.startsWith('blob:')) {
+      editHistory.forEach((item) => {
+        if (item.editedUrl?.startsWith("blob:")) {
           URL.revokeObjectURL(item.editedUrl);
         }
       });
-      if (currentEditedUrl?.startsWith('blob:')) {
+      if (currentEditedUrl?.startsWith("blob:")) {
         URL.revokeObjectURL(currentEditedUrl);
       }
       set({

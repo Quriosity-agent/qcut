@@ -1,7 +1,7 @@
 export async function getStars(): Promise<string> {
   try {
     let count: number;
-    
+
     // Check if we're in Electron environment
     if (typeof window !== "undefined" && window.electronAPI?.invoke) {
       // Use IPC to fetch GitHub stars through Electron main process
@@ -9,12 +9,15 @@ export async function getStars(): Promise<string> {
       count = result.stars || 0;
     } else {
       // Fallback to direct fetch (for web/dev environment)
-      const res = await fetch("https://api.github.com/repos/donghaozhang/qcut", {
-        // Remove problematic Cache-Control header
-        headers: {
-          "Accept": "application/vnd.github.v3+json",
-        },
-      });
+      const res = await fetch(
+        "https://api.github.com/repos/donghaozhang/qcut",
+        {
+          // Remove problematic Cache-Control header
+          headers: {
+            "Accept": "application/vnd.github.v3+json",
+          },
+        }
+      );
 
       if (!res.ok) {
         throw new Error(`GitHub API error: ${res.status} ${res.statusText}`);

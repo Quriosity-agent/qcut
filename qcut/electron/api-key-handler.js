@@ -19,14 +19,18 @@ function setupApiKeyIPC() {
         return { falApiKey: "", freesoundApiKey: "" };
       }
 
-      const encryptedData = JSON.parse(fs.readFileSync(apiKeysFilePath, "utf8"));
-      
+      const encryptedData = JSON.parse(
+        fs.readFileSync(apiKeysFilePath, "utf8")
+      );
+
       // Decrypt the stored keys if they exist and safeStorage is available
       const result = {};
-      
+
       if (encryptedData.falApiKey && safeStorage.isEncryptionAvailable()) {
         try {
-          const decryptedFal = safeStorage.decryptString(Buffer.from(encryptedData.falApiKey, "base64"));
+          const decryptedFal = safeStorage.decryptString(
+            Buffer.from(encryptedData.falApiKey, "base64")
+          );
           result.falApiKey = decryptedFal;
         } catch (error) {
           // Failed to decrypt FAL API key, falling back to plain text
@@ -37,9 +41,14 @@ function setupApiKeyIPC() {
         result.falApiKey = encryptedData.falApiKey || "";
       }
 
-      if (encryptedData.freesoundApiKey && safeStorage.isEncryptionAvailable()) {
+      if (
+        encryptedData.freesoundApiKey &&
+        safeStorage.isEncryptionAvailable()
+      ) {
         try {
-          const decryptedFreesound = safeStorage.decryptString(Buffer.from(encryptedData.freesoundApiKey, "base64"));
+          const decryptedFreesound = safeStorage.decryptString(
+            Buffer.from(encryptedData.freesoundApiKey, "base64")
+          );
           result.freesoundApiKey = decryptedFreesound;
         } catch (error) {
           // Failed to decrypt Freesound API key, falling back to plain text
@@ -63,7 +72,7 @@ function setupApiKeyIPC() {
   ipcMain.handle("api-keys:set", async (event, keys) => {
     try {
       const { falApiKey = "", freesoundApiKey = "" } = keys;
-      
+
       const dataToStore = {};
 
       // Encrypt keys if safeStorage is available, otherwise store as plain text
@@ -96,7 +105,7 @@ function setupApiKeyIPC() {
 
       // Write encrypted data to file
       fs.writeFileSync(apiKeysFilePath, JSON.stringify(dataToStore, null, 2));
-      
+
       // API keys saved successfully
       return true;
     } catch (error) {

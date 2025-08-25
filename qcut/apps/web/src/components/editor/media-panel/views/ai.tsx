@@ -314,8 +314,8 @@ export function AiView() {
                 <label
                   htmlFor="ai-image-input"
                   className={`block border-2 border-dashed rounded-lg cursor-pointer transition-colors min-h-[120px] focus-within:outline-none focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2 ${
-                    selectedImage 
-                      ? "border-primary/50 bg-primary/5 p-2" 
+                    selectedImage
+                      ? "border-primary/50 bg-primary/5 p-2"
                       : "border-muted-foreground/25 hover:border-muted-foreground/50 p-4"
                   }`}
                   aria-label={

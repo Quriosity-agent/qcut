@@ -48,26 +48,32 @@ export const StickerCanvas: React.FC<{
   // Debug state tracking for timing analysis (Task 2.1)
   useEffect(() => {
     if (overlayStickers.size > 0) {
-      console.log(`[StickerCanvas] Media availability check:`, {
+      console.log("[StickerCanvas] Media availability check:", {
         mediaItemsLoaded: mediaItems.length,
-        mediaIds: mediaItems.map(m => ({ id: m.id, name: m.name })),
-        stickersWaitingForMedia: Array.from(overlayStickers.values()).filter(s => 
-          !mediaItems.find(m => m.id === s.mediaItemId)
+        mediaIds: mediaItems.map((m) => ({ id: m.id, name: m.name })),
+        stickersWaitingForMedia: Array.from(overlayStickers.values()).filter(
+          (s) => !mediaItems.find((m) => m.id === s.mediaItemId)
         ).length,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
-      
+
       // Additional timing debug
-      console.log(`[StickerCanvas] Timing Debug:`, {
+      console.log("[StickerCanvas] Timing Debug:", {
         timestamp: new Date().toISOString(),
         mediaStoreReady: !mediaStoreLoading,
         mediaCount: mediaItems.length,
         stickerCount: overlayStickers.size,
         currentTime,
-        visibleStickersCount: getVisibleStickersAtTime(currentTime).length
+        visibleStickersCount: getVisibleStickersAtTime(currentTime).length,
       });
     }
-  }, [mediaItems.length, overlayStickers.size, mediaStoreLoading, currentTime, getVisibleStickersAtTime]);
+  }, [
+    mediaItems.length,
+    overlayStickers.size,
+    mediaStoreLoading,
+    currentTime,
+    getVisibleStickersAtTime,
+  ]);
 
   // Migration: Fix media items with wrong MIME type
   useEffect(() => {
@@ -246,15 +252,15 @@ export const StickerCanvas: React.FC<{
 
   // Get only visible stickers at current time - moved before hooks
   const visibleStickers = getVisibleStickersAtTime(currentTime);
-  
+
   // Don't render if disabled - moved after all hooks
   if (disabled) return null;
-  
+
   // Debug logging for sticker visibility - moved before early return
   // This needs to be before any conditional returns to avoid hooks order issues
   useEffect(() => {
     if (overlayStickers.size > 0) {
-      console.log(`[StickerCanvas] State check:`, {
+      console.log("[StickerCanvas] State check:", {
         totalStickers: overlayStickers.size,
         visibleStickers: visibleStickers.length,
         currentTime,
@@ -262,19 +268,31 @@ export const StickerCanvas: React.FC<{
         mediaStoreLoading,
         mediaStoreError: !!mediaStoreError,
       });
-      
-      const stickerDetails = Array.from(overlayStickers.values()).map(sticker => ({
-        id: sticker.id,
-        mediaItemId: sticker.mediaItemId,
-        timing: sticker.timing,
-        position: sticker.position,
-        hasMediaItem: mediaItems.some(item => item.id === sticker.mediaItemId),
-        isVisible: currentTime >= (sticker.timing?.startTime || 0) && 
-                  currentTime <= (sticker.timing?.endTime || Infinity),
-      }));
-      console.log(`[StickerCanvas] Sticker details:`, stickerDetails);
+
+      const stickerDetails = Array.from(overlayStickers.values()).map(
+        (sticker) => ({
+          id: sticker.id,
+          mediaItemId: sticker.mediaItemId,
+          timing: sticker.timing,
+          position: sticker.position,
+          hasMediaItem: mediaItems.some(
+            (item) => item.id === sticker.mediaItemId
+          ),
+          isVisible:
+            currentTime >= (sticker.timing?.startTime || 0) &&
+            currentTime <= (sticker.timing?.endTime || Infinity),
+        })
+      );
+      console.log("[StickerCanvas] Sticker details:", stickerDetails);
     }
-  }, [overlayStickers.size, visibleStickers.length, currentTime, mediaItems.length, mediaStoreLoading, mediaStoreError]);
+  }, [
+    overlayStickers.size,
+    visibleStickers.length,
+    currentTime,
+    mediaItems.length,
+    mediaStoreLoading,
+    mediaStoreError,
+  ]);
 
   // Show loading state while media store is loading
   if (mediaStoreLoading && overlayStickers.size > 0) {
@@ -317,9 +335,12 @@ export const StickerCanvas: React.FC<{
                 `[StickerCanvas] ⚠️ MEDIA MISSING: Media item not found for sticker ${sticker.id}, mediaItemId: ${sticker.mediaItemId}. Available media: ${mediaItems.length}`,
                 {
                   stickerMediaId: sticker.mediaItemId,
-                  availableMediaIds: mediaItems.map(m => ({ id: m.id, name: m.name })),
+                  availableMediaIds: mediaItems.map((m) => ({
+                    id: m.id,
+                    name: m.name,
+                  })),
                   sticker,
-                  mediaStoreLoading
+                  mediaStoreLoading,
                 }
               );
             }

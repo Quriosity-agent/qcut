@@ -84,7 +84,7 @@ export const processVideoFile = async (file: File) => {
   const defaultResult = {
     thumbnailUrl: undefined,
     width: 1920,
-    height: 1080, 
+    height: 1080,
     duration: 0,
     fps: 30,
     processingMethod: "immediate" as const,
@@ -128,9 +128,9 @@ const extractVideoMetadataBackground = async (file: File) => {
 const updateMediaMetadata = async (file: File, metadata: any) => {
   const mediaStore = useMediaStore.getState();
   const fileId = await generateFileBasedId(file);
-  
+
   // Find and update the media item
-  const updatedItems = mediaStore.mediaItems.map(item => {
+  const updatedItems = mediaStore.mediaItems.map((item) => {
     if (item.id === fileId) {
       return {
         ...item,
@@ -143,7 +143,7 @@ const updateMediaMetadata = async (file: File, metadata: any) => {
     }
     return item;
   });
-  
+
   // Update the store
   useMediaStore.setState({ mediaItems: updatedItems });
 };
@@ -283,21 +283,19 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
       ...item,
       id,
     };
-    
+
     // Debug logging for ID generation (Task 1.3)
     console.log(`[MediaStore] Generated ID for ${newItem.name}:`, {
       id: newItem.id,
       hasFile: !!newItem.file,
       providedId: item.id,
-      generatedNew: !item.id && item.file
+      generatedNew: !item.id && item.file,
     });
-    
 
     // Add to local state immediately for UI responsiveness
     set((state) => ({
       mediaItems: [...state.mediaItems, newItem],
     }));
-    
 
     // Save to persistent storage in background
     try {
@@ -316,7 +314,6 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
     // Import utilities for COEP-safe image loading
     const { convertToBlob, needsBlobConversion, downloadImageAsFile } =
       await import("@/lib/image-utils");
-
 
     const newItems: MediaItem[] = await Promise.all(
       items.map(async (item) => {
@@ -372,7 +369,6 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
       })
     );
 
-
     // Add to local state immediately
     set((state) => ({
       mediaItems: [...state.mediaItems, ...newItems],
@@ -389,14 +385,12 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
           newItems.map(async (item) => {
             try {
               await storageService.saveMediaItem(currentProject.id, item);
-            } catch (error) {
-            }
+            } catch (error) {}
           })
         );
       } else {
       }
-    } catch (error) {
-    }
+    } catch (error) {}
   },
 
   removeMediaItem: async (projectId: string, id: string) => {
@@ -462,8 +456,7 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
     // 3) Remove from persistent storage
     try {
       await storageService.deleteMediaItem(projectId, id);
-    } catch (error) {
-    }
+    } catch (error) {}
   },
 
   loadProjectMedia: async (projectId) => {
@@ -496,7 +489,6 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
                 },
               };
             } catch (error) {
-
               // Return item with error metadata to prevent complete failure
               return {
                 ...item,
@@ -517,7 +509,6 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
         `[MediaStore] ✅ Media loading complete: ${updatedMediaItems.length} items`
       );
     } catch (error) {
-
       // Set empty array to prevent undefined state
       set({ mediaItems: [] });
     } finally {
@@ -547,17 +538,24 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
 
     // Clear local state
     set({ mediaItems: [] });
-    
+
     // Also clean up orphaned stickers when media is cleared
     try {
-      const { useStickersOverlayStore } = await import("@/stores/stickers-overlay-store");
+      const { useStickersOverlayStore } = await import(
+        "@/stores/stickers-overlay-store"
+      );
       const stickerStore = useStickersOverlayStore.getState();
       if (stickerStore.overlayStickers.size > 0) {
-        console.log(`[MediaStore] Media cleared, cleaning up ${stickerStore.overlayStickers.size} orphaned stickers`);
+        console.log(
+          `[MediaStore] Media cleared, cleaning up ${stickerStore.overlayStickers.size} orphaned stickers`
+        );
         stickerStore.cleanupInvalidStickers([]); // Empty array = all stickers are invalid
       }
     } catch (error) {
-      debugError("[MediaStore] Failed to cleanup stickers after media clear:", error);
+      debugError(
+        "[MediaStore] Failed to cleanup stickers after media clear:",
+        error
+      );
     }
 
     // Clear persistent storage
@@ -569,8 +567,7 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
       debugLog(
         `[Cleanup] Cleared ${mediaIds.length} media items from persistent storage for project ${projectId}`
       );
-    } catch (error) {
-    }
+    } catch (error) {}
   },
 
   clearAllMedia: () => {

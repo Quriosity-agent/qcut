@@ -222,7 +222,7 @@ export function MediaView() {
     // Render a preview for each media type (image, video, audio, unknown)
     if (item.type === "image") {
       const imageUrl = item.url || item.thumbnailUrl;
-      
+
       return (
         <div className="w-full h-full flex items-center justify-center">
           <img
@@ -391,49 +391,58 @@ export function MediaView() {
                           aria-label="Add as overlay"
                           onClick={(e) => {
                             e.stopPropagation();
-                            
+
                             // Debug logging for overlay creation (Task 2.2)
                             // Note: We use filteredMediaItems which is already available from the hook
-                            const mediaExists = filteredMediaItems.some((m: any) => m.id === item.id);
-                            
-                            console.log(`[MediaPanel] Overlay creation check:`, {
-                              targetItemId: item.id,
-                              targetItemName: item.name,
-                              mediaExists,
-                              totalMediaItems: filteredMediaItems.length,
-                              availableMediaIds: filteredMediaItems.map((m: any) => m.id),
-                              timestamp: new Date().toISOString()
-                            });
-                            
+                            const mediaExists = filteredMediaItems.some(
+                              (m: any) => m.id === item.id
+                            );
+
+                            console.log(
+                              "[MediaPanel] Overlay creation check:",
+                              {
+                                targetItemId: item.id,
+                                targetItemName: item.name,
+                                mediaExists,
+                                totalMediaItems: filteredMediaItems.length,
+                                availableMediaIds: filteredMediaItems.map(
+                                  (m: any) => m.id
+                                ),
+                                timestamp: new Date().toISOString(),
+                              }
+                            );
+
                             const { addOverlaySticker } =
                               useStickersOverlayStore.getState();
                             const { currentTime } = usePlaybackStore.getState();
                             const { getTotalDuration } =
                               useTimelineStore.getState();
                             const totalDuration = getTotalDuration();
-                            
-                            
+
                             const start = Math.max(
                               0,
                               Math.min(currentTime, totalDuration)
                             );
                             const end = Math.min(start + 5, totalDuration);
-                            
+
                             const overlayData = {
                               timing: {
                                 startTime: start,
                                 endTime: end,
                               },
                             };
-                            
-                            
-                            const stickerId = addOverlaySticker(item.id, overlayData);
-                            
-                            
+
+                            const stickerId = addOverlaySticker(
+                              item.id,
+                              overlayData
+                            );
+
                             // Check store state after adding
-                            const storeState = useStickersOverlayStore.getState();
-                            const newSticker = storeState.overlayStickers.get(stickerId);
-                            
+                            const storeState =
+                              useStickersOverlayStore.getState();
+                            const newSticker =
+                              storeState.overlayStickers.get(stickerId);
+
                             toast.success(`Added "${item.name}" as overlay`);
                           }}
                         >

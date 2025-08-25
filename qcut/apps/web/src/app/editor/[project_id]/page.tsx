@@ -144,10 +144,12 @@ export default function Editor() {
             const layouts = {
               media: <MediaLayout resetCounter={resetCounter} />,
               inspector: <InspectorLayout resetCounter={resetCounter} />,
-              "vertical-preview": <VerticalPreviewLayout resetCounter={resetCounter} />,
+              "vertical-preview": (
+                <VerticalPreviewLayout resetCounter={resetCounter} />
+              ),
               default: <DefaultLayout resetCounter={resetCounter} />,
             };
-            
+
             return layouts[activePreset] || layouts.default;
           })()}
         </div>

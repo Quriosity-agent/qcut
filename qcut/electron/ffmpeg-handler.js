@@ -80,14 +80,12 @@ function setupFFmpegIPC() {
   // Export video with CLI
   ipcMain.handle("export-video-cli", async (event, options) => {
     const { sessionId, width, height, fps, quality, audioFiles = [] } = options;
-    
 
     return new Promise((resolve, reject) => {
       // Get session directories
       const frameDir = tempManager.getFrameDir(sessionId);
       const outputDir = tempManager.getOutputDir(sessionId);
       const outputFile = path.join(outputDir, "output.mp4");
-      
 
       // Construct FFmpeg arguments
       let ffmpegPath;
@@ -97,7 +95,7 @@ function setupFFmpegIPC() {
         reject(error);
         return;
       }
-      
+
       const args = buildFFmpegArgs(
         frameDir,
         outputFile,
@@ -107,7 +105,6 @@ function setupFFmpegIPC() {
         quality,
         audioFiles
       );
-      
 
       // FFmpeg CLI configuration ready
 
@@ -122,7 +119,7 @@ function setupFFmpegIPC() {
       const frameFiles = fs
         .readdirSync(frameDir)
         .filter((f) => f.startsWith("frame-") && f.endsWith(".png"));
-      
+
       if (frameFiles.length === 0) {
         const error = `No frame files found in: ${frameDir}`;
         reject(new Error(error));
@@ -162,10 +159,9 @@ function setupFFmpegIPC() {
           windowsHide: true,
           stdio: ["ignore", "pipe", "pipe"],
         });
-        
-        
-        let stderrOutput = '';
-        let stdoutOutput = '';
+
+        let stderrOutput = "";
+        let stdoutOutput = "";
 
         ffmpegProc.stdout.on("data", (chunk) => {
           const text = chunk.toString();
@@ -175,7 +171,7 @@ function setupFFmpegIPC() {
         ffmpegProc.stderr.on("data", (chunk) => {
           const text = chunk.toString();
           stderrOutput += text;
-          
+
           const progress = parseProgress(text);
           if (progress) {
             event.sender?.send?.("ffmpeg-progress", progress);
@@ -187,7 +183,6 @@ function setupFFmpegIPC() {
         });
 
         ffmpegProc.on("close", (code, signal) => {
-          
           if (code === 0) {
             resolve({ success: true, outputFile, method: "spawn" });
           } else {
@@ -302,8 +297,15 @@ function getFFmpegPath() {
   return ffmpegPath;
 }
 
-function buildFFmpegArgs(inputDir, outputFile, width, height, fps, quality, audioFiles = []) {
-  
+function buildFFmpegArgs(
+  inputDir,
+  outputFile,
+  width,
+  height,
+  fps,
+  quality,
+  audioFiles = []
+) {
   const qualitySettings = {
     "high": { crf: "18", preset: "slow" },
     "medium": { crf: "23", preset: "fast" },
@@ -327,14 +329,13 @@ function buildFFmpegArgs(inputDir, outputFile, width, height, fps, quality, audi
   if (audioFiles && audioFiles.length > 0) {
     // Add each audio file as input
     audioFiles.forEach((audioFile, index) => {
-      
       // CRITICAL: Check if audio file actually exists
-      const fs = require('fs');
-      if (!fs.existsSync(audioFile.path)) {
-        throw new Error(`Audio file not found: ${audioFile.path}`);
+      const fs = require("fs");
+      if (fs.existsSync(audioFile.path)) {
       } else {
+        throw new Error(`Audio file not found: ${audioFile.path}`);
       }
-      
+
       args.push("-i", audioFile.path);
     });
 
@@ -346,8 +347,10 @@ function buildFFmpegArgs(inputDir, outputFile, width, height, fps, quality, audi
         args.push(
           "-filter_complex",
           `[1:a]adelay=${Math.round(audioFile.startTime * 1000)}|${Math.round(audioFile.startTime * 1000)}[audio]`,
-          "-map", "0:v",
-          "-map", "[audio]"
+          "-map",
+          "0:v",
+          "-map",
+          "[audio]"
         );
       } else {
         // No delay needed
@@ -355,13 +358,13 @@ function buildFFmpegArgs(inputDir, outputFile, width, height, fps, quality, audi
       }
     } else {
       // Multiple audio files - mix them together
-      let filterParts = [];
-      let inputMaps = [];
-      
+      const filterParts = [];
+      const inputMaps = [];
+
       audioFiles.forEach((audioFile, index) => {
         const inputIndex = index + 1; // +1 because video is input 0
         let audioFilter = `[${inputIndex}:a]`;
-        
+
         // Apply volume if specified
         if (audioFile.volume !== undefined && audioFile.volume !== 1.0) {
           audioFilter += `volume=${audioFile.volume}[a${index}]`;
@@ -369,7 +372,7 @@ function buildFFmpegArgs(inputDir, outputFile, width, height, fps, quality, audi
         } else {
           inputMaps.push(audioFilter);
         }
-        
+
         // Apply delay if needed
         if (audioFile.startTime > 0) {
           const delayMs = Math.round(audioFile.startTime * 1000);
@@ -381,26 +384,30 @@ function buildFFmpegArgs(inputDir, outputFile, width, height, fps, quality, audi
             inputMaps[inputMaps.length - 1] = `[ad${index}]`;
           }
         }
-        
+
         if (audioFilter !== `[${inputIndex}:a]`) {
           filterParts.push(audioFilter);
         }
       });
-      
+
       // Mix all audio inputs
-      const mixFilter = `${inputMaps.join('')}amix=inputs=${audioFiles.length}:duration=longest[audio]`;
-      
-      const fullFilter = filterParts.length > 0 
-        ? `${filterParts.join('; ')}; ${mixFilter}`
-        : mixFilter;
-      
+      const mixFilter = `${inputMaps.join("")}amix=inputs=${audioFiles.length}:duration=longest[audio]`;
+
+      const fullFilter =
+        filterParts.length > 0
+          ? `${filterParts.join("; ")}; ${mixFilter}`
+          : mixFilter;
+
       args.push(
-        "-filter_complex", fullFilter,
-        "-map", "0:v",
-        "-map", "[audio]"
+        "-filter_complex",
+        fullFilter,
+        "-map",
+        "0:v",
+        "-map",
+        "[audio]"
       );
     }
-    
+
     // Audio codec settings
     args.push("-c:a", "aac", "-b:a", "128k");
   }
@@ -421,7 +428,7 @@ function buildFFmpegArgs(inputDir, outputFile, width, height, fps, quality, audi
     "+faststart",
     outputFile
   );
-  
+
   return args;
 }
 

@@ -52,7 +52,7 @@ export function StickerItem({
       name: name || icon,
       imageUrl,
       hasError,
-      isLoading
+      isLoading,
     });
     onSelect(iconId, name || icon);
   };

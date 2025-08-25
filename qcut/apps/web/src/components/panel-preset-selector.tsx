@@ -9,7 +9,12 @@ import {
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
 import { ChevronDown, LayoutPanelTop, RotateCcw } from "lucide-react";
-import { usePanelStore, type PanelPreset, PRESET_LABELS, PRESET_DESCRIPTIONS } from "@/stores/panel-store";
+import {
+  usePanelStore,
+  type PanelPreset,
+  PRESET_LABELS,
+  PRESET_DESCRIPTIONS,
+} from "@/stores/panel-store";
 
 const presets = Object.keys(PRESET_LABELS) as PanelPreset[];
 
@@ -24,16 +29,19 @@ export function PanelPresetSelector() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button 
+        <Button
           type="button"
-          variant="secondary" 
-          size="sm" 
+          variant="secondary"
+          size="sm"
           className="h-8 px-2 text-xs"
           title="Panel Presets"
         >
           <LayoutPanelTop className="h-4 w-4 mr-1" aria-label="Panel presets" />
           {PRESET_LABELS[activePreset]}
-          <ChevronDown className="h-3 w-3 ml-1" aria-label="Open presets menu" />
+          <ChevronDown
+            className="h-3 w-3 ml-1"
+            aria-label="Open presets menu"
+          />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent>

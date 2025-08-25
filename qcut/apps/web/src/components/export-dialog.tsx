@@ -417,8 +417,15 @@ export function ExportDialog() {
                 disabled={exportProgress.progress.isExporting}
               >
                 <div className="flex items-start space-x-2">
-                  <RadioGroupItem value="standard" id="standard" className="mt-0.5" />
-                  <Label htmlFor="standard" className="text-sm cursor-pointer flex-1 min-w-0">
+                  <RadioGroupItem
+                    value="standard"
+                    id="standard"
+                    className="mt-0.5"
+                  />
+                  <Label
+                    htmlFor="standard"
+                    className="text-sm cursor-pointer flex-1 min-w-0"
+                  >
                     <div className="flex items-center gap-1">
                       <span className="flex-shrink-0">📹</span>
                       <span className="truncate">Standard MediaRecorder</span>
@@ -427,12 +434,21 @@ export function ExportDialog() {
                 </div>
                 {exportSettings.ffmpegAvailable && (
                   <div className="flex items-start space-x-2">
-                    <RadioGroupItem value="ffmpeg" id="ffmpeg" className="mt-0.5" />
-                    <Label htmlFor="ffmpeg" className="text-sm cursor-pointer flex-1 min-w-0">
+                    <RadioGroupItem
+                      value="ffmpeg"
+                      id="ffmpeg"
+                      className="mt-0.5"
+                    />
+                    <Label
+                      htmlFor="ffmpeg"
+                      className="text-sm cursor-pointer flex-1 min-w-0"
+                    >
                       <div className="flex items-center gap-1 flex-wrap">
                         <span className="flex-shrink-0">🚀</span>
                         <span className="whitespace-nowrap">FFmpeg WASM</span>
-                        <span className="text-xs text-muted-foreground whitespace-nowrap">(5x faster)</span>
+                        <span className="text-xs text-muted-foreground whitespace-nowrap">
+                          (5x faster)
+                        </span>
                       </div>
                     </Label>
                   </div>
@@ -440,11 +456,18 @@ export function ExportDialog() {
                 {isElectron() && (
                   <div className="flex items-start space-x-2">
                     <RadioGroupItem value="cli" id="cli" className="mt-0.5" />
-                    <Label htmlFor="cli" className="text-sm cursor-pointer flex-1 min-w-0">
+                    <Label
+                      htmlFor="cli"
+                      className="text-sm cursor-pointer flex-1 min-w-0"
+                    >
                       <div className="flex items-center gap-1 flex-wrap">
                         <span className="flex-shrink-0">⚡</span>
-                        <span className="whitespace-nowrap">Native FFmpeg CLI</span>
-                        <span className="text-xs text-muted-foreground whitespace-nowrap">(10x faster)</span>
+                        <span className="whitespace-nowrap">
+                          Native FFmpeg CLI
+                        </span>
+                        <span className="text-xs text-muted-foreground whitespace-nowrap">
+                          (10x faster)
+                        </span>
                       </div>
                     </Label>
                   </div>

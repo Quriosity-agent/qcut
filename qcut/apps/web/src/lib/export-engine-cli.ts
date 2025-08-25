@@ -5,15 +5,14 @@ import { MediaItem } from "@/stores/media-store";
 import { debugLog, debugError, debugWarn } from "@/lib/debug-config";
 
 // Module-level cached dynamic imports to avoid per-frame overhead
-let stickersModulePromise:
-  | Promise<typeof import("@/stores/stickers-overlay-store")>
-  | null = null;
-let mediaModulePromise:
-  | Promise<typeof import("@/stores/media-store")>
-  | null = null;
-let stickerHelperModulePromise:
-  | Promise<typeof import("@/lib/stickers/sticker-export-helper")>
-  | null = null;
+let stickersModulePromise: Promise<
+  typeof import("@/stores/stickers-overlay-store")
+> | null = null;
+let mediaModulePromise: Promise<typeof import("@/stores/media-store")> | null =
+  null;
+let stickerHelperModulePromise: Promise<
+  typeof import("@/lib/stickers/sticker-export-helper")
+> | null = null;
 
 export type ProgressCallback = (progress: number, message: string) => void;
 
@@ -308,9 +307,8 @@ export class CLIExportEngine extends ExportEngine {
 
     try {
       // Import stickers overlay store dynamically (cached)
-      const { useStickersOverlayStore } = await (stickersModulePromise ||= import(
-        "@/stores/stickers-overlay-store"
-      ));
+      const { useStickersOverlayStore } = await (stickersModulePromise ||=
+        import("@/stores/stickers-overlay-store"));
       const { useMediaStore } = await (mediaModulePromise ||= import(
         "@/stores/media-store"
       ));
@@ -336,9 +334,8 @@ export class CLIExportEngine extends ExportEngine {
       );
 
       // Use the existing sticker export helper (cached)
-      const { getStickerExportHelper } = await (stickerHelperModulePromise ||= import(
-        "@/lib/stickers/sticker-export-helper"
-      ));
+      const { getStickerExportHelper } = await (stickerHelperModulePromise ||=
+        import("@/lib/stickers/sticker-export-helper"));
       const stickerHelper = getStickerExportHelper();
 
       debugLog("[CLI_STICKER_DEBUG] Rendering stickers to canvas...");
@@ -403,25 +400,32 @@ export class CLIExportEngine extends ExportEngine {
     return activeElements;
   }
 
-  private async prepareAudioFiles(): Promise<Array<{ path: string; startTime: number; volume: number }>> {
-    const results: Array<{ path: string; startTime: number; volume: number }> = [];
+  private async prepareAudioFiles(): Promise<
+    Array<{ path: string; startTime: number; volume: number }>
+  > {
+    const results: Array<{ path: string; startTime: number; volume: number }> =
+      [];
     const { useTimelineStore } = await import("@/stores/timeline-store");
     const { useMediaStore } = await import("@/stores/media-store");
-    
+
     const audioElements = useTimelineStore.getState().getAudioElements();
     const concurrency = 4;
     const queue = [...audioElements];
     const workers = Array.from({ length: concurrency }, async () => {
       while (queue.length) {
         const audioElement = queue.shift()!;
-        const mediaItem = useMediaStore.getState().mediaItems.find(
-          (m) => m.id === (audioElement.element as any).mediaId
-        );
+        const mediaItem = useMediaStore
+          .getState()
+          .mediaItems.find(
+            (m) => m.id === (audioElement.element as any).mediaId
+          );
         if (!mediaItem?.url) continue;
         try {
           const response = await fetch(mediaItem.url);
           if (!response.ok) {
-            debugWarn(`[CLIExportEngine] Failed to fetch audio: ${mediaItem.name}`);
+            debugWarn(
+              `[CLIExportEngine] Failed to fetch audio: ${mediaItem.name}`
+            );
             continue;
           }
           const arrayBuffer = await response.arrayBuffer();
@@ -437,27 +441,36 @@ export class CLIExportEngine extends ExportEngine {
           };
           const ext = guessExt();
           const filename = `audio_${this.sessionId}_${(audioElement.element as any).id}.${ext}`;
-          const result = await window.electronAPI?.invoke("save-audio-for-export", {
-            audioData: arrayBuffer,
-            filename,
-          });
+          const result = await window.electronAPI?.invoke(
+            "save-audio-for-export",
+            {
+              audioData: arrayBuffer,
+              filename,
+            }
+          );
           if (result?.success) {
             results.push({
               path: result.path,
               startTime: audioElement.absoluteStart ?? 0,
               volume: (audioElement.element as any).volume ?? 1.0,
             });
-            debugLog(`[CLIExportEngine] Prepared audio file: ${filename} at ${audioElement.absoluteStart}s`);
+            debugLog(
+              `[CLIExportEngine] Prepared audio file: ${filename} at ${audioElement.absoluteStart}s`
+            );
           } else {
-            debugWarn(`[CLIExportEngine] Failed to save audio file: ${result?.error}`);
+            debugWarn(
+              `[CLIExportEngine] Failed to save audio file: ${result?.error}`
+            );
           }
         } catch (error) {
-          debugError(`[CLIExportEngine] Error preparing audio file:`, error);
+          debugError("[CLIExportEngine] Error preparing audio file:", error);
         }
       }
     });
     await Promise.all(workers);
-    debugLog(`[CLIExportEngine] Prepared ${results.length} audio files for export`);
+    debugLog(
+      `[CLIExportEngine] Prepared ${results.length} audio files for export`
+    );
     return results;
   }
 
@@ -627,10 +640,10 @@ export class CLIExportEngine extends ExportEngine {
 
     // Progress: 5% - Preparing audio files
     progressCallback?.(5, "Preparing audio files...");
-    
+
     // Prepare audio files for FFmpeg
     const audioFiles = await this.prepareAudioFiles();
-    
+
     debugLog(`[CLI] Prepared ${audioFiles.length} audio files for export`);
 
     // Progress: 10% - Starting video compilation
@@ -644,106 +657,144 @@ export class CLIExportEngine extends ExportEngine {
       quality: this.settings.quality || "medium",
       audioFiles, // Pass audio files to FFmpeg handler
     };
-    
-    console.log('[CLI Export] Starting FFmpeg export with options:', exportOptions);
+
+    console.log(
+      "[CLI Export] Starting FFmpeg export with options:",
+      exportOptions
+    );
     // Force detailed logging of audio files
     audioFiles.forEach((audioFile, index) => {
       console.log(`[CLI Export] Audio file ${index}:`, {
         path: audioFile.path,
         startTime: audioFile.startTime,
         volume: audioFile.volume,
-        isBlob: audioFile.path?.startsWith('blob:'),
-        isData: audioFile.path?.startsWith('data:'),
+        isBlob: audioFile.path?.startsWith("blob:"),
+        isData: audioFile.path?.startsWith("data:"),
         pathType: typeof audioFile.path,
-        pathLength: audioFile.path?.length
+        pathLength: audioFile.path?.length,
       });
       console.log(`[CLI Export] Audio file ${index} raw path:`, audioFile.path);
     });
-    
+
     console.log(`[CLI Export] Total audio files: ${audioFiles.length}`);
-    
+
     // CRITICAL: Check if audio files exist before sending to FFmpeg
     for (let i = 0; i < audioFiles.length; i++) {
       const audioFile = audioFiles[i];
-      console.log(`[CLI Export] Checking if audio file ${i} exists via Electron...`);
-      
+      console.log(
+        `[CLI Export] Checking if audio file ${i} exists via Electron...`
+      );
+
       try {
         // Use Electron to check if the file exists
-        const exists = await window.electronAPI.invoke('file-exists', audioFile.path);
+        const exists = await window.electronAPI.invoke(
+          "file-exists",
+          audioFile.path
+        );
         console.log(`[CLI Export] Audio file ${i} exists: ${exists}`);
-        
+
         if (!exists) {
           const error = `Audio file does not exist: ${audioFile.path}`;
           console.error(`[CLI Export] ${error}`);
           throw new Error(error);
         }
-        
+
         // Also check the file size to ensure it's not empty/corrupted
         try {
-          const fileInfo = await window.electronAPI.invoke('get-file-info', audioFile.path);
-          console.log(`[CLI Export] Audio file ${i} size: ${fileInfo.size} bytes`);
-          
+          const fileInfo = await window.electronAPI.invoke(
+            "get-file-info",
+            audioFile.path
+          );
+          console.log(
+            `[CLI Export] Audio file ${i} size: ${fileInfo.size} bytes`
+          );
+
           if (fileInfo.size === 0) {
             const error = `Audio file is empty: ${audioFile.path}`;
             console.error(`[CLI Export] ${error}`);
             throw new Error(error);
           }
-          
+
           // CRITICAL: Validate audio file format with ffprobe
-          console.log(`[CLI Export] Validating audio file format with ffprobe...`);
+          console.log(
+            "[CLI Export] Validating audio file format with ffprobe..."
+          );
           try {
-            const audioValidation = await window.electronAPI.invoke('validate-audio-file', audioFile.path);
-            console.log(`[CLI Export] Audio validation result:`, audioValidation);
-            
+            const audioValidation = await window.electronAPI.invoke(
+              "validate-audio-file",
+              audioFile.path
+            );
+            console.log(
+              "[CLI Export] Audio validation result:",
+              audioValidation
+            );
+
             if (!audioValidation.valid) {
               const error = `Invalid audio file format: ${audioFile.path} - ${audioValidation.error}`;
               console.error(`[CLI Export] ${error}`);
               throw new Error(error);
             }
-            
-            console.log(`[CLI Export] Audio file validated successfully:`, {
+
+            console.log("[CLI Export] Audio file validated successfully:", {
               hasAudio: audioValidation.hasAudio,
               duration: audioValidation.duration,
-              streams: audioValidation.info?.streams?.length || 0
+              streams: audioValidation.info?.streams?.length || 0,
             });
-            
+
             // CRITICAL FIX: Skip files that have no audio streams
             if (!audioValidation.hasAudio) {
-              console.warn(`[CLI Export] SKIPPING: File has no audio streams: ${audioFile.path}`);
-              console.log(`[CLI Export] Removing audio file from export list...`);
+              console.warn(
+                `[CLI Export] SKIPPING: File has no audio streams: ${audioFile.path}`
+              );
+              console.log(
+                "[CLI Export] Removing audio file from export list..."
+              );
               // Remove this audio file from the array
               audioFiles.splice(i, 1);
               i--; // Adjust index since we removed an item
-              continue;
             }
           } catch (validationError) {
-            console.error(`[CLI Export] Audio validation failed:`, validationError);
+            console.error(
+              "[CLI Export] Audio validation failed:",
+              validationError
+            );
             // Continue anyway for now - don't block the export
-            console.log(`[CLI Export] Continuing with export despite validation failure...`);
+            console.log(
+              "[CLI Export] Continuing with export despite validation failure..."
+            );
           }
         } catch (infoError) {
-          console.error(`[CLI Export] Failed to get audio file info:`, infoError);
+          console.error(
+            "[CLI Export] Failed to get audio file info:",
+            infoError
+          );
         }
       } catch (checkError) {
-        console.error(`[CLI Export] Failed to check audio file existence:`, checkError);
+        console.error(
+          "[CLI Export] Failed to check audio file existence:",
+          checkError
+        );
         throw new Error(`Failed to validate audio file: ${audioFile.path}`);
       }
     }
 
     // Note: Progress updates would need to be added to electronAPI
     // For now, use basic invoke without progress tracking
-    
+
     try {
-      const result = await window.electronAPI.invoke("export-video-cli", exportOptions);
-      console.log('[CLI Export] FFmpeg export completed successfully:', result);
+      const result = await window.electronAPI.invoke(
+        "export-video-cli",
+        exportOptions
+      );
+      console.log("[CLI Export] FFmpeg export completed successfully:", result);
       return result.outputFile;
     } catch (error) {
-      console.error('[CLI Export] FFmpeg export failed:', error);
-      console.error('[CLI Export] Error details:', {
+      console.error("[CLI Export] FFmpeg export failed:", error);
+      console.error("[CLI Export] Error details:", {
         message: error instanceof Error ? error.message : String(error),
         code: (error as any)?.code,
         stderr: (error as any)?.stderr,
-        stdout: (error as any)?.stdout
+        stdout: (error as any)?.stdout,
       });
       throw error;
     }
@@ -812,9 +863,14 @@ export class CLIExportEngine extends ExportEngine {
 
     try {
       await window.electronAPI.invoke("cleanup-export-session", this.sessionId);
-      debugLog(`[CLIExportEngine] 🧹 Cleaned up export session: ${this.sessionId}`);
+      debugLog(
+        `[CLIExportEngine] 🧹 Cleaned up export session: ${this.sessionId}`
+      );
     } catch (error) {
-      debugWarn(`[CLIExportEngine] ⚠️  Failed to cleanup session ${this.sessionId}:`, error);
+      debugWarn(
+        `[CLIExportEngine] ⚠️  Failed to cleanup session ${this.sessionId}:`,
+        error
+      );
     }
   }
 }

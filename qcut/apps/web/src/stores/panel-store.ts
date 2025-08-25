@@ -2,7 +2,11 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { debugLog, debugError, isDebugEnabled } from "@/lib/debug-config";
 
-export type PanelPreset = "default" | "media" | "inspector" | "vertical-preview";
+export type PanelPreset =
+  | "default"
+  | "media"
+  | "inspector"
+  | "vertical-preview";
 
 // DEBUG: Trace infinite loop on project click
 let updateCounter = 0;
@@ -174,20 +178,20 @@ interface PanelSizes {
 
 const PRESET_CONFIGS: Record<PanelPreset, PanelSizes> = {
   default: {
-    toolsPanel: 20,     // Match current DEFAULT_PANEL_SIZES
-    previewPanel: 55,   // Match current DEFAULT_PANEL_SIZES  
+    toolsPanel: 20, // Match current DEFAULT_PANEL_SIZES
+    previewPanel: 55, // Match current DEFAULT_PANEL_SIZES
     propertiesPanel: 25, // Match current DEFAULT_PANEL_SIZES
-    mainContent: 70,    // Match current DEFAULT_PANEL_SIZES
-    timeline: 30,       // Match current DEFAULT_PANEL_SIZES
-    aiPanelWidth: 22,   // Match current DEFAULT_PANEL_SIZES
+    mainContent: 70, // Match current DEFAULT_PANEL_SIZES
+    timeline: 30, // Match current DEFAULT_PANEL_SIZES
+    aiPanelWidth: 22, // Match current DEFAULT_PANEL_SIZES
     aiPanelMinWidth: 4, // Match current DEFAULT_PANEL_SIZES
   },
   media: {
-    toolsPanel: 30,     // Larger media panel focus
-    previewPanel: 45,   
+    toolsPanel: 30, // Larger media panel focus
+    previewPanel: 45,
     propertiesPanel: 25,
-    mainContent: 75,    // 75% main content height
-    timeline: 25,       // 25% timeline height (75 + 25 = 100)
+    mainContent: 75, // 75% main content height
+    timeline: 25, // 25% timeline height (75 + 25 = 100)
     aiPanelWidth: 22,
     aiPanelMinWidth: 4,
   },
@@ -195,17 +199,17 @@ const PRESET_CONFIGS: Record<PanelPreset, PanelSizes> = {
     toolsPanel: 20,
     previewPanel: 55,
     propertiesPanel: 25,
-    mainContent: 75,    // 75% main content height
-    timeline: 25,       // 25% timeline height (75 + 25 = 100)
+    mainContent: 75, // 75% main content height
+    timeline: 25, // 25% timeline height (75 + 25 = 100)
     aiPanelWidth: 22,
     aiPanelMinWidth: 4,
   },
   "vertical-preview": {
     toolsPanel: 25,
-    previewPanel: 40,   // Optimized for vertical videos
+    previewPanel: 40, // Optimized for vertical videos
     propertiesPanel: 35, // Larger properties panel
-    mainContent: 75,    // 75% main content height
-    timeline: 25,       // 25% timeline height (75 + 25 = 100)
+    mainContent: 75, // 75% main content height
+    timeline: 25, // 25% timeline height (75 + 25 = 100)
     aiPanelWidth: 22,
     aiPanelMinWidth: 4,
   },
@@ -225,7 +229,7 @@ const PRESET_DESCRIPTIONS: Record<PanelPreset, string> = {
   "vertical-preview": "Full height preview on right for vertical videos",
 };
 
-// Export for use in other components  
+// Export for use in other components
 export { PRESET_CONFIGS, PRESET_LABELS, PRESET_DESCRIPTIONS };
 
 interface PanelState {
@@ -251,7 +255,7 @@ interface PanelState {
   setTimeline: (size: number) => void;
   setAiPanelWidth: (size: number) => void;
   normalizeHorizontalPanels: () => void;
-  
+
   // Preset actions
   setActivePreset: (preset: PanelPreset) => void;
   resetPreset: (preset: PanelPreset) => void;
@@ -436,59 +440,75 @@ export const usePanelStore = create<PanelState>()(
 
       // Preset methods
       setActivePreset: (preset) => {
-        const { 
-          activePreset: currentPreset, 
+        const {
+          activePreset: currentPreset,
           presetCustomSizes,
-          getCurrentPresetSizes
+          getCurrentPresetSizes,
         } = get();
-        
+
         // Switching preset
-        
+
         // Save current preset sizes before switching
         const updatedPresetCustomSizes = {
           ...presetCustomSizes,
           [currentPreset]: getCurrentPresetSizes(),
         };
-        
+
         // Load new preset sizes
         const defaultSizes = PRESET_CONFIGS[preset];
         const customSizes = updatedPresetCustomSizes[preset] || {};
         const finalSizes = { ...defaultSizes, ...customSizes };
-        
+
         // Applying preset sizes
-        
+
         set({
           activePreset: preset,
           presetCustomSizes: updatedPresetCustomSizes,
           ...finalSizes,
         });
       },
-      
+
       resetPreset: (preset) => {
         const { presetCustomSizes, activePreset, resetCounter } = get();
         const defaultSizes = PRESET_CONFIGS[preset];
-        
+
         const newPresetCustomSizes = {
           ...presetCustomSizes,
           [preset]: {},
         };
-        
+
         const updates: Partial<PanelState> = {
           presetCustomSizes: newPresetCustomSizes,
           resetCounter: resetCounter + 1,
         };
-        
+
         // If resetting the currently active preset, apply the default sizes
         if (preset === activePreset) {
           Object.assign(updates, defaultSizes);
         }
-        
+
         set(updates);
       },
-      
+
       getCurrentPresetSizes: () => {
-        const { toolsPanel, previewPanel, propertiesPanel, mainContent, timeline, aiPanelWidth, aiPanelMinWidth } = get();
-        return { toolsPanel, previewPanel, propertiesPanel, mainContent, timeline, aiPanelWidth, aiPanelMinWidth };
+        const {
+          toolsPanel,
+          previewPanel,
+          propertiesPanel,
+          mainContent,
+          timeline,
+          aiPanelWidth,
+          aiPanelMinWidth,
+        } = get();
+        return {
+          toolsPanel,
+          previewPanel,
+          propertiesPanel,
+          mainContent,
+          timeline,
+          aiPanelWidth,
+          aiPanelMinWidth,
+        };
       },
     }),
     {

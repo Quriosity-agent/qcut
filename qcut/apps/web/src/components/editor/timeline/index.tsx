@@ -387,9 +387,11 @@ export function Timeline() {
           const handleStickerDrop = async () => {
             try {
               // Import stickers store dynamically
-              const { useStickersStore } = await import("@/stores/stickers-store");
+              const { useStickersStore } = await import(
+                "@/stores/stickers-store"
+              );
               const { downloadSticker } = useStickersStore.getState();
-              
+
               // Download the sticker as a blob
               const parts = dragData.iconName.split(":");
               if (parts.length !== 2) {
@@ -398,12 +400,14 @@ export function Timeline() {
               }
               const [collection, icon] = parts;
               const blob = await downloadSticker(collection, icon);
-              
+
               if (blob && activeProject) {
                 // Convert blob to File
                 const fileName = `${dragData.iconName.replace(":", "-")}.svg`;
-                const file = new File([blob], fileName, { type: "image/svg+xml" });
-                
+                const file = new File([blob], fileName, {
+                  type: "image/svg+xml",
+                });
+
                 // Create media item from sticker
                 const mediaItem = {
                   id: generateUUID(),
@@ -416,10 +420,13 @@ export function Timeline() {
                   duration: 5, // 5 seconds default
                   ephemeral: false, // Stickers added to timeline are not ephemeral
                 };
-                
+
                 // Add to media store
                 if (addMediaItem) {
-                  const newItemId = await addMediaItem(activeProject.id, mediaItem);
+                  const newItemId = await addMediaItem(
+                    activeProject.id,
+                    mediaItem
+                  );
                   // Get the latest state from the dynamically imported store to avoid stale closure
                   const { getMediaStore } = await import("@/utils/lazy-stores");
                   const MediaStore = await getMediaStore();
@@ -437,7 +444,7 @@ export function Timeline() {
               toast.error("Failed to add sticker to timeline");
             }
           };
-          
+
           handleStickerDrop();
         } else {
           // Handle media items

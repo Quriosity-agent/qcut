@@ -10,13 +10,13 @@ export const Route = createFileRoute("/blog")({
 
 function BlogPage() {
   const handleRedirectToGitHub = () => {
-    if (typeof window !== 'undefined' && window.require) {
+    if (typeof window !== "undefined" && window.require) {
       // Running in Electron
-      const { shell } = window.require('electron');
-      shell.openExternal('https://github.com/donghaozhang/qcut');
+      const { shell } = window.require("electron");
+      shell.openExternal("https://github.com/donghaozhang/qcut");
     } else {
       // Running in browser
-      window.open('https://github.com/donghaozhang/qcut', '_blank');
+      window.open("https://github.com/donghaozhang/qcut", "_blank");
     }
   };
 
@@ -36,10 +36,11 @@ function BlogPage() {
               Latest Updates
             </h1>
             <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto leading-relaxed">
-              Stay up to date with the latest news, features, and updates about QCut on our GitHub repository.
+              Stay up to date with the latest news, features, and updates about
+              QCut on our GitHub repository.
             </p>
-            
-            <Button 
+
+            <Button
               onClick={handleRedirectToGitHub}
               size="lg"
               className="gap-2"
@@ -47,9 +48,10 @@ function BlogPage() {
               <ExternalLink className="w-4 h-4" />
               Visit QCut on GitHub
             </Button>
-            
+
             <p className="text-sm text-muted-foreground mt-4">
-              Find release notes, documentation, and discussions at<br />
+              Find release notes, documentation, and discussions at
+              <br />
               <span className="font-mono">github.com/donghaozhang/qcut</span>
             </p>
           </div>

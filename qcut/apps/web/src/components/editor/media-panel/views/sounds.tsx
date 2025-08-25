@@ -88,12 +88,13 @@ function SoundEffectsView() {
   );
 
   // Use infinite scroll hook
-  const { scrollAreaRef, handleScroll: handleInfiniteScroll } = useInfiniteScroll({
-    onLoadMore: loadMore,
-    hasMore: hasNextPage,
-    isLoading: isLoadingMore || isSearching,
-    threshold: 200,
-  });
+  const { scrollAreaRef, handleScroll: handleInfiniteScroll } =
+    useInfiniteScroll({
+      onLoadMore: loadMore,
+      hasMore: hasNextPage,
+      isLoading: isLoadingMore || isSearching,
+      threshold: 200,
+    });
 
   // Load saved sounds and restore scroll position when component mounts
   useEffect(() => {
@@ -139,15 +140,18 @@ function SoundEffectsView() {
     if (sound.previewUrl) {
       try {
         let audioUrl = sound.previewUrl;
-        
+
         // If in Electron, download preview first to avoid CORS issues
         if (window.electronAPI?.invoke) {
           console.log("Downloading preview for local playback...");
-          const result = await window.electronAPI.invoke("sounds:download-preview", {
-            url: sound.previewUrl,
-            id: sound.id
-          });
-          
+          const result = await window.electronAPI.invoke(
+            "sounds:download-preview",
+            {
+              url: sound.previewUrl,
+              id: sound.id,
+            }
+          );
+
           if (result.success) {
             audioUrl = result.path;
             console.log("Playing from local file:", audioUrl);
@@ -156,7 +160,7 @@ function SoundEffectsView() {
             // Try direct playback as fallback
           }
         }
-        
+
         const audio = new Audio(audioUrl);
         audio.addEventListener("ended", () => {
           setPlayingId(null);
@@ -165,9 +169,9 @@ function SoundEffectsView() {
           console.warn("Audio playback error:", e);
           setPlayingId(null);
         });
-        
+
         await audio.play();
-        
+
         setAudioElement(audio);
         setPlayingId(sound.id);
       } catch (error) {

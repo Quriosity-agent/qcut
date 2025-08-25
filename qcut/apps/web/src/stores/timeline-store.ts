@@ -147,7 +147,7 @@ interface TimelineStore {
     splitTime: number
   ) => void;
   separateAudio: (trackId: string, elementId: string) => string | null;
-  
+
   // Get all audio elements for export
   getAudioElements: () => Array<{
     element: TimelineElement;

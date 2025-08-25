@@ -1,35 +1,37 @@
-const { execFile } = require('child_process');
-const path = require('path');
-const fs = require('fs');
-const crypto = require('crypto');
+const { execFile } = require("child_process");
+const path = require("path");
+const fs = require("fs");
+const crypto = require("crypto");
 
 // Official SHA256 hash for rcedit v2.0.0 x64
 // You should verify this from the official release page
-const RCEDIT_SHA256 = '02e8e40ad74aa2a837053a2be23313fb27cfdb2b6e52bb0e53bc25593c8762e2';
-const RCEDIT_URL = 'https://github.com/electron/rcedit/releases/download/v2.0.0/rcedit-x64.exe';
+const RCEDIT_SHA256 =
+  "02e8e40ad74aa2a837053a2be23313fb27cfdb2b6e52bb0e53bc25593c8762e2";
+const RCEDIT_URL =
+  "https://github.com/electron/rcedit/releases/download/v2.0.0/rcedit-x64.exe";
 
 async function verifyFileHash(filePath, expectedHash) {
   return new Promise((resolve, reject) => {
-    const hash = crypto.createHash('sha256');
+    const hash = crypto.createHash("sha256");
     const stream = fs.createReadStream(filePath);
-    
-    stream.on('data', data => hash.update(data));
-    stream.on('end', () => {
-      const fileHash = hash.digest('hex');
+
+    stream.on("data", (data) => hash.update(data));
+    stream.on("end", () => {
+      const fileHash = hash.digest("hex");
       resolve(fileHash.toLowerCase() === expectedHash.toLowerCase());
     });
-    stream.on('error', reject);
+    stream.on("error", reject);
   });
 }
 
 async function fixExeIcon() {
   // Check platform - this script is Windows-only
-  if (process.platform !== 'win32') {
-    process.stderr.write('This script is intended for Windows only.\n');
+  if (process.platform !== "win32") {
+    process.stderr.write("This script is intended for Windows only.\n");
     process.exitCode = 1;
     return;
   }
-  
+
   const getArg = (flag) => {
     const i = process.argv.indexOf(flag);
     return i !== -1 ? process.argv[i + 1] : undefined;
@@ -39,86 +41,106 @@ async function fixExeIcon() {
     return i !== -1 ? process.argv[i + 1] : undefined;
   };
   const exePath =
-    getArg('--exe') || path.resolve(process.cwd(), 'dist', 'win-unpacked', 'QCut Video Editor.exe');
+    getArg("--exe") ||
+    path.resolve(
+      process.cwd(),
+      "dist",
+      "win-unpacked",
+      "QCut Video Editor.exe"
+    );
   const icoPath =
-    getArg('--ico') || path.resolve(process.cwd(), 'build', 'icon.ico');
-  
+    getArg("--ico") || path.resolve(process.cwd(), "build", "icon.ico");
+
   // Check if files exist
   if (!fs.existsSync(exePath)) {
     process.stderr.write(`Executable not found at: ${exePath}\n`);
     process.exitCode = 1;
     return;
   }
-  
+
   if (!fs.existsSync(icoPath)) {
     process.stderr.write(`Icon not found at: ${icoPath}\n`);
     process.exitCode = 1;
     return;
   }
-  
-  process.stdout.write(`Fixing executable icon...\nExe path: ${exePath}\nIcon path: ${icoPath}\n`);
-  
+
+  process.stdout.write(
+    `Fixing executable icon...\nExe path: ${exePath}\nIcon path: ${icoPath}\n`
+  );
+
   // Download rcedit if not available or verify existing one
-  const rceditPath = path.join(__dirname, 'rcedit.exe');
-  
+  const rceditPath = path.join(__dirname, "rcedit.exe");
+
   let needsDownload = false;
-  
-  if (!fs.existsSync(rceditPath)) {
-    needsDownload = true;
-  } else {
+
+  if (fs.existsSync(rceditPath)) {
     // Verify existing rcedit integrity
-    process.stdout.write('Verifying existing rcedit integrity...\n');
+    process.stdout.write("Verifying existing rcedit integrity...\n");
     const isValid = await verifyFileHash(rceditPath, RCEDIT_SHA256);
-    if (!isValid) {
-      process.stderr.write('Existing rcedit.exe failed integrity check. Re-downloading...\n');
+    if (isValid) {
+      process.stdout.write("Existing rcedit.exe passed integrity check.\n");
+    } else {
+      process.stderr.write(
+        "Existing rcedit.exe failed integrity check. Re-downloading...\n"
+      );
       fs.unlinkSync(rceditPath);
       needsDownload = true;
-    } else {
-      process.stdout.write('Existing rcedit.exe passed integrity check.\n');
     }
+  } else {
+    needsDownload = true;
   }
-  
+
   if (needsDownload) {
-    process.stdout.write('Downloading rcedit...\n');
-    const https = require('https');
+    process.stdout.write("Downloading rcedit...\n");
+    const https = require("https");
     const file = fs.createWriteStream(rceditPath);
-    
+
     await new Promise((resolve, reject) => {
-      https.get(RCEDIT_URL, (response) => {
-        if (response.statusCode !== 200) {
-          reject(new Error(`Failed to download: HTTP ${response.statusCode}`));
-          return;
-        }
-        response.pipe(file);
-        file.on('finish', () => {
-          file.close();
-          process.stdout.write('rcedit downloaded successfully\n');
-          resolve();
-        });
-      }).on('error', reject);
+      https
+        .get(RCEDIT_URL, (response) => {
+          if (response.statusCode !== 200) {
+            reject(
+              new Error(`Failed to download: HTTP ${response.statusCode}`)
+            );
+            return;
+          }
+          response.pipe(file);
+          file.on("finish", () => {
+            file.close();
+            process.stdout.write("rcedit downloaded successfully\n");
+            resolve();
+          });
+        })
+        .on("error", reject);
     });
-    
+
     // Verify downloaded file integrity
-    process.stdout.write('Verifying downloaded rcedit integrity...\n');
+    process.stdout.write("Verifying downloaded rcedit integrity...\n");
     const isValid = await verifyFileHash(rceditPath, RCEDIT_SHA256);
     if (!isValid) {
       fs.unlinkSync(rceditPath);
-      throw new Error('Downloaded rcedit.exe failed integrity check. SHA256 mismatch.');
+      throw new Error(
+        "Downloaded rcedit.exe failed integrity check. SHA256 mismatch."
+      );
     }
-    process.stdout.write('Downloaded rcedit.exe passed integrity check.\n');
+    process.stdout.write("Downloaded rcedit.exe passed integrity check.\n");
   }
-  
+
   // Use execFile instead of exec for better security
-  execFile(rceditPath, [exePath, '--set-icon', icoPath], (error, stdout, stderr) => {
-    if (error) {
-      process.stderr.write(`Error setting icon: ${error?.stack || error}\n`);
-      process.exitCode = 1;
-      return;
+  execFile(
+    rceditPath,
+    [exePath, "--set-icon", icoPath],
+    (error, stdout, stderr) => {
+      if (error) {
+        process.stderr.write(`Error setting icon: ${error?.stack || error}\n`);
+        process.exitCode = 1;
+        return;
+      }
+      process.stdout.write("Icon set successfully!\n");
+      if (stdout) process.stdout.write(`Output: ${stdout}\n`);
+      if (stderr) process.stderr.write(`Stderr: ${stderr}\n`);
     }
-    process.stdout.write('Icon set successfully!\n');
-    if (stdout) process.stdout.write(`Output: ${stdout}\n`);
-    if (stderr) process.stderr.write(`Stderr: ${stderr}\n`);
-  });
+  );
 }
 
 fixExeIcon().catch((err) => {

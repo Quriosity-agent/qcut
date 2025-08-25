@@ -336,7 +336,7 @@ export function StickersView() {
         console.log("[StickersView] Sticker downloaded as File:", {
           name: svgFile.name,
           size: svgFile.size,
-          type: svgFile.type
+          type: svgFile.type,
         });
         debugLog("[StickersView] Sticker downloaded as File:", {
           name: svgFile.name,
@@ -348,7 +348,7 @@ export function StickersView() {
         // Create URL from the File object for immediate preview
         const fileUrl = URL.createObjectURL(svgFile);
         console.log("[StickersView] Created file URL:", fileUrl);
-        
+
         const mediaItemData = {
           name: svgFile.name,
           type: "image" as const,
@@ -359,16 +359,19 @@ export function StickersView() {
           height: 512,
           duration: 0,
         };
-        
-        console.log("[StickersView] Adding media item to project:", activeProject.id);
+
+        console.log(
+          "[StickersView] Adding media item to project:",
+          activeProject.id
+        );
         console.log("[StickersView] Media item data:", mediaItemData);
         debugLog(
           "[StickersView] Adding media item to project:",
           activeProject.id
         );
-        
+
         await addMediaItem(activeProject.id, mediaItemData);
-        
+
         console.log("[StickersView] Media item added successfully");
         debugLog("[StickersView] Media item added successfully");
 

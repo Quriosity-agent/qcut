@@ -29,7 +29,7 @@ function resolveBuildOutputDir() {
   if (process.env.BUILD_OUTPUT_DIR) {
     return process.env.BUILD_OUTPUT_DIR;
   }
-  
+
   // Default to dist folder in project root
   return path.join(__dirname, "..", "dist");
 }
@@ -38,7 +38,9 @@ function main() {
   const releaseType = process.argv[2];
 
   if (!releaseType || !RELEASE_TYPES.includes(releaseType)) {
-    process.stderr.write("❌ Usage: node scripts/release.js <patch|minor|major>\n");
+    process.stderr.write(
+      "❌ Usage: node scripts/release.js <patch|minor|major>\n"
+    );
     process.exit(1);
   }
 
@@ -73,10 +75,14 @@ function main() {
     process.stdout.write("📋 Step 7: Generating release notes...\n");
     generateReleaseNotes(newVersion);
 
-    process.stdout.write(`\n✅ Release v${newVersion} prepared successfully!\n`);
+    process.stdout.write(
+      `\n✅ Release v${newVersion} prepared successfully!\n`
+    );
     process.stdout.write("\n📋 Next steps:\n");
     process.stdout.write("1. Review the generated files\n");
-    process.stdout.write("2. Push the tag: git push origin v" + newVersion + "\n");
+    process.stdout.write(
+      "2. Push the tag: git push origin v" + newVersion + "\n"
+    );
     process.stdout.write("3. Create GitHub release with the installer\n");
     process.stdout.write("4. Use the generated release notes template\n");
   } catch (error) {
@@ -118,7 +124,9 @@ function bumpVersion(releaseType) {
   packageJson.version = newVersion;
   fs.writeFileSync(packagePath, JSON.stringify(packageJson, null, 2) + "\n");
 
-  process.stdout.write(`✅ Version bumped: ${currentVersion} -> ${newVersion}\n`);
+  process.stdout.write(
+    `✅ Version bumped: ${currentVersion} -> ${newVersion}\n`
+  );
   return newVersion;
 }
 

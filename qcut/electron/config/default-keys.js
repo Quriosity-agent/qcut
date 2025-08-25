@@ -9,9 +9,10 @@ module.exports = {
   // 2. Go to https://freesound.org/apiv2/apply/
   // 3. Fill out the form (takes 1 minute)
   // 4. Copy your API key
-  FREESOUND_API_KEY: process.env.FREESOUND_API_KEY || 'h650BnTkps2suLENRVXD8LdADgrYzVm1dQxmxQqc', // Working default key
-  
+  FREESOUND_API_KEY:
+    process.env.FREESOUND_API_KEY || "h650BnTkps2suLENRVXD8LdADgrYzVm1dQxmxQqc", // Working default key
+
   // FAL AI API key - no default provided
   // Users must configure their own at https://fal.ai
-  FAL_API_KEY: process.env.FAL_API_KEY || ''
+  FAL_API_KEY: process.env.FAL_API_KEY || "",
 };

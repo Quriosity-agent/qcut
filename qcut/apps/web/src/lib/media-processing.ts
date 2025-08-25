@@ -134,7 +134,9 @@ export async function processMediaFiles(
             fps = 30;
 
             // Skip FFmpeg enhancement to avoid timeout issues
-            debugLog("[Media Processing] ℹ️ Using browser data only to avoid FFmpeg timeout");
+            debugLog(
+              "[Media Processing] ℹ️ Using browser data only to avoid FFmpeg timeout"
+            );
           } catch (error) {
             debugWarn(
               "[Media Processing] Browser processing failed, falling back to FFmpeg:",

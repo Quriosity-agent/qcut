@@ -1,7 +1,7 @@
 /**
  * Debug utilities for sticker overlay investigation
  * These functions help diagnose mediaItemId mismatch issues
- * 
+ *
  * Usage: These are meant to be run in the browser console
  * The global window object will have access to stores
  */
@@ -11,7 +11,6 @@
  * Run these directly in browser developer console
  */
 export const debugStickerOverlay = {
-  
   /**
    * Instructions for using debug commands
    */
@@ -113,13 +112,13 @@ try {
   console.error('Error finding orphaned stickers:', error);
 }
 console.log('==================================');
-`
-  }
+`,
+  },
 };
 
 // Make debug functions globally available in development
-if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
+if (typeof window !== "undefined" && process.env.NODE_ENV === "development") {
   (window as any).debugStickerOverlay = debugStickerOverlay;
-  console.log('🐛 Sticker overlay debug utilities loaded');
-  console.log('📖 Run debugStickerOverlay.help() for instructions');
+  console.log("🐛 Sticker overlay debug utilities loaded");
+  console.log("📖 Run debugStickerOverlay.help() for instructions");
 }

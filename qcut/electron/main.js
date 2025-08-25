@@ -196,7 +196,7 @@ app.whenReady().then(() => {
   // Register custom protocol for serving static files
   protocol.registerFileProtocol("app", (request, callback) => {
     let url = request.url.replace("app://", "").replace("app:/", "");
-    
+
     // Clean up the URL
     if (url.startsWith("./")) {
       url = url.substring(2);
@@ -204,7 +204,7 @@ app.whenReady().then(() => {
     if (url.startsWith("/")) {
       url = url.substring(1);
     }
-    
+
     // Default to index.html for root
     if (!url || url === "") {
       url = "index.html";
@@ -250,45 +250,54 @@ app.whenReady().then(() => {
   if (app.isPackaged) {
     setupAutoUpdater();
   }
-  
+
   // Add IPC handler for saving audio files for export
-  ipcMain.handle('save-audio-for-export', async (event, { audioData, filename }) => {
-    const { saveAudioToTemp } = require('./audio-temp-handler.js');
-    try {
-      const filePath = await saveAudioToTemp(audioData, filename);
-      return { success: true, path: filePath };
-    } catch (error) {
-      logger.error('Failed to save audio file:', error);
-      return { success: false, error: error.message };
+  ipcMain.handle(
+    "save-audio-for-export",
+    async (event, { audioData, filename }) => {
+      const { saveAudioToTemp } = require("./audio-temp-handler.js");
+      try {
+        const filePath = await saveAudioToTemp(audioData, filename);
+        return { success: true, path: filePath };
+      } catch (error) {
+        logger.error("Failed to save audio file:", error);
+        return { success: false, error: error.message };
+      }
     }
-  });
-  
+  );
+
   // Add IPC handler for GitHub API requests to bypass CORS
   ipcMain.handle("fetch-github-stars", async () => {
     try {
       const https = require("https");
       return new Promise((resolve, reject) => {
-        https.get("https://api.github.com/repos/donghaozhang/qcut", {
-          headers: {
-            "User-Agent": "QCut-Video-Editor"
-          }
-        }, (res) => {
-          let data = "";
-          res.on("data", (chunk) => {
-            data += chunk;
-          });
-          res.on("end", () => {
-            try {
-              const parsed = JSON.parse(data);
-              resolve({ stars: parsed.stargazers_count || 0 });
-            } catch (error) {
-              resolve({ stars: 0 });
+        https
+          .get(
+            "https://api.github.com/repos/donghaozhang/qcut",
+            {
+              headers: {
+                "User-Agent": "QCut-Video-Editor",
+              },
+            },
+            (res) => {
+              let data = "";
+              res.on("data", (chunk) => {
+                data += chunk;
+              });
+              res.on("end", () => {
+                try {
+                  const parsed = JSON.parse(data);
+                  resolve({ stars: parsed.stargazers_count || 0 });
+                } catch (error) {
+                  resolve({ stars: 0 });
+                }
+              });
             }
+          )
+          .on("error", (error) => {
+            logger.error("Failed to fetch GitHub stars:", error);
+            resolve({ stars: 0 });
           });
-        }).on("error", (error) => {
-          logger.error("Failed to fetch GitHub stars:", error);
-          resolve({ stars: 0 });
-        });
       });
     } catch (error) {
       logger.error("Error fetching GitHub stars:", error);
@@ -300,9 +309,9 @@ app.whenReady().then(() => {
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") {
     // Clean up audio temp files
-    const { cleanupAllAudioFiles } = require('./audio-temp-handler.js');
+    const { cleanupAllAudioFiles } = require("./audio-temp-handler.js");
     cleanupAllAudioFiles();
-    
+
     // Close the static server when quitting
     if (staticServer) {
       staticServer.close();
@@ -423,95 +432,106 @@ ipcMain.handle("file-exists", async (event, filePath) => {
 });
 
 ipcMain.handle("validate-audio-file", async (event, filePath) => {
-  const { spawn } = require('child_process');
-  const path = require('path');
-  
+  const { spawn } = require("child_process");
+  const path = require("path");
+
   try {
     // Get ffprobe path (should be in same directory as ffmpeg)
-    const { getFFmpegPath } = require('./ffmpeg-handler.js');
+    const { getFFmpegPath } = require("./ffmpeg-handler.js");
     const ffmpegPath = getFFmpegPath();
     const ffmpegDir = path.dirname(ffmpegPath);
-    const ffprobePath = path.join(ffmpegDir, process.platform === 'win32' ? 'ffprobe.exe' : 'ffprobe');
-    
+    const ffprobePath = path.join(
+      ffmpegDir,
+      process.platform === "win32" ? "ffprobe.exe" : "ffprobe"
+    );
+
     return new Promise((resolve) => {
       console.log(`[Main] Running ffprobe on: ${filePath}`);
       console.log(`[Main] ffprobe path: ${ffprobePath}`);
-      
-      const ffprobe = spawn(ffprobePath, [
-        '-v', 'quiet',
-        '-print_format', 'json',
-        '-show_format',
-        '-show_streams',
-        filePath
-      ], { windowsHide: true });
-      
+
+      const ffprobe = spawn(
+        ffprobePath,
+        [
+          "-v",
+          "quiet",
+          "-print_format",
+          "json",
+          "-show_format",
+          "-show_streams",
+          filePath,
+        ],
+        { windowsHide: true }
+      );
+
       // Add timeout
       const timeout = setTimeout(() => {
-        console.log(`[Main] ffprobe timeout, killing process`);
+        console.log("[Main] ffprobe timeout, killing process");
         ffprobe.kill();
         resolve({
           valid: false,
-          error: 'ffprobe timeout after 10 seconds'
+          error: "ffprobe timeout after 10 seconds",
         });
-      }, 10000);
-      
-      let stdout = '';
-      let stderr = '';
-      
-      ffprobe.stdout.on('data', (data) => {
+      }, 10_000);
+
+      let stdout = "";
+      let stderr = "";
+
+      ffprobe.stdout.on("data", (data) => {
         stdout += data.toString();
       });
-      
-      ffprobe.stderr.on('data', (data) => {
+
+      ffprobe.stderr.on("data", (data) => {
         stderr += data.toString();
       });
-      
-      ffprobe.on('close', (code) => {
+
+      ffprobe.on("close", (code) => {
         clearTimeout(timeout);
         console.log(`[Main] ffprobe finished with code: ${code}`);
         console.log(`[Main] ffprobe stdout length: ${stdout.length}`);
         console.log(`[Main] ffprobe stderr: ${stderr}`);
-        
+
         if (code === 0 && stdout) {
           try {
             const info = JSON.parse(stdout);
-            const hasAudio = info.streams && info.streams.some(s => s.codec_type === 'audio');
-            
+            const hasAudio =
+              info.streams &&
+              info.streams.some((s) => s.codec_type === "audio");
+
             resolve({
               valid: true,
-              info: info,
-              hasAudio: hasAudio,
-              duration: info.format?.duration || 0
+              info,
+              hasAudio,
+              duration: info.format?.duration || 0,
             });
           } catch (parseError) {
             resolve({
               valid: false,
               error: `Failed to parse ffprobe output: ${parseError.message}`,
-              stderr: stderr
+              stderr,
             });
           }
         } else {
           resolve({
             valid: false,
             error: `ffprobe failed with code ${code}`,
-            stderr: stderr
+            stderr,
           });
         }
       });
-      
-      ffprobe.on('error', (error) => {
+
+      ffprobe.on("error", (error) => {
         clearTimeout(timeout);
         console.log(`[Main] ffprobe spawn error: ${error.message}`);
         resolve({
           valid: false,
-          error: `ffprobe spawn error: ${error.message}`
+          error: `ffprobe spawn error: ${error.message}`,
         });
       });
     });
   } catch (error) {
     return {
       valid: false,
-      error: `Validation setup failed: ${error.message}`
+      error: `Validation setup failed: ${error.message}`,
     };
   }
 });
