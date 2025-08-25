@@ -244,13 +244,14 @@ export const StickerCanvas: React.FC<{
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [selectedStickerId, disabled, selectSticker]);
 
-  // Don't render if disabled
-  if (disabled) return null;
-
-  // Get only visible stickers at current time
+  // Get only visible stickers at current time - moved before hooks
   const visibleStickers = getVisibleStickersAtTime(currentTime);
   
-  // Debug logging for sticker visibility
+  // Don't render if disabled - moved after all hooks
+  if (disabled) return null;
+  
+  // Debug logging for sticker visibility - moved before early return
+  // This needs to be before any conditional returns to avoid hooks order issues
   useEffect(() => {
     if (overlayStickers.size > 0) {
       console.log(`[StickerCanvas] State check:`, {
@@ -274,6 +275,17 @@ export const StickerCanvas: React.FC<{
       console.log(`[StickerCanvas] Sticker details:`, stickerDetails);
     }
   }, [overlayStickers.size, visibleStickers.length, currentTime, mediaItems.length, mediaStoreLoading, mediaStoreError]);
+
+  // Show loading state while media store is loading
+  if (mediaStoreLoading && overlayStickers.size > 0) {
+    return (
+      <div className="absolute inset-0 z-50 pointer-events-none">
+        <div className="absolute top-2 right-2 text-xs bg-black/50 text-white px-2 py-1 rounded">
+          Loading media...
+        </div>
+      </div>
+    );
+  }
 
   return (
     <>
@@ -299,14 +311,18 @@ export const StickerCanvas: React.FC<{
 
           // Show placeholder if media item not found (it might still be loading)
           if (!mediaItem) {
-            console.error(
-              `[StickerCanvas] ⚠️ MEDIA MISSING: Media item not found for sticker ${sticker.id}, mediaItemId: ${sticker.mediaItemId}. Available media: ${mediaItems.length}`,
-              {
-                stickerMediaId: sticker.mediaItemId,
-                availableMediaIds: mediaItems.map(m => ({ id: m.id, name: m.name })),
-                sticker
-              }
-            );
+            // Only log error if media store is not loading
+            if (!mediaStoreLoading) {
+              console.warn(
+                `[StickerCanvas] ⚠️ MEDIA MISSING: Media item not found for sticker ${sticker.id}, mediaItemId: ${sticker.mediaItemId}. Available media: ${mediaItems.length}`,
+                {
+                  stickerMediaId: sticker.mediaItemId,
+                  availableMediaIds: mediaItems.map(m => ({ id: m.id, name: m.name })),
+                  sticker,
+                  mediaStoreLoading
+                }
+              );
+            }
             // Show a placeholder to indicate missing media
             return (
               <div
@@ -320,7 +336,7 @@ export const StickerCanvas: React.FC<{
                   transform: `translate(-50%, -50%) rotate(${sticker.rotation || 0}deg)`,
                 }}
               >
-                Media Missing
+                {mediaStoreLoading ? "Loading..." : "Media Missing"}
               </div>
             );
           }
