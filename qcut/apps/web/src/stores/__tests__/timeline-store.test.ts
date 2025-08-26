@@ -46,6 +46,27 @@ vi.mock('sonner', () => ({
 
 describe('TimelineStore', () => {
   beforeEach(() => {
+    // Reset the store state completely
+    useTimelineStore.setState({
+      _tracks: [],
+      tracks: [],
+      history: [],
+      redoStack: [],
+      selectedElements: [],
+      snappingEnabled: true,
+      rippleEditingEnabled: false,
+      dragState: {
+        isDragging: false,
+        elementId: null,
+        trackId: null,
+        startMouseX: 0,
+        startElementTime: 0,
+        clickOffsetTime: 0,
+        currentTime: 0,
+      },
+    });
+    
+    // Force re-initialization with main track
     const { result } = renderHook(() => useTimelineStore());
     act(() => {
       result.current.clearTimeline();
