@@ -8,7 +8,9 @@ vi.mock('@/lib/storage/storage-service', () => ({
   storageService: {
     saveMediaItem: vi.fn(() => Promise.resolve()),
     removeMediaItem: vi.fn(() => Promise.resolve()),
+    deleteMediaItem: vi.fn(() => Promise.resolve()),
     loadMediaItems: vi.fn(() => Promise.resolve([])),
+    loadAllMediaItems: vi.fn(() => Promise.resolve([])),
     clearProjectMedia: vi.fn(() => Promise.resolve()),
   }
 }));
@@ -187,7 +189,7 @@ describe('MediaStore', () => {
     
     // Import and mock before using
     const { storageService } = await import('@/lib/storage/storage-service');
-    vi.mocked(storageService.loadMediaItems).mockResolvedValueOnce(mockMediaItems);
+    vi.mocked(storageService.loadAllMediaItems).mockResolvedValueOnce(mockMediaItems);
     
     const { result } = renderHook(() => useMediaStore());
     
@@ -196,7 +198,7 @@ describe('MediaStore', () => {
     });
     
     expect(result.current.mediaItems).toEqual(mockMediaItems);
-    expect(storageService.loadMediaItems).toHaveBeenCalledWith('project-123');
+    expect(storageService.loadAllMediaItems).toHaveBeenCalledWith('project-123');
   });
   
   it('clears project media', async () => {
