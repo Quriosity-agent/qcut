@@ -16,112 +16,335 @@ This document breaks down the testing implementation into **150+ micro-tasks**, 
 
 ### 0.1 Package Installation (5 tasks)
 
-#### Task 001: Install Core Testing Dependencies
+#### Task 001: Install Core Testing Dependencies (Vitest)
+**Location**: Root directory (`C:\Users\zdhpe\Desktop\vite_opencut\OpenCut-main\qcut`)
+**Command**:
 ```bash
-bun add -D vitest @vitest/ui
+cd C:\Users\zdhpe\Desktop\vite_opencut\OpenCut-main\qcut
+bun add -D vitest@1.6.0 @vitest/ui@1.6.0
+```
+**Purpose**: Vitest is a Vite-native test runner that's 10x faster than Jest for Vite projects
+**Verification**:
+```bash
+# Check installation
+bun pm ls | grep vitest
+# Expected output: vitest@1.6.0, @vitest/ui@1.6.0
 ```
 - **Time**: 3 minutes
 - **Risk**: None (dev dependencies only)
-- **Rollback**: Remove from package.json
+- **Rollback**: `bun remove vitest @vitest/ui`
+- **Success Indicator**: Package.json shows vitest in devDependencies
 
 #### Task 002: Install React Testing Library
+**Location**: Root directory
+**Command**:
 ```bash
-bun add -D @testing-library/react @testing-library/user-event
+bun add -D @testing-library/react@16.0.1 @testing-library/user-event@14.5.2
+```
+**Purpose**: Provides utilities for testing React components with user-centric queries
+**Verification**:
+```bash
+# Verify installation
+ls node_modules/@testing-library
+# Should show: react/ and user-event/ directories
+```
+- **Time**: 2 minutes
+- **Risk**: None (compatible with React 18)
+- **Rollback**: `bun remove @testing-library/react @testing-library/user-event`
+- **Success Indicator**: No peer dependency warnings
+
+#### Task 003: Install DOM Testing Utilities
+**Location**: Root directory
+**Command**:
+```bash
+bun add -D @testing-library/jest-dom@6.6.3 happy-dom@15.11.6
+```
+**Purpose**: 
+- jest-dom: Custom matchers for DOM assertions
+- happy-dom: 2x faster than jsdom for component tests
+**Verification**:
+```bash
+# Test happy-dom works
+echo "console.log(typeof window)" | bun --bun run -
 ```
 - **Time**: 2 minutes
 - **Risk**: None
-- **Rollback**: Remove from package.json
+- **Rollback**: `bun remove @testing-library/jest-dom happy-dom`
+- **Success Indicator**: No installation errors
 
-#### Task 003: Install Testing Utilities
+#### Task 004: Install Coverage Reporting Tools
+**Location**: Root directory
+**Command**:
 ```bash
-bun add -D @testing-library/jest-dom happy-dom
+bun add -D @vitest/coverage-v8@1.6.0 @vitest/coverage-istanbul@1.6.0
 ```
+**Purpose**: Generate code coverage reports to track testing progress
+**Note**: Choose v8 for speed or istanbul for accuracy
 - **Time**: 2 minutes
 - **Risk**: None
-- **Rollback**: Remove from package.json
+- **Rollback**: `bun remove @vitest/coverage-v8 @vitest/coverage-istanbul`
+- **Success Indicator**: Coverage packages in node_modules
 
-#### Task 004: Install Coverage Tools
+#### Task 005: Install Playwright for E2E Testing
+**Location**: Root directory
+**Command**:
 ```bash
-bun add -D @vitest/coverage-v8
+bun add -D @playwright/test@1.48.2
+bunx playwright install chromium --with-deps
 ```
-- **Time**: 2 minutes
-- **Risk**: None
-- **Rollback**: Remove from package.json
-
-#### Task 005: Install Playwright for E2E
-```bash
-bun add -D @playwright/test
-```
-- **Time**: 3 minutes
-- **Risk**: None
-- **Rollback**: Remove from package.json
+**Purpose**: E2E testing for Electron app with headless browser support
+**Note**: Only installing Chromium to save space (Electron uses Chromium)
+- **Time**: 5 minutes (includes browser download)
+- **Risk**: None (separate from unit tests)
+- **Rollback**: `bun remove @playwright/test && rm -rf ~/.cache/ms-playwright`
+- **Success Indicator**: `bunx playwright --version` shows 1.48.2
 
 ### 0.2 Configuration Files (10 tasks)
 
-#### Task 006: Create Basic Vitest Config
-**File**: `vitest.config.ts`
+#### Task 006: Create Comprehensive Vitest Config
+**File**: `C:\Users\zdhpe\Desktop\vite_opencut\OpenCut-main\qcut\vitest.config.ts`
+**Content**:
 ```typescript
+/// <reference types="vitest" />
 import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
+import tsconfigPaths from 'vite-tsconfig-paths';
+import path from 'path';
 
 export default defineConfig({
+  plugins: [react(), tsconfigPaths()],
   test: {
     globals: true,
     environment: 'happy-dom',
+    setupFiles: './apps/web/src/test/setup.ts',
+    include: ['**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}'],
+    exclude: ['node_modules', 'dist', '.idea', '.git', '.cache'],
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'json', 'html', 'lcov'],
+      exclude: [
+        'node_modules/',
+        'src/test/',
+        '*.config.*',
+        '**/*.d.ts',
+        '**/*.test.*',
+        '**/mockData/*',
+      ],
+    },
+    pool: 'threads',
+    poolOptions: {
+      threads: {
+        singleThread: true, // Important for Zustand stores
+      },
+    },
+  },
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, './apps/web/src'),
+    },
   },
 });
 ```
-- **Time**: 5 minutes
+**Verification**: Run `npx vitest --version` to ensure config is valid
+- **Time**: 7 minutes
 - **Risk**: None (new file)
-- **Rollback**: Delete file
+- **Rollback**: Delete vitest.config.ts
+- **Success Indicator**: No TypeScript errors in the file
 
-#### Task 007: Add Test Script to Package.json
-**File**: `package.json` (add to scripts)
+#### Task 007: Add Test Scripts to Package.json
+**File**: `C:\Users\zdhpe\Desktop\vite_opencut\OpenCut-main\qcut\package.json`
+**Location in file**: Inside "scripts" object (after line 54)
+**Add these lines**:
 ```json
 "test": "vitest",
 "test:ui": "vitest --ui",
-"test:run": "vitest run"
+"test:run": "vitest run",
+"test:coverage": "vitest run --coverage",
+"test:watch": "vitest watch",
+"test:debug": "vitest --inspect-brk --inspect --logHeapUsage --threads=false"
+```
+**Verification**: 
+```bash
+npm run test -- --version
+# Should show: Vitest version
 ```
 - **Time**: 3 minutes
-- **Risk**: None
-- **Rollback**: Remove scripts
+- **Risk**: None (new scripts only)
+- **Rollback**: Remove added script lines
+- **Success Indicator**: `bun run test` starts vitest watcher
 
-#### Task 008: Create Test Setup File
-**File**: `src/test/setup.ts`
+#### Task 008: Create Comprehensive Test Setup File
+**File**: `C:\Users\zdhpe\Desktop\vite_opencut\OpenCut-main\qcut\apps\web\src\test\setup.ts`
+**Content**:
 ```typescript
+/// <reference types="@testing-library/jest-dom" />
 import '@testing-library/jest-dom';
 import { cleanup } from '@testing-library/react';
-import { afterEach } from 'vitest';
+import { afterEach, beforeAll, afterAll, vi } from 'vitest';
 
+// Cleanup after each test
 afterEach(() => {
   cleanup();
+  document.body.innerHTML = '';
+  vi.clearAllMocks();
+  
+  // Clean up any blob URLs created during tests
+  const blobUrls = document.querySelectorAll('[src^="blob:"], [href^="blob:"]');
+  blobUrls.forEach((element) => {
+    const url = element.getAttribute('src') || element.getAttribute('href');
+    if (url?.startsWith('blob:')) {
+      URL.revokeObjectURL(url);
+    }
+  });
+});
+
+// Mock window.matchMedia
+beforeAll(() => {
+  Object.defineProperty(window, 'matchMedia', {
+    writable: true,
+    value: vi.fn().mockImplementation(query => ({
+      matches: false,
+      media: query,
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    })),
+  });
+});
+
+// Mock IntersectionObserver
+global.IntersectionObserver = vi.fn().mockImplementation(() => ({
+  observe: vi.fn(),
+  unobserve: vi.fn(),
+  disconnect: vi.fn(),
+}));
+
+// Mock ResizeObserver
+global.ResizeObserver = vi.fn().mockImplementation(() => ({
+  observe: vi.fn(),
+  unobserve: vi.fn(),
+  disconnect: vi.fn(),
+}));
+
+// Suppress console errors in tests (optional)
+const originalError = console.error;
+beforeAll(() => {
+  console.error = (...args: any[]) => {
+    if (typeof args[0] === 'string' && args[0].includes('Warning:')) {
+      return;
+    }
+    originalError.call(console, ...args);
+  };
+});
+
+afterAll(() => {
+  console.error = originalError;
 });
 ```
-- **Time**: 5 minutes
-- **Risk**: None
-- **Rollback**: Delete file
+- **Time**: 8 minutes
+- **Risk**: None (new file in test directory)
+- **Rollback**: Delete src/test/setup.ts
+- **Success Indicator**: File created without TypeScript errors
 
-#### Task 009: Create Test Utilities Directory
+#### Task 009: Create Test Directory Structure
+**Location**: `C:\Users\zdhpe\Desktop\vite_opencut\OpenCut-main\qcut\apps\web\src`
+**Commands**:
 ```bash
-mkdir -p src/test/utils
-mkdir -p src/test/fixtures
-mkdir -p src/test/mocks
-```
-- **Time**: 2 minutes
-- **Risk**: None
-- **Rollback**: Delete directories
+cd C:\Users\zdhpe\Desktop\vite_opencut\OpenCut-main\qcut\apps\web\src
+mkdir -p test/utils
+mkdir -p test/fixtures
+mkdir -p test/mocks
+mkdir -p test/integration
+mkdir -p test/unit
+mkdir -p test/e2e
+mkdir -p test/helpers
 
-#### Task 010: Create Test Wrapper Component
-**File**: `src/test/utils/test-wrapper.tsx`
+# Create index files to prevent empty directory issues
+echo "// Test utilities" > test/utils/index.ts
+echo "// Test fixtures" > test/fixtures/index.ts
+echo "// Test mocks" > test/mocks/index.ts
+```
+**Purpose**: Organize test files by type for maintainability
+- **Time**: 2 minutes
+- **Risk**: None (new directories only)
+- **Rollback**: `rm -rf src/test`
+- **Success Indicator**: All directories created successfully
+
+#### Task 010: Create Enhanced Test Wrapper Component
+**File**: `C:\Users\zdhpe\Desktop\vite_opencut\OpenCut-main\qcut\apps\web\src\test\utils\test-wrapper.tsx`
+**Content**:
 ```typescript
 import { ReactNode } from 'react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { RouterProvider, createMemoryRouter } from '@tanstack/react-router';
 
-export function TestWrapper({ children }: { children: ReactNode }) {
-  return <>{children}</>;
+interface TestWrapperProps {
+  children: ReactNode;
+  initialEntries?: string[];
+  withRouter?: boolean;
+  withQueryClient?: boolean;
+}
+
+// Create a new QueryClient for each test to ensure isolation
+function createTestQueryClient() {
+  return new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false, // Turn off retries for tests
+        gcTime: 0, // No garbage collection time
+        staleTime: 0, // Data is always stale
+      },
+      mutations: {
+        retry: false,
+      },
+    },
+  });
+}
+
+export function TestWrapper({ 
+  children, 
+  initialEntries = ['/'],
+  withRouter = false,
+  withQueryClient = false
+}: TestWrapperProps) {
+  let content = children;
+
+  // Wrap with QueryClient if needed
+  if (withQueryClient) {
+    const queryClient = createTestQueryClient();
+    content = (
+      <QueryClientProvider client={queryClient}>
+        {content}
+      </QueryClientProvider>
+    );
+  }
+
+  // Wrap with Router if needed
+  if (withRouter) {
+    // Note: This is a simplified example - adjust based on your actual router setup
+    content = <div data-testid="router-wrapper">{content}</div>;
+  }
+
+  return <>{content}</>;
+}
+
+// Export a simple wrapper for basic tests
+export function SimpleWrapper({ children }: { children: ReactNode }) {
+  return <div data-testid="test-wrapper">{children}</div>;
 }
 ```
-- **Time**: 5 minutes
-- **Risk**: None
-- **Rollback**: Delete file
+**Verification**:
+```bash
+# Check TypeScript compilation
+bunx tsc --noEmit src/test/utils/test-wrapper.tsx
+```
+- **Time**: 7 minutes
+- **Risk**: None (new test utility file)
+- **Rollback**: Delete test-wrapper.tsx
+- **Success Indicator**: No TypeScript errors, file saved successfully
 
 #### Task 011: Create Mock Constants File
 **File**: `src/test/fixtures/constants.ts`
