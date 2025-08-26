@@ -1930,7 +1930,7 @@ export function createDeferred<T>() {
 
 ### 1.1 Utility Function Tests (10 tasks)
 
-#### Task 031: Test Time Formatting Functions
+#### Task 031: Test Time Formatting Functions ✅ COMPLETED
 **File**: `C:\Users\zdhpe\Desktop\vite_opencut\OpenCut-main\qcut\apps\web\src\lib\__tests__\time.test.ts`
 **Source File**: `qcut/apps/web/src/lib/time.ts`
 ```typescript
@@ -1974,7 +1974,7 @@ describe('Time Utilities', () => {
 - **Rollback**: Delete file
 - **Success Indicator**: All time formatting tests pass
 
-#### Task 032: Test UUID and File ID Generation
+#### Task 032: Test UUID and File ID Generation ✅ COMPLETED
 **File**: `C:\Users\zdhpe\Desktop\vite_opencut\OpenCut-main\qcut\apps\web\src\lib\__tests__\utils.test.ts`
 **Source File**: `qcut/apps/web/src/lib/utils.ts`
 ```typescript
@@ -2033,7 +2033,7 @@ describe('Utils', () => {
 - **Rollback**: Delete file
 - **Success Indicator**: UUID generation tests pass
 
-#### Task 033: Test Platform Detection and Class Name Utilities
+#### Task 033: Test Platform Detection and Class Name Utilities ✅ COMPLETED
 **File**: `C:\Users\zdhpe\Desktop\vite_opencut\OpenCut-main\qcut\apps\web\src\lib\__tests__\utils-platform.test.ts`
 **Source File**: `qcut/apps/web/src/lib/utils.ts`
 ```typescript
@@ -2122,7 +2122,7 @@ describe('Platform and DOM Utilities', () => {
 - **Rollback**: Delete file
 - **Success Indicator**: Platform detection tests pass
 
-#### Task 034: Test Memory Utils and File Size Formatting
+#### Task 034: Test Memory Utils and File Size Formatting ✅ COMPLETED
 **File**: `C:\Users\zdhpe\Desktop\vite_opencut\OpenCut-main\qcut\apps\web\src\lib\__tests__\memory-utils.test.ts`
 **Source File**: `qcut/apps/web/src/lib/memory-utils.ts`
 ```typescript
@@ -2217,7 +2217,7 @@ function simulateMemoryPressure(percent: number) {
 - **Rollback**: Delete file
 - **Success Indicator**: Memory utility tests pass
 
-#### Task 035: Test Timeline Calculations and Element Overlap
+#### Task 035: Test Timeline Calculations and Element Overlap ✅ COMPLETED
 **File**: `C:\Users\zdhpe\Desktop\vite_opencut\OpenCut-main\qcut\apps\web\src\lib\__tests__\timeline.test.ts`
 **Source File**: `qcut/apps/web/src/lib/timeline.ts`
 ```typescript
@@ -2341,7 +2341,7 @@ function calculateTimeFromPosition(position: number, zoomLevel: number): number 
 - **Rollback**: Delete file
 - **Success Indicator**: Timeline calculation tests pass
 
-#### Task 036: Test useDebounce Hook
+#### Task 036: Test useDebounce Hook ✅ COMPLETED
 **File**: `C:\Users\zdhpe\Desktop\vite_opencut\OpenCut-main\qcut\apps\web\src\hooks\__tests__\use-debounce.test.ts`
 **Source File**: `qcut/apps/web/src/hooks/use-debounce.ts`
 ```typescript
@@ -2457,7 +2457,7 @@ describe('useDebounce Hook', () => {
 - **Rollback**: Delete file
 - **Success Indicator**: Debounce hook tests pass with timer mocking
 
-#### Task 037: Test useAspectRatio Hook
+#### Task 037: Test useAspectRatio Hook ✅ COMPLETED
 **File**: `C:\Users\zdhpe\Desktop\vite_opencut\OpenCut-main\qcut\apps\web\src\hooks\__tests__\use-aspect-ratio.test.ts`
 **Source File**: `qcut/apps/web/src/hooks/use-aspect-ratio.ts`
 ```typescript
@@ -2537,7 +2537,7 @@ function useAspectRatio(width: number, height: number): string {
 - **Rollback**: Delete file
 - **Success Indicator**: Aspect ratio calculations are accurate
 
-#### Task 038: Test useToast Hook
+#### Task 038: Test useToast Hook ✅ COMPLETED
 **File**: `C:\Users\zdhpe\Desktop\vite_opencut\OpenCut-main\qcut\apps\web\src\hooks\__tests__\use-toast.test.ts`
 **Source File**: `qcut/apps/web/src/hooks/use-toast.ts`
 ```typescript
@@ -2665,7 +2665,7 @@ describe('useToast Hook', () => {
 - **Rollback**: Delete file
 - **Success Indicator**: Toast hook functionality verified
 
-#### Task 039: Test Asset Path Utilities
+#### Task 039: Test Asset Path Utilities ✅ COMPLETED
 **File**: `C:\Users\zdhpe\Desktop\vite_opencut\OpenCut-main\qcut\apps\web\src\lib\__tests__\asset-path.test.ts`
 **Source File**: `qcut/apps/web/src/lib/asset-path.ts`
 ```typescript
@@ -2784,7 +2784,7 @@ function getPublicPath(): string {
 - **Rollback**: Delete file
 - **Success Indicator**: Asset path resolution works for both web and Electron
 
-#### Task 040: Test Image Utils and Dimension Calculations
+#### Task 040: Test Image Utils and Dimension Calculations ✅ COMPLETED
 **File**: `C:\Users\zdhpe\Desktop\vite_opencut\OpenCut-main\qcut\apps\web\src\lib\__tests__\image-utils.test.ts`
 **Source File**: `qcut/apps/web/src/lib/image-utils.ts`
 ```typescript
