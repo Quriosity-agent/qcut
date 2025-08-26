@@ -14,7 +14,10 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:push:local": "cross-env NODE_ENV=development drizzle-kit push",
-    "db:push:prod": "cross-env NODE_ENV=production drizzle-kit push"
+    "db:push:prod": "cross-env NODE_ENV=production drizzle-kit push",
+    "test": "vitest",
+    "test:ui": "vitest --ui",
+    "test:coverage": "vitest --coverage"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.699.0",
@@ -75,18 +78,24 @@
     "@tailwindcss/postcss": "^4.1.11",
     "@tailwindcss/typography": "^0.5.16",
     "@tanstack/router-plugin": "^1.130.9",
+    "@testing-library/jest-dom": "^6.8.0",
+    "@testing-library/react": "^16.3.0",
+    "@testing-library/user-event": "^14.6.1",
     "@types/bun": "latest",
     "@types/pg": "^8.15.4",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^4.7.0",
+    "@vitest/ui": "^3.2.4",
     "cross-env": "^10.0.0",
     "drizzle-kit": "^0.31.4",
+    "happy-dom": "^18.0.1",
     "postcss": "^8",
     "tailwindcss": "^4.1.11",
     "tsx": "^4.7.1",
     "typescript": "^5.8.3",
     "vite": "^7.0.6",
-    "vite-tsconfig-paths": "^5.1.4"
+    "vite-tsconfig-paths": "^5.1.4",
+    "vitest": "^3.2.4"
   }
 }

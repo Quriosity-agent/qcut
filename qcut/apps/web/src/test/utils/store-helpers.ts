@@ -1,0 +1,56 @@
+import { useMediaStore } from '@/stores/media-store';
+import { useTimelineStore } from '@/stores/timeline-store';
+import { useProjectStore } from '@/stores/project-store';
+import { usePlaybackStore } from '@/stores/playback-store';
+import { useExportStore } from '@/stores/export-store';
+import { useStickersOverlayStore } from '@/stores/stickers-overlay-store';
+
+/**
+ * Reset all application stores to their initial state
+ * Call this in beforeEach() to ensure test isolation
+ */
+export async function resetAllStores() {
+  // Reset media store
+  useMediaStore.setState({
+    mediaItems: [],
+    isLoading: false,
+  });
+
+  // Reset timeline store - use proper initialization from actual store
+  const timelineStore = useTimelineStore.getState();
+  if (timelineStore.clearTimeline) {
+    timelineStore.clearTimeline();
+  }
+
+  // Reset project store
+  useProjectStore.setState({
+    activeProject: null,
+    savedProjects: [],
+    isLoading: false,
+    isInitialized: false,
+  });
+
+  // Reset playback store
+  usePlaybackStore.setState({
+    isPlaying: false,
+    currentTime: 0,
+    duration: 0,
+    playbackSpeed: 1,
+  });
+
+  // Reset export store
+  useExportStore.setState({
+    isDialogOpen: false,
+    progress: { percentage: 0, message: '', isExporting: false },
+    error: null,
+  });
+
+  // Reset stickers overlay store
+  const stickersStore = useStickersOverlayStore.getState();
+  if (stickersStore.clearAllStickers) {
+    stickersStore.clearAllStickers();
+  }
+  
+  // Small delay to ensure async operations complete
+  await new Promise(resolve => setTimeout(resolve, 10));
+}
