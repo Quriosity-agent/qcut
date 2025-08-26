@@ -346,147 +346,708 @@ bunx tsc --noEmit src/test/utils/test-wrapper.tsx
 - **Rollback**: Delete test-wrapper.tsx
 - **Success Indicator**: No TypeScript errors, file saved successfully
 
-#### Task 011: Create Mock Constants File
-**File**: `src/test/fixtures/constants.ts`
+#### Task 011: Create Comprehensive Mock Constants File
+**File**: `C:\Users\zdhpe\Desktop\vite_opencut\OpenCut-main\qcut\apps\web\src\test\fixtures\constants.ts`
+**Content**:
 ```typescript
-export const TEST_MEDIA_ID = 'test-media-001';
-export const TEST_PROJECT_ID = 'test-project-001';
-export const TEST_TIMELINE_ID = 'test-timeline-001';
-```
-- **Time**: 3 minutes
-- **Risk**: None
-- **Rollback**: Delete file
+import { generateUUID } from '@/lib/utils';
 
-#### Task 012: Create Store Reset Utility
-**File**: `src/test/utils/store-helpers.ts`
+// Project constants
+export const TEST_PROJECT_ID = 'test-project-001';
+export const TEST_PROJECT_NAME = 'Test Project';
+
+// Media constants
+export const TEST_MEDIA_ID = 'test-media-001';
+export const TEST_VIDEO_ID = 'test-video-001';
+export const TEST_IMAGE_ID = 'test-image-001';
+export const TEST_AUDIO_ID = 'test-audio-001';
+
+// Timeline constants
+export const TEST_TIMELINE_ID = 'test-timeline-001';
+export const TEST_TRACK_ID = 'track-main';
+export const TEST_ELEMENT_ID = 'element-001';
+
+// Sticker constants
+export const TEST_STICKER_ID = 'sticker-001';
+
+// Default durations (in seconds)
+export const DEFAULT_VIDEO_DURATION = 10;
+export const DEFAULT_AUDIO_DURATION = 5;
+export const DEFAULT_IMAGE_DURATION = 3;
+
+// Test file names
+export const TEST_VIDEO_FILE = 'test-video.mp4';
+export const TEST_IMAGE_FILE = 'test-image.jpg';
+export const TEST_AUDIO_FILE = 'test-audio.mp3';
+```
+**Purpose**: Centralized test constants matching actual store implementations
+- **Time**: 5 minutes
+- **Risk**: None (new file)
+- **Rollback**: Delete constants.ts
+- **Success Indicator**: No import errors when used in tests
+
+#### Task 012: Create Store Reset Utility with Actual Store Imports
+**File**: `C:\Users\zdhpe\Desktop\vite_opencut\OpenCut-main\qcut\apps\web\src\test\utils\store-helpers.ts`
+**Content**:
 ```typescript
-export function resetAllStores() {
-  // Will be implemented in future tasks
-  console.log('Resetting stores...');
+import { useMediaStore } from '@/stores/media-store';
+import { useTimelineStore } from '@/stores/timeline-store';
+import { useProjectStore } from '@/stores/project-store';
+import { usePlaybackStore } from '@/stores/playback-store';
+import { useExportStore } from '@/stores/export-store';
+import { useStickersOverlayStore } from '@/stores/stickers-overlay-store';
+
+/**
+ * Reset all application stores to their initial state
+ * Call this in beforeEach() to ensure test isolation
+ */
+export async function resetAllStores() {
+  // Reset media store
+  useMediaStore.setState({
+    mediaItems: [],
+    isLoading: false,
+  });
+
+  // Reset timeline store - use proper initialization from actual store
+  const timelineStore = useTimelineStore.getState();
+  if (timelineStore.clearTimeline) {
+    timelineStore.clearTimeline();
+  }
+
+  // Reset project store
+  useProjectStore.setState({
+    activeProject: null,
+    savedProjects: [],
+    isLoading: false,
+    isInitialized: false,
+  });
+
+  // Reset playback store
+  usePlaybackStore.setState({
+    isPlaying: false,
+    currentTime: 0,
+    duration: 0,
+    playbackSpeed: 1,
+  });
+
+  // Reset export store
+  useExportStore.setState({
+    isDialogOpen: false,
+    progress: { percentage: 0, message: '', isExporting: false },
+    error: null,
+  });
+
+  // Reset stickers overlay store
+  const stickersStore = useStickersOverlayStore.getState();
+  if (stickersStore.clearAllStickers) {
+    stickersStore.clearAllStickers();
+  }
+  
+  // Small delay to ensure async operations complete
+  await new Promise(resolve => setTimeout(resolve, 10));
 }
 ```
-- **Time**: 5 minutes
-- **Risk**: None
-- **Rollback**: Delete file
+**Verification**: Import in test and call without errors
+- **Time**: 7 minutes
+- **Risk**: None (test utility only)
+- **Rollback**: Delete store-helpers.ts
+- **Success Indicator**: Stores reset successfully when function is called
 
-#### Task 013: Create Blob URL Cleanup Helper
-**File**: `src/test/utils/cleanup-helpers.ts`
+#### Task 013: Create Enhanced Blob URL Cleanup Helper
+**File**: `C:\Users\zdhpe\Desktop\vite_opencut\OpenCut-main\qcut\apps\web\src\test\utils\cleanup-helpers.ts`
+**Content**:
 ```typescript
-export function cleanupBlobUrls(urls: string[]) {
-  urls.forEach(url => {
+import { vi } from 'vitest';
+
+/**
+ * Track all created blob URLs for cleanup
+ */
+const createdBlobUrls = new Set<string>();
+
+/**
+ * Mock URL.createObjectURL to track blob URLs
+ */
+export function setupBlobUrlTracking() {
+  const originalCreateObjectURL = URL.createObjectURL;
+  const originalRevokeObjectURL = URL.revokeObjectURL;
+
+  URL.createObjectURL = vi.fn((blob: Blob) => {
+    const url = `blob:http://localhost:3000/${Math.random().toString(36).substring(2)}`;
+    createdBlobUrls.add(url);
+    return url;
+  });
+
+  URL.revokeObjectURL = vi.fn((url: string) => {
+    createdBlobUrls.delete(url);
+  });
+
+  return () => {
+    URL.createObjectURL = originalCreateObjectURL;
+    URL.revokeObjectURL = originalRevokeObjectURL;
+  };
+}
+
+/**
+ * Clean up all blob URLs created during tests
+ */
+export function cleanupBlobUrls(urls?: string[]) {
+  const urlsToClean = urls || Array.from(createdBlobUrls);
+  
+  urlsToClean.forEach(url => {
+    if (url?.startsWith('blob:')) {
+      URL.revokeObjectURL(url);
+      createdBlobUrls.delete(url);
+    }
+  });
+
+  // Also clean up any blob URLs in the DOM
+  const elements = document.querySelectorAll('[src^="blob:"], [href^="blob:"]');
+  elements.forEach((element) => {
+    const url = element.getAttribute('src') || element.getAttribute('href');
     if (url?.startsWith('blob:')) {
       URL.revokeObjectURL(url);
     }
   });
 }
-```
-- **Time**: 5 minutes
-- **Risk**: None
-- **Rollback**: Delete file
 
-#### Task 014: Create Mock File Factory
-**File**: `src/test/fixtures/file-factory.ts`
+/**
+ * Get count of active blob URLs (for memory leak detection)
+ */
+export function getActiveBlobUrlCount(): number {
+  return createdBlobUrls.size;
+}
+```
+**Purpose**: Track and clean up blob URLs to prevent memory leaks in tests
+- **Time**: 8 minutes
+- **Risk**: None (test utility)
+- **Rollback**: Delete cleanup-helpers.ts
+- **Success Indicator**: Blob URLs tracked and cleaned properly
+
+#### Task 014: Create Comprehensive Mock File Factory
+**File**: `C:\Users\zdhpe\Desktop\vite_opencut\OpenCut-main\qcut\apps\web\src\test\fixtures\file-factory.ts`
+**Content**:
 ```typescript
-export function createMockVideoFile(name = 'test.mp4'): File {
-  return new File(['video content'], name, { type: 'video/mp4' });
+/**
+ * Factory functions for creating mock File objects for testing
+ */
+
+// Create a mock video file with realistic metadata
+export function createMockVideoFile(
+  name = 'test-video.mp4',
+  sizeInMB = 10
+): File {
+  const content = new Uint8Array(sizeInMB * 1024 * 1024);
+  return new File([content], name, { 
+    type: 'video/mp4',
+    lastModified: Date.now()
+  });
 }
 
-export function createMockImageFile(name = 'test.jpg'): File {
-  return new File(['image content'], name, { type: 'image/jpeg' });
+// Create a mock image file
+export function createMockImageFile(
+  name = 'test-image.jpg',
+  sizeInKB = 500
+): File {
+  const content = new Uint8Array(sizeInKB * 1024);
+  return new File([content], name, { 
+    type: 'image/jpeg',
+    lastModified: Date.now()
+  });
+}
+
+// Create a mock audio file
+export function createMockAudioFile(
+  name = 'test-audio.mp3',
+  sizeInMB = 3
+): File {
+  const content = new Uint8Array(sizeInMB * 1024 * 1024);
+  return new File([content], name, { 
+    type: 'audio/mpeg',
+    lastModified: Date.now()
+  });
+}
+
+// Create a mock text file (for subtitles/captions)
+export function createMockTextFile(
+  name = 'subtitles.srt',
+  content = 'Test subtitle content'
+): File {
+  return new File([content], name, { 
+    type: 'text/plain',
+    lastModified: Date.now()
+  });
+}
+
+// Create multiple files at once
+export function createMockMediaFiles() {
+  return {
+    video: createMockVideoFile(),
+    image: createMockImageFile(),
+    audio: createMockAudioFile(),
+    text: createMockTextFile(),
+  };
+}
+
+// Helper to get file type (matching getFileType from media-store.ts)
+export function getMockFileType(file: File): 'video' | 'audio' | 'image' | null {
+  if (file.type.startsWith('video/')) return 'video';
+  if (file.type.startsWith('audio/')) return 'audio';
+  if (file.type.startsWith('image/')) return 'image';
+  return null;
 }
 ```
-- **Time**: 5 minutes
-- **Risk**: None
-- **Rollback**: Delete file
+**Verification**: Create files and check their properties
+- **Time**: 6 minutes
+- **Risk**: None (test fixtures)
+- **Rollback**: Delete file-factory.ts
+- **Success Indicator**: Mock files created with correct types and sizes
 
-#### Task 015: Create Coverage Config
-**File**: Update `vitest.config.ts`
+#### Task 015: Update Coverage Configuration in Existing Vitest Config
+**File**: `C:\Users\zdhpe\Desktop\vite_opencut\OpenCut-main\qcut\vitest.config.ts`
+**Location**: Inside the test object (after line 122)
+**Update coverage section**:
 ```typescript
 coverage: {
   provider: 'v8',
-  reporter: ['text', 'html'],
-  exclude: ['node_modules/', 'src/test/'],
+  reporter: ['text', 'json', 'html', 'lcov'],
+  reportsDirectory: './coverage',
+  exclude: [
+    'node_modules/**',
+    'src/test/**',
+    '**/*.test.*',
+    '**/*.spec.*',
+    '**/test-*.ts',
+    '**/*.config.*',
+    '**/*.d.ts',
+    '**/types/**',
+    '**/mocks/**',
+    '**/fixtures/**',
+  ],
+  thresholds: {
+    global: {
+      branches: 0, // Start with 0, increase over time
+      functions: 0,
+      lines: 0,
+      statements: 0,
+    },
+  },
 }
 ```
+**Purpose**: Track test coverage with proper exclusions
 - **Time**: 3 minutes
-- **Risk**: None
-- **Rollback**: Remove coverage config
+- **Risk**: None (config update)
+- **Rollback**: Revert coverage section
+- **Success Indicator**: `bun test:coverage` generates report
 
 ### 0.3 Mock Creation (15 tasks)
 
-#### Task 016: Create Electron API Mock
-**File**: `src/test/mocks/electron.ts`
+#### Task 016: Create Comprehensive Electron API Mock
+**File**: `C:\Users\zdhpe\Desktop\vite_opencut\OpenCut-main\qcut\apps\web\src\test\mocks\electron.ts`
+**Content**:
 ```typescript
-export const mockElectronAPI = {
+import { vi } from 'vitest';
+import type { ElectronAPI } from '@/types/electron';
+
+/**
+ * Complete mock of Electron API matching types/electron.d.ts
+ */
+export const mockElectronAPI: ElectronAPI = {
+  isElectron: true,
+  
+  // File operations
+  openFileDialog: vi.fn().mockResolvedValue('/path/to/file.mp4'),
+  openMultipleFilesDialog: vi.fn().mockResolvedValue(['/path/to/file1.mp4', '/path/to/file2.jpg']),
+  saveFileDialog: vi.fn().mockResolvedValue('/path/to/save.mp4'),
+  readFile: vi.fn().mockResolvedValue(new ArrayBuffer(1024)),
+  writeFile: vi.fn().mockResolvedValue(undefined),
+  deleteFile: vi.fn().mockResolvedValue(undefined),
+  getFileInfo: vi.fn().mockResolvedValue({ size: 1024, lastModified: Date.now() }),
+  
+  // Directory operations
+  ensureDir: vi.fn().mockResolvedValue(undefined),
+  readDir: vi.fn().mockResolvedValue(['file1.mp4', 'file2.jpg']),
+  
+  // FFmpeg operations
+  runFFmpegCommand: vi.fn().mockResolvedValue({ success: true, output: 'output.mp4' }),
+  getFFmpegPath: vi.fn().mockReturnValue('/path/to/ffmpeg'),
+  
+  // Theme operations
+  getTheme: vi.fn().mockReturnValue('dark'),
+  setTheme: vi.fn(),
+  onThemeChange: vi.fn(),
+  
+  // Sound operations (if exists)
+  playSound: vi.fn(),
+  stopSound: vi.fn(),
+  getSounds: vi.fn().mockResolvedValue([]),
+};
+
+/**
+ * Setup mock Electron API in window
+ */
+export function setupElectronMock() {
+  (window as any).electronAPI = mockElectronAPI;
+  return () => {
+    delete (window as any).electronAPI;
+  };
+}
+
+/**
+ * Mock for non-Electron environment
+ */
+export const mockNonElectronAPI = {
   isElectron: false,
-  readFile: vi.fn(),
-  writeFile: vi.fn(),
-  selectFile: vi.fn(),
 };
 ```
-- **Time**: 5 minutes
-- **Risk**: None
-- **Rollback**: Delete file
+**Purpose**: Complete Electron API mock for testing Electron-specific features
+- **Time**: 8 minutes
+- **Risk**: None (test mock)
+- **Rollback**: Delete electron.ts
+- **Success Indicator**: Can import and use in tests without errors
 
-#### Task 017: Create FFmpeg Mock
-**File**: `src/test/mocks/ffmpeg.ts`
+#### Task 017: Create Comprehensive FFmpeg Mock
+**File**: `C:\Users\zdhpe\Desktop\vite_opencut\OpenCut-main\qcut\apps\web\src\test\mocks\ffmpeg.ts`
+**Content**:
 ```typescript
-export const mockFFmpeg = {
-  load: vi.fn().mockResolvedValue(true),
-  writeFile: vi.fn(),
-  readFile: vi.fn(),
-  exec: vi.fn().mockResolvedValue(0),
+import { vi } from 'vitest';
+import type { FFmpeg } from '@ffmpeg/ffmpeg';
+
+/**
+ * Mock FFmpeg instance matching @ffmpeg/ffmpeg interface
+ */
+export class MockFFmpeg implements Partial<FFmpeg> {
+  loaded = false;
+  
+  load = vi.fn().mockImplementation(async () => {
+    this.loaded = true;
+    return true;
+  });
+  
+  writeFile = vi.fn().mockResolvedValue(undefined);
+  readFile = vi.fn().mockResolvedValue(new Uint8Array([1, 2, 3]));
+  deleteFile = vi.fn().mockResolvedValue(undefined);
+  rename = vi.fn().mockResolvedValue(undefined);
+  createDir = vi.fn().mockResolvedValue(undefined);
+  listDir = vi.fn().mockResolvedValue([]);
+  deleteDir = vi.fn().mockResolvedValue(undefined);
+  
+  exec = vi.fn().mockResolvedValue(0);
+  terminate = vi.fn().mockResolvedValue(undefined);
+  
+  on = vi.fn();
+  off = vi.fn();
+}
+
+/**
+ * Mock for createFFmpeg function
+ */
+export const mockCreateFFmpeg = vi.fn(() => new MockFFmpeg());
+
+/**
+ * Mock for FFmpeg utilities
+ */
+export const mockFFmpegUtils = {
+  fetchFile: vi.fn().mockResolvedValue(new Uint8Array([1, 2, 3])),
+  toBlobURL: vi.fn((url: string) => Promise.resolve(`blob:${url}`)),
 };
-```
-- **Time**: 5 minutes
-- **Risk**: None
-- **Rollback**: Delete file
 
-#### Task 018: Create Media Store Mock Data
-**File**: `src/test/fixtures/media-items.ts`
+/**
+ * Setup FFmpeg mocks globally
+ */
+export function setupFFmpegMocks() {
+  vi.mock('@ffmpeg/ffmpeg', () => ({
+    FFmpeg: MockFFmpeg,
+    createFFmpeg: mockCreateFFmpeg,
+  }));
+  
+  vi.mock('@ffmpeg/util', () => mockFFmpegUtils);
+}
+```
+**Verification**: Import MockFFmpeg and check methods exist
+- **Time**: 7 minutes
+- **Risk**: None (test mock)
+- **Rollback**: Delete ffmpeg.ts
+- **Success Indicator**: FFmpeg operations can be mocked in tests
+
+#### Task 018: Create Realistic Media Store Mock Data
+**File**: `C:\Users\zdhpe\Desktop\vite_opencut\OpenCut-main\qcut\apps\web\src\test\fixtures\media-items.ts`
+**Content**:
 ```typescript
-export const mockMediaItems = [
-  {
-    id: 'media-1',
-    name: 'test-video.mp4',
-    type: 'video',
-    duration: 10,
+import type { MediaItem } from '@/stores/media-store-types';
+import { generateUUID, generateFileBasedId } from '@/lib/utils';
+
+/**
+ * Mock media items matching MediaItem interface from media-store-types.ts
+ */
+export const mockVideoItem: MediaItem = {
+  id: generateFileBasedId('test-video.mp4'),
+  name: 'test-video.mp4',
+  type: 'video',
+  url: 'blob:http://localhost:3000/video-123',
+  file: new File(['video content'], 'test-video.mp4', { type: 'video/mp4' }),
+  size: 10485760, // 10MB
+  duration: 120, // 2 minutes
+  dimensions: { width: 1920, height: 1080 },
+  thumbnail: 'blob:http://localhost:3000/thumb-123',
+  metadata: {
+    fps: 30,
+    codec: 'h264',
+    bitrate: '10Mbps',
   },
-];
-```
-- **Time**: 5 minutes
-- **Risk**: None
-- **Rollback**: Delete file
+};
 
-#### Task 019: Create Timeline Mock Data
-**File**: `src/test/fixtures/timeline-data.ts`
-```typescript
-export const mockTimelineElements = [
-  {
-    id: 'element-1',
-    mediaId: 'media-1',
-    startTime: 0,
-    duration: 10,
+export const mockImageItem: MediaItem = {
+  id: generateFileBasedId('test-image.jpg'),
+  name: 'test-image.jpg',
+  type: 'image',
+  url: 'blob:http://localhost:3000/image-456',
+  file: new File(['image content'], 'test-image.jpg', { type: 'image/jpeg' }),
+  size: 512000, // 500KB
+  duration: 5, // Default duration for images
+  dimensions: { width: 1920, height: 1080 },
+  metadata: {
+    format: 'JPEG',
   },
-];
-```
-- **Time**: 5 minutes
-- **Risk**: None
-- **Rollback**: Delete file
+};
 
-#### Task 020: Create Export Settings Mock
-**File**: `src/test/fixtures/export-settings.ts`
+export const mockAudioItem: MediaItem = {
+  id: generateFileBasedId('test-audio.mp3'),
+  name: 'test-audio.mp3',
+  type: 'audio',
+  url: 'blob:http://localhost:3000/audio-789',
+  file: new File(['audio content'], 'test-audio.mp3', { type: 'audio/mpeg' }),
+  size: 3145728, // 3MB
+  duration: 180, // 3 minutes
+  metadata: {
+    sampleRate: 44100,
+    channels: 2,
+    bitrate: '128kbps',
+  },
+};
+
+export const mockMediaItems: MediaItem[] = [
+  mockVideoItem,
+  mockImageItem,
+  mockAudioItem,
+];
+
+/**
+ * Create a custom media item for testing
+ */
+export function createMockMediaItem(overrides: Partial<MediaItem> = {}): MediaItem {
+  return {
+    ...mockVideoItem,
+    id: generateUUID(),
+    ...overrides,
+  };
+}
+```
+**Purpose**: Realistic media items matching actual store types
+- **Time**: 8 minutes
+- **Risk**: None (test fixtures)
+- **Rollback**: Delete media-items.ts
+- **Success Indicator**: Can be imported into media store tests
+
+#### Task 019: Create Timeline Mock Data Matching Store Types
+**File**: `C:\Users\zdhpe\Desktop\vite_opencut\OpenCut-main\qcut\apps\web\src\test\fixtures\timeline-data.ts`
+**Content**:
 ```typescript
-export const mockExportSettings = {
+import type {
+  TimelineElement,
+  TimelineTrack,
+  MediaElement,
+  TextElement,
+} from '@/types/timeline';
+import { generateUUID } from '@/lib/utils';
+
+/**
+ * Mock timeline tracks matching types/timeline.ts
+ */
+export const mockMainTrack: TimelineTrack = {
+  id: 'track-main',
+  name: 'Main',
+  type: 'main',
+  order: 0,
+  isLocked: false,
+  isVisible: true,
+  height: 80,
+};
+
+export const mockVideoTrack: TimelineTrack = {
+  id: 'track-video-1',
+  name: 'Video 1',
+  type: 'video',
+  order: 1,
+  isLocked: false,
+  isVisible: true,
+  height: 80,
+};
+
+/**
+ * Mock timeline elements
+ */
+export const mockMediaElement: MediaElement = {
+  id: generateUUID(),
+  type: 'media',
+  name: 'Test Video Clip',
+  trackId: 'track-main',
+  startTime: 0,
+  duration: 10,
+  mediaType: 'video',
+  mediaId: 'test-media-001',
+  properties: {
+    volume: 1,
+    opacity: 1,
+    scale: 1,
+    rotation: 0,
+    position: { x: 0, y: 0 },
+    crop: { top: 0, right: 0, bottom: 0, left: 0 },
+  },
+};
+
+export const mockTextElement: TextElement = {
+  id: generateUUID(),
+  type: 'text',
+  name: 'Test Text',
+  trackId: 'track-main',
+  startTime: 5,
+  duration: 5,
+  text: 'Test Text Content',
+  style: {
+    fontSize: 32,
+    fontFamily: 'Arial',
+    fontWeight: 'normal',
+    fontStyle: 'normal',
+    textAlign: 'center',
+    color: '#FFFFFF',
+    backgroundColor: 'transparent',
+    strokeColor: '#000000',
+    strokeWidth: 0,
+  },
+  position: { x: 50, y: 50 },
+  animation: 'none',
+};
+
+export const mockTimelineElements: TimelineElement[] = [
+  mockMediaElement,
+  mockTextElement,
+];
+
+export const mockTimelineTracks: TimelineTrack[] = [
+  mockMainTrack,
+  mockVideoTrack,
+];
+
+/**
+ * Create custom timeline element
+ */
+export function createMockTimelineElement(
+  overrides: Partial<TimelineElement> = {}
+): TimelineElement {
+  return {
+    ...mockMediaElement,
+    id: generateUUID(),
+    ...overrides,
+  };
+}
+```
+**Purpose**: Timeline test data matching actual type definitions
+- **Time**: 8 minutes
+- **Risk**: None (test fixtures)
+- **Rollback**: Delete timeline-data.ts
+- **Success Indicator**: Types match timeline store expectations
+
+#### Task 020: Create Comprehensive Export Settings Mock
+**File**: `C:\Users\zdhpe\Desktop\vite_opencut\OpenCut-main\qcut\apps\web\src\test\fixtures\export-settings.ts`
+**Content**:
+```typescript
+import type { ExportSettings, ExportProgress } from '@/types/export';
+
+/**
+ * Mock export settings matching types/export.ts
+ */
+export const mockExportSettingsHD: ExportSettings = {
   format: 'mp4',
-  resolution: '1920x1080',
-  fps: 30,
   quality: 'high',
+  resolution: { width: 1920, height: 1080 },
+  fps: 30,
+  videoBitrate: '10M',
+  audioBitrate: '192k',
+  codec: 'h264',
+  audioCodec: 'aac',
+  filename: 'test-export.mp4',
+  includeAudio: true,
+  includeVideo: true,
 };
+
+export const mockExportSettings4K: ExportSettings = {
+  format: 'mp4',
+  quality: 'ultra',
+  resolution: { width: 3840, height: 2160 },
+  fps: 60,
+  videoBitrate: '50M',
+  audioBitrate: '320k',
+  codec: 'h265',
+  audioCodec: 'aac',
+  filename: 'test-export-4k.mp4',
+  includeAudio: true,
+  includeVideo: true,
+};
+
+export const mockExportSettingsGIF: ExportSettings = {
+  format: 'gif',
+  quality: 'medium',
+  resolution: { width: 480, height: 270 },
+  fps: 15,
+  filename: 'test-export.gif',
+  includeAudio: false,
+  includeVideo: true,
+};
+
+/**
+ * Mock export progress states
+ */
+export const mockExportProgressStart: ExportProgress = {
+  percentage: 0,
+  message: 'Starting export...',
+  isExporting: true,
+  currentFrame: 0,
+  totalFrames: 300,
+};
+
+export const mockExportProgressMiddle: ExportProgress = {
+  percentage: 50,
+  message: 'Processing frame 150 of 300...',
+  isExporting: true,
+  currentFrame: 150,
+  totalFrames: 300,
+};
+
+export const mockExportProgressComplete: ExportProgress = {
+  percentage: 100,
+  message: 'Export complete!',
+  isExporting: false,
+  currentFrame: 300,
+  totalFrames: 300,
+};
+
+/**
+ * Create custom export settings
+ */
+export function createMockExportSettings(
+  overrides: Partial<ExportSettings> = {}
+): ExportSettings {
+  return {
+    ...mockExportSettingsHD,
+    ...overrides,
+  };
+}
 ```
-- **Time**: 3 minutes
-- **Risk**: None
-- **Rollback**: Delete file
+**Purpose**: Export configuration fixtures for testing export functionality
+- **Time**: 7 minutes
+- **Risk**: None (test fixtures)
+- **Rollback**: Delete export-settings.ts
+- **Success Indicator**: Export tests can use realistic settings
 
 #### Task 021: Create Storage Mock
 **File**: `src/test/mocks/storage.ts`
