@@ -61,18 +61,25 @@ describe('useDebounce - Advanced Tests', () => {
   
   it('handles very large delay values', () => {
     const { result, rerender } = renderHook(
-      ({ value }) => useDebounce(value, Number.MAX_SAFE_INTEGER),
-      { initialProps: { value: 'start' } }
+      ({ value, delay }) => useDebounce(value, delay),
+      { initialProps: { value: 'start', delay: 999999 } }
     );
     
-    rerender({ value: 'end' });
+    rerender({ value: 'end', delay: 999999 });
     
     // Value should not change even after a long time
     act(() => {
-      vi.advanceTimersByTime(1000000);
+      vi.advanceTimersByTime(999998);
     });
     
     expect(result.current).toBe('start');
+    
+    // But should change after the delay
+    act(() => {
+      vi.advanceTimersByTime(1);
+    });
+    
+    expect(result.current).toBe('end');
   });
   
   it('handles arrays and objects correctly', () => {

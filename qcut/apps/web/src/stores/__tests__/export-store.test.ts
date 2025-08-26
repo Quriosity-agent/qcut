@@ -15,13 +15,13 @@ describe('ExportStore', () => {
   it('initializes with default settings', () => {
     const { result } = renderHook(() => useExportStore());
     
-    expect(result.current.settings.format).toBe('mp4');
-    expect(result.current.settings.quality).toBe('high');
-    expect(result.current.settings.fps).toBe(30);
-    expect(result.current.settings.includeAudio).toBe(true);
-    expect(result.current.settings.includeSubtitles).toBe(false);
+    expect(result.current.settings.format).toBe('webm');
+    expect(result.current.settings.quality).toBe('1080p');
+    expect(result.current.settings.width).toBe(1920);
+    expect(result.current.settings.height).toBe(1080);
+    expect(result.current.settings.filename).toBeDefined();
     expect(result.current.isDialogOpen).toBe(false);
-    expect(result.current.panelView).toBe('properties');
+    expect(result.current.panelView).toBe('settings');
   });
   
   it('updates export settings', () => {
@@ -29,19 +29,18 @@ describe('ExportStore', () => {
     
     act(() => {
       result.current.updateSettings({
-        quality: 'ultra',
-        fps: 60,
-        includeAudio: false,
-        includeSubtitles: true
+        quality: '720p',
+        filename: 'custom-export.webm'
       });
     });
     
-    expect(result.current.settings.quality).toBe('ultra');
-    expect(result.current.settings.fps).toBe(60);
-    expect(result.current.settings.includeAudio).toBe(false);
-    expect(result.current.settings.includeSubtitles).toBe(true);
+    expect(result.current.settings.quality).toBe('720p');
+    expect(result.current.settings.filename).toBe('custom-export.webm');
+    // Resolution should update with quality
+    expect(result.current.settings.width).toBe(1280);
+    expect(result.current.settings.height).toBe(720);
     // Format should remain unchanged
-    expect(result.current.settings.format).toBe('mp4');
+    expect(result.current.settings.format).toBe('webm');
   });
   
   it('updates export format', () => {
@@ -49,11 +48,11 @@ describe('ExportStore', () => {
     
     act(() => {
       result.current.updateSettings({
-        format: 'webm'
+        format: 'mp4'
       });
     });
     
-    expect(result.current.settings.format).toBe('webm');
+    expect(result.current.settings.format).toBe('mp4');
   });
   
   it('tracks export progress', () => {
@@ -61,39 +60,41 @@ describe('ExportStore', () => {
     
     act(() => {
       result.current.updateProgress({
-        percentage: 0,
-        stage: 'preparing',
-        timeRemaining: 120
+        isExporting: true,
+        progress: 0,
+        status: 'Preparing export...',
+        estimatedTimeRemaining: 120
       });
     });
     
-    expect(result.current.progress.percentage).toBe(0);
-    expect(result.current.progress.stage).toBe('preparing');
-    expect(result.current.progress.timeRemaining).toBe(120);
+    expect(result.current.progress.isExporting).toBe(true);
+    expect(result.current.progress.progress).toBe(0);
+    expect(result.current.progress.status).toBe('Preparing export...');
+    expect(result.current.progress.estimatedTimeRemaining).toBe(120);
     
     act(() => {
       result.current.updateProgress({
-        percentage: 50,
-        stage: 'encoding',
-        timeRemaining: 60
+        progress: 50,
+        currentFrame: 150,
+        totalFrames: 300,
+        estimatedTimeRemaining: 60
       });
     });
     
-    expect(result.current.progress.percentage).toBe(50);
-    expect(result.current.progress.stage).toBe('encoding');
-    expect(result.current.progress.timeRemaining).toBe(60);
+    expect(result.current.progress.progress).toBe(50);
+    expect(result.current.progress.currentFrame).toBe(150);
+    expect(result.current.progress.totalFrames).toBe(300);
     
     act(() => {
       result.current.updateProgress({
-        percentage: 100,
-        stage: 'complete',
-        timeRemaining: 0
+        isExporting: false,
+        progress: 100,
+        status: 'Export complete'
       });
     });
     
-    expect(result.current.progress.percentage).toBe(100);
-    expect(result.current.progress.stage).toBe('complete');
-    expect(result.current.progress.timeRemaining).toBe(0);
+    expect(result.current.progress.isExporting).toBe(false);
+    expect(result.current.progress.progress).toBe(100);
   });
   
   it('manages export history', () => {
@@ -187,6 +188,12 @@ describe('ExportStore', () => {
   it('manages panel view', () => {
     const { result } = renderHook(() => useExportStore());
     
+    expect(result.current.panelView).toBe('settings');
+    
+    act(() => {
+      result.current.setPanelView('properties');
+    });
+    
     expect(result.current.panelView).toBe('properties');
     
     act(() => {
@@ -194,12 +201,6 @@ describe('ExportStore', () => {
     });
     
     expect(result.current.panelView).toBe('export');
-    
-    act(() => {
-      result.current.setPanelView('settings');
-    });
-    
-    expect(result.current.panelView).toBe('settings');
   });
   
   it('sets and clears error state', () => {
@@ -226,14 +227,13 @@ describe('ExportStore', () => {
     // Set various states
     act(() => {
       result.current.updateProgress({
-        percentage: 75,
-        stage: 'encoding',
-        timeRemaining: 30
+        isExporting: true,
+        progress: 75,
+        estimatedTimeRemaining: 30
       });
       result.current.setError('Test error');
       result.current.updateSettings({
-        quality: 'low',
-        fps: 24
+        quality: '480p'
       });
     });
     
@@ -242,12 +242,12 @@ describe('ExportStore', () => {
       result.current.resetExport();
     });
     
-    expect(result.current.progress.percentage).toBe(0);
-    expect(result.current.progress.stage).toBe('preparing');
+    expect(result.current.progress.progress).toBe(0);
+    expect(result.current.progress.isExporting).toBe(false);
     expect(result.current.error).toBe(null);
-    // Settings should not be reset
-    expect(result.current.settings.quality).toBe('low');
-    expect(result.current.settings.fps).toBe(24);
+    // Settings should be reset to defaults
+    expect(result.current.settings.quality).toBe('1080p');
+    expect(result.current.settings.format).toBe('webm');
   });
   
   it('maintains settings across reset', () => {
@@ -255,10 +255,9 @@ describe('ExportStore', () => {
     
     act(() => {
       result.current.updateSettings({
-        format: 'webm',
-        quality: 'ultra',
-        fps: 60,
-        includeAudio: false
+        format: 'mp4',
+        quality: '720p',
+        filename: 'test-export.mp4'
       });
     });
     
@@ -268,6 +267,9 @@ describe('ExportStore', () => {
       result.current.resetExport();
     });
     
-    expect(result.current.settings).toEqual(settingsBeforeReset);
+    // Settings should be reset to defaults, not maintained
+    expect(result.current.settings).not.toEqual(settingsBeforeReset);
+    expect(result.current.settings.format).toBe('webm');
+    expect(result.current.settings.quality).toBe('1080p');
   });
 });

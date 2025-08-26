@@ -24,10 +24,16 @@ vi.mock('@/stores/media-store', () => ({
 
 vi.mock('@/lib/storage/storage-service', () => ({
   storageService: {
-    timeline: {
-      save: vi.fn(() => Promise.resolve()),
-      get: vi.fn(() => Promise.resolve(null))
-    }
+    saveTimeline: vi.fn(() => Promise.resolve()),
+    loadTimeline: vi.fn(() => Promise.resolve(null))
+  }
+}));
+
+vi.mock('@/stores/project-store', () => ({
+  useProjectStore: {
+    getState: vi.fn(() => ({
+      activeProject: null
+    }))
   }
 }));
 
@@ -159,7 +165,7 @@ describe('TimelineStore', () => {
     };
     
     act(() => {
-      result.current.addElement(mainTrack.id, element);
+      result.current.addElementToTrack(mainTrack.id, element);
     });
     
     expect(result.current.tracks[0].elements).toHaveLength(1);
@@ -173,7 +179,7 @@ describe('TimelineStore', () => {
     
     // Add an element
     act(() => {
-      result.current.addElement(mainTrack.id, {
+      result.current.addElementToTrack(mainTrack.id, {
         type: 'media',
         mediaId: 'test-media',
         startTime: 0,
@@ -198,7 +204,7 @@ describe('TimelineStore', () => {
     
     // Add an element
     act(() => {
-      result.current.addElement(mainTrack.id, {
+      result.current.addElementToTrack(mainTrack.id, {
         type: 'text',
         startTime: 0,
         duration: 5,
@@ -230,7 +236,7 @@ describe('TimelineStore', () => {
     act(() => {
       result.current.addTrack('overlay');
       result.current.addTrack('audio');
-      result.current.addElement(result.current.tracks[0].id, {
+      result.current.addElementToTrack(result.current.tracks[0].id, {
         type: 'media',
         mediaId: 'test',
         startTime: 0,
@@ -259,13 +265,13 @@ describe('TimelineStore', () => {
     
     // Add elements
     act(() => {
-      result.current.addElement(mainTrack.id, {
+      result.current.addElementToTrack(mainTrack.id, {
         type: 'media',
         mediaId: 'media1',
         startTime: 0,
         duration: 10
       });
-      result.current.addElement(mainTrack.id, {
+      result.current.addElementToTrack(mainTrack.id, {
         type: 'media',
         mediaId: 'media2',
         startTime: 10,
@@ -277,24 +283,25 @@ describe('TimelineStore', () => {
     
     // Select first element
     act(() => {
-      result.current.setSelectedElement(element1.id);
+      result.current.selectElement(mainTrack.id, element1.id);
     });
     
-    expect(result.current.selectedElement).toBe(element1.id);
+    expect(result.current.selectedElements).toHaveLength(1);
+    expect(result.current.selectedElements[0].elementId).toBe(element1.id);
     
-    // Select second element
+    // Select second element (multi-select)
     act(() => {
-      result.current.setSelectedElement(element2.id);
+      result.current.selectElement(mainTrack.id, element2.id, true);
     });
     
-    expect(result.current.selectedElement).toBe(element2.id);
+    expect(result.current.selectedElements).toHaveLength(2);
     
-    // Deselect
+    // Clear selection
     act(() => {
-      result.current.setSelectedElement(null);
+      result.current.clearSelectedElements();
     });
     
-    expect(result.current.selectedElement).toBe(null);
+    expect(result.current.selectedElements).toHaveLength(0);
   });
   
   it('toggles track mute state', () => {

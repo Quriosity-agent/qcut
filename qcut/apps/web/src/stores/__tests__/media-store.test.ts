@@ -6,12 +6,10 @@ import type { MediaItem } from '@/stores/media-store-types';
 // Mock dependencies
 vi.mock('@/lib/storage/storage-service', () => ({
   storageService: {
-    media: {
-      add: vi.fn(() => Promise.resolve()),
-      remove: vi.fn(() => Promise.resolve()),
-      getByProject: vi.fn(() => Promise.resolve([])),
-      clear: vi.fn(() => Promise.resolve()),
-    }
+    saveMediaItem: vi.fn(() => Promise.resolve()),
+    removeMediaItem: vi.fn(() => Promise.resolve()),
+    loadMediaItems: vi.fn(() => Promise.resolve([])),
+    clearProjectMedia: vi.fn(() => Promise.resolve()),
   }
 }));
 
@@ -25,7 +23,22 @@ vi.mock('@/lib/ffmpeg-utils', () => ({
   generateThumbnail: vi.fn(() => Promise.resolve('thumbnail-url'))
 }));
 
-vi.mock('./timeline-store', () => ({
+vi.mock('@/lib/image-utils', () => ({
+  convertToBlob: vi.fn((url) => Promise.resolve(url)),
+  needsBlobConversion: vi.fn(() => false),
+  downloadImageAsFile: vi.fn((url, name) => Promise.resolve(new File([''], name, { type: 'image/jpeg' }))),
+  revokeBlobUrl: vi.fn(),
+}));
+
+vi.mock('@/stores/project-store', () => ({
+  useProjectStore: {
+    getState: vi.fn(() => ({
+      activeProject: { id: 'test-project' }
+    }))
+  }
+}));
+
+vi.mock('@/stores/timeline-store', () => ({
   useTimelineStore: {
     getState: vi.fn(() => ({
       removeElementsByMediaId: vi.fn()
@@ -168,7 +181,7 @@ describe('MediaStore', () => {
       }
     ];
     
-    (storageService.media.getByProject as any).mockResolvedValueOnce(mockMediaItems);
+    (storageService.loadMediaItems as any).mockResolvedValueOnce(mockMediaItems);
     
     const { result } = renderHook(() => useMediaStore());
     
@@ -177,7 +190,7 @@ describe('MediaStore', () => {
     });
     
     expect(result.current.mediaItems).toEqual(mockMediaItems);
-    expect(storageService.media.getByProject).toHaveBeenCalledWith('project-123');
+    expect(storageService.loadMediaItems).toHaveBeenCalledWith('project-123');
   });
   
   it('clears project media', async () => {
