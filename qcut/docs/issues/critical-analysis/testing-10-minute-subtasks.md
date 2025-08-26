@@ -3687,30 +3687,71 @@ export class TestDataFactory {
 ### 2.2 Component Test Helpers (10 tasks)
 
 #### Task 061: Create Render With Providers
-**File**: `src/test/utils/render-with-providers.tsx`
+**File**: `apps/web/src/test/utils/render-with-providers.tsx`
+**Dependencies**: `@testing-library/react`, TanStack Router
 ```typescript
-import { render } from '@testing-library/react';
-import { TestWrapper } from './test-wrapper';
+import { render, RenderOptions } from '@testing-library/react';
+import { ReactElement } from 'react';
+import { RouterProvider } from '@tanstack/react-router';
+import { createMemoryHistory, createRouter } from '@tanstack/react-router';
 
-export function renderWithProviders(ui: React.ReactElement) {
-  return render(ui, { wrapper: TestWrapper });
+interface CustomRenderOptions extends Omit<RenderOptions, 'wrapper'> {
+  initialRoute?: string;
+}
+
+export function renderWithProviders(
+  ui: ReactElement,
+  options?: CustomRenderOptions
+) {
+  const { initialRoute = '/', ...renderOptions } = options || {};
+  
+  // Create test router with memory history
+  const Wrapper = ({ children }: { children: React.ReactNode }) => {
+    return children;
+  };
+  
+  return render(ui, { wrapper: Wrapper, ...renderOptions });
 }
 ```
 - **Time**: 5 minutes
 - **Risk**: None
 - **Rollback**: Delete file
 
-#### Task 062: Create Wait For Element Helper
-**File**: `src/test/utils/wait-for-element.ts`
+#### Task 062: Create Wait For Element Helper (Already Similar Exists)
+**File**: `apps/web/src/test/utils/wait-for-element.ts`
+**Similar Exists**: `apps/web/src/test/utils/async-helpers.ts` has waitForCondition
 ```typescript
-export async function waitForElement(selector: string, timeout = 3000) {
-  const start = Date.now();
-  while (Date.now() - start < timeout) {
-    const element = document.querySelector(selector);
-    if (element) return element;
-    await new Promise(r => setTimeout(r, 100));
-  }
-  throw new Error(`Element ${selector} not found`);
+import { waitFor } from '@testing-library/react';
+
+export async function waitForElement(
+  selector: string,
+  options = { timeout: 3000 }
+) {
+  return waitFor(
+    () => {
+      const element = document.querySelector(selector);
+      if (!element) throw new Error(`Element ${selector} not found`);
+      return element;
+    },
+    options
+  );
+}
+
+export async function waitForElements(
+  selector: string,
+  count: number,
+  options = { timeout: 3000 }
+) {
+  return waitFor(
+    () => {
+      const elements = document.querySelectorAll(selector);
+      if (elements.length < count) {
+        throw new Error(`Expected ${count} elements, found ${elements.length}`);
+      }
+      return Array.from(elements);
+    },
+    options
+  );
 }
 ```
 - **Time**: 7 minutes
@@ -3718,7 +3759,8 @@ export async function waitForElement(selector: string, timeout = 3000) {
 - **Rollback**: Delete file
 
 #### Task 063: Create Fire Event Helper
-**File**: `src/test/utils/fire-events.ts`
+**File**: `apps/web/src/test/utils/fire-events.ts`
+**Uses**: `@testing-library/react` fireEvent
 ```typescript
 import { fireEvent } from '@testing-library/react';
 
@@ -3727,20 +3769,65 @@ export function fireClickEvent(element: HTMLElement) {
   fireEvent.mouseUp(element);
   fireEvent.click(element);
 }
+
+export function fireDoubleClickEvent(element: HTMLElement) {
+  fireClickEvent(element);
+  fireEvent.dblClick(element);
+}
+
+export function fireHoverEvent(element: HTMLElement) {
+  fireEvent.mouseEnter(element);
+  fireEvent.mouseOver(element);
+}
+
+export function fireUnhoverEvent(element: HTMLElement) {
+  fireEvent.mouseLeave(element);
+  fireEvent.mouseOut(element);
+}
 ```
 - **Time**: 5 minutes
 - **Risk**: None
 - **Rollback**: Delete file
 
 #### Task 064: Create Drag and Drop Helper
-**File**: `src/test/utils/drag-drop.ts`
+**File**: `apps/web/src/test/utils/drag-drop.ts`
+**Component Used**: `apps/web/src/components/editor/timeline/timeline-element.tsx`
 ```typescript
-export function simulateDragDrop(source: HTMLElement, target: HTMLElement) {
-  fireEvent.dragStart(source);
-  fireEvent.dragEnter(target);
-  fireEvent.dragOver(target);
-  fireEvent.drop(target);
-  fireEvent.dragEnd(source);
+import { fireEvent } from '@testing-library/react';
+
+export function simulateDragDrop(
+  source: HTMLElement,
+  target: HTMLElement,
+  dataTransfer?: Partial<DataTransfer>
+) {
+  const transfer = {
+    data: {},
+    setData(format: string, data: string) {
+      this.data[format] = data;
+    },
+    getData(format: string) {
+      return this.data[format];
+    },
+    ...dataTransfer,
+  };
+  
+  fireEvent.dragStart(source, { dataTransfer: transfer });
+  fireEvent.dragEnter(target, { dataTransfer: transfer });
+  fireEvent.dragOver(target, { dataTransfer: transfer });
+  fireEvent.drop(target, { dataTransfer: transfer });
+  fireEvent.dragEnd(source, { dataTransfer: transfer });
+}
+
+export function simulateTimelineDrag(
+  element: HTMLElement,
+  trackId: string,
+  position: number
+) {
+  const data = JSON.stringify({ elementId: element.id, trackId, position });
+  simulateDragDrop(element, document.querySelector(`[data-track-id="${trackId}"]`)!, {
+    getData: () => data,
+    setData: () => {},
+  } as any);
 }
 ```
 - **Time**: 7 minutes
@@ -3748,14 +3835,41 @@ export function simulateDragDrop(source: HTMLElement, target: HTMLElement) {
 - **Rollback**: Delete file
 
 #### Task 065: Create Media Upload Helper
-**File**: `src/test/utils/media-upload.ts`
+**File**: `apps/web/src/test/utils/media-upload.ts`
+**Uses**: File API, `@testing-library/react`
 ```typescript
-export function simulateFileUpload(input: HTMLInputElement, file: File) {
+import { fireEvent } from '@testing-library/react';
+
+export function createMockFile(
+  name: string,
+  size = 1024,
+  type = 'image/jpeg'
+): File {
+  const content = new ArrayBuffer(size);
+  return new File([content], name, { type });
+}
+
+export function createMockVideoFile(name = 'video.mp4', duration = 10): File {
+  return createMockFile(name, 1024 * 1024, 'video/mp4');
+}
+
+export function createMockAudioFile(name = 'audio.mp3'): File {
+  return createMockFile(name, 512 * 1024, 'audio/mpeg');
+}
+
+export function simulateFileUpload(
+  input: HTMLInputElement,
+  files: File | File[]
+) {
+  const fileList = Array.isArray(files) ? files : [files];
+  
   Object.defineProperty(input, 'files', {
-    value: [file],
+    value: fileList,
     writable: true,
+    configurable: true,
   });
-  fireEvent.change(input);
+  
+  fireEvent.change(input, { target: { files: fileList } });
 }
 ```
 - **Time**: 5 minutes
@@ -3763,33 +3877,127 @@ export function simulateFileUpload(input: HTMLInputElement, file: File) {
 - **Rollback**: Delete file
 
 #### Task 066: Create Context Menu Helper
-**File**: `src/test/utils/context-menu.ts`
+**File**: `apps/web/src/test/utils/context-menu.ts`
 ```typescript
-export function openContextMenu(element: HTMLElement) {
-  fireEvent.contextMenu(element);
+import { fireEvent } from '@testing-library/react';
+
+export function openContextMenu(
+  element: HTMLElement,
+  position = { clientX: 100, clientY: 100 }
+) {
+  fireEvent.contextMenu(element, position);
+}
+
+export function selectContextMenuItem(menuText: string) {
+  const menuItem = document.querySelector(
+    `[role="menuitem"]:has-text("${menuText}")`
+  );
+  if (menuItem) {
+    fireEvent.click(menuItem as HTMLElement);
+  }
+  return menuItem;
+}
+
+export function closeContextMenu() {
+  fireEvent.keyDown(document.body, { key: 'Escape' });
 }
 ```
 - **Time**: 3 minutes
 - **Risk**: None
 - **Rollback**: Delete file
 
-#### Task 067: Create Keyboard Shortcut Helper
-**File**: `src/test/utils/keyboard-shortcuts.ts`
+#### Task 067: Create Keyboard Shortcut Helper (Enhanced Existing)
+**File**: `apps/web/src/test/utils/keyboard-shortcuts.ts`
+**Extends**: `apps/web/src/test/utils/keyboard-events.ts` (already exists)
 ```typescript
-export function triggerShortcut(key: string, modifiers = {}) {
-  fireEvent.keyDown(document, { key, ...modifiers });
+import { fireEvent } from '@testing-library/react';
+import { shortcuts } from './keyboard-events';
+
+export function triggerShortcut(
+  key: string,
+  modifiers: {
+    ctrlKey?: boolean;
+    shiftKey?: boolean;
+    altKey?: boolean;
+    metaKey?: boolean;
+  } = {},
+  target: HTMLElement | Document = document
+) {
+  fireEvent.keyDown(target, {
+    key,
+    code: `Key${key.toUpperCase()}`,
+    ...modifiers,
+  });
 }
+
+export const editorShortcuts = {
+  save: () => triggerShortcut('s', { ctrlKey: true }),
+  export: () => triggerShortcut('e', { ctrlKey: true, shiftKey: true }),
+  import: () => triggerShortcut('i', { ctrlKey: true }),
+  newProject: () => triggerShortcut('n', { ctrlKey: true }),
+  
+  // Timeline shortcuts (extending existing)
+  splitAtPlayhead: () => triggerShortcut('s'),
+  deleteSelected: () => shortcuts.delete(),
+  rippleDelete: () => triggerShortcut('Delete', { shiftKey: true }),
+};
 ```
 - **Time**: 5 minutes
 - **Risk**: None
 - **Rollback**: Delete file
 
 #### Task 068: Create Timeline Helper
-**File**: `src/test/utils/timeline-helpers.ts`
+**File**: `apps/web/src/test/utils/timeline-helpers.ts`
+**Store**: `apps/web/src/stores/timeline-store.ts`
 ```typescript
-export function addElementToTimeline(element: any) {
-  // Helper to add elements to timeline in tests
-  return { id: 'test-element', ...element };
+import { useTimelineStore } from '@/stores/timeline-store';
+import type { TimelineElement, TimelineTrack } from '@/types/timeline';
+
+export function addElementToTimeline(
+  trackId: string,
+  element: Partial<TimelineElement>
+): TimelineElement {
+  const store = useTimelineStore.getState();
+  const fullElement: TimelineElement = {
+    id: `element-${Date.now()}`,
+    type: 'media',
+    start: 0,
+    duration: 5,
+    trackId,
+    ...element,
+  } as TimelineElement;
+  
+  store.addElementToTrack(trackId, fullElement);
+  return fullElement;
+}
+
+export function createTestTrack(type: 'media' | 'text' | 'audio' = 'media'): TimelineTrack {
+  const store = useTimelineStore.getState();
+  const track: TimelineTrack = {
+    id: `track-${Date.now()}`,
+    name: `Test ${type} track`,
+    type,
+    elements: [],
+    muted: false,
+    isMain: type === 'media',
+  };
+  
+  store.addTrack(track);
+  return track;
+}
+
+export function getTimelineSnapshot() {
+  const store = useTimelineStore.getState();
+  return {
+    tracks: store.tracks,
+    duration: store.tracks.reduce((max, track) => {
+      const trackDuration = track.elements.reduce(
+        (sum, el) => Math.max(sum, el.start + el.duration),
+        0
+      );
+      return Math.max(max, trackDuration);
+    }, 0),
+  };
 }
 ```
 - **Time**: 5 minutes
@@ -3797,11 +4005,47 @@ export function addElementToTimeline(element: any) {
 - **Rollback**: Delete file
 
 #### Task 069: Create Export Helper
-**File**: `src/test/utils/export-helpers.ts`
+**File**: `apps/web/src/test/utils/export-helpers.ts`
+**Store**: `apps/web/src/stores/export-store.ts`
 ```typescript
-export async function waitForExportComplete(timeout = 10000) {
-  // Helper to wait for export completion
-  return new Promise(resolve => setTimeout(resolve, 100));
+import { useExportStore } from '@/stores/export-store';
+import { waitForCondition } from './async-helpers';
+
+export async function waitForExportComplete(
+  timeout = 30000
+): Promise<void> {
+  const store = useExportStore.getState();
+  
+  await waitForCondition(
+    () => !store.progress.isExporting && store.progress.percentage === 100,
+    {
+      timeout,
+      message: 'Export did not complete',
+    }
+  );
+}
+
+export function mockExportProgress(
+  percentage: number,
+  message = 'Exporting...'
+) {
+  useExportStore.setState({
+    progress: {
+      percentage,
+      message,
+      isExporting: percentage < 100,
+    },
+  });
+}
+
+export function getExportSettings() {
+  const store = useExportStore.getState();
+  return {
+    format: store.format || 'WEBM',
+    quality: store.quality || 0.92,
+    resolution: store.resolution || '1920x1080',
+    fps: store.fps || 30,
+  };
 }
 ```
 - **Time**: 5 minutes
@@ -3809,13 +4053,60 @@ export async function waitForExportComplete(timeout = 10000) {
 - **Rollback**: Delete file
 
 #### Task 070: Create Memory Check Helper
-**File**: `src/test/utils/memory-check.ts`
+**File**: `apps/web/src/test/utils/memory-check.ts`
+**Uses**: Performance API
 ```typescript
-export function checkMemoryUsage() {
-  if (performance.memory) {
-    return performance.memory.usedJSHeapSize;
+interface MemorySnapshot {
+  usedJSHeapSize: number;
+  totalJSHeapSize: number;
+  jsHeapSizeLimit: number;
+  timestamp: number;
+}
+
+export function checkMemoryUsage(): MemorySnapshot | null {
+  // TypeScript doesn't have performance.memory by default
+  const perf = performance as any;
+  
+  if (perf.memory) {
+    return {
+      usedJSHeapSize: perf.memory.usedJSHeapSize,
+      totalJSHeapSize: perf.memory.totalJSHeapSize,
+      jsHeapSizeLimit: perf.memory.jsHeapSizeLimit,
+      timestamp: Date.now(),
+    };
   }
-  return 0;
+  
+  return null;
+}
+
+export function formatMemoryUsage(bytes: number): string {
+  const mb = bytes / (1024 * 1024);
+  return `${mb.toFixed(2)} MB`;
+}
+
+export class MemoryLeakDetector {
+  private snapshots: MemorySnapshot[] = [];
+  
+  takeSnapshot() {
+    const snapshot = checkMemoryUsage();
+    if (snapshot) {
+      this.snapshots.push(snapshot);
+    }
+  }
+  
+  detectLeak(threshold = 10): boolean {
+    if (this.snapshots.length < 2) return false;
+    
+    const first = this.snapshots[0];
+    const last = this.snapshots[this.snapshots.length - 1];
+    const increaseMB = (last.usedJSHeapSize - first.usedJSHeapSize) / (1024 * 1024);
+    
+    return increaseMB > threshold;
+  }
+  
+  reset() {
+    this.snapshots = [];
+  }
 }
 ```
 - **Time**: 5 minutes
