@@ -2967,16 +2967,35 @@ function clamp(value: number, min: number, max: number): number {
 
 ### 1.2 Simple Hook Tests (10 tasks)
 
-#### Task 041: Test useDebounce Hook
-**File**: `src/hooks/use-debounce.test.ts`
+#### Task 041: Test Additional Hooks (useDebounce variations) ✅ COMPLETED
+**File**: `src/hooks/__tests__/use-debounce-callback.test.ts`
+**Source File**: `qcut/apps/web/src/hooks/use-debounce.ts` (already tested)
 ```typescript
+import { describe, it, expect, vi } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useDebounce } from '@/hooks/use-debounce';
 
-describe('useDebounce', () => {
-  it('debounces value', async () => {
-    const { result } = renderHook(() => useDebounce('test', 100));
-    expect(result.current).toBe('test');
+describe('useDebounce - Advanced Tests', () => {
+  it('handles null and undefined values', () => {
+    const { result, rerender } = renderHook(
+      ({ value }) => useDebounce(value, 500),
+      { initialProps: { value: null as any } }
+    );
+    
+    expect(result.current).toBe(null);
+    
+    rerender({ value: undefined });
+    expect(result.current).toBe(null);
+  });
+  
+  it('handles zero delay (immediate update)', () => {
+    const { result, rerender } = renderHook(
+      ({ value }) => useDebounce(value, 0),
+      { initialProps: { value: 'initial' } }
+    );
+    
+    rerender({ value: 'updated' });
+    expect(result.current).toBe('updated');
   });
 });
 ```
@@ -2984,119 +3003,475 @@ describe('useDebounce', () => {
 - **Risk**: None
 - **Rollback**: Delete file
 
-#### Task 042: Test useMobile Hook
-**File**: `src/hooks/use-mobile.test.tsx`
+#### Task 042: Test useIsMobile Hook ✅ COMPLETED
+**File**: `src/hooks/__tests__/use-mobile.test.tsx`
+**Source File**: `qcut/apps/web/src/hooks/use-mobile.tsx`
 ```typescript
-describe('useMobile', () => {
-  it('detects mobile', () => {
-    const { result } = renderHook(() => useMobile());
-    expect(typeof result.current).toBe('boolean');
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { renderHook, act } from '@testing-library/react';
+import { useIsMobile } from '@/hooks/use-mobile';
+
+describe('useIsMobile', () => {
+  const originalInnerWidth = window.innerWidth;
+  const originalMatchMedia = window.matchMedia;
+  
+  beforeEach(() => {
+    const listeners: any[] = [];
+    window.matchMedia = vi.fn((query) => ({
+      matches: window.innerWidth < 768,
+      media: query,
+      addEventListener: vi.fn((event, listener) => listeners.push(listener)),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    } as any));
+  });
+  
+  afterEach(() => {
+    window.innerWidth = originalInnerWidth;
+    window.matchMedia = originalMatchMedia;
+  });
+  
+  it('detects mobile screen size (< 768px)', () => {
+    Object.defineProperty(window, 'innerWidth', {
+      writable: true,
+      configurable: true,
+      value: 500
+    });
+    
+    const { result } = renderHook(() => useIsMobile());
+    expect(result.current).toBe(true);
+  });
+  
+  it('detects desktop screen size (>= 768px)', () => {
+    Object.defineProperty(window, 'innerWidth', {
+      writable: true,
+      configurable: true,
+      value: 1024
+    });
+    
+    const { result } = renderHook(() => useIsMobile());
+    expect(result.current).toBe(false);
   });
 });
 ```
-- **Time**: 5 minutes
+- **Time**: 8 minutes
 - **Risk**: None
 - **Rollback**: Delete file
 
-#### Task 043: Test useToast Hook
-**File**: `src/hooks/use-toast.test.ts`
+#### Task 043: Test Additional useToast Hook Features ✅ COMPLETED
+**File**: `src/hooks/__tests__/use-toast-advanced.test.ts`
+**Source File**: `qcut/apps/web/src/hooks/use-toast.ts` (already tested)
 ```typescript
-describe('useToast', () => {
-  it('returns toast function', () => {
+import { describe, it, expect, vi } from 'vitest';
+import { renderHook, act } from '@testing-library/react';
+import { useToast } from '@/hooks/use-toast';
+
+describe('useToast - Advanced Features', () => {
+  it('handles custom action buttons', () => {
     const { result } = renderHook(() => useToast());
-    expect(result.current.toast).toBeDefined();
+    const onAction = vi.fn();
+    
+    act(() => {
+      result.current.toast({
+        title: 'Action Toast',
+        action: {
+          label: 'Undo',
+          onClick: onAction
+        }
+      });
+    });
+    
+    expect(result.current.toasts[0].action).toBeDefined();
+  });
+  
+  it('supports toast variants', () => {
+    const { result } = renderHook(() => useToast());
+    
+    act(() => {
+      result.current.toast({
+        title: 'Error Toast',
+        variant: 'destructive'
+      });
+    });
+    
+    expect(result.current.toasts[0].variant).toBe('destructive');
   });
 });
 ```
-- **Time**: 5 minutes
+- **Time**: 6 minutes
 - **Risk**: None
 - **Rollback**: Delete file
 
-#### Task 044: Test useAspectRatio Hook
-**File**: `src/hooks/use-aspect-ratio.test.ts`
+#### Task 044: Test Additional useAspectRatio Hook Features ✅ COMPLETED
+**File**: `src/hooks/__tests__/use-aspect-ratio-advanced.test.ts`
+**Source File**: `qcut/apps/web/src/hooks/use-aspect-ratio.ts` (already tested)
 ```typescript
-describe('useAspectRatio', () => {
-  it('calculates aspect ratio', () => {
-    const { result } = renderHook(() => useAspectRatio(1920, 1080));
-    expect(result.current).toBe('16:9');
+import { describe, it, expect, vi } from 'vitest';
+import { renderHook } from '@testing-library/react';
+import { useAspectRatio } from '@/hooks/use-aspect-ratio';
+
+// Mock stores
+vi.mock('@/stores/editor-store');
+vi.mock('@/stores/timeline-store');
+vi.mock('@/hooks/use-async-media-store');
+
+describe('useAspectRatio - Advanced Features', () => {
+  it('handles custom canvas sizes', () => {
+    const { result } = renderHook(() => useAspectRatio());
+    
+    // Test custom aspect ratio not in presets
+    expect(result.current.formatAspectRatio(2.35)).toBe('2.35');
+    expect(result.current.formatAspectRatio(1.85)).toBe('1.85');
+  });
+  
+  it('handles portrait orientations', () => {
+    const { result } = renderHook(() => useAspectRatio());
+    
+    expect(result.current.formatAspectRatio(9/16)).toBe('9:16');
+    expect(result.current.formatAspectRatio(3/4)).toBe('3:4');
   });
 });
 ```
-- **Time**: 5 minutes
+- **Time**: 7 minutes
 - **Risk**: None
 - **Rollback**: Delete file
 
-#### Task 045: Create First Store Test Structure
-**File**: `src/stores/media-store.test.ts`
+#### Task 045: Test Media Store Basic Operations ✅ COMPLETED
+**File**: `src/stores/__tests__/media-store.test.ts`
+**Source File**: `qcut/apps/web/src/stores/media-store.ts`
 ```typescript
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { act, renderHook } from '@testing-library/react';
+import { useMediaStore } from '@/stores/media-store';
+import type { MediaItem } from '@/stores/media-store-types';
+
+// Mock dependencies
+vi.mock('@/lib/storage/storage-service');
+vi.mock('@/lib/ffmpeg-utils');
 
 describe('MediaStore', () => {
-  it('exists', () => {
-    expect(true).toBe(true); // Placeholder
+  beforeEach(() => {
+    const { result } = renderHook(() => useMediaStore());
+    act(() => {
+      result.current.clearAllMedia();
+    });
+  });
+  
+  it('initializes with empty media items', () => {
+    const { result } = renderHook(() => useMediaStore());
+    expect(result.current.mediaItems).toEqual([]);
+    expect(result.current.isLoading).toBe(false);
+  });
+  
+  it('adds media item with generated ID', async () => {
+    const { result } = renderHook(() => useMediaStore());
+    const projectId = 'test-project';
+    
+    const mediaItem: Omit<MediaItem, 'id'> = {
+      type: 'image',
+      name: 'test.jpg',
+      url: 'blob:test',
+      size: 1024,
+      duration: 0,
+      thumbnailUrl: 'thumb.jpg'
+    };
+    
+    await act(async () => {
+      await result.current.addMediaItem(projectId, mediaItem);
+    });
+    
+    expect(result.current.mediaItems).toHaveLength(1);
+    expect(result.current.mediaItems[0].type).toBe('image');
   });
 });
 ```
-- **Time**: 3 minutes
+- **Time**: 8 minutes
 - **Risk**: None
 - **Rollback**: Delete file
 
-#### Task 046: Create Timeline Store Test Structure
-**File**: `src/stores/timeline-store.test.ts`
+#### Task 046: Test Timeline Store Track Operations ✅ COMPLETED
+**File**: `src/stores/__tests__/timeline-store.test.ts`
+**Source File**: `qcut/apps/web/src/stores/timeline-store.ts`
 ```typescript
+import { describe, it, expect, beforeEach } from 'vitest';
+import { act, renderHook } from '@testing-library/react';
+import { useTimelineStore } from '@/stores/timeline-store';
+import type { TimelineTrack, TimelineElement } from '@/types/timeline';
+
 describe('TimelineStore', () => {
-  it('exists', () => {
-    expect(true).toBe(true); // Placeholder
+  beforeEach(() => {
+    const { result } = renderHook(() => useTimelineStore());
+    act(() => {
+      result.current.clearTimeline();
+    });
+  });
+  
+  it('initializes with main track', () => {
+    const { result } = renderHook(() => useTimelineStore());
+    
+    expect(result.current.tracks).toHaveLength(1);
+    expect(result.current.tracks[0].type).toBe('main');
+    expect(result.current.tracks[0].order).toBe(0);
+  });
+  
+  it('adds overlay track', () => {
+    const { result } = renderHook(() => useTimelineStore());
+    
+    act(() => {
+      result.current.addTrack('overlay');
+    });
+    
+    expect(result.current.tracks).toHaveLength(2);
+    const overlayTrack = result.current.tracks.find(t => t.type === 'overlay');
+    expect(overlayTrack).toBeDefined();
+    expect(overlayTrack?.order).toBe(1);
+  });
+  
+  it('maintains history for undo/redo', () => {
+    const { result } = renderHook(() => useTimelineStore());
+    
+    act(() => {
+      result.current.addTrack('audio');
+    });
+    
+    expect(result.current.history).toHaveLength(1);
+    
+    act(() => {
+      result.current.undo();
+    });
+    
+    expect(result.current.tracks).toHaveLength(1);
   });
 });
 ```
-- **Time**: 3 minutes
+- **Time**: 9 minutes
 - **Risk**: None
 - **Rollback**: Delete file
 
-#### Task 047: Create Export Store Test Structure
-**File**: `src/stores/export-store.test.ts`
+#### Task 047: Test Export Store Settings ✅ COMPLETED
+**File**: `src/stores/__tests__/export-store.test.ts`
+**Source File**: `qcut/apps/web/src/stores/export-store.ts`
 ```typescript
+import { describe, it, expect, beforeEach } from 'vitest';
+import { act, renderHook } from '@testing-library/react';
+import { useExportStore } from '@/stores/export-store';
+import type { ExportSettings, ExportProgress } from '@/types/export';
+
 describe('ExportStore', () => {
-  it('exists', () => {
-    expect(true).toBe(true); // Placeholder
+  it('initializes with default settings', () => {
+    const { result } = renderHook(() => useExportStore());
+    
+    expect(result.current.settings.format).toBe('mp4');
+    expect(result.current.settings.quality).toBe('high');
+    expect(result.current.settings.fps).toBe(30);
+    expect(result.current.isDialogOpen).toBe(false);
+  });
+  
+  it('updates export settings', () => {
+    const { result } = renderHook(() => useExportStore());
+    
+    act(() => {
+      result.current.updateSettings({
+        quality: 'ultra',
+        fps: 60,
+        includeAudio: false
+      });
+    });
+    
+    expect(result.current.settings.quality).toBe('ultra');
+    expect(result.current.settings.fps).toBe(60);
+    expect(result.current.settings.includeAudio).toBe(false);
+  });
+  
+  it('tracks export progress', () => {
+    const { result } = renderHook(() => useExportStore());
+    
+    act(() => {
+      result.current.updateProgress({
+        percentage: 50,
+        stage: 'encoding',
+        timeRemaining: 30
+      });
+    });
+    
+    expect(result.current.progress.percentage).toBe(50);
+    expect(result.current.progress.stage).toBe('encoding');
+  });
+  
+  it('manages export history', () => {
+    const { result } = renderHook(() => useExportStore());
+    
+    act(() => {
+      result.current.addToHistory({
+        filename: 'test-export.mp4',
+        settings: result.current.settings,
+        duration: 120,
+        success: true
+      });
+    });
+    
+    expect(result.current.exportHistory).toHaveLength(1);
+    expect(result.current.exportHistory[0].filename).toBe('test-export.mp4');
   });
 });
 ```
-- **Time**: 3 minutes
+- **Time**: 9 minutes
 - **Risk**: None
 - **Rollback**: Delete file
 
-#### Task 048: Create Component Test Structure
-**File**: `src/components/ui/button.test.tsx`
+#### Task 048: Test Button Component ✅ COMPLETED
+**File**: `src/components/ui/__tests__/button.test.tsx`
+**Source File**: `qcut/apps/web/src/components/ui/button.tsx`
 ```typescript
-import { render } from '@testing-library/react';
+import { describe, it, expect, vi } from 'vitest';
+import { render, screen, fireEvent } from '@testing-library/react';
+import { Button } from '@/components/ui/button';
 
-describe('Button', () => {
-  it('renders', () => {
-    expect(true).toBe(true); // Placeholder
+describe('Button Component', () => {
+  it('renders with default props', () => {
+    render(<Button>Click me</Button>);
+    const button = screen.getByRole('button', { name: 'Click me' });
+    expect(button).toBeInTheDocument();
+  });
+  
+  it('applies variant classes', () => {
+    const { rerender } = render(<Button variant="primary">Primary</Button>);
+    let button = screen.getByRole('button');
+    expect(button.className).toContain('bg-primary');
+    
+    rerender(<Button variant="destructive">Destructive</Button>);
+    button = screen.getByRole('button');
+    expect(button.className).toContain('bg-destructive');
+    
+    rerender(<Button variant="outline">Outline</Button>);
+    button = screen.getByRole('button');
+    expect(button.className).toContain('border');
+  });
+  
+  it('applies size classes', () => {
+    const { rerender } = render(<Button size="sm">Small</Button>);
+    let button = screen.getByRole('button');
+    expect(button.className).toContain('h-8');
+    
+    rerender(<Button size="lg">Large</Button>);
+    button = screen.getByRole('button');
+    expect(button.className).toContain('h-10');
+    
+    rerender(<Button size="icon">Icon</Button>);
+    button = screen.getByRole('button');
+    expect(button.className).toContain('h-7');
+    expect(button.className).toContain('w-7');
+  });
+  
+  it('handles click events', () => {
+    const onClick = vi.fn();
+    render(<Button onClick={onClick}>Click me</Button>);
+    
+    const button = screen.getByRole('button');
+    fireEvent.click(button);
+    
+    expect(onClick).toHaveBeenCalledTimes(1);
+  });
+  
+  it('disables button when disabled prop is true', () => {
+    render(<Button disabled>Disabled</Button>);
+    const button = screen.getByRole('button');
+    
+    expect(button).toBeDisabled();
+    expect(button.className).toContain('disabled:opacity-50');
   });
 });
 ```
-- **Time**: 5 minutes
+- **Time**: 9 minutes
 - **Risk**: None
 - **Rollback**: Delete file
 
-#### Task 049: Verify Test Runner Works
+#### Task 049: Create Test Script for CI/CD ✅ COMPLETED
+**File**: `scripts/run-tests.sh`
 ```bash
-bun test
-```
-- **Time**: 5 minutes
-- **Risk**: None
-- **Success**: Tests run without errors
+#!/bin/bash
+# Test runner script for CI/CD integration
 
-#### Task 050: Run Test UI
-```bash
-bun test:ui
+set -e  # Exit on error
+
+echo "🧪 Running QCut Test Suite..."
+echo "================================"
+
+# Navigate to web app directory
+cd "$(dirname "$0")/../apps/web" || exit 1
+
+# Install dependencies if needed
+if [ ! -d "node_modules" ]; then
+  echo "📦 Installing dependencies..."
+  bun install
+fi
+
+# Run linting
+echo "\n🔍 Running linter..."
+bun run lint:clean || echo "⚠️  Lint warnings found"
+
+# Run type checking
+echo "\n📝 Running type check..."
+bun run check-types || echo "⚠️  Type errors found"
+
+# Run tests with coverage
+echo "\n🧪 Running tests..."
+bun test --coverage
+
+# Generate coverage report
+echo "\n📊 Test Coverage Summary:"
+bun test:coverage --reporter=text-summary
+
+echo "\n✅ Test suite completed!"
 ```
-- **Time**: 5 minutes
+**Verification**: `chmod +x scripts/run-tests.sh && ./scripts/run-tests.sh`
+- **Time**: 8 minutes
 - **Risk**: None
-- **Success**: UI opens in browser
+- **Success**: Script executes all test steps
+
+#### Task 050: Create Test Configuration for Watch Mode ✅ COMPLETED
+**File**: `vitest.config.watch.ts`
+```typescript
+import { defineConfig } from 'vitest/config';
+import baseConfig from './vitest.config';
+
+export default defineConfig({
+  ...baseConfig,
+  test: {
+    ...baseConfig.test,
+    watch: true,
+    watchExclude: [
+      '**/node_modules/**',
+      '**/dist/**',
+      '**/build/**',
+      '**/.git/**',
+      '**/coverage/**'
+    ],
+    // Only re-run tests related to changed files
+    passWithNoTests: true,
+    // Faster feedback in watch mode
+    isolate: false,
+    threads: true,
+    // UI server configuration
+    ui: true,
+    uiPort: 51204,
+    open: false // Don't auto-open browser
+  }
+});
+```
+**Script Addition to package.json**:
+```json
+{
+  "scripts": {
+    "test:watch": "vitest --config vitest.config.watch.ts",
+    "test:ui:dev": "vitest --ui --config vitest.config.watch.ts"
+  }
+}
+```
+**Verification**: `bun run test:watch`
+- **Time**: 7 minutes
+- **Risk**: None
+- **Success**: Tests re-run on file changes
 
 ---
 

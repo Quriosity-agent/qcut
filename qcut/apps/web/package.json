@@ -17,7 +17,9 @@
     "db:push:prod": "cross-env NODE_ENV=production drizzle-kit push",
     "test": "vitest",
     "test:ui": "vitest --ui",
-    "test:coverage": "vitest --coverage"
+    "test:coverage": "vitest --coverage",
+    "test:watch": "vitest --config vitest.config.watch.ts",
+    "test:ui:dev": "vitest --ui --config vitest.config.watch.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.699.0",
