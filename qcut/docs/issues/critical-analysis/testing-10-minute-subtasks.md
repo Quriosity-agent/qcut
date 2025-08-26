@@ -1049,141 +1049,880 @@ export function createMockExportSettings(
 - **Rollback**: Delete export-settings.ts
 - **Success Indicator**: Export tests can use realistic settings
 
-#### Task 021: Create Storage Mock
-**File**: `src/test/mocks/storage.ts`
+#### Task 021: Create Comprehensive Storage Service Mock
+**File**: `C:\Users\zdhpe\Desktop\vite_opencut\OpenCut-main\qcut\apps\web\src\test\mocks\storage.ts`
+**Content**:
 ```typescript
+import { vi } from 'vitest';
+import type { StorageAdapter, SerializedProject, MediaFileData, TimelineData } from '@/lib/storage/types';
+
+/**
+ * Mock Storage Service matching lib/storage/storage-service.ts
+ */
+export class MockStorageAdapter implements StorageAdapter<any> {
+  private storage = new Map<string, any>();
+  
+  get = vi.fn().mockImplementation(async (key: string) => {
+    return this.storage.get(key) || null;
+  });
+  
+  set = vi.fn().mockImplementation(async (key: string, value: any) => {
+    this.storage.set(key, value);
+  });
+  
+  delete = vi.fn().mockImplementation(async (key: string) => {
+    this.storage.delete(key);
+  });
+  
+  getAll = vi.fn().mockImplementation(async () => {
+    return Array.from(this.storage.values());
+  });
+  
+  clear = vi.fn().mockImplementation(async () => {
+    this.storage.clear();
+  });
+  
+  has = vi.fn().mockImplementation(async (key: string) => {
+    return this.storage.has(key);
+  });
+}
+
+/**
+ * Mock for the complete storage service
+ */
 export const mockStorageService = {
-  get: vi.fn(),
-  set: vi.fn(),
-  delete: vi.fn(),
-  clear: vi.fn(),
+  // Project operations
+  saveProject: vi.fn().mockResolvedValue(undefined),
+  loadProject: vi.fn().mockResolvedValue({ id: 'test-project', name: 'Test' }),
+  deleteProject: vi.fn().mockResolvedValue(undefined),
+  getAllProjects: vi.fn().mockResolvedValue([]),
+  
+  // Media operations
+  saveMediaFile: vi.fn().mockResolvedValue('media-id'),
+  loadMediaFile: vi.fn().mockResolvedValue(new Blob(['test'])),
+  deleteMediaFile: vi.fn().mockResolvedValue(undefined),
+  
+  // Timeline operations
+  saveTimeline: vi.fn().mockResolvedValue(undefined),
+  loadTimeline: vi.fn().mockResolvedValue({ tracks: [] }),
+  
+  // Storage adapters
+  projectsAdapter: new MockStorageAdapter(),
+  mediaAdapter: new MockStorageAdapter(),
+  timelineAdapter: new MockStorageAdapter(),
 };
 ```
-- **Time**: 5 minutes
-- **Risk**: None
-- **Rollback**: Delete file
+**Purpose**: Complete storage service mock matching actual implementation
+- **Time**: 8 minutes
+- **Risk**: None (test mock)
+- **Rollback**: Delete storage.ts
+- **Success Indicator**: Storage operations can be mocked in tests
 
-#### Task 022: Create Toast Mock
-**File**: `src/test/mocks/toast.ts`
+#### Task 022: Create Toast/Sonner Mock
+**File**: `C:\Users\zdhpe\Desktop\vite_opencut\OpenCut-main\qcut\apps\web\src\test\mocks\toast.ts`
+**Content**:
 ```typescript
+import { vi } from 'vitest';
+
+/**
+ * Mock for sonner toast library (used throughout the app)
+ */
 export const mockToast = {
-  success: vi.fn(),
-  error: vi.fn(),
-  info: vi.fn(),
-  warning: vi.fn(),
+  success: vi.fn((message: string, options?: any) => 'toast-id'),
+  error: vi.fn((message: string, options?: any) => 'toast-id'),
+  info: vi.fn((message: string, options?: any) => 'toast-id'),
+  warning: vi.fn((message: string, options?: any) => 'toast-id'),
+  message: vi.fn((message: string, options?: any) => 'toast-id'),
+  loading: vi.fn((message: string, options?: any) => 'toast-id'),
+  promise: vi.fn((promise: Promise<any>, options: any) => promise),
+  custom: vi.fn((component: any, options?: any) => 'toast-id'),
+  dismiss: vi.fn((id?: string) => undefined),
 };
-```
-- **Time**: 3 minutes
-- **Risk**: None
-- **Rollback**: Delete file
 
-#### Task 023: Create Router Mock
-**File**: `src/test/mocks/router.ts`
+/**
+ * Mock for use-toast hook
+ */
+export const mockUseToast = () => ({
+  toast: mockToast.success,
+  toasts: [],
+  dismiss: mockToast.dismiss,
+});
+
+/**
+ * Setup global toast mock
+ */
+export function setupToastMock() {
+  vi.mock('sonner', () => ({
+    toast: mockToast,
+    Toaster: vi.fn(() => null),
+  }));
+  
+  vi.mock('@/hooks/use-toast', () => ({
+    useToast: mockUseToast,
+  }));
+}
+```
+**Verification**: Import and verify toast methods are callable
+- **Time**: 6 minutes
+- **Risk**: None (test mock)
+- **Rollback**: Delete toast.ts
+- **Success Indicator**: Toast notifications can be mocked
+
+#### Task 023: Create TanStack Router Mock
+**File**: `C:\Users\zdhpe\Desktop\vite_opencut\OpenCut-main\qcut\apps\web\src\test\mocks\router.ts`
+**Content**:
 ```typescript
+import { vi } from 'vitest';
+
+/**
+ * Mock for TanStack Router (not Next.js router)
+ */
 export const mockRouter = {
-  navigate: vi.fn(),
-  params: {},
-  query: {},
+  navigate: vi.fn().mockResolvedValue(undefined),
+  back: vi.fn(),
+  forward: vi.fn(),
+  refresh: vi.fn(),
+  push: vi.fn(),
+  replace: vi.fn(),
+  prefetch: vi.fn(),
+  
+  // Router state
+  pathname: '/',
+  search: '',
+  hash: '',
+  state: {},
+  params: {} as Record<string, string>,
+  
+  // Navigation state
+  isNavigating: false,
+  isLoading: false,
 };
-```
-- **Time**: 5 minutes
-- **Risk**: None
-- **Rollback**: Delete file
 
-#### Task 024: Create Project Mock Data
-**File**: `src/test/fixtures/project-data.ts`
+/**
+ * Mock useParams hook
+ */
+export const mockUseParams = <T = Record<string, string>>() => {
+  return mockRouter.params as T;
+};
+
+/**
+ * Mock useNavigate hook
+ */
+export const mockUseNavigate = () => {
+  return mockRouter.navigate;
+};
+
+/**
+ * Setup router mocks for TanStack Router
+ */
+export function setupRouterMock() {
+  vi.mock('@tanstack/react-router', () => ({
+    useRouter: () => mockRouter,
+    useParams: mockUseParams,
+    useNavigate: mockUseNavigate,
+    useLocation: () => ({
+      pathname: mockRouter.pathname,
+      search: mockRouter.search,
+      hash: mockRouter.hash,
+    }),
+    Link: vi.fn(({ children }) => children),
+    Outlet: vi.fn(() => null),
+  }));
+}
+```
+**Purpose**: Mock TanStack Router (primary routing system)
+- **Time**: 7 minutes
+- **Risk**: None (test mock)
+- **Rollback**: Delete router.ts
+- **Success Indicator**: Router navigation can be tested
+
+#### Task 024: Create Comprehensive Project Mock Data
+**File**: `C:\Users\zdhpe\Desktop\vite_opencut\OpenCut-main\qcut\apps\web\src\test\fixtures\project-data.ts`
+**Content**:
 ```typescript
-export const mockProject = {
-  id: 'project-1',
+import type { TProject } from '@/types/project';
+import { generateUUID } from '@/lib/utils';
+
+/**
+ * Mock project matching types/project.ts interface
+ */
+export const mockProject: TProject = {
+  id: generateUUID(),
   name: 'Test Project',
-  createdAt: new Date().toISOString(),
-  updatedAt: new Date().toISOString(),
+  thumbnail: 'blob:http://localhost:3000/thumb-project',
+  createdAt: new Date('2024-01-01T00:00:00Z'),
+  updatedAt: new Date('2024-01-02T00:00:00Z'),
+  mediaItems: ['media-001', 'media-002', 'media-003'],
+  backgroundColor: '#1a1a1a',
+  backgroundType: 'color',
+  blurIntensity: 8,
+  fps: 30,
+  bookmarks: [0, 5.5, 10.2, 15.7], // Bookmark times in seconds
 };
-```
-- **Time**: 5 minutes
-- **Risk**: None
-- **Rollback**: Delete file
 
-#### Task 025: Create Sticker Mock Data
-**File**: `src/test/fixtures/sticker-data.ts`
-```typescript
-export const mockSticker = {
-  id: 'sticker-1',
-  mediaItemId: 'media-1',
-  position: { x: 100, y: 100 },
-  size: { width: 200, height: 200 },
+export const mockProjectBlur: TProject = {
+  ...mockProject,
+  id: generateUUID(),
+  name: 'Blur Background Project',
+  backgroundType: 'blur',
+  backgroundColor: undefined,
+  blurIntensity: 18,
 };
-```
-- **Time**: 5 minutes
-- **Risk**: None
-- **Rollback**: Delete file
 
-#### Task 026: Create WebAssembly Mock
-**File**: `src/test/mocks/wasm.ts`
+export const mockEmptyProject: TProject = {
+  id: generateUUID(),
+  name: 'Empty Project',
+  thumbnail: '',
+  createdAt: new Date(),
+  updatedAt: new Date(),
+  mediaItems: [],
+  backgroundColor: '#000000',
+  backgroundType: 'color',
+  fps: 24,
+};
+
+/**
+ * Create multiple mock projects
+ */
+export function createMockProjects(count: number): TProject[] {
+  return Array.from({ length: count }, (_, i) => ({
+    ...mockProject,
+    id: generateUUID(),
+    name: `Project ${i + 1}`,
+    createdAt: new Date(Date.now() - i * 86400000), // Each day older
+    updatedAt: new Date(Date.now() - i * 43200000), // Half day older
+  }));
+}
+
+/**
+ * Create custom project
+ */
+export function createMockProject(overrides: Partial<TProject> = {}): TProject {
+  return {
+    ...mockProject,
+    id: generateUUID(),
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    ...overrides,
+  };
+}
+```
+**Purpose**: Project fixtures matching actual TProject interface
+- **Time**: 7 minutes
+- **Risk**: None (test fixtures)
+- **Rollback**: Delete project-data.ts
+- **Success Indicator**: Projects can be created with all required fields
+
+#### Task 025: Create Sticker Overlay Mock Data
+**File**: `C:\Users\zdhpe\Desktop\vite_opencut\OpenCut-main\qcut\apps\web\src\test\fixtures\sticker-data.ts`
+**Content**:
 ```typescript
-global.WebAssembly = {
-  compile: vi.fn(),
-  instantiate: vi.fn(),
+import type { OverlaySticker } from '@/types/sticker-overlay';
+import { Z_INDEX } from '@/types/sticker-overlay';
+
+/**
+ * Mock sticker matching types/sticker-overlay.ts
+ */
+export const mockSticker: OverlaySticker = {
+  id: 'sticker-001',
+  mediaItemId: 'media-001',
+  position: { x: 50, y: 50 }, // Percentage values
+  size: { width: 8, height: 8 }, // Percentage values (smaller default)
+  rotation: 0,
+  opacity: 1,
+  timing: {
+    startTime: 0,
+    endTime: 10,
+  },
+  zIndex: Z_INDEX.BASE,
+  maintainAspectRatio: true,
+};
+
+export const mockAnimatedSticker: OverlaySticker = {
+  ...mockSticker,
+  id: 'sticker-animated-001',
+  rotation: 45,
+  opacity: 0.8,
+  animation: {
+    type: 'bounce',
+    duration: 1000,
+    delay: 0,
+    iterationCount: 'infinite',
+  },
+};
+
+export const mockStickerTopLayer: OverlaySticker = {
+  ...mockSticker,
+  id: 'sticker-top-001',
+  zIndex: Z_INDEX.SELECTED,
+  position: { x: 75, y: 25 },
+  size: { width: 15, height: 15 },
+};
+
+/**
+ * Create multiple stickers at different positions
+ */
+export function createMockStickers(count: number): OverlaySticker[] {
+  return Array.from({ length: count }, (_, i) => ({
+    ...mockSticker,
+    id: `sticker-${i + 1}`,
+    mediaItemId: `media-${(i % 3) + 1}`, // Cycle through 3 media items
+    position: {
+      x: 10 + (i * 20) % 80, // Distribute across canvas
+      y: 10 + (i * 15) % 80,
+    },
+    zIndex: Z_INDEX.BASE + i,
+    timing: {
+      startTime: i * 2,
+      endTime: (i + 1) * 5,
+    },
+  }));
+}
+
+/**
+ * Create sticker with custom properties
+ */
+export function createMockSticker(overrides: Partial<OverlaySticker> = {}): OverlaySticker {
+  return {
+    ...mockSticker,
+    id: `sticker-${Date.now()}`,
+    ...overrides,
+  };
+}
+```
+**Purpose**: Sticker overlay test data matching actual types
+- **Time**: 7 minutes
+- **Risk**: None (test fixtures)
+- **Rollback**: Delete sticker-data.ts
+- **Success Indicator**: Stickers created with proper structure
+
+#### Task 026: Create WebAssembly Mock with FFmpeg Context
+**File**: `C:\Users\zdhpe\Desktop\vite_opencut\OpenCut-main\qcut\apps\web\src\test\mocks\wasm.ts`
+**Content**:
+```typescript
+import { vi } from 'vitest';
+
+/**
+ * Mock WebAssembly global for FFmpeg tests
+ */
+export const mockWebAssembly = {
+  compile: vi.fn().mockResolvedValue({}),
+  compileStreaming: vi.fn().mockResolvedValue({}),
+  instantiate: vi.fn().mockResolvedValue({
+    instance: {
+      exports: {
+        memory: new WebAssembly.Memory({ initial: 256 }),
+        _start: vi.fn(),
+      },
+    },
+    module: {},
+  }),
+  instantiateStreaming: vi.fn().mockResolvedValue({
+    instance: {
+      exports: {
+        memory: new WebAssembly.Memory({ initial: 256 }),
+        _start: vi.fn(),
+      },
+    },
+    module: {},
+  }),
+  validate: vi.fn().mockReturnValue(true),
   Module: vi.fn(),
   Instance: vi.fn(),
+  Memory: WebAssembly.Memory,
+  Table: WebAssembly.Table,
 };
-```
-- **Time**: 5 minutes
-- **Risk**: None
-- **Rollback**: Delete file
 
-#### Task 027: Create Performance Mock
-**File**: `src/test/mocks/performance.ts`
-```typescript
-global.performance.memory = {
-  usedJSHeapSize: 100000000,
-  totalJSHeapSize: 200000000,
-  jsHeapSizeLimit: 300000000,
+/**
+ * Mock SharedArrayBuffer for FFmpeg multi-threading
+ */
+export const mockSharedArrayBuffer = class MockSharedArrayBuffer extends ArrayBuffer {
+  constructor(length: number) {
+    super(length);
+  }
 };
-```
-- **Time**: 3 minutes
-- **Risk**: None
-- **Rollback**: Delete file
 
-#### Task 028: Create IndexedDB Mock
-**File**: `src/test/mocks/indexeddb.ts`
-```typescript
-export const mockIndexedDB = {
-  open: vi.fn(),
-  deleteDatabase: vi.fn(),
-};
-```
-- **Time**: 5 minutes
-- **Risk**: None
-- **Rollback**: Delete file
-
-#### Task 029: Create Keyboard Event Mock
-**File**: `src/test/utils/keyboard-events.ts`
-```typescript
-export function createKeyboardEvent(key: string, modifiers = {}) {
-  return new KeyboardEvent('keydown', { key, ...modifiers });
+/**
+ * Setup WebAssembly environment for tests
+ */
+export function setupWasmEnvironment() {
+  // Mock WebAssembly
+  (global as any).WebAssembly = mockWebAssembly;
+  
+  // Mock SharedArrayBuffer if not available
+  if (typeof SharedArrayBuffer === 'undefined') {
+    (global as any).SharedArrayBuffer = mockSharedArrayBuffer;
+  }
+  
+  // Mock performance.memory for FFmpeg memory checks
+  if (!performance.memory) {
+    Object.defineProperty(performance, 'memory', {
+      value: {
+        usedJSHeapSize: 100000000,
+        totalJSHeapSize: 200000000,
+        jsHeapSizeLimit: 500000000,
+      },
+      writable: true,
+    });
+  }
+  
+  return () => {
+    // Cleanup function
+    delete (global as any).WebAssembly;
+    delete (global as any).SharedArrayBuffer;
+  };
 }
 ```
-- **Time**: 5 minutes
-- **Risk**: None
-- **Rollback**: Delete file
+**Purpose**: WebAssembly mocks for FFmpeg and video processing tests
+- **Time**: 8 minutes
+- **Risk**: None (test environment setup)
+- **Rollback**: Delete wasm.ts
+- **Success Indicator**: WebAssembly APIs available in test environment
 
-#### Task 030: Create Async Test Helper
-**File**: `src/test/utils/async-helpers.ts`
+#### Task 027: Create Performance Monitoring Mock
+**File**: `C:\Users\zdhpe\Desktop\vite_opencut\OpenCut-main\qcut\apps\web\src\test\mocks\performance.ts`
+**Content**:
 ```typescript
-export async function waitForCondition(
-  condition: () => boolean,
-  timeout = 5000
-): Promise<void> {
-  const start = Date.now();
-  while (!condition() && Date.now() - start < timeout) {
-    await new Promise(resolve => setTimeout(resolve, 100));
+import { vi } from 'vitest';
+
+/**
+ * Mock performance APIs for testing
+ */
+export const mockPerformance = {
+  now: vi.fn(() => Date.now()),
+  mark: vi.fn((name: string) => undefined),
+  measure: vi.fn((name: string, startMark?: string, endMark?: string) => undefined),
+  clearMarks: vi.fn((name?: string) => undefined),
+  clearMeasures: vi.fn((name?: string) => undefined),
+  getEntries: vi.fn(() => []),
+  getEntriesByName: vi.fn((name: string) => []),
+  getEntriesByType: vi.fn((type: string) => []),
+  
+  // Memory monitoring (Chrome/Edge only)
+  memory: {
+    usedJSHeapSize: 100000000,  // 100MB
+    totalJSHeapSize: 200000000, // 200MB
+    jsHeapSizeLimit: 500000000, // 500MB limit
+  },
+};
+
+/**
+ * Create performance observer mock
+ */
+export class MockPerformanceObserver {
+  callback: PerformanceObserverCallback;
+  
+  constructor(callback: PerformanceObserverCallback) {
+    this.callback = callback;
+  }
+  
+  observe = vi.fn();
+  disconnect = vi.fn();
+  takeRecords = vi.fn(() => []);
+}
+
+/**
+ * Setup performance mocks
+ */
+export function setupPerformanceMocks() {
+  // Override performance object
+  Object.defineProperty(global, 'performance', {
+    value: mockPerformance,
+    writable: true,
+    configurable: true,
+  });
+  
+  // Mock PerformanceObserver
+  (global as any).PerformanceObserver = MockPerformanceObserver;
+  
+  return () => {
+    // Restore original performance
+    delete (global as any).performance;
+    delete (global as any).PerformanceObserver;
+  };
+}
+
+/**
+ * Helper to track memory usage in tests
+ */
+export function getMemoryUsage() {
+  return mockPerformance.memory.usedJSHeapSize;
+}
+
+/**
+ * Helper to simulate memory pressure
+ */
+export function simulateMemoryPressure(usagePercent: number) {
+  const limit = mockPerformance.memory.jsHeapSizeLimit;
+  mockPerformance.memory.usedJSHeapSize = Math.floor(limit * (usagePercent / 100));
+  mockPerformance.memory.totalJSHeapSize = Math.floor(limit * 0.8);
+}
+```
+**Purpose**: Performance monitoring for memory leak detection
+- **Time**: 7 minutes
+- **Risk**: None (test utilities)
+- **Rollback**: Delete performance.ts
+- **Success Indicator**: Performance APIs available in tests
+
+#### Task 028: Create IndexedDB Mock for Storage Tests
+**File**: `C:\Users\zdhpe\Desktop\vite_opencut\OpenCut-main\qcut\apps\web\src\test\mocks\indexeddb.ts`
+**Content**:
+```typescript
+import { vi } from 'vitest';
+
+/**
+ * Mock IndexedDB implementation for storage tests
+ */
+export class MockIDBDatabase {
+  name: string;
+  version: number;
+  objectStoreNames: DOMStringList;
+  
+  constructor(name: string, version: number) {
+    this.name = name;
+    this.version = version;
+    this.objectStoreNames = [] as any;
+  }
+  
+  createObjectStore = vi.fn((name: string, options?: any) => new MockIDBObjectStore(name));
+  deleteObjectStore = vi.fn();
+  transaction = vi.fn((storeNames: string[], mode?: string) => new MockIDBTransaction());
+  close = vi.fn();
+}
+
+export class MockIDBObjectStore {
+  name: string;
+  keyPath: string | null;
+  indexNames: DOMStringList;
+  
+  constructor(name: string) {
+    this.name = name;
+    this.keyPath = null;
+    this.indexNames = [] as any;
+  }
+  
+  add = vi.fn().mockResolvedValue('key');
+  put = vi.fn().mockResolvedValue('key');
+  get = vi.fn().mockResolvedValue({ id: 'test', data: 'value' });
+  getAll = vi.fn().mockResolvedValue([]);
+  delete = vi.fn().mockResolvedValue(undefined);
+  clear = vi.fn().mockResolvedValue(undefined);
+  count = vi.fn().mockResolvedValue(0);
+  createIndex = vi.fn();
+  deleteIndex = vi.fn();
+}
+
+export class MockIDBTransaction {
+  objectStore = vi.fn((name: string) => new MockIDBObjectStore(name));
+  abort = vi.fn();
+  
+  oncomplete: (() => void) | null = null;
+  onerror: ((event: Event) => void) | null = null;
+  onabort: (() => void) | null = null;
+}
+
+export class MockIDBRequest {
+  result: any = null;
+  error: DOMException | null = null;
+  
+  onsuccess: ((event: Event) => void) | null = null;
+  onerror: ((event: Event) => void) | null = null;
+  
+  constructor(result?: any) {
+    this.result = result;
+    // Simulate async success
+    setTimeout(() => {
+      if (this.onsuccess) {
+        this.onsuccess(new Event('success'));
+      }
+    }, 0);
   }
 }
+
+/**
+ * Mock IndexedDB factory
+ */
+export const mockIndexedDB = {
+  open: vi.fn((name: string, version?: number) => {
+    const request = new MockIDBRequest(new MockIDBDatabase(name, version || 1));
+    return request;
+  }),
+  deleteDatabase: vi.fn((name: string) => new MockIDBRequest()),
+  databases: vi.fn().mockResolvedValue([]),
+  cmp: vi.fn((a: any, b: any) => 0),
+};
+
+/**
+ * Setup IndexedDB mocks globally
+ */
+export function setupIndexedDBMock() {
+  (global as any).indexedDB = mockIndexedDB;
+  (global as any).IDBDatabase = MockIDBDatabase;
+  (global as any).IDBObjectStore = MockIDBObjectStore;
+  (global as any).IDBTransaction = MockIDBTransaction;
+  (global as any).IDBRequest = MockIDBRequest;
+  
+  return () => {
+    delete (global as any).indexedDB;
+    delete (global as any).IDBDatabase;
+    delete (global as any).IDBObjectStore;
+    delete (global as any).IDBTransaction;
+    delete (global as any).IDBRequest;
+  };
+}
 ```
-- **Time**: 5 minutes
-- **Risk**: None
-- **Rollback**: Delete file
+**Purpose**: Complete IndexedDB mock for storage adapter tests
+- **Time**: 9 minutes
+- **Risk**: None (test mock)
+- **Rollback**: Delete indexeddb.ts
+- **Success Indicator**: IndexedDB operations can be tested
+
+#### Task 029: Create Keyboard Event Utilities
+**File**: `C:\Users\zdhpe\Desktop\vite_opencut\OpenCut-main\qcut\apps\web\src\test\utils\keyboard-events.ts`
+**Content**:
+```typescript
+/**
+ * Create keyboard events for testing keyboard shortcuts
+ */
+export function createKeyboardEvent(
+  type: 'keydown' | 'keyup' | 'keypress',
+  key: string,
+  options: Partial<KeyboardEventInit> = {}
+): KeyboardEvent {
+  return new KeyboardEvent(type, {
+    key,
+    code: getKeyCode(key),
+    bubbles: true,
+    cancelable: true,
+    ...options,
+  });
+}
+
+/**
+ * Map common keys to their key codes
+ */
+function getKeyCode(key: string): string {
+  const keyCodes: Record<string, string> = {
+    'Enter': 'Enter',
+    ' ': 'Space',
+    'Escape': 'Escape',
+    'Delete': 'Delete',
+    'Backspace': 'Backspace',
+    'Tab': 'Tab',
+    'ArrowUp': 'ArrowUp',
+    'ArrowDown': 'ArrowDown',
+    'ArrowLeft': 'ArrowLeft',
+    'ArrowRight': 'ArrowRight',
+    'a': 'KeyA',
+    's': 'KeyS',
+    'd': 'KeyD',
+    'z': 'KeyZ',
+    'x': 'KeyX',
+    'c': 'KeyC',
+    'v': 'KeyV',
+  };
+  
+  return keyCodes[key] || `Key${key.toUpperCase()}`;
+}
+
+/**
+ * Create common keyboard shortcuts for testing
+ */
+export const shortcuts = {
+  // Timeline shortcuts
+  play: () => createKeyboardEvent('keydown', ' '),
+  stop: () => createKeyboardEvent('keydown', 'Escape'),
+  
+  // Edit shortcuts
+  undo: () => createKeyboardEvent('keydown', 'z', { ctrlKey: true }),
+  redo: () => createKeyboardEvent('keydown', 'y', { ctrlKey: true }),
+  cut: () => createKeyboardEvent('keydown', 'x', { ctrlKey: true }),
+  copy: () => createKeyboardEvent('keydown', 'c', { ctrlKey: true }),
+  paste: () => createKeyboardEvent('keydown', 'v', { ctrlKey: true }),
+  delete: () => createKeyboardEvent('keydown', 'Delete'),
+  
+  // Navigation
+  home: () => createKeyboardEvent('keydown', 'Home'),
+  end: () => createKeyboardEvent('keydown', 'End'),
+  
+  // Selection
+  selectAll: () => createKeyboardEvent('keydown', 'a', { ctrlKey: true }),
+  
+  // Timeline zoom
+  zoomIn: () => createKeyboardEvent('keydown', '+', { ctrlKey: true }),
+  zoomOut: () => createKeyboardEvent('keydown', '-', { ctrlKey: true }),
+};
+
+/**
+ * Simulate typing text
+ */
+export function typeText(element: HTMLElement, text: string) {
+  text.split('').forEach(char => {
+    element.dispatchEvent(createKeyboardEvent('keydown', char));
+    element.dispatchEvent(createKeyboardEvent('keypress', char));
+    element.dispatchEvent(createKeyboardEvent('keyup', char));
+  });
+}
+```
+**Purpose**: Keyboard event simulation for shortcut testing
+- **Time**: 8 minutes
+- **Risk**: None (test utilities)
+- **Rollback**: Delete keyboard-events.ts
+- **Success Indicator**: Keyboard shortcuts can be simulated
+
+#### Task 030: Create Async Test Helpers
+**File**: `C:\Users\zdhpe\Desktop\vite_opencut\OpenCut-main\qcut\apps\web\src\test\utils\async-helpers.ts`
+**Content**:
+```typescript
+import { vi } from 'vitest';
+
+/**
+ * Wait for a condition to become true
+ */
+export async function waitForCondition(
+  condition: () => boolean,
+  options: {
+    timeout?: number;
+    interval?: number;
+    message?: string;
+  } = {}
+): Promise<void> {
+  const { timeout = 5000, interval = 100, message = 'Condition not met' } = options;
+  const start = Date.now();
+  
+  while (!condition()) {
+    if (Date.now() - start > timeout) {
+      throw new Error(`Timeout: ${message}`);
+    }
+    await new Promise(resolve => setTimeout(resolve, interval));
+  }
+}
+
+/**
+ * Wait for a value to change
+ */
+export async function waitForValueChange<T>(
+  getValue: () => T,
+  initialValue: T,
+  timeout = 5000
+): Promise<T> {
+  const start = Date.now();
+  
+  while (getValue() === initialValue) {
+    if (Date.now() - start > timeout) {
+      throw new Error(`Value did not change from ${initialValue}`);
+    }
+    await new Promise(resolve => setTimeout(resolve, 50));
+  }
+  
+  return getValue();
+}
+
+/**
+ * Retry an async operation
+ */
+export async function retry<T>(
+  operation: () => Promise<T>,
+  options: {
+    maxAttempts?: number;
+    delay?: number;
+    backoff?: number;
+  } = {}
+): Promise<T> {
+  const { maxAttempts = 3, delay = 100, backoff = 2 } = options;
+  let lastError: Error | undefined;
+  
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    try {
+      return await operation();
+    } catch (error) {
+      lastError = error as Error;
+      
+      if (attempt < maxAttempts - 1) {
+        const waitTime = delay * Math.pow(backoff, attempt);
+        await new Promise(resolve => setTimeout(resolve, waitTime));
+      }
+    }
+  }
+  
+  throw lastError || new Error('Retry failed');
+}
+
+/**
+ * Wait for all promises with timeout
+ */
+export async function waitForAll<T>(
+  promises: Promise<T>[],
+  timeout = 10000
+): Promise<T[]> {
+  return Promise.race([
+    Promise.all(promises),
+    new Promise<T[]>((_, reject) =>
+      setTimeout(() => reject(new Error('Timeout waiting for promises')), timeout)
+    ),
+  ]);
+}
+
+/**
+ * Flush all pending promises
+ */
+export async function flushPromises(): Promise<void> {
+  await new Promise(resolve => setImmediate(resolve));
+}
+
+/**
+ * Mock timer helpers
+ */
+export const timers = {
+  /**
+   * Advance timers and flush promises
+   */
+  async advance(ms: number) {
+    vi.advanceTimersByTime(ms);
+    await flushPromises();
+  },
+  
+  /**
+   * Run all timers and flush promises
+   */
+  async runAll() {
+    vi.runAllTimers();
+    await flushPromises();
+  },
+  
+  /**
+   * Run pending timers and flush promises
+   */
+  async runPending() {
+    vi.runOnlyPendingTimers();
+    await flushPromises();
+  },
+};
+
+/**
+ * Create a deferred promise for testing
+ */
+export function createDeferred<T>() {
+  let resolve: (value: T) => void;
+  let reject: (error: Error) => void;
+  
+  const promise = new Promise<T>((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
+  
+  return {
+    promise,
+    resolve: resolve!,
+    reject: reject!,
+  };
+}
+```
+**Purpose**: Comprehensive async testing utilities for complex async flows
+- **Time**: 9 minutes
+- **Risk**: None (test utilities)
+- **Rollback**: Delete async-helpers.ts
+- **Success Indicator**: Async operations can be tested reliably
 
 ---
 
