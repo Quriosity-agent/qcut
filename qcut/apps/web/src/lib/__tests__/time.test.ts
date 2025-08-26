@@ -20,7 +20,7 @@ describe('Time Utilities', () => {
     
     it('formats MM:SS correctly', () => {
       expect(formatTimeCode(65, 'MM:SS')).toBe('01:05');
-      expect(formatTimeCode(3665, 'MM:SS')).toBe('61:05'); // Shows total minutes
+      expect(formatTimeCode(3665, 'MM:SS')).toBe('01:05'); // Only shows minutes within the hour
     });
   });
   

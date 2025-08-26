@@ -219,8 +219,10 @@ describe('Image Utils', () => {
   
   describe('convertToBlob and cache management', () => {
     beforeEach(() => {
-      // Clear cache
-      getCachedBlobUrls().clear();
+      // Clear cache by getting a new map
+      const cache = getCachedBlobUrls();
+      cache.forEach((_, key) => revokeBlobUrl(key));
+      cache.clear();
       
       // Mock fetch
       global.fetch = vi.fn(() =>
@@ -246,7 +248,10 @@ describe('Image Utils', () => {
     });
     
     it('caches blob URLs', async () => {
-      const url = 'https://fal.media/test.jpg';
+      const url = 'https://fal.media/test-cache.jpg';
+      
+      // Reset fetch mock call count
+      vi.clearAllMocks();
       
       const blobUrl1 = await convertToBlob(url);
       const blobUrl2 = await convertToBlob(url);

@@ -61,6 +61,18 @@ describe('useToast', () => {
     it('provides toast state and methods', () => {
       const { result } = renderHook(() => useToast());
       
+      // Clear any existing toasts first
+      act(() => {
+        result.current.toasts.forEach(toast => {
+          result.current.dismiss(toast.id);
+        });
+      });
+      
+      // Wait for toasts to be cleared
+      act(() => {
+        vi.advanceTimersByTime(1_000_000);
+      });
+      
       expect(result.current.toasts).toEqual([]);
       expect(typeof result.current.toast).toBe('function');
       expect(typeof result.current.dismiss).toBe('function');
