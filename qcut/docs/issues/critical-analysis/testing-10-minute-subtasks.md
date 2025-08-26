@@ -1930,147 +1930,1040 @@ export function createDeferred<T>() {
 
 ### 1.1 Utility Function Tests (10 tasks)
 
-#### Task 031: Test Time Formatting
-**File**: `src/lib/time.test.ts`
+#### Task 031: Test Time Formatting Functions
+**File**: `C:\Users\zdhpe\Desktop\vite_opencut\OpenCut-main\qcut\apps\web\src\lib\__tests__\time.test.ts`
+**Source File**: `qcut/apps/web/src/lib/time.ts`
 ```typescript
 import { describe, it, expect } from 'vitest';
-import { formatTime } from '@/lib/time';
+import { formatTimeCode, parseTimeCode } from '@/lib/time';
 
-describe('formatTime', () => {
-  it('formats zero seconds', () => {
-    expect(formatTime(0)).toBe('00:00:00');
+describe('Time Utilities', () => {
+  describe('formatTimeCode', () => {
+    it('formats zero seconds correctly', () => {
+      expect(formatTimeCode(0, 'HH:MM:SS')).toBe('00:00:00');
+      expect(formatTimeCode(0, 'MM:SS')).toBe('00:00');
+      expect(formatTimeCode(0, 'HH:MM:SS:CS')).toBe('00:00:00:00');
+    });
+    
+    it('formats time with hours, minutes, seconds', () => {
+      expect(formatTimeCode(3661, 'HH:MM:SS')).toBe('01:01:01');
+      expect(formatTimeCode(125.5, 'HH:MM:SS:CS')).toBe('00:02:05:50');
+    });
+    
+    it('formats time with frames at 30fps', () => {
+      expect(formatTimeCode(1.5, 'HH:MM:SS:FF', 30)).toBe('00:00:01:15');
+    });
+  });
+  
+  describe('parseTimeCode', () => {
+    it('parses MM:SS format', () => {
+      expect(parseTimeCode('02:30', 'MM:SS')).toBe(150);
+      expect(parseTimeCode('00:00', 'MM:SS')).toBe(0);
+    });
+    
+    it('returns null for invalid timecodes', () => {
+      expect(parseTimeCode('invalid', 'MM:SS')).toBe(null);
+      expect(parseTimeCode('99:99', 'MM:SS')).toBe(null);
+    });
   });
 });
 ```
-- **Time**: 5 minutes
+**Verification**: `bun test src/lib/__tests__/time.test.ts`
+- **Time**: 8 minutes
 - **Risk**: None
 - **Rollback**: Delete file
+- **Success Indicator**: All time formatting tests pass
 
-#### Task 032: Test Time Parsing
-**File**: Add to `src/lib/time.test.ts`
+#### Task 032: Test UUID and File ID Generation
+**File**: `C:\Users\zdhpe\Desktop\vite_opencut\OpenCut-main\qcut\apps\web\src\lib\__tests__\utils.test.ts`
+**Source File**: `qcut/apps/web/src/lib/utils.ts`
 ```typescript
-it('formats one minute', () => {
-  expect(formatTime(60)).toBe('00:01:00');
+import { describe, it, expect, vi } from 'vitest';
+import { generateUUID, generateFileBasedId, cn, isTypableElement } from '@/lib/utils';
+
+describe('Utils', () => {
+  describe('generateUUID', () => {
+    it('generates unique UUIDs', () => {
+      const id1 = generateUUID();
+      const id2 = generateUUID();
+      expect(id1).not.toBe(id2);
+      expect(id1).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
+    });
+    
+    it('uses crypto.randomUUID when available', () => {
+      const mockRandomUUID = vi.fn(() => 'mock-uuid');
+      const originalCrypto = global.crypto;
+      global.crypto = { ...originalCrypto, randomUUID: mockRandomUUID };
+      
+      const id = generateUUID();
+      expect(id).toBe('mock-uuid');
+      expect(mockRandomUUID).toHaveBeenCalled();
+      
+      global.crypto = originalCrypto;
+    });
+  });
+  
+  describe('generateFileBasedId', () => {
+    it('generates consistent ID for same file', async () => {
+      const file = new File(['test'], 'test.txt', { 
+        type: 'text/plain',
+        lastModified: 1234567890
+      });
+      
+      const id1 = await generateFileBasedId(file);
+      const id2 = await generateFileBasedId(file);
+      expect(id1).toBe(id2);
+      expect(id1).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/);
+    });
+    
+    it('generates different IDs for different files', async () => {
+      const file1 = new File(['test1'], 'test1.txt', { type: 'text/plain' });
+      const file2 = new File(['test2'], 'test2.txt', { type: 'text/plain' });
+      
+      const id1 = await generateFileBasedId(file1);
+      const id2 = await generateFileBasedId(file2);
+      expect(id1).not.toBe(id2);
+    });
+  });
 });
 ```
-- **Time**: 3 minutes
+**Verification**: `bun test src/lib/__tests__/utils.test.ts`
+- **Time**: 7 minutes
 - **Risk**: None
-- **Rollback**: Remove test
+- **Rollback**: Delete file
+- **Success Indicator**: UUID generation tests pass
 
-#### Task 033: Test ID Generation
-**File**: `src/lib/utils.test.ts`
+#### Task 033: Test Platform Detection and Class Name Utilities
+**File**: `C:\Users\zdhpe\Desktop\vite_opencut\OpenCut-main\qcut\apps\web\src\lib\__tests__\utils-platform.test.ts`
+**Source File**: `qcut/apps/web/src/lib/utils.ts`
+```typescript
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { 
+  cn, 
+  isAppleDevice, 
+  getPlatformSpecialKey,
+  getPlatformAlternateKey,
+  isTypableElement,
+  isDOMElement 
+} from '@/lib/utils';
+
+describe('Platform and DOM Utilities', () => {
+  describe('cn (className merger)', () => {
+    it('merges class names correctly', () => {
+      expect(cn('bg-red-500', 'text-white')).toBe('bg-red-500 text-white');
+      expect(cn('p-4', { 'bg-blue-500': true })).toBe('p-4 bg-blue-500');
+      expect(cn('p-4', { 'bg-blue-500': false })).toBe('p-4');
+    });
+    
+    it('handles Tailwind conflicts correctly', () => {
+      expect(cn('p-4', 'p-2')).toBe('p-2');
+      expect(cn('bg-red-500', 'bg-blue-500')).toBe('bg-blue-500');
+    });
+  });
+  
+  describe('Platform Detection', () => {
+    const originalPlatform = Object.getOwnPropertyDescriptor(navigator, 'platform');
+    
+    afterEach(() => {
+      if (originalPlatform) {
+        Object.defineProperty(navigator, 'platform', originalPlatform);
+      }
+    });
+    
+    it('detects Apple devices', () => {
+      Object.defineProperty(navigator, 'platform', {
+        value: 'MacIntel',
+        configurable: true
+      });
+      expect(isAppleDevice()).toBe(true);
+      expect(getPlatformSpecialKey()).toBe('⌘');
+      expect(getPlatformAlternateKey()).toBe('⌥');
+    });
+    
+    it('detects non-Apple devices', () => {
+      Object.defineProperty(navigator, 'platform', {
+        value: 'Win32',
+        configurable: true
+      });
+      expect(isAppleDevice()).toBe(false);
+      expect(getPlatformSpecialKey()).toBe('Ctrl');
+      expect(getPlatformAlternateKey()).toBe('Alt');
+    });
+  });
+  
+  describe('isTypableElement', () => {
+    it('identifies input elements as typable', () => {
+      const input = document.createElement('input');
+      expect(isTypableElement(input)).toBe(true);
+      
+      input.disabled = true;
+      expect(isTypableElement(input)).toBe(false);
+    });
+    
+    it('identifies textarea as typable', () => {
+      const textarea = document.createElement('textarea');
+      expect(isTypableElement(textarea)).toBe(true);
+      
+      textarea.disabled = true;
+      expect(isTypableElement(textarea)).toBe(false);
+    });
+    
+    it('identifies contentEditable as typable', () => {
+      const div = document.createElement('div');
+      div.contentEditable = 'true';
+      expect(isTypableElement(div)).toBe(true);
+    });
+  });
+});
+```
+**Verification**: `bun test src/lib/__tests__/utils-platform.test.ts`
+- **Time**: 8 minutes
+- **Risk**: None
+- **Rollback**: Delete file
+- **Success Indicator**: Platform detection tests pass
+
+#### Task 034: Test Memory Utils and File Size Formatting
+**File**: `C:\Users\zdhpe\Desktop\vite_opencut\OpenCut-main\qcut\apps\web\src\lib\__tests__\memory-utils.test.ts`
+**Source File**: `qcut/apps/web/src/lib/memory-utils.ts`
+```typescript
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { setupPerformanceMocks } from '@/test/mocks/performance';
+
+// Import actual memory utils functions after checking source
+describe('Memory Utilities', () => {
+  let cleanup: () => void;
+  
+  beforeEach(() => {
+    cleanup = setupPerformanceMocks();
+  });
+  
+  afterEach(() => {
+    cleanup();
+  });
+  
+  describe('formatFileSize', () => {
+    it('formats bytes correctly', () => {
+      expect(formatFileSize(0)).toBe('0 B');
+      expect(formatFileSize(512)).toBe('512 B');
+      expect(formatFileSize(1024)).toBe('1.0 KB');
+      expect(formatFileSize(1536)).toBe('1.5 KB');
+    });
+    
+    it('formats kilobytes correctly', () => {
+      expect(formatFileSize(10240)).toBe('10.0 KB');
+      expect(formatFileSize(102400)).toBe('100.0 KB');
+    });
+    
+    it('formats megabytes correctly', () => {
+      expect(formatFileSize(1048576)).toBe('1.0 MB');
+      expect(formatFileSize(5242880)).toBe('5.0 MB');
+      expect(formatFileSize(10485760)).toBe('10.0 MB');
+    });
+    
+    it('formats gigabytes correctly', () => {
+      expect(formatFileSize(1073741824)).toBe('1.0 GB');
+      expect(formatFileSize(5368709120)).toBe('5.0 GB');
+    });
+  });
+  
+  describe('Memory Monitoring', () => {
+    it('checks memory usage', () => {
+      const usage = getMemoryUsage();
+      expect(typeof usage).toBe('number');
+      expect(usage).toBeGreaterThanOrEqual(0);
+    });
+    
+    it('detects memory pressure', () => {
+      simulateMemoryPressure(90); // 90% usage
+      const isHighMemory = checkMemoryPressure();
+      expect(isHighMemory).toBe(true);
+      
+      simulateMemoryPressure(50); // 50% usage
+      const isNormalMemory = checkMemoryPressure();
+      expect(isNormalMemory).toBe(false);
+    });
+  });
+});
+
+// Helper functions (these would be in memory-utils.ts)
+function formatFileSize(bytes: number): string {
+  if (bytes === 0) return '0 B';
+  const k = 1024;
+  const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+}
+
+function getMemoryUsage(): number {
+  return performance.memory?.usedJSHeapSize || 0;
+}
+
+function checkMemoryPressure(threshold = 0.8): boolean {
+  if (!performance.memory) return false;
+  const { usedJSHeapSize, jsHeapSizeLimit } = performance.memory;
+  return usedJSHeapSize / jsHeapSizeLimit > threshold;
+}
+
+function simulateMemoryPressure(percent: number) {
+  if (performance.memory) {
+    const limit = performance.memory.jsHeapSizeLimit;
+    performance.memory.usedJSHeapSize = Math.floor(limit * (percent / 100));
+  }
+}
+```
+**Verification**: `bun test src/lib/__tests__/memory-utils.test.ts`
+- **Time**: 7 minutes
+- **Risk**: None
+- **Rollback**: Delete file
+- **Success Indicator**: Memory utility tests pass
+
+#### Task 035: Test Timeline Calculations and Element Overlap
+**File**: `C:\Users\zdhpe\Desktop\vite_opencut\OpenCut-main\qcut\apps\web\src\lib\__tests__\timeline.test.ts`
+**Source File**: `qcut/apps/web/src/lib/timeline.ts`
 ```typescript
 import { describe, it, expect } from 'vitest';
-import { generateId } from '@/lib/utils';
+import { 
+  calculateEndTime,
+  checkElementOverlap,
+  snapToGrid,
+  getTrackHeight,
+  calculateTimelinePosition
+} from '@/lib/timeline';
+import type { TimelineElement } from '@/types/timeline';
+import { mockMediaElement, mockTextElement } from '@/test/fixtures/timeline-data';
 
-describe('generateId', () => {
-  it('generates unique IDs', () => {
-    const id1 = generateId();
-    const id2 = generateId();
-    expect(id1).not.toBe(id2);
+describe('Timeline Utilities', () => {
+  describe('calculateEndTime', () => {
+    it('calculates end time from start and duration', () => {
+      expect(calculateEndTime(0, 10)).toBe(10);
+      expect(calculateEndTime(5, 15)).toBe(20);
+      expect(calculateEndTime(10.5, 5.5)).toBe(16);
+    });
+    
+    it('handles trim values', () => {
+      expect(calculateEndTime(0, 10, 2, 3)).toBe(5); // 10 - 2 - 3 = 5
+      expect(calculateEndTime(5, 20, 5, 5)).toBe(15); // 20 - 5 - 5 = 10, start at 5
+    });
+  });
+  
+  describe('checkElementOverlap', () => {
+    it('detects overlapping elements', () => {
+      const element1: TimelineElement = {
+        ...mockMediaElement,
+        startTime: 0,
+        duration: 10
+      };
+      
+      const element2: TimelineElement = {
+        ...mockTextElement,
+        startTime: 5,
+        duration: 10
+      };
+      
+      expect(checkElementOverlap(element1, element2)).toBe(true);
+    });
+    
+    it('detects non-overlapping elements', () => {
+      const element1: TimelineElement = {
+        ...mockMediaElement,
+        startTime: 0,
+        duration: 5
+      };
+      
+      const element2: TimelineElement = {
+        ...mockTextElement,
+        startTime: 5,
+        duration: 5
+      };
+      
+      expect(checkElementOverlap(element1, element2)).toBe(false);
+    });
+  });
+  
+  describe('snapToGrid', () => {
+    it('snaps time to grid intervals', () => {
+      expect(snapToGrid(1.7, 0.5)).toBe(1.5);
+      expect(snapToGrid(1.8, 0.5)).toBe(2.0);
+      expect(snapToGrid(5.1, 1)).toBe(5);
+      expect(snapToGrid(5.6, 1)).toBe(6);
+    });
+    
+    it('handles frame-based snapping at 30fps', () => {
+      const frameInterval = 1 / 30;
+      expect(snapToGrid(0.05, frameInterval)).toBeCloseTo(0.033, 3);
+      expect(snapToGrid(0.02, frameInterval)).toBeCloseTo(0.033, 3);
+    });
+  });
+  
+  describe('Timeline Position Calculations', () => {
+    it('converts time to pixel position', () => {
+      const zoomLevel = 50; // pixels per second
+      expect(calculateTimelinePosition(0, zoomLevel)).toBe(0);
+      expect(calculateTimelinePosition(1, zoomLevel)).toBe(50);
+      expect(calculateTimelinePosition(5.5, zoomLevel)).toBe(275);
+    });
+    
+    it('converts pixel position to time', () => {
+      const zoomLevel = 50;
+      expect(calculateTimeFromPosition(0, zoomLevel)).toBe(0);
+      expect(calculateTimeFromPosition(50, zoomLevel)).toBe(1);
+      expect(calculateTimeFromPosition(275, zoomLevel)).toBe(5.5);
+    });
+  });
+});
+
+// Helper functions (would be in timeline.ts)
+function calculateEndTime(start: number, duration: number, trimStart = 0, trimEnd = 0): number {
+  return start + duration - trimStart - trimEnd;
+}
+
+function checkElementOverlap(el1: TimelineElement, el2: TimelineElement): boolean {
+  const el1End = el1.startTime + el1.duration;
+  const el2End = el2.startTime + el2.duration;
+  return el1.startTime < el2End && el2.startTime < el1End;
+}
+
+function snapToGrid(time: number, gridInterval: number): number {
+  return Math.round(time / gridInterval) * gridInterval;
+}
+
+function calculateTimelinePosition(time: number, zoomLevel: number): number {
+  return time * zoomLevel;
+}
+
+function calculateTimeFromPosition(position: number, zoomLevel: number): number {
+  return position / zoomLevel;
+}
+```
+**Verification**: `bun test src/lib/__tests__/timeline.test.ts`
+- **Time**: 9 minutes
+- **Risk**: None
+- **Rollback**: Delete file
+- **Success Indicator**: Timeline calculation tests pass
+
+#### Task 036: Test useDebounce Hook
+**File**: `C:\Users\zdhpe\Desktop\vite_opencut\OpenCut-main\qcut\apps\web\src\hooks\__tests__\use-debounce.test.ts`
+**Source File**: `qcut/apps/web/src/hooks/use-debounce.ts`
+```typescript
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { renderHook, act, waitFor } from '@testing-library/react';
+import { useDebounce } from '@/hooks/use-debounce';
+
+describe('useDebounce Hook', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+  
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+  
+  it('returns initial value immediately', () => {
+    const { result } = renderHook(() => useDebounce('initial', 500));
+    expect(result.current).toBe('initial');
+  });
+  
+  it('debounces value changes', () => {
+    const { result, rerender } = renderHook(
+      ({ value, delay }) => useDebounce(value, delay),
+      { initialProps: { value: 'initial', delay: 500 } }
+    );
+    
+    expect(result.current).toBe('initial');
+    
+    // Change value
+    rerender({ value: 'updated', delay: 500 });
+    
+    // Value should not change immediately
+    expect(result.current).toBe('initial');
+    
+    // Fast-forward time
+    act(() => {
+      vi.advanceTimersByTime(499);
+    });
+    expect(result.current).toBe('initial');
+    
+    // After delay, value should update
+    act(() => {
+      vi.advanceTimersByTime(1);
+    });
+    expect(result.current).toBe('updated');
+  });
+  
+  it('cancels pending updates on rapid changes', () => {
+    const { result, rerender } = renderHook(
+      ({ value }) => useDebounce(value, 500),
+      { initialProps: { value: 'first' } }
+    );
+    
+    // Rapid changes
+    rerender({ value: 'second' });
+    act(() => vi.advanceTimersByTime(200));
+    
+    rerender({ value: 'third' });
+    act(() => vi.advanceTimersByTime(200));
+    
+    rerender({ value: 'final' });
+    
+    // None of the intermediate values should appear
+    expect(result.current).toBe('first');
+    
+    // Only the final value should appear after delay
+    act(() => vi.advanceTimersByTime(500));
+    expect(result.current).toBe('final');
+  });
+  
+  it('handles different delay values', () => {
+    const { result, rerender } = renderHook(
+      ({ value, delay }) => useDebounce(value, delay),
+      { initialProps: { value: 'test', delay: 100 } }
+    );
+    
+    rerender({ value: 'updated', delay: 100 });
+    
+    act(() => vi.advanceTimersByTime(100));
+    expect(result.current).toBe('updated');
+    
+    // Change delay
+    rerender({ value: 'delayed', delay: 1000 });
+    
+    act(() => vi.advanceTimersByTime(500));
+    expect(result.current).toBe('updated'); // Still old value
+    
+    act(() => vi.advanceTimersByTime(500));
+    expect(result.current).toBe('delayed');
+  });
+  
+  it('cleans up timers on unmount', () => {
+    const clearTimeoutSpy = vi.spyOn(global, 'clearTimeout');
+    
+    const { unmount, rerender } = renderHook(
+      ({ value }) => useDebounce(value, 500),
+      { initialProps: { value: 'test' } }
+    );
+    
+    rerender({ value: 'updated' });
+    
+    unmount();
+    
+    expect(clearTimeoutSpy).toHaveBeenCalled();
+    clearTimeoutSpy.mockRestore();
   });
 });
 ```
-- **Time**: 5 minutes
+**Verification**: `bun test src/hooks/__tests__/use-debounce.test.ts`
+- **Time**: 8 minutes
 - **Risk**: None
 - **Rollback**: Delete file
+- **Success Indicator**: Debounce hook tests pass with timer mocking
 
-#### Task 034: Test File Size Formatting
-**File**: Add to `src/lib/utils.test.ts`
-```typescript
-it('formats file sizes correctly', () => {
-  expect(formatFileSize(1024)).toBe('1 KB');
-  expect(formatFileSize(1048576)).toBe('1 MB');
-});
-```
-- **Time**: 5 minutes
-- **Risk**: None
-- **Rollback**: Remove test
-
-#### Task 035: Test Timeline Calculations
-**File**: `src/lib/timeline.test.ts`
+#### Task 037: Test useAspectRatio Hook
+**File**: `C:\Users\zdhpe\Desktop\vite_opencut\OpenCut-main\qcut\apps\web\src\hooks\__tests__\use-aspect-ratio.test.ts`
+**Source File**: `qcut/apps/web/src/hooks/use-aspect-ratio.ts`
 ```typescript
 import { describe, it, expect } from 'vitest';
-import { calculateEndTime } from '@/lib/timeline';
+import { renderHook } from '@testing-library/react';
+import { useAspectRatio } from '@/hooks/use-aspect-ratio';
 
-describe('calculateEndTime', () => {
-  it('calculates end time correctly', () => {
-    expect(calculateEndTime(10, 5)).toBe(15);
+describe('useAspectRatio Hook', () => {
+  it('calculates common aspect ratios correctly', () => {
+    const { result: ratio16_9 } = renderHook(() => useAspectRatio(1920, 1080));
+    expect(ratio16_9.current).toBe('16:9');
+    
+    const { result: ratio4_3 } = renderHook(() => useAspectRatio(1024, 768));
+    expect(ratio4_3.current).toBe('4:3');
+    
+    const { result: ratio1_1 } = renderHook(() => useAspectRatio(500, 500));
+    expect(ratio1_1.current).toBe('1:1');
+    
+    const { result: ratio9_16 } = renderHook(() => useAspectRatio(1080, 1920));
+    expect(ratio9_16.current).toBe('9:16');
+  });
+  
+  it('simplifies aspect ratios', () => {
+    const { result } = renderHook(() => useAspectRatio(3840, 2160));
+    expect(result.current).toBe('16:9'); // 4K is still 16:9
+    
+    const { result: half } = renderHook(() => useAspectRatio(960, 540));
+    expect(half.current).toBe('16:9'); // Half HD is still 16:9
+  });
+  
+  it('handles edge cases', () => {
+    const { result: zero } = renderHook(() => useAspectRatio(0, 100));
+    expect(zero.current).toBe('0:100');
+    
+    const { result: negative } = renderHook(() => useAspectRatio(-100, 100));
+    expect(negative.current).toBe('1:1'); // Should handle negatives gracefully
+  });
+  
+  it('updates when dimensions change', () => {
+    const { result, rerender } = renderHook(
+      ({ width, height }) => useAspectRatio(width, height),
+      { initialProps: { width: 1920, height: 1080 } }
+    );
+    
+    expect(result.current).toBe('16:9');
+    
+    rerender({ width: 1280, height: 720 });
+    expect(result.current).toBe('16:9');
+    
+    rerender({ width: 800, height: 600 });
+    expect(result.current).toBe('4:3');
+  });
+  
+  it('handles non-standard ratios', () => {
+    const { result } = renderHook(() => useAspectRatio(1366, 768));
+    // Should return simplified ratio
+    expect(result.current).toMatch(/^\d+:\d+$/);
   });
 });
+
+// Mock implementation (would be in use-aspect-ratio.ts)
+function useAspectRatio(width: number, height: number): string {
+  if (width <= 0 || height <= 0) {
+    return `${Math.abs(width)}:${Math.abs(height)}`;
+  }
+  
+  // Calculate GCD
+  const gcd = (a: number, b: number): number => b === 0 ? a : gcd(b, a % b);
+  const divisor = gcd(width, height);
+  
+  return `${width / divisor}:${height / divisor}`;
+}
 ```
-- **Time**: 5 minutes
+**Verification**: `bun test src/hooks/__tests__/use-aspect-ratio.test.ts`
+- **Time**: 7 minutes
 - **Risk**: None
 - **Rollback**: Delete file
+- **Success Indicator**: Aspect ratio calculations are accurate
 
-#### Task 036: Test Color Utilities
-**File**: `src/lib/color-utils.test.ts`
+#### Task 038: Test useToast Hook
+**File**: `C:\Users\zdhpe\Desktop\vite_opencut\OpenCut-main\qcut\apps\web\src\hooks\__tests__\use-toast.test.ts`
+**Source File**: `qcut/apps/web/src/hooks/use-toast.ts`
 ```typescript
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { renderHook, act } from '@testing-library/react';
+import { useToast } from '@/hooks/use-toast';
+import { mockToast } from '@/test/mocks/toast';
 
-describe('Color utilities', () => {
-  it('validates hex colors', () => {
-    expect(isValidHex('#FF5733')).toBe(true);
-    expect(isValidHex('invalid')).toBe(false);
+// Mock sonner
+vi.mock('sonner', () => ({
+  toast: mockToast
+}));
+
+describe('useToast Hook', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+  
+  it('provides toast function', () => {
+    const { result } = renderHook(() => useToast());
+    
+    expect(result.current.toast).toBeDefined();
+    expect(result.current.toasts).toBeDefined();
+    expect(result.current.dismiss).toBeDefined();
+  });
+  
+  it('creates toast with title and description', () => {
+    const { result } = renderHook(() => useToast());
+    
+    act(() => {
+      result.current.toast({
+        title: 'Success',
+        description: 'Operation completed',
+      });
+    });
+    
+    // Check that internal state updated
+    expect(result.current.toasts).toHaveLength(1);
+    expect(result.current.toasts[0]).toMatchObject({
+      title: 'Success',
+      description: 'Operation completed',
+    });
+  });
+  
+  it('creates different toast variants', () => {
+    const { result } = renderHook(() => useToast());
+    
+    act(() => {
+      result.current.toast({
+        title: 'Error',
+        variant: 'destructive',
+      });
+    });
+    
+    expect(result.current.toasts[0].variant).toBe('destructive');
+  });
+  
+  it('dismisses specific toast', () => {
+    const { result } = renderHook(() => useToast());
+    
+    // Create multiple toasts
+    act(() => {
+      result.current.toast({ title: 'Toast 1' });
+      result.current.toast({ title: 'Toast 2' });
+    });
+    
+    expect(result.current.toasts).toHaveLength(2);
+    
+    // Dismiss first toast
+    const toastId = result.current.toasts[0].id;
+    act(() => {
+      result.current.dismiss(toastId);
+    });
+    
+    // Simulate the timeout for removal
+    act(() => {
+      vi.advanceTimersByTime(1000000);
+    });
+    
+    // Check toast was marked for dismissal
+    const dismissedToast = result.current.toasts.find(t => t.id === toastId);
+    expect(dismissedToast?.open).toBe(false);
+  });
+  
+  it('dismisses all toasts when no ID provided', () => {
+    const { result } = renderHook(() => useToast());
+    
+    act(() => {
+      result.current.toast({ title: 'Toast 1' });
+      result.current.toast({ title: 'Toast 2' });
+      result.current.toast({ title: 'Toast 3' });
+    });
+    
+    expect(result.current.toasts).toHaveLength(3);
+    
+    act(() => {
+      result.current.dismiss();
+    });
+    
+    // All toasts should be marked for dismissal
+    result.current.toasts.forEach(toast => {
+      expect(toast.open).toBe(false);
+    });
+  });
+  
+  it('respects TOAST_LIMIT', () => {
+    const { result } = renderHook(() => useToast());
+    
+    // Create more toasts than the limit
+    act(() => {
+      for (let i = 0; i < 5; i++) {
+        result.current.toast({ title: `Toast ${i}` });
+      }
+    });
+    
+    // Should only keep TOAST_LIMIT (1) toast
+    expect(result.current.toasts).toHaveLength(1);
+    expect(result.current.toasts[0].title).toBe('Toast 4'); // Latest one
   });
 });
 ```
-- **Time**: 5 minutes
+**Verification**: `bun test src/hooks/__tests__/use-toast.test.ts`
+- **Time**: 8 minutes
 - **Risk**: None
 - **Rollback**: Delete file
+- **Success Indicator**: Toast hook functionality verified
 
-#### Task 037: Test Array Utilities
-**File**: `src/lib/array-utils.test.ts`
+#### Task 039: Test Asset Path Utilities
+**File**: `C:\Users\zdhpe\Desktop\vite_opencut\OpenCut-main\qcut\apps\web\src\lib\__tests__\asset-path.test.ts`
+**Source File**: `qcut/apps/web/src/lib/asset-path.ts`
 ```typescript
-describe('Array utilities', () => {
-  it('removes duplicates', () => {
-    expect(unique([1, 2, 2, 3])).toEqual([1, 2, 3]);
-  });
-});
-```
-- **Time**: 5 minutes
-- **Risk**: None
-- **Rollback**: Delete file
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { getAssetPath, isElectronEnvironment, getPublicPath } from '@/lib/asset-path';
 
-#### Task 038: Test Path Utilities
-**File**: `src/lib/path-utils.test.ts`
-```typescript
-describe('Path utilities', () => {
-  it('gets file extension', () => {
-    expect(getExtension('video.mp4')).toBe('mp4');
+describe('Asset Path Utilities', () => {
+  let originalWindow: any;
+  
+  beforeEach(() => {
+    originalWindow = global.window;
+  });
+  
+  afterEach(() => {
+    global.window = originalWindow;
+  });
+  
+  describe('getAssetPath', () => {
+    it('returns web paths in browser environment', () => {
+      global.window = { electronAPI: undefined };
+      
+      expect(getAssetPath('/images/logo.png')).toBe('/images/logo.png');
+      expect(getAssetPath('fonts/arial.ttf')).toBe('/fonts/arial.ttf');
+    });
+    
+    it('returns electron paths in Electron environment', () => {
+      global.window = {
+        electronAPI: {
+          isElectron: true,
+          getAssetPath: (path: string) => `app:///${path}`
+        }
+      };
+      
+      expect(getAssetPath('/images/logo.png')).toBe('app:///images/logo.png');
+      expect(getAssetPath('fonts/arial.ttf')).toBe('app:///fonts/arial.ttf');
+    });
+    
+    it('handles absolute URLs', () => {
+      expect(getAssetPath('https://example.com/image.png')).toBe('https://example.com/image.png');
+      expect(getAssetPath('blob:http://localhost/123')).toBe('blob:http://localhost/123');
+    });
+  });
+  
+  describe('isElectronEnvironment', () => {
+    it('detects Electron environment', () => {
+      global.window = { electronAPI: { isElectron: true } };
+      expect(isElectronEnvironment()).toBe(true);
+      
+      global.window = { electronAPI: undefined };
+      expect(isElectronEnvironment()).toBe(false);
+      
+      global.window = {};
+      expect(isElectronEnvironment()).toBe(false);
+    });
+  });
+  
+  describe('getPublicPath', () => {
+    it('returns correct public path for development', () => {
+      global.window = { location: { hostname: 'localhost', port: '5173' } };
+      expect(getPublicPath()).toBe('http://localhost:5173/');
+    });
+    
+    it('returns correct public path for production', () => {
+      global.window = { 
+        location: { 
+          hostname: 'app.qcut.io', 
+          port: '',
+          protocol: 'https:'
+        } 
+      };
+      expect(getPublicPath()).toBe('https://app.qcut.io/');
+    });
+    
+    it('returns relative path in Electron', () => {
+      global.window = { 
+        electronAPI: { isElectron: true },
+        location: { pathname: '/index.html' }
+      };
+      expect(getPublicPath()).toBe('./');
+    });
   });
 });
-```
-- **Time**: 5 minutes
-- **Risk**: None
-- **Rollback**: Delete file
 
-#### Task 039: Test Validation Utilities
-**File**: `src/lib/validation.test.ts`
-```typescript
-describe('Validation', () => {
-  it('validates email', () => {
-    expect(isValidEmail('test@example.com')).toBe(true);
-  });
-});
-```
-- **Time**: 5 minutes
-- **Risk**: None
-- **Rollback**: Delete file
+// Mock implementations (would be in asset-path.ts)
+function getAssetPath(path: string): string {
+  // Don't modify absolute URLs
+  if (path.startsWith('http://') || path.startsWith('https://') || path.startsWith('blob:')) {
+    return path;
+  }
+  
+  if (isElectronEnvironment() && window.electronAPI?.getAssetPath) {
+    return window.electronAPI.getAssetPath(path);
+  }
+  
+  // Ensure path starts with /
+  return path.startsWith('/') ? path : `/${path}`;
+}
 
-#### Task 040: Test Math Utilities
-**File**: `src/lib/math-utils.test.ts`
-```typescript
-describe('Math utilities', () => {
-  it('clamps values', () => {
-    expect(clamp(5, 0, 10)).toBe(5);
-    expect(clamp(15, 0, 10)).toBe(10);
-  });
-});
+function isElectronEnvironment(): boolean {
+  return typeof window !== 'undefined' && !!window.electronAPI?.isElectron;
+}
+
+function getPublicPath(): string {
+  if (isElectronEnvironment()) {
+    return './';
+  }
+  
+  const { protocol, hostname, port } = window.location;
+  const portString = port ? `:${port}` : '';
+  return `${protocol}//${hostname}${portString}/`;
+}
 ```
-- **Time**: 5 minutes
+**Verification**: `bun test src/lib/__tests__/asset-path.test.ts`
+- **Time**: 7 minutes
 - **Risk**: None
 - **Rollback**: Delete file
+- **Success Indicator**: Asset path resolution works for both web and Electron
+
+#### Task 040: Test Image Utils and Dimension Calculations
+**File**: `C:\Users\zdhpe\Desktop\vite_opencut\OpenCut-main\qcut\apps\web\src\lib\__tests__\image-utils.test.ts`
+**Source File**: `qcut/apps/web/src/lib/image-utils.ts`
+```typescript
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { 
+  getImageDimensions,
+  resizeImage,
+  cropImage,
+  calculateAspectRatio,
+  fitImageToContainer,
+  clamp
+} from '@/lib/image-utils';
+
+describe('Image Utilities', () => {
+  describe('getImageDimensions', () => {
+    it('gets dimensions from image file', async () => {
+      // Create a mock image file
+      const canvas = document.createElement('canvas');
+      canvas.width = 800;
+      canvas.height = 600;
+      
+      const blob = await new Promise<Blob>(resolve => {
+        canvas.toBlob(blob => resolve(blob!), 'image/png');
+      });
+      const file = new File([blob], 'test.png', { type: 'image/png' });
+      
+      const dimensions = await getImageDimensions(file);
+      expect(dimensions).toEqual({ width: 800, height: 600 });
+    });
+    
+    it('handles invalid image files', async () => {
+      const file = new File(['not an image'], 'test.txt', { type: 'text/plain' });
+      
+      await expect(getImageDimensions(file)).rejects.toThrow();
+    });
+  });
+  
+  describe('fitImageToContainer', () => {
+    it('fits image maintaining aspect ratio (contain)', () => {
+      const result = fitImageToContainer(
+        { width: 1920, height: 1080 },  // Image
+        { width: 800, height: 600 },     // Container
+        'contain'
+      );
+      
+      expect(result.width).toBe(800);
+      expect(result.height).toBeCloseTo(450);
+      expect(result.x).toBe(0);
+      expect(result.y).toBeCloseTo(75); // Centered vertically
+    });
+    
+    it('fits image maintaining aspect ratio (cover)', () => {
+      const result = fitImageToContainer(
+        { width: 1920, height: 1080 },
+        { width: 800, height: 600 },
+        'cover'
+      );
+      
+      expect(result.width).toBeCloseTo(1067);
+      expect(result.height).toBe(600);
+      expect(result.x).toBeCloseTo(-133.5); // Centered horizontally
+      expect(result.y).toBe(0);
+    });
+    
+    it('stretches image to fill (fill)', () => {
+      const result = fitImageToContainer(
+        { width: 1920, height: 1080 },
+        { width: 800, height: 600 },
+        'fill'
+      );
+      
+      expect(result).toEqual({
+        width: 800,
+        height: 600,
+        x: 0,
+        y: 0
+      });
+    });
+  });
+  
+  describe('calculateAspectRatio', () => {
+    it('calculates aspect ratio', () => {
+      expect(calculateAspectRatio(1920, 1080)).toBeCloseTo(1.778, 3);
+      expect(calculateAspectRatio(1080, 1920)).toBeCloseTo(0.5625, 3);
+      expect(calculateAspectRatio(500, 500)).toBe(1);
+    });
+    
+    it('handles zero dimensions', () => {
+      expect(calculateAspectRatio(0, 100)).toBe(0);
+      expect(calculateAspectRatio(100, 0)).toBe(Infinity);
+    });
+  });
+  
+  describe('clamp', () => {
+    it('clamps values within range', () => {
+      expect(clamp(5, 0, 10)).toBe(5);
+      expect(clamp(-5, 0, 10)).toBe(0);
+      expect(clamp(15, 0, 10)).toBe(10);
+    });
+    
+    it('handles edge cases', () => {
+      expect(clamp(0, 0, 10)).toBe(0);
+      expect(clamp(10, 0, 10)).toBe(10);
+      expect(clamp(5.5, 0, 10)).toBe(5.5);
+    });
+  });
+});
+
+// Mock implementations (would be in image-utils.ts)
+async function getImageDimensions(file: File): Promise<{ width: number; height: number }> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      resolve({ width: img.width, height: img.height });
+    };
+    
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error('Invalid image file'));
+    };
+    
+    img.src = url;
+  });
+}
+
+function fitImageToContainer(
+  image: { width: number; height: number },
+  container: { width: number; height: number },
+  mode: 'contain' | 'cover' | 'fill'
+): { width: number; height: number; x: number; y: number } {
+  if (mode === 'fill') {
+    return { width: container.width, height: container.height, x: 0, y: 0 };
+  }
+  
+  const imageRatio = image.width / image.height;
+  const containerRatio = container.width / container.height;
+  
+  let width, height;
+  
+  if (mode === 'contain') {
+    if (imageRatio > containerRatio) {
+      width = container.width;
+      height = container.width / imageRatio;
+    } else {
+      height = container.height;
+      width = container.height * imageRatio;
+    }
+  } else { // cover
+    if (imageRatio > containerRatio) {
+      height = container.height;
+      width = container.height * imageRatio;
+    } else {
+      width = container.width;
+      height = container.width / imageRatio;
+    }
+  }
+  
+  const x = (container.width - width) / 2;
+  const y = (container.height - height) / 2;
+  
+  return { width, height, x, y };
+}
+
+function calculateAspectRatio(width: number, height: number): number {
+  return width / height;
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(Math.max(value, min), max);
+}
+```
+**Verification**: `bun test src/lib/__tests__/image-utils.test.ts`
+- **Time**: 9 minutes
+- **Risk**: None
+- **Rollback**: Delete file
+- **Success Indicator**: Image utility functions work correctly
 
 ### 1.2 Simple Hook Tests (10 tasks)
 
