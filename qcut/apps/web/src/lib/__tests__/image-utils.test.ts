@@ -252,7 +252,7 @@ describe('Image Utils', () => {
       const blobUrl2 = await convertToBlob(url);
       
       expect(blobUrl1).toBe(blobUrl2);
-      expect(fetch).toHaveBeenCalledTimes(1);
+      expect(global.fetch).toHaveBeenCalledTimes(1);
     });
     
     it('returns blob URLs as-is', async () => {
@@ -264,9 +264,9 @@ describe('Image Utils', () => {
     });
     
     it('handles fetch errors gracefully', async () => {
+      const url = 'https://fal.media/test-error.jpg';
       global.fetch = vi.fn(() => Promise.reject(new Error('Network error')));
       
-      const url = 'https://fal.media/test.jpg';
       const result = await convertToBlob(url);
       
       expect(result).toBe(url); // Returns original URL as fallback

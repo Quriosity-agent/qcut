@@ -9,11 +9,6 @@ describe('useToast', () => {
   
   afterEach(() => {
     vi.useRealTimers();
-    // Clean up any existing toasts
-    act(() => {
-      const { result } = renderHook(() => useToast());
-      result.current.dismiss();
-    });
   });
   
   describe('toast function', () => {
