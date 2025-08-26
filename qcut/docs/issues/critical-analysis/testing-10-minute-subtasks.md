@@ -3480,12 +3480,15 @@ export default defineConfig({
 ### 2.1 Store Test Helpers (10 tasks)
 
 #### Task 051: Create Store Test Wrapper
-**File**: `src/test/utils/store-wrapper.tsx`
+**File**: `apps/web/src/test/utils/store-wrapper.tsx`
+**Source Store**: `apps/web/src/stores/editor-store.ts`
 ```typescript
 import { ReactNode } from 'react';
+import { resetAllStores } from './store-helpers';
 
 export function StoreTestWrapper({ children }: { children: ReactNode }) {
   // Reset stores before each test
+  resetAllStores();
   return <>{children}</>;
 }
 ```
@@ -3494,15 +3497,15 @@ export function StoreTestWrapper({ children }: { children: ReactNode }) {
 - **Rollback**: Delete file
 
 #### Task 052: Create Media Store Reset Helper
-**File**: `src/test/helpers/reset-media-store.ts`
+**File**: `apps/web/src/test/helpers/reset-media-store.ts`
+**Source Store**: `apps/web/src/stores/media-store.ts`
 ```typescript
 import { useMediaStore } from '@/stores/media-store';
 
 export function resetMediaStore() {
   useMediaStore.setState({
     mediaItems: [],
-    loading: false,
-    error: null,
+    isLoading: false,
   });
 }
 ```
@@ -3511,16 +3514,22 @@ export function resetMediaStore() {
 - **Rollback**: Delete file
 
 #### Task 053: Create Timeline Store Reset Helper
-**File**: `src/test/helpers/reset-timeline-store.ts`
+**File**: `apps/web/src/test/helpers/reset-timeline-store.ts`
+**Source Store**: `apps/web/src/stores/timeline-store.ts`
 ```typescript
 import { useTimelineStore } from '@/stores/timeline-store';
 
 export function resetTimelineStore() {
-  useTimelineStore.setState({
-    elements: [],
-    tracks: [],
-    duration: 0,
-  });
+  const store = useTimelineStore.getState();
+  if (store.clearTimeline) {
+    store.clearTimeline();
+  } else {
+    useTimelineStore.setState({
+      tracks: [],
+      history: [],
+      historyIndex: -1,
+    });
+  }
 }
 ```
 - **Time**: 5 minutes
@@ -3528,7 +3537,8 @@ export function resetTimelineStore() {
 - **Rollback**: Delete file
 
 #### Task 054: Create Playback Store Reset Helper
-**File**: `src/test/helpers/reset-playback-store.ts`
+**File**: `apps/web/src/test/helpers/reset-playback-store.ts`
+**Source Store**: `apps/web/src/stores/playback-store.ts`
 ```typescript
 import { usePlaybackStore } from '@/stores/playback-store';
 
@@ -3537,6 +3547,7 @@ export function resetPlaybackStore() {
     isPlaying: false,
     currentTime: 0,
     duration: 0,
+    playbackSpeed: 1,
   });
 }
 ```
@@ -3544,28 +3555,39 @@ export function resetPlaybackStore() {
 - **Risk**: None
 - **Rollback**: Delete file
 
-#### Task 055: Create Combined Store Reset
-**File**: Update `src/test/utils/store-helpers.ts`
+#### Task 055: Combined Store Reset Helper (Already Exists)
+**File**: `apps/web/src/test/utils/store-helpers.ts` ✅ ALREADY EXISTS
+**Current Implementation**: Complete resetAllStores() function with all stores
 ```typescript
-import { resetMediaStore } from '../helpers/reset-media-store';
-import { resetTimelineStore } from '../helpers/reset-timeline-store';
-import { resetPlaybackStore } from '../helpers/reset-playback-store';
-
-export function resetAllStores() {
-  resetMediaStore();
-  resetTimelineStore();
-  resetPlaybackStore();
+// File already exists with complete implementation
+export async function resetAllStores() {
+  // Resets: media, timeline, project, playback, export, stickers stores
+  // See apps/web/src/test/utils/store-helpers.ts
 }
 ```
-- **Time**: 5 minutes
+- **Time**: 0 minutes (already exists)
 - **Risk**: None
-- **Rollback**: Revert file
+- **Status**: ✅ Already implemented
 
 #### Task 056: Create Store Snapshot Helper
-**File**: `src/test/utils/store-snapshot.ts`
+**File**: `apps/web/src/test/utils/store-snapshot.ts`
 ```typescript
 export function getStoreSnapshot(store: any) {
   return JSON.parse(JSON.stringify(store.getState()));
+}
+
+export function snapshotAllStores() {
+  const { useMediaStore } = require('@/stores/media-store');
+  const { useTimelineStore } = require('@/stores/timeline-store');
+  const { usePlaybackStore } = require('@/stores/playback-store');
+  const { useEditorStore } = require('@/stores/editor-store');
+  
+  return {
+    media: getStoreSnapshot(useMediaStore),
+    timeline: getStoreSnapshot(useTimelineStore),
+    playback: getStoreSnapshot(usePlaybackStore),
+    editor: getStoreSnapshot(useEditorStore),
+  };
 }
 ```
 - **Time**: 5 minutes
@@ -3573,48 +3595,89 @@ export function getStoreSnapshot(store: any) {
 - **Rollback**: Delete file
 
 #### Task 057: Create Store Comparison Helper
-**File**: `src/test/utils/store-compare.ts`
+**File**: `apps/web/src/test/utils/store-compare.ts`
 ```typescript
-export function compareStores(before: any, after: any) {
+export function compareStores(before: any, after: any): boolean {
   return JSON.stringify(before) === JSON.stringify(after);
+}
+
+export function getStoreDifferences(before: any, after: any): string[] {
+  const differences: string[] = [];
+  const checkDiff = (obj1: any, obj2: any, path = '') => {
+    for (const key in obj1) {
+      const newPath = path ? `${path}.${key}` : key;
+      if (JSON.stringify(obj1[key]) !== JSON.stringify(obj2[key])) {
+        differences.push(newPath);
+      }
+    }
+  };
+  checkDiff(before, after);
+  return differences;
 }
 ```
 - **Time**: 3 minutes
 - **Risk**: None
 - **Rollback**: Delete file
 
-#### Task 058: Create Store Subscribe Helper
-**File**: `src/test/utils/store-subscribe.ts`
+#### Task 058: Create Captions Store Reset Helper
+**File**: `apps/web/src/test/helpers/reset-captions-store.ts`
+**Source Store**: `apps/web/src/stores/captions-store.ts`
 ```typescript
-export function subscribeToStore(store: any, callback: Function) {
-  const unsubscribe = store.subscribe(callback);
-  return unsubscribe;
-}
-```
-- **Time**: 5 minutes
-- **Risk**: None
-- **Rollback**: Delete file
+import { useCaptionsStore } from '@/stores/captions-store';
 
-#### Task 059: Create Store Action Logger
-**File**: `src/test/utils/store-logger.ts`
-```typescript
-export function logStoreActions(store: any) {
-  const actions: any[] = [];
-  store.subscribe((state: any) => {
-    actions.push({ timestamp: Date.now(), state });
+export function resetCaptionsStore() {
+  useCaptionsStore.setState({
+    captions: [],
+    selectedCaptionId: null,
+    isGenerating: false,
   });
-  return actions;
 }
 ```
 - **Time**: 5 minutes
 - **Risk**: None
 - **Rollback**: Delete file
 
-#### Task 060: Create Store Hydration Helper
-**File**: `src/test/utils/store-hydrate.ts`
+#### Task 059: Create Export Store Reset Helper
+**File**: `apps/web/src/test/helpers/reset-export-store.ts`
+**Source Store**: `apps/web/src/stores/export-store.ts`
 ```typescript
-export function hydrateStore(store: any, state: any) {
-  store.setState(state);
+import { useExportStore } from '@/stores/export-store';
+
+export function resetExportStore() {
+  useExportStore.setState({
+    isDialogOpen: false,
+    progress: { percentage: 0, message: '', isExporting: false },
+    error: null,
+  });
+}
+```
+- **Time**: 5 minutes
+- **Risk**: None
+- **Rollback**: Delete file
+
+#### Task 060: Create Test Fixture Factory
+**File**: `apps/web/src/test/fixtures/factory.ts`
+**Uses Existing**: `apps/web/src/test/fixtures/media-items.ts`
+```typescript
+import { mockVideoItem, mockImageItem, mockAudioItem } from './media-items';
+import { mockTimelineTrack, mockTimelineElement } from './timeline-data';
+import { mockProject } from './project-data';
+
+export class TestDataFactory {
+  static createMediaItem(type: 'video' | 'image' | 'audio', overrides = {}) {
+    const base = type === 'video' ? mockVideoItem 
+                : type === 'image' ? mockImageItem 
+                : mockAudioItem;
+    return { ...base, ...overrides, id: `${type}-${Date.now()}` };
+  }
+  
+  static createTimelineTrack(overrides = {}) {
+    return { ...mockTimelineTrack, ...overrides, id: `track-${Date.now()}` };
+  }
+  
+  static createProject(overrides = {}) {
+    return { ...mockProject, ...overrides, id: `project-${Date.now()}` };
+  }
 }
 ```
 - **Time**: 3 minutes
