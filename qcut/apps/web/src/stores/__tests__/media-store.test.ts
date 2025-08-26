@@ -41,6 +41,11 @@ vi.mock('@/stores/project-store', () => ({
 vi.mock('@/stores/timeline-store', () => ({
   useTimelineStore: {
     getState: vi.fn(() => ({
+      tracks: [],
+      removeElementFromTrack: vi.fn(),
+      removeElementFromTrackWithRipple: vi.fn(),
+      rippleEditingEnabled: false,
+      pushHistory: vi.fn(),
       removeElementsByMediaId: vi.fn()
     }))
   }
@@ -168,7 +173,6 @@ describe('MediaStore', () => {
   });
   
   it('loads project media from storage', async () => {
-    const { storageService } = await import('@/lib/storage/storage-service');
     const mockMediaItems: MediaItem[] = [
       {
         id: 'stored-1',
@@ -181,7 +185,9 @@ describe('MediaStore', () => {
       }
     ];
     
-    (storageService.loadMediaItems as any).mockResolvedValueOnce(mockMediaItems);
+    // Import and mock before using
+    const { storageService } = await import('@/lib/storage/storage-service');
+    vi.mocked(storageService.loadMediaItems).mockResolvedValueOnce(mockMediaItems);
     
     const { result } = renderHook(() => useMediaStore());
     

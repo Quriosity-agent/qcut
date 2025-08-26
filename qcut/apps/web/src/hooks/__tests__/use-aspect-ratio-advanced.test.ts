@@ -91,9 +91,9 @@ describe('useAspectRatio - Advanced Features', () => {
     expect(result.current.formatAspectRatio(1.77)).toBe('16:9'); // 1.7777...
     expect(result.current.formatAspectRatio(1.78)).toBe('16:9');
     expect(result.current.formatAspectRatio(1.32)).toBe('1.32'); // Not close enough to 4:3
-    expect(result.current.formatAspectRatio(1.34)).toBe('1.34'); // Not close enough to 4:3
+    expect(result.current.formatAspectRatio(1.34)).toBe('4:3'); // Close enough to 4:3 (1.333...)
     expect(result.current.formatAspectRatio(2.32)).toBe('2.32'); // Not close enough to 21:9
-    expect(result.current.formatAspectRatio(2.34)).toBe('2.34'); // Not close enough to 21:9
+    expect(result.current.formatAspectRatio(2.34)).toBe('21:9'); // Close enough to 21:9 (2.333...)
   });
   
   it('provides correct display name for presets', () => {

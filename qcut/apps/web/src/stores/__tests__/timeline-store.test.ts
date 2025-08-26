@@ -78,22 +78,23 @@ describe('TimelineStore', () => {
     const { result } = renderHook(() => useTimelineStore());
     
     expect(result.current.tracks).toHaveLength(1);
-    expect(result.current.tracks[0].type).toBe('main');
-    expect(result.current.tracks[0].order).toBe(0);
+    expect(result.current.tracks[0].type).toBe('media');
+    expect(result.current.tracks[0].isMain).toBe(true);
+    expect(result.current.tracks[0].name).toBe('Main Track');
     expect(result.current.tracks[0].elements).toEqual([]);
   });
   
-  it('adds overlay track', () => {
+  it('adds text track', () => {
     const { result } = renderHook(() => useTimelineStore());
     
     act(() => {
-      result.current.addTrack('overlay');
+      result.current.addTrack('text');
     });
     
     expect(result.current.tracks).toHaveLength(2);
-    const overlayTrack = result.current.tracks.find(t => t.type === 'overlay');
-    expect(overlayTrack).toBeDefined();
-    expect(overlayTrack?.order).toBe(1);
+    const textTrack = result.current.tracks.find(t => t.type === 'text');
+    expect(textTrack).toBeDefined();
+    expect(textTrack?.name).toContain('Text');
   });
   
   it('adds audio track', () => {
@@ -114,19 +115,19 @@ describe('TimelineStore', () => {
     
     // Add a track
     act(() => {
-      result.current.addTrack('overlay');
+      result.current.addTrack('text');
     });
     
-    const overlayTrack = result.current.tracks.find(t => t.type === 'overlay');
-    expect(overlayTrack).toBeDefined();
+    const textTrack = result.current.tracks.find(t => t.type === 'text');
+    expect(textTrack).toBeDefined();
     
     // Remove the track
     act(() => {
-      result.current.removeTrack(overlayTrack!.id);
+      result.current.removeTrack(textTrack!.id);
     });
     
     expect(result.current.tracks).toHaveLength(1);
-    expect(result.current.tracks[0].type).toBe('main');
+    expect(result.current.tracks[0].isMain).toBe(true);
   });
   
   it('cannot remove main track', () => {
@@ -139,7 +140,7 @@ describe('TimelineStore', () => {
     
     // Main track should still exist
     expect(result.current.tracks).toHaveLength(1);
-    expect(result.current.tracks[0].type).toBe('main');
+    expect(result.current.tracks[0].isMain).toBe(true);
   });
   
   it('maintains history for undo/redo', () => {
@@ -213,7 +214,7 @@ describe('TimelineStore', () => {
     
     // Remove the element
     act(() => {
-      result.current.removeElement(mainTrack.id, element.id);
+      result.current.removeElementFromTrack(mainTrack.id, element.id);
     });
     
     expect(result.current.tracks[0].elements).toHaveLength(0);
@@ -226,26 +227,25 @@ describe('TimelineStore', () => {
     // Add an element
     act(() => {
       result.current.addElementToTrack(mainTrack.id, {
-        type: 'text',
+        type: 'media',
+        mediaId: 'test-media',
         startTime: 0,
         duration: 5,
-        name: 'Original Text'
+        name: 'Original Media'
       });
     });
     
     const element = result.current.tracks[0].elements[0];
     
-    // Update element
+    // Update element duration and start time
     act(() => {
-      result.current.updateElement(mainTrack.id, element.id, {
-        name: 'Updated Text',
-        duration: 10,
-        startTime: 5
-      });
+      result.current.updateElementDuration(mainTrack.id, element.id, 10);
+      result.current.updateElementStartTime(mainTrack.id, element.id, 5);
     });
     
     const updatedElement = result.current.tracks[0].elements[0];
-    expect(updatedElement.name).toBe('Updated Text');
+    // Name won't change as there's no method to update it
+    expect(updatedElement.name).toBe('Original Media');
     expect(updatedElement.duration).toBe(10);
     expect(updatedElement.startTime).toBe(5);
   });
@@ -255,7 +255,7 @@ describe('TimelineStore', () => {
     
     // Add tracks and elements
     act(() => {
-      result.current.addTrack('overlay');
+      result.current.addTrack('text');
       result.current.addTrack('audio');
       result.current.addElementToTrack(result.current.tracks[0].id, {
         type: 'media',
@@ -274,7 +274,7 @@ describe('TimelineStore', () => {
     
     // Should have only main track
     expect(result.current.tracks).toHaveLength(1);
-    expect(result.current.tracks[0].type).toBe('main');
+    expect(result.current.tracks[0].isMain).toBe(true);
     expect(result.current.tracks[0].elements).toEqual([]);
     expect(result.current.history).toEqual([]);
     expect(result.current.redoStack).toEqual([]);
