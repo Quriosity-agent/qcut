@@ -112,25 +112,39 @@ export function createMockExportSettings(
  */
 export function createMockExportProgress(
   progress: number,
-  totalFrames: number = 300
+  totalFrames: number = 300,
+  nowMs: number = Date.now()
 ): ExportProgress {
-  const currentFrame = Math.floor((progress / 100) * totalFrames);
-  const elapsedTime = progress > 0 ? Math.floor(progress * 0.6) : 0; // Assume 60 seconds total
+  const clampedProgress = Math.max(0, Math.min(100, Math.floor(progress)));
+  const safeTotalFrames =
+    Number.isFinite(totalFrames) && totalFrames > 0 ? Math.floor(totalFrames) : 300;
+  const currentFrame =
+    clampedProgress === 0
+      ? 0
+      : Math.max(1, Math.floor((clampedProgress / 100) * safeTotalFrames));
+  const elapsedTime =
+    clampedProgress > 0 ? Math.floor(clampedProgress * 0.6) : 0; // Assume 60 seconds total
   const remainingTime = Math.max(0, 60 - elapsedTime);
-  
+
+  const processedFrames = currentFrame;
+
   return {
-    isExporting: progress < 100,
-    progress,
+    isExporting: clampedProgress < 100,
+    progress: clampedProgress,
     currentFrame,
-    totalFrames,
+    totalFrames: safeTotalFrames,
     estimatedTimeRemaining: remainingTime,
-    status: progress < 100 
-      ? `Processing frame ${currentFrame} of ${totalFrames}...`
-      : 'Export complete!',
-    encodingSpeed: progress > 0 ? 5 : 0,
-    processedFrames: currentFrame,
-    startTime: new Date(Date.now() - (elapsedTime * 1000)),
+    status:
+      clampedProgress < 100
+        ? `Processing frame ${currentFrame} of ${safeTotalFrames}...`
+        : 'Export complete!',
+    encodingSpeed: clampedProgress > 0 ? 5 : 0,
+    processedFrames,
+    startTime: new Date(nowMs - elapsedTime * 1000),
     elapsedTime,
-    averageFrameTime: elapsedTime > 0 ? (elapsedTime * 1000) / currentFrame : 0,
+    averageFrameTime:
+      processedFrames > 0 && elapsedTime > 0
+        ? (elapsedTime * 1000) / processedFrames
+        : 0,
   };
 }

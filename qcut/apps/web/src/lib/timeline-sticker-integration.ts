@@ -101,9 +101,7 @@ export class TimelineStickerIntegration {
   private validateSticker(sticker: OverlaySticker): boolean {
     if (!sticker.id || !sticker.mediaItemId) {
       if (this.config.enableLogging) {
-        console.warn(
-          "[TimelineIntegration] Invalid sticker: missing id or mediaItemId"
-        );
+        debugLog("[TimelineIntegration] Invalid sticker: missing id/mediaItemId");
       }
       return false;
     }
@@ -114,9 +112,7 @@ export class TimelineStickerIntegration {
       sticker.timing.endTime === undefined
     ) {
       if (this.config.enableLogging) {
-        console.warn(
-          "[TimelineIntegration] Invalid sticker: missing or invalid timing"
-        );
+        debugLog("[TimelineIntegration] Invalid sticker: missing/invalid timing");
       }
       return false;
     }
@@ -124,9 +120,7 @@ export class TimelineStickerIntegration {
     const duration = sticker.timing.endTime - sticker.timing.startTime;
     if (duration <= 0) {
       if (this.config.enableLogging) {
-        console.warn(
-          `[TimelineIntegration] Invalid sticker: non-positive duration (${duration}s)`
-        );
+        debugLog("[TimelineIntegration] Invalid sticker: non-positive duration", { duration });
       }
       return false;
     }
@@ -168,7 +162,7 @@ export class TimelineStickerIntegration {
       }
 
       if (this.config.enableLogging) {
-        console.log("[TimelineIntegration] Creating new sticker track...");
+        debugLog("[TimelineIntegration] Creating new sticker track...");
       }
 
       // Create the track
@@ -197,7 +191,7 @@ export class TimelineStickerIntegration {
 
       if (stickerTrack) {
         if (this.config.enableLogging) {
-          console.log(
+          debugLog(
             `[TimelineIntegration] Successfully created sticker track: ${trackId}`
           );
         }
@@ -275,14 +269,12 @@ export class TimelineStickerIntegration {
       };
 
       if (this.config.enableLogging) {
-        console.log(
-          `[TimelineIntegration] Adding sticker element to track ${trackId}:`,
-          {
-            duration: `${duration}s`,
-            startTime: element.startTime,
-            stickerId: sticker.id,
-          }
-        );
+        debugLog("[TimelineIntegration] Adding sticker element", {
+          trackId,
+          duration,
+          startTime: element.startTime,
+          stickerId: sticker.id,
+        });
       }
 
       // Add element to track
@@ -290,7 +282,7 @@ export class TimelineStickerIntegration {
 
       if (success) {
         if (this.config.enableLogging) {
-          console.log(
+          debugLog(
             "[TimelineIntegration] ✅ Successfully added sticker to timeline track"
           );
         }

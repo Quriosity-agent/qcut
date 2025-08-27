@@ -2,6 +2,7 @@ const { ipcMain, app, safeStorage } = require("electron");
 const https = require("https");
 const path = require("path");
 const fs = require("fs");
+const { pathToFileURL } = require("node:url");
 
 // Try to load electron-log, fallback to console if not available
 let log;
@@ -149,11 +150,7 @@ function setupSoundIPC() {
     try {
       console.log("[Sound Handler] Getting API key...");
       const FREESOUND_API_KEY = await getFreesoundApiKey();
-      console.log(
-        "[Sound Handler] API key retrieved:",
-        FREESOUND_API_KEY ? `${FREESOUND_API_KEY.substring(0, 10)}...` : "NONE"
-      );
-      log.info("[Sound Handler] API key available:", !!FREESOUND_API_KEY);
+      log.info("[Sound Handler] API key available:", Boolean(FREESOUND_API_KEY));
 
       if (!FREESOUND_API_KEY) {
         console.error("[Sound Handler] No API key found!");
@@ -360,21 +357,42 @@ function setupSoundIPC() {
         fs.mkdirSync(tempDir, { recursive: true });
       }
 
-      const fileName = `preview-${id}.mp3`;
+      // Sanitize the ID to prevent path traversal
+      const safeId = String(id).replace(/[^a-z0-9_-]/gi, "_");
+      const fileName = `preview-${safeId}.mp3`;
       const filePath = path.join(tempDir, fileName);
 
       // Check if already cached
       if (fs.existsSync(filePath)) {
         console.log("[Sound Handler] Preview already cached:", filePath);
-        return { success: true, path: `file://${filePath}` };
+        return { success: true, path: pathToFileURL(filePath).href };
       }
 
       // Download the file
       return new Promise((resolve) => {
+        // Validate URL for security
+        let target;
+        try {
+          target = new URL(url);
+        } catch {
+          return resolve({ success: false, error: "Invalid URL" });
+        }
+        
+        // Allow only HTTPS and specific Freesound domains
+        const allowedHosts = ["freesound.org", "cdn.freesound.org"];
+        const isAllowedHost = allowedHosts.some(
+          (h) => target.hostname === h || target.hostname.endsWith(`.${h}`)
+        );
+        
+        if (target.protocol !== "https:" || !isAllowedHost) {
+          console.error("[Sound Handler] Blocked URL:", url);
+          return resolve({ success: false, error: "URL not allowed - must be HTTPS Freesound domain" });
+        }
+
         const file = fs.createWriteStream(filePath);
 
         https
-          .get(url, (response) => {
+          .get(target, (response) => {
             if (response.statusCode !== 200) {
               console.error(
                 "[Sound Handler] Preview download failed:",
@@ -394,7 +412,7 @@ function setupSoundIPC() {
               console.log("[Sound Handler] Preview downloaded:", filePath);
               resolve({
                 success: true,
-                path: `file://${filePath}`,
+                path: pathToFileURL(filePath).href,
               });
             });
 

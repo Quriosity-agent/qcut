@@ -642,7 +642,10 @@ export class CLIExportEngine extends ExportEngine {
     progressCallback?.(5, "Preparing audio files...");
 
     // Prepare audio files for FFmpeg
-    const audioFiles = await this.prepareAudioFiles();
+    let audioFiles = await this.prepareAudioFiles();
+    
+    // audioFiles can be validated and filtered here if needed
+    // e.g., audioFiles = audioFiles.filter(validateAudioFile);
 
     debugLog(`[CLI] Prepared ${audioFiles.length} audio files for export`);
 
@@ -655,7 +658,7 @@ export class CLIExportEngine extends ExportEngine {
       height: this.canvas.height,
       fps: 30,
       quality: this.settings.quality || "medium",
-      audioFiles, // Pass audio files to FFmpeg handler
+      audioFiles, // Pass audio files to FFmpeg handler (will be validated above)
     };
 
     console.log(

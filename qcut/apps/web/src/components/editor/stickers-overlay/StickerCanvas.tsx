@@ -331,7 +331,7 @@ export const StickerCanvas: React.FC<{
           if (!mediaItem) {
             // Only log error if media store is not loading
             if (!mediaStoreLoading) {
-              console.warn(
+              debugLog(
                 `[StickerCanvas] ⚠️ MEDIA MISSING: Media item not found for sticker ${sticker.id}, mediaItemId: ${sticker.mediaItemId}. Available media: ${mediaItems.length}`,
                 {
                   stickerMediaId: sticker.mediaItemId,

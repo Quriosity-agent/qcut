@@ -123,8 +123,8 @@ export function createMockTimelineElement(
   type: 'media' | 'text' | 'sticker' | 'captions',
   overrides: Partial<TimelineElement> = {}
 ): TimelineElement {
+  const generatedId = `element-${type}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
   const baseElement = {
-    id: `element-${type}-${Date.now()}-${Math.random().toString(36).substring(2)}`,
     name: `Test ${type}`,
     startTime: 0,
     duration: 5,
@@ -136,28 +136,35 @@ export function createMockTimelineElement(
   switch (type) {
     case 'media':
       return {
-        ...baseElement,
         ...mockMediaElement,
+        ...baseElement,
         ...overrides,
+        id: overrides.id ?? generatedId,
       } as MediaElement;
     case 'text':
       return {
-        ...baseElement,
         ...mockTextElement,
+        ...baseElement,
         ...overrides,
+        id: overrides.id ?? generatedId,
       } as TextElement;
     case 'sticker':
       return {
-        ...baseElement,
         ...mockStickerElement,
+        ...baseElement,
         ...overrides,
+        id: overrides.id ?? generatedId,
       } as StickerElement;
     case 'captions':
       return {
-        ...baseElement,
         ...mockCaptionElement,
+        ...baseElement,
         ...overrides,
+        id: overrides.id ?? generatedId,
       } as CaptionElement;
+    default:
+      // Defensive default for future extensions and guideline compliance
+      throw new Error(`[createMockTimelineElement] Unsupported type: ${type}`);
   }
 }
 

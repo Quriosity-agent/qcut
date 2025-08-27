@@ -96,22 +96,58 @@ async function fixExeIcon() {
     const file = fs.createWriteStream(rceditPath);
 
     await new Promise((resolve, reject) => {
-      https
-        .get(RCEDIT_URL, (response) => {
-          if (response.statusCode !== 200) {
-            reject(
-              new Error(`Failed to download: HTTP ${response.statusCode}`)
-            );
+      const maxRedirects = 5;
+      
+      const doGet = (url, redirects = 0) => {
+        const req = https.get(url, (res) => {
+          const { statusCode, headers } = res;
+          
+          // Handle redirects
+          if ([301, 302, 303, 307, 308].includes(statusCode) && headers.location) {
+            if (redirects >= maxRedirects) {
+              res.resume();
+              file.destroy();
+              reject(new Error("Too many redirects when downloading rcedit."));
+              return;
+            }
+            res.resume();
+            doGet(headers.location, redirects + 1);
             return;
           }
-          response.pipe(file);
+          
+          // Check for success
+          if (statusCode !== 200) {
+            res.resume();
+            file.destroy();
+            reject(new Error(`Failed to download: HTTP ${statusCode}`));
+            return;
+          }
+          
+          // Pipe response to file
+          res.pipe(file);
+          
           file.on("finish", () => {
-            file.close();
-            process.stdout.write("rcedit downloaded successfully\n");
-            resolve();
+            file.close(() => {
+              process.stdout.write("rcedit downloaded successfully\n");
+              resolve();
+            });
           });
-        })
-        .on("error", reject);
+          
+          file.on("error", (err) => {
+            file.destroy();
+            fs.unlink(rceditPath, () => {}); // Clean up partial file
+            reject(err);
+          });
+        });
+        
+        req.on("error", (err) => {
+          file.destroy();
+          fs.unlink(rceditPath, () => {}); // Clean up partial file
+          reject(err);
+        });
+      };
+      
+      doGet(RCEDIT_URL);
     });
 
     // Verify downloaded file integrity

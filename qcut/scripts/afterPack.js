@@ -1,5 +1,5 @@
 const path = require("path");
-const { exec } = require("child_process");
+const { execFile } = require("node:child_process");
 const fs = require("fs");
 
 exports.default = async (context) => {
@@ -41,18 +41,20 @@ exports.default = async (context) => {
     process.stdout.write(`Using rcedit from: ${rceditPath}\n`);
 
     return new Promise((resolve, reject) => {
-      exec(
-        `"${rceditPath}" "${exePath}" --set-icon "${icoPath}"`,
+      execFile(
+        rceditPath,
+        [exePath, "--set-icon", icoPath],
+        { windowsHide: true },
         (error, stdout, stderr) => {
           if (error) {
-            process.stderr.write(`Error setting icon: ${error}\n`);
+            process.stderr.write(`Error setting icon: ${error?.stack || error}\n`);
             reject(error);
-          } else {
-            process.stdout.write(
-              "Icon successfully embedded into executable!\n"
-            );
-            resolve();
+            return;
           }
+          process.stdout.write("Icon successfully embedded into executable!\n");
+          if (stdout) process.stdout.write(`Output: ${stdout}\n`);
+          if (stderr) process.stderr.write(`Stderr: ${stderr}\n`);
+          resolve();
         }
       );
     });
