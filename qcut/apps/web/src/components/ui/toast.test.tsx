@@ -65,25 +65,19 @@ describe('Toast System', () => {
 
 // Test the toast hook
 describe('useToast Hook', () => {
-  it('provides toast function', () => {
+  it('returns toast function that can be called', () => {
     const TestComponent = () => {
       const { toast } = useToast();
       
-      return (
-        <button onClick={() => toast({ title: 'Test Toast' })}>
-          Show Toast
-        </button>
-      );
+      // Test that the hook returns a callable function
+      expect(typeof toast).toBe('function');
+      
+      return <div>Hook test</div>;
     };
     
-    render(
-      <>
-        <TestComponent />
-        <Toaster />
-      </>
-    );
+    render(<TestComponent />);
     
-    // Toast hook should be available
-    expect(screen.getByText('Show Toast')).toBeInTheDocument();
+    // Test passes if component renders without error
+    expect(screen.getByText('Hook test')).toBeInTheDocument();
   });
 });
