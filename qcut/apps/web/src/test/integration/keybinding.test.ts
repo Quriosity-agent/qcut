@@ -3,10 +3,8 @@ import { useKeybindingsStore, defaultKeybindings } from '@/stores/keybindings-st
 
 describe('Keybinding', () => {
   beforeEach(() => {
-    useKeybindingsStore.setState({
-      keybindings: { ...defaultKeybindings },
-      customKeybindings: {},
-    });
+    const store = useKeybindingsStore.getState();
+    store.resetToDefaults();
   });
   
   it('registers default keybinding', () => {
