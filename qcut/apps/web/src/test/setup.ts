@@ -2,6 +2,9 @@
 import '@testing-library/jest-dom/vitest';
 import { afterEach, beforeAll, afterAll, vi } from 'vitest';
 
+// Load toast hook mock
+import './mocks/toast';
+
 // Mock window.matchMedia
 Object.defineProperty(window, 'matchMedia', {
   writable: true,
