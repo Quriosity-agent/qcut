@@ -17,9 +17,11 @@ describe('Timeline Element', () => {
     const element = {
       type: 'media' as const,
       mediaId: 'media-001',
-      start: 0,
+      name: 'Test Media',
+      startTime: 0,
       duration: 10,
-      trackId: trackId,
+      trimStart: 0,
+      trimEnd: 0,
     };
     store.addElementToTrack(trackId, element);
     
@@ -35,7 +37,7 @@ describe('Timeline Element', () => {
     expect(addedElement).toBeDefined();
     expect(addedElement?.type).toBe('media');
     expect(addedElement?.mediaId).toBe('media-001');
-    expect(addedElement?.start).toBe(0);
+    expect(addedElement?.startTime).toBe(0);
     expect(addedElement?.duration).toBe(10);
   });
 });
