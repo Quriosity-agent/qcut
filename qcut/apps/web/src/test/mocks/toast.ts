@@ -16,16 +16,20 @@ export const mockToast = {
 };
 
 /**
- * Mock for use-toast hook
+ * Mock for use-toast hook - only used when explicitly mocked in tests
  */
 export const mockUseToast = () => ({
-  toast: mockToast.success,
+  toast: vi.fn((props: any) => ({
+    id: 'toast-id',
+    dismiss: vi.fn(),
+    update: vi.fn(),
+  })),
   toasts: [],
-  dismiss: mockToast.dismiss,
+  dismiss: vi.fn(),
 });
 
 /**
- * Setup global toast mock
+ * Setup global toast mock - only mocks sonner, not use-toast
  */
 export function setupToastMock() {
   vi.mock('sonner', () => ({
@@ -33,7 +37,6 @@ export function setupToastMock() {
     Toaster: vi.fn(() => null),
   }));
   
-  vi.mock('@/hooks/use-toast', () => ({
-    useToast: mockUseToast,
-  }));
+  // Don't mock use-toast by default - let tests import the real implementation
+  // Tests that need to mock it can do so explicitly
 }

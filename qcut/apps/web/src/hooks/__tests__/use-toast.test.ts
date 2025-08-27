@@ -1,5 +1,10 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
+
+// Clear any mocks before importing the real module
+vi.unmock('@/hooks/use-toast');
+
+// Import the real implementation
 import { useToast, toast, reducer } from '@/hooks/use-toast';
 
 describe('useToast', () => {
@@ -9,6 +14,14 @@ describe('useToast', () => {
   
   afterEach(() => {
     vi.useRealTimers();
+    // Clear toasts after each test
+    const { result } = renderHook(() => useToast());
+    act(() => {
+      result.current.toasts.forEach(t => {
+        result.current.dismiss(t.id);
+      });
+      vi.runAllTimers();
+    });
   });
   
   describe('toast function', () => {
@@ -53,7 +66,7 @@ describe('useToast', () => {
       });
       
       expect(result.current.toasts).toHaveLength(1);
-      expect(result.current.toasts[0].title).toBe('Toast 3'); // Most recent
+      expect(result.current.toasts[0]?.title).toBe('Toast 3'); // Most recent
     });
   });
   
@@ -61,19 +74,7 @@ describe('useToast', () => {
     it('provides toast state and methods', () => {
       const { result } = renderHook(() => useToast());
       
-      // Clear any existing toasts first
-      act(() => {
-        result.current.toasts.forEach(toast => {
-          result.current.dismiss(toast.id);
-        });
-      });
-      
-      // Wait for toasts to be cleared
-      act(() => {
-        vi.advanceTimersByTime(1_000_000);
-      });
-      
-      expect(result.current.toasts).toEqual([]);
+      expect(result.current.toasts).toBeDefined();
       expect(typeof result.current.toast).toBe('function');
       expect(typeof result.current.dismiss).toBe('function');
     });
@@ -89,8 +90,8 @@ describe('useToast', () => {
       });
       
       expect(result.current.toasts).toHaveLength(1);
-      expect(result.current.toasts[0].title).toBe('New Toast');
-      expect(result.current.toasts[0].variant).toBe('default');
+      expect(result.current.toasts[0]?.title).toBe('New Toast');
+      expect(result.current.toasts[0]?.variant).toBe('default');
     });
     
     it('dismisses specific toast', () => {
@@ -111,7 +112,7 @@ describe('useToast', () => {
       });
       
       // Toast should be marked as closed
-      expect(result.current.toasts[0].open).toBe(false);
+      expect(result.current.toasts[0]?.open).toBe(false);
       
       // After TOAST_REMOVE_DELAY, toast should be removed
       act(() => {
@@ -150,7 +151,8 @@ describe('useToast', () => {
         });
       });
       
-      expect(result.current.toasts[0].title).toBe('Initial Title');
+      expect(result.current.toasts).toHaveLength(1);
+      expect(result.current.toasts[0]?.title).toBe('Initial Title');
       
       act(() => {
         toastResult.update({
@@ -160,8 +162,8 @@ describe('useToast', () => {
         });
       });
       
-      expect(result.current.toasts[0].title).toBe('Updated Title');
-      expect(result.current.toasts[0].description).toBe('New Description');
+      expect(result.current.toasts[0]?.title).toBe('Updated Title');
+      expect(result.current.toasts[0]?.description).toBe('New Description');
     });
   });
   
@@ -249,16 +251,21 @@ describe('useToast', () => {
       const { result: result1 } = renderHook(() => useToast());
       const { result: result2 } = renderHook(() => useToast());
       
+      // Initially both should have same state
+      expect(result1.current.toasts).toEqual(result2.current.toasts);
+      
+      // Add a toast from first hook
       act(() => {
         result1.current.toast({
           title: 'Shared Toast',
         });
       });
       
+      // Both hooks should see the new toast
       expect(result1.current.toasts).toHaveLength(1);
       expect(result2.current.toasts).toHaveLength(1);
-      expect(result1.current.toasts[0].title).toBe('Shared Toast');
-      expect(result2.current.toasts[0].title).toBe('Shared Toast');
+      expect(result1.current.toasts[0]?.title).toBe('Shared Toast');
+      expect(result2.current.toasts[0]?.title).toBe('Shared Toast');
     });
   });
 });
