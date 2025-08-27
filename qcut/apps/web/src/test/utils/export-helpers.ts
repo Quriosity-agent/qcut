@@ -1,4 +1,5 @@
 import { useExportStore } from '@/stores/export-store';
+import { ExportFormat, ExportQuality } from '@/types/export';
 import { waitForCondition } from './async-helpers';
 
 export async function waitForExportComplete(
@@ -28,12 +29,21 @@ export function mockExportProgress(
   });
 }
 
-export function getExportSettings() {
+const DEFAULT_FPS = 30;
+
+export type ExportSettingsSnapshot = {
+  format: ExportFormat;
+  quality: ExportQuality;
+  resolution: string;
+  fps: number;
+};
+
+export function getExportSettings(): ExportSettingsSnapshot {
   const { settings } = useExportStore.getState();
   return {
-    format: settings.format,
-    quality: settings.quality,
-    resolution: `${settings.width}x${settings.height}`,
-    fps: settings.fps,
+    format: settings.format ?? ExportFormat.WEBM,
+    quality: settings.quality ?? ExportQuality.HIGH,
+    resolution: `${settings.width ?? 1920}x${settings.height ?? 1080}`,
+    fps: DEFAULT_FPS,
   };
 }

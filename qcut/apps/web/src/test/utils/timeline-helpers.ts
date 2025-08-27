@@ -1,5 +1,5 @@
 import { useTimelineStore } from '@/stores/timeline-store';
-import type { TimelineElement, TimelineTrack } from '@/types/timeline';
+import type { TimelineElement, TimelineTrack, TrackType } from '@/types/timeline';
 
 export function addElementToTimeline(
   trackId: string,
@@ -23,18 +23,11 @@ export function addElementToTimeline(
   return created;
 }
 
-export function createTestTrack(type: 'media' | 'text' | 'audio' = 'media'): TimelineTrack {
+export function createTestTrack(type: TrackType = 'media'): TimelineTrack {
   const store = useTimelineStore.getState();
-  const track: TimelineTrack = {
-    id: `track-${Date.now()}`,
-    name: `Test ${type} track`,
-    type,
-    elements: [],
-    muted: false,
-    isMain: type === 'media',
-  };
-  
-  store.addTrack(track);
+  const id = store.addTrack(type);
+  const track = store.tracks.find(t => t.id === id);
+  if (!track) throw new Error(`Failed to create track of type: ${type}`);
   return track;
 }
 
