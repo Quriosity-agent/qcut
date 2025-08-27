@@ -1,5 +1,11 @@
 import { vi } from 'vitest';
 
+declare global {
+  interface Window {
+    electronAPI?: typeof mockElectronAPI;
+  }
+}
+
 /**
  * Complete mock of Electron API matching useElectron hook
  */
@@ -38,9 +44,9 @@ export const mockElectronAPI = {
  * Setup mock Electron API in window
  */
 export function setupElectronMock() {
-  (window as any).electronAPI = mockElectronAPI;
+  window.electronAPI = mockElectronAPI;
   return () => {
-    delete (window as any).electronAPI;
+    Reflect.deleteProperty(window, 'electronAPI');
   };
 }
 

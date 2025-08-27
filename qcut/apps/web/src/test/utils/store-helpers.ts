@@ -11,10 +11,13 @@ import { useStickersOverlayStore } from '@/stores/stickers-overlay-store';
  */
 export async function resetAllStores() {
   // Reset media store
-  useMediaStore.setState({
-    mediaItems: [],
-    isLoading: false,
-  });
+  const mediaStore = useMediaStore.getState();
+  if (mediaStore.clearAllMedia) {
+    mediaStore.clearAllMedia();
+  } else {
+    // Fallback if action isn't available
+    useMediaStore.setState({ mediaItems: [], isLoading: false });
+  }
 
   // Reset timeline store - use proper initialization from actual store
   const timelineStore = useTimelineStore.getState();
