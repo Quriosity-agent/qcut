@@ -17,9 +17,12 @@ describe('Store Initialization', () => {
   
   it('initializes timeline store with default state', () => {
     const state = useTimelineStore.getState();
-    expect(state.tracks).toEqual([]);
+    // Timeline store creates a default main track on initialization
+    expect(state.tracks).toHaveLength(1);
+    expect(state.tracks[0].isMain).toBe(true);
+    expect(state.tracks[0].name).toBe('Main Track');
     expect(state.history).toEqual([]);
-    expect(state.historyIndex).toBe(-1);
+    expect(state.redoStack).toEqual([]);
   });
   
   it('initializes project store with null project', () => {

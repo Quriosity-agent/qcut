@@ -20,8 +20,9 @@ describe('Keybinding', () => {
     const store = useKeybindingsStore.getState();
     store.updateKeybinding('a', 'add-marker');
     
-    const updated = store.getKeybinding('a');
-    expect(updated).toBe('add-marker');
+    // Check the keybinding was updated
+    const updatedStore = useKeybindingsStore.getState();
+    expect(updatedStore.keybindings['a']).toBe('add-marker');
   });
   
   it('resets to default keybindings', () => {
