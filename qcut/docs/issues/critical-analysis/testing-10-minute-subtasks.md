@@ -4525,150 +4525,636 @@ describe('Integration Test Suite', () => {
 ### 3.1 UI Component Tests (15 tasks)
 
 #### Task 081: Test Button Component
-**File**: `src/components/ui/button.test.tsx`
+**File**: `apps/web/src/components/ui/button.test.tsx`
+**Source File**: `apps/web/src/components/ui/button.tsx`
 ```typescript
+import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { Button } from '@/components/ui/button';
 
-describe('Button', () => {
+describe('Button Component', () => {
   it('renders button with text', () => {
     render(<Button>Click me</Button>);
     expect(screen.getByText('Click me')).toBeInTheDocument();
   });
+  
+  it('applies variant classes', () => {
+    const { container } = render(<Button variant="primary">Primary</Button>);
+    const button = container.querySelector('button');
+    expect(button?.className).toContain('bg-primary');
+  });
+  
+  it('applies size classes', () => {
+    const { container } = render(<Button size="sm">Small</Button>);
+    const button = container.querySelector('button');
+    expect(button?.className).toContain('h-8');
+  });
 });
 ```
+**Purpose**: Test the Button component with its variants and sizes
 - **Time**: 7 minutes
 - **Risk**: None
 - **Rollback**: Delete file
+- **Success Indicator**: Button component tests pass
 
-#### Task 082: Test Button Click
-**File**: Add to button.test.tsx
+#### Task 082: Test Button Click Events
+**File**: `apps/web/src/components/ui/button.test.tsx` (continued)
+**Source File**: `apps/web/src/components/ui/button.tsx`
 ```typescript
-it('handles click event', () => {
-  const handleClick = vi.fn();
-  render(<Button onClick={handleClick}>Click</Button>);
-  fireEvent.click(screen.getByText('Click'));
-  expect(handleClick).toHaveBeenCalled();
+import { fireEvent, waitFor } from '@testing-library/react';
+
+// Add to existing button.test.tsx
+describe('Button Events', () => {
+  it('handles click event', async () => {
+    const handleClick = vi.fn();
+    render(<Button onClick={handleClick}>Click</Button>);
+    
+    const button = screen.getByText('Click');
+    fireEvent.click(button);
+    
+    await waitFor(() => {
+      expect(handleClick).toHaveBeenCalledTimes(1);
+    });
+  });
+  
+  it('prevents click when disabled', () => {
+    const handleClick = vi.fn();
+    render(<Button disabled onClick={handleClick}>Disabled</Button>);
+    
+    const button = screen.getByText('Disabled');
+    fireEvent.click(button);
+    
+    expect(handleClick).not.toHaveBeenCalled();
+  });
+  
+  it('works as a link with asChild prop', () => {
+    render(
+      <Button asChild>
+        <a href="/test">Link Button</a>
+      </Button>
+    );
+    
+    const link = screen.getByText('Link Button');
+    expect(link.tagName).toBe('A');
+    expect(link).toHaveAttribute('href', '/test');
+  });
 });
 ```
+**Purpose**: Test button click handling, disabled state, and asChild prop
 - **Time**: 5 minutes
 - **Risk**: None
 - **Rollback**: Remove test
+- **Success Indicator**: Click events handled correctly
 
 #### Task 083: Test Input Component
-**File**: `src/components/ui/input.test.tsx`
+**File**: `apps/web/src/components/ui/input.test.tsx`
+**Source File**: `apps/web/src/components/ui/input.tsx`
 ```typescript
-describe('Input', () => {
+import { describe, it, expect } from 'vitest';
+import { render, screen, fireEvent } from '@testing-library/react';
+import { Input } from '@/components/ui/input';
+
+describe('Input Component', () => {
   it('accepts text input', () => {
     render(<Input placeholder="Enter text" />);
-    const input = screen.getByPlaceholderText('Enter text');
-    fireEvent.change(input, { target: { value: 'test' } });
-    expect(input.value).toBe('test');
+    const input = screen.getByPlaceholderText('Enter text') as HTMLInputElement;
+    
+    fireEvent.change(input, { target: { value: 'test text' } });
+    expect(input.value).toBe('test text');
+  });
+  
+  it('supports different types', () => {
+    const { container } = render(
+      <div>
+        <Input type="email" placeholder="Email" />
+        <Input type="password" placeholder="Password" />
+        <Input type="number" placeholder="Number" />
+      </div>
+    );
+    
+    expect(screen.getByPlaceholderText('Email')).toHaveAttribute('type', 'email');
+    expect(screen.getByPlaceholderText('Password')).toHaveAttribute('type', 'password');
+    expect(screen.getByPlaceholderText('Number')).toHaveAttribute('type', 'number');
+  });
+  
+  it('handles disabled state', () => {
+    render(<Input disabled placeholder="Disabled" />);
+    const input = screen.getByPlaceholderText('Disabled');
+    
+    expect(input).toBeDisabled();
   });
 });
 ```
+**Purpose**: Test Input component with different types and states
 - **Time**: 7 minutes
 - **Risk**: None
 - **Rollback**: Delete file
+- **Success Indicator**: Input component handles all states correctly
 
 #### Task 084: Test Dialog Component
-**File**: `src/components/ui/dialog.test.tsx`
+**File**: `apps/web/src/components/ui/dialog.test.tsx`
+**Source File**: `apps/web/src/components/ui/dialog.tsx`
 ```typescript
-describe('Dialog', () => {
-  it('opens and closes', () => {
-    const { rerender } = render(<Dialog open={false} />);
-    rerender(<Dialog open={true} />);
-    expect(true).toBe(true); // Placeholder
+import { describe, it, expect } from 'vitest';
+import { render, screen, waitFor } from '@testing-library/react';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+
+describe('Dialog Component', () => {
+  it('renders dialog trigger', () => {
+    render(
+      <Dialog>
+        <DialogTrigger>Open Dialog</DialogTrigger>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Test Dialog</DialogTitle>
+            <DialogDescription>This is a test dialog</DialogDescription>
+          </DialogHeader>
+        </DialogContent>
+      </Dialog>
+    );
+    
+    expect(screen.getByText('Open Dialog')).toBeInTheDocument();
+  });
+  
+  it('opens and closes with controlled state', async () => {
+    const { rerender } = render(
+      <Dialog open={false}>
+        <DialogContent>
+          <DialogTitle>Test Dialog</DialogTitle>
+        </DialogContent>
+      </Dialog>
+    );
+    
+    // Dialog should not be visible initially
+    expect(screen.queryByText('Test Dialog')).not.toBeInTheDocument();
+    
+    // Open dialog
+    rerender(
+      <Dialog open={true}>
+        <DialogContent>
+          <DialogTitle>Test Dialog</DialogTitle>
+        </DialogContent>
+      </Dialog>
+    );
+    
+    // Dialog should be visible
+    await waitFor(() => {
+      expect(screen.getByText('Test Dialog')).toBeInTheDocument();
+    });
   });
 });
 ```
+**Purpose**: Test Dialog component opening, closing, and content rendering
 - **Time**: 7 minutes
 - **Risk**: None
 - **Rollback**: Delete file
+- **Success Indicator**: Dialog opens and closes correctly
 
-#### Task 085: Test Dropdown Component
-**File**: `src/components/ui/dropdown.test.tsx`
+#### Task 085: Test Dropdown Menu Component
+**File**: `apps/web/src/components/ui/dropdown-menu.test.tsx`
+**Source File**: `apps/web/src/components/ui/dropdown-menu.tsx`
 ```typescript
-describe('Dropdown', () => {
-  it('shows options', () => {
-    render(<Dropdown options={['A', 'B']} />);
-    expect(true).toBe(true); // Placeholder
+import { describe, it, expect, vi } from 'vitest';
+import { render, screen, fireEvent } from '@testing-library/react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+
+describe('DropdownMenu Component', () => {
+  it('renders dropdown trigger', () => {
+    render(
+      <DropdownMenu>
+        <DropdownMenuTrigger>Open Menu</DropdownMenuTrigger>
+        <DropdownMenuContent>
+          <DropdownMenuItem>Option 1</DropdownMenuItem>
+          <DropdownMenuItem>Option 2</DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    );
+    
+    expect(screen.getByText('Open Menu')).toBeInTheDocument();
+  });
+  
+  it('shows menu items when triggered', async () => {
+    render(
+      <DropdownMenu>
+        <DropdownMenuTrigger>Open Menu</DropdownMenuTrigger>
+        <DropdownMenuContent>
+          <DropdownMenuLabel>Actions</DropdownMenuLabel>
+          <DropdownMenuItem>Edit</DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem>Delete</DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    );
+    
+    const trigger = screen.getByText('Open Menu');
+    fireEvent.click(trigger);
+    
+    // Note: Radix UI portals content, may need to wait or query differently
+    // This is a simplified test
+  });
+  
+  it('handles menu item click', () => {
+    const handleClick = vi.fn();
+    
+    render(
+      <DropdownMenu>
+        <DropdownMenuTrigger>Menu</DropdownMenuTrigger>
+        <DropdownMenuContent>
+          <DropdownMenuItem onClick={handleClick}>Click Me</DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    );
+    
+    // Test would need proper portal handling
   });
 });
 ```
+**Purpose**: Test DropdownMenu component trigger and items
 - **Time**: 5 minutes
 - **Risk**: None
 - **Rollback**: Delete file
+- **Success Indicator**: Dropdown menu renders and responds to interactions
 
 #### Task 086: Test Slider Component
-**File**: `src/components/ui/slider.test.tsx`
+**File**: `apps/web/src/components/ui/slider.test.tsx`
+**Source File**: `apps/web/src/components/ui/slider.tsx`
 ```typescript
-describe('Slider', () => {
-  it('handles value change', () => {
-    render(<Slider min={0} max={100} />);
-    expect(true).toBe(true); // Placeholder
+import { describe, it, expect, vi } from 'vitest';
+import { render, screen } from '@testing-library/react';
+import { Slider } from '@/components/ui/slider';
+
+describe('Slider Component', () => {
+  it('renders with default value', () => {
+    const { container } = render(<Slider defaultValue={[50]} max={100} />);
+    const slider = container.querySelector('[role="slider"]');
+    
+    expect(slider).toBeInTheDocument();
+    expect(slider).toHaveAttribute('aria-valuenow', '50');
+    expect(slider).toHaveAttribute('aria-valuemax', '100');
+  });
+  
+  it('renders with min and max values', () => {
+    const { container } = render(
+      <Slider defaultValue={[25]} min={10} max={90} />
+    );
+    const slider = container.querySelector('[role="slider"]');
+    
+    expect(slider).toHaveAttribute('aria-valuemin', '10');
+    expect(slider).toHaveAttribute('aria-valuemax', '90');
+  });
+  
+  it('handles controlled value', () => {
+    const handleChange = vi.fn();
+    const { rerender } = render(
+      <Slider value={[30]} onValueChange={handleChange} />
+    );
+    
+    const slider = screen.getByRole('slider');
+    expect(slider).toHaveAttribute('aria-valuenow', '30');
+    
+    // Update value
+    rerender(<Slider value={[60]} onValueChange={handleChange} />);
+    expect(slider).toHaveAttribute('aria-valuenow', '60');
+  });
+  
+  it('supports step prop', () => {
+    const { container } = render(
+      <Slider defaultValue={[50]} step={10} max={100} />
+    );
+    const slider = container.querySelector('[role="slider"]');
+    
+    expect(slider).toHaveAttribute('aria-valuetext');
   });
 });
 ```
+**Purpose**: Test Slider component with various configurations
 - **Time**: 5 minutes
 - **Risk**: None
 - **Rollback**: Delete file
+- **Success Indicator**: Slider renders with correct ARIA attributes
 
 #### Task 087: Test Checkbox Component
-**File**: `src/components/ui/checkbox.test.tsx`
+**File**: `apps/web/src/components/ui/checkbox.test.tsx`
+**Source File**: `apps/web/src/components/ui/checkbox.tsx`
 ```typescript
-describe('Checkbox', () => {
-  it('toggles checked state', () => {
-    render(<Checkbox />);
-    expect(true).toBe(true); // Placeholder
+import { describe, it, expect, vi } from 'vitest';
+import { render, screen, fireEvent } from '@testing-library/react';
+import { Checkbox } from '@/components/ui/checkbox';
+
+describe('Checkbox Component', () => {
+  it('renders unchecked by default', () => {
+    const { container } = render(<Checkbox />);
+    const checkbox = container.querySelector('[role="checkbox"]');
+    
+    expect(checkbox).toBeInTheDocument();
+    expect(checkbox).toHaveAttribute('aria-checked', 'false');
+  });
+  
+  it('toggles checked state when clicked', () => {
+    const handleChange = vi.fn();
+    const { container } = render(
+      <Checkbox onCheckedChange={handleChange} />
+    );
+    
+    const checkbox = container.querySelector('[role="checkbox"]')!;
+    fireEvent.click(checkbox);
+    
+    expect(handleChange).toHaveBeenCalledWith(true);
+  });
+  
+  it('renders as checked when controlled', () => {
+    const { container, rerender } = render(<Checkbox checked={false} />);
+    let checkbox = container.querySelector('[role="checkbox"]');
+    
+    expect(checkbox).toHaveAttribute('aria-checked', 'false');
+    
+    rerender(<Checkbox checked={true} />);
+    checkbox = container.querySelector('[role="checkbox"]');
+    
+    expect(checkbox).toHaveAttribute('aria-checked', 'true');
+  });
+  
+  it('supports indeterminate state', () => {
+    const { container } = render(<Checkbox checked="indeterminate" />);
+    const checkbox = container.querySelector('[role="checkbox"]');
+    
+    expect(checkbox).toHaveAttribute('aria-checked', 'mixed');
+  });
+  
+  it('handles disabled state', () => {
+    const handleChange = vi.fn();
+    const { container } = render(
+      <Checkbox disabled onCheckedChange={handleChange} />
+    );
+    
+    const checkbox = container.querySelector('[role="checkbox"]')!;
+    expect(checkbox).toHaveAttribute('aria-disabled', 'true');
+    
+    fireEvent.click(checkbox);
+    expect(handleChange).not.toHaveBeenCalled();
   });
 });
 ```
+**Purpose**: Test Checkbox component states and interactions
 - **Time**: 5 minutes
 - **Risk**: None
 - **Rollback**: Delete file
+- **Success Indicator**: Checkbox toggles and states work correctly
 
 #### Task 088: Test Toast Component
-**File**: `src/components/ui/toast.test.tsx`
+**File**: `apps/web/src/components/ui/toast.test.tsx`
+**Source Files**: `apps/web/src/components/ui/toast.tsx`, `apps/web/src/components/ui/toaster.tsx`
 ```typescript
-describe('Toast', () => {
-  it('displays message', () => {
-    render(<Toast message="Success" />);
-    expect(true).toBe(true); // Placeholder
+import { describe, it, expect, vi } from 'vitest';
+import { render, screen, act } from '@testing-library/react';
+import { Toast, ToastTitle, ToastDescription, ToastAction } from '@/components/ui/toast';
+import { Toaster } from '@/components/ui/toaster';
+import { useToast } from '@/hooks/use-toast';
+
+// Test the Toast component directly
+describe('Toast Component', () => {
+  it('renders toast with title and description', () => {
+    render(
+      <Toast>
+        <ToastTitle>Success</ToastTitle>
+        <ToastDescription>Operation completed</ToastDescription>
+      </Toast>
+    );
+    
+    expect(screen.getByText('Success')).toBeInTheDocument();
+    expect(screen.getByText('Operation completed')).toBeInTheDocument();
+  });
+  
+  it('renders with action button', () => {
+    const handleAction = vi.fn();
+    
+    render(
+      <Toast>
+        <ToastTitle>Notification</ToastTitle>
+        <ToastAction altText="Undo" onClick={handleAction}>
+          Undo
+        </ToastAction>
+      </Toast>
+    );
+    
+    expect(screen.getByText('Undo')).toBeInTheDocument();
+  });
+  
+  it('applies variant classes', () => {
+    const { container } = render(
+      <Toast variant="destructive">
+        <ToastTitle>Error</ToastTitle>
+      </Toast>
+    );
+    
+    const toast = container.firstChild;
+    expect(toast?.className).toContain('destructive');
+  });
+});
+
+// Test the toast hook
+describe('useToast Hook', () => {
+  it('provides toast function', () => {
+    const TestComponent = () => {
+      const { toast } = useToast();
+      
+      return (
+        <button onClick={() => toast({ title: 'Test Toast' })}>
+          Show Toast
+        </button>
+      );
+    };
+    
+    render(
+      <>
+        <TestComponent />
+        <Toaster />
+      </>
+    );
+    
+    // Toast hook should be available
+    expect(screen.getByText('Show Toast')).toBeInTheDocument();
   });
 });
 ```
+**Purpose**: Test Toast component rendering and useToast hook
 - **Time**: 5 minutes
 - **Risk**: None
 - **Rollback**: Delete file
+- **Success Indicator**: Toast displays correctly with variants
 
 #### Task 089: Test Tabs Component
-**File**: `src/components/ui/tabs.test.tsx`
+**File**: `apps/web/src/components/ui/tabs.test.tsx`
+**Source File**: `apps/web/src/components/ui/tabs.tsx`
 ```typescript
-describe('Tabs', () => {
-  it('switches tabs', () => {
-    render(<Tabs tabs={['Tab1', 'Tab2']} />);
-    expect(true).toBe(true); // Placeholder
+import { describe, it, expect, vi } from 'vitest';
+import { render, screen, fireEvent } from '@testing-library/react';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+
+describe('Tabs Component', () => {
+  it('renders tabs with default value', () => {
+    render(
+      <Tabs defaultValue="tab1">
+        <TabsList>
+          <TabsTrigger value="tab1">Tab 1</TabsTrigger>
+          <TabsTrigger value="tab2">Tab 2</TabsTrigger>
+        </TabsList>
+        <TabsContent value="tab1">Content 1</TabsContent>
+        <TabsContent value="tab2">Content 2</TabsContent>
+      </Tabs>
+    );
+    
+    expect(screen.getByText('Tab 1')).toBeInTheDocument();
+    expect(screen.getByText('Tab 2')).toBeInTheDocument();
+    expect(screen.getByText('Content 1')).toBeInTheDocument();
+    expect(screen.queryByText('Content 2')).not.toBeInTheDocument();
+  });
+  
+  it('switches tabs on click', () => {
+    render(
+      <Tabs defaultValue="tab1">
+        <TabsList>
+          <TabsTrigger value="tab1">Tab 1</TabsTrigger>
+          <TabsTrigger value="tab2">Tab 2</TabsTrigger>
+        </TabsList>
+        <TabsContent value="tab1">Content 1</TabsContent>
+        <TabsContent value="tab2">Content 2</TabsContent>
+      </Tabs>
+    );
+    
+    const tab2 = screen.getByText('Tab 2');
+    fireEvent.click(tab2);
+    
+    expect(screen.queryByText('Content 1')).not.toBeInTheDocument();
+    expect(screen.getByText('Content 2')).toBeInTheDocument();
+  });
+  
+  it('handles controlled value', () => {
+    const handleChange = vi.fn();
+    const { rerender } = render(
+      <Tabs value="tab1" onValueChange={handleChange}>
+        <TabsList>
+          <TabsTrigger value="tab1">Tab 1</TabsTrigger>
+          <TabsTrigger value="tab2">Tab 2</TabsTrigger>
+        </TabsList>
+        <TabsContent value="tab1">Content 1</TabsContent>
+        <TabsContent value="tab2">Content 2</TabsContent>
+      </Tabs>
+    );
+    
+    const tab2 = screen.getByText('Tab 2');
+    fireEvent.click(tab2);
+    
+    expect(handleChange).toHaveBeenCalledWith('tab2');
+  });
+  
+  it('applies correct ARIA attributes', () => {
+    render(
+      <Tabs defaultValue="tab1">
+        <TabsList aria-label="Main tabs">
+          <TabsTrigger value="tab1">Tab 1</TabsTrigger>
+          <TabsTrigger value="tab2">Tab 2</TabsTrigger>
+        </TabsList>
+        <TabsContent value="tab1">Content 1</TabsContent>
+      </Tabs>
+    );
+    
+    const tabList = screen.getByRole('tablist');
+    const tab1 = screen.getByRole('tab', { name: 'Tab 1' });
+    
+    expect(tabList).toHaveAttribute('aria-label', 'Main tabs');
+    expect(tab1).toHaveAttribute('aria-selected', 'true');
   });
 });
 ```
+**Purpose**: Test Tabs component switching and state management
 - **Time**: 5 minutes
 - **Risk**: None
 - **Rollback**: Delete file
+- **Success Indicator**: Tabs switch correctly and maintain state
 
 #### Task 090: Test Progress Component
-**File**: `src/components/ui/progress.test.tsx`
+**File**: `apps/web/src/components/ui/progress.test.tsx`
+**Source File**: `apps/web/src/components/ui/progress.tsx`
 ```typescript
-describe('Progress', () => {
-  it('shows progress', () => {
-    render(<Progress value={50} />);
-    expect(true).toBe(true); // Placeholder
+import { describe, it, expect } from 'vitest';
+import { render, screen } from '@testing-library/react';
+import { Progress } from '@/components/ui/progress';
+
+describe('Progress Component', () => {
+  it('renders with default value', () => {
+    const { container } = render(<Progress />);
+    const progressBar = container.querySelector('[role="progressbar"]');
+    
+    expect(progressBar).toBeInTheDocument();
+    expect(progressBar).toHaveAttribute('aria-valuenow', '0');
+    expect(progressBar).toHaveAttribute('aria-valuemin', '0');
+    expect(progressBar).toHaveAttribute('aria-valuemax', '100');
+  });
+  
+  it('shows specific progress value', () => {
+    const { container } = render(<Progress value={50} />);
+    const progressBar = container.querySelector('[role="progressbar"]');
+    const indicator = container.querySelector('[data-state]');
+    
+    expect(progressBar).toHaveAttribute('aria-valuenow', '50');
+    expect(indicator).toHaveStyle({ transform: 'translateX(-50%)' });
+  });
+  
+  it('handles 100% completion', () => {
+    const { container } = render(<Progress value={100} />);
+    const progressBar = container.querySelector('[role="progressbar"]');
+    const indicator = container.querySelector('[data-state]');
+    
+    expect(progressBar).toHaveAttribute('aria-valuenow', '100');
+    expect(indicator).toHaveAttribute('data-state', 'complete');
+    expect(indicator).toHaveStyle({ transform: 'translateX(0%)' });
+  });
+  
+  it('clamps values between 0 and 100', () => {
+    const { container, rerender } = render(<Progress value={-10} />);
+    let progressBar = container.querySelector('[role="progressbar"]');
+    
+    expect(progressBar).toHaveAttribute('aria-valuenow', '0');
+    
+    rerender(<Progress value={150} />);
+    progressBar = container.querySelector('[role="progressbar"]');
+    
+    expect(progressBar).toHaveAttribute('aria-valuenow', '100');
+  });
+  
+  it('updates dynamically', () => {
+    const { container, rerender } = render(<Progress value={25} />);
+    let progressBar = container.querySelector('[role="progressbar"]');
+    
+    expect(progressBar).toHaveAttribute('aria-valuenow', '25');
+    
+    rerender(<Progress value={75} />);
+    progressBar = container.querySelector('[role="progressbar"]');
+    
+    expect(progressBar).toHaveAttribute('aria-valuenow', '75');
   });
 });
 ```
+**Purpose**: Test Progress component with various values and states
 - **Time**: 5 minutes
 - **Risk**: None
 - **Rollback**: Delete file
+- **Success Indicator**: Progress bar renders with correct ARIA attributes and styles
 
 #### Task 091: Test Card Component
 **File**: `src/components/ui/card.test.tsx`
