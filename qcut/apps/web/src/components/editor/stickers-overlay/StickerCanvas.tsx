@@ -42,13 +42,14 @@ export const StickerCanvas: React.FC<{
     error: mediaStoreError,
   } = useAsyncMediaStore();
   const mediaItems = mediaStore?.mediaItems || [];
+  const mediaStoreInitialized = mediaStore?.hasInitialized || false;
   const { activeProject } = useProjectStore();
   const { currentTime } = usePlaybackStore();
 
   // Debug state tracking for timing analysis (Task 2.1)
   useEffect(() => {
     if (overlayStickers.size > 0) {
-      console.log("[StickerCanvas] Media availability check:", {
+      debugLog("[StickerCanvas] Media availability check:", {
         mediaItemsLoaded: mediaItems.length,
         mediaIds: mediaItems.map((m) => ({ id: m.id, name: m.name })),
         stickersWaitingForMedia: Array.from(overlayStickers.values()).filter(
@@ -58,7 +59,7 @@ export const StickerCanvas: React.FC<{
       });
 
       // Additional timing debug
-      console.log("[StickerCanvas] Timing Debug:", {
+      debugLog("[StickerCanvas] Timing Debug:", {
         timestamp: new Date().toISOString(),
         mediaStoreReady: !mediaStoreLoading,
         mediaCount: mediaItems.length,
@@ -192,16 +193,16 @@ export const StickerCanvas: React.FC<{
         // This helps prevent premature cleanup during initial load
         if (mediaItems.length > 0) {
           cleanupInvalidStickers(mediaIds);
-        } else if (overlayStickers.size > 0 && !mediaStoreLoading) {
-          // If we have stickers but no media and store is not loading,
+        } else if (overlayStickers.size > 0 && mediaStoreInitialized) {
+          // If we have stickers but no media and store is initialized,
           // these are likely orphaned stickers that should be cleaned up
-          console.log(
+          debugLog(
             `[StickerCanvas] Found ${overlayStickers.size} stickers with no media items - cleaning up orphaned stickers`
           );
           cleanupInvalidStickers([]);
         } else {
           debugLog(
-            "[StickerCanvas] Skipping cleanup - no media items loaded yet or store is loading"
+            "[StickerCanvas] Skipping cleanup - media store not yet initialized"
           );
         }
       }, 2000); // Increased to 2 seconds to ensure media is fully loaded
@@ -213,6 +214,7 @@ export const StickerCanvas: React.FC<{
     overlayStickers.size,
     cleanupInvalidStickers,
     overlayStickers,
+    mediaStoreInitialized,
   ]);
 
   // Handle keyboard shortcuts
@@ -260,7 +262,7 @@ export const StickerCanvas: React.FC<{
   // This needs to be before any conditional returns to avoid hooks order issues
   useEffect(() => {
     if (overlayStickers.size > 0) {
-      console.log("[StickerCanvas] State check:", {
+      debugLog("[StickerCanvas] State check:", {
         totalStickers: overlayStickers.size,
         visibleStickers: visibleStickers.length,
         currentTime,
@@ -283,7 +285,7 @@ export const StickerCanvas: React.FC<{
             currentTime <= (sticker.timing?.endTime || Infinity),
         })
       );
-      console.log("[StickerCanvas] Sticker details:", stickerDetails);
+      debugLog("[StickerCanvas] Sticker details:", stickerDetails);
     }
   }, [
     overlayStickers.size,

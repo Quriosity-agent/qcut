@@ -3,6 +3,8 @@
  * Run in browser console to test timeline integration
  */
 
+import { debugLog } from "@/lib/debug-config";
+
 export function setupStickerTest() {
   // Make stores available globally for testing
   const setupTestEnvironment = async () => {
@@ -17,10 +19,10 @@ export function setupStickerTest() {
       const stickerStore = useStickersOverlayStore.getState();
       const mediaStore = useMediaStore.getState();
 
-      console.log("🧹 Cleaning up orphaned stickers...");
+      debugLog("🧹 Cleaning up orphaned stickers...");
       const mediaIds = mediaStore.mediaItems.map((item) => item.id);
       const cleaned = stickerStore.cleanupInvalidStickers(mediaIds);
-      console.log(`✅ Cleanup complete. Cleaned ${cleaned} orphaned stickers`);
+      debugLog(`✅ Cleanup complete. Cleaned ${cleaned} orphaned stickers`);
 
       // Also clear if no media exists
       if (
@@ -28,7 +30,7 @@ export function setupStickerTest() {
         stickerStore.overlayStickers.size > 0
       ) {
         stickerStore.clearAllStickers();
-        console.log("✅ Cleared all stickers (no media items exist)");
+        debugLog("✅ Cleared all stickers (no media items exist)");
       }
     };
 
@@ -39,7 +41,7 @@ export function setupStickerTest() {
       const timelineStore = useTimelineStore.getState();
 
       if (mediaStore.mediaItems.length === 0) {
-        console.log(
+        debugLog(
           "❌ No media items available. Please add some media first."
         );
         return;
@@ -50,11 +52,11 @@ export function setupStickerTest() {
         (item) => item.type === "image"
       );
       if (!testMedia) {
-        console.log("❌ No image media items available. Please add an image.");
+        debugLog("❌ No image media items available. Please add an image.");
         return;
       }
 
-      console.log(`🎯 Testing with media: ${testMedia.name} (${testMedia.id})`);
+      debugLog(`🎯 Testing with media: ${testMedia.name} (${testMedia.id})`);
 
       // Add sticker overlay
       const stickerId = await stickerStore.addOverlaySticker(testMedia.id, {
@@ -62,7 +64,7 @@ export function setupStickerTest() {
         timing: { startTime: 0, endTime: 5 },
       });
 
-      console.log(`✅ Added sticker: ${stickerId}`);
+      debugLog(`✅ Added sticker: ${stickerId}`);
 
       // Check timeline
       setTimeout(() => {
@@ -72,24 +74,24 @@ export function setupStickerTest() {
         );
 
         if (stickerTrack) {
-          console.log("✅ Sticker track found:", stickerTrack);
+          debugLog("✅ Sticker track found:", stickerTrack);
           const stickerElement = stickerTrack.elements.find(
             (el: any) => el.stickerId === stickerId
           );
           if (stickerElement) {
-            console.log(
+            debugLog(
               "✅ Sticker element found in timeline:",
               stickerElement
             );
           } else {
-            console.log("❌ Sticker element NOT found in timeline");
+            debugLog("❌ Sticker element NOT found in timeline");
           }
         } else {
-          console.log("❌ Sticker track NOT found in timeline");
+          debugLog("❌ Sticker track NOT found in timeline");
         }
 
         // Show current state
-        console.log("📊 Current state:", {
+        debugLog("📊 Current state:", {
           stickers: Array.from(stickerStore.overlayStickers.values()),
           tracks: updatedTimeline.tracks.map((t) => ({
             id: t.id,
@@ -111,16 +113,16 @@ export function setupStickerTest() {
       }),
       clearAll: () => {
         useStickersOverlayStore.getState().clearAllStickers();
-        console.log("✅ Cleared all stickers");
+        debugLog("✅ Cleared all stickers");
       },
     };
 
-    console.log("🚀 Sticker test helper loaded!");
-    console.log("Commands:");
-    console.log("  stickerTest.cleanup() - Clean orphaned stickers");
-    console.log("  stickerTest.test() - Test timeline integration");
-    console.log("  stickerTest.clearAll() - Clear all stickers");
-    console.log("  stickerTest.getStores() - Get current store states");
+    debugLog("🚀 Sticker test helper loaded!");
+    debugLog("Commands:");
+    debugLog("  stickerTest.cleanup() - Clean orphaned stickers");
+    debugLog("  stickerTest.test() - Test timeline integration");
+    debugLog("  stickerTest.clearAll() - Clear all stickers");
+    debugLog("  stickerTest.getStores() - Get current store states");
   };
 
   setupTestEnvironment();

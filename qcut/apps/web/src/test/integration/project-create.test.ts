@@ -3,6 +3,38 @@ import { useProjectStore } from '@/stores/project-store';
 import { TestDataFactory } from '@/test/fixtures/factory';
 import { waitFor } from '@testing-library/react';
 
+// Mock the media store loader to prevent dynamic import issues
+vi.mock('@/stores/media-store-loader', () => ({
+  getMediaStore: vi.fn(async () => ({
+    useMediaStore: {
+      getState: () => ({
+        mediaItems: [],
+        isLoading: false,
+        hasInitialized: true,
+        loadProjectMedia: vi.fn().mockResolvedValue(undefined),
+        clearProjectMedia: vi.fn().mockResolvedValue(undefined),
+        clearAllMedia: vi.fn(),
+        addMediaItem: vi.fn().mockResolvedValue('mock-media-id'),
+        removeMediaItem: vi.fn().mockResolvedValue(undefined),
+        addGeneratedImages: vi.fn().mockResolvedValue(undefined),
+      })
+    }
+  }))
+}));
+
+// Mock storage service
+vi.mock('@/lib/storage/storage-service', () => ({
+  storageService: {
+    saveProject: vi.fn().mockResolvedValue(undefined),
+    loadProject: vi.fn().mockResolvedValue(null),
+    loadAllProjects: vi.fn().mockResolvedValue([]),
+    deleteProject: vi.fn().mockResolvedValue(undefined),
+    loadAllMediaItems: vi.fn().mockResolvedValue([]),
+    saveMediaItem: vi.fn().mockResolvedValue(undefined),
+    deleteMediaItem: vi.fn().mockResolvedValue(undefined),
+  }
+}));
+
 // Mock localStorage
 const localStorageMock = (() => {
   let store: Record<string, string> = {};
@@ -74,6 +106,10 @@ describe('Project Creation', () => {
       'video-editor-projects_projects_list',
       JSON.stringify(projectsData)
     );
+    
+    // Configure the storage service mock to return the project
+    const { storageService } = await import('@/lib/storage/storage-service');
+    (storageService.loadProject as any).mockResolvedValue(mockProject);
     
     // Load the project
     const store = useProjectStore.getState();

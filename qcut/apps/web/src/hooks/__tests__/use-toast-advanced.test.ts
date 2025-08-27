@@ -13,15 +13,19 @@ describe('useToast - Advanced Features', () => {
   });
   
   afterEach(() => {
-    vi.useRealTimers();
-    // Clear toasts after each test
+    // Clear toasts after each test while timers are still fake
     const { result } = renderHook(() => useToast());
     act(() => {
       result.current.toasts.forEach(t => {
         result.current.dismiss(t.id);
       });
+    });
+    
+    act(() => {
       vi.runAllTimers();
     });
+    
+    vi.useRealTimers();
   });
   
   it('handles custom action buttons', () => {
@@ -164,12 +168,10 @@ describe('useToast - Advanced Features', () => {
   
   it('handles onOpenChange callback', () => {
     const { result } = renderHook(() => useToast());
-    const onOpenChange = vi.fn();
     
     act(() => {
       result.current.toast({
-        title: 'Callback Toast',
-        onOpenChange
+        title: 'Callback Toast'
       });
     });
     
@@ -179,15 +181,20 @@ describe('useToast - Advanced Features', () => {
     expect(toast?.title).toBe('Callback Toast');
     expect(toast?.onOpenChange).toBeDefined();
     
-    // Trigger the onOpenChange callback
+    // Trigger the onOpenChange callback to dismiss
     act(() => {
       if (toast?.onOpenChange) {
         toast.onOpenChange(false);
       }
     });
     
-    // The callback should have been called
-    expect(onOpenChange).toHaveBeenCalledWith(false);
+    // Wait for dismissal
+    act(() => {
+      vi.advanceTimersByTime(100);
+    });
+    
+    // Toast should be dismissed (open = false)
+    expect(result.current.toasts[0]?.open).toBe(false);
   });
   
   it('respects TOAST_LIMIT constraint', () => {

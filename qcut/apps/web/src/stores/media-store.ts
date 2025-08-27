@@ -12,6 +12,7 @@ export type { MediaItem, MediaType };
 interface MediaStore {
   mediaItems: MediaItem[];
   isLoading: boolean;
+  hasInitialized: boolean; // Track if the store has completed at least one load attempt
 
   // Actions - now require projectId
   addMediaItem: (
@@ -259,6 +260,7 @@ export const getMediaAspectRatio = (item: MediaItem): number => {
 export const useMediaStore = create<MediaStore>((set, get) => ({
   mediaItems: [],
   isLoading: false,
+  hasInitialized: false,
 
   addMediaItem: async (projectId, item) => {
     // Generate consistent ID based on file properties if not provided
@@ -285,7 +287,7 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
     };
 
     // Debug logging for ID generation (Task 1.3)
-    console.log(`[MediaStore] Generated ID for ${newItem.name}:`, {
+    debugLog(`[MediaStore] Generated ID for ${newItem.name}:`, {
       id: newItem.id,
       hasFile: !!newItem.file,
       providedId: item.id,
@@ -504,13 +506,13 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
         })
       );
 
-      set({ mediaItems: updatedMediaItems });
+      set({ mediaItems: updatedMediaItems, hasInitialized: true });
       debugLog(
         `[MediaStore] ✅ Media loading complete: ${updatedMediaItems.length} items`
       );
     } catch (error) {
       // Set empty array to prevent undefined state
-      set({ mediaItems: [] });
+      set({ mediaItems: [], hasInitialized: true });
     } finally {
       set({ isLoading: false });
     }
@@ -546,7 +548,7 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
       );
       const stickerStore = useStickersOverlayStore.getState();
       if (stickerStore.overlayStickers.size > 0) {
-        console.log(
+        debugLog(
           `[MediaStore] Media cleared, cleaning up ${stickerStore.overlayStickers.size} orphaned stickers`
         );
         stickerStore.cleanupInvalidStickers([]); // Empty array = all stickers are invalid

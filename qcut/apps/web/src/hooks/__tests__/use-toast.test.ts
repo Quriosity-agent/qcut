@@ -13,15 +13,19 @@ describe('useToast', () => {
   });
   
   afterEach(() => {
-    vi.useRealTimers();
-    // Clear toasts after each test
+    // Clear toasts after each test while timers are still fake
     const { result } = renderHook(() => useToast());
     act(() => {
       result.current.toasts.forEach(t => {
         result.current.dismiss(t.id);
       });
+    });
+    
+    act(() => {
       vi.runAllTimers();
     });
+    
+    vi.useRealTimers();
   });
   
   describe('toast function', () => {
