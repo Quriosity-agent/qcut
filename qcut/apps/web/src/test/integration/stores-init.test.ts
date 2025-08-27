@@ -5,8 +5,8 @@ import { useProjectStore } from '@/stores/project-store';
 import { resetAllStores } from '@/test/utils/store-helpers';
 
 describe('Store Initialization', () => {
-  beforeEach(() => {
-    resetAllStores();
+  beforeEach(async () => {
+    await resetAllStores();
   });
   
   it('initializes media store with empty state', () => {
