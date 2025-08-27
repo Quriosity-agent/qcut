@@ -1,7 +1,5 @@
 import { render, RenderOptions } from '@testing-library/react';
-import { ReactElement } from 'react';
-import { RouterProvider } from '@tanstack/react-router';
-import { createMemoryHistory, createRouter } from '@tanstack/react-router';
+import type { ReactElement, ReactNode } from 'react';
 
 interface CustomRenderOptions extends Omit<RenderOptions, 'wrapper'> {
   initialRoute?: string;
@@ -10,11 +8,16 @@ interface CustomRenderOptions extends Omit<RenderOptions, 'wrapper'> {
 export function renderWithProviders(
   ui: ReactElement,
   options?: CustomRenderOptions
-) {
+): ReturnType<typeof render> {
   const { initialRoute = '/', ...renderOptions } = options || {};
   
-  // Create test router with memory history
-  const Wrapper = ({ children }: { children: React.ReactNode }) => {
+  // Honor the requested initial route for components that read window.location.
+  // When TanStack Router is needed, replace this with proper memory history setup.
+  if (typeof window !== 'undefined') {
+    window.history.replaceState(null, '', initialRoute);
+  }
+  
+  const Wrapper = ({ children }: { children: ReactNode }) => {
     return children;
   };
   

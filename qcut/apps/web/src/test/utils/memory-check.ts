@@ -1,3 +1,14 @@
+declare global {
+  interface Performance {
+    // Non-standard in TS DOM lib but supported by Chromium; optional for portability
+    memory?: {
+      usedJSHeapSize: number;
+      totalJSHeapSize: number;
+      jsHeapSizeLimit: number;
+    };
+  }
+}
+
 interface MemorySnapshot {
   usedJSHeapSize: number;
   totalJSHeapSize: number;
@@ -6,14 +17,13 @@ interface MemorySnapshot {
 }
 
 export function checkMemoryUsage(): MemorySnapshot | null {
-  // TypeScript doesn't have performance.memory by default
-  const perf = performance as any;
-  
-  if (perf.memory) {
+  // Access the (non-standard) Performance.memory safely via interface augmentation.
+  const mem = performance.memory;
+  if (mem) {
     return {
-      usedJSHeapSize: perf.memory.usedJSHeapSize,
-      totalJSHeapSize: perf.memory.totalJSHeapSize,
-      jsHeapSizeLimit: perf.memory.jsHeapSizeLimit,
+      usedJSHeapSize: mem.usedJSHeapSize,
+      totalJSHeapSize: mem.totalJSHeapSize,
+      jsHeapSizeLimit: mem.jsHeapSizeLimit,
       timestamp: Date.now(),
     };
   }

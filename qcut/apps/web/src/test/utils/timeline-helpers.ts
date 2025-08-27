@@ -37,7 +37,7 @@ export function getTimelineSnapshot() {
     tracks: store.tracks,
     duration: store.tracks.reduce((max, track) => {
       const trackDuration = track.elements.reduce(
-        (sum, el) => Math.max(sum, el.start + el.duration),
+        (maxEnd, el) => Math.max(maxEnd, (el.startTime ?? 0) + (el.duration ?? 0)),
         0
       );
       return Math.max(max, trackDuration);

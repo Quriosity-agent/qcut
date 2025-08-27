@@ -1,4 +1,4 @@
-import { fireEvent } from '@testing-library/react';
+import { fireEvent, screen } from '@testing-library/react';
 
 export function openContextMenu(
   element: HTMLElement,
@@ -8,11 +8,9 @@ export function openContextMenu(
 }
 
 export function selectContextMenuItem(menuText: string) {
-  const menuItem = document.querySelector(
-    `[role="menuitem"]:has-text("${menuText}")`
-  );
+  const menuItem = screen.queryByRole('menuitem', { name: menuText });
   if (menuItem) {
-    fireEvent.click(menuItem as HTMLElement);
+    fireEvent.click(menuItem);
   }
   return menuItem;
 }

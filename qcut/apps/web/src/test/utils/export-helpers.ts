@@ -5,10 +5,11 @@ import { waitForCondition } from './async-helpers';
 export async function waitForExportComplete(
   timeout = 30000
 ): Promise<void> {
-  const store = useExportStore.getState();
-  
   await waitForCondition(
-    () => !store.progress.isExporting && store.progress.percentage === 100,
+    () => {
+      const { progress } = useExportStore.getState();
+      return !progress.isExporting && progress.percentage >= 100;
+    },
     {
       timeout,
       message: 'Export did not complete',
