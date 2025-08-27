@@ -395,10 +395,10 @@ export function MediaView() {
                             // Debug logging for overlay creation (Task 2.2)
                             // Note: We use filteredMediaItems which is already available from the hook
                             const mediaExists = filteredMediaItems.some(
-                              (m: any) => m.id === item.id
+                              (m) => m.id === item.id
                             );
 
-                            console.log(
+                            debugLog(
                               "[MediaPanel] Overlay creation check:",
                               {
                                 targetItemId: item.id,
@@ -406,7 +406,7 @@ export function MediaView() {
                                 mediaExists,
                                 totalMediaItems: filteredMediaItems.length,
                                 availableMediaIds: filteredMediaItems.map(
-                                  (m: any) => m.id
+                                  (m) => m.id
                                 ),
                                 timestamp: new Date().toISOString(),
                               }
@@ -432,16 +432,7 @@ export function MediaView() {
                               },
                             };
 
-                            const stickerId = addOverlaySticker(
-                              item.id,
-                              overlayData
-                            );
-
-                            // Check store state after adding
-                            const storeState =
-                              useStickersOverlayStore.getState();
-                            const newSticker =
-                              storeState.overlayStickers.get(stickerId);
+                            addOverlaySticker(item.id, overlayData);
 
                             toast.success(`Added "${item.name}" as overlay`);
                           }}
