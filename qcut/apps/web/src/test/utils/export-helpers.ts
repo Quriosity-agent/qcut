@@ -29,11 +29,11 @@ export function mockExportProgress(
 }
 
 export function getExportSettings() {
-  const store = useExportStore.getState();
+  const { settings } = useExportStore.getState();
   return {
-    format: store.format || 'WEBM',
-    quality: store.quality || 0.92,
-    resolution: store.resolution || '1920x1080',
-    fps: store.fps || 30,
+    format: settings.format,
+    quality: settings.quality,
+    resolution: `${settings.width}x${settings.height}`,
+    fps: settings.fps,
   };
 }

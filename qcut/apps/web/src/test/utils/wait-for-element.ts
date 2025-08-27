@@ -2,23 +2,25 @@ import { waitFor } from '@testing-library/react';
 
 export async function waitForElement(
   selector: string,
-  options = { timeout: 3000 }
-) {
+  options?: Parameters<typeof waitFor>[1]
+): Promise<Element> {
+  const mergedOptions: Parameters<typeof waitFor>[1] = { timeout: 3000, ...(options ?? {}) };
   return waitFor(
     () => {
       const element = document.querySelector(selector);
-      if (!element) throw new Error(`Element ${selector} not found`);
+      if (!element) throw new Error(`Element "${selector}" not found`);
       return element;
     },
-    options
+    mergedOptions
   );
 }
 
 export async function waitForElements(
   selector: string,
   count: number,
-  options = { timeout: 3000 }
-) {
+  options?: Parameters<typeof waitFor>[1]
+): Promise<Element[]> {
+  const mergedOptions: Parameters<typeof waitFor>[1] = { timeout: 3000, ...(options ?? {}) };
   return waitFor(
     () => {
       const elements = document.querySelectorAll(selector);
@@ -27,6 +29,6 @@ export async function waitForElements(
       }
       return Array.from(elements);
     },
-    options
+    mergedOptions
   );
 }
