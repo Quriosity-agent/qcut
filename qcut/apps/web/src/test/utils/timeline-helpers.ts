@@ -6,17 +6,21 @@ export function addElementToTimeline(
   element: Partial<TimelineElement>
 ): TimelineElement {
   const store = useTimelineStore.getState();
-  const fullElement: TimelineElement = {
-    id: `element-${Date.now()}`,
-    type: 'media',
-    start: 0,
+  // Capture existing ids to identify the new element deterministically
+  const beforeIds = new Set(
+    (store.tracks.find(t => t.id === trackId)?.elements ?? []).map(el => el.id)
+  );
+  const elementData: Partial<TimelineElement> = {
+    startTime: 0,
     duration: 5,
-    trackId,
     ...element,
-  } as TimelineElement;
-  
-  store.addElementToTrack(trackId, fullElement);
-  return fullElement;
+  };
+  store.addElementToTrack(trackId, elementData);
+  const track = store.tracks.find(t => t.id === trackId);
+  if (!track) throw new Error(`Track not found: ${trackId}`);
+  const created = track.elements.find(el => !beforeIds.has(el.id));
+  if (!created) throw new Error(`Failed to add element to track: ${trackId}`);
+  return created;
 }
 
 export function createTestTrack(type: 'media' | 'text' | 'audio' = 'media'): TimelineTrack {
