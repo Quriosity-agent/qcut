@@ -10,37 +10,55 @@ import type { MediaItem } from '@/stores/media-store-types';
 import type { TimelineTrack, TimelineElement } from '@/types/timeline';
 import type { TProject } from '@/types/project';
 
-export class TestDataFactory {
-  static createMediaItem(type: 'video' | 'image' | 'audio', overrides: Partial<MediaItem> = {}): MediaItem {
-    const base = type === 'video' ? mockVideoItem 
-                : type === 'image' ? mockImageItem 
-                : mockAudioItem;
-    return { ...base, ...overrides, id: `${type}-${Date.now()}` };
-  }
-  
-  static createTimelineTrack(type: 'media' | 'text' | 'audio' = 'media', overrides: Partial<TimelineTrack> = {}): TimelineTrack {
-    const base = type === 'media' ? mockMainTrack
-                : type === 'text' ? mockTextTrack
-                : mockAudioTrack;
-    return { ...base, ...overrides, id: `track-${Date.now()}` };
-  }
-  
-  static createTimelineElement(index = 0, overrides: Partial<TimelineElement> = {}): TimelineElement {
-    const base = mockTimelineElements[index] || mockTimelineElements[0];
-    return { ...base, ...overrides, id: `element-${Date.now()}` };
-  }
-  
-  static createProject(overrides: Partial<TProject> = {}): TProject {
-    return { ...mockProject, ...overrides, id: `project-${Date.now()}` };
-  }
-  
-  static createBatch<T>(
-    createFn: (...args: any[]) => T, 
-    count: number, 
-    ...args: any[]
-  ): T[] {
-    return Array.from({ length: count }, (_, i) => 
-      createFn(...args, { index: i })
-    );
-  }
-}
+let __factorySeq = 0;
+const nextId = (): string => `${Date.now()}-${__factorySeq++}`;
+
+export const TestDataFactory = {
+  createMediaItem: (type: 'video' | 'image' | 'audio', overrides: Partial<MediaItem> = {}): MediaItem => {
+    let base: MediaItem;
+    switch (type) {
+      case 'video': base = mockVideoItem; break;
+      case 'image': base = mockImageItem; break;
+      case 'audio': base = mockAudioItem; break;
+      default: throw new Error(`Unsupported media type: ${type}`);
+    }
+    const id = overrides.id ?? `media-${nextId()}`;
+    return { ...base, ...overrides, id };
+  },
+
+  createTimelineTrack: (type: 'media' | 'text' | 'audio' = 'media', overrides: Partial<TimelineTrack> = {}): TimelineTrack => {
+    let base: TimelineTrack;
+    switch (type) {
+      case 'media': base = mockMainTrack; break;
+      case 'text': base = mockTextTrack; break;
+      case 'audio': base = mockAudioTrack; break;
+      default: throw new Error(`Unsupported track type: ${type}`);
+    }
+    const id = overrides.id ?? `track-${nextId()}`;
+    return { ...base, ...overrides, id };
+  },
+
+  createTimelineElement: (index = 0, overrides: Partial<TimelineElement> = {}): TimelineElement => {
+    const base = mockTimelineElements.at(index) ?? mockTimelineElements[0];
+    const id = overrides.id ?? `element-${nextId()}`;
+    return { ...base, ...overrides, id };
+  },
+
+  createProject: (overrides: Partial<TProject> = {}): TProject => {
+    const id = overrides.id ?? `project-${nextId()}`;
+    return { ...mockProject, ...overrides, id };
+  },
+
+  // Strictly-typed, zero-`any` batch helper. Callers pass config via closure or the `options` object.
+  createBatch: <T, TOptions>(
+    count: number,
+    createFn: (options: TOptions, ctx: { index: number }) => T,
+    options: TOptions
+  ): T[] => {
+    const out: T[] = [];
+    for (let i = 0; i < count; i++) {
+      out.push(createFn(options, { index: i }));
+    }
+    return out;
+  },
+} as const;

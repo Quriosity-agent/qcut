@@ -26,16 +26,24 @@ export async function resetAllStores() {
   useProjectStore.setState({
     activeProject: null,
     savedProjects: [],
-    isLoading: false,
+    isLoading: true,           // match the store's default
     isInitialized: false,
+    invalidProjectIds: new Set<string>(),  // ensure no residual invalid IDs
   });
 
   // Reset playback store
+  const playbackStore = usePlaybackStore.getState();
+  if (typeof playbackStore.pause === 'function') {
+    playbackStore.pause();
+  }
   usePlaybackStore.setState({
     isPlaying: false,
     currentTime: 0,
     duration: 0,
-    playbackSpeed: 1,
+    speed: 1.0,
+    volume: 1,
+    muted: false,
+    previousVolume: 1,
   });
 
   // Reset export store

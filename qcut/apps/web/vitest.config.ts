@@ -1,6 +1,9 @@
 import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
-import path from 'path';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const rootDir = fileURLToPath(new URL('.', import.meta.url));
 
 export default defineConfig({
   plugins: [react()],
@@ -19,13 +22,11 @@ export default defineConfig({
         'src/routeTree.gen.ts',
       ],
     },
-    alias: {
-      '@': path.resolve(__dirname, './src'),
-    },
+    // alias is configured under top-level resolve.alias
   },
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, './src'),
+      '@': path.resolve(rootDir, './src'),
     },
   },
 });

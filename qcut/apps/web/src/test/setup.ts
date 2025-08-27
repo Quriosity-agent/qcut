@@ -50,11 +50,15 @@ const localStorageMock: Storage = {
 global.localStorage = localStorageMock;
 
 // Mock IndexedDB
-const indexedDBMock = {
-  open: vi.fn(),
-  deleteDatabase: vi.fn(),
+const indexedDBMock: IDBFactory = {
+  // Return minimal shaped requests; expand if tests need more
+  open: vi.fn(() => ({} as IDBOpenDBRequest)),
+  deleteDatabase: vi.fn(() => ({} as IDBOpenDBRequest)),
+  cmp: vi.fn(() => 0),
+  // Some TS lib.dom versions include `databases`; stub defensively
+  databases: vi.fn(async () => [] as IDBDatabaseInfo[]),
 };
-global.indexedDB = indexedDBMock as any;
+global.indexedDB = indexedDBMock;
 
 // Clean up after each test
 afterEach(() => {
