@@ -28,15 +28,17 @@ export function simulateTimelineDrag(
   trackId: string,
   position: number
 ) {
-  const data = JSON.stringify({ elementId: element.id, trackId, position });
-  const trackTarget = document.querySelector(`[data-track-id="${trackId}"]`);
+  const payload = JSON.stringify({ elementId: element.id, trackId, position });
+  const trackTarget = document.querySelector(`[data-track-id="${trackId.replace(/"/g, '\\"')}"]`);
   
   if (!trackTarget) {
     throw new Error(`Track with id ${trackId} not found`);
   }
   
-  simulateDragDrop(element, trackTarget as HTMLElement, {
-    getData: () => data,
-    setData: () => {},
-  } as any);
+  const dtOverrides: Partial<DataTransfer> = {
+    types: ['application/json'],
+    getData: (t: string) => (t === 'application/json' ? payload : ''),
+    setData: () => {}, // consumers shouldn't call this during drop in tests
+  };
+  simulateDragDrop(element, trackTarget as HTMLElement, dtOverrides);
 }

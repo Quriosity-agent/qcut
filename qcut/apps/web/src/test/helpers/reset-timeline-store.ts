@@ -2,13 +2,14 @@ import { useTimelineStore } from '@/stores/timeline-store';
 
 export function resetTimelineStore() {
   const store = useTimelineStore.getState();
-  if (store.clearTimeline) {
+  if (typeof store.clearTimeline === 'function') {
     store.clearTimeline();
-  } else {
-    useTimelineStore.setState({
-      tracks: [],
-      history: [],
-      historyIndex: -1,
-    });
+    return;
   }
+  // Fallback for older store versions: don't touch tracks to preserve invariants.
+  useTimelineStore.setState({
+    history: [],
+    redoStack: [],
+    selectedElements: [],
+  });
 }
