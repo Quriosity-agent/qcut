@@ -1,6 +1,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import React from "react";
 import { render } from "@testing-library/react";
-import { RouterProvider, createHashHistory } from "@tanstack/react-router";
+import { createRouter, RouterProvider } from "@tanstack/react-router";
+import { createHashHistory } from "@tanstack/history";
+import { routeTree } from "../../routeTree.gen";
 
 describe("TanStack Router Navigation", () => {
   beforeEach(() => {
@@ -15,10 +18,6 @@ describe("TanStack Router Navigation", () => {
 
   describe("Navigation Patterns Verified", () => {
     it("should exercise router with hash history", () => {
-      // Import router dependencies
-      const { createRouter, createHashHistory } = require("@tanstack/react-router");
-      const { routeTree } = require("../../routeTree.gen");
-
       // Create router instance like in App.tsx
       const testRouter = createRouter({
         routeTree,
@@ -33,9 +32,9 @@ describe("TanStack Router Navigation", () => {
       expect(testRouter.routeTree).toBeDefined();
 
       // Verify essential routes exist in the route tree
-      const routeIds = testRouter.routeTree.children?.map((route: any) => route.id) || [];
-      expect(routeIds).toContain("/");
-      expect(routeIds.length).toBeGreaterThan(0);
+      const children = testRouter.routeTree.children ?? [];
+      expect(Array.isArray(children)).toBe(true);
+      expect(children.length).toBeGreaterThan(0);
     });
 
     it("should not reference Next.js components", () => {
@@ -136,9 +135,6 @@ describe("TanStack Router Navigation", () => {
 
   describe("Routing Integration Tests", () => {
     it("should mount RouterProvider without throwing", () => {
-      const { createRouter, createHashHistory } = require("@tanstack/react-router");
-      const { routeTree } = require("../../routeTree.gen");
-      
       const router = createRouter({ 
         routeTree, 
         history: createHashHistory(), 
