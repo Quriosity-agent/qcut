@@ -159,47 +159,130 @@ export async function searchSounds(query: string) {
 
 ## Phase 2: API Route Migration (Day 3-5)
 
-### 2.1 Migrate Sounds Search API (2 hours)
+### 2.1 Migrate Sounds Search API (3 hours) - **UPDATED**
 
-#### Subtask 2.1.1: Create Electron handler structure (10 min)
+#### Subtask 2.1.1: Enhance existing Electron handler (15 min)
 ```javascript
-// File: electron/handlers/sounds.js
-const { ipcMain } = require('electron');
-const fetch = require('node-fetch');
+// File: electron/sound-handler.js (EXISTING - needs enhancement)
+// Current implementation already exists with sophisticated API key management
+// Need to add new IPC handler for sounds:search alongside existing handlers
 
-// Initialize handler module
-module.exports = function setupSoundsHandlers() {
-  // Handler implementation here
-};
-```
-
-#### Subtask 2.1.2: Port search logic from Next.js (20 min)
-```javascript
-// File: electron/handlers/sounds.js
-ipcMain.handle('sounds:search', async (event, { query, category }) => {
+ipcMain.handle('sounds:search', async (event, params) => {
   try {
-    const FREESOUND_API_KEY = process.env.FREESOUND_API_KEY;
-    if (!query || typeof query !== 'string') {
-      return { success: false, error: 'Invalid query' };
-    }
-    const url = new URL('https://freesound.org/apiv2/search/text/');
-    url.searchParams.set('query', query);
-    if (category) url.searchParams.set('category', String(category));
-    
-    const response = await fetch(url.toString(), {
-      headers: { 'Authorization': `Token ${FREESOUND_API_KEY}` }
-    });
-    
-    if (!response.ok) {
-      return { success: false, error: `Upstream ${response.status}` };
+    // Reuse existing getFreesoundApiKey() function
+    const apiKey = await getFreesoundApiKey();
+    if (!apiKey) {
+      return { success: false, error: 'Freesound API key not available' };
     }
     
-    const data = await response.json();
-    return { success: true, results: data.results ?? [] };
+    // Use existing search logic but with new interface
+    return await performFreesoundSearch(params, apiKey);
   } catch (error) {
+    log.error('Sounds search error:', error);
     return { success: false, error: error.message };
   }
 });
+```
+
+#### Subtask 2.1.2: Port complex API logic from Next.js (45 min)
+```javascript
+// File: electron/sound-handler.js
+async function performFreesoundSearch(params, apiKey) {
+  const { 
+    q: query, 
+    type = 'effects',
+    page = 1,
+    page_size: pageSize = 20,
+    sort = 'downloads',
+    min_rating = 3,
+    commercial_only = true 
+  } = params;
+
+  // Handle songs limitation (from original API)
+  if (type === 'songs') {
+    return { 
+      success: false, 
+      error: 'Songs are not available yet',
+      message: 'Song search functionality is coming soon. Try searching for sound effects instead.'
+    };
+  }
+
+  // Use score sorting for search queries, downloads for top sounds
+  const sortParam = query
+    ? sort === 'score' ? 'score' : `${sort}_desc`
+    : `${sort}_desc`;
+
+  const searchParams = new URLSearchParams({
+    query: query || '',
+    token: apiKey,
+    page: page.toString(),
+    page_size: pageSize.toString(),
+    sort: sortParam,
+    fields: 'id,name,description,url,previews,download,duration,filesize,type,channels,bitrate,bitdepth,samplerate,username,tags,license,created,num_downloads,avg_rating,num_ratings'
+  });
+
+  // Apply filters (same as original API)
+  if (type === 'effects' || !type) {
+    searchParams.append('filter', 'duration:[* TO 30.0]');
+    searchParams.append('filter', `avg_rating:[${min_rating} TO *]`);
+
+    if (commercial_only) {
+      searchParams.append('filter', 
+        'license:("Attribution" OR "Creative Commons 0" OR "Attribution Noncommercial" OR "Attribution Commercial")');
+    }
+
+    searchParams.append('filter',
+      'tag:sound-effect OR tag:sfx OR tag:foley OR tag:ambient OR tag:nature OR tag:mechanical OR tag:electronic OR tag:impact OR tag:whoosh OR tag:explosion');
+  }
+
+  const response = await fetch(`https://freesound.org/apiv2/search/text/?${searchParams.toString()}`);
+  
+  if (!response.ok) {
+    const errorText = await response.text();
+    log.error('Freesound API error:', response.status, errorText);
+    return { success: false, error: 'Failed to search sounds' };
+  }
+
+  const data = await response.json();
+  
+  // Transform results to match original API format
+  const transformedResults = data.results.map(result => ({
+    id: result.id,
+    name: result.name,
+    description: result.description,
+    url: result.url,
+    previewUrl: result.previews?.['preview-hq-mp3'] || result.previews?.['preview-lq-mp3'],
+    downloadUrl: result.download,
+    duration: result.duration,
+    filesize: result.filesize,
+    type: result.type,
+    channels: result.channels,
+    bitrate: result.bitrate,
+    bitdepth: result.bitdepth,
+    samplerate: result.samplerate,
+    username: result.username,
+    tags: result.tags,
+    license: result.license,
+    created: result.created,
+    downloads: result.num_downloads || 0,
+    rating: result.avg_rating || 0,
+    ratingCount: result.num_ratings || 0
+  }));
+
+  return {
+    success: true,
+    count: data.count,
+    next: data.next,
+    previous: data.previous,
+    results: transformedResults,
+    query: query || '',
+    type: type || 'effects',
+    page,
+    pageSize,
+    sort,
+    minRating: min_rating
+  };
+}
 ```
 
 #### Subtask 2.1.3: Add to preload script (10 min)
@@ -329,45 +412,134 @@ VITE_USE_ELECTRON_API=true bun run electron:dev
 # 5. Document any differences
 ```
 
-### 2.2 Migrate Transcribe API (1.5 hours)
+### 2.2 Migrate Transcribe API (2 hours) - **UPDATED**
 
-#### Subtask 2.2.1: Create transcription handler (10 min)
+#### Subtask 2.2.1: Create new transcription handler (15 min)
 ```javascript
-// File: electron/handlers/transcribe.js
+// File: electron/transcribe-handler.js (NEW FILE)
 const { ipcMain } = require('electron');
 const fs = require('fs/promises');
 const path = require('node:path');
 const os = require('node:os');
 
+// Try to load electron-log, fallback to console
+let log;
+try {
+  log = require('electron-log');
+} catch (error) {
+  log = console;
+}
+
 module.exports = function setupTranscribeHandlers() {
-  ipcMain.handle('transcribe:audio', async (event, audioData) => {
-    // Implementation here
+  ipcMain.handle('transcribe:audio', async (event, requestData) => {
+    return await handleTranscription(requestData);
   });
 };
 ```
 
-#### Subtask 2.2.2: Port transcription logic (20 min)
+#### Subtask 2.2.2: Port complex transcription logic from Next.js (60 min)
 ```javascript
-// File: electron/handlers/transcribe.js
-ipcMain.handle('transcribe:audio', async (event, { audioBuffer, format }) => {
+// File: electron/transcribe-handler.js
+async function handleTranscription(requestData) {
   try {
-    // Save audio to temp file
-    const tempDir = os.tmpdir();
-    const tempFile = path.join(tempDir, `audio-${Date.now()}.${format}`);
-    await fs.writeFile(tempFile, Buffer.from(audioBuffer));
+    const { filename, language = 'auto', decryptionKey, iv } = requestData;
     
-    // Call transcription service (Whisper, etc.)
-    // Copy logic from apps/web/src/app/api/transcribe/route.ts
+    // Check if transcription is configured
+    const transcriptionCheck = isTranscriptionConfigured();
+    if (!transcriptionCheck.configured) {
+      log.error('Missing environment variables:', transcriptionCheck.missingVars);
+      return {
+        success: false,
+        error: 'Transcription not configured',
+        message: `Auto-captions require environment variables: ${transcriptionCheck.missingVars.join(', ')}. Check README for setup instructions.`
+      };
+    }
+
+    // Prepare request body for Modal API (same as Next.js version)
+    const modalRequestBody = {
+      filename,
+      language,
+    };
+
+    // Add encryption parameters if provided (zero-knowledge)
+    if (decryptionKey && iv) {
+      modalRequestBody.decryptionKey = decryptionKey;
+      modalRequestBody.iv = iv;
+    }
+
+    // Call Modal transcription service
+    const response = await fetch(process.env.MODAL_TRANSCRIPTION_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(modalRequestBody),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      log.error('Modal API error:', response.status, errorText);
+
+      let errorMessage = 'Transcription service unavailable';
+      try {
+        const errorData = JSON.parse(errorText);
+        errorMessage = errorData.error || errorMessage;
+      } catch {
+        // Use default message if parsing fails
+      }
+
+      return {
+        success: false,
+        error: errorMessage,
+        message: 'Failed to process transcription request'
+      };
+    }
+
+    const rawResult = await response.json();
     
-    // Clean up temp file
-    await fs.unlink(tempFile);
+    // Validate and transform response (same structure as Next.js API)
+    const result = validateTranscriptionResponse(rawResult);
+    if (!result.valid) {
+      log.error('Invalid Modal API response:', result.error);
+      return { success: false, error: 'Invalid response from transcription service' };
+    }
+
+    return {
+      success: true,
+      text: result.data.text,
+      segments: result.data.segments,
+      language: result.data.language
+    };
     
-    // TODO: replace with real transcription service response
-    return { success: true, text: '', timestamps: [] };
   } catch (error) {
-    return { success: false, error: error.message };
+    log.error('Transcription API error:', error);
+    return {
+      success: false,
+      error: 'Internal server error',
+      message: 'An unexpected error occurred during transcription'
+    };
   }
-});
+}
+
+function isTranscriptionConfigured() {
+  const requiredVars = ['MODAL_TRANSCRIPTION_URL'];
+  const missingVars = requiredVars.filter(varName => !process.env[varName]);
+  
+  return {
+    configured: missingVars.length === 0,
+    missingVars
+  };
+}
+
+function validateTranscriptionResponse(rawResult) {
+  // Implement same validation as Next.js route
+  // This is a simplified version - full zod validation would be ideal
+  if (!rawResult || typeof rawResult.text !== 'string' || !Array.isArray(rawResult.segments)) {
+    return { valid: false, error: 'Invalid response structure' };
+  }
+  
+  return { valid: true, data: rawResult };
+}
 ```
 
 #### Subtask 2.2.3: Update preload and types (10 min)
@@ -463,28 +635,34 @@ describe('Transcription API Migration', () => {
 
 ---
 
-## Phase 3: Router Migration (Day 6-7)
+## Phase 3: Router Migration (Day 6-7) - **UPDATED - MOSTLY COMPLETE**
 
-### 3.1 Create Router Adapter (1 hour)
+### 3.1 Router Infrastructure Already Exists ✅
+
+**FINDING**: TanStack Router is already fully implemented and functional! The existing routes include:
+- `__root.tsx` - Root layout with TanStack router setup
+- `index.tsx` - Home page
+- `editor.$project_id.lazy.tsx` - Editor with lazy loading
+- `projects.lazy.tsx` - Projects page with lazy loading
+- `blog.tsx`, `contributors.tsx`, `privacy.tsx`, etc. - All static pages
+
+**Current Challenge**: The codebase has **DUAL routing systems** running in parallel:
+1. **TanStack Router** (in `src/routes/`) - ✅ Working
+2. **Next.js pages** (in `src/app/`) - ❌ Non-functional in Vite but still referenced
+
+### 3.1 Create Feature Flag Router Adapter (30 min) - **SIMPLIFIED**
 
 #### Subtask 3.1.1: Create routing adapter (15 min)
 ```typescript
 // File: apps/web/src/lib/router-adapter.ts
 import { isFeatureEnabled } from './feature-flags';
 import { useNavigate as useTanStackNavigate } from '@tanstack/react-router';
-import { useRouter as useNextRouter } from 'next/navigation';
 
 export function useAdaptiveRouter() {
-  if (isFeatureEnabled('USE_NEXTJS_ROUTING')) {
-    const nextRouter = useNextRouter();
-    return {
-      push: (path: string) => nextRouter.push(path),
-      replace: (path: string) => nextRouter.replace(path),
-      back: () => nextRouter.back()
-    };
-  }
-  
+  // For now, always use TanStack Router since Next.js routing doesn't work in Vite
+  // Future: could add fallback logic if needed
   const tanstackNavigate = useTanStackNavigate();
+  
   return {
     push: (path: string) => tanstackNavigate({ to: path }),
     replace: (path: string) => tanstackNavigate({ to: path, replace: true }),
@@ -496,119 +674,91 @@ export function useAdaptiveRouter() {
 #### Subtask 3.1.2: Create Link adapter component (10 min)
 ```typescript
 // File: apps/web/src/components/ui/adaptive-link.tsx
-import { isFeatureEnabled } from '@/lib/feature-flags';
-import NextLink from 'next/link';
 import { Link as TanStackLink } from '@tanstack/react-router';
 
 export function AdaptiveLink({ href, to, children, ...props }) {
-  if (isFeatureEnabled('USE_NEXTJS_ROUTING')) {
-    return <NextLink href={href || to} {...props}>{children}</NextLink>;
-  }
-  
+  // Since TanStack Router is already working, use it directly
   return <TanStackLink to={to || href} {...props}>{children}</TanStackLink>;
 }
 ```
 
-#### Subtask 3.1.3: Map Next.js routes to TanStack (20 min)
+#### Subtask 3.1.3: Route mapping already handled ✅ (5 min)
 ```typescript
 // File: apps/web/src/routes/migration-map.ts
-export const ROUTE_MAP = {
-  // Next.js path -> TanStack Router path
-  '/': '/',
-  '/editor/[projectId]': '/editor/$projectId',
-  '/projects': '/projects',
-  '/settings': '/settings',
-  '/export/[id]': '/export/$id'
+// FINDING: Routes are already properly mapped!
+// Next.js [projectId] → TanStack $projectId ✅
+// All major routes exist in TanStack format ✅
+
+export const EXISTING_ROUTES = {
+  '/': '/', // ✅ index.tsx
+  '/editor/[projectId]': '/editor/$project_id', // ✅ editor.$project_id.lazy.tsx  
+  '/projects': '/projects', // ✅ projects.lazy.tsx
+  '/blog': '/blog', // ✅ blog.tsx
+  '/contributors': '/contributors', // ✅ contributors.tsx
+  '/privacy': '/privacy', // ✅ privacy.tsx
+  '/roadmap': '/roadmap', // ✅ roadmap.tsx
+  '/terms': '/terms', // ✅ terms.tsx
+  '/login': '/login', // ✅ login.tsx
+  '/signup': '/signup', // ✅ signup.tsx
+  '/why-not-capcut': '/why-not-capcut', // ✅ why-not-capcut.tsx
 } as const;
-
-export function mapRoute(nextjsPath: string): string {
-  // Handle dynamic segments
-  const mapped = nextjsPath.replace(/\[([^\]]+)\]/g, '$$$1');
-  return ROUTE_MAP[nextjsPath] || mapped;
-}
 ```
 
-#### Subtask 3.1.4: Update navigation components (15 min)
+### 3.2 Migration Tasks - **SIMPLIFIED** (45 min)
+
+#### Subtask 3.2.1: Update components to use TanStack routing (20 min)
 ```typescript
-// File: apps/web/src/components/navigation/main-nav.tsx
-import { AdaptiveLink } from '@/components/ui/adaptive-link';
-import { useAdaptiveRouter } from '@/lib/router-adapter';
+// File: Update existing components that still reference Next.js routing
+// Target files from our analysis:
+// - src/app/(auth)/login/page.tsx (useRouter import)
+// - src/app/(auth)/signup/page.tsx (useRouter import) 
+// - src/app/projects/page.tsx (useRouter import)
+// - src/app/editor/[project_id]/page.tsx (useParams, useRouter imports)
 
-export function MainNav() {
-  const router = useAdaptiveRouter();
-  
-  return (
-    <nav>
-      <AdaptiveLink href="/">Home</AdaptiveLink>
-      <AdaptiveLink href="/projects">Projects</AdaptiveLink>
-      <AdaptiveLink href="/editor/new">New Project</AdaptiveLink>
-      
-      <button onClick={() => router.push('/settings')}>
-        Settings
-      </button>
-    </nav>
-  );
-}
+// Replace Next.js navigation with TanStack equivalents
+import { useNavigate } from '@tanstack/react-router';
+// Instead of: import { useRouter } from 'next/navigation';
 ```
 
-### 3.2 Migrate Page Components (2 hours)
-
-#### Subtask 3.2.1: Create TanStack route for each Next.js page (10 min each)
-```typescript
-// File: apps/web/src/routes/index.tsx
-import { createFileRoute } from '@tanstack/react-router';
-import HomePage from '@/app/page'; // Reuse existing component
-
-export const Route = createFileRoute('/')({
-  component: HomePage
-});
-```
-
-```typescript
-// File: apps/web/src/routes/projects.tsx
-import { createFileRoute } from '@tanstack/react-router';
-import ProjectsPage from '@/app/projects/page';
-
-export const Route = createFileRoute('/projects')({
-  component: ProjectsPage
-});
-```
-
-```typescript
-// File: apps/web/src/routes/editor.$projectId.tsx
-import { createFileRoute } from '@tanstack/react-router';
-import EditorPage from '@/app/editor/[projectId]/page';
-
-export const Route = createFileRoute('/editor/$projectId')({
-  component: ({ params }) => <EditorPage params={params} />
-});
-```
-
-#### Subtask 3.2.2: Update route tree generation (10 min)
+#### Subtask 3.2.2: Route tree generation already working ✅ (5 min)
 ```bash
-# File: Run from apps/web/
-npx @tanstack/router-devtools generate
+# FINDING: Route tree generation is already working!
+# File: apps/web/src/routeTree.gen.ts exists and is up to date
+# Generated automatically by TanStack Router
 ```
 
-#### Subtask 3.2.3: Test parallel routing (30 min)
+#### Subtask 3.2.3: Test routing functionality (20 min)
 ```typescript
 // File: apps/web/src/test/migration/routing.test.tsx
-describe('Parallel Routing', () => {
-  it('should navigate correctly with both routers', () => {
-    // Test with Next.js
-    setRuntimeFlags({ USE_NEXTJS_ROUTING: true });
-    render(<App />);
-    fireEvent.click(screen.getByText('Projects'));
-    expect(window.location.pathname).toBe('/projects');
+describe('TanStack Router Functionality', () => {
+  it('should navigate to all existing routes', () => {
+    // Test that all routes are accessible
+    const routes = ['/', '/projects', '/editor/test-id', '/blog', '/contributors'];
     
-    // Test with TanStack
-    setRuntimeFlags({ USE_NEXTJS_ROUTING: false });
-    render(<App />);
-    fireEvent.click(screen.getByText('Projects'));
-    expect(window.location.pathname).toBe('/projects');
+    routes.forEach(route => {
+      // Test navigation to each route
+      window.history.pushState({}, '', route);
+      // Verify route loads correctly
+    });
+  });
+  
+  it('should handle dynamic routes', () => {
+    // Test editor route with project ID
+    window.history.pushState({}, '', '/editor/abc-123');
+    // Verify project ID is passed correctly to component
   });
 });
 ```
+
+### 3.3 **MAJOR SIMPLIFICATION** - Remove Next.js App Directory
+
+#### Subtask 3.3.1: Update components that reference Next.js pages (15 min)
+Since TanStack routes already exist and work, the main task is updating components that still import from Next.js pages to use TanStack router navigation instead.
+
+**Files to Update:**
+- Any component imports from `@/app/...` → Change to use TanStack routes
+- Navigation hooks: `useRouter()` → `useNavigate()`
+- Link components: `<Link href="">` → `<Link to="">`
 
 ---
 

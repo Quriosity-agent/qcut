@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { useSoundsStore } from "@/stores/sounds-store";
+import { searchSounds } from "@/lib/api-adapter";
 
 /**
  * Custom hook for searching sound effects with race condition protection.
@@ -40,66 +41,31 @@ export function useSoundSearch(query: string, commercialOnly: boolean) {
       setLoadingMore(true);
       const nextPage = currentPage + 1;
 
-      const searchParams = new URLSearchParams({
-        page: nextPage.toString(),
+      console.log("🔄 [Sound Search] Loading more results...");
+      
+      // Use the new API adapter
+      const result = await searchSounds(query.trim() || "", {
         type: "effects",
+        page: nextPage,
+        page_size: 20,
+        commercial_only: commercialOnly,
       });
 
-      if (query.trim()) {
-        searchParams.set("q", query);
-      }
-
-      searchParams.set("commercial_only", commercialOnly.toString());
-
-      // Try IPC first (Electron), fallback to fetch if not available
-      let response;
-      try {
-        if (window.electronAPI?.invoke) {
-          console.log("🔄 [Sound Search] Trying IPC for load more...");
-          const ipcResult = await window.electronAPI.invoke("sounds:search", {
-            q: query.trim() || undefined,
-            type: "effects",
-            page: nextPage,
-            page_size: 20,
-            commercial_only: commercialOnly,
-          });
-
-          if (ipcResult.success) {
-            console.log("✅ [Sound Search] IPC load more successful");
-            response = {
-              ok: true,
-              status: 200,
-              json: () => Promise.resolve(ipcResult.data),
-            };
-          } else {
-            throw new Error(ipcResult.error || "IPC search failed");
-          }
-        } else {
-          throw new Error("No IPC available");
-        }
-      } catch (ipcError) {
-        console.error(
-          "❌ [Sound Search] IPC load more failed - no fallback available:",
-          ipcError
-        );
-        throw new Error("Sound search unavailable - Electron IPC required");
-      }
-
-      if (response.ok) {
-        const data = await response.json();
-
+      if (result.success) {
+        console.log("✅ [Sound Search] Load more successful");
+        
         // Append to appropriate array based on whether we have a query
         if (query.trim()) {
-          appendSearchResults(data.results);
+          appendSearchResults(result.results || []);
         } else {
-          appendTopSounds(data.results);
+          appendTopSounds(result.results || []);
         }
 
         setCurrentPage(nextPage);
-        setHasNextPage(!!data.next);
-        setTotalCount(data.count);
+        setHasNextPage(!!result.next);
+        setTotalCount(result.count || 0);
       } else {
-        setSearchError(`Load more failed: ${response.status}`);
+        setSearchError(result.error || "Load more failed");
       }
     } catch (err) {
       setSearchError(err instanceof Error ? err.message : "Load more failed");
@@ -130,54 +96,28 @@ export function useSoundSearch(query: string, commercialOnly: boolean) {
         setSearchError(null);
         resetPagination();
 
-        // Try IPC first (Electron), fallback to fetch if not available
-        let response;
-        try {
-          if (window.electronAPI?.invoke) {
-            console.log("🔄 [Sound Search] Trying IPC for search:", query);
-            const ipcResult = await window.electronAPI.invoke("sounds:search", {
-              q: query,
-              type: "effects",
-              page: 1,
-              page_size: 20,
-              commercial_only: commercialOnly,
-            });
+        console.log("🔄 [Sound Search] Searching for:", query);
+        
+        // Use the new API adapter
+        const result = await searchSounds(query, {
+          type: "effects",
+          page: 1,
+          page_size: 20,
+          commercial_only: commercialOnly,
+        });
 
-            // Check if we should ignore the result after async operation
-            if (ignore) return;
+        // Check if we should ignore the result after async operation
+        if (ignore) return;
 
-            if (ipcResult.success) {
-              console.log("✅ [Sound Search] IPC search successful");
-              response = {
-                ok: true,
-                status: 200,
-                json: () => Promise.resolve(ipcResult.data),
-              };
-            } else {
-              throw new Error(ipcResult.error || "IPC search failed");
-            }
-          } else {
-            throw new Error("No IPC available");
-          }
-        } catch (ipcError) {
-          console.error(
-            "❌ [Sound Search] IPC search failed - no fallback available:",
-            ipcError
-          );
-          throw new Error("Sound search unavailable - Electron IPC required");
-        }
-
-        if (!ignore) {
-          if (response.ok) {
-            const data = await response.json();
-            setSearchResults(data.results);
-            setLastSearchQuery(query);
-            setHasNextPage(!!data.next);
-            setTotalCount(data.count);
-            setCurrentPage(1);
-          } else {
-            setSearchError(`Search failed: ${response.status}`);
-          }
+        if (result.success) {
+          console.log("✅ [Sound Search] Search successful");
+          setSearchResults(result.results || []);
+          setLastSearchQuery(query);
+          setHasNextPage(!!result.next);
+          setTotalCount(result.count || 0);
+          setCurrentPage(1);
+        } else {
+          setSearchError(result.error || "Search failed");
         }
       } catch (err) {
         if (!ignore) {

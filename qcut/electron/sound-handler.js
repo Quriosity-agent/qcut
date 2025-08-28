@@ -140,16 +140,35 @@ async function getFreesoundApiKey() {
  * Handles Freesound API integration for sound search functionality
  */
 function setupSoundIPC() {
-  // Handle sound search requests
+  // Handle sound search requests - ENHANCED to match Next.js API exactly
   ipcMain.handle("sounds:search", async (event, searchParams) => {
     log.info("=== SOUND SEARCH DEBUG START ===");
     log.info(
       "[Sound Handler] Search request received:",
       JSON.stringify(searchParams)
     );
-    log.info("[Sound Handler] Search request received:", searchParams);
 
     try {
+      // Validate input parameters (same validation as Next.js API)
+      const {
+        q: query,
+        type = 'effects',
+        page = 1,
+        page_size: pageSize = 20,
+        sort = 'downloads',
+        min_rating = 3,
+        commercial_only = true
+      } = searchParams;
+
+      // Handle songs limitation (same as Next.js API)
+      if (type === 'songs') {
+        return {
+          success: false,
+          error: 'Songs are not available yet',
+          message: 'Song search functionality is coming soon. Try searching for sound effects instead.'
+        };
+      }
+
       log.info("[Sound Handler] Getting API key...");
       const FREESOUND_API_KEY = await getFreesoundApiKey();
       log.info(
@@ -161,42 +180,44 @@ function setupSoundIPC() {
         log.error("[Sound Handler] No API key found!");
         return {
           success: false,
-          error:
-            "Freesound API key not configured. Please configure it in Settings → API Keys",
+          error: "Freesound API key not configured"
         };
       }
 
       const baseUrl = "https://freesound.org/apiv2/search/text/";
 
-      // Build query parameters
+      // Use score sorting for search queries, downloads for top sounds (same as Next.js)
+      const sortParam = query
+        ? sort === 'score' ? 'score' : `${sort}_desc`
+        : `${sort}_desc`;
+
+      // Build query parameters (enhanced to match Next.js exactly)
       const params = new URLSearchParams({
-        query: searchParams.q || "",
+        query: query || "",
         token: FREESOUND_API_KEY,
-        page: (searchParams.page || 1).toString(),
-        page_size: (searchParams.page_size || 20).toString(),
-        sort: searchParams.sort || "downloads_desc",
+        page: page.toString(),
+        page_size: pageSize.toString(),
+        sort: sortParam,
         fields:
           "id,name,description,url,previews,download,duration,filesize,type,channels,bitrate,bitdepth,samplerate,username,tags,license,created,num_downloads,avg_rating,num_ratings",
       });
 
-      // Add sound effect filters
-      if (searchParams.type === "effects" || !searchParams.type) {
+      // Always apply sound effect filters (same as Next.js API)
+      if (type === 'effects' || !type) {
         params.append("filter", "duration:[* TO 30.0]");
-        params.append(
-          "filter",
-          `avg_rating:[${searchParams.min_rating || 3} TO *]`
-        );
+        params.append("filter", `avg_rating:[${min_rating} TO *]`);
 
-        if (searchParams.commercial_only) {
+        // Filter by license if commercial_only is true (enhanced from Next.js)
+        if (commercial_only) {
           params.append(
             "filter",
-            'license:("Attribution" OR "Creative Commons 0")'
+            'license:("Attribution" OR "Creative Commons 0" OR "Attribution Noncommercial" OR "Attribution Commercial")'
           );
         }
 
         params.append(
           "filter",
-          "tag:sound-effect OR tag:sfx OR tag:foley OR tag:ambient"
+          "tag:sound-effect OR tag:sfx OR tag:foley OR tag:ambient OR tag:nature OR tag:mechanical OR tag:electronic OR tag:impact OR tag:whoosh OR tag:explosion"
         );
       }
 
@@ -310,12 +331,12 @@ function setupSoundIPC() {
         next: rawData.next,
         previous: rawData.previous,
         results: transformedResults,
-        query: searchParams.q || "",
-        type: searchParams.type || "effects",
-        page: searchParams.page || 1,
-        pageSize: searchParams.page_size || 20,
-        sort: searchParams.sort || "downloads_desc",
-        minRating: searchParams.min_rating || 3,
+        query: query || "",
+        type: type || "effects",
+        page,
+        pageSize,
+        sort,
+        minRating: min_rating,
       };
 
       log.info(
@@ -324,7 +345,12 @@ function setupSoundIPC() {
         "results"
       );
       log.info("=== SOUND SEARCH DEBUG END (SUCCESS) ===");
-      return { success: true, data: responseData };
+      
+      // Return format that matches Next.js API exactly
+      return {
+        success: true,
+        ...responseData  // Spread response data directly (matches Next.js format)
+      };
     } catch (error) {
       log.error("=== SOUND SEARCH ERROR ===");
       log.error("[Sound Handler] Error type:", error.constructor.name);

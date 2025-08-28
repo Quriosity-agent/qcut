@@ -32,6 +32,11 @@ contextBridge.exposeInMainWorld("electronAPI", {
     isDark: () => ipcRenderer.invoke("theme:isDark"),
   },
 
+  // Sound operations
+  sounds: {
+    search: (params) => ipcRenderer.invoke("sounds:search", params),
+  },
+
   // Generic IPC invoke method
   invoke: (channel, ...args) => ipcRenderer.invoke(channel, ...args),
 
