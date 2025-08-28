@@ -55,15 +55,10 @@ describe("TanStack Router Navigation", () => {
 
   describe("Hash History Configuration", () => {
     it("should use hash-based routing for Electron compatibility", () => {
-      // Test hash routing behavior
-      const mockLocation = {
-        hash: "#/projects",
-        pathname: "/",
-        search: "",
-      };
-
-      expect(mockLocation.hash).toBe("#/projects");
-      expect(mockLocation.pathname).toBe("/"); // Should remain root for Electron
+      const history = createHashHistory();
+      history.push("/projects");
+      const href = String(history.location?.href || "");
+      expect(href.includes("#/projects")).toBe(true);
     });
 
     it("should support browser navigation events", () => {
