@@ -100,7 +100,7 @@ const DefaultErrorFallback: React.FC<ErrorFallbackProps> = ({
               </>
             )}
             
-            <Button onClick={handleCopyError} variant="ghost" size="sm" className="w-full">
+            <Button onClick={handleCopyError} variant="outline" size="sm" className="w-full">
               <Bug className="w-4 h-4 mr-2" />
               Copy Error Details
             </Button>

@@ -24,6 +24,12 @@ import { generateUUID } from "@/lib/utils";
 import { TIMELINE_CONSTANTS } from "@/constants/timeline-constants";
 import { toast } from "sonner";
 import { checkElementOverlaps, resolveElementOverlaps } from "@/lib/timeline";
+import { 
+  handleStorageError, 
+  handleValidationError,
+  handleMediaProcessingError,
+  ErrorSeverity 
+} from "@/lib/error-handler";
 
 // Helper function to manage element naming with suffixes
 const getElementNameWithSuffix = (
@@ -248,11 +254,18 @@ export const useTimelineStore = create<TimelineStore>((set, get) => {
         try {
           await storageService.saveTimeline(activeProject.id, get()._tracks);
         } catch (error) {
-          console.error("Failed to auto-save timeline:", error);
+          handleStorageError(error, "Auto-save Timeline", {
+            projectId: activeProject.id,
+            trackCount: get()._tracks.length,
+            showToast: false // Don't show toast for auto-save failures
+          });
         }
       }
     } catch (error) {
-      console.error("Failed to access project store:", error);
+      handleStorageError(error, "Access Project Store", {
+        operation: "timeline-autosave",
+        showToast: false // Silent failure for background operations
+      });
     }
   };
 
@@ -506,26 +519,54 @@ export const useTimelineStore = create<TimelineStore>((set, get) => {
       // Validate element type matches track type
       const track = get()._tracks.find((t) => t.id === trackId);
       if (!track) {
-        console.error("Track not found:", trackId);
+        handleValidationError(
+          new Error(`Track not found: ${trackId}`),
+          "Add Element to Track",
+          {
+            trackId,
+            severity: ErrorSeverity.MEDIUM
+          }
+        );
         return;
       }
 
       // Use utility function for validation
       const validation = validateElementTrackCompatibility(elementData, track);
       if (!validation.isValid) {
-        console.error(validation.errorMessage);
+        handleValidationError(
+          new Error(validation.errorMessage || "Invalid element for track type"),
+          "Element Track Compatibility",
+          {
+            trackType: track.type,
+            elementType: elementData.type
+          }
+        );
         return;
       }
 
       // For media elements, validate mediaId exists
       if (elementData.type === "media" && !elementData.mediaId) {
-        console.error("Media element must have mediaId");
+        handleValidationError(
+          new Error("Media element must have mediaId"),
+          "Media Element Validation",
+          {
+            elementType: "media",
+            trackId
+          }
+        );
         return;
       }
 
       // For text elements, validate required text properties
       if (elementData.type === "text" && !elementData.content) {
-        console.error("Text element must have content");
+        handleValidationError(
+          new Error("Text element must have content"),
+          "Text Element Validation",
+          {
+            elementType: "text",
+            trackId
+          }
+        );
         return;
       }
 
@@ -574,10 +615,10 @@ export const useTimelineStore = create<TimelineStore>((set, get) => {
               }
             })
             .catch((error) => {
-              console.error(
-                "Failed to access project store for FPS update:",
-                error
-              );
+              handleStorageError(error, "Update FPS from Project Store", {
+                operation: "fps-update",
+                showToast: false
+              });
             });
         }
       }
@@ -710,7 +751,14 @@ export const useTimelineStore = create<TimelineStore>((set, get) => {
         toTrack
       );
       if (!validation.isValid) {
-        console.error(validation.errorMessage);
+        handleValidationError(
+          new Error(validation.errorMessage || "Invalid drag operation"),
+          "Timeline Drag Validation",
+          {
+            targetTrackId: toTrackId,
+            elementId: elementId
+          }
+        );
         return;
       }
 
@@ -1309,7 +1357,11 @@ export const useTimelineStore = create<TimelineStore>((set, get) => {
 
         return { success: true };
       } catch (error) {
-        console.error("Failed to replace element media:", error);
+        handleMediaProcessingError(error, "Replace Element Media", {
+          elementId,
+          trackId,
+          fileName: newFile.name
+        });
         return {
           success: false,
           error: `Unexpected error: ${error instanceof Error ? error.message : "Unknown error"}`,
@@ -1367,7 +1419,10 @@ export const useTimelineStore = create<TimelineStore>((set, get) => {
 
         return null;
       } catch (error) {
-        console.error("Failed to get project thumbnail:", error);
+        handleMediaProcessingError(error, "Generate Project Thumbnail", {
+          operation: "thumbnail-generation",
+          showToast: false // Silent failure for thumbnails
+        });
         return null;
       }
     },
@@ -1452,7 +1507,10 @@ export const useTimelineStore = create<TimelineStore>((set, get) => {
         // Clear history when loading a project
         set({ history: [], redoStack: [] });
       } catch (error) {
-        console.error("Failed to load timeline:", error);
+        handleStorageError(error, "Load Timeline", {
+          projectId,
+          severity: ErrorSeverity.HIGH // High severity as it affects project loading
+        });
         // Initialize with default on error
         const defaultTracks = ensureMainTrack([]);
         updateTracks(defaultTracks);
@@ -1464,7 +1522,11 @@ export const useTimelineStore = create<TimelineStore>((set, get) => {
       try {
         await storageService.saveTimeline(projectId, get()._tracks);
       } catch (error) {
-        console.error("Failed to save timeline:", error);
+        handleStorageError(error, "Save Timeline", {
+          projectId,
+          trackCount: get()._tracks.length,
+          severity: ErrorSeverity.HIGH
+        });
       }
     },
 
