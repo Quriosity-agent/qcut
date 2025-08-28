@@ -28,7 +28,9 @@ export function addElementToTimeline(
   } as CreateTimelineElement;
   
   store.addElementToTrack(trackId, elementData);
-  const updatedTrack = store.tracks.find(t => t.id === trackId);
+  // Get fresh state after mutation to avoid stale snapshot
+  const updatedStore = useTimelineStore.getState();
+  const updatedTrack = updatedStore.tracks.find(t => t.id === trackId);
   if (!updatedTrack) throw new Error(`Track not found: ${trackId}`);
   const created = updatedTrack.elements.find(el => !beforeIds.has(el.id));
   if (!created) throw new Error(`Failed to add element to track: ${trackId}`);
@@ -38,7 +40,9 @@ export function addElementToTimeline(
 export function createTestTrack(type: TrackType = 'media'): TimelineTrack {
   const store = useTimelineStore.getState();
   const id = store.addTrack(type);
-  const track = store.tracks.find(t => t.id === id);
+  // Get fresh state after mutation to avoid stale snapshot
+  const updated = useTimelineStore.getState();
+  const track = updated.tracks.find(t => t.id === id);
   if (!track) throw new Error(`Failed to create track of type: ${type}`);
   return track;
 }
