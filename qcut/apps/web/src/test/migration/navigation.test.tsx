@@ -124,16 +124,19 @@ describe("TanStack Router Navigation", () => {
 
   describe("Error Handling", () => {
     it("should have error boundary configured", () => {
-      // __root.tsx has errorComponent configured
-      const hasErrorComponent = true;
-      expect(hasErrorComponent).toBe(true);
+      const fs = require("node:fs");
+      const path = require("node:path");
+      const rootPath = path.resolve(__dirname, "../../routes/__root.tsx");
+      const src = fs.readFileSync(rootPath, "utf8");
+      expect(/errorComponent\s*:/.test(src)).toBe(true);
     });
 
     it("should handle 404 routes gracefully", () => {
-      // TanStack Router handles unknown routes
-      const unknownRoute = "/non-existent-page";
-      expect(typeof unknownRoute).toBe("string");
-      // In real app, this would show error component
+      const fs = require("node:fs");
+      const path = require("node:path");
+      const rootPath = path.resolve(__dirname, "../../routes/__root.tsx");
+      const src = fs.readFileSync(rootPath, "utf8");
+      expect(/notFoundComponent\s*:/.test(src)).toBe(true);
     });
   });
 
