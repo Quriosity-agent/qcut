@@ -1,5 +1,1 @@
-src/app/blog/page.tsx:import Image from "next/image";
-src/app/blog/[slug]/page.tsx:import Image from "next/image";
-src/app/projects/page.tsx:import Image from "next/image";
 src/components/background-settings.tsx:import Image from "next/image";
-src/components/editor/properties-panel/settings-view.tsx:// import Image from "next/image"; // Not needed in Vite

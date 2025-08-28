@@ -1,16 +1,19 @@
 #!/bin/bash
 
+set -Eeuo pipefail
+IFS=$'\n\t'
+
 # Phase 3.2.2: Remove legacy Next.js page components
 # These files are confirmed unused (TanStack routes handle all functionality)
 
 echo "🧹 Starting cleanup of unused Next.js page components..."
 
 # Verify backup exists first
-LATEST_BACKUP=$(ls -t docs/backups/nextjs-pages-backup-*.tar.gz | head -1)
-if [ ! -f "$LATEST_BACKUP" ]; then
-    echo "❌ No backup found! Run backup-nextjs-pages.sh first"
-    exit 1
+if ! compgen -G "docs/backups/nextjs-pages-backup-*.tar.gz" >/dev/null; then
+  echo "❌ No backup found! Run backup-nextjs-pages.sh first"
+  exit 1
 fi
+LATEST_BACKUP=$(ls -t docs/backups/nextjs-pages-backup-*.tar.gz 2>/dev/null | head -n 1)
 
 echo "✅ Backup verified: $LATEST_BACKUP"
 
@@ -58,9 +61,10 @@ echo ""
 echo "📊 Checking remaining files in src/app/..."
 if [ -d "apps/web/src/app" ]; then
     echo "📁 Remaining files in apps/web/src/app/:"
-    find apps/web/src/app -type f | head -10
-    if [ $(find apps/web/src/app -type f | wc -l) -gt 10 ]; then
-        echo "   ... and $(($(find apps/web/src/app -type f | wc -l) - 10)) more files"
+    find apps/web/src/app -type f | head -n 10
+    count=$(find apps/web/src/app -type f | wc -l || echo 0)
+    if [ "$count" -gt 10 ]; then
+        echo "   ... and $(("$count" - 10)) more files"
     fi
     echo ""
     echo "ℹ️ Note: API routes and layout files kept for Phase 4 (dependency removal)"

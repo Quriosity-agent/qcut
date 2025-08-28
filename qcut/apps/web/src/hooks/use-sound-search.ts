@@ -44,7 +44,8 @@ export function useSoundSearch(query: string, commercialOnly: boolean) {
       // loading more results...
 
       // Use the new API adapter
-      const result = await searchSounds(query.trim() || "", {
+      const q = query.trim();
+      const result = await searchSounds(q, {
         type: "effects",
         page: nextPage,
         page_size: 20,
@@ -55,7 +56,7 @@ export function useSoundSearch(query: string, commercialOnly: boolean) {
         // load more successful
 
         // Append to appropriate array based on whether we have a query
-        if (query.trim()) {
+        if (q) {
           appendSearchResults(result.results || []);
         } else {
           appendTopSounds(result.results || []);
@@ -96,23 +97,19 @@ export function useSoundSearch(query: string, commercialOnly: boolean) {
         setSearchError(null);
         resetPagination();
 
-        // searching for query
-
-        // Use the new API adapter
-        const result = await searchSounds(query, {
+        const q = query.trim();
+        const result = await searchSounds(q, {
           type: "effects",
           page: 1,
           page_size: 20,
           commercial_only: commercialOnly,
         });
 
-        // Check if we should ignore the result after async operation
         if (ignore) return;
 
         if (result?.success !== false) {
-          // search successful
           setSearchResults(result.results || []);
-          setLastSearchQuery(query);
+          setLastSearchQuery(q);
           setHasNextPage(!!result.next);
           setTotalCount(result.count || 0);
           setCurrentPage(1);

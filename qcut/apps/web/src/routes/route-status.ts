@@ -155,5 +155,4 @@ export const NEXT_STEPS = {
   impact: "Positive (cleaner codebase, reduced confusion)",
 };
 
-console.log("📋 ROUTE MIGRATION STATUS: 100% COMPLETE");
-console.log("🧹 READY FOR CLEANUP PHASE");
+// Intentionally no console side effects at module load (see coding guidelines).

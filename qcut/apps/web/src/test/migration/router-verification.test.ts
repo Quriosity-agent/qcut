@@ -118,8 +118,8 @@ describe("TanStack Router Verification", () => {
   });
 });
 
-// Export route configuration for documentation
-export const VERIFIED_ROUTES = {
+// Route configuration for documentation (not exported from test files)
+const VERIFIED_ROUTES = {
   // Core application routes
   home: { path: "/", component: "src/routes/index.tsx", status: "✅ VERIFIED" },
   projects: {
@@ -184,7 +184,3 @@ export const VERIFIED_ROUTES = {
     status: "✅ VERIFIED",
   },
 } as const;
-
-console.log(
-  "🎯 ALL MAJOR FUNCTIONALITY ALREADY MIGRATED TO TANSTACK ROUTER ✅"
-);

@@ -30,8 +30,8 @@ export async function searchSounds(
     }
   } catch (error) {
     console.error("Electron API failed, falling back", error);
-    if (fallbackToOld) {
-      // Fallback to old API if new one fails
+    if (fallbackToOld && !isFeatureEnabled("USE_ELECTRON_API")) {
+      // Fallback to old API if new one fails and feature flag allows HTTP
       const urlParams = new URLSearchParams();
       if (query) urlParams.set("q", query);
       if (searchParams.type) urlParams.set("type", searchParams.type);
@@ -64,22 +64,27 @@ export async function searchSounds(
     throw error;
   }
 
-  // Original implementation
-  const urlParams = new URLSearchParams();
-  if (query) urlParams.set("q", query);
-  if (searchParams.type) urlParams.set("type", searchParams.type);
-  if (searchParams.page) urlParams.set("page", searchParams.page.toString());
-  if (searchParams.page_size)
-    urlParams.set("page_size", searchParams.page_size.toString());
-  if (searchParams.sort) urlParams.set("sort", searchParams.sort);
-  if (searchParams.min_rating)
-    urlParams.set("min_rating", searchParams.min_rating.toString());
-  if (searchParams.commercial_only !== undefined)
-    urlParams.set("commercial_only", searchParams.commercial_only.toString());
+  // Original implementation - only available when USE_ELECTRON_API is disabled
+  if (!isFeatureEnabled("USE_ELECTRON_API")) {
+    const urlParams = new URLSearchParams();
+    if (query) urlParams.set("q", query);
+    if (searchParams.type) urlParams.set("type", searchParams.type);
+    if (searchParams.page) urlParams.set("page", searchParams.page.toString());
+    if (searchParams.page_size)
+      urlParams.set("page_size", searchParams.page_size.toString());
+    if (searchParams.sort) urlParams.set("sort", searchParams.sort);
+    if (searchParams.min_rating)
+      urlParams.set("min_rating", searchParams.min_rating.toString());
+    if (searchParams.commercial_only !== undefined)
+      urlParams.set("commercial_only", searchParams.commercial_only.toString());
 
-  const res = await fetch(`/api/sounds/search?${urlParams.toString()}`);
-  if (!res.ok) return { success: false, error: `HTTP ${res.status}` };
-  return await res.json();
+    const res = await fetch(`/api/sounds/search?${urlParams.toString()}`);
+    if (!res.ok) return { success: false, error: `HTTP ${res.status}` };
+    return await res.json();
+  }
+
+  // If USE_ELECTRON_API is enabled but we reach here, return error
+  return { success: false, error: "Electron API not available and HTTP disabled" };
 }
 
 export async function transcribeAudio(

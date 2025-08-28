@@ -35,9 +35,16 @@ fi
 echo "🔄 Backing up Next.js config files..."
 CONFIG_BACKUP="docs/backups/nextjs-config-backup-${BACKUP_DATE}.tar.gz"
 
-if [ -f "apps/web/next.config.mjs" ] || [ -f "apps/web/next-env.d.ts" ]; then
-    tar -czf "$CONFIG_BACKUP" -C apps/web next.config.mjs next-env.d.ts 2>/dev/null
-    echo "✅ Next.js config files backed up to: $CONFIG_BACKUP"
+files=()
+[[ -f "apps/web/next.config.mjs" ]] && files+=("next.config.mjs")
+[[ -f "apps/web/next-env.d.ts" ]] && files+=("next-env.d.ts")
+if ((${#files[@]} > 0)); then
+    if tar -czf "$CONFIG_BACKUP" -C apps/web "${files[@]}"; then
+        echo "✅ Next.js config files backed up to: $CONFIG_BACKUP (${files[*]})"
+    else
+        echo "❌ Config backup failed"
+        exit 1
+    fi
 else
     echo "ℹ️ No Next.js config files found to backup"
 fi

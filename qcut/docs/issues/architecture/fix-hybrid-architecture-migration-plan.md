@@ -188,15 +188,20 @@ ipcMain.handle('sounds:search', async (event, params) => {
 ```javascript
 // File: electron/sound-handler.js
 async function performFreesoundSearch(params, apiKey) {
-  const { 
-    q: query, 
+  const {
+    // accept both shapes
+    q,
+    query: queryProp,
     type = 'effects',
     page = 1,
-    page_size: pageSize = 20,
+    page_size,
+    pageSize: pageSizeProp,
     sort = 'downloads',
     min_rating = 3,
     commercial_only = true 
   } = params;
+  const query = q ?? queryProp ?? '';
+  const pageSize = (page_size ?? pageSizeProp ?? 20);
 
   // Handle songs limitation (from original API)
   if (type === 'songs') {
@@ -433,6 +438,10 @@ try {
 module.exports = function setupTranscribeHandlers() {
   ipcMain.handle('transcribe:audio', async (event, requestData) => {
     return await handleTranscription(requestData);
+  });
+
+  ipcMain.handle('transcribe:cancel', async (event, id) => {
+    return await cancelTranscription(id);
   });
 };
 ```
@@ -869,6 +878,16 @@ export const API_ROUTES_STATUS = {
 ```bash
 # File: scripts/cleanup-migrated-api-routes.sh
 #!/bin/bash
+
+safe_remove() {
+  local path="$1"
+  local label="$2"
+  if [ -e "$path" ]; then
+    rm -rf "$path" && echo "✅ Removed: $label ($path)" || echo "❌ Failed to remove: $label ($path)"
+  else
+    echo "ℹ️ Skipped (not found): $label ($path)"
+  fi
+}
 
 echo "🗑️ Removing migrated API routes (sounds, transcribe)..."
 

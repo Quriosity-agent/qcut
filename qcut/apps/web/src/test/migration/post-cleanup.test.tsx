@@ -132,8 +132,8 @@ describe("Post-Cleanup Functionality", () => {
   });
 });
 
-// Export cleanup results for documentation
-export const POST_CLEANUP_RESULTS = {
+// Cleanup results (not exported from test files)
+const POST_CLEANUP_RESULTS = {
   phase: "Phase 3.3 - Post-Cleanup Verification",
   status: "✅ COMPLETE",
   results: {

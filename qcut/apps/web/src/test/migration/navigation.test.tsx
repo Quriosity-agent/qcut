@@ -14,21 +14,28 @@ describe("TanStack Router Navigation", () => {
   });
 
   describe("Navigation Patterns Verified", () => {
-    it("should handle all navigation patterns correctly", () => {
-      // VERIFIED: Navigation works correctly
-      const verifiedPatterns = {
-        directUrlAccess: "✅ Hash-based URLs work in Electron",
-        programmaticNavigation: "✅ useNavigate() hook functional",
-        browserBackForward: "✅ Browser history integration working",
-        hashBasedRouting: "✅ Optimized for Electron environment",
-        lazyLoading: "✅ Code splitting implemented for performance",
-        dynamicRouteParameters: "✅ $project_id and $slug patterns work",
-      };
+    it("should exercise router with hash history", () => {
+      // Import router dependencies
+      const { createRouter, createHashHistory } = require("@tanstack/react-router");
+      const { routeTree } = require("../../routeTree.gen");
 
-      // All patterns confirmed working
-      Object.entries(verifiedPatterns).forEach(([pattern, status]) => {
-        expect(status).toContain("✅");
+      // Create router instance like in App.tsx
+      const testRouter = createRouter({
+        routeTree,
+        history: createHashHistory(),
+        defaultPreload: "intent",
+        context: {},
       });
+
+      // Verify router is properly configured
+      expect(testRouter).toBeDefined();
+      expect(testRouter.history).toBeDefined();
+      expect(testRouter.routeTree).toBeDefined();
+
+      // Verify essential routes exist in the route tree
+      const routeIds = testRouter.routeTree.children?.map((route: any) => route.id) || [];
+      expect(routeIds).toContain("/");
+      expect(routeIds.length).toBeGreaterThan(0);
     });
 
     it("should not reference Next.js components", () => {
