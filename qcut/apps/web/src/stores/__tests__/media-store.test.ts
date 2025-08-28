@@ -183,7 +183,13 @@ describe('MediaStore', () => {
         url: 'blob:stored',
         file: new File([''], 'video.mp4', { type: 'video/mp4' }),
         duration: 60,
-        thumbnailUrl: 'stored-thumb.jpg'
+        thumbnailUrl: 'stored-thumb.jpg',
+        width: 1920,
+        height: 1080,
+        fps: 30,
+        metadata: {
+          processingMethod: 'immediate'
+        }
       }
     ];
     

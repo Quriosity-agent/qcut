@@ -406,12 +406,14 @@ describe('TimelineStore', () => {
       });
     });
     
-    const element = textTrack.elements[0];
+    // Get fresh reference to track after adding element
+    const updatedTextTrack = result.current.tracks.find(t => t.type === 'text');
+    const element = updatedTextTrack?.elements[0];
     if (!element) throw new Error('Expected text element to exist');
     
     // Update text element using the correct method (updateTextElement, not updateElement)
     act(() => {
-      result.current.updateTextElement(textTrack.id, element.id, {
+      result.current.updateTextElement(updatedTextTrack.id, element.id, {
         content: 'Updated Text',
         fontSize: 24,
         fontFamily: 'Arial'

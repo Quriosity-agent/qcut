@@ -11,7 +11,10 @@ describe('Asset Path Utilities', () => {
     });
     
     afterEach(() => {
-      (window as any).location = originalLocation;
+      // Restore window.location only if window exists
+      if (typeof window !== 'undefined') {
+        (window as any).location = originalLocation;
+      }
       vi.unstubAllGlobals();
     });
     
