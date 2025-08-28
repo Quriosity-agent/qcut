@@ -73,15 +73,12 @@ describe("TanStack Router Navigation", () => {
   });
 
   describe("Route Loading and Performance", () => {
-    it("should implement lazy loading for performance optimization", () => {
-      const lazyRoutes = {
-        projects: "projects.lazy.tsx",
-        editor: "editor.$project_id.lazy.tsx",
-      };
-
-      for (const [, filename] of Object.entries(lazyRoutes)) {
-        expect(filename).toContain(".lazy.tsx");
-      }
+    it("should define at least one lazy route", () => {
+      const fs = require("node:fs");
+      const path = require("node:path");
+      const routeTreePath = path.resolve(__dirname, "../../routeTree.gen.ts");
+      const src = fs.readFileSync(routeTreePath, "utf8");
+      expect(/createLazyFileRoute\s*\(/.test(src)).toBe(true);
     });
 
     it("should handle route preloading correctly", () => {
