@@ -1,4 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { render } from "@testing-library/react";
+import { RouterProvider } from "@tanstack/react-router";
 
 describe("TanStack Router Navigation", () => {
   beforeEach(() => {
@@ -136,22 +138,18 @@ describe("TanStack Router Navigation", () => {
   });
 
   describe("Routing Integration Tests", () => {
-    it("should integrate with React Suspense correctly", () => {
-      // App.tsx wraps RouterProvider in Suspense
-      const hasSuspenseWrapper = true;
-      expect(hasSuspenseWrapper).toBe(true);
-    });
-
-    it("should have proper TypeScript integration", () => {
-      // Router instance registered for type safety
-      const hasTypeRegistration = true;
-      expect(hasTypeRegistration).toBe(true);
-    });
-
-    it("should initialize correctly in Electron environment", () => {
-      // App has initialization delay for Electron readiness
-      const hasInitDelay = true;
-      expect(hasInitDelay).toBe(true);
+    it("should mount RouterProvider without throwing", () => {
+      const { createRouter, createHashHistory } = require("@tanstack/react-router");
+      const { routeTree } = require("../../routeTree.gen");
+      
+      const router = createRouter({ 
+        routeTree, 
+        history: createHashHistory(), 
+        defaultPreload: "intent", 
+        context: {} 
+      });
+      
+      expect(() => render(<RouterProvider router={router} />)).not.toThrow();
     });
   });
 });
