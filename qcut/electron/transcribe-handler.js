@@ -3,12 +3,12 @@ const fs = require("fs/promises");
 const path = require("node:path");
 const os = require("node:os");
 
-// Try to load electron-log, fallback to console
+// Try to load electron-log, fallback to no-op logger
 let log;
 try {
   log = require("electron-log");
 } catch (error) {
-  log = console;
+  log = { info() {}, error() {}, warn() {}, debug() {} };
 }
 
 module.exports = function setupTranscribeHandlers() {

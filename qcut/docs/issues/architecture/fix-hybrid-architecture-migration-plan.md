@@ -226,18 +226,21 @@ async function performFreesoundSearch(params, apiKey) {
     fields: 'id,name,description,url,previews,download,duration,filesize,type,channels,bitrate,bitdepth,samplerate,username,tags,license,created,num_downloads,avg_rating,num_ratings'
   });
 
-  // Apply filters (same as original API)
+  // Apply combined filter (corrected logic)
   if (type === 'effects' || !type) {
-    searchParams.append('filter', 'duration:[* TO 30.0]');
-    searchParams.append('filter', `avg_rating:[${min_rating} TO *]`);
+    const filters = [
+      'duration:[* TO 30.0]',
+      `avg_rating:[${min_rating} TO *]`,
+      'tag:sound-effect OR tag:sfx OR tag:foley OR tag:ambient OR tag:nature OR tag:mechanical OR tag:electronic OR tag:impact OR tag:whoosh OR tag:explosion'
+    ];
 
     if (commercial_only) {
-      searchParams.append('filter', 
-        'license:("Attribution" OR "Creative Commons 0" OR "Attribution Noncommercial" OR "Attribution Commercial")');
+      // Only include licenses that allow commercial use
+      filters.push('license:("Attribution" OR "Creative Commons 0")');
     }
 
-    searchParams.append('filter',
-      'tag:sound-effect OR tag:sfx OR tag:foley OR tag:ambient OR tag:nature OR tag:mechanical OR tag:electronic OR tag:impact OR tag:whoosh OR tag:explosion');
+    // Combine all filters with AND logic
+    searchParams.append('filter', filters.join(' AND '));
   }
 
   const response = await fetch(`https://freesound.org/apiv2/search/text/?${searchParams.toString()}`);
@@ -451,7 +454,16 @@ module.exports = function setupTranscribeHandlers() {
 // File: electron/transcribe-handler.js
 async function handleTranscription(requestData) {
   try {
-    const { filename, language = 'auto', decryptionKey, iv } = requestData;
+    const { id, controller, filename, audioBuffer, format = 'webm', language = 'auto', decryptionKey, iv } = requestData;
+    
+    // Persist buffer to a secure temp file if provided
+    let effectiveFilename = filename;
+    let tmpPath;
+    if (!effectiveFilename && audioBuffer) {
+      tmpPath = path.join(os.tmpdir(), `qcut-transcribe-${id}.${format}`);
+      await fs.writeFile(tmpPath, Buffer.from(audioBuffer));
+      effectiveFilename = tmpPath;
+    }
     
     // Check if transcription is configured
     const transcriptionCheck = isTranscriptionConfigured();
@@ -466,7 +478,7 @@ async function handleTranscription(requestData) {
 
     // Prepare request body for Modal API (same as Next.js version)
     const modalRequestBody = {
-      filename,
+      filename: effectiveFilename,
       language,
     };
 
@@ -483,6 +495,7 @@ async function handleTranscription(requestData) {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(modalRequestBody),
+      signal: controller?.signal,
     });
 
     if (!response.ok) {
@@ -513,11 +526,23 @@ async function handleTranscription(requestData) {
       return { success: false, error: 'Invalid response from transcription service' };
     }
 
+    // Clean up temp file if created
+    if (tmpPath) {
+      try {
+        await fs.unlink(tmpPath);
+      } catch (unlinkError) {
+        log.warn('Failed to clean up temp file:', tmpPath, unlinkError);
+      }
+    }
+
     return {
       success: true,
       text: result.data.text,
+      // Return both for transition period
       segments: result.data.segments,
-      language: result.data.language
+      timestamps: result.data.segments,
+      language: result.data.language,
+      id,
     };
     
   } catch (error) {

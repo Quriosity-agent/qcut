@@ -214,7 +214,7 @@ function setupSoundIPC() {
         if (commercial_only) {
           params.append(
             "filter",
-            'license:("Attribution" OR "Creative Commons 0" OR "Attribution Noncommercial" OR "Attribution Commercial")'
+            'license:("Attribution" OR "Creative Commons 0")'
           );
         }
 
