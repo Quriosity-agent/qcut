@@ -16,15 +16,15 @@ async function legacySoundSearch(
   const urlParams = new URLSearchParams();
   if (query) urlParams.set("q", query);
   if (searchParams.type) urlParams.set("type", searchParams.type);
-  if (searchParams.page)
-    urlParams.set("page", searchParams.page.toString());
-  if (searchParams.page_size)
-    urlParams.set("page_size", searchParams.page_size.toString());
+  if (searchParams.page != null)
+    urlParams.set("page", String(searchParams.page));
+  if (searchParams.page_size != null)
+    urlParams.set("page_size", String(searchParams.page_size));
   if (searchParams.sort) urlParams.set("sort", searchParams.sort);
-  if (searchParams.min_rating)
-    urlParams.set("min_rating", searchParams.min_rating.toString());
+  if (searchParams.min_rating != null)
+    urlParams.set("min_rating", String(searchParams.min_rating));
   if (searchParams.commercial_only !== undefined)
-    urlParams.set("commercial_only", searchParams.commercial_only.toString());
+    urlParams.set("commercial_only", String(searchParams.commercial_only));
 
   for (let i = 0; i < retryCount; i++) {
     try {
@@ -139,12 +139,11 @@ export async function transcribeAudio(
         return result;
       }
       throw new Error(result?.error || "IPC transcription failed, attempting fallback");
-    } catch (error) {
-      console.error("Electron transcription API failed, falling back:", error);
-      if (fallbackToOld && !isFeatureEnabled("USE_ELECTRON_API")) {
+    } catch {
+      if (fallbackToOld) {
         return legacyTranscribe(requestData, retryCount);
       }
-      throw error;
+      throw new Error("IPC transcription failed and fallback disabled");
     }
   }
 
