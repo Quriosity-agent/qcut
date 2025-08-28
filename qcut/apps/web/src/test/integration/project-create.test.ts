@@ -39,7 +39,7 @@ vi.mock("@/lib/storage/storage-service", () => ({
 const localStorageMock = (() => {
   let store: Record<string, string> = {};
   return {
-    getItem: (key: string) => (Object.hasOwn(store, key) ? store[key] : null),
+    getItem: (key: string) => (key in store ? store[key] : null),
     setItem: (key: string, value: string) => {
       store[key] = value;
     },
