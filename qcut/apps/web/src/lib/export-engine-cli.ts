@@ -576,7 +576,7 @@ export class CLIExportEngine extends ExportEngine {
       throw new Error("CLI export only available in Electron");
     }
 
-    return await window.electronAPI.invoke("create-export-session");
+    return await window.electronAPI.ffmpeg.createExportSession();
   }
 
   private async renderFramesToDisk(
@@ -628,7 +628,10 @@ export class CLIExportEngine extends ExportEngine {
       }
 
       // Save via IPC
-      await window.electronAPI.invoke("save-frame", {
+      if (!this.sessionId) {
+        throw new Error("No active session ID");
+      }
+      await window.electronAPI.ffmpeg.saveFrame({
         sessionId: this.sessionId,
         frameName,
         data: base64Data,
@@ -785,6 +788,9 @@ export class CLIExportEngine extends ExportEngine {
     );
 
     // Build options AFTER validation so the filtered list is sent
+    if (!this.sessionId) {
+      throw new Error("No active session ID");
+    }
     const exportOptions = {
       sessionId: this.sessionId,
       width: this.canvas.width,
@@ -803,10 +809,7 @@ export class CLIExportEngine extends ExportEngine {
     // For now, use basic invoke without progress tracking
 
     try {
-      const result = await window.electronAPI.invoke(
-        "export-video-cli",
-        exportOptions
-      );
+      const result = await window.electronAPI.ffmpeg.exportVideoCLI(exportOptions);
       debugLog("[CLI Export] FFmpeg export completed successfully:", result);
       return result.outputFile;
     } catch (error) {
@@ -825,10 +828,7 @@ export class CLIExportEngine extends ExportEngine {
     if (!window.electronAPI) {
       throw new Error("CLI export only available in Electron");
     }
-    const buffer = await window.electronAPI.invoke(
-      "read-output-file",
-      outputPath
-    );
+    const buffer = await window.electronAPI.ffmpeg.readOutputFile(outputPath);
     return new Blob([buffer], { type: "video/mp4" });
   }
 
@@ -883,7 +883,7 @@ export class CLIExportEngine extends ExportEngine {
     }
 
     try {
-      await window.electronAPI.invoke("cleanup-export-session", this.sessionId);
+      await window.electronAPI.ffmpeg.cleanupExportSession(this.sessionId);
       debugLog(
         `[CLIExportEngine] 🧹 Cleaned up export session: ${this.sessionId}`
       );

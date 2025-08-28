@@ -90,6 +90,14 @@ export interface ElectronAPI {
       error?: string;
       message?: string;
     }>;
+    downloadPreview: (params: {
+      url: string;
+      id: number;
+    }) => Promise<{
+      success: boolean;
+      localPath?: string;
+      error?: string;
+    }>;
   };
 
   // Transcription operations
@@ -144,6 +152,24 @@ export interface ElectronAPI {
     }) => Promise<{ success: boolean; outputFile: string }>;
     readOutputFile: (path: string) => Promise<Buffer>;
     cleanupExportSession: (sessionId: string) => Promise<void>;
+  };
+
+  apiKeys: {
+    get: () => Promise<{
+      falApiKey: string;
+      freesoundApiKey: string;
+    }>;
+    set: (keys: {
+      falApiKey?: string;
+      freesoundApiKey?: string;
+    }) => Promise<boolean>;
+    clear: () => Promise<boolean>;
+  };
+
+  github: {
+    fetchStars: () => Promise<{
+      stars: number;
+    }>;
   };
 }
 

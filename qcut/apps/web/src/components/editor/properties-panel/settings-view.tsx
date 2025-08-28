@@ -283,8 +283,8 @@ function ApiKeysView() {
   // Load API keys on component mount
   const loadApiKeys = useCallback(async () => {
     try {
-      if (window.electronAPI?.invoke) {
-        const keys = await window.electronAPI.invoke("api-keys:get");
+      if (window.electronAPI?.apiKeys) {
+        const keys = await window.electronAPI.apiKeys.get();
         if (keys) {
           setFalApiKey(keys.falApiKey || "");
           setFreesoundApiKey(keys.freesoundApiKey || "");
@@ -301,7 +301,7 @@ function ApiKeysView() {
   const saveApiKeys = useCallback(async () => {
     try {
       if (window.electronAPI?.invoke) {
-        await window.electronAPI.invoke("api-keys:set", {
+        await window.electronAPI.apiKeys.set({
           falApiKey: falApiKey.trim(),
           freesoundApiKey: freesoundApiKey.trim(),
         });
@@ -320,12 +320,11 @@ function ApiKeysView() {
     setIsTestingFreesound(true);
     setFreesoundTestResult(null);
     try {
-      if (window.electronAPI?.invoke) {
-        const result = await window.electronAPI.invoke(
-          "sounds:test-key",
-          freesoundApiKey.trim()
-        );
-        setFreesoundTestResult(result);
+      if (window.electronAPI?.sounds) {
+        const result = await window.electronAPI.sounds.search({
+          q: "test",
+        });
+        setFreesoundTestResult({ success: result.success, message: result.message || "Test completed" });
       }
     } catch (error) {
       setFreesoundTestResult({ success: false, message: "Test failed" });

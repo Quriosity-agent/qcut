@@ -35,6 +35,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
   // Sound operations
   sounds: {
     search: (params) => ipcRenderer.invoke("sounds:search", params),
+    downloadPreview: (params) => ipcRenderer.invoke("sounds:download-preview", params),
   },
 
   // Transcription operations
@@ -61,6 +62,18 @@ contextBridge.exposeInMainWorld("electronAPI", {
       ipcRenderer.invoke("get-ffmpeg-resource-path", filename),
     checkFFmpegResource: (filename) =>
       ipcRenderer.invoke("check-ffmpeg-resource", filename),
+  },
+
+  // API key operations
+  apiKeys: {
+    get: () => ipcRenderer.invoke("api-keys:get"),
+    set: (keys) => ipcRenderer.invoke("api-keys:set", keys),
+    clear: () => ipcRenderer.invoke("api-keys:clear"),
+  },
+
+  // GitHub operations
+  github: {
+    fetchStars: () => ipcRenderer.invoke("fetch-github-stars"),
   },
 
   // Utility functions

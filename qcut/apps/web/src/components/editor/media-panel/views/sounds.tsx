@@ -142,18 +142,15 @@ function SoundEffectsView() {
         let audioUrl = sound.previewUrl;
 
         // If in Electron, download preview first to avoid CORS issues
-        if (window.electronAPI?.invoke) {
+        if (window.electronAPI?.sounds) {
           console.log("Downloading preview for local playback...");
-          const result = await window.electronAPI.invoke(
-            "sounds:download-preview",
-            {
-              url: sound.previewUrl,
-              id: sound.id,
-            }
-          );
+          const result = await window.electronAPI.sounds.downloadPreview({
+            url: sound.previewUrl,
+            id: sound.id,
+          });
 
-          if (result.success) {
-            audioUrl = result.path;
+          if (result.success && result.localPath) {
+            audioUrl = result.localPath;
             console.log("Playing from local file:", audioUrl);
           } else {
             console.error("Preview download failed:", result.error);

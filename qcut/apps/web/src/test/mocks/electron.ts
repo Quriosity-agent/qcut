@@ -66,6 +66,10 @@ export const mockElectronAPI: ElectronAPI = {
       success: true,
       results: [],
     }),
+    downloadPreview: vi.fn().mockResolvedValue({
+      success: true,
+      localPath: "/tmp/preview.mp3",
+    }),
   },
 
   // Transcription operations
@@ -78,6 +82,23 @@ export const mockElectronAPI: ElectronAPI = {
     cancel: vi.fn().mockResolvedValue({
       success: true,
       message: "Transcription cancelled",
+    }),
+  },
+
+  // API key operations
+  apiKeys: {
+    get: vi.fn().mockResolvedValue({
+      falApiKey: "",
+      freesoundApiKey: "",
+    }),
+    set: vi.fn().mockResolvedValue(true),
+    clear: vi.fn().mockResolvedValue(true),
+  },
+
+  // GitHub operations
+  github: {
+    fetchStars: vi.fn().mockResolvedValue({
+      stars: 1234,
     }),
   },
 };
