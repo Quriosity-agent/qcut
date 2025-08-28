@@ -489,7 +489,7 @@ module.exports = function setupTranscribeHandlers() {
 // File: electron/transcribe-handler.js
 async function handleTranscription(requestData) {
   try {
-    const { id, controller, filename, audioBuffer, format = 'webm', language = 'auto', decryptionKey, iv } = requestData;
+    const { id, filename, audioBuffer, format = 'webm', language = 'auto', decryptionKey, iv } = requestData;
     
     // Persist buffer to a secure temp file if provided
     let effectiveFilename = filename;
@@ -530,7 +530,7 @@ async function handleTranscription(requestData) {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(modalRequestBody),
-      signal: controller?.signal,
+      signal: controllers.get(id)?.signal,
     });
 
     if (!response.ok) {
@@ -561,15 +561,6 @@ async function handleTranscription(requestData) {
       return { success: false, error: 'Invalid response from transcription service' };
     }
 
-    // Clean up temp file if created
-    if (tmpPath) {
-      try {
-        await fs.unlink(tmpPath);
-      } catch (unlinkError) {
-        log.warn('Failed to clean up temp file:', tmpPath, unlinkError);
-      }
-    }
-
     return {
       success: true,
       text: result.data.text,
@@ -583,16 +574,20 @@ async function handleTranscription(requestData) {
   } catch (error) {
     log.error('Transcription API error:', error);
     
-    // Best-effort tmp cleanup on error
-    try { 
-      if (typeof tmpPath === 'string') await fs.unlink(tmpPath); 
-    } catch {}
-    
     return {
       success: false,
       error: 'Internal server error',
       message: 'An unexpected error occurred during transcription'
     };
+  } finally {
+    // Clean up temp file in both success and error cases
+    if (tmpPath) {
+      try {
+        await fs.unlink(tmpPath);
+      } catch (unlinkError) {
+        log.warn('Failed to clean up temp file:', tmpPath, unlinkError);
+      }
+    }
   }
 }
 
