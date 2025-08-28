@@ -1,11 +1,14 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
+import React from 'react';
 
 // Clear any mocks before importing the real module
 vi.unmock('@/hooks/use-toast');
 
 // Import the real implementation
 import { useToast } from '@/hooks/use-toast';
+import { ToastAction } from '@/components/ui/toast';
+import type { ToastActionElement } from '@/components/ui/toast';
 
 describe('useToast - Advanced Features', () => {
   beforeEach(() => {
@@ -36,16 +39,18 @@ describe('useToast - Advanced Features', () => {
       result.current.toast({
         title: 'Action Toast',
         description: 'This toast has an action',
-        action: {
-          altText: 'Undo action',
-          onClick: onAction
-        } as any
+        action: React.createElement(
+          ToastAction,
+          { altText: 'Undo action', onClick: onAction },
+          'Undo'
+        ) as ToastActionElement
       });
     });
     
     expect(result.current.toasts.length).toBeGreaterThan(0);
-    expect(result.current.toasts[0]?.action).toBeDefined();
-    expect(result.current.toasts[0]?.title).toBe('Action Toast');
+    const latestToast = result.current.toasts.at(0);
+    expect(latestToast?.action).toBeDefined();
+    expect(latestToast?.title).toBe('Action Toast');
   });
   
   it('supports toast variants', () => {
@@ -59,8 +64,8 @@ describe('useToast - Advanced Features', () => {
     });
     
     expect(result.current.toasts.length).toBeGreaterThan(0);
-    expect(result.current.toasts[0]?.variant).toBe('destructive');
-    expect(result.current.toasts[0]?.title).toBe('Error Toast');
+    expect(result.current.toasts.at(0)?.variant).toBe('destructive');
+    expect(result.current.toasts.at(0)?.title).toBe('Error Toast');
   });
   
   it('handles multiple toast variants', () => {
@@ -73,13 +78,13 @@ describe('useToast - Advanced Features', () => {
       act(() => {
         result.current.toast({
           title: `${variant} toast`,
-          variant: variant as any
+          variant: variant
         });
       });
       
       // Due to TOAST_LIMIT = 1, only latest toast should be visible
       expect(result.current.toasts.length).toBeGreaterThan(0);
-      const currentToast = result.current.toasts[0];
+      const currentToast = result.current.toasts.at(0);
       expect(currentToast?.variant || 'default').toBeDefined();
     }
   });
@@ -87,16 +92,17 @@ describe('useToast - Advanced Features', () => {
   it('handles toast with all properties', () => {
     const { result } = renderHook(() => useToast());
     
-    let toastResult: any;
+    let toastResult: ReturnType<typeof result.current.toast>;
     act(() => {
       toastResult = result.current.toast({
         title: 'Complete Toast',
         description: 'This toast has all properties',
         variant: 'default',
-        action: {
-          altText: 'Try again',
-          onClick: () => {}
-        } as any
+        action: React.createElement(
+          ToastAction,
+          { altText: 'Try again', onClick: () => {} },
+          'Try again'
+        ) as ToastActionElement
       });
     });
     
@@ -107,7 +113,7 @@ describe('useToast - Advanced Features', () => {
     
     expect(result.current.toasts.length).toBeGreaterThan(0);
     
-    const toast = result.current.toasts[0];
+    const toast = result.current.toasts.at(0);
     expect(toast?.title).toBe('Complete Toast');
     expect(toast?.description).toBe('This toast has all properties');
     expect(toast?.variant).toBe('default');
@@ -116,7 +122,7 @@ describe('useToast - Advanced Features', () => {
   
   it('updates toast after creation', () => {
     const { result } = renderHook(() => useToast());
-    let toastResult: any;
+    let toastResult: ReturnType<typeof result.current.toast>;
     
     act(() => {
       toastResult = result.current.toast({
@@ -125,7 +131,7 @@ describe('useToast - Advanced Features', () => {
     });
     
     expect(result.current.toasts.length).toBeGreaterThan(0);
-    expect(result.current.toasts[0]?.title).toBe('Original Title');
+    expect(result.current.toasts.at(0)?.title).toBe('Original Title');
     
     act(() => {
       toastResult.update({
@@ -134,13 +140,13 @@ describe('useToast - Advanced Features', () => {
       });
     });
     
-    expect(result.current.toasts[0]?.title).toBe('Updated Title');
-    expect(result.current.toasts[0]?.description).toBe('Now with description');
+    expect(result.current.toasts.at(0)?.title).toBe('Updated Title');
+    expect(result.current.toasts.at(0)?.description).toBe('Now with description');
   });
   
   it('handles rapid toast creation and dismissal', () => {
     const { result } = renderHook(() => useToast());
-    const toastResults: any[] = [];
+    const toastResults: Array<ReturnType<typeof result.current.toast>> = [];
     
     // Create multiple toasts rapidly
     act(() => {
@@ -154,15 +160,18 @@ describe('useToast - Advanced Features', () => {
     
     // Due to TOAST_LIMIT = 1, only the last toast should be visible
     expect(result.current.toasts).toHaveLength(1);
-    expect(result.current.toasts[0]?.title).toBe('Toast 4');
+    expect(result.current.toasts.at(0)?.title).toBe('Toast 4');
     
     // Dismiss the visible toast
     act(() => {
-      result.current.dismiss(result.current.toasts[0]?.id);
+      const toastId = result.current.toasts.at(0)?.id;
+      if (toastId) {
+        result.current.dismiss(toastId);
+      }
     });
     
     // Toast should be marked as dismissed (open = false) 
-    const toast = result.current.toasts[0];
+    const toast = result.current.toasts.at(0);
     expect(toast?.open).toBe(false);
   });
   
@@ -177,7 +186,7 @@ describe('useToast - Advanced Features', () => {
     
     expect(result.current.toasts.length).toBeGreaterThan(0);
     
-    const toast = result.current.toasts[0];
+    const toast = result.current.toasts.at(0);
     expect(toast?.title).toBe('Callback Toast');
     expect(toast?.onOpenChange).toBeDefined();
     
@@ -194,7 +203,7 @@ describe('useToast - Advanced Features', () => {
     });
     
     // Toast should be dismissed (open = false)
-    expect(result.current.toasts[0]?.open).toBe(false);
+    expect(result.current.toasts.at(0)?.open).toBe(false);
   });
   
   it('respects TOAST_LIMIT constraint', () => {
@@ -213,7 +222,7 @@ describe('useToast - Advanced Features', () => {
     expect(result.current.toasts).toHaveLength(1);
     
     // Should be the most recent toast
-    expect(result.current.toasts[0]?.title).toBe('Toast 2');
+    expect(result.current.toasts.at(0)?.title).toBe('Toast 2');
   });
   
   it('handles toast dismissal with timeout', () => {
@@ -227,7 +236,7 @@ describe('useToast - Advanced Features', () => {
     
     expect(result.current.toasts.length).toBeGreaterThan(0);
     
-    const toastId = result.current.toasts[0]?.id;
+    const toastId = result.current.toasts.at(0)?.id;
     expect(toastId).toBeDefined();
     
     // Dismiss the toast
@@ -236,7 +245,7 @@ describe('useToast - Advanced Features', () => {
     });
     
     // Toast should be marked for removal
-    const toast = result.current.toasts[0];
+    const toast = result.current.toasts.at(0);
     expect(toast?.open).toBe(false);
     
     // Fast-forward time to trigger removal

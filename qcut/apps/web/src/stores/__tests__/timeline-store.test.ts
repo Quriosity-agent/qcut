@@ -122,8 +122,9 @@ describe('TimelineStore', () => {
     expect(textTrack).toBeDefined();
     
     // Remove the track
+    if (!textTrack) throw new Error('Expected text track to exist');
     act(() => {
-      result.current.removeTrack(textTrack!.id);
+      result.current.removeTrack(textTrack.id);
     });
     
     expect(result.current.tracks).toHaveLength(1);
@@ -337,19 +338,64 @@ describe('TimelineStore', () => {
     expect(audioTrack?.muted).toBe(false);
     
     // Toggle mute
+    if (!audioTrack) throw new Error('Expected audio track to exist');
     act(() => {
-      result.current.toggleTrackMute(audioTrack!.id);
+      result.current.toggleTrackMute(audioTrack.id);
     });
     
-    const mutedTrack = result.current.tracks.find(t => t.id === audioTrack!.id);
+    const mutedTrack = result.current.tracks.find(t => t.id === audioTrack.id);
     expect(mutedTrack?.muted).toBe(true);
     
     // Toggle again
     act(() => {
-      result.current.toggleTrackMute(audioTrack!.id);
+      result.current.toggleTrackMute(audioTrack.id);
     });
     
-    const unmutedTrack = result.current.tracks.find(t => t.id === audioTrack!.id);
+    const unmutedTrack = result.current.tracks.find(t => t.id === audioTrack.id);
     expect(unmutedTrack?.muted).toBe(false);
+  });
+
+  it('updates text elements using updateTextElement', () => {
+    const { result } = renderHook(() => useTimelineStore());
+    
+    // Add a text track
+    act(() => {
+      result.current.addTrack('text');
+    });
+    
+    const textTrack = result.current.tracks.find(t => t.type === 'text');
+    if (!textTrack) throw new Error('Expected text track to exist');
+    
+    // Add a text element
+    act(() => {
+      result.current.addElementToTrack(textTrack.id, {
+        type: 'text',
+        text: 'Original Text',
+        startTime: 0,
+        duration: 5,
+        name: 'Text Element'
+      });
+    });
+    
+    const element = textTrack.elements[0];
+    if (!element) throw new Error('Expected text element to exist');
+    
+    // Update text element using the correct method (updateTextElement, not updateElement)
+    act(() => {
+      result.current.updateTextElement(textTrack.id, element.id, {
+        text: 'Updated Text',
+        fontSize: 24,
+        fontFamily: 'Arial'
+      });
+    });
+    
+    const updatedTrack = result.current.tracks.find(t => t.id === textTrack.id);
+    const updatedElement = updatedTrack?.elements[0];
+    
+    // Verify the text was updated
+    expect(updatedElement).toBeDefined();
+    if (updatedElement && 'text' in updatedElement) {
+      expect(updatedElement.text).toBe('Updated Text');
+    }
   });
 });

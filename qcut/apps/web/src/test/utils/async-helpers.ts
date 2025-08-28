@@ -100,18 +100,23 @@ export async function flushPromises(): Promise<void> {
  * Create a deferred promise with manual resolution
  */
 export function createDeferred<T>() {
-  let resolve: (value: T) => void;
-  let reject: (error: any) => void;
-  
+  let resolveRef: (value: T) => void = () => {
+    throw new Error('Deferred.resolve used before initialization');
+  };
+  let rejectRef: (reason: Error) => void = () => {
+    throw new Error('Deferred.reject used before initialization');
+  };
+
   const promise = new Promise<T>((res, rej) => {
-    resolve = res;
-    reject = rej;
+    resolveRef = res;
+    // Promise's reject accepts any, but we narrow to Error to match our usage.
+    rejectRef = rej as (reason: Error) => void;
   });
-  
+
   return {
     promise,
-    resolve: resolve!,
-    reject: reject!,
+    resolve: resolveRef,
+    reject: rejectRef,
   };
 }
 

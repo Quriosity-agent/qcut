@@ -57,15 +57,17 @@ export class MockIDBRequest {
   
   onsuccess: ((event: Event) => void) | null = null;
   onerror: ((event: Event) => void) | null = null;
+  onupgradeneeded: ((event: Event) => void) | null = null;
+  onblocked: ((event: Event) => void) | null = null;
   
-  constructor(result?: any) {
+  constructor(result?: unknown, autoSuccess: boolean = true) {
     this.result = result;
-    // Simulate async success
-    setTimeout(() => {
-      if (this.onsuccess) {
-        this.onsuccess(new Event('success'));
-      }
-    }, 0);
+    if (autoSuccess) {
+      // Simulate async success with an event-like object whose target is the request
+      setTimeout(() => {
+        this.onsuccess?.({ type: 'success', target: this } as unknown as Event);
+      }, 0);
+    }
   }
 }
 

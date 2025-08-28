@@ -13,18 +13,14 @@ describe('useToast', () => {
   });
   
   afterEach(() => {
-    // Clear toasts after each test while timers are still fake
-    const { result } = renderHook(() => useToast());
+    // Clean up any existing toasts under fake timers to fully flush queued removals
+    const { result, unmount } = renderHook(() => useToast());
     act(() => {
-      result.current.toasts.forEach(t => {
-        result.current.dismiss(t.id);
-      });
-    });
-    
-    act(() => {
+      result.current.dismiss();
       vi.runAllTimers();
     });
-    
+    unmount();
+    vi.clearAllTimers();
     vi.useRealTimers();
   });
   
@@ -147,7 +143,7 @@ describe('useToast', () => {
   describe('toast update', () => {
     it('updates existing toast', () => {
       const { result } = renderHook(() => useToast());
-      let toastResult: any;
+      let toastResult: ReturnType<typeof result.current.toast>;
       
       act(() => {
         toastResult = result.current.toast({
@@ -175,7 +171,7 @@ describe('useToast', () => {
     const initialState = { toasts: [] };
     
     it('handles ADD_TOAST action', () => {
-      const toast = {
+      const toastItem = {
         id: '1',
         title: 'Test',
         open: true,
@@ -183,11 +179,11 @@ describe('useToast', () => {
       
       const newState = reducer(initialState, {
         type: 'ADD_TOAST',
-        toast,
+        toast: toastItem,
       });
       
       expect(newState.toasts).toHaveLength(1);
-      expect(newState.toasts[0]).toEqual(toast);
+      expect(newState.toasts[0]).toEqual(toastItem);
     });
     
     it('handles UPDATE_TOAST action', () => {

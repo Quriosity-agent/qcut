@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { getAssetPath } from '@/lib/asset-path';
 
 describe('Asset Path Utilities', () => {
@@ -12,6 +12,7 @@ describe('Asset Path Utilities', () => {
     
     afterEach(() => {
       window.location = originalLocation;
+      vi.unstubAllGlobals();
     });
     
     it('returns absolute path for web environment', () => {
@@ -139,13 +140,13 @@ describe('Asset Path Utilities', () => {
     });
     
     it('handles undefined window gracefully', () => {
-      const tempWindow = global.window;
-      delete (global as any).window;
+      // Use vi.stubGlobal for safe cleanup even if test fails
+      vi.stubGlobal('window', undefined as unknown as Window & typeof globalThis);
       
       // Should default to web behavior when window is undefined
       expect(getAssetPath('assets/test.png')).toBe('/assets/test.png');
       
-      global.window = tempWindow as any;
+      // Cleanup is handled by afterEach calling vi.unstubAllGlobals()
     });
   });
 });

@@ -7,6 +7,13 @@ echo ================================
 REM Navigate to web app directory
 cd /d "%~dp0\..\apps\web" || exit /b 1
 
+REM Ensure Bun is available
+where bun >nul 2>nul
+if %errorlevel% neq 0 (
+  echo Error: Bun is not installed or not on PATH. Please install Bun and retry.
+  exit /b 1
+)
+
 REM Check if dependencies are installed
 if not exist "node_modules" (
   echo Installing dependencies...
@@ -28,13 +35,19 @@ if %errorlevel% neq 0 echo Warning: Type errors found
 REM Run tests with coverage
 echo.
 echo Running tests...
+set EXIT_CODE=0
 call bun test --coverage
+set EXIT_CODE=%errorlevel%
 
-REM Generate coverage report
+REM Generate coverage report (best-effort)
 echo.
 echo Test Coverage Summary:
 call bun test:coverage --reporter=text-summary
 
 echo.
-echo Test suite completed!
-exit /b 0
+if %EXIT_CODE% neq 0 (
+  echo Tests failed with exit code %EXIT_CODE%.
+) else (
+  echo Test suite completed successfully!
+)
+exit /b %EXIT_CODE%

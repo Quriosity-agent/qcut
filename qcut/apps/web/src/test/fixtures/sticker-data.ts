@@ -38,7 +38,7 @@ export const mockAnimatedSticker: OverlaySticker = {
   timing: {
     startTime: 2,
     endTime: 8,
-    duration: 1000,
+    durationMs: 1000,
   },
 };
 
@@ -79,12 +79,18 @@ export function createMockStickers(count: number): OverlaySticker[] {
  * Create sticker with custom properties
  */
 export function createMockSticker(overrides: Partial<OverlaySticker> = {}): OverlaySticker {
+  const now = Date.now();
   return {
     ...mockSticker,
-    id: `sticker-${Date.now()}-${Math.random().toString(36).substring(2)}`,
+    // Deep-clone nested objects to avoid shared references in tests
+    position: { ...mockSticker.position },
+    size: { ...mockSticker.size },
+    timing: mockSticker.timing ? { ...mockSticker.timing } : undefined,
+    id: `sticker-${now}-${Math.random().toString(36).slice(2)}`,
     metadata: {
-      addedAt: Date.now(),
-      lastModified: Date.now(),
+      ...mockSticker.metadata,
+      addedAt: now,
+      lastModified: now,
       source: 'library',
     },
     ...overrides,

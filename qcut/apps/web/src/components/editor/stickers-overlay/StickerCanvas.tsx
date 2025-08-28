@@ -252,15 +252,10 @@ export const StickerCanvas: React.FC<{
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [selectedStickerId, disabled, selectSticker]);
 
-  // Get only visible stickers at current time - moved before hooks
-  const visibleStickers = getVisibleStickersAtTime(currentTime);
-
-  // Don't render if disabled - moved after all hooks
-  if (disabled) return null;
-
-  // Debug logging for sticker visibility - moved before early return
-  // This needs to be before any conditional returns to avoid hooks order issues
+  // Debug logging for sticker visibility
   useEffect(() => {
+    const visibleStickers = getVisibleStickersAtTime(currentTime);
+    
     if (overlayStickers.size > 0) {
       debugLog("[StickerCanvas] State check:", {
         totalStickers: overlayStickers.size,
@@ -289,12 +284,18 @@ export const StickerCanvas: React.FC<{
     }
   }, [
     overlayStickers.size,
-    visibleStickers.length,
     currentTime,
     mediaItems.length,
     mediaStoreLoading,
     mediaStoreError,
+    getVisibleStickersAtTime,
   ]);
+
+  // Get only visible stickers at current time
+  const visibleStickers = getVisibleStickersAtTime(currentTime);
+
+  // Don't render if disabled
+  if (disabled) return null;
 
   // Show loading state while media store is loading
   if (mediaStoreLoading && overlayStickers.size > 0) {

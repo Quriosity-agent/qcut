@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { renderHook } from '@testing-library/react';
+import { renderHook, waitFor } from '@testing-library/react';
 import { useAspectRatio } from '@/hooks/use-aspect-ratio';
 
 // Mock stores
@@ -169,7 +169,8 @@ describe('useAspectRatio - Advanced Features', () => {
   it('handles error state properly', async () => {
     const testError = new Error('Failed to load media');
     const { useAsyncMediaItems } = await import('@/hooks/use-async-media-store');
-    (useAsyncMediaItems as any).mockReturnValue({
+    const mockUseAsyncMediaItems = useAsyncMediaItems as ReturnType<typeof vi.fn>;
+    mockUseAsyncMediaItems.mockReturnValue({
       mediaItems: [],
       loading: false,
       error: testError
@@ -177,7 +178,11 @@ describe('useAspectRatio - Advanced Features', () => {
     
     const { result } = renderHook(() => useAspectRatio());
     
-    // Loading state might be true initially
+    // Wait for the loading state to settle
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
+    
     expect(result.current.error).toBe(testError);
   });
 });

@@ -661,13 +661,13 @@ export class CLIExportEngine extends ExportEngine {
       audioFiles, // Pass audio files to FFmpeg handler (will be validated above)
     };
 
-    console.log(
+    debugLog(
       "[CLI Export] Starting FFmpeg export with options:",
       exportOptions
     );
     // Force detailed logging of audio files
-    audioFiles.forEach((audioFile, index) => {
-      console.log(`[CLI Export] Audio file ${index}:`, {
+    for (const [index, audioFile] of audioFiles.entries()) {
+      debugLog(`[CLI Export] Audio file ${index}:`, {
         path: audioFile.path,
         startTime: audioFile.startTime,
         volume: audioFile.volume,
@@ -676,110 +676,94 @@ export class CLIExportEngine extends ExportEngine {
         pathType: typeof audioFile.path,
         pathLength: audioFile.path?.length,
       });
-      console.log(`[CLI Export] Audio file ${index} raw path:`, audioFile.path);
-    });
+      debugLog(`[CLI Export] Audio file ${index} raw path:`, audioFile.path);
+    }
 
-    console.log(`[CLI Export] Total audio files: ${audioFiles.length}`);
+    debugLog(`[CLI Export] Total audio files: ${audioFiles.length}`);
 
-    // CRITICAL: Check if audio files exist before sending to FFmpeg
-    for (let i = 0; i < audioFiles.length; i++) {
-      const audioFile = audioFiles[i];
-      console.log(
-        `[CLI Export] Checking if audio file ${i} exists via Electron...`
-      );
-
-      try {
-        // Use Electron to check if the file exists
-        const exists = await window.electronAPI.invoke(
-          "file-exists",
-          audioFile.path
-        );
-        console.log(`[CLI Export] Audio file ${i} exists: ${exists}`);
-
-        if (!exists) {
-          const error = `Audio file does not exist: ${audioFile.path}`;
-          console.error(`[CLI Export] ${error}`);
-          throw new Error(error);
-        }
-
-        // Also check the file size to ensure it's not empty/corrupted
+    // Validate audio files in parallel before sending to FFmpeg
+    debugLog("[CLI Export] Starting parallel validation of audio files...");
+    
+    const validationResults = await Promise.all(
+      audioFiles.map(async (audioFile, index) => {
+        debugLog(`[CLI Export] Validating audio file ${index}: ${audioFile.path}`);
+        
         try {
+          // Check if file exists
+          const exists = await window.electronAPI.invoke(
+            "file-exists",
+            audioFile.path
+          );
+          debugLog(`[CLI Export] Audio file ${index} exists: ${exists}`);
+          
+          if (!exists) {
+            const error = `Audio file does not exist: ${audioFile.path}`;
+            debugError(`[CLI Export] ${error}`);
+            throw new Error(error);
+          }
+
+          // Check file size to ensure it's not empty/corrupted
           const fileInfo = await window.electronAPI.invoke(
             "get-file-info",
             audioFile.path
           );
-          console.log(
-            `[CLI Export] Audio file ${i} size: ${fileInfo.size} bytes`
-          );
-
+          debugLog(`[CLI Export] Audio file ${index} size: ${fileInfo.size} bytes`);
+          
           if (fileInfo.size === 0) {
             const error = `Audio file is empty: ${audioFile.path}`;
-            console.error(`[CLI Export] ${error}`);
+            debugError(`[CLI Export] ${error}`);
             throw new Error(error);
           }
 
-          // CRITICAL: Validate audio file format with ffprobe
-          console.log(
-            "[CLI Export] Validating audio file format with ffprobe..."
-          );
+          // Validate audio file format with ffprobe
+          debugLog(`[CLI Export] Validating audio file ${index} format with ffprobe...`);
+          
           try {
             const audioValidation = await window.electronAPI.invoke(
               "validate-audio-file",
               audioFile.path
             );
-            console.log(
-              "[CLI Export] Audio validation result:",
-              audioValidation
-            );
+            debugLog(`[CLI Export] Audio file ${index} validation result:`, audioValidation);
 
             if (!audioValidation.valid) {
               const error = `Invalid audio file format: ${audioFile.path} - ${audioValidation.error}`;
-              console.error(`[CLI Export] ${error}`);
+              debugError(`[CLI Export] ${error}`);
               throw new Error(error);
             }
 
-            console.log("[CLI Export] Audio file validated successfully:", {
+            debugLog(`[CLI Export] Audio file ${index} validated successfully:`, {
+              path: audioFile.path,
               hasAudio: audioValidation.hasAudio,
               duration: audioValidation.duration,
               streams: audioValidation.info?.streams?.length || 0,
             });
 
-            // CRITICAL FIX: Skip files that have no audio streams
+            // Skip files that have no audio streams
             if (!audioValidation.hasAudio) {
-              console.warn(
-                `[CLI Export] SKIPPING: File has no audio streams: ${audioFile.path}`
-              );
-              console.log(
-                "[CLI Export] Removing audio file from export list..."
-              );
-              // Remove this audio file from the array
-              audioFiles.splice(i, 1);
-              i--; // Adjust index since we removed an item
+              debugWarn(`[CLI Export] File has no audio streams: ${audioFile.path}`);
+              return null; // Mark for filtering
             }
+
+            return audioFile; // Valid audio file
+            
           } catch (validationError) {
-            console.error(
-              "[CLI Export] Audio validation failed:",
-              validationError
-            );
-            // Continue anyway for now - don't block the export
-            console.log(
-              "[CLI Export] Continuing with export despite validation failure..."
-            );
+            // Log validation error but continue with the file
+            debugError("[CLI Export] Audio validation failed:", validationError);
+            debugLog("[CLI Export] Including file despite validation failure...");
+            return audioFile; // Keep the file despite ffprobe failure
           }
-        } catch (infoError) {
-          console.error(
-            "[CLI Export] Failed to get audio file info:",
-            infoError
-          );
+          
+        } catch (error) {
+          debugError(`[CLI Export] Failed to validate audio file ${index}:`, error);
+          throw new Error(`Failed to validate audio file: ${audioFile.path}`);
         }
-      } catch (checkError) {
-        console.error(
-          "[CLI Export] Failed to check audio file existence:",
-          checkError
-        );
-        throw new Error(`Failed to validate audio file: ${audioFile.path}`);
-      }
-    }
+      })
+    );
+
+    // Filter out null values (files with no audio streams)
+    audioFiles = validationResults.filter((file): file is typeof audioFiles[0] => file !== null);
+    
+    debugLog(`[CLI Export] Validation complete. ${audioFiles.length} valid audio files.`);
 
     // Note: Progress updates would need to be added to electronAPI
     // For now, use basic invoke without progress tracking
@@ -789,11 +773,11 @@ export class CLIExportEngine extends ExportEngine {
         "export-video-cli",
         exportOptions
       );
-      console.log("[CLI Export] FFmpeg export completed successfully:", result);
+      debugLog("[CLI Export] FFmpeg export completed successfully:", result);
       return result.outputFile;
     } catch (error) {
-      console.error("[CLI Export] FFmpeg export failed:", error);
-      console.error("[CLI Export] Error details:", {
+      debugError("[CLI Export] FFmpeg export failed:", error);
+      debugError("[CLI Export] Error details:", {
         message: error instanceof Error ? error.message : String(error),
         code: (error as any)?.code,
         stderr: (error as any)?.stderr,

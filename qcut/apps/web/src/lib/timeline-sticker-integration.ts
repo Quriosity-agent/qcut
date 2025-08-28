@@ -254,7 +254,9 @@ export class TimelineStickerIntegration {
   ): Promise<TimelineIntegrationResult> {
     try {
       const store = useTimelineStore.getState();
-      const duration = sticker.timing!.endTime! - sticker.timing!.startTime!;
+      const timing = sticker.timing as { startTime: number; endTime: number };
+      const { startTime, endTime } = timing;
+      const duration = endTime - startTime;
 
       // Create timeline element from sticker
       const element = {
@@ -263,7 +265,7 @@ export class TimelineStickerIntegration {
         mediaId: sticker.mediaItemId,
         name: `Sticker ${Date.now()}`, // Unique name
         duration,
-        startTime: sticker.timing!.startTime,
+        startTime,
         trimStart: 0,
         trimEnd: 0,
       };
@@ -277,10 +279,20 @@ export class TimelineStickerIntegration {
         });
       }
 
-      // Add element to track
-      const success = store.addElementToTrack(trackId, element);
+      // Add element to track (void function, doesn't return success)
+      store.addElementToTrack(trackId, element);
 
-      if (success) {
+      // Wait for state update to propagate
+      await new Promise(resolve => setTimeout(resolve, 0));
+
+      // Verify element was added by checking the track
+      const updatedStore = useTimelineStore.getState();
+      const track = this.findStickerTrackById(updatedStore, trackId);
+      const elementAdded = track?.elements?.some((el: any) => 
+        el.type === "sticker" && el.stickerId === sticker.id
+      );
+
+      if (elementAdded) {
         if (this.config.enableLogging) {
           debugLog(
             "[TimelineIntegration] ✅ Successfully added sticker to timeline track"
@@ -294,7 +306,7 @@ export class TimelineStickerIntegration {
       }
       return {
         success: false,
-        error: "addElementToTrack returned false",
+        error: "Failed to add sticker element to track",
       };
     } catch (error) {
       const errorMessage =

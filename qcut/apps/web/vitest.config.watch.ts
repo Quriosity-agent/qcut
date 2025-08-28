@@ -24,9 +24,8 @@ export default defineConfig({
     // Faster feedback in watch mode
     isolate: false,
     threads: true,
-    // UI server configuration
-    ui: true,
-    uiPort: 51204,
+    // API server configuration for Vitest v3.2.4
+    api: 51204, // Enable API server on port 51204
     open: false, // Don't auto-open browser
     coverage: {
       enabled: false, // Disable coverage in watch mode for performance

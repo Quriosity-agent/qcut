@@ -458,7 +458,9 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
     // 3) Remove from persistent storage
     try {
       await storageService.deleteMediaItem(projectId, id);
-    } catch (error) {}
+    } catch (error) {
+      debugError("[MediaStore] deleteMediaItem failed", { projectId, id, error });
+    }
   },
 
   loadProjectMedia: async (projectId) => {

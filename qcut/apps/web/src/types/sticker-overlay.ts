@@ -45,7 +45,7 @@ export type OverlaySticker = {
   timing?: {
     startTime?: number; // In seconds
     endTime?: number; // In seconds
-    duration?: number; // For animated stickers
+    durationMs?: number; // In milliseconds for animated stickers
   };
 
   /** Metadata for tracking and debugging */

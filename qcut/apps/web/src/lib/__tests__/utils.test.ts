@@ -12,28 +12,16 @@ describe('Utils', () => {
     
     it('uses crypto.randomUUID when available', () => {
       const mockRandomUUID = vi.fn(() => 'mock-uuid');
-      const originalRandomUUID = global.crypto?.randomUUID;
+      const spy = vi
+        .spyOn(globalThis.crypto, 'randomUUID')
+        .mockImplementation(mockRandomUUID);
       
-      // Mock just the randomUUID method
-      if (global.crypto) {
-        Object.defineProperty(global.crypto, 'randomUUID', {
-          value: mockRandomUUID,
-          writable: true,
-          configurable: true
-        });
-      }
-      
-      const id = generateUUID();
-      expect(id).toBe('mock-uuid');
-      expect(mockRandomUUID).toHaveBeenCalled();
-      
-      // Restore original
-      if (global.crypto && originalRandomUUID) {
-        Object.defineProperty(global.crypto, 'randomUUID', {
-          value: originalRandomUUID,
-          writable: true,
-          configurable: true
-        });
+      try {
+        const id = generateUUID();
+        expect(id).toBe('mock-uuid');
+        expect(mockRandomUUID).toHaveBeenCalled();
+      } finally {
+        spy.mockRestore();
       }
     });
   });

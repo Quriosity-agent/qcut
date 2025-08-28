@@ -13,8 +13,8 @@ describe('useDebounce - Advanced Tests', () => {
   
   it('handles null and undefined values', () => {
     const { result, rerender } = renderHook(
-      ({ value }) => useDebounce(value, 500),
-      { initialProps: { value: null as any } }
+      ({ value }: { value: null | undefined }) => useDebounce(value, 500),
+      { initialProps: { value: null } }
     );
     
     expect(result.current).toBe(null);

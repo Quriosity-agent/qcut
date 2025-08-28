@@ -48,6 +48,7 @@ export type MediaStoreUtils = {
 export type MediaStore = {
   mediaItems: MediaItem[];
   isLoading: boolean;
+  hasInitialized: boolean;
   addMediaItem: (
     projectId: string,
     item: Omit<MediaItem, "id"> & { id?: string }

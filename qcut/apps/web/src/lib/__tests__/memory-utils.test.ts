@@ -1,5 +1,6 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { setupPerformanceMocks, simulateMemoryPressure, getMemoryUsage } from '@/test/mocks/performance';
+import { formatFileSize } from '@/lib/image-utils';
 
 describe('Memory Utilities', () => {
   let cleanup: () => void;
@@ -13,14 +14,6 @@ describe('Memory Utilities', () => {
   });
   
   describe('formatFileSize', () => {
-    // Import the actual function from image-utils
-    function formatFileSize(bytes: number): string {
-      if (bytes === 0) return '0 Bytes';
-      const k = 1024;
-      const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-      const i = Math.floor(Math.log(bytes) / Math.log(k));
-      return parseFloat((bytes / k ** i).toFixed(2)) + ' ' + sizes[i];
-    }
     
     it('formats bytes correctly', () => {
       expect(formatFileSize(0)).toBe('0 Bytes');

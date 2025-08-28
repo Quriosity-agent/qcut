@@ -21,9 +21,13 @@ vi.mock('@/lib/debug-config', () => ({
 
 describe('Image Utils', () => {
   describe('getImageInfo', () => {
+    const OriginalImage = globalThis.Image;
+    const originalCreateObjectURL = globalThis.URL.createObjectURL;
+    const originalRevokeObjectURL = globalThis.URL.revokeObjectURL;
+    
     beforeEach(() => {
       // Mock Image constructor
-      global.Image = class {
+      globalThis.Image = class {
         naturalWidth = 1920;
         naturalHeight = 1080;
         onload: (() => void) | null = null;
@@ -31,11 +35,18 @@ describe('Image Utils', () => {
         set src(_: string) {
           setTimeout(() => this.onload?.(), 0);
         }
-      } as any;
+      } as unknown as typeof Image;
       
       // Mock URL methods
-      global.URL.createObjectURL = vi.fn(() => 'blob:mock-url');
-      global.URL.revokeObjectURL = vi.fn();
+      vi.spyOn(globalThis.URL, 'createObjectURL').mockReturnValue('blob:mock-url');
+      vi.spyOn(globalThis.URL, 'revokeObjectURL').mockImplementation(() => {});
+    });
+    
+    afterEach(() => {
+      globalThis.Image = OriginalImage;
+      globalThis.URL.createObjectURL = originalCreateObjectURL;
+      globalThis.URL.revokeObjectURL = originalRevokeObjectURL;
+      vi.restoreAllMocks();
     });
     
     it('gets image information from file', async () => {
@@ -121,14 +132,15 @@ describe('Image Utils', () => {
         drawImage: vi.fn(),
       };
       
-      document.createElement = vi.fn((tag) => {
+      const realCreateElement = document.createElement.bind(document);
+      vi.spyOn(document, 'createElement').mockImplementation((tag: string) => {
         if (tag === 'canvas') {
           return {
             ...mockCanvas,
             getContext: () => mockContext,
-          } as any;
+          } as HTMLCanvasElement;
         }
-        return document.createElement(tag);
+        return realCreateElement(tag);
       });
       
       // Mock Image

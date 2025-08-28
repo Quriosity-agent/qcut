@@ -75,8 +75,10 @@ export function setupStickerTest() {
 
         if (stickerTrack) {
           debugLog("✅ Sticker track found:", stickerTrack);
+          const hasStickerId = (el: unknown): el is { stickerId?: string } =>
+            !!el && typeof (el as any).stickerId === "string";
           const stickerElement = stickerTrack.elements.find(
-            (el: any) => el.stickerId === stickerId
+            (el) => hasStickerId(el) && el.stickerId === stickerId
           );
           if (stickerElement) {
             debugLog(

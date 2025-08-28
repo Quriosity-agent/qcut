@@ -109,7 +109,6 @@ function setupFFmpegIPC() {
       // FFmpeg CLI configuration ready
 
       // Verify input directory exists and has frames
-      const fs = require("fs");
       if (!fs.existsSync(frameDir)) {
         const error = `Frame directory does not exist: ${frameDir}`;
         reject(new Error(error));
@@ -331,8 +330,7 @@ function buildFFmpegArgs(
     audioFiles.forEach((audioFile, index) => {
       // CRITICAL: Check if audio file actually exists
       const fs = require("fs");
-      if (fs.existsSync(audioFile.path)) {
-      } else {
+      if (!fs.existsSync(audioFile.path)) {
         throw new Error(`Audio file not found: ${audioFile.path}`);
       }
 

@@ -9,6 +9,12 @@ echo "================================"
 # Navigate to web app directory
 cd "$(dirname "$0")/../apps/web" || exit 1
 
+# Ensure Bun is available
+if ! command -v bun >/dev/null 2>&1; then
+  echo "Error: Bun is not installed or not on PATH. Please install Bun and retry."
+  exit 1
+fi
+
 # Install dependencies if needed
 if [ ! -d "node_modules" ]; then
   echo "📦 Installing dependencies..."

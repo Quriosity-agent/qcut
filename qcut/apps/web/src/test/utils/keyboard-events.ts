@@ -30,6 +30,24 @@ function getKeyCode(key: string): string {
     'ArrowDown': 'ArrowDown',
     'ArrowLeft': 'ArrowLeft',
     'ArrowRight': 'ArrowRight',
+    'Home': 'Home',
+    'End': 'End',
+    'PageUp': 'PageUp',
+    'PageDown': 'PageDown',
+    '+': 'Equal',
+    '=': 'Equal',
+    '-': 'Minus',
+    '_': 'Minus',
+    '0': 'Digit0',
+    '1': 'Digit1',
+    '2': 'Digit2',
+    '3': 'Digit3',
+    '4': 'Digit4',
+    '5': 'Digit5',
+    '6': 'Digit6',
+    '7': 'Digit7',
+    '8': 'Digit8',
+    '9': 'Digit9',
     'a': 'KeyA',
     's': 'KeyS',
     'd': 'KeyD',
@@ -37,9 +55,26 @@ function getKeyCode(key: string): string {
     'x': 'KeyX',
     'c': 'KeyC',
     'v': 'KeyV',
+    'y': 'KeyY',
   };
   
-  return keyCodes[key] || `Key${key.toUpperCase()}`;
+  // Check if key is in the mapping
+  if (key in keyCodes) return keyCodes[key];
+  
+  // Handle single letters (A-Z)
+  if (key.length === 1) {
+    const upper = key.toUpperCase();
+    if (upper >= 'A' && upper <= 'Z') {
+      return `Key${upper}`;
+    }
+    // Handle digits (already mapped above, but as fallback)
+    if (upper >= '0' && upper <= '9') {
+      return `Digit${upper}`;
+    }
+  }
+  
+  // Return the key as-is for unmapped special keys
+  return key;
 }
 
 /**
@@ -66,7 +101,7 @@ export const shortcuts = {
   selectAll: () => createKeyboardEvent('keydown', 'a', { ctrlKey: true }),
   
   // Timeline zoom
-  zoomIn: () => createKeyboardEvent('keydown', '+', { ctrlKey: true }),
+  zoomIn: () => createKeyboardEvent('keydown', '=', { ctrlKey: true, shiftKey: true }),
   zoomOut: () => createKeyboardEvent('keydown', '-', { ctrlKey: true }),
 };
 

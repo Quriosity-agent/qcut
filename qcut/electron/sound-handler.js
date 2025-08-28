@@ -4,16 +4,18 @@ const path = require("path");
 const fs = require("fs");
 const { pathToFileURL } = require("node:url");
 
-// Try to load electron-log, fallback to console if not available
+// Try to load electron-log, fallback to no-op if not available
 let log;
 try {
   log = require("electron-log");
 } catch (error) {
-  // Fallback to console for packaged apps where electron-log might not be available
+  // Create a no-op logger to avoid console usage (per project guidelines)
+  const noop = () => {};
   log = {
-    info: console.log,
-    warn: console.warn,
-    error: console.error,
+    info: noop,
+    warn: noop,
+    error: noop,
+    debug: noop,
   };
 }
 
@@ -24,21 +26,21 @@ try {
  * 3. Environment variable (development)
  */
 async function getFreesoundApiKey() {
-  console.log("=== GET API KEY DEBUG ===");
+  log.info("=== GET API KEY DEBUG ===");
 
   // Priority 1: Try user-configured key first
   try {
     const userDataPath = app.getPath("userData");
     const apiKeysFilePath = path.join(userDataPath, "api-keys.json");
-    console.log("[API Key] Checking user config at:", apiKeysFilePath);
+    log.info("[API Key] Checking user config at:", apiKeysFilePath);
 
     if (fs.existsSync(apiKeysFilePath)) {
-      console.log("[API Key] User config file exists");
+      log.info("[API Key] User config file exists");
       const encryptedData = JSON.parse(
         fs.readFileSync(apiKeysFilePath, "utf8")
       );
       if (encryptedData.freesoundApiKey) {
-        console.log("[API Key] Found freesoundApiKey in user config");
+        log.info("[API Key] Found freesoundApiKey in user config");
         // Decrypt if possible
         if (safeStorage.isEncryptionAvailable()) {
           try {
@@ -46,60 +48,60 @@ async function getFreesoundApiKey() {
               Buffer.from(encryptedData.freesoundApiKey, "base64")
             );
             if (decrypted) {
-              console.log("[API Key] Successfully decrypted user key");
+              log.info("[API Key] Successfully decrypted user key");
               log.info("[Sound Handler] Using user-configured API key");
               return decrypted;
             }
           } catch (e) {
-            console.log(
+            log.info(
               "[API Key] Decryption failed, trying plain text:",
               e.message
             );
             // Plain text fallback
             if (encryptedData.freesoundApiKey) {
-              console.log("[API Key] Using plain text user key");
+              log.info("[API Key] Using plain text user key");
               log.info("[Sound Handler] Using user-configured API key (plain)");
               return encryptedData.freesoundApiKey;
             }
           }
         } else if (encryptedData.freesoundApiKey) {
-          console.log("[API Key] Encryption not available, using plain text");
+          log.info("[API Key] Encryption not available, using plain text");
           log.info(
             "[Sound Handler] Using user-configured API key (no encryption)"
           );
           return encryptedData.freesoundApiKey;
         }
       } else {
-        console.log("[API Key] No freesoundApiKey in user config");
+        log.info("[API Key] No freesoundApiKey in user config");
       }
     } else {
-      console.log("[API Key] User config file does not exist");
+      log.info("[API Key] User config file does not exist");
     }
   } catch (error) {
-    console.error("[API Key] Error reading user config:", error);
+    log.error("[API Key] Error reading user config:", error);
     log.warn("[Sound Handler] Error reading stored API key:", error.message);
   }
 
   // Priority 2: Try default embedded key
   try {
-    console.log(
+    log.info(
       "[API Key] Trying to load default keys from ./config/default-keys"
     );
     const defaultKeys = require("./config/default-keys");
-    console.log("[API Key] Default keys loaded:", !!defaultKeys);
+    log.info("[API Key] Default keys loaded:", !!defaultKeys);
     if (defaultKeys.FREESOUND_API_KEY) {
-      console.log("[API Key] Found default FREESOUND_API_KEY");
+      log.info("[API Key] Found default FREESOUND_API_KEY");
       log.info("[Sound Handler] Using default embedded API key");
       return defaultKeys.FREESOUND_API_KEY;
     }
-    console.log("[API Key] No FREESOUND_API_KEY in default config");
+    log.info("[API Key] No FREESOUND_API_KEY in default config");
   } catch (error) {
-    console.error("[API Key] Failed to load default keys:", error);
+    log.error("[API Key] Failed to load default keys:", error);
     log.warn("[Sound Handler] No default keys available:", error.message);
 
     // Fallback: Embedded key directly in code for packaged apps
     const EMBEDDED_DEFAULT_KEY = "h650BnTkps2suLENRVXD8LdADgrYzVm1dQxmxQqc";
-    console.log("[API Key] Using hardcoded embedded default key");
+    log.info("[API Key] Using hardcoded embedded default key");
     log.info("[Sound Handler] Using hardcoded embedded API key");
     return EMBEDDED_DEFAULT_KEY;
   }
@@ -140,20 +142,20 @@ async function getFreesoundApiKey() {
 function setupSoundIPC() {
   // Handle sound search requests
   ipcMain.handle("sounds:search", async (event, searchParams) => {
-    console.log("=== SOUND SEARCH DEBUG START ===");
-    console.log(
+    log.info("=== SOUND SEARCH DEBUG START ===");
+    log.info(
       "[Sound Handler] Search request received:",
       JSON.stringify(searchParams)
     );
     log.info("[Sound Handler] Search request received:", searchParams);
 
     try {
-      console.log("[Sound Handler] Getting API key...");
+      log.info("[Sound Handler] Getting API key...");
       const FREESOUND_API_KEY = await getFreesoundApiKey();
       log.info("[Sound Handler] API key available:", Boolean(FREESOUND_API_KEY));
 
       if (!FREESOUND_API_KEY) {
-        console.error("[Sound Handler] No API key found!");
+        log.error("[Sound Handler] No API key found!");
         return {
           success: false,
           error:
@@ -196,7 +198,7 @@ function setupSoundIPC() {
       }
 
       const finalUrl = `${baseUrl}?${params.toString()}`;
-      console.log(
+      log.info(
         "[Sound Handler] Final URL (masked):",
         finalUrl.replace(FREESOUND_API_KEY, "***")
       );
@@ -206,18 +208,18 @@ function setupSoundIPC() {
       );
 
       // Make HTTPS request
-      console.log("[Sound Handler] Starting HTTPS request...");
+      log.info("[Sound Handler] Starting HTTPS request...");
       const response = await new Promise((resolve, reject) => {
         const req = https.get(finalUrl, (res) => {
-          console.log("[Sound Handler] Response status code:", res.statusCode);
+          log.info("[Sound Handler] Response status code:", res.statusCode);
           let data = "";
           res.on("data", (chunk) => {
             data += chunk;
           });
           res.on("end", () => {
-            console.log("[Sound Handler] Response data length:", data.length);
+            log.info("[Sound Handler] Response data length:", data.length);
             if (res.statusCode !== 200) {
-              console.error(
+              log.error(
                 "[Sound Handler] Response body:",
                 data.substring(0, 500)
               );
@@ -231,20 +233,20 @@ function setupSoundIPC() {
         });
 
         req.on("error", (error) => {
-          console.error("[Sound Handler] Request error:", error);
+          log.error("[Sound Handler] Request error:", error);
           reject(error);
         });
         req.setTimeout(30_000, () => {
-          console.error("[Sound Handler] Request timeout!");
+          log.error("[Sound Handler] Request timeout!");
           req.destroy();
           reject(new Error("Request timeout"));
         });
       });
 
       if (!response.ok) {
-        console.error("[Sound Handler] API request failed!");
-        console.error("[Sound Handler] Status:", response.statusCode);
-        console.error("[Sound Handler] Body:", response.body.substring(0, 500));
+        log.error("[Sound Handler] API request failed!");
+        log.error("[Sound Handler] Status:", response.statusCode);
+        log.error("[Sound Handler] Body:", response.body.substring(0, 500));
         log.error(
           "[Sound Handler] API request failed:",
           response.statusCode,
@@ -318,14 +320,14 @@ function setupSoundIPC() {
         transformedResults.length,
         "results"
       );
-      console.log("=== SOUND SEARCH DEBUG END (SUCCESS) ===");
+      log.info("=== SOUND SEARCH DEBUG END (SUCCESS) ===");
       return { success: true, data: responseData };
     } catch (error) {
-      console.error("=== SOUND SEARCH ERROR ===");
-      console.error("[Sound Handler] Error type:", error.constructor.name);
-      console.error("[Sound Handler] Error message:", error.message);
-      console.error("[Sound Handler] Error stack:", error.stack);
-      console.error("[Sound Handler] Full error:", error);
+      log.error("=== SOUND SEARCH ERROR ===");
+      log.error("[Sound Handler] Error type:", error.constructor.name);
+      log.error("[Sound Handler] Error message:", error.message);
+      log.error("[Sound Handler] Error stack:", error.stack);
+      log.error("[Sound Handler] Full error:", error);
       log.error("[Sound Handler] Error occurred:", error);
 
       // Provide more specific error messages
@@ -348,7 +350,7 @@ function setupSoundIPC() {
 
   // Download and cache audio preview
   ipcMain.handle("sounds:download-preview", async (event, { url, id }) => {
-    console.log("[Sound Handler] Downloading preview for sound:", id);
+    log.info("[Sound Handler] Downloading preview for sound:", id);
     try {
       const tempDir = path.join(app.getPath("temp"), "qcut-previews");
 
@@ -364,7 +366,7 @@ function setupSoundIPC() {
 
       // Check if already cached
       if (fs.existsSync(filePath)) {
-        console.log("[Sound Handler] Preview already cached:", filePath);
+        log.info("[Sound Handler] Preview already cached:", filePath);
         return { success: true, path: pathToFileURL(filePath).href };
       }
 
@@ -385,7 +387,7 @@ function setupSoundIPC() {
         );
         
         if (target.protocol !== "https:" || !isAllowedHost) {
-          console.error("[Sound Handler] Blocked URL:", url);
+          log.error("[Sound Handler] Blocked URL:", url);
           return resolve({ success: false, error: "URL not allowed - must be HTTPS Freesound domain" });
         }
 
@@ -394,7 +396,7 @@ function setupSoundIPC() {
         https
           .get(target, (response) => {
             if (response.statusCode !== 200) {
-              console.error(
+              log.error(
                 "[Sound Handler] Preview download failed:",
                 response.statusCode
               );
@@ -409,7 +411,7 @@ function setupSoundIPC() {
 
             file.on("finish", () => {
               file.close();
-              console.log("[Sound Handler] Preview downloaded:", filePath);
+              log.info("[Sound Handler] Preview downloaded:", filePath);
               resolve({
                 success: true,
                 path: pathToFileURL(filePath).href,
@@ -418,7 +420,7 @@ function setupSoundIPC() {
 
             file.on("error", (err) => {
               fs.unlink(filePath, () => {}); // Delete partial file
-              console.error("[Sound Handler] File write error:", err);
+              log.error("[Sound Handler] File write error:", err);
               resolve({
                 success: false,
                 error: err.message,
@@ -426,7 +428,7 @@ function setupSoundIPC() {
             });
           })
           .on("error", (err) => {
-            console.error("[Sound Handler] Download error:", err);
+            log.error("[Sound Handler] Download error:", err);
             resolve({
               success: false,
               error: err.message,
@@ -434,7 +436,7 @@ function setupSoundIPC() {
           });
       });
     } catch (error) {
-      console.error("[Sound Handler] Preview download error:", error);
+      log.error("[Sound Handler] Preview download error:", error);
       return {
         success: false,
         error: error.message,

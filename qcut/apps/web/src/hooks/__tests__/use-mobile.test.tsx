@@ -5,7 +5,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 describe('useIsMobile', () => {
   const originalInnerWidth = window.innerWidth;
   const originalMatchMedia = window.matchMedia;
-  let mockListeners: Array<(event: any) => void> = [];
+  let mockListeners: Array<(ev: { matches: boolean; media: string }) => void> = [];
   
   beforeEach(() => {
     mockListeners = [];
@@ -14,12 +14,12 @@ describe('useIsMobile', () => {
       media: query,
       addEventListener: vi.fn((event, listener) => {
         if (event === 'change') {
-          mockListeners.push(listener);
+          mockListeners.push(listener as (ev: { matches: boolean; media: string }) => void);
         }
       }),
       removeEventListener: vi.fn((event, listener) => {
         if (event === 'change') {
-          const index = mockListeners.indexOf(listener);
+          const index = mockListeners.indexOf(listener as (ev: { matches: boolean; media: string }) => void);
           if (index > -1) {
             mockListeners.splice(index, 1);
           }
@@ -29,7 +29,7 @@ describe('useIsMobile', () => {
       onchange: null,
       addListener: vi.fn(),
       removeListener: vi.fn(),
-    } as any));
+    } as MediaQueryList));
   });
   
   afterEach(() => {
@@ -124,7 +124,7 @@ describe('useIsMobile', () => {
       onchange: null,
       addListener: vi.fn(),
       removeListener: vi.fn(),
-    } as any));
+    } as MediaQueryList));
     
     const { unmount } = renderHook(() => useIsMobile());
     
