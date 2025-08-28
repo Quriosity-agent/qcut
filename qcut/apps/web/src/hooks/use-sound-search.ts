@@ -42,7 +42,7 @@ export function useSoundSearch(query: string, commercialOnly: boolean) {
       const nextPage = currentPage + 1;
 
       console.log("🔄 [Sound Search] Loading more results...");
-      
+
       // Use the new API adapter
       const result = await searchSounds(query.trim() || "", {
         type: "effects",
@@ -53,7 +53,7 @@ export function useSoundSearch(query: string, commercialOnly: boolean) {
 
       if (result.success) {
         console.log("✅ [Sound Search] Load more successful");
-        
+
         // Append to appropriate array based on whether we have a query
         if (query.trim()) {
           appendSearchResults(result.results || []);
@@ -97,7 +97,7 @@ export function useSoundSearch(query: string, commercialOnly: boolean) {
         resetPagination();
 
         console.log("🔄 [Sound Search] Searching for:", query);
-        
+
         // Use the new API adapter
         const result = await searchSounds(query, {
           type: "effects",

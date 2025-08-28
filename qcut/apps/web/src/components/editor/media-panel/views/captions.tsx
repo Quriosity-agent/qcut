@@ -270,7 +270,9 @@ export function CaptionsView() {
         });
 
         if (!apiResult.success) {
-          throw new Error(apiResult.error || apiResult.message || "Transcription failed");
+          throw new Error(
+            apiResult.error || apiResult.message || "Transcription failed"
+          );
         }
 
         updateState({ transcriptionProgress: 90 });
@@ -278,7 +280,7 @@ export function CaptionsView() {
         const result: TranscriptionResult = {
           text: apiResult.text || "",
           segments: apiResult.segments || [],
-          language: apiResult.language || selectedLanguage
+          language: apiResult.language || selectedLanguage,
         };
 
         // Complete transcription job in store

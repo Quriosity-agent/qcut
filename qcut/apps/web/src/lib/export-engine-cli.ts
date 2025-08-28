@@ -307,11 +307,15 @@ export class CLIExportEngine extends ExportEngine {
 
     try {
       // Import stickers overlay store dynamically (cached)
-      const { useStickersOverlayStore } = await (stickersModulePromise ||=
-        import("@/stores/stickers-overlay-store"));
-      const { useMediaStore } = await (mediaModulePromise ||= import(
-        "@/stores/media-store"
-      ));
+      if (!stickersModulePromise) {
+        stickersModulePromise = import("@/stores/stickers-overlay-store");
+      }
+      const { useStickersOverlayStore } = await stickersModulePromise;
+
+      if (!mediaModulePromise) {
+        mediaModulePromise = import("@/stores/media-store");
+      }
+      const { useMediaStore } = await mediaModulePromise;
 
       // Get visible stickers at current time
       const stickersStore = useStickersOverlayStore.getState();
@@ -334,8 +338,12 @@ export class CLIExportEngine extends ExportEngine {
       );
 
       // Use the existing sticker export helper (cached)
-      const { getStickerExportHelper } = await (stickerHelperModulePromise ||=
-        import("@/lib/stickers/sticker-export-helper"));
+      if (!stickerHelperModulePromise) {
+        stickerHelperModulePromise = import(
+          "@/lib/stickers/sticker-export-helper"
+        );
+      }
+      const { getStickerExportHelper } = await stickerHelperModulePromise;
       const stickerHelper = getStickerExportHelper();
 
       debugLog("[CLI_STICKER_DEBUG] Rendering stickers to canvas...");

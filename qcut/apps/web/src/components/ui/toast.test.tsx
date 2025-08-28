@@ -10,7 +10,7 @@ describe("Toast System", () => {
       const { toast } = useToast();
 
       return (
-        <button onClick={() => toast({ title: "Test Toast" })}>
+        <button type="button" onClick={() => toast({ title: "Test Toast" })}>
           Show Toast
         </button>
       );
@@ -49,6 +49,7 @@ describe("Toast System", () => {
 
       return (
         <button
+          type="button"
           onClick={() =>
             toast({
               title: "Success",

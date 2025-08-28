@@ -48,10 +48,10 @@ export interface ElectronAPI {
   sounds: {
     search: (params: {
       q?: string;
-      type?: 'effects' | 'songs';
+      type?: "effects" | "songs";
       page?: number;
       page_size?: number;
-      sort?: 'downloads' | 'rating' | 'created' | 'score';
+      sort?: "downloads" | "rating" | "created" | "score";
       min_rating?: number;
       commercial_only?: boolean;
     }) => Promise<{

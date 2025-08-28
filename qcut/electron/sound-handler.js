@@ -152,20 +152,21 @@ function setupSoundIPC() {
       // Validate input parameters (same validation as Next.js API)
       const {
         q: query,
-        type = 'effects',
+        type = "effects",
         page = 1,
         page_size: pageSize = 20,
-        sort = 'downloads',
+        sort = "downloads",
         min_rating = 3,
-        commercial_only = true
+        commercial_only = true,
       } = searchParams;
 
       // Handle songs limitation (same as Next.js API)
-      if (type === 'songs') {
+      if (type === "songs") {
         return {
           success: false,
-          error: 'Songs are not available yet',
-          message: 'Song search functionality is coming soon. Try searching for sound effects instead.'
+          error: "Songs are not available yet",
+          message:
+            "Song search functionality is coming soon. Try searching for sound effects instead.",
         };
       }
 
@@ -180,7 +181,7 @@ function setupSoundIPC() {
         log.error("[Sound Handler] No API key found!");
         return {
           success: false,
-          error: "Freesound API key not configured"
+          error: "Freesound API key not configured",
         };
       }
 
@@ -188,7 +189,9 @@ function setupSoundIPC() {
 
       // Use score sorting for search queries, downloads for top sounds (same as Next.js)
       const sortParam = query
-        ? sort === 'score' ? 'score' : `${sort}_desc`
+        ? sort === "score"
+          ? "score"
+          : `${sort}_desc`
         : `${sort}_desc`;
 
       // Build query parameters (enhanced to match Next.js exactly)
@@ -203,7 +206,7 @@ function setupSoundIPC() {
       });
 
       // Always apply sound effect filters (same as Next.js API)
-      if (type === 'effects' || !type) {
+      if (type === "effects" || !type) {
         params.append("filter", "duration:[* TO 30.0]");
         params.append("filter", `avg_rating:[${min_rating} TO *]`);
 
@@ -345,11 +348,11 @@ function setupSoundIPC() {
         "results"
       );
       log.info("=== SOUND SEARCH DEBUG END (SUCCESS) ===");
-      
+
       // Return format that matches Next.js API exactly
       return {
         success: true,
-        ...responseData  // Spread response data directly (matches Next.js format)
+        ...responseData, // Spread response data directly (matches Next.js format)
       };
     } catch (error) {
       log.error("=== SOUND SEARCH ERROR ===");
