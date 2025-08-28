@@ -919,6 +919,12 @@ if [ -d "apps/web/src/app" ]; then
         echo "📦 Moving globals.css to src/"
         mv "apps/web/src/app/globals.css" "apps/web/src/"
         echo "✅ Globals.css moved"
+        
+        # Update components.json reference
+        if [ -f "apps/web/components.json" ]; then
+            sed -i 's|"css": "src/app/globals.css"|"css": "src/globals.css"|' "apps/web/components.json"
+            echo "✅ Updated components.json reference"
+        fi
     fi
 fi
 

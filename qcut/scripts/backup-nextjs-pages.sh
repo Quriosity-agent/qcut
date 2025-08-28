@@ -18,9 +18,10 @@ if [ -d "apps/web/src/app" ]; then
         echo "✅ Next.js pages backed up to: $BACKUP_FILE"
         echo "📊 Backup size: $(du -h "$BACKUP_FILE" | cut -f1)"
         echo "📁 Files backed up:"
-        tar -tzf "$BACKUP_FILE" | head -20
-        if [ $(tar -tzf "$BACKUP_FILE" | wc -l) -gt 20 ]; then
-            echo "   ... and $(($(tar -tzf "$BACKUP_FILE" | wc -l) - 20)) more files"
+        mapfile -t __entries < <(tar -tzf "$BACKUP_FILE")
+        printf '%s\n' "${__entries[@]:0:20}"
+        if [ "${#__entries[@]}" -gt 20 ]; then
+            echo "   ... and $((${#__entries[@]} - 20)) more files"
         fi
     else
         echo "❌ Backup failed!"

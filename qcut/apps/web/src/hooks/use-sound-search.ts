@@ -41,7 +41,7 @@ export function useSoundSearch(query: string, commercialOnly: boolean) {
       setLoadingMore(true);
       const nextPage = currentPage + 1;
 
-      console.log("🔄 [Sound Search] Loading more results...");
+      // loading more results...
 
       // Use the new API adapter
       const result = await searchSounds(query.trim() || "", {
@@ -51,8 +51,8 @@ export function useSoundSearch(query: string, commercialOnly: boolean) {
         commercial_only: commercialOnly,
       });
 
-      if (result.success) {
-        console.log("✅ [Sound Search] Load more successful");
+      if (result?.success !== false) {
+        // load more successful
 
         // Append to appropriate array based on whether we have a query
         if (query.trim()) {
@@ -96,7 +96,7 @@ export function useSoundSearch(query: string, commercialOnly: boolean) {
         setSearchError(null);
         resetPagination();
 
-        console.log("🔄 [Sound Search] Searching for:", query);
+        // searching for query
 
         // Use the new API adapter
         const result = await searchSounds(query, {
@@ -109,8 +109,8 @@ export function useSoundSearch(query: string, commercialOnly: boolean) {
         // Check if we should ignore the result after async operation
         if (ignore) return;
 
-        if (result.success) {
-          console.log("✅ [Sound Search] Search successful");
+        if (result?.success !== false) {
+          // search successful
           setSearchResults(result.results || []);
           setLastSearchQuery(query);
           setHasNextPage(!!result.next);

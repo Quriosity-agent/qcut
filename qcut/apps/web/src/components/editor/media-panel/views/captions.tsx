@@ -269,7 +269,7 @@ export function CaptionsView() {
           iv: ivB64,
         });
 
-        if (!apiResult.success) {
+        if (apiResult?.success === false) {
           throw new Error(
             apiResult.error || apiResult.message || "Transcription failed"
           );
