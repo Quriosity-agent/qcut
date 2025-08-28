@@ -6,7 +6,7 @@ import { afterEach, beforeAll, afterAll, vi } from "vitest";
 import { setupToastMock } from "./mocks/toast";
 setupToastMock();
 
-// Mock window.matchMedia - ensure window exists first
+// Mock window.matchMedia and window.history - ensure window exists first
 if (typeof window !== "undefined") {
   Object.defineProperty(window, "matchMedia", {
     writable: true,
@@ -20,6 +20,21 @@ if (typeof window !== "undefined") {
       removeEventListener: vi.fn(),
       dispatchEvent: vi.fn(),
     })),
+  });
+
+  // Mock window.history for TanStack Router
+  Object.defineProperty(window, "history", {
+    writable: true,
+    value: {
+      pushState: vi.fn(),
+      replaceState: vi.fn(),
+      back: vi.fn(),
+      forward: vi.fn(),
+      go: vi.fn(),
+      length: 1,
+      scrollRestoration: "auto",
+      state: null,
+    },
   });
 }
 
