@@ -63,13 +63,13 @@ describe("TanStack Router Navigation", () => {
       expect(href.includes("#/projects")).toBe(true);
     });
 
-    it("should support browser navigation events", () => {
-      const navigationEvents = ["hashchange", "popstate"];
-
-      for (const eventType of navigationEvents) {
-        expect(typeof eventType).toBe("string");
-        // In real environment, these events are handled by TanStack Router
-      }
+    it("should notify listeners on navigation", () => {
+      const history = createHashHistory();
+      const spy = vi.fn();
+      const unsub = history.subscribe(spy);
+      history.push("/projects");
+      expect(spy).toHaveBeenCalled();
+      unsub();
     });
   });
 
