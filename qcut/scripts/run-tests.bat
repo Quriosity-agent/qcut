@@ -4,8 +4,8 @@ REM Test runner script for CI/CD integration (Windows)
 echo Running QCut Test Suite...
 echo ================================
 
-REM Navigate to web app directory
-cd /d "%~dp0\..\apps\web" || exit /b 1
+REM Navigate to repository root first
+cd /d "%~dp0\.." || exit /b 1
 
 REM Ensure Bun is available
 where bun >nul 2>nul
@@ -24,17 +24,20 @@ if not exist "node_modules" (
   )
 )
 
-REM Run linting
+REM Run linting from root
 echo.
 echo Running linter...
 call bun run lint:clean
 if %errorlevel% neq 0 echo Warning: Lint warnings found
 
-REM Run type checking  
+REM Run type checking from root
 echo.
 echo Running type check...
 call bun run check-types
 if %errorlevel% neq 0 echo Warning: Type errors found
+
+REM Navigate to web app directory for tests
+cd /d "%~dp0\..\apps\web" || exit /b 1
 
 REM Run tests with coverage
 echo.
