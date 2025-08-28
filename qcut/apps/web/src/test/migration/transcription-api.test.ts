@@ -4,7 +4,7 @@ import { setRuntimeFlags, isFeatureEnabled } from '@/lib/feature-flags';
 
 // Mock the global fetch function
 const mockFetch = vi.fn();
-global.fetch = mockFetch;
+(global as any).fetch = mockFetch;
 
 // Mock window.electronAPI
 const mockElectronAPI = {

@@ -59,6 +59,23 @@ export const mockElectronAPI: ElectronAPI = {
     readOutputFile: vi.fn().mockResolvedValue(Buffer.from([1, 2, 3])),
     cleanupExportSession: vi.fn().mockResolvedValue(undefined),
   },
+
+  // Sound search operations
+  sounds: {
+    search: vi.fn().mockResolvedValue({
+      success: true,
+      results: [],
+    }),
+  },
+
+  // Transcription operations
+  transcribe: {
+    audio: vi.fn().mockResolvedValue({
+      success: true,
+      text: "Test transcription",
+      segments: [],
+    }),
+  },
 };
 
 /**
