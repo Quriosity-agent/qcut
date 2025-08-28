@@ -11,7 +11,7 @@ This document provides a comprehensive overview of the QCut source code structur
 ## Project Architecture
 
 QCut is a desktop video editor built with:
-- **Frontend Framework:** Vite 7.0.6 + TanStack Router + React 19
+- **Frontend Framework:** Vite 7.0.6 + TanStack Router + React 18.3.1
 - **Desktop Runtime:** Electron 37.2.5
 - **Language:** TypeScript
 - **State Management:** Zustand

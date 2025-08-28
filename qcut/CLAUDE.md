@@ -39,7 +39,7 @@ QCut is a desktop video editor built with a **hybrid architecture** combining Vi
 ## Key Architecture
 
 ### Tech Stack
-- **Frontend**: Vite 7.0.6, TanStack Router (Hash History), React 19, TypeScript
+- **Frontend**: Vite 7.0.6, TanStack Router (Hash History), React 18.3.1, TypeScript
 - **Desktop**: Electron 37.2.5 with IPC handlers for file operations
 - **State Management**: Zustand stores (editor-store, timeline-store, project-store)
 - **Video Processing**: FFmpeg WebAssembly (@ffmpeg/ffmpeg)
@@ -134,6 +134,14 @@ npx electron-packager . QCut --platform=win32 --arch=x64 --out=dist-packager --o
 
 # Option 2: Using electron-builder (if configured)
 bun run dist:win
+```
+
+### Release Management
+```bash
+# Complete release process (version bump + build + checksums + notes)
+bun run release:patch    # 0.3.40 -> 0.3.41
+bun run release:minor    # 0.3.40 -> 0.4.0  
+bun run release:major    # 0.3.40 -> 1.0.0
 ```
 ## Important Patterns
 

@@ -1,6 +1,6 @@
 {
   "name": "qcut",
-  "version": "0.3.39",
+  "version": "0.3.41",
   "description": "QCut - Open-source video editor",
   "author": "QCut Team",
   "main": "electron/main.js",
@@ -8,12 +8,12 @@
   "devDependencies": {
     "@biomejs/biome": "2.1.2",
     "@emnapi/core": "^1.4.5",
-    "@emnapi/wasi-threads": "^1.0.4",
+    "@emnapi/wasi-threads": "^1.1.0",
     "@types/jszip": "^3.4.1",
-    "@types/react": "^18.3.12",
-    "@types/react-dom": "^18.3.1",
+    "@types/react": "^18.3.24",
+    "@types/react-dom": "^18.3.7",
     "cross-env": "^10.0.0",
-    "electron": "^37.2.5",
+    "electron": "^37.4.0",
     "electron-builder": "^26.0.12",
     "electron-devtools-installer": "^4.0.0",
     "electron-packager": "^17.1.2",
@@ -43,15 +43,12 @@
     "dist:win:unsigned": "electron-builder --win --config.win.forceCodeSigning=false --config.win.verifyUpdateCodeSignature=false",
     "dist:win:release": "electron-builder --win --config.win.forceCodeSigning=false --config.win.verifyUpdateCodeSignature=false",
     "dist:win:fast": "electron-builder --win --config.win.forceCodeSigning=false --config.compression=store --config.nsis.differentialPackage=false",
-    "package:win": "electron-packager . QCut --platform=win32 --arch=x64 --out=dist-packager-new --overwrite --ignore=\"dist-packager.*\" --ignore=\"dist-electron.*\" && npm run copy-ffmpeg",
-    "copy-ffmpeg": "powershell -Command \"Copy-Item -Path 'electron/resources/*.exe' -Destination 'dist-packager-new/QCut-win32-x64/resources/' -Force; Copy-Item -Path 'electron/resources/*.dll' -Destination 'dist-packager-new/QCut-win32-x64/resources/' -Force; Copy-Item -Path 'electron/resources/ffmpeg' -Destination 'dist-packager-new/QCut-win32-x64/resources/' -Recurse -Force\"",
-    "build:exe": "npm run build && npm run package:win",
+    "package:win": "electron-packager . QCut --platform=win32 --arch=x64 --out=dist-packager-new --overwrite --ignore=\"dist-packager.*\" --ignore=\"dist-electron.*\" && bun run copy-ffmpeg",
+    "copy-ffmpeg": "node scripts/copy-ffmpeg.mjs",
+    "build:exe": "bun run build && bun run package:win",
     "release:patch": "node scripts/release.js patch",
     "release:minor": "node scripts/release.js minor",
-    "release:major": "node scripts/release.js major",
-    "version:patch": "npm version patch --no-git-tag-version",
-    "version:minor": "npm version minor --no-git-tag-version",
-    "version:major": "npm version major --no-git-tag-version"
+    "release:major": "node scripts/release.js major"
   },
   "build": {
     "appId": "com.qcut.videoeditor",
@@ -207,13 +204,21 @@
     "@ffmpeg/core": "^0.12.10",
     "@ffmpeg/ffmpeg": "^0.12.15",
     "@ffmpeg/util": "^0.12.2",
-    "electron-log": "^5.4.2",
+    "electron-log": "^5.4.3",
     "electron-updater": "^6.6.2",
     "jszip": "^3.10.1",
-    "next": "^15.3.4",
+    "next": "^15.5.2",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "wavesurfer.js": "^7.9.8"
+    "wavesurfer.js": "^7.10.1"
+  },
+  "resolutions": {
+    "minimist": "^1.2.8",
+    "tough-cookie": "^4.1.4",
+    "form-data": "^4.0.1",
+    "jpeg-js": "^0.4.4",
+    "tmp": "^0.2.4",
+    "esbuild": "^0.25.8"
   },
   "trustedDependencies": [
     "@tailwindcss/oxide",
