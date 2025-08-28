@@ -595,13 +595,13 @@ npx @tanstack/router-devtools generate
 describe('Parallel Routing', () => {
   it('should navigate correctly with both routers', () => {
     // Test with Next.js
-    process.env.VITE_USE_NEXTJS_ROUTING = 'true';
+    setRuntimeFlags({ USE_NEXTJS_ROUTING: true });
     render(<App />);
     fireEvent.click(screen.getByText('Projects'));
     expect(window.location.pathname).toBe('/projects');
     
     // Test with TanStack
-    process.env.VITE_USE_NEXTJS_ROUTING = 'false';
+    setRuntimeFlags({ USE_NEXTJS_ROUTING: false });
     render(<App />);
     fireEvent.click(screen.getByText('Projects'));
     expect(window.location.pathname).toBe('/projects');
