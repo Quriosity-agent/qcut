@@ -1,15 +1,10 @@
 # Current Next.js imports (remaining in hybrid architecture)
-src/app/api/health/route.ts:import { NextRequest } from "next/server";
-src/app/api/waitlist/route.ts:import { NextRequest, NextResponse } from "next/server";
-src/app/api/waitlist/route.ts:import { cookies } from "next/headers";
-src/app/api/waitlist/token/route.ts:import { NextRequest, NextResponse } from "next/server";
-src/app/api/waitlist/token/route.ts:import { cookies } from "next/headers";
+# Note: All Next.js API routes have been removed as they are non-functional in Vite environment
 src/components/background-settings.tsx:import Image from "next/image";
 src/components/editor/properties-panel/settings-view.tsx:// import Image from "next/image"; // Not needed in Vite
 src/components/ui/sonner.tsx:import { useTheme } from "next-themes";
 src/components/ui/theme-toggle.tsx:import { useTheme } from "next-themes";
-src/middleware.ts:import { NextResponse } from "next/server";
-src/middleware.ts:import type { NextRequest } from "next/server";
+# Next.js middleware removed - was non-functional in Vite environment
 src/routes/__root.tsx:import { ThemeProvider } from "next-themes";
 
 # Current TanStack Router usage (migrated from Next.js)
