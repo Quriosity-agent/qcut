@@ -156,7 +156,6 @@ describe('useToast', () => {
       
       act(() => {
         toastResult.update({
-          id: toastResult.id,
           title: 'Updated Title',
           description: 'New Description',
         });

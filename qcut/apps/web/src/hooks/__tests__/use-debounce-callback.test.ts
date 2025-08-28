@@ -19,7 +19,7 @@ describe('useDebounce - Advanced Tests', () => {
     
     expect(result.current).toBe(null);
     
-    rerender({ value: undefined });
+    rerender({ value: undefined as any });
     expect(result.current).toBe(null);
     
     act(() => {

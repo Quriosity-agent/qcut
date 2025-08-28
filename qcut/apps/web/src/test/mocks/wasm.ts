@@ -44,29 +44,72 @@ export const mockSharedArrayBuffer = class MockSharedArrayBuffer extends ArrayBu
  * Setup WebAssembly environment for tests
  */
 export function setupWasmEnvironment() {
+  // Capture original descriptors before mocking
+  const prevWA = Object.getOwnPropertyDescriptor(globalThis, 'WebAssembly');
+  const prevSAB = Object.getOwnPropertyDescriptor(globalThis, 'SharedArrayBuffer');
+  const prevPerfMem = Object.getOwnPropertyDescriptor(performance, 'memory');
+  
   // Mock WebAssembly
-  (global as any).WebAssembly = mockWebAssembly;
+  Object.defineProperty(globalThis, 'WebAssembly', {
+    value: mockWebAssembly,
+    configurable: true,
+    writable: true,
+  });
   
   // Mock SharedArrayBuffer if not available
   if (typeof SharedArrayBuffer === 'undefined') {
-    (global as any).SharedArrayBuffer = mockSharedArrayBuffer;
-  }
-  
-  // Mock performance.memory for FFmpeg memory checks
-  if (!performance.memory) {
-    Object.defineProperty(performance, 'memory', {
-      value: {
-        usedJSHeapSize: 100000000,
-        totalJSHeapSize: 200000000,
-        jsHeapSizeLimit: 500000000,
-      },
+    Object.defineProperty(globalThis, 'SharedArrayBuffer', {
+      value: mockSharedArrayBuffer,
+      configurable: true,
       writable: true,
     });
   }
   
+  // Mock performance.memory for FFmpeg memory checks
+  if (!('memory' in performance)) {
+    Object.defineProperty(performance, 'memory', {
+      value: {
+        usedJSHeapSize: 100_000_000,
+        totalJSHeapSize: 200_000_000,
+        jsHeapSizeLimit: 500_000_000,
+      },
+      configurable: true,
+    });
+  }
+  
   return () => {
-    // Cleanup function
-    delete (global as any).WebAssembly;
-    delete (global as any).SharedArrayBuffer;
+    // Cleanup function: restore captured descriptors
+    if (prevWA) {
+      Object.defineProperty(globalThis, 'WebAssembly', prevWA);
+    } else {
+      Object.defineProperty(globalThis, 'WebAssembly', { 
+        value: undefined, 
+        configurable: true, 
+        writable: true 
+      });
+    }
+    
+    if (prevSAB) {
+      Object.defineProperty(globalThis, 'SharedArrayBuffer', prevSAB);
+    } else if ('SharedArrayBuffer' in globalThis && typeof SharedArrayBuffer === 'function') {
+      // Only reset if we likely set it to our mock
+      const currentSAB = globalThis.SharedArrayBuffer;
+      if (currentSAB && currentSAB.prototype && currentSAB.prototype.constructor === mockSharedArrayBuffer) {
+        Object.defineProperty(globalThis, 'SharedArrayBuffer', { 
+          value: undefined, 
+          configurable: true, 
+          writable: true 
+        });
+      }
+    }
+    
+    if (prevPerfMem) {
+      Object.defineProperty(performance, 'memory', prevPerfMem);
+    } else if ('memory' in performance) {
+      Object.defineProperty(performance, 'memory', { 
+        value: undefined, 
+        configurable: true 
+      });
+    }
   };
 }

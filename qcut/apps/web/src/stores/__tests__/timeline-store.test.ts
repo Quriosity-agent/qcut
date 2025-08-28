@@ -207,7 +207,9 @@ describe('TimelineStore', () => {
         mediaId: 'test-media',
         startTime: 0,
         duration: 10,
-        name: 'To Remove'
+        name: 'To Remove',
+        trimStart: 0,
+        trimEnd: 0
       });
     });
     
@@ -232,7 +234,9 @@ describe('TimelineStore', () => {
         mediaId: 'test-media',
         startTime: 0,
         duration: 5,
-        name: 'Original Media'
+        name: 'Original Media',
+        trimStart: 0,
+        trimEnd: 0
       });
     });
     
@@ -262,7 +266,10 @@ describe('TimelineStore', () => {
         type: 'media',
         mediaId: 'test',
         startTime: 0,
-        duration: 10
+        duration: 10,
+        name: 'Media',
+        trimStart: 0,
+        trimEnd: 0
       });
     });
     
@@ -291,13 +298,19 @@ describe('TimelineStore', () => {
         type: 'media',
         mediaId: 'media1',
         startTime: 0,
-        duration: 10
+        duration: 10,
+        name: 'Media 1',
+        trimStart: 0,
+        trimEnd: 0
       });
       result.current.addElementToTrack(mainTrack.id, {
         type: 'media',
         mediaId: 'media2',
         startTime: 10,
-        duration: 10
+        duration: 10,
+        name: 'Media 2',
+        trimStart: 0,
+        trimEnd: 0
       });
     });
     

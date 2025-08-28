@@ -8,23 +8,23 @@ describe('Timeline Calculations', () => {
       const elements: TimelineElement[] = [
         {
           id: '1',
-          type: 'video',
+          type: 'media' as const,
+          mediaId: 'media-001',
+          name: 'Video',
           startTime: 0,
           duration: 5,
           trimStart: 0,
           trimEnd: 0,
-          trackIndex: 0,
-          position: { x: 0, y: 0 },
         },
         {
           id: '2',
-          type: 'video',
+          type: 'media' as const,
+          mediaId: 'media-001',
+          name: 'Video',
           startTime: 5,
           duration: 5,
           trimStart: 0,
           trimEnd: 0,
-          trackIndex: 0,
-          position: { x: 100, y: 0 },
         },
       ];
       
@@ -35,23 +35,23 @@ describe('Timeline Calculations', () => {
       const elements: TimelineElement[] = [
         {
           id: '1',
-          type: 'video',
+          type: 'media' as const,
+          mediaId: 'media-001',
+          name: 'Video',
           startTime: 0,
           duration: 5,
           trimStart: 0,
           trimEnd: 0,
-          trackIndex: 0,
-          position: { x: 0, y: 0 },
         },
         {
           id: '2',
-          type: 'video',
+          type: 'media' as const,
+          mediaId: 'media-001',
+          name: 'Video',
           startTime: 3,
           duration: 5,
           trimStart: 0,
           trimEnd: 0,
-          trackIndex: 0,
-          position: { x: 60, y: 0 },
         },
       ];
       
@@ -62,23 +62,23 @@ describe('Timeline Calculations', () => {
       const elements: TimelineElement[] = [
         {
           id: '1',
-          type: 'video',
+          type: 'media' as const,
+          mediaId: 'media-001',
+          name: 'Video',
           startTime: 0,
           duration: 10,
           trimStart: 0,
           trimEnd: 5, // Trimmed 5 seconds from end
-          trackIndex: 0,
-          position: { x: 0, y: 0 },
         },
         {
           id: '2',
-          type: 'video',
+          type: 'media' as const,
+          mediaId: 'media-001',
+          name: 'Video',
           startTime: 5,
           duration: 5,
           trimStart: 0,
           trimEnd: 0,
-          trackIndex: 0,
-          position: { x: 100, y: 0 },
         },
       ];
       
@@ -91,23 +91,23 @@ describe('Timeline Calculations', () => {
       const elements: TimelineElement[] = [
         {
           id: '1',
-          type: 'video',
+          type: 'media' as const,
+          mediaId: 'media-001',
+          name: 'Video',
           startTime: 0,
           duration: 5,
           trimStart: 0,
           trimEnd: 0,
-          trackIndex: 0,
-          position: { x: 0, y: 0 },
         },
         {
           id: '2',
-          type: 'video',
+          type: 'media' as const,
+          mediaId: 'media-001',
+          name: 'Video',
           startTime: 3, // Overlaps with first element
           duration: 5,
           trimStart: 0,
           trimEnd: 0,
-          trackIndex: 0,
-          position: { x: 60, y: 0 },
         },
       ];
       
@@ -120,33 +120,33 @@ describe('Timeline Calculations', () => {
       const elements: TimelineElement[] = [
         {
           id: '1',
-          type: 'video',
+          type: 'media' as const,
+          mediaId: 'media-001',
+          name: 'Video',
           startTime: 5,
           duration: 10,
           trimStart: 0,
           trimEnd: 0,
-          trackIndex: 0,
-          position: { x: 100, y: 0 },
         },
         {
           id: '2',
-          type: 'video',
+          type: 'media' as const,
+          mediaId: 'media-001',
+          name: 'Video',
           startTime: 0,
           duration: 10,
           trimStart: 0,
           trimEnd: 0,
-          trackIndex: 0,
-          position: { x: 0, y: 0 },
         },
         {
           id: '3',
-          type: 'video',
+          type: 'media' as const,
+          mediaId: 'media-001',
+          name: 'Video',
           startTime: 2,
           duration: 5,
           trimStart: 0,
           trimEnd: 0,
-          trackIndex: 0,
-          position: { x: 40, y: 0 },
         },
       ];
       

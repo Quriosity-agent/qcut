@@ -56,13 +56,20 @@ export const mockStickerTopLayer: OverlaySticker = {
 export function createMockStickers(count: number): OverlaySticker[] {
   return Array.from({ length: count }, (_, i) => ({
     ...mockSticker,
+    // Ensure size is a fresh clone per sticker
+    size: { ...mockSticker.size },
     id: `sticker-${i + 1}`,
-    mediaItemId: `media-${(i % 3) + 1}`, // Cycle through 3 media items
+    // Zero-pad to match other fixtures (media-001 … media-003)
+    mediaItemId: `media-${String((i % 3) + 1).padStart(3, '0')}`,
     position: {
       x: 10 + (i * 20) % 80, // Distribute across canvas
       y: 10 + (i * 15) % 80,
     },
-    zIndex: Z_INDEX.MIN + (i * Z_INDEX.INCREMENT),
+    // Clamp to avoid exceeding Z_INDEX.MAX
+    zIndex: Math.min(
+      Z_INDEX.MIN + (i * Z_INDEX.INCREMENT),
+      Z_INDEX.MAX - Z_INDEX.INCREMENT
+    ),
     timing: {
       startTime: i * 2,
       endTime: (i + 1) * 5,
@@ -102,24 +109,18 @@ export function createMockSticker(overrides: Partial<OverlaySticker> = {}): Over
  */
 export const mockStickerData: Partial<OverlaySticker>[] = [
   {
-    src: '/stickers/emoji-smile.png',
-    alt: 'Smile Emoji',
     position: { x: 50, y: 50 },
     size: { width: 10, height: 10 },
     rotation: 0,
     opacity: 1,
   },
   {
-    src: '/stickers/emoji-heart.png',
-    alt: 'Heart Emoji',
     position: { x: 60, y: 60 },
     size: { width: 10, height: 10 },
     rotation: 0,
     opacity: 1,
   },
   {
-    src: '/stickers/emoji-star.png',
-    alt: 'Star Emoji',
     position: { x: 70, y: 70 },
     size: { width: 10, height: 10 },
     rotation: 0,

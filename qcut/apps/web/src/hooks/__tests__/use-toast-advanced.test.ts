@@ -43,7 +43,7 @@ describe('useToast - Advanced Features', () => {
           ToastAction,
           { altText: 'Undo action', onClick: onAction },
           'Undo'
-        ) as ToastActionElement
+        ) as unknown as ToastActionElement
       });
     });
     
@@ -92,7 +92,7 @@ describe('useToast - Advanced Features', () => {
   it('handles toast with all properties', () => {
     const { result } = renderHook(() => useToast());
     
-    let toastResult: ReturnType<typeof result.current.toast>;
+    let toastResult: ReturnType<typeof result.current.toast> | undefined;
     act(() => {
       toastResult = result.current.toast({
         title: 'Complete Toast',
@@ -102,14 +102,14 @@ describe('useToast - Advanced Features', () => {
           ToastAction,
           { altText: 'Try again', onClick: () => {} },
           'Try again'
-        ) as ToastActionElement
+        ) as unknown as ToastActionElement
       });
     });
     
     expect(toastResult).toBeDefined();
-    expect(toastResult.id).toBeDefined();
-    expect(toastResult.dismiss).toBeDefined();
-    expect(toastResult.update).toBeDefined();
+    expect(toastResult!.id).toBeDefined();
+    expect(toastResult!.dismiss).toBeDefined();
+    expect(toastResult!.update).toBeDefined();
     
     expect(result.current.toasts.length).toBeGreaterThan(0);
     
@@ -130,18 +130,19 @@ describe('useToast - Advanced Features', () => {
       });
     });
     
-    expect(result.current.toasts.length).toBeGreaterThan(0);
     expect(result.current.toasts.at(0)?.title).toBe('Original Title');
     
     act(() => {
+      // Use the update method from the toast result
       toastResult.update({
         title: 'Updated Title',
         description: 'Now with description'
       });
     });
     
-    expect(result.current.toasts.at(0)?.title).toBe('Updated Title');
-    expect(result.current.toasts.at(0)?.description).toBe('Now with description');
+    const updated = result.current.toasts.at(0);
+    expect(updated?.title).toBe('Updated Title');
+    expect(updated?.description).toBe('Now with description');
   });
   
   it('handles rapid toast creation and dismissal', () => {

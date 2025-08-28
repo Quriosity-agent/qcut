@@ -8,7 +8,7 @@ export async function waitForExportComplete(
   await waitForCondition(
     () => {
       const { progress } = useExportStore.getState();
-      return !progress.isExporting && progress.percentage >= 100;
+      return !progress.isExporting && progress.progress >= 100;
     },
     {
       timeout,
@@ -18,14 +18,17 @@ export async function waitForExportComplete(
 }
 
 export function mockExportProgress(
-  percentage: number,
+  progressValue: number,
   message = 'Exporting...'
 ) {
   useExportStore.setState({
     progress: {
-      percentage,
-      message,
-      isExporting: percentage < 100,
+      progress: progressValue,
+      status: message,
+      isExporting: progressValue < 100,
+      currentFrame: Math.floor((progressValue / 100) * 1000),
+      totalFrames: 1000,
+      estimatedTimeRemaining: Math.max(0, 100 - progressValue)
     },
   });
 }

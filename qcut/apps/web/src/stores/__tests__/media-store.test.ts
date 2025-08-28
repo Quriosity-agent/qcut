@@ -75,8 +75,8 @@ describe('MediaStore', () => {
     const mediaItem: Omit<MediaItem, 'id'> = {
       type: 'image',
       name: 'test.jpg',
+      file: new File([''], 'test.jpg', { type: 'image/jpeg' }),
       url: 'blob:test',
-      size: 1024,
       duration: 0,
       thumbnailUrl: 'thumb.jpg',
       width: 1920,
@@ -104,7 +104,7 @@ describe('MediaStore', () => {
       type: 'video' as const,
       name: 'video.mp4',
       url: 'blob:video',
-      size: 5000000,
+      file: new File([''], 'video.mp4', { type: 'video/mp4' }),
       duration: 30,
       thumbnailUrl: 'video-thumb.jpg'
     };
@@ -124,7 +124,7 @@ describe('MediaStore', () => {
         url: 'image1.jpg',
         type: 'image' as const,
         name: 'Generated Image 1',
-        size: 1024,
+        file: new File([''], 'image.jpg', { type: 'image/jpeg' }),
         duration: 0,
         metadata: { source: 'ai-generated' }
       },
@@ -132,7 +132,7 @@ describe('MediaStore', () => {
         url: 'image2.jpg',
         type: 'image' as const,
         name: 'Generated Image 2',
-        size: 2048,
+        file: new File([''], 'image2.jpg', { type: 'image/jpeg' }),
         duration: 0,
         metadata: { source: 'ai-generated' }
       }
@@ -158,7 +158,7 @@ describe('MediaStore', () => {
         type: 'image',
         name: 'to-remove.jpg',
         url: 'blob:remove',
-        size: 1024,
+        file: new File([''], 'image.jpg', { type: 'image/jpeg' }),
         duration: 0,
         thumbnailUrl: 'thumb.jpg'
       });
@@ -181,7 +181,7 @@ describe('MediaStore', () => {
         type: 'video',
         name: 'stored-video.mp4',
         url: 'blob:stored',
-        size: 1000000,
+        file: new File([''], 'video.mp4', { type: 'video/mp4' }),
         duration: 60,
         thumbnailUrl: 'stored-thumb.jpg'
       }
@@ -211,7 +211,7 @@ describe('MediaStore', () => {
         type: 'image',
         name: 'test1.jpg',
         url: 'blob:1',
-        size: 1024,
+        file: new File([''], 'image.jpg', { type: 'image/jpeg' }),
         duration: 0,
         thumbnailUrl: 'thumb1.jpg'
       });
@@ -219,7 +219,7 @@ describe('MediaStore', () => {
         type: 'video',
         name: 'test2.mp4',
         url: 'blob:2',
-        size: 2048,
+        file: new File([''], 'image2.jpg', { type: 'image/jpeg' }),
         duration: 10,
         thumbnailUrl: 'thumb2.jpg'
       });
@@ -246,7 +246,7 @@ describe('MediaStore', () => {
           type: 'image',
           name: 'temp.jpg',
           url: 'blob:temp',
-          size: 1024,
+          file: new File([''], 'image.jpg', { type: 'image/jpeg' }),
           duration: 0,
           thumbnailUrl: 'temp-thumb.jpg'
         } as MediaItem

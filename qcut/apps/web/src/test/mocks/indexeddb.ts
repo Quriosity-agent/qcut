@@ -31,13 +31,34 @@ export class MockIDBObjectStore {
     this.indexNames = [] as any;
   }
   
-  add = vi.fn().mockResolvedValue('key');
-  put = vi.fn().mockResolvedValue('key');
-  get = vi.fn().mockResolvedValue({ id: 'test', data: 'value' });
-  getAll = vi.fn().mockResolvedValue([]);
-  delete = vi.fn().mockResolvedValue(undefined);
-  clear = vi.fn().mockResolvedValue(undefined);
-  count = vi.fn().mockResolvedValue(0);
+  add = vi.fn((value: any, key?: IDBValidKey) => {
+    return new MockIDBRequest(key || 'key');
+  });
+  
+  put = vi.fn((value: any, key?: IDBValidKey) => {
+    return new MockIDBRequest(key || 'key');
+  });
+  
+  get = vi.fn((key: IDBValidKey | IDBKeyRange) => {
+    return new MockIDBRequest({ id: 'test', data: 'value' });
+  });
+  
+  getAll = vi.fn((query?: IDBValidKey | IDBKeyRange, count?: number) => {
+    return new MockIDBRequest([]);
+  });
+  
+  delete = vi.fn((key: IDBValidKey | IDBKeyRange) => {
+    return new MockIDBRequest(undefined);
+  });
+  
+  clear = vi.fn(() => {
+    return new MockIDBRequest(undefined);
+  });
+  
+  count = vi.fn((key?: IDBValidKey | IDBKeyRange) => {
+    return new MockIDBRequest(0);
+  });
+  
   createIndex = vi.fn();
   deleteIndex = vi.fn();
 }

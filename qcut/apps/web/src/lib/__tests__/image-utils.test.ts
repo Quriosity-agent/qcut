@@ -138,7 +138,7 @@ describe('Image Utils', () => {
           return {
             ...mockCanvas,
             getContext: () => mockContext,
-          } as HTMLCanvasElement;
+          } as unknown as HTMLCanvasElement;
         }
         return realCreateElement(tag);
       });
@@ -242,7 +242,7 @@ describe('Image Utils', () => {
           ok: true,
           blob: () => Promise.resolve(new Blob(['test'], { type: 'image/jpeg' })),
         } as Response)
-      );
+      ) as any;
       
       global.URL.createObjectURL = vi.fn(() => 'blob:mock-url');
       global.URL.revokeObjectURL = vi.fn();
@@ -282,7 +282,7 @@ describe('Image Utils', () => {
     
     it('handles fetch errors gracefully', async () => {
       const url = 'https://fal.media/test-error.jpg';
-      global.fetch = vi.fn(() => Promise.reject(new Error('Network error')));
+      global.fetch = vi.fn(() => Promise.reject(new Error('Network error'))) as any;
       
       const result = await convertToBlob(url);
       
