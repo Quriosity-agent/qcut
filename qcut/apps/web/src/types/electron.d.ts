@@ -95,6 +95,7 @@ export interface ElectronAPI {
   // Transcription operations
   transcribe: {
     audio: (requestData: {
+      id: string;
       filename: string;
       language?: string;
       decryptionKey?: string;
@@ -111,6 +112,11 @@ export interface ElectronAPI {
       language?: string;
       error?: string;
       message?: string;
+    }>;
+    cancel: (id: string) => Promise<{
+      success: boolean;
+      message?: string;
+      error?: string;
     }>;
   };
 

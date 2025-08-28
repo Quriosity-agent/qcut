@@ -40,6 +40,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
   // Transcription operations
   transcribe: {
     audio: (requestData) => ipcRenderer.invoke("transcribe:audio", requestData),
+    cancel: (id) => ipcRenderer.invoke("transcribe:cancel", id),
   },
 
 

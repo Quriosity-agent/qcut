@@ -11,15 +11,46 @@ try {
   log = { info() {}, error() {}, warn() {}, debug() {} };
 }
 
+// Map to track ongoing transcription controllers
+const controllers = new Map();
+
 module.exports = function setupTranscribeHandlers() {
+  // Remove existing handlers to prevent duplicate registration
+  try { ipcMain.removeHandler("transcribe:audio"); } catch {}
+  try { ipcMain.removeHandler("transcribe:cancel"); } catch {}
+
   ipcMain.handle("transcribe:audio", async (event, requestData) => {
-    return await handleTranscription(requestData);
+    const { id } = requestData;
+    if (!id) {
+      return { success: false, error: "Transcription ID is required" };
+    }
+
+    // Create AbortController for this transcription
+    const controller = new AbortController();
+    controllers.set(id, controller);
+
+    try {
+      const result = await handleTranscription({ ...requestData, controller });
+      return { ...result, id };
+    } finally {
+      controllers.delete(id);
+    }
+  });
+
+  ipcMain.handle("transcribe:cancel", async (event, id) => {
+    const controller = controllers.get(id);
+    if (controller) {
+      controller.abort();
+      controllers.delete(id);
+      return { success: true, message: `Transcription ${id} cancelled` };
+    }
+    return { success: false, error: `Transcription ${id} not found` };
   });
 };
 
 async function handleTranscription(requestData) {
   try {
-    const { filename, language = "auto", decryptionKey, iv } = requestData;
+    const { filename, language = "auto", decryptionKey, iv, controller } = requestData;
 
     log.info("[Transcribe Handler] Starting transcription for:", filename);
 
@@ -59,6 +90,7 @@ async function handleTranscription(requestData) {
         "Content-Type": "application/json",
       },
       body: JSON.stringify(modalRequestBody),
+      signal: controller?.signal,
     });
 
     if (!response.ok) {
