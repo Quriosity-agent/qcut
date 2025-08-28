@@ -1,1 +1,0 @@
-src/components/background-settings.tsx:import Image from "next/image";
