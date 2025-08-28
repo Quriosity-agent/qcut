@@ -209,12 +209,21 @@ These ten rules catch the most frequent and most critical a11y bugs in a React +
 > **Implementation tip:** add these rules to your Ultracite (Biome) config at **error** level first; they deliver the highest value-to-refactor ratio for an existing QCut codebase.
 
 
-## Current Limitations
-1. No test suite
-2. Limited error handling
+## Current Status & Recent Improvements
+
+### ✅ **Recently Fixed (v0.3.38)**
+- **Electron API Structure**: Fixed `window.electronAPI.invoke is not a function` error by implementing proper structured API methods
+- **TypeScript Safety**: All Electron API calls now use proper types with null checks
+- **API Completeness**: Added missing methods (apiKeys, github.fetchStars, sounds.downloadPreview)
+- **Test Coverage**: Updated mocks to match all API methods
+- **Build Process**: Clean TypeScript compilation with no errors
+
+### Current Limitations
+1. No test suite (in progress)
+2. Limited error handling (improving)
 3. No performance monitoring
 4. Basic export functionality (needs enhancement)
-5. **Hybrid architecture complexity** - dual routing and API systems
+5. **Hybrid architecture complexity** - dual routing and API systems (manageable)
 
 ## When Working on Features
 1. Always test both `bun run electron:dev` (development) and `bun run electron` (production)
@@ -244,3 +253,10 @@ When encountering Next.js patterns that don't work in Vite:
 2. **Server Components** → Convert to client components with IPC calls
 3. **process.env** → Convert to `import.meta.env.VITE_*`
 4. **Next.js Image** → Use regular `<img>` or create compatibility wrapper
+
+### 🎯 **Electron API Best Practices**
+- **Structured Methods**: Use `window.electronAPI.sounds.search()` instead of `window.electronAPI.invoke("sounds:search")`
+- **Type Safety**: All API calls have proper TypeScript definitions in `src/types/electron.d.ts`
+- **Error Handling**: Check for API availability before calling: `if (window.electronAPI?.sounds)`
+- **Null Checks**: Always validate return values and handle undefined cases
+- **Mock Coverage**: Ensure test mocks match the actual API structure

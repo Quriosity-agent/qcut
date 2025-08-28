@@ -198,8 +198,40 @@ We welcome contributions! The project has been successfully migrated to a deskto
 - Efficient media caching
 - WebAssembly for compute-intensive tasks
 
+### Recent Improvements (v0.3.38)
+
+- **Fixed Runtime Errors**: Resolved `window.electronAPI.invoke is not a function` with proper structured API
+- **Enhanced Type Safety**: Complete TypeScript definitions for all Electron API methods
+- **Improved Error Handling**: Better null checks and validation throughout the codebase
+- **Clean Builds**: No TypeScript compilation errors, production-ready state
+
 ### Known Limitations
 
 - API routes from Next.js structure are non-functional (use Electron IPC instead)
-- Some features require packaging adjustments for production builds
+- Some advanced features still in development (transcription, AI features)
 - FFmpeg WebAssembly files need special handling in linting
+- Test suite implementation in progress
+
+## Troubleshooting
+
+### Common Issues
+
+**Build Errors:**
+- Run `bun install` to ensure all dependencies are installed
+- Use `bun run lint:clean` instead of `bun lint` to skip FFmpeg WebAssembly parsing errors
+- Check that you're using the correct Node.js version (v18+)
+
+**Electron App Won't Start:**
+- Ensure you've built the web app first: `cd qcut/apps/web && bun run build`
+- Try running in development mode: `bun run electron:dev`
+- Check that all required files are present in `electron/` directory
+
+**API Errors:**
+- If you see `window.electronAPI.invoke is not a function`, make sure you're using structured API calls
+- Example: Use `window.electronAPI.sounds.search()` instead of `window.electronAPI.invoke("sounds:search")`
+- Check the preload script is properly configured
+
+**Performance Issues:**
+- Close unnecessary browser tabs if running in development mode
+- Ensure sufficient RAM available (recommended 8GB+)
+- Check if antivirus software is interfering with file operations
