@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render } from "@testing-library/react";
-import { RouterProvider } from "@tanstack/react-router";
+import { RouterProvider, createHashHistory } from "@tanstack/react-router";
 
 describe("TanStack Router Navigation", () => {
   beforeEach(() => {
