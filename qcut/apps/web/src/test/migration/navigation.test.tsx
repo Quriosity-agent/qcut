@@ -89,18 +89,12 @@ describe("TanStack Router Navigation", () => {
   });
 
   describe("Dynamic Route Parameters", () => {
-    it("should handle editor project IDs correctly", () => {
-      const editorRoutes = [
-        "/editor/project-123",
-        "/editor/my-video-project",
-        "/editor/test-project-456",
-      ];
-
-      for (const route of editorRoutes) {
-        const parts = route.split("/");
-        expect(parts[1]).toBe("editor");
-        expect(parts[2]).toBeTruthy(); // Project ID exists
-      }
+    it("should declare an editor route with a dynamic project param", () => {
+      const fs = require("node:fs");
+      const path = require("node:path");
+      const routeTreePath = path.resolve(__dirname, "../../routeTree.gen.ts");
+      const src = fs.readFileSync(routeTreePath, "utf8");
+      expect(/editor\.(\$|_)\w+/.test(src) || /\/editor\/\$\w+/.test(src)).toBe(true);
     });
 
     it("should declare a blog route with a dynamic slug", () => {
