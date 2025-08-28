@@ -75,6 +75,10 @@ export const mockElectronAPI: ElectronAPI = {
       text: "Test transcription",
       segments: [],
     }),
+    cancel: vi.fn().mockResolvedValue({
+      success: true,
+      message: "Transcription cancelled",
+    }),
   },
 };
 

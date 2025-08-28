@@ -129,8 +129,9 @@ export async function transcribeAudio(
 
   if (isFeatureEnabled("USE_ELECTRON_API")) {
     try {
-      // New Electron IPC implementation
-      const result = await window.electronAPI?.transcribe.audio(requestData);
+      // New Electron IPC implementation - add missing id parameter
+      const requestWithId = { ...requestData, id: crypto.randomUUID() };
+      const result = await window.electronAPI?.transcribe.audio(requestWithId);
 
       if (result?.success) {
         return result;
