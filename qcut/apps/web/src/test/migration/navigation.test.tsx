@@ -107,18 +107,12 @@ describe("TanStack Router Navigation", () => {
       }
     });
 
-    it("should handle blog post slugs correctly", () => {
-      const blogRoutes = [
-        "/blog/getting-started",
-        "/blog/video-editing-tips",
-        "/blog/new-features",
-      ];
-
-      for (const route of blogRoutes) {
-        const parts = route.split("/");
-        expect(parts[1]).toBe("blog");
-        expect(parts[2]).toBeTruthy(); // Slug exists
-      }
+    it("should declare a blog route with a dynamic slug", () => {
+      const fs = require("node:fs");
+      const path = require("node:path");
+      const routeTreePath = path.resolve(__dirname, "../../routeTree.gen.ts");
+      const src = fs.readFileSync(routeTreePath, "utf8");
+      expect(/blog\.(\$|_)\w+/.test(src) || /\/blog\/\$\w+/.test(src)).toBe(true);
     });
   });
 
