@@ -37,6 +37,11 @@ contextBridge.exposeInMainWorld("electronAPI", {
     search: (params) => ipcRenderer.invoke("sounds:search", params),
   },
 
+  // Transcription operations
+  transcribe: {
+    audio: (requestData) => ipcRenderer.invoke("transcribe:audio", requestData),
+  },
+
   // Generic IPC invoke method
   invoke: (channel, ...args) => ipcRenderer.invoke(channel, ...args),
 

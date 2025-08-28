@@ -92,6 +92,28 @@ export interface ElectronAPI {
     }>;
   };
 
+  // Transcription operations
+  transcribe: {
+    audio: (requestData: {
+      filename: string;
+      language?: string;
+      decryptionKey?: string;
+      iv?: string;
+    }) => Promise<{
+      success: boolean;
+      text?: string;
+      segments?: Array<{
+        id: number;
+        start: number;
+        end: number;
+        text: string;
+      }>;
+      language?: string;
+      error?: string;
+      message?: string;
+    }>;
+  };
+
   // Generic IPC invoke method
   invoke: (channel: string, ...args: any[]) => Promise<any>;
 

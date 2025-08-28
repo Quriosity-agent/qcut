@@ -71,3 +71,65 @@ export async function searchSounds(
   if (!res.ok) return { success: false, error: `HTTP ${res.status}` };
   return await res.json();
 }
+
+export async function transcribeAudio(
+  requestData: {
+    filename: string;
+    language?: string;
+    decryptionKey?: string;
+    iv?: string;
+  },
+  options: { 
+    retryCount?: number; 
+    fallbackToOld?: boolean;
+  } = {}
+) {
+  const { retryCount = 3, fallbackToOld = true } = options;
+  
+  try {
+    if (isFeatureEnabled('USE_ELECTRON_API')) {
+      // New Electron IPC implementation
+      const result = await window.electronAPI?.transcribe.audio(requestData);
+      
+      if (!result?.success && fallbackToOld) {
+        throw new Error(result?.error || 'IPC transcription failed');
+      }
+      return result;
+    }
+  } catch (error) {
+    console.error('Electron transcription API failed, falling back', error);
+    if (fallbackToOld) {
+      // Fallback to old Next.js API if new one fails
+      for (let i = 0; i < retryCount; i++) {
+        try {
+          const res = await fetch('/api/transcribe', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(requestData),
+          });
+          if (res.ok) return await res.json();
+        } catch (fetchError) {
+          console.error(`Transcription fetch attempt ${i + 1} failed:`, fetchError);
+        }
+        if (i < retryCount - 1) {
+          await new Promise(r => setTimeout(r, 1000 * (i + 1))); // exponential backoff
+        }
+      }
+      return { success: false, error: 'Transcription fallback failed after retries' };
+    }
+    throw error;
+  }
+  
+  // Original implementation
+  const res = await fetch('/api/transcribe', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(requestData),
+  });
+  if (!res.ok) return { success: false, error: `HTTP ${res.status}` };
+  return await res.json();
+}

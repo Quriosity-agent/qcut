@@ -38,6 +38,7 @@ import { encryptWithRandomKey } from "@/lib/transcription/zk-encryption";
 // REMOVED: import { r2Client } from "@/lib/storage/r2-client";
 import { useTimelineStore } from "@/stores/timeline-store";
 import { useCaptionsStore } from "@/stores/captions-store";
+import { transcribeAudio } from "@/lib/api-adapter";
 
 // Helper function to convert ArrayBuffer to base64 for JSON serialization
 function arrayBufferToBase64(ab: ArrayBuffer): string {
@@ -261,34 +262,24 @@ export function CaptionsView() {
           transcriptionProgress: 10,
         });
 
-        const response = await fetch("/api/transcribe", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            filename: r2Key,
-            language: selectedLanguage,
-            decryptionKey: keyB64,
-            iv: ivB64,
-          }),
+        const apiResult = await transcribeAudio({
+          filename: r2Key,
+          language: selectedLanguage,
+          decryptionKey: keyB64,
+          iv: ivB64,
         });
 
-        if (!response.ok) {
-          let message = "Transcription failed";
-          try {
-            const errorData = await response.json();
-            message = errorData.message || message;
-          } catch {
-            const text = await response.text();
-            if (text) message = text;
-          }
-          throw new Error(message);
+        if (!apiResult.success) {
+          throw new Error(apiResult.error || apiResult.message || "Transcription failed");
         }
 
         updateState({ transcriptionProgress: 90 });
 
-        const result: TranscriptionResult = await response.json();
+        const result: TranscriptionResult = {
+          text: apiResult.text || "",
+          segments: apiResult.segments || [],
+          language: apiResult.language || selectedLanguage
+        };
 
         // Complete transcription job in store
         completeTranscriptionJob(jobId, result);
