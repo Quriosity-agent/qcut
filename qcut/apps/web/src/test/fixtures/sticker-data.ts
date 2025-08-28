@@ -109,18 +109,21 @@ export function createMockSticker(overrides: Partial<OverlaySticker> = {}): Over
  */
 export const mockStickerData: Partial<OverlaySticker>[] = [
   {
+    mediaItemId: 'media-sticker-smile',
     position: { x: 50, y: 50 },
     size: { width: 10, height: 10 },
     rotation: 0,
     opacity: 1,
   },
   {
+    mediaItemId: 'media-sticker-heart',
     position: { x: 60, y: 60 },
     size: { width: 10, height: 10 },
     rotation: 0,
     opacity: 1,
   },
   {
+    mediaItemId: 'media-sticker-star',
     position: { x: 70, y: 70 },
     size: { width: 10, height: 10 },
     rotation: 0,

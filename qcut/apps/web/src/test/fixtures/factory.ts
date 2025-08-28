@@ -41,7 +41,7 @@ export const TestDataFactory = {
   createTimelineElement: (index = 0, overrides: Partial<TimelineElement> = {}): TimelineElement => {
     const base = mockTimelineElements.at(index) ?? mockTimelineElements[0];
     const id = overrides.id ?? `element-${nextId()}`;
-    return { ...base, ...overrides, id };
+    return { ...base, ...overrides, id } as TimelineElement;
   },
 
   createProject: (overrides: Partial<TProject> = {}): TProject => {

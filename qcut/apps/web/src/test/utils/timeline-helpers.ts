@@ -1,5 +1,5 @@
 import { useTimelineStore } from '@/stores/timeline-store';
-import type { TimelineElement, TimelineTrack, TrackType } from '@/types/timeline';
+import type { TimelineElement, TimelineTrack, TrackType, CreateTimelineElement } from '@/types/timeline';
 
 export function addElementToTimeline(
   trackId: string,
@@ -10,15 +10,27 @@ export function addElementToTimeline(
   const beforeIds = new Set(
     (store.tracks.find(t => t.id === trackId)?.elements ?? []).map(el => el.id)
   );
-  const elementData: Partial<TimelineElement> = {
-    startTime: 0,
-    duration: 5,
-    ...element,
-  };
-  store.addElementToTrack(trackId, elementData);
+  
+  // Find track to determine type
   const track = store.tracks.find(t => t.id === trackId);
   if (!track) throw new Error(`Track not found: ${trackId}`);
-  const created = track.elements.find(el => !beforeIds.has(el.id));
+  
+  // Create element data based on track type
+  const elementData = {
+    type: track.type === 'text' ? 'text' : 'media',
+    startTime: 0,
+    duration: 5,
+    trimStart: 0,
+    trimEnd: 5,
+    name: 'Test Element',
+    mediaId: 'test-media',
+    ...element,
+  } as CreateTimelineElement;
+  
+  store.addElementToTrack(trackId, elementData);
+  const updatedTrack = store.tracks.find(t => t.id === trackId);
+  if (!updatedTrack) throw new Error(`Track not found: ${trackId}`);
+  const created = updatedTrack.elements.find(el => !beforeIds.has(el.id));
   if (!created) throw new Error(`Failed to add element to track: ${trackId}`);
   return created;
 }

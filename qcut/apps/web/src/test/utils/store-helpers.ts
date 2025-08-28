@@ -49,19 +49,10 @@ export async function resetAllStores() {
     previousVolume: 1,
   });
 
-  // Reset export store
-  useExportStore.setState({
-    isDialogOpen: false,
-    progress: { 
-      progress: 0, 
-      status: '', 
-      isExporting: false,
-      currentFrame: 0,
-      totalFrames: 0,
-      estimatedTimeRemaining: 0
-    },
-    error: null,
-  });
+  // Reset export store using canonical methods
+  const { resetExport, clearHistory } = useExportStore.getState();
+  resetExport();
+  clearHistory();
 
   // Reset stickers overlay store
   const stickersStore = useStickersOverlayStore.getState();

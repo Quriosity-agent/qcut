@@ -17,16 +17,19 @@ describe('useToast - Advanced Features', () => {
   
   afterEach(() => {
     // Clear toasts after each test while timers are still fake
-    const { result } = renderHook(() => useToast());
+    const hook = renderHook(() => useToast());
     act(() => {
-      result.current.toasts.forEach(t => {
-        result.current.dismiss(t.id);
-      });
+      for (const t of hook.result.current.toasts) {
+        hook.result.current.dismiss(t.id);
+      }
     });
     
     act(() => {
       vi.runAllTimers();
     });
+    
+    // Unmount to remove subscribed listener
+    hook.unmount();
     
     vi.useRealTimers();
   });

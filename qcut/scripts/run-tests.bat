@@ -18,6 +18,10 @@ REM Check if dependencies are installed
 if not exist "node_modules" (
   echo Installing dependencies...
   call bun install
+  if errorlevel 1 (
+    echo Error: Dependency installation failed. See logs above.
+    exit /b 1
+  )
 )
 
 REM Run linting
@@ -42,7 +46,7 @@ set EXIT_CODE=%errorlevel%
 REM Generate coverage report (best-effort)
 echo.
 echo Test Coverage Summary:
-call bun test:coverage --reporter=text-summary
+call bun run test:coverage --reporter=text-summary
 
 echo.
 if %EXIT_CODE% neq 0 (

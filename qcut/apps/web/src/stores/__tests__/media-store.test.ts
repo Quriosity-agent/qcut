@@ -124,7 +124,7 @@ describe('MediaStore', () => {
         url: 'image1.jpg',
         type: 'image' as const,
         name: 'Generated Image 1',
-        file: new File([''], 'image.jpg', { type: 'image/jpeg' }),
+        size: 1024,
         duration: 0,
         metadata: { source: 'ai-generated' }
       },
@@ -132,7 +132,7 @@ describe('MediaStore', () => {
         url: 'image2.jpg',
         type: 'image' as const,
         name: 'Generated Image 2',
-        file: new File([''], 'image2.jpg', { type: 'image/jpeg' }),
+        size: 2048,
         duration: 0,
         metadata: { source: 'ai-generated' }
       }

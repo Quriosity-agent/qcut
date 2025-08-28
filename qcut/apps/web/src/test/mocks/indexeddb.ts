@@ -109,17 +109,26 @@ export const mockIndexedDB = {
  * Setup IndexedDB mocks globally
  */
 export function setupIndexedDBMock() {
-  (global as any).indexedDB = mockIndexedDB;
-  (global as any).IDBDatabase = MockIDBDatabase;
-  (global as any).IDBObjectStore = MockIDBObjectStore;
-  (global as any).IDBTransaction = MockIDBTransaction;
-  (global as any).IDBRequest = MockIDBRequest;
+  const g = globalThis as any;
+  const prev = {
+    indexedDB: g.indexedDB,
+    IDBDatabase: g.IDBDatabase,
+    IDBObjectStore: g.IDBObjectStore,
+    IDBTransaction: g.IDBTransaction,
+    IDBRequest: g.IDBRequest,
+  };
+  
+  g.indexedDB = mockIndexedDB;
+  g.IDBDatabase = MockIDBDatabase;
+  g.IDBObjectStore = MockIDBObjectStore;
+  g.IDBTransaction = MockIDBTransaction;
+  g.IDBRequest = MockIDBRequest;
   
   return () => {
-    delete (global as any).indexedDB;
-    delete (global as any).IDBDatabase;
-    delete (global as any).IDBObjectStore;
-    delete (global as any).IDBTransaction;
-    delete (global as any).IDBRequest;
+    g.indexedDB = prev.indexedDB;
+    g.IDBDatabase = prev.IDBDatabase;
+    g.IDBObjectStore = prev.IDBObjectStore;
+    g.IDBTransaction = prev.IDBTransaction;
+    g.IDBRequest = prev.IDBRequest;
   };
 }

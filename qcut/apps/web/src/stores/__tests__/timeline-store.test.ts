@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { act, renderHook } from '@testing-library/react';
 import { useTimelineStore } from '@/stores/timeline-store';
-import type { TimelineTrack, TimelineElement, MediaElement } from '@/types/timeline';
+import type { TimelineTrack, TimelineElement, MediaElement, CreateMediaElement } from '@/types/timeline';
 
 // Mock dependencies
 vi.mock('@/stores/editor-store', () => ({
@@ -179,12 +179,14 @@ describe('TimelineStore', () => {
     const { result } = renderHook(() => useTimelineStore());
     const mainTrack = result.current.tracks[0];
     
-    const element: Partial<TimelineElement> = {
+    const element: CreateMediaElement = {
       type: 'media',
       mediaId: 'test-media',
       startTime: 0,
       duration: 10,
-      name: 'Test Element'
+      name: 'Test Element',
+      trimStart: 0,
+      trimEnd: 10
     };
     
     act(() => {
