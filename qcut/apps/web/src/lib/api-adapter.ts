@@ -1,5 +1,75 @@
 import { isFeatureEnabled } from "./feature-flags";
 
+// Helper function for legacy sound search with retry logic
+async function legacySoundSearch(
+  query: string,
+  searchParams: {
+    type?: "effects" | "songs";
+    page?: number;
+    page_size?: number;
+    sort?: "downloads" | "rating" | "created" | "score";
+    min_rating?: number;
+    commercial_only?: boolean;
+  },
+  retryCount: number
+) {
+  const urlParams = new URLSearchParams();
+  if (query) urlParams.set("q", query);
+  if (searchParams.type) urlParams.set("type", searchParams.type);
+  if (searchParams.page)
+    urlParams.set("page", searchParams.page.toString());
+  if (searchParams.page_size)
+    urlParams.set("page_size", searchParams.page_size.toString());
+  if (searchParams.sort) urlParams.set("sort", searchParams.sort);
+  if (searchParams.min_rating)
+    urlParams.set("min_rating", searchParams.min_rating.toString());
+  if (searchParams.commercial_only !== undefined)
+    urlParams.set("commercial_only", searchParams.commercial_only.toString());
+
+  for (let i = 0; i < retryCount; i++) {
+    try {
+      const res = await fetch(`/api/sounds/search?${urlParams.toString()}`);
+      if (res.ok) return await res.json();
+    } catch (fetchError) {
+      console.error(`Fetch attempt ${i + 1} failed:`, fetchError);
+    }
+    if (i < retryCount - 1) {
+      await new Promise((r) => setTimeout(r, 1000 * (i + 1))); // exponential backoff
+    }
+  }
+  return { success: false, error: "API call failed after retries" };
+}
+
+// Helper function for legacy transcribe with retry logic
+async function legacyTranscribe(
+  requestData: {
+    filename: string;
+    language?: string;
+    decryptionKey?: string;
+    iv?: string;
+  },
+  retryCount: number
+) {
+  for (let i = 0; i < retryCount; i++) {
+    try {
+      const res = await fetch("/api/transcribe", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(requestData),
+      });
+      if (res.ok) return await res.json();
+    } catch (fetchError) {
+      console.error(`Transcription fetch attempt ${i + 1} failed:`, fetchError);
+    }
+    if (i < retryCount - 1) {
+      await new Promise((r) => setTimeout(r, 1000 * (i + 1))); // exponential backoff
+    }
+  }
+  return { success: false, error: "API call failed after retries" };
+}
+
 export async function searchSounds(
   query: string,
   options: {
@@ -15,76 +85,32 @@ export async function searchSounds(
 ) {
   const { retryCount = 3, fallbackToOld = true, ...searchParams } = options;
 
-  try {
-    if (isFeatureEnabled("USE_ELECTRON_API")) {
+  if (isFeatureEnabled("USE_ELECTRON_API")) {
+    try {
       // New Electron IPC implementation
       const result = await window.electronAPI?.sounds.search({
         q: query,
         ...searchParams,
       });
 
-      if (!result?.success && fallbackToOld) {
-        throw new Error(result?.error || "IPC failed");
+      if (result?.success) {
+        return result;
       }
-      return result;
-    }
-  } catch (error) {
-    console.error("Electron API failed, falling back", error);
-    if (fallbackToOld && !isFeatureEnabled("USE_ELECTRON_API")) {
-      // Fallback to old API if new one fails and feature flag allows HTTP
-      const urlParams = new URLSearchParams();
-      if (query) urlParams.set("q", query);
-      if (searchParams.type) urlParams.set("type", searchParams.type);
-      if (searchParams.page)
-        urlParams.set("page", searchParams.page.toString());
-      if (searchParams.page_size)
-        urlParams.set("page_size", searchParams.page_size.toString());
-      if (searchParams.sort) urlParams.set("sort", searchParams.sort);
-      if (searchParams.min_rating)
-        urlParams.set("min_rating", searchParams.min_rating.toString());
-      if (searchParams.commercial_only !== undefined)
-        urlParams.set(
-          "commercial_only",
-          searchParams.commercial_only.toString()
-        );
-
-      for (let i = 0; i < retryCount; i++) {
-        try {
-          const res = await fetch(`/api/sounds/search?${urlParams.toString()}`);
-          if (res.ok) return await res.json();
-        } catch (fetchError) {
-          console.error(`Fetch attempt ${i + 1} failed:`, fetchError);
-        }
-        if (i < retryCount - 1) {
-          await new Promise((r) => setTimeout(r, 1000 * (i + 1))); // exponential backoff
-        }
+      if (!fallbackToOld) {
+        return result;
       }
-      return { success: false, error: "Fallback failed after retries" };
+      throw new Error(result?.error || "IPC failed, attempting fallback");
+    } catch (error) {
+      console.error("Electron API failed, falling back:", error);
+      if (fallbackToOld && !isFeatureEnabled("USE_ELECTRON_API")) {
+        return legacySoundSearch(query, searchParams, retryCount);
+      }
+      throw error;
     }
-    throw error;
   }
 
-  // Original implementation - only available when USE_ELECTRON_API is disabled
-  if (!isFeatureEnabled("USE_ELECTRON_API")) {
-    const urlParams = new URLSearchParams();
-    if (query) urlParams.set("q", query);
-    if (searchParams.type) urlParams.set("type", searchParams.type);
-    if (searchParams.page) urlParams.set("page", searchParams.page.toString());
-    if (searchParams.page_size)
-      urlParams.set("page_size", searchParams.page_size.toString());
-    if (searchParams.sort) urlParams.set("sort", searchParams.sort);
-    if (searchParams.min_rating)
-      urlParams.set("min_rating", searchParams.min_rating.toString());
-    if (searchParams.commercial_only !== undefined)
-      urlParams.set("commercial_only", searchParams.commercial_only.toString());
-
-    const res = await fetch(`/api/sounds/search?${urlParams.toString()}`);
-    if (!res.ok) return { success: false, error: `HTTP ${res.status}` };
-    return await res.json();
-  }
-
-  // If USE_ELECTRON_API is enabled but we reach here, return error
-  return { success: false, error: "Electron API not available and HTTP disabled" };
+  // Original path now also has consistent retry logic
+  return legacySoundSearch(query, searchParams, retryCount);
 }
 
 export async function transcribeAudio(
@@ -101,56 +127,27 @@ export async function transcribeAudio(
 ) {
   const { retryCount = 3, fallbackToOld = true } = options;
 
-  try {
-    if (isFeatureEnabled("USE_ELECTRON_API")) {
+  if (isFeatureEnabled("USE_ELECTRON_API")) {
+    try {
       // New Electron IPC implementation
       const result = await window.electronAPI?.transcribe.audio(requestData);
 
-      if (!result?.success && fallbackToOld) {
-        throw new Error(result?.error || "IPC transcription failed");
+      if (result?.success) {
+        return result;
       }
-      return result;
-    }
-  } catch (error) {
-    console.error("Electron transcription API failed, falling back", error);
-    if (fallbackToOld) {
-      // Fallback to old Next.js API if new one fails
-      for (let i = 0; i < retryCount; i++) {
-        try {
-          const res = await fetch("/api/transcribe", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify(requestData),
-          });
-          if (res.ok) return await res.json();
-        } catch (fetchError) {
-          console.error(
-            `Transcription fetch attempt ${i + 1} failed:`,
-            fetchError
-          );
-        }
-        if (i < retryCount - 1) {
-          await new Promise((r) => setTimeout(r, 1000 * (i + 1))); // exponential backoff
-        }
+      if (!fallbackToOld) {
+        return result;
       }
-      return {
-        success: false,
-        error: "Transcription fallback failed after retries",
-      };
+      throw new Error(result?.error || "IPC transcription failed, attempting fallback");
+    } catch (error) {
+      console.error("Electron transcription API failed, falling back:", error);
+      if (fallbackToOld && !isFeatureEnabled("USE_ELECTRON_API")) {
+        return legacyTranscribe(requestData, retryCount);
+      }
+      throw error;
     }
-    throw error;
   }
 
-  // Original implementation
-  const res = await fetch("/api/transcribe", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(requestData),
-  });
-  if (!res.ok) return { success: false, error: `HTTP ${res.status}` };
-  return await res.json();
+  // Original path now also has consistent retry logic
+  return legacyTranscribe(requestData, retryCount);
 }

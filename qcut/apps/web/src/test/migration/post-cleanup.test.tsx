@@ -18,11 +18,11 @@ describe("Post-Cleanup Functionality", () => {
         "/why-not-capcut",
       ];
 
-      routes.forEach((route) => {
+      for (const route of routes) {
         // Navigation test - hash routing for Electron
         const hashRoute = `#${route}`;
         expect(hashRoute).toBe(`#${route}`);
-      });
+      }
 
       // All routes confirmed working with TanStack Router
       expect(routes.length).toBe(11);
@@ -61,9 +61,9 @@ describe("Post-Cleanup Functionality", () => {
         backupCreated: true,
       };
 
-      Object.values(fileStructure).forEach((status) => {
+      for (const status of Object.values(fileStructure)) {
         expect(status).toBe(true);
-      });
+      }
     });
   });
 
@@ -77,9 +77,9 @@ describe("Post-Cleanup Functionality", () => {
         maintainedFunctionality: true,
       };
 
-      Object.values(improvements).forEach((improvement) => {
+      for (const improvement of Object.values(improvements)) {
         expect(improvement).toBe(true);
-      });
+      }
     });
 
     it("should maintain all existing functionality", () => {
@@ -93,9 +93,9 @@ describe("Post-Cleanup Functionality", () => {
         transcriptionAPIWorking: true,
       };
 
-      Object.values(functionality).forEach((working) => {
+      for (const working of Object.values(functionality)) {
         expect(working).toBe(true);
-      });
+      }
     });
   });
 
@@ -110,9 +110,9 @@ describe("Post-Cleanup Functionality", () => {
         readyForPhase4: true,
       };
 
-      Object.entries(phase3Results).forEach(([task, status]) => {
+      for (const [, status] of Object.entries(phase3Results)) {
         expect(status).toBe(true);
-      });
+      }
     });
 
     it("should be ready for dependency removal phase", () => {
@@ -125,9 +125,9 @@ describe("Post-Cleanup Functionality", () => {
         backupAvailable: true,
       };
 
-      Object.values(readinessCheck).forEach((ready) => {
+      for (const ready of Object.values(readinessCheck)) {
         expect(ready).toBe(true);
-      });
+      }
     });
   });
 });

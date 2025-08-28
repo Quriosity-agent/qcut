@@ -33,12 +33,12 @@ describe("TanStack Router Verification", () => {
       { path: "/why-not-capcut", description: "Comparison page" },
     ];
 
-    routes.forEach(({ path, description }) => {
+    for (const { path, description } of routes) {
       it(`should handle route: ${path} (${description})`, () => {
         const result = testRoute(path);
         expect(result).toBe(`#${path}`);
       });
-    });
+    }
   });
 
   describe("Route Patterns", () => {
@@ -93,10 +93,10 @@ describe("TanStack Router Verification", () => {
         "/signup", // Registration
       ];
 
-      criticalRoutes.forEach((route) => {
+      for (const route of criticalRoutes) {
         const result = testRoute(route);
         expect(result).toBe(`#${route}`);
-      });
+      }
     });
 
     it("should confirm static pages exist", () => {
@@ -110,10 +110,10 @@ describe("TanStack Router Verification", () => {
         "/why-not-capcut",
       ];
 
-      staticRoutes.forEach((route) => {
+      for (const route of staticRoutes) {
         const result = testRoute(route);
         expect(result).toBe(`#${route}`);
-      });
+      }
     });
   });
 });

@@ -164,24 +164,37 @@ export async function searchSounds(query: string) {
 #### Subtask 2.1.1: Enhance existing Electron handler (15 min)
 ```javascript
 // File: electron/sound-handler.js (EXISTING - needs enhancement)
+const { ipcMain } = require('electron');
+
+// Try to load electron-log, fallback to no-op logger
+let log;
+try {
+  log = require('electron-log');
+} catch (error) {
+  log = { info() {}, error() {}, warn() {}, debug() {} };
+}
+
 // Current implementation already exists with sophisticated API key management
 // Need to add new IPC handler for sounds:search alongside existing handlers
 
-ipcMain.handle('sounds:search', async (event, params) => {
-  try {
-    // Reuse existing getFreesoundApiKey() function
-    const apiKey = await getFreesoundApiKey();
-    if (!apiKey) {
-      return { success: false, error: 'Freesound API key not available' };
+// Guard against re-registration during HMR
+if (!ipcMain.listenerCount('sounds:search')) {
+  ipcMain.handle('sounds:search', async (event, params) => {
+    try {
+      // Reuse existing getFreesoundApiKey() function
+      const apiKey = await getFreesoundApiKey();
+      if (!apiKey) {
+        return { success: false, error: 'Freesound API key not available' };
+      }
+      
+      // Use existing search logic but with new interface
+      return await performFreesoundSearch(params, apiKey);
+    } catch (error) {
+      log.error('Sounds search error:', error);
+      return { success: false, error: error.message };
     }
-    
-    // Use existing search logic but with new interface
-    return await performFreesoundSearch(params, apiKey);
-  } catch (error) {
-    log.error('Sounds search error:', error);
-    return { success: false, error: error.message };
-  }
-});
+  });
+}
 ```
 
 #### Subtask 2.1.2: Port complex API logic from Next.js (45 min)
@@ -947,6 +960,16 @@ echo "✅ Migrated API routes cleaned up"
 ```bash
 # File: scripts/final-nextjs-cleanup.sh
 #!/bin/bash
+
+safe_remove() {
+  local path="$1"
+  local label="$2"
+  if [ -e "$path" ]; then
+    rm -rf "$path" && echo "✅ Removed: $label ($path)" || echo "❌ Failed to remove: $label ($path)"
+  else
+    echo "ℹ️ Skipped (not found): $label ($path)"
+  fi
+}
 
 echo "🧹 Final Next.js cleanup..."
 

@@ -49,9 +49,9 @@ describe("TanStack Router Navigation", () => {
       };
 
       // All imports use TanStack Router patterns ✅
-      Object.values(tanstackPatterns).forEach((pattern) => {
+      for (const pattern of Object.values(tanstackPatterns)) {
         expect(pattern).toBeTruthy();
-      });
+      }
     });
   });
 
@@ -71,10 +71,10 @@ describe("TanStack Router Navigation", () => {
     it("should support browser navigation events", () => {
       const navigationEvents = ["hashchange", "popstate"];
 
-      navigationEvents.forEach((eventType) => {
+      for (const eventType of navigationEvents) {
         expect(typeof eventType).toBe("string");
         // In real environment, these events are handled by TanStack Router
-      });
+      }
     });
   });
 
@@ -85,9 +85,9 @@ describe("TanStack Router Navigation", () => {
         editor: "editor.$project_id.lazy.tsx",
       };
 
-      Object.entries(lazyRoutes).forEach(([route, filename]) => {
+      for (const [, filename] of Object.entries(lazyRoutes)) {
         expect(filename).toContain(".lazy.tsx");
-      });
+      }
     });
 
     it("should handle route preloading correctly", () => {
@@ -105,11 +105,11 @@ describe("TanStack Router Navigation", () => {
         "/editor/test-project-456",
       ];
 
-      editorRoutes.forEach((route) => {
+      for (const route of editorRoutes) {
         const parts = route.split("/");
         expect(parts[1]).toBe("editor");
         expect(parts[2]).toBeTruthy(); // Project ID exists
-      });
+      }
     });
 
     it("should handle blog post slugs correctly", () => {
@@ -119,11 +119,11 @@ describe("TanStack Router Navigation", () => {
         "/blog/new-features",
       ];
 
-      blogRoutes.forEach((route) => {
+      for (const route of blogRoutes) {
         const parts = route.split("/");
         expect(parts[1]).toBe("blog");
         expect(parts[2]).toBeTruthy(); // Slug exists
-      });
+      }
     });
   });
 
