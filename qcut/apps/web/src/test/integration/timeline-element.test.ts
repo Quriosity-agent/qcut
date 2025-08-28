@@ -36,7 +36,7 @@ describe('Timeline Element', () => {
     const addedElement = updatedTrack?.elements[0];
     expect(addedElement).toBeDefined();
     expect(addedElement?.type).toBe('media');
-    expect(addedElement?.mediaId).toBe('media-001');
+    expect((addedElement as any)?.mediaId).toBe('media-001');
     expect(addedElement?.startTime).toBe(0);
     expect(addedElement?.duration).toBe(10);
   });

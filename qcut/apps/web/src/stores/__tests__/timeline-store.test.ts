@@ -383,10 +383,24 @@ describe('TimelineStore', () => {
     act(() => {
       result.current.addElementToTrack(textTrack.id, {
         type: 'text',
-        text: 'Original Text',
+        content: 'Original Text',
         startTime: 0,
         duration: 5,
-        name: 'Text Element'
+        name: 'Text Element',
+        trimStart: 0,
+        trimEnd: 0,
+        fontSize: 16,
+        fontFamily: 'Arial',
+        color: '#000000',
+        backgroundColor: 'transparent',
+        textAlign: 'center',
+        fontWeight: 'normal',
+        fontStyle: 'normal',
+        textDecoration: 'none',
+        x: 0,
+        y: 0,
+        rotation: 0,
+        opacity: 1
       });
     });
     
@@ -396,7 +410,7 @@ describe('TimelineStore', () => {
     // Update text element using the correct method (updateTextElement, not updateElement)
     act(() => {
       result.current.updateTextElement(textTrack.id, element.id, {
-        text: 'Updated Text',
+        content: 'Updated Text',
         fontSize: 24,
         fontFamily: 'Arial'
       });

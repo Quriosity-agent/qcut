@@ -690,7 +690,7 @@ export class CLIExportEngine extends ExportEngine {
         
         try {
           // Check if file exists
-          const exists = await window.electronAPI.invoke(
+          const exists = await window.electronAPI?.invoke(
             "file-exists",
             audioFile.path
           );
@@ -703,7 +703,7 @@ export class CLIExportEngine extends ExportEngine {
           }
 
           // Check file size to ensure it's not empty/corrupted
-          const fileInfo = await window.electronAPI.invoke(
+          const fileInfo = await window.electronAPI?.invoke(
             "get-file-info",
             audioFile.path
           );
@@ -719,7 +719,7 @@ export class CLIExportEngine extends ExportEngine {
           debugLog(`[CLI Export] Validating audio file ${index} format with ffprobe...`);
           
           try {
-            const audioValidation = await window.electronAPI.invoke(
+            const audioValidation = await window.electronAPI?.invoke(
               "validate-audio-file",
               audioFile.path
             );

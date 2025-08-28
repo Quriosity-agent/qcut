@@ -1,6 +1,6 @@
 {
   "name": "qcut",
-  "version": "0.3.9",
+  "version": "0.3.10",
   "description": "QCut - Open-source video editor",
   "author": "QCut Team",
   "main": "electron/main.js",

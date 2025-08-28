@@ -16,16 +16,16 @@ describe('Keybinding', () => {
   
   it('updates custom keybinding', () => {
     const store = useKeybindingsStore.getState();
-    store.updateKeybinding('a', 'add-marker');
+    store.updateKeybinding('a', 'split-element' as any);
     
     // Check the keybinding was updated
     const updatedStore = useKeybindingsStore.getState();
-    expect(updatedStore.keybindings['a']).toBe('add-marker');
+    expect(updatedStore.keybindings['a']).toBe('split-element');
   });
   
   it('resets to default keybindings', () => {
     const store = useKeybindingsStore.getState();
-    store.updateKeybinding('space', 'custom-action');
+    store.updateKeybinding('space', 'stop-playback' as any);
     store.resetToDefaults();
     
     expect(store.keybindings['space']).toBe('toggle-play');

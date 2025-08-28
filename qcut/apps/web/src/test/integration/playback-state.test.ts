@@ -21,7 +21,7 @@ global.CustomEvent = class CustomEvent extends Event {
     super(event, params);
     this.detail = params?.detail;
   }
-};
+} as any;
 
 // Mock window object
 global.window = {
@@ -36,7 +36,9 @@ describe('Playback State', () => {
       isPlaying: false,
       currentTime: 0,
       duration: 0,
-      playbackSpeed: 1,
+      speed: 1,
+      volume: 1,
+      muted: false,
     });
   });
   
@@ -66,8 +68,8 @@ describe('Playback State', () => {
   it('changes playback speed', () => {
     const store = usePlaybackStore.getState();
     // Set speed directly via state since setPlaybackSpeed might not exist
-    usePlaybackStore.setState({ playbackSpeed: 2 });
+    usePlaybackStore.setState({ speed: 2 });
     const updatedState = usePlaybackStore.getState();
-    expect(updatedState.playbackSpeed).toBe(2);
+    expect(updatedState.speed).toBe(2);
   });
 });
