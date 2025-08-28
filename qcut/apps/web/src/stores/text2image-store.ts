@@ -1,5 +1,11 @@
 import { create } from "zustand";
 import { devtools } from "zustand/middleware";
+import { 
+  handleAIServiceError, 
+  handleValidationError,
+  handleStorageError,
+  ErrorSeverity 
+} from "@/lib/error-handler";
 
 // Debug flag - set to false to disable console logs
 const DEBUG_TEXT2IMAGE_STORE = process.env.NODE_ENV === "development" && false;
@@ -148,7 +154,14 @@ export const useText2ImageStore = create<Text2ImageStore>()(
           });
 
         if (selectedModels.length === 0) {
-          if (DEBUG_TEXT2IMAGE_STORE) console.error("No models selected");
+          handleValidationError(
+            new Error("No models selected for image generation"),
+            "Text-to-Image Generation",
+            {
+              severity: ErrorSeverity.LOW,
+              metadata: { prompt }
+            }
+          );
           return;
         }
 
@@ -244,8 +257,15 @@ export const useText2ImageStore = create<Text2ImageStore>()(
           // Add to history
           get().addToHistory(prompt, selectedModels, finalResults);
         } catch (error) {
-          if (DEBUG_TEXT2IMAGE_STORE)
-            console.error("Generation failed:", error);
+          handleAIServiceError(
+            error,
+            "Multi-Model Image Generation",
+            {
+              prompt,
+              models: selectedModels,
+              settings
+            }
+          );
 
           // Mark all as failed
           const errorResults: Record<string, GenerationResult> = {};
@@ -349,11 +369,15 @@ export const useText2ImageStore = create<Text2ImageStore>()(
               "✅ TEXT2IMAGE-STORE: media-store.addGeneratedImages() called successfully"
             );
         } catch (error) {
-          if (DEBUG_TEXT2IMAGE_STORE)
-            console.error(
-              "❌ TEXT2IMAGE-STORE: Failed to import media store:",
-              error
-            );
+          handleStorageError(
+            error,
+            "Import Media Store for Text-to-Image",
+            {
+              operation: "add-to-media",
+              resultCount: resultsToAdd.length,
+              severity: ErrorSeverity.HIGH
+            }
+          );
         }
 
         // Clear selections after adding

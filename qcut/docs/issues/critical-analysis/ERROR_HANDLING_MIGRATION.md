@@ -14,11 +14,11 @@ This guide shows how to migrate from `console.error` patterns to our new enhance
 
 **High Priority (Critical Operations):**
 - ✅ ~~`apps/web/src/stores/timeline-store.ts`~~ - **MIGRATED (10 console.error → proper handlers)**
-- `apps/web/src/stores/text2image-store.ts` - AI text-to-image generation
-- `apps/web/src/components/export-dialog.tsx` - Video export functionality
+- ✅ ~~`apps/web/src/stores/text2image-store.ts`~~ - **MIGRATED (3 console.error → proper handlers)**
+- ✅ ~~`apps/web/src/components/export-dialog.tsx`~~ - **NO ERRORS FOUND (clean)**
 
 **Medium Priority (User-Facing Features):**
-- `apps/web/src/components/editor/media-panel/views/sounds.tsx` - Sound library & downloads
+- ✅ ~~`apps/web/src/components/editor/media-panel/views/sounds.tsx`~~ - **MIGRATED (1 console.error → proper handler)**
 - `apps/web/src/components/editor/media-panel/views/captions.tsx` - Caption generation
 - `apps/web/src/components/editor/properties-panel/settings-view.tsx` - Settings persistence
 
@@ -291,16 +291,16 @@ const MyComponent = () => {
 
 ## 📊 **Migration Progress Tracker**
 
-### **Overall Progress: 2/10 Files Migrated (20%)**
+### **Overall Progress: 5/10 Files Migrated (50%)**
 
 | File | Status | Console.error Count | Migration Date |
 |------|--------|-------------------|----------------|
 | `ai-video-client.ts` | ✅ Migrated | 3 → 0 | Initial |
 | `use-blob-image.ts` | ✅ Migrated | 1 → 0 | Initial |
 | `timeline-store.ts` | ✅ Migrated | 10 → 0 | 2025-08-28 |
-| `text2image-store.ts` | ⏳ Pending | TBD | - |
-| `export-dialog.tsx` | ⏳ Pending | TBD | - |
-| `sounds.tsx` | ⏳ Pending | TBD | - |
+| `text2image-store.ts` | ✅ Migrated | 3 → 0 | 2025-08-28 |
+| `export-dialog.tsx` | ✅ No errors | 0 | N/A |
+| `sounds.tsx` | ✅ Migrated | 1 → 0 | 2025-08-28 |
 | `captions.tsx` | ⏳ Pending | TBD | - |
 | `settings-view.tsx` | ⏳ Pending | TBD | - |
 | `api-adapter.ts` | ⏳ Pending | TBD | - |
@@ -309,13 +309,32 @@ const MyComponent = () => {
 ### **Migration Log**
 
 #### **Session: 2025-08-28**
+
+##### **Task 1: Migrate timeline-store.ts**
 ```markdown
-Task: Migrate timeline-store.ts
 ├── ✅ Subtask 1: Audit for console.error (5 min) - Found 10 instances
 ├── ✅ Subtask 2: Replace with handlers (8 min) - All replaced successfully
 └── ✅ Subtask 3: Test changes (5 min) - Dev server runs without errors
 Total Time: 18 minutes
 ```
+
+##### **Task 2: Migrate text2image-store.ts**
+```markdown
+├── ✅ Subtask 1: Audit for console.error (3 min) - Found 3 instances
+├── ✅ Subtask 2: Replace with handlers (5 min) - Used handleAIServiceError, handleValidationError, handleStorageError
+└── ✅ Subtask 3: Test changes (2 min) - Dev server runs without errors
+Total Time: 10 minutes
+```
+
+##### **Task 3: Migrate sounds.tsx**
+```markdown
+├── ✅ Subtask 1: Audit for console.error (2 min) - Found 1 instance
+├── ✅ Subtask 2: Replace with handler (3 min) - Used handleNetworkError
+└── ✅ Subtask 3: Test changes (1 min) - Changes applied successfully
+Total Time: 6 minutes
+```
+
+**Session Total: 34 minutes | Files Migrated: 3 | Errors Fixed: 14**
 
 ---
 
