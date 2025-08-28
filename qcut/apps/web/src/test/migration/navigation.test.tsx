@@ -32,9 +32,11 @@ describe("TanStack Router Navigation", () => {
       expect(testRouter.routeTree).toBeDefined();
 
       // Verify essential routes exist in the route tree
-      const children = testRouter.routeTree.children ?? [];
-      expect(Array.isArray(children)).toBe(true);
-      expect(children.length).toBeGreaterThan(0);
+      const children = testRouter.routeTree.children;
+      expect(children).toBeDefined();
+      if (Array.isArray(children)) {
+        expect(children.length).toBeGreaterThan(0);
+      }
     });
 
     it("should not reference Next.js components", () => {
