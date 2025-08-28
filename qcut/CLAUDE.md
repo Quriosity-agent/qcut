@@ -135,6 +135,14 @@ npx electron-packager . QCut --platform=win32 --arch=x64 --out=dist-packager --o
 # Option 2: Using electron-builder (if configured)
 bun run dist:win
 ```
+
+### Release Management
+```bash
+# Complete release process (version bump + build + checksums + notes)
+bun run release:patch    # 0.3.40 -> 0.3.41
+bun run release:minor    # 0.3.40 -> 0.4.0  
+bun run release:major    # 0.3.40 -> 1.0.0
+```
 ## Important Patterns
 
 ### State Management

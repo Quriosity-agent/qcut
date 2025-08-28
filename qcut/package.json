@@ -1,6 +1,6 @@
 {
   "name": "qcut",
-  "version": "0.3.40",
+  "version": "0.3.41",
   "description": "QCut - Open-source video editor",
   "author": "QCut Team",
   "main": "electron/main.js",
@@ -44,14 +44,11 @@
     "dist:win:release": "electron-builder --win --config.win.forceCodeSigning=false --config.win.verifyUpdateCodeSignature=false",
     "dist:win:fast": "electron-builder --win --config.win.forceCodeSigning=false --config.compression=store --config.nsis.differentialPackage=false",
     "package:win": "electron-packager . QCut --platform=win32 --arch=x64 --out=dist-packager-new --overwrite --ignore=\"dist-packager.*\" --ignore=\"dist-electron.*\" && bun run copy-ffmpeg",
-    "copy-ffmpeg": "powershell -Command \"Copy-Item -Path 'electron/resources/*.exe' -Destination 'dist-packager-new/QCut-win32-x64/resources/' -Force; Copy-Item -Path 'electron/resources/*.dll' -Destination 'dist-packager-new/QCut-win32-x64/resources/' -Force; Copy-Item -Path 'electron/resources/ffmpeg' -Destination 'dist-packager-new/QCut-win32-x64/resources/' -Recurse -Force\"",
+    "copy-ffmpeg": "node scripts/copy-ffmpeg.mjs",
     "build:exe": "bun run build && bun run package:win",
     "release:patch": "node scripts/release.js patch",
     "release:minor": "node scripts/release.js minor",
-    "release:major": "node scripts/release.js major",
-    "version:patch": "bun version --patch",
-    "version:minor": "bun version --minor",
-    "version:major": "bun version --major"
+    "release:major": "node scripts/release.js major"
   },
   "build": {
     "appId": "com.qcut.videoeditor",
