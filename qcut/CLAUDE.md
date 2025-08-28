@@ -39,7 +39,7 @@ QCut is a desktop video editor built with a **hybrid architecture** combining Vi
 ## Key Architecture
 
 ### Tech Stack
-- **Frontend**: Vite 7.0.6, TanStack Router (Hash History), React 19, TypeScript
+- **Frontend**: Vite 7.0.6, TanStack Router (Hash History), React 18.3.1, TypeScript
 - **Desktop**: Electron 37.2.5 with IPC handlers for file operations
 - **State Management**: Zustand stores (editor-store, timeline-store, project-store)
 - **Video Processing**: FFmpeg WebAssembly (@ffmpeg/ffmpeg)

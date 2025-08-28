@@ -160,7 +160,7 @@ bun run dist:win
 
 QCut uses a modern desktop application stack:
 
-- **Frontend**: Vite 7 + React 19 + TanStack Router (hash-based routing)
+- **Frontend**: Vite 7 + React 18.3.1 + TanStack Router (hash-based routing)
 - **Desktop**: Electron 37 with secure IPC communication
 - **Video Processing**: FFmpeg via WebAssembly (@ffmpeg/ffmpeg)
 - **Styling**: Tailwind CSS 4 with custom dark theme
