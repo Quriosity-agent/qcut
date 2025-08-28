@@ -104,13 +104,25 @@ describe('API Baseline Tests', () => {
 #### Subtask 1.3.1: Create feature flag system (10 min)
 ```typescript
 // File: apps/web/src/lib/feature-flags.ts
-export const FEATURES = {
-  USE_ELECTRON_API: process.env.VITE_USE_ELECTRON_API === 'true',
-  USE_NEXTJS_ROUTING: process.env.VITE_USE_NEXTJS_ROUTING === 'true',
+// Use import.meta.env for Vite (process.env doesn't work in browser)
+const baseFlags = {
+  USE_ELECTRON_API: import.meta.env.VITE_USE_ELECTRON_API === 'true',
+  USE_NEXTJS_ROUTING: import.meta.env.VITE_USE_NEXTJS_ROUTING === 'true',
 } as const;
 
-export function isFeatureEnabled(feature: keyof typeof FEATURES): boolean {
-  return FEATURES[feature] ?? false;
+// Runtime overrides for testing
+let runtimeOverrides: Partial<typeof baseFlags> = {};
+
+export function setRuntimeFlags(flags: Partial<typeof baseFlags>) {
+  runtimeOverrides = flags;
+}
+
+export function isFeatureEnabled(feature: keyof typeof baseFlags): boolean {
+  // Runtime overrides take precedence
+  if (feature in runtimeOverrides) {
+    return runtimeOverrides[feature] ?? false;
+  }
+  return baseFlags[feature] ?? false;
 }
 ```
 
@@ -132,11 +144,12 @@ import { isFeatureEnabled } from './feature-flags';
 
 export async function searchSounds(query: string) {
   if (isFeatureEnabled('USE_ELECTRON_API')) {
-    // New Electron IPC implementation
-    return await window.electronAPI.sounds.search(query);
+    // New Electron IPC implementation - expects object parameter
+    return await window.electronAPI.sounds.search({ query });
   } else {
-    // Existing Next.js API call
-    const res = await fetch(`/api/sounds/search?q=${query}`);
+    // Existing Next.js API call - properly encode query string
+    const q = encodeURIComponent(query);
+    const res = await fetch(`/api/sounds/search?q=${q}`);
     return await res.json();
   }
 }
@@ -831,6 +844,7 @@ export const ROLLOUT_STAGES = {
 ```typescript
 // File: apps/web/src/lib/rollout-manager.ts
 import { ROLLOUT_STAGES } from '@/config/rollout';
+import { setRuntimeFlags } from '@/lib/feature-flags';
 
 export class RolloutManager {
   private stage = 'STAGE_1';
@@ -839,10 +853,9 @@ export class RolloutManager {
     this.stage = stage;
     const config = ROLLOUT_STAGES[stage];
     
-    // Update environment variables
-    Object.entries(config.flags).forEach(([key, value]) => {
-      process.env[`VITE_${key}`] = String(value);
-    });
+    // Apply runtime overrides instead of mutating process.env
+    // (process.env.VITE_* is statically replaced at build time in Vite)
+    setRuntimeFlags(config.flags);
     
     // Log stage change
     console.log(`Rollout stage changed to: ${config.name}`);
@@ -996,8 +1009,8 @@ The hybrid Next.js/Vite architecture has been successfully migrated to pure Vite
 export class PerformanceMonitor {
   private metrics = new Map<string, number[]>();
   
-  measure(name: string, fn: () => Promise<any>) {
-    return async (...args) => {
+  measure<TArgs extends any[], T>(name: string, fn: (...args: TArgs) => Promise<T>) {
+    return async (...args: TArgs): Promise<T> => {
       const start = performance.now();
       const result = await fn(...args);
       const duration = performance.now() - start;
@@ -1014,9 +1027,9 @@ export class PerformanceMonitor {
   getStats(name: string) {
     const times = this.metrics.get(name) || [];
     return {
-      avg: times.reduce((a, b) => a + b, 0) / times.length,
-      min: Math.min(...times),
-      max: Math.max(...times),
+      avg: times.length ? times.reduce((a, b) => a + b, 0) / times.length : 0,
+      min: times.length ? Math.min(...times) : 0,
+      max: times.length ? Math.max(...times) : 0,
       count: times.length
     };
   }
