@@ -1,3 +1,5 @@
+import { handleNetworkError, ErrorSeverity } from "./error-handler";
+
 export async function getStars(): Promise<string> {
   try {
     let count: number;
@@ -36,7 +38,15 @@ export async function getStars(): Promise<string> {
       return (count / 1000).toFixed(1).replace(/\.0$/, "") + "k";
     return count.toString();
   } catch (error) {
-    console.error("Failed to fetch GitHub stars:", error);
-    return "1.5k";
+    handleNetworkError(
+      error,
+      "Fetch GitHub Stars",
+      {
+        repository: "donghaozhang/qcut",
+        severity: ErrorSeverity.LOW,
+        showToast: false // Don't show toast for non-critical UI data
+      }
+    );
+    return "1.5k"; // Return fallback value
   }
 }

@@ -13,6 +13,11 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { LanguageSelect } from "@/components/captions/language-select";
 import { UploadProgress } from "@/components/captions/upload-progress";
+import { 
+  handleAIServiceError,
+  handleMediaProcessingError,
+  ErrorSeverity 
+} from "@/lib/error-handler";
 import {
   Upload,
   Download,
@@ -25,7 +30,6 @@ import {
   Pause,
   Plus,
 } from "lucide-react";
-import { toast } from "sonner";
 import { useDragDrop } from "@/hooks/use-drag-drop";
 import { cn } from "@/lib/utils";
 import { isTranscriptionConfigured } from "@/lib/transcription/transcription-utils";
@@ -113,8 +117,15 @@ export function CaptionsView() {
           `Added ${captionElements.length} caption segments to timeline`
         );
       } catch (error) {
-        console.error("Failed to add captions to timeline:", error);
-        toast.error("Failed to add captions to timeline");
+        handleMediaProcessingError(
+          error,
+          "Add Captions to Timeline",
+          {
+            captionCount: segments.length,
+            duration: segments[segments.length - 1]?.end || 0,
+            severity: ErrorSeverity.HIGH
+          }
+        );
       }
     },
     [createCaptionElements, addTrack, addElementToTrack]
@@ -309,7 +320,15 @@ export function CaptionsView() {
           }
         }
       } catch (error) {
-        console.error("Transcription error:", error);
+        handleAIServiceError(
+          error,
+          "Audio Transcription",
+          {
+            language: selectedLanguage,
+            fileSize: file?.size,
+            fileName: file?.name
+          }
+        );
         const errorMessage =
           error instanceof Error ? error.message : "Transcription failed";
 

@@ -1,4 +1,5 @@
 import { isFeatureEnabled } from "./feature-flags";
+import { handleNetworkError, ErrorSeverity } from "./error-handler";
 
 // Helper function for legacy sound search with retry logic
 async function legacySoundSearch(
@@ -31,7 +32,17 @@ async function legacySoundSearch(
       const res = await fetch(`/api/sounds/search?${urlParams.toString()}`);
       if (res.ok) return await res.json();
     } catch (fetchError) {
-      console.error(`Fetch attempt ${i + 1} failed:`, fetchError);
+      handleNetworkError(
+        fetchError,
+        `Sound Search (Attempt ${i + 1})`,
+        {
+          query,
+          attempt: i + 1,
+          maxAttempts: retryCount,
+          severity: ErrorSeverity.LOW,
+          showToast: false // Don't show toast for retryable errors
+        }
+      );
     }
     if (i < retryCount - 1) {
       await new Promise((r) => setTimeout(r, 1000 * (i + 1))); // exponential backoff
@@ -61,7 +72,17 @@ async function legacyTranscribe(
       });
       if (res.ok) return await res.json();
     } catch (fetchError) {
-      console.error(`Transcription fetch attempt ${i + 1} failed:`, fetchError);
+      handleNetworkError(
+        fetchError,
+        `Transcription Upload (Attempt ${i + 1})`,
+        {
+          attempt: i + 1,
+          maxAttempts: retryCount,
+          language,
+          severity: ErrorSeverity.MEDIUM,
+          showToast: false // Don't show toast for retryable errors
+        }
+      );
     }
     if (i < retryCount - 1) {
       await new Promise((r) => setTimeout(r, 1000 * (i + 1))); // exponential backoff
@@ -101,7 +122,15 @@ export async function searchSounds(
       }
       throw new Error(result?.error || "IPC failed, attempting fallback");
     } catch (error) {
-      console.error("Electron API failed, falling back:", error);
+      handleNetworkError(
+        error,
+        "Electron API Sound Search",
+        {
+          query,
+          severity: ErrorSeverity.LOW,
+          showToast: false // Silent fallback to legacy method
+        }
+      );
       if (fallbackToOld && !isFeatureEnabled("USE_ELECTRON_API")) {
         return legacySoundSearch(query, searchParams, retryCount);
       }
