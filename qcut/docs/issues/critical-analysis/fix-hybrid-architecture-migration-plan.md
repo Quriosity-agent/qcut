@@ -1094,8 +1094,18 @@ export function MigrationDashboard() {
     return () => clearInterval(interval);
   }, []);
   
-  if (!metrics || process.env.NODE_ENV !== 'development') return null;
-  
+// File: apps/web/src/components/dev/migration-dashboard.tsx
+import React, { useEffect, useState } from 'react';
+
+export function MigrationDashboard() {
+  const [metrics, setMetrics] = useState<any>(null);
+
+  useEffect(() => {
+    // existing logic to fetch/set metrics
+  }, []);
+
+  if (!metrics || !import.meta.env.DEV) return null;
+
   return (
     <div className="fixed top-4 right-4 p-4 bg-black/80 text-white rounded">
       <h4>Migration Status</h4>
@@ -1103,7 +1113,6 @@ export function MigrationDashboard() {
     </div>
   );
 }
-```
 
 ---
 
