@@ -178,16 +178,24 @@ module.exports = function setupSoundsHandlers() {
 // File: electron/handlers/sounds.js
 ipcMain.handle('sounds:search', async (event, { query, category }) => {
   try {
-    // Copy logic from apps/web/src/app/api/sounds/search/route.ts
     const FREESOUND_API_KEY = process.env.FREESOUND_API_KEY;
-    const url = `https://freesound.org/apiv2/search/text/?query=${query}`;
+    if (!query || typeof query !== 'string') {
+      return { success: false, error: 'Invalid query' };
+    }
+    const url = new URL('https://freesound.org/apiv2/search/text/');
+    url.searchParams.set('query', query);
+    if (category) url.searchParams.set('category', String(category));
     
-    const response = await fetch(url, {
+    const response = await fetch(url.toString(), {
       headers: { 'Authorization': `Token ${FREESOUND_API_KEY}` }
     });
     
+    if (!response.ok) {
+      return { success: false, error: `Upstream ${response.status}` };
+    }
+    
     const data = await response.json();
-    return { success: true, results: data.results };
+    return { success: true, results: data.results ?? [] };
   } catch (error) {
     return { success: false, error: error.message };
   }
@@ -225,6 +233,13 @@ export interface ElectronAPI {
     getCategories: () => Promise<string[]>;
   };
 }
+
+declare global {
+  interface Window {
+    electronAPI: ElectronAPI;
+  }
+}
+export {};
 ```
 
 #### Subtask 2.1.5: Update component to use adapter (15 min)
