@@ -1,5 +1,5 @@
 # Current Next.js imports (remaining in hybrid architecture)
-# Note: All Next.js API routes have been removed as they are non-functional in Vite environment
+# Note: All Next.js API routes and Metadata imports have been removed as they are non-functional in Vite environment
 src/components/background-settings.tsx:import Image from "next/image";
 src/components/editor/properties-panel/settings-view.tsx:// import Image from "next/image"; // Not needed in Vite
 src/components/ui/sonner.tsx:import { useTheme } from "next-themes";
