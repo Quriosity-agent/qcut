@@ -439,25 +439,47 @@ VITE_USE_ELECTRON_API=true bun run electron:dev
 ```javascript
 // File: electron/transcribe-handler.js (NEW FILE)
 const { ipcMain } = require('electron');
+const { randomUUID } = require('node:crypto');
 const fs = require('fs/promises');
 const path = require('node:path');
 const os = require('node:os');
 
-// Try to load electron-log, fallback to console
+// Try to load electron-log, fallback to no-op logger
 let log;
 try {
   log = require('electron-log');
 } catch (error) {
-  log = console;
+  log = { info() {}, error() {}, warn() {}, debug() {} };
 }
 
+const controllers = new Map(); // id -> AbortController
+
 module.exports = function setupTranscribeHandlers() {
-  ipcMain.handle('transcribe:audio', async (event, requestData) => {
-    return await handleTranscription(requestData);
+  // Remove existing handlers before re-registering
+  try { ipcMain.removeHandler('transcribe:audio'); } catch {}
+  try { ipcMain.removeHandler('transcribe:cancel'); } catch {}
+
+  ipcMain.handle('transcribe:audio', async (event, requestData = {}) => {
+    const id = requestData.id || randomUUID();
+    const controller = new AbortController();
+    controllers.set(id, controller);
+    
+    try {
+      const result = await handleTranscription({ ...requestData, id, controller });
+      return { ...result, id };
+    } finally {
+      controllers.delete(id);
+    }
   });
 
-  ipcMain.handle('transcribe:cancel', async (event, id) => {
-    return await cancelTranscription(id);
+  ipcMain.handle('transcribe:cancel', async (_event, id) => {
+    const controller = controllers.get(id);
+    if (controller) {
+      controller.abort();
+      controllers.delete(id);
+      return { success: true, message: `Transcription ${id} cancelled` };
+    }
+    return { success: false, error: `Transcription ${id} not found` };
   });
 };
 ```
@@ -560,6 +582,12 @@ async function handleTranscription(requestData) {
     
   } catch (error) {
     log.error('Transcription API error:', error);
+    
+    // Best-effort tmp cleanup on error
+    try { 
+      if (typeof tmpPath === 'string') await fs.unlink(tmpPath); 
+    } catch {}
+    
     return {
       success: false,
       error: 'Internal server error',

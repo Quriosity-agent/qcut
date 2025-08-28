@@ -1,6 +1,4 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import React from "react";
-import { render, screen } from "@testing-library/react";
 
 describe("TanStack Router Navigation", () => {
   beforeEach(() => {
@@ -163,29 +161,4 @@ describe("TanStack Router Navigation", () => {
   });
 });
 
-// Export test results for documentation
-export const NAVIGATION_TEST_RESULTS = {
-  totalTests: 12,
-  passingTests: 12,
-  failingTests: 0,
-  coverage: "100%",
-  status: "✅ ALL NAVIGATION PATTERNS VERIFIED",
-  findings: {
-    tanstackRouterWorking: "✅ Fully functional",
-    hashHistoryConfigured: "✅ Electron optimized",
-    lazyLoadingImplemented: "✅ Performance optimized",
-    dynamicRoutesWorking: "✅ Parameters handled correctly",
-    errorHandlingConfigured: "✅ Error boundaries in place",
-    typeScriptIntegration: "✅ Full type safety",
-    electronCompatibility: "✅ Hash routing for file:// protocol",
-  },
-  nextSteps: {
-    phase: "Phase 3.2",
-    task: "Remove unused Next.js components",
-    risk: "Very Low",
-    impact: "Positive (cleaner codebase)",
-  },
-};
-
-console.log("🧪 NAVIGATION TESTS: ALL PATTERNS VERIFIED ✅");
-console.log("🚀 READY FOR NEXT.JS COMPONENT CLEANUP");
+// Removed exports and logging to comply with test file rules

@@ -39,7 +39,12 @@ const { setupFFmpegIPC } = require("./ffmpeg-handler.js");
 const { setupSoundIPC } = require("./sound-handler.js");
 const { setupThemeIPC } = require("./theme-handler.js");
 const { setupApiKeyIPC } = require("./api-key-handler.js");
-const setupTranscribeHandlers = require("./transcribe-handler.js");
+let setupTranscribeHandlers = null;
+try {
+  setupTranscribeHandlers = require("./transcribe-handler.js");
+} catch (err) {
+  logger.warn("[Transcribe] handler not available:", err?.message || err);
+}
 
 let mainWindow;
 let staticServer;
@@ -246,7 +251,11 @@ app.whenReady().then(() => {
   setupSoundIPC(); // Add sound search support
   setupThemeIPC(); // Add theme switching support
   setupApiKeyIPC(); // Add API key management support
-  setupTranscribeHandlers(); // Add transcription support
+  if (typeof setupTranscribeHandlers === "function") {
+    setupTranscribeHandlers(); // Add transcription support
+  } else {
+    logger.warn("[Transcribe] Skipping setup; handler not initialized");
+  }
 
   // Configure auto-updater for production builds
   if (app.isPackaged) {

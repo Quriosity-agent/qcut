@@ -1,38 +1,9 @@
-src/app/(auth)/login/page.tsx:import { useRouter } from "next/navigation";
-src/app/(auth)/login/page.tsx:import Link from "next/link";
-src/app/(auth)/signup/page.tsx:import { useRouter } from "next/navigation";
-src/app/(auth)/signup/page.tsx:import Link from "next/link";
+# Current Next.js imports (remaining in hybrid architecture)
 src/app/api/health/route.ts:import { NextRequest } from "next/server";
-src/app/api/sounds/search/route.ts:import { NextRequest, NextResponse } from "next/server";
-src/app/api/transcribe/route.ts:import { NextRequest, NextResponse } from "next/server";
 src/app/api/waitlist/route.ts:import { NextRequest, NextResponse } from "next/server";
 src/app/api/waitlist/route.ts:import { cookies } from "next/headers";
 src/app/api/waitlist/token/route.ts:import { NextRequest, NextResponse } from "next/server";
 src/app/api/waitlist/token/route.ts:import { cookies } from "next/headers";
-src/app/blog/page.tsx:import { Metadata } from "next";
-src/app/blog/page.tsx:import Link from "next/link";
-src/app/blog/page.tsx:import Image from "next/image";
-src/app/blog/[slug]/page.tsx:import { Metadata } from "next";
-src/app/blog/[slug]/page.tsx:import Image from "next/image";
-src/app/blog/[slug]/page.tsx:import { notFound } from "next/navigation";
-src/app/contributors/page.tsx:import { Metadata } from "next";
-src/app/contributors/page.tsx:import Link from "next/link";
-src/app/editor/[project_id]/page.tsx:import { useParams, useRouter } from "next/navigation";
-src/app/layout.tsx:import { ThemeProvider } from "next-themes";
-src/app/layout.tsx:import Script from "next/script";
-src/app/metadata.ts:import type { Metadata } from "next";
-src/app/page.tsx:import type { Metadata } from "next";
-src/app/privacy/page.tsx:import { Metadata } from "next";
-src/app/privacy/page.tsx:import Link from "next/link";
-src/app/projects/page.tsx:import Image from "next/image";
-src/app/projects/page.tsx:import Link from "next/link";
-src/app/projects/page.tsx:import { useRouter } from "next/navigation";
-src/app/roadmap/page.tsx:import { Metadata } from "next";
-src/app/roadmap/page.tsx:import Link from "next/link";
-src/app/robots.ts:import type { MetadataRoute } from "next";
-src/app/sitemap.ts:import type { MetadataRoute } from "next";
-src/app/terms/page.tsx:import { Metadata } from "next";
-src/app/terms/page.tsx:import Link from "next/link";
 src/components/background-settings.tsx:import Image from "next/image";
 src/components/editor/properties-panel/settings-view.tsx:// import Image from "next/image"; // Not needed in Vite
 src/components/ui/sonner.tsx:import { useTheme } from "next-themes";
@@ -40,3 +11,15 @@ src/components/ui/theme-toggle.tsx:import { useTheme } from "next-themes";
 src/middleware.ts:import { NextResponse } from "next/server";
 src/middleware.ts:import type { NextRequest } from "next/server";
 src/routes/__root.tsx:import { ThemeProvider } from "next-themes";
+
+# Current TanStack Router usage (migrated from Next.js)
+src/App.tsx:import { createRouter, RouterProvider } from "@tanstack/react-router";
+src/App.tsx:import { createHashHistory } from "@tanstack/react-router";
+src/hooks/auth/useLogin.ts:import { useNavigate } from "@tanstack/react-router";
+src/hooks/auth/useSignUp.ts:import { useNavigate } from "@tanstack/react-router";
+src/routes/__root.tsx:import { createRootRoute, Outlet } from "@tanstack/react-router";
+src/routes/blog.tsx:import { createFileRoute } from "@tanstack/react-router";
+src/routes/blog.$slug.tsx:import { createFileRoute } from "@tanstack/react-router";
+src/routes/contributors.tsx:import { createFileRoute, Link } from "@tanstack/react-router";
+src/routes/terms.tsx:import { createFileRoute } from "@tanstack/react-router";
+src/routes/why-not-capcut.tsx:import { createFileRoute } from "@tanstack/react-router";

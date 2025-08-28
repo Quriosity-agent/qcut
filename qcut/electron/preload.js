@@ -42,8 +42,6 @@ contextBridge.exposeInMainWorld("electronAPI", {
     audio: (requestData) => ipcRenderer.invoke("transcribe:audio", requestData),
   },
 
-  // Generic IPC invoke method
-  invoke: (channel, ...args) => ipcRenderer.invoke(channel, ...args),
 
   // FFmpeg export operations
   ffmpeg: {
