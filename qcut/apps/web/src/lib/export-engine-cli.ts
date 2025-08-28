@@ -652,19 +652,8 @@ export class CLIExportEngine extends ExportEngine {
     // Progress: 10% - Starting video compilation
     progressCallback?.(10, "Starting video compilation...");
 
-    const exportOptions = {
-      sessionId: this.sessionId,
-      width: this.canvas.width,
-      height: this.canvas.height,
-      fps: 30,
-      quality: this.settings.quality || "medium",
-      audioFiles, // Pass audio files to FFmpeg handler (will be validated above)
-    };
-
-    debugLog(
-      "[CLI Export] Starting FFmpeg export with options:",
-      exportOptions
-    );
+    // Log initial audio files before validation
+    debugLog(`[CLI Export] Initial audio files count: ${audioFiles.length}`);
     // Force detailed logging of audio files
     for (const [index, audioFile] of audioFiles.entries()) {
       debugLog(`[CLI Export] Audio file ${index}:`, {
@@ -678,8 +667,6 @@ export class CLIExportEngine extends ExportEngine {
       });
       debugLog(`[CLI Export] Audio file ${index} raw path:`, audioFile.path);
     }
-
-    debugLog(`[CLI Export] Total audio files: ${audioFiles.length}`);
 
     // Validate audio files in parallel before sending to FFmpeg
     debugLog("[CLI Export] Starting parallel validation of audio files...");
@@ -764,6 +751,21 @@ export class CLIExportEngine extends ExportEngine {
     audioFiles = validationResults.filter((file): file is typeof audioFiles[0] => file !== null);
     
     debugLog(`[CLI Export] Validation complete. ${audioFiles.length} valid audio files.`);
+
+    // Build options AFTER validation so the filtered list is sent
+    const exportOptions = {
+      sessionId: this.sessionId,
+      width: this.canvas.width,
+      height: this.canvas.height,
+      fps: 30,
+      quality: this.settings.quality || "medium",
+      audioFiles, // Now contains only validated audio files
+    };
+
+    debugLog(
+      "[CLI Export] Starting FFmpeg export with options:",
+      exportOptions
+    );
 
     // Note: Progress updates would need to be added to electronAPI
     // For now, use basic invoke without progress tracking

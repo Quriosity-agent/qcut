@@ -3,6 +3,8 @@ import {
   mockMainTrack, 
   mockTextTrack, 
   mockAudioTrack,
+  mockStickerTrack,
+  mockCaptionTrack,
   mockTimelineElements 
 } from './timeline-data';
 import { mockProject } from './project-data';
@@ -14,7 +16,7 @@ let __factorySeq = 0;
 const nextId = (): string => `${Date.now()}-${__factorySeq++}`;
 
 export const TestDataFactory = {
-  createMediaItem: (type: 'video' | 'image' | 'audio', overrides: Partial<MediaItem> = {}): MediaItem => {
+  createMediaItem: (type: MediaItem['type'], overrides: Partial<MediaItem> = {}): MediaItem => {
     let base: MediaItem;
     switch (type) {
       case 'video': base = mockVideoItem; break;
@@ -23,19 +25,23 @@ export const TestDataFactory = {
       default: throw new Error(`Unsupported media type: ${type}`);
     }
     const id = overrides.id ?? `media-${nextId()}`;
-    return { ...base, ...overrides, id };
+    const metadata = overrides.metadata ? { ...overrides.metadata } : { ...base.metadata };
+    return { ...base, ...overrides, id, metadata };
   },
 
-  createTimelineTrack: (type: 'media' | 'text' | 'audio' = 'media', overrides: Partial<TimelineTrack> = {}): TimelineTrack => {
+  createTimelineTrack: (type: TimelineTrack['type'] = 'media', overrides: Partial<TimelineTrack> = {}): TimelineTrack => {
     let base: TimelineTrack;
     switch (type) {
       case 'media': base = mockMainTrack; break;
       case 'text': base = mockTextTrack; break;
       case 'audio': base = mockAudioTrack; break;
+      case 'sticker': base = mockStickerTrack; break;
+      case 'captions': base = mockCaptionTrack; break;
       default: throw new Error(`Unsupported track type: ${type}`);
     }
     const id = overrides.id ?? `track-${nextId()}`;
-    return { ...base, ...overrides, id };
+    const elements = overrides.elements ? [...overrides.elements] : [...base.elements];
+    return { ...base, ...overrides, id, elements };
   },
 
   createTimelineElement: (index = 0, overrides: Partial<TimelineElement> = {}): TimelineElement => {

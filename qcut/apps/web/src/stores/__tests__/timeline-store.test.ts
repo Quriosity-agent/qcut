@@ -423,8 +423,9 @@ describe('TimelineStore', () => {
     
     // Verify the text was updated
     expect(updatedElement).toBeDefined();
-    if (updatedElement && 'text' in updatedElement) {
-      expect(updatedElement.text).toBe('Updated Text');
+    if (!updatedElement || updatedElement.type !== 'text') {
+      throw new Error('Expected a text element');
     }
+    expect(updatedElement.content).toBe('Updated Text');
   });
 });

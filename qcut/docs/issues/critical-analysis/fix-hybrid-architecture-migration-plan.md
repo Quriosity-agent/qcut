@@ -16,8 +16,8 @@ This document outlines the complete migration plan to resolve Critical Issue #2:
 #### Subtask 1.1.1: Scan for Next.js imports (5 min)
 ```bash
 # File: Run from qcut/apps/web/
-grep -r "from 'next" --include="*.ts" --include="*.tsx" src/ > ../../../docs/nextjs-imports.txt
-grep -r 'from "next' --include="*.ts" --include="*.tsx" src/ >> ../../../docs/nextjs-imports.txt
+grep -R --include="*.ts" --include="*.tsx" "from 'next" src/ > ../../docs/nextjs-imports.txt
+grep -R --include="*.ts" --include="*.tsx" 'from "next' src/ >> ../../docs/nextjs-imports.txt
 ```
 
 #### Subtask 1.1.2: Document Next.js Image usage (5 min)
@@ -25,7 +25,7 @@ grep -r 'from "next' --include="*.ts" --include="*.tsx" src/ >> ../../../docs/ne
 # Files to check:
 # - apps/web/src/components/ui/image-compat.tsx
 # - apps/web/src/app/*/page.tsx
-grep -r "next/image" --include="*.tsx" src/ > ../../../docs/nextjs-images.txt
+grep -R --include="*.tsx" "next/image" src/ > ../../docs/nextjs-images.txt
 ```
 
 #### Subtask 1.1.3: List all Next.js Link components (5 min)
@@ -33,13 +33,13 @@ grep -r "next/image" --include="*.tsx" src/ > ../../../docs/nextjs-images.txt
 # Files affected:
 # - apps/web/src/components/navigation/*
 # - apps/web/src/app/layout.tsx
-grep -r "next/link" --include="*.tsx" src/ > ../../../docs/nextjs-links.txt
+grep -R --include="*.tsx" "next/link" src/ > ../../docs/nextjs-links.txt
 ```
 
 #### Subtask 1.1.4: Find Next.js router usage (5 min)
 ```bash
 # Files with programmatic navigation:
-grep -r "useRouter\|usePathname\|useSearchParams" --include="*.tsx" src/ > ../../../docs/nextjs-router.txt
+grep -R --include="*.tsx" -E "useRouter|usePathname|useSearchParams" src/ > ../../docs/nextjs-router.txt
 ```
 
 #### Subtask 1.1.5: Create migration tracking spreadsheet (10 min)
@@ -56,7 +56,7 @@ grep -r "useRouter\|usePathname\|useSearchParams" --include="*.tsx" src/ > ../..
 #### Subtask 1.2.1: List all API route files (5 min)
 ```bash
 # File: apps/web/src/app/api/
-find apps/web/src/app/api -name "route.ts" -o -name "route.js" > ../../../docs/api-routes-list.txt
+find src/app/api -name "route.ts" -o -name "route.js" > ../../docs/api-routes-list.txt
 ```
 
 #### Subtask 1.2.2: Analyze sounds/search API (10 min)
@@ -277,25 +277,34 @@ describe('Sounds API Migration', () => {
 #### Subtask 2.1.7: Add error handling and fallback (20 min)
 ```typescript
 // File: apps/web/src/lib/api-adapter.ts
-export async function searchSounds(query: string, options = {}) {
+export async function searchSounds(query: string, options: { retryCount?: number; fallbackToOld?: boolean } = {}) {
   const { retryCount = 3, fallbackToOld = true } = options;
   
   try {
     if (isFeatureEnabled('USE_ELECTRON_API')) {
-      return await window.electronAPI.sounds.search({ query });
+      const r = await window.electronAPI.sounds.search({ query });
+      if (!r.success && fallbackToOld) throw new Error(r.error || 'IPC failed');
+      return r;
     }
   } catch (error) {
     console.error('Electron API failed, falling back', error);
     if (fallbackToOld) {
       // Fallback to old API if new one fails
-      const res = await fetch(`/api/sounds/search?q=${query}`);
-      return await res.json();
+      const q = encodeURIComponent(query);
+      for (let i = 0; i < retryCount; i++) {
+        const res = await fetch(`/api/sounds/search?q=${q}`);
+        if (res.ok) return await res.json();
+        if (i < retryCount - 1) await new Promise(r => setTimeout(r, 1000 * (i + 1))); // exponential backoff
+      }
+      return { success: false, error: 'Fallback failed after retries' };
     }
     throw error;
   }
   
   // Original implementation
-  const res = await fetch(`/api/sounds/search?q=${query}`);
+  const q = encodeURIComponent(query);
+  const res = await fetch(`/api/sounds/search?q=${q}`);
+  if (!res.ok) return { success: false, error: `HTTP ${res.status}` };
   return await res.json();
 }
 ```
@@ -326,9 +335,9 @@ VITE_USE_ELECTRON_API=true bun run electron:dev
 ```javascript
 // File: electron/handlers/transcribe.js
 const { ipcMain } = require('electron');
-const fs = require('fs').promises;
-const path = require('path');
-const os = require('os');
+const fs = require('fs/promises');
+const path = require('node:path');
+const os = require('node:os');
 
 module.exports = function setupTranscribeHandlers() {
   ipcMain.handle('transcribe:audio', async (event, audioData) => {
@@ -353,7 +362,8 @@ ipcMain.handle('transcribe:audio', async (event, { audioBuffer, format }) => {
     // Clean up temp file
     await fs.unlink(tempFile);
     
-    return { success: true, text: transcription, timestamps };
+    // TODO: replace with real transcription service response
+    return { success: true, text: '', timestamps: [] };
   } catch (error) {
     return { success: false, error: error.message };
   }
@@ -889,7 +899,7 @@ import { RolloutManager } from '@/lib/rollout-manager';
 import { ROLLOUT_STAGES } from '@/config/rollout';
 
 export function RolloutPanel() {
-  if (process.env.NODE_ENV !== 'development') return null;
+  if (!import.meta.env.DEV) return null;
   
   const manager = new RolloutManager();
   

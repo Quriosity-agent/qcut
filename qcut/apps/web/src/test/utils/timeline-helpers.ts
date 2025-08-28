@@ -16,16 +16,70 @@ export function addElementToTimeline(
   if (!track) throw new Error(`Track not found: ${trackId}`);
   
   // Create element data based on track type
-  const elementData = {
-    type: track.type === 'text' ? 'text' : 'media',
-    startTime: 0,
-    duration: 5,
-    trimStart: 0,
-    trimEnd: 5,
-    name: 'Test Element',
-    mediaId: 'test-media',
-    ...element,
-  } as CreateTimelineElement;
+  let elementData: CreateTimelineElement;
+  
+  if (track.type === 'text') {
+    elementData = {
+      type: 'text',
+      startTime: 0,
+      duration: 5,
+      trimStart: 0,
+      trimEnd: 0, // Text elements don't use trim values
+      name: 'Test Text',
+      content: 'Test Content',
+      fontSize: 24,
+      fontFamily: 'Arial',
+      color: '#000000',
+      backgroundColor: 'transparent',
+      textAlign: 'center',
+      fontWeight: 'normal',
+      fontStyle: 'normal',
+      textDecoration: 'none',
+      x: 0,
+      y: 0,
+      rotation: 0,
+      opacity: 1,
+      ...element,
+    } as CreateTimelineElement;
+  } else if (track.type === 'sticker') {
+    elementData = {
+      type: 'sticker',
+      startTime: 0,
+      duration: 5,
+      trimStart: 0,
+      trimEnd: 0, // Stickers don't use trim values
+      name: 'Test Sticker',
+      stickerId: 'test-sticker',
+      mediaId: 'test-media',
+      ...element,
+    } as CreateTimelineElement;
+  } else if (track.type === 'captions') {
+    elementData = {
+      type: 'captions',
+      startTime: 0,
+      duration: 5,
+      trimStart: 0,
+      trimEnd: 0, // Captions don't use trim values
+      name: 'Test Caption',
+      text: 'Test caption text',
+      language: 'en',
+      source: 'manual',
+      ...element,
+    } as CreateTimelineElement;
+  } else {
+    // Default to media element for 'media' and 'audio' tracks
+    elementData = {
+      type: 'media',
+      startTime: 0,
+      duration: 5,
+      trimStart: 0,
+      trimEnd: 0, // Set to 0 to avoid zero-length elements
+      name: 'Test Media',
+      mediaId: 'test-media',
+      volume: 1,
+      ...element,
+    } as CreateTimelineElement;
+  }
   
   store.addElementToTrack(trackId, elementData);
   // Get fresh state after mutation to avoid stale snapshot

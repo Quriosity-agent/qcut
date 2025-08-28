@@ -35,6 +35,22 @@ export const mockAudioTrack: TimelineTrack = {
   muted: false,
 };
 
+export const mockStickerTrack: TimelineTrack = {
+  id: 'track-sticker-1',
+  name: 'Sticker Track',
+  type: 'sticker',
+  elements: [],
+  muted: false,
+};
+
+export const mockCaptionTrack: TimelineTrack = {
+  id: 'track-caption-1',
+  name: 'Caption Track',
+  type: 'captions',
+  elements: [],
+  muted: false,
+};
+
 /**
  * Mock timeline elements
  */
