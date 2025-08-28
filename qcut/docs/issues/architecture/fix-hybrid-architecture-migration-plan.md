@@ -178,23 +178,22 @@ try {
 // Need to add new IPC handler for sounds:search alongside existing handlers
 
 // Guard against re-registration during HMR
-if (!ipcMain.listenerCount('sounds:search')) {
-  ipcMain.handle('sounds:search', async (event, params) => {
-    try {
-      // Reuse existing getFreesoundApiKey() function
-      const apiKey = await getFreesoundApiKey();
-      if (!apiKey) {
-        return { success: false, error: 'Freesound API key not available' };
-      }
-      
-      // Use existing search logic but with new interface
-      return await performFreesoundSearch(params, apiKey);
-    } catch (error) {
-      log.error('Sounds search error:', error);
-      return { success: false, error: error.message };
+try { ipcMain.removeHandler('sounds:search'); } catch {}
+ipcMain.handle('sounds:search', async (event, params) => {
+  try {
+    // Reuse existing getFreesoundApiKey() function
+    const apiKey = await getFreesoundApiKey();
+    if (!apiKey) {
+      return { success: false, error: 'Freesound API key not available' };
     }
-  });
-}
+    
+    // Use existing search logic but with new interface
+    return await performFreesoundSearch(params, apiKey);
+  } catch (error) {
+    log.error('Sounds search error:', error);
+    return { success: false, error: error.message };
+  }
+});
 ```
 
 #### Subtask 2.1.2: Port complex API logic from Next.js (45 min)
