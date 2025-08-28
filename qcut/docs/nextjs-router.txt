@@ -1,0 +1,8 @@
+src/app/(auth)/login/page.tsx:import { useRouter } from "next/navigation";
+src/app/(auth)/login/page.tsx:  const router = useRouter();
+src/app/(auth)/signup/page.tsx:import { useRouter } from "next/navigation";
+src/app/(auth)/signup/page.tsx:  const router = useRouter();
+src/app/editor/[project_id]/page.tsx:import { useParams, useRouter } from "next/navigation";
+src/app/editor/[project_id]/page.tsx:  const router = useRouter();
+src/app/projects/page.tsx:import { useRouter } from "next/navigation";
+src/app/projects/page.tsx:  const router = useRouter();
