@@ -1,39 +1,39 @@
-import type { 
-  ExportSettings, 
+import type {
+  ExportSettings,
   ExportProgress,
   ExportFormat,
   ExportQuality,
-  ExportPurpose 
-} from '@/types/export';
+  ExportPurpose,
+} from "@/types/export";
 
 /**
  * Mock export settings matching types/export.ts
  */
 export const mockExportSettingsHD: ExportSettings = {
-  format: 'mp4' as ExportFormat,
-  quality: '1080p' as ExportQuality,
-  filename: 'test-export-hd.mp4',
+  format: "mp4" as ExportFormat,
+  quality: "1080p" as ExportQuality,
+  filename: "test-export-hd.mp4",
   width: 1920,
   height: 1080,
-  purpose: 'final' as ExportPurpose,
+  purpose: "final" as ExportPurpose,
 };
 
 export const mockExportSettingsMedium: ExportSettings = {
-  format: 'webm' as ExportFormat,
-  quality: '720p' as ExportQuality,
-  filename: 'test-export-720p.webm',
+  format: "webm" as ExportFormat,
+  quality: "720p" as ExportQuality,
+  filename: "test-export-720p.webm",
   width: 1280,
   height: 720,
-  purpose: 'preview' as ExportPurpose,
+  purpose: "preview" as ExportPurpose,
 };
 
 export const mockExportSettingsLow: ExportSettings = {
-  format: 'mov' as ExportFormat,
-  quality: '480p' as ExportQuality,
-  filename: 'test-export-480p.mov',
+  format: "mov" as ExportFormat,
+  quality: "480p" as ExportQuality,
+  filename: "test-export-480p.mov",
   width: 854,
   height: 480,
-  purpose: 'preview' as ExportPurpose,
+  purpose: "preview" as ExportPurpose,
 };
 
 /**
@@ -45,7 +45,7 @@ export const mockExportProgressStart: ExportProgress = {
   currentFrame: 0,
   totalFrames: 300,
   estimatedTimeRemaining: 60,
-  status: 'Starting export...',
+  status: "Starting export...",
   encodingSpeed: 0,
   processedFrames: 0,
   startTime: new Date(),
@@ -59,10 +59,10 @@ export const mockExportProgressMiddle: ExportProgress = {
   currentFrame: 150,
   totalFrames: 300,
   estimatedTimeRemaining: 30,
-  status: 'Processing frame 150 of 300...',
+  status: "Processing frame 150 of 300...",
   encodingSpeed: 5,
   processedFrames: 150,
-  startTime: new Date(Date.now() - 30000), // 30 seconds ago
+  startTime: new Date(Date.now() - 30_000), // 30 seconds ago
   elapsedTime: 30,
   averageFrameTime: 200, // 200ms per frame
 };
@@ -73,10 +73,10 @@ export const mockExportProgressComplete: ExportProgress = {
   currentFrame: 300,
   totalFrames: 300,
   estimatedTimeRemaining: 0,
-  status: 'Export complete!',
+  status: "Export complete!",
   encodingSpeed: 5,
   processedFrames: 300,
-  startTime: new Date(Date.now() - 60000), // 1 minute ago
+  startTime: new Date(Date.now() - 60_000), // 1 minute ago
   elapsedTime: 60,
   averageFrameTime: 200,
 };
@@ -87,10 +87,10 @@ export const mockExportProgressError: ExportProgress = {
   currentFrame: 225,
   totalFrames: 300,
   estimatedTimeRemaining: 0,
-  status: 'Export failed: Insufficient memory',
+  status: "Export failed: Insufficient memory",
   encodingSpeed: 0,
   processedFrames: 225,
-  startTime: new Date(Date.now() - 45000),
+  startTime: new Date(Date.now() - 45_000),
   elapsedTime: 45,
   averageFrameTime: 200,
 };
@@ -112,12 +112,14 @@ export function createMockExportSettings(
  */
 export function createMockExportProgress(
   progress: number,
-  totalFrames: number = 300,
+  totalFrames = 300,
   nowMs: number = Date.now()
 ): ExportProgress {
   const clampedProgress = Math.max(0, Math.min(100, Math.floor(progress)));
   const safeTotalFrames =
-    Number.isFinite(totalFrames) && totalFrames > 0 ? Math.floor(totalFrames) : 300;
+    Number.isFinite(totalFrames) && totalFrames > 0
+      ? Math.floor(totalFrames)
+      : 300;
   const currentFrame =
     clampedProgress === 0
       ? 0
@@ -137,7 +139,7 @@ export function createMockExportProgress(
     status:
       clampedProgress < 100
         ? `Processing frame ${currentFrame} of ${safeTotalFrames}...`
-        : 'Export complete!',
+        : "Export complete!",
     encodingSpeed: clampedProgress > 0 ? 5 : 0,
     processedFrames,
     startTime: new Date(nowMs - elapsedTime * 1000),

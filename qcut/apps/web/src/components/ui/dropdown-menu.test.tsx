@@ -1,5 +1,5 @@
-import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { describe, it, expect, vi } from "vitest";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -7,10 +7,10 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+} from "@/components/ui/dropdown-menu";
 
-describe('DropdownMenu Component', () => {
-  it('renders dropdown trigger', () => {
+describe("DropdownMenu Component", () => {
+  it("renders dropdown trigger", () => {
     render(
       <DropdownMenu>
         <DropdownMenuTrigger>Open Menu</DropdownMenuTrigger>
@@ -20,11 +20,11 @@ describe('DropdownMenu Component', () => {
         </DropdownMenuContent>
       </DropdownMenu>
     );
-    
-    expect(screen.getByText('Open Menu')).toBeInTheDocument();
+
+    expect(screen.getByText("Open Menu")).toBeInTheDocument();
   });
-  
-  it('shows menu structure when configured', () => {
+
+  it("shows menu structure when configured", () => {
     const { container } = render(
       <DropdownMenu>
         <DropdownMenuTrigger>Open Menu</DropdownMenuTrigger>
@@ -36,24 +36,24 @@ describe('DropdownMenu Component', () => {
         </DropdownMenuContent>
       </DropdownMenu>
     );
-    
+
     // Verify trigger renders
-    const trigger = screen.getByRole('button', { name: /open menu/i });
+    const trigger = screen.getByRole("button", { name: /open menu/i });
     expect(trigger).toBeInTheDocument();
-    
+
     // Click to attempt opening (even if portal doesn't render in test)
     fireEvent.click(trigger);
-    
+
     // Verify the dropdown structure was created without errors
     expect(container.firstChild).toBeInTheDocument();
-    
+
     // Note: Full portal rendering requires additional test setup.
     // This test verifies the component accepts menu items and renders trigger.
   });
-  
-  it('handles menu item with onSelect callback', () => {
+
+  it("handles menu item with onSelect callback", () => {
     const handleSelect = vi.fn();
-    
+
     render(
       <DropdownMenu>
         <DropdownMenuTrigger>Menu</DropdownMenuTrigger>
@@ -62,15 +62,15 @@ describe('DropdownMenu Component', () => {
         </DropdownMenuContent>
       </DropdownMenu>
     );
-    
+
     // Verify the dropdown menu structure renders without errors
-    const trigger = screen.getByText('Menu');
+    const trigger = screen.getByText("Menu");
     expect(trigger).toBeInTheDocument();
-    
+
     // Note: Testing actual menu item clicks with Radix UI portals
     // requires complex setup with portal containers and async handling.
     // This test verifies the component accepts the onSelect handler.
     expect(handleSelect).toBeDefined();
-    expect(typeof handleSelect).toBe('function');
+    expect(typeof handleSelect).toBe("function");
   });
 });

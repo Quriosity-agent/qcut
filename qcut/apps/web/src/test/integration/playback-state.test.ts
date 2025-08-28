@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { usePlaybackStore } from '@/stores/playback-store';
+import { describe, it, expect, beforeEach, vi } from "vitest";
+import { usePlaybackStore } from "@/stores/playback-store";
 
 // Mock browser APIs
 let rafCallbacks: any[] = [];
@@ -13,7 +13,7 @@ global.requestAnimationFrame = vi.fn((cb) => {
 });
 
 global.cancelAnimationFrame = vi.fn((id) => {
-  rafCallbacks = rafCallbacks.filter(c => c.id !== id);
+  rafCallbacks = rafCallbacks.filter((c) => c.id !== id);
 });
 global.CustomEvent = class CustomEvent extends Event {
   detail: any;
@@ -27,10 +27,10 @@ global.CustomEvent = class CustomEvent extends Event {
 global.window = {
   dispatchEvent: vi.fn(),
   addEventListener: vi.fn(),
-  removeEventListener: vi.fn()
+  removeEventListener: vi.fn(),
 } as any;
 
-describe('Playback State', () => {
+describe("Playback State", () => {
   beforeEach(() => {
     usePlaybackStore.setState({
       isPlaying: false,
@@ -41,31 +41,31 @@ describe('Playback State', () => {
       muted: false,
     });
   });
-  
-  it('toggles playback state', () => {
+
+  it("toggles playback state", () => {
     const store = usePlaybackStore.getState();
     expect(store.isPlaying).toBe(false);
-    
+
     store.play();
     const playingState = usePlaybackStore.getState();
     expect(playingState.isPlaying).toBe(true);
-    
+
     store.pause();
     const pausedState = usePlaybackStore.getState();
     expect(pausedState.isPlaying).toBe(false);
   });
-  
-  it('updates current time', () => {
+
+  it("updates current time", () => {
     // Set duration first so seek has a valid range
     usePlaybackStore.setState({ duration: 20 });
-    
+
     const store = usePlaybackStore.getState();
     store.seek(10.5);
     const updatedState = usePlaybackStore.getState();
     expect(updatedState.currentTime).toBe(10.5);
   });
-  
-  it('changes playback speed', () => {
+
+  it("changes playback speed", () => {
     const store = usePlaybackStore.getState();
     // Set speed directly via state since setPlaybackSpeed might not exist
     usePlaybackStore.setState({ speed: 2 });

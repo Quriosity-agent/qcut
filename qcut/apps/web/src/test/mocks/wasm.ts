@@ -1,4 +1,4 @@
-import { vi } from 'vitest';
+import { vi } from "vitest";
 
 /**
  * Mock WebAssembly global for FFmpeg tests
@@ -34,40 +34,39 @@ export const mockWebAssembly = {
 /**
  * Mock SharedArrayBuffer for FFmpeg multi-threading
  */
-export const mockSharedArrayBuffer = class MockSharedArrayBuffer extends ArrayBuffer {
-  constructor(length: number) {
-    super(length);
-  }
-};
+export const mockSharedArrayBuffer = class MockSharedArrayBuffer extends ArrayBuffer {};
 
 /**
  * Setup WebAssembly environment for tests
  */
 export function setupWasmEnvironment() {
   // Capture original descriptors before mocking
-  const prevWA = Object.getOwnPropertyDescriptor(globalThis, 'WebAssembly');
-  const prevSAB = Object.getOwnPropertyDescriptor(globalThis, 'SharedArrayBuffer');
-  const prevPerfMem = Object.getOwnPropertyDescriptor(performance, 'memory');
-  
+  const prevWA = Object.getOwnPropertyDescriptor(globalThis, "WebAssembly");
+  const prevSAB = Object.getOwnPropertyDescriptor(
+    globalThis,
+    "SharedArrayBuffer"
+  );
+  const prevPerfMem = Object.getOwnPropertyDescriptor(performance, "memory");
+
   // Mock WebAssembly
-  Object.defineProperty(globalThis, 'WebAssembly', {
+  Object.defineProperty(globalThis, "WebAssembly", {
     value: mockWebAssembly,
     configurable: true,
     writable: true,
   });
-  
+
   // Mock SharedArrayBuffer if not available
-  if (typeof SharedArrayBuffer === 'undefined') {
-    Object.defineProperty(globalThis, 'SharedArrayBuffer', {
+  if (typeof SharedArrayBuffer === "undefined") {
+    Object.defineProperty(globalThis, "SharedArrayBuffer", {
       value: mockSharedArrayBuffer,
       configurable: true,
       writable: true,
     });
   }
-  
+
   // Mock performance.memory for FFmpeg memory checks
-  if (!('memory' in performance)) {
-    Object.defineProperty(performance, 'memory', {
+  if (!("memory" in performance)) {
+    Object.defineProperty(performance, "memory", {
       value: {
         usedJSHeapSize: 100_000_000,
         totalJSHeapSize: 200_000_000,
@@ -76,39 +75,46 @@ export function setupWasmEnvironment() {
       configurable: true,
     });
   }
-  
+
   return () => {
     // Cleanup function: restore captured descriptors
     if (prevWA) {
-      Object.defineProperty(globalThis, 'WebAssembly', prevWA);
+      Object.defineProperty(globalThis, "WebAssembly", prevWA);
     } else {
-      Object.defineProperty(globalThis, 'WebAssembly', { 
-        value: undefined, 
-        configurable: true, 
-        writable: true 
+      Object.defineProperty(globalThis, "WebAssembly", {
+        value: undefined,
+        configurable: true,
+        writable: true,
       });
     }
-    
+
     if (prevSAB) {
-      Object.defineProperty(globalThis, 'SharedArrayBuffer', prevSAB);
-    } else if ('SharedArrayBuffer' in globalThis && typeof SharedArrayBuffer === 'function') {
+      Object.defineProperty(globalThis, "SharedArrayBuffer", prevSAB);
+    } else if (
+      "SharedArrayBuffer" in globalThis &&
+      typeof SharedArrayBuffer === "function"
+    ) {
       // Only reset if we likely set it to our mock
       const currentSAB = globalThis.SharedArrayBuffer;
-      if (currentSAB && currentSAB.prototype && currentSAB.prototype.constructor === mockSharedArrayBuffer) {
-        Object.defineProperty(globalThis, 'SharedArrayBuffer', { 
-          value: undefined, 
-          configurable: true, 
-          writable: true 
+      if (
+        currentSAB &&
+        currentSAB.prototype &&
+        currentSAB.prototype.constructor === mockSharedArrayBuffer
+      ) {
+        Object.defineProperty(globalThis, "SharedArrayBuffer", {
+          value: undefined,
+          configurable: true,
+          writable: true,
         });
       }
     }
-    
+
     if (prevPerfMem) {
-      Object.defineProperty(performance, 'memory', prevPerfMem);
-    } else if ('memory' in performance) {
-      Object.defineProperty(performance, 'memory', { 
-        value: undefined, 
-        configurable: true 
+      Object.defineProperty(performance, "memory", prevPerfMem);
+    } else if ("memory" in performance) {
+      Object.defineProperty(performance, "memory", {
+        value: undefined,
+        configurable: true,
       });
     }
   };

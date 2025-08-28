@@ -398,19 +398,16 @@ export function MediaView() {
                               (m) => m.id === item.id
                             );
 
-                            debugLog(
-                              "[MediaPanel] Overlay creation check:",
-                              {
-                                targetItemId: item.id,
-                                targetItemName: item.name,
-                                mediaExists,
-                                totalMediaItems: filteredMediaItems.length,
-                                availableMediaIds: filteredMediaItems.map(
-                                  (m) => m.id
-                                ),
-                                timestamp: new Date().toISOString(),
-                              }
-                            );
+                            debugLog("[MediaPanel] Overlay creation check:", {
+                              targetItemId: item.id,
+                              targetItemName: item.name,
+                              mediaExists,
+                              totalMediaItems: filteredMediaItems.length,
+                              availableMediaIds: filteredMediaItems.map(
+                                (m) => m.id
+                              ),
+                              timestamp: new Date().toISOString(),
+                            });
 
                             const { addOverlaySticker } =
                               useStickersOverlayStore.getState();

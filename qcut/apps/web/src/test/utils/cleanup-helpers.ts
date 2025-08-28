@@ -1,4 +1,4 @@
-import { vi } from 'vitest';
+import { vi } from "vitest";
 
 /**
  * Track all created blob URLs for cleanup
@@ -33,9 +33,9 @@ export function setupBlobUrlTracking() {
  */
 export function cleanupBlobUrls(urls?: string[]) {
   const urlsToClean = urls || Array.from(createdBlobUrls);
-  
-  urlsToClean.forEach(url => {
-    if (url?.startsWith('blob:')) {
+
+  urlsToClean.forEach((url) => {
+    if (url?.startsWith("blob:")) {
       URL.revokeObjectURL(url);
       createdBlobUrls.delete(url);
     }
@@ -44,8 +44,8 @@ export function cleanupBlobUrls(urls?: string[]) {
   // Also clean up any blob URLs in the DOM
   const elements = document.querySelectorAll('[src^="blob:"], [href^="blob:"]');
   elements.forEach((element) => {
-    const url = element.getAttribute('src') || element.getAttribute('href');
-    if (url?.startsWith('blob:')) {
+    const url = element.getAttribute("src") || element.getAttribute("href");
+    if (url?.startsWith("blob:")) {
       URL.revokeObjectURL(url);
     }
   });

@@ -47,7 +47,9 @@ exports.default = async (context) => {
         { windowsHide: true },
         (error, stdout, stderr) => {
           if (error) {
-            process.stderr.write(`Error setting icon: ${error?.stack || error}\n`);
+            process.stderr.write(
+              `Error setting icon: ${error?.stack || error}\n`
+            );
             reject(error);
             return;
           }

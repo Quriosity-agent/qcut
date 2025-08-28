@@ -9,12 +9,7 @@ const tempManager = new TempManager();
 function setupFFmpegIPC() {
   // Handle ffmpeg-path request
   ipcMain.handle("ffmpeg-path", async () => {
-    try {
-      return getFFmpegPath();
-    } catch (error) {
-      // Error getting FFmpeg path
-      throw error;
-    }
+    return getFFmpegPath();
   });
 
   // Create export session
@@ -26,36 +21,31 @@ function setupFFmpegIPC() {
   ipcMain.handle(
     "save-frame",
     async (event, { sessionId, frameName, data }) => {
-      try {
-        const frameDir = tempManager.getFrameDir(sessionId);
-        const framePath = path.join(frameDir, frameName);
-        const buffer = Buffer.from(data, "base64");
+      const frameDir = tempManager.getFrameDir(sessionId);
+      const framePath = path.join(frameDir, frameName);
+      const buffer = Buffer.from(data, "base64");
 
-        // Validate buffer
-        if (!buffer || buffer.length < 100) {
-          throw new Error(`Invalid PNG buffer: ${buffer.length} bytes`);
-        }
-
-        // Check PNG signature (first 8 bytes should be PNG signature)
-        const pngSignature = Buffer.from([
-          0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a,
-        ]);
-        if (!buffer.subarray(0, 8).equals(pngSignature)) {
-          // Warning: Invalid PNG signature
-        }
-
-        fs.writeFileSync(framePath, buffer);
-
-        // Log first few frames for debugging
-        if (frameName === "frame-0000.png" || frameName === "frame-0001.png") {
-          // Saved frame to disk
-        }
-
-        return framePath;
-      } catch (error) {
-        // Error saving frame
-        throw error;
+      // Validate buffer
+      if (!buffer || buffer.length < 100) {
+        throw new Error(`Invalid PNG buffer: ${buffer.length} bytes`);
       }
+
+      // Check PNG signature (first 8 bytes should be PNG signature)
+      const pngSignature = Buffer.from([
+        0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a,
+      ]);
+      if (!buffer.subarray(0, 8).equals(pngSignature)) {
+        // Warning: Invalid PNG signature
+      }
+
+      fs.writeFileSync(framePath, buffer);
+
+      // Log first few frames for debugging
+      if (frameName === "frame-0000.png" || frameName === "frame-0001.png") {
+        // Saved frame to disk
+      }
+
+      return framePath;
     }
   );
 

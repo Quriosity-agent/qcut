@@ -1,8 +1,8 @@
-import { useTimelineStore } from '@/stores/timeline-store';
+import { useTimelineStore } from "@/stores/timeline-store";
 
 export function resetTimelineStore() {
   const store = useTimelineStore.getState();
-  if (typeof store.clearTimeline === 'function') {
+  if (typeof store.clearTimeline === "function") {
     store.clearTimeline();
     return;
   }

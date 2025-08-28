@@ -152,7 +152,10 @@ function setupSoundIPC() {
     try {
       log.info("[Sound Handler] Getting API key...");
       const FREESOUND_API_KEY = await getFreesoundApiKey();
-      log.info("[Sound Handler] API key available:", Boolean(FREESOUND_API_KEY));
+      log.info(
+        "[Sound Handler] API key available:",
+        Boolean(FREESOUND_API_KEY)
+      );
 
       if (!FREESOUND_API_KEY) {
         log.error("[Sound Handler] No API key found!");
@@ -379,16 +382,19 @@ function setupSoundIPC() {
         } catch {
           return resolve({ success: false, error: "Invalid URL" });
         }
-        
+
         // Allow only HTTPS and specific Freesound domains
         const allowedHosts = ["freesound.org", "cdn.freesound.org"];
         const isAllowedHost = allowedHosts.some(
           (h) => target.hostname === h || target.hostname.endsWith(`.${h}`)
         );
-        
+
         if (target.protocol !== "https:" || !isAllowedHost) {
           log.error("[Sound Handler] Blocked URL:", url);
-          return resolve({ success: false, error: "URL not allowed - must be HTTPS Freesound domain" });
+          return resolve({
+            success: false,
+            error: "URL not allowed - must be HTTPS Freesound domain",
+          });
         }
 
         const file = fs.createWriteStream(filePath);

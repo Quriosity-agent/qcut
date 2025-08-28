@@ -1,5 +1,5 @@
-import { fireEvent } from '@testing-library/react';
-import { shortcuts } from './keyboard-events';
+import { fireEvent } from "@testing-library/react";
+import { shortcuts } from "./keyboard-events";
 
 export function triggerShortcut(
   key: string,
@@ -19,13 +19,13 @@ export function triggerShortcut(
 }
 
 export const editorShortcuts = {
-  save: () => triggerShortcut('s', { ctrlKey: true }),
-  export: () => triggerShortcut('e', { ctrlKey: true, shiftKey: true }),
-  import: () => triggerShortcut('i', { ctrlKey: true }),
-  newProject: () => triggerShortcut('n', { ctrlKey: true }),
-  
+  save: () => triggerShortcut("s", { ctrlKey: true }),
+  export: () => triggerShortcut("e", { ctrlKey: true, shiftKey: true }),
+  import: () => triggerShortcut("i", { ctrlKey: true }),
+  newProject: () => triggerShortcut("n", { ctrlKey: true }),
+
   // Timeline shortcuts (extending existing)
-  splitAtPlayhead: () => triggerShortcut('s'),
+  splitAtPlayhead: () => triggerShortcut("s"),
   deleteSelected: () => shortcuts.delete(),
-  rippleDelete: () => triggerShortcut('Delete', { shiftKey: true }),
+  rippleDelete: () => triggerShortcut("Delete", { shiftKey: true }),
 };

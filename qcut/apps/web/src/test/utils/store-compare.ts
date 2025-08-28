@@ -2,11 +2,14 @@ export function compareStores(before: any, after: any): boolean {
   return JSON.stringify(before) === JSON.stringify(after);
 }
 
-export function getStoreDifferences<T extends Record<string, unknown>>(before: T, after: T): string[] {
+export function getStoreDifferences<T extends Record<string, unknown>>(
+  before: T,
+  after: T
+): string[] {
   const diffs: string[] = [];
 
   const isObject = (v: unknown): v is Record<string, unknown> =>
-    v !== null && typeof v === 'object' && !Array.isArray(v);
+    v !== null && typeof v === "object" && !Array.isArray(v);
 
   const isDate = (v: unknown): v is Date => v instanceof Date;
 
@@ -23,7 +26,12 @@ export function getStoreDifferences<T extends Record<string, unknown>>(before: T
     if (isObject(a) && isObject(b)) {
       const keys = new Set([...Object.keys(a), ...Object.keys(b)]);
       for (const k of keys) {
-        if (!deepEqual((a as Record<string, unknown>)[k], (b as Record<string, unknown>)[k])) {
+        if (
+          !deepEqual(
+            (a as Record<string, unknown>)[k],
+            (b as Record<string, unknown>)[k]
+          )
+        ) {
           return false;
         }
       }
@@ -50,15 +58,19 @@ export function getStoreDifferences<T extends Record<string, unknown>>(before: T
       const keys = new Set([...Object.keys(a), ...Object.keys(b)]);
       for (const k of keys) {
         const p = path ? `${path}.${k}` : k;
-        walk((a as Record<string, unknown>)[k], (b as Record<string, unknown>)[k], p);
+        walk(
+          (a as Record<string, unknown>)[k],
+          (b as Record<string, unknown>)[k],
+          p
+        );
       }
       return;
     }
 
     // Primitive or type mismatch difference
-    diffs.push(path || '<root>');
+    diffs.push(path || "<root>");
   };
 
-  walk(before, after, '');
+  walk(before, after, "");
   return diffs;
 }

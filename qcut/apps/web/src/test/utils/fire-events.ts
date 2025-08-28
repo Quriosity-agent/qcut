@@ -1,4 +1,4 @@
-import { fireEvent } from '@testing-library/react';
+import { fireEvent } from "@testing-library/react";
 
 export function fireClickEvent(element: HTMLElement) {
   fireEvent.mouseDown(element);

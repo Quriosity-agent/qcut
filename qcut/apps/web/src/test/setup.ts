@@ -1,14 +1,14 @@
 // Test setup file for Vitest
-import '@testing-library/jest-dom/vitest';
-import { afterEach, beforeAll, afterAll, vi } from 'vitest';
+import "@testing-library/jest-dom/vitest";
+import { afterEach, beforeAll, afterAll, vi } from "vitest";
 
 // Load toast hook mock
-import { setupToastMock } from './mocks/toast';
+import { setupToastMock } from "./mocks/toast";
 setupToastMock();
 
 // Mock window.matchMedia - ensure window exists first
-if (typeof window !== 'undefined') {
-  Object.defineProperty(window, 'matchMedia', {
+if (typeof window !== "undefined") {
+  Object.defineProperty(window, "matchMedia", {
     writable: true,
     value: vi.fn().mockImplementation((query: string) => ({
       matches: false,
@@ -24,7 +24,7 @@ if (typeof window !== 'undefined') {
 }
 
 // Mock global APIs - check for existence first
-if (typeof global !== 'undefined') {
+if (typeof global !== "undefined") {
   // Mock IntersectionObserver
   global.IntersectionObserver = vi.fn().mockImplementation(() => ({
     observe: vi.fn(),
@@ -41,7 +41,7 @@ if (typeof global !== 'undefined') {
 
   // Mock URL.createObjectURL and revokeObjectURL
   if (global.URL) {
-    global.URL.createObjectURL = vi.fn(() => 'blob:mock-url');
+    global.URL.createObjectURL = vi.fn(() => "blob:mock-url");
     global.URL.revokeObjectURL = vi.fn();
   }
 
@@ -59,8 +59,8 @@ if (typeof global !== 'undefined') {
   // Mock IndexedDB
   const indexedDBMock: IDBFactory = {
     // Return minimal shaped requests; expand if tests need more
-    open: vi.fn(() => ({} as IDBOpenDBRequest)),
-    deleteDatabase: vi.fn(() => ({} as IDBOpenDBRequest)),
+    open: vi.fn(() => ({}) as IDBOpenDBRequest),
+    deleteDatabase: vi.fn(() => ({}) as IDBOpenDBRequest),
     cmp: vi.fn(() => 0),
     // Some TS lib.dom versions include `databases`; stub defensively
     databases: vi.fn(async () => [] as IDBDatabaseInfo[]),
@@ -71,7 +71,7 @@ if (typeof global !== 'undefined') {
 // Clean up after each test
 afterEach(() => {
   vi.clearAllMocks();
-  if (typeof localStorage !== 'undefined') {
+  if (typeof localStorage !== "undefined") {
     localStorage.clear();
   }
 });
@@ -79,8 +79,8 @@ afterEach(() => {
 // Setup before all tests
 beforeAll(() => {
   // Suppress console errors in tests unless explicitly testing error handling
-  vi.spyOn(console, 'error').mockImplementation(() => {});
-  vi.spyOn(console, 'warn').mockImplementation(() => {});
+  vi.spyOn(console, "error").mockImplementation(() => {});
+  vi.spyOn(console, "warn").mockImplementation(() => {});
 });
 
 // Cleanup after all tests

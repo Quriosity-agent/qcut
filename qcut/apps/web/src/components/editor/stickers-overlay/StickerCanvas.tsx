@@ -74,6 +74,9 @@ export const StickerCanvas: React.FC<{
     mediaStoreLoading,
     currentTime,
     getVisibleStickersAtTime,
+    mediaItems.find,
+    mediaItems.map,
+    overlayStickers.values,
   ]);
 
   // Migration: Fix media items with wrong MIME type
@@ -255,7 +258,7 @@ export const StickerCanvas: React.FC<{
   // Debug logging for sticker visibility
   useEffect(() => {
     const visibleStickers = getVisibleStickersAtTime(currentTime);
-    
+
     if (overlayStickers.size > 0) {
       debugLog("[StickerCanvas] State check:", {
         totalStickers: overlayStickers.size,
@@ -289,6 +292,8 @@ export const StickerCanvas: React.FC<{
     mediaStoreLoading,
     mediaStoreError,
     getVisibleStickersAtTime,
+    mediaItems.some,
+    overlayStickers.values,
   ]);
 
   // Get only visible stickers at current time

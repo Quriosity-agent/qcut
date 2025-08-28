@@ -1,4 +1,4 @@
-import { vi } from 'vitest';
+import { vi } from "vitest";
 
 /**
  * Mock for TanStack Router (not Next.js router)
@@ -11,14 +11,14 @@ export const mockRouter = {
   push: vi.fn(),
   replace: vi.fn(),
   prefetch: vi.fn(),
-  
+
   // Router state
-  pathname: '/',
-  search: '',
-  hash: '',
+  pathname: "/",
+  search: "",
+  hash: "",
   state: {},
   params: {} as Record<string, string>,
-  
+
   // Navigation state
   isNavigating: false,
   isLoading: false,
@@ -42,7 +42,7 @@ export const mockUseNavigate = () => {
  * Setup router mocks for TanStack Router
  */
 export function setupRouterMock() {
-  vi.mock('@tanstack/react-router', () => ({
+  vi.mock("@tanstack/react-router", () => ({
     useRouter: () => mockRouter,
     useParams: mockUseParams,
     useNavigate: mockUseNavigate,

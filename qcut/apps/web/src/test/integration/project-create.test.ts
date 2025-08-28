@@ -1,10 +1,10 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { useProjectStore } from '@/stores/project-store';
-import { TestDataFactory } from '@/test/fixtures/factory';
-import { waitFor } from '@testing-library/react';
+import { describe, it, expect, beforeEach, vi } from "vitest";
+import { useProjectStore } from "@/stores/project-store";
+import { TestDataFactory } from "@/test/fixtures/factory";
+import { waitFor } from "@testing-library/react";
 
 // Mock the media store loader to prevent dynamic import issues
-vi.mock('@/stores/media-store-loader', () => ({
+vi.mock("@/stores/media-store-loader", () => ({
   getMediaStore: vi.fn(async () => ({
     useMediaStore: {
       getState: () => ({
@@ -14,16 +14,16 @@ vi.mock('@/stores/media-store-loader', () => ({
         loadProjectMedia: vi.fn().mockResolvedValue(undefined),
         clearProjectMedia: vi.fn().mockResolvedValue(undefined),
         clearAllMedia: vi.fn(),
-        addMediaItem: vi.fn().mockResolvedValue('mock-media-id'),
+        addMediaItem: vi.fn().mockResolvedValue("mock-media-id"),
         removeMediaItem: vi.fn().mockResolvedValue(undefined),
         addGeneratedImages: vi.fn().mockResolvedValue(undefined),
-      })
-    }
-  }))
+      }),
+    },
+  })),
 }));
 
 // Mock storage service
-vi.mock('@/lib/storage/storage-service', () => ({
+vi.mock("@/lib/storage/storage-service", () => ({
   storageService: {
     saveProject: vi.fn().mockResolvedValue(undefined),
     loadProject: vi.fn().mockResolvedValue(null),
@@ -32,15 +32,14 @@ vi.mock('@/lib/storage/storage-service', () => ({
     loadAllMediaItems: vi.fn().mockResolvedValue([]),
     saveMediaItem: vi.fn().mockResolvedValue(undefined),
     deleteMediaItem: vi.fn().mockResolvedValue(undefined),
-  }
+  },
 }));
 
 // Mock localStorage
 const localStorageMock = (() => {
   let store: Record<string, string> = {};
   return {
-    getItem: (key: string) =>
-      Object.prototype.hasOwnProperty.call(store, key) ? store[key] : null,
+    getItem: (key: string) => (Object.hasOwn(store, key) ? store[key] : null),
     setItem: (key: string, value: string) => {
       store[key] = value;
     },
@@ -50,13 +49,13 @@ const localStorageMock = (() => {
     removeItem: (key: string) => {
       const { [key]: _omitted, ...rest } = store;
       store = rest;
-    }
+    },
   };
 })();
 
 global.localStorage = localStorageMock as Storage;
 
-describe('Project Creation', () => {
+describe("Project Creation", () => {
   beforeEach(() => {
     useProjectStore.setState({
       activeProject: null,
@@ -67,13 +66,13 @@ describe('Project Creation', () => {
     });
     localStorageMock.clear();
   });
-  
-  it('creates new project', async () => {
+
+  it("creates new project", async () => {
     const store = useProjectStore.getState();
-    
+
     // Create the project
-    const projectIdPromise = store.createNewProject('Test Project');
-    
+    const projectIdPromise = store.createNewProject("Test Project");
+
     // Wait for the project to be created with a longer timeout
     const projectId = await waitFor(
       async () => {
@@ -81,45 +80,45 @@ describe('Project Creation', () => {
         expect(id).toBeDefined();
         return id;
       },
-      { timeout: 10000 } // 10 second timeout
+      { timeout: 10_000 } // 10 second timeout
     );
-    
+
     expect(projectId).toBeTruthy();
-    
+
     // Check if project is set as active
     await waitFor(() => {
       const updatedStore = useProjectStore.getState();
       expect(updatedStore.activeProject?.id).toBe(projectId);
-      expect(updatedStore.activeProject?.name).toBe('Test Project');
+      expect(updatedStore.activeProject?.name).toBe("Test Project");
     });
-  }, 10000); // Set test timeout to 10 seconds
-  
-  it('loads project from storage', async () => {
-    const mockProject = TestDataFactory.createProject({ 
-      id: 'test-project-id',
-      name: 'Loaded Project' 
+  }, 10_000); // Set test timeout to 10 seconds
+
+  it("loads project from storage", async () => {
+    const mockProject = TestDataFactory.createProject({
+      id: "test-project-id",
+      name: "Loaded Project",
     });
-    
+
     // Store the project in mock localStorage
     const projectsData = { [mockProject.id]: mockProject };
     localStorageMock.setItem(
-      'video-editor-projects_projects_list',
+      "video-editor-projects_projects_list",
       JSON.stringify(projectsData)
     );
-    
+
     // Configure the storage service mock to return the project
-    const { storageService } = await import('@/lib/storage/storage-service');
+    const { storageService } = await import("@/lib/storage/storage-service");
     (storageService.loadProject as any).mockResolvedValue(mockProject);
-    
+
     // Load the project
     const store = useProjectStore.getState();
     await store.loadProject(mockProject.id);
-    
+
     // Check if project is loaded
     await waitFor(() => {
       const updatedStore = useProjectStore.getState();
       expect(updatedStore.activeProject?.id).toBe(mockProject.id);
-      expect(updatedStore.activeProject?.name).toBe('Loaded Project');
+      expect(updatedStore.activeProject?.name).toBe("Loaded Project");
     });
   });
 });

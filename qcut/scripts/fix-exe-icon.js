@@ -97,13 +97,16 @@ async function fixExeIcon() {
 
     await new Promise((resolve, reject) => {
       const maxRedirects = 5;
-      
+
       const doGet = (url, redirects = 0) => {
         const req = https.get(url, (res) => {
           const { statusCode, headers } = res;
-          
+
           // Handle redirects
-          if ([301, 302, 303, 307, 308].includes(statusCode) && headers.location) {
+          if (
+            [301, 302, 303, 307, 308].includes(statusCode) &&
+            headers.location
+          ) {
             if (redirects >= maxRedirects) {
               res.resume();
               file.destroy();
@@ -114,7 +117,7 @@ async function fixExeIcon() {
             doGet(headers.location, redirects + 1);
             return;
           }
-          
+
           // Check for success
           if (statusCode !== 200) {
             res.resume();
@@ -122,31 +125,31 @@ async function fixExeIcon() {
             reject(new Error(`Failed to download: HTTP ${statusCode}`));
             return;
           }
-          
+
           // Pipe response to file
           res.pipe(file);
-          
+
           file.on("finish", () => {
             file.close(() => {
               process.stdout.write("rcedit downloaded successfully\n");
               resolve();
             });
           });
-          
+
           file.on("error", (err) => {
             file.destroy();
             fs.unlink(rceditPath, () => {}); // Clean up partial file
             reject(err);
           });
         });
-        
+
         req.on("error", (err) => {
           file.destroy();
           fs.unlink(rceditPath, () => {}); // Clean up partial file
           reject(err);
         });
       };
-      
+
       doGet(RCEDIT_URL);
     });
 

@@ -1,10 +1,8 @@
-import { useExportStore } from '@/stores/export-store';
-import { ExportFormat, ExportQuality } from '@/types/export';
-import { waitForCondition } from './async-helpers';
+import { useExportStore } from "@/stores/export-store";
+import { ExportFormat, ExportQuality } from "@/types/export";
+import { waitForCondition } from "./async-helpers";
 
-export async function waitForExportComplete(
-  timeout = 30000
-): Promise<void> {
+export async function waitForExportComplete(timeout = 30_000): Promise<void> {
   await waitForCondition(
     () => {
       const { progress } = useExportStore.getState();
@@ -12,14 +10,14 @@ export async function waitForExportComplete(
     },
     {
       timeout,
-      message: 'Export did not complete',
+      message: "Export did not complete",
     }
   );
 }
 
 export function mockExportProgress(
   progressValue: number,
-  message = 'Exporting...'
+  message = "Exporting..."
 ) {
   useExportStore.setState({
     progress: {
@@ -28,7 +26,7 @@ export function mockExportProgress(
       isExporting: progressValue < 100,
       currentFrame: Math.floor((progressValue / 100) * 1000),
       totalFrames: 1000,
-      estimatedTimeRemaining: Math.max(0, 100 - progressValue)
+      estimatedTimeRemaining: Math.max(0, 100 - progressValue),
     },
   });
 }

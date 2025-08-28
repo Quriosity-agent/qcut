@@ -1,5 +1,5 @@
-import { ReactNode, useEffect, useState } from 'react';
-import { resetAllStores } from './store-helpers';
+import { ReactNode, useEffect, useState } from "react";
+import { resetAllStores } from "./store-helpers";
 
 export function StoreTestWrapper({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(false);

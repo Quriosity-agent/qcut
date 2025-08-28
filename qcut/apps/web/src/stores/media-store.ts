@@ -459,7 +459,11 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
     try {
       await storageService.deleteMediaItem(projectId, id);
     } catch (error) {
-      debugError("[MediaStore] deleteMediaItem failed", { projectId, id, error });
+      debugError("[MediaStore] deleteMediaItem failed", {
+        projectId,
+        id,
+        error,
+      });
     }
   },
 

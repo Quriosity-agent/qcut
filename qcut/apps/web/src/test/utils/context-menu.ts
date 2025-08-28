@@ -1,4 +1,4 @@
-import { fireEvent, screen } from '@testing-library/react';
+import { fireEvent, screen } from "@testing-library/react";
 
 export function openContextMenu(
   element: HTMLElement,
@@ -8,7 +8,7 @@ export function openContextMenu(
 }
 
 export function selectContextMenuItem(menuText: string) {
-  const menuItem = screen.queryByRole('menuitem', { name: menuText });
+  const menuItem = screen.queryByRole("menuitem", { name: menuText });
   if (menuItem) {
     fireEvent.click(menuItem);
   }
@@ -16,5 +16,5 @@ export function selectContextMenuItem(menuText: string) {
 }
 
 export function closeContextMenu() {
-  fireEvent.keyDown(document.body, { key: 'Escape' });
+  fireEvent.keyDown(document.body, { key: "Escape" });
 }

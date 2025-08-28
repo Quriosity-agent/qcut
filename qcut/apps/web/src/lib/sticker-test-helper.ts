@@ -41,9 +41,7 @@ export function setupStickerTest() {
       const timelineStore = useTimelineStore.getState();
 
       if (mediaStore.mediaItems.length === 0) {
-        debugLog(
-          "❌ No media items available. Please add some media first."
-        );
+        debugLog("❌ No media items available. Please add some media first.");
         return;
       }
 
@@ -81,10 +79,7 @@ export function setupStickerTest() {
             (el) => hasStickerId(el) && el.stickerId === stickerId
           );
           if (stickerElement) {
-            debugLog(
-              "✅ Sticker element found in timeline:",
-              stickerElement
-            );
+            debugLog("✅ Sticker element found in timeline:", stickerElement);
           } else {
             debugLog("❌ Sticker element NOT found in timeline");
           }

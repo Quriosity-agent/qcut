@@ -1,8 +1,8 @@
-import { usePlaybackStore } from '@/stores/playback-store';
+import { usePlaybackStore } from "@/stores/playback-store";
 
 export function resetPlaybackStore(): void {
   const store = usePlaybackStore.getState();
-  if (typeof store.pause === 'function') {
+  if (typeof store.pause === "function") {
     store.pause();
   }
   usePlaybackStore.setState({

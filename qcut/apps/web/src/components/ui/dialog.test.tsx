@@ -1,5 +1,5 @@
-import { describe, it, expect } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { describe, it, expect } from "vitest";
+import { render, screen, waitFor } from "@testing-library/react";
 import {
   Dialog,
   DialogContent,
@@ -7,10 +7,10 @@ import {
   DialogTitle,
   DialogDescription,
   DialogTrigger,
-} from '@/components/ui/dialog';
+} from "@/components/ui/dialog";
 
-describe('Dialog Component', () => {
-  it('renders dialog trigger', () => {
+describe("Dialog Component", () => {
+  it("renders dialog trigger", () => {
     render(
       <Dialog>
         <DialogTrigger>Open Dialog</DialogTrigger>
@@ -22,11 +22,11 @@ describe('Dialog Component', () => {
         </DialogContent>
       </Dialog>
     );
-    
-    expect(screen.getByText('Open Dialog')).toBeInTheDocument();
+
+    expect(screen.getByText("Open Dialog")).toBeInTheDocument();
   });
-  
-  it('opens and closes with controlled state', async () => {
+
+  it("opens and closes with controlled state", async () => {
     const { rerender } = render(
       <Dialog open={false}>
         <DialogContent>
@@ -34,10 +34,10 @@ describe('Dialog Component', () => {
         </DialogContent>
       </Dialog>
     );
-    
+
     // Dialog should not be visible initially
-    expect(screen.queryByText('Test Dialog')).not.toBeInTheDocument();
-    
+    expect(screen.queryByText("Test Dialog")).not.toBeInTheDocument();
+
     // Open dialog
     rerender(
       <Dialog open={true}>
@@ -46,10 +46,10 @@ describe('Dialog Component', () => {
         </DialogContent>
       </Dialog>
     );
-    
+
     // Dialog should be visible
     await waitFor(() => {
-      expect(screen.getByText('Test Dialog')).toBeInTheDocument();
+      expect(screen.getByText("Test Dialog")).toBeInTheDocument();
     });
   });
 });

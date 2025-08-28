@@ -1,8 +1,8 @@
-import { useCaptionsStore } from '@/stores/captions-store';
+import { useCaptionsStore } from "@/stores/captions-store";
 
 export function resetCaptionsStore(): void {
   const { reset } = useCaptionsStore.getState();
-  if (typeof reset === 'function') {
+  if (typeof reset === "function") {
     reset();
   } else {
     // Fallback for older store versions

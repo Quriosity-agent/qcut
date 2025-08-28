@@ -101,7 +101,9 @@ export class TimelineStickerIntegration {
   private validateSticker(sticker: OverlaySticker): boolean {
     if (!sticker.id || !sticker.mediaItemId) {
       if (this.config.enableLogging) {
-        debugLog("[TimelineIntegration] Invalid sticker: missing id/mediaItemId");
+        debugLog(
+          "[TimelineIntegration] Invalid sticker: missing id/mediaItemId"
+        );
       }
       return false;
     }
@@ -112,7 +114,9 @@ export class TimelineStickerIntegration {
       sticker.timing.endTime === undefined
     ) {
       if (this.config.enableLogging) {
-        debugLog("[TimelineIntegration] Invalid sticker: missing/invalid timing");
+        debugLog(
+          "[TimelineIntegration] Invalid sticker: missing/invalid timing"
+        );
       }
       return false;
     }
@@ -120,7 +124,10 @@ export class TimelineStickerIntegration {
     const duration = sticker.timing.endTime - sticker.timing.startTime;
     if (duration <= 0) {
       if (this.config.enableLogging) {
-        debugLog("[TimelineIntegration] Invalid sticker: non-positive duration", { duration });
+        debugLog(
+          "[TimelineIntegration] Invalid sticker: non-positive duration",
+          { duration }
+        );
       }
       return false;
     }
@@ -283,13 +290,13 @@ export class TimelineStickerIntegration {
       store.addElementToTrack(trackId, element);
 
       // Wait for state update to propagate
-      await new Promise(resolve => setTimeout(resolve, 0));
+      await new Promise((resolve) => setTimeout(resolve, 0));
 
       // Verify element was added by checking the track
       const updatedStore = useTimelineStore.getState();
       const track = this.findStickerTrackById(updatedStore, trackId);
-      const elementAdded = track?.elements?.some((el: any) => 
-        el.type === "sticker" && el.stickerId === sticker.id
+      const elementAdded = track?.elements?.some(
+        (el: any) => el.type === "sticker" && el.stickerId === sticker.id
       );
 
       if (elementAdded) {

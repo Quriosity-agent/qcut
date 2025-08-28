@@ -1,9 +1,9 @@
-import { useMediaStore } from '@/stores/media-store';
-import { useTimelineStore } from '@/stores/timeline-store';
-import { useProjectStore } from '@/stores/project-store';
-import { usePlaybackStore } from '@/stores/playback-store';
-import { useExportStore } from '@/stores/export-store';
-import { useStickersOverlayStore } from '@/stores/stickers-overlay-store';
+import { useMediaStore } from "@/stores/media-store";
+import { useTimelineStore } from "@/stores/timeline-store";
+import { useProjectStore } from "@/stores/project-store";
+import { usePlaybackStore } from "@/stores/playback-store";
+import { useExportStore } from "@/stores/export-store";
+import { useStickersOverlayStore } from "@/stores/stickers-overlay-store";
 
 /**
  * Reset all application stores to their initial state
@@ -29,14 +29,14 @@ export async function resetAllStores() {
   useProjectStore.setState({
     activeProject: null,
     savedProjects: [],
-    isLoading: true,           // match the store's default
+    isLoading: true, // match the store's default
     isInitialized: false,
-    invalidProjectIds: new Set<string>(),  // ensure no residual invalid IDs
+    invalidProjectIds: new Set<string>(), // ensure no residual invalid IDs
   });
 
   // Reset playback store
   const playbackStore = usePlaybackStore.getState();
-  if (typeof playbackStore.pause === 'function') {
+  if (typeof playbackStore.pause === "function") {
     playbackStore.pause();
   }
   usePlaybackStore.setState({
@@ -59,7 +59,7 @@ export async function resetAllStores() {
   if (stickersStore.clearAllStickers) {
     stickersStore.clearAllStickers();
   }
-  
+
   // Small delay to ensure async operations complete
-  await new Promise(resolve => setTimeout(resolve, 10));
+  await new Promise((resolve) => setTimeout(resolve, 10));
 }
