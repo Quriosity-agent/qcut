@@ -4,6 +4,7 @@ import {
   needsBlobConversion,
   revokeBlobUrl,
 } from "@/lib/image-utils";
+import { handleMediaProcessingError } from "@/lib/error-handler";
 
 /**
  * Hook to convert external image URLs (like fal.media) to blob URLs
@@ -44,8 +45,13 @@ export function useBlobImage(url: string | undefined): {
         setError(null);
       })
       .catch((err) => {
-        console.error("Failed to convert image to blob:", err);
-        setError(err.message || "Failed to load image");
+        const processedError = handleMediaProcessingError(err, "Image to Blob Conversion", {
+          originalUrl: url,
+          operation: "convertImageToBlob",
+          showToast: false // Don't show toast for this common operation
+        });
+        
+        setError(processedError.message);
         setBlobUrl(url); // Fallback to original URL
       })
       .finally(() => {

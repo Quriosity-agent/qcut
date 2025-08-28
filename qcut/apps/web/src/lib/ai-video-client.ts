@@ -3,6 +3,8 @@
  * Handles communication with the Python FastAPI backend
  */
 
+import { handleAIServiceError, handleNetworkError } from "./error-handler";
+
 // Direct FAL AI integration - no backend needed
 const FAL_API_KEY = import.meta.env.VITE_FAL_API_KEY;
 const FAL_API_BASE = "https://fal.run";
@@ -84,13 +86,17 @@ export async function generateVideo(
 ): Promise<VideoGenerationResponse> {
   try {
     if (!FAL_API_KEY) {
-      console.error("❌ FAL API Key Missing!");
-      console.error(
-        "Please set NEXT_PUBLIC_FAL_API_KEY in your .env.local file"
-      );
-      throw new Error(
+      const error = new Error(
         "FAL API key not configured. Please set NEXT_PUBLIC_FAL_API_KEY in your environment variables."
       );
+      
+      // Use our enhanced error handler instead of console.error
+      handleAIServiceError(error, "AI Video Generation Setup", {
+        configRequired: "NEXT_PUBLIC_FAL_API_KEY",
+        operation: "checkApiKey"
+      });
+      
+      throw error;
     }
 
     console.log(
@@ -314,17 +320,21 @@ export async function generateVideo(
         video_data: directResult,
       };
     }
-    console.error(
-      "❌ Both attempts failed. Queue result:",
-      queueResult,
-      "Direct result:",
-      directResult
-    );
-    throw new Error(
+    const error = new Error(
       "No video URL received from either queue or direct API mode. Please check the logs for details."
     );
+    
+    handleAIServiceError(error, "AI Video Generation", {
+      queueResult,
+      directResult,
+      operation: "generateVideo"
+    });
+    
+    throw error;
   } catch (error) {
-    console.error("Error generating video:", error);
+    handleAIServiceError(error, "AI Video Generation", {
+      operation: "generateVideo"
+    });
     if (onProgress) {
       onProgress({
         status: "failed",
