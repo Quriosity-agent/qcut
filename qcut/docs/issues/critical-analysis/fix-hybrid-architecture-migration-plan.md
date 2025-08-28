@@ -415,6 +415,7 @@ export async function transcribeAudio(audioBlob: Blob) {
     method: 'POST',
     body: formData
   });
+  if (!res.ok) return { success: false, error: `HTTP ${res.status}` };
   return await res.json();
 }
 ```
