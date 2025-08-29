@@ -9,12 +9,19 @@ if (typeof document === "undefined") {
   Object.defineProperty(globalThis, 'navigator', { value: dom.window.navigator, writable: true });
   Object.defineProperty(globalThis, 'location', { value: dom.window.location, writable: true });
   Object.defineProperty(globalThis, 'HTMLElement', { value: dom.window.HTMLElement, writable: true });
+  Object.defineProperty(globalThis, 'HTMLButtonElement', { value: dom.window.HTMLButtonElement, writable: true });
   Object.defineProperty(globalThis, 'Element', { value: dom.window.Element, writable: true });
 }
 
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor, cleanup } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
 import { Button } from "@/components/ui/button";
+import { afterEach } from "vitest";
+
+// Clean up after each test
+afterEach(() => {
+  cleanup();
+});
 
 describe("Button Component", () => {
   it("renders button with text", () => {

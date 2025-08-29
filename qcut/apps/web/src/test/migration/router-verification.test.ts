@@ -1,4 +1,18 @@
 import { describe, it, expect, beforeEach } from "vitest";
+import { JSDOM } from "jsdom";
+
+// Set up DOM immediately at module level before any imports
+if (typeof document === "undefined") {
+  const dom = new JSDOM('<!DOCTYPE html><html><body></body></html>', {
+    url: "http://localhost:3000/"
+  });
+  Object.defineProperty(globalThis, 'window', { value: dom.window, writable: true });
+  Object.defineProperty(globalThis, 'document', { value: dom.window.document, writable: true });
+  Object.defineProperty(globalThis, 'navigator', { value: dom.window.navigator, writable: true });
+  Object.defineProperty(globalThis, 'location', { value: dom.window.location, writable: true });
+  Object.defineProperty(globalThis, 'HTMLElement', { value: dom.window.HTMLElement, writable: true });
+  Object.defineProperty(globalThis, 'Element', { value: dom.window.Element, writable: true });
+}
 
 // Test all existing TanStack routes to verify they work correctly
 describe("TanStack Router Verification", () => {

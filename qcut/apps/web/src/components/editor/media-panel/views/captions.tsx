@@ -341,6 +341,7 @@ export function CaptionsView() {
           operation: "Audio Transcription",
           category: ErrorCategory.AI_SERVICE,
           severity: ErrorSeverity.HIGH,
+          showToast: false, // We show more specific toasts below
           metadata: {
             language: selectedLanguage,
             fileSize: file?.size,
