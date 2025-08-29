@@ -63,19 +63,19 @@ Object.defineProperty(window, "history", {
 });
 
 // Mock global APIs for happy-dom environment
-// Mock IntersectionObserver
-global.IntersectionObserver = vi.fn().mockImplementation(() => ({
+const makeObserver = () => ({
   observe: vi.fn(),
   unobserve: vi.fn(),
   disconnect: vi.fn(),
-}));
+});
 
-// Mock ResizeObserver  
-global.ResizeObserver = vi.fn().mockImplementation(() => ({
-  observe: vi.fn(),
-  unobserve: vi.fn(),
-  disconnect: vi.fn(),
-}));
+// Mock IntersectionObserver
+Object.defineProperty(window, "IntersectionObserver", { writable: true, value: vi.fn().mockImplementation(makeObserver) });
+Object.defineProperty(globalThis, "IntersectionObserver", { writable: true, value: window.IntersectionObserver });
+
+// Mock ResizeObserver
+Object.defineProperty(window, "ResizeObserver", { writable: true, value: vi.fn().mockImplementation(makeObserver) });
+Object.defineProperty(globalThis, "ResizeObserver", { writable: true, value: window.ResizeObserver });
 
 // Mock URL methods
 Object.defineProperty(URL, "createObjectURL", {
