@@ -1,4 +1,4 @@
-import { handleNetworkError, ErrorSeverity } from "./error-handler";
+import { handleError, ErrorCategory, ErrorSeverity } from "./error-handler";
 
 export async function getStars(): Promise<string> {
   try {
@@ -38,15 +38,15 @@ export async function getStars(): Promise<string> {
       return (count / 1000).toFixed(1).replace(/\.0$/, "") + "k";
     return count.toString();
   } catch (error) {
-    handleNetworkError(
-      error,
-      "Fetch GitHub Stars",
-      {
-        repository: "donghaozhang/qcut",
-        severity: ErrorSeverity.LOW,
-        showToast: false // Don't show toast for non-critical UI data
+    handleError(error, {
+      operation: "Fetch GitHub Stars",
+      category: ErrorCategory.NETWORK,
+      severity: ErrorSeverity.LOW,
+      showToast: false,
+      metadata: {
+        repository: "donghaozhang/qcut"
       }
-    );
+    });
     return "1.5k"; // Return fallback value
   }
 }

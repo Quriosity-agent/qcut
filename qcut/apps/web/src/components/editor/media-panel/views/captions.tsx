@@ -121,8 +121,8 @@ export function CaptionsView() {
           error,
           "Add Captions to Timeline",
           {
-            captionCount: segments.length,
-            duration: segments[segments.length - 1]?.end || 0,
+            captionCount: result.segments.length,
+            duration: result.segments[result.segments.length - 1]?.end || 0,
             severity: ErrorSeverity.HIGH
           }
         );
