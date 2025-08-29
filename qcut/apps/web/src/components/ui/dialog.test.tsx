@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { JSDOM } from "jsdom";
 
-// Set up DOM immediately at module level before any imports
+// Set up DOM immediately at module level before any imports  
 if (typeof document === "undefined") {
   const dom = new JSDOM('<!DOCTYPE html><html><body></body></html>', {
     url: "http://localhost:3000/"

@@ -11,6 +11,7 @@ if (typeof document === "undefined") {
   Object.defineProperty(globalThis, 'navigator', { value: dom.window.navigator, writable: true });
   Object.defineProperty(globalThis, 'location', { value: dom.window.location, writable: true });
   Object.defineProperty(globalThis, 'HTMLElement', { value: dom.window.HTMLElement, writable: true });
+  Object.defineProperty(globalThis, 'HTMLButtonElement', { value: dom.window.HTMLButtonElement, writable: true });
   Object.defineProperty(globalThis, 'Element', { value: dom.window.Element, writable: true });
   Object.defineProperty(globalThis, 'getComputedStyle', { value: dom.window.getComputedStyle, writable: true });
 }
