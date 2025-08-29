@@ -79,7 +79,7 @@ describe("TanStack Router Verification", () => {
       // Test that we're using hash history (important for Electron)
       testRoute("/projects");
       expect(window.location.hash).toBe("#/projects");
-      expect(window.location.pathname).toBe("/"); // Should remain root
+      expect(window.location.pathname).toBe("blank"); // JSDOM sets pathname to "blank" by default
     });
 
     it("should support browser navigation", () => {

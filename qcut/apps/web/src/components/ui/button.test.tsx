@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeAll } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { JSDOM } from "jsdom";
 
 // Set up DOM immediately at module level before any imports
@@ -13,7 +13,7 @@ if (typeof document === "undefined") {
   Object.defineProperty(globalThis, 'Element', { value: dom.window.Element, writable: true });
 }
 
-import { render, screen, fireEvent, waitFor, cleanup } from "@testing-library/react";
+import { render, fireEvent, waitFor, cleanup } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
 import { Button } from "@/components/ui/button";
 import { afterEach } from "vitest";

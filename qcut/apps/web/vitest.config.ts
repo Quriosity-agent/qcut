@@ -11,7 +11,7 @@ export default defineConfig({
   test: {
     globals: true,
     environment: "node",
-    setupFiles: [path.resolve(rootDir, "src/test/minimal-setup.js")],
+    setupFiles: [path.resolve(rootDir, "src/test/setup.ts")],
   },
   resolve: {
     alias: {
