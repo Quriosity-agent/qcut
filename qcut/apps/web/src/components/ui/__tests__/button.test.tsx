@@ -1,5 +1,19 @@
 import { describe, it, expect, vi } from "vitest";
+import { JSDOM } from "jsdom";
+
+// Set up DOM immediately at module level before any imports
+if (typeof document === "undefined") {
+  const dom = new JSDOM('<!DOCTYPE html><html><body></body></html>');
+  Object.defineProperty(globalThis, 'window', { value: dom.window, writable: true });
+  Object.defineProperty(globalThis, 'document', { value: dom.window.document, writable: true });
+  Object.defineProperty(globalThis, 'navigator', { value: dom.window.navigator, writable: true });
+  Object.defineProperty(globalThis, 'location', { value: dom.window.location, writable: true });
+  Object.defineProperty(globalThis, 'HTMLElement', { value: dom.window.HTMLElement, writable: true });
+  Object.defineProperty(globalThis, 'Element', { value: dom.window.Element, writable: true });
+}
+
 import { render, screen, fireEvent } from "@testing-library/react";
+import "@testing-library/jest-dom/vitest";
 import { Button } from "@/components/ui/button";
 import React from "react";
 

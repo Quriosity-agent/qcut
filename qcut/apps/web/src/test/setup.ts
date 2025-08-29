@@ -1,87 +1,138 @@
-// Test setup file for Vitest
+// Test setup file for Vitest - setup DOM first before any other imports
+import { JSDOM } from "jsdom";
+
+console.log("Setting up JSDOM environment...");
+
+// Create DOM environment immediately
+const dom = new JSDOM('<!DOCTYPE html><html><body></body></html>', {
+  url: "http://localhost:3000",
+  pretendToBeVisual: true,
+  resources: "usable"
+});
+
+// Set up DOM globals immediately at module level
+Object.defineProperty(globalThis, 'window', { value: dom.window, writable: true });
+Object.defineProperty(globalThis, 'document', { value: dom.window.document, writable: true });
+Object.defineProperty(globalThis, 'navigator', { value: dom.window.navigator, writable: true });
+Object.defineProperty(globalThis, 'location', { value: dom.window.location, writable: true });
+Object.defineProperty(globalThis, 'HTMLElement', { value: dom.window.HTMLElement, writable: true });
+Object.defineProperty(globalThis, 'Element', { value: dom.window.Element, writable: true });
+Object.defineProperty(globalThis, 'Node', { value: dom.window.Node, writable: true });
+
+console.log("JSDOM setup complete. Document available:", typeof globalThis.document !== "undefined");
+
+// Test global availability immediately
+console.log("Global document test:", typeof document !== "undefined" ? "AVAILABLE" : "NOT AVAILABLE");
+
+// Now that DOM is available, import testing libraries
 import "@testing-library/jest-dom/vitest";
-import { afterEach, beforeAll, afterAll, vi } from "vitest";
+import { afterEach, afterAll, vi } from "vitest";
 
 // Load toast hook mock
 import { setupToastMock } from "./mocks/toast";
 setupToastMock();
 
-// Mock window.matchMedia and window.history - ensure window exists first
-if (typeof window !== "undefined") {
-  Object.defineProperty(window, "matchMedia", {
-    writable: true,
-    value: vi.fn().mockImplementation((query: string) => ({
-      matches: false,
-      media: query,
-      onchange: null,
-      addListener: vi.fn(),
-      removeListener: vi.fn(),
-      addEventListener: vi.fn(),
-      removeEventListener: vi.fn(),
-      dispatchEvent: vi.fn(),
-    })),
-  });
+// Mock window.matchMedia and window.history for happy-dom environment
+Object.defineProperty(window, "matchMedia", {
+  writable: true,
+  value: vi.fn().mockImplementation((query: string) => ({
+    matches: false,
+    media: query,
+    onchange: null,
+    addListener: vi.fn(),
+    removeListener: vi.fn(),
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+    dispatchEvent: vi.fn(),
+  })),
+});
 
-  // Mock window.history for TanStack Router
-  Object.defineProperty(window, "history", {
-    writable: true,
-    value: {
-      pushState: vi.fn(),
-      replaceState: vi.fn(),
-      back: vi.fn(),
-      forward: vi.fn(),
-      go: vi.fn(),
-      length: 1,
-      scrollRestoration: "auto",
-      state: null,
-    },
-  });
-}
+// Mock window.history for TanStack Router
+Object.defineProperty(window, "history", {
+  writable: true,
+  value: {
+    pushState: vi.fn(),
+    replaceState: vi.fn(),
+    back: vi.fn(),
+    forward: vi.fn(),
+    go: vi.fn(),
+    length: 1,
+    scrollRestoration: "auto",
+    state: null,
+  },
+});
 
-// Mock global APIs - check for existence first
-if (typeof global !== "undefined") {
-  // Mock IntersectionObserver
-  global.IntersectionObserver = vi.fn().mockImplementation(() => ({
-    observe: vi.fn(),
-    unobserve: vi.fn(),
-    disconnect: vi.fn(),
-  }));
+// Mock global APIs for happy-dom environment
+// Mock IntersectionObserver
+global.IntersectionObserver = vi.fn().mockImplementation(() => ({
+  observe: vi.fn(),
+  unobserve: vi.fn(),
+  disconnect: vi.fn(),
+}));
 
-  // Mock ResizeObserver
-  global.ResizeObserver = vi.fn().mockImplementation(() => ({
-    observe: vi.fn(),
-    unobserve: vi.fn(),
-    disconnect: vi.fn(),
-  }));
+// Mock ResizeObserver  
+global.ResizeObserver = vi.fn().mockImplementation(() => ({
+  observe: vi.fn(),
+  unobserve: vi.fn(),
+  disconnect: vi.fn(),
+}));
 
-  // Mock URL.createObjectURL and revokeObjectURL
-  if (global.URL) {
-    global.URL.createObjectURL = vi.fn(() => "blob:mock-url");
-    global.URL.revokeObjectURL = vi.fn();
-  }
+// Mock URL methods
+Object.defineProperty(URL, "createObjectURL", {
+  writable: true,
+  value: vi.fn(() => "blob:mock-url"),
+});
+Object.defineProperty(URL, "revokeObjectURL", {
+  writable: true,
+  value: vi.fn(),
+});
 
-  // Mock localStorage
-  const localStorageMock: Storage = {
-    getItem: vi.fn(),
-    setItem: vi.fn(),
-    removeItem: vi.fn(),
-    clear: vi.fn(),
-    key: vi.fn(),
-    length: 0,
-  };
-  global.localStorage = localStorageMock;
+// Mock localStorage (should be available in happy-dom but ensure it's mocked)
+const localStorageMock: Storage = {
+  getItem: vi.fn(),
+  setItem: vi.fn(),
+  removeItem: vi.fn(),
+  clear: vi.fn(),
+  key: vi.fn(),
+  length: 0,
+};
+Object.defineProperty(window, "localStorage", {
+  value: localStorageMock,
+  writable: true,
+});
 
-  // Mock IndexedDB
-  const indexedDBMock: IDBFactory = {
-    // Return minimal shaped requests; expand if tests need more
-    open: vi.fn(() => ({}) as IDBOpenDBRequest),
-    deleteDatabase: vi.fn(() => ({}) as IDBOpenDBRequest),
-    cmp: vi.fn(() => 0),
-    // Some TS lib.dom versions include `databases`; stub defensively
-    databases: vi.fn(async () => [] as IDBDatabaseInfo[]),
-  };
-  global.indexedDB = indexedDBMock;
-}
+// Mock IndexedDB
+const indexedDBMock: IDBFactory = {
+  open: vi.fn(() => ({}) as IDBOpenDBRequest),
+  deleteDatabase: vi.fn(() => ({}) as IDBOpenDBRequest),
+  cmp: vi.fn(() => 0),
+  databases: vi.fn(async () => [] as IDBDatabaseInfo[]),
+};
+Object.defineProperty(window, "indexedDB", {
+  value: indexedDBMock,
+  writable: true,
+});
+
+// Mock navigator.clipboard
+Object.defineProperty(navigator, "clipboard", {
+  value: {
+    writeText: vi.fn(() => Promise.resolve()),
+    readText: vi.fn(() => Promise.resolve("")),
+  },
+  writable: true,
+});
+
+// Mock window.location methods
+Object.defineProperty(window, "location", {
+  value: {
+    href: "http://localhost:3000",
+    origin: "http://localhost:3000",
+    reload: vi.fn(),
+    assign: vi.fn(),
+    replace: vi.fn(),
+  },
+  writable: true,
+});
 
 // Clean up after each test
 afterEach(() => {

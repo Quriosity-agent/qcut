@@ -1,11 +1,25 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, beforeAll } from "vitest";
+import { JSDOM } from "jsdom";
+
+// Set up DOM immediately at module level before any imports
+if (typeof document === "undefined") {
+  const dom = new JSDOM('<!DOCTYPE html><html><body></body></html>');
+  Object.defineProperty(globalThis, 'window', { value: dom.window, writable: true });
+  Object.defineProperty(globalThis, 'document', { value: dom.window.document, writable: true });
+  Object.defineProperty(globalThis, 'navigator', { value: dom.window.navigator, writable: true });
+  Object.defineProperty(globalThis, 'location', { value: dom.window.location, writable: true });
+  Object.defineProperty(globalThis, 'HTMLElement', { value: dom.window.HTMLElement, writable: true });
+  Object.defineProperty(globalThis, 'Element', { value: dom.window.Element, writable: true });
+}
+
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import "@testing-library/jest-dom/vitest";
 import { Button } from "@/components/ui/button";
 
 describe("Button Component", () => {
   it("renders button with text", () => {
-    render(<Button>Click me</Button>);
-    expect(screen.getByText("Click me")).toBeInTheDocument();
+    const { getByText } = render(<Button>Click me</Button>);
+    expect(getByText("Click me")).toBeInTheDocument();
   });
 
   it("applies variant classes", () => {
@@ -24,9 +38,9 @@ describe("Button Component", () => {
 describe("Button Events", () => {
   it("handles click event", async () => {
     const handleClick = vi.fn();
-    render(<Button onClick={handleClick}>Click</Button>);
+    const { getByText } = render(<Button onClick={handleClick}>Click</Button>);
 
-    const button = screen.getByText("Click");
+    const button = getByText("Click");
     fireEvent.click(button);
 
     await waitFor(() => {
@@ -36,26 +50,26 @@ describe("Button Events", () => {
 
   it("prevents click when disabled", () => {
     const handleClick = vi.fn();
-    render(
+    const { getByText } = render(
       <Button disabled onClick={handleClick}>
         Disabled
       </Button>
     );
 
-    const button = screen.getByText("Disabled");
+    const button = getByText("Disabled");
     fireEvent.click(button);
 
     expect(handleClick).not.toHaveBeenCalled();
   });
 
   it("works as a link with asChild prop", () => {
-    render(
+    const { getByText } = render(
       <Button asChild>
         <a href="/test">Link Button</a>
       </Button>
     );
 
-    const link = screen.getByText("Link Button");
+    const link = getByText("Link Button");
     expect(link.tagName).toBe("A");
     expect(link).toHaveAttribute("href", "/test");
   });
