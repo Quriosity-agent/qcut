@@ -5,6 +5,8 @@ import { debugLog, debugError, debugWarn } from "@/lib/debug-config";
 
 let ffmpeg: FFmpeg | null = null;
 let isFFmpegLoaded = false;
+let lastUsedAt = Date.now();
+let cleanupTimer: number | null = null;
 
 // Check if running in Electron
 const isElectron = () => {
@@ -110,6 +112,26 @@ const getFFmpegResourceUrl = async (filename: string): Promise<string> => {
   }
 
   throw new Error(`Could not resolve FFmpeg resource: ${filename}`);
+};
+
+// Schedule FFmpeg cleanup after inactivity
+const scheduleFFmpegCleanup = () => {
+  if (cleanupTimer) {
+    clearTimeout(cleanupTimer);
+  }
+  
+  cleanupTimer = window.setTimeout(() => {
+    if (ffmpeg && isFFmpegLoaded && Date.now() - lastUsedAt > 5 * 60 * 1000) {
+      debugLog("[FFmpeg Utils] Auto-terminating FFmpeg due to inactivity");
+      terminateFFmpeg();
+    }
+  }, 5 * 60 * 1000);
+};
+
+// Update last used time and schedule cleanup
+const updateLastUsed = () => {
+  lastUsedAt = Date.now();
+  scheduleFFmpegCleanup();
 };
 
 export const initFFmpeg = async (): Promise<FFmpeg> => {
@@ -328,6 +350,7 @@ export const generateThumbnail = async (
     await ffmpeg.deleteFile(inputName);
     await ffmpeg.deleteFile(outputName);
 
+    updateLastUsed();
     return URL.createObjectURL(blob);
   } catch (error) {
     console.error("[FFmpeg] Thumbnail generation failed:", error);
@@ -395,6 +418,7 @@ export const trimVideo = async (
   await ffmpeg.deleteFile(inputName);
   await ffmpeg.deleteFile(outputName);
 
+  updateLastUsed();
   return blob;
 };
 
@@ -477,6 +501,7 @@ export const getVideoInfo = async (
     fps = parseFloat(videoStreamMatch[3]);
   }
 
+  updateLastUsed();
   return {
     duration,
     width,
@@ -530,6 +555,7 @@ export const convertToWebM = async (
   await ffmpeg.deleteFile(inputName);
   await ffmpeg.deleteFile(outputName);
 
+  updateLastUsed();
   return blob;
 };
 
@@ -574,5 +600,33 @@ export const extractAudio = async (
   await ffmpeg.deleteFile(inputName);
   await ffmpeg.deleteFile(outputName);
 
+  updateLastUsed();
   return blob;
+};
+
+export const terminateFFmpeg = async (): Promise<void> => {
+  if (!ffmpeg || !isFFmpegLoaded) return;
+  
+  try {
+    if (typeof ffmpeg.terminate === 'function') {
+      await ffmpeg.terminate();
+      debugLog("[FFmpeg Utils] ✅ FFmpeg terminated successfully");
+    }
+  } catch (error) {
+    debugWarn("[FFmpeg Utils] ⚠️ Error terminating FFmpeg:", error);
+  } finally {
+    ffmpeg = null;
+    isFFmpegLoaded = false;
+    if (cleanupTimer) {
+      clearTimeout(cleanupTimer);
+      cleanupTimer = null;
+    }
+  }
+};
+
+export const forceFFmpegCleanup = (): void => {
+  if (ffmpeg) {
+    debugLog("[FFmpeg Utils] 🧹 Force cleaning FFmpeg instance");
+    terminateFFmpeg();
+  }
 };

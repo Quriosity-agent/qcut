@@ -228,11 +228,16 @@ export function TimelineElement({
     const input = document.createElement("input");
     input.type = "file";
     input.accept = "video/*,audio/*,image/*";
+    
+    const cleanup = () => {
+      input.remove();
+    };
+    
     input.onchange = async (e) => {
-      const file = (e.target as HTMLInputElement).files?.[0];
-      if (!file) return;
-
       try {
+        const file = (e.target as HTMLInputElement).files?.[0];
+        if (!file) return;
+
         const result = await replaceElementMedia(track.id, element.id, file);
         if (result.success) {
           toast.success("Clip replaced successfully");
@@ -244,8 +249,14 @@ export function TimelineElement({
         toast.error(
           `Unexpected error: ${error instanceof Error ? error.message : "Unknown error"}`
         );
+      } finally {
+        cleanup();
       }
     };
+    
+    // Cleanup if user cancels the file dialog
+    input.oncancel = cleanup;
+    
     input.click();
   };
 

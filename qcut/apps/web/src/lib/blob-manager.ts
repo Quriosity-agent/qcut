@@ -1,0 +1,122 @@
+/**
+ * Centralized BlobURL manager to prevent memory leaks
+ * Automatically tracks and cleans up blob URLs
+ */
+
+interface BlobEntry {
+  url: string;
+  file: File;
+  createdAt: number;
+  revokedAt?: number;
+  source?: string;
+}
+
+class BlobManager {
+  private blobs = new Map<string, BlobEntry>();
+  private cleanupInterval: number | null = null;
+
+  constructor() {
+    // Auto-cleanup orphaned blobs every 5 minutes
+    this.cleanupInterval = window.setInterval(() => {
+      this.cleanupOldBlobs();
+    }, 5 * 60 * 1000);
+  }
+
+  /**
+   * Create a tracked blob URL that will be automatically cleaned up
+   */
+  createObjectURL(file: File, source?: string): string {
+    const url = URL.createObjectURL(file);
+    
+    this.blobs.set(url, {
+      url,
+      file,
+      createdAt: Date.now(),
+      source: source || new Error().stack?.split('\n')[2]?.trim(),
+    });
+
+    return url;
+  }
+
+  /**
+   * Manually revoke a blob URL
+   */
+  revokeObjectURL(url: string): void {
+    const entry = this.blobs.get(url);
+    if (entry && !entry.revokedAt) {
+      URL.revokeObjectURL(url);
+      entry.revokedAt = Date.now();
+      this.blobs.delete(url);
+    }
+  }
+
+  /**
+   * Clean up blobs older than maxAge (default: 10 minutes)
+   */
+  private cleanupOldBlobs(maxAge = 10 * 60 * 1000): void {
+    const now = Date.now();
+    
+    for (const [url, entry] of this.blobs.entries()) {
+      if (!entry.revokedAt && (now - entry.createdAt) > maxAge) {
+        console.warn(`[BlobManager] Auto-revoking old blob URL from: ${entry.source}`);
+        this.revokeObjectURL(url);
+      }
+    }
+  }
+
+  /**
+   * Get debugging information about active blobs
+   */
+  getActiveBlobs(): BlobEntry[] {
+    return Array.from(this.blobs.values()).filter(entry => !entry.revokedAt);
+  }
+
+  /**
+   * Force cleanup all active blobs (use sparingly)
+   */
+  cleanup(): void {
+    for (const url of this.blobs.keys()) {
+      this.revokeObjectURL(url);
+    }
+    
+    if (this.cleanupInterval) {
+      clearInterval(this.cleanupInterval);
+      this.cleanupInterval = null;
+    }
+  }
+
+  /**
+   * Get memory usage statistics
+   */
+  getStats() {
+    const active = this.getActiveBlobs();
+    const totalSize = active.reduce((sum, entry) => sum + entry.file.size, 0);
+    
+    return {
+      activeCount: active.length,
+      totalSize,
+      oldestBlob: active.length > 0 ? Math.min(...active.map(e => e.createdAt)) : null,
+    };
+  }
+}
+
+// Global singleton instance
+export const blobManager = new BlobManager();
+
+// Convenience exports that use the managed instance
+export const createObjectURL = (file: File, source?: string): string => {
+  return blobManager.createObjectURL(file, source);
+};
+
+export const revokeObjectURL = (url: string): void => {
+  blobManager.revokeObjectURL(url);
+};
+
+// Development helper to monitor blob usage
+if (import.meta.env.DEV) {
+  (window as any).debugBlobs = () => {
+    const stats = blobManager.getStats();
+    console.log('[BlobManager] Stats:', stats);
+    console.log('[BlobManager] Active blobs:', blobManager.getActiveBlobs());
+  };
+}

@@ -532,6 +532,7 @@ export function AiView() {
                           a.href = result.video.videoUrl;
                           a.download = `ai-video-${result.video.jobId}.mp4`;
                           a.click();
+                          a.remove();
                         }}
                         className="h-6 px-2"
                         aria-label="Download video"

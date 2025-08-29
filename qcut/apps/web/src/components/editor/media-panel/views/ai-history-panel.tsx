@@ -149,6 +149,7 @@ export function AIHistoryPanel({
                         link.href = video.videoUrl;
                         link.download = `generated-video-${video.jobId.substring(0, 8)}.mp4`;
                         link.click();
+                        link.remove();
                       }}
                     >
                       <Download className="size-3" />
