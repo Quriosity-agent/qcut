@@ -25,9 +25,8 @@ import { TIMELINE_CONSTANTS } from "@/constants/timeline-constants";
 import { toast } from "sonner";
 import { checkElementOverlaps, resolveElementOverlaps } from "@/lib/timeline";
 import { 
-  handleStorageError, 
-  handleValidationError,
-  handleMediaProcessingError,
+  handleError,
+  ErrorCategory,
   ErrorSeverity 
 } from "@/lib/error-handler";
 
@@ -254,17 +253,25 @@ export const useTimelineStore = create<TimelineStore>((set, get) => {
         try {
           await storageService.saveTimeline(activeProject.id, get()._tracks);
         } catch (error) {
-          handleStorageError(error, "Auto-save Timeline", {
-            projectId: activeProject.id,
-            trackCount: get()._tracks.length,
-            showToast: false // Don't show toast for auto-save failures
+          handleError(error, {
+            operation: "Auto-save Timeline",
+            category: ErrorCategory.STORAGE,
+            showToast: false,
+            metadata: {
+              projectId: activeProject.id,
+              trackCount: get()._tracks.length
+            }
           });
         }
       }
     } catch (error) {
-      handleStorageError(error, "Access Project Store", {
-        operation: "timeline-autosave",
-        showToast: false // Silent failure for background operations
+      handleError(error, {
+        operation: "Access Project Store",
+        category: ErrorCategory.STORAGE,
+        showToast: false,
+        metadata: {
+          operation: "timeline-autosave"
+        }
       });
     }
   };
@@ -519,12 +526,15 @@ export const useTimelineStore = create<TimelineStore>((set, get) => {
       // Validate element type matches track type
       const track = get()._tracks.find((t) => t.id === trackId);
       if (!track) {
-        handleValidationError(
+        handleError(
           new Error(`Track not found: ${trackId}`),
-          "Add Element to Track",
           {
-            trackId,
-            severity: ErrorSeverity.MEDIUM
+            operation: "Add Element to Track",
+            category: ErrorCategory.VALIDATION,
+            severity: ErrorSeverity.MEDIUM,
+            metadata: {
+              trackId
+            }
           }
         );
         return;
@@ -533,12 +543,15 @@ export const useTimelineStore = create<TimelineStore>((set, get) => {
       // Use utility function for validation
       const validation = validateElementTrackCompatibility(elementData, track);
       if (!validation.isValid) {
-        handleValidationError(
+        handleError(
           new Error(validation.errorMessage || "Invalid element for track type"),
-          "Element Track Compatibility",
           {
-            trackType: track.type,
-            elementType: elementData.type
+            operation: "Element Track Compatibility",
+            category: ErrorCategory.VALIDATION,
+            metadata: {
+              trackType: track.type,
+              elementType: elementData.type
+            }
           }
         );
         return;
@@ -546,12 +559,15 @@ export const useTimelineStore = create<TimelineStore>((set, get) => {
 
       // For media elements, validate mediaId exists
       if (elementData.type === "media" && !elementData.mediaId) {
-        handleValidationError(
+        handleError(
           new Error("Media element must have mediaId"),
-          "Media Element Validation",
           {
-            elementType: "media",
-            trackId
+            operation: "Media Element Validation",
+            category: ErrorCategory.VALIDATION,
+            metadata: {
+              elementType: "media",
+              trackId
+            }
           }
         );
         return;
@@ -559,12 +575,15 @@ export const useTimelineStore = create<TimelineStore>((set, get) => {
 
       // For text elements, validate required text properties
       if (elementData.type === "text" && !elementData.content) {
-        handleValidationError(
+        handleError(
           new Error("Text element must have content"),
-          "Text Element Validation",
           {
-            elementType: "text",
-            trackId
+            operation: "Text Element Validation",
+            category: ErrorCategory.VALIDATION,
+            metadata: {
+              elementType: "text",
+              trackId
+            }
           }
         );
         return;
@@ -615,9 +634,13 @@ export const useTimelineStore = create<TimelineStore>((set, get) => {
               }
             })
             .catch((error) => {
-              handleStorageError(error, "Update FPS from Project Store", {
-                operation: "fps-update",
-                showToast: false
+              handleError(error, {
+                operation: "Update FPS from Project Store",
+                category: ErrorCategory.STORAGE,
+                showToast: false,
+                metadata: {
+                  operation: "fps-update"
+                }
               });
             });
         }
@@ -751,12 +774,15 @@ export const useTimelineStore = create<TimelineStore>((set, get) => {
         toTrack
       );
       if (!validation.isValid) {
-        handleValidationError(
+        handleError(
           new Error(validation.errorMessage || "Invalid drag operation"),
-          "Timeline Drag Validation",
           {
-            targetTrackId: toTrackId,
-            elementId: elementId
+            operation: "Timeline Drag Validation",
+            category: ErrorCategory.VALIDATION,
+            metadata: {
+              targetTrackId: toTrackId,
+              elementId: elementId
+            }
           }
         );
         return;
@@ -1357,10 +1383,14 @@ export const useTimelineStore = create<TimelineStore>((set, get) => {
 
         return { success: true };
       } catch (error) {
-        handleMediaProcessingError(error, "Replace Element Media", {
-          elementId,
-          trackId,
-          fileName: newFile.name
+        handleError(error, {
+          operation: "Replace Element Media",
+          category: ErrorCategory.MEDIA_PROCESSING,
+          metadata: {
+            elementId,
+            trackId,
+            fileName: newFile.name
+          }
         });
         return {
           success: false,
@@ -1419,9 +1449,13 @@ export const useTimelineStore = create<TimelineStore>((set, get) => {
 
         return null;
       } catch (error) {
-        handleMediaProcessingError(error, "Generate Project Thumbnail", {
-          operation: "thumbnail-generation",
-          showToast: false // Silent failure for thumbnails
+        handleError(error, {
+          operation: "Generate Project Thumbnail",
+          category: ErrorCategory.MEDIA_PROCESSING,
+          showToast: false,
+          metadata: {
+            operation: "thumbnail-generation"
+          }
         });
         return null;
       }
@@ -1507,9 +1541,13 @@ export const useTimelineStore = create<TimelineStore>((set, get) => {
         // Clear history when loading a project
         set({ history: [], redoStack: [] });
       } catch (error) {
-        handleStorageError(error, "Load Timeline", {
-          projectId,
-          severity: ErrorSeverity.HIGH // High severity as it affects project loading
+        handleError(error, {
+          operation: "Load Timeline",
+          category: ErrorCategory.STORAGE,
+          severity: ErrorSeverity.HIGH,
+          metadata: {
+            projectId
+          }
         });
         // Initialize with default on error
         const defaultTracks = ensureMainTrack([]);
@@ -1522,10 +1560,14 @@ export const useTimelineStore = create<TimelineStore>((set, get) => {
       try {
         await storageService.saveTimeline(projectId, get()._tracks);
       } catch (error) {
-        handleStorageError(error, "Save Timeline", {
-          projectId,
-          trackCount: get()._tracks.length,
-          severity: ErrorSeverity.HIGH
+        handleError(error, {
+          operation: "Save Timeline",
+          category: ErrorCategory.STORAGE,
+          severity: ErrorSeverity.HIGH,
+          metadata: {
+            projectId,
+            trackCount: get()._tracks.length
+          }
         });
       }
     },

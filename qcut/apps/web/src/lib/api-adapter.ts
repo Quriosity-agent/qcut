@@ -1,5 +1,5 @@
 import { isFeatureEnabled } from "./feature-flags";
-import { handleNetworkError, ErrorSeverity } from "./error-handler";
+import { handleError, ErrorCategory, ErrorSeverity } from "./error-handler";
 
 // Helper function for legacy sound search with retry logic
 async function legacySoundSearch(
@@ -32,16 +32,17 @@ async function legacySoundSearch(
       const res = await fetch(`/api/sounds/search?${urlParams.toString()}`);
       if (res.ok) return await res.json();
     } catch (fetchError) {
-      handleNetworkError(
-        fetchError,
-        `Sound Search (Attempt ${i + 1})`,
-        {
+      handleError(fetchError, {
+        operation: `Sound Search (Attempt ${i + 1})`,
+        category: ErrorCategory.NETWORK,
+        severity: ErrorSeverity.LOW,
+        showToast: false,
+        metadata: {
           query,
           attempt: i + 1,
-          maxAttempts: retryCount,
-          severity: ErrorSeverity.LOW,
-          showToast: false // Don't show toast for retryable errors
+          maxAttempts: retryCount
         }
+      }
       );
     }
     if (i < retryCount - 1) {
@@ -72,16 +73,17 @@ async function legacyTranscribe(
       });
       if (res.ok) return await res.json();
     } catch (fetchError) {
-      handleNetworkError(
-        fetchError,
-        `Transcription Upload (Attempt ${i + 1})`,
-        {
+      handleError(fetchError, {
+        operation: `Transcription Upload (Attempt ${i + 1})`,
+        category: ErrorCategory.NETWORK,
+        severity: ErrorSeverity.MEDIUM,
+        showToast: false,
+        metadata: {
           attempt: i + 1,
           maxAttempts: retryCount,
-          language,
-          severity: ErrorSeverity.MEDIUM,
-          showToast: false // Don't show toast for retryable errors
+          language
         }
+      }
       );
     }
     if (i < retryCount - 1) {
@@ -122,14 +124,15 @@ export async function searchSounds(
       }
       throw new Error(result?.error || "IPC failed, attempting fallback");
     } catch (error) {
-      handleNetworkError(
-        error,
-        "Electron API Sound Search",
-        {
-          query,
-          severity: ErrorSeverity.LOW,
-          showToast: false // Silent fallback to legacy method
+      handleError(error, {
+        operation: "Electron API Sound Search",
+        category: ErrorCategory.NETWORK,
+        severity: ErrorSeverity.LOW,
+        showToast: false,
+        metadata: {
+          query
         }
+      }
       );
       if (fallbackToOld && !isFeatureEnabled("USE_ELECTRON_API")) {
         return legacySoundSearch(query, searchParams, retryCount);

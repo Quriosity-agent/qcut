@@ -18,7 +18,7 @@ import {
 } from "./property-item";
 import { FPS_PRESETS } from "@/constants/timeline-constants";
 import { useProjectStore } from "@/stores/project-store";
-import { handleStorageError, ErrorSeverity } from "@/lib/error-handler";
+import { handleError, ErrorCategory, ErrorSeverity } from "@/lib/error-handler";
 import { useEditorStore } from "@/stores/editor-store";
 import { useAspectRatio } from "@/hooks/use-aspect-ratio";
 // import Image from "next/image"; // Not needed in Vite
@@ -292,15 +292,15 @@ function ApiKeysView() {
         }
       }
     } catch (error) {
-      handleStorageError(
-        error,
-        "Load API Keys",
-        {
-          operation: "load-api-keys",
-          severity: ErrorSeverity.LOW,
-          showToast: false // Don't show toast for loading settings
+      handleError(error, {
+        operation: "Load API Keys",
+        category: ErrorCategory.STORAGE,
+        severity: ErrorSeverity.LOW,
+        showToast: false,
+        metadata: {
+          operation: "load-api-keys"
         }
-      );
+      });
     } finally {
       setIsLoading(false);
     }
@@ -320,14 +320,14 @@ function ApiKeysView() {
         setFalTestResult(null);
       }
     } catch (error) {
-      handleStorageError(
-        error,
-        "Save API Keys",
-        {
-          operation: "save-api-keys",
-          severity: ErrorSeverity.MEDIUM
+      handleError(error, {
+        operation: "Save API Keys",
+        category: ErrorCategory.STORAGE,
+        severity: ErrorSeverity.MEDIUM,
+        metadata: {
+          operation: "save-api-keys"
         }
-      );
+      });
     }
   }, [falApiKey, freesoundApiKey]);
 

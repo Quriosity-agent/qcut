@@ -14,8 +14,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { LanguageSelect } from "@/components/captions/language-select";
 import { UploadProgress } from "@/components/captions/upload-progress";
 import { 
-  handleAIServiceError,
-  handleMediaProcessingError,
+  handleError,
+  ErrorCategory,
   ErrorSeverity 
 } from "@/lib/error-handler";
 import {
@@ -117,15 +117,15 @@ export function CaptionsView() {
           `Added ${captionElements.length} caption segments to timeline`
         );
       } catch (error) {
-        handleMediaProcessingError(
-          error,
-          "Add Captions to Timeline",
-          {
+        handleError(error, {
+          operation: "Add Captions to Timeline",
+          category: ErrorCategory.MEDIA_PROCESSING,
+          severity: ErrorSeverity.HIGH,
+          metadata: {
             captionCount: result.segments.length,
-            duration: result.segments[result.segments.length - 1]?.end || 0,
-            severity: ErrorSeverity.HIGH
+            duration: result.segments.at(-1)?.end ?? 0
           }
-        );
+        });
       }
     },
     [createCaptionElements, addTrack, addElementToTrack]
@@ -320,15 +320,15 @@ export function CaptionsView() {
           }
         }
       } catch (error) {
-        handleAIServiceError(
-          error,
-          "Audio Transcription",
-          {
+        handleError(error, {
+          operation: "Audio Transcription",
+          category: ErrorCategory.AI_SERVICE,
+          metadata: {
             language: selectedLanguage,
             fileSize: file?.size,
             fileName: file?.name
           }
-        );
+        });
         const errorMessage =
           error instanceof Error ? error.message : "Transcription failed";
 

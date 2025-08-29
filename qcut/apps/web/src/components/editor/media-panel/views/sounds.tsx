@@ -22,7 +22,7 @@ import {
   DropdownMenuCheckboxItem,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
-import { handleNetworkError, ErrorSeverity } from "@/lib/error-handler";
+import { handleError, ErrorCategory, ErrorSeverity } from "@/lib/error-handler";
 
 export function SoundsView() {
   return (
@@ -154,14 +154,17 @@ function SoundEffectsView() {
             audioUrl = result.localPath;
             console.log("Playing from local file:", audioUrl);
           } else {
-            handleNetworkError(
+            handleError(
               new Error(result.error || "Failed to download sound preview"),
-              "Download Sound Preview",
               {
-                soundId: sound.id,
-                soundName: sound.name,
+                operation: "Download Sound Preview",
+                category: ErrorCategory.NETWORK,
                 severity: ErrorSeverity.LOW,
-                showToast: false // Don't show toast, will fallback to direct playback
+                showToast: false,
+                metadata: {
+                  soundId: sound.id,
+                  soundName: sound.name
+                }
               }
             );
             // Try direct playback as fallback

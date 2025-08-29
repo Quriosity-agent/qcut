@@ -1,9 +1,8 @@
 import { create } from "zustand";
 import { devtools } from "zustand/middleware";
 import { 
-  handleAIServiceError, 
-  handleValidationError,
-  handleStorageError,
+  handleError,
+  ErrorCategory,
   ErrorSeverity 
 } from "@/lib/error-handler";
 
@@ -154,10 +153,11 @@ export const useText2ImageStore = create<Text2ImageStore>()(
           });
 
         if (selectedModels.length === 0) {
-          handleValidationError(
+          handleError(
             new Error("No models selected for image generation"),
-            "Text-to-Image Generation",
             {
+              operation: "Text-to-Image Generation",
+              category: ErrorCategory.VALIDATION,
               severity: ErrorSeverity.LOW,
               metadata: { prompt }
             }
@@ -257,15 +257,15 @@ export const useText2ImageStore = create<Text2ImageStore>()(
           // Add to history
           get().addToHistory(prompt, selectedModels, finalResults);
         } catch (error) {
-          handleAIServiceError(
-            error,
-            "Multi-Model Image Generation",
-            {
+          handleError(error, {
+            operation: "Multi-Model Image Generation",
+            category: ErrorCategory.AI_SERVICE,
+            metadata: {
               prompt,
               models: selectedModels,
               settings
             }
-          );
+          });
 
           // Mark all as failed
           const errorResults: Record<string, GenerationResult> = {};
@@ -369,15 +369,15 @@ export const useText2ImageStore = create<Text2ImageStore>()(
               "✅ TEXT2IMAGE-STORE: media-store.addGeneratedImages() called successfully"
             );
         } catch (error) {
-          handleStorageError(
-            error,
-            "Import Media Store for Text-to-Image",
-            {
+          handleError(error, {
+            operation: "Import Media Store for Text-to-Image",
+            category: ErrorCategory.STORAGE,
+            severity: ErrorSeverity.HIGH,
+            metadata: {
               operation: "add-to-media",
-              resultCount: resultsToAdd.length,
-              severity: ErrorSeverity.HIGH
+              resultCount: resultsToAdd.length
             }
-          );
+          });
         }
 
         // Clear selections after adding
