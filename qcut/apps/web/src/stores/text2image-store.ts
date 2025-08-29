@@ -260,6 +260,7 @@ export const useText2ImageStore = create<Text2ImageStore>()(
           handleError(error, {
             operation: "Multi-Model Image Generation",
             category: ErrorCategory.AI_SERVICE,
+            severity: ErrorSeverity.MEDIUM,
             metadata: {
               prompt,
               models: selectedModels,

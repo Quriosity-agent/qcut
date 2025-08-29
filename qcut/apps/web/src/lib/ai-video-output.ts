@@ -112,7 +112,7 @@ export class AIVideoOutputManager {
     filename: string,
     mimeType = "video/mp4"
   ): Promise<File> {
-    const blob = new Blob([data], { type: mimeType });
+    const blob = new Blob([data as unknown as ArrayBuffer], { type: mimeType });
     return new File([blob], filename, { type: mimeType });
   }
 }

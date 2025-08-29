@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
+import { toast } from "sonner";
 import { LanguageSelect } from "@/components/captions/language-select";
 import { UploadProgress } from "@/components/captions/upload-progress";
 import { 
@@ -156,7 +157,15 @@ export function CaptionsView() {
           localStorage.removeItem(`transcription-${fileKey}`);
         }
       } catch (error) {
-        console.warn("Cache read error:", error);
+        handleError(error, {
+          operation: "Read Transcription Cache",
+          category: ErrorCategory.STORAGE,
+          severity: ErrorSeverity.LOW,
+          showToast: false,
+          metadata: {
+            fileKey
+          }
+        });
       }
       return null;
     },
@@ -316,13 +325,22 @@ export function CaptionsView() {
               JSON.stringify(cacheData)
             );
           } catch (error) {
-            console.warn("Failed to cache transcription:", error);
+            handleError(error, {
+              operation: "Cache Transcription Result",
+              category: ErrorCategory.STORAGE,
+              severity: ErrorSeverity.LOW,
+              showToast: false,
+              metadata: {
+                fileKey
+              }
+            });
           }
         }
       } catch (error) {
         handleError(error, {
           operation: "Audio Transcription",
           category: ErrorCategory.AI_SERVICE,
+          severity: ErrorSeverity.HIGH,
           metadata: {
             language: selectedLanguage,
             fileSize: file?.size,

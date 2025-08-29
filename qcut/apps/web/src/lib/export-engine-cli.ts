@@ -829,7 +829,7 @@ export class CLIExportEngine extends ExportEngine {
       throw new Error("CLI export only available in Electron");
     }
     const buffer = await window.electronAPI.ffmpeg.readOutputFile(outputPath);
-    return new Blob([buffer], { type: "video/mp4" });
+    return new Blob([buffer as unknown as ArrayBuffer], { type: "video/mp4" });
   }
 
   calculateTotalFrames(): number {

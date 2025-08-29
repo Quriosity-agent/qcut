@@ -82,7 +82,7 @@ export const useElectron = () => {
         try {
           const buffer = await readFile(filePath);
           const fileName = filePath.split(/[\\/]/).pop() || "unknown";
-          const file = new File([buffer], fileName);
+          const file = new File([buffer as unknown as ArrayBuffer], fileName);
           files.push(file);
         } catch (error) {
           console.error(`Failed to read file ${filePath}:`, error);
@@ -129,7 +129,7 @@ export const useElectron = () => {
         return { success: true, filePath: result.filePath };
       }
       // In browser mode, use download link
-      const blob = data instanceof Blob ? data : new Blob([data]);
+      const blob = data instanceof Blob ? data : new Blob([data as unknown as ArrayBuffer]);
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;

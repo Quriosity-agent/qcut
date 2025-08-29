@@ -81,7 +81,7 @@ async function legacyTranscribe(
         metadata: {
           attempt: i + 1,
           maxAttempts: retryCount,
-          language
+          language: requestData.language
         }
       }
       );

@@ -98,7 +98,7 @@ export class FFmpegService {
       console.log("[FFmpeg Service] 📖 Reading output file...");
       // Read output
       const data = await this.ffmpeg.readFile(outputFile);
-      const videoBlob = new Blob([data], { type: `video/${format}` });
+      const videoBlob = new Blob([data as unknown as ArrayBuffer], { type: `video/${format}` });
 
       console.log(
         `[FFmpeg Service] ✅ Video encoded successfully: ${(videoBlob.size / 1024 / 1024).toFixed(2)} MB`

@@ -256,6 +256,7 @@ export const useTimelineStore = create<TimelineStore>((set, get) => {
           handleError(error, {
             operation: "Auto-save Timeline",
             category: ErrorCategory.STORAGE,
+            severity: ErrorSeverity.LOW,
             showToast: false,
             metadata: {
               projectId: activeProject.id,
@@ -268,6 +269,7 @@ export const useTimelineStore = create<TimelineStore>((set, get) => {
       handleError(error, {
         operation: "Access Project Store",
         category: ErrorCategory.STORAGE,
+        severity: ErrorSeverity.LOW,
         showToast: false,
         metadata: {
           operation: "timeline-autosave"
@@ -548,6 +550,7 @@ export const useTimelineStore = create<TimelineStore>((set, get) => {
           {
             operation: "Element Track Compatibility",
             category: ErrorCategory.VALIDATION,
+            severity: ErrorSeverity.MEDIUM,
             metadata: {
               trackType: track.type,
               elementType: elementData.type
@@ -564,6 +567,7 @@ export const useTimelineStore = create<TimelineStore>((set, get) => {
           {
             operation: "Media Element Validation",
             category: ErrorCategory.VALIDATION,
+            severity: ErrorSeverity.MEDIUM,
             metadata: {
               elementType: "media",
               trackId
@@ -580,6 +584,7 @@ export const useTimelineStore = create<TimelineStore>((set, get) => {
           {
             operation: "Text Element Validation",
             category: ErrorCategory.VALIDATION,
+            severity: ErrorSeverity.MEDIUM,
             metadata: {
               elementType: "text",
               trackId
@@ -637,6 +642,7 @@ export const useTimelineStore = create<TimelineStore>((set, get) => {
               handleError(error, {
                 operation: "Update FPS from Project Store",
                 category: ErrorCategory.STORAGE,
+                severity: ErrorSeverity.LOW,
                 showToast: false,
                 metadata: {
                   operation: "fps-update"
@@ -779,6 +785,7 @@ export const useTimelineStore = create<TimelineStore>((set, get) => {
           {
             operation: "Timeline Drag Validation",
             category: ErrorCategory.VALIDATION,
+            severity: ErrorSeverity.MEDIUM,
             metadata: {
               targetTrackId: toTrackId,
               elementId: elementId
@@ -1386,6 +1393,7 @@ export const useTimelineStore = create<TimelineStore>((set, get) => {
         handleError(error, {
           operation: "Replace Element Media",
           category: ErrorCategory.MEDIA_PROCESSING,
+          severity: ErrorSeverity.MEDIUM,
           metadata: {
             elementId,
             trackId,
@@ -1452,6 +1460,7 @@ export const useTimelineStore = create<TimelineStore>((set, get) => {
         handleError(error, {
           operation: "Generate Project Thumbnail",
           category: ErrorCategory.MEDIA_PROCESSING,
+          severity: ErrorSeverity.LOW,
           showToast: false,
           metadata: {
             operation: "thumbnail-generation"

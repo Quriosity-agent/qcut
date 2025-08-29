@@ -76,7 +76,7 @@ export const encodeImagesToVideo = async (
   }
 
   // Convert to Blob
-  const blob = new Blob([data], {
+  const blob = new Blob([data as unknown as ArrayBuffer], {
     type: options.format === "mp4" ? "video/mp4" : "video/webm",
   });
 

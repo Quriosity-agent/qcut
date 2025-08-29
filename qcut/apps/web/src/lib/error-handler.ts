@@ -104,11 +104,18 @@ const getToastDuration = (severity: ErrorSeverity): number => {
   }
 };
 
-// Enhanced error logging with structured format
+// Enhanced error logging with structured format (development only)
 const logError = (processedError: ProcessedError): void => {
+  // Only log to console in development mode
+  if (!import.meta.env.DEV) {
+    // In production, send to error tracking service instead
+    // TODO: Integrate with error tracking service (e.g., Sentry)
+    return;
+  }
+  
   const { id, context, originalError, timestamp } = processedError;
   
-  // Structured console logging
+  // Structured console logging for development
   console.group(`🚨 Error ${id} [${context.severity.toUpperCase()}]`);
   console.log("Timestamp:", timestamp);
   console.log("Operation:", context.operation);

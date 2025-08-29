@@ -322,7 +322,7 @@ export const generateThumbnail = async (
 
     // Read output file
     const data = await ffmpeg.readFile(outputName);
-    const blob = new Blob([data], { type: "image/jpeg" });
+    const blob = new Blob([data as unknown as ArrayBuffer], { type: "image/jpeg" });
 
     // Cleanup
     await ffmpeg.deleteFile(inputName);
@@ -389,7 +389,7 @@ export const trimVideo = async (
 
   // Read output file
   const data = await ffmpeg.readFile(outputName);
-  const blob = new Blob([data], { type: "video/mp4" });
+  const blob = new Blob([data as unknown as ArrayBuffer], { type: "video/mp4" });
 
   // Cleanup
   await ffmpeg.deleteFile(inputName);
@@ -524,7 +524,7 @@ export const convertToWebM = async (
 
   // Read output file
   const data = await ffmpeg.readFile(outputName);
-  const blob = new Blob([data], { type: "video/webm" });
+  const blob = new Blob([data as unknown as ArrayBuffer], { type: "video/webm" });
 
   // Cleanup
   await ffmpeg.deleteFile(inputName);
@@ -568,7 +568,7 @@ export const extractAudio = async (
 
   // Read output file
   const data = await ffmpeg.readFile(outputName);
-  const blob = new Blob([data], { type: `audio/${format}` });
+  const blob = new Blob([data as unknown as ArrayBuffer], { type: `audio/${format}` });
 
   // Cleanup
   await ffmpeg.deleteFile(inputName);
