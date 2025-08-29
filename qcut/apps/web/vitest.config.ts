@@ -12,6 +12,8 @@ export default defineConfig({
     globals: true,
     environment: "node",
     setupFiles: [path.resolve(rootDir, "src/test/setup.ts")],
+    isolate: true,
+    pool: "forks",
   },
   resolve: {
     alias: {

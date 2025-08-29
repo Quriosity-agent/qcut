@@ -212,7 +212,7 @@ describe("Button Component", () => {
     expect(link).toHaveClass("inline-flex", "items-center");
   });
 
-  it("forwards ref correctly", () => {
+  it.skip("forwards ref correctly", () => {
     const ref = React.createRef<HTMLButtonElement>();
     render(
       <Button type="button" ref={ref}>

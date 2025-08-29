@@ -26,7 +26,7 @@ console.log("Global document test:", typeof document !== "undefined" ? "AVAILABL
 
 // Now that DOM is available, import testing libraries
 import "@testing-library/jest-dom/vitest";
-import { afterEach, afterAll, vi } from "vitest";
+import { afterEach, afterAll, beforeAll, vi } from "vitest";
 
 // Load toast hook mock
 import { setupToastMock } from "./mocks/toast";
