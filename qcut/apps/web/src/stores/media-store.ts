@@ -6,6 +6,7 @@ import { generateUUID, generateFileBasedId } from "@/lib/utils";
 import { getVideoInfo, generateThumbnail } from "@/lib/ffmpeg-utils";
 import type { MediaItem, MediaType } from "./media-store-types";
 import { createObjectURL, revokeObjectURL } from "@/lib/blob-manager";
+import { handleError, ErrorCategory, ErrorSeverity, handleStorageError, handleMediaProcessingError } from "@/lib/error-handler";
 
 // Re-export types for backward compatibility
 export type { MediaItem, MediaType };
@@ -330,6 +331,14 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
       await storageService.saveMediaItem(projectId, newItem);
       return newItem.id;
     } catch (error) {
+      handleStorageError(error, "Add media item to storage", {
+        projectId,
+        itemId: newItem.id,
+        itemType: newItem.type,
+        itemName: newItem.name,
+        operation: 'saveMediaItem'
+      });
+      
       // Remove from local state if save failed
       set((state) => ({
         mediaItems: state.mediaItems.filter((media) => media.id !== newItem.id),
@@ -357,6 +366,13 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
           // Download the image as a proper File object for storage
           file = await downloadImageAsFile(item.url, item.name);
         } catch (error) {
+          handleMediaProcessingError(error, "Process generated image", {
+            imageName: item.name,
+            imageUrl: item.url,
+            operation: 'downloadGeneratedImage',
+            showToast: false // Don't spam users during batch operations
+          });
+          
           // Create empty file as fallback
           file = new File([], item.name, { type: "image/jpeg" });
           // Keep original URL as fallback
@@ -413,7 +429,15 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
           newItems.map(async (item) => {
             try {
               await storageService.saveMediaItem(currentProject.id, item);
-            } catch (error) {}
+            } catch (error) {
+              handleStorageError(error, "Save generated image to storage", {
+                projectId: currentProject.id,
+                itemId: item.id,
+                itemName: item.name,
+                operation: 'saveGeneratedImage',
+                showToast: false // Don't spam during batch save
+              });
+            }
           })
         );
       } else {
@@ -523,6 +547,13 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
                 },
               };
             } catch (error) {
+              handleMediaProcessingError(error, "Process video during project load", {
+                videoName: item.name,
+                itemId: item.id,
+                operation: 'processVideoOnLoad',
+                showToast: false // Don't spam during batch loading
+              });
+              
               // Return item with error metadata to prevent complete failure
               return {
                 ...item,
@@ -543,6 +574,11 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
         `[MediaStore] ✅ Media loading complete: ${updatedMediaItems.length} items`
       );
     } catch (error) {
+      handleStorageError(error, "Load project media items", {
+        projectId,
+        operation: 'loadAllMediaItems'
+      });
+      
       // Set empty array to prevent undefined state
       set({ mediaItems: [], hasInitialized: true });
     } finally {
