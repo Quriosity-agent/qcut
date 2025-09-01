@@ -5,7 +5,7 @@
 
 interface BlobEntry {
   url: string;
-  file: File;
+  file: File | Blob;
   createdAt: number;
   revokedAt?: number;
   source?: string;
@@ -25,7 +25,7 @@ class BlobManager {
   /**
    * Create a tracked blob URL that will be automatically cleaned up
    */
-  createObjectURL(file: File, source?: string): string {
+  createObjectURL(file: File | Blob, source?: string): string {
     const url = URL.createObjectURL(file);
     
     this.blobs.set(url, {
@@ -104,7 +104,7 @@ class BlobManager {
 export const blobManager = new BlobManager();
 
 // Convenience exports that use the managed instance
-export const createObjectURL = (file: File, source?: string): string => {
+export const createObjectURL = (file: File | Blob, source?: string): string => {
   return blobManager.createObjectURL(file, source);
 };
 

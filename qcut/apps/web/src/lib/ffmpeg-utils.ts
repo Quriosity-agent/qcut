@@ -262,10 +262,6 @@ export const initFFmpeg = async (): Promise<FFmpeg> => {
     } catch (loadError) {
       debugLog("[FFmpeg Utils] ❌ FFmpeg load failed:", loadError);
 
-      // Cleanup blob URLs on failure
-      URL.revokeObjectURL(coreBlobUrl);
-      URL.revokeObjectURL(wasmBlobUrl);
-
       // Enhanced diagnostics
       debugLog("[FFmpeg Utils] 🔍 Environment diagnostics:", {
         hasSharedArrayBuffer: environment.hasSharedArrayBuffer,
@@ -288,6 +284,10 @@ export const initFFmpeg = async (): Promise<FFmpeg> => {
         );
       }
       throw new Error(`FFmpeg initialization failed: ${errorMessage}`);
+    } finally {
+      // Cleanup blob URLs after successful or failed load
+      URL.revokeObjectURL(coreBlobUrl);
+      URL.revokeObjectURL(wasmBlobUrl);
     }
 
     isFFmpegLoaded = true;
