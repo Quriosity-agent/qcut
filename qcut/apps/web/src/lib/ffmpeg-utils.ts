@@ -3,6 +3,7 @@ import { toBlobURL } from "@ffmpeg/util";
 import type { FFmpeg } from "@ffmpeg/ffmpeg";
 import { debugLog, debugError, debugWarn } from "@/lib/debug-config";
 import { handleMediaProcessingError } from "@/lib/error-handler";
+import { createObjectURL } from "@/lib/blob-manager";
 
 let ffmpeg: FFmpeg | null = null;
 let isFFmpegLoaded = false;
@@ -369,7 +370,7 @@ export const generateThumbnail = async (
     await ffmpeg.deleteFile(outputName);
 
     updateLastUsed();
-    return URL.createObjectURL(blob);
+    return createObjectURL(blob, "ffmpeg:thumbnail");
   } catch (error) {
     handleMediaProcessingError(error, "Generate thumbnail", {
       videoFile: videoFile.name,
@@ -526,6 +527,10 @@ export const getVideoInfo = async (
   }
 
   updateLastUsed();
+  
+  // Remove the log listener to prevent memory leaks
+  (ffmpeg as any).off("log", listener);
+  
   return {
     duration,
     width,
