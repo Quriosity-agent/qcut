@@ -107,29 +107,19 @@ export const useEnhancedErrorReporter = (
     }
   }, [reportError]);
 
-  const withErrorReporting = useCallback(<T extends (...args: any[]) => any>(
-    fn: T,
+  const withErrorReporting = useCallback(<TArgs extends unknown[], TReturn>(
+    fn: (...args: TArgs) => Promise<TReturn>,
     operation: string,
     options?: ErrorReportOptions
-  ): T => {
-    return ((...args: Parameters<T>) => {
+  ): ((...args: TArgs) => Promise<TReturn>) => {
+    return (async (...args: TArgs): Promise<TReturn> => {
       try {
-        const result = fn(...args);
-        
-        // Handle async functions
-        if (result && typeof result.catch === 'function') {
-          return result.catch((error: unknown) => {
-            reportError(error, operation, options);
-            throw error;
-          });
-        }
-        
-        return result;
-      } catch (error) {
-        reportError(error, operation, options);
-        throw error;
+        return await fn(...args);
+      } catch (err) {
+        await reportError(err, operation, options);
+        throw err;
       }
-    }) as T;
+    });
   }, [reportError]);
 
   return {
