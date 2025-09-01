@@ -57,10 +57,13 @@ describe("Transcription API Migration", () => {
         language: "en",
       });
 
-      expect(mockElectronAPI.transcribe.audio).toHaveBeenCalledWith({
-        filename: "test-audio.wav",
-        language: "en",
-      });
+      expect(mockElectronAPI.transcribe.audio).toHaveBeenCalledWith(
+        expect.objectContaining({
+          filename: "test-audio.wav",
+          language: "en",
+          id: expect.any(String),
+        })
+      );
       expect(result).toEqual(mockResult);
       expect(mockFetch).not.toHaveBeenCalled();
     });
@@ -94,7 +97,10 @@ describe("Transcription API Migration", () => {
       const result = await transcribeAudio(requestData);
 
       expect(mockElectronAPI.transcribe.audio).toHaveBeenCalledWith(
-        requestData
+        expect.objectContaining({
+          ...requestData,
+          id: expect.any(String),
+        })
       );
       expect(result).toEqual(mockResult);
     });
@@ -244,20 +250,25 @@ describe("Transcription API Migration", () => {
     it("should handle fetch errors with retries", async () => {
       setRuntimeFlags({ USE_ELECTRON_API: false });
 
-      // Mock fetch to fail twice then succeed
-      mockFetch
-        .mockRejectedValueOnce(new Error("Network error"))
-        .mockRejectedValueOnce(new Error("Network error"))
-        .mockResolvedValueOnce({
-          ok: true,
-          json: () =>
-            Promise.resolve({
-              success: true,
-              text: "Retry successful",
-              segments: [],
-              language: "auto",
-            }),
-        });
+      // Mock fetch implementation to fail twice then succeed
+      let callCount = 0;
+      mockFetch.mockImplementation(() => {
+        callCount++;
+        if (callCount <= 2) {
+          return Promise.reject(new Error("Network error"));
+        } else {
+          return Promise.resolve({
+            ok: true,
+            json: () =>
+              Promise.resolve({
+                success: true,
+                text: "Retry successful",
+                segments: [],
+                language: "auto",
+              }),
+          });
+        }
+      });
 
       const result = await transcribeAudio(
         {
@@ -411,10 +422,13 @@ describe("Transcription API Migration", () => {
       });
 
       expect(result.language).toBe("en");
-      expect(mockElectronAPI.transcribe.audio).toHaveBeenCalledWith({
-        filename: "auto-detect.wav",
-        language: "auto",
-      });
+      expect(mockElectronAPI.transcribe.audio).toHaveBeenCalledWith(
+        expect.objectContaining({
+          filename: "auto-detect.wav",
+          language: "auto",
+          id: expect.any(String),
+        })
+      );
     });
 
     it("should handle specific language requests", async () => {
