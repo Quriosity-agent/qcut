@@ -10,7 +10,7 @@ export default defineConfig({
   plugins: [react()],
   test: {
     globals: true,
-    environment: "node",
+    environment: "happy-dom",
     setupFiles: [path.resolve(rootDir, "src/test/setup.ts")],
     isolate: true,
     pool: "forks",

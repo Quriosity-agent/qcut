@@ -1,25 +1,8 @@
-// Test setup file for Vitest - setup DOM first before any other imports
-import { JSDOM } from "jsdom";
+// Test setup file for Vitest - enhanced DOM setup for happy-dom
+console.log("Setting up happy-dom environment...");
 
-console.log("Setting up JSDOM environment...");
-
-// Create DOM environment immediately
-const dom = new JSDOM('<!DOCTYPE html><html><body></body></html>', {
-  url: "http://localhost:3000",
-  pretendToBeVisual: true,
-  resources: "usable"
-});
-
-// Set up DOM globals immediately at module level
-Object.defineProperty(globalThis, 'window', { value: dom.window, writable: true });
-Object.defineProperty(globalThis, 'document', { value: dom.window.document, writable: true });
-Object.defineProperty(globalThis, 'navigator', { value: dom.window.navigator, writable: true });
-Object.defineProperty(globalThis, 'location', { value: dom.window.location, writable: true });
-Object.defineProperty(globalThis, 'HTMLElement', { value: dom.window.HTMLElement, writable: true });
-Object.defineProperty(globalThis, 'Element', { value: dom.window.Element, writable: true });
-Object.defineProperty(globalThis, 'Node', { value: dom.window.Node, writable: true });
-
-// Mock getComputedStyle immediately in JSDOM window
+// happy-dom provides DOM globals automatically, we just need to enhance them
+// Mock getComputedStyle for Radix UI components
 const mockGetComputedStyle = (element) => ({
   getPropertyValue: () => "",
   display: "block",
@@ -30,7 +13,8 @@ const mockGetComputedStyle = (element) => ({
   animation: "none",
 });
 
-Object.defineProperty(dom.window, 'getComputedStyle', {
+// Apply getComputedStyle mock to all contexts
+Object.defineProperty(window, 'getComputedStyle', {
   value: mockGetComputedStyle,
   writable: true,
   configurable: true,
@@ -40,19 +24,10 @@ Object.defineProperty(globalThis, 'getComputedStyle', {
   writable: true,
   configurable: true,
 });
-Object.defineProperty(window, 'getComputedStyle', {
-  value: mockGetComputedStyle,
-  writable: true,
-  configurable: true,
-});
-// Also add to global context
 global.getComputedStyle = mockGetComputedStyle;
 
-console.log("JSDOM setup complete. Document available:", typeof globalThis.document !== "undefined");
-console.log("getComputedStyle available:", typeof globalThis.getComputedStyle !== "undefined");
-
-// Test global availability immediately
-console.log("Global document test:", typeof document !== "undefined" ? "AVAILABLE" : "NOT AVAILABLE");
+console.log("happy-dom setup complete. Document available:", typeof document !== "undefined");
+console.log("getComputedStyle available:", typeof getComputedStyle !== "undefined");
 
 // Now that DOM is available, import testing libraries
 import "@testing-library/jest-dom/vitest";
