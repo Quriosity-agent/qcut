@@ -17,7 +17,10 @@ const getSessionId = (): string => {
 
 // Get current browser and environment information
 const getBrowserContext = () => ({
-  userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : 'unknown',
+  userAgent: typeof navigator !== 'undefined'
+    ? ((navigator as any).userAgentData?.brands?.map((b: any) => `${b.brand}/${b.version}`).join(' ')
+       ?? navigator.userAgent.slice(0, 64))
+    : 'unknown',
   platform: typeof navigator !== 'undefined' ? navigator.platform : 'unknown',
   language: typeof navigator !== 'undefined' ? navigator.language : 'unknown',
   cookieEnabled: typeof navigator !== 'undefined' ? navigator.cookieEnabled : false,
