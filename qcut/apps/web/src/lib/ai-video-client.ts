@@ -195,11 +195,12 @@ export async function generateVideo(
 
     if (!queueResponse.ok) {
       const errorData = await queueResponse.json().catch(() => ({}));
-      console.error("❌ FAL Queue Submit Error:", {
+      handleAIServiceError(new Error(`FAL Queue Submit Error: ${queueResponse.status} ${queueResponse.statusText}`), "Submit FAL AI request to queue", {
         status: queueResponse.status,
         statusText: queueResponse.statusText,
         errorData,
         endpoint,
+        operation: "queueSubmit"
       });
 
       const errorMessage = handleQueueError(queueResponse, errorData, endpoint);
@@ -465,7 +466,12 @@ async function pollQueueStatus(
       // Continue polling for IN_PROGRESS or IN_QUEUE
       await sleep(5000); // Poll every 5 seconds
     } catch (error) {
-      console.error(`❌ Status polling error (attempt ${attempts}):`, error);
+      handleAIServiceError(error, "Poll FAL AI queue status", {
+        attempts,
+        requestId,
+        elapsedTime,
+        operation: "statusPolling"
+      });
 
       if (attempts >= maxAttempts) {
         const errorMessage = `Timeout: Video generation took longer than expected (${Math.floor((maxAttempts * 5) / 60)} minutes)`;
@@ -738,7 +744,11 @@ export async function generateVideoFromImage(
       video_data: result,
     };
   } catch (error) {
-    console.error("Error generating video from image:", error);
+    handleAIServiceError(error, "Generate video from image", {
+      model: request.model,
+      imageName: request.image.name,
+      operation: "generateVideoFromImage"
+    });
     throw error;
   }
 }

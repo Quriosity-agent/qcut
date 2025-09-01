@@ -1,4 +1,5 @@
 import { TEXT2IMAGE_MODELS, type Text2ImageModel } from "./text2image-models";
+import { handleAIServiceError } from "./error-handler";
 
 // Types for API responses
 interface FalImageResponse {
@@ -93,7 +94,13 @@ class FalAIClient {
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      console.error("[FalAI] API request failed:", errorData);
+      handleAIServiceError(new Error(`FAL AI API request failed: ${response.status}`), "FAL AI API request", {
+        status: response.status,
+        statusText: response.statusText,
+        errorData,
+        endpoint: requestUrl,
+        operation: "makeRequest"
+      });
 
       // Handle different error response formats
       let errorMessage = `API request failed: ${response.status}`;
@@ -257,7 +264,10 @@ class FalAIClient {
         },
       };
     } catch (error) {
-      console.error(`Generation failed for ${modelKey}:`, error);
+      handleAIServiceError(error, "Generate image with FAL AI model", {
+        modelKey,
+        operation: "generateWithModel"
+      });
 
       return {
         success: false,
@@ -295,10 +305,10 @@ class FalAIClient {
         if (result.status === "fulfilled") {
           finalResults[modelKey] = result.value[1];
         } else {
-          console.error(
-            `Model ${modelKey} generation rejected:`,
-            result.reason
-          );
+          handleAIServiceError(result.reason, "Multi-model image generation", {
+            modelKey,
+            operation: "generateWithMultipleModels"
+          });
           finalResults[modelKey] = {
             success: false,
             error:
@@ -311,7 +321,10 @@ class FalAIClient {
 
       return finalResults;
     } catch (error) {
-      console.error("Multi-model generation failed:", error);
+      handleAIServiceError(error, "Multi-model image generation", {
+        modelCount: modelKeys.length,
+        operation: "generateWithMultipleModels"
+      });
 
       // Return error results for all models
       const errorResults: MultiModelGenerationResult = {};
@@ -377,10 +390,11 @@ class FalAIClient {
 
       return result.success;
     } catch (error) {
-      console.error(
-        `[FalAI] Model availability test failed for ${modelKey}:`,
-        error
-      );
+      handleAIServiceError(error, "Test FAL AI model availability", {
+        modelKey,
+        operation: "testModelAvailability",
+        showToast: false // Don't spam users with test failures
+      });
       return false;
     }
   }
@@ -497,7 +511,10 @@ export async function batchGenerate(
         results.push(settledResult.value);
       } else {
         // Handle rejected batch item
-        console.error("Batch generation item failed:", settledResult.reason);
+        handleAIServiceError(settledResult.reason, "Batch image generation", {
+          operation: "batchGenerate",
+          showToast: false // Don't spam with batch failures
+        });
       }
     });
 

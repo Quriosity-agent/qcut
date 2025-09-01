@@ -3,6 +3,8 @@
  * Supports SeedEdit v3, FLUX Pro Kontext, and FLUX Pro Kontext Max
  */
 
+import { handleAIServiceError } from "./error-handler";
+
 const FAL_API_KEY = import.meta.env.VITE_FAL_API_KEY;
 const FAL_API_BASE = "https://fal.run";
 
@@ -199,7 +201,14 @@ export async function editImage(
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      console.error("FAL API Error:", errorData);
+      handleAIServiceError(new Error(`FAL API Error: ${response.status}`), "FAL AI image edit request", {
+        status: response.status,
+        statusText: response.statusText,
+        errorData,
+        endpoint: modelConfig.endpoint,
+        model: request.model,
+        operation: "editImage"
+      });
 
       // Handle content policy violations (422 errors) with user-friendly messages
       if (
@@ -306,13 +315,15 @@ export async function editImage(
         processing_time: Math.floor((Date.now() - startTime) / 1000),
       };
     }
-    console.error("❌ Unexpected API response structure:", {
+    const error = new Error(`Unexpected response format from FAL API. Response keys: ${Object.keys(result).join(", ")}`);
+    handleAIServiceError(error, "Parse FAL AI image edit response", {
       hasRequestId: !!result.request_id,
       hasImages: !!result.images,
       hasImageObject: !!result.image,
       hasUrlRoot: !!result.url,
       keys: Object.keys(result),
-      result,
+      model: request.model,
+      operation: "parseEditResponse"
     });
     throw new Error(
       `Unexpected response format from FAL API. Response keys: ${Object.keys(result).join(", ")}`
@@ -424,7 +435,13 @@ async function pollImageEditStatus(
 
       await sleep(5000);
     } catch (error) {
-      console.error(`Status polling error (attempt ${attempts}):`, error);
+      handleAIServiceError(error, "Poll FAL AI image edit status", {
+        attempts,
+        requestId,
+        elapsedTime,
+        modelName,
+        operation: "pollImageEditStatus"
+      });
       if (attempts >= maxAttempts) {
         throw new Error("Image editing timeout");
       }
