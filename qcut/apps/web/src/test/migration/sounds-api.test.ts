@@ -221,7 +221,7 @@ describe("Sounds API Migration", () => {
       setRuntimeFlags({ USE_ELECTRON_API: false });
 
       // Create a fresh mock for this test only
-      const localMockFetch = vi.fn();
+      const localMockFetch = vi.fn() as any;
       const originalFetch = global.fetch;
       global.fetch = localMockFetch;
 

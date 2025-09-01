@@ -5,7 +5,7 @@ console.log("🔧 Initial DOM check - window available:", typeof window !== "und
 
 // happy-dom provides DOM globals automatically, we just need to enhance them
 // Mock getComputedStyle for Radix UI components
-const mockGetComputedStyle = (element) => ({
+const mockGetComputedStyle = (element: Element): Partial<CSSStyleDeclaration> => ({
   getPropertyValue: () => "",
   display: "block",
   visibility: "visible", 
@@ -19,7 +19,7 @@ const mockGetComputedStyle = (element) => ({
 if (typeof window !== "undefined") {
   console.log("🔧 Applying getComputedStyle to window");
   Object.defineProperty(window, 'getComputedStyle', {
-    value: mockGetComputedStyle,
+    value: mockGetComputedStyle as typeof window.getComputedStyle,
     writable: true,
     configurable: true,
   });
@@ -28,7 +28,7 @@ if (typeof window !== "undefined") {
 if (typeof globalThis !== "undefined") {
   console.log("🔧 Applying getComputedStyle to globalThis");
   Object.defineProperty(globalThis, 'getComputedStyle', {
-    value: mockGetComputedStyle,
+    value: mockGetComputedStyle as typeof window.getComputedStyle,
     writable: true,
     configurable: true,
   });
@@ -36,7 +36,7 @@ if (typeof globalThis !== "undefined") {
 
 if (typeof global !== "undefined") {
   console.log("🔧 Applying getComputedStyle to global");
-  global.getComputedStyle = mockGetComputedStyle;
+  (global as any).getComputedStyle = mockGetComputedStyle;
 }
 
 console.log("🔧 SETUP.TS COMPLETE - Document available:", typeof document !== "undefined");

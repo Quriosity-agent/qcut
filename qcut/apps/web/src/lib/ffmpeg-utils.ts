@@ -231,8 +231,8 @@ export const initFFmpeg = async (): Promise<FFmpeg> => {
       );
     }
 
-    const coreBlobUrl = URL.createObjectURL(coreBlob);
-    const wasmBlobUrl = URL.createObjectURL(wasmBlob);
+    const coreBlobUrl = createObjectURL(coreBlob, 'FFmpeg-core');
+    const wasmBlobUrl = createObjectURL(wasmBlob, 'FFmpeg-wasm');
 
     // Add timeout to detect hanging with environment-specific timeouts
     const timeoutDuration = environment.hasSharedArrayBuffer ? 60_000 : 120_000; // More generous timeouts for large WASM files
