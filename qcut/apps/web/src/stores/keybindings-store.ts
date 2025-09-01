@@ -5,6 +5,7 @@ import { persist } from "zustand/middleware";
 import { ActionWithOptionalArgs } from "@/constants/actions";
 import { isAppleDevice, isDOMElement, isTypableElement } from "@/lib/utils";
 import { KeybindingConfig, ShortcutKey } from "@/types/keybinding";
+import { handleError, ErrorCategory, ErrorSeverity } from "@/lib/error-handler";
 
 // One-time migration: copy opencut-keybindings → qcut-keybindings
 if (typeof window !== "undefined") {
@@ -18,8 +19,15 @@ if (typeof window !== "undefined") {
         localStorage.removeItem(OLD_KEY);
       }
     }
-  } catch {
-    /* best-effort migration */
+  } catch (error) {
+    // Log migration failure but don't block app startup
+    handleError(error, {
+      operation: "Migrate keybindings from old storage format",
+      category: ErrorCategory.SYSTEM,
+      severity: ErrorSeverity.LOW,
+      showToast: false // Don't spam users on startup
+    });
+    // Continue with default keybindings - app still works!
   }
 }
 
