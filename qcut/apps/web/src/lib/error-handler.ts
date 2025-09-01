@@ -408,30 +408,26 @@ export const safeBatchAsync = async <T>(
     showProgress?: boolean;
   }
 ): Promise<Array<T | null>> => {
-  const results: Array<T | null> = [];
   const continueOnError = options?.continueOnError ?? true;
-
-  for (let i = 0; i < operations.length; i++) {
-    const { fn, context } = operations[i];
-    
-    try {
-      const result = await safeAsync(fn, {
-        ...context,
-        metadata: {
-          ...context.metadata,
-          batchIndex: i,
-          totalOperations: operations.length,
-        }
-      });
-      results.push(result);
-    } catch (error) {
-      if (!continueOnError) {
-        throw error;
-      }
+  const tasks = operations.map(({ fn, context }, i) =>
+    safeAsync(fn, {
+      ...context,
+      metadata: {
+        ...context.metadata,
+        batchIndex: i,
+        totalOperations: operations.length,
+      },
+    })
+  );
+  const settled = await Promise.allSettled(tasks);
+  const results: Array<T | null> = [];
+  for (const s of settled) {
+    if (s.status === "fulfilled") results.push(s.value);
+    else {
+      if (!continueOnError) throw (s as PromiseRejectedResult).reason;
       results.push(null);
     }
   }
-
   return results;
 };
 

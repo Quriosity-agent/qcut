@@ -84,7 +84,7 @@ export const getErrorContext = () => {
     
     // Timeline context
     trackCount: null as number | null,
-    selectedElements: null as number | null,
+    selectedElementCount: null as number | null,
   };
 
   // Safely get project store context
@@ -119,7 +119,7 @@ export const getErrorContext = () => {
       const timelineStore = (window as any).__TIMELINE_STORE_STATE__;
       if (timelineStore?._tracks) {
         context.trackCount = timelineStore._tracks.length;
-        context.selectedElements = timelineStore.selectedElements?.length || 0;
+        context.selectedElementCount = timelineStore.selectedElements?.length || 0;
       }
     }
   } catch (error) {

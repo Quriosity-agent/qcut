@@ -130,7 +130,7 @@ input.onchange = async (e) => { /* ... */ cleanup(); };
 1. ~~Implement systematic cleanup in all useEffect hooks~~ ✅ **COMPLETED**
 2. ~~Create BlobURL manager with automatic revocation~~ ✅ **COMPLETED**  
 3. ~~Add memory profiling to development workflow~~ ✅ **COMPLETED**
-4. ~~Implement periodic garbage collection triggers~~ ✅ **COMPLETED**
+4. ~~Implement deterministic disposal patterns (teardowns, URL revokes, FFmpeg termination, WeakRef where safe)~~ ✅ **COMPLETED**
 
 ---
 
