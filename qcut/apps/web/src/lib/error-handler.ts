@@ -316,8 +316,178 @@ export const useErrorHandler = () => {
     handleMediaProcessingError,
     handleAIServiceError,
     handleExportError,
-    withErrorHandling
+    withErrorHandling,
+    safeAsync,
+    safeAsyncWithFallback,
+    withAsyncErrorHandling,
   };
+};
+
+/**
+ * Safe async operation wrapper that handles errors gracefully
+ * 
+ * @param fn - Async function to execute safely
+ * @param errorContext - Context information for error handling
+ * @returns Result of the async operation or null on error
+ */
+export const safeAsync = async <T>(
+  fn: () => Promise<T>,
+  errorContext: Partial<ErrorContext>
+): Promise<T | null> => {
+  try {
+    return await fn();
+  } catch (error) {
+    handleError(error, {
+      category: ErrorCategory.UNKNOWN,
+      severity: ErrorSeverity.MEDIUM,
+      showToast: true,
+      ...errorContext
+    });
+    return null;
+  }
+};
+
+/**
+ * Safe async operation wrapper with custom fallback value
+ * 
+ * @param fn - Async function to execute safely
+ * @param fallbackValue - Value to return on error
+ * @param errorContext - Context information for error handling
+ * @returns Result of the async operation or fallback value on error
+ */
+export const safeAsyncWithFallback = async <T>(
+  fn: () => Promise<T>,
+  fallbackValue: T,
+  errorContext: Partial<ErrorContext>
+): Promise<T> => {
+  try {
+    return await fn();
+  } catch (error) {
+    handleError(error, {
+      category: ErrorCategory.UNKNOWN,
+      severity: ErrorSeverity.MEDIUM,
+      showToast: true,
+      ...errorContext
+    });
+    return fallbackValue;
+  }
+};
+
+/**
+ * Higher-order function that wraps async functions with error handling
+ * 
+ * @param fn - Async function to wrap
+ * @param errorContext - Context information for error handling
+ * @returns Wrapped async function that handles errors gracefully
+ */
+export const withAsyncErrorHandling = <TArgs extends any[], TReturn>(
+  fn: (...args: TArgs) => Promise<TReturn>,
+  errorContext: Partial<ErrorContext>
+) => {
+  return async (...args: TArgs): Promise<TReturn | null> => {
+    return safeAsync(() => fn(...args), errorContext);
+  };
+};
+
+/**
+ * Batch async operation handler for multiple operations
+ * 
+ * @param operations - Array of async operations with their contexts
+ * @param options - Options for batch processing
+ * @returns Results of all operations, null for failed ones
+ */
+export const safeBatchAsync = async <T>(
+  operations: Array<{
+    fn: () => Promise<T>;
+    context: Partial<ErrorContext>;
+  }>,
+  options?: {
+    continueOnError?: boolean;
+    showProgress?: boolean;
+  }
+): Promise<Array<T | null>> => {
+  const results: Array<T | null> = [];
+  const continueOnError = options?.continueOnError ?? true;
+
+  for (let i = 0; i < operations.length; i++) {
+    const { fn, context } = operations[i];
+    
+    try {
+      const result = await safeAsync(fn, {
+        ...context,
+        metadata: {
+          ...context.metadata,
+          batchIndex: i,
+          totalOperations: operations.length,
+        }
+      });
+      results.push(result);
+    } catch (error) {
+      if (!continueOnError) {
+        throw error;
+      }
+      results.push(null);
+    }
+  }
+
+  return results;
+};
+
+/**
+ * Retry async operation wrapper with exponential backoff
+ * 
+ * @param fn - Async function to retry
+ * @param errorContext - Context information for error handling
+ * @param options - Retry options
+ * @returns Result of the async operation or null after all retries
+ */
+export const safeAsyncWithRetry = async <T>(
+  fn: () => Promise<T>,
+  errorContext: Partial<ErrorContext>,
+  options?: {
+    maxRetries?: number;
+    backoffMs?: number;
+    exponentialBackoff?: boolean;
+  }
+): Promise<T | null> => {
+  const maxRetries = options?.maxRetries ?? 3;
+  const baseBackoffMs = options?.backoffMs ?? 1000;
+  const exponentialBackoff = options?.exponentialBackoff ?? true;
+  
+  let lastError: unknown;
+  
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (error) {
+      lastError = error;
+      
+      if (attempt === maxRetries) {
+        // Final attempt failed, handle error
+        handleError(error, {
+          category: ErrorCategory.UNKNOWN,
+          severity: ErrorSeverity.MEDIUM,
+          showToast: true,
+          ...errorContext,
+          metadata: {
+            ...errorContext.metadata,
+            totalAttempts: attempt + 1,
+            maxRetries,
+          }
+        });
+        return null;
+      }
+      
+      // Wait before retry
+      const backoffTime = exponentialBackoff 
+        ? baseBackoffMs * Math.pow(2, attempt)
+        : baseBackoffMs;
+      
+      await new Promise(resolve => setTimeout(resolve, backoffTime));
+    }
+  }
+  
+  return null;
 };
 
 export default handleError;
