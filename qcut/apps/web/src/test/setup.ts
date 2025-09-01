@@ -77,6 +77,10 @@ Object.defineProperty(globalThis, "IntersectionObserver", { writable: true, valu
 Object.defineProperty(window, "ResizeObserver", { writable: true, value: vi.fn().mockImplementation(makeObserver) });
 Object.defineProperty(globalThis, "ResizeObserver", { writable: true, value: window.ResizeObserver });
 
+// Mock MutationObserver
+Object.defineProperty(window, "MutationObserver", { writable: true, value: vi.fn().mockImplementation(makeObserver) });
+Object.defineProperty(globalThis, "MutationObserver", { writable: true, value: window.MutationObserver });
+
 // Mock URL methods
 Object.defineProperty(URL, "createObjectURL", {
   writable: true,

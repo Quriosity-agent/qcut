@@ -50,7 +50,7 @@ export function isDOMElement(el: any): el is HTMLElement {
 
 export function isTypableElement(el: HTMLElement): boolean {
   // If content editable, then it is editable
-  if (el.isContentEditable) return true;
+  if (el.isContentEditable || el.contentEditable === "true") return true;
 
   // If element is an input and the input is enabled, then it is typable
   if (el.tagName === "INPUT") {
