@@ -405,10 +405,12 @@ export const trimVideo = async (
   const outputName = "output.mp4";
 
   // Set up progress callback
+  let progressHandler: undefined | ((e: { progress: number }) => void);
   if (onProgress) {
-    ffmpeg.on("progress", ({ progress }) => {
+    progressHandler = ({ progress }: { progress: number }) => {
       onProgress(progress * 100);
-    });
+    };
+    (ffmpeg as any).on("progress", progressHandler);
   }
 
   // Write input file
@@ -439,6 +441,9 @@ export const trimVideo = async (
   // Cleanup
   await ffmpeg.deleteFile(inputName);
   await ffmpeg.deleteFile(outputName);
+  
+  // Remove the progress listener to prevent memory leaks
+  if (progressHandler) (ffmpeg as any).off?.("progress", progressHandler);
 
   updateLastUsed();
   return blob;
@@ -549,10 +554,12 @@ export const convertToWebM = async (
   const outputName = "output.webm";
 
   // Set up progress callback
+  let progressHandler: undefined | ((e: { progress: number }) => void);
   if (onProgress) {
-    ffmpeg.on("progress", ({ progress }) => {
+    progressHandler = ({ progress }: { progress: number }) => {
       onProgress(progress * 100);
-    });
+    };
+    (ffmpeg as any).on("progress", progressHandler);
   }
 
   // Write input file
@@ -583,7 +590,10 @@ export const convertToWebM = async (
   // Cleanup
   await ffmpeg.deleteFile(inputName);
   await ffmpeg.deleteFile(outputName);
-
+  
+  // Remove the progress listener to prevent memory leaks
+  if (progressHandler) (ffmpeg as any).off?.("progress", progressHandler);
+  
   updateLastUsed();
   return blob;
 };
