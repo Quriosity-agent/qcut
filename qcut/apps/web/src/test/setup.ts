@@ -87,6 +87,26 @@ Object.defineProperty(URL, "revokeObjectURL", {
   value: vi.fn(),
 });
 
+// Mock getComputedStyle for Radix UI components
+const mockGetComputedStyle = vi.fn(() => ({
+  getPropertyValue: vi.fn(() => ""),
+  display: "block",
+  visibility: "visible",
+  opacity: "1",
+  transform: "none",
+  transition: "none",
+  animation: "none",
+}));
+
+Object.defineProperty(window, "getComputedStyle", {
+  value: mockGetComputedStyle,
+  writable: true,
+});
+Object.defineProperty(globalThis, "getComputedStyle", {
+  value: mockGetComputedStyle,
+  writable: true,
+});
+
 // Mock localStorage (should be available in happy-dom but ensure it's mocked)
 const localStorageMock: Storage = {
   getItem: vi.fn(),
