@@ -338,6 +338,7 @@ export const safeAsync = async <T>(
     return await fn();
   } catch (error) {
     handleError(error, {
+      operation: "Safe async operation",
       category: ErrorCategory.UNKNOWN,
       severity: ErrorSeverity.MEDIUM,
       showToast: true,
@@ -364,6 +365,7 @@ export const safeAsyncWithFallback = async <T>(
     return await fn();
   } catch (error) {
     handleError(error, {
+      operation: "Safe async operation with fallback",
       category: ErrorCategory.UNKNOWN,
       severity: ErrorSeverity.MEDIUM,
       showToast: true,
@@ -465,6 +467,7 @@ export const safeAsyncWithRetry = async <T>(
       if (attempt === maxRetries) {
         // Final attempt failed, handle error
         handleError(error, {
+          operation: "Safe async operation with retry",
           category: ErrorCategory.UNKNOWN,
           severity: ErrorSeverity.MEDIUM,
           showToast: true,
