@@ -3,6 +3,8 @@
  * Provides utilities for monitoring memory usage during development
  */
 
+import { debugLog } from '@/lib/debug-config';
+
 interface MemorySnapshot {
   timestamp: number;
   heapUsed: number;
@@ -66,12 +68,12 @@ class DevMemoryProfiler {
    */
   start(): void {
     if (this.isRunning) {
-      console.warn('[Memory Profiler] Already running');
+      debugLog('[Memory Profiler] Already running');
       return;
     }
 
     this.isRunning = true;
-    console.log(`[Memory Profiler] Starting monitoring (${this.options.intervalMs}ms intervals)`);
+    debugLog(`[Memory Profiler] Starting monitoring (${this.options.intervalMs}ms intervals)`);
     
     this.intervalId = window.setInterval(() => {
       const snapshot = this.takeSnapshot();
@@ -92,7 +94,7 @@ class DevMemoryProfiler {
    */
   stop(): void {
     if (!this.isRunning) {
-      console.warn('[Memory Profiler] Not currently running');
+      debugLog('[Memory Profiler] Not currently running');
       return;
     }
 
@@ -102,7 +104,7 @@ class DevMemoryProfiler {
     }
     
     this.isRunning = false;
-    console.log('[Memory Profiler] Stopped monitoring');
+    debugLog('[Memory Profiler] Stopped monitoring');
   }
 
   /**
@@ -137,7 +139,7 @@ class DevMemoryProfiler {
     const formatBytes = this.formatBytes;
     const time = new Date(snapshot.timestamp).toLocaleTimeString();
     
-    console.log(
+    debugLog(
       `[Memory] ${time} | Heap: ${formatBytes(snapshot.heapUsed)}/${formatBytes(snapshot.heapTotal)} | External: ${formatBytes(snapshot.external)}`
     );
   }
@@ -189,7 +191,7 @@ class DevMemoryProfiler {
    */
   clear(): void {
     this.snapshots = [];
-    console.log('[Memory Profiler] Cleared all snapshots');
+    debugLog('[Memory Profiler] Cleared all snapshots');
   }
 
   /**
@@ -211,11 +213,11 @@ if (import.meta.env.DEV && typeof window !== 'undefined') {
   (window as any).getMemoryStats = () => devMemoryProfiler.getStats();
   (window as any).clearMemorySnapshots = () => devMemoryProfiler.clear();
   
-  console.log('🧠 Memory profiler available:');
-  console.log('- startMemoryProfiling()');
-  console.log('- stopMemoryProfiling()');
-  console.log('- getMemoryStats()');
-  console.log('- clearMemorySnapshots()');
+  debugLog('🧠 Memory profiler available:');
+  debugLog('- startMemoryProfiling()');
+  debugLog('- stopMemoryProfiling()');
+  debugLog('- getMemoryStats()');
+  debugLog('- clearMemorySnapshots()');
 }
 
 export default DevMemoryProfiler;
