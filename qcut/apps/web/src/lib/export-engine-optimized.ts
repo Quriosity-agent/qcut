@@ -2,6 +2,7 @@ import { ExportEngine } from "./export-engine";
 import { ExportSettings } from "@/types/export";
 import { TimelineElement, TimelineTrack } from "@/types/timeline";
 import { MediaItem } from "@/stores/media-store";
+import { handleExportError } from "@/lib/error-handler";
 
 // Frame cache entry
 interface CachedFrame {
@@ -494,7 +495,11 @@ export class OptimizedExportEngine extends ExportEngine {
       // Clean up
       video.remove();
     } catch (error) {
-      console.error("Failed to render video:", error);
+      handleExportError(error, "Render video frame", { 
+        videoUrl: mediaItem.url,
+        timeOffset,
+        elementId: element.id 
+      });
     }
   }
 
