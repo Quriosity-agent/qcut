@@ -220,21 +220,38 @@ describe("Sounds API Migration", () => {
     it("should handle fetch errors with retries", async () => {
       setRuntimeFlags({ USE_ELECTRON_API: false });
 
-      // Mock fetch to fail twice then succeed
-      mockFetch
-        .mockRejectedValueOnce(new Error("Network error"))
-        .mockRejectedValueOnce(new Error("Network error"))
-        .mockResolvedValue({
-          ok: true,
-          json: () => Promise.resolve({ results: [] }),
+      // Create a fresh mock for this test only
+      const localMockFetch = vi.fn();
+      const originalFetch = global.fetch;
+      global.fetch = localMockFetch;
+
+      try {
+        // Mock fetch to fail twice then succeed
+        let callCount = 0;
+        localMockFetch.mockImplementation(() => {
+          callCount++;
+          if (callCount === 1) {
+            return Promise.reject(new Error("Network error"));
+          } else if (callCount === 2) {
+            return Promise.reject(new Error("Network error"));
+          } else {
+            return Promise.resolve({
+              ok: true,
+              json: () => Promise.resolve({ results: [] }),
+            });
+          }
         });
 
-      const result = await searchSounds("retry-test", {
-        retryCount: 3,
-      });
+        const result = await searchSounds("retry-test", {
+          retryCount: 3,
+        });
 
-      expect(mockFetch).toHaveBeenCalledTimes(3);
-      expect(result).toEqual({ results: [] });
+        expect(localMockFetch).toHaveBeenCalledTimes(3);
+        expect(result).toEqual({ results: [] });
+      } finally {
+        // Restore original fetch
+        global.fetch = originalFetch;
+      }
     });
   });
 

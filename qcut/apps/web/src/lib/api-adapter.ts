@@ -31,6 +31,21 @@ async function legacySoundSearch(
     try {
       const res = await fetch(`/api/sounds/search?${urlParams.toString()}`);
       if (res.ok) return await res.json();
+      
+      // If response is not ok, treat as error for retry logic
+      const errorMsg = `HTTP ${res.status}: ${res.statusText}`;
+      handleError(new Error(errorMsg), {
+        operation: `Sound Search (Attempt ${i + 1})`,
+        category: ErrorCategory.NETWORK,
+        severity: ErrorSeverity.LOW,
+        showToast: false,
+        metadata: {
+          query,
+          attempt: i + 1,
+          maxAttempts: retryCount,
+          status: res.status
+        }
+      });
     } catch (fetchError) {
       handleError(fetchError, {
         operation: `Sound Search (Attempt ${i + 1})`,
@@ -42,9 +57,10 @@ async function legacySoundSearch(
           attempt: i + 1,
           maxAttempts: retryCount
         }
-      }
-      );
+      });
     }
+    
+    // Add delay between retries (except after last attempt)
     if (i < retryCount - 1) {
       await new Promise((r) => setTimeout(r, 1000 * (i + 1))); // exponential backoff
     }
@@ -134,7 +150,7 @@ export async function searchSounds(
         }
       }
       );
-      if (fallbackToOld && !isFeatureEnabled("USE_ELECTRON_API")) {
+      if (fallbackToOld) {
         return legacySoundSearch(query, searchParams, retryCount);
       }
       throw error;

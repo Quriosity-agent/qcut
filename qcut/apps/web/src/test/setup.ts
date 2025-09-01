@@ -19,7 +19,30 @@ Object.defineProperty(globalThis, 'HTMLElement', { value: dom.window.HTMLElement
 Object.defineProperty(globalThis, 'Element', { value: dom.window.Element, writable: true });
 Object.defineProperty(globalThis, 'Node', { value: dom.window.Node, writable: true });
 
+// Mock getComputedStyle immediately in JSDOM window
+const mockGetComputedStyle = (element) => ({
+  getPropertyValue: () => "",
+  display: "block",
+  visibility: "visible", 
+  opacity: "1",
+  transform: "none",
+  transition: "none",
+  animation: "none",
+});
+
+Object.defineProperty(dom.window, 'getComputedStyle', {
+  value: mockGetComputedStyle,
+  writable: true,
+  configurable: true,
+});
+Object.defineProperty(globalThis, 'getComputedStyle', {
+  value: mockGetComputedStyle,
+  writable: true,
+  configurable: true,
+});
+
 console.log("JSDOM setup complete. Document available:", typeof globalThis.document !== "undefined");
+console.log("getComputedStyle available:", typeof globalThis.getComputedStyle !== "undefined");
 
 // Test global availability immediately
 console.log("Global document test:", typeof document !== "undefined" ? "AVAILABLE" : "NOT AVAILABLE");
