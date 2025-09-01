@@ -1,4 +1,5 @@
 import { StorageAdapter } from "./types";
+import { handleStorageError } from "@/lib/error-handler";
 
 export class LocalStorageAdapter<T> implements StorageAdapter<T> {
   private prefix: string;
@@ -38,11 +39,10 @@ export class LocalStorageAdapter<T> implements StorageAdapter<T> {
       localStorage.setItem(fullKey, JSON.stringify(value));
       console.log("[DEBUG] LocalStorageAdapter: Set key:", fullKey);
     } catch (error) {
-      console.error(
-        "[DEBUG] LocalStorageAdapter: Error setting key:",
+      handleStorageError(error, "Save data to local storage", { 
         key,
-        error
-      );
+        operation: 'set'
+      });
       throw error;
     }
   }
@@ -53,11 +53,10 @@ export class LocalStorageAdapter<T> implements StorageAdapter<T> {
       localStorage.removeItem(fullKey);
       console.log("[DEBUG] LocalStorageAdapter: Removed key:", fullKey);
     } catch (error) {
-      console.error(
-        "[DEBUG] LocalStorageAdapter: Error removing key:",
+      handleStorageError(error, "Remove data from local storage", { 
         key,
-        error
-      );
+        operation: 'remove'
+      });
       throw error;
     }
   }
@@ -74,7 +73,9 @@ export class LocalStorageAdapter<T> implements StorageAdapter<T> {
       console.log("[DEBUG] LocalStorageAdapter: Listed keys:", keys);
       return keys;
     } catch (error) {
-      console.error("[DEBUG] LocalStorageAdapter: Error listing keys:", error);
+      handleStorageError(error, "List local storage keys", { 
+        operation: 'list'
+      });
       throw error;
     }
   }
@@ -96,7 +97,9 @@ export class LocalStorageAdapter<T> implements StorageAdapter<T> {
         "keys"
       );
     } catch (error) {
-      console.error("[DEBUG] LocalStorageAdapter: Error clearing:", error);
+      handleStorageError(error, "Clear local storage", { 
+        operation: 'clear'
+      });
       throw error;
     }
   }

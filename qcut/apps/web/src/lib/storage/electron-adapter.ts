@@ -1,4 +1,5 @@
 import { StorageAdapter } from "./types";
+import { handleStorageError } from "@/lib/error-handler";
 
 export class ElectronStorageAdapter<T> implements StorageAdapter<T> {
   private prefix: string;
@@ -12,7 +13,10 @@ export class ElectronStorageAdapter<T> implements StorageAdapter<T> {
       const fullKey = this.prefix + key;
       return await (window as any).electronAPI.storage.load(fullKey);
     } catch (error) {
-      console.error("ElectronStorageAdapter: Error getting key:", key, error);
+      handleStorageError(error, "Get data from Electron storage", { 
+        key,
+        operation: 'get'
+      });
       return null;
     }
   }
@@ -22,7 +26,10 @@ export class ElectronStorageAdapter<T> implements StorageAdapter<T> {
       const fullKey = this.prefix + key;
       await (window as any).electronAPI.storage.save(fullKey, value);
     } catch (error) {
-      console.error("ElectronStorageAdapter: Error setting key:", key, error);
+      handleStorageError(error, "Save data to Electron storage", { 
+        key,
+        operation: 'set'
+      });
       throw error;
     }
   }
@@ -32,7 +39,10 @@ export class ElectronStorageAdapter<T> implements StorageAdapter<T> {
       const fullKey = this.prefix + key;
       await (window as any).electronAPI.storage.remove(fullKey);
     } catch (error) {
-      console.error("ElectronStorageAdapter: Error removing key:", key, error);
+      handleStorageError(error, "Remove data from Electron storage", { 
+        key,
+        operation: 'remove'
+      });
       throw error;
     }
   }
@@ -44,7 +54,9 @@ export class ElectronStorageAdapter<T> implements StorageAdapter<T> {
         .filter((key: string) => key.startsWith(this.prefix))
         .map((key: string) => key.substring(this.prefix.length));
     } catch (error) {
-      console.error("ElectronStorageAdapter: Error listing keys:", error);
+      handleStorageError(error, "List Electron storage keys", { 
+        operation: 'list'
+      });
       throw error;
     }
   }
@@ -61,7 +73,9 @@ export class ElectronStorageAdapter<T> implements StorageAdapter<T> {
         )
       );
     } catch (error) {
-      console.error("ElectronStorageAdapter: Error clearing:", error);
+      handleStorageError(error, "Clear Electron storage", { 
+        operation: 'clear'
+      });
       throw error;
     }
   }
