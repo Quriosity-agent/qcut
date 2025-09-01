@@ -470,10 +470,10 @@ export const getVideoInfo = async (
   // Capture FFmpeg stderr output with a one-time listener pattern
   let ffmpegOutput = "";
   let listening = true;
-  const listener = (data: string) => {
-    if (listening) ffmpegOutput += data;
+  const logHandler = ({ message }: { message: string }) => {
+    if (listening) ffmpegOutput += message;
   };
-  ffmpeg.on("log", ({ message }) => listener(message));
+  (ffmpeg as any).on("log", logHandler);
 
   // Run ffmpeg to get info (stderr will contain the info)
   try {
@@ -534,7 +534,7 @@ export const getVideoInfo = async (
   updateLastUsed();
   
   // Remove the log listener to prevent memory leaks
-  (ffmpeg as any).off("log", listener);
+  (ffmpeg as any).off?.("log", logHandler);
   
   return {
     duration,
