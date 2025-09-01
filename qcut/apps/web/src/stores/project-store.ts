@@ -9,6 +9,7 @@ import { getMediaStore } from "./media-store-loader";
 // import { useStickersOverlayStore } from "./stickers-overlay-store";
 import { generateUUID } from "@/lib/utils";
 import { debugError, debugLog } from "@/lib/debug-config";
+import { handleError, ErrorCategory, ErrorSeverity, handleStorageError } from "@/lib/error-handler";
 
 /**
  * Thrown when a requested project cannot be found in storage.
@@ -105,9 +106,11 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
       set({ activeProject: updatedProject });
       await get().loadAllProjects(); // Refresh the list
     } catch (error) {
-      debugError("Failed to update project bookmarks:", error);
-      toast.error("Failed to update bookmarks", {
-        description: "Please try again",
+      handleStorageError(error, "Update project bookmarks", {
+        projectId: updatedProject.id,
+        projectName: updatedProject.name,
+        bookmarkTime: frameTime,
+        operation: 'updateBookmarks'
       });
     }
   },
@@ -153,9 +156,11 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
       set({ activeProject: updatedProject });
       await get().loadAllProjects(); // Refresh the list
     } catch (error) {
-      debugError("Failed to update project bookmarks:", error);
-      toast.error("Failed to remove bookmark", {
-        description: "Please try again",
+      handleStorageError(error, "Remove project bookmark", {
+        projectId: updatedProject.id,
+        projectName: updatedProject.name,
+        bookmarkTime: frameTime,
+        operation: 'removeBookmark'
       });
     }
   },
@@ -182,7 +187,11 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
       await get().loadAllProjects();
       return newProject.id;
     } catch (error) {
-      toast.error("Failed to save new project");
+      handleStorageError(error, "Create new project", {
+        projectId: newProject.id,
+        projectName: newProject.name,
+        operation: 'createProject'
+      });
       throw error;
     }
   },
@@ -226,7 +235,10 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
         throw new NotFoundError(`Project ${id} not found`);
       }
     } catch (error) {
-      debugError("Failed to load project:", error);
+      handleStorageError(error, "Load project", {
+        projectId: id,
+        operation: 'loadProject'
+      });
       throw error; // Re-throw so the editor page can handle it
     } finally {
       set({ isLoading: false });
@@ -252,7 +264,11 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
       ]);
       await get().loadAllProjects(); // Refresh the list
     } catch (error) {
-      debugError("Failed to save project:", error);
+      handleStorageError(error, "Save current project", {
+        projectId: activeProject.id,
+        projectName: activeProject.name,
+        operation: 'saveCurrentProject'
+      });
     }
   },
 
@@ -265,7 +281,9 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
       const projects = await storageService.loadAllProjects();
       set({ savedProjects: projects });
     } catch (error) {
-      debugError("Failed to load projects:", error);
+      handleStorageError(error, "Load all projects", {
+        operation: 'loadAllProjects'
+      });
     } finally {
       set({ isLoading: false, isInitialized: true });
     }
@@ -292,7 +310,10 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
         timelineStore.clearTimeline();
       }
     } catch (error) {
-      debugError("Failed to delete project:", error);
+      handleStorageError(error, "Delete project", {
+        projectId: id,
+        operation: 'deleteProject'
+      });
     }
   },
 
@@ -313,8 +334,11 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
     // Find the project to rename
     const projectToRename = savedProjects.find((p) => p.id === id);
     if (!projectToRename) {
-      toast.error("Project not found", {
-        description: "Please try again",
+      handleError(new Error(`Project ${id} not found`), {
+        operation: "Find project to rename",
+        category: ErrorCategory.VALIDATION,
+        severity: ErrorSeverity.MEDIUM,
+        metadata: { projectId: id }
       });
       return;
     }
@@ -337,10 +361,11 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
         set({ activeProject: updatedProject });
       }
     } catch (error) {
-      debugError("Failed to rename project:", error);
-      toast.error("Failed to rename project", {
-        description:
-          error instanceof Error ? error.message : "Please try again",
+      handleStorageError(error, "Rename project", {
+        projectId: id,
+        oldName: projectToRename.name,
+        newName: name,
+        operation: 'renameProject'
       });
     }
   },
@@ -349,10 +374,14 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
     try {
       const project = await storageService.loadProject(projectId);
       if (!project) {
-        toast.error("Project not found", {
-          description: "Please try again",
+        const error = new NotFoundError(`Project ${projectId} not found`);
+        handleError(error, {
+          operation: "Load project for duplication",
+          category: ErrorCategory.VALIDATION,
+          severity: ErrorSeverity.MEDIUM,
+          metadata: { projectId }
         });
-        throw new NotFoundError(`Project ${projectId} not found`);
+        throw error;
       }
 
       const { savedProjects } = get();
@@ -385,12 +414,11 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
       await get().loadAllProjects();
       return newProject.id;
     } catch (error) {
-      debugError("Failed to duplicate project:", error);
-      // Avoid double reporting when we already showed a "Project not found" toast.
+      // Only handle storage errors, not NotFoundError which was already handled above
       if (!(error instanceof NotFoundError)) {
-        toast.error("Failed to duplicate project", {
-          description:
-            error instanceof Error ? error.message : "Please try again",
+        handleStorageError(error, "Duplicate project", {
+          projectId,
+          operation: 'duplicateProject'
         });
       }
       throw error;
@@ -412,9 +440,11 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
       set({ activeProject: updatedProject });
       await get().loadAllProjects(); // Refresh the list
     } catch (error) {
-      debugError("Failed to update project background:", error);
-      toast.error("Failed to update background", {
-        description: "Please try again",
+      handleStorageError(error, "Update project background", {
+        projectId: activeProject.id,
+        projectName: activeProject.name,
+        backgroundColor,
+        operation: 'updateProjectBackground'
       });
     }
   },
@@ -441,9 +471,11 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
       set({ activeProject: updatedProject });
       await get().loadAllProjects(); // Refresh the list
     } catch (error) {
-      debugError("Failed to update background type:", error);
-      toast.error("Failed to update background", {
-        description: "Please try again",
+      handleStorageError(error, "Update project background type", {
+        projectId: activeProject.id,
+        projectName: activeProject.name,
+        backgroundType: type,
+        operation: 'updateBackgroundType'
       });
     }
   },
@@ -463,9 +495,11 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
       set({ activeProject: updatedProject });
       await get().loadAllProjects(); // Refresh the list
     } catch (error) {
-      debugError("Failed to update project FPS:", error);
-      toast.error("Failed to update project FPS", {
-        description: "Please try again",
+      handleStorageError(error, "Update project FPS", {
+        projectId: activeProject.id,
+        projectName: activeProject.name,
+        fps,
+        operation: 'updateProjectFps'
       });
     }
   },
