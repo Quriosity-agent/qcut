@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { handleMediaProcessingError } from "@/lib/error-handler";
 import { Button } from "../../ui/button";
 import {
   MoreVertical,
@@ -245,10 +246,10 @@ export function TimelineElement({
           toast.error(result.error || "Failed to replace clip");
         }
       } catch (error) {
-        console.error("Unexpected error replacing clip:", error);
-        toast.error(
-          `Unexpected error: ${error instanceof Error ? error.message : "Unknown error"}`
-        );
+        handleMediaProcessingError(error, "Replace clip", { 
+          trackId: track.id, 
+          elementId: element.id 
+        });
       } finally {
         cleanup();
       }

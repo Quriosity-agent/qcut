@@ -2,6 +2,7 @@ import { createFFmpeg } from "@/lib/ffmpeg-loader";
 import { toBlobURL } from "@ffmpeg/util";
 import type { FFmpeg } from "@ffmpeg/ffmpeg";
 import { debugLog, debugError, debugWarn } from "@/lib/debug-config";
+import { handleMediaProcessingError } from "@/lib/error-handler";
 
 let ffmpeg: FFmpeg | null = null;
 let isFFmpegLoaded = false;
@@ -152,10 +153,10 @@ export const initFFmpeg = async (): Promise<FFmpeg> => {
 
   // Validate FFmpeg instance has required methods
   if (typeof ffmpeg.load !== "function") {
-    console.error(
-      "[FFmpeg Utils] ❌ FFmpeg instance missing load method:",
-      ffmpeg
-    );
+    const error = new Error("Invalid FFmpeg instance - missing load() method");
+    handleMediaProcessingError(error, "FFmpeg validation", {
+      instanceType: typeof ffmpeg
+    });
     throw new Error("Invalid FFmpeg instance - missing load() method");
   }
 
@@ -170,10 +171,10 @@ export const initFFmpeg = async (): Promise<FFmpeg> => {
       coreUrl = await getFFmpegResourceUrl("ffmpeg-core.js");
       wasmUrl = await getFFmpegResourceUrl("ffmpeg-core.wasm");
     } catch (resourceError) {
-      console.error(
-        "[FFmpeg Utils] ❌ Resource resolution failed:",
-        resourceError
-      );
+      handleMediaProcessingError(resourceError, "Resolve FFmpeg resources", {
+        coreUrl: "ffmpeg-core.js",
+        wasmUrl: "ffmpeg-core.wasm"
+      });
       throw new Error(
         `Failed to resolve FFmpeg resources: ${resourceError instanceof Error ? resourceError.message : String(resourceError)}`
       );
@@ -186,7 +187,10 @@ export const initFFmpeg = async (): Promise<FFmpeg> => {
       coreResponse = await fetch(coreUrl);
       wasmResponse = await fetch(wasmUrl);
     } catch (fetchError) {
-      console.error("[FFmpeg Utils] ❌ Network fetch failed:", fetchError);
+      handleMediaProcessingError(fetchError, "Fetch FFmpeg resources", {
+        coreUrl,
+        wasmUrl
+      });
       throw new Error(
         `Network error while fetching FFmpeg resources: ${fetchError instanceof Error ? fetchError.message : String(fetchError)}`
       );
@@ -194,12 +198,20 @@ export const initFFmpeg = async (): Promise<FFmpeg> => {
 
     if (!coreResponse.ok) {
       const errorMsg = `Failed to fetch ffmpeg-core.js: ${coreResponse.status} ${coreResponse.statusText}`;
-      console.error("[FFmpeg Utils] ❌", errorMsg);
+      const error = new Error(errorMsg);
+      handleMediaProcessingError(error, "Fetch FFmpeg core", {
+        status: coreResponse.status,
+        statusText: coreResponse.statusText
+      });
       throw new Error(errorMsg);
     }
     if (!wasmResponse.ok) {
       const errorMsg = `Failed to fetch ffmpeg-core.wasm: ${wasmResponse.status} ${wasmResponse.statusText}`;
-      console.error("[FFmpeg Utils] ❌", errorMsg);
+      const error = new Error(errorMsg);
+      handleMediaProcessingError(error, "Fetch FFmpeg WASM", {
+        status: wasmResponse.status,
+        statusText: wasmResponse.statusText
+      });
       throw new Error(errorMsg);
     }
 
@@ -209,7 +221,10 @@ export const initFFmpeg = async (): Promise<FFmpeg> => {
       coreBlob = await coreResponse.blob();
       wasmBlob = await wasmResponse.blob();
     } catch (blobError) {
-      console.error("[FFmpeg Utils] ❌ Blob conversion failed:", blobError);
+      handleMediaProcessingError(blobError, "Convert FFmpeg resources to blobs", {
+        coreSize: coreResponse.headers.get('content-length'),
+        wasmSize: wasmResponse.headers.get('content-length')
+      });
       throw new Error(
         `Failed to convert FFmpeg resources to blobs: ${blobError instanceof Error ? blobError.message : String(blobError)}`
       );
@@ -276,7 +291,10 @@ export const initFFmpeg = async (): Promise<FFmpeg> => {
 
     isFFmpegLoaded = true;
   } catch (error) {
-    console.error("[FFmpeg Utils] ❌ FFmpeg initialization failed:", error);
+    handleMediaProcessingError(error, "Initialize FFmpeg", {
+      hasSharedArrayBuffer: typeof SharedArrayBuffer !== "undefined",
+      crossOriginIsolated: self.crossOriginIsolated
+    });
     isFFmpegLoaded = false;
     ffmpeg = null;
     throw error;
@@ -353,7 +371,10 @@ export const generateThumbnail = async (
     updateLastUsed();
     return URL.createObjectURL(blob);
   } catch (error) {
-    console.error("[FFmpeg] Thumbnail generation failed:", error);
+    handleMediaProcessingError(error, "Generate thumbnail", {
+      videoFile: videoFile.name,
+      timeInSeconds
+    });
 
     // Cleanup on error
     try {
@@ -466,7 +487,10 @@ export const getVideoInfo = async (
   } catch (error) {
     listening = false;
     await ffmpeg.deleteFile(inputName);
-    console.error("FFmpeg execution failed:", error);
+    handleMediaProcessingError(error, "Extract video info", {
+      videoFile: videoFile.name,
+      fileSize: videoFile.size
+    });
     throw new Error(
       "Failed to extract video info. The file may be corrupted or in an unsupported format."
     );
