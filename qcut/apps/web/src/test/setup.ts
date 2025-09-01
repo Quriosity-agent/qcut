@@ -147,44 +147,20 @@ Object.defineProperty(navigator, "clipboard", {
   writable: true,
 });
 
-// Mock window.location methods - handle read-only properties properly
+// Mock window.location methods without replacing the Location object
 try {
-  // Try to override the entire location object
-  Object.defineProperty(window, "location", {
-    value: {
-      href: "http://localhost:3000",
-      origin: "http://localhost:3000",
-      pathname: "/",
-      search: "",
-      hash: "",
-      reload: vi.fn(),
-      assign: vi.fn(),
-      replace: vi.fn(),
-    },
-    writable: true,
-    configurable: true,
-  });
-} catch (e) {
-  // If that fails, try to mock individual methods
+  const loc = window.location;
+  vi.spyOn(loc, "reload").mockImplementation(() => {});
+  vi.spyOn(loc, "assign").mockImplementation(() => {});
+  vi.spyOn(loc, "replace").mockImplementation(() => {});
+} catch {
+  // Fallback for environments where spying is not possible
   try {
-    Object.defineProperty(window.location, "reload", {
-      value: vi.fn(),
-      writable: true,
-      configurable: true,
-    });
-    Object.defineProperty(window.location, "assign", {
-      value: vi.fn(),
-      writable: true,
-      configurable: true,
-    });
-    Object.defineProperty(window.location, "replace", {
-      value: vi.fn(),
-      writable: true,
-      configurable: true,
-    });
-  } catch (err) {
-    // If all else fails, skip location mocking
-    console.warn("Could not mock window.location methods:", err);
+    Object.defineProperty(window.location, "reload", { value: vi.fn(), configurable: true });
+    Object.defineProperty(window.location, "assign", { value: vi.fn(), configurable: true });
+    Object.defineProperty(window.location, "replace", { value: vi.fn(), configurable: true });
+  } catch {
+    // Last-resort: leave as-is; tests that rely on navigation should stub per-test.
   }
 }
 

@@ -1,14 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-// Mock sonner toast
-vi.mock("sonner", () => ({
-  toast: Object.assign(vi.fn(), {
-    error: vi.fn(),
-    warning: vi.fn(),
-    success: vi.fn()
-  })
-}));
-
 import { 
   handleError, 
   handleNetworkError,
@@ -17,13 +8,14 @@ import {
   ErrorSeverity 
 } from "../error-handler";
 
-// Import toast after mocking to get the mocked version
+// Import toast to get the mocked version (already mocked in test setup)
 import { toast } from "sonner";
 
-// Get references to the mock functions
-const mockToast = toast as any;
-const mockToastError = mockToast.error;
-const mockToastWarning = mockToast.warning;
+// Get references to the mock functions from the test setup
+// toast is actually the mocked object from the setup, with all methods as spies
+const mockToast = vi.mocked(toast, true);
+const mockToastError = vi.mocked(toast.error);
+const mockToastWarning = vi.mocked(toast.warning);
 
 // Mock clipboard API
 Object.assign(navigator, {
