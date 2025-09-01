@@ -1,5 +1,7 @@
 // Test setup file for Vitest - enhanced DOM setup for happy-dom
-console.log("Setting up happy-dom environment...");
+console.log("🔧 SETUP.TS EXECUTING - Starting happy-dom environment setup...");
+console.log("🔧 Initial DOM check - document available:", typeof document !== "undefined");
+console.log("🔧 Initial DOM check - window available:", typeof window !== "undefined");
 
 // happy-dom provides DOM globals automatically, we just need to enhance them
 // Mock getComputedStyle for Radix UI components
@@ -14,20 +16,32 @@ const mockGetComputedStyle = (element) => ({
 });
 
 // Apply getComputedStyle mock to all contexts
-Object.defineProperty(window, 'getComputedStyle', {
-  value: mockGetComputedStyle,
-  writable: true,
-  configurable: true,
-});
-Object.defineProperty(globalThis, 'getComputedStyle', {
-  value: mockGetComputedStyle,
-  writable: true,
-  configurable: true,
-});
-global.getComputedStyle = mockGetComputedStyle;
+if (typeof window !== "undefined") {
+  console.log("🔧 Applying getComputedStyle to window");
+  Object.defineProperty(window, 'getComputedStyle', {
+    value: mockGetComputedStyle,
+    writable: true,
+    configurable: true,
+  });
+}
 
-console.log("happy-dom setup complete. Document available:", typeof document !== "undefined");
-console.log("getComputedStyle available:", typeof getComputedStyle !== "undefined");
+if (typeof globalThis !== "undefined") {
+  console.log("🔧 Applying getComputedStyle to globalThis");
+  Object.defineProperty(globalThis, 'getComputedStyle', {
+    value: mockGetComputedStyle,
+    writable: true,
+    configurable: true,
+  });
+}
+
+if (typeof global !== "undefined") {
+  console.log("🔧 Applying getComputedStyle to global");
+  global.getComputedStyle = mockGetComputedStyle;
+}
+
+console.log("🔧 SETUP.TS COMPLETE - Document available:", typeof document !== "undefined");
+console.log("🔧 SETUP.TS COMPLETE - getComputedStyle available:", typeof getComputedStyle !== "undefined");
+console.log("🔧 SETUP.TS COMPLETE - Environment ready for tests");
 
 // Now that DOM is available, import testing libraries
 import "@testing-library/jest-dom/vitest";
