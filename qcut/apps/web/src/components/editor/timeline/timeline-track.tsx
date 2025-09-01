@@ -23,8 +23,9 @@ import {
 } from "@/constants/timeline-constants";
 import { useProjectStore } from "@/stores/project-store";
 import { useTimelineSnapping, SnapPoint } from "@/hooks/use-timeline-snapping";
+import { withErrorBoundary } from "@/components/error-boundary";
 
-export function TimelineTrackContent({
+function TimelineTrackContentComponent({
   track,
   zoomLevel,
   onSnapPointChange,
@@ -1194,3 +1195,23 @@ export function TimelineTrackContent({
     </div>
   );
 }
+
+// Error Fallback Component for Timeline Track
+const TimelineTrackErrorFallback = ({ resetError }: { resetError: () => void }) => (
+  <div className="h-16 bg-destructive/10 border border-destructive/20 rounded flex items-center justify-center text-sm text-destructive m-2">
+    <span className="mr-2">⚠️ Track Error</span>
+    <button 
+      onClick={resetError} 
+      className="underline hover:no-underline"
+      type="button"
+    >
+      Retry
+    </button>
+  </div>
+);
+
+// Export wrapped component with error boundary
+export const TimelineTrackContent = withErrorBoundary(TimelineTrackContentComponent, {
+  isolate: true, // Only affects this track, not the entire timeline
+  fallback: TimelineTrackErrorFallback
+});

@@ -26,6 +26,7 @@ import AudioWaveform from "../audio-waveform";
 import { toast } from "sonner";
 import { TimelineElementProps, TrackType } from "@/types/timeline";
 import { useTimelineElementResize } from "@/hooks/use-timeline-element-resize";
+import { withErrorBoundary } from "@/components/error-boundary";
 
 // Helper function to get display name for element type
 function getElementTypeName(element: { type: string }): string {
@@ -63,7 +64,7 @@ import {
   ContextMenuTrigger,
 } from "../../ui/context-menu";
 
-export function TimelineElement({
+function TimelineElementComponent({
   element,
   track,
   zoomLevel,
@@ -554,3 +555,23 @@ export function TimelineElement({
     </ContextMenu>
   );
 }
+
+// Error Fallback Component for Timeline Elements
+const TimelineElementErrorFallback = ({ resetError }: { resetError: () => void }) => (
+  <div className="h-12 bg-destructive/10 border border-destructive/20 rounded flex items-center justify-center text-sm text-destructive">
+    <span className="mr-2">⚠️ Element Error</span>
+    <button 
+      onClick={resetError} 
+      className="underline hover:no-underline"
+      type="button"
+    >
+      Retry
+    </button>
+  </div>
+);
+
+// Export wrapped component with error boundary
+export const TimelineElement = withErrorBoundary(TimelineElementComponent, {
+  isolate: true, // Only affects this element, not the entire timeline
+  fallback: TimelineElementErrorFallback
+});
