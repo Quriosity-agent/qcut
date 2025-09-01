@@ -40,6 +40,13 @@ Object.defineProperty(globalThis, 'getComputedStyle', {
   writable: true,
   configurable: true,
 });
+Object.defineProperty(window, 'getComputedStyle', {
+  value: mockGetComputedStyle,
+  writable: true,
+  configurable: true,
+});
+// Also add to global context
+global.getComputedStyle = mockGetComputedStyle;
 
 console.log("JSDOM setup complete. Document available:", typeof globalThis.document !== "undefined");
 console.log("getComputedStyle available:", typeof globalThis.getComputedStyle !== "undefined");
