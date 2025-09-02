@@ -51,7 +51,7 @@ describe("TanStack Router Verification", () => {
       it(`should handle route: ${path} (${description})`, () => {
         const result = testRoute(path);
         expect(result).toBe(`#${path}`);
-      }, { timeout: 1000 });
+      }, 1_000);
     }
   });
 
@@ -60,18 +60,18 @@ describe("TanStack Router Verification", () => {
       const projectId = "test-project-456";
       const result = testRoute(`/editor/${projectId}`);
       expect(result).toBe(`#/editor/${projectId}`);
-    }, { timeout: 1000 });
+    }, 1_000);
 
     it("should support blog post slugs", () => {
       const slug = "my-test-blog-post";
       const result = testRoute(`/blog/${slug}`);
       expect(result).toBe(`#/blog/${slug}`);
-    }, { timeout: 1000 });
+    }, 1_000);
 
     it("should handle root route", () => {
       const result = testRoute("/");
       expect(result).toBe("#/");
-    }, { timeout: 1000 });
+    }, 1_000);
   });
 
   describe("Hash History Configuration", () => {
@@ -81,7 +81,7 @@ describe("TanStack Router Verification", () => {
       expect(window.location.hash).toBe("#/projects");
       // JSDOM may set pathname to "/" or "blank" depending on version/environment
       expect(["blank", "/"]).toContain(window.location.pathname);
-    }, { timeout: 1000 });
+    }, 1_000);
 
     it("should support browser navigation", () => {
       // Test navigation patterns
@@ -94,7 +94,7 @@ describe("TanStack Router Verification", () => {
       // Simulate back navigation
       window.history.back();
       // Note: In real environment this would change, but in test it remains
-    }, { timeout: 1000 });
+    }, 1_000);
   });
 
   describe("Route Tree Status", () => {
@@ -112,7 +112,7 @@ describe("TanStack Router Verification", () => {
         const result = testRoute(route);
         expect(result).toBe(`#${route}`);
       }
-    }, { timeout: 1000 });
+    }, 1_000);
 
     it("should confirm static pages exist", () => {
       // These routes provide important site content
@@ -129,7 +129,7 @@ describe("TanStack Router Verification", () => {
         const result = testRoute(route);
         expect(result).toBe(`#${route}`);
       }
-    }, { timeout: 1000 });
+    }, 1_000);
   });
 });
 

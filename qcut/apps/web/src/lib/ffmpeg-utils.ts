@@ -663,9 +663,9 @@ export const terminateFFmpeg = async (): Promise<void> => {
   }
 };
 
-export const forceFFmpegCleanup = (): void => {
+export const forceFFmpegCleanup = async (): Promise<void> => {
   if (ffmpeg) {
     debugLog("[FFmpeg Utils] 🧹 Force cleaning FFmpeg instance");
-    terminateFFmpeg();
+    await terminateFFmpeg();
   }
 };
