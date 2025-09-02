@@ -153,12 +153,30 @@ try {
   vi.spyOn(loc, "reload").mockImplementation(() => {});
   vi.spyOn(loc, "assign").mockImplementation(() => {});
   vi.spyOn(loc, "replace").mockImplementation(() => {});
+  
+  // Also set globalThis.location to match window.location for consistency
+  if (typeof globalThis !== "undefined" && !globalThis.location) {
+    Object.defineProperty(globalThis, 'location', { 
+      value: window.location, 
+      writable: true,
+      configurable: true 
+    });
+  }
 } catch {
   // Fallback for environments where spying is not possible
   try {
     Object.defineProperty(window.location, "reload", { value: vi.fn(), configurable: true });
     Object.defineProperty(window.location, "assign", { value: vi.fn(), configurable: true });
     Object.defineProperty(window.location, "replace", { value: vi.fn(), configurable: true });
+    
+    // Also set globalThis.location in fallback
+    if (typeof globalThis !== "undefined" && !globalThis.location) {
+      Object.defineProperty(globalThis, 'location', { 
+        value: window.location, 
+        writable: true,
+        configurable: true 
+      });
+    }
   } catch {
     // Last-resort: leave as-is; tests that rely on navigation should stub per-test.
   }

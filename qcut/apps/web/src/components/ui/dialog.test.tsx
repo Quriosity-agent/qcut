@@ -9,7 +9,7 @@ if (typeof document === "undefined") {
   Object.defineProperty(globalThis, 'window', { value: dom.window, writable: true });
   Object.defineProperty(globalThis, 'document', { value: dom.window.document, writable: true });
   Object.defineProperty(globalThis, 'navigator', { value: dom.window.navigator, writable: true });
-  Object.defineProperty(globalThis, 'location', { value: dom.window.location, writable: true });
+  // location is now set in test/setup.ts
   Object.defineProperty(globalThis, 'HTMLElement', { value: dom.window.HTMLElement, writable: true });
   Object.defineProperty(globalThis, 'Element', { value: dom.window.Element, writable: true });
   Object.defineProperty(globalThis, 'getComputedStyle', { value: dom.window.getComputedStyle, writable: true });
