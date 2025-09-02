@@ -123,7 +123,7 @@ const scheduleFFmpegCleanup = () => {
   }
   
   cleanupTimer = window.setTimeout(() => {
-    if (ffmpeg && isFFmpegLoaded && Date.now() - lastUsedAt > 5 * 60 * 1000) {
+    if (ffmpeg && isFFmpegLoaded) {
       debugLog("[FFmpeg Utils] Auto-terminating FFmpeg due to inactivity");
       terminateFFmpeg();
     }

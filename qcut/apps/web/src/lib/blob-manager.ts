@@ -7,7 +7,6 @@ interface BlobEntry {
   url: string;
   file: File | Blob;
   createdAt: number;
-  revokedAt?: number;
   source?: string;
 }
 
@@ -42,10 +41,8 @@ class BlobManager {
    * Manually revoke a blob URL
    */
   revokeObjectURL(url: string): void {
-    const entry = this.blobs.get(url);
-    if (entry && !entry.revokedAt) {
+    if (this.blobs.has(url)) {
       URL.revokeObjectURL(url);
-      entry.revokedAt = Date.now();
       this.blobs.delete(url);
     }
   }
@@ -57,7 +54,7 @@ class BlobManager {
     const now = Date.now();
     
     for (const [url, entry] of this.blobs.entries()) {
-      if (!entry.revokedAt && (now - entry.createdAt) > maxAge) {
+      if ((now - entry.createdAt) > maxAge) {
         console.warn(`[BlobManager] Auto-revoking old blob URL from: ${entry.source}`);
         this.revokeObjectURL(url);
       }
@@ -68,7 +65,7 @@ class BlobManager {
    * Get debugging information about active blobs
    */
   getActiveBlobs(): BlobEntry[] {
-    return Array.from(this.blobs.values()).filter(entry => !entry.revokedAt);
+    return Array.from(this.blobs.values());
   }
 
   /**
