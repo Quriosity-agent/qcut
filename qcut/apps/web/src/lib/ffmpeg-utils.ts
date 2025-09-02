@@ -3,7 +3,7 @@ import { toBlobURL } from "@ffmpeg/util";
 import type { FFmpeg } from "@ffmpeg/ffmpeg";
 import { debugLog, debugError, debugWarn } from "@/lib/debug-config";
 import { handleMediaProcessingError } from "@/lib/error-handler";
-import { createObjectURL } from "@/lib/blob-manager";
+import { createObjectURL, revokeObjectURL } from "@/lib/blob-manager";
 
 let ffmpeg: FFmpeg | null = null;
 let isFFmpegLoaded = false;
@@ -286,8 +286,8 @@ export const initFFmpeg = async (): Promise<FFmpeg> => {
       throw new Error(`FFmpeg initialization failed: ${errorMessage}`);
     } finally {
       // Cleanup blob URLs after successful or failed load
-      URL.revokeObjectURL(coreBlobUrl);
-      URL.revokeObjectURL(wasmBlobUrl);
+      revokeObjectURL(coreBlobUrl);
+      revokeObjectURL(wasmBlobUrl);
     }
 
     isFFmpegLoaded = true;
