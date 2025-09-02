@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { debugLog, debugWarn } from '@/lib/debug-config';
 
 /**
  * Hook for monitoring memory usage in React components during development
@@ -48,11 +49,25 @@ export function useMemoryMonitor(options: {
 
   // Update memory info if tracking is enabled
   useEffect(() => {
-    if (trackUpdates && import.meta.env.DEV) {
+    if (!import.meta.env.DEV || !trackUpdates) return;
+    
+    // Set up polling interval for memory updates
+    const intervalId = window.setInterval(() => {
       const info = getMemoryInfo();
-      setMemoryInfo(info);
-    }
-  });
+      setMemoryInfo(prev => {
+        // Only update if memory info actually changed to prevent unnecessary re-renders
+        if (!prev || !info) return info;
+        const hasChanged = prev.heapUsed !== info.heapUsed || prev.heapTotal !== info.heapTotal;
+        return hasChanged ? info : prev;
+      });
+    }, 1000); // Poll every second
+    
+    // Also set initial value
+    const initialInfo = getMemoryInfo();
+    setMemoryInfo(initialInfo);
+    
+    return () => clearInterval(intervalId);
+  }, [trackUpdates]);
 
   // Mount/unmount logging
   useEffect(() => {
@@ -62,14 +77,14 @@ export function useMemoryMonitor(options: {
     
     if (logOnMount) {
       const info = getMemoryInfo();
-      console.log(`🧠 [${componentName}] Mounted | Memory: ${info?.heapUsed}/${info?.heapTotal}`);
+      debugLog(`🧠 [${componentName}] Mounted | Memory: ${info?.heapUsed}/${info?.heapTotal}`);
     }
 
     return () => {
       if (logOnUnmount) {
         const info = getMemoryInfo();
         const lifespan = Date.now() - mountTime.current;
-        console.log(
+        debugLog(
           `🧠 [${componentName}] Unmounted after ${lifespan}ms | Memory: ${info?.heapUsed}/${info?.heapTotal} | Renders: ${renderCount.current}`
         );
       }
@@ -81,7 +96,7 @@ export function useMemoryMonitor(options: {
     if (!import.meta.env.DEV) return null;
     
     const info = getMemoryInfo();
-    console.log(
+    debugLog(
       `🧠 [${componentName}] Memory check | Heap: ${info?.heapUsed}/${info?.heapTotal} | Renders: ${renderCount.current}`
     );
     return info;
@@ -90,16 +105,16 @@ export function useMemoryMonitor(options: {
   // Trigger garbage collection if available
   const triggerGC = () => {
     if (import.meta.env.DEV && (window as any).gc) {
-      console.log(`🗑️ [${componentName}] Triggering GC`);
+      debugLog(`🗑️ [${componentName}] Triggering GC`);
       (window as any).gc();
       
       // Check memory after GC
       setTimeout(() => {
         const info = getMemoryInfo();
-        console.log(`🧠 [${componentName}] Post-GC Memory: ${info?.heapUsed}/${info?.heapTotal}`);
+        debugLog(`🧠 [${componentName}] Post-GC Memory: ${info?.heapUsed}/${info?.heapTotal}`);
       }, 100);
     } else {
-      console.warn(`🗑️ [${componentName}] GC not available`);
+      debugWarn(`🗑️ [${componentName}] GC not available`);
     }
   };
 
@@ -135,7 +150,7 @@ export function useMemoryLeakDetector(
         const memoryGrowth = currentMemory - initialMemory.current;
         
         if (memoryGrowth > threshold) {
-          console.warn(
+          debugWarn(
             `🚨 [${componentName}] Potential memory leak detected!`,
             `Memory grew by ${(memoryGrowth / 1024 / 1024).toFixed(1)}MB`,
             `Data size: ${(dataSize / 1024 / 1024).toFixed(1)}MB`
