@@ -9,6 +9,13 @@ interface CachedFrame {
   timestamp: number;
 }
 
+interface CacheSnapshot {
+  key: number;
+  imageData: ImageData;
+  timelineHash: string;
+  timestamp: number;
+}
+
 interface FrameCacheOptions {
   maxCacheSize?: number;
   cacheResolution?: number;
@@ -311,7 +318,7 @@ export function useFrameCache(options: FrameCacheOptions = {}) {
     if (!persist) return;
     try {
       const db = await openDB("frame-cache", 1);
-      const cacheArray: any = await db.get("frames", "cache-snapshot");
+      const cacheArray = await db.get("frames", "cache-snapshot") as CacheSnapshot[] | undefined;
       if (cacheArray && Array.isArray(cacheArray)) {
         frameCacheRef.current.clear();
         for (const item of cacheArray) {
