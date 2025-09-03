@@ -15,6 +15,38 @@ export async function captureFrameToCanvas(
   options: CaptureOptions
 ): Promise<ImageData | null> {
   try {
+    // Prefer OffscreenCanvas if available for performance
+    if (typeof OffscreenCanvas !== "undefined") {
+      if (
+        !offscreenCanvas ||
+        offscreenCanvas.width !== options.width ||
+        offscreenCanvas.height !== options.height
+      ) {
+        offscreenCanvas = new OffscreenCanvas(options.width, options.height);
+        offscreenContext = offscreenCanvas.getContext("2d");
+      }
+
+      if (offscreenContext) {
+        const canvas = await html2canvas(element, {
+          canvas: offscreenCanvas as any,
+          width: options.width,
+          height: options.height,
+          backgroundColor: options.backgroundColor || "#000000",
+          logging: false,
+          useCORS: true,
+          allowTaint: false,
+          foreignObjectRendering: true,
+        });
+
+        return offscreenContext.getImageData(
+          0,
+          0,
+          options.width,
+          options.height
+        );
+      }
+    }
+
     const canvas = await html2canvas(element, {
       width: options.width,
       height: options.height,

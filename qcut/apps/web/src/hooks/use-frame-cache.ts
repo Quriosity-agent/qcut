@@ -1,4 +1,5 @@
-import { useRef, useCallback } from "react";
+import { useRef, useCallback, useEffect } from "react";
+import { openDB } from "idb";
 import { TimelineTrack, TimelineElement } from "@/types/timeline";
 import { MediaItem } from "@/stores/media-store-types";
 
@@ -11,11 +12,13 @@ interface CachedFrame {
 interface FrameCacheOptions {
   maxCacheSize?: number;
   cacheResolution?: number;
+  persist?: boolean;
 }
 
 export function useFrameCache(options: FrameCacheOptions = {}) {
-  const { maxCacheSize = 300, cacheResolution = 30 } = options; // 10 seconds at 30fps
+  const { maxCacheSize = 300, cacheResolution = 30, persist = false } = options; // 10 seconds at 30fps
   const frameCacheRef = useRef(new Map<number, CachedFrame>());
+  const persistTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Generate a hash of the timeline state that affects rendering
   const getTimelineHash = useCallback(
@@ -92,7 +95,11 @@ export function useFrameCache(options: FrameCacheOptions = {}) {
       const frameTime = Math.floor(time * cacheResolution) / cacheResolution;
       const cached = frameCacheRef.current.get(frameTime);
 
-      if (!cached) return null;
+      if (!cached) {
+        // metrics: miss when no entry
+        metricsRef.current.misses++;
+        return null;
+      }
 
       const currentHash = getTimelineHash(
         time,
@@ -103,9 +110,11 @@ export function useFrameCache(options: FrameCacheOptions = {}) {
       if (cached.timelineHash !== currentHash) {
         // Cache is stale, remove it
         frameCacheRef.current.delete(frameTime);
+        metricsRef.current.misses++;
         return null;
       }
 
+      metricsRef.current.hits++;
       return cached.imageData;
     },
     [getTimelineHash, cacheResolution]
@@ -120,6 +129,7 @@ export function useFrameCache(options: FrameCacheOptions = {}) {
       mediaItems: MediaItem[],
       activeProject: any
     ): void => {
+      const startTime = performance.now();
       const frameTime = Math.floor(time * cacheResolution) / cacheResolution;
       const timelineHash = getTimelineHash(
         time,
@@ -128,12 +138,23 @@ export function useFrameCache(options: FrameCacheOptions = {}) {
         activeProject
       );
 
-      // LRU eviction if cache is full
+      // Smarter LRU eviction based on access patterns
       if (frameCacheRef.current.size >= maxCacheSize) {
-        // Get oldest entry (first in Map)
-        const firstKey = frameCacheRef.current.keys().next().value;
-        if (firstKey !== undefined) {
-          frameCacheRef.current.delete(firstKey);
+        const entries = Array.from(frameCacheRef.current.entries());
+        // Sort by timestamp and distance from current time
+        entries.sort((a, b) => {
+          const aDistance = Math.abs(a[0] - frameTime);
+          const bDistance = Math.abs(b[0] - frameTime);
+          const aAge = Date.now() - a[1].timestamp;
+          const bAge = Date.now() - b[1].timestamp;
+          if (aDistance < 5 && bDistance >= 5) return -1;
+          if (bDistance < 5 && aDistance >= 5) return 1;
+          return bAge - aAge;
+        });
+        // Remove oldest ~20%
+        const toRemove = Math.max(1, Math.floor(entries.length * 0.2));
+        for (let i = 0; i < toRemove; i++) {
+          frameCacheRef.current.delete(entries[i][0]);
         }
       }
 
@@ -142,14 +163,34 @@ export function useFrameCache(options: FrameCacheOptions = {}) {
         timelineHash,
         timestamp: Date.now(),
       });
+
+      // metrics: approximate capture/caching time
+      const captureTime = performance.now() - startTime;
+      metricsRef.current.captureCount++;
+      metricsRef.current.avgCaptureTime =
+        (metricsRef.current.avgCaptureTime *
+          (metricsRef.current.captureCount - 1) +
+          captureTime) /
+        metricsRef.current.captureCount;
+
+      // schedule persistence if enabled (debounced)
+      if (persist) {
+        if (persistTimerRef.current) clearTimeout(persistTimerRef.current);
+        persistTimerRef.current = setTimeout(() => {
+          void saveToIndexedDB();
+        }, 1000);
+      }
     },
-    [getTimelineHash, cacheResolution, maxCacheSize]
+    [getTimelineHash, cacheResolution, maxCacheSize, persist]
   );
 
   // Clear cache when timeline changes significantly
   const invalidateCache = useCallback(() => {
     frameCacheRef.current.clear();
-  }, []);
+    if (persist) {
+      void saveToIndexedDB();
+    }
+  }, [persist]);
 
   // Get render status for timeline indicator
   const getRenderStatus = useCallback(
@@ -249,6 +290,74 @@ export function useFrameCache(options: FrameCacheOptions = {}) {
     [cacheFrame, cacheResolution, isFrameCached]
   );
 
+  // Performance metrics
+  interface CacheMetrics {
+    hits: number;
+    misses: number;
+    avgCaptureTime: number;
+    captureCount: number;
+  }
+  const metricsRef = useRef<CacheMetrics>({
+    hits: 0,
+    misses: 0,
+    avgCaptureTime: 0,
+    captureCount: 0,
+  });
+
+  // IndexedDB persistence helpers
+  const saveToIndexedDB = useCallback(async () => {
+    if (!persist) return;
+    try {
+      const db = await openDB("frame-cache", 1, {
+        upgrade(db) {
+          if (!db.objectStoreNames.contains("frames")) {
+            db.createObjectStore("frames");
+          }
+        },
+      });
+
+      const cacheArray = Array.from(frameCacheRef.current.entries()).map(
+        ([key, value]) => ({
+          key,
+          imageData: value.imageData,
+          timelineHash: value.timelineHash,
+          timestamp: value.timestamp,
+        })
+      );
+
+      await db.put("frames", cacheArray, "cache-snapshot");
+    } catch (error) {
+      console.warn("Failed to persist cache:", error);
+    }
+  }, [persist]);
+
+  const restoreFromIndexedDB = useCallback(async () => {
+    if (!persist) return;
+    try {
+      const db = await openDB("frame-cache", 1);
+      const cacheArray: any = await db.get("frames", "cache-snapshot");
+      if (cacheArray && Array.isArray(cacheArray)) {
+        frameCacheRef.current.clear();
+        for (const item of cacheArray) {
+          frameCacheRef.current.set(item.key, {
+            imageData: item.imageData,
+            timelineHash: item.timelineHash,
+            timestamp: item.timestamp,
+          });
+        }
+      }
+    } catch (error) {
+      console.warn("Failed to restore cache:", error);
+    }
+  }, [persist]);
+
+  // Restore on mount when persistence enabled
+  useEffect(() => {
+    if (persist) {
+      void restoreFromIndexedDB();
+    }
+  }, [persist, restoreFromIndexedDB]);
+
   return {
     getCachedFrame,
     cacheFrame,
@@ -256,6 +365,10 @@ export function useFrameCache(options: FrameCacheOptions = {}) {
     getRenderStatus,
     isFrameCached,
     preRenderNearbyFrames,
+    cacheMetrics: metricsRef.current,
+    cacheHitRate:
+      (metricsRef.current.hits || 0) /
+      Math.max(1, metricsRef.current.hits + metricsRef.current.misses),
     cacheSize: frameCacheRef.current.size,
   };
 }
