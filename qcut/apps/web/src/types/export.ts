@@ -218,3 +218,94 @@ export const getDefaultFilename = (): string => {
     .replace(/:/g, "-");
   return `export_${timestamp}`;
 };
+
+// ============================================================================
+// AUDIO EXPORT EXTENSIONS (Non-breaking additions)
+// ============================================================================
+
+/**
+ * Supported audio codec types for export
+ */
+export type AudioCodec = 'aac' | 'opus' | 'mp3';
+
+/**
+ * Audio export options interface
+ * These are optional extensions that don't affect existing ExportSettings
+ */
+export interface AudioExportOptions {
+  includeAudio?: boolean;
+  audioCodec?: AudioCodec;
+  audioBitrate?: number; // in kbps
+  audioSampleRate?: number; // in Hz
+  audioChannels?: 1 | 2; // mono or stereo
+}
+
+/**
+ * Extended export settings that include audio options
+ * Use this for components that support audio export
+ */
+export interface ExportSettingsWithAudio extends ExportSettings, AudioExportOptions {}
+
+/**
+ * Type guard to check if settings include audio options
+ */
+export const hasAudioOptions = (
+  settings: ExportSettings | ExportSettingsWithAudio
+): settings is ExportSettingsWithAudio => {
+  return 'includeAudio' in settings;
+};
+
+/**
+ * Helper to safely get audio inclusion status
+ * Defaults to true for backward compatibility
+ */
+export const shouldIncludeAudio = (
+  settings: ExportSettings | ExportSettingsWithAudio
+): boolean => {
+  if (hasAudioOptions(settings)) {
+    return settings.includeAudio ?? true;
+  }
+  return true; // Default: include audio for backward compatibility
+};
+
+/**
+ * Get audio codec for format
+ * Maps export formats to their recommended audio codecs
+ */
+export const getAudioCodecForFormat = (format: ExportFormat): AudioCodec => {
+  switch (format) {
+    case ExportFormat.MP4:
+    case ExportFormat.MOV:
+      return 'aac';
+    case ExportFormat.WEBM:
+      return 'opus';
+    default:
+      return 'aac';
+  }
+};
+
+/**
+ * Default audio export options
+ */
+export const DEFAULT_AUDIO_OPTIONS: AudioExportOptions = {
+  includeAudio: true,
+  audioCodec: 'aac',
+  audioBitrate: 128,
+  audioSampleRate: 44100,
+  audioChannels: 2,
+};
+
+/**
+ * Merge audio options with export settings
+ * Safe helper to combine settings without breaking existing code
+ */
+export const mergeAudioSettings = (
+  baseSettings: ExportSettings,
+  audioOptions?: AudioExportOptions
+): ExportSettingsWithAudio => {
+  return {
+    ...baseSettings,
+    ...DEFAULT_AUDIO_OPTIONS,
+    ...audioOptions,
+  };
+};

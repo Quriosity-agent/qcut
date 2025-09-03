@@ -41,6 +41,9 @@ import { debugLog, debugWarn } from "@/lib/debug-config";
 import { useExportValidation } from "@/hooks/use-export-validation";
 import { useExportPresets } from "@/hooks/use-export-presets";
 
+// Audio export configuration
+import { setAudioExportConfig, getCodecForFormat } from "@/lib/audio-export-config";
+
 export function ExportDialog() {
   const { error } = useExportStore();
   const { getTotalDuration, tracks } = useTimelineStore();
@@ -55,9 +58,17 @@ export function ExportDialog() {
   const [exportCaptions, setExportCaptions] = useState(false);
   const [captionFormat, setCaptionFormat] = useState<CaptionFormat>("srt");
 
+  // Audio export state (non-breaking addition)
+  const [includeAudio, setIncludeAudio] = useState(true); // Default to true for backward compatibility
+
   // Check if there are caption tracks available
   const hasCaptions = tracks.some(
     (track) => track.type === "captions" && track.elements.length > 0
+  );
+
+  // Check if there are audio tracks available
+  const hasAudio = tracks.some(
+    (track) => track.type === "audio" && track.elements.length > 0
   );
 
   const captionFormats: {
@@ -171,13 +182,35 @@ export function ExportDialog() {
       }
     }
 
+    // Sync audio settings globally
+    const audioCodec = getCodecForFormat(exportSettings.format);
+    const audioEnabled = includeAudio && hasAudio;
+    setAudioExportConfig({
+      enabled: audioEnabled,
+      codec: audioCodec,
+      bitrate: 128,
+    });
+
+    // Also sync with export store (if available)
+    const exportStore = useExportStore.getState();
+    if (exportStore.updateAudioSettings) {
+      exportStore.updateAudioSettings({
+        enabled: audioEnabled,
+        codec: audioCodec,
+      });
+    }
+
     await exportProgress.handleExport(canvas, exportSettings.timelineDuration, {
       quality: exportSettings.quality,
       format: exportSettings.format,
       filename: exportSettings.filename,
       engineType: exportSettings.engineType,
       resolution: exportSettings.resolution,
-    });
+      // Add audio settings (backward compatible - ignored if not supported)
+      includeAudio: audioEnabled,
+      audioCodec: audioCodec,
+      audioBitrate: 128,
+    } as any);
   };
 
   if (mediaItemsLoading) {
@@ -635,6 +668,38 @@ export function ExportDialog() {
                       {exportSettings.filename}.
                       {getCaptionFileExtension(captionFormat)}
                     </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Audio Export Section - Non-breaking addition */}
+          {hasAudio && (
+            <Card className="col-span-2">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm">Audio Export</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="include-audio"
+                    checked={includeAudio}
+                    onCheckedChange={(checked) =>
+                      setIncludeAudio(checked as boolean)
+                    }
+                    disabled={exportProgress.progress.isExporting}
+                  />
+                  <Label
+                    htmlFor="include-audio"
+                    className="text-sm cursor-pointer"
+                  >
+                    Include audio in export
+                  </Label>
+                </div>
+                {includeAudio && (
+                  <div className="text-xs text-muted-foreground pl-6">
+                    Audio tracks will be mixed and included in the exported video
                   </div>
                 )}
               </CardContent>

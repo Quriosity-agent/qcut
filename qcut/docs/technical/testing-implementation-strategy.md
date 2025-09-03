@@ -1,419 +1,429 @@
 # QCut Testing Implementation Strategy
 
-**Document Version**: 1.0  
-**Created**: 2025-09-02  
-**Source**: `docs/issues/critical-analysis/testing-10-minute-subtasks.md`  
-**Author**: Testing Implementation Analysis  
+**Document Version**: 2.0  
+**Last Updated**: 2025-09-03  
+**Status**: Phase 0-2 ✅ COMPLETED | Phase 3 🔄 IN PROGRESS | 45+ test files implemented
 
-## Executive Summary
+## Current Implementation Status
 
-This document outlines the comprehensive testing implementation strategy for QCut, a desktop video editor built with Electron, Vite, React, and TypeScript. The strategy breaks down testing implementation into **150+ micro-tasks**, each completable in under 10 minutes without breaking existing functionality.
+### ✅ What's Already Working
 
-### Key Principles
+The testing infrastructure has been successfully implemented with:
+- **Test Runner**: Vitest 1.6.0 with UI visualization
+- **React Testing**: @testing-library/react 16.0.1 with user-event
+- **Coverage Reporting**: @vitest/coverage-v8 configured
+- **Mock Infrastructure**: Complete mocks for Electron, FFmpeg, storage, router
+- **Test Utilities**: Store helpers, render wrappers, cleanup utilities
+- **Memory Management**: Blob manager cleanup and performance monitoring
 
-- ✅ **Non-Breaking**: Each task is isolated and additive (new files only)
-- ✅ **Zero Risk**: No production code modification required
-- ✅ **Immediate Rollback**: Delete file to undo any task
-- ✅ **Flexible Order**: Tasks can be done in any order within each phase
-- ✅ **Incremental Value**: Each task provides immediate testing capability
+### ✅ Completed Test Suites (45+ test files)
 
-## Testing Infrastructure Overview
+#### Component Tests (10 files)
+- ✅ Button component - variants, states, events
+- ✅ Checkbox component - checked states, controlled
+- ✅ Dialog component - lifecycle, content rendering
+- ✅ Dropdown Menu - trigger, items, selection
+- ✅ Input component - types, validation, controlled
+- ✅ Progress component - value, indeterminate states
+- ✅ Slider component - range, steps, controlled
+- ✅ Tabs component - tab switching, content
+- ✅ Toast component - variants, actions, dismissal
 
-### Core Technology Stack
+#### Hook Tests (7 files)
+- ✅ useDebounce - basic and advanced variations
+- ✅ useDebounceCallback - callback debouncing
+- ✅ useMobile - responsive detection
+- ✅ useAspectRatio - basic and advanced ratio calculations
+- ✅ useToast - basic and advanced notification hooks
 
-- **Test Runner**: Vitest 1.6.0 (Vite-native, 10x faster than Jest)
-- **React Testing**: @testing-library/react 16.0.1 + @testing-library/user-event 14.5.2
-- **DOM Environment**: happy-dom 15.11.6 (2x faster than jsdom)
-- **Coverage**: @vitest/coverage-v8 1.6.0
-- **E2E Testing**: @playwright/test 1.48.2 (Chromium only for Electron compatibility)
-- **Mocking**: Vitest built-in mocking capabilities
+#### Utility Tests (8 files)
+- ✅ Time formatting - formatTimeCode, parseTimeCode
+- ✅ UUID generation - generateUUID, generateFileBasedId
+- ✅ Platform detection - OS detection and key mapping
+- ✅ Memory utils - file size formatting
+- ✅ Timeline calculations - overlap detection
+- ✅ Image utils - dimension calculations
+- ✅ Asset paths - Electron vs web path resolution
+- ✅ Error handling - error capture and reporting
 
-### QCut Application Architecture Context
+#### Store Tests (3 files)
+- ✅ Media store - file management operations
+- ✅ Timeline store - track and element operations
+- ✅ Export store - settings validation
 
-QCut is a desktop video editor with the following key characteristics:
+#### Integration Tests (11 files)
+- ✅ Store initialization - all stores setup
+- ✅ Media addition workflow - file upload process
+- ✅ Timeline element creation - element manipulation
+- ✅ Export settings - configuration validation
+- ✅ Storage mock verification - persistence layer
+- ✅ Playback state management - play/pause/seek
+- ✅ Keybinding registration - shortcut handling
+- ✅ Project creation - new project workflow
+- ✅ Sticker overlay addition - sticker management
+- ✅ Integration suite runner - full test execution
 
-- **Hybrid Architecture**: Combines Vite + TanStack Router + Electron
-- **State Management**: Zustand stores (media, timeline, project, playback, export, stickers)
-- **Video Processing**: FFmpeg WebAssembly (@ffmpeg/ffmpeg)
-- **Storage**: Multi-tier system (Electron IPC → IndexedDB → localStorage)
-- **UI Components**: Radix UI primitives with Tailwind CSS
+#### Migration Tests (5 files)
+- ✅ Router verification - TanStack Router migration
+- ✅ Navigation tests - routing functionality
+- ✅ Post-cleanup tests - migration cleanup
+- ✅ Sounds API - audio integration
+- ✅ Transcription API - subtitle generation
 
-## Implementation Phases
+### 🚀 How to Run Tests
 
-### Phase 0: Setup & Configuration (30 tasks × 10 min = 5 hours)
+```bash
+# Run all tests
+bun test
 
-**Objective**: Establish complete testing infrastructure without breaking existing code
+# Run tests with UI (recommended for development)
+bun test:ui
 
-#### Package Installation (5 tasks)
-1. **Core Testing Dependencies**: Vitest + @vitest/ui
-2. **React Testing Library**: Component testing utilities
-3. **DOM Testing Utilities**: jest-dom matchers + happy-dom
-4. **Coverage Tools**: v8 coverage provider
-5. **E2E Testing**: Playwright with Chromium
+# Run tests with coverage report
+bun test:coverage
 
-#### Configuration Files (10 tasks)
-- **Vitest Config**: Comprehensive test runner configuration
-- **Test Scripts**: Package.json script additions
-- **Test Setup**: Global test environment setup
-- **Directory Structure**: Organized test file hierarchy
-- **Test Wrapper Components**: Provider wrappers for components
-- **Mock Constants**: Centralized test constants
-- **Store Reset Utilities**: Zustand store isolation
-- **Blob URL Management**: Memory leak prevention
-- **File Factory**: Mock file generation utilities
-- **Coverage Configuration**: Detailed coverage reporting
+# Run tests in watch mode
+bun test:watch
 
-#### Mock Creation (15 tasks)
-- **Electron API Mock**: Complete IPC API simulation
-- **FFmpeg Mock**: WebAssembly video processing mock
-- **Media Store Mock**: Realistic media item fixtures
-- **Timeline Mock**: Track and element test data
-- **Export Settings Mock**: Video export configurations
-- **Storage Service Mock**: Persistence layer simulation
-- **Toast/Sonner Mock**: Notification system mock
-- **TanStack Router Mock**: Navigation mocking
-- **Project Mock**: Complete project data fixtures
-- **Sticker Overlay Mock**: Overlay system test data
-- **WebAssembly Mock**: WASM environment simulation
-- **Performance Mock**: Memory monitoring utilities
-- **IndexedDB Mock**: Browser storage simulation
-- **Keyboard Event Utilities**: Shortcut testing helpers
-- **Async Test Helpers**: Promise and timing utilities
+# Run specific test file
+bun test src/test/router.test.tsx
+```
 
-### Phase 1: First Tests (20 tasks × 10 min = 3.3 hours)
-
-**Objective**: Establish working test pipeline with utility function coverage
-
-#### Utility Function Tests (10 tasks)
-- **Time Formatting**: formatTimeCode, parseTimeCode functions
-- **UUID Generation**: generateUUID, generateFileBasedId functions
-- **Platform Detection**: Device detection and key mapping
-- **Memory Utils**: File size formatting and memory monitoring
-- **Timeline Calculations**: Element overlap and position calculations
-- **useDebounce Hook**: Value debouncing with timer mocking
-- **useAspectRatio Hook**: Dimension ratio calculations
-- **useToast Hook**: Notification system hook testing
-- **Asset Path Utils**: Electron vs web path resolution
-- **Image Utils**: Dimension calculation and fitting algorithms
-
-#### Simple Hook Tests (10 tasks)
-- Advanced debounce variations and edge cases
-- Mobile detection hook with media query mocking
-- Toast hook advanced features (actions, variants)
-- Aspect ratio hook custom canvas sizes
-- Basic store operations testing
-- Timeline store track operations
-- Export store settings validation
-- Button component rendering and variants
-- Test script creation for CI/CD integration
-- Watch mode configuration for development
-
-### Phase 2: Integration Test Infrastructure (30 tasks × 10 min = 5 hours)
-
-**Objective**: Build comprehensive integration testing capabilities
-
-#### Store Test Helpers (10 tasks)
-- Store test wrapper components
-- Individual store reset utilities (media, timeline, playback, captions, export)
-- Combined store reset functionality
-- Store snapshot and comparison utilities
-- Test fixture factory patterns
-
-#### Component Test Helpers (10 tasks)
-- Render with providers utility
-- Element waiting utilities
-- Fire event helpers
-- Drag and drop simulation
-- Media upload simulation
-- Context menu interaction helpers
-- Enhanced keyboard shortcut utilities
-- Timeline manipulation helpers
-- Export process helpers
-- Memory leak detection utilities
-
-#### First Integration Tests (10 tasks)
-- Store initialization verification
-- Media item addition workflows
-- Timeline element creation processes
-- Export settings validation
-- Storage service mock verification
-- Playback state management
-- Keybinding registration system
-- Project creation workflows
-- Sticker overlay addition
-- Integration test suite execution
-
-### Phase 3: Component Tests (30 tasks × 10 min = 5 hours)
-
-**Objective**: Achieve comprehensive UI component coverage
-
-#### UI Component Tests (15 tasks)
-- **Button Component**: Variants, sizes, events, disabled states
-- **Input Component**: Different types, validation, controlled/uncontrolled
-- **Dialog Component**: Opening, closing, content rendering
-- **Dropdown Menu**: Trigger, items, selection
-- **Slider Component**: Value ranges, steps, controlled states
-- **Checkbox Component**: Checked states, indeterminate, disabled
-- **Toast Component**: Variants, actions, dismissal
-- **Tabs Component**: Tab switching, content rendering
-- **Form Components**: Field validation, submission
-- **Layout Components**: Responsive behavior
-- **Loading States**: Spinner, skeleton components
-- **Error Boundaries**: Error handling and recovery
-- **Accessibility**: ARIA attributes, keyboard navigation
-- **Theme Support**: Dark/light mode switching
-- **Responsive Design**: Mobile and desktop layouts
-
-#### Editor Component Tests (15 tasks)
-- **Timeline Editor**: Track management, element manipulation
-- **Media Browser**: File upload, media selection
-- **Preview Canvas**: Video rendering, playback controls
-- **Property Panels**: Adjustment controls, real-time updates
-- **Export Dialog**: Settings configuration, progress tracking
-- **Sticker Overlay**: Positioning, sizing, layering
-- **Text Editor**: Font selection, styling options
-- **Audio Waveform**: Visual representation, scrubbing
-- **Timeline Ruler**: Time markers, zoom levels
-- **Track Controls**: Mute, solo, lock functionality
-- **Context Menus**: Right-click actions
-- **Keyboard Shortcuts**: Editor key bindings
-- **Drag & Drop**: File import, timeline manipulation
-- **Undo/Redo System**: History management
-- **Project Management**: Save, load, export workflows
-
-### Phase 4: Advanced Testing & CI/CD (40 tasks × 10 min = 6.7 hours)
-
-**Objective**: Production-ready testing pipeline with comprehensive coverage
-
-#### Performance Testing (10 tasks)
-- Memory leak detection for video processing
-- Large file handling simulation
-- Timeline performance with many elements
-- Export process stress testing
-- Store performance under load
-- Render performance optimization
-- WebAssembly memory management
-- Blob URL lifecycle management
-- FFmpeg processing benchmarks
-- UI responsiveness under load
-
-#### E2E Testing with Playwright (10 tasks)
-- Complete project workflow testing
-- Multi-format export verification
-- Cross-platform compatibility
-- File import/export testing
-- Timeline interaction automation
-- Keyboard shortcut validation
-- Error recovery scenarios
-- Performance regression detection
-- Visual regression testing
-- Accessibility compliance testing
-
-#### CI/CD Integration (10 tasks)
-- GitHub Actions workflow setup
-- Automated test execution
-- Coverage reporting integration
-- Performance regression detection
-- Cross-platform test execution
-- Dependency vulnerability scanning
-- Build artifact testing
-- Release candidate validation
-- Documentation generation
-- Test result notifications
-
-#### Coverage & Quality Assurance (10 tasks)
-- Comprehensive coverage reporting
-- Code quality metrics
-- Test maintainability analysis
-- Flaky test detection
-- Performance benchmarking
-- Security vulnerability testing
-- Accessibility audit automation
-- Cross-browser compatibility
-- Mobile responsiveness validation
-- Production environment simulation
-
-## Test Organization Structure
+### 📁 Test File Organization
 
 ```
 qcut/apps/web/src/test/
-├── fixtures/           # Test data and mock objects
-│   ├── constants.ts    # Centralized test constants
-│   ├── media-items.ts  # Media mock data
-│   ├── timeline-data.ts # Timeline fixtures
-│   ├── project-data.ts # Project fixtures
-│   ├── sticker-data.ts # Sticker overlay data
-│   ├── export-settings.ts # Export configurations
-│   └── file-factory.ts # Mock file generation
-├── mocks/              # External service mocks
-│   ├── electron.ts     # Electron API mock
-│   ├── ffmpeg.ts       # FFmpeg WebAssembly mock
-│   ├── storage.ts      # Storage service mock
-│   ├── toast.ts        # Notification system mock
-│   ├── router.ts       # TanStack Router mock
-│   ├── wasm.ts         # WebAssembly environment
-│   ├── performance.ts  # Performance API mock
-│   └── indexeddb.ts    # Browser storage mock
-├── utils/              # Test utilities and helpers
-│   ├── store-helpers.ts # Zustand store management
-│   ├── test-wrapper.tsx # Component wrapper
-│   ├── cleanup-helpers.ts # Memory leak prevention
-│   ├── async-helpers.ts # Promise and timing utilities
-│   ├── keyboard-events.ts # Keyboard simulation
-│   └── render-with-providers.tsx # Provider setup
-├── integration/        # Integration test suites
-│   ├── stores-init.test.ts
-│   ├── media-workflow.test.ts
-│   ├── timeline-operations.test.ts
-│   └── export-process.test.ts
-├── unit/              # Unit test suites
-├── e2e/               # End-to-end test suites
-└── setup.ts           # Global test configuration
+├── fixtures/           # ✅ Test data and mock objects
+├── mocks/              # ✅ External service mocks
+├── utils/              # ✅ Test utilities and helpers
+├── integration/        # 🔄 Integration test suites
+├── unit/              # 🔄 Unit test suites
+├── e2e/               # 📅 End-to-end test suites
+└── setup.ts           # ✅ Global test configuration
 ```
 
-## Store Testing Strategy
+## Executive Summary
 
-QCut uses Zustand for state management with the following stores:
+QCut's testing strategy breaks down implementation into **150+ micro-tasks**, each completable in under 10 minutes without breaking existing functionality. The approach is:
 
-### Core Stores
-- **Media Store**: File management, type detection, thumbnail generation
-- **Timeline Store**: Track management, element positioning, history
-- **Project Store**: Project lifecycle, persistence, metadata
-- **Playback Store**: Video playback state, timing, speed control
-- **Export Store**: Export settings, progress tracking, format options
+- ✅ **Non-Breaking**: Each task is isolated and additive
+- ✅ **Zero Risk**: No production code modification required
+- ✅ **Immediate Value**: Each task provides testing capability
+- ✅ **Incremental**: Build confidence with each test added
 
-### Specialized Stores
-- **Editor Store**: Canvas dimensions, zoom, selection state
-- **Stickers Overlay Store**: Sticker positioning, layering, animation
-- **Captions Store**: Subtitle management, timing, styling
-- **Keybindings Store**: Keyboard shortcuts, customization
-- **Panel Store**: UI panel state, layout management
+## Technology Stack
 
-### Store Testing Approach
-1. **Isolation**: Each test resets all stores to initial state
-2. **Realistic Data**: Use fixtures that match actual store interfaces
-3. **State Transitions**: Test complete workflows, not just individual actions
-4. **Error Handling**: Verify error states and recovery mechanisms
-5. **Performance**: Monitor memory usage and update performance
+### Core Testing Stack (Already Installed)
+- **Vitest 1.6.0**: Vite-native test runner (10x faster than Jest)
+- **@testing-library/react 16.0.1**: Component testing
+- **happy-dom 15.11.6**: Fast DOM environment (2x faster than jsdom)
+- **@vitest/coverage-v8**: Code coverage reporting
+- **@playwright/test 1.48.2**: E2E testing (Chromium for Electron)
 
-## Memory Management Strategy
+### QCut Architecture Context
+- **Hybrid Stack**: Vite + TanStack Router + Electron
+- **State Management**: Zustand stores (media, timeline, project, playback, export)
+- **Video Processing**: FFmpeg WebAssembly
+- **Storage**: Multi-tier (Electron IPC → IndexedDB → localStorage)
+- **UI Components**: Radix UI + Tailwind CSS
 
-QCut processes large video files, making memory management critical:
+## Implementation Roadmap
 
-### Blob URL Management
-- **Automatic Cleanup**: Track all created blob URLs
-- **Test Isolation**: Clean up blob URLs between tests
-- **Memory Monitoring**: Detect memory leaks in tests
-- **Performance Metrics**: Track memory usage patterns
+### ✅ Phase 0: Setup & Configuration (COMPLETED)
+- Core testing dependencies installed
+- Test configuration files created
+- Mock infrastructure established
+- Test utilities implemented
+- Directory structure organized
 
-### FFmpeg WebAssembly Testing
-- **WASM Environment Mocking**: Simulate WebAssembly loading
-- **Memory Pressure Simulation**: Test under memory constraints
-- **Processing Timeout Testing**: Verify timeout handling
-- **Resource Cleanup**: Ensure proper FFmpeg termination
+### ✅ Phase 1: First Tests (COMPLETED - 15 files)
+**Completed Areas:**
+1. **Utility Function Tests** ✅
+   - Time formatting functions
+   - UUID generation
+   - Platform detection
+   - Memory utilities
+   - Timeline calculations
+   - Image and asset utilities
+
+2. **Hook Tests** ✅
+   - Debounce variations
+   - Mobile detection
+   - Toast notifications
+   - Aspect ratio calculations
+
+### ✅ Phase 2: Integration Tests (COMPLETED - 11 files)
+- Store test helpers and wrappers ✅
+- Component test utilities ✅
+- Workflow integration tests ✅
+- Memory leak detection ✅
+
+### 🔄 Phase 3: Component Tests (PARTIALLY COMPLETE - 10/30 tasks)
+- UI component coverage (10 components tested)
+- Editor component testing (pending)
+- Accessibility validation (in progress)
+- Theme support testing (pending)
+
+### 📅 Phase 4: Advanced Testing & CI/CD (Planned - 40 tasks)
+- Performance testing
+- E2E with Playwright
+- CI/CD integration
+- Coverage optimization
+
+## Priority Testing Areas
+
+### 1. Critical Business Logic
+- Media processing workflows
+- Timeline operations
+- Export functionality
+- Project persistence
+
+### 2. User-Facing Components
+- Timeline editor
+- Media browser
+- Preview canvas
+- Export dialog
+
+### 3. State Management
+- Store actions and reducers
+- Store synchronization
+- Error state handling
+
+### 4. Memory Management
+- Blob URL lifecycle
+- FFmpeg memory usage
+- Large file handling
+- Resource cleanup
 
 ## Coverage Goals
 
-### Target Coverage Metrics
+### Target Metrics
 - **Statements**: 80%+
 - **Branches**: 75%+
 - **Functions**: 85%+
 - **Lines**: 80%+
 
-### Priority Areas for Coverage
-1. **Core Business Logic**: Media processing, timeline operations
-2. **State Management**: Store actions and reducers
-3. **User Interactions**: Component event handlers
-4. **Error Handling**: Exception cases and recovery
-5. **API Integrations**: Electron IPC, storage operations
+### Current Coverage
+Run `bun test:coverage` to see current metrics.
 
-### Coverage Exclusions
-- FFmpeg WebAssembly files (external library)
-- Auto-generated type definitions
-- Test utilities and mocks
-- Build configuration files
-- Third-party library wrappers
+## Store Testing Strategy
 
-## CI/CD Integration
+### Core Stores to Test
+1. **Media Store**: File management, thumbnails
+2. **Timeline Store**: Track management, history
+3. **Project Store**: Lifecycle, persistence
+4. **Playback Store**: Video playback state
+5. **Export Store**: Settings, progress tracking
 
-### Automated Testing Pipeline
-1. **Pre-commit Hooks**: Run linting and type checking
-2. **Pull Request Validation**: Full test suite execution
-3. **Coverage Reporting**: Generate and track coverage metrics
-4. **Performance Testing**: Automated performance regression detection
-5. **E2E Testing**: Cross-platform compatibility verification
+### Testing Approach
+- Isolate each test with store resets
+- Use realistic fixtures
+- Test complete workflows
+- Verify error handling
+- Monitor performance
 
-### Test Execution Strategy
-- **Parallel Execution**: Run unit tests in parallel for speed
-- **Sequential Integration**: Run integration tests sequentially
-- **Conditional E2E**: Run E2E tests on main branch and releases
-- **Flaky Test Detection**: Identify and quarantine unstable tests
+## Memory Management Testing
+
+### Critical Areas
+- **Blob URL Management**: Automatic cleanup between tests
+- **FFmpeg WebAssembly**: Memory pressure simulation
+- **Large Files**: Handling and cleanup
+- **Performance Monitoring**: Memory leak detection
+
+## Quick Reference
+
+### Writing a New Test
+
+```typescript
+// Example component test
+import { render, screen } from '@testing-library/react';
+import { TestWrapper } from '@/test/utils/test-wrapper';
+
+describe('MyComponent', () => {
+  it('should render correctly', () => {
+    render(
+      <TestWrapper>
+        <MyComponent />
+      </TestWrapper>
+    );
+    
+    expect(screen.getByText('Expected Text')).toBeInTheDocument();
+  });
+});
+```
+
+### Using Store Mocks
+
+```typescript
+import { resetAllStores } from '@/test/utils/store-helpers';
+
+beforeEach(() => {
+  resetAllStores(); // Clean slate for each test
+});
+```
+
+### Common Test Patterns
+
+```typescript
+// Async operations
+import { waitFor } from '@testing-library/react';
+
+await waitFor(() => {
+  expect(screen.getByText('Loaded')).toBeInTheDocument();
+});
+
+// User interactions
+import userEvent from '@testing-library/user-event';
+
+const user = userEvent.setup();
+await user.click(screen.getByRole('button'));
+```
+
+## CI/CD Integration (Planned)
+
+### Automated Pipeline Goals
+1. Pre-commit hooks for linting
+2. PR validation with full test suite
+3. Coverage reporting and tracking
+4. Performance regression detection
+5. Cross-platform E2E testing
 
 ## Risk Mitigation
 
 ### Zero-Risk Implementation
-- **Additive Only**: All tests are new files, no production code changes
-- **Immediate Rollback**: Delete test files to remove any task
-- **Isolated Execution**: Tests don't affect development or production
-- **Optional Integration**: Tests can be skipped during development
+- All tests are new files only
+- No production code changes required
+- Tests can be deleted to rollback
+- Optional execution during development
 
 ### Quality Assurance
-- **Code Review**: All test code follows same standards as production
-- **Documentation**: Every test includes clear purpose and expectations
-- **Maintenance**: Regular review and updating of test utilities
-- **Performance**: Monitor test execution time and optimize
+- Code review for all tests
+- Clear documentation
+- Regular maintenance
+- Performance monitoring
 
-## Quick Start Implementation
+## Next Steps
 
-### Phase 0 - Minimum Viable Setup (1 hour)
-```bash
-# Install core dependencies
-bun add -D vitest@1.6.0 @vitest/ui@1.6.0
-bun add -D @testing-library/react@16.0.1 @testing-library/user-event@14.5.2
-bun add -D @testing-library/jest-dom@6.6.3 happy-dom@15.11.6
+### Immediate Actions (Phase 3 - Editor Components)
+1. Timeline editor component tests
+2. Media browser component tests
+3. Preview canvas component tests
+4. Property panel tests
+5. Context menu tests
 
-# Create directory structure
-mkdir -p apps/web/src/test/{utils,fixtures,mocks,integration,unit,e2e}
+### Areas Needing Tests
+1. **Editor Components** (High Priority)
+   - Timeline manipulation UI
+   - Media selection interface
+   - Preview controls
+   - Export dialog
+   
+2. **Complex Workflows** (Medium Priority)
+   - Multi-track timeline editing
+   - Video export process
+   - Project save/load cycle
+   - Undo/redo system
 
-# Add test scripts to package.json
-npm pkg set scripts.test="vitest"
-npm pkg set scripts.test:ui="vitest --ui"
-npm pkg set scripts.test:coverage="vitest run --coverage"
+3. **Performance Tests** (Future)
+   - Large file handling
+   - Memory leak detection
+   - Timeline with many elements
 
-# Create basic vitest config
-# Create test setup file
-# Verify installation
-bun test
-```
-
-### Immediate Value
-After the first 5 tasks (50 minutes), you'll have:
-- Working test runner with UI
-- Component testing capabilities
-- Coverage reporting
-- Test file organization
-- Mock utilities foundation
+### For Contributors
+1. Check existing tests before writing new ones
+2. Follow established patterns in test/utils
+3. Use fixtures for consistent test data
+4. Clean up resources in afterEach blocks
+5. Focus on editor components for maximum impact
 
 ## Success Metrics
 
-### Quantitative Measures
-- **Task Completion Time**: Each task < 10 minutes
-- **Test Coverage**: Incremental improvement with each phase
-- **Build Time Impact**: No increase in production build time
-- **CI/CD Pipeline**: Automated testing with fast feedback
+### Quantitative
+- Each task < 10 minutes
+- Incremental coverage improvement
+- No production build impact
+- Fast CI/CD feedback
 
-### Qualitative Measures
-- **Developer Experience**: Easy to write and maintain tests
-- **Code Confidence**: Refactoring safety with comprehensive tests
-- **Bug Prevention**: Early detection of regressions
-- **Documentation Value**: Tests serve as usage examples
+### Qualitative
+- Easy test maintenance
+- Refactoring confidence
+- Early bug detection
+- Tests as documentation
 
-## Conclusion
+## Detailed Implementation Phases
 
-This testing implementation strategy provides a comprehensive, risk-free approach to adding testing infrastructure to QCut. The micro-task approach ensures that each step is manageable and provides immediate value, while the overall strategy builds toward a production-ready testing pipeline.
+### Phase 1: First Tests (Detailed Breakdown)
 
-The strategy addresses the unique challenges of testing a desktop video editor, including memory management, performance considerations, and complex state management, while maintaining a zero-risk implementation approach that won't disrupt ongoing development.
+#### Utility Function Tests Priority List
+1. `formatTimeCode()` - Time display formatting
+2. `parseTimeCode()` - Time string parsing
+3. `generateUUID()` - Unique ID generation
+4. `generateFileBasedId()` - File-based IDs
+5. `detectPlatform()` - OS detection
+6. `formatFileSize()` - Memory formatting
+7. `calculateOverlap()` - Timeline overlaps
+8. `useDebounce()` - Debounce hook
+9. `useAspectRatio()` - Ratio calculations
+10. `useToast()` - Notification hook
+
+### Phase 2: Integration Test Infrastructure
+
+#### Store Test Helpers Implementation
+- Individual store reset utilities
+- Combined store reset functionality
+- Store snapshot utilities
+- Test fixture factories
+- State transition testing
+
+#### Component Test Helpers
+- Render with providers
+- Element waiting utilities
+- Event simulation helpers
+- Drag and drop testing
+- Media upload simulation
+
+### Phase 3: Component Tests
+
+#### UI Component Priority
+1. Button variants and states
+2. Input validation and types
+3. Dialog lifecycle
+4. Dropdown interactions
+5. Slider controls
+6. Form submissions
+7. Loading states
+8. Error boundaries
+9. Accessibility compliance
+10. Theme switching
+
+#### Editor Component Priority
+1. Timeline manipulation
+2. Media selection
+3. Preview controls
+4. Export configuration
+5. Sticker positioning
+6. Text editing
+7. Audio waveforms
+8. Keyboard shortcuts
+9. Undo/redo system
+10. Project management
+
+### Phase 4: Advanced Testing & CI/CD
+
+#### Performance Testing Focus
+- Memory leak detection
+- Large file handling
+- Timeline performance
+- Export stress testing
+- WebAssembly management
+
+#### E2E Testing Scenarios
+- Complete project workflow
+- Multi-format exports
+- Cross-platform compatibility
+- Error recovery
+- Visual regression
 
 ---
 
-**Next Steps**: Begin with Phase 0 Task 001 (Install Core Testing Dependencies) and progress through each phase systematically. Each completed task brings immediate testing capabilities while building toward comprehensive coverage.
+**For questions or issues**: Create an issue in the repository or consult the team lead.

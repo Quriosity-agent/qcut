@@ -7,6 +7,7 @@ import {
   ExportQuality,
   getDefaultFilename,
   QUALITY_RESOLUTIONS,
+  AudioCodec,
 } from "@/types/export";
 
 // Export history entry
@@ -38,6 +39,13 @@ interface ExportStore {
   // Export history
   exportHistory: ExportHistoryEntry[];
 
+  // Audio export settings (optional for backward compatibility)
+  audioEnabled?: boolean;
+  audioCodec?: AudioCodec;
+  audioBitrate?: number;
+  audioSampleRate?: number;
+  audioChannels?: 1 | 2;
+
   // Actions
   setDialogOpen: (open: boolean) => void;
   setPanelView: (view: "properties" | "export" | "settings") => void;
@@ -45,6 +53,18 @@ interface ExportStore {
   updateProgress: (progress: Partial<ExportProgress>) => void;
   setError: (error: string | null) => void;
   resetExport: () => void;
+
+  // Audio actions (optional for backward compatibility)
+  setAudioEnabled?: (enabled: boolean) => void;
+  setAudioCodec?: (codec: AudioCodec) => void;
+  setAudioBitrate?: (bitrate: number) => void;
+  updateAudioSettings?: (settings: {
+    enabled?: boolean;
+    codec?: AudioCodec;
+    bitrate?: number;
+    sampleRate?: number;
+    channels?: 1 | 2;
+  }) => void;
 
   // History actions
   addToHistory: (entry: Omit<ExportHistoryEntry, "id" | "timestamp">) => void;
@@ -87,6 +107,13 @@ export const useExportStore = create<ExportStore>()(
       progress: getDefaultProgress(),
       error: null,
       exportHistory: [],
+
+      // Audio export settings (with defaults)
+      audioEnabled: true,
+      audioCodec: 'aac' as const,
+      audioBitrate: 128,
+      audioSampleRate: 44100,
+      audioChannels: 2 as const,
 
       // Actions
       setDialogOpen: (open) => {
@@ -136,7 +163,29 @@ export const useExportStore = create<ExportStore>()(
           progress: getDefaultProgress(),
           error: null,
           isDialogOpen: false,
+          // Keep audio settings on reset (user preference)
         });
+      },
+
+      // Audio actions (non-breaking optional implementations)
+      setAudioEnabled: (enabled) => set({ audioEnabled: enabled }),
+      
+      setAudioCodec: (codec) => set({ audioCodec: codec }),
+      
+      setAudioBitrate: (bitrate) => {
+        // Validate bitrate range
+        const validBitrate = Math.max(32, Math.min(320, bitrate));
+        set({ audioBitrate: validBitrate });
+      },
+      
+      updateAudioSettings: (settings) => {
+        set((state) => ({
+          audioEnabled: settings.enabled ?? state.audioEnabled,
+          audioCodec: settings.codec ?? state.audioCodec,
+          audioBitrate: settings.bitrate ?? state.audioBitrate,
+          audioSampleRate: settings.sampleRate ?? state.audioSampleRate,
+          audioChannels: settings.channels ?? state.audioChannels,
+        }));
       },
 
       // History actions
