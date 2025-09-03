@@ -1,4 +1,9 @@
-# Complete Audio Export Integration Guide (Non-Breaking)
+# Audio Export Integration Guide - 10-Minute Tasks
+
+## Quick Reference
+**Time Estimate**: 6 tasks × 10 minutes = 1 hour total
+**Risk Level**: Low (non-breaking additions only)
+**Dependencies**: None (memory management already complete)
 
 ## Source Commit
 **Repository**: OpenCut-app/OpenCut  
@@ -412,21 +417,47 @@ Before integration, understand our existing system:
 3. **Audio Stream Integration** in export engines
 4. **Audio Config Extension** without breaking existing types
 
-## Implementation Steps (Only What's Needed)
+## 10-Minute Implementation Tasks
 
-### ✅ Phase 1: Memory Management - SKIP (Already Complete)
-No action needed - BlobManager and FFmpeg cleanup already implemented.
-
-### 🚧 Phase 2: Audio Export Feature - TO IMPLEMENT
-
-#### Step 1: Create Audio Extension Module
-```bash
-# Create new file for audio without breaking existing code
-touch apps/web/src/lib/audio-export-extension.ts
-```
+### Task 1: Add Audio Toggle UI (10 minutes)
+**File**: `apps/web/src/components/export-dialog.tsx`
+**Risk**: None - UI addition only
 
 ```typescript
-// apps/web/src/lib/audio-export-extension.ts
+// After line 56 (caption export state):
+const [includeAudio, setIncludeAudio] = useState<boolean>(true);
+
+// After line 61 (hasCaptions check):
+const hasAudio = tracks.some(
+  (track) => track.type === "audio" && track.elements.length > 0
+);
+
+// In the render, after caption export section (around line 200):
+{hasAudio && (
+  <div className="space-y-4 mt-4">
+    <div className="flex items-center space-x-2">
+      <Checkbox
+        id="include-audio"
+        checked={includeAudio}
+        onCheckedChange={(checked) => setIncludeAudio(!!checked)}
+      />
+      <Label htmlFor="include-audio">
+        Include audio in export
+      </Label>
+    </div>
+  </div>
+)}
+```
+**Test**: Open export dialog, verify checkbox appears when audio tracks exist
+
+---
+
+### Task 2: Create Audio Export Config Module (10 minutes)
+**File**: Create `apps/web/src/lib/audio-export-config.ts`
+**Risk**: None - New isolated file
+
+```typescript
+// Complete file content:
 export interface AudioExportConfig {
   enabled: boolean;
   codec?: 'aac' | 'opus';
@@ -443,256 +474,191 @@ export const setAudioExportConfig = (config: Partial<AudioExportConfig>) => {
   audioConfig = { ...audioConfig, ...config };
 };
 
-export const getAudioExportConfig = (): AudioExportConfig => audioConfig;
+export const getAudioExportConfig = (): AudioExportConfig => ({
+  ...audioConfig
+});
+
+// Auto-select codec based on format
+export const getCodecForFormat = (format: string): 'aac' | 'opus' => {
+  return format === 'webm' ? 'opus' : 'aac';
+};
 ```
+**Test**: Import and call `getAudioExportConfig()` in console
 
-#### Step 2: Extend Export Types (Don't Modify Existing)
+---
+
+### Task 3: Extend Export Types (10 minutes)
+**File**: `apps/web/src/types/export.ts`
+**Risk**: None - Only adding new interfaces
+
 ```typescript
-// ADD to apps/web/src/types/export.ts - don't replace existing
+// ADD at the end of file:
 
-// Audio export extension
+// Audio export extension (non-breaking)
 export interface AudioExportOptions {
   includeAudio?: boolean;
   audioCodec?: 'aac' | 'opus';
   audioBitrate?: number;
 }
 
-// Extended settings for components that support audio
+// Extended settings for audio-aware components
 export interface ExportSettingsWithAudio extends ExportSettings, AudioExportOptions {}
-```
 
-#### Step 3: Update Export Store (Additive Only)
+// Helper to check if audio should be included
+export const shouldIncludeAudio = (
+  settings: ExportSettings | ExportSettingsWithAudio
+): boolean => {
+  if ('includeAudio' in settings) {
+    return (settings as AudioExportOptions).includeAudio ?? true;
+  }
+  return true; // Default: include audio
+};
+```
+**Test**: TypeScript compilation should pass
+
+---
+
+### Task 4: Add Audio Fields to Export Store (10 minutes)
+**File**: `apps/web/src/stores/export-store.ts`
+**Risk**: Low - Optional fields only
+
 ```typescript
-// In export-store.ts, ADD these optional fields to interface:
+// In ExportStore interface (around line 40), ADD:
+// Audio settings (optional for backward compatibility)
 audioEnabled?: boolean;
+audioCodec?: 'aac' | 'opus';
+audioBitrate?: number;
 setAudioEnabled?: (enabled: boolean) => void;
+setAudioCodec?: (codec: 'aac' | 'opus') => void;
 
-// In implementation, ADD:
+// In store creation (around line 80), ADD:
 audioEnabled: true,
+audioCodec: 'aac',
+audioBitrate: 128,
 setAudioEnabled: (enabled) => set({ audioEnabled: enabled }),
+setAudioCodec: (codec) => set({ audioCodec: codec }),
 ```
+**Test**: Check store in React DevTools, verify audio fields exist
 
-#### Step 4: Implement Web Audio Mixing
-Based on our existing documentation (`docs/completed/audio_export.md`):
+---
+
+### Task 5: Create Basic Audio Mixer (10 minutes)
+**File**: Create `apps/web/src/lib/audio-mixer.ts`
+**Risk**: None - New isolated file
 
 ```typescript
-// apps/web/src/lib/audio-mixer.ts
-export async function mixTimelineAudio(
-  tracks: any[],
-  duration: number
-): Promise<MediaStream | null> {
-  const audioContext = new AudioContext();
-  const destination = audioContext.createMediaStreamDestination();
+// Basic Web Audio API mixer setup:
+export interface AudioMixerOptions {
+  sampleRate?: number;
+  channels?: number;
+}
+
+export class AudioMixer {
+  private audioContext: AudioContext;
+  private destination: MediaStreamAudioDestinationNode;
   
-  // Mix audio tracks using Web Audio API
-  for (const track of tracks) {
-    if (track.type === 'audio' && !track.muted) {
-      // Load and connect audio sources
-      // ... implementation from audio_export.md
-    }
+  constructor(options: AudioMixerOptions = {}) {
+    this.audioContext = new AudioContext({
+      sampleRate: options.sampleRate || 44100
+    });
+    this.destination = this.audioContext.createMediaStreamDestination();
   }
   
-  return destination.stream;
+  getStream(): MediaStream {
+    return this.destination.stream;
+  }
+  
+  async addAudioTrack(audioElement: HTMLAudioElement): Promise<void> {
+    const source = this.audioContext.createMediaElementSource(audioElement);
+    source.connect(this.destination);
+  }
+  
+  dispose(): void {
+    this.audioContext.close();
+  }
 }
 ```
+**Test**: Create instance in console, verify no errors
 
-#### Step 5: Test Without Breaking Existing Features
-```bash
-# Test existing export first
-bun dev
-# Export without audio changes - must work
+---
 
-# Then test with audio
-# Enable feature flag if using one
-VITE_ENABLE_AUDIO_EXPORT=true bun dev
-```
+### Task 6: Wire Audio Toggle to Export (10 minutes)
+**File**: `apps/web/src/components/export-dialog.tsx`
+**Risk**: Low - Pass-through parameter only
 
-## Backward Compatibility Checklist
-
-### Existing Features Must Continue Working
-- [ ] All existing export presets still function
-- [ ] Export dialog opens without errors
-- [ ] Quality settings ("1080p", "720p", "480p") work correctly
-- [ ] Format selection (WebM, MP4, MOV) unchanged
-- [ ] Export history tracking still works
-- [ ] Progress reporting remains accurate
-- [ ] Filename generation works as before
-- [ ] Export engines (FFmpeg, CLI, Optimized) not broken
-
-### New Audio Features (Optional Enhancement)
-- [ ] Audio toggle only appears if audio tracks exist
-- [ ] Default behavior includes audio (backward compatible)
-- [ ] Audio can be disabled without affecting video export
-- [ ] Audio codec auto-selected based on format
-- [ ] No errors if audio processing fails (graceful fallback)
-
-## Testing Checklist
-
-### Regression Testing (Critical)
-1. **Test WITHOUT Audio Changes First**
-   - [ ] Export a video using existing UI
-   - [ ] Verify all formats work
-   - [ ] Check all quality presets
-   - [ ] Confirm file sizes are reasonable
-
-2. **Test WITH Audio Features**
-   - [ ] Audio toggle appears in export dialog
-   - [ ] Export works with audio included/excluded
-   - [ ] Audio syncs properly with video
-   - [ ] Multiple audio tracks mix correctly
-   - [ ] MP4 exports with AAC audio
-   - [ ] WebM exports with Opus audio
-
-### Memory Management
-- [ ] Memory stabilizes after video processing
-- [ ] Blob URLs are properly revoked
-- [ ] FFmpeg instances are terminated
-- [ ] No memory leaks on component unmount
-- [ ] Memory released when switching projects
-
-### Performance
-- [ ] Export time reasonable (< 2x video duration)
-- [ ] Memory usage stays under 2GB for typical projects
-- [ ] No browser crashes or freezes
-- [ ] Progress indicator accurate
-
-## Verification Commands
-
-```bash
-# Run development server
-bun dev
-
-# Check for TypeScript errors
-bun check-types
-
-# Run linting
-bun lint:clean
-
-# Build for production
-bun build
-
-# Test Electron app
-bun run electron:dev
-```
-
-## Migration Path & Rollback Plan
-
-### Phased Rollout Strategy
-
-#### Phase 1: Memory Improvements Only (Low Risk)
-- Implement BlobManager
-- Add cleanup methods
-- Test thoroughly
-- Deploy if stable
-
-#### Phase 2: Audio Infrastructure (Medium Risk)
-- Add audio extension module
-- Update types with extensions (not modifications)
-- Deploy behind feature flag
-
-#### Phase 3: UI Integration (Low Risk)
-- Add audio toggle UI
-- Connect to audio extension
-- Test with users
-- Full rollout
-
-### Feature Flag Implementation
 ```typescript
-// apps/web/src/lib/feature-flags.ts
-export const FEATURES = {
-  AUDIO_EXPORT: process.env.VITE_ENABLE_AUDIO_EXPORT === 'true',
-  MEMORY_OPTIMIZATION: true, // Always on after testing
+// In handleExport function (around line 250), ADD to export params:
+const exportParams = {
+  ...existingParams,
+  includeAudio: includeAudio, // Add this line
 };
 
-// Usage in components
-import { FEATURES } from '@/lib/feature-flags';
+// If using export store, also update it:
+import { getAudioExportConfig, setAudioExportConfig } from '@/lib/audio-export-config';
 
-if (FEATURES.AUDIO_EXPORT) {
-  // Show audio options
-}
+// Before export:
+setAudioExportConfig({ enabled: includeAudio });
+```
+**Test**: Toggle checkbox, verify state is passed to export function
+
+## Testing After Each Task
+
+### Quick Validation (1 minute per task)
+```bash
+# After each task:
+bun dev                    # Start dev server
+# Open export dialog
+# Verify no console errors
+# Check existing export still works
 ```
 
-### Rollback Plan
+### Final Integration Test (5 minutes)
+After all 6 tasks:
+1. Open project with audio tracks
+2. Open export dialog
+3. Verify audio checkbox appears
+4. Toggle audio on/off
+5. Export with default settings
+6. Verify no errors in console
 
-If issues occur at any phase:
+## Rollback if Needed
+Each task is isolated. If any task causes issues:
+```bash
+git stash              # Save current work
+git checkout -- .      # Revert changes
+# Or selectively revert:
+git checkout -- path/to/file.ts
+```
 
-1. **Phase-Specific Rollback**
-   ```bash
-   # Rollback only the problematic phase
-   git revert <commit-hash>
-   ```
+## Summary
 
-2. **Feature Flag Disable**
-   ```bash
-   # Disable in .env
-   VITE_ENABLE_AUDIO_EXPORT=false
-   ```
+### Total Time: ~1 hour (6 tasks × 10 minutes)
 
-3. **Emergency Hotfix**
-   ```typescript
-   // Quick disable in code
-   const AUDIO_EXPORT_ENABLED = false; // Emergency kill switch
-   ```
+### What Gets Done:
+✅ Audio toggle in export dialog  
+✅ Audio configuration module  
+✅ Type extensions (non-breaking)  
+✅ Export store audio fields  
+✅ Basic audio mixer class  
+✅ Wire up audio state  
 
-4. **Debug Mode**
-   ```typescript
-   const DEBUG = {
-     MEMORY: true,
-     AUDIO: true,
-     EXPORT: true,
-   };
-   
-   if (DEBUG.MEMORY) {
-     console.log('Memory:', performance.memory.usedJSHeapSize);
-   }
-   ```
+### What's NOT Included (Future Tasks):
+- Full Web Audio API implementation
+- Audio stream integration with MediaRecorder
+- Audio track loading and timing
+- Export engine modifications
+- Advanced audio effects
 
-## Known Issues & Solutions
+### Success Criteria:
+- Existing export functionality unchanged
+- Audio checkbox visible when audio tracks exist
+- Audio state properly managed
+- No TypeScript errors
+- No console errors
 
-### Issue: FFmpeg Still Running
-**Solution**: Ensure terminate() called in all code paths
-
-### Issue: Audio Out of Sync
-**Solution**: Verify frame rate matches project settings
-
-### Issue: Export Fails with Audio
-**Solution**: Check available memory, reduce project size
-
-### Issue: Blob URLs Not Revoked
-**Solution**: Use BlobManager consistently across all components
-
-## Browser Compatibility
-
-### Required APIs
-- Web Audio API
-- AudioContext or webkitAudioContext
-- ArrayBuffer support
-- Blob URL support
-- FFmpeg WebAssembly
-
-### Tested Browsers
-- Chrome 90+ ✅
-- Firefox 88+ ✅
-- Edge 90+ ✅
-- Safari 14+ (limited testing)
-
-## Long-term Maintenance
-
-### Regular Monitoring
-- Set up memory usage alerts
-- Add memory profiling to CI/CD
-- Regular performance audits
-
-### Future Improvements
-- Implement streaming audio processing
-- Add multi-channel audio support
-- Create memory usage dashboard
-- Add real-time audio preview
-- Implement audio effects during export
-
-## References
-- [Original Commit](https://github.com/OpenCut-app/OpenCut/commit/70a9bfebb196d5c0bde35ce0a165b696bb9ae1d0)
-- [FFmpeg.wasm Memory Management](https://github.com/ffmpegwasm/ffmpeg.wasm/blob/main/docs/memory-management.md)
-- [Chrome Memory Profiling Guide](https://developer.chrome.com/docs/devtools/memory-problems/)
-- [Web Audio API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Audio_API)
-- [MediaBunny Documentation](https://github.com/mediabunny/docs)
+## Next Steps After These Tasks
+Once the basic infrastructure is in place:
+1. Implement full audio mixing logic (30 min)
+2. Integrate with MediaRecorder (30 min)
+3. Test with real projects (30 min)
+4. Performance optimization (as needed)
