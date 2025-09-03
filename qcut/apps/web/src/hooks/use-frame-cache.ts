@@ -175,11 +175,87 @@ export function useFrameCache(options: FrameCacheOptions = {}) {
     [getTimelineHash, cacheResolution]
   );
 
+  // Helper to check if a frame is cached and valid
+  const isFrameCached = useCallback(
+    (
+      time: number,
+      tracks: TimelineTrack[],
+      mediaItems: MediaItem[],
+      activeProject: any
+    ): boolean => {
+      return (
+        getRenderStatus(time, tracks, mediaItems, activeProject) === "cached"
+      );
+    },
+    [getRenderStatus]
+  );
+
+  // Pre-render frames around current time during idle time
+  const preRenderNearbyFrames = useCallback(
+    async (
+      currentTime: number,
+      renderFunction: (time: number) => Promise<ImageData>,
+      range: number = 2, // seconds before and after
+      tracks?: TimelineTrack[],
+      mediaItems?: MediaItem[],
+      activeProject?: any
+    ) => {
+      if (!tracks || !mediaItems) return;
+
+      const framesToPreRender: number[] = [];
+
+      // Calculate frames to pre-render at the configured resolution
+      for (
+        let offset = -range;
+        offset <= range;
+        offset += 1 / cacheResolution
+      ) {
+        const time = currentTime + offset;
+        if (time < 0) continue;
+
+        if (!isFrameCached(time, tracks, mediaItems, activeProject)) {
+          framesToPreRender.push(
+            Math.floor(time * cacheResolution) / cacheResolution
+          );
+        }
+      }
+
+      // Limit pre-render count to avoid heavy work
+      const limited = framesToPreRender.slice(0, 30);
+
+      for (const time of limited) {
+        // Schedule during idle time to avoid blocking UI
+        (window as any).requestIdleCallback?.(() => {
+          (async () => {
+            try {
+              const imageData = await renderFunction(time);
+              cacheFrame(time, imageData, tracks, mediaItems, activeProject);
+            } catch (error) {
+              console.warn(`Pre-render failed for time ${time}:`, error);
+            }
+          })();
+        }, { timeout: 1000 }) ||
+          // Fallback if requestIdleCallback is unavailable
+          setTimeout(async () => {
+            try {
+              const imageData = await renderFunction(time);
+              cacheFrame(time, imageData, tracks, mediaItems, activeProject);
+            } catch (error) {
+              console.warn(`Pre-render failed for time ${time}:`, error);
+            }
+          }, 0);
+      }
+    },
+    [cacheFrame, cacheResolution, isFrameCached]
+  );
+
   return {
     getCachedFrame,
     cacheFrame,
     invalidateCache,
     getRenderStatus,
+    isFrameCached,
+    preRenderNearbyFrames,
     cacheSize: frameCacheRef.current.size,
   };
 }
