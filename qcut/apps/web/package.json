@@ -1,6 +1,6 @@
 {
   "name": "qcut",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "private": true,
   "packageManager": "bun@1.2.18",
   "scripts": {
