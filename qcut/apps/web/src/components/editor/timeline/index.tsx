@@ -38,6 +38,8 @@ import {
 import { useTimelineStore } from "@/stores/timeline-store";
 import { useAsyncMediaStore } from "@/hooks/use-async-media-store";
 import { usePlaybackStore } from "@/stores/playback-store";
+import { useFrameCache } from "@/hooks/use-frame-cache";
+import { TimelineCacheIndicator } from "./timeline-cache-indicator";
 import { useProjectStore } from "@/stores/project-store";
 import { useTimelineZoom } from "@/hooks/use-timeline-zoom";
 // Media processing utilities will be imported dynamically when needed
@@ -140,6 +142,12 @@ export function Timeline() {
   const lastRulerSync = useRef(0);
   const lastTracksSync = useRef(0);
   const lastVerticalSync = useRef(0);
+
+  // Cache status tracking
+  const { getRenderStatus } = useFrameCache({
+    maxCacheSize: 300,
+    cacheResolution: 30,
+  });
 
   // Timeline playhead ruler handlers
   const { handleRulerMouseDown } = useTimelinePlayheadRuler({
@@ -683,6 +691,16 @@ export function Timeline() {
                 }}
                 onMouseDown={handleRulerMouseDown}
               >
+                {/* Cache indicator */}
+                <TimelineCacheIndicator
+                  duration={duration}
+                  zoomLevel={zoomLevel}
+                  tracks={tracks}
+                  mediaItems={mediaItems}
+                  activeProject={activeProject}
+                  getRenderStatus={getRenderStatus}
+                />
+
                 {/* Time markers */}
                 {(() => {
                   // Calculate appropriate time interval based on zoom level
