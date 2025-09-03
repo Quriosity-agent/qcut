@@ -48,6 +48,7 @@
     "feed": "^5.1.0",
     "framer-motion": "^11.18.2",
     "html2canvas": "^1.4.1",
+    "idb": "^8.0.0",
     "input-otp": "^1.4.2",
     "lucide-react": "^0.468.0",
     "motion": "^12.23.12",

@@ -82,11 +82,17 @@ export function PreviewPanel() {
   });
 
   // Frame caching - non-intrusive addition
-  const { getCachedFrame, cacheFrame, invalidateCache, getRenderStatus } =
-    useFrameCache({
-      maxCacheSize: 300,
-      cacheResolution: 30,
-    });
+  const {
+    getCachedFrame,
+    cacheFrame,
+    invalidateCache,
+    getRenderStatus,
+    preRenderNearbyFrames,
+  } = useFrameCache({
+    maxCacheSize: 300,
+    cacheResolution: 30,
+    persist: true,
+  });
 
   useEffect(() => {
     const updatePreviewSize = () => {
@@ -332,6 +338,52 @@ export function PreviewPanel() {
     () => getActiveElements(),
     [getActiveElements]
   );
+
+  // Warm cache during idle time
+  useEffect(() => {
+    if (!isPlaying && previewRef.current) {
+      const warmCache = () => {
+        preRenderNearbyFrames(
+          currentTime,
+          async (time) => {
+            if (!previewRef.current) throw new Error("No preview element");
+            // Safety: only capture current-time frame to avoid mismatched cache
+            const tolerance = 1 / 30;
+            if (Math.abs(time - currentTime) > tolerance) {
+              throw new Error("Cannot capture non-current time safely");
+            }
+            const imageData = await captureWithFallback(previewRef.current, {
+              width: previewDimensions.width,
+              height: previewDimensions.height,
+              backgroundColor:
+                activeProject?.backgroundType === "blur"
+                  ? "transparent"
+                  : activeProject?.backgroundColor || "#000000",
+            });
+            if (!imageData) throw new Error("Failed to capture frame");
+            return imageData;
+          },
+          3,
+          tracks,
+          mediaItems,
+          activeProject
+        );
+      };
+
+      const timeoutId = setTimeout(warmCache, 100);
+      return () => clearTimeout(timeoutId);
+    }
+  }, [
+    currentTime,
+    isPlaying,
+    preRenderNearbyFrames,
+    previewDimensions.width,
+    previewDimensions.height,
+    activeProject?.backgroundColor,
+    activeProject?.backgroundType,
+    tracks,
+    mediaItems,
+  ]);
 
   // Extract caption segments from active elements
   const captionSegments = useMemo(() => {
