@@ -255,7 +255,9 @@ export class AudioMixer {
    * Clear all tracks
    */
   clearTracks(): void {
-    for (const [id] of this.tracks) {
+    // Use Array.from for ES5 compatibility
+    const trackIds = Array.from(this.tracks.keys());
+    for (const id of trackIds) {
       this.removeTrack(id);
     }
   }
