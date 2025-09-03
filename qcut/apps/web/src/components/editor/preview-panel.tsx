@@ -39,6 +39,7 @@ import { CaptionsDisplay } from "@/components/captions/captions-display";
 import type { TranscriptionSegment } from "@/types/captions";
 // Import canvas capture utilities for frame caching
 import { captureFrameToCanvas, captureWithFallback } from "@/lib/canvas-utils";
+import { useFrameCache } from "@/hooks/use-frame-cache";
 
 interface ActiveElement {
   element: TimelineElement;
@@ -79,6 +80,13 @@ export function PreviewPanel() {
     elementWidth: 0,
     elementHeight: 0,
   });
+
+  // Frame caching - non-intrusive addition
+  const { getCachedFrame, cacheFrame, invalidateCache, getRenderStatus } =
+    useFrameCache({
+      maxCacheSize: 300,
+      cacheResolution: 30,
+    });
 
   useEffect(() => {
     const updatePreviewSize = () => {
