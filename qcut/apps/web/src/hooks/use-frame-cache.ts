@@ -1,5 +1,5 @@
 import { useRef, useCallback, useEffect } from "react";
-import { openDB } from "idb";
+import { openDB, type IDBPDatabase } from "idb";
 import { TimelineTrack, TimelineElement } from "@/types/timeline";
 import { MediaItem } from "@/stores/media-store-types";
 
@@ -285,7 +285,7 @@ export function useFrameCache(options: FrameCacheOptions = {}) {
     if (!persist) return;
     try {
       const db = await openDB("frame-cache", 1, {
-        upgrade(db) {
+        upgrade(db: IDBPDatabase) {
           if (!db.objectStoreNames.contains("frames")) {
             db.createObjectStore("frames");
           }
