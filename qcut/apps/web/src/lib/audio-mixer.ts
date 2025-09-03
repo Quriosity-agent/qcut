@@ -304,20 +304,15 @@ export class AudioMixer {
 
 /**
  * Helper function to load audio file as AudioBuffer
+ * Note: AudioBuffer is bound to the AudioContext that created it,
+ * so the context parameter is required to ensure compatibility
  */
 export async function loadAudioBuffer(
   file: File | Blob,
-  context?: AudioContext
+  context: AudioContext
 ): Promise<AudioBuffer> {
-  const audioContext = context || new (window.AudioContext || (window as any).webkitAudioContext)();
   const arrayBuffer = await file.arrayBuffer();
-  const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
-  
-  // Close temporary context if we created one
-  if (!context && audioContext.state !== 'closed') {
-    await audioContext.close();
-  }
-  
+  const audioBuffer = await context.decodeAudioData(arrayBuffer);
   return audioBuffer;
 }
 
@@ -325,6 +320,7 @@ export async function loadAudioBuffer(
  * Helper to check Web Audio API availability
  */
 export function isWebAudioSupported(): boolean {
+  if (typeof window === 'undefined') return false;
   return !!(window.AudioContext || (window as any).webkitAudioContext);
 }
 

@@ -184,8 +184,9 @@ export function ExportDialog() {
 
     // Sync audio settings globally
     const audioCodec = getCodecForFormat(exportSettings.format);
+    const audioEnabled = includeAudio && hasAudio;
     setAudioExportConfig({
-      enabled: includeAudio,
+      enabled: audioEnabled,
       codec: audioCodec,
       bitrate: 128,
     });
@@ -194,7 +195,7 @@ export function ExportDialog() {
     const exportStore = useExportStore.getState();
     if (exportStore.updateAudioSettings) {
       exportStore.updateAudioSettings({
-        enabled: includeAudio,
+        enabled: audioEnabled,
         codec: audioCodec,
       });
     }
@@ -206,7 +207,7 @@ export function ExportDialog() {
       engineType: exportSettings.engineType,
       resolution: exportSettings.resolution,
       // Add audio settings (backward compatible - ignored if not supported)
-      includeAudio: includeAudio,
+      includeAudio: audioEnabled,
       audioCodec: audioCodec,
       audioBitrate: 128,
     } as any);
