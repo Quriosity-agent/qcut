@@ -224,12 +224,17 @@ export const getDefaultFilename = (): string => {
 // ============================================================================
 
 /**
+ * Supported audio codec types for export
+ */
+export type AudioCodec = 'aac' | 'opus' | 'mp3';
+
+/**
  * Audio export options interface
  * These are optional extensions that don't affect existing ExportSettings
  */
 export interface AudioExportOptions {
   includeAudio?: boolean;
-  audioCodec?: 'aac' | 'opus' | 'mp3';
+  audioCodec?: AudioCodec;
   audioBitrate?: number; // in kbps
   audioSampleRate?: number; // in Hz
   audioChannels?: 1 | 2; // mono or stereo
@@ -267,7 +272,7 @@ export const shouldIncludeAudio = (
  * Get audio codec for format
  * Maps export formats to their recommended audio codecs
  */
-export const getAudioCodecForFormat = (format: ExportFormat): 'aac' | 'opus' | 'mp3' => {
+export const getAudioCodecForFormat = (format: ExportFormat): AudioCodec => {
   switch (format) {
     case ExportFormat.MP4:
     case ExportFormat.MOV:

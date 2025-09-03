@@ -7,6 +7,7 @@ import {
   ExportQuality,
   getDefaultFilename,
   QUALITY_RESOLUTIONS,
+  AudioCodec,
 } from "@/types/export";
 
 // Export history entry
@@ -40,7 +41,7 @@ interface ExportStore {
 
   // Audio export settings (optional for backward compatibility)
   audioEnabled?: boolean;
-  audioCodec?: 'aac' | 'opus' | 'mp3';
+  audioCodec?: AudioCodec;
   audioBitrate?: number;
   audioSampleRate?: number;
   audioChannels?: 1 | 2;
@@ -55,11 +56,11 @@ interface ExportStore {
 
   // Audio actions (optional for backward compatibility)
   setAudioEnabled?: (enabled: boolean) => void;
-  setAudioCodec?: (codec: 'aac' | 'opus' | 'mp3') => void;
+  setAudioCodec?: (codec: AudioCodec) => void;
   setAudioBitrate?: (bitrate: number) => void;
   updateAudioSettings?: (settings: {
     enabled?: boolean;
-    codec?: 'aac' | 'opus' | 'mp3';
+    codec?: AudioCodec;
     bitrate?: number;
     sampleRate?: number;
     channels?: 1 | 2;
