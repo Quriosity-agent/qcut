@@ -8,6 +8,17 @@ This commit implements timeline caching with visual cache indicators to improve 
 **Feature**: Timeline frame caching with cache status indicator
 **Branch**: `feature/timeline-caching-indicator`
 
+## Quick Reference Table
+
+| Task | Our Repo File | Fetched Reference | Action |
+|------|--------------|-------------------|--------|
+| Canvas Rendering | `apps/web/src/components/editor/preview-panel.tsx` | `preview-panel.tsx` (lines 463-631) | Modify |
+| Timeline Renderer | `apps/web/src/lib/timeline-renderer.ts` | `preview-panel.tsx` (lines 525-631) | Create |
+| Frame Cache Hook | `apps/web/src/hooks/use-frame-cache.ts` | `use-frame-cache.ts` (complete) | Create |
+| Cache Indicator | `apps/web/src/components/editor/timeline/timeline-cache-indicator.tsx` | `timeline-cache-indicator.tsx` (complete) | Create |
+| Timeline Marker | `apps/web/src/components/editor/timeline/timeline-marker.tsx` | `timeline-marker.tsx` (complete) | Create |
+| Timeline Integration | `apps/web/src/components/editor/timeline/index.tsx` | `timeline-index.tsx` (lines 685-695) | Modify |
+
 ## Modified Files
 
 ### 1. **preview-panel.tsx** (Modified)
@@ -126,14 +137,20 @@ Automatically invalidates when:
 - Has sophisticated caching with ImageData
 - Pre-renders nearby frames asynchronously
 
-### Required Adaptations
+### Required Adaptations (Based on Our Codebase Analysis)
 
 #### 1. Canvas Rendering System
-**Current Gap**: Our preview panel doesn't use canvas for timeline rendering
+**Current Implementation**: Our preview panel uses React components for rendering:
+- `VideoPlayer` component for video elements
+- `<img>` tags for image elements  
+- `<div>` elements for text overlays
+- `StickerCanvas` and `CaptionsDisplay` overlays
+
+**IMPORTANT**: Adding canvas rendering should NOT replace existing components
 **Solution**: 
-- Implement a `renderTimelineFrame` function
-- Add canvas element to preview panel
-- Create offscreen rendering capability
+- Add a secondary canvas layer for caching WITHOUT removing existing rendering
+- Canvas will capture the current frame composition
+- Keep all existing interactive elements (text dragging, etc.)
 
 #### 2. Cache Hook Integration
 **Files to Create**:
@@ -159,28 +176,367 @@ Automatically invalidates when:
 - Create `timeline-marker.tsx` component
 - This will clean up the timeline component
 
-### Implementation Plan
+### Implementation Plan with File References
 
-#### Phase 1: Foundation (2-3 hours)
-1. Create canvas rendering system in preview panel
-2. Implement `renderTimelineFrame` function
-3. Set up offscreen canvas support
+#### Phase 1: Foundation (2-3 hours → 12-18 tasks @ 10 min each)
 
-#### Phase 2: Caching System (2-3 hours)
-1. Adapt and create `use-frame-cache.ts` hook
-2. Integrate with our media store and timeline store
-3. Add cache invalidation logic
+##### Task 1.1: Install DOM capture library (10 min)
+**Action**: Install html2canvas dependency
+```bash
+cd apps/web && npm install html2canvas @types/html2canvas
+```
 
-#### Phase 3: UI Integration (1-2 hours)
-1. Create `timeline-cache-indicator.tsx` component
-2. Extract and create `timeline-marker.tsx`
-3. Add cache indicator to timeline ruler
-4. Style according to our theme
+##### Task 1.2: Add canvas refs to preview panel (10 min)
+**File**: `apps/web/src/components/editor/preview-panel.tsx`
+**Location**: After line 56 (with other refs)
+```typescript
+const canvasRef = useRef<HTMLCanvasElement>(null);
+const cacheCanvasRef = useRef<HTMLCanvasElement>(null);
+```
+
+##### Task 1.3: Add hidden canvas element (10 min)
+**File**: `apps/web/src/components/editor/preview-panel.tsx`
+**Location**: After line 636 (after CaptionsDisplay)
+```jsx
+<canvas
+  ref={cacheCanvasRef}
+  style={{ display: 'none' }}
+  width={previewDimensions.width}
+  height={previewDimensions.height}
+/>
+```
+
+##### Task 1.4: Create timeline-renderer.ts file structure (10 min)
+**File**: `apps/web/src/lib/timeline-renderer.ts` (new)
+```typescript
+import html2canvas from 'html2canvas';
+
+export interface CaptureOptions {
+  width: number;
+  height: number;
+  backgroundColor?: string;
+}
+
+// Basic structure - implementation in next task
+export async function captureFrameToCanvas(
+  previewElement: HTMLElement,
+  options: CaptureOptions
+): Promise<ImageData | null> {
+  // TODO: Implement in Task 1.5
+  return null;
+}
+```
+
+##### Task 1.5: Implement captureFrameToCanvas function (10 min)
+**File**: `apps/web/src/lib/timeline-renderer.ts`
+```typescript
+export async function captureFrameToCanvas(
+  previewElement: HTMLElement,
+  options: CaptureOptions
+): Promise<ImageData | null> {
+  try {
+    const canvas = await html2canvas(previewElement, {
+      width: options.width,
+      height: options.height,
+      backgroundColor: options.backgroundColor || '#000000',
+      logging: false,
+      useCORS: true,
+    });
+    
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return null;
+    
+    return ctx.getImageData(0, 0, options.width, options.height);
+  } catch (error) {
+    console.error('Failed to capture frame:', error);
+    return null;
+  }
+}
+```
+
+##### Task 1.6: Add capture trigger in preview panel (10 min)
+**File**: `apps/web/src/components/editor/preview-panel.tsx`
+**Location**: Add useEffect after line 176
+```typescript
+import { captureFrameToCanvas } from '@/lib/timeline-renderer';
+
+// Add after other useEffects
+useEffect(() => {
+  if (!previewRef.current || !cacheCanvasRef.current) return;
+  // Capture will be triggered by cache hook in Phase 2
+}, [currentTime, tracks]);
+```
+
+#### Phase 2: Caching System (2-3 hours → 12-18 tasks @ 10 min each)
+
+##### Task 2.1: Create use-frame-cache.ts file structure (10 min)
+**File**: `apps/web/src/hooks/use-frame-cache.ts` (new)
+```typescript
+import { useRef, useCallback } from "react";
+import { TimelineTrack, TimelineElement } from "@/types/timeline";
+import { MediaItem } from "@/stores/media-store-types";
+
+interface CachedFrame {
+  imageData: ImageData;
+  timelineHash: string;
+  timestamp: number;
+}
+
+export function useFrameCache(options = {}) {
+  const { maxCacheSize = 300 } = options;
+  const frameCacheRef = useRef(new Map<number, CachedFrame>());
+  
+  // TODO: Implement methods in subsequent tasks
+  return {
+    getCachedFrame: () => null,
+    cacheFrame: () => {},
+    invalidateCache: () => {},
+    getRenderStatus: () => "not-cached" as const,
+  };
+}
+```
+
+##### Task 2.2: Implement getTimelineHash function (10 min)
+**File**: `apps/web/src/hooks/use-frame-cache.ts`
+```typescript
+const getTimelineHash = useCallback((
+  time: number,
+  tracks: TimelineTrack[],
+  mediaItems: MediaItem[],
+  activeProject: any
+): string => {
+  // Create hash from active elements at current time
+  const activeElements = tracks.flatMap(track => 
+    track.elements.filter(el => {
+      const start = el.startTime;
+      const end = el.startTime + el.duration - el.trimStart - el.trimEnd;
+      return time >= start && time < end;
+    })
+  );
+  
+  return JSON.stringify({
+    time,
+    elements: activeElements.map(e => e.id),
+    bg: activeProject?.backgroundColor
+  });
+}, []);
+```
+
+##### Task 2.3: Implement getCachedFrame method (10 min)
+**File**: `apps/web/src/hooks/use-frame-cache.ts`
+```typescript
+const getCachedFrame = useCallback((
+  time: number,
+  tracks: TimelineTrack[],
+  mediaItems: MediaItem[],
+  activeProject: any
+): ImageData | null => {
+  const frameTime = Math.round(time * 30) / 30; // 30fps resolution
+  const cached = frameCacheRef.current.get(frameTime);
+  
+  if (!cached) return null;
+  
+  const currentHash = getTimelineHash(time, tracks, mediaItems, activeProject);
+  if (cached.timelineHash !== currentHash) {
+    frameCacheRef.current.delete(frameTime);
+    return null;
+  }
+  
+  return cached.imageData;
+}, [getTimelineHash]);
+```
+
+##### Task 2.4: Implement cacheFrame method (10 min)
+**File**: `apps/web/src/hooks/use-frame-cache.ts`
+```typescript
+const cacheFrame = useCallback((
+  time: number,
+  imageData: ImageData,
+  tracks: TimelineTrack[],
+  mediaItems: MediaItem[],
+  activeProject: any
+): void => {
+  const frameTime = Math.round(time * 30) / 30;
+  const hash = getTimelineHash(time, tracks, mediaItems, activeProject);
+  
+  // LRU eviction if cache is full
+  if (frameCacheRef.current.size >= maxCacheSize) {
+    const firstKey = frameCacheRef.current.keys().next().value;
+    frameCacheRef.current.delete(firstKey);
+  }
+  
+  frameCacheRef.current.set(frameTime, {
+    imageData,
+    timelineHash: hash,
+    timestamp: Date.now()
+  });
+}, [getTimelineHash, maxCacheSize]);
+```
+
+##### Task 2.5: Implement invalidateCache method (10 min)
+**File**: `apps/web/src/hooks/use-frame-cache.ts`
+```typescript
+const invalidateCache = useCallback((): void => {
+  frameCacheRef.current.clear();
+}, []);
+
+const getRenderStatus = useCallback((
+  time: number,
+  tracks: TimelineTrack[],
+  mediaItems: MediaItem[],
+  activeProject: any
+): "cached" | "not-cached" => {
+  const frameTime = Math.round(time * 30) / 30;
+  return frameCacheRef.current.has(frameTime) ? "cached" : "not-cached";
+}, []);
+```
+
+##### Task 2.6: Wire up cache hook in preview panel (10 min)
+**File**: `apps/web/src/components/editor/preview-panel.tsx`
+**Location**: After line 48 (with other hooks)
+```typescript
+import { useFrameCache } from '@/hooks/use-frame-cache';
+
+// In component
+const { getCachedFrame, cacheFrame, invalidateCache } = useFrameCache();
+```
+
+##### Task 2.7: Add cache invalidation effect (10 min)
+**File**: `apps/web/src/components/editor/preview-panel.tsx`
+**Location**: Add after line 176
+```typescript
+// Invalidate cache when timeline changes
+useEffect(() => {
+  invalidateCache();
+}, [tracks, mediaItems, activeProject?.backgroundColor, invalidateCache]);
+```
+
+##### Task 2.8: Implement frame capture and caching (10 min)
+**File**: `apps/web/src/components/editor/preview-panel.tsx`
+**Location**: Add new useEffect
+```typescript
+useEffect(() => {
+  const captureAndCache = async () => {
+    if (!previewRef.current) return;
+    
+    // Check if already cached
+    const cached = getCachedFrame(currentTime, tracks, mediaItems, activeProject);
+    if (cached) return;
+    
+    // Capture and cache
+    const imageData = await captureFrameToCanvas(previewRef.current, {
+      width: previewDimensions.width,
+      height: previewDimensions.height,
+    });
+    
+    if (imageData) {
+      cacheFrame(currentTime, imageData, tracks, mediaItems, activeProject);
+    }
+  };
+  
+  captureAndCache();
+}, [currentTime, tracks, /* other deps */]);
+```
+
+#### Phase 3: UI Integration (1-2 hours → 6-12 tasks @ 10 min each)
+
+##### Task 3.1: Create `timeline-cache-indicator.tsx` component
+**Our Repo Files to Create**:
+- `apps/web/src/components/editor/timeline/timeline-cache-indicator.tsx` - New component
+
+**Reference from Fetched Commit**:
+- `timeline-caching-e222f15/timeline-cache-indicator.tsx` (complete file) - Full implementation
+
+**Required Imports Update**:
+```typescript
+import { TIMELINE_CONSTANTS } from "@/constants/timeline-constants";
+import { MediaItem } from "@/stores/media-store-types";
+```
+
+##### Task 3.2: Extract and create `timeline-marker.tsx`
+**Our Repo Files to Modify**:
+- `apps/web/src/components/editor/timeline/index.tsx` (lines 693-749) - Extract marker logic
+
+**Our Repo Files to Create**:
+- `apps/web/src/components/editor/timeline/timeline-marker.tsx` - New component
+
+**Reference from Fetched Commit**:
+- `timeline-caching-e222f15/timeline-marker.tsx` (complete file) - Target structure
+
+##### Task 3.3: Add cache indicator to timeline ruler
+**Our Repo Files to Modify**:
+- `apps/web/src/components/editor/timeline/index.tsx` - Add TimelineCacheIndicator
+
+**Current Timeline Ruler Structure (lines 677-788)**:
+```jsx
+<ScrollArea className="w-full" ref={rulerScrollRef}>
+  <div ref={rulerRef} className="relative h-10 select-none cursor-default">
+    {/* Time markers - lines 686-763 */}
+    {/* Bookmark markers - lines 765-787 */}
+  </div>
+</ScrollArea>
+```
+
+**Integration Point (line 686, before time markers)**:
+```typescript
+// Add cache indicator as first child of ruler div
+<div ref={rulerRef} className="relative h-10 select-none cursor-default">
+  {/* ADD HERE: Cache indicator */}
+  <TimelineCacheIndicator
+    duration={duration}
+    zoomLevel={zoomLevel}
+    tracks={tracks}
+    mediaFiles={mediaItems} // Using our mediaItems
+    activeProject={activeProject}
+    getRenderStatus={getRenderStatus} // From useFrameCache hook
+  />
+  {/* Existing time markers */}
+  {(() => { ... })()}
+  {/* Existing bookmark markers */}
+  {(() => { ... })()}
+</div>
+```
+
+##### Task 3.4: Style according to our theme
+**Our Repo Files to Modify**:
+- `apps/web/src/components/editor/timeline/timeline-cache-indicator.tsx` - Adjust classes
+
+**Styling Updates**:
+```typescript
+// Use our existing color scheme
+className={cn(
+  "absolute top-0 h-px",
+  segment.cached ? "bg-primary" : "bg-border"
+)}
+```
 
 #### Phase 4: Optimization (1-2 hours)
-1. Implement pre-rendering strategy
-2. Fine-tune cache parameters
-3. Add performance monitoring
+
+##### Task 4.1: Implement pre-rendering strategy
+**Our Repo Files to Modify**:
+- `apps/web/src/components/editor/preview-panel.tsx` - Add pre-render logic
+
+**Reference from Fetched Commit**:
+- `timeline-caching-e222f15/preview-panel.tsx` (lines 502-565) - Pre-rendering implementation
+
+##### Task 4.2: Fine-tune cache parameters
+**Our Repo Files to Modify**:
+- `apps/web/src/hooks/use-frame-cache.ts` - Adjust cache size and resolution
+
+**Configuration**:
+```typescript
+const { maxCacheSize = 300, cacheResolution = 30 } = options; // Tune these values
+```
+
+##### Task 4.3: Add performance monitoring
+**Our Repo Files to Create**:
+- `apps/web/src/lib/performance-monitor.ts` - Performance tracking utilities
+
+**Metrics to Track**:
+- Cache hit rate
+- Render time per frame
+- Memory usage
+- Pre-render effectiveness
 
 ### Key Differences to Address
 
@@ -238,10 +594,138 @@ Automatically invalidates when:
    - Verify sticker/caption compatibility
    - Test with different timeline lengths
 
+## Safety Considerations to Prevent Breaking Existing Features
+
+### Critical Points to Maintain:
+
+1. **Preview Panel Rendering**:
+   - ✅ KEEP all existing React components (VideoPlayer, AudioPlayer, img, div)
+   - ✅ KEEP text element dragging functionality (lines 419-465)
+   - ✅ KEEP StickerCanvas overlay (line 624-627)
+   - ✅ KEEP CaptionsDisplay overlay (lines 630-635)
+   - ❌ DO NOT replace DOM rendering with canvas-only rendering
+
+2. **Timeline Interactions**:
+   - ✅ KEEP existing ruler click handlers (line 684: onMouseDown)
+   - ✅ KEEP bookmark markers interactive (lines 777-780: onClick)
+   - ✅ KEEP time marker rendering logic (lines 686-763)
+   - ✅ Cache indicator should be non-interactive (pointer-events-none)
+
+3. **State Management**:
+   - ✅ Cache invalidation should not trigger unnecessary re-renders
+   - ✅ Keep existing store subscriptions unchanged
+   - ✅ Add cache operations as side effects only
+
+4. **Media Store Compatibility**:
+   - Our code uses `MediaItem[]` from `useAsyncMediaItems()`
+   - Fetched code uses `MediaFile[]`
+   - Create adapter: `mediaItemsToMediaFiles(items: MediaItem[]): MediaFile[]`
+
+### Implementation Safety Checklist:
+
+- [ ] Canvas rendering captures DOM, doesn't replace it
+- [ ] All interactive elements remain functional
+- [ ] Text dragging still works
+- [ ] Video/Audio players continue to work
+- [ ] Sticker and caption overlays render correctly
+- [ ] Timeline scrolling and zoom unchanged
+- [ ] Playhead movement unaffected
+- [ ] No performance regression for non-cached frames
+
+## File Mapping Summary
+
+### Files to Create (New)
+1. `apps/web/src/lib/timeline-renderer.ts` - Timeline frame rendering logic
+2. `apps/web/src/hooks/use-frame-cache.ts` - Frame caching hook
+3. `apps/web/src/components/editor/timeline/timeline-cache-indicator.tsx` - Cache indicator UI
+4. `apps/web/src/components/editor/timeline/timeline-marker.tsx` - Extracted marker component
+5. `apps/web/src/lib/performance-monitor.ts` - Performance tracking
+
+### Files to Modify (Existing)
+1. `apps/web/src/components/editor/preview-panel.tsx` - Add canvas rendering
+2. `apps/web/src/components/editor/timeline/index.tsx` - Integrate cache indicator
+3. `apps/web/src/stores/timeline-store.ts` - Cache-related actions
+4. `apps/web/src/stores/media-store.ts` - Cache invalidation triggers
+
+### Reference Files from Fetched Commit
+All reference files are located in: `docs/issues/critical-analysis/timeline-caching-e222f15/`
+- `preview-panel.tsx` - Complete canvas implementation reference
+- `timeline-index.tsx` - Timeline integration reference
+- `timeline-cache-indicator.tsx` - Ready to adapt
+- `timeline-marker.tsx` - Ready to adapt
+- `use-frame-cache.ts` - Complete hook implementation
+
+## Recommended Implementation Approach
+
+### Why DOM Capture Instead of Canvas Rendering:
+
+Our codebase uses React components for rendering (VideoPlayer, AudioPlayer, etc.) rather than direct canvas drawing. To implement caching without breaking these features:
+
+1. **Use DOM-to-Canvas Capture**:
+   - Install: `npm install html2canvas` or similar library
+   - Capture the preview div content to canvas
+   - Cache the captured ImageData
+   - This preserves all existing functionality
+
+2. **Alternative: Hybrid Approach**:
+   - Keep React components for interactive elements
+   - Use canvas only for static frame caching
+   - Overlay cached frames behind interactive elements
+
+3. **Progressive Enhancement**:
+   - Start with basic frame caching
+   - Add pre-rendering later
+   - Optimize based on performance metrics
+
+### Migration Path:
+
+1. **Phase 1**: Add caching without changing rendering (2 hours)
+   - Add html2canvas for DOM capture
+   - Implement basic cache storage
+   - Test with existing elements
+
+2. **Phase 2**: Add cache indicators (1 hour)
+   - Visual feedback for users
+   - Performance monitoring
+
+3. **Phase 3**: Optimize (2 hours)
+   - Pre-rendering strategy
+   - Memory management
+   - Performance tuning
+
 ## Next Steps
 
 1. ✅ Analyze current codebase structure
-2. Create canvas rendering foundation
-3. Implement frame cache hook
-4. Add cache indicator UI
-5. Test and optimize performance
+2. ✅ Create detailed implementation plan with file references
+3. ✅ Identify safety considerations
+4. Install html2canvas for DOM capture
+5. Create canvas rendering foundation (DOM capture approach)
+6. Implement frame cache hook
+7. Add cache indicator UI
+8. Test and optimize performance
+
+## Implementation Checklist
+
+### Phase 1: Foundation
+- [ ] Add canvas element to preview-panel.tsx
+- [ ] Create timeline-renderer.ts with renderTimelineFrame function
+- [ ] Implement offscreen canvas support
+- [ ] Test basic canvas rendering
+
+### Phase 2: Caching System  
+- [ ] Create use-frame-cache.ts hook
+- [ ] Add cache invalidation to stores
+- [ ] Implement getTimelineHash function
+- [ ] Test cache hit/miss logic
+
+### Phase 3: UI Integration
+- [ ] Create timeline-cache-indicator.tsx
+- [ ] Extract and create timeline-marker.tsx
+- [ ] Add indicator to timeline ruler
+- [ ] Style components with our theme
+
+### Phase 4: Optimization
+- [ ] Implement pre-rendering strategy
+- [ ] Add performance monitoring
+- [ ] Fine-tune cache parameters
+- [ ] Benchmark performance improvements
