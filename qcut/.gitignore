@@ -88,3 +88,7 @@ coverage/
 html/
 lcov-report/
 *.lcov
+
+# Audio export documentation (local only - implementation guides)
+docs/issues/audio-export-feature-70a9bfe/implementation-summary.md
+docs/issues/audio-export-feature-70a9bfe/complete-integration-guide.md
