@@ -6,10 +6,13 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 // Custom render function that includes all necessary providers
 const AllTheProviders = ({ children }: { children: React.ReactNode }) => {
   return (
-    <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false} forcedTheme="dark">
-      <TooltipProvider>
-        {children}
-      </TooltipProvider>
+    <ThemeProvider
+      attribute="class"
+      defaultTheme="dark"
+      enableSystem={false}
+      forcedTheme="dark"
+    >
+      <TooltipProvider>{children}</TooltipProvider>
     </ThemeProvider>
   );
 };

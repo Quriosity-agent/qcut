@@ -94,13 +94,17 @@ class FalAIClient {
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      handleAIServiceError(new Error(`FAL AI API request failed: ${response.status}`), "FAL AI API request", {
-        status: response.status,
-        statusText: response.statusText,
-        errorData,
-        endpoint: requestUrl,
-        operation: "makeRequest"
-      });
+      handleAIServiceError(
+        new Error(`FAL AI API request failed: ${response.status}`),
+        "FAL AI API request",
+        {
+          status: response.status,
+          statusText: response.statusText,
+          errorData,
+          endpoint: requestUrl,
+          operation: "makeRequest",
+        }
+      );
 
       // Handle different error response formats
       let errorMessage = `API request failed: ${response.status}`;
@@ -266,7 +270,7 @@ class FalAIClient {
     } catch (error) {
       handleAIServiceError(error, "Generate image with FAL AI model", {
         modelKey,
-        operation: "generateWithModel"
+        operation: "generateWithModel",
       });
 
       return {
@@ -307,7 +311,7 @@ class FalAIClient {
         } else {
           handleAIServiceError(result.reason, "Multi-model image generation", {
             modelKey,
-            operation: "generateWithMultipleModels"
+            operation: "generateWithMultipleModels",
           });
           finalResults[modelKey] = {
             success: false,
@@ -323,7 +327,7 @@ class FalAIClient {
     } catch (error) {
       handleAIServiceError(error, "Multi-model image generation", {
         modelCount: modelKeys.length,
-        operation: "generateWithMultipleModels"
+        operation: "generateWithMultipleModels",
       });
 
       // Return error results for all models
@@ -393,7 +397,7 @@ class FalAIClient {
       handleAIServiceError(error, "Test FAL AI model availability", {
         modelKey,
         operation: "testModelAvailability",
-        showToast: false // Don't spam users with test failures
+        showToast: false, // Don't spam users with test failures
       });
       return false;
     }
@@ -513,7 +517,7 @@ export async function batchGenerate(
         // Handle rejected batch item
         handleAIServiceError(settledResult.reason, "Batch image generation", {
           operation: "batchGenerate",
-          showToast: false // Don't spam with batch failures
+          showToast: false, // Don't spam with batch failures
         });
       }
     });

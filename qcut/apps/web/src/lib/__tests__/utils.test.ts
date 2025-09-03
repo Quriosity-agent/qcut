@@ -18,7 +18,9 @@ describe("Utils", () => {
     });
 
     it("uses crypto.randomUUID when available", () => {
-      const mockRandomUUID = vi.fn(() => "mock-uuid" as `${string}-${string}-${string}-${string}-${string}`);
+      const mockRandomUUID = vi.fn(
+        () => "mock-uuid" as `${string}-${string}-${string}-${string}-${string}`
+      );
       const spy = vi
         .spyOn(globalThis.crypto, "randomUUID")
         .mockImplementation(mockRandomUUID);

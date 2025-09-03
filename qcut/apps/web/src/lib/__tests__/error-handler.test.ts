@@ -1,11 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-import { 
-  handleError, 
+import {
+  handleError,
   handleNetworkError,
   handleAIServiceError,
-  ErrorCategory, 
-  ErrorSeverity 
+  ErrorCategory,
+  ErrorSeverity,
 } from "../error-handler";
 
 // Import toast to get the mocked version (already mocked in test setup)
@@ -20,18 +20,18 @@ const mockToastWarning = vi.mocked(toast.warning);
 // Mock clipboard API
 Object.assign(navigator, {
   clipboard: {
-    writeText: vi.fn(() => Promise.resolve())
-  }
+    writeText: vi.fn(() => Promise.resolve()),
+  },
 });
 
 describe("Error Handler", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     // Suppress console logs during tests
-    vi.spyOn(console, 'group').mockImplementation(() => {});
-    vi.spyOn(console, 'log').mockImplementation(() => {});
-    vi.spyOn(console, 'error').mockImplementation(() => {});
-    vi.spyOn(console, 'groupEnd').mockImplementation(() => {});
+    vi.spyOn(console, "group").mockImplementation(() => {});
+    vi.spyOn(console, "log").mockImplementation(() => {});
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    vi.spyOn(console, "groupEnd").mockImplementation(() => {});
   });
 
   it("should handle basic errors with proper structure", () => {
@@ -39,7 +39,7 @@ describe("Error Handler", () => {
     const context = {
       operation: "Test Operation",
       category: ErrorCategory.SYSTEM,
-      severity: ErrorSeverity.MEDIUM
+      severity: ErrorSeverity.MEDIUM,
     };
 
     const result = handleError(error, context);
@@ -48,9 +48,9 @@ describe("Error Handler", () => {
       message: "Test error message",
       originalError: error,
       context,
-      stack: expect.any(String)
+      stack: expect.any(String),
     });
-    
+
     expect(result.id).toMatch(/^ERR-\d+-[A-Z0-9]{6}$/);
     expect(result.timestamp).toBeDefined();
   });
@@ -62,76 +62,78 @@ describe("Error Handler", () => {
     handleError(error, {
       operation: "Low Test",
       category: ErrorCategory.VALIDATION,
-      severity: ErrorSeverity.LOW
+      severity: ErrorSeverity.LOW,
     });
     expect(mockToast).toHaveBeenCalledWith(
       "Test error",
       expect.objectContaining({
         description: expect.stringContaining("Low Test"),
-        duration: 4000
+        duration: 4000,
       })
     );
 
-    // Test HIGH severity  
+    // Test HIGH severity
     handleError(error, {
       operation: "High Test",
       category: ErrorCategory.STORAGE,
-      severity: ErrorSeverity.HIGH
+      severity: ErrorSeverity.HIGH,
     });
     expect(mockToastError).toHaveBeenCalledWith(
       "Test error",
       expect.objectContaining({
         description: expect.stringContaining("High Test"),
-        duration: 8000
+        duration: 8000,
       })
     );
 
     // Test CRITICAL severity
     handleError(error, {
-      operation: "Critical Test", 
+      operation: "Critical Test",
       category: ErrorCategory.EXPORT,
-      severity: ErrorSeverity.CRITICAL
+      severity: ErrorSeverity.CRITICAL,
     });
     expect(mockToastError).toHaveBeenCalledWith(
       "Test error",
       expect.objectContaining({
         description: expect.stringContaining("Critical error"),
-        duration: 15000
+        duration: 15_000,
       })
     );
   });
 
   it("should provide user-friendly messages for network errors", () => {
     const fetchError = new Error("Failed to fetch");
-    
+
     const result = handleNetworkError(fetchError, "API Call");
-    
-    expect(result.message).toBe("Network connection failed. Please check your internet connection.");
+
+    expect(result.message).toBe(
+      "Network connection failed. Please check your internet connection."
+    );
   });
 
   it("should handle AI service errors with metadata", () => {
     const apiError = new Error("API key missing");
-    
+
     const result = handleAIServiceError(apiError, "Video Generation", {
       model: "test-model",
-      requestId: "req-123"
+      requestId: "req-123",
     });
-    
+
     expect(result.context.category).toBe(ErrorCategory.AI_SERVICE);
     expect(result.context.metadata).toEqual({
-      model: "test-model", 
-      requestId: "req-123"
+      model: "test-model",
+      requestId: "req-123",
     });
   });
 
   it("should suppress toast when showToast is false", () => {
     const error = new Error("Silent error");
-    
+
     handleError(error, {
       operation: "Silent Operation",
       category: ErrorCategory.SYSTEM,
       severity: ErrorSeverity.HIGH,
-      showToast: false
+      showToast: false,
     });
 
     expect(mockToast).not.toHaveBeenCalled();
@@ -141,11 +143,11 @@ describe("Error Handler", () => {
 
   it("should handle non-Error objects", () => {
     const errorString = "Something went wrong";
-    
+
     const result = handleError(errorString, {
       operation: "String Error",
       category: ErrorCategory.UNKNOWN,
-      severity: ErrorSeverity.MEDIUM
+      severity: ErrorSeverity.MEDIUM,
     });
 
     expect(result.originalError).toBe(errorString);
@@ -158,7 +160,7 @@ describe("Error Handler", () => {
     const context = {
       operation: "Test",
       category: ErrorCategory.SYSTEM,
-      severity: ErrorSeverity.LOW
+      severity: ErrorSeverity.LOW,
     };
 
     const result1 = handleError(error, context);

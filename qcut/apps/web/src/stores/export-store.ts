@@ -110,9 +110,9 @@ export const useExportStore = create<ExportStore>()(
 
       // Audio export settings (with defaults)
       audioEnabled: true,
-      audioCodec: 'aac' as const,
+      audioCodec: "aac" as const,
       audioBitrate: 128,
-      audioSampleRate: 44100,
+      audioSampleRate: 44_100,
       audioChannels: 2 as const,
 
       // Actions
@@ -169,15 +169,15 @@ export const useExportStore = create<ExportStore>()(
 
       // Audio actions (non-breaking optional implementations)
       setAudioEnabled: (enabled) => set({ audioEnabled: enabled }),
-      
+
       setAudioCodec: (codec) => set({ audioCodec: codec }),
-      
+
       setAudioBitrate: (bitrate) => {
         // Validate bitrate range
         const validBitrate = Math.max(32, Math.min(320, bitrate));
         set({ audioBitrate: validBitrate });
       },
-      
+
       updateAudioSettings: (settings) => {
         set((state) => ({
           audioEnabled: settings.enabled ?? state.audioEnabled,

@@ -230,11 +230,11 @@ function TimelineElementComponent({
     const input = document.createElement("input");
     input.type = "file";
     input.accept = "video/*,audio/*,image/*";
-    
+
     const cleanup = () => {
       input.remove();
     };
-    
+
     input.onchange = async (e) => {
       try {
         const file = (e.target as HTMLInputElement).files?.[0];
@@ -247,18 +247,18 @@ function TimelineElementComponent({
           toast.error(result.error || "Failed to replace clip");
         }
       } catch (error) {
-        handleMediaProcessingError(error, "Replace clip", { 
-          trackId: track.id, 
-          elementId: element.id 
+        handleMediaProcessingError(error, "Replace clip", {
+          trackId: track.id,
+          elementId: element.id,
         });
       } finally {
         cleanup();
       }
     };
-    
+
     // Cleanup if user cancels the file dialog
     input.oncancel = cleanup;
-    
+
     input.click();
   };
 
@@ -557,11 +557,15 @@ function TimelineElementComponent({
 }
 
 // Error Fallback Component for Timeline Elements
-const TimelineElementErrorFallback = ({ resetError }: { resetError: () => void }) => (
+const TimelineElementErrorFallback = ({
+  resetError,
+}: {
+  resetError: () => void;
+}) => (
   <div className="h-12 bg-destructive/10 border border-destructive/20 rounded flex items-center justify-center text-sm text-destructive">
     <span className="mr-2">⚠️ Element Error</span>
-    <button 
-      onClick={resetError} 
+    <button
+      onClick={resetError}
       className="underline hover:no-underline"
       type="button"
     >
@@ -573,5 +577,5 @@ const TimelineElementErrorFallback = ({ resetError }: { resetError: () => void }
 // Export wrapped component with error boundary
 export const TimelineElement = withErrorBoundary(TimelineElementComponent, {
   isolate: true, // Only affects this element, not the entire timeline
-  fallback: TimelineElementErrorFallback
+  fallback: TimelineElementErrorFallback,
 });

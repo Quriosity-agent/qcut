@@ -298,8 +298,8 @@ function ApiKeysView() {
         severity: ErrorSeverity.LOW,
         showToast: false,
         metadata: {
-          operation: "load-api-keys"
-        }
+          operation: "load-api-keys",
+        },
       });
     } finally {
       setIsLoading(false);
@@ -325,8 +325,8 @@ function ApiKeysView() {
         category: ErrorCategory.STORAGE,
         severity: ErrorSeverity.MEDIUM,
         metadata: {
-          operation: "save-api-keys"
-        }
+          operation: "save-api-keys",
+        },
       });
     }
   }, [falApiKey, freesoundApiKey]);
@@ -340,7 +340,10 @@ function ApiKeysView() {
         const result = await window.electronAPI.sounds.search({
           q: "test",
         });
-        setFreesoundTestResult({ success: result.success, message: result.message || "Test completed" });
+        setFreesoundTestResult({
+          success: result.success,
+          message: result.message || "Test completed",
+        });
       }
     } catch (error) {
       setFreesoundTestResult({ success: false, message: "Test failed" });

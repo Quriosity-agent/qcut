@@ -121,13 +121,16 @@ const scheduleFFmpegCleanup = () => {
   if (cleanupTimer) {
     clearTimeout(cleanupTimer);
   }
-  
-  cleanupTimer = window.setTimeout(() => {
-    if (ffmpeg && isFFmpegLoaded) {
-      debugLog("[FFmpeg Utils] Auto-terminating FFmpeg due to inactivity");
-      terminateFFmpeg();
-    }
-  }, 5 * 60 * 1000);
+
+  cleanupTimer = window.setTimeout(
+    () => {
+      if (ffmpeg && isFFmpegLoaded) {
+        debugLog("[FFmpeg Utils] Auto-terminating FFmpeg due to inactivity");
+        terminateFFmpeg();
+      }
+    },
+    5 * 60 * 1000
+  );
 };
 
 // Update last used time and schedule cleanup
@@ -156,7 +159,7 @@ export const initFFmpeg = async (): Promise<FFmpeg> => {
   if (typeof ffmpeg.load !== "function") {
     const error = new Error("Invalid FFmpeg instance - missing load() method");
     handleMediaProcessingError(error, "FFmpeg validation", {
-      instanceType: typeof ffmpeg
+      instanceType: typeof ffmpeg,
     });
     throw new Error("Invalid FFmpeg instance - missing load() method");
   }
@@ -174,7 +177,7 @@ export const initFFmpeg = async (): Promise<FFmpeg> => {
     } catch (resourceError) {
       handleMediaProcessingError(resourceError, "Resolve FFmpeg resources", {
         coreUrl: "ffmpeg-core.js",
-        wasmUrl: "ffmpeg-core.wasm"
+        wasmUrl: "ffmpeg-core.wasm",
       });
       throw new Error(
         `Failed to resolve FFmpeg resources: ${resourceError instanceof Error ? resourceError.message : String(resourceError)}`
@@ -190,7 +193,7 @@ export const initFFmpeg = async (): Promise<FFmpeg> => {
     } catch (fetchError) {
       handleMediaProcessingError(fetchError, "Fetch FFmpeg resources", {
         coreUrl,
-        wasmUrl
+        wasmUrl,
       });
       throw new Error(
         `Network error while fetching FFmpeg resources: ${fetchError instanceof Error ? fetchError.message : String(fetchError)}`
@@ -202,7 +205,7 @@ export const initFFmpeg = async (): Promise<FFmpeg> => {
       const error = new Error(errorMsg);
       handleMediaProcessingError(error, "Fetch FFmpeg core", {
         status: coreResponse.status,
-        statusText: coreResponse.statusText
+        statusText: coreResponse.statusText,
       });
       throw new Error(errorMsg);
     }
@@ -211,7 +214,7 @@ export const initFFmpeg = async (): Promise<FFmpeg> => {
       const error = new Error(errorMsg);
       handleMediaProcessingError(error, "Fetch FFmpeg WASM", {
         status: wasmResponse.status,
-        statusText: wasmResponse.statusText
+        statusText: wasmResponse.statusText,
       });
       throw new Error(errorMsg);
     }
@@ -222,17 +225,21 @@ export const initFFmpeg = async (): Promise<FFmpeg> => {
       coreBlob = await coreResponse.blob();
       wasmBlob = await wasmResponse.blob();
     } catch (blobError) {
-      handleMediaProcessingError(blobError, "Convert FFmpeg resources to blobs", {
-        coreSize: coreResponse.headers.get('content-length'),
-        wasmSize: wasmResponse.headers.get('content-length')
-      });
+      handleMediaProcessingError(
+        blobError,
+        "Convert FFmpeg resources to blobs",
+        {
+          coreSize: coreResponse.headers.get("content-length"),
+          wasmSize: wasmResponse.headers.get("content-length"),
+        }
+      );
       throw new Error(
         `Failed to convert FFmpeg resources to blobs: ${blobError instanceof Error ? blobError.message : String(blobError)}`
       );
     }
 
-    const coreBlobUrl = createObjectURL(coreBlob, 'FFmpeg-core');
-    const wasmBlobUrl = createObjectURL(wasmBlob, 'FFmpeg-wasm');
+    const coreBlobUrl = createObjectURL(coreBlob, "FFmpeg-core");
+    const wasmBlobUrl = createObjectURL(wasmBlob, "FFmpeg-wasm");
 
     // Add timeout to detect hanging with environment-specific timeouts
     const timeoutDuration = environment.hasSharedArrayBuffer ? 60_000 : 120_000; // More generous timeouts for large WASM files
@@ -294,7 +301,7 @@ export const initFFmpeg = async (): Promise<FFmpeg> => {
   } catch (error) {
     handleMediaProcessingError(error, "Initialize FFmpeg", {
       hasSharedArrayBuffer: typeof SharedArrayBuffer !== "undefined",
-      crossOriginIsolated: self.crossOriginIsolated
+      crossOriginIsolated: self.crossOriginIsolated,
     });
     isFFmpegLoaded = false;
     ffmpeg = null;
@@ -363,7 +370,9 @@ export const generateThumbnail = async (
 
     // Read output file
     const data = await ffmpeg.readFile(outputName);
-    const blob = new Blob([data as unknown as ArrayBuffer], { type: "image/jpeg" });
+    const blob = new Blob([data as unknown as ArrayBuffer], {
+      type: "image/jpeg",
+    });
 
     // Cleanup
     await ffmpeg.deleteFile(inputName);
@@ -374,7 +383,7 @@ export const generateThumbnail = async (
   } catch (error) {
     handleMediaProcessingError(error, "Generate thumbnail", {
       videoFile: videoFile.name,
-      timeInSeconds
+      timeInSeconds,
     });
 
     // Cleanup on error
@@ -436,12 +445,14 @@ export const trimVideo = async (
 
   // Read output file
   const data = await ffmpeg.readFile(outputName);
-  const blob = new Blob([data as unknown as ArrayBuffer], { type: "video/mp4" });
+  const blob = new Blob([data as unknown as ArrayBuffer], {
+    type: "video/mp4",
+  });
 
   // Cleanup
   await ffmpeg.deleteFile(inputName);
   await ffmpeg.deleteFile(outputName);
-  
+
   // Remove the progress listener to prevent memory leaks
   if (progressHandler) (ffmpeg as any).off?.("progress", progressHandler);
 
@@ -495,7 +506,7 @@ export const getVideoInfo = async (
     await ffmpeg.deleteFile(inputName);
     handleMediaProcessingError(error, "Extract video info", {
       videoFile: videoFile.name,
-      fileSize: videoFile.size
+      fileSize: videoFile.size,
     });
     throw new Error(
       "Failed to extract video info. The file may be corrupted or in an unsupported format."
@@ -532,10 +543,10 @@ export const getVideoInfo = async (
   }
 
   updateLastUsed();
-  
+
   // Remove the log listener to prevent memory leaks
   (ffmpeg as any).off?.("log", logHandler);
-  
+
   return {
     duration,
     width,
@@ -585,15 +596,17 @@ export const convertToWebM = async (
 
   // Read output file
   const data = await ffmpeg.readFile(outputName);
-  const blob = new Blob([data as unknown as ArrayBuffer], { type: "video/webm" });
+  const blob = new Blob([data as unknown as ArrayBuffer], {
+    type: "video/webm",
+  });
 
   // Cleanup
   await ffmpeg.deleteFile(inputName);
   await ffmpeg.deleteFile(outputName);
-  
+
   // Remove the progress listener to prevent memory leaks
   if (progressHandler) (ffmpeg as any).off?.("progress", progressHandler);
-  
+
   updateLastUsed();
   return blob;
 };
@@ -633,7 +646,9 @@ export const extractAudio = async (
 
   // Read output file
   const data = await ffmpeg.readFile(outputName);
-  const blob = new Blob([data as unknown as ArrayBuffer], { type: `audio/${format}` });
+  const blob = new Blob([data as unknown as ArrayBuffer], {
+    type: `audio/${format}`,
+  });
 
   // Cleanup
   await ffmpeg.deleteFile(inputName);
@@ -645,9 +660,9 @@ export const extractAudio = async (
 
 export const terminateFFmpeg = async (): Promise<void> => {
   if (!ffmpeg || !isFFmpegLoaded) return;
-  
+
   try {
-    if (typeof ffmpeg.terminate === 'function') {
+    if (typeof ffmpeg.terminate === "function") {
       await ffmpeg.terminate();
       debugLog("[FFmpeg Utils] ✅ FFmpeg terminated successfully");
     }

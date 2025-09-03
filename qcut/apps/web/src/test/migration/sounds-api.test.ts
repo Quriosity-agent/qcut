@@ -232,14 +232,14 @@ describe("Sounds API Migration", () => {
           callCount++;
           if (callCount === 1) {
             return Promise.reject(new Error("Network error"));
-          } else if (callCount === 2) {
-            return Promise.reject(new Error("Network error"));
-          } else {
-            return Promise.resolve({
-              ok: true,
-              json: () => Promise.resolve({ results: [] }),
-            });
           }
+          if (callCount === 2) {
+            return Promise.reject(new Error("Network error"));
+          }
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ results: [] }),
+          });
         });
 
         const result = await searchSounds("retry-test", {

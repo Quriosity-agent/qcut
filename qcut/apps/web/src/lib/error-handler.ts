@@ -7,14 +7,14 @@ import { toast } from "sonner";
 
 export enum ErrorSeverity {
   LOW = "low",
-  MEDIUM = "medium", 
+  MEDIUM = "medium",
   HIGH = "high",
-  CRITICAL = "critical"
+  CRITICAL = "critical",
 }
 
 export enum ErrorCategory {
   NETWORK = "network",
-  VALIDATION = "validation", 
+  VALIDATION = "validation",
   STORAGE = "storage",
   MEDIA_PROCESSING = "media_processing",
   AI_SERVICE = "ai_service",
@@ -22,7 +22,7 @@ export enum ErrorCategory {
   AUTH = "auth",
   UI = "ui",
   SYSTEM = "system",
-  UNKNOWN = "unknown"
+  UNKNOWN = "unknown",
 }
 
 export interface ErrorContext {
@@ -50,57 +50,81 @@ const generateErrorId = (): string => {
 };
 
 // Get user-friendly error messages
-const getUserFriendlyMessage = (error: Error | unknown, context: ErrorContext): string => {
+const getUserFriendlyMessage = (
+  error: Error | unknown,
+  context: ErrorContext
+): string => {
   const fallbackMessage = "An unexpected error occurred";
-  
+
   if (error instanceof Error) {
     // Common patterns to make more user-friendly
     const message = error.message;
-    
+
     if (context.category === ErrorCategory.NETWORK) {
-      if (message.includes("fetch")) return "Network connection failed. Please check your internet connection.";
-      if (message.includes("timeout")) return "Request timed out. Please try again.";
-      if (message.includes("404")) return "The requested resource was not found.";
-      if (message.includes("500")) return "Server error occurred. Please try again later.";
+      if (message.includes("fetch"))
+        return "Network connection failed. Please check your internet connection.";
+      if (message.includes("timeout"))
+        return "Request timed out. Please try again.";
+      if (message.includes("404"))
+        return "The requested resource was not found.";
+      if (message.includes("500"))
+        return "Server error occurred. Please try again later.";
     }
-    
+
     if (context.category === ErrorCategory.STORAGE) {
-      if (message.includes("quota")) return "Storage space is full. Please free up space and try again.";
-      if (message.includes("permission")) return "Storage permission denied. Please check browser settings.";
+      if (message.includes("quota"))
+        return "Storage space is full. Please free up space and try again.";
+      if (message.includes("permission"))
+        return "Storage permission denied. Please check browser settings.";
     }
-    
+
     if (context.category === ErrorCategory.MEDIA_PROCESSING) {
-      if (message.includes("codec")) return "Video format not supported. Please try a different file.";
-      if (message.includes("memory")) return "File too large to process. Please try a smaller file.";
+      if (message.includes("codec"))
+        return "Video format not supported. Please try a different file.";
+      if (message.includes("memory"))
+        return "File too large to process. Please try a smaller file.";
     }
-    
+
     if (context.category === ErrorCategory.AI_SERVICE) {
-      if (message.includes("API key")) return "AI service configuration issue. Please check settings.";
-      if (message.includes("quota") || message.includes("limit")) return "AI service usage limit reached. Please try again later.";
+      if (message.includes("API key"))
+        return "AI service configuration issue. Please check settings.";
+      if (message.includes("quota") || message.includes("limit"))
+        return "AI service usage limit reached. Please try again later.";
     }
-    
+
     if (context.category === ErrorCategory.EXPORT) {
-      if (message.includes("ffmpeg")) return "Video export failed. Please try again or use different settings.";
-      if (message.includes("codec")) return "Export codec not supported. Please try different export settings.";
+      if (message.includes("ffmpeg"))
+        return "Video export failed. Please try again or use different settings.";
+      if (message.includes("codec"))
+        return "Export codec not supported. Please try different export settings.";
     }
-    
+
     // If no specific pattern matches, return the original message if it's user-friendly
-    if (message.length < 100 && !message.includes("stack") && !message.includes("TypeError")) {
+    if (
+      message.length < 100 &&
+      !message.includes("stack") &&
+      !message.includes("TypeError")
+    ) {
       return message;
     }
   }
-  
+
   return fallbackMessage;
 };
 
 // Get appropriate toast duration based on severity
 const getToastDuration = (severity: ErrorSeverity): number => {
   switch (severity) {
-    case ErrorSeverity.LOW: return 4000;
-    case ErrorSeverity.MEDIUM: return 6000;
-    case ErrorSeverity.HIGH: return 8000;
-    case ErrorSeverity.CRITICAL: return 12000;
-    default: return 6000;
+    case ErrorSeverity.LOW:
+      return 4000;
+    case ErrorSeverity.MEDIUM:
+      return 6000;
+    case ErrorSeverity.HIGH:
+      return 8000;
+    case ErrorSeverity.CRITICAL:
+      return 12_000;
+    default:
+      return 6000;
   }
 };
 
@@ -112,16 +136,16 @@ const logError = (processedError: ProcessedError): void => {
     // TODO: Integrate with error tracking service (e.g., Sentry)
     return;
   }
-  
+
   const { id, context, originalError, timestamp } = processedError;
-  
+
   // Structured console logging for development
   console.group(`🚨 Error ${id} [${context.severity.toUpperCase()}]`);
   console.log("Timestamp:", timestamp);
   console.log("Operation:", context.operation);
   console.log("Category:", context.category);
   console.log("Severity:", context.severity);
-  
+
   if (originalError instanceof Error) {
     console.error("Original Error:", originalError);
     if (originalError.stack) {
@@ -130,11 +154,11 @@ const logError = (processedError: ProcessedError): void => {
   } else {
     console.error("Error Value:", originalError);
   }
-  
+
   if (context.metadata && Object.keys(context.metadata).length > 0) {
     console.log("Metadata:", context.metadata);
   }
-  
+
   console.groupEnd();
 };
 
@@ -152,7 +176,7 @@ export const handleError = (
     message: getUserFriendlyMessage(error, context),
     originalError: error,
     context,
-    stack: error instanceof Error ? error.stack : undefined
+    stack: error instanceof Error ? error.stack : undefined,
   };
 
   // Always log to console with enhanced formatting
@@ -164,37 +188,37 @@ export const handleError = (
       duration: getToastDuration(context.severity),
       action: {
         label: "Copy ID",
-        onClick: () => navigator.clipboard.writeText(processedError.id)
-      }
+        onClick: () => navigator.clipboard.writeText(processedError.id),
+      },
     };
 
     switch (context.severity) {
       case ErrorSeverity.LOW:
         toast(processedError.message, {
           ...toastOptions,
-          description: `${context.operation} (${processedError.id})`
+          description: `${context.operation} (${processedError.id})`,
         });
         break;
-      
+
       case ErrorSeverity.MEDIUM:
         toast.warning(processedError.message, {
           ...toastOptions,
-          description: `${context.operation} (${processedError.id})`
+          description: `${context.operation} (${processedError.id})`,
         });
         break;
-      
+
       case ErrorSeverity.HIGH:
         toast.error(processedError.message, {
           ...toastOptions,
-          description: `${context.operation} (${processedError.id})`
+          description: `${context.operation} (${processedError.id})`,
         });
         break;
-      
+
       case ErrorSeverity.CRITICAL:
         toast.error(processedError.message, {
           ...toastOptions,
           description: `Critical error in ${context.operation} (${processedError.id})`,
-          duration: 15000 // Longer duration for critical errors
+          duration: 15_000, // Longer duration for critical errors
         });
         break;
     }
@@ -219,7 +243,7 @@ export const handleNetworkError = (
     operation,
     category: ErrorCategory.NETWORK,
     severity: ErrorSeverity.MEDIUM,
-    metadata
+    metadata,
   });
 };
 
@@ -232,7 +256,7 @@ export const handleValidationError = (
     operation,
     category: ErrorCategory.VALIDATION,
     severity: ErrorSeverity.LOW,
-    metadata
+    metadata,
   });
 };
 
@@ -245,7 +269,7 @@ export const handleStorageError = (
     operation,
     category: ErrorCategory.STORAGE,
     severity: ErrorSeverity.HIGH,
-    metadata
+    metadata,
   });
 };
 
@@ -258,7 +282,7 @@ export const handleMediaProcessingError = (
     operation,
     category: ErrorCategory.MEDIA_PROCESSING,
     severity: ErrorSeverity.HIGH,
-    metadata
+    metadata,
   });
 };
 
@@ -271,7 +295,7 @@ export const handleAIServiceError = (
     operation,
     category: ErrorCategory.AI_SERVICE,
     severity: ErrorSeverity.MEDIUM,
-    metadata
+    metadata,
   });
 };
 
@@ -284,7 +308,7 @@ export const handleExportError = (
     operation,
     category: ErrorCategory.EXPORT,
     severity: ErrorSeverity.CRITICAL,
-    metadata
+    metadata,
   });
 };
 
@@ -325,7 +349,7 @@ export const useErrorHandler = () => {
 
 /**
  * Safe async operation wrapper that handles errors gracefully
- * 
+ *
  * @param fn - Async function to execute safely
  * @param errorContext - Context information for error handling
  * @returns Result of the async operation or null on error
@@ -342,7 +366,7 @@ export const safeAsync = async <T>(
       category: ErrorCategory.UNKNOWN,
       severity: ErrorSeverity.MEDIUM,
       showToast: true,
-      ...errorContext
+      ...errorContext,
     });
     return null;
   }
@@ -350,7 +374,7 @@ export const safeAsync = async <T>(
 
 /**
  * Safe async operation wrapper with custom fallback value
- * 
+ *
  * @param fn - Async function to execute safely
  * @param fallbackValue - Value to return on error
  * @param errorContext - Context information for error handling
@@ -369,7 +393,7 @@ export const safeAsyncWithFallback = async <T>(
       category: ErrorCategory.UNKNOWN,
       severity: ErrorSeverity.MEDIUM,
       showToast: true,
-      ...errorContext
+      ...errorContext,
     });
     return fallbackValue;
   }
@@ -377,7 +401,7 @@ export const safeAsyncWithFallback = async <T>(
 
 /**
  * Higher-order function that wraps async functions with error handling
- * 
+ *
  * @param fn - Async function to wrap
  * @param errorContext - Context information for error handling
  * @returns Wrapped async function that handles errors gracefully
@@ -393,7 +417,7 @@ export const withAsyncErrorHandling = <TArgs extends any[], TReturn>(
 
 /**
  * Batch async operation handler for multiple operations
- * 
+ *
  * @param operations - Array of async operations with their contexts
  * @param options - Options for batch processing
  * @returns Results of all operations, null for failed ones
@@ -433,7 +457,7 @@ export const safeBatchAsync = async <T>(
 
 /**
  * Retry async operation wrapper with exponential backoff
- * 
+ *
  * @param fn - Async function to retry
  * @param errorContext - Context information for error handling
  * @param options - Retry options
@@ -451,15 +475,15 @@ export const safeAsyncWithRetry = async <T>(
   const maxRetries = options?.maxRetries ?? 3;
   const baseBackoffMs = options?.backoffMs ?? 1000;
   const exponentialBackoff = options?.exponentialBackoff ?? true;
-  
+
   let lastError: unknown;
-  
+
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
       return await fn();
     } catch (error) {
       lastError = error;
-      
+
       if (attempt === maxRetries) {
         // Final attempt failed, handle error
         handleError(error, {
@@ -472,20 +496,20 @@ export const safeAsyncWithRetry = async <T>(
             ...errorContext.metadata,
             totalAttempts: attempt + 1,
             maxRetries,
-          }
+          },
         });
         return null;
       }
-      
+
       // Wait before retry
-      const backoffTime = exponentialBackoff 
-        ? baseBackoffMs * Math.pow(2, attempt)
+      const backoffTime = exponentialBackoff
+        ? baseBackoffMs * 2 ** attempt
         : baseBackoffMs;
-      
-      await new Promise(resolve => setTimeout(resolve, backoffTime));
+
+      await new Promise((resolve) => setTimeout(resolve, backoffTime));
     }
   }
-  
+
   return null;
 };
 

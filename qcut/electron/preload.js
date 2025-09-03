@@ -35,7 +35,8 @@ contextBridge.exposeInMainWorld("electronAPI", {
   // Sound operations
   sounds: {
     search: (params) => ipcRenderer.invoke("sounds:search", params),
-    downloadPreview: (params) => ipcRenderer.invoke("sounds:download-preview", params),
+    downloadPreview: (params) =>
+      ipcRenderer.invoke("sounds:download-preview", params),
   },
 
   // Transcription operations
@@ -43,7 +44,6 @@ contextBridge.exposeInMainWorld("electronAPI", {
     audio: (requestData) => ipcRenderer.invoke("transcribe:audio", requestData),
     cancel: (id) => ipcRenderer.invoke("transcribe:cancel", id),
   },
-
 
   // FFmpeg export operations
   ffmpeg: {

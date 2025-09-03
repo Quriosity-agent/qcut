@@ -9,7 +9,12 @@ import { getMediaStore } from "./media-store-loader";
 // import { useStickersOverlayStore } from "./stickers-overlay-store";
 import { generateUUID } from "@/lib/utils";
 import { debugError, debugLog } from "@/lib/debug-config";
-import { handleError, ErrorCategory, ErrorSeverity, handleStorageError } from "@/lib/error-handler";
+import {
+  handleError,
+  ErrorCategory,
+  ErrorSeverity,
+  handleStorageError,
+} from "@/lib/error-handler";
 
 /**
  * Thrown when a requested project cannot be found in storage.
@@ -110,7 +115,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
         projectId: updatedProject.id,
         projectName: updatedProject.name,
         bookmarkTime: frameTime,
-        operation: 'updateBookmarks'
+        operation: "updateBookmarks",
       });
     }
   },
@@ -160,7 +165,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
         projectId: updatedProject.id,
         projectName: updatedProject.name,
         bookmarkTime: frameTime,
-        operation: 'removeBookmark'
+        operation: "removeBookmark",
       });
     }
   },
@@ -190,7 +195,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
       handleStorageError(error, "Create new project", {
         projectId: newProject.id,
         projectName: newProject.name,
-        operation: 'createProject'
+        operation: "createProject",
       });
       throw error;
     }
@@ -237,7 +242,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
     } catch (error) {
       handleStorageError(error, "Load project", {
         projectId: id,
-        operation: 'loadProject'
+        operation: "loadProject",
       });
       throw error; // Re-throw so the editor page can handle it
     } finally {
@@ -267,7 +272,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
       handleStorageError(error, "Save current project", {
         projectId: activeProject.id,
         projectName: activeProject.name,
-        operation: 'saveCurrentProject'
+        operation: "saveCurrentProject",
       });
     }
   },
@@ -282,7 +287,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
       set({ savedProjects: projects });
     } catch (error) {
       handleStorageError(error, "Load all projects", {
-        operation: 'loadAllProjects'
+        operation: "loadAllProjects",
       });
     } finally {
       set({ isLoading: false, isInitialized: true });
@@ -312,7 +317,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
     } catch (error) {
       handleStorageError(error, "Delete project", {
         projectId: id,
-        operation: 'deleteProject'
+        operation: "deleteProject",
       });
     }
   },
@@ -338,7 +343,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
         operation: "Find project to rename",
         category: ErrorCategory.VALIDATION,
         severity: ErrorSeverity.MEDIUM,
-        metadata: { projectId: id }
+        metadata: { projectId: id },
       });
       return;
     }
@@ -365,7 +370,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
         projectId: id,
         oldName: projectToRename.name,
         newName: name,
-        operation: 'renameProject'
+        operation: "renameProject",
       });
     }
   },
@@ -379,7 +384,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
           operation: "Load project for duplication",
           category: ErrorCategory.VALIDATION,
           severity: ErrorSeverity.MEDIUM,
-          metadata: { projectId }
+          metadata: { projectId },
         });
         throw error;
       }
@@ -418,7 +423,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
       if (!(error instanceof NotFoundError)) {
         handleStorageError(error, "Duplicate project", {
           projectId,
-          operation: 'duplicateProject'
+          operation: "duplicateProject",
         });
       }
       throw error;
@@ -444,7 +449,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
         projectId: activeProject.id,
         projectName: activeProject.name,
         backgroundColor,
-        operation: 'updateProjectBackground'
+        operation: "updateProjectBackground",
       });
     }
   },
@@ -475,7 +480,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
         projectId: activeProject.id,
         projectName: activeProject.name,
         backgroundType: type,
-        operation: 'updateBackgroundType'
+        operation: "updateBackgroundType",
       });
     }
   },
@@ -499,7 +504,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
         projectId: activeProject.id,
         projectName: activeProject.name,
         fps,
-        operation: 'updateProjectFps'
+        operation: "updateProjectFps",
       });
     }
   },

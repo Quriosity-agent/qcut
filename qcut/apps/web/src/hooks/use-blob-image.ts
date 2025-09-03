@@ -45,12 +45,16 @@ export function useBlobImage(url: string | undefined): {
         setError(null);
       })
       .catch((err) => {
-        const processedError = handleMediaProcessingError(err, "Image to Blob Conversion", {
-          originalUrl: url,
-          operation: "convertImageToBlob",
-          showToast: false // Don't show toast for this common operation
-        });
-        
+        const processedError = handleMediaProcessingError(
+          err,
+          "Image to Blob Conversion",
+          {
+            originalUrl: url,
+            operation: "convertImageToBlob",
+            showToast: false, // Don't show toast for this common operation
+          }
+        );
+
         setError(processedError.message);
         setBlobUrl(url); // Fallback to original URL
       })

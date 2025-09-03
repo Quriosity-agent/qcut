@@ -4,7 +4,13 @@ import React from "react";
 import { toast } from "sonner";
 import { RefreshCw, AlertTriangle, Bug, Home } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { handleError, ErrorCategory, ErrorSeverity } from "@/lib/error-handler";
 
@@ -40,7 +46,7 @@ const DefaultErrorFallback: React.FC<ErrorFallbackProps> = ({
   error,
   errorId,
   resetError,
-  isolate = false
+  isolate = false,
 }) => {
   const handleReload = () => {
     window.location.reload();
@@ -62,14 +68,18 @@ const DefaultErrorFallback: React.FC<ErrorFallbackProps> = ({
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <div className="mx-auto w-12 h-12 rounded-full bg-destructive/10 flex items-center justify-center mb-4">
-            <AlertTriangle className="w-6 h-6 text-destructive" aria-hidden="true" />
+            <AlertTriangle
+              className="w-6 h-6 text-destructive"
+              aria-hidden="true"
+            />
           </div>
-          <CardTitle className="text-xl font-semibold">Something went wrong</CardTitle>
+          <CardTitle className="text-xl font-semibold">
+            Something went wrong
+          </CardTitle>
           <CardDescription>
-            {isolate 
+            {isolate
               ? "This component encountered an error, but the rest of the app should continue working."
-              : "An unexpected error occurred while rendering this page."
-            }
+              : "An unexpected error occurred while rendering this page."}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -78,30 +88,51 @@ const DefaultErrorFallback: React.FC<ErrorFallbackProps> = ({
               Error ID: {errorId}
             </p>
           </div>
-          
+
           <Separator />
-          
+
           <div className="flex flex-col gap-2">
-            <Button type="button" onClick={resetError} variant="default" className="w-full">
+            <Button
+              type="button"
+              onClick={resetError}
+              variant="default"
+              className="w-full"
+            >
               <RefreshCw className="w-4 h-4 mr-2" aria-hidden="true" />
               Try Again
             </Button>
-            
+
             {!isolate && (
               <>
-                <Button type="button" onClick={handleGoHome} variant="outline" className="w-full">
+                <Button
+                  type="button"
+                  onClick={handleGoHome}
+                  variant="outline"
+                  className="w-full"
+                >
                   <Home className="w-4 h-4 mr-2" aria-hidden="true" />
                   Go to Home
                 </Button>
-                
-                <Button type="button" onClick={handleReload} variant="outline" className="w-full">
+
+                <Button
+                  type="button"
+                  onClick={handleReload}
+                  variant="outline"
+                  className="w-full"
+                >
                   <RefreshCw className="w-4 h-4 mr-2" aria-hidden="true" />
                   Reload Page
                 </Button>
               </>
             )}
-            
-            <Button type="button" onClick={handleCopyError} variant="outline" size="sm" className="w-full">
+
+            <Button
+              type="button"
+              onClick={handleCopyError}
+              variant="outline"
+              size="sm"
+              className="w-full"
+            >
               <Bug className="w-4 h-4 mr-2" />
               Copy Error Details
             </Button>
@@ -113,7 +144,11 @@ const DefaultErrorFallback: React.FC<ErrorFallbackProps> = ({
 };
 
 // Enhanced error logging
-const logError = (error: Error, errorInfo: React.ErrorInfo, errorId: string) => {
+const logError = (
+  error: Error,
+  errorInfo: React.ErrorInfo,
+  errorId: string
+) => {
   // Use centralized error handler for consistent logging and tracking
   handleError(error, {
     operation: "React Error Boundary",
@@ -123,8 +158,8 @@ const logError = (error: Error, errorInfo: React.ErrorInfo, errorId: string) => 
     metadata: {
       errorId,
       componentStack: errorInfo.componentStack,
-      errorBoundary: true
-    }
+      errorBoundary: true,
+    },
   });
 
   // Show toast notification with error boundary specific formatting
@@ -133,12 +168,15 @@ const logError = (error: Error, errorInfo: React.ErrorInfo, errorId: string) => 
     duration: 8000,
     action: {
       label: "Copy ID",
-      onClick: () => navigator.clipboard.writeText(errorId)
-    }
+      onClick: () => navigator.clipboard.writeText(errorId),
+    },
   });
 };
 
-export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
+export class ErrorBoundary extends React.Component<
+  ErrorBoundaryProps,
+  ErrorBoundaryState
+> {
   private errorId: string;
 
   constructor(props: ErrorBoundaryProps) {
@@ -148,14 +186,14 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
       hasError: false,
       error: null,
       errorInfo: null,
-      errorId: this.errorId
+      errorId: this.errorId,
     };
   }
 
   static getDerivedStateFromError(error: Error): Partial<ErrorBoundaryState> {
     return {
       hasError: true,
-      error
+      error,
     };
   }
 
@@ -164,7 +202,7 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
     this.setState({
       error,
       errorInfo,
-      errorId: this.errorId
+      errorId: this.errorId,
     });
 
     // Log the error
@@ -182,15 +220,17 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
       hasError: false,
       error: null,
       errorInfo: null,
-      errorId: this.errorId
+      errorId: this.errorId,
     });
   };
 
   render() {
     if (this.state.hasError && this.state.error) {
       const FallbackComponent = this.props.fallback || DefaultErrorFallback;
-      const safeErrorInfo: React.ErrorInfo = this.state.errorInfo ?? { componentStack: "" };
-      
+      const safeErrorInfo: React.ErrorInfo = this.state.errorInfo ?? {
+        componentStack: "",
+      };
+
       return (
         <FallbackComponent
           error={this.state.error}
@@ -211,12 +251,12 @@ export const useErrorHandler = () => {
   return React.useCallback((error: Error) => {
     // Create a synthetic error info object
     const errorInfo: React.ErrorInfo = {
-      componentStack: new Error().stack || 'No stack available'
+      componentStack: new Error().stack || "No stack available",
     };
-    
+
     const errorId = generateErrorId();
     logError(error, errorInfo, errorId);
-    
+
     // Re-throw to trigger error boundary
     throw error;
   }, []);
@@ -227,7 +267,11 @@ export const withErrorBoundary = <P extends object>(
   Component: React.ComponentType<P>,
   options?: {
     fallback?: React.ComponentType<ErrorFallbackProps>;
-    onError?: (error: Error, errorInfo: React.ErrorInfo, errorId: string) => void;
+    onError?: (
+      error: Error,
+      errorInfo: React.ErrorInfo,
+      errorId: string
+    ) => void;
     isolate?: boolean;
   }
 ) => {
@@ -236,7 +280,7 @@ export const withErrorBoundary = <P extends object>(
       <Component {...props} />
     </ErrorBoundary>
   );
-  
+
   WrappedComponent.displayName = `withErrorBoundary(${Component.displayName || Component.name})`;
   return WrappedComponent;
 };
@@ -244,19 +288,20 @@ export const withErrorBoundary = <P extends object>(
 // Utility for async error handling in hooks and event handlers
 export const handleAsyncError = (
   error: unknown,
-  context: string = "Unknown operation",
-  showToast: boolean = true
+  context = "Unknown operation",
+  showToast = true
 ): void => {
-  const processedError = error instanceof Error ? error : new Error(String(error));
-  
+  const processedError =
+    error instanceof Error ? error : new Error(String(error));
+
   handleError(processedError, {
     operation: context,
     category: ErrorCategory.UI,
     severity: ErrorSeverity.MEDIUM,
     showToast,
     metadata: {
-      source: "async-error-handler"
-    }
+      source: "async-error-handler",
+    },
   });
 };
 

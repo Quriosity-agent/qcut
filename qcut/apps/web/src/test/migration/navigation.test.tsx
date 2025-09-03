@@ -25,16 +25,18 @@ describe("TanStack Router Navigation", () => {
         back: vi.fn(),
         forward: vi.fn(),
         go: vi.fn(),
-        location: { 
-          pathname: "/", 
-          search: "", 
-          hash: "", 
-          state: { __tempLocation: null, __tempKey: null }, 
-          key: "default" 
+        location: {
+          pathname: "/",
+          search: "",
+          hash: "",
+          state: { __tempLocation: null, __tempKey: null },
+          key: "default",
         },
         listen: vi.fn(),
         subscribe: vi.fn(() => vi.fn()),
-        createHref: vi.fn((location) => location.pathname + location.search + location.hash),
+        createHref: vi.fn(
+          (location) => location.pathname + location.search + location.hash
+        ),
       };
 
       // Create router instance like in App.tsx but with mock history
@@ -93,7 +95,7 @@ describe("TanStack Router Navigation", () => {
         }),
         push: vi.fn(),
       };
-      
+
       const unsub = mockHistory.subscribe(spy);
       mockHistory.push("/projects");
       expect(spy).toHaveBeenCalled();
@@ -107,7 +109,9 @@ describe("TanStack Router Navigation", () => {
       const path = require("node:path");
       const routesDir = path.resolve(__dirname, "../../routes");
       const files = fs.readdirSync(routesDir);
-      const lazyFiles = files.filter((file: string) => file.endsWith('.lazy.tsx'));
+      const lazyFiles = files.filter((file: string) =>
+        file.endsWith(".lazy.tsx")
+      );
       expect(lazyFiles.length).toBeGreaterThan(0);
     });
 
@@ -124,7 +128,9 @@ describe("TanStack Router Navigation", () => {
       const path = require("node:path");
       const routeTreePath = path.resolve(__dirname, "../../routeTree.gen.ts");
       const src = fs.readFileSync(routeTreePath, "utf8");
-      expect(/editor\.(\$|_)\w+/.test(src) || /\/editor\/\$\w+/.test(src)).toBe(true);
+      expect(/editor\.(\$|_)\w+/.test(src) || /\/editor\/\$\w+/.test(src)).toBe(
+        true
+      );
     });
 
     it("should declare a blog route with a dynamic slug", () => {
@@ -132,7 +138,9 @@ describe("TanStack Router Navigation", () => {
       const path = require("node:path");
       const routeTreePath = path.resolve(__dirname, "../../routeTree.gen.ts");
       const src = fs.readFileSync(routeTreePath, "utf8");
-      expect(/blog\.(\$|_)\w+/.test(src) || /\/blog\/\$\w+/.test(src)).toBe(true);
+      expect(/blog\.(\$|_)\w+/.test(src) || /\/blog\/\$\w+/.test(src)).toBe(
+        true
+      );
     });
   });
 
@@ -164,25 +172,27 @@ describe("TanStack Router Navigation", () => {
         back: vi.fn(),
         forward: vi.fn(),
         go: vi.fn(),
-        location: { 
-          pathname: "/", 
-          search: "", 
-          hash: "", 
-          state: { __tempLocation: null, __tempKey: null }, 
-          key: "default" 
+        location: {
+          pathname: "/",
+          search: "",
+          hash: "",
+          state: { __tempLocation: null, __tempKey: null },
+          key: "default",
         },
         listen: vi.fn(),
         subscribe: vi.fn(() => vi.fn()),
-        createHref: vi.fn((location) => location.pathname + location.search + location.hash),
+        createHref: vi.fn(
+          (location) => location.pathname + location.search + location.hash
+        ),
       };
 
-      const router = createRouter({ 
-        routeTree, 
-        history: mockHistory as any, 
-        defaultPreload: "intent", 
-        context: {} 
+      const router = createRouter({
+        routeTree,
+        history: mockHistory as any,
+        defaultPreload: "intent",
+        context: {},
       });
-      
+
       // Test that router can be created successfully (render needs full DOM environment)
       expect(() => <RouterProvider router={router} />).not.toThrow();
     });

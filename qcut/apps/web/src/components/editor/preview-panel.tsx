@@ -37,6 +37,8 @@ import { StickerCanvas } from "./stickers-overlay/StickerCanvas";
 // Import captions display
 import { CaptionsDisplay } from "@/components/captions/captions-display";
 import type { TranscriptionSegment } from "@/types/captions";
+// Import canvas capture utilities for frame caching
+import { captureFrameToCanvas, captureWithFallback } from "@/lib/canvas-utils";
 
 interface ActiveElement {
   element: TimelineElement;
@@ -55,6 +57,9 @@ export function PreviewPanel() {
   const { canvasSize } = useEditorStore();
   const previewRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  // Canvas refs for frame caching - non-interfering
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const cacheCanvasRef = useRef<HTMLCanvasElement>(null);
   const [previewDimensions, setPreviewDimensions] = useState({
     width: 0,
     height: 0,
@@ -258,6 +263,33 @@ export function PreviewPanel() {
   const toggleExpanded = useCallback(() => {
     setIsExpanded((prev) => !prev);
   }, []);
+
+  // Helper function to capture current preview frame
+  const captureCurrentFrame = useCallback(async () => {
+    if (
+      !previewRef.current ||
+      previewDimensions.width === 0 ||
+      previewDimensions.height === 0
+    ) {
+      return null;
+    }
+
+    try {
+      const imageData = await captureWithFallback(previewRef.current, {
+        width: previewDimensions.width,
+        height: previewDimensions.height,
+        backgroundColor:
+          activeProject?.backgroundType === "blur"
+            ? "transparent"
+            : activeProject?.backgroundColor || "#000000",
+      });
+
+      return imageData;
+    } catch (error) {
+      console.error("Failed to capture preview frame:", error);
+      return null;
+    }
+  }, [previewDimensions, activeProject]);
 
   const hasAnyElements = tracks.some((track) => track.elements.length > 0);
   const getActiveElements = useCallback((): ActiveElement[] => {
@@ -632,6 +664,20 @@ export function PreviewPanel() {
                 currentTime={currentTime}
                 isVisible={captionSegments.length > 0}
                 className="absolute inset-0 pointer-events-none"
+              />
+
+              {/* Hidden canvas for frame caching - non-visual */}
+              <canvas
+                ref={canvasRef}
+                className="hidden"
+                width={previewDimensions.width}
+                height={previewDimensions.height}
+              />
+              <canvas
+                ref={cacheCanvasRef}
+                className="hidden"
+                width={previewDimensions.width}
+                height={previewDimensions.height}
               />
             </div>
           ) : null}

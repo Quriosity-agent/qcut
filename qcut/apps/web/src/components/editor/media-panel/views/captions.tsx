@@ -14,11 +14,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { LanguageSelect } from "@/components/captions/language-select";
 import { UploadProgress } from "@/components/captions/upload-progress";
-import { 
-  handleError,
-  ErrorCategory,
-  ErrorSeverity 
-} from "@/lib/error-handler";
+import { handleError, ErrorCategory, ErrorSeverity } from "@/lib/error-handler";
 import {
   Upload,
   Download,
@@ -124,8 +120,8 @@ export function CaptionsView() {
           severity: ErrorSeverity.HIGH,
           metadata: {
             captionCount: result.segments.length,
-            duration: result.segments.at(-1)?.end ?? 0
-          }
+            duration: result.segments.at(-1)?.end ?? 0,
+          },
         });
       }
     },
@@ -163,8 +159,8 @@ export function CaptionsView() {
           severity: ErrorSeverity.LOW,
           showToast: false,
           metadata: {
-            fileKey
-          }
+            fileKey,
+          },
         });
       }
       return null;
@@ -331,8 +327,8 @@ export function CaptionsView() {
               severity: ErrorSeverity.LOW,
               showToast: false,
               metadata: {
-                fileKey
-              }
+                fileKey,
+              },
             });
           }
         }
@@ -345,8 +341,8 @@ export function CaptionsView() {
           metadata: {
             language: selectedLanguage,
             fileSize: file?.size,
-            fileName: file?.name
-          }
+            fileName: file?.name,
+          },
         });
         const errorMessage =
           error instanceof Error ? error.message : "Transcription failed";

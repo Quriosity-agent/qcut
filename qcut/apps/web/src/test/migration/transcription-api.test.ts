@@ -256,18 +256,17 @@ describe("Transcription API Migration", () => {
         callCount++;
         if (callCount <= 2) {
           return Promise.reject(new Error("Network error"));
-        } else {
-          return Promise.resolve({
-            ok: true,
-            json: () =>
-              Promise.resolve({
-                success: true,
-                text: "Retry successful",
-                segments: [],
-                language: "auto",
-              }),
-          });
         }
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              success: true,
+              text: "Retry successful",
+              segments: [],
+              language: "auto",
+            }),
+        });
       });
 
       const result = await transcribeAudio(

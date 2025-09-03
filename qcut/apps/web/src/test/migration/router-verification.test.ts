@@ -3,15 +3,30 @@ import { JSDOM } from "jsdom";
 
 // Set up DOM immediately at module level before any imports
 if (typeof document === "undefined") {
-  const dom = new JSDOM('<!DOCTYPE html><html><body></body></html>', {
-    url: "http://localhost:3000/"
+  const dom = new JSDOM("<!DOCTYPE html><html><body></body></html>", {
+    url: "http://localhost:3000/",
   });
-  Object.defineProperty(globalThis, 'window', { value: dom.window, writable: true });
-  Object.defineProperty(globalThis, 'document', { value: dom.window.document, writable: true });
-  Object.defineProperty(globalThis, 'navigator', { value: dom.window.navigator, writable: true });
+  Object.defineProperty(globalThis, "window", {
+    value: dom.window,
+    writable: true,
+  });
+  Object.defineProperty(globalThis, "document", {
+    value: dom.window.document,
+    writable: true,
+  });
+  Object.defineProperty(globalThis, "navigator", {
+    value: dom.window.navigator,
+    writable: true,
+  });
   // location is now set in test/setup.ts
-  Object.defineProperty(globalThis, 'HTMLElement', { value: dom.window.HTMLElement, writable: true });
-  Object.defineProperty(globalThis, 'Element', { value: dom.window.Element, writable: true });
+  Object.defineProperty(globalThis, "HTMLElement", {
+    value: dom.window.HTMLElement,
+    writable: true,
+  });
+  Object.defineProperty(globalThis, "Element", {
+    value: dom.window.Element,
+    writable: true,
+  });
 }
 
 // Test all existing TanStack routes to verify they work correctly
@@ -51,7 +66,7 @@ describe("TanStack Router Verification", () => {
       it(`should handle route: ${path} (${description})`, () => {
         const result = testRoute(path);
         expect(result).toBe(`#${path}`);
-      }, 1_000);
+      }, 1000);
     }
   });
 
@@ -60,18 +75,18 @@ describe("TanStack Router Verification", () => {
       const projectId = "test-project-456";
       const result = testRoute(`/editor/${projectId}`);
       expect(result).toBe(`#/editor/${projectId}`);
-    }, 1_000);
+    }, 1000);
 
     it("should support blog post slugs", () => {
       const slug = "my-test-blog-post";
       const result = testRoute(`/blog/${slug}`);
       expect(result).toBe(`#/blog/${slug}`);
-    }, 1_000);
+    }, 1000);
 
     it("should handle root route", () => {
       const result = testRoute("/");
       expect(result).toBe("#/");
-    }, 1_000);
+    }, 1000);
   });
 
   describe("Hash History Configuration", () => {
@@ -81,7 +96,7 @@ describe("TanStack Router Verification", () => {
       expect(window.location.hash).toBe("#/projects");
       // JSDOM may set pathname to "/" or "blank" depending on version/environment
       expect(["blank", "/"]).toContain(window.location.pathname);
-    }, 1_000);
+    }, 1000);
 
     it("should support browser navigation", () => {
       // Test navigation patterns
@@ -94,7 +109,7 @@ describe("TanStack Router Verification", () => {
       // Simulate back navigation
       window.history.back();
       // Note: In real environment this would change, but in test it remains
-    }, 1_000);
+    }, 1000);
   });
 
   describe("Route Tree Status", () => {
@@ -112,7 +127,7 @@ describe("TanStack Router Verification", () => {
         const result = testRoute(route);
         expect(result).toBe(`#${route}`);
       }
-    }, 1_000);
+    }, 1000);
 
     it("should confirm static pages exist", () => {
       // These routes provide important site content
@@ -129,7 +144,7 @@ describe("TanStack Router Verification", () => {
         const result = testRoute(route);
         expect(result).toBe(`#${route}`);
       }
-    }, 1_000);
+    }, 1000);
   });
 });
 

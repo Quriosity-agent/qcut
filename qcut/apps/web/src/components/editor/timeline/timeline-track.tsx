@@ -1197,11 +1197,15 @@ function TimelineTrackContentComponent({
 }
 
 // Error Fallback Component for Timeline Track
-const TimelineTrackErrorFallback = ({ resetError }: { resetError: () => void }) => (
+const TimelineTrackErrorFallback = ({
+  resetError,
+}: {
+  resetError: () => void;
+}) => (
   <div className="h-16 bg-destructive/10 border border-destructive/20 rounded flex items-center justify-center text-sm text-destructive m-2">
     <span className="mr-2">⚠️ Track Error</span>
-    <button 
-      onClick={resetError} 
+    <button
+      onClick={resetError}
       className="underline hover:no-underline"
       type="button"
     >
@@ -1211,7 +1215,10 @@ const TimelineTrackErrorFallback = ({ resetError }: { resetError: () => void }) 
 );
 
 // Export wrapped component with error boundary
-export const TimelineTrackContent = withErrorBoundary(TimelineTrackContentComponent, {
-  isolate: true, // Only affects this track, not the entire timeline
-  fallback: TimelineTrackErrorFallback
-});
+export const TimelineTrackContent = withErrorBoundary(
+  TimelineTrackContentComponent,
+  {
+    isolate: true, // Only affects this track, not the entire timeline
+    fallback: TimelineTrackErrorFallback,
+  }
+);

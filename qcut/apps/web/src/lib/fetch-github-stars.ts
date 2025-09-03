@@ -44,8 +44,8 @@ export async function getStars(): Promise<string> {
       severity: ErrorSeverity.LOW,
       showToast: false,
       metadata: {
-        repository: "donghaozhang/qcut"
-      }
+        repository: "donghaozhang/qcut",
+      },
     });
     return "1.5k"; // Return fallback value
   }

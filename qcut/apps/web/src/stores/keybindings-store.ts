@@ -25,7 +25,7 @@ if (typeof window !== "undefined") {
       operation: "Migrate keybindings from old storage format",
       category: ErrorCategory.SYSTEM,
       severity: ErrorSeverity.LOW,
-      showToast: false // Don't spam users on startup
+      showToast: false, // Don't spam users on startup
     });
     // Continue with default keybindings - app still works!
   }

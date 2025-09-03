@@ -163,8 +163,8 @@ function SoundEffectsView() {
                 showToast: false,
                 metadata: {
                   soundId: sound.id,
-                  soundName: sound.name
-                }
+                  soundName: sound.name,
+                },
               }
             );
             // Try direct playback as fallback

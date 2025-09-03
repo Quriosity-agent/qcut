@@ -89,13 +89,13 @@ export async function generateVideo(
       const error = new Error(
         "FAL API key not configured. Please set NEXT_PUBLIC_FAL_API_KEY in your environment variables."
       );
-      
+
       // Use our enhanced error handler instead of console.error
       handleAIServiceError(error, "AI Video Generation Setup", {
         configRequired: "NEXT_PUBLIC_FAL_API_KEY",
-        operation: "checkApiKey"
+        operation: "checkApiKey",
       });
-      
+
       throw error;
     }
 
@@ -195,13 +195,19 @@ export async function generateVideo(
 
     if (!queueResponse.ok) {
       const errorData = await queueResponse.json().catch(() => ({}));
-      handleAIServiceError(new Error(`FAL Queue Submit Error: ${queueResponse.status} ${queueResponse.statusText}`), "Submit FAL AI request to queue", {
-        status: queueResponse.status,
-        statusText: queueResponse.statusText,
-        errorData,
-        endpoint,
-        operation: "queueSubmit"
-      });
+      handleAIServiceError(
+        new Error(
+          `FAL Queue Submit Error: ${queueResponse.status} ${queueResponse.statusText}`
+        ),
+        "Submit FAL AI request to queue",
+        {
+          status: queueResponse.status,
+          statusText: queueResponse.statusText,
+          errorData,
+          endpoint,
+          operation: "queueSubmit",
+        }
+      );
 
       const errorMessage = handleQueueError(queueResponse, errorData, endpoint);
       throw new Error(errorMessage);
@@ -324,17 +330,17 @@ export async function generateVideo(
     const error = new Error(
       "No video URL received from either queue or direct API mode. Please check the logs for details."
     );
-    
+
     handleAIServiceError(error, "AI Video Generation", {
       queueResult,
       directResult,
-      operation: "generateVideo"
+      operation: "generateVideo",
     });
-    
+
     throw error;
   } catch (error) {
     handleAIServiceError(error, "AI Video Generation", {
-      operation: "generateVideo"
+      operation: "generateVideo",
     });
     if (onProgress) {
       onProgress({
@@ -470,7 +476,7 @@ async function pollQueueStatus(
         attempts,
         requestId,
         elapsedTime,
-        operation: "statusPolling"
+        operation: "statusPolling",
       });
 
       if (attempts >= maxAttempts) {
@@ -747,7 +753,7 @@ export async function generateVideoFromImage(
     handleAIServiceError(error, "Generate video from image", {
       model: request.model,
       imageName: request.image.name,
-      operation: "generateVideoFromImage"
+      operation: "generateVideoFromImage",
     });
     throw error;
   }

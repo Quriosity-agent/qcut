@@ -129,7 +129,10 @@ export const useElectron = () => {
         return { success: true, filePath: result.filePath };
       }
       // In browser mode, use download link
-      const blob = data instanceof Blob ? data : new Blob([data as unknown as ArrayBuffer]);
+      const blob =
+        data instanceof Blob
+          ? data
+          : new Blob([data as unknown as ArrayBuffer]);
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;

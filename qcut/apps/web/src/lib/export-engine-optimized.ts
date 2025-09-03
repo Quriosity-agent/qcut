@@ -495,10 +495,10 @@ export class OptimizedExportEngine extends ExportEngine {
       // Clean up
       video.remove();
     } catch (error) {
-      handleExportError(error, "Render video frame", { 
+      handleExportError(error, "Render video frame", {
         videoUrl: mediaItem.url,
         timeOffset,
-        elementId: element.id 
+        elementId: element.id,
       });
     }
   }

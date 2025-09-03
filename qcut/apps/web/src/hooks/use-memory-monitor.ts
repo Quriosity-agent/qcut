@@ -1,17 +1,19 @@
-import { useEffect, useRef, useState } from 'react';
-import { debugLog, debugWarn } from '@/lib/debug-config';
+import { useEffect, useRef, useState } from "react";
+import { debugLog, debugWarn } from "@/lib/debug-config";
 
 /**
  * Hook for monitoring memory usage in React components during development
  */
-export function useMemoryMonitor(options: {
-  componentName?: string;
-  logOnMount?: boolean;
-  logOnUnmount?: boolean;
-  trackUpdates?: boolean;
-} = {}) {
+export function useMemoryMonitor(
+  options: {
+    componentName?: string;
+    logOnMount?: boolean;
+    logOnUnmount?: boolean;
+    trackUpdates?: boolean;
+  } = {}
+) {
   const {
-    componentName = 'Component',
+    componentName = "Component",
     logOnMount = true,
     logOnUnmount = true,
     trackUpdates = false,
@@ -21,7 +23,7 @@ export function useMemoryMonitor(options: {
     heapUsed: string;
     heapTotal: string;
   } | null>(null);
-  
+
   const renderCount = useRef(0);
   const mountTime = useRef<number>(0);
 
@@ -29,13 +31,13 @@ export function useMemoryMonitor(options: {
   const getMemoryInfo = () => {
     const memory = (performance as any).memory;
     if (!memory) return null;
-    
+
     const formatBytes = (bytes: number) => {
-      if (bytes === 0) return '0 B';
+      if (bytes === 0) return "0 B";
       const k = 1024;
-      const sizes = ['B', 'KB', 'MB', 'GB'];
+      const sizes = ["B", "KB", "MB", "GB"];
       const i = Math.floor(Math.log(bytes) / Math.log(k));
-      return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
+      return `${parseFloat((bytes / k ** i).toFixed(1))} ${sizes[i]}`;
     };
 
     return {
@@ -50,34 +52,37 @@ export function useMemoryMonitor(options: {
   // Update memory info if tracking is enabled
   useEffect(() => {
     if (!import.meta.env.DEV || !trackUpdates) return;
-    
+
     // Set up polling interval for memory updates
     const intervalId = window.setInterval(() => {
       const info = getMemoryInfo();
-      setMemoryInfo(prev => {
+      setMemoryInfo((prev) => {
         // Only update if memory info actually changed to prevent unnecessary re-renders
         if (!prev || !info) return info;
-        const hasChanged = prev.heapUsed !== info.heapUsed || prev.heapTotal !== info.heapTotal;
+        const hasChanged =
+          prev.heapUsed !== info.heapUsed || prev.heapTotal !== info.heapTotal;
         return hasChanged ? info : prev;
       });
     }, 1000); // Poll every second
-    
+
     // Also set initial value
     const initialInfo = getMemoryInfo();
     setMemoryInfo(initialInfo);
-    
+
     return () => clearInterval(intervalId);
   }, [trackUpdates]);
 
   // Mount/unmount logging
   useEffect(() => {
     if (!import.meta.env.DEV) return;
-    
+
     mountTime.current = Date.now();
-    
+
     if (logOnMount) {
       const info = getMemoryInfo();
-      debugLog(`🧠 [${componentName}] Mounted | Memory: ${info?.heapUsed}/${info?.heapTotal}`);
+      debugLog(
+        `🧠 [${componentName}] Mounted | Memory: ${info?.heapUsed}/${info?.heapTotal}`
+      );
     }
 
     return () => {
@@ -94,7 +99,7 @@ export function useMemoryMonitor(options: {
   // Force memory check function
   const checkMemory = () => {
     if (!import.meta.env.DEV) return null;
-    
+
     const info = getMemoryInfo();
     debugLog(
       `🧠 [${componentName}] Memory check | Heap: ${info?.heapUsed}/${info?.heapTotal} | Renders: ${renderCount.current}`
@@ -107,11 +112,13 @@ export function useMemoryMonitor(options: {
     if (import.meta.env.DEV && (window as any).gc) {
       debugLog(`🗑️ [${componentName}] Triggering GC`);
       (window as any).gc();
-      
+
       // Check memory after GC
       setTimeout(() => {
         const info = getMemoryInfo();
-        debugLog(`🧠 [${componentName}] Post-GC Memory: ${info?.heapUsed}/${info?.heapTotal}`);
+        debugLog(
+          `🧠 [${componentName}] Post-GC Memory: ${info?.heapUsed}/${info?.heapTotal}`
+        );
       }, 100);
     } else {
       debugWarn(`🗑️ [${componentName}] GC not available`);
@@ -132,23 +139,23 @@ export function useMemoryMonitor(options: {
 export function useMemoryLeakDetector(
   dataSize: number,
   threshold: number = 10 * 1024 * 1024, // 10MB default
-  componentName: string = 'Component'
+  componentName = "Component"
 ) {
   const initialMemory = useRef<number>(0);
-  
+
   useEffect(() => {
     if (!import.meta.env.DEV) return;
-    
+
     const memory = (performance as any).memory;
     if (memory) {
       initialMemory.current = memory.usedJSHeapSize;
     }
-    
+
     return () => {
       if (memory) {
         const currentMemory = memory.usedJSHeapSize;
         const memoryGrowth = currentMemory - initialMemory.current;
-        
+
         if (memoryGrowth > threshold) {
           debugWarn(
             `🚨 [${componentName}] Potential memory leak detected!`,

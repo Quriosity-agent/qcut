@@ -90,10 +90,7 @@ export interface ElectronAPI {
       error?: string;
       message?: string;
     }>;
-    downloadPreview: (params: {
-      url: string;
-      id: number;
-    }) => Promise<{
+    downloadPreview: (params: { url: string; id: number }) => Promise<{
       success: boolean;
       localPath?: string;
       error?: string;

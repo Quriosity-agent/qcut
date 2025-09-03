@@ -16,9 +16,12 @@ class BlobManager {
 
   constructor() {
     // Auto-cleanup orphaned blobs every 5 minutes
-    this.cleanupInterval = window.setInterval(() => {
-      this.cleanupOldBlobs();
-    }, 5 * 60 * 1000);
+    this.cleanupInterval = window.setInterval(
+      () => {
+        this.cleanupOldBlobs();
+      },
+      5 * 60 * 1000
+    );
   }
 
   /**
@@ -26,12 +29,12 @@ class BlobManager {
    */
   createObjectURL(file: File | Blob, source?: string): string {
     const url = URL.createObjectURL(file);
-    
+
     this.blobs.set(url, {
       url,
       file,
       createdAt: Date.now(),
-      source: source || new Error().stack?.split('\n')[2]?.trim(),
+      source: source || new Error().stack?.split("\n")[2]?.trim(),
     });
 
     return url;
@@ -52,10 +55,12 @@ class BlobManager {
    */
   private cleanupOldBlobs(maxAge = 10 * 60 * 1000): void {
     const now = Date.now();
-    
+
     for (const [url, entry] of this.blobs.entries()) {
-      if ((now - entry.createdAt) > maxAge) {
-        console.warn(`[BlobManager] Auto-revoking old blob URL from: ${entry.source}`);
+      if (now - entry.createdAt > maxAge) {
+        console.warn(
+          `[BlobManager] Auto-revoking old blob URL from: ${entry.source}`
+        );
         this.revokeObjectURL(url);
       }
     }
@@ -75,7 +80,7 @@ class BlobManager {
     for (const url of this.blobs.keys()) {
       this.revokeObjectURL(url);
     }
-    
+
     if (this.cleanupInterval) {
       clearInterval(this.cleanupInterval);
       this.cleanupInterval = null;
@@ -88,11 +93,12 @@ class BlobManager {
   getStats() {
     const active = this.getActiveBlobs();
     const totalSize = active.reduce((sum, entry) => sum + entry.file.size, 0);
-    
+
     return {
       activeCount: active.length,
       totalSize,
-      oldestBlob: active.length > 0 ? Math.min(...active.map(e => e.createdAt)) : null,
+      oldestBlob:
+        active.length > 0 ? Math.min(...active.map((e) => e.createdAt)) : null,
     };
   }
 }
@@ -113,7 +119,7 @@ export const revokeObjectURL = (url: string): void => {
 if (import.meta.env.DEV) {
   (window as any).debugBlobs = () => {
     const stats = blobManager.getStats();
-    console.log('[BlobManager] Stats:', stats);
-    console.log('[BlobManager] Active blobs:', blobManager.getActiveBlobs());
+    console.log("[BlobManager] Stats:", stats);
+    console.log("[BlobManager] Active blobs:", blobManager.getActiveBlobs());
   };
 }

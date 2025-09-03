@@ -9,7 +9,7 @@ describe("Asset Path Utilities", () => {
 
     it("returns absolute path for web environment", () => {
       vi.stubGlobal("window", {
-        location: { protocol: "http:" }
+        location: { protocol: "http:" },
       });
 
       expect(getAssetPath("assets/image.png")).toBe("/assets/image.png");
@@ -18,7 +18,7 @@ describe("Asset Path Utilities", () => {
 
     it("returns absolute path for https environment", () => {
       vi.stubGlobal("window", {
-        location: { protocol: "https:" }
+        location: { protocol: "https:" },
       });
 
       expect(getAssetPath("assets/video.mp4")).toBe("/assets/video.mp4");
@@ -27,7 +27,7 @@ describe("Asset Path Utilities", () => {
 
     it("returns relative path for Electron environment", () => {
       vi.stubGlobal("window", {
-        location: { protocol: "file:" }
+        location: { protocol: "file:" },
       });
 
       expect(getAssetPath("assets/image.png")).toBe("./assets/image.png");
@@ -36,7 +36,7 @@ describe("Asset Path Utilities", () => {
 
     it("handles paths without leading slash in Electron", () => {
       vi.stubGlobal("window", {
-        location: { protocol: "file:" }
+        location: { protocol: "file:" },
       });
 
       expect(getAssetPath("fonts/roboto.ttf")).toBe("./fonts/roboto.ttf");
@@ -45,7 +45,7 @@ describe("Asset Path Utilities", () => {
 
     it("handles paths with leading slash in Electron", () => {
       vi.stubGlobal("window", {
-        location: { protocol: "file:" }
+        location: { protocol: "file:" },
       });
 
       expect(getAssetPath("/fonts/roboto.ttf")).toBe("./fonts/roboto.ttf");
@@ -54,21 +54,21 @@ describe("Asset Path Utilities", () => {
 
     it("handles empty path in web environment", () => {
       vi.stubGlobal("window", {
-        location: { protocol: "http:" }
+        location: { protocol: "http:" },
       });
       expect(getAssetPath("")).toBe("/");
     });
 
     it("handles empty path in Electron environment", () => {
       vi.stubGlobal("window", {
-        location: { protocol: "file:" }
+        location: { protocol: "file:" },
       });
       expect(getAssetPath("")).toBe("./");
     });
 
     it("handles paths with subdirectories in web environment", () => {
       vi.stubGlobal("window", {
-        location: { protocol: "http:" }
+        location: { protocol: "http:" },
       });
       expect(getAssetPath("assets/images/thumbnails/video1.jpg")).toBe(
         "/assets/images/thumbnails/video1.jpg"
@@ -77,7 +77,7 @@ describe("Asset Path Utilities", () => {
 
     it("handles paths with subdirectories in Electron environment", () => {
       vi.stubGlobal("window", {
-        location: { protocol: "file:" }
+        location: { protocol: "file:" },
       });
       expect(getAssetPath("assets/images/thumbnails/video1.jpg")).toBe(
         "./assets/images/thumbnails/video1.jpg"
@@ -86,7 +86,7 @@ describe("Asset Path Utilities", () => {
 
     it("handles paths with query parameters in web environment", () => {
       vi.stubGlobal("window", {
-        location: { protocol: "http:" }
+        location: { protocol: "http:" },
       });
       expect(getAssetPath("assets/font.woff2?v=1.2.3")).toBe(
         "/assets/font.woff2?v=1.2.3"
@@ -95,7 +95,7 @@ describe("Asset Path Utilities", () => {
 
     it("handles paths with query parameters in Electron environment", () => {
       vi.stubGlobal("window", {
-        location: { protocol: "file:" }
+        location: { protocol: "file:" },
       });
       expect(getAssetPath("assets/font.woff2?v=1.2.3")).toBe(
         "./assets/font.woff2?v=1.2.3"
@@ -104,7 +104,7 @@ describe("Asset Path Utilities", () => {
 
     it("handles paths with hashes in web environment", () => {
       vi.stubGlobal("window", {
-        location: { protocol: "http:" }
+        location: { protocol: "http:" },
       });
       expect(getAssetPath("assets/icons.svg#icon-play")).toBe(
         "/assets/icons.svg#icon-play"
@@ -113,7 +113,7 @@ describe("Asset Path Utilities", () => {
 
     it("handles paths with hashes in Electron environment", () => {
       vi.stubGlobal("window", {
-        location: { protocol: "file:" }
+        location: { protocol: "file:" },
       });
       expect(getAssetPath("assets/icons.svg#icon-play")).toBe(
         "./assets/icons.svg#icon-play"
@@ -122,7 +122,7 @@ describe("Asset Path Utilities", () => {
 
     it("handles localhost development environment", () => {
       vi.stubGlobal("window", {
-        location: { protocol: "http:" }
+        location: { protocol: "http:" },
       });
       expect(getAssetPath("assets/dev-asset.js")).toBe("/assets/dev-asset.js");
     });

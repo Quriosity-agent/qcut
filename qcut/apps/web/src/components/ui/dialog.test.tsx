@@ -1,18 +1,36 @@
 import { describe, it, expect } from "vitest";
 import { JSDOM } from "jsdom";
 
-// Set up DOM immediately at module level before any imports  
+// Set up DOM immediately at module level before any imports
 if (typeof document === "undefined") {
-  const dom = new JSDOM('<!DOCTYPE html><html><body></body></html>', {
-    url: "http://localhost:3000/"
+  const dom = new JSDOM("<!DOCTYPE html><html><body></body></html>", {
+    url: "http://localhost:3000/",
   });
-  Object.defineProperty(globalThis, 'window', { value: dom.window, writable: true });
-  Object.defineProperty(globalThis, 'document', { value: dom.window.document, writable: true });
-  Object.defineProperty(globalThis, 'navigator', { value: dom.window.navigator, writable: true });
+  Object.defineProperty(globalThis, "window", {
+    value: dom.window,
+    writable: true,
+  });
+  Object.defineProperty(globalThis, "document", {
+    value: dom.window.document,
+    writable: true,
+  });
+  Object.defineProperty(globalThis, "navigator", {
+    value: dom.window.navigator,
+    writable: true,
+  });
   // location is now set in test/setup.ts
-  Object.defineProperty(globalThis, 'HTMLElement', { value: dom.window.HTMLElement, writable: true });
-  Object.defineProperty(globalThis, 'Element', { value: dom.window.Element, writable: true });
-  Object.defineProperty(globalThis, 'getComputedStyle', { value: dom.window.getComputedStyle, writable: true });
+  Object.defineProperty(globalThis, "HTMLElement", {
+    value: dom.window.HTMLElement,
+    writable: true,
+  });
+  Object.defineProperty(globalThis, "Element", {
+    value: dom.window.Element,
+    writable: true,
+  });
+  Object.defineProperty(globalThis, "getComputedStyle", {
+    value: dom.window.getComputedStyle,
+    writable: true,
+  });
 }
 
 import { render, screen, waitFor } from "@testing-library/react";

@@ -6,7 +6,13 @@ import { generateUUID, generateFileBasedId } from "@/lib/utils";
 import { getVideoInfo, generateThumbnail } from "@/lib/ffmpeg-utils";
 import type { MediaItem, MediaType } from "./media-store-types";
 import { createObjectURL, revokeObjectURL } from "@/lib/blob-manager";
-import { handleError, ErrorCategory, ErrorSeverity, handleStorageError, handleMediaProcessingError } from "@/lib/error-handler";
+import {
+  handleError,
+  ErrorCategory,
+  ErrorSeverity,
+  handleStorageError,
+  handleMediaProcessingError,
+} from "@/lib/error-handler";
 
 // Re-export types for backward compatibility
 export type { MediaItem, MediaType };
@@ -85,7 +91,7 @@ export const getImageDimensions = (
       reject(new Error("Could not load image"));
     });
 
-    blobUrl = createObjectURL(file, 'getImageDimensions');
+    blobUrl = createObjectURL(file, "getImageDimensions");
     img.src = blobUrl;
   });
 };
@@ -229,7 +235,7 @@ export const generateVideoThumbnailBrowser = (
     });
 
     try {
-      blobUrl = createObjectURL(file, 'processVideoFile');
+      blobUrl = createObjectURL(file, "processVideoFile");
       video.src = blobUrl;
       video.load();
     } catch (urlError) {
@@ -270,7 +276,7 @@ export const getMediaDuration = (file: File): Promise<number> => {
       reject(new Error("Could not load media"));
     });
 
-    blobUrl = createObjectURL(file, 'getMediaDuration');
+    blobUrl = createObjectURL(file, "getMediaDuration");
     element.src = blobUrl;
     element.load();
   });
@@ -336,9 +342,9 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
         itemId: newItem.id,
         itemType: newItem.type,
         itemName: newItem.name,
-        operation: 'saveMediaItem'
+        operation: "saveMediaItem",
       });
-      
+
       // Remove from local state if save failed
       set((state) => ({
         mediaItems: state.mediaItems.filter((media) => media.id !== newItem.id),
@@ -369,10 +375,10 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
           handleMediaProcessingError(error, "Process generated image", {
             imageName: item.name,
             imageUrl: item.url,
-            operation: 'downloadGeneratedImage',
-            showToast: false // Don't spam users during batch operations
+            operation: "downloadGeneratedImage",
+            showToast: false, // Don't spam users during batch operations
           });
-          
+
           // Create empty file as fallback
           file = new File([], item.name, { type: "image/jpeg" });
           // Keep original URL as fallback
@@ -391,10 +397,10 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
               const text = await file.text();
               displayUrl = `data:image/svg+xml;base64,${btoa(text)}`;
             } catch (error) {
-              displayUrl = createObjectURL(file, 'addMediaItem-svg-fallback');
+              displayUrl = createObjectURL(file, "addMediaItem-svg-fallback");
             }
           } else {
-            displayUrl = createObjectURL(file, 'addMediaItem-display');
+            displayUrl = createObjectURL(file, "addMediaItem-display");
           }
         }
 
@@ -434,8 +440,8 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
                 projectId: currentProject.id,
                 itemId: item.id,
                 itemName: item.name,
-                operation: 'saveGeneratedImage',
-                showToast: false // Don't spam during batch save
+                operation: "saveGeneratedImage",
+                showToast: false, // Don't spam during batch save
               });
             }
           })
@@ -547,13 +553,17 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
                 },
               };
             } catch (error) {
-              handleMediaProcessingError(error, "Process video during project load", {
-                videoName: item.name,
-                itemId: item.id,
-                operation: 'processVideoOnLoad',
-                showToast: false // Don't spam during batch loading
-              });
-              
+              handleMediaProcessingError(
+                error,
+                "Process video during project load",
+                {
+                  videoName: item.name,
+                  itemId: item.id,
+                  operation: "processVideoOnLoad",
+                  showToast: false, // Don't spam during batch loading
+                }
+              );
+
               // Return item with error metadata to prevent complete failure
               return {
                 ...item,
@@ -576,9 +586,9 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
     } catch (error) {
       handleStorageError(error, "Load project media items", {
         projectId,
-        operation: 'loadAllMediaItems'
+        operation: "loadAllMediaItems",
       });
-      
+
       // Set empty array to prevent undefined state
       set({ mediaItems: [], hasInitialized: true });
     } finally {

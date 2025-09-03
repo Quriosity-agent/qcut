@@ -31,7 +31,7 @@ async function legacySoundSearch(
     try {
       const res = await fetch(`/api/sounds/search?${urlParams.toString()}`);
       if (res.ok) return await res.json();
-      
+
       // If response is not ok, treat as error for retry logic
       const errorMsg = `HTTP ${res.status}: ${res.statusText}`;
       handleError(new Error(errorMsg), {
@@ -43,8 +43,8 @@ async function legacySoundSearch(
           query,
           attempt: i + 1,
           maxAttempts: retryCount,
-          status: res.status
-        }
+          status: res.status,
+        },
       });
     } catch (fetchError) {
       handleError(fetchError, {
@@ -55,11 +55,11 @@ async function legacySoundSearch(
         metadata: {
           query,
           attempt: i + 1,
-          maxAttempts: retryCount
-        }
+          maxAttempts: retryCount,
+        },
       });
     }
-    
+
     // Add delay between retries (except after last attempt)
     if (i < retryCount - 1) {
       await new Promise((r) => setTimeout(r, 1000 * (i + 1))); // exponential backoff
@@ -97,10 +97,9 @@ async function legacyTranscribe(
         metadata: {
           attempt: i + 1,
           maxAttempts: retryCount,
-          language: requestData.language
-        }
-      }
-      );
+          language: requestData.language,
+        },
+      });
     }
     if (i < retryCount - 1) {
       await new Promise((r) => setTimeout(r, 1000 * (i + 1))); // exponential backoff
@@ -146,10 +145,9 @@ export async function searchSounds(
         severity: ErrorSeverity.LOW,
         showToast: false,
         metadata: {
-          query
-        }
-      }
-      );
+          query,
+        },
+      });
       if (fallbackToOld) {
         return legacySoundSearch(query, searchParams, retryCount);
       }
@@ -187,7 +185,9 @@ export async function transcribeAudio(
       if (!fallbackToOld) {
         return result;
       }
-      throw new Error(result?.error || "IPC transcription failed, attempting fallback");
+      throw new Error(
+        result?.error || "IPC transcription failed, attempting fallback"
+      );
     } catch {
       if (fallbackToOld) {
         return legacyTranscribe(requestData, retryCount);

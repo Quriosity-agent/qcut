@@ -1,10 +1,6 @@
 import { create } from "zustand";
 import { devtools } from "zustand/middleware";
-import { 
-  handleError,
-  ErrorCategory,
-  ErrorSeverity 
-} from "@/lib/error-handler";
+import { handleError, ErrorCategory, ErrorSeverity } from "@/lib/error-handler";
 
 // Debug flag - set to false to disable console logs
 const DEBUG_TEXT2IMAGE_STORE = process.env.NODE_ENV === "development" && false;
@@ -153,15 +149,12 @@ export const useText2ImageStore = create<Text2ImageStore>()(
           });
 
         if (selectedModels.length === 0) {
-          handleError(
-            new Error("No models selected for image generation"),
-            {
-              operation: "Text-to-Image Generation",
-              category: ErrorCategory.VALIDATION,
-              severity: ErrorSeverity.LOW,
-              metadata: { prompt }
-            }
-          );
+          handleError(new Error("No models selected for image generation"), {
+            operation: "Text-to-Image Generation",
+            category: ErrorCategory.VALIDATION,
+            severity: ErrorSeverity.LOW,
+            metadata: { prompt },
+          });
           return;
         }
 
@@ -264,8 +257,8 @@ export const useText2ImageStore = create<Text2ImageStore>()(
             metadata: {
               prompt,
               models: selectedModels,
-              settings
-            }
+              settings,
+            },
           });
 
           // Mark all as failed
@@ -376,8 +369,8 @@ export const useText2ImageStore = create<Text2ImageStore>()(
             severity: ErrorSeverity.HIGH,
             metadata: {
               operation: "add-to-media",
-              resultCount: resultsToAdd.length
-            }
+              resultCount: resultsToAdd.length,
+            },
           });
         }
 

@@ -39,9 +39,9 @@ export class LocalStorageAdapter<T> implements StorageAdapter<T> {
       localStorage.setItem(fullKey, JSON.stringify(value));
       console.log("[DEBUG] LocalStorageAdapter: Set key:", fullKey);
     } catch (error) {
-      handleStorageError(error, "Save data to local storage", { 
+      handleStorageError(error, "Save data to local storage", {
         key,
-        operation: 'set'
+        operation: "set",
       });
       throw error;
     }
@@ -53,9 +53,9 @@ export class LocalStorageAdapter<T> implements StorageAdapter<T> {
       localStorage.removeItem(fullKey);
       console.log("[DEBUG] LocalStorageAdapter: Removed key:", fullKey);
     } catch (error) {
-      handleStorageError(error, "Remove data from local storage", { 
+      handleStorageError(error, "Remove data from local storage", {
         key,
-        operation: 'remove'
+        operation: "remove",
       });
       throw error;
     }
@@ -73,8 +73,8 @@ export class LocalStorageAdapter<T> implements StorageAdapter<T> {
       console.log("[DEBUG] LocalStorageAdapter: Listed keys:", keys);
       return keys;
     } catch (error) {
-      handleStorageError(error, "List local storage keys", { 
-        operation: 'list'
+      handleStorageError(error, "List local storage keys", {
+        operation: "list",
       });
       throw error;
     }
@@ -97,8 +97,8 @@ export class LocalStorageAdapter<T> implements StorageAdapter<T> {
         "keys"
       );
     } catch (error) {
-      handleStorageError(error, "Clear local storage", { 
-        operation: 'clear'
+      handleStorageError(error, "Clear local storage", {
+        operation: "clear",
       });
       throw error;
     }

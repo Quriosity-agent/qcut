@@ -809,7 +809,8 @@ export class CLIExportEngine extends ExportEngine {
     // For now, use basic invoke without progress tracking
 
     try {
-      const result = await window.electronAPI.ffmpeg.exportVideoCLI(exportOptions);
+      const result =
+        await window.electronAPI.ffmpeg.exportVideoCLI(exportOptions);
       debugLog("[CLI Export] FFmpeg export completed successfully:", result);
       return result.outputFile;
     } catch (error) {

@@ -226,7 +226,7 @@ export const getDefaultFilename = (): string => {
 /**
  * Supported audio codec types for export
  */
-export type AudioCodec = 'aac' | 'opus' | 'mp3';
+export type AudioCodec = "aac" | "opus" | "mp3";
 
 /**
  * Audio export options interface
@@ -244,7 +244,9 @@ export interface AudioExportOptions {
  * Extended export settings that include audio options
  * Use this for components that support audio export
  */
-export interface ExportSettingsWithAudio extends ExportSettings, AudioExportOptions {}
+export interface ExportSettingsWithAudio
+  extends ExportSettings,
+    AudioExportOptions {}
 
 /**
  * Type guard to check if settings include audio options
@@ -252,7 +254,7 @@ export interface ExportSettingsWithAudio extends ExportSettings, AudioExportOpti
 export const hasAudioOptions = (
   settings: ExportSettings | ExportSettingsWithAudio
 ): settings is ExportSettingsWithAudio => {
-  return 'includeAudio' in settings;
+  return "includeAudio" in settings;
 };
 
 /**
@@ -276,11 +278,11 @@ export const getAudioCodecForFormat = (format: ExportFormat): AudioCodec => {
   switch (format) {
     case ExportFormat.MP4:
     case ExportFormat.MOV:
-      return 'aac';
+      return "aac";
     case ExportFormat.WEBM:
-      return 'opus';
+      return "opus";
     default:
-      return 'aac';
+      return "aac";
   }
 };
 
@@ -289,9 +291,9 @@ export const getAudioCodecForFormat = (format: ExportFormat): AudioCodec => {
  */
 export const DEFAULT_AUDIO_OPTIONS: AudioExportOptions = {
   includeAudio: true,
-  audioCodec: 'aac',
+  audioCodec: "aac",
   audioBitrate: 128,
-  audioSampleRate: 44100,
+  audioSampleRate: 44_100,
   audioChannels: 2,
 };
 

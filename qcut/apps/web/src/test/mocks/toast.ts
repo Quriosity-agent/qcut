@@ -33,7 +33,10 @@ export const mockUseToast = () => ({
  */
 export function setupToastMock() {
   vi.mock("sonner", () => ({
-    toast: Object.assign(vi.fn((message: string, options?: any) => "toast-id"), mockToast),
+    toast: Object.assign(
+      vi.fn((message: string, options?: any) => "toast-id"),
+      mockToast
+    ),
     Toaster: vi.fn(() => null),
   }));
 

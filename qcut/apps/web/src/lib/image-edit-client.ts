@@ -201,14 +201,18 @@ export async function editImage(
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      handleAIServiceError(new Error(`FAL API Error: ${response.status}`), "FAL AI image edit request", {
-        status: response.status,
-        statusText: response.statusText,
-        errorData,
-        endpoint: modelConfig.endpoint,
-        model: request.model,
-        operation: "editImage"
-      });
+      handleAIServiceError(
+        new Error(`FAL API Error: ${response.status}`),
+        "FAL AI image edit request",
+        {
+          status: response.status,
+          statusText: response.statusText,
+          errorData,
+          endpoint: modelConfig.endpoint,
+          model: request.model,
+          operation: "editImage",
+        }
+      );
 
       // Handle content policy violations (422 errors) with user-friendly messages
       if (
@@ -315,7 +319,9 @@ export async function editImage(
         processing_time: Math.floor((Date.now() - startTime) / 1000),
       };
     }
-    const error = new Error(`Unexpected response format from FAL API. Response keys: ${Object.keys(result).join(", ")}`);
+    const error = new Error(
+      `Unexpected response format from FAL API. Response keys: ${Object.keys(result).join(", ")}`
+    );
     handleAIServiceError(error, "Parse FAL AI image edit response", {
       hasRequestId: !!result.request_id,
       hasImages: !!result.images,
@@ -323,7 +329,7 @@ export async function editImage(
       hasUrlRoot: !!result.url,
       keys: Object.keys(result),
       model: request.model,
-      operation: "parseEditResponse"
+      operation: "parseEditResponse",
     });
     throw new Error(
       `Unexpected response format from FAL API. Response keys: ${Object.keys(result).join(", ")}`
@@ -440,7 +446,7 @@ async function pollImageEditStatus(
         requestId,
         elapsedTime,
         modelName,
-        operation: "pollImageEditStatus"
+        operation: "pollImageEditStatus",
       });
       if (attempts >= maxAttempts) {
         throw new Error("Image editing timeout");

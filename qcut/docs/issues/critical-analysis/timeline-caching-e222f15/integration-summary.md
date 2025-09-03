@@ -393,40 +393,63 @@ const getRenderStatus = useCallback((
 
 ##### Task 2.6: Wire up cache hook in preview panel (10 min)
 **File**: `apps/web/src/components/editor/preview-panel.tsx`
-**Location**: After line 48 (with other hooks)
+**Location**: Add import after line 39 (after existing imports)
 ```typescript
 import { useFrameCache } from '@/hooks/use-frame-cache';
-
-// In component
+```
+**Location**: Inside component, after line 76 (after dragState)
+```typescript
+// Frame caching - non-intrusive addition
 const { getCachedFrame, cacheFrame, invalidateCache } = useFrameCache();
 ```
+**Safety Verification**:
+- ✅ Hook is called unconditionally (React rules)
+- ✅ Placed after existing state to maintain order
+- ✅ Does not modify any existing state or refs
+- ✅ Isolated from drag state and other hooks
 
 ##### Task 2.7: Add cache invalidation effect (10 min)
 **File**: `apps/web/src/components/editor/preview-panel.tsx`
-**Location**: Add after line 176
+**Location**: Add after line 177 (after isExpanded effect, before dragState effect)
 ```typescript
-// Invalidate cache when timeline changes
+// Invalidate cache when timeline changes - runs independently
 useEffect(() => {
   invalidateCache();
 }, [tracks, mediaItems, activeProject?.backgroundColor, invalidateCache]);
 ```
+**Safety Verification**:
+- ✅ Effect runs independently of existing effects
+- ✅ Does not modify DOM or state
+- ✅ Only clears internal cache Map
+- ✅ No interference with drag operations (next effect at line 178)
 
 ##### Task 2.8: Implement frame capture and caching (10 min)
 **File**: `apps/web/src/components/editor/preview-panel.tsx`
-**Location**: Add new useEffect
+**Location**: Add after line 231 (after dragState effect)
 ```typescript
+// Capture and cache frames after render - non-blocking
 useEffect(() => {
+  // Skip during playback and drag to avoid performance impact
+  if (isPlaying || dragState.isDragging) return;
+  
   const captureAndCache = async () => {
-    if (!previewRef.current) return;
+    if (!previewRef.current || activeElements.length === 0) return;
     
     // Check if already cached
     const cached = getCachedFrame(currentTime, tracks, mediaItems, activeProject);
     if (cached) return;
     
+    // Delay to ensure render is complete
+    await new Promise(resolve => setTimeout(resolve, 50));
+    
+    // Skip if component unmounted or state changed
+    if (!previewRef.current) return;
+    
     // Capture and cache
     const imageData = await captureFrameToCanvas(previewRef.current, {
       width: previewDimensions.width,
       height: previewDimensions.height,
+      backgroundColor: activeProject?.backgroundColor || '#000000',
     });
     
     if (imageData) {
@@ -434,9 +457,31 @@ useEffect(() => {
     }
   };
   
-  captureAndCache();
-}, [currentTime, tracks, /* other deps */]);
+  // Use requestIdleCallback for non-blocking capture
+  const id = requestIdleCallback(() => captureAndCache(), { timeout: 1000 });
+  return () => cancelIdleCallback(id);
+}, [
+  currentTime, 
+  tracks, 
+  mediaItems, 
+  activeProject,
+  previewDimensions.width,
+  previewDimensions.height,
+  isPlaying,
+  dragState.isDragging,
+  activeElements.length,
+  getCachedFrame,
+  cacheFrame
+]);
 ```
+**Safety Verification**:
+- ✅ Only runs when not playing (preserves playback performance)
+- ✅ Skips during drag operations (preserves drag smoothness)
+- ✅ Uses requestIdleCallback (non-blocking)
+- ✅ Checks activeElements to avoid unnecessary captures
+- ✅ Waits for render completion with setTimeout
+- ✅ Has timeout to prevent hanging
+- ✅ Proper cleanup with cancelIdleCallback
 
 #### Phase 3: UI Integration (1-2 hours → 6-12 tasks @ 10 min each)
 
@@ -510,33 +555,293 @@ className={cn(
 )}
 ```
 
-#### Phase 4: Optimization (1-2 hours)
+#### Phase 4: Optimization (1-2 hours → 6 tasks @ 10 min each)
 
-##### Task 4.1: Implement pre-rendering strategy
-**Our Repo Files to Modify**:
-- `apps/web/src/components/editor/preview-panel.tsx` - Add pre-render logic
-
-**Reference from Fetched Commit**:
-- `timeline-caching-e222f15/preview-panel.tsx` (lines 502-565) - Pre-rendering implementation
-
-##### Task 4.2: Fine-tune cache parameters
-**Our Repo Files to Modify**:
-- `apps/web/src/hooks/use-frame-cache.ts` - Adjust cache size and resolution
-
-**Configuration**:
+##### Task 4.1: Implement pre-rendering for nearby frames (10 min)
+**File**: `apps/web/src/hooks/use-frame-cache.ts`
+**Reference**: `timeline-caching-e222f15/use-frame-cache.ts` (lines 242-309)
+**Location**: Add method to hook
 ```typescript
-const { maxCacheSize = 300, cacheResolution = 30 } = options; // Tune these values
+const preRenderNearbyFrames = useCallback(async (
+  currentTime: number,
+  renderFunction: (time: number) => Promise<ImageData>,
+  range: number = 2 // seconds before and after
+) => {
+  const framesToPreRender: number[] = [];
+  
+  // Calculate frames to pre-render
+  for (let offset = -range; offset <= range; offset += 1 / cacheResolution) {
+    const time = currentTime + offset;
+    if (time < 0) continue;
+    
+    if (!isFrameCached(time, tracks, mediaFiles, activeProject)) {
+      framesToPreRender.push(time);
+    }
+  }
+  
+  // Pre-render during idle time
+  for (const time of framesToPreRender.slice(0, 30)) { // Limit to 30 frames
+    requestIdleCallback(async () => {
+      try {
+        const imageData = await renderFunction(time);
+        cacheFrame(time, imageData, tracks, mediaFiles, activeProject);
+      } catch (error) {
+        console.warn(`Pre-render failed for time ${time}:`, error);
+      }
+    });
+  }
+}, [isFrameCached, cacheFrame, cacheResolution, tracks, mediaFiles, activeProject]);
 ```
 
-##### Task 4.3: Add performance monitoring
-**Our Repo Files to Create**:
-- `apps/web/src/lib/performance-monitor.ts` - Performance tracking utilities
+##### Task 4.2: Add offscreen canvas optimization (10 min)
+**File**: `apps/web/src/lib/canvas-utils.ts`
+**Location**: Update captureFrameToCanvas function
+```typescript
+// Create offscreen canvas for better performance
+let offscreenCanvas: OffscreenCanvas | null = null;
+let offscreenContext: OffscreenCanvasRenderingContext2D | null = null;
 
-**Metrics to Track**:
-- Cache hit rate
-- Render time per frame
-- Memory usage
-- Pre-render effectiveness
+export async function captureFrameToCanvas(
+  element: HTMLElement,
+  options: CaptureOptions
+): Promise<ImageData | null> {
+  try {
+    // Use offscreen canvas if available
+    if (typeof OffscreenCanvas !== 'undefined') {
+      if (!offscreenCanvas || 
+          offscreenCanvas.width !== options.width || 
+          offscreenCanvas.height !== options.height) {
+        offscreenCanvas = new OffscreenCanvas(options.width, options.height);
+        offscreenContext = offscreenCanvas.getContext('2d');
+      }
+      
+      if (offscreenContext) {
+        // Use html2canvas to render to offscreen canvas
+        const canvas = await html2canvas(element, {
+          canvas: offscreenCanvas as any,
+          width: options.width,
+          height: options.height,
+          backgroundColor: options.backgroundColor,
+          logging: false,
+        });
+        
+        return offscreenContext.getImageData(0, 0, options.width, options.height);
+      }
+    }
+    
+    // Fallback to regular canvas
+    return await captureWithRegularCanvas(element, options);
+  } catch (error) {
+    console.error('Frame capture failed:', error);
+    return null;
+  }
+}
+```
+
+##### Task 4.3: Implement smart cache eviction (10 min)
+**File**: `apps/web/src/hooks/use-frame-cache.ts`
+**Reference**: `timeline-caching-e222f15/use-frame-cache.ts` (lines 200-211)
+**Location**: Update cacheFrame method
+```typescript
+// Smarter LRU eviction based on access patterns
+if (frameCacheRef.current.size >= maxCacheSize) {
+  const entries = Array.from(frameCacheRef.current.entries());
+  
+  // Sort by timestamp and distance from current time
+  entries.sort((a, b) => {
+    const aDistance = Math.abs(a[0] - time);
+    const bDistance = Math.abs(b[0] - time);
+    const aAge = Date.now() - a[1].timestamp;
+    const bAge = Date.now() - b[1].timestamp;
+    
+    // Prioritize keeping frames near current time (within 5 seconds)
+    if (aDistance < 5 && bDistance >= 5) return -1;
+    if (bDistance < 5 && aDistance >= 5) return 1;
+    
+    // Otherwise evict oldest
+    return bAge - aAge;
+  });
+  
+  // Remove oldest 20% of entries
+  const toRemove = Math.floor(entries.length * 0.2);
+  for (let i = 0; i < toRemove; i++) {
+    frameCacheRef.current.delete(entries[i][0]);
+  }
+}
+```
+
+##### Task 4.4: Add performance monitoring (10 min)
+**File**: `apps/web/src/hooks/use-frame-cache.ts`
+**Location**: Add performance tracking to hook
+```typescript
+interface CacheMetrics {
+  hits: number;
+  misses: number;
+  avgCaptureTime: number;
+  captureCount: number;
+}
+
+const metricsRef = useRef<CacheMetrics>({
+  hits: 0,
+  misses: 0,
+  avgCaptureTime: 0,
+  captureCount: 0
+});
+
+// Update getCachedFrame to track hits/misses
+const getCachedFrame = useCallback((/* params */) => {
+  const frameKey = Math.floor(time * cacheResolution);
+  const cached = frameCacheRef.current.get(frameKey);
+  
+  if (cached && cached.timelineHash === currentHash) {
+    metricsRef.current.hits++;
+    return cached.imageData;
+  } else {
+    metricsRef.current.misses++;
+    return null;
+  }
+}, [/* deps */]);
+
+// Track capture performance
+const cacheFrame = useCallback((/* params */) => {
+  const startTime = performance.now();
+  // ... existing caching logic ...
+  
+  const captureTime = performance.now() - startTime;
+  metricsRef.current.captureCount++;
+  metricsRef.current.avgCaptureTime = 
+    (metricsRef.current.avgCaptureTime * (metricsRef.current.captureCount - 1) + captureTime) 
+    / metricsRef.current.captureCount;
+}, [/* deps */]);
+
+// Expose metrics in return
+return {
+  // ... existing returns
+  cacheMetrics: metricsRef.current,
+  cacheHitRate: metricsRef.current.hits / (metricsRef.current.hits + metricsRef.current.misses)
+};
+```
+
+##### Task 4.5: Add cache warming on idle (10 min)
+**File**: `apps/web/src/components/editor/preview-panel.tsx`
+**Location**: Add after line 500 (after main component logic)
+```typescript
+// Warm cache during idle time
+useEffect(() => {
+  if (!isPlaying && previewRef.current) {
+    const warmCache = () => {
+      // Only warm cache if user has been idle for 100ms
+      preRenderNearbyFrames(
+        currentTime,
+        async (time) => {
+          if (!previewRef.current) throw new Error("No preview element");
+          
+          // Capture frame at specified time
+          // First update timeline to that time (without triggering re-render)
+          const imageData = await captureFrameToCanvas(previewRef.current, {
+            width: previewDimensions.width,
+            height: previewDimensions.height,
+            backgroundColor: activeProject?.backgroundColor || '#000000',
+          });
+          
+          if (!imageData) throw new Error("Failed to capture frame");
+          return imageData;
+        },
+        3 // Pre-render 3 seconds ahead/behind
+      );
+    };
+    
+    const timeoutId = setTimeout(warmCache, 100);
+    return () => clearTimeout(timeoutId);
+  }
+}, [
+  currentTime, 
+  isPlaying, 
+  preRenderNearbyFrames,
+  previewDimensions,
+  activeProject?.backgroundColor
+]);
+```
+
+##### Task 4.6: Add cache persistence option (10 min)
+**File**: `apps/web/src/hooks/use-frame-cache.ts`
+**Location**: Add optional IndexedDB persistence
+```typescript
+import { openDB } from 'idb';
+
+interface FrameCacheOptions {
+  maxCacheSize?: number;
+  cacheResolution?: number;
+  persist?: boolean; // New option for persistence
+}
+
+// Save cache to IndexedDB
+const saveToIndexedDB = useCallback(async () => {
+  if (!options.persist) return;
+  
+  try {
+    const db = await openDB('frame-cache', 1, {
+      upgrade(db) {
+        if (!db.objectStoreNames.contains('frames')) {
+          db.createObjectStore('frames');
+        }
+      }
+    });
+    
+    // Convert Map to array for storage
+    const cacheArray = Array.from(frameCacheRef.current.entries()).map(
+      ([key, value]) => ({
+        key,
+        imageData: value.imageData,
+        timelineHash: value.timelineHash,
+        timestamp: value.timestamp
+      })
+    );
+    
+    await db.put('frames', cacheArray, 'cache-snapshot');
+  } catch (error) {
+    console.warn('Failed to persist cache:', error);
+  }
+}, [options.persist]);
+
+// Restore cache from IndexedDB on mount
+const restoreFromIndexedDB = useCallback(async () => {
+  if (!options.persist) return;
+  
+  try {
+    const db = await openDB('frame-cache', 1);
+    const cacheArray = await db.get('frames', 'cache-snapshot');
+    
+    if (cacheArray && Array.isArray(cacheArray)) {
+      frameCacheRef.current.clear();
+      for (const item of cacheArray) {
+        frameCacheRef.current.set(item.key, {
+          imageData: item.imageData,
+          timelineHash: item.timelineHash,
+          timestamp: item.timestamp
+        });
+      }
+    }
+  } catch (error) {
+    console.warn('Failed to restore cache:', error);
+  }
+}, [options.persist]);
+
+// Add restore on mount
+useEffect(() => {
+  if (options.persist) {
+    restoreFromIndexedDB();
+  }
+}, []);
+
+// Add save on significant changes
+useEffect(() => {
+  if (options.persist && frameCacheRef.current.size > 0) {
+    const debounceTimer = setTimeout(saveToIndexedDB, 1000);
+    return () => clearTimeout(debounceTimer);
+  }
+}, [frameCacheRef.current.size, saveToIndexedDB]);
+```
 
 ### Key Differences to Address
 
@@ -724,8 +1029,10 @@ Our codebase uses React components for rendering (VideoPlayer, AudioPlayer, etc.
 - [ ] Add indicator to timeline ruler
 - [ ] Style components with our theme
 
-### Phase 4: Optimization
-- [ ] Implement pre-rendering strategy
-- [ ] Add performance monitoring
-- [ ] Fine-tune cache parameters
-- [ ] Benchmark performance improvements
+### Phase 4: Optimization (6 tasks @ 10 min each)
+- [ ] Task 4.1: Implement pre-rendering for nearby frames
+- [ ] Task 4.2: Add offscreen canvas optimization
+- [ ] Task 4.3: Implement smart cache eviction
+- [ ] Task 4.4: Add performance monitoring
+- [ ] Task 4.5: Add cache warming on idle
+- [ ] Task 4.6: Add cache persistence option

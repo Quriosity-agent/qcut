@@ -16,8 +16,12 @@ const controllers = new Map();
 
 module.exports = function setupTranscribeHandlers() {
   // Remove existing handlers to prevent duplicate registration
-  try { ipcMain.removeHandler("transcribe:audio"); } catch {}
-  try { ipcMain.removeHandler("transcribe:cancel"); } catch {}
+  try {
+    ipcMain.removeHandler("transcribe:audio");
+  } catch {}
+  try {
+    ipcMain.removeHandler("transcribe:cancel");
+  } catch {}
 
   ipcMain.handle("transcribe:audio", async (event, requestData) => {
     const { id } = requestData;
@@ -50,7 +54,13 @@ module.exports = function setupTranscribeHandlers() {
 
 async function handleTranscription(requestData) {
   try {
-    const { filename, language = "auto", decryptionKey, iv, controller } = requestData;
+    const {
+      filename,
+      language = "auto",
+      decryptionKey,
+      iv,
+      controller,
+    } = requestData;
 
     log.info("[Transcribe Handler] Starting transcription for:", filename);
 

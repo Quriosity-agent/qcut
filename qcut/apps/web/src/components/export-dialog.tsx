@@ -42,7 +42,10 @@ import { useExportValidation } from "@/hooks/use-export-validation";
 import { useExportPresets } from "@/hooks/use-export-presets";
 
 // Audio export configuration
-import { setAudioExportConfig, getCodecForFormat } from "@/lib/audio-export-config";
+import {
+  setAudioExportConfig,
+  getCodecForFormat,
+} from "@/lib/audio-export-config";
 
 export function ExportDialog() {
   const { error } = useExportStore();
@@ -208,7 +211,7 @@ export function ExportDialog() {
       resolution: exportSettings.resolution,
       // Add audio settings (backward compatible - ignored if not supported)
       includeAudio: audioEnabled,
-      audioCodec: audioCodec,
+      audioCodec,
       audioBitrate: 128,
     } as any);
   };
@@ -699,7 +702,8 @@ export function ExportDialog() {
                 </div>
                 {includeAudio && (
                   <div className="text-xs text-muted-foreground pl-6">
-                    Audio tracks will be mixed and included in the exported video
+                    Audio tracks will be mixed and included in the exported
+                    video
                   </div>
                 )}
               </CardContent>

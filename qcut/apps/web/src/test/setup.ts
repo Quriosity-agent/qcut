@@ -1,14 +1,22 @@
 // Test setup file for Vitest - enhanced DOM setup for happy-dom
 console.log("🔧 SETUP.TS EXECUTING - Starting happy-dom environment setup...");
-console.log("🔧 Initial DOM check - document available:", typeof document !== "undefined");
-console.log("🔧 Initial DOM check - window available:", typeof window !== "undefined");
+console.log(
+  "🔧 Initial DOM check - document available:",
+  typeof document !== "undefined"
+);
+console.log(
+  "🔧 Initial DOM check - window available:",
+  typeof window !== "undefined"
+);
 
 // happy-dom provides DOM globals automatically, we just need to enhance them
 // Mock getComputedStyle for Radix UI components
-const mockGetComputedStyle = (element: Element): Partial<CSSStyleDeclaration> => ({
+const mockGetComputedStyle = (
+  element: Element
+): Partial<CSSStyleDeclaration> => ({
   getPropertyValue: () => "",
   display: "block",
-  visibility: "visible", 
+  visibility: "visible",
   opacity: "1",
   transform: "none",
   transition: "none",
@@ -18,7 +26,7 @@ const mockGetComputedStyle = (element: Element): Partial<CSSStyleDeclaration> =>
 // Apply getComputedStyle mock to all contexts
 if (typeof window !== "undefined") {
   console.log("🔧 Applying getComputedStyle to window");
-  Object.defineProperty(window, 'getComputedStyle', {
+  Object.defineProperty(window, "getComputedStyle", {
     value: mockGetComputedStyle as typeof window.getComputedStyle,
     writable: true,
     configurable: true,
@@ -27,7 +35,7 @@ if (typeof window !== "undefined") {
 
 if (typeof globalThis !== "undefined") {
   console.log("🔧 Applying getComputedStyle to globalThis");
-  Object.defineProperty(globalThis, 'getComputedStyle', {
+  Object.defineProperty(globalThis, "getComputedStyle", {
     value: mockGetComputedStyle as typeof window.getComputedStyle,
     writable: true,
     configurable: true,
@@ -39,8 +47,14 @@ if (typeof global !== "undefined") {
   (global as any).getComputedStyle = mockGetComputedStyle;
 }
 
-console.log("🔧 SETUP.TS COMPLETE - Document available:", typeof document !== "undefined");
-console.log("🔧 SETUP.TS COMPLETE - getComputedStyle available:", typeof getComputedStyle !== "undefined");
+console.log(
+  "🔧 SETUP.TS COMPLETE - Document available:",
+  typeof document !== "undefined"
+);
+console.log(
+  "🔧 SETUP.TS COMPLETE - getComputedStyle available:",
+  typeof getComputedStyle !== "undefined"
+);
 console.log("🔧 SETUP.TS COMPLETE - Environment ready for tests");
 
 // Now that DOM is available, import testing libraries
@@ -89,16 +103,34 @@ const makeObserver = () => ({
 });
 
 // Mock IntersectionObserver
-Object.defineProperty(window, "IntersectionObserver", { writable: true, value: vi.fn().mockImplementation(makeObserver) });
-Object.defineProperty(globalThis, "IntersectionObserver", { writable: true, value: window.IntersectionObserver });
+Object.defineProperty(window, "IntersectionObserver", {
+  writable: true,
+  value: vi.fn().mockImplementation(makeObserver),
+});
+Object.defineProperty(globalThis, "IntersectionObserver", {
+  writable: true,
+  value: window.IntersectionObserver,
+});
 
 // Mock ResizeObserver
-Object.defineProperty(window, "ResizeObserver", { writable: true, value: vi.fn().mockImplementation(makeObserver) });
-Object.defineProperty(globalThis, "ResizeObserver", { writable: true, value: window.ResizeObserver });
+Object.defineProperty(window, "ResizeObserver", {
+  writable: true,
+  value: vi.fn().mockImplementation(makeObserver),
+});
+Object.defineProperty(globalThis, "ResizeObserver", {
+  writable: true,
+  value: window.ResizeObserver,
+});
 
 // Mock MutationObserver
-Object.defineProperty(window, "MutationObserver", { writable: true, value: vi.fn().mockImplementation(makeObserver) });
-Object.defineProperty(globalThis, "MutationObserver", { writable: true, value: window.MutationObserver });
+Object.defineProperty(window, "MutationObserver", {
+  writable: true,
+  value: vi.fn().mockImplementation(makeObserver),
+});
+Object.defineProperty(globalThis, "MutationObserver", {
+  writable: true,
+  value: window.MutationObserver,
+});
 
 // Mock URL methods
 Object.defineProperty(URL, "createObjectURL", {
@@ -153,28 +185,37 @@ try {
   vi.spyOn(loc, "reload").mockImplementation(() => {});
   vi.spyOn(loc, "assign").mockImplementation(() => {});
   vi.spyOn(loc, "replace").mockImplementation(() => {});
-  
+
   // Also set globalThis.location to match window.location for consistency
   if (typeof globalThis !== "undefined" && !globalThis.location) {
-    Object.defineProperty(globalThis, 'location', { 
-      value: window.location, 
+    Object.defineProperty(globalThis, "location", {
+      value: window.location,
       writable: true,
-      configurable: true 
+      configurable: true,
     });
   }
 } catch {
   // Fallback for environments where spying is not possible
   try {
-    Object.defineProperty(window.location, "reload", { value: vi.fn(), configurable: true });
-    Object.defineProperty(window.location, "assign", { value: vi.fn(), configurable: true });
-    Object.defineProperty(window.location, "replace", { value: vi.fn(), configurable: true });
-    
+    Object.defineProperty(window.location, "reload", {
+      value: vi.fn(),
+      configurable: true,
+    });
+    Object.defineProperty(window.location, "assign", {
+      value: vi.fn(),
+      configurable: true,
+    });
+    Object.defineProperty(window.location, "replace", {
+      value: vi.fn(),
+      configurable: true,
+    });
+
     // Also set globalThis.location in fallback
     if (typeof globalThis !== "undefined" && !globalThis.location) {
-      Object.defineProperty(globalThis, 'location', { 
-        value: window.location, 
+      Object.defineProperty(globalThis, "location", {
+        value: window.location,
         writable: true,
-        configurable: true 
+        configurable: true,
       });
     }
   } catch {
