@@ -2,6 +2,7 @@ import { useRef, useCallback, useEffect } from "react";
 import { openDB, type IDBPDatabase } from "idb";
 import { TimelineTrack, TimelineElement } from "@/types/timeline";
 import { MediaItem } from "@/stores/media-store-types";
+import { TProject } from "@/types/project";
 
 interface CachedFrame {
   imageData: ImageData;
@@ -33,7 +34,7 @@ export function useFrameCache(options: FrameCacheOptions = {}) {
       time: number,
       tracks: TimelineTrack[],
       mediaItems: MediaItem[],
-      activeProject: any
+      activeProject: TProject | null
     ): string => {
       // Get elements that are active at this time
       const activeElements: Array<{
@@ -79,7 +80,6 @@ export function useFrameCache(options: FrameCacheOptions = {}) {
         backgroundColor: activeProject?.backgroundColor,
         backgroundType: activeProject?.backgroundType,
         blurIntensity: activeProject?.blurIntensity,
-        canvasSize: activeProject?.canvasSize,
       };
 
       return JSON.stringify({
@@ -97,7 +97,7 @@ export function useFrameCache(options: FrameCacheOptions = {}) {
       time: number,
       tracks: TimelineTrack[],
       mediaItems: MediaItem[],
-      activeProject: any
+      activeProject: TProject | null
     ): ImageData | null => {
       const frameTime = Math.floor(time * cacheResolution) / cacheResolution;
       const cached = frameCacheRef.current.get(frameTime);
@@ -134,7 +134,7 @@ export function useFrameCache(options: FrameCacheOptions = {}) {
       imageData: ImageData,
       tracks: TimelineTrack[],
       mediaItems: MediaItem[],
-      activeProject: any
+      activeProject: TProject | null
     ): void => {
       const startTime = performance.now();
       const frameTime = Math.floor(time * cacheResolution) / cacheResolution;
@@ -206,7 +206,7 @@ export function useFrameCache(options: FrameCacheOptions = {}) {
       time: number,
       tracks: TimelineTrack[],
       mediaItems: MediaItem[],
-      activeProject: any
+      activeProject: TProject | null
     ): "cached" | "not-cached" => {
       const frameTime = Math.floor(time * cacheResolution) / cacheResolution;
       const cached = frameCacheRef.current.get(frameTime);
@@ -230,7 +230,7 @@ export function useFrameCache(options: FrameCacheOptions = {}) {
       time: number,
       tracks: TimelineTrack[],
       mediaItems: MediaItem[],
-      activeProject: any
+      activeProject: TProject | null
     ): boolean => {
       return (
         getRenderStatus(time, tracks, mediaItems, activeProject) === "cached"
@@ -247,13 +247,13 @@ export function useFrameCache(options: FrameCacheOptions = {}) {
       range: number = 2, // kept for API compatibility
       tracks?: TimelineTrack[],
       mediaItems?: MediaItem[],
-      activeProject?: any
+      activeProject?: TProject | null
     ) => {
       if (!tracks || !mediaItems) return;
 
       // For safety with DOM-capture rendering, only pre-render the quantized current frame
       const frameTime = Math.floor(currentTime * cacheResolution) / cacheResolution;
-      if (!isFrameCached(frameTime, tracks, mediaItems, activeProject)) {
+      if (!isFrameCached(frameTime, tracks, mediaItems, activeProject ?? null)) {
         const schedule = (fn: () => void) => {
           if ('requestIdleCallback' in window) {
             window.requestIdleCallback(fn, { timeout: 1000 });
@@ -266,7 +266,7 @@ export function useFrameCache(options: FrameCacheOptions = {}) {
           (async () => {
             try {
               const imageData = await renderFunction(frameTime);
-              cacheFrame(frameTime, imageData, tracks, mediaItems, activeProject);
+              cacheFrame(frameTime, imageData, tracks, mediaItems, activeProject ?? null);
             } catch (error) {
               // Silently ignore if render couldn't proceed (e.g., targeted time capture unsupported)
             }

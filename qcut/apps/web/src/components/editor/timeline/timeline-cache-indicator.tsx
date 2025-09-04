@@ -79,7 +79,7 @@ export function TimelineCacheIndicator({
 
         return (
           <div
-            key={index}
+            key={`${segment.startTime}-${segment.endTime}-${segment.cached ? 1 : 0}`}
             className={cn(
               "absolute top-0 h-px",
               segment.cached ? "bg-primary" : "bg-border"
