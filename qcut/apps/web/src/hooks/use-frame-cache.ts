@@ -82,8 +82,12 @@ export function useFrameCache(options: FrameCacheOptions = {}) {
         blurIntensity: activeProject?.blurIntensity,
       };
 
+      // Sort activeElements by id for consistent hashing
+      const sortedElements = [...activeElements].sort((a, b) => a.id.localeCompare(b.id));
+      
+      // Create a stable string representation
       return JSON.stringify({
-        activeElements,
+        activeElements: sortedElements,
         projectState,
         time: Math.floor(time * cacheResolution) / cacheResolution, // Quantize time
       });
@@ -145,7 +149,7 @@ export function useFrameCache(options: FrameCacheOptions = {}) {
         activeProject
       );
 
-      // Smarter LRU eviction based on access patterns
+      // Distance and age-based eviction (keeps frames near current position, evicts old distant frames)
       if (frameCacheRef.current.size >= maxCacheSize) {
         const entries = Array.from(frameCacheRef.current.entries());
         // Sort by distance (far first) then age (older first)

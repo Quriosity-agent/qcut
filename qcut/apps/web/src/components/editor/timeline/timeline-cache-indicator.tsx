@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { TIMELINE_CONSTANTS } from "@/constants/timeline-constants";
 import { TimelineTrack } from "@/types/timeline";
 import { MediaItem } from "@/stores/media-store-types";
+import { TProject } from "@/types/project";
 
 interface CacheSegment {
   startTime: number;
@@ -18,13 +19,14 @@ interface TimelineCacheIndicatorProps {
   zoomLevel: number;
   tracks: TimelineTrack[];
   mediaItems: MediaItem[];
-  activeProject: any;
+  activeProject: TProject | null;
   getRenderStatus: (
     time: number,
     tracks: TimelineTrack[],
     mediaItems: MediaItem[],
-    activeProject: any
+    activeProject: TProject | null
   ) => "cached" | "not-cached";
+  cacheResolution?: number; // optional, for step alignment
 }
 
 export function TimelineCacheIndicator({
