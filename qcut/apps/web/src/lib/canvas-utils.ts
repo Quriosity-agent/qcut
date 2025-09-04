@@ -31,7 +31,9 @@ export async function captureFrameToCanvas(
           canvas: offscreenCanvas as any,
           width: options.width,
           height: options.height,
-          backgroundColor: options.backgroundColor || "#000000",
+          backgroundColor:
+            options.backgroundColor === 'transparent' ? null : (options.backgroundColor || '#000000'),
+          scale: 1,
           logging: false,
           useCORS: true,
           allowTaint: false,
@@ -50,16 +52,18 @@ export async function captureFrameToCanvas(
     const canvas = await html2canvas(element, {
       width: options.width,
       height: options.height,
-      backgroundColor: options.backgroundColor || "#000000",
+      backgroundColor:
+        options.backgroundColor === 'transparent' ? null : (options.backgroundColor || '#000000'),
+      scale: 1,
       logging: false,
       useCORS: true,
       // Preserve video frames and dynamic content
       allowTaint: false,
       foreignObjectRendering: true,
       // Important: preserve existing transforms and styles
-      onclone: (clonedDoc, element) => {
+      onclone: (clonedDoc) => {
         // Preserve any dynamic styles
-        const clonedElement = clonedDoc.getElementById(element.id);
+        const clonedElement = element.id ? clonedDoc.getElementById(element.id) : null;
         if (clonedElement && element.style) {
           clonedElement.style.cssText = element.style.cssText;
         }
@@ -103,7 +107,9 @@ export async function captureFrameToOffscreenCanvas(
         const regularCanvas = await html2canvas(element, {
           width: options.width,
           height: options.height,
-          backgroundColor: options.backgroundColor || "#000000",
+          backgroundColor:
+            options.backgroundColor === 'transparent' ? null : (options.backgroundColor || '#000000'),
+          scale: 1,
           logging: false,
           useCORS: true,
           allowTaint: false,

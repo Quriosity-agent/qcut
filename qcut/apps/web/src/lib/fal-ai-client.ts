@@ -1,5 +1,5 @@
 import { TEXT2IMAGE_MODELS, type Text2ImageModel } from "./text2image-models";
-import { handleAIServiceError } from "./error-handler";
+import { handleAIServiceError, handleError, ErrorCategory, ErrorSeverity } from "./error-handler";
 
 // Types for API responses
 interface FalImageResponse {
@@ -394,9 +394,11 @@ class FalAIClient {
 
       return result.success;
     } catch (error) {
-      handleAIServiceError(error, "Test FAL AI model availability", {
-        modelKey,
-        operation: "testModelAvailability",
+      handleError(error instanceof Error ? error : new Error(String(error)), {
+        operation: "Test FAL AI model availability",
+        category: ErrorCategory.AI_SERVICE,
+        severity: ErrorSeverity.MEDIUM,
+        metadata: { modelKey, operation: "testModelAvailability" },
         showToast: false, // Don't spam users with test failures
       });
       return false;
@@ -515,8 +517,11 @@ export async function batchGenerate(
         results.push(settledResult.value);
       } else {
         // Handle rejected batch item
-        handleAIServiceError(settledResult.reason, "Batch image generation", {
-          operation: "batchGenerate",
+        handleError(settledResult.reason instanceof Error ? settledResult.reason : new Error(String(settledResult.reason)), {
+          operation: "Batch image generation",
+          category: ErrorCategory.AI_SERVICE,
+          severity: ErrorSeverity.MEDIUM,
+          metadata: { operation: "batchGenerate" },
           showToast: false, // Don't spam with batch failures
         });
       }

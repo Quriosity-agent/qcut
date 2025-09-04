@@ -70,7 +70,7 @@ export function useFrameCache(options: FrameCacheOptions = {}) {
               trimStart: element.trimStart,
               trimEnd: element.trimEnd,
               mediaId:
-                element.type === "media" ? (element as any).mediaId : undefined,
+                element.type === "media" && 'mediaId' in element ? element.mediaId : undefined,
             });
           }
         }
@@ -131,6 +131,33 @@ export function useFrameCache(options: FrameCacheOptions = {}) {
     },
     [getTimelineHash, cacheResolution]
   );
+
+  // IndexedDB persistence helpers
+  const saveToIndexedDB = useCallback(async () => {
+    if (!persist) return;
+    try {
+      const db = await openDB("frame-cache", 1, {
+        upgrade(db: IDBPDatabase) {
+          if (!db.objectStoreNames.contains("frames")) {
+            db.createObjectStore("frames");
+          }
+        },
+      });
+
+      const cacheArray = Array.from(frameCacheRef.current.entries()).map(
+        ([key, value]) => ({
+          key,
+          imageData: value.imageData,
+          timelineHash: value.timelineHash,
+          timestamp: value.timestamp,
+        })
+      );
+
+      await db.put("frames", cacheArray, "cache-snapshot");
+    } catch (error) {
+      onError?.(error);
+    }
+  }, [persist, onError]);
 
   // Cache a rendered frame
   const cacheFrame = useCallback(
@@ -194,7 +221,7 @@ export function useFrameCache(options: FrameCacheOptions = {}) {
         }, 1000);
       }
     },
-    [getTimelineHash, cacheResolution, maxCacheSize, persist]
+    [getTimelineHash, cacheResolution, maxCacheSize, persist, saveToIndexedDB]
   );
 
   // Clear cache when timeline changes significantly
@@ -203,7 +230,7 @@ export function useFrameCache(options: FrameCacheOptions = {}) {
     if (persist) {
       saveToIndexedDB().catch(() => {});
     }
-  }, [persist]);
+  }, [persist, saveToIndexedDB]);
 
   // Get render status for timeline indicator
   const getRenderStatus = useCallback(
@@ -295,33 +322,6 @@ export function useFrameCache(options: FrameCacheOptions = {}) {
     avgCaptureTime: 0,
     captureCount: 0,
   });
-
-  // IndexedDB persistence helpers
-  const saveToIndexedDB = useCallback(async () => {
-    if (!persist) return;
-    try {
-      const db = await openDB("frame-cache", 1, {
-        upgrade(db: IDBPDatabase) {
-          if (!db.objectStoreNames.contains("frames")) {
-            db.createObjectStore("frames");
-          }
-        },
-      });
-
-      const cacheArray = Array.from(frameCacheRef.current.entries()).map(
-        ([key, value]) => ({
-          key,
-          imageData: value.imageData,
-          timelineHash: value.timelineHash,
-          timestamp: value.timestamp,
-        })
-      );
-
-      await db.put("frames", cacheArray, "cache-snapshot");
-    } catch (error) {
-      onError?.(error);
-    }
-  }, [persist]);
 
   const restoreFromIndexedDB = useCallback(async () => {
     if (!persist) return;
