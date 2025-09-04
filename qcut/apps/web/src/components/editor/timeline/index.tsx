@@ -1022,6 +1022,7 @@ function TimelineToolbar({
   const toggle = usePlaybackStore((s) => s.toggle);
   const toggleBookmark = useProjectStore((s) => s.toggleBookmark);
   const isBookmarked = useProjectStore((s) => s.isBookmarked);
+  const activeProject = useProjectStore((s) => s.activeProject);
 
   // Action handlers
   const handleSplitSelected = () => {
@@ -1154,6 +1155,21 @@ function TimelineToolbar({
 
   const handleToggleBookmark = async () => {
     await toggleBookmark(currentTime);
+  };
+
+  const handleSceneManagement = () => {
+    toast.info(
+      "Scene management coming soon! This will allow you to create and switch between different timeline scenes.",
+      {
+        duration: 4000,
+        action: {
+          label: "Learn More",
+          onClick: () => {
+            console.log("Scene management documentation");
+          },
+        },
+      }
+    );
   };
 
   // Check if the current time is bookmarked
@@ -1305,13 +1321,22 @@ function TimelineToolbar({
         </TooltipProvider>
       </div>
       <div>
-        <SplitButton>
-          <SplitButtonLeft>Main scene</SplitButtonLeft>
-          <SplitButtonSeparator />
-          <SplitButtonRight onClick={() => {}}>
-            <LayersIcon />
-          </SplitButtonRight>
-        </SplitButton>
+        <TooltipProvider delayDuration={500}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <SplitButton>
+                <SplitButtonLeft>{activeProject?.name || "Main scene"}</SplitButtonLeft>
+                <SplitButtonSeparator />
+                <SplitButtonRight onClick={handleSceneManagement}>
+                  <LayersIcon className="h-4 w-4" />
+                </SplitButtonRight>
+              </SplitButton>
+            </TooltipTrigger>
+            <TooltipContent>
+              Scene: {activeProject?.name || "Main scene"} • Click layers to manage scenes
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
       </div>
       <div className="flex items-center gap-1">
         <TooltipProvider delayDuration={500}>
