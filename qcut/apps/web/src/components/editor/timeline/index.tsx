@@ -1028,7 +1028,7 @@ function TimelineToolbar({
   const handleSplitSelected = () => {
     if (selectedElements.length === 0) return;
     let splitCount = 0;
-    selectedElements.forEach(({ trackId, elementId }) => {
+    for (const { trackId, elementId } of selectedElements) {
       const track = tracks.find((t) => t.id === trackId);
       const element = track?.elements.find((c) => c.id === elementId);
       if (element && track) {
@@ -1041,7 +1041,7 @@ function TimelineToolbar({
           if (newElementId) splitCount++;
         }
       }
-    });
+    }
     if (splitCount === 0) {
       toast.error("Playhead must be within selected elements to split");
     }
@@ -1052,7 +1052,7 @@ function TimelineToolbar({
     const canDuplicate = selectedElements.length === 1;
     if (!canDuplicate) return;
 
-    selectedElements.forEach(({ trackId, elementId }) => {
+    for (const { trackId, elementId } of selectedElements) {
       const track = tracks.find((t) => t.id === trackId);
       const element = track?.elements.find((el) => el.id === elementId);
       if (element) {
@@ -1066,7 +1066,7 @@ function TimelineToolbar({
           startTime: newStartTime,
         });
       }
-    });
+    }
     clearSelectedElements();
   };
 
@@ -1130,13 +1130,13 @@ function TimelineToolbar({
 
   const handleDeleteSelected = () => {
     if (selectedElements.length === 0) return;
-    selectedElements.forEach(({ trackId, elementId }) => {
+    for (const { trackId, elementId } of selectedElements) {
       if (rippleEditingEnabled) {
         removeElementFromTrackWithRipple(trackId, elementId);
       } else {
         removeElementFromTrack(trackId, elementId);
       }
-    });
+    }
     clearSelectedElements();
   };
 
@@ -1158,6 +1158,11 @@ function TimelineToolbar({
   };
 
   const handleSceneManagement = () => {
+    // TODO: Implement scenes menu with the following features:
+    // - List existing scenes
+    // - Create new scene
+    // - Switch between scenes
+    // - Rename/delete scenes
     toast.info(
       "Scene management coming soon! This will allow you to create and switch between different timeline scenes.",
       {
@@ -1325,10 +1330,14 @@ function TimelineToolbar({
           <Tooltip>
             <TooltipTrigger asChild>
               <SplitButton>
-                <SplitButtonLeft>{activeProject?.name || "Main scene"}</SplitButtonLeft>
+                <SplitButtonLeft disabled>{activeProject?.name || "Main scene"}</SplitButtonLeft>
                 <SplitButtonSeparator />
-                <SplitButtonRight onClick={handleSceneManagement}>
-                  <LayersIcon className="h-4 w-4" />
+                <SplitButtonRight
+                  type="button"
+                  aria-label="Open scenes menu"
+                  onClick={handleSceneManagement}
+                >
+                  <LayersIcon className="h-4 w-4" aria-hidden="true" />
                 </SplitButtonRight>
               </SplitButton>
             </TooltipTrigger>
