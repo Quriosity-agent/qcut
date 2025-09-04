@@ -22,6 +22,7 @@ import {
   ZoomOut,
   Bookmark,
   Sticker,
+  LayersIcon,
 } from "lucide-react";
 import {
   Tooltip,
@@ -35,6 +36,12 @@ import {
   ContextMenuItem,
   ContextMenuTrigger,
 } from "../../ui/context-menu";
+import {
+  SplitButton,
+  SplitButtonLeft,
+  SplitButtonRight,
+  SplitButtonSeparator,
+} from "../../ui/split-button";
 import { useTimelineStore } from "@/stores/timeline-store";
 import { useAsyncMediaStore } from "@/hooks/use-async-media-store";
 import { usePlaybackStore } from "@/stores/playback-store";
@@ -1152,8 +1159,8 @@ function TimelineToolbar({
   // Check if the current time is bookmarked
   const currentBookmarked = isBookmarked(currentTime);
   return (
-    <div className="border-b flex items-center justify-between px-2 py-1">
-      <div className="flex items-center gap-1 w-full">
+    <div className="flex items-center justify-between px-2 py-1 border-b h-10">
+      <div className="flex items-center gap-1">
         <TooltipProvider delayDuration={500}>
           {/* Play/Pause Button */}
           <Tooltip>
@@ -1296,6 +1303,15 @@ function TimelineToolbar({
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>
+      </div>
+      <div>
+        <SplitButton>
+          <SplitButtonLeft>Main scene</SplitButtonLeft>
+          <SplitButtonSeparator />
+          <SplitButtonRight onClick={() => {}}>
+            <LayersIcon />
+          </SplitButtonRight>
+        </SplitButton>
       </div>
       <div className="flex items-center gap-1">
         <TooltipProvider delayDuration={500}>
