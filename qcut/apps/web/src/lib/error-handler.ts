@@ -190,7 +190,11 @@ export const handleError = (
       duration: getToastDuration(context.severity),
       action: {
         label: "Copy ID",
-        onClick: () => navigator.clipboard.writeText(processedError.id),
+        onClick: () => {
+          navigator.clipboard?.writeText?.(processedError.id).catch(() => {
+            // optionally surface a soft warning toast if desired
+          });
+        },
       },
     };
 
