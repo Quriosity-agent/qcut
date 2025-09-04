@@ -185,7 +185,7 @@ export function useFrameCache(options: FrameCacheOptions = {}) {
       if (persist) {
         if (persistTimerRef.current) clearTimeout(persistTimerRef.current);
         persistTimerRef.current = setTimeout(() => {
-          void saveToIndexedDB();
+          saveToIndexedDB().catch(() => {});
         }, 1000);
       }
     },
@@ -196,7 +196,7 @@ export function useFrameCache(options: FrameCacheOptions = {}) {
   const invalidateCache = useCallback(() => {
     frameCacheRef.current.clear();
     if (persist) {
-      void saveToIndexedDB();
+      saveToIndexedDB().catch(() => {});
     }
   }, [persist]);
 
@@ -341,7 +341,7 @@ export function useFrameCache(options: FrameCacheOptions = {}) {
   // Restore on mount when persistence enabled
   useEffect(() => {
     if (persist) {
-      void restoreFromIndexedDB();
+      restoreFromIndexedDB().catch(() => {});
     }
   }, [persist, restoreFromIndexedDB]);
 
