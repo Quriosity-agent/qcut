@@ -5,25 +5,27 @@ import { toast } from "sonner";
  * Replaces scattered console.error calls with user-friendly notifications
  */
 
-export enum ErrorSeverity {
-  LOW = "low",
-  MEDIUM = "medium",
-  HIGH = "high",
-  CRITICAL = "critical",
-}
+export const ErrorSeverity = {
+  LOW: 'low',
+  MEDIUM: 'medium',
+  HIGH: 'high',
+  CRITICAL: 'critical',
+} as const;
+export type ErrorSeverity = typeof ErrorSeverity[keyof typeof ErrorSeverity];
 
-export enum ErrorCategory {
-  NETWORK = "network",
-  VALIDATION = "validation",
-  STORAGE = "storage",
-  MEDIA_PROCESSING = "media_processing",
-  AI_SERVICE = "ai_service",
-  EXPORT = "export",
-  AUTH = "auth",
-  UI = "ui",
-  SYSTEM = "system",
-  UNKNOWN = "unknown",
-}
+export const ErrorCategory = {
+  NETWORK: 'network',
+  VALIDATION: 'validation',
+  STORAGE: 'storage',
+  MEDIA_PROCESSING: 'media_processing',
+  AI_SERVICE: 'ai_service',
+  EXPORT: 'export',
+  AUTH: 'auth',
+  UI: 'ui',
+  SYSTEM: 'system',
+  UNKNOWN: 'unknown',
+} as const;
+export type ErrorCategory = typeof ErrorCategory[keyof typeof ErrorCategory];
 
 export interface ErrorContext {
   operation: string;

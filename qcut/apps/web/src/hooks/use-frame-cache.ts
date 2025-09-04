@@ -21,10 +21,11 @@ interface FrameCacheOptions {
   maxCacheSize?: number;
   cacheResolution?: number;
   persist?: boolean;
+  onError?: (error: unknown) => void;
 }
 
 export function useFrameCache(options: FrameCacheOptions = {}) {
-  const { maxCacheSize = 300, cacheResolution = 30, persist = false } = options; // 10 seconds at 30fps
+  const { maxCacheSize = 300, cacheResolution = 30, persist = false, onError } = options; // 10 seconds at 30fps
   const frameCacheRef = useRef(new Map<number, CachedFrame>());
   const persistTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -318,7 +319,7 @@ export function useFrameCache(options: FrameCacheOptions = {}) {
 
       await db.put("frames", cacheArray, "cache-snapshot");
     } catch (error) {
-      console.warn("Failed to persist cache:", error);
+      onError?.(error);
     }
   }, [persist]);
 
@@ -338,7 +339,7 @@ export function useFrameCache(options: FrameCacheOptions = {}) {
         }
       }
     } catch (error) {
-      console.warn("Failed to restore cache:", error);
+      onError?.(error);
     }
   }, [persist]);
 
