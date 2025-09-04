@@ -254,10 +254,13 @@ export function useFrameCache(options: FrameCacheOptions = {}) {
       // For safety with DOM-capture rendering, only pre-render the quantized current frame
       const frameTime = Math.floor(currentTime * cacheResolution) / cacheResolution;
       if (!isFrameCached(frameTime, tracks, mediaItems, activeProject)) {
-        const schedule = (fn: () => void) =>
-          ((window as any).requestIdleCallback
-            ? (window as any).requestIdleCallback(fn, { timeout: 1000 })
-            : setTimeout(fn, 0));
+        const schedule = (fn: () => void) => {
+          if ('requestIdleCallback' in window) {
+            window.requestIdleCallback(fn, { timeout: 1000 });
+          } else {
+            setTimeout(fn, 0);
+          }
+        };
 
         schedule(() => {
           (async () => {

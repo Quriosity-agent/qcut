@@ -1,5 +1,7 @@
 "use client";
 
+import { useMemo } from "react";
+
 import { cn } from "@/lib/utils";
 import { TIMELINE_CONSTANTS } from "@/constants/timeline-constants";
 import { TimelineTrack } from "@/types/timeline";
@@ -33,54 +35,38 @@ export function TimelineCacheIndicator({
   activeProject,
   getRenderStatus,
 }: TimelineCacheIndicatorProps) {
-  // Calculate cache segments by sampling the timeline
-  const calculateCacheSegments = (): CacheSegment[] => {
-    const segments: CacheSegment[] = [];
-    const sampleRate = 10; // Sample every 0.1 seconds
-    const totalSamples = Math.ceil(duration * sampleRate);
-
-    if (totalSamples === 0) {
-      return [{ startTime: 0, endTime: duration, cached: false }];
+  // Calculate cache segments by sampling the timeline (memoized)
+  const cacheSegments = useMemo<CacheSegment[]>(() => {
+    if (!duration || duration <= 0) {
+      return [{ startTime: 0, endTime: 0, cached: false }];
     }
+    // Bound total samples to avoid excessive work on long timelines
+    const MAX_SAMPLES = 2000;
+    const quantStep = 1 / 30; // Default to 30fps resolution
+    const approxStep = Math.max(duration / MAX_SAMPLES, quantStep);
+    const total = Math.ceil(duration / approxStep);
 
-    let currentSegment: CacheSegment | null = null;
+    const segments: CacheSegment[] = [];
+    let current: CacheSegment | null = null;
 
-    for (let i = 0; i <= totalSamples; i++) {
-      const time = i / sampleRate;
-      const cached =
-        getRenderStatus(time, tracks, mediaItems, activeProject) === "cached";
-
-      if (!currentSegment) {
-        // Start first segment
-        currentSegment = {
-          startTime: time,
-          endTime: time,
-          cached,
-        };
-      } else if (currentSegment.cached === cached) {
-        // Extend current segment
-        currentSegment.endTime = time;
+    for (let i = 0; i <= total; i++) {
+      const time = Math.min(i * approxStep, duration);
+      const cached = getRenderStatus(time, tracks, mediaItems, activeProject) === 'cached';
+      if (!current) {
+        current = { startTime: time, endTime: time, cached };
+      } else if (current.cached === cached) {
+        current.endTime = time;
       } else {
-        // Finish current segment and start new one
-        segments.push(currentSegment);
-        currentSegment = {
-          startTime: time,
-          endTime: time,
-          cached,
-        };
+        segments.push(current);
+        current = { startTime: time, endTime: time, cached };
       }
     }
-
-    // Add the last segment
-    if (currentSegment) {
-      currentSegment.endTime = duration;
-      segments.push(currentSegment);
+    if (current) {
+      current.endTime = duration;
+      segments.push(current);
     }
-
     return segments;
-  };
-
-  const cacheSegments = calculateCacheSegments();
+  }, [duration, tracks, mediaItems, activeProject, getRenderStatus]);
 
   return (
     <div className="absolute top-0 left-0 right-0 h-px z-10 pointer-events-none">
