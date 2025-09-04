@@ -148,20 +148,21 @@ export function useFrameCache(options: FrameCacheOptions = {}) {
       // Smarter LRU eviction based on access patterns
       if (frameCacheRef.current.size >= maxCacheSize) {
         const entries = Array.from(frameCacheRef.current.entries());
-        // Sort by timestamp and distance from current time
+        // Sort by distance (far first) then age (older first)
         entries.sort((a, b) => {
           const aDistance = Math.abs(a[0] - frameTime);
           const bDistance = Math.abs(b[0] - frameTime);
           const aAge = Date.now() - a[1].timestamp;
           const bAge = Date.now() - b[1].timestamp;
-          if (aDistance < 5 && bDistance >= 5) return -1;
-          if (bDistance < 5 && aDistance >= 5) return 1;
-          return bAge - aAge;
+          if (aDistance >= 5 && bDistance < 5) return -1;
+          if (bDistance >= 5 && aDistance < 5) return 1;
+          return bAge - aAge; // older first among equals
         });
         // Remove oldest ~20%
         const toRemove = Math.max(1, Math.floor(entries.length * 0.2));
         for (let i = 0; i < toRemove; i++) {
-          frameCacheRef.current.delete(entries[i][0]);
+          const k = entries.at(i)?.[0];
+          if (k !== undefined) frameCacheRef.current.delete(k);
         }
       }
 

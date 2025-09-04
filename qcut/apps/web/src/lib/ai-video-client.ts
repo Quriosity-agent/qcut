@@ -87,12 +87,12 @@ export async function generateVideo(
   try {
     if (!FAL_API_KEY) {
       const error = new Error(
-        "FAL API key not configured. Please set NEXT_PUBLIC_FAL_API_KEY in your environment variables."
+        "FAL API key not configured. Please set VITE_FAL_API_KEY in your environment variables."
       );
 
       // Use our enhanced error handler instead of console.error
       handleAIServiceError(error, "AI Video Generation Setup", {
-        configRequired: "NEXT_PUBLIC_FAL_API_KEY",
+        configRequired: "VITE_FAL_API_KEY",
         operation: "checkApiKey",
       });
 
@@ -597,7 +597,7 @@ function handleQueueError(
     errorMessage = `Invalid request parameters: ${JSON.stringify(errorData)}`;
   } else if (response.status === 401) {
     errorMessage =
-      "Invalid FAL API key. Please check your NEXT_PUBLIC_FAL_API_KEY environment variable.";
+      "Invalid FAL API key. Please check your VITE_FAL_API_KEY environment variable.";
   } else if (response.status === 429) {
     errorMessage =
       "Rate limit exceeded. Please wait a moment before trying again.";
