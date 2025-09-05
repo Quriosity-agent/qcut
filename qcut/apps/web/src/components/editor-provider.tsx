@@ -8,6 +8,7 @@ import {
   useKeybindingDisabler,
 } from "@/hooks/use-keybindings";
 import { useEditorActions } from "@/hooks/use-editor-actions";
+import { ScenesMigrator } from "@/components/providers/migrators/scenes-migrator";
 
 interface EditorProviderProps {
   children: React.ReactNode;
@@ -48,6 +49,6 @@ export function EditorProvider({ children }: EditorProviderProps) {
     );
   }
 
-  // App is ready, render children
-  return <>{children}</>;
+  // App is ready, render children with scene migration
+  return <ScenesMigrator>{children}</ScenesMigrator>;
 }

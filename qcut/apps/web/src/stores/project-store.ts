@@ -233,10 +233,13 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
     const { useStickersOverlayStore } = await import(
       "./stickers-overlay-store"
     );
+    const { useSceneStore } = await import("./scene-store");
     const stickersStore = useStickersOverlayStore.getState();
+    const sceneStore = useSceneStore.getState();
     mediaStore.clearAllMedia();
     timelineStore.clearTimeline();
     stickersStore.clearAllStickers();
+    sceneStore.clearScenes();
 
     try {
       const project = await storageService.loadProject(id);
