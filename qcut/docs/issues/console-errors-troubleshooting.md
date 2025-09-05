@@ -24,6 +24,36 @@ This document tracks various console errors encountered in the QCut video editor
   - Error timing correlates with FFmpeg initialization
   - Multiple FFmpeg-related files found in source analysis
 
+**Console Diagnostic (add to pinpoint failure):**
+Use this snippet around the `ffmpeg.load(...)` call (e.g., near `src/lib/ffmpeg-utils.ts:241-242`) to surface the exact failing blob URLs and environment details.
+
+```ts
+try {
+  await ffmpeg.load({ coreURL: coreBlobUrl, wasmURL: wasmBlobUrl });
+} catch (err) {
+  console.error("[FFmpeg] WASM load failed from blob URLs", {
+    coreBlobUrl,
+    wasmBlobUrl,
+    isElectron: !!(window as any)?.process?.versions?.electron,
+    userAgent: navigator.userAgent,
+    error: (err as any)?.message || err,
+  });
+  // Optional: revoke to avoid leaks after failure
+  try { URL.revokeObjectURL(coreBlobUrl); } catch {}
+  try { URL.revokeObjectURL(wasmBlobUrl); } catch {}
+  throw err;
+}
+
+// Global catch for blob resource load errors
+window.addEventListener("error", (e: ErrorEvent) => {
+  const msg = String(e?.message || "");
+  const file = (e as any)?.filename || "";
+  if (file.startsWith("blob:") || msg.includes("Failed to load resource")) {
+    console.error("[Blob] Resource loading failure detected", { file, msg, error: e.error });
+  }
+});
+```
+
 ### 2. React Ref Warning
 **Error:** `Warning: Function components cannot be given refs. Attempts to access this ref will fail. Did you mean to use React.forwardRef()?`
 
