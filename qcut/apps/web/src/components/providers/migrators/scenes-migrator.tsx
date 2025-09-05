@@ -33,13 +33,53 @@ export function ScenesMigrator({ children }: { children: React.ReactNode }) {
   const shouldCheckMigration =
     pathname.startsWith("/editor") || pathname.startsWith("/projects");
 
-  useEffect(() => {
+  const migrateLegacyProject = useCallback(async (project: TProject) => {
+    try {
+      const mainScene: Scene = {
+        id: generateUUID(),
+        name: "Main Scene",
+        isMain: true,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      const migratedProject: TProject = {
+        ...project,
+        scenes: [mainScene],
+        currentSceneId: mainScene.id,
+        updatedAt: new Date(),
+        // Add default canvas size if not present
+        canvasSize: project.canvasSize || { width: 1920, height: 1080 },
+        canvasMode: project.canvasMode || "preset",
+      };
+
+      // Load existing timeline data (legacy format)
+      const legacyTimeline = await storageService.loadTimeline({
+        projectId: project.id,
+      });
+
+      await storageService.saveProject({ project: migratedProject });
+
+      // If timeline data exists, migrate it to the main scene
+      if (legacyTimeline && legacyTimeline.length > 0) {
+        await storageService.saveTimeline({
+          projectId: project.id,
+          tracks: legacyTimeline,
+          sceneId: mainScene.id,
+        });
+      }
+
+      // Clean up legacy timeline storage
+      await storageService.deleteProjectTimeline({ projectId: project.id });
+    } catch (error) {
+      console.error(`Failed to migrate project ${project.name}:`, error);
+      throw error;
+    }
+  }, []);
+
+  const checkAndMigrateProjects = useCallback(async () => {
     if (!shouldCheckMigration) return;
-
-    checkAndMigrateProjects();
-  }, [shouldCheckMigration]);
-
-  const checkAndMigrateProjects = async () => {
+    
     try {
       const projects = await storageService.loadAllProjects();
       const legacyProjects = projects.filter(
@@ -84,51 +124,11 @@ export function ScenesMigrator({ children }: { children: React.ReactNode }) {
       console.error("Migration failed:", error);
       setIsMigrating(false);
     }
-  };
+  }, [shouldCheckMigration, migrateLegacyProject]);
 
-  const migrateLegacyProject = async (project: TProject) => {
-    try {
-      const mainScene: Scene = {
-        id: generateUUID(),
-        name: "Main Scene",
-        isMain: true,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
-
-      const migratedProject: TProject = {
-        ...project,
-        scenes: [mainScene],
-        currentSceneId: mainScene.id,
-        updatedAt: new Date(),
-        // Add default canvas size if not present
-        canvasSize: project.canvasSize || { width: 1920, height: 1080 },
-        canvasMode: project.canvasMode || "preset",
-      };
-
-      // Load existing timeline data (legacy format)
-      const legacyTimeline = await storageService.loadTimeline({
-        projectId: project.id,
-      });
-
-      await storageService.saveProject({ project: migratedProject });
-
-      // If timeline data exists, migrate it to the main scene
-      if (legacyTimeline && legacyTimeline.length > 0) {
-        await storageService.saveTimeline({
-          projectId: project.id,
-          tracks: legacyTimeline,
-          sceneId: mainScene.id,
-        });
-      }
-
-      // Clean up legacy timeline storage
-      await storageService.deleteProjectTimeline({ projectId: project.id });
-    } catch (error) {
-      console.error(`Failed to migrate project ${project.name}:`, error);
-      throw error;
-    }
-  };
+  useEffect(() => {
+    checkAndMigrateProjects();
+  }, [checkAndMigrateProjects]);
 
   if (!shouldCheckMigration) {
     return children;
