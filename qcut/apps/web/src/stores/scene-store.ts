@@ -59,7 +59,7 @@ interface SceneStore {
   }: {
     scenes: Scene[];
     currentSceneId?: string;
-  }) => void;
+  }) => Promise<void>;
   clearScenes: () => void;
   initializeProjectScenes: (project: { scenes: Scene[]; currentSceneId: string }) => Promise<void>;
 }
@@ -293,7 +293,7 @@ export const useSceneStore = create<SceneStore>((set, get) => ({
     }
   },
 
-  initializeScenes: ({
+  initializeScenes: async ({
     scenes,
     currentSceneId,
   }: {
@@ -323,17 +323,15 @@ export const useSceneStore = create<SceneStore>((set, get) => ({
           updatedAt: new Date(),
         };
 
-        storageService
-          .saveProject({ project: updatedProject })
-          .then(() => {
-            useProjectStore.setState({ activeProject: updatedProject });
-          })
-          .catch((error) => {
-            console.error(
-              "Failed to save project with main scene:",
-              error
-            );
-          });
+        try {
+          await storageService.saveProject({ project: updatedProject });
+          useProjectStore.setState({ activeProject: updatedProject });
+        } catch (error) {
+          console.error(
+            "Failed to save project with main scene:",
+            error
+          );
+        }
       }
     }
   },
