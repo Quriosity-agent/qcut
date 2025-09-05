@@ -187,7 +187,7 @@ class StorageService {
     const projects: TProject[] = [];
 
     for (const id of projectIds) {
-      const project = await this.loadProject(id);
+      const project = await this.loadProject({ id });
       if (project) {
         projects.push(project);
       } else {
@@ -348,12 +348,45 @@ class StorageService {
     ]);
   }
 
-  // Timeline operations - now project-specific
-  async saveTimeline(
-    projectId: string,
-    tracks: TimelineTrack[]
-  ): Promise<void> {
-    const timelineAdapter = this.getProjectTimelineAdapter(projectId);
+  // Legacy timeline operations (kept for backward compatibility)
+  async saveProjectTimeline({
+    projectId,
+    tracks,
+    sceneId,
+  }: {
+    projectId: string;
+    tracks: TimelineTrack[];
+    sceneId?: string;
+  }): Promise<void> {
+    return this.saveTimeline({ projectId, tracks, sceneId });
+  }
+
+  async loadProjectTimeline({
+    projectId,
+    sceneId,
+  }: {
+    projectId: string;
+    sceneId?: string;
+  }): Promise<TimelineTrack[] | null> {
+    return this.loadTimeline({ projectId, sceneId });
+  }
+
+  async deleteProjectTimeline({ projectId }: { projectId: string }): Promise<void> {
+    const timelineAdapter = this.getProjectTimelineAdapter({ projectId });
+    await timelineAdapter.remove("timeline");
+  }
+
+  // Scene-aware timeline operations
+  async saveTimeline({
+    projectId,
+    tracks,
+    sceneId,
+  }: {
+    projectId: string;
+    tracks: TimelineTrack[];
+    sceneId?: string;
+  }): Promise<void> {
+    const timelineAdapter = this.getProjectTimelineAdapter({ projectId, sceneId });
     const timelineData: TimelineData = {
       tracks,
       lastModified: new Date().toISOString(),
@@ -361,15 +394,16 @@ class StorageService {
     await timelineAdapter.set("timeline", timelineData);
   }
 
-  async loadTimeline(projectId: string): Promise<TimelineTrack[] | null> {
-    const timelineAdapter = this.getProjectTimelineAdapter(projectId);
+  async loadTimeline({
+    projectId,
+    sceneId,
+  }: {
+    projectId: string;
+    sceneId?: string;
+  }): Promise<TimelineTrack[] | null> {
+    const timelineAdapter = this.getProjectTimelineAdapter({ projectId, sceneId });
     const timelineData = await timelineAdapter.get("timeline");
     return timelineData ? timelineData.tracks : null;
-  }
-
-  async deleteProjectTimeline(projectId: string): Promise<void> {
-    const timelineAdapter = this.getProjectTimelineAdapter(projectId);
-    await timelineAdapter.remove("timeline");
   }
 
   // Utility methods
