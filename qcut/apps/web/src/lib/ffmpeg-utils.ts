@@ -10,6 +10,23 @@ let isFFmpegLoaded = false;
 let lastUsedAt = Date.now();
 let cleanupTimer: number | null = null;
 
+// One-time global listener to surface blob resource load failures
+let blobErrorListenerAdded = false;
+if (typeof window !== "undefined" && !blobErrorListenerAdded) {
+  window.addEventListener("error", (e: ErrorEvent) => {
+    const msg = String(e?.message || "");
+    const file = (e as any)?.filename || "";
+    if (file?.startsWith("blob:") || msg.includes("Failed to load resource")) {
+      console.error("[Blob] Resource loading failure detected", {
+        file,
+        msg,
+        error: e.error,
+      });
+    }
+  });
+  blobErrorListenerAdded = true;
+}
+
 // Check if running in Electron
 const isElectron = () => {
   return (
@@ -268,6 +285,18 @@ export const initFFmpeg = async (): Promise<FFmpeg> => {
       debugLog("[FFmpeg Utils] ✅ FFmpeg core loaded");
     } catch (loadError) {
       debugLog("[FFmpeg Utils] ❌ FFmpeg load failed:", loadError);
+
+      // Console diagnostic to aid Blob URL failure triage
+      try {
+        console.error("[FFmpeg] WASM load failed from blob URLs", {
+          coreBlobUrl,
+          wasmBlobUrl,
+          isElectron: !!(window as any)?.process?.versions?.electron,
+          userAgent: navigator.userAgent,
+          error:
+            loadError instanceof Error ? loadError.message : String(loadError),
+        });
+      } catch {}
 
       // Enhanced diagnostics
       debugLog("[FFmpeg Utils] 🔍 Environment diagnostics:", {
