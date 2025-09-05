@@ -5,6 +5,8 @@ export interface CanvasSize {
   height: number;
 }
 
+export type CanvasMode = "preset" | "original" | "custom";
+
 export interface CanvasPreset {
   name: string;
   width: number;

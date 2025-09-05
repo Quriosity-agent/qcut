@@ -433,7 +433,7 @@ class StorageService {
     hasTimeline: boolean;
   }> {
     const { mediaMetadataAdapter } = this.getProjectMediaAdapters(projectId);
-    const timelineAdapter = this.getProjectTimelineAdapter(projectId);
+    const timelineAdapter = this.getProjectTimelineAdapter({ projectId });
 
     const [mediaIds, timelineData] = await Promise.all([
       mediaMetadataAdapter.list(),

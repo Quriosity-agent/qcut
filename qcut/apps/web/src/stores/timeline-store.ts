@@ -247,7 +247,7 @@ export const useTimelineStore = create<TimelineStore>((set, get) => {
       const activeProject = useProjectStore.getState().activeProject;
       if (activeProject) {
         try {
-          await storageService.saveTimeline(activeProject.id, get()._tracks);
+          await storageService.saveTimeline({ projectId: activeProject.id, tracks: get()._tracks });
         } catch (error) {
           handleError(error, {
             operation: "Auto-save Timeline",
@@ -1416,7 +1416,7 @@ export const useTimelineStore = create<TimelineStore>((set, get) => {
 
     getProjectThumbnail: async (projectId) => {
       try {
-        const tracks = await storageService.loadTimeline(projectId);
+        const tracks = await storageService.loadTimeline({ projectId });
         const mediaItems = await storageService.loadAllMediaItems(projectId);
 
         if (!tracks || !mediaItems.length) return null;

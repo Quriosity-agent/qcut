@@ -1,8 +1,10 @@
 import type { TProject } from "@/types/project";
+import { DEFAULT_CANVAS_SIZE, createMainScene } from "@/stores/project-store";
 
 /**
  * Mock project matching types/project.ts interface
  */
+const mainScene = createMainScene();
 export const mockProject: TProject = {
   id: "project-test-001",
   name: "Test Project",
@@ -15,6 +17,10 @@ export const mockProject: TProject = {
   blurIntensity: 8,
   fps: 30,
   bookmarks: [0, 5.5, 10.2, 15.7], // Bookmark times in seconds
+  scenes: [mainScene],
+  currentSceneId: mainScene.id,
+  canvasSize: DEFAULT_CANVAS_SIZE,
+  canvasMode: "preset",
 };
 
 export const mockProjectBlur: TProject = {
@@ -26,6 +32,7 @@ export const mockProjectBlur: TProject = {
   blurIntensity: 18,
 };
 
+const emptyProjectMainScene = createMainScene();
 export const mockEmptyProject: TProject = {
   id: "project-empty-001",
   name: "Empty Project",
@@ -36,6 +43,11 @@ export const mockEmptyProject: TProject = {
   backgroundColor: "#000000",
   backgroundType: "color",
   fps: 24,
+  bookmarks: [],
+  scenes: [emptyProjectMainScene],
+  currentSceneId: emptyProjectMainScene.id,
+  canvasSize: DEFAULT_CANVAS_SIZE,
+  canvasMode: "preset",
 };
 
 /**

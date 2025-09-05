@@ -1,4 +1,4 @@
-import { TProject, Scene } from "@/types/project";
+import { TProject, Scene, BlurIntensity } from "@/types/project";
 import { CanvasSize, CanvasMode } from "@/types/editor";
 import { create } from "zustand";
 import { storageService } from "@/lib/storage/storage-service";
@@ -62,7 +62,7 @@ interface ProjectStore {
   updateProjectBackground: (backgroundColor: string) => Promise<void>;
   updateBackgroundType: (
     type: "color" | "blur",
-    options?: { backgroundColor?: string; blurIntensity?: number }
+    options?: { backgroundColor?: string; blurIntensity?: BlurIntensity }
   ) => Promise<void>;
   updateProjectFps: (fps: number) => Promise<void>;
 
@@ -121,7 +121,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
     };
 
     try {
-      await storageService.saveProject(updatedProject);
+      await storageService.saveProject({ project: updatedProject });
       set({ activeProject: updatedProject });
       await get().loadAllProjects(); // Refresh the list
     } catch (error) {
@@ -171,7 +171,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
     };
 
     try {
-      await storageService.saveProject(updatedProject);
+      await storageService.saveProject({ project: updatedProject });
       set({ activeProject: updatedProject });
       await get().loadAllProjects(); // Refresh the list
     } catch (error) {
@@ -242,7 +242,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
     sceneStore.clearScenes();
 
     try {
-      const project = await storageService.loadProject(id);
+      const project = await storageService.loadProject({ id });
       if (project) {
         set({ activeProject: project });
 
@@ -259,7 +259,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
         
         // Load timeline and stickers in parallel (both may depend on media being loaded)
         await Promise.all([
-          timelineStore.loadProjectTimeline(id),
+          timelineStore.loadProjectTimeline({ projectId: id }),
           stickersStore.loadFromProject(id),
         ]);
         debugLog(`[ProjectStore] Project loading complete: ${id}`);
@@ -290,8 +290,8 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
       );
       const stickersStore = useStickersOverlayStore.getState();
       await Promise.all([
-        storageService.saveProject(activeProject),
-        timelineStore.saveProjectTimeline(activeProject.id),
+        storageService.saveProject({ project: activeProject }),
+        timelineStore.saveProjectTimeline({ projectId: activeProject.id }),
         stickersStore.saveToProject(activeProject.id),
       ]);
       await get().loadAllProjects(); // Refresh the list
@@ -326,7 +326,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
       // Delete project data in parallel
       await Promise.all([
         storageService.deleteProjectMedia(id),
-        storageService.deleteProjectTimeline(id),
+        storageService.deleteProjectTimeline({ projectId: id }),
         storageService.deleteProject(id),
       ]);
       await get().loadAllProjects(); // Refresh the list
@@ -383,7 +383,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
 
     try {
       // Save to storage
-      await storageService.saveProject(updatedProject);
+      await storageService.saveProject({ project: updatedProject });
 
       await get().loadAllProjects();
 
@@ -404,7 +404,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
 
   duplicateProject: async (projectId: string) => {
     try {
-      const project = await storageService.loadProject(projectId);
+      const project = await storageService.loadProject({ id: projectId });
       if (!project) {
         const error = new NotFoundError(`Project ${projectId} not found`);
         handleError(error, {
@@ -442,7 +442,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
         updatedAt: new Date(),
       };
 
-      await storageService.saveProject(newProject);
+      await storageService.saveProject({ project: newProject });
       await get().loadAllProjects();
       return newProject.id;
     } catch (error) {
@@ -468,7 +468,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
     };
 
     try {
-      await storageService.saveProject(updatedProject);
+      await storageService.saveProject({ project: updatedProject });
       set({ activeProject: updatedProject });
       await get().loadAllProjects(); // Refresh the list
     } catch (error) {
@@ -483,7 +483,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
 
   updateBackgroundType: async (
     type: "color" | "blur",
-    options?: { backgroundColor?: string; blurIntensity?: number }
+    options?: { backgroundColor?: string; blurIntensity?: BlurIntensity }
   ) => {
     const { activeProject } = get();
     if (!activeProject) return;
@@ -499,7 +499,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
     };
 
     try {
-      await storageService.saveProject(updatedProject);
+      await storageService.saveProject({ project: updatedProject });
       set({ activeProject: updatedProject });
       await get().loadAllProjects(); // Refresh the list
     } catch (error) {
@@ -523,7 +523,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
     };
 
     try {
-      await storageService.saveProject(updatedProject);
+      await storageService.saveProject({ project: updatedProject });
       set({ activeProject: updatedProject });
       await get().loadAllProjects(); // Refresh the list
     } catch (error) {
