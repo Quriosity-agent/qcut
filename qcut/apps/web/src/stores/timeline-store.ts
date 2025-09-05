@@ -185,8 +185,8 @@ interface TimelineStore {
   pushHistory: () => void;
 
   // Persistence actions
-  loadProjectTimeline: (projectId: string) => Promise<void>;
-  saveProjectTimeline: (projectId: string) => Promise<void>;
+  loadProjectTimeline: ({ projectId, sceneId }: { projectId: string; sceneId?: string }) => Promise<void>;
+  saveProjectTimeline: ({ projectId, sceneId }: { projectId: string; sceneId?: string }) => Promise<void>;
   clearTimeline: () => void;
   updateTextElement: (
     trackId: string,
@@ -1526,9 +1526,9 @@ export const useTimelineStore = create<TimelineStore>((set, get) => {
     },
 
     // Persistence methods
-    loadProjectTimeline: async (projectId) => {
+    loadProjectTimeline: async ({ projectId, sceneId }) => {
       try {
-        const tracks = await storageService.loadTimeline(projectId);
+        const tracks = await storageService.loadProjectTimeline({ projectId, sceneId });
         if (tracks) {
           updateTracks(tracks);
         } else {
@@ -1545,6 +1545,7 @@ export const useTimelineStore = create<TimelineStore>((set, get) => {
           severity: ErrorSeverity.HIGH,
           metadata: {
             projectId,
+            sceneId,
           },
         });
         // Initialize with default on error
@@ -1554,9 +1555,9 @@ export const useTimelineStore = create<TimelineStore>((set, get) => {
       }
     },
 
-    saveProjectTimeline: async (projectId) => {
+    saveProjectTimeline: async ({ projectId, sceneId }) => {
       try {
-        await storageService.saveTimeline(projectId, get()._tracks);
+        await storageService.saveProjectTimeline({ projectId, tracks: get()._tracks, sceneId });
       } catch (error) {
         handleError(error, {
           operation: "Save Timeline",
@@ -1564,6 +1565,7 @@ export const useTimelineStore = create<TimelineStore>((set, get) => {
           severity: ErrorSeverity.HIGH,
           metadata: {
             projectId,
+            sceneId,
             trackCount: get()._tracks.length,
           },
         });

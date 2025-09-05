@@ -48,6 +48,8 @@ import { usePlaybackStore } from "@/stores/playback-store";
 import { useFrameCache } from "@/hooks/use-frame-cache";
 import { TimelineCacheIndicator } from "./timeline-cache-indicator";
 import { useProjectStore } from "@/stores/project-store";
+import { useSceneStore } from "@/stores/scene-store";
+import { ScenesView } from "../scenes-view";
 import { useTimelineZoom } from "@/hooks/use-timeline-zoom";
 // Media processing utilities will be imported dynamically when needed
 import { toast } from "sonner";
@@ -1023,6 +1025,7 @@ function TimelineToolbar({
   const toggleBookmark = useProjectStore((s) => s.toggleBookmark);
   const isBookmarked = useProjectStore((s) => s.isBookmarked);
   const activeProject = useProjectStore((s) => s.activeProject);
+  const { scenes, currentScene } = useSceneStore();
 
   // Action handlers
   const handleSplitSelected = () => {

@@ -207,7 +207,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
     set({ activeProject: newProject });
 
     try {
-      await storageService.saveProject(newProject);
+      await storageService.saveProject({ project: newProject });
       // Reload all projects to update the list
       await get().loadAllProjects();
       return newProject.id;
