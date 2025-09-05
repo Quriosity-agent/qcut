@@ -61,6 +61,7 @@ interface SceneStore {
     currentSceneId?: string;
   }) => void;
   clearScenes: () => void;
+  initializeProjectScenes: (project: { scenes: Scene[]; currentSceneId: string }) => Promise<void>;
 }
 
 export const useSceneStore = create<SceneStore>((set, get) => ({
@@ -312,6 +313,20 @@ export const useSceneStore = create<SceneStore>((set, get) => ({
     set({
       scenes: [],
       currentScene: null,
+    });
+  },
+
+  initializeProjectScenes: async (project: { scenes: Scene[]; currentSceneId: string }) => {
+    const ensuredScenes = ensureMainScene(project.scenes || []);
+    const currentScene = project.currentSceneId 
+      ? ensuredScenes.find((s) => s.id === project.currentSceneId)
+      : null;
+    
+    const fallbackScene = getMainScene({ scenes: ensuredScenes });
+    
+    set({
+      scenes: ensuredScenes,
+      currentScene: currentScene || fallbackScene,
     });
   },
 }));

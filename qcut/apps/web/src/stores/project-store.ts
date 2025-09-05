@@ -253,6 +253,10 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
           "[ProjectStore] Media loading complete, now loading timeline and stickers"
         );
 
+        // Initialize scenes for the project
+        debugLog(`[ProjectStore] Initializing scenes for project: ${id}`);
+        await sceneStore.initializeProjectScenes(project);
+        
         // Load timeline and stickers in parallel (both may depend on media being loaded)
         await Promise.all([
           timelineStore.loadProjectTimeline(id),
