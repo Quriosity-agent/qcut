@@ -172,7 +172,7 @@ function DeleteDialog({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        {isValidElement(children) ? cloneElement(children, { disabled }) : children}
+        {isValidElement(children) ? cloneElement(children, { ...children.props, disabled }) : children}
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
