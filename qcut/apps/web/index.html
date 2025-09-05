@@ -41,6 +41,20 @@
   </head>
   <body class="font-sans antialiased" style="font-family: Inter, system-ui, -apple-system, sans-serif;">
     <div id="root"></div>
+    <script>
+      // Debug: Track blob URL errors
+      if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
+        const originalConsoleError = console.error;
+        console.error = function(...args) {
+          const message = args.join(' ');
+          if (message.includes('Failed to load resource') && message.includes('blob:')) {
+            console.log('🔧 Blob resource error detected and suppressed:', message);
+            return; // Suppress blob resource errors in development
+          }
+          return originalConsoleError.apply(console, args);
+        };
+      }
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

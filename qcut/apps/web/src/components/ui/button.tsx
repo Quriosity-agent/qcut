@@ -47,7 +47,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     const Comp = asChild ? SlotPrimitive.Slot : "button";
     
     // Debug: Verify forwardRef fix
-    if (process.env.NODE_ENV === 'development' && asChild && ref) {
+    if (import.meta.env.DEV && asChild && ref) {
       console.log('✅ Button: Prevented ref forwarding to Slot component (fixes forwardRef warning)');
     }
     

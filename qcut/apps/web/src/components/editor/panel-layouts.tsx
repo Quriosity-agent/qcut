@@ -29,6 +29,28 @@ export function DefaultLayout({ resetCounter }: LayoutProps) {
     setPropertiesPanel,
   } = usePanelStore();
 
+  // Debug: Log actual panel sizes from store
+  if (import.meta.env.DEV) {
+    console.log(`🔍 DefaultLayout panel sizes:`, {
+      toolsPanel: `${toolsPanel.toFixed(2)}%`,
+      previewPanel: `${previewPanel.toFixed(2)}%`, 
+      propertiesPanel: `${propertiesPanel.toFixed(2)}%`,
+      total: `${(toolsPanel + previewPanel + propertiesPanel).toFixed(2)}%`,
+      raw: { toolsPanel, previewPanel, propertiesPanel }
+    });
+  }
+
+  // Debug: Log actual defaultSize values being passed to ResizablePanel
+  if (import.meta.env.DEV) {
+    console.log(`🔧 DefaultLayout ResizablePanel defaultSize values:`, {
+      toolsPanel,
+      previewPanel,
+      propertiesPanel,
+      mainContent,
+      timeline
+    });
+  }
+
   return (
     <ResizablePanelGroup
       key={`default-${resetCounter}`}
@@ -124,7 +146,7 @@ export function MediaLayout({ resetCounter }: LayoutProps) {
   const propertiesPanelRelative = totalRaw > 0 ? (rawPropertiesRelative / totalRaw) * 100 : 40;
   
   // Debug: Verify layout normalization fix
-  if (process.env.NODE_ENV === 'development') {
+  if (import.meta.env.DEV) {
     const total = previewPanelRelative + propertiesPanelRelative;
     if (Math.abs(total - 100) > 0.01) {
       console.warn(`MediaLayout: Panel sizes don't sum to 100%: ${total.toFixed(2)}%`);
@@ -245,7 +267,7 @@ export function InspectorLayout({ resetCounter }: LayoutProps) {
   const previewPanelRelative = totalRaw > 0 ? (rawPreviewRelative / totalRaw) * 100 : 70;
   
   // Debug: Verify layout normalization fix
-  if (process.env.NODE_ENV === 'development') {
+  if (import.meta.env.DEV) {
     const total = toolsPanelRelative + previewPanelRelative;
     if (Math.abs(total - 100) > 0.01) {
       console.warn(`InspectorLayout: Panel sizes don't sum to 100%: ${total.toFixed(2)}%`);
@@ -348,7 +370,7 @@ export function VerticalPreviewLayout({ resetCounter }: LayoutProps) {
   const propertiesPanelRelative = totalRaw > 0 ? (rawPropertiesRelative / totalRaw) * 100 : 50;
   
   // Debug: Verify layout normalization fix
-  if (process.env.NODE_ENV === 'development') {
+  if (import.meta.env.DEV) {
     const total = toolsPanelRelative + propertiesPanelRelative;
     if (Math.abs(total - 100) > 0.01) {
       console.warn(`VerticalPreviewLayout: Panel sizes don't sum to 100%: ${total.toFixed(2)}%`);
