@@ -6,6 +6,7 @@ import Image from "next/image";
 import { colors } from "@/data/colors";
 import { useProjectStore } from "@/stores/project-store";
 import { PipetteIcon } from "lucide-react";
+import type { BlurIntensity } from "@/types/project";
 
 type BackgroundTab = "color" | "blur";
 

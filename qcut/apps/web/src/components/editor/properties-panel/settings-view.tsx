@@ -28,6 +28,7 @@ import { PipetteIcon, KeyIcon, EyeIcon, EyeOffIcon } from "lucide-react";
 import { useMemo, memo, useCallback, useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import type { BlurIntensity } from "@/types/project";
 
 export function SettingsView() {
   return <ProjectSettingsTabs />;
@@ -189,7 +190,7 @@ function BackgroundView() {
 
   const handleBlurSelect = useCallback(
     async (blurIntensity: number) => {
-      await updateBackgroundType("blur", { blurIntensity });
+      await updateBackgroundType("blur", { blurIntensity: blurIntensity as BlurIntensity });
     },
     [updateBackgroundType]
   );
