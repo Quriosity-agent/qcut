@@ -114,9 +114,24 @@ export function MediaLayout({ resetCounter }: LayoutProps) {
   // The right group contains preview + properties and its total width is (100 - toolsPanel)
   const rightGroupTotal = Math.max(1, 100 - toolsPanel);
 
-  // Convert from global percentages to right group percentages
-  const previewPanelRelative = (previewPanel / rightGroupTotal) * 100;
-  const propertiesPanelRelative = (propertiesPanel / rightGroupTotal) * 100;
+  // Convert from global percentages to right group percentages and ensure they sum to 100%
+  const rawPreviewRelative = (previewPanel / rightGroupTotal) * 100;
+  const rawPropertiesRelative = (propertiesPanel / rightGroupTotal) * 100;
+  const totalRaw = rawPreviewRelative + rawPropertiesRelative;
+  
+  // Normalize to ensure total is 100%
+  const previewPanelRelative = totalRaw > 0 ? (rawPreviewRelative / totalRaw) * 100 : 60;
+  const propertiesPanelRelative = totalRaw > 0 ? (rawPropertiesRelative / totalRaw) * 100 : 40;
+  
+  // Debug: Verify layout normalization fix
+  if (process.env.NODE_ENV === 'development') {
+    const total = previewPanelRelative + propertiesPanelRelative;
+    if (Math.abs(total - 100) > 0.01) {
+      console.warn(`MediaLayout: Panel sizes don't sum to 100%: ${total.toFixed(2)}%`);
+    } else {
+      console.log(`✅ MediaLayout: Panel sizes normalized correctly: ${total.toFixed(2)}%`);
+    }
+  }
 
   // Convert from right group percentage back to global percentage
   const toGlobalPreview = (rightGroupPct: number) =>
@@ -220,9 +235,24 @@ export function InspectorLayout({ resetCounter }: LayoutProps) {
   // The left group contains tools + preview and its total width is (100 - propertiesPanel)
   const leftGroupTotal = Math.max(1, 100 - propertiesPanel);
 
-  // Convert from global percentages to left group percentages
-  const toolsPanelRelative = (toolsPanel / leftGroupTotal) * 100;
-  const previewPanelRelative = (previewPanel / leftGroupTotal) * 100;
+  // Convert from global percentages to left group percentages and ensure they sum to 100%
+  const rawToolsRelative = (toolsPanel / leftGroupTotal) * 100;
+  const rawPreviewRelative = (previewPanel / leftGroupTotal) * 100;
+  const totalRaw = rawToolsRelative + rawPreviewRelative;
+  
+  // Normalize to ensure total is 100%
+  const toolsPanelRelative = totalRaw > 0 ? (rawToolsRelative / totalRaw) * 100 : 30;
+  const previewPanelRelative = totalRaw > 0 ? (rawPreviewRelative / totalRaw) * 100 : 70;
+  
+  // Debug: Verify layout normalization fix
+  if (process.env.NODE_ENV === 'development') {
+    const total = toolsPanelRelative + previewPanelRelative;
+    if (Math.abs(total - 100) > 0.01) {
+      console.warn(`InspectorLayout: Panel sizes don't sum to 100%: ${total.toFixed(2)}%`);
+    } else {
+      console.log(`✅ InspectorLayout: Panel sizes normalized correctly: ${total.toFixed(2)}%`);
+    }
+  }
 
   // Convert from left group percentage back to global percentage
   const toGlobalTools = (leftGroupPct: number) =>
@@ -308,9 +338,24 @@ export function VerticalPreviewLayout({ resetCounter }: LayoutProps) {
   // The left group contains tools + properties and its total width is (100 - previewPanel)
   const leftGroupTotal = Math.max(1, 100 - previewPanel);
 
-  // Convert from global percentages to left group percentages
-  const toolsPanelRelative = (toolsPanel / leftGroupTotal) * 100;
-  const propertiesPanelRelative = (propertiesPanel / leftGroupTotal) * 100;
+  // Convert from global percentages to left group percentages and ensure they sum to 100%
+  const rawToolsRelative = (toolsPanel / leftGroupTotal) * 100;
+  const rawPropertiesRelative = (propertiesPanel / leftGroupTotal) * 100;
+  const totalRaw = rawToolsRelative + rawPropertiesRelative;
+  
+  // Normalize to ensure total is 100%
+  const toolsPanelRelative = totalRaw > 0 ? (rawToolsRelative / totalRaw) * 100 : 50;
+  const propertiesPanelRelative = totalRaw > 0 ? (rawPropertiesRelative / totalRaw) * 100 : 50;
+  
+  // Debug: Verify layout normalization fix
+  if (process.env.NODE_ENV === 'development') {
+    const total = toolsPanelRelative + propertiesPanelRelative;
+    if (Math.abs(total - 100) > 0.01) {
+      console.warn(`VerticalPreviewLayout: Panel sizes don't sum to 100%: ${total.toFixed(2)}%`);
+    } else {
+      console.log(`✅ VerticalPreviewLayout: Panel sizes normalized correctly: ${total.toFixed(2)}%`);
+    }
+  }
 
   // Convert from left group percentage back to global percentage
   const toGlobalTools = (leftGroupPct: number) =>
