@@ -31,7 +31,7 @@ export function ScenesMigrator({ children }: { children: React.ReactNode }) {
   });
 
   const shouldCheckMigration =
-    pathname.startsWith("/editor") || pathname.startsWith("/projects");
+    pathname?.startsWith("/editor") || pathname?.startsWith("/projects");
 
   const migrateLegacyProject = useCallback(async (project: TProject) => {
     try {

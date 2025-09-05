@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { useSceneStore } from "@/stores/scene-store";
 import { Check, ListCheck, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useState } from "react";
+import { useState, cloneElement, isValidElement } from "react";
 import {
   Dialog,
   DialogContent,
@@ -158,20 +158,22 @@ function DeleteDialog({
   children,
 }: {
   count: number;
-  onDelete: () => void;
+  onDelete: () => Promise<void> | void;
   disabled?: boolean;
   children: React.ReactNode;
 }) {
   const [open, setOpen] = useState(false);
 
-  const handleDelete = () => {
-    onDelete();
+  const handleDelete = async () => {
+    await onDelete();
     setOpen(false);
   };
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>{children}</DialogTrigger>
+      <DialogTrigger asChild>
+        {isValidElement(children) ? cloneElement(children, { disabled }) : children}
+      </DialogTrigger>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Delete Scenes</DialogTitle>
