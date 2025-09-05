@@ -42,17 +42,27 @@
   <body class="font-sans antialiased" style="font-family: Inter, system-ui, -apple-system, sans-serif;">
     <div id="root"></div>
     <script>
-      // Debug: Track blob URL errors
-      if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
-        const originalConsoleError = console.error;
+      // Debug: Track blob URL errors and suppress them in development
+      if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.protocol === 'app:')) {
+        // Suppress blob resource loading errors in console  
+        const originalError = console.error;
         console.error = function(...args) {
-          const message = args.join(' ');
+          const message = String(args[0] || '');
           if (message.includes('Failed to load resource') && message.includes('blob:')) {
-            console.log('🔧 Blob resource error detected and suppressed:', message);
-            return; // Suppress blob resource errors in development
+            console.log('🔧 Suppressed blob resource error:', message.split(' ')[0]);
+            return; 
           }
-          return originalConsoleError.apply(console, args);
+          return originalError.apply(console, args);
         };
+        
+        // Also suppress network errors for blob URLs
+        window.addEventListener('error', function(e) {
+          if (e.target && e.target.src && e.target.src.startsWith('blob:')) {
+            console.log('🔧 Suppressed blob network error for:', e.target.tagName);
+            e.preventDefault();
+            e.stopPropagation();
+          }
+        }, true);
       }
     </script>
     <script type="module" src="/src/main.tsx"></script>

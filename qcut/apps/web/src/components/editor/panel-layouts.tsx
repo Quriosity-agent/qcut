@@ -31,24 +31,12 @@ export function DefaultLayout({ resetCounter }: LayoutProps) {
 
   // Debug: Log actual panel sizes from store
   if (import.meta.env.DEV) {
-    console.log(`🔍 DefaultLayout panel sizes:`, {
-      toolsPanel: `${toolsPanel.toFixed(2)}%`,
-      previewPanel: `${previewPanel.toFixed(2)}%`, 
-      propertiesPanel: `${propertiesPanel.toFixed(2)}%`,
-      total: `${(toolsPanel + previewPanel + propertiesPanel).toFixed(2)}%`,
-      raw: { toolsPanel, previewPanel, propertiesPanel }
-    });
+    console.log(`🔍 DefaultLayout panel sizes: tools=${toolsPanel.toFixed(2)}%, preview=${previewPanel.toFixed(2)}%, props=${propertiesPanel.toFixed(2)}%, total=${(toolsPanel + previewPanel + propertiesPanel).toFixed(2)}%`);
   }
 
   // Debug: Log actual defaultSize values being passed to ResizablePanel
   if (import.meta.env.DEV) {
-    console.log(`🔧 DefaultLayout ResizablePanel defaultSize values:`, {
-      toolsPanel,
-      previewPanel,
-      propertiesPanel,
-      mainContent,
-      timeline
-    });
+    console.log(`🔧 DefaultLayout defaultSizes: tools=${toolsPanel}, preview=${previewPanel}, props=${propertiesPanel}, main=${mainContent}, timeline=${timeline}`);
   }
 
   return (

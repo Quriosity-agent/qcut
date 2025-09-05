@@ -25,6 +25,8 @@ export default defineConfig({
   build: {
     outDir: "dist",
     assetsDir: "assets",
+    // Enable source maps for better debugging
+    sourcemap: true,
     // Increase chunk size warning limit from 500kB to 1MB
     // Note: This suppresses warnings but doesn't fix performance
     chunkSizeWarningLimit: 1000,
