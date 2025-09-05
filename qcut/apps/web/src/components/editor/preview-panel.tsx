@@ -26,6 +26,7 @@ import { EditableTimecode } from "@/components/ui/editable-timecode";
 import { FONT_CLASS_MAP } from "@/lib/font-config";
 import { BackgroundSettings } from "../background-settings";
 import { useProjectStore } from "@/stores/project-store";
+import { useSceneStore } from "@/stores/scene-store";
 import { TextElementDragState } from "@/types/editor";
 import {
   FullscreenToolbar,
@@ -67,6 +68,7 @@ export function PreviewPanel() {
   });
   const [isExpanded, setIsExpanded] = useState(false);
   const { activeProject } = useProjectStore();
+  const { currentScene } = useSceneStore();
   const [dragState, setDragState] = useState<TextElementDragState>({
     isDragging: false,
     elementId: null,

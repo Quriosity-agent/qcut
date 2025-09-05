@@ -1214,6 +1214,25 @@ function TimelineToolbar({
           >
             {currentTime.toFixed(1)}s / {duration.toFixed(1)}s
           </div>
+          
+          {/* Scenes Button */}
+          {scenes.length > 0 && (
+            <>
+              <div className="w-px h-6 bg-border mx-1" />
+              <ScenesView>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button variant="text" size="icon">
+                      <LayersIcon className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    Scenes ({scenes.length}) - {currentScene?.name || 'No scene'}
+                  </TooltipContent>
+                </Tooltip>
+              </ScenesView>
+            </>
+          )}
           {/* Test Clip Button - for debugging */}
           {tracks.length === 0 && (
             <>

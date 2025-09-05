@@ -35,7 +35,8 @@ export function useFrameCache(options: FrameCacheOptions = {}) {
       time: number,
       tracks: TimelineTrack[],
       mediaItems: MediaItem[],
-      activeProject: TProject | null
+      activeProject: TProject | null,
+      sceneId?: string
     ): string => {
       // Get elements that are active at this time
       const activeElements: Array<{
@@ -90,6 +91,7 @@ export function useFrameCache(options: FrameCacheOptions = {}) {
       return JSON.stringify({
         activeElements: sortedElements,
         projectState,
+        sceneId: sceneId || 'default', // Include scene ID for cache isolation
         time: Math.floor(time * cacheResolution) / cacheResolution, // Quantize time
       });
     },
@@ -102,7 +104,8 @@ export function useFrameCache(options: FrameCacheOptions = {}) {
       time: number,
       tracks: TimelineTrack[],
       mediaItems: MediaItem[],
-      activeProject: TProject | null
+      activeProject: TProject | null,
+      sceneId?: string
     ): ImageData | null => {
       const frameTime = Math.floor(time * cacheResolution) / cacheResolution;
       const cached = frameCacheRef.current.get(frameTime);
@@ -117,7 +120,8 @@ export function useFrameCache(options: FrameCacheOptions = {}) {
         time,
         tracks,
         mediaItems,
-        activeProject
+        activeProject,
+        sceneId
       );
       if (cached.timelineHash !== currentHash) {
         // Cache is stale, remove it
@@ -166,7 +170,8 @@ export function useFrameCache(options: FrameCacheOptions = {}) {
       imageData: ImageData,
       tracks: TimelineTrack[],
       mediaItems: MediaItem[],
-      activeProject: TProject | null
+      activeProject: TProject | null,
+      sceneId?: string
     ): void => {
       const startTime = performance.now();
       const frameTime = Math.floor(time * cacheResolution) / cacheResolution;
@@ -174,7 +179,8 @@ export function useFrameCache(options: FrameCacheOptions = {}) {
         time,
         tracks,
         mediaItems,
-        activeProject
+        activeProject,
+        sceneId
       );
 
       // Distance and age-based eviction (keeps frames near current position, evicts old distant frames)
