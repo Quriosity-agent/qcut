@@ -1,4 +1,4 @@
-import { TProject } from "@/types/project";
+import { TProject, Scene } from "@/types/project";
 import { TimelineTrack } from "@/types/timeline";
 
 export interface StorageAdapter<T> {
@@ -35,10 +35,20 @@ export interface StorageConfig {
   version: number;
 }
 
-// Helper type for serialization - converts Date objects to strings
-export type SerializedProject = Omit<TProject, "createdAt" | "updatedAt"> & {
+// Serialized scene type
+export interface SerializedScene {
+  id: string;
+  name: string;
+  isMain: boolean;
   createdAt: string;
   updatedAt: string;
+}
+
+// Helper type for serialization - converts Date objects to strings
+export type SerializedProject = Omit<TProject, "createdAt" | "updatedAt" | "scenes"> & {
+  createdAt: string;
+  updatedAt: string;
+  scenes: SerializedScene[];
   bookmarks?: number[];
 };
 

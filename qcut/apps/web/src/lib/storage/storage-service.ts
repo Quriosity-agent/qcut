@@ -8,6 +8,7 @@ import {
   MediaFileData,
   StorageConfig,
   SerializedProject,
+  SerializedScene,
   TimelineData,
   StorageAdapter,
 } from "./types";
@@ -92,18 +93,38 @@ class StorageService {
   }
 
   // Helper to get project-specific timeline adapter
-  private getProjectTimelineAdapter(projectId: string) {
+  private getProjectTimelineAdapter({
+    projectId,
+    sceneId,
+  }: {
+    projectId: string;
+    sceneId?: string;
+  }) {
+    const dbName = sceneId
+      ? `${this.config.timelineDb}-${projectId}-${sceneId}`
+      : `${this.config.timelineDb}-${projectId}`;
+
     return new IndexedDBAdapter<TimelineData>(
-      `${this.config.timelineDb}-${projectId}`,
+      dbName,
       "timeline",
       this.config.version
     );
   }
 
   // Project operations
-  async saveProject(project: TProject): Promise<void> {
+  async saveProject({ project }: { project: TProject }): Promise<void> {
     // Ensure storage is initialized
     await this.initializeStorage();
+    
+    // Convert scenes to serializable format
+    const serializedScenes: SerializedScene[] = project.scenes.map((scene) => ({
+      id: scene.id,
+      name: scene.name,
+      isMain: scene.isMain,
+      createdAt: scene.createdAt.toISOString(),
+      updatedAt: scene.updatedAt.toISOString(),
+    }));
+
     // Convert TProject to serializable format
     const serializedProject: SerializedProject = {
       id: project.id,
@@ -111,20 +132,33 @@ class StorageService {
       thumbnail: project.thumbnail,
       createdAt: project.createdAt.toISOString(),
       updatedAt: project.updatedAt.toISOString(),
+      scenes: serializedScenes,
+      currentSceneId: project.currentSceneId,
       backgroundColor: project.backgroundColor,
       backgroundType: project.backgroundType,
       blurIntensity: project.blurIntensity,
       bookmarks: project.bookmarks,
       fps: project.fps,
+      canvasSize: project.canvasSize,
+      canvasMode: project.canvasMode,
     };
 
     await this.projectsAdapter.set(project.id, serializedProject);
   }
 
-  async loadProject(id: string): Promise<TProject | null> {
+  async loadProject({ id }: { id: string }): Promise<TProject | null> {
     const serializedProject = await this.projectsAdapter.get(id);
 
     if (!serializedProject) return null;
+
+    // Convert scenes back from serialized format
+    const scenes = serializedProject.scenes?.map((scene) => ({
+      id: scene.id,
+      name: scene.name,
+      isMain: scene.isMain,
+      createdAt: new Date(scene.createdAt),
+      updatedAt: new Date(scene.updatedAt),
+    })) || [];
 
     // Convert back to TProject format
     return {
@@ -133,11 +167,15 @@ class StorageService {
       thumbnail: serializedProject.thumbnail,
       createdAt: new Date(serializedProject.createdAt),
       updatedAt: new Date(serializedProject.updatedAt),
+      scenes,
+      currentSceneId: serializedProject.currentSceneId || (scenes[0]?.id || ''),
       backgroundColor: serializedProject.backgroundColor,
       backgroundType: serializedProject.backgroundType,
       blurIntensity: serializedProject.blurIntensity,
       bookmarks: serializedProject.bookmarks,
       fps: serializedProject.fps,
+      canvasSize: serializedProject.canvasSize || { width: 1920, height: 1080 },
+      canvasMode: serializedProject.canvasMode || "preset",
     };
   }
 
