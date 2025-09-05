@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { usePathname } from "next/navigation";
 import { storageService } from "@/lib/storage/storage-service";
 import { TProject, Scene } from "@/types/project";

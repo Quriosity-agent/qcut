@@ -135,11 +135,15 @@ export const useSceneStore = create<SceneStore>((set, get) => ({
     const updatedProject = {
       ...activeProject,
       scenes: updatedScenes,
+      currentSceneId: newCurrentScene?.id ?? activeProject.currentSceneId,
       updatedAt: new Date(),
     };
 
     try {
       await storageService.saveProject({ project: updatedProject });
+      // TODO: Add scene-specific timeline cleanup when storageService supports it
+      // Note: Scene timeline data will remain in storage but won't affect functionality
+      
       useProjectStore.setState({ activeProject: updatedProject });
       set({
         scenes: updatedScenes,
@@ -248,15 +252,40 @@ export const useSceneStore = create<SceneStore>((set, get) => ({
         const ensuredScenes = project.scenes.map((scene) => ({
           ...scene,
           isMain: scene.isMain || false,
+          createdAt:
+            typeof (scene as any).createdAt === 'string'
+              ? new Date((scene as any).createdAt)
+              : scene.createdAt,
+          updatedAt:
+            typeof (scene as any).updatedAt === 'string'
+              ? new Date((scene as any).updatedAt)
+              : scene.updatedAt,
         }));
-        const currentScene =
+        const selectedScene =
           ensuredScenes.find((s) => s.id === project.currentSceneId) ||
-          ensuredScenes[0];
+          ensuredScenes[0] ||
+          null;
 
         set({
           scenes: ensuredScenes,
-          currentScene,
+          currentScene: selectedScene,
         });
+
+        // Persist corrected currentSceneId if needed
+        if (selectedScene && project.currentSceneId !== selectedScene.id) {
+          try {
+            await storageService.saveProject({
+              project: {
+                ...project,
+                scenes: ensuredScenes,
+                currentSceneId: selectedScene.id,
+                updatedAt: new Date(),
+              },
+            });
+          } catch (saveError) {
+            console.error("Failed to persist corrected currentSceneId:", saveError);
+          }
+        }
       }
     } catch (error) {
       console.error("Failed to load project scenes:", error);
