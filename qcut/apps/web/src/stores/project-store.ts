@@ -1,4 +1,5 @@
-import { TProject } from "@/types/project";
+import { TProject, Scene } from "@/types/project";
+import { CanvasSize, CanvasMode } from "@/types/editor";
 import { create } from "zustand";
 import { storageService } from "@/lib/storage/storage-service";
 import { toast } from "sonner";
@@ -15,6 +16,19 @@ import {
   ErrorSeverity,
   handleStorageError,
 } from "@/lib/error-handler";
+
+export const DEFAULT_CANVAS_SIZE: CanvasSize = { width: 1920, height: 1080 };
+export const DEFAULT_FPS = 30;
+
+export function createMainScene(): Scene {
+  return {
+    id: generateUUID(),
+    name: "Main Scene",
+    isMain: true,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  };
+}
 
 /**
  * Thrown when a requested project cannot be found in storage.
@@ -171,17 +185,23 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
   },
 
   createNewProject: async (name: string) => {
+    const mainScene = createMainScene();
+    
     const newProject: TProject = {
       id: generateUUID(),
       name,
       thumbnail: "",
       createdAt: new Date(),
       updatedAt: new Date(),
+      scenes: [mainScene],
+      currentSceneId: mainScene.id,
       backgroundColor: "#000000",
       backgroundType: "color",
       blurIntensity: 8,
       bookmarks: [],
-      fps: 30,
+      fps: DEFAULT_FPS,
+      canvasSize: DEFAULT_CANVAS_SIZE,
+      canvasMode: "preset",
     };
 
     set({ activeProject: newProject });
