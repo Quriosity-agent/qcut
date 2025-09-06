@@ -257,21 +257,48 @@ export const getMediaDuration = (file: File): Promise<number> => {
       file.type.startsWith("video/") ? "video" : "audio"
     ) as HTMLMediaElement;
     let blobUrl: string | null = null;
+    let cleanupTimeout: number | null = null;
 
     const cleanup = () => {
+      if (cleanupTimeout) {
+        clearTimeout(cleanupTimeout);
+        cleanupTimeout = null;
+      }
       element.remove();
       if (blobUrl) {
-        revokeObjectURL(blobUrl);
+        // Delay cleanup to prevent timing conflicts
+        setTimeout(() => {
+          revokeObjectURL(blobUrl!);
+        }, 100);
       }
     };
 
-    element.addEventListener("loadedmetadata", () => {
-      const duration = element.duration;
+    // Set a reasonable timeout for media loading
+    const timeoutId = setTimeout(() => {
+      console.warn("[getMediaDuration] Timeout loading media:", file.name);
       cleanup();
-      resolve(duration);
+      reject(new Error("Media loading timeout"));
+    }, 10000);
+
+    element.addEventListener("loadedmetadata", () => {
+      clearTimeout(timeoutId);
+      const duration = element.duration;
+      if (isNaN(duration) || duration <= 0) {
+        cleanup();
+        reject(new Error("Invalid media duration"));
+        return;
+      }
+      
+      // Delay cleanup to allow other processes to finish using the blob URL
+      cleanupTimeout = window.setTimeout(() => {
+        cleanup();
+        resolve(duration);
+      }, 50);
     });
 
-    element.addEventListener("error", () => {
+    element.addEventListener("error", (e) => {
+      clearTimeout(timeoutId);
+      console.warn("[getMediaDuration] Media loading failed:", e);
       cleanup();
       reject(new Error("Could not load media"));
     });

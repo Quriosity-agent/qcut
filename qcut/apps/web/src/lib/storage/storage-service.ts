@@ -13,6 +13,7 @@ import {
   StorageAdapter,
 } from "./types";
 import { TimelineTrack } from "@/types/timeline";
+import { createObjectURL } from "@/lib/blob-manager";
 import { debugLog, debugError } from "@/lib/debug-config";
 
 class StorageService {
@@ -276,8 +277,8 @@ class StorageService {
         );
       } else {
         // Use blob URL for web environment or non-image files
-        // NOTE: Caller is responsible for revoking blob URLs via URL.revokeObjectURL()
-        url = URL.createObjectURL(file);
+        // NOTE: Caller is responsible for revoking blob URLs via revokeObjectURL()
+        url = createObjectURL(file, "storage-service");
         debugLog(
           `[StorageService] Created object URL for ${metadata.name}: ${url}`
         );

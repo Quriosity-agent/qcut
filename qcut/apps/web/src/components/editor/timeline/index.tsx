@@ -1,6 +1,7 @@
 "use client";
 
 import { generateUUID } from "@/lib/utils";
+import { createObjectURL } from "@/lib/blob-manager";
 import { ScrollArea } from "../../ui/scroll-area";
 import { Button } from "../../ui/button";
 import {
@@ -431,7 +432,7 @@ export function Timeline() {
                   name: dragData.iconName.replace(":", "-"),
                   type: "image" as const,
                   file,
-                  url: URL.createObjectURL(file),
+                  url: createObjectURL(file, "timeline-sticker-drop"),
                   width: 200,
                   height: 200,
                   duration: 5, // 5 seconds default

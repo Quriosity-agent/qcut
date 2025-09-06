@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { debugLog, debugError } from "@/lib/debug-config";
+import { createObjectURL } from "@/lib/blob-manager";
 import {
   AlertCircle,
   Clock,
@@ -346,7 +347,7 @@ export function StickersView() {
 
         // Add media item directly with File object
         // Create URL from the File object for immediate preview
-        const fileUrl = URL.createObjectURL(svgFile);
+        const fileUrl = createObjectURL(svgFile, "stickers-svg-upload");
         console.log("[StickersView] Created file URL:", fileUrl);
 
         const mediaItemData = {

@@ -8,6 +8,7 @@ import { Image, Loader2, Music, Plus, Video, Edit, Layers } from "lucide-react";
 import { useEffect, useRef, useState, useMemo } from "react";
 import { toast } from "sonner";
 import { debugLog, debugError } from "@/lib/debug-config";
+import { createObjectURL } from "@/lib/blob-manager";
 import { Button } from "@/components/ui/button";
 import { MediaDragOverlay } from "@/components/editor/media-panel/drag-overlay";
 import {
@@ -173,7 +174,7 @@ export function MediaView() {
     try {
       // Set the original image in the adjustment store
       const imageUrl =
-        item.url || item.thumbnailUrl || URL.createObjectURL(item.file);
+        item.url || item.thumbnailUrl || createObjectURL(item.file, "adjustment-original");
       setOriginalImage(item.file, imageUrl);
 
       // Switch to adjustment tab

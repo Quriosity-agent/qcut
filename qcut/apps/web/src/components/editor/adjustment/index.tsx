@@ -13,6 +13,7 @@ import {
 } from "@/lib/image-edit-client";
 // Image utilities will be imported dynamically when needed
 import { debugLog } from "@/lib/debug-config";
+import { createObjectURL } from "@/lib/blob-manager";
 
 // Export individual components
 export { EditHistory } from "./edit-history";
@@ -53,7 +54,7 @@ export function AdjustmentPanel() {
   } = useAsyncMediaStoreActions();
 
   const handleImageSelect = (file: File) => {
-    const url = URL.createObjectURL(file);
+    const url = createObjectURL(file, "adjustment-image-select");
     setOriginalImage(file, url);
   };
 
@@ -149,7 +150,7 @@ export function AdjustmentPanel() {
           });
 
           // Create blob URL for display (avoids CORS/COEP issues)
-          blobUrl = URL.createObjectURL(downloadedFile);
+          blobUrl = createObjectURL(downloadedFile, "adjustment-download");
 
           const imageInfo = await getImageInfo(downloadedFile);
 

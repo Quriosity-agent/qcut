@@ -18,6 +18,7 @@ import {
   type MediaItem,
 } from "./media-store";
 import { storageService } from "@/lib/storage/storage-service";
+import { createObjectURL } from "@/lib/blob-manager";
 // Dynamic import to break circular dependency
 // import { useProjectStore } from "./project-store";
 import { generateUUID } from "@/lib/utils";
@@ -1298,7 +1299,7 @@ export const useTimelineStore = create<TimelineStore>((set, get) => {
           name: newFile.name,
           type: fileType,
           file: newFile,
-          url: URL.createObjectURL(newFile),
+          url: createObjectURL(newFile, "timeline-add-media"),
         };
 
         try {

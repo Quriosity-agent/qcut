@@ -5,6 +5,7 @@ import { useMediaStore } from "./media-store";
 import { useTimelineStore } from "./timeline-store";
 import { useProjectStore } from "./project-store";
 import { usePlaybackStore } from "./playback-store";
+import { createObjectURL, revokeObjectURL } from "@/lib/blob-manager";
 
 // Illegal filename characters for file system safety
 const ILLEGAL_FILENAME_CHARS = /[<>:"/\\|?*\u0000-\u001f]/g;
@@ -300,7 +301,7 @@ export const useSoundsStore = create<SoundsStore>((set, get) => ({
         type: contentType,
       });
 
-      objectUrl = URL.createObjectURL(file);
+      objectUrl = createObjectURL(file, "sounds-download");
 
       const mediaId = await useMediaStore
         .getState()
@@ -330,7 +331,7 @@ export const useSoundsStore = create<SoundsStore>((set, get) => ({
       // Best-effort cleanup: revoke object URL if it was created
       if (objectUrl) {
         try {
-          URL.revokeObjectURL(objectUrl);
+          revokeObjectURL(objectUrl);
         } catch {
           // ignore cleanup errors
         }
