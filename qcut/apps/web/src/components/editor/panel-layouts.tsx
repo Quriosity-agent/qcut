@@ -1,5 +1,6 @@
 "use client";
 
+import React from "react";
 import {
   ResizablePanelGroup,
   ResizablePanel,
@@ -27,17 +28,34 @@ export function DefaultLayout({ resetCounter }: LayoutProps) {
     setMainContent,
     setTimeline,
     setPropertiesPanel,
+    normalizeHorizontalPanels,
   } = usePanelStore();
+
+  // Normalize panel sizes to ensure they sum to 100%
+  const total = toolsPanel + previewPanel + propertiesPanel;
+  const normalizationFactor = total !== 0 ? 100 / total : 1;
+  
+  const normalizedTools = Math.round((toolsPanel * normalizationFactor) * 100) / 100;
+  const normalizedPreview = Math.round((previewPanel * normalizationFactor) * 100) / 100;
+  // Properties gets the remainder to ensure exact 100%
+  const normalizedProperties = Math.round((100 - normalizedTools - normalizedPreview) * 100) / 100;
 
   // Debug: Log actual panel sizes from store
   if (import.meta.env.DEV) {
-    console.log(`🔍 DefaultLayout panel sizes: tools=${toolsPanel.toFixed(2)}%, preview=${previewPanel.toFixed(2)}%, props=${propertiesPanel.toFixed(2)}%, total=${(toolsPanel + previewPanel + propertiesPanel).toFixed(2)}%`);
+    console.log(`🔍 DefaultLayout panel sizes: tools=${normalizedTools.toFixed(2)}%, preview=${normalizedPreview.toFixed(2)}%, props=${normalizedProperties.toFixed(2)}%, total=${(normalizedTools + normalizedPreview + normalizedProperties).toFixed(2)}%`);
   }
 
   // Debug: Log actual defaultSize values being passed to ResizablePanel
   if (import.meta.env.DEV) {
-    console.log(`🔧 DefaultLayout defaultSizes: tools=${toolsPanel}, preview=${previewPanel}, props=${propertiesPanel}, main=${mainContent}, timeline=${timeline}`);
+    console.log(`🔧 DefaultLayout defaultSizes: tools=${normalizedTools}, preview=${normalizedPreview}, props=${normalizedProperties}, main=${mainContent}, timeline=${timeline}`);
   }
+
+  // Trigger normalization if panels are off
+  React.useEffect(() => {
+    if (Math.abs(total - 100) > 0.1) {
+      normalizeHorizontalPanels();
+    }
+  }, [total, normalizeHorizontalPanels]);
 
   return (
     <ResizablePanelGroup
@@ -57,7 +75,7 @@ export function DefaultLayout({ resetCounter }: LayoutProps) {
           className="h-full w-full gap-[0.19rem] px-2"
         >
           <ResizablePanel
-            defaultSize={toolsPanel}
+            defaultSize={normalizedTools}
             minSize={15}
             maxSize={40}
             onResize={setToolsPanel}
@@ -69,7 +87,7 @@ export function DefaultLayout({ resetCounter }: LayoutProps) {
           <ResizableHandle withHandle />
 
           <ResizablePanel
-            defaultSize={previewPanel}
+            defaultSize={normalizedPreview}
             minSize={30}
             onResize={setPreviewPanel}
             className="min-w-0 min-h-0 flex-1"
@@ -80,7 +98,7 @@ export function DefaultLayout({ resetCounter }: LayoutProps) {
           <ResizableHandle withHandle />
 
           <ResizablePanel
-            defaultSize={propertiesPanel}
+            defaultSize={normalizedProperties}
             minSize={15}
             maxSize={40}
             onResize={setPropertiesPanel}
