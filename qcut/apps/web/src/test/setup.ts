@@ -4,6 +4,56 @@ console.log("🔧 SETUP.TS EXECUTING - Starting jsdom environment setup...");
 // CRITICAL: Import polyfills FIRST before anything else
 import "./polyfills";
 
+// AGGRESSIVE: Override getComputedStyle everywhere immediately
+const forceGetComputedStylePolyfill = () => {
+  const mockGetComputedStyle = (element: Element): CSSStyleDeclaration => {
+    const styles: any = {
+      getPropertyValue: (prop: string) => {
+        const mappings: Record<string, string> = {
+          'display': 'block', 'visibility': 'visible', 'opacity': '1', 'transform': 'none',
+          'transition': 'none', 'animation': 'none', 'position': 'static', 'top': 'auto',
+          'left': 'auto', 'right': 'auto', 'bottom': 'auto', 'width': 'auto', 'height': 'auto',
+          'margin': '0px', 'padding': '0px', 'border': '0px', 'background': 'transparent'
+        };
+        return mappings[prop] || "";
+      },
+      setProperty: () => {}, removeProperty: () => "", item: () => "", length: 0,
+      parentRule: null, cssFloat: "", cssText: "", display: "block", visibility: "visible", 
+      opacity: "1", transform: "none", transition: "none", animation: "none", position: "static",
+      top: "auto", left: "auto", right: "auto", bottom: "auto", width: "auto", height: "auto"
+    };
+    Object.defineProperty(styles, Symbol.iterator, { value: function* () { for (let i = 0; i < this.length; i++) yield this.item(i); }});
+    return styles as CSSStyleDeclaration;
+  };
+
+  // Apply to ALL possible contexts aggressively
+  const contexts = [globalThis, global, window, self].filter(Boolean);
+  contexts.forEach(context => {
+    if (context && typeof context === 'object') {
+      try {
+        context.getComputedStyle = mockGetComputedStyle;
+      } catch (e) {
+        // ignore errors
+      }
+    }
+  });
+
+  // Override the actual function reference
+  if (typeof getComputedStyle === 'undefined') {
+    (globalThis as any).getComputedStyle = mockGetComputedStyle;
+  }
+
+  return mockGetComputedStyle;
+};
+
+// Apply immediately and repeatedly
+const polyfill = forceGetComputedStylePolyfill();
+
+// Also override in a timer to catch late initialization 
+setTimeout(() => {
+  forceGetComputedStylePolyfill();
+}, 0);
+
 // Ensure globals are properly set up after polyfills
 if (typeof window !== "undefined") {
   // Make sure document and window are available globally
@@ -15,6 +65,11 @@ if (typeof window !== "undefined") {
     (global as any).window = window;
   }
 }
+
+// Force polyfill again after globals setup
+setTimeout(() => {
+  forceGetComputedStylePolyfill();
+}, 1);
 
 console.log(
   "🔧 Initial DOM check - document available:",

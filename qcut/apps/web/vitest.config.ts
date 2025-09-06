@@ -70,9 +70,12 @@ export default defineConfig({
       }
     },
     globalSetup: path.resolve(rootDir, "src/test/global-setup.ts"),
-    setupFiles: [path.resolve(rootDir, "src/test/setup.ts")],
-    isolate: false,
-    pool: "threads",
+    setupFiles: [
+      path.resolve(rootDir, "src/test/preload-polyfills.ts"),
+      path.resolve(rootDir, "src/test/setup.ts")
+    ],
+    isolate: true,
+    pool: "forks",
     testTimeout: 5000,
     hookTimeout: 5000,
   },

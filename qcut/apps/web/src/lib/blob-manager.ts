@@ -16,12 +16,15 @@ class BlobManager {
 
   constructor() {
     // Auto-cleanup orphaned blobs every 5 minutes
-    this.cleanupInterval = window.setInterval(
-      () => {
-        this.cleanupOldBlobs();
-      },
-      5 * 60 * 1000
-    );
+    // Only set up cleanup if we have a window environment
+    if (typeof window !== 'undefined' && window.setInterval) {
+      this.cleanupInterval = window.setInterval(
+        () => {
+          this.cleanupOldBlobs();
+        },
+        5 * 60 * 1000
+      );
+    }
   }
 
   /**
@@ -104,8 +107,8 @@ class BlobManager {
       this.revokeObjectURL(url);
     }
 
-    if (this.cleanupInterval) {
-      clearInterval(this.cleanupInterval);
+    if (this.cleanupInterval && typeof window !== 'undefined' && window.clearInterval) {
+      window.clearInterval(this.cleanupInterval);
       this.cleanupInterval = null;
     }
   }
