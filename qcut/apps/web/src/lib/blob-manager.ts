@@ -29,13 +29,20 @@ class BlobManager {
    */
   createObjectURL(file: File | Blob, source?: string): string {
     const url = URL.createObjectURL(file);
+    const callerStack = source || new Error().stack?.split("\n")[2]?.trim();
 
     this.blobs.set(url, {
       url,
       file,
       createdAt: Date.now(),
-      source: source || new Error().stack?.split("\n")[2]?.trim(),
+      source: callerStack,
     });
+
+    if (import.meta.env.DEV) {
+      console.log(`[BlobManager] 🟢 Created: ${url}`);
+      console.log(`  📍 Source: ${callerStack}`);
+      console.log(`  📦 Type: ${file.constructor.name}, Size: ${file.size} bytes`);
+    }
 
     return url;
   }
@@ -45,6 +52,16 @@ class BlobManager {
    */
   revokeObjectURL(url: string): void {
     if (this.blobs.has(url)) {
+      const entry = this.blobs.get(url);
+      
+      if (import.meta.env.DEV) {
+        const revokeStack = new Error().stack?.split("\n").slice(2, 4).join(' → ').trim();
+        console.log(`[BlobManager] 🔴 Revoked: ${url}`);
+        console.log(`  📍 Created by: ${entry?.source || 'unknown'}`);
+        console.log(`  🗑️ Revoked by: ${revokeStack}`);
+        console.log(`  ⏱️ Lifespan: ${entry ? Date.now() - entry.createdAt : 'unknown'}ms`);
+      }
+      
       URL.revokeObjectURL(url);
       this.blobs.delete(url);
     }
@@ -58,9 +75,11 @@ class BlobManager {
 
     for (const [url, entry] of this.blobs.entries()) {
       if (now - entry.createdAt > maxAge) {
-        console.warn(
-          `[BlobManager] Auto-revoking old blob URL from: ${entry.source}`
-        );
+        if (import.meta.env.DEV) {
+          console.warn(`[BlobManager] ⏰ Auto-revoking old blob URL: ${url}`);
+          console.warn(`  📍 Created by: ${entry.source}`);
+          console.warn(`  🕒 Age: ${(now - entry.createdAt) / 1000}s`);
+        }
         this.revokeObjectURL(url);
       }
     }
@@ -77,6 +96,10 @@ class BlobManager {
    * Force cleanup all active blobs (use sparingly)
    */
   cleanup(): void {
+    if (import.meta.env.DEV) {
+      console.log(`[BlobManager] 🧹 Force cleanup of ${this.blobs.size} active blob URLs`);
+    }
+    
     for (const url of this.blobs.keys()) {
       this.revokeObjectURL(url);
     }

@@ -30,11 +30,9 @@ export function enableBlobUrlDebugging() {
       created: new Date(),
     });
     
-    console.log(`[BlobUrlDebug] Created: ${url}`, {
-      source,
-      objectType: object.constructor.name,
-      size: object instanceof File ? object.size : 'unknown',
-    });
+    console.log(`[BlobUrlDebug] 🟢 Created: ${url}`);
+    console.log(`  📍 Source: ${source}`);
+    console.log(`  📦 Type: ${object.constructor.name}, Size: ${object instanceof File ? object.size + ' bytes' : 'unknown'}`);
     
     return url;
   };
@@ -49,11 +47,10 @@ export function enableBlobUrlDebugging() {
       const revokeStack = new Error().stack || 'Unknown revoke source';
       const revokeSource = revokeStack.split('\n').slice(2, 4).join(' → ').trim();
       
-      console.log(`[BlobUrlDebug] Revoked: ${url}`, {
-        createdBy: tracked.source,
-        revokedBy: revokeSource,
-        lifespan: Date.now() - tracked.created.getTime() + 'ms',
-      });
+      console.log(`[BlobUrlDebug] 🔴 Revoked: ${url}`);
+      console.log(`  📍 Created by: ${tracked.source}`);
+      console.log(`  🗑️ Revoked by: ${revokeSource}`);
+      console.log(`  ⏱️ Lifespan: ${Date.now() - tracked.created.getTime()}ms`);
     } else {
       console.log(`[BlobUrlDebug] Revoked untracked: ${url}`);
     }
