@@ -102,6 +102,10 @@ import { afterEach, afterAll, beforeAll, vi } from "vitest";
 import { setupToastMock } from "./mocks/toast";
 setupToastMock();
 
+// Load Radix UI presence mock to avoid getComputedStyle issues
+import { mockPresence } from "./mocks/radix-presence";
+mockPresence();
+
 // Mock window.matchMedia and window.history for jsdom environment
 Object.defineProperty(window, "matchMedia", {
   writable: true,

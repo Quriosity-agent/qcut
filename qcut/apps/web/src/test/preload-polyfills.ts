@@ -1,81 +1,125 @@
 // This file MUST be loaded before any React or Radix UI imports
 // It provides critical polyfills for the test environment
 
-// Immediate polyfill application before any module evaluation
-(() => {
-  const mockGetComputedStyle = (element: Element): CSSStyleDeclaration => {
-    const styles: any = {
-      getPropertyValue: (prop: string) => {
-        const mappings: Record<string, string> = {
-          'display': 'block', 'visibility': 'visible', 'opacity': '1', 
-          'transform': 'none', 'transition': 'none', 'animation': 'none',
-          'position': 'static', 'top': 'auto', 'left': 'auto', 
-          'right': 'auto', 'bottom': 'auto', 'width': 'auto', 
-          'height': 'auto', 'margin': '0px', 'padding': '0px', 
-          'border': '0px', 'background': 'transparent'
-        };
-        return mappings[prop] || "";
-      },
-      setProperty: () => {}, 
-      removeProperty: () => "", 
-      item: () => "", 
-      length: 0,
-      parentRule: null, 
-      cssFloat: "", 
-      cssText: "", 
-      display: "block", 
-      visibility: "visible", 
-      opacity: "1", 
-      transform: "none", 
-      transition: "none", 
-      animation: "none", 
-      position: "static",
-      top: "auto", 
-      left: "auto", 
-      right: "auto", 
-      bottom: "auto", 
-      width: "auto", 
-      height: "auto"
-    };
-    
+// Create a comprehensive mock CSSStyleDeclaration
+class MockCSSStyleDeclaration {
+  [key: string]: any;
+  
+  constructor() {
+    // Add all common CSS properties
+    this.display = "block";
+    this.visibility = "visible";
+    this.opacity = "1";
+    this.transform = "none";
+    this.transition = "none";
+    this.animation = "none";
+    this.position = "static";
+    this.top = "auto";
+    this.left = "auto";
+    this.right = "auto";
+    this.bottom = "auto";
+    this.width = "auto";
+    this.height = "auto";
+    this.margin = "0px";
+    this.padding = "0px";
+    this.border = "0px";
+    this.background = "transparent";
+    this.cssFloat = "";
+    this.cssText = "";
+    this.length = 0;
+    this.parentRule = null;
+  }
+  
+  getPropertyValue(prop: string): string {
+    const normalizedProp = prop.replace(/-([a-z])/g, (g) => g[1].toUpperCase());
+    return this[normalizedProp] || "";
+  }
+  
+  setProperty(prop: string, value: string): void {
+    const normalizedProp = prop.replace(/-([a-z])/g, (g) => g[1].toUpperCase());
+    this[normalizedProp] = value;
+  }
+  
+  removeProperty(prop: string): string {
+    const normalizedProp = prop.replace(/-([a-z])/g, (g) => g[1].toUpperCase());
+    const oldValue = this[normalizedProp];
+    delete this[normalizedProp];
+    return oldValue || "";
+  }
+  
+  item(index: number): string {
+    return "";
+  }
+  
+  *[Symbol.iterator]() {
     // Make it iterable
-    Object.defineProperty(styles, Symbol.iterator, { 
-      value: function* () { 
-        for (let i = 0; i < this.length; i++) yield this.item(i); 
-      }
+  }
+}
+
+// Create the mock function
+const mockGetComputedStyle = (element: Element): CSSStyleDeclaration => {
+  return new MockCSSStyleDeclaration() as any;
+};
+
+// Aggressive patching strategy
+const patchGlobal = (target: any, name: string) => {
+  if (!target) return;
+  
+  try {
+    // Try multiple ways to set the property
+    target.getComputedStyle = mockGetComputedStyle;
+    
+    Object.defineProperty(target, 'getComputedStyle', {
+      value: mockGetComputedStyle,
+      writable: true,
+      configurable: true,
+      enumerable: true
     });
     
-    return styles as CSSStyleDeclaration;
-  };
+    // Also set on prototype if exists
+    if (target.prototype) {
+      target.prototype.getComputedStyle = mockGetComputedStyle;
+    }
+  } catch (e) {
+    // Ignore errors
+  }
+};
 
-  // Force assignment to all possible global contexts
-  const applyToAll = () => {
-    const targets = [globalThis, window, global, self].filter(Boolean);
-    targets.forEach(target => {
-      if (target && typeof target === 'object') {
-        Object.defineProperty(target, 'getComputedStyle', {
-          value: mockGetComputedStyle,
-          writable: true,
-          configurable: true,
-          enumerable: true
-        });
+// Apply to all possible contexts immediately
+patchGlobal(globalThis, 'globalThis');
+patchGlobal(global, 'global');
+patchGlobal(window, 'window');
+patchGlobal(self, 'self');
+
+// Intercept property access
+if (typeof Proxy !== 'undefined') {
+  const handler = {
+    get(target: any, prop: string) {
+      if (prop === 'getComputedStyle') {
+        return mockGetComputedStyle;
       }
-    });
+      return target[prop];
+    }
   };
-
-  // Apply immediately
-  applyToAll();
-
-  // Re-apply on next tick
-  if (typeof process !== 'undefined' && process.nextTick) {
-    process.nextTick(applyToAll);
-  }
   
-  if (typeof setImmediate !== 'undefined') {
-    setImmediate(applyToAll);
+  try {
+    if (typeof window !== 'undefined') {
+      window = new Proxy(window, handler);
+    }
+  } catch (e) {
+    // Can't proxy window in some environments
   }
-  
-  setTimeout(applyToAll, 0);
-})();
+}
+
+// Re-apply periodically to catch late initializations
+const intervals = [0, 1, 10, 100];
+intervals.forEach(delay => {
+  setTimeout(() => {
+    patchGlobal(globalThis, 'globalThis');
+    patchGlobal(global, 'global');
+    patchGlobal(window, 'window');
+    patchGlobal(self, 'self');
+  }, delay);
+});
 
 export {};
