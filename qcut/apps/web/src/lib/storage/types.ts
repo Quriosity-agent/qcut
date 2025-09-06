@@ -19,7 +19,7 @@ export interface MediaFileData {
   height?: number;
   duration?: number;
   url?: string; // For generated images with blob URLs
-  metadata?: any; // Additional metadata
+  metadata?: Record<string, unknown>; // Additional metadata
   // File will be stored separately in OPFS
 }
 
@@ -44,12 +44,11 @@ export interface SerializedScene {
   updatedAt: string;
 }
 
-// Helper type for serialization - converts Date objects to strings
+/** Project payload for storage (Date -> string, scenes -> SerializedScene[]). */
 export type SerializedProject = Omit<TProject, "createdAt" | "updatedAt" | "scenes"> & {
   createdAt: string;
   updatedAt: string;
   scenes: SerializedScene[];
-  bookmarks?: number[];
 };
 
 // Extend FileSystemDirectoryHandle with missing async iterator methods
