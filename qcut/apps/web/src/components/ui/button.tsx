@@ -43,19 +43,22 @@ export interface ButtonProps
 }
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant, size, asChild = false, ...props }, ref) => {
-    const Comp = asChild ? SlotPrimitive.Slot : "button";
-    
-    // Debug: Verify forwardRef fix
-    if (import.meta.env.DEV && asChild && ref) {
-      console.log('✅ Button: Prevented ref forwarding to Slot component (fixes forwardRef warning)');
+  ({ className, variant, size, asChild = false, type, ...props }, ref) => {
+    if (asChild) {
+      return (
+        <SlotPrimitive.Slot
+          ref={ref}
+          className={cn(buttonVariants({ variant, size, className }))}
+          {...props}
+        />
+      );
     }
     
     return (
-      <Comp
+      <button
         className={cn(buttonVariants({ variant, size, className }))}
-        ref={asChild ? undefined : ref}
-        type={asChild ? undefined : (props.type ?? 'button')}
+        ref={ref}
+        type={type ?? 'button'}
         {...props}
       />
     );
