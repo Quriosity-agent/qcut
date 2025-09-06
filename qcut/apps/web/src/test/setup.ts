@@ -1,101 +1,19 @@
 // Test setup file for Vitest - enhanced DOM setup for jsdom
 console.log("🔧 SETUP.TS EXECUTING - Starting jsdom environment setup...");
 
-// CRITICAL: Set up getComputedStyle IMMEDIATELY as a robust polyfill
-// This polyfill must be bulletproof and work across all contexts
-const createComputedStylePolyfill = () => {
-  const mockGetComputedStyle = (element: Element): CSSStyleDeclaration => {
-    const styles: any = {
-      // Core methods
-      getPropertyValue: (prop: string) => {
-        // Handle common properties that Radix UI might check
-        const mappings: Record<string, string> = {
-          'display': 'block',
-          'visibility': 'visible',
-          'opacity': '1',
-          'transform': 'none',
-          'transition': 'none',
-          'animation': 'none',
-          'position': 'static',
-          'top': 'auto',
-          'left': 'auto',
-          'right': 'auto',
-          'bottom': 'auto',
-          'width': 'auto',
-          'height': 'auto',
-          'margin': '0px',
-          'padding': '0px',
-          'border': '0px',
-          'background': 'transparent'
-        };
-        return mappings[prop] || "";
-      },
-      setProperty: () => {},
-      removeProperty: () => "",
-      item: (index: number) => "",
-      
-      // Common properties
-      length: 0,
-      parentRule: null,
-      cssFloat: "",
-      cssText: "",
-      
-      // Layout properties
-      display: "block",
-      visibility: "visible", 
-      opacity: "1",
-      transform: "none",
-      transition: "none",
-      animation: "none",
-      position: "static",
-      top: "auto",
-      left: "auto",
-      right: "auto",
-      bottom: "auto",
-      width: "auto",
-      height: "auto"
-    };
-    
-    // Make it iterable
-    Object.defineProperty(styles, Symbol.iterator, {
-      value: function* () {
-        for (let i = 0; i < this.length; i++) {
-          yield this.item(i);
-        }
-      }
-    });
-    
-    return styles as CSSStyleDeclaration;
-  };
-  
-  return mockGetComputedStyle;
-};
+// CRITICAL: Import polyfills FIRST before anything else
+import "./polyfills";
 
-const mockGetComputedStyle = createComputedStylePolyfill();
-
-// Apply polyfill to ALL possible global contexts
-const globalContexts = [globalThis, window, global].filter(Boolean);
-
-globalContexts.forEach(context => {
-  if (context && typeof context === 'object') {
-    Object.defineProperty(context, "getComputedStyle", {
-      value: mockGetComputedStyle,
-      writable: true,
-      configurable: true,
-    });
-  }
-});
-
-// Special handling for when window becomes available later
-if (typeof window === "undefined") {
-  // Set up a proxy that will work when window becomes available
-  (globalThis as any).getComputedStyle = mockGetComputedStyle;
-} else {
-  // Window is available, set up everything
-  window.getComputedStyle = mockGetComputedStyle;
-  (globalThis as any).getComputedStyle = mockGetComputedStyle;
+// Ensure globals are properly set up after polyfills
+if (typeof window !== "undefined") {
+  // Make sure document and window are available globally
   (globalThis as any).document = window.document;
   (globalThis as any).window = window;
+  
+  if (typeof global !== "undefined") {
+    (global as any).document = window.document;
+    (global as any).window = window;
+  }
 }
 
 console.log(

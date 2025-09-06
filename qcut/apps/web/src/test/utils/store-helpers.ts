@@ -60,6 +60,6 @@ export async function resetAllStores() {
     stickersStore.clearAllStickers();
   }
 
-  // Small delay to ensure async operations complete
-  await new Promise((resolve) => setTimeout(resolve, 10));
+  // Small delay to ensure async operations complete - reduced for tests
+  await new Promise((resolve) => setTimeout(resolve, 1));
 }
