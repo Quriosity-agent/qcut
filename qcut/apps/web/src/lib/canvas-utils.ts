@@ -15,39 +15,8 @@ export async function captureFrameToCanvas(
   options: CaptureOptions
 ): Promise<ImageData | null> {
   try {
-    // Prefer OffscreenCanvas if available for performance
-    if (typeof OffscreenCanvas !== "undefined") {
-      if (
-        !offscreenCanvas ||
-        offscreenCanvas.width !== options.width ||
-        offscreenCanvas.height !== options.height
-      ) {
-        offscreenCanvas = new OffscreenCanvas(options.width, options.height);
-        offscreenContext = offscreenCanvas.getContext("2d");
-      }
-
-      if (offscreenContext) {
-        const canvas = await html2canvas(element, {
-          canvas: offscreenCanvas as any,
-          width: options.width,
-          height: options.height,
-          backgroundColor:
-            options.backgroundColor === 'transparent' ? null : (options.backgroundColor || '#000000'),
-          scale: 1,
-          logging: false,
-          useCORS: true,
-          allowTaint: false,
-          foreignObjectRendering: true,
-        });
-
-        return offscreenContext.getImageData(
-          0,
-          0,
-          options.width,
-          options.height
-        );
-      }
-    }
+    // Skip OffscreenCanvas with html2canvas due to compatibility issues
+    // html2canvas doesn't properly support canvas option with OffscreenCanvas
 
     const canvas = await html2canvas(element, {
       width: options.width,
@@ -59,9 +28,21 @@ export async function captureFrameToCanvas(
       useCORS: true,
       // Preserve video frames and dynamic content
       allowTaint: false,
-      foreignObjectRendering: true,
+      foreignObjectRendering: false, // Disable to avoid oklab color issues
       // Important: preserve existing transforms and styles
       onclone: (clonedDoc) => {
+        // Remove problematic CSS that uses oklab colors
+        const style = clonedDoc.createElement('style');
+        style.textContent = `
+          * { 
+            /* Override any oklab colors with fallbacks */
+            color: inherit !important;
+            background-color: transparent !important;
+            border-color: currentColor !important;
+          }
+        `;
+        clonedDoc.head.appendChild(style);
+        
         // Preserve any dynamic styles
         const clonedElement = element.id ? clonedDoc.getElementById(element.id) : null;
         if (clonedElement && element.style) {
@@ -76,6 +57,41 @@ export async function captureFrameToCanvas(
     return ctx.getImageData(0, 0, options.width, options.height);
   } catch (error) {
     console.error("Failed to capture frame:", error);
+    
+    // Fallback: Create a simple canvas capture without html2canvas
+    try {
+      const fallbackCanvas = document.createElement('canvas');
+      fallbackCanvas.width = options.width;
+      fallbackCanvas.height = options.height;
+      const fallbackCtx = fallbackCanvas.getContext('2d');
+      
+      if (fallbackCtx) {
+        // Fill with background color
+        fallbackCtx.fillStyle = options.backgroundColor || '#000000';
+        fallbackCtx.fillRect(0, 0, options.width, options.height);
+        
+        // Try to draw any video elements directly
+        const videos = element.getElementsByTagName('video');
+        if (videos.length > 0) {
+          const video = videos[0];
+          const rect = video.getBoundingClientRect();
+          const elementRect = element.getBoundingClientRect();
+          
+          fallbackCtx.drawImage(
+            video,
+            rect.left - elementRect.left,
+            rect.top - elementRect.top,
+            rect.width,
+            rect.height
+          );
+        }
+        
+        return fallbackCtx.getImageData(0, 0, options.width, options.height);
+      }
+    } catch (fallbackError) {
+      console.error("Fallback capture also failed:", fallbackError);
+    }
+    
     return null;
   }
 }
@@ -90,49 +106,9 @@ export async function captureFrameToOffscreenCanvas(
   element: HTMLElement,
   options: CaptureOptions
 ): Promise<ImageData | null> {
-  try {
-    // Use offscreen canvas if available
-    if (typeof OffscreenCanvas !== "undefined") {
-      if (
-        !offscreenCanvas ||
-        offscreenCanvas.width !== options.width ||
-        offscreenCanvas.height !== options.height
-      ) {
-        offscreenCanvas = new OffscreenCanvas(options.width, options.height);
-        offscreenContext = offscreenCanvas.getContext("2d");
-      }
-
-      if (offscreenContext) {
-        // First capture to regular canvas with html2canvas
-        const regularCanvas = await html2canvas(element, {
-          width: options.width,
-          height: options.height,
-          backgroundColor:
-            options.backgroundColor === 'transparent' ? null : (options.backgroundColor || '#000000'),
-          scale: 1,
-          logging: false,
-          useCORS: true,
-          allowTaint: false,
-        });
-
-        // Draw to offscreen canvas
-        offscreenContext.drawImage(regularCanvas, 0, 0);
-
-        return offscreenContext.getImageData(
-          0,
-          0,
-          options.width,
-          options.height
-        );
-      }
-    }
-
-    // Fallback to regular canvas
-    return captureFrameToCanvas(element, options);
-  } catch (error) {
-    console.error("Offscreen capture failed, falling back:", error);
-    return captureFrameToCanvas(element, options);
-  }
+  // Due to html2canvas compatibility issues with OffscreenCanvas
+  // and oklab color functions, just use regular capture
+  return captureFrameToCanvas(element, options);
 }
 
 /**

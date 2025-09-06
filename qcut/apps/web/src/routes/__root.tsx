@@ -5,6 +5,8 @@ import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { StorageProvider } from "@/components/storage-provider";
 import { ErrorBoundary } from "@/components/error-boundary";
+import { BlobUrlCleanup } from "@/components/providers/migrators/blob-url-cleanup";
+import "@/lib/blob-url-debug"; // Enable blob URL debugging in development
 
 export const Route = createRootRoute({
   component: () => (
@@ -12,10 +14,12 @@ export const Route = createRootRoute({
       <TooltipProvider>
         <ErrorBoundary>
           <StorageProvider>
-            <ErrorBoundary isolate>
-              <Outlet />
-            </ErrorBoundary>
-            <Toaster />
+            <BlobUrlCleanup>
+              <ErrorBoundary isolate>
+                <Outlet />
+              </ErrorBoundary>
+              <Toaster />
+            </BlobUrlCleanup>
           </StorageProvider>
         </ErrorBoundary>
       </TooltipProvider>
