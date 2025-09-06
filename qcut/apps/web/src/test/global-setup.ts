@@ -64,7 +64,11 @@ export default function setup() {
   };
 
   // Apply to all contexts aggressively
-  const contexts = [globalThis, global, window].filter(Boolean);
+  const contexts = [
+    globalThis,
+    typeof global !== "undefined" ? global : null,
+    typeof window !== "undefined" ? window : null
+  ].filter(Boolean);
   contexts.forEach(context => {
     if (context && typeof context === 'object') {
       try {

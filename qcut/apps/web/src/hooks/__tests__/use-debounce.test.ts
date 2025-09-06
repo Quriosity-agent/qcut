@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { renderHook } from "@testing-library/react";
+import { renderHook, act, waitFor } from "@testing-library/react";
 import { useDebounce } from "@/hooks/use-debounce";
 
 describe("useDebounce", () => {
@@ -17,15 +17,17 @@ describe("useDebounce", () => {
     expect(result.current).toBe("initial");
 
     // Change value
-    rerender({ value: "updated", delay: 50 });
+    act(() => {
+      rerender({ value: "updated", delay: 50 });
+    });
 
     // Value should not change immediately
     expect(result.current).toBe("initial");
 
-    // Wait for debounce to complete
-    await new Promise(resolve => setTimeout(resolve, 60));
-
-    expect(result.current).toBe("updated");
+    // Wait for debounce to complete - increase timeout
+    await waitFor(() => {
+      expect(result.current).toBe("updated");
+    }, { timeout: 200 });
   });
 
   it("works with complex objects", async () => {
@@ -39,12 +41,14 @@ describe("useDebounce", () => {
 
     expect(result.current).toEqual(initialObject);
 
-    rerender({ value: updatedObject, delay: 30 });
+    act(() => {
+      rerender({ value: updatedObject, delay: 30 });
+    });
 
     // Wait for debounce
-    await new Promise(resolve => setTimeout(resolve, 40));
-
-    expect(result.current).toEqual(updatedObject);
+    await waitFor(() => {
+      expect(result.current).toEqual(updatedObject);
+    }, { timeout: 100 });
   });
 
   it("handles delay changes", async () => {
@@ -53,10 +57,13 @@ describe("useDebounce", () => {
       { initialProps: { value: "initial", delay: 100 } }
     );
 
-    rerender({ value: "updated", delay: 25 });
+    act(() => {
+      rerender({ value: "updated", delay: 25 });
+    });
 
-    // New delay should be respected
-    await new Promise(resolve => setTimeout(resolve, 30));
-    expect(result.current).toBe("updated");
+    // New delay should be respected - increase timeout for safety
+    await waitFor(() => {
+      expect(result.current).toBe("updated");
+    }, { timeout: 100 });
   });
 });

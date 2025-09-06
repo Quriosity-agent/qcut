@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { renderHook } from "@testing-library/react";
+import { renderHook, act, waitFor } from "@testing-library/react";
 import { useDebounce } from "@/hooks/use-debounce";
 
 describe("useDebounce - Advanced Tests", () => {
@@ -11,12 +11,14 @@ describe("useDebounce - Advanced Tests", () => {
 
     expect(result.current).toBe(null);
 
-    rerender({ value: undefined as any });
+    act(() => {
+      rerender({ value: undefined as any });
+    });
     expect(result.current).toBe(null);
 
-    await new Promise(resolve => setTimeout(resolve, 40));
-
-    expect(result.current).toBe(undefined);
+    await waitFor(() => {
+      expect(result.current).toBe(undefined);
+    }, { timeout: 60 });
   });
 
   it("handles zero delay (immediate update)", async () => {
@@ -25,12 +27,14 @@ describe("useDebounce - Advanced Tests", () => {
       { initialProps: { value: "initial" } }
     );
 
-    rerender({ value: "updated" });
+    act(() => {
+      rerender({ value: "updated" });
+    });
 
-    // Even with 0 delay, there's still a microtask
-    await new Promise(resolve => setTimeout(resolve, 1));
-
-    expect(result.current).toBe("updated");
+    // Even with 0 delay, React needs time to update
+    await waitFor(() => {
+      expect(result.current).toBe("updated");
+    }, { timeout: 10 });
   });
 
   it("handles arrays and objects correctly", async () => {
@@ -43,11 +47,14 @@ describe("useDebounce - Advanced Tests", () => {
     expect(result.current).toBe(initialArray);
 
     const newArray = [4, 5, 6];
-    rerender({ value: newArray });
+    act(() => {
+      rerender({ value: newArray });
+    });
 
-    await new Promise(resolve => setTimeout(resolve, 40));
-
-    expect(result.current).toBe(newArray);
+    await waitFor(() => {
+      expect(result.current).toBe(newArray);
+    }, { timeout: 100 });
+    
     expect(result.current).toEqual([4, 5, 6]);
   });
 
