@@ -129,7 +129,8 @@ class StorageService {
     const serializedProject: SerializedProject = {
       id: project.id,
       name: project.name,
-      thumbnail: project.thumbnail,
+      // Don't save blob URLs as they don't persist across sessions
+      thumbnail: project.thumbnail?.startsWith("blob:") ? "" : project.thumbnail,
       createdAt: project.createdAt.toISOString(),
       updatedAt: project.updatedAt.toISOString(),
       scenes: serializedScenes,
@@ -225,8 +226,9 @@ class StorageService {
       width: mediaItem.width,
       height: mediaItem.height,
       duration: mediaItem.duration,
-      // Store the URL if it's a generated image (blob URL)
-      url: mediaItem.url,
+      // Only store non-blob URLs (e.g., data URLs, http URLs)
+      // Blob URLs are temporary and don't persist across sessions
+      url: mediaItem.url?.startsWith("blob:") ? undefined : mediaItem.url,
       metadata: mediaItem.metadata,
     };
 
@@ -282,6 +284,13 @@ class StorageService {
       }
     } else if (metadata.url) {
       // No file or empty file, but we have a URL (e.g., generated image fallback)
+      // Skip invalid blob URLs from previous sessions
+      if (metadata.url.startsWith("blob:")) {
+        console.warn(
+          `[StorageService] Skipping invalid blob URL for ${metadata.name}. Blob URLs don't persist across sessions.`
+        );
+        return null;
+      }
       url = metadata.url;
       // Create empty file placeholder
       actualFile = new File([], metadata.name, {
