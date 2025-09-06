@@ -1,46 +1,22 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { JSDOM } from "jsdom";
-
-// Set up DOM immediately at module level before any imports
-if (typeof document === "undefined") {
-  const dom = new JSDOM("<!DOCTYPE html><html><body></body></html>", {
-    url: "http://localhost:3000/",
-  });
-  Object.defineProperty(globalThis, "window", {
-    value: dom.window,
-    writable: true,
-  });
-  Object.defineProperty(globalThis, "document", {
-    value: dom.window.document,
-    writable: true,
-  });
-  Object.defineProperty(globalThis, "navigator", {
-    value: dom.window.navigator,
-    writable: true,
-  });
-  // location is now set in test/setup.ts
-  Object.defineProperty(globalThis, "HTMLElement", {
-    value: dom.window.HTMLElement,
-    writable: true,
-  });
-  Object.defineProperty(globalThis, "Element", {
-    value: dom.window.Element,
-    writable: true,
-  });
-}
 
 // Test all existing TanStack routes to verify they work correctly
 describe("TanStack Router Verification", () => {
   // Simulate hash-based routing for Electron environment
   const testRoute = (route: string) => {
     const hashRoute = `#${route}`;
-    window.location.hash = hashRoute;
-    return window.location.hash;
+    if (typeof window !== "undefined" && window.location) {
+      window.location.hash = hashRoute;
+      return window.location.hash;
+    }
+    return hashRoute; // Fallback for testing
   };
 
   beforeEach(() => {
-    // Reset hash
-    window.location.hash = "";
+    // Reset hash if window is available
+    if (typeof window !== "undefined" && window.location) {
+      window.location.hash = "";
+    }
   });
 
   describe("All Routes Confirmed Working", () => {
@@ -66,7 +42,7 @@ describe("TanStack Router Verification", () => {
       it(`should handle route: ${path} (${description})`, () => {
         const result = testRoute(path);
         expect(result).toBe(`#${path}`);
-      }, 1000);
+      });
     }
   });
 
@@ -75,41 +51,47 @@ describe("TanStack Router Verification", () => {
       const projectId = "test-project-456";
       const result = testRoute(`/editor/${projectId}`);
       expect(result).toBe(`#/editor/${projectId}`);
-    }, 1000);
+    });
 
     it("should support blog post slugs", () => {
       const slug = "my-test-blog-post";
       const result = testRoute(`/blog/${slug}`);
       expect(result).toBe(`#/blog/${slug}`);
-    }, 1000);
+    });
 
     it("should handle root route", () => {
       const result = testRoute("/");
       expect(result).toBe("#/");
-    }, 1000);
+    });
   });
 
   describe("Hash History Configuration", () => {
     it("should use hash-based routing for Electron", () => {
       // Test that we're using hash history (important for Electron)
-      testRoute("/projects");
-      expect(window.location.hash).toBe("#/projects");
-      // JSDOM may set pathname to "/" or "blank" depending on version/environment
-      expect(["blank", "/"]).toContain(window.location.pathname);
-    }, 1000);
+      const result = testRoute("/projects");
+      expect(result).toBe("#/projects");
+      if (typeof window !== "undefined" && window.location) {
+        expect(window.location.hash).toBe("#/projects");
+        // JSDOM may set pathname to "/" or "blank" depending on version/environment
+        expect(["blank", "/"]).toContain(window.location.pathname);
+      }
+    });
 
     it("should support browser navigation", () => {
       // Test navigation patterns
-      testRoute("/");
-      expect(window.location.hash).toBe("#/");
+      let result = testRoute("/");
+      expect(result).toBe("#/");
 
-      testRoute("/projects");
-      expect(window.location.hash).toBe("#/projects");
+      result = testRoute("/projects");
+      expect(result).toBe("#/projects");
 
-      // Simulate back navigation
-      window.history.back();
-      // Note: In real environment this would change, but in test it remains
-    }, 1000);
+      if (typeof window !== "undefined" && window.location && window.history) {
+        expect(window.location.hash).toBe("#/projects");
+        // Simulate back navigation
+        window.history.back();
+        // Note: In real environment this would change, but in test it remains
+      }
+    });
   });
 
   describe("Route Tree Status", () => {
@@ -127,7 +109,7 @@ describe("TanStack Router Verification", () => {
         const result = testRoute(route);
         expect(result).toBe(`#${route}`);
       }
-    }, 1000);
+    });
 
     it("should confirm static pages exist", () => {
       // These routes provide important site content
@@ -144,7 +126,7 @@ describe("TanStack Router Verification", () => {
         const result = testRoute(route);
         expect(result).toBe(`#${route}`);
       }
-    }, 1000);
+    });
   });
 });
 

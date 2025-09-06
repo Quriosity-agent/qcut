@@ -1,5 +1,103 @@
-// Test setup file for Vitest - enhanced DOM setup for happy-dom
-console.log("🔧 SETUP.TS EXECUTING - Starting happy-dom environment setup...");
+// Test setup file for Vitest - enhanced DOM setup for jsdom
+console.log("🔧 SETUP.TS EXECUTING - Starting jsdom environment setup...");
+
+// CRITICAL: Set up getComputedStyle IMMEDIATELY as a robust polyfill
+// This polyfill must be bulletproof and work across all contexts
+const createComputedStylePolyfill = () => {
+  const mockGetComputedStyle = (element: Element): CSSStyleDeclaration => {
+    const styles: any = {
+      // Core methods
+      getPropertyValue: (prop: string) => {
+        // Handle common properties that Radix UI might check
+        const mappings: Record<string, string> = {
+          'display': 'block',
+          'visibility': 'visible',
+          'opacity': '1',
+          'transform': 'none',
+          'transition': 'none',
+          'animation': 'none',
+          'position': 'static',
+          'top': 'auto',
+          'left': 'auto',
+          'right': 'auto',
+          'bottom': 'auto',
+          'width': 'auto',
+          'height': 'auto',
+          'margin': '0px',
+          'padding': '0px',
+          'border': '0px',
+          'background': 'transparent'
+        };
+        return mappings[prop] || "";
+      },
+      setProperty: () => {},
+      removeProperty: () => "",
+      item: (index: number) => "",
+      
+      // Common properties
+      length: 0,
+      parentRule: null,
+      cssFloat: "",
+      cssText: "",
+      
+      // Layout properties
+      display: "block",
+      visibility: "visible", 
+      opacity: "1",
+      transform: "none",
+      transition: "none",
+      animation: "none",
+      position: "static",
+      top: "auto",
+      left: "auto",
+      right: "auto",
+      bottom: "auto",
+      width: "auto",
+      height: "auto"
+    };
+    
+    // Make it iterable
+    Object.defineProperty(styles, Symbol.iterator, {
+      value: function* () {
+        for (let i = 0; i < this.length; i++) {
+          yield this.item(i);
+        }
+      }
+    });
+    
+    return styles as CSSStyleDeclaration;
+  };
+  
+  return mockGetComputedStyle;
+};
+
+const mockGetComputedStyle = createComputedStylePolyfill();
+
+// Apply polyfill to ALL possible global contexts
+const globalContexts = [globalThis, window, global].filter(Boolean);
+
+globalContexts.forEach(context => {
+  if (context && typeof context === 'object') {
+    Object.defineProperty(context, "getComputedStyle", {
+      value: mockGetComputedStyle,
+      writable: true,
+      configurable: true,
+    });
+  }
+});
+
+// Special handling for when window becomes available later
+if (typeof window === "undefined") {
+  // Set up a proxy that will work when window becomes available
+  (globalThis as any).getComputedStyle = mockGetComputedStyle;
+} else {
+  // Window is available, set up everything
+  window.getComputedStyle = mockGetComputedStyle;
+  (globalThis as any).getComputedStyle = mockGetComputedStyle;
+  (globalThis as any).document = window.document;
+  (globalThis as any).window = window;
+}
+
 console.log(
   "🔧 Initial DOM check - document available:",
   typeof document !== "undefined"
@@ -8,44 +106,10 @@ console.log(
   "🔧 Initial DOM check - window available:",
   typeof window !== "undefined"
 );
-
-// happy-dom provides DOM globals automatically, we just need to enhance them
-// Mock getComputedStyle for Radix UI components
-const mockGetComputedStyle = (
-  element: Element
-): Partial<CSSStyleDeclaration> => ({
-  getPropertyValue: () => "",
-  display: "block",
-  visibility: "visible",
-  opacity: "1",
-  transform: "none",
-  transition: "none",
-  animation: "none",
-});
-
-// Apply getComputedStyle mock to all contexts
-if (typeof window !== "undefined") {
-  console.log("🔧 Applying getComputedStyle to window");
-  Object.defineProperty(window, "getComputedStyle", {
-    value: mockGetComputedStyle as typeof window.getComputedStyle,
-    writable: true,
-    configurable: true,
-  });
-}
-
-if (typeof globalThis !== "undefined") {
-  console.log("🔧 Applying getComputedStyle to globalThis");
-  Object.defineProperty(globalThis, "getComputedStyle", {
-    value: mockGetComputedStyle as typeof window.getComputedStyle,
-    writable: true,
-    configurable: true,
-  });
-}
-
-if (typeof global !== "undefined") {
-  console.log("🔧 Applying getComputedStyle to global");
-  (global as any).getComputedStyle = mockGetComputedStyle;
-}
+console.log(
+  "🔧 getComputedStyle now available:",
+  typeof getComputedStyle !== "undefined"
+);
 
 console.log(
   "🔧 SETUP.TS COMPLETE - Document available:",
@@ -65,7 +129,7 @@ import { afterEach, afterAll, beforeAll, vi } from "vitest";
 import { setupToastMock } from "./mocks/toast";
 setupToastMock();
 
-// Mock window.matchMedia and window.history for happy-dom environment
+// Mock window.matchMedia and window.history for jsdom environment
 Object.defineProperty(window, "matchMedia", {
   writable: true,
   value: vi.fn().mockImplementation((query: string) => ({
@@ -95,7 +159,7 @@ Object.defineProperty(window, "history", {
   },
 });
 
-// Mock global APIs for happy-dom environment
+// Mock global APIs for jsdom environment
 const makeObserver = () => ({
   observe: vi.fn(),
   unobserve: vi.fn(),
@@ -144,7 +208,7 @@ Object.defineProperty(URL, "revokeObjectURL", {
 
 // getComputedStyle mock is already set up earlier in JSDOM setup
 
-// Mock localStorage (should be available in happy-dom but ensure it's mocked)
+// Mock localStorage (should be available in jsdom but ensure it's mocked)
 const localStorageMock: Storage = {
   getItem: vi.fn(),
   setItem: vi.fn(),

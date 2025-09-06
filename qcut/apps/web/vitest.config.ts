@@ -10,10 +10,12 @@ export default defineConfig({
   plugins: [react()],
   test: {
     globals: true,
-    environment: "happy-dom",
+    environment: "jsdom",
     setupFiles: [path.resolve(rootDir, "src/test/setup.ts")],
-    isolate: true,
-    pool: "forks",
+    isolate: false,
+    pool: "threads",
+    testTimeout: 5000,
+    hookTimeout: 5000,
   },
   resolve: {
     alias: {
