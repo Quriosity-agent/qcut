@@ -26,6 +26,25 @@ Fixed multiple test failures in the QCut test suite, primarily related to DOM en
 
 **Fix**: Removed duplicate JSDOM initialization from individual test files.
 
+## Fix History (One-by-One)
+
+### Fix #1: Added Radix UI Import Fix
+**Issue**: All Radix UI components failing with `getComputedStyle is not defined`
+**Files Fixed**:
+- `checkbox.test.tsx` - Added import for fix-radix-ui
+- `dialog.test.tsx` - Removed JSDOM setup, added fix import
+- `dropdown-menu.test.tsx` - Added fix import
+- `slider.test.tsx` - Added fix import  
+- `tabs.test.tsx` - Added fix import
+- `toast.test.tsx` - Added fix import
+
+**Solution**: Created `src/test/fix-radix-ui.ts` that ensures getComputedStyle is defined before Radix UI components load.
+
+### Fix #2: Fixed Window Reference Error in Polyfills
+**Issue**: `ReferenceError: window is not defined` in test/polyfills.ts when running vitest
+**File Fixed**: `src/test/polyfills.ts`
+**Solution**: Added safety checks for window and global objects before trying to access them. Changed direct references to conditional checks.
+
 ## Files Modified
 
 ### Test Setup Files
@@ -110,6 +129,39 @@ Key Radix UI modules are mocked to bypass complex DOM interactions:
 - `@radix-ui/react-focus-scope`: Disabled focus trapping in tests
 - `@radix-ui/react-focus-guards`: Removed focus guard functionality
 
+## Test Status Summary (After Fixes)
+
+### ✅ Passing Tests (When Run Individually)
+- **Button Component**: All tests passing
+- **Store Initialization**: All 3 tests passing
+- **Playback State**: All 3 tests passing  
+- **Sticker Addition**: All 2 tests passing
+- **Other Integration Tests**: Most passing when run individually
+
+### ⚠️ Still Failing (Due to Test Environment Issues)
+These tests fail when run with `bun test` directly due to missing DOM environment setup:
+- **Checkbox Component**: Needs vitest environment
+- **Dialog Component**: Needs vitest environment
+- **Dropdown Menu**: Needs vitest environment
+- **Slider Component**: Needs vitest environment + ResizeObserver
+- **Tabs Component**: Needs vitest environment
+- **Toast System**: Needs vitest environment
+- **useDebounce Hook**: Needs vitest environment
+
+### 📝 Important Notes
+1. **Running Tests**: Tests should be run with the vitest configuration, not directly with `bun test`
+2. **DOM Environment**: Many tests require the JSDOM environment which is configured in vitest.config.ts
+3. **Radix UI Issues**: Complex Radix UI components still have challenges in test environments due to their reliance on browser APIs
+
 ## Conclusion
 
-The test suite is now more stable and reliable. While some Radix UI component tests still have issues, the core functionality and business logic tests are working correctly. The fixes provide a solid foundation for continued test development and maintenance.
+The test suite is now more stable and reliable. While some Radix UI component tests still have issues when run outside of the vitest environment, the core functionality and business logic tests are working correctly. The fixes provide a solid foundation for continued test development and maintenance.
+
+### Recommended Test Command
+```bash
+# Use this command to run tests with proper environment setup
+bunx vitest run
+
+# Or for watch mode
+bunx vitest
+```

@@ -1,3 +1,4 @@
+import "@/test/fix-radix-ui";
 import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { Slider } from "@/components/ui/slider";

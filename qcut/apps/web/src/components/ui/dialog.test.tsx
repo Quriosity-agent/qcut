@@ -1,38 +1,5 @@
+import "@/test/fix-radix-ui";
 import { describe, it, expect } from "vitest";
-import { JSDOM } from "jsdom";
-
-// Set up DOM immediately at module level before any imports
-if (typeof document === "undefined") {
-  const dom = new JSDOM("<!DOCTYPE html><html><body></body></html>", {
-    url: "http://localhost:3000/",
-  });
-  Object.defineProperty(globalThis, "window", {
-    value: dom.window,
-    writable: true,
-  });
-  Object.defineProperty(globalThis, "document", {
-    value: dom.window.document,
-    writable: true,
-  });
-  Object.defineProperty(globalThis, "navigator", {
-    value: dom.window.navigator,
-    writable: true,
-  });
-  // location is now set in test/setup.ts
-  Object.defineProperty(globalThis, "HTMLElement", {
-    value: dom.window.HTMLElement,
-    writable: true,
-  });
-  Object.defineProperty(globalThis, "Element", {
-    value: dom.window.Element,
-    writable: true,
-  });
-  Object.defineProperty(globalThis, "getComputedStyle", {
-    value: dom.window.getComputedStyle,
-    writable: true,
-  });
-}
-
 import { render, screen, waitFor } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
 import {
@@ -62,29 +29,64 @@ describe("Dialog Component", () => {
   });
 
   it("opens and closes with controlled state", async () => {
-    const { rerender, queryByText } = render(
-      <Dialog open={false}>
-        <DialogContent>
-          <DialogTitle>Test Dialog</DialogTitle>
-        </DialogContent>
-      </Dialog>
-    );
+    const TestDialog = () => {
+      const [open, setOpen] = React.useState(false);
+      return (
+        <Dialog open={open} onOpenChange={setOpen}>
+          <DialogTrigger>Open</DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Test Title</DialogTitle>
+              <DialogDescription>Test Description</DialogDescription>
+            </DialogHeader>
+            <button onClick={() => setOpen(false)}>Close</button>
+          </DialogContent>
+        </Dialog>
+      );
+    };
 
-    // Dialog should not be visible initially
-    expect(queryByText("Test Dialog")).not.toBeInTheDocument();
+    const { getByText, queryByText, getByRole } = render(<TestDialog />);
+
+    // Dialog should be closed initially
+    expect(queryByText("Test Title")).not.toBeInTheDocument();
 
     // Open dialog
-    rerender(
-      <Dialog open={true}>
+    const trigger = getByText("Open");
+    trigger.click();
+
+    // Wait for dialog to appear
+    await waitFor(() => {
+      expect(getByText("Test Title")).toBeInTheDocument();
+    });
+
+    // Close dialog
+    const closeButton = getByText("Close");
+    closeButton.click();
+
+    // Wait for dialog to disappear
+    await waitFor(() => {
+      expect(queryByText("Test Title")).not.toBeInTheDocument();
+    });
+  });
+
+  it("renders with correct ARIA attributes", () => {
+    const { getByRole, getByText } = render(
+      <Dialog defaultOpen>
+        <DialogTrigger>Open</DialogTrigger>
         <DialogContent>
-          <DialogTitle>Test Dialog</DialogTitle>
+          <DialogHeader>
+            <DialogTitle>Accessible Dialog</DialogTitle>
+            <DialogDescription>With proper ARIA labels</DialogDescription>
+          </DialogHeader>
         </DialogContent>
       </Dialog>
     );
 
-    // Dialog should be visible
-    await waitFor(() => {
-      expect(queryByText("Test Dialog")).toBeInTheDocument();
-    });
+    const dialog = getByRole("dialog");
+    expect(dialog).toBeInTheDocument();
+    expect(dialog).toHaveAttribute("aria-modal", "true");
   });
 });
+
+// Add React import for the test
+import React from "react";

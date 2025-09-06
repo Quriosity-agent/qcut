@@ -90,14 +90,14 @@ const applyToContext = (context: any, name: string) => {
   }
 };
 
-// Apply immediately
+// Apply immediately with safety checks
 applyToContext(globalThis, "globalThis");
 
-if (typeof window !== "undefined") {
+if (typeof window !== "undefined" && window) {
   applyToContext(window, "window");
 }
 
-if (typeof global !== "undefined") {
+if (typeof global !== "undefined" && global) {
   applyToContext(global, "global");
 }
 
@@ -108,7 +108,11 @@ if (typeof this !== "undefined") {
 
 // Additional polyfills for JSDOM environment
 const setupAdditionalPolyfills = () => {
-  const contexts = [globalThis, window, global].filter(Boolean);
+  const contexts = [
+    globalThis,
+    typeof window !== "undefined" ? window : null,
+    typeof global !== "undefined" ? global : null
+  ].filter(Boolean);
   
   contexts.forEach(context => {
     if (!context || typeof context !== 'object') return;
