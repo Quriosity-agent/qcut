@@ -201,129 +201,183 @@ export const initFFmpeg = async (): Promise<FFmpeg> => {
       );
     }
 
-    // Fetch and convert to blob URLs for consistent loading
-    let coreResponse, wasmResponse;
-
-    try {
-      coreResponse = await fetch(coreUrl);
-      wasmResponse = await fetch(wasmUrl);
-    } catch (fetchError) {
-      handleMediaProcessingError(fetchError, "Fetch FFmpeg resources", {
-        coreUrl,
-        wasmUrl,
-      });
-      throw new Error(
-        `Network error while fetching FFmpeg resources: ${fetchError instanceof Error ? fetchError.message : String(fetchError)}`
-      );
-    }
-
-    if (!coreResponse.ok) {
-      const errorMsg = `Failed to fetch ffmpeg-core.js: ${coreResponse.status} ${coreResponse.statusText}`;
-      const error = new Error(errorMsg);
-      handleMediaProcessingError(error, "Fetch FFmpeg core", {
-        status: coreResponse.status,
-        statusText: coreResponse.statusText,
-      });
-      throw new Error(errorMsg);
-    }
-    if (!wasmResponse.ok) {
-      const errorMsg = `Failed to fetch ffmpeg-core.wasm: ${wasmResponse.status} ${wasmResponse.statusText}`;
-      const error = new Error(errorMsg);
-      handleMediaProcessingError(error, "Fetch FFmpeg WASM", {
-        status: wasmResponse.status,
-        statusText: wasmResponse.statusText,
-      });
-      throw new Error(errorMsg);
-    }
-
-    let coreBlob, wasmBlob;
-
-    try {
-      coreBlob = await coreResponse.blob();
-      wasmBlob = await wasmResponse.blob();
-    } catch (blobError) {
-      handleMediaProcessingError(
-        blobError,
-        "Convert FFmpeg resources to blobs",
-        {
-          coreSize: coreResponse.headers.get("content-length"),
-          wasmSize: wasmResponse.headers.get("content-length"),
-        }
-      );
-      throw new Error(
-        `Failed to convert FFmpeg resources to blobs: ${blobError instanceof Error ? blobError.message : String(blobError)}`
-      );
-    }
-
-    const coreBlobUrl = createObjectURL(coreBlob, "FFmpeg-core");
-    const wasmBlobUrl = createObjectURL(wasmBlob, "FFmpeg-wasm");
-
-    // Add timeout to detect hanging with environment-specific timeouts
-    const timeoutDuration = environment.hasSharedArrayBuffer ? 60_000 : 120_000; // More generous timeouts for large WASM files
-
-    try {
-      const loadPromise = ffmpeg.load({
-        coreURL: coreBlobUrl,
-        wasmURL: wasmBlobUrl,
-      });
-
-      const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(
-          () =>
-            reject(
-              new Error(
-                `FFmpeg load timeout after ${timeoutDuration / 1000} seconds`
-              )
-            ),
-          timeoutDuration
-        );
-      });
-
-      await Promise.race([loadPromise, timeoutPromise]);
-
-      // FFmpeg core fully loaded
-      debugLog("[FFmpeg Utils] ✅ FFmpeg core loaded");
-    } catch (loadError) {
-      debugLog("[FFmpeg Utils] ❌ FFmpeg load failed:", loadError);
-
-      // Console diagnostic to aid Blob URL failure triage
+    // In Electron, use direct URLs instead of blob URLs to avoid ERR_FILE_NOT_FOUND
+    const electronMode = isElectron();
+    
+    if (electronMode) {
+      console.log("[FFmpeg Utils] 🎯 Using direct URLs for Electron environment");
+      
+      // Verify URLs are accessible before loading
       try {
-        console.error("[FFmpeg] WASM load failed from blob URLs", {
-          coreBlobUrl,
-          wasmBlobUrl,
-          isElectron: !!(window as any)?.process?.versions?.electron,
-          userAgent: navigator.userAgent,
-          error:
-            loadError instanceof Error ? loadError.message : String(loadError),
+        const coreCheck = await fetch(coreUrl, { method: 'HEAD' });
+        const wasmCheck = await fetch(wasmUrl, { method: 'HEAD' });
+        
+        if (!coreCheck.ok || !wasmCheck.ok) {
+          throw new Error(`FFmpeg resources not accessible: core=${coreCheck.ok}, wasm=${wasmCheck.ok}`);
+        }
+      } catch (checkError) {
+        console.warn("[FFmpeg Utils] ⚠️ Resource check failed, attempting load anyway:", checkError);
+      }
+      
+      // Add timeout to detect hanging with environment-specific timeouts
+      const timeoutDuration = environment.hasSharedArrayBuffer ? 60_000 : 120_000;
+      
+      try {
+        const loadPromise = ffmpeg.load({
+          coreURL: coreUrl,
+          wasmURL: wasmUrl,
         });
-      } catch {}
+        
+        const timeoutPromise = new Promise((_, reject) => {
+          setTimeout(
+            () => reject(new Error(`FFmpeg load timeout after ${timeoutDuration / 1000} seconds`)),
+            timeoutDuration
+          );
+        });
+        
+        await Promise.race([loadPromise, timeoutPromise]);
+        
+        console.log("[FFmpeg Utils] ✅ FFmpeg loaded successfully with direct URLs in Electron");
+      } catch (loadError) {
+        console.error("[FFmpeg Utils] ❌ Failed to load FFmpeg with direct URLs:", loadError);
+        throw loadError;
+      }
+    } else {
+      // Browser mode: Use blob URLs for better performance
+      console.log("[FFmpeg Utils] 🌐 Using blob URLs for browser environment");
+      
+      // Fetch and convert to blob URLs for consistent loading
+      let coreResponse, wasmResponse;
 
-      // Enhanced diagnostics
-      debugLog("[FFmpeg Utils] 🔍 Environment diagnostics:", {
-        hasSharedArrayBuffer: environment.hasSharedArrayBuffer,
-        crossOriginIsolated: self.crossOriginIsolated,
-        timeoutUsed: timeoutDuration / 1000 + "s",
-        userAgent: navigator.userAgent,
-      });
-
-      // Provide specific error messages based on error type
-      const errorMessage =
-        loadError instanceof Error ? loadError.message : String(loadError);
-      if (errorMessage.includes("timeout")) {
+      try {
+        coreResponse = await fetch(coreUrl);
+        wasmResponse = await fetch(wasmUrl);
+      } catch (fetchError) {
+        handleMediaProcessingError(fetchError, "Fetch FFmpeg resources", {
+          coreUrl,
+          wasmUrl,
+        });
         throw new Error(
-          `FFmpeg initialization timed out after ${timeoutDuration / 1000}s. This may be due to slow network, large WASM files, or missing SharedArrayBuffer support.`
+          `Network error while fetching FFmpeg resources: ${fetchError instanceof Error ? fetchError.message : String(fetchError)}`
         );
       }
-      if (errorMessage.includes("SharedArrayBuffer")) {
+
+      if (!coreResponse.ok) {
+        const errorMsg = `Failed to fetch ffmpeg-core.js: ${coreResponse.status} ${coreResponse.statusText}`;
+        const error = new Error(errorMsg);
+        handleMediaProcessingError(error, "Fetch FFmpeg core", {
+          status: coreResponse.status,
+          statusText: coreResponse.statusText,
+        });
+        throw new Error(errorMsg);
+      }
+      if (!wasmResponse.ok) {
+        const errorMsg = `Failed to fetch ffmpeg-core.wasm: ${wasmResponse.status} ${wasmResponse.statusText}`;
+        const error = new Error(errorMsg);
+        handleMediaProcessingError(error, "Fetch FFmpeg WASM", {
+          status: wasmResponse.status,
+          statusText: wasmResponse.statusText,
+        });
+        throw new Error(errorMsg);
+      }
+
+      let coreBlob, wasmBlob;
+
+      try {
+        coreBlob = await coreResponse.blob();
+        wasmBlob = await wasmResponse.blob();
+      } catch (blobError) {
+        handleMediaProcessingError(
+          blobError,
+          "Convert FFmpeg resources to blobs",
+          {
+            coreSize: coreResponse.headers.get("content-length"),
+            wasmSize: wasmResponse.headers.get("content-length"),
+          }
+        );
         throw new Error(
-          "FFmpeg requires SharedArrayBuffer support. Please ensure proper COOP/COEP headers are set."
+          `Failed to convert FFmpeg resources to blobs: ${blobError instanceof Error ? blobError.message : String(blobError)}`
         );
       }
-      throw new Error(`FFmpeg initialization failed: ${errorMessage}`);
-    } finally {
-      // Cleanup blob URLs after successful or failed load
-      revokeObjectURL(coreBlobUrl);
-      revokeObjectURL(wasmBlobUrl);
+
+      const coreBlobUrl = createObjectURL(coreBlob, "FFmpeg-core");
+      const wasmBlobUrl = createObjectURL(wasmBlob, "FFmpeg-wasm");
+
+      // Add timeout to detect hanging with environment-specific timeouts
+      const timeoutDuration = environment.hasSharedArrayBuffer ? 60_000 : 120_000;
+
+      try {
+        const loadPromise = ffmpeg.load({
+          coreURL: coreBlobUrl,
+          wasmURL: wasmBlobUrl,
+        });
+
+        const timeoutPromise = new Promise((_, reject) => {
+          setTimeout(
+            () =>
+              reject(
+                new Error(
+                  `FFmpeg load timeout after ${timeoutDuration / 1000} seconds`
+                )
+              ),
+            timeoutDuration
+          );
+        });
+
+        await Promise.race([loadPromise, timeoutPromise]);
+
+        // FFmpeg core fully loaded
+        debugLog("[FFmpeg Utils] ✅ FFmpeg core loaded with blob URLs");
+        
+        // Clean up blob URLs after successful load
+        try {
+          URL.revokeObjectURL(coreBlobUrl);
+          URL.revokeObjectURL(wasmBlobUrl);
+        } catch {}
+      } catch (loadError) {
+        debugLog("[FFmpeg Utils] ❌ FFmpeg load failed:", loadError);
+
+        // Console diagnostic to aid Blob URL failure triage
+        try {
+          console.error("[FFmpeg] WASM load failed from blob URLs", {
+            coreBlobUrl,
+            wasmBlobUrl,
+            isElectron: !!(window as any)?.process?.versions?.electron,
+            userAgent: navigator.userAgent,
+            error:
+              loadError instanceof Error ? loadError.message : String(loadError),
+          });
+        } catch {}
+        
+        // Clean up blob URLs after failure
+        try {
+          URL.revokeObjectURL(coreBlobUrl);
+          URL.revokeObjectURL(wasmBlobUrl);
+        } catch {}
+
+        // Enhanced diagnostics
+        debugLog("[FFmpeg Utils] 🔍 Environment diagnostics:", {
+          hasSharedArrayBuffer: environment.hasSharedArrayBuffer,
+          crossOriginIsolated: self.crossOriginIsolated,
+          timeoutUsed: timeoutDuration / 1000 + "s",
+          userAgent: navigator.userAgent,
+        });
+
+        // Provide specific error messages based on error type
+        const errorMessage =
+          loadError instanceof Error ? loadError.message : String(loadError);
+        if (errorMessage.includes("timeout")) {
+          throw new Error(
+            `FFmpeg initialization timed out after ${timeoutDuration / 1000}s. This may be due to slow network, large WASM files, or missing SharedArrayBuffer support.`
+          );
+        }
+        if (errorMessage.includes("SharedArrayBuffer")) {
+          throw new Error(
+            "FFmpeg requires SharedArrayBuffer support. Please ensure proper COOP/COEP headers are set."
+          );
+        }
+        throw new Error(`FFmpeg initialization failed: ${errorMessage}`);
+      }
     }
 
     isFFmpegLoaded = true;
