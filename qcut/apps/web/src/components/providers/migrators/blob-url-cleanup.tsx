@@ -90,45 +90,10 @@ export function BlobUrlCleanup({ children }: { children: React.ReactNode }) {
           }
         }
 
-        // Also check for any blob URLs in timeline data
-        let timelinesCleaned = 0;
-        for (const project of projects) {
-          for (const scene of project.scenes || []) {
-            try {
-              const timeline = await storageService.loadProjectTimeline({
-                projectId: project.id,
-                sceneId: scene.id,
-              });
-              
-              if (timeline) {
-                let timelineNeedsUpdate = false;
-                for (const track of timeline) {
-                  for (const element of track.elements || []) {
-                    if (element.url?.startsWith("blob:")) {
-                      console.log(`[BlobUrlCleanup] Found timeline element with blob URL: ${element.id}`);
-                      element.url = undefined;
-                      timelineNeedsUpdate = true;
-                    }
-                  }
-                }
-                
-                if (timelineNeedsUpdate) {
-                  await storageService.saveProjectTimeline({
-                    projectId: project.id,
-                    sceneId: scene.id,
-                    tracks: timeline,
-                  });
-                  timelinesCleaned++;
-                  console.log(`[BlobUrlCleanup] Cleaned timeline for scene: ${scene.name}`);
-                }
-              }
-            } catch (error) {
-              console.warn(`[BlobUrlCleanup] Failed to check timeline for scene ${scene.name}:`, error);
-            }
-          }
-        }
+        // Timeline elements don't directly store URLs - they reference media items by ID
+        // The cleanup above for media items should handle any blob URLs in the system
 
-        console.log(`[BlobUrlCleanup] Cleanup complete. Projects: ${projectsUpdated}, Media items cleaned: ${mediaItemsCleaned}, Media items removed: ${mediaItemsRemoved}, Timelines: ${timelinesCleaned}`);
+        console.log(`[BlobUrlCleanup] Cleanup complete. Projects: ${projectsUpdated}, Media items cleaned: ${mediaItemsCleaned}, Media items removed: ${mediaItemsRemoved}`);
         
         // Mark cleanup as done for this session
         sessionStorage.setItem(cleanupKey, "true");

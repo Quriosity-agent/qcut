@@ -8,7 +8,7 @@ let originalRevokeObjectURL: typeof URL.revokeObjectURL;
 let blobUrlTracker = new Map<string, { source: string; created: Date }>();
 
 export function enableBlobUrlDebugging() {
-  if (originalCreateObjectURL) {
+  if (typeof originalCreateObjectURL !== 'undefined') {
     console.log("[BlobUrlDebug] Already enabled");
     return;
   }
@@ -44,8 +44,14 @@ export function enableBlobUrlDebugging() {
     const tracked = blobUrlTracker.get(url);
     if (tracked) {
       blobUrlTracker.delete(url);
+      
+      // Get stack trace for revoke call to identify what's revoking it
+      const revokeStack = new Error().stack || 'Unknown revoke source';
+      const revokeSource = revokeStack.split('\n').slice(2, 4).join(' → ').trim();
+      
       console.log(`[BlobUrlDebug] Revoked: ${url}`, {
-        source: tracked.source,
+        createdBy: tracked.source,
+        revokedBy: revokeSource,
         lifespan: Date.now() - tracked.created.getTime() + 'ms',
       });
     } else {
@@ -54,6 +60,26 @@ export function enableBlobUrlDebugging() {
     
     return originalRevokeObjectURL.call(this, url);
   };
+
+  // Also intercept fetch to catch usage of revoked blob URLs
+  const originalFetch = window.fetch;
+  const interceptFetch = async function(input: RequestInfo | URL, init?: RequestInit) {
+    const url = typeof input === 'string' ? input : input.toString();
+    if (url.startsWith('blob:') && !blobUrlTracker.has(url)) {
+      console.warn(`[BlobUrlDebug] 🚨 Fetch attempt on revoked blob URL: ${url}`);
+      const stack = new Error().stack || 'Unknown';
+      console.warn('[BlobUrlDebug] Fetch attempt from:', stack.split('\n').slice(2, 5));
+    }
+    return originalFetch.call(window, input, init);
+  };
+  
+  // Copy all properties from original fetch to maintain compatibility
+  Object.setPrototypeOf(interceptFetch, originalFetch);
+  Object.defineProperty(window, 'fetch', {
+    value: interceptFetch,
+    writable: true,
+    configurable: true
+  });
 
   console.log("[BlobUrlDebug] Blob URL debugging enabled");
 }
