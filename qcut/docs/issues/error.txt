@@ -1,0 +1,3 @@
+Editor using layout: default, resetCounter: 0
+blob:app://./37492b54-dba6-41e3-8430-c39434551488:1  Failed to load resource: net::ERR_FILE_NOT_FOUND
+2editor.$project_id.lazy.tsx:189 🎯 Editor using layout: default, resetCounter: 0
