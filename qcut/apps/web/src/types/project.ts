@@ -2,6 +2,7 @@ import { CanvasSize } from "./editor";
 
 export type BlurIntensity = 4 | 8 | 18;
 
+/** A timeline scene within a project. */
 export interface Scene {
   id: string;
   /** User-defined name for this scene. */
