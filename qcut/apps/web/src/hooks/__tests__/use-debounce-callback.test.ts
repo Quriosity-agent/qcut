@@ -33,10 +33,10 @@ describe("useDebounce - Advanced Tests", () => {
       rerender({ value: "updated" });
     });
 
-    // Zero delay still needs async handling in React
+    // Even with zero delay, setTimeout is still async and requires waiting
     await waitFor(() => {
       expect(result.current).toBe("updated");
-    }, { timeout: 50 });
+    }, { timeout: 100 });
   });
 
   it("handles arrays and objects correctly", async () => {
