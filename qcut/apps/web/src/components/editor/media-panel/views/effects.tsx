@@ -1,13 +1,18 @@
 import { useState } from "react";
 import { useEffectsStore } from "@/stores/effects-store";
+import { useTimelineStore } from "@/stores/timeline-store";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 import type { EffectCategory, EffectPreset } from "@/types/effects";
 
 export default function EffectsView() {
   const { presets, selectedCategory, setSelectedCategory, applyEffect } = useEffectsStore();
+  const { selectedElementIds } = useTimelineStore();
   const [searchQuery, setSearchQuery] = useState("");
+  const [draggedEffect, setDraggedEffect] = useState<EffectPreset | null>(null);
 
   const categories: Array<EffectCategory | "all"> = [
     "all",
@@ -28,10 +33,33 @@ export default function EffectsView() {
 
   const handleApplyEffect = (preset: EffectPreset) => {
     // Get selected element from timeline store
-    const selectedElementId = "placeholder"; // TODO: Get from timeline store
+    const selectedElementId = selectedElementIds[0];
     if (selectedElementId) {
       applyEffect(selectedElementId, preset);
+      toast.success(`Applied ${preset.name} effect`);
+    } else {
+      toast.error("Please select an element first");
     }
+  };
+
+  const handleDragStart = (e: React.DragEvent, preset: EffectPreset) => {
+    setDraggedEffect(preset);
+    e.dataTransfer.effectAllowed = 'copy';
+    e.dataTransfer.setData('application/json', JSON.stringify({
+      type: 'effect',
+      preset: preset
+    }));
+    
+    // Add visual feedback
+    const dragImage = e.currentTarget.cloneNode(true) as HTMLElement;
+    dragImage.style.opacity = '0.5';
+    document.body.appendChild(dragImage);
+    e.dataTransfer.setDragImage(dragImage, e.nativeEvent.offsetX, e.nativeEvent.offsetY);
+    setTimeout(() => document.body.removeChild(dragImage), 0);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedEffect(null);
   };
 
   return (
@@ -64,8 +92,15 @@ export default function EffectsView() {
               <Button
                 key={preset.id}
                 variant="outline"
-                className="h-20 flex flex-col items-center justify-center gap-1 hover:bg-accent"
+                className={cn(
+                  "h-20 flex flex-col items-center justify-center gap-1 hover:bg-accent cursor-move",
+                  draggedEffect?.id === preset.id && "opacity-50"
+                )}
                 onClick={() => handleApplyEffect(preset)}
+                draggable
+                onDragStart={(e) => handleDragStart(e, preset)}
+                onDragEnd={handleDragEnd}
+                title={`${preset.name} - Drag to timeline element to apply`}
               >
                 <span className="text-2xl">{preset.icon}</span>
                 <span className="text-xs font-medium">{preset.name}</span>

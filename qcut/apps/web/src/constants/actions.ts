@@ -45,7 +45,17 @@ export type Action =
   | "duplicate-selected" // Duplicate selected element
   | "toggle-snapping" // Toggle snapping
   | "undo" // Undo last action
-  | "redo"; // Redo last undone action
+  | "redo" // Redo last undone action
+  // Effects actions
+  | "apply-brightness-effect" // Apply brightness effect
+  | "apply-contrast-effect" // Apply contrast effect
+  | "apply-saturation-effect" // Apply saturation effect
+  | "apply-blur-effect" // Apply blur effect
+  | "toggle-selected-effect" // Toggle selected effect on/off
+  | "reset-effect-parameters" // Reset effect parameters to defaults
+  | "duplicate-effect" // Duplicate selected effect
+  | "increase-effect-intensity" // Increase effect intensity
+  | "decrease-effect-intensity"; // Decrease effect intensity
 
 /**
  * Defines the arguments, if present for a given type that is required to be passed on
