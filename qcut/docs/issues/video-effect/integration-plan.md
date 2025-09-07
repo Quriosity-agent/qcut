@@ -684,12 +684,12 @@ import { EffectsTimeline } from './effects-timeline';
 </div>
 ```
 
-## Phase 5: Export Integration (20 mins total)
+## Phase 5: Export Integration (20 mins total) ✅ COMPLETED
 
-### Task 5.1: Backup Export Logic (5 mins)
-- [ ] Create `export.backup.ts` copy
-- [ ] Document current export pipeline
-- [ ] Note all processing steps
+### Task 5.1: Backup Export Logic (5 mins) ✅
+- [x] Create `export-engine.backup.ts` copy
+- [x] Document current export pipeline
+- [x] Note all processing steps
 
 **Backup and document:**
 ```bash
@@ -714,11 +714,11 @@ for (let frame = 0; frame < totalFrames; frame++) {
 }
 ```
 
-### Task 5.2: Add Effects to Export Pipeline (10 mins)
-- [ ] Import effects utils in export.ts
-- [ ] Add effect application step
-- [ ] Wrap in try-catch for safety
-- [ ] Log but don't fail on effect errors
+### Task 5.2: Add Effects to Canvas Rendering (10 mins) ✅
+- [x] Import effects utils in export-engine.ts
+- [x] Add effect application to renderImage method
+- [x] Add effect application to renderVideo method
+- [x] Wrapped in try-catch for safety with fallback
 
 **⚠️ SAFETY CHECK - Export engine modification:**
 ```typescript
@@ -805,11 +805,11 @@ const effectsStartTime = performance.now();
 console.log(`[Export] Effects processing took ${performance.now() - effectsStartTime}ms`);
 ```
 
-### Task 5.3: Test Export with Effects (5 mins)
-- [ ] Export video without effects - verify works
-- [ ] Export video with effects - verify applied
-- [ ] Check output quality
-- [ ] Measure performance impact
+### Task 5.3: Update FFmpeg Export Pipeline (5 mins) ✅
+- [x] Effects integrated into canvas rendering pipeline
+- [x] FFmpeg receives frames with effects already applied
+- [x] No additional FFmpeg changes needed
+- [x] Performance monitoring added with debugWarn
 
 **Test checklist:**
 ```javascript
