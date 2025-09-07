@@ -228,6 +228,12 @@ interface TimelineStore {
   addTextAtTime: (item: TextElement, currentTime?: number) => boolean;
   addMediaToNewTrack: (item: MediaItem) => boolean;
   addTextToNewTrack: (item: TextElement | DragData) => boolean;
+
+  // Effects-related methods (safe additions)
+  addEffectToElement: (elementId: string, effectId: string) => void;
+  removeEffectFromElement: (elementId: string, effectId: string) => void;
+  getElementEffectIds: (elementId: string) => string[] | undefined;
+  clearElementEffects: (elementId: string) => void;
 }
 
 export const useTimelineStore = create<TimelineStore>((set, get) => {
@@ -1734,6 +1740,86 @@ export const useTimelineStore = create<TimelineStore>((set, get) => {
           "opacity" in item && item.opacity !== undefined ? item.opacity : 1,
       });
       return true;
+    },
+
+    // Effects-related methods implementation
+    addEffectToElement: (elementId: string, effectId: string) => {
+      const tracks = [...get()._tracks];
+      let elementFound = false;
+      
+      for (const track of tracks) {
+        const element = track.elements.find(e => e.id === elementId);
+        if (element) {
+          // Safe optional field addition - doesn't break existing types
+          if (!element.effectIds) {
+            element.effectIds = [];
+          }
+          if (!element.effectIds.includes(effectId)) {
+            element.effectIds.push(effectId);
+          }
+          elementFound = true;
+          break;
+        }
+      }
+      
+      if (elementFound) {
+        updateTracks(tracks);
+        autoSaveTimeline();
+      }
+    },
+
+    removeEffectFromElement: (elementId: string, effectId: string) => {
+      const tracks = [...get()._tracks];
+      let elementFound = false;
+      
+      for (const track of tracks) {
+        const element = track.elements.find(e => e.id === elementId);
+        if (element && element.effectIds) {
+          const index = element.effectIds.indexOf(effectId);
+          if (index > -1) {
+            element.effectIds.splice(index, 1);
+            elementFound = true;
+            break;
+          }
+        }
+      }
+      
+      if (elementFound) {
+        updateTracks(tracks);
+        autoSaveTimeline();
+      }
+    },
+
+    getElementEffectIds: (elementId: string) => {
+      const tracks = get()._tracks;
+      
+      for (const track of tracks) {
+        const element = track.elements.find(e => e.id === elementId);
+        if (element) {
+          return element.effectIds;
+        }
+      }
+      
+      return undefined;
+    },
+
+    clearElementEffects: (elementId: string) => {
+      const tracks = [...get()._tracks];
+      let elementFound = false;
+      
+      for (const track of tracks) {
+        const element = track.elements.find(e => e.id === elementId);
+        if (element && element.effectIds) {
+          element.effectIds = [];
+          elementFound = true;
+          break;
+        }
+      }
+      
+      if (elementFound) {
+        updateTracks(tracks);
+        autoSaveTimeline();
+      }
     },
   };
 });

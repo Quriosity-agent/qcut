@@ -7,6 +7,7 @@ interface VideoPlayerProps {
   src: string;
   poster?: string;
   className?: string;
+  style?: React.CSSProperties;
   clipStartTime: number;
   trimStart: number;
   trimEnd: number;
@@ -17,6 +18,7 @@ export function VideoPlayer({
   src,
   poster,
   className = "",
+  style,
   clipStartTime,
   trimStart,
   trimEnd,
@@ -141,6 +143,7 @@ export function VideoPlayer({
         pointerEvents: "none",
         width: "100%",
         height: "100%",
+        ...style,
       }}
       onContextMenu={(e) => e.preventDefault()}
       onLoadedMetadata={(e) => {

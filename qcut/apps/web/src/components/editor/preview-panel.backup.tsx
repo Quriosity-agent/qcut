@@ -41,44 +41,11 @@ import type { TranscriptionSegment } from "@/types/captions";
 // Import canvas capture utilities for frame caching
 import { captureFrameToCanvas, captureWithFallback } from "@/lib/canvas-utils";
 import { useFrameCache } from "@/hooks/use-frame-cache";
-// Import effects utilities
-import { useEffectsStore } from "@/stores/effects-store";
-import { parametersToCSSFilters, mergeEffectParameters } from "@/lib/effects-utils";
-
-// Feature flag for effects - disabled by default for safety
-const EFFECTS_ENABLED = false;
 
 interface ActiveElement {
   element: TimelineElement;
   track: TimelineTrack;
   mediaItem: MediaItem | null;
-}
-
-// Hook for effects rendering
-function useEffectsRendering(elementId: string | null, enabled = false) {
-  const getElementEffects = useEffectsStore((state) => state.getElementEffects);
-  
-  const effects = useMemo(() => {
-    if (!enabled || !elementId) return [];
-    return getElementEffects(elementId);
-  }, [enabled, elementId, getElementEffects]);
-  
-  const filterStyle = useMemo(() => {
-    if (!enabled || !effects || effects.length === 0) return "";
-    
-    try {
-      // Merge all active effect parameters
-      const mergedParams = mergeEffectParameters(
-        ...effects.filter(e => e.enabled).map(e => e.parameters)
-      );
-      return parametersToCSSFilters(mergedParams);
-    } catch (error) {
-      console.error("[Effects] Failed to generate CSS filters:", error);
-      return "";
-    }
-  }, [enabled, effects]);
-  
-  return { filterStyle, hasEffects: effects.length > 0 };
 }
 
 export function PreviewPanel() {
@@ -374,17 +341,6 @@ export function PreviewPanel() {
     [getActiveElements]
   );
 
-  // Get the current media element for effects
-  const currentMediaElement = activeElements.find(
-    (item) => item.element.type === "media" && item.mediaItem?.type === "video"
-  );
-
-  // Use effects rendering hook
-  const { filterStyle, hasEffects } = useEffectsRendering(
-    currentMediaElement?.element.id || null,
-    EFFECTS_ENABLED
-  );
-
   // Warm cache during idle time
   useEffect(() => {
     if (!isPlaying && previewRef.current) {
@@ -510,7 +466,6 @@ export function PreviewPanel() {
             trimEnd={element.trimEnd}
             clipDuration={element.duration}
             className="object-cover"
-            style={EFFECTS_ENABLED && element.id === currentMediaElement?.element.id ? { filter: filterStyle } : undefined}
           />
         </div>
       );
@@ -641,7 +596,6 @@ export function PreviewPanel() {
               trimEnd={element.trimEnd}
               clipDuration={element.duration}
               className="object-cover"
-              style={EFFECTS_ENABLED && element.id === currentMediaElement?.element.id ? { filter: filterStyle } : undefined}
             />
           </div>
         );

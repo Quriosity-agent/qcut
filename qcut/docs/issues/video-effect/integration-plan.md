@@ -426,12 +426,12 @@ const hasEffects = (element: TimelineElement) => {
 };
 ```
 
-## Phase 3: Preview Integration (30 mins total)
+## Phase 3: Preview Integration (30 mins total) ✅ COMPLETED
 
-### Task 3.1: Backup Current Preview Panel (5 mins)
-- [ ] Create `preview-panel.backup.tsx` copy
-- [ ] Document current preview behavior
-- [ ] Note all import/export points
+### Task 3.1: Backup Current Preview Panel (5 mins) ✅
+- [x] Create `preview-panel.backup.tsx` copy
+- [x] Document current preview behavior
+- [x] Note all import/export points
 
 **Backup command:**
 ```bash
@@ -465,11 +465,11 @@ const videoRef = useRef<HTMLVideoElement>(null);
 // 3. TextElementDragState - must continue working
 ```
 
-### Task 3.2: Add Effects Rendering Hook (10 mins)
-- [ ] Create `useEffectsRendering` hook in preview panel
-- [ ] Add CSS filter application logic
-- [ ] Keep it disabled by default
-- [ ] Test with mock data only
+### Task 3.2: Add Effects Rendering Hook (10 mins) ✅
+- [x] Create `useEffectsRendering` hook in preview panel
+- [x] Add CSS filter application logic
+- [x] Keep it disabled by default
+- [x] Test with mock data only
 
 **Create hook following existing patterns:**
 ```typescript
@@ -494,11 +494,11 @@ function useEffectsRendering(elementId: string | null, enabled = false) {
 }
 ```
 
-### Task 3.3: Integrate Effects Store with Preview (10 mins)
-- [ ] Import effects store in preview panel
-- [ ] Add effect parameters retrieval
-- [ ] Apply filters only when effects exist
-- [ ] Add try-catch for safety
+### Task 3.3: Integrate Effects Store with Preview (10 mins) ✅
+- [x] Import effects store in preview panel
+- [x] Add effect parameters retrieval
+- [x] Apply filters only when effects exist
+- [x] Add try-catch for safety
 
 **Safe integration with existing preview code:**
 ```typescript
