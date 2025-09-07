@@ -3,12 +3,24 @@
 ## Overview
 This document outlines a safe, incremental integration strategy for PR #582's video effects system. Each task is broken down into subtasks that can be completed in under 10 minutes, with emphasis on code reuse and maintaining existing functionality.
 
+## ⚠️ CRITICAL SAFETY VERIFIED
+Based on source code review, these existing features MUST be preserved:
+1. **VideoPlayer/AudioPlayer components** - Effects integrate via CSS, not replacing
+2. **StickerCanvas overlay** - Must continue working on top of effects
+3. **CaptionsDisplay** - Must continue working with effects
+4. **Timeline overlap checking** - Don't modify existing logic
+5. **Undo/redo system** - Add effect operations to history
+6. **Export with FFmpeg** - Effects apply to canvas context only
+7. **useAsyncMediaItems hook** - Don't modify media loading
+8. **Scene management** - Effects are element-level, not scene-level
+
 ## Integration Principles
 1. **No Breaking Changes**: All existing features must continue working
 2. **Maximum Code Reuse**: Leverage existing stores, components, and utilities
 3. **Incremental Testing**: Test after each subtask completion
 4. **Rollback Points**: Each subtask should be independently revertible
 5. **Type Safety First**: Add types before implementation
+6. **Feature Flag Protection**: Everything behind EFFECTS_ENABLED flag
 
 ## Phase 1: Type Definitions & Core Setup (30 mins total)
 
@@ -17,27 +29,32 @@ This document outlines a safe, incremental integration strategy for PR #582's vi
 - [ ] Review and ensure no conflicts with existing types
 - [ ] Run type check: `bun check-types`
 
-**Code to reuse from existing codebase:**
+**⚠️ SAFETY CHECK - No type conflicts:**
 ```typescript
-// From src/types/timeline.ts - follow similar pattern
-export interface TimelineElement {
-  id: string;
-  type: ElementType;
-  // ... existing properties
-}
+// VERIFIED: src/types/timeline.ts uses these types:
+// BaseTimelineElement, MediaElement, TextElement, StickerElement, CaptionElement
+// NO conflict with new effect types
 
-// Add to effects.ts following same pattern:
+// SAFE to add new types without modifying existing:
 export interface TimelineEffect {
   id: string;
-  elementId: string; // links to TimelineElement.id
+  elementId: string; // links to existing TimelineElement.id
   // ... effect properties
+}
+
+// DO NOT modify TimelineElement directly, use optional extension:
+// In timeline-store.ts, only add optional field:
+interface TimelineElement {
+  // ... existing properties unchanged
+  effectIds?: string[]; // OPTIONAL - won't break existing code
 }
 ```
 
 **Modifications needed:**
 ```typescript
-// In src/types/index.ts (if exists), add:
-export * from './effects';
+// NOTE: src/types/index.ts does NOT exist in current codebase
+// Create new file or add exports directly where needed
+// Safe approach: Import directly from './effects' in components
 ```
 
 ### Task 1.2: Update Existing Type Exports (5 mins)
@@ -96,25 +113,25 @@ if (process.env.NODE_ENV === 'development') {
 - [ ] Verify store initialization doesn't break existing stores
 - [ ] Add to store provider if centralized
 
-**Reuse Zustand patterns from existing stores:**
+**⚠️ SAFETY CHECK - Store compatibility:**
 ```typescript
-// From src/stores/timeline-store.ts - copy structure:
-import { create } from 'zustand';
-import { immer } from 'zustand/middleware/immer';
+// VERIFIED: timeline-store.ts uses simple create() without immer
+import { create } from "zustand";
+// NO immer middleware in timeline-store - keep effects store simple too
 
-// From src/stores/editor-store.ts - copy subscription pattern:
-export const useEditorStore = create<EditorStore>()(
-  subscribeWithSelector(
-    devtools(
-      immer((set, get) => ({
-        // state and methods
-      }))
-    )
-  )
-);
+// SAFE pattern from timeline-store.ts:
+export const useEffectsStore = create<EffectsStore>((set, get) => ({
+  // state and methods
+}));
+
+// IMPORTANT: These stores exist and can be imported:
+// ✓ useTimelineStore - safe to import
+// ✓ usePlaybackStore - safe to import  
+// ✓ useProjectStore - safe to import
+// ✗ useMediaStore - uses async pattern, import MediaStore type instead
 ```
 
-**Reuse toast pattern:**
+**Reuse toast pattern (VERIFIED exists):**
 ```typescript
 // From src/stores/timeline-store.ts
 import { toast } from 'sonner';
@@ -310,16 +327,22 @@ const hasEffects = (element: TimelineElement) => {
 cp src/components/editor/preview-panel.tsx src/components/editor/preview-panel.backup.tsx
 ```
 
-**Document these key integration points:**
+**⚠️ SAFETY CHECK - Preview panel structure:**
 ```typescript
-// Current video ref usage:
-const videoRef = useRef<HTMLVideoElement>(null);
+// VERIFIED: preview-panel.tsx current structure:
+// - Uses VideoPlayer and AudioPlayer components (not raw video/canvas)
+// - Has StickerCanvas overlay system
+// - Has CaptionsDisplay system
+// - Uses useFrameCache hook
+// - NO direct video ref - uses VideoPlayer component
 
-// Current canvas usage for overlays:
-const canvasRef = useRef<HTMLCanvasElement>(null);
+// IMPORTANT: Effects must integrate with VideoPlayer component:
+// src/components/ui/video-player.tsx - check this for video ref
 
-// Current playback store subscription:
-const { currentTime, isPlaying } = usePlaybackStore();
+// Current overlay systems to preserve:
+// 1. StickerCanvas - must continue working
+// 2. CaptionsDisplay - must continue working
+// 3. TextElementDragState - must continue working
 ```
 
 ### Task 3.2: Add Effects Rendering Hook (10 mins)
@@ -428,22 +451,30 @@ console.timeEnd('effect-render'); // Should be < 16ms
 - [ ] Add effect ID tracking to elements
 - [ ] Default to empty effects array
 
-**Extend timeline store safely:**
+**⚠️ SAFETY CHECK - Timeline store modification:**
 ```typescript
-// In src/stores/timeline-store.ts, add to interface:
-interface TimelineElement {
-  // ... existing properties
-  effectIds?: string[]; // Optional for backward compatibility
-}
+// VERIFIED: timeline-store.ts structure:
+// - Uses _tracks internal storage with getter
+// - Complex element operations with overlap checking
+// - Undo/redo system with history tracking
 
-// Add methods following existing patterns:
+// SAFE approach - DO NOT modify existing methods:
+// Add NEW methods only, keep existing untouched
+
+// In src/stores/timeline-store.ts, add ONLY new methods:
 addEffectToElement: (elementId: string, effectId: string) => {
-  set((state) => {
-    const element = state.elements.find(e => e.id === elementId);
+  // Find element across all tracks
+  const tracks = get()._tracks;
+  for (const track of tracks) {
+    const element = track.elements.find(e => e.id === elementId);
     if (element) {
-      element.effectIds = [...(element.effectIds || []), effectId];
+      // Safe optional field addition
+      if (!element.effectIds) element.effectIds = [];
+      element.effectIds.push(effectId);
+      set({ _tracks: [...tracks] }); // Trigger re-render
+      break;
     }
-  });
+  }
 },
 
 removeEffectFromElement: (elementId: string, effectId: string) => {
@@ -569,27 +600,35 @@ for (let frame = 0; frame < totalFrames; frame++) {
 - [ ] Wrap in try-catch for safety
 - [ ] Log but don't fail on effect errors
 
-**Safe integration with existing export:**
+**⚠️ SAFETY CHECK - Export engine modification:**
 ```typescript
-// In src/lib/export.ts, add imports:
-import { useEffectsStore } from '@/stores/effects-store';
-import { applyEffectsToCanvas, resetCanvasFilters } from '@/lib/effects-utils';
+// VERIFIED: export-engine.ts structure:
+// - ExportEngine class with canvas rendering
+// - renderStickersToCanvas already integrated
+// - Complex frame rendering with media elements
+// - FFmpegVideoRecorder for encoding
 
-// In the frame rendering loop, find where elements are drawn:
-for (const element of elementsAtTime) {
-  // Before drawing element:
-  ctx.save();
+// SAFE integration point - in renderFrame method:
+// In src/lib/export-engine.ts, modify renderFrame:
+
+protected async renderFrame(time: number): Promise<void> {
+  // ... existing element rendering code ...
   
-  // Apply effects if enabled and present
-  if (EFFECTS_ENABLED) {
+  // Add AFTER existing element draw, BEFORE stickers:
+  if (EFFECTS_ENABLED && element.effectIds?.length) {
     try {
       const effects = useEffectsStore.getState().getElementEffects(element.id);
       if (effects && effects.length > 0) {
-        applyEffectsToCanvas(ctx, effects);
+        // Save context state
+        this.ctx.save();
+        applyEffectsToCanvas(this.ctx, effects);
+        // Draw element with effects
+        // ... existing draw code ...
+        this.ctx.restore();
       }
     } catch (error) {
-      console.warn(`[Export] Failed to apply effects for element ${element.id}:`, error);
-      // Continue without effects - don't break export
+      console.warn(`[Export] Effects failed for ${element.id}:`, error);
+      // Continue without effects - preserve export
     }
   }
   
@@ -972,13 +1011,14 @@ If issues occur at any phase:
 - Cache computed values
 - Debounce parameter updates
 
-## Phase 8: Additional Features from PR (25 mins total)
+## Phase 8: Additional Features from PR (35 mins total)
 
 ### Task 8.1: Interactive Element Manipulation (10 mins)
 - [ ] Add drag and drop for elements with effects
 - [ ] Implement resize handles for effect regions
 - [ ] Add rotation controls
 - [ ] Test interaction with effects applied
+- [ ] Add position and transformation controls for text elements
 
 **Implementation from preview-panel.tsx:**
 ```typescript
@@ -1023,7 +1063,50 @@ const renderResizeHandles = (element: TimelineElement) => {
 };
 ```
 
-### Task 8.2: Effect Animations & Keyframes (10 mins)
+### Task 8.2: Effect Management Features (10 mins)
+- [ ] Implement multi-effect application to single element
+- [ ] Add enable/disable toggle for individual effects
+- [ ] Create effect duplication functionality
+- [ ] Add effect reset to defaults
+- [ ] Implement effect time range trimming
+
+**Effect management implementation:**
+```typescript
+// Support multiple effects per element
+interface ElementEffects {
+  elementId: string;
+  effects: EffectInstance[];
+  // Each effect can be individually controlled
+}
+
+// Toggle individual effects
+const toggleEffect = (elementId: string, effectId: string) => {
+  const element = getElement(elementId);
+  const effect = element.effects.find(e => e.id === effectId);
+  if (effect) {
+    effect.enabled = !effect.enabled;
+    updatePreview();
+  }
+};
+
+// Duplicate effect with new ID
+const duplicateEffect = (effect: EffectInstance): EffectInstance => {
+  return {
+    ...effect,
+    id: generateUUID(),
+    name: `${effect.name} (Copy)`,
+  };
+};
+
+// Time range trimming
+interface EffectTimeRange {
+  startTime: number; // Relative to element start
+  endTime: number;   // Relative to element start
+  duration: number;  // Calculated
+}
+```
+
+### Task 8.3: Effect Animations & Keyframes (10 mins)
 - [ ] Add keyframe support for effect parameters
 - [ ] Implement effect transitions
 - [ ] Add easing functions
@@ -1067,7 +1150,7 @@ const interpolateValue = (
 };
 ```
 
-### Task 8.3: Advanced Effect Categories (5 mins)
+### Task 8.4: Advanced Effect Categories (5 mins)
 - [ ] Add distortion effects (pixelate, wave, twist)
 - [ ] Add artistic effects (oil painting, watercolor)
 - [ ] Add transition effects (fade, dissolve, wipe)
@@ -1124,9 +1207,127 @@ export interface EffectParameters {
 }
 ```
 
-## Phase 9: Performance Optimizations (15 mins total)
+## Phase 9: UI/UX Enhancements (20 mins total)
 
-### Task 9.1: Effect Caching System (5 mins)
+### Task 9.1: Keyboard Shortcuts for Effects (5 mins)
+- [ ] Add keyboard shortcuts for common effects
+- [ ] Implement shortcuts for parameter adjustment
+- [ ] Add shortcuts for effect enable/disable
+- [ ] Update keyboard shortcuts help
+
+**Keyboard shortcut implementation:**
+```typescript
+// Add to keyboard-shortcuts-help.tsx
+const effectShortcuts = {
+  'Alt+B': 'Apply brightness effect',
+  'Alt+C': 'Apply contrast effect',
+  'Alt+S': 'Apply saturation effect',
+  'Alt+E': 'Toggle selected effect',
+  'Alt+R': 'Reset effect parameters',
+  'Alt+D': 'Duplicate selected effect',
+  'Shift+Plus': 'Increase effect intensity',
+  'Shift+Minus': 'Decrease effect intensity',
+};
+
+// Keyboard handler for effects
+const handleEffectKeyboard = (e: KeyboardEvent) => {
+  if (!EFFECTS_ENABLED) return;
+  
+  if (e.altKey) {
+    switch(e.key) {
+      case 'b': applyPresetEffect('brightness'); break;
+      case 'c': applyPresetEffect('contrast'); break;
+      case 's': applyPresetEffect('saturation'); break;
+      case 'e': toggleSelectedEffect(); break;
+      case 'r': resetSelectedEffect(); break;
+      case 'd': duplicateSelectedEffect(); break;
+    }
+  }
+};
+```
+
+### Task 9.2: Drag & Drop Effects to Timeline (10 mins)
+- [ ] Implement drag source for effect presets
+- [ ] Add drop zones on timeline elements
+- [ ] Visual feedback during drag
+- [ ] Apply effect on drop
+
+**Drag & drop implementation:**
+```typescript
+// Make effect presets draggable
+<div
+  draggable
+  onDragStart={(e) => {
+    e.dataTransfer.setData('effect', JSON.stringify(preset));
+    e.dataTransfer.effectAllowed = 'copy';
+  }}
+  className="effect-preset-card"
+>
+  {/* Effect preset UI */}
+</div>
+
+// Timeline element as drop zone
+<div
+  onDragOver={(e) => {
+    if (e.dataTransfer.types.includes('effect')) {
+      e.preventDefault();
+      setDropHighlight(true);
+    }
+  }}
+  onDrop={(e) => {
+    const effectData = e.dataTransfer.getData('effect');
+    const preset = JSON.parse(effectData);
+    applyEffectToElement(element.id, preset);
+    setDropHighlight(false);
+  }}
+>
+  {/* Timeline element */}
+</div>
+```
+
+### Task 9.3: Effect Search and Filtering (5 mins)
+- [ ] Implement effect search functionality
+- [ ] Add category filters
+- [ ] Create recent/favorite effects section
+- [ ] Add effect preview thumbnails
+
+**Search and filter implementation:**
+```typescript
+// Effect search component
+const EffectSearch = () => {
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('all');
+  
+  const filteredEffects = useMemo(() => {
+    return effects.filter(effect => {
+      const matchesSearch = effect.name.toLowerCase()
+        .includes(searchTerm.toLowerCase());
+      const matchesCategory = selectedCategory === 'all' || 
+        effect.category === selectedCategory;
+      return matchesSearch && matchesCategory;
+    });
+  }, [searchTerm, selectedCategory, effects]);
+  
+  return (
+    <div>
+      <Input
+        placeholder="Search effects..."
+        value={searchTerm}
+        onChange={(e) => setSearchTerm(e.target.value)}
+      />
+      <CategoryFilter
+        selected={selectedCategory}
+        onChange={setSelectedCategory}
+      />
+      <EffectGrid effects={filteredEffects} />
+    </div>
+  );
+};
+```
+
+## Phase 10: Performance Optimizations (15 mins total)
+
+### Task 10.1: Effect Caching System (5 mins)
 - [ ] Implement effect result caching
 - [ ] Add cache invalidation logic
 - [ ] Create memory management for cache
@@ -1185,7 +1386,7 @@ export function parametersToCSSFilters(
 }
 ```
 
-### Task 9.2: WebGL Acceleration (5 mins)
+### Task 10.2: WebGL Acceleration (5 mins)
 - [ ] Add WebGL context for heavy effects
 - [ ] Implement shader-based filters
 - [ ] Create fallback to CSS filters
@@ -1224,7 +1425,7 @@ const applyWebGLEffect = (
 };
 ```
 
-### Task 9.3: Batch Processing (5 mins)
+### Task 10.3: Batch Processing (5 mins)
 - [ ] Batch multiple effect updates
 - [ ] Implement requestAnimationFrame batching
 - [ ] Add debouncing for parameter changes
@@ -1262,6 +1463,61 @@ const processBatchedUpdates = () => {
 };
 ```
 
+## Complete Feature List from PR #582
+
+### ✅ Effect Types (20 total)
+1. Blur
+2. Brightness
+3. Contrast
+4. Saturation
+5. Hue
+6. Gamma
+7. Sepia
+8. Grayscale
+9. Invert
+10. Vintage
+11. Dramatic
+12. Warm
+13. Cool
+14. Cinematic
+15. Vignette
+16. Grain
+17. Sharpen
+18. Emboss
+19. Edge
+20. Pixelate
+
+### ✅ Core Features
+- **Effects Panel**: Grid-based browser with categories
+- **Search & Filter**: Real-time search with category filtering
+- **Drag & Drop**: Effects to timeline elements
+- **Properties Panel**: Slider controls for all parameters
+- **Multi-Effect Support**: Multiple effects per element
+- **Enable/Disable**: Individual effect toggling
+- **Reset & Duplicate**: Effect management options
+- **Time Range**: Effect trimming and duration control
+
+### ✅ Interactive Features
+- **Element Manipulation**: Drag, resize, rotate in preview
+- **Text Positioning**: X/Y position controls
+- **Transform Controls**: Rotation and scale
+- **Real-time Preview**: Instant effect updates
+- **Visual Feedback**: Drop zones and highlights
+
+### ✅ Integration Points
+- **Timeline**: Effect visualization bars
+- **Export**: Canvas rendering with effects
+- **Undo/Redo**: Full history support
+- **Keyboard Shortcuts**: Quick effect application
+- **Performance**: CSS filters for real-time, canvas for export
+
+### ✅ Technical Implementation
+- **State Management**: Zustand store for effects
+- **Parameter Validation**: Comprehensive validation system
+- **Error Handling**: Try-catch wrapping for safety
+- **Feature Flag**: EFFECTS_ENABLED for safe rollout
+- **Type Safety**: Full TypeScript definitions
+
 ## Notes
 
 - Each subtask should commit independently
@@ -1271,3 +1527,5 @@ const processBatchedUpdates = () => {
 - Document any deviations from plan
 - Consider performance impact of advanced features
 - Test on different hardware configurations
+- All 20 effect types from PR must be implemented
+- Preserve all existing overlay systems (stickers, captions)
