@@ -15,11 +15,6 @@ import { debugLog, debugError, debugWarn } from "@/lib/debug-config";
 import { renderStickersToCanvas } from "@/lib/stickers/sticker-export-helper";
 import { useStickersOverlayStore } from "@/stores/stickers-overlay-store";
 import { useMediaStore } from "@/stores/media-store";
-import { useEffectsStore } from "@/stores/effects-store";
-import { applyEffectsToCanvas, resetCanvasFilters, mergeEffectParameters } from "@/lib/effects-utils";
-
-// Feature flag for effects - disabled by default for safety
-const EFFECTS_ENABLED = false;
 
 // Interface for active elements at a specific time
 interface ActiveElement {
@@ -242,43 +237,7 @@ export class ExportEngine {
             img.width,
             img.height
           );
-
-          // Apply effects if enabled and element has effects
-          if (EFFECTS_ENABLED && element.effectIds?.length) {
-            try {
-              const effects = useEffectsStore.getState().getElementEffects(element.id);
-              if (effects && effects.length > 0) {
-                // Save context state before applying effects
-                this.ctx.save();
-                
-                // Merge all active effect parameters
-                const mergedParams = mergeEffectParameters(
-                  ...effects.filter(e => e.enabled).map(e => e.parameters)
-                );
-                
-                // Apply effects to canvas context
-                applyEffectsToCanvas(this.ctx, mergedParams);
-                
-                // Draw image with effects applied
-                this.ctx.drawImage(img, x, y, width, height);
-                
-                // Restore context state
-                this.ctx.restore();
-              } else {
-                // No active effects - draw normally
-                this.ctx.drawImage(img, x, y, width, height);
-              }
-            } catch (error) {
-              // Log but don't fail export
-              debugWarn(`[Export] Effects failed for ${element.id}:`, error);
-              // Fallback to drawing without effects
-              this.ctx.drawImage(img, x, y, width, height);
-            }
-          } else {
-            // Effects disabled or no effects - draw normally
-            this.ctx.drawImage(img, x, y, width, height);
-          }
-
+          this.ctx.drawImage(img, x, y, width, height);
           resolve();
         } catch (error) {
           reject(error);
@@ -397,41 +356,8 @@ export class ExportEngine {
         video.videoHeight
       );
 
-      // Draw video frame to canvas with effects if enabled
-      if (EFFECTS_ENABLED && element.effectIds?.length) {
-        try {
-          const effects = useEffectsStore.getState().getElementEffects(element.id);
-          if (effects && effects.length > 0) {
-            // Save context state before applying effects
-            this.ctx.save();
-            
-            // Merge all active effect parameters
-            const mergedParams = mergeEffectParameters(
-              ...effects.filter(e => e.enabled).map(e => e.parameters)
-            );
-            
-            // Apply effects to canvas context
-            applyEffectsToCanvas(this.ctx, mergedParams);
-            
-            // Draw video with effects applied
-            this.ctx.drawImage(video, x, y, width, height);
-            
-            // Restore context state
-            this.ctx.restore();
-          } else {
-            // No active effects - draw normally
-            this.ctx.drawImage(video, x, y, width, height);
-          }
-        } catch (error) {
-          // Log but don't fail export
-          debugWarn(`[Export] Video effects failed for ${element.id}:`, error);
-          // Fallback to drawing without effects
-          this.ctx.drawImage(video, x, y, width, height);
-        }
-      } else {
-        // Effects disabled or no effects - draw normally
-        this.ctx.drawImage(video, x, y, width, height);
-      }
+      // Draw video frame to canvas
+      this.ctx.drawImage(video, x, y, width, height);
 
       // Validate frame rendering success (detect black frames)
       const frameValidation = this.validateRenderedFrame(
