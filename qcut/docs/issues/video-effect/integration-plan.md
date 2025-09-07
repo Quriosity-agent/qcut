@@ -657,21 +657,119 @@ console.timeEnd('export-with-effects');
 - [ ] Add `ENABLE_VIDEO_EFFECTS` flag
 - [ ] Default to `false` for safety
 - [ ] Make it runtime toggleable
-- **Reuses**: Common feature flag patterns
+
+**Create feature flags file:**
+```typescript
+// src/config/features.ts
+export const FEATURES = {
+  VIDEO_EFFECTS: {
+    enabled: false, // Default off for safety
+    name: 'Video Effects System',
+    description: 'CSS filter-based video effects',
+    experimental: true,
+  },
+  // Add other feature flags here following same pattern
+} as const;
+
+// Helper to check feature status
+export const isFeatureEnabled = (feature: keyof typeof FEATURES): boolean => {
+  // Check localStorage for override (for testing)
+  if (typeof window !== 'undefined') {
+    const override = localStorage.getItem(`feature_${feature}`);
+    if (override !== null) {
+      return override === 'true';
+    }
+  }
+  
+  return FEATURES[feature]?.enabled || false;
+};
+
+// Helper to toggle feature (for development)
+export const toggleFeature = (feature: keyof typeof FEATURES, enabled: boolean) => {
+  if (typeof window !== 'undefined') {
+    localStorage.setItem(`feature_${feature}`, String(enabled));
+    // Trigger reload for changes to take effect
+    window.location.reload();
+  }
+};
+
+// Export convenience constant
+export const EFFECTS_ENABLED = isFeatureEnabled('VIDEO_EFFECTS');
+```
 
 ### Task 6.2: Wire Up Feature Flags (5 mins)
 - [ ] Replace all `EFFECTS_ENABLED` with central flag
 - [ ] Add flag check in stores
 - [ ] Add flag check in components
 - [ ] Ensure clean enable/disable
-- **Pattern**: Centralized configuration
+
+**Update all files to use central flag:**
+```typescript
+// In all components/stores, replace:
+const EFFECTS_ENABLED = false;
+
+// With:
+import { EFFECTS_ENABLED } from '@/config/features';
+
+// Or for dynamic checks:
+import { isFeatureEnabled } from '@/config/features';
+const effectsEnabled = isFeatureEnabled('VIDEO_EFFECTS');
+```
+
+**Add development UI for toggling (optional):**
+```typescript
+// In settings or debug panel:
+import { FEATURES, toggleFeature, isFeatureEnabled } from '@/config/features';
+
+// Render toggle switches:
+{Object.entries(FEATURES).map(([key, config]) => (
+  <div key={key} className="flex items-center justify-between p-2">
+    <div>
+      <p className="font-medium">{config.name}</p>
+      {config.experimental && (
+        <span className="text-xs text-yellow-600">Experimental</span>
+      )}
+    </div>
+    <Switch
+      checked={isFeatureEnabled(key as keyof typeof FEATURES)}
+      onCheckedChange={(checked) => toggleFeature(key, checked)}
+    />
+  </div>
+))}
+```
 
 ### Task 6.3: Enable and Test (5 mins)
 - [ ] Set flag to `true`
 - [ ] Test full effects workflow
 - [ ] Verify no existing features broken
 - [ ] Document any issues found
-- **Validation**: Final integration test
+
+**Test sequence:**
+```javascript
+// 1. Enable via console for testing:
+localStorage.setItem('feature_VIDEO_EFFECTS', 'true');
+window.location.reload();
+
+// 2. Verify effects UI appears:
+// - Check media panel has Effects tab
+// - Check properties panel shows effects when selected
+// - Check timeline shows effect indicators
+
+// 3. Test complete workflow:
+// a. Import video
+// b. Add to timeline
+// c. Apply effect from Effects panel
+// d. See effect in preview
+// e. Adjust parameters in Properties
+// f. Export with effects
+// g. Verify exported video has effects
+
+// 4. Test disable:
+localStorage.setItem('feature_VIDEO_EFFECTS', 'false');
+window.location.reload();
+// Verify all effects UI is hidden
+// Verify existing projects still work
+```
 
 ## Phase 7: Testing & Validation (20 mins total)
 
@@ -680,14 +778,136 @@ console.timeEnd('export-with-effects');
 - [ ] Test timeline operations
 - [ ] Test text/audio features
 - [ ] Verify no regressions
-- **Critical**: Ensures no breaking changes
+
+**Regression test checklist:**
+```typescript
+// 1. Video Import (should work exactly as before)
+const testVideoImport = async () => {
+  // Drag and drop video file
+  // Verify thumbnail generation
+  // Verify duration detection
+  // Verify adds to media library
+  console.log('✅ Video import works');
+};
+
+// 2. Timeline Operations
+const testTimelineOps = () => {
+  // Add element to timeline
+  // Move element
+  // Resize element
+  // Delete element
+  // Split element
+  // Verify all work without errors
+  console.log('✅ Timeline operations work');
+};
+
+// 3. Text Features
+const testTextFeatures = () => {
+  // Add text element
+  // Change font, size, color
+  // Apply text animations
+  // Verify rendering in preview
+  console.log('✅ Text features work');
+};
+
+// 4. Audio Features  
+const testAudioFeatures = () => {
+  // Add audio track
+  // Adjust volume
+  // Trim audio
+  // Verify waveform display
+  console.log('✅ Audio features work');
+};
+
+// 5. Export without effects
+const testExport = async () => {
+  // Export project
+  // Verify output file created
+  // Verify video plays correctly
+  // Check file size is reasonable
+  console.log('✅ Export works');
+};
+```
 
 ### Task 7.2: Test Effects Features (10 mins)
 - [ ] Apply each effect type
 - [ ] Test effect combinations
 - [ ] Test effect removal
 - [ ] Test undo/redo with effects
-- **Validation**: Confirms new features work
+
+**Effects feature test suite:**
+```typescript
+// 1. Test each effect type
+const effectTypes = [
+  'brightness', 'contrast', 'saturation',
+  'blur', 'sepia', 'grayscale', 'vintage'
+];
+
+for (const effectType of effectTypes) {
+  // Apply effect
+  applyEffect(elementId, { type: effectType, value: 50 });
+  // Verify preview updates
+  // Verify properties panel shows controls
+  console.log(`✅ ${effectType} effect works`);
+}
+
+// 2. Test effect combinations
+const testCombinations = () => {
+  // Apply brightness + contrast
+  applyEffect(elementId, { type: 'brightness', value: 20 });
+  applyEffect(elementId, { type: 'contrast', value: 30 });
+  // Verify both effects visible
+  // Verify no conflicts
+  console.log('✅ Effect combinations work');
+};
+
+// 3. Test effect removal
+const testRemoval = () => {
+  const effectId = applyEffect(elementId, { type: 'blur', value: 5 });
+  removeEffect(elementId, effectId);
+  // Verify effect removed from preview
+  // Verify properties panel updated
+  console.log('✅ Effect removal works');
+};
+
+// 4. Test undo/redo
+const testUndoRedo = () => {
+  // Apply effect
+  const effectId = applyEffect(elementId, { type: 'sepia', value: 80 });
+  // Undo (Ctrl+Z)
+  document.dispatchEvent(new KeyboardEvent('keydown', { 
+    key: 'z', ctrlKey: true 
+  }));
+  // Verify effect removed
+  // Redo (Ctrl+Y)
+  document.dispatchEvent(new KeyboardEvent('keydown', { 
+    key: 'y', ctrlKey: true 
+  }));
+  // Verify effect restored
+  console.log('✅ Undo/redo with effects works');
+};
+
+// 5. Performance test
+const testPerformance = () => {
+  const startTime = performance.now();
+  
+  // Apply 10 effects
+  for (let i = 0; i < 10; i++) {
+    applyEffect(`element-${i}`, { 
+      type: 'brightness', 
+      value: Math.random() * 100 - 50 
+    });
+  }
+  
+  const renderTime = performance.now() - startTime;
+  console.log(`✅ 10 effects applied in ${renderTime}ms`);
+  
+  // Should be < 100ms for good UX
+  if (renderTime > 100) {
+    console.warn('⚠️ Performance may need optimization');
+  }
+};
+```
 
 ## Rollback Plan
 
@@ -752,6 +972,296 @@ If issues occur at any phase:
 - Cache computed values
 - Debounce parameter updates
 
+## Phase 8: Additional Features from PR (25 mins total)
+
+### Task 8.1: Interactive Element Manipulation (10 mins)
+- [ ] Add drag and drop for elements with effects
+- [ ] Implement resize handles for effect regions
+- [ ] Add rotation controls
+- [ ] Test interaction with effects applied
+
+**Implementation from preview-panel.tsx:**
+```typescript
+// Text element drag state handling (already in PR)
+interface TextElementDragState {
+  elementId: string;
+  initialX: number;
+  initialY: number;
+  currentX: number;
+  currentY: number;
+}
+
+// Add to preview panel for draggable elements:
+const handleElementDrag = (e: MouseEvent, elementId: string) => {
+  if (!EFFECTS_ENABLED) return;
+  
+  // Reuse existing drag logic from text elements
+  const element = elements.find(el => el.id === elementId);
+  if (element && element.effectIds?.length) {
+    // Enable drag for elements with effects
+    setDragState({
+      elementId,
+      initialX: e.clientX,
+      initialY: e.clientY,
+      // ... rest of drag state
+    });
+  }
+};
+
+// Resize handles for effect regions
+const renderResizeHandles = (element: TimelineElement) => {
+  if (!element.effectIds?.length) return null;
+  
+  return (
+    <div className="absolute inset-0 pointer-events-none">
+      {/* Corner handles */}
+      <div className="absolute top-0 left-0 w-2 h-2 bg-primary pointer-events-auto cursor-nw-resize" />
+      <div className="absolute top-0 right-0 w-2 h-2 bg-primary pointer-events-auto cursor-ne-resize" />
+      {/* ... other handles */}
+    </div>
+  );
+};
+```
+
+### Task 8.2: Effect Animations & Keyframes (10 mins)
+- [ ] Add keyframe support for effect parameters
+- [ ] Implement effect transitions
+- [ ] Add easing functions
+- [ ] Create animation timeline UI
+
+**Keyframe implementation pattern:**
+```typescript
+// Add to effects.ts types:
+export interface EffectKeyframe {
+  time: number; // in seconds
+  value: number;
+  easing?: 'linear' | 'ease-in' | 'ease-out' | 'ease-in-out';
+}
+
+export interface AnimatedEffectParameter {
+  parameter: string;
+  keyframes: EffectKeyframe[];
+}
+
+// Add to TimelineEffect interface:
+export interface TimelineEffect {
+  // ... existing properties
+  animations?: AnimatedEffectParameter[];
+}
+
+// Interpolation utility:
+const interpolateValue = (
+  keyframes: EffectKeyframe[],
+  currentTime: number
+): number => {
+  // Find surrounding keyframes
+  const before = keyframes.filter(k => k.time <= currentTime).pop();
+  const after = keyframes.find(k => k.time > currentTime);
+  
+  if (!before) return keyframes[0]?.value || 0;
+  if (!after) return before.value;
+  
+  // Linear interpolation (extend for easing)
+  const progress = (currentTime - before.time) / (after.time - before.time);
+  return before.value + (after.value - before.value) * progress;
+};
+```
+
+### Task 8.3: Advanced Effect Categories (5 mins)
+- [ ] Add distortion effects (pixelate, wave, twist)
+- [ ] Add artistic effects (oil painting, watercolor)
+- [ ] Add transition effects (fade, dissolve, wipe)
+- [ ] Add composite effects (overlay, multiply, screen)
+
+**Additional effect types to add:**
+```typescript
+// Add to EffectType in effects.ts:
+export type EffectType =
+  | /* ... existing types ... */
+  // Distortion effects
+  | "wave"
+  | "twist"
+  | "bulge"
+  | "fisheye"
+  // Artistic effects  
+  | "oil-painting"
+  | "watercolor"
+  | "pencil-sketch"
+  | "halftone"
+  // Transition effects
+  | "fade-in"
+  | "fade-out"
+  | "dissolve"
+  | "wipe"
+  // Composite effects
+  | "overlay"
+  | "multiply"
+  | "screen"
+  | "color-dodge";
+
+// Add corresponding parameters:
+export interface EffectParameters {
+  // ... existing parameters
+  
+  // Distortion
+  waveAmplitude?: number;
+  waveFrequency?: number;
+  twistAngle?: number;
+  bulgeRadius?: number;
+  
+  // Artistic
+  brushSize?: number;
+  paintStrength?: number;
+  sketchIntensity?: number;
+  
+  // Transition
+  fadeProgress?: number;
+  transitionDuration?: number;
+  
+  // Composite
+  blendMode?: string;
+  opacity?: number;
+}
+```
+
+## Phase 9: Performance Optimizations (15 mins total)
+
+### Task 9.1: Effect Caching System (5 mins)
+- [ ] Implement effect result caching
+- [ ] Add cache invalidation logic
+- [ ] Create memory management for cache
+- [ ] Monitor cache hit rate
+
+**Caching implementation:**
+```typescript
+// Create effect cache store
+const effectCache = new Map<string, {
+  params: EffectParameters;
+  result: string; // CSS filter string
+  timestamp: number;
+}>();
+
+const getCachedEffect = (
+  effectId: string,
+  params: EffectParameters
+): string | null => {
+  const cached = effectCache.get(effectId);
+  if (!cached) return null;
+  
+  // Check if params match
+  if (JSON.stringify(cached.params) !== JSON.stringify(params)) {
+    return null;
+  }
+  
+  // Check if cache is fresh (< 1 second old)
+  if (Date.now() - cached.timestamp > 1000) {
+    effectCache.delete(effectId);
+    return null;
+  }
+  
+  return cached.result;
+};
+
+// Use in parametersToCSSFilters:
+export function parametersToCSSFilters(
+  effectId: string,
+  parameters: EffectParameters
+): string {
+  // Check cache first
+  const cached = getCachedEffect(effectId, parameters);
+  if (cached) return cached;
+  
+  // Generate filter string
+  const result = /* ... existing logic ... */;
+  
+  // Cache result
+  effectCache.set(effectId, {
+    params: parameters,
+    result,
+    timestamp: Date.now()
+  });
+  
+  return result;
+}
+```
+
+### Task 9.2: WebGL Acceleration (5 mins)
+- [ ] Add WebGL context for heavy effects
+- [ ] Implement shader-based filters
+- [ ] Create fallback to CSS filters
+- [ ] Benchmark performance gains
+
+**WebGL integration pattern:**
+```typescript
+// Check for WebGL support
+const supportsWebGL = (() => {
+  try {
+    const canvas = document.createElement('canvas');
+    return !!(
+      window.WebGLRenderingContext &&
+      (canvas.getContext('webgl') || canvas.getContext('experimental-webgl'))
+    );
+  } catch (e) {
+    return false;
+  }
+})();
+
+// Use WebGL for complex effects
+const applyWebGLEffect = (
+  canvas: HTMLCanvasElement,
+  effect: EffectParameters
+): void => {
+  if (!supportsWebGL) {
+    // Fallback to CSS filters
+    return;
+  }
+  
+  const gl = canvas.getContext('webgl');
+  if (!gl) return;
+  
+  // Load and compile shaders for effects
+  // ... WebGL implementation
+};
+```
+
+### Task 9.3: Batch Processing (5 mins)
+- [ ] Batch multiple effect updates
+- [ ] Implement requestAnimationFrame batching
+- [ ] Add debouncing for parameter changes
+- [ ] Create update queue system
+
+**Batch processing implementation:**
+```typescript
+// Effect update queue
+const effectUpdateQueue = new Set<string>();
+let updateScheduled = false;
+
+const queueEffectUpdate = (effectId: string) => {
+  effectUpdateQueue.add(effectId);
+  
+  if (!updateScheduled) {
+    updateScheduled = true;
+    requestAnimationFrame(() => {
+      processBatchedUpdates();
+      updateScheduled = false;
+    });
+  }
+};
+
+const processBatchedUpdates = () => {
+  const updates = Array.from(effectUpdateQueue);
+  effectUpdateQueue.clear();
+  
+  // Process all updates in single render pass
+  updates.forEach(effectId => {
+    const effect = getEffectById(effectId);
+    if (effect) {
+      applyEffectToElement(effect);
+    }
+  });
+};
+```
+
 ## Notes
 
 - Each subtask should commit independently
@@ -759,3 +1269,5 @@ If issues occur at any phase:
 - Test in both dev and production builds
 - Keep effects disabled until fully tested
 - Document any deviations from plan
+- Consider performance impact of advanced features
+- Test on different hardware configurations
