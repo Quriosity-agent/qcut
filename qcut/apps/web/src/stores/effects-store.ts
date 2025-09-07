@@ -7,6 +7,7 @@ import type {
   EffectParameters,
   EffectInstance,
   EffectType,
+  AnimatedParameter,
 } from "@/types/effects";
 
 // Feature flag - disabled by default for safety
@@ -174,6 +175,138 @@ const EFFECT_PRESETS: EffectPreset[] = [
     icon: "🔄",
     parameters: { invert: 100 },
   },
+  // Distortion effects
+  {
+    id: "wave",
+    name: "Wave",
+    description: "Wave distortion",
+    category: "distortion",
+    icon: "🌊",
+    parameters: { wave: 50, waveFrequency: 3, waveAmplitude: 20 },
+  },
+  {
+    id: "twist",
+    name: "Twist",
+    description: "Twirl distortion",
+    category: "distortion",
+    icon: "🌀",
+    parameters: { twist: 60, twistAngle: 180 },
+  },
+  {
+    id: "bulge",
+    name: "Bulge",
+    description: "Bulge distortion",
+    category: "distortion",
+    icon: "🔵",
+    parameters: { bulge: 50, bulgeRadius: 200 },
+  },
+  {
+    id: "fisheye",
+    name: "Fisheye",
+    description: "Fisheye lens effect",
+    category: "distortion",
+    icon: "👁️",
+    parameters: { fisheye: 70, fisheyeStrength: 2 },
+  },
+  // Artistic effects
+  {
+    id: "oil-painting",
+    name: "Oil Painting",
+    description: "Oil painting effect",
+    category: "artistic",
+    icon: "🎨",
+    parameters: { oilPainting: 60, brushSize: 5 },
+  },
+  {
+    id: "watercolor",
+    name: "Watercolor",
+    description: "Watercolor painting",
+    category: "artistic",
+    icon: "💧",
+    parameters: { watercolor: 70, wetness: 50 },
+  },
+  {
+    id: "pencil-sketch",
+    name: "Pencil Sketch",
+    description: "Pencil drawing effect",
+    category: "artistic",
+    icon: "✏️",
+    parameters: { pencilSketch: 80, strokeWidth: 2 },
+  },
+  {
+    id: "halftone",
+    name: "Halftone",
+    description: "Comic book dots",
+    category: "artistic",
+    icon: "⚫",
+    parameters: { halftone: 50, dotSize: 4 },
+  },
+  // Transition effects
+  {
+    id: "fade-in",
+    name: "Fade In",
+    description: "Fade in transition",
+    category: "transition",
+    icon: "⬆️",
+    parameters: { fadeIn: 100 },
+  },
+  {
+    id: "fade-out",
+    name: "Fade Out",
+    description: "Fade out transition",
+    category: "transition",
+    icon: "⬇️",
+    parameters: { fadeOut: 100 },
+  },
+  {
+    id: "dissolve",
+    name: "Dissolve",
+    description: "Dissolve transition",
+    category: "transition",
+    icon: "💫",
+    parameters: { dissolve: 50, dissolveProgress: 50 },
+  },
+  {
+    id: "wipe",
+    name: "Wipe",
+    description: "Wipe transition",
+    category: "transition",
+    icon: "➡️",
+    parameters: { wipe: 100, wipeDirection: "right", wipeProgress: 50 },
+  },
+  // Composite effects
+  {
+    id: "overlay",
+    name: "Overlay",
+    description: "Overlay blend",
+    category: "composite",
+    icon: "🔲",
+    parameters: { overlay: 50, overlayOpacity: 75, blendMode: "overlay" },
+  },
+  {
+    id: "multiply",
+    name: "Multiply",
+    description: "Multiply blend",
+    category: "composite",
+    icon: "✖️",
+    parameters: { multiply: 100, blendMode: "multiply" },
+  },
+  {
+    id: "screen",
+    name: "Screen",
+    description: "Screen blend",
+    category: "composite",
+    icon: "📺",
+    parameters: { screen: 100, blendMode: "screen" },
+  },
+  {
+    id: "color-dodge",
+    name: "Color Dodge",
+    description: "Color dodge blend",
+    category: "composite",
+    icon: "💡",
+    parameters: { colorDodge: 80, blendMode: "color-dodge" },
+  },
 ];
 
 interface EffectsStore {
@@ -194,6 +327,7 @@ interface EffectsStore {
   duplicateEffect: (elementId: string, effectId: string) => void;
   reorderEffects: (elementId: string, effectIds: string[]) => void;
   resetEffectToDefaults: (elementId: string, effectId: string) => void;
+  updateEffectAnimations: (elementId: string, effectId: string, animation: AnimatedParameter | null) => void;
 }
 
 export const useEffectsStore = create<EffectsStore>((set, get) => ({
@@ -331,6 +465,93 @@ export const useEffectsStore = create<EffectsStore>((set, get) => ({
       });
       
       toast.success("Effect duplicated");
+    }
+  },
+  
+  reorderEffects: (elementId, effectIds) => {
+    const effects = get().activeEffects.get(elementId) || [];
+    const reorderedEffects = effectIds
+      .map(id => effects.find(e => e.id === id))
+      .filter((e): e is EffectInstance => e !== undefined);
+    
+    if (reorderedEffects.length === effects.length) {
+      set((state) => {
+        const newMap = new Map(state.activeEffects);
+        newMap.set(elementId, reorderedEffects);
+        return { activeEffects: newMap };
+      });
+    }
+  },
+  
+  resetEffectToDefaults: (elementId, effectId) => {
+    const effects = get().activeEffects.get(elementId) || [];
+    const effectIndex = effects.findIndex(e => e.id === effectId);
+    
+    if (effectIndex !== -1) {
+      const effect = effects[effectIndex];
+      // Find the original preset
+      const preset = EFFECT_PRESETS.find(p => 
+        p.name === effect.name || p.id === effect.effectType
+      );
+      
+      if (preset) {
+        const resetEffect: EffectInstance = {
+          ...effect,
+          parameters: { ...preset.parameters },
+        };
+        
+        const newEffects = [...effects];
+        newEffects[effectIndex] = resetEffect;
+        
+        set((state) => {
+          const newMap = new Map(state.activeEffects);
+          newMap.set(elementId, newEffects);
+          return { activeEffects: newMap };
+        });
+        
+        toast.success("Effect reset to defaults");
+      }
+    }
+  },
+  
+  updateEffectAnimations: (elementId, effectId, animation) => {
+    const effects = get().activeEffects.get(elementId) || [];
+    const effectIndex = effects.findIndex(e => e.id === effectId);
+    
+    if (effectIndex !== -1) {
+      const effect = effects[effectIndex];
+      const newEffects = [...effects];
+      
+      if (animation) {
+        // Add or update animation
+        const existingAnimations = effect.animations || [];
+        const animIndex = existingAnimations.findIndex(a => a.parameter === animation.parameter);
+        
+        if (animIndex !== -1) {
+          // Update existing animation
+          existingAnimations[animIndex] = animation;
+        } else {
+          // Add new animation
+          existingAnimations.push(animation);
+        }
+        
+        newEffects[effectIndex] = {
+          ...effect,
+          animations: existingAnimations,
+        };
+      } else {
+        // Remove all animations
+        newEffects[effectIndex] = {
+          ...effect,
+          animations: undefined,
+        };
+      }
+      
+      set((state) => {
+        const newMap = new Map(state.activeEffects);
+        newMap.set(elementId, newEffects);
+        return { activeEffects: newMap };
+      });
     }
   },
 }));
