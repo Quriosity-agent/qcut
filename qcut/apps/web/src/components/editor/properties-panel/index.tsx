@@ -28,6 +28,11 @@ import { useExportStore } from "@/stores/export-store";
 import { ExportPanelContent } from "./export-panel-content";
 import { SettingsView } from "./settings-view";
 import { PanelView } from "@/types/panel";
+import { useEffectsStore } from "@/stores/effects-store";
+import { EffectsProperties } from "./effects-properties";
+
+// Feature flag for effects - disabled by default for safety
+const EFFECTS_ENABLED = false;
 
 export function PropertiesPanel() {
   const { activeProject, updateProjectFps } = useProjectStore();
@@ -38,6 +43,14 @@ export function PropertiesPanel() {
     loading: mediaItemsLoading,
     error: mediaItemsError,
   } = useAsyncMediaItems();
+  const getElementEffects = useEffectsStore((s) => s.getElementEffects);
+
+  // Helper to check if element has effects
+  const hasEffects = (elementId: string) => {
+    if (!EFFECTS_ENABLED) return false;
+    const effects = getElementEffects(elementId);
+    return effects && effects.length > 0;
+  };
 
   const panelView = useExportStore((s) => s.panelView);
   const setPanelView = useExportStore((s) => s.setPanelView);
@@ -145,6 +158,22 @@ export function PropertiesPanel() {
                   const element = track?.elements.find(
                     (e) => e.id === elementId
                   );
+
+                  // Check for effects first (if enabled)
+                  if (EFFECTS_ENABLED && element && hasEffects(element.id)) {
+                    return (
+                      <div key={elementId}>
+                        <EffectsProperties elementId={element.id} />
+                        {/* Still show original properties below effects */}
+                        {element.type === "text" && (
+                          <TextProperties element={element} trackId={trackId} />
+                        )}
+                        {element.type === "media" && (
+                          <MediaProperties element={element} trackId={trackId} />
+                        )}
+                      </div>
+                    );
+                  }
 
                   if (element?.type === "text") {
                     return (

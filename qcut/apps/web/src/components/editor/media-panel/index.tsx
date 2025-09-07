@@ -13,6 +13,16 @@ import { CaptionsView } from "./views/captions";
 import { SoundsView } from "./views/sounds";
 import React from "react";
 
+// Feature flag for effects - disabled by default for safety
+const EFFECTS_ENABLED = false;
+
+// Lazy load effects view only when enabled
+const EffectsView = React.lazy(() =>
+  EFFECTS_ENABLED
+    ? import("./views/effects")
+    : Promise.resolve({ default: () => null })
+);
+
 export function MediaPanel() {
   const { activeTab } = useMediaPanelStore();
 
@@ -21,7 +31,11 @@ export function MediaPanel() {
     audio: <AudioView />,
     text: <TextView />,
     stickers: <StickersView />,
-    effects: (
+    effects: EFFECTS_ENABLED ? (
+      <React.Suspense fallback={<div className="p-4">Loading effects...</div>}>
+        <EffectsView />
+      </React.Suspense>
+    ) : (
       <div className="p-4 text-muted-foreground">
         Effects view coming soon...
       </div>
