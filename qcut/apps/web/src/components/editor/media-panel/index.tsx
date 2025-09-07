@@ -20,7 +20,7 @@ const EFFECTS_ENABLED = false;
 const EffectsView = React.lazy(() =>
   EFFECTS_ENABLED
     ? import("./views/effects")
-    : Promise.resolve({ default: () => null })
+    : Promise.resolve({ default: () => React.createElement('div', null, 'Effects disabled') })
 );
 
 export function MediaPanel() {

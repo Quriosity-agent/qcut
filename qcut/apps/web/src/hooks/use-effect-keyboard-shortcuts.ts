@@ -9,17 +9,17 @@ import { EFFECTS_ENABLED } from "@/config/features";
 
 export const useEffectKeyboardShortcuts = () => {
   const isActive = useRef(true);
-  const { applyEffect, toggleEffect, resetEffectParameters, duplicateEffect, getActiveEffects } = useEffectsStore();
-  const { selectedElementIds } = useTimelineStore();
+  const { applyEffect, toggleEffect, resetEffectParameters, duplicateEffect, activeEffects } = useEffectsStore();
+  const { selectedElements } = useTimelineStore();
 
   // Helper function to get selected element
   const getSelectedElement = () => {
     if (!EFFECTS_ENABLED) return null;
-    if (selectedElementIds.length === 0) {
+    if (selectedElements.length === 0) {
       toast.error("No element selected");
       return null;
     }
-    return selectedElementIds[0];
+    return selectedElements[0]?.elementId;
   };
 
   // Apply brightness effect (Alt+B)
@@ -31,6 +31,7 @@ export const useEffectKeyboardShortcuts = () => {
         applyEffect(elementId, {
           id: "brightness-increase",
           name: "Brightness",
+          description: "Increase brightness",
           category: "basic",
           icon: "🔆",
           parameters: { brightness: 20 }
@@ -50,6 +51,7 @@ export const useEffectKeyboardShortcuts = () => {
         applyEffect(elementId, {
           id: "contrast-high",
           name: "Contrast",
+          description: "Increase contrast",
           category: "basic",
           icon: "🎭",
           parameters: { contrast: 30 }
@@ -69,6 +71,7 @@ export const useEffectKeyboardShortcuts = () => {
         applyEffect(elementId, {
           id: "saturation-boost",
           name: "Saturation",
+          description: "Boost color saturation",
           category: "color",
           icon: "🎨",
           parameters: { saturation: 30 }
@@ -88,6 +91,7 @@ export const useEffectKeyboardShortcuts = () => {
         applyEffect(elementId, {
           id: "blur-soft",
           name: "Soft Blur",
+          description: "Apply soft blur effect",
           category: "basic",
           icon: "🌫️",
           parameters: { blur: 3 }
@@ -104,7 +108,7 @@ export const useEffectKeyboardShortcuts = () => {
     () => {
       const elementId = getSelectedElement();
       if (elementId) {
-        const effects = getActiveEffects().get(elementId);
+        const effects = activeEffects.get(elementId);
         if (effects && effects.length > 0) {
           toggleEffect(elementId, effects[0].id);
           toast.success("Effect toggled");
@@ -135,7 +139,7 @@ export const useEffectKeyboardShortcuts = () => {
     () => {
       const elementId = getSelectedElement();
       if (elementId) {
-        const effects = getActiveEffects().get(elementId);
+        const effects = activeEffects.get(elementId);
         if (effects && effects.length > 0) {
           duplicateEffect(elementId, effects[0].id);
           toast.success("Effect duplicated");
@@ -153,7 +157,7 @@ export const useEffectKeyboardShortcuts = () => {
     () => {
       const elementId = getSelectedElement();
       if (elementId) {
-        const effects = getActiveEffects().get(elementId);
+        const effects = activeEffects.get(elementId);
         if (effects && effects.length > 0) {
           const effect = effects[0];
           const param = Object.keys(effect.parameters)[0];
@@ -178,7 +182,7 @@ export const useEffectKeyboardShortcuts = () => {
     () => {
       const elementId = getSelectedElement();
       if (elementId) {
-        const effects = getActiveEffects().get(elementId);
+        const effects = activeEffects.get(elementId);
         if (effects && effects.length > 0) {
           const effect = effects[0];
           const param = Object.keys(effect.parameters)[0];

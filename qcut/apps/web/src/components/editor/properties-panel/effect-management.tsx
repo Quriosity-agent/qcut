@@ -65,7 +65,7 @@ export function EffectManagement({ elementId, className }: EffectManagementProps
       id: `${effect.id}-copy-${generateUUID().slice(0, 8)}`,
       name: `${effect.name} (Copy)`,
       description: `Copy of ${effect.name}`,
-      category: "custom",
+      category: "basic",
       icon: "📋",
       parameters: { ...effect.parameters },
     };
@@ -120,7 +120,7 @@ export function EffectManagement({ elementId, className }: EffectManagementProps
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-medium">Applied Effects ({effects.length})</h3>
         <Button
-          variant="ghost"
+          variant="text"
           size="sm"
           onClick={() => clearEffects(elementId)}
           className="text-destructive hover:text-destructive"
@@ -145,7 +145,7 @@ export function EffectManagement({ elementId, className }: EffectManagementProps
                     <span className="text-xs text-muted-foreground">#{index + 1}</span>
                     
                     {/* Effect Icon */}
-                    <span className="text-lg">{effect.icon}</span>
+                    <span className="text-lg">✨</span>
                     
                     {/* Effect Name */}
                     <CardTitle className="text-sm">{effect.name}</CardTitle>
@@ -164,7 +164,7 @@ export function EffectManagement({ elementId, className }: EffectManagementProps
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <Button
-                            variant="ghost"
+                            variant="text"
                             size="icon"
                             className="h-6 w-6"
                             onClick={() => handleMoveEffect(effect.id, "up")}
@@ -181,7 +181,7 @@ export function EffectManagement({ elementId, className }: EffectManagementProps
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <Button
-                            variant="ghost"
+                            variant="text"
                             size="icon"
                             className="h-6 w-6"
                             onClick={() => handleMoveEffect(effect.id, "down")}
@@ -199,7 +199,7 @@ export function EffectManagement({ elementId, className }: EffectManagementProps
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <Button
-                            variant="ghost"
+                            variant="text"
                             size="icon"
                             className="h-6 w-6"
                             onClick={() => handleDuplicateEffect(effect)}
@@ -215,7 +215,7 @@ export function EffectManagement({ elementId, className }: EffectManagementProps
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <Button
-                            variant="ghost"
+                            variant="text"
                             size="icon"
                             className="h-6 w-6"
                             onClick={() => handleResetEffect(effect.id)}
@@ -231,7 +231,7 @@ export function EffectManagement({ elementId, className }: EffectManagementProps
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <Button
-                            variant="ghost"
+                            variant="text"
                             size="icon"
                             className="h-6 w-6"
                             onClick={() => removeEffect(elementId, effect.id)}
@@ -245,7 +245,7 @@ export function EffectManagement({ elementId, className }: EffectManagementProps
                     
                     {/* Expand/Collapse */}
                     <Button
-                      variant="ghost"
+                      variant="text"
                       size="icon"
                       className="h-6 w-6"
                       onClick={() => toggleExpanded(effect.id)}

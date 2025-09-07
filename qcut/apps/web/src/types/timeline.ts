@@ -18,6 +18,7 @@ interface BaseTimelineElement {
   width?: number;
   height?: number;
   rotation?: number;
+  effectIds?: string[];
 }
 
 // Media element that references MediaStore

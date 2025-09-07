@@ -192,7 +192,7 @@ export function EffectsSearch({ presets, onSearchResults, className }: EffectsSe
         <Popover open={isFilterOpen} onOpenChange={setIsFilterOpen}>
           <PopoverTrigger asChild>
             <Button
-              variant="ghost"
+              variant="text"
               size="sm"
               className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 p-0"
             >
@@ -212,7 +212,7 @@ export function EffectsSearch({ presets, onSearchResults, className }: EffectsSe
               <div className="flex items-center justify-between">
                 <h4 className="font-medium">Filters</h4>
                 <Button
-                  variant="ghost"
+                  variant="text"
                   size="sm"
                   onClick={clearFilters}
                   className="h-auto p-1 text-xs"

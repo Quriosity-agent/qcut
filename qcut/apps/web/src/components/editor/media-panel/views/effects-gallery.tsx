@@ -129,7 +129,7 @@ export function EffectsGallery({
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <Button
-                          variant="ghost"
+                          variant="text"
                           size="icon"
                           className="h-8 w-8"
                           onClick={(e) => toggleFavorite(e, preset.id)}
@@ -152,7 +152,7 @@ export function EffectsGallery({
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <Button
-                          variant="ghost"
+                          variant="text"
                           size="icon"
                           className="h-8 w-8"
                           onClick={(e) => handlePreview(e, preset)}
@@ -204,7 +204,7 @@ export function EffectsGallery({
                 
                 {/* Favorite button overlay */}
                 <Button
-                  variant="ghost"
+                  variant="text"
                   size="icon"
                   className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
                   onClick={(e) => toggleFavorite(e, preset.id)}
@@ -249,7 +249,7 @@ export function EffectsGallery({
                   Apply
                 </Button>
                 <Button
-                  variant="ghost"
+                  variant="text"
                   size="sm"
                   className="h-7 w-7 p-0"
                   onClick={(e) => handlePreview(e, preset)}

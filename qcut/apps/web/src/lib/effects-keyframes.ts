@@ -90,7 +90,7 @@ export function interpolateKeyframes(
   // Apply easing
   const easing = kf1.easing || "linear";
   if (easing === "cubic-bezier" && kf1.controlPoints) {
-    progress = easingFunctions["cubic-bezier"](progress, kf1.controlPoints);
+    progress = easingFunctions["cubic-bezier"](progress, kf1.controlPoints as [number, number, number, number]);
   } else if (easing in easingFunctions && easing !== "cubic-bezier") {
     progress = easingFunctions[easing as keyof typeof easingFunctions](progress);
   }
@@ -136,7 +136,7 @@ export function getAnimatedParameters(
       time,
       animation.interpolation
     );
-    animatedParams[animation.parameter] = value;
+    (animatedParams as any)[animation.parameter] = value;
   }
   
   return animatedParams;

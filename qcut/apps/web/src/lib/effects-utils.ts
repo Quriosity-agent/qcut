@@ -170,11 +170,11 @@ export function mergeEffectParameters(
       if (value !== undefined) {
         // For additive effects, sum them up
         if (["brightness", "contrast", "saturation", "hue"].includes(key)) {
-          merged[key as keyof EffectParameters] = 
+          (merged as any)[key] = 
             ((merged[key as keyof EffectParameters] as number) || 0) + (value as number);
         } else {
           // For other effects, take the last value
-          merged[key as keyof EffectParameters] = value;
+          (merged as any)[key] = value;
         }
       }
     }
