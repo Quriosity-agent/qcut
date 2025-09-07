@@ -31,7 +31,7 @@ if (typeof globalThis.getComputedStyle === 'undefined') {
       },
       removeProperty: (prop: string) => {
         const value = styles[prop] ?? '';
-        delete styles[prop];
+        styles[prop] = '';
         return value;
       },
       item: (index: number) => '',

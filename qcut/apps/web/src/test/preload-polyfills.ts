@@ -43,8 +43,8 @@ class MockCSSStyleDeclaration {
   removeProperty(prop: string): string {
     const normalizedProp = prop.replace(/-([a-z])/g, (g) => g[1].toUpperCase());
     const oldValue = this[normalizedProp];
-    delete this[normalizedProp];
-    return oldValue || "";
+    this[normalizedProp] = '';
+    return oldValue || '';
   }
   
   item(index: number): string {

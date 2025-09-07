@@ -40,7 +40,7 @@ describe("Dialog Component", () => {
               <DialogTitle>Test Title</DialogTitle>
               <DialogDescription>Test Description</DialogDescription>
             </DialogHeader>
-            <button onClick={() => setOpen(false)} data-testid="custom-close">Close Dialog</button>
+            <button type="button" onClick={() => setOpen(false)} data-testid="custom-close">Close Dialog</button>
           </DialogContent>
         </Dialog>
       );
