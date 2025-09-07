@@ -27,14 +27,16 @@ describe("useDebounce - Advanced Tests", () => {
       { initialProps: { value: "initial" } }
     );
 
+    expect(result.current).toBe("initial");
+
     act(() => {
       rerender({ value: "updated" });
     });
 
-    // Even with 0 delay, React needs time to update
+    // Zero delay still needs async handling in React
     await waitFor(() => {
       expect(result.current).toBe("updated");
-    }, { timeout: 10 });
+    }, { timeout: 50 });
   });
 
   it("handles arrays and objects correctly", async () => {
