@@ -1,4 +1,5 @@
 import "@/test/fix-radix-ui";
+import React from "react";
 import { describe, it, expect } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
@@ -90,6 +91,3 @@ describe("Dialog Component", () => {
     expect(hasAriaModal || hasDataState).toBe(true);
   });
 });
-
-// Add React import for the test
-import React from "react";
