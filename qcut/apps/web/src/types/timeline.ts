@@ -12,6 +12,12 @@ interface BaseTimelineElement {
   trimStart: number;
   trimEnd: number;
   hidden?: boolean;
+  // Optional position and transformation properties (for effects)
+  x?: number;
+  y?: number;
+  width?: number;
+  height?: number;
+  rotation?: number;
 }
 
 // Media element that references MediaStore

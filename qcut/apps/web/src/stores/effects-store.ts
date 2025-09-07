@@ -192,6 +192,8 @@ interface EffectsStore {
   setSelectedEffect: (effect: EffectInstance | null) => void;
   getElementEffects: (elementId: string) => EffectInstance[];
   duplicateEffect: (elementId: string, effectId: string) => void;
+  reorderEffects: (elementId: string, effectIds: string[]) => void;
+  resetEffectToDefaults: (elementId: string, effectId: string) => void;
 }
 
 export const useEffectsStore = create<EffectsStore>((set, get) => ({

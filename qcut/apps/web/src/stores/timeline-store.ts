@@ -211,6 +211,11 @@ interface TimelineStore {
       >
     >
   ) => void;
+  
+  // Interactive element manipulation (for effects)
+  updateElementPosition: (elementId: string, position: { x: number; y: number }) => void;
+  updateElementSize: (elementId: string, size: { width: number; height: number; x?: number; y?: number }) => void;
+  updateElementRotation: (elementId: string, rotation: number) => void;
   updateMediaElement: (
     trackId: string,
     elementId: string,
@@ -1013,6 +1018,55 @@ export const useTimelineStore = create<TimelineStore>((set, get) => {
               }
             : track
         )
+      );
+    },
+    
+    // Interactive element manipulation (for effects)
+    updateElementPosition: (elementId, position) => {
+      get().pushHistory();
+      updateTracksAndSave(
+        get()._tracks.map((track) => ({
+          ...track,
+          elements: track.elements.map((element) =>
+            element.id === elementId
+              ? { ...element, x: position.x, y: position.y }
+              : element
+          ),
+        }))
+      );
+    },
+    
+    updateElementSize: (elementId, size) => {
+      get().pushHistory();
+      updateTracksAndSave(
+        get()._tracks.map((track) => ({
+          ...track,
+          elements: track.elements.map((element) =>
+            element.id === elementId
+              ? { 
+                  ...element, 
+                  width: size.width, 
+                  height: size.height,
+                  ...(size.x !== undefined && { x: size.x }),
+                  ...(size.y !== undefined && { y: size.y })
+                }
+              : element
+          ),
+        }))
+      );
+    },
+    
+    updateElementRotation: (elementId, rotation) => {
+      get().pushHistory();
+      updateTracksAndSave(
+        get()._tracks.map((track) => ({
+          ...track,
+          elements: track.elements.map((element) =>
+            element.id === elementId
+              ? { ...element, rotation }
+              : element
+          ),
+        }))
       );
     },
 
