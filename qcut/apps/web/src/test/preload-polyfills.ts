@@ -87,9 +87,9 @@ const patchGlobal = (target: any, name: string) => {
 
 // Apply to all possible contexts immediately
 patchGlobal(globalThis, 'globalThis');
-patchGlobal(global, 'global');
-patchGlobal(window, 'window');
-patchGlobal(self, 'self');
+if (typeof global !== 'undefined') patchGlobal(global, 'global');
+if (typeof window !== 'undefined') patchGlobal(window, 'window');
+if (typeof self !== 'undefined') patchGlobal(self, 'self');
 
 // Intercept property access
 if (typeof Proxy !== 'undefined') {

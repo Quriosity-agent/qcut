@@ -4,8 +4,14 @@ console.log("🔧 SETUP.TS EXECUTING - Starting jsdom environment setup...");
 // CRITICAL: Import polyfills FIRST before anything else
 import "./polyfills";
 
-// AGGRESSIVE: Override getComputedStyle everywhere immediately
+// Ensure getComputedStyle is available everywhere (reuse from polyfills.ts)
 const forceGetComputedStylePolyfill = () => {
+  // Check if already available from polyfills.ts
+  if (typeof getComputedStyle === 'function') {
+    return getComputedStyle;
+  }
+
+  // Fallback: create a simple mock if not available
   const mockGetComputedStyle = (element: Element): CSSStyleDeclaration => {
     const styles: any = {
       getPropertyValue: (prop: string) => {
@@ -26,21 +32,20 @@ const forceGetComputedStylePolyfill = () => {
     return styles as CSSStyleDeclaration;
   };
 
-  // Apply to ALL possible contexts aggressively
-  const contexts = [globalThis, global, window, self].filter(Boolean);
-  contexts.forEach(context => {
-    if (context && typeof context === 'object') {
+  // Apply only to contexts that don't have it (using for...of per house rules)
+  const contexts = [globalThis, (globalThis as any).window, (globalThis as any).self].filter(Boolean) as any[];
+  for (const context of contexts) {
+    if (context && typeof context === 'object' && typeof context.getComputedStyle !== 'function') {
       try {
-        context.getComputedStyle = mockGetComputedStyle;
+        Object.defineProperty(context, 'getComputedStyle', {
+          value: mockGetComputedStyle,
+          configurable: true,
+          writable: true,
+        });
       } catch (e) {
-        // ignore errors
+        // ignore errors if property is not configurable
       }
     }
-  });
-
-  // Override the actual function reference
-  if (typeof getComputedStyle === 'undefined') {
-    (globalThis as any).getComputedStyle = mockGetComputedStyle;
   }
 
   return mockGetComputedStyle;

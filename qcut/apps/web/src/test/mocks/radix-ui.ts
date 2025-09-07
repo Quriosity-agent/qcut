@@ -1,5 +1,6 @@
 // Mock for Radix UI components to avoid getComputedStyle issues in tests
 import React from 'react';
+import { vi } from 'vitest';
 
 // Mock the problematic Presence component from Radix UI
 export const mockPresence = {
@@ -17,16 +18,8 @@ export const mockCheckboxIndicator = React.forwardRef<any, any>(
 
 // Setup function to be called in test setup
 export function setupRadixUIMocks() {
-  // Only mock in test environment
   if (typeof process !== 'undefined' && process.env.NODE_ENV === 'test') {
-    try {
-      // Try to mock the Presence module
-      const presenceModule = '@radix-ui/react-presence';
-      if (require.cache[require.resolve(presenceModule)]) {
-        require.cache[require.resolve(presenceModule)].exports = mockPresence;
-      }
-    } catch (e) {
-      // Module not yet loaded, that's fine
-    }
+    // Use Vitest's module mocker for proper ESM support
+    vi.mock('@radix-ui/react-presence', () => mockPresence);
   }
 }

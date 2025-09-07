@@ -1,9 +1,10 @@
 // Patch Radix UI components to work in test environment
 import { vi } from "vitest";
+import type { ReactNode } from 'react';
 
 // Define getComputedStyle polyfill
 const mockGetComputedStyle = (element: Element): CSSStyleDeclaration => {
-  return {
+  const styles: any = {
     getPropertyValue: (prop: string) => '',
     setProperty: () => {},
     removeProperty: () => '',
@@ -25,7 +26,8 @@ const mockGetComputedStyle = (element: Element): CSSStyleDeclaration => {
     bottom: 'auto',
     width: 'auto',
     height: 'auto',
-  } as any;
+  };
+  return styles as CSSStyleDeclaration;
 };
 
 // Define ResizeObserver polyfill
@@ -36,18 +38,30 @@ class MockResizeObserver {
 }
 
 // Apply polyfills to all possible global contexts
-const contexts = [globalThis, global, window, self].filter(Boolean);
-contexts.forEach(ctx => {
+const contexts: Array<Record<string, unknown>> = [
+  globalThis as unknown as Record<string, unknown>,
+];
+if (typeof global !== 'undefined') {
+  contexts.push(global as unknown as Record<string, unknown>);
+}
+if (typeof window !== 'undefined') {
+  contexts.push(window as unknown as Record<string, unknown>);
+}
+if (typeof self !== 'undefined') {
+  contexts.push(self as unknown as Record<string, unknown>);
+}
+
+for (const ctx of contexts) {
   if (ctx && typeof ctx === 'object') {
     try {
-      if (!ctx.getComputedStyle) {
+      if (!('getComputedStyle' in ctx)) {
         Object.defineProperty(ctx, 'getComputedStyle', {
           value: mockGetComputedStyle,
           writable: true,
           configurable: true,
         });
       }
-      if (!ctx.ResizeObserver) {
+      if (!('ResizeObserver' in ctx)) {
         Object.defineProperty(ctx, 'ResizeObserver', {
           value: MockResizeObserver,
           writable: true,
@@ -58,28 +72,26 @@ contexts.forEach(ctx => {
       // Ignore errors
     }
   }
-});
+}
 
 // Mock problematic Radix UI modules
 vi.mock('@radix-ui/react-presence', () => ({
-  Presence: ({ children, present }: any) => {
+  Presence: ({ children, present }: { children?: ReactNode; present?: boolean }) => {
     return present !== false ? children : null;
   },
 }));
 
 vi.mock('@radix-ui/react-dismissable-layer', () => ({
-  DismissableLayer: ({ children, ...props }: any) => {
-    return children;
-  },
-  DismissableLayerBranch: ({ children }: any) => children,
+  DismissableLayer: ({ children }: { children?: ReactNode }) => children,
+  DismissableLayerBranch: ({ children }: { children?: ReactNode }) => children,
 }));
 
 vi.mock('@radix-ui/react-focus-scope', () => ({
-  FocusScope: ({ children }: any) => children,
+  FocusScope: ({ children }: { children?: ReactNode }) => children,
 }));
 
 vi.mock('@radix-ui/react-focus-guards', () => ({
-  FocusGuards: ({ children }: any) => children,
+  FocusGuards: ({ children }: { children?: ReactNode }) => children,
 }));
 
 export {};

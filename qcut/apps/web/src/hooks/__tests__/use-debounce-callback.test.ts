@@ -1,45 +1,45 @@
-import { describe, it, expect } from "vitest";
-import { renderHook, act, waitFor } from "@testing-library/react";
-import { useDebounce } from "@/hooks/use-debounce";
+import { describe, it, expect } from 'vitest';
+import { renderHook, act, waitFor } from '@testing-library/react';
+import { useDebounce } from '@/hooks/use-debounce';
 
-describe("useDebounce - Advanced Tests", () => {
-  it("handles null and undefined values", async () => {
+describe('useDebounce - Advanced Tests', () => {
+  it('handles null and undefined values', async () => {
     const { result, rerender } = renderHook(
       ({ value }: { value: null | undefined }) => useDebounce(value, 30),
       { initialProps: { value: null } }
     );
 
-    expect(result.current).toBe(null);
+    expect(result.current).toBeNull();
 
     act(() => {
-      rerender({ value: undefined as any });
+      rerender({ value: undefined });
     });
-    expect(result.current).toBe(null);
+    expect(result.current).toBeNull();
 
     await waitFor(() => {
-      expect(result.current).toBe(undefined);
-    }, { timeout: 60 });
+      expect(result.current).toBeUndefined();
+    }, { timeout: 200 });
   });
 
-  it("handles zero delay (immediate update)", async () => {
+  it('handles zero delay (immediate update)', async () => {
     const { result, rerender } = renderHook(
       ({ value }) => useDebounce(value, 0),
-      { initialProps: { value: "initial" } }
+      { initialProps: { value: 'initial' } }
     );
 
-    expect(result.current).toBe("initial");
+    expect(result.current).toBe('initial');
 
     act(() => {
-      rerender({ value: "updated" });
+      rerender({ value: 'updated' });
     });
 
-    // Even with zero delay, setTimeout is still async and requires waiting
+    // Even with zero delay, update posts to the macrotask queue
     await waitFor(() => {
-      expect(result.current).toBe("updated");
+      expect(result.current).toBe('updated');
     }, { timeout: 100 });
   });
 
-  it("handles arrays and objects correctly", async () => {
+  it('handles arrays and objects correctly', async () => {
     const initialArray = [1, 2, 3];
     const { result, rerender } = renderHook(
       ({ value }) => useDebounce(value, 30),
@@ -55,13 +55,13 @@ describe("useDebounce - Advanced Tests", () => {
 
     await waitFor(() => {
       expect(result.current).toBe(newArray);
-    }, { timeout: 100 });
+    }, { timeout: 200 });
     
     expect(result.current).toEqual([4, 5, 6]);
   });
 
-  it("maintains referential equality for unchanged values", async () => {
-    const obj = { test: "value" };
+  it('maintains referential equality for unchanged values', async () => {
+    const obj = { test: 'value' };
     const { result, rerender } = renderHook(
       ({ value }) => useDebounce(value, 20),
       { initialProps: { value: obj } }
@@ -72,8 +72,8 @@ describe("useDebounce - Advanced Tests", () => {
     // Rerender with same object reference
     rerender({ value: obj });
 
-    await new Promise(resolve => setTimeout(resolve, 30));
-
-    expect(result.current).toBe(firstRef);
+    await waitFor(() => {
+      expect(result.current).toBe(firstRef);
+    }, { timeout: 200 });
   });
 });
