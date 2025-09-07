@@ -97,27 +97,106 @@
 - Performance optimizations
 - More interactive element types
 
-## Complete File List
+## Complete File List (56 files total)
 
-### Added Files (New)
+### Added Files (New) - 5 files
 ```
+✅ EFFECTS_README.md
 ✅ apps/web/src/components/editor/media-panel/views/effects.tsx
+✅ apps/web/src/components/editor/properties-panel/effects-properties.tsx
+✅ apps/web/src/components/editor/timeline/effects-timeline.tsx
+✅ apps/web/src/lib/effects-utils.ts
 ✅ apps/web/src/stores/effects-store.ts
 ✅ apps/web/src/types/effects.ts
-✅ apps/web/src/lib/effects-utils.ts
-✅ EFFECTS_README.md
 ```
 
-### Modified Files
+### Modified Files - 50 files
+
+#### API Routes
 ```
-📝 apps/web/src/components/editor/properties-panel/effects-properties.tsx
-📝 apps/web/src/components/editor/timeline/effects-timeline.tsx
+📝 apps/web/src/app/api/get-upload-url/route.ts
+📝 apps/web/src/app/api/sounds/search/route.ts
+📝 apps/web/src/app/api/transcribe/route.ts
+📝 apps/web/src/app/api/waitlist/export/route.ts
+```
+
+#### Editor Components
+```
+📝 apps/web/src/app/editor/[project_id]/layout.tsx
+📝 apps/web/src/components/editor/layout-guide-overlay.tsx
+📝 apps/web/src/components/editor/media-panel/index.tsx
+📝 apps/web/src/components/editor/media-panel/views/sounds.tsx
+📝 apps/web/src/components/editor/panel-base-view.tsx
+📝 apps/web/src/components/editor/panel-preset-selector.tsx
+📝 apps/web/src/components/editor/preview-panel.tsx
+📝 apps/web/src/components/editor/properties-panel/index.tsx
 📝 apps/web/src/components/editor/timeline/index.tsx
+📝 apps/web/src/components/editor/timeline/timeline-track.tsx
+```
+
+#### UI Components
+```
+📝 apps/web/src/components/footer.tsx
+📝 apps/web/src/components/icons.tsx
+📝 apps/web/src/components/keyboard-shortcuts-help.tsx
+📝 apps/web/src/components/language-select.tsx
+📝 apps/web/src/components/theme-toggle.tsx
+📝 apps/web/src/components/ui/editable-timecode.tsx
+📝 apps/web/src/components/ui/font-picker.tsx
+📝 apps/web/src/components/ui/input-with-back.tsx
+📝 apps/web/src/components/ui/input.tsx
+📝 apps/web/src/components/ui/tooltip.tsx
+📝 apps/web/src/components/ui/video-player.tsx
+```
+
+#### Providers & Constants
+```
+📝 apps/web/src/components/providers/global-prefetcher.ts
+📝 apps/web/src/constants/text-constants.ts
+📝 apps/web/src/data/colors/syntax-ui.tsx
+```
+
+#### Hooks
+```
+📝 apps/web/src/hooks/use-edge-auto-scroll.ts
+📝 apps/web/src/hooks/use-highlight-scroll.ts
+📝 apps/web/src/hooks/use-infinite-scroll.ts
+📝 apps/web/src/hooks/use-sound-search.ts
+```
+
+#### Libraries/Utilities
+```
+📝 apps/web/src/lib/editor-utils.ts
+📝 apps/web/src/lib/export.ts
+📝 apps/web/src/lib/iconify-api.ts
+📝 apps/web/src/lib/schemas/waitlist.ts
+📝 apps/web/src/lib/timeline-renderer.ts
+📝 apps/web/src/lib/transcription-utils.ts
+📝 apps/web/src/lib/zk-encryption.ts
+```
+
+#### Stores
+```
+📝 apps/web/src/stores/playback-store.ts
+📝 apps/web/src/stores/sounds-store.ts
+📝 apps/web/src/stores/text-properties-store.ts
+📝 apps/web/src/stores/timeline-store.ts
+```
+
+#### Types
+```
+📝 apps/web/src/types/media.ts
+📝 apps/web/src/types/sounds.ts
+📝 apps/web/src/types/timeline.ts
+```
+
+#### Database Migrations
+```
 📝 apps/web/migrations/meta/0003_snapshot.json
 📝 apps/web/migrations/meta/_journal.json
 ```
 
-### Deleted Files
+### Deleted Files - 1 file
 ```
 ❌ .github/CONTRIBUTING.md
 ```
