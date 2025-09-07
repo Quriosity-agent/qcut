@@ -65,6 +65,10 @@ import { useSelectionBox } from "@/hooks/use-selection-box";
 import { SnapIndicator } from "../snap-indicator";
 import { SnapPoint } from "@/hooks/use-timeline-snapping";
 import type { DragData, TimelineTrack } from "@/types/timeline";
+import { EffectsTimeline } from "./effects-timeline";
+
+// Feature flag for effects - disabled by default for safety
+const EFFECTS_ENABLED = false;
 import {
   getTrackHeight,
   getCumulativeHeightBefore,
@@ -845,6 +849,17 @@ export function Timeline() {
                       )}
                     </div>
                   ))}
+                  {/* Effects Track Label */}
+                  {EFFECTS_ENABLED && tracks.length > 0 && (
+                    <div
+                      className="flex items-center px-3 border-t-2 border-purple-500/30 group bg-purple-500/10"
+                      style={{ height: "64px" }}
+                    >
+                      <div className="flex items-center flex-1 min-w-0">
+                        <span className="text-sm text-purple-400">Effects</span>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </ScrollArea>
             </div>
@@ -960,6 +975,24 @@ export function Timeline() {
                         </ContextMenuContent>
                       </ContextMenu>
                     ))}
+                    {/* Effects Timeline Visualization */}
+                    {EFFECTS_ENABLED && tracks.length > 0 && (
+                      <div
+                        className="absolute left-0 right-0 border-t-2 border-purple-500/30"
+                        style={{
+                          top: `${getTotalTracksHeight(tracks)}px`,
+                          height: "64px",
+                        }}
+                      >
+                        {tracks.map((track) => (
+                          <EffectsTimeline
+                            key={`effects-${track.id}`}
+                            track={track}
+                            pixelsPerSecond={zoomLevel * 10}
+                          />
+                        ))}
+                      </div>
+                    )}
                   </>
                 )}
               </div>
