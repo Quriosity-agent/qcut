@@ -4,7 +4,7 @@ import type { ReactNode } from 'react';
 
 // Define getComputedStyle polyfill
 const mockGetComputedStyle = (element: Element): CSSStyleDeclaration => {
-  const styles: any = {
+  const styles = {
     getPropertyValue: (prop: string) => '',
     setProperty: () => {},
     removeProperty: () => '',
@@ -27,7 +27,7 @@ const mockGetComputedStyle = (element: Element): CSSStyleDeclaration => {
     width: 'auto',
     height: 'auto',
   };
-  return styles as CSSStyleDeclaration;
+  return styles as unknown as CSSStyleDeclaration;
 };
 
 // Define ResizeObserver polyfill

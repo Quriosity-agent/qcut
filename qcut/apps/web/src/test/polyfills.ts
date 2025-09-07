@@ -143,11 +143,16 @@ const setupAdditionalPolyfills = () => {
       // IntersectionObserver mock
       if (!context.IntersectionObserver) {
         context.IntersectionObserver = class MockIntersectionObserver {
+          root: Element | null = null;
+          rootMargin: string = '0px';
+          thresholds: ReadonlyArray<number> = [0];
+          
           constructor() {}
           observe() {}
           unobserve() {}
           disconnect() {}
-        };
+          takeRecords() { return []; }
+        } as any;
       }
       
       console.log(`✓ Applied additional polyfills to context`);
