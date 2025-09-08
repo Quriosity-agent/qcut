@@ -133,6 +133,8 @@ export function EffectsGallery({
                           variant="text"
                           size="icon"
                           className="h-8 w-8"
+                          aria-label={favorites.has(preset.id) ? "Remove from favorites" : "Add to favorites"}
+                          aria-pressed={favorites.has(preset.id)}
                           onClick={(e) => toggleFavorite(e, preset.id)}
                         >
                           <Star
@@ -157,6 +159,7 @@ export function EffectsGallery({
                           variant="text"
                           size="icon"
                           className="h-8 w-8"
+                          aria-label="Preview effect"
                           onClick={(e) => handlePreview(e, preset)}
                         >
                           <Info className="h-4 w-4" />
@@ -206,9 +209,12 @@ export function EffectsGallery({
                 
                 {/* Favorite button overlay */}
                 <Button
+                  type="button"
                   variant="text"
                   size="icon"
                   className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                  aria-label={favorites.has(preset.id) ? "Remove from favorites" : "Add to favorites"}
+                  aria-pressed={favorites.has(preset.id)}
                   onClick={(e) => toggleFavorite(e, preset.id)}
                 >
                   <Star
@@ -310,6 +316,7 @@ export function EffectsGallery({
               
               <div className="flex gap-2">
                 <Button
+                  type="button"
                   className="flex-1"
                   onClick={() => {
                     handleApply(selectedEffect);
@@ -320,8 +327,11 @@ export function EffectsGallery({
                   Apply Effect
                 </Button>
                 <Button
+                  type="button"
                   variant="outline"
                   size="icon"
+                  aria-label={favorites.has(selectedEffect.id) ? "Remove from favorites" : "Add to favorites"}
+                  aria-pressed={favorites.has(selectedEffect.id)}
                   onClick={(e) => toggleFavorite(e, selectedEffect.id)}
                 >
                   <Star
