@@ -18,9 +18,7 @@ import { useMediaStore } from "@/stores/media-store";
 import { useEffectsStore } from "@/stores/effects-store";
 import { applyEffectsToCanvas, resetCanvasFilters, mergeEffectParameters } from "@/lib/effects-utils";
 import { applyAdvancedCanvasEffects } from "@/lib/effects-canvas-advanced";
-
-// Feature flag for effects - disabled by default for safety
-const EFFECTS_ENABLED = false;
+import { EFFECTS_ENABLED } from "@/config/features";
 
 // Interface for active elements at a specific time
 interface ActiveElement {

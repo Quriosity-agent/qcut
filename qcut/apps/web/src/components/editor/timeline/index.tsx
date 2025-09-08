@@ -66,9 +66,7 @@ import { SnapIndicator } from "../snap-indicator";
 import { SnapPoint } from "@/hooks/use-timeline-snapping";
 import type { DragData, TimelineTrack } from "@/types/timeline";
 import { EffectsTimeline } from "./effects-timeline";
-
-// Feature flag for effects - disabled by default for safety
-const EFFECTS_ENABLED = false;
+import { EFFECTS_ENABLED } from "@/config/features";
 import {
   getTrackHeight,
   getCumulativeHeightBefore,

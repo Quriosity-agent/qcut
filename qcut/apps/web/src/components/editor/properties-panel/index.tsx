@@ -31,9 +31,7 @@ import { PanelView } from "@/types/panel";
 import { useEffectsStore } from "@/stores/effects-store";
 import { EffectsProperties } from "./effects-properties";
 import { TransformProperties } from "./transform-properties";
-
-// Feature flag for effects - disabled by default for safety
-const EFFECTS_ENABLED = false;
+import { EFFECTS_ENABLED } from "@/config/features";
 
 export function PropertiesPanel() {
   const { activeProject, updateProjectFps } = useProjectStore();

@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { toast } from "sonner";
 import { generateUUID } from "@/lib/utils";
+import { EFFECTS_ENABLED } from "@/config/features";
 import type {
   EffectPreset,
   EffectCategory,
@@ -10,9 +11,6 @@ import type {
   AnimatedParameter,
 } from "@/types/effects";
 import { processEffectChain, layerEffectChains, createEffectChain, type EffectChain } from "@/lib/effects-chaining";
-
-// Feature flag - enabled for testing
-export const EFFECTS_ENABLED = true;
 
 // Predefined effect presets
 const EFFECT_PRESETS: EffectPreset[] = [

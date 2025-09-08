@@ -12,9 +12,7 @@ import { StickersView } from "./views/stickers";
 import { CaptionsView } from "./views/captions";
 import { SoundsView } from "./views/sounds";
 import React from "react";
-
-// Feature flag for effects - enabled for testing
-const EFFECTS_ENABLED = true;
+import { EFFECTS_ENABLED } from "@/config/features";
 
 // Lazy load effects view only when enabled
 const EffectsView = React.lazy(() =>

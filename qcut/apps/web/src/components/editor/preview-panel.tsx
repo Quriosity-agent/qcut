@@ -46,9 +46,7 @@ import { useEffectsStore } from "@/stores/effects-store";
 import { parametersToCSSFilters, mergeEffectParameters } from "@/lib/effects-utils";
 // Import interactive element overlay
 import { InteractiveElementOverlay, ElementTransform } from "./interactive-element-overlay";
-
-// Feature flag for effects - enabled for testing
-const EFFECTS_ENABLED = true;
+import { EFFECTS_ENABLED } from "@/config/features";
 
 interface ActiveElement {
   element: TimelineElement;
