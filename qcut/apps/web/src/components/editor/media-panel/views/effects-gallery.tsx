@@ -129,6 +129,7 @@ export function EffectsGallery({
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <Button
+                          type="button"
                           variant="text"
                           size="icon"
                           className="h-8 w-8"
@@ -152,6 +153,7 @@ export function EffectsGallery({
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <Button
+                          type="button"
                           variant="text"
                           size="icon"
                           className="h-8 w-8"
@@ -237,6 +239,7 @@ export function EffectsGallery({
                 hoveredEffect === preset.id && "opacity-100"
               )}>
                 <Button
+                  type="button"
                   variant="secondary"
                   size="sm"
                   className="flex-1 h-7 text-xs"
@@ -249,6 +252,7 @@ export function EffectsGallery({
                   Apply
                 </Button>
                 <Button
+                  type="button"
                   variant="text"
                   size="sm"
                   className="h-7 w-7 p-0"
