@@ -57,17 +57,29 @@ export function TimelineElementDropZone({
 
     try {
       const data = e.dataTransfer.getData('application/json');
-      if (data) {
-        const parsed = JSON.parse(data);
-        
-        if (parsed.type === 'effect' && parsed.preset) {
-          const preset = parsed.preset as EffectPreset;
-          applyEffect(element.id, preset);
-          toast.success(`Applied ${preset.name} effect to element`);
-        }
+      if (!data) return;
+      
+      const parsed = JSON.parse(data);
+      
+      // Validate the parsed data structure
+      if (
+        parsed && 
+        typeof parsed === 'object' &&
+        parsed.type === 'effect' && 
+        parsed.preset && 
+        typeof parsed.preset === 'object' &&
+        typeof parsed.preset.name === 'string' &&
+        typeof parsed.preset.id === 'string' &&
+        typeof parsed.preset.parameters === 'object'
+      ) {
+        const preset = parsed.preset as EffectPreset;
+        applyEffect(element.id, preset);
+        toast.success(`Applied ${preset.name} effect to element`);
+      } else {
+        toast.error('Invalid effect data');
       }
-    } catch (error) {
-      console.error('Failed to handle drop:', error);
+    } catch {
+      // Don't use console.error - just show user-facing error
       toast.error('Failed to apply effect');
     }
   };

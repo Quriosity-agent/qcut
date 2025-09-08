@@ -48,13 +48,19 @@ export function InteractiveElementOverlay({
     return null;
   }
 
+  // Type-safe helper to get element properties
+  const getElementProperty = <T,>(prop: string, defaultValue: T): T => {
+    const value = (element as Record<string, unknown>)[prop];
+    return value !== undefined && value !== null ? value as T : defaultValue;
+  };
+
   const [transform, setTransform] = useState<ElementTransform>({
-    x: (element as any).x || 0,
-    y: (element as any).y || 0,
-    width: (element as any).width || 200,
-    height: (element as any).height || 100,
-    rotation: (element as any).rotation || 0,
-    scale: (element as any).scale || 1,
+    x: getElementProperty('x', 0),
+    y: getElementProperty('y', 0),
+    width: getElementProperty('width', 200),
+    height: getElementProperty('height', 100),
+    rotation: getElementProperty('rotation', 0),
+    scale: getElementProperty('scale', 1),
   });
 
   const [dragState, setDragState] = useState<DragState>({
