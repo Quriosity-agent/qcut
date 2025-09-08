@@ -95,7 +95,14 @@ function useEffectsRendering(elementId: string | null, enabled = false) {
 }
 
 export function PreviewPanel() {
-  const { tracks, getTotalDuration, updateTextElement } = useTimelineStore();
+  const { 
+    tracks, 
+    getTotalDuration, 
+    updateTextElement,
+    updateElementPosition,
+    updateElementSize,
+    updateElementRotation,
+  } = useTimelineStore();
   const {
     mediaItems,
     loading: mediaItemsLoading,
@@ -450,17 +457,39 @@ export function PreviewPanel() {
   // Handler for transform updates from interactive overlay
   const handleTransformUpdate = useCallback((elementId: string, transform: ElementTransform) => {
     const element = activeElements.find(el => el.element.id === elementId);
-    if (element) {
+    if (!element) return;
+    
+    // Use generic element update methods that work for all element types
+    // Update position if changed
+    if (transform.x !== undefined || transform.y !== undefined) {
+      updateElementPosition(elementId, { 
+        x: transform.x, 
+        y: transform.y 
+      });
+    }
+    
+    // Update size if changed
+    if (transform.width !== undefined || transform.height !== undefined) {
+      updateElementSize(elementId, { 
+        width: transform.width, 
+        height: transform.height 
+      });
+    }
+    
+    // Update rotation if changed
+    if (transform.rotation !== undefined) {
+      updateElementRotation(elementId, transform.rotation);
+    }
+    
+    // Note: Scale is not yet persisted in the timeline store
+    // Add updateElementScale method to store if scale persistence is needed
+    if (transform.scale !== undefined && element.element.type === 'text') {
+      // For text elements, we can still use updateTextElement for scale
       updateTextElement(element.track.id, elementId, {
-        x: transform.x,
-        y: transform.y,
-        width: transform.width,
-        height: transform.height,
-        rotation: transform.rotation,
         scale: transform.scale,
       } as any);
     }
-  }, [activeElements, updateTextElement]);
+  }, [activeElements, updateElementPosition, updateElementSize, updateElementRotation, updateTextElement]);
 
   // Extract caption segments from active elements
   const captionSegments = useMemo(() => {

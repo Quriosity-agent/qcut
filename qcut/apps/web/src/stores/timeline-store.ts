@@ -1798,48 +1798,75 @@ export const useTimelineStore = create<TimelineStore>((set, get) => {
 
     // Effects-related methods implementation
     addEffectToElement: (elementId: string, effectId: string) => {
-      const tracks = [...get()._tracks];
-      let elementFound = false;
+      const { _tracks, pushHistory } = get();
+      let updated = false;
       
-      for (const track of tracks) {
-        const element = track.elements.find(e => e.id === elementId);
-        if (element) {
-          // Safe optional field addition - doesn't break existing types
-          if (!element.effectIds) {
-            element.effectIds = [];
-          }
-          if (!element.effectIds.includes(effectId)) {
-            element.effectIds.push(effectId);
-          }
-          elementFound = true;
-          break;
-        }
-      }
+      // Create immutable update
+      const newTracks = _tracks.map((track) => {
+        const elementIndex = track.elements.findIndex(e => e.id === elementId);
+        if (elementIndex === -1) return track;
+        
+        const element = track.elements[elementIndex];
+        const currentEffectIds = element.effectIds || [];
+        
+        // Check if effect already exists
+        if (currentEffectIds.includes(effectId)) return track;
+        
+        // Create new element with updated effect IDs
+        const updatedElement = {
+          ...element,
+          effectIds: [...currentEffectIds, effectId]
+        };
+        
+        // Create new track with updated element
+        const newElements = [...track.elements];
+        newElements[elementIndex] = updatedElement;
+        
+        updated = true;
+        return { ...track, elements: newElements };
+      });
       
-      if (elementFound) {
-        updateTracks(tracks);
+      if (updated) {
+        pushHistory();
+        updateTracks(newTracks);
         autoSaveTimeline();
       }
     },
 
     removeEffectFromElement: (elementId: string, effectId: string) => {
-      const tracks = [...get()._tracks];
-      let elementFound = false;
+      const { _tracks, pushHistory } = get();
+      let updated = false;
       
-      for (const track of tracks) {
-        const element = track.elements.find(e => e.id === elementId);
-        if (element && element.effectIds) {
-          const index = element.effectIds.indexOf(effectId);
-          if (index > -1) {
-            element.effectIds.splice(index, 1);
-            elementFound = true;
-            break;
-          }
+      // Create immutable update
+      const newTracks = _tracks.map((track) => {
+        const elementIndex = track.elements.findIndex(e => e.id === elementId);
+        if (elementIndex === -1) return track;
+        
+        const element = track.elements[elementIndex];
+        if (!element.effectIds || !element.effectIds.includes(effectId)) return track;
+        
+        // Create new element with updated effect IDs
+        const updatedElement = {
+          ...element,
+          effectIds: element.effectIds.filter(id => id !== effectId)
+        };
+        
+        // Clean up empty effectIds array
+        if (updatedElement.effectIds.length === 0) {
+          delete updatedElement.effectIds;
         }
-      }
+        
+        // Create new track with updated element
+        const newElements = [...track.elements];
+        newElements[elementIndex] = updatedElement;
+        
+        updated = true;
+        return { ...track, elements: newElements };
+      });
       
-      if (elementFound) {
-        updateTracks(tracks);
+      if (updated) {
+        pushHistory();
+        updateTracks(newTracks);
         autoSaveTimeline();
       }
     },

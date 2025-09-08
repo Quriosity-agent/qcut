@@ -76,6 +76,7 @@ export function EffectsProperties({ elementId }: EffectsPropertiesProps) {
             <Switch
               checked={effect.enabled}
               onCheckedChange={() => toggleEffect(elementId, effect.id)}
+              aria-label={`Toggle ${effect.name} effect`}
             />
             <div className="flex gap-2">
               <Button
