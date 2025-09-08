@@ -30,6 +30,7 @@ import { SettingsView } from "./settings-view";
 import { PanelView } from "@/types/panel";
 import { useEffectsStore } from "@/stores/effects-store";
 import { EffectsProperties } from "./effects-properties";
+import { TransformProperties } from "./transform-properties";
 
 // Feature flag for effects - disabled by default for safety
 const EFFECTS_ENABLED = false;
@@ -164,6 +165,7 @@ export function PropertiesPanel() {
                     return (
                       <div key={elementId}>
                         <EffectsProperties elementId={element.id} />
+                        <TransformProperties element={element} trackId={trackId} />
                         {/* Still show original properties below effects */}
                         {element.type === "text" && (
                           <TextProperties element={element} trackId={trackId} />
@@ -178,6 +180,7 @@ export function PropertiesPanel() {
                   if (element?.type === "text") {
                     return (
                       <div key={elementId}>
+                        <TransformProperties element={element} trackId={trackId} />
                         <TextProperties element={element} trackId={trackId} />
                       </div>
                     );

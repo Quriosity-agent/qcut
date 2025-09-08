@@ -44,6 +44,8 @@ import { useFrameCache } from "@/hooks/use-frame-cache";
 // Import effects utilities
 import { useEffectsStore } from "@/stores/effects-store";
 import { parametersToCSSFilters, mergeEffectParameters } from "@/lib/effects-utils";
+// Import interactive element overlay
+import { InteractiveElementOverlay, ElementTransform } from "./interactive-element-overlay";
 
 // Feature flag for effects - disabled by default for safety
 const EFFECTS_ENABLED = false;
@@ -115,6 +117,9 @@ export function PreviewPanel() {
     elementWidth: 0,
     elementHeight: 0,
   });
+  
+  // State for selected element (for interactive overlay)
+  const [selectedElementId, setSelectedElementId] = useState<string | null>(null);
 
   // Frame caching - non-intrusive addition
   const {
@@ -430,6 +435,21 @@ export function PreviewPanel() {
     tracks,
     mediaItems,
   ]);
+  
+  // Handler for transform updates from interactive overlay
+  const handleTransformUpdate = useCallback((elementId: string, transform: ElementTransform) => {
+    const element = activeElements.find(el => el.element.id === elementId);
+    if (element) {
+      updateTextElement(element.track.id, elementId, {
+        x: transform.x,
+        y: transform.y,
+        width: transform.width,
+        height: transform.height,
+        rotation: transform.rotation,
+        scale: transform.scale,
+      } as any);
+    }
+  }, [activeElements, updateTextElement]);
 
   // Extract caption segments from active elements
   const captionSegments = useMemo(() => {
@@ -555,6 +575,7 @@ export function PreviewPanel() {
         <div
           key={element.id}
           className="absolute flex items-center justify-center cursor-grab"
+          onClick={() => setSelectedElementId(element.id)}
           onMouseDown={(e) =>
             handleTextMouseDown(e, element, elementData.track.id)
           }
@@ -773,6 +794,18 @@ export function PreviewPanel() {
                 isVisible={captionSegments.length > 0}
                 className="absolute inset-0 pointer-events-none"
               />
+              
+              {/* Interactive element overlays for elements with effects */}
+              {EFFECTS_ENABLED && activeElements.map((elementData) => (
+                <InteractiveElementOverlay
+                  key={elementData.element.id}
+                  element={elementData.element}
+                  isSelected={selectedElementId === elementData.element.id}
+                  canvasSize={canvasSize}
+                  previewDimensions={previewDimensions}
+                  onTransformUpdate={handleTransformUpdate}
+                />
+              ))}
 
               {/* Hidden canvas for frame caching - non-visual */}
               <canvas
