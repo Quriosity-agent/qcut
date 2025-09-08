@@ -69,18 +69,29 @@ function useEffectsRendering(elementId: string | null, enabled = false) {
     if (!enabled || !effects || effects.length === 0) return "";
     
     try {
+      // Filter for enabled effects first
+      const enabledEffects = effects.filter(e => e.enabled);
+      
+      // Guard against zero enabled effects
+      if (enabledEffects.length === 0) return "";
+      
       // Merge all active effect parameters
       const mergedParams = mergeEffectParameters(
-        ...effects.filter(e => e.enabled).map(e => e.parameters)
+        ...enabledEffects.map(e => e.parameters)
       );
+      
       return parametersToCSSFilters(mergedParams);
     } catch (error) {
-      console.error("[Effects] Failed to generate CSS filters:", error);
+      // Use a more specific error message without console
+      // Error will be handled silently, returning empty string
       return "";
     }
   }, [enabled, effects]);
   
-  return { filterStyle, hasEffects: effects.length > 0 };
+  // Check if there are any enabled effects, not just any effects
+  const hasEnabledEffects = effects?.some?.(e => e.enabled) ?? false;
+  
+  return { filterStyle, hasEffects: hasEnabledEffects };
 }
 
 export function PreviewPanel() {

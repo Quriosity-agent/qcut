@@ -282,58 +282,116 @@ export function InteractiveElementOverlay({
       style={elementStyle}
     >
       {/* Drag handle - center */}
-      <div
-        className="absolute inset-0 cursor-move"
+      <button
+        type="button"
+        aria-label="Drag element. Use arrow keys to move"
+        className="absolute inset-0 cursor-move focus:outline-none focus:ring-2 focus:ring-primary bg-transparent"
         onMouseDown={handleDragStart}
+        onKeyDown={(e) => {
+          e.preventDefault();
+          const step = 5 / previewScale;
+          const largeStep = 20 / previewScale;
+          const currentStep = e.shiftKey ? largeStep : step;
+          
+          if (e.key === 'ArrowUp') {
+            updateElementPosition(element.id, { 
+              x: element.x ?? 0, 
+              y: (element.y ?? 0) - currentStep 
+            });
+          } else if (e.key === 'ArrowDown') {
+            updateElementPosition(element.id, { 
+              x: element.x ?? 0, 
+              y: (element.y ?? 0) + currentStep 
+            });
+          } else if (e.key === 'ArrowLeft') {
+            updateElementPosition(element.id, { 
+              x: (element.x ?? 0) - currentStep, 
+              y: element.y ?? 0 
+            });
+          } else if (e.key === 'ArrowRight') {
+            updateElementPosition(element.id, { 
+              x: (element.x ?? 0) + currentStep, 
+              y: element.y ?? 0 
+            });
+          }
+        }}
       >
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-0 hover:opacity-100 transition-opacity">
-          <Move className="w-6 h-6 text-primary" />
+        <span className="sr-only">Drag element</span>
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-0 hover:opacity-100 transition-opacity pointer-events-none">
+          <Move className="w-6 h-6 text-primary" title="Move" />
         </div>
-      </div>
+      </button>
       
       {/* Resize handles */}
-      <div
-        className="absolute -top-1 -left-1 w-3 h-3 bg-primary cursor-nw-resize"
+      <button
+        type="button"
+        aria-label="Resize from top-left corner"
+        className="absolute -top-1 -left-1 w-3 h-3 bg-primary cursor-nw-resize focus:outline-none focus:ring-2 focus:ring-primary rounded-full"
         onMouseDown={(e) => handleResizeStart(e, "top-left")}
       />
-      <div
-        className="absolute -top-1 -right-1 w-3 h-3 bg-primary cursor-ne-resize"
+      <button
+        type="button"
+        aria-label="Resize from top-right corner"
+        className="absolute -top-1 -right-1 w-3 h-3 bg-primary cursor-ne-resize focus:outline-none focus:ring-2 focus:ring-primary rounded-full"
         onMouseDown={(e) => handleResizeStart(e, "top-right")}
       />
-      <div
-        className="absolute -bottom-1 -left-1 w-3 h-3 bg-primary cursor-sw-resize"
+      <button
+        type="button"
+        aria-label="Resize from bottom-left corner"
+        className="absolute -bottom-1 -left-1 w-3 h-3 bg-primary cursor-sw-resize focus:outline-none focus:ring-2 focus:ring-primary rounded-full"
         onMouseDown={(e) => handleResizeStart(e, "bottom-left")}
       />
-      <div
-        className="absolute -bottom-1 -right-1 w-3 h-3 bg-primary cursor-se-resize"
+      <button
+        type="button"
+        aria-label="Resize from bottom-right corner"
+        className="absolute -bottom-1 -right-1 w-3 h-3 bg-primary cursor-se-resize focus:outline-none focus:ring-2 focus:ring-primary rounded-full"
         onMouseDown={(e) => handleResizeStart(e, "bottom-right")}
       />
       
       {/* Edge resize handles */}
-      <div
-        className="absolute top-1/2 -left-1 w-3 h-6 -translate-y-1/2 bg-primary cursor-ew-resize"
+      <button
+        type="button"
+        aria-label="Resize from left edge"
+        className="absolute top-1/2 -left-1 w-3 h-6 -translate-y-1/2 bg-primary cursor-ew-resize focus:outline-none focus:ring-2 focus:ring-primary rounded"
         onMouseDown={(e) => handleResizeStart(e, "left")}
       />
-      <div
-        className="absolute top-1/2 -right-1 w-3 h-6 -translate-y-1/2 bg-primary cursor-ew-resize"
+      <button
+        type="button"
+        aria-label="Resize from right edge"
+        className="absolute top-1/2 -right-1 w-3 h-6 -translate-y-1/2 bg-primary cursor-ew-resize focus:outline-none focus:ring-2 focus:ring-primary rounded"
         onMouseDown={(e) => handleResizeStart(e, "right")}
       />
-      <div
-        className="absolute -top-1 left-1/2 w-6 h-3 -translate-x-1/2 bg-primary cursor-ns-resize"
+      <button
+        type="button"
+        aria-label="Resize from top edge"
+        className="absolute -top-1 left-1/2 w-6 h-3 -translate-x-1/2 bg-primary cursor-ns-resize focus:outline-none focus:ring-2 focus:ring-primary rounded"
         onMouseDown={(e) => handleResizeStart(e, "top")}
       />
-      <div
-        className="absolute -bottom-1 left-1/2 w-6 h-3 -translate-x-1/2 bg-primary cursor-ns-resize"
+      <button
+        type="button"
+        aria-label="Resize from bottom edge"
+        className="absolute -bottom-1 left-1/2 w-6 h-3 -translate-x-1/2 bg-primary cursor-ns-resize focus:outline-none focus:ring-2 focus:ring-primary rounded"
         onMouseDown={(e) => handleResizeStart(e, "bottom")}
       />
       
       {/* Rotation handle */}
-      <div
-        className="absolute -top-8 left-1/2 -translate-x-1/2 w-6 h-6 bg-primary rounded-full cursor-grab hover:cursor-grabbing flex items-center justify-center"
+      <button
+        type="button"
+        aria-label="Rotate element. Use left/right arrow keys to rotate"
+        className="absolute -top-8 left-1/2 -translate-x-1/2 w-6 h-6 bg-primary rounded-full cursor-grab hover:cursor-grabbing flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-primary"
         onMouseDown={handleRotateStart}
+        onKeyDown={(e) => {
+          if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+            e.preventDefault();
+            const rotationStep = e.shiftKey ? 15 : 5;
+            const direction = e.key === 'ArrowLeft' ? -1 : 1;
+            const currentRotation = element.rotation ?? 0;
+            updateElementRotation(element.id, currentRotation + (direction * rotationStep));
+          }
+        }}
       >
-        <RotateCw className="w-4 h-4 text-primary-foreground" />
-      </div>
+        <RotateCw className="w-4 h-4 text-primary-foreground" title="Rotate" />
+      </button>
       
       {/* Effect indicator */}
       {hasEffects && (

@@ -132,12 +132,31 @@ export function KeyframeTimeline({
       const newTime = Math.max(0, Math.min(duration, startTime + deltaTime));
       
       if (animation) {
-        // Update keyframe time
-        const updatedKeyframes = animation.keyframes.map(kf =>
-          kf === keyframe ? { ...kf, time: newTime } : kf
+        // Check for collision with existing keyframes (minimum 0.01s separation)
+        const hasCollision = animation.keyframes.some(kf => 
+          kf !== keyframe && Math.abs(kf.time - newTime) < 0.01
         );
-        const updatedAnimation = { ...animation, keyframes: updatedKeyframes };
-        updateEffectAnimations(elementId, effectId, updatedAnimation);
+        
+        // Only update if no collision detected
+        if (!hasCollision) {
+          // Update keyframe time
+          const updatedKeyframes = animation.keyframes.map(kf =>
+            kf === keyframe ? { ...kf, time: newTime } : kf
+          );
+          const updatedAnimation = { ...animation, keyframes: updatedKeyframes };
+          updateEffectAnimations(elementId, effectId, updatedAnimation);
+        } else {
+          // Optional: Provide visual feedback for collision
+          // Could show a temporary red border or snap to nearest valid position
+          const nearestValidTime = findNearestValidPosition(newTime, animation.keyframes, keyframe);
+          if (nearestValidTime !== null) {
+            const updatedKeyframes = animation.keyframes.map(kf =>
+              kf === keyframe ? { ...kf, time: nearestValidTime } : kf
+            );
+            const updatedAnimation = { ...animation, keyframes: updatedKeyframes };
+            updateEffectAnimations(elementId, effectId, updatedAnimation);
+          }
+        }
       }
     };
     
