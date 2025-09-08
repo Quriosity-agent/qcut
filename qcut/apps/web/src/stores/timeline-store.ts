@@ -1834,7 +1834,7 @@ export const useTimelineStore = create<TimelineStore>((set, get) => {
     },
 
     removeEffectFromElement: (elementId: string, effectId: string) => {
-      const { _tracks, pushHistory } = get();
+      const { _tracks, pushHistory, updateTracksAndSave } = get();
       let updated = false;
       
       // Create immutable update
@@ -1842,19 +1842,15 @@ export const useTimelineStore = create<TimelineStore>((set, get) => {
         const elementIndex = track.elements.findIndex(e => e.id === elementId);
         if (elementIndex === -1) return track;
         
-        const element = track.elements[elementIndex];
-        if (!element.effectIds || !element.effectIds.includes(effectId)) return track;
+        const element = track.elements.at(elementIndex);
+        if (!element || !element.effectIds || !element.effectIds.includes(effectId)) return track;
         
         // Create new element with updated effect IDs
+        const nextEffectIds = element.effectIds.filter((id) => id !== effectId);
         const updatedElement = {
           ...element,
-          effectIds: element.effectIds.filter(id => id !== effectId)
+          effectIds: nextEffectIds
         };
-        
-        // Clean up empty effectIds array by setting to undefined
-        if (updatedElement.effectIds.length === 0) {
-          updatedElement.effectIds = undefined as any;
-        }
         
         // Create new track with updated element
         const newElements = [...track.elements];
@@ -1866,8 +1862,7 @@ export const useTimelineStore = create<TimelineStore>((set, get) => {
       
       if (updated) {
         pushHistory();
-        updateTracks(newTracks);
-        autoSaveTimeline();
+        updateTracksAndSave(newTracks);
       }
     },
 
@@ -1885,7 +1880,7 @@ export const useTimelineStore = create<TimelineStore>((set, get) => {
     },
 
     clearElementEffects: (elementId: string) => {
-      const { _tracks, pushHistory } = get();
+      const { _tracks, pushHistory, updateTracksAndSave } = get();
       let updated = false;
       
       // Create immutable update
@@ -1893,13 +1888,13 @@ export const useTimelineStore = create<TimelineStore>((set, get) => {
         const elementIndex = track.elements.findIndex(e => e.id === elementId);
         if (elementIndex === -1) return track;
         
-        const element = track.elements[elementIndex];
-        if (!element.effectIds || element.effectIds.length === 0) return track;
+        const element = track.elements.at(elementIndex);
+        if (!element || !element.effectIds || element.effectIds.length === 0) return track;
         
         // Create new element with cleared effect IDs
         const updatedElement = {
           ...element,
-          effectIds: [] as string[]
+          effectIds: []
         };
         
         // Create new track with updated element
@@ -1912,8 +1907,7 @@ export const useTimelineStore = create<TimelineStore>((set, get) => {
       
       if (updated) {
         pushHistory();
-        updateTracks(newTracks);
-        autoSaveTimeline();
+        updateTracksAndSave(newTracks);
       }
     },
   };

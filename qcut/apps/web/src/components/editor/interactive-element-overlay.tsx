@@ -198,13 +198,30 @@ export function InteractiveElementOverlay({
         className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-8 bg-primary/20 rounded-full flex items-center justify-center cursor-move hover:bg-primary/30 focus:outline-none focus:ring-2 focus:ring-primary"
         onMouseDown={(e) => handleMouseDown(e, "move")}
         onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === ' ') {
+          const step = e.shiftKey ? 10 : 1;
+          if (e.key === 'ArrowUp') {
             e.preventDefault();
-            // Start keyboard-based movement with arrow keys
-            const step = e.shiftKey ? 10 : 1;
-            if (e.key === 'Enter') {
-              handleMouseDown(e as any, "move");
-            }
+            const newTransform = { ...transform, y: transform.y - step };
+            setTransform(newTransform);
+            onTransformUpdate(element.id, newTransform);
+          } else if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            const newTransform = { ...transform, y: transform.y + step };
+            setTransform(newTransform);
+            onTransformUpdate(element.id, newTransform);
+          } else if (e.key === 'ArrowLeft') {
+            e.preventDefault();
+            const newTransform = { ...transform, x: transform.x - step };
+            setTransform(newTransform);
+            onTransformUpdate(element.id, newTransform);
+          } else if (e.key === 'ArrowRight') {
+            e.preventDefault();
+            const newTransform = { ...transform, x: transform.x + step };
+            setTransform(newTransform);
+            onTransformUpdate(element.id, newTransform);
+          } else if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            handleMouseDown(e as any, "move");
           }
         }}
         tabIndex={0}
