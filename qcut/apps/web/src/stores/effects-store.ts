@@ -440,24 +440,7 @@ export const useEffectsStore = create<EffectsStore>((set, get) => ({
     const newEffect: EffectInstance = {
       id: generateUUID(),
       name: preset.name,
-      effectType: preset.parameters.brightness ? "brightness" :
-                  preset.parameters.contrast ? "contrast" :
-                  preset.parameters.saturation ? "saturation" :
-                  preset.parameters.sepia ? "sepia" :
-                  preset.parameters.grayscale ? "grayscale" :
-                  preset.parameters.vintage ? "vintage" :
-                  preset.parameters.dramatic ? "dramatic" :
-                  preset.parameters.warm ? "warm" :
-                  preset.parameters.cool ? "cool" :
-                  preset.parameters.cinematic ? "cinematic" :
-                  preset.parameters.blur ? "blur" :
-                  preset.parameters.sharpen ? "sharpen" :
-                  preset.parameters.emboss ? "emboss" :
-                  preset.parameters.edge ? "edge" :
-                  preset.parameters.pixelate ? "pixelate" :
-                  preset.parameters.vignette ? "vignette" :
-                  preset.parameters.grain ? "grain" :
-                  preset.parameters.invert ? "invert" : "brightness",
+      effectType: inferEffectType(preset.parameters),
       parameters: { ...preset.parameters },
       duration: 0, // Will be set based on element duration
       enabled: true,

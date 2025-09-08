@@ -38,7 +38,7 @@ export default function EffectsView() {
       applyEffect(selectedElementId, preset);
       toast.success(`Applied ${preset.name} effect`);
     } else {
-      toast.error("Please select an element first");
+      toast.info("Please select an element on the timeline first");
     }
   };
 
