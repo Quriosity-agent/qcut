@@ -196,13 +196,13 @@ export function KeyframeTimeline({
           </Select>
           
           {/* Playback controls */}
-          <Button size="icon" variant="ghost" onClick={() => navigateToKeyframe("prev")}>
+          <Button size="icon" variant="text" onClick={() => navigateToKeyframe("prev")}>
             <SkipBack className="h-4 w-4" />
           </Button>
-          <Button size="icon" variant="ghost" onClick={toggle}>
+          <Button size="icon" variant="text" onClick={toggle}>
             {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
           </Button>
-          <Button size="icon" variant="ghost" onClick={() => navigateToKeyframe("next")}>
+          <Button size="icon" variant="text" onClick={() => navigateToKeyframe("next")}>
             <SkipForward className="h-4 w-4" />
           </Button>
           
@@ -240,16 +240,16 @@ export function KeyframeTimeline({
       {/* Transition presets */}
       <div className="flex space-x-2">
         <span className="text-sm">Quick Transitions:</span>
-        <Button size="sm" variant="ghost" onClick={() => handleApplyTransition("fade-in")}>
+        <Button size="sm" variant="text" onClick={() => handleApplyTransition("fade-in")}>
           Fade In
         </Button>
-        <Button size="sm" variant="ghost" onClick={() => handleApplyTransition("fade-out")}>
+        <Button size="sm" variant="text" onClick={() => handleApplyTransition("fade-out")}>
           Fade Out
         </Button>
-        <Button size="sm" variant="ghost" onClick={() => handleApplyTransition("pulse")}>
+        <Button size="sm" variant="text" onClick={() => handleApplyTransition("pulse")}>
           Pulse
         </Button>
-        <Button size="sm" variant="ghost" onClick={() => handleApplyTransition("bounce")}>
+        <Button size="sm" variant="text" onClick={() => handleApplyTransition("bounce")}>
           Bounce
         </Button>
       </div>

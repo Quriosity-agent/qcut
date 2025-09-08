@@ -92,7 +92,7 @@ export function interpolateKeyframes(
   if (easing === "cubic-bezier" && kf1.controlPoints) {
     progress = easingFunctions["cubic-bezier"](progress, kf1.controlPoints as [number, number, number, number]);
   } else if (easing in easingFunctions && easing !== "cubic-bezier") {
-    progress = easingFunctions[easing as keyof typeof easingFunctions](progress);
+    progress = (easingFunctions[easing as keyof typeof easingFunctions] as (t: number) => number)(progress);
   }
   
   // Smooth interpolation with cubic hermite spline

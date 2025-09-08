@@ -126,8 +126,11 @@ export const useEffectKeyboardShortcuts = () => {
     () => {
       const elementId = getSelectedElement();
       if (elementId) {
-        resetEffectParameters(elementId);
-        toast.success("Effect parameters reset");
+        const effects = activeEffects.get(elementId);
+        if (effects && effects.length > 0) {
+          resetEffectParameters(elementId, effects[0].id);
+          toast.success("Effect parameters reset");
+        }
       }
     },
     isActive
@@ -161,8 +164,8 @@ export const useEffectKeyboardShortcuts = () => {
         if (effects && effects.length > 0) {
           const effect = effects[0];
           const param = Object.keys(effect.parameters)[0];
-          if (param && typeof effect.parameters[param] === 'number') {
-            const newValue = Math.min(100, effect.parameters[param] + 10);
+          if (param && typeof (effect.parameters as any)[param] === 'number') {
+            const newValue = Math.min(100, (effect.parameters as any)[param] + 10);
             useEffectsStore.getState().updateEffectParameters(
               elementId,
               effect.id,
@@ -186,8 +189,8 @@ export const useEffectKeyboardShortcuts = () => {
         if (effects && effects.length > 0) {
           const effect = effects[0];
           const param = Object.keys(effect.parameters)[0];
-          if (param && typeof effect.parameters[param] === 'number') {
-            const newValue = Math.max(-100, effect.parameters[param] - 10);
+          if (param && typeof (effect.parameters as any)[param] === 'number') {
+            const newValue = Math.max(-100, (effect.parameters as any)[param] - 10);
             useEffectsStore.getState().updateEffectParameters(
               elementId,
               effect.id,

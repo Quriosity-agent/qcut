@@ -3,7 +3,7 @@ import { useEffectsStore } from "@/stores/effects-store";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
-import { PropertyGroup } from "@/components/editor/properties-panel/property-group";
+import { PropertyGroup } from "@/components/editor/properties-panel/property-item";
 import { Trash2, Copy } from "lucide-react";
 import type { EffectInstance, EffectParameters } from "@/types/effects";
 
@@ -70,7 +70,7 @@ export function EffectsProperties({ elementId }: EffectsPropertiesProps) {
   return (
     <div className="space-y-4">
       {effects.map((effect) => (
-        <PropertyGroup key={effect.id} label={effect.name}>
+        <PropertyGroup key={effect.id} title={effect.name}>
           {/* Effect Controls */}
           <div className="flex items-center justify-between mb-4">
             <Switch
@@ -79,14 +79,14 @@ export function EffectsProperties({ elementId }: EffectsPropertiesProps) {
             />
             <div className="flex gap-2">
               <Button
-                variant="ghost"
+                variant="text"
                 size="icon"
                 onClick={() => duplicateEffect(elementId, effect.id)}
               >
                 <Copy className="w-4 h-4" />
               </Button>
               <Button
-                variant="ghost"
+                variant="text"
                 size="icon"
                 onClick={() => removeEffect(elementId, effect.id)}
               >

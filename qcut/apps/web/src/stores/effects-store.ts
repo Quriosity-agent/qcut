@@ -327,6 +327,7 @@ interface EffectsStore {
   duplicateEffect: (elementId: string, effectId: string) => void;
   reorderEffects: (elementId: string, effectIds: string[]) => void;
   resetEffectToDefaults: (elementId: string, effectId: string) => void;
+  resetEffectParameters: (elementId: string, effectId: string) => void;
   updateEffectAnimations: (elementId: string, effectId: string, animation: AnimatedParameter | null) => void;
 }
 
@@ -512,6 +513,11 @@ export const useEffectsStore = create<EffectsStore>((set, get) => ({
         toast.success("Effect reset to defaults");
       }
     }
+  },
+  
+  resetEffectParameters: (elementId, effectId) => {
+    // This is an alias for resetEffectToDefaults
+    get().resetEffectToDefaults(elementId, effectId);
   },
   
   updateEffectAnimations: (elementId, effectId, animation) => {
