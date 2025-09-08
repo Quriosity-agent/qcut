@@ -897,7 +897,11 @@ export function Timeline() {
                 style={{
                   height: `${Math.max(
                     200,
-                    Math.min(800, getTotalTracksHeight(tracks))
+                    Math.min(
+                      800,
+                      getTotalTracksHeight(tracks) +
+                        (EFFECTS_ENABLED && tracks.length > 0 ? TIMELINE_CONSTANTS.TRACK_HEIGHT : 0)
+                    )
                   )}px`,
                   width: `${dynamicTimelineWidth}px`,
                 }}

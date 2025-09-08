@@ -1,28 +1,10 @@
 // This file MUST be loaded before any React or Radix UI imports
 // It provides critical polyfills for the test environment
 
-// MutationObserver mock - MUST be defined before any imports that use it
-class MockMutationObserver {
-  constructor(callback: MutationCallback) {}
-  observe(target: Node, options?: MutationObserverInit) {}
-  unobserve(target: Node) {}
-  disconnect() {}
-  takeRecords(): MutationRecord[] { return []; }
-}
+import { installAllBrowserMocks } from './mocks/browser-mocks';
 
-// Set MutationObserver on all global contexts
-if (typeof globalThis !== 'undefined' && !globalThis.MutationObserver) {
-  (globalThis as any).MutationObserver = MockMutationObserver;
-}
-if (typeof global !== 'undefined' && !global.MutationObserver) {
-  (global as any).MutationObserver = MockMutationObserver;
-}
-if (typeof window !== 'undefined' && !window.MutationObserver) {
-  (window as any).MutationObserver = MockMutationObserver;
-}
-if (typeof self !== 'undefined' && !(self as any).MutationObserver) {
-  (self as any).MutationObserver = MockMutationObserver;
-}
+// Install browser mocks before any imports that might use them
+installAllBrowserMocks();
 
 // Create a comprehensive mock CSSStyleDeclaration
 class MockCSSStyleDeclaration {

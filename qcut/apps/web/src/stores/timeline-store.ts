@@ -1834,7 +1834,7 @@ export const useTimelineStore = create<TimelineStore>((set, get) => {
     },
 
     removeEffectFromElement: (elementId: string, effectId: string) => {
-      const { _tracks, pushHistory, updateTracksAndSave } = get();
+      const { _tracks, pushHistory } = get();
       let updated = false;
       
       // Create immutable update
@@ -1862,7 +1862,8 @@ export const useTimelineStore = create<TimelineStore>((set, get) => {
       
       if (updated) {
         pushHistory();
-        updateTracksAndSave(newTracks);
+        updateTracks(newTracks);
+        autoSaveTimeline();
       }
     },
 
@@ -1880,7 +1881,7 @@ export const useTimelineStore = create<TimelineStore>((set, get) => {
     },
 
     clearElementEffects: (elementId: string) => {
-      const { _tracks, pushHistory, updateTracksAndSave } = get();
+      const { _tracks, pushHistory } = get();
       let updated = false;
       
       // Create immutable update
@@ -1907,7 +1908,8 @@ export const useTimelineStore = create<TimelineStore>((set, get) => {
       
       if (updated) {
         pushHistory();
-        updateTracksAndSave(newTracks);
+        updateTracks(newTracks);
+        autoSaveTimeline();
       }
     },
   };

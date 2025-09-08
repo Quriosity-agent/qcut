@@ -114,6 +114,8 @@ export interface EffectParameters {
   bulgeRadius?: number;
   fisheye?: number;
   fisheyeStrength?: number;
+  ripple?: number;
+  swirl?: number;
   
   // Artistic effects
   oilPainting?: number;

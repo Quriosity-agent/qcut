@@ -30,21 +30,8 @@ const mockGetComputedStyle = (element: Element): CSSStyleDeclaration => {
   return styles as unknown as CSSStyleDeclaration;
 };
 
-// Define MutationObserver polyfill
-class MockMutationObserver {
-  constructor(callback: MutationCallback) {}
-  observe(target: Node, options?: MutationObserverInit) {}
-  unobserve(target: Node) {}
-  disconnect() {}
-  takeRecords(): MutationRecord[] { return []; }
-}
-
-// Define ResizeObserver polyfill
-class MockResizeObserver {
-  observe() {}
-  unobserve() {}
-  disconnect() {}
-}
+// Import shared browser mocks
+import { MockMutationObserver, MockResizeObserver } from './mocks/browser-mocks';
 
 // Apply polyfills to all possible global contexts
 const contexts: Array<Record<string, unknown>> = [

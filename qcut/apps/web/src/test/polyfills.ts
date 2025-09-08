@@ -143,9 +143,8 @@ const setupAdditionalPolyfills = () => {
       // MutationObserver mock
       if (!context.MutationObserver) {
         context.MutationObserver = class MockMutationObserver {
-          constructor(callback: MutationCallback) {}
-          observe(target: Node, options?: MutationObserverInit) {}
-          unobserve(target: Node) {}
+          constructor(_callback: MutationCallback) {}
+          observe(_target: Node, _options?: MutationObserverInit) {}
           disconnect() {}
           takeRecords(): MutationRecord[] { return []; }
         };
