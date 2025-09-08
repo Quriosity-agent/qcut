@@ -1,87 +1,27 @@
-// Global setup that runs once before all tests
-import { beforeAll } from 'vitest'
+// Global setup that runs before any test files are loaded
+// This ensures MutationObserver is available for all modules
 
-// Import polyfills at the global level
-import './polyfills'
-
-export default function setup() {
-  // Force polyfill application globally
-  const mockGetComputedStyle = (element: Element): CSSStyleDeclaration => {
-    const styles: any = {
-      getPropertyValue: (prop: string) => {
-        const mappings: Record<string, string> = {
-          'display': 'block',
-          'visibility': 'visible',
-          'opacity': '1',
-          'transform': 'none',
-          'transition': 'none',
-          'animation': 'none',
-          'position': 'static',
-          'top': 'auto',
-          'left': 'auto',
-          'right': 'auto',
-          'bottom': 'auto',
-          'width': 'auto',
-          'height': 'auto',
-          'margin': '0px',
-          'padding': '0px',
-          'border': '0px',
-          'background': 'transparent'
-        };
-        return mappings[prop] || "";
-      },
-      setProperty: () => {},
-      removeProperty: () => "",
-      item: (index: number) => "",
-      length: 0,
-      parentRule: null,
-      cssFloat: "",
-      cssText: "",
-      display: "block",
-      visibility: "visible", 
-      opacity: "1",
-      transform: "none",
-      transition: "none",
-      animation: "none",
-      position: "static",
-      top: "auto",
-      left: "auto",
-      right: "auto",
-      bottom: "auto",
-      width: "auto",
-      height: "auto"
-    };
-    
-    Object.defineProperty(styles, Symbol.iterator, {
-      value: function* () {
-        for (let i = 0; i < this.length; i++) {
-          yield this.item(i);
-        }
-      }
-    });
-    
-    return styles as CSSStyleDeclaration;
-  };
-
-  // Apply to all contexts aggressively
-  const contexts = [
-    globalThis,
-    typeof global !== "undefined" ? global : null,
-    typeof window !== "undefined" ? window : null
-  ].filter(Boolean);
-  contexts.forEach(context => {
-    if (context && typeof context === 'object') {
-      try {
-        Object.defineProperty(context, "getComputedStyle", {
-          value: mockGetComputedStyle,
-          writable: true,
-          configurable: true,
-        });
-      } catch (e) {
-        console.warn('Failed to set getComputedStyle on context:', e);
-      }
-    }
-  });
-
-  console.log('✓ Global setup complete - polyfills applied');
+// MutationObserver polyfill for JSDOM
+if (typeof global !== "undefined" && !global.MutationObserver) {
+  class MockMutationObserver {
+    constructor(callback: MutationCallback) {}
+    observe(target: Node, options?: MutationObserverInit) {}
+    unobserve(target: Node) {}
+    disconnect() {}
+    takeRecords(): MutationRecord[] { return []; }
+  }
+  
+  (global as any).MutationObserver = MockMutationObserver;
 }
+
+// Also set on globalThis for consistency
+if (typeof globalThis !== "undefined" && !globalThis.MutationObserver) {
+  (globalThis as any).MutationObserver = (global as any).MutationObserver;
+}
+
+// And on window if it exists
+if (typeof window !== "undefined" && !window.MutationObserver) {
+  (window as any).MutationObserver = (global as any).MutationObserver;
+}
+
+export {};

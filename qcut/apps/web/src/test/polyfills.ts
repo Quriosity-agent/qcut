@@ -140,6 +140,17 @@ const setupAdditionalPolyfills = () => {
         };
       }
       
+      // MutationObserver mock
+      if (!context.MutationObserver) {
+        context.MutationObserver = class MockMutationObserver {
+          constructor(callback: MutationCallback) {}
+          observe(target: Node, options?: MutationObserverInit) {}
+          unobserve(target: Node) {}
+          disconnect() {}
+          takeRecords(): MutationRecord[] { return []; }
+        };
+      }
+      
       // IntersectionObserver mock
       if (!context.IntersectionObserver) {
         context.IntersectionObserver = class MockIntersectionObserver {

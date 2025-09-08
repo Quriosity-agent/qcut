@@ -111,6 +111,10 @@ setupToastMock();
 import { mockPresence } from "./mocks/radix-presence";
 mockPresence();
 
+// Load Radix UI focus scope mock to avoid MutationObserver issues
+import { mockFocusScope } from "./mocks/radix-focus-scope";
+mockFocusScope();
+
 // Mock window.matchMedia and window.history for jsdom environment
 Object.defineProperty(window, "matchMedia", {
   writable: true,
@@ -168,15 +172,29 @@ Object.defineProperty(globalThis, "ResizeObserver", {
   value: window.ResizeObserver,
 });
 
-// Mock MutationObserver
+// Mock MutationObserver with full implementation
+const MutationObserverMock = vi.fn().mockImplementation((callback) => {
+  const observer = {
+    observe: vi.fn(),
+    unobserve: vi.fn(),
+    disconnect: vi.fn(),
+    takeRecords: vi.fn(() => []),
+  };
+  return observer;
+});
+
 Object.defineProperty(window, "MutationObserver", {
   writable: true,
-  value: vi.fn().mockImplementation(makeObserver),
+  value: MutationObserverMock,
 });
 Object.defineProperty(globalThis, "MutationObserver", {
   writable: true,
-  value: window.MutationObserver,
+  value: MutationObserverMock,
 });
+// Also set it on global for Node environments
+if (typeof global !== "undefined") {
+  (global as any).MutationObserver = MutationObserverMock;
+}
 
 // Mock URL methods
 Object.defineProperty(URL, "createObjectURL", {

@@ -50,7 +50,7 @@ export function InteractiveElementOverlay({
 
   // Type-safe helper to get element properties
   const getElementProperty = <T,>(prop: string, defaultValue: T): T => {
-    const value = (element as Record<string, unknown>)[prop];
+    const value = (element as any)[prop];
     return value !== undefined && value !== null ? value as T : defaultValue;
   };
 
@@ -337,7 +337,7 @@ export function InteractiveElementOverlay({
             const rotationStep = e.shiftKey ? 15 : 5;
             const direction = e.key === 'ArrowLeft' ? -1 : 1;
             const newRotation = (transform.rotation || 0) + (direction * rotationStep);
-            onTransformUpdate({ ...transform, rotation: newRotation });
+            onTransformUpdate(element.id, { ...transform, rotation: newRotation });
           }
         }}
         tabIndex={0}

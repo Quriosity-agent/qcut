@@ -60,6 +60,12 @@ export function InteractiveElementOverlay({
   const { updateElementPosition, updateElementSize, updateElementRotation } = useTimelineStore();
   const { getElementEffects } = useEffectsStore();
   const overlayRef = useRef<HTMLDivElement>(null);
+  const rafRef = useRef<number | null>(null);
+  const pendingUpdateRef = useRef<{
+    position?: { x: number; y: number };
+    size?: { width: number; height: number; x: number; y: number };
+    rotation?: number;
+  } | null>(null);
   
   const [dragState, setDragState] = useState<DragState>({
     isDragging: false,
@@ -88,6 +94,61 @@ export function InteractiveElementOverlay({
 
   // Check if element has effects
   const hasEffects = effectsEnabled && getElementEffects(element.id).length > 0;
+  
+  // Throttled update function using requestAnimationFrame
+  const flushPendingUpdates = useCallback(() => {
+    if (!pendingUpdateRef.current) return;
+    
+    const updates = pendingUpdateRef.current;
+    
+    if (updates.position) {
+      updateElementPosition(element.id, updates.position);
+    }
+    
+    if (updates.size) {
+      updateElementSize(element.id, updates.size);
+    }
+    
+    if (updates.rotation !== undefined) {
+      updateElementRotation(element.id, updates.rotation);
+    }
+    
+    pendingUpdateRef.current = null;
+    rafRef.current = null;
+  }, [element.id, updateElementPosition, updateElementSize, updateElementRotation]);
+
+  const scheduleUpdate = useCallback((type: 'position' | 'size' | 'rotation', data: any) => {
+    if (!pendingUpdateRef.current) {
+      pendingUpdateRef.current = {};
+    }
+    
+    if (type === 'position') {
+      pendingUpdateRef.current.position = data;
+    } else if (type === 'size') {
+      pendingUpdateRef.current.size = data;
+    } else if (type === 'rotation') {
+      pendingUpdateRef.current.rotation = data;
+    }
+    
+    if (!rafRef.current) {
+      rafRef.current = requestAnimationFrame(flushPendingUpdates);
+    }
+  }, [flushPendingUpdates]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      // Cancel any pending RAF on unmount
+      if (rafRef.current) {
+        cancelAnimationFrame(rafRef.current);
+        rafRef.current = null;
+      }
+      // Flush any pending updates
+      if (pendingUpdateRef.current) {
+        flushPendingUpdates();
+      }
+    };
+  }, [flushPendingUpdates]);
   
   // Only show interactive overlay if element has effects or is selected
   if (!hasEffects && !isActive) {
@@ -155,7 +216,7 @@ export function InteractiveElementOverlay({
         const deltaX = (e.clientX - dragState.startX) / previewScale;
         const deltaY = (e.clientY - dragState.startY) / previewScale;
         
-        updateElementPosition(element.id, {
+        scheduleUpdate('position', {
           x: dragState.initialX + deltaX,
           y: dragState.initialY + deltaY,
         });
@@ -207,7 +268,7 @@ export function InteractiveElementOverlay({
             break;
         }
         
-        updateElementSize(element.id, {
+        scheduleUpdate('size', {
           width: newWidth,
           height: newHeight,
           x: newX,
@@ -228,27 +289,70 @@ export function InteractiveElementOverlay({
         const deltaAngle = currentAngle - rotateState.startAngle;
         const newRotation = rotateState.initialRotation + deltaAngle;
         
-        updateElementRotation(element.id, newRotation);
+        scheduleUpdate('rotation', newRotation);
       }
     };
     
     const handleMouseUp = () => {
+      // Flush any pending updates immediately on mouse up
+      if (rafRef.current) {
+        cancelAnimationFrame(rafRef.current);
+        rafRef.current = null;
+      }
+      flushPendingUpdates();
+      
       setDragState(prev => ({ ...prev, isDragging: false }));
       setResizeState(prev => ({ ...prev, isResizing: false }));
       setRotateState(prev => ({ ...prev, isRotating: false }));
     };
     
+    // Helper function to get proper cursor based on resize handle
+    const getResizeCursor = (handle: ResizeHandle): string => {
+      switch (handle) {
+        case "top-left":
+        case "bottom-right":
+          return "nwse-resize";
+        case "top-right":
+        case "bottom-left":
+          return "nesw-resize";
+        case "left":
+        case "right":
+          return "ew-resize";
+        case "top":
+        case "bottom":
+          return "ns-resize";
+        default:
+          return "nwse-resize";
+      }
+    };
+    
     if (dragState.isDragging || resizeState.isResizing || rotateState.isRotating) {
       document.addEventListener("mousemove", handleMouseMove);
       document.addEventListener("mouseup", handleMouseUp);
-      document.body.style.cursor = dragState.isDragging ? "move" : 
-                                   resizeState.isResizing ? "nwse-resize" : 
-                                   "grabbing";
+      
+      // Set proper cursor and disable text selection during operations
+      if (dragState.isDragging) {
+        document.body.style.cursor = "move";
+      } else if (resizeState.isResizing) {
+        document.body.style.cursor = getResizeCursor(resizeState.handle);
+      } else if (rotateState.isRotating) {
+        document.body.style.cursor = "grabbing";
+      }
+      
+      // Disable text selection during drag operations
+      document.body.style.userSelect = "none";
       
       return () => {
         document.removeEventListener("mousemove", handleMouseMove);
         document.removeEventListener("mouseup", handleMouseUp);
         document.body.style.cursor = "";
+        document.body.style.userSelect = "";
+        
+        // Clean up any pending RAF
+        if (rafRef.current) {
+          cancelAnimationFrame(rafRef.current);
+          rafRef.current = null;
+        }
       };
     }
   }, [
@@ -256,10 +360,8 @@ export function InteractiveElementOverlay({
     resizeState,
     rotateState,
     previewScale,
-    element.id,
-    updateElementPosition,
-    updateElementSize,
-    updateElementRotation,
+    scheduleUpdate,
+    flushPendingUpdates,
   ]);
 
   const elementStyle = {
@@ -318,7 +420,7 @@ export function InteractiveElementOverlay({
       >
         <span className="sr-only">Drag element</span>
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-0 hover:opacity-100 transition-opacity pointer-events-none">
-          <Move className="w-6 h-6 text-primary" title="Move" />
+          <Move className="w-6 h-6 text-primary" />
         </div>
       </button>
       
@@ -390,7 +492,7 @@ export function InteractiveElementOverlay({
           }
         }}
       >
-        <RotateCw className="w-4 h-4 text-primary-foreground" title="Rotate" />
+        <RotateCw className="w-4 h-4 text-primary-foreground" />
       </button>
       
       {/* Effect indicator */}

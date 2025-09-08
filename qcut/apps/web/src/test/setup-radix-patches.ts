@@ -30,6 +30,15 @@ const mockGetComputedStyle = (element: Element): CSSStyleDeclaration => {
   return styles as unknown as CSSStyleDeclaration;
 };
 
+// Define MutationObserver polyfill
+class MockMutationObserver {
+  constructor(callback: MutationCallback) {}
+  observe(target: Node, options?: MutationObserverInit) {}
+  unobserve(target: Node) {}
+  disconnect() {}
+  takeRecords(): MutationRecord[] { return []; }
+}
+
 // Define ResizeObserver polyfill
 class MockResizeObserver {
   observe() {}
@@ -57,6 +66,13 @@ for (const ctx of contexts) {
       if (!('getComputedStyle' in ctx)) {
         Object.defineProperty(ctx, 'getComputedStyle', {
           value: mockGetComputedStyle,
+          writable: true,
+          configurable: true,
+        });
+      }
+      if (!('MutationObserver' in ctx)) {
+        Object.defineProperty(ctx, 'MutationObserver', {
+          value: MockMutationObserver,
           writable: true,
           configurable: true,
         });

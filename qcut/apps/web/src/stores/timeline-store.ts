@@ -1851,9 +1851,9 @@ export const useTimelineStore = create<TimelineStore>((set, get) => {
           effectIds: element.effectIds.filter(id => id !== effectId)
         };
         
-        // Clean up empty effectIds array
+        // Clean up empty effectIds array by setting to undefined
         if (updatedElement.effectIds.length === 0) {
-          delete updatedElement.effectIds;
+          updatedElement.effectIds = undefined as any;
         }
         
         // Create new track with updated element
