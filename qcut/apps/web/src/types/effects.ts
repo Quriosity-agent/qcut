@@ -66,6 +66,13 @@ export type EffectCategory =
   | "composite";
 
 export interface EffectParameters {
+  // Transform parameters
+  opacity?: number;
+  scale?: number;
+  rotate?: number;
+  skewX?: number;
+  skewY?: number;
+
   // Basic parameters
   brightness?: number;
   contrast?: number;

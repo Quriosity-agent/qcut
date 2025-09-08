@@ -979,16 +979,13 @@ export function Timeline() {
                         className="absolute left-0 right-0 border-t-2 border-purple-500/30"
                         style={{
                           top: `${getTotalTracksHeight(tracks)}px`,
-                          height: "64px",
+                          height: `${TIMELINE_CONSTANTS.TRACK_HEIGHT}px`,
                         }}
                       >
-                        {tracks.map((track) => (
-                          <EffectsTimeline
-                            key={`effects-${track.id}`}
-                            track={track}
-                            pixelsPerSecond={TIMELINE_CONSTANTS.PIXELS_PER_SECOND * zoomLevel}
-                          />
-                        ))}
+                        <EffectsTimeline
+                          tracks={tracks}
+                          pixelsPerSecond={TIMELINE_CONSTANTS.PIXELS_PER_SECOND * zoomLevel}
+                        />
                       </div>
                     )}
                   </>

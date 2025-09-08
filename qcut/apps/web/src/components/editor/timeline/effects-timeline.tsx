@@ -8,14 +8,14 @@ import type {
 } from "@/types/timeline";
 
 interface EffectsTimelineProps {
-  track: TimelineTrack;
+  tracks: TimelineTrack[];
   pixelsPerSecond: number;
 }
 
 // Standard track height from timeline constants
 const TRACK_HEIGHT = 64;
 
-export function EffectsTimeline({ track, pixelsPerSecond }: EffectsTimelineProps) {
+export function EffectsTimeline({ tracks, pixelsPerSecond }: EffectsTimelineProps) {
   const { getElementEffects } = useEffectsStore();
   const [hoveredEffect, setHoveredEffect] = useState<string | null>(null);
 
@@ -79,16 +79,11 @@ export function EffectsTimeline({ track, pixelsPerSecond }: EffectsTimelineProps
 
   return (
     <div 
-      className="relative h-16 border-b hover:bg-accent/5"
+      className="relative hover:bg-accent/5"
       style={{ height: `${TRACK_HEIGHT}px` }}
     >
-      {/* Track label */}
-      <div className="absolute left-2 top-2 text-xs text-muted-foreground">
-        Effects
-      </div>
-
-      {/* Effect visualization bars for each element */}
-      {track.elements.map((element) => (
+      {/* Effect visualization bars for all elements from all tracks */}
+      {tracks.flatMap(track => track.elements).map((element) => (
         <div key={element.id}>
           {renderEffectBars(element)}
         </div>
@@ -97,8 +92,9 @@ export function EffectsTimeline({ track, pixelsPerSecond }: EffectsTimelineProps
       {/* Hover tooltip */}
       {hoveredEffect && (
         <div className="absolute top-0 right-2 text-xs text-muted-foreground">
-          {getElementEffects(track.elements[0]?.id)
-            ?.find(e => e.id === hoveredEffect)?.name}
+          {tracks.flatMap(t => t.elements).map(el => getElementEffects(el.id))
+            .flat()
+            ?.find(e => e?.id === hoveredEffect)?.name}
         </div>
       )}
     </div>

@@ -242,6 +242,51 @@ export function KeyframeTimeline({
     }
   }, [animation, currentTime, setCurrentTime]);
   
+  // Get appropriate range for parameter type
+  const getParameterRange = (param: keyof EffectParameters) => {
+    switch(param) {
+      case 'opacity':
+        return { min: 0, max: 1, step: 0.01 };
+      case 'blur':
+      case 'sharpen':
+      case 'grain':
+      case 'vignette':
+      case 'edge':
+        return { min: 0, max: 100, step: 1 };
+      case 'brightness':
+      case 'contrast':
+      case 'saturation':
+        return { min: 0, max: 200, step: 1 };
+      case 'hue':
+        return { min: -180, max: 180, step: 1 };
+      case 'warm':
+      case 'cool':
+      case 'vintage':
+      case 'sepia':
+      case 'grayscale':
+        return { min: 0, max: 100, step: 1 };
+      case 'gamma':
+        return { min: 0.1, max: 3, step: 0.1 };
+      case 'scale':
+        return { min: 0, max: 300, step: 1 };
+      case 'rotate':
+        return { min: -360, max: 360, step: 1 };
+      case 'skewX':
+      case 'skewY':
+        return { min: -45, max: 45, step: 1 };
+      case 'wave':
+      case 'ripple':
+      case 'swirl':
+      case 'bulge':
+      case 'fisheye':
+        return { min: 0, max: 100, step: 1 };
+      default:
+        return { min: -100, max: 100, step: 1 };
+    }
+  };
+  
+  const parameterRange = getParameterRange(selectedParameter);
+  
   return (
     <div className={cn("space-y-4 p-4 bg-background border rounded", className)}>
       {/* Controls */}
@@ -356,6 +401,15 @@ export function KeyframeTimeline({
                     style={{ left: `${keyframe.time * pixelsPerSecond}px` }}
                     onMouseDown={(e) => handleKeyframeDrag(keyframe, e)}
                     onClick={() => setSelectedKeyframe(keyframe)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        setSelectedKeyframe(keyframe);
+                      }
+                    }}
+                    tabIndex={0}
+                    role="button"
+                    aria-label={`Keyframe at ${keyframe.time.toFixed(2)} seconds`}
                   >
                     <Diamond 
                       className={cn(
@@ -393,9 +447,9 @@ export function KeyframeTimeline({
             <Slider
               value={[selectedKeyframe.value]}
               onValueChange={([value]) => handleUpdateKeyframe(value)}
-              min={-100}
-              max={100}
-              step={1}
+              min={parameterRange.min}
+              max={parameterRange.max}
+              step={parameterRange.step}
               className="flex-1"
             />
             <span className="text-sm w-12">{selectedKeyframe.value}</span>
