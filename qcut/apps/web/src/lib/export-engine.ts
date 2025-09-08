@@ -246,13 +246,15 @@ export class ExportEngine {
           if (EFFECTS_ENABLED && element.effectIds?.length) {
             try {
               const effects = useEffectsStore.getState().getElementEffects(element.id);
-              if (effects && effects.length > 0) {
+              const enabledEffects = effects.filter(e => e.enabled);
+              
+              if (enabledEffects.length > 0) {
                 // Save context state before applying effects
                 this.ctx.save();
                 
                 // Merge all active effect parameters
                 const mergedParams = mergeEffectParameters(
-                  ...effects.filter(e => e.enabled).map(e => e.parameters)
+                  ...enabledEffects.map(e => e.parameters)
                 );
                 
                 // Apply CSS-compatible effects to canvas context
@@ -267,7 +269,7 @@ export class ExportEngine {
                 // Restore context state
                 this.ctx.restore();
               } else {
-                // No active effects - draw normally
+                // No enabled effects - draw normally
                 this.ctx.drawImage(img, x, y, width, height);
               }
             } catch (error) {
