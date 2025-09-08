@@ -9,6 +9,7 @@ import type {
   EffectType,
   AnimatedParameter,
 } from "@/types/effects";
+import { processEffectChain, layerEffectChains, createEffectChain, type EffectChain } from "@/lib/effects-chaining";
 
 // Feature flag - disabled by default for safety
 export const EFFECTS_ENABLED = false;
@@ -312,6 +313,7 @@ const EFFECT_PRESETS: EffectPreset[] = [
 interface EffectsStore {
   presets: EffectPreset[];
   activeEffects: Map<string, EffectInstance[]>; // elementId -> effects
+  effectChains: Map<string, EffectChain[]>; // elementId -> chains
   selectedCategory: EffectCategory | "all";
   selectedEffect: EffectInstance | null;
   
@@ -329,11 +331,19 @@ interface EffectsStore {
   resetEffectToDefaults: (elementId: string, effectId: string) => void;
   resetEffectParameters: (elementId: string, effectId: string) => void;
   updateEffectAnimations: (elementId: string, effectId: string, animation: AnimatedParameter | null) => void;
+  
+  // Effect Chaining
+  createChain: (elementId: string, name: string, effectIds: string[]) => void;
+  removeChain: (elementId: string, chainId: string) => void;
+  updateChainBlendMode: (elementId: string, chainId: string, blendMode: string) => void;
+  getProcessedEffects: (elementId: string, currentTime?: number) => EffectParameters;
+  moveEffectInChain: (elementId: string, effectId: string, newIndex: number) => void;
 }
 
 export const useEffectsStore = create<EffectsStore>((set, get) => ({
   presets: EFFECT_PRESETS,
   activeEffects: new Map(),
+  effectChains: new Map(),
   selectedCategory: "all",
   selectedEffect: null,
 
@@ -552,6 +562,86 @@ export const useEffectsStore = create<EffectsStore>((set, get) => ({
           animations: undefined,
         };
       }
+      
+      set((state) => {
+        const newMap = new Map(state.activeEffects);
+        newMap.set(elementId, newEffects);
+        return { activeEffects: newMap };
+      });
+    }
+  },
+  
+  // Effect Chaining Methods
+  createChain: (elementId, name, effectIds) => {
+    const chain = createEffectChain(name, effectIds, get().presets);
+    
+    set((state) => {
+      const chains = state.effectChains.get(elementId) || [];
+      const newMap = new Map(state.effectChains);
+      newMap.set(elementId, [...chains, chain]);
+      return { effectChains: newMap };
+    });
+    
+    toast.success(`Created effect chain: ${name}`);
+  },
+  
+  removeChain: (elementId, chainId) => {
+    set((state) => {
+      const chains = state.effectChains.get(elementId) || [];
+      const newChains = chains.filter(c => c.id !== chainId);
+      const newMap = new Map(state.effectChains);
+      
+      if (newChains.length === 0) {
+        newMap.delete(elementId);
+      } else {
+        newMap.set(elementId, newChains);
+      }
+      
+      return { effectChains: newMap };
+    });
+    
+    toast.info("Effect chain removed");
+  },
+  
+  updateChainBlendMode: (elementId, chainId, blendMode) => {
+    set((state) => {
+      const chains = state.effectChains.get(elementId) || [];
+      const newChains = chains.map(c => 
+        c.id === chainId 
+          ? { ...c, blendMode: blendMode as any }
+          : c
+      );
+      const newMap = new Map(state.effectChains);
+      newMap.set(elementId, newChains);
+      return { effectChains: newMap };
+    });
+  },
+  
+  getProcessedEffects: (elementId, currentTime) => {
+    const chains = get().effectChains.get(elementId);
+    const effects = get().activeEffects.get(elementId);
+    
+    // If there are chains, use chain processing
+    if (chains && chains.length > 0) {
+      return layerEffectChains(chains, currentTime);
+    }
+    
+    // Otherwise, process regular effects
+    if (effects && effects.length > 0) {
+      return processEffectChain(effects, currentTime);
+    }
+    
+    return {};
+  },
+  
+  moveEffectInChain: (elementId, effectId, newIndex) => {
+    const effects = get().activeEffects.get(elementId) || [];
+    const effectIndex = effects.findIndex(e => e.id === effectId);
+    
+    if (effectIndex !== -1 && effectIndex !== newIndex) {
+      const newEffects = [...effects];
+      const [movedEffect] = newEffects.splice(effectIndex, 1);
+      newEffects.splice(newIndex, 0, movedEffect);
       
       set((state) => {
         const newMap = new Map(state.activeEffects);
