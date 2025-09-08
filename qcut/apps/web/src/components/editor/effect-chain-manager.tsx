@@ -150,7 +150,7 @@ export function EffectChainManager({ elementId }: EffectChainManagerProps) {
                   <Select
                     value={chain.blendMode || "normal"}
                     onValueChange={(value) =>
-                      updateChainBlendMode(elementId, chain.id, value)
+                      updateChainBlendMode(elementId, chain.id, value as "normal" | "overlay" | "multiply" | "screen")
                     }
                   >
                     <SelectTrigger className="w-[140px]" aria-label="Blend mode">

@@ -333,7 +333,7 @@ interface EffectsStore {
   // Effect Chaining
   createChain: (elementId: string, name: string, effectIds: string[]) => void;
   removeChain: (elementId: string, chainId: string) => void;
-  updateChainBlendMode: (elementId: string, chainId: string, blendMode: string) => void;
+  updateChainBlendMode: (elementId: string, chainId: string, blendMode: EffectChain['blendMode']) => void;
   getProcessedEffects: (elementId: string, currentTime?: number) => EffectParameters;
   moveEffectInChain: (elementId: string, effectId: string, newIndex: number) => void;
 }
@@ -673,7 +673,7 @@ export const useEffectsStore = create<EffectsStore>((set, get) => ({
       const chains = state.effectChains.get(elementId) || [];
       const newChains = chains.map(c => 
         c.id === chainId 
-          ? { ...c, blendMode: blendMode as any }
+          ? { ...c, blendMode }
           : c
       );
       const newMap = new Map(state.effectChains);
