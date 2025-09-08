@@ -18,6 +18,31 @@ interface TransformPropertiesProps {
   trackId: string;
 }
 
+// Type guard to check if element has transform properties
+function getTransformProperties(element: TimelineElement) {
+  // TextElement always has these properties
+  if (element.type === "text") {
+    return {
+      x: element.x,
+      y: element.y,
+      width: element.width ?? 200,
+      height: element.height ?? 100,
+      rotation: element.rotation,
+      scale: 100, // TextElement doesn't have scale, default to 100
+    };
+  }
+  
+  // Other elements may have optional transform properties
+  return {
+    x: element.x ?? 0,
+    y: element.y ?? 0,
+    width: element.width ?? 200,
+    height: element.height ?? 100,
+    rotation: element.rotation ?? 0,
+    scale: 100, // Default scale
+  };
+}
+
 export function TransformProperties({ element, trackId }: TransformPropertiesProps) {
   const { updateTextElement } = useTimelineStore();
   const { getElementEffects } = useEffectsStore();
@@ -30,26 +55,12 @@ export function TransformProperties({ element, trackId }: TransformPropertiesPro
     return null;
   }
 
-  // Initialize transform values
-  const [transform, setTransform] = useState({
-    x: (element as any).x || 0,
-    y: (element as any).y || 0,
-    width: (element as any).width || 200,
-    height: (element as any).height || 100,
-    rotation: (element as any).rotation || 0,
-    scale: (element as any).scale || 100,
-  });
+  // Initialize transform values using type-safe getter
+  const [transform, setTransform] = useState(() => getTransformProperties(element));
 
   // Update local state when element changes
   useEffect(() => {
-    setTransform({
-      x: (element as any).x || 0,
-      y: (element as any).y || 0,
-      width: (element as any).width || 200,
-      height: (element as any).height || 100,
-      rotation: (element as any).rotation || 0,
-      scale: (element as any).scale || 100,
-    });
+    setTransform(getTransformProperties(element));
   }, [element]);
 
   const handleChange = (property: string, value: number) => {
@@ -57,10 +68,18 @@ export function TransformProperties({ element, trackId }: TransformPropertiesPro
     setTransform(newTransform);
     
     // Update element in timeline store
-    updateTextElement(trackId, element.id, {
-      ...newTransform,
-      scale: newTransform.scale / 100, // Convert percentage to decimal
-    } as any);
+    // Create a partial update object with only the properties that exist on TimelineElement
+    const updateData: Partial<TimelineElement> = {
+      x: newTransform.x,
+      y: newTransform.y,
+      width: newTransform.width,
+      height: newTransform.height,
+      rotation: newTransform.rotation,
+      // Note: scale is not a standard TimelineElement property, 
+      // it may need to be handled differently or stored elsewhere
+    };
+    
+    updateTextElement(trackId, element.id, updateData);
   };
 
   const handleReset = (property?: string) => {
