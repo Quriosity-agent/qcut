@@ -13,8 +13,8 @@ import { CaptionsView } from "./views/captions";
 import { SoundsView } from "./views/sounds";
 import React from "react";
 
-// Feature flag for effects - disabled by default for safety
-const EFFECTS_ENABLED = false;
+// Feature flag for effects - enabled for testing
+const EFFECTS_ENABLED = true;
 
 // Lazy load effects view only when enabled
 const EffectsView = React.lazy(() =>

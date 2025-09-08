@@ -47,8 +47,8 @@ import { parametersToCSSFilters, mergeEffectParameters } from "@/lib/effects-uti
 // Import interactive element overlay
 import { InteractiveElementOverlay, ElementTransform } from "./interactive-element-overlay";
 
-// Feature flag for effects - disabled by default for safety
-const EFFECTS_ENABLED = false;
+// Feature flag for effects - enabled for testing
+const EFFECTS_ENABLED = true;
 
 interface ActiveElement {
   element: TimelineElement;

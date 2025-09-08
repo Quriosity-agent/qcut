@@ -11,8 +11,8 @@ import type {
 } from "@/types/effects";
 import { processEffectChain, layerEffectChains, createEffectChain, type EffectChain } from "@/lib/effects-chaining";
 
-// Feature flag - disabled by default for safety
-export const EFFECTS_ENABLED = false;
+// Feature flag - enabled for testing
+export const EFFECTS_ENABLED = true;
 
 // Predefined effect presets
 const EFFECT_PRESETS: EffectPreset[] = [

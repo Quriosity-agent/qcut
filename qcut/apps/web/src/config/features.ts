@@ -3,7 +3,7 @@
 
 export const FEATURES = {
   VIDEO_EFFECTS: {
-    enabled: false, // Default off for safety
+    enabled: true, // Enabled for testing
     name: "Video Effects System",
     description: "CSS filter-based video effects for timeline elements",
     experimental: true,
