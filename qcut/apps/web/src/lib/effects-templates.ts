@@ -517,7 +517,11 @@ export function saveCustomTemplate(
   // Save to localStorage
   const savedTemplates = loadCustomTemplates();
   savedTemplates.push(template);
-  localStorage.setItem("effect-templates-custom", JSON.stringify(savedTemplates));
+  try {
+    localStorage.setItem("effect-templates-custom", JSON.stringify(savedTemplates));
+  } catch {
+    // Silently fail if localStorage is unavailable (quota, private mode, SSR)
+  }
   
   return template;
 }
@@ -531,8 +535,8 @@ export function loadCustomTemplates(): EffectTemplate[] {
     if (saved) {
       return JSON.parse(saved);
     }
-  } catch (error) {
-    console.error("Failed to load custom templates:", error);
+  } catch {
+    // Silently fail if localStorage is unavailable or data is corrupted
   }
   return [];
 }
@@ -543,7 +547,11 @@ export function loadCustomTemplates(): EffectTemplate[] {
 export function deleteCustomTemplate(templateId: string): void {
   const templates = loadCustomTemplates();
   const filtered = templates.filter((t) => t.id !== templateId);
-  localStorage.setItem("effect-templates-custom", JSON.stringify(filtered));
+  try {
+    localStorage.setItem("effect-templates-custom", JSON.stringify(filtered));
+  } catch {
+    // Silently fail if localStorage is unavailable
+  }
 }
 
 /**
@@ -558,13 +566,33 @@ export function exportTemplate(template: EffectTemplate): string {
  */
 export function importTemplate(json: string): EffectTemplate | null {
   try {
-    const template = JSON.parse(json);
-    // Validate structure
-    if (template.id && template.name && template.effects) {
-      return template;
+    const candidate = JSON.parse(json) as any;
+    if (
+      candidate &&
+      typeof candidate.id === 'string' &&
+      typeof candidate.name === 'string' &&
+      Array.isArray(candidate.effects) &&
+      candidate.effects.every((e: any) => 
+        e && 
+        typeof e.name === 'string' &&
+        typeof e.type === 'string' &&
+        typeof e.order === 'number' &&
+        e.parameters && typeof e.parameters === 'object'
+      )
+    ) {
+      // Ensure required fields and proper types
+      return {
+        id: candidate.id,
+        name: candidate.name,
+        description: candidate.description || '',
+        category: candidate.category || 'custom',
+        effects: candidate.effects,
+        thumbnail: candidate.thumbnail,
+        metadata: candidate.metadata
+      } as EffectTemplate;
     }
-  } catch (error) {
-    console.error("Failed to import template:", error);
+  } catch {
+    // Silently ignore malformed import
   }
   return null;
 }

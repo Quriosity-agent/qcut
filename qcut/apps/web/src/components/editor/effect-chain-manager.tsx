@@ -26,6 +26,7 @@ export function EffectChainManager({ elementId }: EffectChainManagerProps) {
     createChain,
     removeChain,
     updateChainBlendMode,
+    toggleEffectInChain,
     moveEffectInChain,
     toggleEffect,
     removeEffect,
@@ -79,9 +80,13 @@ export function EffectChainManager({ elementId }: EffectChainManagerProps) {
       {isCreatingChain && (
         <Card className="p-4">
           <div className="space-y-3">
+            <label htmlFor="chainName" className="block text-sm font-medium mb-1">
+              Chain name
+            </label>
             <input
               type="text"
-              placeholder="Chain name..."
+              id="chainName"
+              placeholder="e.g., Cinematic Warm Overlay"
               value={chainName}
               onChange={(e) => setChainName(e.target.value)}
               className="w-full px-3 py-2 border rounded"

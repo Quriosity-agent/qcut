@@ -334,6 +334,7 @@ interface EffectsStore {
   createChain: (elementId: string, name: string, effectIds: string[]) => void;
   removeChain: (elementId: string, chainId: string) => void;
   updateChainBlendMode: (elementId: string, chainId: string, blendMode: EffectChain['blendMode']) => void;
+  toggleEffectInChain: (elementId: string, chainId: string, effectId: string) => void;
   getProcessedEffects: (elementId: string, currentTime?: number) => EffectParameters;
   moveEffectInChain: (elementId: string, effectId: string, newIndex: number) => void;
 }
@@ -676,6 +677,26 @@ export const useEffectsStore = create<EffectsStore>((set, get) => ({
           ? { ...c, blendMode }
           : c
       );
+      const newMap = new Map(state.effectChains);
+      newMap.set(elementId, newChains);
+      return { effectChains: newMap };
+    });
+  },
+  
+  toggleEffectInChain: (elementId, chainId, effectId) => {
+    set((state) => {
+      const chains = state.effectChains.get(elementId) || [];
+      const newChains = chains.map(chain => {
+        if (chain.id === chainId) {
+          const newEffects = chain.effects.map(effect => 
+            effect.id === effectId 
+              ? { ...effect, enabled: !effect.enabled }
+              : effect
+          );
+          return { ...chain, effects: newEffects };
+        }
+        return chain;
+      });
       const newMap = new Map(state.effectChains);
       newMap.set(elementId, newChains);
       return { effectChains: newMap };
