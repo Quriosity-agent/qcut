@@ -127,8 +127,8 @@ export function InteractiveElementOverlay({
         // Calculate rotation based on mouse position relative to center
         const centerX = transform.x + transform.width / 2;
         const centerY = transform.y + transform.height / 2;
-        const mouseX = dragState.startX + deltaX * scaleX;
-        const mouseY = dragState.startY + deltaY * scaleY;
+        const mouseX = e.clientX / scaleX;
+        const mouseY = e.clientY / scaleY;
         
         const angle = Math.atan2(mouseY - centerY, mouseX - centerX) * (180 / Math.PI);
         newTransform.rotation = Math.round(angle);
