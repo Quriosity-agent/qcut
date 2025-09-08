@@ -72,6 +72,7 @@ export default function EffectsView() {
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           className="w-full"
+          aria-label="Search effects"
         />
       </div>
 
