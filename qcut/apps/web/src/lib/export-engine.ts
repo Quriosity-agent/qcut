@@ -17,6 +17,7 @@ import { useStickersOverlayStore } from "@/stores/stickers-overlay-store";
 import { useMediaStore } from "@/stores/media-store";
 import { useEffectsStore } from "@/stores/effects-store";
 import { applyEffectsToCanvas, resetCanvasFilters, mergeEffectParameters } from "@/lib/effects-utils";
+import { applyAdvancedCanvasEffects } from "@/lib/effects-canvas-advanced";
 
 // Feature flag for effects - disabled by default for safety
 const EFFECTS_ENABLED = false;
@@ -256,11 +257,14 @@ export class ExportEngine {
                   ...effects.filter(e => e.enabled).map(e => e.parameters)
                 );
                 
-                // Apply effects to canvas context
+                // Apply CSS-compatible effects to canvas context
                 applyEffectsToCanvas(this.ctx, mergedParams);
                 
                 // Draw image with effects applied
                 this.ctx.drawImage(img, x, y, width, height);
+                
+                // Apply advanced canvas-only effects
+                applyAdvancedCanvasEffects(this.ctx, mergedParams);
                 
                 // Restore context state
                 this.ctx.restore();
@@ -410,11 +414,14 @@ export class ExportEngine {
               ...effects.filter(e => e.enabled).map(e => e.parameters)
             );
             
-            // Apply effects to canvas context
+            // Apply CSS-compatible effects to canvas context
             applyEffectsToCanvas(this.ctx, mergedParams);
             
             // Draw video with effects applied
             this.ctx.drawImage(video, x, y, width, height);
+            
+            // Apply advanced canvas-only effects
+            applyAdvancedCanvasEffects(this.ctx, mergedParams);
             
             // Restore context state
             this.ctx.restore();

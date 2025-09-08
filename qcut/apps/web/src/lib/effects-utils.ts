@@ -94,6 +94,54 @@ export function parametersToCSSFilters(parameters: EffectParameters): string {
     filters.push(`hue-rotate(${cinematicStrength * 5}deg)`);
   }
 
+  // Advanced distortion effects (using CSS transforms where possible)
+  if (parameters.pixelate !== undefined && parameters.pixelate > 0) {
+    // Pixelate effect - simulated with blur for CSS
+    // Real pixelation would need canvas processing
+    filters.push(`blur(${parameters.pixelate / 10}px)`);
+  }
+
+  // Artistic effects
+  if (parameters.oilPainting !== undefined) {
+    // Oil painting effect - approximated with contrast and saturation
+    const strength = parameters.oilPainting / 100;
+    filters.push(`contrast(${1 + strength * 0.4})`);
+    filters.push(`saturate(${1 + strength * 0.3})`);
+  }
+
+  if (parameters.watercolor !== undefined) {
+    // Watercolor effect - soft and desaturated
+    const strength = parameters.watercolor / 100;
+    filters.push(`contrast(${1 - strength * 0.2})`);
+    filters.push(`saturate(${1 - strength * 0.3})`);
+    filters.push(`blur(${strength * 0.5}px)`);
+  }
+
+  if (parameters.pencilSketch !== undefined) {
+    // Pencil sketch - high contrast grayscale
+    const strength = parameters.pencilSketch / 100;
+    filters.push(`grayscale(1)`);
+    filters.push(`contrast(${1 + strength * 0.8})`);
+    filters.push(`brightness(${1 + strength * 0.1})`);
+  }
+
+  // Transition effects (opacity-based)
+  if (parameters.fadeIn !== undefined) {
+    const opacity = parameters.fadeIn / 100;
+    filters.push(`opacity(${opacity})`);
+  }
+
+  if (parameters.fadeOut !== undefined) {
+    const opacity = 1 - (parameters.fadeOut / 100);
+    filters.push(`opacity(${opacity})`);
+  }
+
+  // Composite effects using blend modes
+  if (parameters.overlay !== undefined && parameters.overlayOpacity !== undefined) {
+    const opacity = parameters.overlayOpacity / 100;
+    filters.push(`opacity(${opacity})`);
+  }
+
   return filters.join(" ");
 }
 
