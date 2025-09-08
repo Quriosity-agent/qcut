@@ -319,34 +319,46 @@ export function EffectsSearch({ presets, onSearchResults, className }: EffectsSe
               className="gap-1"
             >
               {category}
-              <button
+              <Button
+                type="button"
+                variant="text"
+                size="sm"
                 onClick={() => toggleCategory(category)}
-                className="ml-1 hover:text-destructive"
+                className="ml-1 h-4 w-4 p-0 hover:text-destructive"
+                aria-label={`Remove ${category} filter`}
               >
                 ×
-              </button>
+              </Button>
             </Badge>
           ))}
           {filterOptions.showFavorites && (
             <Badge variant="secondary" className="gap-1">
               Favorites
-              <button
+              <Button
+                type="button"
+                variant="text"
+                size="sm"
                 onClick={() => setFilterOptions(prev => ({ ...prev, showFavorites: false }))}
-                className="ml-1 hover:text-destructive"
+                className="ml-1 h-4 w-4 p-0 hover:text-destructive"
+                aria-label="Remove Favorites filter"
               >
                 ×
-              </button>
+              </Button>
             </Badge>
           )}
           {filterOptions.showRecent && (
             <Badge variant="secondary" className="gap-1">
               Recent
-              <button
+              <Button
+                type="button"
+                variant="text"
+                size="sm"
                 onClick={() => setFilterOptions(prev => ({ ...prev, showRecent: false }))}
-                className="ml-1 hover:text-destructive"
+                className="ml-1 h-4 w-4 p-0 hover:text-destructive"
+                aria-label="Remove Recent filter"
               >
                 ×
-              </button>
+              </Button>
             </Badge>
           )}
         </div>
