@@ -91,18 +91,20 @@ export default function EffectsView() {
             {filteredPresets.map((preset) => (
               <Button
                 key={preset.id}
+                type="button"
                 variant="outline"
                 className={cn(
                   "h-20 flex flex-col items-center justify-center gap-1 hover:bg-accent cursor-move",
                   draggedEffect?.id === preset.id && "opacity-50"
                 )}
                 onClick={() => handleApplyEffect(preset)}
+                aria-label={`Apply ${preset.name} effect`}
                 draggable
                 onDragStart={(e) => handleDragStart(e, preset)}
                 onDragEnd={handleDragEnd}
                 title={`${preset.name} - Drag to timeline element to apply`}
               >
-                <span className="text-2xl">{preset.icon}</span>
+                <span className="text-2xl" aria-hidden="true">{preset.icon}</span>
                 <span className="text-xs font-medium">{preset.name}</span>
               </Button>
             ))}
