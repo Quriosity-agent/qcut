@@ -18,7 +18,6 @@ export interface ElementTransform {
   width: number;
   height: number;
   rotation: number;
-  scale: number;
 }
 
 interface DragState {
@@ -60,7 +59,6 @@ export function InteractiveElementOverlay({
     width: getElementProperty('width', 200),
     height: getElementProperty('height', 100),
     rotation: getElementProperty('rotation', 0),
-    scale: getElementProperty('scale', 1),
   });
 
   const [dragState, setDragState] = useState<DragState>({
@@ -183,7 +181,7 @@ export function InteractiveElementOverlay({
     top: `${transform.y * scaleY}px`,
     width: `${transform.width * scaleX}px`,
     height: `${transform.height * scaleY}px`,
-    transform: `rotate(${transform.rotation}deg) scale(${transform.scale})`,
+    transform: `rotate(${transform.rotation}deg)`,
   };
 
   return (

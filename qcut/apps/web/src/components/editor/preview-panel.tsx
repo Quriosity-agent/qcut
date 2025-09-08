@@ -478,15 +478,6 @@ export function PreviewPanel() {
     if (transform.rotation !== undefined) {
       updateElementRotation(elementId, transform.rotation);
     }
-    
-    // Note: Scale is not yet persisted in the timeline store
-    // Add updateElementScale method to store if scale persistence is needed
-    if (transform.scale !== undefined && element.element.type === 'text') {
-      // For text elements, we can still use updateTextElement for scale
-      updateTextElement(element.track.id, elementId, {
-        scale: transform.scale,
-      } as any);
-    }
   }, [activeElements, updateElementPosition, updateElementSize, updateElementRotation, updateTextElement]);
 
   // Extract caption segments from active elements

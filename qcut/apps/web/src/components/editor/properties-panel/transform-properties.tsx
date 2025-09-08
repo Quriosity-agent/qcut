@@ -28,7 +28,6 @@ function getTransformProperties(element: TimelineElement) {
       width: element.width ?? 200,
       height: element.height ?? 100,
       rotation: element.rotation,
-      scale: 100, // TextElement doesn't have scale, default to 100
     };
   }
   
@@ -39,7 +38,6 @@ function getTransformProperties(element: TimelineElement) {
     width: element.width ?? 200,
     height: element.height ?? 100,
     rotation: element.rotation ?? 0,
-    scale: 100, // Default scale
   };
 }
 
@@ -75,8 +73,6 @@ export function TransformProperties({ element, trackId }: TransformPropertiesPro
       width: newTransform.width,
       height: newTransform.height,
       rotation: newTransform.rotation,
-      // Note: scale is not a standard TimelineElement property, 
-      // it may need to be handled differently or stored elsewhere
     };
     
     updateTextElement(trackId, element.id, updateData);
@@ -89,7 +85,6 @@ export function TransformProperties({ element, trackId }: TransformPropertiesPro
       width: 200,
       height: 100,
       rotation: 0,
-      scale: 100,
     };
 
     if (property) {
@@ -216,35 +211,6 @@ export function TransformProperties({ element, trackId }: TransformPropertiesPro
                 variant="text"
                 size="icon"
                 onClick={() => handleReset("height")}
-              >
-                <RotateCcw className="w-3 h-3" />
-              </Button>
-            </div>
-          </PropertyItemValue>
-        </PropertyItem>
-
-        <PropertyItem>
-          <PropertyItemLabel>Scale (%)</PropertyItemLabel>
-          <PropertyItemValue>
-            <div className="flex items-center gap-2">
-              <Input
-                type="number"
-                value={transform.scale}
-                onChange={(e) => handleChange("scale", parseInt(e.target.value) || 100)}
-                className="w-20"
-              />
-              <Slider
-                value={[transform.scale]}
-                onValueChange={([value]) => handleChange("scale", value)}
-                min={10}
-                max={200}
-                step={1}
-                className="flex-1"
-              />
-              <Button
-                variant="text"
-                size="icon"
-                onClick={() => handleReset("scale")}
               >
                 <RotateCcw className="w-3 h-3" />
               </Button>
