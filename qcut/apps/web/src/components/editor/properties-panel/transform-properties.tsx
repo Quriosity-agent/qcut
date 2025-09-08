@@ -310,6 +310,7 @@ export function TransformProperties({ element, trackId }: TransformPropertiesPro
 
       <div className="pt-4 border-t">
         <Button
+          type="button"
           variant="outline"
           className="w-full"
           onClick={() => handleReset()}

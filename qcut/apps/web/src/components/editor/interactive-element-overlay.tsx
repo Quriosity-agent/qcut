@@ -191,52 +191,152 @@ export function InteractiveElementOverlay({
     >
       {/* Move handle - center of element */}
       <div
-        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-8 bg-primary/20 rounded-full flex items-center justify-center cursor-move hover:bg-primary/30"
+        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-8 bg-primary/20 rounded-full flex items-center justify-center cursor-move hover:bg-primary/30 focus:outline-none focus:ring-2 focus:ring-primary"
         onMouseDown={(e) => handleMouseDown(e, "move")}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            // Start keyboard-based movement with arrow keys
+            const step = e.shiftKey ? 10 : 1;
+            if (e.key === 'Enter') {
+              handleMouseDown(e as any, "move");
+            }
+          }
+        }}
+        tabIndex={0}
+        role="button"
+        aria-label="Move element. Press Enter to activate, then use arrow keys to move"
       >
         <Move className="w-4 h-4 text-primary-foreground" />
       </div>
 
       {/* Resize handles - corners and edges */}
       <div
-        className="absolute -top-1 -left-1 w-3 h-3 bg-primary rounded-full cursor-nw-resize"
+        className="absolute -top-1 -left-1 w-3 h-3 bg-primary rounded-full cursor-nw-resize focus:outline-none focus:ring-2 focus:ring-primary"
         onMouseDown={(e) => handleMouseDown(e, "resize", "nw")}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            handleMouseDown(e as any, "resize", "nw");
+          }
+        }}
+        tabIndex={0}
+        role="button"
+        aria-label="Resize from top-left corner"
       />
       <div
-        className="absolute -top-1 -right-1 w-3 h-3 bg-primary rounded-full cursor-ne-resize"
+        className="absolute -top-1 -right-1 w-3 h-3 bg-primary rounded-full cursor-ne-resize focus:outline-none focus:ring-2 focus:ring-primary"
         onMouseDown={(e) => handleMouseDown(e, "resize", "ne")}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            handleMouseDown(e as any, "resize", "ne");
+          }
+        }}
+        tabIndex={0}
+        role="button"
+        aria-label="Resize from top-right corner"
       />
       <div
-        className="absolute -bottom-1 -left-1 w-3 h-3 bg-primary rounded-full cursor-sw-resize"
+        className="absolute -bottom-1 -left-1 w-3 h-3 bg-primary rounded-full cursor-sw-resize focus:outline-none focus:ring-2 focus:ring-primary"
         onMouseDown={(e) => handleMouseDown(e, "resize", "sw")}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            handleMouseDown(e as any, "resize", "sw");
+          }
+        }}
+        tabIndex={0}
+        role="button"
+        aria-label="Resize from bottom-left corner"
       />
       <div
-        className="absolute -bottom-1 -right-1 w-3 h-3 bg-primary rounded-full cursor-se-resize"
+        className="absolute -bottom-1 -right-1 w-3 h-3 bg-primary rounded-full cursor-se-resize focus:outline-none focus:ring-2 focus:ring-primary"
         onMouseDown={(e) => handleMouseDown(e, "resize", "se")}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            handleMouseDown(e as any, "resize", "se");
+          }
+        }}
+        tabIndex={0}
+        role="button"
+        aria-label="Resize from bottom-right corner"
       />
       
       {/* Edge resize handles */}
       <div
-        className="absolute -top-1 left-1/2 -translate-x-1/2 w-3 h-3 bg-primary rounded-full cursor-n-resize"
+        className="absolute -top-1 left-1/2 -translate-x-1/2 w-3 h-3 bg-primary rounded-full cursor-n-resize focus:outline-none focus:ring-2 focus:ring-primary"
         onMouseDown={(e) => handleMouseDown(e, "resize", "n")}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            handleMouseDown(e as any, "resize", "n");
+          }
+        }}
+        tabIndex={0}
+        role="button"
+        aria-label="Resize from top edge"
       />
       <div
-        className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-3 h-3 bg-primary rounded-full cursor-s-resize"
+        className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-3 h-3 bg-primary rounded-full cursor-s-resize focus:outline-none focus:ring-2 focus:ring-primary"
         onMouseDown={(e) => handleMouseDown(e, "resize", "s")}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            handleMouseDown(e as any, "resize", "s");
+          }
+        }}
+        tabIndex={0}
+        role="button"
+        aria-label="Resize from bottom edge"
       />
       <div
-        className="absolute top-1/2 -left-1 -translate-y-1/2 w-3 h-3 bg-primary rounded-full cursor-w-resize"
+        className="absolute top-1/2 -left-1 -translate-y-1/2 w-3 h-3 bg-primary rounded-full cursor-w-resize focus:outline-none focus:ring-2 focus:ring-primary"
         onMouseDown={(e) => handleMouseDown(e, "resize", "w")}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            handleMouseDown(e as any, "resize", "w");
+          }
+        }}
+        tabIndex={0}
+        role="button"
+        aria-label="Resize from left edge"
       />
       <div
-        className="absolute top-1/2 -right-1 -translate-y-1/2 w-3 h-3 bg-primary rounded-full cursor-e-resize"
+        className="absolute top-1/2 -right-1 -translate-y-1/2 w-3 h-3 bg-primary rounded-full cursor-e-resize focus:outline-none focus:ring-2 focus:ring-primary"
         onMouseDown={(e) => handleMouseDown(e, "resize", "e")}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            handleMouseDown(e as any, "resize", "e");
+          }
+        }}
+        tabIndex={0}
+        role="button"
+        aria-label="Resize from right edge"
       />
 
       {/* Rotation handle - top center */}
       <div
-        className="absolute -top-8 left-1/2 -translate-x-1/2 w-6 h-6 bg-primary/80 rounded-full flex items-center justify-center cursor-pointer hover:bg-primary"
+        className="absolute -top-8 left-1/2 -translate-x-1/2 w-6 h-6 bg-primary/80 rounded-full flex items-center justify-center cursor-pointer hover:bg-primary focus:outline-none focus:ring-2 focus:ring-primary"
         onMouseDown={(e) => handleMouseDown(e, "rotate")}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            handleMouseDown(e as any, "rotate");
+          } else if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+            e.preventDefault();
+            const rotationStep = e.shiftKey ? 15 : 5;
+            const direction = e.key === 'ArrowLeft' ? -1 : 1;
+            const newRotation = (transform.rotation || 0) + (direction * rotationStep);
+            onTransformUpdate({ ...transform, rotation: newRotation });
+          }
+        }}
+        tabIndex={0}
+        role="button"
+        aria-label="Rotate element. Press Enter to drag or use arrow keys to rotate"
       >
         <RotateCw className="w-3 h-3 text-primary-foreground" />
       </div>
