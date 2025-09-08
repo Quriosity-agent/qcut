@@ -1,7 +1,13 @@
 import React, { useState } from "react";
 import { useEffectsStore } from "@/stores/effects-store";
 import { Button } from "@/components/ui/button";
-import { Select } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Card } from "@/components/ui/card";
 // DnD functionality temporarily removed - can be added with proper library installation
 import { Layers, Plus, Trash2, Move, Eye, EyeOff } from "lucide-react";
@@ -147,10 +153,15 @@ export function EffectChainManager({ elementId }: EffectChainManagerProps) {
                       updateChainBlendMode(elementId, chain.id, value)
                     }
                   >
-                    <option value="normal">Normal</option>
-                    <option value="overlay">Overlay</option>
-                    <option value="multiply">Multiply</option>
-                    <option value="screen">Screen</option>
+                    <SelectTrigger className="w-[140px]" aria-label="Blend mode">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="normal">Normal</SelectItem>
+                      <SelectItem value="overlay">Overlay</SelectItem>
+                      <SelectItem value="multiply">Multiply</SelectItem>
+                      <SelectItem value="screen">Screen</SelectItem>
+                    </SelectContent>
                   </Select>
                   <Button
                     size="icon"
