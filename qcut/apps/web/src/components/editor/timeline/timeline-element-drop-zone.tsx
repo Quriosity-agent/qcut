@@ -1,14 +1,15 @@
-import { useState } from "react";
-import { cn } from "@/lib/utils";
-import { useEffectsStore } from "@/stores/effects-store";
-import { toast } from "sonner";
-import { EFFECTS_ENABLED } from "@/config/features";
-import type { TimelineElement } from "@/types/timeline";
-import type { EffectPreset } from "@/types/effects";
+import { useState } from 'react';
+import type { ReactNode, DragEvent } from 'react';
+import { cn } from '@/lib/utils';
+import { useEffectsStore } from '@/stores/effects-store';
+import { toast } from 'sonner';
+import { EFFECTS_ENABLED } from '@/config/features';
+import type { TimelineElement } from '@/types/timeline';
+import type { EffectPreset } from '@/types/effects';
 
 interface TimelineElementDropZoneProps {
   element: TimelineElement;
-  children: React.ReactNode;
+  children: ReactNode;
   className?: string;
 }
 
@@ -24,7 +25,7 @@ export function TimelineElementDropZone({
     return <>{children}</>;
   }
 
-  const handleDragOver = (e: React.DragEvent) => {
+  const handleDragOver = (e: DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.stopPropagation();
     
@@ -36,7 +37,7 @@ export function TimelineElementDropZone({
     }
   };
 
-  const handleDragLeave = (e: React.DragEvent) => {
+  const handleDragLeave = (e: DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.stopPropagation();
     
@@ -50,7 +51,7 @@ export function TimelineElementDropZone({
     }
   };
 
-  const handleDrop = (e: React.DragEvent) => {
+  const handleDrop = (e: DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.stopPropagation();
     setIsDragOver(false);

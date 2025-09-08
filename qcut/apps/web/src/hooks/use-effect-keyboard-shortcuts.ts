@@ -9,7 +9,7 @@ import { EFFECTS_ENABLED } from "@/config/features";
 
 export const useEffectKeyboardShortcuts = () => {
   const isActive = useRef(true);
-  const { applyEffect, toggleEffect, resetEffectParameters, duplicateEffect, activeEffects } = useEffectsStore();
+  const { applyEffect, toggleEffect, resetEffectParameters, duplicateEffect, activeEffects, updateEffectParameters } = useEffectsStore();
   const { selectedElements } = useTimelineStore();
 
   // Helper function to get selected element
@@ -166,7 +166,7 @@ export const useEffectKeyboardShortcuts = () => {
           const param = Object.keys(effect.parameters)[0];
           if (param && typeof (effect.parameters as any)[param] === 'number') {
             const newValue = Math.min(100, (effect.parameters as any)[param] + 10);
-            useEffectsStore.getState().updateEffectParameters(
+            updateEffectParameters(
               elementId,
               effect.id,
               { [param]: newValue }
@@ -191,7 +191,7 @@ export const useEffectKeyboardShortcuts = () => {
           const param = Object.keys(effect.parameters)[0];
           if (param && typeof (effect.parameters as any)[param] === 'number') {
             const newValue = Math.max(-100, (effect.parameters as any)[param] - 10);
-            useEffectsStore.getState().updateEffectParameters(
+            updateEffectParameters(
               elementId,
               effect.id,
               { [param]: newValue }

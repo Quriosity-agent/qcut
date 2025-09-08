@@ -195,6 +195,7 @@ export function EffectsSearch({ presets, onSearchResults, className }: EffectsSe
               variant="text"
               size="sm"
               className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 p-0"
+              aria-label={`Filter effects${activeFilterCount > 0 ? ` (${activeFilterCount} active)` : ''}`}
             >
               <Filter className="h-4 w-4" />
               {activeFilterCount > 0 && (

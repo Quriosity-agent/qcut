@@ -188,7 +188,7 @@ export function EffectChainManager({ elementId }: EffectChainManagerProps) {
                     <Button
                       size="icon"
                       variant="text"
-                      onClick={() => toggleEffect(elementId, effect.id)}
+                      onClick={() => toggleEffectInChain(elementId, chain.id, effect.id)}
                     >
                       {effect.enabled ? (
                         <Eye className="h-3 w-3" />
