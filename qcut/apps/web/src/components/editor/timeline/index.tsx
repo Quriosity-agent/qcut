@@ -986,7 +986,7 @@ export function Timeline() {
                           <EffectsTimeline
                             key={`effects-${track.id}`}
                             track={track}
-                            pixelsPerSecond={zoomLevel * 10}
+                            pixelsPerSecond={TIMELINE_CONSTANTS.PIXELS_PER_SECOND * zoomLevel}
                           />
                         ))}
                       </div>

@@ -406,12 +406,19 @@ export class ExportEngine {
         try {
           const effects = useEffectsStore.getState().getElementEffects(element.id);
           if (effects && effects.length > 0) {
+            const activeEffects = effects.filter(e => e.enabled);
+            if (activeEffects.length === 0) {
+              // No enabled effects - draw normally
+              this.ctx.drawImage(video, x, y, width, height);
+              return;
+            }
+            
             // Save context state before applying effects
             this.ctx.save();
             
             // Merge all active effect parameters
             const mergedParams = mergeEffectParameters(
-              ...effects.filter(e => e.enabled).map(e => e.parameters)
+              ...activeEffects.map(e => e.parameters)
             );
             
             // Apply CSS-compatible effects to canvas context
