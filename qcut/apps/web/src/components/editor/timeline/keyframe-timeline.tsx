@@ -412,31 +412,26 @@ export function KeyframeTimeline({
             <TooltipProvider key={index}>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <div
+                  <button
+                    type="button"
                     className={cn(
-                      "absolute top-6 w-4 h-4 -ml-2 cursor-pointer",
-                      selectedKeyframe === keyframe && "ring-2 ring-primary"
+                      "absolute top-6 w-4 h-4 -ml-2 cursor-pointer p-0 border-0 bg-transparent",
+                      selectedKeyframe?.time === keyframe.time && "ring-2 ring-primary"
                     )}
                     style={{ left: `${keyframe.time * pixelsPerSecond}px` }}
                     onMouseDown={(e) => handleKeyframeDrag(keyframe, e)}
                     onClick={() => setSelectedKeyframe(keyframe)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        setSelectedKeyframe(keyframe);
-                      }
-                    }}
-                    tabIndex={0}
-                    role="button"
                     aria-label={`Keyframe at ${keyframe.time.toFixed(2)} seconds`}
                   >
                     <Diamond 
                       className={cn(
                         "w-4 h-4",
-                        selectedKeyframe === keyframe ? "text-primary fill-primary" : "text-foreground fill-foreground"
+                        selectedKeyframe?.time === keyframe.time ? "text-primary fill-primary" : "text-foreground fill-foreground"
                       )}
+                      aria-hidden="true"
+                      focusable="false"
                     />
-                  </div>
+                  </button>
                 </TooltipTrigger>
                 <TooltipContent>
                   <div className="text-xs">

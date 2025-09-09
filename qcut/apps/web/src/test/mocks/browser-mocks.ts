@@ -86,36 +86,18 @@ export function installBrowserMocks(context: ObserverHost | null | undefined): v
 }
 
 // Install mocks on all available global contexts
-// Prioritizes globalThis first, then mirrors to other contexts only if needed
-export function installAllBrowserMocks() {
+// Force-installs on each context to ensure consistent mock implementations
+export function installAllBrowserMocks(): void {
   // Install on globalThis first (the modern standard)
   if (typeof globalThis !== 'undefined') {
     installBrowserMocks(globalThis);
     
-    // Mirror to window if it exists and is missing the observers
+    // Ensure the same overrides exist on window/global as separate realms
     if (typeof window !== 'undefined' && window !== globalThis) {
-      if (!window.MutationObserver) {
-        window.MutationObserver = globalThis.MutationObserver;
-      }
-      if (!window.ResizeObserver) {
-        window.ResizeObserver = globalThis.ResizeObserver;
-      }
-      if (!window.IntersectionObserver) {
-        window.IntersectionObserver = globalThis.IntersectionObserver;
-      }
+      installBrowserMocks(window as unknown as ObserverHost);
     }
-    
-    // Mirror to global if it exists and is missing the observers
     if (typeof global !== 'undefined' && global !== globalThis) {
-      if (!global.MutationObserver) {
-        (global as any).MutationObserver = globalThis.MutationObserver;
-      }
-      if (!global.ResizeObserver) {
-        (global as any).ResizeObserver = globalThis.ResizeObserver;
-      }
-      if (!global.IntersectionObserver) {
-        (global as any).IntersectionObserver = globalThis.IntersectionObserver;
-      }
+      installBrowserMocks(global as unknown as ObserverHost);
     }
   } else {
     // Fallback: Install on whatever contexts are available

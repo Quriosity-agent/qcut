@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useId } from "react";
 import { Search, Star, Clock, Filter } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -34,6 +34,9 @@ interface FilterOptions {
 }
 
 export function EffectsSearch({ presets, onSearchResults, className }: EffectsSearchProps) {
+  const uid = useId();
+  const popoverId = `${uid}-effects-filter-popover`;
+  
   const [searchQuery, setSearchQuery] = useState("");
   const [filterOptions, setFilterOptions] = useState<FilterOptions>({
     categories: [],
@@ -202,7 +205,7 @@ export function EffectsSearch({ presets, onSearchResults, className }: EffectsSe
               aria-label={`Filter effects${activeFilterCount > 0 ? ` (${activeFilterCount} active)` : ''}`}
               aria-haspopup="dialog"
               aria-expanded={isFilterOpen}
-              aria-controls="effects-filter-popover"
+              aria-controls={popoverId}
             >
               <Filter className="h-4 w-4" />
               {activeFilterCount > 0 && (
@@ -216,7 +219,7 @@ export function EffectsSearch({ presets, onSearchResults, className }: EffectsSe
               )}
             </Button>
           </PopoverTrigger>
-          <PopoverContent id="effects-filter-popover" className="w-80" align="end">
+          <PopoverContent id={popoverId} className="w-80" align="end">
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <h4 className="font-medium">Filters</h4>
@@ -234,8 +237,8 @@ export function EffectsSearch({ presets, onSearchResults, className }: EffectsSe
               
               {/* Categories */}
               <div className="space-y-2">
-                <span id="effects-categories-label" className="text-sm font-medium">Categories</span>
-                <div className="flex flex-wrap gap-2" role="group" aria-labelledby="effects-categories-label">
+                <span id={`${uid}-effects-categories-label`} className="text-sm font-medium">Categories</span>
+                <div className="flex flex-wrap gap-2" role="group" aria-labelledby={`${uid}-effects-categories-label`}>
                   {availableCategories.map(category => {
                     const active = filterOptions.categories.includes(category);
                     return (
@@ -260,18 +263,18 @@ export function EffectsSearch({ presets, onSearchResults, className }: EffectsSe
               
               {/* Quick Filters */}
               <div className="space-y-2">
-                <span id="effects-quickfilters-label" className="text-sm font-medium">Quick Filters</span>
-                <div className="space-y-2" role="group" aria-labelledby="effects-quickfilters-label">
+                <span id={`${uid}-effects-quickfilters-label`} className="text-sm font-medium">Quick Filters</span>
+                <div className="space-y-2" role="group" aria-labelledby={`${uid}-effects-quickfilters-label`}>
                   <div className="flex items-center space-x-2">
                     <Checkbox
-                      id="favorites"
+                      id={`${uid}-favorites`}
                       checked={filterOptions.showFavorites}
                       onCheckedChange={(checked) => 
                         setFilterOptions(prev => ({ ...prev, showFavorites: !!checked }))
                       }
                     />
                     <label
-                      htmlFor="favorites"
+                      htmlFor={`${uid}-favorites`}
                       className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 flex items-center gap-2"
                     >
                       <Star className="h-3 w-3" />
@@ -281,14 +284,14 @@ export function EffectsSearch({ presets, onSearchResults, className }: EffectsSe
                   
                   <div className="flex items-center space-x-2">
                     <Checkbox
-                      id="recent"
+                      id={`${uid}-recent`}
                       checked={filterOptions.showRecent}
                       onCheckedChange={(checked) => 
                         setFilterOptions(prev => ({ ...prev, showRecent: !!checked }))
                       }
                     />
                     <label
-                      htmlFor="recent"
+                      htmlFor={`${uid}-recent`}
                       className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 flex items-center gap-2"
                     >
                       <Clock className="h-3 w-3" />
@@ -302,14 +305,14 @@ export function EffectsSearch({ presets, onSearchResults, className }: EffectsSe
               
               {/* Sort By */}
               <div className="space-y-2">
-                <span id="effects-sortby-label" className="text-sm font-medium">Sort by</span>
+                <span id={`${uid}-effects-sortby-label`} className="text-sm font-medium">Sort by</span>
                 <Select
                   value={filterOptions.sortBy}
                   onValueChange={(value: FilterOptions['sortBy']) => 
                     setFilterOptions(prev => ({ ...prev, sortBy: value }))
                   }
                 >
-                  <SelectTrigger className="w-full" aria-labelledby="effects-sortby-label">
+                  <SelectTrigger className="w-full" aria-labelledby={`${uid}-effects-sortby-label`}>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>

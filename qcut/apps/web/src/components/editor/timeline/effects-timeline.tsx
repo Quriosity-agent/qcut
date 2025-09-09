@@ -17,7 +17,7 @@ const TRACK_HEIGHT = 64;
 
 export function EffectsTimeline({ tracks, pixelsPerSecond }: EffectsTimelineProps) {
   const { getElementEffects } = useEffectsStore();
-  const [hoveredEffect, setHoveredEffect] = useState<string | null>(null);
+  const [hoveredEffect, setHoveredEffect] = useState<{ id: string; name: string } | null>(null);
 
   // Render effect visualization bars for each element
   const renderEffectBars = (element: TimelineElementType) => {
@@ -41,9 +41,9 @@ export function EffectsTimeline({ tracks, pixelsPerSecond }: EffectsTimelineProp
             bottom: `${barOffset}px`,
             height: `${barHeight}px`,
             backgroundColor: getEffectColor(effect.effectType),
-            opacity: hoveredEffect === effect.id ? 1 : 0.7,
+            opacity: hoveredEffect?.id === effect.id ? 1 : 0.7,
           }}
-          onMouseEnter={() => setHoveredEffect(effect.id)}
+          onMouseEnter={() => setHoveredEffect({ id: effect.id, name: effect.name })}
           onMouseLeave={() => setHoveredEffect(null)}
           title={`${effect.name} Effect`}
         />
@@ -92,9 +92,7 @@ export function EffectsTimeline({ tracks, pixelsPerSecond }: EffectsTimelineProp
       {/* Hover tooltip */}
       {hoveredEffect && (
         <div className="absolute top-0 right-2 text-xs text-muted-foreground">
-          {tracks.flatMap(t => t.elements).map(el => getElementEffects(el.id))
-            .flat()
-            ?.find(e => e?.id === hoveredEffect)?.name}
+          {hoveredEffect.name}
         </div>
       )}
     </div>

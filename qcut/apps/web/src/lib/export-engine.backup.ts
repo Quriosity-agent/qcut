@@ -629,14 +629,19 @@ export class ExportEngine {
       `[ExportEngine] Export complete: ${totalSize} bytes, ${this.recordedChunks.length} chunks`
     );
 
-    return new Promise((resolve, reject) => {
-      this.mediaRecorder!.onstop = () => {
+    return new Promise((resolve) => {
+      const recorder = this.mediaRecorder;
+      if (!recorder) {
+        throw new Error("MediaRecorder not available");
+      }
+      
+      recorder.onstop = () => {
         const blob = new Blob(this.recordedChunks, { type: "video/webm" });
         resolve(blob);
       };
 
-      if (this.mediaRecorder!.state === "recording") {
-        this.mediaRecorder!.stop();
+      if (recorder.state === "recording") {
+        recorder.stop();
       } else {
         // Already stopped, create blob immediately
         const blob = new Blob(this.recordedChunks, { type: "video/webm" });

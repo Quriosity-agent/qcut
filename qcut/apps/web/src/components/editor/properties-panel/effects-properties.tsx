@@ -252,19 +252,19 @@ export function EffectsProperties({ elementId }: EffectsPropertiesProps) {
                 type="button"
                 variant="text"
                 size="icon"
-                aria-label="Duplicate effect"
+                aria-label={`Duplicate ${effect.name} effect`}
                 onClick={() => duplicateEffect(elementId, effect.id)}
               >
-                <Copy className="w-4 h-4" />
+                <Copy className="w-4 h-4" aria-hidden="true" focusable="false" />
               </Button>
               <Button
                 type="button"
                 variant="text"
                 size="icon"
-                aria-label="Remove effect"
+                aria-label={`Remove ${effect.name} effect`}
                 onClick={() => removeEffect(elementId, effect.id)}
               >
-                <Trash2 className="w-4 h-4" />
+                <Trash2 className="w-4 h-4" aria-hidden="true" focusable="false" />
               </Button>
             </div>
           </div>
