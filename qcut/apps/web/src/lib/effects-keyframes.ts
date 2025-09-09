@@ -1,4 +1,4 @@
-import { EffectKeyframe, AnimatedParameter, EffectParameters } from "@/types/effects";
+import type { EffectKeyframe, AnimatedParameter, EffectParameters } from "@/types/effects";
 
 /**
  * Easing functions for smooth animations

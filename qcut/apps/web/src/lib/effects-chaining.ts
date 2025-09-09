@@ -1,5 +1,6 @@
 import type { EffectInstance, EffectParameters } from "@/types/effects";
 import { mergeEffectParameters } from "@/lib/effects-utils";
+import { inferEffectType } from "@/lib/utils/effects";
 
 /**
  * Effect Chain Management
@@ -188,7 +189,7 @@ export function createEffectChain(
     .map(preset => ({
       id: crypto.randomUUID(),
       name: preset.name,
-      effectType: preset.category,
+      effectType: inferEffectType(preset.parameters),
       parameters: preset.parameters,
       duration: 0,
       enabled: true,

@@ -308,6 +308,8 @@ export function EffectManagement({ elementId, className }: EffectManagementProps
                         type="number"
                         placeholder="Start"
                         className="flex-1 px-2 py-1 text-xs border rounded"
+                        min={0}
+                        aria-label="Effect start time (s)"
                         value={timeRange?.start || ""}
                         onChange={(e) => {
                           const start = parseFloat(e.target.value) || 0;
@@ -319,6 +321,8 @@ export function EffectManagement({ elementId, className }: EffectManagementProps
                         type="number"
                         placeholder="End"
                         className="flex-1 px-2 py-1 text-xs border rounded"
+                        min={0}
+                        aria-label="Effect end time (s)"
                         value={timeRange?.end || ""}
                         onChange={(e) => {
                           const start = timeRange?.start || 0;
