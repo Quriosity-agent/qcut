@@ -178,13 +178,14 @@ export function EffectTemplatesPanel({
           <Button
             size="sm"
             variant="outline"
+            type="button"
             onClick={() => setIsCreating(!isCreating)}
           >
             <Save className="h-4 w-4 mr-1" />
             Save Current
           </Button>
           <label>
-            <Button size="sm" variant="outline" asChild>
+            <Button size="sm" variant="outline" asChild type="button">
               <span>
                 <Upload className="h-4 w-4 mr-1" />
                 Import
@@ -308,7 +309,7 @@ export function EffectTemplatesPanel({
                     <div className="flex flex-wrap gap-1">
                       {template.effects.map((effect) => (
                         <span
-                          key={`${template.id}-${effect.type}-${effect.order}`}
+                          key={`${template.id}-${effect.effectType}-${effect.order}`}
                           className="text-xs px-2 py-1 bg-muted rounded"
                         >
                           {effect.name}

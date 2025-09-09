@@ -154,9 +154,7 @@ export function applyEffectsToCanvas(
   parameters: EffectParameters
 ): void {
   const filterString = parametersToCSSFilters(parameters);
-  if (filterString) {
-    ctx.filter = filterString;
-  }
+  ctx.filter = filterString ? filterString : 'none';
 }
 
 /**

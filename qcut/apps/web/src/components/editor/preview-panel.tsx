@@ -605,9 +605,18 @@ export function PreviewPanel() {
           key={element.id}
           className="absolute flex items-center justify-center cursor-grab"
           onClick={() => setSelectedElementId(element.id)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              setSelectedElementId(element.id);
+            }
+          }}
           onMouseDown={(e) =>
             handleTextMouseDown(e, element, elementData.track.id)
           }
+          tabIndex={0}
+          role="button"
+          aria-label={`Select ${element.type} element`}
           style={{
             left: `${
               50 +

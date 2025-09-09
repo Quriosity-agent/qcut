@@ -254,6 +254,7 @@ export function TransformProperties({ element, trackId }: TransformPropertiesPro
           <PropertyItemValue>
             <div className="flex gap-2">
               <Button
+                type="button"
                 variant="outline"
                 size="sm"
                 onClick={() => handleChange("rotation", transform.rotation - 90)}
@@ -261,6 +262,7 @@ export function TransformProperties({ element, trackId }: TransformPropertiesPro
                 -90°
               </Button>
               <Button
+                type="button"
                 variant="outline"
                 size="sm"
                 onClick={() => handleChange("rotation", transform.rotation - 45)}
@@ -268,6 +270,7 @@ export function TransformProperties({ element, trackId }: TransformPropertiesPro
                 -45°
               </Button>
               <Button
+                type="button"
                 variant="outline"
                 size="sm"
                 onClick={() => handleChange("rotation", 0)}
@@ -275,6 +278,7 @@ export function TransformProperties({ element, trackId }: TransformPropertiesPro
                 0°
               </Button>
               <Button
+                type="button"
                 variant="outline"
                 size="sm"
                 onClick={() => handleChange("rotation", transform.rotation + 45)}
@@ -282,6 +286,7 @@ export function TransformProperties({ element, trackId }: TransformPropertiesPro
                 +45°
               </Button>
               <Button
+                type="button"
                 variant="outline"
                 size="sm"
                 onClick={() => handleChange("rotation", transform.rotation + 90)}

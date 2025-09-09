@@ -283,31 +283,36 @@ export function applyAdvancedCanvasEffects(
   ctx: CanvasRenderingContext2D,
   parameters: EffectParameters
 ): void {
-  // Apply distortion effects
-  if (parameters.pixelate && parameters.pixelate > 0) {
-    applyPixelateEffect(ctx, parameters.pixelate);
-  }
-  
-  if (parameters.wave && parameters.waveAmplitude && parameters.waveFrequency) {
-    applyWaveEffect(ctx, parameters.waveAmplitude, parameters.waveFrequency);
-  }
-  
-  if (parameters.twist && parameters.twistAngle) {
-    applyTwistEffect(ctx, parameters.twistAngle);
-  }
-  
-  // Apply artistic effects
-  if (parameters.halftone && parameters.dotSize) {
-    applyHalftoneEffect(ctx, parameters.dotSize);
-  }
-  
-  if (parameters.oilPainting && parameters.brushSize) {
-    applyOilPaintingEffect(ctx, parameters.brushSize, parameters.oilPainting);
-  }
-  
-  // Apply blend modes for composite effects
-  if (parameters.blendMode) {
-    ctx.globalCompositeOperation = parameters.blendMode as GlobalCompositeOperation;
+  ctx.save();
+  try {
+    // Apply distortion effects
+    if (parameters.pixelate && parameters.pixelate > 0) {
+      applyPixelateEffect(ctx, parameters.pixelate);
+    }
+    
+    if (parameters.waveAmplitude && parameters.waveFrequency) {
+      applyWaveEffect(ctx, parameters.waveAmplitude, parameters.waveFrequency);
+    }
+    
+    if (parameters.twist && parameters.twistAngle) {
+      applyTwistEffect(ctx, parameters.twistAngle);
+    }
+    
+    // Apply artistic effects
+    if (parameters.halftone && parameters.dotSize) {
+      applyHalftoneEffect(ctx, parameters.dotSize);
+    }
+    
+    if (parameters.oilPainting && parameters.brushSize) {
+      applyOilPaintingEffect(ctx, parameters.brushSize, parameters.oilPainting);
+    }
+    
+    // Apply blend modes for composite effects
+    if (parameters.blendMode) {
+      ctx.globalCompositeOperation = parameters.blendMode as GlobalCompositeOperation;
+    }
+  } finally {
+    ctx.restore();
   }
 }
 
