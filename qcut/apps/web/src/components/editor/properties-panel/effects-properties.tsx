@@ -8,47 +8,47 @@ import { Trash2, Copy } from "lucide-react";
 import type { EffectInstance, EffectParameters } from "@/types/effects";
 
 // Configuration for effect parameter controls
-const PARAMETER_CONFIG: Record<keyof EffectParameters, {
+// Note: Only numeric parameters can have sliders. Non-numeric parameters like blurType and wipeDirection
+// need different controls and are not included here.
+const PARAMETER_CONFIG: Partial<Record<keyof EffectParameters, {
   label: string;
   min: number;
   max: number;
   step?: number;
-}> = {
+}>> = {
+  // Transform parameters
+  opacity: { label: "Opacity", min: 0, max: 100 },
+  scale: { label: "Scale", min: 0, max: 200 },
+  rotate: { label: "Rotate", min: -360, max: 360 },
+  skewX: { label: "Skew X", min: -45, max: 45 },
+  skewY: { label: "Skew Y", min: -45, max: 45 },
+  
   // Basic color adjustments
   brightness: { label: "Brightness", min: -100, max: 100 },
   contrast: { label: "Contrast", min: -100, max: 100 },
   saturation: { label: "Saturation", min: -100, max: 200 },
   hue: { label: "Hue Rotation", min: 0, max: 360 },
-  temperature: { label: "Temperature", min: -100, max: 100 },
-  tint: { label: "Tint", min: -100, max: 100 },
-  exposure: { label: "Exposure", min: -100, max: 100 },
   gamma: { label: "Gamma", min: 0, max: 200 },
-  opacity: { label: "Opacity", min: 0, max: 100 },
   
-  // Blur and sharpness
+  // Blur effects
   blur: { label: "Blur", min: 0, max: 20 },
-  radialBlur: { label: "Radial Blur", min: 0, max: 100 },
-  motionBlur: { label: "Motion Blur", min: 0, max: 100 },
-  sharpen: { label: "Sharpen", min: 0, max: 100 },
-  unsharpMask: { label: "Unsharp Mask", min: 0, max: 100 },
   
-  // Stylistic effects
+  // Color effects
   sepia: { label: "Sepia", min: 0, max: 100 },
   grayscale: { label: "Grayscale", min: 0, max: 100 },
   invert: { label: "Invert", min: 0, max: 100 },
+  
+  // Style effects
   vintage: { label: "Vintage", min: 0, max: 100 },
   dramatic: { label: "Dramatic", min: 0, max: 100 },
   warm: { label: "Warm", min: 0, max: 100 },
   cool: { label: "Cool", min: 0, max: 100 },
   cinematic: { label: "Cinematic", min: 0, max: 100 },
-  glitch: { label: "Glitch", min: 0, max: 100 },
   
   // Enhancement effects
   vignette: { label: "Vignette", min: 0, max: 100 },
   grain: { label: "Grain", min: 0, max: 100 },
-  denoise: { label: "Denoise", min: 0, max: 100 },
-  
-  // Processing effects
+  sharpen: { label: "Sharpen", min: 0, max: 100 },
   emboss: { label: "Emboss", min: 0, max: 100 },
   edge: { label: "Edge Detection", min: 0, max: 100 },
   pixelate: { label: "Pixelate", min: 0, max: 50 },
@@ -63,6 +63,8 @@ const PARAMETER_CONFIG: Record<keyof EffectParameters, {
   bulgeRadius: { label: "Bulge Radius", min: 50, max: 500 },
   fisheye: { label: "Fisheye", min: 0, max: 100 },
   fisheyeStrength: { label: "Fisheye Strength", min: 1, max: 5, step: 0.1 },
+  ripple: { label: "Ripple", min: 0, max: 100 },
+  swirl: { label: "Swirl", min: 0, max: 100 },
   
   // Artistic effects
   oilPainting: { label: "Oil Painting", min: 0, max: 100 },
@@ -80,7 +82,7 @@ const PARAMETER_CONFIG: Record<keyof EffectParameters, {
   dissolve: { label: "Dissolve", min: 0, max: 100 },
   dissolveProgress: { label: "Dissolve Progress", min: 0, max: 100 },
   wipe: { label: "Wipe", min: 0, max: 100 },
-  wipeDirection: { label: "Wipe Direction", min: 0, max: 360 },
+  // wipeDirection is a string enum, not a number - handled separately
   wipeProgress: { label: "Wipe Progress", min: 0, max: 100 },
   
   // Composite effects
@@ -89,7 +91,7 @@ const PARAMETER_CONFIG: Record<keyof EffectParameters, {
   multiply: { label: "Multiply", min: 0, max: 100 },
   screen: { label: "Screen", min: 0, max: 100 },
   colorDodge: { label: "Color Dodge", min: 0, max: 100 },
-  blendMode: { label: "Blend Mode", min: 0, max: 100 },
+  // blendMode is a string enum, not a number - handled separately
 };
 
 interface EffectsPropertiesProps {

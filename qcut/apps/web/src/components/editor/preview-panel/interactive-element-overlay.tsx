@@ -59,7 +59,7 @@ export function InteractiveElementOverlay({
 }: InteractiveElementOverlayProps) {
   // Note: We use updateElementTransform directly via getState() for batched updates
   // Individual update methods are still imported for direct user interactions
-  const { updateElementPosition } = useTimelineStore();
+  const { updateElementPosition, updateElementRotation } = useTimelineStore();
   const overlayRef = useRef<HTMLDivElement>(null);
   const rafRef = useRef<number | null>(null);
   const pendingUpdateRef = useRef<{

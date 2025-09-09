@@ -231,8 +231,8 @@ export function EffectsSearch({ presets, onSearchResults, className }: EffectsSe
               
               {/* Categories */}
               <div className="space-y-2">
-                <label className="text-sm font-medium">Categories</label>
-                <div className="flex flex-wrap gap-2">
+                <span id="effects-categories-label" className="text-sm font-medium">Categories</span>
+                <div className="flex flex-wrap gap-2" role="group" aria-labelledby="effects-categories-label">
                   {availableCategories.map(category => {
                     const active = filterOptions.categories.includes(category);
                     return (
@@ -257,8 +257,8 @@ export function EffectsSearch({ presets, onSearchResults, className }: EffectsSe
               
               {/* Quick Filters */}
               <div className="space-y-2">
-                <label className="text-sm font-medium">Quick Filters</label>
-                <div className="space-y-2">
+                <span id="effects-quickfilters-label" className="text-sm font-medium">Quick Filters</span>
+                <div className="space-y-2" role="group" aria-labelledby="effects-quickfilters-label">
                   <div className="flex items-center space-x-2">
                     <Checkbox
                       id="favorites"

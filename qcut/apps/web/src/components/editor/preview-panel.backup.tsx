@@ -311,9 +311,9 @@ export function PreviewPanel() {
   const getActiveElements = useCallback((): ActiveElement[] => {
     const activeElements: ActiveElement[] = [];
 
-    tracks.forEach((track) => {
-      track.elements.forEach((element) => {
-        if (element.hidden) return;
+    for (const track of tracks) {
+      for (const element of track.elements) {
+        if (element.hidden) continue;
         const elementStart = element.startTime;
         const elementEnd =
           element.startTime +
@@ -330,8 +330,8 @@ export function PreviewPanel() {
           }
           activeElements.push({ element, track, mediaItem });
         }
-      });
-    });
+      }
+    }
 
     return activeElements;
   }, [tracks, currentTime, mediaItems]);

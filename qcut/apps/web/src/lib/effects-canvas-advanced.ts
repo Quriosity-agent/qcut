@@ -77,7 +77,8 @@ export function applyWaveEffect(
   const tempCanvas = document.createElement('canvas');
   tempCanvas.width = width;
   tempCanvas.height = height;
-  const tempCtx = tempCanvas.getContext('2d')!;
+  const tempCtx = tempCanvas.getContext('2d');
+  if (!tempCtx) return;
   
   // Copy original image
   tempCtx.drawImage(canvas, 0, 0);
@@ -212,16 +213,25 @@ export function applyOilPaintingEffect(
   const srcData = new Uint8ClampedArray(imageData.data);
   const destData = imageData.data;
   
-  const radius = Math.floor(brushSize);
+  // Ensure valid radius and intensity levels
+  const radius = Math.max(1, Math.floor(brushSize));
+  const levels = Math.min(256, Math.max(1, Math.round(intensity || 1)));
+  
+  // Pre-allocate typed arrays outside the loop for better performance
+  const hist = new Uint16Array(levels);
+  const sumR = new Uint32Array(levels);
+  const sumG = new Uint32Array(levels);
+  const sumB = new Uint32Array(levels);
   
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
-      // Sample colors in brush area
-      const intensityLevels = Array(256).fill(0);
-      const avgR = Array(256).fill(0);
-      const avgG = Array(256).fill(0);
-      const avgB = Array(256).fill(0);
+      // Reset histograms for this pixel
+      hist.fill(0);
+      sumR.fill(0);
+      sumG.fill(0);
+      sumB.fill(0);
       
+      // Sample colors in brush area
       for (let dy = -radius; dy <= radius; dy++) {
         for (let dx = -radius; dx <= radius; dx++) {
           const px = Math.min(width - 1, Math.max(0, x + dx));
@@ -232,31 +242,33 @@ export function applyOilPaintingEffect(
           const g = srcData[idx + 1];
           const b = srcData[idx + 2];
           
-          // Calculate intensity level
-          const intensityLevel = Math.floor(((r + g + b) / 3) * intensity / 100);
+          // Calculate bucket index [0..levels-1] based on luminance
+          const lum = (r + g + b) / 3; // 0..255
+          const bucket = Math.min(levels - 1, Math.max(0, Math.floor((lum / 255) * (levels - 1))));
           
-          intensityLevels[intensityLevel]++;
-          avgR[intensityLevel] += r;
-          avgG[intensityLevel] += g;
-          avgB[intensityLevel] += b;
+          hist[bucket]++;
+          sumR[bucket] += r;
+          sumG[bucket] += g;
+          sumB[bucket] += b;
         }
       }
       
-      // Find most common intensity level
+      // Find most common bucket
       let maxLevel = 0;
-      let maxLevelCount = 0;
-      for (let i = 0; i < 256; i++) {
-        if (intensityLevels[i] > maxLevelCount) {
-          maxLevelCount = intensityLevels[i];
+      let maxCount = 0;
+      for (let i = 0; i < levels; i++) {
+        if (hist[i] > maxCount) {
+          maxCount = hist[i];
           maxLevel = i;
         }
       }
       
-      // Set pixel to average color of most common intensity
+      // Set pixel to average color of most common intensity (with division by zero protection)
       const destIdx = (y * width + x) * 4;
-      destData[destIdx] = avgR[maxLevel] / intensityLevels[maxLevel];
-      destData[destIdx + 1] = avgG[maxLevel] / intensityLevels[maxLevel];
-      destData[destIdx + 2] = avgB[maxLevel] / intensityLevels[maxLevel];
+      const denom = Math.max(1, hist[maxLevel]);
+      destData[destIdx] = Math.round(sumR[maxLevel] / denom);
+      destData[destIdx + 1] = Math.round(sumG[maxLevel] / denom);
+      destData[destIdx + 2] = Math.round(sumB[maxLevel] / denom);
       destData[destIdx + 3] = srcData[destIdx + 3];
     }
   }
@@ -360,6 +372,15 @@ export function applyTransitionEffect(
       ctx.clip();
       ctx.drawImage(toCanvas, 0, 0);
       ctx.restore();
+      break;
+      
+    default:
+      // Fallback: simple crossfade
+      ctx.globalAlpha = 1 - progress;
+      ctx.drawImage(fromCanvas, 0, 0);
+      ctx.globalAlpha = progress;
+      ctx.drawImage(toCanvas, 0, 0);
+      ctx.globalAlpha = 1;
       break;
   }
 }

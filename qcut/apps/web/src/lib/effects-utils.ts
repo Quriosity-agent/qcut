@@ -228,20 +228,23 @@ export function mergeEffectParameters(
   for (const params of parameterSets) {
     for (const [key, value] of Object.entries(params)) {
       if (value !== undefined) {
-        const currentValue = merged[key as keyof EffectParameters];
+        const typedKey = key as keyof EffectParameters;
+        const currentValue = merged[typedKey];
         
         if (additiveParams.includes(key)) {
           // Additive: sum values (useful for color adjustments)
-          (merged as any)[key] = 
-            ((currentValue as number) || 0) + (value as number);
+          const numericCurrentValue = typeof currentValue === 'number' ? currentValue : 0;
+          const numericValue = typeof value === 'number' ? value : 0;
+          (merged as any)[typedKey] = numericCurrentValue + numericValue;
         } else if (multiplicativeParams.includes(key)) {
           // Multiplicative: multiply values (useful for cumulative effects)
           // Default to 1 for first value to maintain multiplication identity
-          (merged as any)[key] = 
-            ((currentValue as number) || 1) * (value as number);
+          const numericCurrentValue = typeof currentValue === 'number' ? currentValue : 1;
+          const numericValue = typeof value === 'number' ? value : 1;
+          (merged as any)[typedKey] = numericCurrentValue * numericValue;
         } else {
           // Override: last value wins (for discrete/boolean parameters)
-          (merged as any)[key] = value;
+          merged[typedKey] = value;
         }
       }
     }

@@ -196,9 +196,9 @@ export function EffectChainManager({ elementId }: EffectChainManagerProps) {
                       onClick={() => toggleEffectInChain(elementId, chain.id, effect.id)}
                     >
                       {effect.enabled ? (
-                        <Eye className="h-3 w-3" title="Enabled" />
+                        <Eye className="h-3 w-3" />
                       ) : (
-                        <EyeOff className="h-3 w-3" title="Disabled" />
+                        <EyeOff className="h-3 w-3" />
                       )}
                     </Button>
                   </div>
