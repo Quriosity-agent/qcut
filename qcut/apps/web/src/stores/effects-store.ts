@@ -11,6 +11,7 @@ import type {
   AnimatedParameter,
 } from "@/types/effects";
 import { processEffectChain, layerEffectChains, createEffectChain, type EffectChain } from "@/lib/effects-chaining";
+import { inferEffectType, stripCopySuffix } from "@/lib/utils/effects";
 
 // Predefined effect presets
 const EFFECT_PRESETS: EffectPreset[] = [
@@ -324,6 +325,7 @@ interface EffectsStore {
   setSelectedCategory: (category: EffectCategory | "all") => void;
   setSelectedEffect: (effect: EffectInstance | null) => void;
   getElementEffects: (elementId: string) => EffectInstance[];
+  getEffectsForElement: (elementId: string) => EffectInstance[]; // Alias for backward compatibility
   duplicateEffect: (elementId: string, effectId: string) => void;
   reorderEffects: (elementId: string, effectIds: string[]) => void;
   resetEffectToDefaults: (elementId: string, effectId: string) => void;
@@ -531,6 +533,11 @@ export const useEffectsStore = create<EffectsStore>((set, get) => ({
     return get().activeEffects.get(elementId) || [];
   },
 
+  // Alias for backward compatibility with external callers
+  getEffectsForElement: (elementId) => {
+    return get().activeEffects.get(elementId) || [];
+  },
+
   duplicateEffect: (elementId, effectId) => {
     const effects = get().activeEffects.get(elementId) || [];
     const effectToDuplicate = effects.find(e => e.id === effectId);
@@ -614,21 +621,17 @@ export const useEffectsStore = create<EffectsStore>((set, get) => ({
       const newEffects = [...effects];
       
       if (animation) {
-        // Add or update animation
-        const existingAnimations = effect.animations || [];
-        const animIndex = existingAnimations.findIndex(a => a.parameter === animation.parameter);
-        
-        if (animIndex !== -1) {
-          // Update existing animation
-          existingAnimations[animIndex] = animation;
-        } else {
-          // Add new animation
-          existingAnimations.push(animation);
-        }
+        // Add or update animation with proper immutability
+        const existing = effect.animations ? [...effect.animations] : [];
+        const idx = existing.findIndex(a => a.parameter === animation.parameter);
+        const nextAnimations =
+          idx !== -1
+            ? existing.map((a, i) => (i === idx ? animation : a))
+            : [...existing, animation];
         
         newEffects[effectIndex] = {
           ...effect,
-          animations: existingAnimations,
+          animations: nextAnimations,
         };
       } else {
         // Remove all animations
