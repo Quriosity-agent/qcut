@@ -336,11 +336,12 @@ export function KeyframeTimeline({
           </Button>
           
           {/* Keyframe actions */}
-          <Button size="sm" variant="outline" onClick={handleAddKeyframe}>
+          <Button type="button" size="sm" variant="outline" onClick={handleAddKeyframe}>
             <Plus className="h-4 w-4 mr-1" />
             Add Keyframe
           </Button>
           <Button 
+            type="button"
             size="sm" 
             variant="outline" 
             onClick={handleRemoveKeyframe}

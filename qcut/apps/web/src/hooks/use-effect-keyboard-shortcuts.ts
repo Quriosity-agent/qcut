@@ -237,6 +237,7 @@ export const useEffectKeyboardShortcuts = () => {
   );
 
   // Increase effect intensity (Shift+Plus)
+  // Uses parameter-aware ranges for safe value clamping
   useActionHandler(
     "increase-effect-intensity",
     () => {
@@ -269,6 +270,7 @@ export const useEffectKeyboardShortcuts = () => {
   );
 
   // Decrease effect intensity (Shift+Minus)
+  // Uses parameter-aware ranges for safe value clamping (mirrors increase logic)
   useActionHandler(
     "decrease-effect-intensity",
     () => {

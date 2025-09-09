@@ -42,13 +42,13 @@ export function PropertiesPanel() {
     loading: mediaItemsLoading,
     error: mediaItemsError,
   } = useAsyncMediaItems();
-  const getElementEffects = useEffectsStore((s) => s.getElementEffects);
+  const activeEffects = useEffectsStore((s) => s.activeEffects);
 
   // Helper to check if element has effects
   const hasEffects = (elementId: string) => {
     if (!EFFECTS_ENABLED) return false;
-    const effects = getElementEffects(elementId);
-    return effects && effects.length > 0;
+    const effects = activeEffects.get(elementId) || [];
+    return effects.length > 0;
   };
 
   const panelView = useExportStore((s) => s.panelView);

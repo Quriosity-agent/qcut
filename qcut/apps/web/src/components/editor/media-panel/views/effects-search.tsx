@@ -192,23 +192,28 @@ export function EffectsSearch({ presets, onSearchResults, className }: EffectsSe
         <Popover open={isFilterOpen} onOpenChange={setIsFilterOpen}>
           <PopoverTrigger asChild>
             <Button
+              type="button"
               variant="text"
               size="sm"
               className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 p-0"
               aria-label={`Filter effects${activeFilterCount > 0 ? ` (${activeFilterCount} active)` : ''}`}
+              aria-haspopup="dialog"
+              aria-expanded={isFilterOpen}
+              aria-controls="effects-filter-popover"
             >
               <Filter className="h-4 w-4" />
               {activeFilterCount > 0 && (
                 <Badge
                   variant="destructive"
                   className="absolute -top-1 -right-1 h-4 w-4 p-0 flex items-center justify-center text-[10px]"
+                  aria-hidden="true"
                 >
                   {activeFilterCount}
                 </Badge>
               )}
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-80" align="end">
+          <PopoverContent id="effects-filter-popover" className="w-80" align="end">
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <h4 className="font-medium">Filters</h4>
