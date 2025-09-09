@@ -52,11 +52,25 @@ export function EffectsSearch({ presets, onSearchResults, className }: EffectsSe
     const savedRecent = localStorage.getItem('effectsRecent');
     
     if (savedFavorites) {
-      setFavorites(new Set(JSON.parse(savedFavorites)));
+      try {
+        const parsed = JSON.parse(savedFavorites);
+        if (Array.isArray(parsed)) {
+          setFavorites(new Set(parsed));
+        }
+      } catch {
+        // ignore malformed/legacy data
+      }
     }
     
     if (savedRecent) {
-      setRecentlyUsed(JSON.parse(savedRecent));
+      try {
+        const parsed = JSON.parse(savedRecent);
+        if (Array.isArray(parsed)) {
+          setRecentlyUsed(parsed);
+        }
+      } catch {
+        // ignore malformed/legacy data
+      }
     }
   }, []);
 
@@ -72,8 +86,8 @@ export function EffectsSearch({ presets, onSearchResults, className }: EffectsSe
 
   const availableCategories: EffectCategory[] = useMemo(() => {
     const categories = new Set<EffectCategory>();
-    presets.forEach(preset => categories.add(preset.category));
-    return Array.from(categories);
+    for (const preset of presets) categories.add(preset.category);
+    return Array.from(categories).sort((a, b) => a.localeCompare(b));
   }, [presets]);
 
   const filteredAndSortedPresets = useMemo(() => {
@@ -391,7 +405,16 @@ export function EffectsSearch({ presets, onSearchResults, className }: EffectsSe
 export const effectsSearchHelpers = {
   toggleFavorite: (presetId: string) => {
     const saved = localStorage.getItem('effectsFavorites');
-    const favorites = saved ? new Set(JSON.parse(saved)) : new Set();
+    let arr: string[] = [];
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) arr = parsed;
+      } catch {
+        // ignore malformed/legacy data
+      }
+    }
+    const favorites = new Set(arr);
     
     if (favorites.has(presetId)) {
       favorites.delete(presetId);
@@ -405,14 +428,31 @@ export const effectsSearchHelpers = {
   
   addToRecent: (presetId: string) => {
     const saved = localStorage.getItem('effectsRecent');
-    const recent = saved ? JSON.parse(saved) : [];
+    let recent: string[] = [];
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) recent = parsed;
+      } catch {
+        // ignore malformed/legacy data
+      }
+    }
     const newRecent = [presetId, ...recent.filter((id: string) => id !== presetId)].slice(0, 10);
     localStorage.setItem('effectsRecent', JSON.stringify(newRecent));
   },
   
   isFavorite: (presetId: string) => {
     const saved = localStorage.getItem('effectsFavorites');
-    const favorites = saved ? new Set(JSON.parse(saved)) : new Set();
+    let arr: string[] = [];
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) arr = parsed;
+      } catch {
+        // ignore malformed/legacy data
+      }
+    }
+    const favorites = new Set(arr);
     return favorites.has(presetId);
   }
 };
