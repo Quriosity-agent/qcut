@@ -213,6 +213,17 @@ interface TimelineStore {
   ) => void;
   
   // Interactive element manipulation (for effects)
+  // Batched transform updater - use this to update multiple properties atomically and avoid history spam
+  updateElementTransform: (
+    elementId: string,
+    updates: {
+      position?: { x: number; y: number };
+      size?: { width: number; height: number; x?: number; y?: number };
+      rotation?: number;
+    },
+    options?: { pushHistory?: boolean }
+  ) => void;
+  // Individual transform updaters - these delegate to updateElementTransform internally
   updateElementPosition: (elementId: string, position: { x: number; y: number }) => void;
   updateElementSize: (elementId: string, size: { width: number; height: number; x?: number; y?: number }) => void;
   updateElementRotation: (elementId: string, rotation: number) => void;
@@ -1047,53 +1058,37 @@ export const useTimelineStore = create<TimelineStore>((set, get) => {
     },
     
     // Interactive element manipulation (for effects)
-    updateElementPosition: (elementId, position) => {
-      get().pushHistory();
-      updateTracksAndSave(
-        get()._tracks.map((track) => ({
-          ...track,
-          elements: track.elements.map((element) =>
-            element.id === elementId
-              ? { ...element, x: position.x, y: position.y }
-              : element
-          ),
-        }))
-      );
+    updateElementTransform: (elementId, updates, options) => {
+      const push = options?.pushHistory !== false;
+      if (push) get().pushHistory();
+      const newTracks = get()._tracks.map((track) => ({
+        ...track,
+        elements: track.elements.map((el) => {
+          if (el.id !== elementId) return el;
+          return {
+            ...el,
+            ...(updates.position && { x: updates.position.x, y: updates.position.y }),
+            ...(updates.size && {
+              width: updates.size.width,
+              height: updates.size.height,
+              ...(updates.size.x !== undefined && { x: updates.size.x }),
+              ...(updates.size.y !== undefined && { y: updates.size.y }),
+            }),
+            ...(updates.rotation !== undefined && { rotation: updates.rotation }),
+          };
+        }),
+      }));
+      updateTracksAndSave(newTracks);
     },
     
-    updateElementSize: (elementId, size) => {
-      get().pushHistory();
-      updateTracksAndSave(
-        get()._tracks.map((track) => ({
-          ...track,
-          elements: track.elements.map((element) =>
-            element.id === elementId
-              ? { 
-                  ...element, 
-                  width: size.width, 
-                  height: size.height,
-                  ...(size.x !== undefined && { x: size.x }),
-                  ...(size.y !== undefined && { y: size.y })
-                }
-              : element
-          ),
-        }))
-      );
-    },
-    
-    updateElementRotation: (elementId, rotation) => {
-      get().pushHistory();
-      updateTracksAndSave(
-        get()._tracks.map((track) => ({
-          ...track,
-          elements: track.elements.map((element) =>
-            element.id === elementId
-              ? { ...element, rotation }
-              : element
-          ),
-        }))
-      );
-    },
+    updateElementPosition: (elementId, position) =>
+      get().updateElementTransform(elementId, { position }, { pushHistory: true }),
+      
+    updateElementSize: (elementId, size) =>
+      get().updateElementTransform(elementId, { size }, { pushHistory: true }),
+      
+    updateElementRotation: (elementId, rotation) =>
+      get().updateElementTransform(elementId, { rotation }, { pushHistory: true }),
 
     updateMediaElement: (trackId, elementId, updates, pushHistory = true) => {
       if (pushHistory) {
