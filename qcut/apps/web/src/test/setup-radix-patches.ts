@@ -30,10 +30,11 @@ const mockGetComputedStyle = (element: Element): CSSStyleDeclaration => {
   return styles as unknown as CSSStyleDeclaration;
 };
 
-// Import shared browser mocks
-import { MockMutationObserver, MockResizeObserver } from './mocks/browser-mocks';
+// Browser mocks (MutationObserver, ResizeObserver) are already installed 
+// via browser-mocks.ts in global-setup.ts
+// We only need to add getComputedStyle if missing
 
-// Apply polyfills to all possible global contexts
+// Apply getComputedStyle polyfill to all possible global contexts
 const contexts: Array<Record<string, unknown>> = [
   globalThis as unknown as Record<string, unknown>,
 ];
@@ -53,20 +54,6 @@ for (const ctx of contexts) {
       if (!('getComputedStyle' in ctx)) {
         Object.defineProperty(ctx, 'getComputedStyle', {
           value: mockGetComputedStyle,
-          writable: true,
-          configurable: true,
-        });
-      }
-      if (!('MutationObserver' in ctx)) {
-        Object.defineProperty(ctx, 'MutationObserver', {
-          value: MockMutationObserver,
-          writable: true,
-          configurable: true,
-        });
-      }
-      if (!('ResizeObserver' in ctx)) {
-        Object.defineProperty(ctx, 'ResizeObserver', {
-          value: MockResizeObserver,
           writable: true,
           configurable: true,
         });

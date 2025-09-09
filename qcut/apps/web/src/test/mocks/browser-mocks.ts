@@ -36,15 +36,39 @@ export class MockIntersectionObserver implements IntersectionObserver {
 export function installBrowserMocks(context: any) {
   if (!context) return;
   
-  if (!context.MutationObserver) {
+  // Force override using Object.defineProperty for better compatibility
+  // This ensures we override JSDOM's native implementation
+  try {
+    Object.defineProperty(context, 'MutationObserver', {
+      value: MockMutationObserver,
+      writable: true,
+      configurable: true,
+      enumerable: true
+    });
+  } catch (e) {
+    // Fallback to direct assignment if defineProperty fails
     context.MutationObserver = MockMutationObserver;
   }
   
-  if (!context.ResizeObserver) {
+  try {
+    Object.defineProperty(context, 'ResizeObserver', {
+      value: MockResizeObserver,
+      writable: true,
+      configurable: true,
+      enumerable: true
+    });
+  } catch (e) {
     context.ResizeObserver = MockResizeObserver;
   }
   
-  if (!context.IntersectionObserver) {
+  try {
+    Object.defineProperty(context, 'IntersectionObserver', {
+      value: MockIntersectionObserver,
+      writable: true,
+      configurable: true,
+      enumerable: true
+    });
+  } catch (e) {
     context.IntersectionObserver = MockIntersectionObserver;
   }
 }

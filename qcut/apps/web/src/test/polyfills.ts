@@ -107,15 +107,15 @@ if (typeof this !== "undefined") {
 }
 
 // Additional polyfills for JSDOM environment
-const setupAdditionalPolyfills = () => {
+const setupAdditionalPolyfills = async () => {
   const contexts = [
     globalThis,
     typeof window !== "undefined" ? window : null,
     typeof global !== "undefined" ? global : null
   ].filter(Boolean);
   
-  contexts.forEach(context => {
-    if (!context || typeof context !== 'object') return;
+  for (const context of contexts) {
+    if (!context || typeof context !== 'object') continue;
     
     try {
       // requestAnimationFrame polyfill
@@ -140,36 +140,15 @@ const setupAdditionalPolyfills = () => {
         };
       }
       
-      // MutationObserver mock
-      if (!context.MutationObserver) {
-        context.MutationObserver = class MockMutationObserver {
-          constructor(_callback: MutationCallback) {}
-          observe(_target: Node, _options?: MutationObserverInit) {}
-          disconnect() {}
-          takeRecords(): MutationRecord[] { return []; }
-        };
-      }
-      
-      // IntersectionObserver mock
-      if (!context.IntersectionObserver) {
-        context.IntersectionObserver = class MockIntersectionObserver {
-          root: Element | null = null;
-          rootMargin: string = '0px';
-          thresholds: ReadonlyArray<number> = [0];
-          
-          constructor() {}
-          observe() {}
-          unobserve() {}
-          disconnect() {}
-          takeRecords() { return []; }
-        } as any;
-      }
+      // Import and install browser mocks from shared module
+      const { installBrowserMocks } = await import('./mocks/browser-mocks');
+      installBrowserMocks(context);
       
       console.log(`✓ Applied additional polyfills to context`);
     } catch (error) {
       console.warn(`Failed to apply additional polyfills:`, error);
     }
-  });
+  }
 };
 
 // Apply additional polyfills

@@ -40,7 +40,6 @@ export function EffectsGallery({
   showThumbnails = true,
   className
 }: EffectsGalleryProps) {
-  const [hoveredEffect, setHoveredEffect] = useState<string | null>(null);
   const [selectedEffect, setSelectedEffect] = useState<EffectPreset | null>(null);
   const [favorites, setFavorites] = useState<Set<string>>(() => {
     const saved = localStorage.getItem('effectsFavorites');
@@ -188,14 +187,12 @@ export function EffectsGallery({
             className={cn(
               "relative group cursor-move overflow-hidden transition-all",
               "hover:shadow-lg hover:scale-105",
-              hoveredEffect === preset.id && "ring-2 ring-primary"
+              "focus-within:ring-2 focus-within:ring-primary"
             )}
             draggable
             onDragStart={(e) => onDragStart?.(e, preset)}
             onDragEnd={onDragEnd}
             onClick={() => handleApply(preset)}
-            onMouseEnter={() => setHoveredEffect(preset.id)}
-            onMouseLeave={() => setHoveredEffect(null)}
           >
             {/* Thumbnail Preview */}
             {showThumbnails && (
@@ -240,10 +237,7 @@ export function EffectsGallery({
               </div>
               
               {/* Action buttons on hover */}
-              <div className={cn(
-                "mt-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity",
-                hoveredEffect === preset.id && "opacity-100"
-              )}>
+              <div className="mt-2 flex gap-1 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity">
                 <Button
                   type="button"
                   variant="secondary"

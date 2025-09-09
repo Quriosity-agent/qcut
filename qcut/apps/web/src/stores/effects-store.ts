@@ -423,6 +423,14 @@ function inferEffectType(params: EffectParameters): EffectType {
   return 'brightness';
 }
 
+/**
+ * Helper to strip " (Copy)" suffix from effect names
+ */
+const COPY_SUFFIX_RE = /\s+\(Copy\)$/;
+function stripCopySuffix(name: string): string {
+  return name.replace(COPY_SUFFIX_RE, '');
+}
+
 export const useEffectsStore = create<EffectsStore>((set, get) => ({
   presets: EFFECT_PRESETS,
   activeEffects: new Map(),
@@ -566,10 +574,11 @@ export const useEffectsStore = create<EffectsStore>((set, get) => ({
     
     if (effectIndex !== -1) {
       const effect = effects[effectIndex];
-      // Find the original preset
-      const preset = EFFECT_PRESETS.find(p => 
-        p.name === effect.name || p.id === effect.effectType
-      );
+      // Find the original preset (strip "(Copy)" and fallback by inferred type)
+      const baseName = stripCopySuffix(effect.name);
+      const preset =
+        EFFECT_PRESETS.find((p) => p.name === baseName) ??
+        EFFECT_PRESETS.find((p) => inferEffectType(p.parameters) === effect.effectType);
       
       if (preset) {
         const resetEffect: EffectInstance = {

@@ -3,7 +3,12 @@
 
 import { installAllBrowserMocks } from './mocks/browser-mocks';
 
-// Install all browser mocks on available global contexts
-installAllBrowserMocks();
+export function setup() {
+  // Install all browser mocks on available global contexts
+  installAllBrowserMocks();
+  console.log('✓ Global setup: Browser mocks installed');
+}
 
-export {};
+export function teardown() {
+  // Cleanup if needed
+}

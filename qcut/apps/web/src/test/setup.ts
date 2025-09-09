@@ -4,6 +4,10 @@ console.log("🔧 SETUP.TS EXECUTING - Starting jsdom environment setup...");
 // CRITICAL: Import polyfills FIRST before anything else
 import "./polyfills";
 
+// Import and install browser mocks to ensure they're available
+import { installAllBrowserMocks } from './mocks/browser-mocks';
+installAllBrowserMocks();
+
 // Ensure getComputedStyle is available everywhere (reuse from polyfills.ts)
 const forceGetComputedStylePolyfill = () => {
   // Check if already available from polyfills.ts
@@ -172,29 +176,7 @@ Object.defineProperty(globalThis, "ResizeObserver", {
   value: window.ResizeObserver,
 });
 
-// Mock MutationObserver with full implementation
-const MutationObserverMock = vi.fn().mockImplementation((callback) => {
-  const observer = {
-    observe: vi.fn(),
-    unobserve: vi.fn(),
-    disconnect: vi.fn(),
-    takeRecords: vi.fn(() => []),
-  };
-  return observer;
-});
-
-Object.defineProperty(window, "MutationObserver", {
-  writable: true,
-  value: MutationObserverMock,
-});
-Object.defineProperty(globalThis, "MutationObserver", {
-  writable: true,
-  value: MutationObserverMock,
-});
-// Also set it on global for Node environments
-if (typeof global !== "undefined") {
-  (global as any).MutationObserver = MutationObserverMock;
-}
+// Browser mocks are already installed at the top of this file
 
 // Mock URL methods
 Object.defineProperty(URL, "createObjectURL", {
