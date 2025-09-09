@@ -369,16 +369,16 @@ export function KeyframeTimeline({
       {/* Transition presets */}
       <div className="flex space-x-2">
         <span className="text-sm">Quick Transitions:</span>
-        <Button size="sm" variant="text" onClick={() => handleApplyTransition("fade-in")}>
+        <Button type="button" size="sm" variant="text" onClick={() => handleApplyTransition("fade-in")}>
           Fade In
         </Button>
-        <Button size="sm" variant="text" onClick={() => handleApplyTransition("fade-out")}>
+        <Button type="button" size="sm" variant="text" onClick={() => handleApplyTransition("fade-out")}>
           Fade Out
         </Button>
-        <Button size="sm" variant="text" onClick={() => handleApplyTransition("pulse")}>
+        <Button type="button" size="sm" variant="text" onClick={() => handleApplyTransition("pulse")}>
           Pulse
         </Button>
-        <Button size="sm" variant="text" onClick={() => handleApplyTransition("bounce")}>
+        <Button type="button" size="sm" variant="text" onClick={() => handleApplyTransition("bounce")}>
           Bounce
         </Button>
       </div>

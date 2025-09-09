@@ -107,7 +107,7 @@ export function TransformProperties({ element, trackId }: TransformPropertiesPro
               <Input
                 type="number"
                 value={transform.x}
-                onChange={(e) => handleChange("x", parseInt(e.target.value) || 0)}
+                onChange={(e) => handleChange("x", parseInt(e.target.value, 10) || 0)}
                 className="w-20"
               />
               <Slider
@@ -136,7 +136,7 @@ export function TransformProperties({ element, trackId }: TransformPropertiesPro
               <Input
                 type="number"
                 value={transform.y}
-                onChange={(e) => handleChange("y", parseInt(e.target.value) || 0)}
+                onChange={(e) => handleChange("y", parseInt(e.target.value, 10) || 0)}
                 className="w-20"
               />
               <Slider
@@ -167,7 +167,7 @@ export function TransformProperties({ element, trackId }: TransformPropertiesPro
               <Input
                 type="number"
                 value={transform.width}
-                onChange={(e) => handleChange("width", parseInt(e.target.value) || 50)}
+                onChange={(e) => handleChange("width", parseInt(e.target.value, 10) || 50)}
                 className="w-20"
               />
               <Slider
@@ -196,7 +196,7 @@ export function TransformProperties({ element, trackId }: TransformPropertiesPro
               <Input
                 type="number"
                 value={transform.height}
-                onChange={(e) => handleChange("height", parseInt(e.target.value) || 50)}
+                onChange={(e) => handleChange("height", parseInt(e.target.value, 10) || 50)}
                 className="w-20"
               />
               <Slider
@@ -227,7 +227,7 @@ export function TransformProperties({ element, trackId }: TransformPropertiesPro
               <Input
                 type="number"
                 value={transform.rotation}
-                onChange={(e) => handleChange("rotation", parseInt(e.target.value) || 0)}
+                onChange={(e) => handleChange("rotation", parseInt(e.target.value, 10) || 0)}
                 className="w-20"
               />
               <Slider

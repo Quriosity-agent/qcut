@@ -69,9 +69,9 @@ export function InteractiveElementOverlay({
     startTransform: transform,
   });
 
-  // Calculate scale ratio between canvas and preview
-  const scaleX = previewDimensions.width / canvasSize.width;
-  const scaleY = previewDimensions.height / canvasSize.height;
+  // Calculate scale ratio between canvas and preview (guard against zero division)
+  const scaleX = canvasSize.width ? previewDimensions.width / canvasSize.width : 1;
+  const scaleY = canvasSize.height ? previewDimensions.height / canvasSize.height : 1;
 
   // Handle mouse down for drag start
   const handleMouseDown = useCallback((e: React.MouseEvent, type: "move" | "resize" | "rotate", handle?: string) => {

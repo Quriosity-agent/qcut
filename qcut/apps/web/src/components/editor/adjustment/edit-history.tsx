@@ -59,6 +59,7 @@ export function EditHistory() {
               Edit History
             </CardTitle>
             <Button
+              type="button"
               variant="outline"
               size="sm"
               onClick={toggleHistory}
@@ -91,6 +92,7 @@ export function EditHistory() {
             </Badge>
           </CardTitle>
           <Button
+            type="button"
             variant="outline"
             size="sm"
             onClick={toggleHistory}
@@ -103,6 +105,7 @@ export function EditHistory() {
         {/* Quick Actions */}
         <div className="flex gap-2">
           <Button
+            type="button"
             variant="outline"
             size="sm"
             onClick={undo}
@@ -113,6 +116,7 @@ export function EditHistory() {
             Undo
           </Button>
           <Button
+            type="button"
             variant="outline"
             size="sm"
             onClick={redo}
@@ -123,6 +127,7 @@ export function EditHistory() {
             Redo
           </Button>
           <Button
+            type="button"
             variant="outline"
             size="sm"
             onClick={clearHistory}

@@ -121,6 +121,7 @@ export function EffectChainManager({ elementId }: EffectChainManagerProps) {
             
             <div className="flex gap-2">
               <Button
+                type="button"
                 size="sm"
                 onClick={handleCreateChain}
                 disabled={!chainName || selectedEffects.length === 0}
@@ -128,6 +129,7 @@ export function EffectChainManager({ elementId }: EffectChainManagerProps) {
                 Create
               </Button>
               <Button
+                type="button"
                 size="sm"
                 variant="outline"
                 onClick={() => {
@@ -169,6 +171,7 @@ export function EffectChainManager({ elementId }: EffectChainManagerProps) {
                     </SelectContent>
                   </Select>
                   <Button
+                    type="button"
                     size="icon"
                     variant="text"
                     onClick={() => removeChain(elementId, chain.id)}
@@ -186,14 +189,16 @@ export function EffectChainManager({ elementId }: EffectChainManagerProps) {
                   >
                     <span>{index + 1}. {effect.name}</span>
                     <Button
+                      type="button"
                       size="icon"
                       variant="text"
+                      aria-label={effect.enabled ? 'Disable effect' : 'Enable effect'}
                       onClick={() => toggleEffectInChain(elementId, chain.id, effect.id)}
                     >
                       {effect.enabled ? (
-                        <Eye className="h-3 w-3" />
+                        <Eye className="h-3 w-3" title="Enabled" />
                       ) : (
-                        <EyeOff className="h-3 w-3" />
+                        <EyeOff className="h-3 w-3" title="Disabled" />
                       )}
                     </Button>
                   </div>
@@ -217,6 +222,7 @@ export function EffectChainManager({ elementId }: EffectChainManagerProps) {
                 <div className="flex items-center gap-2">
                   <div className="flex flex-col gap-1">
                     <Button
+                      type="button"
                       size="icon"
                       variant="text"
                       disabled={index === 0}
@@ -225,6 +231,7 @@ export function EffectChainManager({ elementId }: EffectChainManagerProps) {
                       <Move className="h-3 w-3 rotate-180" />
                     </Button>
                     <Button
+                      type="button"
                       size="icon"
                       variant="text"
                       disabled={index === effects.length - 1}
