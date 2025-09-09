@@ -191,8 +191,35 @@ export function validateEffectParameters(parameters: EffectParameters): boolean 
     }
   }
 
+  // Check blur range (must be non-negative)
+  if (parameters.blur !== undefined) {
+    if (parameters.blur < 0 || parameters.blur > 100) {
+      return false;
+    }
+  }
+
+  // Check opacity range (0-100 for percentage, will be converted to 0-1 for CSS)
+  if (parameters.opacity !== undefined) {
+    if (parameters.opacity < 0 || parameters.opacity > 100) {
+      return false;
+    }
+  }
+
   // Check other percentage-based parameters
-  const percentageParams = ["sepia", "grayscale", "invert", "vintage", "dramatic", "warm", "cool", "cinematic"];
+  const percentageParams = [
+    'sepia',
+    'grayscale',
+    'invert',
+    'vintage',
+    'dramatic',
+    'warm',
+    'cool',
+    'cinematic',
+    'fadeIn',
+    'fadeOut',
+    'overlayOpacity',
+  ] as const;
+  
   for (const param of percentageParams) {
     const value = parameters[param as keyof EffectParameters];
     if (value !== undefined && typeof value === "number") {
