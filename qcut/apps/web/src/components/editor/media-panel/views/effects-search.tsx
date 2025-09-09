@@ -404,17 +404,19 @@ export function EffectsSearch({ presets, onSearchResults, className }: EffectsSe
 // Export helper functions for managing favorites and recent
 export const effectsSearchHelpers = {
   toggleFavorite: (presetId: string) => {
-    const saved = localStorage.getItem('effectsFavorites');
-    let arr: string[] = [];
-    if (saved) {
-      try {
+    let favorites: Set<string>;
+    try {
+      const saved = localStorage.getItem('effectsFavorites');
+      if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed)) arr = parsed;
-      } catch {
-        // ignore malformed/legacy data
+        favorites = Array.isArray(parsed) ? new Set(parsed) : new Set();
+      } else {
+        favorites = new Set();
       }
+    } catch {
+      // Handle parse errors or storage access errors
+      favorites = new Set();
     }
-    const favorites = new Set(arr);
     
     if (favorites.has(presetId)) {
       favorites.delete(presetId);
@@ -422,37 +424,54 @@ export const effectsSearchHelpers = {
       favorites.add(presetId);
     }
     
-    localStorage.setItem('effectsFavorites', JSON.stringify(Array.from(favorites)));
+    try {
+      localStorage.setItem('effectsFavorites', JSON.stringify(Array.from(favorites)));
+    } catch {
+      // Handle storage quota exceeded or write errors
+      console.warn('Failed to save favorites to localStorage');
+    }
+    
     return favorites.has(presetId);
   },
   
   addToRecent: (presetId: string) => {
-    const saved = localStorage.getItem('effectsRecent');
     let recent: string[] = [];
-    if (saved) {
-      try {
+    try {
+      const saved = localStorage.getItem('effectsRecent');
+      if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed)) recent = parsed;
-      } catch {
-        // ignore malformed/legacy data
+        recent = Array.isArray(parsed) ? parsed : [];
       }
+    } catch {
+      // Handle parse errors or storage access errors
+      recent = [];
     }
+    
     const newRecent = [presetId, ...recent.filter((id: string) => id !== presetId)].slice(0, 10);
-    localStorage.setItem('effectsRecent', JSON.stringify(newRecent));
+    
+    try {
+      localStorage.setItem('effectsRecent', JSON.stringify(newRecent));
+    } catch {
+      // Handle storage quota exceeded or write errors
+      console.warn('Failed to save recent items to localStorage');
+    }
   },
   
   isFavorite: (presetId: string) => {
-    const saved = localStorage.getItem('effectsFavorites');
-    let arr: string[] = [];
-    if (saved) {
-      try {
+    let favorites: Set<string>;
+    try {
+      const saved = localStorage.getItem('effectsFavorites');
+      if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed)) arr = parsed;
-      } catch {
-        // ignore malformed/legacy data
+        favorites = Array.isArray(parsed) ? new Set(parsed) : new Set();
+      } else {
+        favorites = new Set();
       }
+    } catch {
+      // Handle parse errors or storage access errors
+      favorites = new Set();
     }
-    const favorites = new Set(arr);
+    
     return favorites.has(presetId);
   }
 };
