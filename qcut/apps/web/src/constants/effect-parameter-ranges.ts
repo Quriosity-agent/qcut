@@ -3,13 +3,13 @@
 
 import type { EffectParameters } from "@/types/effects";
 
-export interface ParamRange {
+export type ParamRange = Readonly<{
   min: number;
   max: number;
   step: number;
-}
+}>;
 
-// Type for numeric parameter keys (excluding string enums)
+// Type for numeric parameter keys (excluding string enums like blurType, wipeDirection, blendMode)
 export type NumericParameterKey = 
   | 'opacity' | 'scale' | 'rotate' | 'skewX' | 'skewY'
   | 'brightness' | 'contrast' | 'saturation' | 'hue' | 'gamma'
@@ -25,9 +25,9 @@ export type NumericParameterKey =
 
 // Note: Enum parameters (blurType, wipeDirection, blendMode) are handled separately
 // as they don't have meaningful numeric ranges for keyboard shortcuts
-export const PARAMETER_RANGES: Record<NumericParameterKey, ParamRange> = {
+export const PARAMETER_RANGES = {
   // Transform parameters
-  opacity: { min: 0, max: 1, step: 0.01 },
+  opacity: { min: 0, max: 100, step: 1 },
   scale: { min: 0, max: 500, step: 10 },
   rotate: { min: -360, max: 360, step: 15 },
   skewX: { min: -45, max: 45, step: 5 },
@@ -38,7 +38,7 @@ export const PARAMETER_RANGES: Record<NumericParameterKey, ParamRange> = {
   contrast: { min: -100, max: 100, step: 10 },
   saturation: { min: -100, max: 200, step: 10 },
   hue: { min: -180, max: 180, step: 1 },
-  gamma: { min: 0.1, max: 5, step: 0.1 },
+  gamma: { min: 0.1, max: 3, step: 0.1 },
   
   // Blur parameters
   blur: { min: 0, max: 20, step: 1 },
@@ -68,11 +68,11 @@ export const PARAMETER_RANGES: Record<NumericParameterKey, ParamRange> = {
   waveFrequency: { min: 1, max: 20, step: 1 },
   waveAmplitude: { min: 0, max: 50, step: 5 },
   twist: { min: 0, max: 360, step: 15 },
-  twistAngle: { min: 0, max: 360, step: 15 },
+  twistAngle: { min: -180, max: 180, step: 15 },
   bulge: { min: -100, max: 100, step: 10 },
-  bulgeRadius: { min: 0, max: 500, step: 25 },
+  bulgeRadius: { min: 10, max: 500, step: 25 },
   fisheye: { min: 0, max: 100, step: 10 },
-  fisheyeStrength: { min: 0, max: 100, step: 10 },
+  fisheyeStrength: { min: 0.1, max: 3, step: 0.1 },
   ripple: { min: 0, max: 100, step: 10 },
   swirl: { min: 0, max: 360, step: 15 },
   
@@ -104,6 +104,6 @@ export const PARAMETER_RANGES: Record<NumericParameterKey, ParamRange> = {
 
 // Helper function to get parameter range with fallback
 export function getParameterRange(param: string): ParamRange {
-  const range = PARAMETER_RANGES[param as NumericParameterKey];
+  const range = PARAMETER_RANGES[param as keyof typeof PARAMETER_RANGES];
   return range || { min: -100, max: 100, step: 10 };
 }

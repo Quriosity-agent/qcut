@@ -5,7 +5,7 @@ import { TimelineElement } from "@/types/timeline";
 import { useTimelineStore } from "@/stores/timeline-store";
 import { useEffectsStore } from "@/stores/effects-store";
 import { cn } from "@/lib/utils";
-import { Move, Maximize2, RotateCw } from "lucide-react";
+import { Move, RotateCw } from "lucide-react";
 
 interface InteractiveElementOverlayProps {
   element: TimelineElement;

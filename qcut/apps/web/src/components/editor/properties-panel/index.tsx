@@ -5,6 +5,7 @@ import { useAspectRatio } from "@/hooks/use-aspect-ratio";
 import { useAsyncMediaItems } from "@/hooks/use-async-media-store";
 import { useProjectStore } from "@/stores/project-store";
 import { useTimelineStore } from "@/stores/timeline-store";
+import type { TimelineElement } from "@/types/timeline";
 import { Label } from "../../ui/label";
 import { ScrollArea } from "../../ui/scroll-area";
 import {
@@ -142,7 +143,7 @@ export function PropertiesPanel() {
   }
 
   // Helper function to render element-specific properties
-  const renderElementProperties = (element: any, trackId: string) => {
+  const renderElementProperties = (element: TimelineElement, trackId: string) => {
     if (element.type === "text") {
       return <TextProperties element={element} trackId={trackId} />;
     }

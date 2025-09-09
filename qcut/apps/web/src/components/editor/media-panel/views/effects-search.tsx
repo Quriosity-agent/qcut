@@ -16,7 +16,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import type { EffectPreset, EffectCategory } from "@/types/effects";
@@ -416,8 +415,7 @@ export const effectsSearchHelpers = {
     try {
       localStorage.setItem('effectsFavorites', JSON.stringify(Array.from(favorites)));
     } catch {
-      // Handle storage quota exceeded or write errors
-      console.warn('Failed to save favorites to localStorage');
+      // Failed to persist favorites (quota/private mode). Intentionally ignored.
     }
     
     return favorites.has(presetId);
@@ -441,8 +439,7 @@ export const effectsSearchHelpers = {
     try {
       localStorage.setItem('effectsRecent', JSON.stringify(newRecent));
     } catch {
-      // Handle storage quota exceeded or write errors
-      console.warn('Failed to save recent items to localStorage');
+      // Failed to persist recents (quota/private mode). Intentionally ignored.
     }
   },
   

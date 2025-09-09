@@ -6,92 +6,86 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PropertyGroup } from "@/components/editor/properties-panel/property-item";
 import { Trash2, Copy } from "lucide-react";
+import { getParameterRange } from "@/constants/effect-parameter-ranges";
 import type { EffectInstance, EffectParameters } from "@/types/effects";
 
-// Configuration for effect parameter controls
-// Note: Only numeric parameters can have sliders. Non-numeric parameters like blurType and wipeDirection
-// need different controls and are not included here.
-const PARAMETER_CONFIG: Partial<Record<keyof EffectParameters, {
-  label: string;
-  min: number;
-  max: number;
-  step?: number;
-}>> = {
+// Labels only; numeric ranges come from getParameterRange()
+const PARAMETER_LABELS: Partial<Record<keyof EffectParameters, string>> = {
   // Transform parameters
-  opacity: { label: "Opacity", min: 0, max: 100 },
-  scale: { label: "Scale", min: 0, max: 200 },
-  rotate: { label: "Rotate", min: -360, max: 360 },
-  skewX: { label: "Skew X", min: -45, max: 45 },
-  skewY: { label: "Skew Y", min: -45, max: 45 },
+  opacity: "Opacity",
+  scale: "Scale",
+  rotate: "Rotate",
+  skewX: "Skew X",
+  skewY: "Skew Y",
   
   // Basic color adjustments
-  brightness: { label: "Brightness", min: -100, max: 100 },
-  contrast: { label: "Contrast", min: -100, max: 100 },
-  saturation: { label: "Saturation", min: -100, max: 200 },
-  hue: { label: "Hue Rotation", min: 0, max: 360 },
-  gamma: { label: "Gamma", min: 0, max: 200 },
+  brightness: "Brightness",
+  contrast: "Contrast",
+  saturation: "Saturation",
+  hue: "Hue Rotation",
+  gamma: "Gamma",
   
   // Blur effects
-  blur: { label: "Blur", min: 0, max: 20 },
+  blur: "Blur",
   
   // Color effects
-  sepia: { label: "Sepia", min: 0, max: 100 },
-  grayscale: { label: "Grayscale", min: 0, max: 100 },
-  invert: { label: "Invert", min: 0, max: 100 },
+  sepia: "Sepia",
+  grayscale: "Grayscale",
+  invert: "Invert",
   
   // Style effects
-  vintage: { label: "Vintage", min: 0, max: 100 },
-  dramatic: { label: "Dramatic", min: 0, max: 100 },
-  warm: { label: "Warm", min: 0, max: 100 },
-  cool: { label: "Cool", min: 0, max: 100 },
-  cinematic: { label: "Cinematic", min: 0, max: 100 },
+  vintage: "Vintage",
+  dramatic: "Dramatic",
+  warm: "Warm",
+  cool: "Cool",
+  cinematic: "Cinematic",
   
   // Enhancement effects
-  vignette: { label: "Vignette", min: 0, max: 100 },
-  grain: { label: "Grain", min: 0, max: 100 },
-  sharpen: { label: "Sharpen", min: 0, max: 100 },
-  emboss: { label: "Emboss", min: 0, max: 100 },
-  edge: { label: "Edge Detection", min: 0, max: 100 },
-  pixelate: { label: "Pixelate", min: 0, max: 50 },
+  vignette: "Vignette",
+  grain: "Grain",
+  sharpen: "Sharpen",
+  emboss: "Emboss",
+  edge: "Edge Detection",
+  pixelate: "Pixelate",
   
   // Distortion effects
-  wave: { label: "Wave", min: 0, max: 100 },
-  waveFrequency: { label: "Wave Frequency", min: 1, max: 20 },
-  waveAmplitude: { label: "Wave Amplitude", min: 0, max: 50 },
-  twist: { label: "Twist", min: 0, max: 100 },
-  twistAngle: { label: "Twist Angle", min: -180, max: 180 },
-  bulge: { label: "Bulge", min: -100, max: 100 },
-  bulgeRadius: { label: "Bulge Radius", min: 50, max: 500 },
-  fisheye: { label: "Fisheye", min: 0, max: 100 },
-  fisheyeStrength: { label: "Fisheye Strength", min: 1, max: 5, step: 0.1 },
-  ripple: { label: "Ripple", min: 0, max: 100 },
-  swirl: { label: "Swirl", min: 0, max: 100 },
+  wave: "Wave",
+  waveFrequency: "Wave Frequency",
+  waveAmplitude: "Wave Amplitude",
+  twist: "Twist",
+  twistAngle: "Twist Angle",
+  bulge: "Bulge",
+  bulgeRadius: "Bulge Radius",
+  fisheye: "Fisheye",
+  fisheyeStrength: "Fisheye Strength",
+  ripple: "Ripple",
+  swirl: "Swirl",
   
   // Artistic effects
-  oilPainting: { label: "Oil Painting", min: 0, max: 100 },
-  brushSize: { label: "Brush Size", min: 1, max: 10 },
-  watercolor: { label: "Watercolor", min: 0, max: 100 },
-  wetness: { label: "Wetness", min: 0, max: 100 },
-  pencilSketch: { label: "Pencil Sketch", min: 0, max: 100 },
-  strokeWidth: { label: "Stroke Width", min: 1, max: 5 },
-  halftone: { label: "Halftone", min: 0, max: 100 },
-  dotSize: { label: "Dot Size", min: 1, max: 10 },
+  oilPainting: "Oil Painting",
+  brushSize: "Brush Size",
+  watercolor: "Watercolor",
+  wetness: "Wetness",
+  pencilSketch: "Pencil Sketch",
+  strokeWidth: "Stroke Width",
+  halftone: "Halftone",
+  dotSize: "Dot Size",
   
   // Transition effects
-  fadeIn: { label: "Fade In", min: 0, max: 100 },
-  fadeOut: { label: "Fade Out", min: 0, max: 100 },
-  dissolve: { label: "Dissolve", min: 0, max: 100 },
-  dissolveProgress: { label: "Dissolve Progress", min: 0, max: 100 },
-  wipe: { label: "Wipe", min: 0, max: 100 },
+  fadeIn: "Fade In",
+  fadeOut: "Fade Out",
+  dissolve: "Dissolve",
+  dissolveProgress: "Dissolve Progress",
+  wipe: "Wipe",
   // wipeDirection is a string enum, not a number - handled separately
-  wipeProgress: { label: "Wipe Progress", min: 0, max: 100 },
+  wipeProgress: "Wipe Progress",
   
   // Composite effects
-  overlay: { label: "Overlay", min: 0, max: 100 },
-  overlayOpacity: { label: "Overlay Opacity", min: 0, max: 100 },
-  multiply: { label: "Multiply", min: 0, max: 100 },
-  screen: { label: "Screen", min: 0, max: 100 },
-  colorDodge: { label: "Color Dodge", min: 0, max: 100 },
+  overlay: "Overlay",
+  overlayOpacity: "Overlay Opacity",
+  multiply: "Multiply",
+  screen: "Screen",
+  colorDodge: "Color Dodge",
   // blendMode is a string enum, not a number - handled separately
 };
 
@@ -116,7 +110,7 @@ export function EffectsProperties({ elementId }: EffectsPropertiesProps) {
     parameter: keyof EffectParameters
   ) => {
     const value = effect.parameters[parameter];
-    const config = PARAMETER_CONFIG[parameter];
+    const label = PARAMETER_LABELS[parameter] ?? String(parameter);
     
     // Handle string-union parameters with select controls
     if (parameter === 'blendMode' && typeof value === 'string') {
@@ -192,11 +186,12 @@ export function EffectsProperties({ elementId }: EffectsPropertiesProps) {
     }
     
     // Handle numeric parameters with sliders
-    if (typeof value === 'number' && config) {
+    if (typeof value === 'number') {
+      const range = getParameterRange(parameter as string);
       return (
         <div className="space-y-2">
           <div className="flex justify-between text-sm">
-            <span>{config.label}</span>
+            <span>{label}</span>
             <span className="text-muted-foreground">{value}</span>
           </div>
           <Slider
@@ -204,11 +199,11 @@ export function EffectsProperties({ elementId }: EffectsPropertiesProps) {
             onValueChange={([newValue]) =>
               handleParameterChange(effect.id, parameter, newValue)
             }
-            min={config.min}
-            max={config.max}
-            step={config.step || 1}
+            min={range.min}
+            max={range.max}
+            step={range.step}
             className="w-full"
-            aria-label={config.label}
+            aria-label={label}
           />
         </div>
       );
