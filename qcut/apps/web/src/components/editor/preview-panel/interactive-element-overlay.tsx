@@ -58,7 +58,6 @@ export function InteractiveElementOverlay({
   effectsEnabled = false,
 }: InteractiveElementOverlayProps) {
   const { updateElementPosition, updateElementSize, updateElementRotation } = useTimelineStore();
-  const { getElementEffects } = useEffectsStore();
   const overlayRef = useRef<HTMLDivElement>(null);
   const rafRef = useRef<number | null>(null);
   const pendingUpdateRef = useRef<{
@@ -92,8 +91,11 @@ export function InteractiveElementOverlay({
     initialRotation: element.rotation || 0,
   });
 
-  // Check if element has effects
-  const hasEffects = effectsEnabled && getElementEffects(element.id).length > 0;
+  // Check if element has effects (reactive to store changes)
+  const effectCount = useEffectsStore(
+    (s) => (s.activeEffects.get(element.id) ?? []).length
+  );
+  const hasEffects = effectsEnabled && effectCount > 0;
   
   // Throttled update function using requestAnimationFrame
   const flushPendingUpdates = useCallback(() => {
@@ -390,6 +392,15 @@ export function InteractiveElementOverlay({
         className="absolute inset-0 cursor-move focus:outline-none focus:ring-2 focus:ring-primary bg-transparent"
         onMouseDown={handleDragStart}
         onKeyDown={(e) => {
+          // Only handle arrow keys, let other keys pass through for navigation
+          const handled = 
+            e.key === 'ArrowUp' ||
+            e.key === 'ArrowDown' ||
+            e.key === 'ArrowLeft' ||
+            e.key === 'ArrowRight';
+          
+          if (!handled) return;
+          
           e.preventDefault();
           const step = 5 / previewScale;
           const largeStep = 20 / previewScale;

@@ -311,6 +311,7 @@ export function KeyframeTimeline({
           
           {/* Playback controls */}
           <Button 
+            type="button"
             size="icon" 
             variant="text" 
             onClick={() => navigateToKeyframe("prev")}
@@ -319,6 +320,7 @@ export function KeyframeTimeline({
             <SkipBack className="h-4 w-4" />
           </Button>
           <Button 
+            type="button"
             size="icon" 
             variant="text" 
             onClick={toggle}
@@ -327,6 +329,7 @@ export function KeyframeTimeline({
             {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
           </Button>
           <Button 
+            type="button"
             size="icon" 
             variant="text" 
             onClick={() => navigateToKeyframe("next")}

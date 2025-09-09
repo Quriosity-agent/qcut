@@ -97,15 +97,9 @@ interface EffectsPropertiesProps {
 }
 
 export function EffectsProperties({ elementId }: EffectsPropertiesProps) {
-  const {
-    getElementEffects,
-    updateEffectParameters,
-    toggleEffect,
-    removeEffect,
-    duplicateEffect,
-  } = useEffectsStore();
-
-  const effects = getElementEffects(elementId);
+  const { updateEffectParameters, toggleEffect, removeEffect, duplicateEffect } = useEffectsStore();
+  
+  const effects = useEffectsStore((s) => s.activeEffects.get(elementId) || []);
 
   const handleParameterChange = useCallback(
     (effectId: string, parameter: keyof EffectParameters, value: number) => {

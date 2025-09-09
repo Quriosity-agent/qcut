@@ -352,7 +352,9 @@ export function InteractiveElementOverlay({
             const rotationStep = e.shiftKey ? 15 : 5;
             const direction = e.key === 'ArrowLeft' ? -1 : 1;
             const newRotation = (transform.rotation || 0) + (direction * rotationStep);
-            onTransformUpdate(element.id, { ...transform, rotation: newRotation });
+            const nextTransform = { ...transform, rotation: newRotation };
+            setTransform(nextTransform);
+            onTransformUpdate(element.id, nextTransform);
           }
         }}
         tabIndex={0}
