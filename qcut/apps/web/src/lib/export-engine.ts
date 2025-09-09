@@ -242,8 +242,8 @@ export class ExportEngine {
             img.height
           );
 
-          // Apply effects if enabled and element has effects
-          if (EFFECTS_ENABLED && element.effectIds?.length) {
+          // Apply effects if enabled
+          if (EFFECTS_ENABLED) {
             try {
               const effects = useEffectsStore.getState().getElementEffects(element.id);
               const enabledEffects = effects.filter(e => e.enabled);
@@ -402,7 +402,7 @@ export class ExportEngine {
       );
 
       // Draw video frame to canvas with effects if enabled
-      if (EFFECTS_ENABLED && element.effectIds?.length) {
+      if (EFFECTS_ENABLED) {
         try {
           const effects = useEffectsStore.getState().getElementEffects(element.id);
           if (effects && effects.length > 0) {

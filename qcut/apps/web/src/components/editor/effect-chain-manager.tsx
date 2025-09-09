@@ -240,8 +240,10 @@ export function EffectChainManager({ elementId }: EffectChainManagerProps) {
                 
                 <div className="flex items-center gap-1">
                   <Button
+                    type="button"
                     size="icon"
                     variant="text"
+                    aria-label={effect.enabled ? "Disable effect" : "Enable effect"}
                     onClick={() => toggleEffect(elementId, effect.id)}
                   >
                     {effect.enabled ? (
@@ -251,8 +253,10 @@ export function EffectChainManager({ elementId }: EffectChainManagerProps) {
                     )}
                   </Button>
                   <Button
+                    type="button"
                     size="icon"
                     variant="text"
+                    aria-label="Remove effect"
                     onClick={() => removeEffect(elementId, effect.id)}
                   >
                     <Trash2 className="h-4 w-4" />

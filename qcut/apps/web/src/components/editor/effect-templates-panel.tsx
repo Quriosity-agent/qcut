@@ -306,9 +306,9 @@ export function EffectTemplatesPanel({
                     </p>
 
                     <div className="flex flex-wrap gap-1">
-                      {template.effects.map((effect, index) => (
+                      {template.effects.map((effect) => (
                         <span
-                          key={index}
+                          key={`${template.id}-${effect.type}-${effect.order}`}
                           className="text-xs px-2 py-1 bg-muted rounded"
                         >
                           {effect.name}

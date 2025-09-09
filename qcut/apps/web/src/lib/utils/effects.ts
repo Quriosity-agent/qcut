@@ -9,34 +9,27 @@ const PARAM_TO_TYPE: ReadonlyArray<[keyof EffectParameters, EffectType]> = [
   ['contrast', 'contrast'],
   ['saturation', 'saturation'],
   ['hue', 'hue'],
-  ['temperature', 'temperature'],
-  ['tint', 'tint'],
-  ['exposure', 'exposure'],
   ['gamma', 'gamma'],
-  ['opacity', 'opacity'],
+  ['blur', 'blur'],
+  ['blurType', 'blur'],
   
-  // Stylistic effects  
+  // Color effects
   ['sepia', 'sepia'],
   ['grayscale', 'grayscale'],
   ['invert', 'invert'],
+  
+  // Style effects
   ['vintage', 'vintage'],
-  ['grain', 'grain'],
-  ['vignette', 'vignette'],
   ['dramatic', 'dramatic'],
   ['warm', 'warm'],
   ['cool', 'cool'],
-  ['glitch', 'glitch'],
   ['cinematic', 'cinematic'],
   
-  // Blur effects
-  ['blur', 'blur'],
-  ['radialBlur', 'radial-blur'],
-  ['motionBlur', 'motion-blur'],
+  // Enhancement effects
+  ['vignette', 'vignette'],
+  ['grain', 'grain'],
   ['sharpen', 'sharpen'],
-  ['unsharpMask', 'unsharp-mask'],
-  
-  // Advanced processing
-  ['denoise', 'denoise'],
+  ['emboss', 'emboss'],
   ['edge', 'edge'],
   ['pixelate', 'pixelate'],
   

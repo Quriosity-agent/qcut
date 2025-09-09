@@ -141,6 +141,25 @@ export function PropertiesPanel() {
     );
   }
 
+  // Helper function to render element-specific properties
+  const renderElementProperties = (element: any, trackId: string) => {
+    if (element.type === "text") {
+      return <TextProperties element={element} trackId={trackId} />;
+    }
+    
+    if (element.type === "media") {
+      const mediaItem = mediaItems.find((item) => item.id === element.mediaId);
+      
+      if (mediaItem?.type === "audio") {
+        return <AudioProperties element={element} trackId={trackId} />;
+      }
+      
+      return <MediaProperties element={element} trackId={trackId} />;
+    }
+    
+    return null;
+  };
+
   return (
     <div className="h-full flex flex-col">
       <PanelTabs activeTab={panelView} onTabChange={setPanelView} />
@@ -158,53 +177,18 @@ export function PropertiesPanel() {
                     (e) => e.id === elementId
                   );
 
-                  // Check for effects first (if enabled)
-                  if (EFFECTS_ENABLED && element && hasEffects(element.id)) {
-                    return (
-                      <div key={elementId}>
-                        <EffectsProperties elementId={element.id} />
-                        <TransformProperties element={element} trackId={trackId} />
-                        {/* Still show original properties below effects */}
-                        {element.type === "text" && (
-                          <TextProperties element={element} trackId={trackId} />
-                        )}
-                        {element.type === "media" && (
-                          <MediaProperties element={element} trackId={trackId} />
-                        )}
-                      </div>
-                    );
-                  }
+                  if (!element) return null;
 
-                  if (element?.type === "text") {
-                    return (
-                      <div key={elementId}>
-                        <TransformProperties element={element} trackId={trackId} />
-                        <TextProperties element={element} trackId={trackId} />
-                      </div>
-                    );
-                  }
-                  if (element?.type === "media") {
-                    const mediaItem = mediaItems.find(
-                      (item) => item.id === element.mediaId
-                    );
+                  const showEffects = EFFECTS_ENABLED && hasEffects(element.id);
+                  const showTransform = element.type === "text" || showEffects;
 
-                    if (mediaItem?.type === "audio") {
-                      return (
-                        <AudioProperties
-                          key={elementId}
-                          element={element}
-                          trackId={trackId}
-                        />
-                      );
-                    }
-
-                    return (
-                      <div key={elementId}>
-                        <MediaProperties element={element} trackId={trackId} />
-                      </div>
-                    );
-                  }
-                  return null;
+                  return (
+                    <div key={elementId}>
+                      {showEffects && <EffectsProperties elementId={element.id} />}
+                      {showTransform && <TransformProperties element={element} trackId={trackId} />}
+                      {renderElementProperties(element, trackId)}
+                    </div>
+                  );
                 })
               : emptyView}
           </ScrollArea>
