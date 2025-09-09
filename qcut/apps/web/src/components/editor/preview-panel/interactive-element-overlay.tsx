@@ -57,7 +57,9 @@ export function InteractiveElementOverlay({
   isActive,
   effectsEnabled = false,
 }: InteractiveElementOverlayProps) {
-  const { updateElementPosition, updateElementSize, updateElementRotation } = useTimelineStore();
+  // Note: We use updateElementTransform directly via getState() for batched updates
+  // Individual update methods are still imported for direct user interactions
+  const { updateElementPosition } = useTimelineStore();
   const overlayRef = useRef<HTMLDivElement>(null);
   const rafRef = useRef<number | null>(null);
   const pendingUpdateRef = useRef<{
@@ -98,26 +100,26 @@ export function InteractiveElementOverlay({
   const hasEffects = effectsEnabled && effectCount > 0;
   
   // Throttled update function using requestAnimationFrame
+  // Uses batched updateElementTransform to avoid multiple history entries
   const flushPendingUpdates = useCallback(() => {
     if (!pendingUpdateRef.current) return;
     
     const updates = pendingUpdateRef.current;
     
-    if (updates.position) {
-      updateElementPosition(element.id, updates.position);
-    }
-    
-    if (updates.size) {
-      updateElementSize(element.id, updates.size);
-    }
-    
-    if (updates.rotation !== undefined) {
-      updateElementRotation(element.id, updates.rotation);
-    }
+    // Batch all updates into a single store write to avoid multiple history entries
+    useTimelineStore.getState().updateElementTransform(
+      element.id,
+      {
+        ...(updates.position && { position: updates.position }),
+        ...(updates.size && { size: updates.size }),
+        ...(updates.rotation !== undefined && { rotation: updates.rotation }),
+      },
+      { pushHistory: true }
+    );
     
     pendingUpdateRef.current = null;
     rafRef.current = null;
-  }, [element.id, updateElementPosition, updateElementSize, updateElementRotation]);
+  }, [element.id]);
 
   const scheduleUpdate = useCallback((type: 'position' | 'size' | 'rotation', data: any) => {
     if (!pendingUpdateRef.current) {

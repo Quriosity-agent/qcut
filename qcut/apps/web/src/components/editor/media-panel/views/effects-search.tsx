@@ -233,16 +233,23 @@ export function EffectsSearch({ presets, onSearchResults, className }: EffectsSe
               <div className="space-y-2">
                 <label className="text-sm font-medium">Categories</label>
                 <div className="flex flex-wrap gap-2">
-                  {availableCategories.map(category => (
-                    <Badge
-                      key={category}
-                      variant={filterOptions.categories.includes(category) ? "default" : "outline"}
-                      className="cursor-pointer"
-                      onClick={() => toggleCategory(category)}
-                    >
-                      {category}
-                    </Badge>
-                  ))}
+                  {availableCategories.map(category => {
+                    const active = filterOptions.categories.includes(category);
+                    return (
+                      <Button
+                        key={category}
+                        type="button"
+                        variant={active ? 'secondary' : 'outline'}
+                        size="sm"
+                        className="h-6 px-2 text-xs"
+                        aria-pressed={active}
+                        aria-label={`Toggle ${category} category filter`}
+                        onClick={() => toggleCategory(category)}
+                      >
+                        {category}
+                      </Button>
+                    );
+                  })}
                 </div>
               </div>
               
@@ -292,14 +299,14 @@ export function EffectsSearch({ presets, onSearchResults, className }: EffectsSe
               
               {/* Sort By */}
               <div className="space-y-2">
-                <label className="text-sm font-medium">Sort by</label>
+                <span id="effects-sortby-label" className="text-sm font-medium">Sort by</span>
                 <Select
                   value={filterOptions.sortBy}
                   onValueChange={(value: FilterOptions['sortBy']) => 
                     setFilterOptions(prev => ({ ...prev, sortBy: value }))
                   }
                 >
-                  <SelectTrigger className="w-full">
+                  <SelectTrigger className="w-full" aria-labelledby="effects-sortby-label">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
