@@ -1,4 +1,4 @@
-import type { EffectParameters, EffectInstance } from "@/types/effects";
+import type { EffectParameters, EffectInstance, EffectType } from "@/types/effects";
 import { generateUUID } from "@/lib/utils";
 
 /**
@@ -24,7 +24,7 @@ export interface EffectTemplate {
 
 export interface TemplateEffect {
   name: string;
-  type: string;
+  effectType: string;
   parameters: EffectParameters;
   order: number;
   blendMode?: string;
@@ -40,7 +40,7 @@ const PROFESSIONAL_TEMPLATES: EffectTemplate[] = [
     effects: [
       {
         name: "Color Correction",
-        type: "color",
+        effectType: "color",
         parameters: {
           brightness: 5,
           contrast: 10,
@@ -51,7 +51,7 @@ const PROFESSIONAL_TEMPLATES: EffectTemplate[] = [
       },
       {
         name: "Sharpening",
-        type: "enhancement",
+        effectType: "enhancement",
         parameters: {
           sharpen: 30,
         },
@@ -59,7 +59,7 @@ const PROFESSIONAL_TEMPLATES: EffectTemplate[] = [
       },
       {
         name: "Vignette",
-        type: "enhancement",
+        effectType: "enhancement",
         parameters: {
           vignette: 20,
         },
@@ -75,7 +75,7 @@ const PROFESSIONAL_TEMPLATES: EffectTemplate[] = [
     effects: [
       {
         name: "Neutral Grade",
-        type: "color",
+        effectType: "color",
         parameters: {
           contrast: 15,
           saturation: -10,
@@ -84,7 +84,7 @@ const PROFESSIONAL_TEMPLATES: EffectTemplate[] = [
       },
       {
         name: "Slight Grain",
-        type: "enhancement",
+        effectType: "enhancement",
         parameters: {
           grain: 10,
         },
@@ -100,7 +100,7 @@ const PROFESSIONAL_TEMPLATES: EffectTemplate[] = [
     effects: [
       {
         name: "Skin Tone Correction",
-        type: "color",
+        effectType: "color",
         parameters: {
           warm: 15,
           saturation: 10,
@@ -109,7 +109,7 @@ const PROFESSIONAL_TEMPLATES: EffectTemplate[] = [
       },
       {
         name: "Soft Focus",
-        type: "enhancement",
+        effectType: "enhancement",
         parameters: {
           blur: 0.5,
           sharpen: 20,
@@ -130,7 +130,7 @@ const CREATIVE_TEMPLATES: EffectTemplate[] = [
     effects: [
       {
         name: "Soft Glow",
-        type: "enhancement",
+        effectType: "enhancement",
         parameters: {
           blur: 2,
           brightness: 15,
@@ -140,7 +140,7 @@ const CREATIVE_TEMPLATES: EffectTemplate[] = [
       },
       {
         name: "Color Shift",
-        type: "color",
+        effectType: "color",
         parameters: {
           hue: 20,
           saturation: 30,
@@ -149,7 +149,7 @@ const CREATIVE_TEMPLATES: EffectTemplate[] = [
       },
       {
         name: "Vignette",
-        type: "enhancement",
+        effectType: "enhancement",
         parameters: {
           vignette: 40,
         },
@@ -165,7 +165,7 @@ const CREATIVE_TEMPLATES: EffectTemplate[] = [
     effects: [
       {
         name: "Neon Colors",
-        type: "color",
+        effectType: "color",
         parameters: {
           saturation: 80,
           contrast: 40,
@@ -174,7 +174,7 @@ const CREATIVE_TEMPLATES: EffectTemplate[] = [
       },
       {
         name: "Blue Shift",
-        type: "color",
+        effectType: "color",
         parameters: {
           cool: 60,
         },
@@ -182,7 +182,7 @@ const CREATIVE_TEMPLATES: EffectTemplate[] = [
       },
       {
         name: "Edge Glow",
-        type: "enhancement",
+        effectType: "enhancement",
         parameters: {
           edge: 30,
         },
@@ -190,7 +190,7 @@ const CREATIVE_TEMPLATES: EffectTemplate[] = [
       },
       {
         name: "Grain",
-        type: "enhancement",
+        effectType: "enhancement",
         parameters: {
           grain: 25,
         },
@@ -206,7 +206,7 @@ const CREATIVE_TEMPLATES: EffectTemplate[] = [
     effects: [
       {
         name: "High Contrast",
-        type: "color",
+        effectType: "color",
         parameters: {
           contrast: 70,
           saturation: 60,
@@ -215,7 +215,7 @@ const CREATIVE_TEMPLATES: EffectTemplate[] = [
       },
       {
         name: "Halftone",
-        type: "artistic",
+        effectType: "artistic",
         parameters: {
           halftone: 50,
           dotSize: 3,
@@ -224,7 +224,7 @@ const CREATIVE_TEMPLATES: EffectTemplate[] = [
       },
       {
         name: "Edge Detection",
-        type: "enhancement",
+        effectType: "enhancement",
         parameters: {
           edge: 50,
         },
@@ -244,7 +244,7 @@ const VINTAGE_TEMPLATES: EffectTemplate[] = [
     effects: [
       {
         name: "Film Color",
-        type: "color",
+        effectType: "color",
         parameters: {
           vintage: 70,
           warm: 30,
@@ -253,7 +253,7 @@ const VINTAGE_TEMPLATES: EffectTemplate[] = [
       },
       {
         name: "Film Grain",
-        type: "enhancement",
+        effectType: "enhancement",
         parameters: {
           grain: 40,
         },
@@ -261,7 +261,7 @@ const VINTAGE_TEMPLATES: EffectTemplate[] = [
       },
       {
         name: "Vignette",
-        type: "enhancement",
+        effectType: "enhancement",
         parameters: {
           vignette: 50,
         },
@@ -269,7 +269,7 @@ const VINTAGE_TEMPLATES: EffectTemplate[] = [
       },
       {
         name: "Slight Blur",
-        type: "enhancement",
+        effectType: "enhancement",
         parameters: {
           blur: 0.8,
         },
@@ -285,7 +285,7 @@ const VINTAGE_TEMPLATES: EffectTemplate[] = [
     effects: [
       {
         name: "Black & White",
-        type: "color",
+        effectType: "color",
         parameters: {
           grayscale: 100,
         },
@@ -293,7 +293,7 @@ const VINTAGE_TEMPLATES: EffectTemplate[] = [
       },
       {
         name: "High Contrast",
-        type: "color",
+        effectType: "color",
         parameters: {
           contrast: 50,
           brightness: -10,
@@ -302,7 +302,7 @@ const VINTAGE_TEMPLATES: EffectTemplate[] = [
       },
       {
         name: "Film Grain",
-        type: "enhancement",
+        effectType: "enhancement",
         parameters: {
           grain: 30,
         },
@@ -310,7 +310,7 @@ const VINTAGE_TEMPLATES: EffectTemplate[] = [
       },
       {
         name: "Vignette",
-        type: "enhancement",
+        effectType: "enhancement",
         parameters: {
           vignette: 60,
         },
@@ -326,7 +326,7 @@ const VINTAGE_TEMPLATES: EffectTemplate[] = [
     effects: [
       {
         name: "Color Bleed",
-        type: "color",
+        effectType: "color",
         parameters: {
           saturation: -20,
           contrast: -15,
@@ -335,7 +335,7 @@ const VINTAGE_TEMPLATES: EffectTemplate[] = [
       },
       {
         name: "Scan Lines",
-        type: "distortion",
+        effectType: "distortion",
         parameters: {
           wave: 5,
           waveFrequency: 50,
@@ -345,7 +345,7 @@ const VINTAGE_TEMPLATES: EffectTemplate[] = [
       },
       {
         name: "Static Noise",
-        type: "enhancement",
+        effectType: "enhancement",
         parameters: {
           grain: 35,
         },
@@ -353,7 +353,7 @@ const VINTAGE_TEMPLATES: EffectTemplate[] = [
       },
       {
         name: "Color Shift",
-        type: "color",
+        effectType: "color",
         parameters: {
           hue: 5,
         },
@@ -373,7 +373,7 @@ const MODERN_TEMPLATES: EffectTemplate[] = [
     effects: [
       {
         name: "Pop Colors",
-        type: "color",
+        effectType: "color",
         parameters: {
           saturation: 25,
           contrast: 20,
@@ -383,7 +383,7 @@ const MODERN_TEMPLATES: EffectTemplate[] = [
       },
       {
         name: "Subtle Warmth",
-        type: "color",
+        effectType: "color",
         parameters: {
           warm: 10,
         },
@@ -391,7 +391,7 @@ const MODERN_TEMPLATES: EffectTemplate[] = [
       },
       {
         name: "Slight Vignette",
-        type: "enhancement",
+        effectType: "enhancement",
         parameters: {
           vignette: 15,
         },
@@ -407,7 +407,7 @@ const MODERN_TEMPLATES: EffectTemplate[] = [
     effects: [
       {
         name: "Desaturate",
-        type: "color",
+        effectType: "color",
         parameters: {
           saturation: -30,
         },
@@ -415,7 +415,7 @@ const MODERN_TEMPLATES: EffectTemplate[] = [
       },
       {
         name: "Lift Shadows",
-        type: "color",
+        effectType: "color",
         parameters: {
           brightness: 15,
           contrast: -10,
@@ -424,7 +424,7 @@ const MODERN_TEMPLATES: EffectTemplate[] = [
       },
       {
         name: "Cool Tone",
-        type: "color",
+        effectType: "color",
         parameters: {
           cool: 20,
         },
@@ -440,7 +440,7 @@ const MODERN_TEMPLATES: EffectTemplate[] = [
     effects: [
       {
         name: "Compression Ready",
-        type: "color",
+        effectType: "color",
         parameters: {
           contrast: 15,
           saturation: 15,
@@ -449,7 +449,7 @@ const MODERN_TEMPLATES: EffectTemplate[] = [
       },
       {
         name: "Sharpening",
-        type: "enhancement",
+        effectType: "enhancement",
         parameters: {
           sharpen: 25,
         },
@@ -457,7 +457,7 @@ const MODERN_TEMPLATES: EffectTemplate[] = [
       },
       {
         name: "Slight Grain",
-        type: "enhancement",
+        effectType: "enhancement",
         parameters: {
           grain: 5,
         },
@@ -475,6 +475,36 @@ export const EFFECT_TEMPLATES: EffectTemplate[] = [
   ...MODERN_TEMPLATES,
 ];
 
+// Helper: derive EffectType from provided parameters
+const PARAM_TO_TYPE: ReadonlyArray<[keyof EffectParameters, EffectType]> = [
+  ['brightness','brightness'], ['contrast','contrast'], ['saturation','saturation'],
+  ['hue','hue'], ['gamma','gamma'],
+  ['sepia','sepia'], ['grayscale','grayscale'], ['invert','invert'],
+  ['vintage','vintage'], ['dramatic','dramatic'], ['warm','warm'], ['cool','cool'], ['cinematic','cinematic'],
+  ['vignette','vignette'], ['grain','grain'], ['sharpen','sharpen'], ['emboss','emboss'], ['edge','edge'], ['pixelate','pixelate'],
+  ['wave','wave'], ['waveFrequency','wave'], ['waveAmplitude','wave'],
+  ['twist','twist'], ['twistAngle','twist'],
+  ['bulge','bulge'], ['bulgeRadius','bulge'],
+  ['fisheye','fisheye'], ['fisheyeStrength','fisheye'],
+  ['oilPainting','oil-painting'], ['brushSize','oil-painting'],
+  ['watercolor','watercolor'], ['wetness','watercolor'],
+  ['pencilSketch','pencil-sketch'], ['strokeWidth','pencil-sketch'],
+  ['halftone','halftone'], ['dotSize','halftone'],
+  ['fadeIn','fade-in'], ['fadeOut','fade-out'],
+  ['dissolve','dissolve'], ['dissolveProgress','dissolve'],
+  ['wipe','wipe'], ['wipeDirection','wipe'], ['wipeProgress','wipe'],
+  ['overlay','overlay'], ['overlayOpacity','overlay'],
+  ['multiply','multiply'], ['screen','screen'],
+  ['colorDodge','color-dodge'], ['blendMode','overlay'],
+];
+
+function inferEffectTypeFromParams(params: EffectParameters): EffectType {
+  for (const [k, t] of PARAM_TO_TYPE) {
+    if (params[k] !== undefined) return t;
+  }
+  return 'brightness';
+}
+
 /**
  * Apply template to create effect instances
  */
@@ -482,7 +512,7 @@ export function applyTemplate(template: EffectTemplate): EffectInstance[] {
   return template.effects.map((effect) => ({
     id: generateUUID(),
     name: effect.name,
-    effectType: effect.type as any,
+    effectType: inferEffectTypeFromParams(effect.parameters),
     parameters: effect.parameters,
     duration: 0,
     enabled: true,
@@ -504,7 +534,7 @@ export function saveCustomTemplate(
     category: "custom",
     effects: effects.map((effect, index) => ({
       name: effect.name,
-      type: effect.effectType,
+      effectType: effect.effectType,
       parameters: effect.parameters,
       order: index + 1,
     })),
@@ -526,14 +556,27 @@ export function saveCustomTemplate(
   return template;
 }
 
+function normalizeTemplate(t: any): EffectTemplate {
+  const meta = t?.metadata ?? {};
+  const toDate = (v: unknown) =>
+    v instanceof Date ? v : typeof v === 'string' ? new Date(v) : undefined;
+  return {
+    ...t,
+    metadata: { ...meta, createdAt: toDate(meta.createdAt), updatedAt: toDate(meta.updatedAt) },
+  } as EffectTemplate;
+}
+
 /**
  * Load custom templates from localStorage
  */
 export function loadCustomTemplates(): EffectTemplate[] {
   try {
-    const saved = localStorage.getItem("effect-templates-custom");
+    const saved = localStorage.getItem('effect-templates-custom');
     if (saved) {
-      return JSON.parse(saved);
+      const parsed = JSON.parse(saved) as unknown;
+      if (Array.isArray(parsed)) {
+        return parsed.map(normalizeTemplate) as EffectTemplate[];
+      }
     }
   } catch {
     // Silently fail if localStorage is unavailable or data is corrupted
@@ -562,6 +605,46 @@ export function exportTemplate(template: EffectTemplate): string {
 }
 
 /**
+ * Infer effect type from parameters
+ */
+function inferEffectType(parameters: EffectParameters): string {
+  // Look for the first defined parameter to guess effect type
+  if (parameters.brightness !== undefined || parameters.contrast !== undefined || 
+      parameters.saturation !== undefined || parameters.hue !== undefined) {
+    return 'color';
+  }
+  if (parameters.blur !== undefined) return 'blur';
+  if (parameters.sepia !== undefined || parameters.grayscale !== undefined || parameters.invert !== undefined) {
+    return 'color';
+  }
+  if (parameters.vintage !== undefined || parameters.dramatic !== undefined || 
+      parameters.warm !== undefined || parameters.cool !== undefined || parameters.cinematic !== undefined) {
+    return 'style';
+  }
+  if (parameters.vignette !== undefined || parameters.grain !== undefined || 
+      parameters.sharpen !== undefined || parameters.emboss !== undefined) {
+    return 'enhancement';
+  }
+  if (parameters.wave !== undefined || parameters.twist !== undefined || 
+      parameters.bulge !== undefined || parameters.fisheye !== undefined) {
+    return 'distortion';
+  }
+  if (parameters.oilPainting !== undefined || parameters.watercolor !== undefined || 
+      parameters.pencilSketch !== undefined || parameters.halftone !== undefined) {
+    return 'artistic';
+  }
+  if (parameters.fadeIn !== undefined || parameters.fadeOut !== undefined || 
+      parameters.dissolve !== undefined || parameters.wipe !== undefined) {
+    return 'transition';
+  }
+  if (parameters.overlay !== undefined || parameters.multiply !== undefined || 
+      parameters.screen !== undefined || parameters.colorDodge !== undefined) {
+    return 'composite';
+  }
+  return 'unknown';
+}
+
+/**
  * Import template from JSON
  */
 export function importTemplate(json: string): EffectTemplate | null {
@@ -575,8 +658,7 @@ export function importTemplate(json: string): EffectTemplate | null {
       candidate.effects.every((e: any) => 
         e && 
         typeof e.name === 'string' &&
-        typeof e.type === 'string' &&
-        typeof e.order === 'number' &&
+        (typeof e.order === 'number' || e.order === undefined) &&
         e.parameters && typeof e.parameters === 'object'
       )
     ) {
@@ -586,7 +668,14 @@ export function importTemplate(json: string): EffectTemplate | null {
         name: candidate.name,
         description: candidate.description || '',
         category: candidate.category || 'custom',
-        effects: candidate.effects,
+        effects: candidate.effects.map((e: any, i: number) => ({
+          name: e.name,
+          // Support both old 'type' and new 'effectType' fields for backward compatibility
+          effectType: e.effectType || e.type || inferEffectType(e.parameters),
+          parameters: e.parameters,
+          order: typeof e.order === 'number' ? e.order : i + 1,
+          blendMode: e.blendMode
+        })),
         thumbnail: candidate.thumbnail,
         metadata: candidate.metadata
       } as EffectTemplate;
