@@ -76,12 +76,20 @@ export function EffectsSearch({ presets, onSearchResults, className }: EffectsSe
 
   // Save favorites to localStorage
   useEffect(() => {
-    localStorage.setItem('effectsFavorites', JSON.stringify(Array.from(favorites)));
+    try {
+      localStorage.setItem('effectsFavorites', JSON.stringify(Array.from(favorites)));
+    } catch {
+      // Handle storage quota exceeded or write errors silently
+    }
   }, [favorites]);
 
   // Save recent to localStorage
   useEffect(() => {
-    localStorage.setItem('effectsRecent', JSON.stringify(recentlyUsed));
+    try {
+      localStorage.setItem('effectsRecent', JSON.stringify(recentlyUsed));
+    } catch {
+      // Handle storage quota exceeded or write errors silently
+    }
   }, [recentlyUsed]);
 
   const availableCategories: EffectCategory[] = useMemo(() => {
@@ -144,25 +152,6 @@ export function EffectsSearch({ presets, onSearchResults, className }: EffectsSe
   useEffect(() => {
     onSearchResults(filteredAndSortedPresets);
   }, [filteredAndSortedPresets, onSearchResults]);
-
-  const toggleFavorite = (presetId: string) => {
-    setFavorites(prev => {
-      const newFavorites = new Set(prev);
-      if (newFavorites.has(presetId)) {
-        newFavorites.delete(presetId);
-      } else {
-        newFavorites.add(presetId);
-      }
-      return newFavorites;
-    });
-  };
-
-  const addToRecent = (presetId: string) => {
-    setRecentlyUsed(prev => {
-      const newRecent = [presetId, ...prev.filter(id => id !== presetId)].slice(0, 10);
-      return newRecent;
-    });
-  };
 
   const toggleCategory = (category: EffectCategory) => {
     setFilterOptions(prev => ({

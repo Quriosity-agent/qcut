@@ -3,6 +3,7 @@ import { useEffectsStore } from "@/stores/effects-store";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PropertyGroup } from "@/components/editor/properties-panel/property-item";
 import { Trash2, Copy } from "lucide-react";
 import type { EffectInstance, EffectParameters } from "@/types/effects";
@@ -104,7 +105,7 @@ export function EffectsProperties({ elementId }: EffectsPropertiesProps) {
   const effects = useEffectsStore((s) => s.activeEffects.get(elementId) || []);
 
   const handleParameterChange = useCallback(
-    (effectId: string, parameter: keyof EffectParameters, value: number) => {
+    (effectId: string, parameter: keyof EffectParameters, value: number | string) => {
       updateEffectParameters(elementId, effectId, { [parameter]: value });
     },
     [elementId, updateEffectParameters]
@@ -114,31 +115,107 @@ export function EffectsProperties({ elementId }: EffectsPropertiesProps) {
     effect: EffectInstance,
     parameter: keyof EffectParameters
   ) => {
-    const value = effect.parameters[parameter] as number | undefined;
+    const value = effect.parameters[parameter];
     const config = PARAMETER_CONFIG[parameter];
     
-    // Skip if parameter value is undefined or no config exists
-    if (value === undefined || !config) return null;
-
-    return (
-      <div className="space-y-2">
-        <div className="flex justify-between text-sm">
-          <span>{config.label}</span>
-          <span className="text-muted-foreground">{value}</span>
+    // Handle string-union parameters with select controls
+    if (parameter === 'blendMode' && typeof value === 'string') {
+      return (
+        <div className="space-y-2">
+          <div className="flex justify-between text-sm">
+            <span>Blend Mode</span>
+            <span className="text-muted-foreground">{value}</span>
+          </div>
+          <Select
+            value={value}
+            onValueChange={(v) => handleParameterChange(effect.id, parameter, v)}
+          >
+            <SelectTrigger className="w-full h-7 text-xs" aria-label="Blend Mode">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {['normal', 'multiply', 'screen', 'overlay', 'darken', 'lighten', 'color-dodge', 'color-burn'].map((m) => (
+                <SelectItem key={m} value={m} className="text-xs capitalize">{m}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
-        <Slider
-          value={[value]}
-          onValueChange={([newValue]) =>
-            handleParameterChange(effect.id, parameter, newValue)
-          }
-          min={config.min}
-          max={config.max}
-          step={config.step || 1}
-          className="w-full"
-          aria-label={config.label}
-        />
-      </div>
-    );
+      );
+    }
+    
+    if (parameter === 'wipeDirection' && typeof value === 'string') {
+      return (
+        <div className="space-y-2">
+          <div className="flex justify-between text-sm">
+            <span>Wipe Direction</span>
+            <span className="text-muted-foreground">{value}</span>
+          </div>
+          <Select
+            value={value}
+            onValueChange={(v) => handleParameterChange(effect.id, parameter, v)}
+          >
+            <SelectTrigger className="w-full h-7 text-xs" aria-label="Wipe Direction">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {['left', 'right', 'up', 'down'].map((d) => (
+                <SelectItem key={d} value={d} className="text-xs capitalize">{d}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      );
+    }
+    
+    if (parameter === 'blurType' && typeof value === 'string') {
+      return (
+        <div className="space-y-2">
+          <div className="flex justify-between text-sm">
+            <span>Blur Type</span>
+            <span className="text-muted-foreground">{value}</span>
+          </div>
+          <Select
+            value={value}
+            onValueChange={(v) => handleParameterChange(effect.id, parameter, v)}
+          >
+            <SelectTrigger className="w-full h-7 text-xs" aria-label="Blur Type">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {['gaussian', 'box', 'motion'].map((t) => (
+                <SelectItem key={t} value={t} className="text-xs capitalize">{t}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      );
+    }
+    
+    // Handle numeric parameters with sliders
+    if (typeof value === 'number' && config) {
+      return (
+        <div className="space-y-2">
+          <div className="flex justify-between text-sm">
+            <span>{config.label}</span>
+            <span className="text-muted-foreground">{value}</span>
+          </div>
+          <Slider
+            value={[value]}
+            onValueChange={([newValue]) =>
+              handleParameterChange(effect.id, parameter, newValue)
+            }
+            min={config.min}
+            max={config.max}
+            step={config.step || 1}
+            className="w-full"
+            aria-label={config.label}
+          />
+        </div>
+      );
+    }
+    
+    // Skip parameters that don't have appropriate controls
+    return null;
   };
   
   const renderEffectParameters = (effect: EffectInstance) => {

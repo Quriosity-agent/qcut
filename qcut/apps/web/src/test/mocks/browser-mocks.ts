@@ -3,6 +3,18 @@
  * Provides consistent implementations across all test files
  */
 
+// Type definitions for observer constructors
+type MutationObserverCtor = new (callback: MutationCallback) => MutationObserver;
+type ResizeObserverCtor = new (callback: ResizeObserverCallback) => ResizeObserver;
+type IntersectionObserverCtor = new (callback: IntersectionObserverCallback, options?: IntersectionObserverInit) => IntersectionObserver;
+
+// Host context for installing observers
+type ObserverHost = Partial<{
+  MutationObserver: MutationObserverCtor;
+  ResizeObserver: ResizeObserverCtor;
+  IntersectionObserver: IntersectionObserverCtor;
+}> & object;
+
 // MutationObserver mock implementation
 export class MockMutationObserver implements MutationObserver {
   constructor(_callback: MutationCallback) {}
@@ -33,7 +45,7 @@ export class MockIntersectionObserver implements IntersectionObserver {
 }
 
 // Helper function to install all mocks on a global context
-export function installBrowserMocks(context: any) {
+export function installBrowserMocks(context: ObserverHost | null | undefined): void {
   if (!context) return;
   
   // Force override using Object.defineProperty for better compatibility
