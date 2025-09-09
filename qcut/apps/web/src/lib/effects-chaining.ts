@@ -203,14 +203,42 @@ export function createEffectChain(
 }
 
 /**
- * Validate effect chain
+ * Validation result for effect chains
  */
-export function validateEffectChain(chain: EffectChain): boolean {
-  if (!chain.id || !chain.name || !chain.effects) {
-    return false;
+export interface EffectChainValidationResult {
+  isValid: boolean;
+  warnings: string[];
+  errors: string[];
+}
+
+/**
+ * Validate effect chain and return detailed result
+ */
+export function validateEffectChain(chain: EffectChain): EffectChainValidationResult {
+  const warnings: string[] = [];
+  const errors: string[] = [];
+  
+  // Check required fields
+  if (!chain.id) {
+    errors.push("Effect chain is missing an ID");
+  }
+  if (!chain.name) {
+    errors.push("Effect chain is missing a name");
+  }
+  if (!chain.effects) {
+    errors.push("Effect chain is missing effects array");
   }
   
-  // Check for circular dependencies or conflicts
+  // Return early if basic validation fails
+  if (errors.length > 0) {
+    return {
+      isValid: false,
+      warnings,
+      errors
+    };
+  }
+  
+  // Check for parameter conflicts
   const parameterUsage = new Map<string, number>();
   
   for (const effect of chain.effects) {
@@ -218,14 +246,31 @@ export function validateEffectChain(chain: EffectChain): boolean {
       const count = parameterUsage.get(param) || 0;
       parameterUsage.set(param, count + 1);
       
-      // Warn if same parameter is modified multiple times
+      // Collect warning if same parameter is modified multiple times
       if (count > 2) {
-        console.warn(`Parameter ${param} is modified ${count + 1} times in chain`);
+        warnings.push(`Parameter "${param}" is modified ${count + 1} times in chain. This may cause unexpected results.`);
       }
     }
   }
   
-  return true;
+  // Check for potential performance issues
+  if (chain.effects.length > 10) {
+    warnings.push(`Chain contains ${chain.effects.length} effects. Consider optimizing for performance.`);
+  }
+  
+  return {
+    isValid: errors.length === 0,
+    warnings,
+    errors
+  };
+}
+
+/**
+ * Simple validation check that returns boolean
+ * Use validateEffectChain() for detailed validation results
+ */
+export function isEffectChainValid(chain: EffectChain): boolean {
+  return validateEffectChain(chain).isValid;
 }
 
 /**

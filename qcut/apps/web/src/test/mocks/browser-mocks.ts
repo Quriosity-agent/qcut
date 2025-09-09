@@ -21,9 +21,9 @@ export class MockResizeObserver implements ResizeObserver {
 
 // IntersectionObserver mock implementation
 export class MockIntersectionObserver implements IntersectionObserver {
-  root: Element | Document | null = null;
-  rootMargin: string = '0px';
-  thresholds: ReadonlyArray<number> = [0];
+  readonly root: Element | Document | null = null;
+  readonly rootMargin = '0px';
+  readonly thresholds: ReadonlyArray<number> = [0];
   
   constructor(_callback: IntersectionObserverCallback, _options?: IntersectionObserverInit) {}
   observe(_target: Element) {}

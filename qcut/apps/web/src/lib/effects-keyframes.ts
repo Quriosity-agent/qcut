@@ -84,6 +84,8 @@ export function interpolateKeyframes(
   
   // Calculate progress between keyframes
   const duration = kf2.time - kf1.time;
+  if (duration <= 0) return kf2.value; // Guard against zero-duration segments
+  
   const elapsed = time - kf1.time;
   let progress = elapsed / duration;
   
