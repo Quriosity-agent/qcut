@@ -74,13 +74,45 @@ export function installBrowserMocks(context: any) {
 }
 
 // Install mocks on all available global contexts
+// Prioritizes globalThis first, then mirrors to other contexts only if needed
 export function installAllBrowserMocks() {
-  const contexts = [
-    typeof globalThis !== 'undefined' ? globalThis : null,
-    typeof global !== 'undefined' ? global : null,
-    typeof window !== 'undefined' ? window : null,
-    typeof self !== 'undefined' ? self : null,
-  ].filter(Boolean);
-  
-  contexts.forEach(ctx => installBrowserMocks(ctx));
+  // Install on globalThis first (the modern standard)
+  if (typeof globalThis !== 'undefined') {
+    installBrowserMocks(globalThis);
+    
+    // Mirror to window if it exists and is missing the observers
+    if (typeof window !== 'undefined' && window !== globalThis) {
+      if (!window.MutationObserver) {
+        window.MutationObserver = globalThis.MutationObserver;
+      }
+      if (!window.ResizeObserver) {
+        window.ResizeObserver = globalThis.ResizeObserver;
+      }
+      if (!window.IntersectionObserver) {
+        window.IntersectionObserver = globalThis.IntersectionObserver;
+      }
+    }
+    
+    // Mirror to global if it exists and is missing the observers
+    if (typeof global !== 'undefined' && global !== globalThis) {
+      if (!global.MutationObserver) {
+        (global as any).MutationObserver = globalThis.MutationObserver;
+      }
+      if (!global.ResizeObserver) {
+        (global as any).ResizeObserver = globalThis.ResizeObserver;
+      }
+      if (!global.IntersectionObserver) {
+        (global as any).IntersectionObserver = globalThis.IntersectionObserver;
+      }
+    }
+  } else {
+    // Fallback: Install on whatever contexts are available
+    const contexts = [
+      typeof global !== 'undefined' ? global : null,
+      typeof window !== 'undefined' ? window : null,
+      typeof self !== 'undefined' ? self : null,
+    ].filter(Boolean);
+    
+    contexts.forEach(ctx => installBrowserMocks(ctx));
+  }
 }

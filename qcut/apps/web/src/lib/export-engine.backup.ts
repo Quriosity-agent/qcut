@@ -1048,7 +1048,11 @@ export class ExportEngine {
     // Collect unique video URLs
     this.mediaItems
       .filter((item) => item.type === "video" && item.url)
-      .forEach((item) => videoUrls.add(item.url!));
+      .forEach((item) => {
+        if (item.url) {
+          videoUrls.add(item.url);
+        }
+      });
 
     debugLog(`[ExportEngine] Pre-loading ${videoUrls.size} videos...`);
 
