@@ -186,6 +186,7 @@ export function EffectsSearch({ presets, onSearchResults, className }: EffectsSe
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           className="pl-10 pr-10"
+          aria-label="Search effects"
         />
         
         {/* Filter Button */}
