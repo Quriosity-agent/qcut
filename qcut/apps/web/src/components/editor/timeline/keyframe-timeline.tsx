@@ -310,13 +310,28 @@ export function KeyframeTimeline({
           </Select>
           
           {/* Playback controls */}
-          <Button size="icon" variant="text" onClick={() => navigateToKeyframe("prev")}>
+          <Button 
+            size="icon" 
+            variant="text" 
+            onClick={() => navigateToKeyframe("prev")}
+            aria-label="Previous keyframe"
+          >
             <SkipBack className="h-4 w-4" />
           </Button>
-          <Button size="icon" variant="text" onClick={toggle}>
+          <Button 
+            size="icon" 
+            variant="text" 
+            onClick={toggle}
+            aria-label={isPlaying ? "Pause" : "Play"}
+          >
             {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
           </Button>
-          <Button size="icon" variant="text" onClick={() => navigateToKeyframe("next")}>
+          <Button 
+            size="icon" 
+            variant="text" 
+            onClick={() => navigateToKeyframe("next")}
+            aria-label="Next keyframe"
+          >
             <SkipForward className="h-4 w-4" />
           </Button>
           

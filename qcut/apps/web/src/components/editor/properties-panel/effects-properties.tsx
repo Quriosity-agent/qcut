@@ -54,6 +54,7 @@ export function EffectsProperties({ elementId }: EffectsPropertiesProps) {
           max={max}
           step={1}
           className="w-full"
+          aria-label={label}
         />
       </div>
     );
@@ -80,15 +81,19 @@ export function EffectsProperties({ elementId }: EffectsPropertiesProps) {
             />
             <div className="flex gap-2">
               <Button
+                type="button"
                 variant="text"
                 size="icon"
+                aria-label="Duplicate effect"
                 onClick={() => duplicateEffect(elementId, effect.id)}
               >
                 <Copy className="w-4 h-4" />
               </Button>
               <Button
+                type="button"
                 variant="text"
                 size="icon"
+                aria-label="Remove effect"
                 onClick={() => removeEffect(elementId, effect.id)}
               >
                 <Trash2 className="w-4 h-4" />

@@ -206,26 +206,62 @@ export function validateEffectParameters(parameters: EffectParameters): boolean 
 }
 
 /**
- * Merges multiple effect parameters
+ * Merges multiple effect parameters with consistent behavior
+ * 
+ * Merging strategy:
+ * - Additive parameters (brightness, contrast, saturation, hue): Values are summed
+ * - Multiplicative parameters (blur, opacity, scale): Values are multiplied
+ * - Override parameters (all others): Last value wins
+ * 
+ * @param parameterSets - Array of effect parameters to merge
+ * @returns Merged effect parameters
  */
 export function mergeEffectParameters(
   ...parameterSets: EffectParameters[]
 ): EffectParameters {
   const merged: EffectParameters = {};
 
+  // Define merging strategies for different parameter types
+  const additiveParams = ["brightness", "contrast", "saturation", "hue"];
+  const multiplicativeParams = ["blur", "opacity", "scale"];
+  
   for (const params of parameterSets) {
     for (const [key, value] of Object.entries(params)) {
       if (value !== undefined) {
-        // For additive effects, sum them up
-        if (["brightness", "contrast", "saturation", "hue"].includes(key)) {
+        const currentValue = merged[key as keyof EffectParameters];
+        
+        if (additiveParams.includes(key)) {
+          // Additive: sum values (useful for color adjustments)
           (merged as any)[key] = 
-            ((merged[key as keyof EffectParameters] as number) || 0) + (value as number);
+            ((currentValue as number) || 0) + (value as number);
+        } else if (multiplicativeParams.includes(key)) {
+          // Multiplicative: multiply values (useful for cumulative effects)
+          // Default to 1 for first value to maintain multiplication identity
+          (merged as any)[key] = 
+            ((currentValue as number) || 1) * (value as number);
         } else {
-          // For other effects, take the last value
+          // Override: last value wins (for discrete/boolean parameters)
           (merged as any)[key] = value;
         }
       }
     }
+  }
+
+  // Clamp values to valid ranges after merging
+  if (merged.brightness !== undefined) {
+    merged.brightness = Math.max(-100, Math.min(100, merged.brightness));
+  }
+  if (merged.contrast !== undefined) {
+    merged.contrast = Math.max(-100, Math.min(100, merged.contrast));
+  }
+  if (merged.saturation !== undefined) {
+    merged.saturation = Math.max(-100, Math.min(200, merged.saturation));
+  }
+  if (merged.opacity !== undefined) {
+    merged.opacity = Math.max(0, Math.min(1, merged.opacity));
+  }
+  if (merged.blur !== undefined) {
+    merged.blur = Math.max(0, Math.min(100, merged.blur));
   }
 
   return merged;

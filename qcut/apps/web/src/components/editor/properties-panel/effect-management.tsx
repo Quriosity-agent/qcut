@@ -93,7 +93,6 @@ export function EffectManagement({ elementId, className }: EffectManagementProps
     newRanges.set(effectId, { start, end });
     setEffectTimeRanges(newRanges);
     // TODO: Implement actual time range trimming when keyframes are supported
-    console.log(`Effect ${effectId} time range: ${start}s - ${end}s`);
   };
 
   const toggleExpanded = (effectId: string) => {
@@ -120,6 +119,7 @@ export function EffectManagement({ elementId, className }: EffectManagementProps
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-medium">Applied Effects ({effects.length})</h3>
         <Button
+          type="button"
           variant="text"
           size="sm"
           onClick={() => clearEffects(elementId)}
@@ -154,6 +154,7 @@ export function EffectManagement({ elementId, className }: EffectManagementProps
                     <Switch
                       checked={effect.enabled}
                       onCheckedChange={() => handleToggleEffect(effect.id)}
+                      aria-label="Toggle effect"
                       className="scale-75"
                     />
                   </div>
@@ -164,9 +165,11 @@ export function EffectManagement({ elementId, className }: EffectManagementProps
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <Button
+                            type="button"
                             variant="text"
                             size="icon"
                             className="h-6 w-6"
+                            aria-label="Move effect up"
                             onClick={() => handleMoveEffect(effect.id, "up")}
                             disabled={index === 0}
                           >
@@ -181,9 +184,11 @@ export function EffectManagement({ elementId, className }: EffectManagementProps
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <Button
+                            type="button"
                             variant="text"
                             size="icon"
                             className="h-6 w-6"
+                            aria-label="Move effect down"
                             onClick={() => handleMoveEffect(effect.id, "down")}
                             disabled={index === effects.length - 1}
                           >
@@ -199,9 +204,11 @@ export function EffectManagement({ elementId, className }: EffectManagementProps
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <Button
+                            type="button"
                             variant="text"
                             size="icon"
                             className="h-6 w-6"
+                            aria-label="Duplicate effect"
                             onClick={() => handleDuplicateEffect(effect)}
                           >
                             <Copy className="h-3 w-3" />
@@ -215,9 +222,11 @@ export function EffectManagement({ elementId, className }: EffectManagementProps
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <Button
+                            type="button"
                             variant="text"
                             size="icon"
                             className="h-6 w-6"
+                            aria-label="Reset effect to defaults"
                             onClick={() => handleResetEffect(effect.id)}
                           >
                             <RotateCcw className="h-3 w-3" />
@@ -231,9 +240,11 @@ export function EffectManagement({ elementId, className }: EffectManagementProps
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <Button
+                            type="button"
                             variant="text"
                             size="icon"
                             className="h-6 w-6"
+                            aria-label="Remove effect"
                             onClick={() => removeEffect(elementId, effect.id)}
                           >
                             <Trash2 className="h-3 w-3" />
@@ -245,9 +256,13 @@ export function EffectManagement({ elementId, className }: EffectManagementProps
                     
                     {/* Expand/Collapse */}
                     <Button
+                      type="button"
                       variant="text"
                       size="icon"
                       className="h-6 w-6"
+                      aria-label={isExpanded ? 'Collapse effect details' : 'Expand effect details'}
+                      aria-expanded={isExpanded}
+                      aria-controls={`effect-${effect.id}-panel`}
                       onClick={() => toggleExpanded(effect.id)}
                     >
                       {isExpanded ? (
@@ -261,7 +276,7 @@ export function EffectManagement({ elementId, className }: EffectManagementProps
               </CardHeader>
               
               {isExpanded && (
-                <CardContent className="p-3 pt-0 space-y-3">
+                <CardContent id={`effect-${effect.id}-panel`} className="p-3 pt-0 space-y-3">
                   {/* Parameter Controls */}
                   <div className="space-y-2">
                     {Object.entries(effect.parameters).map(([param, value]) => (

@@ -234,10 +234,35 @@ interface TimelineStore {
   addMediaToNewTrack: (item: MediaItem) => boolean;
   addTextToNewTrack: (item: TextElement | DragData) => boolean;
 
-  // Effects-related methods (safe additions)
+  // Effects-related methods
+  /**
+   * Add an effect to a timeline element
+   * @param elementId - ID of the element to add effect to
+   * @param effectId - ID of the effect to add
+   * @side-effects Pushes to history for undo/redo, updates tracks, triggers auto-save
+   */
   addEffectToElement: (elementId: string, effectId: string) => void;
+  
+  /**
+   * Remove an effect from a timeline element
+   * @param elementId - ID of the element to remove effect from
+   * @param effectId - ID of the effect to remove
+   * @side-effects Pushes to history for undo/redo, updates tracks, triggers auto-save
+   */
   removeEffectFromElement: (elementId: string, effectId: string) => void;
-  getElementEffectIds: (elementId: string) => string[] | undefined;
+  
+  /**
+   * Get all effect IDs for a timeline element
+   * @param elementId - ID of the element to get effects for
+   * @returns Array of effect IDs, empty array if element has no effects or doesn't exist
+   */
+  getElementEffectIds: (elementId: string) => string[];
+  
+  /**
+   * Clear all effects from a timeline element
+   * @param elementId - ID of the element to clear effects from
+   * @side-effects Pushes to history for undo/redo, updates tracks, triggers auto-save
+   */
   clearElementEffects: (elementId: string) => void;
 }
 
@@ -1873,11 +1898,11 @@ export const useTimelineStore = create<TimelineStore>((set, get) => {
       for (const track of tracks) {
         const element = track.elements.find(e => e.id === elementId);
         if (element) {
-          return element.effectIds;
+          return element.effectIds || [];
         }
       }
       
-      return undefined;
+      return [];
     },
 
     clearElementEffects: (elementId: string) => {
