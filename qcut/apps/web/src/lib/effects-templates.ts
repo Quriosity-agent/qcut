@@ -532,12 +532,6 @@ const PARAM_TO_TYPE: ReadonlyArray<[keyof EffectParameters, EffectType]> = [
   ["blendMode", "overlay"],
 ];
 
-function inferEffectTypeFromParams(params: EffectParameters): EffectType {
-  for (const [k, t] of PARAM_TO_TYPE) {
-    if (params[k] !== undefined) return t;
-  }
-  return "brightness";
-}
 
 /**
  * Apply template to create effect instances
@@ -721,7 +715,7 @@ function inferEffectCategory(parameters: EffectParameters): string {
 /**
  * Infer specific effect type from parameters
  */
-function inferEffectTypeFromParams(parameters: EffectParameters): string {
+function inferEffectTypeFromParams(parameters: EffectParameters): EffectType {
   // Look for the first defined parameter to determine specific effect type
   if (parameters.brightness !== undefined) return "brightness";
   if (parameters.contrast !== undefined) return "contrast";
@@ -756,7 +750,7 @@ function inferEffectTypeFromParams(parameters: EffectParameters): string {
   if (parameters.multiply !== undefined) return "multiply";
   if (parameters.screen !== undefined) return "screen";
   if (parameters.colorDodge !== undefined) return "color-dodge";
-  return "unknown";
+  return "brightness";
 }
 
 /**
