@@ -12,6 +12,7 @@ import {
   WandIcon,
   BotIcon,
   VolumeXIcon,
+  PaletteIcon,
 } from "lucide-react";
 import { create } from "zustand";
 
@@ -26,6 +27,7 @@ export type Tab =
   | "filters"
   | "adjustment"
   | "text2image"
+  | "nano-edit"
   | "ai"
   | "sounds";
 
@@ -69,6 +71,10 @@ export const tabs: { [key in Tab]: { icon: LucideIcon; label: string } } = {
   text2image: {
     icon: WandIcon,
     label: "AI Images",
+  },
+  "nano-edit": {
+    icon: PaletteIcon,
+    label: "Nano Edit",
   },
   ai: {
     icon: BotIcon,
