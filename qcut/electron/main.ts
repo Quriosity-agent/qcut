@@ -64,14 +64,14 @@ try {
   }
 }
 
-// Import handlers (compiled TypeScript)
-const { setupFFmpegIPC } = require("../dist/electron/ffmpeg-handler.js");
-const { setupSoundIPC } = require("../dist/electron/sound-handler.js");
-const { setupThemeIPC } = require("../dist/electron/theme-handler.js");
-const { setupApiKeyIPC } = require("../dist/electron/api-key-handler.js");
+// Import handlers (compiled TypeScript - relative to dist/electron output)
+const { setupFFmpegIPC } = require("./ffmpeg-handler.js");
+const { setupSoundIPC } = require("./sound-handler.js");
+const { setupThemeIPC } = require("./theme-handler.js");
+const { setupApiKeyIPC } = require("./api-key-handler.js");
 let setupTranscribeHandlers: HandlerFunction | null = null;
 try {
-  setupTranscribeHandlers = require("../dist/electron/transcribe-handler.js");
+  setupTranscribeHandlers = require("./transcribe-handler.js");
 } catch (err: any) {
   logger.warn("[Transcribe] handler not available:", err?.message || err);
 }
@@ -273,7 +273,7 @@ function createWindow(): void {
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
-      preload: path.join(__dirname, "../dist/electron/preload.js"),
+      preload: path.join(__dirname, "./preload.js"),
       webSecurity: true,
       // Allow CORS for external APIs while maintaining security
       webviewTag: false,
@@ -371,7 +371,7 @@ app.whenReady().then(() => {
   ipcMain.handle(
     "save-audio-for-export",
     async (event: IpcMainInvokeEvent, { audioData, filename }: { audioData: any; filename: string }) => {
-      const { saveAudioToTemp } = require("../dist/electron/audio-temp-handler.js");
+      const { saveAudioToTemp } = require("./audio-temp-handler.js");
       try {
         const filePath = await saveAudioToTemp(audioData, filename);
         return { success: true, path: filePath };
@@ -526,7 +526,7 @@ app.whenReady().then(() => {
 
     try {
       // Get ffprobe path (should be in same directory as ffmpeg)
-      const { getFFmpegPath } = require("../dist/electron/ffmpeg-handler.js");
+      const { getFFmpegPath } = require("./ffmpeg-handler.js");
       const ffmpegPath = getFFmpegPath();
       const ffmpegDir = path.dirname(ffmpegPath);
       const ffprobePath = path.join(
@@ -784,7 +784,7 @@ app.whenReady().then(() => {
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") {
     // Clean up audio temp files
-    const { cleanupAllAudioFiles } = require("../dist/electron/audio-temp-handler.js");
+    const { cleanupAllAudioFiles } = require("./audio-temp-handler.js");
     cleanupAllAudioFiles();
 
     // Close the static server when quitting
