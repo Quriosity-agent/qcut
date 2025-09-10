@@ -181,10 +181,10 @@ function createStaticServer(): http.Server {
     let fullPath: string;
     if (filePath.startsWith("ffmpeg/")) {
       // Serve FFmpeg files from the dist directory
-      fullPath = path.join(__dirname, "../apps/web/dist", filePath);
+      fullPath = path.join(__dirname, "../../apps/web/dist", filePath);
     } else {
       // Serve other static files from dist
-      fullPath = path.join(__dirname, "../apps/web/dist", filePath);
+      fullPath = path.join(__dirname, "../../apps/web/dist", filePath);
     }
 
     // Check if file exists
@@ -269,7 +269,7 @@ function createWindow(): void {
   mainWindow = new BrowserWindow({
     width: 1400,
     height: 900,
-    icon: path.join(__dirname, "../build/icon.ico"),
+    icon: path.join(__dirname, "../../build/icon.ico"),
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
@@ -324,7 +324,7 @@ app.whenReady().then(() => {
     // Determine base path based on whether app is packaged
     const basePath = app.isPackaged
       ? path.join(app.getAppPath(), "apps/web/dist")
-      : path.join(__dirname, "../apps/web/dist");
+      : path.join(__dirname, "../../apps/web/dist");
 
     // Handle FFmpeg resources specifically
     if (url.startsWith("ffmpeg/")) {
@@ -344,7 +344,14 @@ app.whenReady().then(() => {
     } else {
       // Handle other resources
       const filePath = path.join(basePath, url);
-      callback({ path: filePath });
+      logger.log(`[Protocol] Serving file: ${filePath} (exists: ${fs.existsSync(filePath)})`);
+      
+      if (fs.existsSync(filePath)) {
+        callback({ path: filePath });
+      } else {
+        logger.error(`[Protocol] File not found: ${filePath}`);
+        callback({ error: -6 }); // net::ERR_FILE_NOT_FOUND
+      }
     }
   });
 
@@ -713,7 +720,7 @@ app.whenReady().then(() => {
     }
 
     // Fallback to dist directory (development)
-    const distPath = path.join(__dirname, "../apps/web/dist/ffmpeg", filename);
+    const distPath = path.join(__dirname, "../../apps/web/dist/ffmpeg", filename);
     return distPath;
   });
 
@@ -725,7 +732,7 @@ app.whenReady().then(() => {
     }
 
     // Check dist directory (development)
-    const distPath = path.join(__dirname, "../apps/web/dist/ffmpeg", filename);
+    const distPath = path.join(__dirname, "../../apps/web/dist/ffmpeg", filename);
     return fs.existsSync(distPath);
   });
 
