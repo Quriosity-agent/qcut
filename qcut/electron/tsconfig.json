@@ -17,12 +17,12 @@
     "sourceMap": true
   },
   "include": [
-    "**/*.ts",
-    "**/*.js"
+    "**/*.ts"
   ],
   "exclude": [
     "node_modules",
     "dist",
-    "resources"
+    "resources",
+    "**/*.js"
   ]
 }

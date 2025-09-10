@@ -176,7 +176,7 @@ function createWindow() {
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
-      preload: path.join(__dirname, "preload.js"),
+      preload: path.join(__dirname, "../dist/electron/preload.js"),
       webSecurity: true,
       // Allow CORS for external APIs while maintaining security
       webviewTag: false,
