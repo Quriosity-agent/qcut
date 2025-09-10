@@ -12,10 +12,10 @@ export const mockPresence = {
 
 // Mock CheckboxIndicator to avoid Presence issues
 export const mockCheckboxIndicator = React.forwardRef<
-  React.ElementRef<'span'>,
-  React.ComponentPropsWithoutRef<'span'>
+  React.ElementRef<"span">,
+  React.ComponentPropsWithoutRef<"span">
 >(({ children, ...props }, ref) => {
-  return React.createElement('span', { ...props, ref }, children);
+  return React.createElement("span", { ...props, ref }, children);
 });
 
 // Setup function to be called in test setup

@@ -6,24 +6,24 @@ import { toast } from "sonner";
  */
 
 export const ErrorSeverity = {
-  LOW: 'low',
-  MEDIUM: 'medium',
-  HIGH: 'high',
-  CRITICAL: 'critical',
+  LOW: "low",
+  MEDIUM: "medium",
+  HIGH: "high",
+  CRITICAL: "critical",
 } as const;
 export type ErrorSeverity = (typeof ErrorSeverity)[keyof typeof ErrorSeverity];
 
 export const ErrorCategory = {
-  NETWORK: 'network',
-  VALIDATION: 'validation',
-  STORAGE: 'storage',
-  MEDIA_PROCESSING: 'media_processing',
-  AI_SERVICE: 'ai_service',
-  EXPORT: 'export',
-  AUTH: 'auth',
-  UI: 'ui',
-  SYSTEM: 'system',
-  UNKNOWN: 'unknown',
+  NETWORK: "network",
+  VALIDATION: "validation",
+  STORAGE: "storage",
+  MEDIA_PROCESSING: "media_processing",
+  AI_SERVICE: "ai_service",
+  EXPORT: "export",
+  AUTH: "auth",
+  UI: "ui",
+  SYSTEM: "system",
+  UNKNOWN: "unknown",
 } as const;
 export type ErrorCategory = (typeof ErrorCategory)[keyof typeof ErrorCategory];
 

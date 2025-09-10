@@ -353,7 +353,7 @@ export function applyTransitionEffect(
       ctx.drawImage(fromCanvas, 0, 0);
 
       const imageData = ctx.getImageData(0, 0, width, height);
-      const toCtx = toCanvas.getContext('2d');
+      const toCtx = toCanvas.getContext("2d");
       if (!toCtx) {
         // No 2D context available (e.g., tests). Skip dissolve gracefully.
         break;

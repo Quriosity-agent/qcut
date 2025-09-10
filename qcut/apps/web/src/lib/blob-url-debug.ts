@@ -71,13 +71,13 @@ export function enableBlobUrlDebugging() {
     init?: RequestInit
   ) => {
     const url =
-      typeof input === 'string'
+      typeof input === "string"
         ? input
         : input instanceof URL
-        ? input.toString()
-        : input instanceof Request
-        ? input.url
-        : String(input);
+          ? input.toString()
+          : input instanceof Request
+            ? input.url
+            : String(input);
     if (url.startsWith("blob:") && !blobUrlTracker.has(url)) {
       console.warn(
         `[BlobUrlDebug] 🚨 Fetch attempt on revoked blob URL: ${url}`

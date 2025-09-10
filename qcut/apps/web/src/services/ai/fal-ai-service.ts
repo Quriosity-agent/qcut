@@ -1,5 +1,9 @@
 import { fal } from "@fal-ai/client";
-import type { FalAiImageResult, FalAiTextToImageInput, FalAiImageEditInput } from "../../types/nano-edit";
+import type {
+  FalAiImageResult,
+  FalAiTextToImageInput,
+  FalAiImageEditInput,
+} from "../../types/nano-edit";
 
 /**
  * Service class for interacting with fal.ai Nano Banana APIs
@@ -20,19 +24,24 @@ export class FalAiService {
       const input: FalAiTextToImageInput = {
         prompt,
         num_images: 1,
-        output_format: 'jpeg',
+        output_format: "jpeg",
         sync_mode: true,
         ...options,
       };
 
       const result = await fal.subscribe("fal-ai/nano-banana", {
         input,
-      }) as FalAiImageResult;
+      });
+      
+      // Type guard to ensure result matches expected format
+      const typedResult = result as any;
 
-      return result.images?.map(img => img.url) || [];
+      return typedResult.images?.map((img: any) => img.url) || [];
     } catch (error) {
-      console.error('Failed to generate image:', error);
-      throw new Error(`Image generation failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      console.error("Failed to generate image:", error);
+      throw new Error(
+        `Image generation failed: ${error instanceof Error ? error.message : "Unknown error"}`
+      );
     }
   }
 
@@ -50,30 +59,35 @@ export class FalAiService {
   ): Promise<string[]> {
     try {
       if (imageUrls.length === 0) {
-        throw new Error('At least one image URL is required for editing');
+        throw new Error("At least one image URL is required for editing");
       }
 
       if (imageUrls.length > 10) {
-        throw new Error('Maximum 10 images can be processed at once');
+        throw new Error("Maximum 10 images can be processed at once");
       }
 
       const input: FalAiImageEditInput = {
         prompt,
         image_urls: imageUrls,
         num_images: 1,
-        output_format: 'jpeg',
+        output_format: "jpeg",
         sync_mode: true,
         ...options,
       };
 
       const result = await fal.subscribe("fal-ai/nano-banana/edit", {
         input,
-      }) as FalAiImageResult;
+      });
+      
+      // Type guard to ensure result matches expected format
+      const typedResult = result as any;
 
-      return result.images?.map(img => img.url) || [];
+      return typedResult.images?.map((img: any) => img.url) || [];
     } catch (error) {
-      console.error('Failed to edit images:', error);
-      throw new Error(`Image editing failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      console.error("Failed to edit images:", error);
+      throw new Error(
+        `Image editing failed: ${error instanceof Error ? error.message : "Unknown error"}`
+      );
     }
   }
 
@@ -86,14 +100,14 @@ export class FalAiService {
    */
   static async generateThumbnails(
     projectTitle: string,
-    style: string = 'vibrant',
+    style: string = "vibrant",
     count: number = 3
   ): Promise<string[]> {
     const prompt = `Create a ${style} YouTube thumbnail for "${projectTitle}"`;
-    
+
     return this.generateImage(prompt, {
       num_images: Math.min(count, 4),
-      output_format: 'png',
+      output_format: "png",
     });
   }
 
@@ -106,18 +120,18 @@ export class FalAiService {
    */
   static async generateTitleCard(
     title: string,
-    subtitle: string = '',
-    style: string = 'professional'
+    subtitle: string = "",
+    style: string = "professional"
   ): Promise<string> {
-    const subtitleText = subtitle ? ` with subtitle "${subtitle}"` : '';
+    const subtitleText = subtitle ? ` with subtitle "${subtitle}"` : "";
     const prompt = `Create a ${style} title card with text "${title}"${subtitleText}`;
-    
+
     const results = await this.generateImage(prompt, {
       num_images: 1,
-      output_format: 'png',
+      output_format: "png",
     });
 
-    return results[0] || '';
+    return results[0] || "";
   }
 
   /**
@@ -127,7 +141,7 @@ export class FalAiService {
   static async isAvailable(): Promise<boolean> {
     try {
       // Simple connectivity check - could be expanded with actual API ping
-      return typeof fal !== 'undefined';
+      return typeof fal !== "undefined";
     } catch {
       return false;
     }

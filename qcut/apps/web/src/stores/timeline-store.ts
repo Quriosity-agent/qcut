@@ -315,7 +315,9 @@ export const useTimelineStore = create<TimelineStore>((set, get) => {
         try {
           // Include current scene ID to avoid desync
           const { useSceneStore } = await import("./scene-store");
-          const sceneId = useSceneStore.getState().currentScene?.id ?? activeProject.currentSceneId;
+          const sceneId =
+            useSceneStore.getState().currentScene?.id ??
+            activeProject.currentSceneId;
           await storageService.saveProjectTimeline({
             projectId: activeProject.id,
             tracks: get()._tracks,

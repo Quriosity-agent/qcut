@@ -532,7 +532,6 @@ const PARAM_TO_TYPE: ReadonlyArray<[keyof EffectParameters, EffectType]> = [
   ["blendMode", "overlay"],
 ];
 
-
 /**
  * Apply template to create effect instances
  */
@@ -783,9 +782,7 @@ export function importTemplate(json: string): EffectTemplate | null {
           name: e.name,
           // Support both old 'type' and new 'effectType' fields for backward compatibility
           effectType:
-            e.effectType ||
-            e.type ||
-            inferEffectTypeFromParams(e.parameters),
+            e.effectType || e.type || inferEffectTypeFromParams(e.parameters),
           parameters: e.parameters,
           order: typeof e.order === "number" ? e.order : i + 1,
           blendMode: e.blendMode,
