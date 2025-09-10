@@ -1866,7 +1866,7 @@ export const useTimelineStore = create<TimelineStore>((set, get) => {
         if (!element || !element.effectIds || !element.effectIds.includes(effectId)) return track;
         
         // Create new element with updated effect IDs
-        const nextEffectIds = element.effectIds.filter((id) => id !== effectId);
+        const nextEffectIds = element.effectIds.filter((id: string) => id !== effectId);
         const updatedElement = {
           ...element,
           effectIds: nextEffectIds
