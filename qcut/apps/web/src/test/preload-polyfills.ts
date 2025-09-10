@@ -12,57 +12,55 @@ const installCriticalObservers = (target: any) => {
   if (!target) return;
   
   try {
-    // Force install observers with multiple strategies
-    target.MutationObserver = MockMutationObserver;
-    target.ResizeObserver = MockResizeObserver; 
-    target.IntersectionObserver = MockIntersectionObserver;
+    // Check if properties are configurable before trying to modify
+    const mutationObserverDesc = Object.getOwnPropertyDescriptor(target, 'MutationObserver');
+    const resizeObserverDesc = Object.getOwnPropertyDescriptor(target, 'ResizeObserver');
+    const intersectionObserverDesc = Object.getOwnPropertyDescriptor(target, 'IntersectionObserver');
     
-    // Use defineProperty to prevent overrides
-    Object.defineProperty(target, 'MutationObserver', {
-      value: MockMutationObserver,
-      writable: false,
-      configurable: false,
-      enumerable: true
-    });
+    // Only set if not defined or configurable
+    if (!mutationObserverDesc || mutationObserverDesc.configurable) {
+      Object.defineProperty(target, 'MutationObserver', {
+        value: MockMutationObserver,
+        writable: true,
+        configurable: true,
+        enumerable: true
+      });
+    }
     
-    Object.defineProperty(target, 'ResizeObserver', {
-      value: MockResizeObserver,
-      writable: false,
-      configurable: false,
-      enumerable: true
-    });
+    if (!resizeObserverDesc || resizeObserverDesc.configurable) {
+      Object.defineProperty(target, 'ResizeObserver', {
+        value: MockResizeObserver,
+        writable: true,
+        configurable: true,
+        enumerable: true
+      });
+    }
     
-    Object.defineProperty(target, 'IntersectionObserver', {
-      value: MockIntersectionObserver,
-      writable: false,
-      configurable: false,
-      enumerable: true
-    });
+    if (!intersectionObserverDesc || intersectionObserverDesc.configurable) {
+      Object.defineProperty(target, 'IntersectionObserver', {
+        value: MockIntersectionObserver,
+        writable: true,
+        configurable: true,
+        enumerable: true
+      });
+    }
     
   } catch (e) {
-    // Fallback: at least try direct assignment
-    target.MutationObserver = MockMutationObserver;
-    target.ResizeObserver = MockResizeObserver;
-    target.IntersectionObserver = MockIntersectionObserver;
+    // Silently skip if we can't modify the properties
+    console.log('Could not install observers on target:', e);
   }
 };
 
 // Install on all possible contexts IMMEDIATELY
-[globalThis, global, window, self].forEach(ctx => {
-  if (ctx) installCriticalObservers(ctx);
-});
+// Only process contexts that actually exist
+const contexts = [
+  typeof globalThis !== 'undefined' ? globalThis : null,
+  typeof global !== 'undefined' ? global : null,
+  typeof window !== 'undefined' ? window : null,
+  typeof self !== 'undefined' ? self : null
+].filter(Boolean);
 
-// Also install on constructor prototypes if available
-try {
-  if (typeof Window !== 'undefined' && Window.prototype) {
-    installCriticalObservers(Window.prototype);
-  }
-  if (typeof Global !== 'undefined' && (Global as any).prototype) {
-    installCriticalObservers((Global as any).prototype);
-  }
-} catch (e) {
-  // Ignore prototype errors
-}
+contexts.forEach(ctx => installCriticalObservers(ctx));
 
 // Create a comprehensive mock CSSStyleDeclaration
 class MockCSSStyleDeclaration {

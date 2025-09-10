@@ -2,11 +2,29 @@
 import { vi, beforeAll, afterEach, afterAll } from "vitest";
 import "@testing-library/jest-dom/vitest";
 
+console.log("🔧 Starting comprehensive test setup...");
+
+// 0. VERIFY DOM ENVIRONMENT
+console.log("DOM Check - document exists:", typeof document !== 'undefined');
+console.log("DOM Check - window exists:", typeof window !== 'undefined');
+
+// If DOM doesn't exist, this is a fundamental environment issue
+if (typeof document === 'undefined') {
+  console.error("❌ CRITICAL: document is undefined - DOM environment not initialized");
+  console.log("Environment details:", {
+    nodeEnv: process.env.NODE_ENV,
+    testEnv: process.env.VITEST_ENVIRONMENT,
+    userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : 'undefined'
+  });
+} else {
+  console.log("✅ DOM environment available");
+}
+
 // 1. FIRST: Install browser APIs immediately
 console.log("🔧 Installing browser APIs...");
 
 // Mock MutationObserver - critical for Radix UI
-globalThis.MutationObserver = class MockMutationObserver implements MutationObserver {
+const MockMutationObserver = class implements MutationObserver {
   constructor(private callback: MutationCallback) {}
   observe() {}
   disconnect() {}
@@ -14,7 +32,7 @@ globalThis.MutationObserver = class MockMutationObserver implements MutationObse
 };
 
 // Mock ResizeObserver
-globalThis.ResizeObserver = class MockResizeObserver implements ResizeObserver {
+const MockResizeObserver = class implements ResizeObserver {
   constructor(private callback: ResizeObserverCallback) {}
   observe() {}
   unobserve() {}
@@ -22,7 +40,7 @@ globalThis.ResizeObserver = class MockResizeObserver implements ResizeObserver {
 };
 
 // Mock IntersectionObserver
-globalThis.IntersectionObserver = class MockIntersectionObserver implements IntersectionObserver {
+const MockIntersectionObserver = class implements IntersectionObserver {
   readonly root = null;
   readonly rootMargin = '0px';
   readonly thresholds: ReadonlyArray<number> = [0];
@@ -33,12 +51,19 @@ globalThis.IntersectionObserver = class MockIntersectionObserver implements Inte
   takeRecords(): IntersectionObserverEntry[] { return []; }
 };
 
-// Ensure observers are available on window if it exists
-if (typeof window !== 'undefined') {
-  window.MutationObserver = globalThis.MutationObserver;
-  window.ResizeObserver = globalThis.ResizeObserver;
-  window.IntersectionObserver = globalThis.IntersectionObserver;
-}
+// Install observers on all contexts
+const installObservers = (context: any, name: string) => {
+  if (context) {
+    context.MutationObserver = MockMutationObserver;
+    context.ResizeObserver = MockResizeObserver;
+    context.IntersectionObserver = MockIntersectionObserver;
+    console.log(`✅ Observers installed on ${name}`);
+  }
+};
+
+installObservers(globalThis, 'globalThis');
+if (typeof window !== 'undefined') installObservers(window, 'window');
+if (typeof global !== 'undefined') installObservers(global, 'global');
 
 console.log("✅ Browser APIs installed");
 
