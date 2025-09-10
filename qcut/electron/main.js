@@ -266,7 +266,7 @@ app.whenReady().then(() => {
   ipcMain.handle(
     "save-audio-for-export",
     async (event, { audioData, filename }) => {
-      const { saveAudioToTemp } = require("./audio-temp-handler.js");
+      const { saveAudioToTemp } = require("../dist/electron/audio-temp-handler.js");
       try {
         const filePath = await saveAudioToTemp(audioData, filename);
         return { success: true, path: filePath };
@@ -320,7 +320,7 @@ app.whenReady().then(() => {
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") {
     // Clean up audio temp files
-    const { cleanupAllAudioFiles } = require("./audio-temp-handler.js");
+    const { cleanupAllAudioFiles } = require("../dist/electron/audio-temp-handler.js");
     cleanupAllAudioFiles();
 
     // Close the static server when quitting
