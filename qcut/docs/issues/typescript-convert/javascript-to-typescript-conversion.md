@@ -43,6 +43,7 @@
 - `scripts/fix-exe-icon.ts` - Executable icon fixing utility (converted)
 - `electron/theme-handler.ts` - UI theme management with IPC handlers (converted)
 - `scripts/afterPack.ts` - Post-packaging hook with electron-builder types (converted)
+- `electron/temp-manager.ts` - Temporary file management class with export sessions (converted)
 - `scripts/tsconfig.json` - TypeScript configuration for scripts
 - `electron/tsconfig.json` - TypeScript configuration for electron
 - `dist/scripts/` - Compiled JavaScript output directory
@@ -826,7 +827,232 @@ export type { AfterPackContext };
 - ✅ Function signature correct: `typeof afterPack === 'function'`
 - ✅ Async function: `afterPack.constructor.name === 'AsyncFunction'`
 
-**Next Recommended File:** `electron/temp-manager.js` (Medium-risk temporary file management)
+**Next Recommended File:** ~~`electron/temp-manager.js`~~ ✅ **COMPLETED**
+
+### 1.8. Converting Temp Manager Class ✅ IMPLEMENTED
+
+#### Example: `electron/temp-manager.js` → `electron/temp-manager.ts`
+
+**Implementation Status:** ✅ Successfully Converted and Tested
+
+**ACTUAL Before (JavaScript) - From Repository:**
+```js
+// electron/temp-manager.js
+const fs = require("fs");
+const path = require("path");
+const { app } = require("electron");
+
+// Initialize electron-log early
+let log = null;
+try {
+  log = require("electron-log");
+} catch (error) {
+  // electron-log not available, will use fallback
+}
+const logger = log || console;
+
+class TempManager {
+  constructor() {
+    this.tempDir = path.join(app.getPath("temp"), "qcut-export");
+    this.ensureTempDir();
+  }
+
+  ensureTempDir() {
+    if (!fs.existsSync(this.tempDir)) {
+      fs.mkdirSync(this.tempDir, { recursive: true });
+    }
+  }
+
+  createExportSession() {
+    const sessionId = Date.now().toString();
+    const sessionDir = path.join(this.tempDir, sessionId);
+    const frameDir = path.join(sessionDir, "frames");
+    const outputDir = path.join(sessionDir, "output");
+
+    // Create directories
+    fs.mkdirSync(sessionDir, { recursive: true });
+    fs.mkdirSync(frameDir, { recursive: true });
+    fs.mkdirSync(outputDir, { recursive: true });
+
+    return {
+      sessionId,
+      frameDir,
+      outputDir,
+    };
+  }
+
+  cleanup(sessionId) {
+    // Clean up audio files first
+    try {
+      const { cleanupAudioFiles } = require("./audio-temp-handler.js");
+      cleanupAudioFiles(sessionId);
+    } catch (error) {
+      logger.warn(
+        "Failed to cleanup audio files for session:",
+        sessionId,
+        error.message
+      );
+    }
+
+    // Clean up session directory
+    const sessionDir = path.join(this.tempDir, sessionId);
+    if (fs.existsSync(sessionDir)) {
+      fs.rmSync(sessionDir, { recursive: true, force: true });
+    }
+  }
+
+  // Additional utility methods...
+}
+
+module.exports = { TempManager };
+```
+
+**After (TypeScript) - IMPLEMENTED & TESTED:**
+```ts
+// electron/temp-manager.ts
+import fs from "fs";
+import path from "path";
+import { app } from "electron";
+
+// Initialize electron-log early
+let log: any = null;
+try {
+  log = require("electron-log");
+} catch (error) {
+  // electron-log not available, will use fallback
+}
+const logger = log || console;
+
+interface ExportSession {
+  sessionId: string;
+  frameDir: string;
+  outputDir: string;
+}
+
+interface Logger {
+  warn(message?: any, ...optionalParams: any[]): void;
+}
+
+class TempManager {
+  private tempDir: string;
+
+  constructor() {
+    this.tempDir = path.join(app.getPath("temp"), "qcut-export");
+    this.ensureTempDir();
+  }
+
+  private ensureTempDir(): void {
+    if (!fs.existsSync(this.tempDir)) {
+      fs.mkdirSync(this.tempDir, { recursive: true });
+    }
+  }
+
+  createExportSession(): ExportSession {
+    const sessionId: string = Date.now().toString();
+    const sessionDir: string = path.join(this.tempDir, sessionId);
+    const frameDir: string = path.join(sessionDir, "frames");
+    const outputDir: string = path.join(sessionDir, "output");
+
+    // Create directories
+    fs.mkdirSync(sessionDir, { recursive: true });
+    fs.mkdirSync(frameDir, { recursive: true });
+    fs.mkdirSync(outputDir, { recursive: true });
+
+    return {
+      sessionId,
+      frameDir,
+      outputDir,
+    };
+  }
+
+  cleanup(sessionId: string): void {
+    // Clean up audio files first
+    try {
+      const { cleanupAudioFiles } = require("./audio-temp-handler.js");
+      cleanupAudioFiles(sessionId);
+    } catch (error: any) {
+      (logger as Logger).warn(
+        "Failed to cleanup audio files for session:",
+        sessionId,
+        error.message
+      );
+    }
+
+    // Clean up session directory
+    const sessionDir: string = path.join(this.tempDir, sessionId);
+    if (fs.existsSync(sessionDir)) {
+      fs.rmSync(sessionDir, { recursive: true, force: true });
+    }
+  }
+
+  cleanupOldSessions(): void {
+    // Clean up sessions older than 1 hour
+    const cutoff: number = Date.now() - 60 * 60 * 1000;
+
+    if (fs.existsSync(this.tempDir)) {
+      const sessions: string[] = fs.readdirSync(this.tempDir);
+      sessions.forEach((sessionId: string) => {
+        const timestamp: number = parseInt(sessionId);
+        if (timestamp < cutoff) {
+          this.cleanup(sessionId);
+        }
+      });
+    }
+  }
+
+  // Get temp directory path for debugging
+  getTempDir(): string {
+    return this.tempDir;
+  }
+
+  // Get session directory path
+  getSessionDir(sessionId: string): string {
+    return path.join(this.tempDir, sessionId);
+  }
+
+  // Get frame directory path
+  getFrameDir(sessionId: string): string {
+    return path.join(this.tempDir, sessionId, "frames");
+  }
+
+  // Get output directory path
+  getOutputDir(sessionId: string): string {
+    return path.join(this.tempDir, sessionId, "output");
+  }
+}
+
+// CommonJS export for backward compatibility with ffmpeg-handler.js
+module.exports = { TempManager };
+
+// ES6 export for TypeScript files
+export { TempManager };
+export default TempManager;
+export type { ExportSession, Logger };
+```
+
+**✅ MIGRATION COMPLETED SUCCESSFULLY**
+
+**Key Implementation Learnings:**
+1. ✅ **Class Typing:** Comprehensive TypeScript class with private fields and method signatures
+2. ✅ **Interface Definitions:** `ExportSession` interface for return type and `Logger` interface for dependency
+3. ✅ **Property Access Modifiers:** Used `private` for internal fields like `tempDir`
+4. ✅ **Method Return Types:** All methods properly typed with `void`, `string`, or `ExportSession`
+5. ✅ **Error Handling:** Proper typing for try/catch blocks with `any` type for dynamic errors
+
+**Migration Artifacts:**
+- ✅ `electron/temp-manager.ts` - TypeScript version (active)
+- ✅ `dist/electron/temp-manager.js` - Compiled output
+- ❌ ~~`electron/temp-manager.js`~~ - **REMOVED** (original JavaScript)
+
+**Dependency Update Required:**
+- ✅ Updated `electron/ffmpeg-handler.js` require path to `../dist/electron/temp-manager.js`
+
+**Testing Results:**
+- ✅ Compiled TypeScript loads successfully: `require('./dist/electron/temp-manager.js')`
+- ✅ Class constructor available: `typeof TempManager === 'function'`
+- ✅ Electron integration: Constructor attempts to use `app.getPath` (expected behavior)
+
+**Next Recommended File:** `electron/audio-temp-handler.js` (Audio file temporary management)
 
 ### 2. Converting Configuration Files ✅ IMPLEMENTED
 
@@ -1244,7 +1470,7 @@ These handle auxiliary features that won't break core functionality:
 ### 🟠 **MEDIUM RISK** (Important but Isolated)
 These are important but have clear boundaries:
 
-8. **electron/temp-manager.js** - File management with clear interface
+8. ~~**electron/temp-manager.js**~~ - ✅ **COMPLETED - Converted to TypeScript**
 9. **electron/audio-temp-handler.js** - Audio file handling, well-scoped
 10. **electron/sound-handler.js** - Sound effects, non-critical feature
 11. **scripts/release.js** - Release automation, developer-facing only
@@ -1526,7 +1752,14 @@ export default myExport;    // For TS consumers
    - Updated package.json build configuration to use compiled TypeScript
    - Comprehensive async/await typing with Promise<void> return type
 
-**📊 Current Progress: 7/15 files converted (46.7% complete)**
+8. **~~electron/temp-manager.js~~** → **electron/temp-manager.ts**
+   - Status: ✅ **MIGRATION COMPLETE** - Original `.js` file removed
+   - Temporary file management class for video export sessions
+   - TypeScript version with comprehensive class and interface typing
+   - Export session management with proper directory structure
+   - Cleanup functionality for old sessions and audio files integration
 
-**🎯 Next Target:** `electron/temp-manager.js` - Temporary file management
-**🏆 Milestone:** Low-risk files progressing! Moving toward medium-risk files.
+**📊 Current Progress: 8/15 files converted (53.3% complete)**
+
+**🎯 Next Target:** `electron/audio-temp-handler.js` - Audio temporary file handling
+**🏆 Milestone:** First medium-risk file completed! Continuing with medium-risk files.
