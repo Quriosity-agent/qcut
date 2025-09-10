@@ -1,7 +1,8 @@
-const { execFile } = require("child_process");
-const path = require("path");
-const fs = require("fs");
-const crypto = require("crypto");
+import { execFile } from "child_process";
+import path from "path";
+import fs from "fs";
+import crypto from "crypto";
+import https from "https";
 
 // Official SHA256 hash for rcedit v2.0.0 x64
 // You should verify this from the official release page
@@ -10,12 +11,12 @@ const RCEDIT_SHA256 =
 const RCEDIT_URL =
   "https://github.com/electron/rcedit/releases/download/v2.0.0/rcedit-x64.exe";
 
-async function verifyFileHash(filePath, expectedHash) {
+async function verifyFileHash(filePath: string, expectedHash: string): Promise<boolean> {
   return new Promise((resolve, reject) => {
     const hash = crypto.createHash("sha256");
     const stream = fs.createReadStream(filePath);
 
-    stream.on("data", (data) => hash.update(data));
+    stream.on("data", (data: Buffer) => hash.update(data));
     stream.on("end", () => {
       const fileHash = hash.digest("hex");
       resolve(fileHash.toLowerCase() === expectedHash.toLowerCase());
@@ -24,7 +25,7 @@ async function verifyFileHash(filePath, expectedHash) {
   });
 }
 
-async function fixExeIcon() {
+async function fixExeIcon(): Promise<void> {
   // Check platform - this script is Windows-only
   if (process.platform !== "win32") {
     process.stderr.write("This script is intended for Windows only.\n");
@@ -32,14 +33,11 @@ async function fixExeIcon() {
     return;
   }
 
-  const getArg = (flag) => {
+  const getArg = (flag: string): string | undefined => {
     const i = process.argv.indexOf(flag);
     return i !== -1 ? process.argv[i + 1] : undefined;
   };
-  const getArg = (flag) => {
-    const i = process.argv.indexOf(flag);
-    return i !== -1 ? process.argv[i + 1] : undefined;
-  };
+
   const exePath =
     getArg("--exe") ||
     path.resolve(
@@ -68,8 +66,14 @@ async function fixExeIcon() {
     `Fixing executable icon...\nExe path: ${exePath}\nIcon path: ${icoPath}\n`
   );
 
+  // Handle path resolution for both source and compiled contexts
+  const isCompiled = __dirname.includes('dist');
+  const scriptDir = isCompiled 
+    ? path.join(__dirname, '../../scripts')  // Go up from dist/scripts to project root, then to scripts
+    : __dirname;  // Already in scripts directory
+
   // Download rcedit if not available or verify existing one
-  const rceditPath = path.join(__dirname, "rcedit.exe");
+  const rceditPath = path.join(scriptDir, "rcedit.exe");
 
   let needsDownload = false;
 
@@ -92,19 +96,18 @@ async function fixExeIcon() {
 
   if (needsDownload) {
     process.stdout.write("Downloading rcedit...\n");
-    const https = require("https");
     const file = fs.createWriteStream(rceditPath);
 
-    await new Promise((resolve, reject) => {
+    await new Promise<void>((resolve, reject) => {
       const maxRedirects = 5;
 
-      const doGet = (url, redirects = 0) => {
+      const doGet = (url: string, redirects = 0): void => {
         const req = https.get(url, (res) => {
           const { statusCode, headers } = res;
 
           // Handle redirects
           if (
-            [301, 302, 303, 307, 308].includes(statusCode) &&
+            [301, 302, 303, 307, 308].includes(statusCode || 0) &&
             headers.location
           ) {
             if (redirects >= maxRedirects) {
@@ -136,14 +139,14 @@ async function fixExeIcon() {
             });
           });
 
-          file.on("error", (err) => {
+          file.on("error", (err: Error) => {
             file.destroy();
             fs.unlink(rceditPath, () => {}); // Clean up partial file
             reject(err);
           });
         });
 
-        req.on("error", (err) => {
+        req.on("error", (err: Error) => {
           file.destroy();
           fs.unlink(rceditPath, () => {}); // Clean up partial file
           reject(err);
@@ -182,7 +185,7 @@ async function fixExeIcon() {
   );
 }
 
-fixExeIcon().catch((err) => {
+fixExeIcon().catch((err: Error) => {
   process.stderr.write(`Error: ${err?.stack || err}\n`);
   process.exitCode = 1;
 });
