@@ -26,6 +26,7 @@ interface Logger {
 interface AutoUpdater {
   checkForUpdatesAndNotify(): Promise<any>;
   on(event: string, listener: (...args: any[]) => void): void;
+  quitAndInstall(): void;
 }
 
 interface MimeTypeMap {
@@ -79,39 +80,93 @@ let mainWindow: BrowserWindow | null = null;
 let staticServer: http.Server | null = null;
 
 // Suppress Electron DevTools Autofill errors
-const originalConsoleWarn = console.warn;
-console.warn = (...args: any[]) => {
-  const message = args[0];
-  if (
-    typeof message === "string" &&
-    message.includes("Autofill.enable failed") &&
-    message.includes("session not found")
-  ) {
-    return; // Suppress this specific warning
-  }
-  originalConsoleWarn.apply(console, args);
-};
+app.commandLine.appendSwitch("disable-features", "Autofill");
+
+// ① Register app:// protocol with required privileges
+protocol.registerSchemesAsPrivileged([
+  {
+    scheme: "app",
+    privileges: {
+      secure: true,
+      standard: true,
+      supportFetchAPI: true,
+      corsEnabled: true,
+      bypassCSP: false,
+      allowServiceWorkers: true,
+      stream: true,
+    },
+  },
+]);
 
 function setupAutoUpdater(): void {
-  if (!autoUpdater) return;
+  if (!autoUpdater) {
+    logger.log("⚠️ [AutoUpdater] Auto-updater not available - skipping setup");
+    return;
+  }
 
-  // Basic update handling for packaged app
-  autoUpdater.on("update-available", () => {
-    logger.log("🔄 [AutoUpdater] Update available, downloading...");
+  logger.log("🔄 [AutoUpdater] Setting up auto-updater...");
+
+  // Configure auto-updater settings
+  autoUpdater.checkForUpdatesAndNotify();
+
+  // Auto-updater event handlers
+  autoUpdater.on("checking-for-update", () => {
+    logger.log("🔄 [AutoUpdater] Checking for updates...");
   });
 
-  autoUpdater.on("update-downloaded", () => {
+  autoUpdater.on("update-available", (info: any) => {
+    logger.log("📦 [AutoUpdater] Update available:", info.version);
+
+    // Send to renderer process
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send("update-available", {
+        version: info.version,
+        releaseNotes: info.releaseNotes,
+        releaseDate: info.releaseDate,
+      });
+    }
+  });
+
+  autoUpdater.on("update-not-available", () => {
+    logger.log("✅ [AutoUpdater] App is up to date");
+  });
+
+  autoUpdater.on("error", (err: Error) => {
+    logger.error("❌ [AutoUpdater] Error:", err);
+  });
+
+  autoUpdater.on("download-progress", (progressObj: any) => {
+    const percent = Math.round(progressObj.percent);
+    logger.log(`📥 [AutoUpdater] Download progress: ${percent}%`);
+
+    // Send progress to renderer
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send("download-progress", {
+        percent,
+        transferred: progressObj.transferred,
+        total: progressObj.total,
+      });
+    }
+  });
+
+  autoUpdater.on("update-downloaded", (info: any) => {
     logger.log("✅ [AutoUpdater] Update downloaded, will install on quit");
+
+    // Send to renderer process
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send("update-downloaded", {
+        version: info.version,
+      });
+    }
   });
 
-  autoUpdater.on("error", (error: Error) => {
-    logger.error("❌ [AutoUpdater] Error:", error);
-  });
-
-  // Check for updates (silent)
-  autoUpdater.checkForUpdatesAndNotify().catch((error: Error) => {
-    logger.warn("⚠️ [AutoUpdater] Check failed:", error.message);
-  });
+  // Check for updates every hour in production
+  setInterval(
+    () => {
+      autoUpdater.checkForUpdatesAndNotify();
+    },
+    60 * 60 * 1000
+  ); // 1 hour
 }
 
 function createStaticServer(): http.Server {
@@ -178,35 +233,35 @@ function createStaticServer(): http.Server {
 }
 
 function createWindow(): void {
-  // Replace CSP headers to ensure no conflicts
+  // ③ "Replace" rather than "append" CSP - completely override all existing CSP policies
   session.defaultSession.webRequest.onHeadersReceived(
     (details: OnHeadersReceivedListenerDetails, callback: (response: HeadersReceivedResponse) => void) => {
       const responseHeaders = { ...details.responseHeaders };
 
-      // Remove all existing CSP-related headers to ensure no conflicts
+      // Delete all existing CSP-related headers to ensure no conflicts
       Object.keys(responseHeaders).forEach((key: string) => {
         if (key.toLowerCase().includes("content-security-policy")) {
           delete responseHeaders[key];
         }
       });
 
-      // Add comprehensive CSP policy
+      // Set complete new CSP policy, exactly matching index.html meta tag
       responseHeaders["Content-Security-Policy"] = [
-        "default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob: " +
-          "http://localhost:8080 " +
-          "https://freesound.org https://cdn.freesound.org " +
-          "https://fal.run https://queue.fal.run " +
-          "https://storage.googleapis.com " +
-          "https://api.github.com " +
-          "wss://socket.fal.run; " +
-          "img-src 'self' data: blob: *; " +
-          "media-src 'self' data: blob: *; " +
-          "font-src 'self' data:; " +
-          "worker-src 'self' blob:; " +
-          "frame-src 'none';"
+        "default-src 'self' blob: data: app:; " +
+          "script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: app:; " +
+          "worker-src 'self' blob: app:; " +
+          "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
+          "font-src 'self' https://fonts.gstatic.com; " +
+          "connect-src 'self' blob: app: http://localhost:8080 ws: wss: https://fonts.googleapis.com https://fonts.gstatic.com https://api.github.com https://fal.run https://fal.media https://v3.fal.media https://api.iconify.design https://api.simplesvg.com https://api.unisvg.com https://freesound.org https://cdn.freesound.org; " +
+          "media-src 'self' blob: data: app: https://freesound.org https://cdn.freesound.org; " +
+          "img-src 'self' blob: data: app: https://fal.run https://fal.media https://v3.fal.media https://api.iconify.design https://api.simplesvg.com https://api.unisvg.com https://avatars.githubusercontent.com;",
       ];
 
-      callback({ cancel: false, responseHeaders });
+      // Add COOP/COEP headers to support SharedArrayBuffer (required for FFmpeg WASM)
+      responseHeaders["Cross-Origin-Opener-Policy"] = ["same-origin"];
+      responseHeaders["Cross-Origin-Embedder-Policy"] = ["require-corp"];
+
+      callback({ responseHeaders });
     }
   );
 
@@ -226,15 +281,14 @@ function createWindow(): void {
   });
 
   // Load the app
-  if (app.isPackaged) {
-    // Production: load the built app
-    const indexPath = path.join(__dirname, "../apps/web/dist/index.html");
-    mainWindow.loadFile(indexPath);
-  } else {
-    // Development: load from Vite dev server
+  const isDev = process.env.NODE_ENV === "development";
+  if (isDev) {
     mainWindow.loadURL("http://localhost:5173");
     // Open DevTools in development
     mainWindow.webContents.openDevTools();
+  } else {
+    // Use custom app protocol to avoid file:// restrictions
+    mainWindow.loadURL("app://./index.html");
   }
 
   // Handle external links
@@ -458,6 +512,119 @@ app.whenReady().then(() => {
     }
   });
 
+  ipcMain.handle("file-exists", async (event: IpcMainInvokeEvent, filePath: string): Promise<boolean> => {
+    try {
+      fs.accessSync(filePath, fs.constants.F_OK);
+      return true;
+    } catch (error) {
+      return false;
+    }
+  });
+
+  ipcMain.handle("validate-audio-file", async (event: IpcMainInvokeEvent, filePath: string) => {
+    const { spawn } = require("child_process");
+
+    try {
+      // Get ffprobe path (should be in same directory as ffmpeg)
+      const { getFFmpegPath } = require("../dist/electron/ffmpeg-handler.js");
+      const ffmpegPath = getFFmpegPath();
+      const ffmpegDir = path.dirname(ffmpegPath);
+      const ffprobePath = path.join(
+        ffmpegDir,
+        process.platform === "win32" ? "ffprobe.exe" : "ffprobe"
+      );
+
+      return new Promise((resolve) => {
+        logger.log(`[Main] Running ffprobe on: ${filePath}`);
+        logger.log(`[Main] ffprobe path: ${ffprobePath}`);
+
+        const ffprobe = spawn(
+          ffprobePath,
+          [
+            "-v",
+            "quiet",
+            "-print_format",
+            "json",
+            "-show_format",
+            "-show_streams",
+            filePath,
+          ],
+          { windowsHide: true }
+        );
+
+        // Add timeout
+        const timeout = setTimeout(() => {
+          logger.log("[Main] ffprobe timeout, killing process");
+          ffprobe.kill();
+          resolve({
+            valid: false,
+            error: "ffprobe timeout after 10 seconds",
+          });
+        }, 10_000);
+
+        let stdout = "";
+        let stderr = "";
+
+        ffprobe.stdout.on("data", (data: any) => {
+          stdout += data.toString();
+        });
+
+        ffprobe.stderr.on("data", (data: any) => {
+          stderr += data.toString();
+        });
+
+        ffprobe.on("close", (code: number) => {
+          clearTimeout(timeout);
+          logger.log(`[Main] ffprobe finished with code: ${code}`);
+          logger.log(`[Main] ffprobe stdout length: ${stdout.length}`);
+          logger.log(`[Main] ffprobe stderr: ${stderr}`);
+
+          if (code === 0 && stdout) {
+            try {
+              const info = JSON.parse(stdout);
+              const hasAudio =
+                info.streams &&
+                info.streams.some((s: any) => s.codec_type === "audio");
+
+              resolve({
+                valid: true,
+                info,
+                hasAudio,
+                duration: info.format?.duration || 0,
+              });
+            } catch (parseError: any) {
+              resolve({
+                valid: false,
+                error: `Failed to parse ffprobe output: ${parseError.message}`,
+                stderr,
+              });
+            }
+          } else {
+            resolve({
+              valid: false,
+              error: `ffprobe failed with code ${code}`,
+              stderr,
+            });
+          }
+        });
+
+        ffprobe.on("error", (error: Error) => {
+          clearTimeout(timeout);
+          logger.log(`[Main] ffprobe spawn error: ${error.message}`);
+          resolve({
+            valid: false,
+            error: `ffprobe spawn error: ${error.message}`,
+          });
+        });
+      });
+    } catch (error: any) {
+      return {
+        valid: false,
+        error: `Validation setup failed: ${error.message}`,
+      };
+    }
+  });
+
   ipcMain.handle("get-file-info", async (event: IpcMainInvokeEvent, filePath: string) => {
     try {
       const stats = fs.statSync(filePath);
@@ -465,43 +632,152 @@ app.whenReady().then(() => {
         name: path.basename(filePath),
         path: filePath,
         size: stats.size,
+        created: stats.birthtime,
+        modified: stats.mtime,
         lastModified: stats.mtime,
         type: path.extname(filePath),
+        isFile: stats.isFile(),
+        isDirectory: stats.isDirectory(),
       };
     } catch (error: any) {
       logger.error("Error getting file info:", error);
-      return null;
+      throw error;
     }
   });
 
-  // Storage IPC handlers (basic key-value storage)
-  const storage = new Map<string, any>();
-
-  ipcMain.handle("storage:save", async (event: IpcMainInvokeEvent, key: string, data: any): Promise<boolean> => {
-    try {
-      storage.set(key, data);
-      return true;
-    } catch (error: any) {
-      logger.error("Storage save error:", error);
-      return false;
-    }
+  // Storage IPC handlers with file persistence
+  ipcMain.handle("storage:save", async (event: IpcMainInvokeEvent, key: string, data: any): Promise<void> => {
+    const userDataPath = app.getPath("userData");
+    const filePath = path.join(userDataPath, "projects", `${key}.json`);
+    await fs.promises.mkdir(path.dirname(filePath), { recursive: true });
+    await fs.promises.writeFile(filePath, JSON.stringify(data));
   });
 
   ipcMain.handle("storage:load", async (event: IpcMainInvokeEvent, key: string): Promise<any> => {
-    return storage.get(key) || null;
+    try {
+      const userDataPath = app.getPath("userData");
+      const filePath = path.join(userDataPath, "projects", `${key}.json`);
+      const data = await fs.promises.readFile(filePath, "utf8");
+      return JSON.parse(data);
+    } catch (error: any) {
+      if (error.code === "ENOENT") return null;
+      throw error;
+    }
   });
 
-  ipcMain.handle("storage:remove", async (event: IpcMainInvokeEvent, key: string): Promise<boolean> => {
-    return storage.delete(key);
+  ipcMain.handle("storage:remove", async (event: IpcMainInvokeEvent, key: string): Promise<void> => {
+    try {
+      const userDataPath = app.getPath("userData");
+      const filePath = path.join(userDataPath, "projects", `${key}.json`);
+      await fs.promises.unlink(filePath);
+    } catch (error: any) {
+      if (error.code !== "ENOENT") throw error;
+    }
   });
 
   ipcMain.handle("storage:list", async (): Promise<string[]> => {
-    return Array.from(storage.keys());
+    try {
+      const userDataPath = app.getPath("userData");
+      const projectsDir = path.join(userDataPath, "projects");
+      const files = await fs.promises.readdir(projectsDir);
+      return files
+        .filter((f) => f.endsWith(".json"))
+        .map((f) => f.replace(".json", ""));
+    } catch (error: any) {
+      if (error.code === "ENOENT") return [];
+      throw error;
+    }
   });
 
-  ipcMain.handle("storage:clear", async (): Promise<boolean> => {
-    storage.clear();
-    return true;
+  ipcMain.handle("storage:clear", async (): Promise<void> => {
+    try {
+      const userDataPath = app.getPath("userData");
+      const projectsDir = path.join(userDataPath, "projects");
+      const files = await fs.promises.readdir(projectsDir);
+      await Promise.all(
+        files
+          .filter((f) => f.endsWith(".json"))
+          .map((f) => fs.promises.unlink(path.join(projectsDir, f)))
+      );
+    } catch (error: any) {
+      if (error.code !== "ENOENT") throw error;
+    }
+  });
+
+  // FFmpeg resource IPC handlers
+  ipcMain.handle("get-ffmpeg-resource-path", (event: IpcMainInvokeEvent, filename: string): string => {
+    // Try resources/ffmpeg first (production)
+    const resourcesPath = path.join(__dirname, "resources", "ffmpeg", filename);
+    if (fs.existsSync(resourcesPath)) {
+      return resourcesPath;
+    }
+
+    // Fallback to dist directory (development)
+    const distPath = path.join(__dirname, "../apps/web/dist/ffmpeg", filename);
+    return distPath;
+  });
+
+  ipcMain.handle("check-ffmpeg-resource", (event: IpcMainInvokeEvent, filename: string): boolean => {
+    // Check resources/ffmpeg first (production)
+    const resourcesPath = path.join(__dirname, "resources", "ffmpeg", filename);
+    if (fs.existsSync(resourcesPath)) {
+      return true;
+    }
+
+    // Check dist directory (development)
+    const distPath = path.join(__dirname, "../apps/web/dist/ffmpeg", filename);
+    return fs.existsSync(distPath);
+  });
+
+  // IPC handlers for manual update checks
+  ipcMain.handle("check-for-updates", async (): Promise<any> => {
+    if (!app.isPackaged) {
+      return {
+        available: false,
+        message: "Updates only available in production builds",
+      };
+    }
+
+    if (!autoUpdater) {
+      return { available: false, message: "Auto-updater not available" };
+    }
+
+    try {
+      const result = await autoUpdater.checkForUpdatesAndNotify();
+      return {
+        available: true,
+        version: (result as any)?.updateInfo?.version || "unknown",
+        message: "Checking for updates...",
+      };
+    } catch (error: any) {
+      logger.error("Error checking for updates:", error);
+      return {
+        available: false,
+        error: error.message,
+        message: "Failed to check for updates",
+      };
+    }
+  });
+
+  ipcMain.handle("install-update", async (): Promise<any> => {
+    if (!app.isPackaged) {
+      return {
+        success: false,
+        message: "Updates only available in production builds",
+      };
+    }
+
+    if (!autoUpdater) {
+      return { success: false, message: "Auto-updater not available" };
+    }
+
+    try {
+      autoUpdater.quitAndInstall();
+      return { success: true, message: "Installing update..." };
+    } catch (error: any) {
+      logger.error("Error installing update:", error);
+      return { success: false, error: error.message };
+    }
   });
 });
 
