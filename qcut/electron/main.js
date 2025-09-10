@@ -38,7 +38,7 @@ try {
 const { setupFFmpegIPC } = require("./ffmpeg-handler.js");
 const { setupSoundIPC } = require("../dist/electron/sound-handler.js");
 const { setupThemeIPC } = require("../dist/electron/theme-handler.js");
-const { setupApiKeyIPC } = require("./api-key-handler.js");
+const { setupApiKeyIPC } = require("../dist/electron/api-key-handler.js");
 let setupTranscribeHandlers = null;
 try {
   setupTranscribeHandlers = require("./transcribe-handler.js");
