@@ -184,7 +184,39 @@ MARBLE_WORKSPACE_KEY    # Blog CMS
 - **Path aliases**: Use `@/` for `src/` imports
 
 ## Testing
-**⚠️ No testing framework currently configured** - This is a known gap
+
+### Test Framework - ✅ **FULLY CONFIGURED**
+- **Framework**: Vitest 3.2.4 with JSDOM environment
+- **Testing Library**: @testing-library/react 16.3.0 
+- **Status**: All 200+ tests passing successfully
+- **Coverage**: Component tests, integration tests, hook tests, utility tests
+
+### Running Tests
+```bash
+# Run all tests (recommended)
+cd qcut/apps/web && bun run test
+
+# Run tests with UI
+bun run test:ui
+
+# Run tests with coverage
+bun run test:coverage
+
+# Watch mode during development
+bun run test:watch
+```
+
+### Test Categories
+- **UI Components**: Button, Checkbox, Dialog, Toast, Tabs, Slider, etc.
+- **Hooks**: Custom React hooks with comprehensive test coverage  
+- **Integration**: Store initialization, project creation workflows
+- **Utilities**: Helper functions and utility modules
+
+### Test Environment Setup
+- **JSDOM**: Properly configured for DOM-based component testing
+- **Browser APIs**: Comprehensive mocking (MutationObserver, ResizeObserver, etc.)
+- **Radix UI Compatible**: Enhanced setup for complex UI component testing
+- **Mock System**: Robust mocking for Electron APIs and external dependencies
 
 ## Key Files to Understand
 
@@ -251,11 +283,10 @@ These ten rules catch the most frequent and most critical a11y bugs in a React +
 5. ✅ **Build Integration**: Seamless TypeScript compilation in build pipeline
 
 ### Current Limitations
-1. No test suite (in progress)
-2. No performance monitoring
-3. Basic export functionality (needs enhancement)
-4. **Hybrid architecture complexity** - dual routing and API systems (manageable)
-5. Frontend TypeScript coverage could be improved (backend is 100% complete)
+1. No performance monitoring
+2. Basic export functionality (needs enhancement)  
+3. **Hybrid architecture complexity** - dual routing and API systems (manageable)
+4. Frontend TypeScript coverage could be improved (backend is 100% complete)
 
 ## When Working on Features
 1. Always test both `bun run electron:dev` (development) and `bun run electron` (production)
