@@ -35,7 +35,7 @@ try {
     );
   }
 }
-const { setupFFmpegIPC } = require("./ffmpeg-handler.js");
+const { setupFFmpegIPC } = require("../dist/electron/ffmpeg-handler.js");
 const { setupSoundIPC } = require("../dist/electron/sound-handler.js");
 const { setupThemeIPC } = require("../dist/electron/theme-handler.js");
 const { setupApiKeyIPC } = require("../dist/electron/api-key-handler.js");

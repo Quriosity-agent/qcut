@@ -2,7 +2,7 @@ import { ipcMain, app, shell, IpcMainInvokeEvent } from "electron";
 import { spawn, ChildProcess } from "child_process";
 import path from "path";
 import fs from "fs";
-import { TempManager, ExportSession } from "../dist/electron/temp-manager.js";
+import { TempManager, ExportSession } from "./temp-manager.js";
 
 // Type definitions for FFmpeg operations
 interface AudioFile {
