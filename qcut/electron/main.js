@@ -41,7 +41,7 @@ const { setupThemeIPC } = require("../dist/electron/theme-handler.js");
 const { setupApiKeyIPC } = require("../dist/electron/api-key-handler.js");
 let setupTranscribeHandlers = null;
 try {
-  setupTranscribeHandlers = require("./transcribe-handler.js");
+  setupTranscribeHandlers = require("../dist/electron/transcribe-handler.js");
 } catch (err) {
   logger.warn("[Transcribe] handler not available:", err?.message || err);
 }
