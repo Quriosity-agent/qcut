@@ -87,7 +87,7 @@ async function getFreesoundApiKey() {
     log.info(
       "[API Key] Trying to load default keys from ./config/default-keys"
     );
-    const defaultKeys = require("./config/default-keys");
+    const defaultKeys = require("../dist/electron/config/default-keys");
     log.info("[API Key] Default keys loaded:", !!defaultKeys);
     if (defaultKeys.FREESOUND_API_KEY) {
       log.info("[API Key] Found default FREESOUND_API_KEY");

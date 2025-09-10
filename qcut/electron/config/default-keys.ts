@@ -1,6 +1,12 @@
 // Default API keys for packaged app (can be overridden by user)
 // These are fallback keys for when users haven't configured their own
-module.exports = {
+
+interface DefaultKeys {
+  FREESOUND_API_KEY: string;
+  FAL_API_KEY: string;
+}
+
+const defaultKeys: DefaultKeys = {
   // Default Freesound API key
   // IMPORTANT: Replace with a valid API key or leave empty
   // Users should get their own key from https://freesound.org/help/developers/
@@ -16,3 +22,10 @@ module.exports = {
   // Users must configure their own at https://fal.ai
   FAL_API_KEY: process.env.FAL_API_KEY || "",
 };
+
+// CommonJS export for backward compatibility with existing JavaScript files
+module.exports = defaultKeys;
+
+// ES6 export for TypeScript files
+export default defaultKeys;
+export type { DefaultKeys };
