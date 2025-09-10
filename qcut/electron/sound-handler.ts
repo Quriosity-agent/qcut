@@ -1,16 +1,23 @@
-const { ipcMain, app, safeStorage } = require("electron");
-const https = require("https");
-const path = require("path");
-const fs = require("fs");
-const { pathToFileURL } = require("node:url");
+import { ipcMain, app, safeStorage, IpcMainInvokeEvent } from "electron";
+import https from "https";
+import path from "path";
+import fs from "fs";
+import { pathToFileURL } from "node:url";
 
 // Try to load electron-log, fallback to no-op if not available
-let log;
+interface Logger {
+  info(message?: any, ...optionalParams: any[]): void;
+  warn(message?: any, ...optionalParams: any[]): void;
+  error(message?: any, ...optionalParams: any[]): void;
+  debug(message?: any, ...optionalParams: any[]): void;
+}
+
+let log: Logger;
 try {
   log = require("electron-log");
 } catch (error) {
   // Create a no-op logger to avoid console usage (per project guidelines)
-  const noop = () => {};
+  const noop = (): void => {};
   log = {
     info: noop,
     warn: noop,
@@ -19,24 +26,125 @@ try {
   };
 }
 
+interface ApiKeysConfig {
+  freesoundApiKey?: string;
+}
+
+interface DefaultKeys {
+  FREESOUND_API_KEY?: string;
+}
+
+interface SearchParams {
+  q?: string;
+  type?: string;
+  page?: number;
+  page_size?: number;
+  sort?: string;
+  min_rating?: number;
+  commercial_only?: boolean;
+}
+
+interface FreesoundResult {
+  id: number;
+  name: string;
+  description: string;
+  url: string;
+  previews?: {
+    "preview-hq-mp3"?: string;
+    "preview-lq-mp3"?: string;
+  };
+  download: string;
+  duration: number;
+  filesize: number;
+  type: string;
+  channels: number;
+  bitrate: number;
+  bitdepth: number;
+  samplerate: number;
+  username: string;
+  tags: string[];
+  license: string;
+  created: string;
+  num_downloads?: number;
+  avg_rating?: number;
+  num_ratings?: number;
+}
+
+interface TransformedResult {
+  id: number;
+  name: string;
+  description: string;
+  url: string;
+  previewUrl?: string;
+  downloadUrl: string;
+  duration: number;
+  filesize: number;
+  type: string;
+  channels: number;
+  bitrate: number;
+  bitdepth: number;
+  samplerate: number;
+  username: string;
+  tags: string[];
+  license: string;
+  created: string;
+  downloads: number;
+  rating: number;
+  ratingCount: number;
+}
+
+interface SearchResponse {
+  success: boolean;
+  error?: string;
+  status?: number;
+  count?: number;
+  next?: string | null;
+  previous?: string | null;
+  results?: TransformedResult[];
+  query?: string;
+  type?: string;
+  page?: number;
+  pageSize?: number;
+  sort?: string;
+  minRating?: number;
+  message?: string;
+}
+
+interface DownloadResponse {
+  success: boolean;
+  path?: string;
+  error?: string;
+}
+
+interface TestKeyResponse {
+  success: boolean;
+  message: string;
+}
+
+interface HttpResponse {
+  statusCode?: number;
+  body: string;
+  ok?: boolean;
+}
+
 /**
  * Get Freesound API key with fallback priority:
  * 1. User-configured key from settings (highest priority)
  * 2. Default embedded key
  * 3. Environment variable (development)
  */
-async function getFreesoundApiKey() {
+async function getFreesoundApiKey(): Promise<string | null> {
   log.info("=== GET API KEY DEBUG ===");
 
   // Priority 1: Try user-configured key first
   try {
-    const userDataPath = app.getPath("userData");
-    const apiKeysFilePath = path.join(userDataPath, "api-keys.json");
+    const userDataPath: string = app.getPath("userData");
+    const apiKeysFilePath: string = path.join(userDataPath, "api-keys.json");
     log.info("[API Key] Checking user config at:", apiKeysFilePath);
 
     if (fs.existsSync(apiKeysFilePath)) {
       log.info("[API Key] User config file exists");
-      const encryptedData = JSON.parse(
+      const encryptedData: ApiKeysConfig = JSON.parse(
         fs.readFileSync(apiKeysFilePath, "utf8")
       );
       if (encryptedData.freesoundApiKey) {
@@ -44,7 +152,7 @@ async function getFreesoundApiKey() {
         // Decrypt if possible
         if (safeStorage.isEncryptionAvailable()) {
           try {
-            const decrypted = safeStorage.decryptString(
+            const decrypted: string = safeStorage.decryptString(
               Buffer.from(encryptedData.freesoundApiKey, "base64")
             );
             if (decrypted) {
@@ -52,7 +160,7 @@ async function getFreesoundApiKey() {
               log.info("[Sound Handler] Using user-configured API key");
               return decrypted;
             }
-          } catch (e) {
+          } catch (e: any) {
             log.info(
               "[API Key] Decryption failed, trying plain text:",
               e.message
@@ -77,7 +185,7 @@ async function getFreesoundApiKey() {
     } else {
       log.info("[API Key] User config file does not exist");
     }
-  } catch (error) {
+  } catch (error: any) {
     log.error("[API Key] Error reading user config:", error);
     log.warn("[Sound Handler] Error reading stored API key:", error.message);
   }
@@ -87,7 +195,7 @@ async function getFreesoundApiKey() {
     log.info(
       "[API Key] Trying to load default keys from ./config/default-keys"
     );
-    const defaultKeys = require("../dist/electron/config/default-keys");
+    const defaultKeys: DefaultKeys = require("../dist/electron/config/default-keys");
     log.info("[API Key] Default keys loaded:", !!defaultKeys);
     if (defaultKeys.FREESOUND_API_KEY) {
       log.info("[API Key] Found default FREESOUND_API_KEY");
@@ -95,12 +203,12 @@ async function getFreesoundApiKey() {
       return defaultKeys.FREESOUND_API_KEY;
     }
     log.info("[API Key] No FREESOUND_API_KEY in default config");
-  } catch (error) {
+  } catch (error: any) {
     log.error("[API Key] Failed to load default keys:", error);
     log.warn("[Sound Handler] No default keys available:", error.message);
 
     // Fallback: Embedded key directly in code for packaged apps
-    const EMBEDDED_DEFAULT_KEY = "h650BnTkps2suLENRVXD8LdADgrYzVm1dQxmxQqc";
+    const EMBEDDED_DEFAULT_KEY: string = "h650BnTkps2suLENRVXD8LdADgrYzVm1dQxmxQqc";
     log.info("[API Key] Using hardcoded embedded default key");
     log.info("[Sound Handler] Using hardcoded embedded API key");
     return EMBEDDED_DEFAULT_KEY;
@@ -115,7 +223,7 @@ async function getFreesoundApiKey() {
   // Priority 4: Try loading from .env.local files (legacy support)
   try {
     const dotenv = require("dotenv");
-    const envPaths = [
+    const envPaths: string[] = [
       path.join(__dirname, "../apps/web/.env.local"),
       path.join(__dirname, "../.env.local"),
       path.join(__dirname, "../../apps/web/.env.local"),
@@ -128,7 +236,7 @@ async function getFreesoundApiKey() {
         return process.env.FREESOUND_API_KEY;
       }
     }
-  } catch (error) {
+  } catch (error: any) {
     log.warn("[Sound Handler] dotenv not available:", error.message);
   }
 
@@ -139,9 +247,9 @@ async function getFreesoundApiKey() {
  * Setup sound search IPC handlers
  * Handles Freesound API integration for sound search functionality
  */
-function setupSoundIPC() {
+export function setupSoundIPC(): void {
   // Handle sound search requests - ENHANCED to match Next.js API exactly
-  ipcMain.handle("sounds:search", async (event, searchParams) => {
+  ipcMain.handle("sounds:search", async (event: IpcMainInvokeEvent, searchParams: SearchParams): Promise<SearchResponse> => {
     log.info("=== SOUND SEARCH DEBUG START ===");
     log.info(
       "[Sound Handler] Search request received:",
@@ -171,7 +279,7 @@ function setupSoundIPC() {
       }
 
       log.info("[Sound Handler] Getting API key...");
-      const FREESOUND_API_KEY = await getFreesoundApiKey();
+      const FREESOUND_API_KEY: string | null = await getFreesoundApiKey();
       log.info(
         "[Sound Handler] API key available:",
         Boolean(FREESOUND_API_KEY)
@@ -185,10 +293,10 @@ function setupSoundIPC() {
         };
       }
 
-      const baseUrl = "https://freesound.org/apiv2/search/text/";
+      const baseUrl: string = "https://freesound.org/apiv2/search/text/";
 
       // Use score sorting for search queries, downloads for top sounds (same as Next.js)
-      const sortParam = query
+      const sortParam: string = query
         ? sort === "score"
           ? "score"
           : `${sort}_desc`
@@ -224,7 +332,7 @@ function setupSoundIPC() {
         );
       }
 
-      const finalUrl = `${baseUrl}?${params.toString()}`;
+      const finalUrl: string = `${baseUrl}?${params.toString()}`;
       log.info(
         "[Sound Handler] Final URL (masked):",
         finalUrl.replace(FREESOUND_API_KEY, "***")
@@ -236,10 +344,10 @@ function setupSoundIPC() {
 
       // Make HTTPS request
       log.info("[Sound Handler] Starting HTTPS request...");
-      const response = await new Promise((resolve, reject) => {
+      const response: HttpResponse = await new Promise((resolve, reject) => {
         const req = https.get(finalUrl, (res) => {
           log.info("[Sound Handler] Response status code:", res.statusCode);
-          let data = "";
+          let data: string = "";
           res.on("data", (chunk) => {
             data += chunk;
           });
@@ -254,12 +362,12 @@ function setupSoundIPC() {
             resolve({
               statusCode: res.statusCode,
               body: data,
-              ok: res.statusCode >= 200 && res.statusCode < 300,
+              ok: res.statusCode! >= 200 && res.statusCode! < 300,
             });
           });
         });
 
-        req.on("error", (error) => {
+        req.on("error", (error: Error) => {
           log.error("[Sound Handler] Request error:", error);
           reject(error);
         });
@@ -280,7 +388,7 @@ function setupSoundIPC() {
           response.body
         );
 
-        let errorMessage = "Failed to search sounds";
+        let errorMessage: string = "Failed to search sounds";
         if (response.statusCode === 401) {
           errorMessage =
             "Invalid API key. Please check your API key in Settings → API Keys";
@@ -288,7 +396,7 @@ function setupSoundIPC() {
           errorMessage = "API key rate limit exceeded. Please try again later";
         } else if (response.statusCode === 404) {
           errorMessage = "API endpoint not found";
-        } else if (response.statusCode >= 500) {
+        } else if (response.statusCode! >= 500) {
           errorMessage = "Freesound server error. Please try again later";
         }
 
@@ -301,10 +409,10 @@ function setupSoundIPC() {
 
       log.info("[Sound Handler] API request successful, parsing response...");
 
-      const rawData = JSON.parse(response.body);
+      const rawData: { count: number; next: string | null; previous: string | null; results: FreesoundResult[] } = JSON.parse(response.body);
 
       // Transform results to match frontend expectations
-      const transformedResults = rawData.results.map((result) => ({
+      const transformedResults: TransformedResult[] = rawData.results.map((result: FreesoundResult) => ({
         id: result.id,
         name: result.name,
         description: result.description,
@@ -354,7 +462,7 @@ function setupSoundIPC() {
         success: true,
         ...responseData, // Spread response data directly (matches Next.js format)
       };
-    } catch (error) {
+    } catch (error: any) {
       log.error("=== SOUND SEARCH ERROR ===");
       log.error("[Sound Handler] Error type:", error.constructor.name);
       log.error("[Sound Handler] Error message:", error.message);
@@ -363,7 +471,7 @@ function setupSoundIPC() {
       log.error("[Sound Handler] Error occurred:", error);
 
       // Provide more specific error messages
-      let errorMessage = error.message || "Unknown error occurred";
+      let errorMessage: string = error.message || "Unknown error occurred";
       if (error.code === "ENOTFOUND") {
         errorMessage =
           "Cannot connect to Freesound. Check your internet connection";
@@ -381,10 +489,10 @@ function setupSoundIPC() {
   });
 
   // Download and cache audio preview
-  ipcMain.handle("sounds:download-preview", async (event, { url, id }) => {
+  ipcMain.handle("sounds:download-preview", async (event: IpcMainInvokeEvent, { url, id }: { url: string; id: string | number }): Promise<DownloadResponse> => {
     log.info("[Sound Handler] Downloading preview for sound:", id);
     try {
-      const tempDir = path.join(app.getPath("temp"), "qcut-previews");
+      const tempDir: string = path.join(app.getPath("temp"), "qcut-previews");
 
       // Create temp directory if it doesn't exist
       if (!fs.existsSync(tempDir)) {
@@ -392,9 +500,9 @@ function setupSoundIPC() {
       }
 
       // Sanitize the ID to prevent path traversal
-      const safeId = String(id).replace(/[^a-z0-9_-]/gi, "_");
-      const fileName = `preview-${safeId}.mp3`;
-      const filePath = path.join(tempDir, fileName);
+      const safeId: string = String(id).replace(/[^a-z0-9_-]/gi, "_");
+      const fileName: string = `preview-${safeId}.mp3`;
+      const filePath: string = path.join(tempDir, fileName);
 
       // Check if already cached
       if (fs.existsSync(filePath)) {
@@ -405,7 +513,7 @@ function setupSoundIPC() {
       // Download the file
       return new Promise((resolve) => {
         // Validate URL for security
-        let target;
+        let target: URL;
         try {
           target = new URL(url);
         } catch {
@@ -413,8 +521,8 @@ function setupSoundIPC() {
         }
 
         // Allow only HTTPS and specific Freesound domains
-        const allowedHosts = ["freesound.org", "cdn.freesound.org"];
-        const isAllowedHost = allowedHosts.some(
+        const allowedHosts: string[] = ["freesound.org", "cdn.freesound.org"];
+        const isAllowedHost: boolean = allowedHosts.some(
           (h) => target.hostname === h || target.hostname.endsWith(`.${h}`)
         );
 
@@ -453,7 +561,7 @@ function setupSoundIPC() {
               });
             });
 
-            file.on("error", (err) => {
+            file.on("error", (err: Error) => {
               fs.unlink(filePath, () => {}); // Delete partial file
               log.error("[Sound Handler] File write error:", err);
               resolve({
@@ -462,7 +570,7 @@ function setupSoundIPC() {
               });
             });
           })
-          .on("error", (err) => {
+          .on("error", (err: Error) => {
             log.error("[Sound Handler] Download error:", err);
             resolve({
               success: false,
@@ -470,7 +578,7 @@ function setupSoundIPC() {
             });
           });
       });
-    } catch (error) {
+    } catch (error: any) {
       log.error("[Sound Handler] Preview download error:", error);
       return {
         success: false,
@@ -480,7 +588,7 @@ function setupSoundIPC() {
   });
 
   // Test API key validity
-  ipcMain.handle("sounds:test-key", async (event, apiKey) => {
+  ipcMain.handle("sounds:test-key", async (event: IpcMainInvokeEvent, apiKey: string): Promise<TestKeyResponse> => {
     log.info("[Sound Handler] Testing API key validity");
     try {
       if (!apiKey) {
@@ -490,11 +598,11 @@ function setupSoundIPC() {
         };
       }
 
-      const testUrl = `https://freesound.org/apiv2/search/text/?query=test&token=${apiKey}&page_size=1`;
+      const testUrl: string = `https://freesound.org/apiv2/search/text/?query=test&token=${apiKey}&page_size=1`;
 
-      const response = await new Promise((resolve, reject) => {
+      const response: HttpResponse = await new Promise((resolve, reject) => {
         const req = https.get(testUrl, (res) => {
-          let data = "";
+          let data: string = "";
           res.on("data", (chunk) => {
             data += chunk;
           });
@@ -532,7 +640,7 @@ function setupSoundIPC() {
         success: false,
         message: `Unexpected response: ${response.statusCode}`,
       };
-    } catch (error) {
+    } catch (error: any) {
       log.error("[Sound Handler] Test key error:", error);
       return {
         success: false,
@@ -542,4 +650,20 @@ function setupSoundIPC() {
   });
 }
 
+// CommonJS export for backward compatibility with main.js
 module.exports = { setupSoundIPC };
+
+// ES6 export for TypeScript files
+export default { setupSoundIPC };
+export type {
+  Logger,
+  ApiKeysConfig,
+  DefaultKeys,
+  SearchParams,
+  FreesoundResult,
+  TransformedResult,
+  SearchResponse,
+  DownloadResponse,
+  TestKeyResponse,
+  HttpResponse,
+};
