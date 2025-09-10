@@ -2,7 +2,7 @@ const { ipcMain, app } = require("electron");
 const { spawn, execFile, exec } = require("child_process");
 const path = require("path");
 const fs = require("fs");
-const { TempManager } = require("./temp-manager.js");
+const { TempManager } = require("../dist/electron/temp-manager.js");
 
 const tempManager = new TempManager();
 

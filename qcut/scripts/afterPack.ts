@@ -1,13 +1,15 @@
-const path = require("path");
-const { execFile } = require("node:child_process");
-const fs = require("fs");
+import path from "path";
+import { execFile } from "node:child_process";
+import fs from "fs";
+import os from "os";
+import { AfterPackContext } from "electron-builder";
 
-exports.default = async (context) => {
+async function afterPack(context: AfterPackContext): Promise<void> {
   process.stdout.write("Running afterPack hook to fix icon...\n");
 
-  const appOutDir = context.appOutDir;
-  const exePath = path.join(appOutDir, "QCut Video Editor.exe");
-  const icoPath = path.join(context.packager.projectDir, "build", "icon.ico");
+  const appOutDir: string = context.appOutDir;
+  const exePath: string = path.join(appOutDir, "QCut Video Editor.exe");
+  const icoPath: string = path.join(context.packager.projectDir, "build", "icon.ico");
 
   process.stdout.write(`Executable path: ${exePath}\n`);
   process.stdout.write(`Icon path: ${icoPath}\n`);
@@ -23,7 +25,7 @@ exports.default = async (context) => {
   }
 
   // Try to use our downloaded rcedit
-  let rceditPath = path.join(
+  let rceditPath: string = path.join(
     context.packager.projectDir,
     "scripts",
     "rcedit.exe"
@@ -32,7 +34,7 @@ exports.default = async (context) => {
   // Fallback to electron-builder's cache
   if (!fs.existsSync(rceditPath)) {
     rceditPath = path.join(
-      require("os").homedir(),
+      os.homedir(),
       "AppData/Local/electron-builder/Cache/winCodeSign/winCodeSign-2.6.0/rcedit-x64.exe"
     );
   }
@@ -40,7 +42,7 @@ exports.default = async (context) => {
   if (fs.existsSync(rceditPath)) {
     process.stdout.write(`Using rcedit from: ${rceditPath}\n`);
 
-    return new Promise((resolve, reject) => {
+    return new Promise<void>((resolve, reject) => {
       execFile(
         rceditPath,
         [exePath, "--set-icon", icoPath],
@@ -64,4 +66,11 @@ exports.default = async (context) => {
   process.stdout.write(
     "rcedit not found in electron-builder cache, icon should be set by electron-builder\n"
   );
-};
+}
+
+// CommonJS export for backward compatibility with electron-builder
+module.exports = { default: afterPack };
+
+// ES6 export for TypeScript files
+export default afterPack;
+export type { AfterPackContext };

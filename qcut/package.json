@@ -9,6 +9,7 @@
     "@biomejs/biome": "2.1.2",
     "@emnapi/core": "^1.4.5",
     "@emnapi/wasi-threads": "^1.1.0",
+    "@types/electron-builder": "^2.8.2",
     "@types/jsdom": "^21.1.7",
     "@types/jszip": "^3.4.1",
     "@types/node": "^24.3.1",
@@ -59,7 +60,7 @@
     "appId": "com.qcut.videoeditor",
     "productName": "QCut Video Editor",
     "copyright": "Copyright © 2024 QCut Team",
-    "afterPack": "./scripts/afterPack.js",
+    "afterPack": "./dist/scripts/afterPack.js",
     "directories": {
       "output": "d:/AI_play/AI_Code/build_qcut",
       "buildResources": "build"

@@ -33,6 +33,7 @@
 - `@types/sharp@0.32.0` ✅
 - `@types/to-ico@1.1.3` ✅
 - `@types/tailwindcss@3.1.0` ✅
+- `@types/electron-builder@2.8.2` ✅
 
 ### 📁 Files Created
 - `scripts/copy-icon-assets.ts` - Icon asset copying (converted)
@@ -40,6 +41,8 @@
 - `electron/config/default-keys.ts` - API key configuration (converted)
 - `apps/web/tailwind.config.ts` - Tailwind CSS configuration (converted)
 - `scripts/fix-exe-icon.ts` - Executable icon fixing utility (converted)
+- `electron/theme-handler.ts` - UI theme management with IPC handlers (converted)
+- `scripts/afterPack.ts` - Post-packaging hook with electron-builder types (converted)
 - `scripts/tsconfig.json` - TypeScript configuration for scripts
 - `electron/tsconfig.json` - TypeScript configuration for electron
 - `dist/scripts/` - Compiled JavaScript output directory
@@ -660,7 +663,170 @@ export type { ThemeSource, ThemeHandlers };
 - ✅ Function signature correct: `typeof setupThemeIPC === 'function'`
 - ✅ Main process import works: No errors in electron startup
 
-**Next Recommended File:** `scripts/afterPack.js` (Post-packaging build hook)
+**Next Recommended File:** ~~`scripts/afterPack.js`~~ ✅ **COMPLETED**
+
+### 1.7. Converting AfterPack Hook ✅ IMPLEMENTED
+
+#### Example: `scripts/afterPack.js` → `scripts/afterPack.ts`
+
+**Implementation Status:** ✅ Successfully Converted and Tested
+
+**ACTUAL Before (JavaScript) - From Repository:**
+```js
+// scripts/afterPack.js
+const path = require("path");
+const { execFile } = require("node:child_process");
+const fs = require("fs");
+
+exports.default = async (context) => {
+  process.stdout.write("Running afterPack hook to fix icon...\n");
+
+  const appOutDir = context.appOutDir;
+  const exePath = path.join(appOutDir, "QCut Video Editor.exe");
+  const icoPath = path.join(context.packager.projectDir, "build", "icon.ico");
+
+  process.stdout.write(`Executable path: ${exePath}\n`);
+  process.stdout.write(`Icon path: ${icoPath}\n`);
+
+  // File existence checks...
+  // rcedit logic for icon embedding...
+  
+  if (fs.existsSync(rceditPath)) {
+    process.stdout.write(`Using rcedit from: ${rceditPath}\n`);
+
+    return new Promise((resolve, reject) => {
+      execFile(
+        rceditPath,
+        [exePath, "--set-icon", icoPath],
+        { windowsHide: true },
+        (error, stdout, stderr) => {
+          if (error) {
+            process.stderr.write(
+              `Error setting icon: ${error?.stack || error}\n`
+            );
+            reject(error);
+            return;
+          }
+          process.stdout.write("Icon successfully embedded into executable!\n");
+          if (stdout) process.stdout.write(`Output: ${stdout}\n`);
+          if (stderr) process.stderr.write(`Stderr: ${stderr}\n`);
+          resolve();
+        }
+      );
+    });
+  }
+};
+```
+
+**After (TypeScript) - IMPLEMENTED & TESTED:**
+```ts
+// scripts/afterPack.ts
+import path from "path";
+import { execFile } from "node:child_process";
+import fs from "fs";
+import os from "os";
+import { AfterPackContext } from "electron-builder";
+
+async function afterPack(context: AfterPackContext): Promise<void> {
+  process.stdout.write("Running afterPack hook to fix icon...\n");
+
+  const appOutDir: string = context.appOutDir;
+  const exePath: string = path.join(appOutDir, "QCut Video Editor.exe");
+  const icoPath: string = path.join(context.packager.projectDir, "build", "icon.ico");
+
+  process.stdout.write(`Executable path: ${exePath}\n`);
+  process.stdout.write(`Icon path: ${icoPath}\n`);
+
+  if (!fs.existsSync(exePath)) {
+    process.stderr.write(`Executable not found: ${exePath}\n`);
+    return;
+  }
+
+  if (!fs.existsSync(icoPath)) {
+    process.stderr.write(`Icon not found: ${icoPath}\n`);
+    return;
+  }
+
+  // Try to use our downloaded rcedit
+  let rceditPath: string = path.join(
+    context.packager.projectDir,
+    "scripts",
+    "rcedit.exe"
+  );
+
+  // Fallback to electron-builder's cache
+  if (!fs.existsSync(rceditPath)) {
+    rceditPath = path.join(
+      os.homedir(),
+      "AppData/Local/electron-builder/Cache/winCodeSign/winCodeSign-2.6.0/rcedit-x64.exe"
+    );
+  }
+
+  if (fs.existsSync(rceditPath)) {
+    process.stdout.write(`Using rcedit from: ${rceditPath}\n`);
+
+    return new Promise<void>((resolve, reject) => {
+      execFile(
+        rceditPath,
+        [exePath, "--set-icon", icoPath],
+        { windowsHide: true },
+        (error, stdout, stderr) => {
+          if (error) {
+            process.stderr.write(
+              `Error setting icon: ${error?.stack || error}\n`
+            );
+            reject(error);
+            return;
+          }
+          process.stdout.write("Icon successfully embedded into executable!\n");
+          if (stdout) process.stdout.write(`Output: ${stdout}\n`);
+          if (stderr) process.stderr.write(`Stderr: ${stderr}\n`);
+          resolve();
+        }
+      );
+    });
+  }
+  process.stdout.write(
+    "rcedit not found in electron-builder cache, icon should be set by electron-builder\n"
+  );
+}
+
+// CommonJS export for backward compatibility with electron-builder
+module.exports = { default: afterPack };
+
+// ES6 export for TypeScript files
+export default afterPack;
+export type { AfterPackContext };
+```
+
+**✅ MIGRATION COMPLETED SUCCESSFULLY**
+
+**Key Implementation Learnings:**
+1. ✅ **electron-builder Types:** Required `@types/electron-builder` for `AfterPackContext` interface
+2. ✅ **Async Function Typing:** Proper `Promise<void>` return type for async function
+3. ✅ **Package.json Update:** Updated `"afterPack": "./dist/scripts/afterPack.js"` reference
+4. ✅ **Dual Export Pattern:** Maintained CommonJS compatibility for electron-builder
+5. ✅ **Promise Generic:** Used `Promise<void>` for explicit void resolution typing
+
+**Migration Artifacts:**
+- ✅ `scripts/afterPack.ts` - TypeScript version (active)
+- ✅ `dist/scripts/afterPack.js` - Compiled output
+- ❌ ~~`scripts/afterPack.js`~~ - **REMOVED** (original JavaScript)
+
+**Dependencies Added:**
+```bash
+✅ @types/electron-builder@2.8.2
+```
+
+**Configuration Update Required:**
+- ✅ Updated `package.json` build configuration: `"afterPack": "./dist/scripts/afterPack.js"`
+
+**Testing Results:**
+- ✅ Compiled TypeScript loads successfully: `require('./dist/scripts/afterPack.js')`
+- ✅ Function signature correct: `typeof afterPack === 'function'`
+- ✅ Async function: `afterPack.constructor.name === 'AsyncFunction'`
+
+**Next Recommended File:** `electron/temp-manager.js` (Medium-risk temporary file management)
 
 ### 2. Converting Configuration Files ✅ IMPLEMENTED
 
@@ -1066,9 +1232,9 @@ These files run only during build/development and won't affect runtime:
 ### 🟡 **LOW RISK** (Non-Critical Features)
 These handle auxiliary features that won't break core functionality:
 
-5. **electron/theme-handler.js** - UI theming, graceful fallback exists
+5. ~~**electron/theme-handler.js**~~ - ✅ **COMPLETED - Converted to TypeScript**
 6. ~~**scripts/fix-exe-icon.js**~~ - ✅ **COMPLETED - Converted to TypeScript**
-7. **scripts/afterPack.js** - Post-packaging hook, optional
+7. ~~**scripts/afterPack.js**~~ - ✅ **COMPLETED - Converted to TypeScript**
 
 **Why low risk:**
 - Features degrade gracefully
@@ -1353,7 +1519,14 @@ export default myExport;    // For TS consumers
    - Dual export pattern maintains compatibility with main.js
    - Comprehensive type definitions for theme sources and handlers
 
-**📊 Current Progress: 6/15 files converted (40.0% complete)**
+7. **~~scripts/afterPack.js~~** → **scripts/afterPack.ts**
+   - Status: ✅ **MIGRATION COMPLETE** - Original `.js` file removed
+   - Post-packaging hook for embedding icons into Windows executables
+   - TypeScript version with proper electron-builder AfterPackContext typing
+   - Updated package.json build configuration to use compiled TypeScript
+   - Comprehensive async/await typing with Promise<void> return type
 
-**🎯 Next Target:** `scripts/afterPack.js` - Post-packaging hook
-**🏆 Milestone:** First low-risk file completed! Continuing with low-risk files.
+**📊 Current Progress: 7/15 files converted (46.7% complete)**
+
+**🎯 Next Target:** `electron/temp-manager.js` - Temporary file management
+**🏆 Milestone:** Low-risk files progressing! Moving toward medium-risk files.
