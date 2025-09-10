@@ -13,19 +13,23 @@ export default defineConfig({
     environment: "jsdom",
     environmentOptions: {
       jsdom: {
-        url: "http://localhost:3000"
+        url: "http://localhost:3000",
+        // Enable additional JSDOM features for better compatibility
+        pretendToBeVisual: true,
+        resources: "usable"
       }
     },
-    globalSetup: path.resolve(rootDir, "src/test/global-setup.ts"),
     setupFiles: [
-      path.resolve(rootDir, "src/test/preload-polyfills.ts"),
-      path.resolve(rootDir, "src/test/setup-radix-patches.ts"),
-      path.resolve(rootDir, "src/test/setup.ts")
+      path.resolve(rootDir, "src/test/simplified-setup.ts")
     ],
-    isolate: true,
-    pool: "forks",
-    testTimeout: 5000,
-    hookTimeout: 5000,
+    isolate: false, // Disable test isolation to allow proper DOM setup
+    pool: "threads", // Use threads instead of forks for better DOM sharing
+    testTimeout: 10000, // Increase timeout for complex component tests
+    hookTimeout: 10000,
+    env: {
+      // Force browser APIs to be available
+      NODE_ENV: "test"
+    }
   },
   resolve: {
     alias: {

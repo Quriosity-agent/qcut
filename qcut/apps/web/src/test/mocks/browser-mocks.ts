@@ -51,14 +51,26 @@ export function installBrowserMocks(context: ObserverHost | null | undefined): v
   // Force override using Object.defineProperty for better compatibility
   // This ensures we override JSDOM's native implementation
   try {
+    // Delete existing property first to ensure clean override
+    if ('MutationObserver' in context) {
+      delete (context as any).MutationObserver;
+    }
+    
     Object.defineProperty(context, 'MutationObserver', {
       value: MockMutationObserver,
       writable: true,
       configurable: true,
       enumerable: true
     });
+    
+    // Verify the mock is properly installed
+    if ((context as any).MutationObserver !== MockMutationObserver) {
+      console.warn('Failed to install MutationObserver mock via defineProperty, falling back');
+      (context as any).MutationObserver = MockMutationObserver;
+    }
   } catch (e) {
     // Fallback to direct assignment if defineProperty fails
+    console.warn('defineProperty failed for MutationObserver, using direct assignment:', e);
     context.MutationObserver = MockMutationObserver;
   }
   

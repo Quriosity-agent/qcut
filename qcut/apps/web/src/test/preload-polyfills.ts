@@ -1,10 +1,68 @@
 // This file MUST be loaded before any React or Radix UI imports
 // It provides critical polyfills for the test environment
 
-import { installAllBrowserMocks } from './mocks/browser-mocks';
+import { installAllBrowserMocks, MockMutationObserver, MockResizeObserver, MockIntersectionObserver } from './mocks/browser-mocks';
 
 // Install browser mocks before any imports that might use them
 installAllBrowserMocks();
+
+// CRITICAL: Ensure MutationObserver is available immediately
+// This is the most aggressive installation possible
+const installCriticalObservers = (target: any) => {
+  if (!target) return;
+  
+  try {
+    // Force install observers with multiple strategies
+    target.MutationObserver = MockMutationObserver;
+    target.ResizeObserver = MockResizeObserver; 
+    target.IntersectionObserver = MockIntersectionObserver;
+    
+    // Use defineProperty to prevent overrides
+    Object.defineProperty(target, 'MutationObserver', {
+      value: MockMutationObserver,
+      writable: false,
+      configurable: false,
+      enumerable: true
+    });
+    
+    Object.defineProperty(target, 'ResizeObserver', {
+      value: MockResizeObserver,
+      writable: false,
+      configurable: false,
+      enumerable: true
+    });
+    
+    Object.defineProperty(target, 'IntersectionObserver', {
+      value: MockIntersectionObserver,
+      writable: false,
+      configurable: false,
+      enumerable: true
+    });
+    
+  } catch (e) {
+    // Fallback: at least try direct assignment
+    target.MutationObserver = MockMutationObserver;
+    target.ResizeObserver = MockResizeObserver;
+    target.IntersectionObserver = MockIntersectionObserver;
+  }
+};
+
+// Install on all possible contexts IMMEDIATELY
+[globalThis, global, window, self].forEach(ctx => {
+  if (ctx) installCriticalObservers(ctx);
+});
+
+// Also install on constructor prototypes if available
+try {
+  if (typeof Window !== 'undefined' && Window.prototype) {
+    installCriticalObservers(Window.prototype);
+  }
+  if (typeof Global !== 'undefined' && (Global as any).prototype) {
+    installCriticalObservers((Global as any).prototype);
+  }
+} catch (e) {
+  // Ignore prototype errors
+}
 
 // Create a comprehensive mock CSSStyleDeclaration
 class MockCSSStyleDeclaration {

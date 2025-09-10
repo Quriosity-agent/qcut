@@ -64,24 +64,41 @@ for (const ctx of contexts) {
   }
 }
 
-// Mock problematic Radix UI modules
+// Mock problematic Radix UI modules with comprehensive mocking
+vi.mock('@radix-ui/react-focus-scope', () => ({
+  __esModule: true,
+  default: ({ children }: { children?: ReactNode }) => children,
+  FocusScope: ({ children }: { children?: ReactNode }) => children,
+  useFocusScope: () => ({}),
+}));
+
 vi.mock('@radix-ui/react-presence', () => ({
+  __esModule: true,
+  default: ({ children, present }: { children?: ReactNode; present?: boolean }) => {
+    return present !== false ? children : null;
+  },
   Presence: ({ children, present }: { children?: ReactNode; present?: boolean }) => {
     return present !== false ? children : null;
   },
 }));
 
 vi.mock('@radix-ui/react-dismissable-layer', () => ({
+  __esModule: true,
+  default: ({ children }: { children?: ReactNode }) => children,
   DismissableLayer: ({ children }: { children?: ReactNode }) => children,
   DismissableLayerBranch: ({ children }: { children?: ReactNode }) => children,
 }));
 
-vi.mock('@radix-ui/react-focus-scope', () => ({
-  FocusScope: ({ children }: { children?: ReactNode }) => children,
+vi.mock('@radix-ui/react-focus-guards', () => ({
+  __esModule: true,
+  default: ({ children }: { children?: ReactNode }) => children,
+  FocusGuards: ({ children }: { children?: ReactNode }) => children,
 }));
 
-vi.mock('@radix-ui/react-focus-guards', () => ({
-  FocusGuards: ({ children }: { children?: ReactNode }) => children,
+vi.mock('@radix-ui/react-portal', () => ({
+  __esModule: true,
+  default: ({ children }: { children?: ReactNode }) => children,
+  Portal: ({ children }: { children?: ReactNode }) => children,
 }));
 
 export {};
