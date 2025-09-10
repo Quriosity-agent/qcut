@@ -14,30 +14,42 @@
  *   node scripts/release.js major   # 0.1.0 -> 1.0.0
  */
 
-const fs = require("fs");
-const path = require("path");
-const { execSync } = require("child_process");
+import fs from "fs";
+import path from "path";
+import { execSync } from "child_process";
 
-const RELEASE_TYPES = ["patch", "minor", "major"];
+type ReleaseType = "patch" | "minor" | "major";
+const RELEASE_TYPES: ReleaseType[] = ["patch", "minor", "major"];
+
+interface PackageJson {
+  version: string;
+  [key: string]: any;
+}
 
 /**
  * Resolves the build output directory based on environment
- * @returns {string} The build output directory path
+ * @returns The build output directory path
  */
-function resolveBuildOutputDir() {
+function resolveBuildOutputDir(): string {
   // Check for environment variable first (CI/CD)
   if (process.env.BUILD_OUTPUT_DIR) {
     return process.env.BUILD_OUTPUT_DIR;
   }
 
+  // Handle both source and compiled execution contexts
+  const isCompiled = __dirname.includes('dist');
+  const rootDir = isCompiled 
+    ? path.join(__dirname, '../../')  // Go up from dist/scripts
+    : path.join(__dirname, '../');     // Go up from scripts
+
   // Default to dist folder in project root
-  return path.join(__dirname, "..", "dist");
+  return path.join(rootDir, "dist");
 }
 
-function main() {
-  const releaseType = process.argv[2];
+function main(): void {
+  const releaseType: string | undefined = process.argv[2];
 
-  if (!releaseType || !RELEASE_TYPES.includes(releaseType)) {
+  if (!releaseType || !RELEASE_TYPES.includes(releaseType as ReleaseType)) {
     process.stderr.write(
       "❌ Usage: node scripts/release.js <patch|minor|major>\n"
     );
@@ -53,7 +65,7 @@ function main() {
 
     // Step 2: Bump version
     process.stdout.write("📋 Step 2: Bumping version...\n");
-    const newVersion = bumpVersion(releaseType);
+    const newVersion: string = bumpVersion(releaseType as ReleaseType);
 
     // Step 3: Build web application
     process.stdout.write("📋 Step 3: Building web application...\n");
@@ -85,14 +97,14 @@ function main() {
     );
     process.stdout.write("3. Create GitHub release with the installer\n");
     process.stdout.write("4. Use the generated release notes template\n");
-  } catch (error) {
-    process.stderr.write(`\n❌ Release process failed: ${error.message}\n`);
+  } catch (error: any) {
+    process.stderr.write(`\n❌ Release process failed: ${error?.message || error}\n`);
     process.exit(1);
   }
 }
 
-function checkGitStatus() {
-  const status = execSync("git status --porcelain", { encoding: "utf8" });
+function checkGitStatus(): void {
+  const status: string = execSync("git status --porcelain", { encoding: "utf8" });
   if (status.trim()) {
     throw new Error(
       "Working directory is not clean. Please commit your changes first."
@@ -101,14 +113,20 @@ function checkGitStatus() {
   process.stdout.write("✅ Working directory is clean\n");
 }
 
-function bumpVersion(releaseType) {
-  const packagePath = path.join(__dirname, "../package.json");
-  const packageJson = JSON.parse(fs.readFileSync(packagePath, "utf8"));
+function bumpVersion(releaseType: ReleaseType): string {
+  // Handle both source and compiled execution contexts
+  const isCompiled = __dirname.includes('dist');
+  const rootDir = isCompiled 
+    ? path.join(__dirname, '../../')  // Go up from dist/scripts
+    : path.join(__dirname, '../');     // Go up from scripts
 
-  const currentVersion = packageJson.version;
-  const [major, minor, patch] = currentVersion.split(".").map(Number);
+  const packagePath: string = path.join(rootDir, "package.json");
+  const packageJson: PackageJson = JSON.parse(fs.readFileSync(packagePath, "utf8"));
 
-  let newVersion;
+  const currentVersion: string = packageJson.version;
+  const [major, minor, patch]: number[] = currentVersion.split(".").map(Number);
+
+  let newVersion: string;
   switch (releaseType) {
     case "patch":
       newVersion = `${major}.${minor}.${patch + 1}`;
@@ -130,46 +148,46 @@ function bumpVersion(releaseType) {
   return newVersion;
 }
 
-function buildWebApp() {
+function buildWebApp(): void {
   try {
     execSync("bun run build", { stdio: "inherit" });
     process.stdout.write("✅ Web application built successfully\n");
-  } catch (error) {
+  } catch (error: any) {
     throw new Error("Failed to build web application");
   }
 }
 
-function buildElectronApp() {
+function buildElectronApp(): void {
   try {
     execSync("bun run dist:win:release", { stdio: "inherit" });
     process.stdout.write("✅ Electron application built successfully\n");
-  } catch (error) {
+  } catch (error: any) {
     throw new Error("Failed to build Electron application");
   }
 }
 
-function generateChecksums() {
-  const buildDir = resolveBuildOutputDir();
-  const installerPattern = /QCut.*Setup.*\.exe$/;
+function generateChecksums(): void {
+  const buildDir: string = resolveBuildOutputDir();
+  const installerPattern: RegExp = /QCut.*Setup.*\.exe$/;
 
   try {
-    const files = fs.readdirSync(buildDir);
-    const installerFile = files.find((file) => installerPattern.test(file));
+    const files: string[] = fs.readdirSync(buildDir);
+    const installerFile: string | undefined = files.find((file: string) => installerPattern.test(file));
 
     if (!installerFile) {
       throw new Error("Installer file not found");
     }
 
-    const installerPath = path.join(buildDir, installerFile);
+    const installerPath: string = path.join(buildDir, installerFile);
 
     // Generate SHA256 checksum
-    const checksum = execSync(
+    const checksum: string = execSync(
       `powershell "Get-FileHash '${installerPath}' -Algorithm SHA256 | Select-Object -ExpandProperty Hash"`,
       { encoding: "utf8" }
     ).trim();
 
     // Write checksums file
-    const checksumContent = `SHA256 Checksums for QCut Release
+    const checksumContent: string = `SHA256 Checksums for QCut Release
 =================================
 
 ${installerFile}
@@ -183,12 +201,12 @@ Verification:
 
     fs.writeFileSync(path.join(buildDir, "SHA256SUMS.txt"), checksumContent);
     process.stdout.write(`✅ Checksums generated for ${installerFile}\n`);
-  } catch (error) {
+  } catch (error: any) {
     throw new Error("Failed to generate checksums: " + error.message);
   }
 }
 
-function createGitTag(version) {
+function createGitTag(version: string): void {
   try {
     // Add package.json to staging
     execSync("git add package.json");
@@ -200,22 +218,27 @@ function createGitTag(version) {
     execSync(`git tag -a v${version} -m "Release v${version}"`);
 
     process.stdout.write(`✅ Git tag v${version} created\n`);
-  } catch (error) {
+  } catch (error: any) {
     throw new Error("Failed to create git tag: " + error.message);
   }
 }
 
-function generateReleaseNotes(version) {
-  const buildDir = resolveBuildOutputDir();
-  const installerPattern = /QCut.*Setup.*\.exe$/;
+function generateReleaseNotes(version: string): void {
+  const buildDir: string = resolveBuildOutputDir();
+  const installerPattern: RegExp = /QCut.*Setup.*\.exe$/;
 
   try {
-    const files = fs.readdirSync(buildDir);
-    const installerFile = files.find((file) => installerPattern.test(file));
-    const installerStats = fs.statSync(path.join(buildDir, installerFile));
-    const fileSizeMB = (installerStats.size / (1024 * 1024)).toFixed(1);
+    const files: string[] = fs.readdirSync(buildDir);
+    const installerFile: string | undefined = files.find((file: string) => installerPattern.test(file));
+    
+    if (!installerFile) {
+      throw new Error("Installer file not found for release notes");
+    }
 
-    const releaseNotes = `# QCut Video Editor v${version}
+    const installerStats: fs.Stats = fs.statSync(path.join(buildDir, installerFile));
+    const fileSizeMB: string = (installerStats.size / (1024 * 1024)).toFixed(1);
+
+    const releaseNotes: string = `# QCut Video Editor v${version}
 
 ## 🎉 What's New
 
@@ -286,12 +309,18 @@ This version includes auto-update functionality:
 
     fs.writeFileSync(path.join(buildDir, "RELEASE_NOTES.md"), releaseNotes);
     process.stdout.write("✅ Release notes template generated\n");
-  } catch (error) {
+  } catch (error: any) {
     process.stdout.write(
       "⚠️  Could not generate full release notes template, creating basic version\n"
     );
 
-    const basicNotes = `# QCut Video Editor v${version}
+    // Handle both source and compiled execution contexts for fallback
+    const isCompiled = __dirname.includes('dist');
+    const rootDir = isCompiled 
+      ? path.join(__dirname, '../../')  // Go up from dist/scripts
+      : path.join(__dirname, '../');     // Go up from scripts
+
+    const basicNotes: string = `# QCut Video Editor v${version}
 
 ## Download
 - Windows Installer: Available in this release
@@ -301,21 +330,21 @@ This version includes auto-update functionality:
 This is an unsigned installer - see documentation for details.
 `;
 
-    fs.writeFileSync(path.join(__dirname, "../RELEASE_NOTES.md"), basicNotes);
+    fs.writeFileSync(path.join(rootDir, "RELEASE_NOTES.md"), basicNotes);
   }
 }
 
-function getPreviousVersion() {
+function getPreviousVersion(): string {
   try {
-    const tags = execSync("git tag --sort=-version:refname", {
+    const tags: string = execSync("git tag --sort=-version:refname", {
       encoding: "utf8",
     });
-    const tagList = tags
+    const tagList: string[] = tags
       .trim()
       .split("\n")
-      .filter((tag) => tag.match(/^v\d+\.\d+\.\d+$/));
+      .filter((tag: string) => tag.match(/^v\d+\.\d+\.\d+$/));
     return tagList[1] || "v0.0.0"; // Return second tag (previous version)
-  } catch (error) {
+  } catch (error: any) {
     return "v0.0.0";
   }
 }
@@ -324,4 +353,9 @@ if (require.main === module) {
   main();
 }
 
+// CommonJS export for backward compatibility
 module.exports = { main, bumpVersion, generateChecksums };
+
+// ES6 export for TypeScript files
+export { main, bumpVersion, generateChecksums };
+export type { ReleaseType, PackageJson };
