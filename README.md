@@ -110,20 +110,30 @@ The QCut desktop application will launch with the complete video editing interfa
 
 For developing the Electron desktop application:
 
-1. **Start the Vite development server:**
+#### **Recommended Development Workflow:**
+
+1. **Terminal 1 - Frontend (hot reload):**
    ```bash
    cd qcut/apps/web
    bun run dev
    ```
-   The dev server will start at `http://localhost:5173`
+   The Vite dev server will start at `http://localhost:5173`
 
-2. **In another terminal, run Electron in development mode:**
+2. **Terminal 2 - TypeScript Backend (auto-compile):**
+   ```bash
+   cd qcut
+   bun run build:electron:watch
+   ```
+   This will automatically recompile TypeScript files when you modify Electron backend code
+
+3. **Terminal 3 - Electron App:**
    ```bash
    cd qcut
    bun run electron:dev
    ```
+   Launch Electron in development mode (restart when backend changes)
 
-This will launch Electron with hot reload capabilities for development.
+This workflow provides **hot reload for frontend** and **automatic compilation for backend** changes.
 
 ### Available Scripts
 
@@ -142,7 +152,8 @@ From `qcut/apps/web/`:
 - `bun run lint:fix` - Auto-fix linting issues
 
 **TypeScript Development:**
-- `cd electron && bun x tsc` - Compile TypeScript files manually
+- `bun run build:electron` - Compile TypeScript files (one-time)
+- `bun run build:electron:watch` - Auto-recompile on file changes (recommended for development)
 - `bun run check-types` - Type checking across workspace
 
 ### Building for Distribution
