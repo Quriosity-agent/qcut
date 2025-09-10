@@ -144,7 +144,7 @@ export function setupFFmpegIPC(): void {
       sessionId: string
     ): Promise<OpenFolderResult> => {
       const frameDir: string = tempManager.getFrameDir(sessionId);
-      shell.openPath(frameDir);
+      await shell.openPath(frameDir);
       return { success: true, path: frameDir };
     }
   );

@@ -70,7 +70,14 @@ export function enableBlobUrlDebugging() {
     input: RequestInfo | URL,
     init?: RequestInit
   ) => {
-    const url = typeof input === "string" ? input : input.toString();
+    const url =
+      typeof input === 'string'
+        ? input
+        : input instanceof URL
+        ? input.toString()
+        : input instanceof Request
+        ? input.url
+        : String(input);
     if (url.startsWith("blob:") && !blobUrlTracker.has(url)) {
       console.warn(
         `[BlobUrlDebug] 🚨 Fetch attempt on revoked blob URL: ${url}`
@@ -120,9 +127,21 @@ if (import.meta.env.DEV) {
   enableBlobUrlDebugging();
 
   // Add to global for easy access in console
-  (window as any).blobUrlDebug = {
+  window.blobUrlDebug = {
     enable: enableBlobUrlDebugging,
     disable: disableBlobUrlDebugging,
     report: getBlobUrlReport,
   };
 }
+
+// Type augmentation for global window
+declare global {
+  interface Window {
+    blobUrlDebug: {
+      enable: typeof enableBlobUrlDebugging;
+      disable: typeof disableBlobUrlDebugging;
+      report: typeof getBlobUrlReport;
+    };
+  }
+}
+export {};

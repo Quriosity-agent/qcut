@@ -1391,7 +1391,7 @@ function TimelineToolbar({
             <TooltipTrigger asChild>
               <SplitButton>
                 <SplitButtonLeft disabled>
-                  {activeProject?.name || "Main scene"}
+                  {currentScene?.name || "Main scene"}
                 </SplitButtonLeft>
                 <SplitButtonSeparator />
                 <SplitButtonRight
@@ -1404,8 +1404,7 @@ function TimelineToolbar({
               </SplitButton>
             </TooltipTrigger>
             <TooltipContent>
-              Scene: {activeProject?.name || "Main scene"} • Click layers to
-              manage scenes
+              Scene: {currentScene?.name || "Main scene"} • Click layers to manage scenes
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>

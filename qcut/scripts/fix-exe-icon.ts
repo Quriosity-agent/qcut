@@ -1,8 +1,9 @@
-import { execFile } from "child_process";
-import path from "path";
-import fs from "fs";
-import crypto from "crypto";
-import https from "https";
+import { execFile } from 'node:child_process';
+import path from 'node:path';
+import fs from 'node:fs';
+import crypto from 'node:crypto';
+import https from 'node:https';
+import { fileURLToPath } from 'node:url';
 
 // Official SHA256 hash for rcedit v2.0.0 x64
 // You should verify this from the official release page
@@ -70,10 +71,11 @@ async function fixExeIcon(): Promise<void> {
   );
 
   // Handle path resolution for both source and compiled contexts
-  const isCompiled = import.meta.dirname.includes("dist");
+  const scriptDirCurrent = path.dirname(fileURLToPath(import.meta.url));
+  const isCompiled = scriptDirCurrent.includes(`${path.sep}dist${path.sep}`);
   const scriptDir = isCompiled
-    ? path.join(__dirname, "../../scripts") // Go up from dist/scripts to project root, then to scripts
-    : __dirname; // Already in scripts directory
+    ? path.join(scriptDirCurrent, '../../scripts') // Go up from dist/scripts to project root, then to scripts
+    : scriptDirCurrent; // Already in scripts directory
 
   // Download rcedit if not available or verify existing one
   const rceditPath = path.join(scriptDir, "rcedit.exe");

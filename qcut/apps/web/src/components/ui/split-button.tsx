@@ -31,22 +31,22 @@ const SplitButton = forwardRef<HTMLDivElement, SplitButtonProps>(
 SplitButton.displayName = "SplitButton";
 
 const SplitButtonSide = forwardRef<HTMLButtonElement, SplitButtonSideProps>(
-  ({ children, className, onClick, ...props }, ref) => {
+  ({ children, className, onClick, disabled: disabledProp, ...props }, ref) => {
+    const isDisabled = disabledProp ?? !onClick;
     return (
       <Button
         ref={ref}
         variant="text"
         type="button"
-        disabled={!onClick}
-        aria-disabled={onClick ? undefined : true}
+        disabled={isDisabled}
         className={cn(
           "h-full rounded-none bg-panel-accent !opacity-100 border-0 gap-0 font-normal transition-colors",
-          onClick
+          !isDisabled
             ? "hover:bg-foreground/10 hover:opacity-100 cursor-pointer"
             : "cursor-default select-text",
           className
         )}
-        onClick={onClick}
+        onClick={disabledProp ? undefined : onClick}
         {...props}
       >
         {typeof children === "string" ? (

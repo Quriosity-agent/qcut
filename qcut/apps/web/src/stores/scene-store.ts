@@ -4,6 +4,7 @@ import { useProjectStore } from "./project-store";
 import { useTimelineStore } from "./timeline-store";
 import { storageService } from "@/lib/storage/storage-service";
 import { generateUUID } from "@/lib/utils";
+import type { SerializedScene } from "@/lib/storage/types";
 
 export function getMainScene({ scenes }: { scenes: Scene[] }): Scene | null {
   return scenes.find((scene) => scene.isMain) || null;
@@ -256,13 +257,13 @@ export const useSceneStore = create<SceneStore>((set, get) => ({
           ...scene,
           isMain: scene.isMain || false,
           createdAt:
-            typeof (scene as any).createdAt === "string"
-              ? new Date((scene as any).createdAt)
-              : scene.createdAt,
+            typeof (scene as SerializedScene).createdAt === "string"
+              ? new Date((scene as SerializedScene).createdAt)
+              : (scene.createdAt as Date),
           updatedAt:
-            typeof (scene as any).updatedAt === "string"
-              ? new Date((scene as any).updatedAt)
-              : scene.updatedAt,
+            typeof (scene as SerializedScene).updatedAt === "string"
+              ? new Date((scene as SerializedScene).updatedAt)
+              : (scene.updatedAt as Date),
         }));
         const selectedScene =
           ensuredScenes.find((s) => s.id === project.currentSceneId) ||

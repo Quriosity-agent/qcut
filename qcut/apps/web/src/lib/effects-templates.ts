@@ -646,9 +646,9 @@ export function exportTemplate(template: EffectTemplate): string {
 }
 
 /**
- * Infer effect type from parameters
+ * Infer effect category from parameters
  */
-function inferEffectType(parameters: EffectParameters): string {
+function inferEffectCategory(parameters: EffectParameters): string {
   // Look for the first defined parameter to guess effect type
   if (
     parameters.brightness !== undefined ||
@@ -719,6 +719,47 @@ function inferEffectType(parameters: EffectParameters): string {
 }
 
 /**
+ * Infer specific effect type from parameters
+ */
+function inferEffectTypeFromParams(parameters: EffectParameters): string {
+  // Look for the first defined parameter to determine specific effect type
+  if (parameters.brightness !== undefined) return "brightness";
+  if (parameters.contrast !== undefined) return "contrast";
+  if (parameters.saturation !== undefined) return "saturation";
+  if (parameters.hue !== undefined) return "hue";
+  if (parameters.blur !== undefined) return "blur";
+  if (parameters.sepia !== undefined) return "sepia";
+  if (parameters.grayscale !== undefined) return "grayscale";
+  if (parameters.invert !== undefined) return "invert";
+  if (parameters.vintage !== undefined) return "vintage";
+  if (parameters.dramatic !== undefined) return "dramatic";
+  if (parameters.warm !== undefined) return "warm";
+  if (parameters.cool !== undefined) return "cool";
+  if (parameters.cinematic !== undefined) return "cinematic";
+  if (parameters.vignette !== undefined) return "vignette";
+  if (parameters.grain !== undefined) return "grain";
+  if (parameters.sharpen !== undefined) return "sharpen";
+  if (parameters.emboss !== undefined) return "emboss";
+  if (parameters.wave !== undefined) return "wave";
+  if (parameters.twist !== undefined) return "twist";
+  if (parameters.bulge !== undefined) return "bulge";
+  if (parameters.fisheye !== undefined) return "fisheye";
+  if (parameters.oilPainting !== undefined) return "oil-painting";
+  if (parameters.watercolor !== undefined) return "watercolor";
+  if (parameters.pencilSketch !== undefined) return "pencil-sketch";
+  if (parameters.halftone !== undefined) return "halftone";
+  if (parameters.fadeIn !== undefined) return "fade-in";
+  if (parameters.fadeOut !== undefined) return "fade-out";
+  if (parameters.dissolve !== undefined) return "dissolve";
+  if (parameters.wipe !== undefined) return "wipe";
+  if (parameters.overlay !== undefined) return "overlay";
+  if (parameters.multiply !== undefined) return "multiply";
+  if (parameters.screen !== undefined) return "screen";
+  if (parameters.colorDodge !== undefined) return "color-dodge";
+  return "unknown";
+}
+
+/**
  * Import template from JSON
  */
 export function importTemplate(json: string): EffectTemplate | null {
@@ -747,7 +788,10 @@ export function importTemplate(json: string): EffectTemplate | null {
         effects: candidate.effects.map((e: any, i: number) => ({
           name: e.name,
           // Support both old 'type' and new 'effectType' fields for backward compatibility
-          effectType: e.effectType || e.type || inferEffectType(e.parameters),
+          effectType:
+            e.effectType ||
+            e.type ||
+            inferEffectTypeFromParams(e.parameters),
           parameters: e.parameters,
           order: typeof e.order === "number" ? e.order : i + 1,
           blendMode: e.blendMode,

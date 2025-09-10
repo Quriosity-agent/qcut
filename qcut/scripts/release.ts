@@ -17,6 +17,7 @@
 import fs from "fs";
 import path from "path";
 import { execSync } from "child_process";
+import { fileURLToPath } from "url";
 
 type ReleaseType = "patch" | "minor" | "major";
 const RELEASE_TYPES: ReleaseType[] = ["patch", "minor", "major"];
@@ -37,10 +38,11 @@ function resolveBuildOutputDir(): string {
   }
 
   // Handle both source and compiled execution contexts
-  const isCompiled = import.meta.dirname.includes("dist");
+  const currentDir = import.meta.dirname;
+  const isCompiled = currentDir.includes("dist");
   const rootDir = isCompiled
-    ? path.join(__dirname, "../../") // Go up from dist/scripts
-    : path.join(__dirname, "../"); // Go up from scripts
+    ? path.join(currentDir, "../../") // Go up from dist/scripts
+    : path.join(currentDir, "../"); // Go up from scripts
 
   // Default to dist folder in project root
   return path.join(rootDir, "dist");
@@ -119,10 +121,11 @@ function checkGitStatus(): void {
 
 function bumpVersion(releaseType: ReleaseType): string {
   // Handle both source and compiled execution contexts
-  const isCompiled = import.meta.dirname.includes("dist");
+  const currentDir = path.dirname(fileURLToPath(import.meta.url));
+  const isCompiled = currentDir.includes(`${path.sep}dist${path.sep}`);
   const rootDir = isCompiled
-    ? path.join(__dirname, "../../") // Go up from dist/scripts
-    : path.join(__dirname, "../"); // Go up from scripts
+    ? path.join(currentDir, "../../") // Go up from dist/scripts
+    : path.join(currentDir, "../"); // Go up from scripts
 
   const packagePath: string = path.join(rootDir, "package.json");
   const packageJson: PackageJson = JSON.parse(
@@ -327,10 +330,11 @@ This version includes auto-update functionality:
     );
 
     // Handle both source and compiled execution contexts for fallback
-    const isCompiled = import.meta.dirname.includes("dist");
+    const currentDir = import.meta.dirname;
+    const isCompiled = currentDir.includes("dist");
     const rootDir = isCompiled
-      ? path.join(__dirname, "../../") // Go up from dist/scripts
-      : path.join(__dirname, "../"); // Go up from scripts
+      ? path.join(currentDir, "../../") // Go up from dist/scripts
+      : path.join(currentDir, "../"); // Go up from scripts
 
     const basicNotes: string = `# QCut Video Editor v${version}
 

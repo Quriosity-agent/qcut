@@ -25,7 +25,7 @@ const createGetComputedStylePolyfill = () => {
           "padding": "0px",
           "border": "0px",
           "background": "transparent",
-          "z-index": "auto",
+          "zIndex": "auto",
           "overflow": "visible",
           "color": "rgb(0, 0, 0)",
           "font-size": "16px",

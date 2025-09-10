@@ -40,14 +40,14 @@ QCut is a desktop video editor built with a **hybrid architecture** combining Vi
 
 ### Tech Stack
 - **Frontend**: Vite 7.0.6, TanStack Router (Hash History), React 18.3.1, TypeScript
-- **Desktop**: Electron 37.4.0 with **100% TypeScript** IPC handlers for file operations
+- **Desktop**: Electron 37.4.0 with TypeScript IPC handlers for file operations (10/11 files in TS)
 - **State Management**: Zustand stores (editor-store, timeline-store, project-store)
 - **Video Processing**: FFmpeg WebAssembly (@ffmpeg/ffmpeg)
 - **Storage**: Multi-tier system (Electron IPC → IndexedDB → localStorage fallback)
 - **Styling**: Tailwind CSS 4.1.11
 - **UI Components**: Radix UI primitives
 - **Monorepo**: Turborepo with Bun
-- **Type Safety**: Complete TypeScript coverage for main process (19 IPC handlers)
+- **Type Safety**: Comprehensive TypeScript coverage for main process (38 IPC handlers across 6 files)
 
 ### **🏗️ Hybrid Architecture Details**
 

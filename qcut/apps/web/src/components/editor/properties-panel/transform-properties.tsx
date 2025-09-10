@@ -45,7 +45,7 @@ export function TransformProperties({
   element,
   trackId,
 }: TransformPropertiesProps) {
-  const { updateTextElement } = useTimelineStore();
+  const { updateElementTransform } = useTimelineStore();
   const { getElementEffects } = useEffectsStore();
 
   // Check if element has effects or is a text element
@@ -70,17 +70,14 @@ export function TransformProperties({
     const newTransform = { ...transform, [property]: value };
     setTransform(newTransform);
 
-    // Update element in timeline store
-    // Create a partial update object with only the properties that exist on TimelineElement
-    const updateData: Partial<TimelineElement> = {
-      x: newTransform.x,
-      y: newTransform.y,
-      width: newTransform.width,
-      height: newTransform.height,
+    // Update element transform in timeline store
+    const transformUpdate = {
+      position: { x: newTransform.x, y: newTransform.y },
+      size: { width: newTransform.width, height: newTransform.height },
       rotation: newTransform.rotation,
     };
 
-    updateTextElement(trackId, element.id, updateData);
+    updateElementTransform(element.id, transformUpdate, { pushHistory: true });
   };
 
   const handleReset = (property?: string) => {

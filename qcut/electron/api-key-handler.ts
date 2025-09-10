@@ -127,8 +127,12 @@ export function setupApiKeyIPC(): void {
           fs.mkdirSync(dir, { recursive: true });
         }
 
-        // Write encrypted data to file
-        fs.writeFileSync(apiKeysFilePath, JSON.stringify(dataToStore, null, 2));
+        // Write encrypted data to file with restrictive permissions
+        fs.writeFileSync(
+          apiKeysFilePath,
+          JSON.stringify(dataToStore, null, 2),
+          { mode: 0o600 }
+        );
 
         // API keys saved successfully
         return true;

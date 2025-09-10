@@ -1,6 +1,7 @@
-import sharp from "sharp";
-import * as fs from "fs";
-import * as path from "path";
+import sharp from 'sharp';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 interface ResizeOptions {
   fit: "contain" | "cover" | "fill" | "inside" | "outside";
@@ -14,10 +15,11 @@ interface ResizeOptions {
 
 async function copyIconAssets(): Promise<void> {
   // Determine if we're running from dist or source
-  const isCompiled = import.meta.dirname.includes("dist");
+  const currentDir = path.dirname(fileURLToPath(import.meta.url));
+  const isCompiled = currentDir.includes(`${path.sep}dist${path.sep}`);
   const rootDir = isCompiled
-    ? path.join(__dirname, "../../") // Go up from dist/scripts
-    : path.join(__dirname, "../"); // Go up from scripts
+    ? path.join(currentDir, '../../') // Go up from dist/scripts
+    : path.join(currentDir, '../'); // Go up from scripts
 
   const inputPath: string = path.join(
     rootDir,

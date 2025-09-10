@@ -207,11 +207,14 @@ async function getFreesoundApiKey(): Promise<string | null> {
     log.error("[API Key] Failed to load default keys:", error);
     log.warn("[Sound Handler] No default keys available:", error.message);
 
-    // Fallback: Embedded key directly in code for packaged apps
-    const EMBEDDED_DEFAULT_KEY: string =
-      "h650BnTkps2suLENRVXD8LdADgrYzVm1dQxmxQqc";
-    log.info("[API Key] Using hardcoded embedded default key");
-    log.info("[Sound Handler] Using hardcoded embedded API key");
+    // Fallback: Load from build-time environment or configuration
+    const EMBEDDED_DEFAULT_KEY: string = process.env.DEFAULT_FREESOUND_KEY || "";
+    if (!EMBEDDED_DEFAULT_KEY) {
+      log.warn("[API Key] No embedded default key available");
+      return null;
+    }
+    log.info("[API Key] Using embedded default key from environment");
+    log.info("[Sound Handler] Using embedded API key from configuration");
     return EMBEDDED_DEFAULT_KEY;
   }
 
