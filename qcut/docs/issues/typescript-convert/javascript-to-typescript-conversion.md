@@ -9,13 +9,21 @@
    - Can be executed with both `bun` and `node`
    - No breaking changes to functionality
 
+2. **~~scripts/create-logo-ico.js~~** → **scripts/create-logo-ico.ts**
+   - Status: ✅ **MIGRATION COMPLETE** - Original `.js` file removed
+   - Converts PNG to ICO with multiple sizes (16x16 to 256x256)
+   - TypeScript version fully tested and working
+   - Successfully creates icon.ico in build directory
+
 ### 📦 Packages Installed
 - `typescript@5.9.2` ✅
 - `@types/node@24.3.1` ✅
 - `@types/sharp@0.32.0` ✅
+- `@types/to-ico@1.1.3` ✅
 
 ### 📁 Files Created
-- `scripts/copy-icon-assets.ts` - First TypeScript conversion
+- `scripts/copy-icon-assets.ts` - Icon asset copying (converted)
+- `scripts/create-logo-ico.ts` - ICO file creation (converted)
 - `scripts/tsconfig.json` - TypeScript configuration for scripts
 - `dist/scripts/` - Compiled JavaScript output directory
 
@@ -46,7 +54,7 @@ This document outlines the process and considerations for converting the JavaScr
 #### Build and Script Files
 - `scripts/afterPack.js` - Post-packaging script
 - ~~`scripts/copy-icon-assets.js`~~ → ✅ **Converted to TypeScript**
-- `scripts/create-logo-ico.js` - ICO file creation script
+- ~~`scripts/create-logo-ico.js`~~ → ✅ **Converted to TypeScript**
 - `scripts/fix-exe-icon.js` - Executable icon fixing script
 - `scripts/release.js` - Release automation script
 
@@ -242,18 +250,22 @@ copyIconAssets().catch((err: Error) => {
 });
 ```
 
+**✅ MIGRATION COMPLETED SUCCESSFULLY**
+
 **Key Implementation Learnings:**
 1. ✅ **Sharp Import Issue:** Use default import `import sharp from "sharp"` not `import * as sharp`
 2. ✅ **Path Resolution:** Must handle both source and compiled contexts (`__dirname` differs)
 3. ✅ **Testing Success:** Both execution methods work:
    - Direct TypeScript: `bun run scripts/copy-icon-assets.ts`
    - Compiled JavaScript: `node dist/scripts/copy-icon-assets.js`
-4. ✅ **Backward Compatibility:** Original `.js` file still works unchanged
+4. ✅ **Safe Removal:** Original `.js` file removed after TypeScript verification
+5. ✅ **No Breaking Changes:** Functionality identical, migration transparent
 
-**Files Created:**
-- `scripts/copy-icon-assets.ts` - TypeScript version
-- `scripts/tsconfig.json` - TypeScript configuration for scripts
-- `dist/scripts/copy-icon-assets.js` - Compiled output
+**Migration Artifacts:**
+- ✅ `scripts/copy-icon-assets.ts` - TypeScript version (active)
+- ✅ `scripts/tsconfig.json` - TypeScript configuration for scripts
+- ✅ `dist/scripts/copy-icon-assets.js` - Compiled output
+- ❌ ~~`scripts/copy-icon-assets.js`~~ - **REMOVED** (original JavaScript)
 
 **Dependencies Installed:**
 ```bash
@@ -261,6 +273,143 @@ copyIconAssets().catch((err: Error) => {
 ✅ @types/node@24.3.1  
 ✅ @types/sharp@0.32.0
 ```
+
+**Next Recommended File:** ~~`scripts/create-logo-ico.js`~~ ✅ **COMPLETED**
+
+### 1.2. Converting ICO Generation Script ✅ IMPLEMENTED
+
+#### Example: `scripts/create-logo-ico.js` → `scripts/create-logo-ico.ts`
+
+**Implementation Status:** ✅ Successfully Converted and Tested
+
+**ACTUAL Before (JavaScript) - From Repository:**
+```js
+// scripts/create-logo-ico.js
+const sharp = require("sharp");
+const fs = require("fs").promises;
+const path = require("path");
+const toIco = require("to-ico");
+
+async function createIcon() {
+  const inputPath = path.join(
+    __dirname,
+    "../apps/web/public/assets/logo-v4.png"
+  );
+  const icoPath = path.join(__dirname, "../build/icon.ico");
+
+  // Ensure build directory exists
+  const buildDir = path.dirname(icoPath);
+  await fs.mkdir(buildDir, { recursive: true });
+
+  // Create multiple sizes for ICO - Windows standard sizes
+  const sizes = [16, 32, 48, 64, 128, 256];
+  const pngBuffers = [];
+
+  for (const size of sizes) {
+    const buffer = await sharp(inputPath)
+      .resize(size, size, {
+        fit: "contain",
+        background: { r: 0, g: 0, b: 0, alpha: 0 },
+      })
+      .png()
+      .toBuffer();
+
+    pngBuffers.push(buffer);
+  }
+
+  // Convert PNG buffers to ICO using to-ico
+  const icoBuffer = await toIco(pngBuffers);
+  await fs.writeFile(icoPath, icoBuffer);
+}
+```
+
+**After (TypeScript) - IMPLEMENTED & TESTED:**
+```ts
+// scripts/create-logo-ico.ts
+import sharp from "sharp";
+import { promises as fs } from "fs";
+import * as path from "path";
+import toIco from "to-ico";
+
+interface ResizeOptions {
+  fit: "contain" | "cover" | "fill" | "inside" | "outside";
+  background: {
+    r: number;
+    g: number;
+    b: number;
+    alpha: number;
+  };
+}
+
+async function createIcon(): Promise<void> {
+  // Handle both compiled and source execution contexts
+  const isCompiled = __dirname.includes('dist');
+  const rootDir = isCompiled 
+    ? path.join(__dirname, '../../')
+    : path.join(__dirname, '../');
+
+  const inputPath: string = path.join(
+    rootDir,
+    "apps/web/public/assets/logo-v4.png"
+  );
+  const icoPath: string = path.join(rootDir, "build/icon.ico");
+
+  // Ensure build directory exists
+  const buildDir: string = path.dirname(icoPath);
+  await fs.mkdir(buildDir, { recursive: true });
+
+  // Backup existing icon if it exists
+  try {
+    await fs.access(icoPath);
+    await fs.rename(icoPath, path.join(buildDir, "icon-backup.ico"));
+  } catch {
+    // Icon doesn't exist, no backup needed
+  }
+
+  // Create multiple sizes for ICO - Windows standard sizes
+  const sizes: number[] = [16, 32, 48, 64, 128, 256];
+  const pngBuffers: Buffer[] = [];
+
+  const resizeOptions: ResizeOptions = {
+    fit: "contain",
+    background: { r: 0, g: 0, b: 0, alpha: 0 },
+  };
+
+  for (const size of sizes) {
+    const buffer: Buffer = await sharp(inputPath)
+      .resize(size, size, resizeOptions)
+      .png()
+      .toBuffer();
+
+    pngBuffers.push(buffer);
+  }
+
+  // Convert PNG buffers to ICO using to-ico
+  const icoBuffer: Buffer = await toIco(pngBuffers);
+  await fs.writeFile(icoPath, icoBuffer);
+}
+```
+
+**✅ MIGRATION COMPLETED SUCCESSFULLY**
+
+**Key Implementation Learnings:**
+1. ✅ **to-ico Import:** Default import works correctly with TypeScript types
+2. ✅ **Buffer Typing:** Explicit `Buffer[]` typing for PNG buffer array
+3. ✅ **Promises Import:** `{ promises as fs }` pattern maintains consistency
+4. ✅ **Path Resolution:** Same pattern as previous conversion works perfectly
+5. ✅ **Icon Creation:** Successfully generates multi-size ICO files
+
+**Migration Artifacts:**
+- ✅ `scripts/create-logo-ico.ts` - TypeScript version (active)
+- ✅ `dist/scripts/create-logo-ico.js` - Compiled output
+- ❌ ~~`scripts/create-logo-ico.js`~~ - **REMOVED** (original JavaScript)
+
+**Dependencies Added:**
+```bash
+✅ @types/to-ico@1.1.3
+```
+
+**Next Recommended File:** `electron/config/default-keys.js` (configuration file with dual exports)
 
 ### 2. Converting Configuration Files
 
@@ -631,7 +780,7 @@ export {};
 These files run only during build/development and won't affect runtime:
 
 1. ~~**scripts/copy-icon-assets.js**~~ - ✅ **COMPLETED - Converted to TypeScript**
-2. **scripts/create-logo-ico.js** - Icon generation utility, isolated process  
+2. ~~**scripts/create-logo-ico.js**~~ - ✅ **COMPLETED - Converted to TypeScript**
 3. **electron/config/default-keys.js** - Static configuration object, no logic
 4. **apps/web/tailwind.config.js** - CSS configuration, well-documented migration path
 
@@ -859,13 +1008,19 @@ type Handler<K extends keyof IpcChannels> = (
 
 ### ✅ Verified Safe to Convert (Lowest Risk)
 
-1. **scripts/copy-icon-assets.js**
-   - No imports from other modules
-   - Not imported by any other files
-   - Standalone script, runs independently
-   - Uses `sharp` library (has TypeScript types available)
+1. ~~**scripts/copy-icon-assets.js**~~ - ✅ **MIGRATION COMPLETE**
+   - ✅ Successfully converted to TypeScript
+   - ✅ Original JavaScript file removed
+   - ✅ TypeScript version fully functional
+   - ✅ No breaking changes to build process
 
-2. **electron/config/default-keys.js**
+2. ~~**scripts/create-logo-ico.js**~~ - ✅ **MIGRATION COMPLETE**
+   - ✅ Successfully converted to TypeScript
+   - ✅ Original JavaScript file removed
+   - ✅ Creates multi-size ICO files correctly
+   - ✅ Both direct TypeScript and compiled execution work
+
+3. **electron/config/default-keys.js**
    - Only imported by `sound-handler.js` via CommonJS require
    - Solution: Keep dual exports (CommonJS + ES6) for compatibility
    - Simple configuration object, no complex logic
@@ -896,10 +1051,16 @@ export default myExport;    // For TS consumers
 
 ## Next Steps
 
-1. **Begin with lowest risk file**: `scripts/copy-icon-assets.js`
-2. Install TypeScript dependencies: `bun add -d typescript @types/node @types/electron @types/sharp`
-3. Create `tsconfig.json` in project root with `allowJs: true`
-4. Convert first file following the checklist
-5. Run the script to verify it works: `node scripts/copy-icon-assets.js`
-6. Test build process: `bun run build`
-7. Document any project-specific patterns discovered
+1. ~~**Begin with lowest risk file**: `scripts/copy-icon-assets.js`~~ ✅ **COMPLETED**
+2. ✅ **Dependencies installed**: `typescript`, `@types/node`, `@types/sharp`
+3. ✅ **TypeScript configuration created**: `scripts/tsconfig.json`
+4. ✅ **First file converted successfully**: TypeScript version working
+5. ✅ **Testing verified**: Both direct TS and compiled JS execution work
+6. ✅ **Original JS file removed**: Clean migration completed
+
+**Next Recommended Actions:**
+1. **Convert next lowest risk file**: `scripts/create-logo-ico.js`
+2. **Continue with remaining scripts**: Build confidence with standalone files
+3. **Move to configuration files**: `electron/config/default-keys.js` with dual exports
+4. **Document patterns**: Each conversion teaches new migration strategies
+5. **Test build process**: Ensure no dependencies on removed files
