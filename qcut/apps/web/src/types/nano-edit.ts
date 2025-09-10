@@ -1,3 +1,25 @@
+// Nano-banana transformation interface
+export interface Transformation {
+  title: string;
+  prompt: string;
+  emoji: string;
+  description: string;
+  isMultiImage?: boolean;
+  isTwoStep?: boolean;
+  stepTwoPrompt?: string;
+  primaryUploaderTitle?: string;
+  secondaryUploaderTitle?: string;
+  primaryUploaderDescription?: string;
+  secondaryUploaderDescription?: string;
+  category?: string;
+}
+
+export interface GeneratedContent {
+  imageUrl: string | null;
+  text: string | null;
+  secondaryImageUrl?: string | null;
+}
+
 export interface NanoEditAsset {
   id: string;
   type: "thumbnail" | "title-card" | "logo" | "overlay";
@@ -6,6 +28,7 @@ export interface NanoEditAsset {
   createdAt: Date;
   prompt?: string;
   dimensions?: string;
+  transformation?: Transformation;
 }
 
 export interface NanoEditState {

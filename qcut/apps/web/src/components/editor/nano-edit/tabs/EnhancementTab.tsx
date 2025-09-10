@@ -1,7 +1,6 @@
 import React from "react";
 import { HistoryPanel } from "../components/HistoryPanel";
 import { EffectGallery } from "../components/EffectGallery";
-import { ResultDisplay } from "../components/ResultDisplay";
 
 export const EnhancementTab: React.FC = () => {
   return (
@@ -16,18 +15,10 @@ export const EnhancementTab: React.FC = () => {
         </p>
       </div>
 
-      {/* Enhancement Tools Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Left Column */}
-        <div className="space-y-6">
-          <EffectGallery />
-          <HistoryPanel />
-        </div>
-
-        {/* Right Column */}
-        <div>
-          <ResultDisplay />
-        </div>
+      {/* Enhancement Tools */}
+      <div className="space-y-6">
+        <EffectGallery />
+        <HistoryPanel />
       </div>
     </div>
   );

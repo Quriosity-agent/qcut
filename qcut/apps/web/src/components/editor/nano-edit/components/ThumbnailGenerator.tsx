@@ -2,8 +2,8 @@ import React, { useState } from "react";
 import { useNanoEditStore } from "@/stores/nano-edit-store";
 import { FalAiService } from "@/services/ai/fal-ai-service";
 import { PromptInput } from "./PromptInput";
-import { TemplateSelector } from "./TemplateSelector";
-import { THUMBNAIL_TEMPLATES, AssetTemplate } from "../constants/templates";
+import TransformationSelector from "./TransformationSelector";
+import { THUMBNAIL_TEMPLATES, Transformation } from "../constants/transformations";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
 
 export const ThumbnailGenerator: React.FC = () => {
@@ -32,6 +32,7 @@ export const ThumbnailGenerator: React.FC = () => {
           createdAt: new Date(),
           prompt: prompt,
           dimensions: "1280x720",
+          transformation: undefined,
         };
 
         addAsset(asset);
@@ -41,9 +42,14 @@ export const ThumbnailGenerator: React.FC = () => {
     }
   };
 
-  const handleTemplateSelect = (template: AssetTemplate) => {
-    setCustomPrompt(template.prompt);
-    handleGenerate(template.prompt);
+  const handleTransformationSelect = (transformation: Transformation) => {
+    setCustomPrompt(transformation.prompt);
+    handleGenerate(transformation.prompt);
+  };
+
+  const handleOrderChange = (newOrder: Transformation[]) => {
+    // Optional: Handle reordering of transformations
+    console.log('Transformation order changed:', newOrder);
   };
 
   const thumbnailAssets = assets.filter((asset) => asset.type === "thumbnail");
@@ -61,11 +67,12 @@ export const ThumbnailGenerator: React.FC = () => {
         </div>
       </div>
 
-      {/* Template Selector */}
-      <TemplateSelector
-        templates={THUMBNAIL_TEMPLATES}
-        onTemplateSelect={handleTemplateSelect}
-        disabled={isProcessing}
+      {/* Transformation Selector */}
+      <TransformationSelector
+        transformations={THUMBNAIL_TEMPLATES}
+        onSelect={handleTransformationSelect}
+        hasPreviousResult={thumbnailAssets.length > 0}
+        onOrderChange={handleOrderChange}
       />
 
       {/* Generation Form */}

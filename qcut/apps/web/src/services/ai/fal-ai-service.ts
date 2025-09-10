@@ -5,6 +5,24 @@ import type {
   FalAiImageEditInput,
 } from "../../types/nano-edit";
 
+// Configure fal client with API key from settings
+const configureFalClient = async () => {
+  if (window.electronAPI?.apiKeys) {
+    try {
+      const keys = await window.electronAPI.apiKeys.get();
+      if (keys?.falApiKey) {
+        fal.config({
+          credentials: keys.falApiKey
+        });
+        return true;
+      }
+    } catch (error) {
+      console.error("Failed to load FAL API key:", error);
+    }
+  }
+  return false;
+};
+
 /**
  * Service class for interacting with fal.ai Nano Banana APIs
  * Provides text-to-image generation and image editing capabilities
@@ -21,6 +39,12 @@ export class FalAiService {
     options: Partial<FalAiTextToImageInput> = {}
   ): Promise<string[]> {
     try {
+      // Configure fal client with API key before making requests
+      const configured = await configureFalClient();
+      if (!configured) {
+        throw new Error("FAL API key not configured. Please set your API key in Settings.");
+      }
+
       const input: FalAiTextToImageInput = {
         prompt,
         num_images: 1,
@@ -58,6 +82,12 @@ export class FalAiService {
     options: Partial<FalAiImageEditInput> = {}
   ): Promise<string[]> {
     try {
+      // Configure fal client with API key before making requests
+      const configured = await configureFalClient();
+      if (!configured) {
+        throw new Error("FAL API key not configured. Please set your API key in Settings.");
+      }
+
       if (imageUrls.length === 0) {
         throw new Error("At least one image URL is required for editing");
       }
