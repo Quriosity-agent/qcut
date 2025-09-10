@@ -37,10 +37,10 @@ function resolveBuildOutputDir(): string {
   }
 
   // Handle both source and compiled execution contexts
-  const isCompiled = __dirname.includes('dist');
-  const rootDir = isCompiled 
-    ? path.join(__dirname, '../../')  // Go up from dist/scripts
-    : path.join(__dirname, '../');     // Go up from scripts
+  const isCompiled = import.meta.dirname.includes("dist");
+  const rootDir = isCompiled
+    ? path.join(__dirname, "../../") // Go up from dist/scripts
+    : path.join(__dirname, "../"); // Go up from scripts
 
   // Default to dist folder in project root
   return path.join(rootDir, "dist");
@@ -98,13 +98,17 @@ function main(): void {
     process.stdout.write("3. Create GitHub release with the installer\n");
     process.stdout.write("4. Use the generated release notes template\n");
   } catch (error: any) {
-    process.stderr.write(`\n❌ Release process failed: ${error?.message || error}\n`);
+    process.stderr.write(
+      `\n❌ Release process failed: ${error?.message || error}\n`
+    );
     process.exit(1);
   }
 }
 
 function checkGitStatus(): void {
-  const status: string = execSync("git status --porcelain", { encoding: "utf8" });
+  const status: string = execSync("git status --porcelain", {
+    encoding: "utf8",
+  });
   if (status.trim()) {
     throw new Error(
       "Working directory is not clean. Please commit your changes first."
@@ -115,13 +119,15 @@ function checkGitStatus(): void {
 
 function bumpVersion(releaseType: ReleaseType): string {
   // Handle both source and compiled execution contexts
-  const isCompiled = __dirname.includes('dist');
-  const rootDir = isCompiled 
-    ? path.join(__dirname, '../../')  // Go up from dist/scripts
-    : path.join(__dirname, '../');     // Go up from scripts
+  const isCompiled = import.meta.dirname.includes("dist");
+  const rootDir = isCompiled
+    ? path.join(__dirname, "../../") // Go up from dist/scripts
+    : path.join(__dirname, "../"); // Go up from scripts
 
   const packagePath: string = path.join(rootDir, "package.json");
-  const packageJson: PackageJson = JSON.parse(fs.readFileSync(packagePath, "utf8"));
+  const packageJson: PackageJson = JSON.parse(
+    fs.readFileSync(packagePath, "utf8")
+  );
 
   const currentVersion: string = packageJson.version;
   const [major, minor, patch]: number[] = currentVersion.split(".").map(Number);
@@ -172,7 +178,9 @@ function generateChecksums(): void {
 
   try {
     const files: string[] = fs.readdirSync(buildDir);
-    const installerFile: string | undefined = files.find((file: string) => installerPattern.test(file));
+    const installerFile: string | undefined = files.find((file: string) =>
+      installerPattern.test(file)
+    );
 
     if (!installerFile) {
       throw new Error("Installer file not found");
@@ -229,13 +237,17 @@ function generateReleaseNotes(version: string): void {
 
   try {
     const files: string[] = fs.readdirSync(buildDir);
-    const installerFile: string | undefined = files.find((file: string) => installerPattern.test(file));
-    
+    const installerFile: string | undefined = files.find((file: string) =>
+      installerPattern.test(file)
+    );
+
     if (!installerFile) {
       throw new Error("Installer file not found for release notes");
     }
 
-    const installerStats: fs.Stats = fs.statSync(path.join(buildDir, installerFile));
+    const installerStats: fs.Stats = fs.statSync(
+      path.join(buildDir, installerFile)
+    );
     const fileSizeMB: string = (installerStats.size / (1024 * 1024)).toFixed(1);
 
     const releaseNotes: string = `# QCut Video Editor v${version}
@@ -315,10 +327,10 @@ This version includes auto-update functionality:
     );
 
     // Handle both source and compiled execution contexts for fallback
-    const isCompiled = __dirname.includes('dist');
-    const rootDir = isCompiled 
-      ? path.join(__dirname, '../../')  // Go up from dist/scripts
-      : path.join(__dirname, '../');     // Go up from scripts
+    const isCompiled = import.meta.dirname.includes("dist");
+    const rootDir = isCompiled
+      ? path.join(__dirname, "../../") // Go up from dist/scripts
+      : path.join(__dirname, "../"); // Go up from scripts
 
     const basicNotes: string = `# QCut Video Editor v${version}
 

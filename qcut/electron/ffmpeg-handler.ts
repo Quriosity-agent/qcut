@@ -16,7 +16,7 @@ interface ExportOptions {
   width: number;
   height: number;
   fps: number;
-  quality: 'high' | 'medium' | 'low';
+  quality: "high" | "medium" | "low";
   audioFiles?: AudioFile[];
 }
 
@@ -29,7 +29,7 @@ interface FrameData {
 interface ExportResult {
   success: boolean;
   outputFile: string;
-  method: 'spawn' | 'manual';
+  method: "spawn" | "manual";
   message?: string;
 }
 
@@ -63,13 +63,13 @@ interface OpenFolderResult {
 }
 
 interface FFmpegHandlers {
-  'ffmpeg-path': () => Promise<string>;
-  'create-export-session': () => Promise<ExportSession>;
-  'save-frame': (data: FrameData) => Promise<string>;
-  'read-output-file': (outputPath: string) => Promise<Buffer>;
-  'cleanup-export-session': (sessionId: string) => Promise<void>;
-  'open-frames-folder': (sessionId: string) => Promise<OpenFolderResult>;
-  'export-video-cli': (options: ExportOptions) => Promise<ExportResult>;
+  "ffmpeg-path": () => Promise<string>;
+  "create-export-session": () => Promise<ExportSession>;
+  "save-frame": (data: FrameData) => Promise<string>;
+  "read-output-file": (outputPath: string) => Promise<Buffer>;
+  "cleanup-export-session": (sessionId: string) => Promise<void>;
+  "open-frames-folder": (sessionId: string) => Promise<OpenFolderResult>;
+  "export-video-cli": (options: ExportOptions) => Promise<ExportResult>;
 }
 
 const tempManager = new TempManager();
@@ -88,7 +88,10 @@ export function setupFFmpegIPC(): void {
   // Save frame to disk
   ipcMain.handle(
     "save-frame",
-    async (event: IpcMainInvokeEvent, { sessionId, frameName, data }: FrameData): Promise<string> => {
+    async (
+      event: IpcMainInvokeEvent,
+      { sessionId, frameName, data }: FrameData
+    ): Promise<string> => {
       const frameDir: string = tempManager.getFrameDir(sessionId);
       const framePath: string = path.join(frameDir, frameName);
       const buffer: Buffer = Buffer.from(data, "base64");
@@ -118,194 +121,224 @@ export function setupFFmpegIPC(): void {
   );
 
   // Read output file
-  ipcMain.handle("read-output-file", async (event: IpcMainInvokeEvent, outputPath: string): Promise<Buffer> => {
-    return fs.readFileSync(outputPath);
-  });
+  ipcMain.handle(
+    "read-output-file",
+    async (event: IpcMainInvokeEvent, outputPath: string): Promise<Buffer> => {
+      return fs.readFileSync(outputPath);
+    }
+  );
 
   // Cleanup export session
-  ipcMain.handle("cleanup-export-session", async (event: IpcMainInvokeEvent, sessionId: string): Promise<void> => {
-    tempManager.cleanup(sessionId);
-  });
+  ipcMain.handle(
+    "cleanup-export-session",
+    async (event: IpcMainInvokeEvent, sessionId: string): Promise<void> => {
+      tempManager.cleanup(sessionId);
+    }
+  );
 
   // Open frames folder in file explorer
-  ipcMain.handle("open-frames-folder", async (event: IpcMainInvokeEvent, sessionId: string): Promise<OpenFolderResult> => {
-    const frameDir: string = tempManager.getFrameDir(sessionId);
-    shell.openPath(frameDir);
-    return { success: true, path: frameDir };
-  });
+  ipcMain.handle(
+    "open-frames-folder",
+    async (
+      event: IpcMainInvokeEvent,
+      sessionId: string
+    ): Promise<OpenFolderResult> => {
+      const frameDir: string = tempManager.getFrameDir(sessionId);
+      shell.openPath(frameDir);
+      return { success: true, path: frameDir };
+    }
+  );
 
   // Export video with CLI
-  ipcMain.handle("export-video-cli", async (event: IpcMainInvokeEvent, options: ExportOptions): Promise<ExportResult> => {
-    const { sessionId, width, height, fps, quality, audioFiles = [] } = options;
-
-    return new Promise<ExportResult>((resolve, reject) => {
-      // Get session directories
-      const frameDir: string = tempManager.getFrameDir(sessionId);
-      const outputDir: string = tempManager.getOutputDir(sessionId);
-      const outputFile: string = path.join(outputDir, "output.mp4");
-
-      // Construct FFmpeg arguments
-      let ffmpegPath: string;
-      try {
-        ffmpegPath = getFFmpegPath();
-      } catch (error: any) {
-        reject(error);
-        return;
-      }
-
-      const args: string[] = buildFFmpegArgs(
-        frameDir,
-        outputFile,
+  ipcMain.handle(
+    "export-video-cli",
+    async (
+      event: IpcMainInvokeEvent,
+      options: ExportOptions
+    ): Promise<ExportResult> => {
+      const {
+        sessionId,
         width,
         height,
         fps,
         quality,
-        audioFiles
-      );
+        audioFiles = [],
+      } = options;
 
-      // FFmpeg CLI configuration ready
+      return new Promise<ExportResult>((resolve, reject) => {
+        // Get session directories
+        const frameDir: string = tempManager.getFrameDir(sessionId);
+        const outputDir: string = tempManager.getOutputDir(sessionId);
+        const outputFile: string = path.join(outputDir, "output.mp4");
 
-      // Verify input directory exists and has frames
-      if (!fs.existsSync(frameDir)) {
-        const error: string = `Frame directory does not exist: ${frameDir}`;
-        reject(new Error(error));
-        return;
-      }
+        // Construct FFmpeg arguments
+        let ffmpegPath: string;
+        try {
+          ffmpegPath = getFFmpegPath();
+        } catch (error: any) {
+          reject(error);
+          return;
+        }
 
-      const frameFiles: string[] = fs
-        .readdirSync(frameDir)
-        .filter((f: string) => f.startsWith("frame-") && f.endsWith(".png"));
+        const args: string[] = buildFFmpegArgs(
+          frameDir,
+          outputFile,
+          width,
+          height,
+          fps,
+          quality,
+          audioFiles
+        );
 
-      if (frameFiles.length === 0) {
-        const error: string = `No frame files found in: ${frameDir}`;
-        reject(new Error(error));
-        return;
-      }
+        // FFmpeg CLI configuration ready
 
-      // Ensure output directory exists
-      const outputDirPath: string = path.dirname(outputFile);
-      if (!fs.existsSync(outputDirPath)) {
-        fs.mkdirSync(outputDirPath, { recursive: true });
-      }
+        // Verify input directory exists and has frames
+        if (!fs.existsSync(frameDir)) {
+          const error: string = `Frame directory does not exist: ${frameDir}`;
+          reject(new Error(error));
+          return;
+        }
 
-      // Test simple command first: create 1-second video from first frame only
-      const simpleArgs: string[] = [
-        "-y",
-        "-f",
-        "image2",
-        "-i",
-        path.join(frameDir, "frame-0000.png"),
-        "-c:v",
-        "libx264",
-        "-t",
-        "1",
-        "-pix_fmt",
-        "yuv420p",
-        outputFile,
-      ];
+        const frameFiles: string[] = fs
+          .readdirSync(frameDir)
+          .filter((f: string) => f.startsWith("frame-") && f.endsWith(".png"));
 
-      // Attempt to spawn FFmpeg process directly instead of requiring manual run
-      const inputPattern: string = path.join(frameDir, "frame-%04d.png");
+        if (frameFiles.length === 0) {
+          const error: string = `No frame files found in: ${frameDir}`;
+          reject(new Error(error));
+          return;
+        }
 
-      // =============================
-      // Try to run FFmpeg directly
-      // =============================
-      try {
-        const ffmpegProc: ChildProcess = spawn(ffmpegPath, args, {
-          windowsHide: true,
-          stdio: ["ignore", "pipe", "pipe"],
-        });
+        // Ensure output directory exists
+        const outputDirPath: string = path.dirname(outputFile);
+        if (!fs.existsSync(outputDirPath)) {
+          fs.mkdirSync(outputDirPath, { recursive: true });
+        }
 
-        let stderrOutput: string = "";
-        let stdoutOutput: string = "";
+        // Test simple command first: create 1-second video from first frame only
+        const simpleArgs: string[] = [
+          "-y",
+          "-f",
+          "image2",
+          "-i",
+          path.join(frameDir, "frame-0000.png"),
+          "-c:v",
+          "libx264",
+          "-t",
+          "1",
+          "-pix_fmt",
+          "yuv420p",
+          outputFile,
+        ];
 
-        ffmpegProc.stdout?.on("data", (chunk: Buffer) => {
-          const text: string = chunk.toString();
-          stdoutOutput += text;
-        });
+        // Attempt to spawn FFmpeg process directly instead of requiring manual run
+        const inputPattern: string = path.join(frameDir, "frame-%04d.png");
 
-        ffmpegProc.stderr?.on("data", (chunk: Buffer) => {
-          const text: string = chunk.toString();
-          stderrOutput += text;
+        // =============================
+        // Try to run FFmpeg directly
+        // =============================
+        try {
+          const ffmpegProc: ChildProcess = spawn(ffmpegPath, args, {
+            windowsHide: true,
+            stdio: ["ignore", "pipe", "pipe"],
+          });
 
-          const progress: FFmpegProgress | null = parseProgress(text);
-          if (progress) {
-            event.sender?.send?.("ffmpeg-progress", progress);
-          }
-        });
+          let stderrOutput = "";
+          let stdoutOutput = "";
 
-        ffmpegProc.on("error", (err: Error) => {
-          reject(err);
-        });
+          ffmpegProc.stdout?.on("data", (chunk: Buffer) => {
+            const text: string = chunk.toString();
+            stdoutOutput += text;
+          });
 
-        ffmpegProc.on("close", (code: number | null, signal: string | null) => {
-          if (code === 0) {
-            resolve({ success: true, outputFile, method: "spawn" });
-          } else {
-            const error: FFmpegError = new Error(`FFmpeg exited with code ${code}`) as FFmpegError;
-            error.code = code || undefined;
-            error.signal = signal || undefined;
-            error.stderr = stderrOutput;
-            error.stdout = stdoutOutput;
-            reject(error);
-          }
-        });
+          ffmpegProc.stderr?.on("data", (chunk: Buffer) => {
+            const text: string = chunk.toString();
+            stderrOutput += text;
 
-        // If spawn succeeded we exit early and skip manual fallback logic below.
-        return;
-      } catch (spawnErr: any) {
-        // Direct spawn failed, falling back to manual instructions
-      }
-      
-      const batchFile: string = path.join(
-        tempManager.getOutputDir(sessionId),
-        "ffmpeg_run.bat"
-      );
+            const progress: FFmpegProgress | null = parseProgress(text);
+            if (progress) {
+              event.sender?.send?.("ffmpeg-progress", progress);
+            }
+          });
 
-      // Create batch file content using Windows CMD syntax
-      const ffmpegDir: string = path.dirname(ffmpegPath);
-      const ffmpegExe: string = path.basename(ffmpegPath);
-      const batchContent: string = `@echo off
+          ffmpegProc.on("error", (err: Error) => {
+            reject(err);
+          });
+
+          ffmpegProc.on(
+            "close",
+            (code: number | null, signal: string | null) => {
+              if (code === 0) {
+                resolve({ success: true, outputFile, method: "spawn" });
+              } else {
+                const error: FFmpegError = new Error(
+                  `FFmpeg exited with code ${code}`
+                ) as FFmpegError;
+                error.code = code || undefined;
+                error.signal = signal || undefined;
+                error.stderr = stderrOutput;
+                error.stdout = stdoutOutput;
+                reject(error);
+              }
+            }
+          );
+
+          // If spawn succeeded we exit early and skip manual fallback logic below.
+          return;
+        } catch (spawnErr: any) {
+          // Direct spawn failed, falling back to manual instructions
+        }
+
+        const batchFile: string = path.join(
+          tempManager.getOutputDir(sessionId),
+          "ffmpeg_run.bat"
+        );
+
+        // Create batch file content using Windows CMD syntax
+        const ffmpegDir: string = path.dirname(ffmpegPath);
+        const ffmpegExe: string = path.basename(ffmpegPath);
+        const batchContent: string = `@echo off
 cd /d "${ffmpegDir}"
 echo Starting FFmpeg export...
 ${ffmpegExe} -y -framerate 30 -i "${inputPattern}" -c:v libx264 -preset fast -crf 23 -t 5 -pix_fmt yuv420p -movflags +faststart "${outputFile}"
 echo FFmpeg exit code: %ERRORLEVEL%
 exit /b %ERRORLEVEL%`;
 
-      // Creating batch file workaround
+        // Creating batch file workaround
 
-      // Write batch file
-      fs.writeFileSync(batchFile, batchContent);
+        // Write batch file
+        fs.writeFileSync(batchFile, batchContent);
 
-      // Since Electron process spawning is restricted on Windows, provide manual export option
-      // Windows process spawning restricted, frames ready for manual export
+        // Since Electron process spawning is restricted on Windows, provide manual export option
+        // Windows process spawning restricted, frames ready for manual export
 
-      // Check if user has already created the video manually
-      const checkForManualVideo = (): void => {
-        if (fs.existsSync(outputFile)) {
-          const stats: fs.Stats = fs.statSync(outputFile);
-          // Found manually created video
-          resolve({
-            success: true,
-            outputFile,
-            method: "manual",
-            message: "Video created manually - frames exported successfully!",
-          });
-        } else {
-          // Provide helpful error with manual instructions
-          reject(
-            new Error(
-              `FFmpeg process spawning restricted by Windows. Please run the command manually:\n\ncd "${path.dirname(ffmpegPath)}" && ${path.basename(ffmpegPath)} -y -framerate 30 -i "${inputPattern}" -c:v libx264 -preset fast -crf 23 -t 5 -pix_fmt yuv420p "${outputFile}"\n\nFrames location: ${frameDir}`
-            )
-          );
-        }
-      };
+        // Check if user has already created the video manually
+        const checkForManualVideo = (): void => {
+          if (fs.existsSync(outputFile)) {
+            const stats: fs.Stats = fs.statSync(outputFile);
+            // Found manually created video
+            resolve({
+              success: true,
+              outputFile,
+              method: "manual",
+              message: "Video created manually - frames exported successfully!",
+            });
+          } else {
+            // Provide helpful error with manual instructions
+            reject(
+              new Error(
+                `FFmpeg process spawning restricted by Windows. Please run the command manually:\n\ncd "${path.dirname(ffmpegPath)}" && ${path.basename(ffmpegPath)} -y -framerate 30 -i "${inputPattern}" -c:v libx264 -preset fast -crf 23 -t 5 -pix_fmt yuv420p "${outputFile}"\n\nFrames location: ${frameDir}`
+              )
+            );
+          }
+        };
 
-      // Check immediately and also after a short delay
-      checkForManualVideo();
-      setTimeout(checkForManualVideo, 2000);
-    });
-  });
+        // Check immediately and also after a short delay
+        checkForManualVideo();
+        setTimeout(checkForManualVideo, 2000);
+      });
+    }
+  );
 }
 
 export function getFFmpegPath(): string {
@@ -360,7 +393,7 @@ function buildFFmpegArgs(
   width: number,
   height: number,
   fps: number,
-  quality: 'high' | 'medium' | 'low',
+  quality: "high" | "medium" | "low",
   audioFiles: AudioFile[] = []
 ): string[] {
   const qualitySettings: QualityMap = {
@@ -369,7 +402,8 @@ function buildFFmpegArgs(
     "low": { crf: "28", preset: "veryfast" },
   };
 
-  const { crf, preset }: QualitySettings = qualitySettings[quality] || qualitySettings.medium;
+  const { crf, preset }: QualitySettings =
+    qualitySettings[quality] || qualitySettings.medium;
 
   // Use exact same format that worked manually
   const inputPattern: string = path.join(inputDir, "frame-%04d.png");
@@ -418,7 +452,7 @@ function buildFFmpegArgs(
 
       audioFiles.forEach((audioFile: AudioFile, index: number) => {
         const inputIndex: number = index + 1; // +1 because video is input 0
-        let audioFilter: string = `[${inputIndex}:a]`;
+        let audioFilter = `[${inputIndex}:a]`;
 
         // Apply volume if specified
         if (audioFile.volume !== undefined && audioFile.volume !== 1.0) {
@@ -490,7 +524,9 @@ function buildFFmpegArgs(
 function parseProgress(output: string): FFmpegProgress | null {
   // Parse FFmpeg progress from output
   const frameMatch: RegExpMatchArray | null = output.match(/frame=\s*(\d+)/);
-  const timeMatch: RegExpMatchArray | null = output.match(/time=(\d+:\d+:\d+\.\d+)/);
+  const timeMatch: RegExpMatchArray | null = output.match(
+    /time=(\d+:\d+:\d+\.\d+)/
+  );
 
   if (frameMatch || timeMatch) {
     return {
@@ -506,12 +542,12 @@ module.exports = { setupFFmpegIPC, getFFmpegPath };
 
 // ES6 export for TypeScript files
 export default { setupFFmpegIPC, getFFmpegPath };
-export type { 
-  AudioFile, 
-  ExportOptions, 
-  FrameData, 
-  ExportResult, 
-  FFmpegProgress, 
+export type {
+  AudioFile,
+  ExportOptions,
+  FrameData,
+  ExportResult,
+  FFmpegProgress,
   FFmpegHandlers,
-  OpenFolderResult
+  OpenFolderResult,
 };

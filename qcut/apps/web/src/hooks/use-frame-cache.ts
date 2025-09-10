@@ -25,7 +25,12 @@ interface FrameCacheOptions {
 }
 
 export function useFrameCache(options: FrameCacheOptions = {}) {
-  const { maxCacheSize = 300, cacheResolution = 30, persist = false, onError } = options; // 10 seconds at 30fps
+  const {
+    maxCacheSize = 300,
+    cacheResolution = 30,
+    persist = false,
+    onError,
+  } = options; // 10 seconds at 30fps
   const frameCacheRef = useRef(new Map<number, CachedFrame>());
   const persistTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -71,7 +76,9 @@ export function useFrameCache(options: FrameCacheOptions = {}) {
               trimStart: element.trimStart,
               trimEnd: element.trimEnd,
               mediaId:
-                element.type === "media" && 'mediaId' in element ? element.mediaId : undefined,
+                element.type === "media" && "mediaId" in element
+                  ? element.mediaId
+                  : undefined,
             });
           }
         }
@@ -85,13 +92,15 @@ export function useFrameCache(options: FrameCacheOptions = {}) {
       };
 
       // Sort activeElements by id for consistent hashing
-      const sortedElements = [...activeElements].sort((a, b) => a.id.localeCompare(b.id));
-      
+      const sortedElements = [...activeElements].sort((a, b) =>
+        a.id.localeCompare(b.id)
+      );
+
       // Create a stable string representation
       return JSON.stringify({
         activeElements: sortedElements,
         projectState,
-        sceneId: sceneId || 'default', // Include scene ID for cache isolation
+        sceneId: sceneId || "default", // Include scene ID for cache isolation
         time: Math.floor(time * cacheResolution) / cacheResolution, // Quantize time
       });
     },
@@ -282,7 +291,7 @@ export function useFrameCache(options: FrameCacheOptions = {}) {
     async (
       currentTime: number,
       renderFunction: (time: number) => Promise<ImageData>,
-      range: number = 2, // kept for API compatibility
+      range = 2, // kept for API compatibility
       tracks?: TimelineTrack[],
       mediaItems?: MediaItem[],
       activeProject?: TProject | null
@@ -290,10 +299,13 @@ export function useFrameCache(options: FrameCacheOptions = {}) {
       if (!tracks || !mediaItems) return;
 
       // For safety with DOM-capture rendering, only pre-render the quantized current frame
-      const frameTime = Math.floor(currentTime * cacheResolution) / cacheResolution;
-      if (!isFrameCached(frameTime, tracks, mediaItems, activeProject ?? null)) {
+      const frameTime =
+        Math.floor(currentTime * cacheResolution) / cacheResolution;
+      if (
+        !isFrameCached(frameTime, tracks, mediaItems, activeProject ?? null)
+      ) {
         const schedule = (fn: () => void) => {
-          if ('requestIdleCallback' in window) {
+          if ("requestIdleCallback" in window) {
             window.requestIdleCallback(fn, { timeout: 1000 });
           } else {
             setTimeout(fn, 0);
@@ -304,7 +316,13 @@ export function useFrameCache(options: FrameCacheOptions = {}) {
           (async () => {
             try {
               const imageData = await renderFunction(frameTime);
-              cacheFrame(frameTime, imageData, tracks, mediaItems, activeProject ?? null);
+              cacheFrame(
+                frameTime,
+                imageData,
+                tracks,
+                mediaItems,
+                activeProject ?? null
+              );
             } catch (error) {
               // Silently ignore if render couldn't proceed (e.g., targeted time capture unsupported)
             }
@@ -333,7 +351,9 @@ export function useFrameCache(options: FrameCacheOptions = {}) {
     if (!persist) return;
     try {
       const db = await openDB("frame-cache", 1);
-      const cacheArray = await db.get("frames", "cache-snapshot") as CacheSnapshot[] | undefined;
+      const cacheArray = (await db.get("frames", "cache-snapshot")) as
+        | CacheSnapshot[]
+        | undefined;
       if (cacheArray && Array.isArray(cacheArray)) {
         frameCacheRef.current.clear();
         for (const item of cacheArray) {

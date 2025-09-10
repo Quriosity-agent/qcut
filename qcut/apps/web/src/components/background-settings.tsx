@@ -21,7 +21,9 @@ export function BackgroundSettings() {
   };
 
   const handleBlurSelect = (blurIntensity: number) => {
-    updateBackgroundType("blur", { blurIntensity: blurIntensity as BlurIntensity });
+    updateBackgroundType("blur", {
+      blurIntensity: blurIntensity as BlurIntensity,
+    });
   };
 
   const tabs = [

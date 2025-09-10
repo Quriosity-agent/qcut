@@ -14,11 +14,11 @@ interface ResizeOptions {
 
 async function copyIconAssets(): Promise<void> {
   // Determine if we're running from dist or source
-  const isCompiled = __dirname.includes('dist');
-  const rootDir = isCompiled 
-    ? path.join(__dirname, '../../')  // Go up from dist/scripts
-    : path.join(__dirname, '../');     // Go up from scripts
-  
+  const isCompiled = import.meta.dirname.includes("dist");
+  const rootDir = isCompiled
+    ? path.join(__dirname, "../../") // Go up from dist/scripts
+    : path.join(__dirname, "../"); // Go up from scripts
+
   const inputPath: string = path.join(
     rootDir,
     "apps/web/public/assets/logo-v4.png"
@@ -34,10 +34,8 @@ async function copyIconAssets(): Promise<void> {
     fit: "contain",
     background: { r: 0, g: 0, b: 0, alpha: 0 },
   };
-  
-  await sharp(inputPath)
-    .resize(256, 256, resizeOptions)
-    .toFile(iconPngPath);
+
+  await sharp(inputPath).resize(256, 256, resizeOptions).toFile(iconPngPath);
   process.stdout.write("Created icon.png in build folder\n");
 
   // Copy to various locations that might be used

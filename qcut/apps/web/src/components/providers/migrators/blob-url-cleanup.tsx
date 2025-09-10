@@ -17,7 +17,7 @@ export function BlobUrlCleanup({ children }: { children: React.ReactNode }) {
       // Check if cleanup has already been done in this session
       const cleanupKey = "blob-url-cleanup-v1";
       const hasCleanedSession = sessionStorage.getItem(cleanupKey);
-      
+
       if (hasCleanedSession) {
         setHasCleanedUp(true);
         return;
@@ -30,16 +30,16 @@ export function BlobUrlCleanup({ children }: { children: React.ReactNode }) {
         // Clean up projects with blob URL thumbnails
         const projects = await storageService.loadAllProjects();
         let projectsUpdated = 0;
-        
+
         for (const project of projects) {
           let needsUpdate = false;
-          
+
           // Check if thumbnail is a blob URL
           if (project.thumbnail?.startsWith("blob:")) {
             project.thumbnail = "";
             needsUpdate = true;
           }
-          
+
           if (needsUpdate) {
             await storageService.saveProject({ project });
             projectsUpdated++;
@@ -52,18 +52,22 @@ export function BlobUrlCleanup({ children }: { children: React.ReactNode }) {
         let mediaItemsRemoved = 0;
         for (const project of projects) {
           const mediaItems = await storageService.loadAllMediaItems(project.id);
-          
+
           for (const item of mediaItems) {
             let needsUpdate = false;
             let shouldRemove = false;
-            
+
             // Check if URL is a blob URL
             if (item.url?.startsWith("blob:")) {
-              console.log(`[BlobUrlCleanup] Found media item with blob URL: ${item.name} (${item.url})`);
-              
+              console.log(
+                `[BlobUrlCleanup] Found media item with blob URL: ${item.name} (${item.url})`
+              );
+
               // If the item has no file or an empty file, remove it entirely
               if (!item.file || item.file.size === 0) {
-                console.log(`[BlobUrlCleanup] Removing media item with no file: ${item.name}`);
+                console.log(
+                  `[BlobUrlCleanup] Removing media item with no file: ${item.name}`
+                );
                 // Note: We can't directly delete from storage here, but mark it for removal
                 shouldRemove = true;
                 mediaItemsRemoved++;
@@ -71,17 +75,21 @@ export function BlobUrlCleanup({ children }: { children: React.ReactNode }) {
                 // Item has a file, clear the blob URL and let it regenerate
                 item.url = undefined;
                 needsUpdate = true;
-                console.log(`[BlobUrlCleanup] Cleared blob URL for media item: ${item.name}`);
+                console.log(
+                  `[BlobUrlCleanup] Cleared blob URL for media item: ${item.name}`
+                );
               }
             }
-            
+
             // Check if thumbnail URL is a blob URL
             if (item.thumbnailUrl?.startsWith("blob:")) {
-              console.log(`[BlobUrlCleanup] Found thumbnail with blob URL: ${item.name} (${item.thumbnailUrl})`);
+              console.log(
+                `[BlobUrlCleanup] Found thumbnail with blob URL: ${item.name} (${item.thumbnailUrl})`
+              );
               item.thumbnailUrl = undefined;
               needsUpdate = true;
             }
-            
+
             if (needsUpdate && !shouldRemove) {
               await storageService.saveMediaItem(project.id, item);
               mediaItemsCleaned++;
@@ -93,8 +101,10 @@ export function BlobUrlCleanup({ children }: { children: React.ReactNode }) {
         // Timeline elements don't directly store URLs - they reference media items by ID
         // The cleanup above for media items should handle any blob URLs in the system
 
-        console.log(`[BlobUrlCleanup] Cleanup complete. Projects: ${projectsUpdated}, Media items cleaned: ${mediaItemsCleaned}, Media items removed: ${mediaItemsRemoved}`);
-        
+        console.log(
+          `[BlobUrlCleanup] Cleanup complete. Projects: ${projectsUpdated}, Media items cleaned: ${mediaItemsCleaned}, Media items removed: ${mediaItemsRemoved}`
+        );
+
         // Mark cleanup as done for this session
         sessionStorage.setItem(cleanupKey, "true");
         setHasCleanedUp(true);

@@ -107,7 +107,10 @@ interface ElectronAPI {
   // File operations
   openFileDialog: () => Promise<string | null>;
   openMultipleFilesDialog: () => Promise<string[]>;
-  saveFileDialog: (defaultFilename?: string, filters?: FileDialogFilter[]) => Promise<string | null>;
+  saveFileDialog: (
+    defaultFilename?: string,
+    filters?: FileDialogFilter[]
+  ) => Promise<string | null>;
   readFile: (filePath: string) => Promise<Buffer | null>;
   writeFile: (filePath: string, data: Buffer | string) => Promise<boolean>;
   getFileInfo: (filePath: string) => Promise<FileInfo | null>;
@@ -132,20 +135,28 @@ interface ElectronAPI {
   // Sound operations
   sounds: {
     search: (params: SoundSearchParams) => Promise<any>;
-    downloadPreview: (params: SoundDownloadParams) => Promise<{ success: boolean; path?: string; error?: string }>;
+    downloadPreview: (
+      params: SoundDownloadParams
+    ) => Promise<{ success: boolean; path?: string; error?: string }>;
   };
 
   // Transcription operations
   transcribe: {
-    audio: (requestData: TranscriptionRequestData) => Promise<TranscriptionResult>;
+    audio: (
+      requestData: TranscriptionRequestData
+    ) => Promise<TranscriptionResult>;
     cancel: (id: string) => Promise<CancelResult>;
   };
 
   // FFmpeg export operations
   ffmpeg: {
     createExportSession: () => Promise<ExportSession>;
-    saveFrame: (data: FrameData) => Promise<{ success: boolean; error?: string }>;
-    exportVideoCLI: (options: ExportOptions) => Promise<{ success: boolean; outputPath?: string; error?: string }>;
+    saveFrame: (
+      data: FrameData
+    ) => Promise<{ success: boolean; error?: string }>;
+    exportVideoCLI: (
+      options: ExportOptions
+    ) => Promise<{ success: boolean; outputPath?: string; error?: string }>;
     readOutputFile: (path: string) => Promise<Buffer | null>;
     cleanupExportSession: (sessionId: string) => Promise<boolean>;
     openFramesFolder: (sessionId: string) => Promise<void>;
@@ -177,21 +188,30 @@ const electronAPI: ElectronAPI = {
   platform: process.platform,
 
   // File operations
-  openFileDialog: (): Promise<string | null> => ipcRenderer.invoke("open-file-dialog"),
+  openFileDialog: (): Promise<string | null> =>
+    ipcRenderer.invoke("open-file-dialog"),
   openMultipleFilesDialog: (): Promise<string[]> =>
     ipcRenderer.invoke("open-multiple-files-dialog"),
-  saveFileDialog: (defaultFilename?: string, filters?: FileDialogFilter[]): Promise<string | null> =>
+  saveFileDialog: (
+    defaultFilename?: string,
+    filters?: FileDialogFilter[]
+  ): Promise<string | null> =>
     ipcRenderer.invoke("save-file-dialog", defaultFilename, filters),
-  readFile: (filePath: string): Promise<Buffer | null> => ipcRenderer.invoke("read-file", filePath),
+  readFile: (filePath: string): Promise<Buffer | null> =>
+    ipcRenderer.invoke("read-file", filePath),
   writeFile: (filePath: string, data: Buffer | string): Promise<boolean> =>
     ipcRenderer.invoke("write-file", filePath, data),
-  getFileInfo: (filePath: string): Promise<FileInfo | null> => ipcRenderer.invoke("get-file-info", filePath),
+  getFileInfo: (filePath: string): Promise<FileInfo | null> =>
+    ipcRenderer.invoke("get-file-info", filePath),
 
   // Storage operations
   storage: {
-    save: (key: string, data: any): Promise<boolean> => ipcRenderer.invoke("storage:save", key, data),
-    load: (key: string): Promise<any> => ipcRenderer.invoke("storage:load", key),
-    remove: (key: string): Promise<boolean> => ipcRenderer.invoke("storage:remove", key),
+    save: (key: string, data: any): Promise<boolean> =>
+      ipcRenderer.invoke("storage:save", key, data),
+    load: (key: string): Promise<any> =>
+      ipcRenderer.invoke("storage:load", key),
+    remove: (key: string): Promise<boolean> =>
+      ipcRenderer.invoke("storage:remove", key),
     list: (): Promise<string[]> => ipcRenderer.invoke("storage:list"),
     clear: (): Promise<boolean> => ipcRenderer.invoke("storage:clear"),
   },
@@ -199,31 +219,46 @@ const electronAPI: ElectronAPI = {
   // Theme operations
   theme: {
     get: (): Promise<ThemeSource> => ipcRenderer.invoke("theme:get"),
-    set: (theme: ThemeSource): Promise<ThemeSource> => ipcRenderer.invoke("theme:set", theme),
+    set: (theme: ThemeSource): Promise<ThemeSource> =>
+      ipcRenderer.invoke("theme:set", theme),
     toggle: (): Promise<ThemeSource> => ipcRenderer.invoke("theme:toggle"),
     isDark: (): Promise<boolean> => ipcRenderer.invoke("theme:isDark"),
   },
 
   // Sound operations
   sounds: {
-    search: (params: SoundSearchParams): Promise<any> => ipcRenderer.invoke("sounds:search", params),
-    downloadPreview: (params: SoundDownloadParams): Promise<{ success: boolean; path?: string; error?: string }> =>
+    search: (params: SoundSearchParams): Promise<any> =>
+      ipcRenderer.invoke("sounds:search", params),
+    downloadPreview: (
+      params: SoundDownloadParams
+    ): Promise<{ success: boolean; path?: string; error?: string }> =>
       ipcRenderer.invoke("sounds:download-preview", params),
   },
 
   // Transcription operations
   transcribe: {
-    audio: (requestData: TranscriptionRequestData): Promise<TranscriptionResult> => ipcRenderer.invoke("transcribe:audio", requestData),
-    cancel: (id: string): Promise<CancelResult> => ipcRenderer.invoke("transcribe:cancel", id),
+    audio: (
+      requestData: TranscriptionRequestData
+    ): Promise<TranscriptionResult> =>
+      ipcRenderer.invoke("transcribe:audio", requestData),
+    cancel: (id: string): Promise<CancelResult> =>
+      ipcRenderer.invoke("transcribe:cancel", id),
   },
 
   // FFmpeg export operations
   ffmpeg: {
-    createExportSession: (): Promise<ExportSession> => ipcRenderer.invoke("create-export-session"),
-    saveFrame: (data: FrameData): Promise<{ success: boolean; error?: string }> => ipcRenderer.invoke("save-frame", data),
-    exportVideoCLI: (options: ExportOptions): Promise<{ success: boolean; outputPath?: string; error?: string }> =>
+    createExportSession: (): Promise<ExportSession> =>
+      ipcRenderer.invoke("create-export-session"),
+    saveFrame: (
+      data: FrameData
+    ): Promise<{ success: boolean; error?: string }> =>
+      ipcRenderer.invoke("save-frame", data),
+    exportVideoCLI: (
+      options: ExportOptions
+    ): Promise<{ success: boolean; outputPath?: string; error?: string }> =>
       ipcRenderer.invoke("export-video-cli", options),
-    readOutputFile: (path: string): Promise<Buffer | null> => ipcRenderer.invoke("read-output-file", path),
+    readOutputFile: (path: string): Promise<Buffer | null> =>
+      ipcRenderer.invoke("read-output-file", path),
     cleanupExportSession: (sessionId: string): Promise<boolean> =>
       ipcRenderer.invoke("cleanup-export-session", sessionId),
     openFramesFolder: (sessionId: string): Promise<void> =>
@@ -239,13 +274,15 @@ const electronAPI: ElectronAPI = {
   // API key operations
   apiKeys: {
     get: (): Promise<ApiKeyConfig> => ipcRenderer.invoke("api-keys:get"),
-    set: (keys: ApiKeyConfig): Promise<boolean> => ipcRenderer.invoke("api-keys:set", keys),
+    set: (keys: ApiKeyConfig): Promise<boolean> =>
+      ipcRenderer.invoke("api-keys:set", keys),
     clear: (): Promise<boolean> => ipcRenderer.invoke("api-keys:clear"),
   },
 
   // GitHub operations
   github: {
-    fetchStars: (): Promise<GitHubStarsResponse> => ipcRenderer.invoke("fetch-github-stars"),
+    fetchStars: (): Promise<GitHubStarsResponse> =>
+      ipcRenderer.invoke("fetch-github-stars"),
   },
 
   // Utility functions

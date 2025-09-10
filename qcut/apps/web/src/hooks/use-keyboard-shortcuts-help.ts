@@ -64,15 +64,39 @@ const actionDescriptions: Record<
   undo: { description: "Undo", category: "History" },
   redo: { description: "Redo", category: "History" },
   // Effects actions
-  "apply-brightness-effect": { description: "Apply brightness effect", category: "Effects" },
-  "apply-contrast-effect": { description: "Apply contrast effect", category: "Effects" },
-  "apply-saturation-effect": { description: "Apply saturation effect", category: "Effects" },
-  "apply-blur-effect": { description: "Apply blur effect", category: "Effects" },
-  "toggle-selected-effect": { description: "Toggle selected effect", category: "Effects" },
-  "reset-effect-parameters": { description: "Reset effect parameters", category: "Effects" },
+  "apply-brightness-effect": {
+    description: "Apply brightness effect",
+    category: "Effects",
+  },
+  "apply-contrast-effect": {
+    description: "Apply contrast effect",
+    category: "Effects",
+  },
+  "apply-saturation-effect": {
+    description: "Apply saturation effect",
+    category: "Effects",
+  },
+  "apply-blur-effect": {
+    description: "Apply blur effect",
+    category: "Effects",
+  },
+  "toggle-selected-effect": {
+    description: "Toggle selected effect",
+    category: "Effects",
+  },
+  "reset-effect-parameters": {
+    description: "Reset effect parameters",
+    category: "Effects",
+  },
   "duplicate-effect": { description: "Duplicate effect", category: "Effects" },
-  "increase-effect-intensity": { description: "Increase effect intensity", category: "Effects" },
-  "decrease-effect-intensity": { description: "Decrease effect intensity", category: "Effects" },
+  "increase-effect-intensity": {
+    description: "Increase effect intensity",
+    category: "Effects",
+  },
+  "decrease-effect-intensity": {
+    description: "Decrease effect intensity",
+    category: "Effects",
+  },
 };
 
 // Convert key binding format to display format

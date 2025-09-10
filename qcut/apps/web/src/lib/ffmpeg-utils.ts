@@ -203,49 +203,68 @@ export const initFFmpeg = async (): Promise<FFmpeg> => {
 
     // In Electron, use direct URLs instead of blob URLs to avoid ERR_FILE_NOT_FOUND
     const electronMode = isElectron();
-    
+
     if (electronMode) {
-      console.log("[FFmpeg Utils] 🎯 Using direct URLs for Electron environment");
-      
+      console.log(
+        "[FFmpeg Utils] 🎯 Using direct URLs for Electron environment"
+      );
+
       // Verify URLs are accessible before loading
       try {
-        const coreCheck = await fetch(coreUrl, { method: 'HEAD' });
-        const wasmCheck = await fetch(wasmUrl, { method: 'HEAD' });
-        
+        const coreCheck = await fetch(coreUrl, { method: "HEAD" });
+        const wasmCheck = await fetch(wasmUrl, { method: "HEAD" });
+
         if (!coreCheck.ok || !wasmCheck.ok) {
-          throw new Error(`FFmpeg resources not accessible: core=${coreCheck.ok}, wasm=${wasmCheck.ok}`);
+          throw new Error(
+            `FFmpeg resources not accessible: core=${coreCheck.ok}, wasm=${wasmCheck.ok}`
+          );
         }
       } catch (checkError) {
-        console.warn("[FFmpeg Utils] ⚠️ Resource check failed, attempting load anyway:", checkError);
+        console.warn(
+          "[FFmpeg Utils] ⚠️ Resource check failed, attempting load anyway:",
+          checkError
+        );
       }
-      
+
       // Add timeout to detect hanging with environment-specific timeouts
-      const timeoutDuration = environment.hasSharedArrayBuffer ? 60_000 : 120_000;
-      
+      const timeoutDuration = environment.hasSharedArrayBuffer
+        ? 60_000
+        : 120_000;
+
       try {
         const loadPromise = ffmpeg.load({
           coreURL: coreUrl,
           wasmURL: wasmUrl,
         });
-        
+
         const timeoutPromise = new Promise((_, reject) => {
           setTimeout(
-            () => reject(new Error(`FFmpeg load timeout after ${timeoutDuration / 1000} seconds`)),
+            () =>
+              reject(
+                new Error(
+                  `FFmpeg load timeout after ${timeoutDuration / 1000} seconds`
+                )
+              ),
             timeoutDuration
           );
         });
-        
+
         await Promise.race([loadPromise, timeoutPromise]);
-        
-        console.log("[FFmpeg Utils] ✅ FFmpeg loaded successfully with direct URLs in Electron");
+
+        console.log(
+          "[FFmpeg Utils] ✅ FFmpeg loaded successfully with direct URLs in Electron"
+        );
       } catch (loadError) {
-        console.error("[FFmpeg Utils] ❌ Failed to load FFmpeg with direct URLs:", loadError);
+        console.error(
+          "[FFmpeg Utils] ❌ Failed to load FFmpeg with direct URLs:",
+          loadError
+        );
         throw loadError;
       }
     } else {
       // Browser mode: Use blob URLs for better performance
       console.log("[FFmpeg Utils] 🌐 Using blob URLs for browser environment");
-      
+
       // Fetch and convert to blob URLs for consistent loading
       let coreResponse, wasmResponse;
 
@@ -304,7 +323,9 @@ export const initFFmpeg = async (): Promise<FFmpeg> => {
       const wasmBlobUrl = createObjectURL(wasmBlob, "FFmpeg-wasm");
 
       // Add timeout to detect hanging with environment-specific timeouts
-      const timeoutDuration = environment.hasSharedArrayBuffer ? 60_000 : 120_000;
+      const timeoutDuration = environment.hasSharedArrayBuffer
+        ? 60_000
+        : 120_000;
 
       try {
         const loadPromise = ffmpeg.load({
@@ -328,7 +349,7 @@ export const initFFmpeg = async (): Promise<FFmpeg> => {
 
         // FFmpeg core fully loaded
         debugLog("[FFmpeg Utils] ✅ FFmpeg core loaded with blob URLs");
-        
+
         // Clean up blob URLs after successful load
         try {
           URL.revokeObjectURL(coreBlobUrl);
@@ -345,10 +366,12 @@ export const initFFmpeg = async (): Promise<FFmpeg> => {
             isElectron: !!(window as any)?.process?.versions?.electron,
             userAgent: navigator.userAgent,
             error:
-              loadError instanceof Error ? loadError.message : String(loadError),
+              loadError instanceof Error
+                ? loadError.message
+                : String(loadError),
           });
         } catch {}
-        
+
         // Clean up blob URLs after failure
         try {
           URL.revokeObjectURL(coreBlobUrl);

@@ -186,7 +186,9 @@ function EditorPage() {
 
   // Debug: Log which layout is being used
   if (import.meta.env.DEV) {
-    console.log(`🎯 Editor using layout: ${activePreset}, resetCounter: ${resetCounter}`);
+    console.log(
+      `🎯 Editor using layout: ${activePreset}, resetCounter: ${resetCounter}`
+    );
   }
 
   usePlaybackControls();

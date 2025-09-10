@@ -43,9 +43,15 @@ import { captureFrameToCanvas, captureWithFallback } from "@/lib/canvas-utils";
 import { useFrameCache } from "@/hooks/use-frame-cache";
 // Import effects utilities
 import { useEffectsStore } from "@/stores/effects-store";
-import { parametersToCSSFilters, mergeEffectParameters } from "@/lib/effects-utils";
+import {
+  parametersToCSSFilters,
+  mergeEffectParameters,
+} from "@/lib/effects-utils";
 // Import interactive element overlay
-import { InteractiveElementOverlay, ElementTransform } from "./interactive-element-overlay";
+import {
+  InteractiveElementOverlay,
+  ElementTransform,
+} from "./interactive-element-overlay";
 import { EFFECTS_ENABLED } from "@/config/features";
 
 interface ActiveElement {
@@ -57,27 +63,27 @@ interface ActiveElement {
 // Hook for effects rendering
 function useEffectsRendering(elementId: string | null, enabled = false) {
   const getElementEffects = useEffectsStore((state) => state.getElementEffects);
-  
+
   const effects = useMemo(() => {
     if (!enabled || !elementId) return [];
     return getElementEffects(elementId);
   }, [enabled, elementId, getElementEffects]);
-  
+
   const filterStyle = useMemo(() => {
     if (!enabled || !effects || effects.length === 0) return "";
-    
+
     try {
       // Filter for enabled effects first
-      const enabledEffects = effects.filter(e => e.enabled);
-      
+      const enabledEffects = effects.filter((e) => e.enabled);
+
       // Guard against zero enabled effects
       if (enabledEffects.length === 0) return "";
-      
+
       // Merge all active effect parameters
       const mergedParams = mergeEffectParameters(
-        ...enabledEffects.map(e => e.parameters)
+        ...enabledEffects.map((e) => e.parameters)
       );
-      
+
       return parametersToCSSFilters(mergedParams);
     } catch (error) {
       // Use a more specific error message without console
@@ -85,17 +91,17 @@ function useEffectsRendering(elementId: string | null, enabled = false) {
       return "";
     }
   }, [enabled, effects]);
-  
+
   // Check if there are any enabled effects, not just any effects
-  const hasEnabledEffects = effects?.some?.(e => e.enabled) ?? false;
-  
+  const hasEnabledEffects = effects?.some?.((e) => e.enabled) ?? false;
+
   return { filterStyle, hasEffects: hasEnabledEffects };
 }
 
 export function PreviewPanel() {
-  const { 
-    tracks, 
-    getTotalDuration, 
+  const {
+    tracks,
+    getTotalDuration,
     updateTextElement,
     updateElementPosition,
     updateElementSize,
@@ -133,9 +139,11 @@ export function PreviewPanel() {
     elementWidth: 0,
     elementHeight: 0,
   });
-  
+
   // State for selected element (for interactive overlay)
-  const [selectedElementId, setSelectedElementId] = useState<string | null>(null);
+  const [selectedElementId, setSelectedElementId] = useState<string | null>(
+    null
+  );
 
   // Frame caching - non-intrusive addition
   const {
@@ -451,34 +459,43 @@ export function PreviewPanel() {
     tracks,
     mediaItems,
   ]);
-  
+
   // Handler for transform updates from interactive overlay
-  const handleTransformUpdate = useCallback((elementId: string, transform: ElementTransform) => {
-    const element = activeElements.find(el => el.element.id === elementId);
-    if (!element) return;
-    
-    // Use generic element update methods that work for all element types
-    // Update position if changed
-    if (transform.x !== undefined || transform.y !== undefined) {
-      updateElementPosition(elementId, { 
-        x: transform.x, 
-        y: transform.y 
-      });
-    }
-    
-    // Update size if changed
-    if (transform.width !== undefined || transform.height !== undefined) {
-      updateElementSize(elementId, { 
-        width: transform.width, 
-        height: transform.height 
-      });
-    }
-    
-    // Update rotation if changed
-    if (transform.rotation !== undefined) {
-      updateElementRotation(elementId, transform.rotation);
-    }
-  }, [activeElements, updateElementPosition, updateElementSize, updateElementRotation, updateTextElement]);
+  const handleTransformUpdate = useCallback(
+    (elementId: string, transform: ElementTransform) => {
+      const element = activeElements.find((el) => el.element.id === elementId);
+      if (!element) return;
+
+      // Use generic element update methods that work for all element types
+      // Update position if changed
+      if (transform.x !== undefined || transform.y !== undefined) {
+        updateElementPosition(elementId, {
+          x: transform.x,
+          y: transform.y,
+        });
+      }
+
+      // Update size if changed
+      if (transform.width !== undefined || transform.height !== undefined) {
+        updateElementSize(elementId, {
+          width: transform.width,
+          height: transform.height,
+        });
+      }
+
+      // Update rotation if changed
+      if (transform.rotation !== undefined) {
+        updateElementRotation(elementId, transform.rotation);
+      }
+    },
+    [
+      activeElements,
+      updateElementPosition,
+      updateElementSize,
+      updateElementRotation,
+      updateTextElement,
+    ]
+  );
 
   // Extract caption segments from active elements
   const captionSegments = useMemo(() => {
@@ -559,7 +576,11 @@ export function PreviewPanel() {
             trimEnd={element.trimEnd}
             clipDuration={element.duration}
             className="object-cover"
-            style={EFFECTS_ENABLED && element.id === currentMediaElement?.element.id ? { filter: filterStyle } : undefined}
+            style={
+              EFFECTS_ENABLED && element.id === currentMediaElement?.element.id
+                ? { filter: filterStyle }
+                : undefined
+            }
           />
         </div>
       );
@@ -606,7 +627,7 @@ export function PreviewPanel() {
           className="absolute flex items-center justify-center cursor-grab"
           onClick={() => setSelectedElementId(element.id)}
           onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
+            if (e.key === "Enter" || e.key === " ") {
               e.preventDefault();
               setSelectedElementId(element.id);
             }
@@ -700,7 +721,12 @@ export function PreviewPanel() {
               trimEnd={element.trimEnd}
               clipDuration={element.duration}
               className="object-cover"
-              style={EFFECTS_ENABLED && element.id === currentMediaElement?.element.id ? { filter: filterStyle } : undefined}
+              style={
+                EFFECTS_ENABLED &&
+                element.id === currentMediaElement?.element.id
+                  ? { filter: filterStyle }
+                  : undefined
+              }
             />
           </div>
         );
@@ -832,18 +858,19 @@ export function PreviewPanel() {
                 isVisible={captionSegments.length > 0}
                 className="absolute inset-0 pointer-events-none"
               />
-              
+
               {/* Interactive element overlays for elements with effects */}
-              {EFFECTS_ENABLED && activeElements.map((elementData) => (
-                <InteractiveElementOverlay
-                  key={elementData.element.id}
-                  element={elementData.element}
-                  isSelected={selectedElementId === elementData.element.id}
-                  canvasSize={canvasSize}
-                  previewDimensions={previewDimensions}
-                  onTransformUpdate={handleTransformUpdate}
-                />
-              ))}
+              {EFFECTS_ENABLED &&
+                activeElements.map((elementData) => (
+                  <InteractiveElementOverlay
+                    key={elementData.element.id}
+                    element={elementData.element}
+                    isSelected={selectedElementId === elementData.element.id}
+                    canvasSize={canvasSize}
+                    previewDimensions={previewDimensions}
+                    onTransformUpdate={handleTransformUpdate}
+                  />
+                ))}
 
               {/* Hidden canvas for frame caching - non-visual */}
               <canvas

@@ -45,7 +45,7 @@ export function ScenesMigrator({ children }: { children: React.ReactNode }) {
         updatedAt: new Date(),
         // Add default canvas size if not present
         canvasSize: project.canvasSize ?? { width: 1920, height: 1080 },
-        canvasMode: project.canvasMode ?? 'preset',
+        canvasMode: project.canvasMode ?? "preset",
       };
 
       // 1) Load legacy timeline data (legacy format)
@@ -75,13 +75,18 @@ export function ScenesMigrator({ children }: { children: React.ReactNode }) {
 
   const checkAndMigrateProjects = useCallback(async () => {
     if (!shouldCheckMigration) return;
-    
+
     try {
       const projects = await storageService.loadAllProjects();
       const legacyProjects: TProject[] = [];
       for (const project of projects) {
-        const hasScenes = Array.isArray(project.scenes) && project.scenes.length > 0 && !!project.currentSceneId;
-        const legacyTimeline = await storageService.loadTimeline({ projectId: project.id });
+        const hasScenes =
+          Array.isArray(project.scenes) &&
+          project.scenes.length > 0 &&
+          !!project.currentSceneId;
+        const legacyTimeline = await storageService.loadTimeline({
+          projectId: project.id,
+        });
         const needsTimelineMigration = !!legacyTimeline?.length;
         if (!hasScenes || needsTimelineMigration) {
           legacyProjects.push(project);

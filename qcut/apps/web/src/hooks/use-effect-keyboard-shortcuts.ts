@@ -7,11 +7,22 @@ import { useTimelineStore } from "@/stores/timeline-store";
 import { toast } from "sonner";
 import { EFFECTS_ENABLED } from "@/config/features";
 import type { EffectParameters } from "@/types/effects";
-import { PARAMETER_RANGES, getParameterRange, type NumericParameterKey } from "@/constants/effect-parameter-ranges";
+import {
+  PARAMETER_RANGES,
+  getParameterRange,
+  type NumericParameterKey,
+} from "@/constants/effect-parameter-ranges";
 
 export const useEffectKeyboardShortcuts = () => {
   const isActive = useRef(true);
-  const { applyEffect, toggleEffect, resetEffectParameters, duplicateEffect, activeEffects, updateEffectParameters } = useEffectsStore();
+  const {
+    applyEffect,
+    toggleEffect,
+    resetEffectParameters,
+    duplicateEffect,
+    activeEffects,
+    updateEffectParameters,
+  } = useEffectsStore();
   const { selectedElements } = useTimelineStore();
 
   // Helper function to get selected element
@@ -36,7 +47,7 @@ export const useEffectKeyboardShortcuts = () => {
           description: "Increase brightness",
           category: "basic",
           icon: "🔆",
-          parameters: { brightness: 20 }
+          parameters: { brightness: 20 },
         });
         toast.success("Brightness effect applied");
       }
@@ -56,7 +67,7 @@ export const useEffectKeyboardShortcuts = () => {
           description: "Increase contrast",
           category: "basic",
           icon: "🎭",
-          parameters: { contrast: 30 }
+          parameters: { contrast: 30 },
         });
         toast.success("Contrast effect applied");
       }
@@ -76,7 +87,7 @@ export const useEffectKeyboardShortcuts = () => {
           description: "Boost color saturation",
           category: "color",
           icon: "🎨",
-          parameters: { saturation: 30 }
+          parameters: { saturation: 30 },
         });
         toast.success("Saturation effect applied");
       }
@@ -96,7 +107,7 @@ export const useEffectKeyboardShortcuts = () => {
           description: "Apply soft blur effect",
           category: "basic",
           icon: "🌫️",
-          parameters: { blur: 3 }
+          parameters: { blur: 3 },
         });
         toast.success("Blur effect applied");
       }
@@ -166,22 +177,26 @@ export const useEffectKeyboardShortcuts = () => {
         const effects = activeEffects.get(elementId);
         if (effects && effects.length > 0) {
           const effect = effects[0];
-          
+
           // Find first numeric parameter
-          const paramKeys = Object.keys(effect.parameters) as Array<keyof EffectParameters>;
-          const firstNumericParam = paramKeys.find(key => typeof effect.parameters[key] === 'number');
-          
+          const paramKeys = Object.keys(effect.parameters) as Array<
+            keyof EffectParameters
+          >;
+          const firstNumericParam = paramKeys.find(
+            (key) => typeof effect.parameters[key] === "number"
+          );
+
           if (firstNumericParam) {
             const currentValue = effect.parameters[firstNumericParam] as number;
             const range = getParameterRange(firstNumericParam);
             const newValue = Math.min(range.max, currentValue + range.step);
-            
-            updateEffectParameters(
-              elementId,
-              effect.id,
-              { [firstNumericParam]: newValue } as Partial<EffectParameters>
+
+            updateEffectParameters(elementId, effect.id, {
+              [firstNumericParam]: newValue,
+            } as Partial<EffectParameters>);
+            toast.success(
+              `${String(firstNumericParam)} increased to ${newValue}`
             );
-            toast.success(`${String(firstNumericParam)} increased to ${newValue}`);
           }
         }
       }
@@ -199,22 +214,26 @@ export const useEffectKeyboardShortcuts = () => {
         const effects = activeEffects.get(elementId);
         if (effects && effects.length > 0) {
           const effect = effects[0];
-          
+
           // Find first numeric parameter
-          const paramKeys = Object.keys(effect.parameters) as Array<keyof EffectParameters>;
-          const firstNumericParam = paramKeys.find(key => typeof effect.parameters[key] === 'number');
-          
+          const paramKeys = Object.keys(effect.parameters) as Array<
+            keyof EffectParameters
+          >;
+          const firstNumericParam = paramKeys.find(
+            (key) => typeof effect.parameters[key] === "number"
+          );
+
           if (firstNumericParam) {
             const currentValue = effect.parameters[firstNumericParam] as number;
             const range = getParameterRange(firstNumericParam);
             const newValue = Math.max(range.min, currentValue - range.step);
-            
-            updateEffectParameters(
-              elementId,
-              effect.id,
-              { [firstNumericParam]: newValue } as Partial<EffectParameters>
+
+            updateEffectParameters(elementId, effect.id, {
+              [firstNumericParam]: newValue,
+            } as Partial<EffectParameters>);
+            toast.success(
+              `${String(firstNumericParam)} decreased to ${newValue}`
             );
-            toast.success(`${String(firstNumericParam)} decreased to ${newValue}`);
           }
         }
       }

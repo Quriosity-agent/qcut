@@ -900,7 +900,9 @@ export function Timeline() {
                     Math.min(
                       800,
                       getTotalTracksHeight(tracks) +
-                        (EFFECTS_ENABLED && tracks.length > 0 ? TIMELINE_CONSTANTS.TRACK_HEIGHT : 0)
+                        (EFFECTS_ENABLED && tracks.length > 0
+                          ? TIMELINE_CONSTANTS.TRACK_HEIGHT
+                          : 0)
                     )
                   )}px`,
                   width: `${dynamicTimelineWidth}px`,
@@ -988,7 +990,9 @@ export function Timeline() {
                       >
                         <EffectsTimeline
                           tracks={tracks}
-                          pixelsPerSecond={TIMELINE_CONSTANTS.PIXELS_PER_SECOND * zoomLevel}
+                          pixelsPerSecond={
+                            TIMELINE_CONSTANTS.PIXELS_PER_SECOND * zoomLevel
+                          }
                         />
                       </div>
                     )}
@@ -1247,7 +1251,7 @@ function TimelineToolbar({
           >
             {currentTime.toFixed(1)}s / {duration.toFixed(1)}s
           </div>
-          
+
           {/* Scenes Button */}
           {scenes.length > 0 && (
             <>
@@ -1260,7 +1264,8 @@ function TimelineToolbar({
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent>
-                    Scenes ({scenes.length}) - {currentScene?.name || 'No scene'}
+                    Scenes ({scenes.length}) -{" "}
+                    {currentScene?.name || "No scene"}
                   </TooltipContent>
                 </Tooltip>
               </ScenesView>
@@ -1385,7 +1390,9 @@ function TimelineToolbar({
           <Tooltip>
             <TooltipTrigger asChild>
               <SplitButton>
-                <SplitButtonLeft disabled>{activeProject?.name || "Main scene"}</SplitButtonLeft>
+                <SplitButtonLeft disabled>
+                  {activeProject?.name || "Main scene"}
+                </SplitButtonLeft>
                 <SplitButtonSeparator />
                 <SplitButtonRight
                   type="button"
@@ -1397,7 +1404,8 @@ function TimelineToolbar({
               </SplitButton>
             </TooltipTrigger>
             <TooltipContent>
-              Scene: {activeProject?.name || "Main scene"} • Click layers to manage scenes
+              Scene: {activeProject?.name || "Main scene"} • Click layers to
+              manage scenes
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>

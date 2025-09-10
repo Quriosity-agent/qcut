@@ -116,7 +116,7 @@ class StorageService {
   async saveProject({ project }: { project: TProject }): Promise<void> {
     // Ensure storage is initialized
     await this.initializeStorage();
-    
+
     // Convert scenes to serializable format
     const serializedScenes: SerializedScene[] = project.scenes.map((scene) => ({
       id: scene.id,
@@ -131,7 +131,9 @@ class StorageService {
       id: project.id,
       name: project.name,
       // Don't save blob URLs as they don't persist across sessions
-      thumbnail: project.thumbnail?.startsWith("blob:") ? "" : project.thumbnail,
+      thumbnail: project.thumbnail?.startsWith("blob:")
+        ? ""
+        : project.thumbnail,
       createdAt: project.createdAt.toISOString(),
       updatedAt: project.updatedAt.toISOString(),
       scenes: serializedScenes,
@@ -154,13 +156,14 @@ class StorageService {
     if (!serializedProject) return null;
 
     // Convert scenes back from serialized format
-    const scenes = serializedProject.scenes?.map((scene) => ({
-      id: scene.id,
-      name: scene.name,
-      isMain: scene.isMain,
-      createdAt: new Date(scene.createdAt),
-      updatedAt: new Date(scene.updatedAt),
-    })) || [];
+    const scenes =
+      serializedProject.scenes?.map((scene) => ({
+        id: scene.id,
+        name: scene.name,
+        isMain: scene.isMain,
+        createdAt: new Date(scene.createdAt),
+        updatedAt: new Date(scene.updatedAt),
+      })) || [];
 
     // Convert back to TProject format
     return {
@@ -170,7 +173,7 @@ class StorageService {
       createdAt: new Date(serializedProject.createdAt),
       updatedAt: new Date(serializedProject.updatedAt),
       scenes,
-      currentSceneId: serializedProject.currentSceneId || (scenes[0]?.id || ''),
+      currentSceneId: serializedProject.currentSceneId || scenes[0]?.id || "",
       backgroundColor: serializedProject.backgroundColor,
       backgroundType: serializedProject.backgroundType,
       blurIntensity: serializedProject.blurIntensity,
@@ -381,7 +384,11 @@ class StorageService {
     return this.loadTimeline({ projectId, sceneId });
   }
 
-  async deleteProjectTimeline({ projectId }: { projectId: string }): Promise<void> {
+  async deleteProjectTimeline({
+    projectId,
+  }: {
+    projectId: string;
+  }): Promise<void> {
     const timelineAdapter = this.getProjectTimelineAdapter({ projectId });
     await timelineAdapter.remove("timeline");
   }
@@ -396,7 +403,10 @@ class StorageService {
     tracks: TimelineTrack[];
     sceneId?: string;
   }): Promise<void> {
-    const timelineAdapter = this.getProjectTimelineAdapter({ projectId, sceneId });
+    const timelineAdapter = this.getProjectTimelineAdapter({
+      projectId,
+      sceneId,
+    });
     const timelineData: TimelineData = {
       tracks,
       lastModified: new Date().toISOString(),
@@ -411,7 +421,10 @@ class StorageService {
     projectId: string;
     sceneId?: string;
   }): Promise<TimelineTrack[] | null> {
-    const timelineAdapter = this.getProjectTimelineAdapter({ projectId, sceneId });
+    const timelineAdapter = this.getProjectTimelineAdapter({
+      projectId,
+      sceneId,
+    });
     const timelineData = await timelineAdapter.get("timeline");
     return timelineData ? timelineData.tracks : null;
   }

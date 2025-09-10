@@ -143,21 +143,24 @@ export function PropertiesPanel() {
   }
 
   // Helper function to render element-specific properties
-  const renderElementProperties = (element: TimelineElement, trackId: string) => {
+  const renderElementProperties = (
+    element: TimelineElement,
+    trackId: string
+  ) => {
     if (element.type === "text") {
       return <TextProperties element={element} trackId={trackId} />;
     }
-    
+
     if (element.type === "media") {
       const mediaItem = mediaItems.find((item) => item.id === element.mediaId);
-      
+
       if (mediaItem?.type === "audio") {
         return <AudioProperties element={element} trackId={trackId} />;
       }
-      
+
       return <MediaProperties element={element} trackId={trackId} />;
     }
-    
+
     return null;
   };
 
@@ -185,8 +188,15 @@ export function PropertiesPanel() {
 
                   return (
                     <div key={elementId}>
-                      {showEffects && <EffectsProperties elementId={element.id} />}
-                      {showTransform && <TransformProperties element={element} trackId={trackId} />}
+                      {showEffects && (
+                        <EffectsProperties elementId={element.id} />
+                      )}
+                      {showTransform && (
+                        <TransformProperties
+                          element={element}
+                          trackId={trackId}
+                        />
+                      )}
                       {renderElementProperties(element, trackId)}
                     </div>
                   );

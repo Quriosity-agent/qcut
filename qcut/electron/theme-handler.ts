@@ -19,23 +19,25 @@ export function setupThemeIPC(): void {
   });
 
   // Set theme (light, dark, or system)
-  ipcMain.handle("theme:set", (
-    event: IpcMainInvokeEvent, 
-    theme: ThemeSource
-  ): ThemeSource => {
-    const validThemes: ThemeSource[] = ["light", "dark", "system"];
-    if (validThemes.includes(theme)) {
-      nativeTheme.themeSource = theme;
-      return theme;
+  ipcMain.handle(
+    "theme:set",
+    (event: IpcMainInvokeEvent, theme: ThemeSource): ThemeSource => {
+      const validThemes: ThemeSource[] = ["light", "dark", "system"];
+      if (validThemes.includes(theme)) {
+        nativeTheme.themeSource = theme;
+        return theme;
+      }
+      throw new Error(
+        `Invalid theme: ${theme}. Must be 'light', 'dark', or 'system'`
+      );
     }
-    throw new Error(
-      `Invalid theme: ${theme}. Must be 'light', 'dark', or 'system'`
-    );
-  });
+  );
 
   // Toggle between light and dark
   ipcMain.handle("theme:toggle", (event: IpcMainInvokeEvent): ThemeSource => {
-    const newTheme: ThemeSource = nativeTheme.shouldUseDarkColors ? "light" : "dark";
+    const newTheme: ThemeSource = nativeTheme.shouldUseDarkColors
+      ? "light"
+      : "dark";
     nativeTheme.themeSource = newTheme;
     return newTheme;
   });

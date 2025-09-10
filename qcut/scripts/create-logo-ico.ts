@@ -15,10 +15,10 @@ interface ResizeOptions {
 
 async function createIcon(): Promise<void> {
   // Determine if we're running from dist or source
-  const isCompiled = __dirname.includes('dist');
-  const rootDir = isCompiled 
-    ? path.join(__dirname, '../../')  // Go up from dist/scripts
-    : path.join(__dirname, '../');     // Go up from scripts
+  const isCompiled = import.meta.dirname.includes("dist");
+  const rootDir = isCompiled
+    ? path.join(__dirname, "../../") // Go up from dist/scripts
+    : path.join(__dirname, "../"); // Go up from scripts
 
   const inputPath: string = path.join(
     rootDir,

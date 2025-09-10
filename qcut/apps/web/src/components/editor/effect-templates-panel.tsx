@@ -64,7 +64,7 @@ export function EffectTemplatesPanel({
 
   const handleApplyTemplate = (template: EffectTemplate) => {
     const effects = applyTemplate(template);
-    
+
     // Apply each effect from the template
     effects.forEach((effect) => {
       const preset = {
@@ -84,7 +84,7 @@ export function EffectTemplatesPanel({
 
   const handleSaveAsTemplate = () => {
     const currentEffects = getElementEffects(elementId);
-    
+
     if (currentEffects.length === 0) {
       toast.error("No effects to save as template");
       return;
@@ -105,7 +105,7 @@ export function EffectTemplatesPanel({
     setIsCreating(false);
     setNewTemplateName("");
     setNewTemplateDescription("");
-    
+
     toast.success(`Saved template: ${template.name}`);
   };
 
@@ -139,7 +139,10 @@ export function EffectTemplatesPanel({
           template.id = crypto.randomUUID(); // Generate new ID
           template.category = "custom";
           const templates = [...customTemplates, template];
-          localStorage.setItem("effect-templates-custom", JSON.stringify(templates));
+          localStorage.setItem(
+            "effect-templates-custom",
+            JSON.stringify(templates)
+          );
           setCustomTemplates(templates);
           toast.success(`Imported template: ${template.name}`);
         } else {

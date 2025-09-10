@@ -48,11 +48,11 @@ export function EffectChainManager({ elementId }: EffectChainManagerProps) {
     }
   };
 
-  const handleMoveEffect = (effectId: string, direction: 'up' | 'down') => {
-    const effectIndex = effects.findIndex(e => e.id === effectId);
+  const handleMoveEffect = (effectId: string, direction: "up" | "down") => {
+    const effectIndex = effects.findIndex((e) => e.id === effectId);
     if (effectIndex === -1) return;
-    
-    const newIndex = direction === 'up' ? effectIndex - 1 : effectIndex + 1;
+
+    const newIndex = direction === "up" ? effectIndex - 1 : effectIndex + 1;
     if (newIndex >= 0 && newIndex < effects.length) {
       moveEffectInChain(elementId, effectId, newIndex);
     }
@@ -80,7 +80,10 @@ export function EffectChainManager({ elementId }: EffectChainManagerProps) {
       {isCreatingChain && (
         <Card className="p-4">
           <div className="space-y-3">
-            <label htmlFor="chainName" className="block text-sm font-medium mb-1">
+            <label
+              htmlFor="chainName"
+              className="block text-sm font-medium mb-1"
+            >
               Chain name
             </label>
             <input
@@ -91,7 +94,7 @@ export function EffectChainManager({ elementId }: EffectChainManagerProps) {
               onChange={(e) => setChainName(e.target.value)}
               className="w-full px-3 py-2 border rounded"
             />
-            
+
             <div className="space-y-2">
               <p className="text-sm text-muted-foreground">Select effects:</p>
               <div className="grid grid-cols-2 gap-2">
@@ -118,7 +121,7 @@ export function EffectChainManager({ elementId }: EffectChainManagerProps) {
                 ))}
               </div>
             </div>
-            
+
             <div className="flex gap-2">
               <Button
                 type="button"
@@ -157,10 +160,17 @@ export function EffectChainManager({ elementId }: EffectChainManagerProps) {
                   <Select
                     value={chain.blendMode || "normal"}
                     onValueChange={(value) =>
-                      updateChainBlendMode(elementId, chain.id, value as "normal" | "overlay" | "multiply" | "screen")
+                      updateChainBlendMode(
+                        elementId,
+                        chain.id,
+                        value as "normal" | "overlay" | "multiply" | "screen"
+                      )
                     }
                   >
-                    <SelectTrigger className="w-[140px]" aria-label="Blend mode">
+                    <SelectTrigger
+                      className="w-[140px]"
+                      aria-label="Blend mode"
+                    >
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -180,20 +190,26 @@ export function EffectChainManager({ elementId }: EffectChainManagerProps) {
                   </Button>
                 </div>
               </div>
-              
+
               <div className="space-y-1">
                 {chain.effects.map((effect, index) => (
                   <div
                     key={effect.id}
                     className="flex items-center justify-between text-sm p-2 bg-muted/50 rounded"
                   >
-                    <span>{index + 1}. {effect.name}</span>
+                    <span>
+                      {index + 1}. {effect.name}
+                    </span>
                     <Button
                       type="button"
                       size="icon"
                       variant="text"
-                      aria-label={effect.enabled ? 'Disable effect' : 'Enable effect'}
-                      onClick={() => toggleEffectInChain(elementId, chain.id, effect.id)}
+                      aria-label={
+                        effect.enabled ? "Disable effect" : "Enable effect"
+                      }
+                      onClick={() =>
+                        toggleEffectInChain(elementId, chain.id, effect.id)
+                      }
                     >
                       {effect.enabled ? (
                         <Eye className="h-3 w-3" />
@@ -226,7 +242,7 @@ export function EffectChainManager({ elementId }: EffectChainManagerProps) {
                       size="icon"
                       variant="text"
                       disabled={index === 0}
-                      onClick={() => handleMoveEffect(effect.id, 'up')}
+                      onClick={() => handleMoveEffect(effect.id, "up")}
                     >
                       <Move className="h-3 w-3 rotate-180" />
                     </Button>
@@ -235,7 +251,7 @@ export function EffectChainManager({ elementId }: EffectChainManagerProps) {
                       size="icon"
                       variant="text"
                       disabled={index === effects.length - 1}
-                      onClick={() => handleMoveEffect(effect.id, 'down')}
+                      onClick={() => handleMoveEffect(effect.id, "down")}
                     >
                       <Move className="h-3 w-3" />
                     </Button>
@@ -244,13 +260,15 @@ export function EffectChainManager({ elementId }: EffectChainManagerProps) {
                     {index + 1}. {effect.name}
                   </span>
                 </div>
-                
+
                 <div className="flex items-center gap-1">
                   <Button
                     type="button"
                     size="icon"
                     variant="text"
-                    aria-label={effect.enabled ? "Disable effect" : "Enable effect"}
+                    aria-label={
+                      effect.enabled ? "Disable effect" : "Enable effect"
+                    }
                     onClick={() => toggleEffect(elementId, effect.id)}
                   >
                     {effect.enabled ? (

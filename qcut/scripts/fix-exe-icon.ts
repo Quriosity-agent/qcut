@@ -11,7 +11,10 @@ const RCEDIT_SHA256 =
 const RCEDIT_URL =
   "https://github.com/electron/rcedit/releases/download/v2.0.0/rcedit-x64.exe";
 
-async function verifyFileHash(filePath: string, expectedHash: string): Promise<boolean> {
+async function verifyFileHash(
+  filePath: string,
+  expectedHash: string
+): Promise<boolean> {
   return new Promise((resolve, reject) => {
     const hash = crypto.createHash("sha256");
     const stream = fs.createReadStream(filePath);
@@ -67,10 +70,10 @@ async function fixExeIcon(): Promise<void> {
   );
 
   // Handle path resolution for both source and compiled contexts
-  const isCompiled = __dirname.includes('dist');
-  const scriptDir = isCompiled 
-    ? path.join(__dirname, '../../scripts')  // Go up from dist/scripts to project root, then to scripts
-    : __dirname;  // Already in scripts directory
+  const isCompiled = import.meta.dirname.includes("dist");
+  const scriptDir = isCompiled
+    ? path.join(__dirname, "../../scripts") // Go up from dist/scripts to project root, then to scripts
+    : __dirname; // Already in scripts directory
 
   // Download rcedit if not available or verify existing one
   const rceditPath = path.join(scriptDir, "rcedit.exe");

@@ -1,11 +1,11 @@
-import { useState } from 'react';
-import type { ReactNode, DragEvent } from 'react';
-import { cn } from '@/lib/utils';
-import { useEffectsStore } from '@/stores/effects-store';
-import { toast } from 'sonner';
-import { EFFECTS_ENABLED } from '@/config/features';
-import type { TimelineElement } from '@/types/timeline';
-import type { EffectPreset } from '@/types/effects';
+import { useState } from "react";
+import type { ReactNode, DragEvent } from "react";
+import { cn } from "@/lib/utils";
+import { useEffectsStore } from "@/stores/effects-store";
+import { toast } from "sonner";
+import { EFFECTS_ENABLED } from "@/config/features";
+import type { TimelineElement } from "@/types/timeline";
+import type { EffectPreset } from "@/types/effects";
 
 interface TimelineElementDropZoneProps {
   element: TimelineElement;
@@ -13,10 +13,10 @@ interface TimelineElementDropZoneProps {
   className?: string;
 }
 
-export function TimelineElementDropZone({ 
-  element, 
-  children, 
-  className 
+export function TimelineElementDropZone({
+  element,
+  children,
+  className,
 }: TimelineElementDropZoneProps) {
   const [isDragOver, setIsDragOver] = useState(false);
   const { applyEffect } = useEffectsStore();
@@ -28,11 +28,11 @@ export function TimelineElementDropZone({
   const handleDragOver = (e: DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.stopPropagation();
-    
+
     // Check if it's an effect being dragged
-    const data = e.dataTransfer.types.includes('application/json');
+    const data = e.dataTransfer.types.includes("application/json");
     if (data) {
-      e.dataTransfer.dropEffect = 'copy';
+      e.dataTransfer.dropEffect = "copy";
       setIsDragOver(true);
     }
   };
@@ -40,12 +40,12 @@ export function TimelineElementDropZone({
   const handleDragLeave = (e: DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.stopPropagation();
-    
+
     // Check if we're leaving the element entirely
     const rect = e.currentTarget.getBoundingClientRect();
     const x = e.clientX;
     const y = e.clientY;
-    
+
     if (x < rect.left || x >= rect.right || y < rect.top || y >= rect.bottom) {
       setIsDragOver(false);
     }
@@ -57,31 +57,31 @@ export function TimelineElementDropZone({
     setIsDragOver(false);
 
     try {
-      const data = e.dataTransfer.getData('application/json');
+      const data = e.dataTransfer.getData("application/json");
       if (!data) return;
-      
+
       const parsed = JSON.parse(data);
-      
+
       // Validate the parsed data structure
       if (
-        parsed && 
-        typeof parsed === 'object' &&
-        parsed.type === 'effect' && 
-        parsed.preset && 
-        typeof parsed.preset === 'object' &&
-        typeof parsed.preset.name === 'string' &&
-        typeof parsed.preset.id === 'string' &&
-        typeof parsed.preset.parameters === 'object'
+        parsed &&
+        typeof parsed === "object" &&
+        parsed.type === "effect" &&
+        parsed.preset &&
+        typeof parsed.preset === "object" &&
+        typeof parsed.preset.name === "string" &&
+        typeof parsed.preset.id === "string" &&
+        typeof parsed.preset.parameters === "object"
       ) {
         const preset = parsed.preset as EffectPreset;
         applyEffect(element.id, preset);
         toast.success(`Applied ${preset.name} effect to element`);
       } else {
-        toast.error('Invalid effect data');
+        toast.error("Invalid effect data");
       }
     } catch {
       // Don't use console.error - just show user-facing error
-      toast.error('Failed to apply effect');
+      toast.error("Failed to apply effect");
     }
   };
 
@@ -97,7 +97,7 @@ export function TimelineElementDropZone({
       onDrop={handleDrop}
     >
       {children}
-      
+
       {/* Drop zone overlay */}
       {isDragOver && (
         <div className="absolute inset-0 bg-primary/20 pointer-events-none flex items-center justify-center z-10">

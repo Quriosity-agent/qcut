@@ -56,7 +56,9 @@ class TempManager {
   cleanup(sessionId: string): void {
     // Clean up audio files first
     try {
-      const { cleanupAudioFiles } = require("../dist/electron/audio-temp-handler.js");
+      const {
+        cleanupAudioFiles,
+      } = require("../dist/electron/audio-temp-handler.js");
       cleanupAudioFiles(sessionId);
     } catch (error: any) {
       (logger as Logger).warn(

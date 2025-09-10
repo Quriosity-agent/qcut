@@ -39,7 +39,10 @@ interface EffectManagementProps {
   className?: string;
 }
 
-export function EffectManagement({ elementId, className }: EffectManagementProps) {
+export function EffectManagement({
+  elementId,
+  className,
+}: EffectManagementProps) {
   const {
     getElementEffects,
     updateEffectParameters,
@@ -51,10 +54,14 @@ export function EffectManagement({ elementId, className }: EffectManagementProps
     duplicateEffect,
     resetEffectToDefaults,
   } = useEffectsStore();
-  
+
   const effects = getElementEffects(elementId);
-  const [expandedEffects, setExpandedEffects] = useState<Set<string>>(new Set());
-  const [effectTimeRanges, setEffectTimeRanges] = useState<Map<string, { start: number; end: number }>>(new Map());
+  const [expandedEffects, setExpandedEffects] = useState<Set<string>>(
+    new Set()
+  );
+  const [effectTimeRanges, setEffectTimeRanges] = useState<
+    Map<string, { start: number; end: number }>
+  >(new Map());
 
   const handleToggleEffect = (effectId: string) => {
     toggleEffect(elementId, effectId);
@@ -77,15 +84,21 @@ export function EffectManagement({ elementId, className }: EffectManagementProps
   };
 
   const handleMoveEffect = (effectId: string, direction: "up" | "down") => {
-    const currentIndex = effects.findIndex(e => e.id === effectId);
+    const currentIndex = effects.findIndex((e) => e.id === effectId);
     if (currentIndex === -1) return;
-    
+
     const newIndex = direction === "up" ? currentIndex - 1 : currentIndex + 1;
     if (newIndex < 0 || newIndex >= effects.length) return;
-    
+
     const newOrder = [...effects];
-    [newOrder[currentIndex], newOrder[newIndex]] = [newOrder[newIndex], newOrder[currentIndex]];
-    reorderEffects(elementId, newOrder.map(e => e.id));
+    [newOrder[currentIndex], newOrder[newIndex]] = [
+      newOrder[newIndex],
+      newOrder[currentIndex],
+    ];
+    reorderEffects(
+      elementId,
+      newOrder.map((e) => e.id)
+    );
   };
 
   const handleSetTimeRange = (effectId: string, start: number, end: number) => {
@@ -117,7 +130,9 @@ export function EffectManagement({ elementId, className }: EffectManagementProps
     <div className={cn("space-y-4", className)}>
       {/* Header Actions */}
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-medium">Applied Effects ({effects.length})</h3>
+        <h3 className="text-sm font-medium">
+          Applied Effects ({effects.length})
+        </h3>
         <Button
           type="button"
           variant="text"
@@ -135,21 +150,23 @@ export function EffectManagement({ elementId, className }: EffectManagementProps
         {effects.map((effect, index) => {
           const isExpanded = expandedEffects.has(effect.id);
           const timeRange = effectTimeRanges.get(effect.id);
-          
+
           return (
             <Card key={effect.id} className="overflow-hidden">
               <CardHeader className="p-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-2">
                     {/* Effect Order */}
-                    <span className="text-xs text-muted-foreground">#{index + 1}</span>
-                    
+                    <span className="text-xs text-muted-foreground">
+                      #{index + 1}
+                    </span>
+
                     {/* Effect Icon */}
                     <span className="text-lg">✨</span>
-                    
+
                     {/* Effect Name */}
                     <CardTitle className="text-sm">{effect.name}</CardTitle>
-                    
+
                     {/* Enable/Disable Switch */}
                     <Switch
                       checked={effect.enabled}
@@ -158,7 +175,7 @@ export function EffectManagement({ elementId, className }: EffectManagementProps
                       className="scale-75"
                     />
                   </div>
-                  
+
                   <div className="flex items-center space-x-1">
                     {/* Reorder Buttons */}
                     <TooltipProvider>
@@ -179,7 +196,7 @@ export function EffectManagement({ elementId, className }: EffectManagementProps
                         <TooltipContent>Move Up</TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
-                    
+
                     <TooltipProvider>
                       <Tooltip>
                         <TooltipTrigger asChild>
@@ -198,7 +215,7 @@ export function EffectManagement({ elementId, className }: EffectManagementProps
                         <TooltipContent>Move Down</TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
-                    
+
                     {/* Action Buttons */}
                     <TooltipProvider>
                       <Tooltip>
@@ -217,7 +234,7 @@ export function EffectManagement({ elementId, className }: EffectManagementProps
                         <TooltipContent>Duplicate Effect</TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
-                    
+
                     <TooltipProvider>
                       <Tooltip>
                         <TooltipTrigger asChild>
@@ -235,7 +252,7 @@ export function EffectManagement({ elementId, className }: EffectManagementProps
                         <TooltipContent>Reset to Defaults</TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
-                    
+
                     <TooltipProvider>
                       <Tooltip>
                         <TooltipTrigger asChild>
@@ -253,14 +270,18 @@ export function EffectManagement({ elementId, className }: EffectManagementProps
                         <TooltipContent>Remove Effect</TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
-                    
+
                     {/* Expand/Collapse */}
                     <Button
                       type="button"
                       variant="text"
                       size="icon"
                       className="h-6 w-6"
-                      aria-label={isExpanded ? 'Collapse effect details' : 'Expand effect details'}
+                      aria-label={
+                        isExpanded
+                          ? "Collapse effect details"
+                          : "Expand effect details"
+                      }
                       aria-expanded={isExpanded}
                       aria-controls={`effect-${effect.id}-panel`}
                       onClick={() => toggleExpanded(effect.id)}
@@ -274,9 +295,12 @@ export function EffectManagement({ elementId, className }: EffectManagementProps
                   </div>
                 </div>
               </CardHeader>
-              
+
               {isExpanded && (
-                <CardContent id={`effect-${effect.id}-panel`} className="p-3 pt-0 space-y-3">
+                <CardContent
+                  id={`effect-${effect.id}-panel`}
+                  className="p-3 pt-0 space-y-3"
+                >
                   {/* Parameter Controls */}
                   <div className="space-y-2">
                     {Object.entries(effect.parameters).map(([param, value]) => (
@@ -306,7 +330,7 @@ export function EffectManagement({ elementId, className }: EffectManagementProps
                       </div>
                     ))}
                   </div>
-                  
+
                   {/* Time Range Control (for future keyframe support) */}
                   <div className="border-t pt-3">
                     <div className="flex items-center justify-between mb-2">
@@ -315,7 +339,9 @@ export function EffectManagement({ elementId, className }: EffectManagementProps
                         Time Range
                       </label>
                       <span className="text-xs text-muted-foreground">
-                        {timeRange ? `${timeRange.start}s - ${timeRange.end}s` : "Full Duration"}
+                        {timeRange
+                          ? `${timeRange.start}s - ${timeRange.end}s`
+                          : "Full Duration"}
                       </span>
                     </div>
                     <div className="flex space-x-2">
@@ -353,7 +379,7 @@ export function EffectManagement({ elementId, className }: EffectManagementProps
           );
         })}
       </div>
-      
+
       {/* Layer Mode Indicator */}
       <div className="flex items-center space-x-2 p-2 bg-muted rounded text-xs">
         <Layers className="h-3 w-3" />

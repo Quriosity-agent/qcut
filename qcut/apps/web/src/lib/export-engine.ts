@@ -16,7 +16,11 @@ import { renderStickersToCanvas } from "@/lib/stickers/sticker-export-helper";
 import { useStickersOverlayStore } from "@/stores/stickers-overlay-store";
 import { useMediaStore } from "@/stores/media-store";
 import { useEffectsStore } from "@/stores/effects-store";
-import { applyEffectsToCanvas, resetCanvasFilters, mergeEffectParameters } from "@/lib/effects-utils";
+import {
+  applyEffectsToCanvas,
+  resetCanvasFilters,
+  mergeEffectParameters,
+} from "@/lib/effects-utils";
 import { applyAdvancedCanvasEffects } from "@/lib/effects-canvas-advanced";
 import { EFFECTS_ENABLED } from "@/config/features";
 
@@ -245,27 +249,29 @@ export class ExportEngine {
           // Apply effects if enabled
           if (EFFECTS_ENABLED) {
             try {
-              const effects = useEffectsStore.getState().getElementEffects(element.id);
-              const enabledEffects = effects.filter(e => e.enabled);
-              
+              const effects = useEffectsStore
+                .getState()
+                .getElementEffects(element.id);
+              const enabledEffects = effects.filter((e) => e.enabled);
+
               if (enabledEffects.length > 0) {
                 // Save context state before applying effects
                 this.ctx.save();
-                
+
                 // Merge all active effect parameters
                 const mergedParams = mergeEffectParameters(
-                  ...enabledEffects.map(e => e.parameters)
+                  ...enabledEffects.map((e) => e.parameters)
                 );
-                
+
                 // Apply CSS-compatible effects to canvas context
                 applyEffectsToCanvas(this.ctx, mergedParams);
-                
+
                 // Draw image with effects applied
                 this.ctx.drawImage(img, x, y, width, height);
-                
+
                 // Apply advanced canvas-only effects
                 applyAdvancedCanvasEffects(this.ctx, mergedParams);
-                
+
                 // Restore context state
                 this.ctx.restore();
               } else {
@@ -404,32 +410,34 @@ export class ExportEngine {
       // Draw video frame to canvas with effects if enabled
       if (EFFECTS_ENABLED) {
         try {
-          const effects = useEffectsStore.getState().getElementEffects(element.id);
+          const effects = useEffectsStore
+            .getState()
+            .getElementEffects(element.id);
           if (effects && effects.length > 0) {
-            const activeEffects = effects.filter(e => e.enabled);
+            const activeEffects = effects.filter((e) => e.enabled);
             if (activeEffects.length === 0) {
               // No enabled effects - draw normally
               this.ctx.drawImage(video, x, y, width, height);
               return;
             }
-            
+
             // Save context state before applying effects
             this.ctx.save();
-            
+
             // Merge all active effect parameters
             const mergedParams = mergeEffectParameters(
-              ...activeEffects.map(e => e.parameters)
+              ...activeEffects.map((e) => e.parameters)
             );
-            
+
             // Apply CSS-compatible effects to canvas context
             applyEffectsToCanvas(this.ctx, mergedParams);
-            
+
             // Draw video with effects applied
             this.ctx.drawImage(video, x, y, width, height);
-            
+
             // Apply advanced canvas-only effects
             applyAdvancedCanvasEffects(this.ctx, mergedParams);
-            
+
             // Restore context state
             this.ctx.restore();
           } else {

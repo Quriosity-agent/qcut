@@ -190,7 +190,9 @@ function BackgroundView() {
 
   const handleBlurSelect = useCallback(
     async (blurIntensity: number) => {
-      await updateBackgroundType("blur", { blurIntensity: blurIntensity as BlurIntensity });
+      await updateBackgroundType("blur", {
+        blurIntensity: blurIntensity as BlurIntensity,
+      });
     },
     [updateBackgroundType]
   );

@@ -6,16 +6,19 @@ import { installAllBrowserMocks } from "./mocks/browser-mocks";
 console.log("🔧 Starting comprehensive test setup...");
 
 // 0. VERIFY DOM ENVIRONMENT
-console.log("DOM Check - document exists:", typeof document !== 'undefined');
-console.log("DOM Check - window exists:", typeof window !== 'undefined');
+console.log("DOM Check - document exists:", typeof document !== "undefined");
+console.log("DOM Check - window exists:", typeof window !== "undefined");
 
 // If DOM doesn't exist, this is a fundamental environment issue
-if (typeof document === 'undefined') {
-  console.error("❌ CRITICAL: document is undefined - DOM environment not initialized");
+if (typeof document === "undefined") {
+  console.error(
+    "❌ CRITICAL: document is undefined - DOM environment not initialized"
+  );
   console.log("Environment details:", {
     nodeEnv: process.env.NODE_ENV,
     testEnv: process.env.VITEST_ENVIRONMENT,
-    userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : 'undefined'
+    userAgent:
+      typeof navigator !== "undefined" ? navigator.userAgent : "undefined",
   });
 } else {
   console.log("✅ DOM environment available");
@@ -81,7 +84,7 @@ beforeAll(() => {
   // Suppress console errors in tests
   vi.spyOn(console, "error").mockImplementation(() => {});
   vi.spyOn(console, "warn").mockImplementation(() => {});
-  
+
   console.log("✅ Test environment ready");
 });
 

@@ -22,7 +22,9 @@ export async function captureFrameToCanvas(
       width: options.width,
       height: options.height,
       backgroundColor:
-        options.backgroundColor === 'transparent' ? null : (options.backgroundColor || '#000000'),
+        options.backgroundColor === "transparent"
+          ? null
+          : options.backgroundColor || "#000000",
       scale: 1,
       logging: false,
       useCORS: true,
@@ -32,7 +34,7 @@ export async function captureFrameToCanvas(
       // Important: preserve existing transforms and styles
       onclone: (clonedDoc) => {
         // Remove problematic CSS that uses oklab colors
-        const style = clonedDoc.createElement('style');
+        const style = clonedDoc.createElement("style");
         style.textContent = `
           * { 
             /* Override any oklab colors with fallbacks */
@@ -42,9 +44,11 @@ export async function captureFrameToCanvas(
           }
         `;
         clonedDoc.head.appendChild(style);
-        
+
         // Preserve any dynamic styles
-        const clonedElement = element.id ? clonedDoc.getElementById(element.id) : null;
+        const clonedElement = element.id
+          ? clonedDoc.getElementById(element.id)
+          : null;
         if (clonedElement && element.style) {
           clonedElement.style.cssText = element.style.cssText;
         }
@@ -57,26 +61,26 @@ export async function captureFrameToCanvas(
     return ctx.getImageData(0, 0, options.width, options.height);
   } catch (error) {
     console.error("Failed to capture frame:", error);
-    
+
     // Fallback: Create a simple canvas capture without html2canvas
     try {
-      const fallbackCanvas = document.createElement('canvas');
+      const fallbackCanvas = document.createElement("canvas");
       fallbackCanvas.width = options.width;
       fallbackCanvas.height = options.height;
-      const fallbackCtx = fallbackCanvas.getContext('2d');
-      
+      const fallbackCtx = fallbackCanvas.getContext("2d");
+
       if (fallbackCtx) {
         // Fill with background color
-        fallbackCtx.fillStyle = options.backgroundColor || '#000000';
+        fallbackCtx.fillStyle = options.backgroundColor || "#000000";
         fallbackCtx.fillRect(0, 0, options.width, options.height);
-        
+
         // Try to draw any video elements directly
-        const videos = element.getElementsByTagName('video');
+        const videos = element.getElementsByTagName("video");
         if (videos.length > 0) {
           const video = videos[0];
           const rect = video.getBoundingClientRect();
           const elementRect = element.getBoundingClientRect();
-          
+
           fallbackCtx.drawImage(
             video,
             rect.left - elementRect.left,
@@ -85,13 +89,13 @@ export async function captureFrameToCanvas(
             rect.height
           );
         }
-        
+
         return fallbackCtx.getImageData(0, 0, options.width, options.height);
       }
     } catch (fallbackError) {
       console.error("Fallback capture also failed:", fallbackError);
     }
-    
+
     return null;
   }
 }
@@ -99,8 +103,8 @@ export async function captureFrameToCanvas(
 /**
  * Create an offscreen canvas for better performance
  */
-let offscreenCanvas: OffscreenCanvas | null = null;
-let offscreenContext: OffscreenCanvasRenderingContext2D | null = null;
+const offscreenCanvas: OffscreenCanvas | null = null;
+const offscreenContext: OffscreenCanvasRenderingContext2D | null = null;
 
 export async function captureFrameToOffscreenCanvas(
   element: HTMLElement,

@@ -634,7 +634,7 @@ export class ExportEngine {
       if (!recorder) {
         throw new Error("MediaRecorder not available");
       }
-      
+
       recorder.onstop = () => {
         const blob = new Blob(this.recordedChunks, { type: "video/webm" });
         resolve(blob);

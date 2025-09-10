@@ -22,24 +22,28 @@ export function processEffectChain(
   currentTime?: number
 ): EffectParameters {
   // Filter enabled effects
-  const enabledEffects = effects.filter(effect => effect.enabled);
-  
+  const enabledEffects = effects.filter((effect) => effect.enabled);
+
   if (enabledEffects.length === 0) {
     return {};
   }
-  
+
   // Process effects in order, merging parameters
   const chainedParams = enabledEffects.reduce((acc, effect) => {
     // Apply time-based animations if currentTime is provided
     let effectParams = { ...effect.parameters };
-    
+
     if (currentTime !== undefined && effect.animations) {
-      effectParams = applyAnimationsAtTime(effectParams, effect.animations, currentTime);
+      effectParams = applyAnimationsAtTime(
+        effectParams,
+        effect.animations,
+        currentTime
+      );
     }
-    
+
     return mergeEffectParameters(acc, effectParams);
   }, {} as EffectParameters);
-  
+
   return chainedParams;
 }
 
@@ -52,12 +56,12 @@ function applyAnimationsAtTime(
   time: number
 ): EffectParameters {
   const animatedParams = { ...parameters };
-  
-  animations.forEach(animation => {
+
+  animations.forEach((animation) => {
     const value = interpolateKeyframes(animation.keyframes, time);
     (animatedParams as any)[animation.parameter] = value;
   });
-  
+
   return animatedParams;
 }
 
@@ -67,11 +71,11 @@ function applyAnimationsAtTime(
 function interpolateKeyframes(keyframes: any[], time: number): number {
   if (keyframes.length === 0) return 0;
   if (keyframes.length === 1) return keyframes[0].value;
-  
+
   // Find surrounding keyframes
   let before = keyframes[0];
   let after = keyframes[keyframes.length - 1];
-  
+
   for (let i = 0; i < keyframes.length - 1; i++) {
     if (time >= keyframes[i].time && time <= keyframes[i + 1].time) {
       before = keyframes[i];
@@ -79,10 +83,10 @@ function interpolateKeyframes(keyframes: any[], time: number): number {
       break;
     }
   }
-  
+
   if (time <= before.time) return before.value;
   if (time >= after.time) return after.value;
-  
+
   // Linear interpolation
   const progress = (time - before.time) / (after.time - before.time);
   return before.value + (after.value - before.value) * progress;
@@ -96,12 +100,12 @@ export function layerEffectChains(
   currentTime?: number
 ): EffectParameters {
   if (chains.length === 0) return {};
-  
+
   // Process first chain as base
   const baseParams = processEffectChain(chains[0].effects, currentTime);
-  
+
   if (chains.length === 1) return baseParams;
-  
+
   // Layer additional chains
   return chains.slice(1).reduce((acc, chain) => {
     const chainParams = processEffectChain(chain.effects, currentTime);
@@ -118,60 +122,62 @@ function blendParameters(
   blendMode: string
 ): EffectParameters {
   const blended = { ...base };
-  
+
   switch (blendMode) {
     case "overlay":
       // Overlay blend mode - emphasizes contrast
       for (const key in overlay) {
         const baseValue = (base as any)[key] || 0;
         const overlayValue = (overlay as any)[key] || 0;
-        
+
         if (typeof baseValue === "number" && typeof overlayValue === "number") {
           if (baseValue < 50) {
-            (blended as any)[key] = 2 * baseValue * overlayValue / 100;
+            (blended as any)[key] = (2 * baseValue * overlayValue) / 100;
           } else {
-            (blended as any)[key] = 100 - 2 * (100 - baseValue) * (100 - overlayValue) / 100;
+            (blended as any)[key] =
+              100 - (2 * (100 - baseValue) * (100 - overlayValue)) / 100;
           }
         }
       }
       break;
-      
+
     case "multiply":
       // Multiply blend mode - darkens
       for (const key in overlay) {
         const baseValue = (base as any)[key] || 0;
         const overlayValue = (overlay as any)[key] || 0;
-        
+
         if (typeof baseValue === "number" && typeof overlayValue === "number") {
           (blended as any)[key] = (baseValue * overlayValue) / 100;
         }
       }
       break;
-      
+
     case "screen":
       // Screen blend mode - lightens
       for (const key in overlay) {
         const baseValue = (base as any)[key] || 0;
         const overlayValue = (overlay as any)[key] || 0;
-        
+
         if (typeof baseValue === "number" && typeof overlayValue === "number") {
-          (blended as any)[key] = 100 - ((100 - baseValue) * (100 - overlayValue)) / 100;
+          (blended as any)[key] =
+            100 - ((100 - baseValue) * (100 - overlayValue)) / 100;
         }
       }
       break;
-      
+
     case "normal":
     default:
       // Normal blend - overlay values override base
       Object.assign(blended, overlay);
       break;
   }
-  
+
   // Set blend mode
   if (blendMode !== "normal") {
     blended.blendMode = blendMode as any;
   }
-  
+
   return blended;
 }
 
@@ -184,9 +190,9 @@ export function createEffectChain(
   presets: any[]
 ): EffectChain {
   const effects = effectIds
-    .map(id => presets.find(p => p.id === id))
+    .map((id) => presets.find((p) => p.id === id))
     .filter(Boolean)
-    .map(preset => ({
+    .map((preset) => ({
       id: crypto.randomUUID(),
       name: preset.name,
       effectType: inferEffectType(preset.parameters),
@@ -194,7 +200,7 @@ export function createEffectChain(
       duration: 0,
       enabled: true,
     }));
-  
+
   return {
     id: crypto.randomUUID(),
     name,
@@ -214,10 +220,12 @@ export interface EffectChainValidationResult {
 /**
  * Validate effect chain and return detailed result
  */
-export function validateEffectChain(chain: EffectChain): EffectChainValidationResult {
+export function validateEffectChain(
+  chain: EffectChain
+): EffectChainValidationResult {
   const warnings: string[] = [];
   const errors: string[] = [];
-  
+
   // Check required fields
   if (!chain.id) {
     errors.push("Effect chain is missing an ID");
@@ -228,40 +236,44 @@ export function validateEffectChain(chain: EffectChain): EffectChainValidationRe
   if (!chain.effects) {
     errors.push("Effect chain is missing effects array");
   }
-  
+
   // Return early if basic validation fails
   if (errors.length > 0) {
     return {
       isValid: false,
       warnings,
-      errors
+      errors,
     };
   }
-  
+
   // Check for parameter conflicts
   const parameterUsage = new Map<string, number>();
-  
+
   for (const effect of chain.effects) {
     for (const param in effect.parameters) {
       const count = parameterUsage.get(param) || 0;
       parameterUsage.set(param, count + 1);
-      
+
       // Collect warning if same parameter is modified multiple times
       if (count > 2) {
-        warnings.push(`Parameter "${param}" is modified ${count + 1} times in chain. This may cause unexpected results.`);
+        warnings.push(
+          `Parameter "${param}" is modified ${count + 1} times in chain. This may cause unexpected results.`
+        );
       }
     }
   }
-  
+
   // Check for potential performance issues
   if (chain.effects.length > 10) {
-    warnings.push(`Chain contains ${chain.effects.length} effects. Consider optimizing for performance.`);
+    warnings.push(
+      `Chain contains ${chain.effects.length} effects. Consider optimizing for performance.`
+    );
   }
-  
+
   return {
     isValid: errors.length === 0,
     warnings,
-    errors
+    errors,
   };
 }
 
@@ -279,10 +291,10 @@ export function isEffectChainValid(chain: EffectChain): boolean {
 export function optimizeEffectChain(chain: EffectChain): EffectChain {
   const optimized: EffectInstance[] = [];
   let current: EffectInstance | null = null;
-  
+
   for (const effect of chain.effects) {
     if (!effect.enabled) continue;
-    
+
     if (!current) {
       current = { ...effect };
     } else if (canCombineEffects(current, effect)) {
@@ -297,11 +309,11 @@ export function optimizeEffectChain(chain: EffectChain): EffectChain {
       current = { ...effect };
     }
   }
-  
+
   if (current) {
     optimized.push(current);
   }
-  
+
   return {
     ...chain,
     effects: optimized,
@@ -315,12 +327,12 @@ function canCombineEffects(a: EffectInstance, b: EffectInstance): boolean {
   // Can combine if they modify different parameters
   const aParams = new Set(Object.keys(a.parameters));
   const bParams = new Set(Object.keys(b.parameters));
-  
+
   for (const param of bParams) {
     if (aParams.has(param)) {
       return false; // Overlapping parameters, can't combine
     }
   }
-  
+
   return true;
 }

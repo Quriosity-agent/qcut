@@ -30,7 +30,7 @@ function getTransformProperties(element: TimelineElement) {
       rotation: element.rotation,
     };
   }
-  
+
   // Other elements may have optional transform properties
   return {
     x: element.x ?? 0,
@@ -41,20 +41,25 @@ function getTransformProperties(element: TimelineElement) {
   };
 }
 
-export function TransformProperties({ element, trackId }: TransformPropertiesProps) {
+export function TransformProperties({
+  element,
+  trackId,
+}: TransformPropertiesProps) {
   const { updateTextElement } = useTimelineStore();
   const { getElementEffects } = useEffectsStore();
-  
+
   // Check if element has effects or is a text element
   const hasEffects = getElementEffects(element.id).length > 0;
   const showTransformControls = hasEffects || element.type === "text";
-  
+
   if (!showTransformControls) {
     return null;
   }
 
   // Initialize transform values using type-safe getter
-  const [transform, setTransform] = useState(() => getTransformProperties(element));
+  const [transform, setTransform] = useState(() =>
+    getTransformProperties(element)
+  );
 
   // Update local state when element changes
   useEffect(() => {
@@ -64,7 +69,7 @@ export function TransformProperties({ element, trackId }: TransformPropertiesPro
   const handleChange = (property: string, value: number) => {
     const newTransform = { ...transform, [property]: value };
     setTransform(newTransform);
-    
+
     // Update element in timeline store
     // Create a partial update object with only the properties that exist on TimelineElement
     const updateData: Partial<TimelineElement> = {
@@ -74,7 +79,7 @@ export function TransformProperties({ element, trackId }: TransformPropertiesPro
       height: newTransform.height,
       rotation: newTransform.rotation,
     };
-    
+
     updateTextElement(trackId, element.id, updateData);
   };
 
@@ -107,7 +112,9 @@ export function TransformProperties({ element, trackId }: TransformPropertiesPro
               <Input
                 type="number"
                 value={transform.x}
-                onChange={(e) => handleChange("x", parseInt(e.target.value, 10) || 0)}
+                onChange={(e) =>
+                  handleChange("x", parseInt(e.target.value, 10) || 0)
+                }
                 className="w-20"
               />
               <Slider
@@ -136,7 +143,9 @@ export function TransformProperties({ element, trackId }: TransformPropertiesPro
               <Input
                 type="number"
                 value={transform.y}
-                onChange={(e) => handleChange("y", parseInt(e.target.value, 10) || 0)}
+                onChange={(e) =>
+                  handleChange("y", parseInt(e.target.value, 10) || 0)
+                }
                 className="w-20"
               />
               <Slider
@@ -167,7 +176,9 @@ export function TransformProperties({ element, trackId }: TransformPropertiesPro
               <Input
                 type="number"
                 value={transform.width}
-                onChange={(e) => handleChange("width", parseInt(e.target.value, 10) || 50)}
+                onChange={(e) =>
+                  handleChange("width", parseInt(e.target.value, 10) || 50)
+                }
                 className="w-20"
               />
               <Slider
@@ -196,7 +207,9 @@ export function TransformProperties({ element, trackId }: TransformPropertiesPro
               <Input
                 type="number"
                 value={transform.height}
-                onChange={(e) => handleChange("height", parseInt(e.target.value, 10) || 50)}
+                onChange={(e) =>
+                  handleChange("height", parseInt(e.target.value, 10) || 50)
+                }
                 className="w-20"
               />
               <Slider
@@ -227,7 +240,9 @@ export function TransformProperties({ element, trackId }: TransformPropertiesPro
               <Input
                 type="number"
                 value={transform.rotation}
-                onChange={(e) => handleChange("rotation", parseInt(e.target.value, 10) || 0)}
+                onChange={(e) =>
+                  handleChange("rotation", parseInt(e.target.value, 10) || 0)
+                }
                 className="w-20"
               />
               <Slider
@@ -257,7 +272,9 @@ export function TransformProperties({ element, trackId }: TransformPropertiesPro
                 type="button"
                 variant="outline"
                 size="sm"
-                onClick={() => handleChange("rotation", transform.rotation - 90)}
+                onClick={() =>
+                  handleChange("rotation", transform.rotation - 90)
+                }
               >
                 -90°
               </Button>
@@ -265,7 +282,9 @@ export function TransformProperties({ element, trackId }: TransformPropertiesPro
                 type="button"
                 variant="outline"
                 size="sm"
-                onClick={() => handleChange("rotation", transform.rotation - 45)}
+                onClick={() =>
+                  handleChange("rotation", transform.rotation - 45)
+                }
               >
                 -45°
               </Button>
@@ -281,7 +300,9 @@ export function TransformProperties({ element, trackId }: TransformPropertiesPro
                 type="button"
                 variant="outline"
                 size="sm"
-                onClick={() => handleChange("rotation", transform.rotation + 45)}
+                onClick={() =>
+                  handleChange("rotation", transform.rotation + 45)
+                }
               >
                 +45°
               </Button>
@@ -289,7 +310,9 @@ export function TransformProperties({ element, trackId }: TransformPropertiesPro
                 type="button"
                 variant="outline"
                 size="sm"
-                onClick={() => handleChange("rotation", transform.rotation + 90)}
+                onClick={() =>
+                  handleChange("rotation", transform.rotation + 90)
+                }
               >
                 +90°
               </Button>
