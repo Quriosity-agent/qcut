@@ -16,7 +16,7 @@ async function verifyFileHash(filePath: string, expectedHash: string): Promise<b
     const hash = crypto.createHash("sha256");
     const stream = fs.createReadStream(filePath);
 
-    stream.on("data", (data: Buffer) => hash.update(data));
+    stream.on("data", (data: string | Buffer) => hash.update(data));
     stream.on("end", () => {
       const fileHash = hash.digest("hex");
       resolve(fileHash.toLowerCase() === expectedHash.toLowerCase());
