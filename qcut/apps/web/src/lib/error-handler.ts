@@ -11,7 +11,7 @@ export const ErrorSeverity = {
   HIGH: 'high',
   CRITICAL: 'critical',
 } as const;
-export type ErrorSeverity = typeof ErrorSeverity[keyof typeof ErrorSeverity];
+export type ErrorSeverity = (typeof ErrorSeverity)[keyof typeof ErrorSeverity];
 
 export const ErrorCategory = {
   NETWORK: 'network',
@@ -25,7 +25,7 @@ export const ErrorCategory = {
   SYSTEM: 'system',
   UNKNOWN: 'unknown',
 } as const;
-export type ErrorCategory = typeof ErrorCategory[keyof typeof ErrorCategory];
+export type ErrorCategory = (typeof ErrorCategory)[keyof typeof ErrorCategory];
 
 export interface ErrorContext {
   operation: string;

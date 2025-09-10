@@ -18,7 +18,9 @@ import { EFFECTS_ENABLED } from "@/config/features";
 const EffectsView = React.lazy(() =>
   EFFECTS_ENABLED
     ? import("./views/effects")
-    : Promise.resolve({ default: () => React.createElement('div', null, 'Effects disabled') })
+    : Promise.resolve({
+        default: () => React.createElement("div", null, "Effects disabled"),
+      })
 );
 
 export function MediaPanel() {

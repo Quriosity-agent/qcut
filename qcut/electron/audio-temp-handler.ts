@@ -25,7 +25,7 @@ interface Logger {
  * @returns Promise resolving to the full path to the saved file
  */
 async function saveAudioToTemp(
-  audioData: Buffer | ArrayBuffer, 
+  audioData: Buffer | ArrayBuffer,
   filename: string
 ): Promise<string> {
   try {
@@ -67,7 +67,7 @@ function cleanupAudioFiles(sessionId: string): void {
     }
 
     const files: string[] = fs.readdirSync(tempDir);
-    let cleaned: number = 0;
+    let cleaned = 0;
 
     files.forEach((file: string) => {
       // Clean files matching this session pattern
@@ -77,7 +77,10 @@ function cleanupAudioFiles(sessionId: string): void {
           fs.unlinkSync(filePath);
           cleaned++;
         } catch (err: any) {
-          (logger as Logger).warn(`[Audio Temp] Failed to delete ${file}:`, err.message);
+          (logger as Logger).warn(
+            `[Audio Temp] Failed to delete ${file}:`,
+            err.message
+          );
         }
       }
     });
@@ -109,7 +112,10 @@ function cleanupAllAudioFiles(): void {
       "[Audio Temp] Cleaned up all audio files and removed temp directory"
     );
   } catch (error: any) {
-    (logger as Logger).error("[Audio Temp] Failed to clean all audio files:", error);
+    (logger as Logger).error(
+      "[Audio Temp] Failed to clean all audio files:",
+      error
+    );
   }
 }
 
@@ -121,9 +127,5 @@ module.exports = {
 };
 
 // ES6 export for TypeScript files
-export {
-  saveAudioToTemp,
-  cleanupAudioFiles,
-  cleanupAllAudioFiles,
-};
+export { saveAudioToTemp, cleanupAudioFiles, cleanupAllAudioFiles };
 export type { Logger };

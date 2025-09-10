@@ -9,7 +9,8 @@ import { cn } from "@/lib/utils";
 import type { EffectCategory, EffectPreset } from "@/types/effects";
 
 export default function EffectsView() {
-  const { presets, selectedCategory, setSelectedCategory, applyEffect } = useEffectsStore();
+  const { presets, selectedCategory, setSelectedCategory, applyEffect } =
+    useEffectsStore();
   const { selectedElements } = useTimelineStore();
   const [searchQuery, setSearchQuery] = useState("");
   const [draggedEffect, setDraggedEffect] = useState<EffectPreset | null>(null);
@@ -25,9 +26,11 @@ export default function EffectsView() {
   ];
 
   const filteredPresets = presets.filter((preset) => {
-    const matchesCategory = selectedCategory === "all" || preset.category === selectedCategory;
-    const matchesSearch = preset.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          preset.description.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesCategory =
+      selectedCategory === "all" || preset.category === selectedCategory;
+    const matchesSearch =
+      preset.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      preset.description.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesCategory && matchesSearch;
   });
 
@@ -44,17 +47,24 @@ export default function EffectsView() {
 
   const handleDragStart = (e: React.DragEvent, preset: EffectPreset) => {
     setDraggedEffect(preset);
-    e.dataTransfer.effectAllowed = 'copy';
-    e.dataTransfer.setData('application/json', JSON.stringify({
-      type: 'effect',
-      preset: preset
-    }));
-    
+    e.dataTransfer.effectAllowed = "copy";
+    e.dataTransfer.setData(
+      "application/json",
+      JSON.stringify({
+        type: "effect",
+        preset,
+      })
+    );
+
     // Add visual feedback
     const dragImage = e.currentTarget.cloneNode(true) as HTMLElement;
-    dragImage.style.opacity = '0.5';
+    dragImage.style.opacity = "0.5";
     document.body.appendChild(dragImage);
-    e.dataTransfer.setDragImage(dragImage, e.nativeEvent.offsetX, e.nativeEvent.offsetY);
+    e.dataTransfer.setDragImage(
+      dragImage,
+      e.nativeEvent.offsetX,
+      e.nativeEvent.offsetY
+    );
     setTimeout(() => document.body.removeChild(dragImage), 0);
   };
 
@@ -77,7 +87,12 @@ export default function EffectsView() {
       </div>
 
       {/* Category Tabs */}
-      <Tabs value={selectedCategory} onValueChange={(value) => setSelectedCategory(value as EffectCategory | "all")}>
+      <Tabs
+        value={selectedCategory}
+        onValueChange={(value) =>
+          setSelectedCategory(value as EffectCategory | "all")
+        }
+      >
         <TabsList className="w-full justify-start px-4">
           {categories.map((category) => (
             <TabsTrigger key={category} value={category} className="capitalize">
@@ -86,7 +101,10 @@ export default function EffectsView() {
           ))}
         </TabsList>
 
-        <TabsContent value={selectedCategory} className="flex-1 overflow-y-auto">
+        <TabsContent
+          value={selectedCategory}
+          className="flex-1 overflow-y-auto"
+        >
           {/* Effects Grid */}
           <div className="grid grid-cols-2 gap-2 p-4">
             {filteredPresets.map((preset) => (
@@ -105,7 +123,9 @@ export default function EffectsView() {
                 onDragEnd={handleDragEnd}
                 title={`${preset.name} - Drag to timeline element to apply`}
               >
-                <span className="text-2xl" aria-hidden="true">{preset.icon}</span>
+                <span className="text-2xl" aria-hidden="true">
+                  {preset.icon}
+                </span>
                 <span className="text-xs font-medium">{preset.name}</span>
               </Button>
             ))}

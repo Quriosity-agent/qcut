@@ -13,14 +13,14 @@ export default defineConfig({
     environment: "jsdom",
     environmentOptions: {
       jsdom: {
-        url: "http://localhost:3000"
-      }
+        url: "http://localhost:3000",
+      },
     },
     globalSetup: path.resolve(rootDir, "src/test/global-setup.ts"),
     setupFiles: [
       path.resolve(rootDir, "src/test/preload-polyfills.ts"),
       path.resolve(rootDir, "src/test/setup-radix-patches.ts"),
-      path.resolve(rootDir, "src/test/setup.ts")
+      path.resolve(rootDir, "src/test/setup.ts"),
     ],
     isolate: true,
     pool: "forks",

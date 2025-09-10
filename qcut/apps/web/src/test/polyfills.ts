@@ -8,44 +8,44 @@ const createGetComputedStylePolyfill = () => {
       // Core CSSStyleDeclaration methods
       getPropertyValue: (prop: string) => {
         const mappings: Record<string, string> = {
-          'display': 'block',
-          'visibility': 'visible',
-          'opacity': '1',
-          'transform': 'none',
-          'transition': 'none',
-          'animation': 'none',
-          'position': 'static',
-          'top': 'auto',
-          'left': 'auto',
-          'right': 'auto',
-          'bottom': 'auto',
-          'width': 'auto',
-          'height': 'auto',
-          'margin': '0px',
-          'padding': '0px',
-          'border': '0px',
-          'background': 'transparent',
-          'z-index': 'auto',
-          'overflow': 'visible',
-          'color': 'rgb(0, 0, 0)',
-          'font-size': '16px',
-          'line-height': 'normal'
+          "display": "block",
+          "visibility": "visible",
+          "opacity": "1",
+          "transform": "none",
+          "transition": "none",
+          "animation": "none",
+          "position": "static",
+          "top": "auto",
+          "left": "auto",
+          "right": "auto",
+          "bottom": "auto",
+          "width": "auto",
+          "height": "auto",
+          "margin": "0px",
+          "padding": "0px",
+          "border": "0px",
+          "background": "transparent",
+          "zIndex": "auto",
+          "overflow": "visible",
+          "color": "rgb(0, 0, 0)",
+          "font-size": "16px",
+          "line-height": "normal",
         };
         return mappings[prop] || "";
       },
       setProperty: () => {},
       removeProperty: () => "",
       item: (index: number) => "",
-      
+
       // Required properties
       length: 0,
       parentRule: null,
       cssFloat: "",
       cssText: "",
-      
+
       // Layout properties that Radix UI checks
       display: "block",
-      visibility: "visible", 
+      visibility: "visible",
       opacity: "1",
       transform: "none",
       transition: "none",
@@ -57,18 +57,18 @@ const createGetComputedStylePolyfill = () => {
       bottom: "auto",
       width: "auto",
       height: "auto",
-      zIndex: "auto"
+      zIndex: "auto",
     };
-    
+
     // Make it properly iterable
     Object.defineProperty(styles, Symbol.iterator, {
-      value: function* () {
+      *value() {
         for (let i = 0; i < this.length; i++) {
           yield this.item(i);
         }
-      }
+      },
     });
-    
+
     return styles as CSSStyleDeclaration;
   };
 };
@@ -111,12 +111,12 @@ const setupAdditionalPolyfills = async () => {
   const contexts = [
     globalThis,
     typeof window !== "undefined" ? window : null,
-    typeof global !== "undefined" ? global : null
+    typeof global !== "undefined" ? global : null,
   ].filter(Boolean);
-  
+
   for (const context of contexts) {
-    if (!context || typeof context !== 'object') continue;
-    
+    if (!context || typeof context !== "object") continue;
+
     try {
       // requestAnimationFrame polyfill
       if (!context.requestAnimationFrame) {
@@ -124,13 +124,13 @@ const setupAdditionalPolyfills = async () => {
           return context.setTimeout(callback, 16); // ~60fps
         };
       }
-      
+
       if (!context.cancelAnimationFrame) {
         context.cancelAnimationFrame = (id: number) => {
           context.clearTimeout(id);
         };
       }
-      
+
       // ResizeObserver mock
       if (!context.ResizeObserver) {
         context.ResizeObserver = class MockResizeObserver {
@@ -139,14 +139,14 @@ const setupAdditionalPolyfills = async () => {
           disconnect() {}
         };
       }
-      
+
       // Import and install browser mocks from shared module
-      const { installBrowserMocks } = await import('./mocks/browser-mocks');
+      const { installBrowserMocks } = await import("./mocks/browser-mocks");
       installBrowserMocks(context);
-      
-      console.log(`✓ Applied additional polyfills to context`);
+
+      console.log("✓ Applied additional polyfills to context");
     } catch (error) {
-      console.warn(`Failed to apply additional polyfills:`, error);
+      console.warn("Failed to apply additional polyfills:", error);
     }
   }
 };

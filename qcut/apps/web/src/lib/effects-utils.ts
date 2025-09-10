@@ -120,7 +120,7 @@ export function parametersToCSSFilters(parameters: EffectParameters): string {
   if (parameters.pencilSketch !== undefined) {
     // Pencil sketch - high contrast grayscale
     const strength = parameters.pencilSketch / 100;
-    filters.push(`grayscale(1)`);
+    filters.push("grayscale(1)");
     filters.push(`contrast(${1 + strength * 0.8})`);
     filters.push(`brightness(${1 + strength * 0.1})`);
   }
@@ -132,12 +132,15 @@ export function parametersToCSSFilters(parameters: EffectParameters): string {
   }
 
   if (parameters.fadeOut !== undefined) {
-    const opacity = 1 - (parameters.fadeOut / 100);
+    const opacity = 1 - parameters.fadeOut / 100;
     filters.push(`opacity(${opacity})`);
   }
 
   // Composite effects using blend modes
-  if (parameters.overlay !== undefined && parameters.overlayOpacity !== undefined) {
+  if (
+    parameters.overlay !== undefined &&
+    parameters.overlayOpacity !== undefined
+  ) {
     const opacity = parameters.overlayOpacity / 100;
     filters.push(`opacity(${opacity})`);
   }
@@ -154,7 +157,7 @@ export function applyEffectsToCanvas(
   parameters: EffectParameters
 ): void {
   const filterString = parametersToCSSFilters(parameters);
-  ctx.filter = filterString ? filterString : 'none';
+  ctx.filter = filterString ? filterString : "none";
 }
 
 /**
@@ -167,7 +170,9 @@ export function resetCanvasFilters(ctx: CanvasRenderingContext2D): void {
 /**
  * Validates effect parameters
  */
-export function validateEffectParameters(parameters: EffectParameters): boolean {
+export function validateEffectParameters(
+  parameters: EffectParameters
+): boolean {
   // Check brightness range
   if (parameters.brightness !== undefined) {
     if (parameters.brightness < -100 || parameters.brightness > 100) {
@@ -205,19 +210,19 @@ export function validateEffectParameters(parameters: EffectParameters): boolean 
 
   // Check other percentage-based parameters
   const percentageParams = [
-    'sepia',
-    'grayscale',
-    'invert',
-    'vintage',
-    'dramatic',
-    'warm',
-    'cool',
-    'cinematic',
-    'fadeIn',
-    'fadeOut',
-    'overlayOpacity',
+    "sepia",
+    "grayscale",
+    "invert",
+    "vintage",
+    "dramatic",
+    "warm",
+    "cool",
+    "cinematic",
+    "fadeIn",
+    "fadeOut",
+    "overlayOpacity",
   ] as const;
-  
+
   for (const param of percentageParams) {
     const value = parameters[param as keyof EffectParameters];
     if (value !== undefined && typeof value === "number") {
@@ -232,12 +237,12 @@ export function validateEffectParameters(parameters: EffectParameters): boolean 
 
 /**
  * Merges multiple effect parameters with consistent behavior
- * 
+ *
  * Merging strategy:
  * - Additive parameters (brightness, contrast, saturation, hue): Values are summed
  * - Multiplicative parameters (blur, opacity, scale): Values are multiplied
  * - Override parameters (all others): Last value wins
- * 
+ *
  * @param parameterSets - Array of effect parameters to merge
  * @returns Merged effect parameters
  */
@@ -249,23 +254,25 @@ export function mergeEffectParameters(
   // Define merging strategies for different parameter types
   const additiveParams = ["brightness", "contrast", "saturation", "hue"];
   const multiplicativeParams = ["blur", "opacity", "scale"];
-  
+
   for (const params of parameterSets) {
     for (const [key, value] of Object.entries(params)) {
       if (value !== undefined) {
         const typedKey = key as keyof EffectParameters;
         const currentValue = merged[typedKey];
-        
+
         if (additiveParams.includes(key)) {
           // Additive: sum values (useful for color adjustments)
-          const numericCurrentValue = typeof currentValue === 'number' ? currentValue : 0;
-          const numericValue = typeof value === 'number' ? value : 0;
+          const numericCurrentValue =
+            typeof currentValue === "number" ? currentValue : 0;
+          const numericValue = typeof value === "number" ? value : 0;
           (merged as any)[typedKey] = numericCurrentValue + numericValue;
         } else if (multiplicativeParams.includes(key)) {
           // Multiplicative: multiply values (useful for cumulative effects)
           // Default to 1 for first value to maintain multiplication identity
-          const numericCurrentValue = typeof currentValue === 'number' ? currentValue : 1;
-          const numericValue = typeof value === 'number' ? value : 1;
+          const numericCurrentValue =
+            typeof currentValue === "number" ? currentValue : 1;
+          const numericValue = typeof value === "number" ? value : 1;
           (merged as any)[typedKey] = numericCurrentValue * numericValue;
         } else {
           // Override: last value wins (for discrete/boolean parameters)

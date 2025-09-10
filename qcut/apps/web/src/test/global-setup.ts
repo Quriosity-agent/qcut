@@ -1,14 +1,14 @@
 // Global setup that runs before any test files are loaded
-// This ensures browser APIs are available for all modules
-
-import { installAllBrowserMocks } from './mocks/browser-mocks';
+// Note: This runs in Node context, not in the test environment
+// DOM-related setup should be in setupFiles, not globalSetup
 
 export function setup() {
-  // Install all browser mocks on available global contexts
-  installAllBrowserMocks();
-  console.log('✓ Global setup: Browser mocks installed');
+  console.log("✓ Global setup: Starting test suite");
+  // Global setup runs in Node context, so we can't access DOM/window here
+  // All DOM-related setup should be in the setupFiles instead
 }
 
 export function teardown() {
+  console.log("✓ Global teardown: Test suite complete");
   // Cleanup if needed
 }

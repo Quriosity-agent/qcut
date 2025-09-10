@@ -33,9 +33,7 @@ interface MimeTypeMap {
   [key: string]: string;
 }
 
-interface HandlerFunction {
-  (): void;
-}
+type HandlerFunction = () => void;
 
 // Initialize electron-log early
 let log: any = null;
@@ -235,7 +233,10 @@ function createStaticServer(): http.Server {
 function createWindow(): void {
   // ③ "Replace" rather than "append" CSP - completely override all existing CSP policies
   session.defaultSession.webRequest.onHeadersReceived(
-    (details: OnHeadersReceivedListenerDetails, callback: (response: HeadersReceivedResponse) => void) => {
+    (
+      details: OnHeadersReceivedListenerDetails,
+      callback: (response: HeadersReceivedResponse) => void
+    ) => {
       const responseHeaders = { ...details.responseHeaders };
 
       // Delete all existing CSP-related headers to ensure no conflicts
@@ -344,8 +345,10 @@ app.whenReady().then(() => {
     } else {
       // Handle other resources
       const filePath = path.join(basePath, url);
-      logger.log(`[Protocol] Serving file: ${filePath} (exists: ${fs.existsSync(filePath)})`);
-      
+      logger.log(
+        `[Protocol] Serving file: ${filePath} (exists: ${fs.existsSync(filePath)})`
+      );
+
       if (fs.existsSync(filePath)) {
         callback({ path: filePath });
       } else {
@@ -377,7 +380,10 @@ app.whenReady().then(() => {
   // Add IPC handler for saving audio files for export
   ipcMain.handle(
     "save-audio-for-export",
-    async (event: IpcMainInvokeEvent, { audioData, filename }: { audioData: any; filename: string }) => {
+    async (
+      event: IpcMainInvokeEvent,
+      { audioData, filename }: { audioData: any; filename: string }
+    ) => {
       const { saveAudioToTemp } = require("./audio-temp-handler.js");
       try {
         const filePath = await saveAudioToTemp(audioData, filename);
@@ -429,258 +435,316 @@ app.whenReady().then(() => {
   });
 
   // File operation IPC handlers
-  ipcMain.handle("open-file-dialog", async (): Promise<Electron.OpenDialogReturnValue> => {
-    const result = await dialog.showOpenDialog(mainWindow!, {
-      properties: ["openFile"],
-      filters: [
-        {
-          name: "Video Files",
-          extensions: [
-            "mp4", "webm", "mov", "avi", "mkv", "wmv", "flv", "3gp", "m4v",
-          ],
-        },
-        {
-          name: "Audio Files",
-          extensions: ["mp3", "wav", "aac", "ogg", "flac", "m4a", "wma"],
-        },
-        {
-          name: "Image Files",
-          extensions: ["jpg", "jpeg", "png", "gif", "bmp", "webp", "svg"],
-        },
-        {
-          name: "All Files",
-          extensions: ["*"],
-        },
-      ],
-    });
-    return result;
-  });
-
-  ipcMain.handle("open-multiple-files-dialog", async (): Promise<Electron.OpenDialogReturnValue> => {
-    const result = await dialog.showOpenDialog(mainWindow!, {
-      properties: ["openFile", "multiSelections"],
-      filters: [
-        {
-          name: "Media Files",
-          extensions: [
-            "mp4", "webm", "mov", "avi", "mkv", "mp3", "wav", "jpg", "jpeg", "png", "gif",
-          ],
-        },
-        {
-          name: "All Files",
-          extensions: ["*"],
-        },
-      ],
-    });
-    return result;
-  });
-
-  ipcMain.handle("save-file-dialog", async (
-    event: IpcMainInvokeEvent,
-    defaultFilename?: string,
-    filters?: Electron.FileFilter[]
-  ): Promise<Electron.SaveDialogReturnValue> => {
-    const result = await dialog.showSaveDialog(mainWindow!, {
-      defaultPath: defaultFilename,
-      filters: filters || [
-        {
-          name: "Video Files",
-          extensions: ["mp4"],
-        },
-        {
-          name: "All Files",
-          extensions: ["*"],
-        },
-      ],
-    });
-    return result;
-  });
-
-  ipcMain.handle("read-file", async (event: IpcMainInvokeEvent, filePath: string): Promise<Buffer | null> => {
-    try {
-      return fs.readFileSync(filePath);
-    } catch (error: any) {
-      logger.error("Error reading file:", error);
-      return null;
+  ipcMain.handle(
+    "open-file-dialog",
+    async (): Promise<Electron.OpenDialogReturnValue> => {
+      const result = await dialog.showOpenDialog(mainWindow!, {
+        properties: ["openFile"],
+        filters: [
+          {
+            name: "Video Files",
+            extensions: [
+              "mp4",
+              "webm",
+              "mov",
+              "avi",
+              "mkv",
+              "wmv",
+              "flv",
+              "3gp",
+              "m4v",
+            ],
+          },
+          {
+            name: "Audio Files",
+            extensions: ["mp3", "wav", "aac", "ogg", "flac", "m4a", "wma"],
+          },
+          {
+            name: "Image Files",
+            extensions: ["jpg", "jpeg", "png", "gif", "bmp", "webp", "svg"],
+          },
+          {
+            name: "All Files",
+            extensions: ["*"],
+          },
+        ],
+      });
+      return result;
     }
-  });
+  );
 
-  ipcMain.handle("write-file", async (
-    event: IpcMainInvokeEvent,
-    filePath: string,
-    data: string | Buffer
-  ): Promise<boolean> => {
-    try {
-      fs.writeFileSync(filePath, data);
-      return true;
-    } catch (error: any) {
-      logger.error("Error writing file:", error);
-      return false;
+  ipcMain.handle(
+    "open-multiple-files-dialog",
+    async (): Promise<Electron.OpenDialogReturnValue> => {
+      const result = await dialog.showOpenDialog(mainWindow!, {
+        properties: ["openFile", "multiSelections"],
+        filters: [
+          {
+            name: "Media Files",
+            extensions: [
+              "mp4",
+              "webm",
+              "mov",
+              "avi",
+              "mkv",
+              "mp3",
+              "wav",
+              "jpg",
+              "jpeg",
+              "png",
+              "gif",
+            ],
+          },
+          {
+            name: "All Files",
+            extensions: ["*"],
+          },
+        ],
+      });
+      return result;
     }
-  });
+  );
 
-  ipcMain.handle("file-exists", async (event: IpcMainInvokeEvent, filePath: string): Promise<boolean> => {
-    try {
-      fs.accessSync(filePath, fs.constants.F_OK);
-      return true;
-    } catch (error) {
-      return false;
+  ipcMain.handle(
+    "save-file-dialog",
+    async (
+      event: IpcMainInvokeEvent,
+      defaultFilename?: string,
+      filters?: Electron.FileFilter[]
+    ): Promise<Electron.SaveDialogReturnValue> => {
+      const result = await dialog.showSaveDialog(mainWindow!, {
+        defaultPath: defaultFilename,
+        filters: filters || [
+          {
+            name: "Video Files",
+            extensions: ["mp4"],
+          },
+          {
+            name: "All Files",
+            extensions: ["*"],
+          },
+        ],
+      });
+      return result;
     }
-  });
+  );
 
-  ipcMain.handle("validate-audio-file", async (event: IpcMainInvokeEvent, filePath: string) => {
-    const { spawn } = require("child_process");
+  ipcMain.handle(
+    "read-file",
+    async (
+      event: IpcMainInvokeEvent,
+      filePath: string
+    ): Promise<Buffer | null> => {
+      try {
+        return fs.readFileSync(filePath);
+      } catch (error: any) {
+        logger.error("Error reading file:", error);
+        return null;
+      }
+    }
+  );
 
-    try {
-      // Get ffprobe path (should be in same directory as ffmpeg)
-      const { getFFmpegPath } = require("./ffmpeg-handler.js");
-      const ffmpegPath = getFFmpegPath();
-      const ffmpegDir = path.dirname(ffmpegPath);
-      const ffprobePath = path.join(
-        ffmpegDir,
-        process.platform === "win32" ? "ffprobe.exe" : "ffprobe"
-      );
+  ipcMain.handle(
+    "write-file",
+    async (
+      event: IpcMainInvokeEvent,
+      filePath: string,
+      data: string | Buffer
+    ): Promise<boolean> => {
+      try {
+        fs.writeFileSync(filePath, data);
+        return true;
+      } catch (error: any) {
+        logger.error("Error writing file:", error);
+        return false;
+      }
+    }
+  );
 
-      return new Promise((resolve) => {
-        logger.log(`[Main] Running ffprobe on: ${filePath}`);
-        logger.log(`[Main] ffprobe path: ${ffprobePath}`);
+  ipcMain.handle(
+    "file-exists",
+    async (event: IpcMainInvokeEvent, filePath: string): Promise<boolean> => {
+      try {
+        fs.accessSync(filePath, fs.constants.F_OK);
+        return true;
+      } catch (error) {
+        return false;
+      }
+    }
+  );
 
-        const ffprobe = spawn(
-          ffprobePath,
-          [
-            "-v",
-            "quiet",
-            "-print_format",
-            "json",
-            "-show_format",
-            "-show_streams",
-            filePath,
-          ],
-          { windowsHide: true }
+  ipcMain.handle(
+    "validate-audio-file",
+    async (event: IpcMainInvokeEvent, filePath: string) => {
+      const { spawn } = require("child_process");
+
+      try {
+        // Get ffprobe path (should be in same directory as ffmpeg)
+        const { getFFmpegPath } = require("./ffmpeg-handler.js");
+        const ffmpegPath = getFFmpegPath();
+        const ffmpegDir = path.dirname(ffmpegPath);
+        const ffprobePath = path.join(
+          ffmpegDir,
+          process.platform === "win32" ? "ffprobe.exe" : "ffprobe"
         );
 
-        // Add timeout
-        const timeout = setTimeout(() => {
-          logger.log("[Main] ffprobe timeout, killing process");
-          ffprobe.kill();
-          resolve({
-            valid: false,
-            error: "ffprobe timeout after 10 seconds",
+        return new Promise((resolve) => {
+          logger.log(`[Main] Running ffprobe on: ${filePath}`);
+          logger.log(`[Main] ffprobe path: ${ffprobePath}`);
+
+          const ffprobe = spawn(
+            ffprobePath,
+            [
+              "-v",
+              "quiet",
+              "-print_format",
+              "json",
+              "-show_format",
+              "-show_streams",
+              filePath,
+            ],
+            { windowsHide: true }
+          );
+
+          // Add timeout
+          const timeout = setTimeout(() => {
+            logger.log("[Main] ffprobe timeout, killing process");
+            ffprobe.kill();
+            resolve({
+              valid: false,
+              error: "ffprobe timeout after 10 seconds",
+            });
+          }, 10_000);
+
+          let stdout = "";
+          let stderr = "";
+
+          ffprobe.stdout.on("data", (data: any) => {
+            stdout += data.toString();
           });
-        }, 10_000);
 
-        let stdout = "";
-        let stderr = "";
+          ffprobe.stderr.on("data", (data: any) => {
+            stderr += data.toString();
+          });
 
-        ffprobe.stdout.on("data", (data: any) => {
-          stdout += data.toString();
-        });
+          ffprobe.on("close", (code: number) => {
+            clearTimeout(timeout);
+            logger.log(`[Main] ffprobe finished with code: ${code}`);
+            logger.log(`[Main] ffprobe stdout length: ${stdout.length}`);
+            logger.log(`[Main] ffprobe stderr: ${stderr}`);
 
-        ffprobe.stderr.on("data", (data: any) => {
-          stderr += data.toString();
-        });
+            if (code === 0 && stdout) {
+              try {
+                const info = JSON.parse(stdout);
+                const hasAudio =
+                  info.streams &&
+                  info.streams.some((s: any) => s.codec_type === "audio");
 
-        ffprobe.on("close", (code: number) => {
-          clearTimeout(timeout);
-          logger.log(`[Main] ffprobe finished with code: ${code}`);
-          logger.log(`[Main] ffprobe stdout length: ${stdout.length}`);
-          logger.log(`[Main] ffprobe stderr: ${stderr}`);
-
-          if (code === 0 && stdout) {
-            try {
-              const info = JSON.parse(stdout);
-              const hasAudio =
-                info.streams &&
-                info.streams.some((s: any) => s.codec_type === "audio");
-
-              resolve({
-                valid: true,
-                info,
-                hasAudio,
-                duration: info.format?.duration || 0,
-              });
-            } catch (parseError: any) {
+                resolve({
+                  valid: true,
+                  info,
+                  hasAudio,
+                  duration: info.format?.duration || 0,
+                });
+              } catch (parseError: any) {
+                resolve({
+                  valid: false,
+                  error: `Failed to parse ffprobe output: ${parseError.message}`,
+                  stderr,
+                });
+              }
+            } else {
               resolve({
                 valid: false,
-                error: `Failed to parse ffprobe output: ${parseError.message}`,
+                error: `ffprobe failed with code ${code}`,
                 stderr,
               });
             }
-          } else {
+          });
+
+          ffprobe.on("error", (error: Error) => {
+            clearTimeout(timeout);
+            logger.log(`[Main] ffprobe spawn error: ${error.message}`);
             resolve({
               valid: false,
-              error: `ffprobe failed with code ${code}`,
-              stderr,
+              error: `ffprobe spawn error: ${error.message}`,
             });
-          }
-        });
-
-        ffprobe.on("error", (error: Error) => {
-          clearTimeout(timeout);
-          logger.log(`[Main] ffprobe spawn error: ${error.message}`);
-          resolve({
-            valid: false,
-            error: `ffprobe spawn error: ${error.message}`,
           });
         });
-      });
-    } catch (error: any) {
-      return {
-        valid: false,
-        error: `Validation setup failed: ${error.message}`,
-      };
+      } catch (error: any) {
+        return {
+          valid: false,
+          error: `Validation setup failed: ${error.message}`,
+        };
+      }
     }
-  });
+  );
 
-  ipcMain.handle("get-file-info", async (event: IpcMainInvokeEvent, filePath: string) => {
-    try {
-      const stats = fs.statSync(filePath);
-      return {
-        name: path.basename(filePath),
-        path: filePath,
-        size: stats.size,
-        created: stats.birthtime,
-        modified: stats.mtime,
-        lastModified: stats.mtime,
-        type: path.extname(filePath),
-        isFile: stats.isFile(),
-        isDirectory: stats.isDirectory(),
-      };
-    } catch (error: any) {
-      logger.error("Error getting file info:", error);
-      throw error;
+  ipcMain.handle(
+    "get-file-info",
+    async (event: IpcMainInvokeEvent, filePath: string) => {
+      try {
+        const stats = fs.statSync(filePath);
+        return {
+          name: path.basename(filePath),
+          path: filePath,
+          size: stats.size,
+          created: stats.birthtime,
+          modified: stats.mtime,
+          lastModified: stats.mtime,
+          type: path.extname(filePath),
+          isFile: stats.isFile(),
+          isDirectory: stats.isDirectory(),
+        };
+      } catch (error: any) {
+        logger.error("Error getting file info:", error);
+        throw error;
+      }
     }
-  });
+  );
 
   // Storage IPC handlers with file persistence
-  ipcMain.handle("storage:save", async (event: IpcMainInvokeEvent, key: string, data: any): Promise<void> => {
-    const userDataPath = app.getPath("userData");
-    const filePath = path.join(userDataPath, "projects", `${key}.json`);
-    await fs.promises.mkdir(path.dirname(filePath), { recursive: true });
-    await fs.promises.writeFile(filePath, JSON.stringify(data));
-  });
-
-  ipcMain.handle("storage:load", async (event: IpcMainInvokeEvent, key: string): Promise<any> => {
-    try {
+  ipcMain.handle(
+    "storage:save",
+    async (
+      event: IpcMainInvokeEvent,
+      key: string,
+      data: any
+    ): Promise<void> => {
       const userDataPath = app.getPath("userData");
       const filePath = path.join(userDataPath, "projects", `${key}.json`);
-      const data = await fs.promises.readFile(filePath, "utf8");
-      return JSON.parse(data);
-    } catch (error: any) {
-      if (error.code === "ENOENT") return null;
-      throw error;
+      await fs.promises.mkdir(path.dirname(filePath), { recursive: true });
+      await fs.promises.writeFile(filePath, JSON.stringify(data));
     }
-  });
+  );
 
-  ipcMain.handle("storage:remove", async (event: IpcMainInvokeEvent, key: string): Promise<void> => {
-    try {
-      const userDataPath = app.getPath("userData");
-      const filePath = path.join(userDataPath, "projects", `${key}.json`);
-      await fs.promises.unlink(filePath);
-    } catch (error: any) {
-      if (error.code !== "ENOENT") throw error;
+  ipcMain.handle(
+    "storage:load",
+    async (event: IpcMainInvokeEvent, key: string): Promise<any> => {
+      try {
+        const userDataPath = app.getPath("userData");
+        const filePath = path.join(userDataPath, "projects", `${key}.json`);
+        const data = await fs.promises.readFile(filePath, "utf8");
+        return JSON.parse(data);
+      } catch (error: any) {
+        if (error.code === "ENOENT") return null;
+        throw error;
+      }
     }
-  });
+  );
+
+  ipcMain.handle(
+    "storage:remove",
+    async (event: IpcMainInvokeEvent, key: string): Promise<void> => {
+      try {
+        const userDataPath = app.getPath("userData");
+        const filePath = path.join(userDataPath, "projects", `${key}.json`);
+        await fs.promises.unlink(filePath);
+      } catch (error: any) {
+        if (error.code !== "ENOENT") throw error;
+      }
+    }
+  );
 
   ipcMain.handle("storage:list", async (): Promise<string[]> => {
     try {
@@ -712,29 +776,53 @@ app.whenReady().then(() => {
   });
 
   // FFmpeg resource IPC handlers
-  ipcMain.handle("get-ffmpeg-resource-path", (event: IpcMainInvokeEvent, filename: string): string => {
-    // Try resources/ffmpeg first (production)
-    const resourcesPath = path.join(__dirname, "resources", "ffmpeg", filename);
-    if (fs.existsSync(resourcesPath)) {
-      return resourcesPath;
+  ipcMain.handle(
+    "get-ffmpeg-resource-path",
+    (event: IpcMainInvokeEvent, filename: string): string => {
+      // Try resources/ffmpeg first (production)
+      const resourcesPath = path.join(
+        __dirname,
+        "resources",
+        "ffmpeg",
+        filename
+      );
+      if (fs.existsSync(resourcesPath)) {
+        return resourcesPath;
+      }
+
+      // Fallback to dist directory (development)
+      const distPath = path.join(
+        __dirname,
+        "../../apps/web/dist/ffmpeg",
+        filename
+      );
+      return distPath;
     }
+  );
 
-    // Fallback to dist directory (development)
-    const distPath = path.join(__dirname, "../../apps/web/dist/ffmpeg", filename);
-    return distPath;
-  });
+  ipcMain.handle(
+    "check-ffmpeg-resource",
+    (event: IpcMainInvokeEvent, filename: string): boolean => {
+      // Check resources/ffmpeg first (production)
+      const resourcesPath = path.join(
+        __dirname,
+        "resources",
+        "ffmpeg",
+        filename
+      );
+      if (fs.existsSync(resourcesPath)) {
+        return true;
+      }
 
-  ipcMain.handle("check-ffmpeg-resource", (event: IpcMainInvokeEvent, filename: string): boolean => {
-    // Check resources/ffmpeg first (production)
-    const resourcesPath = path.join(__dirname, "resources", "ffmpeg", filename);
-    if (fs.existsSync(resourcesPath)) {
-      return true;
+      // Check dist directory (development)
+      const distPath = path.join(
+        __dirname,
+        "../../apps/web/dist/ffmpeg",
+        filename
+      );
+      return fs.existsSync(distPath);
     }
-
-    // Check dist directory (development)
-    const distPath = path.join(__dirname, "../../apps/web/dist/ffmpeg", filename);
-    return fs.existsSync(distPath);
-  });
+  );
 
   // IPC handlers for manual update checks
   ipcMain.handle("check-for-updates", async (): Promise<any> => {

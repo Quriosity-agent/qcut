@@ -278,7 +278,7 @@ export const getMediaDuration = (file: File): Promise<number> => {
       console.warn("[getMediaDuration] Timeout loading media:", file.name);
       cleanup();
       reject(new Error("Media loading timeout"));
-    }, 10000);
+    }, 10_000);
 
     element.addEventListener("loadedmetadata", () => {
       clearTimeout(timeoutId);
@@ -288,7 +288,7 @@ export const getMediaDuration = (file: File): Promise<number> => {
         reject(new Error("Invalid media duration"));
         return;
       }
-      
+
       // Delay cleanup to allow other processes to finish using the blob URL
       cleanupTimeout = window.setTimeout(() => {
         cleanup();

@@ -45,7 +45,10 @@ export interface SerializedScene {
 }
 
 /** Project payload for storage (Date -> string, scenes -> SerializedScene[]). */
-export type SerializedProject = Omit<TProject, "createdAt" | "updatedAt" | "scenes"> & {
+export type SerializedProject = Omit<
+  TProject,
+  "createdAt" | "updatedAt" | "scenes"
+> & {
   createdAt: string;
   updatedAt: string;
   scenes: SerializedScene[];

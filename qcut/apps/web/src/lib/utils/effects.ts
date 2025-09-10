@@ -5,71 +5,71 @@ import type { EffectParameters, EffectType } from "@/types/effects";
  */
 const PARAM_TO_TYPE: ReadonlyArray<[keyof EffectParameters, EffectType]> = [
   // Basic effects
-  ['brightness', 'brightness'],
-  ['contrast', 'contrast'],
-  ['saturation', 'saturation'],
-  ['hue', 'hue'],
-  ['gamma', 'gamma'],
-  ['blur', 'blur'],
-  ['blurType', 'blur'],
-  
+  ["brightness", "brightness"],
+  ["contrast", "contrast"],
+  ["saturation", "saturation"],
+  ["hue", "hue"],
+  ["gamma", "gamma"],
+  ["blur", "blur"],
+  ["blurType", "blur"],
+
   // Color effects
-  ['sepia', 'sepia'],
-  ['grayscale', 'grayscale'],
-  ['invert', 'invert'],
-  
+  ["sepia", "sepia"],
+  ["grayscale", "grayscale"],
+  ["invert", "invert"],
+
   // Style effects
-  ['vintage', 'vintage'],
-  ['dramatic', 'dramatic'],
-  ['warm', 'warm'],
-  ['cool', 'cool'],
-  ['cinematic', 'cinematic'],
-  
+  ["vintage", "vintage"],
+  ["dramatic", "dramatic"],
+  ["warm", "warm"],
+  ["cool", "cool"],
+  ["cinematic", "cinematic"],
+
   // Enhancement effects
-  ['vignette', 'vignette'],
-  ['grain', 'grain'],
-  ['sharpen', 'sharpen'],
-  ['emboss', 'emboss'],
-  ['edge', 'edge'],
-  ['pixelate', 'pixelate'],
-  
+  ["vignette", "vignette"],
+  ["grain", "grain"],
+  ["sharpen", "sharpen"],
+  ["emboss", "emboss"],
+  ["edge", "edge"],
+  ["pixelate", "pixelate"],
+
   // Distortion effects
-  ['wave', 'wave'],
-  ['waveFrequency', 'wave'],
-  ['waveAmplitude', 'wave'],
-  ['twist', 'twist'],
-  ['twistAngle', 'twist'],
-  ['bulge', 'bulge'],
-  ['bulgeRadius', 'bulge'],
-  ['fisheye', 'fisheye'],
-  ['fisheyeStrength', 'fisheye'],
-  
+  ["wave", "wave"],
+  ["waveFrequency", "wave"],
+  ["waveAmplitude", "wave"],
+  ["twist", "twist"],
+  ["twistAngle", "twist"],
+  ["bulge", "bulge"],
+  ["bulgeRadius", "bulge"],
+  ["fisheye", "fisheye"],
+  ["fisheyeStrength", "fisheye"],
+
   // Artistic effects
-  ['oilPainting', 'oil-painting'],
-  ['brushSize', 'oil-painting'],
-  ['watercolor', 'watercolor'],
-  ['wetness', 'watercolor'],
-  ['pencilSketch', 'pencil-sketch'],
-  ['strokeWidth', 'pencil-sketch'],
-  ['halftone', 'halftone'],
-  ['dotSize', 'halftone'],
-  
+  ["oilPainting", "oil-painting"],
+  ["brushSize", "oil-painting"],
+  ["watercolor", "watercolor"],
+  ["wetness", "watercolor"],
+  ["pencilSketch", "pencil-sketch"],
+  ["strokeWidth", "pencil-sketch"],
+  ["halftone", "halftone"],
+  ["dotSize", "halftone"],
+
   // Transition effects
-  ['fadeIn', 'fade-in'],
-  ['fadeOut', 'fade-out'],
-  ['dissolve', 'dissolve'],
-  ['dissolveProgress', 'dissolve'],
-  ['wipe', 'wipe'],
-  ['wipeDirection', 'wipe'],
-  ['wipeProgress', 'wipe'],
-  
+  ["fadeIn", "fade-in"],
+  ["fadeOut", "fade-out"],
+  ["dissolve", "dissolve"],
+  ["dissolveProgress", "dissolve"],
+  ["wipe", "wipe"],
+  ["wipeDirection", "wipe"],
+  ["wipeProgress", "wipe"],
+
   // Composite effects
-  ['overlay', 'overlay'],
-  ['overlayOpacity', 'overlay'],
-  ['multiply', 'multiply'],
-  ['screen', 'screen'],
-  ['colorDodge', 'color-dodge'],
-  ['blendMode', 'overlay'],
+  ["overlay", "overlay"],
+  ["overlayOpacity", "overlay"],
+  ["multiply", "multiply"],
+  ["screen", "screen"],
+  ["colorDodge", "color-dodge"],
+  ["blendMode", "overlay"],
 ];
 
 /**
@@ -83,7 +83,7 @@ export function inferEffectType(params: EffectParameters): EffectType {
     }
   }
   // Default fallback if no parameters match
-  return 'brightness';
+  return "brightness";
 }
 
 /**
@@ -91,5 +91,5 @@ export function inferEffectType(params: EffectParameters): EffectType {
  */
 const COPY_SUFFIX_RE = /\s+\(Copy\)$/;
 export function stripCopySuffix(name: string): string {
-  return name.replace(COPY_SUFFIX_RE, '');
+  return name.replace(COPY_SUFFIX_RE, "");
 }

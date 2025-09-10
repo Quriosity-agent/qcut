@@ -186,7 +186,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
 
   createNewProject: async (name: string) => {
     const mainScene = createMainScene();
-    
+
     const newProject: TProject = {
       id: generateUUID(),
       name,
@@ -256,7 +256,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
         // Initialize scenes for the project
         debugLog(`[ProjectStore] Initializing scenes for project: ${id}`);
         await sceneStore.initializeProjectScenes(project);
-        
+
         // Load timeline and stickers in parallel (both may depend on media being loaded)
         await Promise.all([
           timelineStore.loadProjectTimeline({ projectId: id }),

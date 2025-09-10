@@ -53,7 +53,8 @@ export function TimelineCacheIndicator({
 
     for (let i = 0; i <= total; i++) {
       const time = Math.min(i * approxStep, duration);
-      const cached = getRenderStatus(time, tracks, mediaItems, activeProject) === 'cached';
+      const cached =
+        getRenderStatus(time, tracks, mediaItems, activeProject) === "cached";
       if (!current) {
         current = { startTime: time, endTime: time, cached };
       } else if (current.cached === cached) {

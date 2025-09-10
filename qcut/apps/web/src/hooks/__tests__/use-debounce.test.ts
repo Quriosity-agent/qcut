@@ -25,9 +25,12 @@ describe("useDebounce", () => {
     expect(result.current).toBe("initial");
 
     // Wait for debounce to complete - increase timeout
-    await waitFor(() => {
-      expect(result.current).toBe("updated");
-    }, { timeout: 200 });
+    await waitFor(
+      () => {
+        expect(result.current).toBe("updated");
+      },
+      { timeout: 200 }
+    );
   });
 
   it("works with complex objects", async () => {
@@ -46,9 +49,12 @@ describe("useDebounce", () => {
     });
 
     // Wait for debounce
-    await waitFor(() => {
-      expect(result.current).toEqual(updatedObject);
-    }, { timeout: 100 });
+    await waitFor(
+      () => {
+        expect(result.current).toEqual(updatedObject);
+      },
+      { timeout: 100 }
+    );
   });
 
   it("handles delay changes", async () => {
@@ -62,8 +68,11 @@ describe("useDebounce", () => {
     });
 
     // New delay should be respected - increase timeout for safety
-    await waitFor(() => {
-      expect(result.current).toBe("updated");
-    }, { timeout: 100 });
+    await waitFor(
+      () => {
+        expect(result.current).toBe("updated");
+      },
+      { timeout: 100 }
+    );
   });
 });

@@ -1,4 +1,8 @@
-import type { EffectKeyframe, AnimatedParameter, EffectParameters } from "@/types/effects";
+import type {
+  EffectKeyframe,
+  AnimatedParameter,
+  EffectParameters,
+} from "@/types/effects";
 
 /**
  * Easing functions for smooth animations
@@ -17,7 +21,7 @@ const easingFunctions = {
     const cy = 3 * y1;
     const by = 3 * (y2 - y1) - cy;
     const ay = 1 - cy - by;
-    
+
     // Newton-Raphson iteration to find t for given x
     let t2 = t;
     for (let i = 0; i < 4; i++) {
@@ -26,7 +30,7 @@ const easingFunctions = {
       if (Math.abs(x - t) < 0.001) break;
       t2 -= (x - t) / dx;
     }
-    
+
     return ((ay * t2 + by) * t2 + cy) * t2;
   },
 };
@@ -40,27 +44,27 @@ function findSurroundingKeyframes(
 ): [EffectKeyframe | null, EffectKeyframe | null] {
   if (keyframes.length === 0) return [null, null];
   if (keyframes.length === 1) return [keyframes[0], keyframes[0]];
-  
+
   // Sort keyframes by time
   const sorted = [...keyframes].sort((a, b) => a.time - b.time);
-  
+
   // Before first keyframe
   if (time <= sorted[0].time) {
     return [sorted[0], sorted[0]];
   }
-  
+
   // After last keyframe
   if (time >= sorted[sorted.length - 1].time) {
     return [sorted[sorted.length - 1], sorted[sorted.length - 1]];
   }
-  
+
   // Find surrounding keyframes
   for (let i = 0; i < sorted.length - 1; i++) {
     if (time >= sorted[i].time && time <= sorted[i + 1].time) {
       return [sorted[i], sorted[i + 1]];
     }
   }
-  
+
   return [null, null];
 }
 
@@ -73,30 +77,37 @@ export function interpolateKeyframes(
   interpolation: "linear" | "step" | "smooth" = "linear"
 ): number {
   const [kf1, kf2] = findSurroundingKeyframes(keyframes, time);
-  
+
   if (!kf1 || !kf2) return 0;
   if (kf1 === kf2) return kf1.value;
-  
+
   // Step interpolation
   if (interpolation === "step") {
     return kf1.value;
   }
-  
+
   // Calculate progress between keyframes
   const duration = kf2.time - kf1.time;
   if (duration <= 0) return kf2.value; // Guard against zero-duration segments
-  
+
   const elapsed = time - kf1.time;
   let progress = elapsed / duration;
-  
+
   // Apply easing
   const easing = kf1.easing || "linear";
   if (easing === "cubic-bezier" && kf1.controlPoints) {
-    progress = easingFunctions["cubic-bezier"](progress, kf1.controlPoints as [number, number, number, number]);
+    progress = easingFunctions["cubic-bezier"](
+      progress,
+      kf1.controlPoints as [number, number, number, number]
+    );
   } else if (easing in easingFunctions && easing !== "cubic-bezier") {
-    progress = (easingFunctions[easing as keyof typeof easingFunctions] as (t: number) => number)(progress);
+    progress = (
+      easingFunctions[easing as keyof typeof easingFunctions] as (
+        t: number
+      ) => number
+    )(progress);
   }
-  
+
   // Smooth interpolation with cubic hermite spline
   if (interpolation === "smooth") {
     const t = progress;
@@ -106,14 +117,16 @@ export function interpolateKeyframes(
     const h2 = -2 * t3 + 3 * t2;
     const h3 = t3 - 2 * t2 + t;
     const h4 = t3 - t2;
-    
+
     // Estimate tangents (simplified)
     const m1 = 0; // Could be calculated from neighboring keyframes
     const m2 = 0;
-    
-    return h1 * kf1.value + h2 * kf2.value + h3 * m1 * duration + h4 * m2 * duration;
+
+    return (
+      h1 * kf1.value + h2 * kf2.value + h3 * m1 * duration + h4 * m2 * duration
+    );
   }
-  
+
   // Linear interpolation
   return kf1.value + (kf2.value - kf1.value) * progress;
 }
@@ -129,9 +142,9 @@ export function getAnimatedParameters(
   if (!animations || animations.length === 0) {
     return baseParameters;
   }
-  
+
   const animatedParams = { ...baseParameters };
-  
+
   for (const animation of animations) {
     const value = interpolateKeyframes(
       animation.keyframes,
@@ -140,7 +153,7 @@ export function getAnimatedParameters(
     );
     (animatedParams as any)[animation.parameter] = value;
   }
-  
+
   return animatedParams;
 }
 
@@ -154,8 +167,10 @@ export function addKeyframe(
   easing?: EffectKeyframe["easing"]
 ): AnimatedParameter {
   const newKeyframe: EffectKeyframe = { time, value, easing };
-  const keyframes = [...animation.keyframes, newKeyframe].sort((a, b) => a.time - b.time);
-  
+  const keyframes = [...animation.keyframes, newKeyframe].sort(
+    (a, b) => a.time - b.time
+  );
+
   return {
     ...animation,
     keyframes,
@@ -169,8 +184,10 @@ export function removeKeyframe(
   animation: AnimatedParameter,
   time: number
 ): AnimatedParameter {
-  const keyframes = animation.keyframes.filter(kf => Math.abs(kf.time - time) > 0.01);
-  
+  const keyframes = animation.keyframes.filter(
+    (kf) => Math.abs(kf.time - time) > 0.01
+  );
+
   return {
     ...animation,
     keyframes,
@@ -185,10 +202,10 @@ export function updateKeyframe(
   time: number,
   value: number
 ): AnimatedParameter {
-  const keyframes = animation.keyframes.map(kf =>
+  const keyframes = animation.keyframes.map((kf) =>
     Math.abs(kf.time - time) < 0.01 ? { ...kf, value } : kf
   );
-  
+
   return {
     ...animation,
     keyframes,
@@ -222,15 +239,15 @@ export function createTransition(
   parameter: keyof EffectParameters,
   type: "fade-in" | "fade-out" | "pulse" | "bounce",
   duration: number,
-  intensity: number = 100
+  intensity = 100
 ): AnimatedParameter {
   switch (type) {
     case "fade-in":
       return createAnimation(parameter, 0, intensity, duration, "ease-in");
-    
+
     case "fade-out":
       return createAnimation(parameter, intensity, 0, duration, "ease-out");
-    
+
     case "pulse":
       return {
         parameter,
@@ -241,7 +258,7 @@ export function createTransition(
         ],
         interpolation: "smooth",
       };
-    
+
     case "bounce":
       return {
         parameter,
@@ -254,7 +271,7 @@ export function createTransition(
         ],
         interpolation: "linear",
       };
-    
+
     default:
       return createAnimation(parameter, 0, intensity, duration);
   }

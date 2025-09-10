@@ -4,6 +4,7 @@ import { useProjectStore } from "./project-store";
 import { useTimelineStore } from "./timeline-store";
 import { storageService } from "@/lib/storage/storage-service";
 import { generateUUID } from "@/lib/utils";
+import type { SerializedScene } from "@/lib/storage/types";
 
 export function getMainScene({ scenes }: { scenes: Scene[] }): Scene | null {
   return scenes.find((scene) => scene.isMain) || null;
@@ -61,7 +62,10 @@ interface SceneStore {
     currentSceneId?: string;
   }) => Promise<void>;
   clearScenes: () => void;
-  initializeProjectScenes: (project: { scenes: Scene[]; currentSceneId: string }) => Promise<void>;
+  initializeProjectScenes: (project: {
+    scenes: Scene[];
+    currentSceneId: string;
+  }) => Promise<void>;
 }
 
 export const useSceneStore = create<SceneStore>((set, get) => ({
@@ -143,7 +147,7 @@ export const useSceneStore = create<SceneStore>((set, get) => ({
       await storageService.saveProject({ project: updatedProject });
       // TODO: Add scene-specific timeline cleanup when storageService supports it
       // Note: Scene timeline data will remain in storage but won't affect functionality
-      
+
       useProjectStore.setState({ activeProject: updatedProject });
       set({
         scenes: updatedScenes,
@@ -253,11 +257,11 @@ export const useSceneStore = create<SceneStore>((set, get) => ({
           ...scene,
           isMain: scene.isMain || false,
           createdAt:
-            typeof (scene as any).createdAt === 'string'
+            typeof (scene as any).createdAt === "string"
               ? new Date((scene as any).createdAt)
               : scene.createdAt,
           updatedAt:
-            typeof (scene as any).updatedAt === 'string'
+            typeof (scene as any).updatedAt === "string"
               ? new Date((scene as any).updatedAt)
               : scene.updatedAt,
         }));
@@ -283,7 +287,10 @@ export const useSceneStore = create<SceneStore>((set, get) => ({
               },
             });
           } catch (saveError) {
-            console.error("Failed to persist corrected currentSceneId:", saveError);
+            console.error(
+              "Failed to persist corrected currentSceneId:",
+              saveError
+            );
           }
         }
       }
@@ -327,10 +334,7 @@ export const useSceneStore = create<SceneStore>((set, get) => ({
           await storageService.saveProject({ project: updatedProject });
           useProjectStore.setState({ activeProject: updatedProject });
         } catch (error) {
-          console.error(
-            "Failed to save project with main scene:",
-            error
-          );
+          console.error("Failed to save project with main scene:", error);
         }
       }
     }
@@ -343,14 +347,17 @@ export const useSceneStore = create<SceneStore>((set, get) => ({
     });
   },
 
-  initializeProjectScenes: async (project: { scenes: Scene[]; currentSceneId: string }) => {
+  initializeProjectScenes: async (project: {
+    scenes: Scene[];
+    currentSceneId: string;
+  }) => {
     const ensuredScenes = ensureMainScene(project.scenes || []);
-    const currentScene = project.currentSceneId 
+    const currentScene = project.currentSceneId
       ? ensuredScenes.find((s) => s.id === project.currentSceneId)
       : null;
-    
+
     const fallbackScene = getMainScene({ scenes: ensuredScenes });
-    
+
     set({
       scenes: ensuredScenes,
       currentScene: currentScene || fallbackScene,

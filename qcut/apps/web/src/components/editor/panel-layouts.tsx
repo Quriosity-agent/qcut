@@ -34,20 +34,27 @@ export function DefaultLayout({ resetCounter }: LayoutProps) {
   // Normalize panel sizes to ensure they sum to 100%
   const total = toolsPanel + previewPanel + propertiesPanel;
   const normalizationFactor = total !== 0 ? 100 / total : 1;
-  
-  const normalizedTools = Math.round((toolsPanel * normalizationFactor) * 100) / 100;
-  const normalizedPreview = Math.round((previewPanel * normalizationFactor) * 100) / 100;
+
+  const normalizedTools =
+    Math.round(toolsPanel * normalizationFactor * 100) / 100;
+  const normalizedPreview =
+    Math.round(previewPanel * normalizationFactor * 100) / 100;
   // Properties gets the remainder to ensure exact 100%
-  const normalizedProperties = Math.round((100 - normalizedTools - normalizedPreview) * 100) / 100;
+  const normalizedProperties =
+    Math.round((100 - normalizedTools - normalizedPreview) * 100) / 100;
 
   // Debug: Log actual panel sizes from store
   if (import.meta.env.DEV) {
-    console.log(`🔍 DefaultLayout panel sizes: tools=${normalizedTools.toFixed(2)}%, preview=${normalizedPreview.toFixed(2)}%, props=${normalizedProperties.toFixed(2)}%, total=${(normalizedTools + normalizedPreview + normalizedProperties).toFixed(2)}%`);
+    console.log(
+      `🔍 DefaultLayout panel sizes: tools=${normalizedTools.toFixed(2)}%, preview=${normalizedPreview.toFixed(2)}%, props=${normalizedProperties.toFixed(2)}%, total=${(normalizedTools + normalizedPreview + normalizedProperties).toFixed(2)}%`
+    );
   }
 
   // Debug: Log actual defaultSize values being passed to ResizablePanel
   if (import.meta.env.DEV) {
-    console.log(`🔧 DefaultLayout defaultSizes: tools=${normalizedTools}, preview=${normalizedPreview}, props=${normalizedProperties}, main=${mainContent}, timeline=${timeline}`);
+    console.log(
+      `🔧 DefaultLayout defaultSizes: tools=${normalizedTools}, preview=${normalizedPreview}, props=${normalizedProperties}, main=${mainContent}, timeline=${timeline}`
+    );
   }
 
   // Trigger normalization if panels are off
@@ -146,18 +153,24 @@ export function MediaLayout({ resetCounter }: LayoutProps) {
   const rawPreviewRelative = (previewPanel / rightGroupTotal) * 100;
   const rawPropertiesRelative = (propertiesPanel / rightGroupTotal) * 100;
   const totalRaw = rawPreviewRelative + rawPropertiesRelative;
-  
+
   // Normalize to ensure total is 100%
-  const previewPanelRelative = totalRaw > 0 ? (rawPreviewRelative / totalRaw) * 100 : 60;
-  const propertiesPanelRelative = totalRaw > 0 ? (rawPropertiesRelative / totalRaw) * 100 : 40;
-  
+  const previewPanelRelative =
+    totalRaw > 0 ? (rawPreviewRelative / totalRaw) * 100 : 60;
+  const propertiesPanelRelative =
+    totalRaw > 0 ? (rawPropertiesRelative / totalRaw) * 100 : 40;
+
   // Debug: Verify layout normalization fix
   if (import.meta.env.DEV) {
     const total = previewPanelRelative + propertiesPanelRelative;
     if (Math.abs(total - 100) > 0.01) {
-      console.warn(`MediaLayout: Panel sizes don't sum to 100%: ${total.toFixed(2)}%`);
+      console.warn(
+        `MediaLayout: Panel sizes don't sum to 100%: ${total.toFixed(2)}%`
+      );
     } else {
-      console.log(`✅ MediaLayout: Panel sizes normalized correctly: ${total.toFixed(2)}%`);
+      console.log(
+        `✅ MediaLayout: Panel sizes normalized correctly: ${total.toFixed(2)}%`
+      );
     }
   }
 
@@ -267,18 +280,24 @@ export function InspectorLayout({ resetCounter }: LayoutProps) {
   const rawToolsRelative = (toolsPanel / leftGroupTotal) * 100;
   const rawPreviewRelative = (previewPanel / leftGroupTotal) * 100;
   const totalRaw = rawToolsRelative + rawPreviewRelative;
-  
+
   // Normalize to ensure total is 100%
-  const toolsPanelRelative = totalRaw > 0 ? (rawToolsRelative / totalRaw) * 100 : 30;
-  const previewPanelRelative = totalRaw > 0 ? (rawPreviewRelative / totalRaw) * 100 : 70;
-  
+  const toolsPanelRelative =
+    totalRaw > 0 ? (rawToolsRelative / totalRaw) * 100 : 30;
+  const previewPanelRelative =
+    totalRaw > 0 ? (rawPreviewRelative / totalRaw) * 100 : 70;
+
   // Debug: Verify layout normalization fix
   if (import.meta.env.DEV) {
     const total = toolsPanelRelative + previewPanelRelative;
     if (Math.abs(total - 100) > 0.01) {
-      console.warn(`InspectorLayout: Panel sizes don't sum to 100%: ${total.toFixed(2)}%`);
+      console.warn(
+        `InspectorLayout: Panel sizes don't sum to 100%: ${total.toFixed(2)}%`
+      );
     } else {
-      console.log(`✅ InspectorLayout: Panel sizes normalized correctly: ${total.toFixed(2)}%`);
+      console.log(
+        `✅ InspectorLayout: Panel sizes normalized correctly: ${total.toFixed(2)}%`
+      );
     }
   }
 
@@ -370,18 +389,24 @@ export function VerticalPreviewLayout({ resetCounter }: LayoutProps) {
   const rawToolsRelative = (toolsPanel / leftGroupTotal) * 100;
   const rawPropertiesRelative = (propertiesPanel / leftGroupTotal) * 100;
   const totalRaw = rawToolsRelative + rawPropertiesRelative;
-  
+
   // Normalize to ensure total is 100%
-  const toolsPanelRelative = totalRaw > 0 ? (rawToolsRelative / totalRaw) * 100 : 50;
-  const propertiesPanelRelative = totalRaw > 0 ? (rawPropertiesRelative / totalRaw) * 100 : 50;
-  
+  const toolsPanelRelative =
+    totalRaw > 0 ? (rawToolsRelative / totalRaw) * 100 : 50;
+  const propertiesPanelRelative =
+    totalRaw > 0 ? (rawPropertiesRelative / totalRaw) * 100 : 50;
+
   // Debug: Verify layout normalization fix
   if (import.meta.env.DEV) {
     const total = toolsPanelRelative + propertiesPanelRelative;
     if (Math.abs(total - 100) > 0.01) {
-      console.warn(`VerticalPreviewLayout: Panel sizes don't sum to 100%: ${total.toFixed(2)}%`);
+      console.warn(
+        `VerticalPreviewLayout: Panel sizes don't sum to 100%: ${total.toFixed(2)}%`
+      );
     } else {
-      console.log(`✅ VerticalPreviewLayout: Panel sizes normalized correctly: ${total.toFixed(2)}%`);
+      console.log(
+        `✅ VerticalPreviewLayout: Panel sizes normalized correctly: ${total.toFixed(2)}%`
+      );
     }
   }
 

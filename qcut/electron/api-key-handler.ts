@@ -18,9 +18,9 @@ interface EncryptedApiKeyData {
 }
 
 interface ApiKeyHandlers {
-  'api-keys:get': () => Promise<ApiKeys>;
-  'api-keys:set': (keys: ApiKeyData) => Promise<boolean>;
-  'api-keys:clear': () => Promise<boolean>;
+  "api-keys:get": () => Promise<ApiKeys>;
+  "api-keys:set": (keys: ApiKeyData) => Promise<boolean>;
+  "api-keys:clear": () => Promise<boolean>;
 }
 
 /**
@@ -90,53 +90,58 @@ export function setupApiKeyIPC(): void {
   /**
    * Store API keys (encrypted)
    */
-  ipcMain.handle("api-keys:set", async (
-    event: IpcMainInvokeEvent, 
-    keys: ApiKeyData
-  ): Promise<boolean> => {
-    try {
-      const { falApiKey = "", freesoundApiKey = "" } = keys;
+  ipcMain.handle(
+    "api-keys:set",
+    async (event: IpcMainInvokeEvent, keys: ApiKeyData): Promise<boolean> => {
+      try {
+        const { falApiKey = "", freesoundApiKey = "" } = keys;
 
-      const dataToStore: EncryptedApiKeyData = {};
+        const dataToStore: EncryptedApiKeyData = {};
 
-      // Encrypt keys if safeStorage is available, otherwise store as plain text
-      if (safeStorage.isEncryptionAvailable()) {
-        if (falApiKey) {
-          const encryptedFal: Buffer = safeStorage.encryptString(falApiKey);
-          dataToStore.falApiKey = encryptedFal.toString("base64");
+        // Encrypt keys if safeStorage is available, otherwise store as plain text
+        if (safeStorage.isEncryptionAvailable()) {
+          if (falApiKey) {
+            const encryptedFal: Buffer = safeStorage.encryptString(falApiKey);
+            dataToStore.falApiKey = encryptedFal.toString("base64");
+          } else {
+            dataToStore.falApiKey = "";
+          }
+
+          if (freesoundApiKey) {
+            const encryptedFreesound: Buffer =
+              safeStorage.encryptString(freesoundApiKey);
+            dataToStore.freesoundApiKey = encryptedFreesound.toString("base64");
+          } else {
+            dataToStore.freesoundApiKey = "";
+          }
         } else {
-          dataToStore.falApiKey = "";
+          // Fallback to plain text storage if encryption is not available
+          // Encryption not available, storing API keys as plain text
+          dataToStore.falApiKey = falApiKey;
+          dataToStore.freesoundApiKey = freesoundApiKey;
         }
 
-        if (freesoundApiKey) {
-          const encryptedFreesound: Buffer = safeStorage.encryptString(freesoundApiKey);
-          dataToStore.freesoundApiKey = encryptedFreesound.toString("base64");
-        } else {
-          dataToStore.freesoundApiKey = "";
+        // Ensure the directory exists
+        const dir: string = path.dirname(apiKeysFilePath);
+        if (!fs.existsSync(dir)) {
+          fs.mkdirSync(dir, { recursive: true });
         }
-      } else {
-        // Fallback to plain text storage if encryption is not available
-        // Encryption not available, storing API keys as plain text
-        dataToStore.falApiKey = falApiKey;
-        dataToStore.freesoundApiKey = freesoundApiKey;
+
+        // Write encrypted data to file with restrictive permissions
+        fs.writeFileSync(
+          apiKeysFilePath,
+          JSON.stringify(dataToStore, null, 2),
+          { mode: 0o600 }
+        );
+
+        // API keys saved successfully
+        return true;
+      } catch (error: any) {
+        // Failed to save API keys
+        throw new Error(`Failed to save API keys: ${error?.message || error}`);
       }
-
-      // Ensure the directory exists
-      const dir: string = path.dirname(apiKeysFilePath);
-      if (!fs.existsSync(dir)) {
-        fs.mkdirSync(dir, { recursive: true });
-      }
-
-      // Write encrypted data to file
-      fs.writeFileSync(apiKeysFilePath, JSON.stringify(dataToStore, null, 2));
-
-      // API keys saved successfully
-      return true;
-    } catch (error: any) {
-      // Failed to save API keys
-      throw new Error(`Failed to save API keys: ${error?.message || error}`);
     }
-  });
+  );
 
   /**
    * Clear all stored API keys

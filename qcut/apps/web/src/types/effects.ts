@@ -29,7 +29,7 @@ export type EffectType =
   | "twist"
   | "bulge"
   | "fisheye"
-  // Artistic effects  
+  // Artistic effects
   | "oil-painting"
   | "watercolor"
   | "pencil-sketch"
@@ -103,7 +103,7 @@ export interface EffectParameters {
   emboss?: number;
   edge?: number;
   pixelate?: number;
-  
+
   // Distortion effects
   wave?: number;
   waveFrequency?: number;
@@ -116,7 +116,7 @@ export interface EffectParameters {
   fisheyeStrength?: number;
   ripple?: number;
   swirl?: number;
-  
+
   // Artistic effects
   oilPainting?: number;
   brushSize?: number;
@@ -126,7 +126,7 @@ export interface EffectParameters {
   strokeWidth?: number;
   halftone?: number;
   dotSize?: number;
-  
+
   // Transition effects
   fadeIn?: number;
   fadeOut?: number;
@@ -135,14 +135,22 @@ export interface EffectParameters {
   wipe?: number;
   wipeDirection?: "left" | "right" | "up" | "down";
   wipeProgress?: number;
-  
+
   // Composite effects
   overlay?: number;
   overlayOpacity?: number;
   multiply?: number;
   screen?: number;
   colorDodge?: number;
-  blendMode?: "normal" | "multiply" | "screen" | "overlay" | "darken" | "lighten" | "color-dodge" | "color-burn";
+  blendMode?:
+    | "normal"
+    | "multiply"
+    | "screen"
+    | "overlay"
+    | "darken"
+    | "lighten"
+    | "color-dodge"
+    | "color-burn";
 }
 
 // Keyframe support for animations

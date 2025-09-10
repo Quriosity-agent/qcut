@@ -174,7 +174,9 @@ export function MediaView() {
     try {
       // Set the original image in the adjustment store
       const imageUrl =
-        item.url || item.thumbnailUrl || createObjectURL(item.file, "adjustment-original");
+        item.url ||
+        item.thumbnailUrl ||
+        createObjectURL(item.file, "adjustment-original");
       setOriginalImage(item.file, imageUrl);
 
       // Switch to adjustment tab

@@ -62,8 +62,10 @@ interface CancelResult {
 }
 
 interface TranscribeHandlers {
-  'transcribe:audio': (requestData: TranscriptionRequestData) => Promise<TranscriptionResult>;
-  'transcribe:cancel': (id: string) => Promise<CancelResult>;
+  "transcribe:audio": (
+    requestData: TranscriptionRequestData
+  ) => Promise<TranscriptionResult>;
+  "transcribe:cancel": (id: string) => Promise<CancelResult>;
 }
 
 // Try to load electron-log, fallback to no-op logger
@@ -86,42 +88,50 @@ export default function setupTranscribeHandlers(): void {
     ipcMain.removeHandler("transcribe:cancel");
   } catch {}
 
-  ipcMain.handle("transcribe:audio", async (
-    event: IpcMainInvokeEvent, 
-    requestData: TranscriptionRequestData
-  ): Promise<TranscriptionResult> => {
-    const { id } = requestData;
-    if (!id) {
-      return { success: false, error: "Transcription ID is required" };
-    }
+  ipcMain.handle(
+    "transcribe:audio",
+    async (
+      event: IpcMainInvokeEvent,
+      requestData: TranscriptionRequestData
+    ): Promise<TranscriptionResult> => {
+      const { id } = requestData;
+      if (!id) {
+        return { success: false, error: "Transcription ID is required" };
+      }
 
-    // Create AbortController for this transcription
-    const controller: AbortController = new AbortController();
-    controllers.set(id, controller);
+      // Create AbortController for this transcription
+      const controller: AbortController = new AbortController();
+      controllers.set(id, controller);
 
-    try {
-      const result: TranscriptionResult = await handleTranscription({ ...requestData, controller });
-      return { ...result, id };
-    } finally {
-      controllers.delete(id);
+      try {
+        const result: TranscriptionResult = await handleTranscription({
+          ...requestData,
+          controller,
+        });
+        return { ...result, id };
+      } finally {
+        controllers.delete(id);
+      }
     }
-  });
+  );
 
-  ipcMain.handle("transcribe:cancel", async (
-    event: IpcMainInvokeEvent, 
-    id: string
-  ): Promise<CancelResult> => {
-    const controller: AbortController | undefined = controllers.get(id);
-    if (controller) {
-      controller.abort();
-      controllers.delete(id);
-      return { success: true, message: `Transcription ${id} cancelled` };
+  ipcMain.handle(
+    "transcribe:cancel",
+    async (event: IpcMainInvokeEvent, id: string): Promise<CancelResult> => {
+      const controller: AbortController | undefined = controllers.get(id);
+      if (controller) {
+        controller.abort();
+        controllers.delete(id);
+        return { success: true, message: `Transcription ${id} cancelled` };
+      }
+      return { success: false, error: `Transcription ${id} not found` };
     }
-    return { success: false, error: `Transcription ${id} not found` };
-  });
+  );
 }
 
-async function handleTranscription(requestData: TranscriptionRequestData): Promise<TranscriptionResult> {
+async function handleTranscription(
+  requestData: TranscriptionRequestData
+): Promise<TranscriptionResult> {
   try {
     const {
       filename,
@@ -163,14 +173,17 @@ async function handleTranscription(requestData: TranscriptionRequestData): Promi
     log.info("[Transcribe Handler] Calling Modal API...");
 
     // Call Modal transcription service
-    const response: Response = await fetch(process.env.MODAL_TRANSCRIPTION_URL!, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(modalRequestBody),
-      signal: controller?.signal,
-    });
+    const response: Response = await fetch(
+      process.env.MODAL_TRANSCRIPTION_URL!,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(modalRequestBody),
+        signal: controller?.signal,
+      }
+    );
 
     if (!response.ok) {
       const errorText: string = await response.text();
@@ -180,7 +193,7 @@ async function handleTranscription(requestData: TranscriptionRequestData): Promi
         errorText
       );
 
-      let errorMessage: string = "Transcription service unavailable";
+      let errorMessage = "Transcription service unavailable";
       try {
         const errorData: any = JSON.parse(errorText);
         errorMessage = errorData.error || errorMessage;
@@ -234,7 +247,9 @@ async function handleTranscription(requestData: TranscriptionRequestData): Promi
 
 function isTranscriptionConfigured(): ConfigurationCheck {
   const requiredVars: string[] = ["MODAL_TRANSCRIPTION_URL"];
-  const missingVars: string[] = requiredVars.filter((varName: string) => !process.env[varName]);
+  const missingVars: string[] = requiredVars.filter(
+    (varName: string) => !process.env[varName]
+  );
 
   return {
     configured: missingVars.length === 0,
@@ -275,12 +290,12 @@ module.exports = setupTranscribeHandlers;
 
 // ES6 export for TypeScript files
 export { setupTranscribeHandlers };
-export type { 
+export type {
   TranscriptionRequestData,
   TranscriptionSegment,
   TranscriptionResult,
   TranscribeHandlers,
   CancelResult,
   ConfigurationCheck,
-  ValidationResult
+  ValidationResult,
 };

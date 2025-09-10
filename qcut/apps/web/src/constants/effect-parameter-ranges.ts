@@ -10,18 +10,62 @@ export type ParamRange = Readonly<{
 }>;
 
 // Type for numeric parameter keys (excluding string enums like blurType, wipeDirection, blendMode)
-export type NumericParameterKey = 
-  | 'opacity' | 'scale' | 'rotate' | 'skewX' | 'skewY'
-  | 'brightness' | 'contrast' | 'saturation' | 'hue' | 'gamma'
-  | 'blur' | 'sepia' | 'grayscale' | 'invert'
-  | 'vintage' | 'dramatic' | 'warm' | 'cool' | 'cinematic'
-  | 'vignette' | 'grain' | 'sharpen' | 'emboss' | 'edge' | 'pixelate'
-  | 'wave' | 'waveFrequency' | 'waveAmplitude' | 'twist' | 'twistAngle'
-  | 'bulge' | 'bulgeRadius' | 'fisheye' | 'fisheyeStrength' | 'ripple' | 'swirl'
-  | 'oilPainting' | 'brushSize' | 'watercolor' | 'wetness' | 'pencilSketch'
-  | 'strokeWidth' | 'halftone' | 'dotSize'
-  | 'fadeIn' | 'fadeOut' | 'dissolve' | 'dissolveProgress' | 'wipe' | 'wipeProgress'
-  | 'overlay' | 'overlayOpacity' | 'multiply' | 'screen' | 'colorDodge';
+export type NumericParameterKey =
+  | "opacity"
+  | "scale"
+  | "rotate"
+  | "skewX"
+  | "skewY"
+  | "brightness"
+  | "contrast"
+  | "saturation"
+  | "hue"
+  | "gamma"
+  | "blur"
+  | "sepia"
+  | "grayscale"
+  | "invert"
+  | "vintage"
+  | "dramatic"
+  | "warm"
+  | "cool"
+  | "cinematic"
+  | "vignette"
+  | "grain"
+  | "sharpen"
+  | "emboss"
+  | "edge"
+  | "pixelate"
+  | "wave"
+  | "waveFrequency"
+  | "waveAmplitude"
+  | "twist"
+  | "twistAngle"
+  | "bulge"
+  | "bulgeRadius"
+  | "fisheye"
+  | "fisheyeStrength"
+  | "ripple"
+  | "swirl"
+  | "oilPainting"
+  | "brushSize"
+  | "watercolor"
+  | "wetness"
+  | "pencilSketch"
+  | "strokeWidth"
+  | "halftone"
+  | "dotSize"
+  | "fadeIn"
+  | "fadeOut"
+  | "dissolve"
+  | "dissolveProgress"
+  | "wipe"
+  | "wipeProgress"
+  | "overlay"
+  | "overlayOpacity"
+  | "multiply"
+  | "screen"
+  | "colorDodge";
 
 // Note: Enum parameters (blurType, wipeDirection, blendMode) are handled separately
 // as they don't have meaningful numeric ranges for keyboard shortcuts
@@ -32,29 +76,29 @@ export const PARAMETER_RANGES = {
   rotate: { min: -360, max: 360, step: 15 },
   skewX: { min: -45, max: 45, step: 5 },
   skewY: { min: -45, max: 45, step: 5 },
-  
+
   // Basic parameters
   brightness: { min: -100, max: 100, step: 10 },
   contrast: { min: -100, max: 100, step: 10 },
   saturation: { min: -100, max: 200, step: 10 },
   hue: { min: -180, max: 180, step: 1 },
   gamma: { min: 0.1, max: 3, step: 0.1 },
-  
+
   // Blur parameters
   blur: { min: 0, max: 20, step: 1 },
-  
+
   // Color effects
   sepia: { min: 0, max: 100, step: 10 },
   grayscale: { min: 0, max: 100, step: 10 },
   invert: { min: 0, max: 100, step: 10 },
-  
+
   // Style effects
   vintage: { min: 0, max: 100, step: 10 },
   dramatic: { min: 0, max: 100, step: 10 },
   warm: { min: 0, max: 100, step: 10 },
   cool: { min: 0, max: 100, step: 10 },
   cinematic: { min: 0, max: 100, step: 10 },
-  
+
   // Enhancement effects
   vignette: { min: 0, max: 100, step: 10 },
   grain: { min: 0, max: 100, step: 10 },
@@ -62,7 +106,7 @@ export const PARAMETER_RANGES = {
   emboss: { min: 0, max: 100, step: 10 },
   edge: { min: 0, max: 100, step: 10 },
   pixelate: { min: 1, max: 50, step: 5 },
-  
+
   // Distortion effects
   wave: { min: 0, max: 100, step: 10 },
   waveFrequency: { min: 1, max: 20, step: 1 },
@@ -75,7 +119,7 @@ export const PARAMETER_RANGES = {
   fisheyeStrength: { min: 0.1, max: 3, step: 0.1 },
   ripple: { min: 0, max: 100, step: 10 },
   swirl: { min: 0, max: 360, step: 15 },
-  
+
   // Artistic effects
   oilPainting: { min: 0, max: 100, step: 10 },
   brushSize: { min: 1, max: 50, step: 2 },
@@ -85,7 +129,7 @@ export const PARAMETER_RANGES = {
   strokeWidth: { min: 1, max: 20, step: 1 },
   halftone: { min: 0, max: 100, step: 10 },
   dotSize: { min: 1, max: 20, step: 1 },
-  
+
   // Transition effects
   fadeIn: { min: 0, max: 100, step: 10 },
   fadeOut: { min: 0, max: 100, step: 10 },
@@ -93,7 +137,7 @@ export const PARAMETER_RANGES = {
   dissolveProgress: { min: 0, max: 100, step: 10 },
   wipe: { min: 0, max: 100, step: 10 },
   wipeProgress: { min: 0, max: 100, step: 10 },
-  
+
   // Composite effects
   overlay: { min: 0, max: 100, step: 10 },
   overlayOpacity: { min: 0, max: 100, step: 10 },

@@ -17,7 +17,7 @@ class BlobManager {
   constructor() {
     // Auto-cleanup orphaned blobs every 5 minutes
     // Only set up cleanup if we have a window environment
-    if (typeof window !== 'undefined' && window.setInterval) {
+    if (typeof window !== "undefined" && window.setInterval) {
       this.cleanupInterval = window.setInterval(
         () => {
           this.cleanupOldBlobs();
@@ -44,7 +44,9 @@ class BlobManager {
     if (import.meta.env.DEV) {
       console.log(`[BlobManager] 🟢 Created: ${url}`);
       console.log(`  📍 Source: ${callerStack}`);
-      console.log(`  📦 Type: ${file.constructor.name}, Size: ${file.size} bytes`);
+      console.log(
+        `  📦 Type: ${file.constructor.name}, Size: ${file.size} bytes`
+      );
     }
 
     return url;
@@ -56,15 +58,21 @@ class BlobManager {
   revokeObjectURL(url: string): void {
     if (this.blobs.has(url)) {
       const entry = this.blobs.get(url);
-      
+
       if (import.meta.env.DEV) {
-        const revokeStack = new Error().stack?.split("\n").slice(2, 4).join(' → ').trim();
+        const revokeStack = new Error().stack
+          ?.split("\n")
+          .slice(2, 4)
+          .join(" → ")
+          .trim();
         console.log(`[BlobManager] 🔴 Revoked: ${url}`);
-        console.log(`  📍 Created by: ${entry?.source || 'unknown'}`);
+        console.log(`  📍 Created by: ${entry?.source || "unknown"}`);
         console.log(`  🗑️ Revoked by: ${revokeStack}`);
-        console.log(`  ⏱️ Lifespan: ${entry ? Date.now() - entry.createdAt : 'unknown'}ms`);
+        console.log(
+          `  ⏱️ Lifespan: ${entry ? Date.now() - entry.createdAt : "unknown"}ms`
+        );
       }
-      
+
       URL.revokeObjectURL(url);
       this.blobs.delete(url);
     }
@@ -100,14 +108,20 @@ class BlobManager {
    */
   cleanup(): void {
     if (import.meta.env.DEV) {
-      console.log(`[BlobManager] 🧹 Force cleanup of ${this.blobs.size} active blob URLs`);
+      console.log(
+        `[BlobManager] 🧹 Force cleanup of ${this.blobs.size} active blob URLs`
+      );
     }
-    
+
     for (const url of this.blobs.keys()) {
       this.revokeObjectURL(url);
     }
 
-    if (this.cleanupInterval && typeof window !== 'undefined' && window.clearInterval) {
+    if (
+      this.cleanupInterval &&
+      typeof window !== "undefined" &&
+      window.clearInterval
+    ) {
       window.clearInterval(this.cleanupInterval);
       this.cleanupInterval = null;
     }

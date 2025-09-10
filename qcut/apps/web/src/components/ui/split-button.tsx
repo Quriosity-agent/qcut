@@ -30,47 +30,58 @@ const SplitButton = forwardRef<HTMLDivElement, SplitButtonProps>(
 );
 SplitButton.displayName = "SplitButton";
 
-const SplitButtonSide = forwardRef<
-  HTMLButtonElement,
-  SplitButtonSideProps
->(({ children, className, onClick, ...props }, ref) => {
-  return (
-    <Button
-      ref={ref}
-      variant="text"
-      type="button"
-      disabled={!onClick}
-      aria-disabled={onClick ? undefined : true}
-      className={cn(
-        "h-full rounded-none bg-panel-accent !opacity-100 border-0 gap-0 font-normal transition-colors",
-        onClick
-          ? "hover:bg-foreground/10 hover:opacity-100 cursor-pointer"
-          : "cursor-default select-text",
-        className
-      )}
-      onClick={onClick}
-      {...props}
-    >
-      {typeof children === "string" ? (
-        <span className="cursor-text">{children}</span>
-      ) : (
-        children
-      )}
-    </Button>
-  );
-});
+const SplitButtonSide = forwardRef<HTMLButtonElement, SplitButtonSideProps>(
+  ({ children, className, onClick, disabled: disabledProp, ...props }, ref) => {
+    const isDisabled = disabledProp ?? !onClick;
+    return (
+      <Button
+        ref={ref}
+        variant="text"
+        type="button"
+        disabled={isDisabled}
+        className={cn(
+          "h-full rounded-none bg-panel-accent !opacity-100 border-0 gap-0 font-normal transition-colors",
+          !isDisabled
+            ? "hover:bg-foreground/10 hover:opacity-100 cursor-pointer"
+            : "cursor-default select-text",
+          className
+        )}
+        onClick={disabledProp ? undefined : onClick}
+        {...props}
+      >
+        {typeof children === "string" ? (
+          <span className="cursor-text">{children}</span>
+        ) : (
+          children
+        )}
+      </Button>
+    );
+  }
+);
 SplitButtonSide.displayName = "SplitButtonSide";
 
 const SplitButtonLeft = forwardRef<HTMLButtonElement, SplitButtonSideProps>(
   ({ className, ...props }, ref) => {
-    return <SplitButtonSide ref={ref} className={cn("pl-3 pr-2", className)} {...props} />;
+    return (
+      <SplitButtonSide
+        ref={ref}
+        className={cn("pl-3 pr-2", className)}
+        {...props}
+      />
+    );
   }
 );
 SplitButtonLeft.displayName = "SplitButtonLeft";
 
 const SplitButtonRight = forwardRef<HTMLButtonElement, SplitButtonSideProps>(
   ({ className, ...props }, ref) => {
-    return <SplitButtonSide ref={ref} className={cn("pl-2 pr-3", className)} {...props} />;
+    return (
+      <SplitButtonSide
+        ref={ref}
+        className={cn("pl-2 pr-3", className)}
+        {...props}
+      />
+    );
   }
 );
 SplitButtonRight.displayName = "SplitButtonRight";

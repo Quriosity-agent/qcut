@@ -5,13 +5,13 @@ console.log("🔧 SETUP.TS EXECUTING - Starting jsdom environment setup...");
 import "./polyfills";
 
 // Import and install browser mocks to ensure they're available
-import { installAllBrowserMocks } from './mocks/browser-mocks';
+import { installAllBrowserMocks } from "./mocks/browser-mocks";
 installAllBrowserMocks();
 
 // Ensure getComputedStyle is available everywhere (reuse from polyfills.ts)
 const forceGetComputedStylePolyfill = () => {
   // Check if already available from polyfills.ts
-  if (typeof getComputedStyle === 'function') {
+  if (typeof getComputedStyle === "function") {
     return getComputedStyle;
   }
 
@@ -20,28 +20,69 @@ const forceGetComputedStylePolyfill = () => {
     const styles: any = {
       getPropertyValue: (prop: string) => {
         const mappings: Record<string, string> = {
-          'display': 'block', 'visibility': 'visible', 'opacity': '1', 'transform': 'none',
-          'transition': 'none', 'animation': 'none', 'position': 'static', 'top': 'auto',
-          'left': 'auto', 'right': 'auto', 'bottom': 'auto', 'width': 'auto', 'height': 'auto',
-          'margin': '0px', 'padding': '0px', 'border': '0px', 'background': 'transparent'
+          "display": "block",
+          "visibility": "visible",
+          "opacity": "1",
+          "transform": "none",
+          "transition": "none",
+          "animation": "none",
+          "position": "static",
+          "top": "auto",
+          "left": "auto",
+          "right": "auto",
+          "bottom": "auto",
+          "width": "auto",
+          "height": "auto",
+          "margin": "0px",
+          "padding": "0px",
+          "border": "0px",
+          "background": "transparent",
         };
         return mappings[prop] || "";
       },
-      setProperty: () => {}, removeProperty: () => "", item: () => "", length: 0,
-      parentRule: null, cssFloat: "", cssText: "", display: "block", visibility: "visible", 
-      opacity: "1", transform: "none", transition: "none", animation: "none", position: "static",
-      top: "auto", left: "auto", right: "auto", bottom: "auto", width: "auto", height: "auto"
+      setProperty: () => {},
+      removeProperty: () => "",
+      item: () => "",
+      length: 0,
+      parentRule: null,
+      cssFloat: "",
+      cssText: "",
+      display: "block",
+      visibility: "visible",
+      opacity: "1",
+      transform: "none",
+      transition: "none",
+      animation: "none",
+      position: "static",
+      top: "auto",
+      left: "auto",
+      right: "auto",
+      bottom: "auto",
+      width: "auto",
+      height: "auto",
     };
-    Object.defineProperty(styles, Symbol.iterator, { value: function* () { for (let i = 0; i < this.length; i++) yield this.item(i); }});
+    Object.defineProperty(styles, Symbol.iterator, {
+      *value() {
+        for (let i = 0; i < this.length; i++) yield this.item(i);
+      },
+    });
     return styles as CSSStyleDeclaration;
   };
 
   // Apply only to contexts that don't have it (using for...of per house rules)
-  const contexts = [globalThis, (globalThis as any).window, (globalThis as any).self].filter(Boolean) as any[];
+  const contexts = [
+    globalThis,
+    (globalThis as any).window,
+    (globalThis as any).self,
+  ].filter(Boolean) as any[];
   for (const context of contexts) {
-    if (context && typeof context === 'object' && typeof context.getComputedStyle !== 'function') {
+    if (
+      context &&
+      typeof context === "object" &&
+      typeof context.getComputedStyle !== "function"
+    ) {
       try {
-        Object.defineProperty(context, 'getComputedStyle', {
+        Object.defineProperty(context, "getComputedStyle", {
           value: mockGetComputedStyle,
           configurable: true,
           writable: true,
@@ -58,7 +99,7 @@ const forceGetComputedStylePolyfill = () => {
 // Apply immediately and repeatedly
 const polyfill = forceGetComputedStylePolyfill();
 
-// Also override in a timer to catch late initialization 
+// Also override in a timer to catch late initialization
 setTimeout(() => {
   forceGetComputedStylePolyfill();
 }, 0);
@@ -68,7 +109,7 @@ if (typeof window !== "undefined") {
   // Make sure document and window are available globally
   (globalThis as any).document = window.document;
   (globalThis as any).window = window;
-  
+
   if (typeof global !== "undefined") {
     (global as any).document = window.document;
     (global as any).window = window;

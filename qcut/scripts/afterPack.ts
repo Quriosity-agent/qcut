@@ -9,7 +9,11 @@ async function afterPack(context: AfterPackContext): Promise<void> {
 
   const appOutDir: string = context.appOutDir;
   const exePath: string = path.join(appOutDir, "QCut Video Editor.exe");
-  const icoPath: string = path.join(context.packager.projectDir, "build", "icon.ico");
+  const icoPath: string = path.join(
+    context.packager.projectDir,
+    "build",
+    "icon.ico"
+  );
 
   process.stdout.write(`Executable path: ${exePath}\n`);
   process.stdout.write(`Icon path: ${icoPath}\n`);

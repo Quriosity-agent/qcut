@@ -186,8 +186,20 @@ interface TimelineStore {
   pushHistory: () => void;
 
   // Persistence actions
-  loadProjectTimeline: ({ projectId, sceneId }: { projectId: string; sceneId?: string }) => Promise<void>;
-  saveProjectTimeline: ({ projectId, sceneId }: { projectId: string; sceneId?: string }) => Promise<void>;
+  loadProjectTimeline: ({
+    projectId,
+    sceneId,
+  }: {
+    projectId: string;
+    sceneId?: string;
+  }) => Promise<void>;
+  saveProjectTimeline: ({
+    projectId,
+    sceneId,
+  }: {
+    projectId: string;
+    sceneId?: string;
+  }) => Promise<void>;
   clearTimeline: () => void;
   updateTextElement: (
     trackId: string,
@@ -211,7 +223,7 @@ interface TimelineStore {
       >
     >
   ) => void;
-  
+
   // Interactive element manipulation (for effects)
   // Batched transform updater - use this to update multiple properties atomically and avoid history spam
   updateElementTransform: (
@@ -224,8 +236,14 @@ interface TimelineStore {
     options?: { pushHistory?: boolean }
   ) => void;
   // Individual transform updaters - these delegate to updateElementTransform internally
-  updateElementPosition: (elementId: string, position: { x: number; y: number }) => void;
-  updateElementSize: (elementId: string, size: { width: number; height: number; x?: number; y?: number }) => void;
+  updateElementPosition: (
+    elementId: string,
+    position: { x: number; y: number }
+  ) => void;
+  updateElementSize: (
+    elementId: string,
+    size: { width: number; height: number; x?: number; y?: number }
+  ) => void;
   updateElementRotation: (elementId: string, rotation: number) => void;
   updateMediaElement: (
     trackId: string,
@@ -253,7 +271,7 @@ interface TimelineStore {
    * @side-effects Pushes to history for undo/redo, updates tracks, triggers auto-save
    */
   addEffectToElement: (elementId: string, effectId: string) => void;
-  
+
   /**
    * Remove an effect from a timeline element
    * @param elementId - ID of the element to remove effect from
@@ -261,14 +279,14 @@ interface TimelineStore {
    * @side-effects Pushes to history for undo/redo, updates tracks, triggers auto-save
    */
   removeEffectFromElement: (elementId: string, effectId: string) => void;
-  
+
   /**
    * Get all effect IDs for a timeline element
    * @param elementId - ID of the element to get effects for
    * @returns Array of effect IDs, empty array if element has no effects or doesn't exist
    */
   getElementEffectIds: (elementId: string) => string[];
-  
+
   /**
    * Clear all effects from a timeline element
    * @param elementId - ID of the element to clear effects from
@@ -295,7 +313,14 @@ export const useTimelineStore = create<TimelineStore>((set, get) => {
       const activeProject = useProjectStore.getState().activeProject;
       if (activeProject) {
         try {
-          await storageService.saveTimeline({ projectId: activeProject.id, tracks: get()._tracks });
+          // Include current scene ID to avoid desync
+          const { useSceneStore } = await import("./scene-store");
+          const sceneId = useSceneStore.getState().currentScene?.id ?? activeProject.currentSceneId;
+          await storageService.saveProjectTimeline({
+            projectId: activeProject.id,
+            tracks: get()._tracks,
+            sceneId,
+          });
         } catch (error) {
           handleError(error, {
             operation: "Auto-save Timeline",
@@ -1056,7 +1081,7 @@ export const useTimelineStore = create<TimelineStore>((set, get) => {
         )
       );
     },
-    
+
     // Interactive element manipulation (for effects)
     updateElementTransform: (elementId, updates, options) => {
       const push = options?.pushHistory !== false;
@@ -1067,28 +1092,41 @@ export const useTimelineStore = create<TimelineStore>((set, get) => {
           if (el.id !== elementId) return el;
           return {
             ...el,
-            ...(updates.position && { x: updates.position.x, y: updates.position.y }),
+            ...(updates.position && {
+              x: updates.position.x,
+              y: updates.position.y,
+            }),
             ...(updates.size && {
               width: updates.size.width,
               height: updates.size.height,
               ...(updates.size.x !== undefined && { x: updates.size.x }),
               ...(updates.size.y !== undefined && { y: updates.size.y }),
             }),
-            ...(updates.rotation !== undefined && { rotation: updates.rotation }),
+            ...(updates.rotation !== undefined && {
+              rotation: updates.rotation,
+            }),
           };
         }),
       }));
       updateTracksAndSave(newTracks);
     },
-    
+
     updateElementPosition: (elementId, position) =>
-      get().updateElementTransform(elementId, { position }, { pushHistory: true }),
-      
+      get().updateElementTransform(
+        elementId,
+        { position },
+        { pushHistory: true }
+      ),
+
     updateElementSize: (elementId, size) =>
       get().updateElementTransform(elementId, { size }, { pushHistory: true }),
-      
+
     updateElementRotation: (elementId, rotation) =>
-      get().updateElementTransform(elementId, { rotation }, { pushHistory: true }),
+      get().updateElementTransform(
+        elementId,
+        { rotation },
+        { pushHistory: true }
+      ),
 
     updateMediaElement: (trackId, elementId, updates, pushHistory = true) => {
       if (pushHistory) {
@@ -1609,7 +1647,10 @@ export const useTimelineStore = create<TimelineStore>((set, get) => {
     // Persistence methods
     loadProjectTimeline: async ({ projectId, sceneId }) => {
       try {
-        const tracks = await storageService.loadProjectTimeline({ projectId, sceneId });
+        const tracks = await storageService.loadProjectTimeline({
+          projectId,
+          sceneId,
+        });
         if (tracks) {
           updateTracks(tracks);
         } else {
@@ -1638,7 +1679,11 @@ export const useTimelineStore = create<TimelineStore>((set, get) => {
 
     saveProjectTimeline: async ({ projectId, sceneId }) => {
       try {
-        await storageService.saveProjectTimeline({ projectId, tracks: get()._tracks, sceneId });
+        await storageService.saveProjectTimeline({
+          projectId,
+          tracks: get()._tracks,
+          sceneId,
+        });
       } catch (error) {
         handleError(error, {
           operation: "Save Timeline",
@@ -1820,32 +1865,34 @@ export const useTimelineStore = create<TimelineStore>((set, get) => {
     addEffectToElement: (elementId: string, effectId: string) => {
       const { _tracks, pushHistory } = get();
       let updated = false;
-      
+
       // Create immutable update
       const newTracks = _tracks.map((track) => {
-        const elementIndex = track.elements.findIndex(e => e.id === elementId);
+        const elementIndex = track.elements.findIndex(
+          (e) => e.id === elementId
+        );
         if (elementIndex === -1) return track;
-        
+
         const element = track.elements[elementIndex];
         const currentEffectIds = element.effectIds || [];
-        
+
         // Check if effect already exists
         if (currentEffectIds.includes(effectId)) return track;
-        
+
         // Create new element with updated effect IDs
         const updatedElement = {
           ...element,
-          effectIds: [...currentEffectIds, effectId]
+          effectIds: [...currentEffectIds, effectId],
         };
-        
+
         // Create new track with updated element
         const newElements = [...track.elements];
         newElements[elementIndex] = updatedElement;
-        
+
         updated = true;
         return { ...track, elements: newElements };
       });
-      
+
       if (updated) {
         pushHistory();
         updateTracks(newTracks);
@@ -1856,30 +1903,39 @@ export const useTimelineStore = create<TimelineStore>((set, get) => {
     removeEffectFromElement: (elementId: string, effectId: string) => {
       const { _tracks, pushHistory } = get();
       let updated = false;
-      
+
       // Create immutable update
       const newTracks = _tracks.map((track) => {
-        const elementIndex = track.elements.findIndex(e => e.id === elementId);
+        const elementIndex = track.elements.findIndex(
+          (e) => e.id === elementId
+        );
         if (elementIndex === -1) return track;
-        
+
         const element = track.elements.at(elementIndex);
-        if (!element || !element.effectIds || !element.effectIds.includes(effectId)) return track;
-        
+        if (
+          !element ||
+          !element.effectIds ||
+          !element.effectIds.includes(effectId)
+        )
+          return track;
+
         // Create new element with updated effect IDs
-        const nextEffectIds = element.effectIds.filter((id: string) => id !== effectId);
+        const nextEffectIds = element.effectIds.filter(
+          (id: string) => id !== effectId
+        );
         const updatedElement = {
           ...element,
-          effectIds: nextEffectIds
+          effectIds: nextEffectIds,
         };
-        
+
         // Create new track with updated element
         const newElements = [...track.elements];
         newElements[elementIndex] = updatedElement;
-        
+
         updated = true;
         return { ...track, elements: newElements };
       });
-      
+
       if (updated) {
         pushHistory();
         updateTracks(newTracks);
@@ -1889,43 +1945,46 @@ export const useTimelineStore = create<TimelineStore>((set, get) => {
 
     getElementEffectIds: (elementId: string) => {
       const tracks = get()._tracks;
-      
+
       for (const track of tracks) {
-        const element = track.elements.find(e => e.id === elementId);
+        const element = track.elements.find((e) => e.id === elementId);
         if (element) {
           return element.effectIds || [];
         }
       }
-      
+
       return [];
     },
 
     clearElementEffects: (elementId: string) => {
       const { _tracks, pushHistory } = get();
       let updated = false;
-      
+
       // Create immutable update
       const newTracks = _tracks.map((track) => {
-        const elementIndex = track.elements.findIndex(e => e.id === elementId);
+        const elementIndex = track.elements.findIndex(
+          (e) => e.id === elementId
+        );
         if (elementIndex === -1) return track;
-        
+
         const element = track.elements.at(elementIndex);
-        if (!element || !element.effectIds || element.effectIds.length === 0) return track;
-        
+        if (!element || !element.effectIds || element.effectIds.length === 0)
+          return track;
+
         // Create new element with cleared effect IDs
         const updatedElement = {
           ...element,
-          effectIds: []
+          effectIds: [],
         };
-        
+
         // Create new track with updated element
         const newElements = [...track.elements];
         newElements[elementIndex] = updatedElement;
-        
+
         updated = true;
         return { ...track, elements: newElements };
       });
-      
+
       if (updated) {
         pushHistory();
         updateTracks(newTracks);

@@ -11,7 +11,7 @@
  * - Default settings optimized for quality/size balance
  */
 
-import type { ExportFormat, AudioCodec } from '@/types/export';
+import type { ExportFormat, AudioCodec } from "@/types/export";
 
 export interface AudioExportConfig {
   enabled: boolean;
@@ -64,11 +64,11 @@ export const resetAudioExportConfig = (): void => {
  * @returns Recommended audio codec
  */
 export const getCodecForFormat = (format: ExportFormat): AudioCodec => {
-  const formatCodecMap: Record<ExportFormat | 'default', AudioCodec> = {
-    mp4: 'aac',  // MP4 works best with AAC
-    webm: 'opus', // WebM prefers Opus (better compression)
-    mov: 'aac',  // MOV works with AAC
-    default: 'aac', // Safe default
+  const formatCodecMap: Record<ExportFormat | "default", AudioCodec> = {
+    mp4: "aac", // MP4 works best with AAC
+    webm: "opus", // WebM prefers Opus (better compression)
+    mov: "aac", // MOV works with AAC
+    default: "aac", // Safe default
   };
   return formatCodecMap[format] ?? formatCodecMap.default;
 };
