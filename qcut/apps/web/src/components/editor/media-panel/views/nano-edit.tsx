@@ -1,15 +1,9 @@
 import React from "react";
-import {
-  useNanoEditStore,
-  selectIsProcessing,
-  selectActiveTab,
-} from "../../../../stores/nano-edit-store";
-import LoadingSpinner from "../../../ui/LoadingSpinner";
-import ImageAssetsTab from "../../nano-edit/tabs/ImageAssetsTab";
-import EnhancementTab from "../../nano-edit/tabs/EnhancementTab";
+import { useNanoEditStore, selectActiveTab } from '@/stores/nano-edit-store';
+import ImageAssetsTab from '@/components/editor/nano-edit/tabs/ImageAssetsTab';
+import EnhancementTab from '@/components/editor/nano-edit/tabs/EnhancementTab';
 
 const NanoEditView: React.FC = () => {
-  const isProcessing = useNanoEditStore(selectIsProcessing);
   const activeTab = useNanoEditStore(selectActiveTab);
   const setActiveTab = useNanoEditStore((state) => state.setActiveTab);
   const assets = useNanoEditStore((state) => state.assets);
@@ -25,6 +19,7 @@ const NanoEditView: React.FC = () => {
       {/* Tab Navigation */}
       <div className="flex space-x-1 mb-6 bg-gray-800 p-1 rounded-lg">
         <button
+          type="button"
           onClick={() => setActiveTab("image-assets")}
           className={`px-3 py-2 text-sm font-medium rounded-md transition-colors ${
             activeTab === "image-assets"
@@ -35,6 +30,7 @@ const NanoEditView: React.FC = () => {
           📷 Image Assets
         </button>
         <button
+          type="button"
           onClick={() => setActiveTab("enhancement")}
           className={`px-3 py-2 text-sm font-medium rounded-md transition-colors ${
             activeTab === "enhancement"
@@ -45,6 +41,7 @@ const NanoEditView: React.FC = () => {
           🔧 Enhancement
         </button>
         <button
+          type="button"
           onClick={() => setActiveTab("templates")}
           className={`px-3 py-2 text-sm font-medium rounded-md transition-colors ${
             activeTab === "templates"
@@ -55,6 +52,7 @@ const NanoEditView: React.FC = () => {
           📋 Templates
         </button>
         <button
+          type="button"
           onClick={() => setActiveTab("style-transfer")}
           className={`px-3 py-2 text-sm font-medium rounded-md transition-colors ${
             activeTab === "style-transfer"

@@ -5,6 +5,16 @@ import type {
   FalAiImageEditInput,
 } from '@/types/nano-edit';
 
+// FAL API response types
+type FalApiResponse = {
+  images?: { url: string }[];
+  data?: {
+    images?: { url: string }[];
+    image?: string;
+    output?: { url: string }[] | string;
+  };
+};
+
 // Configure fal client with API key from environment or settings
 const configureFalClient = async () => {
   // First try environment variable (same as AI panel)
@@ -70,30 +80,30 @@ export class FalAiService {
         input,
       });
       
-      // Type guard to ensure result matches expected format
-      const typedResult = result as any;
+      // Parse response with proper typing
+      const response = result as FalApiResponse;
       
       // Try different response structures
       let imageUrls: string[] = [];
       
       // Check for images in direct response
-      if (typedResult.images && Array.isArray(typedResult.images)) {
-        imageUrls = typedResult.images.map((img: any) => img.url || img);
+      if (response.images && Array.isArray(response.images)) {
+        imageUrls = response.images.map((img) => img.url);
       }
       // Check for images in data property
-      else if (typedResult.data?.images && Array.isArray(typedResult.data.images)) {
-        imageUrls = typedResult.data.images.map((img: any) => img.url || img);
+      else if (response.data?.images && Array.isArray(response.data.images)) {
+        imageUrls = response.data.images.map((img) => img.url);
       }
       // Check for single image in data
-      else if (typedResult.data?.image) {
-        imageUrls = [typedResult.data.image];
+      else if (response.data?.image && typeof response.data.image === 'string') {
+        imageUrls = [response.data.image];
       }
       // Check for output property (some FAL models use this)
-      else if (typedResult.data?.output) {
-        if (Array.isArray(typedResult.data.output)) {
-          imageUrls = typedResult.data.output.map((item: any) => item.url || item);
-        } else if (typeof typedResult.data.output === 'string') {
-          imageUrls = [typedResult.data.output];
+      else if (response.data?.output) {
+        if (Array.isArray(response.data.output)) {
+          imageUrls = response.data.output.map((item) => typeof item === 'string' ? item : item.url).filter(Boolean);
+        } else if (typeof response.data.output === 'string') {
+          imageUrls = [response.data.output];
         }
       }
 
@@ -148,30 +158,30 @@ export class FalAiService {
         input,
       });
       
-      // Type guard to ensure result matches expected format
-      const typedResult = result as any;
+      // Parse response with proper typing
+      const response = result as FalApiResponse;
       
       // Try different response structures
       let editedUrls: string[] = [];
       
       // Check for images in direct response
-      if (typedResult.images && Array.isArray(typedResult.images)) {
-        editedUrls = typedResult.images.map((img: any) => img.url || img);
+      if (response.images && Array.isArray(response.images)) {
+        editedUrls = response.images.map((img) => img.url);
       }
       // Check for images in data property
-      else if (typedResult.data?.images && Array.isArray(typedResult.data.images)) {
-        editedUrls = typedResult.data.images.map((img: any) => img.url || img);
+      else if (response.data?.images && Array.isArray(response.data.images)) {
+        editedUrls = response.data.images.map((img) => img.url);
       }
       // Check for single image in data
-      else if (typedResult.data?.image) {
-        editedUrls = [typedResult.data.image];
+      else if (response.data?.image && typeof response.data.image === 'string') {
+        editedUrls = [response.data.image];
       }
       // Check for output property (some FAL models use this)
-      else if (typedResult.data?.output) {
-        if (Array.isArray(typedResult.data.output)) {
-          editedUrls = typedResult.data.output.map((item: any) => item.url || item);
-        } else if (typeof typedResult.data.output === 'string') {
-          editedUrls = [typedResult.data.output];
+      else if (response.data?.output) {
+        if (Array.isArray(response.data.output)) {
+          editedUrls = response.data.output.map((item) => typeof item === 'string' ? item : item.url).filter(Boolean);
+        } else if (typeof response.data.output === 'string') {
+          editedUrls = [response.data.output];
         }
       }
 
