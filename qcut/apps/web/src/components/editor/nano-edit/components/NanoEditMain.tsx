@@ -11,7 +11,7 @@ import ImageEditorCanvas from './ImageEditorCanvas';
 import MultiImageUploader from './MultiImageUploader';
 import { ResultDisplay } from './ResultDisplay';
 import { GeneratedContent } from '@/types/nano-edit';
-import { fileToBase64, dataUrlToFile, embedWatermark } from '../utils/fileUtils';
+import { dataUrlToFile, embedWatermark } from '../utils/fileUtils';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 
 type ActiveTool = 'mask' | 'none';
@@ -101,8 +101,10 @@ const NanoEditMain: React.FC = () => {
       let imageUrls: string[] = [];
       
       if (primaryImageUrl) {
-        // For editing, we need to pass the image URL
-        imageUrls = await FalAiService.editImages(promptToUse, [primaryImageUrl], {
+        const inputs = selectedTransformation.isMultiImage && secondaryImageUrl
+          ? [primaryImageUrl, secondaryImageUrl]
+          : [primaryImageUrl];
+        imageUrls = await FalAiService.editImages(promptToUse, inputs, {
           num_images: 1,
         });
       } else {
@@ -317,7 +319,10 @@ const NanoEditMain: React.FC = () => {
                               activeTool === 'mask' ? 'bg-gradient-to-r from-orange-500 to-yellow-400 text-black' : 'bg-gray-800 hover:bg-gray-700'
                           }`}
                       >
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.5L15.232 5.232z" /></svg>
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                            <title>Mask tool</title>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.5L15.232 5.232z" />
+                          </svg>
                           <span>Draw Mask</span>
                       </button>
                   </div>

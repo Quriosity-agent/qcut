@@ -1,6 +1,5 @@
 import { fal } from '@fal-ai/client';
 import type {
-  FalAiImageResult,
   FalAiTextToImageInput,
   FalAiImageEditInput,
 } from '@/types/nano-edit';
@@ -13,6 +12,28 @@ type FalApiResponse = {
     image?: string;
     output?: { url: string }[] | string;
   };
+};
+
+// Type guard for FAL API response validation
+const isFalApiResponse = (response: unknown): response is FalApiResponse => {
+  if (typeof response !== 'object' || response === null) {
+    return false;
+  }
+  
+  const resp = response as Record<string, unknown>;
+  
+  // Check if response has expected shape
+  const hasImages = !resp.images || (Array.isArray(resp.images) && 
+    resp.images.every((img: unknown) => 
+      typeof img === 'object' && img !== null && 
+      typeof (img as { url?: unknown }).url === 'string'
+    ));
+  
+  const hasValidData = !resp.data || (
+    typeof resp.data === 'object' && resp.data !== null
+  );
+  
+  return hasImages && hasValidData;
 };
 
 // Configure fal client with API key from environment or settings
@@ -47,17 +68,17 @@ const configureFalClient = async () => {
 };
 
 /**
- * Service class for interacting with fal.ai Nano Banana APIs
+ * Service for interacting with fal.ai Nano Banana APIs
  * Provides text-to-image generation and image editing capabilities
  */
-export class FalAiService {
+export const FalAiService = {
   /**
    * Generate images from text prompts using fal.ai nano-banana model
    * @param prompt Text description for image generation
    * @param options Additional generation options
    * @returns Promise resolving to generated image URLs
    */
-  static async generateImage(
+  async generateImage(
     prompt: string,
     options: Partial<FalAiTextToImageInput> = {}
   ): Promise<string[]> {
@@ -81,7 +102,11 @@ export class FalAiService {
       });
       
       // Parse response with proper typing
-      const response = result as FalApiResponse;
+      const unknownResp: unknown = result;
+      if (!isFalApiResponse(unknownResp)) {
+        throw new Error('Unexpected FAL response shape');
+      }
+      const response: FalApiResponse = unknownResp;
       
       // Try different response structures
       let imageUrls: string[] = [];
@@ -109,12 +134,12 @@ export class FalAiService {
 
       return imageUrls;
     } catch (error) {
-      console.error("[FalAiService] Image generation failed:", error);
       throw new Error(
-        `Image generation failed: ${error instanceof Error ? error.message : "Unknown error"}`
+        `Image generation failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        { cause: error as unknown as Error }
       );
     }
-  }
+  },
 
   /**
    * Edit existing images using text prompts
@@ -123,7 +148,7 @@ export class FalAiService {
    * @param options Additional editing options
    * @returns Promise resolving to edited image URLs
    */
-  static async editImages(
+  async editImages(
     prompt: string,
     imageUrls: string[],
     options: Partial<FalAiImageEditInput> = {}
@@ -149,7 +174,7 @@ export class FalAiService {
         image_urls: imageUrls, // Can be data URLs or regular URLs
         num_images: options.num_images || 1,
         output_format: options.output_format || "jpeg",
-        sync_mode: true, // Return images as data URIs
+        sync_mode: true, // synchronous response
         ...options,
       };
 
@@ -159,7 +184,11 @@ export class FalAiService {
       });
       
       // Parse response with proper typing
-      const response = result as FalApiResponse;
+      const unknownResp: unknown = result;
+      if (!isFalApiResponse(unknownResp)) {
+        throw new Error('Unexpected FAL response shape');
+      }
+      const response: FalApiResponse = unknownResp;
       
       // Try different response structures
       let editedUrls: string[] = [];
@@ -187,12 +216,12 @@ export class FalAiService {
 
       return editedUrls;
     } catch (error) {
-      console.error("[FalAiService] Image editing failed:", error);
       throw new Error(
-        `Image editing failed: ${error instanceof Error ? error.message : "Unknown error"}`
+        `Image editing failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        { cause: error as unknown as Error }
       );
     }
-  }
+  },
 
   /**
    * Generate multiple thumbnail variations for video projects
@@ -201,18 +230,18 @@ export class FalAiService {
    * @param count Number of variations to generate (1-4)
    * @returns Promise resolving to thumbnail URLs
    */
-  static async generateThumbnails(
+  async generateThumbnails(
     projectTitle: string,
     style: string = "vibrant",
     count: number = 3
   ): Promise<string[]> {
     const prompt = `Create a ${style} YouTube thumbnail for "${projectTitle}"`;
 
-    return this.generateImage(prompt, {
+    return FalAiService.generateImage(prompt, {
       num_images: Math.min(count, 4),
       output_format: "png",
     });
-  }
+  },
 
   /**
    * Generate title card for video projects
@@ -221,7 +250,7 @@ export class FalAiService {
    * @param style Style preference
    * @returns Promise resolving to title card URL
    */
-  static async generateTitleCard(
+  async generateTitleCard(
     title: string,
     subtitle: string = "",
     style: string = "professional"
@@ -229,24 +258,19 @@ export class FalAiService {
     const subtitleText = subtitle ? ` with subtitle "${subtitle}"` : "";
     const prompt = `Create a ${style} title card with text "${title}"${subtitleText}`;
 
-    const results = await this.generateImage(prompt, {
+    const results = await FalAiService.generateImage(prompt, {
       num_images: 1,
       output_format: "png",
     });
 
     return results.at(0) ?? '';
-  }
+  },
 
   /**
    * Check if fal.ai service is available and configured
    * @returns Promise resolving to boolean indicating availability
    */
-  static async isAvailable(): Promise<boolean> {
-    try {
-      // Simple connectivity check - could be expanded with actual API ping
-      return typeof fal !== "undefined";
-    } catch {
-      return false;
-    }
-  }
-}
+  async isAvailable(): Promise<boolean> {
+    return configureFalClient();
+  },
+} as const;
