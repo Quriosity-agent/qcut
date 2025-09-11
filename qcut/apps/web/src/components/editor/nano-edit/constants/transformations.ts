@@ -1,11 +1,14 @@
 // Direct copy of nano-banana transformations with QCut adaptations
 import type { Transformation } from '@/types/nano-edit';
 
+// Constants
+export const CUSTOM_PROMPT = 'CUSTOM';
+
 export const TRANSFORMATIONS: Transformation[] = [
   // Viral & Fun Transformations
   { 
     title: "Custom Prompt", 
-    prompt: "CUSTOM", 
+    prompt: CUSTOM_PROMPT, 
     emoji: "✍️",
     description: "Describe any change you can imagine. Your creativity is the only limit!",
     category: "custom"

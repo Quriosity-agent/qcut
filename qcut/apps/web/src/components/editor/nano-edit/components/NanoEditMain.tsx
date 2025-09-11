@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { TRANSFORMATIONS } from '../constants/transformations';
+import { TRANSFORMATIONS, CUSTOM_PROMPT } from '../constants/transformations';
 import type { Transformation } from '@/types/nano-edit';
 import { FalAiService } from '@/services/ai/fal-ai-service';
 import { useNanoEditStore } from '@/stores/nano-edit-store';
@@ -39,7 +39,7 @@ const NanoEditMain: React.FC = () => {
     setSelectedTransformation(transformation);
     setGeneratedContent(null);
     setError(null);
-    if (transformation.prompt !== 'CUSTOM') {
+    if (transformation.prompt !== CUSTOM_PROMPT) {
       setCustomPrompt('');
     }
   };
@@ -84,7 +84,7 @@ const NanoEditMain: React.FC = () => {
         return;
     }
     
-    const promptToUse = selectedTransformation.prompt === 'CUSTOM' ? customPrompt : selectedTransformation.prompt;
+    const promptToUse = selectedTransformation.prompt === CUSTOM_PROMPT ? customPrompt : selectedTransformation.prompt;
     
     if (!promptToUse.trim()) {
         setError("Please enter a prompt describing the change you want to see.");
@@ -234,7 +234,7 @@ const NanoEditMain: React.FC = () => {
     setActiveTool(current => (current === 'mask' ? 'none' : 'mask'));
   };
   
-  const isCustomPromptEmpty = selectedTransformation?.prompt === 'CUSTOM' && !customPrompt.trim();
+  const isCustomPromptEmpty = selectedTransformation?.prompt === CUSTOM_PROMPT && !customPrompt.trim();
   const isSingleImageReady = !selectedTransformation?.isMultiImage && primaryImageUrl;
   const isMultiImageReady = selectedTransformation?.isMultiImage && primaryImageUrl && secondaryImageUrl;
   const isGenerateDisabled = isProcessing || isCustomPromptEmpty || (!isSingleImageReady && !isMultiImageReady);
@@ -272,7 +272,7 @@ const NanoEditMain: React.FC = () => {
                     <span className="text-3xl">{selectedTransformation.emoji}</span>
                     {selectedTransformation.title}
                   </h2>
-                  {selectedTransformation.prompt === 'CUSTOM' ? (
+                  {selectedTransformation.prompt === CUSTOM_PROMPT ? (
                       <textarea
                           value={customPrompt}
                           onChange={(e) => setCustomPrompt(e.target.value)}
