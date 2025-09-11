@@ -166,6 +166,10 @@ const ImageEditorCanvas: React.FC<ImageEditorCanvasProps> = ({ onImageSelect, in
   const handleFile = useCallback((file: File) => {
      const reader = new FileReader();
       reader.onload = (e) => { onImageSelect(file, e.target?.result as string); };
+      reader.onerror = () => {
+        console.error('Failed to read file:', file.name);
+        // Consider adding user-facing error notification
+      };
       reader.readAsDataURL(file);
   }, [onImageSelect]);
 

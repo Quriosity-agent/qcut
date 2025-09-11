@@ -234,7 +234,7 @@ export class FalAiService {
       output_format: "png",
     });
 
-    return results[0] || "";
+    return results.at(0) ?? '';
   }
 
   /**
