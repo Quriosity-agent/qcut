@@ -1,5 +1,6 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import type { GeneratedContent } from '@/types/nano-edit';
+import { downloadImage } from '../utils/fileUtils';
 
 interface ResultDisplayProps {
   content: GeneratedContent;
@@ -62,14 +63,6 @@ const ResultDisplay: React.FC<ResultDisplayProps> = ({ content, onUseImageAsInpu
 
   const handleInteractionStart = () => setIsDragging(true);
 
-  const downloadImage = (url: string, filename: string) => {
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = filename;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
 
   const handleDownload = () => {
     if (!content.imageUrl) return;
@@ -350,7 +343,7 @@ const ResultDisplay: React.FC<ResultDisplayProps> = ({ content, onUseImageAsInpu
         )}
 
         {viewMode === 'slider' && content.imageUrl && originalImageUrl && (
-          <div ref={sliderContainerRef} onMouseDown={handleMouseDown} className="relative w-full h-full overflow-hidden rounded-lg cursor-ew-resize border border-white/10 select-none bg-black">
+          <div ref={sliderContainerRef} onMouseDown={handleInteractionStart} onTouchStart={handleInteractionStart} className="relative w-full h-full overflow-hidden rounded-lg cursor-ew-resize border border-white/10 select-none bg-black">
             <div className="absolute inset-0 flex items-center justify-center">
                 <img src={originalImageUrl} alt="Original" className="max-w-full max-h-full object-contain" />
             </div>
