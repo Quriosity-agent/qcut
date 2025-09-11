@@ -5,33 +5,35 @@ import { PromptInput } from "./PromptInput";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
 
 export const TitleCardCreator: React.FC = () => {
-  const { addAsset, isProcessing, assets } = useNanoEditStore();
+  const { addAsset, isProcessing, assets, setProcessing } = useNanoEditStore();
 
   const handleGenerate = async (prompt: string) => {
     try {
+      setProcessing(true);
       const imageUrls = await FalAiService.generateImage(
         `Professional title card design: ${prompt}`,
         {
-          image_size: { width: 1920, height: 1080 },
           num_images: 1,
         }
       );
 
-      if (imageUrls.length > 0) {
-        const asset = {
-          id: crypto.randomUUID(),
-          type: "title-card" as const,
-          url: imageUrls[0],
-          projectId: undefined,
-          createdAt: new Date(),
-          prompt: prompt,
-          dimensions: "1920x1080",
-        };
+      const firstUrl = imageUrls.at(0);
+      if (!firstUrl) return;
 
-        addAsset(asset);
-      }
+      const asset = {
+        id: crypto.randomUUID(),
+        type: "title-card" as const,
+        url: firstUrl,
+        createdAt: new Date(),
+        prompt: prompt,
+      };
+
+      addAsset(asset);
     } catch (error) {
       console.error("Error generating title card:", error);
+      // TODO: route to app-level logger/toast
+    } finally {
+      setProcessing(false);
     }
   };
 

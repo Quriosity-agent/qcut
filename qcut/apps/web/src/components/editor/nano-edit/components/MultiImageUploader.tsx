@@ -48,7 +48,7 @@ const UploaderBox: React.FC<UploaderBoxProps> = ({ onImageSelect, imageUrl, onCl
                 ) : (
                     <>
                         <img src={imageUrl} alt={title} className="w-full h-full object-contain rounded-lg" />
-                        <button onClick={onClear} className="absolute top-2 right-2 z-10 p-1 bg-black/50 backdrop-blur-sm rounded-full text-white hover:bg-red-600 transition-colors" aria-label={`Remove ${title} image`}>
+                        <button type="button" onClick={onClear} className="absolute top-2 right-2 z-10 p-1 bg-black/50 backdrop-blur-sm rounded-full text-white hover:bg-red-600 transition-colors" aria-label={`Remove ${title} image`}>
                             <svg aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" /></svg>
                         </button>
                     </>

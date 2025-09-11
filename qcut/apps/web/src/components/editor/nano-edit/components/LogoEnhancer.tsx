@@ -116,12 +116,18 @@ export const LogoEnhancer: React.FC = () => {
             {logoAssets.slice(0, 6).map((asset) => (
               <div key={asset.id} className="relative group">
                 <div className="w-full h-20 bg-gray-700 rounded border border-gray-600 group-hover:border-blue-500 transition-colors flex items-center justify-center">
-                  <img
-                    src={asset.url}
-                    alt="Generated logo"
-                    className="max-w-full max-h-full object-contain cursor-pointer"
+                  <button
+                    type="button"
                     onClick={() => window.open(asset.url, "_blank")}
-                  />
+                    className="flex items-center justify-center w-full h-full"
+                    aria-label="Open generated logo in new tab"
+                  >
+                    <img
+                      src={asset.url}
+                      alt="Generated logo"
+                      className="max-w-full max-h-full object-contain"
+                    />
+                  </button>
                 </div>
                 <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 rounded transition-colors" />
                 {asset.prompt && (

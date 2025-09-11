@@ -161,6 +161,7 @@ const ResultDisplay: React.FC<ResultDisplayProps> = ({ content, onUseImageAsInpu
                 {(['result', 'grid', 'slider'] as TwoStepViewMode[]).map(mode => (
                 <button
                     key={mode}
+                    type="button"
                     onClick={() => setTwoStepViewMode(mode)}
                     className={`px-3 py-1 text-xs font-semibold rounded-md transition-colors duration-200 ${
                     twoStepViewMode === mode
@@ -197,15 +198,15 @@ const ResultDisplay: React.FC<ResultDisplayProps> = ({ content, onUseImageAsInpu
                 ))}
                 </div>
                 <div className="w-full flex flex-col md:flex-row gap-3 mt-auto">
-                    <button onClick={handleDownloadBoth} className="flex-1 py-2 px-4 bg-gray-800 text-gray-200 font-semibold rounded-lg shadow-sm hover:bg-gray-700 transition-all duration-200 flex items-center justify-center gap-2">
+                    <button type="button" onClick={handleDownloadBoth} className="flex-1 py-2 px-4 bg-gray-800 text-gray-200 font-semibold rounded-lg shadow-sm hover:bg-gray-700 transition-all duration-200 flex items-center justify-center gap-2">
                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" /></svg>
                         Download Both
                     </button>
-                    <button onClick={() => onUseImageAsInput(content.secondaryImageUrl!)} className="flex-1 py-2 px-4 bg-gray-800 text-gray-200 font-semibold rounded-lg shadow-sm hover:bg-gray-700 transition-all duration-200 flex items-center justify-center gap-2">
+                    <button type="button" onClick={() => onUseImageAsInput(content.secondaryImageUrl!)} className="flex-1 py-2 px-4 bg-gray-800 text-gray-200 font-semibold rounded-lg shadow-sm hover:bg-gray-700 transition-all duration-200 flex items-center justify-center gap-2">
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V13h2.828l7.586-7.586a2 2 0 000-2.828z" /><path fillRule="evenodd" d="M2 6a2 2 0 012-2h4a1 1 0 010 2H4v10h10v-4a1 1 0 112 0v4a2 2 0 01-2-2H4a2 2 0 01-2-2V6z" clipRule="evenodd" /></svg>
                         Use Line Art as Input
                     </button>
-                    <button onClick={() => onUseImageAsInput(content.imageUrl!)} className="flex-1 py-2 px-4 bg-gradient-to-r from-orange-500 to-yellow-400 text-black font-semibold rounded-lg shadow-md shadow-orange-500/20 hover:from-orange-600 hover:to-yellow-500 transition-all duration-200 flex items-center justify-center gap-2">
+                    <button type="button" onClick={() => onUseImageAsInput(content.imageUrl!)} className="flex-1 py-2 px-4 bg-gradient-to-r from-orange-500 to-yellow-400 text-black font-semibold rounded-lg shadow-md shadow-orange-500/20 hover:from-orange-600 hover:to-yellow-500 transition-all duration-200 flex items-center justify-center gap-2">
                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V13h2.828l7.586-7.586a2 2 0 000-2.828z" /><path fillRule="evenodd" d="M2 6a2 2 0 012-2h4a1 1 0 010 2H4v10h10v-4a1 1 0 112 0v4a2 2 0 01-2-2H4a2 2 0 01-2-2V6z" clipRule="evenodd" /></svg>
                         Use Final as Input
                     </button>
@@ -263,6 +264,7 @@ const ResultDisplay: React.FC<ResultDisplayProps> = ({ content, onUseImageAsInpu
          {twoStepViewMode !== 'result' && (
             <div className="w-full flex flex-col md:flex-row gap-3 mt-auto">
                 <button
+                type="button"
                 onClick={handleDownloadComparison}
                 className="flex-1 py-2 px-4 bg-gray-800 text-gray-200 font-semibold rounded-lg shadow-sm hover:bg-gray-700 transition-all duration-200 flex items-center justify-center gap-2"
                 >
@@ -270,6 +272,7 @@ const ResultDisplay: React.FC<ResultDisplayProps> = ({ content, onUseImageAsInpu
                 <span>Download Comparison</span>
                 </button>
                 <button
+                type="button"
                 onClick={() => onUseImageAsInput(content.imageUrl!)}
                 className="flex-1 py-2 px-4 bg-gradient-to-r from-orange-500 to-yellow-400 text-black font-semibold rounded-lg shadow-md shadow-orange-500/20 hover:from-orange-600 hover:to-yellow-500 transition-all duration-200 flex items-center justify-center gap-2"
                 >
@@ -292,6 +295,7 @@ const ResultDisplay: React.FC<ResultDisplayProps> = ({ content, onUseImageAsInpu
             {(['result', 'side-by-side', 'slider'] as ViewMode[]).map(mode => (
             <button
                 key={mode}
+                type="button"
                 onClick={() => setViewMode(mode)}
                 className={`px-3 py-1 text-xs font-semibold rounded-md transition-colors duration-200 ${
                 viewMode === mode
@@ -372,6 +376,7 @@ const ResultDisplay: React.FC<ResultDisplayProps> = ({ content, onUseImageAsInpu
               </button>
             )}
             <button
+              type="button"
               onClick={handleDownload}
               className="flex-1 py-2 px-4 bg-gray-800 text-gray-200 font-semibold rounded-lg shadow-sm hover:bg-gray-700 transition-all duration-200 flex items-center justify-center gap-2"
             >
@@ -381,6 +386,7 @@ const ResultDisplay: React.FC<ResultDisplayProps> = ({ content, onUseImageAsInpu
               <span>Download Image</span>
             </button>
             <button
+              type="button"
               onClick={() => onUseImageAsInput(content.imageUrl!)}
               className="flex-1 py-2 px-4 bg-gradient-to-r from-orange-500 to-yellow-400 text-black font-semibold rounded-lg shadow-md shadow-orange-500/20 hover:from-orange-600 hover:to-yellow-500 transition-all duration-200 flex items-center justify-center gap-2"
             >

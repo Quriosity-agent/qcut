@@ -14,6 +14,7 @@ const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({ message }) => {
         fill="none"
         viewBox="0 0 24 24"
       >
+        <title>Loading</title>
         <circle
           className="opacity-25"
           cx="12"

@@ -58,6 +58,7 @@ const TransformationSelector: React.FC<TransformationSelectorProps> = ({ transfo
         {transformations.map((trans, index) => (
           <button
             key={trans.title}
+            type="button"
             draggable
             onDragStart={(e) => handleDragStart(e, index)}
             onDragEnter={(e) => handleDragEnter(e, index)}

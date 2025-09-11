@@ -204,7 +204,7 @@ const ImageEditorCanvas: React.FC<ImageEditorCanvasProps> = ({ onImageSelect, in
                 </label>
             ) : (
                 <>
-                    <button onClick={onClearImage} className="absolute top-2 right-2 z-30 p-1 bg-black/50 backdrop-blur-sm rounded-full text-white hover:bg-red-600 transition-colors" aria-label="Remove image"><svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" /></svg></button>
+                    <button type="button" onClick={onClearImage} className="absolute top-2 right-2 z-30 p-1 bg-black/50 backdrop-blur-sm rounded-full text-white hover:bg-red-600 transition-colors" aria-label="Remove image"><svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" /></svg></button>
                     <canvas ref={imageCanvasRef} className="absolute top-0 left-0" style={{ zIndex: 1 }} />
                     <canvas ref={maskCanvasRef} className="absolute top-0 left-0" style={{ zIndex: 3, touchAction: 'none', cursor: isMaskToolActive ? 'crosshair' : 'default' }} 
                         onMouseDown={isMaskToolActive ? startDrawing : undefined} 
@@ -226,8 +226,8 @@ const ImageEditorCanvas: React.FC<ImageEditorCanvasProps> = ({ onImageSelect, in
                     <input id="brush-size" type="range" min="5" max="100" value={brushSize} onChange={(e) => setBrushSize(Number(e.target.value))} className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-orange-500" />
                 </div>
                 <div className="grid grid-cols-2 gap-2">
-                    <button onClick={handleUndo} disabled={history.length === 0} className="px-4 py-2 text-sm font-semibold text-gray-200 bg-gray-800 rounded-md hover:bg-gray-700 disabled:bg-gray-800 disabled:text-gray-500 disabled:cursor-not-allowed transition-colors">Undo</button>
-                    <button onClick={clearMask} disabled={history.length === 0} className="px-4 py-2 text-sm font-semibold text-gray-200 bg-gray-800 rounded-md hover:bg-gray-700 disabled:bg-gray-800 disabled:text-gray-500 disabled:cursor-not-allowed transition-colors">Clear Mask</button>
+                    <button type="button" onClick={handleUndo} disabled={history.length === 0} className="px-4 py-2 text-sm font-semibold text-gray-200 bg-gray-800 rounded-md hover:bg-gray-700 disabled:bg-gray-800 disabled:text-gray-500 disabled:cursor-not-allowed transition-colors">Undo</button>
+                    <button type="button" onClick={clearMask} disabled={history.length === 0} className="px-4 py-2 text-sm font-semibold text-gray-200 bg-gray-800 rounded-md hover:bg-gray-700 disabled:bg-gray-800 disabled:text-gray-500 disabled:cursor-not-allowed transition-colors">Clear Mask</button>
                 </div>
             </div>
         )}

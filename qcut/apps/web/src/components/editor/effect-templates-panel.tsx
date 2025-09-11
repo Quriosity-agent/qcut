@@ -219,12 +219,13 @@ export function EffectTemplatesPanel({
               onChange={(e) => setNewTemplateDescription(e.target.value)}
             />
             <div className="flex gap-2">
-              <Button size="sm" onClick={handleSaveAsTemplate}>
+              <Button size="sm" type="button" onClick={handleSaveAsTemplate}>
                 Save Template
               </Button>
               <Button
                 size="sm"
                 variant="outline"
+                type="button"
                 onClick={() => {
                   setIsCreating(false);
                   setNewTemplateName("");
@@ -282,6 +283,7 @@ export function EffectTemplatesPanel({
                         <Button
                           size="icon"
                           variant="text"
+                          type="button"
                           onClick={() => handleApplyTemplate(template)}
                         >
                           <Plus className="h-4 w-4" />
@@ -289,6 +291,7 @@ export function EffectTemplatesPanel({
                         <Button
                           size="icon"
                           variant="text"
+                          type="button"
                           onClick={() => handleExportTemplate(template)}
                         >
                           <Download className="h-4 w-4" />
@@ -297,6 +300,7 @@ export function EffectTemplatesPanel({
                           <Button
                             size="icon"
                             variant="text"
+                            type="button"
                             onClick={() => handleDeleteTemplate(template.id)}
                           >
                             <Trash2 className="h-4 w-4" />
