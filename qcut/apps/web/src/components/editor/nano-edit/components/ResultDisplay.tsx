@@ -86,20 +86,23 @@ const ResultDisplay: React.FC<ResultDisplayProps> = ({ content, onUseImageAsInpu
     const validImages = imagesToLoad.filter(item => item.url);
     if (validImages.length < 2) return;
 
-    const loadPromises = validImages.map(item => {
+    const loadPromises = validImages.map(item => new Promise<boolean>((resolve) => {
         item.img.crossOrigin = 'anonymous';
+        item.img.onload = () => resolve(true);
+        item.img.onerror = () => resolve(false);
         item.img.src = item.url!;
-        return new Promise(resolve => item.img.onload = resolve);
-    });
+    }));
 
-    await Promise.all(loadPromises);
+    const loaded = await Promise.all(loadPromises);
+    const loadedImages = validImages.filter((_, i) => loaded[i]);
+    if (loadedImages.length < 2) return;
     
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
     
-    const totalWidth = validImages.reduce((sum, item) => sum + item.img.width, 0);
-    const maxHeight = Math.max(...validImages.map(item => item.img.height));
+    const totalWidth = loadedImages.reduce((sum, item) => sum + item.img.width, 0);
+    const maxHeight = Math.max(...loadedImages.map(item => item.img.height));
 
     canvas.width = totalWidth;
     canvas.height = maxHeight;
@@ -108,7 +111,7 @@ const ResultDisplay: React.FC<ResultDisplayProps> = ({ content, onUseImageAsInpu
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     let currentX = 0;
-    for (const item of validImages) {
+    for (const item of loadedImages) {
         ctx.drawImage(item.img, currentX, (maxHeight - item.img.height) / 2);
         currentX += item.img.width;
     }
