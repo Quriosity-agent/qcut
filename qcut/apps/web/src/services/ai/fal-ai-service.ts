@@ -1,9 +1,9 @@
-import { fal } from "@fal-ai/client";
+import { fal } from '@fal-ai/client';
 import type {
   FalAiImageResult,
   FalAiTextToImageInput,
   FalAiImageEditInput,
-} from "../../types/nano-edit";
+} from '@/types/nano-edit';
 
 // Configure fal client with API key from environment or settings
 const configureFalClient = async () => {
