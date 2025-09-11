@@ -76,9 +76,10 @@ const EFFECT_PRESETS: ImageEffect[] = [
 ];
 
 export const EffectGallery: React.FC = () => {
-  const { addAsset, isProcessing, assets } = useNanoEditStore();
+  const { addAsset, isProcessing, setProcessing, assets } = useNanoEditStore();
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [selectedAsset, setSelectedAsset] = useState<string | null>(null);
+  const [processingEffectId, setProcessingEffectId] = useState<string | null>(null);
 
   // Get unique categories
   const categories = [
@@ -94,6 +95,9 @@ export const EffectGallery: React.FC = () => {
 
   const applyEffect = async (effect: ImageEffect, targetAssetId: string) => {
     if (!targetAssetId) return;
+
+    setProcessing(true);
+    setProcessingEffectId(effect.id);
 
     try {
       const targetAsset = assets.find((a) => a.id === targetAssetId);
@@ -125,6 +129,10 @@ export const EffectGallery: React.FC = () => {
       }
     } catch (error) {
       console.error("Error applying effect:", error);
+      // Consider showing a user-friendly error message
+    } finally {
+      setProcessing(false);
+      setProcessingEffectId(null);
     }
   };
 
