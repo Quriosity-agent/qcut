@@ -12,6 +12,30 @@ export interface ImageEffect {
   description: string;
 }
 
+// Static categories list
+const CATEGORIES = [
+  "all",
+  ...Array.from(new Set(["artistic", "photography", "vintage", "modern", "fantasy"] as const)),
+];
+
+// Static icon mapping for categories
+const getCategoryIcon = (category: string): string => {
+  switch (category) {
+    case "artistic":
+      return "🎨";
+    case "photography":
+      return "📸";
+    case "vintage":
+      return "📼";
+    case "modern":
+      return "✨";
+    case "fantasy":
+      return "🧙";
+    default:
+      return "🎯";
+  }
+};
+
 const EFFECT_PRESETS: ImageEffect[] = [
   {
     id: "oil-painting",
@@ -223,6 +247,7 @@ export const EffectGallery: React.FC = () => {
               type="button"
               onClick={() => setSelectedCategory(category)}
               disabled={isProcessing}
+              aria-pressed={selectedCategory === category}
               className={`px-3 py-1 text-sm rounded transition-colors ${
                 selectedCategory === category
                   ? "bg-blue-600 text-white"

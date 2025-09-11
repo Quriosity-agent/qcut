@@ -5,7 +5,7 @@ import { PromptInput } from "./PromptInput";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
 
 export const LogoEnhancer: React.FC = () => {
-  const { addAsset, isProcessing, assets } = useNanoEditStore();
+  const { addAsset, isProcessing, assets, setProcessing } = useNanoEditStore();
   const [uploadedImage, setUploadedImage] = useState<string | null>(null);
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -22,31 +22,36 @@ export const LogoEnhancer: React.FC = () => {
 
   const handleGenerate = async (prompt: string) => {
     try {
+      setProcessing(true);
       // For logo enhancement, we can generate variations or create new logos
       const enhancementPrompt = uploadedImage
         ? `Enhance and improve this logo style: ${prompt}`
         : `Create a professional logo: ${prompt}`;
 
       const imageUrls = await FalAiService.generateImage(enhancementPrompt, {
-        image_size: { width: 512, height: 512 },
         num_images: 1,
       });
 
-      if (imageUrls.length > 0) {
-        const asset = {
-          id: crypto.randomUUID(),
-          type: "logo" as const,
-          url: imageUrls[0],
-          projectId: undefined,
-          createdAt: new Date(),
-          prompt: prompt,
-          dimensions: "512x512",
-        };
-
-        addAsset(asset);
+      const firstUrl = imageUrls.at(0);
+      if (!firstUrl) {
+        console.warn("No images were generated");
+        return;
       }
+
+      const asset = {
+        id: crypto.randomUUID(),
+        type: "logo" as const,
+        url: firstUrl,
+        createdAt: new Date(),
+        prompt: prompt,
+      };
+
+      addAsset(asset);
     } catch (error) {
       console.error("Error enhancing logo:", error);
+      // TODO: route to app-level logger/toast
+    } finally {
+      setProcessing(false);
     }
   };
 
