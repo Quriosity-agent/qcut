@@ -196,6 +196,7 @@ export const EffectGallery: React.FC = () => {
           {categories.map((category) => (
             <button
               key={category}
+              type="button"
               onClick={() => setSelectedCategory(category)}
               disabled={isProcessing}
               className={`px-3 py-1 text-sm rounded transition-colors ${
@@ -213,28 +214,39 @@ export const EffectGallery: React.FC = () => {
 
       {/* Effects Grid */}
       <div className="grid grid-cols-2 gap-3 max-h-64 overflow-y-auto">
-        {filteredEffects.map((effect) => (
-          <button
-            key={effect.id}
-            onClick={() => selectedAsset && applyEffect(effect, selectedAsset)}
-            disabled={isProcessing || !selectedAsset}
-            className="p-3 bg-gray-700 hover:bg-gray-600 rounded-lg text-left transition-colors disabled:opacity-50 disabled:cursor-not-allowed group"
-          >
-            <div className="flex items-start gap-2">
-              <div className="text-lg flex-shrink-0">
-                {getCategoryIcon(effect.category)}
+        {filteredEffects.map((effect) => {
+          const isThisEffectProcessing = processingEffectId === effect.id;
+          
+          return (
+            <button
+              key={effect.id}
+              type="button"
+              onClick={() => selectedAsset && applyEffect(effect, selectedAsset)}
+              disabled={isProcessing || !selectedAsset}
+              className={`p-3 bg-gray-700 hover:bg-gray-600 rounded-lg text-left transition-colors disabled:opacity-50 disabled:cursor-not-allowed group relative ${
+                isThisEffectProcessing ? 'ring-2 ring-blue-500' : ''
+              }`}
+            >
+              <div className="flex items-start gap-2">
+                <div className="text-lg flex-shrink-0">
+                  {isThisEffectProcessing ? (
+                    <span className="inline-block animate-spin">⏳</span>
+                  ) : (
+                    getCategoryIcon(effect.category)
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h5 className="text-sm font-medium text-white truncate group-hover:text-blue-300">
+                    {effect.name}
+                  </h5>
+                  <p className="text-xs text-gray-400 mt-1 line-clamp-2">
+                    {isThisEffectProcessing ? 'Applying effect...' : effect.description}
+                  </p>
+                </div>
               </div>
-              <div className="flex-1 min-w-0">
-                <h5 className="text-sm font-medium text-white truncate group-hover:text-blue-300">
-                  {effect.name}
-                </h5>
-                <p className="text-xs text-gray-400 mt-1 line-clamp-2">
-                  {effect.description}
-                </p>
-              </div>
-            </div>
-          </button>
-        ))}
+            </button>
+          );
+        })}
       </div>
 
       {filteredEffects.length === 0 && (
