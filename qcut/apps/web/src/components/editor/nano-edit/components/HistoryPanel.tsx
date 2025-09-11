@@ -79,11 +79,13 @@ export const HistoryPanel: React.FC = () => {
         </div>
         {history.length > 0 && (
           <button
+            type="button"
             onClick={clearHistory}
+            aria-label="Clear history"
             className="p-2 text-gray-400 hover:text-red-400 hover:bg-gray-700 rounded transition-colors"
             title="Clear History"
           >
-            <TrashIcon className="w-4 h-4" />
+            <TrashIcon className="w-4 h-4" aria-hidden="true" />
           </button>
         )}
       </div>
@@ -126,11 +128,13 @@ export const HistoryPanel: React.FC = () => {
                       {formatTime(entry.timestamp)}
                     </span>
                     <button
+                      type="button"
                       onClick={() => revertToAction(entry)}
+                      aria-label="Revert to this state"
                       className="p-1 text-gray-400 hover:text-blue-400 opacity-0 group-hover:opacity-100 transition-all"
                       title="Revert to this state"
                     >
-                      <RotateCcwIcon className="w-3 h-3" />
+                      <RotateCcwIcon className="w-3 h-3" aria-hidden="true" />
                     </button>
                   </div>
                 </div>
