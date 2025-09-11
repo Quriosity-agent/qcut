@@ -7,29 +7,44 @@ import type {
 
 // Configure fal client with API key from environment or settings
 const configureFalClient = async () => {
+  console.log("[FalAiService] Starting FAL client configuration...");
+  
   // First try environment variable (same as AI panel)
   const envApiKey = import.meta.env.VITE_FAL_API_KEY;
+  console.log("[FalAiService] Checking environment variable:", envApiKey ? "Found (hidden)" : "Not found");
+  
   if (envApiKey) {
+    console.log("[FalAiService] Configuring FAL client with environment API key");
     fal.config({
       credentials: envApiKey
     });
+    console.log("[FalAiService] FAL client configured successfully with env key");
     return true;
   }
 
   // Fall back to Electron storage
+  console.log("[FalAiService] Checking Electron storage for API key...");
   if (window.electronAPI?.apiKeys) {
     try {
       const keys = await window.electronAPI.apiKeys.get();
+      console.log("[FalAiService] Electron storage keys:", keys?.falApiKey ? "Found (hidden)" : "Not found");
+      
       if (keys?.falApiKey) {
+        console.log("[FalAiService] Configuring FAL client with storage API key");
         fal.config({
           credentials: keys.falApiKey
         });
+        console.log("[FalAiService] FAL client configured successfully with storage key");
         return true;
       }
     } catch (error) {
-      console.error("Failed to load FAL API key from storage:", error);
+      console.error("[FalAiService] Failed to load FAL API key from storage:", error);
     }
+  } else {
+    console.log("[FalAiService] Electron API not available");
   }
+  
+  console.log("[FalAiService] No API key found in environment or storage");
   return false;
 };
 
@@ -48,10 +63,15 @@ export class FalAiService {
     prompt: string,
     options: Partial<FalAiTextToImageInput> = {}
   ): Promise<string[]> {
+    console.log("[FalAiService.generateImage] Starting image generation");
+    console.log("[FalAiService.generateImage] Prompt:", prompt);
+    console.log("[FalAiService.generateImage] Options:", options);
+    
     try {
       // Configure fal client with API key before making requests
       const configured = await configureFalClient();
       if (!configured) {
+        console.error("[FalAiService.generateImage] API key configuration failed");
         throw new Error("FAL API key not configured. Please set VITE_FAL_API_KEY environment variable or configure it in Settings.");
       }
 
@@ -62,17 +82,30 @@ export class FalAiService {
         sync_mode: true,
         ...options,
       };
+      
+      console.log("[FalAiService.generateImage] Calling FAL API with input:", input);
 
       const result = await fal.subscribe("fal-ai/nano-banana", {
         input,
       });
       
+      console.log("[FalAiService.generateImage] Raw FAL API response:", result);
+      
       // Type guard to ensure result matches expected format
       const typedResult = result as any;
+      
+      const imageUrls = typedResult.images?.map((img: any) => img.url) || [];
+      console.log("[FalAiService.generateImage] Extracted image URLs:", imageUrls);
+      console.log("[FalAiService.generateImage] Number of images returned:", imageUrls.length);
 
-      return typedResult.images?.map((img: any) => img.url) || [];
+      return imageUrls;
     } catch (error) {
-      console.error("Failed to generate image:", error);
+      console.error("[FalAiService.generateImage] Failed to generate image:", error);
+      console.error("[FalAiService.generateImage] Error details:", {
+        name: error instanceof Error ? error.name : "Unknown",
+        message: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined
+      });
       throw new Error(
         `Image generation failed: ${error instanceof Error ? error.message : "Unknown error"}`
       );
@@ -91,18 +124,26 @@ export class FalAiService {
     imageUrls: string[],
     options: Partial<FalAiImageEditInput> = {}
   ): Promise<string[]> {
+    console.log("[FalAiService.editImages] Starting image editing");
+    console.log("[FalAiService.editImages] Prompt:", prompt);
+    console.log("[FalAiService.editImages] Image URLs:", imageUrls);
+    console.log("[FalAiService.editImages] Options:", options);
+    
     try {
       // Configure fal client with API key before making requests
       const configured = await configureFalClient();
       if (!configured) {
+        console.error("[FalAiService.editImages] API key configuration failed");
         throw new Error("FAL API key not configured. Please set VITE_FAL_API_KEY environment variable or configure it in Settings.");
       }
 
       if (imageUrls.length === 0) {
+        console.error("[FalAiService.editImages] No image URLs provided");
         throw new Error("At least one image URL is required for editing");
       }
 
       if (imageUrls.length > 10) {
+        console.error("[FalAiService.editImages] Too many images:", imageUrls.length);
         throw new Error("Maximum 10 images can be processed at once");
       }
 
@@ -114,17 +155,30 @@ export class FalAiService {
         sync_mode: true,
         ...options,
       };
+      
+      console.log("[FalAiService.editImages] Calling FAL API with input:", input);
 
       const result = await fal.subscribe("fal-ai/nano-banana/edit", {
         input,
       });
       
+      console.log("[FalAiService.editImages] Raw FAL API response:", result);
+      
       // Type guard to ensure result matches expected format
       const typedResult = result as any;
+      
+      const editedUrls = typedResult.images?.map((img: any) => img.url) || [];
+      console.log("[FalAiService.editImages] Extracted image URLs:", editedUrls);
+      console.log("[FalAiService.editImages] Number of images returned:", editedUrls.length);
 
-      return typedResult.images?.map((img: any) => img.url) || [];
+      return editedUrls;
     } catch (error) {
-      console.error("Failed to edit images:", error);
+      console.error("[FalAiService.editImages] Failed to edit images:", error);
+      console.error("[FalAiService.editImages] Error details:", {
+        name: error instanceof Error ? error.name : "Unknown",
+        message: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined
+      });
       throw new Error(
         `Image editing failed: ${error instanceof Error ? error.message : "Unknown error"}`
       );

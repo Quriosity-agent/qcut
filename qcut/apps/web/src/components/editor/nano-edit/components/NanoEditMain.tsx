@@ -38,6 +38,7 @@ const NanoEditMain: React.FC = () => {
   };
 
   const handlePrimaryImageSelect = useCallback((file: File, dataUrl: string) => {
+    console.log("[NanoEditMain] Primary image selected, resetting state");
     setPrimaryFile(file);
     setPrimaryImageUrl(dataUrl);
     setGeneratedContent(null);
@@ -68,17 +69,31 @@ const NanoEditMain: React.FC = () => {
   };
 
   const handleGenerate = useCallback(async () => {
+    console.log("[NanoEditMain] handleGenerate called");
+    console.log("[NanoEditMain] Current state:", {
+      hasPrimaryImage: !!primaryImageUrl,
+      hasSecondaryImage: !!secondaryImageUrl,
+      selectedTransformation,
+      customPrompt,
+      maskDataUrl: !!maskDataUrl
+    });
+    
     if (!primaryImageUrl || !selectedTransformation) {
+        console.error("[NanoEditMain] Missing required inputs:", { primaryImageUrl: !!primaryImageUrl, selectedTransformation: !!selectedTransformation });
         setError("Please upload an image and select an effect.");
         return;
     }
     if (selectedTransformation.isMultiImage && !secondaryImageUrl) {
+        console.error("[NanoEditMain] Multi-image transformation requires secondary image");
         setError("Please upload both required images.");
         return;
     }
     
     const promptToUse = selectedTransformation.prompt === 'CUSTOM' ? customPrompt : selectedTransformation.prompt;
+    console.log("[NanoEditMain] Prompt to use:", promptToUse);
+    
     if (!promptToUse.trim()) {
+        console.error("[NanoEditMain] Empty prompt");
         setError("Please enter a prompt describing the change you want to see.");
         return;
     }
@@ -87,21 +102,32 @@ const NanoEditMain: React.FC = () => {
     setError(null);
     setGeneratedContent(null);
     setLoadingMessage('Generating your masterpiece...');
+    console.log("[NanoEditMain] Starting generation process...");
 
     try {
+      console.log("[NanoEditMain] Calling FalAiService.generateImage...");
       const imageUrls = await FalAiService.generateImage(promptToUse, {
         image_size: { width: 1024, height: 1024 },
         num_images: 1,
       });
 
+      console.log("[NanoEditMain] FalAiService returned:", {
+        imageUrls,
+        count: imageUrls.length,
+        firstUrl: imageUrls[0] || "none"
+      });
+
       if (imageUrls.length > 0) {
         let finalImageUrl = imageUrls[0];
+        console.log("[NanoEditMain] Processing image URL:", finalImageUrl);
         
         // Add watermark
         try {
+          console.log("[NanoEditMain] Adding watermark...");
           finalImageUrl = await embedWatermark(finalImageUrl, "QCut｜Nano Edit");
+          console.log("[NanoEditMain] Watermark added successfully");
         } catch (watermarkError) {
-          console.warn("Failed to add watermark:", watermarkError);
+          console.warn("[NanoEditMain] Failed to add watermark:", watermarkError);
           // Continue with original image if watermark fails
         }
 
@@ -111,6 +137,7 @@ const NanoEditMain: React.FC = () => {
           secondaryImageUrl: null,
         };
         
+        console.log("[NanoEditMain] Setting generated content:", result);
         setGeneratedContent(result);
 
         // Add to store as asset
@@ -125,12 +152,23 @@ const NanoEditMain: React.FC = () => {
           transformation: selectedTransformation,
         };
 
+        console.log("[NanoEditMain] Adding asset to store:", asset);
         addAsset(asset);
+        console.log("[NanoEditMain] Generation completed successfully");
+      } else {
+        console.error("[NanoEditMain] No images returned from FalAiService");
+        setError("No images were generated. Please try again.");
       }
     } catch (err) {
-      console.error(err);
+      console.error("[NanoEditMain] Generation failed:", err);
+      console.error("[NanoEditMain] Error details:", {
+        name: err instanceof Error ? err.name : "Unknown",
+        message: err instanceof Error ? err.message : String(err),
+        stack: err instanceof Error ? err.stack : undefined
+      });
       setError(err instanceof Error ? err.message : "An unknown error occurred.");
     } finally {
+      console.log("[NanoEditMain] Cleaning up generation state");
       setProcessing(false);
       setLoadingMessage('');
     }
