@@ -24,28 +24,43 @@ const ResultDisplay: React.FC<ResultDisplayProps> = ({ content, onUseImageAsInpu
   const [sliderRight, setSliderRight] = useState<ImageSelection>('Final Result');
 
   useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
+    const handleMove = (clientX: number) => {
       if (!isDragging || !sliderContainerRef.current) return;
       const rect = sliderContainerRef.current.getBoundingClientRect();
-      const x = Math.max(0, Math.min(e.clientX - rect.left, rect.width));
+      const x = Math.max(0, Math.min(clientX - rect.left, rect.width));
       const percent = (x / rect.width) * 100;
       setSliderPosition(percent);
     };
 
+    const handleMouseMove = (e: MouseEvent) => {
+      handleMove(e.clientX);
+    };
+    
+    const handleTouchMove = (e: TouchEvent) => {
+      if (e.touches.length > 0) {
+        handleMove(e.touches[0].clientX);
+      }
+    };
+
     const handleMouseUp = () => setIsDragging(false);
+    const handleTouchEnd = () => setIsDragging(false);
 
     if (isDragging) {
       window.addEventListener('mousemove', handleMouseMove);
       window.addEventListener('mouseup', handleMouseUp);
+      window.addEventListener('touchmove', handleTouchMove);
+      window.addEventListener('touchend', handleTouchEnd);
     }
 
     return () => {
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
+      window.removeEventListener('touchmove', handleTouchMove);
+      window.removeEventListener('touchend', handleTouchEnd);
     };
   }, [isDragging]);
 
-  const handleMouseDown = () => setIsDragging(true);
+  const handleInteractionStart = () => setIsDragging(true);
 
   const downloadImage = (url: string, filename: string) => {
     const link = document.createElement('a');
@@ -161,7 +176,16 @@ const ResultDisplay: React.FC<ResultDisplayProps> = ({ content, onUseImageAsInpu
                     { src: content.imageUrl, label: 'Final Result' },
                 ].map(({ src, label }) => (
                     <div key={label} className="relative rounded-lg overflow-hidden border border-white/10 bg-black flex items-center justify-center flex-col p-1 aspect-square md:aspect-auto">
-                    <img src={src!} alt={label} className="max-w-full max-h-full object-contain cursor-pointer" onClick={() => onImageClick(src!)} />
+                    <img 
+                        src={src!} 
+                        alt={label} 
+                        className="max-w-full max-h-full object-contain cursor-pointer" 
+                        onClick={() => onImageClick(src!)}
+                        onKeyDown={(e) => e.key === 'Enter' && onImageClick(src!)}
+                        tabIndex={0}
+                        role="button"
+                        aria-label={`View ${label} in full size`}
+                    />
                     <div className="absolute bottom-1 right-1 text-xs bg-black/50 text-white px-2 py-1 rounded">{label}</div>
                     </div>
                 ))}
@@ -209,7 +233,12 @@ const ResultDisplay: React.FC<ResultDisplayProps> = ({ content, onUseImageAsInpu
                         {imageOptions.filter(o => o !== sliderLeft).map(o => <option key={o} value={o}>{o}</option>)}
                     </select>
                 </div>
-                <div ref={sliderContainerRef} onMouseDown={handleMouseDown} className="relative w-full h-full overflow-hidden rounded-lg cursor-ew-resize border border-white/10 select-none bg-black">
+                <div 
+                    ref={sliderContainerRef} 
+                    onMouseDown={handleInteractionStart}
+                    onTouchStart={handleInteractionStart}
+                    className="relative w-full h-full overflow-hidden rounded-lg cursor-ew-resize border border-white/10 select-none bg-black"
+                >
                     <div className="absolute inset-0 flex items-center justify-center">
                         <img src={leftImageSrc} alt={sliderLeft} className="max-w-full max-h-full object-contain" />
                     </div>
@@ -280,6 +309,10 @@ const ResultDisplay: React.FC<ResultDisplayProps> = ({ content, onUseImageAsInpu
           <div 
             className="w-full h-full relative bg-black rounded-lg overflow-hidden shadow-inner cursor-pointer group border border-white/10 flex items-center justify-center"
             onClick={() => onImageClick(content.imageUrl!)}
+            onKeyDown={(e) => e.key === 'Enter' && onImageClick(content.imageUrl!)}
+            tabIndex={0}
+            role="button"
+            aria-label="View generated result in full size"
           >
             <img src={content.imageUrl} alt="Generated result" className="max-w-full max-h-full object-contain" />
             <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">

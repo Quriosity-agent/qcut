@@ -148,9 +148,16 @@ const NanoEditMain: React.FC = () => {
         setGeneratedContent(result);
 
         // Add to store as asset
+        const getAssetType = (transformation: Transformation): "thumbnail" | "title-card" | "logo" | "overlay" => {
+          if (transformation.title.toLowerCase().includes('thumbnail')) return "thumbnail";
+          if (transformation.title.toLowerCase().includes('title') || transformation.title.toLowerCase().includes('card')) return "title-card";
+          if (transformation.title.toLowerCase().includes('logo')) return "logo";
+          return "overlay"; // default for other transformations
+        };
+
         const asset = {
           id: crypto.randomUUID(),
-          type: "thumbnail" as const,
+          type: getAssetType(selectedTransformation),
           url: finalImageUrl,
           projectId: undefined,
           createdAt: new Date(),

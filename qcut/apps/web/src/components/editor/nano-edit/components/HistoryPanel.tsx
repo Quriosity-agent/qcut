@@ -16,7 +16,7 @@ export const HistoryPanel: React.FC = () => {
 
   // Generate history from assets (simplified approach)
   // In a full implementation, this would be stored separately
-  const history: HistoryEntry[] = assets
+  const history: HistoryEntry[] = React.useMemo(() => assets
     .map((asset) => ({
       id: asset.id,
       timestamp: asset.createdAt,
@@ -25,7 +25,7 @@ export const HistoryPanel: React.FC = () => {
       assetType: asset.type,
       description: `Generated ${asset.type}: ${asset.prompt?.slice(0, 50) || "No description"}${asset.prompt && asset.prompt.length > 50 ? "..." : ""}`,
     }))
-    .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+    .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime()), [assets]);
 
   const clearHistory = () => {
     // In a full implementation, this would clear history while keeping assets

@@ -6,7 +6,6 @@ import EnhancementTab from '@/components/editor/nano-edit/tabs/EnhancementTab';
 const NanoEditView: React.FC = () => {
   const activeTab = useNanoEditStore(selectActiveTab);
   const setActiveTab = useNanoEditStore((state) => state.setActiveTab);
-  const assets = useNanoEditStore((state) => state.assets);
 
   return (
     <div className="p-4 h-full flex flex-col">

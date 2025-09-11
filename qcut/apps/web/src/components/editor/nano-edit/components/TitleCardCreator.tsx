@@ -83,6 +83,7 @@ export const TitleCardCreator: React.FC = () => {
                     src={asset.url}
                     alt={asset.prompt || 'Title card'}
                     className="w-full h-24 object-cover rounded border border-gray-600 group-hover:border-blue-500 transition-colors"
+                    loading="lazy"
                   />
                   <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 rounded transition-colors" />
                 </a>
