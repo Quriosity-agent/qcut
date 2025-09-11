@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useId, useState } from "react";
 import { useNanoEditStore } from "@/stores/nano-edit-store";
 
 interface PromptInputProps {
@@ -14,6 +14,7 @@ export const PromptInput: React.FC<PromptInputProps> = ({
 }) => {
   const [prompt, setPrompt] = useState("");
   const { isProcessing } = useNanoEditStore();
+  const inputId = useId();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -31,13 +32,13 @@ export const PromptInput: React.FC<PromptInputProps> = ({
     <form onSubmit={handleSubmit} className="space-y-3">
       <div>
         <label
-          htmlFor="prompt-input"
+          htmlFor={inputId}
           className="block text-sm font-medium text-gray-300 mb-2"
         >
           {label}
         </label>
         <textarea
-          id="prompt-input"
+          id={inputId}
           value={prompt}
           onChange={(e) => setPrompt(e.target.value)}
           placeholder={placeholder}

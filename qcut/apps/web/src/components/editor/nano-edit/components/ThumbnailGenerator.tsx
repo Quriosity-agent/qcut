@@ -99,13 +99,19 @@ export const ThumbnailGenerator: React.FC = () => {
           <div className="grid grid-cols-2 gap-3">
             {thumbnailAssets.slice(0, 4).map((asset) => (
               <div key={asset.id} className="relative group">
-                <img
-                  src={asset.url}
-                  alt="Generated thumbnail"
-                  className="w-full h-20 object-cover rounded border border-gray-600 group-hover:border-blue-500 transition-colors cursor-pointer"
+                <button
+                  type="button"
                   onClick={() => window.open(asset.url, "_blank")}
-                />
-                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 rounded transition-colors" />
+                  className="w-full h-20 overflow-hidden rounded border border-gray-600 group-hover:border-blue-500 transition-colors"
+                  aria-label="Open generated thumbnail in new tab"
+                >
+                  <img
+                    src={asset.url}
+                    alt="Generated thumbnail"
+                    className="w-full h-full object-cover"
+                  />
+                </button>
+                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 rounded transition-colors pointer-events-none" />
                 {asset.prompt && (
                   <div className="absolute bottom-1 left-1 right-1 text-xs text-white bg-black/70 px-1 py-0.5 rounded truncate opacity-0 group-hover:opacity-100 transition-opacity">
                     {asset.prompt}

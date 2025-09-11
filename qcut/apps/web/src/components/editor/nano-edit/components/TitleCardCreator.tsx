@@ -73,13 +73,19 @@ export const TitleCardCreator: React.FC = () => {
           <div className="grid grid-cols-1 gap-3">
             {titleCardAssets.slice(0, 3).map((asset) => (
               <div key={asset.id} className="relative group">
-                <img
-                  src={asset.url}
-                  alt="Generated title card"
-                  className="w-full h-24 object-cover rounded border border-gray-600 group-hover:border-blue-500 transition-colors cursor-pointer"
-                  onClick={() => window.open(asset.url, "_blank")}
-                />
-                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 rounded transition-colors" />
+                <a
+                  href={asset.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block"
+                >
+                  <img
+                    src={asset.url}
+                    alt={asset.prompt || 'Title card'}
+                    className="w-full h-24 object-cover rounded border border-gray-600 group-hover:border-blue-500 transition-colors"
+                  />
+                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 rounded transition-colors" />
+                </a>
                 {asset.prompt && (
                   <div className="absolute bottom-1 left-1 right-1 text-xs text-white bg-black/70 px-2 py-1 rounded truncate opacity-0 group-hover:opacity-100 transition-opacity">
                     {asset.prompt}
