@@ -16,8 +16,8 @@ if (platform() !== "win32") {
   process.exit(0);
 }
 
-const sourceDir = "electron/resources";
-const targetDir = "dist-packager-new/QCut-win32-x64/resources";
+const sourceDir: string = "electron/resources";
+const targetDir: string = "dist-packager-new/QCut-win32-x64/resources";
 
 try {
   // Check if source directory exists
@@ -37,7 +37,8 @@ try {
   });
 
   console.log("✅ FFmpeg resources copied successfully");
-} catch (error) {
-  console.error("❌ Failed to copy FFmpeg resources:", error.message);
+} catch (error: unknown) {
+  const errorMessage = error instanceof Error ? error.message : String(error);
+  console.error("❌ Failed to copy FFmpeg resources:", errorMessage);
   process.exit(1);
 }

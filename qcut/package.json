@@ -53,7 +53,7 @@
     "dist:win:release": "electron-builder --win --config.win.forceCodeSigning=false --config.win.verifyUpdateCodeSignature=false",
     "dist:win:fast": "electron-builder --win --config.win.forceCodeSigning=false --config.compression=store --config.nsis.differentialPackage=false",
     "package:win": "electron-packager . QCut --platform=win32 --arch=x64 --out=dist-packager-new --overwrite --ignore=\"dist-packager.*\" --ignore=\"dist-electron.*\" && bun run copy-ffmpeg",
-    "copy-ffmpeg": "node scripts/copy-ffmpeg.mjs",
+    "copy-ffmpeg": "bun scripts/copy-ffmpeg.ts",
     "build:exe": "bun run build && bun run package:win",
     "release:patch": "node scripts/release.js patch",
     "release:minor": "node scripts/release.js minor",
