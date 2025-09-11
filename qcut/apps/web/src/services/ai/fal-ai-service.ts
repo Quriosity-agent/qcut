@@ -5,8 +5,18 @@ import type {
   FalAiImageEditInput,
 } from "../../types/nano-edit";
 
-// Configure fal client with API key from settings
+// Configure fal client with API key from environment or settings
 const configureFalClient = async () => {
+  // First try environment variable (same as AI panel)
+  const envApiKey = import.meta.env.VITE_FAL_API_KEY;
+  if (envApiKey) {
+    fal.config({
+      credentials: envApiKey
+    });
+    return true;
+  }
+
+  // Fall back to Electron storage
   if (window.electronAPI?.apiKeys) {
     try {
       const keys = await window.electronAPI.apiKeys.get();
@@ -17,7 +27,7 @@ const configureFalClient = async () => {
         return true;
       }
     } catch (error) {
-      console.error("Failed to load FAL API key:", error);
+      console.error("Failed to load FAL API key from storage:", error);
     }
   }
   return false;
@@ -42,7 +52,7 @@ export class FalAiService {
       // Configure fal client with API key before making requests
       const configured = await configureFalClient();
       if (!configured) {
-        throw new Error("FAL API key not configured. Please set your API key in Settings.");
+        throw new Error("FAL API key not configured. Please set VITE_FAL_API_KEY environment variable or configure it in Settings.");
       }
 
       const input: FalAiTextToImageInput = {
@@ -85,7 +95,7 @@ export class FalAiService {
       // Configure fal client with API key before making requests
       const configured = await configureFalClient();
       if (!configured) {
-        throw new Error("FAL API key not configured. Please set your API key in Settings.");
+        throw new Error("FAL API key not configured. Please set VITE_FAL_API_KEY environment variable or configure it in Settings.");
       }
 
       if (imageUrls.length === 0) {
