@@ -149,20 +149,13 @@ const NanoEditMain: React.FC = () => {
         }
 
         // Convert to File for media library if needed
-        let imageFile: File;
+        let imageFile: File | undefined;
         try {
           const timestamp = Date.now();
-          const filename = `nano-edit-${selectedTransformation.id}-${timestamp}.png`;
+          const filename = `nano-edit-${selectedTransformation.title.toLowerCase().replace(/\s+/g, '-')}-${timestamp}.png`;
           
-          // Check if finalImageUrl is a data URL or regular URL
-          if (finalImageUrl.startsWith('data:')) {
-            imageFile = await dataUrlToFile(finalImageUrl, filename);
-          } else {
-            // If it's a regular URL, we need to download it first
-            const response = await fetch(finalImageUrl);
-            const blob = await response.blob();
-            imageFile = new File([blob], filename, { type: 'image/png' });
-          }
+          // Always use dataUrlToFile since finalImageUrl should be a data URL after watermarking
+          imageFile = await dataUrlToFile(finalImageUrl, filename);
           
           console.log("[NanoEditMain] Created file for media library:", {
             name: imageFile.name,
@@ -171,7 +164,9 @@ const NanoEditMain: React.FC = () => {
           });
         } catch (fileError) {
           console.error("[NanoEditMain] Failed to create file:", fileError);
-          throw new Error("Failed to process generated image");
+          // Don't throw here - just log the error and continue without adding to media library
+          console.warn("[NanoEditMain] Continuing without media library addition");
+          imageFile = undefined;
         }
 
         const result: GeneratedContent = {
@@ -198,8 +193,8 @@ const NanoEditMain: React.FC = () => {
         console.log("[NanoEditMain] Adding asset to store:", asset);
         addAsset(asset);
         
-        // Add to media library like adjustment panel does
-        if (addMediaItem && projectId) {
+        // Add to media library like adjustment panel does (only if file was created successfully)
+        if (addMediaItem && projectId && imageFile) {
           try {
             const blobUrl = createObjectURL(imageFile, "nano-edit-result");
             
@@ -220,7 +215,7 @@ const NanoEditMain: React.FC = () => {
               height: img.height || 1024,
               metadata: {
                 source: "nano_edit",
-                transformation: selectedTransformation.id,
+                transformation: selectedTransformation.title,
                 prompt: promptToUse,
                 originalImage: primaryFile?.name,
               },

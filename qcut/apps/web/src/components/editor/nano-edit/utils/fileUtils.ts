@@ -16,9 +16,24 @@ export const fileToBase64 = (file: File): Promise<{ base64: string; mimeType: st
 };
 
 export const dataUrlToFile = async (dataUrl: string, filename: string): Promise<File> => {
-    const res = await fetch(dataUrl);
-    const blob = await res.blob();
-    return new File([blob], filename, { type: blob.type });
+    // Extract the base64 data and MIME type from the data URL
+    const [header, base64Data] = dataUrl.split(',');
+    const mimeMatch = header.match(/:(.*?);/);
+    const mimeType = mimeMatch ? mimeMatch[1] : 'image/png';
+    
+    // Convert base64 to binary
+    const binaryString = atob(base64Data);
+    const bytes = new Uint8Array(binaryString.length);
+    
+    for (let i = 0; i < binaryString.length; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+    }
+    
+    // Create a blob from the binary data
+    const blob = new Blob([bytes], { type: mimeType });
+    
+    // Create and return a File object
+    return new File([blob], filename, { type: mimeType });
 };
 
 /**
