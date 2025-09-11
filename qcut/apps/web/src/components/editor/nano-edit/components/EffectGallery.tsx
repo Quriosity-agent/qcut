@@ -106,11 +106,6 @@ export const EffectGallery: React.FC = () => {
   const [selectedAsset, setSelectedAsset] = useState<string | null>(null);
   const [processingEffectId, setProcessingEffectId] = useState<string | null>(null);
 
-  // Get unique categories
-  const categories = [
-    "all",
-    ...Array.from(new Set(EFFECT_PRESETS.map((e) => e.category))),
-  ];
 
   // Filter effects by category
   const filteredEffects =
@@ -184,22 +179,6 @@ export const EffectGallery: React.FC = () => {
     }
   };
 
-  const getCategoryIcon = (category: string) => {
-    switch (category) {
-      case "artistic":
-        return "🎨";
-      case "photography":
-        return "📸";
-      case "vintage":
-        return "📼";
-      case "modern":
-        return "✨";
-      case "fantasy":
-        return "🧙";
-      default:
-        return "🎯";
-    }
-  };
 
   return (
     <div className="bg-gray-800 rounded-lg p-4 space-y-4">
@@ -241,7 +220,7 @@ export const EffectGallery: React.FC = () => {
           Effect Category
         </label>
         <div className="flex gap-2 flex-wrap">
-          {categories.map((category) => (
+          {CATEGORIES.map((category) => (
             <button
               key={category}
               type="button"
