@@ -2,6 +2,9 @@ import React, { useState, useCallback } from 'react';
 import { TRANSFORMATIONS, Transformation } from '../constants/transformations';
 import { FalAiService } from '@/services/ai/fal-ai-service';
 import { useNanoEditStore } from '@/stores/nano-edit-store';
+import { useAsyncMediaStoreActions } from '@/hooks/use-async-media-store';
+import { useParams } from '@tanstack/react-router';
+import { createObjectURL } from '@/lib/blob-manager';
 import TransformationSelector from './TransformationSelector';
 import ImageEditorCanvas from './ImageEditorCanvas';
 import MultiImageUploader from './MultiImageUploader';
@@ -14,6 +17,9 @@ type ActiveTool = 'mask' | 'none';
 
 const NanoEditMain: React.FC = () => {
   const { addAsset, isProcessing, setProcessing } = useNanoEditStore();
+  const { addMediaItem } = useAsyncMediaStoreActions();
+  const params = useParams({ from: '/editor/$project_id' });
+  const projectId = params.project_id;
   
   const [transformations, setTransformations] = useState<Transformation[]>(TRANSFORMATIONS);
   const [selectedTransformation, setSelectedTransformation] = useState<Transformation | null>(null);
@@ -142,6 +148,32 @@ const NanoEditMain: React.FC = () => {
           // Continue with original image if watermark fails
         }
 
+        // Convert to File for media library if needed
+        let imageFile: File;
+        try {
+          const timestamp = Date.now();
+          const filename = `nano-edit-${selectedTransformation.id}-${timestamp}.png`;
+          
+          // Check if finalImageUrl is a data URL or regular URL
+          if (finalImageUrl.startsWith('data:')) {
+            imageFile = await dataUrlToFile(finalImageUrl, filename);
+          } else {
+            // If it's a regular URL, we need to download it first
+            const response = await fetch(finalImageUrl);
+            const blob = await response.blob();
+            imageFile = new File([blob], filename, { type: 'image/png' });
+          }
+          
+          console.log("[NanoEditMain] Created file for media library:", {
+            name: imageFile.name,
+            size: imageFile.size,
+            type: imageFile.type
+          });
+        } catch (fileError) {
+          console.error("[NanoEditMain] Failed to create file:", fileError);
+          throw new Error("Failed to process generated image");
+        }
+
         const result: GeneratedContent = {
           imageUrl: finalImageUrl,
           text: promptToUse,
@@ -165,6 +197,43 @@ const NanoEditMain: React.FC = () => {
 
         console.log("[NanoEditMain] Adding asset to store:", asset);
         addAsset(asset);
+        
+        // Add to media library like adjustment panel does
+        if (addMediaItem && projectId) {
+          try {
+            const blobUrl = createObjectURL(imageFile, "nano-edit-result");
+            
+            // Get image dimensions
+            const img = new Image();
+            await new Promise((resolve, reject) => {
+              img.onload = resolve;
+              img.onerror = reject;
+              img.src = finalImageUrl;
+            });
+            
+            const mediaItem = {
+              name: imageFile.name,
+              type: "image" as const,
+              file: imageFile,
+              url: blobUrl,
+              width: img.width || 1024,
+              height: img.height || 1024,
+              metadata: {
+                source: "nano_edit",
+                transformation: selectedTransformation.id,
+                prompt: promptToUse,
+                originalImage: primaryFile?.name,
+              },
+            };
+            
+            const newItemId = await addMediaItem(projectId, mediaItem);
+            console.log("[NanoEditMain] Added to media library with ID:", newItemId);
+          } catch (mediaError) {
+            console.error("[NanoEditMain] Failed to add to media library:", mediaError);
+            // Don't throw - the generation was successful even if media library failed
+          }
+        }
+        
         console.log("[NanoEditMain] Generation completed successfully");
       } else {
         console.error("[NanoEditMain] No images returned from FalAiService");

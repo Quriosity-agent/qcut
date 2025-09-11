@@ -150,7 +150,7 @@ export class FalAiService {
   /**
    * Edit existing images using text prompts
    * @param prompt Text description for desired changes
-   * @param imageUrls Array of image URLs to edit (max 10)
+   * @param imageUrls Array of image URLs or data URLs to edit (max 10)
    * @param options Additional editing options
    * @returns Promise resolving to edited image URLs
    */
@@ -161,7 +161,7 @@ export class FalAiService {
   ): Promise<string[]> {
     console.log("[FalAiService.editImages] Starting image editing");
     console.log("[FalAiService.editImages] Prompt:", prompt);
-    console.log("[FalAiService.editImages] Image URLs:", imageUrls);
+    console.log("[FalAiService.editImages] Image URLs type:", imageUrls.map(url => url.startsWith('data:') ? 'data URL' : 'regular URL'));
     console.log("[FalAiService.editImages] Options:", options);
     
     try {
@@ -182,9 +182,11 @@ export class FalAiService {
         throw new Error("Maximum 10 images can be processed at once");
       }
 
+      // The nano-banana/edit endpoint accepts data URLs directly
+      // Just like the adjustment panel does with other models
       const input: FalAiImageEditInput = {
         prompt,
-        image_urls: imageUrls, // Array of image URLs
+        image_urls: imageUrls, // Can be data URLs or regular URLs
         num_images: options.num_images || 1,
         output_format: options.output_format || "jpeg",
         sync_mode: true, // Return images as data URIs
