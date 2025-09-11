@@ -1,18 +1,5 @@
 // Direct copy of nano-banana transformations with QCut adaptations
-export interface Transformation {
-  title: string;
-  prompt: string;
-  emoji: string;
-  description: string;
-  isMultiImage?: boolean;
-  isTwoStep?: boolean;
-  stepTwoPrompt?: string;
-  primaryUploaderTitle?: string;
-  secondaryUploaderTitle?: string;
-  primaryUploaderDescription?: string;
-  secondaryUploaderDescription?: string;
-  category?: string;
-}
+import type { Transformation } from '@/types/nano-edit';
 
 export const TRANSFORMATIONS: Transformation[] = [
   // Viral & Fun Transformations
