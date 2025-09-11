@@ -13,9 +13,6 @@ type TwoStepViewMode = 'result' | 'grid' | 'slider';
 type ImageSelection = 'Original' | 'Line Art' | 'Final Result';
 
 const ResultDisplay: React.FC<ResultDisplayProps> = ({ content, onUseImageAsInput, onImageClick, originalImageUrl }) => {
-  console.log("[ResultDisplay] Rendering with content:", content);
-  console.log("[ResultDisplay] Original image URL:", originalImageUrl);
-  
   const [viewMode, setViewMode] = useState<ViewMode>('result');
   const [twoStepViewMode, setTwoStepViewMode] = useState<TwoStepViewMode>('result');
   
