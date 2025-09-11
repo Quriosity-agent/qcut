@@ -90,11 +90,46 @@ export class FalAiService {
       });
       
       console.log("[FalAiService.generateImage] Raw FAL API response:", result);
+      console.log("[FalAiService.generateImage] Response type:", typeof result);
+      console.log("[FalAiService.generateImage] Response keys:", Object.keys(result));
+      
+      // Check if response has data property
+      if ((result as any).data) {
+        console.log("[FalAiService.generateImage] Response.data:", (result as any).data);
+        console.log("[FalAiService.generateImage] Response.data keys:", Object.keys((result as any).data));
+      }
       
       // Type guard to ensure result matches expected format
       const typedResult = result as any;
       
-      const imageUrls = typedResult.images?.map((img: any) => img.url) || [];
+      // Try different response structures
+      let imageUrls: string[] = [];
+      
+      // Check for images in direct response
+      if (typedResult.images && Array.isArray(typedResult.images)) {
+        console.log("[FalAiService.generateImage] Found images in direct response");
+        imageUrls = typedResult.images.map((img: any) => img.url || img);
+      }
+      // Check for images in data property
+      else if (typedResult.data?.images && Array.isArray(typedResult.data.images)) {
+        console.log("[FalAiService.generateImage] Found images in data property");
+        imageUrls = typedResult.data.images.map((img: any) => img.url || img);
+      }
+      // Check for single image in data
+      else if (typedResult.data?.image) {
+        console.log("[FalAiService.generateImage] Found single image in data property");
+        imageUrls = [typedResult.data.image];
+      }
+      // Check for output property (some FAL models use this)
+      else if (typedResult.data?.output) {
+        console.log("[FalAiService.generateImage] Found output in data property");
+        if (Array.isArray(typedResult.data.output)) {
+          imageUrls = typedResult.data.output.map((item: any) => item.url || item);
+        } else if (typeof typedResult.data.output === 'string') {
+          imageUrls = [typedResult.data.output];
+        }
+      }
+      
       console.log("[FalAiService.generateImage] Extracted image URLs:", imageUrls);
       console.log("[FalAiService.generateImage] Number of images returned:", imageUrls.length);
 
@@ -149,25 +184,61 @@ export class FalAiService {
 
       const input: FalAiImageEditInput = {
         prompt,
-        image_urls: imageUrls,
-        num_images: 1,
-        output_format: "jpeg",
-        sync_mode: true,
+        image_urls: imageUrls, // Array of image URLs
+        num_images: options.num_images || 1,
+        output_format: options.output_format || "jpeg",
+        sync_mode: true, // Return images as data URIs
         ...options,
       };
       
       console.log("[FalAiService.editImages] Calling FAL API with input:", input);
 
+      // Use the correct nano-banana/edit endpoint
       const result = await fal.subscribe("fal-ai/nano-banana/edit", {
         input,
       });
       
       console.log("[FalAiService.editImages] Raw FAL API response:", result);
+      console.log("[FalAiService.editImages] Response type:", typeof result);
+      console.log("[FalAiService.editImages] Response keys:", Object.keys(result));
+      
+      // Check if response has data property
+      if ((result as any).data) {
+        console.log("[FalAiService.editImages] Response.data:", (result as any).data);
+        console.log("[FalAiService.editImages] Response.data keys:", Object.keys((result as any).data));
+      }
       
       // Type guard to ensure result matches expected format
       const typedResult = result as any;
       
-      const editedUrls = typedResult.images?.map((img: any) => img.url) || [];
+      // Try different response structures
+      let editedUrls: string[] = [];
+      
+      // Check for images in direct response
+      if (typedResult.images && Array.isArray(typedResult.images)) {
+        console.log("[FalAiService.editImages] Found images in direct response");
+        editedUrls = typedResult.images.map((img: any) => img.url || img);
+      }
+      // Check for images in data property
+      else if (typedResult.data?.images && Array.isArray(typedResult.data.images)) {
+        console.log("[FalAiService.editImages] Found images in data property");
+        editedUrls = typedResult.data.images.map((img: any) => img.url || img);
+      }
+      // Check for single image in data
+      else if (typedResult.data?.image) {
+        console.log("[FalAiService.editImages] Found single image in data property");
+        editedUrls = [typedResult.data.image];
+      }
+      // Check for output property (some FAL models use this)
+      else if (typedResult.data?.output) {
+        console.log("[FalAiService.editImages] Found output in data property");
+        if (Array.isArray(typedResult.data.output)) {
+          editedUrls = typedResult.data.output.map((item: any) => item.url || item);
+        } else if (typeof typedResult.data.output === 'string') {
+          editedUrls = [typedResult.data.output];
+        }
+      }
+      
       console.log("[FalAiService.editImages] Extracted image URLs:", editedUrls);
       console.log("[FalAiService.editImages] Number of images returned:", editedUrls.length);
 

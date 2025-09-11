@@ -105,11 +105,22 @@ const NanoEditMain: React.FC = () => {
     console.log("[NanoEditMain] Starting generation process...");
 
     try {
-      console.log("[NanoEditMain] Calling FalAiService.generateImage...");
-      const imageUrls = await FalAiService.generateImage(promptToUse, {
-        image_size: { width: 1024, height: 1024 },
-        num_images: 1,
-      });
+      // Use editImages when we have an input image, generateImage for text-only
+      let imageUrls: string[] = [];
+      
+      if (primaryImageUrl) {
+        console.log("[NanoEditMain] Calling FalAiService.editImages with input image...");
+        // For editing, we need to pass the image URL
+        imageUrls = await FalAiService.editImages(promptToUse, [primaryImageUrl], {
+          num_images: 1,
+        });
+      } else {
+        console.log("[NanoEditMain] Calling FalAiService.generateImage (no input image)...");
+        imageUrls = await FalAiService.generateImage(promptToUse, {
+          image_size: { width: 1024, height: 1024 },
+          num_images: 1,
+        });
+      }
 
       console.log("[NanoEditMain] FalAiService returned:", {
         imageUrls,
