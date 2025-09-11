@@ -1,5 +1,6 @@
 import React, { useState, useCallback } from 'react';
-import { TRANSFORMATIONS, Transformation } from '../constants/transformations';
+import { TRANSFORMATIONS } from '../constants/transformations';
+import type { Transformation } from '@/types/nano-edit';
 import { FalAiService } from '@/services/ai/fal-ai-service';
 import { useNanoEditStore } from '@/stores/nano-edit-store';
 import { useAsyncMediaStoreActions } from '@/hooks/use-async-media-store';

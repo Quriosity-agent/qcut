@@ -3,7 +3,8 @@ import { useNanoEditStore } from "@/stores/nano-edit-store";
 import { FalAiService } from "@/services/ai/fal-ai-service";
 import { PromptInput } from "./PromptInput";
 import TransformationSelector from "./TransformationSelector";
-import { THUMBNAIL_TEMPLATES, Transformation } from "../constants/transformations";
+import { THUMBNAIL_TEMPLATES } from "../constants/transformations";
+import type { Transformation } from '@/types/nano-edit';
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
 
 export const ThumbnailGenerator: React.FC = () => {

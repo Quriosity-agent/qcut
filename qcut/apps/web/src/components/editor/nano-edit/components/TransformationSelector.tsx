@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import type { Transformation } from '../constants/transformations';
+import type { Transformation } from '@/types/nano-edit';
 
 interface TransformationSelectorProps {
   transformations: Transformation[];
