@@ -54,7 +54,6 @@ class FalAIClient {
     // Try to get API key from environment variables
     this.apiKey =
       import.meta.env.VITE_FAL_API_KEY ||
-      process.env.FAL_API_KEY ||
       (typeof window !== "undefined" &&
         (window as any).process?.env?.FAL_API_KEY) ||
       null;
@@ -369,7 +368,6 @@ class FalAIClient {
     // Determine source of API key
     let source = "unknown";
     if (import.meta.env.VITE_FAL_API_KEY) source = "VITE_FAL_API_KEY";
-    else if (process.env.FAL_API_KEY) source = "FAL_API_KEY";
     else if (
       typeof window !== "undefined" &&
       (window as any).process?.env?.FAL_API_KEY

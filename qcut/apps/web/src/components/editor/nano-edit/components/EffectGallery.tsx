@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useNanoEditStore } from "@/stores/nano-edit-store";
 import { FalAiService } from "@/services/ai/fal-ai-service";
+import { toast } from "@/hooks/use-toast";
 
 export interface ImageEffect {
   id: string;
@@ -126,10 +127,33 @@ export const EffectGallery: React.FC = () => {
         };
 
         addAsset(newAsset);
+        
+        // Show success notification
+        toast({
+          title: "Effect Applied Successfully",
+          description: `${effect.name} effect has been applied to your image.`,
+        });
+      } else {
+        // Handle case where no images were returned
+        toast({
+          title: "No Result",
+          description: "The effect was processed but no image was returned. Please try again.",
+          variant: "destructive",
+        });
       }
     } catch (error) {
       console.error("Error applying effect:", error);
-      // Consider showing a user-friendly error message
+      
+      // Show user-friendly error notification
+      const errorMessage = error instanceof Error 
+        ? error.message 
+        : "An unexpected error occurred while applying the effect.";
+      
+      toast({
+        title: "Failed to Apply Effect",
+        description: errorMessage,
+        variant: "destructive",
+      });
     } finally {
       setProcessing(false);
       setProcessingEffectId(null);

@@ -243,13 +243,4 @@ export const EFFECT_PRESETS = TRANSFORMATIONS.filter(t =>
   t.category === "artistic" || t.category === "utility"
 );
 
-// Helper function to get transformations by category
-export const getTransformationsByCategory = (category: string) => {
-  return TRANSFORMATIONS.filter(transformation => transformation.category === category);
-};
 
-// Helper function to get all categories
-export const getCategories = () => {
-  const categories = new Set(TRANSFORMATIONS.map(transformation => transformation.category?.toLowerCase()));
-  return Array.from(categories).filter(Boolean);
-};
