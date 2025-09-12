@@ -168,7 +168,7 @@ class FalAIClient {
           case "portrait_4_3":
             params.aspect_ratio = "3:4";
             break;
-          case "portrait_16_9":
+          case "portrait_9_16":
             params.aspect_ratio = "9:16";
             break;
           case "landscape_4_3":
@@ -207,7 +207,7 @@ class FalAIClient {
           case "portrait_4_3":
             params.aspect_ratio = "3:4";
             break;
-          case "portrait_16_9":
+          case "portrait_9_16":
             params.aspect_ratio = "9:16";
             break;
           case "landscape_4_3":
@@ -225,7 +225,7 @@ class FalAIClient {
         // SeedDream V4 uses string image_size values like "square_hd", "square", etc.
         if (typeof settings.imageSize === 'string') {
           // Validate and use string values directly for V4
-          const validV4Sizes = ["square", "square_hd", "portrait_4_3", "landscape_4_3", "portrait_16_9", "landscape_16_9"];
+          const validV4Sizes = ["square", "square_hd", "portrait_4_3", "landscape_4_3", "portrait_9_16", "landscape_16_9"];
           if (validV4Sizes.includes(settings.imageSize)) {
             params.image_size = settings.imageSize;
           } else {
@@ -550,7 +550,7 @@ function convertV4Parameters(params: any) {
 
   // Validate image_size - must be valid preset or numeric value between 256-4096
   let imageSize = params.image_size || params.imageSize || "square_hd";
-  const validPresets = ["square_hd", "square", "portrait_4_3", "portrait_16_9", "landscape_4_3", "landscape_16_9"];
+  const validPresets = ["square_hd", "square", "portrait_4_3", "portrait_9_16", "landscape_4_3", "landscape_16_9"];
   if (typeof imageSize === "number") {
     imageSize = clamp(imageSize, 256, 4096);
   } else if (typeof imageSize === "string" && !validPresets.includes(imageSize)) {
