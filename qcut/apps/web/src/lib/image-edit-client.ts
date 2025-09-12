@@ -222,16 +222,20 @@ export async function editImage(
 
   console.log(`🎨 Editing image with ${request.model}:`, {
     ...payload,
-    image_url: payload.image_url?.substring(0, 50) + "...", // Truncate for readability
+    image_url: payload.image_url?.substring(0, 50) + "..." || "N/A", // Truncate for readability
+    image_urls: payload.image_urls?.map(url => url.substring(0, 50) + "...") || "N/A", // For V4/Nano Banana
   });
 
-  // Debug: Check the actual format of the image URL
+  // Debug: Check the actual format of the image URL(s)
+  const imageUrl = payload.image_url || payload.image_urls?.[0];
   console.log("🔍 DEBUG: Image URL details:", {
-    type: typeof payload.image_url,
-    length: payload.image_url?.length,
-    startsWithData: payload.image_url?.startsWith("data:"),
-    startsWithHttps: payload.image_url?.startsWith("https:"),
-    firstChars: payload.image_url?.substring(0, 20),
+    type: typeof imageUrl,
+    length: imageUrl?.length,
+    startsWithData: imageUrl?.startsWith("data:"),
+    startsWithHttps: imageUrl?.startsWith("https:"),
+    firstChars: imageUrl?.substring(0, 20),
+    hasImageUrls: !!payload.image_urls,
+    imageUrlsLength: payload.image_urls?.length || 0,
   });
 
   if (onProgress) {

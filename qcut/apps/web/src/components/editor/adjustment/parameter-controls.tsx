@@ -219,12 +219,12 @@ export function ParameterControls() {
                 value={[parameters.maxImages || 1]}
                 onValueChange={([value]) => updateParameter("maxImages", value)}
                 min={1}
-                max={10}
+                max={6}
                 step={1}
                 className="w-full"
               />
               <p className="text-xs text-muted-foreground">
-                Maximum number of input images to process
+                Maximum number of input images to process (1-6)
               </p>
             </div>
 

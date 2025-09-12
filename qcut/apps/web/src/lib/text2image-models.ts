@@ -520,7 +520,7 @@ export const TEXT2IMAGE_MODELS: Record<string, Text2ImageModel> = {
         name: "max_images",
         type: "number", 
         min: 1,
-        max: 10,
+        max: 6,
         default: 1,
         description: "Maximum input images to process"
       },

@@ -1283,8 +1283,10 @@ export function MultiImageUpload({ images, maxImages, onChange }: MultiImageUplo
 **SeedDream V4 API Corrections Applied:**
 - **Image Size Parameter**: Changed from flexible numeric sizing (1024-4096px) to predefined string options ("square_hd", "square", "portrait_4_3", etc.) to match actual V4 API requirements
 - **Image URLs**: Fixed to use `image_urls` array parameter instead of single `image_url` for V4 and Nano Banana models
+- **Parameter Limits**: Corrected `max_images` limit from 10 to 6 (API constraint: "ensure this value is less than or equal to 6")
 - **Parameter Types**: Updated all interfaces and stores to use correct string-based image sizing
 - **UI Controls**: Changed V4 image size from slider to dropdown selector with proper resolution labels
+- **Debug Logging**: Enhanced to properly display both `image_url` and `image_urls` parameters for better troubleshooting
 
 **These fixes resolve 422 API errors and ensure proper compatibility with the actual SeedDream V4 endpoint.**
 
