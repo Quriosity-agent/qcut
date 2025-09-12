@@ -61,14 +61,35 @@ export function getModelCapabilities(modelId: string): ModelCapability {
   }
 }
 
-export function canSwitchModels(fromModel: string, toModel: string, currentParams: any): boolean {
+export function canSwitchModels(fromModel: string, toModel: string, currentParams: CommonParams): boolean {
   // Allow switching between any models - parameters will be converted appropriately
   // V3 users can always upgrade to V4/Nano Banana
   // V4/Nano Banana users can downgrade to V3 (with parameter compatibility warnings)
   return true;
 }
 
-export function convertParametersBetweenModels(params: any, fromModel: string, toModel: string): any {
+type CommonParams = Partial<{
+  prompt: string
+  numImages: number
+  num_images: number
+  guidanceScale: number
+  guidance_scale: number
+  steps: number
+  num_inference_steps: number
+  seed: number
+  safetyTolerance: number
+  safety_tolerance: number
+  image_urls: string[]
+  outputFormat: 'JPEG' | 'PNG'
+  imageSize: number
+  maxImages: number
+}>
+
+export function convertParametersBetweenModels(
+  params: CommonParams,
+  fromModel: string,
+  toModel: string
+): Record<string, unknown> {
   // Handle parameter conversion when switching models
   const baseParams = {
     prompt: params.prompt || "",
@@ -78,7 +99,7 @@ export function convertParametersBetweenModels(params: any, fromModel: string, t
   if (toModel === "nano-banana") {
     return {
       ...baseParams,
-      outputFormat: "PNG",
+      outputFormat: (params.outputFormat === 'JPEG' || params.outputFormat === 'PNG') ? params.outputFormat : "PNG",
       syncMode: false,
       image_urls: params.image_urls || []
     };
@@ -189,7 +210,7 @@ export function getModelDisplayInfo(modelId: string) {
   }
 }
 
-export function validateModelParameters(modelId: string, params: any): string[] {
+export function validateModelParameters(modelId: string, params: CommonParams): string[] {
   const errors: string[] = [];
   
   if (modelId === "seeddream-v4") {

@@ -249,6 +249,9 @@ export async function editImage(
 
   try {
     // Try queue mode first
+    const ctrl = new AbortController();
+    const timeout = setTimeout(() => ctrl.abort(), 60_000); // 60 second timeout
+    
     const response = await fetch(`${FAL_API_BASE}/${modelConfig.endpoint}`, {
       method: "POST",
       headers: {
@@ -257,7 +260,10 @@ export async function editImage(
         "X-Fal-Queue": "true",
       },
       body: JSON.stringify(payload),
+      signal: ctrl.signal,
     });
+    
+    clearTimeout(timeout);
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
@@ -395,11 +401,21 @@ export async function editImage(
       `Unexpected response format from FAL API. Response keys: ${Object.keys(result).join(", ")}`
     );
   } catch (error) {
+    // Handle timeout errors specifically
+    let errorMessage = "Unknown error";
+    if (error instanceof Error) {
+      if (error.name === "AbortError") {
+        errorMessage = "Request timeout - the image editing service took too long to respond";
+      } else {
+        errorMessage = error.message;
+      }
+    }
+    
     if (onProgress) {
       onProgress({
         status: "failed",
         progress: 0,
-        message: error instanceof Error ? error.message : "Unknown error",
+        message: errorMessage,
         elapsedTime: Math.floor((Date.now() - startTime) / 1000),
       });
     }
@@ -426,14 +442,20 @@ async function pollImageEditStatus(
     const elapsedTime = Math.floor((Date.now() - startTime) / 1000);
 
     try {
+      const pollCtrl = new AbortController();
+      const pollTimeout = setTimeout(() => pollCtrl.abort(), 15_000); // 15 second timeout per poll
+      
       const statusResponse = await fetch(
         `${FAL_API_BASE}/queue/requests/${requestId}/status`,
         {
           headers: {
             "Authorization": `Key ${FAL_API_KEY}`,
           },
+          signal: pollCtrl.signal,
         }
       );
+      
+      clearTimeout(pollTimeout);
 
       if (!statusResponse.ok) {
         console.warn(
@@ -501,15 +523,21 @@ async function pollImageEditStatus(
 
       await sleep(5000);
     } catch (error) {
-      handleAIServiceError(error, "Poll FAL AI image edit status", {
-        attempts,
-        requestId,
-        elapsedTime,
-        modelName,
-        operation: "pollImageEditStatus",
-      });
+      // Handle specific timeout errors
+      if (error instanceof Error && error.name === "AbortError") {
+        console.warn(`⏰ Poll request timeout (attempt ${attempts}): Status check took longer than 15 seconds`);
+      } else {
+        handleAIServiceError(error, "Poll FAL AI image edit status", {
+          attempts,
+          requestId,
+          elapsedTime,
+          modelName,
+          operation: "pollImageEditStatus",
+        });
+      }
+      
       if (attempts >= maxAttempts) {
-        throw new Error("Image editing timeout");
+        throw new Error("Image editing timeout - maximum polling attempts reached");
       }
       await sleep(5000);
     }

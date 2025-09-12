@@ -584,13 +584,49 @@ function convertV4Parameters(params: any) {
   };
 }
 
+/**
+ * Converts and sanitizes Nano Banana API parameters with proper validation
+ * Enforces count limits and normalizes format specifications
+ * @param params - Raw parameters from the user
+ * @returns Sanitized parameters for Nano Banana API
+ */
 function convertNanoBananaParameters(params: any) {
+  // Sanitize and validate image URLs - limit to max 10 URLs
+  const urls = (params.image_urls ?? (params.imageUrl ? [params.imageUrl] : [])) as string[];
+  const imageUrls = Array.isArray(urls) ? urls.slice(0, 10) : [];
+  
+  if (Array.isArray(urls) && urls.length > 10) {
+    console.warn(`[FAL AI Nano Banana] Truncating image_urls from ${urls.length} to 10 (max allowed)`);
+  }
+
+  // Clamp num_images to valid range (1-4)
+  const numImages = Math.max(1, Math.min(4, Number(params.num_images ?? params.numImages ?? 1)));
+  
+  if (numImages !== (params.num_images ?? params.numImages ?? 1)) {
+    console.warn(`[FAL AI Nano Banana] Clamping num_images to ${numImages} (valid range: 1-4)`);
+  }
+
+  // Normalize output format to uppercase
+  const validFormats = ["PNG", "JPEG", "WEBP"];
+  let outputFormat = String(params.output_format ?? params.outputFormat ?? "PNG").toUpperCase();
+  
+  if (!validFormats.includes(outputFormat)) {
+    console.warn(`[FAL AI Nano Banana] Invalid output_format "${outputFormat}", defaulting to "PNG"`);
+    outputFormat = "PNG";
+  }
+
+  // Ensure sync_mode is boolean
+  const syncMode = Boolean(params.sync_mode ?? params.syncMode ?? false);
+
+  // Sanitize prompt
+  const prompt = params.prompt || "";
+
   return {
-    image_urls: params.image_urls || (params.imageUrl ? [params.imageUrl] : []),
-    prompt: params.prompt || "",
-    num_images: params.num_images || params.numImages || 1,
-    output_format: params.output_format || params.outputFormat || "PNG",
-    sync_mode: params.sync_mode || params.syncMode || false
+    image_urls: imageUrls,
+    prompt: prompt,
+    num_images: numImages,
+    output_format: outputFormat,
+    sync_mode: syncMode
   };
 }
 
