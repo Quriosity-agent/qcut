@@ -151,6 +151,7 @@ export const useAdjustmentStore = create<AdjustmentStore>()(
     originalImage: null,
     originalImageUrl: null,
     currentEditedUrl: null,
+    multipleImages: [],
     selectedModel: "seededit",
     prompt: "",
     parameters: getDefaultParameters("seededit"),
@@ -197,6 +198,19 @@ export const useAdjustmentStore = create<AdjustmentStore>()(
         editHistory: [],
         currentHistoryIndex: -1,
         prompt: "",
+      });
+    },
+
+    setMultipleImages: (imageUrls) => {
+      // Clean up old URLs that are blob URLs
+      const { multipleImages } = get();
+      multipleImages.forEach(url => {
+        if (url.startsWith("blob:")) {
+          URL.revokeObjectURL(url);
+        }
+      });
+      set({
+        multipleImages: imageUrls,
       });
     },
 

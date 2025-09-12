@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useAdjustmentStore } from "@/stores/adjustment-store";
 import { getImageEditModels } from "@/lib/image-edit-client";
 import { getModelCapabilities } from "@/lib/model-utils";
+import { MultiImageUpload } from "./multi-image-upload";
 import { RotateCcw } from "lucide-react";
 
 export function ParameterControls() {
@@ -18,9 +19,11 @@ export function ParameterControls() {
     selectedModel,
     parameters,
     prompt,
+    multipleImages,
     updateParameter,
     resetParameters,
     setPrompt,
+    setMultipleImages,
   } = useAdjustmentStore();
 
   const models = getImageEditModels();
@@ -183,6 +186,14 @@ export function ParameterControls() {
         {/* SeedDream V4 Specific Controls */}
         {selectedModel === "seeddream-v4" && (
           <>
+            {/* Multi-Image Upload */}
+            <MultiImageUpload
+              images={multipleImages}
+              maxImages={6}
+              onChange={setMultipleImages}
+              label="Input Images (SeedDream V4)"
+            />
+
             {/* Image Size Selector */}
             <div className="space-y-2">
               <Label className="text-xs">Image Size</Label>
@@ -257,6 +268,14 @@ export function ParameterControls() {
         {/* Nano Banana Specific Controls */}
         {selectedModel === "nano-banana" && (
           <>
+            {/* Multi-Image Upload */}
+            <MultiImageUpload
+              images={multipleImages}
+              maxImages={10}
+              onChange={setMultipleImages}
+              label="Input Images (Nano Banana)"
+            />
+
             {/* Output Format Selector */}
             <div className="space-y-2">
               <Label className="text-xs">Output Format</Label>
