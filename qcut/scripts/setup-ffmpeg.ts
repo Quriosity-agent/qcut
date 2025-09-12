@@ -46,7 +46,8 @@ async function setupFFmpeg() {
           console.log(`✅ Copied: ${file} → ${targetPath}`);
         }
       } else {
-        console.warn(`⚠️  Source file not found: ${sourcePath}`);
+        console.error(`❌ Source file not found: ${sourcePath}`);
+        process.exit(1);
       }
     }
 
