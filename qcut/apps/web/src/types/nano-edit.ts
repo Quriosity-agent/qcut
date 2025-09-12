@@ -34,7 +34,7 @@ export interface NanoEditAsset {
 export interface NanoEditState {
   assets: NanoEditAsset[];
   isProcessing: boolean;
-  activeTab: "image-assets" | "enhancement" | "templates" | "style-transfer";
+  activeTab: "image-assets" | "enhancement";
   currentProject?: string;
 }
 

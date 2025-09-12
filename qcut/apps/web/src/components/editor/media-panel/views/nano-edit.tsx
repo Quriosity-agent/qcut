@@ -39,56 +39,12 @@ const NanoEditView: React.FC = () => {
         >
           🔧 Enhancement
         </button>
-        <button
-          type="button"
-          onClick={() => setActiveTab("templates")}
-          className={`px-3 py-2 text-sm font-medium rounded-md transition-colors ${
-            activeTab === "templates"
-              ? "bg-orange-500 text-white"
-              : "text-gray-400 hover:text-white hover:bg-gray-700"
-          }`}
-        >
-          📋 Templates
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveTab("style-transfer")}
-          className={`px-3 py-2 text-sm font-medium rounded-md transition-colors ${
-            activeTab === "style-transfer"
-              ? "bg-orange-500 text-white"
-              : "text-gray-400 hover:text-white hover:bg-gray-700"
-          }`}
-        >
-          🎨 Style Transfer
-        </button>
       </div>
 
       {/* Content Area */}
       <div className="flex-1 overflow-y-auto">
         {activeTab === "image-assets" && <ImageAssetsTab />}
         {activeTab === "enhancement" && <EnhancementTab />}
-
-        {activeTab === "templates" && (
-          <div className="text-center space-y-4 max-w-md mx-auto pt-16">
-            <div className="text-6xl mb-4">📋</div>
-            <h3 className="text-xl font-semibold text-white">
-              Template Gallery
-            </h3>
-            <p className="text-gray-400 leading-relaxed">
-              Pre-designed templates and layouts coming soon
-            </p>
-          </div>
-        )}
-
-        {activeTab === "style-transfer" && (
-          <div className="text-center space-y-4 max-w-md mx-auto pt-16">
-            <div className="text-6xl mb-4">🎨</div>
-            <h3 className="text-xl font-semibold text-white">Style Transfer</h3>
-            <p className="text-gray-400 leading-relaxed">
-              AI-powered style transfer and artistic effects coming soon
-            </p>
-          </div>
-        )}
       </div>
     </div>
   );
