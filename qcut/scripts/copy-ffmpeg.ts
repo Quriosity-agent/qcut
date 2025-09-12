@@ -1,4 +1,3 @@
-#!/usr/bin/env node
 /**
  * Cross-platform FFmpeg resource copying script
  *
