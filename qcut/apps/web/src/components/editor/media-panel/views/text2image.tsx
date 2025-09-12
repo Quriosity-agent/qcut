@@ -274,8 +274,8 @@ export function Text2ImageView() {
                   >
                     Landscape (16:9)
                   </SelectItem>
-                  <SelectItem value="portrait_4_3" className="text-foreground">
-                    Portrait (4:3)
+                  <SelectItem value="portrait_3_4" className="text-foreground">
+                    Portrait (3:4)
                   </SelectItem>
                   <SelectItem value="portrait_9_16" className="text-foreground">
                     Portrait (9:16)

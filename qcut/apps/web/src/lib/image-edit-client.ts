@@ -655,7 +655,7 @@ export function getImageEditModels() {
       parameters: {
         imageSize: { 
           type: "select", 
-          options: ["square_hd", "square", "portrait_4_3", "portrait_9_16", "landscape_4_3", "landscape_16_9"],
+          options: ["square_hd", "square", "portrait_3_4", "portrait_9_16", "landscape_4_3", "landscape_16_9"],
           default: "square_hd",
           customRange: { min: 1024, max: 4096, step: 64 } // Allow custom numeric values
         },

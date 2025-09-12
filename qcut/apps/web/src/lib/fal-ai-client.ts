@@ -165,7 +165,7 @@ class FalAIClient {
           case "square_hd":
             params.aspect_ratio = "1:1";
             break;
-          case "portrait_4_3":
+          case "portrait_3_4":
             params.aspect_ratio = "3:4";
             break;
           case "portrait_9_16":
@@ -204,7 +204,7 @@ class FalAIClient {
           case "square_hd":
             params.aspect_ratio = "1:1";
             break;
-          case "portrait_4_3":
+          case "portrait_3_4":
             params.aspect_ratio = "3:4";
             break;
           case "portrait_9_16":
@@ -225,7 +225,7 @@ class FalAIClient {
         // SeedDream V4 uses string image_size values like "square_hd", "square", etc.
         if (typeof settings.imageSize === 'string') {
           // Validate and use string values directly for V4
-          const validV4Sizes = ["square", "square_hd", "portrait_4_3", "landscape_4_3", "portrait_9_16", "landscape_16_9"];
+          const validV4Sizes = ["square", "square_hd", "portrait_3_4", "landscape_4_3", "portrait_9_16", "landscape_16_9"];
           if (validV4Sizes.includes(settings.imageSize)) {
             params.image_size = settings.imageSize;
           } else {
@@ -238,7 +238,7 @@ class FalAIClient {
           if (clampedSize >= 1536) {
             params.image_size = "square_hd"; // 1536x1536
           } else if (clampedSize >= 1280) {
-            params.image_size = "portrait_4_3"; // ~1280px
+            params.image_size = "portrait_3_4"; // ~1280px
           } else {
             params.image_size = "square"; // 1024x1024
           }
@@ -550,7 +550,7 @@ function convertV4Parameters(params: any) {
 
   // Validate image_size - must be valid preset or numeric value between 256-4096
   let imageSize = params.image_size || params.imageSize || "square_hd";
-  const validPresets = ["square_hd", "square", "portrait_4_3", "portrait_9_16", "landscape_4_3", "landscape_16_9"];
+  const validPresets = ["square_hd", "square", "portrait_3_4", "portrait_9_16", "landscape_4_3", "landscape_16_9"];
   if (typeof imageSize === "number") {
     imageSize = clamp(imageSize, 256, 4096);
   } else if (typeof imageSize === "string" && !validPresets.includes(imageSize)) {
