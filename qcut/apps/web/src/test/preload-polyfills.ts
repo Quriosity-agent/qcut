@@ -1,15 +1,56 @@
 // This file MUST be loaded before any React or Radix UI imports
 // It provides critical polyfills for the test environment
 
-import {
-  installAllBrowserMocks,
-  MockMutationObserver,
-  MockResizeObserver,
-  MockIntersectionObserver,
-} from "./mocks/browser-mocks";
+// Define mocks inline to ensure they're available immediately
+class MockMutationObserver {
+  constructor(_callback: MutationCallback) {}
+  observe(_target: Node, _options?: MutationObserverInit) {}
+  disconnect() {}
+  takeRecords(): MutationRecord[] {
+    return [];
+  }
+}
 
-// Install browser mocks before any imports that might use them
-installAllBrowserMocks();
+class MockResizeObserver {
+  constructor(_callback: ResizeObserverCallback) {}
+  observe(_target: Element, _options?: ResizeObserverOptions) {}
+  unobserve(_target: Element) {}
+  disconnect() {}
+}
+
+class MockIntersectionObserver {
+  readonly root: Element | Document | null = null;
+  readonly rootMargin = "0px";
+  readonly thresholds: ReadonlyArray<number> = [0];
+
+  constructor(
+    _callback: IntersectionObserverCallback,
+    _options?: IntersectionObserverInit
+  ) {}
+  observe(_target: Element) {}
+  unobserve(_target: Element) {}
+  disconnect() {}
+  takeRecords(): IntersectionObserverEntry[] {
+    return [];
+  }
+}
+
+// Install immediately on all global objects
+(globalThis as any).MutationObserver = MockMutationObserver;
+(globalThis as any).ResizeObserver = MockResizeObserver;
+(globalThis as any).IntersectionObserver = MockIntersectionObserver;
+
+if (typeof global !== "undefined") {
+  (global as any).MutationObserver = MockMutationObserver;
+  (global as any).ResizeObserver = MockResizeObserver;
+  (global as any).IntersectionObserver = MockIntersectionObserver;
+}
+
+if (typeof window !== "undefined") {
+  (window as any).MutationObserver = MockMutationObserver;
+  (window as any).ResizeObserver = MockResizeObserver;
+  (window as any).IntersectionObserver = MockIntersectionObserver;
+}
 
 // CRITICAL: Ensure MutationObserver is available immediately
 // This is the most aggressive installation possible
