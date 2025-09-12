@@ -95,3 +95,9 @@ docs/issues/audio-export-feature-70a9bfe/complete-integration-guide.md
 
 # Video effect documentation folder
 docs/issues/video-effect/
+
+# FFmpeg WebAssembly files (installed as dependencies)
+/apps/web/public/ffmpeg/
+**/ffmpeg-core.js
+**/ffmpeg-core.wasm
+**/ffmpeg-core.worker.js
