@@ -130,19 +130,24 @@ Add SeedDream V4 and Nano Banana as additional model options in the adjustment p
 - [ ] Show appropriate parameter controls per selected model
 - [ ] Add model badges/indicators for each type
 
-#### Subtask 3.2: V4-Specific Parameter Controls (60-90 min)
+#### Subtask 3.2: Model-Specific Parameter Controls (90-120 min)
 **Files to create:**
 - `apps/web/src/components/editor/adjustment/v4/image-size-slider.tsx` - V4 flexible sizing (1024-4096px)
 - `apps/web/src/components/editor/adjustment/v4/multi-image-upload.tsx` - Multi-image support (up to 10)
 - `apps/web/src/components/editor/adjustment/v4/enhanced-prompt-input.tsx` - 5000 character prompt input
 - `apps/web/src/components/editor/adjustment/v4/safety-controls.tsx` - V4 safety options
+- `apps/web/src/components/editor/adjustment/nano-banana/output-format-selector.tsx` - JPEG/PNG output format
+- `apps/web/src/components/editor/adjustment/nano-banana/multi-output-control.tsx` - 1-4 output images
+- `apps/web/src/components/editor/adjustment/shared/multi-image-upload.tsx` - Shared multi-image component
 
 **Tasks:**
 - [ ] Create V4-specific slider for 1024-4096px image size range
-- [ ] Build multi-image upload interface (up to 10 images)
-- [ ] Create enhanced prompt input with 5000 character counter
-- [ ] Add toggle controls for sync_mode and safety_checker
-- [ ] Add V4 model badge/indicators
+- [ ] Build shared multi-image upload interface (up to 10 images for both V4 and Nano Banana)
+- [ ] Create enhanced prompt input with 5000 character counter (V4 only)
+- [ ] Add toggle controls for sync_mode and safety_checker (V4)
+- [ ] Add output format selector for Nano Banana (JPEG/PNG)
+- [ ] Add output image count control for Nano Banana (1-4 images)
+- [ ] Add model badges/indicators for V4 and Nano Banana
 
 #### Subtask 3.3: Model Selection UI (45-60 min)
 **Files to modify:**
@@ -150,11 +155,12 @@ Add SeedDream V4 and Nano Banana as additional model options in the adjustment p
 - `apps/web/src/components/editor/adjustment/model-comparison.tsx` - V3 vs V4 feature comparison
 
 **Tasks:**
-- [ ] Update model selector to show both V3 and V4 options
-- [ ] Add model feature comparison tooltip/modal
-- [ ] Show model-specific pricing and capabilities
-- [ ] Add "Recommended" badges for different use cases
+- [ ] Update model selector to show V3, V4, and Nano Banana options
+- [ ] Add model feature comparison tooltip/modal for all three models
+- [ ] Show model-specific pricing and capabilities (V3: standard, V4: enhanced, Nano Banana: $0.039/image)
+- [ ] Add "Recommended" badges for different use cases (V3: stable, V4: complex edits, Nano Banana: smart understanding)
 - [ ] Implement smooth model switching without data loss
+- [ ] Add model technology indicators (ByteDance vs Google/Gemini)
 
 ### Phase 4: Testing & Validation (Est. 2-3 hours)
 #### Subtask 4.1: Unit Testing (60-90 min)
@@ -164,10 +170,12 @@ Add SeedDream V4 and Nano Banana as additional model options in the adjustment p
 
 **Tasks:**
 - [ ] Test V4 parameter handling functions (separate from V3)
-- [ ] Validate dual model support functions
-- [ ] Test model selection logic and switching
-- [ ] Verify parameter validation for both V3 and V4 formats
-- [ ] Test model capability detection
+- [ ] Test Nano Banana parameter handling functions (separate from V3/V4)
+- [ ] Validate multi-model support functions (V3/V4/Nano Banana)
+- [ ] Test model selection logic and switching between all three models
+- [ ] Verify parameter validation for V3, V4, and Nano Banana formats
+- [ ] Test model capability detection for all models
+- [ ] Test output format handling for Nano Banana
 
 #### Subtask 4.2: Integration Testing (60-90 min)
 **Test files to update:**
@@ -176,10 +184,12 @@ Add SeedDream V4 and Nano Banana as additional model options in the adjustment p
 **Tasks:**
 - [ ] Test V3 workflows continue to work unchanged
 - [ ] Test V4 workflows with new capabilities
-- [ ] Validate model switching preserves compatible parameters
-- [ ] Test error handling for both V3 and V4 API calls
-- [ ] Verify user can seamlessly switch between models
-- [ ] Test that V3 users are unaffected by V4 addition
+- [ ] Test Nano Banana workflows with Google/Gemini features
+- [ ] Validate model switching preserves compatible parameters across all models
+- [ ] Test error handling for V3, V4, and Nano Banana API calls
+- [ ] Verify users can seamlessly switch between all three models
+- [ ] Test that existing V3 users are unaffected by new model additions
+- [ ] Test output format differences (Nano Banana JPEG/PNG vs others)
 
 ### Phase 5: Documentation & Rollout (Est. 1-2 hours)
 #### Subtask 5.1: Documentation Updates (30-45 min)
@@ -188,21 +198,25 @@ Add SeedDream V4 and Nano Banana as additional model options in the adjustment p
 - Add migration guide for developers
 
 **Tasks:**
-- [ ] Document V4 features and when to use V4 vs V3
-- [ ] Create user guide for model selection
+- [ ] Document V4 and Nano Banana features and when to use each model
+- [ ] Create comprehensive user guide for model selection (V3/V4/Nano Banana)
 - [ ] Document new V4 parameters and capabilities
-- [ ] Update troubleshooting guide for dual model support
+- [ ] Document Nano Banana parameters and Google/Gemini features
+- [ ] Update troubleshooting guide for multi-model support
+- [ ] Create model comparison matrix for users
 
 #### Subtask 5.2: Monitoring & Analytics (45-60 min)
 **Files to create:**
 - `apps/web/src/lib/model-usage-analytics.ts` - Track V3/V4 usage patterns
 
 **Tasks:**
-- [ ] Add usage analytics for V3 vs V4 adoption
-- [ ] Monitor V4 API performance and error rates
-- [ ] Track user preference patterns (V3 vs V4)
-- [ ] Add success metrics for dual model implementation
+- [ ] Add usage analytics for V3/V4/Nano Banana adoption patterns
+- [ ] Monitor API performance and error rates for all three models
+- [ ] Track user preference patterns and model switching behavior
+- [ ] Add success metrics for multi-model implementation
 - [ ] Monitor resource usage differences between models
+- [ ] Track cost analysis for different model usage patterns
+- [ ] Monitor output format preferences for Nano Banana
 
 ## Critical Files Requiring Modification
 1. **`apps/web/src/lib/text2image-models.ts`** - Core model configuration
