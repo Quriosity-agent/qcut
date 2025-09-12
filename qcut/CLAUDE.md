@@ -107,8 +107,6 @@ qcut/
 bun dev          # Start all apps in development
 bun build        # Build all packages and apps
 bun check-types  # Type checking across workspace
-bun lint         # Lint with Ultracite/Biome
-bun format       # Format with Ultracite/Biome
 ```
 
 ### Web App (apps/web/)
@@ -265,35 +263,11 @@ These ten rules catch the most frequent and most critical a11y bugs in a React +
 > **Implementation tip:** add these rules to your Ultracite (Biome) config at **error** level first; they deliver the highest value-to-refactor ratio for an existing QCut codebase.
 
 
-## Current Status & Recent Improvements
-
-### ✅ **Recently Fixed (v0.3.48) - MAJOR TYPESCRIPT CONVERSION**
-- **🎉 100% TypeScript Electron Main Process**: Complete conversion of all Electron main process files from JavaScript to TypeScript
-- **Full IPC Handler Migration**: All 19 IPC handlers successfully converted with comprehensive type safety
-- **Enhanced Error Handling**: Comprehensive TypeScript error management across all handlers
-- **Protocol Handler Fixed**: Complete resolution of `app://` protocol file loading issues
-- **Path Resolution**: Fixed all import and file paths for compiled TypeScript structure
-- **Build Process**: Clean TypeScript compilation with no errors and full type safety
-
-### TypeScript Conversion Achievements
-1. ✅ **100% Main Process Coverage**: All Electron main process files converted to TypeScript
-2. ✅ **19 IPC Handlers**: Complete type safety for all inter-process communication
-3. ✅ **Comprehensive Error Handling**: TypeScript error management across all handlers
-4. ✅ **Protocol Handler**: Fixed and type-safe file serving via `app://` protocol
-5. ✅ **Build Integration**: Seamless TypeScript compilation in build pipeline
-
-### Current Limitations
-1. No performance monitoring
-2. Basic export functionality (needs enhancement)  
-3. **Hybrid architecture complexity** - dual routing and API systems (manageable)
-4. Frontend TypeScript coverage could be improved (backend is 100% complete)
-
 ## When Working on Features
 1. Always test both `bun run electron:dev` (development) and `bun run electron` (production)
 2. Test EXE builds with `npx electron-packager` after major changes
 3. Ensure FFmpeg paths work in both dev and packaged environments
 4. Use Electron IPC for all file system operations
-5. **⚠️ CRITICAL: Never rely on Next.js API routes** - they don't work in Vite environment
 
 ## Architecture Guidelines
 
@@ -305,7 +279,7 @@ These ten rules catch the most frequent and most critical a11y bugs in a React +
 - **Image Components**: Consider dual Next.js/Vite compatibility when needed
 
 ### ❌ **DON'T** - Avoid These Patterns  
-- **API Routes**: Don't expect `src/app/api/` routes to work in Vite
+- **API Routes**: Don't expect `src/app/api/` routes to work in Vite (use Electron IPC instead)
 - **Server-side Logic**: Don't put backend logic in client-side components
 - **process.env**: Don't use `process.env` in client code (use `import.meta.env`)
 - **Next.js Dependencies**: Don't add features that require Next.js runtime

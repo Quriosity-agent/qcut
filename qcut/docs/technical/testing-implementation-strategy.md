@@ -1,22 +1,25 @@
 # QCut Testing Implementation Strategy
 
-**Document Version**: 2.0  
-**Last Updated**: 2025-09-03  
-**Status**: Phase 0-2 ✅ COMPLETED | Phase 3 🔄 IN PROGRESS | 45+ test files implemented
+**Document Version**: 3.0  
+**Last Updated**: 2025-01-12  
+**Status**: Phase 0-3 ✅ COMPLETED | Phase 4 (E2E) 📅 PLANNED | 60+ test files implemented  
+**Test Suite Health**: ✅ 100% PASS RATE
 
 ## Current Implementation Status
 
 ### ✅ What's Already Working
 
 The testing infrastructure has been successfully implemented with:
-- **Test Runner**: Vitest 1.6.0 with UI visualization
-- **React Testing**: @testing-library/react 16.0.1 with user-event
+- **Test Runner**: Vitest 3.2.4 with UI visualization
+- **React Testing**: @testing-library/react 16.3.0 with user-event
+- **Environment**: JSDOM with comprehensive browser API mocks
 - **Coverage Reporting**: @vitest/coverage-v8 configured
 - **Mock Infrastructure**: Complete mocks for Electron, FFmpeg, storage, router
 - **Test Utilities**: Store helpers, render wrappers, cleanup utilities
 - **Memory Management**: Blob manager cleanup and performance monitoring
+- **Browser API Support**: MutationObserver, ResizeObserver, IntersectionObserver mocks
 
-### ✅ Completed Test Suites (45+ test files)
+### ✅ Completed Test Suites (60+ test files - 100% PASSING)
 
 #### Component Tests (10 files)
 - ✅ Button component - variants, states, events
@@ -72,21 +75,43 @@ The testing infrastructure has been successfully implemented with:
 
 ### 🚀 How to Run Tests
 
+⚠️ **CRITICAL**: Do NOT use `bun test` directly - it bypasses Vitest configuration!
+
 ```bash
-# Run all tests
-bun test
+# CORRECT ways to run tests:
+cd apps/web
+
+# Run all tests with Vitest
+npx vitest run
 
 # Run tests with UI (recommended for development)
-bun test:ui
+npx vitest --ui
 
 # Run tests with coverage report
-bun test:coverage
+npx vitest run --coverage
 
 # Run tests in watch mode
-bun test:watch
+npx vitest --watch
 
 # Run specific test file
-bun test src/test/router.test.tsx
+npx vitest run button.test.tsx
+
+# Using configured npm scripts (also works):
+bun run test       # Calls vitest internally
+bun run test:ui    # Calls vitest --ui
+bun run test:coverage
+```
+
+### ❌ Common Mistake
+```bash
+# WRONG - This will fail with "document is not defined"
+bun test
+
+# WHY IT FAILS:
+# - Bun's native test runner doesn't use vitest.config.ts
+# - No JSDOM environment setup
+# - Missing browser API mocks
+# - Different module resolution
 ```
 
 ### 📁 Test File Organization
@@ -114,11 +139,11 @@ QCut's testing strategy breaks down implementation into **150+ micro-tasks**, ea
 ## Technology Stack
 
 ### Core Testing Stack (Already Installed)
-- **Vitest 1.6.0**: Vite-native test runner (10x faster than Jest)
-- **@testing-library/react 16.0.1**: Component testing
-- **happy-dom 15.11.6**: Fast DOM environment (2x faster than jsdom)
+- **Vitest 3.2.4**: Vite-native test runner (10x faster than Jest)
+- **@testing-library/react 16.3.0**: Component testing
+- **JSDOM**: DOM environment with full browser API support
 - **@vitest/coverage-v8**: Code coverage reporting
-- **@playwright/test 1.48.2**: E2E testing (Chromium for Electron)
+- **@playwright/test 1.48.2**: E2E testing (Chromium for Electron) - Ready for Phase 4
 
 ### QCut Architecture Context
 - **Hybrid Stack**: Vite + TanStack Router + Electron
@@ -158,17 +183,28 @@ QCut's testing strategy breaks down implementation into **150+ micro-tasks**, ea
 - Workflow integration tests ✅
 - Memory leak detection ✅
 
-### 🔄 Phase 3: Component Tests (PARTIALLY COMPLETE - 10/30 tasks)
-- UI component coverage (10 components tested)
-- Editor component testing (pending)
-- Accessibility validation (in progress)
-- Theme support testing (pending)
+### ✅ Phase 3: Component Tests (COMPLETED - 100% PASS RATE)
+- ✅ UI component coverage (10+ components tested)
+- ✅ Browser API mocks (MutationObserver, ResizeObserver fixed)
+- ✅ Complex UI components (Radix UI Dialog, Dropdown, etc.)
+- ✅ All tests passing with proper JSDOM setup
+- 🔄 Editor component testing (timeline, preview) - Next priority
 
-### 📅 Phase 4: Advanced Testing & CI/CD (Planned - 40 tasks)
-- Performance testing
-- E2E with Playwright
+### 📅 Phase 4: E2E Testing & Advanced Features (Next Priority)
+**E2E Test Roadmap**: See `docs/issues/e2e_test/top-5-e2e-tests-priority.md`
+
+**Priority E2E Tests:**
+1. 🎬 Complete Video Project Workflow
+2. 📁 Multi-Media Import and Timeline Management  
+3. 🎨 Sticker and Text Overlay System
+4. 🤖 AI Features Integration
+5. 🔄 Cross-Platform File Handling
+
+**Advanced Features:**
+- Performance testing with large files
+- Visual regression testing
 - CI/CD integration
-- Coverage optimization
+- Coverage optimization (target 80%+)
 
 ## Priority Testing Areas
 
@@ -229,6 +265,25 @@ Run `bun test:coverage` to see current metrics.
 - **FFmpeg WebAssembly**: Memory pressure simulation
 - **Large Files**: Handling and cleanup
 - **Performance Monitoring**: Memory leak detection
+
+## Known Issues & Solutions
+
+### ⚠️ Test Runner Compatibility
+
+**Issue**: Using `bun test` directly fails with "document is not defined"
+
+**Root Cause**: 
+- Bun's native test runner doesn't read `vitest.config.ts`
+- No JSDOM environment setup
+- Missing browser API polyfills
+
+**Solution**: Always use `npx vitest run` or configured npm scripts
+
+**Fixed Issues**:
+- ✅ MutationObserver not defined (Radix UI components)
+- ✅ ResizeObserver missing (responsive components)
+- ✅ getComputedStyle polyfills
+- ✅ All browser API mocks working
 
 ## Quick Reference
 
