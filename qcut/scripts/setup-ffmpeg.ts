@@ -16,6 +16,7 @@ async function setupFFmpeg() {
     // Define source paths (from node_modules) - using ESM version for Vite compatibility
     const ffmpegCorePath = "node_modules/@ffmpeg/core/dist/esm";
     const publicFFmpegPath = "apps/web/public/ffmpeg";
+    const electronFFmpegPath = "electron/resources/ffmpeg";
 
     // Files to copy (worker.js may not exist in this version)
     const filesToCopy = [
@@ -23,27 +24,36 @@ async function setupFFmpeg() {
       "ffmpeg-core.wasm"
     ];
 
-    // Create public/ffmpeg directory if it doesn't exist
-    if (!existsSync(publicFFmpegPath)) {
-      await mkdir(publicFFmpegPath, { recursive: true });
-      console.log(`📁 Created directory: ${publicFFmpegPath}`);
+    // Target directories to create
+    const targetPaths = [publicFFmpegPath, electronFFmpegPath];
+
+    // Create target directories if they don't exist
+    for (const targetPath of targetPaths) {
+      if (!existsSync(targetPath)) {
+        await mkdir(targetPath, { recursive: true });
+        console.log(`📁 Created directory: ${targetPath}`);
+      }
     }
 
-    // Copy each file
+    // Copy files to both locations
     for (const file of filesToCopy) {
       const sourcePath = join(ffmpegCorePath, file);
-      const targetPath = join(publicFFmpegPath, file);
 
       if (existsSync(sourcePath)) {
-        await copyFile(sourcePath, targetPath);
-        console.log(`✅ Copied: ${file}`);
+        for (const targetPath of targetPaths) {
+          const destPath = join(targetPath, file);
+          await copyFile(sourcePath, destPath);
+          console.log(`✅ Copied: ${file} → ${targetPath}`);
+        }
       } else {
         console.warn(`⚠️  Source file not found: ${sourcePath}`);
       }
     }
 
     console.log("🎉 FFmpeg setup completed successfully!");
-    console.log(`📍 Files available at: ${publicFFmpegPath}`);
+    console.log(`📍 Web files: ${publicFFmpegPath}`);
+    console.log(`📍 Electron files: ${electronFFmpegPath}`);
+    console.log("ℹ️  Files excluded from git via .gitignore patterns");
     
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
