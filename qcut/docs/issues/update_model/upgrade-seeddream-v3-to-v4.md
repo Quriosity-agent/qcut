@@ -3,6 +3,10 @@
 ## Overview
 Add SeedDream V4 and Nano Banana as additional model options in the adjustment panel, keeping existing SeedDream V3 functionality intact. This approach provides users with choice between multiple proven models based on their specific editing needs while maintaining full backward compatibility.
 
+## API References
+- **SeedDream V4 API**: https://fal.ai/models/fal-ai/bytedance/seedream/v4/edit/api
+- **Nano Banana API**: https://fal.ai/models/fal-ai/nano-banana/edit/api
+
 ## Current State
 - Adjustment panel currently using SeedDream V3
 - Users have established workflows with V3
