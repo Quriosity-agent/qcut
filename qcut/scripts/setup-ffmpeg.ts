@@ -13,15 +13,14 @@ async function setupFFmpeg() {
   try {
     console.log("🔧 Setting up FFmpeg WebAssembly files...");
 
-    // Define source paths (from node_modules)
-    const ffmpegCorePath = "node_modules/@ffmpeg/core/dist";
+    // Define source paths (from node_modules) - using ESM version for Vite compatibility
+    const ffmpegCorePath = "node_modules/@ffmpeg/core/dist/esm";
     const publicFFmpegPath = "apps/web/public/ffmpeg";
 
-    // Files to copy
+    // Files to copy (worker.js may not exist in this version)
     const filesToCopy = [
       "ffmpeg-core.js",
-      "ffmpeg-core.wasm",
-      "ffmpeg-core.worker.js"
+      "ffmpeg-core.wasm"
     ];
 
     // Create public/ffmpeg directory if it doesn't exist

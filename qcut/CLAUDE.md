@@ -122,6 +122,14 @@ bun lint:fix             # Auto-fix linting issues
 docker-compose up -d     # PostgreSQL (5432), Redis (6379)
 ```
 
+### FFmpeg WebAssembly Setup
+```bash
+# Copy FFmpeg WASM files from node_modules to public directory
+bun run setup-ffmpeg
+```
+
+**Note**: FFmpeg WebAssembly files (`ffmpeg-core.js`, `ffmpeg-core.wasm`) are not committed to git. They are installed as npm dependencies (`@ffmpeg/core`) and copied to the public directory via the setup script. This keeps the repository size manageable while ensuring the files are available for runtime use.
+
 ## Electron Build & Distribution
 
 ### Development
