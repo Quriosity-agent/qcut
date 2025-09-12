@@ -4,32 +4,63 @@ import path from "path";
 import fs from "fs";
 import { TempManager, ExportSession } from "./temp-manager.js";
 
-// Type definitions for FFmpeg operations
+/**
+ * Audio file configuration for FFmpeg video export
+ * Defines audio track placement and mixing parameters
+ */
 interface AudioFile {
+  /** File system path to the audio file */
   path: string;
+  /** Start time in seconds for audio placement in video */
   startTime: number;
+  /** Audio volume level (0.0-1.0, optional) */
   volume?: number;
 }
 
+/**
+ * Configuration options for video export operations
+ * Contains all parameters needed for FFmpeg video generation
+ */
 interface ExportOptions {
+  /** Unique identifier for the export session */
   sessionId: string;
+  /** Output video width in pixels */
   width: number;
+  /** Output video height in pixels */
   height: number;
+  /** Target frames per second */
   fps: number;
+  /** Quality preset affecting encoding parameters */
   quality: "high" | "medium" | "low";
+  /** Optional array of audio files to mix into the video */
   audioFiles?: AudioFile[];
 }
 
+/**
+ * Individual frame data for video export
+ * Contains base64 encoded frame image data
+ */
 interface FrameData {
+  /** Export session identifier */
   sessionId: string;
+  /** Unique name/identifier for this frame */
   frameName: string;
-  data: string; // base64 encoded
+  /** Base64 encoded image data for the frame */
+  data: string;
 }
 
+/**
+ * Result of a video export operation
+ * Contains success status and output file information
+ */
 interface ExportResult {
+  /** Whether the export operation succeeded */
   success: boolean;
+  /** Path to the generated output video file */
   outputFile: string;
+  /** Export method used (spawn process vs manual) */
   method: "spawn" | "manual";
+  /** Optional message with additional details */
   message?: string;
 }
 

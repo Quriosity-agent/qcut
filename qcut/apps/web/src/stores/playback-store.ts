@@ -3,13 +3,24 @@ import type { PlaybackState, PlaybackControls } from "@/types/playback";
 import { useTimelineStore } from "@/stores/timeline-store";
 import { useProjectStore } from "./project-store";
 
+/**
+ * Playback store interface combining state and control methods
+ * Manages video playback timing, controls, and synchronization
+ */
 interface PlaybackStore extends PlaybackState, PlaybackControls {
+  /** Set the total duration of the timeline content */
   setDuration: (duration: number) => void;
+  /** Set the current playback position */
   setCurrentTime: (time: number) => void;
 }
 
+/** Animation frame ID for playback timer */
 let playbackTimer: number | null = null;
 
+/**
+ * Starts the playback timer using requestAnimationFrame for smooth updates
+ * @param store - Function returning the playback store instance
+ */
 const startTimer = (store: () => PlaybackStore) => {
   if (playbackTimer) cancelAnimationFrame(playbackTimer);
 
