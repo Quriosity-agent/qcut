@@ -1,6 +1,11 @@
 import { TimelineElement } from "@/types/timeline";
 
-// Helper function to check for element overlaps and prevent invalid timeline states
+/**
+ * Checks if any timeline elements overlap in time
+ * Used to prevent invalid timeline states where elements occupy the same time range
+ * @param elements - Array of timeline elements to check
+ * @returns true if overlaps are detected, false otherwise
+ */
 export const checkElementOverlaps = (elements: TimelineElement[]): boolean => {
   // Sort elements by start time
   const sortedElements = [...elements].sort(
@@ -22,7 +27,12 @@ export const checkElementOverlaps = (elements: TimelineElement[]): boolean => {
   return false; // No overlaps
 };
 
-// Helper function to resolve overlaps by adjusting element positions
+/**
+ * Resolves timeline element overlaps by adjusting element positions
+ * Moves overlapping elements to prevent conflicts, maintaining chronological order
+ * @param elements - Array of timeline elements that may have overlaps
+ * @returns New array with resolved element positions (no overlaps)
+ */
 export const resolveElementOverlaps = (
   elements: TimelineElement[]
 ): TimelineElement[] => {

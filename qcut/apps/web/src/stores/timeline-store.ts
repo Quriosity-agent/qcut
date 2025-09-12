@@ -27,7 +27,13 @@ import { toast } from "sonner";
 import { checkElementOverlaps, resolveElementOverlaps } from "@/lib/timeline";
 import { handleError, ErrorCategory, ErrorSeverity } from "@/lib/error-handler";
 
-// Helper function to manage element naming with suffixes
+/**
+ * Helper function to manage element naming with suffixes
+ * Prevents suffix accumulation by removing existing suffixes before adding new ones
+ * @param originalName - The original name of the element
+ * @param suffix - The suffix to add (e.g., 'left', 'right', 'audio')
+ * @returns The element name with the specified suffix
+ */
 const getElementNameWithSuffix = (
   originalName: string,
   suffix: string
@@ -42,48 +48,68 @@ const getElementNameWithSuffix = (
   return `${baseName} (${suffix})`;
 };
 
+/**
+ * Timeline store interface that manages video editor timeline state
+ * Handles tracks, elements, history, and all timeline operations
+ */
 interface TimelineStore {
-  // Private track storage
+  /** Private track storage - do not access directly, use tracks property instead */
   _tracks: TimelineTrack[];
+  /** Undo history stack storing previous timeline states */
   history: TimelineTrack[][];
+  /** Redo stack for restoring undone states */
   redoStack: TimelineTrack[][];
 
-  // Always returns properly ordered tracks with main track ensured
+  /** Always returns properly ordered tracks with main track ensured */
   tracks: TimelineTrack[];
 
-  // Manual method if you need to force recomputation
+  /** Manual method to force recomputation of track ordering */
   getSortedTracks: () => TimelineTrack[];
 
-  // Snapping settings
+  /** Whether snapping to grid and elements is enabled */
   snappingEnabled: boolean;
 
-  // Snapping actions
+  /** Toggle snapping on/off */
   toggleSnapping: () => void;
 
-  // Ripple editing mode
+  /** Whether ripple editing mode is enabled (moving elements affects subsequent elements) */
   rippleEditingEnabled: boolean;
+  /** Toggle ripple editing mode on/off */
   toggleRippleEditing: () => void;
 
-  // Multi-selection
+  /** Array of currently selected timeline elements */
   selectedElements: { trackId: string; elementId: string }[];
+  /** Select an element, optionally as part of multi-selection */
   selectElement: (trackId: string, elementId: string, multi?: boolean) => void;
+  /** Deselect a specific element */
   deselectElement: (trackId: string, elementId: string) => void;
+  /** Clear all selected elements */
   clearSelectedElements: () => void;
+  /** Set the entire selection to the provided elements array */
   setSelectedElements: (
     elements: { trackId: string; elementId: string }[]
   ) => void;
 
-  // Drag state
+  /** Current drag operation state for timeline elements */
   dragState: {
+    /** Whether a drag operation is currently active */
     isDragging: boolean;
+    /** ID of the element being dragged */
     elementId: string | null;
+    /** ID of the track containing the dragged element */
     trackId: string | null;
+    /** Initial mouse X position when drag started */
     startMouseX: number;
+    /** Initial element start time when drag started */
     startElementTime: number;
+    /** Time offset from element start where click occurred */
     clickOffsetTime: number;
+    /** Current time position during drag */
     currentTime: number;
   };
+  /** Update drag state with partial values */
   setDragState: (dragState: Partial<TimelineStore["dragState"]>) => void;
+  /** Start a drag operation with initial parameters */
   startDrag: (
     elementId: string,
     trackId: string,
@@ -91,25 +117,34 @@ interface TimelineStore {
     startElementTime: number,
     clickOffsetTime: number
   ) => void;
+  /** Update the current time during drag operation */
   updateDragTime: (currentTime: number) => void;
+  /** End the current drag operation */
   endDrag: () => void;
 
-  // Actions
+  /** Add a new track of the specified type to the timeline */
   addTrack: (type: TrackType) => string;
+  /** Insert a new track at the specified index position */
   insertTrackAt: (type: TrackType, index: number) => string;
+  /** Remove a track from the timeline */
   removeTrack: (trackId: string) => void;
+  /** Remove a track with ripple editing (affects subsequent elements) */
   removeTrackWithRipple: (trackId: string) => void;
+  /** Add an element to the specified track */
   addElementToTrack: (trackId: string, element: CreateTimelineElement) => void;
+  /** Remove an element from a track, optionally pushing to history */
   removeElementFromTrack: (
     trackId: string,
     elementId: string,
     pushHistory?: boolean
   ) => void;
+  /** Move an element from one track to another */
   moveElementToTrack: (
     fromTrackId: string,
     toTrackId: string,
     elementId: string
   ) => void;
+  /** Update the trim start and end values for an element */
   updateElementTrim: (
     trackId: string,
     elementId: string,
@@ -117,19 +152,23 @@ interface TimelineStore {
     trimEnd: number,
     pushHistory?: boolean
   ) => void;
+  /** Update the duration of an element */
   updateElementDuration: (
     trackId: string,
     elementId: string,
     duration: number,
     pushHistory?: boolean
   ) => void;
+  /** Update the start time of an element */
   updateElementStartTime: (
     trackId: string,
     elementId: string,
     startTime: number,
     pushHistory?: boolean
   ) => void;
+  /** Toggle mute state for a track */
   toggleTrackMute: (trackId: string) => void;
+  /** Toggle hidden/visible state for an element */
   toggleElementHidden: (trackId: string, elementId: string) => void;
 
   // Split operations for elements

@@ -1,24 +1,37 @@
 import { create } from "zustand";
 import { CanvasSize, CanvasPreset } from "@/types/editor";
 
+/** Canvas sizing mode - determines how canvas dimensions are calculated */
 type CanvasMode = "preset" | "original" | "custom";
 
+/**
+ * Editor store state interface
+ * Manages global editor settings, canvas configuration, and initialization state
+ */
 interface EditorState {
-  // Loading states
+  /** Whether the app is currently initializing */
   isInitializing: boolean;
+  /** Whether UI panels are ready for user interaction */
   isPanelsReady: boolean;
 
-  // Canvas/Project settings
+  /** Current canvas dimensions for the video project */
   canvasSize: CanvasSize;
+  /** Current canvas sizing mode */
   canvasMode: CanvasMode;
+  /** Available canvas size presets (16:9, 9:16, etc.) */
   canvasPresets: CanvasPreset[];
 
-  // Actions
+  /** Set the app initialization state */
   setInitializing: (loading: boolean) => void;
+  /** Set whether panels are ready for interaction */
   setPanelsReady: (ready: boolean) => void;
+  /** Initialize the entire application */
   initializeApp: () => Promise<void>;
+  /** Set canvas to a specific size */
   setCanvasSize: (size: CanvasSize) => void;
+  /** Set canvas size to match original media aspect ratio */
   setCanvasSizeToOriginal: (aspectRatio: number) => void;
+  /** Set canvas size based on aspect ratio using best matching preset */
   setCanvasSizeFromAspectRatio: (aspectRatio: number) => void;
 }
 
@@ -29,7 +42,12 @@ const DEFAULT_CANVAS_PRESETS: CanvasPreset[] = [
   { name: "4:3", width: 1440, height: 1080 },
 ];
 
-// Helper function to find the best matching canvas preset for an aspect ratio
+/**
+ * Finds the best matching canvas preset for a given aspect ratio
+ * Falls back to custom dimensions if no preset matches closely enough
+ * @param aspectRatio - Target aspect ratio (width/height)
+ * @returns Canvas size with width and height dimensions
+ */
 const findBestCanvasPreset = (aspectRatio: number): CanvasSize => {
   // Calculate aspect ratio for each preset and find the closest match
   let bestMatch = DEFAULT_CANVAS_PRESETS[0]; // Default to 16:9 HD
