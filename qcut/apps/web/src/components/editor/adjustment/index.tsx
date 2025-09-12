@@ -101,6 +101,12 @@ export function AdjustmentPanel() {
         seed: parameters.seed,
         safetyTolerance: parameters.safetyTolerance,
         numImages: parameters.numImages,
+        // Add new V4/Nano Banana parameters
+        imageSize: parameters.imageSize,
+        maxImages: parameters.maxImages,
+        syncMode: parameters.syncMode,
+        enableSafetyChecker: parameters.enableSafetyChecker,
+        outputFormat: parameters.outputFormat,
       };
 
       debugLog("🎨 Generating edit with:", editRequest);

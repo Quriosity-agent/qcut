@@ -526,7 +526,7 @@ function convertV4Parameters(params: any) {
   return {
     image_urls: params.image_urls || (params.imageUrl ? [params.imageUrl] : []),
     prompt: params.prompt || "",
-    image_size: params.image_size || params.imageSize || 1024,
+    image_size: params.image_size || params.imageSize || "square_hd",
     max_images: params.max_images || params.maxImages || 1,
     num_images: params.num_images || params.numImages || 1,
     sync_mode: params.sync_mode || params.syncMode || false,

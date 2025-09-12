@@ -494,7 +494,7 @@ export const TEXT2IMAGE_MODELS: Record<string, Text2ImageModel> = {
     supportedAspectRatios: ["1:1", "4:3", "3:4", "16:9", "9:16"],
     
     defaultParams: {
-      image_size: 1024,
+      image_size: "square_hd",
       max_images: 1,
       sync_mode: false,
       enable_safety_checker: true,
@@ -504,11 +504,17 @@ export const TEXT2IMAGE_MODELS: Record<string, Text2ImageModel> = {
     availableParams: [
       {
         name: "image_size",
-        type: "number",
-        min: 1024,
-        max: 4096,
-        default: 1024,
-        description: "Output image size in pixels (square)"
+        type: "select",
+        options: [
+          "square_hd",
+          "square",
+          "portrait_4_3",
+          "portrait_16_9",
+          "landscape_4_3",
+          "landscape_16_9",
+        ],
+        default: "square_hd",
+        description: "Output image resolution and aspect ratio"
       },
       {
         name: "max_images",

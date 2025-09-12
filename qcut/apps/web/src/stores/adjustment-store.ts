@@ -32,7 +32,7 @@ export interface AdjustmentState {
     numImages: number;
     
     // Add new V4-specific parameters (optional for backward compatibility)
-    imageSize?: number; // 1024-4096 for V4
+    imageSize?: string; // "square_hd", "square", etc. for V4
     maxImages?: number; // 1-10 for V4 
     syncMode?: boolean; // V4 and Nano Banana
     enableSafetyChecker?: boolean; // V4
@@ -121,7 +121,7 @@ const getDefaultParameters = (model: AdjustmentState["selectedModel"]) => {
         safetyTolerance: 2,
         numImages: 1,
         // V4-specific parameters
-        imageSize: 1024,
+        imageSize: "square_hd",
         maxImages: 1,
         syncMode: false,
         enableSafetyChecker: true,

@@ -20,8 +20,8 @@ export interface ImageEditRequest {
   safetyTolerance?: number;
   numImages?: number;
   
-  // New V4-specific parameters
-  imageSize?: number; // 1024-4096 for V4
+  // New V4-specific parameters  
+  imageSize?: string; // "square_hd", "square", etc. for V4
   maxImages?: number; // 1-10 for V4
   syncMode?: boolean; // V4 and Nano Banana
   enableSafetyChecker?: boolean; // V4
@@ -80,7 +80,7 @@ const MODEL_ENDPOINTS: Record<string, ModelEndpoint> = {
   "seeddream-v4": {
     endpoint: "fal-ai/bytedance/seedream/v4/edit",
     defaultParams: {
-      image_size: 1024,
+      image_size: "square_hd",
       max_images: 1,
       sync_mode: false,
       enable_safety_checker: true,
@@ -172,9 +172,17 @@ export async function editImage(
   // Build request payload
   const payload: any = {
     prompt: request.prompt,
-    image_url: request.imageUrl,
     ...modelConfig.defaultParams,
   };
+
+  // Handle image URL(s) based on model
+  if (request.model === "seeddream-v4" || request.model === "nano-banana") {
+    // V4 and Nano Banana use image_urls array
+    payload.image_urls = [request.imageUrl];
+  } else {
+    // V3 and FLUX use image_url string  
+    payload.image_url = request.imageUrl;
+  }
 
   // Override with user-specified parameters
   if (request.guidanceScale !== undefined) {
