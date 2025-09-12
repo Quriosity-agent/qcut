@@ -68,6 +68,9 @@
       "output": "d:/AI_play/AI_Code/build_qcut",
       "buildResources": "build"
     },
+    "extraMetadata": {
+      "main": "electron/main.js"
+    },
     "publish": {
       "provider": "github",
       "owner": "qcut-team",
@@ -77,8 +80,12 @@
     },
     "generateUpdatesFilesForAllChannels": true,
     "files": [
-      "electron/**/*",
-      "electron/config/**/*",
+      "package.json",
+      {
+        "from": "dist/electron",
+        "to": "electron",
+        "filter": ["**/*"]
+      },
       "apps/web/dist/**/*",
       "node_modules/electron-updater/**/*",
       "!**/node_modules/*/{CHANGELOG.md,README.md,README,readme.md,readme}",
