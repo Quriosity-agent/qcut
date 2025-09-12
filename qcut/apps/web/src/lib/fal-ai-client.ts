@@ -220,6 +220,43 @@ class FalAIClient {
             params.aspect_ratio = "16:9"; // Default for FLUX
         }
         break;
+
+      case "seeddream-v4":
+        // SeedDream V4 uses numeric image_size instead of string values
+        if (typeof settings.imageSize === 'string') {
+          // Convert string size to numeric pixels for V4
+          switch (settings.imageSize) {
+            case "square":
+              params.image_size = 1024;
+              break;
+            case "square_hd":
+              params.image_size = 1536;
+              break;
+            case "portrait_4_3":
+            case "landscape_4_3":
+              params.image_size = 1280;
+              break;
+            case "portrait_16_9":
+            case "landscape_16_9":
+              params.image_size = 1920;
+              break;
+            default:
+              params.image_size = 1024;
+          }
+        } else if (typeof settings.imageSize === 'number') {
+          // Direct numeric size (1024-4096)
+          params.image_size = Math.min(Math.max(settings.imageSize, 1024), 4096);
+        }
+        break;
+
+      case "nano-banana":
+        // Nano Banana uses traditional image_size string values
+        params.image_size = settings.imageSize;
+        // Set default output format if not specified
+        if (!params.output_format) {
+          params.output_format = "PNG";
+        }
+        break;
     }
 
     return params;
@@ -447,6 +484,86 @@ class FalAIClient {
       features: model.strengths,
     };
   }
+}
+
+// Add model-specific parameter conversion for image editing
+export function convertParametersForModel(modelId: string, params: any) {
+  switch (modelId) {
+    case "seededit":
+      // Keep existing V3 conversion unchanged
+      return convertV3Parameters(params);
+      
+    case "seeddream-v4":
+      return convertV4Parameters(params);
+      
+    case "nano-banana":
+      return convertNanoBananaParameters(params);
+      
+    case "flux-kontext":
+    case "flux-kontext-max":
+      // Keep existing flux conversion unchanged  
+      return convertFluxParameters(params);
+      
+    default:
+      throw new Error(`Unknown model: ${modelId}`);
+  }
+}
+
+function convertV3Parameters(params: any) {
+  // Keep existing V3 parameter structure
+  return {
+    prompt: params.prompt || "",
+    image_url: params.image_url || params.imageUrl,
+    guidance_scale: params.guidance_scale || params.guidanceScale || 1.0,
+    num_inference_steps: params.num_inference_steps || params.steps || 20,
+    seed: params.seed,
+    safety_tolerance: params.safety_tolerance || params.safetyTolerance || 2,
+    num_images: params.num_images || params.numImages || 1
+  };
+}
+
+function convertV4Parameters(params: any) {
+  return {
+    image_urls: params.image_urls || (params.imageUrl ? [params.imageUrl] : []),
+    prompt: params.prompt || "",
+    image_size: params.image_size || params.imageSize || 1024,
+    max_images: params.max_images || params.maxImages || 1,
+    num_images: params.num_images || params.numImages || 1,
+    sync_mode: params.sync_mode || params.syncMode || false,
+    enable_safety_checker: params.enable_safety_checker !== false && params.enableSafetyChecker !== false,
+    seed: params.seed
+  };
+}
+
+function convertNanoBananaParameters(params: any) {
+  return {
+    image_urls: params.image_urls || (params.imageUrl ? [params.imageUrl] : []),
+    prompt: params.prompt || "",
+    num_images: params.num_images || params.numImages || 1,
+    output_format: params.output_format || params.outputFormat || "PNG",
+    sync_mode: params.sync_mode || params.syncMode || false
+  };
+}
+
+function convertFluxParameters(params: any) {
+  // Keep existing flux parameter structure
+  return {
+    prompt: params.prompt || "",
+    image_url: params.image_url || params.imageUrl,
+    guidance_scale: params.guidance_scale || params.guidanceScale || 3.5,
+    num_inference_steps: params.num_inference_steps || params.steps || 28,
+    seed: params.seed,
+    safety_tolerance: params.safety_tolerance || params.safetyTolerance || 2,
+    num_images: params.num_images || params.numImages || 1
+  };
+}
+
+// Model detection and routing
+export function detectModelVersion(modelId: string): "v3" | "v4" | "nano-banana" | "flux" {
+  if (modelId === "seeddream-v4") return "v4";
+  if (modelId === "nano-banana") return "nano-banana";
+  if (modelId.includes("flux")) return "flux";
+  return "v3"; // default to V3 for backward compatibility
 }
 
 // Export singleton instance

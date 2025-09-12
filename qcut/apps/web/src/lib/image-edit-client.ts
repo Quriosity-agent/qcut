@@ -13,12 +13,19 @@ const FAL_API_BASE = "https://fal.run";
 export interface ImageEditRequest {
   imageUrl: string;
   prompt: string;
-  model: "seededit" | "flux-kontext" | "flux-kontext-max";
+  model: "seededit" | "flux-kontext" | "flux-kontext-max" | "seeddream-v4" | "nano-banana";
   guidanceScale?: number;
   steps?: number;
   seed?: number;
   safetyTolerance?: number;
   numImages?: number;
+  
+  // New V4-specific parameters
+  imageSize?: number; // 1024-4096 for V4
+  maxImages?: number; // 1-10 for V4
+  syncMode?: boolean; // V4 and Nano Banana
+  enableSafetyChecker?: boolean; // V4
+  outputFormat?: "JPEG" | "PNG"; // Nano Banana only
 }
 
 export interface ImageEditResponse {
@@ -66,6 +73,28 @@ const MODEL_ENDPOINTS: Record<string, ModelEndpoint> = {
       num_inference_steps: 28,
       safety_tolerance: 2,
       num_images: 1,
+    },
+  },
+  
+  // Add new SeedDream V4 endpoint
+  "seeddream-v4": {
+    endpoint: "fal-ai/bytedance/seedream/v4/edit",
+    defaultParams: {
+      image_size: 1024,
+      max_images: 1,
+      sync_mode: false,
+      enable_safety_checker: true,
+      num_images: 1,
+    },
+  },
+
+  // Add Nano Banana endpoint
+  "nano-banana": {
+    endpoint: "fal-ai/nano-banana/edit", 
+    defaultParams: {
+      num_images: 1,
+      output_format: "PNG",
+      sync_mode: false,
     },
   },
 };
@@ -162,6 +191,25 @@ export async function editImage(
   }
   if (request.numImages !== undefined) {
     payload.num_images = request.numImages;
+  }
+  
+  // Add new V4-specific parameters
+  if (request.imageSize !== undefined) {
+    payload.image_size = request.imageSize;
+  }
+  if (request.maxImages !== undefined) {
+    payload.max_images = request.maxImages;
+  }
+  if (request.syncMode !== undefined) {
+    payload.sync_mode = request.syncMode;
+  }
+  if (request.enableSafetyChecker !== undefined) {
+    payload.enable_safety_checker = request.enableSafetyChecker;
+  }
+  
+  // Add Nano Banana-specific parameters
+  if (request.outputFormat !== undefined) {
+    payload.output_format = request.outputFormat;
   }
 
   console.log(`🎨 Editing image with ${request.model}:`, {
@@ -553,6 +601,39 @@ export function getImageEditModels() {
         steps: { min: 1, max: 50, default: 28, step: 1 },
         safetyTolerance: { min: 1, max: 6, default: 2, step: 1 },
         numImages: { min: 1, max: 4, default: 1, step: 1 },
+      },
+    },
+
+    // Add new SeedDream V4 model
+    {
+      id: "seeddream-v4",
+      name: "SeedDream v4", 
+      description: "Advanced multi-image editing with unified architecture",
+      provider: "ByteDance",
+      estimatedCost: "$0.04-0.08",
+      features: ["Multi-image processing", "Flexible sizing", "Enhanced prompts", "Advanced controls"],
+      parameters: {
+        imageSize: { min: 1024, max: 4096, default: 1024, step: 64 },
+        maxImages: { min: 1, max: 10, default: 1, step: 1 },
+        numImages: { min: 1, max: 4, default: 1, step: 1 },
+        syncMode: { type: "boolean", default: false },
+        enableSafetyChecker: { type: "boolean", default: true },
+        seed: { optional: true },
+      },
+    },
+
+    // Add Nano Banana model
+    {
+      id: "nano-banana",
+      name: "Nano Banana",
+      description: "Smart AI-powered editing with Google/Gemini technology",
+      provider: "Google",
+      estimatedCost: "$0.039",
+      features: ["Smart understanding", "Cost effective", "Multiple formats", "Edit descriptions"],
+      parameters: {
+        numImages: { min: 1, max: 4, default: 1, step: 1 },
+        outputFormat: { type: "select", options: ["JPEG", "PNG"], default: "PNG" },
+        syncMode: { type: "boolean", default: false },
       },
     },
   ];
