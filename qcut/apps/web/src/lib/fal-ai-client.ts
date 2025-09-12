@@ -630,16 +630,45 @@ function convertNanoBananaParameters(params: any) {
   };
 }
 
+/**
+ * Converts and sanitizes FLUX API parameters with proper validation
+ * Ensures consistency with other model parameter converters
+ * @param params - Raw parameters from the user
+ * @returns Sanitized parameters for FLUX API
+ */
 function convertFluxParameters(params: any) {
-  // Keep existing flux parameter structure
+  // Sanitize and validate image URLs - consistent with V4 and Nano Banana
+  const urls = params.image_urls ?? (params.imageUrl ? [params.imageUrl] : []);
+  const imageUrls = Array.isArray(urls) ? urls.slice(0, 10) : [];
+  
+  if (Array.isArray(urls) && urls.length > 10) {
+    console.warn(`[FAL AI FLUX] Truncating image_urls from ${urls.length} to 10 (max allowed)`);
+  }
+
+  // Clamp num_images to valid range (1-4) - consistent with other models
+  const numImages = Math.max(1, Math.min(4, Number(params.num_images ?? params.numImages ?? 1)));
+  
+  if (numImages !== (params.num_images ?? params.numImages ?? 1)) {
+    console.warn(`[FAL AI FLUX] Clamping num_images to ${numImages} (valid range: 1-4)`);
+  }
+
+  // Clamp guidance_scale to reasonable range
+  const guidanceScale = Math.max(1, Math.min(20, Number(params.guidance_scale ?? params.guidanceScale ?? 3.5)));
+  
+  // Clamp inference steps to reasonable range
+  const inferenceSteps = Math.max(1, Math.min(100, Number(params.num_inference_steps ?? params.steps ?? 28)));
+  
+  // Clamp safety tolerance to valid range
+  const safetyTolerance = Math.max(1, Math.min(6, Number(params.safety_tolerance ?? params.safetyTolerance ?? 2)));
+
   return {
     prompt: params.prompt || "",
-    image_url: params.image_url || params.imageUrl,
-    guidance_scale: params.guidance_scale || params.guidanceScale || 3.5,
-    num_inference_steps: params.num_inference_steps || params.steps || 28,
+    image_urls: imageUrls, // Use array format for consistency
+    guidance_scale: guidanceScale,
+    num_inference_steps: inferenceSteps,
     seed: params.seed,
-    safety_tolerance: params.safety_tolerance || params.safetyTolerance || 2,
-    num_images: params.num_images || params.numImages || 1
+    safety_tolerance: safetyTolerance,
+    num_images: numImages
   };
 }
 
