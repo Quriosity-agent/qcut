@@ -522,13 +522,62 @@ function convertV3Parameters(params: any) {
   };
 }
 
+/**
+ * Converts and sanitizes V4 API parameters with proper validation
+ * Enforces documented limits to prevent invalid requests
+ * @param params - Raw parameters from the user
+ * @returns Sanitized parameters for V4 API
+ */
 function convertV4Parameters(params: any) {
+  // Helper function to clamp numeric values
+  const clamp = (value: number, min: number, max: number): number => {
+    return Math.min(Math.max(value, min), max);
+  };
+
+  // Sanitize image URLs - limit to max 10 URLs
+  let imageUrls = params.image_urls || (params.imageUrl ? [params.imageUrl] : []);
+  if (Array.isArray(imageUrls) && imageUrls.length > 10) {
+    console.warn(`[FAL AI] Truncating image_urls from ${imageUrls.length} to 10 (max allowed)`);
+    imageUrls = imageUrls.slice(0, 10);
+  }
+
+  // Sanitize prompt - truncate to 5000 characters max
+  let prompt = params.prompt || "";
+  if (prompt.length > 5000) {
+    console.warn(`[FAL AI] Truncating prompt from ${prompt.length} to 5000 characters (max allowed)`);
+    prompt = prompt.substring(0, 5000);
+  }
+
+  // Validate image_size - must be valid preset or numeric value between 256-4096
+  let imageSize = params.image_size || params.imageSize || "square_hd";
+  const validPresets = ["square_hd", "square", "portrait_4_3", "portrait_16_9", "landscape_4_3", "landscape_16_9"];
+  if (typeof imageSize === "number") {
+    imageSize = clamp(imageSize, 256, 4096);
+  } else if (typeof imageSize === "string" && !validPresets.includes(imageSize)) {
+    console.warn(`[FAL AI] Invalid image_size "${imageSize}", defaulting to "square_hd"`);
+    imageSize = "square_hd";
+  }
+
+  // Clamp num_images to valid range (1-4)
+  const numImages = clamp(
+    params.num_images || params.numImages || 1,
+    1,
+    4
+  );
+
+  // Clamp max_images to valid range (1-4)
+  const maxImages = clamp(
+    params.max_images || params.maxImages || 1,
+    1,
+    4
+  );
+
   return {
-    image_urls: params.image_urls || (params.imageUrl ? [params.imageUrl] : []),
-    prompt: params.prompt || "",
-    image_size: params.image_size || params.imageSize || "square_hd",
-    max_images: params.max_images || params.maxImages || 1,
-    num_images: params.num_images || params.numImages || 1,
+    image_urls: imageUrls,
+    prompt: prompt,
+    image_size: imageSize,
+    max_images: maxImages,
+    num_images: numImages,
     sync_mode: params.sync_mode || params.syncMode || false,
     enable_safety_checker: params.enable_safety_checker !== false && params.enableSafetyChecker !== false,
     seed: params.seed
