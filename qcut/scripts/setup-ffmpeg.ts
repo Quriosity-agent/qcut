@@ -8,13 +8,25 @@
 import { copyFile, mkdir } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { join, dirname } from "node:path";
+import { createRequire } from "node:module";
 
 async function setupFFmpeg() {
   try {
     console.log("🔧 Setting up FFmpeg WebAssembly files...");
 
-    // Define source paths (from node_modules) - using ESM version for Vite compatibility
-    const ffmpegCorePath = "node_modules/@ffmpeg/core/dist/esm";
+    // Dynamically resolve @ffmpeg/core package path to handle different package managers
+    const require = createRequire(import.meta.url);
+    let ffmpegCoreRoot: string;
+    let ffmpegCorePath: string;
+    
+    try {
+      ffmpegCoreRoot = dirname(require.resolve("@ffmpeg/core/package.json"));
+      ffmpegCorePath = join(ffmpegCoreRoot, "dist", "esm");
+      console.log(`📦 Resolved @ffmpeg/core path: ${ffmpegCoreRoot}`);
+      console.log(`📂 Using source directory: ${ffmpegCorePath}`);
+    } catch (error) {
+      throw new Error(`Failed to resolve @ffmpeg/core package. Make sure it's installed: ${error instanceof Error ? error.message : String(error)}`);
+    }
     const publicFFmpegPath = "apps/web/public/ffmpeg";
     const electronFFmpegPath = "electron/resources/ffmpeg";
 

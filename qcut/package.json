@@ -39,6 +39,7 @@
     "dev": "turbo run dev",
     "build": "turbo run build",
     "check-types": "turbo run check-types",
+    "postinstall": "bun run setup-ffmpeg",
     "build:electron": "cd electron && bun x tsc",
     "build:electron:watch": "cd electron && bun x tsc --watch",
     "lint": "npx ultracite@latest lint",
