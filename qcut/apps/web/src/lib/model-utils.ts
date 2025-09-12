@@ -81,7 +81,7 @@ type CommonParams = Partial<{
   safety_tolerance: number
   image_urls: string[]
   outputFormat: 'JPEG' | 'PNG'
-  imageSize: number
+  imageSize: string | number // Support both preset strings and custom numbers
   maxImages: number
 }>
 
@@ -210,16 +210,41 @@ export function getModelDisplayInfo(modelId: string) {
   }
 }
 
+/**
+ * Validates model parameters against model-specific constraints
+ * @param modelId - The AI model identifier
+ * @param params - Parameters to validate
+ * @returns Array of validation error messages
+ */
 export function validateModelParameters(modelId: string, params: CommonParams): string[] {
   const errors: string[] = [];
   
   if (modelId === "seeddream-v4") {
-    if (params.imageSize && (params.imageSize < 1024 || params.imageSize > 4096)) {
-      errors.push("Image size must be between 1024-4096px for SeedDream V4");
+    // Validate image size - supports both preset strings and custom numbers
+    if (params.imageSize) {
+      const validPresets = ["square_hd", "square", "portrait_4_3", "portrait_16_9", "landscape_4_3", "landscape_16_9"];
+      
+      if (typeof params.imageSize === "string") {
+        // String preset validation
+        if (!validPresets.includes(params.imageSize)) {
+          errors.push(`Image size preset must be one of: ${validPresets.join(', ')}`);
+        }
+      } else if (typeof params.imageSize === "number") {
+        // Custom numeric size validation
+        if (params.imageSize < 1024 || params.imageSize > 4096) {
+          errors.push("Custom image size must be between 1024-4096px for SeedDream V4");
+        }
+      } else {
+        errors.push("Image size must be a valid preset string or number between 1024-4096");
+      }
     }
-    if (params.maxImages && (params.maxImages < 1 || params.maxImages > 10)) {
-      errors.push("Max images must be between 1-10 for SeedDream V4");  
+    
+    // Validate max images count (corrected from 10 to 6 based on capabilities)
+    if (params.maxImages && (params.maxImages < 1 || params.maxImages > 6)) {
+      errors.push("Max images must be between 1-6 for SeedDream V4");  
     }
+    
+    // Validate prompt length
     if (params.prompt && params.prompt.length > 5000) {
       errors.push("Prompt must be under 5000 characters for SeedDream V4");
     }

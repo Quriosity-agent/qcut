@@ -490,7 +490,7 @@ export const TEXT2IMAGE_MODELS: Record<string, Text2ImageModel> = {
     estimatedCost: "$0.04-0.08",
     costPerImage: 5, // cents
     
-    maxResolution: "4096x4096", 
+    maxResolution: "1536x1536", 
     supportedAspectRatios: ["1:1", "4:3", "3:4", "16:9", "9:16"],
     
     defaultParams: {

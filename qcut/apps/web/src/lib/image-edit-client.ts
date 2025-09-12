@@ -21,7 +21,7 @@ export interface ImageEditRequest {
   numImages?: number;
   
   // New V4-specific parameters  
-  imageSize?: string; // "square_hd", "square", etc. for V4
+  imageSize?: string | number; // String presets ("square_hd", "square", etc.) or custom pixel values for V4
   maxImages?: number; // 1-10 for V4
   syncMode?: boolean; // V4 and Nano Banana
   enableSafetyChecker?: boolean; // V4
@@ -653,8 +653,13 @@ export function getImageEditModels() {
       estimatedCost: "$0.04-0.08",
       features: ["Multi-image processing", "Flexible sizing", "Enhanced prompts", "Advanced controls"],
       parameters: {
-        imageSize: { min: 1024, max: 4096, default: 1024, step: 64 },
-        maxImages: { min: 1, max: 10, default: 1, step: 1 },
+        imageSize: { 
+          type: "select", 
+          options: ["square_hd", "square", "portrait_4_3", "portrait_16_9", "landscape_4_3", "landscape_16_9"],
+          default: "square_hd",
+          customRange: { min: 1024, max: 4096, step: 64 } // Allow custom numeric values
+        },
+        maxImages: { min: 1, max: 6, default: 1, step: 1 }, // Corrected max from 10 to 6
         numImages: { min: 1, max: 4, default: 1, step: 1 },
         syncMode: { type: "boolean", default: false },
         enableSafetyChecker: { type: "boolean", default: true },

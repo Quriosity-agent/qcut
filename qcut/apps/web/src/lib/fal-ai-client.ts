@@ -39,7 +39,7 @@ interface GenerationResult {
 }
 
 export interface GenerationSettings {
-  imageSize: string;
+  imageSize: string | number;
   seed?: number;
 }
 
@@ -222,30 +222,30 @@ class FalAIClient {
         break;
 
       case "seeddream-v4":
-        // SeedDream V4 uses numeric image_size instead of string values
+        // SeedDream V4 uses string image_size values like "square_hd", "square", etc.
         if (typeof settings.imageSize === 'string') {
-          // Convert string size to numeric pixels for V4
-          switch (settings.imageSize) {
-            case "square":
-              params.image_size = 1024;
-              break;
-            case "square_hd":
-              params.image_size = 1536;
-              break;
-            case "portrait_4_3":
-            case "landscape_4_3":
-              params.image_size = 1280;
-              break;
-            case "portrait_16_9":
-            case "landscape_16_9":
-              params.image_size = 1920;
-              break;
-            default:
-              params.image_size = 1024;
+          // Validate and use string values directly for V4
+          const validV4Sizes = ["square", "square_hd", "portrait_4_3", "landscape_4_3", "portrait_16_9", "landscape_16_9"];
+          if (validV4Sizes.includes(settings.imageSize)) {
+            params.image_size = settings.imageSize;
+          } else {
+            console.warn(`[SeedDream V4] Invalid image_size "${settings.imageSize}", defaulting to "square_hd"`);
+            params.image_size = "square_hd";
           }
         } else if (typeof settings.imageSize === 'number') {
-          // Direct numeric size (1024-4096)
-          params.image_size = Math.min(Math.max(settings.imageSize, 1024), 4096);
+          // Convert numeric size to closest V4 string equivalent
+          const clampedSize = Math.min(Math.max(Math.round(settings.imageSize), 1024), 4096);
+          if (clampedSize >= 1536) {
+            params.image_size = "square_hd"; // 1536x1536
+          } else if (clampedSize >= 1280) {
+            params.image_size = "portrait_4_3"; // ~1280px
+          } else {
+            params.image_size = "square"; // 1024x1024
+          }
+          console.log(`[SeedDream V4] Converted numeric size ${settings.imageSize} -> "${params.image_size}"`);
+        } else {
+          // Default fallback
+          params.image_size = "square_hd";
         }
         break;
 
