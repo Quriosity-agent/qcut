@@ -77,87 +77,340 @@ Add SeedDream V4 and Nano Banana as additional model options in the adjustment p
 
 **1. Update `text2image-models.ts`:**
 ```typescript
-// Add new models alongside existing V3
-export const imageEditModels = [
-  // Keep existing V3 model unchanged
-  {
-    id: "seeddream-v3",
-    name: "SeedDream V3",
-    endpoint: "fal-ai/bytedance/seedream/v3/text-to-image",
-    // ... existing V3 configuration
+// Add new V4 model to existing TEXT2IMAGE_MODELS
+export const TEXT2IMAGE_MODELS: Record<string, Text2ImageModel> = {
+  // Keep all existing models unchanged including seeddream-v3
+  "seeddream-v3": {
+    // ... existing V3 configuration remains completely unchanged
   },
-  // Add new V4 model
-  {
-    id: "seeddream-v4", 
-    name: "SeedDream V4",
-    endpoint: "fal-ai/bytedance/seedream/v4/edit",
-    parameters: {
-      image_urls: { type: "array", max: 10 },
-      image_size: { type: "range", min: 1024, max: 4096 },
-      max_images: { type: "number", default: 1 },
-      sync_mode: { type: "boolean", default: false },
-      enable_safety_checker: { type: "boolean", default: true },
-      prompt: { type: "string", max: 5000 },
-      num_images: { type: "number", min: 1, max: 4 },
-      seed: { type: "number", optional: true }
+
+  // Add new SeedDream V4 model
+  "seeddream-v4": {
+    id: "seeddream-v4",
+    name: "SeedDream v4",
+    description: "ByteDance's advanced editing model with multi-image support and unified architecture",
+    provider: "ByteDance",
+    endpoint: "https://fal.run/fal-ai/bytedance/seedream/v4/edit",
+    
+    qualityRating: 4,
+    speedRating: 4,
+    
+    estimatedCost: "$0.04-0.08",
+    costPerImage: 5, // cents
+    
+    maxResolution: "4096x4096", 
+    supportedAspectRatios: ["1:1", "4:3", "3:4", "16:9", "9:16"],
+    
+    defaultParams: {
+      image_size: 1024,
+      max_images: 1,
+      sync_mode: false,
+      enable_safety_checker: true,
+      num_images: 1
     },
-    features: ["multi-image", "flexible-sizing", "enhanced-prompts"]
+    
+    availableParams: [
+      {
+        name: "image_size",
+        type: "number",
+        min: 1024,
+        max: 4096,
+        default: 1024,
+        description: "Output image size in pixels (square)"
+      },
+      {
+        name: "max_images",
+        type: "number", 
+        min: 1,
+        max: 10,
+        default: 1,
+        description: "Maximum input images to process"
+      },
+      {
+        name: "num_images",
+        type: "number",
+        min: 1,
+        max: 4,
+        default: 1,
+        description: "Number of output images to generate"
+      },
+      {
+        name: "sync_mode",
+        type: "boolean",
+        default: false,
+        description: "Use synchronous processing mode"
+      },
+      {
+        name: "enable_safety_checker",
+        type: "boolean", 
+        default: true,
+        description: "Enable content safety filtering"
+      },
+      {
+        name: "seed",
+        type: "number",
+        min: 0,
+        max: 2_147_483_647,
+        default: null,
+        description: "Random seed for reproducible results"
+      }
+    ],
+    
+    bestFor: [
+      "Multi-image editing",
+      "Complex image transformations", 
+      "Advanced content modification",
+      "Batch image processing"
+    ],
+    
+    strengths: [
+      "Processes multiple images simultaneously",
+      "Unified generation and editing architecture",
+      "Flexible output sizing",
+      "Enhanced prompt understanding (5000 chars)",
+      "Advanced safety controls"
+    ],
+    
+    limitations: [
+      "Higher complexity than V3",
+      "May require more specific prompts",
+      "Potentially slower for simple edits"
+    ]
   },
+
   // Add Nano Banana model
-  {
+  "nano-banana": {
     id: "nano-banana",
-    name: "Nano Banana", 
-    endpoint: "fal-ai/nano-banana/edit",
-    parameters: {
-      image_urls: { type: "array", min: 1, max: 10 },
-      prompt: { type: "string", required: true },
-      num_images: { type: "number", min: 1, max: 4, default: 1 },
-      output_format: { type: "enum", values: ["JPEG", "PNG"], default: "PNG" },
-      sync_mode: { type: "boolean", default: false }
+    name: "Nano Banana",
+    description: "Google/Gemini-powered smart image editing with cost-effective pricing",
+    provider: "Google",
+    endpoint: "https://fal.run/fal-ai/nano-banana/edit",
+    
+    qualityRating: 4,
+    speedRating: 5,
+    
+    estimatedCost: "$0.039",
+    costPerImage: 3.9, // cents
+    
+    maxResolution: "2048x2048",
+    supportedAspectRatios: ["1:1", "4:3", "3:4", "16:9", "9:16"],
+    
+    defaultParams: {
+      num_images: 1,
+      output_format: "PNG",
+      sync_mode: false
     },
-    features: ["multi-image", "output-formats", "gemini-powered"],
-    pricing: { perImage: 0.039, currency: "USD" }
+    
+    availableParams: [
+      {
+        name: "num_images",
+        type: "number",
+        min: 1,
+        max: 4,
+        default: 1,
+        description: "Number of output images to generate"
+      },
+      {
+        name: "output_format", 
+        type: "select",
+        options: ["JPEG", "PNG"],
+        default: "PNG",
+        description: "Output image format"
+      },
+      {
+        name: "sync_mode",
+        type: "boolean",
+        default: false,
+        description: "Return images as data URIs immediately"
+      }
+    ],
+    
+    bestFor: [
+      "Cost-effective image editing",
+      "Smart content understanding", 
+      "Quick image modifications",
+      "Format-specific outputs"
+    ],
+    
+    strengths: [
+      "Google/Gemini AI technology",
+      "Very cost effective ($0.039/image)",
+      "Multiple output formats",
+      "Smart contextual understanding",
+      "Provides edit descriptions"
+    ],
+    
+    limitations: [
+      "Less advanced than SeedDream V4",
+      "No flexible sizing options",
+      "Standard prompt length limits"
+    ]
   }
-];
+
+  // ... keep all other existing models unchanged
+};
+
+// Update model categories to include new models
+export const MODEL_CATEGORIES = {
+  PHOTOREALISTIC: ["imagen4-ultra", "wan-v2-2"],
+  ARTISTIC: ["seeddream-v3", "seeddream-v4", "qwen-image"], // Add V4 to artistic
+  VERSATILE: ["qwen-image", "flux-pro-v11-ultra", "nano-banana"], // Add nano-banana
+  FAST: ["seeddream-v3", "nano-banana", "qwen-image"], // Add nano-banana to fast
+  HIGH_QUALITY: ["imagen4-ultra", "wan-v2-2", "flux-pro-v11-ultra", "seeddream-v4"], // Add V4 
+  COST_EFFECTIVE: ["seeddream-v3", "nano-banana", "qwen-image"], // Add nano-banana
+} as const;
 ```
 
 **2. Update `image-edit-client.ts`:**
 ```typescript
-// Add model configuration functions
+// Add new model endpoints to existing MODEL_ENDPOINTS
+const MODEL_ENDPOINTS: Record<string, ModelEndpoint> = {
+  // Keep existing models unchanged
+  "seededit": {
+    endpoint: "fal-ai/bytedance/seededit/v3/edit-image",
+    defaultParams: {
+      guidance_scale: 1.0,
+    },
+  },
+  "flux-kontext": {
+    // ... existing flux-kontext config unchanged
+  },
+  "flux-kontext-max": {
+    // ... existing flux-kontext-max config unchanged  
+  },
+
+  // Add new SeedDream V4 endpoint
+  "seeddream-v4": {
+    endpoint: "fal-ai/bytedance/seedream/v4/edit",
+    defaultParams: {
+      image_size: 1024,
+      max_images: 1,
+      sync_mode: false,
+      enable_safety_checker: true,
+      num_images: 1,
+    },
+  },
+
+  // Add Nano Banana endpoint
+  "nano-banana": {
+    endpoint: "fal-ai/nano-banana/edit", 
+    defaultParams: {
+      num_images: 1,
+      output_format: "PNG",
+      sync_mode: false,
+    },
+  },
+};
+
+// Update ImageEditRequest interface to support new models
+export interface ImageEditRequest {
+  imageUrl: string;
+  prompt: string;
+  model: "seededit" | "flux-kontext" | "flux-kontext-max" | "seeddream-v4" | "nano-banana";
+  
+  // Existing parameters (keep unchanged for backward compatibility)
+  guidanceScale?: number;
+  steps?: number;
+  seed?: number;
+  safetyTolerance?: number;
+  numImages?: number;
+  
+  // New V4-specific parameters
+  imageSize?: number; // 1024-4096 for V4
+  maxImages?: number; // 1-10 for V4
+  syncMode?: boolean; // V4 and Nano Banana
+  enableSafetyChecker?: boolean; // V4
+  outputFormat?: "JPEG" | "PNG"; // Nano Banana only
+}
+
+// Update getImageEditModels function to include new models
 export function getImageEditModels() {
-  return imageEditModels.filter(model => 
-    ["seeddream-v3", "seeddream-v4", "nano-banana"].includes(model.id)
-  );
+  return [
+    // Keep existing models unchanged
+    {
+      id: "seededit",
+      name: "SeedEdit v3",
+      description: "Precise photo editing with content preservation",
+      provider: "ByteDance",
+      estimatedCost: "$0.05-0.10",
+      features: ["Photo retouching", "Object modification", "Realistic edits"],
+      parameters: {
+        guidanceScale: { min: 1, max: 10, default: 1.0, step: 0.1 },
+        seed: { optional: true },
+      },
+    },
+    {
+      id: "flux-kontext",
+      // ... existing flux-kontext config unchanged
+    },
+    {
+      id: "flux-kontext-max",
+      // ... existing flux-kontext-max config unchanged
+    },
+
+    // Add new SeedDream V4 model
+    {
+      id: "seeddream-v4",
+      name: "SeedDream v4", 
+      description: "Advanced multi-image editing with unified architecture",
+      provider: "ByteDance",
+      estimatedCost: "$0.04-0.08",
+      features: ["Multi-image processing", "Flexible sizing", "Enhanced prompts", "Advanced controls"],
+      parameters: {
+        imageSize: { min: 1024, max: 4096, default: 1024, step: 64 },
+        maxImages: { min: 1, max: 10, default: 1, step: 1 },
+        numImages: { min: 1, max: 4, default: 1, step: 1 },
+        syncMode: { type: "boolean", default: false },
+        enableSafetyChecker: { type: "boolean", default: true },
+        seed: { optional: true },
+      },
+    },
+
+    // Add Nano Banana model
+    {
+      id: "nano-banana",
+      name: "Nano Banana",
+      description: "Smart AI-powered editing with Google/Gemini technology",
+      provider: "Google",
+      estimatedCost: "$0.039",
+      features: ["Smart understanding", "Cost effective", "Multiple formats", "Edit descriptions"],
+      parameters: {
+        numImages: { min: 1, max: 4, default: 1, step: 1 },
+        outputFormat: { type: "select", options: ["JPEG", "PNG"], default: "PNG" },
+        syncMode: { type: "boolean", default: false },
+      },
+    },
+  ];
 }
 
-export function getModelCapabilities(modelId: string) {
-  const model = imageEditModels.find(m => m.id === modelId);
-  return model?.features || [];
+// Add parameter validation for new models
+function validateV4Parameters(params: any): string[] {
+  const errors: string[] = [];
+  
+  if (params.imageSize && (params.imageSize < 1024 || params.imageSize > 4096)) {
+    errors.push("Image size must be between 1024-4096px for SeedDream V4");
+  }
+  if (params.maxImages && (params.maxImages < 1 || params.maxImages > 10)) {
+    errors.push("Max images must be between 1-10 for SeedDream V4");  
+  }
+  if (params.prompt && params.prompt.length > 5000) {
+    errors.push("Prompt must be under 5000 characters for SeedDream V4");
+  }
+  
+  return errors;
 }
 
-export function validateModelParameters(modelId: string, params: any) {
-  const model = imageEditModels.find(m => m.id === modelId);
-  if (!model) return { valid: false, errors: ["Unknown model"] };
+function validateNanoBananaParameters(params: any): string[] {
+  const errors: string[] = [];
   
-  // Model-specific validation logic
-  const errors = [];
-  
-  if (modelId === "seeddream-v4") {
-    if (params.image_size && (params.image_size < 1024 || params.image_size > 4096)) {
-      errors.push("Image size must be between 1024-4096px for V4");
-    }
-    if (params.prompt && params.prompt.length > 5000) {
-      errors.push("Prompt must be under 5000 characters for V4");
-    }
+  if (params.outputFormat && !["JPEG", "PNG"].includes(params.outputFormat)) {
+    errors.push("Output format must be JPEG or PNG for Nano Banana");
+  }
+  if (params.numImages && (params.numImages < 1 || params.numImages > 4)) {
+    errors.push("Number of images must be between 1-4 for Nano Banana");
   }
   
-  if (modelId === "nano-banana") {
-    if (params.output_format && !["JPEG", "PNG"].includes(params.output_format)) {
-      errors.push("Output format must be JPEG or PNG for Nano Banana");
-    }
-  }
-  
-  return { valid: errors.length === 0, errors };
+  return errors;
 }
 ```
 
@@ -234,86 +487,176 @@ export function detectModelVersion(modelId: string): "v3" | "v4" | "nano-banana"
 
 **1. Update `adjustment-store.ts`:**
 ```typescript
-interface AdjustmentState {
-  selectedModel: "seeddream-v3" | "seeddream-v4" | "nano-banana";
-  // Keep existing V3 parameters unchanged
-  v3Parameters: {
-    // ... existing V3 parameters
-  };
-  // Add new V4 parameters
-  v4Parameters: {
-    image_urls: string[];
-    image_size: number;
-    max_images: number;
-    sync_mode: boolean;
-    enable_safety_checker: boolean;
-    prompt: string;
-    num_images: number;
+// Update the existing AdjustmentState interface to support new models
+export interface AdjustmentState {
+  // Current image (keep unchanged)
+  originalImage: File | null;
+  originalImageUrl: string | null;
+  currentEditedUrl: string | null;
+
+  // Update model selection to include new models
+  selectedModel: "seededit" | "flux-kontext" | "flux-kontext-max" | "seeddream-v4" | "nano-banana";
+
+  // Keep existing parameters structure but make it model-agnostic
+  prompt: string;
+  parameters: {
+    // Existing parameters (keep for backward compatibility)
+    guidanceScale: number;
+    steps: number;
     seed?: number;
+    safetyTolerance: number;
+    numImages: number;
+    
+    // Add new V4-specific parameters (optional for backward compatibility)
+    imageSize?: number; // 1024-4096 for V4
+    maxImages?: number; // 1-10 for V4 
+    syncMode?: boolean; // V4 and Nano Banana
+    enableSafetyChecker?: boolean; // V4
+    outputFormat?: "JPEG" | "PNG"; // Nano Banana only
   };
-  // Add Nano Banana parameters
-  nanoBananaParameters: {
-    image_urls: string[];
-    prompt: string;
-    num_images: number;
-    output_format: "JPEG" | "PNG";
-    sync_mode: boolean;
-  };
+
+  // Keep all existing state unchanged
+  editHistory: EditHistoryItem[];
+  currentHistoryIndex: number;
+  isProcessing: boolean;
+  progress: number;
+  statusMessage: string;
+  elapsedTime: number;
+  estimatedTime?: number;
+  showParameters: boolean;
+  showHistory: boolean;
+  previewMode: "side-by-side" | "overlay" | "single";
 }
 
-// Add model-specific parameter defaults
-const defaultV4Parameters = {
-  image_urls: [],
-  image_size: 1024,
-  max_images: 1,
-  sync_mode: false,
-  enable_safety_checker: true,
-  prompt: "",
-  num_images: 1
+// Update getDefaultParameters function to support new models
+const getDefaultParameters = (model: AdjustmentState["selectedModel"]) => {
+  switch (model) {
+    case "seededit":
+      // Keep existing V3/seededit parameters unchanged
+      return {
+        guidanceScale: 1.0,
+        steps: 20,
+        seed: undefined,
+        safetyTolerance: 2,
+        numImages: 1,
+      };
+    case "flux-kontext":
+    case "flux-kontext-max":
+      // Keep existing flux parameters unchanged
+      return {
+        guidanceScale: 3.5,
+        steps: 28,
+        seed: undefined,
+        safetyTolerance: 2,
+        numImages: 1,
+      };
+    case "seeddream-v4":
+      // Add new V4 parameters
+      return {
+        guidanceScale: 2.5, // Reasonable default similar to V3
+        steps: 20,
+        seed: undefined,
+        safetyTolerance: 2,
+        numImages: 1,
+        // V4-specific parameters
+        imageSize: 1024,
+        maxImages: 1,
+        syncMode: false,
+        enableSafetyChecker: true,
+      };
+    case "nano-banana":
+      // Add Nano Banana parameters
+      return {
+        guidanceScale: 2.5, // Not used but kept for interface consistency
+        steps: 20, // Not used but kept for interface consistency
+        seed: undefined,
+        safetyTolerance: 2, // Not used but kept for interface consistency
+        numImages: 1,
+        // Nano Banana-specific parameters
+        outputFormat: "PNG" as const,
+        syncMode: false,
+      };
+  }
 };
 
-const defaultNanoBananaParameters = {
-  image_urls: [],
-  prompt: "",
-  num_images: 1,
-  output_format: "PNG" as const,
-  sync_mode: false
-};
+// Update store creation - keep all existing functionality unchanged
+export const useAdjustmentStore = create<AdjustmentStore>()(
+  subscribeWithSelector((set, get) => ({
+    // Keep all existing initial state unchanged
+    originalImage: null,
+    originalImageUrl: null,
+    currentEditedUrl: null,
+    selectedModel: "seededit", // Keep seededit as default for backward compatibility
+    prompt: "",
+    parameters: getDefaultParameters("seededit"), // Default to seededit
+    editHistory: [],
+    currentHistoryIndex: -1,
+    isProcessing: false,
+    progress: 0,
+    statusMessage: "",
+    elapsedTime: 0,
+    estimatedTime: undefined,
+    showParameters: true,
+    showHistory: false,
+    previewMode: "side-by-side",
 
-export const useAdjustmentStore = create<AdjustmentState & Actions>((set, get) => ({
-  selectedModel: "seeddream-v3", // Default to V3 for backward compatibility
-  v3Parameters: { /* existing V3 defaults */ },
-  v4Parameters: defaultV4Parameters,
-  nanoBananaParameters: defaultNanoBananaParameters,
-  
-  // Keep existing V3 actions unchanged
-  setSelectedModel: (model) => set({ selectedModel: model }),
-  
-  // Add model-specific parameter getters
-  getCurrentParameters: () => {
-    const state = get();
-    switch (state.selectedModel) {
-      case "seeddream-v4": return state.v4Parameters;
-      case "nano-banana": return state.nanoBananaParameters;
-      default: return state.v3Parameters; // V3 default
-    }
-  },
-  
-  updateParameters: (params) => {
-    const state = get();
-    switch (state.selectedModel) {
-      case "seeddream-v4":
-        set({ v4Parameters: { ...state.v4Parameters, ...params } });
-        break;
-      case "nano-banana":
-        set({ nanoBananaParameters: { ...state.nanoBananaParameters, ...params } });
-        break;
-      default:
-        // Keep existing V3 parameter update logic unchanged
-        set({ v3Parameters: { ...state.v3Parameters, ...params } });
+    // Keep all existing actions unchanged, just update setSelectedModel
+    setSelectedModel: (model) => {
+      set({
+        selectedModel: model,
+        parameters: getDefaultParameters(model), // This now supports new models
+      });
+    },
+
+    // All other actions remain completely unchanged
+    setOriginalImage: (file, url) => {
+      const prevUrl = get().originalImageUrl;
+      if (prevUrl?.startsWith("blob:")) {
+        URL.revokeObjectURL(prevUrl);
+      }
+      set({
+        originalImage: file,
+        originalImageUrl: url,
+        currentEditedUrl: null,
+        editHistory: [],
+        currentHistoryIndex: -1,
+      });
+    },
+
+    // ... all other existing actions remain unchanged
+  }))
+);
+
+// Keep existing localStorage persistence logic unchanged
+if (typeof window !== "undefined") {
+  const savedSettings = localStorage.getItem("adjustment-settings");
+  if (savedSettings) {
+    try {
+      const settings = JSON.parse(savedSettings);
+      useAdjustmentStore.setState({
+        selectedModel: settings.selectedModel || "seededit", // Default to seededit
+        showParameters: settings.showParameters ?? true,
+        previewMode: settings.previewMode || "side-by-side",
+      });
+    } catch (error) {
+      console.warn("Failed to load adjustment settings:", error);
     }
   }
-}));
+
+  // Keep existing settings subscription unchanged
+  useAdjustmentStore.subscribe(
+    (state) => ({
+      selectedModel: state.selectedModel,
+      showParameters: state.showParameters,
+      previewMode: state.previewMode,
+    }),
+    (settings) => {
+      localStorage.setItem("adjustment-settings", JSON.stringify(settings));
+    }
+  );
+}
+```
+
 ```
 
 **2. Update `text2image-store.ts`:**
@@ -872,61 +1215,6 @@ export function MultiImageUpload({ images, maxImages, onChange }: MultiImageUplo
 - [ ] Implement smooth model switching with parameter preservation where compatible
 - [ ] Ensure existing V3 users see no changes unless they actively switch models
 
-### Phase 4: Testing & Validation (Est. 2-3 hours)
-#### Subtask 4.1: Unit Testing (60-90 min)
-**Files to create:**
-- `apps/web/src/lib/__tests__/parameter-translation.test.ts`
-- `apps/web/src/stores/__tests__/v4-migration.test.ts`
-
-**Tasks:**
-- [ ] Test V4 parameter handling functions (separate from V3)
-- [ ] Test Nano Banana parameter handling functions (separate from V3/V4)
-- [ ] Validate multi-model support functions (V3/V4/Nano Banana)
-- [ ] Test model selection logic and switching between all three models
-- [ ] Verify parameter validation for V3, V4, and Nano Banana formats
-- [ ] Test model capability detection for all models
-- [ ] Test output format handling for Nano Banana
-
-#### Subtask 4.2: Integration Testing (60-90 min)
-**Test files to update:**
-- Update existing adjustment panel tests to support both models
-
-**Tasks:**
-- [ ] Test V3 workflows continue to work unchanged
-- [ ] Test V4 workflows with new capabilities
-- [ ] Test Nano Banana workflows with Google/Gemini features
-- [ ] Validate model switching preserves compatible parameters across all models
-- [ ] Test error handling for V3, V4, and Nano Banana API calls
-- [ ] Verify users can seamlessly switch between all three models
-- [ ] Test that existing V3 users are unaffected by new model additions
-- [ ] Test output format differences (Nano Banana JPEG/PNG vs others)
-
-### Phase 5: Documentation & Rollout (Est. 1-2 hours)
-#### Subtask 5.1: Documentation Updates (30-45 min)
-**Files to update:**
-- Update component documentation for V4 features
-- Add migration guide for developers
-
-**Tasks:**
-- [ ] Document V4 and Nano Banana features and when to use each model
-- [ ] Create comprehensive user guide for model selection (V3/V4/Nano Banana)
-- [ ] Document new V4 parameters and capabilities
-- [ ] Document Nano Banana parameters and Google/Gemini features
-- [ ] Update troubleshooting guide for multi-model support
-- [ ] Create model comparison matrix for users
-
-#### Subtask 5.2: Monitoring & Analytics (45-60 min)
-**Files to create:**
-- `apps/web/src/lib/model-usage-analytics.ts` - Track V3/V4 usage patterns
-
-**Tasks:**
-- [ ] Add usage analytics for V3/V4/Nano Banana adoption patterns
-- [ ] Monitor API performance and error rates for all three models
-- [ ] Track user preference patterns and model switching behavior
-- [ ] Add success metrics for multi-model implementation
-- [ ] Monitor resource usage differences between models
-- [ ] Track cost analysis for different model usage patterns
-- [ ] Monitor output format preferences for Nano Banana
 
 ## Critical Files Requiring Modification
 1. **`apps/web/src/lib/text2image-models.ts`** - Core model configuration
