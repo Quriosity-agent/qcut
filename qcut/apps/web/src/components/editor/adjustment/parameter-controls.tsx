@@ -208,7 +208,7 @@ export function ParameterControls() {
                   <SelectItem value="square_hd">Square HD (1536×1536)</SelectItem>
                   <SelectItem value="square">Square (1024×1024)</SelectItem>
                   <SelectItem value="portrait_4_3">Portrait 4:3</SelectItem>
-                  <SelectItem value="portrait_16_9">Portrait 16:9</SelectItem>
+                  <SelectItem value="portrait_9_16">Portrait 9:16</SelectItem>
                   <SelectItem value="landscape_4_3">Landscape 4:3</SelectItem>
                   <SelectItem value="landscape_16_9">Landscape 16:9</SelectItem>
                 </SelectContent>

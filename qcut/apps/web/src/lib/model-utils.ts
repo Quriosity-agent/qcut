@@ -18,7 +18,7 @@ export function getModelCapabilities(modelId: string): ModelCapability {
         enhancedPrompts: false,
         outputFormats: ["PNG"],
         maxImages: 1,
-        sizeOptions: ["square_hd", "square", "portrait_4_3", "portrait_16_9", "landscape_4_3", "landscape_16_9"]
+        sizeOptions: ["square_hd", "square", "portrait_4_3", "portrait_9_16", "landscape_4_3", "landscape_16_9"]
       };
     case "seeddream-v4":
       return {
@@ -27,7 +27,7 @@ export function getModelCapabilities(modelId: string): ModelCapability {
         enhancedPrompts: true,
         outputFormats: ["PNG"],
         maxImages: 6,
-        sizeOptions: ["square_hd", "square", "portrait_4_3", "portrait_16_9", "landscape_4_3", "landscape_16_9"]
+        sizeOptions: ["square_hd", "square", "portrait_4_3", "portrait_9_16", "landscape_4_3", "landscape_16_9"]
       };
     case "nano-banana":
       return {
@@ -36,7 +36,7 @@ export function getModelCapabilities(modelId: string): ModelCapability {
         enhancedPrompts: false,
         outputFormats: ["JPEG", "PNG"],
         maxImages: 10,
-        sizeOptions: ["square_hd", "square", "portrait_4_3", "portrait_16_9", "landscape_4_3", "landscape_16_9"],
+        sizeOptions: ["square_hd", "square", "portrait_4_3", "portrait_9_16", "landscape_4_3", "landscape_16_9"],
         pricing: { perImage: 0.039, currency: "USD" }
       };
     case "flux-kontext":
@@ -47,7 +47,7 @@ export function getModelCapabilities(modelId: string): ModelCapability {
         enhancedPrompts: false,
         outputFormats: ["PNG"],
         maxImages: 1,
-        sizeOptions: ["square_hd", "square", "portrait_4_3", "portrait_16_9", "landscape_4_3", "landscape_16_9"]
+        sizeOptions: ["square_hd", "square", "portrait_4_3", "portrait_9_16", "landscape_4_3", "landscape_16_9"]
       };
     default:
       return {
@@ -56,7 +56,7 @@ export function getModelCapabilities(modelId: string): ModelCapability {
         enhancedPrompts: false,
         outputFormats: ["PNG"],
         maxImages: 1,
-        sizeOptions: ["square_hd", "square", "portrait_4_3", "portrait_16_9", "landscape_4_3", "landscape_16_9"]
+        sizeOptions: ["square_hd", "square", "portrait_4_3", "portrait_9_16", "landscape_4_3", "landscape_16_9"]
       };
   }
 }
@@ -222,7 +222,7 @@ export function validateModelParameters(modelId: string, params: CommonParams): 
   if (modelId === "seeddream-v4") {
     // Validate image size - supports both preset strings and custom numbers
     if (params.imageSize) {
-      const validPresets = ["square_hd", "square", "portrait_4_3", "portrait_16_9", "landscape_4_3", "landscape_16_9"];
+      const validPresets = ["square_hd", "square", "portrait_4_3", "portrait_9_16", "landscape_4_3", "landscape_16_9"];
       
       if (typeof params.imageSize === "string") {
         // String preset validation
