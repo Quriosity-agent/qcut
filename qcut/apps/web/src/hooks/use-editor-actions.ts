@@ -7,6 +7,11 @@ import { usePlaybackStore } from "@/stores/playback-store";
 import { useProjectStore } from "@/stores/project-store";
 import { toast } from "sonner";
 
+/**
+ * Custom hook that sets up editor action handlers for keyboard shortcuts and commands
+ * Handles playback controls, timeline operations, element manipulation, and project actions
+ * @returns void - This hook manages side effects and doesn't return values
+ */
 export function useEditorActions() {
   const {
     tracks,

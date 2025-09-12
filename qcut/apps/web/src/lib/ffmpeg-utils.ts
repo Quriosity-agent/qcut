@@ -5,12 +5,16 @@ import { debugLog, debugError, debugWarn } from "@/lib/debug-config";
 import { handleMediaProcessingError } from "@/lib/error-handler";
 import { createObjectURL, revokeObjectURL } from "@/lib/blob-manager";
 
+/** Global FFmpeg instance - lazily initialized */
 let ffmpeg: FFmpeg | null = null;
+/** Whether FFmpeg has been successfully loaded and initialized */
 let isFFmpegLoaded = false;
+/** Timestamp of last FFmpeg usage for cleanup scheduling */
 let lastUsedAt = Date.now();
+/** Timer ID for scheduled FFmpeg cleanup */
 let cleanupTimer: number | null = null;
 
-// One-time global listener to surface blob resource load failures
+/** Flag to prevent multiple blob error listeners */
 let blobErrorListenerAdded = false;
 if (typeof window !== "undefined" && !blobErrorListenerAdded) {
   window.addEventListener("error", (e: ErrorEvent) => {
@@ -27,7 +31,10 @@ if (typeof window !== "undefined" && !blobErrorListenerAdded) {
   blobErrorListenerAdded = true;
 }
 
-// Check if running in Electron
+/**
+ * Detects if the application is running in Electron environment
+ * @returns true if running in Electron, false otherwise
+ */
 const isElectron = () => {
   return (
     (typeof window !== "undefined" &&
@@ -39,7 +46,10 @@ const isElectron = () => {
   );
 };
 
-// Check if running in packaged Electron app
+/**
+ * Detects if running in a packaged Electron application (vs development)
+ * @returns true if running in packaged Electron app, false otherwise
+ */
 const isPackagedElectron = () => {
   return (
     isElectron() &&
@@ -49,7 +59,11 @@ const isPackagedElectron = () => {
   );
 };
 
-// Environment diagnostics for FFmpeg initialization
+/**
+ * Performs environment diagnostics for FFmpeg compatibility
+ * Checks for required browser features like SharedArrayBuffer and Workers
+ * @returns Object containing feature availability flags
+ */
 const checkEnvironment = () => {
   const hasSharedArrayBuffer = typeof SharedArrayBuffer !== "undefined";
   const hasWorker = typeof Worker !== "undefined";
@@ -74,7 +88,13 @@ const checkEnvironment = () => {
   return { hasSharedArrayBuffer, hasWorker };
 };
 
-// Fallback resource resolution for FFmpeg WebAssembly files
+/**
+ * Resolves FFmpeg WebAssembly resource URLs with fallback strategies
+ * Tries app:// protocol first, then falls back to HTTP and relative paths
+ * @param filename - Name of the FFmpeg resource file to resolve
+ * @returns Promise resolving to the accessible URL for the resource
+ * @throws Error if no fallback strategy succeeds
+ */
 const getFFmpegResourceUrl = async (filename: string): Promise<string> => {
   // Try app:// protocol first
   try {
@@ -133,7 +153,11 @@ const getFFmpegResourceUrl = async (filename: string): Promise<string> => {
   throw new Error(`Could not resolve FFmpeg resource: ${filename}`);
 };
 
-// Schedule FFmpeg cleanup after inactivity
+/**
+ * Schedules automatic FFmpeg cleanup after period of inactivity
+ * Helps free memory by terminating unused FFmpeg instances
+ * @param inactivityMs - Inactivity period in milliseconds (default: 5 minutes)
+ */
 const scheduleFFmpegCleanup = () => {
   if (cleanupTimer) {
     clearTimeout(cleanupTimer);
