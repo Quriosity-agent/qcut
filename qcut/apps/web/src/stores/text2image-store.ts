@@ -81,6 +81,8 @@ export const useText2ImageStore = create<Text2ImageStore>()(
       selectedModels: [
         "imagen4-ultra",
         "seeddream-v3",
+        "seeddream-v4", // Add new SeedDream V4
+        "nano-banana",  // Add new Nano Banana
         "flux-pro-v11-ultra",
         "wan-v2-2",
         "qwen-image",
@@ -106,7 +108,7 @@ export const useText2ImageStore = create<Text2ImageStore>()(
         } else if (mode === "multi" && selectedModels.length === 0) {
           // Select first three models by default for multi mode
           set({
-            selectedModels: ["imagen4-ultra", "wan-v2-2", "seeddream-v3"],
+            selectedModels: ["imagen4-ultra", "wan-v2-2", "seeddream-v3", "seeddream-v4", "nano-banana"],
           });
         } else if (mode === "single" && selectedModels.length === 0) {
           // Select first model by default for single mode

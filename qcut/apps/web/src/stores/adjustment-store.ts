@@ -19,16 +19,24 @@ export interface AdjustmentState {
   currentEditedUrl: string | null;
 
   // Model selection
-  selectedModel: "seededit" | "flux-kontext" | "flux-kontext-max";
+  selectedModel: "seededit" | "flux-kontext" | "flux-kontext-max" | "seeddream-v4" | "nano-banana";
 
   // Parameters
   prompt: string;
   parameters: {
+    // Existing parameters (keep for backward compatibility)
     guidanceScale: number;
     steps: number;
     seed?: number;
     safetyTolerance: number;
     numImages: number;
+    
+    // Add new V4-specific parameters (optional for backward compatibility)
+    imageSize?: number; // 1024-4096 for V4
+    maxImages?: number; // 1-10 for V4 
+    syncMode?: boolean; // V4 and Nano Banana
+    enableSafetyChecker?: boolean; // V4
+    outputFormat?: "JPEG" | "PNG"; // Nano Banana only
   };
 
   // Edit history
@@ -103,6 +111,32 @@ const getDefaultParameters = (model: AdjustmentState["selectedModel"]) => {
         seed: undefined,
         safetyTolerance: 2,
         numImages: 1,
+      };
+    case "seeddream-v4":
+      // Add new V4 parameters
+      return {
+        guidanceScale: 2.5, // Reasonable default similar to V3
+        steps: 20,
+        seed: undefined,
+        safetyTolerance: 2,
+        numImages: 1,
+        // V4-specific parameters
+        imageSize: 1024,
+        maxImages: 1,
+        syncMode: false,
+        enableSafetyChecker: true,
+      };
+    case "nano-banana":
+      // Add Nano Banana parameters
+      return {
+        guidanceScale: 2.5, // Not used but kept for interface consistency
+        steps: 20, // Not used but kept for interface consistency
+        seed: undefined,
+        safetyTolerance: 2, // Not used but kept for interface consistency
+        numImages: 1,
+        // Nano Banana-specific parameters
+        outputFormat: "PNG" as const,
+        syncMode: false,
       };
   }
 };
