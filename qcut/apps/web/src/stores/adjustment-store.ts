@@ -17,6 +17,9 @@ export interface AdjustmentState {
   originalImage: File | null;
   originalImageUrl: string | null;
   currentEditedUrl: string | null;
+  
+  // Multiple images for V4 and Nano Banana models
+  multipleImages: string[];
 
   // Model selection
   selectedModel: "seededit" | "flux-kontext" | "flux-kontext-max" | "seeddream-v4" | "nano-banana";
@@ -60,6 +63,7 @@ export interface AdjustmentActions {
   // Image management
   setOriginalImage: (file: File, url: string) => void;
   clearImage: () => void;
+  setMultipleImages: (imageUrls: string[]) => void;
 
   // Model and parameters
   setSelectedModel: (model: AdjustmentState["selectedModel"]) => void;

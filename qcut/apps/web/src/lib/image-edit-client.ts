@@ -223,7 +223,7 @@ export async function editImage(
   console.log(`🎨 Editing image with ${request.model}:`, {
     ...payload,
     image_url: payload.image_url?.substring(0, 50) + "..." || "N/A", // Truncate for readability
-    image_urls: payload.image_urls?.map(url => url.substring(0, 50) + "...") || "N/A", // For V4/Nano Banana
+    image_urls: payload.image_urls?.map((url: string) => url.substring(0, 50) + "...") || "N/A", // For V4/Nano Banana
   });
 
   // Debug: Check the actual format of the image URL(s)
