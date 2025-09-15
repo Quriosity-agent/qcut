@@ -1,0 +1,85 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e2]:
+  - generic [ref=e3]:
+    - banner [ref=e5]:
+      - link "QCut Logo QCut" [ref=e7] [cursor=pointer]:
+        - /url: /index.html#/
+        - img "QCut Logo" [ref=e8] [cursor=pointer]
+        - generic [ref=e9] [cursor=pointer]: QCut
+      - navigation [ref=e11]:
+        - button "Toggle theme" [ref=e12] [cursor=pointer]:
+          - img
+          - img
+        - generic [ref=e13]:
+          - link "Blog" [ref=e14] [cursor=pointer]:
+            - /url: /index.html#/blog
+          - link "Contributors" [ref=e15] [cursor=pointer]:
+            - /url: /index.html#/contributors
+        - link "Projects" [ref=e16] [cursor=pointer]:
+          - /url: /index.html#/projects
+          - button "Projects" [ref=e17] [cursor=pointer]:
+            - text: Projects
+            - img
+    - generic [ref=e18]:
+      - img "landing-page.bg" [ref=e19]
+      - generic [ref=e20]:
+        - link "Sponsored by Vercel" [ref=e22] [cursor=pointer]:
+          - /url: https://vercel.com/home?utm_source=opencut
+          - generic [ref=e23] [cursor=pointer]: Sponsored by
+          - generic [ref=e24] [cursor=pointer]:
+            - img [ref=e26] [cursor=pointer]
+            - generic [ref=e28] [cursor=pointer]: Vercel
+        - generic [ref=e29]:
+          - heading "The Open Source" [level=1] [ref=e30]
+          - generic [ref=e38]: Video Editor
+        - paragraph [ref=e39]: A simple but powerful video editor that gets the job done. Works on any platform.
+        - link "Try early beta" [ref=e41] [cursor=pointer]:
+          - /url: /index.html#/projects
+          - button "Try early beta" [ref=e42] [cursor=pointer]:
+            - text: Try early beta
+            - img
+    - contentinfo [ref=e43]:
+      - generic [ref=e44]:
+        - generic [ref=e45]:
+          - generic [ref=e46]:
+            - generic [ref=e47]:
+              - img "QCut" [ref=e48]
+              - generic [ref=e49]: QCut
+            - paragraph [ref=e50]: The open source video editor that gets the job done. Simple, powerful, and works on any platform.
+            - generic [ref=e51]:
+              - link [ref=e52] [cursor=pointer]:
+                - /url: https://github.com/qcut-app/qcut
+                - img [ref=e53] [cursor=pointer]
+              - link [ref=e55] [cursor=pointer]:
+                - /url: https://x.com/QCutApp
+                - img [ref=e56] [cursor=pointer]
+              - link [ref=e58] [cursor=pointer]:
+                - /url: https://discord.com/invite/Mu3acKZvCp
+                - img [ref=e59] [cursor=pointer]
+          - generic [ref=e61]:
+            - generic [ref=e62]:
+              - heading "Resources" [level=3] [ref=e63]
+              - list [ref=e64]:
+                - listitem [ref=e65]:
+                  - link "Roadmap" [ref=e66] [cursor=pointer]:
+                    - /url: /index.html#/roadmap
+                - listitem [ref=e67]:
+                  - link "Privacy policy" [ref=e68] [cursor=pointer]:
+                    - /url: /index.html#/privacy
+                - listitem [ref=e69]:
+                  - link "Terms of use" [ref=e70] [cursor=pointer]:
+                    - /url: /index.html#/terms
+            - generic [ref=e71]:
+              - heading "Company" [level=3] [ref=e72]
+              - list [ref=e73]:
+                - listitem [ref=e74]:
+                  - link "Contributors" [ref=e75] [cursor=pointer]:
+                    - /url: /index.html#/contributors
+                - listitem [ref=e76]:
+                  - link "About" [ref=e77] [cursor=pointer]:
+                    - /url: https://github.com/qcut-app/qcut/blob/main/README.md
+        - generic [ref=e80]: © 2025 QCut, All Rights Reserved
+  - region "Notifications alt+T"
+```

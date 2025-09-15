@@ -5,7 +5,7 @@
  * media import, file upload processes, and basic editor functionality.
  */
 
-import { test, expect, createTestProject, importTestVideo } from '../helpers/electron-helpers';
+import { test, expect, createTestProject, importTestVideo } from './helpers/electron-helpers';
 
 /**
  * Test suite for Project Creation & Media Import (Subtask 1A)

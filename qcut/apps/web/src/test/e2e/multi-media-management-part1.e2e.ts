@@ -5,7 +5,7 @@
  * track management, media panel organization, and timeline integration.
  */
 
-import { test, expect, createTestProject, importTestVideo, importTestAudio, importTestImage } from '../helpers/electron-helpers';
+import { test, expect, createTestProject, importTestVideo, importTestAudio, importTestImage } from './helpers/electron-helpers';
 
 /**
  * Test suite for Multi-Media Import & Track Management (Test #2 Part 1)

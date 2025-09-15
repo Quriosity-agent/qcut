@@ -1,0 +1,31 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const test_1 = require("@playwright/test");
+exports.default = (0, test_1.defineConfig)({
+    testDir: './apps/web/src/test/e2e',
+    fullyParallel: true,
+    forbidOnly: !!process.env.CI,
+    retries: process.env.CI ? 2 : 0,
+    workers: process.env.CI ? 1 : undefined,
+    reporter: 'html',
+    timeout: 60000, // 1 minute timeout for E2E tests
+    expect: {
+        timeout: 10000, // 10 seconds for assertions
+    },
+    use: {
+        trace: 'on-first-retry',
+        screenshot: 'only-on-failure',
+        video: 'retain-on-failure',
+    },
+    projects: [
+        {
+            name: 'electron',
+            testMatch: '**/*.e2e.ts',
+            use: {
+                ...test_1.devices['Desktop Chrome'],
+                // Electron-specific configuration - tests launch Electron app directly from dist/
+            },
+        },
+    ],
+    // Note: No webServer needed - Electron tests launch the app directly from dist/electron/main.js
+});
