@@ -1231,6 +1231,8 @@ function TimelineToolbar({
                 size="icon"
                 onClick={toggle}
                 className="mr-2"
+                data-testid={isPlaying ? "pause-button" : "play-button"}
+                data-playing={isPlaying}
               >
                 {isPlaying ? (
                   <Pause className="h-4 w-4" />
@@ -1248,6 +1250,7 @@ function TimelineToolbar({
           <div
             className="text-xs text-muted-foreground font-mono px-2"
             style={{ minWidth: "18ch", textAlign: "center" }}
+            data-testid="current-time-display"
           >
             {currentTime.toFixed(1)}s / {duration.toFixed(1)}s
           </div>
@@ -1304,7 +1307,7 @@ function TimelineToolbar({
           <div className="w-px h-6 bg-border mx-1" />
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button variant="text" size="icon" onClick={handleSplitSelected}>
+              <Button variant="text" size="icon" onClick={handleSplitSelected} data-testid="split-clip-button">
                 <Scissors className="h-4 w-4" />
               </Button>
             </TooltipTrigger>
@@ -1444,7 +1447,7 @@ function TimelineToolbar({
 
         <div className="h-6 w-px bg-border mx-1" />
         <div className="flex items-center gap-1">
-          <Button variant="text" size="icon" onClick={handleZoomOut}>
+          <Button variant="text" size="icon" onClick={handleZoomOut} data-testid="zoom-out-button">
             <ZoomOut className="h-4 w-4" />
           </Button>
           <Slider
@@ -1454,8 +1457,9 @@ function TimelineToolbar({
             min={0.25}
             max={4}
             step={0.25}
+            data-zoom-level={zoomLevel}
           />
-          <Button variant="text" size="icon" onClick={handleZoomIn}>
+          <Button variant="text" size="icon" onClick={handleZoomIn} data-testid="zoom-in-button">
             <ZoomIn className="h-4 w-4" />
           </Button>
         </div>
