@@ -145,26 +145,20 @@ export async function createTestProject(page: Page, projectName = 'E2E Test Proj
   await page.waitForSelector('[data-testid="new-project-button"], [data-testid="new-project-button-mobile"], [data-testid="new-project-button-empty-state"]', { state: 'attached' });
 
   // Click whichever button is visible (desktop header, mobile header, or empty state)
-  const headerButton = page.getByTestId('new-project-button');
+  const headerButton = page.getByTestId('new-project-button').first(); // Use .first() to handle duplicates
   const mobileButton = page.getByTestId('new-project-button-mobile');
   const emptyStateButton = page.getByTestId('new-project-button-empty-state');
 
-  // Try to click visible buttons, with fallback to force clicking hidden ones
-  try {
-    if (await headerButton.isVisible()) {
-      await headerButton.click();
-    } else if (await mobileButton.isVisible()) {
-      await mobileButton.click();
-    } else if (await emptyStateButton.isVisible()) {
-      await emptyStateButton.click();
-    } else {
-      // Fallback: force click the first available button even if hidden
-      await headerButton.first().click({ force: true });
-    }
-  } catch (error) {
-    // Final fallback: try clicking any available button
-    const anyButton = page.locator('[data-testid="new-project-button"], [data-testid="new-project-button-mobile"], [data-testid="new-project-button-empty-state"]').first();
-    await anyButton.click({ force: true });
+  // Prioritize the empty state button since it's most likely to be visible and clickable
+  if (await emptyStateButton.isVisible()) {
+    await emptyStateButton.click();
+  } else if (await headerButton.isVisible()) {
+    await headerButton.click();
+  } else if (await mobileButton.isVisible()) {
+    await mobileButton.click();
+  } else {
+    // Fallback: force click the empty state button if no buttons are detected as visible
+    await emptyStateButton.click({ force: true });
   }
 
   // If there's a project creation modal, fill it out

@@ -169,24 +169,36 @@ test.describe('File Operations & Storage Management', () => {
    * from the media panel to the timeline and other UI interactions.
    */
   test('5A.5 - Test drag and drop file operations', async ({ page }) => {
-    // Verify timeline and media panel for drag/drop operations
+    // Setup: Create project and ensure we have media to drag
+    await createTestProject(page, 'Drag Drop Test Project');
+
+    // Import media to ensure we have items for drag-and-drop testing
+    await page.click('[data-testid="import-media-button"]');
+    await page.waitForSelector('[data-testid="media-item"]', {
+      state: 'visible',
+      timeout: 10000
+    });
+
+    // Verify we have the required elements for drag-and-drop
     const timelineTrack = page.locator('[data-testid="timeline-track"]').first();
     const mediaItem = page.locator('[data-testid="media-item"]').first();
 
-    if (await mediaItem.isVisible() && await timelineTrack.isVisible()) {
-      // Perform drag and drop
-      await mediaItem.dragTo(timelineTrack);
-      await page.waitForTimeout(1000);
+    await expect(mediaItem).toBeVisible();
+    await expect(timelineTrack).toBeVisible();
 
-      // Verify element appears on timeline
-      const timelineElement = timelineTrack.locator('[data-testid="timeline-element"]');
-      await expect(timelineElement).toBeVisible();
+    // Perform drag and drop
+    await mediaItem.dragTo(timelineTrack);
 
-      // Verify element has proper metadata
-      const duration = await timelineElement.getAttribute('data-duration');
-      if (duration) {
-        expect(parseFloat(duration)).toBeGreaterThan(0);
-      }
+    // Wait for timeline element to appear with proper state-based waiting
+    const timelineElement = timelineTrack.locator('[data-testid="timeline-element"]');
+    await expect(timelineElement).toBeVisible({ timeout: 5000 });
+
+    // Verify element has proper metadata with robust numeric validation
+    const duration = await timelineElement.getAttribute('data-duration');
+    if (duration) {
+      const seconds = Number(duration);
+      expect(Number.isFinite(seconds)).toBe(true);
+      expect(seconds).toBeGreaterThan(0);
     }
   });
 
