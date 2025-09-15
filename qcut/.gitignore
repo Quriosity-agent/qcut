@@ -98,6 +98,5 @@ docs/issues/video-effect/
 
 # FFmpeg WebAssembly files (installed as dependencies)
 /apps/web/public/ffmpeg/
-**/ffmpeg-core.js
-**/ffmpeg-core.wasm
-**/ffmpeg-core.worker.js
+/electron/resources/ffmpeg/*.js
+/electron/resources/ffmpeg/*.wasm
