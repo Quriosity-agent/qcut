@@ -1,4 +1,4 @@
-import { test, expect } from '../helpers/electron-helpers';
+import { test, expect } from './helpers/electron-helpers';
 
 test.describe('Text Overlay Testing (Subtask 3B)', () => {
   test('should access text panel and interact with text overlay button', async ({ page }) => {

@@ -1,5 +1,6 @@
 import { DraggableMediaItem } from "@/components/ui/draggable-item";
 import { TIMELINE_CONSTANTS } from "@/constants/timeline-constants";
+import { usePlaybackStore } from "@/stores/playback-store";
 import { useTimelineStore } from "@/stores/timeline-store";
 import { type TextElement } from "@/types/timeline";
 
@@ -27,9 +28,29 @@ const textData: TextElement = {
 };
 
 export function TextView() {
+  const handleAddTextToTimeline = () => {
+    const currentTime = usePlaybackStore.getState().currentTime;
+    useTimelineStore.getState().addTextAtTime(textData, currentTime);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      handleAddTextToTimeline();
+    }
+  };
+
   return (
     <div className="p-4" data-testid="text-panel">
-      <div data-testid="text-overlay-button">
+      <div
+        data-testid="text-overlay-button"
+        role="button"
+        aria-label="Add default text overlay"
+        tabIndex={0}
+        onClick={handleAddTextToTimeline}
+        onKeyDown={handleKeyDown}
+        className="cursor-pointer"
+      >
         <DraggableMediaItem
           name="Default text"
           preview={

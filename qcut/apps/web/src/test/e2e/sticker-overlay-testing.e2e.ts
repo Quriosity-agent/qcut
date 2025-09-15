@@ -1,4 +1,4 @@
-import { test, expect } from '../helpers/electron-helpers';
+import { test, expect } from './helpers/electron-helpers';
 
 test.describe('Sticker Overlay Testing (Subtask 3A)', () => {
   test('should access stickers panel and interact with sticker items', async ({ page }) => {

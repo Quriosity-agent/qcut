@@ -1,19 +1,18 @@
-import { test, expect } from './helpers/electron-helpers';
+import { test, expect, createTestProject } from './helpers/electron-helpers';
 
 test.describe('AI Transcription & Caption Generation', () => {
-  test('4A.1 - Upload media file and access AI transcription', async ({ page }) => {
-    // Navigate to projects page and create new project
-    await page.getByTestId('new-project-button').click();
-    await page.getByTestId('import-media-button').waitFor(); // Wait for app to be ready
+  test.beforeEach(async ({ page }) => {
+    // Create a fresh project for each test to ensure independence
+    await createTestProject(page, 'E2E AI Transcription Test');
 
-    // Import media file
+    // Import media file that will be used for transcription
     await page.getByTestId('import-media-button').click();
     await page.waitForSelector('[data-testid="media-item"]');
-
-    // Verify media item appears
     await expect(page.getByTestId('media-item').first()).toBeVisible();
+  });
 
-    // Switch to Captions tab in media panel
+  test('4A.1 - Upload media file and access AI transcription', async ({ page }) => {
+    // Media file already uploaded in beforeEach - switch to Captions tab
     await page.getByTestId('captions-panel-tab').click();
     await page.waitForTimeout(500);
 
@@ -25,9 +24,12 @@ test.describe('AI Transcription & Caption Generation', () => {
   });
 
   test('4A.2 - Generate transcription with AI service', async ({ page }) => {
-    // Ensure we're in the captions panel
+    // Navigate to captions panel
     await page.getByTestId('captions-panel-tab').click();
     await page.waitForTimeout(500);
+
+    // Verify AI transcription panel is visible
+    await expect(page.getByTestId('ai-transcription-panel')).toBeVisible();
 
     // Click transcription upload/generate button
     await page.getByTestId('transcription-upload-button').click();
@@ -44,9 +46,17 @@ test.describe('AI Transcription & Caption Generation', () => {
   });
 
   test('4A.3 - Edit and customize generated captions', async ({ page }) => {
-    // Ensure captions are generated (from previous test)
+    // Navigate to captions panel and generate transcription first
     await page.getByTestId('captions-panel-tab').click();
     await page.waitForTimeout(500);
+    await expect(page.getByTestId('ai-transcription-panel')).toBeVisible();
+
+    // Generate transcription if not already available
+    const transcribeButton = page.getByTestId('transcription-upload-button');
+    if (await transcribeButton.isVisible()) {
+      await transcribeButton.click();
+      await page.waitForTimeout(3000); // Wait for transcription processing
+    }
 
     // Look for editable caption elements
     const captionItems = page.locator('[data-testid*="caption-item"], [data-testid*="subtitle-item"]');
@@ -70,9 +80,17 @@ test.describe('AI Transcription & Caption Generation', () => {
   });
 
   test('4A.4 - Apply captions to timeline', async ({ page }) => {
-    // Ensure we have captions generated
+    // Navigate to captions panel and ensure transcription is available
     await page.getByTestId('captions-panel-tab').click();
     await page.waitForTimeout(500);
+    await expect(page.getByTestId('ai-transcription-panel')).toBeVisible();
+
+    // Generate transcription if needed
+    const transcribeButton = page.getByTestId('transcription-upload-button');
+    if (await transcribeButton.isVisible()) {
+      await transcribeButton.click();
+      await page.waitForTimeout(3000);
+    }
 
     // Look for apply/add to timeline button
     const applyButton = page.locator('[data-testid*="apply"], [data-testid*="add-to-timeline"]').first();
@@ -97,6 +115,24 @@ test.describe('AI Transcription & Caption Generation', () => {
   });
 
   test('4A.5 - Preview captions in video preview', async ({ page }) => {
+    // Set up captions on timeline first
+    await page.getByTestId('captions-panel-tab').click();
+    await page.waitForTimeout(500);
+
+    // Generate and apply captions if needed
+    const transcribeButton = page.getByTestId('transcription-upload-button');
+    if (await transcribeButton.isVisible()) {
+      await transcribeButton.click();
+      await page.waitForTimeout(3000);
+    }
+
+    // Apply captions to timeline
+    const applyButton = page.locator('[data-testid*="apply"], [data-testid*="add-to-timeline"]').first();
+    if (await applyButton.isVisible()) {
+      await applyButton.click();
+      await page.waitForTimeout(1000);
+    }
+
     // Ensure timeline has content
     const timelineElements = page.locator('[data-testid="timeline-element"]');
     await expect(timelineElements.first()).toBeVisible();
@@ -123,6 +159,28 @@ test.describe('AI Transcription & Caption Generation', () => {
   });
 
   test('4A.6 - Export project with embedded captions', async ({ page }) => {
+    // Set up captions on timeline first
+    await page.getByTestId('captions-panel-tab').click();
+    await page.waitForTimeout(500);
+
+    // Generate captions if needed
+    const transcribeButton = page.getByTestId('transcription-upload-button');
+    if (await transcribeButton.isVisible()) {
+      await transcribeButton.click();
+      await page.waitForTimeout(3000);
+    }
+
+    // Apply captions to timeline for export
+    const applyButton = page.locator('[data-testid*="apply"], [data-testid*="add-to-timeline"]').first();
+    if (await applyButton.isVisible()) {
+      await applyButton.click();
+      await page.waitForTimeout(1000);
+    }
+
+    // Verify timeline has elements before export
+    const timelineElements = page.locator('[data-testid="timeline-element"]');
+    await expect(timelineElements).toHaveCountGreaterThan(0);
+
     // Open export dialog
     const exportButton = page.locator('[data-testid*="export"]').first();
     await exportButton.click();

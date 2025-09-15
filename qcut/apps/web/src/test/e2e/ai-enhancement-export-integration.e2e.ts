@@ -3,6 +3,7 @@ import { test, expect } from './helpers/electron-helpers';
 test.describe('AI Enhancement & Export Integration', () => {
   test('4B.1 - Access AI enhancement tools', async ({ page }) => {
     // Navigate to projects and create new project
+    await page.goto('/projects');
     await page.click('[data-testid="new-project-button"]');
     await page.waitForSelector('[data-testid="import-media-button"]', { state: 'visible' });
 
