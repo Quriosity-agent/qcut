@@ -477,12 +477,13 @@ test.describe('Text Overlays & Export Verification', () => {
 
 ---
 
-### 4. 🤖 **AI Features Integration (Transcription & Enhancement)**
+### 4. 🤖 **AI Features Integration (Transcription & Enhancement)** ✅ IMPLEMENTED
 **Priority**: HIGH
 **Total Estimated Time**: 25-30 minutes (Split into 2 subtasks)
+**Implementation Status**: ✅ All subtasks completed
 
-#### Subtask 4A: Transcription Service & Subtitle Generation (15 minutes)
-**File**: `apps/web/src/test/e2e/ai-features-part1.e2e.ts`
+#### Subtask 4A: AI Transcription & Caption Generation (15 minutes) ✅
+**File**: `apps/web/src/test/e2e/ai-transcription-caption-generation.e2e.ts` - **CREATED**
 
 ```typescript
 test.describe('Transcription Service & Subtitle Generation', () => {
@@ -557,8 +558,8 @@ test.describe('Transcription Service & Subtitle Generation', () => {
 - Transcription/subtitle functionality may be limited - check existing implementation
 - Caption functionality exists (`captions.tsx`) - may use this instead of separate subtitle tracks
 
-#### Subtask 4B: AI Enhancement & Export with Subtitles (15 minutes)
-**File**: `apps/web/src/test/e2e/ai-features-part2.e2e.ts`
+#### Subtask 4B: AI Enhancement & Export Integration (15 minutes) ✅
+**File**: `apps/web/src/test/e2e/ai-enhancement-export-integration.e2e.ts` - **CREATED**
 
 ```typescript
 test.describe('AI Enhancement & Export with Subtitles', () => {
