@@ -168,7 +168,7 @@ function ProjectsPage() {
               )}
             </div>
           ) : (
-            <CreateButton onClick={handleCreateProject} />
+            <CreateButton onClick={handleCreateProject} testId="new-project-button-mobile" />
           )}
         </div>
       </div>
@@ -545,9 +545,9 @@ function ProjectCard({
   );
 }
 
-function CreateButton({ onClick }: { onClick?: () => void }) {
+function CreateButton({ onClick, testId = "new-project-button" }: { onClick?: () => void; testId?: string }) {
   return (
-    <Button className="flex" onClick={onClick} data-testid="new-project-button">
+    <Button className="flex" onClick={onClick} data-testid={testId}>
       <Plus className="size-4!" />
       <span className="text-sm font-medium">New project</span>
     </Button>

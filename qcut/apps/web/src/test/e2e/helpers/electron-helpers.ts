@@ -73,9 +73,9 @@ export async function navigateToProjects(page: Page) {
     // First wait for the home page to load
     await page.waitForLoadState('networkidle', { timeout: 10000 });
 
-    // Check if we're already on projects page
-    const projectButton = page.getByTestId('new-project-button');
-    if (await projectButton.isVisible({ timeout: 2000 })) {
+    // Check if we're already on projects page (look for any project creation button)
+    const anyProjectButton = page.locator('[data-testid="new-project-button"], [data-testid="new-project-button-mobile"], [data-testid="new-project-button-empty-state"]');
+    if (await anyProjectButton.first().isVisible({ timeout: 2000 })) {
       // Already on projects page
       return;
     }
@@ -98,8 +98,8 @@ export async function navigateToProjects(page: Page) {
       });
     }
 
-    // Wait for projects page to load
-    await page.waitForSelector('[data-testid="new-project-button"], [data-testid="project-list"]', { timeout: 10000 });
+    // Wait for projects page to load (any of the project buttons or project list)
+    await page.waitForSelector('[data-testid="new-project-button"], [data-testid="new-project-button-mobile"], [data-testid="new-project-button-empty-state"], [data-testid="project-list"]', { timeout: 10000 });
   } catch (error) {
     console.warn('Navigation to projects page failed, continuing anyway:', error);
     // Don't throw - let individual tests handle missing elements
@@ -141,15 +141,18 @@ export async function waitForProjectLoad(page: Page) {
  * @throws {Error} When project creation fails or times out
  */
 export async function createTestProject(page: Page, projectName = 'E2E Test Project') {
-  // Wait for either the header button or empty state button to be available
-  await page.waitForSelector('[data-testid="new-project-button"], [data-testid="new-project-button-empty-state"]');
+  // Wait for any of the project creation buttons to be available
+  await page.waitForSelector('[data-testid="new-project-button"], [data-testid="new-project-button-mobile"], [data-testid="new-project-button-empty-state"]');
 
-  // Click whichever button is available (header or empty state)
+  // Click whichever button is visible (desktop header, mobile header, or empty state)
   const headerButton = page.getByTestId('new-project-button');
+  const mobileButton = page.getByTestId('new-project-button-mobile');
   const emptyStateButton = page.getByTestId('new-project-button-empty-state');
 
   if (await headerButton.isVisible()) {
     await headerButton.click();
+  } else if (await mobileButton.isVisible()) {
+    await mobileButton.click();
   } else {
     await emptyStateButton.click();
   }

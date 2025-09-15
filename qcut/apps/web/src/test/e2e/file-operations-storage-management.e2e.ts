@@ -130,25 +130,37 @@ test.describe('File Operations & Storage Management', () => {
    * and ensures thumbnails are properly displayed and cached.
    */
   test('5A.4 - Verify thumbnail generation for media', async ({ page }) => {
-    // Ensure we have media items
+    // Setup: Create project and import media for thumbnail testing
+    await createTestProject(page, 'Thumbnail Generation Test');
+
+    // Import media to ensure we have items to test thumbnails for
+    await page.click('[data-testid="import-media-button"]');
+    await page.waitForSelector('[data-testid="media-item"]', {
+      state: 'visible',
+      timeout: 10000
+    });
+
+    // Verify we have media items
     const mediaItems = page.locator('[data-testid="media-item"]');
+    expect(await mediaItems.count()).toBeGreaterThan(0);
 
-    if (await mediaItems.count() > 0) {
-      const firstMediaItem = mediaItems.first();
-      await expect(firstMediaItem).toBeVisible();
+    const firstMediaItem = mediaItems.first();
+    await expect(firstMediaItem).toBeVisible();
 
-      // Look for thumbnail elements
-      const thumbnail = firstMediaItem.locator('img, [data-testid*="thumbnail"], [data-testid*="preview"]').first();
+    // Look for thumbnail elements
+    const thumbnail = firstMediaItem.locator('img, [data-testid*="thumbnail"], [data-testid*="preview"]').first();
 
-      if (await thumbnail.isVisible()) {
-        await expect(thumbnail).toBeVisible();
+    // Wait for thumbnail to load
+    await thumbnail.waitFor({ state: 'visible', timeout: 5000 });
+    await expect(thumbnail).toBeVisible();
 
-        // Verify thumbnail has loaded (not broken image)
-        const thumbnailSrc = await thumbnail.getAttribute('src');
-        expect(thumbnailSrc).toBeTruthy();
-        expect(thumbnailSrc).not.toBe('');
-      }
-    }
+    // Verify thumbnail has loaded (not broken image)
+    const thumbnailSrc = await thumbnail.getAttribute('src');
+    expect(thumbnailSrc).toBeTruthy();
+    expect(thumbnailSrc).not.toBe('');
+
+    // Additional validation: thumbnail should be a valid image URL or data URL
+    expect(thumbnailSrc).toMatch(/^(data:image\/|blob:|https?:\/\/)/);
   });
 
   /**
