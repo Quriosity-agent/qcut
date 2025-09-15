@@ -231,11 +231,154 @@ test.describe('QCut E2E Tests', () => {
 - Clear failure messages
 - Reproducible across platforms
 
+## Detailed Integration Plan
+
+### Phase 1: Setup & Infrastructure (Week 1)
+
+#### Files to Create/Modify:
+
+**Package Configuration:**
+- `qcut/package.json` - Add Playwright dependencies and test scripts
+- `qcut/apps/web/package.json` - Add e2e test scripts
+- `qcut/playwright.config.ts` - Main Playwright configuration for Electron
+
+**Test Infrastructure:**
+- `qcut/apps/web/src/test/e2e/` - Create E2E test directory structure
+- `qcut/apps/web/src/test/e2e/fixtures/` - Test media files and project templates
+- `qcut/apps/web/src/test/e2e/helpers/` - Utility functions and test helpers
+- `qcut/apps/web/src/test/e2e/setup/` - Global test setup and teardown
+
+**Configuration Files:**
+- `qcut/apps/web/src/test/e2e/setup/global-setup.ts` - Global test environment setup
+- `qcut/apps/web/src/test/e2e/setup/global-teardown.ts` - Cleanup after tests
+- `qcut/apps/web/src/test/e2e/helpers/electron-helpers.ts` - Electron-specific utilities
+- `qcut/apps/web/src/test/e2e/helpers/media-helpers.ts` - Media file handling utilities
+
+### Phase 2: Core Test Implementation (Weeks 2-3)
+
+#### Test Files to Create:
+
+**Critical Priority Tests:**
+- `qcut/apps/web/src/test/e2e/project-workflow.e2e.ts` - Complete video project workflow
+- `qcut/apps/web/src/test/e2e/media-timeline.e2e.ts` - Multi-media import and timeline management
+
+**High Priority Tests:**
+- `qcut/apps/web/src/test/e2e/overlays.e2e.ts` - Sticker and text overlay system
+- `qcut/apps/web/src/test/e2e/ai-features.e2e.ts` - AI features integration
+- `qcut/apps/web/src/test/e2e/file-storage.e2e.ts` - Cross-platform file handling
+
+#### Test Fixtures to Create:
+- `qcut/apps/web/src/test/e2e/fixtures/media/sample-video.mp4` - Small test video (5MB)
+- `qcut/apps/web/src/test/e2e/fixtures/media/sample-audio.mp3` - Test audio file (1MB)
+- `qcut/apps/web/src/test/e2e/fixtures/media/sample-image.png` - Test image (500KB)
+- `qcut/apps/web/src/test/e2e/fixtures/projects/basic-project.json` - Template project
+- `qcut/apps/web/src/test/e2e/fixtures/projects/multi-track-project.json` - Complex project template
+
+### Phase 3: CI/CD Integration (Week 4)
+
+#### Files to Modify/Create:
+
+**GitHub Actions:**
+- `.github/workflows/e2e-tests.yml` - E2E test workflow for CI/CD
+- `.github/workflows/pr-validation.yml` - Update to include E2E tests
+
+**Build Configuration:**
+- `qcut/turbo.json` - Add e2e test task to Turborepo config
+- `qcut/.gitignore` - Add E2E test artifacts to ignore list
+
+### Detailed File Structure:
+
+```
+qcut/
+├── playwright.config.ts                           # Main Playwright config
+├── package.json                                   # Add Playwright deps
+├── apps/web/
+│   ├── package.json                              # Add e2e scripts
+│   └── src/test/e2e/
+│       ├── setup/
+│       │   ├── global-setup.ts                   # Global test setup
+│       │   └── global-teardown.ts                # Global cleanup
+│       ├── helpers/
+│       │   ├── electron-helpers.ts               # Electron utilities
+│       │   ├── media-helpers.ts                  # Media utilities
+│       │   ├── timeline-helpers.ts               # Timeline utilities
+│       │   ├── project-helpers.ts                # Project utilities
+│       │   └── assertion-helpers.ts              # Custom assertions
+│       ├── fixtures/
+│       │   ├── media/
+│       │   │   ├── sample-video.mp4             # Test video file
+│       │   │   ├── sample-audio.mp3             # Test audio file
+│       │   │   └── sample-image.png             # Test image file
+│       │   └── projects/
+│       │       ├── basic-project.json           # Basic project template
+│       │       └── multi-track-project.json     # Complex project template
+│       ├── project-workflow.e2e.ts              # Test 1: Complete workflow
+│       ├── media-timeline.e2e.ts                # Test 2: Media & timeline
+│       ├── overlays.e2e.ts                      # Test 3: Stickers & text
+│       ├── ai-features.e2e.ts                   # Test 4: AI integration
+│       └── file-storage.e2e.ts                  # Test 5: File handling
+├── .github/workflows/
+│   ├── e2e-tests.yml                            # E2E CI workflow
+│   └── pr-validation.yml                        # Update for E2E
+└── turbo.json                                    # Add e2e task
+```
+
+### Implementation Schedule:
+
+**Week 1: Infrastructure Setup**
+1. Install Playwright dependencies
+2. Create configuration files
+3. Set up test directory structure
+4. Create helper utilities
+5. Add test fixtures
+
+**Week 2: Critical Tests**
+1. Implement project-workflow.e2e.ts
+2. Implement media-timeline.e2e.ts
+3. Create supporting test helpers
+4. Validate tests work locally
+
+**Week 3: High Priority Tests**
+1. Implement overlays.e2e.ts
+2. Implement ai-features.e2e.ts
+3. Implement file-storage.e2e.ts
+4. Refine test helpers and utilities
+
+**Week 4: CI/CD Integration**
+1. Create GitHub Actions workflows
+2. Configure test reporting
+3. Set up failure notifications
+4. Test full CI/CD pipeline
+
+### Dependencies to Add:
+
+```json
+{
+  "devDependencies": {
+    "@playwright/test": "^1.40.0",
+    "playwright": "^1.40.0",
+    "playwright-electron": "^0.4.0"
+  }
+}
+```
+
+### Configuration Requirements:
+
+**Environment Variables:**
+- `E2E_TEST_TIMEOUT` - Test timeout configuration
+- `E2E_FIXTURES_PATH` - Path to test fixtures
+- `E2E_OUTPUT_PATH` - Path for test outputs
+
+**Component Updates:**
+- Add `data-testid` attributes to key UI components
+- Ensure consistent element selectors
+- Add test-specific environment detection
+
 ## Next Steps
 
 1. **Set up Playwright for Electron**
    ```bash
-   bun add -D @playwright/test playwright
+   bun add -D @playwright/test playwright playwright-electron
    ```
 
 2. **Create test fixtures and helpers**
