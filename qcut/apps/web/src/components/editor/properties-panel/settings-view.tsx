@@ -39,21 +39,21 @@ function ProjectSettingsTabs() {
     <div className="h-full flex flex-col">
       <Tabs defaultValue="project-info" className="flex flex-col h-full">
         <div className="px-3 pt-4 pb-0">
-          <TabsList>
-            <TabsTrigger value="project-info">Project info</TabsTrigger>
-            <TabsTrigger value="background">Background</TabsTrigger>
-            <TabsTrigger value="api-keys">API Keys</TabsTrigger>
+          <TabsList data-testid="settings-tabs">
+            <TabsTrigger value="project-info" data-testid="project-info-tab">Project info</TabsTrigger>
+            <TabsTrigger value="background" data-testid="background-tab">Background</TabsTrigger>
+            <TabsTrigger value="api-keys" data-testid="api-keys-tab">API Keys</TabsTrigger>
           </TabsList>
         </div>
         <Separator className="my-4" />
         <ScrollArea className="flex-1">
-          <TabsContent value="project-info" className="p-5 pt-0 mt-0">
+          <TabsContent value="project-info" className="p-5 pt-0 mt-0" data-testid="project-info-content">
             <ProjectInfoView />
           </TabsContent>
-          <TabsContent value="background" className="p-4 pt-0">
+          <TabsContent value="background" className="p-4 pt-0" data-testid="background-content">
             <BackgroundView />
           </TabsContent>
-          <TabsContent value="api-keys" className="p-5 pt-0 mt-0">
+          <TabsContent value="api-keys" className="p-5 pt-0 mt-0" data-testid="api-keys-content">
             <ApiKeysView />
           </TabsContent>
         </ScrollArea>
@@ -390,6 +390,7 @@ function ApiKeysView() {
                 value={falApiKey}
                 onChange={(e) => setFalApiKey(e.target.value)}
                 className="bg-panel-accent pr-10"
+                data-testid="fal-api-key-input"
               />
               <Button
                 type="button"
@@ -427,6 +428,7 @@ function ApiKeysView() {
                   setFreesoundTestResult(null); // Clear test result on change
                 }}
                 className="bg-panel-accent pr-10"
+                data-testid="freesound-api-key-input"
               />
               <Button
                 type="button"
@@ -463,7 +465,7 @@ function ApiKeysView() {
 
       {/* Save Button */}
       <div className="flex justify-end">
-        <Button onClick={saveApiKeys} className="gap-2">
+        <Button onClick={saveApiKeys} className="gap-2" data-testid="save-api-keys-button">
           <KeyIcon className="h-4 w-4" />
           Save API Keys
         </Button>

@@ -38,5 +38,5 @@ export const StickerOverlayAutoSave = () => {
   }, []);
 
   // No UI, just side effects
-  return null;
+  return <div data-testid="auto-save-indicator" style={{ display: 'none' }}>Auto-saved</div>;
 };

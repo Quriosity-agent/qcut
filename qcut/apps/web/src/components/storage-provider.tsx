@@ -46,7 +46,10 @@ export function StorageProvider({ children }: StorageProviderProps) {
 
         if (!hasSupport) {
           toast.warning(
-            "Storage not fully supported. Some features may not work."
+            "Storage not fully supported. Some features may not work.",
+            {
+              data: { testid: "storage-warning" }
+            }
           );
         }
 

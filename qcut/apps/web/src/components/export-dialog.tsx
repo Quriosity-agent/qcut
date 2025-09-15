@@ -288,8 +288,9 @@ export function ExportDialog() {
             <Progress
               value={exportProgress.progress.progress}
               className="w-full"
+              data-testid="export-progress-bar"
             />
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-muted-foreground" data-testid="export-status">
               {exportProgress.progress.status}
             </p>
 
@@ -395,6 +396,7 @@ export function ExportDialog() {
                 placeholder="Enter filename"
                 disabled={exportProgress.progress.isExporting}
                 className="text-sm"
+                data-testid="export-filename-input"
               />
               {!exportValidation.hasValidFilename &&
                 exportSettings.filename && (
@@ -417,6 +419,7 @@ export function ExportDialog() {
                   exportSettings.handleQualityChange(value as ExportQuality)
                 }
                 disabled={exportProgress.progress.isExporting}
+                data-testid="export-quality-select"
               >
                 {Object.values(ExportQuality).map((q) => {
                   const resolution = QUALITY_RESOLUTIONS[q];
@@ -531,7 +534,8 @@ export function ExportDialog() {
                   exportSettings.handleFormatChange(value as ExportFormat)
                 }
                 disabled={exportProgress.progress.isExporting}
-              >
+                data-testid="export-format-select"
+              />
                 {exportSettings.supportedFormats.map((fmt) => (
                   <div key={fmt} className="flex items-center space-x-2">
                     <RadioGroupItem value={fmt} id={fmt} />
@@ -617,6 +621,7 @@ export function ExportDialog() {
                       setExportCaptions(checked as boolean)
                     }
                     disabled={exportProgress.progress.isExporting}
+                    data-testid="export-include-captions-checkbox"
                   />
                   <Label
                     htmlFor="export-captions"
