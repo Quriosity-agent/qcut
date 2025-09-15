@@ -28,9 +28,16 @@ const textData: TextElement = {
 };
 
 export function TextView() {
-  const handleAddTextToTimeline = () => {
-    const currentTime = usePlaybackStore.getState().currentTime;
-    useTimelineStore.getState().addTextAtTime(textData, currentTime);
+  const handleAddTextToTimeline = (currentTime?: number) => {
+    const timeToUse = currentTime ?? usePlaybackStore.getState().currentTime;
+    useTimelineStore.getState().addTextAtTime(textData, timeToUse);
+  };
+
+  const handleWrapperClick = (e: React.MouseEvent) => {
+    // Only trigger if the click is directly on the wrapper, not on the draggable item
+    if (e.target === e.currentTarget) {
+      handleAddTextToTimeline();
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -47,7 +54,7 @@ export function TextView() {
         role="button"
         aria-label="Add default text overlay"
         tabIndex={0}
-        onClick={handleAddTextToTimeline}
+        onClick={handleWrapperClick}
         onKeyDown={handleKeyDown}
         className="cursor-pointer"
       >
@@ -65,6 +72,7 @@ export function TextView() {
             content: textData.content,
           }}
           aspectRatio={1}
+          onAddToTimeline={handleAddTextToTimeline}
           showLabel={false}
         />
       </div>
