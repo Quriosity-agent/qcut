@@ -7,6 +7,13 @@
 
 import { test as base, expect, Page } from '@playwright/test';
 import { ElectronApplication, _electron as electron } from 'playwright';
+import { resolve as pathResolve } from 'path';
+
+/**
+ * Resolve media fixture paths relative to this helper file
+ */
+const mediaPath = (file: string) =>
+  pathResolve(__dirname, '../fixtures/media', file);
 
 /**
  * Electron-specific test fixtures that extend Playwright's base fixtures
@@ -157,7 +164,7 @@ export async function uploadTestMedia(page: Page, filePath: string) {
  * @throws {Error} When video import fails
  */
 export async function importTestVideo(page: Page) {
-  const videoPath = 'src/test/e2e/fixtures/media/sample-video.mp4';
+  const videoPath = mediaPath('sample-video.mp4');
   await uploadTestMedia(page, videoPath);
 }
 
@@ -169,7 +176,7 @@ export async function importTestVideo(page: Page) {
  * @throws {Error} When audio import fails
  */
 export async function importTestAudio(page: Page) {
-  const audioPath = 'src/test/e2e/fixtures/media/sample-audio.mp3';
+  const audioPath = mediaPath('sample-audio.mp3');
   await uploadTestMedia(page, audioPath);
 }
 
@@ -181,7 +188,7 @@ export async function importTestAudio(page: Page) {
  * @throws {Error} When image import fails
  */
 export async function importTestImage(page: Page) {
-  const imagePath = 'src/test/e2e/fixtures/media/sample-image.png';
+  const imagePath = mediaPath('sample-image.png');
   await uploadTestMedia(page, imagePath);
 }
 

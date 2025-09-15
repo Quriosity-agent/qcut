@@ -1,8 +1,25 @@
+/**
+ * File Operations & Storage Management E2E Tests
+ *
+ * This test suite covers comprehensive file operations including media import,
+ * storage management, thumbnail generation, drag-and-drop functionality,
+ * and cross-platform file handling capabilities.
+ */
+
 import { test, expect, createTestProject } from './helpers/electron-helpers';
 
+/**
+ * Test suite for File Operations & Storage Management (Test #5A)
+ * Covers subtasks 5A.1 through 5A.8 from the E2E testing priority document.
+ */
 test.describe('File Operations & Storage Management', () => {
   // Remove manual lifecycle hooks; fixtures provide { electronApp, page } per test.
 
+  /**
+   * Test 5A.1: Import media files with progress tracking
+   * Verifies that media import functionality works correctly and displays
+   * appropriate progress indicators during file upload operations.
+   */
   test('5A.1 - Import media files with progress tracking', async ({ page }) => {
     // Navigate to projects page and create new project
     await page.goto('/projects');
@@ -26,6 +43,11 @@ test.describe('File Operations & Storage Management', () => {
     }
   });
 
+  /**
+   * Test 5A.2: Handle large file imports
+   * Tests the application's ability to handle large media files,
+   * including progress tracking, memory management, and error handling.
+   */
   test('5A.2 - Handle large file imports', async ({ page }) => {
     // Setup: Create project for testing large file imports
     await page.goto('/projects');
@@ -52,6 +74,11 @@ test.describe('File Operations & Storage Management', () => {
     }
   });
 
+  /**
+   * Test 5A.3: Test storage quota and fallback system
+   * Verifies storage quota monitoring and fallback mechanisms
+   * when storage limits are approached or exceeded.
+   */
   test('5A.3 - Test storage quota and fallback system', async ({ page }) => {
     // Setup: Create project to test storage operations
     await page.goto('/projects');
@@ -97,6 +124,11 @@ test.describe('File Operations & Storage Management', () => {
     }
   });
 
+  /**
+   * Test 5A.4: Verify thumbnail generation for media
+   * Tests automatic thumbnail generation for imported media files
+   * and ensures thumbnails are properly displayed and cached.
+   */
   test('5A.4 - Verify thumbnail generation for media', async ({ page }) => {
     // Ensure we have media items
     const mediaItems = page.locator('[data-testid="media-item"]');
@@ -119,6 +151,11 @@ test.describe('File Operations & Storage Management', () => {
     }
   });
 
+  /**
+   * Test 5A.5: Test drag and drop file operations
+   * Verifies drag-and-drop functionality for moving media items
+   * from the media panel to the timeline and other UI interactions.
+   */
   test('5A.5 - Test drag and drop file operations', async ({ page }) => {
     // Verify timeline and media panel for drag/drop operations
     const timelineTrack = page.locator('[data-testid="timeline-track"]').first();
@@ -141,6 +178,11 @@ test.describe('File Operations & Storage Management', () => {
     }
   });
 
+  /**
+   * Test 5A.6: Test file format support and validation
+   * Tests support for various file formats (video, audio, image)
+   * and proper handling of unsupported or corrupted files.
+   */
   test('5A.6 - Test file format support and validation', async ({ page }) => {
     // This test would verify different file formats are handled properly
 
@@ -163,6 +205,11 @@ test.describe('File Operations & Storage Management', () => {
     }
   });
 
+  /**
+   * Test 5A.7: Test storage service integration
+   * Verifies integration with the storage service including
+   * project persistence, data retrieval, and cross-session consistency.
+   */
   test('5A.7 - Test storage service integration', async ({ page }) => {
     // Setup: Create project for storage service testing
     await page.goto('/projects');
@@ -190,6 +237,11 @@ test.describe('File Operations & Storage Management', () => {
     }
   });
 
+  /**
+   * Test 5A.8: Test cross-platform file path handling
+   * Tests proper file path handling across different operating systems
+   * and ensures consistent behavior on Windows, macOS, and Linux.
+   */
   test('5A.8 - Test cross-platform file path handling', async ({ page }) => {
     // This test verifies file paths work correctly across different platforms
 

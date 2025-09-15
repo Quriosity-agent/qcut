@@ -106,7 +106,8 @@ test.describe('Sticker Overlay Testing (Subtask 3A)', () => {
         await expect(newInstance).toBeVisible();
 
         // Check that the instance has positioning attributes
-        await expect(newInstance).toHaveAttribute('style');
+        const style = await newInstance.getAttribute('style');
+        expect(style).toBeTruthy();
 
       } else {
         // Canvas not available - test alternative interaction
