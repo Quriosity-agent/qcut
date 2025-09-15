@@ -4,7 +4,7 @@ import { EffectGallery } from "../components/EffectGallery";
 
 export const EnhancementTab: React.FC = () => {
   return (
-    <div className="space-y-6 p-4">
+    <div className="space-y-6 p-4" data-testid="ai-enhancement-panel">
       {/* Header */}
       <div className="border-b border-gray-700 pb-4">
         <h3 className="text-lg font-semibold text-white mb-2">

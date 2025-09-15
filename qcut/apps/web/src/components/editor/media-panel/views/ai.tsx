@@ -217,6 +217,7 @@ export function AiView() {
   return (
     <div
       className={`h-full flex flex-col transition-all duration-200 ${isCollapsed ? "p-2" : isCompact ? "p-3" : "p-4"}`}
+      data-testid="ai-features-panel"
     >
       <div
         className={`flex items-center mb-4 ${isCollapsed ? "justify-center" : isCompact ? "flex-col gap-1" : "justify-between"}`}
