@@ -17,11 +17,9 @@ test.describe('Project Creation & Media Import (Subtask 1A)', () => {
    * Verifies new project creation and successful video file import.
    */
   test('should create project and import media', async ({ page }) => {
-    // Navigate to projects page
-    await page.goto('/projects');
-
     // Test steps:
     // 1. Create new project with settings (1080p, 30fps)
+    // Note: Electron app should already be on the projects page
     await createTestProject(page, 'E2E Workflow Test Project');
 
     // 2. Import video file (MP4)
@@ -36,7 +34,7 @@ test.describe('Project Creation & Media Import (Subtask 1A)', () => {
    * Verifies proper handling of file selection and upload indicators.
    */
   test('should handle file upload process', async ({ page }) => {
-    await page.goto('/projects');
+    // Electron app should already be loaded, click new project button
     await page.getByTestId('new-project-button').click();
     await page.waitForSelector('[data-testid="import-media-button"]');
 

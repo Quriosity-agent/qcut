@@ -2,7 +2,7 @@ import { test, expect } from './helpers/electron-helpers';
 
 test.describe('Timeline Controls & Editing Operations (Test #2 Part 2)', () => {
   test('should control playback with play/pause buttons', async ({ page }) => {
-    await page.goto('/projects');
+    
     await page.getByTestId('new-project-button').click();
     await page.waitForSelector('[data-testid="timeline-track"]');
 
@@ -30,7 +30,7 @@ test.describe('Timeline Controls & Editing Operations (Test #2 Part 2)', () => {
   });
 
   test('should handle zoom controls', async ({ page }) => {
-    await page.goto('/projects');
+    
     await page.getByTestId('new-project-button').click();
     await page.waitForSelector('[data-testid="timeline-track"]');
 
@@ -61,7 +61,7 @@ test.describe('Timeline Controls & Editing Operations (Test #2 Part 2)', () => {
   });
 
   test('should display current time and duration', async ({ page }) => {
-    await page.goto('/projects');
+    
     await page.getByTestId('new-project-button').click();
     await page.waitForSelector('[data-testid="timeline-track"]');
 
@@ -76,7 +76,7 @@ test.describe('Timeline Controls & Editing Operations (Test #2 Part 2)', () => {
   });
 
   test('should handle split clip functionality', async ({ page }) => {
-    await page.goto('/projects');
+    
     await page.getByTestId('new-project-button').click();
     await page.waitForSelector('[data-testid="timeline-track"]');
 
@@ -95,7 +95,7 @@ test.describe('Timeline Controls & Editing Operations (Test #2 Part 2)', () => {
   });
 
   test('should handle timeline element selection and editing', async ({ page }) => {
-    await page.goto('/projects');
+    
     await page.getByTestId('new-project-button').click();
     await page.waitForSelector('[data-testid="timeline-track"]');
 
@@ -126,7 +126,7 @@ test.describe('Timeline Controls & Editing Operations (Test #2 Part 2)', () => {
   });
 
   test('should maintain playback state', async ({ page }) => {
-    await page.goto('/projects');
+    
     await page.getByTestId('new-project-button').click();
     await page.waitForSelector('[data-testid="timeline-track"]');
 
@@ -143,7 +143,7 @@ test.describe('Timeline Controls & Editing Operations (Test #2 Part 2)', () => {
   });
 
   test('should handle timeline scrolling and navigation', async ({ page }) => {
-    await page.goto('/projects');
+    
     await page.getByTestId('new-project-button').click();
     await page.waitForSelector('[data-testid="timeline-track"]');
 

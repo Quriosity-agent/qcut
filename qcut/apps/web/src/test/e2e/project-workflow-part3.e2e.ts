@@ -3,7 +3,7 @@ import { test, expect, createTestProject } from './helpers/electron-helpers';
 test.describe('Project Persistence & Export (Subtask 1C)', () => {
   test('should handle project persistence', async ({ page }) => {
     // Setup: Create project and navigate to editor
-    await page.goto('/projects');
+    
     await page.getByTestId('new-project-button').click();
     await page.waitForSelector('[data-testid="timeline-track"]');
 
@@ -15,7 +15,7 @@ test.describe('Project Persistence & Export (Subtask 1C)', () => {
     await expect(timeline).toBeVisible();
 
     // 2. Navigate back to projects to test persistence
-    await page.goto('/projects');
+    
 
     // 3. Verify project appears in project list
     await page.waitForSelector('[data-testid="project-list-item"]');
@@ -32,7 +32,7 @@ test.describe('Project Persistence & Export (Subtask 1C)', () => {
 
   test('should access export functionality', async ({ page }) => {
     // Setup project with proper state
-    await page.goto('/projects');
+    
     await createTestProject(page, 'Export Test Project');
 
     // Ensure timeline is ready for export testing
@@ -63,7 +63,7 @@ test.describe('Project Persistence & Export (Subtask 1C)', () => {
 
   test('should maintain project state across sessions', async ({ page }) => {
     // Test 1: Create project with some state
-    await page.goto('/projects');
+    
     await page.getByTestId('new-project-button').click();
     await page.waitForSelector('[data-testid="timeline-track"]');
 
@@ -74,7 +74,7 @@ test.describe('Project Persistence & Export (Subtask 1C)', () => {
     const trackType = await timeline.getAttribute('data-track-type');
 
     // Test 2: Navigate away and back
-    await page.goto('/projects');
+    
     await page.waitForSelector('[data-testid="project-list-item"]');
 
     // Test 3: Reopen project
@@ -90,7 +90,7 @@ test.describe('Project Persistence & Export (Subtask 1C)', () => {
   });
 
   test('should handle export configuration', async ({ page }) => {
-    await page.goto('/projects');
+    
     await createTestProject(page, 'Export Config Test Project');
 
     // Verify timeline is ready for export operations

@@ -3,7 +3,7 @@ import { test, expect, uploadTestMedia } from './helpers/electron-helpers';
 test.describe('Timeline Operations (Subtask 1B)', () => {
   test('should add media to timeline and perform basic edits', async ({ page }) => {
     // Setup: Create project and navigate to editor
-    await page.goto('/projects');
+    
     await page.getByTestId('new-project-button').click();
     await page.waitForSelector('[data-testid="import-media-button"]');
 
@@ -43,7 +43,7 @@ test.describe('Timeline Operations (Subtask 1B)', () => {
   });
 
   test('should handle timeline element operations', async ({ page }) => {
-    await page.goto('/projects');
+    
     await page.getByTestId('new-project-button').click();
     await page.waitForSelector('[data-testid="timeline-track"]');
 
@@ -65,7 +65,7 @@ test.describe('Timeline Operations (Subtask 1B)', () => {
   });
 
   test('should support timeline element manipulation', async ({ page }) => {
-    await page.goto('/projects');
+    
     await page.getByTestId('new-project-button').click();
     await page.waitForSelector('[data-testid="timeline-track"]');
 

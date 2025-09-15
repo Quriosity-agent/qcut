@@ -19,7 +19,7 @@ test.describe('Sticker Overlay Testing (Subtask 3A)', () => {
    */
   test('should access stickers panel and interact with sticker items', async ({ page }) => {
     // Setup: Create project and navigate to editor
-    await page.goto('/projects');
+    
     await createTestProject(page, 'Sticker Test Project');
 
     // Test steps:
@@ -58,7 +58,7 @@ test.describe('Sticker Overlay Testing (Subtask 3A)', () => {
    * Verifies stickers can be dragged from panel to canvas and positioned correctly.
    */
   test('should support sticker drag and drop to canvas', async ({ page }) => {
-    await page.goto('/projects');
+    
     await createTestProject(page, 'Sticker DnD Test Project');
 
     // Open stickers panel
@@ -143,7 +143,7 @@ test.describe('Sticker Overlay Testing (Subtask 3A)', () => {
    * Verifies selection, repositioning, resizing, and deletion of placed stickers.
    */
   test('should manipulate stickers on canvas after placement', async ({ page }) => {
-    await page.goto('/projects');
+    
     await createTestProject(page, 'Sticker Manipulation Test');
 
     // Open stickers panel and place a sticker
@@ -210,7 +210,7 @@ test.describe('Sticker Overlay Testing (Subtask 3A)', () => {
    * Verifies category tabs and search input work correctly.
    */
   test('should handle sticker panel categories and search', async ({ page }) => {
-    await page.goto('/projects');
+    
     await createTestProject(page, 'Sticker Categories Test');
 
     // Open stickers panel
@@ -256,7 +256,7 @@ test.describe('Sticker Overlay Testing (Subtask 3A)', () => {
    * Verifies proper layering, positioning, and z-index for sticker overlays.
    */
   test('should handle sticker overlay rendering', async ({ page }) => {
-    await page.goto('/projects');
+    
     await createTestProject(page, 'Sticker Rendering Test');
 
     // Check for preview canvas (where stickers would be rendered)
@@ -296,7 +296,7 @@ test.describe('Sticker Overlay Testing (Subtask 3A)', () => {
    * Verifies panel maintains functionality when switching between tabs.
    */
   test('should maintain sticker panel state across interactions', async ({ page }) => {
-    await page.goto('/projects');
+    
     await createTestProject(page, 'Sticker State Test Project');
 
     // Open stickers panel

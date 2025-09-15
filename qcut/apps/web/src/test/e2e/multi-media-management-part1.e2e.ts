@@ -18,7 +18,7 @@ test.describe('Multi-Media Import & Track Management (Test #2 Part 1)', () => {
    */
   test('should import multiple media types and manage tracks', async ({ page }) => {
     // Setup: Create project
-    await page.goto('/projects');
+    
     await createTestProject(page, 'Multi-Media Test Project');
 
     // Test steps:
@@ -51,7 +51,7 @@ test.describe('Multi-Media Import & Track Management (Test #2 Part 1)', () => {
    * Verifies media items can be dragged and positioned on timeline tracks.
    */
   test('should handle drag and drop to timeline', async ({ page }) => {
-    await page.goto('/projects');
+    
     await page.getByTestId('new-project-button').click();
     await page.waitForSelector('[data-testid="timeline-track"]');
 
@@ -95,7 +95,7 @@ test.describe('Multi-Media Import & Track Management (Test #2 Part 1)', () => {
   });
 
   test('should support multiple track types', async ({ page }) => {
-    await page.goto('/projects');
+    
     await page.getByTestId('new-project-button').click();
     await page.waitForSelector('[data-testid="timeline-track"]');
 
@@ -114,7 +114,7 @@ test.describe('Multi-Media Import & Track Management (Test #2 Part 1)', () => {
   });
 
   test('should maintain timeline state across operations', async ({ page }) => {
-    await page.goto('/projects');
+    
     await page.getByTestId('new-project-button').click();
     await page.waitForSelector('[data-testid="timeline-track"]');
 
@@ -133,7 +133,7 @@ test.describe('Multi-Media Import & Track Management (Test #2 Part 1)', () => {
   });
 
   test('should display media items correctly', async ({ page }) => {
-    await page.goto('/projects');
+    
     await page.getByTestId('new-project-button').click();
     await page.waitForSelector('[data-testid="import-media-button"]');
 

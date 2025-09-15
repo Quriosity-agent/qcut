@@ -22,7 +22,7 @@ test.describe('File Operations & Storage Management', () => {
    */
   test('5A.1 - Import media files with progress tracking', async ({ page }) => {
     // Navigate to projects page and create new project
-    await page.goto('/projects');
+    
     await createTestProject(page, 'Import Progress Test Project');
 
     // Open import dialog
@@ -50,7 +50,7 @@ test.describe('File Operations & Storage Management', () => {
    */
   test('5A.2 - Handle large file imports', async ({ page }) => {
     // Setup: Create project for testing large file imports
-    await page.goto('/projects');
+    
     await createTestProject(page, 'Large File Import Test');
 
     // In a real implementation, you would:
@@ -81,7 +81,7 @@ test.describe('File Operations & Storage Management', () => {
    */
   test('5A.3 - Test storage quota and fallback system', async ({ page }) => {
     // Setup: Create project to test storage operations
-    await page.goto('/projects');
+    
     await createTestProject(page, 'Storage Quota Test Project');
 
     // Add media to trigger storage operations
@@ -212,7 +212,7 @@ test.describe('File Operations & Storage Management', () => {
    */
   test('5A.7 - Test storage service integration', async ({ page }) => {
     // Setup: Create project for storage service testing
-    await page.goto('/projects');
+    
     await createTestProject(page, 'Storage Integration Test Project');
 
     // Verify project appears in storage

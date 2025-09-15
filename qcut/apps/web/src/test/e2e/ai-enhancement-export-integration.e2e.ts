@@ -18,8 +18,7 @@ test.describe('AI Enhancement & Export Integration', () => {
    * Verifies user can access AI enhancement panel and features after importing media.
    */
   test('4B.1 - Access AI enhancement tools', async ({ page }) => {
-    // Navigate to projects and create new project
-    await page.goto('/projects');
+    // Create new project (Electron app should already be loaded)
     await createTestProject(page, 'AI Enhancement Test');
 
     // Import media file first

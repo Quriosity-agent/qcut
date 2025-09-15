@@ -3,7 +3,7 @@ import { test, expect } from './helpers/electron-helpers';
 test.describe('Text Overlay Testing (Subtask 3B)', () => {
   test('should access text panel and interact with text overlay button', async ({ page }) => {
     // Setup: Create project and navigate to editor
-    await page.goto('/projects');
+    
     await page.getByTestId('new-project-button').click();
     await page.waitForSelector('[data-testid="timeline-track"]');
 
@@ -40,7 +40,7 @@ test.describe('Text Overlay Testing (Subtask 3B)', () => {
   });
 
   test('should support text drag and drop to timeline', async ({ page }) => {
-    await page.goto('/projects');
+    
     await page.getByTestId('new-project-button').click();
     await page.waitForSelector('[data-testid="timeline-track"]');
 
@@ -90,7 +90,7 @@ test.describe('Text Overlay Testing (Subtask 3B)', () => {
   });
 
   test('should handle text panel state and functionality', async ({ page }) => {
-    await page.goto('/projects');
+    
     await page.getByTestId('new-project-button').click();
     await page.waitForSelector('[data-testid="timeline-track"]');
 
@@ -125,7 +125,7 @@ test.describe('Text Overlay Testing (Subtask 3B)', () => {
   });
 
   test('should support text overlay interactions with timeline', async ({ page }) => {
-    await page.goto('/projects');
+    
     await page.getByTestId('new-project-button').click();
     await page.waitForSelector('[data-testid="timeline-track"]');
 
@@ -156,7 +156,7 @@ test.describe('Text Overlay Testing (Subtask 3B)', () => {
   });
 
   test('should maintain text overlay state across panel switches', async ({ page }) => {
-    await page.goto('/projects');
+    
     await page.getByTestId('new-project-button').click();
     await page.waitForSelector('[data-testid="timeline-track"]');
 
@@ -190,7 +190,7 @@ test.describe('Text Overlay Testing (Subtask 3B)', () => {
   });
 
   test('should handle text overlay rendering in preview canvas', async ({ page }) => {
-    await page.goto('/projects');
+    
     await page.getByTestId('new-project-button').click();
     await page.waitForSelector('[data-testid="timeline-track"]');
 
