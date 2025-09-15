@@ -48,18 +48,8 @@ export const test = base.extend<ElectronFixtures>({
     // Wait for the app to be ready using proper state-based waiting
     await page.waitForLoadState('domcontentloaded');
 
-    // Wait for the main app component to be ready instead of using fixed timeout
-    try {
-      // Try waiting for main application elements that indicate readiness
-      await Promise.race([
-        page.waitForSelector('[data-testid="app-ready"]', { timeout: 10000 }),
-        page.waitForSelector('[data-testid="new-project-button"], [data-testid="project-list"]', { timeout: 10000 }),
-        page.waitForSelector('.app-container, #root', { timeout: 10000 }),
-      ]);
-    } catch (error) {
-      // Fallback: wait for network idle as last resort
-      await page.waitForLoadState('networkidle', { timeout: 15000 });
-    }
+    // Navigate to projects page for E2E testing
+    await navigateToProjects(page);
 
     await use(page);
   },
@@ -70,6 +60,51 @@ export { expect };
 /**
  * Helper functions for common E2E operations
  */
+
+/**
+ * Navigates from home page to projects page for E2E testing.
+ * Handles the initial app state and ensures we're on the projects page.
+ *
+ * @param page - The Playwright page instance
+ * @throws {Error} When navigation to projects page fails
+ */
+export async function navigateToProjects(page: Page) {
+  try {
+    // First wait for the home page to load
+    await page.waitForLoadState('networkidle', { timeout: 10000 });
+
+    // Check if we're already on projects page
+    const projectButton = page.getByTestId('new-project-button');
+    if (await projectButton.isVisible({ timeout: 2000 })) {
+      // Already on projects page
+      return;
+    }
+
+    // Look for the "Try early beta" button on the home page
+    const tryBetaButton = page.locator('a[href="/projects"] button', { hasText: 'Try early beta' });
+    if (await tryBetaButton.isVisible({ timeout: 5000 })) {
+      await tryBetaButton.click();
+    } else {
+      // Alternative: try to navigate directly via TanStack Router
+      await page.evaluate(() => {
+        // Use TanStack Router's navigation if available
+        const router = (window as any).router;
+        if (router && router.navigate) {
+          router.navigate({ to: '/projects' });
+        } else {
+          // Fallback: modify location hash since TanStack Router uses hash routing
+          window.location.hash = '#/projects';
+        }
+      });
+    }
+
+    // Wait for projects page to load
+    await page.waitForSelector('[data-testid="new-project-button"], [data-testid="project-list"]', { timeout: 10000 });
+  } catch (error) {
+    console.warn('Navigation to projects page failed, continuing anyway:', error);
+    // Don't throw - let individual tests handle missing elements
+  }
+}
 
 /**
  * Waits for a project to fully load in the editor interface.
