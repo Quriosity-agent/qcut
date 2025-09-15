@@ -9,23 +9,40 @@ import { copyFile, mkdir } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { createRequire } from "node:module";
+import { fileURLToPath } from "node:url";
 
 async function setupFFmpeg() {
   try {
     console.log("🔧 Setting up FFmpeg WebAssembly files...");
 
     // Dynamically resolve @ffmpeg/core package path to handle different package managers
-    const require = createRequire(import.meta.url);
-    let ffmpegCoreRoot: string;
     let ffmpegCorePath: string;
-    
+
     try {
-      ffmpegCoreRoot = dirname(require.resolve("@ffmpeg/core/package.json"));
+      // Use createRequire for robust cross-platform resolution
+      const require = createRequire(import.meta.url);
+      const ffmpegCoreRoot = dirname(require.resolve("@ffmpeg/core/package.json"));
       ffmpegCorePath = join(ffmpegCoreRoot, "dist", "esm");
       console.log(`📦 Resolved @ffmpeg/core path: ${ffmpegCoreRoot}`);
       console.log(`📂 Using source directory: ${ffmpegCorePath}`);
     } catch (error) {
-      throw new Error(`Failed to resolve @ffmpeg/core package. Make sure it's installed: ${error instanceof Error ? error.message : String(error)}`);
+      // Fallback to checking common locations if resolution fails
+      const possiblePaths = [
+        join(process.cwd(), "node_modules", "@ffmpeg", "core", "dist", "esm"),
+        join(dirname(fileURLToPath(import.meta.url)), "..", "node_modules", "@ffmpeg", "core", "dist", "esm")
+      ];
+
+      for (const path of possiblePaths) {
+        if (existsSync(join(path, "ffmpeg-core.js"))) {
+          ffmpegCorePath = path;
+          console.log(`📦 Found @ffmpeg/core at: ${path}`);
+          break;
+        }
+      }
+
+      if (!ffmpegCorePath!) {
+        throw new Error(`Failed to resolve @ffmpeg/core package. Make sure it's installed: ${error instanceof Error ? error.message : String(error)}`);
+      }
     }
     const publicFFmpegPath = "apps/web/public/ffmpeg";
     const electronFFmpegPath = "electron/resources/ffmpeg";
