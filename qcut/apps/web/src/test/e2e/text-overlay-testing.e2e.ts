@@ -33,7 +33,8 @@ test.describe('Text Overlay Testing (Subtask 3B)', () => {
     // Should show plus button on hover (if implemented)
     const plusButton = textOverlayButton.locator('button');
 
-    if (await plusButton.isVisible({ timeout: 500 }).catch(() => false)) {
+    const plusVisible = await plusButton.waitFor({ state: 'visible', timeout: 500 }).then(() => true).catch(() => false);
+    if (plusVisible) {
       await expect(plusButton).toBeVisible();
     }
   });
@@ -54,31 +55,37 @@ test.describe('Text Overlay Testing (Subtask 3B)', () => {
     await expect(textOverlayButton).toBeVisible();
     await expect(timeline).toBeVisible();
 
-    // Test drag and drop capability
+    // Get count of timeline elements before drag-and-drop
+    const timelineElementsBefore = await page.locator('[data-testid="timeline-element"]').count();
+
+    // Perform actual drag-and-drop operation
     const draggableElement = textOverlayButton.locator('[draggable="true"]');
-    await expect(draggableElement).toBeVisible();
+    if (await draggableElement.isVisible()) {
+      // Drag text element to timeline
+      await draggableElement.dragTo(timeline);
+      await page.waitForTimeout(1000);
+    } else {
+      // If no draggable element, try clicking the text overlay button to add text
+      await textOverlayButton.click();
+      await page.waitForTimeout(1000);
+    }
 
-    // Get bounds for drag operation
-    const sourceBounds = await draggableElement.boundingBox();
-    const targetBounds = await timeline.boundingBox();
+    // Verify that a text element was added to the timeline
+    const timelineElementsAfter = await page.locator('[data-testid="timeline-element"]').count();
+    expect(timelineElementsAfter).toBeGreaterThan(timelineElementsBefore);
 
-    expect(sourceBounds).toBeTruthy();
-    expect(targetBounds).toBeTruthy();
+    // Verify the text element has proper attributes
+    const textElements = page.locator('[data-testid="timeline-element"]').filter({
+      hasText: /text|overlay/i
+    });
 
-    if (sourceBounds && targetBounds) {
-      // Test drag start
-      await draggableElement.hover();
+    if (await textElements.count() > 0) {
+      const textElement = textElements.first();
+      await expect(textElement).toBeVisible();
 
-      // Verify draggable element has proper attributes
-      const isDraggable = await draggableElement.getAttribute('draggable');
-      expect(isDraggable).toBe('true');
-
-      // Test that timeline can accept drops
-      await timeline.hover();
-
-      // Timeline should be interactive
-      expect(targetBounds.width).toBeGreaterThan(100);
-      expect(targetBounds.height).toBeGreaterThan(20);
+      // Verify it has duration attribute
+      const duration = await textElement.getAttribute('data-duration');
+      expect(duration).toBeTruthy();
     }
   });
 
@@ -111,7 +118,8 @@ test.describe('Text Overlay Testing (Subtask 3B)', () => {
     // Test aspect ratio container
     const aspectRatioContainer = textOverlayButton.locator('[style*="aspect-ratio"]');
 
-    if (await aspectRatioContainer.isVisible({ timeout: 500 }).catch(() => false)) {
+    const arVisible = await aspectRatioContainer.waitFor({ state: 'visible', timeout: 500 }).then(() => true).catch(() => false);
+    if (arVisible) {
       await expect(aspectRatioContainer).toBeVisible();
     }
   });
@@ -131,28 +139,15 @@ test.describe('Text Overlay Testing (Subtask 3B)', () => {
 
     const plusButton = textOverlayButton.locator('button');
 
-    if (await plusButton.isVisible({ timeout: 1000 }).catch(() => false)) {
-      // Test plus button click
+    const plusReady = await plusButton.waitFor({ state: 'visible', timeout: 1000 }).then(() => true).catch(() => false);
+    if (plusReady) {
+      const elements = page.getByTestId('timeline-element');
+      const before = await elements.count();
       await plusButton.click();
-
-      // Should add text to timeline
-      // Check for timeline elements after addition
-      const timelineElements = page.getByTestId('timeline-element');
-
-      // Wait for potential element addition
-      await page.waitForTimeout(500);
-
-      const elementCount = await timelineElements.count();
-
-      // If successful, should have added an element
-      if (elementCount > 0) {
-        const textElement = timelineElements.first();
-        await expect(textElement).toBeVisible();
-
-        // Verify it's a text element
-        const elementType = await textElement.getAttribute('data-element-id');
-        expect(elementType).toBeTruthy();
-      }
+      await expect(elements.nth(before)).toBeVisible({ timeout: 5000 });
+      const textElement = elements.nth(before);
+      const elementId = await textElement.getAttribute('data-element-id');
+      expect(elementId).toBeTruthy();
     }
 
     // Test that text panel remains functional
@@ -202,7 +197,8 @@ test.describe('Text Overlay Testing (Subtask 3B)', () => {
     // Check for preview canvas where text overlays would render
     const previewCanvas = page.getByTestId('preview-canvas');
 
-    if (await previewCanvas.isVisible({ timeout: 2000 }).catch(() => false)) {
+    const previewVisible = await previewCanvas.waitFor({ state: 'visible', timeout: 2000 }).then(() => true).catch(() => false);
+    if (previewVisible) {
       await expect(previewCanvas).toBeVisible();
 
       // Verify canvas positioning for text overlays

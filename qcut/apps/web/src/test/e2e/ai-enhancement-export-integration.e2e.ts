@@ -97,16 +97,16 @@ test.describe('AI Enhancement & Export Integration', () => {
 
   test('4B.5 - Export enhanced project with AI effects', async ({ page }) => {
     // Open export dialog
-    const exportButton = window.locator('[data-testid*="export"]').first();
+    const exportButton = page.locator('[data-testid*="export"]').first();
     await exportButton.click();
-    await window.waitForTimeout(1000);
+    await page.waitForTimeout(1000);
 
     // Verify export dialog appears
-    const exportDialog = window.locator('[data-testid*="export-dialog"], .modal, [role="dialog"]').first();
+    const exportDialog = page.locator('[data-testid*="export-dialog"], .modal, [role="dialog"]').first();
     await expect(exportDialog).toBeVisible();
 
     // Configure export settings for enhanced content
-    const qualityOptions = window.locator('select, input[type="radio"]').filter({
+    const qualityOptions = page.locator('select, input[type="radio"]').filter({
       hasText: /quality|resolution|format/i
     });
 
@@ -119,50 +119,50 @@ test.describe('AI Enhancement & Export Integration', () => {
     }
 
     // Start export process
-    const startExportButton = window.locator('[data-testid="export-start-button"]');
+    const startExportButton = page.locator('[data-testid="export-start-button"]');
     if (await startExportButton.isVisible()) {
       await startExportButton.click();
-      await window.waitForTimeout(2000);
+      await page.waitForTimeout(2000);
 
       // Verify export is processing
-      const exportStatus = window.locator('[data-testid*="export-status"], [data-testid*="export-progress"]').first();
+      const exportStatus = page.locator('[data-testid*="export-status"], [data-testid*="export-progress"]').first();
       if (await exportStatus.isVisible()) {
         await expect(exportStatus).toBeVisible();
       }
     }
   });
 
-  test('4B.6 - Batch apply AI enhancements to multiple assets', async () => {
+  test('4B.6 - Batch apply AI enhancements to multiple assets', async ({ page }) => {
     // Ensure we have multiple media items
-    await window.click('[data-testid="import-media-button"]');
-    await window.waitForTimeout(1000);
+    await page.click('[data-testid="import-media-button"]');
+    await page.waitForTimeout(1000);
 
     // Switch to AI panel
-    await window.click('[data-testid="ai-panel-tab"]');
-    await window.waitForTimeout(500);
+    await page.click('[data-testid="ai-panel-tab"]');
+    await page.waitForTimeout(500);
 
-    const mediaItems = window.locator('[data-testid="media-item"]');
+    const mediaItems = page.locator('[data-testid="media-item"]');
     const itemCount = await mediaItems.count();
 
     if (itemCount > 1) {
       // Look for batch processing or select all functionality
-      const selectAllOption = window.locator('input[type="checkbox"]').filter({
+      const selectAllOption = page.locator('input[type="checkbox"]').filter({
         hasText: /select all|batch|all items/i
       }).first();
 
       if (await selectAllOption.isVisible()) {
         await selectAllOption.check();
-        await window.waitForTimeout(500);
+        await page.waitForTimeout(500);
       }
 
       // Apply batch enhancement
-      const batchEnhanceButton = window.locator('button').filter({
+      const batchEnhanceButton = page.locator('button').filter({
         hasText: /apply all|batch enhance|enhance all/i
       }).first();
 
       if (await batchEnhanceButton.isVisible()) {
         await batchEnhanceButton.click();
-        await window.waitForTimeout(5000); // Allow time for batch processing
+        await page.waitForTimeout(5000); // Allow time for batch processing
       }
     }
 
@@ -170,32 +170,32 @@ test.describe('AI Enhancement & Export Integration', () => {
     await expect(mediaItems).toHaveCountGreaterThan(0);
   });
 
-  test('4B.7 - Integration with project export workflow', async () => {
+  test('4B.7 - Integration with project export workflow', async ({ page }) => {
     // Create complete project with AI enhancements
-    const timelineElements = window.locator('[data-testid="timeline-element"]');
+    const timelineElements = page.locator('[data-testid="timeline-element"]');
 
     if (await timelineElements.count() === 0) {
       // Add media to timeline if not already there
-      const mediaItem = window.locator('[data-testid="media-item"]').first();
-      const timelineTrack = window.locator('[data-testid="timeline-track"]').first();
+      const mediaItem = page.locator('[data-testid="media-item"]').first();
+      const timelineTrack = page.locator('[data-testid="timeline-track"]').first();
 
       await mediaItem.dragTo(timelineTrack);
-      await window.waitForTimeout(1000);
+      await page.waitForTimeout(1000);
     }
 
     // Verify timeline has content
-    await expect(window.locator('[data-testid="timeline-element"]')).toHaveCountGreaterThan(0);
+    await expect(page.locator('[data-testid="timeline-element"]')).toHaveCountGreaterThan(0);
 
     // Test export with all AI features combined
-    const exportButton = window.locator('[data-testid*="export"]').first();
+    const exportButton = page.locator('[data-testid*="export"]').first();
     await exportButton.click();
-    await window.waitForTimeout(1000);
+    await page.waitForTimeout(1000);
 
-    const exportDialog = window.locator('[data-testid*="export-dialog"], .modal, [role="dialog"]').first();
+    const exportDialog = page.locator('[data-testid*="export-dialog"], .modal, [role="dialog"]').first();
     await expect(exportDialog).toBeVisible();
 
     // Enable all AI-related export features
-    const aiOptions = window.locator('input[type="checkbox"], input[type="radio"]').filter({
+    const aiOptions = page.locator('input[type="checkbox"], input[type="radio"]').filter({
       hasText: /ai|enhancement|effect|filter|caption|subtitle/i
     });
 
@@ -207,13 +207,13 @@ test.describe('AI Enhancement & Export Integration', () => {
     }
 
     // Start final export
-    const startExportButton = window.locator('[data-testid="export-start-button"]');
+    const startExportButton = page.locator('[data-testid="export-start-button"]');
     if (await startExportButton.isVisible()) {
       await startExportButton.click();
-      await window.waitForTimeout(2000);
+      await page.waitForTimeout(2000);
 
       // Verify comprehensive export is processing
-      const exportStatus = window.locator('[data-testid*="export-status"], [data-testid*="export-progress"]').first();
+      const exportStatus = page.locator('[data-testid*="export-status"], [data-testid*="export-progress"]').first();
       if (await exportStatus.isVisible()) {
         await expect(exportStatus).toContainText(/export|process|render/i);
       }

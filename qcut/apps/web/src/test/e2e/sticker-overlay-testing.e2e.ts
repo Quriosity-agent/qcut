@@ -50,23 +50,7 @@ test.describe('Sticker Overlay Testing (Subtask 3A)', () => {
     // Check if sticker canvas is available
     const stickerCanvas = page.getByTestId('sticker-canvas');
 
-    // Canvas may not be visible initially
-    try {
-      await expect(stickerCanvas).toBeAttached({ timeout: 2000 });
-
-      // Get canvas bounds for drag target
-      const canvasBounds = await stickerCanvas.boundingBox();
-
-      if (canvasBounds) {
-        expect(canvasBounds.width).toBeGreaterThan(0);
-        expect(canvasBounds.height).toBeGreaterThan(0);
-      }
-    } catch (error) {
-      // Canvas might not be visible without media - this is expected behavior
-      console.log('Sticker canvas not immediately visible - may require media content');
-    }
-
-    // Test sticker items are interactive
+    // Test sticker drag-and-drop functionality
     const stickerItems = page.getByTestId('sticker-item');
     await page.waitForTimeout(1000);
 
@@ -75,11 +59,125 @@ test.describe('Sticker Overlay Testing (Subtask 3A)', () => {
       const firstSticker = stickerItems.first();
       await expect(firstSticker).toBeVisible();
 
-      // Test hover interaction
-      await firstSticker.hover();
+      // Check if sticker canvas is available for drag-and-drop
+      const canvasCount = await stickerCanvas.count();
 
-      // Verify sticker remains interactive
-      await expect(firstSticker).toBeEnabled();
+      if (canvasCount > 0 && await stickerCanvas.isVisible()) {
+        // Canvas is available - perform drag-and-drop
+        await expect(stickerCanvas).toBeAttached({ timeout: 2000 });
+
+        // Count existing sticker instances on canvas before drop
+        const stickerInstances = page.locator('[data-testid="sticker-instance"]');
+        const instancesBefore = await stickerInstances.count();
+
+        // Perform drag-and-drop with better options
+        await firstSticker.dragTo(stickerCanvas, {
+          force: true,
+          timeout: 5000,
+          targetPosition: { x: 100, y: 100 } // Drop at specific position
+        });
+
+        await page.waitForTimeout(1000);
+
+        // Verify a sticker instance was added to canvas
+        const instancesAfter = await stickerInstances.count();
+        expect(instancesAfter).toBeGreaterThan(instancesBefore);
+
+        // Verify the sticker instance is visible and positioned correctly
+        const newInstance = stickerInstances.last();
+        await expect(newInstance).toBeVisible();
+
+        // Check that the instance has positioning attributes
+        await expect(newInstance).toHaveAttribute('style');
+
+      } else {
+        // Canvas not available - test alternative interaction
+        console.log('Sticker canvas not available - testing click interaction');
+
+        // Test hover and click interactions
+        await firstSticker.hover();
+        await page.waitForTimeout(200);
+
+        await firstSticker.click();
+        await page.waitForTimeout(500);
+
+        // Verify interaction feedback - check for selection or preview
+        const hasSelectionState = await firstSticker.getAttribute('data-selected');
+        const hasActiveClass = await firstSticker.getAttribute('class');
+
+        if (hasSelectionState === 'true' || hasActiveClass?.includes('selected')) {
+          await expect(firstSticker).toHaveAttribute('data-selected', 'true');
+        } else {
+          // Alternative: check if sticker preview appears
+          const stickerPreview = page.locator('[data-testid="sticker-preview"]');
+          if (await stickerPreview.isVisible({ timeout: 1000 })) {
+            await expect(stickerPreview).toBeVisible();
+          }
+        }
+      }
+    }
+  });
+
+  test('should manipulate stickers on canvas after placement', async ({ page }) => {
+    await page.goto('/projects');
+    await page.getByTestId('new-project-button').click();
+    await page.waitForSelector('[data-testid="timeline-track"]');
+
+    // Open stickers panel and place a sticker
+    await page.getByTestId('stickers-panel-tab').click();
+    await expect(page.getByTestId('stickers-panel')).toBeVisible();
+
+    const stickerCanvas = page.getByTestId('sticker-canvas');
+    const stickerItems = page.getByTestId('sticker-item');
+    await page.waitForTimeout(1000);
+
+    const itemCount = await stickerItems.count();
+    if (itemCount > 0 && await stickerCanvas.count() > 0) {
+      const firstSticker = stickerItems.first();
+
+      // Place sticker on canvas
+      await firstSticker.dragTo(stickerCanvas, {
+        force: true,
+        targetPosition: { x: 150, y: 150 }
+      });
+      await page.waitForTimeout(1000);
+
+      // Find the placed sticker instance
+      const stickerInstances = page.locator('[data-testid="sticker-instance"]');
+      if (await stickerInstances.count() > 0) {
+        const placedSticker = stickerInstances.first();
+        await expect(placedSticker).toBeVisible();
+
+        // Test sticker manipulation: click to select
+        await placedSticker.click();
+        await page.waitForTimeout(300);
+
+        // Check if selection controls appear
+        const resizeHandles = page.locator('[data-testid="resize-handle"]');
+        if (await resizeHandles.count() > 0) {
+          await expect(resizeHandles.first()).toBeVisible();
+        }
+
+        // Test drag to reposition (if drag is supported)
+        const originalPosition = await placedSticker.boundingBox();
+        if (originalPosition) {
+          await placedSticker.dragTo(stickerCanvas, {
+            targetPosition: { x: 200, y: 200 }
+          });
+          await page.waitForTimeout(500);
+
+          const newPosition = await placedSticker.boundingBox();
+          expect(newPosition?.x).not.toBe(originalPosition.x);
+        }
+
+        // Test delete functionality (if available)
+        const deleteButton = page.locator('[data-testid="delete-sticker"], [data-testid="remove-overlay"]');
+        if (await deleteButton.isVisible({ timeout: 1000 })) {
+          await deleteButton.click();
+          await page.waitForTimeout(500);
+          await expect(placedSticker).not.toBeVisible();
+        }
+      }
     }
   });
 
