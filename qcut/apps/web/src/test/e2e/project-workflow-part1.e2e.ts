@@ -34,8 +34,8 @@ test.describe('Project Creation & Media Import (Subtask 1A)', () => {
    * Verifies proper handling of file selection and upload indicators.
    */
   test('should handle file upload process', async ({ page }) => {
-    // Electron app should already be loaded, click new project button
-    await page.getByTestId('new-project-button').click();
+    // Electron app should already be loaded, create a new project
+    await createTestProject(page, 'E2E Upload Test Project');
     await page.waitForSelector('[data-testid="import-media-button"]');
 
     // Test file upload UI interactions
