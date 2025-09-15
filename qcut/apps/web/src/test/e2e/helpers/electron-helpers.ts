@@ -1,8 +1,21 @@
+/**
+ * Electron E2E Testing Helpers
+ *
+ * This module provides Playwright fixtures and helper functions for testing
+ * Electron applications, specifically designed for QCut video editor E2E tests.
+ */
+
 import { test as base, expect, Page } from '@playwright/test';
 import { ElectronApplication, _electron as electron } from 'playwright';
 
+/**
+ * Electron-specific test fixtures that extend Playwright's base fixtures
+ * with Electron application and page instances.
+ */
 export interface ElectronFixtures {
+  /** The Electron application instance */
   electronApp: ElectronApplication;
+  /** The main window page instance */
   page: Page;
 }
 
@@ -47,7 +60,17 @@ export const test = base.extend<ElectronFixtures>({
 
 export { expect };
 
-// Helper functions for common E2E operations
+/**
+ * Helper functions for common E2E operations
+ */
+
+/**
+ * Waits for a project to fully load in the editor interface.
+ * Uses multiple fallback strategies to ensure reliable waiting.
+ *
+ * @param page - The Playwright page instance
+ * @throws {Error} When project fails to load within timeout
+ */
 export async function waitForProjectLoad(page: Page) {
   // Wait for editor components to indicate the project is fully loaded
   try {
@@ -67,6 +90,14 @@ export async function waitForProjectLoad(page: Page) {
   }
 }
 
+/**
+ * Creates a new test project with the specified name.
+ * Handles both header and empty state button scenarios.
+ *
+ * @param page - The Playwright page instance
+ * @param projectName - Name for the new project (default: 'E2E Test Project')
+ * @throws {Error} When project creation fails or times out
+ */
 export async function createTestProject(page: Page, projectName = 'E2E Test Project') {
   // Wait for either the header button or empty state button to be available
   await page.waitForSelector('[data-testid="new-project-button"], [data-testid="new-project-button-empty-state"]');
@@ -98,6 +129,14 @@ export async function createTestProject(page: Page, projectName = 'E2E Test Proj
   await waitForProjectLoad(page);
 }
 
+/**
+ * Uploads test media file through the import media interface.
+ * Clicks the import button and selects the specified file.
+ *
+ * @param page - The Playwright page instance
+ * @param filePath - Relative path to the media file from project root
+ * @throws {Error} When file upload fails or times out
+ */
 export async function uploadTestMedia(page: Page, filePath: string) {
   // Click the import media button to trigger file picker
   await page.getByTestId('import-media-button').click();
@@ -111,24 +150,52 @@ export async function uploadTestMedia(page: Page, filePath: string) {
 }
 
 /**
- * Import test media using the standard test files
+ * Imports the standard test video file (sample-video.mp4).
+ * Uses the pre-created 5-second 720p test video for E2E testing.
+ *
+ * @param page - The Playwright page instance
+ * @throws {Error} When video import fails
  */
 export async function importTestVideo(page: Page) {
   const videoPath = 'src/test/e2e/fixtures/media/sample-video.mp4';
   await uploadTestMedia(page, videoPath);
 }
 
+/**
+ * Imports the standard test audio file (sample-audio.mp3).
+ * Uses the pre-created 5-second sine wave test audio for E2E testing.
+ *
+ * @param page - The Playwright page instance
+ * @throws {Error} When audio import fails
+ */
 export async function importTestAudio(page: Page) {
   const audioPath = 'src/test/e2e/fixtures/media/sample-audio.mp3';
   await uploadTestMedia(page, audioPath);
 }
 
+/**
+ * Imports the standard test image file (sample-image.png).
+ * Uses the pre-created 1280x720 blue test image for E2E testing.
+ *
+ * @param page - The Playwright page instance
+ * @throws {Error} When image import fails
+ */
 export async function importTestImage(page: Page) {
   const imagePath = 'src/test/e2e/fixtures/media/sample-image.png';
   await uploadTestMedia(page, imagePath);
 }
 
-// Additional helper functions for the E2E tests
+/**
+ * Additional helper functions for the E2E tests
+ */
+
+/**
+ * Starts an Electron application instance for testing.
+ * Configures test environment with GPU acceleration disabled.
+ *
+ * @returns Promise<ElectronApplication> The launched Electron app instance
+ * @throws {Error} When Electron app fails to launch
+ */
 export async function startElectronApp() {
   return await electron.launch({
     args: ['dist/electron/main.js'],
@@ -139,6 +206,14 @@ export async function startElectronApp() {
   });
 }
 
+/**
+ * Gets the main window from an Electron application instance.
+ * Waits for DOM content to load and app to be ready.
+ *
+ * @param electronApp - The Electron application instance
+ * @returns Promise<Page> The main window page instance
+ * @throws {Error} When main window is not accessible
+ */
 export async function getMainWindow(electronApp: ElectronApplication) {
   const page = await electronApp.firstWindow();
   await page.waitForLoadState('domcontentloaded');
@@ -150,7 +225,11 @@ export async function getMainWindow(electronApp: ElectronApplication) {
 }
 
 /**
- * Waits for the application to be fully ready for testing
+ * Waits for the application to be fully ready for testing.
+ * Uses multiple strategies including element detection and network idle state.
+ *
+ * @param page - The Playwright page instance
+ * @throws {Error} When app fails to reach ready state within timeout
  */
 export async function waitForAppReady(page: Page) {
   try {

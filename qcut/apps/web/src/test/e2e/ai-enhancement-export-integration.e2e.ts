@@ -1,6 +1,22 @@
+/**
+ * AI Enhancement & Export Integration E2E Tests
+ *
+ * Tests the complete workflow for AI-powered video enhancement features
+ * including accessing AI tools, applying effects, timeline integration,
+ * preview functionality, and export with AI enhancements.
+ */
+
 import { test, expect, createTestProject, importTestVideo } from './helpers/electron-helpers';
 
+/**
+ * Test suite for AI Enhancement & Export Integration (Test #4B)
+ * Covers subtasks 4B.1 through 4B.7 from the E2E testing priority document.
+ */
 test.describe('AI Enhancement & Export Integration', () => {
+  /**
+   * Test 4B.1: Access AI enhancement tools
+   * Verifies user can access AI enhancement panel and features after importing media.
+   */
   test('4B.1 - Access AI enhancement tools', async ({ page }) => {
     // Navigate to projects and create new project
     await page.goto('/projects');
@@ -23,6 +39,10 @@ test.describe('AI Enhancement & Export Integration', () => {
     await expect(page.locator('[data-testid="ai-enhancement-panel"]')).toBeVisible();
   });
 
+  /**
+   * Test 4B.2: Apply AI enhancement effects to media
+   * Tests the ability to select and apply AI enhancement effects to imported media.
+   */
   test('4B.2 - Apply AI enhancement effects to media', async ({ page }) => {
     // Ensure we're in AI panel
     await page.click('[data-testid="ai-panel-tab"]');
@@ -46,10 +66,14 @@ test.describe('AI Enhancement & Export Integration', () => {
 
       // Verify enhancement was applied (new asset created or existing modified)
       const mediaItems = page.locator('[data-testid="media-item"]');
-      await expect(mediaItems).toHaveCountGreaterThan(0);
+      expect(await mediaItems.count()).toBeGreaterThan(0);
     }
   });
 
+  /**
+   * Test 4B.3: Use enhanced media in timeline
+   * Verifies enhanced media can be dragged to timeline and displays properly.
+   */
   test('4B.3 - Use enhanced media in timeline', async ({ page }) => {
     // Drag enhanced media to timeline
     const mediaItem = page.locator('[data-testid="media-item"]').first();
@@ -66,13 +90,17 @@ test.describe('AI Enhancement & Export Integration', () => {
 
     // Verify media appears on timeline
     const timelineElements = page.locator('[data-testid="timeline-element"]');
-    await expect(timelineElements).toHaveCountGreaterThan(0);
+    expect(await timelineElements.count()).toBeGreaterThan(0);
 
     // Verify timeline element has proper duration
     const firstElement = timelineElements.first();
     await expect(firstElement).toHaveAttribute('data-duration');
   });
 
+  /**
+   * Test 4B.4: Preview enhanced media with effects
+   * Tests video playback preview functionality with AI enhancements applied.
+   */
   test('4B.4 - Preview enhanced media with effects', async ({ page }) => {
     // Ensure timeline has content
     const timelineElements = page.locator('[data-testid="timeline-element"]');
@@ -98,6 +126,10 @@ test.describe('AI Enhancement & Export Integration', () => {
     await expect(previewPanel).toBeVisible();
   });
 
+  /**
+   * Test 4B.5: Export enhanced project with AI effects
+   * Verifies export functionality works correctly with AI-enhanced content.
+   */
   test('4B.5 - Export enhanced project with AI effects', async ({ page }) => {
     // Open export dialog
     const exportButton = page.locator('[data-testid*="export"]').first();
@@ -135,6 +167,10 @@ test.describe('AI Enhancement & Export Integration', () => {
     }
   });
 
+  /**
+   * Test 4B.6: Batch apply AI enhancements to multiple assets
+   * Tests bulk processing capabilities for applying AI enhancements to multiple media items.
+   */
   test('4B.6 - Batch apply AI enhancements to multiple assets', async ({ page }) => {
     // Ensure we have multiple media items
     await page.click('[data-testid="import-media-button"]');
@@ -170,9 +206,13 @@ test.describe('AI Enhancement & Export Integration', () => {
     }
 
     // Verify enhanced assets are available
-    await expect(mediaItems).toHaveCountGreaterThan(0);
+    expect(await mediaItems.count()).toBeGreaterThan(0);
   });
 
+  /**
+   * Test 4B.7: Integration with project export workflow
+   * Tests the complete end-to-end workflow from AI enhancement to final export.
+   */
   test('4B.7 - Integration with project export workflow', async ({ page }) => {
     // Create complete project with AI enhancements
     const timelineElements = page.locator('[data-testid="timeline-element"]');
@@ -193,7 +233,7 @@ test.describe('AI Enhancement & Export Integration', () => {
     }
 
     // Verify timeline has content
-    await expect(page.locator('[data-testid="timeline-element"]')).toHaveCountGreaterThan(0);
+    expect(await page.locator('[data-testid="timeline-element"]').count()).toBeGreaterThan(0);
 
     // Test export with all AI features combined
     const exportButton = page.locator('[data-testid*="export"]').first();

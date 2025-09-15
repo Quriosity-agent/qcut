@@ -1,4 +1,4 @@
-import { test, expect } from '../helpers/electron-helpers';
+import { test, expect, createTestProject } from './helpers/electron-helpers';
 
 test.describe('Project Persistence & Export (Subtask 1C)', () => {
   test('should handle project persistence', async ({ page }) => {
@@ -31,33 +31,33 @@ test.describe('Project Persistence & Export (Subtask 1C)', () => {
   });
 
   test('should access export functionality', async ({ page }) => {
-    // Setup project
+    // Setup project with proper state
     await page.goto('/projects');
-    await page.getByTestId('new-project-button').click();
-    await page.waitForSelector('[data-testid="timeline-track"]');
+    await createTestProject(page, 'Export Test Project');
 
-    // Test export accessibility - navigate to export panel
-    // Note: Export functionality might be in a properties panel or menu
+    // Ensure timeline is ready for export testing
+    await expect(page.getByTestId('timeline-track')).toBeVisible();
 
-    // Look for export button or panel access
-    // This might need to be updated based on actual UI structure
+    // Test export button accessibility in primary location
     const exportButton = page.getByTestId('export-start-button');
+    const exportButtonVisible = await exportButton.isVisible();
 
-    // If export functionality exists, test its availability
-    try {
-      await expect(exportButton).toBeVisible({ timeout: 5000 });
-
-      // Test export button interaction
+    if (exportButtonVisible) {
+      // Export button is available - verify it's functional
+      await expect(exportButton).toBeVisible();
       await expect(exportButton).toBeEnabled();
+    } else {
+      // Export functionality may be in a menu or dialog - test alternative access
+      const exportMenuTrigger = page.locator('[data-testid*="export"], button').filter({ hasText: /export/i }).first();
 
-      // Note: We don't actually start export to avoid long test times
-      // But we verify the functionality is accessible
-    } catch (error) {
-      // If export button isn't immediately visible, it might be in a panel/menu
-      console.log('Export button not immediately visible - may be in panel/menu');
-
-      // Verify timeline is ready for export (has content capability)
-      await expect(page.getByTestId('timeline-track')).toBeVisible();
+      if (await exportMenuTrigger.isVisible()) {
+        await exportMenuTrigger.click();
+        // After clicking, the export button should appear
+        await expect(exportButton).toBeVisible({ timeout: 5000 });
+      } else {
+        // If no export UI is found, this is a valid test failure
+        throw new Error('Export functionality is not accessible in the current UI state');
+      }
     }
   });
 
@@ -91,26 +91,39 @@ test.describe('Project Persistence & Export (Subtask 1C)', () => {
 
   test('should handle export configuration', async ({ page }) => {
     await page.goto('/projects');
-    await page.getByTestId('new-project-button').click();
-    await page.waitForSelector('[data-testid="timeline-track"]');
+    await createTestProject(page, 'Export Config Test Project');
 
-    // Test export configuration UI if available
+    // Verify timeline is ready for export operations
+    await expect(page.getByTestId('timeline-track')).toBeVisible();
+
+    // Test export configuration UI
     const exportButton = page.getByTestId('export-start-button');
+    const exportButtonExists = await exportButton.isVisible();
 
-    try {
-      await expect(exportButton).toBeVisible({ timeout: 5000 });
-
-      // Export button exists - test configuration
-      // Note: Don't actually start export, just test UI
+    if (exportButtonExists) {
+      // Export button is directly accessible - test its functionality
+      await expect(exportButton).toBeVisible();
       await expect(exportButton).toBeEnabled();
 
-      console.log('Export functionality is accessible');
-    } catch (error) {
-      // Export might be accessible through different means
-      // Verify basic project functionality instead
-      await expect(page.getByTestId('timeline-track')).toBeVisible();
+      // Verify export button is properly configured for user interaction
+      const buttonText = await exportButton.textContent();
+      expect(buttonText).toBeTruthy();
+    } else {
+      // Export functionality may be behind a menu or different UI pattern
+      // Look for export-related UI elements
+      const exportTriggers = page.locator('[data-testid*="export"], button').filter({ hasText: /export/i });
+      const exportTriggerCount = await exportTriggers.count();
 
-      console.log('Export functionality may require panel navigation');
+      if (exportTriggerCount > 0) {
+        // Found export-related UI elements - verify they're functional
+        const firstExportTrigger = exportTriggers.first();
+        await expect(firstExportTrigger).toBeVisible();
+        await expect(firstExportTrigger).toBeEnabled();
+      } else {
+        // No export UI found - this indicates the export feature may not be implemented
+        // The test should fail to highlight missing functionality
+        throw new Error('Export configuration UI is not accessible - feature may not be implemented');
+      }
     }
   });
 });

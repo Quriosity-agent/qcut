@@ -1,31 +1,40 @@
-import { test, expect, uploadTestMedia } from '../helpers/electron-helpers';
+/**
+ * Project Creation & Media Import E2E Tests
+ *
+ * Tests the fundamental project workflow including project creation,
+ * media import, file upload processes, and basic editor functionality.
+ */
 
+import { test, expect, createTestProject, importTestVideo } from '../helpers/electron-helpers';
+
+/**
+ * Test suite for Project Creation & Media Import (Subtask 1A)
+ * Covers basic project setup and media import workflows.
+ */
 test.describe('Project Creation & Media Import (Subtask 1A)', () => {
+  /**
+   * Tests complete project creation and media import workflow.
+   * Verifies new project creation and successful video file import.
+   */
   test('should create project and import media', async ({ page }) => {
     // Navigate to projects page
     await page.goto('/projects');
 
-    // Wait for page to load
-    await page.waitForSelector('[data-testid="new-project-button"]');
-
     // Test steps:
     // 1. Create new project with settings (1080p, 30fps)
-    await page.getByTestId('new-project-button').click();
-
-    // Wait for editor to load
-    await page.waitForSelector('[data-testid="import-media-button"]', { timeout: 10000 });
-
-    // Verify we're in the editor
-    await expect(page.getByTestId('import-media-button')).toBeVisible();
+    await createTestProject(page, 'E2E Workflow Test Project');
 
     // 2. Import video file (MP4)
-    // A test file should exist at 'src/test/e2e/fixtures/media/sample-video.mp4'.
-    await uploadTestMedia(page, 'src/test/e2e/fixtures/media/sample-video.mp4');
+    await importTestVideo(page);
 
     // 3. Verify media item appears in the media panel
     await expect(page.getByTestId('media-item').first()).toBeVisible();
   });
 
+  /**
+   * Tests the file upload process and UI feedback.
+   * Verifies proper handling of file selection and upload indicators.
+   */
   test('should handle file upload process', async ({ page }) => {
     await page.goto('/projects');
     await page.getByTestId('new-project-button').click();

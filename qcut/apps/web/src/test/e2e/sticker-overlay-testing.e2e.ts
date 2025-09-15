@@ -1,11 +1,26 @@
-import { test, expect } from './helpers/electron-helpers';
+/**
+ * Sticker Overlay Testing E2E Tests
+ *
+ * Tests the complete sticker overlay functionality including panel access,
+ * sticker selection, drag-and-drop placement, canvas manipulation,
+ * category navigation, and overlay rendering.
+ */
 
+import { test, expect, createTestProject } from './helpers/electron-helpers';
+
+/**
+ * Test suite for Sticker Overlay Testing (Subtask 3A)
+ * Covers sticker panel interactions, placement, and manipulation functionality.
+ */
 test.describe('Sticker Overlay Testing (Subtask 3A)', () => {
+  /**
+   * Tests basic sticker panel access and sticker item interaction.
+   * Verifies panel opens correctly and sticker items are selectable.
+   */
   test('should access stickers panel and interact with sticker items', async ({ page }) => {
     // Setup: Create project and navigate to editor
     await page.goto('/projects');
-    await page.getByTestId('new-project-button').click();
-    await page.waitForSelector('[data-testid="timeline-track"]');
+    await createTestProject(page, 'Sticker Test Project');
 
     // Test steps:
     // 1. Open stickers panel
@@ -38,10 +53,13 @@ test.describe('Sticker Overlay Testing (Subtask 3A)', () => {
     await expect(page.getByTestId('stickers-panel')).toHaveClass(/flex.*h-full.*flex-col/);
   });
 
+  /**
+   * Tests sticker drag-and-drop functionality to canvas.
+   * Verifies stickers can be dragged from panel to canvas and positioned correctly.
+   */
   test('should support sticker drag and drop to canvas', async ({ page }) => {
     await page.goto('/projects');
-    await page.getByTestId('new-project-button').click();
-    await page.waitForSelector('[data-testid="timeline-track"]');
+    await createTestProject(page, 'Sticker DnD Test Project');
 
     // Open stickers panel
     await page.getByTestId('stickers-panel-tab').click();
@@ -119,10 +137,13 @@ test.describe('Sticker Overlay Testing (Subtask 3A)', () => {
     }
   });
 
+  /**
+   * Tests sticker manipulation capabilities after placement on canvas.
+   * Verifies selection, repositioning, resizing, and deletion of placed stickers.
+   */
   test('should manipulate stickers on canvas after placement', async ({ page }) => {
     await page.goto('/projects');
-    await page.getByTestId('new-project-button').click();
-    await page.waitForSelector('[data-testid="timeline-track"]');
+    await createTestProject(page, 'Sticker Manipulation Test');
 
     // Open stickers panel and place a sticker
     await page.getByTestId('stickers-panel-tab').click();
@@ -183,10 +204,13 @@ test.describe('Sticker Overlay Testing (Subtask 3A)', () => {
     }
   });
 
+  /**
+   * Tests sticker panel category navigation and search functionality.
+   * Verifies category tabs and search input work correctly.
+   */
   test('should handle sticker panel categories and search', async ({ page }) => {
     await page.goto('/projects');
-    await page.getByTestId('new-project-button').click();
-    await page.waitForSelector('[data-testid="timeline-track"]');
+    await createTestProject(page, 'Sticker Categories Test');
 
     // Open stickers panel
     await page.getByTestId('stickers-panel-tab').click();
@@ -226,10 +250,13 @@ test.describe('Sticker Overlay Testing (Subtask 3A)', () => {
     }
   });
 
+  /**
+   * Tests sticker overlay rendering and canvas properties.
+   * Verifies proper layering, positioning, and z-index for sticker overlays.
+   */
   test('should handle sticker overlay rendering', async ({ page }) => {
     await page.goto('/projects');
-    await page.getByTestId('new-project-button').click();
-    await page.waitForSelector('[data-testid="timeline-track"]');
+    await createTestProject(page, 'Sticker Rendering Test');
 
     // Check for preview canvas (where stickers would be rendered)
     const previewCanvas = page.getByTestId('preview-canvas');
@@ -246,8 +273,8 @@ test.describe('Sticker Overlay Testing (Subtask 3A)', () => {
     // Test sticker canvas when available
     const stickerCanvas = page.getByTestId('sticker-canvas');
 
-    const canvasAttached = await stickerCanvas.waitFor({ state: 'attached', timeout: 1000 }).then(() => true).catch(() => false);
-    if (canvasAttached) {
+    if (await stickerCanvas.count() > 0) {
+      await expect(stickerCanvas).toBeAttached({ timeout: 1000 });
       // Verify sticker canvas properties
       const canvasStyle = await stickerCanvas.getAttribute('style');
 
@@ -263,10 +290,13 @@ test.describe('Sticker Overlay Testing (Subtask 3A)', () => {
     }
   });
 
+  /**
+   * Tests sticker panel state persistence across UI interactions.
+   * Verifies panel maintains functionality when switching between tabs.
+   */
   test('should maintain sticker panel state across interactions', async ({ page }) => {
     await page.goto('/projects');
-    await page.getByTestId('new-project-button').click();
-    await page.waitForSelector('[data-testid="timeline-track"]');
+    await createTestProject(page, 'Sticker State Test Project');
 
     // Open stickers panel
     await page.getByTestId('stickers-panel-tab').click();

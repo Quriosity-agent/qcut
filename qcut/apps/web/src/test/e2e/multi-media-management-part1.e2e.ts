@@ -1,23 +1,37 @@
-import { test, expect } from '../helpers/electron-helpers';
+/**
+ * Multi-Media Import & Track Management E2E Tests
+ *
+ * Tests comprehensive media import functionality including multiple file types,
+ * track management, media panel organization, and timeline integration.
+ */
 
+import { test, expect, createTestProject, importTestVideo, importTestAudio, importTestImage } from '../helpers/electron-helpers';
+
+/**
+ * Test suite for Multi-Media Import & Track Management (Test #2 Part 1)
+ * Covers importing multiple media types and track management workflows.
+ */
 test.describe('Multi-Media Import & Track Management (Test #2 Part 1)', () => {
+  /**
+   * Tests importing multiple media types and managing timeline tracks.
+   * Verifies video, audio, and image import with proper track organization.
+   */
   test('should import multiple media types and manage tracks', async ({ page }) => {
     // Setup: Create project
     await page.goto('/projects');
-    await page.getByTestId('new-project-button').click();
-    await page.waitForSelector('[data-testid="import-media-button"]');
+    await createTestProject(page, 'Multi-Media Test Project');
 
     // Test steps:
     // 1. Import multiple media types
-    await page.getByTestId('import-media-button').click();
+    await importTestVideo(page);
+    await importTestAudio(page);
+    await importTestImage(page);
 
-    // Verify file input is available
-    const fileInput = page.locator('input[type="file"]');
-    await expect(fileInput).toBeAttached();
+    // Verify media items are imported
+    const mediaItems = page.locator('[data-testid="media-item"]');
+    await expect(mediaItems).toHaveCountGreaterThanOrEqual(3);
 
     // 2. Verify media panel can handle multiple items
-    // Note: In real tests, you would upload actual test files
-    // For now, we verify the UI is ready for multiple media items
     const importButton = page.getByTestId('import-media-button');
     await expect(importButton).toBeEnabled();
 
@@ -32,6 +46,10 @@ test.describe('Multi-Media Import & Track Management (Test #2 Part 1)', () => {
     await expect(firstTrack).toHaveAttribute('data-track-type');
   });
 
+  /**
+   * Tests drag-and-drop functionality from media panel to timeline.
+   * Verifies media items can be dragged and positioned on timeline tracks.
+   */
   test('should handle drag and drop to timeline', async ({ page }) => {
     await page.goto('/projects');
     await page.getByTestId('new-project-button').click();

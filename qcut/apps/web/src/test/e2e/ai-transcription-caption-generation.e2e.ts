@@ -1,16 +1,34 @@
+/**
+ * AI Transcription & Caption Generation E2E Tests
+ *
+ * Tests the complete workflow for AI-powered transcription and caption generation
+ * including media upload, AI transcription, caption editing, timeline integration,
+ * preview functionality, and export with embedded captions.
+ */
+
 import { test, expect, createTestProject, importTestVideo } from './helpers/electron-helpers';
 
+/**
+ * Test suite for AI Transcription & Caption Generation (Test #4A)
+ * Covers subtasks 4A.1 through 4A.6 from the E2E testing priority document.
+ */
 test.describe('AI Transcription & Caption Generation', () => {
+  /**
+   * Setup for each test: Creates a fresh project and imports test video
+   * for transcription testing.
+   */
   test.beforeEach(async ({ page }) => {
     // Create a fresh project for each test to ensure independence
     await createTestProject(page, 'E2E AI Transcription Test');
 
     // Import media file that will be used for transcription
-    await page.getByTestId('import-media-button').click();
-    await page.waitForSelector('[data-testid="media-item"]');
-    await expect(page.getByTestId('media-item').first()).toBeVisible();
+    await importTestVideo(page);
   });
 
+  /**
+   * Test 4A.1: Upload media file and access AI transcription
+   * Verifies media upload and access to AI transcription panel.
+   */
   test('4A.1 - Upload media file and access AI transcription', async ({ page }) => {
     // Media file already uploaded in beforeEach - switch to Captions tab
     await page.getByTestId('captions-panel-tab').click();
@@ -23,6 +41,10 @@ test.describe('AI Transcription & Caption Generation', () => {
     await expect(page.getByTestId('transcription-upload-button')).toBeVisible();
   });
 
+  /**
+   * Test 4A.2: Generate transcription with AI service
+   * Tests the AI transcription generation process and result display.
+   */
   test('4A.2 - Generate transcription with AI service', async ({ page }) => {
     // Navigate to captions panel
     await page.getByTestId('captions-panel-tab').click();
@@ -45,6 +67,10 @@ test.describe('AI Transcription & Caption Generation', () => {
     await expect(transcriptionContent).toContainText(/transcription|caption|subtitle/i);
   });
 
+  /**
+   * Test 4A.3: Edit and customize generated captions
+   * Verifies users can edit and customize AI-generated caption text.
+   */
   test('4A.3 - Edit and customize generated captions', async ({ page }) => {
     // Navigate to captions panel and generate transcription first
     await page.getByTestId('captions-panel-tab').click();
@@ -79,6 +105,10 @@ test.describe('AI Transcription & Caption Generation', () => {
     await expect(page.getByTestId('ai-transcription-panel')).toBeVisible();
   });
 
+  /**
+   * Test 4A.4: Apply captions to timeline
+   * Tests adding generated captions to the video timeline.
+   */
   test('4A.4 - Apply captions to timeline', async ({ page }) => {
     // Navigate to captions panel and ensure transcription is available
     await page.getByTestId('captions-panel-tab').click();
@@ -102,7 +132,7 @@ test.describe('AI Transcription & Caption Generation', () => {
 
     // Verify captions appear on timeline
     const timelineTracks = page.locator('[data-testid="timeline-track"]');
-    await expect(timelineTracks).toHaveCountGreaterThan(0);
+    await expect(timelineTracks.first()).toBeVisible();
 
     // Look for caption/subtitle track specifically
     const captionTrack = page.locator('[data-testid="timeline-track"][data-track-type*="caption"], [data-testid="timeline-track"][data-track-type*="subtitle"]');
@@ -110,10 +140,14 @@ test.describe('AI Transcription & Caption Generation', () => {
     // If caption track exists, verify it has elements
     if (await captionTrack.count() > 0) {
       const captionElements = captionTrack.locator('[data-testid="timeline-element"]');
-      await expect(captionElements).toHaveCountGreaterThan(0);
+      await expect(captionElements.first()).toBeVisible();
     }
   });
 
+  /**
+   * Test 4A.5: Preview captions in video preview
+   * Verifies captions display correctly during video playback preview.
+   */
   test('4A.5 - Preview captions in video preview', async ({ page }) => {
     // Set up captions on timeline first
     await page.getByTestId('captions-panel-tab').click();
@@ -158,6 +192,10 @@ test.describe('AI Transcription & Caption Generation', () => {
     await expect(previewPanel).toBeVisible();
   });
 
+  /**
+   * Test 4A.6: Export project with embedded captions
+   * Tests exporting video projects with captions embedded in the output.
+   */
   test('4A.6 - Export project with embedded captions', async ({ page }) => {
     // Set up captions on timeline first
     await page.getByTestId('captions-panel-tab').click();
@@ -179,7 +217,7 @@ test.describe('AI Transcription & Caption Generation', () => {
 
     // Verify timeline has elements before export
     const timelineElements = page.locator('[data-testid="timeline-element"]');
-    await expect(timelineElements).toHaveCountGreaterThan(0);
+    await expect(timelineElements.first()).toBeVisible();
 
     // Open export dialog
     const exportButton = page.locator('[data-testid*="export"]').first();
@@ -190,10 +228,10 @@ test.describe('AI Transcription & Caption Generation', () => {
     const exportDialog = page.locator('[data-testid*="export-dialog"], .modal, [role="dialog"]').first();
     await expect(exportDialog).toBeVisible();
 
-    // Look for caption/subtitle export options
-    const captionOptions = page.locator('input[type="checkbox"], input[type="radio"]').filter({
-      hasText: /caption|subtitle|transcription/i
-    });
+    // Look for caption/subtitle export options using role-based selector
+    const captionOptions = page.getByRole('checkbox', { name: /caption|subtitle|transcription/i })
+      .or(page.getByRole('radio', { name: /caption|subtitle|transcription/i }))
+      .or(page.locator('label:has-text(/caption|subtitle|transcription/i) input[type="checkbox"], label:has-text(/caption|subtitle|transcription/i) input[type="radio"]'));
 
     // Enable caption export if option exists
     if (await captionOptions.count() > 0) {

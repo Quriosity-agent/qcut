@@ -65,9 +65,6 @@ export function TextView() {
             content: textData.content,
           }}
           aspectRatio={1}
-          onAddToTimeline={(currentTime) =>
-            useTimelineStore.getState().addTextAtTime(textData, currentTime)
-          }
           showLabel={false}
         />
       </div>
