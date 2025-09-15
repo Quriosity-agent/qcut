@@ -1,4 +1,4 @@
-import { test, expect, createTestProject } from './helpers/electron-helpers';
+import { test, expect, createTestProject, importTestVideo } from './helpers/electron-helpers';
 
 test.describe('AI Transcription & Caption Generation', () => {
   test.beforeEach(async ({ page }) => {

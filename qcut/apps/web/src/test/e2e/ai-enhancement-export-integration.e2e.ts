@@ -1,15 +1,13 @@
-import { test, expect } from './helpers/electron-helpers';
+import { test, expect, createTestProject, importTestVideo } from './helpers/electron-helpers';
 
 test.describe('AI Enhancement & Export Integration', () => {
   test('4B.1 - Access AI enhancement tools', async ({ page }) => {
     // Navigate to projects and create new project
     await page.goto('/projects');
-    await page.click('[data-testid="new-project-button"]');
-    await page.waitForSelector('[data-testid="import-media-button"]', { state: 'visible' });
+    await createTestProject(page, 'AI Enhancement Test');
 
     // Import media file first
-    await page.click('[data-testid="import-media-button"]');
-    await page.waitForSelector('[data-testid="media-item"]', { state: 'visible' });
+    await importTestVideo(page);
 
     // Verify media item appears
     await expect(page.locator('[data-testid="media-item"]').first()).toBeVisible();
@@ -57,8 +55,13 @@ test.describe('AI Enhancement & Export Integration', () => {
     const mediaItem = page.locator('[data-testid="media-item"]').first();
     const timelineTrack = page.locator('[data-testid="timeline-track"]').first();
 
-    // Perform drag and drop operation
-    await mediaItem.dragTo(timelineTrack);
+    // Perform drag and drop operation with intermediate steps for reliability
+    await mediaItem.hover();
+    await page.mouse.down();
+    await timelineTrack.hover();
+    await page.mouse.up();
+
+    // Wait for the element to appear on timeline
     await page.waitForSelector('[data-testid="timeline-element"]', { state: 'visible' });
 
     // Verify media appears on timeline
@@ -179,7 +182,13 @@ test.describe('AI Enhancement & Export Integration', () => {
       const mediaItem = page.locator('[data-testid="media-item"]').first();
       const timelineTrack = page.locator('[data-testid="timeline-track"]').first();
 
-      await mediaItem.dragTo(timelineTrack);
+      // Use proper drag and drop with intermediate steps for reliability
+      await mediaItem.hover();
+      await page.mouse.down();
+      await timelineTrack.hover();
+      await page.mouse.up();
+
+      // Wait for the element to appear on timeline
       await page.waitForSelector('[data-testid="timeline-element"]', { state: 'visible' });
     }
 

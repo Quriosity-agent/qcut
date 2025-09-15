@@ -99,11 +99,33 @@ export async function createTestProject(page: Page, projectName = 'E2E Test Proj
 }
 
 export async function uploadTestMedia(page: Page, filePath: string) {
+  // Click the import media button to trigger file picker
+  await page.getByTestId('import-media-button').click();
+
+  // Wait for file input to be available and set the file
   const fileInput = page.locator('input[type="file"]');
   await fileInput.setInputFiles(filePath);
 
   // Wait for upload to complete
   await page.waitForSelector('[data-testid="media-item"]', { timeout: 15000 });
+}
+
+/**
+ * Import test media using the standard test files
+ */
+export async function importTestVideo(page: Page) {
+  const videoPath = 'src/test/e2e/fixtures/media/sample-video.mp4';
+  await uploadTestMedia(page, videoPath);
+}
+
+export async function importTestAudio(page: Page) {
+  const audioPath = 'src/test/e2e/fixtures/media/sample-audio.mp3';
+  await uploadTestMedia(page, audioPath);
+}
+
+export async function importTestImage(page: Page) {
+  const imagePath = 'src/test/e2e/fixtures/media/sample-image.png';
+  await uploadTestMedia(page, imagePath);
 }
 
 // Additional helper functions for the E2E tests
