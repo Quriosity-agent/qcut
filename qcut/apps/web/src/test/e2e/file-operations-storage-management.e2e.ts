@@ -91,8 +91,8 @@ test.describe('File Operations & Storage Management', () => {
     // Simulate storage quota issues via JavaScript
     await page.evaluate(() => {
       // Mock storage quota exceeded scenario
-      if (page.navigator?.storage) {
-        (page.navigator.storage as any).estimate = () =>
+      if (window.navigator?.storage) {
+        (window.navigator.storage as any).estimate = () =>
           Promise.resolve({
             quota: 1000000, // 1MB quota
             usage: 900000,  // 90% used
