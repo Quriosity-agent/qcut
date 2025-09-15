@@ -465,8 +465,8 @@ function ApiKeysView() {
 
       {/* Save Button */}
       <div className="flex justify-end">
-        <Button onClick={saveApiKeys} className="gap-2" data-testid="save-api-keys-button">
-          <KeyIcon className="h-4 w-4" />
+        <Button type="button" onClick={saveApiKeys} className="gap-2" data-testid="save-api-keys-button">
+          <KeyIcon className="h-4 w-4" aria-hidden="true" />
           Save API Keys
         </Button>
       </div>

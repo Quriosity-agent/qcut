@@ -4,18 +4,18 @@ test.describe('AI Enhancement & Export Integration', () => {
   test('4B.1 - Access AI enhancement tools', async ({ page }) => {
     // Navigate to projects and create new project
     await page.click('[data-testid="new-project-button"]');
-    await page.waitForTimeout(2000);
+    await page.waitForSelector('[data-testid="import-media-button"]', { state: 'visible' });
 
     // Import media file first
     await page.click('[data-testid="import-media-button"]');
-    await page.waitForTimeout(1000);
+    await page.waitForSelector('[data-testid="media-item"]', { state: 'visible' });
 
     // Verify media item appears
     await expect(page.locator('[data-testid="media-item"]').first()).toBeVisible();
 
     // Switch to AI panel in media panel
     await page.click('[data-testid="ai-panel-tab"]');
-    await page.waitForTimeout(500);
+    await page.waitForSelector('[data-testid="ai-features-panel"]', { state: 'visible' });
 
     // Verify AI features panel is visible
     await expect(page.locator('[data-testid="ai-features-panel"]')).toBeVisible();
@@ -27,7 +27,7 @@ test.describe('AI Enhancement & Export Integration', () => {
   test('4B.2 - Apply AI enhancement effects to media', async ({ page }) => {
     // Ensure we're in AI panel
     await page.click('[data-testid="ai-panel-tab"]');
-    await page.waitForTimeout(500);
+    await page.waitForSelector('[data-testid="ai-enhancement-panel"]', { state: 'visible' });
 
     // Look for effect gallery or enhancement tools
     const effectGallery = page.locator('[data-testid="ai-enhancement-panel"]');
@@ -41,10 +41,9 @@ test.describe('AI Enhancement & Export Integration', () => {
     if (await enhancementOptions.count() > 0) {
       // Select first available enhancement
       await enhancementOptions.first().click();
-      await page.waitForTimeout(2000);
 
       // Wait for processing to complete
-      await page.waitForTimeout(3000);
+      await page.waitForLoadState('networkidle');
 
       // Verify enhancement was applied (new asset created or existing modified)
       const mediaItems = page.locator('[data-testid="media-item"]');
@@ -59,7 +58,7 @@ test.describe('AI Enhancement & Export Integration', () => {
 
     // Perform drag and drop operation
     await mediaItem.dragTo(timelineTrack);
-    await page.waitForTimeout(1000);
+    await page.waitForSelector('[data-testid="timeline-element"]', { state: 'visible' });
 
     // Verify media appears on timeline
     const timelineElements = page.locator('[data-testid="timeline-element"]');
@@ -78,13 +77,13 @@ test.describe('AI Enhancement & Export Integration', () => {
     // Click play to preview enhanced media
     const playButton = page.locator('[data-testid="play-pause-button"]');
     await playButton.click();
-    await page.waitForTimeout(500);
+    await expect(playButton).toHaveAttribute('data-playing', 'true');
 
     // Verify video is playing
     await expect(playButton).toHaveAttribute('data-playing', 'true');
 
     // Let video play to see enhancements
-    await page.waitForTimeout(4000);
+    await page.waitForTimeout(3000);
 
     // Pause video
     await playButton.click();
@@ -99,7 +98,7 @@ test.describe('AI Enhancement & Export Integration', () => {
     // Open export dialog
     const exportButton = page.locator('[data-testid*="export"]').first();
     await exportButton.click();
-    await page.waitForTimeout(1000);
+    await page.waitForSelector('[data-testid*="export-dialog"], .modal, [role="dialog"]', { state: 'visible' });
 
     // Verify export dialog appears
     const exportDialog = page.locator('[data-testid*="export-dialog"], .modal, [role="dialog"]').first();
@@ -122,7 +121,7 @@ test.describe('AI Enhancement & Export Integration', () => {
     const startExportButton = page.locator('[data-testid="export-start-button"]');
     if (await startExportButton.isVisible()) {
       await startExportButton.click();
-      await page.waitForTimeout(2000);
+      await page.waitForSelector('[data-testid*="export-status"], [data-testid*="export-progress"]', { state: 'visible', timeout: 10000 });
 
       // Verify export is processing
       const exportStatus = page.locator('[data-testid*="export-status"], [data-testid*="export-progress"]').first();
@@ -135,11 +134,11 @@ test.describe('AI Enhancement & Export Integration', () => {
   test('4B.6 - Batch apply AI enhancements to multiple assets', async ({ page }) => {
     // Ensure we have multiple media items
     await page.click('[data-testid="import-media-button"]');
-    await page.waitForTimeout(1000);
+    await page.waitForSelector('[data-testid="media-item"]', { state: 'visible' });
 
     // Switch to AI panel
     await page.click('[data-testid="ai-panel-tab"]');
-    await page.waitForTimeout(500);
+    await page.waitForSelector('[data-testid="ai-enhancement-panel"]', { state: 'visible' });
 
     const mediaItems = page.locator('[data-testid="media-item"]');
     const itemCount = await mediaItems.count();
@@ -152,7 +151,7 @@ test.describe('AI Enhancement & Export Integration', () => {
 
       if (await selectAllOption.isVisible()) {
         await selectAllOption.check();
-        await page.waitForTimeout(500);
+        await expect(selectAllOption).toBeChecked();
       }
 
       // Apply batch enhancement
@@ -162,7 +161,7 @@ test.describe('AI Enhancement & Export Integration', () => {
 
       if (await batchEnhanceButton.isVisible()) {
         await batchEnhanceButton.click();
-        await page.waitForTimeout(5000); // Allow time for batch processing
+        await page.waitForLoadState('networkidle'); // Allow time for batch processing
       }
     }
 
@@ -180,7 +179,7 @@ test.describe('AI Enhancement & Export Integration', () => {
       const timelineTrack = page.locator('[data-testid="timeline-track"]').first();
 
       await mediaItem.dragTo(timelineTrack);
-      await page.waitForTimeout(1000);
+      await page.waitForSelector('[data-testid="timeline-element"]', { state: 'visible' });
     }
 
     // Verify timeline has content
@@ -189,7 +188,7 @@ test.describe('AI Enhancement & Export Integration', () => {
     // Test export with all AI features combined
     const exportButton = page.locator('[data-testid*="export"]').first();
     await exportButton.click();
-    await page.waitForTimeout(1000);
+    await page.waitForSelector('[data-testid*="export-dialog"], .modal, [role="dialog"]', { state: 'visible' });
 
     const exportDialog = page.locator('[data-testid*="export-dialog"], .modal, [role="dialog"]').first();
     await expect(exportDialog).toBeVisible();
@@ -210,7 +209,7 @@ test.describe('AI Enhancement & Export Integration', () => {
     const startExportButton = page.locator('[data-testid="export-start-button"]');
     if (await startExportButton.isVisible()) {
       await startExportButton.click();
-      await page.waitForTimeout(2000);
+      await page.waitForSelector('[data-testid*="export-status"], [data-testid*="export-progress"]', { state: 'visible', timeout: 10000 });
 
       // Verify comprehensive export is processing
       const exportStatus = page.locator('[data-testid*="export-status"], [data-testid*="export-progress"]').first();

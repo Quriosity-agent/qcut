@@ -110,7 +110,8 @@ test.describe('Sticker Overlay Testing (Subtask 3A)', () => {
         } else {
           // Alternative: check if sticker preview appears
           const stickerPreview = page.locator('[data-testid="sticker-preview"]');
-          if (await stickerPreview.isVisible({ timeout: 1000 })) {
+          const previewVisible = await stickerPreview.waitFor({ state: 'visible', timeout: 1000 }).then(() => true).catch(() => false);
+          if (previewVisible) {
             await expect(stickerPreview).toBeVisible();
           }
         }
@@ -172,7 +173,8 @@ test.describe('Sticker Overlay Testing (Subtask 3A)', () => {
 
         // Test delete functionality (if available)
         const deleteButton = page.locator('[data-testid="delete-sticker"], [data-testid="remove-overlay"]');
-        if (await deleteButton.isVisible({ timeout: 1000 })) {
+        const deleteVisible = await deleteButton.waitFor({ state: 'visible', timeout: 1000 }).then(() => true).catch(() => false);
+        if (deleteVisible) {
           await deleteButton.click();
           await page.waitForTimeout(500);
           await expect(placedSticker).not.toBeVisible();
@@ -193,7 +195,8 @@ test.describe('Sticker Overlay Testing (Subtask 3A)', () => {
     // Check for search functionality (if input exists)
     const searchInput = page.locator('input[placeholder*="Search stickers"]');
 
-    if (await searchInput.isVisible({ timeout: 1000 }).catch(() => false)) {
+    const searchVisible = await searchInput.waitFor({ state: 'visible', timeout: 1000 }).then(() => true).catch(() => false);
+    if (searchVisible) {
       // Test search functionality
       await searchInput.fill('star');
 
@@ -231,7 +234,8 @@ test.describe('Sticker Overlay Testing (Subtask 3A)', () => {
     // Check for preview canvas (where stickers would be rendered)
     const previewCanvas = page.getByTestId('preview-canvas');
 
-    if (await previewCanvas.isVisible({ timeout: 2000 }).catch(() => false)) {
+    const previewVisible = await previewCanvas.waitFor({ state: 'visible', timeout: 2000 }).then(() => true).catch(() => false);
+    if (previewVisible) {
       await expect(previewCanvas).toBeVisible();
 
       // Verify canvas is positioned correctly for overlays
@@ -242,7 +246,8 @@ test.describe('Sticker Overlay Testing (Subtask 3A)', () => {
     // Test sticker canvas when available
     const stickerCanvas = page.getByTestId('sticker-canvas');
 
-    if (await stickerCanvas.isAttached({ timeout: 1000 }).catch(() => false)) {
+    const canvasAttached = await stickerCanvas.waitFor({ state: 'attached', timeout: 1000 }).then(() => true).catch(() => false);
+    if (canvasAttached) {
       // Verify sticker canvas properties
       const canvasStyle = await stickerCanvas.getAttribute('style');
 
