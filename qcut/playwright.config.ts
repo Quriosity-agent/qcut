@@ -3,10 +3,10 @@ import { resolve } from 'path';
 
 export default defineConfig({
   testDir: './apps/web/src/test/e2e',
-  fullyParallel: true,
+  fullyParallel: false, // Electron tests need sequential execution due to port conflicts
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  workers: process.env.CI ? 1 : undefined,
+  workers: 1, // Force single worker for Electron to avoid port conflicts
   reporter: 'html',
   timeout: 60000, // 1 minute timeout for E2E tests
   expect: {
