@@ -45,4 +45,29 @@ test.describe('Simple Navigation Test', () => {
       await expect(emptyStateButton).toContainText('Create Your First Project');
     }
   });
+
+  test('should handle project creation button click without crash', async ({ page }) => {
+    // Get initial project count
+    const initialCount = await page.locator('text=/\\d+ projects?/').first().textContent();
+    console.log('Initial project count:', initialCount);
+
+    // Intercept navigation to prevent going to editor page
+    await page.route('/editor/*', route => {
+      console.log('Intercepted navigation to editor, staying on projects page');
+      route.abort();
+    });
+
+    // Click the header new project button
+    const headerButton = page.getByTestId('new-project-button').first();
+    await expect(headerButton).toBeVisible();
+
+    // Click and wait a bit
+    await headerButton.click();
+
+    // Wait for potential project creation (should still be on projects page)
+    await page.waitForTimeout(2000);
+
+    // Verify we're still on projects page
+    await expect(page.getByText('Your Projects')).toBeVisible();
+  });
 });
