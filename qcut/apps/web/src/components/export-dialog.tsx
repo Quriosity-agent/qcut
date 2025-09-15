@@ -535,7 +535,7 @@ export function ExportDialog() {
                 }
                 disabled={exportProgress.progress.isExporting}
                 data-testid="export-format-select"
-              />
+              >
                 {exportSettings.supportedFormats.map((fmt) => (
                   <div key={fmt} className="flex items-center space-x-2">
                     <RadioGroupItem value={fmt} id={fmt} />
