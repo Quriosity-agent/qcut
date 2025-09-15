@@ -476,7 +476,7 @@ export function StickersView() {
   }
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex h-full flex-col" data-testid="stickers-panel">
       {/* Search Bar */}
       <div className="border-b p-4">
         <div className="relative">

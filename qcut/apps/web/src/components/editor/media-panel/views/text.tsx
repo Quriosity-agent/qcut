@@ -28,26 +28,28 @@ const textData: TextElement = {
 
 export function TextView() {
   return (
-    <div className="p-4">
-      <DraggableMediaItem
-        name="Default text"
-        preview={
-          <div className="flex items-center justify-center w-full h-full bg-accent rounded">
-            <span className="text-xs select-none">Default text</span>
-          </div>
-        }
-        dragData={{
-          id: textData.id,
-          type: textData.type,
-          name: textData.name,
-          content: textData.content,
-        }}
-        aspectRatio={1}
-        onAddToTimeline={(currentTime) =>
-          useTimelineStore.getState().addTextAtTime(textData, currentTime)
-        }
-        showLabel={false}
-      />
+    <div className="p-4" data-testid="text-panel">
+      <div data-testid="text-overlay-button">
+        <DraggableMediaItem
+          name="Default text"
+          preview={
+            <div className="flex items-center justify-center w-full h-full bg-accent rounded">
+              <span className="text-xs select-none">Default text</span>
+            </div>
+          }
+          dragData={{
+            id: textData.id,
+            type: textData.type,
+            name: textData.name,
+            content: textData.content,
+          }}
+          aspectRatio={1}
+          onAddToTimeline={(currentTime) =>
+            useTimelineStore.getState().addTextAtTime(textData, currentTime)
+          }
+          showLabel={false}
+        />
+      </div>
     </div>
   );
 }

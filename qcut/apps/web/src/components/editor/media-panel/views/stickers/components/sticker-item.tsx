@@ -70,6 +70,7 @@ export function StickerItem({
           disabled={hasError || !imageUrl}
           aria-pressed={Boolean(isSelected)}
           aria-label={(name || icon) + " (" + collection + ")"}
+          data-testid="sticker-item"
         >
           {isLoading && (
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
