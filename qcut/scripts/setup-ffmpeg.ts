@@ -47,21 +47,26 @@ async function setupFFmpeg() {
       }
     }
 
-    // Copy files to both locations
-    for (const file of filesToCopy) {
+    // Copy files to both locations concurrently
+    const copyOperations = filesToCopy.flatMap(file => {
       const sourcePath = join(ffmpegCorePath, file);
 
-      if (existsSync(sourcePath)) {
-        for (const targetPath of targetPaths) {
-          const destPath = join(targetPath, file);
+      return targetPaths.map(async targetPath => {
+        const destPath = join(targetPath, file);
+        try {
           await copyFile(sourcePath, destPath);
           console.log(`✅ Copied: ${file} → ${targetPath}`);
+        } catch (error) {
+          if ((error as any).code === 'ENOENT' && (error as any).path === sourcePath) {
+            console.error(`❌ Source file not found: ${sourcePath}`);
+            process.exit(1);
+          }
+          throw error;
         }
-      } else {
-        console.error(`❌ Source file not found: ${sourcePath}`);
-        process.exit(1);
-      }
-    }
+      });
+    });
+
+    await Promise.all(copyOperations);
 
     console.log("🎉 FFmpeg setup completed successfully!");
     console.log(`📍 Web files: ${publicFFmpegPath}`);
