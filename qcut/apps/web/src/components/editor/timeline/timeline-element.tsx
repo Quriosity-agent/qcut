@@ -460,6 +460,8 @@ function TimelineElementComponent({
           }}
           data-element-id={element.id}
           data-track-id={track.id}
+          data-testid="timeline-element"
+          data-duration={effectiveDuration}
           onMouseMove={resizing ? handleResizeMove : undefined}
           onMouseUp={resizing ? handleResizeEnd : undefined}
           onMouseLeave={resizing ? handleResizeEnd : undefined}
@@ -495,6 +497,7 @@ function TimelineElementComponent({
                 <div
                   className="absolute left-0 top-0 bottom-0 w-1 cursor-w-resize bg-foreground z-50"
                   onMouseDown={(e) => handleResizeStart(e, element.id, "left")}
+                  data-testid="trim-start-handle"
                 />
                 <div
                   className="absolute right-0 top-0 bottom-0 w-1 cursor-e-resize bg-foreground z-50"

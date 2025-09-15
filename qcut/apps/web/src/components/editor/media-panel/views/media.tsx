@@ -338,6 +338,7 @@ export function MediaView() {
               onClick={handleFileSelect}
               disabled={isProcessing}
               className="flex-none bg-transparent min-w-[30px] whitespace-nowrap overflow-hidden px-2 justify-center items-center h-9"
+              data-testid="import-media-button"
             >
               {isProcessing ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -385,6 +386,7 @@ export function MediaView() {
                             .addMediaAtTime(item, currentTime)
                         }
                         rounded={false}
+                        data-testid="media-item"
                       />
                     </ContextMenuTrigger>
                     <ContextMenuContent>

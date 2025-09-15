@@ -272,6 +272,7 @@ export function ExportDialog() {
             disabled={!exportValidation.canExport}
             className="w-full"
             size="lg"
+            data-testid="export-start-button"
           >
             <Download className="w-4 h-4 mr-2" />
             Export Video

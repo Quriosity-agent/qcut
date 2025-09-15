@@ -1114,6 +1114,8 @@ function TimelineTrackContentComponent({
       <div
         ref={timelineRef}
         className="h-full relative track-elements-container min-w-full"
+        data-testid="timeline-track"
+        data-track-type={track.type}
       >
         {track.elements.length === 0 ? (
           <div

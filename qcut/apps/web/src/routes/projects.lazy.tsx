@@ -391,6 +391,7 @@ function ProjectCard({
       className={`overflow-hidden bg-background border-none p-0 transition-all ${
         isSelectionMode && isSelected ? "ring-2 ring-primary" : ""
       }`}
+      data-testid="project-list-item"
     >
       <div
         className={`relative aspect-square bg-muted transition-opacity ${
@@ -546,7 +547,7 @@ function ProjectCard({
 
 function CreateButton({ onClick }: { onClick?: () => void }) {
   return (
-    <Button className="flex" onClick={onClick}>
+    <Button className="flex" onClick={onClick} data-testid="new-project-button">
       <Plus className="size-4!" />
       <span className="text-sm font-medium">New project</span>
     </Button>
@@ -564,7 +565,7 @@ function NoProjects({ onCreateProject }: { onCreateProject: () => void }) {
         Start creating your first video project. Import media, edit, and export
         professional videos.
       </p>
-      <Button size="lg" className="gap-2" onClick={onCreateProject}>
+      <Button size="lg" className="gap-2" onClick={onCreateProject} data-testid="new-project-button">
         <Plus className="h-4 w-4" />
         Create Your First Project
       </Button>
