@@ -1,4 +1,4 @@
-import { test, expect } from '../helpers/electron-helpers';
+import { test, expect } from './helpers/electron-helpers';
 
 test.describe('Timeline Controls & Editing Operations (Test #2 Part 2)', () => {
   test('should control playback with play/pause buttons', async ({ page }) => {

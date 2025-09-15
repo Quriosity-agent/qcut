@@ -1,4 +1,4 @@
-import { test, expect } from '../helpers/electron-helpers';
+import { test, expect, uploadTestMedia } from './helpers/electron-helpers';
 
 test.describe('Timeline Operations (Subtask 1B)', () => {
   test('should add media to timeline and perform basic edits', async ({ page }) => {
@@ -7,24 +7,39 @@ test.describe('Timeline Operations (Subtask 1B)', () => {
     await page.getByTestId('new-project-button').click();
     await page.waitForSelector('[data-testid="import-media-button"]');
 
-    // Test steps:
     // 1. Verify timeline is present and functional
     const timeline = page.getByTestId('timeline-track');
     await expect(timeline).toBeVisible();
-
-    // 2. Check timeline track attributes
     await expect(timeline).toHaveAttribute('data-track-type');
 
-    // 3. Verify timeline elements container is ready
-    const timelineContainer = page.locator('.track-elements-container').first();
-    await expect(timelineContainer).toBeVisible();
+    // 2. Import test media file
+    await uploadTestMedia(page, 'src/test/e2e/fixtures/media/sample-video.mp4');
 
-    // 4. Test timeline interaction capabilities
-    // Click on timeline to test selection
-    await timeline.click();
+    // 3. Verify media appears in media panel
+    await expect(page.getByTestId('media-item').first()).toBeVisible();
 
-    // Verify timeline is interactive
-    await expect(timeline).toBeVisible();
+    // 4. Drag media from media panel to timeline
+    const mediaItem = page.getByTestId('media-item').first();
+    await mediaItem.dragTo(timeline);
+
+    // 5. Verify timeline element was created
+    const timelineElements = page.getByTestId('timeline-element');
+    await expect(timelineElements.first()).toBeVisible();
+
+    // 6. Perform basic edit operations
+    const firstElement = timelineElements.first();
+
+    // Test element selection
+    await firstElement.click();
+
+    // Verify element has required attributes for editing
+    await expect(firstElement).toHaveAttribute('data-duration');
+    await expect(firstElement).toHaveAttribute('data-element-id');
+
+    // Test element positioning (basic timeline interaction)
+    const elementRect = await firstElement.boundingBox();
+    expect(elementRect).toBeTruthy();
+    expect(elementRect!.width).toBeGreaterThan(0);
   });
 
   test('should handle timeline element operations', async ({ page }) => {

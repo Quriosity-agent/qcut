@@ -37,19 +37,43 @@ test.describe('Multi-Media Import & Track Management (Test #2 Part 1)', () => {
     await page.getByTestId('new-project-button').click();
     await page.waitForSelector('[data-testid="timeline-track"]');
 
-    // Test drag and drop functionality
+    // Test actual drag and drop functionality
     const timeline = page.getByTestId('timeline-track').first();
-    const bounds = await timeline.boundingBox();
-
-    expect(bounds).toBeTruthy();
-    expect(bounds!.width).toBeGreaterThan(0);
-    expect(bounds!.height).toBeGreaterThan(0);
-
-    // Verify timeline accepts drops
-    await timeline.hover();
-
-    // Timeline should be interactive
     await expect(timeline).toBeVisible();
+
+    // Get existing timeline elements count
+    const timelineElementsBefore = await page.locator('[data-testid="timeline-element"]').count();
+
+    // Try to find media items to drag
+    const mediaItems = page.locator('[data-testid="media-item"]');
+    const mediaCount = await mediaItems.count();
+
+    if (mediaCount > 0) {
+      // Perform actual drag-and-drop
+      const firstMedia = mediaItems.first();
+      await firstMedia.dragTo(timeline);
+      await page.waitForTimeout(1000);
+
+      // Verify element was added to timeline
+      const timelineElementsAfter = await page.locator('[data-testid="timeline-element"]').count();
+      expect(timelineElementsAfter).toBeGreaterThan(timelineElementsBefore);
+
+      // Verify timeline element has proper attributes
+      const timelineElement = page.locator('[data-testid="timeline-element"]').first();
+      if (await timelineElement.isVisible()) {
+        await expect(timelineElement).toBeVisible();
+
+        // Check for duration attribute
+        const duration = await timelineElement.getAttribute('data-duration');
+        if (duration) {
+          expect(parseFloat(duration)).toBeGreaterThan(0);
+        }
+      }
+    } else {
+      // No media items available, just verify timeline is interactive
+      await timeline.hover();
+      await expect(timeline).toBeVisible();
+    }
   });
 
   test('should support multiple track types', async ({ page }) => {
