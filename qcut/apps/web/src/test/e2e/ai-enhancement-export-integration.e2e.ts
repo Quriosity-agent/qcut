@@ -1,82 +1,68 @@
-import { test, expect } from '@playwright/test';
-import { ElectronApplication, Page } from 'playwright';
-import { startElectronApp, getMainWindow } from './helpers/electron-helpers';
+import { test, expect } from './helpers/electron-helpers';
 
 test.describe('AI Enhancement & Export Integration', () => {
-  let electronApp: ElectronApplication;
-  let window: Page;
-
-  test.beforeAll(async () => {
-    electronApp = await startElectronApp();
-    window = await getMainWindow(electronApp);
-  });
-
-  test.afterAll(async () => {
-    await electronApp.close();
-  });
-
-  test('4B.1 - Access AI enhancement tools', async () => {
+  test('4B.1 - Access AI enhancement tools', async ({ page }) => {
     // Navigate to projects and create new project
-    await window.click('[data-testid="new-project-button"]');
-    await window.waitForTimeout(2000);
+    await page.click('[data-testid="new-project-button"]');
+    await page.waitForTimeout(2000);
 
     // Import media file first
-    await window.click('[data-testid="import-media-button"]');
-    await window.waitForTimeout(1000);
+    await page.click('[data-testid="import-media-button"]');
+    await page.waitForTimeout(1000);
 
     // Verify media item appears
-    await expect(window.locator('[data-testid="media-item"]').first()).toBeVisible();
+    await expect(page.locator('[data-testid="media-item"]').first()).toBeVisible();
 
     // Switch to AI panel in media panel
-    await window.click('[data-testid="ai-panel-tab"]');
-    await window.waitForTimeout(500);
+    await page.click('[data-testid="ai-panel-tab"]');
+    await page.waitForTimeout(500);
 
     // Verify AI features panel is visible
-    await expect(window.locator('[data-testid="ai-features-panel"]')).toBeVisible();
+    await expect(page.locator('[data-testid="ai-features-panel"]')).toBeVisible();
 
     // Verify AI enhancement panel exists
-    await expect(window.locator('[data-testid="ai-enhancement-panel"]')).toBeVisible();
+    await expect(page.locator('[data-testid="ai-enhancement-panel"]')).toBeVisible();
   });
 
-  test('4B.2 - Apply AI enhancement effects to media', async () => {
+  test('4B.2 - Apply AI enhancement effects to media', async ({ page }) => {
     // Ensure we're in AI panel
-    await window.click('[data-testid="ai-panel-tab"]');
-    await window.waitForTimeout(500);
+    await page.click('[data-testid="ai-panel-tab"]');
+    await page.waitForTimeout(500);
 
     // Look for effect gallery or enhancement tools
-    const effectGallery = window.locator('[data-testid="ai-enhancement-panel"]');
+    const effectGallery = page.locator('[data-testid="ai-enhancement-panel"]');
     await expect(effectGallery).toBeVisible();
 
     // Look for enhancement effect options
-    const enhancementOptions = window.locator('[data-testid*="effect"], [data-testid*="enhancement"], button').filter({
+    const enhancementOptions = page.locator('[data-testid*="effect"], [data-testid*="enhancement"], button').filter({
       hasText: /enhance|effect|filter|style/i
     });
 
     if (await enhancementOptions.count() > 0) {
       // Select first available enhancement
       await enhancementOptions.first().click();
-      await window.waitForTimeout(2000);
+      await page.waitForTimeout(2000);
 
       // Wait for processing to complete
-      await window.waitForTimeout(3000);
+      await page.waitForTimeout(3000);
 
       // Verify enhancement was applied (new asset created or existing modified)
-      const mediaItems = window.locator('[data-testid="media-item"]');
+      const mediaItems = page.locator('[data-testid="media-item"]');
       await expect(mediaItems).toHaveCountGreaterThan(0);
     }
   });
 
-  test('4B.3 - Use enhanced media in timeline', async () => {
+  test('4B.3 - Use enhanced media in timeline', async ({ page }) => {
     // Drag enhanced media to timeline
-    const mediaItem = window.locator('[data-testid="media-item"]').first();
-    const timelineTrack = window.locator('[data-testid="timeline-track"]').first();
+    const mediaItem = page.locator('[data-testid="media-item"]').first();
+    const timelineTrack = page.locator('[data-testid="timeline-track"]').first();
 
     // Perform drag and drop operation
     await mediaItem.dragTo(timelineTrack);
-    await window.waitForTimeout(1000);
+    await page.waitForTimeout(1000);
 
     // Verify media appears on timeline
-    const timelineElements = window.locator('[data-testid="timeline-element"]');
+    const timelineElements = page.locator('[data-testid="timeline-element"]');
     await expect(timelineElements).toHaveCountGreaterThan(0);
 
     // Verify timeline element has proper duration
@@ -84,32 +70,32 @@ test.describe('AI Enhancement & Export Integration', () => {
     await expect(firstElement).toHaveAttribute('data-duration');
   });
 
-  test('4B.4 - Preview enhanced media with effects', async () => {
+  test('4B.4 - Preview enhanced media with effects', async ({ page }) => {
     // Ensure timeline has content
-    const timelineElements = window.locator('[data-testid="timeline-element"]');
+    const timelineElements = page.locator('[data-testid="timeline-element"]');
     await expect(timelineElements.first()).toBeVisible();
 
     // Click play to preview enhanced media
-    const playButton = window.locator('[data-testid="play-pause-button"]');
+    const playButton = page.locator('[data-testid="play-pause-button"]');
     await playButton.click();
-    await window.waitForTimeout(500);
+    await page.waitForTimeout(500);
 
     // Verify video is playing
     await expect(playButton).toHaveAttribute('data-playing', 'true');
 
     // Let video play to see enhancements
-    await window.waitForTimeout(4000);
+    await page.waitForTimeout(4000);
 
     // Pause video
     await playButton.click();
     await expect(playButton).toHaveAttribute('data-playing', 'false');
 
     // Verify preview panel is showing enhanced content
-    const previewPanel = window.locator('[data-testid*="preview"], [data-testid*="video-player"]').first();
+    const previewPanel = page.locator('[data-testid*="preview"], [data-testid*="video-player"]').first();
     await expect(previewPanel).toBeVisible();
   });
 
-  test('4B.5 - Export enhanced project with AI effects', async () => {
+  test('4B.5 - Export enhanced project with AI effects', async ({ page }) => {
     // Open export dialog
     const exportButton = window.locator('[data-testid*="export"]').first();
     await exportButton.click();

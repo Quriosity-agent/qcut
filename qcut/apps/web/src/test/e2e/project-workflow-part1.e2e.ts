@@ -1,4 +1,4 @@
-import { test, expect } from '../helpers/electron-helpers';
+import { test, expect, uploadTestMedia } from '../helpers/electron-helpers';
 
 test.describe('Project Creation & Media Import (Subtask 1A)', () => {
   test('should create project and import media', async ({ page }) => {
@@ -19,23 +19,11 @@ test.describe('Project Creation & Media Import (Subtask 1A)', () => {
     await expect(page.getByTestId('import-media-button')).toBeVisible();
 
     // 2. Import video file (MP4)
-    // Create a test file input
-    const fileInput = page.locator('input[type="file"]');
+    // A test file should exist at 'src/test/e2e/fixtures/media/sample-video.mp4'.
+    await uploadTestMedia(page, 'src/test/e2e/fixtures/media/sample-video.mp4');
 
-    // Note: In a real test, you would use actual test media files
-    // For now, we'll just verify the import button is functional
-    await page.getByTestId('import-media-button').click();
-
-    // Verify the file input is accessible
-    await expect(fileInput).toBeAttached();
-
-    // 3. Verify media panel is ready for media items
-    // The media panel should be visible and functional
-    const mediaPanel = page.locator('[data-testid="media-item"]').first();
-
-    // If no media is present yet, check for empty state
-    const emptyStateOrMedia = page.locator('[data-testid="media-item"], text="No media"').first();
-    await expect(emptyStateOrMedia).toBeVisible();
+    // 3. Verify media item appears in the media panel
+    await expect(page.getByTestId('media-item').first()).toBeVisible();
   });
 
   test('should handle file upload process', async ({ page }) => {

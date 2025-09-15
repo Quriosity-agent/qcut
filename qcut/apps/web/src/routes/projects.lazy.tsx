@@ -565,7 +565,7 @@ function NoProjects({ onCreateProject }: { onCreateProject: () => void }) {
         Start creating your first video project. Import media, edit, and export
         professional videos.
       </p>
-      <Button size="lg" className="gap-2" onClick={onCreateProject} data-testid="new-project-button">
+      <Button size="lg" className="gap-2" onClick={onCreateProject} data-testid="new-project-button-empty-state">
         <Plus className="h-4 w-4" />
         Create Your First Project
       </Button>

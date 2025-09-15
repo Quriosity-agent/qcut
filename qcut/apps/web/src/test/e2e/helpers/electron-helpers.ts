@@ -41,7 +41,18 @@ export async function waitForProjectLoad(page: Page) {
 }
 
 export async function createTestProject(page: Page, projectName = 'E2E Test Project') {
-  await page.getByTestId('new-project-button').click();
+  // Wait for either the header button or empty state button to be available
+  await page.waitForSelector('[data-testid="new-project-button"], [data-testid="new-project-button-empty-state"]');
+
+  // Click whichever button is available (header or empty state)
+  const headerButton = page.getByTestId('new-project-button');
+  const emptyStateButton = page.getByTestId('new-project-button-empty-state');
+
+  if (await headerButton.isVisible()) {
+    await headerButton.click();
+  } else {
+    await emptyStateButton.click();
+  }
   await page.waitForTimeout(500);
 
   // If there's a project creation modal, fill it out
@@ -61,4 +72,22 @@ export async function uploadTestMedia(page: Page, filePath: string) {
 
   // Wait for upload to complete
   await page.waitForSelector('[data-testid="media-item"]', { timeout: 15000 });
+}
+
+// Additional helper functions for the E2E tests
+export async function startElectronApp() {
+  return await electron.launch({
+    args: ['dist/electron/main.js'],
+    env: {
+      NODE_ENV: 'test',
+      ELECTRON_DISABLE_GPU: '1'
+    }
+  });
+}
+
+export async function getMainWindow(electronApp: ElectronApplication) {
+  const page = await electronApp.firstWindow();
+  await page.waitForLoadState('domcontentloaded');
+  await page.waitForTimeout(1000);
+  return page;
 }

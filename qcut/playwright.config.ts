@@ -24,16 +24,10 @@ export default defineConfig({
       testMatch: '**/*.e2e.ts',
       use: {
         ...devices['Desktop Chrome'],
-        // Electron-specific configuration will be added here
+        // Electron-specific configuration - tests launch Electron app directly from dist/
       },
     },
   ],
 
-  // Run your local dev server before starting the tests
-  webServer: {
-    command: 'bun dev',
-    port: 5173,
-    reuseExistingServer: !process.env.CI,
-    cwd: resolve(__dirname),
-  },
+  // Note: No webServer needed - Electron tests launch the app directly from dist/electron/main.js
 });
