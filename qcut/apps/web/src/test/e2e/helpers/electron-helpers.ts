@@ -144,21 +144,28 @@ export async function createTestProject(page: Page, projectName = 'E2E Test Proj
   // Wait for any of the project creation buttons to be in the DOM (they might be hidden by responsive CSS)
   await page.waitForSelector('[data-testid="new-project-button"], [data-testid="new-project-button-mobile"], [data-testid="new-project-button-empty-state"]', { state: 'attached' });
 
-  // Click whichever button is visible (desktop header, mobile header, or empty state)
-  const headerButton = page.getByTestId('new-project-button').first(); // Use .first() to handle duplicates
-  const mobileButton = page.getByTestId('new-project-button-mobile');
-  const emptyStateButton = page.getByTestId('new-project-button-empty-state');
+  // Small delay to ensure page is stable
+  await page.waitForTimeout(1000);
 
-  // Prioritize the empty state button since it's most likely to be visible and clickable
-  if (await emptyStateButton.isVisible()) {
+  // Check if we're in empty state (no projects)
+  const emptyStateButton = page.getByTestId('new-project-button-empty-state');
+  const hasEmptyState = await emptyStateButton.count() > 0;
+
+  if (hasEmptyState && await emptyStateButton.isVisible()) {
+    // No projects - click empty state button
     await emptyStateButton.click();
-  } else if (await headerButton.isVisible()) {
-    await headerButton.click();
-  } else if (await mobileButton.isVisible()) {
-    await mobileButton.click();
   } else {
-    // Fallback: force click the empty state button if no buttons are detected as visible
-    await emptyStateButton.click({ force: true });
+    // Has projects - find and click the visible header button
+    // Use a more specific selector that targets the visible button
+    const visibleButton = page.locator('[data-testid="new-project-button"]:visible, [data-testid="new-project-button-mobile"]:visible').first();
+
+    if (await visibleButton.count() > 0) {
+      await visibleButton.click();
+    } else {
+      // Last resort: click any new project button that exists
+      const anyButton = page.locator('[data-testid*="new-project"]').first();
+      await anyButton.click();
+    }
   }
 
   // If there's a project creation modal, fill it out
