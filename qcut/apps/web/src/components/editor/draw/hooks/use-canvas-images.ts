@@ -9,6 +9,15 @@ export interface CanvasImage {
   height: number;
   rotation: number;
   selected: boolean;
+  groupId?: string;
+}
+
+export interface ObjectGroup {
+  id: string;
+  name: string;
+  objectIds: string[];
+  locked: boolean;
+  visible: boolean;
 }
 
 interface ImageTransform {
@@ -22,9 +31,11 @@ interface ImageTransform {
 
 export const useCanvasImages = (canvasRef: React.RefObject<HTMLCanvasElement>) => {
   const [images, setImages] = useState<CanvasImage[]>([]);
-  const [selectedImageId, setSelectedImageId] = useState<string | null>(null);
+  const [groups, setGroups] = useState<ObjectGroup[]>([]);
+  const [selectedImageIds, setSelectedImageIds] = useState<string[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [isResizing, setIsResizing] = useState(false);
+  const [isMultiSelecting, setIsMultiSelecting] = useState(false);
   const dragOffset = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
 
   const addImage = useCallback(async (file: File) => {
@@ -65,7 +76,7 @@ export const useCanvasImages = (canvasRef: React.RefObject<HTMLCanvasElement>) =
         };
 
         setImages(prev => [...prev, newImage]);
-        setSelectedImageId(id);
+        setSelectedImageIds([id]);
         resolve(id);
       };
 
@@ -79,10 +90,8 @@ export const useCanvasImages = (canvasRef: React.RefObject<HTMLCanvasElement>) =
 
   const removeImage = useCallback((id: string) => {
     setImages(prev => prev.filter(img => img.id !== id));
-    if (selectedImageId === id) {
-      setSelectedImageId(null);
-    }
-  }, [selectedImageId]);
+    setSelectedImageIds(prev => prev.filter(imgId => imgId !== id));
+  }, []);
 
   const updateImage = useCallback((id: string, updates: Partial<ImageTransform>) => {
     setImages(prev => prev.map(img =>
@@ -90,13 +99,36 @@ export const useCanvasImages = (canvasRef: React.RefObject<HTMLCanvasElement>) =
     ));
   }, []);
 
-  const selectImage = useCallback((id: string | null) => {
+  const selectImages = useCallback((ids: string[], addToSelection = false) => {
+    if (addToSelection) {
+      setSelectedImageIds(prev => {
+        const newSelection = [...prev];
+        ids.forEach(id => {
+          if (!newSelection.includes(id)) {
+            newSelection.push(id);
+          }
+        });
+        return newSelection;
+      });
+    } else {
+      setSelectedImageIds(ids);
+    }
+
     setImages(prev => prev.map(img => ({
       ...img,
-      selected: img.id === id
+      selected: addToSelection
+        ? (img.selected || ids.includes(img.id))
+        : ids.includes(img.id)
     })));
-    setSelectedImageId(id);
   }, []);
+
+  const selectImage = useCallback((id: string | null, addToSelection = false) => {
+    if (id === null) {
+      selectImages([], false);
+    } else {
+      selectImages([id], addToSelection);
+    }
+  }, [selectImages]);
 
   const getImageAtPosition = useCallback((x: number, y: number): CanvasImage | null => {
     // Check from top to bottom (last added first)
@@ -110,6 +142,50 @@ export const useCanvasImages = (canvasRef: React.RefObject<HTMLCanvasElement>) =
     return null;
   }, [images]);
 
+  const createGroup = useCallback((name?: string) => {
+    if (selectedImageIds.length < 2) return null;
+
+    const groupId = Date.now().toString();
+    const groupName = name || `Group ${groups.length + 1}`;
+
+    const newGroup: ObjectGroup = {
+      id: groupId,
+      name: groupName,
+      objectIds: [...selectedImageIds],
+      locked: false,
+      visible: true
+    };
+
+    setGroups(prev => [...prev, newGroup]);
+
+    // Update images to belong to the group
+    setImages(prev => prev.map(img =>
+      selectedImageIds.includes(img.id)
+        ? { ...img, groupId }
+        : img
+    ));
+
+    console.log('🔗 Group created:', { groupId, name: groupName, objects: selectedImageIds });
+    return groupId;
+  }, [selectedImageIds, groups.length]);
+
+  const ungroupObjects = useCallback((groupId: string) => {
+    setGroups(prev => prev.filter(group => group.id !== groupId));
+    setImages(prev => prev.map(img =>
+      img.groupId === groupId
+        ? { ...img, groupId: undefined }
+        : img
+    ));
+    console.log('🔓 Group dissolved:', { groupId });
+  }, []);
+
+  const selectGroup = useCallback((groupId: string) => {
+    const group = groups.find(g => g.id === groupId);
+    if (group) {
+      selectImages(group.objectIds, false);
+    }
+  }, [groups, selectImages]);
+
   const startDrag = useCallback((imageId: string, startX: number, startY: number) => {
     const image = images.find(img => img.id === imageId);
     if (image) {
@@ -122,15 +198,31 @@ export const useCanvasImages = (canvasRef: React.RefObject<HTMLCanvasElement>) =
   }, [images]);
 
   const updateDrag = useCallback((currentX: number, currentY: number) => {
-    if (isDragging && selectedImageId) {
-      const newX = currentX - dragOffset.current.x;
-      const newY = currentY - dragOffset.current.y;
-      updateImage(selectedImageId, { x: newX, y: newY });
+    if (isDragging && selectedImageIds.length > 0) {
+      const deltaX = currentX - dragOffset.current.x;
+      const deltaY = currentY - dragOffset.current.y;
+
+      // Move all selected images
+      selectedImageIds.forEach(imageId => {
+        const image = images.find(img => img.id === imageId);
+        if (image) {
+          const newX = image.x + (deltaX - (dragOffset.current.lastDeltaX || 0));
+          const newY = image.y + (deltaY - (dragOffset.current.lastDeltaY || 0));
+          updateImage(imageId, { x: newX, y: newY });
+        }
+      });
+
+      // Store the last delta for next frame
+      dragOffset.current.lastDeltaX = deltaX;
+      dragOffset.current.lastDeltaY = deltaY;
     }
-  }, [isDragging, selectedImageId, updateImage]);
+  }, [isDragging, selectedImageIds, updateImage, images]);
 
   const endDrag = useCallback(() => {
     setIsDragging(false);
+    // Reset drag offset deltas
+    dragOffset.current.lastDeltaX = 0;
+    dragOffset.current.lastDeltaY = 0;
   }, []);
 
   const renderImages = useCallback((ctx: CanvasRenderingContext2D) => {

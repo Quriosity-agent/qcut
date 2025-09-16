@@ -121,7 +121,40 @@ export const DrawingCanvas = forwardRef<HTMLCanvasElement, DrawingCanvasProps>((
         position: screenPosition,
         canvasPosition
       });
-    }, [])
+    }, []),
+
+    onSelectObject: useCallback((canvasPosition: { x: number; y: number }) => {
+      // Try to select an image at the position
+      const image = getImageAtPosition(canvasPosition.x, canvasPosition.y);
+      if (image) {
+        console.log('🎯 Image selected:', { imageId: image.id, position: canvasPosition });
+        selectImage(image.id);
+        startDrag(image.id, canvasPosition.x, canvasPosition.y);
+        return true; // Object was selected
+      } else {
+        // Deselect all if clicked on empty space
+        selectImage(null);
+        return false; // No object selected
+      }
+    }, [getImageAtPosition, selectImage, startDrag]),
+
+    onMoveObject: useCallback((startPos: { x: number; y: number }, currentPos: { x: number; y: number }) => {
+      if (selectedImageId && isDragging) {
+        console.log('🚀 Moving image:', {
+          imageId: selectedImageId,
+          startPos,
+          currentPos,
+          deltaX: currentPos.x - startPos.x,
+          deltaY: currentPos.y - startPos.y
+        });
+        updateDrag(currentPos.x, currentPos.y);
+      }
+    }, [selectedImageId, isDragging, updateDrag]),
+
+    onEndMove: useCallback(() => {
+      console.log('🏁 End move operation');
+      endDrag();
+    }, [endDrag])
   });
 
   // Initialize canvases with error handling

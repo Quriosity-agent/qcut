@@ -10,6 +10,9 @@ interface DrawingOptions {
   onDrawingStart: () => void;
   onDrawingEnd: () => void;
   onTextInput?: (position: { x: number; y: number }) => void;
+  onSelectObject?: (position: { x: number; y: number }) => boolean;
+  onMoveObject?: (startPos: { x: number; y: number }, currentPos: { x: number; y: number }) => void;
+  onEndMove?: () => void;
 }
 
 export const useCanvasDrawing = (
@@ -223,6 +226,20 @@ export const useCanvasDrawing = (
 
     console.log('🖱️ Mouse down:', { pos, toolId: options.tool.id, category: options.tool.category });
 
+    // Handle select tool click
+    if (options.tool.category === 'select') {
+      if (options.onSelectObject) {
+        const objectSelected = options.onSelectObject(pos);
+        if (objectSelected) {
+          console.log('🎯 Object selected for moving');
+          // Object was selected, prepare for potential drag
+          isDrawing.current = true; // Use drawing state to track selection drag
+          return;
+        }
+      }
+      return;
+    }
+
     // Handle text tool click
     if (options.tool.category === 'text') {
       if (options.onTextInput) {
@@ -245,6 +262,14 @@ export const useCanvasDrawing = (
     if (!isDrawing.current || options.disabled) return;
 
     const currentPos = getCanvasCoordinates(e.nativeEvent);
+
+    // Handle select tool dragging
+    if (options.tool.category === 'select' && startPos.current) {
+      if (options.onMoveObject) {
+        options.onMoveObject(startPos.current, currentPos);
+      }
+      return;
+    }
 
     // Handle shape tools differently
     if (options.tool.category === 'shape' && startPos.current) {
@@ -276,11 +301,22 @@ export const useCanvasDrawing = (
         lastPos.current = currentPos;
       }
     });
-  }, [getCanvasCoordinates, drawLine, drawShape, options.disabled, options.tool.category, options.tool.id]);
+  }, [getCanvasCoordinates, drawLine, drawShape, options.disabled, options.tool.category, options.tool.id, options.onMoveObject]);
 
   const handleMouseUp = useCallback(() => {
     if (isDrawing.current) {
       console.log('🖱️ Mouse up:', { toolId: options.tool.id, category: options.tool.category });
+
+      // Handle select tool end movement
+      if (options.tool.category === 'select') {
+        if (options.onEndMove) {
+          options.onEndMove();
+        }
+        isDrawing.current = false;
+        startPos.current = null;
+        options.onDrawingEnd();
+        return;
+      }
 
       // For shape tools, draw final shape
       if (options.tool.category === 'shape' && startPos.current) {
@@ -309,7 +345,7 @@ export const useCanvasDrawing = (
 
       options.onDrawingEnd();
     }
-  }, [options.onDrawingEnd, options.tool.category, options.tool.id, drawShape]);
+  }, [options.onDrawingEnd, options.tool.category, options.tool.id, options.onEndMove, drawShape]);
 
   // Touch event handlers with better mobile support
   const handleTouchStart = useCallback((e: React.TouchEvent) => {

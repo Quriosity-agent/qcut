@@ -3,7 +3,7 @@ export interface DrawingTool {
   name: string;
   description: string;
   cursor: string;
-  category: 'brush' | 'shape' | 'text' | 'effect';
+  category: 'select' | 'brush' | 'shape' | 'text' | 'effect';
   shortcut?: string;
   disabled?: boolean;
 }
