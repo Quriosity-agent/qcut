@@ -21,12 +21,25 @@ export default defineConfig({
   projects: [
     {
       name: 'electron',
+      testDir: './apps/web/src/test/e2e',
       testMatch: '**/*.e2e.ts',
       use: {
         ...devices['Desktop Chrome'],
         // Electron-specific configuration - tests launch Electron app directly from dist/
       },
     },
+  ],
+
+  // Explicitly ignore non-E2E test files
+  testIgnore: [
+    '**/node_modules/**',
+    '**/*.test.ts',
+    '**/*.test.tsx',
+    '**/*.spec.ts',
+    '**/*.spec.tsx',
+    '**/src/test/**/*.ts',
+    '**/src/test/**/*.tsx',
+    '!**/src/test/e2e/**/*.e2e.ts'
   ],
 
   // Note: No webServer needed - Electron tests launch the app directly from dist/electron/main.js

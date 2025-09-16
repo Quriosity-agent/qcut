@@ -1,5 +1,84 @@
 # E2E Testing Infrastructure - QCut Video Editor
 
+## How to Run E2E Tests
+
+### Prerequisites
+1. **Build the project**:
+   ```bash
+   cd qcut
+   bun run build
+   ```
+
+2. **Ensure Electron app works**:
+   ```bash
+   bun run electron
+   ```
+
+### Running Tests
+
+#### Run All E2E Tests
+```bash
+cd qcut
+bun x playwright test --project=electron
+```
+
+#### Run Specific Test Files
+```bash
+# Basic navigation tests
+bun x playwright test simple-navigation.e2e.ts --project=electron
+
+# Project workflow tests
+bun x playwright test project-workflow-part1.e2e.ts --project=electron
+
+# Editor navigation tests
+bun x playwright test editor-navigation.e2e.ts --project=electron
+```
+
+#### Run Single Test
+```bash
+# Run specific test by line number
+bun x playwright test project-workflow-part1.e2e.ts:19 --project=electron
+
+# Run by test name pattern
+bun x playwright test --project=electron --grep "should create project"
+```
+
+#### Debug Mode
+```bash
+# Run with headed browser for debugging
+bun x playwright test --project=electron --headed
+
+# Run with debug mode (step through)
+bun x playwright test --project=electron --debug
+```
+
+#### Test Reports
+```bash
+# Generate and open HTML report
+bun x playwright show-report
+
+# Run with specific reporter
+bun x playwright test --project=electron --reporter=html
+```
+
+### Configuration Options
+
+#### Playwright Configuration (`playwright.config.ts`)
+```typescript
+export default defineConfig({
+  testDir: './apps/web/src/test/e2e',
+  fullyParallel: false,        // Sequential execution for Electron
+  workers: 1,                  // Single worker to avoid port conflicts
+  retries: process.env.CI ? 2 : 0,
+  timeout: 30000,              // 30-second test timeout
+
+  projects: [{
+    name: 'electron',
+    testMatch: '**/*.e2e.ts'
+  }]
+});
+```
+
 ## 📊 **Current Status Summary**
 
 **✅ WORKING: 15 tests passing** - Core video editing workflow fully functional
@@ -128,84 +207,6 @@ graph TD
     O --> R
 ```
 
-## How to Run E2E Tests
-
-### Prerequisites
-1. **Build the project**:
-   ```bash
-   cd qcut
-   bun run build
-   ```
-
-2. **Ensure Electron app works**:
-   ```bash
-   bun run electron
-   ```
-
-### Running Tests
-
-#### Run All E2E Tests
-```bash
-cd qcut
-bun x playwright test --project=electron
-```
-
-#### Run Specific Test Files
-```bash
-# Basic navigation tests
-bun x playwright test simple-navigation.e2e.ts --project=electron
-
-# Project workflow tests
-bun x playwright test project-workflow-part1.e2e.ts --project=electron
-
-# Editor navigation tests
-bun x playwright test editor-navigation.e2e.ts --project=electron
-```
-
-#### Run Single Test
-```bash
-# Run specific test by line number
-bun x playwright test project-workflow-part1.e2e.ts:19 --project=electron
-
-# Run by test name pattern
-bun x playwright test --project=electron --grep "should create project"
-```
-
-#### Debug Mode
-```bash
-# Run with headed browser for debugging
-bun x playwright test --project=electron --headed
-
-# Run with debug mode (step through)
-bun x playwright test --project=electron --debug
-```
-
-#### Test Reports
-```bash
-# Generate and open HTML report
-bun x playwright show-report
-
-# Run with specific reporter
-bun x playwright test --project=electron --reporter=html
-```
-
-### Configuration Options
-
-#### Playwright Configuration (`playwright.config.ts`)
-```typescript
-export default defineConfig({
-  testDir: './apps/web/src/test/e2e',
-  fullyParallel: false,        // Sequential execution for Electron
-  workers: 1,                  // Single worker to avoid port conflicts
-  retries: process.env.CI ? 2 : 0,
-  timeout: 30000,              // 30-second test timeout
-
-  projects: [{
-    name: 'electron',
-    testMatch: '**/*.e2e.ts'
-  }]
-});
-```
 
 ## Test Categories
 
@@ -384,9 +385,16 @@ bun x playwright test --project=electron --headed --debug
 
 ## Current Test Status (Updated: September 16, 2025)
 
-### ✅ **Working Tests (15 tests passing)**
+### 🔧 **Test Execution Status (Latest Update)**
 
-#### **Core Workflow Tests (9/9 passing) - FULLY FUNCTIONAL**
+**Current Issue**: Playwright configuration problems preventing systematic test execution
+- Initial test run showed `simple-navigation.e2e.ts` has 2/3 tests passing, 1 failing
+- Subsequent test execution blocked by configuration and installation issues
+- Package.json corruption occurred during testing, since restored from git
+
+### ✅ **Working Tests (15 tests passing)** - *Status needs verification*
+
+#### **Core Workflow Tests (9/9 passing) - FULLY FUNCTIONAL** - *Status needs verification*
 - **`project-workflow-part1.e2e.ts`** - ✅ 2/2 tests passing
   - ✅ Project creation and media import workflow
   - ✅ File upload process validation
@@ -402,16 +410,19 @@ bun x playwright test --project=electron --headed --debug
   - ✅ Project state across sessions
   - ✅ Export configuration handling
 
-#### **Navigation Tests (5/6 passing) - MOSTLY FUNCTIONAL**
-- **`editor-navigation.e2e.ts`** - ✅ 3/3 tests passing
-  - ✅ Existing project detection
-  - ✅ Project opening without crashes
-  - ✅ Direct navigation to editor
+#### **Navigation Tests (Currently Verified)**
+- **`editor-navigation.e2e.ts`** - ⚠️ Status unknown (not tested due to config issues)
+  - ⚠️ Existing project detection
+  - ⚠️ Project opening without crashes
+  - ⚠️ Direct navigation to editor
 
-- **`simple-navigation.e2e.ts`** - ✅ 2/3 tests passing
+- **`simple-navigation.e2e.ts`** - ✅ 2/3 tests passing (Verified: September 16, 2025)
   - ✅ Projects page navigation
   - ✅ Project creation button detection
-  - ❌ Project creation button interaction (visibility issue with responsive design)
+  - ❌ **FAILING**: "should navigate to projects page successfully"
+    - **Error**: `expect(page.getByText('No projects yet')).toBeVisible()` failed
+    - **Issue**: Text not found - likely due to existing projects in test environment
+    - **Fix needed**: Update text expectation or clear test data
 
 ### ❌ **Failing Tests (51+ tests failing)**
 
@@ -449,6 +460,29 @@ These tests have infrastructure issues and need significant fixes:
 5. **Missing UI Elements**: Tests expect UI elements that may not exist or be implemented yet
 6. **Navigation Issues**: Tests use `page.goto()` which doesn't work in Electron
 
+### **Current Infrastructure Issues (September 16, 2025)**
+
+#### **Playwright Configuration Problems**
+1. **Project Not Found Error**: `Error: Project(s) "electron" not found. Available projects: ""`
+   - **Symptom**: `bunx playwright test --project=electron` fails
+   - **Cause**: Playwright configuration may not be properly detecting the electron project
+   - **Impact**: Cannot run individual tests systematically
+
+2. **Test Discovery Issues**:
+   - **Symptom**: `Error: No tests found` when specifying test files
+   - **Cause**: Possible testDir configuration mismatch or file path issues
+   - **Impact**: Manual test execution is blocked
+
+3. **Vitest Conflicts**:
+   - **Symptom**: Vitest import errors when running playwright tests
+   - **Cause**: Playwright trying to run all test files including vitest tests
+   - **Impact**: Need better test file filtering
+
+#### **Immediate Actions Needed**
+1. **Fix Playwright Config**: Verify `playwright.config.ts` electron project configuration
+2. **Test Environment**: Set up clean test environment with proper dependencies
+3. **Test Isolation**: Improve test file pattern matching to avoid vitest conflicts
+
 ### **Recommendations for Fixing Failing Tests:**
 
 1. **Update Import Statements**: Add `createTestProject` to all test imports
@@ -457,6 +491,7 @@ These tests have infrastructure issues and need significant fixes:
 4. **Increase Timeouts**: Set appropriate timeouts for complex operations (15-30 seconds)
 5. **Add Error Handling**: Implement try-catch blocks for unstable operations
 6. **Check UI Implementation**: Verify that expected UI elements actually exist in the app
+7. **🔧 PRIORITY: Fix Playwright Configuration**: Resolve project detection and test discovery issues
 
 ### Step-by-Step Workflow for Fixing Failing Tests
 

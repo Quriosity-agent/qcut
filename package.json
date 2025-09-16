@@ -1,0 +1,257 @@
+{
+  "name": "qcut",
+  "version": "0.3.48",
+  "description": "QCut - Open-source video editor",
+  "author": "QCut Team",
+  "main": "dist/electron/main.js",
+  "packageManager": "bun@1.2.18",
+  "devDependencies": {
+    "@biomejs/biome": "2.1.2",
+    "@emnapi/core": "^1.4.5",
+    "@emnapi/wasi-threads": "^1.1.0",
+    "@playwright/test": "^1.40.0",
+    "@types/electron-builder": "^2.8.2",
+    "@types/jsdom": "^21.1.7",
+    "@types/jszip": "^3.4.1",
+    "@types/node": "^24.3.1",
+    "@types/react": "^18.3.24",
+    "@types/react-dom": "^18.3.7",
+    "@types/sharp": "^0.32.0",
+    "@types/to-ico": "^1.1.3",
+    "cross-env": "^10.0.0",
+    "electron": "^37.4.0",
+    "electron-builder": "^26.0.12",
+    "electron-devtools-installer": "^4.0.0",
+    "electron-packager": "^17.1.2",
+    "happy-dom": "^18.0.1",
+    "husky": "^9.1.7",
+    "jsdom": "^26.1.0",
+    "playwright": "^1.40.0",
+    "rollup-plugin-visualizer": "^6.0.3",
+    "to-ico": "^1.1.5",
+    "turbo": "^2.5.6",
+    "typescript": "^5.9.2",
+    "ultracite": "5.0.48"
+  },
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "check-types": "turbo run check-types",
+    "postinstall": "bun run setup-ffmpeg",
+    "build:electron": "cd electron && bun x tsc",
+    "build:electron:watch": "cd electron && bun x tsc --watch",
+    "lint": "npx ultracite@latest lint",
+    "lint:clean": "npx @biomejs/biome check --skip-parse-errors .",
+    "format": "npx ultracite@latest format",
+    "electron": "electron .",
+    "electron:dev": "cross-env NODE_ENV=development electron .",
+    "dist": "electron-builder",
+    "dist:win": "electron-builder --win -c.win.forceCodeSigning=false",
+    "dist:dir": "electron-builder --dir",
+    "dist:win:unsigned": "electron-builder --win --config.win.forceCodeSigning=false --config.win.verifyUpdateCodeSignature=false",
+    "dist:win:release": "electron-builder --win --config.win.forceCodeSigning=false --config.win.verifyUpdateCodeSignature=false",
+    "dist:win:fast": "electron-builder --win --config.win.forceCodeSigning=false --config.compression=store --config.nsis.differentialPackage=false",
+    "package:win": "electron-packager . QCut --platform=win32 --arch=x64 --out=dist-packager-new --overwrite --ignore=\"dist-packager.*\" --ignore=\"dist-electron.*\" && bun run copy-ffmpeg",
+    "copy-ffmpeg": "bun scripts/copy-ffmpeg.ts",
+    "setup-ffmpeg": "bun scripts/setup-ffmpeg.ts",
+    "predev": "bun run setup-ffmpeg",
+    "prebuild": "bun run setup-ffmpeg",
+    "build:exe": "bun run build && bun run package:win",
+    "release:patch": "node scripts/release.js patch",
+    "release:minor": "node scripts/release.js minor",
+    "release:major": "node scripts/release.js major",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:headed": "playwright test --headed",
+    "test:e2e:workflow": "playwright test project-workflow"
+  },
+  "build": {
+    "appId": "com.qcut.videoeditor",
+    "productName": "QCut Video Editor",
+    "copyright": "Copyright © 2024 QCut Team",
+    "afterPack": "./dist/scripts/afterPack.js",
+    "directories": {
+      "output": "d:/AI_play/AI_Code/build_qcut",
+      "buildResources": "build"
+    },
+    "extraMetadata": {
+      "main": "electron/main.js"
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "qcut-team",
+      "repo": "qcut",
+      "private": false,
+      "releaseType": "release"
+    },
+    "generateUpdatesFilesForAllChannels": true,
+    "files": [
+      "package.json",
+      {
+        "from": "dist/electron",
+        "to": "electron",
+        "filter": ["**/*"]
+      },
+      "apps/web/dist/**/*",
+      "node_modules/electron-updater/**/*",
+      "!**/node_modules/*/{CHANGELOG.md,README.md,README,readme.md,readme}",
+      "!**/node_modules/*/{test,__tests__,tests,powered-test,example,examples}",
+      "!**/node_modules/*.d.ts",
+      "!**/node_modules/.bin",
+      "!**/*.{iml,o,hprof,orig,pyc,pyo,rbc,swp,csproj,sln,xproj}",
+      "!.editorconfig",
+      "!**/._*",
+      "!**/{.DS_Store,.git,.hg,.svn,CVS,RCS,SCCS,.gitignore,.gitattributes}",
+      "!**/{__pycache__,thumbs.db,.flowconfig,.idea,.vs,.nyc_output}",
+      "!**/{appveyor.yml,.travis.yml,circle.yml}",
+      "!**/{npm-debug.log,yarn.lock,.yarn-integrity,.yarn-metadata.json}",
+      "!**/dist-packager/**/*",
+      "!**/dist-packager-*/**/*",
+      "!**/electron-builds/**/*",
+      "!**/docs/**/*",
+      "!**/test/**/*",
+      "!**/tests/**/*",
+      "!**/coverage/**/*",
+      "!**/.turbo/**/*",
+      "!**/.next/**/*",
+      "!**/packages/**/*",
+      "!**/apps/landing/**/*"
+    ],
+    "compression": "maximum",
+    "npmRebuild": true,
+    "nodeGypRebuild": false,
+    "extraResources": [
+      {
+        "from": "electron/resources/",
+        "to": "./",
+        "filter": [
+          "**/*.exe",
+          "**/*.dll"
+        ]
+      }
+    ],
+    "extraMetadata": {
+      "main": "electron/main.js"
+    },
+    "asar": true,
+    "asarUnpack": [
+      "**/node_modules/sharp/**/*",
+      "**/node_modules/@ffmpeg/**/*",
+      "**/node_modules/electron-updater/**/*",
+      "**/node_modules/electron-log/**/*",
+      "**/electron/resources/**/*"
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "build/icon.ico",
+      "forceCodeSigning": false,
+      "verifyUpdateCodeSignature": false,
+      "signAndEditExecutable": false,
+      "requestedExecutionLevel": "asInvoker",
+      "artifactName": "${productName}-Setup-${version}.${ext}",
+      "compression": "store"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "QCut Video Editor",
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico",
+      "installerHeaderIcon": "build/icon.ico",
+      "deleteAppDataOnUninstall": true,
+      "runAfterFinish": true,
+      "menuCategory": "Video",
+      "perMachine": false,
+      "allowElevation": true,
+      "displayLanguageSelector": false,
+      "installerSidebar": "build/icon.ico",
+      "uninstallerSidebar": "build/icon.ico",
+      "license": false,
+      "warningsAsErrors": false,
+      "packElevateHelper": true,
+      "differentialPackage": true,
+      "artifactName": "${productName}-Setup-${version}.${ext}",
+      "guid": "0fa53e31-8a77-5f52-ad1c-f9c8705b5d38"
+    },
+    "protocols": [
+      {
+        "name": "qcut-protocol",
+        "schemes": [
+          "qcut"
+        ]
+      }
+    ],
+    "fileAssociations": [
+      {
+        "ext": "qcut",
+        "name": "QCut Project",
+        "description": "QCut Project File",
+        "icon": "build/icon.ico"
+      },
+      {
+        "ext": "mp4",
+        "name": "MP4 Video",
+        "description": "MPEG-4 Video File",
+        "icon": "build/icon.ico"
+      },
+      {
+        "ext": "avi",
+        "name": "AVI Video",
+        "description": "AVI Video File",
+        "icon": "build/icon.ico"
+      },
+      {
+        "ext": "mov",
+        "name": "QuickTime Video",
+        "description": "QuickTime Movie File",
+        "icon": "build/icon.ico"
+      },
+      {
+        "ext": "mkv",
+        "name": "Matroska Video",
+        "description": "Matroska Video File",
+        "icon": "build/icon.ico"
+      },
+      {
+        "ext": "webm",
+        "name": "WebM Video",
+        "description": "WebM Video File",
+        "icon": "build/icon.ico"
+      }
+    ]
+  },
+  "dependencies": {
+    "@ffmpeg/core": "^0.12.10",
+    "@ffmpeg/ffmpeg": "^0.12.15",
+    "@ffmpeg/util": "^0.12.2",
+    "electron-log": "^5.4.3",
+    "electron-updater": "^6.6.2",
+    "jszip": "^3.10.1",
+    "next": "^15.5.2",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "wavesurfer.js": "^7.10.1"
+  },
+  "resolutions": {
+    "minimist": "^1.2.8",
+    "tough-cookie": "^4.1.4",
+    "form-data": "^4.0.1",
+    "jpeg-js": "^0.4.4",
+    "tmp": "^0.2.4",
+    "esbuild": "^0.25.8",
+    "@types/node": "^24.3.1"
+  },
+  "trustedDependencies": [
+    "@tailwindcss/oxide",
+    "electron",
+    "electron-winstaller",
+    "esbuild",
+    "sharp"
+  ]
+}
