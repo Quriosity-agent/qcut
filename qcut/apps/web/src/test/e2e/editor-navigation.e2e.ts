@@ -92,9 +92,6 @@ test.describe('Editor Navigation Test', () => {
   });
 
   test('should check if direct navigation to editor works', async ({ page }) => {
-    // Try to navigate directly to a mock editor URL
-    console.log('Testing direct editor navigation...');
-
     // Setup error tracking
     const errors: string[] = [];
     page.on('console', msg => {
@@ -103,44 +100,58 @@ test.describe('Editor Navigation Test', () => {
       }
     });
 
-    try {
-      // Use JavaScript navigation since page.goto doesn't work in Electron
-      await page.evaluate(() => {
-        // Try to navigate using the router if available
-        const router = (window as any).router;
-        if (router && router.navigate) {
-          console.log('Using router to navigate to editor');
-          router.navigate({ to: '/editor/test-project-id' });
-        } else {
-          console.log('Router not available, using location change');
-          window.location.hash = '#/editor/test-project-id';
-        }
-      });
-
-      // Wait to see what happens
-      await page.waitForTimeout(3000);
-
-      // Check if we're still connected
-      const isResponsive = await page.evaluate(() => true).catch(() => false);
-
-      if (isResponsive) {
-        console.log('App is still responsive after navigation attempt');
-
-        // Check what page we're on
-        const currentUrl = await page.evaluate(() => window.location.href);
-        console.log('Current URL:', currentUrl);
-
-        // Check for errors
-        if (errors.length > 0) {
-          console.log('Console errors:', errors);
-        }
-      } else {
-        throw new Error('App became unresponsive');
+    // Use JavaScript navigation since page.goto doesn't work in Electron
+    await page.evaluate(() => {
+      // Properly typed router access
+      interface RouterWindow extends Window {
+        router?: {
+          navigate: (options: { to: string }) => void;
+        };
       }
 
-    } catch (error) {
-      console.error('Direct navigation test failed:', error);
-      throw error;
+      const routerWindow = window as RouterWindow;
+      if (routerWindow.router?.navigate) {
+        routerWindow.router.navigate({ to: '/editor/test-project-id' });
+      } else {
+        // Fallback: use hash navigation
+        window.location.hash = '#/editor/test-project-id';
+      }
+    });
+
+    // Wait for navigation to complete by checking for editor elements or error state
+    const editorLocator = page.locator('[data-testid="editor-container"], [data-testid="timeline-track"], .editor-layout');
+    const errorLocator = page.locator('text=/not found|error/i');
+
+    // Wait for either editor to load or error to appear
+    await Promise.race([
+      editorLocator.first().waitFor({ timeout: 10000 }),
+      errorLocator.first().waitFor({ timeout: 10000 })
+    ]);
+
+    // Verify app is still responsive
+    await page.evaluate(() => document.title);
+
+    // Assert the current URL contains editor route
+    const currentUrl = await page.evaluate(() => window.location.href);
+    expect(currentUrl).toContain('/editor/test-project-id');
+
+    // Check if editor loaded successfully or if we got expected error
+    const hasEditor = await editorLocator.first().isVisible();
+    const hasError = await errorLocator.first().isVisible();
+
+    if (hasEditor) {
+      // Success: editor loaded
+      expect(hasEditor).toBe(true);
+    } else if (hasError) {
+      // Expected: project not found error (since test-project-id doesn't exist)
+      expect(hasError).toBe(true);
+    } else {
+      throw new Error('Neither editor nor error state detected after navigation');
+    }
+
+    // Log any console errors for debugging (but don't fail the test)
+    if (errors.length > 0) {
+      console.log('Console errors (expected for non-existent project):', errors.slice(0, 3));
     }
   });
 });

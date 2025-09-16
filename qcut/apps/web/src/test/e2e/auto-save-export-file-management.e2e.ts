@@ -242,14 +242,14 @@ test.describe('Auto-Save & Export File Management', () => {
 
       if (await customLocationButton.isVisible()) {
         // Prefer stubbing Electron's dialog in main process for deterministic result
-        const restore = await electronApp.evaluate(async ({ dialog }) => {
+        await electronApp.evaluate(async ({ dialog }) => {
           const { tmpdir } = require('node:os');
-          const original = dialog.showOpenDialog;
+          // @ts-expect-error attach on global for test restore
+          global.__origShowOpenDialog__ = dialog.showOpenDialog;
           dialog.showOpenDialog = async () => ({
             canceled: false,
             filePaths: [tmpdir()]
           });
-          return () => (dialog.showOpenDialog = original);
         });
 
         await customLocationButton.click();
@@ -260,7 +260,15 @@ test.describe('Auto-Save & Export File Management', () => {
           return expect(page.getByTestId('export-dialog')).toBeVisible();
         });
 
-        await restore();
+        await electronApp.evaluate(({ dialog }) => {
+          // @ts-expect-error read from global and clean up
+          if (global.__origShowOpenDialog__) {
+            // @ts-expect-error
+            dialog.showOpenDialog = global.__origShowOpenDialog__;
+            // @ts-expect-error
+            delete global.__origShowOpenDialog__;
+          }
+        });
       }
 
       // Set export quality

@@ -184,13 +184,17 @@ test.describe('Sticker Overlay Testing (Subtask 3A)', () => {
         // Test drag to reposition (if drag is supported)
         const originalPosition = await placedSticker.boundingBox();
         if (originalPosition) {
-          await placedSticker.dragTo(stickerCanvas, {
-            targetPosition: { x: 200, y: 200 }
-          });
-          await page.waitForTimeout(500);
+          // Drag the placed sticker by ~80px diagonally
+          const cx = originalPosition.x + originalPosition.width / 2;
+          const cy = originalPosition.y + originalPosition.height / 2;
+          await page.mouse.move(cx, cy);
+          await page.mouse.down();
+          await page.mouse.move(cx + 80, cy + 80, { steps: 6 });
+          await page.mouse.up();
 
-          const newPosition = await placedSticker.boundingBox();
-          expect(newPosition?.x).not.toBe(originalPosition.x);
+          await expect.poll(async () => (await placedSticker.boundingBox())?.x, {
+            timeout: 3000
+          }).not.toBeCloseTo(originalPosition.x, 0);
         }
 
         // Test delete functionality (if available)
