@@ -20,11 +20,13 @@ import { cn } from "@/lib/utils";
 interface CanvasToolbarProps {
   canvasRef: React.RefObject<HTMLCanvasElement>;
   className?: string;
+  onImageUpload?: (imageFile: File) => void;
 }
 
 export const CanvasToolbar: React.FC<CanvasToolbarProps> = ({
   canvasRef,
-  className
+  className,
+  onImageUpload
 }) => {
   const [isExporting, setIsExporting] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -107,6 +109,20 @@ export const CanvasToolbar: React.FC<CanvasToolbarProps> = ({
     toast.success("Canvas cleared");
   };
 
+  const handleImageUpload = () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.onchange = (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (file && onImageUpload) {
+        onImageUpload(file);
+        toast.success("Image uploaded to canvas");
+      }
+    };
+    input.click();
+  };
+
   const canUndo = history.length > 0 && historyIndex > 0;
   const canRedo = history.length > 0 && historyIndex < history.length - 1;
 
@@ -138,6 +154,15 @@ export const CanvasToolbar: React.FC<CanvasToolbarProps> = ({
 
       {/* Canvas Actions */}
       <div className="flex items-center gap-1 border-r border-gray-600 pr-2">
+        <Button
+          variant="text"
+          size="sm"
+          onClick={handleImageUpload}
+          title="Upload Image"
+          className="h-8 w-8 p-0"
+        >
+          <Upload size={14} />
+        </Button>
         <Button
           variant="text"
           size="sm"

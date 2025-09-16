@@ -9,6 +9,7 @@ interface DrawingOptions {
   disabled: boolean;
   onDrawingStart: () => void;
   onDrawingEnd: () => void;
+  onTextInput?: (position: { x: number; y: number }) => void;
 }
 
 export const useCanvasDrawing = (
@@ -86,6 +87,19 @@ export const useCanvasDrawing = (
       case 'circle':
         ctx.strokeStyle = options.color;
         ctx.lineCap = 'round';
+        ctx.globalCompositeOperation = 'source-over';
+        break;
+
+      case 'text':
+        ctx.fillStyle = options.color;
+        ctx.font = `${options.brushSize}px Arial, sans-serif`;
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'top';
+        ctx.globalCompositeOperation = 'source-over';
+        break;
+
+      case 'blur':
+        ctx.filter = `blur(${Math.max(1, options.brushSize / 10)}px)`;
         ctx.globalCompositeOperation = 'source-over';
         break;
 
@@ -176,6 +190,26 @@ export const useCanvasDrawing = (
     ctx.restore();
   }, [setupCanvasContext, options.tool.id, options.disabled]);
 
+  const drawText = useCallback((position: { x: number; y: number }, text: string) => {
+    const canvas = canvasRef.current;
+    const ctx = canvas?.getContext('2d');
+    if (!ctx || options.disabled) return;
+
+    console.log('✏️ Drawing text:', { position, text, fontSize: options.brushSize });
+
+    // Save context state
+    ctx.save();
+
+    // Setup context for text
+    setupCanvasContext(ctx);
+
+    // Draw text
+    ctx.fillText(text, position.x, position.y);
+
+    // Restore context state
+    ctx.restore();
+  }, [setupCanvasContext, options.disabled, options.brushSize]);
+
   // Mouse event handlers
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     if (options.disabled) return;
@@ -188,6 +222,14 @@ export const useCanvasDrawing = (
     options.onDrawingStart();
 
     console.log('🖱️ Mouse down:', { pos, toolId: options.tool.id, category: options.tool.category });
+
+    // Handle text tool click
+    if (options.tool.category === 'text') {
+      if (options.onTextInput) {
+        options.onTextInput(pos);
+      }
+      return;
+    }
 
     // For shape tools, don't draw initial point - wait for drag
     if (options.tool.category === 'shape') {
@@ -314,6 +356,7 @@ export const useCanvasDrawing = (
     handleMouseUp,
     handleTouchStart,
     handleTouchMove,
-    handleTouchEnd
+    handleTouchEnd,
+    drawText
   };
 };

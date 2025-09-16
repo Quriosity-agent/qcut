@@ -9,6 +9,7 @@ import { SavedDrawings } from "@/components/editor/draw/components/saved-drawing
 const DrawView: React.FC = () => {
   const { activeTab, setActiveTab } = useWhiteDrawStore();
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const canvasComponentRef = useRef<any>(null);
   const [currentDrawingData, setCurrentDrawingData] = useState<string>("");
 
   // Handle loading a drawing from saved files
@@ -22,6 +23,13 @@ const DrawView: React.FC = () => {
   // Handle drawing changes from canvas
   const handleDrawingChange = useCallback((dataUrl: string) => {
     setCurrentDrawingData(dataUrl);
+  }, []);
+
+  // Handle image upload from toolbar
+  const handleImageUpload = useCallback((file: File) => {
+    if (canvasComponentRef.current?.handleImageUpload) {
+      canvasComponentRef.current.handleImageUpload(file);
+    }
   }, []);
 
   return (
@@ -74,21 +82,29 @@ const DrawView: React.FC = () => {
 
       {/* Content Area - Phase 2 implementation */}
       <div className="flex-1 overflow-y-auto">
-        {activeTab === "canvas" && (
-          <div className="w-full h-full flex flex-col space-y-4">
-            <CanvasToolbar canvasRef={canvasRef} />
-            <div className="flex-1 flex items-center justify-center">
-              <DrawingCanvas
-                ref={canvasRef}
-                className="max-w-full max-h-full"
-                onDrawingChange={handleDrawingChange}
-              />
-            </div>
+        {/* Canvas - Always mounted to preserve drawings */}
+        <div
+          className={`w-full h-full flex flex-col space-y-4 ${activeTab === "canvas" ? "" : "hidden"}`}
+        >
+          <CanvasToolbar
+            canvasRef={canvasRef}
+            onImageUpload={handleImageUpload}
+          />
+          <div className="flex-1 flex items-center justify-center">
+            <DrawingCanvas
+              ref={canvasComponentRef}
+              className="max-w-full max-h-full"
+              onDrawingChange={handleDrawingChange}
+            />
           </div>
-        )}
+        </div>
+
+        {/* Tools Tab */}
         {activeTab === "tools" && (
           <ToolSelector className="h-full" />
         )}
+
+        {/* Files Tab */}
         {activeTab === "files" && (
           <SavedDrawings
             currentDrawingData={currentDrawingData}

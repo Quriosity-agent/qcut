@@ -1,6 +1,8 @@
-import React, { useRef, useEffect, useCallback, useMemo, forwardRef, useImperativeHandle } from 'react';
+import React, { useRef, useEffect, useCallback, useMemo, forwardRef, useImperativeHandle, useState } from 'react';
 import { useWhiteDrawStore, selectCurrentTool } from "@/stores/white-draw-store";
 import { useCanvasDrawing } from "../hooks/use-canvas-drawing";
+import { useCanvasImages } from "../hooks/use-canvas-images";
+import { TextInputModal } from "../components/text-input-modal";
 import { cn } from "@/lib/utils";
 import { handleError, ErrorCategory, ErrorSeverity } from "@/lib/error-handler";
 
@@ -23,13 +25,34 @@ export const DrawingCanvas = forwardRef<HTMLCanvasElement, DrawingCanvasProps>((
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const backgroundCanvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const [textInputModal, setTextInputModal] = useState<{
+    isOpen: boolean;
+    position: { x: number; y: number };
+    canvasPosition: { x: number; y: number };
+  }>({
+    isOpen: false,
+    position: { x: 0, y: 0 },
+    canvasPosition: { x: 0, y: 0 }
+  });
 
   // Use selectors for performance optimization
   const currentTool = useWhiteDrawStore(selectCurrentTool);
   const { brushSize, color, opacity, setDrawing, saveToHistory } = useWhiteDrawStore();
 
-  // Expose canvas ref to parent
-  useImperativeHandle(ref, () => canvasRef.current!, []);
+  // Image management hook
+  const {
+    images,
+    selectedImageId,
+    isDragging,
+    addImage,
+    removeImage,
+    selectImage,
+    getImageAtPosition,
+    startDrag,
+    updateDrag,
+    endDrag,
+    renderImages
+  } = useCanvasImages(canvasRef);
 
   // Memoize canvas dimensions for performance
   const canvasDimensions = useMemo(() => {
@@ -43,7 +66,8 @@ export const DrawingCanvas = forwardRef<HTMLCanvasElement, DrawingCanvasProps>((
     handleMouseUp,
     handleTouchStart,
     handleTouchMove,
-    handleTouchEnd
+    handleTouchEnd,
+    drawText
   } = useCanvasDrawing(canvasRef, {
     tool: currentTool,
     brushSize,
@@ -80,7 +104,24 @@ export const DrawingCanvas = forwardRef<HTMLCanvasElement, DrawingCanvasProps>((
           severity: ErrorSeverity.MEDIUM
         });
       }
-    }, [disabled, setDrawing, onDrawingChange])
+    }, [disabled, setDrawing, onDrawingChange]),
+
+    onTextInput: useCallback((canvasPosition: { x: number; y: number }) => {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+
+      const rect = canvas.getBoundingClientRect();
+      const screenPosition = {
+        x: rect.left + (canvasPosition.x * rect.width / canvas.width),
+        y: rect.top + (canvasPosition.y * rect.height / canvas.height)
+      };
+
+      setTextInputModal({
+        isOpen: true,
+        position: screenPosition,
+        canvasPosition
+      });
+    }, [])
   });
 
   // Initialize canvases with error handling
@@ -169,6 +210,61 @@ export const DrawingCanvas = forwardRef<HTMLCanvasElement, DrawingCanvasProps>((
     }
   }, [canvasDimensions, backgroundImage]);
 
+  // Text input handlers
+  const handleTextConfirm = useCallback((text: string) => {
+    if (textInputModal.canvasPosition && drawText) {
+      drawText(textInputModal.canvasPosition, text);
+      if (onDrawingChange && canvasRef.current) {
+        onDrawingChange(canvasRef.current.toDataURL());
+      }
+    }
+    setTextInputModal(prev => ({ ...prev, isOpen: false }));
+  }, [textInputModal.canvasPosition, drawText, onDrawingChange]);
+
+  const handleTextCancel = useCallback(() => {
+    setTextInputModal(prev => ({ ...prev, isOpen: false }));
+  }, []);
+
+  // Image upload handler
+  const handleImageUpload = useCallback(async (file: File) => {
+    try {
+      await addImage(file);
+      if (onDrawingChange && canvasRef.current) {
+        onDrawingChange(canvasRef.current.toDataURL());
+      }
+    } catch (error) {
+      handleError(error, {
+        operation: "image upload",
+        category: ErrorCategory.MEDIA_PROCESSING,
+        severity: ErrorSeverity.MEDIUM
+      });
+    }
+  }, [addImage, onDrawingChange]);
+
+  // Re-render canvas when images change
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    const ctx = canvas?.getContext('2d');
+    if (!ctx || !canvas) return;
+
+    // Only re-render if there are images to show
+    if (images.length > 0) {
+      // Clear and redraw with white background
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = 'white';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Render all images
+      renderImages(ctx);
+    }
+  }, [images, renderImages]);
+
+  // Expose canvas ref and image upload function to parent
+  useImperativeHandle(ref, () => ({
+    ...canvasRef.current!,
+    handleImageUpload
+  }), [handleImageUpload]);
+
   return (
     <div
       ref={containerRef}
@@ -218,6 +314,16 @@ export const DrawingCanvas = forwardRef<HTMLCanvasElement, DrawingCanvasProps>((
           <div className="text-white text-sm">Processing...</div>
         </div>
       )}
+
+      {/* Text Input Modal */}
+      <TextInputModal
+        isOpen={textInputModal.isOpen}
+        position={textInputModal.position}
+        fontSize={brushSize}
+        color={color}
+        onConfirm={handleTextConfirm}
+        onCancel={handleTextCancel}
+      />
     </div>
   );
 });

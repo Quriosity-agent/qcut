@@ -7,11 +7,23 @@ import {
   Type,
   Highlighter,
   Blend,
-  Pencil
+  Pencil,
+  MousePointer
 } from "lucide-react";
 import type { DrawingToolConfig, ToolCategory } from "@/types/white-draw";
 
 // Individual tool configurations with comprehensive settings
+export const SELECT_TOOL: DrawingToolConfig = {
+  id: "select",
+  name: "Select",
+  description: "Select and move objects on the canvas",
+  icon: <MousePointer size={16} />,
+  cursor: "default",
+  category: "select",
+  shortcut: "S",
+  settings: {}
+};
+
 export const BRUSH_TOOL: DrawingToolConfig = {
   id: "brush",
   name: "Brush",
@@ -149,6 +161,11 @@ export const BLUR_TOOL: DrawingToolConfig = {
 // Organized tool categories for UI
 export const TOOL_CATEGORIES: ToolCategory[] = [
   {
+    id: "select",
+    name: "Selection",
+    tools: [SELECT_TOOL]
+  },
+  {
     id: "brush",
     name: "Brushes",
     tools: [BRUSH_TOOL, PENCIL_TOOL, ERASER_TOOL, HIGHLIGHTER_TOOL]
@@ -179,7 +196,7 @@ export const TOOL_MAP = new Map<string, DrawingToolConfig>(
 );
 
 // Default tool
-export const DEFAULT_TOOL = BRUSH_TOOL;
+export const DEFAULT_TOOL = SELECT_TOOL;
 
 // Tool keyboard shortcuts map
 export const TOOL_SHORTCUTS = new Map<string, string>(
