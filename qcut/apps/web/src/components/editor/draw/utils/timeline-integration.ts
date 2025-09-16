@@ -26,7 +26,7 @@ export class TimelineIntegration {
       const timelineStore = useTimelineStore.getState();
       const projectStore = useProjectStore.getState();
 
-      const currentProject = projectStore.currentProject;
+      const currentProject = projectStore.activeProject;
       if (!currentProject?.id) {
         toast.error("No active project found");
         return;
@@ -37,7 +37,7 @@ export class TimelineIntegration {
         file,
         name: filename,
         type: "image",
-        tags: ["drawing", "white-draw"]
+        // Note: MediaItem interface doesn't include tags field
       });
 
       if (!mediaId) {
@@ -47,20 +47,20 @@ export class TimelineIntegration {
       // Step 2: Add to timeline (existing pattern)
       // Find the main video track or create one
       const tracks = timelineStore._tracks;
-      let targetTrack = tracks.find(track => track.type === "video" && track.name === "Main");
+      let targetTrack = tracks.find(track => track.type === "media" && track.name === "Main");
 
       if (!targetTrack) {
         // Find any video track
-        targetTrack = tracks.find(track => track.type === "video");
+        targetTrack = tracks.find(track => track.type === "media");
       }
 
       if (!targetTrack) {
-        toast.error("No video track found. Please create a video track first.");
+        toast.error("No media track found. Please create a media track first.");
         return;
       }
 
       // Get current playhead position or add at the end
-      const currentTime = timelineStore.currentTime;
+      const currentTime = timelineStore.dragState?.currentTime || 0;
 
       // Add drawing as image element to timeline
       timelineStore.addElementToTrack(targetTrack.id, {
@@ -69,7 +69,8 @@ export class TimelineIntegration {
         name: filename,
         duration: TIMELINE_CONSTANTS.DEFAULT_IMAGE_DURATION, // 5 seconds default
         startTime: currentTime,
-        id: generateUUID()
+        trimStart: 0,
+        trimEnd: 0
       });
 
       toast.success(`Drawing "${filename}" added to timeline`);
@@ -171,9 +172,9 @@ export class TimelineIntegration {
       const projectStore = useProjectStore.getState();
 
       return !!(
-        timelineStore.addElementToTrack &&
-        mediaStore.addMediaItem &&
-        projectStore.currentProject
+        typeof timelineStore.addElementToTrack === 'function' &&
+        typeof mediaStore.addMediaItem === 'function' &&
+        projectStore.activeProject
       );
     } catch {
       return false;
@@ -187,7 +188,7 @@ export class TimelineIntegration {
     try {
       const timelineStore = useTimelineStore.getState();
       return timelineStore._tracks
-        .filter(track => track.type === "video")
+        .filter(track => track.type === "media")
         .map(track => ({ id: track.id, name: track.name }));
     } catch {
       return [];
