@@ -1,8 +1,8 @@
 import { useCallback, useRef, useEffect, useMemo } from 'react';
-import { DrawingTool } from '@/types/white-draw';
+import { DrawingToolConfig } from '@/types/white-draw';
 
 interface DrawingOptions {
-  tool: DrawingTool;
+  tool: DrawingToolConfig;
   brushSize: number;
   color: string;
   opacity: number;
@@ -37,6 +37,53 @@ export const useCanvasDrawing = (
     };
   }, []);
 
+  const setupCanvasContext = useCallback((ctx: CanvasRenderingContext2D) => {
+    // Set common properties
+    ctx.lineWidth = options.brushSize;
+    ctx.globalAlpha = options.opacity;
+
+    // Tool-specific context setup
+    switch (options.tool.id) {
+      case 'brush':
+      case 'pencil':
+        ctx.strokeStyle = options.color;
+        ctx.fillStyle = options.color;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.globalCompositeOperation = 'source-over';
+        break;
+
+      case 'eraser':
+        ctx.globalCompositeOperation = 'destination-out';
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        break;
+
+      case 'highlighter':
+        ctx.strokeStyle = options.color;
+        ctx.fillStyle = options.color;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.globalCompositeOperation = 'multiply';
+        break;
+
+      case 'line':
+      case 'rectangle':
+      case 'circle':
+        ctx.strokeStyle = options.color;
+        ctx.lineCap = 'round';
+        ctx.globalCompositeOperation = 'source-over';
+        break;
+
+      default:
+        ctx.strokeStyle = options.color;
+        ctx.fillStyle = options.color;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.globalCompositeOperation = 'source-over';
+    }
+  }, [options.tool.id, options.brushSize, options.color, options.opacity]);
+
   const drawLine = useCallback((from: { x: number; y: number }, to: { x: number; y: number }) => {
     const canvas = canvasRef.current;
     const ctx = canvas?.getContext('2d');
@@ -45,35 +92,21 @@ export const useCanvasDrawing = (
     // Save context state
     ctx.save();
 
-    // Set drawing properties
-    ctx.lineWidth = options.brushSize;
-    ctx.strokeStyle = options.color;
-    ctx.globalAlpha = options.opacity;
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
+    // Setup context for current tool
+    setupCanvasContext(ctx);
 
-    // Handle different tool types
-    switch (options.tool.id) {
-      case 'eraser':
-        ctx.globalCompositeOperation = 'destination-out';
-        break;
-      case 'blur':
-        ctx.filter = 'blur(2px)';
-        ctx.globalCompositeOperation = 'source-over';
-        break;
-      default:
-        ctx.globalCompositeOperation = 'source-over';
+    // Draw based on tool type
+    if (options.tool.category === 'brush' || options.tool.id === 'eraser') {
+      // Freehand drawing tools
+      ctx.beginPath();
+      ctx.moveTo(from.x, from.y);
+      ctx.lineTo(to.x, to.y);
+      ctx.stroke();
     }
-
-    // Draw line
-    ctx.beginPath();
-    ctx.moveTo(from.x, from.y);
-    ctx.lineTo(to.x, to.y);
-    ctx.stroke();
 
     // Restore context state
     ctx.restore();
-  }, [options.brushSize, options.color, options.opacity, options.tool.id, options.disabled]);
+  }, [setupCanvasContext, options.tool.category, options.tool.id, options.disabled]);
 
   // Mouse event handlers
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
