@@ -100,13 +100,17 @@ export const resizeCanvas = (
 };
 
 /**
- * Clear canvas while preserving context settings
+ * Clear canvas while preserving context settings and white background
  */
 export const clearCanvas = (canvas: HTMLCanvasElement): void => {
   try {
     const ctx = canvas.getContext('2d');
     if (ctx) {
+      // Clear the canvas
       ctx.clearRect(0, 0, canvas.width, canvas.height);
+      // Set white background
+      ctx.fillStyle = 'white';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
   } catch (error) {
     handleError(error, {

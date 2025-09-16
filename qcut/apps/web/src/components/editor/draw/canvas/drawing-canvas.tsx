@@ -104,14 +104,18 @@ export const DrawingCanvas = forwardRef<HTMLCanvasElement, DrawingCanvasProps>((
       const bgCtx = bgCanvas.getContext('2d');
 
       if (ctx) {
-        ctx.clearRect(0, 0, width, height);
+        // Set white background
+        ctx.fillStyle = 'white';
+        ctx.fillRect(0, 0, width, height);
         // Set default canvas properties
         ctx.lineCap = 'round';
         ctx.lineJoin = 'round';
       }
 
       if (bgCtx) {
-        bgCtx.clearRect(0, 0, width, height);
+        // Set white background for background canvas too
+        bgCtx.fillStyle = 'white';
+        bgCtx.fillRect(0, 0, width, height);
 
         // Draw background image if provided
         if (backgroundImage) {
