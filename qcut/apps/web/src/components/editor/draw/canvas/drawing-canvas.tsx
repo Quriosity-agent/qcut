@@ -1,7 +1,7 @@
 import React, { useRef, useEffect, useCallback, useMemo, forwardRef, useImperativeHandle, useState } from 'react';
 import { useWhiteDrawStore, selectCurrentTool } from "@/stores/white-draw-store";
 import { useCanvasDrawing } from "../hooks/use-canvas-drawing";
-import { useCanvasImages } from "../hooks/use-canvas-images";
+import { useCanvasObjects } from "../hooks/use-canvas-objects";
 import { TextInputModal } from "../components/text-input-modal";
 import { cn } from "@/lib/utils";
 import { handleError, ErrorCategory, ErrorSeverity } from "@/lib/error-handler";
@@ -39,25 +39,28 @@ export const DrawingCanvas = forwardRef<HTMLCanvasElement, DrawingCanvasProps>((
   const currentTool = useWhiteDrawStore(selectCurrentTool);
   const { brushSize, color, opacity, setDrawing, saveToHistory } = useWhiteDrawStore();
 
-  // Image management hook
+  // Object management hook (replaces image-only management)
   const {
-    images,
+    objects,
     groups,
-    selectedImageIds,
+    selectedObjectIds,
     isDragging,
-    addImage,
-    removeImage,
-    selectImage,
-    selectImages,
-    getImageAtPosition,
+    addStroke,
+    addShape,
+    addText,
+    addImageObject,
+    selectObjects,
+    getObjectAtPosition,
+    createGroup,
+    ungroupObjects,
     startDrag,
     updateDrag,
     endDrag,
-    renderImages,
-    createGroup,
-    ungroupObjects,
-    selectGroup
-  } = useCanvasImages(canvasRef);
+    deleteSelectedObjects,
+    renderObjects,
+    setIsDrawing,
+    setIsDragging
+  } = useCanvasObjects();
 
   // Memoize canvas dimensions for performance
   const canvasDimensions = useMemo(() => {
@@ -83,6 +86,7 @@ export const DrawingCanvas = forwardRef<HTMLCanvasElement, DrawingCanvasProps>((
       if (disabled) return;
       try {
         setDrawing(true);
+        setIsDrawing(true);
         if (canvasRef.current) {
           saveToHistory(canvasRef.current.toDataURL());
         }
@@ -93,12 +97,13 @@ export const DrawingCanvas = forwardRef<HTMLCanvasElement, DrawingCanvasProps>((
           severity: ErrorSeverity.MEDIUM
         });
       }
-    }, [disabled, setDrawing, saveToHistory]),
+    }, [disabled, setDrawing, setIsDrawing, saveToHistory]),
 
     onDrawingEnd: useCallback(() => {
       if (disabled) return;
       try {
         setDrawing(false);
+        setIsDrawing(false);
         if (canvasRef.current && onDrawingChange) {
           onDrawingChange(canvasRef.current.toDataURL());
         }
@@ -109,7 +114,7 @@ export const DrawingCanvas = forwardRef<HTMLCanvasElement, DrawingCanvasProps>((
           severity: ErrorSeverity.MEDIUM
         });
       }
-    }, [disabled, setDrawing, onDrawingChange]),
+    }, [disabled, setDrawing, setIsDrawing, onDrawingChange]),
 
     onTextInput: useCallback((canvasPosition: { x: number; y: number }) => {
       const canvas = canvasRef.current;
@@ -129,45 +134,62 @@ export const DrawingCanvas = forwardRef<HTMLCanvasElement, DrawingCanvasProps>((
     }, []),
 
     onSelectObject: useCallback((canvasPosition: { x: number; y: number }, isMultiSelect = false) => {
-      // Try to select an image at the position
-      const image = getImageAtPosition(canvasPosition.x, canvasPosition.y);
-      if (image) {
-        console.log('🎯 Image selected:', {
-          imageId: image.id,
+      // Try to select any object at the position
+      const object = getObjectAtPosition(canvasPosition.x, canvasPosition.y);
+      if (object) {
+        console.log('🎯 Object selected:', {
+          objectId: object.id,
+          objectType: object.type,
           position: canvasPosition,
           multiSelect: isMultiSelect,
-          currentSelection: selectedImageIds
+          currentSelection: selectedObjectIds
         });
 
-        selectImage(image.id, isMultiSelect);
-        startDrag(image.id, canvasPosition.x, canvasPosition.y);
+        selectObjects([object.id], isMultiSelect);
+
+        // Start dragging for the selected object(s)
+        startDrag(canvasPosition.x, canvasPosition.y);
+
         return true; // Object was selected
       } else {
         // Deselect all if clicked on empty space (unless multi-selecting)
         if (!isMultiSelect) {
-          selectImage(null);
+          selectObjects([]);
         }
         return false; // No object selected
       }
-    }, [getImageAtPosition, selectImage, startDrag, selectedImageIds]),
+    }, [getObjectAtPosition, selectObjects, selectedObjectIds, startDrag]),
 
     onMoveObject: useCallback((startPos: { x: number; y: number }, currentPos: { x: number; y: number }) => {
-      if (selectedImageIds.length > 0 && isDragging) {
+      if (selectedObjectIds.length > 0 && isDragging) {
         console.log('🚀 Moving objects:', {
-          selectedIds: selectedImageIds,
-          startPos,
-          currentPos,
-          deltaX: currentPos.x - startPos.x,
-          deltaY: currentPos.y - startPos.y
+          selectedIds: selectedObjectIds,
+          currentPos
         });
         updateDrag(currentPos.x, currentPos.y);
       }
-    }, [selectedImageIds, isDragging, updateDrag]),
+    }, [selectedObjectIds, isDragging, updateDrag]),
 
     onEndMove: useCallback(() => {
       console.log('🏁 End move operation');
       endDrag();
-    }, [endDrag])
+    }, [endDrag]),
+
+    // New object creation callbacks
+    onCreateStroke: useCallback((points: { x: number; y: number }[], style: any) => {
+      console.log('🖌️ Creating stroke object:', { pointCount: points.length, style });
+      return addStroke(points, style);
+    }, [addStroke]),
+
+    onCreateShape: useCallback((shapeType: string, bounds: any, style: any) => {
+      console.log('🔲 Creating shape object:', { shapeType, bounds, style });
+      return addShape(shapeType as any, bounds, style);
+    }, [addShape]),
+
+    onCreateText: useCallback((text: string, position: { x: number; y: number }, style: any) => {
+      console.log('📝 Creating text object:', { text, position, style });
+      return addText(text, position, style);
+    }, [addText])
   });
 
   // Initialize canvases with error handling
@@ -258,14 +280,21 @@ export const DrawingCanvas = forwardRef<HTMLCanvasElement, DrawingCanvasProps>((
 
   // Text input handlers
   const handleTextConfirm = useCallback((text: string) => {
-    if (textInputModal.canvasPosition && drawText) {
-      drawText(textInputModal.canvasPosition, text);
+    if (textInputModal.canvasPosition && text.trim()) {
+      const style = {
+        font: `${brushSize}px Arial, sans-serif`,
+        fillStyle: color,
+        opacity: opacity
+      };
+
+      addText(text, textInputModal.canvasPosition, style);
+
       if (onDrawingChange && canvasRef.current) {
         onDrawingChange(canvasRef.current.toDataURL());
       }
     }
     setTextInputModal(prev => ({ ...prev, isOpen: false }));
-  }, [textInputModal.canvasPosition, drawText, onDrawingChange]);
+  }, [textInputModal.canvasPosition, addText, brushSize, color, opacity, onDrawingChange]);
 
   const handleTextCancel = useCallback(() => {
     setTextInputModal(prev => ({ ...prev, isOpen: false }));
@@ -274,7 +303,45 @@ export const DrawingCanvas = forwardRef<HTMLCanvasElement, DrawingCanvasProps>((
   // Image upload handler
   const handleImageUpload = useCallback(async (file: File) => {
     try {
-      await addImage(file);
+      const canvas = canvasRef.current;
+      if (!canvas) {
+        throw new Error('Canvas not available');
+      }
+
+      // Create image element and load the file
+      const img = new Image();
+      await new Promise<void>((resolve, reject) => {
+        img.onload = () => resolve();
+        img.onerror = () => reject(new Error('Failed to load image'));
+        img.src = URL.createObjectURL(file);
+      });
+
+      // Calculate initial size (fit to canvas while maintaining aspect ratio)
+      const maxWidth = canvas.width * 0.5; // Max 50% of canvas width
+      const maxHeight = canvas.height * 0.5; // Max 50% of canvas height
+
+      let width = img.width;
+      let height = img.height;
+
+      if (width > maxWidth || height > maxHeight) {
+        const ratio = Math.min(maxWidth / width, maxHeight / height);
+        width *= ratio;
+        height *= ratio;
+      }
+
+      // Create image object
+      const imageData = {
+        id: `image-${Date.now()}`,
+        element: img,
+        x: (canvas.width - width) / 2, // Center horizontally
+        y: (canvas.height - height) / 2, // Center vertically
+        width,
+        height,
+        rotation: 0
+      };
+
+      addImageObject(imageData);
+
       if (onDrawingChange && canvasRef.current) {
         onDrawingChange(canvasRef.current.toDataURL());
       }
@@ -285,44 +352,43 @@ export const DrawingCanvas = forwardRef<HTMLCanvasElement, DrawingCanvasProps>((
         severity: ErrorSeverity.MEDIUM
       });
     }
-  }, [addImage, onDrawingChange]);
+  }, [addImageObject, onDrawingChange]);
 
-  // Re-render canvas when images change
+  // Re-render canvas when objects change
   useEffect(() => {
     const canvas = canvasRef.current;
     const ctx = canvas?.getContext('2d');
     if (!ctx || !canvas) return;
 
-    // Only re-render if there are images to show
-    if (images.length > 0) {
-      // Clear and redraw with white background
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.fillStyle = 'white';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    // Clear and redraw with white background
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = 'white';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      // Render all images
-      renderImages(ctx);
+    // Render all objects (strokes, shapes, text, images)
+    if (objects.length > 0) {
+      renderObjects(ctx);
     }
-  }, [images, renderImages]);
+  }, [objects, renderObjects]);
 
-  // Expose canvas ref and image/group functions to parent
+  // Expose canvas ref and object/group functions to parent
   useImperativeHandle(ref, () => ({
     ...canvasRef.current!,
     handleImageUpload,
-    getSelectedCount: () => selectedImageIds.length,
+    getSelectedCount: () => selectedObjectIds.length,
     getHasGroups: () => groups.length > 0,
     handleCreateGroup: () => {
       const groupId = createGroup();
       if (groupId) {
-        console.log('✅ Group created successfully:', { groupId, selectedCount: selectedImageIds.length });
+        console.log('✅ Group created successfully:', { groupId, selectedCount: selectedObjectIds.length });
       } else {
         console.log('❌ Failed to create group - need at least 2 selected objects');
       }
     },
     handleUngroup: () => {
-      // Find groups that contain any of the selected images
+      // Find groups that contain any of the selected objects
       const selectedGroups = groups.filter(group =>
-        group.objectIds.some(id => selectedImageIds.includes(id))
+        group.objectIds.some(id => selectedObjectIds.includes(id))
       );
 
       selectedGroups.forEach(group => {
@@ -330,7 +396,7 @@ export const DrawingCanvas = forwardRef<HTMLCanvasElement, DrawingCanvasProps>((
         console.log('✅ Group dissolved:', { groupId: group.id });
       });
     }
-  }), [handleImageUpload, selectedImageIds.length, groups.length, createGroup, ungroupObjects, selectedImageIds, groups]);
+  }), [handleImageUpload, selectedObjectIds.length, groups.length, createGroup, ungroupObjects, selectedObjectIds, groups]);
 
   return (
     <div

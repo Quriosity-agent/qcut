@@ -69,7 +69,13 @@ export const useCanvasObjects = () => {
   const [selectedObjectIds, setSelectedObjectIds] = useState<string[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [isDrawing, setIsDrawing] = useState(false);
-  const dragOffset = useRef<{ x: number; y: number; lastDeltaX?: number; lastDeltaY?: number }>({ x: 0, y: 0 });
+  const dragState = useRef<{
+    startX: number;
+    startY: number;
+    lastX: number;
+    lastY: number;
+    hasMoved: boolean;
+  }>({ startX: 0, startY: 0, lastX: 0, lastY: 0, hasMoved: false });
   const zIndexCounter = useRef(1);
 
   // Add a new stroke object
@@ -286,16 +292,73 @@ export const useCanvasObjects = () => {
     console.log('🔓 Group dissolved:', { groupId });
   }, []);
 
-  // Move selected objects
-  const moveObjects = useCallback((deltaX: number, deltaY: number) => {
-    if (selectedObjectIds.length === 0) return;
+  // Start dragging objects
+  const startDrag = useCallback((startX: number, startY: number) => {
+    if (selectedObjectIds.length === 0) return false;
 
-    setObjects(prev => prev.map(obj =>
-      selectedObjectIds.includes(obj.id)
-        ? { ...obj, x: obj.x + deltaX, y: obj.y + deltaY }
-        : obj
-    ));
+    dragState.current = {
+      startX,
+      startY,
+      lastX: startX,
+      lastY: startY,
+      hasMoved: false
+    };
+    setIsDragging(true);
+    console.log('🖱️ Drag started:', { startX, startY, selectedCount: selectedObjectIds.length });
+    return true;
   }, [selectedObjectIds]);
+
+  // Update drag position
+  const updateDrag = useCallback((currentX: number, currentY: number) => {
+    console.log('🔄 updateDrag called:', {
+      currentX,
+      currentY,
+      isDragging,
+      selectedCount: selectedObjectIds.length,
+      lastX: dragState.current.lastX,
+      lastY: dragState.current.lastY
+    });
+
+    if (!isDragging || selectedObjectIds.length === 0) {
+      console.log('❌ updateDrag early return:', { isDragging, selectedCount: selectedObjectIds.length });
+      return;
+    }
+
+    const deltaX = currentX - dragState.current.lastX;
+    const deltaY = currentY - dragState.current.lastY;
+
+    // Only move if there's actual movement
+    if (Math.abs(deltaX) > 0.5 || Math.abs(deltaY) > 0.5) {
+      console.log('🚀 Applying movement:', { deltaX, deltaY, selectedIds: selectedObjectIds });
+
+      setObjects(prev => prev.map(obj => {
+        if (selectedObjectIds.includes(obj.id)) {
+          const newObj = { ...obj, x: obj.x + deltaX, y: obj.y + deltaY };
+          console.log(`📦 Moving object ${obj.id}:`, {
+            from: { x: obj.x, y: obj.y },
+            to: { x: newObj.x, y: newObj.y }
+          });
+          return newObj;
+        }
+        return obj;
+      }));
+
+      dragState.current.lastX = currentX;
+      dragState.current.lastY = currentY;
+      dragState.current.hasMoved = true;
+    } else {
+      console.log('⏸️ Movement too small:', { deltaX, deltaY });
+    }
+  }, [isDragging, selectedObjectIds]);
+
+  // End dragging
+  const endDrag = useCallback(() => {
+    if (isDragging) {
+      setIsDragging(false);
+      console.log('🏁 Drag ended:', { hasMoved: dragState.current.hasMoved });
+      dragState.current = { startX: 0, startY: 0, lastX: 0, lastY: 0, hasMoved: false };
+    }
+  }, [isDragging]);
 
   // Delete selected objects
   const deleteSelectedObjects = useCallback(() => {
@@ -423,7 +486,9 @@ export const useCanvasObjects = () => {
     getObjectAtPosition,
     createGroup,
     ungroupObjects,
-    moveObjects,
+    startDrag,
+    updateDrag,
+    endDrag,
     deleteSelectedObjects,
     renderObjects,
     setIsDrawing,
