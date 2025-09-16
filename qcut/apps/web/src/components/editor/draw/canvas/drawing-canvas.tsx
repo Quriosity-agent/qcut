@@ -42,16 +42,21 @@ export const DrawingCanvas = forwardRef<HTMLCanvasElement, DrawingCanvasProps>((
   // Image management hook
   const {
     images,
-    selectedImageId,
+    groups,
+    selectedImageIds,
     isDragging,
     addImage,
     removeImage,
     selectImage,
+    selectImages,
     getImageAtPosition,
     startDrag,
     updateDrag,
     endDrag,
-    renderImages
+    renderImages,
+    createGroup,
+    ungroupObjects,
+    selectGroup
   } = useCanvasImages(canvasRef);
 
   // Memoize canvas dimensions for performance
@@ -123,25 +128,33 @@ export const DrawingCanvas = forwardRef<HTMLCanvasElement, DrawingCanvasProps>((
       });
     }, []),
 
-    onSelectObject: useCallback((canvasPosition: { x: number; y: number }) => {
+    onSelectObject: useCallback((canvasPosition: { x: number; y: number }, isMultiSelect = false) => {
       // Try to select an image at the position
       const image = getImageAtPosition(canvasPosition.x, canvasPosition.y);
       if (image) {
-        console.log('🎯 Image selected:', { imageId: image.id, position: canvasPosition });
-        selectImage(image.id);
+        console.log('🎯 Image selected:', {
+          imageId: image.id,
+          position: canvasPosition,
+          multiSelect: isMultiSelect,
+          currentSelection: selectedImageIds
+        });
+
+        selectImage(image.id, isMultiSelect);
         startDrag(image.id, canvasPosition.x, canvasPosition.y);
         return true; // Object was selected
       } else {
-        // Deselect all if clicked on empty space
-        selectImage(null);
+        // Deselect all if clicked on empty space (unless multi-selecting)
+        if (!isMultiSelect) {
+          selectImage(null);
+        }
         return false; // No object selected
       }
-    }, [getImageAtPosition, selectImage, startDrag]),
+    }, [getImageAtPosition, selectImage, startDrag, selectedImageIds]),
 
     onMoveObject: useCallback((startPos: { x: number; y: number }, currentPos: { x: number; y: number }) => {
-      if (selectedImageId && isDragging) {
-        console.log('🚀 Moving image:', {
-          imageId: selectedImageId,
+      if (selectedImageIds.length > 0 && isDragging) {
+        console.log('🚀 Moving objects:', {
+          selectedIds: selectedImageIds,
           startPos,
           currentPos,
           deltaX: currentPos.x - startPos.x,
@@ -149,7 +162,7 @@ export const DrawingCanvas = forwardRef<HTMLCanvasElement, DrawingCanvasProps>((
         });
         updateDrag(currentPos.x, currentPos.y);
       }
-    }, [selectedImageId, isDragging, updateDrag]),
+    }, [selectedImageIds, isDragging, updateDrag]),
 
     onEndMove: useCallback(() => {
       console.log('🏁 End move operation');
@@ -292,11 +305,32 @@ export const DrawingCanvas = forwardRef<HTMLCanvasElement, DrawingCanvasProps>((
     }
   }, [images, renderImages]);
 
-  // Expose canvas ref and image upload function to parent
+  // Expose canvas ref and image/group functions to parent
   useImperativeHandle(ref, () => ({
     ...canvasRef.current!,
-    handleImageUpload
-  }), [handleImageUpload]);
+    handleImageUpload,
+    getSelectedCount: () => selectedImageIds.length,
+    getHasGroups: () => groups.length > 0,
+    handleCreateGroup: () => {
+      const groupId = createGroup();
+      if (groupId) {
+        console.log('✅ Group created successfully:', { groupId, selectedCount: selectedImageIds.length });
+      } else {
+        console.log('❌ Failed to create group - need at least 2 selected objects');
+      }
+    },
+    handleUngroup: () => {
+      // Find groups that contain any of the selected images
+      const selectedGroups = groups.filter(group =>
+        group.objectIds.some(id => selectedImageIds.includes(id))
+      );
+
+      selectedGroups.forEach(group => {
+        ungroupObjects(group.id);
+        console.log('✅ Group dissolved:', { groupId: group.id });
+      });
+    }
+  }), [handleImageUpload, selectedImageIds.length, groups.length, createGroup, ungroupObjects, selectedImageIds, groups]);
 
   return (
     <div

@@ -36,7 +36,7 @@ export const useCanvasImages = (canvasRef: React.RefObject<HTMLCanvasElement>) =
   const [isDragging, setIsDragging] = useState(false);
   const [isResizing, setIsResizing] = useState(false);
   const [isMultiSelecting, setIsMultiSelecting] = useState(false);
-  const dragOffset = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+  const dragOffset = useRef<{ x: number; y: number; lastDeltaX?: number; lastDeltaY?: number }>({ x: 0, y: 0 });
 
   const addImage = useCallback(async (file: File) => {
     return new Promise<string>((resolve, reject) => {
@@ -240,23 +240,55 @@ export const useCanvasImages = (canvasRef: React.RefObject<HTMLCanvasElement>) =
       // Draw image
       ctx.drawImage(img.element, img.x, img.y, img.width, img.height);
 
-      // Draw selection handles if selected
+      // Draw selection borders and handles if selected
       if (img.selected) {
+        // Selection border
         ctx.strokeStyle = '#ff6b35'; // Orange selection color
-        ctx.lineWidth = 2;
-        ctx.setLineDash([5, 5]);
-        ctx.strokeRect(img.x, img.y, img.width, img.height);
+        ctx.lineWidth = 3;
+        ctx.setLineDash([]);
+        ctx.strokeRect(img.x - 2, img.y - 2, img.width + 4, img.height + 4);
+
+        // Group indicator if part of a group
+        if (img.groupId) {
+          ctx.strokeStyle = '#00ff88'; // Green for grouped items
+          ctx.lineWidth = 2;
+          ctx.setLineDash([8, 4]);
+          ctx.strokeRect(img.x - 4, img.y - 4, img.width + 8, img.height + 8);
+        }
 
         // Selection handles
-        const handleSize = 8;
+        const handleSize = 10;
         ctx.fillStyle = '#ff6b35';
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 2;
         ctx.setLineDash([]);
 
         // Corner handles
-        ctx.fillRect(img.x - handleSize/2, img.y - handleSize/2, handleSize, handleSize);
-        ctx.fillRect(img.x + img.width - handleSize/2, img.y - handleSize/2, handleSize, handleSize);
-        ctx.fillRect(img.x - handleSize/2, img.y + img.height - handleSize/2, handleSize, handleSize);
-        ctx.fillRect(img.x + img.width - handleSize/2, img.y + img.height - handleSize/2, handleSize, handleSize);
+        const corners = [
+          { x: img.x - handleSize/2, y: img.y - handleSize/2 }, // Top-left
+          { x: img.x + img.width - handleSize/2, y: img.y - handleSize/2 }, // Top-right
+          { x: img.x - handleSize/2, y: img.y + img.height - handleSize/2 }, // Bottom-left
+          { x: img.x + img.width - handleSize/2, y: img.y + img.height - handleSize/2 } // Bottom-right
+        ];
+
+        corners.forEach(corner => {
+          ctx.fillRect(corner.x, corner.y, handleSize, handleSize);
+          ctx.strokeRect(corner.x, corner.y, handleSize, handleSize);
+        });
+
+        // Middle handles for resizing
+        const midHandles = [
+          { x: img.x + img.width/2 - handleSize/2, y: img.y - handleSize/2 }, // Top
+          { x: img.x + img.width/2 - handleSize/2, y: img.y + img.height - handleSize/2 }, // Bottom
+          { x: img.x - handleSize/2, y: img.y + img.height/2 - handleSize/2 }, // Left
+          { x: img.x + img.width - handleSize/2, y: img.y + img.height/2 - handleSize/2 } // Right
+        ];
+
+        ctx.fillStyle = '#ffffff';
+        midHandles.forEach(handle => {
+          ctx.fillRect(handle.x, handle.y, handleSize, handleSize);
+          ctx.strokeRect(handle.x, handle.y, handleSize, handleSize);
+        });
       }
 
       ctx.restore();
@@ -265,18 +297,24 @@ export const useCanvasImages = (canvasRef: React.RefObject<HTMLCanvasElement>) =
 
   return {
     images,
-    selectedImageId,
+    groups,
+    selectedImageIds,
     isDragging,
     isResizing,
+    isMultiSelecting,
     addImage,
     removeImage,
     updateImage,
     selectImage,
+    selectImages,
     getImageAtPosition,
     startDrag,
     updateDrag,
     endDrag,
-    renderImages
+    renderImages,
+    createGroup,
+    ungroupObjects,
+    selectGroup
   };
 };
 

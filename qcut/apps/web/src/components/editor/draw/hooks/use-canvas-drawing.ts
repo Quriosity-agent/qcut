@@ -10,7 +10,7 @@ interface DrawingOptions {
   onDrawingStart: () => void;
   onDrawingEnd: () => void;
   onTextInput?: (position: { x: number; y: number }) => void;
-  onSelectObject?: (position: { x: number; y: number }) => boolean;
+  onSelectObject?: (position: { x: number; y: number }, isMultiSelect?: boolean) => boolean;
   onMoveObject?: (startPos: { x: number; y: number }, currentPos: { x: number; y: number }) => void;
   onEndMove?: () => void;
 }
@@ -229,9 +229,11 @@ export const useCanvasDrawing = (
     // Handle select tool click
     if (options.tool.category === 'select') {
       if (options.onSelectObject) {
-        const objectSelected = options.onSelectObject(pos);
+        // Check for Ctrl key for multi-selection
+        const isMultiSelect = e.nativeEvent.ctrlKey || e.nativeEvent.metaKey;
+        const objectSelected = options.onSelectObject(pos, isMultiSelect);
         if (objectSelected) {
-          console.log('🎯 Object selected for moving');
+          console.log('🎯 Object selected for moving:', { multiSelect: isMultiSelect });
           // Object was selected, prepare for potential drag
           isDrawing.current = true; // Use drawing state to track selection drag
           return;

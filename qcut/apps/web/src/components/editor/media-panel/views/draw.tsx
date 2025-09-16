@@ -1,4 +1,4 @@
-import React, { useRef, useState, useCallback } from "react";
+import React, { useRef, useState, useCallback, useEffect } from "react";
 import { useWhiteDrawStore } from "@/stores/white-draw-store";
 import { PenTool } from "lucide-react";
 import { DrawingCanvas } from "@/components/editor/draw/canvas/drawing-canvas";
@@ -11,6 +11,8 @@ const DrawView: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const canvasComponentRef = useRef<any>(null);
   const [currentDrawingData, setCurrentDrawingData] = useState<string>("");
+  const [selectedCount, setSelectedCount] = useState(0);
+  const [hasGroups, setHasGroups] = useState(false);
 
   // Handle loading a drawing from saved files
   const handleLoadDrawing = useCallback((drawingData: string) => {
@@ -31,6 +33,41 @@ const DrawView: React.FC = () => {
       canvasComponentRef.current.handleImageUpload(file);
     }
   }, []);
+
+  // Handle group creation
+  const handleCreateGroup = useCallback(() => {
+    if (canvasComponentRef.current?.handleCreateGroup) {
+      canvasComponentRef.current.handleCreateGroup();
+      // Update state after group creation
+      updateGroupState();
+    }
+  }, []);
+
+  // Handle group dissolution
+  const handleUngroup = useCallback(() => {
+    if (canvasComponentRef.current?.handleUngroup) {
+      canvasComponentRef.current.handleUngroup();
+      // Update state after ungrouping
+      updateGroupState();
+    }
+  }, []);
+
+  // Update group state from canvas
+  const updateGroupState = useCallback(() => {
+    if (canvasComponentRef.current) {
+      const newSelectedCount = canvasComponentRef.current.getSelectedCount?.() || 0;
+      const newHasGroups = canvasComponentRef.current.getHasGroups?.() || false;
+      setSelectedCount(newSelectedCount);
+      setHasGroups(newHasGroups);
+    }
+  }, []);
+
+  // Update group state when drawing changes
+  useEffect(() => {
+    if (currentDrawingData) {
+      updateGroupState();
+    }
+  }, [currentDrawingData, updateGroupState]);
 
   return (
     <div className="p-4 h-full flex flex-col">
@@ -89,6 +126,10 @@ const DrawView: React.FC = () => {
           <CanvasToolbar
             canvasRef={canvasRef}
             onImageUpload={handleImageUpload}
+            selectedCount={selectedCount}
+            hasGroups={hasGroups}
+            onCreateGroup={handleCreateGroup}
+            onUngroup={handleUngroup}
           />
           <div className="flex-1 flex items-center justify-center">
             <DrawingCanvas

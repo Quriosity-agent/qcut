@@ -14,6 +14,7 @@ import { useProjectStore } from "@/stores/project-store";
 import { TimelineIntegration } from "../utils/timeline-integration";
 import { DrawingStorage } from "../utils/drawing-storage";
 import { downloadDrawing, clearCanvas } from "../utils/canvas-utils";
+import { GroupControls } from "./group-controls";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -21,12 +22,20 @@ interface CanvasToolbarProps {
   canvasRef: React.RefObject<HTMLCanvasElement>;
   className?: string;
   onImageUpload?: (imageFile: File) => void;
+  selectedCount?: number;
+  hasGroups?: boolean;
+  onCreateGroup?: () => void;
+  onUngroup?: () => void;
 }
 
 export const CanvasToolbar: React.FC<CanvasToolbarProps> = ({
   canvasRef,
   className,
-  onImageUpload
+  onImageUpload,
+  selectedCount = 0,
+  hasGroups = false,
+  onCreateGroup,
+  onUngroup
 }) => {
   const [isExporting, setIsExporting] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -173,6 +182,18 @@ export const CanvasToolbar: React.FC<CanvasToolbarProps> = ({
           <Trash2 size={14} />
         </Button>
       </div>
+
+      {/* Group Controls - Only show if we have selection functionality */}
+      {(onCreateGroup || onUngroup) && (
+        <div className="flex items-center border-r border-gray-600 pr-2">
+          <GroupControls
+            selectedCount={selectedCount}
+            hasGroups={hasGroups}
+            onCreateGroup={onCreateGroup || (() => {})}
+            onUngroup={onUngroup || (() => {})}
+          />
+        </div>
+      )}
 
       {/* Export Actions */}
       <div className="flex items-center gap-1">
