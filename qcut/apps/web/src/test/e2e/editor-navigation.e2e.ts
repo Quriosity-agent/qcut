@@ -56,30 +56,24 @@ test.describe('Editor Navigation Test', () => {
     console.log('Attempting to click on project...');
 
     try {
-      // Click with a timeout to catch potential crashes
+      // Click and wait for editor route or editor UI to appear
       await firstProject.click({ timeout: 5000 });
-
-      // Wait a bit to see if the app crashes
-      await page.waitForTimeout(2000);
-
-      // Check if we're still connected
-      const title = await page.title().catch(() => 'CRASHED');
-      console.log(`Page title after click: ${title}`);
+      const editorLocator = page
+        .locator('[data-testid="editor-container"], [data-testid="timeline-track"], .editor-layout')
+        .first();
+      await Promise.race([
+        page.waitForURL(/editor/i, { timeout: 15000 }),
+        editorLocator.waitFor({ state: 'visible', timeout: 15000 }),
+      ]);
 
       // Check for any console errors
       if (errors.length > 0) {
         console.log('Console errors detected:', errors);
       }
 
-      // Try to verify we made it to the editor
-      const editorElement = page.locator('[data-testid="editor-container"], [data-testid="timeline-track"], .editor-layout');
-      const isOnEditor = await editorElement.first().isVisible({ timeout: 5000 }).catch(() => false);
-
-      if (isOnEditor) {
-        console.log('Successfully navigated to editor!');
-      } else {
-        console.log('Navigation completed but editor elements not found');
-      }
+      // Assert editor is visible (hard assertion; makes the test meaningful)
+      await expect(editorLocator).toBeVisible({ timeout: 15000 });
+      console.log('Successfully navigated to editor!');
 
     } catch (error) {
       console.error('Error during navigation:', error);

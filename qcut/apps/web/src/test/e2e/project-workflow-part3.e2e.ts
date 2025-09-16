@@ -3,9 +3,7 @@ import { test, expect, createTestProject } from './helpers/electron-helpers';
 test.describe('Project Persistence & Export (Subtask 1C)', () => {
   test('should handle project persistence', async ({ page }) => {
     // Setup: Create project and navigate to editor
-    
-    await page.getByTestId('new-project-button').click();
-    await page.waitForSelector('[data-testid="timeline-track"]');
+    await createTestProject(page, 'Persistence Test Project');
 
     // Test project state management
     // Projects are automatically saved in QCut, so we test the persistence layer
@@ -15,7 +13,10 @@ test.describe('Project Persistence & Export (Subtask 1C)', () => {
     await expect(timeline).toBeVisible();
 
     // 2. Navigate back to projects to test persistence
-    
+    await page.evaluate(() => {
+      window.location.hash = '#/projects';
+    });
+    await page.waitForLoadState('networkidle');
 
     // 3. Verify project appears in project list
     await page.waitForSelector('[data-testid="project-list-item"]');
@@ -63,9 +64,7 @@ test.describe('Project Persistence & Export (Subtask 1C)', () => {
 
   test('should maintain project state across sessions', async ({ page }) => {
     // Test 1: Create project with some state
-    
-    await page.getByTestId('new-project-button').click();
-    await page.waitForSelector('[data-testid="timeline-track"]');
+    await createTestProject(page, 'Session Test Project');
 
     const timeline = page.getByTestId('timeline-track');
     await expect(timeline).toBeVisible();
@@ -74,7 +73,10 @@ test.describe('Project Persistence & Export (Subtask 1C)', () => {
     const trackType = await timeline.getAttribute('data-track-type');
 
     // Test 2: Navigate away and back
-    
+    await page.evaluate(() => {
+      window.location.hash = '#/projects';
+    });
+    await page.waitForLoadState('networkidle');
     await page.waitForSelector('[data-testid="project-list-item"]');
 
     // Test 3: Reopen project

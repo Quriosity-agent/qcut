@@ -26,6 +26,7 @@ export interface DraggableMediaItemProps {
   rounded?: boolean;
   variant?: "default" | "card";
   isDraggable?: boolean;
+  stopPropagation?: boolean;
 }
 
 export function DraggableMediaItem({
@@ -41,6 +42,7 @@ export function DraggableMediaItem({
   rounded = true,
   variant = "default",
   isDraggable = true,
+  stopPropagation = true,
 }: DraggableMediaItemProps) {
   const [isDragging, setIsDragging] = useState(false);
   const [dragPosition, setDragPosition] = useState({ x: 0, y: 0 });
@@ -104,6 +106,7 @@ export function DraggableMediaItem({
             variant === "card" && "bg-card border rounded-md p-2",
             className
           )}
+          onClick={(e) => stopPropagation && e.stopPropagation()}
         >
           <AspectRatio
             ratio={aspectRatio}

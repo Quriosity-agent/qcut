@@ -33,30 +33,20 @@ export function TextView() {
     useTimelineStore.getState().addTextAtTime(textData, timeToUse);
   };
 
-  const handleWrapperClick = (e: React.MouseEvent) => {
-    // Only trigger if the click is directly on the wrapper, not on the draggable item
-    if (e.target === e.currentTarget) {
-      handleAddTextToTimeline();
-    }
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' || e.key === ' ') {
-      e.preventDefault();
-      handleAddTextToTimeline();
-    }
+  // For the outer button element: prevent page scroll on Space; rely on native click for activation.
+  const handleButtonKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === ' ') e.preventDefault();
   };
 
   return (
     <div className="p-4" data-testid="text-panel">
-      <div
+      <button
         data-testid="text-overlay-button"
-        role="button"
         aria-label="Add default text overlay"
-        tabIndex={0}
-        onClick={handleWrapperClick}
-        onKeyDown={handleKeyDown}
-        className="cursor-pointer"
+        onClick={handleAddTextToTimeline}
+        onKeyDown={handleButtonKeyDown}
+        className="cursor-pointer bg-transparent border-0 p-0 w-full"
+        type="button"
       >
         <DraggableMediaItem
           name="Default text"
@@ -74,8 +64,9 @@ export function TextView() {
           aspectRatio={1}
           onAddToTimeline={handleAddTextToTimeline}
           showLabel={false}
+          stopPropagation={false}
         />
-      </div>
+      </button>
     </div>
   );
 }

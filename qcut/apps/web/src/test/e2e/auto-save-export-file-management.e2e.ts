@@ -1,4 +1,4 @@
-import { test, expect, createTestProject } from './helpers/electron-helpers';
+import { test, expect, createTestProject, startElectronApp, getMainWindow } from './helpers/electron-helpers';
 
 test.describe('Auto-Save & Export File Management', () => {
 
@@ -79,7 +79,7 @@ test.describe('Auto-Save & Export File Management', () => {
     const autoSaveIndicator = page.locator('[data-testid="auto-save-indicator"]');
 
     // Auto-save indicator might be hidden but should exist in DOM
-    const autoSaveExists = await autoSaveIndicator.count() > 0;
+    const autoSaveExists = (await autoSaveIndicator.count()) > 0;
     expect(autoSaveExists).toBe(true);
 
     // Wait for auto-save to trigger with 1-second interval

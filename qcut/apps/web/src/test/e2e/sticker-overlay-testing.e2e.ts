@@ -33,7 +33,7 @@ test.describe('Sticker Overlay Testing (Subtask 3A)', () => {
     const stickerItems = page.getByTestId('sticker-item');
 
     // Wait for stickers to load
-    await page.waitForTimeout(2000);
+    await stickerItems.first().waitFor({ state: 'attached', timeout: 5000 }).catch(() => {});
 
     const itemCount = await stickerItems.count();
     if (itemCount > 0) {
@@ -46,7 +46,7 @@ test.describe('Sticker Overlay Testing (Subtask 3A)', () => {
       await firstSticker.click();
 
       // Verify sticker is selected (should have different styling)
-      await expect(firstSticker).toHaveAttribute('aria-pressed', 'false');
+      await expect(firstSticker).toHaveAttribute('aria-pressed', 'true');
     }
 
     // 4. Verify panel structure
@@ -70,7 +70,7 @@ test.describe('Sticker Overlay Testing (Subtask 3A)', () => {
 
     // Test sticker drag-and-drop functionality
     const stickerItems = page.getByTestId('sticker-item');
-    await page.waitForTimeout(1000);
+    await page.locator('[data-testid="sticker-item"]').first().waitFor({ state: 'attached', timeout: 5000 }).catch(() => {});
 
     const itemCount = await stickerItems.count();
     if (itemCount > 0) {
@@ -95,7 +95,7 @@ test.describe('Sticker Overlay Testing (Subtask 3A)', () => {
           targetPosition: { x: 100, y: 100 } // Drop at specific position
         });
 
-        await page.waitForTimeout(1000);
+        await expect(stickerInstances).toHaveCount(instancesBefore + 1, { timeout: 5000 });
 
         // Verify a sticker instance was added to canvas
         const instancesAfter = await stickerInstances.count();
@@ -115,10 +115,10 @@ test.describe('Sticker Overlay Testing (Subtask 3A)', () => {
 
         // Test hover and click interactions
         await firstSticker.hover();
-        await page.waitForTimeout(200);
+        // rely on assertion auto-waits below
 
         await firstSticker.click();
-        await page.waitForTimeout(500);
+        // rely on subsequent handle visibility assertion which auto-waits
 
         // Verify interaction feedback - check for selection or preview
         const hasSelectionState = await firstSticker.getAttribute('data-selected');
@@ -152,7 +152,7 @@ test.describe('Sticker Overlay Testing (Subtask 3A)', () => {
 
     const stickerCanvas = page.getByTestId('sticker-canvas');
     const stickerItems = page.getByTestId('sticker-item');
-    await page.waitForTimeout(1000);
+    await stickerItems.first().waitFor({ state: 'visible', timeout: 5000 }).catch(() => {});
 
     const itemCount = await stickerItems.count();
     if (itemCount > 0 && await stickerCanvas.count() > 0) {
@@ -163,7 +163,7 @@ test.describe('Sticker Overlay Testing (Subtask 3A)', () => {
         force: true,
         targetPosition: { x: 150, y: 150 }
       });
-      await page.waitForTimeout(1000);
+      await page.locator('[data-testid="sticker-instance"]').first().waitFor({ state: 'visible', timeout: 5000 });
 
       // Find the placed sticker instance
       const stickerInstances = page.locator('[data-testid="sticker-instance"]');
@@ -173,7 +173,7 @@ test.describe('Sticker Overlay Testing (Subtask 3A)', () => {
 
         // Test sticker manipulation: click to select
         await placedSticker.click();
-        await page.waitForTimeout(300);
+        // rely on subsequent handle visibility assertion which auto-waits
 
         // Check if selection controls appear
         const resizeHandles = page.locator('[data-testid="resize-handle"]');
@@ -202,8 +202,7 @@ test.describe('Sticker Overlay Testing (Subtask 3A)', () => {
         const deleteVisible = await deleteButton.waitFor({ state: 'visible', timeout: 1000 }).then(() => true).catch(() => false);
         if (deleteVisible) {
           await deleteButton.click();
-          await page.waitForTimeout(500);
-          await expect(placedSticker).not.toBeVisible();
+          await expect(placedSticker).toBeHidden({ timeout: 2000 });
         }
       }
     }
@@ -228,12 +227,10 @@ test.describe('Sticker Overlay Testing (Subtask 3A)', () => {
     if (searchVisible) {
       // Test search functionality
       await searchInput.fill('star');
-
-      // Wait for search results
-      await page.waitForTimeout(500);
+      await expect(searchInput).toHaveValue('star');
 
       // Clear search
-      await searchInput.clear();
+      await searchInput.fill('');
     }
 
     // Check for category tabs (Recent, All, etc.)
@@ -246,8 +243,7 @@ test.describe('Sticker Overlay Testing (Subtask 3A)', () => {
         const tab = categoryTabs.nth(i);
         await tab.click();
 
-        // Wait for content to load
-        await page.waitForTimeout(300);
+        // toHaveAttribute('data-state','active') below will auto-wait
 
         // Verify tab is active
         await expect(tab).toHaveAttribute('data-state', 'active');
@@ -309,7 +305,7 @@ test.describe('Sticker Overlay Testing (Subtask 3A)', () => {
 
     // Switch to another tab and back
     await page.getByTestId('media-panel-tab').click();
-    await page.waitForTimeout(200);
+    // returning to stickers tab is asserted below
 
     await page.getByTestId('stickers-panel-tab').click();
 
@@ -318,7 +314,7 @@ test.describe('Sticker Overlay Testing (Subtask 3A)', () => {
 
     // Test panel responsiveness
     const stickerItems = page.getByTestId('sticker-item');
-    await page.waitForTimeout(1000);
+    await stickerItems.first().waitFor({ state: 'visible', timeout: 5000 }).catch(() => {});
 
     const itemCount = await stickerItems.count();
     if (itemCount > 0) {
