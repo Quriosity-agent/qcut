@@ -12,6 +12,7 @@ import { StickersView } from "./views/stickers";
 import { CaptionsView } from "./views/captions";
 import { SoundsView } from "./views/sounds";
 import NanoEditView from "./views/nano-edit";
+import DrawView from "./views/draw";
 import React from "react";
 import { EFFECTS_ENABLED } from "@/config/features";
 
@@ -57,6 +58,7 @@ export function MediaPanel() {
     "nano-edit": <NanoEditView />,
     ai: <AiView />,
     sounds: <SoundsView />,
+    draw: <DrawView />,
   };
 
   return (

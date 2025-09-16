@@ -13,6 +13,7 @@ import {
   BotIcon,
   VolumeXIcon,
   PaletteIcon,
+  PenTool,
 } from "lucide-react";
 import { create } from "zustand";
 
@@ -29,7 +30,8 @@ export type Tab =
   | "text2image"
   | "nano-edit"
   | "ai"
-  | "sounds";
+  | "sounds"
+  | "draw";
 
 export const tabs: { [key in Tab]: { icon: LucideIcon; label: string } } = {
   media: {
@@ -83,6 +85,10 @@ export const tabs: { [key in Tab]: { icon: LucideIcon; label: string } } = {
   sounds: {
     icon: VolumeXIcon,
     label: "Sounds",
+  },
+  draw: {
+    icon: PenTool,
+    label: "Draw",
   },
 };
 
