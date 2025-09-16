@@ -58,15 +58,15 @@ export const CanvasToolbar: React.FC<CanvasToolbarProps> = ({
       console.log('🔍 Checking canvas ref type:', {
         refCurrent: canvasRef.current,
         isHTMLCanvasElement: canvasRef.current instanceof HTMLCanvasElement,
-        hasToDataURL: typeof canvasRef.current?.toDataURL === 'function',
-        tagName: canvasRef.current?.tagName
+        hasToDataURL: typeof (canvasRef.current as any)?.toDataURL === 'function',
+        tagName: (canvasRef.current as any)?.tagName
       });
 
       if (canvasRef.current instanceof HTMLCanvasElement) {
         // Direct canvas element
         canvas = canvasRef.current;
         console.log('✅ Found direct canvas element');
-      } else if (canvasRef.current?.tagName === 'CANVAS') {
+      } else if ((canvasRef.current as any)?.tagName === 'CANVAS') {
         // Canvas element with different typing
         canvas = canvasRef.current as HTMLCanvasElement;
         console.log('✅ Found canvas with CANVAS tagName');
