@@ -1,11 +1,13 @@
-import React from "react";
+import React, { useRef } from "react";
 import { useWhiteDrawStore } from "@/stores/white-draw-store";
 import { PenTool } from "lucide-react";
 import { DrawingCanvas } from "@/components/editor/draw/canvas/drawing-canvas";
 import { ToolSelector } from "@/components/editor/draw/components/tool-selector";
+import { CanvasToolbar } from "@/components/editor/draw/components/canvas-toolbar";
 
 const DrawView: React.FC = () => {
   const { activeTab, setActiveTab } = useWhiteDrawStore();
+  const canvasRef = useRef<HTMLCanvasElement>(null);
 
   return (
     <div className="p-4 h-full flex flex-col">
@@ -47,13 +49,17 @@ const DrawView: React.FC = () => {
       {/* Content Area - Phase 2 implementation */}
       <div className="flex-1 overflow-y-auto">
         {activeTab === "canvas" && (
-          <div className="w-full h-full flex items-center justify-center">
-            <DrawingCanvas
-              className="max-w-full max-h-full"
-              onDrawingChange={(dataUrl) => {
-                console.log("Drawing updated:", dataUrl.slice(0, 50) + "...");
-              }}
-            />
+          <div className="w-full h-full flex flex-col space-y-4">
+            <CanvasToolbar canvasRef={canvasRef} />
+            <div className="flex-1 flex items-center justify-center">
+              <DrawingCanvas
+                ref={canvasRef}
+                className="max-w-full max-h-full"
+                onDrawingChange={(dataUrl) => {
+                  console.log("Drawing updated:", dataUrl.slice(0, 50) + "...");
+                }}
+              />
+            </div>
           </div>
         )}
         {activeTab === "tools" && (

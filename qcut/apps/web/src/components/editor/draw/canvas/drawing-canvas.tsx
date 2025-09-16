@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useCallback, useMemo } from 'react';
+import React, { useRef, useEffect, useCallback, useMemo, forwardRef, useImperativeHandle } from 'react';
 import { useWhiteDrawStore, selectCurrentTool } from "@/stores/white-draw-store";
 import { useCanvasDrawing } from "../hooks/use-canvas-drawing";
 import { cn } from "@/lib/utils";
@@ -14,12 +14,12 @@ interface DrawingCanvasProps {
 // Default canvas size matches QCut editor dimensions
 const DEFAULT_CANVAS_SIZE = { width: 800, height: 450 }; // 16:9 ratio
 
-export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
+export const DrawingCanvas = forwardRef<HTMLCanvasElement, DrawingCanvasProps>(({
   className,
   onDrawingChange,
   backgroundImage,
   disabled = false
-}) => {
+}, ref) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const backgroundCanvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -27,6 +27,9 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
   // Use selectors for performance optimization
   const currentTool = useWhiteDrawStore(selectCurrentTool);
   const { brushSize, color, opacity, setDrawing, saveToHistory } = useWhiteDrawStore();
+
+  // Expose canvas ref to parent
+  useImperativeHandle(ref, () => canvasRef.current!, []);
 
   // Memoize canvas dimensions for performance
   const canvasDimensions = useMemo(() => {
@@ -213,4 +216,6 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
       )}
     </div>
   );
-};
+});
+
+DrawingCanvas.displayName = 'DrawingCanvas';
