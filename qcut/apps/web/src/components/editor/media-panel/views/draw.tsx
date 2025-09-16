@@ -1,6 +1,7 @@
 import React from "react";
 import { useWhiteDrawStore } from "@/stores/white-draw-store";
 import { PenTool } from "lucide-react";
+import { DrawingCanvas } from "@/components/editor/draw/canvas/drawing-canvas";
 
 const DrawView: React.FC = () => {
   const { activeTab, setActiveTab } = useWhiteDrawStore();
@@ -45,8 +46,13 @@ const DrawView: React.FC = () => {
       {/* Content Area - Phase 2 implementation */}
       <div className="flex-1 overflow-y-auto">
         {activeTab === "canvas" && (
-          <div className="w-full h-full border-2 border-dashed border-gray-600 rounded-lg flex items-center justify-center">
-            <p className="text-gray-400">Drawing Canvas (Phase 2)</p>
+          <div className="w-full h-full flex items-center justify-center">
+            <DrawingCanvas
+              className="max-w-full max-h-full"
+              onDrawingChange={(dataUrl) => {
+                console.log("Drawing updated:", dataUrl.slice(0, 50) + "...");
+              }}
+            />
           </div>
         )}
         {activeTab === "tools" && (
