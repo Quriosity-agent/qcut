@@ -6,25 +6,29 @@
  * preview functionality, and export with AI enhancements.
  */
 
-import { test, expect, createTestProject, importTestVideo } from './helpers/electron-helpers';
+import { test, expect, createTestProject, importTestVideo, navigateToProjects } from './helpers/electron-helpers';
 
 /**
  * Test suite for AI Enhancement & Export Integration (Test #4B)
  * Covers subtasks 4B.1 through 4B.7 from the E2E testing priority document.
  */
 test.describe('AI Enhancement & Export Integration', () => {
+  test.beforeEach(async ({ page }, testInfo) => {
+    // Ensure we start from the projects hub before creating a fresh project per test
+    await navigateToProjects(page);
+
+    const projectName = `AI Enhancement ${testInfo.title}`;
+    await createTestProject(page, projectName);
+    await importTestVideo(page);
+
+    await expect(page.locator('[data-testid="media-item"]').first()).toBeVisible();
+  });
   /**
    * Test 4B.1: Access AI enhancement tools
    * Verifies user can access AI enhancement panel and features after importing media.
    */
   test('4B.1 - Access AI enhancement tools', async ({ page }) => {
-    // Create new project (Electron app should already be loaded)
-    await createTestProject(page, 'AI Enhancement Test');
-
-    // Import media file first
-    await importTestVideo(page);
-
-    // Verify media item appears
+    // Verify media item appears from setup
     await expect(page.locator('[data-testid="media-item"]').first()).toBeVisible();
 
     // Switch to AI panel in media panel
@@ -76,7 +80,10 @@ test.describe('AI Enhancement & Export Integration', () => {
   test('4B.3 - Use enhanced media in timeline', async ({ page }) => {
     // Drag enhanced media to timeline
     const mediaItem = page.locator('[data-testid="media-item"]').first();
+    await expect(mediaItem).toBeVisible();
+
     const timelineTrack = page.locator('[data-testid="timeline-track"]').first();
+    await expect(timelineTrack).toBeVisible();
 
     // Perform drag and drop operation with intermediate steps for reliability
     await mediaItem.hover();
@@ -103,7 +110,21 @@ test.describe('AI Enhancement & Export Integration', () => {
   test('4B.4 - Preview enhanced media with effects', async ({ page }) => {
     // Ensure timeline has content
     const timelineElements = page.locator('[data-testid="timeline-element"]');
-    await expect(timelineElements.first()).toBeVisible();
+
+    if (await timelineElements.count() === 0) {
+      const mediaItem = page.locator('[data-testid="media-item"]').first();
+      const timelineTrack = page.locator('[data-testid="timeline-track"]').first();
+
+      await expect(mediaItem).toBeVisible();
+      await expect(timelineTrack).toBeVisible();
+
+      await mediaItem.hover();
+      await page.mouse.down();
+      await timelineTrack.hover();
+      await page.mouse.up();
+
+      await expect(timelineElements.first()).toBeVisible();
+    }
 
     // Click play to preview enhanced media
     const playButton = page.locator('[data-testid="play-pause-button"]');
