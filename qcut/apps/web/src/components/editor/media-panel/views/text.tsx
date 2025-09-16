@@ -33,6 +33,10 @@ export function TextView() {
     useTimelineStore.getState().addTextAtTime(textData, timeToUse);
   };
 
+  const handleButtonClick = () => {
+    handleAddTextToTimeline();
+  };
+
   // For the outer button element: prevent page scroll on Space; rely on native click for activation.
   const handleButtonKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === ' ') e.preventDefault();
@@ -43,7 +47,7 @@ export function TextView() {
       <button
         data-testid="text-overlay-button"
         aria-label="Add default text overlay"
-        onClick={handleAddTextToTimeline}
+        onClick={handleButtonClick}
         onKeyDown={handleButtonKeyDown}
         className="cursor-pointer bg-transparent border-0 p-0 w-full"
         type="button"
