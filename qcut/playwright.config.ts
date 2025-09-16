@@ -7,7 +7,8 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
   workers: 1, // Force single worker for Electron to avoid port conflicts
-  reporter: 'html',
+  reporter: [['html', { outputFolder: './docs/completed/test-results' }]],
+  outputDir: './docs/completed/test-results-raw',
   timeout: 60000, // 1 minute timeout for E2E tests
   expect: {
     timeout: 10000, // 10 seconds for assertions
@@ -36,10 +37,7 @@ export default defineConfig({
     '**/*.test.ts',
     '**/*.test.tsx',
     '**/*.spec.ts',
-    '**/*.spec.tsx',
-    '**/src/test/**/*.ts',
-    '**/src/test/**/*.tsx',
-    '!**/src/test/e2e/**/*.e2e.ts'
+    '**/*.spec.tsx'
   ],
 
   // Note: No webServer needed - Electron tests launch the app directly from dist/electron/main.js

@@ -54,10 +54,10 @@ bun x playwright test --project=electron --debug
 
 #### Test Reports
 ```bash
-# Generate and open HTML report
+# Generate and open HTML report (saved in docs/completed/test-results/)
 bun x playwright show-report
 
-# Run with specific reporter
+# Run with specific reporter (results saved in docs/completed/)
 bun x playwright test --project=electron --reporter=html
 ```
 
@@ -127,7 +127,9 @@ qcut/
 │       ├── sticker-text-overlay-*.e2e.ts  # Overlay feature tests
 │       ├── auto-save-*.e2e.ts          # Auto-save feature tests
 │       └── cross-platform-*.e2e.ts    # Cross-platform tests
-└── test-results/                       # Generated test artifacts (gitignored)
+└── docs/completed/                     # Test results and completed artifacts
+    ├── test-results/                   # HTML test reports (gitignored)
+    └── test-results-raw/               # Raw test artifacts (gitignored)
 ```
 
 ## Core Functions and Architecture
