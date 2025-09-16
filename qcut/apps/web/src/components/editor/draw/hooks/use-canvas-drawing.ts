@@ -268,17 +268,49 @@ export const useCanvasDrawing = (
   }, [getCanvasCoordinates, options.onDrawingStart, options.disabled, drawLine, options.tool.category, options.tool.id]);
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
-    if (!isDrawing.current || options.disabled) return;
+    // Always log mouse move events to debug
+    console.log('🖱️ MOUSE MOVE EVENT FIRED:', {
+      toolCategory: options.tool.category,
+      isDrawing: isDrawing.current,
+      disabled: options.disabled,
+      buttons: e.buttons // This shows which mouse buttons are pressed
+    });
+
+    if (options.disabled) return;
 
     const currentPos = getCanvasCoordinates(e.nativeEvent);
 
-    // Handle select tool dragging
-    if (options.tool.category === 'select' && startPos.current) {
+    // Debug: Always log mouse move for select tool
+    if (options.tool.category === 'select') {
+      console.log('🖱️ Mouse move (select tool debug):', {
+        start: startPos.current,
+        current: currentPos,
+        isDrawing: isDrawing.current,
+        hasStartPos: !!startPos.current,
+        disabled: options.disabled,
+        toolCategory: options.tool.category,
+        buttons: e.buttons
+      });
+    }
+
+    // Handle select tool dragging - Fixed: Don't require buttons to be pressed
+    // isDrawing.current is sufficient to track drag state
+    if (options.tool.category === 'select' && isDrawing.current && startPos.current) {
+      console.log('🚀 Calling onMoveObject with positions:', {
+        start: startPos.current,
+        current: currentPos,
+        deltaX: currentPos.x - startPos.current.x,
+        deltaY: currentPos.y - startPos.current.y
+      });
+
       if (options.onMoveObject) {
         options.onMoveObject(startPos.current, currentPos);
       }
       return;
     }
+
+    // For other tools, require drawing state
+    if (!isDrawing.current) return;
 
     // Handle shape tools differently
     if (options.tool.category === 'shape' && startPos.current) {

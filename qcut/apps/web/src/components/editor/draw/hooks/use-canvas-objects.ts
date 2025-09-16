@@ -319,8 +319,19 @@ export const useCanvasObjects = () => {
       lastY: dragState.current.lastY
     });
 
-    if (!isDragging || selectedObjectIds.length === 0) {
-      console.log('❌ updateDrag early return:', { isDragging, selectedCount: selectedObjectIds.length });
+    // Only check if we have selected objects - don't rely on isDragging state
+    // since it might be out of sync between hooks
+    if (selectedObjectIds.length === 0) {
+      console.log('❌ updateDrag early return - no selected objects:', { selectedCount: selectedObjectIds.length });
+      return;
+    }
+
+    // Ensure we have a valid start position
+    if (dragState.current.lastX === 0 && dragState.current.lastY === 0) {
+      // Initialize drag state if not set
+      dragState.current.lastX = currentX;
+      dragState.current.lastY = currentY;
+      console.log('🔧 Initializing drag state:', { currentX, currentY });
       return;
     }
 

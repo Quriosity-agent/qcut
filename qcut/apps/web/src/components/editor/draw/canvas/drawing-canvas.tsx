@@ -161,12 +161,19 @@ export const DrawingCanvas = forwardRef<HTMLCanvasElement, DrawingCanvasProps>((
     }, [getObjectAtPosition, selectObjects, selectedObjectIds, startDrag]),
 
     onMoveObject: useCallback((startPos: { x: number; y: number }, currentPos: { x: number; y: number }) => {
-      if (selectedObjectIds.length > 0 && isDragging) {
+      if (selectedObjectIds.length > 0) {
         console.log('🚀 Moving objects:', {
           selectedIds: selectedObjectIds,
-          currentPos
+          startPos,
+          currentPos,
+          isDragState: isDragging
         });
         updateDrag(currentPos.x, currentPos.y);
+      } else {
+        console.log('❌ No objects selected for movement:', {
+          selectedCount: selectedObjectIds.length,
+          isDragState: isDragging
+        });
       }
     }, [selectedObjectIds, isDragging, updateDrag]),
 
