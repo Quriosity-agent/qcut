@@ -34,7 +34,7 @@ export interface WhiteDrawStore {
 
   // Drawing State
   isDrawing: boolean;
-  currentTool: DrawingTool;
+  currentTool: DrawingToolConfig;
   brushSize: number;
   color: string;
   opacity: number;
@@ -46,7 +46,7 @@ export interface WhiteDrawStore {
   // Actions
   setActiveTab: (tab: "canvas" | "tools") => void;
   setDrawing: (drawing: boolean) => void;
-  setTool: (tool: DrawingTool) => void;
+  setTool: (tool: DrawingToolConfig) => void;
   setBrushSize: (size: number) => void;
   setColor: (color: string) => void;
   setOpacity: (opacity: number) => void;

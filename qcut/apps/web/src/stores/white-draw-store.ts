@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { devtools } from "zustand/middleware";
-import type { WhiteDrawStore, DrawingTool } from "@/types/white-draw";
+import type { WhiteDrawStore, DrawingToolConfig } from "@/types/white-draw";
+import { DEFAULT_TOOL } from "@/components/editor/draw/constants/drawing-tools";
 
 export const useWhiteDrawStore = create<WhiteDrawStore>()(
   devtools(
@@ -8,7 +9,7 @@ export const useWhiteDrawStore = create<WhiteDrawStore>()(
       // State - matches nano-edit store structure
       activeTab: "canvas",
       isDrawing: false,
-      currentTool: { id: "brush", name: "Brush", cursor: "crosshair", category: "brush", description: "Freehand drawing" },
+      currentTool: DEFAULT_TOOL,
       brushSize: 10,
       color: "#000000",
       opacity: 1,

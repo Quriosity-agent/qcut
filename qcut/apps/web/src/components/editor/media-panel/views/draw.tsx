@@ -2,6 +2,7 @@ import React from "react";
 import { useWhiteDrawStore } from "@/stores/white-draw-store";
 import { PenTool } from "lucide-react";
 import { DrawingCanvas } from "@/components/editor/draw/canvas/drawing-canvas";
+import { ToolSelector } from "@/components/editor/draw/components/tool-selector";
 
 const DrawView: React.FC = () => {
   const { activeTab, setActiveTab } = useWhiteDrawStore();
@@ -56,7 +57,7 @@ const DrawView: React.FC = () => {
           </div>
         )}
         {activeTab === "tools" && (
-          <div className="text-gray-400">Tool Selector (Phase 3)</div>
+          <ToolSelector className="h-full" />
         )}
       </div>
     </div>
