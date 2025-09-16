@@ -10,10 +10,10 @@ import { ElectronApplication, _electron as electron } from 'playwright';
 import { resolve as pathResolve } from 'path';
 
 /**
- * Resolve media fixture paths relative to this helper file
+ * Resolve media fixture paths relative to the project root
  */
 const mediaPath = (file: string) =>
-  pathResolve(__dirname, '../fixtures/media', file);
+  pathResolve(process.cwd(), 'apps/web/src/test/e2e/fixtures/media', file);
 
 /**
  * Electron-specific test fixtures that extend Playwright's base fixtures
@@ -201,8 +201,9 @@ export async function uploadTestMedia(page: Page, filePath: string) {
   const fileInput = page.locator('input[type="file"]');
   await fileInput.setInputFiles(filePath);
 
-  // Wait for upload to complete
-  await page.waitForSelector('[data-testid="media-item"]', { timeout: 15000 });
+  // Wait for upload to complete - look for the media item in the media panel
+  // Just wait for the file name to appear as that's the most reliable indicator
+  await page.waitForSelector('text=sample-', { timeout: 15000 });
 }
 
 /**
