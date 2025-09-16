@@ -100,3 +100,10 @@ docs/issues/video-effect/
 /apps/web/public/ffmpeg/
 /electron/resources/ffmpeg/*.js
 /electron/resources/ffmpeg/*.wasm
+
+# Playwright test artifacts
+test-results/
+test-temp/
+tmp/
+playwright-report/
+playwright/.cache/
