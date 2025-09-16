@@ -52,59 +52,38 @@ export const CanvasToolbar: React.FC<CanvasToolbarProps> = ({
     }
 
     try {
-      // The canvasRef might be pointing to the DrawingCanvas component, not the HTMLCanvasElement
-      let canvas: HTMLCanvasElement | null = null;
+      let dataUrl: string | null = null;
 
-      console.log('🔍 Checking canvas ref type:', {
-        refCurrent: canvasRef.current,
-        isHTMLCanvasElement: canvasRef.current instanceof HTMLCanvasElement,
-        hasToDataURL: typeof (canvasRef.current as any)?.toDataURL === 'function',
-        tagName: (canvasRef.current as any)?.tagName
-      });
-
-      if (canvasRef.current instanceof HTMLCanvasElement) {
-        // Direct canvas element
-        canvas = canvasRef.current;
-        console.log('✅ Found direct canvas element');
-      } else if ((canvasRef.current as any)?.tagName === 'CANVAS') {
-        // Canvas element with different typing
-        canvas = canvasRef.current as HTMLCanvasElement;
-        console.log('✅ Found canvas with CANVAS tagName');
+      // Check if this is a DrawingCanvas component with getCanvasDataUrl method
+      if (typeof (canvasRef.current as any)?.getCanvasDataUrl === 'function') {
+        console.log('✅ Using DrawingCanvas.getCanvasDataUrl method');
+        dataUrl = (canvasRef.current as any).getCanvasDataUrl();
       } else {
-        // Might be a component ref, try to find the canvas inside it
-        console.log('🔍 Searching for canvas element in component...');
+        // Fallback to direct canvas access (legacy)
+        console.log('🔄 Falling back to direct canvas access');
 
-        // Try common canvas selectors
-        const canvasElement = document.querySelector('.drawing-canvas canvas') ||
-                             document.querySelector('canvas[role="img"]') ||
-                             document.querySelector('canvas[aria-label="Drawing canvas"]');
+        let canvas: HTMLCanvasElement | null = null;
 
-        if (canvasElement instanceof HTMLCanvasElement) {
-          canvas = canvasElement;
-          console.log('✅ Found canvas via querySelector:', {
-            selector: canvasElement.getAttribute('aria-label') || canvasElement.className,
-            width: canvas.width,
-            height: canvas.height
-          });
+        if (canvasRef.current instanceof HTMLCanvasElement) {
+          canvas = canvasRef.current;
+        } else {
+          // Try to find canvas in DOM
+          const canvasElement = document.querySelector('.drawing-canvas canvas[aria-label="Drawing canvas"]');
+          if (canvasElement instanceof HTMLCanvasElement) {
+            canvas = canvasElement;
+          }
+        }
+
+        if (canvas) {
+          dataUrl = canvas.toDataURL('image/png');
         }
       }
 
-      if (!canvas) {
-        console.error('❌ Could not find canvas element');
-        toast.error("Canvas element not found");
+      if (!dataUrl) {
+        console.error('❌ Could not generate canvas data URL');
+        toast.error("Failed to generate image data");
         return;
       }
-
-      console.log('✅ Canvas found:', {
-        width: canvas.width,
-        height: canvas.height,
-        tagName: canvas.tagName,
-        isConnected: canvas.isConnected,
-        hasContext: !!canvas.getContext('2d')
-      });
-
-      console.log('🖼️ Generating canvas data URL...');
-      const dataUrl = canvas.toDataURL('image/png');
 
       const filename = `drawing-${Date.now()}.png`;
       console.log('📱 Data URL generated:', {
@@ -142,8 +121,27 @@ export const CanvasToolbar: React.FC<CanvasToolbarProps> = ({
 
     setIsExporting(true);
     try {
-      const canvas = canvasRef.current;
-      const dataUrl = canvas.toDataURL('image/png');
+      let dataUrl: string | null = null;
+
+      // Use the same logic as download
+      if (typeof (canvasRef.current as any)?.getCanvasDataUrl === 'function') {
+        dataUrl = (canvasRef.current as any).getCanvasDataUrl();
+      } else {
+        // Fallback to direct canvas access
+        const canvas = canvasRef.current instanceof HTMLCanvasElement
+          ? canvasRef.current
+          : document.querySelector('.drawing-canvas canvas[aria-label="Drawing canvas"]') as HTMLCanvasElement;
+
+        if (canvas) {
+          dataUrl = canvas.toDataURL('image/png');
+        }
+      }
+
+      if (!dataUrl) {
+        toast.error("Failed to generate image data");
+        return;
+      }
+
       await TimelineIntegration.quickExport(dataUrl);
     } catch (error) {
       toast.error("Failed to export to timeline");
@@ -165,8 +163,27 @@ export const CanvasToolbar: React.FC<CanvasToolbarProps> = ({
 
     setIsSaving(true);
     try {
-      const canvas = canvasRef.current;
-      const dataUrl = canvas.toDataURL('image/png');
+      let dataUrl: string | null = null;
+
+      // Use the same logic as download
+      if (typeof (canvasRef.current as any)?.getCanvasDataUrl === 'function') {
+        dataUrl = (canvasRef.current as any).getCanvasDataUrl();
+      } else {
+        // Fallback to direct canvas access
+        const canvas = canvasRef.current instanceof HTMLCanvasElement
+          ? canvasRef.current
+          : document.querySelector('.drawing-canvas canvas[aria-label="Drawing canvas"]') as HTMLCanvasElement;
+
+        if (canvas) {
+          dataUrl = canvas.toDataURL('image/png');
+        }
+      }
+
+      if (!dataUrl) {
+        toast.error("Failed to generate image data");
+        return;
+      }
+
       const filename = `quick-save-${new Date().toISOString().slice(0, 19).replace(/[:-]/g, '')}.png`;
 
       await DrawingStorage.saveDrawing(dataUrl, activeProject.id, filename, ["quick-save"]);

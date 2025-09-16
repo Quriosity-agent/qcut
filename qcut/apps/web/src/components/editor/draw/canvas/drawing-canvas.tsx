@@ -378,12 +378,52 @@ export const DrawingCanvas = forwardRef<HTMLCanvasElement, DrawingCanvasProps>((
     }
   }, [objects, renderObjects]);
 
+  // Force render all objects and get canvas data URL for download
+  const getCanvasDataUrl = useCallback(() => {
+    const canvas = canvasRef.current;
+    const ctx = canvas?.getContext('2d');
+    if (!ctx || !canvas) {
+      console.error('❌ Canvas not available for download');
+      return null;
+    }
+
+    console.log('🖼️ Preparing canvas for download:', {
+      objectCount: objects.length,
+      canvasSize: { width: canvas.width, height: canvas.height }
+    });
+
+    // Clear and redraw everything for download
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Set white background
+    ctx.fillStyle = 'white';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Render all objects
+    if (objects.length > 0) {
+      renderObjects(ctx);
+      console.log('✅ Objects rendered for download');
+    } else {
+      console.log('⚠️ No objects to render');
+    }
+
+    // Get the data URL
+    const dataUrl = canvas.toDataURL('image/png');
+    console.log('📸 Canvas data URL generated:', {
+      dataUrlLength: dataUrl.length,
+      isValid: dataUrl.startsWith('data:image/png;base64,')
+    });
+
+    return dataUrl;
+  }, [objects, renderObjects]);
+
   // Expose canvas ref and object/group functions to parent
   useImperativeHandle(ref, () => ({
     ...canvasRef.current!,
     handleImageUpload,
     getSelectedCount: () => selectedObjectIds.length,
     getHasGroups: () => groups.length > 0,
+    getCanvasDataUrl, // Add this method for downloads
     handleCreateGroup: () => {
       const groupId = createGroup();
       if (groupId) {
@@ -403,7 +443,7 @@ export const DrawingCanvas = forwardRef<HTMLCanvasElement, DrawingCanvasProps>((
         console.log('✅ Group dissolved:', { groupId: group.id });
       });
     }
-  }), [handleImageUpload, selectedObjectIds.length, groups.length, createGroup, ungroupObjects, selectedObjectIds, groups]);
+  }), [handleImageUpload, selectedObjectIds.length, groups.length, createGroup, ungroupObjects, selectedObjectIds, groups, getCanvasDataUrl]);
 
   return (
     <div
