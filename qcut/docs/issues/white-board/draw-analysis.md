@@ -162,28 +162,128 @@ apps/web/src/components/editor/white-draw-panel/
 - `apps/web/src/components/editor/white-draw-panel/index.ts` - Export barrel file
 - `apps/web/src/stores/white-draw-store.ts` - Zustand store for drawing state
 
-**Implementation:**
+**Detailed Implementation:**
 ```typescript
 // white-draw-panel.tsx - Basic panel structure following QCut patterns
+import { useWhiteDrawStore } from "@/stores/white-draw-store";
+
 export function WhiteDrawPanel() {
+  const { currentTool, isDrawing } = useWhiteDrawStore();
+
   return (
     <div className="flex flex-col h-full bg-background">
       <div className="flex-1 p-4">
-        {/* Drawing canvas area */}
+        {/* Drawing canvas area - placeholder for Phase 2 */}
+        <div className="w-full h-full border-2 border-dashed border-border rounded-lg flex items-center justify-center">
+          <p className="text-muted-foreground">Drawing Canvas (Phase 2)</p>
+        </div>
       </div>
     </div>
   );
 }
+
+// white-draw-store.ts - Zustand store following QCut patterns
+import { create } from "zustand";
+
+interface DrawingTool {
+  id: string;
+  name: string;
+  cursor: string;
+}
+
+interface WhiteDrawStore {
+  // Drawing state
+  isDrawing: boolean;
+  currentTool: DrawingTool;
+  brushSize: number;
+  color: string;
+  layers: string[]; // Canvas data URLs
+  history: string[]; // History states
+  historyIndex: number;
+
+  // Actions
+  setDrawing: (drawing: boolean) => void;
+  setTool: (tool: DrawingTool) => void;
+  setBrushSize: (size: number) => void;
+  setColor: (color: string) => void;
+  addLayer: () => void;
+  saveToHistory: (state: string) => void;
+  undo: () => void;
+  redo: () => void;
+  clear: () => void;
+}
+
+export const useWhiteDrawStore = create<WhiteDrawStore>((set, get) => ({
+  // Initial state
+  isDrawing: false,
+  currentTool: { id: "brush", name: "Brush", cursor: "crosshair" },
+  brushSize: 10,
+  color: "#000000",
+  layers: [],
+  history: [],
+  historyIndex: -1,
+
+  // Actions
+  setDrawing: (drawing) => set({ isDrawing: drawing }),
+  setTool: (tool) => set({ currentTool: tool }),
+  setBrushSize: (size) => set({ brushSize: size }),
+  setColor: (color) => set({ color }),
+  addLayer: () => set((state) => ({ layers: [...state.layers, ""] })),
+
+  saveToHistory: (state) => set((current) => {
+    const newHistory = current.history.slice(0, current.historyIndex + 1);
+    newHistory.push(state);
+    return {
+      history: newHistory.slice(-50), // Limit to 50 states
+      historyIndex: newHistory.length - 1
+    };
+  }),
+
+  undo: () => set((state) => ({
+    historyIndex: Math.max(0, state.historyIndex - 1)
+  })),
+
+  redo: () => set((state) => ({
+    historyIndex: Math.min(state.history.length - 1, state.historyIndex + 1)
+  })),
+
+  clear: () => set({
+    layers: [],
+    history: [],
+    historyIndex: -1,
+    isDrawing: false
+  })
+}));
 ```
 
 #### **Task 1.2: Panel Registration** ⏱️ *4 minutes*
 **Files to Modify:**
 - `apps/web/src/components/editor/panel-layouts.tsx` - Add white-draw panel to layout system
-- `apps/web/src/components/editor/panels/index.ts` - Export new panel
+- `apps/web/src/components/editor/media-panel/index.tsx` - Add draw tab
+
+**Implementation Pattern:**
+```typescript
+// In media-panel/index.tsx, add to viewMap:
+import { WhiteDrawView } from "./views/white-draw";
+
+const viewMap: Record<Tab, React.ReactNode> = {
+  // ... existing tabs
+  draw: <WhiteDrawView />,
+};
+
+// In media-panel/store.ts, update Tab type:
+export type Tab = "media" | "audio" | "text" | "stickers" | "effects" | "transitions" | "captions" | "filters" | "text2image" | "ai" | "sounds" | "nano-edit" | "draw";
+```
 
 #### **Task 1.3: Store Integration** ⏱️ *3 minutes*
 **Files to Modify:**
 - `apps/web/src/stores/index.ts` - Export white-draw store
+
+**Implementation:**
+```typescript
+// Add to stores/index.ts
+export { useWhiteDrawStore } from "./white-draw-store";
+```
 
 ### **Phase 2: Core Canvas Implementation** ⏱️ *25 minutes*
 
@@ -195,10 +295,343 @@ export function WhiteDrawPanel() {
 
 **Adapted from:** `qcut/docs/issues/white-board/draw/components/ImageEditorCanvas.tsx`
 
+**Detailed Implementation:**
+```typescript
+// drawing-canvas.tsx - Core drawing canvas following QCut patterns
+import React, { useRef, useEffect, useState, useCallback } from 'react';
+import { useWhiteDrawStore } from "@/stores/white-draw-store";
+import { useCanvasDrawing } from "../hooks/use-canvas-drawing";
+
+interface DrawingCanvasProps {
+  width: number;
+  height: number;
+  onDrawingChange: (dataUrl: string) => void;
+  backgroundImage?: string;
+}
+
+export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
+  width, height, onDrawingChange, backgroundImage
+}) => {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const backgroundCanvasRef = useRef<HTMLCanvasElement>(null);
+  const { currentTool, brushSize, color, isDrawing, setDrawing, saveToHistory } = useWhiteDrawStore();
+
+  const {
+    handleMouseDown,
+    handleMouseMove,
+    handleMouseUp,
+    handleTouchStart,
+    handleTouchMove,
+    handleTouchEnd
+  } = useCanvasDrawing(canvasRef, {
+    tool: currentTool,
+    brushSize,
+    color,
+    onDrawingStart: () => {
+      setDrawing(true);
+      if (canvasRef.current) {
+        saveToHistory(canvasRef.current.toDataURL());
+      }
+    },
+    onDrawingEnd: () => {
+      setDrawing(false);
+      if (canvasRef.current) {
+        onDrawingChange(canvasRef.current.toDataURL());
+      }
+    }
+  });
+
+  // Initialize canvases
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    const bgCanvas = backgroundCanvasRef.current;
+
+    if (canvas && bgCanvas) {
+      canvas.width = width;
+      canvas.height = height;
+      bgCanvas.width = width;
+      bgCanvas.height = height;
+
+      // Draw background image if provided
+      if (backgroundImage) {
+        const ctx = bgCanvas.getContext('2d');
+        const img = new Image();
+        img.onload = () => {
+          ctx?.drawImage(img, 0, 0, width, height);
+        };
+        img.src = backgroundImage;
+      }
+    }
+  }, [width, height, backgroundImage]);
+
+  return (
+    <div className="relative" style={{ width, height }}>
+      {/* Background canvas for images */}
+      <canvas
+        ref={backgroundCanvasRef}
+        className="absolute inset-0 pointer-events-none"
+        style={{ zIndex: 1 }}
+      />
+
+      {/* Drawing canvas */}
+      <canvas
+        ref={canvasRef}
+        width={width}
+        height={height}
+        className={`absolute inset-0 border border-border ${currentTool.cursor}`}
+        style={{ zIndex: 2 }}
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+      />
+    </div>
+  );
+};
+
+// use-canvas-drawing.ts - Drawing logic hook
+import { useCallback, useRef } from 'react';
+
+interface DrawingOptions {
+  tool: { id: string; cursor: string };
+  brushSize: number;
+  color: string;
+  onDrawingStart: () => void;
+  onDrawingEnd: () => void;
+}
+
+export const useCanvasDrawing = (
+  canvasRef: React.RefObject<HTMLCanvasElement>,
+  options: DrawingOptions
+) => {
+  const isDrawing = useRef(false);
+  const lastPos = useRef<{ x: number; y: number } | null>(null);
+
+  const getCanvasCoordinates = useCallback((e: MouseEvent | TouchEvent) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return { x: 0, y: 0 };
+
+    const rect = canvas.getBoundingClientRect();
+    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+
+    return {
+      x: clientX - rect.left,
+      y: clientY - rect.top
+    };
+  }, []);
+
+  const drawLine = useCallback((from: { x: number; y: number }, to: { x: number; y: number }) => {
+    const canvas = canvasRef.current;
+    const ctx = canvas?.getContext('2d');
+    if (!ctx) return;
+
+    ctx.lineWidth = options.brushSize;
+    ctx.strokeStyle = options.color;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+
+    if (options.tool.id === 'eraser') {
+      ctx.globalCompositeOperation = 'destination-out';
+    } else {
+      ctx.globalCompositeOperation = 'source-over';
+    }
+
+    ctx.beginPath();
+    ctx.moveTo(from.x, from.y);
+    ctx.lineTo(to.x, to.y);
+    ctx.stroke();
+  }, [options.brushSize, options.color, options.tool.id]);
+
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    isDrawing.current = true;
+    const pos = getCanvasCoordinates(e.nativeEvent);
+    lastPos.current = pos;
+    options.onDrawingStart();
+  }, [getCanvasCoordinates, options.onDrawingStart]);
+
+  const handleMouseMove = useCallback((e: React.MouseEvent) => {
+    if (!isDrawing.current || !lastPos.current) return;
+
+    const currentPos = getCanvasCoordinates(e.nativeEvent);
+    drawLine(lastPos.current, currentPos);
+    lastPos.current = currentPos;
+  }, [getCanvasCoordinates, drawLine]);
+
+  const handleMouseUp = useCallback(() => {
+    if (isDrawing.current) {
+      isDrawing.current = false;
+      lastPos.current = null;
+      options.onDrawingEnd();
+    }
+  }, [options.onDrawingEnd]);
+
+  // Touch event handlers
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    e.preventDefault();
+    isDrawing.current = true;
+    const pos = getCanvasCoordinates(e.nativeEvent);
+    lastPos.current = pos;
+    options.onDrawingStart();
+  }, [getCanvasCoordinates, options.onDrawingStart]);
+
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    e.preventDefault();
+    if (!isDrawing.current || !lastPos.current) return;
+
+    const currentPos = getCanvasCoordinates(e.nativeEvent);
+    drawLine(lastPos.current, currentPos);
+    lastPos.current = currentPos;
+  }, [getCanvasCoordinates, drawLine]);
+
+  const handleTouchEnd = useCallback((e: React.TouchEvent) => {
+    e.preventDefault();
+    handleMouseUp();
+  }, [handleMouseUp]);
+
+  return {
+    handleMouseDown,
+    handleMouseMove,
+    handleMouseUp,
+    handleTouchStart,
+    handleTouchMove,
+    handleTouchEnd
+  };
+};
+
+// canvas-utils.ts - Canvas utility functions adapted from fileUtils.ts
+export const dataUrlToFile = async (dataUrl: string, filename: string): Promise<File> => {
+  const res = await fetch(dataUrl);
+  const blob = await res.blob();
+  return new File([blob], filename, { type: blob.type });
+};
+
+export const downloadDrawing = (dataUrl: string, filename: string) => {
+  const link = document.createElement('a');
+  link.href = dataUrl;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+};
+
+export const resizeCanvas = (
+  sourceCanvas: HTMLCanvasElement,
+  width: number,
+  height: number
+): string => {
+  const tempCanvas = document.createElement('canvas');
+  const tempCtx = tempCanvas.getContext('2d');
+
+  tempCanvas.width = width;
+  tempCanvas.height = height;
+
+  if (tempCtx) {
+    tempCtx.drawImage(sourceCanvas, 0, 0, width, height);
+  }
+
+  return tempCanvas.toDataURL('image/png');
+};
+```
+
 #### **Task 2.2: Drawing Tools** ⏱️ *10 minutes*
 **Files to Create:**
 - `apps/web/src/components/editor/white-draw-panel/components/drawing-tools.tsx`
 - `apps/web/src/components/editor/white-draw-panel/types/drawing-types.ts`
+
+**Implementation:**
+```typescript
+// drawing-types.ts - TypeScript definitions
+export interface DrawingTool {
+  id: string;
+  name: string;
+  icon: React.ReactNode;
+  cursor: string;
+  settings?: ToolSettings;
+}
+
+export interface ToolSettings {
+  brushSize?: { min: number; max: number; default: number };
+  opacity?: { min: number; max: number; default: number };
+  color?: boolean;
+}
+
+export interface DrawingLayer {
+  id: string;
+  name: string;
+  visible: boolean;
+  opacity: number;
+  data: string; // Canvas data URL
+}
+
+// drawing-tools.tsx - Tool constants and configurations
+import { Brush, Eraser, Minus, Square, Circle, Type } from "lucide-react";
+
+export const DRAWING_TOOLS: DrawingTool[] = [
+  {
+    id: "brush",
+    name: "Brush",
+    icon: <Brush size={16} />,
+    cursor: "crosshair",
+    settings: {
+      brushSize: { min: 1, max: 100, default: 10 },
+      opacity: { min: 0.1, max: 1, default: 1 },
+      color: true
+    }
+  },
+  {
+    id: "eraser",
+    name: "Eraser",
+    icon: <Eraser size={16} />,
+    cursor: "crosshair",
+    settings: {
+      brushSize: { min: 5, max: 100, default: 20 }
+    }
+  },
+  {
+    id: "line",
+    name: "Line",
+    icon: <Minus size={16} />,
+    cursor: "crosshair",
+    settings: {
+      brushSize: { min: 1, max: 20, default: 2 },
+      color: true
+    }
+  },
+  {
+    id: "rectangle",
+    name: "Rectangle",
+    icon: <Square size={16} />,
+    cursor: "crosshair",
+    settings: {
+      brushSize: { min: 1, max: 20, default: 2 },
+      color: true
+    }
+  },
+  {
+    id: "circle",
+    name: "Circle",
+    icon: <Circle size={16} />,
+    cursor: "crosshair",
+    settings: {
+      brushSize: { min: 1, max: 20, default: 2 },
+      color: true
+    }
+  },
+  {
+    id: "text",
+    name: "Text",
+    icon: <Type size={16} />,
+    cursor: "text",
+    settings: {
+      brushSize: { min: 8, max: 72, default: 16 },
+      color: true
+    }
+  }
+];
+```
 
 ### **Phase 3: UI Components** ⏱️ *20 minutes*
 
@@ -208,6 +641,81 @@ export function WhiteDrawPanel() {
 
 **Adapted from:** `qcut/docs/issues/white-board/draw/components/TransformationSelector.tsx`
 
+**Implementation:**
+```typescript
+// tool-selector.tsx - Drawing tools selector following QCut UI patterns
+import { Button } from "@/components/ui/button";
+import { useWhiteDrawStore } from "@/stores/white-draw-store";
+import { DRAWING_TOOLS } from "./drawing-tools";
+import { Slider } from "@/components/ui/slider";
+import { Label } from "@/components/ui/label";
+
+export const ToolSelector: React.FC = () => {
+  const { currentTool, setTool, brushSize, setBrushSize, color, setColor } = useWhiteDrawStore();
+
+  return (
+    <div className="p-4 border-b border-border">
+      {/* Tool Selection */}
+      <div className="mb-4">
+        <Label className="text-sm font-medium mb-2 block">Tools</Label>
+        <div className="grid grid-cols-3 gap-2">
+          {DRAWING_TOOLS.map((tool) => (
+            <Button
+              key={tool.id}
+              variant={currentTool.id === tool.id ? "default" : "outline"}
+              size="sm"
+              onClick={() => setTool(tool)}
+              className="flex flex-col items-center gap-1 h-auto py-2"
+            >
+              {tool.icon}
+              <span className="text-xs">{tool.name}</span>
+            </Button>
+          ))}
+        </div>
+      </div>
+
+      {/* Tool Settings */}
+      {currentTool.settings && (
+        <div className="space-y-4">
+          {/* Brush Size */}
+          {currentTool.settings.brushSize && (
+            <div>
+              <Label className="text-sm font-medium mb-2 block">
+                Size: {brushSize}px
+              </Label>
+              <Slider
+                value={[brushSize]}
+                onValueChange={([value]) => setBrushSize(value)}
+                min={currentTool.settings.brushSize.min}
+                max={currentTool.settings.brushSize.max}
+                step={1}
+                className="w-full"
+              />
+            </div>
+          )}
+
+          {/* Color Picker */}
+          {currentTool.settings.color && (
+            <div>
+              <Label className="text-sm font-medium mb-2 block">Color</Label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="color"
+                  value={color}
+                  onChange={(e) => setColor(e.target.value)}
+                  className="w-8 h-8 rounded border border-border cursor-pointer"
+                />
+                <span className="text-sm text-muted-foreground">{color}</span>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+```
+
 #### **Task 3.2: History Panel** ⏱️ *7 minutes*
 **Files to Create:**
 - `apps/web/src/components/editor/white-draw-panel/components/drawing-history.tsx`
@@ -215,9 +723,171 @@ export function WhiteDrawPanel() {
 
 **Adapted from:** `qcut/docs/issues/white-board/draw/components/HistoryPanel.tsx`
 
+**Implementation:**
+```typescript
+// drawing-history.tsx - History panel with undo/redo
+import { Button } from "@/components/ui/button";
+import { Undo2, Redo2, RotateCcw } from "lucide-react";
+import { useWhiteDrawStore } from "@/stores/white-draw-store";
+import { Label } from "@/components/ui/label";
+
+export const DrawingHistory: React.FC = () => {
+  const { history, historyIndex, undo, redo, clear } = useWhiteDrawStore();
+
+  const canUndo = historyIndex > 0;
+  const canRedo = historyIndex < history.length - 1;
+
+  return (
+    <div className="p-4 border-b border-border">
+      <Label className="text-sm font-medium mb-2 block">History</Label>
+
+      <div className="flex items-center gap-2">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={undo}
+          disabled={!canUndo}
+          title="Undo"
+        >
+          <Undo2 size={14} />
+        </Button>
+
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={redo}
+          disabled={!canRedo}
+          title="Redo"
+        >
+          <Redo2 size={14} />
+        </Button>
+
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={clear}
+          title="Clear All"
+          className="ml-auto"
+        >
+          <RotateCcw size={14} />
+        </Button>
+      </div>
+
+      <div className="mt-2 text-xs text-muted-foreground">
+        {history.length > 0 ? `${historyIndex + 1} / ${history.length}` : "No history"}
+      </div>
+    </div>
+  );
+};
+
+// use-drawing-history.ts - History management hook
+import { useCallback } from 'react';
+import { useWhiteDrawStore } from '@/stores/white-draw-store';
+
+export const useDrawingHistory = () => {
+  const store = useWhiteDrawStore();
+
+  const saveState = useCallback((canvasDataUrl: string) => {
+    store.saveToHistory(canvasDataUrl);
+  }, [store]);
+
+  const getCurrentState = useCallback(() => {
+    if (store.historyIndex >= 0 && store.historyIndex < store.history.length) {
+      return store.history[store.historyIndex];
+    }
+    return null;
+  }, [store.history, store.historyIndex]);
+
+  return {
+    saveState,
+    getCurrentState,
+    undo: store.undo,
+    redo: store.redo,
+    clear: store.clear,
+    canUndo: store.historyIndex > 0,
+    canRedo: store.historyIndex < store.history.length - 1,
+    historyLength: store.history.length
+  };
+};
+```
+
 #### **Task 3.3: Export Options** ⏱️ *5 minutes*
 **Files to Create:**
 - `apps/web/src/components/editor/white-draw-panel/components/export-options.tsx`
+
+**Implementation:**
+```typescript
+// export-options.tsx - Export and timeline integration
+import { Button } from "@/components/ui/button";
+import { Download, Plus, Image } from "lucide-react";
+import { useWhiteDrawStore } from "@/stores/white-draw-store";
+import { downloadDrawing, dataUrlToFile } from "../utils/canvas-utils";
+import { useTimelineStore } from "@/stores/timeline-store";
+import { Label } from "@/components/ui/label";
+
+export const ExportOptions: React.FC<{ canvasRef: React.RefObject<HTMLCanvasElement> }> = ({ canvasRef }) => {
+  const { layers } = useWhiteDrawStore();
+  const timelineStore = useTimelineStore();
+
+  const handleDownload = () => {
+    if (canvasRef.current) {
+      const dataUrl = canvasRef.current.toDataURL('image/png');
+      downloadDrawing(dataUrl, `drawing-${Date.now()}.png`);
+    }
+  };
+
+  const handleAddToTimeline = async () => {
+    if (canvasRef.current) {
+      const dataUrl = canvasRef.current.toDataURL('image/png');
+      const file = await dataUrlToFile(dataUrl, `drawing-${Date.now()}.png`);
+
+      // Add to timeline as image element
+      // This will need integration with actual timeline store methods
+      console.log('Adding drawing to timeline:', file);
+    }
+  };
+
+  return (
+    <div className="p-4 border-t border-border">
+      <Label className="text-sm font-medium mb-2 block">Export</Label>
+
+      <div className="space-y-2">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleDownload}
+          className="w-full justify-start"
+          disabled={!canvasRef.current}
+        >
+          <Download size={14} className="mr-2" />
+          Download PNG
+        </Button>
+
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleAddToTimeline}
+          className="w-full justify-start"
+          disabled={!canvasRef.current}
+        >
+          <Plus size={14} className="mr-2" />
+          Add to Timeline
+        </Button>
+
+        <Button
+          variant="outline"
+          size="sm"
+          className="w-full justify-start"
+          disabled={!canvasRef.current}
+        >
+          <Image size={14} className="mr-2" />
+          Save to Project
+        </Button>
+      </div>
+    </div>
+  );
+};
+```
 
 ### **Phase 4: Timeline Integration** ⏱️ *15 minutes*
 
@@ -226,9 +896,102 @@ export function WhiteDrawPanel() {
 - `apps/web/src/stores/timeline-store.ts` - Add method to import drawing as media element
 - `apps/web/src/components/editor/white-draw-panel/utils/timeline-integration.ts` - Export utilities
 
+**Implementation:**
+```typescript
+// timeline-integration.ts - Timeline integration utilities
+import { useTimelineStore } from "@/stores/timeline-store";
+import { dataUrlToFile } from "./canvas-utils";
+
+export interface DrawingTimelineElement {
+  type: "drawing";
+  id: string;
+  drawingData: string;        // Base64 canvas data
+  duration: number;           // Display duration in ms
+  opacity: number;            // Layer opacity
+  blendMode: string;          // Canvas blend mode
+  position: { x: number; y: number; };
+  scale: { x: number; y: number; };
+}
+
+export const timelineIntegration = {
+  exportAsImage: async (drawingData: string): Promise<void> => {
+    const file = await dataUrlToFile(drawingData, `drawing-${Date.now()}.png`);
+    // Use QCut's existing media import system
+    const timelineStore = useTimelineStore.getState();
+
+    // This needs to be adapted to actual QCut timeline methods
+    if (timelineStore.addMediaElement) {
+      await timelineStore.addMediaElement(file, "image");
+    }
+  },
+
+  exportAsOverlay: async (drawingData: string): Promise<void> => {
+    // Create transparent overlay element
+    const overlayElement: DrawingTimelineElement = {
+      type: "drawing",
+      id: `drawing-${Date.now()}`,
+      drawingData,
+      duration: 5000,  // 5 second default
+      opacity: 0.8,
+      blendMode: "normal",
+      position: { x: 0, y: 0 },
+      scale: { x: 1, y: 1 }
+    };
+
+    const timelineStore = useTimelineStore.getState();
+
+    // This needs to be adapted to actual QCut timeline methods
+    if (timelineStore.addElement) {
+      await timelineStore.addElement(overlayElement);
+    }
+  },
+
+  saveToProject: async (drawingData: string, projectId: string): Promise<string> => {
+    // Use Electron IPC for saving to project
+    if (window.electronAPI?.files?.saveDrawing) {
+      return await window.electronAPI.files.saveDrawing(drawingData, projectId);
+    }
+
+    // Fallback for browser testing
+    const file = await dataUrlToFile(drawingData, `drawing-${Date.now()}.png`);
+    return URL.createObjectURL(file);
+  }
+};
+```
+
 #### **Task 4.2: Drawing Layer Support** ⏱️ *5 minutes*
 **Files to Modify:**
 - `apps/web/src/components/editor/timeline/timeline-element.tsx` - Support drawing overlay type
+
+**Implementation Note:**
+```typescript
+// Add to timeline element types
+type ElementType = "video" | "audio" | "image" | "text" | "drawing";
+
+// In timeline-element.tsx, add rendering support for drawing elements
+const renderDrawingElement = (element: DrawingTimelineElement) => {
+  return (
+    <div
+      className="timeline-element drawing-element"
+      style={{
+        opacity: element.opacity,
+        mixBlendMode: element.blendMode as any
+      }}
+    >
+      <img
+        src={element.drawingData}
+        alt="Drawing overlay"
+        style={{
+          transform: `scale(${element.scale.x}, ${element.scale.y})`,
+          position: 'absolute',
+          left: element.position.x,
+          top: element.position.y
+        }}
+      />
+    </div>
+  );
+};
+```
 
 ### **Phase 5: File System Integration** ⏱️ *12 minutes*
 
@@ -237,9 +1000,140 @@ export function WhiteDrawPanel() {
 - `electron/main.ts` - Add IPC handlers for drawing save/load
 - `apps/web/src/lib/electron-api.ts` - Add drawing storage APIs
 
+**Implementation:**
+```typescript
+// Add to electron/main.ts - Drawing Storage IPC Handlers
+const drawingHandlers = {
+  "drawing:save": async (drawingData: string, projectId: string): Promise<string> => {
+    const drawingPath = path.join(projectsDir, projectId, "drawings");
+    await fs.ensureDir(drawingPath);
+    const filename = `drawing-${Date.now()}.png`;
+    const filePath = path.join(drawingPath, filename);
+
+    // Convert base64 to buffer and save
+    const base64Data = drawingData.replace(/^data:image\/png;base64,/, "");
+    await fs.writeFile(filePath, base64Data, "base64");
+    return filename;
+  },
+
+  "drawing:load": async (filename: string, projectId: string): Promise<string> => {
+    const filePath = path.join(projectsDir, projectId, "drawings", filename);
+    const buffer = await fs.readFile(filePath);
+    return `data:image/png;base64,${buffer.toString("base64")}`;
+  },
+
+  "drawing:list": async (projectId: string): Promise<string[]> => {
+    const drawingPath = path.join(projectsDir, projectId, "drawings");
+    if (!(await fs.pathExists(drawingPath))) return [];
+    return fs.readdir(drawingPath);
+  },
+
+  "drawing:delete": async (filename: string, projectId: string): Promise<void> => {
+    const filePath = path.join(projectsDir, projectId, "drawings", filename);
+    await fs.remove(filePath);
+  }
+};
+
+// Register handlers
+Object.entries(drawingHandlers).forEach(([channel, handler]) => {
+  ipcMain.handle(channel, async (event, ...args) => {
+    try {
+      return await handler(...args);
+    } catch (error) {
+      console.error(`Error in ${channel}:`, error);
+      throw error;
+    }
+  });
+});
+
+// Add to electron-api.ts
+declare global {
+  interface Window {
+    electronAPI: {
+      // ... existing APIs
+      drawings: {
+        save: (drawingData: string, projectId: string) => Promise<string>;
+        load: (filename: string, projectId: string) => Promise<string>;
+        list: (projectId: string) => Promise<string[]>;
+        delete: (filename: string, projectId: string) => Promise<void>;
+      };
+    };
+  }
+}
+```
+
 #### **Task 5.2: Drawing Persistence** ⏱️ *5 minutes*
 **Files to Create:**
 - `apps/web/src/components/editor/white-draw-panel/utils/drawing-storage.ts`
+
+**Implementation:**
+```typescript
+// drawing-storage.ts - Drawing persistence utilities
+export class DrawingStorage {
+  static async saveDrawing(drawingData: string, projectId: string): Promise<string> {
+    if (window.electronAPI?.drawings?.save) {
+      return await window.electronAPI.drawings.save(drawingData, projectId);
+    }
+
+    // Fallback for browser development
+    const key = `drawing-${projectId}-${Date.now()}`;
+    localStorage.setItem(key, drawingData);
+    return key;
+  }
+
+  static async loadDrawing(filename: string, projectId: string): Promise<string> {
+    if (window.electronAPI?.drawings?.load) {
+      return await window.electronAPI.drawings.load(filename, projectId);
+    }
+
+    // Fallback for browser development
+    return localStorage.getItem(filename) || "";
+  }
+
+  static async listDrawings(projectId: string): Promise<string[]> {
+    if (window.electronAPI?.drawings?.list) {
+      return await window.electronAPI.drawings.list(projectId);
+    }
+
+    // Fallback for browser development
+    const keys = Object.keys(localStorage);
+    return keys.filter(key => key.startsWith(`drawing-${projectId}-`));
+  }
+
+  static async deleteDrawing(filename: string, projectId: string): Promise<void> {
+    if (window.electronAPI?.drawings?.delete) {
+      return await window.electronAPI.drawings.delete(filename, projectId);
+    }
+
+    // Fallback for browser development
+    localStorage.removeItem(filename);
+  }
+
+  static async autosaveDrawing(drawingData: string, projectId: string): Promise<void> {
+    const autosaveKey = `autosave-drawing-${projectId}`;
+
+    if (window.electronAPI?.drawings?.save) {
+      await window.electronAPI.drawings.save(drawingData, `${projectId}-autosave`);
+    } else {
+      localStorage.setItem(autosaveKey, drawingData);
+    }
+  }
+
+  static async loadAutosave(projectId: string): Promise<string | null> {
+    const autosaveKey = `autosave-drawing-${projectId}`;
+
+    if (window.electronAPI?.drawings?.load) {
+      try {
+        return await window.electronAPI.drawings.load("autosave", `${projectId}-autosave`);
+      } catch {
+        return null;
+      }
+    } else {
+      return localStorage.getItem(autosaveKey);
+    }
+  }
+}
+```
 
 ### **Phase 6: Testing & Safety** ⏱️ *18 minutes*
 
@@ -248,11 +1142,104 @@ export function WhiteDrawPanel() {
 - `apps/web/src/test/components/white-draw-panel.test.tsx`
 - `apps/web/src/test/stores/white-draw-store.test.ts`
 
+**Implementation:**
+```typescript
+// white-draw-panel.test.tsx - Component tests
+import { render, screen, fireEvent } from '@testing-library/react';
+import { WhiteDrawPanel } from '@/components/editor/white-draw-panel';
+import { useWhiteDrawStore } from '@/stores/white-draw-store';
+
+// Mock the store
+jest.mock('@/stores/white-draw-store');
+
+describe('WhiteDrawPanel', () => {
+  beforeEach(() => {
+    (useWhiteDrawStore as jest.Mock).mockReturnValue({
+      currentTool: { id: 'brush', name: 'Brush', cursor: 'crosshair' },
+      isDrawing: false,
+      brushSize: 10,
+      color: '#000000',
+      setTool: jest.fn(),
+      setBrushSize: jest.fn(),
+      setColor: jest.fn()
+    });
+  });
+
+  it('renders drawing panel', () => {
+    render(<WhiteDrawPanel />);
+    expect(screen.getByText(/drawing canvas/i)).toBeInTheDocument();
+  });
+
+  it('displays current tool information', () => {
+    render(<WhiteDrawPanel />);
+    // Add specific tool display tests
+  });
+});
+
+// white-draw-store.test.ts - Store tests
+import { renderHook, act } from '@testing-library/react';
+import { useWhiteDrawStore } from '@/stores/white-draw-store';
+
+describe('useWhiteDrawStore', () => {
+  it('initializes with default values', () => {
+    const { result } = renderHook(() => useWhiteDrawStore());
+
+    expect(result.current.isDrawing).toBe(false);
+    expect(result.current.currentTool.id).toBe('brush');
+    expect(result.current.brushSize).toBe(10);
+    expect(result.current.color).toBe('#000000');
+  });
+
+  it('updates drawing state', () => {
+    const { result } = renderHook(() => useWhiteDrawStore());
+
+    act(() => {
+      result.current.setDrawing(true);
+    });
+
+    expect(result.current.isDrawing).toBe(true);
+  });
+
+  it('manages undo/redo history', () => {
+    const { result } = renderHook(() => useWhiteDrawStore());
+
+    act(() => {
+      result.current.saveToHistory('test-state-1');
+      result.current.saveToHistory('test-state-2');
+    });
+
+    expect(result.current.history).toHaveLength(2);
+    expect(result.current.historyIndex).toBe(1);
+
+    act(() => {
+      result.current.undo();
+    });
+
+    expect(result.current.historyIndex).toBe(0);
+  });
+});
+```
+
 #### **Task 6.2: Integration Safety Check** ⏱️ *6 minutes*
 **Files to Test:**
 - Run existing E2E tests to ensure no regressions
 - Test timeline functionality with new drawing elements
 - Verify panel switching doesn't break existing features
+
+**Testing Commands:**
+```bash
+# Run all tests to ensure no regressions
+bun run test
+
+# Run E2E tests
+bun x playwright test --project=electron
+
+# Specific white-draw panel tests
+bun run test white-draw
+
+# Integration tests
+bun run test timeline
+```
 
 ---
 
@@ -323,326 +1310,3 @@ If issues arise:
 - **E2E Tests**: Core tests must pass before integration
 - **Canvas API**: Browser canvas support (already available in Electron)
 - **No New Dependencies**: Implementation uses existing QCut tech stack
-
----
-
-## 🔍 **Detailed Code Analysis & Implementation Patterns**
-
-### **Canvas Implementation Analysis from ImageEditorCanvas.tsx**
-
-#### **Core Canvas Features Identified:**
-```typescript
-// Key features from draw/components/ImageEditorCanvas.tsx
-interface CanvasFeatures {
-  // Dual canvas system for layers
-  imageCanvas: HTMLCanvasElement;     // Background/image layer
-  maskCanvas: HTMLCanvasElement;      // Drawing/mask layer
-
-  // Drawing state management
-  isDrawing: boolean;
-  lastPos: { x: number; y: number };
-  brushSize: number;
-  history: ImageData[];               // Undo/redo system
-
-  // Image handling
-  image: HTMLImageElement;
-  aspectRatioHandling: boolean;       // Auto-fit to container
-  crossOriginSupport: boolean;        // For external images
-}
-```
-
-#### **Drawing Implementation Pattern:**
-```typescript
-// Mouse/touch event handling pattern from ImageEditorCanvas
-const handleDrawing = {
-  onMouseDown: (e) => {
-    setIsDrawing(true);
-    saveToHistory();  // Save state before drawing
-    setLastPos(getCanvasCoordinates(e));
-  },
-  onMouseMove: (e) => {
-    if (!isDrawing) return;
-    drawLine(lastPos, getCanvasCoordinates(e));
-    setLastPos(getCanvasCoordinates(e));
-  },
-  onMouseUp: () => {
-    setIsDrawing(false);
-    onMaskChange(canvas.toDataURL()); // Export to parent
-  }
-};
-```
-
-### **QCut Panel Architecture Analysis**
-
-#### **Panel Registration Pattern (from panel-layouts.tsx):**
-```typescript
-// QCut uses ResizablePanelGroup structure
-interface PanelStructure {
-  toolsPanel: number;     // Left sidebar percentage
-  previewPanel: number;   // Center preview percentage
-  propertiesPanel: number; // Right sidebar percentage
-
-  // Normalization ensures panels sum to 100%
-  normalizationFactor: number;
-}
-
-// Implementation pattern for white-draw integration:
-const WhiteDrawPanelIntegration = {
-  // Add to existing MediaPanel tab system
-  location: "toolsPanel",           // Left sidebar with media
-  tabName: "draw",                 // New tab in MediaPanel
-  component: "<WhiteDrawView />",   // Component to render
-};
-```
-
-#### **Store Pattern Analysis (from editor-store.ts):**
-```typescript
-// QCut Zustand store pattern to follow
-interface StorePattern {
-  // State properties
-  isInitializing: boolean;
-  canvasSize: CanvasSize;
-
-  // Actions with descriptive names
-  setInitializing: (loading: boolean) => void;
-  initializeApp: () => Promise<void>;
-}
-
-// White-draw store should follow this pattern:
-interface WhiteDrawStore {
-  // Drawing state
-  isDrawing: boolean;
-  currentTool: DrawingTool;
-  brushSize: number;
-  color: string;
-  layers: DrawingLayer[];
-  history: DrawingHistory[];
-
-  // Actions
-  setDrawing: (drawing: boolean) => void;
-  setTool: (tool: DrawingTool) => void;
-  setBrushSize: (size: number) => void;
-  addLayer: () => void;
-  undo: () => void;
-  redo: () => void;
-  exportToTimeline: () => Promise<void>;
-}
-```
-
-### **MediaPanel Integration Pattern**
-
-#### **Tab System Integration (from media-panel/index.tsx):**
-```typescript
-// Current MediaPanel tabs structure
-type ExistingTabs = "media" | "audio" | "text" | "stickers" | "effects" | "captions";
-
-// Add white-draw to existing tab system
-type UpdatedTabs = ExistingTabs | "draw";
-
-const viewMap: Record<UpdatedTabs, React.ReactNode> = {
-  // ... existing tabs
-  draw: <WhiteDrawView />,  // New tab integration
-};
-
-// Tab configuration
-const drawTabConfig = {
-  id: "draw" as const,
-  label: "Draw",
-  icon: "✏️",              // Or use Lucide icon
-  component: WhiteDrawView,
-};
-```
-
-### **File Utilities Adaptation from draw/utils/fileUtils.ts**
-
-#### **QCut-Compatible File Handling:**
-```typescript
-// Adapt existing utilities for QCut's Electron environment
-class QCutDrawingFileUtils {
-  // Use QCut's Electron IPC instead of browser file APIs
-  static async saveDrawing(drawingData: string, projectId: string): Promise<string> {
-    return window.electronAPI?.files?.saveDrawing?.(drawingData, projectId) || "";
-  }
-
-  static async loadDrawing(drawingId: string): Promise<string> {
-    return window.electronAPI?.files?.loadDrawing?.(drawingId) || "";
-  }
-
-  // Maintain browser compatibility for canvas operations
-  static dataUrlToFile = dataUrlToFile;     // Keep from original
-  static loadImage = loadImage;             // Keep from original
-  static downloadImage = downloadImage;     // Keep from original
-
-  // Adapt watermarking for QCut projects
-  static async embedProjectWatermark(imageUrl: string, projectId: string): Promise<string> {
-    const watermarkText = `QCut-${projectId}-${Date.now()}`;
-    return embedWatermark(imageUrl, watermarkText);
-  }
-}
-```
-
-### **Timeline Integration Specification**
-
-#### **Drawing Element Type Addition:**
-```typescript
-// Extend QCut's timeline element types
-type ExistingElementTypes = "video" | "audio" | "image" | "text";
-type ExtendedElementTypes = ExistingElementTypes | "drawing";
-
-interface DrawingTimelineElement {
-  type: "drawing";
-  id: string;
-  drawingData: string;        // Base64 canvas data
-  duration: number;           // Display duration
-  opacity: number;            // Layer opacity
-  blendMode: string;          // Canvas blend mode
-  position: { x: number; y: number; };
-  scale: { x: number; y: number; };
-}
-```
-
-#### **Export Integration with QCut Timeline:**
-```typescript
-// Integration with QCut's timeline store
-const timelineIntegration = {
-  exportAsImage: async (drawingData: string) => {
-    const file = await dataUrlToFile(drawingData, `drawing-${Date.now()}.png`);
-    // Use QCut's existing media import system
-    return useTimelineStore.getState().addMediaElement(file, "image");
-  },
-
-  exportAsOverlay: async (drawingData: string) => {
-    // Create transparent overlay element
-    const overlayElement: DrawingTimelineElement = {
-      type: "drawing",
-      id: `drawing-${Date.now()}`,
-      drawingData,
-      duration: 5000,  // 5 second default
-      opacity: 0.8,
-      blendMode: "normal",
-      position: { x: 0, y: 0 },
-      scale: { x: 1, y: 1 }
-    };
-
-    return useTimelineStore.getState().addElement(overlayElement);
-  }
-};
-```
-
-### **Component Architecture Deep Dive**
-
-#### **DrawingCanvas Component (adapted from ImageEditorCanvas):**
-```typescript
-// Core drawing canvas following QCut patterns
-interface DrawingCanvasProps {
-  width: number;
-  height: number;
-  onDrawingChange: (dataUrl: string) => void;
-  tool: DrawingTool;
-  brushSize: number;
-  color: string;
-  backgroundImage?: string;
-}
-
-const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
-  width, height, onDrawingChange, tool, brushSize, color, backgroundImage
-}) => {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [isDrawing, setIsDrawing] = useState(false);
-  const [history, setHistory] = useState<ImageData[]>([]);
-
-  // Implement drawing logic adapted from ImageEditorCanvas
-  // with QCut-specific optimizations
-
-  return (
-    <canvas
-      ref={canvasRef}
-      width={width}
-      height={height}
-      className="border border-border cursor-crosshair"
-      onMouseDown={handleMouseDown}
-      onMouseMove={handleMouseMove}
-      onMouseUp={handleMouseUp}
-      onTouchStart={handleTouchStart}
-      onTouchMove={handleTouchMove}
-      onTouchEnd={handleTouchEnd}
-    />
-  );
-};
-```
-
-#### **Tool Selector Component (adapted from TransformationSelector):**
-```typescript
-// Drawing tools selector following QCut UI patterns
-interface DrawingTool {
-  id: string;
-  name: string;
-  icon: React.ReactNode;
-  cursor: string;
-  settings?: ToolSettings;
-}
-
-const drawingTools: DrawingTool[] = [
-  { id: "brush", name: "Brush", icon: <Brush />, cursor: "crosshair" },
-  { id: "eraser", name: "Eraser", icon: <Eraser />, cursor: "crosshair" },
-  { id: "line", name: "Line", icon: <Minus />, cursor: "crosshair" },
-  { id: "rectangle", name: "Rectangle", icon: <Square />, cursor: "crosshair" },
-  { id: "circle", name: "Circle", icon: <Circle />, cursor: "crosshair" },
-  { id: "text", name: "Text", icon: <Type />, cursor: "text" },
-];
-```
-
-### **Memory Management & Performance**
-
-#### **Canvas Optimization for QCut:**
-```typescript
-// Optimize for video editor performance
-const canvasOptimizations = {
-  // Debounce drawing operations to prevent lag
-  debouncedDraw: useMemo(
-    () => debounce((drawData) => onDrawingChange(drawData), 100),
-    [onDrawingChange]
-  ),
-
-  // Limit history size to prevent memory issues
-  maxHistorySize: 50,
-
-  // Use requestAnimationFrame for smooth drawing
-  useAnimationFrame: true,
-
-  // Canvas recycling for multiple drawings
-  canvasPool: new Map<string, HTMLCanvasElement>(),
-};
-```
-
-### **Electron IPC Integration**
-
-#### **Drawing Storage IPC Handlers:**
-```typescript
-// Add to electron/main.ts
-const drawingHandlers = {
-  "drawing:save": async (drawingData: string, projectId: string) => {
-    const drawingPath = path.join(projectsDir, projectId, "drawings");
-    await fs.ensureDir(drawingPath);
-    const filename = `drawing-${Date.now()}.png`;
-    const filePath = path.join(drawingPath, filename);
-
-    // Convert base64 to buffer and save
-    const base64Data = drawingData.replace(/^data:image\/png;base64,/, "");
-    await fs.writeFile(filePath, base64Data, "base64");
-    return filename;
-  },
-
-  "drawing:load": async (filename: string, projectId: string) => {
-    const filePath = path.join(projectsDir, projectId, "drawings", filename);
-    const buffer = await fs.readFile(filePath);
-    return `data:image/png;base64,${buffer.toString("base64")}`;
-  },
-
-  "drawing:list": async (projectId: string) => {
-    const drawingPath = path.join(projectsDir, projectId, "drawings");
-    if (!(await fs.pathExists(drawingPath))) return [];
-    return fs.readdir(drawingPath);
-  }
-};
-```
