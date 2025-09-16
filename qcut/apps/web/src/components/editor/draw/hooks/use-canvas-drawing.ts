@@ -13,6 +13,10 @@ interface DrawingOptions {
   onSelectObject?: (position: { x: number; y: number }, isMultiSelect?: boolean) => boolean;
   onMoveObject?: (startPos: { x: number; y: number }, currentPos: { x: number; y: number }) => void;
   onEndMove?: () => void;
+  // New object-based drawing callbacks
+  onCreateStroke?: (points: { x: number; y: number }[], style: any) => string | null;
+  onCreateShape?: (shapeType: string, bounds: any, style: any) => string | null;
+  onCreateText?: (text: string, position: { x: number; y: number }, style: any) => string | null;
 }
 
 export const useCanvasDrawing = (
@@ -23,6 +27,7 @@ export const useCanvasDrawing = (
   const lastPos = useRef<{ x: number; y: number } | null>(null);
   const animationFrame = useRef<number | null>(null);
   const startPos = useRef<{ x: number; y: number } | null>(null);
+  const currentStroke = useRef<{ x: number; y: number }[]>([]);
 
   // Debug logging for tool selection
   useEffect(() => {
@@ -116,29 +121,31 @@ export const useCanvasDrawing = (
   }, [options.tool.id, options.brushSize, options.color, options.opacity]);
 
   const drawLine = useCallback((from: { x: number; y: number }, to: { x: number; y: number }) => {
-    const canvas = canvasRef.current;
-    const ctx = canvas?.getContext('2d');
-    if (!ctx || options.disabled) return;
+    if (options.disabled) return;
 
     console.log('🖌️ Drawing line:', { from, to, toolId: options.tool.id, category: options.tool.category });
 
-    // Save context state
-    ctx.save();
-
-    // Setup context for current tool
-    setupCanvasContext(ctx);
-
-    // Draw based on tool type
+    // For brush/pencil tools, collect points for stroke object
     if (options.tool.category === 'brush' || options.tool.id === 'eraser') {
-      // Freehand drawing tools
-      ctx.beginPath();
-      ctx.moveTo(from.x, from.y);
-      ctx.lineTo(to.x, to.y);
-      ctx.stroke();
-    }
+      // Add points to current stroke
+      if (currentStroke.current.length === 0) {
+        currentStroke.current.push(from);
+      }
+      currentStroke.current.push(to);
 
-    // Restore context state
-    ctx.restore();
+      // Optional: Draw preview to canvas for immediate feedback
+      const canvas = canvasRef.current;
+      const ctx = canvas?.getContext('2d');
+      if (ctx) {
+        ctx.save();
+        setupCanvasContext(ctx);
+        ctx.beginPath();
+        ctx.moveTo(from.x, from.y);
+        ctx.lineTo(to.x, to.y);
+        ctx.stroke();
+        ctx.restore();
+      }
+    }
   }, [setupCanvasContext, options.tool.category, options.tool.id, options.disabled]);
 
   const drawShape = useCallback((start: { x: number; y: number }, end: { x: number; y: number }, isPreview = false) => {
@@ -320,20 +327,56 @@ export const useCanvasDrawing = (
         return;
       }
 
-      // For shape tools, draw final shape
+      // For shape tools, create shape object
       if (options.tool.category === 'shape' && startPos.current) {
-        // Get current mouse position from the canvas
-        const canvas = canvasRef.current;
-        if (canvas) {
-          const rect = canvas.getBoundingClientRect();
-          const endPos = lastPos.current || startPos.current;
-          console.log('🔲 Finalizing shape:', {
-            start: startPos.current,
-            end: endPos,
-            toolId: options.tool.id
-          });
-          drawShape(startPos.current, endPos, false);
+        const endPos = lastPos.current || startPos.current;
+        console.log('🔲 Finalizing shape:', {
+          start: startPos.current,
+          end: endPos,
+          toolId: options.tool.id
+        });
+
+        if (options.onCreateShape) {
+          const bounds = {
+            x: Math.min(startPos.current.x, endPos.x),
+            y: Math.min(startPos.current.y, endPos.y),
+            width: Math.abs(endPos.x - startPos.current.x),
+            height: Math.abs(endPos.y - startPos.current.y)
+          };
+
+          const style = {
+            strokeStyle: options.color,
+            lineWidth: options.brushSize,
+            opacity: options.opacity
+          };
+
+          options.onCreateShape(options.tool.id, bounds, style);
         }
+      }
+
+      // For brush tools, create stroke object
+      if ((options.tool.category === 'brush' || options.tool.id === 'eraser') && currentStroke.current.length > 0) {
+        console.log('🖌️ Finalizing stroke:', {
+          pointCount: currentStroke.current.length,
+          toolId: options.tool.id
+        });
+
+        if (options.onCreateStroke) {
+          const style = {
+            strokeStyle: options.color,
+            lineWidth: options.brushSize,
+            opacity: options.opacity,
+            tool: options.tool.id,
+            lineCap: 'round',
+            lineJoin: 'round',
+            globalCompositeOperation: options.tool.id === 'eraser' ? 'destination-out' : 'source-over'
+          };
+
+          options.onCreateStroke([...currentStroke.current], style);
+        }
+
+        // Clear current stroke
+        currentStroke.current = [];
       }
 
       isDrawing.current = false;
@@ -347,7 +390,7 @@ export const useCanvasDrawing = (
 
       options.onDrawingEnd();
     }
-  }, [options.onDrawingEnd, options.tool.category, options.tool.id, options.onEndMove, drawShape]);
+  }, [options.onDrawingEnd, options.tool.category, options.tool.id, options.onEndMove, options.onCreateShape, options.onCreateStroke, options.color, options.brushSize, options.opacity]);
 
   // Touch event handlers with better mobile support
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
