@@ -1,13 +1,28 @@
-import React, { useRef } from "react";
+import React, { useRef, useState, useCallback } from "react";
 import { useWhiteDrawStore } from "@/stores/white-draw-store";
 import { PenTool } from "lucide-react";
 import { DrawingCanvas } from "@/components/editor/draw/canvas/drawing-canvas";
 import { ToolSelector } from "@/components/editor/draw/components/tool-selector";
 import { CanvasToolbar } from "@/components/editor/draw/components/canvas-toolbar";
+import { SavedDrawings } from "@/components/editor/draw/components/saved-drawings";
 
 const DrawView: React.FC = () => {
   const { activeTab, setActiveTab } = useWhiteDrawStore();
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [currentDrawingData, setCurrentDrawingData] = useState<string>("");
+
+  // Handle loading a drawing from saved files
+  const handleLoadDrawing = useCallback((drawingData: string) => {
+    // This would need to be implemented to load the drawing into the canvas
+    // For now, we'll just store it and potentially trigger a canvas update
+    setCurrentDrawingData(drawingData);
+    setActiveTab("canvas"); // Switch to canvas tab when loading
+  }, [setActiveTab]);
+
+  // Handle drawing changes from canvas
+  const handleDrawingChange = useCallback((dataUrl: string) => {
+    setCurrentDrawingData(dataUrl);
+  }, []);
 
   return (
     <div className="p-4 h-full flex flex-col">
@@ -44,6 +59,17 @@ const DrawView: React.FC = () => {
         >
           🛠️ Tools
         </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab("files")}
+          className={`px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+            activeTab === "files"
+              ? "bg-orange-500 text-white"
+              : "text-gray-400 hover:text-white hover:bg-gray-700"
+          }`}
+        >
+          📁 Files
+        </button>
       </div>
 
       {/* Content Area - Phase 2 implementation */}
@@ -55,15 +81,20 @@ const DrawView: React.FC = () => {
               <DrawingCanvas
                 ref={canvasRef}
                 className="max-w-full max-h-full"
-                onDrawingChange={(dataUrl) => {
-                  console.log("Drawing updated:", dataUrl.slice(0, 50) + "...");
-                }}
+                onDrawingChange={handleDrawingChange}
               />
             </div>
           </div>
         )}
         {activeTab === "tools" && (
           <ToolSelector className="h-full" />
+        )}
+        {activeTab === "files" && (
+          <SavedDrawings
+            currentDrawingData={currentDrawingData}
+            onLoadDrawing={handleLoadDrawing}
+            className="h-full"
+          />
         )}
       </div>
     </div>

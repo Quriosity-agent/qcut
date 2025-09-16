@@ -29,7 +29,7 @@ export interface DrawingLayer {
 
 export interface WhiteDrawStore {
   // UI State
-  activeTab: "canvas" | "tools";
+  activeTab: "canvas" | "tools" | "files";
   isProcessing: boolean;
 
   // Drawing State
@@ -44,7 +44,7 @@ export interface WhiteDrawStore {
   drawings: Array<{ id: string; name: string; data: string; created: Date }>;
 
   // Actions
-  setActiveTab: (tab: "canvas" | "tools") => void;
+  setActiveTab: (tab: "canvas" | "tools" | "files") => void;
   setDrawing: (drawing: boolean) => void;
   setTool: (tool: DrawingToolConfig) => void;
   setBrushSize: (size: number) => void;

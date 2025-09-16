@@ -6,10 +6,13 @@ import {
   RotateCcw,
   Trash2,
   Save,
-  Film
+  Film,
+  FolderOpen
 } from "lucide-react";
 import { useWhiteDrawStore } from "@/stores/white-draw-store";
+import { useProjectStore } from "@/stores/project-store";
 import { TimelineIntegration } from "../utils/timeline-integration";
+import { DrawingStorage } from "../utils/drawing-storage";
 import { downloadDrawing, clearCanvas } from "../utils/canvas-utils";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -24,7 +27,9 @@ export const CanvasToolbar: React.FC<CanvasToolbarProps> = ({
   className
 }) => {
   const [isExporting, setIsExporting] = useState(false);
-  const { undo, redo, clear, history, historyIndex } = useWhiteDrawStore();
+  const [isSaving, setIsSaving] = useState(false);
+  const { undo, redo, clear, history, historyIndex, setActiveTab } = useWhiteDrawStore();
+  const { activeProject } = useProjectStore();
 
   const handleDownload = async () => {
     if (!canvasRef.current) {
@@ -62,6 +67,32 @@ export const CanvasToolbar: React.FC<CanvasToolbarProps> = ({
       toast.error("Failed to export to timeline");
     } finally {
       setIsExporting(false);
+    }
+  };
+
+  const handleQuickSave = async () => {
+    if (!canvasRef.current) {
+      toast.error("Canvas not available");
+      return;
+    }
+
+    if (!activeProject?.id) {
+      toast.error("No active project");
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      const canvas = canvasRef.current;
+      const dataUrl = canvas.toDataURL('image/png');
+      const filename = `quick-save-${new Date().toISOString().slice(0, 19).replace(/[:-]/g, '')}.png`;
+
+      await DrawingStorage.saveDrawing(dataUrl, activeProject.id, filename, ["quick-save"]);
+      toast.success("Drawing saved!");
+    } catch (error) {
+      toast.error("Failed to save drawing");
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -123,6 +154,20 @@ export const CanvasToolbar: React.FC<CanvasToolbarProps> = ({
         <Button
           variant="text"
           size="sm"
+          onClick={handleQuickSave}
+          disabled={isSaving || !activeProject}
+          title="Quick Save"
+          className="h-8 w-8 p-0"
+        >
+          {isSaving ? (
+            <div className="w-3 h-3 border border-gray-400 border-t-transparent rounded-full animate-spin" />
+          ) : (
+            <Save size={14} />
+          )}
+        </Button>
+        <Button
+          variant="text"
+          size="sm"
           onClick={handleDownload}
           title="Download as PNG"
           className="h-8 w-8 p-0"
@@ -142,6 +187,15 @@ export const CanvasToolbar: React.FC<CanvasToolbarProps> = ({
           ) : (
             <Film size={14} />
           )}
+        </Button>
+        <Button
+          variant="text"
+          size="sm"
+          onClick={() => setActiveTab("files")}
+          title="Open Files Tab"
+          className="h-8 w-8 p-0"
+        >
+          <FolderOpen size={14} />
         </Button>
       </div>
 
