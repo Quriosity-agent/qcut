@@ -8,7 +8,6 @@ import { SavedDrawings } from "@/components/editor/draw/components/saved-drawing
 
 const DrawView: React.FC = () => {
   const { activeTab, setActiveTab } = useWhiteDrawStore();
-  const canvasRef = useRef<HTMLCanvasElement>(null);
   const canvasComponentRef = useRef<any>(null);
   const [currentDrawingData, setCurrentDrawingData] = useState<string>("");
   const [selectedCount, setSelectedCount] = useState(0);
@@ -124,7 +123,7 @@ const DrawView: React.FC = () => {
           className={`w-full h-full flex flex-col space-y-4 ${activeTab === "canvas" ? "" : "hidden"}`}
         >
           <CanvasToolbar
-            canvasRef={canvasRef}
+            canvasRef={canvasComponentRef}
             onImageUpload={handleImageUpload}
             selectedCount={selectedCount}
             hasGroups={hasGroups}

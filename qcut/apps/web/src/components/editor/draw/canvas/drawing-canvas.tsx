@@ -336,7 +336,7 @@ export const DrawingCanvas = forwardRef<HTMLCanvasElement, DrawingCanvasProps>((
     <div
       ref={containerRef}
       className={cn(
-        "relative bg-gray-900 rounded-lg overflow-hidden",
+        "relative bg-gray-900 rounded-lg overflow-hidden drawing-canvas",
         disabled && "opacity-50 pointer-events-none",
         className
       )}

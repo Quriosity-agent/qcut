@@ -25,25 +25,57 @@ export const dataUrlToFile = async (dataUrl: string, filename: string): Promise<
  */
 export const downloadDrawing = (dataUrl: string, filename: string): void => {
   try {
+    console.log('📦 downloadDrawing called with:', {
+      filename,
+      dataUrlLength: dataUrl.length,
+      dataUrlPrefix: dataUrl.substring(0, 50) + '...',
+      isDataUrl: dataUrl.startsWith('data:'),
+      isBlobUrl: dataUrl.startsWith('blob:')
+    });
+
+    console.log('🔗 Creating download link element...');
     const link = document.createElement('a');
     link.href = dataUrl;
     link.download = filename;
     link.style.display = 'none';
 
+    console.log('✅ Link element created:', {
+      href: link.href.substring(0, 50) + '...',
+      download: link.download,
+      display: link.style.display
+    });
+
+    console.log('📎 Appending link to document body...');
     document.body.appendChild(link);
+
+    console.log('🖱️ Triggering link click...');
     link.click();
+
+    console.log('🗑️ Removing link from document body...');
     document.body.removeChild(link);
 
     // Clean up object URL if it was created
     if (dataUrl.startsWith('blob:')) {
+      console.log('🧹 Cleaning up blob URL...');
       URL.revokeObjectURL(dataUrl);
     }
+
+    console.log('✅ downloadDrawing completed successfully');
   } catch (error) {
+    console.error('❌ downloadDrawing failed:', {
+      error,
+      errorMessage: error instanceof Error ? error.message : String(error),
+      errorStack: error instanceof Error ? error.stack : undefined,
+      filename,
+      dataUrlLength: dataUrl.length
+    });
+
     handleError(error, {
       operation: "drawing download",
       category: ErrorCategory.STORAGE,
       severity: ErrorSeverity.MEDIUM
     });
+    throw error; // Re-throw to let caller handle
   }
 };
 

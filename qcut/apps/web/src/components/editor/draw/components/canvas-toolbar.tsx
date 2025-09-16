@@ -43,17 +43,88 @@ export const CanvasToolbar: React.FC<CanvasToolbarProps> = ({
   const { activeProject } = useProjectStore();
 
   const handleDownload = async () => {
+    console.log('🎯 Download button clicked - starting download process');
+
     if (!canvasRef.current) {
+      console.error('❌ Canvas ref is null or undefined:', canvasRef.current);
       toast.error("Canvas not available");
       return;
     }
 
     try {
-      const canvas = canvasRef.current;
+      // The canvasRef might be pointing to the DrawingCanvas component, not the HTMLCanvasElement
+      let canvas: HTMLCanvasElement | null = null;
+
+      console.log('🔍 Checking canvas ref type:', {
+        refCurrent: canvasRef.current,
+        isHTMLCanvasElement: canvasRef.current instanceof HTMLCanvasElement,
+        hasToDataURL: typeof canvasRef.current?.toDataURL === 'function',
+        tagName: canvasRef.current?.tagName
+      });
+
+      if (canvasRef.current instanceof HTMLCanvasElement) {
+        // Direct canvas element
+        canvas = canvasRef.current;
+        console.log('✅ Found direct canvas element');
+      } else if (canvasRef.current?.tagName === 'CANVAS') {
+        // Canvas element with different typing
+        canvas = canvasRef.current as HTMLCanvasElement;
+        console.log('✅ Found canvas with CANVAS tagName');
+      } else {
+        // Might be a component ref, try to find the canvas inside it
+        console.log('🔍 Searching for canvas element in component...');
+
+        // Try common canvas selectors
+        const canvasElement = document.querySelector('.drawing-canvas canvas') ||
+                             document.querySelector('canvas[role="img"]') ||
+                             document.querySelector('canvas[aria-label="Drawing canvas"]');
+
+        if (canvasElement instanceof HTMLCanvasElement) {
+          canvas = canvasElement;
+          console.log('✅ Found canvas via querySelector:', {
+            selector: canvasElement.getAttribute('aria-label') || canvasElement.className,
+            width: canvas.width,
+            height: canvas.height
+          });
+        }
+      }
+
+      if (!canvas) {
+        console.error('❌ Could not find canvas element');
+        toast.error("Canvas element not found");
+        return;
+      }
+
+      console.log('✅ Canvas found:', {
+        width: canvas.width,
+        height: canvas.height,
+        tagName: canvas.tagName,
+        isConnected: canvas.isConnected,
+        hasContext: !!canvas.getContext('2d')
+      });
+
+      console.log('🖼️ Generating canvas data URL...');
       const dataUrl = canvas.toDataURL('image/png');
-      await downloadDrawing(dataUrl, `drawing-${Date.now()}.png`);
+
+      const filename = `drawing-${Date.now()}.png`;
+      console.log('📱 Data URL generated:', {
+        filename,
+        dataUrlLength: dataUrl.length,
+        dataUrlPrefix: dataUrl.substring(0, 50) + '...',
+        isValidDataUrl: dataUrl.startsWith('data:image/png;base64,')
+      });
+
+      console.log('💾 Calling downloadDrawing function...');
+      await downloadDrawing(dataUrl, filename);
+
+      console.log('✅ Download completed successfully');
       toast.success("Drawing downloaded successfully");
     } catch (error) {
+      console.error('❌ Download failed with error:', {
+        error,
+        errorMessage: error instanceof Error ? error.message : String(error),
+        errorStack: error instanceof Error ? error.stack : undefined
+      });
       toast.error("Failed to download drawing");
     }
   };
