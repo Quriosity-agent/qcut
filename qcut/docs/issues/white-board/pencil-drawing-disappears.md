@@ -55,16 +55,32 @@ Since rendering is successful but user reports "no image visible", the problem i
 4. **User Interface Layering** - Other UI elements covering the canvas
 5. **Canvas Scale/Transform** - Canvas rendered but scaled/transformed out of view
 
-**Key Evidence from Latest Console Logs:**
+**Key Evidence from Console Logs (V2 & V3):**
+
+**From image_debug_v2.md:**
 ```
 Line 25: ✅ IMAGE DEBUG - Image rendered successfully: image-1758088429977
 Line 31: ✅ IMAGE DEBUG - Image rendered successfully: image-1758088429977
-Lines 23,29: 🖼️ IMAGE DEBUG - Rendering image object (called twice)
-Lines 24,30: 🖼️ IMAGE DEBUG - Transform calculations (positioning working)
 ```
 
-**🎯 NEW INVESTIGATION FOCUS:**
-The issue is **UI/CSS-related**, not code logic. Images render successfully to canvas but canvas may not be visually accessible to user.
+**From image_debug_V3.md - CRITICAL CONFIRMATION:**
+```
+Line 26: 🚨 CANVAS LAYER PROBLEM - Rendering images to drawing canvas: Object
+Line 29: ✅ IMAGE DEBUG - Image rendered successfully: image-1758090039025
+Line 30: 🎨 CANVAS DEBUG - Render completed (but images will be hidden): Object
+```
+
+**Pattern Observed (V3):**
+- Image renders successfully **MULTIPLE TIMES** (lines 6, 11, 20, 23, 29, 36, 41, 48, 51, 57, 62)
+- **EVERY render** is followed by "will be hidden" warning
+- Canvas clears with white background after each render cycle
+
+**🎯 CONFIRMED DIAGNOSIS:**
+The enhanced debugging in V3 explicitly shows:
+1. Line 26: `🚨 CANVAS LAYER PROBLEM` - System detects wrong canvas usage
+2. Line 30: "images will be hidden" - System predicts the visual issue
+3. Images are rendering to **Drawing Canvas (z-index: 2)** instead of **Background Canvas (z-index: 1)**
+4. Drawing canvas white background immediately covers the rendered images
 
 ## Debug Support
 
@@ -146,6 +162,34 @@ Since images render successfully to canvas, check these UI issues:
 
 **Quick Test:** Use browser DevTools Elements tab to inspect the canvas element and verify its visual properties.
 
+## 🔧 **SOLUTION REQUIRED**
+
+Based on V3 console logs confirming the diagnosis, the fix requires:
+
+1. **Separate Rendering Logic:**
+   - Images → Render to **Background Canvas** (z-index: 1)
+   - Strokes/Shapes/Text → Render to **Drawing Canvas** (z-index: 2)
+
+2. **Make Drawing Canvas Transparent:**
+   - Remove white background fill from drawing canvas
+   - Use `clearRect()` only, no white `fillRect()`
+   - Allow background canvas to show through
+
+3. **Code Changes Needed:**
+   ```javascript
+   // In renderObjects effect:
+   if (obj.type === 'image') {
+     // Render to backgroundCanvasRef context
+   } else {
+     // Render to canvasRef context
+   }
+
+   // In drawing canvas clear:
+   ctx.clearRect(0, 0, canvas.width, canvas.height);
+   // Remove: ctx.fillStyle = 'white';
+   // Remove: ctx.fillRect(0, 0, canvas.width, canvas.height);
+   ```
+
 ---
 *Last Updated: 2025-09-17*
-*Priority: RESOLVED (Object Persistence & Canvas Rendering) / **INVESTIGATING UI/CSS ISSUES***
+*Status: **DIAGNOSIS CONFIRMED** - Canvas layering issue identified, solution path clear*
