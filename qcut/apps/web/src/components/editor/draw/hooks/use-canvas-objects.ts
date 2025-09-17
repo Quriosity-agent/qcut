@@ -302,7 +302,7 @@ export const useCanvasObjects = () => {
     setSelectedObjectIds([]);
     setIsDrawing(false);
     setIsDragging(false);
-    dragState.current = null;
+    dragState.current = { startX: 0, startY: 0, lastX: 0, lastY: 0, hasMoved: false };
     console.log('🧹 Canvas cleared');
   }, []);
 
