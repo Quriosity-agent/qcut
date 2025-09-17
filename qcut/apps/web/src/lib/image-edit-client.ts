@@ -13,14 +13,19 @@ const FAL_API_BASE = "https://fal.run";
 export interface ImageEditRequest {
   imageUrl: string;
   prompt: string;
-  model: "seededit" | "flux-kontext" | "flux-kontext-max" | "seeddream-v4" | "nano-banana";
+  model:
+    | "seededit"
+    | "flux-kontext"
+    | "flux-kontext-max"
+    | "seeddream-v4"
+    | "nano-banana";
   guidanceScale?: number;
   steps?: number;
   seed?: number;
   safetyTolerance?: number;
   numImages?: number;
-  
-  // New V4-specific parameters  
+
+  // New V4-specific parameters
   imageSize?: string | number; // String presets ("square_hd", "square", etc.) or custom pixel values for V4
   maxImages?: number; // 1-10 for V4
   syncMode?: boolean; // V4 and Nano Banana
@@ -75,7 +80,7 @@ const MODEL_ENDPOINTS: Record<string, ModelEndpoint> = {
       num_images: 1,
     },
   },
-  
+
   // Add new SeedDream V4 endpoint
   "seeddream-v4": {
     endpoint: "fal-ai/bytedance/seedream/v4/edit",
@@ -90,7 +95,7 @@ const MODEL_ENDPOINTS: Record<string, ModelEndpoint> = {
 
   // Add Nano Banana endpoint
   "nano-banana": {
-    endpoint: "fal-ai/nano-banana/edit", 
+    endpoint: "fal-ai/nano-banana/edit",
     defaultParams: {
       num_images: 1,
       output_format: "PNG",
@@ -180,7 +185,7 @@ export async function editImage(
     // V4 and Nano Banana use image_urls array
     payload.image_urls = [request.imageUrl];
   } else {
-    // V3 and FLUX use image_url string  
+    // V3 and FLUX use image_url string
     payload.image_url = request.imageUrl;
   }
 
@@ -200,7 +205,7 @@ export async function editImage(
   if (request.numImages !== undefined) {
     payload.num_images = request.numImages;
   }
-  
+
   // Add new V4-specific parameters
   if (request.imageSize !== undefined) {
     payload.image_size = request.imageSize;
@@ -214,7 +219,7 @@ export async function editImage(
   if (request.enableSafetyChecker !== undefined) {
     payload.enable_safety_checker = request.enableSafetyChecker;
   }
-  
+
   // Add Nano Banana-specific parameters
   if (request.outputFormat !== undefined) {
     payload.output_format = request.outputFormat;
@@ -223,7 +228,9 @@ export async function editImage(
   console.log(`🎨 Editing image with ${request.model}:`, {
     ...payload,
     image_url: payload.image_url?.substring(0, 50) + "..." || "N/A", // Truncate for readability
-    image_urls: payload.image_urls?.map((url: string) => url.substring(0, 50) + "...") || "N/A", // For V4/Nano Banana
+    image_urls:
+      payload.image_urls?.map((url: string) => url.substring(0, 50) + "...") ||
+      "N/A", // For V4/Nano Banana
   });
 
   // Debug: Check the actual format of the image URL(s)
@@ -251,7 +258,7 @@ export async function editImage(
     // Try queue mode first
     const ctrl = new AbortController();
     const timeout = setTimeout(() => ctrl.abort(), 60_000); // 60 second timeout
-    
+
     const response = await fetch(`${FAL_API_BASE}/${modelConfig.endpoint}`, {
       method: "POST",
       headers: {
@@ -262,7 +269,7 @@ export async function editImage(
       body: JSON.stringify(payload),
       signal: ctrl.signal,
     });
-    
+
     clearTimeout(timeout);
 
     if (!response.ok) {
@@ -405,12 +412,13 @@ export async function editImage(
     let errorMessage = "Unknown error";
     if (error instanceof Error) {
       if (error.name === "AbortError") {
-        errorMessage = "Request timeout - the image editing service took too long to respond";
+        errorMessage =
+          "Request timeout - the image editing service took too long to respond";
       } else {
         errorMessage = error.message;
       }
     }
-    
+
     if (onProgress) {
       onProgress({
         status: "failed",
@@ -444,7 +452,7 @@ async function pollImageEditStatus(
     try {
       const pollCtrl = new AbortController();
       const pollTimeout = setTimeout(() => pollCtrl.abort(), 15_000); // 15 second timeout per poll
-      
+
       const statusResponse = await fetch(
         `${FAL_API_BASE}/queue/requests/${requestId}/status`,
         {
@@ -454,7 +462,7 @@ async function pollImageEditStatus(
           signal: pollCtrl.signal,
         }
       );
-      
+
       clearTimeout(pollTimeout);
 
       if (!statusResponse.ok) {
@@ -525,7 +533,9 @@ async function pollImageEditStatus(
     } catch (error) {
       // Handle specific timeout errors
       if (error instanceof Error && error.name === "AbortError") {
-        console.warn(`⏰ Poll request timeout (attempt ${attempts}): Status check took longer than 15 seconds`);
+        console.warn(
+          `⏰ Poll request timeout (attempt ${attempts}): Status check took longer than 15 seconds`
+        );
       } else {
         handleAIServiceError(error, "Poll FAL AI image edit status", {
           attempts,
@@ -535,9 +545,11 @@ async function pollImageEditStatus(
           operation: "pollImageEditStatus",
         });
       }
-      
+
       if (attempts >= maxAttempts) {
-        throw new Error("Image editing timeout - maximum polling attempts reached");
+        throw new Error(
+          "Image editing timeout - maximum polling attempts reached"
+        );
       }
       await sleep(5000);
     }
@@ -647,17 +659,29 @@ export function getImageEditModels() {
     // Add new SeedDream V4 model
     {
       id: "seeddream-v4",
-      name: "SeedDream v4", 
+      name: "SeedDream v4",
       description: "Advanced multi-image editing with unified architecture",
       provider: "ByteDance",
       estimatedCost: "$0.04-0.08",
-      features: ["Multi-image processing", "Flexible sizing", "Enhanced prompts", "Advanced controls"],
+      features: [
+        "Multi-image processing",
+        "Flexible sizing",
+        "Enhanced prompts",
+        "Advanced controls",
+      ],
       parameters: {
-        imageSize: { 
-          type: "select", 
-          options: ["square_hd", "square", "portrait_3_4", "portrait_9_16", "landscape_4_3", "landscape_16_9"],
+        imageSize: {
+          type: "select",
+          options: [
+            "square_hd",
+            "square",
+            "portrait_3_4",
+            "portrait_9_16",
+            "landscape_4_3",
+            "landscape_16_9",
+          ],
           default: "square_hd",
-          customRange: { min: 1024, max: 4096, step: 64 } // Allow custom numeric values
+          customRange: { min: 1024, max: 4096, step: 64 }, // Allow custom numeric values
         },
         maxImages: { min: 1, max: 6, default: 1, step: 1 }, // Corrected max from 10 to 6
         numImages: { min: 1, max: 4, default: 1, step: 1 },
@@ -674,10 +698,19 @@ export function getImageEditModels() {
       description: "Smart AI-powered editing with Google/Gemini technology",
       provider: "Google",
       estimatedCost: "$0.039",
-      features: ["Smart understanding", "Cost effective", "Multiple formats", "Edit descriptions"],
+      features: [
+        "Smart understanding",
+        "Cost effective",
+        "Multiple formats",
+        "Edit descriptions",
+      ],
       parameters: {
         numImages: { min: 1, max: 4, default: 1, step: 1 },
-        outputFormat: { type: "select", options: ["JPEG", "PNG"], default: "PNG" },
+        outputFormat: {
+          type: "select",
+          options: ["JPEG", "PNG"],
+          default: "PNG",
+        },
         syncMode: { type: "boolean", default: false },
       },
     },

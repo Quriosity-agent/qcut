@@ -33,39 +33,59 @@ export const useWhiteDrawStore = create<WhiteDrawStore>()(
       setBrushSize: (size) =>
         set({ brushSize: size }, false, "white-draw/setBrushSize"),
 
-      setColor: (color) =>
-        set({ color }, false, "white-draw/setColor"),
+      setColor: (color) => set({ color }, false, "white-draw/setColor"),
 
-      setOpacity: (opacity) =>
-        set({ opacity }, false, "white-draw/setOpacity"),
+      setOpacity: (opacity) => set({ opacity }, false, "white-draw/setOpacity"),
 
       addLayer: () =>
-        set((state) => ({
-          layers: [...state.layers, { id: generateUUID(), data: "", visible: true, opacity: 1 }]
-        }), false, "white-draw/addLayer"),
+        set(
+          (state) => ({
+            layers: [
+              ...state.layers,
+              { id: generateUUID(), data: "", visible: true, opacity: 1 },
+            ],
+          }),
+          false,
+          "white-draw/addLayer"
+        ),
 
       saveToHistory: (snapshot) =>
-        set((current) => {
-          const next = current.history.slice(0, current.historyIndex + 1);
-          next.push(snapshot);
-          const trimmed = next.slice(-50); // Limit to 50 states
-          return {
-            history: trimmed,
-            historyIndex: trimmed.length - 1,
-          };
-        }, false, 'white-draw/saveToHistory'),
+        set(
+          (current) => {
+            const next = current.history.slice(0, current.historyIndex + 1);
+            next.push(snapshot);
+            const trimmed = next.slice(-50); // Limit to 50 states
+            return {
+              history: trimmed,
+              historyIndex: trimmed.length - 1,
+            };
+          },
+          false,
+          "white-draw/saveToHistory"
+        ),
 
       undo: () =>
-        set((state) => {
-          const newIndex = Math.max(-1, state.historyIndex - 1);
-          return { historyIndex: newIndex };
-        }, false, "white-draw/undo"),
+        set(
+          (state) => {
+            const newIndex = Math.max(-1, state.historyIndex - 1);
+            return { historyIndex: newIndex };
+          },
+          false,
+          "white-draw/undo"
+        ),
 
       redo: () =>
-        set((state) => {
-          const newIndex = Math.min(state.history.length - 1, state.historyIndex + 1);
-          return { historyIndex: newIndex };
-        }, false, "white-draw/redo"),
+        set(
+          (state) => {
+            const newIndex = Math.min(
+              state.history.length - 1,
+              state.historyIndex + 1
+            );
+            return { historyIndex: newIndex };
+          },
+          false,
+          "white-draw/redo"
+        ),
 
       getCurrentHistoryState: () => {
         const state = get();
@@ -73,15 +93,19 @@ export const useWhiteDrawStore = create<WhiteDrawStore>()(
       },
 
       clear: () =>
-        set({
-          layers: [],
-          history: [],
-          historyIndex: -1,
-          isDrawing: false
-        }, false, "white-draw/clear"),
+        set(
+          {
+            layers: [],
+            history: [],
+            historyIndex: -1,
+            isDrawing: false,
+          },
+          false,
+          "white-draw/clear"
+        ),
 
       setProcessing: (processing) =>
-        set({ isProcessing: processing }, false, "white-draw/setProcessing")
+        set({ isProcessing: processing }, false, "white-draw/setProcessing"),
     }),
     {
       name: "white-draw-store",

@@ -1,26 +1,40 @@
-import { test, expect, createTestProject, startElectronApp, getMainWindow } from './helpers/electron-helpers';
+import {
+  test,
+  expect,
+  createTestProject,
+  startElectronApp,
+  getMainWindow,
+} from "./helpers/electron-helpers";
 
-test.describe('Auto-Save & Export File Management', () => {
-
-  test('5B.1 - Configure and test auto-save functionality', async ({ page }) => {
+test.describe("Auto-Save & Export File Management", () => {
+  test("5B.1 - Configure and test auto-save functionality", async ({
+    page,
+  }) => {
     // Navigate to settings to configure auto-save
     await page.click('[data-testid="settings-button"]');
-    await page.waitForSelector('[data-testid="settings-tabs"], [data-testid="project-info-tab"]', {
-      state: 'visible',
-      timeout: 5000
-    });
+    await page.waitForSelector(
+      '[data-testid="settings-tabs"], [data-testid="project-info-tab"]',
+      {
+        state: "visible",
+        timeout: 5000,
+      }
+    );
 
     // Access settings tabs if they exist
-    const settingsDialog = page.locator('[data-testid="settings-tabs"], [data-testid="project-info-tab"]');
+    const settingsDialog = page.locator(
+      '[data-testid="settings-tabs"], [data-testid="project-info-tab"]'
+    );
     if (await settingsDialog.isVisible()) {
       // Navigate to project settings or general settings
       await settingsDialog.click();
       // Wait for settings dialog to be ready
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState("networkidle");
     }
 
     // Look for auto-save settings using proper selectors
-    const autoSaveCheckbox = page.getByTestId('auto-save-checkbox').or(page.getByLabel(/auto.*save/i));
+    const autoSaveCheckbox = page
+      .getByTestId("auto-save-checkbox")
+      .or(page.getByLabel(/auto.*save/i));
     const autoSaveCheckboxExists = await autoSaveCheckbox.isVisible();
 
     if (autoSaveCheckboxExists) {
@@ -31,52 +45,76 @@ test.describe('Auto-Save & Export File Management', () => {
       await expect(autoSaveCheckbox).toBeChecked();
 
       // Look for auto-save interval setting using proper selectors
-      const intervalInput = page.getByTestId('auto-save-interval-input').or(page.getByLabel(/interval|seconds?/i));
+      const intervalInput = page
+        .getByTestId("auto-save-interval-input")
+        .or(page.getByLabel(/interval|seconds?/i));
       const intervalInputExists = await intervalInput.isVisible();
 
       if (intervalInputExists) {
-        await intervalInput.fill('1'); // 1 second interval for testing
+        await intervalInput.fill("1"); // 1 second interval for testing
         // Verify input value was set
-        await expect(intervalInput).toHaveValue('1');
+        await expect(intervalInput).toHaveValue("1");
       }
 
       // Save settings
-      const saveButton = page.locator('[data-testid="save-settings-button"], [data-testid="save-api-keys-button"]').first();
+      const saveButton = page
+        .locator(
+          '[data-testid="save-settings-button"], [data-testid="save-api-keys-button"]'
+        )
+        .first();
       if (await saveButton.isVisible()) {
         await saveButton.click();
         // Wait for settings to be saved instead of arbitrary timeout
-        await expect(page.getByTestId('settings-saved-toast').or(page.locator('.toast, .notification')).first()).toBeVisible({ timeout: 5000 }).catch(() => {
-          // If no toast appears, just verify the button is no longer in loading state
-          return expect(saveButton).toBeEnabled();
-        });
+        await expect(
+          page
+            .getByTestId("settings-saved-toast")
+            .or(page.locator(".toast, .notification"))
+            .first()
+        )
+          .toBeVisible({ timeout: 5000 })
+          .catch(() => {
+            // If no toast appears, just verify the button is no longer in loading state
+            return expect(saveButton).toBeEnabled();
+          });
       }
     }
 
     // Close settings dialog using proper selector
-    const closeButton = page.getByTestId('settings-close-button').or(page.getByRole('button', { name: /close|cancel/i })).first();
+    const closeButton = page
+      .getByTestId("settings-close-button")
+      .or(page.getByRole("button", { name: /close|cancel/i }))
+      .first();
     if (await closeButton.isVisible()) {
       await closeButton.click();
     }
 
     // Create a project to test auto-save
-    await createTestProject(page, 'Auto-Save Test Project');
+    await createTestProject(page, "Auto-Save Test Project");
 
     // Make some changes to trigger auto-save
     await page.click('[data-testid="import-media-button"]');
     // Wait for import dialog to appear
-    await expect(page.locator('input[type="file"], [data-testid="file-upload-area"]').first()).toBeVisible();
+    await expect(
+      page
+        .locator('input[type="file"], [data-testid="file-upload-area"]')
+        .first()
+    ).toBeVisible();
 
     // Add media to timeline if possible
     const mediaItem = page.locator('[data-testid="media-item"]').first();
-    const timelineTrack = page.locator('[data-testid="timeline-track"]').first();
+    const timelineTrack = page
+      .locator('[data-testid="timeline-track"]')
+      .first();
 
-    if (await mediaItem.isVisible() && await timelineTrack.isVisible()) {
+    if ((await mediaItem.isVisible()) && (await timelineTrack.isVisible())) {
       await mediaItem.dragTo(timelineTrack);
       await page.waitForTimeout(1000);
     }
 
     // Look for auto-save indicator
-    const autoSaveIndicator = page.locator('[data-testid="auto-save-indicator"]');
+    const autoSaveIndicator = page.locator(
+      '[data-testid="auto-save-indicator"]'
+    );
 
     // Auto-save indicator might be hidden but should exist in DOM
     const autoSaveExists = (await autoSaveIndicator.count()) > 0;
@@ -91,106 +129,136 @@ test.describe('Auto-Save & Export File Management', () => {
     }
   });
 
-  test('5B.2 - Test project recovery after crash simulation', async () => {
+  test("5B.2 - Test project recovery after crash simulation", async () => {
     // Use local instances for this test to avoid affecting other tests
     let localElectronApp = await startElectronApp();
     let localPage = await getMainWindow(localElectronApp);
 
     try {
       // Create project with content using helper
-      await createTestProject(localPage, 'Recovery Test Project');
+      await createTestProject(localPage, "Recovery Test Project");
 
       // Add content to project
       await localPage.click('[data-testid="import-media-button"]');
-      await localPage.waitForSelector('[data-testid="media-item"]', {
-        state: 'visible',
-        timeout: 5000
-      }).catch(() => {});
+      await localPage
+        .waitForSelector('[data-testid="media-item"]', {
+          state: "visible",
+          timeout: 5000,
+        })
+        .catch(() => {});
 
       const mediaItem = localPage.locator('[data-testid="media-item"]').first();
-      const timelineTrack = localPage.locator('[data-testid="timeline-track"]').first();
+      const timelineTrack = localPage
+        .locator('[data-testid="timeline-track"]')
+        .first();
 
-      if (await mediaItem.isVisible() && await timelineTrack.isVisible()) {
+      if ((await mediaItem.isVisible()) && (await timelineTrack.isVisible())) {
         await mediaItem.dragTo(timelineTrack);
-        await localPage.waitForSelector('[data-testid="timeline-element"]', {
-          state: 'visible',
-          timeout: 3000
-        }).catch(() => {});
+        await localPage
+          .waitForSelector('[data-testid="timeline-element"]', {
+            state: "visible",
+            timeout: 3000,
+          })
+          .catch(() => {});
       }
 
       // Add some text overlay to make project more substantial
       await localPage.click('[data-testid="text-panel-tab"]');
-      await localPage.waitForSelector('[data-testid="text-overlay-button"]', {
-        state: 'visible',
-        timeout: 2000
-      }).catch(() => {});
+      await localPage
+        .waitForSelector('[data-testid="text-overlay-button"]', {
+          state: "visible",
+          timeout: 2000,
+        })
+        .catch(() => {});
 
-      const textButton = localPage.locator('[data-testid="text-overlay-button"]');
+      const textButton = localPage.locator(
+        '[data-testid="text-overlay-button"]'
+      );
       if (await textButton.isVisible()) {
         await textButton.click();
-        await localPage.waitForSelector('[data-testid="text-input-box"], input[type="text"]', {
-          state: 'visible',
-          timeout: 3000
-        }).catch(() => {});
+        await localPage
+          .waitForSelector(
+            '[data-testid="text-input-box"], input[type="text"]',
+            {
+              state: "visible",
+              timeout: 3000,
+            }
+          )
+          .catch(() => {});
 
         // Add text content
-        const textInput = localPage.locator('[data-testid="text-input-box"], input[type="text"]').first();
+        const textInput = localPage
+          .locator('[data-testid="text-input-box"], input[type="text"]')
+          .first();
         if (await textInput.isVisible()) {
-          await textInput.fill('Recovery Test Content');
-          await localPage.waitForLoadState('networkidle');
+          await textInput.fill("Recovery Test Content");
+          await localPage.waitForLoadState("networkidle");
         }
       }
 
       // Simulate force quit by closing and reopening app
       await localElectronApp.close();
-      await new Promise(resolve => setTimeout(resolve, 2000)); // Wait for clean shutdown
+      await new Promise((resolve) => setTimeout(resolve, 2000)); // Wait for clean shutdown
 
       // Restart application with new instances
       localElectronApp = await startElectronApp();
       localPage = await getMainWindow(localElectronApp);
 
       // Wait for app to fully load
-      await localPage.waitForLoadState('domcontentloaded');
+      await localPage.waitForLoadState("domcontentloaded");
 
       // Look for recovery dialog or unsaved changes notification
-      const recoveryDialog = localPage.locator('[data-testid="recovery-dialog"], [role="dialog"]').filter({
-        hasText: /recover|unsaved|restore/i
-      }).first();
+      const recoveryDialog = localPage
+        .locator('[data-testid="recovery-dialog"], [role="dialog"]')
+        .filter({
+          hasText: /recover|unsaved|restore/i,
+        })
+        .first();
 
       if (await recoveryDialog.isVisible()) {
         await expect(recoveryDialog).toContainText(/unsaved|changes|recover/i);
 
         // Click recover button
-        const recoverButton = localPage.locator('[data-testid="recover-project-button"], button').filter({
-          hasText: /recover|restore|yes/i
-        }).first();
+        const recoverButton = localPage
+          .locator('[data-testid="recover-project-button"], button')
+          .filter({
+            hasText: /recover|restore|yes/i,
+          })
+          .first();
 
         if (await recoverButton.isVisible()) {
           await recoverButton.click();
-          await localPage.waitForSelector('[data-testid="timeline-element"]', {
-            state: 'visible',
-            timeout: 5000
-          }).catch(() => {});
+          await localPage
+            .waitForSelector('[data-testid="timeline-element"]', {
+              state: "visible",
+              timeout: 5000,
+            })
+            .catch(() => {});
 
           // Verify content was recovered
-          const timelineElements = localPage.locator('[data-testid="timeline-element"]');
-          if (await timelineElements.count() > 0) {
+          const timelineElements = localPage.locator(
+            '[data-testid="timeline-element"]'
+          );
+          if ((await timelineElements.count()) > 0) {
             await expect(timelineElements.first()).toBeVisible();
           }
 
-          const textOverlay = localPage.locator('[data-testid="canvas-text"]').filter({
-            hasText: 'Recovery Test Content'
-          });
-          if (await textOverlay.count() > 0) {
+          const textOverlay = localPage
+            .locator('[data-testid="canvas-text"]')
+            .filter({
+              hasText: "Recovery Test Content",
+            });
+          if ((await textOverlay.count()) > 0) {
             await expect(textOverlay.first()).toBeVisible();
           }
         }
       } else {
         // If no recovery dialog appears, that's also a valid test result
         // It means the app either auto-recovered or had no unsaved changes
-        console.log('No recovery dialog appeared - app may have auto-recovered');
+        console.log(
+          "No recovery dialog appeared - app may have auto-recovered"
+        );
       }
-
     } finally {
       // Clean up local instances
       if (localElectronApp) {
@@ -199,18 +267,23 @@ test.describe('Auto-Save & Export File Management', () => {
     }
   });
 
-  test('5B.3 - Test export to custom directories', async ({ page, electronApp }) => {
+  test("5B.3 - Test export to custom directories", async ({
+    page,
+    electronApp,
+  }) => {
     // Create a project to export
-    await createTestProject(page, 'Export Directory Test Project');
+    await createTestProject(page, "Export Directory Test Project");
 
     // Add content
     await page.click('[data-testid="import-media-button"]');
     await page.waitForTimeout(1000);
 
     const mediaItem = page.locator('[data-testid="media-item"]').first();
-    const timelineTrack = page.locator('[data-testid="timeline-track"]').first();
+    const timelineTrack = page
+      .locator('[data-testid="timeline-track"]')
+      .first();
 
-    if (await mediaItem.isVisible() && await timelineTrack.isVisible()) {
+    if ((await mediaItem.isVisible()) && (await timelineTrack.isVisible())) {
       await mediaItem.dragTo(timelineTrack);
       await page.waitForTimeout(1000);
     }
@@ -221,44 +294,55 @@ test.describe('Auto-Save & Export File Management', () => {
     await page.waitForTimeout(1000);
 
     // Look for export dialog
-    const exportDialog = page.locator('[data-testid*="export-dialog"], .export, [role="dialog"]').filter({
-      hasText: /export|render|save/i
-    }).first();
+    const exportDialog = page
+      .locator('[data-testid*="export-dialog"], .export, [role="dialog"]')
+      .filter({
+        hasText: /export|render|save/i,
+      })
+      .first();
 
     if (await exportDialog.isVisible()) {
       await expect(exportDialog).toBeVisible();
 
       // Configure filename with special characters
-      const filenameInput = page.locator('[data-testid="export-filename-input"]');
+      const filenameInput = page.locator(
+        '[data-testid="export-filename-input"]'
+      );
       if (await filenameInput.isVisible()) {
-        await filenameInput.fill('Test Video (Special & Characters) [2024]');
+        await filenameInput.fill("Test Video (Special & Characters) [2024]");
         await page.waitForTimeout(500);
       }
 
       // Look for custom export location button
-      const customLocationButton = page.locator('button').filter({
-        hasText: /custom|browse|location|directory/i
-      }).first();
+      const customLocationButton = page
+        .locator("button")
+        .filter({
+          hasText: /custom|browse|location|directory/i,
+        })
+        .first();
 
       if (await customLocationButton.isVisible()) {
         // Prefer stubbing Electron's dialog in main process for deterministic result
         await electronApp.evaluate(async ({ dialog }) => {
-          const { tmpdir } = require('node:os');
+          const { tmpdir } = require("node:os");
           // @ts-expect-error attach on global for test restore
           global.__origShowOpenDialog__ = dialog.showOpenDialog;
           dialog.showOpenDialog = async () => ({
             canceled: false,
-            filePaths: [tmpdir()]
+            filePaths: [tmpdir()],
           });
         });
 
         await customLocationButton.click();
 
         // Wait for export location to be updated in UI
-        await page.getByTestId('export-location-display').waitFor({ state: 'visible', timeout: 5000 }).catch(() => {
-          // If no specific location display, just verify dialog interaction completed
-          return expect(page.getByTestId('export-dialog')).toBeVisible();
-        });
+        await page
+          .getByTestId("export-location-display")
+          .waitFor({ state: "visible", timeout: 5000 })
+          .catch(() => {
+            // If no specific location display, just verify dialog interaction completed
+            return expect(page.getByTestId("export-dialog")).toBeVisible();
+          });
 
         await electronApp.evaluate(({ dialog }) => {
           // @ts-expect-error read from global and clean up
@@ -272,17 +356,23 @@ test.describe('Auto-Save & Export File Management', () => {
       }
 
       // Set export quality
-      const qualitySelect = page.locator('[data-testid="export-quality-select"]');
+      const qualitySelect = page.locator(
+        '[data-testid="export-quality-select"]'
+      );
       if (await qualitySelect.isVisible()) {
         // Select a quality option
-        const qualityOption = qualitySelect.locator('input[value="720p"], [value*="720"]').first();
+        const qualityOption = qualitySelect
+          .locator('input[value="720p"], [value*="720"]')
+          .first();
         if (await qualityOption.isVisible()) {
           await qualityOption.click();
         }
       }
 
       // Start export
-      const startExportButton = page.locator('[data-testid="export-start-button"]');
+      const startExportButton = page.locator(
+        '[data-testid="export-start-button"]'
+      );
       if (await startExportButton.isVisible()) {
         await startExportButton.click();
         await page.waitForTimeout(2000);
@@ -302,7 +392,9 @@ test.describe('Auto-Save & Export File Management', () => {
         // Wait a moment to see progress, then cancel to avoid long wait
         await page.waitForTimeout(3000);
 
-        const cancelButton = page.locator('[data-testid="export-cancel-button"]');
+        const cancelButton = page.locator(
+          '[data-testid="export-cancel-button"]'
+        );
         if (await cancelButton.isVisible()) {
           await cancelButton.click();
           await page.waitForTimeout(1000);
@@ -311,16 +403,22 @@ test.describe('Auto-Save & Export File Management', () => {
     }
   });
 
-  test('5B.4 - Test export file format and quality options', async ({ page }) => {
+  test("5B.4 - Test export file format and quality options", async ({
+    page,
+  }) => {
     // Open export dialog
     const exportButton = page.locator('[data-testid*="export"]').first();
     await exportButton.click();
     await page.waitForTimeout(1000);
 
-    const exportDialog = page.locator('[data-testid*="export-dialog"], .export').first();
+    const exportDialog = page
+      .locator('[data-testid*="export-dialog"], .export')
+      .first();
     if (await exportDialog.isVisible()) {
       // Test quality selection
-      const qualitySelect = page.locator('[data-testid="export-quality-select"]');
+      const qualitySelect = page.locator(
+        '[data-testid="export-quality-select"]'
+      );
       if (await qualitySelect.isVisible()) {
         // Check available quality options
         const qualityOptions = qualitySelect.locator('input, [role="radio"]');
@@ -328,7 +426,10 @@ test.describe('Auto-Save & Export File Management', () => {
         expect(optionCount).toBeGreaterThan(0);
 
         // Select high quality if available
-        const highQualityOption = page.getByRole('option', { name: /1080|high|hd/i }).or(qualityOptions.filter({ hasText: /1080|high|hd/i })).first();
+        const highQualityOption = page
+          .getByRole("option", { name: /1080|high|hd/i })
+          .or(qualityOptions.filter({ hasText: /1080|high|hd/i }))
+          .first();
         if (await highQualityOption.isVisible()) {
           await highQualityOption.click();
           await page.waitForTimeout(500);
@@ -344,7 +445,10 @@ test.describe('Auto-Save & Export File Management', () => {
         expect(formatCount).toBeGreaterThan(0);
 
         // Select MP4 format if available
-        const mp4Option = page.getByRole('option', { name: /mp4|mpeg/i }).or(formatOptions.filter({ hasText: /mp4|mpeg/i })).first();
+        const mp4Option = page
+          .getByRole("option", { name: /mp4|mpeg/i })
+          .or(formatOptions.filter({ hasText: /mp4|mpeg/i }))
+          .first();
         if (await mp4Option.isVisible()) {
           await mp4Option.click();
           await page.waitForTimeout(500);
@@ -352,15 +456,21 @@ test.describe('Auto-Save & Export File Management', () => {
       }
 
       // Test caption export options if available
-      const captionCheckbox = page.locator('[data-testid="export-include-captions-checkbox"]');
+      const captionCheckbox = page.locator(
+        '[data-testid="export-include-captions-checkbox"]'
+      );
       if (await captionCheckbox.isVisible()) {
         await captionCheckbox.check();
         await page.waitForTimeout(500);
 
         // Look for caption format options
-        const captionFormatSelect = page.locator('[data-testid="caption-format-select"]');
+        const captionFormatSelect = page.locator(
+          '[data-testid="caption-format-select"]'
+        );
         if (await captionFormatSelect.isVisible()) {
-          const srtOption = captionFormatSelect.locator('input[value="srt"]').first();
+          const srtOption = captionFormatSelect
+            .locator('input[value="srt"]')
+            .first();
           if (await srtOption.isVisible()) {
             await srtOption.click();
           }
@@ -368,7 +478,9 @@ test.describe('Auto-Save & Export File Management', () => {
       }
 
       // Test audio export options if available
-      const audioCheckbox = page.locator('[data-testid="export-include-audio-checkbox"]');
+      const audioCheckbox = page.locator(
+        '[data-testid="export-include-audio-checkbox"]'
+      );
       if (await audioCheckbox.isVisible()) {
         await audioCheckbox.check();
         await page.waitForTimeout(500);
@@ -376,7 +488,9 @@ test.describe('Auto-Save & Export File Management', () => {
     }
   });
 
-  test('5B.5 - Test file permissions and cross-platform compatibility', async ({ page }) => {
+  test("5B.5 - Test file permissions and cross-platform compatibility", async ({
+    page,
+  }) => {
     // Get system information
     const platform = await page.evaluate(() => ({
       platform: navigator.platform,
@@ -430,7 +544,9 @@ test.describe('Auto-Save & Export File Management', () => {
     // 4. Long file paths are supported
   });
 
-  test('5B.6 - Test comprehensive export workflow with all features', async ({ page }) => {
+  test("5B.6 - Test comprehensive export workflow with all features", async ({
+    page,
+  }) => {
     // Create a comprehensive project
     await page.click('[data-testid="new-project-button"]');
     await page.waitForTimeout(2000);
@@ -441,9 +557,11 @@ test.describe('Auto-Save & Export File Management', () => {
 
     // Add to timeline
     const mediaItem = page.locator('[data-testid="media-item"]').first();
-    const timelineTrack = page.locator('[data-testid="timeline-track"]').first();
+    const timelineTrack = page
+      .locator('[data-testid="timeline-track"]')
+      .first();
 
-    if (await mediaItem.isVisible() && await timelineTrack.isVisible()) {
+    if ((await mediaItem.isVisible()) && (await timelineTrack.isVisible())) {
       await mediaItem.dragTo(timelineTrack);
       await page.waitForTimeout(1000);
     }
@@ -466,24 +584,35 @@ test.describe('Auto-Save & Export File Management', () => {
     const exportDialog = page.locator('[data-testid*="export-dialog"]').first();
     if (await exportDialog.isVisible()) {
       // Configure comprehensive export settings
-      await page.locator('[data-testid="export-filename-input"]').fill('Comprehensive Export Test');
+      await page
+        .locator('[data-testid="export-filename-input"]')
+        .fill("Comprehensive Export Test");
       await page.waitForTimeout(500);
 
       // Enable all export features
-      const captionCheckbox = page.locator('[data-testid="export-include-captions-checkbox"]');
+      const captionCheckbox = page.locator(
+        '[data-testid="export-include-captions-checkbox"]'
+      );
       if (await captionCheckbox.isVisible()) {
         await captionCheckbox.check();
       }
 
-      const audioCheckbox = page.locator('[data-testid="export-include-audio-checkbox"]');
+      const audioCheckbox = page.locator(
+        '[data-testid="export-include-audio-checkbox"]'
+      );
       if (await audioCheckbox.isVisible()) {
         await audioCheckbox.check();
       }
 
       // Set quality and format
-      const qualitySelect = page.locator('[data-testid="export-quality-select"]');
+      const qualitySelect = page.locator(
+        '[data-testid="export-quality-select"]'
+      );
       if (await qualitySelect.isVisible()) {
-        const hdOption = qualitySelect.getByRole('option', { name: /720|hd/i }).or(qualitySelect.locator('option').filter({ hasText: /720|hd/i })).first();
+        const hdOption = qualitySelect
+          .getByRole("option", { name: /720|hd/i })
+          .or(qualitySelect.locator("option").filter({ hasText: /720|hd/i }))
+          .first();
         if (await hdOption.isVisible()) {
           await hdOption.click();
         }
@@ -510,7 +639,9 @@ test.describe('Auto-Save & Export File Management', () => {
         // Let it run for a few seconds, then cancel to avoid long test times
         await page.waitForTimeout(5000);
 
-        const cancelButton = page.locator('[data-testid="export-cancel-button"]');
+        const cancelButton = page.locator(
+          '[data-testid="export-cancel-button"]'
+        );
         if (await cancelButton.isVisible()) {
           await cancelButton.click();
           await page.waitForTimeout(1000);

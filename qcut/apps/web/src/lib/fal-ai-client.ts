@@ -223,18 +223,30 @@ class FalAIClient {
 
       case "seeddream-v4":
         // SeedDream V4 uses string image_size values like "square_hd", "square", etc.
-        if (typeof settings.imageSize === 'string') {
+        if (typeof settings.imageSize === "string") {
           // Validate and use string values directly for V4
-          const validV4Sizes = ["square", "square_hd", "portrait_3_4", "landscape_4_3", "portrait_9_16", "landscape_16_9"];
+          const validV4Sizes = [
+            "square",
+            "square_hd",
+            "portrait_3_4",
+            "landscape_4_3",
+            "portrait_9_16",
+            "landscape_16_9",
+          ];
           if (validV4Sizes.includes(settings.imageSize)) {
             params.image_size = settings.imageSize;
           } else {
-            console.warn(`[SeedDream V4] Invalid image_size "${settings.imageSize}", defaulting to "square_hd"`);
+            console.warn(
+              `[SeedDream V4] Invalid image_size "${settings.imageSize}", defaulting to "square_hd"`
+            );
             params.image_size = "square_hd";
           }
-        } else if (typeof settings.imageSize === 'number') {
+        } else if (typeof settings.imageSize === "number") {
           // Convert numeric size to closest V4 string equivalent
-          const clampedSize = Math.min(Math.max(Math.round(settings.imageSize), 1024), 4096);
+          const clampedSize = Math.min(
+            Math.max(Math.round(settings.imageSize), 1024),
+            4096
+          );
           if (clampedSize >= 1536) {
             params.image_size = "square_hd"; // 1536x1536
           } else if (clampedSize >= 1280) {
@@ -242,7 +254,9 @@ class FalAIClient {
           } else {
             params.image_size = "square"; // 1024x1024
           }
-          console.log(`[SeedDream V4] Converted numeric size ${settings.imageSize} -> "${params.image_size}"`);
+          console.log(
+            `[SeedDream V4] Converted numeric size ${settings.imageSize} -> "${params.image_size}"`
+          );
         } else {
           // Default fallback
           params.image_size = "square_hd";
@@ -492,18 +506,18 @@ export function convertParametersForModel(modelId: string, params: any) {
     case "seededit":
       // Keep existing V3 conversion unchanged
       return convertV3Parameters(params);
-      
+
     case "seeddream-v4":
       return convertV4Parameters(params);
-      
+
     case "nano-banana":
       return convertNanoBananaParameters(params);
-      
+
     case "flux-kontext":
     case "flux-kontext-max":
-      // Keep existing flux conversion unchanged  
+      // Keep existing flux conversion unchanged
       return convertFluxParameters(params);
-      
+
     default:
       throw new Error(`Unknown model: ${modelId}`);
   }
@@ -518,7 +532,7 @@ function convertV3Parameters(params: any) {
     num_inference_steps: params.num_inference_steps || params.steps || 20,
     seed: params.seed,
     safety_tolerance: params.safety_tolerance || params.safetyTolerance || 2,
-    num_images: params.num_images || params.numImages || 1
+    num_images: params.num_images || params.numImages || 1,
   };
 }
 
@@ -535,52 +549,63 @@ function convertV4Parameters(params: any) {
   };
 
   // Sanitize image URLs - limit to max 10 URLs
-  let imageUrls = params.image_urls || (params.imageUrl ? [params.imageUrl] : []);
+  let imageUrls =
+    params.image_urls || (params.imageUrl ? [params.imageUrl] : []);
   if (Array.isArray(imageUrls) && imageUrls.length > 10) {
-    console.warn(`[FAL AI] Truncating image_urls from ${imageUrls.length} to 10 (max allowed)`);
+    console.warn(
+      `[FAL AI] Truncating image_urls from ${imageUrls.length} to 10 (max allowed)`
+    );
     imageUrls = imageUrls.slice(0, 10);
   }
 
   // Sanitize prompt - truncate to 5000 characters max
   let prompt = params.prompt || "";
   if (prompt.length > 5000) {
-    console.warn(`[FAL AI] Truncating prompt from ${prompt.length} to 5000 characters (max allowed)`);
+    console.warn(
+      `[FAL AI] Truncating prompt from ${prompt.length} to 5000 characters (max allowed)`
+    );
     prompt = prompt.substring(0, 5000);
   }
 
   // Validate image_size - must be valid preset or numeric value between 256-4096
   let imageSize = params.image_size || params.imageSize || "square_hd";
-  const validPresets = ["square_hd", "square", "portrait_3_4", "portrait_9_16", "landscape_4_3", "landscape_16_9"];
+  const validPresets = [
+    "square_hd",
+    "square",
+    "portrait_3_4",
+    "portrait_9_16",
+    "landscape_4_3",
+    "landscape_16_9",
+  ];
   if (typeof imageSize === "number") {
     imageSize = clamp(imageSize, 256, 4096);
-  } else if (typeof imageSize === "string" && !validPresets.includes(imageSize)) {
-    console.warn(`[FAL AI] Invalid image_size "${imageSize}", defaulting to "square_hd"`);
+  } else if (
+    typeof imageSize === "string" &&
+    !validPresets.includes(imageSize)
+  ) {
+    console.warn(
+      `[FAL AI] Invalid image_size "${imageSize}", defaulting to "square_hd"`
+    );
     imageSize = "square_hd";
   }
 
   // Clamp num_images to valid range (1-4)
-  const numImages = clamp(
-    params.num_images || params.numImages || 1,
-    1,
-    4
-  );
+  const numImages = clamp(params.num_images || params.numImages || 1, 1, 4);
 
   // Clamp max_images to valid range (1-4)
-  const maxImages = clamp(
-    params.max_images || params.maxImages || 1,
-    1,
-    4
-  );
+  const maxImages = clamp(params.max_images || params.maxImages || 1, 1, 4);
 
   return {
     image_urls: imageUrls,
-    prompt: prompt,
+    prompt,
     image_size: imageSize,
     max_images: maxImages,
     num_images: numImages,
     sync_mode: params.sync_mode || params.syncMode || false,
-    enable_safety_checker: params.enable_safety_checker !== false && params.enableSafetyChecker !== false,
-    seed: params.seed
+    enable_safety_checker:
+      params.enable_safety_checker !== false &&
+      params.enableSafetyChecker !== false,
+    seed: params.seed,
   };
 }
 
@@ -592,26 +617,38 @@ function convertV4Parameters(params: any) {
  */
 function convertNanoBananaParameters(params: any) {
   // Sanitize and validate image URLs - limit to max 10 URLs
-  const urls = (params.image_urls ?? (params.imageUrl ? [params.imageUrl] : [])) as string[];
+  const urls = (params.image_urls ??
+    (params.imageUrl ? [params.imageUrl] : [])) as string[];
   const imageUrls = Array.isArray(urls) ? urls.slice(0, 10) : [];
-  
+
   if (Array.isArray(urls) && urls.length > 10) {
-    console.warn(`[FAL AI Nano Banana] Truncating image_urls from ${urls.length} to 10 (max allowed)`);
+    console.warn(
+      `[FAL AI Nano Banana] Truncating image_urls from ${urls.length} to 10 (max allowed)`
+    );
   }
 
   // Clamp num_images to valid range (1-4)
-  const numImages = Math.max(1, Math.min(4, Number(params.num_images ?? params.numImages ?? 1)));
-  
+  const numImages = Math.max(
+    1,
+    Math.min(4, Number(params.num_images ?? params.numImages ?? 1))
+  );
+
   if (numImages !== (params.num_images ?? params.numImages ?? 1)) {
-    console.warn(`[FAL AI Nano Banana] Clamping num_images to ${numImages} (valid range: 1-4)`);
+    console.warn(
+      `[FAL AI Nano Banana] Clamping num_images to ${numImages} (valid range: 1-4)`
+    );
   }
 
   // Normalize output format to uppercase
   const validFormats = ["PNG", "JPEG", "WEBP"];
-  let outputFormat = String(params.output_format ?? params.outputFormat ?? "PNG").toUpperCase();
-  
+  let outputFormat = String(
+    params.output_format ?? params.outputFormat ?? "PNG"
+  ).toUpperCase();
+
   if (!validFormats.includes(outputFormat)) {
-    console.warn(`[FAL AI Nano Banana] Invalid output_format "${outputFormat}", defaulting to "PNG"`);
+    console.warn(
+      `[FAL AI Nano Banana] Invalid output_format "${outputFormat}", defaulting to "PNG"`
+    );
     outputFormat = "PNG";
   }
 
@@ -623,10 +660,10 @@ function convertNanoBananaParameters(params: any) {
 
   return {
     image_urls: imageUrls,
-    prompt: prompt,
+    prompt,
     num_images: numImages,
     output_format: outputFormat,
-    sync_mode: syncMode
+    sync_mode: syncMode,
   };
 }
 
@@ -640,26 +677,42 @@ function convertFluxParameters(params: any) {
   // Sanitize and validate image URLs - consistent with V4 and Nano Banana
   const urls = params.image_urls ?? (params.imageUrl ? [params.imageUrl] : []);
   const imageUrls = Array.isArray(urls) ? urls.slice(0, 10) : [];
-  
+
   if (Array.isArray(urls) && urls.length > 10) {
-    console.warn(`[FAL AI FLUX] Truncating image_urls from ${urls.length} to 10 (max allowed)`);
+    console.warn(
+      `[FAL AI FLUX] Truncating image_urls from ${urls.length} to 10 (max allowed)`
+    );
   }
 
   // Clamp num_images to valid range (1-4) - consistent with other models
-  const numImages = Math.max(1, Math.min(4, Number(params.num_images ?? params.numImages ?? 1)));
-  
+  const numImages = Math.max(
+    1,
+    Math.min(4, Number(params.num_images ?? params.numImages ?? 1))
+  );
+
   if (numImages !== (params.num_images ?? params.numImages ?? 1)) {
-    console.warn(`[FAL AI FLUX] Clamping num_images to ${numImages} (valid range: 1-4)`);
+    console.warn(
+      `[FAL AI FLUX] Clamping num_images to ${numImages} (valid range: 1-4)`
+    );
   }
 
   // Clamp guidance_scale to reasonable range
-  const guidanceScale = Math.max(1, Math.min(20, Number(params.guidance_scale ?? params.guidanceScale ?? 3.5)));
-  
+  const guidanceScale = Math.max(
+    1,
+    Math.min(20, Number(params.guidance_scale ?? params.guidanceScale ?? 3.5))
+  );
+
   // Clamp inference steps to reasonable range
-  const inferenceSteps = Math.max(1, Math.min(100, Number(params.num_inference_steps ?? params.steps ?? 28)));
-  
+  const inferenceSteps = Math.max(
+    1,
+    Math.min(100, Number(params.num_inference_steps ?? params.steps ?? 28))
+  );
+
   // Clamp safety tolerance to valid range
-  const safetyTolerance = Math.max(1, Math.min(6, Number(params.safety_tolerance ?? params.safetyTolerance ?? 2)));
+  const safetyTolerance = Math.max(
+    1,
+    Math.min(6, Number(params.safety_tolerance ?? params.safetyTolerance ?? 2))
+  );
 
   return {
     prompt: params.prompt || "",
@@ -668,12 +721,14 @@ function convertFluxParameters(params: any) {
     num_inference_steps: inferenceSteps,
     seed: params.seed,
     safety_tolerance: safetyTolerance,
-    num_images: numImages
+    num_images: numImages,
   };
 }
 
 // Model detection and routing
-export function detectModelVersion(modelId: string): "v3" | "v4" | "nano-banana" | "flux" {
+export function detectModelVersion(
+  modelId: string
+): "v3" | "v4" | "nano-banana" | "flux" {
   if (modelId === "seeddream-v4") return "v4";
   if (modelId === "nano-banana") return "nano-banana";
   if (modelId.includes("flux")) return "flux";

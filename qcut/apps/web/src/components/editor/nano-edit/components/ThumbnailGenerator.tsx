@@ -4,14 +4,14 @@ import { FalAiService } from "@/services/ai/fal-ai-service";
 import { PromptInput } from "./PromptInput";
 import TransformationSelector from "./TransformationSelector";
 import { THUMBNAIL_TEMPLATES } from "../constants/transformations";
-import type { Transformation } from '@/types/nano-edit';
+import type { Transformation } from "@/types/nano-edit";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
 
 export const ThumbnailGenerator: React.FC = () => {
   const { addAsset, isProcessing, assets } = useNanoEditStore();
   const [customPrompt, setCustomPrompt] = useState("");
 
-  // Get project info (read-only access)  
+  // Get project info (read-only access)
   const currentProject: { id: string } | undefined = undefined; // TODO: Add project store integration when needed
 
   const handleGenerate = async (prompt: string) => {
@@ -31,7 +31,7 @@ export const ThumbnailGenerator: React.FC = () => {
           url: imageUrls[0],
           projectId: undefined,
           createdAt: new Date(),
-          prompt: prompt,
+          prompt,
           dimensions: "1280x720",
           transformation: undefined,
         };
@@ -50,7 +50,7 @@ export const ThumbnailGenerator: React.FC = () => {
 
   const handleOrderChange = (newOrder: Transformation[]) => {
     // Optional: Handle reordering of transformations
-    console.log('Transformation order changed:', newOrder);
+    console.log("Transformation order changed:", newOrder);
   };
 
   const thumbnailAssets = assets.filter((asset) => asset.type === "thumbnail");

@@ -25,7 +25,7 @@ export const TitleCardCreator: React.FC = () => {
         type: "title-card" as const,
         url: firstUrl,
         createdAt: new Date(),
-        prompt: prompt,
+        prompt,
       };
 
       addAsset(asset);
@@ -83,7 +83,7 @@ export const TitleCardCreator: React.FC = () => {
                 >
                   <img
                     src={asset.url}
-                    alt={asset.prompt || 'Title card'}
+                    alt={asset.prompt || "Title card"}
                     className="w-full h-24 object-cover rounded border border-gray-600 group-hover:border-blue-500 transition-colors"
                     loading="lazy"
                   />

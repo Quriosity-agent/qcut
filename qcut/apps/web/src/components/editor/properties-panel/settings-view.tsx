@@ -40,20 +40,38 @@ function ProjectSettingsTabs() {
       <Tabs defaultValue="project-info" className="flex flex-col h-full">
         <div className="px-3 pt-4 pb-0">
           <TabsList data-testid="settings-tabs">
-            <TabsTrigger value="project-info" data-testid="project-info-tab">Project info</TabsTrigger>
-            <TabsTrigger value="background" data-testid="background-tab">Background</TabsTrigger>
-            <TabsTrigger value="api-keys" data-testid="api-keys-tab">API Keys</TabsTrigger>
+            <TabsTrigger value="project-info" data-testid="project-info-tab">
+              Project info
+            </TabsTrigger>
+            <TabsTrigger value="background" data-testid="background-tab">
+              Background
+            </TabsTrigger>
+            <TabsTrigger value="api-keys" data-testid="api-keys-tab">
+              API Keys
+            </TabsTrigger>
           </TabsList>
         </div>
         <Separator className="my-4" />
         <ScrollArea className="flex-1">
-          <TabsContent value="project-info" className="p-5 pt-0 mt-0" data-testid="project-info-content">
+          <TabsContent
+            value="project-info"
+            className="p-5 pt-0 mt-0"
+            data-testid="project-info-content"
+          >
             <ProjectInfoView />
           </TabsContent>
-          <TabsContent value="background" className="p-4 pt-0" data-testid="background-content">
+          <TabsContent
+            value="background"
+            className="p-4 pt-0"
+            data-testid="background-content"
+          >
             <BackgroundView />
           </TabsContent>
-          <TabsContent value="api-keys" className="p-5 pt-0 mt-0" data-testid="api-keys-content">
+          <TabsContent
+            value="api-keys"
+            className="p-5 pt-0 mt-0"
+            data-testid="api-keys-content"
+          >
             <ApiKeysView />
           </TabsContent>
         </ScrollArea>
@@ -465,7 +483,12 @@ function ApiKeysView() {
 
       {/* Save Button */}
       <div className="flex justify-end">
-        <Button type="button" onClick={saveApiKeys} className="gap-2" data-testid="save-api-keys-button">
+        <Button
+          type="button"
+          onClick={saveApiKeys}
+          className="gap-2"
+          data-testid="save-api-keys-button"
+        >
           <KeyIcon className="h-4 w-4" aria-hidden="true" />
           Save API Keys
         </Button>

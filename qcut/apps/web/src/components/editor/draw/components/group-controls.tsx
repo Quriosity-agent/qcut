@@ -16,7 +16,7 @@ export const GroupControls: React.FC<GroupControlsProps> = ({
   hasGroups,
   onCreateGroup,
   onUngroup,
-  className
+  className,
 }) => {
   const canGroup = selectedCount >= 2;
   const canUngroup = hasGroups && selectedCount > 0;

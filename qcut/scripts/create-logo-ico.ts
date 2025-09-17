@@ -1,8 +1,8 @@
-import sharp from 'sharp';
-import { promises as fs } from 'node:fs';
-import * as path from 'node:path';
-import toIco from 'to-ico';
-import { fileURLToPath } from 'node:url';
+import sharp from "sharp";
+import { promises as fs } from "node:fs";
+import * as path from "node:path";
+import toIco from "to-ico";
+import { fileURLToPath } from "node:url";
 
 interface ResizeOptions {
   fit: "contain" | "cover" | "fill" | "inside" | "outside";
@@ -19,8 +19,8 @@ async function createIcon(): Promise<void> {
   const scriptDir = path.dirname(fileURLToPath(import.meta.url));
   const isCompiled = scriptDir.includes(`${path.sep}dist${path.sep}`);
   const rootDir = isCompiled
-    ? path.join(scriptDir, '../../') // Go up from dist/scripts
-    : path.join(scriptDir, '../');   // Go up from scripts
+    ? path.join(scriptDir, "../../") // Go up from dist/scripts
+    : path.join(scriptDir, "../"); // Go up from scripts
 
   const inputPath: string = path.join(
     rootDir,

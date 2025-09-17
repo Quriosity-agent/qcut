@@ -1,7 +1,10 @@
 import React, { useRef, useState, useCallback, useEffect } from "react";
 import { useWhiteDrawStore } from "@/stores/white-draw-store";
 import { PenTool } from "lucide-react";
-import { DrawingCanvas, type DrawingCanvasHandle } from "@/components/editor/draw/canvas/drawing-canvas";
+import {
+  DrawingCanvas,
+  type DrawingCanvasHandle,
+} from "@/components/editor/draw/canvas/drawing-canvas";
 import { ToolSelector } from "@/components/editor/draw/components/tool-selector";
 import { CanvasToolbar } from "@/components/editor/draw/components/canvas-toolbar";
 import { SavedDrawings } from "@/components/editor/draw/components/saved-drawings";
@@ -14,14 +17,17 @@ const DrawView: React.FC = () => {
   const [hasGroups, setHasGroups] = useState(false);
 
   // Handle loading a drawing from saved files
-  const handleLoadDrawing = useCallback(async (drawingData: string) => {
-    // Load the drawing into the canvas
-    if (canvasComponentRef.current?.loadDrawingFromDataUrl) {
-      await canvasComponentRef.current.loadDrawingFromDataUrl(drawingData);
-    }
-    setCurrentDrawingData(drawingData);
-    setActiveTab("canvas"); // Switch to canvas tab when loading
-  }, [setActiveTab]);
+  const handleLoadDrawing = useCallback(
+    async (drawingData: string) => {
+      // Load the drawing into the canvas
+      if (canvasComponentRef.current?.loadDrawingFromDataUrl) {
+        await canvasComponentRef.current.loadDrawingFromDataUrl(drawingData);
+      }
+      setCurrentDrawingData(drawingData);
+      setActiveTab("canvas"); // Switch to canvas tab when loading
+    },
+    [setActiveTab]
+  );
 
   // Handle drawing changes from canvas
   const handleDrawingChange = useCallback((dataUrl: string) => {
@@ -56,7 +62,8 @@ const DrawView: React.FC = () => {
   // Update group state from canvas
   const updateGroupState = useCallback(() => {
     if (canvasComponentRef.current) {
-      const newSelectedCount = canvasComponentRef.current.getSelectedCount?.() || 0;
+      const newSelectedCount =
+        canvasComponentRef.current.getSelectedCount?.() || 0;
       const newHasGroups = canvasComponentRef.current.getHasGroups?.() || false;
       setSelectedCount(newSelectedCount);
       setHasGroups(newHasGroups);
@@ -142,9 +149,7 @@ const DrawView: React.FC = () => {
         </div>
 
         {/* Tools Tab */}
-        {activeTab === "tools" && (
-          <ToolSelector className="h-full" />
-        )}
+        {activeTab === "tools" && <ToolSelector className="h-full" />}
 
         {/* Files Tab */}
         {activeTab === "files" && (

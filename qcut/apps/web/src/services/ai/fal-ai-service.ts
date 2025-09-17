@@ -1,8 +1,8 @@
-import { fal } from '@fal-ai/client';
+import { fal } from "@fal-ai/client";
 import type {
   FalAiTextToImageInput,
   FalAiImageEditInput,
-} from '@/types/nano-edit';
+} from "@/types/nano-edit";
 
 // FAL API response types
 type FalApiResponse = {
@@ -16,23 +16,26 @@ type FalApiResponse = {
 
 // Type guard for FAL API response validation
 const isFalApiResponse = (response: unknown): response is FalApiResponse => {
-  if (typeof response !== 'object' || response === null) {
+  if (typeof response !== "object" || response === null) {
     return false;
   }
-  
+
   const resp = response as Record<string, unknown>;
-  
+
   // Check if response has expected shape
-  const hasImages = !resp.images || (Array.isArray(resp.images) && 
-    resp.images.every((img: unknown) => 
-      typeof img === 'object' && img !== null && 
-      typeof (img as { url?: unknown }).url === 'string'
-    ));
-  
-  const hasValidData = !resp.data || (
-    typeof resp.data === 'object' && resp.data !== null
-  );
-  
+  const hasImages =
+    !resp.images ||
+    (Array.isArray(resp.images) &&
+      resp.images.every(
+        (img: unknown) =>
+          typeof img === "object" &&
+          img !== null &&
+          typeof (img as { url?: unknown }).url === "string"
+      ));
+
+  const hasValidData =
+    !resp.data || (typeof resp.data === "object" && resp.data !== null);
+
   return hasImages && hasValidData;
 };
 
@@ -40,10 +43,10 @@ const isFalApiResponse = (response: unknown): response is FalApiResponse => {
 const configureFalClient = async () => {
   // First try environment variable (same as AI panel)
   const envApiKey = import.meta.env.VITE_FAL_API_KEY;
-  
+
   if (envApiKey) {
     fal.config({
-      credentials: envApiKey
+      credentials: envApiKey,
     });
     return true;
   }
@@ -52,18 +55,21 @@ const configureFalClient = async () => {
   if (window.electronAPI?.apiKeys) {
     try {
       const keys = await window.electronAPI.apiKeys.get();
-      
+
       if (keys?.falApiKey) {
         fal.config({
-          credentials: keys.falApiKey
+          credentials: keys.falApiKey,
         });
         return true;
       }
     } catch (error) {
-      console.error("[FalAiService] Failed to load FAL API key from storage:", error);
+      console.error(
+        "[FalAiService] Failed to load FAL API key from storage:",
+        error
+      );
     }
   }
-  
+
   return false;
 };
 
@@ -86,7 +92,9 @@ export const FalAiService = {
       // Configure fal client with API key before making requests
       const configured = await configureFalClient();
       if (!configured) {
-        throw new Error("FAL API key not configured. Please set VITE_FAL_API_KEY environment variable or configure it in Settings.");
+        throw new Error(
+          "FAL API key not configured. Please set VITE_FAL_API_KEY environment variable or configure it in Settings."
+        );
       }
 
       const input: FalAiTextToImageInput = {
@@ -100,17 +108,17 @@ export const FalAiService = {
       const result = await fal.subscribe("fal-ai/nano-banana", {
         input,
       });
-      
+
       // Parse response with proper typing
       const unknownResp: unknown = result;
       if (!isFalApiResponse(unknownResp)) {
-        throw new Error('Unexpected FAL response shape');
+        throw new Error("Unexpected FAL response shape");
       }
       const response: FalApiResponse = unknownResp;
-      
+
       // Try different response structures
       let imageUrls: string[] = [];
-      
+
       // Check for images in direct response
       if (response.images && Array.isArray(response.images)) {
         imageUrls = response.images.map((img) => img.url);
@@ -120,14 +128,19 @@ export const FalAiService = {
         imageUrls = response.data.images.map((img) => img.url);
       }
       // Check for single image in data
-      else if (response.data?.image && typeof response.data.image === 'string') {
+      else if (
+        response.data?.image &&
+        typeof response.data.image === "string"
+      ) {
         imageUrls = [response.data.image];
       }
       // Check for output property (some FAL models use this)
       else if (response.data?.output) {
         if (Array.isArray(response.data.output)) {
-          imageUrls = response.data.output.map((item) => typeof item === 'string' ? item : item.url).filter(Boolean);
-        } else if (typeof response.data.output === 'string') {
+          imageUrls = response.data.output
+            .map((item) => (typeof item === "string" ? item : item.url))
+            .filter(Boolean);
+        } else if (typeof response.data.output === "string") {
           imageUrls = [response.data.output];
         }
       }
@@ -135,7 +148,7 @@ export const FalAiService = {
       return imageUrls;
     } catch (error) {
       throw new Error(
-        `Image generation failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        `Image generation failed: ${error instanceof Error ? error.message : "Unknown error"}`,
         { cause: error as unknown as Error }
       );
     }
@@ -157,7 +170,9 @@ export const FalAiService = {
       // Configure fal client with API key before making requests
       const configured = await configureFalClient();
       if (!configured) {
-        throw new Error("FAL API key not configured. Please set VITE_FAL_API_KEY environment variable or configure it in Settings.");
+        throw new Error(
+          "FAL API key not configured. Please set VITE_FAL_API_KEY environment variable or configure it in Settings."
+        );
       }
 
       if (imageUrls.length === 0) {
@@ -182,17 +197,17 @@ export const FalAiService = {
       const result = await fal.subscribe("fal-ai/nano-banana/edit", {
         input,
       });
-      
+
       // Parse response with proper typing
       const unknownResp: unknown = result;
       if (!isFalApiResponse(unknownResp)) {
-        throw new Error('Unexpected FAL response shape');
+        throw new Error("Unexpected FAL response shape");
       }
       const response: FalApiResponse = unknownResp;
-      
+
       // Try different response structures
       let editedUrls: string[] = [];
-      
+
       // Check for images in direct response
       if (response.images && Array.isArray(response.images)) {
         editedUrls = response.images.map((img) => img.url);
@@ -202,14 +217,19 @@ export const FalAiService = {
         editedUrls = response.data.images.map((img) => img.url);
       }
       // Check for single image in data
-      else if (response.data?.image && typeof response.data.image === 'string') {
+      else if (
+        response.data?.image &&
+        typeof response.data.image === "string"
+      ) {
         editedUrls = [response.data.image];
       }
       // Check for output property (some FAL models use this)
       else if (response.data?.output) {
         if (Array.isArray(response.data.output)) {
-          editedUrls = response.data.output.map((item) => typeof item === 'string' ? item : item.url).filter(Boolean);
-        } else if (typeof response.data.output === 'string') {
+          editedUrls = response.data.output
+            .map((item) => (typeof item === "string" ? item : item.url))
+            .filter(Boolean);
+        } else if (typeof response.data.output === "string") {
           editedUrls = [response.data.output];
         }
       }
@@ -217,7 +237,7 @@ export const FalAiService = {
       return editedUrls;
     } catch (error) {
       throw new Error(
-        `Image editing failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        `Image editing failed: ${error instanceof Error ? error.message : "Unknown error"}`,
         { cause: error as unknown as Error }
       );
     }
@@ -232,8 +252,8 @@ export const FalAiService = {
    */
   async generateThumbnails(
     projectTitle: string,
-    style: string = "vibrant",
-    count: number = 3
+    style = "vibrant",
+    count = 3
   ): Promise<string[]> {
     const prompt = `Create a ${style} YouTube thumbnail for "${projectTitle}"`;
 
@@ -252,8 +272,8 @@ export const FalAiService = {
    */
   async generateTitleCard(
     title: string,
-    subtitle: string = "",
-    style: string = "professional"
+    subtitle = "",
+    style = "professional"
   ): Promise<string> {
     const subtitleText = subtitle ? ` with subtitle "${subtitle}"` : "";
     const prompt = `Create a ${style} title card with text "${title}"${subtitleText}`;
@@ -263,7 +283,7 @@ export const FalAiService = {
       output_format: "png",
     });
 
-    return results.at(0) ?? '';
+    return results.at(0) ?? "";
   },
 
   /**

@@ -39,7 +39,7 @@ export function TextView() {
 
   // For the outer button element: prevent page scroll on Space; rely on native click for activation.
   const handleButtonKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === ' ') e.preventDefault();
+    if (e.key === " ") e.preventDefault();
   };
 
   return (

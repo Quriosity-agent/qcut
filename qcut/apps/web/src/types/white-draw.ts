@@ -1,11 +1,11 @@
-import type { ReactNode } from 'react';
+import type { ReactNode } from "react";
 
 export interface DrawingTool {
   id: string;
   name: string;
   description: string;
   cursor: string;
-  category: 'select' | 'brush' | 'shape' | 'text' | 'effect';
+  category: "select" | "brush" | "shape" | "text" | "effect";
   shortcut?: string;
   disabled?: boolean;
 }

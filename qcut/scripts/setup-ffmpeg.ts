@@ -1,6 +1,6 @@
 /**
  * Setup script to copy FFmpeg WebAssembly files from node_modules to public directory
- * 
+ *
  * This script copies the necessary FFmpeg.wasm files to the public directory so they can be
  * served statically by the web server and loaded by the FFmpeg worker at runtime.
  */
@@ -21,7 +21,9 @@ async function setupFFmpeg() {
     try {
       // Use createRequire for robust cross-platform resolution
       const require = createRequire(import.meta.url);
-      const ffmpegCoreRoot = dirname(require.resolve("@ffmpeg/core/package.json"));
+      const ffmpegCoreRoot = dirname(
+        require.resolve("@ffmpeg/core/package.json")
+      );
       ffmpegCorePath = join(ffmpegCoreRoot, "dist", "esm");
       console.log(`📦 Resolved @ffmpeg/core path: ${ffmpegCoreRoot}`);
       console.log(`📂 Using source directory: ${ffmpegCorePath}`);
@@ -29,7 +31,15 @@ async function setupFFmpeg() {
       // Fallback to checking common locations if resolution fails
       const possiblePaths = [
         join(process.cwd(), "node_modules", "@ffmpeg", "core", "dist", "esm"),
-        join(dirname(fileURLToPath(import.meta.url)), "..", "node_modules", "@ffmpeg", "core", "dist", "esm")
+        join(
+          dirname(fileURLToPath(import.meta.url)),
+          "..",
+          "node_modules",
+          "@ffmpeg",
+          "core",
+          "dist",
+          "esm"
+        ),
       ];
 
       for (const path of possiblePaths) {
@@ -41,17 +51,16 @@ async function setupFFmpeg() {
       }
 
       if (!ffmpegCorePath!) {
-        throw new Error(`Failed to resolve @ffmpeg/core package. Make sure it's installed: ${error instanceof Error ? error.message : String(error)}`);
+        throw new Error(
+          `Failed to resolve @ffmpeg/core package. Make sure it's installed: ${error instanceof Error ? error.message : String(error)}`
+        );
       }
     }
     const publicFFmpegPath = "apps/web/public/ffmpeg";
     const electronFFmpegPath = "electron/resources/ffmpeg";
 
     // Files to copy (worker.js may not exist in this version)
-    const filesToCopy = [
-      "ffmpeg-core.js",
-      "ffmpeg-core.wasm"
-    ];
+    const filesToCopy = ["ffmpeg-core.js", "ffmpeg-core.wasm"];
 
     // Target directories to create
     const targetPaths = [publicFFmpegPath, electronFFmpegPath];
@@ -65,16 +74,19 @@ async function setupFFmpeg() {
     }
 
     // Copy files to both locations concurrently
-    const copyOperations = filesToCopy.flatMap(file => {
+    const copyOperations = filesToCopy.flatMap((file) => {
       const sourcePath = join(ffmpegCorePath, file);
 
-      return targetPaths.map(async targetPath => {
+      return targetPaths.map(async (targetPath) => {
         const destPath = join(targetPath, file);
         try {
           await copyFile(sourcePath, destPath);
           console.log(`✅ Copied: ${file} → ${targetPath}`);
         } catch (error) {
-          if ((error as any).code === 'ENOENT' && (error as any).path === sourcePath) {
+          if (
+            (error as any).code === "ENOENT" &&
+            (error as any).path === sourcePath
+          ) {
             console.error(`❌ Source file not found: ${sourcePath}`);
             process.exit(1);
           }
@@ -89,7 +101,6 @@ async function setupFFmpeg() {
     console.log(`📍 Web files: ${publicFFmpegPath}`);
     console.log(`📍 Electron files: ${electronFFmpegPath}`);
     console.log("ℹ️  Files excluded from git via .gitignore patterns");
-    
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     console.error("❌ Failed to setup FFmpeg files:", errorMessage);

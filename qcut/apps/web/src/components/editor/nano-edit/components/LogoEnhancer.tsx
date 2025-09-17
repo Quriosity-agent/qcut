@@ -43,7 +43,7 @@ export const LogoEnhancer: React.FC = () => {
         type: "logo" as const,
         url: firstUrl,
         createdAt: new Date(),
-        prompt: prompt,
+        prompt,
       };
 
       addAsset(asset);

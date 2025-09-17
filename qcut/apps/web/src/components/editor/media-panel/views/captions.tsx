@@ -457,7 +457,10 @@ export function CaptionsView() {
   const isProcessing = state.isUploading || state.isTranscribing;
 
   return (
-    <div className="h-full flex flex-col p-4 space-y-4" data-testid="ai-transcription-panel">
+    <div
+      className="h-full flex flex-col p-4 space-y-4"
+      data-testid="ai-transcription-panel"
+    >
       {/* Configuration Warning */}
       {!configured && (
         <div className="flex items-center gap-2 p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">

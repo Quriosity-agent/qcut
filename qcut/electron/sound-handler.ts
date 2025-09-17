@@ -208,7 +208,8 @@ async function getFreesoundApiKey(): Promise<string | null> {
     log.warn("[Sound Handler] No default keys available:", error.message);
 
     // Fallback: Load from build-time environment or configuration
-    const EMBEDDED_DEFAULT_KEY: string = process.env.DEFAULT_FREESOUND_KEY || "";
+    const EMBEDDED_DEFAULT_KEY: string =
+      process.env.DEFAULT_FREESOUND_KEY || "";
     if (!EMBEDDED_DEFAULT_KEY) {
       log.warn("[API Key] No embedded default key available");
       return null;

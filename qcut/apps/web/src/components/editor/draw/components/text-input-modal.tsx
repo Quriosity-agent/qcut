@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -17,23 +17,23 @@ export const TextInputModal: React.FC<TextInputModalProps> = ({
   fontSize,
   color,
   onConfirm,
-  onCancel
+  onCancel,
 }) => {
-  const [text, setText] = useState('');
+  const [text, setText] = useState("");
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     if (isOpen && inputRef.current) {
       inputRef.current.focus();
-      setText('');
+      setText("");
     }
   }, [isOpen]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleConfirm();
-    } else if (e.key === 'Escape') {
+    } else if (e.key === "Escape") {
       e.preventDefault();
       onCancel();
     }
@@ -54,7 +54,7 @@ export const TextInputModal: React.FC<TextInputModalProps> = ({
       <div
         className="bg-gray-800 border border-gray-600 rounded-lg shadow-lg p-4 min-w-[300px]"
         style={{
-          position: 'absolute',
+          position: "absolute",
           left: Math.min(position.x, window.innerWidth - 320),
           top: Math.min(position.y, window.innerHeight - 200),
         }}
@@ -75,8 +75,8 @@ export const TextInputModal: React.FC<TextInputModalProps> = ({
             )}
             style={{
               fontSize: `${Math.max(12, Math.min(fontSize, 24))}px`,
-              color: color,
-              minHeight: '80px'
+              color,
+              minHeight: "80px",
             }}
             rows={3}
           />

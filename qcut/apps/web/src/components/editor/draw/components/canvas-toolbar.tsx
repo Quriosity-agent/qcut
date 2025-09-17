@@ -7,7 +7,7 @@ import {
   Trash2,
   Save,
   Film,
-  FolderOpen
+  FolderOpen,
 } from "lucide-react";
 import { useWhiteDrawStore } from "@/stores/white-draw-store";
 import { useProjectStore } from "@/stores/project-store";
@@ -21,7 +21,7 @@ import type { DrawingCanvasHandle } from "../canvas/drawing-canvas";
 
 // Debug logging function that only logs in development mode when enabled
 const debug = (...args: unknown[]) => {
-  if (import.meta.env.DEV && import.meta.env.VITE_DEBUG_TOOLBAR === '1') {
+  if (import.meta.env.DEV && import.meta.env.VITE_DEBUG_TOOLBAR === "1") {
     // eslint-disable-next-line no-console
     console.log(...args);
   }
@@ -44,17 +44,18 @@ export const CanvasToolbar: React.FC<CanvasToolbarProps> = ({
   selectedCount = 0,
   hasGroups = false,
   onCreateGroup,
-  onUngroup
+  onUngroup,
 }) => {
   const [isExporting, setIsExporting] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const { undo, redo, clear, history, historyIndex, setActiveTab } = useWhiteDrawStore();
+  const { undo, redo, clear, history, historyIndex, setActiveTab } =
+    useWhiteDrawStore();
   const { activeProject } = useProjectStore();
 
   // Helper function to get canvas data URL using the typed DrawingCanvasHandle
   const getCanvasDataUrl = (): string | null => {
     if (!canvasRef.current) {
-      debug('❌ Canvas ref is null or undefined');
+      debug("❌ Canvas ref is null or undefined");
       return null;
     }
 
@@ -63,29 +64,29 @@ export const CanvasToolbar: React.FC<CanvasToolbarProps> = ({
   };
 
   const handleDownload = async () => {
-    debug('🎯 Download button clicked - starting download process');
+    debug("🎯 Download button clicked - starting download process");
 
     try {
       const dataUrl = getCanvasDataUrl();
 
       if (!dataUrl) {
-        debug('❌ Could not generate canvas data URL');
+        debug("❌ Could not generate canvas data URL");
         toast.error("Failed to generate image data");
         return;
       }
 
       const filename = `drawing-${Date.now()}.png`;
-      debug('📱 Data URL generated:', {
+      debug("📱 Data URL generated:", {
         filename,
         dataUrlLength: dataUrl.length,
-        isValidDataUrl: dataUrl.startsWith('data:image/png;base64,')
+        isValidDataUrl: dataUrl.startsWith("data:image/png;base64,"),
       });
 
       await downloadDrawing(dataUrl, filename);
-      debug('✅ Download completed successfully');
+      debug("✅ Download completed successfully");
       toast.success("Drawing downloaded successfully");
     } catch (error) {
-      debug('❌ Download failed:', error);
+      debug("❌ Download failed:", error);
       toast.error("Failed to download drawing");
     }
   };
@@ -128,9 +129,11 @@ export const CanvasToolbar: React.FC<CanvasToolbarProps> = ({
         return;
       }
 
-      const filename = `quick-save-${new Date().toISOString().slice(0, 19).replace(/[:-]/g, '')}.png`;
+      const filename = `quick-save-${new Date().toISOString().slice(0, 19).replace(/[:-]/g, "")}.png`;
 
-      await DrawingStorage.saveDrawing(dataUrl, activeProject.id, filename, ["quick-save"]);
+      await DrawingStorage.saveDrawing(dataUrl, activeProject.id, filename, [
+        "quick-save",
+      ]);
       toast.success("Drawing saved!");
     } catch (error) {
       toast.error("Failed to save drawing");
@@ -152,9 +155,9 @@ export const CanvasToolbar: React.FC<CanvasToolbarProps> = ({
   };
 
   const handleImageUpload = () => {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = 'image/*';
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "image/*";
     input.onchange = (e) => {
       const file = (e.target as HTMLInputElement).files?.[0];
       if (file && onImageUpload) {
@@ -169,7 +172,12 @@ export const CanvasToolbar: React.FC<CanvasToolbarProps> = ({
   const canRedo = history.length > 0 && historyIndex < history.length - 1;
 
   return (
-    <div className={cn("flex items-center gap-2 p-2 bg-gray-800 rounded-lg", className)}>
+    <div
+      className={cn(
+        "flex items-center gap-2 p-2 bg-gray-800 rounded-lg",
+        className
+      )}
+    >
       {/* History Controls */}
       <div className="flex items-center gap-1 border-r border-gray-600 pr-2">
         <Button

@@ -7,7 +7,13 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useAdjustmentStore } from "@/stores/adjustment-store";
 import { getImageEditModels } from "@/lib/image-edit-client";
 import { getModelCapabilities } from "@/lib/model-utils";
@@ -197,7 +203,7 @@ export function ParameterControls() {
             {/* Image Size Selector */}
             <div className="space-y-2">
               <Label className="text-xs">Image Size</Label>
-              <Select 
+              <Select
                 value={parameters.imageSize || "square_hd"}
                 onValueChange={(size) => updateParameter("imageSize", size)}
               >
@@ -205,7 +211,9 @@ export function ParameterControls() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="square_hd">Square HD (1536×1536)</SelectItem>
+                  <SelectItem value="square_hd">
+                    Square HD (1536×1536)
+                  </SelectItem>
                   <SelectItem value="square">Square (1024×1024)</SelectItem>
                   <SelectItem value="portrait_3_4">Portrait 3:4</SelectItem>
                   <SelectItem value="portrait_9_16">Portrait 9:16</SelectItem>
@@ -244,7 +252,9 @@ export function ParameterControls() {
               <Label className="text-xs">Safety Checker</Label>
               <Switch
                 checked={parameters.enableSafetyChecker !== false}
-                onCheckedChange={(checked) => updateParameter("enableSafetyChecker", checked)}
+                onCheckedChange={(checked) =>
+                  updateParameter("enableSafetyChecker", checked)
+                }
               />
             </div>
             <p className="text-xs text-muted-foreground">
@@ -256,7 +266,9 @@ export function ParameterControls() {
               <Label className="text-xs">Sync Mode</Label>
               <Switch
                 checked={parameters.syncMode || false}
-                onCheckedChange={(checked) => updateParameter("syncMode", checked)}
+                onCheckedChange={(checked) =>
+                  updateParameter("syncMode", checked)
+                }
               />
             </div>
             <p className="text-xs text-muted-foreground">
@@ -279,9 +291,11 @@ export function ParameterControls() {
             {/* Output Format Selector */}
             <div className="space-y-2">
               <Label className="text-xs">Output Format</Label>
-              <Select 
+              <Select
                 value={parameters.outputFormat || "PNG"}
-                onValueChange={(format) => updateParameter("outputFormat", format)}
+                onValueChange={(format) =>
+                  updateParameter("outputFormat", format)
+                }
               >
                 <SelectTrigger className="h-8 text-xs">
                   <SelectValue />
@@ -301,7 +315,9 @@ export function ParameterControls() {
               <Label className="text-xs">Sync Mode</Label>
               <Switch
                 checked={parameters.syncMode || false}
-                onCheckedChange={(checked) => updateParameter("syncMode", checked)}
+                onCheckedChange={(checked) =>
+                  updateParameter("syncMode", checked)
+                }
               />
             </div>
             <p className="text-xs text-muted-foreground">

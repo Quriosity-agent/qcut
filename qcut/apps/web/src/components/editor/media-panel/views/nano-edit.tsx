@@ -1,7 +1,7 @@
 import React from "react";
-import { useNanoEditStore, selectActiveTab } from '@/stores/nano-edit-store';
-import ImageAssetsTab from '@/components/editor/nano-edit/tabs/ImageAssetsTab';
-import EnhancementTab from '@/components/editor/nano-edit/tabs/EnhancementTab';
+import { useNanoEditStore, selectActiveTab } from "@/stores/nano-edit-store";
+import ImageAssetsTab from "@/components/editor/nano-edit/tabs/ImageAssetsTab";
+import EnhancementTab from "@/components/editor/nano-edit/tabs/EnhancementTab";
 
 const NanoEditView: React.FC = () => {
   const activeTab = useNanoEditStore(selectActiveTab);

@@ -10,7 +10,7 @@ import {
   Edit3,
   FileImage,
   Calendar,
-  HardDrive
+  HardDrive,
 } from "lucide-react";
 import { useProjectStore } from "@/stores/project-store";
 import { DrawingStorage, type DrawingMetadata } from "../utils/drawing-storage";
@@ -26,13 +26,18 @@ interface SavedDrawingsProps {
 export const SavedDrawings: React.FC<SavedDrawingsProps> = ({
   currentDrawingData,
   onLoadDrawing,
-  className
+  className,
 }) => {
-  const [savedDrawings, setSavedDrawings] = useState<Array<{id: string; metadata: DrawingMetadata}>>([]);
+  const [savedDrawings, setSavedDrawings] = useState<
+    Array<{ id: string; metadata: DrawingMetadata }>
+  >([]);
   const [isLoading, setIsLoading] = useState(false);
   const [saveFilename, setSaveFilename] = useState("");
   const [selectedDrawing, setSelectedDrawing] = useState<string | null>(null);
-  const [storageStats, setStorageStats] = useState<{count: number; totalSize: number} | null>(null);
+  const [storageStats, setStorageStats] = useState<{
+    count: number;
+    totalSize: number;
+  } | null>(null);
 
   const { activeProject } = useProjectStore();
 
@@ -49,7 +54,9 @@ export const SavedDrawings: React.FC<SavedDrawingsProps> = ({
 
     setIsLoading(true);
     try {
-      const drawings = await DrawingStorage.listProjectDrawings(activeProject.id);
+      const drawings = await DrawingStorage.listProjectDrawings(
+        activeProject.id
+      );
       setSavedDrawings(drawings);
     } catch (error) {
       toast.error("Failed to load saved drawings");
@@ -82,7 +89,9 @@ export const SavedDrawings: React.FC<SavedDrawingsProps> = ({
 
     try {
       setIsLoading(true);
-      const filename = saveFilename.endsWith('.png') ? saveFilename : `${saveFilename}.png`;
+      const filename = saveFilename.endsWith(".png")
+        ? saveFilename
+        : `${saveFilename}.png`;
 
       await DrawingStorage.saveDrawing(
         currentDrawingData,
@@ -162,19 +171,19 @@ export const SavedDrawings: React.FC<SavedDrawingsProps> = ({
   };
 
   const formatFileSize = (bytes: number): string => {
-    if (bytes === 0) return '0 B';
+    if (bytes === 0) return "0 B";
     const k = 1024;
-    const sizes = ['B', 'KB', 'MB'];
+    const sizes = ["B", "KB", "MB"];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
+    return `${parseFloat((bytes / k ** i).toFixed(1))} ${sizes[i]}`;
   };
 
   const formatDate = (dateString: string): string => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
+    return new Date(dateString).toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
     });
   };
 
@@ -192,10 +201,14 @@ export const SavedDrawings: React.FC<SavedDrawingsProps> = ({
     <div className={cn("p-4 h-full flex flex-col space-y-4", className)}>
       {/* Save New Drawing */}
       <div className="space-y-3 pb-4 border-b border-gray-700">
-        <h3 className="text-sm font-medium text-gray-300">Save Current Drawing</h3>
+        <h3 className="text-sm font-medium text-gray-300">
+          Save Current Drawing
+        </h3>
         <div className="flex gap-2">
           <div className="flex-1">
-            <Label htmlFor="filename" className="text-xs text-gray-400">Filename</Label>
+            <Label htmlFor="filename" className="text-xs text-gray-400">
+              Filename
+            </Label>
             <Input
               id="filename"
               value={saveFilename}
@@ -230,7 +243,9 @@ export const SavedDrawings: React.FC<SavedDrawingsProps> = ({
 
       {/* Saved Drawings List */}
       <div className="flex-1 overflow-y-auto">
-        <h3 className="text-sm font-medium text-gray-300 mb-3">Saved Drawings</h3>
+        <h3 className="text-sm font-medium text-gray-300 mb-3">
+          Saved Drawings
+        </h3>
 
         {isLoading ? (
           <div className="text-center py-8 text-gray-400">
@@ -283,7 +298,9 @@ export const SavedDrawings: React.FC<SavedDrawingsProps> = ({
                   <Button
                     variant="text"
                     size="sm"
-                    onClick={() => handleExportDrawing(drawing.id, drawing.metadata.filename)}
+                    onClick={() =>
+                      handleExportDrawing(drawing.id, drawing.metadata.filename)
+                    }
                     className="h-7 px-2 text-xs"
                     disabled={isLoading}
                   >
@@ -293,7 +310,9 @@ export const SavedDrawings: React.FC<SavedDrawingsProps> = ({
                   <Button
                     variant="text"
                     size="sm"
-                    onClick={() => handleDeleteDrawing(drawing.id, drawing.metadata.filename)}
+                    onClick={() =>
+                      handleDeleteDrawing(drawing.id, drawing.metadata.filename)
+                    }
                     className="h-7 px-2 text-xs text-red-400 hover:text-red-300"
                     disabled={isLoading}
                   >

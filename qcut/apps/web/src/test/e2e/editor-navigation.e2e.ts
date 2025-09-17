@@ -4,15 +4,15 @@
  * Tests navigation to the editor page to isolate crash issues
  */
 
-import { test, expect } from './helpers/electron-helpers';
+import { test, expect } from "./helpers/electron-helpers";
 
-test.describe('Editor Navigation Test', () => {
-  test('should detect existing project on projects page', async ({ page }) => {
+test.describe("Editor Navigation Test", () => {
+  test("should detect existing project on projects page", async ({ page }) => {
     // Verify we're on projects page
-    await expect(page.getByText('Your Projects')).toBeVisible();
+    await expect(page.getByText("Your Projects")).toBeVisible();
 
     // Check for existing projects
-    const projectCards = page.getByTestId('project-list-item');
+    const projectCards = page.getByTestId("project-list-item");
     const projectCount = await projectCards.count();
 
     console.log(`Found ${projectCount} existing projects`);
@@ -20,76 +20,83 @@ test.describe('Editor Navigation Test', () => {
     if (projectCount > 0) {
       // Get the first project's name
       const firstProject = projectCards.first();
-      const projectName = await firstProject.locator('h3').textContent();
+      const projectName = await firstProject.locator("h3").textContent();
       console.log(`First project name: ${projectName}`);
 
       await expect(firstProject).toBeVisible();
     }
   });
 
-  test('should attempt to open existing project without crash', async ({ page }) => {
+  test("should attempt to open existing project without crash", async ({
+    page,
+  }) => {
     // Check if there are existing projects
-    const projectCards = page.getByTestId('project-list-item');
+    const projectCards = page.getByTestId("project-list-item");
     const projectCount = await projectCards.count();
 
     if (projectCount === 0) {
-      console.log('No existing projects to test with');
+      console.log("No existing projects to test with");
       test.skip();
       return;
     }
 
     // Setup a listener for console errors
     const errors: string[] = [];
-    page.on('console', msg => {
-      if (msg.type() === 'error') {
+    page.on("console", (msg) => {
+      if (msg.type() === "error") {
         errors.push(msg.text());
       }
     });
 
     // Setup a listener for page crashes
-    page.on('crash', () => {
-      console.error('PAGE CRASHED!');
+    page.on("crash", () => {
+      console.error("PAGE CRASHED!");
     });
 
     // Try clicking on the first project
     const firstProject = projectCards.first();
-    console.log('Attempting to click on project...');
+    console.log("Attempting to click on project...");
 
     try {
       // Click and wait for editor route or editor UI to appear
       await firstProject.click({ timeout: 5000 });
       const editorLocator = page
-        .locator('[data-testid="editor-container"], [data-testid="timeline-track"], .editor-layout')
+        .locator(
+          '[data-testid="editor-container"], [data-testid="timeline-track"], .editor-layout'
+        )
         .first();
       await Promise.race([
-        page.waitForURL(/editor/i, { timeout: 15000 }),
-        editorLocator.waitFor({ state: 'visible', timeout: 15000 }),
+        page.waitForURL(/editor/i, { timeout: 15_000 }),
+        editorLocator.waitFor({ state: "visible", timeout: 15_000 }),
       ]);
 
       // Check for any console errors
       if (errors.length > 0) {
-        console.log('Console errors detected:', errors);
+        console.log("Console errors detected:", errors);
       }
 
       // Assert editor is visible (hard assertion; makes the test meaningful)
-      await expect(editorLocator).toBeVisible({ timeout: 15000 });
-      console.log('Successfully navigated to editor!');
-
+      await expect(editorLocator).toBeVisible({ timeout: 15_000 });
+      console.log("Successfully navigated to editor!");
     } catch (error) {
-      console.error('Error during navigation:', error);
+      console.error("Error during navigation:", error);
       // Check if the page is still responsive
       const isResponsive = await page.evaluate(() => true).catch(() => false);
       if (!isResponsive) {
-        throw new Error('Electron app became unresponsive after clicking project');
+        throw new Error(
+          "Electron app became unresponsive after clicking project"
+        );
       }
     }
   });
 
-  test('should check if direct navigation to editor works', async ({ page }) => {
+  test("should check if direct navigation to editor works", async ({
+    page,
+  }) => {
     // Setup error tracking
     const errors: string[] = [];
-    page.on('console', msg => {
-      if (msg.type() === 'error') {
+    page.on("console", (msg) => {
+      if (msg.type() === "error") {
         errors.push(msg.text());
       }
     });
@@ -105,21 +112,23 @@ test.describe('Editor Navigation Test', () => {
 
       const routerWindow = window as RouterWindow;
       if (routerWindow.router?.navigate) {
-        routerWindow.router.navigate({ to: '/editor/test-project-id' });
+        routerWindow.router.navigate({ to: "/editor/test-project-id" });
       } else {
         // Fallback: use hash navigation
-        window.location.hash = '#/editor/test-project-id';
+        window.location.hash = "#/editor/test-project-id";
       }
     });
 
     // Wait for navigation to complete by checking for editor elements or error state
-    const editorLocator = page.locator('[data-testid="editor-container"], [data-testid="timeline-track"], .editor-layout');
-    const errorLocator = page.locator('text=/not found|error/i');
+    const editorLocator = page.locator(
+      '[data-testid="editor-container"], [data-testid="timeline-track"], .editor-layout'
+    );
+    const errorLocator = page.locator("text=/not found|error/i");
 
     // Wait for either editor to load or error to appear
     await Promise.race([
-      editorLocator.first().waitFor({ timeout: 10000 }),
-      errorLocator.first().waitFor({ timeout: 10000 })
+      editorLocator.first().waitFor({ timeout: 10_000 }),
+      errorLocator.first().waitFor({ timeout: 10_000 }),
     ]);
 
     // Verify app is still responsive
@@ -127,7 +136,7 @@ test.describe('Editor Navigation Test', () => {
 
     // Assert the current URL contains editor route
     const currentUrl = await page.evaluate(() => window.location.href);
-    expect(currentUrl).toContain('/editor/test-project-id');
+    expect(currentUrl).toContain("/editor/test-project-id");
 
     // Check if editor loaded successfully or if we got expected error
     const hasEditor = await editorLocator.first().isVisible();
@@ -140,12 +149,17 @@ test.describe('Editor Navigation Test', () => {
       // Expected: project not found error (since test-project-id doesn't exist)
       expect(hasError).toBe(true);
     } else {
-      throw new Error('Neither editor nor error state detected after navigation');
+      throw new Error(
+        "Neither editor nor error state detected after navigation"
+      );
     }
 
     // Log any console errors for debugging (but don't fail the test)
     if (errors.length > 0) {
-      console.log('Console errors (expected for non-existent project):', errors.slice(0, 3));
+      console.log(
+        "Console errors (expected for non-existent project):",
+        errors.slice(0, 3)
+      );
     }
   });
 });

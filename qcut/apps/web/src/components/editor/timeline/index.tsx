@@ -1307,7 +1307,12 @@ function TimelineToolbar({
           <div className="w-px h-6 bg-border mx-1" />
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button variant="text" size="icon" onClick={handleSplitSelected} data-testid="split-clip-button">
+              <Button
+                variant="text"
+                size="icon"
+                onClick={handleSplitSelected}
+                data-testid="split-clip-button"
+              >
                 <Scissors className="h-4 w-4" />
               </Button>
             </TooltipTrigger>
@@ -1447,7 +1452,12 @@ function TimelineToolbar({
 
         <div className="h-6 w-px bg-border mx-1" />
         <div className="flex items-center gap-1">
-          <Button variant="text" size="icon" onClick={handleZoomOut} data-testid="zoom-out-button">
+          <Button
+            variant="text"
+            size="icon"
+            onClick={handleZoomOut}
+            data-testid="zoom-out-button"
+          >
             <ZoomOut className="h-4 w-4" />
           </Button>
           <Slider
@@ -1459,7 +1469,12 @@ function TimelineToolbar({
             step={0.25}
             data-zoom-level={zoomLevel}
           />
-          <Button variant="text" size="icon" onClick={handleZoomIn} data-testid="zoom-in-button">
+          <Button
+            variant="text"
+            size="icon"
+            onClick={handleZoomIn}
+            data-testid="zoom-in-button"
+          >
             <ZoomIn className="h-4 w-4" />
           </Button>
         </div>

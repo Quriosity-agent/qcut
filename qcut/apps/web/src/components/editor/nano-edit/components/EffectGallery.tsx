@@ -15,7 +15,15 @@ export interface ImageEffect {
 // Static categories list
 const CATEGORIES = [
   "all",
-  ...Array.from(new Set(["artistic", "photography", "vintage", "modern", "fantasy"] as const)),
+  ...Array.from(
+    new Set([
+      "artistic",
+      "photography",
+      "vintage",
+      "modern",
+      "fantasy",
+    ] as const)
+  ),
 ];
 
 // Static icon mapping for categories
@@ -104,8 +112,9 @@ export const EffectGallery: React.FC = () => {
   const { addAsset, isProcessing, setProcessing, assets } = useNanoEditStore();
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [selectedAsset, setSelectedAsset] = useState<string | null>(null);
-  const [processingEffectId, setProcessingEffectId] = useState<string | null>(null);
-
+  const [processingEffectId, setProcessingEffectId] = useState<string | null>(
+    null
+  );
 
   // Filter effects by category
   const filteredEffects =
@@ -146,7 +155,7 @@ export const EffectGallery: React.FC = () => {
         };
 
         addAsset(newAsset);
-        
+
         // Show success notification
         toast({
           title: "Effect Applied Successfully",
@@ -156,18 +165,20 @@ export const EffectGallery: React.FC = () => {
         // Handle case where no images were returned
         toast({
           title: "No Result",
-          description: "The effect was processed but no image was returned. Please try again.",
+          description:
+            "The effect was processed but no image was returned. Please try again.",
           variant: "destructive",
         });
       }
     } catch (error) {
       console.error("Error applying effect:", error);
-      
+
       // Show user-friendly error notification
-      const errorMessage = error instanceof Error 
-        ? error.message 
-        : "An unexpected error occurred while applying the effect.";
-      
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : "An unexpected error occurred while applying the effect.";
+
       toast({
         title: "Failed to Apply Effect",
         description: errorMessage,
@@ -178,7 +189,6 @@ export const EffectGallery: React.FC = () => {
       setProcessingEffectId(null);
     }
   };
-
 
   return (
     <div className="bg-gray-800 rounded-lg p-4 space-y-4">
@@ -244,15 +254,17 @@ export const EffectGallery: React.FC = () => {
       <div className="grid grid-cols-2 gap-3 max-h-64 overflow-y-auto">
         {filteredEffects.map((effect) => {
           const isThisEffectProcessing = processingEffectId === effect.id;
-          
+
           return (
             <button
               key={effect.id}
               type="button"
-              onClick={() => selectedAsset && applyEffect(effect, selectedAsset)}
+              onClick={() =>
+                selectedAsset && applyEffect(effect, selectedAsset)
+              }
               disabled={isProcessing || !selectedAsset}
               className={`p-3 bg-gray-700 hover:bg-gray-600 rounded-lg text-left transition-colors disabled:opacity-50 disabled:cursor-not-allowed group relative ${
-                isThisEffectProcessing ? 'ring-2 ring-blue-500' : ''
+                isThisEffectProcessing ? "ring-2 ring-blue-500" : ""
               }`}
             >
               <div className="flex items-start gap-2">
@@ -268,7 +280,9 @@ export const EffectGallery: React.FC = () => {
                     {effect.name}
                   </h5>
                   <p className="text-xs text-gray-400 mt-1 line-clamp-2">
-                    {isThisEffectProcessing ? 'Applying effect...' : effect.description}
+                    {isThisEffectProcessing
+                      ? "Applying effect..."
+                      : effect.description}
                   </p>
                 </div>
               </div>

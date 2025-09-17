@@ -19,7 +19,7 @@ export const ToolSelector: React.FC<ToolSelectorProps> = ({ className }) => {
     color,
     setColor,
     opacity,
-    setOpacity
+    setOpacity,
   } = useWhiteDrawStore();
 
   return (
@@ -38,9 +38,7 @@ export const ToolSelector: React.FC<ToolSelectorProps> = ({ className }) => {
                 className="flex flex-col items-center gap-1 h-auto py-3 text-xs"
                 title={`${tool.name} (${tool.shortcut})\n${tool.description}`}
               >
-                <div className="w-4 h-4">
-                  {tool.icon}
-                </div>
+                <div className="w-4 h-4">{tool.icon}</div>
                 <span className="text-xs">{tool.name}</span>
               </Button>
             ))}
@@ -103,10 +101,22 @@ export const ToolSelector: React.FC<ToolSelectorProps> = ({ className }) => {
               {/* Color Presets */}
               <div className="grid grid-cols-8 gap-1">
                 {[
-                  '#000000', '#FFFFFF', '#FF0000', '#00FF00',
-                  '#0000FF', '#FFFF00', '#FF00FF', '#00FFFF',
-                  '#FF8000', '#8000FF', '#0080FF', '#80FF00',
-                  '#FF0080', '#80FF80', '#808080', '#C0C0C0'
+                  "#000000",
+                  "#FFFFFF",
+                  "#FF0000",
+                  "#00FF00",
+                  "#0000FF",
+                  "#FFFF00",
+                  "#FF00FF",
+                  "#00FFFF",
+                  "#FF8000",
+                  "#8000FF",
+                  "#0080FF",
+                  "#80FF00",
+                  "#FF0080",
+                  "#80FF80",
+                  "#808080",
+                  "#C0C0C0",
                 ].map((presetColor) => (
                   <button
                     key={presetColor}

@@ -168,7 +168,10 @@ function ProjectsPage() {
               )}
             </div>
           ) : (
-            <CreateButton onClick={handleCreateProject} testId="new-project-button-mobile" />
+            <CreateButton
+              onClick={handleCreateProject}
+              testId="new-project-button-mobile"
+            />
           )}
         </div>
       </div>
@@ -545,7 +548,13 @@ function ProjectCard({
   );
 }
 
-function CreateButton({ onClick, testId = "new-project-button" }: { onClick?: () => void; testId?: string }) {
+function CreateButton({
+  onClick,
+  testId = "new-project-button",
+}: {
+  onClick?: () => void;
+  testId?: string;
+}) {
   return (
     <Button className="flex" onClick={onClick} data-testid={testId}>
       <Plus className="size-4!" />
@@ -565,7 +574,12 @@ function NoProjects({ onCreateProject }: { onCreateProject: () => void }) {
         Start creating your first video project. Import media, edit, and export
         professional videos.
       </p>
-      <Button size="lg" className="gap-2" onClick={onCreateProject} data-testid="new-project-button-empty-state">
+      <Button
+        size="lg"
+        className="gap-2"
+        onClick={onCreateProject}
+        data-testid="new-project-button-empty-state"
+      >
         <Plus className="h-4 w-4" />
         Create Your First Project
       </Button>

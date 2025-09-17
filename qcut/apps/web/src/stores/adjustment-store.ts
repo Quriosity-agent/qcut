@@ -17,12 +17,17 @@ export interface AdjustmentState {
   originalImage: File | null;
   originalImageUrl: string | null;
   currentEditedUrl: string | null;
-  
+
   // Multiple images for V4 and Nano Banana models
   multipleImages: string[];
 
   // Model selection
-  selectedModel: "seededit" | "flux-kontext" | "flux-kontext-max" | "seeddream-v4" | "nano-banana";
+  selectedModel:
+    | "seededit"
+    | "flux-kontext"
+    | "flux-kontext-max"
+    | "seeddream-v4"
+    | "nano-banana";
 
   // Parameters
   prompt: string;
@@ -33,10 +38,10 @@ export interface AdjustmentState {
     seed?: number;
     safetyTolerance: number;
     numImages: number;
-    
+
     // Add new V4-specific parameters (optional for backward compatibility)
     imageSize?: string; // "square_hd", "square", etc. for V4
-    maxImages?: number; // 1-10 for V4 
+    maxImages?: number; // 1-10 for V4
     syncMode?: boolean; // V4 and Nano Banana
     enableSafetyChecker?: boolean; // V4
     outputFormat?: "JPEG" | "PNG"; // Nano Banana only
@@ -204,7 +209,7 @@ export const useAdjustmentStore = create<AdjustmentStore>()(
     setMultipleImages: (imageUrls) => {
       // Clean up old URLs that are blob URLs
       const { multipleImages } = get();
-      multipleImages.forEach(url => {
+      multipleImages.forEach((url) => {
         if (url.startsWith("blob:")) {
           URL.revokeObjectURL(url);
         }

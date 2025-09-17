@@ -290,7 +290,10 @@ export function ExportDialog() {
               className="w-full"
               data-testid="export-progress-bar"
             />
-            <p className="text-sm text-muted-foreground" data-testid="export-status">
+            <p
+              className="text-sm text-muted-foreground"
+              data-testid="export-status"
+            >
               {exportProgress.progress.status}
             </p>
 

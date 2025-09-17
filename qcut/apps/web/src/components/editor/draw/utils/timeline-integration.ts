@@ -19,7 +19,10 @@ export class TimelineIntegration {
    * Export drawing as regular image to timeline
    * Uses existing media import flow - 100% safe
    */
-  static async exportAsImage(drawingData: string, name?: string): Promise<void> {
+  static async exportAsImage(
+    drawingData: string,
+    name?: string
+  ): Promise<void> {
     try {
       const filename = name || `drawing-${Date.now()}.png`;
       const file = await dataUrlToFile(drawingData, filename);
@@ -50,11 +53,13 @@ export class TimelineIntegration {
       // Step 2: Add to timeline (existing pattern)
       // Find the main video track or create one
       const tracks = timelineStore._tracks;
-      let targetTrack = tracks.find(track => track.type === "media" && track.name === "Main");
+      let targetTrack = tracks.find(
+        (track) => track.type === "media" && track.name === "Main"
+      );
 
       if (!targetTrack) {
         // Find any video track
-        targetTrack = tracks.find(track => track.type === "media");
+        targetTrack = tracks.find((track) => track.type === "media");
       }
 
       if (!targetTrack) {
@@ -73,16 +78,15 @@ export class TimelineIntegration {
         duration: TIMELINE_CONSTANTS.DEFAULT_IMAGE_DURATION, // 5 seconds default
         startTime: currentTime,
         trimStart: 0,
-        trimEnd: 0
+        trimEnd: 0,
       });
 
       toast.success(`Drawing "${filename}" added to timeline`);
-
     } catch (error) {
       handleError(error, {
         operation: "export drawing to timeline",
         category: ErrorCategory.MEDIA_PROCESSING,
-        severity: ErrorSeverity.MEDIUM
+        severity: ErrorSeverity.MEDIUM,
       });
     }
   }
@@ -105,23 +109,22 @@ export class TimelineIntegration {
       const {
         duration = TIMELINE_CONSTANTS.DEFAULT_IMAGE_DURATION,
         opacity = 1,
-        name = `drawing-overlay-${Date.now()}.png`
+        name = `drawing-overlay-${Date.now()}.png`,
       } = options;
 
       // First export as regular image
-      await this.exportAsImage(drawingData, name);
+      await TimelineIntegration.exportAsImage(drawingData, name);
 
       // TODO: If QCut adds overlay/layer support in the future,
       // this method can be enhanced to create overlay elements
       // For now, it falls back to regular image export
 
       toast.success(`Drawing "${name}" added as image overlay`);
-
     } catch (error) {
       handleError(error, {
         operation: "export drawing as overlay",
         category: ErrorCategory.MEDIA_PROCESSING,
-        severity: ErrorSeverity.MEDIUM
+        severity: ErrorSeverity.MEDIUM,
       });
     }
   }
@@ -130,9 +133,12 @@ export class TimelineIntegration {
    * Quick export - adds drawing at current playhead position
    */
   static async quickExport(drawingData: string): Promise<void> {
-    const timestamp = new Date().toISOString().slice(0, 19).replace(FILENAME_SANITIZE_RE, '');
+    const timestamp = new Date()
+      .toISOString()
+      .slice(0, 19)
+      .replace(FILENAME_SANITIZE_RE, "");
     const name = `drawing-${timestamp}.png`;
-    await this.exportAsImage(drawingData, name);
+    await TimelineIntegration.exportAsImage(drawingData, name);
   }
 
   /**
@@ -145,21 +151,20 @@ export class TimelineIntegration {
       for (let i = 0; i < drawings.length; i++) {
         const drawing = drawings[i];
         const name = drawing.name || `drawing-batch-${i + 1}.png`;
-        await this.exportAsImage(drawing.data, name);
+        await TimelineIntegration.exportAsImage(drawing.data, name);
 
         // Small delay to prevent overwhelming the system
         if (i < drawings.length - 1) {
-          await new Promise(resolve => setTimeout(resolve, 100));
+          await new Promise((resolve) => setTimeout(resolve, 100));
         }
       }
 
       toast.success(`Exported ${drawings.length} drawings to timeline`);
-
     } catch (error) {
       handleError(error, {
         operation: "batch export drawings",
         category: ErrorCategory.MEDIA_PROCESSING,
-        severity: ErrorSeverity.MEDIUM
+        severity: ErrorSeverity.MEDIUM,
       });
     }
   }
@@ -175,8 +180,8 @@ export class TimelineIntegration {
       const projectStore = useProjectStore.getState();
 
       return !!(
-        typeof timelineStore.addElementToTrack === 'function' &&
-        typeof mediaStore.addMediaItem === 'function' &&
+        typeof timelineStore.addElementToTrack === "function" &&
+        typeof mediaStore.addMediaItem === "function" &&
         projectStore.activeProject
       );
     } catch {
@@ -191,8 +196,8 @@ export class TimelineIntegration {
     try {
       const timelineStore = useTimelineStore.getState();
       return timelineStore._tracks
-        .filter(track => track.type === "media")
-        .map(track => ({ id: track.id, name: track.name }));
+        .filter((track) => track.type === "media")
+        .map((track) => ({ id: track.id, name: track.name }));
     } catch {
       return [];
     }

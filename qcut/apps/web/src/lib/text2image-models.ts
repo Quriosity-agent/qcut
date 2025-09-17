@@ -480,27 +480,28 @@ export const TEXT2IMAGE_MODELS: Record<string, Text2ImageModel> = {
   "seeddream-v4": {
     id: "seeddream-v4",
     name: "SeedDream v4",
-    description: "ByteDance's advanced editing model with multi-image support and unified architecture",
+    description:
+      "ByteDance's advanced editing model with multi-image support and unified architecture",
     provider: "ByteDance",
     endpoint: "https://fal.run/fal-ai/bytedance/seedream/v4/edit",
-    
+
     qualityRating: 4,
     speedRating: 4,
-    
+
     estimatedCost: "$0.04-0.08",
     costPerImage: 5, // cents
-    
-    maxResolution: "1536x1536", 
+
+    maxResolution: "1536x1536",
     supportedAspectRatios: ["1:1", "4:3", "3:4", "16:9", "9:16"],
-    
+
     defaultParams: {
       image_size: "square_hd",
       max_images: 1,
       sync_mode: false,
       enable_safety_checker: true,
-      num_images: 1
+      num_images: 1,
     },
-    
+
     availableParams: [
       {
         name: "image_size",
@@ -514,15 +515,15 @@ export const TEXT2IMAGE_MODELS: Record<string, Text2ImageModel> = {
           "landscape_16_9",
         ],
         default: "square_hd",
-        description: "Output image resolution and aspect ratio"
+        description: "Output image resolution and aspect ratio",
       },
       {
         name: "max_images",
-        type: "number", 
+        type: "number",
         min: 1,
         max: 6,
         default: 1,
-        description: "Maximum input images to process"
+        description: "Maximum input images to process",
       },
       {
         name: "num_images",
@@ -530,19 +531,19 @@ export const TEXT2IMAGE_MODELS: Record<string, Text2ImageModel> = {
         min: 1,
         max: 4,
         default: 1,
-        description: "Number of output images to generate"
+        description: "Number of output images to generate",
       },
       {
         name: "sync_mode",
         type: "boolean",
         default: false,
-        description: "Use synchronous processing mode"
+        description: "Use synchronous processing mode",
       },
       {
         name: "enable_safety_checker",
-        type: "boolean", 
+        type: "boolean",
         default: true,
-        description: "Enable content safety filtering"
+        description: "Enable content safety filtering",
       },
       {
         name: "seed",
@@ -550,55 +551,56 @@ export const TEXT2IMAGE_MODELS: Record<string, Text2ImageModel> = {
         min: 0,
         max: 2_147_483_647,
         default: null,
-        description: "Random seed for reproducible results"
-      }
+        description: "Random seed for reproducible results",
+      },
     ],
-    
+
     bestFor: [
       "Multi-image editing",
-      "Complex image transformations", 
+      "Complex image transformations",
       "Advanced content modification",
-      "Batch image processing"
+      "Batch image processing",
     ],
-    
+
     strengths: [
       "Processes multiple images simultaneously",
       "Unified generation and editing architecture",
       "Flexible output sizing",
       "Enhanced prompt understanding (5000 chars)",
-      "Advanced safety controls"
+      "Advanced safety controls",
     ],
-    
+
     limitations: [
       "Higher complexity than V3",
       "May require more specific prompts",
-      "Potentially slower for simple edits"
-    ]
+      "Potentially slower for simple edits",
+    ],
   },
 
   // Add Nano Banana model
   "nano-banana": {
     id: "nano-banana",
     name: "Nano Banana",
-    description: "Google/Gemini-powered smart image editing with cost-effective pricing",
+    description:
+      "Google/Gemini-powered smart image editing with cost-effective pricing",
     provider: "Google",
     endpoint: "https://fal.run/fal-ai/nano-banana/edit",
-    
+
     qualityRating: 4,
     speedRating: 5,
-    
+
     estimatedCost: "$0.039",
     costPerImage: 3.9, // cents
-    
+
     maxResolution: "2048x2048",
     supportedAspectRatios: ["1:1", "4:3", "3:4", "16:9", "9:16"],
-    
+
     defaultParams: {
       num_images: 1,
       output_format: "PNG",
-      sync_mode: false
+      sync_mode: false,
     },
-    
+
     availableParams: [
       {
         name: "num_images",
@@ -606,43 +608,43 @@ export const TEXT2IMAGE_MODELS: Record<string, Text2ImageModel> = {
         min: 1,
         max: 4,
         default: 1,
-        description: "Number of output images to generate"
+        description: "Number of output images to generate",
       },
       {
-        name: "output_format", 
+        name: "output_format",
         type: "select",
         options: ["JPEG", "PNG"],
         default: "PNG",
-        description: "Output image format"
+        description: "Output image format",
       },
       {
         name: "sync_mode",
         type: "boolean",
         default: false,
-        description: "Return images as data URIs immediately"
-      }
+        description: "Return images as data URIs immediately",
+      },
     ],
-    
+
     bestFor: [
       "Cost-effective image editing",
-      "Smart content understanding", 
+      "Smart content understanding",
       "Quick image modifications",
-      "Format-specific outputs"
+      "Format-specific outputs",
     ],
-    
+
     strengths: [
       "Google/Gemini AI technology",
       "Very cost effective ($0.039/image)",
       "Multiple output formats",
       "Smart contextual understanding",
-      "Provides edit descriptions"
+      "Provides edit descriptions",
     ],
-    
+
     limitations: [
       "Less advanced than SeedDream V4",
       "No flexible sizing options",
-      "Standard prompt length limits"
-    ]
+      "Standard prompt length limits",
+    ],
   },
 };
 
@@ -709,6 +711,11 @@ export const MODEL_CATEGORIES = {
   ARTISTIC: ["seeddream-v3", "seeddream-v4", "qwen-image"], // Add V4 to artistic
   VERSATILE: ["qwen-image", "flux-pro-v11-ultra", "nano-banana"], // Add nano-banana
   FAST: ["seeddream-v3", "nano-banana", "qwen-image"], // Add nano-banana to fast
-  HIGH_QUALITY: ["imagen4-ultra", "wan-v2-2", "flux-pro-v11-ultra", "seeddream-v4"], // Add V4 
+  HIGH_QUALITY: [
+    "imagen4-ultra",
+    "wan-v2-2",
+    "flux-pro-v11-ultra",
+    "seeddream-v4",
+  ], // Add V4
   COST_EFFECTIVE: ["seeddream-v3", "nano-banana", "qwen-image"], // Add nano-banana
 } as const;

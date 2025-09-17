@@ -4,7 +4,10 @@ import { handleError, ErrorCategory, ErrorSeverity } from "@/lib/error-handler";
  * Convert canvas data URL to File object
  * Matches QCut's file handling patterns
  */
-export const dataUrlToFile = async (dataUrl: string, filename: string): Promise<File> => {
+export const dataUrlToFile = async (
+  dataUrl: string,
+  filename: string
+): Promise<File> => {
   try {
     const res = await fetch(dataUrl);
     const blob = await res.blob();
@@ -13,7 +16,7 @@ export const dataUrlToFile = async (dataUrl: string, filename: string): Promise<
     handleError(error, {
       operation: "canvas data URL to file conversion",
       category: ErrorCategory.STORAGE,
-      severity: ErrorSeverity.MEDIUM
+      severity: ErrorSeverity.MEDIUM,
     });
     throw error;
   }
@@ -25,55 +28,55 @@ export const dataUrlToFile = async (dataUrl: string, filename: string): Promise<
  */
 export const downloadDrawing = (dataUrl: string, filename: string): void => {
   try {
-    console.log('📦 downloadDrawing called with:', {
+    console.log("📦 downloadDrawing called with:", {
       filename,
       dataUrlLength: dataUrl.length,
-      dataUrlPrefix: dataUrl.substring(0, 50) + '...',
-      isDataUrl: dataUrl.startsWith('data:'),
-      isBlobUrl: dataUrl.startsWith('blob:')
+      dataUrlPrefix: dataUrl.substring(0, 50) + "...",
+      isDataUrl: dataUrl.startsWith("data:"),
+      isBlobUrl: dataUrl.startsWith("blob:"),
     });
 
-    console.log('🔗 Creating download link element...');
-    const link = document.createElement('a');
+    console.log("🔗 Creating download link element...");
+    const link = document.createElement("a");
     link.href = dataUrl;
     link.download = filename;
-    link.style.display = 'none';
+    link.style.display = "none";
 
-    console.log('✅ Link element created:', {
-      href: link.href.substring(0, 50) + '...',
+    console.log("✅ Link element created:", {
+      href: link.href.substring(0, 50) + "...",
       download: link.download,
-      display: link.style.display
+      display: link.style.display,
     });
 
-    console.log('📎 Appending link to document body...');
+    console.log("📎 Appending link to document body...");
     document.body.appendChild(link);
 
-    console.log('🖱️ Triggering link click...');
+    console.log("🖱️ Triggering link click...");
     link.click();
 
-    console.log('🗑️ Removing link from document body...');
+    console.log("🗑️ Removing link from document body...");
     document.body.removeChild(link);
 
     // Clean up object URL if it was created
-    if (dataUrl.startsWith('blob:')) {
-      console.log('🧹 Cleaning up blob URL...');
+    if (dataUrl.startsWith("blob:")) {
+      console.log("🧹 Cleaning up blob URL...");
       URL.revokeObjectURL(dataUrl);
     }
 
-    console.log('✅ downloadDrawing completed successfully');
+    console.log("✅ downloadDrawing completed successfully");
   } catch (error) {
-    console.error('❌ downloadDrawing failed:', {
+    console.error("❌ downloadDrawing failed:", {
       error,
       errorMessage: error instanceof Error ? error.message : String(error),
       errorStack: error instanceof Error ? error.stack : undefined,
       filename,
-      dataUrlLength: dataUrl.length
+      dataUrlLength: dataUrl.length,
     });
 
     handleError(error, {
       operation: "drawing download",
       category: ErrorCategory.STORAGE,
-      severity: ErrorSeverity.MEDIUM
+      severity: ErrorSeverity.MEDIUM,
     });
     throw error; // Re-throw to let caller handle
   }
@@ -90,11 +93,11 @@ export const resizeCanvas = (
   maintainAspectRatio = true
 ): string => {
   try {
-    const tempCanvas = document.createElement('canvas');
-    const tempCtx = tempCanvas.getContext('2d');
+    const tempCanvas = document.createElement("canvas");
+    const tempCtx = tempCanvas.getContext("2d");
 
     if (!tempCtx) {
-      throw new Error('Failed to get canvas context');
+      throw new Error("Failed to get canvas context");
     }
 
     let targetWidth = width;
@@ -116,16 +119,16 @@ export const resizeCanvas = (
 
     // Use high-quality scaling
     tempCtx.imageSmoothingEnabled = true;
-    tempCtx.imageSmoothingQuality = 'high';
+    tempCtx.imageSmoothingQuality = "high";
 
     tempCtx.drawImage(sourceCanvas, 0, 0, targetWidth, targetHeight);
 
-    return tempCanvas.toDataURL('image/png');
+    return tempCanvas.toDataURL("image/png");
   } catch (error) {
     handleError(error, {
       operation: "canvas resize",
       category: ErrorCategory.UI,
-      severity: ErrorSeverity.MEDIUM
+      severity: ErrorSeverity.MEDIUM,
     });
     throw error;
   }
@@ -136,19 +139,19 @@ export const resizeCanvas = (
  */
 export const clearCanvas = (canvas: HTMLCanvasElement): void => {
   try {
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext("2d");
     if (ctx) {
       // Clear the canvas
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       // Set white background
-      ctx.fillStyle = 'white';
+      ctx.fillStyle = "white";
       ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
   } catch (error) {
     handleError(error, {
       operation: "canvas clear",
       category: ErrorCategory.UI,
-      severity: ErrorSeverity.LOW
+      severity: ErrorSeverity.LOW,
     });
   }
 };
@@ -156,7 +159,11 @@ export const clearCanvas = (canvas: HTMLCanvasElement): void => {
 /**
  * Get canvas as blob for efficient processing
  */
-export const canvasToBlob = (canvas: HTMLCanvasElement, type = 'image/png', quality = 0.92): Promise<Blob> => {
+export const canvasToBlob = (
+  canvas: HTMLCanvasElement,
+  type = "image/png",
+  quality = 0.92
+): Promise<Blob> => {
   return new Promise((resolve, reject) => {
     try {
       canvas.toBlob(
@@ -164,7 +171,7 @@ export const canvasToBlob = (canvas: HTMLCanvasElement, type = 'image/png', qual
           if (blob) {
             resolve(blob);
           } else {
-            reject(new Error('Failed to create blob from canvas'));
+            reject(new Error("Failed to create blob from canvas"));
           }
         },
         type,
@@ -174,7 +181,7 @@ export const canvasToBlob = (canvas: HTMLCanvasElement, type = 'image/png', qual
       handleError(error, {
         operation: "canvas to blob conversion",
         category: ErrorCategory.UI,
-        severity: ErrorSeverity.MEDIUM
+        severity: ErrorSeverity.MEDIUM,
       });
       reject(error);
     }

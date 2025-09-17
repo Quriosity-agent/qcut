@@ -1,10 +1,12 @@
-export const fileToBase64 = (file: File): Promise<{ base64: string; mimeType: string }> => {
+export const fileToBase64 = (
+  file: File
+): Promise<{ base64: string; mimeType: string }> => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.readAsDataURL(file);
     reader.onload = () => {
       const result = reader.result as string;
-      const base64 = result.split(',')[1];
+      const base64 = result.split(",")[1];
       if (base64) {
         resolve({ base64, mimeType: file.type });
       } else {
@@ -15,25 +17,28 @@ export const fileToBase64 = (file: File): Promise<{ base64: string; mimeType: st
   });
 };
 
-export const dataUrlToFile = async (dataUrl: string, filename: string): Promise<File> => {
-    // Extract the base64 data and MIME type from the data URL
-    const [header, base64Data] = dataUrl.split(',');
-    const mimeMatch = header.match(/:(.*?);/);
-    const mimeType = mimeMatch ? mimeMatch[1] : 'image/png';
-    
-    // Convert base64 to binary
-    const binaryString = atob(base64Data);
-    const bytes = new Uint8Array(binaryString.length);
-    
-    for (let i = 0; i < binaryString.length; i++) {
-        bytes[i] = binaryString.charCodeAt(i);
-    }
-    
-    // Create a blob from the binary data
-    const blob = new Blob([bytes], { type: mimeType });
-    
-    // Create and return a File object
-    return new File([blob], filename, { type: mimeType });
+export const dataUrlToFile = async (
+  dataUrl: string,
+  filename: string
+): Promise<File> => {
+  // Extract the base64 data and MIME type from the data URL
+  const [header, base64Data] = dataUrl.split(",");
+  const mimeMatch = header.match(/:(.*?);/);
+  const mimeType = mimeMatch ? mimeMatch[1] : "image/png";
+
+  // Convert base64 to binary
+  const binaryString = atob(base64Data);
+  const bytes = new Uint8Array(binaryString.length);
+
+  for (let i = 0; i < binaryString.length; i++) {
+    bytes[i] = binaryString.charCodeAt(i);
+  }
+
+  // Create a blob from the binary data
+  const blob = new Blob([bytes], { type: mimeType });
+
+  // Create and return a File object
+  return new File([blob], filename, { type: mimeType });
 };
 
 /**
@@ -42,13 +47,14 @@ export const dataUrlToFile = async (dataUrl: string, filename: string): Promise<
  * @returns A Promise that resolves with the loaded HTMLImageElement.
  */
 export const loadImage = (dataUrl: string): Promise<HTMLImageElement> => {
-    return new Promise((resolve, reject) => {
-        const img = new Image();
-        img.crossOrigin = "anonymous";
-        img.onload = () => resolve(img);
-        img.onerror = (err) => reject(new Error("Failed to load image from data URL."));
-        img.src = dataUrl;
-    });
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => resolve(img);
+    img.onerror = (err) =>
+      reject(new Error("Failed to load image from data URL."));
+    img.src = dataUrl;
+  });
 };
 
 /**
@@ -57,28 +63,31 @@ export const loadImage = (dataUrl: string): Promise<HTMLImageElement> => {
  * @param targetImage The loaded HTMLImageElement with the target dimensions.
  * @returns A Promise that resolves with the data URL of the resized image.
  */
-export const resizeImageToMatch = (sourceDataUrl: string, targetImage: HTMLImageElement): Promise<string> => {
-     return new Promise((resolve, reject) => {
-       const canvas = document.createElement('canvas');
-       const ctx = canvas.getContext('2d');
-       if (!ctx) {
-         return reject(new Error("Could not get canvas context."));
-       }
-       
-       const sourceImage = new Image();
-       sourceImage.crossOrigin = "anonymous";
-       sourceImage.onload = () => {
-         canvas.width = targetImage.naturalWidth;
-         canvas.height = targetImage.naturalHeight;
-         
-         ctx.drawImage(sourceImage, 0, 0, canvas.width, canvas.height);
-         resolve(canvas.toDataURL('image/png'));
-       };
-       sourceImage.onerror = () => reject(new Error("Failed to load source image for resizing."));
-       sourceImage.src = sourceDataUrl;
-     });
-};
+export const resizeImageToMatch = (
+  sourceDataUrl: string,
+  targetImage: HTMLImageElement
+): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
+    if (!ctx) {
+      return reject(new Error("Could not get canvas context."));
+    }
 
+    const sourceImage = new Image();
+    sourceImage.crossOrigin = "anonymous";
+    sourceImage.onload = () => {
+      canvas.width = targetImage.naturalWidth;
+      canvas.height = targetImage.naturalHeight;
+
+      ctx.drawImage(sourceImage, 0, 0, canvas.width, canvas.height);
+      resolve(canvas.toDataURL("image/png"));
+    };
+    sourceImage.onerror = () =>
+      reject(new Error("Failed to load source image for resizing."));
+    sourceImage.src = sourceDataUrl;
+  });
+};
 
 /**
  * Converts a string to its binary representation.
@@ -86,9 +95,12 @@ export const resizeImageToMatch = (sourceDataUrl: string, targetImage: HTMLImage
  * @returns A string of 0s and 1s.
  */
 const textToBinary = (text: string): string => {
-    return text.split('').map(char => {
-        return char.charCodeAt(0).toString(2).padStart(8, '0');
-    }).join('');
+  return text
+    .split("")
+    .map((char) => {
+      return char.charCodeAt(0).toString(2).padStart(8, "0");
+    })
+    .join("");
 };
 
 /**
@@ -97,48 +109,56 @@ const textToBinary = (text: string): string => {
  * @param text The text to embed.
  * @returns A Promise that resolves with the data URL of the watermarked image.
  */
-export const embedWatermark = (imageUrl: string, text: string): Promise<string> => {
-    return new Promise((resolve, reject) => {
-        const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d');
-        if (!ctx) {
-            return reject(new Error("Could not get canvas context."));
+export const embedWatermark = (
+  imageUrl: string,
+  text: string
+): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
+    if (!ctx) {
+      return reject(new Error("Could not get canvas context."));
+    }
+
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+      canvas.width = img.width;
+      canvas.height = img.height;
+      ctx.drawImage(img, 0, 0);
+
+      const watermarkText = text + "::END"; // Add a delimiter
+      const binaryMessage = textToBinary(watermarkText);
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const data = imageData.data;
+
+      if (binaryMessage.length > (data.length / 4) * 3) {
+        console.warn("Watermark is too long for the image. Skipping.");
+        return resolve(imageUrl); // Return original if too long
+      }
+
+      let messageIndex = 0;
+      for (
+        let i = 0;
+        i < data.length && messageIndex < binaryMessage.length;
+        i += 4
+      ) {
+        // Embed in R, G, B channels
+        for (let j = 0; j < 3 && messageIndex < binaryMessage.length; j++) {
+          const bit = parseInt(binaryMessage[messageIndex], 2);
+          // Clear the LSB and then set it
+          data[i + j] = (data[i + j] & 0xfe) | bit;
+          messageIndex++;
         }
+      }
 
-        const img = new Image();
-        img.crossOrigin = "anonymous";
-        img.onload = () => {
-            canvas.width = img.width;
-            canvas.height = img.height;
-            ctx.drawImage(img, 0, 0);
-
-            const watermarkText = text + "::END"; // Add a delimiter
-            const binaryMessage = textToBinary(watermarkText);
-            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-            const data = imageData.data;
-
-            if (binaryMessage.length > data.length / 4 * 3) {
-                 console.warn("Watermark is too long for the image. Skipping.");
-                 return resolve(imageUrl); // Return original if too long
-            }
-
-            let messageIndex = 0;
-            for (let i = 0; i < data.length && messageIndex < binaryMessage.length; i += 4) {
-                // Embed in R, G, B channels
-                for (let j = 0; j < 3 && messageIndex < binaryMessage.length; j++) {
-                    const bit = parseInt(binaryMessage[messageIndex], 2);
-                    // Clear the LSB and then set it
-                    data[i + j] = (data[i + j] & 0xFE) | bit;
-                    messageIndex++;
-                }
-            }
-
-            ctx.putImageData(imageData, 0, 0);
-            resolve(canvas.toDataURL('image/png'));
-        };
-        img.onerror = () => reject(new Error("Failed to load image for watermarking."));
-        img.src = imageUrl;
-    });
+      ctx.putImageData(imageData, 0, 0);
+      resolve(canvas.toDataURL("image/png"));
+    };
+    img.onerror = () =>
+      reject(new Error("Failed to load image for watermarking."));
+    img.src = imageUrl;
+  });
 };
 
 /**
@@ -147,7 +167,7 @@ export const embedWatermark = (imageUrl: string, text: string): Promise<string> 
  * @param filename The desired name for the downloaded file.
  */
 export const downloadImage = (url: string, filename: string) => {
-  const link = document.createElement('a');
+  const link = document.createElement("a");
   link.href = url;
   link.download = filename;
   document.body.appendChild(link);

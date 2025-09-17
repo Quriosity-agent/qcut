@@ -94,7 +94,9 @@
       {
         "from": "dist/electron",
         "to": "electron",
-        "filter": ["**/*"]
+        "filter": [
+          "**/*"
+        ]
       },
       "apps/web/dist/**/*",
       "node_modules/electron-updater/**/*",

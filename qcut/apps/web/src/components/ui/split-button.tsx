@@ -41,9 +41,9 @@ const SplitButtonSide = forwardRef<HTMLButtonElement, SplitButtonSideProps>(
         disabled={isDisabled}
         className={cn(
           "h-full rounded-none bg-panel-accent !opacity-100 border-0 gap-0 font-normal transition-colors",
-          !isDisabled
-            ? "hover:bg-foreground/10 hover:opacity-100 cursor-pointer"
-            : "cursor-default select-text",
+          isDisabled
+            ? "cursor-default select-text"
+            : "hover:bg-foreground/10 hover:opacity-100 cursor-pointer",
           className
         )}
         onClick={disabledProp ? undefined : onClick}

@@ -1,10 +1,10 @@
-import { useState, useCallback, useRef } from 'react';
-import { generateUUID } from '@/lib/utils';
+import { useState, useCallback, useRef } from "react";
+import { generateUUID } from "@/lib/utils";
 
 // Base object interface
 export interface CanvasObject {
   id: string;
-  type: 'stroke' | 'shape' | 'text' | 'image';
+  type: "stroke" | "shape" | "text" | "image";
   x: number;
   y: number;
   width: number;
@@ -18,7 +18,7 @@ export interface CanvasObject {
 
 // Stroke object for pencil/brush drawings
 export interface StrokeObject extends CanvasObject {
-  type: 'stroke';
+  type: "stroke";
   points: { x: number; y: number }[];
   strokeStyle: string;
   lineWidth: number;
@@ -30,10 +30,10 @@ export interface StrokeObject extends CanvasObject {
 
 // Shape object for rectangles, circles, lines
 export interface ShapeObject extends CanvasObject {
-  type: 'shape';
+  type: "shape";
   // Note: 'square' tool is normalized to 'rectangle' during creation
   // A square is stored as a rectangle with equal width and height
-  shapeType: 'rectangle' | 'circle' | 'line';
+  shapeType: "rectangle" | "circle" | "line";
   strokeStyle: string;
   fillStyle?: string;
   lineWidth: number;
@@ -41,7 +41,7 @@ export interface ShapeObject extends CanvasObject {
 
 // Text object
 export interface TextObject extends CanvasObject {
-  type: 'text';
+  type: "text";
   text: string;
   font: string;
   fillStyle: string;
@@ -49,13 +49,17 @@ export interface TextObject extends CanvasObject {
 
 // Image object (already exists in use-canvas-images but extending here)
 export interface ImageObject extends CanvasObject {
-  type: 'image';
+  type: "image";
   element: HTMLImageElement;
   rotation: number;
 }
 
 // Union type for all canvas objects
-export type AnyCanvasObject = StrokeObject | ShapeObject | TextObject | ImageObject;
+export type AnyCanvasObject =
+  | StrokeObject
+  | ShapeObject
+  | TextObject
+  | ImageObject;
 
 // Group interface
 export interface ObjectGroup {
@@ -70,29 +74,36 @@ export const useCanvasObjects = () => {
   const [objects, setObjectsInternal] = useState<AnyCanvasObject[]>([]);
 
   // Wrapper to track all setObjects calls
-  const setObjects = useCallback((newObjects: AnyCanvasObject[] | ((prev: AnyCanvasObject[]) => AnyCanvasObject[])) => {
-    if (typeof newObjects === 'function') {
-      setObjectsInternal(prev => {
-        const result = newObjects(prev);
+  const setObjects = useCallback(
+    (
+      newObjects:
+        | AnyCanvasObject[]
+        | ((prev: AnyCanvasObject[]) => AnyCanvasObject[])
+    ) => {
+      if (typeof newObjects === "function") {
+        setObjectsInternal((prev) => {
+          const result = newObjects(prev);
+          if (import.meta.env.DEV) {
+            console.log("📝 setObjects called (function):", {
+              previousCount: prev.length,
+              newCount: result.length,
+              stackTrace: new Error().stack?.split("\n")[2]?.trim(),
+            });
+          }
+          return result;
+        });
+      } else {
         if (import.meta.env.DEV) {
-          console.log('📝 setObjects called (function):', {
-            previousCount: prev.length,
-            newCount: result.length,
-            stackTrace: new Error().stack?.split('\n')[2]?.trim()
+          console.log("📝 setObjects called (direct):", {
+            newCount: newObjects.length,
+            stackTrace: new Error().stack?.split("\n")[2]?.trim(),
           });
         }
-        return result;
-      });
-    } else {
-      if (import.meta.env.DEV) {
-        console.log('📝 setObjects called (direct):', {
-          newCount: newObjects.length,
-          stackTrace: new Error().stack?.split('\n')[2]?.trim()
-        });
+        setObjectsInternal(newObjects);
       }
-      setObjectsInternal(newObjects);
-    }
-  }, []);
+    },
+    []
+  );
   const [groups, setGroups] = useState<ObjectGroup[]>([]);
   const [selectedObjectIds, setSelectedObjectIds] = useState<string[]>([]);
   const [isDragging, setIsDragging] = useState(false);
@@ -107,236 +118,269 @@ export const useCanvasObjects = () => {
   const zIndexCounter = useRef(1);
 
   // Add a new stroke object
-  const addStroke = useCallback((
-    points: { x: number; y: number }[],
-    style: {
-      strokeStyle: string;
-      lineWidth: number;
-      opacity: number;
-      tool: string;
-      lineCap: string;
-      lineJoin: string;
-      globalCompositeOperation: string;
-    }
-  ) => {
-    if (import.meta.env.DEV) {
-      console.log('🏗️ addStroke called:', {
-        pointCount: points.length,
-        tool: style.tool
-      });
-    }
+  const addStroke = useCallback(
+    (
+      points: { x: number; y: number }[],
+      style: {
+        strokeStyle: string;
+        lineWidth: number;
+        opacity: number;
+        tool: string;
+        lineCap: string;
+        lineJoin: string;
+        globalCompositeOperation: string;
+      }
+    ) => {
+      if (import.meta.env.DEV) {
+        console.log("🏗️ addStroke called:", {
+          pointCount: points.length,
+          tool: style.tool,
+        });
+      }
 
-    if (points.length === 0) {
-      console.error('❌ No points provided to addStroke');
-      return null;
-    }
+      if (points.length === 0) {
+        console.error("❌ No points provided to addStroke");
+        return null;
+      }
 
-    // Calculate bounding box
-    const minX = Math.min(...points.map(p => p.x));
-    const maxX = Math.max(...points.map(p => p.x));
-    const minY = Math.min(...points.map(p => p.y));
-    const maxY = Math.max(...points.map(p => p.y));
+      // Calculate bounding box
+      const minX = Math.min(...points.map((p) => p.x));
+      const maxX = Math.max(...points.map((p) => p.x));
+      const minY = Math.min(...points.map((p) => p.y));
+      const maxY = Math.max(...points.map((p) => p.y));
 
-    const strokeObject: StrokeObject = {
-      id: generateUUID(),
-      type: 'stroke',
-      x: minX - style.lineWidth / 2,
-      y: minY - style.lineWidth / 2,
-      width: maxX - minX + style.lineWidth,
-      height: maxY - minY + style.lineWidth,
-      opacity: style.opacity,
-      points: points.map(p => ({ x: p.x - minX, y: p.y - minY })), // Relative to object origin
-      strokeStyle: style.strokeStyle,
-      lineWidth: style.lineWidth,
-      tool: style.tool,
-      lineCap: style.lineCap,
-      lineJoin: style.lineJoin,
-      globalCompositeOperation: style.globalCompositeOperation,
-      selected: false,
-      zIndex: zIndexCounter.current++,
-      created: new Date()
-    };
+      const strokeObject: StrokeObject = {
+        id: generateUUID(),
+        type: "stroke",
+        x: minX - style.lineWidth / 2,
+        y: minY - style.lineWidth / 2,
+        width: maxX - minX + style.lineWidth,
+        height: maxY - minY + style.lineWidth,
+        opacity: style.opacity,
+        points: points.map((p) => ({ x: p.x - minX, y: p.y - minY })), // Relative to object origin
+        strokeStyle: style.strokeStyle,
+        lineWidth: style.lineWidth,
+        tool: style.tool,
+        lineCap: style.lineCap,
+        lineJoin: style.lineJoin,
+        globalCompositeOperation: style.globalCompositeOperation,
+        selected: false,
+        zIndex: zIndexCounter.current++,
+        created: new Date(),
+      };
 
-    setObjects(prev => [...prev, strokeObject]);
+      setObjects((prev) => [...prev, strokeObject]);
 
-    if (import.meta.env.DEV) {
-      console.log('✏️ Stroke object created:', { id: strokeObject.id, tool: style.tool });
-    }
+      if (import.meta.env.DEV) {
+        console.log("✏️ Stroke object created:", {
+          id: strokeObject.id,
+          tool: style.tool,
+        });
+      }
 
-    return strokeObject.id;
-  }, []);
+      return strokeObject.id;
+    },
+    []
+  );
 
   // Add a new shape object
   // Note: 'square' should be normalized to 'rectangle' before calling this function
-  const addShape = useCallback((
-    shapeType: 'rectangle' | 'circle' | 'line',  // Excludes 'square' - use 'rectangle' instead
-    bounds: { x: number; y: number; width: number; height: number },
-    style: {
-      strokeStyle: string;
-      fillStyle?: string;
-      lineWidth: number;
-      opacity: number;
-    }
-  ) => {
-    const shapeObject: ShapeObject = {
-      id: generateUUID(),
-      type: 'shape',
-      shapeType,
-      x: bounds.x,
-      y: bounds.y,
-      width: bounds.width,
-      height: bounds.height,
-      opacity: style.opacity,
-      strokeStyle: style.strokeStyle,
-      fillStyle: style.fillStyle,
-      lineWidth: style.lineWidth,
-      selected: false,
-      zIndex: zIndexCounter.current++,
-      created: new Date()
-    };
+  const addShape = useCallback(
+    (
+      shapeType: "rectangle" | "circle" | "line", // Excludes 'square' - use 'rectangle' instead
+      bounds: { x: number; y: number; width: number; height: number },
+      style: {
+        strokeStyle: string;
+        fillStyle?: string;
+        lineWidth: number;
+        opacity: number;
+      }
+    ) => {
+      const shapeObject: ShapeObject = {
+        id: generateUUID(),
+        type: "shape",
+        shapeType,
+        x: bounds.x,
+        y: bounds.y,
+        width: bounds.width,
+        height: bounds.height,
+        opacity: style.opacity,
+        strokeStyle: style.strokeStyle,
+        fillStyle: style.fillStyle,
+        lineWidth: style.lineWidth,
+        selected: false,
+        zIndex: zIndexCounter.current++,
+        created: new Date(),
+      };
 
-    setObjects(prev => [...prev, shapeObject]);
+      setObjects((prev) => [...prev, shapeObject]);
 
-    if (import.meta.env.DEV) {
-      console.log('🔲 Shape object created:', { id: shapeObject.id, type: shapeType });
-    }
+      if (import.meta.env.DEV) {
+        console.log("🔲 Shape object created:", {
+          id: shapeObject.id,
+          type: shapeType,
+        });
+      }
 
-    return shapeObject.id;
-  }, []);
+      return shapeObject.id;
+    },
+    []
+  );
 
   // Add a new text object
-  const addText = useCallback((
-    text: string,
-    position: { x: number; y: number },
-    style: {
-      font: string;
-      fillStyle: string;
-      opacity: number;
-    }
-  ) => {
-    console.log('📝 TEXT DEBUG - addText called:', {
-      text: text,
-      position: position,
-      style: style,
-      currentObjectCount: objects.length,
-      timestamp: Date.now()
-    });
-
-    // Estimate text dimensions (rough calculation)
-    const fontSize = parseInt(style.font);
-    const estimatedWidth = text.length * fontSize * 0.6;
-    const estimatedHeight = fontSize * 1.2;
-
-    console.log('📝 TEXT DEBUG - Calculated text dimensions:', {
-      fontSize: fontSize,
-      estimatedWidth: estimatedWidth,
-      estimatedHeight: estimatedHeight
-    });
-
-    const textObject: TextObject = {
-      id: generateUUID(),
-      type: 'text',
-      text,
-      x: position.x,
-      y: position.y,
-      width: estimatedWidth,
-      height: estimatedHeight,
-      opacity: style.opacity,
-      font: style.font,
-      fillStyle: style.fillStyle,
-      selected: false,
-      zIndex: zIndexCounter.current++,
-      created: new Date()
-    };
-
-    console.log('📝 TEXT DEBUG - Created text object:', {
-      id: textObject.id,
-      type: textObject.type,
-      text: textObject.text,
-      bounds: { x: textObject.x, y: textObject.y, width: textObject.width, height: textObject.height },
-      timestamp: Date.now()
-    });
-
-    setObjects(prev => {
-      const newObjects = [...prev, textObject];
-      console.log('📝 TEXT DEBUG - Updated objects array:', {
-        previousCount: prev.length,
-        newCount: newObjects.length,
-        addedObject: { id: textObject.id, type: textObject.type },
-        timestamp: Date.now()
+  const addText = useCallback(
+    (
+      text: string,
+      position: { x: number; y: number },
+      style: {
+        font: string;
+        fillStyle: string;
+        opacity: number;
+      }
+    ) => {
+      console.log("📝 TEXT DEBUG - addText called:", {
+        text,
+        position,
+        style,
+        currentObjectCount: objects.length,
+        timestamp: Date.now(),
       });
-      return newObjects;
-    });
 
-    console.log('✅ TEXT DEBUG - Text object creation completed:', {
-      id: textObject.id,
-      text: text,
-      finalObjectCount: objects.length + 1
-    });
+      // Estimate text dimensions (rough calculation)
+      const fontSize = parseInt(style.font);
+      const estimatedWidth = text.length * fontSize * 0.6;
+      const estimatedHeight = fontSize * 1.2;
 
-    return textObject.id;
-  }, [objects.length]);
+      console.log("📝 TEXT DEBUG - Calculated text dimensions:", {
+        fontSize,
+        estimatedWidth,
+        estimatedHeight,
+      });
+
+      const textObject: TextObject = {
+        id: generateUUID(),
+        type: "text",
+        text,
+        x: position.x,
+        y: position.y,
+        width: estimatedWidth,
+        height: estimatedHeight,
+        opacity: style.opacity,
+        font: style.font,
+        fillStyle: style.fillStyle,
+        selected: false,
+        zIndex: zIndexCounter.current++,
+        created: new Date(),
+      };
+
+      console.log("📝 TEXT DEBUG - Created text object:", {
+        id: textObject.id,
+        type: textObject.type,
+        text: textObject.text,
+        bounds: {
+          x: textObject.x,
+          y: textObject.y,
+          width: textObject.width,
+          height: textObject.height,
+        },
+        timestamp: Date.now(),
+      });
+
+      setObjects((prev) => {
+        const newObjects = [...prev, textObject];
+        console.log("📝 TEXT DEBUG - Updated objects array:", {
+          previousCount: prev.length,
+          newCount: newObjects.length,
+          addedObject: { id: textObject.id, type: textObject.type },
+          timestamp: Date.now(),
+        });
+        return newObjects;
+      });
+
+      console.log("✅ TEXT DEBUG - Text object creation completed:", {
+        id: textObject.id,
+        text,
+        finalObjectCount: objects.length + 1,
+      });
+
+      return textObject.id;
+    },
+    [objects.length]
+  );
 
   // Add an image object (integrates with existing image system)
-  const addImageObject = useCallback((imageData: {
-    id: string;
-    element: HTMLImageElement;
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-    rotation: number;
-  }) => {
-    console.log('🖼️ IMAGE DEBUG - addImageObject called:', {
-      imageId: imageData.id,
-      dimensions: { x: imageData.x, y: imageData.y, width: imageData.width, height: imageData.height },
-      rotation: imageData.rotation,
-      currentObjectCount: objects.length,
-      timestamp: Date.now()
-    });
-
-    const imageObject: ImageObject = {
-      ...imageData,
-      type: 'image',
-      opacity: 1.0, // Default opacity for images
-      selected: false,
-      zIndex: zIndexCounter.current++,
-      created: new Date()
-    };
-
-    console.log('🖼️ IMAGE DEBUG - Created image object:', {
-      id: imageObject.id,
-      type: imageObject.type,
-      bounds: { x: imageObject.x, y: imageObject.y, width: imageObject.width, height: imageObject.height },
-      zIndex: imageObject.zIndex,
-      timestamp: Date.now()
-    });
-
-    setObjects(prev => {
-      const newObjects = [...prev, imageObject];
-      console.log('🖼️ IMAGE DEBUG - Updated objects array:', {
-        previousCount: prev.length,
-        newCount: newObjects.length,
-        addedObject: { id: imageObject.id, type: imageObject.type },
-        timestamp: Date.now()
+  const addImageObject = useCallback(
+    (imageData: {
+      id: string;
+      element: HTMLImageElement;
+      x: number;
+      y: number;
+      width: number;
+      height: number;
+      rotation: number;
+    }) => {
+      console.log("🖼️ IMAGE DEBUG - addImageObject called:", {
+        imageId: imageData.id,
+        dimensions: {
+          x: imageData.x,
+          y: imageData.y,
+          width: imageData.width,
+          height: imageData.height,
+        },
+        rotation: imageData.rotation,
+        currentObjectCount: objects.length,
+        timestamp: Date.now(),
       });
-      return newObjects;
-    });
 
-    console.log('✅ IMAGE DEBUG - Image object creation completed:', {
-      id: imageObject.id,
-      finalObjectCount: objects.length + 1
-    });
+      const imageObject: ImageObject = {
+        ...imageData,
+        type: "image",
+        opacity: 1.0, // Default opacity for images
+        selected: false,
+        zIndex: zIndexCounter.current++,
+        created: new Date(),
+      };
 
-    return imageObject.id;
-  }, [objects.length]);
+      console.log("🖼️ IMAGE DEBUG - Created image object:", {
+        id: imageObject.id,
+        type: imageObject.type,
+        bounds: {
+          x: imageObject.x,
+          y: imageObject.y,
+          width: imageObject.width,
+          height: imageObject.height,
+        },
+        zIndex: imageObject.zIndex,
+        timestamp: Date.now(),
+      });
+
+      setObjects((prev) => {
+        const newObjects = [...prev, imageObject];
+        console.log("🖼️ IMAGE DEBUG - Updated objects array:", {
+          previousCount: prev.length,
+          newCount: newObjects.length,
+          addedObject: { id: imageObject.id, type: imageObject.type },
+          timestamp: Date.now(),
+        });
+        return newObjects;
+      });
+
+      console.log("✅ IMAGE DEBUG - Image object creation completed:", {
+        id: imageObject.id,
+        finalObjectCount: objects.length + 1,
+      });
+
+      return imageObject.id;
+    },
+    [objects.length]
+  );
 
   // Select objects
   const selectObjects = useCallback((ids: string[], addToSelection = false) => {
     if (addToSelection) {
-      setSelectedObjectIds(prev => {
+      setSelectedObjectIds((prev) => {
         const newSelection = [...prev];
-        ids.forEach(id => {
+        ids.forEach((id) => {
           if (!newSelection.includes(id)) {
             newSelection.push(id);
           }
@@ -347,77 +391,93 @@ export const useCanvasObjects = () => {
       setSelectedObjectIds(ids);
     }
 
-    setObjects(prev => prev.map(obj => ({
-      ...obj,
-      selected: addToSelection
-        ? (obj.selected || ids.includes(obj.id))
-        : ids.includes(obj.id)
-    })));
+    setObjects((prev) =>
+      prev.map((obj) => ({
+        ...obj,
+        selected: addToSelection
+          ? obj.selected || ids.includes(obj.id)
+          : ids.includes(obj.id),
+      }))
+    );
   }, []);
 
   // Get object at position (for selection)
-  const getObjectAtPosition = useCallback((x: number, y: number): AnyCanvasObject | null => {
-    // Check from top to bottom (highest z-index first)
-    const sortedObjects = [...objects].sort((a, b) => b.zIndex - a.zIndex);
+  const getObjectAtPosition = useCallback(
+    (x: number, y: number): AnyCanvasObject | null => {
+      // Check from top to bottom (highest z-index first)
+      const sortedObjects = [...objects].sort((a, b) => b.zIndex - a.zIndex);
 
-    for (const obj of sortedObjects) {
-      if (x >= obj.x && x <= obj.x + obj.width &&
-          y >= obj.y && y <= obj.y + obj.height) {
-        return obj;
+      for (const obj of sortedObjects) {
+        if (
+          x >= obj.x &&
+          x <= obj.x + obj.width &&
+          y >= obj.y &&
+          y <= obj.y + obj.height
+        ) {
+          return obj;
+        }
       }
-    }
-    return null;
-  }, [objects]);
+      return null;
+    },
+    [objects]
+  );
 
   // Create group from selected objects
-  const createGroup = useCallback((name?: string) => {
-    if (selectedObjectIds.length < 2) return null;
+  const createGroup = useCallback(
+    (name?: string) => {
+      if (selectedObjectIds.length < 2) return null;
 
-    const groupId = generateUUID();
-    const groupName = name || `Group ${groups.length + 1}`;
+      const groupId = generateUUID();
+      const groupName = name || `Group ${groups.length + 1}`;
 
-    const newGroup: ObjectGroup = {
-      id: groupId,
-      name: groupName,
-      objectIds: [...selectedObjectIds],
-      locked: false,
-      visible: true
-    };
+      const newGroup: ObjectGroup = {
+        id: groupId,
+        name: groupName,
+        objectIds: [...selectedObjectIds],
+        locked: false,
+        visible: true,
+      };
 
-    setGroups(prev => [...prev, newGroup]);
-    setObjects(prev => prev.map(obj =>
-      selectedObjectIds.includes(obj.id)
-        ? { ...obj, groupId }
-        : obj
-    ));
+      setGroups((prev) => [...prev, newGroup]);
+      setObjects((prev) =>
+        prev.map((obj) =>
+          selectedObjectIds.includes(obj.id) ? { ...obj, groupId } : obj
+        )
+      );
 
-    if (import.meta.env.DEV) {
-      console.log('🔗 Group created:', { groupId, name: groupName, objects: selectedObjectIds });
-    }
+      if (import.meta.env.DEV) {
+        console.log("🔗 Group created:", {
+          groupId,
+          name: groupName,
+          objects: selectedObjectIds,
+        });
+      }
 
-    return groupId;
-  }, [selectedObjectIds, groups.length]);
+      return groupId;
+    },
+    [selectedObjectIds, groups.length]
+  );
 
   // Ungroup objects
   const ungroupObjects = useCallback((groupId: string) => {
-    setGroups(prev => prev.filter(group => group.id !== groupId));
-    setObjects(prev => prev.map(obj =>
-      obj.groupId === groupId
-        ? { ...obj, groupId: undefined }
-        : obj
-    ));
+    setGroups((prev) => prev.filter((group) => group.id !== groupId));
+    setObjects((prev) =>
+      prev.map((obj) =>
+        obj.groupId === groupId ? { ...obj, groupId: undefined } : obj
+      )
+    );
 
     if (import.meta.env.DEV) {
-      console.log('🔓 Group dissolved:', { groupId });
+      console.log("🔓 Group dissolved:", { groupId });
     }
   }, []);
 
   // Clear all objects and groups
   const clearAll = useCallback(() => {
     if (import.meta.env.DEV) {
-      console.log('🧹 clearAll called:', {
+      console.log("🧹 clearAll called:", {
         currentObjectCount: objects.length,
-        stackTrace: new Error().stack?.split('\n')[2]?.trim()
+        stackTrace: new Error().stack?.split("\n")[2]?.trim(),
       });
     }
     setObjects([]);
@@ -425,285 +485,336 @@ export const useCanvasObjects = () => {
     setSelectedObjectIds([]);
     setIsDrawing(false);
     setIsDragging(false);
-    dragState.current = { startX: 0, startY: 0, lastX: 0, lastY: 0, hasMoved: false };
+    dragState.current = {
+      startX: 0,
+      startY: 0,
+      lastX: 0,
+      lastY: 0,
+      hasMoved: false,
+    };
   }, [objects.length, setObjects]);
 
   // Start dragging objects
-  const startDrag = useCallback((startX: number, startY: number) => {
-    if (selectedObjectIds.length === 0) return false;
+  const startDrag = useCallback(
+    (startX: number, startY: number) => {
+      if (selectedObjectIds.length === 0) return false;
 
-    dragState.current = {
-      startX,
-      startY,
-      lastX: startX,
-      lastY: startY,
-      hasMoved: false
-    };
-    setIsDragging(true);
+      dragState.current = {
+        startX,
+        startY,
+        lastX: startX,
+        lastY: startY,
+        hasMoved: false,
+      };
+      setIsDragging(true);
 
-    if (import.meta.env.DEV) {
-      console.log('🖱️ Drag started:', { startX, startY, selectedCount: selectedObjectIds.length });
-    }
+      if (import.meta.env.DEV) {
+        console.log("🖱️ Drag started:", {
+          startX,
+          startY,
+          selectedCount: selectedObjectIds.length,
+        });
+      }
 
-    return true;
-  }, [selectedObjectIds]);
+      return true;
+    },
+    [selectedObjectIds]
+  );
 
   // Update drag position
-  const updateDrag = useCallback((currentX: number, currentY: number) => {
-    if (import.meta.env.DEV) {
-      console.log('🔄 updateDrag called:', {
-        currentX,
-        currentY,
-        isDragging,
-        selectedCount: selectedObjectIds.length,
-        lastX: dragState.current.lastX,
-        lastY: dragState.current.lastY
-      });
-    }
-
-    // Only check if we have selected objects - don't rely on isDragging state
-    // since it might be out of sync between hooks
-    if (selectedObjectIds.length === 0) {
+  const updateDrag = useCallback(
+    (currentX: number, currentY: number) => {
       if (import.meta.env.DEV) {
-        console.log('❌ updateDrag early return - no selected objects:', { selectedCount: selectedObjectIds.length });
-      }
-      return;
-    }
-
-    // Ensure we have a valid start position
-    if (dragState.current.lastX === 0 && dragState.current.lastY === 0) {
-      // Initialize drag state if not set
-      dragState.current.lastX = currentX;
-      dragState.current.lastY = currentY;
-      if (import.meta.env.DEV) {
-        console.log('🔧 Initializing drag state:', { currentX, currentY });
-      }
-      return;
-    }
-
-    const deltaX = currentX - dragState.current.lastX;
-    const deltaY = currentY - dragState.current.lastY;
-
-    // Only move if there's actual movement
-    if (Math.abs(deltaX) > 0.5 || Math.abs(deltaY) > 0.5) {
-      if (import.meta.env.DEV) {
-        console.log('🚀 Applying movement:', { deltaX, deltaY, selectedIds: selectedObjectIds });
+        console.log("🔄 updateDrag called:", {
+          currentX,
+          currentY,
+          isDragging,
+          selectedCount: selectedObjectIds.length,
+          lastX: dragState.current.lastX,
+          lastY: dragState.current.lastY,
+        });
       }
 
-      setObjects(prev => prev.map(obj => {
-        if (selectedObjectIds.includes(obj.id)) {
-          const newObj = { ...obj, x: obj.x + deltaX, y: obj.y + deltaY };
-          if (import.meta.env.DEV) {
-            console.log(`📦 Moving object ${obj.id}:`, {
-              from: { x: obj.x, y: obj.y },
-              to: { x: newObj.x, y: newObj.y }
-            });
-          }
-          return newObj;
+      // Only check if we have selected objects - don't rely on isDragging state
+      // since it might be out of sync between hooks
+      if (selectedObjectIds.length === 0) {
+        if (import.meta.env.DEV) {
+          console.log("❌ updateDrag early return - no selected objects:", {
+            selectedCount: selectedObjectIds.length,
+          });
         }
-        return obj;
-      }));
-
-      dragState.current.lastX = currentX;
-      dragState.current.lastY = currentY;
-      dragState.current.hasMoved = true;
-    } else {
-      if (import.meta.env.DEV) {
-        console.log('⏸️ Movement too small:', { deltaX, deltaY });
+        return;
       }
-    }
-  }, [isDragging, selectedObjectIds]);
+
+      // Ensure we have a valid start position
+      if (dragState.current.lastX === 0 && dragState.current.lastY === 0) {
+        // Initialize drag state if not set
+        dragState.current.lastX = currentX;
+        dragState.current.lastY = currentY;
+        if (import.meta.env.DEV) {
+          console.log("🔧 Initializing drag state:", { currentX, currentY });
+        }
+        return;
+      }
+
+      const deltaX = currentX - dragState.current.lastX;
+      const deltaY = currentY - dragState.current.lastY;
+
+      // Only move if there's actual movement
+      if (Math.abs(deltaX) > 0.5 || Math.abs(deltaY) > 0.5) {
+        if (import.meta.env.DEV) {
+          console.log("🚀 Applying movement:", {
+            deltaX,
+            deltaY,
+            selectedIds: selectedObjectIds,
+          });
+        }
+
+        setObjects((prev) =>
+          prev.map((obj) => {
+            if (selectedObjectIds.includes(obj.id)) {
+              const newObj = { ...obj, x: obj.x + deltaX, y: obj.y + deltaY };
+              if (import.meta.env.DEV) {
+                console.log(`📦 Moving object ${obj.id}:`, {
+                  from: { x: obj.x, y: obj.y },
+                  to: { x: newObj.x, y: newObj.y },
+                });
+              }
+              return newObj;
+            }
+            return obj;
+          })
+        );
+
+        dragState.current.lastX = currentX;
+        dragState.current.lastY = currentY;
+        dragState.current.hasMoved = true;
+      } else {
+        if (import.meta.env.DEV) {
+          console.log("⏸️ Movement too small:", { deltaX, deltaY });
+        }
+      }
+    },
+    [isDragging, selectedObjectIds]
+  );
 
   // End dragging
   const endDrag = useCallback(() => {
     if (isDragging) {
       setIsDragging(false);
       if (import.meta.env.DEV) {
-        console.log('🏁 Drag ended:', { hasMoved: dragState.current.hasMoved });
+        console.log("🏁 Drag ended:", { hasMoved: dragState.current.hasMoved });
       }
-      dragState.current = { startX: 0, startY: 0, lastX: 0, lastY: 0, hasMoved: false };
+      dragState.current = {
+        startX: 0,
+        startY: 0,
+        lastX: 0,
+        lastY: 0,
+        hasMoved: false,
+      };
     }
   }, [isDragging]);
 
   // Delete selected objects
   const deleteSelectedObjects = useCallback(() => {
-    setObjects(prev => prev.filter(obj => !selectedObjectIds.includes(obj.id)));
+    setObjects((prev) =>
+      prev.filter((obj) => !selectedObjectIds.includes(obj.id))
+    );
     setSelectedObjectIds([]);
   }, [selectedObjectIds]);
 
   // Render objects to canvas (optionally filtered)
-  const renderObjects = useCallback((ctx: CanvasRenderingContext2D, objectsToRender?: AnyCanvasObject[]) => {
-    // Use provided objects or default to all objects
-    const targetObjects = objectsToRender || objects;
+  const renderObjects = useCallback(
+    (ctx: CanvasRenderingContext2D, objectsToRender?: AnyCanvasObject[]) => {
+      // Use provided objects or default to all objects
+      const targetObjects = objectsToRender || objects;
 
-    // Sort by z-index
-    const sortedObjects = [...targetObjects].sort((a, b) => a.zIndex - b.zIndex);
+      // Sort by z-index
+      const sortedObjects = [...targetObjects].sort(
+        (a, b) => a.zIndex - b.zIndex
+      );
 
-    sortedObjects.forEach(obj => {
+      sortedObjects.forEach((obj) => {
+        ctx.save();
 
-      ctx.save();
+        // Apply object opacity
+        ctx.globalAlpha = obj.opacity || 1;
 
-      // Apply object opacity
-      ctx.globalAlpha = obj.opacity || 1;
+        switch (obj.type) {
+          case "stroke": {
+            const stroke = obj as StrokeObject;
+            ctx.strokeStyle = stroke.strokeStyle;
+            ctx.lineWidth = stroke.lineWidth;
+            ctx.lineCap = stroke.lineCap as CanvasLineCap;
+            ctx.lineJoin = stroke.lineJoin as CanvasLineJoin;
+            ctx.globalCompositeOperation =
+              stroke.globalCompositeOperation as GlobalCompositeOperation;
 
-      switch (obj.type) {
-        case 'stroke': {
-          const stroke = obj as StrokeObject;
-          ctx.strokeStyle = stroke.strokeStyle;
-          ctx.lineWidth = stroke.lineWidth;
-          ctx.lineCap = stroke.lineCap as CanvasLineCap;
-          ctx.lineJoin = stroke.lineJoin as CanvasLineJoin;
-          ctx.globalCompositeOperation = stroke.globalCompositeOperation as GlobalCompositeOperation;
+            if (stroke.points.length > 1) {
+              ctx.beginPath();
+              const firstPoint = stroke.points[0];
+              const startX = obj.x + firstPoint.x;
+              const startY = obj.y + firstPoint.y;
+              ctx.moveTo(startX, startY);
 
-          if (stroke.points.length > 1) {
-            ctx.beginPath();
-            const firstPoint = stroke.points[0];
-            const startX = obj.x + firstPoint.x;
-            const startY = obj.y + firstPoint.y;
-            ctx.moveTo(startX, startY);
-
-            for (let i = 1; i < stroke.points.length; i++) {
-              const point = stroke.points[i];
-              const lineX = obj.x + point.x;
-              const lineY = obj.y + point.y;
-              ctx.lineTo(lineX, lineY);
-            }
-            ctx.stroke();
-          }
-          break;
-        }
-
-        case 'shape': {
-          const shape = obj as ShapeObject;
-          ctx.strokeStyle = shape.strokeStyle;
-          ctx.lineWidth = shape.lineWidth;
-          if (shape.fillStyle) {
-            ctx.fillStyle = shape.fillStyle;
-          }
-
-          ctx.beginPath();
-          switch (shape.shapeType) {
-            case 'rectangle':
-              ctx.rect(obj.x, obj.y, obj.width, obj.height);
-              break;
-            case 'circle':
-              const centerX = obj.x + obj.width / 2;
-              const centerY = obj.y + obj.height / 2;
-              const radius = Math.min(obj.width, obj.height) / 2;
-              ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
-              break;
-            case 'line':
-              ctx.moveTo(obj.x, obj.y);
-              ctx.lineTo(obj.x + obj.width, obj.y + obj.height);
-              break;
-          }
-
-          if (shape.fillStyle) {
-            ctx.fill();
-          }
-          ctx.stroke();
-          break;
-        }
-
-        case 'text': {
-          const text = obj as TextObject;
-          if (import.meta.env.DEV) {
-            console.log('📝 TEXT DEBUG - Rendering text object:', {
-              id: text.id,
-              text: text.text,
-              position: { x: obj.x, y: obj.y },
-              font: text.font,
-              fillStyle: text.fillStyle
-            });
-          }
-          ctx.fillStyle = text.fillStyle;
-          ctx.font = text.font;
-          ctx.fillText(text.text, obj.x, obj.y);
-          break;
-        }
-
-        case 'image': {
-          const image = obj as ImageObject;
-          if (import.meta.env.DEV) {
-            console.log('🖼️ IMAGE DEBUG - Rendering image object:', {
-              id: image.id,
-              bounds: { x: obj.x, y: obj.y, width: obj.width, height: obj.height },
-              rotation: image.rotation,
-              canvasSize: { width: ctx.canvas.width, height: ctx.canvas.height },
-              imageElement: {
-                width: image.element.width,
-                height: image.element.height,
-                complete: image.element.complete,
-                src: image.element.src?.substring(0, 50) + '...'
+              for (let i = 1; i < stroke.points.length; i++) {
+                const point = stroke.points[i];
+                const lineX = obj.x + point.x;
+                const lineY = obj.y + point.y;
+                ctx.lineTo(lineX, lineY);
               }
-            });
-          }
-
-          // Check if image is loaded
-          if (!image.element.complete) {
-            console.warn('🖼️ IMAGE DEBUG - Image not fully loaded, skipping render:', image.id);
+              ctx.stroke();
+            }
             break;
           }
 
-          const centerX = obj.x + obj.width / 2;
-          const centerY = obj.y + obj.height / 2;
-
-          if (import.meta.env.DEV) {
-            console.log('🖼️ IMAGE DEBUG - Transform calculations:', {
-              centerX,
-              centerY,
-              rotation: image.rotation,
-              finalPosition: { x: obj.x, y: obj.y },
-              willBeVisible: (
-                obj.x < ctx.canvas.width &&
-                obj.y < ctx.canvas.height &&
-                obj.x + obj.width > 0 &&
-                obj.y + obj.height > 0
-              )
-            });
-          }
-
-          ctx.translate(centerX, centerY);
-          ctx.rotate((image.rotation * Math.PI) / 180);
-          ctx.translate(-centerX, -centerY);
-
-          try {
-            ctx.drawImage(image.element, obj.x, obj.y, obj.width, obj.height);
-            if (import.meta.env.DEV) {
-              console.log('✅ IMAGE DEBUG - Image rendered successfully:', image.id);
+          case "shape": {
+            const shape = obj as ShapeObject;
+            ctx.strokeStyle = shape.strokeStyle;
+            ctx.lineWidth = shape.lineWidth;
+            if (shape.fillStyle) {
+              ctx.fillStyle = shape.fillStyle;
             }
-          } catch (error) {
-            console.error('❌ IMAGE DEBUG - Failed to render image:', {
-              id: image.id,
-              error: error,
-              imageElement: image.element
-            });
+
+            ctx.beginPath();
+            switch (shape.shapeType) {
+              case "rectangle":
+                ctx.rect(obj.x, obj.y, obj.width, obj.height);
+                break;
+              case "circle": {
+                const centerX = obj.x + obj.width / 2;
+                const centerY = obj.y + obj.height / 2;
+                const radius = Math.min(obj.width, obj.height) / 2;
+                ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
+                break;
+              }
+              case "line":
+                ctx.moveTo(obj.x, obj.y);
+                ctx.lineTo(obj.x + obj.width, obj.y + obj.height);
+                break;
+            }
+
+            if (shape.fillStyle) {
+              ctx.fill();
+            }
+            ctx.stroke();
+            break;
           }
-          break;
+
+          case "text": {
+            const text = obj as TextObject;
+            if (import.meta.env.DEV) {
+              console.log("📝 TEXT DEBUG - Rendering text object:", {
+                id: text.id,
+                text: text.text,
+                position: { x: obj.x, y: obj.y },
+                font: text.font,
+                fillStyle: text.fillStyle,
+              });
+            }
+            ctx.fillStyle = text.fillStyle;
+            ctx.font = text.font;
+            ctx.fillText(text.text, obj.x, obj.y);
+            break;
+          }
+
+          case "image": {
+            const image = obj as ImageObject;
+            if (import.meta.env.DEV) {
+              console.log("🖼️ IMAGE DEBUG - Rendering image object:", {
+                id: image.id,
+                bounds: {
+                  x: obj.x,
+                  y: obj.y,
+                  width: obj.width,
+                  height: obj.height,
+                },
+                rotation: image.rotation,
+                canvasSize: {
+                  width: ctx.canvas.width,
+                  height: ctx.canvas.height,
+                },
+                imageElement: {
+                  width: image.element.width,
+                  height: image.element.height,
+                  complete: image.element.complete,
+                  src: image.element.src?.substring(0, 50) + "...",
+                },
+              });
+            }
+
+            // Check if image is loaded
+            if (!image.element.complete) {
+              console.warn(
+                "🖼️ IMAGE DEBUG - Image not fully loaded, skipping render:",
+                image.id
+              );
+              break;
+            }
+
+            const centerX = obj.x + obj.width / 2;
+            const centerY = obj.y + obj.height / 2;
+
+            if (import.meta.env.DEV) {
+              console.log("🖼️ IMAGE DEBUG - Transform calculations:", {
+                centerX,
+                centerY,
+                rotation: image.rotation,
+                finalPosition: { x: obj.x, y: obj.y },
+                willBeVisible:
+                  obj.x < ctx.canvas.width &&
+                  obj.y < ctx.canvas.height &&
+                  obj.x + obj.width > 0 &&
+                  obj.y + obj.height > 0,
+              });
+            }
+
+            ctx.translate(centerX, centerY);
+            ctx.rotate((image.rotation * Math.PI) / 180);
+            ctx.translate(-centerX, -centerY);
+
+            try {
+              ctx.drawImage(image.element, obj.x, obj.y, obj.width, obj.height);
+              if (import.meta.env.DEV) {
+                console.log(
+                  "✅ IMAGE DEBUG - Image rendered successfully:",
+                  image.id
+                );
+              }
+            } catch (error) {
+              console.error("❌ IMAGE DEBUG - Failed to render image:", {
+                id: image.id,
+                error,
+                imageElement: image.element,
+              });
+            }
+            break;
+          }
         }
-      }
 
-      // Draw selection indicator
-      if (obj.selected) {
-        ctx.strokeStyle = '#ff6b35';
-        ctx.lineWidth = 3;
-        ctx.setLineDash([]);
-        ctx.globalCompositeOperation = 'source-over';
-        ctx.globalAlpha = 1;
-        ctx.strokeRect(obj.x - 2, obj.y - 2, obj.width + 4, obj.height + 4);
+        // Draw selection indicator
+        if (obj.selected) {
+          ctx.strokeStyle = "#ff6b35";
+          ctx.lineWidth = 3;
+          ctx.setLineDash([]);
+          ctx.globalCompositeOperation = "source-over";
+          ctx.globalAlpha = 1;
+          ctx.strokeRect(obj.x - 2, obj.y - 2, obj.width + 4, obj.height + 4);
 
-        // Draw group indicator if part of a group
-        if (obj.groupId) {
-          ctx.strokeStyle = '#00ff88';
-          ctx.lineWidth = 2;
-          ctx.setLineDash([8, 4]);
-          ctx.strokeRect(obj.x - 4, obj.y - 4, obj.width + 8, obj.height + 8);
+          // Draw group indicator if part of a group
+          if (obj.groupId) {
+            ctx.strokeStyle = "#00ff88";
+            ctx.lineWidth = 2;
+            ctx.setLineDash([8, 4]);
+            ctx.strokeRect(obj.x - 4, obj.y - 4, obj.width + 8, obj.height + 8);
+          }
         }
-      }
 
-      ctx.restore();
-    });
-  }, [objects]);
+        ctx.restore();
+      });
+    },
+    [objects]
+  );
 
   return {
     objects,
@@ -726,7 +837,7 @@ export const useCanvasObjects = () => {
     deleteSelectedObjects,
     renderObjects,
     setIsDrawing,
-    setIsDragging
+    setIsDragging,
   };
 };
 
