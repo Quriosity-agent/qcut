@@ -93,14 +93,18 @@ export const DrawingCanvas = forwardRef<DrawingCanvasHandle, DrawingCanvasProps>
   const withObjectCreationProtection = useCallback((operation: () => any, operationType: string) => {
     // Set flag to prevent history restoration during object creation
     recentObjectCreation.current = true;
-    console.log(`🚫 PENCIL DEBUG - Setting recentObjectCreation flag for ${operationType}`);
+    if (import.meta.env.DEV) {
+      console.log(`🛡️ Object creation protection enabled: ${operationType}`);
+    }
 
     const result = operation();
 
     // Clear flag after a delay to allow rendering and history operations to complete
     setTimeout(() => {
       recentObjectCreation.current = false;
-      console.log(`✅ PENCIL DEBUG - Cleared recentObjectCreation flag for ${operationType}`);
+      if (import.meta.env.DEV) {
+        console.log(`✅ Object creation protection cleared: ${operationType}`);
+      }
     }, 200);
 
     return result;
@@ -328,74 +332,28 @@ export const DrawingCanvas = forwardRef<DrawingCanvasHandle, DrawingCanvasProps>
 
     // New object creation callbacks with immediate history saving
     onCreateStroke: useCallback((points: { x: number; y: number }[], style: StrokeStyle) => {
-      // Always log for debugging pencil issue
-      console.log('🎯 PENCIL DEBUG - onCreateStroke callback triggered:', {
-        pointCount: points.length,
-        points: points,
-        style: style,
-        timestamp: Date.now()
-      });
-
       return withObjectCreationProtection(() => {
         const objectId = addStroke(points, style);
-        console.log('🎯 PENCIL DEBUG - addStroke returned objectId:', {
-          objectId,
-          success: !!objectId,
-          timestamp: Date.now()
-        });
-
         // Save state to history immediately after object creation
         saveCanvasToHistory();
-        console.log('💾 PENCIL DEBUG - Canvas state saved to history after stroke creation');
-
         return objectId;
       }, 'stroke');
     }, [addStroke, saveCanvasToHistory, withObjectCreationProtection]),
 
     onCreateShape: useCallback((shapeType: 'rectangle' | 'circle' | 'line', bounds: { x: number; y: number; width: number; height: number }, style: ShapeStyle) => {
-      console.log('🔲 SHAPE DEBUG - onCreateShape callback triggered:', {
-        shapeType,
-        bounds,
-        style,
-        timestamp: Date.now()
-      });
-
       return withObjectCreationProtection(() => {
         const objectId = addShape(shapeType, bounds, style);
-        console.log('🔲 SHAPE DEBUG - addShape returned objectId:', {
-          objectId,
-          success: !!objectId,
-          timestamp: Date.now()
-        });
-
         // Save state to history immediately after object creation
         saveCanvasToHistory();
-        console.log('💾 SHAPE DEBUG - Canvas state saved to history after shape creation');
-
         return objectId;
       }, `shape-${shapeType}`);
     }, [addShape, saveCanvasToHistory, withObjectCreationProtection]),
 
     onCreateText: useCallback((text: string, position: { x: number; y: number }, style: TextStyle) => {
-      console.log('📝 TEXT DEBUG - onCreateText callback triggered:', {
-        text,
-        position,
-        style,
-        timestamp: Date.now()
-      });
-
       return withObjectCreationProtection(() => {
         const objectId = addText(text, position, style);
-        console.log('📝 TEXT DEBUG - addText returned objectId:', {
-          objectId,
-          success: !!objectId,
-          timestamp: Date.now()
-        });
-
         // Save state to history immediately after object creation
         saveCanvasToHistory();
-        console.log('💾 TEXT DEBUG - Canvas state saved to history after text creation');
-
         return objectId;
       }, 'text');
     }, [addText, saveCanvasToHistory, withObjectCreationProtection])
@@ -589,12 +547,6 @@ export const DrawingCanvas = forwardRef<DrawingCanvasHandle, DrawingCanvasProps>
       }
 
       // Create image object with protection
-      console.log('🖼️ IMAGE DEBUG - handleImageUpload creating image object:', {
-        width,
-        height,
-        timestamp: Date.now()
-      });
-
       withObjectCreationProtection(() => {
         const imageData = {
           id: `image-${Date.now()}`,
@@ -607,16 +559,11 @@ export const DrawingCanvas = forwardRef<DrawingCanvasHandle, DrawingCanvasProps>
         };
 
         addImageObject(imageData);
-        console.log('🖼️ IMAGE DEBUG - addImageObject completed:', {
-          imageId: imageData.id,
-          timestamp: Date.now()
-        });
 
         if (onDrawingChange && canvasRef.current) {
           onDrawingChange(canvasRef.current.toDataURL());
         }
 
-        console.log('💾 IMAGE DEBUG - Image upload completed with protection');
         return imageData.id;
       }, 'image');
     } catch (error) {
@@ -631,90 +578,52 @@ export const DrawingCanvas = forwardRef<DrawingCanvasHandle, DrawingCanvasProps>
   // Handle undo/redo by restoring canvas state from history
   useEffect(() => {
     const historyState = getCurrentHistoryState();
-    console.log('🔄 PENCIL DEBUG - History effect triggered:', {
-      historyIndex,
-      hasHistoryState: !!historyState,
-      historyStateLength: historyState?.length || 0,
-      currentObjectCount: objects.length,
-      isSavingToHistory: isSavingToHistory.current,
-      trigger: 'historyIndex or dependencies changed',
-      timestamp: Date.now()
-    });
-
-    // Skip restoration if we're currently saving to history or recently created stroke
-    if (isSavingToHistory.current) {
-      console.log('🚫 PENCIL DEBUG - Skipping restoration - currently saving to history');
-      return;
+    // Debug: Only log if there's an issue
+    if (import.meta.env.DEV && historyState && historyState !== getCanvasDataUrl()) {
+      console.log('🔄 DRAW DEBUG - History restoration triggered:', {
+        historyIndex,
+        currentObjectCount: objects.length
+      });
     }
 
-    if (recentObjectCreation.current) {
-      console.log('🚫 OBJECT DEBUG - Skipping restoration - recent object creation');
+    // Skip restoration if we're currently saving to history or recently created object
+    if (isSavingToHistory.current || recentObjectCreation.current) {
+      if (import.meta.env.DEV) {
+        console.log('🚫 DRAW DEBUG - Skipping restoration:', {
+          saving: isSavingToHistory.current,
+          recentCreation: recentObjectCreation.current
+        });
+      }
       return;
     }
 
     if (historyState && historyState !== getCanvasDataUrl()) {
-      console.log('🔄 PENCIL DEBUG - Restoring canvas from history (THIS WILL CLEAR OBJECTS)');
-      // Load the history state back into the canvas
+      console.warn('⚠️ DRAW DEBUG - Restoring canvas from history (objects will be cleared)');
       loadDrawingFromDataUrl(historyState);
-    } else {
-      console.log('✅ PENCIL DEBUG - History effect ran but no restoration needed:', {
-        hasHistoryState: !!historyState,
-        statesMatch: historyState === getCanvasDataUrl(),
-        reason: !historyState ? 'no history state' : 'states match',
-        timestamp: Date.now()
-      });
     }
   }, [historyIndex, getCurrentHistoryState, getCanvasDataUrl, loadDrawingFromDataUrl]);
 
   // Re-render canvas when objects change
   useEffect(() => {
-    // Always log for debugging pencil issue
-    console.log('🔄 PENCIL DEBUG - Canvas re-render effect triggered:', {
-      reason: 'objects array updated',
-      objectCount: objects.length,
-      objects: objects.map(obj => ({ id: obj.id, type: obj.type, visible: true, bounds: { x: obj.x, y: obj.y, width: obj.width, height: obj.height } })),
-      timestamp: Date.now()
-    });
-
     const canvas = canvasRef.current;
     const ctx = canvas?.getContext('2d');
     if (!ctx || !canvas) {
-      console.error('❌ PENCIL DEBUG - No canvas or context for re-render');
+      if (import.meta.env.DEV) console.error('❌ Canvas or context not available');
       return;
     }
 
     // Clear and redraw with white background
-    console.log('🔄 PENCIL DEBUG - Clearing canvas and redrawing background:', {
-      canvasSize: { width: canvas.width, height: canvas.height },
-      timestamp: Date.now()
-    });
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.fillStyle = 'white';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     // Render all objects (strokes, shapes, text, images)
     if (objects.length > 0) {
-      console.log('🔄 PENCIL DEBUG - Rendering objects to canvas:', {
-        objectCount: objects.length,
-        timestamp: Date.now()
-      });
       renderObjects(ctx);
-      console.log('✅ PENCIL DEBUG - Objects rendering completed');
-
-      // Check if we have stroke objects persisting after creation (SUCCESS indicator)
-      const strokeObjects = objects.filter(obj => obj.type === 'stroke');
-      if (strokeObjects.length > 0) {
-        console.log('🎉 PENCIL DEBUG - SUCCESS: Stroke objects persisted!', {
-          strokeCount: strokeObjects.length,
-          strokeIds: strokeObjects.map(obj => obj.id),
-          timestamp: Date.now()
-        });
+      // Optional: Log success only in dev mode when objects persist
+      if (import.meta.env.DEV && objects.length > 3) {
+        console.log('🎨 Drawing canvas updated:', { objectCount: objects.length });
       }
-    } else {
-      console.log('⚠️ PENCIL DEBUG - No objects to render:', {
-        objectCount: objects.length,
-        timestamp: Date.now()
-      });
     }
   }, [objects, renderObjects]);
 
