@@ -201,7 +201,9 @@ export const DrawingCanvas = forwardRef<
   const saveCanvasToHistory = useCallback(() => {
     console.log("💾 PENCIL DEBUG - saveCanvasToHistory called:", {
       objectCount: objects.length,
-      stackTrace: new Error("Stack trace for debugging").stack?.split("\n")[2]?.trim(),
+      stackTrace: new Error("Stack trace for debugging").stack
+        ?.split("\n")[2]
+        ?.trim(),
       timestamp: Date.now(),
     });
     const saveSnapshot = () => {
@@ -604,7 +606,9 @@ export const DrawingCanvas = forwardRef<
         console.log("🔄 PENCIL DEBUG - loadDrawingFromDataUrl called:", {
           dataUrlLength: dataUrl.length,
           currentObjectCount: objects.length,
-          stackTrace: new Error("Stack trace for debugging").stack?.split("\n")[2]?.trim(),
+          stackTrace: new Error("Stack trace for debugging").stack
+            ?.split("\n")[2]
+            ?.trim(),
           timestamp: Date.now(),
         });
 
@@ -1044,7 +1048,6 @@ export const DrawingCanvas = forwardRef<
         ref={backgroundCanvasRef}
         className="absolute inset-0 pointer-events-none"
         style={{ zIndex: 1 }}
-        aria-hidden="true"
       />
 
       {/* Drawing canvas */}

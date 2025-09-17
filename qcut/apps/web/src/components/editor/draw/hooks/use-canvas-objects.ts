@@ -87,7 +87,7 @@ export const useCanvasObjects = () => {
             console.log("📝 setObjects called (function):", {
               previousCount: prev.length,
               newCount: result.length,
-              stackTrace: new Error().stack?.split("\n")[2]?.trim(),
+              stackTrace: new Error("Debug stack trace").stack?.split("\n")[2]?.trim(),
             });
           }
           return result;

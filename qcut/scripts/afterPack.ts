@@ -2,6 +2,7 @@ import path from "path";
 import { execFile } from "node:child_process";
 import fs from "fs";
 import os from "os";
+// biome-ignore lint/style/noExportedImports: This is not being re-exported, just used for type annotation
 import { AfterPackContext } from "electron-builder";
 
 async function afterPack(context: AfterPackContext): Promise<void> {

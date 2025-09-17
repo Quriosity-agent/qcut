@@ -501,7 +501,6 @@ export const useCanvasDrawing = (
     [
       getCanvasCoordinates,
       drawLine,
-      drawShape,
       options.disabled,
       options.tool.category,
       options.tool.id,
