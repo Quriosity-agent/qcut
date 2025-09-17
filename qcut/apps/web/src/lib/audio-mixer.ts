@@ -40,10 +40,7 @@ export class AudioTrackSource {
   private context: AudioContext;
   private options: AudioTrackOptions;
 
-  constructor(
-    context: AudioContext,
-    options: AudioTrackOptions = {}
-  ) {
+  constructor(context: AudioContext, options: AudioTrackOptions = {}) {
     this.context = context;
     this.options = options;
     this.gainNode = context.createGain();

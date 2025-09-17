@@ -146,11 +146,13 @@ function blendParameters(
     case "multiply":
       // Multiply blend mode - darkens
       for (const key in overlay) {
-        const baseValue = (base as any)[key] || 0;
-        const overlayValue = (overlay as any)[key] || 0;
+        if (Object.hasOwn(overlay, key)) {
+          const baseValue = (base as any)[key] || 0;
+          const overlayValue = (overlay as any)[key] || 0;
 
-        if (typeof baseValue === "number" && typeof overlayValue === "number") {
-          (blended as any)[key] = (baseValue * overlayValue) / 100;
+          if (typeof baseValue === "number" && typeof overlayValue === "number") {
+            (blended as any)[key] = (baseValue * overlayValue) / 100;
+          }
         }
       }
       break;
@@ -158,17 +160,18 @@ function blendParameters(
     case "screen":
       // Screen blend mode - lightens
       for (const key in overlay) {
-        const baseValue = (base as any)[key] || 0;
-        const overlayValue = (overlay as any)[key] || 0;
+        if (Object.hasOwn(overlay, key)) {
+          const baseValue = (base as any)[key] || 0;
+          const overlayValue = (overlay as any)[key] || 0;
 
-        if (typeof baseValue === "number" && typeof overlayValue === "number") {
-          (blended as any)[key] =
-            100 - ((100 - baseValue) * (100 - overlayValue)) / 100;
+          if (typeof baseValue === "number" && typeof overlayValue === "number") {
+            (blended as any)[key] =
+              100 - ((100 - baseValue) * (100 - overlayValue)) / 100;
+          }
         }
       }
       break;
 
-    case "normal":
     default:
       // Normal blend - overlay values override base
       Object.assign(blended, overlay);
