@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef } from 'react';
+import { generateUUID } from '@/lib/utils';
 
 // Base object interface
 export interface CanvasObject {
@@ -102,7 +103,7 @@ export const useCanvasObjects = () => {
     const maxY = Math.max(...points.map(p => p.y));
 
     const strokeObject: StrokeObject = {
-      id: `stroke-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      id: generateUUID(),
       type: 'stroke',
       x: minX - style.lineWidth / 2,
       y: minY - style.lineWidth / 2,
@@ -122,7 +123,11 @@ export const useCanvasObjects = () => {
     };
 
     setObjects(prev => [...prev, strokeObject]);
-    console.log('✏️ Stroke object created:', { id: strokeObject.id, pointCount: points.length });
+
+    if (import.meta.env.DEV) {
+      console.log('✏️ Stroke object created:', { id: strokeObject.id, pointCount: points.length });
+    }
+
     return strokeObject.id;
   }, []);
 
@@ -139,7 +144,7 @@ export const useCanvasObjects = () => {
     }
   ) => {
     const shapeObject: ShapeObject = {
-      id: `shape-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      id: generateUUID(),
       type: 'shape',
       shapeType,
       x: bounds.x,
@@ -156,7 +161,11 @@ export const useCanvasObjects = () => {
     };
 
     setObjects(prev => [...prev, shapeObject]);
-    console.log('🔲 Shape object created:', { id: shapeObject.id, type: shapeType });
+
+    if (import.meta.env.DEV) {
+      console.log('🔲 Shape object created:', { id: shapeObject.id, type: shapeType });
+    }
+
     return shapeObject.id;
   }, []);
 
@@ -176,7 +185,7 @@ export const useCanvasObjects = () => {
     const estimatedHeight = fontSize * 1.2;
 
     const textObject: TextObject = {
-      id: `text-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      id: generateUUID(),
       type: 'text',
       text,
       x: position.x,
@@ -192,7 +201,11 @@ export const useCanvasObjects = () => {
     };
 
     setObjects(prev => [...prev, textObject]);
-    console.log('📝 Text object created:', { id: textObject.id, text });
+
+    if (import.meta.env.DEV) {
+      console.log('📝 Text object created:', { id: textObject.id, text });
+    }
+
     return textObject.id;
   }, []);
 
@@ -216,7 +229,11 @@ export const useCanvasObjects = () => {
     };
 
     setObjects(prev => [...prev, imageObject]);
-    console.log('🖼️ Image object created:', { id: imageObject.id });
+
+    if (import.meta.env.DEV) {
+      console.log('🖼️ Image object created:', { id: imageObject.id });
+    }
+
     return imageObject.id;
   }, []);
 
@@ -262,7 +279,7 @@ export const useCanvasObjects = () => {
   const createGroup = useCallback((name?: string) => {
     if (selectedObjectIds.length < 2) return null;
 
-    const groupId = `group-${Date.now()}`;
+    const groupId = generateUUID();
     const groupName = name || `Group ${groups.length + 1}`;
 
     const newGroup: ObjectGroup = {
@@ -280,7 +297,10 @@ export const useCanvasObjects = () => {
         : obj
     ));
 
-    console.log('🔗 Group created:', { groupId, name: groupName, objects: selectedObjectIds });
+    if (import.meta.env.DEV) {
+      console.log('🔗 Group created:', { groupId, name: groupName, objects: selectedObjectIds });
+    }
+
     return groupId;
   }, [selectedObjectIds, groups.length]);
 
@@ -292,7 +312,10 @@ export const useCanvasObjects = () => {
         ? { ...obj, groupId: undefined }
         : obj
     ));
-    console.log('🔓 Group dissolved:', { groupId });
+
+    if (import.meta.env.DEV) {
+      console.log('🔓 Group dissolved:', { groupId });
+    }
   }, []);
 
   // Clear all objects and groups
@@ -303,7 +326,10 @@ export const useCanvasObjects = () => {
     setIsDrawing(false);
     setIsDragging(false);
     dragState.current = { startX: 0, startY: 0, lastX: 0, lastY: 0, hasMoved: false };
-    console.log('🧹 Canvas cleared');
+
+    if (import.meta.env.DEV) {
+      console.log('🧹 Canvas cleared');
+    }
   }, []);
 
   // Start dragging objects
@@ -318,25 +344,33 @@ export const useCanvasObjects = () => {
       hasMoved: false
     };
     setIsDragging(true);
-    console.log('🖱️ Drag started:', { startX, startY, selectedCount: selectedObjectIds.length });
+
+    if (import.meta.env.DEV) {
+      console.log('🖱️ Drag started:', { startX, startY, selectedCount: selectedObjectIds.length });
+    }
+
     return true;
   }, [selectedObjectIds]);
 
   // Update drag position
   const updateDrag = useCallback((currentX: number, currentY: number) => {
-    console.log('🔄 updateDrag called:', {
-      currentX,
-      currentY,
-      isDragging,
-      selectedCount: selectedObjectIds.length,
-      lastX: dragState.current.lastX,
-      lastY: dragState.current.lastY
-    });
+    if (import.meta.env.DEV) {
+      console.log('🔄 updateDrag called:', {
+        currentX,
+        currentY,
+        isDragging,
+        selectedCount: selectedObjectIds.length,
+        lastX: dragState.current.lastX,
+        lastY: dragState.current.lastY
+      });
+    }
 
     // Only check if we have selected objects - don't rely on isDragging state
     // since it might be out of sync between hooks
     if (selectedObjectIds.length === 0) {
-      console.log('❌ updateDrag early return - no selected objects:', { selectedCount: selectedObjectIds.length });
+      if (import.meta.env.DEV) {
+        console.log('❌ updateDrag early return - no selected objects:', { selectedCount: selectedObjectIds.length });
+      }
       return;
     }
 
@@ -345,7 +379,9 @@ export const useCanvasObjects = () => {
       // Initialize drag state if not set
       dragState.current.lastX = currentX;
       dragState.current.lastY = currentY;
-      console.log('🔧 Initializing drag state:', { currentX, currentY });
+      if (import.meta.env.DEV) {
+        console.log('🔧 Initializing drag state:', { currentX, currentY });
+      }
       return;
     }
 
@@ -354,15 +390,19 @@ export const useCanvasObjects = () => {
 
     // Only move if there's actual movement
     if (Math.abs(deltaX) > 0.5 || Math.abs(deltaY) > 0.5) {
-      console.log('🚀 Applying movement:', { deltaX, deltaY, selectedIds: selectedObjectIds });
+      if (import.meta.env.DEV) {
+        console.log('🚀 Applying movement:', { deltaX, deltaY, selectedIds: selectedObjectIds });
+      }
 
       setObjects(prev => prev.map(obj => {
         if (selectedObjectIds.includes(obj.id)) {
           const newObj = { ...obj, x: obj.x + deltaX, y: obj.y + deltaY };
-          console.log(`📦 Moving object ${obj.id}:`, {
-            from: { x: obj.x, y: obj.y },
-            to: { x: newObj.x, y: newObj.y }
-          });
+          if (import.meta.env.DEV) {
+            console.log(`📦 Moving object ${obj.id}:`, {
+              from: { x: obj.x, y: obj.y },
+              to: { x: newObj.x, y: newObj.y }
+            });
+          }
           return newObj;
         }
         return obj;
@@ -372,7 +412,9 @@ export const useCanvasObjects = () => {
       dragState.current.lastY = currentY;
       dragState.current.hasMoved = true;
     } else {
-      console.log('⏸️ Movement too small:', { deltaX, deltaY });
+      if (import.meta.env.DEV) {
+        console.log('⏸️ Movement too small:', { deltaX, deltaY });
+      }
     }
   }, [isDragging, selectedObjectIds]);
 
@@ -380,7 +422,9 @@ export const useCanvasObjects = () => {
   const endDrag = useCallback(() => {
     if (isDragging) {
       setIsDragging(false);
-      console.log('🏁 Drag ended:', { hasMoved: dragState.current.hasMoved });
+      if (import.meta.env.DEV) {
+        console.log('🏁 Drag ended:', { hasMoved: dragState.current.hasMoved });
+      }
       dragState.current = { startX: 0, startY: 0, lastX: 0, lastY: 0, hasMoved: false };
     }
   }, [isDragging]);
