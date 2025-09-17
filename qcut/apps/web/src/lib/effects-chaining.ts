@@ -127,15 +127,17 @@ function blendParameters(
     case "overlay":
       // Overlay blend mode - emphasizes contrast
       for (const key in overlay) {
-        const baseValue = (base as any)[key] || 0;
-        const overlayValue = (overlay as any)[key] || 0;
+        if (Object.hasOwn(overlay, key)) {
+          const baseValue = (base as any)[key] || 0;
+          const overlayValue = (overlay as any)[key] || 0;
 
-        if (typeof baseValue === "number" && typeof overlayValue === "number") {
-          if (baseValue < 50) {
-            (blended as any)[key] = (2 * baseValue * overlayValue) / 100;
-          } else {
-            (blended as any)[key] =
-              100 - (2 * (100 - baseValue) * (100 - overlayValue)) / 100;
+          if (typeof baseValue === "number" && typeof overlayValue === "number") {
+            if (baseValue < 50) {
+              (blended as any)[key] = (2 * baseValue * overlayValue) / 100;
+            } else {
+              (blended as any)[key] =
+                100 - (2 * (100 - baseValue) * (100 - overlayValue)) / 100;
+            }
           }
         }
       }

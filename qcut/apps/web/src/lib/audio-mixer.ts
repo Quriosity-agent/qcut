@@ -37,11 +37,15 @@ export class AudioTrackSource {
     null;
   private gainNode: GainNode;
   private pannerNode: StereoPannerNode;
+  private context: AudioContext;
+  private options: AudioTrackOptions;
 
   constructor(
-    private context: AudioContext,
-    private options: AudioTrackOptions = {}
+    context: AudioContext,
+    options: AudioTrackOptions = {}
   ) {
+    this.context = context;
+    this.options = options;
     this.gainNode = context.createGain();
     this.pannerNode = context.createStereoPanner();
 
@@ -138,8 +142,10 @@ export class AudioMixer {
   private masterGain: GainNode;
   private tracks: Map<string, AudioTrackSource> = new Map();
   private isInitialized = false;
+  private options: AudioMixerOptions;
 
-  constructor(private options: AudioMixerOptions = {}) {
+  constructor(options: AudioMixerOptions = {}) {
+    this.options = options;
     // Create audio context with specified options
     this.audioContext = new (
       window.AudioContext || (window as any).webkitAudioContext

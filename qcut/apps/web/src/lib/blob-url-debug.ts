@@ -82,7 +82,7 @@ export function enableBlobUrlDebugging() {
       console.warn(
         `[BlobUrlDebug] 🚨 Fetch attempt on revoked blob URL: ${url}`
       );
-      const stack = new Error().stack || "Unknown";
+      const stack = new Error("Stack trace for revoked blob fetch attempt").stack || "Unknown";
       console.warn(
         "[BlobUrlDebug] Fetch attempt from:",
         stack.split("\n").slice(2, 5)

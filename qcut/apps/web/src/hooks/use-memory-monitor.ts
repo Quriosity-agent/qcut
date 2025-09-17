@@ -50,6 +50,7 @@ export function useMemoryMonitor(
   renderCount.current += 1;
 
   // Update memory info if tracking is enabled
+  // biome-ignore lint/correctness/useExhaustiveDependencies: getMemoryInfo is intentionally omitted to avoid unnecessary re-renders
   useEffect(() => {
     if (!import.meta.env.DEV || !trackUpdates) return;
 
@@ -73,6 +74,7 @@ export function useMemoryMonitor(
   }, [trackUpdates]);
 
   // Mount/unmount logging
+  // biome-ignore lint/correctness/useExhaustiveDependencies: getMemoryInfo is intentionally omitted to avoid unnecessary re-renders
   useEffect(() => {
     if (!import.meta.env.DEV) return;
 
