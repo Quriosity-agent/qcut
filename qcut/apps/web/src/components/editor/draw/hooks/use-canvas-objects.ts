@@ -94,10 +94,12 @@ export const useCanvasObjects = () => {
       globalCompositeOperation: string;
     }
   ) => {
+    // Always log for debugging pencil issue - regardless of environment
     console.log('🏗️ PENCIL DEBUG - addStroke called:', {
       pointCount: points.length,
       points: points,
-      style: style
+      style: style,
+      timestamp: Date.now()
     });
 
     if (points.length === 0) {
@@ -114,7 +116,8 @@ export const useCanvasObjects = () => {
     console.log('🏗️ PENCIL DEBUG - Calculated bounds:', {
       minX, maxX, minY, maxY,
       width: maxX - minX,
-      height: maxY - minY
+      height: maxY - minY,
+      timestamp: Date.now()
     });
 
     const strokeObject: StrokeObject = {
@@ -137,7 +140,13 @@ export const useCanvasObjects = () => {
       created: new Date()
     };
 
-    console.log('🏗️ PENCIL DEBUG - Created stroke object:', strokeObject);
+    console.log('🏗️ PENCIL DEBUG - Created stroke object:', {
+      id: strokeObject.id,
+      type: strokeObject.type,
+      pointCount: strokeObject.points.length,
+      bounds: { x: strokeObject.x, y: strokeObject.y, width: strokeObject.width, height: strokeObject.height },
+      timestamp: Date.now()
+    });
 
     setObjects(prev => {
       const newObjects = [...prev, strokeObject];
@@ -460,9 +469,12 @@ export const useCanvasObjects = () => {
 
   // Render all objects to canvas
   const renderObjects = useCallback((ctx: CanvasRenderingContext2D) => {
+    // Always log rendering for debugging pencil issue
     console.log('🎨 PENCIL DEBUG - renderObjects called:', {
       objectCount: objects.length,
-      objects: objects.map(obj => ({ id: obj.id, type: obj.type, x: obj.x, y: obj.y }))
+      canvasSize: ctx.canvas ? { width: ctx.canvas.width, height: ctx.canvas.height } : 'unknown',
+      objects: objects.map(obj => ({ id: obj.id, type: obj.type, x: obj.x, y: obj.y })),
+      timestamp: Date.now()
     });
 
     // Sort by z-index
@@ -472,7 +484,8 @@ export const useCanvasObjects = () => {
       console.log('🎨 PENCIL DEBUG - Rendering object:', {
         id: obj.id,
         type: obj.type,
-        bounds: { x: obj.x, y: obj.y, width: obj.width, height: obj.height }
+        bounds: { x: obj.x, y: obj.y, width: obj.width, height: obj.height },
+        timestamp: Date.now()
       });
 
       ctx.save();
@@ -488,7 +501,10 @@ export const useCanvasObjects = () => {
             pointCount: stroke.points.length,
             strokeStyle: stroke.strokeStyle,
             lineWidth: stroke.lineWidth,
-            points: stroke.points
+            tool: stroke.tool,
+            absolutePosition: { x: obj.x, y: obj.y },
+            points: stroke.points,
+            timestamp: Date.now()
           });
 
           ctx.strokeStyle = stroke.strokeStyle;
@@ -513,7 +529,12 @@ export const useCanvasObjects = () => {
               ctx.lineTo(lineX, lineY);
             }
             ctx.stroke();
-            console.log('🎨 PENCIL DEBUG - Stroke rendered successfully');
+            console.log('✅ PENCIL DEBUG - Stroke rendered successfully:', {
+              id: stroke.id,
+              pointsRendered: stroke.points.length,
+              finalPosition: { x: obj.x, y: obj.y },
+              timestamp: Date.now()
+            });
           } else {
             console.log('⚠️ PENCIL DEBUG - Stroke has insufficient points:', stroke.points.length);
           }

@@ -179,12 +179,14 @@ export const DrawingCanvas = forwardRef<DrawingCanvasHandle, DrawingCanvasProps>
     onDrawingStart: useCallback(() => {
       if (disabled) return;
       try {
+        console.log('🎯 PENCIL DEBUG - Drawing started:', { timestamp: Date.now() });
         setDrawing(true);
         setIsDrawing(true);
         if (canvasRef.current) {
           saveToHistory(canvasRef.current.toDataURL());
         }
       } catch (error) {
+        console.error('❌ PENCIL DEBUG - Error in drawing start:', error);
         handleError(error, {
           operation: "canvas drawing start",
           category: ErrorCategory.UI,
@@ -196,19 +198,24 @@ export const DrawingCanvas = forwardRef<DrawingCanvasHandle, DrawingCanvasProps>
     onDrawingEnd: useCallback(() => {
       if (disabled) return;
       try {
+        console.log('🎯 PENCIL DEBUG - Drawing ended:', {
+          objectCount: objects.length,
+          timestamp: Date.now()
+        });
         setDrawing(false);
         setIsDrawing(false);
         if (canvasRef.current && onDrawingChange) {
           onDrawingChange(canvasRef.current.toDataURL());
         }
       } catch (error) {
+        console.error('❌ PENCIL DEBUG - Error in drawing end:', error);
         handleError(error, {
           operation: "canvas drawing end",
           category: ErrorCategory.UI,
           severity: ErrorSeverity.MEDIUM
         });
       }
-    }, [disabled, setDrawing, setIsDrawing, onDrawingChange]),
+    }, [disabled, setDrawing, setIsDrawing, onDrawingChange, objects.length]),
 
     onTextInput: useCallback((canvasPosition: { x: number; y: number }) => {
       const canvas = canvasRef.current;
@@ -280,16 +287,22 @@ export const DrawingCanvas = forwardRef<DrawingCanvasHandle, DrawingCanvasProps>
 
     // New object creation callbacks with immediate history saving
     onCreateStroke: useCallback((points: { x: number; y: number }[], style: StrokeStyle) => {
+      // Always log for debugging pencil issue
       console.log('🎯 PENCIL DEBUG - onCreateStroke callback triggered:', {
         pointCount: points.length,
         points: points,
-        style: style
+        style: style,
+        timestamp: Date.now()
       });
       const objectId = addStroke(points, style);
-      console.log('🎯 PENCIL DEBUG - addStroke returned objectId:', objectId);
+      console.log('🎯 PENCIL DEBUG - addStroke returned objectId:', {
+        objectId,
+        success: !!objectId,
+        timestamp: Date.now()
+      });
       // Save state to history immediately after object creation
       saveCanvasToHistory();
-      console.log('🎯 PENCIL DEBUG - History saved after stroke creation');
+      console.log('💾 PENCIL DEBUG - Canvas state saved to history after stroke creation');
       return objectId;
     }, [addStroke, saveCanvasToHistory]),
 
@@ -526,9 +539,12 @@ export const DrawingCanvas = forwardRef<DrawingCanvasHandle, DrawingCanvasProps>
 
   // Re-render canvas when objects change
   useEffect(() => {
+    // Always log for debugging pencil issue
     console.log('🔄 PENCIL DEBUG - Canvas re-render effect triggered:', {
+      reason: 'objects array updated',
       objectCount: objects.length,
-      objects: objects.map(obj => ({ id: obj.id, type: obj.type }))
+      objects: objects.map(obj => ({ id: obj.id, type: obj.type, visible: true, bounds: { x: obj.x, y: obj.y, width: obj.width, height: obj.height } })),
+      timestamp: Date.now()
     });
 
     const canvas = canvasRef.current;
@@ -539,17 +555,27 @@ export const DrawingCanvas = forwardRef<DrawingCanvasHandle, DrawingCanvasProps>
     }
 
     // Clear and redraw with white background
-    console.log('🔄 PENCIL DEBUG - Clearing canvas and redrawing background');
+    console.log('🔄 PENCIL DEBUG - Clearing canvas and redrawing background:', {
+      canvasSize: { width: canvas.width, height: canvas.height },
+      timestamp: Date.now()
+    });
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.fillStyle = 'white';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     // Render all objects (strokes, shapes, text, images)
     if (objects.length > 0) {
-      console.log('🔄 PENCIL DEBUG - Rendering objects to canvas');
+      console.log('🔄 PENCIL DEBUG - Rendering objects to canvas:', {
+        objectCount: objects.length,
+        timestamp: Date.now()
+      });
       renderObjects(ctx);
+      console.log('✅ PENCIL DEBUG - Objects rendering completed');
     } else {
-      console.log('⚠️ PENCIL DEBUG - No objects to render');
+      console.log('⚠️ PENCIL DEBUG - No objects to render:', {
+        objectCount: objects.length,
+        timestamp: Date.now()
+      });
     }
   }, [objects, renderObjects]);
 
