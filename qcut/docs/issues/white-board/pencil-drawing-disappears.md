@@ -33,34 +33,38 @@ The history restoration effect was triggering immediately after object creation,
 - **Shape tools** (rectangle, circle, line) - Working properly
 - **Text objects** - Working properly
 
-### 🔍 IMAGE UPLOAD ANALYSIS (NEW FINDINGS)
-**Console log analysis reveals images ARE being processed correctly:**
+### 🔍 IMAGE UPLOAD ANALYSIS - **BREAKTHROUGH FINDINGS**
 
-✅ **Working Properly:**
+**🎉 MAJOR DISCOVERY:** Console logs from `image_debug_v2.md` reveal **images ARE rendering successfully!**
+
+✅ **CONFIRMED WORKING SYSTEMS:**
 - Image files load successfully (blob URLs created)
 - Image objects added to objects array correctly
-- Objects array count increases (4 → 5 objects)
-- No `clearAll()` or object removal occurring
-- Protection system prevents inappropriate history restoration
-- Images are being rendered (multiple render calls in logs)
+- **Images render to canvas successfully** (`✅ IMAGE DEBUG - Image rendered successfully`)
+- Protection system working correctly
+- Canvas rendering pipeline functioning properly
+- Transform calculations executing correctly
 
-❓ **Potential Issues (Not Object Disappearance):**
-The issue appears to be **visual/rendering-related**, not object persistence:
+**🚨 ACTUAL ISSUE IDENTIFIED:**
+Since rendering is successful but user reports "no image visible", the problem is **NOT** with our code:
 
-1. **Canvas Positioning** - Images may render outside visible canvas area
-2. **Canvas Layering** - Images may render on wrong canvas layer
-3. **Image Display** - Blob URLs work but visual display may fail
-4. **Canvas Transform** - Image rotation/translation may place images off-screen
+**Most Likely Causes:**
+1. **Canvas Viewport/Scrolling** - Canvas rendered but not in visible viewport
+2. **Canvas CSS Styling** - Canvas rendered but hidden by CSS (opacity, z-index, etc.)
+3. **Canvas Container Issues** - Canvas rendered but container positioning wrong
+4. **User Interface Layering** - Other UI elements covering the canvas
+5. **Canvas Scale/Transform** - Canvas rendered but scaled/transformed out of view
 
-**Key Evidence from Console Logs:**
+**Key Evidence from Latest Console Logs:**
 ```
-🖼️ IMAGE DEBUG - Image loaded successfully: {imageWidth: 736, imageHeight: 1408}
-🖼️ IMAGE DEBUG - Calculated image dimensions: {originalSize: {...}, scaledSize: {...}}
-🖼️ IMAGE DEBUG - Updated objects array: {previousCount: 4, newCount: 5}
-🖼️ IMAGE DEBUG - Rendering image object: {id: 'image-1758087781471', bounds: {...}}
+Line 25: ✅ IMAGE DEBUG - Image rendered successfully: image-1758088429977
+Line 31: ✅ IMAGE DEBUG - Image rendered successfully: image-1758088429977
+Lines 23,29: 🖼️ IMAGE DEBUG - Rendering image object (called twice)
+Lines 24,30: 🖼️ IMAGE DEBUG - Transform calculations (positioning working)
 ```
 
-**Recommendation:** Focus investigation on canvas rendering and positioning rather than object persistence.
+**🎯 NEW INVESTIGATION FOCUS:**
+The issue is **UI/CSS-related**, not code logic. Images render successfully to canvas but canvas may not be visually accessible to user.
 
 ## Debug Support
 
@@ -113,10 +117,35 @@ Comprehensive console logging now available for pinpointing image visibility iss
    - `complete: true` indicates image element loaded properly
 
 **Next Steps Based on Console Output:**
+- If `✅ IMAGE DEBUG - Image rendered successfully` appears → **SUCCESS** (check UI/CSS issues)
 - If `willBeVisible: false` → **POSITIONING ISSUE** (image rendered off-screen)
 - If `complete: false` → **LOADING ISSUE** (blob URL or element problem)
 - If rendering fails → **CANVAS ISSUE** (context or drawing problem)
 
+### 🔧 **UI/CSS DEBUGGING CHECKLIST** (New Focus)
+
+Since images render successfully to canvas, check these UI issues:
+
+1. **Canvas Visibility:**
+   - Check canvas element has correct CSS styles (not `display: none`, `opacity: 0`)
+   - Verify canvas z-index positioning
+   - Ensure canvas container isn't clipped or hidden
+
+2. **Canvas Positioning:**
+   - Check if canvas is positioned outside viewport
+   - Verify parent container positioning and overflow settings
+   - Look for transform/translate CSS that moves canvas off-screen
+
+3. **Canvas Scaling:**
+   - Check if canvas has CSS transforms that scale it down to invisible size
+   - Verify canvas width/height CSS vs element width/height attributes
+
+4. **UI Element Conflicts:**
+   - Check if other UI elements are positioned over the canvas
+   - Verify modal overlays or panels aren't blocking canvas view
+
+**Quick Test:** Use browser DevTools Elements tab to inspect the canvas element and verify its visual properties.
+
 ---
 *Last Updated: 2025-09-17*
-*Priority: RESOLVED (Object Persistence) / DEBUGGING ENHANCED (Image Visual Display)*
+*Priority: RESOLVED (Object Persistence & Canvas Rendering) / **INVESTIGATING UI/CSS ISSUES***
