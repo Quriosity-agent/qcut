@@ -81,6 +81,54 @@ export const DrawingCanvas = forwardRef<DrawingCanvasHandle, DrawingCanvasProps>
     return DEFAULT_CANVAS_SIZE;
   }, []);
 
+  // Force render all objects and get canvas data URL for download
+  const getCanvasDataUrl = useCallback(() => {
+    const canvas = canvasRef.current;
+    const ctx = canvas?.getContext('2d');
+    if (!ctx || !canvas) {
+      console.error('❌ Canvas not available for download');
+      return null;
+    }
+
+    console.log('🖼️ Preparing canvas for download:', {
+      objectCount: objects.length,
+      canvasSize: { width: canvas.width, height: canvas.height }
+    });
+
+    // Clear and redraw everything for download
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Set white background
+    ctx.fillStyle = 'white';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Render all objects
+    if (objects.length > 0) {
+      renderObjects(ctx);
+      console.log('✅ Objects rendered for download');
+    } else {
+      console.log('⚠️ No objects to render');
+    }
+
+    // Get the data URL
+    const dataUrl = canvas.toDataURL('image/png');
+    console.log('📸 Canvas data URL generated:', {
+      dataUrlLength: dataUrl.length,
+      isValid: dataUrl.startsWith('data:image/png;base64,')
+    });
+
+    return dataUrl;
+  }, [objects, renderObjects]);
+
+  // Save current canvas state to history
+  const saveCanvasToHistory = useCallback(() => {
+    const dataUrl = getCanvasDataUrl();
+    if (dataUrl) {
+      saveToHistory(dataUrl);
+      console.log('💾 Canvas state saved to history');
+    }
+  }, [getCanvasDataUrl, saveToHistory]);
+
   const {
     handleMouseDown,
     handleMouseMove,
@@ -195,28 +243,28 @@ export const DrawingCanvas = forwardRef<DrawingCanvasHandle, DrawingCanvasProps>
       endDrag();
     }, [endDrag]),
 
-    // New object creation callbacks
+    // New object creation callbacks with immediate history saving
     onCreateStroke: useCallback((points: { x: number; y: number }[], style: any) => {
       console.log('🖌️ Creating stroke object:', { pointCount: points.length, style });
       const objectId = addStroke(points, style);
-      // Save state to history after object creation
-      setTimeout(() => saveCanvasToHistory(), 0);
+      // Save state to history immediately after object creation
+      saveCanvasToHistory();
       return objectId;
     }, [addStroke, saveCanvasToHistory]),
 
     onCreateShape: useCallback((shapeType: string, bounds: any, style: any) => {
       console.log('🔲 Creating shape object:', { shapeType, bounds, style });
       const objectId = addShape(shapeType as any, bounds, style);
-      // Save state to history after object creation
-      setTimeout(() => saveCanvasToHistory(), 0);
+      // Save state to history immediately after object creation
+      saveCanvasToHistory();
       return objectId;
     }, [addShape, saveCanvasToHistory]),
 
     onCreateText: useCallback((text: string, position: { x: number; y: number }, style: any) => {
       console.log('📝 Creating text object:', { text, position, style });
       const objectId = addText(text, position, style);
-      // Save state to history after object creation
-      setTimeout(() => saveCanvasToHistory(), 0);
+      // Save state to history immediately after object creation
+      saveCanvasToHistory();
       return objectId;
     }, [addText, saveCanvasToHistory])
   });
@@ -455,54 +503,6 @@ export const DrawingCanvas = forwardRef<DrawingCanvasHandle, DrawingCanvasProps>
       renderObjects(ctx);
     }
   }, [objects, renderObjects]);
-
-  // Force render all objects and get canvas data URL for download
-  const getCanvasDataUrl = useCallback(() => {
-    const canvas = canvasRef.current;
-    const ctx = canvas?.getContext('2d');
-    if (!ctx || !canvas) {
-      console.error('❌ Canvas not available for download');
-      return null;
-    }
-
-    console.log('🖼️ Preparing canvas for download:', {
-      objectCount: objects.length,
-      canvasSize: { width: canvas.width, height: canvas.height }
-    });
-
-    // Clear and redraw everything for download
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    // Set white background
-    ctx.fillStyle = 'white';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    // Render all objects
-    if (objects.length > 0) {
-      renderObjects(ctx);
-      console.log('✅ Objects rendered for download');
-    } else {
-      console.log('⚠️ No objects to render');
-    }
-
-    // Get the data URL
-    const dataUrl = canvas.toDataURL('image/png');
-    console.log('📸 Canvas data URL generated:', {
-      dataUrlLength: dataUrl.length,
-      isValid: dataUrl.startsWith('data:image/png;base64,')
-    });
-
-    return dataUrl;
-  }, [objects, renderObjects]);
-
-  // Save current canvas state to history
-  const saveCanvasToHistory = useCallback(() => {
-    const dataUrl = getCanvasDataUrl();
-    if (dataUrl) {
-      saveToHistory(dataUrl);
-      console.log('💾 Canvas state saved to history');
-    }
-  }, [getCanvasDataUrl, saveToHistory]);
 
   // Expose canvas ref and object/group functions to parent
   useImperativeHandle(ref, () => {
