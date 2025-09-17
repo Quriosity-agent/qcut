@@ -1,5 +1,5 @@
 import { useCallback, useRef, useEffect } from 'react';
-import { DrawingToolConfig } from '@/types/white-draw';
+import type { DrawingToolConfig } from '@/types/white-draw';
 import type { StrokeObject, ShapeObject, TextObject } from './use-canvas-objects';
 
 // Debug logging function that only logs in development mode when enabled

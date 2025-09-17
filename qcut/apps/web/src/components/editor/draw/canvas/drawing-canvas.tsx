@@ -22,6 +22,7 @@ export interface DrawingCanvasHandle extends HTMLCanvasElement {
   getCanvasDataUrl: () => string | null;
   handleCreateGroup: () => void;
   handleUngroup: () => void;
+  clearAll: () => void;
 }
 
 // Default canvas size matches QCut editor dimensions
@@ -197,18 +198,27 @@ export const DrawingCanvas = forwardRef<DrawingCanvasHandle, DrawingCanvasProps>
     // New object creation callbacks
     onCreateStroke: useCallback((points: { x: number; y: number }[], style: any) => {
       console.log('🖌️ Creating stroke object:', { pointCount: points.length, style });
-      return addStroke(points, style);
-    }, [addStroke]),
+      const objectId = addStroke(points, style);
+      // Save state to history after object creation
+      setTimeout(() => saveCanvasToHistory(), 0);
+      return objectId;
+    }, [addStroke, saveCanvasToHistory]),
 
     onCreateShape: useCallback((shapeType: string, bounds: any, style: any) => {
       console.log('🔲 Creating shape object:', { shapeType, bounds, style });
-      return addShape(shapeType as any, bounds, style);
-    }, [addShape]),
+      const objectId = addShape(shapeType as any, bounds, style);
+      // Save state to history after object creation
+      setTimeout(() => saveCanvasToHistory(), 0);
+      return objectId;
+    }, [addShape, saveCanvasToHistory]),
 
     onCreateText: useCallback((text: string, position: { x: number; y: number }, style: any) => {
       console.log('📝 Creating text object:', { text, position, style });
-      return addText(text, position, style);
-    }, [addText])
+      const objectId = addText(text, position, style);
+      // Save state to history after object creation
+      setTimeout(() => saveCanvasToHistory(), 0);
+      return objectId;
+    }, [addText, saveCanvasToHistory])
   });
 
   // Initialize canvases with error handling
@@ -475,6 +485,15 @@ export const DrawingCanvas = forwardRef<DrawingCanvasHandle, DrawingCanvasProps>
     return dataUrl;
   }, [objects, renderObjects]);
 
+  // Save current canvas state to history
+  const saveCanvasToHistory = useCallback(() => {
+    const dataUrl = getCanvasDataUrl();
+    if (dataUrl) {
+      saveToHistory(dataUrl);
+      console.log('💾 Canvas state saved to history');
+    }
+  }, [getCanvasDataUrl, saveToHistory]);
+
   // Expose canvas ref and object/group functions to parent
   useImperativeHandle(ref, () => {
     if (!canvasRef.current) return null as any;
@@ -487,6 +506,7 @@ export const DrawingCanvas = forwardRef<DrawingCanvasHandle, DrawingCanvasProps>
       getSelectedCount: () => selectedObjectIds.length,
       getHasGroups: () => groups.length > 0,
       getCanvasDataUrl, // Add this method for downloads
+      clearAll, // Add clearAll method from useCanvasObjects hook
       handleCreateGroup: () => {
         const groupId = createGroup();
         if (groupId) {
@@ -507,7 +527,7 @@ export const DrawingCanvas = forwardRef<DrawingCanvasHandle, DrawingCanvasProps>
         });
       }
     });
-  }, [handleImageUpload, loadDrawingFromDataUrl, selectedObjectIds.length, groups.length, createGroup, ungroupObjects, selectedObjectIds, groups, getCanvasDataUrl]);
+  }, [handleImageUpload, loadDrawingFromDataUrl, selectedObjectIds.length, groups.length, createGroup, ungroupObjects, selectedObjectIds, groups, getCanvasDataUrl, clearAll]);
 
   return (
     <div
