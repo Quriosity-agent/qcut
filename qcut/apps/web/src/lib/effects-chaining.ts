@@ -131,7 +131,10 @@ function blendParameters(
           const baseValue = (base as any)[key] || 0;
           const overlayValue = (overlay as any)[key] || 0;
 
-          if (typeof baseValue === "number" && typeof overlayValue === "number") {
+          if (
+            typeof baseValue === "number" &&
+            typeof overlayValue === "number"
+          ) {
             if (baseValue < 50) {
               (blended as any)[key] = (2 * baseValue * overlayValue) / 100;
             } else {
@@ -150,7 +153,10 @@ function blendParameters(
           const baseValue = (base as any)[key] || 0;
           const overlayValue = (overlay as any)[key] || 0;
 
-          if (typeof baseValue === "number" && typeof overlayValue === "number") {
+          if (
+            typeof baseValue === "number" &&
+            typeof overlayValue === "number"
+          ) {
             (blended as any)[key] = (baseValue * overlayValue) / 100;
           }
         }
@@ -164,7 +170,10 @@ function blendParameters(
           const baseValue = (base as any)[key] || 0;
           const overlayValue = (overlay as any)[key] || 0;
 
-          if (typeof baseValue === "number" && typeof overlayValue === "number") {
+          if (
+            typeof baseValue === "number" &&
+            typeof overlayValue === "number"
+          ) {
             (blended as any)[key] =
               100 - ((100 - baseValue) * (100 - overlayValue)) / 100;
           }
@@ -256,14 +265,16 @@ export function validateEffectChain(
 
   for (const effect of chain.effects) {
     for (const param in effect.parameters) {
-      const count = parameterUsage.get(param) || 0;
-      parameterUsage.set(param, count + 1);
+      if (Object.hasOwn(effect.parameters, param)) {
+        const count = parameterUsage.get(param) || 0;
+        parameterUsage.set(param, count + 1);
 
-      // Collect warning if same parameter is modified multiple times
-      if (count > 2) {
-        warnings.push(
-          `Parameter "${param}" is modified ${count + 1} times in chain. This may cause unexpected results.`
-        );
+        // Collect warning if same parameter is modified multiple times
+        if (count > 2) {
+          warnings.push(
+            `Parameter "${param}" is modified ${count + 1} times in chain. This may cause unexpected results.`
+          );
+        }
       }
     }
   }

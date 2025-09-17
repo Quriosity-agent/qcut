@@ -269,7 +269,6 @@ export function KeyframeTimeline({
       document.addEventListener("mousemove", handleMouseMove);
       document.addEventListener("mouseup", handleMouseUp);
     },
-    // biome-ignore lint/correctness/useExhaustiveDependencies: findNearestValidPosition changes on every render, adding it would cause unnecessary re-renders
     [
       animation,
       duration,
@@ -277,6 +276,7 @@ export function KeyframeTimeline({
       elementId,
       effectId,
       updateEffectAnimations,
+      // findNearestValidPosition intentionally omitted to avoid unnecessary re-renders
     ]
   );
 
