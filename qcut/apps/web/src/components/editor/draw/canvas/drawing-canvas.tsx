@@ -567,10 +567,9 @@ export const DrawingCanvas = forwardRef<DrawingCanvasHandle, DrawingCanvasProps>
         height={canvasDimensions.height}
         className={cn(
           "absolute inset-0 border border-gray-600",
-          `cursor-${currentTool.cursor}`,
           !disabled && "hover:border-orange-500 transition-colors"
         )}
-        style={{ zIndex: 2 }}
+        style={{ zIndex: 2, cursor: currentTool.cursor }}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}

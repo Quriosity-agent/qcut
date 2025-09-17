@@ -43,15 +43,16 @@ export const useWhiteDrawStore = create<WhiteDrawStore>()(
           layers: [...state.layers, { id: Date.now().toString(), data: "", visible: true, opacity: 1 }]
         }), false, "white-draw/addLayer"),
 
-      saveToHistory: (state) =>
+      saveToHistory: (snapshot) =>
         set((current) => {
-          const newHistory = current.history.slice(0, current.historyIndex + 1);
-          newHistory.push(state);
+          const next = current.history.slice(0, current.historyIndex + 1);
+          next.push(snapshot);
+          const trimmed = next.slice(-50); // Limit to 50 states
           return {
-            history: newHistory.slice(-50), // Limit to 50 states
-            historyIndex: newHistory.length - 1
+            history: trimmed,
+            historyIndex: trimmed.length - 1,
           };
-        }, false, "white-draw/saveToHistory"),
+        }, false, 'white-draw/saveToHistory'),
 
       undo: () =>
         set((state) => {
