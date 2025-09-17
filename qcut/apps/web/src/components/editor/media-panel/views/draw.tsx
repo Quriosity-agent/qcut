@@ -41,6 +41,17 @@ const DrawView: React.FC = () => {
     }
   }, []);
 
+  // Update group state from canvas
+  const updateGroupState = useCallback(() => {
+    if (canvasComponentRef.current) {
+      const newSelectedCount =
+        canvasComponentRef.current.getSelectedCount?.() || 0;
+      const newHasGroups = canvasComponentRef.current.getHasGroups?.() || false;
+      setSelectedCount(newSelectedCount);
+      setHasGroups(newHasGroups);
+    }
+  }, []);
+
   // Handle group creation
   const handleCreateGroup = useCallback(() => {
     if (canvasComponentRef.current?.handleCreateGroup) {
@@ -58,17 +69,6 @@ const DrawView: React.FC = () => {
       updateGroupState();
     }
   }, [updateGroupState]);
-
-  // Update group state from canvas
-  const updateGroupState = useCallback(() => {
-    if (canvasComponentRef.current) {
-      const newSelectedCount =
-        canvasComponentRef.current.getSelectedCount?.() || 0;
-      const newHasGroups = canvasComponentRef.current.getHasGroups?.() || false;
-      setSelectedCount(newSelectedCount);
-      setHasGroups(newHasGroups);
-    }
-  }, []);
 
   // Update group state when drawing changes
   useEffect(() => {

@@ -309,7 +309,7 @@ export const useCanvasObjects = () => {
 
       return textObject.id;
     },
-    [objects.length]
+    [objects.length, setObjects]
   );
 
   // Add an image object (integrates with existing image system)
@@ -376,7 +376,7 @@ export const useCanvasObjects = () => {
 
       return imageObject.id;
     },
-    [objects.length]
+    [objects.length, setObjects]
   );
 
   // Select objects
@@ -462,7 +462,7 @@ export const useCanvasObjects = () => {
 
       return groupId;
     },
-    [selectedObjectIds, groups.length]
+    [selectedObjectIds, groups.length, setObjects]
   );
 
   // Ungroup objects
@@ -477,7 +477,7 @@ export const useCanvasObjects = () => {
     if (import.meta.env.DEV) {
       console.log("🔓 Group dissolved:", { groupId });
     }
-  }, []);
+  }, [setObjects]);
 
   // Clear all objects and groups
   const clearAll = useCallback(() => {
