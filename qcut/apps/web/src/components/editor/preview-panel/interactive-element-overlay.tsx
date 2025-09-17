@@ -157,11 +157,6 @@ export function InteractiveElementOverlay({
     };
   }, [flushPendingUpdates]);
 
-  // Only show interactive overlay if element has effects or is selected
-  if (!hasEffects && !isActive) {
-    return null;
-  }
-
   // Handle drag start
   const handleDragStart = useCallback(
     (e: React.MouseEvent) => {
@@ -380,6 +375,11 @@ export function InteractiveElementOverlay({
     scheduleUpdate,
     flushPendingUpdates,
   ]);
+
+  // Only show interactive overlay if element has effects or is selected
+  if (!hasEffects && !isActive) {
+    return null;
+  }
 
   const elementStyle = {
     left: `${(element.x || 0) * previewScale}px`,

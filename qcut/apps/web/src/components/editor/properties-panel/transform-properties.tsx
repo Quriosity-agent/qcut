@@ -52,10 +52,6 @@ export function TransformProperties({
   const hasEffects = getElementEffects(element.id).length > 0;
   const showTransformControls = hasEffects || element.type === "text";
 
-  if (!showTransformControls) {
-    return null;
-  }
-
   // Initialize transform values using type-safe getter
   const [transform, setTransform] = useState(() =>
     getTransformProperties(element)
@@ -65,6 +61,10 @@ export function TransformProperties({
   useEffect(() => {
     setTransform(getTransformProperties(element));
   }, [element]);
+
+  if (!showTransformControls) {
+    return null;
+  }
 
   const handleChange = (property: string, value: number) => {
     const newTransform = { ...transform, [property]: value };
