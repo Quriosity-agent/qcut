@@ -84,10 +84,23 @@ const ImageEditorCanvas: React.FC<ImageEditorCanvasProps> = ({ onImageSelect, in
 
   useEffect(() => {
     draw();
-    const handleResize = () => draw();
+    const handleResize = () => {
+      const { maskCanvas, imageCanvas, maskCtx } = getCanvasContexts();
+      const snapshot = maskCanvas?.toDataURL();
+      draw();
+      if (snapshot && maskCanvas && imageCanvas && maskCtx) {
+        const img = new Image();
+        img.onload = () => {
+          // scale snapshot to new canvas size
+          maskCtx.clearRect(0, 0, maskCanvas.width, maskCanvas.height);
+          maskCtx.drawImage(img, 0, 0, imageCanvas.width, imageCanvas.height);
+        };
+        img.src = snapshot;
+      }
+    };
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
-  }, [draw, image]);
+  }, [draw, image, getCanvasContexts]);
 
   const saveToHistory = useCallback(() => {
     const { maskCtx, maskCanvas } = getCanvasContexts();
@@ -171,7 +184,9 @@ const ImageEditorCanvas: React.FC<ImageEditorCanvasProps> = ({ onImageSelect, in
         }
       };
       reader.onerror = () => {
-        console.error('Failed to read file:', file.name);
+        if (import.meta.env.DEV) {
+          console.error('Failed to read file:', file.name);
+        }
         // Consider adding user-facing error notification
       };
       reader.readAsDataURL(file);
