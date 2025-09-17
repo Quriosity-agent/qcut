@@ -3,7 +3,7 @@ import { useWhiteDrawStore, selectCurrentTool } from "@/stores/white-draw-store"
 import { DEFAULT_CANVAS_SIZE } from "@/stores/project-store";
 import { useCanvasDrawing } from "../hooks/use-canvas-drawing";
 import type { StrokeStyle, ShapeStyle, TextStyle } from '../hooks/use-canvas-drawing';
-import { useCanvasObjects } from "../hooks/use-canvas-objects";
+import { useCanvasObjects, type ImageObject } from "../hooks/use-canvas-objects";
 import { TextInputModal } from "../components/text-input-modal";
 import { cn } from "@/lib/utils";
 import { handleError, ErrorCategory, ErrorSeverity } from "@/lib/error-handler";
@@ -698,65 +698,120 @@ export const DrawingCanvas = forwardRef<DrawingCanvasHandle, DrawingCanvasProps>
     if (import.meta.env.DEV) {
       console.log('🎨 CANVAS LAYER DEBUG - Drawing canvas render:', {
         canvasElement: 'Drawing Canvas (z-index: 2)',
-        clearingWithWhite: true,
-        willCoverBackgroundCanvas: true,
+        clearingWithTransparent: true,
+        willShowBackgroundCanvas: true,
         backgroundCanvasHasImages: objects.filter(obj => obj.type === 'image').length > 0
       });
     }
 
-    // Clear and redraw with white background
-    // 🚨 ISSUE: This white background covers the background canvas where images are rendered!
+    // Clear canvas with TRANSPARENT background (no white fill)
+    // ✅ FIX: Only clear, don't fill with white so background canvas shows through
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = 'white';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    // REMOVED: ctx.fillStyle = 'white';
+    // REMOVED: ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Render all objects (strokes, shapes, text, images)
-    if (objects.length > 0) {
+    // Render non-image objects to DRAWING canvas (strokes, shapes, text)
+    // Images are now rendered separately to background canvas
+    const nonImageObjects = objects.filter(obj => obj.type !== 'image');
+
+    if (nonImageObjects.length > 0) {
       if (import.meta.env.DEV) {
-        const imageObjects = objects.filter(obj => obj.type === 'image');
-        console.log('🎨 CANVAS DEBUG - Starting render:', {
+        const imageCount = objects.filter(obj => obj.type === 'image').length;
+        console.log('🎨 DRAWING CANVAS - Rendering non-image objects:', {
+          canvasElement: 'Drawing Canvas (z-index: 2)',
           totalObjects: objects.length,
+          renderingToDrawingCanvas: nonImageObjects.length,
+          imagesSkipped: imageCount,
+          renderingTypes: [...new Set(nonImageObjects.map(obj => obj.type))],
+          imagesHandledSeparately: 'Background Canvas (z-index: 1)'
+        });
+      }
+
+      // Create a modified renderObjects that only processes non-image objects
+      renderObjects(ctx, nonImageObjects);
+
+      if (import.meta.env.DEV) {
+        console.log('✅ DRAWING CANVAS - Render completed:', {
+          objectsRendered: nonImageObjects.length,
+          timestamp: Date.now()
+        });
+      }
+    } else {
+      if (import.meta.env.DEV) {
+        console.log('🎨 DRAWING CANVAS - No non-image objects to render');
+      }
+    }
+  }, [objects, renderObjects]);
+
+  // Render images to BACKGROUND canvas (z-index: 1)
+  useEffect(() => {
+    const bgCanvas = backgroundCanvasRef.current;
+    const bgCtx = bgCanvas?.getContext('2d');
+    if (!bgCtx || !bgCanvas) {
+      return;
+    }
+
+    // Clear background canvas
+    bgCtx.clearRect(0, 0, bgCanvas.width, bgCanvas.height);
+
+    // Set white background for background canvas
+    bgCtx.fillStyle = 'white';
+    bgCtx.fillRect(0, 0, bgCanvas.width, bgCanvas.height);
+
+    // Get only image objects
+    const imageObjects = objects.filter(obj => obj.type === 'image');
+
+    if (imageObjects.length > 0) {
+      if (import.meta.env.DEV) {
+        console.log('🖼️ BACKGROUND CANVAS - Rendering images:', {
+          canvasElement: 'Background Canvas (z-index: 1)',
           imageCount: imageObjects.length,
-          canvasSize: { width: canvas.width, height: canvas.height },
-          imageObjects: imageObjects.map(img => ({
+          images: imageObjects.map(img => ({
             id: img.id,
             bounds: { x: img.x, y: img.y, width: img.width, height: img.height }
           }))
         });
       }
 
-      if (import.meta.env.DEV) {
-        const imageCount = objects.filter(obj => obj.type === 'image').length;
-        if (imageCount > 0) {
-          console.log('🚨 CANVAS LAYER PROBLEM - Rendering images to drawing canvas:', {
-            problem: 'Images rendered to drawing canvas (z-index: 2) but then covered by white background',
-            imagesBeingRendered: imageCount,
-            renderingToCanvas: 'Drawing Canvas (TOP layer)',
-            shouldRenderTo: 'Background Canvas (BOTTOM layer)',
-            result: 'Images rendered then immediately hidden by white background'
+      // Render each image to background canvas
+      imageObjects.forEach(obj => {
+        bgCtx.save();
+        bgCtx.globalAlpha = obj.opacity || 1;
+
+        const image = obj as ImageObject;
+
+        // Check if image is loaded
+        if (!image.element.complete) {
+          if (import.meta.env.DEV) {
+            console.warn('🖼️ BACKGROUND CANVAS - Image not fully loaded, skipping:', image.id);
+          }
+          bgCtx.restore();
+          return;
+        }
+
+        const centerX = obj.x + obj.width / 2;
+        const centerY = obj.y + obj.height / 2;
+
+        bgCtx.translate(centerX, centerY);
+        bgCtx.rotate((image.rotation * Math.PI) / 180);
+        bgCtx.translate(-centerX, -centerY);
+
+        try {
+          bgCtx.drawImage(image.element, obj.x, obj.y, obj.width, obj.height);
+          if (import.meta.env.DEV) {
+            console.log('✅ BACKGROUND CANVAS - Image rendered successfully:', image.id);
+          }
+        } catch (error) {
+          console.error('❌ BACKGROUND CANVAS - Failed to render image:', {
+            id: image.id,
+            error: error
           });
         }
-      }
 
-      renderObjects(ctx);
-
-      // Enhanced logging for image debugging
-      if (import.meta.env.DEV) {
-        const imageCount = objects.filter(obj => obj.type === 'image').length;
-        if (imageCount > 0) {
-          console.log('🎨 CANVAS DEBUG - Render completed (but images will be hidden):', {
-            objectCount: objects.length,
-            imageCount: imageCount,
-            timestamp: Date.now()
-          });
-        }
-      }
-    } else {
-      if (import.meta.env.DEV) {
-        console.log('🎨 CANVAS DEBUG - No objects to render');
-      }
+        bgCtx.restore();
+      });
     }
-  }, [objects, renderObjects]);
+  }, [objects]);
 
   // Expose canvas ref and object/group functions to parent
   useImperativeHandle(ref, () => {

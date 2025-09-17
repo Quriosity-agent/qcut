@@ -531,10 +531,13 @@ export const useCanvasObjects = () => {
     setSelectedObjectIds([]);
   }, [selectedObjectIds]);
 
-  // Render all objects to canvas
-  const renderObjects = useCallback((ctx: CanvasRenderingContext2D) => {
+  // Render objects to canvas (optionally filtered)
+  const renderObjects = useCallback((ctx: CanvasRenderingContext2D, objectsToRender?: AnyCanvasObject[]) => {
+    // Use provided objects or default to all objects
+    const targetObjects = objectsToRender || objects;
+
     // Sort by z-index
-    const sortedObjects = [...objects].sort((a, b) => a.zIndex - b.zIndex);
+    const sortedObjects = [...targetObjects].sort((a, b) => a.zIndex - b.zIndex);
 
     sortedObjects.forEach(obj => {
 
