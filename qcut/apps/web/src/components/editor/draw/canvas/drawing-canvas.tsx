@@ -399,6 +399,13 @@ export const DrawingCanvas = forwardRef<DrawingCanvasHandle, DrawingCanvasProps>
       const bgCtx = bgCanvas.getContext('2d');
 
       if (ctx) {
+        if (import.meta.env.DEV) {
+          console.log('🎨 CANVAS LAYER DEBUG - Drawing canvas initialization:', {
+            canvasElement: 'Drawing Canvas (z-index: 2)',
+            settingWhiteBackground: true,
+            willCoverBackgroundCanvas: true
+          });
+        }
         // Set white background
         ctx.fillStyle = 'white';
         ctx.fillRect(0, 0, width, height);
@@ -408,6 +415,13 @@ export const DrawingCanvas = forwardRef<DrawingCanvasHandle, DrawingCanvasProps>
       }
 
       if (bgCtx) {
+        if (import.meta.env.DEV) {
+          console.log('🎨 CANVAS LAYER DEBUG - Background canvas initialization:', {
+            canvasElement: 'Background Canvas (z-index: 1)',
+            settingWhiteBackground: true,
+            thisIsWhereImagesRender: true
+          });
+        }
         // Set white background for background canvas too
         bgCtx.fillStyle = 'white';
         bgCtx.fillRect(0, 0, width, height);
@@ -681,7 +695,17 @@ export const DrawingCanvas = forwardRef<DrawingCanvasHandle, DrawingCanvasProps>
       return;
     }
 
+    if (import.meta.env.DEV) {
+      console.log('🎨 CANVAS LAYER DEBUG - Drawing canvas render:', {
+        canvasElement: 'Drawing Canvas (z-index: 2)',
+        clearingWithWhite: true,
+        willCoverBackgroundCanvas: true,
+        backgroundCanvasHasImages: objects.filter(obj => obj.type === 'image').length > 0
+      });
+    }
+
     // Clear and redraw with white background
+    // 🚨 ISSUE: This white background covers the background canvas where images are rendered!
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.fillStyle = 'white';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -701,13 +725,26 @@ export const DrawingCanvas = forwardRef<DrawingCanvasHandle, DrawingCanvasProps>
         });
       }
 
+      if (import.meta.env.DEV) {
+        const imageCount = objects.filter(obj => obj.type === 'image').length;
+        if (imageCount > 0) {
+          console.log('🚨 CANVAS LAYER PROBLEM - Rendering images to drawing canvas:', {
+            problem: 'Images rendered to drawing canvas (z-index: 2) but then covered by white background',
+            imagesBeingRendered: imageCount,
+            renderingToCanvas: 'Drawing Canvas (TOP layer)',
+            shouldRenderTo: 'Background Canvas (BOTTOM layer)',
+            result: 'Images rendered then immediately hidden by white background'
+          });
+        }
+      }
+
       renderObjects(ctx);
 
       // Enhanced logging for image debugging
       if (import.meta.env.DEV) {
         const imageCount = objects.filter(obj => obj.type === 'image').length;
         if (imageCount > 0) {
-          console.log('🎨 CANVAS DEBUG - Render completed:', {
+          console.log('🎨 CANVAS DEBUG - Render completed (but images will be hidden):', {
             objectCount: objects.length,
             imageCount: imageCount,
             timestamp: Date.now()
