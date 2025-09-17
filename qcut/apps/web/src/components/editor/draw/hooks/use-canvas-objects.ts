@@ -87,7 +87,9 @@ export const useCanvasObjects = () => {
             console.log("📝 setObjects called (function):", {
               previousCount: prev.length,
               newCount: result.length,
-              stackTrace: new Error("Debug stack trace").stack?.split("\n")[2]?.trim(),
+              stackTrace: new Error("Debug stack trace").stack
+                ?.split("\n")[2]
+                ?.trim(),
             });
           }
           return result;
@@ -96,7 +98,9 @@ export const useCanvasObjects = () => {
         if (import.meta.env.DEV) {
           console.log("📝 setObjects called (direct):", {
             newCount: newObjects.length,
-            stackTrace: new Error().stack?.split("\n")[2]?.trim(),
+            stackTrace: new Error("Debug stack trace for setObjects").stack
+              ?.split("\n")[2]
+              ?.trim(),
           });
         }
         setObjectsInternal(newObjects);
@@ -180,7 +184,7 @@ export const useCanvasObjects = () => {
 
       return strokeObject.id;
     },
-    []
+    [setObjects]
   );
 
   // Add a new shape object
@@ -224,7 +228,7 @@ export const useCanvasObjects = () => {
 
       return shapeObject.id;
     },
-    []
+    [setObjects]
   );
 
   // Add a new text object
@@ -376,30 +380,33 @@ export const useCanvasObjects = () => {
   );
 
   // Select objects
-  const selectObjects = useCallback((ids: string[], addToSelection = false) => {
-    if (addToSelection) {
-      setSelectedObjectIds((prev) => {
-        const newSelection = [...prev];
-        ids.forEach((id) => {
-          if (!newSelection.includes(id)) {
-            newSelection.push(id);
-          }
+  const selectObjects = useCallback(
+    (ids: string[], addToSelection = false) => {
+      if (addToSelection) {
+        setSelectedObjectIds((prev) => {
+          const newSelection = [...prev];
+          ids.forEach((id) => {
+            if (!newSelection.includes(id)) {
+              newSelection.push(id);
+            }
+          });
+          return newSelection;
         });
-        return newSelection;
-      });
-    } else {
-      setSelectedObjectIds(ids);
-    }
+      } else {
+        setSelectedObjectIds(ids);
+      }
 
-    setObjects((prev) =>
-      prev.map((obj) => ({
-        ...obj,
-        selected: addToSelection
-          ? obj.selected || ids.includes(obj.id)
-          : ids.includes(obj.id),
-      }))
-    );
-  }, []);
+      setObjects((prev) =>
+        prev.map((obj) => ({
+          ...obj,
+          selected: addToSelection
+            ? obj.selected || ids.includes(obj.id)
+            : ids.includes(obj.id),
+        }))
+      );
+    },
+    [setObjects]
+  );
 
   // Get object at position (for selection)
   const getObjectAtPosition = useCallback(
@@ -477,7 +484,9 @@ export const useCanvasObjects = () => {
     if (import.meta.env.DEV) {
       console.log("🧹 clearAll called:", {
         currentObjectCount: objects.length,
-        stackTrace: new Error().stack?.split("\n")[2]?.trim(),
+        stackTrace: new Error("Debug stack trace for clearAll").stack
+          ?.split("\n")[2]
+          ?.trim(),
       });
     }
     setObjects([]);

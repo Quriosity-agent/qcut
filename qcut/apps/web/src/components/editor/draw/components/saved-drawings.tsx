@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -42,14 +42,7 @@ export const SavedDrawings: React.FC<SavedDrawingsProps> = ({
   const { activeProject } = useProjectStore();
 
   // Load saved drawings when component mounts or project changes
-  useEffect(() => {
-    if (activeProject?.id) {
-      loadSavedDrawings();
-      loadStorageStats();
-    }
-  }, [activeProject?.id, loadSavedDrawings, loadStorageStats]);
-
-  const loadSavedDrawings = async () => {
+  const loadSavedDrawings = useCallback(async () => {
     if (!activeProject?.id) return;
 
     setIsLoading(true);
@@ -63,9 +56,9 @@ export const SavedDrawings: React.FC<SavedDrawingsProps> = ({
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [activeProject?.id]);
 
-  const loadStorageStats = async () => {
+  const loadStorageStats = useCallback(async () => {
     if (!activeProject?.id) return;
 
     try {
@@ -74,7 +67,14 @@ export const SavedDrawings: React.FC<SavedDrawingsProps> = ({
     } catch (error) {
       // Silent fail for stats
     }
-  };
+  }, [activeProject?.id]);
+
+  useEffect(() => {
+    if (activeProject?.id) {
+      loadSavedDrawings();
+      loadStorageStats();
+    }
+  }, [activeProject?.id, loadSavedDrawings, loadStorageStats]);
 
   const handleSaveDrawing = async () => {
     if (!activeProject?.id || !currentDrawingData) {
