@@ -67,7 +67,33 @@ export interface ObjectGroup {
 }
 
 export const useCanvasObjects = () => {
-  const [objects, setObjects] = useState<AnyCanvasObject[]>([]);
+  const [objects, setObjectsInternal] = useState<AnyCanvasObject[]>([]);
+
+  // Wrapper to track all setObjects calls
+  const setObjects = useCallback((newObjects: AnyCanvasObject[] | ((prev: AnyCanvasObject[]) => AnyCanvasObject[])) => {
+    if (typeof newObjects === 'function') {
+      setObjectsInternal(prev => {
+        const result = newObjects(prev);
+        console.log('📝 PENCIL DEBUG - setObjects called (function):', {
+          previousCount: prev.length,
+          newCount: result.length,
+          previousObjects: prev.map(obj => ({ id: obj.id, type: obj.type })),
+          newObjects: result.map(obj => ({ id: obj.id, type: obj.type })),
+          stackTrace: new Error().stack?.split('\n')[2]?.trim(),
+          timestamp: Date.now()
+        });
+        return result;
+      });
+    } else {
+      console.log('📝 PENCIL DEBUG - setObjects called (direct):', {
+        newCount: newObjects.length,
+        newObjects: newObjects.map(obj => ({ id: obj.id, type: obj.type })),
+        stackTrace: new Error().stack?.split('\n')[2]?.trim(),
+        timestamp: Date.now()
+      });
+      setObjectsInternal(newObjects);
+    }
+  }, []);
   const [groups, setGroups] = useState<ObjectGroup[]>([]);
   const [selectedObjectIds, setSelectedObjectIds] = useState<string[]>([]);
   const [isDragging, setIsDragging] = useState(false);
@@ -352,6 +378,11 @@ export const useCanvasObjects = () => {
 
   // Clear all objects and groups
   const clearAll = useCallback(() => {
+    console.log('🚨 PENCIL DEBUG - clearAll called:', {
+      currentObjectCount: objects.length,
+      stackTrace: new Error().stack,
+      timestamp: Date.now()
+    });
     setObjects([]);
     setGroups([]);
     setSelectedObjectIds([]);
@@ -359,10 +390,8 @@ export const useCanvasObjects = () => {
     setIsDragging(false);
     dragState.current = { startX: 0, startY: 0, lastX: 0, lastY: 0, hasMoved: false };
 
-    if (import.meta.env.DEV) {
-      console.log('🧹 Canvas cleared');
-    }
-  }, []);
+    console.log('🧹 PENCIL DEBUG - Canvas cleared, all objects removed');
+  }, [objects.length, setObjects]);
 
   // Start dragging objects
   const startDrag = useCallback((startX: number, startY: number) => {

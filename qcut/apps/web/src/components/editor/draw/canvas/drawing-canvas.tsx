@@ -144,11 +144,19 @@ export const DrawingCanvas = forwardRef<DrawingCanvasHandle, DrawingCanvasProps>
 
   // Save current canvas state to history
   const saveCanvasToHistory = useCallback(() => {
+    console.log('💾 PENCIL DEBUG - saveCanvasToHistory called:', {
+      objectCount: objects.length,
+      stackTrace: new Error().stack?.split('\n')[2]?.trim(),
+      timestamp: Date.now()
+    });
     const saveSnapshot = () => {
       const dataUrl = getCanvasDataUrl();
       if (dataUrl) {
+        console.log('💾 PENCIL DEBUG - Saving to history with dataUrl length:', dataUrl.length);
         saveToHistory(dataUrl);
-        debug('💾 Canvas state saved to history');
+        console.log('💾 PENCIL DEBUG - History save completed');
+      } else {
+        console.error('❌ PENCIL DEBUG - No dataUrl to save to history');
       }
     };
 
@@ -161,7 +169,7 @@ export const DrawingCanvas = forwardRef<DrawingCanvasHandle, DrawingCanvasProps>
     } else {
       saveSnapshot();
     }
-  }, [getCanvasDataUrl, saveToHistory]);
+  }, [getCanvasDataUrl, saveToHistory, objects.length]);
   const {
     handleMouseDown,
     handleMouseMove,
@@ -434,12 +442,20 @@ export const DrawingCanvas = forwardRef<DrawingCanvasHandle, DrawingCanvasProps>
   // Load drawing from data URL (for saved drawings)
   const loadDrawingFromDataUrl = useCallback(async (dataUrl: string) => {
     try {
+      console.log('🔄 PENCIL DEBUG - loadDrawingFromDataUrl called:', {
+        dataUrlLength: dataUrl.length,
+        currentObjectCount: objects.length,
+        stackTrace: new Error().stack?.split('\n')[2]?.trim(),
+        timestamp: Date.now()
+      });
+
       const canvas = canvasRef.current;
       if (!canvas) {
         throw new Error('Canvas not available');
       }
 
       // Clear existing objects
+      console.log('🚨 PENCIL DEBUG - About to call clearAll from loadDrawingFromDataUrl');
       clearAll();
 
       // Create image element and load the data URL
@@ -471,7 +487,7 @@ export const DrawingCanvas = forwardRef<DrawingCanvasHandle, DrawingCanvasProps>
         severity: ErrorSeverity.MEDIUM
       });
     }
-  }, [addImageObject, clearAll, onDrawingChange]);
+  }, [addImageObject, clearAll, onDrawingChange, objects.length]);
 
   // Image upload handler
   const handleImageUpload = useCallback(async (file: File) => {
@@ -530,12 +546,20 @@ export const DrawingCanvas = forwardRef<DrawingCanvasHandle, DrawingCanvasProps>
   // Handle undo/redo by restoring canvas state from history
   useEffect(() => {
     const historyState = getCurrentHistoryState();
+    console.log('🔄 PENCIL DEBUG - History effect triggered:', {
+      historyIndex,
+      hasHistoryState: !!historyState,
+      historyStateLength: historyState?.length || 0,
+      currentObjectCount: objects.length,
+      timestamp: Date.now()
+    });
+
     if (historyState && historyState !== getCanvasDataUrl()) {
-      debug('🔄 Restoring canvas from history:', { historyIndex, hasState: !!historyState });
+      console.log('🔄 PENCIL DEBUG - Restoring canvas from history (THIS WILL CLEAR OBJECTS)');
       // Load the history state back into the canvas
       loadDrawingFromDataUrl(historyState);
     }
-  }, [historyIndex, getCurrentHistoryState, getCanvasDataUrl, loadDrawingFromDataUrl]);
+  }, [historyIndex, getCurrentHistoryState, getCanvasDataUrl, loadDrawingFromDataUrl, objects.length]);
 
   // Re-render canvas when objects change
   useEffect(() => {
