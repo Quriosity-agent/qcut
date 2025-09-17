@@ -5,7 +5,7 @@
 When using the pencil tool to draw on the white board canvas, the drawing appears briefly during the drawing action but then disappears after the mouse is released or the drawing is completed.
 
 ## Status
-✅ **FULLY RESOLVED** - Both root causes identified and fixed
+🟡 **COMPREHENSIVE FIX APPLIED** - Three-layer protection implemented
 
 ## Observed Behavior
 
@@ -458,6 +458,70 @@ History effect triggers on `objects.length` dependency change, but the dependenc
 - ✅ `"🎉 SUCCESS: Stroke objects persisted!"` confirmation
 - ✅ No `"Restoring canvas from history (THIS WILL CLEAR OBJECTS)"` after strokes
 
-**Last Updated**: 2025-09-17 (Complete fix implemented and deployed)
-**Status**: ✅ **FULLY RESOLVED**
-**Priority**: ~~HIGH~~ → **CLOSED**
+## 🔴 CONSOLE LOGS V3 ANALYSIS - ISSUE PERSISTS
+
+**Critical Finding**: Despite both fixes, the issue still occurs:
+
+```
+Line 129: History effect triggered (after stroke creation)
+Line 134: ✅ Stroke rendered successfully
+Line 135: 🔄 Restoring canvas from history (THIS WILL CLEAR OBJECTS) ← STILL HAPPENING
+Lines 137-140: Objects cleared again
+```
+
+**Why Previous Fixes Failed**:
+
+1. **Fix 1 (Flag Protection)**: Only protects during save operations (lines 160, 164)
+2. **Fix 2 (Remove Dependency)**: Didn't prevent the triggering cause
+
+**Root Cause Analysis V3**:
+The history effect still triggers restoration because `historyState !== getCanvasDataUrl()` evaluates to true. This means:
+- Canvas state changes after stroke rendering
+- History state doesn't match current canvas
+- Effect decides restoration is needed
+- `clearAll()` is called, destroying the stroke
+
+**The Real Problem**:
+Timing issue between canvas rendering and history state comparison. The stroke is rendered to canvas, changing its dataURL, but the history effect compares against an older saved state.
+
+**Next Fix Strategy**:
+- Add stroke creation awareness to history effect
+- Prevent restoration immediately after stroke operations
+- OR fix the timing of history state updates
+- OR disable history effect entirely during stroke workflows
+
+## 🛡️ COMPREHENSIVE THREE-LAYER FIX IMPLEMENTED
+
+**Fix 3: Stroke Creation Protection** (Latest - addresses V3 issue):
+
+```typescript
+// Added in onCreateStroke callback:
+recentStrokeCreation.current = true;
+setTimeout(() => {
+  recentStrokeCreation.current = false;
+}, 200);
+
+// Enhanced history effect protection:
+if (recentStrokeCreation.current) {
+  console.log('🚫 PENCIL DEBUG - Skipping restoration - recent stroke creation');
+  return;
+}
+```
+
+**Complete Protection System**:
+
+1. **Fix 1**: `isSavingToHistory` flag - Protects during save operations
+2. **Fix 2**: Removed `objects.length` dependency - Prevents dependency-triggered restoration
+3. **Fix 3**: `recentStrokeCreation` flag - Blocks restoration for 200ms after stroke creation
+
+**Expected Console Output After Fix 3**:
+- ✅ `"🚫 Setting recentStrokeCreation flag to prevent restoration"`
+- ✅ `"🚫 Skipping restoration - recent stroke creation"`
+- ✅ `"✅ Cleared recentStrokeCreation flag, restoration re-enabled"`
+- ❌ **NO** `"Restoring canvas from history (THIS WILL CLEAR OBJECTS)"` during stroke workflow
+
+**This comprehensive approach should eliminate the timing window that allowed inappropriate restoration.**
+
+**Last Updated**: 2025-09-17 (Three-layer protection system deployed)
+**Status**: 🟡 **AWAITING VERIFICATION** - Comprehensive fix applied
+**Priority**: **HIGH** - Testing needed to confirm resolution
