@@ -68,9 +68,8 @@ export function KeyframeTimeline({
   const effects = getElementEffects(elementId);
   const effect = effects.find((e) => e.id === effectId);
 
-  if (!effect) return null;
-
-  const animation = effect.animations?.find(
+  // Calculate values needed by hooks (using optional chaining for safety)
+  const animation = effect?.animations?.find(
     (a) => a.parameter === selectedParameter
   );
   const pixelsPerSecond = (zoom / 100) * 50;
@@ -352,6 +351,9 @@ export function KeyframeTimeline({
   };
 
   const parameterRange = getParameterRange(selectedParameter);
+
+  // Early return after all hooks are defined
+  if (!effect) return null;
 
   return (
     <div
