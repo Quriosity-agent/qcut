@@ -116,7 +116,7 @@ export class DrawingStorage {
 
         const entries = await Promise.all(
           drawingKeys.map(async (key) => {
-            const raw = await window.electronAPI.storage.load(`${this.METADATA_PREFIX}${key}`);
+            const raw = await window.electronAPI?.storage.load(`${this.METADATA_PREFIX}${key}`);
             const md = typeof raw === 'string' ? JSON.parse(raw) : raw;
             return md ? { id: key, metadata: md as DrawingMetadata } : null;
           })
