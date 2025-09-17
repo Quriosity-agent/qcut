@@ -30,6 +30,8 @@ export interface StrokeObject extends CanvasObject {
 // Shape object for rectangles, circles, lines
 export interface ShapeObject extends CanvasObject {
   type: 'shape';
+  // Note: 'square' tool is normalized to 'rectangle' during creation
+  // A square is stored as a rectangle with equal width and height
   shapeType: 'rectangle' | 'circle' | 'line';
   strokeStyle: string;
   fillStyle?: string;
@@ -125,8 +127,9 @@ export const useCanvasObjects = () => {
   }, []);
 
   // Add a new shape object
+  // Note: 'square' should be normalized to 'rectangle' before calling this function
   const addShape = useCallback((
-    shapeType: 'rectangle' | 'circle' | 'line',
+    shapeType: 'rectangle' | 'circle' | 'line',  // Excludes 'square' - use 'rectangle' instead
     bounds: { x: number; y: number; width: number; height: number },
     style: {
       strokeStyle: string;
@@ -292,6 +295,17 @@ export const useCanvasObjects = () => {
     console.log('🔓 Group dissolved:', { groupId });
   }, []);
 
+  // Clear all objects and groups
+  const clearAll = useCallback(() => {
+    setObjects([]);
+    setGroups([]);
+    setSelectedObjectIds([]);
+    setIsDrawing(false);
+    setIsDragging(false);
+    dragState.current = null;
+    console.log('🧹 Canvas cleared');
+  }, []);
+
   // Start dragging objects
   const startDrag = useCallback((startX: number, startY: number) => {
     if (selectedObjectIds.length === 0) return false;
@@ -430,6 +444,10 @@ export const useCanvasObjects = () => {
               const radius = Math.min(obj.width, obj.height) / 2;
               ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
               break;
+            case 'line':
+              ctx.moveTo(obj.x, obj.y);
+              ctx.lineTo(obj.x + obj.width, obj.y + obj.height);
+              break;
           }
 
           if (shape.fillStyle) {
@@ -497,6 +515,7 @@ export const useCanvasObjects = () => {
     getObjectAtPosition,
     createGroup,
     ungroupObjects,
+    clearAll,
     startDrag,
     updateDrag,
     endDrag,

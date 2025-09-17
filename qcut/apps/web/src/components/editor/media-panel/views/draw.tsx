@@ -14,9 +14,11 @@ const DrawView: React.FC = () => {
   const [hasGroups, setHasGroups] = useState(false);
 
   // Handle loading a drawing from saved files
-  const handleLoadDrawing = useCallback((drawingData: string) => {
-    // This would need to be implemented to load the drawing into the canvas
-    // For now, we'll just store it and potentially trigger a canvas update
+  const handleLoadDrawing = useCallback(async (drawingData: string) => {
+    // Load the drawing into the canvas
+    if (canvasComponentRef.current?.loadDrawingFromDataUrl) {
+      await canvasComponentRef.current.loadDrawingFromDataUrl(drawingData);
+    }
     setCurrentDrawingData(drawingData);
     setActiveTab("canvas"); // Switch to canvas tab when loading
   }, [setActiveTab]);

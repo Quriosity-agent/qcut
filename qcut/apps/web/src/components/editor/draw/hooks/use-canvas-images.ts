@@ -134,8 +134,26 @@ export const useCanvasImages = (canvasRef: React.RefObject<HTMLCanvasElement>) =
     // Check from top to bottom (last added first)
     for (let i = images.length - 1; i >= 0; i--) {
       const img = images[i];
-      if (x >= img.x && x <= img.x + img.width &&
-          y >= img.y && y <= img.y + img.height) {
+
+      // Transform point to image's local coordinate system
+      const centerX = img.x + img.width / 2;
+      const centerY = img.y + img.height / 2;
+      const angle = -img.rotation * Math.PI / 180; // Negative for inverse rotation
+
+      // Translate to origin
+      const translatedX = x - centerX;
+      const translatedY = y - centerY;
+
+      // Rotate point
+      const rotatedX = translatedX * Math.cos(angle) - translatedY * Math.sin(angle);
+      const rotatedY = translatedX * Math.sin(angle) + translatedY * Math.cos(angle);
+
+      // Translate back and check bounds
+      const localX = rotatedX + centerX;
+      const localY = rotatedY + centerY;
+
+      if (localX >= img.x && localX <= img.x + img.width &&
+          localY >= img.y && localY <= img.y + img.height) {
         return img;
       }
     }

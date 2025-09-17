@@ -13,10 +13,21 @@ interface DrawingCanvasProps {
   disabled?: boolean;
 }
 
+// Export the type for the canvas handle that includes both HTMLCanvasElement methods and custom methods
+export interface DrawingCanvasHandle extends HTMLCanvasElement {
+  handleImageUpload: (file: File) => Promise<void>;
+  loadDrawingFromDataUrl: (dataUrl: string) => Promise<void>;
+  getSelectedCount: () => number;
+  getHasGroups: () => boolean;
+  getCanvasDataUrl: () => string | null;
+  handleCreateGroup: () => void;
+  handleUngroup: () => void;
+}
+
 // Default canvas size matches QCut editor dimensions
 const DEFAULT_CANVAS_SIZE = { width: 800, height: 450 }; // 16:9 ratio
 
-export const DrawingCanvas = forwardRef<HTMLCanvasElement, DrawingCanvasProps>(({
+export const DrawingCanvas = forwardRef<DrawingCanvasHandle, DrawingCanvasProps>(({
   className,
   onDrawingChange,
   backgroundImage,
@@ -59,7 +70,8 @@ export const DrawingCanvas = forwardRef<HTMLCanvasElement, DrawingCanvasProps>((
     deleteSelectedObjects,
     renderObjects,
     setIsDrawing,
-    setIsDragging
+    setIsDragging,
+    clearAll
   } = useCanvasObjects();
 
   // Memoize canvas dimensions for performance
@@ -307,6 +319,52 @@ export const DrawingCanvas = forwardRef<HTMLCanvasElement, DrawingCanvasProps>((
     setTextInputModal(prev => ({ ...prev, isOpen: false }));
   }, []);
 
+  // Load drawing from data URL (for saved drawings)
+  const loadDrawingFromDataUrl = useCallback(async (dataUrl: string) => {
+    try {
+      const canvas = canvasRef.current;
+      if (!canvas) {
+        throw new Error('Canvas not available');
+      }
+
+      // Clear existing objects
+      clearAll();
+
+      // Create image element and load the data URL
+      const img = new Image();
+      await new Promise<void>((resolve, reject) => {
+        img.onload = () => resolve();
+        img.onerror = () => reject(new Error('Failed to load drawing'));
+        img.src = dataUrl;
+      });
+
+      // Add the loaded drawing as a full-canvas image object
+      const imageData = {
+        src: dataUrl,
+        x: 0,
+        y: 0,
+        width: canvas.width,
+        height: canvas.height,
+        rotation: 0,
+        opacity: 1,
+        flipX: false,
+        flipY: false
+      };
+
+      addImageObject(imageData);
+
+      if (onDrawingChange) {
+        onDrawingChange(dataUrl);
+      }
+    } catch (error) {
+      handleError(error, {
+        operation: "load drawing",
+        category: ErrorCategory.MEDIA_PROCESSING,
+        severity: ErrorSeverity.MEDIUM
+      });
+    }
+  }, [addImageObject, clearAll, onDrawingChange]);
+
   // Image upload handler
   const handleImageUpload = useCallback(async (file: File) => {
     try {
@@ -418,32 +476,38 @@ export const DrawingCanvas = forwardRef<HTMLCanvasElement, DrawingCanvasProps>((
   }, [objects, renderObjects]);
 
   // Expose canvas ref and object/group functions to parent
-  useImperativeHandle(ref, () => ({
-    ...canvasRef.current!,
-    handleImageUpload,
-    getSelectedCount: () => selectedObjectIds.length,
-    getHasGroups: () => groups.length > 0,
-    getCanvasDataUrl, // Add this method for downloads
-    handleCreateGroup: () => {
-      const groupId = createGroup();
-      if (groupId) {
-        console.log('✅ Group created successfully:', { groupId, selectedCount: selectedObjectIds.length });
-      } else {
-        console.log('❌ Failed to create group - need at least 2 selected objects');
-      }
-    },
-    handleUngroup: () => {
-      // Find groups that contain any of the selected objects
-      const selectedGroups = groups.filter(group =>
-        group.objectIds.some(id => selectedObjectIds.includes(id))
-      );
+  useImperativeHandle(ref, () => {
+    if (!canvasRef.current) return null as any;
 
-      selectedGroups.forEach(group => {
-        ungroupObjects(group.id);
-        console.log('✅ Group dissolved:', { groupId: group.id });
-      });
-    }
-  }), [handleImageUpload, selectedObjectIds.length, groups.length, createGroup, ungroupObjects, selectedObjectIds, groups, getCanvasDataUrl]);
+    // Use Object.assign to maintain the canvas element's prototype chain
+    // This preserves DOM method bindings like getContext, toDataURL, etc.
+    return Object.assign(canvasRef.current, {
+      handleImageUpload,
+      loadDrawingFromDataUrl,
+      getSelectedCount: () => selectedObjectIds.length,
+      getHasGroups: () => groups.length > 0,
+      getCanvasDataUrl, // Add this method for downloads
+      handleCreateGroup: () => {
+        const groupId = createGroup();
+        if (groupId) {
+          console.log('✅ Group created successfully:', { groupId, selectedCount: selectedObjectIds.length });
+        } else {
+          console.log('❌ Failed to create group - need at least 2 selected objects');
+        }
+      },
+      handleUngroup: () => {
+        // Find groups that contain any of the selected objects
+        const selectedGroups = groups.filter(group =>
+          group.objectIds.some(id => selectedObjectIds.includes(id))
+        );
+
+        selectedGroups.forEach(group => {
+          ungroupObjects(group.id);
+          console.log('✅ Group dissolved:', { groupId: group.id });
+        });
+      }
+    });
+  }, [handleImageUpload, loadDrawingFromDataUrl, selectedObjectIds.length, groups.length, createGroup, ungroupObjects, selectedObjectIds, groups, getCanvasDataUrl]);
 
   return (
     <div

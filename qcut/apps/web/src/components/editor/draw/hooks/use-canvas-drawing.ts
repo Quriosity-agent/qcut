@@ -1,5 +1,21 @@
 import { useCallback, useRef, useEffect } from 'react';
 import { DrawingToolConfig } from '@/types/white-draw';
+import type { StrokeObject, ShapeObject, TextObject } from './use-canvas-objects';
+
+// Debug logging function that only logs in development mode when enabled
+const debug = (...args: unknown[]) => {
+  if (import.meta.env.DEV && import.meta.env.VITE_DEBUG_DRAW === '1') {
+    // eslint-disable-next-line no-console
+    console.log(...args);
+  }
+};
+
+type StrokeStyle = Pick<StrokeObject, 'strokeStyle' | 'lineWidth' | 'opacity' | 'tool' | 'lineCap' | 'lineJoin' | 'globalCompositeOperation'>;
+type ShapeStyle = Pick<ShapeObject, 'strokeStyle' | 'fillStyle' | 'lineWidth' | 'opacity'>;
+type TextStyle = Pick<TextObject, 'font' | 'fillStyle' | 'opacity'>;
+type StoredShapeType = 'rectangle' | 'circle' | 'line';  // Shape types as stored in objects
+type DrawingShapeType = 'rectangle' | 'circle' | 'line' | 'square';  // Shape types during drawing
+type ShapeBounds = { x: number; y: number; width: number; height: number };
 
 interface DrawingOptions {
   tool: DrawingToolConfig;
@@ -13,10 +29,10 @@ interface DrawingOptions {
   onSelectObject?: (position: { x: number; y: number }, isMultiSelect?: boolean) => boolean;
   onMoveObject?: (startPos: { x: number; y: number }, currentPos: { x: number; y: number }) => void;
   onEndMove?: () => void;
-  // New object-based drawing callbacks
-  onCreateStroke?: (points: { x: number; y: number }[], style: any) => string | null;
-  onCreateShape?: (shapeType: string, bounds: any, style: any) => string | null;
-  onCreateText?: (text: string, position: { x: number; y: number }, style: any) => string | null;
+  // New object-based drawing callbacks with proper types
+  onCreateStroke?: (points: { x: number; y: number }[], style: StrokeStyle) => string | null;
+  onCreateShape?: (shapeType: StoredShapeType, bounds: ShapeBounds, style: ShapeStyle) => string | null;
+  onCreateText?: (text: string, position: { x: number; y: number }, style: TextStyle) => string | null;
 }
 
 export const useCanvasDrawing = (
@@ -28,10 +44,11 @@ export const useCanvasDrawing = (
   const animationFrame = useRef<number | null>(null);
   const startPos = useRef<{ x: number; y: number } | null>(null);
   const currentStroke = useRef<{ x: number; y: number }[]>([]);
+  const previewCanvasRef = useRef<HTMLCanvasElement | null>(null);
 
   // Debug logging for tool selection
   useEffect(() => {
-    console.log('🎨 Canvas Drawing Hook - Tool changed:', {
+    debug('🎨 Canvas Drawing Hook - Tool changed:', {
       toolId: options.tool.id,
       toolName: options.tool.name,
       toolCategory: options.tool.category,
@@ -123,7 +140,7 @@ export const useCanvasDrawing = (
   const drawLine = useCallback((from: { x: number; y: number }, to: { x: number; y: number }) => {
     if (options.disabled) return;
 
-    console.log('🖌️ Drawing line:', { from, to, toolId: options.tool.id, category: options.tool.category });
+    debug('🖌️ Drawing line:', { from, to, toolId: options.tool.id, category: options.tool.category });
 
     // For brush/pencil tools, collect points for stroke object
     if (options.tool.category === 'brush' || options.tool.id === 'eraser') {
@@ -133,27 +150,18 @@ export const useCanvasDrawing = (
       }
       currentStroke.current.push(to);
 
-      // Optional: Draw preview to canvas for immediate feedback
-      const canvas = canvasRef.current;
-      const ctx = canvas?.getContext('2d');
-      if (ctx) {
-        ctx.save();
-        setupCanvasContext(ctx);
-        ctx.beginPath();
-        ctx.moveTo(from.x, from.y);
-        ctx.lineTo(to.x, to.y);
-        ctx.stroke();
-        ctx.restore();
-      }
+      // Note: Preview drawing is now handled by the object management system
+      // The stroke will be rendered through renderObjects() when finalized
+      // This prevents direct canvas manipulation which could interfere with state
     }
-  }, [setupCanvasContext, options.tool.category, options.tool.id, options.disabled]);
+  }, [options.tool.category, options.tool.id, options.disabled]);
 
   const drawShape = useCallback((start: { x: number; y: number }, end: { x: number; y: number }, isPreview = false) => {
     const canvas = canvasRef.current;
     const ctx = canvas?.getContext('2d');
     if (!ctx || options.disabled) return;
 
-    console.log('🔲 Drawing shape:', {
+    debug('🔲 Drawing shape:', {
       toolId: options.tool.id,
       start,
       end,
@@ -205,7 +213,7 @@ export const useCanvasDrawing = (
     const ctx = canvas?.getContext('2d');
     if (!ctx || options.disabled) return;
 
-    console.log('✏️ Drawing text:', { position, text, fontSize: options.brushSize });
+    debug('✏️ Drawing text:', { position, text, fontSize: options.brushSize });
 
     // Save context state
     ctx.save();
@@ -231,7 +239,7 @@ export const useCanvasDrawing = (
     startPos.current = pos;
     options.onDrawingStart();
 
-    console.log('🖱️ Mouse down:', { pos, toolId: options.tool.id, category: options.tool.category });
+    debug('🖱️ Mouse down:', { pos, toolId: options.tool.id, category: options.tool.category });
 
     // Handle select tool click
     if (options.tool.category === 'select') {
@@ -240,7 +248,7 @@ export const useCanvasDrawing = (
         const isMultiSelect = e.nativeEvent.ctrlKey || e.nativeEvent.metaKey;
         const objectSelected = options.onSelectObject(pos, isMultiSelect);
         if (objectSelected) {
-          console.log('🎯 Object selected for moving:', { multiSelect: isMultiSelect });
+          debug('🎯 Object selected for moving:', { multiSelect: isMultiSelect });
           // Object was selected, prepare for potential drag
           isDrawing.current = true; // Use drawing state to track selection drag
           return;
@@ -268,8 +276,8 @@ export const useCanvasDrawing = (
   }, [getCanvasCoordinates, options.onDrawingStart, options.disabled, drawLine, options.tool.category, options.tool.id]);
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
-    // Always log mouse move events to debug
-    console.log('🖱️ MOUSE MOVE EVENT FIRED:', {
+    // Log mouse move events for debugging when enabled
+    debug('🖱️ MOUSE MOVE EVENT FIRED:', {
       toolCategory: options.tool.category,
       isDrawing: isDrawing.current,
       disabled: options.disabled,
@@ -280,9 +288,9 @@ export const useCanvasDrawing = (
 
     const currentPos = getCanvasCoordinates(e.nativeEvent);
 
-    // Debug: Always log mouse move for select tool
+    // Debug: Log mouse move for select tool when debugging is enabled
     if (options.tool.category === 'select') {
-      console.log('🖱️ Mouse move (select tool debug):', {
+      debug('🖱️ Mouse move (select tool debug):', {
         start: startPos.current,
         current: currentPos,
         isDrawing: isDrawing.current,
@@ -296,7 +304,7 @@ export const useCanvasDrawing = (
     // Handle select tool dragging - Fixed: Don't require buttons to be pressed
     // isDrawing.current is sufficient to track drag state
     if (options.tool.category === 'select' && isDrawing.current && startPos.current) {
-      console.log('🚀 Calling onMoveObject with positions:', {
+      debug('🚀 Calling onMoveObject with positions:', {
         start: startPos.current,
         current: currentPos,
         deltaX: currentPos.x - startPos.current.x,
@@ -314,7 +322,7 @@ export const useCanvasDrawing = (
 
     // Handle shape tools differently
     if (options.tool.category === 'shape' && startPos.current) {
-      console.log('🖱️ Mouse move (shape):', {
+      debug('🖱️ Mouse move (shape):', {
         start: startPos.current,
         current: currentPos,
         toolId: options.tool.id
@@ -346,7 +354,7 @@ export const useCanvasDrawing = (
 
   const handleMouseUp = useCallback(() => {
     if (isDrawing.current) {
-      console.log('🖱️ Mouse up:', { toolId: options.tool.id, category: options.tool.category });
+      debug('🖱️ Mouse up:', { toolId: options.tool.id, category: options.tool.category });
 
       // Handle select tool end movement
       if (options.tool.category === 'select') {
@@ -362,46 +370,53 @@ export const useCanvasDrawing = (
       // For shape tools, create shape object
       if (options.tool.category === 'shape' && startPos.current) {
         const endPos = lastPos.current || startPos.current;
-        console.log('🔲 Finalizing shape:', {
+        debug('🔲 Finalizing shape:', {
           start: startPos.current,
           end: endPos,
           toolId: options.tool.id
         });
 
         if (options.onCreateShape) {
-          const bounds = {
+          const bounds: ShapeBounds = {
             x: Math.min(startPos.current.x, endPos.x),
             y: Math.min(startPos.current.y, endPos.y),
             width: Math.abs(endPos.x - startPos.current.x),
             height: Math.abs(endPos.y - startPos.current.y)
           };
 
-          const style = {
+          const style: ShapeStyle = {
             strokeStyle: options.color,
+            fillStyle: undefined,
             lineWidth: options.brushSize,
             opacity: options.opacity
           };
 
-          options.onCreateShape(options.tool.id, bounds, style);
+          // Map 'square' to 'rectangle' for storage consistency
+          // Square is just a rectangle with equal width and height
+          const normalizedShapeType: StoredShapeType =
+            options.tool.id === 'square' ? 'rectangle' :
+            options.tool.id as StoredShapeType;
+
+          options.onCreateShape(normalizedShapeType, bounds, style);
         }
       }
 
       // For brush tools, create stroke object
       if ((options.tool.category === 'brush' || options.tool.id === 'eraser') && currentStroke.current.length > 0) {
-        console.log('🖌️ Finalizing stroke:', {
+        debug('🖌️ Finalizing stroke:', {
           pointCount: currentStroke.current.length,
           toolId: options.tool.id
         });
 
         if (options.onCreateStroke) {
-          const style = {
+          const style: StrokeStyle = {
             strokeStyle: options.color,
             lineWidth: options.brushSize,
             opacity: options.opacity,
             tool: options.tool.id,
             lineCap: 'round',
             lineJoin: 'round',
-            globalCompositeOperation: options.tool.id === 'eraser' ? 'destination-out' : 'source-over'
+            globalCompositeOperation: (options.tool.id === 'eraser' ? 'destination-out' : 'source-over') as GlobalCompositeOperation
           };
 
           options.onCreateStroke([...currentStroke.current], style);
@@ -420,6 +435,9 @@ export const useCanvasDrawing = (
         animationFrame.current = null;
       }
 
+      // Clear any preview drawings
+      clearPreview();
+
       options.onDrawingEnd();
     }
   }, [options.onDrawingEnd, options.tool.category, options.tool.id, options.onEndMove, options.onCreateShape, options.onCreateStroke, options.color, options.brushSize, options.opacity]);
@@ -433,32 +451,115 @@ export const useCanvasDrawing = (
       isDrawing.current = true;
       const pos = getCanvasCoordinates(e.nativeEvent);
       lastPos.current = pos;
+      startPos.current = pos;
       options.onDrawingStart();
+
+      // Handle select tool
+      if (options.tool.category === 'select') {
+        if (options.onSelectObject) {
+          const objectSelected = options.onSelectObject(pos, false);
+          if (objectSelected) {
+            isDrawing.current = true;
+            return;
+          }
+        }
+        return;
+      }
+
+      // Handle text tool
+      if (options.tool.category === 'text') {
+        if (options.onTextInput) {
+          options.onTextInput(pos);
+        }
+        return;
+      }
+
+      // For shape tools, don't draw initial point
+      if (options.tool.category === 'shape') {
+        return;
+      }
+
+      // For brush tools, draw initial point
       drawLine(pos, pos);
     }
-  }, [getCanvasCoordinates, options.onDrawingStart, options.disabled, drawLine]);
+  }, [getCanvasCoordinates, options.onDrawingStart, options.disabled, drawLine, options.tool.category, options.onSelectObject, options.onTextInput]);
 
   const handleTouchMove = useCallback((e: React.TouchEvent) => {
-    if (!isDrawing.current || !lastPos.current || options.disabled) return;
+    if (options.disabled) return;
 
     e.preventDefault();
     if (e.touches.length === 1) {
       const currentPos = getCanvasCoordinates(e.nativeEvent);
+
+      // Handle select tool dragging
+      if (options.tool.category === 'select' && isDrawing.current && startPos.current) {
+        if (options.onMoveObject) {
+          options.onMoveObject(startPos.current, currentPos);
+        }
+        return;
+      }
+
+      // For other tools, require drawing state
+      if (!isDrawing.current) return;
+
+      // Handle shape tools
+      if (options.tool.category === 'shape' && startPos.current) {
+        lastPos.current = currentPos;
+        return;
+      }
+
+      // Handle brush tools
+      if (!lastPos.current) return;
       drawLine(lastPos.current, currentPos);
       lastPos.current = currentPos;
     }
-  }, [getCanvasCoordinates, drawLine, options.disabled]);
+  }, [getCanvasCoordinates, drawLine, options.disabled, options.tool.category, options.onMoveObject]);
 
   const handleTouchEnd = useCallback((e: React.TouchEvent) => {
     e.preventDefault();
     handleMouseUp();
   }, [handleMouseUp]);
 
-  // Cleanup animation frames on unmount
+  // Create preview canvas for temporary strokes
+  const getPreviewCanvas = useCallback(() => {
+    if (!previewCanvasRef.current && canvasRef.current) {
+      // Create overlay canvas for previews
+      const canvas = canvasRef.current;
+      const previewCanvas = document.createElement('canvas');
+      previewCanvas.width = canvas.width;
+      previewCanvas.height = canvas.height;
+      previewCanvas.style.position = 'absolute';
+      previewCanvas.style.pointerEvents = 'none';
+      previewCanvas.style.zIndex = '3';
+
+      // Insert preview canvas as sibling to main canvas
+      canvas.parentElement?.appendChild(previewCanvas);
+      previewCanvasRef.current = previewCanvas;
+    }
+    return previewCanvasRef.current;
+  }, []);
+
+  // Clear preview canvas
+  const clearPreview = useCallback(() => {
+    const previewCanvas = getPreviewCanvas();
+    if (previewCanvas) {
+      const ctx = previewCanvas.getContext('2d');
+      if (ctx) {
+        ctx.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
+      }
+    }
+  }, [getPreviewCanvas]);
+
+  // Cleanup animation frames and preview canvas on unmount
   useEffect(() => {
     return () => {
       if (animationFrame.current) {
         cancelAnimationFrame(animationFrame.current);
+      }
+      // Clean up preview canvas
+      if (previewCanvasRef.current) {
+        previewCanvasRef.current.remove();
+        previewCanvasRef.current = null;
       }
     };
   }, []);

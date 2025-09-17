@@ -17,7 +17,11 @@ export const SELECT_TOOL: DrawingToolConfig = {
   id: "select",
   name: "Select",
   description: "Select and move objects on the canvas",
-  icon: <MousePointer size={16} />,
+  icon: (
+    <MousePointer size={16}>
+      <title>Select</title>
+    </MousePointer>
+  ),
   cursor: "default",
   category: "select",
   shortcut: "S",
@@ -28,7 +32,11 @@ export const BRUSH_TOOL: DrawingToolConfig = {
   id: "brush",
   name: "Brush",
   description: "Freehand drawing with pressure sensitivity",
-  icon: <Brush size={16} />,
+  icon: (
+    <Brush size={16}>
+      <title>Brush</title>
+    </Brush>
+  ),
   cursor: "crosshair",
   category: "brush",
   shortcut: "B",
@@ -44,7 +52,11 @@ export const PENCIL_TOOL: DrawingToolConfig = {
   id: "pencil",
   name: "Pencil",
   description: "Precise drawing with harder edges",
-  icon: <Pencil size={16} />,
+  icon: (
+    <Pencil size={16}>
+      <title>Pencil</title>
+    </Pencil>
+  ),
   cursor: "crosshair",
   category: "brush",
   shortcut: "P",
@@ -60,7 +72,11 @@ export const ERASER_TOOL: DrawingToolConfig = {
   id: "eraser",
   name: "Eraser",
   description: "Remove parts of the drawing",
-  icon: <Eraser size={16} />,
+  icon: (
+    <Eraser size={16}>
+      <title>Eraser</title>
+    </Eraser>
+  ),
   cursor: "crosshair",
   category: "brush",
   shortcut: "E",
@@ -74,7 +90,11 @@ export const HIGHLIGHTER_TOOL: DrawingToolConfig = {
   id: "highlighter",
   name: "Highlighter",
   description: "Semi-transparent highlighting",
-  icon: <Highlighter size={16} />,
+  icon: (
+    <Highlighter size={16}>
+      <title>Highlighter</title>
+    </Highlighter>
+  ),
   cursor: "crosshair",
   category: "brush",
   shortcut: "H",
@@ -89,7 +109,11 @@ export const LINE_TOOL: DrawingToolConfig = {
   id: "line",
   name: "Line",
   description: "Draw straight lines",
-  icon: <Minus size={16} />,
+  icon: (
+    <Minus size={16}>
+      <title>Line</title>
+    </Minus>
+  ),
   cursor: "crosshair",
   category: "shape",
   shortcut: "L",
@@ -104,7 +128,11 @@ export const RECTANGLE_TOOL: DrawingToolConfig = {
   id: "rectangle",
   name: "Rectangle",
   description: "Draw rectangles and squares",
-  icon: <Square size={16} />,
+  icon: (
+    <Square size={16}>
+      <title>Rectangle</title>
+    </Square>
+  ),
   cursor: "crosshair",
   category: "shape",
   shortcut: "R",
@@ -119,7 +147,11 @@ export const CIRCLE_TOOL: DrawingToolConfig = {
   id: "circle",
   name: "Circle",
   description: "Draw circles and ellipses",
-  icon: <Circle size={16} />,
+  icon: (
+    <Circle size={16}>
+      <title>Circle</title>
+    </Circle>
+  ),
   cursor: "crosshair",
   category: "shape",
   shortcut: "C",
@@ -134,7 +166,11 @@ export const TEXT_TOOL: DrawingToolConfig = {
   id: "text",
   name: "Text",
   description: "Add text annotations",
-  icon: <Type size={16} />,
+  icon: (
+    <Type size={16}>
+      <title>Text</title>
+    </Type>
+  ),
   cursor: "text",
   category: "text",
   shortcut: "T",
@@ -148,7 +184,11 @@ export const BLUR_TOOL: DrawingToolConfig = {
   id: "blur",
   name: "Blur",
   description: "Apply blur effect",
-  icon: <Blend size={16} />,
+  icon: (
+    <Blend size={16}>
+      <title>Blur</title>
+    </Blend>
+  ),
   cursor: "crosshair",
   category: "effect",
   shortcut: "U",
