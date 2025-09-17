@@ -86,6 +86,9 @@ export const DrawingCanvas = forwardRef<DrawingCanvasHandle, DrawingCanvasProps>
   // Track if we're currently saving to history to prevent restoration
   const isSavingToHistory = useRef(false);
 
+  // Track recent stroke creation to prevent inappropriate restoration
+  const recentStrokeCreation = useRef(false);
+
   // Memoize canvas dimensions for performance
   const canvasDimensions = useMemo(() => {
     // Responsive canvas size based on container
@@ -315,15 +318,28 @@ export const DrawingCanvas = forwardRef<DrawingCanvasHandle, DrawingCanvasProps>
         style: style,
         timestamp: Date.now()
       });
+
+      // Set flag to prevent history restoration during stroke creation
+      recentStrokeCreation.current = true;
+      console.log('🚫 PENCIL DEBUG - Setting recentStrokeCreation flag to prevent restoration');
+
       const objectId = addStroke(points, style);
       console.log('🎯 PENCIL DEBUG - addStroke returned objectId:', {
         objectId,
         success: !!objectId,
         timestamp: Date.now()
       });
+
       // Save state to history immediately after object creation
       saveCanvasToHistory();
       console.log('💾 PENCIL DEBUG - Canvas state saved to history after stroke creation');
+
+      // Clear flag after a delay to allow rendering and history operations to complete
+      setTimeout(() => {
+        recentStrokeCreation.current = false;
+        console.log('✅ PENCIL DEBUG - Cleared recentStrokeCreation flag, restoration re-enabled');
+      }, 200);
+
       return objectId;
     }, [addStroke, saveCanvasToHistory]),
 
@@ -569,9 +585,14 @@ export const DrawingCanvas = forwardRef<DrawingCanvasHandle, DrawingCanvasProps>
       timestamp: Date.now()
     });
 
-    // Skip restoration if we're currently saving to history
+    // Skip restoration if we're currently saving to history or recently created stroke
     if (isSavingToHistory.current) {
       console.log('🚫 PENCIL DEBUG - Skipping restoration - currently saving to history');
+      return;
+    }
+
+    if (recentStrokeCreation.current) {
+      console.log('🚫 PENCIL DEBUG - Skipping restoration - recent stroke creation');
       return;
     }
 
