@@ -144,13 +144,24 @@ export const DrawingCanvas = forwardRef<DrawingCanvasHandle, DrawingCanvasProps>
 
   // Save current canvas state to history
   const saveCanvasToHistory = useCallback(() => {
-    const dataUrl = getCanvasDataUrl();
-    if (dataUrl) {
-      saveToHistory(dataUrl);
-      debug('💾 Canvas state saved to history');
+    const saveSnapshot = () => {
+      const dataUrl = getCanvasDataUrl();
+      if (dataUrl) {
+        saveToHistory(dataUrl);
+        debug('💾 Canvas state saved to history');
+      }
+    };
+
+    if (typeof window !== 'undefined') {
+      if (typeof window.requestAnimationFrame === 'function') {
+        window.requestAnimationFrame(() => window.requestAnimationFrame(saveSnapshot));
+      } else {
+        setTimeout(saveSnapshot, 0);
+      }
+    } else {
+      saveSnapshot();
     }
   }, [getCanvasDataUrl, saveToHistory]);
-
   const {
     handleMouseDown,
     handleMouseMove,
