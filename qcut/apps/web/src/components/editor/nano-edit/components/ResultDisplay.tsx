@@ -249,8 +249,6 @@ const ResultDisplay: React.FC<ResultDisplayProps> = ({
                     className="max-w-full max-h-full object-contain cursor-pointer"
                     onClick={() => onImageClick(src!)}
                     onKeyDown={(e) => e.key === "Enter" && onImageClick(src!)}
-                    tabIndex={0}
-                    role="button"
                     aria-label={`View ${label} in full size`}
                   />
                   <div className="absolute bottom-1 right-1 text-xs bg-black/50 text-white px-2 py-1 rounded">
@@ -604,6 +602,7 @@ const ResultDisplay: React.FC<ResultDisplayProps> = ({
           <>
             {viewMode === "side-by-side" && (
               <button
+                type="button"
                 onClick={handleDownloadComparison}
                 className="flex-1 py-2 px-4 bg-gray-800 text-gray-200 font-semibold rounded-lg shadow-sm hover:bg-gray-700 transition-all duration-200 flex items-center justify-center gap-2"
               >

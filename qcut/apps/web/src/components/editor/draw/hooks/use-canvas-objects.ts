@@ -622,7 +622,7 @@ export const useCanvasObjects = () => {
         hasMoved: false,
       };
     }
-  }, [isDragging]);
+  }, [isDragging, setObjects]);
 
   // Delete selected objects
   const deleteSelectedObjects = useCallback(() => {
@@ -630,7 +630,7 @@ export const useCanvasObjects = () => {
       prev.filter((obj) => !selectedObjectIds.includes(obj.id))
     );
     setSelectedObjectIds([]);
-  }, [selectedObjectIds]);
+  }, [selectedObjectIds, setObjects]);
 
   // Render objects to canvas (optionally filtered)
   const renderObjects = useCallback(
