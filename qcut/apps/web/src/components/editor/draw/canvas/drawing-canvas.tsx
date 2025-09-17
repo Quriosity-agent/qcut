@@ -565,6 +565,7 @@ export const DrawingCanvas = forwardRef<DrawingCanvasHandle, DrawingCanvasProps>
       historyStateLength: historyState?.length || 0,
       currentObjectCount: objects.length,
       isSavingToHistory: isSavingToHistory.current,
+      trigger: 'historyIndex or dependencies changed',
       timestamp: Date.now()
     });
 
@@ -578,8 +579,15 @@ export const DrawingCanvas = forwardRef<DrawingCanvasHandle, DrawingCanvasProps>
       console.log('🔄 PENCIL DEBUG - Restoring canvas from history (THIS WILL CLEAR OBJECTS)');
       // Load the history state back into the canvas
       loadDrawingFromDataUrl(historyState);
+    } else {
+      console.log('✅ PENCIL DEBUG - History effect ran but no restoration needed:', {
+        hasHistoryState: !!historyState,
+        statesMatch: historyState === getCanvasDataUrl(),
+        reason: !historyState ? 'no history state' : 'states match',
+        timestamp: Date.now()
+      });
     }
-  }, [historyIndex, getCurrentHistoryState, getCanvasDataUrl, loadDrawingFromDataUrl, objects.length]);
+  }, [historyIndex, getCurrentHistoryState, getCanvasDataUrl, loadDrawingFromDataUrl]);
 
   // Re-render canvas when objects change
   useEffect(() => {
