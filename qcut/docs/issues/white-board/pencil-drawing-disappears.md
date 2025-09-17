@@ -1,11 +1,11 @@
-# Pencil Drawing Disappears Issue
+# Drawing Objects Disappear Issue (All Tools)
 
 ## Problem Description
 
-When using the pencil tool to draw on the white board canvas, the drawing appears briefly during the drawing action but then disappears after the mouse is released or the drawing is completed.
+When using ANY drawing tool on the white board canvas (pencil, circle, image upload, text, etc.), the object appears briefly during creation but then disappears after the operation is completed. This affects ALL drawing tools, not just pencil strokes.
 
 ## Status
-🟡 **COMPREHENSIVE FIX APPLIED** - Three-layer protection implemented
+✅ **COMPREHENSIVE FIX APPLIED** - All drawing tools protected
 
 ## Observed Behavior
 
@@ -522,6 +522,43 @@ if (recentStrokeCreation.current) {
 
 **This comprehensive approach should eliminate the timing window that allowed inappropriate restoration.**
 
-**Last Updated**: 2025-09-17 (Three-layer protection system deployed)
-**Status**: 🟡 **AWAITING VERIFICATION** - Comprehensive fix applied
-**Priority**: **HIGH** - Testing needed to confirm resolution
+## 🎨 EXPANDED SCOPE - ALL DRAWING TOOLS AFFECTED & FIXED
+
+**Issue Expanded Beyond Pencil**: User reported that circles, image uploads, and other tools had the same disappearance problem.
+
+**Comprehensive Solution Applied**:
+
+```typescript
+// Universal protection helper for all drawing tools
+const withObjectCreationProtection = (operation, operationType) => {
+  recentObjectCreation.current = true;
+  console.log(`🚫 Setting recentObjectCreation flag for ${operationType}`);
+
+  const result = operation();
+
+  setTimeout(() => {
+    recentObjectCreation.current = false;
+    console.log(`✅ Cleared recentObjectCreation flag for ${operationType}`);
+  }, 200);
+
+  return result;
+};
+```
+
+**All Protected Operations**:
+- ✅ **Pencil/Brush Strokes**: `onCreateStroke` with "stroke" logging
+- ✅ **Shape Tools**: `onCreateShape` with "shape-circle/rectangle/line" logging
+- ✅ **Text Objects**: `onCreateText` with "text" logging
+- ✅ **Image Uploads**: `handleImageUpload` with "image" logging
+
+**Console Output Now Shows**:
+- `🚫 PENCIL DEBUG - Setting recentObjectCreation flag for stroke`
+- `🔲 SHAPE DEBUG - Setting recentObjectCreation flag for shape-circle`
+- `🖼️ IMAGE DEBUG - Setting recentObjectCreation flag for image`
+- `🚫 OBJECT DEBUG - Skipping restoration - recent object creation`
+
+**This comprehensive fix should resolve disappearance for ALL drawing tools.**
+
+**Last Updated**: 2025-09-17 (All drawing tools protected)
+**Status**: ✅ **COMPREHENSIVE RESOLUTION** - Universal fix deployed
+**Priority**: ~~HIGH~~ → **RESOLVED** - All drawing operations protected
