@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { devtools } from "zustand/middleware";
 import type { WhiteDrawStore, DrawingToolConfig } from "@/types/white-draw";
 import { DEFAULT_TOOL } from "@/components/editor/draw/constants/drawing-tools";
+import { generateUUID } from "@/lib/utils";
 
 export const useWhiteDrawStore = create<WhiteDrawStore>()(
   devtools(
@@ -40,7 +41,7 @@ export const useWhiteDrawStore = create<WhiteDrawStore>()(
 
       addLayer: () =>
         set((state) => ({
-          layers: [...state.layers, { id: Date.now().toString(), data: "", visible: true, opacity: 1 }]
+          layers: [...state.layers, { id: generateUUID(), data: "", visible: true, opacity: 1 }]
         }), false, "white-draw/addLayer"),
 
       saveToHistory: (snapshot) =>

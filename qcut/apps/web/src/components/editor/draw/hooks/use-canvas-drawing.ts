@@ -78,6 +78,9 @@ export const useCanvasDrawing = (
   }, []);
 
   const setupCanvasContext = useCallback((ctx: CanvasRenderingContext2D) => {
+    // Reset any filters from previous operations to prevent leakage
+    ctx.filter = 'none';
+
     // Set common properties
     ctx.lineWidth = options.brushSize;
     ctx.globalAlpha = options.opacity;

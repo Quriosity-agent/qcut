@@ -1,5 +1,6 @@
 import React, { useRef, useEffect, useCallback, useMemo, forwardRef, useImperativeHandle, useState } from 'react';
 import { useWhiteDrawStore, selectCurrentTool } from "@/stores/white-draw-store";
+import { DEFAULT_CANVAS_SIZE } from "@/stores/project-store";
 import { useCanvasDrawing } from "../hooks/use-canvas-drawing";
 import { useCanvasObjects } from "../hooks/use-canvas-objects";
 import { TextInputModal } from "../components/text-input-modal";
@@ -33,8 +34,6 @@ export interface DrawingCanvasHandle extends HTMLCanvasElement {
   clearAll: () => void;
 }
 
-// Default canvas size matches QCut editor dimensions
-const DEFAULT_CANVAS_SIZE = { width: 800, height: 450 }; // 16:9 ratio
 
 export const DrawingCanvas = forwardRef<DrawingCanvasHandle, DrawingCanvasProps>(({
   className,
@@ -407,19 +406,15 @@ export const DrawingCanvas = forwardRef<DrawingCanvasHandle, DrawingCanvasProps>
       });
 
       // Add the loaded drawing as a full-canvas image object
-      const imageData = {
-        src: dataUrl,
+      addImageObject({
+        id: `image-${Date.now()}`,
+        element: img,
         x: 0,
         y: 0,
         width: canvas.width,
         height: canvas.height,
         rotation: 0,
-        opacity: 1,
-        flipX: false,
-        flipY: false
-      };
-
-      addImageObject(imageData);
+      });
 
       if (onDrawingChange) {
         onDrawingChange(dataUrl);
