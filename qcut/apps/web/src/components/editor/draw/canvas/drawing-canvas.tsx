@@ -206,7 +206,7 @@ export const DrawingCanvas = forwardRef<DrawingCanvasHandle, DrawingCanvasProps>
       // Try to select any object at the position
       const object = getObjectAtPosition(canvasPosition.x, canvasPosition.y);
       if (object) {
-        console.log('🎯 Object selected:', {
+        debug('🎯 Object selected:', {
           objectId: object.id,
           objectType: object.type,
           position: canvasPosition,
@@ -231,7 +231,7 @@ export const DrawingCanvas = forwardRef<DrawingCanvasHandle, DrawingCanvasProps>
 
     onMoveObject: useCallback((startPos: { x: number; y: number }, currentPos: { x: number; y: number }) => {
       if (selectedObjectIds.length > 0) {
-        console.log('🚀 Moving objects:', {
+        debug('🚀 Moving objects:', {
           selectedIds: selectedObjectIds,
           startPos,
           currentPos,
@@ -239,7 +239,7 @@ export const DrawingCanvas = forwardRef<DrawingCanvasHandle, DrawingCanvasProps>
         });
         updateDrag(currentPos.x, currentPos.y);
       } else {
-        console.log('❌ No objects selected for movement:', {
+        debug('❌ No objects selected for movement:', {
           selectedCount: selectedObjectIds.length,
           isDragState: isDragging
         });
@@ -247,7 +247,7 @@ export const DrawingCanvas = forwardRef<DrawingCanvasHandle, DrawingCanvasProps>
     }, [selectedObjectIds, isDragging, updateDrag]),
 
     onEndMove: useCallback(() => {
-      console.log('🏁 End move operation');
+      debug('🏁 End move operation');
       endDrag();
       // Save final positions to history so undo/redo works for moves
       saveCanvasToHistory();
@@ -255,7 +255,7 @@ export const DrawingCanvas = forwardRef<DrawingCanvasHandle, DrawingCanvasProps>
 
     // New object creation callbacks with immediate history saving
     onCreateStroke: useCallback((points: { x: number; y: number }[], style: any) => {
-      console.log('🖌️ Creating stroke object:', { pointCount: points.length, style });
+      debug('🖌️ Creating stroke object:', { pointCount: points.length, style });
       const objectId = addStroke(points, style);
       // Save state to history immediately after object creation
       saveCanvasToHistory();
@@ -263,7 +263,7 @@ export const DrawingCanvas = forwardRef<DrawingCanvasHandle, DrawingCanvasProps>
     }, [addStroke, saveCanvasToHistory]),
 
     onCreateShape: useCallback((shapeType: string, bounds: any, style: any) => {
-      console.log('🔲 Creating shape object:', { shapeType, bounds, style });
+      debug('🔲 Creating shape object:', { shapeType, bounds, style });
       const objectId = addShape(shapeType as any, bounds, style);
       // Save state to history immediately after object creation
       saveCanvasToHistory();
@@ -271,7 +271,7 @@ export const DrawingCanvas = forwardRef<DrawingCanvasHandle, DrawingCanvasProps>
     }, [addShape, saveCanvasToHistory]),
 
     onCreateText: useCallback((text: string, position: { x: number; y: number }, style: any) => {
-      console.log('📝 Creating text object:', { text, position, style });
+      debug('📝 Creating text object:', { text, position, style });
       const objectId = addText(text, position, style);
       // Save state to history immediately after object creation
       saveCanvasToHistory();
@@ -491,7 +491,7 @@ export const DrawingCanvas = forwardRef<DrawingCanvasHandle, DrawingCanvasProps>
   useEffect(() => {
     const historyState = getCurrentHistoryState();
     if (historyState && historyState !== getCanvasDataUrl()) {
-      console.log('🔄 Restoring canvas from history:', { historyIndex, hasState: !!historyState });
+      debug('🔄 Restoring canvas from history:', { historyIndex, hasState: !!historyState });
       // Load the history state back into the canvas
       loadDrawingFromDataUrl(historyState);
     }
@@ -530,9 +530,9 @@ export const DrawingCanvas = forwardRef<DrawingCanvasHandle, DrawingCanvasProps>
       handleCreateGroup: () => {
         const groupId = createGroup();
         if (groupId) {
-          console.log('✅ Group created successfully:', { groupId, selectedCount: selectedObjectIds.length });
+          debug('✅ Group created successfully:', { groupId, selectedCount: selectedObjectIds.length });
         } else {
-          console.log('❌ Failed to create group - need at least 2 selected objects');
+          debug('❌ Failed to create group - need at least 2 selected objects');
         }
       },
       handleUngroup: () => {
@@ -543,7 +543,7 @@ export const DrawingCanvas = forwardRef<DrawingCanvasHandle, DrawingCanvasProps>
 
         selectedGroups.forEach(group => {
           ungroupObjects(group.id);
-          console.log('✅ Group dissolved:', { groupId: group.id });
+          debug('✅ Group dissolved:', { groupId: group.id });
         });
       }
     });
