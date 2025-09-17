@@ -5,7 +5,7 @@
 When using the pencil tool to draw on the white board canvas, the drawing appears briefly during the drawing action but then disappears after the mouse is released or the drawing is completed.
 
 ## Status
-🔴 **ROOT CAUSE IDENTIFIED** - Stroke objects are created successfully but immediately cleared from objects array
+🔴 **ROOT CAUSE FOUND** - History effect triggering `loadDrawingFromDataUrl` → `clearAll()` after stroke creation
 
 ## Observed Behavior
 
@@ -147,13 +147,26 @@ The following console messages have been added to help identify the issue:
 - [x] Verify stroke object bounds calculation is correct ✅ **WORKING**
 - [x] Verify stroke object rendering logic works correctly ✅ **WORKING**
 
-## NEW INVESTIGATION PRIORITIES
+## ✅ INVESTIGATION COMPLETED
 
-- [ ] **CRITICAL**: Identify what is clearing the objects array between renders
-- [ ] **CRITICAL**: Check if history save/restore is resetting the objects array
-- [ ] **CRITICAL**: Find the code that triggers the second re-render with empty objects
-- [ ] Check if `clearAll()` or `setObjects([])` is being called inappropriately
-- [ ] Investigate `loadDrawingFromDataUrl` being called after stroke creation
+- [x] **CRITICAL**: ✅ **FOUND** - History effect is clearing the objects array after stroke creation
+- [x] **CRITICAL**: ✅ **CONFIRMED** - History save/restore is resetting the objects array inappropriately
+- [x] **CRITICAL**: ✅ **IDENTIFIED** - History effect triggers `loadDrawingFromDataUrl` → `clearAll()`
+- [x] **FOUND**: `clearAll()` called from `loadDrawingFromDataUrl` in history effect
+- [x] **CONFIRMED**: `loadDrawingFromDataUrl` being called immediately after stroke creation via history effect
+
+## 🔧 SOLUTION REQUIRED
+
+**The Fix Needed:**
+The history effect should **NOT** trigger when we just saved to history. The effect needs to differentiate between:
+1. **User undo/redo operations** (should restore from history)
+2. **Automatic history saves** (should NOT restore from history)
+
+**Potential Solutions:**
+1. **Skip history restoration immediately after save**
+2. **Add flag to prevent history effect during save operations**
+3. **Improve history effect condition to detect save vs restore scenarios**
+4. **Debounce or delay history effect to avoid immediate restoration**
 
 ## Reproduction Steps
 
@@ -324,33 +337,63 @@ console.log('🔍 PENCIL DEBUG - Objects array state:', objects.map(obj => ({
 })));
 ```
 
-## DEBUG FINDINGS FROM CONSOLE LOGS
+## 🎯 ROOT CAUSE IDENTIFIED FROM CONSOLE LOGS
 
-**Observed Console Pattern (The Problem):**
+**Complete Console Flow Analysis:**
+The debug logs reveal the **exact sequence** causing the issue:
+
 ```
-✅ PENCIL DEBUG - Stroke rendered successfully: Object
-✅ PENCIL DEBUG - Objects rendering completed
-🔄 PENCIL DEBUG - Canvas re-render effect triggered: Object  ← SECOND RE-RENDER
-🧹 PENCIL DEBUG - Clearing canvas and redrawing background: Object
-⚠️ PENCIL DEBUG - No objects to render: Object  ← OBJECTS ARRAY IS EMPTY!
+Line 117: 🔄 PENCIL DEBUG - Restoring canvas from history (THIS WILL CLEAR OBJECTS)
+Line 118: 🔄 PENCIL DEBUG - loadDrawingFromDataUrl called
+Line 119: 🚨 PENCIL DEBUG - About to call clearAll from loadDrawingFromDataUrl
+Line 120: 🚨 PENCIL DEBUG - clearAll called
+Line 121: 📝 PENCIL DEBUG - setObjects called (direct): [empty array]
+Line 122: 🧹 PENCIL DEBUG - Canvas cleared, all objects removed
 ```
 
-**Analysis:**
-The stroke creation pipeline works perfectly. The issue is that **something is clearing the objects array AFTER successful stroke creation**, causing a second re-render with an empty objects array.
+**✅ CONFIRMED ROOT CAUSE:**
+The **History Effect** in `drawing-canvas.tsx:546-561` is triggering **immediately after stroke creation**, causing:
 
-**Likely Suspects:**
-1. **History System**: `saveCanvasToHistory()` → `loadDrawingFromDataUrl()` → `clearAll()`
-2. **State Reset**: Some effect or callback is calling `setObjects([])`
-3. **Component Unmount/Remount**: Component lifecycle issue
-4. **Concurrent State Updates**: Race condition in state updates
+1. ✅ Stroke created successfully (lines 96-116)
+2. ✅ Object added to array (line 107: "new length: 1")
+3. ✅ Stroke rendered successfully (line 116)
+4. 🔄 **History effect triggers** (line 117)
+5. 🚨 **`loadDrawingFromDataUrl` called** (line 118)
+6. 🚨 **`clearAll()` executed** (lines 119-122)
+7. ⚠️ **Objects array now empty** (line 135: "No objects to render")
 
-**Next Steps:**
-We need to add debug logging to track:
-- All calls to `setObjects`
-- All calls to `clearAll`
-- History save/restore operations
-- Component lifecycle events
+**The Problem Code:**
+```typescript
+// drawing-canvas.tsx:546-561
+useEffect(() => {
+  const historyState = getCurrentHistoryState();
+  if (historyState && historyState !== getCanvasDataUrl()) {
+    // This triggers loadDrawingFromDataUrl → clearAll()
+    loadDrawingFromDataUrl(historyState);
+  }
+}, [historyIndex, getCurrentHistoryState, getCanvasDataUrl, loadDrawingFromDataUrl]);
+```
 
-**Last Updated**: 2025-09-17
+**Why This Happens:**
+1. Stroke creation triggers `saveCanvasToHistory()`
+2. History save changes the history state
+3. History effect detects change and restores from history
+4. `loadDrawingFromDataUrl()` calls `clearAll()` as first step
+5. All objects (including the just-created stroke) are cleared
+6. Canvas re-renders with empty objects array
+
+## 📋 SUMMARY
+
+**Issue**: Pencil drawings disappear after mouse release
+**Root Cause**: History effect incorrectly restoring canvas state immediately after saving
+**Location**: `drawing-canvas.tsx:546-561` - History restoration effect
+**Solution**: Prevent history restoration when save operation just occurred
+
+**Next Steps**:
+1. Implement fix to prevent inappropriate history restoration
+2. Test fix ensures pencil drawings persist
+3. Verify undo/redo still works correctly
+
+**Last Updated**: 2025-09-17 (Root cause identified via console log analysis)
 **Assigned To**: Development Team
 **Priority**: High (Core functionality broken)
