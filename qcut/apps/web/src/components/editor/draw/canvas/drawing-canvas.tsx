@@ -530,12 +530,6 @@ export const DrawingCanvas = forwardRef<DrawingCanvasHandle, DrawingCanvasProps>
     if (!canvas) {
       // Return a proper object that satisfies the interface instead of null
       return {
-        // Provide dummy canvas methods that throw errors
-        getContext: () => { throw new Error('Canvas not available'); },
-        toDataURL: () => { throw new Error('Canvas not available'); },
-        addEventListener: () => { throw new Error('Canvas not available'); },
-        removeEventListener: () => { throw new Error('Canvas not available'); },
-        getBoundingClientRect: () => { throw new Error('Canvas not available'); },
         // Our custom methods
         handleImageUpload: async () => { throw new Error('Canvas not available'); },
         loadDrawingFromDataUrl: async () => { throw new Error('Canvas not available'); },
@@ -545,7 +539,7 @@ export const DrawingCanvas = forwardRef<DrawingCanvasHandle, DrawingCanvasProps>
         clearAll: () => { throw new Error('Canvas not available'); },
         handleCreateGroup: () => { throw new Error('Canvas not available'); },
         handleUngroup: () => { throw new Error('Canvas not available'); },
-      } as DrawingCanvasHandle;
+      } as unknown as DrawingCanvasHandle;
     }
 
     // Create a proxy that delegates canvas methods to the actual canvas
