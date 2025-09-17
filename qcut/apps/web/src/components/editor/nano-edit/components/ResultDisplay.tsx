@@ -108,14 +108,14 @@ const ResultDisplay: React.FC<ResultDisplayProps> = ({
     );
   };
 
-  const handleDownloadBoth = () => {
+  const handleDownloadBoth = useCallback(() => {
     if (content.secondaryImageUrl) {
       downloadImage(content.secondaryImageUrl, `line-art-${Date.now()}.png`);
     }
     if (content.imageUrl) {
       downloadImage(content.imageUrl, `final-result-${Date.now()}.png`);
     }
-  };
+  }, [content.secondaryImageUrl, content.imageUrl]);
 
   const handleDownloadComparison = useCallback(async () => {
     const imagesToLoad: { url: string | null; img: HTMLImageElement }[] = [
@@ -193,7 +193,12 @@ const ResultDisplay: React.FC<ResultDisplayProps> = ({
       // Fallback to downloading individual images
       handleDownloadBoth();
     }
-  }, [originalImageUrl, content.imageUrl, content.secondaryImageUrl]);
+  }, [
+    originalImageUrl,
+    content.imageUrl,
+    content.secondaryImageUrl,
+    handleDownloadBoth,
+  ]);
 
   // Special view for two-step results
   if (content.secondaryImageUrl && content.imageUrl && originalImageUrl) {

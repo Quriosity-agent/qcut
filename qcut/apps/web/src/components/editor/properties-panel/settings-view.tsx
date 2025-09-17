@@ -371,7 +371,7 @@ function ApiKeysView() {
     } finally {
       setIsTestingFreesound(false);
     }
-  }, [freesoundApiKey]);
+  }, []);
 
   // Load keys on mount
   useEffect(() => {

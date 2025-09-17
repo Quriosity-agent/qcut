@@ -466,18 +466,21 @@ export const useCanvasObjects = () => {
   );
 
   // Ungroup objects
-  const ungroupObjects = useCallback((groupId: string) => {
-    setGroups((prev) => prev.filter((group) => group.id !== groupId));
-    setObjects((prev) =>
-      prev.map((obj) =>
-        obj.groupId === groupId ? { ...obj, groupId: undefined } : obj
-      )
-    );
+  const ungroupObjects = useCallback(
+    (groupId: string) => {
+      setGroups((prev) => prev.filter((group) => group.id !== groupId));
+      setObjects((prev) =>
+        prev.map((obj) =>
+          obj.groupId === groupId ? { ...obj, groupId: undefined } : obj
+        )
+      );
 
-    if (import.meta.env.DEV) {
-      console.log("🔓 Group dissolved:", { groupId });
-    }
-  }, [setObjects]);
+      if (import.meta.env.DEV) {
+        console.log("🔓 Group dissolved:", { groupId });
+      }
+    },
+    [setObjects]
+  );
 
   // Clear all objects and groups
   const clearAll = useCallback(() => {
@@ -604,7 +607,7 @@ export const useCanvasObjects = () => {
         }
       }
     },
-    [isDragging, selectedObjectIds]
+    [isDragging, selectedObjectIds, setObjects]
   );
 
   // End dragging
@@ -622,7 +625,7 @@ export const useCanvasObjects = () => {
         hasMoved: false,
       };
     }
-  }, [isDragging, setObjects]);
+  }, [isDragging]);
 
   // Delete selected objects
   const deleteSelectedObjects = useCallback(() => {
