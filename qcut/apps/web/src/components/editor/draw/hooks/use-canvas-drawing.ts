@@ -163,7 +163,7 @@ export const useCanvasDrawing = (
 
     debug('🖌️ Drawing line:', { from, to, toolId: options.tool.id, category: options.tool.category });
 
-    // For brush/pencil tools, collect points for stroke object
+    // For brush/pencil tools, collect points for stroke object AND draw immediately for visual feedback
     if (options.tool.category === 'brush' || options.tool.id === 'eraser') {
       // Add points to current stroke
       if (currentStroke.current.length === 0) {
@@ -171,11 +171,23 @@ export const useCanvasDrawing = (
       }
       currentStroke.current.push(to);
 
-      // Note: Preview drawing is now handled by the object management system
-      // The stroke will be rendered through renderObjects() when finalized
-      // This prevents direct canvas manipulation which could interfere with state
+      // IMMEDIATE DRAWING: Draw to canvas immediately for visual feedback
+      // This will be overwritten when the final stroke object is created, but provides instant feedback
+      const canvas = canvasRef.current;
+      const ctx = canvas?.getContext('2d');
+      if (ctx) {
+        ctx.save();
+        setupCanvasContext(ctx);
+
+        ctx.beginPath();
+        ctx.moveTo(from.x, from.y);
+        ctx.lineTo(to.x, to.y);
+        ctx.stroke();
+
+        ctx.restore();
+      }
     }
-  }, [options.tool.category, options.tool.id, options.disabled]);
+  }, [options.tool.category, options.tool.id, options.disabled, setupCanvasContext]);
 
   const drawShape = useCallback((start: { x: number; y: number }, end: { x: number; y: number }, isPreview = false) => {
     const canvas = canvasRef.current;
