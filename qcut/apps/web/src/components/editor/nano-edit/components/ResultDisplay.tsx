@@ -13,6 +13,32 @@ type ViewMode = 'result' | 'side-by-side' | 'slider';
 type TwoStepViewMode = 'result' | 'grid' | 'slider';
 type ImageSelection = 'Original' | 'Line Art' | 'Final Result';
 
+interface ViewSwitcherProps {
+  viewMode: ViewMode;
+  onViewModeChange: (mode: ViewMode) => void;
+}
+
+const ViewSwitcher: React.FC<ViewSwitcherProps> = ({ viewMode, onViewModeChange }) => (
+  <div className="w-full flex justify-center">
+    <div className="p-1 bg-gray-900 rounded-lg flex items-center gap-1">
+      {(['result', 'side-by-side', 'slider'] as ViewMode[]).map(mode => (
+        <button
+          key={mode}
+          type="button"
+          onClick={() => onViewModeChange(mode)}
+          className={`px-3 py-1 text-xs font-semibold rounded-md transition-colors duration-200 ${
+            viewMode === mode
+              ? 'bg-gradient-to-r from-orange-500 to-yellow-400 text-black'
+              : 'text-gray-300 hover:bg-gray-700'
+          }`}
+        >
+          {mode.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+        </button>
+      ))}
+    </div>
+  </div>
+);
+
 const ResultDisplay: React.FC<ResultDisplayProps> = ({ content, onUseImageAsInput, onImageClick, originalImageUrl }) => {
   const [viewMode, setViewMode] = useState<ViewMode>('result');
   const [twoStepViewMode, setTwoStepViewMode] = useState<TwoStepViewMode>('result');
@@ -288,31 +314,10 @@ const ResultDisplay: React.FC<ResultDisplayProps> = ({ content, onUseImageAsInpu
     );
   }
 
-  // Fix: Define the ViewSwitcher component to handle view mode changes.
-  const ViewSwitcher = () => (
-    <div className="w-full flex justify-center">
-        <div className="p-1 bg-gray-900 rounded-lg flex items-center gap-1">
-            {(['result', 'side-by-side', 'slider'] as ViewMode[]).map(mode => (
-            <button
-                key={mode}
-                type="button"
-                onClick={() => setViewMode(mode)}
-                className={`px-3 py-1 text-xs font-semibold rounded-md transition-colors duration-200 ${
-                viewMode === mode
-                    ? 'bg-gradient-to-r from-orange-500 to-yellow-400 text-black'
-                    : 'text-gray-300 hover:bg-gray-700'
-                }`}
-            >
-                {mode.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase())}
-            </button>
-            ))}
-        </div>
-    </div>
-  );
 
   return (
     <div className="w-full h-full flex flex-col items-center gap-4 animate-fade-in">
-      {content.imageUrl && originalImageUrl && <ViewSwitcher />}
+      {content.imageUrl && originalImageUrl && <ViewSwitcher viewMode={viewMode} onViewModeChange={setViewMode} />}
       
       <div className="w-full flex-grow relative">
         {viewMode === 'result' && content.imageUrl && (
