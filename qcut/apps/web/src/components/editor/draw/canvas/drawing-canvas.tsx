@@ -83,6 +83,9 @@ export const DrawingCanvas = forwardRef<DrawingCanvasHandle, DrawingCanvasProps>
     clearAll
   } = useCanvasObjects();
 
+  // Track if we're currently saving to history to prevent restoration
+  const isSavingToHistory = useRef(false);
+
   // Memoize canvas dimensions for performance
   const canvasDimensions = useMemo(() => {
     // Responsive canvas size based on container
@@ -153,7 +156,17 @@ export const DrawingCanvas = forwardRef<DrawingCanvasHandle, DrawingCanvasProps>
       const dataUrl = getCanvasDataUrl();
       if (dataUrl) {
         console.log('💾 PENCIL DEBUG - Saving to history with dataUrl length:', dataUrl.length);
+
+        // Set flag to prevent history restoration during save
+        isSavingToHistory.current = true;
         saveToHistory(dataUrl);
+
+        // Clear flag after a short delay to allow effect to run
+        setTimeout(() => {
+          isSavingToHistory.current = false;
+          console.log('💾 PENCIL DEBUG - Save operation completed, restoration re-enabled');
+        }, 50);
+
         console.log('💾 PENCIL DEBUG - History save completed');
       } else {
         console.error('❌ PENCIL DEBUG - No dataUrl to save to history');
@@ -551,8 +564,15 @@ export const DrawingCanvas = forwardRef<DrawingCanvasHandle, DrawingCanvasProps>
       hasHistoryState: !!historyState,
       historyStateLength: historyState?.length || 0,
       currentObjectCount: objects.length,
+      isSavingToHistory: isSavingToHistory.current,
       timestamp: Date.now()
     });
+
+    // Skip restoration if we're currently saving to history
+    if (isSavingToHistory.current) {
+      console.log('🚫 PENCIL DEBUG - Skipping restoration - currently saving to history');
+      return;
+    }
 
     if (historyState && historyState !== getCanvasDataUrl()) {
       console.log('🔄 PENCIL DEBUG - Restoring canvas from history (THIS WILL CLEAR OBJECTS)');
@@ -595,6 +615,16 @@ export const DrawingCanvas = forwardRef<DrawingCanvasHandle, DrawingCanvasProps>
       });
       renderObjects(ctx);
       console.log('✅ PENCIL DEBUG - Objects rendering completed');
+
+      // Check if we have stroke objects persisting after creation (SUCCESS indicator)
+      const strokeObjects = objects.filter(obj => obj.type === 'stroke');
+      if (strokeObjects.length > 0) {
+        console.log('🎉 PENCIL DEBUG - SUCCESS: Stroke objects persisted!', {
+          strokeCount: strokeObjects.length,
+          strokeIds: strokeObjects.map(obj => obj.id),
+          timestamp: Date.now()
+        });
+      }
     } else {
       console.log('⚠️ PENCIL DEBUG - No objects to render:', {
         objectCount: objects.length,
