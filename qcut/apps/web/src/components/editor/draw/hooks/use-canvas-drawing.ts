@@ -118,6 +118,8 @@ export const useCanvasDrawing = (
       x: (clientX - rect.left) * scaleX,
       y: (clientY - rect.top) * scaleY,
     };
+    // Note: canvasRef.current is intentionally not in dependencies to avoid unnecessary re-creations
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const setupCanvasContext = useCallback(
@@ -244,6 +246,8 @@ export const useCanvasDrawing = (
       options.tool.id,
       options.disabled,
       setupCanvasContext,
+      // Note: canvasRef.current is intentionally not in dependencies to avoid unnecessary re-creations
+      // eslint-disable-next-line react-hooks/exhaustive-deps
     ]
   );
 
@@ -304,7 +308,13 @@ export const useCanvasDrawing = (
       // Restore context state
       ctx.restore();
     },
-    [setupCanvasContext, options.tool.id, options.disabled]
+    [
+      setupCanvasContext,
+      options.tool.id,
+      options.disabled,
+      // Note: canvasRef.current is intentionally not in dependencies to avoid unnecessary re-creations
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    ]
   );
 
   const drawText = useCallback(
@@ -327,7 +337,13 @@ export const useCanvasDrawing = (
       // Restore context state
       ctx.restore();
     },
-    [setupCanvasContext, options.disabled, options.brushSize]
+    [
+      setupCanvasContext,
+      options.disabled,
+      options.brushSize,
+      // Note: canvasRef.current is intentionally not in dependencies to avoid unnecessary re-creations
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    ]
   );
 
   // Mouse event handlers

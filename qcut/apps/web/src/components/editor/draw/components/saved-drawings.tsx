@@ -47,7 +47,7 @@ export const SavedDrawings: React.FC<SavedDrawingsProps> = ({
       loadSavedDrawings();
       loadStorageStats();
     }
-  }, [activeProject?.id]);
+  }, [activeProject?.id, loadSavedDrawings, loadStorageStats]);
 
   const loadSavedDrawings = async () => {
     if (!activeProject?.id) return;

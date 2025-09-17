@@ -14,6 +14,7 @@ const FILENAME_SANITIZE_RE = /[-:]/g;
  * Safe timeline integration that uses existing QCut patterns
  * DOES NOT modify core timeline - only uses existing methods
  */
+// biome-ignore lint/complexity/noStaticOnlyClass: This utility class provides a clean namespace for timeline integration functions
 export class TimelineIntegration {
   /**
    * Export drawing as regular image to timeline

@@ -14,6 +14,7 @@ interface DrawingMetadata {
  * Drawing storage service that safely extends QCut's existing storage
  * Uses existing storage.save/load methods - no new IPC handlers needed
  */
+// biome-ignore lint/complexity/noStaticOnlyClass: This utility class provides a clean namespace for related drawing storage functions
 export class DrawingStorage {
   private static readonly STORAGE_PREFIX = "qcut-drawing-";
   private static readonly METADATA_PREFIX = "qcut-drawing-meta-";

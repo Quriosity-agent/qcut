@@ -119,6 +119,7 @@ export const ToolSelector: React.FC<ToolSelectorProps> = ({ className }) => {
                   "#C0C0C0",
                 ].map((presetColor) => (
                   <button
+                    type="button"
                     key={presetColor}
                     onClick={() => setColor(presetColor)}
                     className={cn(

@@ -39,20 +39,13 @@ export function InteractiveElementOverlay({
   const elementRef = useRef<HTMLDivElement>(null);
   const { getElementEffects } = useEffectsStore();
 
-  // Check if element has effects
-  const hasEffects = getElementEffects(element.id).length > 0;
-
-  // Only show interactive overlay for elements with effects or text elements
-  if (!hasEffects && element.type !== "text") {
-    return null;
-  }
-
   // Type-safe helper to get element properties
   const getElementProperty = <T,>(prop: string, defaultValue: T): T => {
     const value = (element as any)[prop];
     return value !== undefined && value !== null ? (value as T) : defaultValue;
   };
 
+  // All hooks must be called before any conditional returns
   const [transform, setTransform] = useState<ElementTransform>({
     x: getElementProperty("x", 0),
     y: getElementProperty("y", 0),
@@ -203,6 +196,14 @@ export function InteractiveElementOverlay({
       };
     }
   }, [dragState.isDragging, handleMouseMove, handleMouseUp]);
+
+  // Check if element has effects
+  const hasEffects = getElementEffects(element.id).length > 0;
+
+  // Only show interactive overlay for elements with effects or text elements
+  if (!hasEffects && element.type !== "text") {
+    return null;
+  }
 
   if (!isSelected) {
     return null;
