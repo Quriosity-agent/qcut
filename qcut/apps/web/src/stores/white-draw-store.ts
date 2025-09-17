@@ -54,14 +54,21 @@ export const useWhiteDrawStore = create<WhiteDrawStore>()(
         }, false, "white-draw/saveToHistory"),
 
       undo: () =>
-        set((state) => ({
-          historyIndex: Math.max(0, state.historyIndex - 1)
-        }), false, "white-draw/undo"),
+        set((state) => {
+          const newIndex = Math.max(0, state.historyIndex - 1);
+          return { historyIndex: newIndex };
+        }, false, "white-draw/undo"),
 
       redo: () =>
-        set((state) => ({
-          historyIndex: Math.min(state.history.length - 1, state.historyIndex + 1)
-        }), false, "white-draw/redo"),
+        set((state) => {
+          const newIndex = Math.min(state.history.length - 1, state.historyIndex + 1);
+          return { historyIndex: newIndex };
+        }, false, "white-draw/redo"),
+
+      getCurrentHistoryState: () => {
+        const state = get();
+        return state.history[state.historyIndex];
+      },
 
       clear: () =>
         set({

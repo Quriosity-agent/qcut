@@ -49,7 +49,7 @@ export const DrawingCanvas = forwardRef<DrawingCanvasHandle, DrawingCanvasProps>
 
   // Use selectors for performance optimization
   const currentTool = useWhiteDrawStore(selectCurrentTool);
-  const { brushSize, color, opacity, setDrawing, saveToHistory } = useWhiteDrawStore();
+  const { brushSize, color, opacity, setDrawing, saveToHistory, historyIndex, getCurrentHistoryState } = useWhiteDrawStore();
 
   // Object management hook (replaces image-only management)
   const {
@@ -428,6 +428,16 @@ export const DrawingCanvas = forwardRef<DrawingCanvasHandle, DrawingCanvasProps>
       });
     }
   }, [addImageObject, onDrawingChange]);
+
+  // Handle undo/redo by restoring canvas state from history
+  useEffect(() => {
+    const historyState = getCurrentHistoryState();
+    if (historyState && historyState !== getCanvasDataUrl()) {
+      console.log('🔄 Restoring canvas from history:', { historyIndex, hasState: !!historyState });
+      // Load the history state back into the canvas
+      loadDrawingFromDataUrl(historyState);
+    }
+  }, [historyIndex, getCurrentHistoryState, getCanvasDataUrl, loadDrawingFromDataUrl]);
 
   // Re-render canvas when objects change
   useEffect(() => {

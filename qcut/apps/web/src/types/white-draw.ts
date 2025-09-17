@@ -54,6 +54,7 @@ export interface WhiteDrawStore {
   saveToHistory: (state: string) => void;
   undo: () => void;
   redo: () => void;
+  getCurrentHistoryState: () => string | undefined;
   clear: () => void;
   setProcessing: (processing: boolean) => void;
 }
