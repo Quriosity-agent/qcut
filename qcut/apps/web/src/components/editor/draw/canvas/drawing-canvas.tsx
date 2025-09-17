@@ -86,8 +86,25 @@ export const DrawingCanvas = forwardRef<DrawingCanvasHandle, DrawingCanvasProps>
   // Track if we're currently saving to history to prevent restoration
   const isSavingToHistory = useRef(false);
 
-  // Track recent stroke creation to prevent inappropriate restoration
-  const recentStrokeCreation = useRef(false);
+  // Track recent object creation to prevent inappropriate restoration
+  const recentObjectCreation = useRef(false);
+
+  // Helper function to apply object creation protection
+  const withObjectCreationProtection = useCallback((operation: () => any, operationType: string) => {
+    // Set flag to prevent history restoration during object creation
+    recentObjectCreation.current = true;
+    console.log(`🚫 PENCIL DEBUG - Setting recentObjectCreation flag for ${operationType}`);
+
+    const result = operation();
+
+    // Clear flag after a delay to allow rendering and history operations to complete
+    setTimeout(() => {
+      recentObjectCreation.current = false;
+      console.log(`✅ PENCIL DEBUG - Cleared recentObjectCreation flag for ${operationType}`);
+    }, 200);
+
+    return result;
+  }, []);
 
   // Memoize canvas dimensions for performance
   const canvasDimensions = useMemo(() => {
@@ -319,45 +336,69 @@ export const DrawingCanvas = forwardRef<DrawingCanvasHandle, DrawingCanvasProps>
         timestamp: Date.now()
       });
 
-      // Set flag to prevent history restoration during stroke creation
-      recentStrokeCreation.current = true;
-      console.log('🚫 PENCIL DEBUG - Setting recentStrokeCreation flag to prevent restoration');
+      return withObjectCreationProtection(() => {
+        const objectId = addStroke(points, style);
+        console.log('🎯 PENCIL DEBUG - addStroke returned objectId:', {
+          objectId,
+          success: !!objectId,
+          timestamp: Date.now()
+        });
 
-      const objectId = addStroke(points, style);
-      console.log('🎯 PENCIL DEBUG - addStroke returned objectId:', {
-        objectId,
-        success: !!objectId,
+        // Save state to history immediately after object creation
+        saveCanvasToHistory();
+        console.log('💾 PENCIL DEBUG - Canvas state saved to history after stroke creation');
+
+        return objectId;
+      }, 'stroke');
+    }, [addStroke, saveCanvasToHistory, withObjectCreationProtection]),
+
+    onCreateShape: useCallback((shapeType: 'rectangle' | 'circle' | 'line', bounds: { x: number; y: number; width: number; height: number }, style: ShapeStyle) => {
+      console.log('🔲 SHAPE DEBUG - onCreateShape callback triggered:', {
+        shapeType,
+        bounds,
+        style,
         timestamp: Date.now()
       });
 
-      // Save state to history immediately after object creation
-      saveCanvasToHistory();
-      console.log('💾 PENCIL DEBUG - Canvas state saved to history after stroke creation');
+      return withObjectCreationProtection(() => {
+        const objectId = addShape(shapeType, bounds, style);
+        console.log('🔲 SHAPE DEBUG - addShape returned objectId:', {
+          objectId,
+          success: !!objectId,
+          timestamp: Date.now()
+        });
 
-      // Clear flag after a delay to allow rendering and history operations to complete
-      setTimeout(() => {
-        recentStrokeCreation.current = false;
-        console.log('✅ PENCIL DEBUG - Cleared recentStrokeCreation flag, restoration re-enabled');
-      }, 200);
+        // Save state to history immediately after object creation
+        saveCanvasToHistory();
+        console.log('💾 SHAPE DEBUG - Canvas state saved to history after shape creation');
 
-      return objectId;
-    }, [addStroke, saveCanvasToHistory]),
-
-    onCreateShape: useCallback((shapeType: 'rectangle' | 'circle' | 'line', bounds: { x: number; y: number; width: number; height: number }, style: ShapeStyle) => {
-      debug('🔲 Creating shape object:', { shapeType, bounds, style });
-      const objectId = addShape(shapeType, bounds, style);
-      // Save state to history immediately after object creation
-      saveCanvasToHistory();
-      return objectId;
-    }, [addShape, saveCanvasToHistory]),
+        return objectId;
+      }, `shape-${shapeType}`);
+    }, [addShape, saveCanvasToHistory, withObjectCreationProtection]),
 
     onCreateText: useCallback((text: string, position: { x: number; y: number }, style: TextStyle) => {
-      debug('📝 Creating text object:', { text, position, style });
-      const objectId = addText(text, position, style);
-      // Save state to history immediately after object creation
-      saveCanvasToHistory();
-      return objectId;
-    }, [addText, saveCanvasToHistory])
+      console.log('📝 TEXT DEBUG - onCreateText callback triggered:', {
+        text,
+        position,
+        style,
+        timestamp: Date.now()
+      });
+
+      return withObjectCreationProtection(() => {
+        const objectId = addText(text, position, style);
+        console.log('📝 TEXT DEBUG - addText returned objectId:', {
+          objectId,
+          success: !!objectId,
+          timestamp: Date.now()
+        });
+
+        // Save state to history immediately after object creation
+        saveCanvasToHistory();
+        console.log('💾 TEXT DEBUG - Canvas state saved to history after text creation');
+
+        return objectId;
+      }, 'text');
+    }, [addText, saveCanvasToHistory, withObjectCreationProtection])
   });
 
   // Initialize canvases with error handling
@@ -547,22 +588,37 @@ export const DrawingCanvas = forwardRef<DrawingCanvasHandle, DrawingCanvasProps>
         height *= ratio;
       }
 
-      // Create image object
-      const imageData = {
-        id: `image-${Date.now()}`,
-        element: img,
-        x: (canvas.width - width) / 2, // Center horizontally
-        y: (canvas.height - height) / 2, // Center vertically
+      // Create image object with protection
+      console.log('🖼️ IMAGE DEBUG - handleImageUpload creating image object:', {
         width,
         height,
-        rotation: 0
-      };
+        timestamp: Date.now()
+      });
 
-      addImageObject(imageData);
+      withObjectCreationProtection(() => {
+        const imageData = {
+          id: `image-${Date.now()}`,
+          element: img,
+          x: (canvas.width - width) / 2, // Center horizontally
+          y: (canvas.height - height) / 2, // Center vertically
+          width,
+          height,
+          rotation: 0
+        };
 
-      if (onDrawingChange && canvasRef.current) {
-        onDrawingChange(canvasRef.current.toDataURL());
-      }
+        addImageObject(imageData);
+        console.log('🖼️ IMAGE DEBUG - addImageObject completed:', {
+          imageId: imageData.id,
+          timestamp: Date.now()
+        });
+
+        if (onDrawingChange && canvasRef.current) {
+          onDrawingChange(canvasRef.current.toDataURL());
+        }
+
+        console.log('💾 IMAGE DEBUG - Image upload completed with protection');
+        return imageData.id;
+      }, 'image');
     } catch (error) {
       handleError(error, {
         operation: "image upload",
@@ -570,7 +626,7 @@ export const DrawingCanvas = forwardRef<DrawingCanvasHandle, DrawingCanvasProps>
         severity: ErrorSeverity.MEDIUM
       });
     }
-  }, [addImageObject, onDrawingChange]);
+  }, [addImageObject, onDrawingChange, withObjectCreationProtection]);
 
   // Handle undo/redo by restoring canvas state from history
   useEffect(() => {
@@ -591,8 +647,8 @@ export const DrawingCanvas = forwardRef<DrawingCanvasHandle, DrawingCanvasProps>
       return;
     }
 
-    if (recentStrokeCreation.current) {
-      console.log('🚫 PENCIL DEBUG - Skipping restoration - recent stroke creation');
+    if (recentObjectCreation.current) {
+      console.log('🚫 OBJECT DEBUG - Skipping restoration - recent object creation');
       return;
     }
 
