@@ -5,7 +5,7 @@
 When using the pencil tool to draw on the white board canvas, the drawing appears briefly during the drawing action but then disappears after the mouse is released or the drawing is completed.
 
 ## Status
-🔴 **NOT SOLVED** - Issue persists despite initial fix attempts
+🟡 **DEBUGGING IN PROGRESS** - Comprehensive debug logging added to identify root cause
 
 ## Observed Behavior
 
