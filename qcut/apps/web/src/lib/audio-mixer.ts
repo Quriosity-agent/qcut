@@ -142,10 +142,8 @@ export class AudioMixer {
   private masterGain: GainNode;
   private tracks: Map<string, AudioTrackSource> = new Map();
   private isInitialized = false;
-  private options: AudioMixerOptions;
 
   constructor(options: AudioMixerOptions = {}) {
-    this.options = options;
     // Create audio context with specified options
     this.audioContext = new (
       window.AudioContext || (window as any).webkitAudioContext
