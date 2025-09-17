@@ -48,7 +48,7 @@ const DrawView: React.FC = () => {
       // Update state after group creation
       updateGroupState();
     }
-  }, []);
+  }, [updateGroupState]);
 
   // Handle group dissolution
   const handleUngroup = useCallback(() => {
@@ -57,7 +57,7 @@ const DrawView: React.FC = () => {
       // Update state after ungrouping
       updateGroupState();
     }
-  }, []);
+  }, [updateGroupState]);
 
   // Update group state from canvas
   const updateGroupState = useCallback(() => {

@@ -258,6 +258,8 @@ const NanoEditMain: React.FC = () => {
     customPrompt,
     addAsset,
     setProcessing,
+    addMediaItem,
+    projectId,
   ]);
 
   const handleUseImageAsInput = useCallback(async (imageUrl: string) => {

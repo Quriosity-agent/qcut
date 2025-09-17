@@ -104,7 +104,7 @@ const ImageEditorCanvas: React.FC<ImageEditorCanvasProps> = ({
     };
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
-  }, [draw, image, getCanvasContexts]);
+  }, [draw, getCanvasContexts]);
 
   const saveToHistory = useCallback(() => {
     const { maskCtx, maskCanvas } = getCanvasContexts();

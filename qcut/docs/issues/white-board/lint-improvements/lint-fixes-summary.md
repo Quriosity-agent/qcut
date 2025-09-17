@@ -173,6 +173,37 @@ These remaining issues are **non-critical** and would require significant refact
 **Additional Reduction**: 4.0% improvement
 **Overall Achievement**: **84% total error reduction**
 
+## 🎯 **Latest Round - Additional Easy Fixes (Round 2) - IMPLEMENTED ✅**
+
+### **3 More Safe & Easy Lint Fixes (Zero Risk to Existing Features) - COMPLETED:**
+
+1. **⚡ Fix Missing updateGroupState Dependencies** (2 locations) ✅
+   - **Files**: `apps/web/src/components/editor/media-panel/views/draw.tsx`
+   - **Functions**: `handleCreateGroup`, `handleUngroup`
+   - **Fix**: Added `updateGroupState` to useCallback dependency arrays
+   - **Risk**: None - function is stable and required for proper callback behavior
+   - **Impact**: Ensures proper dependency tracking and prevents stale closure issues
+   - **Status**: ✅ **IMPLEMENTED**
+
+2. **🧹 Remove Unnecessary image Dependency** (1 location) ✅
+   - **File**: `apps/web/src/components/editor/nano-edit/components/ImageEditorCanvas.tsx`
+   - **Fix**: Removed unused `image` dependency from useEffect dependency array
+   - **Risk**: None - `image` variable is not used within the effect
+   - **Impact**: Prevents unnecessary effect re-runs, improves performance
+   - **Status**: ✅ **IMPLEMENTED**
+
+3. **🔧 Fix Missing addMediaItem and projectId Dependencies** (1 location) ✅
+   - **File**: `apps/web/src/components/editor/nano-edit/components/NanoEditMain.tsx`
+   - **Function**: `handleGenerate`
+   - **Fix**: Added `addMediaItem` and `projectId` to useCallback dependency array
+   - **Risk**: None - these are stable dependencies required for proper callback behavior
+   - **Impact**: Ensures callback updates when dependencies change, prevents stale closure bugs
+   - **Status**: ✅ **IMPLEMENTED**
+
+**Latest Round Total**: 3 additional lint errors fixed ✅
+**Estimated New Error Count**: ~116-119 errors (pending verification)
+**Cumulative Achievement**: Continuing toward **85%+ total error reduction**
+
 ### **Implementation Results:**
 - ✅ All fixes successfully implemented and tested
 - ✅ **Zero functional changes** to drawing logic confirmed
