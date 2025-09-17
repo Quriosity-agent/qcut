@@ -280,10 +280,16 @@ export const DrawingCanvas = forwardRef<DrawingCanvasHandle, DrawingCanvasProps>
 
     // New object creation callbacks with immediate history saving
     onCreateStroke: useCallback((points: { x: number; y: number }[], style: StrokeStyle) => {
-      debug('🖌️ Creating stroke object:', { pointCount: points.length, style });
+      console.log('🎯 PENCIL DEBUG - onCreateStroke callback triggered:', {
+        pointCount: points.length,
+        points: points,
+        style: style
+      });
       const objectId = addStroke(points, style);
+      console.log('🎯 PENCIL DEBUG - addStroke returned objectId:', objectId);
       // Save state to history immediately after object creation
       saveCanvasToHistory();
+      console.log('🎯 PENCIL DEBUG - History saved after stroke creation');
       return objectId;
     }, [addStroke, saveCanvasToHistory]),
 
@@ -520,18 +526,30 @@ export const DrawingCanvas = forwardRef<DrawingCanvasHandle, DrawingCanvasProps>
 
   // Re-render canvas when objects change
   useEffect(() => {
+    console.log('🔄 PENCIL DEBUG - Canvas re-render effect triggered:', {
+      objectCount: objects.length,
+      objects: objects.map(obj => ({ id: obj.id, type: obj.type }))
+    });
+
     const canvas = canvasRef.current;
     const ctx = canvas?.getContext('2d');
-    if (!ctx || !canvas) return;
+    if (!ctx || !canvas) {
+      console.error('❌ PENCIL DEBUG - No canvas or context for re-render');
+      return;
+    }
 
     // Clear and redraw with white background
+    console.log('🔄 PENCIL DEBUG - Clearing canvas and redrawing background');
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.fillStyle = 'white';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     // Render all objects (strokes, shapes, text, images)
     if (objects.length > 0) {
+      console.log('🔄 PENCIL DEBUG - Rendering objects to canvas');
       renderObjects(ctx);
+    } else {
+      console.log('⚠️ PENCIL DEBUG - No objects to render');
     }
   }, [objects, renderObjects]);
 

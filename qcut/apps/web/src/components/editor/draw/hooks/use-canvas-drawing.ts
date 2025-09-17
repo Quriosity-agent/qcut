@@ -161,15 +161,23 @@ export const useCanvasDrawing = (
   const drawLine = useCallback((from: { x: number; y: number }, to: { x: number; y: number }) => {
     if (options.disabled) return;
 
-    debug('🖌️ Drawing line:', { from, to, toolId: options.tool.id, category: options.tool.category });
+    console.log('🖌️ PENCIL DEBUG - Drawing line:', {
+      from,
+      to,
+      toolId: options.tool.id,
+      category: options.tool.category,
+      currentStrokeLength: currentStroke.current.length
+    });
 
     // For brush/pencil tools, collect points for stroke object AND draw immediately for visual feedback
     if (options.tool.category === 'brush' || options.tool.id === 'eraser') {
       // Add points to current stroke
       if (currentStroke.current.length === 0) {
         currentStroke.current.push(from);
+        console.log('🖌️ PENCIL DEBUG - Added first point:', from);
       }
       currentStroke.current.push(to);
+      console.log('🖌️ PENCIL DEBUG - Added point, total points:', currentStroke.current.length);
 
       // IMMEDIATE DRAWING: Draw to canvas immediately for visual feedback
       // This will be overwritten when the final stroke object is created, but provides instant feedback
@@ -185,6 +193,9 @@ export const useCanvasDrawing = (
         ctx.stroke();
 
         ctx.restore();
+        console.log('🖌️ PENCIL DEBUG - Drew line segment to canvas');
+      } else {
+        console.error('❌ PENCIL DEBUG - No canvas context available for immediate drawing');
       }
     }
   }, [options.tool.category, options.tool.id, options.disabled, setupCanvasContext]);
@@ -270,9 +281,19 @@ export const useCanvasDrawing = (
     const pos = getCanvasCoordinates(e.nativeEvent);
     lastPos.current = pos;
     startPos.current = pos;
+
+    // Clear current stroke at start of new drawing
+    currentStroke.current = [];
+
     options.onDrawingStart();
 
-    debug('🖱️ Mouse down:', { pos, toolId: options.tool.id, category: options.tool.category });
+    console.log('🖱️ PENCIL DEBUG - Mouse down:', {
+      pos,
+      toolId: options.tool.id,
+      category: options.tool.category,
+      isDrawing: isDrawing.current,
+      strokeLength: currentStroke.current.length
+    });
 
     // Handle select tool click
     if (options.tool.category === 'select') {
@@ -448,9 +469,11 @@ export const useCanvasDrawing = (
 
       // For brush tools, create stroke object
       if ((options.tool.category === 'brush' || options.tool.id === 'eraser') && currentStroke.current.length > 0) {
-        debug('🖌️ Finalizing stroke:', {
+        console.log('🖌️ PENCIL DEBUG - Finalizing stroke:', {
           pointCount: currentStroke.current.length,
-          toolId: options.tool.id
+          toolId: options.tool.id,
+          points: currentStroke.current,
+          hasOnCreateStroke: !!options.onCreateStroke
         });
 
         if (options.onCreateStroke) {
@@ -464,11 +487,22 @@ export const useCanvasDrawing = (
             globalCompositeOperation: (options.tool.id === 'eraser' ? 'destination-out' : 'source-over') as GlobalCompositeOperation
           };
 
-          options.onCreateStroke([...currentStroke.current], style);
+          console.log('🖌️ PENCIL DEBUG - Calling onCreateStroke with style:', style);
+          const strokeId = options.onCreateStroke([...currentStroke.current], style);
+          console.log('🖌️ PENCIL DEBUG - onCreateStroke returned:', strokeId);
+        } else {
+          console.error('❌ PENCIL DEBUG - No onCreateStroke callback available!');
         }
 
         // Clear current stroke
         currentStroke.current = [];
+        console.log('🖌️ PENCIL DEBUG - Cleared current stroke');
+      } else {
+        console.log('⚠️ PENCIL DEBUG - No stroke to finalize:', {
+          category: options.tool.category,
+          toolId: options.tool.id,
+          strokeLength: currentStroke.current.length
+        });
       }
 
       isDrawing.current = false;

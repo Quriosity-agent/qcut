@@ -94,13 +94,28 @@ export const useCanvasObjects = () => {
       globalCompositeOperation: string;
     }
   ) => {
-    if (points.length === 0) return null;
+    console.log('🏗️ PENCIL DEBUG - addStroke called:', {
+      pointCount: points.length,
+      points: points,
+      style: style
+    });
+
+    if (points.length === 0) {
+      console.error('❌ PENCIL DEBUG - No points provided to addStroke');
+      return null;
+    }
 
     // Calculate bounding box
     const minX = Math.min(...points.map(p => p.x));
     const maxX = Math.max(...points.map(p => p.x));
     const minY = Math.min(...points.map(p => p.y));
     const maxY = Math.max(...points.map(p => p.y));
+
+    console.log('🏗️ PENCIL DEBUG - Calculated bounds:', {
+      minX, maxX, minY, maxY,
+      width: maxX - minX,
+      height: maxY - minY
+    });
 
     const strokeObject: StrokeObject = {
       id: generateUUID(),
@@ -122,11 +137,19 @@ export const useCanvasObjects = () => {
       created: new Date()
     };
 
-    setObjects(prev => [...prev, strokeObject]);
+    console.log('🏗️ PENCIL DEBUG - Created stroke object:', strokeObject);
 
-    if (import.meta.env.DEV) {
-      console.log('✏️ Stroke object created:', { id: strokeObject.id, pointCount: points.length });
-    }
+    setObjects(prev => {
+      const newObjects = [...prev, strokeObject];
+      console.log('🏗️ PENCIL DEBUG - Updated objects array, new length:', newObjects.length);
+      return newObjects;
+    });
+
+    console.log('✏️ PENCIL DEBUG - Stroke object created successfully:', {
+      id: strokeObject.id,
+      pointCount: points.length,
+      bounds: { x: strokeObject.x, y: strokeObject.y, width: strokeObject.width, height: strokeObject.height }
+    });
 
     return strokeObject.id;
   }, []);
@@ -437,10 +460,21 @@ export const useCanvasObjects = () => {
 
   // Render all objects to canvas
   const renderObjects = useCallback((ctx: CanvasRenderingContext2D) => {
+    console.log('🎨 PENCIL DEBUG - renderObjects called:', {
+      objectCount: objects.length,
+      objects: objects.map(obj => ({ id: obj.id, type: obj.type, x: obj.x, y: obj.y }))
+    });
+
     // Sort by z-index
     const sortedObjects = [...objects].sort((a, b) => a.zIndex - b.zIndex);
 
     sortedObjects.forEach(obj => {
+      console.log('🎨 PENCIL DEBUG - Rendering object:', {
+        id: obj.id,
+        type: obj.type,
+        bounds: { x: obj.x, y: obj.y, width: obj.width, height: obj.height }
+      });
+
       ctx.save();
 
       // Apply object opacity
@@ -449,6 +483,14 @@ export const useCanvasObjects = () => {
       switch (obj.type) {
         case 'stroke': {
           const stroke = obj as StrokeObject;
+          console.log('🎨 PENCIL DEBUG - Rendering stroke:', {
+            id: stroke.id,
+            pointCount: stroke.points.length,
+            strokeStyle: stroke.strokeStyle,
+            lineWidth: stroke.lineWidth,
+            points: stroke.points
+          });
+
           ctx.strokeStyle = stroke.strokeStyle;
           ctx.lineWidth = stroke.lineWidth;
           ctx.lineCap = stroke.lineCap as CanvasLineCap;
@@ -458,13 +500,22 @@ export const useCanvasObjects = () => {
           if (stroke.points.length > 1) {
             ctx.beginPath();
             const firstPoint = stroke.points[0];
-            ctx.moveTo(obj.x + firstPoint.x, obj.y + firstPoint.y);
+            const startX = obj.x + firstPoint.x;
+            const startY = obj.y + firstPoint.y;
+            ctx.moveTo(startX, startY);
+
+            console.log('🎨 PENCIL DEBUG - Stroke path start:', { startX, startY });
 
             for (let i = 1; i < stroke.points.length; i++) {
               const point = stroke.points[i];
-              ctx.lineTo(obj.x + point.x, obj.y + point.y);
+              const lineX = obj.x + point.x;
+              const lineY = obj.y + point.y;
+              ctx.lineTo(lineX, lineY);
             }
             ctx.stroke();
+            console.log('🎨 PENCIL DEBUG - Stroke rendered successfully');
+          } else {
+            console.log('⚠️ PENCIL DEBUG - Stroke has insufficient points:', stroke.points.length);
           }
           break;
         }
