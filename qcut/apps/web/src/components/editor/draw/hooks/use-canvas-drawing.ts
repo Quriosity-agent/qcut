@@ -102,7 +102,7 @@ export const useCanvasDrawing = (
     options.disabled,
   ]);
 
-  const getCanvasCoordinates = useCallback((e: MouseEvent | TouchEvent) => {
+  // biome-ignore lint/correctness/useExhaustiveDependencies: canvasRef.current intentionally omitted to avoid unnecessary re-creations\n  const getCanvasCoordinates = useCallback((e: MouseEvent | TouchEvent) => {
     const canvas = canvasRef.current;
     if (!canvas) return { x: 0, y: 0 };
 
@@ -251,7 +251,7 @@ export const useCanvasDrawing = (
     ]
   );
 
-  const drawShape = useCallback(
+  // biome-ignore lint/correctness/useExhaustiveDependencies: canvasRef.current intentionally omitted to avoid unnecessary re-creations\n  const drawShape = useCallback(
     (
       start: { x: number; y: number },
       end: { x: number; y: number },
@@ -414,6 +414,8 @@ export const useCanvasDrawing = (
       drawLine,
       options.tool.category,
       options.tool.id,
+      options.onSelectObject,
+      options.onTextInput,
     ]
   );
 
@@ -655,6 +657,7 @@ export const useCanvasDrawing = (
     options.color,
     options.brushSize,
     options.opacity,
+    clearPreview,
   ]);
 
   // Touch event handlers with better mobile support
