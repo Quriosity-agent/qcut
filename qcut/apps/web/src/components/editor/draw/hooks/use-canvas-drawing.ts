@@ -161,12 +161,14 @@ export const useCanvasDrawing = (
   const drawLine = useCallback((from: { x: number; y: number }, to: { x: number; y: number }) => {
     if (options.disabled) return;
 
+    // Always log for debugging pencil issue - regardless of VITE_DEBUG_DRAW setting
     console.log('🖌️ PENCIL DEBUG - Drawing line:', {
       from,
       to,
       toolId: options.tool.id,
       category: options.tool.category,
-      currentStrokeLength: currentStroke.current.length
+      currentStrokeLength: currentStroke.current.length,
+      timestamp: Date.now()
     });
 
     // For brush/pencil tools, collect points for stroke object AND draw immediately for visual feedback
@@ -174,7 +176,7 @@ export const useCanvasDrawing = (
       // Add points to current stroke
       if (currentStroke.current.length === 0) {
         currentStroke.current.push(from);
-        console.log('🖌️ PENCIL DEBUG - Added first point:', from);
+        console.log('🖌️ PENCIL DEBUG - Added first point:', { point: from, strokeId: 'new-stroke', timestamp: Date.now() });
       }
       currentStroke.current.push(to);
       console.log('🖌️ PENCIL DEBUG - Added point, total points:', currentStroke.current.length);
@@ -287,12 +289,14 @@ export const useCanvasDrawing = (
 
     options.onDrawingStart();
 
+    // Always log mouse events for debugging - regardless of VITE_DEBUG_DRAW setting
     console.log('🖱️ PENCIL DEBUG - Mouse down:', {
       pos,
       toolId: options.tool.id,
       category: options.tool.category,
       isDrawing: isDrawing.current,
-      strokeLength: currentStroke.current.length
+      strokeLength: currentStroke.current.length,
+      timestamp: Date.now()
     });
 
     // Handle select tool click
@@ -408,7 +412,12 @@ export const useCanvasDrawing = (
 
   const handleMouseUp = useCallback(() => {
     if (isDrawing.current) {
-      debug('🖱️ Mouse up:', { toolId: options.tool.id, category: options.tool.category });
+      console.log('🖱️ PENCIL DEBUG - Mouse up:', {
+        toolId: options.tool.id,
+        category: options.tool.category,
+        strokePoints: currentStroke.current.length,
+        timestamp: Date.now()
+      });
 
       // Handle select tool end movement
       if (options.tool.category === 'select') {
@@ -473,7 +482,8 @@ export const useCanvasDrawing = (
           pointCount: currentStroke.current.length,
           toolId: options.tool.id,
           points: currentStroke.current,
-          hasOnCreateStroke: !!options.onCreateStroke
+          hasOnCreateStroke: !!options.onCreateStroke,
+          timestamp: Date.now()
         });
 
         if (options.onCreateStroke) {
@@ -489,7 +499,11 @@ export const useCanvasDrawing = (
 
           console.log('🖌️ PENCIL DEBUG - Calling onCreateStroke with style:', style);
           const strokeId = options.onCreateStroke([...currentStroke.current], style);
-          console.log('🖌️ PENCIL DEBUG - onCreateStroke returned:', strokeId);
+          console.log('🖌️ PENCIL DEBUG - onCreateStroke returned:', {
+            strokeId,
+            success: !!strokeId,
+            timestamp: Date.now()
+          });
         } else {
           console.error('❌ PENCIL DEBUG - No onCreateStroke callback available!');
         }
