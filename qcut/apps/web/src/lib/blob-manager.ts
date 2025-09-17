@@ -32,7 +32,7 @@ class BlobManager {
    */
   createObjectURL(file: File | Blob, source?: string): string {
     const url = URL.createObjectURL(file);
-    const callerStack = source || new Error().stack?.split("\n")[2]?.trim();
+    const callerStack = source || new Error("Stack trace for blob URL creation").stack?.split("\n")[2]?.trim();
 
     this.blobs.set(url, {
       url,
@@ -60,7 +60,7 @@ class BlobManager {
       const entry = this.blobs.get(url);
 
       if (import.meta.env.DEV) {
-        const revokeStack = new Error().stack
+        const revokeStack = new Error("Stack trace for blob URL revocation").stack
           ?.split("\n")
           .slice(2, 4)
           .join(" → ")

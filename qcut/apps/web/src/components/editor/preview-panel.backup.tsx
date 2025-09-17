@@ -385,6 +385,7 @@ export function PreviewPanel() {
     activeProject?.backgroundType,
     tracks,
     mediaItems,
+    activeProject,
   ]);
 
   // Extract caption segments from active elements

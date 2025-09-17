@@ -251,7 +251,9 @@ export const useErrorHandler = () => {
   return React.useCallback((error: Error) => {
     // Create a synthetic error info object
     const errorInfo: React.ErrorInfo = {
-      componentStack: new Error().stack || "No stack available",
+      componentStack:
+        new Error("Component stack trace for error boundary").stack ||
+        "No stack available",
     };
 
     const errorId = generateErrorId();

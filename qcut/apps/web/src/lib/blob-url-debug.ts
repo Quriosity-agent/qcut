@@ -22,7 +22,7 @@ export function enableBlobUrlDebugging() {
     const url = originalCreateObjectURL.call(this, object);
 
     // Get stack trace to identify source
-    const stack = new Error().stack || "Unknown source";
+    const stack = new Error("Stack trace for blob URL creation").stack || "Unknown source";
     const source = stack.split("\n").slice(2, 4).join(" → ").trim();
 
     blobUrlTracker.set(url, {
@@ -46,7 +46,7 @@ export function enableBlobUrlDebugging() {
       blobUrlTracker.delete(url);
 
       // Get stack trace for revoke call to identify what's revoking it
-      const revokeStack = new Error().stack || "Unknown revoke source";
+      const revokeStack = new Error("Stack trace for blob URL revocation").stack || "Unknown revoke source";
       const revokeSource = revokeStack
         .split("\n")
         .slice(2, 4)

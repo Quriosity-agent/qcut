@@ -458,6 +458,7 @@ export function PreviewPanel() {
     activeProject?.backgroundType,
     tracks,
     mediaItems,
+    activeProject,
   ]);
 
   // Handler for transform updates from interactive overlay
@@ -493,7 +494,6 @@ export function PreviewPanel() {
       updateElementPosition,
       updateElementSize,
       updateElementRotation,
-      updateTextElement,
     ]
   );
 

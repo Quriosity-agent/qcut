@@ -367,7 +367,7 @@ export function useFrameCache(options: FrameCacheOptions = {}) {
     } catch (error) {
       onError?.(error);
     }
-  }, [persist]);
+  }, [persist, onError]);
 
   // Restore on mount when persistence enabled
   useEffect(() => {
