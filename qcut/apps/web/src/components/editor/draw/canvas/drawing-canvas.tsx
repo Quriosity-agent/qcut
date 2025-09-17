@@ -350,13 +350,32 @@ export const DrawingCanvas = forwardRef<DrawingCanvasHandle, DrawingCanvasProps>
     }, [addShape, saveCanvasToHistory, withObjectCreationProtection]),
 
     onCreateText: useCallback((text: string, position: { x: number; y: number }, style: TextStyle) => {
+      console.log('📝 TEXT DEBUG - Text creation starting:', {
+        text: text,
+        position: position,
+        style: style,
+        currentObjectCount: objects.length,
+        timestamp: Date.now()
+      });
+
       return withObjectCreationProtection(() => {
+        console.log('📝 TEXT DEBUG - Adding text object to store');
         const objectId = addText(text, position, style);
+        console.log('📝 TEXT DEBUG - Text object added with ID:', objectId);
+
         // Save state to history immediately after object creation
+        console.log('📝 TEXT DEBUG - Saving canvas to history after text creation');
         saveCanvasToHistory();
+
+        console.log('📝 TEXT DEBUG - Text creation completed:', {
+          objectId: objectId,
+          newObjectCount: objects.length + 1,
+          timestamp: Date.now()
+        });
+
         return objectId;
       }, 'text');
-    }, [addText, saveCanvasToHistory, withObjectCreationProtection])
+    }, [addText, saveCanvasToHistory, withObjectCreationProtection, objects.length])
   });
 
   // Initialize canvases with error handling
@@ -447,6 +466,14 @@ export const DrawingCanvas = forwardRef<DrawingCanvasHandle, DrawingCanvasProps>
 
   // Text input handlers
   const handleTextConfirm = useCallback((text: string) => {
+    console.log('📝 TEXT DEBUG - Text input confirmed:', {
+      text: text,
+      hasCanvasPosition: !!textInputModal.canvasPosition,
+      canvasPosition: textInputModal.canvasPosition,
+      currentObjectCount: objects.length,
+      timestamp: Date.now()
+    });
+
     if (textInputModal.canvasPosition && text.trim()) {
       const style = {
         font: `${brushSize}px Arial, sans-serif`,
@@ -454,14 +481,19 @@ export const DrawingCanvas = forwardRef<DrawingCanvasHandle, DrawingCanvasProps>
         opacity: opacity
       };
 
-      addText(text, textInputModal.canvasPosition, style);
+      console.log('📝 TEXT DEBUG - Calling addText with style:', style);
+      const textId = addText(text, textInputModal.canvasPosition, style);
+      console.log('📝 TEXT DEBUG - Text added with ID:', textId);
 
       if (onDrawingChange && canvasRef.current) {
+        console.log('📝 TEXT DEBUG - Triggering onDrawingChange');
         onDrawingChange(canvasRef.current.toDataURL());
       }
+    } else {
+      console.log('📝 TEXT DEBUG - Text input cancelled - no position or empty text');
     }
     setTextInputModal(prev => ({ ...prev, isOpen: false }));
-  }, [textInputModal.canvasPosition, addText, brushSize, color, opacity, onDrawingChange]);
+  }, [textInputModal.canvasPosition, addText, brushSize, color, opacity, onDrawingChange, objects.length]);
 
   const handleTextCancel = useCallback(() => {
     setTextInputModal(prev => ({ ...prev, isOpen: false }));
@@ -519,17 +551,36 @@ export const DrawingCanvas = forwardRef<DrawingCanvasHandle, DrawingCanvasProps>
 
   // Image upload handler
   const handleImageUpload = useCallback(async (file: File) => {
+    console.log('🖼️ IMAGE DEBUG - Image upload starting:', {
+      fileName: file.name,
+      fileSize: file.size,
+      fileType: file.type,
+      currentObjectCount: objects.length,
+      timestamp: Date.now()
+    });
+
     try {
       const canvas = canvasRef.current;
       if (!canvas) {
+        console.error('🖼️ IMAGE DEBUG - Canvas not available');
         throw new Error('Canvas not available');
       }
 
+      console.log('🖼️ IMAGE DEBUG - Creating image element and loading file');
       // Create image element and load the file
       const img = new Image();
       await new Promise<void>((resolve, reject) => {
-        img.onload = () => resolve();
-        img.onerror = () => reject(new Error('Failed to load image'));
+        img.onload = () => {
+          console.log('🖼️ IMAGE DEBUG - Image loaded successfully:', {
+            imageWidth: img.width,
+            imageHeight: img.height
+          });
+          resolve();
+        };
+        img.onerror = () => {
+          console.error('🖼️ IMAGE DEBUG - Failed to load image');
+          reject(new Error('Failed to load image'));
+        };
         img.src = URL.createObjectURL(file);
       });
 
@@ -546,8 +597,14 @@ export const DrawingCanvas = forwardRef<DrawingCanvasHandle, DrawingCanvasProps>
         height *= ratio;
       }
 
+      console.log('🖼️ IMAGE DEBUG - Calculated image dimensions:', {
+        originalSize: { width: img.width, height: img.height },
+        scaledSize: { width, height },
+        canvasSize: { width: canvas.width, height: canvas.height }
+      });
+
       // Create image object with protection
-      withObjectCreationProtection(() => {
+      const result = withObjectCreationProtection(() => {
         const imageData = {
           id: `image-${Date.now()}`,
           element: img,
@@ -558,22 +615,34 @@ export const DrawingCanvas = forwardRef<DrawingCanvasHandle, DrawingCanvasProps>
           rotation: 0
         };
 
+        console.log('🖼️ IMAGE DEBUG - Creating image object:', imageData);
         addImageObject(imageData);
+        console.log('🖼️ IMAGE DEBUG - Image object added to store');
 
         if (onDrawingChange && canvasRef.current) {
+          console.log('🖼️ IMAGE DEBUG - Triggering onDrawingChange');
           onDrawingChange(canvasRef.current.toDataURL());
         }
 
+        console.log('🖼️ IMAGE DEBUG - Image upload completed:', {
+          imageId: imageData.id,
+          newObjectCount: objects.length + 1,
+          timestamp: Date.now()
+        });
+
         return imageData.id;
       }, 'image');
+
+      return result;
     } catch (error) {
+      console.error('🖼️ IMAGE DEBUG - Image upload error:', error);
       handleError(error, {
         operation: "image upload",
         category: ErrorCategory.MEDIA_PROCESSING,
         severity: ErrorSeverity.MEDIUM
       });
     }
-  }, [addImageObject, onDrawingChange, withObjectCreationProtection]);
+  }, [addImageObject, onDrawingChange, withObjectCreationProtection, objects.length]);
 
   // Handle undo/redo by restoring canvas state from history
   useEffect(() => {
@@ -619,10 +688,35 @@ export const DrawingCanvas = forwardRef<DrawingCanvasHandle, DrawingCanvasProps>
 
     // Render all objects (strokes, shapes, text, images)
     if (objects.length > 0) {
+      if (import.meta.env.DEV) {
+        const imageObjects = objects.filter(obj => obj.type === 'image');
+        console.log('🎨 CANVAS DEBUG - Starting render:', {
+          totalObjects: objects.length,
+          imageCount: imageObjects.length,
+          canvasSize: { width: canvas.width, height: canvas.height },
+          imageObjects: imageObjects.map(img => ({
+            id: img.id,
+            bounds: { x: img.x, y: img.y, width: img.width, height: img.height }
+          }))
+        });
+      }
+
       renderObjects(ctx);
-      // Optional: Log success only in dev mode when objects persist
-      if (import.meta.env.DEV && objects.length > 3) {
-        console.log('🎨 Drawing canvas updated:', { objectCount: objects.length });
+
+      // Enhanced logging for image debugging
+      if (import.meta.env.DEV) {
+        const imageCount = objects.filter(obj => obj.type === 'image').length;
+        if (imageCount > 0) {
+          console.log('🎨 CANVAS DEBUG - Render completed:', {
+            objectCount: objects.length,
+            imageCount: imageCount,
+            timestamp: Date.now()
+          });
+        }
+      }
+    } else {
+      if (import.meta.env.DEV) {
+        console.log('🎨 CANVAS DEBUG - No objects to render');
       }
     }
   }, [objects, renderObjects]);

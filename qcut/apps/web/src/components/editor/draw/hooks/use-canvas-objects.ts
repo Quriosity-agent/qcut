@@ -74,23 +74,22 @@ export const useCanvasObjects = () => {
     if (typeof newObjects === 'function') {
       setObjectsInternal(prev => {
         const result = newObjects(prev);
-        console.log('📝 PENCIL DEBUG - setObjects called (function):', {
-          previousCount: prev.length,
-          newCount: result.length,
-          previousObjects: prev.map(obj => ({ id: obj.id, type: obj.type })),
-          newObjects: result.map(obj => ({ id: obj.id, type: obj.type })),
-          stackTrace: new Error().stack?.split('\n')[2]?.trim(),
-          timestamp: Date.now()
-        });
+        if (import.meta.env.DEV) {
+          console.log('📝 setObjects called (function):', {
+            previousCount: prev.length,
+            newCount: result.length,
+            stackTrace: new Error().stack?.split('\n')[2]?.trim()
+          });
+        }
         return result;
       });
     } else {
-      console.log('📝 PENCIL DEBUG - setObjects called (direct):', {
-        newCount: newObjects.length,
-        newObjects: newObjects.map(obj => ({ id: obj.id, type: obj.type })),
-        stackTrace: new Error().stack?.split('\n')[2]?.trim(),
-        timestamp: Date.now()
-      });
+      if (import.meta.env.DEV) {
+        console.log('📝 setObjects called (direct):', {
+          newCount: newObjects.length,
+          stackTrace: new Error().stack?.split('\n')[2]?.trim()
+        });
+      }
       setObjectsInternal(newObjects);
     }
   }, []);
@@ -120,16 +119,15 @@ export const useCanvasObjects = () => {
       globalCompositeOperation: string;
     }
   ) => {
-    // Always log for debugging pencil issue - regardless of environment
-    console.log('🏗️ PENCIL DEBUG - addStroke called:', {
-      pointCount: points.length,
-      points: points,
-      style: style,
-      timestamp: Date.now()
-    });
+    if (import.meta.env.DEV) {
+      console.log('🏗️ addStroke called:', {
+        pointCount: points.length,
+        tool: style.tool
+      });
+    }
 
     if (points.length === 0) {
-      console.error('❌ PENCIL DEBUG - No points provided to addStroke');
+      console.error('❌ No points provided to addStroke');
       return null;
     }
 
@@ -138,13 +136,6 @@ export const useCanvasObjects = () => {
     const maxX = Math.max(...points.map(p => p.x));
     const minY = Math.min(...points.map(p => p.y));
     const maxY = Math.max(...points.map(p => p.y));
-
-    console.log('🏗️ PENCIL DEBUG - Calculated bounds:', {
-      minX, maxX, minY, maxY,
-      width: maxX - minX,
-      height: maxY - minY,
-      timestamp: Date.now()
-    });
 
     const strokeObject: StrokeObject = {
       id: generateUUID(),
@@ -166,25 +157,11 @@ export const useCanvasObjects = () => {
       created: new Date()
     };
 
-    console.log('🏗️ PENCIL DEBUG - Created stroke object:', {
-      id: strokeObject.id,
-      type: strokeObject.type,
-      pointCount: strokeObject.points.length,
-      bounds: { x: strokeObject.x, y: strokeObject.y, width: strokeObject.width, height: strokeObject.height },
-      timestamp: Date.now()
-    });
+    setObjects(prev => [...prev, strokeObject]);
 
-    setObjects(prev => {
-      const newObjects = [...prev, strokeObject];
-      console.log('🏗️ PENCIL DEBUG - Updated objects array, new length:', newObjects.length);
-      return newObjects;
-    });
-
-    console.log('✏️ PENCIL DEBUG - Stroke object created successfully:', {
-      id: strokeObject.id,
-      pointCount: points.length,
-      bounds: { x: strokeObject.x, y: strokeObject.y, width: strokeObject.width, height: strokeObject.height }
-    });
+    if (import.meta.env.DEV) {
+      console.log('✏️ Stroke object created:', { id: strokeObject.id, tool: style.tool });
+    }
 
     return strokeObject.id;
   }, []);
@@ -237,10 +214,24 @@ export const useCanvasObjects = () => {
       opacity: number;
     }
   ) => {
+    console.log('📝 TEXT DEBUG - addText called:', {
+      text: text,
+      position: position,
+      style: style,
+      currentObjectCount: objects.length,
+      timestamp: Date.now()
+    });
+
     // Estimate text dimensions (rough calculation)
     const fontSize = parseInt(style.font);
     const estimatedWidth = text.length * fontSize * 0.6;
     const estimatedHeight = fontSize * 1.2;
+
+    console.log('📝 TEXT DEBUG - Calculated text dimensions:', {
+      fontSize: fontSize,
+      estimatedWidth: estimatedWidth,
+      estimatedHeight: estimatedHeight
+    });
 
     const textObject: TextObject = {
       id: generateUUID(),
@@ -258,14 +249,33 @@ export const useCanvasObjects = () => {
       created: new Date()
     };
 
-    setObjects(prev => [...prev, textObject]);
+    console.log('📝 TEXT DEBUG - Created text object:', {
+      id: textObject.id,
+      type: textObject.type,
+      text: textObject.text,
+      bounds: { x: textObject.x, y: textObject.y, width: textObject.width, height: textObject.height },
+      timestamp: Date.now()
+    });
 
-    if (import.meta.env.DEV) {
-      console.log('📝 Text object created:', { id: textObject.id, text });
-    }
+    setObjects(prev => {
+      const newObjects = [...prev, textObject];
+      console.log('📝 TEXT DEBUG - Updated objects array:', {
+        previousCount: prev.length,
+        newCount: newObjects.length,
+        addedObject: { id: textObject.id, type: textObject.type },
+        timestamp: Date.now()
+      });
+      return newObjects;
+    });
+
+    console.log('✅ TEXT DEBUG - Text object creation completed:', {
+      id: textObject.id,
+      text: text,
+      finalObjectCount: objects.length + 1
+    });
 
     return textObject.id;
-  }, []);
+  }, [objects.length]);
 
   // Add an image object (integrates with existing image system)
   const addImageObject = useCallback((imageData: {
@@ -277,6 +287,14 @@ export const useCanvasObjects = () => {
     height: number;
     rotation: number;
   }) => {
+    console.log('🖼️ IMAGE DEBUG - addImageObject called:', {
+      imageId: imageData.id,
+      dimensions: { x: imageData.x, y: imageData.y, width: imageData.width, height: imageData.height },
+      rotation: imageData.rotation,
+      currentObjectCount: objects.length,
+      timestamp: Date.now()
+    });
+
     const imageObject: ImageObject = {
       ...imageData,
       type: 'image',
@@ -286,14 +304,32 @@ export const useCanvasObjects = () => {
       created: new Date()
     };
 
-    setObjects(prev => [...prev, imageObject]);
+    console.log('🖼️ IMAGE DEBUG - Created image object:', {
+      id: imageObject.id,
+      type: imageObject.type,
+      bounds: { x: imageObject.x, y: imageObject.y, width: imageObject.width, height: imageObject.height },
+      zIndex: imageObject.zIndex,
+      timestamp: Date.now()
+    });
 
-    if (import.meta.env.DEV) {
-      console.log('🖼️ Image object created:', { id: imageObject.id });
-    }
+    setObjects(prev => {
+      const newObjects = [...prev, imageObject];
+      console.log('🖼️ IMAGE DEBUG - Updated objects array:', {
+        previousCount: prev.length,
+        newCount: newObjects.length,
+        addedObject: { id: imageObject.id, type: imageObject.type },
+        timestamp: Date.now()
+      });
+      return newObjects;
+    });
+
+    console.log('✅ IMAGE DEBUG - Image object creation completed:', {
+      id: imageObject.id,
+      finalObjectCount: objects.length + 1
+    });
 
     return imageObject.id;
-  }, []);
+  }, [objects.length]);
 
   // Select objects
   const selectObjects = useCallback((ids: string[], addToSelection = false) => {
@@ -378,19 +414,18 @@ export const useCanvasObjects = () => {
 
   // Clear all objects and groups
   const clearAll = useCallback(() => {
-    console.log('🚨 PENCIL DEBUG - clearAll called:', {
-      currentObjectCount: objects.length,
-      stackTrace: new Error().stack,
-      timestamp: Date.now()
-    });
+    if (import.meta.env.DEV) {
+      console.log('🧹 clearAll called:', {
+        currentObjectCount: objects.length,
+        stackTrace: new Error().stack?.split('\n')[2]?.trim()
+      });
+    }
     setObjects([]);
     setGroups([]);
     setSelectedObjectIds([]);
     setIsDrawing(false);
     setIsDragging(false);
     dragState.current = { startX: 0, startY: 0, lastX: 0, lastY: 0, hasMoved: false };
-
-    console.log('🧹 PENCIL DEBUG - Canvas cleared, all objects removed');
   }, [objects.length, setObjects]);
 
   // Start dragging objects
@@ -498,24 +533,10 @@ export const useCanvasObjects = () => {
 
   // Render all objects to canvas
   const renderObjects = useCallback((ctx: CanvasRenderingContext2D) => {
-    // Always log rendering for debugging pencil issue
-    console.log('🎨 PENCIL DEBUG - renderObjects called:', {
-      objectCount: objects.length,
-      canvasSize: ctx.canvas ? { width: ctx.canvas.width, height: ctx.canvas.height } : 'unknown',
-      objects: objects.map(obj => ({ id: obj.id, type: obj.type, x: obj.x, y: obj.y })),
-      timestamp: Date.now()
-    });
-
     // Sort by z-index
     const sortedObjects = [...objects].sort((a, b) => a.zIndex - b.zIndex);
 
     sortedObjects.forEach(obj => {
-      console.log('🎨 PENCIL DEBUG - Rendering object:', {
-        id: obj.id,
-        type: obj.type,
-        bounds: { x: obj.x, y: obj.y, width: obj.width, height: obj.height },
-        timestamp: Date.now()
-      });
 
       ctx.save();
 
@@ -525,17 +546,6 @@ export const useCanvasObjects = () => {
       switch (obj.type) {
         case 'stroke': {
           const stroke = obj as StrokeObject;
-          console.log('🎨 PENCIL DEBUG - Rendering stroke:', {
-            id: stroke.id,
-            pointCount: stroke.points.length,
-            strokeStyle: stroke.strokeStyle,
-            lineWidth: stroke.lineWidth,
-            tool: stroke.tool,
-            absolutePosition: { x: obj.x, y: obj.y },
-            points: stroke.points,
-            timestamp: Date.now()
-          });
-
           ctx.strokeStyle = stroke.strokeStyle;
           ctx.lineWidth = stroke.lineWidth;
           ctx.lineCap = stroke.lineCap as CanvasLineCap;
@@ -549,8 +559,6 @@ export const useCanvasObjects = () => {
             const startY = obj.y + firstPoint.y;
             ctx.moveTo(startX, startY);
 
-            console.log('🎨 PENCIL DEBUG - Stroke path start:', { startX, startY });
-
             for (let i = 1; i < stroke.points.length; i++) {
               const point = stroke.points[i];
               const lineX = obj.x + point.x;
@@ -558,14 +566,6 @@ export const useCanvasObjects = () => {
               ctx.lineTo(lineX, lineY);
             }
             ctx.stroke();
-            console.log('✅ PENCIL DEBUG - Stroke rendered successfully:', {
-              id: stroke.id,
-              pointsRendered: stroke.points.length,
-              finalPosition: { x: obj.x, y: obj.y },
-              timestamp: Date.now()
-            });
-          } else {
-            console.log('⚠️ PENCIL DEBUG - Stroke has insufficient points:', stroke.points.length);
           }
           break;
         }
@@ -604,6 +604,15 @@ export const useCanvasObjects = () => {
 
         case 'text': {
           const text = obj as TextObject;
+          if (import.meta.env.DEV) {
+            console.log('📝 TEXT DEBUG - Rendering text object:', {
+              id: text.id,
+              text: text.text,
+              position: { x: obj.x, y: obj.y },
+              font: text.font,
+              fillStyle: text.fillStyle
+            });
+          }
           ctx.fillStyle = text.fillStyle;
           ctx.font = text.font;
           ctx.fillText(text.text, obj.x, obj.y);
@@ -612,14 +621,61 @@ export const useCanvasObjects = () => {
 
         case 'image': {
           const image = obj as ImageObject;
+          if (import.meta.env.DEV) {
+            console.log('🖼️ IMAGE DEBUG - Rendering image object:', {
+              id: image.id,
+              bounds: { x: obj.x, y: obj.y, width: obj.width, height: obj.height },
+              rotation: image.rotation,
+              canvasSize: { width: ctx.canvas.width, height: ctx.canvas.height },
+              imageElement: {
+                width: image.element.width,
+                height: image.element.height,
+                complete: image.element.complete,
+                src: image.element.src?.substring(0, 50) + '...'
+              }
+            });
+          }
+
+          // Check if image is loaded
+          if (!image.element.complete) {
+            console.warn('🖼️ IMAGE DEBUG - Image not fully loaded, skipping render:', image.id);
+            break;
+          }
+
           const centerX = obj.x + obj.width / 2;
           const centerY = obj.y + obj.height / 2;
+
+          if (import.meta.env.DEV) {
+            console.log('🖼️ IMAGE DEBUG - Transform calculations:', {
+              centerX,
+              centerY,
+              rotation: image.rotation,
+              finalPosition: { x: obj.x, y: obj.y },
+              willBeVisible: (
+                obj.x < ctx.canvas.width &&
+                obj.y < ctx.canvas.height &&
+                obj.x + obj.width > 0 &&
+                obj.y + obj.height > 0
+              )
+            });
+          }
 
           ctx.translate(centerX, centerY);
           ctx.rotate((image.rotation * Math.PI) / 180);
           ctx.translate(-centerX, -centerY);
 
-          ctx.drawImage(image.element, obj.x, obj.y, obj.width, obj.height);
+          try {
+            ctx.drawImage(image.element, obj.x, obj.y, obj.width, obj.height);
+            if (import.meta.env.DEV) {
+              console.log('✅ IMAGE DEBUG - Image rendered successfully:', image.id);
+            }
+          } catch (error) {
+            console.error('❌ IMAGE DEBUG - Failed to render image:', {
+              id: image.id,
+              error: error,
+              imageElement: image.element
+            });
+          }
           break;
         }
       }
