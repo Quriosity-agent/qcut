@@ -46,7 +46,10 @@ export class DrawingStorage {
       // Use existing storage API - completely safe
       if (window.electronAPI?.storage?.save) {
         await window.electronAPI.storage.save(drawingId, drawingData);
-        await window.electronAPI.storage.save(`${this.METADATA_PREFIX}${drawingId}`, metadata);
+        await window.electronAPI.storage.save(
+          `${this.METADATA_PREFIX}${drawingId}`,
+          JSON.stringify(metadata)
+        );
       } else {
         // Fallback to localStorage for browser development
         localStorage.setItem(drawingId, drawingData);
@@ -74,7 +77,8 @@ export class DrawingStorage {
 
       if (window.electronAPI?.storage?.load) {
         data = await window.electronAPI.storage.load(drawingId);
-        metadata = await window.electronAPI.storage.load(`${this.METADATA_PREFIX}${drawingId}`);
+        const rawMeta = await window.electronAPI.storage.load(`${this.METADATA_PREFIX}${drawingId}`);
+        metadata = typeof rawMeta === 'string' ? JSON.parse(rawMeta) : (rawMeta as DrawingMetadata);
       } else {
         // Fallback
         data = localStorage.getItem(drawingId);
@@ -110,11 +114,15 @@ export class DrawingStorage {
           key.startsWith(`${this.STORAGE_PREFIX}${projectId}-`)
         );
 
-        for (const key of drawingKeys) {
-          const metadata = await window.electronAPI.storage.load(`${this.METADATA_PREFIX}${key}`);
-          if (metadata) {
-            drawings.push({ id: key, metadata });
-          }
+        const entries = await Promise.all(
+          drawingKeys.map(async (key) => {
+            const raw = await window.electronAPI.storage.load(`${this.METADATA_PREFIX}${key}`);
+            const md = typeof raw === 'string' ? JSON.parse(raw) : raw;
+            return md ? { id: key, metadata: md as DrawingMetadata } : null;
+          })
+        );
+        for (const entry of entries) {
+          if (entry) drawings.push(entry);
         }
       } else {
         // Fallback
@@ -192,7 +200,10 @@ export class DrawingStorage {
       };
 
       if (window.electronAPI?.storage?.save) {
-        await window.electronAPI.storage.save(`${this.METADATA_PREFIX}${drawingId}`, updatedMetadata);
+        await window.electronAPI.storage.save(
+          `${this.METADATA_PREFIX}${drawingId}`,
+          JSON.stringify(updatedMetadata)
+        );
       } else {
         localStorage.setItem(`${this.METADATA_PREFIX}${drawingId}`, JSON.stringify(updatedMetadata));
       }

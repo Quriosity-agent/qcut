@@ -1,3 +1,5 @@
+import type { ReactNode } from 'react';
+
 export interface DrawingTool {
   id: string;
   name: string;
@@ -16,7 +18,7 @@ export interface ToolSettings {
 }
 
 export interface DrawingToolConfig extends DrawingTool {
-  icon: React.ReactNode;
+  icon: ReactNode;
   settings: ToolSettings;
 }
 

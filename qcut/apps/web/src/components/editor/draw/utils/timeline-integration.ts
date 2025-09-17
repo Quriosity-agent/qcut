@@ -7,6 +7,9 @@ import { toast } from "sonner";
 import { handleError, ErrorCategory, ErrorSeverity } from "@/lib/error-handler";
 import { TIMELINE_CONSTANTS } from "@/constants/timeline-constants";
 
+// Regex for sanitizing filename timestamps - dash must be first or escaped
+const FILENAME_SANITIZE_RE = /[-:]/g;
+
 /**
  * Safe timeline integration that uses existing QCut patterns
  * DOES NOT modify core timeline - only uses existing methods
@@ -127,7 +130,7 @@ export class TimelineIntegration {
    * Quick export - adds drawing at current playhead position
    */
   static async quickExport(drawingData: string): Promise<void> {
-    const timestamp = new Date().toISOString().slice(0, 19).replace(/[:-]/g, '');
+    const timestamp = new Date().toISOString().slice(0, 19).replace(FILENAME_SANITIZE_RE, '');
     const name = `drawing-${timestamp}.png`;
     await this.exportAsImage(drawingData, name);
   }
