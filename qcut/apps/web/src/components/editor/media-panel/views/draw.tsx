@@ -1,14 +1,14 @@
 import React, { useRef, useState, useCallback, useEffect } from "react";
 import { useWhiteDrawStore } from "@/stores/white-draw-store";
 import { PenTool } from "lucide-react";
-import { DrawingCanvas } from "@/components/editor/draw/canvas/drawing-canvas";
+import { DrawingCanvas, type DrawingCanvasHandle } from "@/components/editor/draw/canvas/drawing-canvas";
 import { ToolSelector } from "@/components/editor/draw/components/tool-selector";
 import { CanvasToolbar } from "@/components/editor/draw/components/canvas-toolbar";
 import { SavedDrawings } from "@/components/editor/draw/components/saved-drawings";
 
 const DrawView: React.FC = () => {
   const { activeTab, setActiveTab } = useWhiteDrawStore();
-  const canvasComponentRef = useRef<any>(null);
+  const canvasComponentRef = useRef<DrawingCanvasHandle | null>(null);
   const [currentDrawingData, setCurrentDrawingData] = useState<string>("");
   const [selectedCount, setSelectedCount] = useState(0);
   const [hasGroups, setHasGroups] = useState(false);

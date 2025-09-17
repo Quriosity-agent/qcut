@@ -6,6 +6,14 @@ import { TextInputModal } from "../components/text-input-modal";
 import { cn } from "@/lib/utils";
 import { handleError, ErrorCategory, ErrorSeverity } from "@/lib/error-handler";
 
+// Debug logging function that only logs in development mode when enabled
+const debug = (...args: unknown[]) => {
+  if (import.meta.env.DEV && import.meta.env.VITE_DEBUG_DRAW === '1') {
+    // eslint-disable-next-line no-console
+    console.log(...args);
+  }
+};
+
 interface DrawingCanvasProps {
   className?: string;
   onDrawingChange?: (dataUrl: string) => void;
@@ -90,7 +98,7 @@ export const DrawingCanvas = forwardRef<DrawingCanvasHandle, DrawingCanvasProps>
       return null;
     }
 
-    console.log('🖼️ Preparing canvas for download:', {
+    debug('🖼️ Preparing canvas for download:', {
       objectCount: objects.length,
       canvasSize: { width: canvas.width, height: canvas.height }
     });
@@ -105,14 +113,14 @@ export const DrawingCanvas = forwardRef<DrawingCanvasHandle, DrawingCanvasProps>
     // Render all objects
     if (objects.length > 0) {
       renderObjects(ctx);
-      console.log('✅ Objects rendered for download');
+      debug('✅ Objects rendered for download');
     } else {
-      console.log('⚠️ No objects to render');
+      debug('⚠️ No objects to render');
     }
 
     // Get the data URL
     const dataUrl = canvas.toDataURL('image/png');
-    console.log('📸 Canvas data URL generated:', {
+    debug('📸 Canvas data URL generated:', {
       dataUrlLength: dataUrl.length,
       isValid: dataUrl.startsWith('data:image/png;base64,')
     });
@@ -125,7 +133,7 @@ export const DrawingCanvas = forwardRef<DrawingCanvasHandle, DrawingCanvasProps>
     const dataUrl = getCanvasDataUrl();
     if (dataUrl) {
       saveToHistory(dataUrl);
-      console.log('💾 Canvas state saved to history');
+      debug('💾 Canvas state saved to history');
     }
   }, [getCanvasDataUrl, saveToHistory]);
 
@@ -241,7 +249,9 @@ export const DrawingCanvas = forwardRef<DrawingCanvasHandle, DrawingCanvasProps>
     onEndMove: useCallback(() => {
       console.log('🏁 End move operation');
       endDrag();
-    }, [endDrag]),
+      // Save final positions to history so undo/redo works for moves
+      saveCanvasToHistory();
+    }, [endDrag, saveCanvasToHistory]),
 
     // New object creation callbacks with immediate history saving
     onCreateStroke: useCallback((points: { x: number; y: number }[], style: any) => {

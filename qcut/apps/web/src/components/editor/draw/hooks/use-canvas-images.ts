@@ -1,5 +1,13 @@
 import { useState, useCallback, useRef } from 'react';
 
+// Debug logging function that only logs in development mode when enabled
+const debug = (...args: unknown[]) => {
+  if (import.meta.env.DEV && import.meta.env.VITE_DEBUG_DRAW === '1') {
+    // eslint-disable-next-line no-console
+    console.log(...args);
+  }
+};
+
 export interface CanvasImage {
   id: string;
   element: HTMLImageElement;
@@ -148,12 +156,9 @@ export const useCanvasImages = (canvasRef: React.RefObject<HTMLCanvasElement>) =
       const rotatedX = translatedX * Math.cos(angle) - translatedY * Math.sin(angle);
       const rotatedY = translatedX * Math.sin(angle) + translatedY * Math.cos(angle);
 
-      // Translate back and check bounds
-      const localX = rotatedX + centerX;
-      const localY = rotatedY + centerY;
-
-      if (localX >= img.x && localX <= img.x + img.width &&
-          localY >= img.y && localY <= img.y + img.height) {
+      // Check bounds in local coordinates (centered at 0,0)
+      if (rotatedX >= -img.width / 2 && rotatedX <= img.width / 2 &&
+          rotatedY >= -img.height / 2 && rotatedY <= img.height / 2) {
         return img;
       }
     }
@@ -183,7 +188,7 @@ export const useCanvasImages = (canvasRef: React.RefObject<HTMLCanvasElement>) =
         : img
     ));
 
-    console.log('🔗 Group created:', { groupId, name: groupName, objects: selectedImageIds });
+    debug('🔗 Group created:', { groupId, name: groupName, objects: selectedImageIds });
     return groupId;
   }, [selectedImageIds, groups.length]);
 
@@ -194,7 +199,7 @@ export const useCanvasImages = (canvasRef: React.RefObject<HTMLCanvasElement>) =
         ? { ...img, groupId: undefined }
         : img
     ));
-    console.log('🔓 Group dissolved:', { groupId });
+    debug('🔓 Group dissolved:', { groupId });
   }, []);
 
   const selectGroup = useCallback((groupId: string) => {
