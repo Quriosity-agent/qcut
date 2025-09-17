@@ -5,7 +5,7 @@
 When using the pencil tool to draw on the white board canvas, the drawing appears briefly during the drawing action but then disappears after the mouse is released or the drawing is completed.
 
 ## Status
-✅ **RESOLVED** - Fixed history effect preventing inappropriate restoration during automatic saves
+✅ **FULLY RESOLVED** - Both root causes identified and fixed
 
 ## Observed Behavior
 
@@ -410,6 +410,54 @@ useEffect(() => {
 - ✅ Undo/redo functionality remains intact
 - ✅ Console shows "🎉 SUCCESS: Stroke objects persisted!" when working
 
-**Last Updated**: 2025-09-17 (Fix implemented and deployed)
-**Status**: ✅ **RESOLVED**
-**Priority**: ~~High~~ → **CLOSED**
+## 🟡 ADDITIONAL ISSUE FOUND
+
+**Console Log Analysis V2 Reveals**:
+The fix prevents restoration **during save**, but history effect triggers **before save starts**:
+
+```
+Line 77: History effect triggered (after stroke creation)
+Line 83: Restoring canvas from history (THIS WILL CLEAR OBJECTS) ← PROBLEM
+Lines 84-88: Objects cleared
+Line 104: Saving to history starts ← TOO LATE
+Lines 107,111: Skipping restoration - currently saving ← FIX WORKING BUT TOO LATE
+```
+
+**Root Cause Refined**:
+History effect triggers on `objects.length` dependency change, but the dependency causes restoration **before** save operation begins.
+
+**Additional Fix Needed**:
+- Remove `objects.length` from history effect dependencies OR
+- Add broader protection against restoration after any object creation OR
+- Delay history effect to occur after save operations
+
+## ✅ COMPLETE RESOLUTION ACHIEVED
+
+**Two-Part Fix Implemented**:
+
+### Fix 1: Flag-Based Protection During Saves
+- Added `isSavingToHistory` ref to track save operations
+- History effect skips restoration when flag is set
+- Prevents restoration during the save process
+
+### Fix 2: Remove Inappropriate Dependency
+- **KEY FIX**: Removed `objects.length` from history effect dependencies
+- History effect now only triggers on `historyIndex` changes (user undo/redo)
+- Prevents automatic triggering after stroke creation
+
+**Files Modified**:
+- `drawing-canvas.tsx:86-87` - Added `isSavingToHistory` ref
+- `drawing-canvas.tsx:160-168` - Enhanced save function with flag protection
+- `drawing-canvas.tsx:571-575` - Added flag check in history effect
+- `drawing-canvas.tsx:590` - **REMOVED `objects.length` dependency**
+- `drawing-canvas.tsx:583-589` - Added enhanced logging for verification
+
+**Expected Console Output Now**:
+- ✅ No inappropriate history effect triggers after stroke creation
+- ✅ `"✅ History effect ran but no restoration needed"` messages
+- ✅ `"🎉 SUCCESS: Stroke objects persisted!"` confirmation
+- ✅ No `"Restoring canvas from history (THIS WILL CLEAR OBJECTS)"` after strokes
+
+**Last Updated**: 2025-09-17 (Complete fix implemented and deployed)
+**Status**: ✅ **FULLY RESOLVED**
+**Priority**: ~~HIGH~~ → **CLOSED**
