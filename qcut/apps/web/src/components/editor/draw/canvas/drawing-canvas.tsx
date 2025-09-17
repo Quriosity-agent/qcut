@@ -2,6 +2,7 @@ import React, { useRef, useEffect, useCallback, useMemo, forwardRef, useImperati
 import { useWhiteDrawStore, selectCurrentTool } from "@/stores/white-draw-store";
 import { DEFAULT_CANVAS_SIZE } from "@/stores/project-store";
 import { useCanvasDrawing } from "../hooks/use-canvas-drawing";
+import type { StrokeStyle, ShapeStyle, TextStyle } from '../hooks/use-canvas-drawing';
 import { useCanvasObjects } from "../hooks/use-canvas-objects";
 import { TextInputModal } from "../components/text-input-modal";
 import { cn } from "@/lib/utils";
@@ -88,37 +89,51 @@ export const DrawingCanvas = forwardRef<DrawingCanvasHandle, DrawingCanvasProps>
     return DEFAULT_CANVAS_SIZE;
   }, []);
 
-  // Force render all objects and get canvas data URL for download
+  // Export canvas contents to data URL without mutating the visible canvas
   const getCanvasDataUrl = useCallback(() => {
     const canvas = canvasRef.current;
-    const ctx = canvas?.getContext('2d');
-    if (!ctx || !canvas) {
-      console.error('❌ Canvas not available for download');
+    const backgroundCanvas = backgroundCanvasRef.current;
+    if (!canvas) {
+      debug('❌ Canvas not available for download');
       return null;
     }
 
-    debug('🖼️ Preparing canvas for download:', {
+    debug('🖼️ Preparing offscreen canvas for download:', {
       objectCount: objects.length,
       canvasSize: { width: canvas.width, height: canvas.height }
     });
 
-    // Clear and redraw everything for download
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    // Create offscreen canvas for export
+    const exportCanvas = document.createElement('canvas');
+    exportCanvas.width = canvas.width;
+    exportCanvas.height = canvas.height;
+    const exportCtx = exportCanvas.getContext('2d');
+
+    if (!exportCtx) {
+      debug('❌ Failed to get export canvas context');
+      return null;
+    }
 
     // Set white background
-    ctx.fillStyle = 'white';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    exportCtx.fillStyle = 'white';
+    exportCtx.fillRect(0, 0, exportCanvas.width, exportCanvas.height);
 
-    // Render all objects
+    // Composite background layer if available
+    if (backgroundCanvas) {
+      exportCtx.drawImage(backgroundCanvas, 0, 0);
+      debug('🖼️ Background layer composited');
+    }
+
+    // Render all objects to the offscreen canvas
     if (objects.length > 0) {
-      renderObjects(ctx);
+      renderObjects(exportCtx);
       debug('✅ Objects rendered for download');
     } else {
       debug('⚠️ No objects to render');
     }
 
     // Get the data URL
-    const dataUrl = canvas.toDataURL('image/png');
+    const dataUrl = exportCanvas.toDataURL('image/png');
     debug('📸 Canvas data URL generated:', {
       dataUrlLength: dataUrl.length,
       isValid: dataUrl.startsWith('data:image/png;base64,')
@@ -253,7 +268,7 @@ export const DrawingCanvas = forwardRef<DrawingCanvasHandle, DrawingCanvasProps>
     }, [endDrag, saveCanvasToHistory]),
 
     // New object creation callbacks with immediate history saving
-    onCreateStroke: useCallback((points: { x: number; y: number }[], style: any) => {
+    onCreateStroke: useCallback((points: { x: number; y: number }[], style: StrokeStyle) => {
       debug('🖌️ Creating stroke object:', { pointCount: points.length, style });
       const objectId = addStroke(points, style);
       // Save state to history immediately after object creation
@@ -261,15 +276,15 @@ export const DrawingCanvas = forwardRef<DrawingCanvasHandle, DrawingCanvasProps>
       return objectId;
     }, [addStroke, saveCanvasToHistory]),
 
-    onCreateShape: useCallback((shapeType: string, bounds: any, style: any) => {
+    onCreateShape: useCallback((shapeType: 'rectangle' | 'circle' | 'line', bounds: { x: number; y: number; width: number; height: number }, style: ShapeStyle) => {
       debug('🔲 Creating shape object:', { shapeType, bounds, style });
-      const objectId = addShape(shapeType as any, bounds, style);
+      const objectId = addShape(shapeType, bounds, style);
       // Save state to history immediately after object creation
       saveCanvasToHistory();
       return objectId;
     }, [addShape, saveCanvasToHistory]),
 
-    onCreateText: useCallback((text: string, position: { x: number; y: number }, style: any) => {
+    onCreateText: useCallback((text: string, position: { x: number; y: number }, style: TextStyle) => {
       debug('📝 Creating text object:', { text, position, style });
       const objectId = addText(text, position, style);
       // Save state to history immediately after object creation
@@ -511,38 +526,77 @@ export const DrawingCanvas = forwardRef<DrawingCanvasHandle, DrawingCanvasProps>
 
   // Expose canvas ref and object/group functions to parent
   useImperativeHandle(ref, () => {
-    if (!canvasRef.current) return null as any;
+    const canvas = canvasRef.current;
+    if (!canvas) {
+      // Return a proper object that satisfies the interface instead of null
+      return {
+        // Provide dummy canvas methods that throw errors
+        getContext: () => { throw new Error('Canvas not available'); },
+        toDataURL: () => { throw new Error('Canvas not available'); },
+        addEventListener: () => { throw new Error('Canvas not available'); },
+        removeEventListener: () => { throw new Error('Canvas not available'); },
+        getBoundingClientRect: () => { throw new Error('Canvas not available'); },
+        // Our custom methods
+        handleImageUpload: async () => { throw new Error('Canvas not available'); },
+        loadDrawingFromDataUrl: async () => { throw new Error('Canvas not available'); },
+        getSelectedCount: () => 0,
+        getHasGroups: () => false,
+        getCanvasDataUrl: () => null,
+        clearAll: () => { throw new Error('Canvas not available'); },
+        handleCreateGroup: () => { throw new Error('Canvas not available'); },
+        handleUngroup: () => { throw new Error('Canvas not available'); },
+      } as DrawingCanvasHandle;
+    }
 
-    // Use Object.assign to maintain the canvas element's prototype chain
-    // This preserves DOM method bindings like getContext, toDataURL, etc.
-    return Object.assign(canvasRef.current, {
-      handleImageUpload,
-      loadDrawingFromDataUrl,
-      getSelectedCount: () => selectedObjectIds.length,
-      getHasGroups: () => groups.length > 0,
-      getCanvasDataUrl, // Add this method for downloads
-      clearAll, // Add clearAll method from useCanvasObjects hook
-      handleCreateGroup: () => {
-        const groupId = createGroup();
-        if (groupId) {
-          debug('✅ Group created successfully:', { groupId, selectedCount: selectedObjectIds.length });
-        } else {
-          debug('❌ Failed to create group - need at least 2 selected objects');
+    // Create a proxy that delegates canvas methods to the actual canvas
+    // This avoids direct DOM mutation while maintaining functionality
+    const canvasProxy = new Proxy(canvas, {
+      get(target, prop) {
+        // Override specific methods with our custom implementations
+        switch (prop) {
+          case 'handleImageUpload':
+            return handleImageUpload;
+          case 'loadDrawingFromDataUrl':
+            return loadDrawingFromDataUrl;
+          case 'getSelectedCount':
+            return () => selectedObjectIds.length;
+          case 'getHasGroups':
+            return () => groups.length > 0;
+          case 'getCanvasDataUrl':
+            return getCanvasDataUrl;
+          case 'clearAll':
+            return clearAll;
+          case 'handleCreateGroup':
+            return () => {
+              const groupId = createGroup();
+              if (groupId) {
+                debug('✅ Group created successfully:', { groupId, selectedCount: selectedObjectIds.length });
+              } else {
+                debug('❌ Failed to create group - need at least 2 selected objects');
+              }
+            };
+          case 'handleUngroup':
+            return () => {
+              // Find groups that contain any of the selected objects
+              const selectedGroups = groups.filter(group =>
+                group.objectIds.some(id => selectedObjectIds.includes(id))
+              );
+
+              selectedGroups.forEach(group => {
+                ungroupObjects(group.id);
+                debug('✅ Group dissolved:', { groupId: group.id });
+              });
+            };
+          default:
+            // Delegate to the actual canvas element
+            const value = target[prop as keyof HTMLCanvasElement];
+            return typeof value === 'function' ? value.bind(target) : value;
         }
-      },
-      handleUngroup: () => {
-        // Find groups that contain any of the selected objects
-        const selectedGroups = groups.filter(group =>
-          group.objectIds.some(id => selectedObjectIds.includes(id))
-        );
-
-        selectedGroups.forEach(group => {
-          ungroupObjects(group.id);
-          debug('✅ Group dissolved:', { groupId: group.id });
-        });
       }
-    });
-  }, [handleImageUpload, loadDrawingFromDataUrl, selectedObjectIds.length, groups.length, createGroup, ungroupObjects, selectedObjectIds, groups, getCanvasDataUrl, clearAll]);
+    }) as DrawingCanvasHandle;
+
+    return canvasProxy;
+  }, [handleImageUpload, loadDrawingFromDataUrl, createGroup, ungroupObjects, selectedObjectIds, groups, getCanvasDataUrl, clearAll]);
 
   return (
     <div

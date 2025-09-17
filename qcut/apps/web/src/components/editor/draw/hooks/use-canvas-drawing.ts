@@ -1,6 +1,5 @@
 import { useCallback, useRef, useEffect } from 'react';
 import type { DrawingToolConfig } from '@/types/white-draw';
-import type { StrokeObject, ShapeObject, TextObject } from './use-canvas-objects';
 
 // Debug logging function that only logs in development mode when enabled
 const debug = (...args: unknown[]) => {
@@ -10,9 +9,28 @@ const debug = (...args: unknown[]) => {
   }
 };
 
-type StrokeStyle = Pick<StrokeObject, 'strokeStyle' | 'lineWidth' | 'opacity' | 'tool' | 'lineCap' | 'lineJoin' | 'globalCompositeOperation'>;
-type ShapeStyle = Pick<ShapeObject, 'strokeStyle' | 'fillStyle' | 'lineWidth' | 'opacity'>;
-type TextStyle = Pick<TextObject, 'font' | 'fillStyle' | 'opacity'>;
+export type StrokeStyle = {
+  strokeStyle: string;
+  lineWidth: number;
+  opacity: number;
+  tool: string;
+  lineCap: CanvasLineCap;
+  lineJoin: CanvasLineJoin;
+  globalCompositeOperation: GlobalCompositeOperation;
+};
+
+export type ShapeStyle = {
+  strokeStyle: string;
+  fillStyle?: string;
+  lineWidth: number;
+  opacity: number;
+};
+
+export type TextStyle = {
+  font: string;
+  fillStyle: string;
+  opacity: number;
+};
 type StoredShapeType = 'rectangle' | 'circle' | 'line';  // Shape types as stored in objects
 type DrawingShapeType = 'rectangle' | 'circle' | 'line' | 'square';  // Shape types during drawing
 type ShapeBounds = { x: number; y: number; width: number; height: number };
@@ -380,12 +398,24 @@ export const useCanvasDrawing = (
         });
 
         if (options.onCreateShape) {
-          const bounds: ShapeBounds = {
-            x: Math.min(startPos.current.x, endPos.x),
-            y: Math.min(startPos.current.y, endPos.y),
-            width: Math.abs(endPos.x - startPos.current.x),
-            height: Math.abs(endPos.y - startPos.current.y)
-          };
+          let bounds: ShapeBounds;
+          const dx = endPos.x - startPos.current.x;
+          const dy = endPos.y - startPos.current.y;
+          if (options.tool.id === 'square') {
+            const side = Math.min(Math.abs(dx), Math.abs(dy));
+            const w = Math.sign(dx) * side;
+            const h = Math.sign(dy) * side;
+            const x = w < 0 ? startPos.current.x + w : startPos.current.x;
+            const y = h < 0 ? startPos.current.y + h : startPos.current.y;
+            bounds = { x, y, width: Math.abs(w), height: Math.abs(h) };
+          } else {
+            bounds = {
+              x: Math.min(startPos.current.x, endPos.x),
+              y: Math.min(startPos.current.y, endPos.y),
+              width: Math.abs(dx),
+              height: Math.abs(dy),
+            };
+          }
 
           const style: ShapeStyle = {
             strokeStyle: options.color,
