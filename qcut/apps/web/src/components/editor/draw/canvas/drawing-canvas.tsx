@@ -218,13 +218,13 @@ export const DrawingCanvas = forwardRef<
         isSavingToHistory.current = true;
         saveToHistory(dataUrl);
 
-        // Clear flag after a short delay to allow effect to run
+        // Clear flag after a longer delay to coordinate with object creation protection
         setTimeout(() => {
           isSavingToHistory.current = false;
           console.log(
             "💾 PENCIL DEBUG - Save operation completed, restoration re-enabled"
           );
-        }, 50);
+        }, 250); // Increased to 250ms to ensure it's after object creation protection clears (200ms)
 
         console.log("💾 PENCIL DEBUG - History save completed");
       } else {
@@ -288,6 +288,10 @@ export const DrawingCanvas = forwardRef<
         });
         setDrawing(false);
         setIsDrawing(false);
+
+        // Save the completed pencil stroke to history
+        saveCanvasToHistory();
+
         if (canvasRef.current && onDrawingChange) {
           onDrawingChange(canvasRef.current.toDataURL());
         }
@@ -299,7 +303,7 @@ export const DrawingCanvas = forwardRef<
           severity: ErrorSeverity.MEDIUM,
         });
       }
-    }, [disabled, setDrawing, setIsDrawing, onDrawingChange, objects.length]),
+    }, [disabled, setDrawing, setIsDrawing, saveCanvasToHistory, onDrawingChange, objects.length]),
 
     onTextInput: useCallback((canvasPosition: { x: number; y: number }) => {
       const canvas = canvasRef.current;
@@ -784,11 +788,28 @@ export const DrawingCanvas = forwardRef<
       return;
     }
 
-    if (historyState && historyState !== getCanvasDataUrl()) {
-      console.warn(
-        "⚠️ DRAW DEBUG - Restoring canvas from history (objects will be cleared)"
-      );
-      loadDrawingFromDataUrl(historyState);
+    // Add debounce protection for rapid restoration calls
+    const currentCanvasData = getCanvasDataUrl();
+    if (historyState && currentCanvasData && historyState !== currentCanvasData) {
+      // Additional protection: only restore if the difference is significant enough
+      // This prevents unnecessary restorations from small timing differences
+      if (Math.abs(historyState.length - currentCanvasData.length) > 100) {
+        console.warn(
+          "⚠️ DRAW DEBUG - Restoring canvas from history (objects will be cleared)",
+          {
+            historyStateLength: historyState.length,
+            currentStateLength: currentCanvasData.length,
+            sizeDifference: Math.abs(historyState.length - currentCanvasData.length)
+          }
+        );
+        loadDrawingFromDataUrl(historyState);
+      } else {
+        if (import.meta.env.DEV) {
+          console.log("🚫 DRAW DEBUG - Skipping restoration due to minimal difference:", {
+            sizeDifference: Math.abs(historyState.length - currentCanvasData.length)
+          });
+        }
+      }
     }
   }, [
     historyIndex,
