@@ -213,6 +213,7 @@ if (typeof Proxy !== "undefined") {
 
   try {
     if (typeof window !== "undefined") {
+      // biome-ignore lint/suspicious/noGlobalAssign: Required for test environment polyfills
       window = new Proxy(window, handler);
     }
   } catch (e) {
