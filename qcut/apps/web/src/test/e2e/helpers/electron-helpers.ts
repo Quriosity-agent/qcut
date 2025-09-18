@@ -27,7 +27,7 @@ export interface ElectronFixtures {
 }
 
 export const test = base.extend<ElectronFixtures>({
-  electronApp: async ({}, use) => {
+  electronApp: async (_, use) => {
     // Launch Electron app
     const electronApp = await electron.launch({
       args: ["dist/electron/main.js"],

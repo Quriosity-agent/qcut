@@ -4,7 +4,6 @@ import { storageService } from "@/lib/storage/storage-service";
 import { useTimelineStore } from "./timeline-store";
 import { generateUUID, generateFileBasedId } from "@/lib/utils";
 import { getVideoInfo, generateThumbnail } from "@/lib/ffmpeg-utils";
-import type { MediaItem, MediaType } from "./media-store-types";
 import { createObjectURL, revokeObjectURL } from "@/lib/blob-manager";
 import {
   handleError,
@@ -15,7 +14,7 @@ import {
 } from "@/lib/error-handler";
 
 // Re-export types for backward compatibility
-export type { MediaItem, MediaType };
+export type { MediaItem, MediaType } from "./media-store-types";
 
 interface MediaStore {
   mediaItems: MediaItem[];
@@ -70,7 +69,7 @@ export const getImageDimensions = (
 ): Promise<{ width: number; height: number }> => {
   return new Promise((resolve, reject) => {
     const img = new window.Image();
-    let blobUrl: string;
+    const blobUrl = createObjectURL(file, "getImageDimensions");
 
     const cleanup = () => {
       img.remove();
@@ -91,7 +90,6 @@ export const getImageDimensions = (
       reject(new Error("Could not load image"));
     });
 
-    blobUrl = createObjectURL(file, "getImageDimensions");
     img.src = blobUrl;
   });
 };

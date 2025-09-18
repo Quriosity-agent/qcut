@@ -350,7 +350,7 @@ test.describe("Auto-Save & Export File Management", () => {
             // @ts-expect-error
             dialog.showOpenDialog = global.__origShowOpenDialog__;
             // @ts-expect-error
-            delete global.__origShowOpenDialog__;
+            global.__origShowOpenDialog__ = undefined;
           }
         });
       }
