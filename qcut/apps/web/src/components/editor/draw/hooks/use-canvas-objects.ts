@@ -83,25 +83,16 @@ export const useCanvasObjects = () => {
       if (typeof newObjects === "function") {
         setObjectsInternal((prev) => {
           const result = newObjects(prev);
-          if (import.meta.env.DEV) {
-            console.log("📝 setObjects called (function):", {
-              previousCount: prev.length,
-              newCount: result.length,
-              stackTrace: new Error("Debug stack trace").stack
-                ?.split("\n")[2]
-                ?.trim(),
-            });
+          // Reduced verbose setObjects logging
+          if (import.meta.env.DEV && false) { // Temporarily disabled
+            console.log("📝 setObjects (function):", prev.length, "→", result.length);
           }
           return result;
         });
       } else {
-        if (import.meta.env.DEV) {
-          console.log("📝 setObjects called (direct):", {
-            newCount: newObjects.length,
-            stackTrace: new Error("Debug stack trace for setObjects").stack
-              ?.split("\n")[2]
-              ?.trim(),
-          });
+        // Reduced verbose setObjects direct logging
+        if (import.meta.env.DEV && false) { // Temporarily disabled
+          console.log("📝 setObjects (direct):", newObjects.length);
         }
         setObjectsInternal(newObjects);
       }
@@ -732,27 +723,9 @@ export const useCanvasObjects = () => {
 
           case "image": {
             const image = obj as ImageObject;
-            if (import.meta.env.DEV) {
-              console.log("🖼️ IMAGE DEBUG - Rendering image object:", {
-                id: image.id,
-                bounds: {
-                  x: obj.x,
-                  y: obj.y,
-                  width: obj.width,
-                  height: obj.height,
-                },
-                rotation: image.rotation,
-                canvasSize: {
-                  width: ctx.canvas.width,
-                  height: ctx.canvas.height,
-                },
-                imageElement: {
-                  width: image.element.width,
-                  height: image.element.height,
-                  complete: image.element.complete,
-                  src: image.element.src?.substring(0, 50) + "...",
-                },
-              });
+            // Reduced verbose image debug logging
+            if (import.meta.env.DEV && false) { // Temporarily disabled
+              console.log("🖼️ IMAGE DEBUG - Rendering image object:", image.id);
             }
 
             // Check if image is loaded
@@ -767,18 +740,9 @@ export const useCanvasObjects = () => {
             const centerX = obj.x + obj.width / 2;
             const centerY = obj.y + obj.height / 2;
 
-            if (import.meta.env.DEV) {
-              console.log("🖼️ IMAGE DEBUG - Transform calculations:", {
-                centerX,
-                centerY,
-                rotation: image.rotation,
-                finalPosition: { x: obj.x, y: obj.y },
-                willBeVisible:
-                  obj.x < ctx.canvas.width &&
-                  obj.y < ctx.canvas.height &&
-                  obj.x + obj.width > 0 &&
-                  obj.y + obj.height > 0,
-              });
+            // Reduced verbose transform calculations logging
+            if (import.meta.env.DEV && false) { // Temporarily disabled
+              console.log("🖼️ IMAGE DEBUG - Transform calculations for:", image.id);
             }
 
             ctx.translate(centerX, centerY);
@@ -787,11 +751,9 @@ export const useCanvasObjects = () => {
 
             try {
               ctx.drawImage(image.element, obj.x, obj.y, obj.width, obj.height);
-              if (import.meta.env.DEV) {
-                console.log(
-                  "✅ IMAGE DEBUG - Image rendered successfully:",
-                  image.id
-                );
+              // Reduced verbose image success logging
+              if (import.meta.env.DEV && false) { // Temporarily disabled
+                console.log("✅ IMAGE DEBUG - Image rendered successfully:", image.id);
               }
             } catch (error) {
               console.error("❌ IMAGE DEBUG - Failed to render image:", {

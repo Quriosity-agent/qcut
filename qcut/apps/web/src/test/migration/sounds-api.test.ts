@@ -2,6 +2,29 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { searchSounds } from "@/lib/api-adapter";
 import { setRuntimeFlags, isFeatureEnabled } from "@/lib/feature-flags";
 
+// Mock the error handler to prevent interference during tests
+vi.mock("@/lib/error-handler", () => ({
+  handleError: vi.fn(),
+  ErrorCategory: {
+    NETWORK: "network",
+    VALIDATION: "validation",
+    STORAGE: "storage",
+    MEDIA_PROCESSING: "media_processing",
+    AI_SERVICE: "ai_service",
+    EXPORT: "export",
+    AUTH: "auth",
+    UI: "ui",
+    SYSTEM: "system",
+    UNKNOWN: "unknown",
+  },
+  ErrorSeverity: {
+    LOW: "low",
+    MEDIUM: "medium",
+    HIGH: "high",
+    CRITICAL: "critical",
+  },
+}));
+
 // Mock the global fetch function
 const mockFetch = vi.fn();
 (global as any).fetch = mockFetch;
