@@ -189,6 +189,7 @@ export const useCanvasDrawing = (
     [options.tool.id, options.brushSize, options.color, options.opacity]
   );
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: canvasRef.current intentionally omitted to avoid unnecessary re-creations
   const drawLine = useCallback(
     (from: { x: number; y: number }, to: { x: number; y: number }) => {
       if (options.disabled) return;
@@ -247,8 +248,6 @@ export const useCanvasDrawing = (
       options.tool.id,
       options.disabled,
       setupCanvasContext,
-      // Note: canvasRef.current is intentionally not in dependencies to avoid unnecessary re-creations
-      // eslint-disable-next-line react-hooks/exhaustive-deps
     ]
   );
 
@@ -319,6 +318,7 @@ export const useCanvasDrawing = (
     ]
   );
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: canvasRef.current intentionally omitted to avoid unnecessary re-creations
   const drawText = useCallback(
     (position: { x: number; y: number }, text: string) => {
       const canvas = canvasRef.current;
@@ -343,8 +343,6 @@ export const useCanvasDrawing = (
       setupCanvasContext,
       options.disabled,
       options.brushSize,
-      // Note: canvasRef.current is intentionally not in dependencies to avoid unnecessary re-creations
-      // eslint-disable-next-line react-hooks/exhaustive-deps
     ]
   );
 
@@ -513,6 +511,7 @@ export const useCanvasDrawing = (
   );
 
   // Create preview canvas for temporary strokes
+  // biome-ignore lint/correctness/useExhaustiveDependencies: canvasRef.current intentionally omitted to avoid unnecessary re-creations
   const getPreviewCanvas = useCallback(() => {
     if (!previewCanvasRef.current && canvasRef.current) {
       // Create overlay canvas for previews
