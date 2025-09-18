@@ -275,7 +275,7 @@ export function KeyframeTimeline({
       elementId,
       effectId,
       updateEffectAnimations,
-      // findNearestValidPosition intentionally omitted to avoid unnecessary re-renders
+      findNearestValidPosition,
     ]
   );
 
