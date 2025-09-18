@@ -339,11 +339,7 @@ export const useCanvasDrawing = (
       // Restore context state
       ctx.restore();
     },
-    [
-      setupCanvasContext,
-      options.disabled,
-      options.brushSize,
-    ]
+    [setupCanvasContext, options.disabled, options.brushSize]
   );
 
   // Mouse event handlers
