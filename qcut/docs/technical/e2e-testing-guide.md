@@ -85,6 +85,13 @@ export default defineConfig({
 **❌ FAILING: 51+ tests failing** - Advanced features need helper function updates
 **🎯 PRIORITY: Fix multi-media management tests** - Extends core functionality
 
+### **Priority E2E Test Roadmap**
+1. 🎬 **Complete Video Project Workflow** - ✅ WORKING (project-workflow-part1/2/3.e2e.ts)
+2. 📁 **Multi-Media Import and Timeline Management** - 🔄 NEEDS HELPER UPDATES
+3. 🎨 **Sticker and Text Overlay System** - 🔄 NEEDS HELPER UPDATES
+4. 🤖 **AI Features Integration** - 🔄 NEEDS HELPER UPDATES
+5. 🔄 **Cross-Platform File Handling** - 🔄 NEEDS HELPER UPDATES
+
 ## Overview
 
 QCut's End-to-End (E2E) testing infrastructure provides comprehensive testing for the Electron-based video editor application. The test suite uses Playwright to automate real user interactions across the entire application stack, from project creation to media import and timeline editing.
@@ -359,13 +366,70 @@ bun x playwright test --project=electron --headed --debug
 
 ### CI/CD Integration
 
+#### GitHub Actions Example
 ```yaml
-# Example GitHub Actions integration
-- name: Run E2E Tests
+# .github/workflows/e2e-tests.yml
+name: E2E Tests
+
+on:
+  pull_request:
+    branches: [main, master]
+  push:
+    branches: [main, master]
+
+jobs:
+  e2e-tests:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: |
+          cd qcut
+          bun install
+
+      - name: Build application
+        run: |
+          cd qcut
+          bun run build
+
+      - name: Run E2E tests
+        run: |
+          cd qcut
+          bun x playwright test --project=electron --reporter=html
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e2e-test-results
+          path: qcut/docs/completed/test-results/
+```
+
+#### Advanced CI/CD Patterns
+```yaml
+# Conditional E2E testing based on changed files
+- name: Check for relevant changes
+  id: changes
+  uses: dorny/paths-filter@v2
+  with:
+    filters: |
+      e2e-relevant:
+        - 'qcut/apps/web/src/**'
+        - 'qcut/electron/**'
+        - 'qcut/apps/web/src/test/e2e/**'
+
+- name: Run E2E tests
+  if: steps.changes.outputs.e2e-relevant == 'true'
   run: |
     cd qcut
-    bun run build
-    bun x playwright test --project=electron --reporter=html
+    bun x playwright test --project=electron
 ```
 
 ## Performance Considerations
