@@ -196,14 +196,7 @@ const handlePan = (deltaX: number, deltaY: number) => {
 };
 ```
 
-#### **6. Keyboard Shortcuts**
-**Modify**: `apps/web/src/components/editor/draw/canvas/drawing-canvas.tsx:300-350`
-- Add keyboard shortcuts for scrolling
-- Arrow Keys: Scroll in small increments (20px)
-- Page Up/Down: Scroll vertically by viewport height
-- Home/End: Jump to top/bottom of canvas
-
-#### **7. Store Integration**
+#### **6. Store Integration**
 **Modify**: `apps/web/src/stores/drawing-store.ts` (if exists) or create new
 - Persist scroll positions
 - Share scroll state between components
@@ -234,6 +227,105 @@ interface DrawingStore {
 | `apps/web/src/stores/drawing-store.ts` | **CREATE/MODIFY** | Persist scroll state |
 | `apps/web/src/components/editor/draw/utils/canvas-utils.ts` | **MODIFY** | Update coordinate calculations |
 
+## 🔍 **Existing Code Analysis & Compatibility**
+
+### **Current Implementation Status**
+After analyzing the existing drawing canvas code, here are the key findings:
+
+#### **✅ Compatible Features (Safe to Modify)**
+1. **Canvas Structure**:
+   - Uses dual-canvas setup (background + drawing canvas)
+   - Background canvas: `zIndex: 1` for images
+   - Drawing canvas: `zIndex: 2` for strokes/shapes/text
+   - Container structure supports adding scrollbars
+
+2. **Coordinate System**:
+   - `getCanvasCoordinates()` in `use-canvas-drawing.ts:106-124` already handles coordinate transformations
+   - Easy to modify for scroll offset: `x: (clientX - rect.left) + scrollX`
+
+3. **Image Positioning**:
+   - `use-canvas-images.ts:83-92` currently centers images
+   - Simple change to use top-left positioning instead
+
+#### **⚠️ Areas Requiring Careful Integration**
+
+1. **Event Handling**:
+   - Drawing events in `use-canvas-drawing.ts` need scroll offset adjustments
+   - Touch events need similar modifications
+   - Object selection logic must account for scroll position
+
+2. **Canvas Rendering**:
+   - Two separate canvases render independently
+   - Must maintain separation when adding scroll transformations
+   - Images render to background canvas, other objects to drawing canvas
+
+3. **State Management**:
+   - Multiple state hooks manage different aspects
+   - Need centralized scroll state without conflicts
+
+### **Implementation Safety Measures**
+
+#### **1. Coordinate System Changes**
+**Current**: `use-canvas-drawing.ts:106-124`
+```typescript
+return {
+  x: (clientX - rect.left) * scaleX,
+  y: (clientY - rect.top) * scaleY,
+};
+```
+
+**Modified** (scroll-aware):
+```typescript
+return {
+  x: (clientX - rect.left) * scaleX + scrollX,
+  y: (clientY - rect.top) * scaleY + scrollY,
+};
+```
+
+#### **2. Canvas Rendering Safety**
+- **Background Canvas**: Apply scroll transform to image rendering
+- **Drawing Canvas**: Apply scroll transform to stroke/shape/text rendering
+- **Container**: Add scrollbar components without disrupting canvas layers
+
+#### **3. Image Positioning Change**
+**Current**: `use-canvas-images.ts:86-87`
+```typescript
+x: (canvas.width - width) / 2,  // Center horizontally
+y: (canvas.height - height) / 2, // Center vertically
+```
+
+**Modified** (top-left with padding):
+```typescript
+x: 20, // Top-left positioning with padding
+y: 20  // Top-left positioning with padding
+```
+
+### **Compatibility Risk Assessment**
+
+| Component | Risk Level | Mitigation Strategy |
+|-----------|------------|-------------------|
+| **Drawing Events** | 🟡 MEDIUM | Update coordinate calculations gradually, test each tool |
+| **Image Rendering** | 🟢 LOW | Simple positioning change in one location |
+| **Object Selection** | 🟡 MEDIUM | Ensure hit testing works with scroll offsets |
+| **Undo/Redo** | 🟡 MEDIUM | May need scroll position in history state |
+| **Touch Support** | 🟡 MEDIUM | Apply same coordinate fixes to touch events |
+| **Canvas Export** | 🟢 LOW | Export function works independently of scroll |
+
+### **Breaking Change Prevention**
+
+1. **Backward Compatibility**: Keep existing image centering as fallback option
+2. **Feature Flags**: Add environment variable to toggle new positioning
+3. **Gradual Rollout**: Implement scroll controls first, then positioning changes
+4. **Fallback Mode**: Disable scroll features if issues detected
+
+### **Recommended Implementation Order**
+
+1. **Phase 1**: Add scroll state management and utilities
+2. **Phase 2**: Implement scrollbar UI components
+3. **Phase 3**: Update coordinate calculations for scroll offsets
+4. **Phase 4**: Change image positioning to top-left
+5. **Phase 5**: Add touch gesture support
+
 ### **UI/UX Considerations**
 
 1. **Scrollbar Design**
@@ -254,14 +346,12 @@ interface DrawingStore {
 
 4. **Accessibility**
    - ARIA labels for scrollbars
-   - Keyboard navigation support for scrolling
-   - Focus indicators for keyboard users
+   - Focus indicators for scrollbar interaction
 
 ### **Testing Checklist**
 - [ ] Images upload and position at top-left corner
 - [ ] Vertical scrollbar works correctly for large canvases
 - [ ] Horizontal scrollbar works correctly for wide canvases
-- [ ] Keyboard shortcuts (arrows, page up/down) work
 - [ ] Mouse wheel scrolling functions properly
 - [ ] Pan gestures update scrollbar positions
 - [ ] Drawing accuracy maintained at all scroll positions
