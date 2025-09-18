@@ -3,7 +3,6 @@
 
 // Define mocks inline to ensure they're available immediately
 class MockMutationObserver {
-  constructor(_callback: MutationCallback) {}
   observe(_target: Node, _options?: MutationObserverInit) {}
   disconnect() {}
   takeRecords(): MutationRecord[] {
@@ -12,7 +11,6 @@ class MockMutationObserver {
 }
 
 class MockResizeObserver {
-  constructor(_callback: ResizeObserverCallback) {}
   observe(_target: Element, _options?: ResizeObserverOptions) {}
   unobserve(_target: Element) {}
   disconnect() {}
@@ -23,10 +21,6 @@ class MockIntersectionObserver {
   readonly rootMargin = "0px";
   readonly thresholds: ReadonlyArray<number> = [0];
 
-  constructor(
-    _callback: IntersectionObserverCallback,
-    _options?: IntersectionObserverInit
-  ) {}
   observe(_target: Element) {}
   unobserve(_target: Element) {}
   disconnect() {}
