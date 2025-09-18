@@ -151,57 +151,60 @@ export function KeyframeTimeline({
   );
 
   // Helper function to find nearest valid position when collision occurs
-  const findNearestValidPosition = (
-    targetTime: number,
-    keyframes: EffectKeyframe[],
-    currentKeyframe: EffectKeyframe
-  ): number | null => {
-    const minSeparation = 0.01; // Minimum 10ms separation
-    const sortedKeyframes = keyframes
-      .filter((kf) => kf !== currentKeyframe)
-      .sort((a, b) => a.time - b.time);
+  const findNearestValidPosition = useCallback(
+    (
+      targetTime: number,
+      keyframes: EffectKeyframe[],
+      currentKeyframe: EffectKeyframe
+    ): number | null => {
+      const minSeparation = 0.01; // Minimum 10ms separation
+      const sortedKeyframes = keyframes
+        .filter((kf) => kf !== currentKeyframe)
+        .sort((a, b) => a.time - b.time);
 
-    // Find the nearest gap that can fit our keyframe
-    let bestPosition: number | null = null;
-    let minDistance = Infinity;
+      // Find the nearest gap that can fit our keyframe
+      let bestPosition: number | null = null;
+      let minDistance = Infinity;
 
-    // Check position before first keyframe
-    if (
-      sortedKeyframes.length === 0 ||
-      targetTime < sortedKeyframes[0].time - minSeparation
-    ) {
-      bestPosition = Math.max(0, targetTime);
-    } else {
-      // Check gaps between keyframes
-      for (let i = 0; i < sortedKeyframes.length - 1; i++) {
-        const gapStart = sortedKeyframes[i].time + minSeparation;
-        const gapEnd = sortedKeyframes[i + 1].time - minSeparation;
+      // Check position before first keyframe
+      if (
+        sortedKeyframes.length === 0 ||
+        targetTime < sortedKeyframes[0].time - minSeparation
+      ) {
+        bestPosition = Math.max(0, targetTime);
+      } else {
+        // Check gaps between keyframes
+        for (let i = 0; i < sortedKeyframes.length - 1; i++) {
+          const gapStart = sortedKeyframes[i].time + minSeparation;
+          const gapEnd = sortedKeyframes[i + 1].time - minSeparation;
 
-        if (gapEnd > gapStart) {
-          const clampedTime = Math.max(gapStart, Math.min(gapEnd, targetTime));
+          if (gapEnd > gapStart) {
+            const clampedTime = Math.max(gapStart, Math.min(gapEnd, targetTime));
+            const distance = Math.abs(clampedTime - targetTime);
+
+            if (distance < minDistance) {
+              minDistance = distance;
+              bestPosition = clampedTime;
+            }
+          }
+        }
+
+        // Check position after last keyframe
+        const lastKeyframe = sortedKeyframes[sortedKeyframes.length - 1];
+        if (targetTime > lastKeyframe.time + minSeparation) {
+          const clampedTime = Math.min(duration, targetTime);
           const distance = Math.abs(clampedTime - targetTime);
 
           if (distance < minDistance) {
-            minDistance = distance;
             bestPosition = clampedTime;
           }
         }
       }
 
-      // Check position after last keyframe
-      const lastKeyframe = sortedKeyframes[sortedKeyframes.length - 1];
-      if (targetTime > lastKeyframe.time + minSeparation) {
-        const clampedTime = Math.min(duration, targetTime);
-        const distance = Math.abs(clampedTime - targetTime);
-
-        if (distance < minDistance) {
-          bestPosition = clampedTime;
-        }
-      }
-    }
-
-    return bestPosition;
-  };
+      return bestPosition;
+    },
+    [duration]
+  );
 
   // Handle keyframe dragging
   const handleKeyframeDrag = useCallback(
