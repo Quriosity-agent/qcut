@@ -199,20 +199,17 @@ export const DrawingCanvas = forwardRef<
 
   // Save current canvas state to history
   const saveCanvasToHistory = useCallback(() => {
-    console.log("💾 PENCIL DEBUG - saveCanvasToHistory called:", {
-      objectCount: objects.length,
-      stackTrace: new Error("Stack trace for debugging").stack
-        ?.split("\n")[2]
-        ?.trim(),
-      timestamp: Date.now(),
-    });
+    if (import.meta.env.DEV) {
+      console.log("💾 DRAW DEBUG - Saving canvas to history:", {
+        objectCount: objects.length,
+      });
+    }
     const saveSnapshot = () => {
       const dataUrl = getCanvasDataUrl();
       if (dataUrl) {
-        console.log(
-          "💾 PENCIL DEBUG - Saving to history with dataUrl length:",
-          dataUrl.length
-        );
+        if (import.meta.env.DEV) {
+          console.log("💾 DRAW DEBUG - Saving to history, length:", dataUrl.length);
+        }
 
         // Set flag to prevent history restoration during save
         isSavingToHistory.current = true;
@@ -221,14 +218,12 @@ export const DrawingCanvas = forwardRef<
         // Clear flag after a longer delay to coordinate with object creation protection
         setTimeout(() => {
           isSavingToHistory.current = false;
-          console.log(
-            "💾 PENCIL DEBUG - Save operation completed, restoration re-enabled"
-          );
+          if (import.meta.env.DEV) {
+            console.log("💾 DRAW DEBUG - Save operation completed");
+          }
         }, 250); // Increased to 250ms to ensure it's after object creation protection clears (200ms)
-
-        console.log("💾 PENCIL DEBUG - History save completed");
       } else {
-        console.error("❌ PENCIL DEBUG - No dataUrl to save to history");
+        console.error("❌ DRAW DEBUG - No dataUrl to save to history");
       }
     };
 
@@ -261,9 +256,9 @@ export const DrawingCanvas = forwardRef<
     onDrawingStart: useCallback(() => {
       if (disabled) return;
       try {
-        console.log("🎯 PENCIL DEBUG - Drawing started:", {
-          timestamp: Date.now(),
-        });
+        if (import.meta.env.DEV) {
+          console.log("🎯 DRAW DEBUG - Drawing started");
+        }
         setDrawing(true);
         setIsDrawing(true);
         if (canvasRef.current) {
@@ -282,10 +277,9 @@ export const DrawingCanvas = forwardRef<
     onDrawingEnd: useCallback(() => {
       if (disabled) return;
       try {
-        console.log("🎯 PENCIL DEBUG - Drawing ended:", {
-          objectCount: objects.length,
-          timestamp: Date.now(),
-        });
+        if (import.meta.env.DEV) {
+          console.log("🎯 DRAW DEBUG - Drawing ended");
+        }
         setDrawing(false);
         setIsDrawing(false);
 
@@ -607,48 +601,44 @@ export const DrawingCanvas = forwardRef<
   const loadDrawingFromDataUrl = useCallback(
     async (dataUrl: string) => {
       try {
-        console.log("🔄 PENCIL DEBUG - loadDrawingFromDataUrl called:", {
-          dataUrlLength: dataUrl.length,
-          currentObjectCount: objects.length,
-          stackTrace: new Error("Stack trace for debugging").stack
-            ?.split("\n")[2]
-            ?.trim(),
-          timestamp: Date.now(),
-        });
+        if (import.meta.env.DEV) {
+          console.log("🔄 DRAW DEBUG - loadDrawingFromDataUrl called:", {
+            dataUrlLength: dataUrl.length,
+            currentObjectCount: objects.length,
+          });
+        }
 
         const canvas = canvasRef.current;
         if (!canvas) {
           throw new Error("Canvas not available");
         }
 
-        // Clear existing objects
-        console.log(
-          "🚨 PENCIL DEBUG - About to call clearAll from loadDrawingFromDataUrl"
-        );
-        clearAll();
+        // CRITICAL FIX: Instead of clearing objects and converting to image,
+        // we should preserve existing objects and only update the canvas visual state.
+        // This prevents stroke objects from being destroyed and converted to images.
 
-        // Create image element and load the data URL
-        const img = new Image();
-        await new Promise<void>((resolve, reject) => {
-          img.onload = () => resolve();
-          img.onerror = () => reject(new Error("Failed to load drawing"));
-          img.src = dataUrl;
-        });
+        // For now, we'll disable this problematic function that was causing
+        // stroke objects to be converted to image objects.
+        // The proper fix would be to implement object-aware history that
+        // serializes/deserializes the actual object state instead of canvas pixels.
 
-        // Add the loaded drawing as a full-canvas image object
-        addImageObject({
-          id: `image-${Date.now()}`,
-          element: img,
-          x: 0,
-          y: 0,
-          width: canvas.width,
-          height: canvas.height,
-          rotation: 0,
-        });
+        if (import.meta.env.DEV) {
+          console.log("🚫 DRAW DEBUG - loadDrawingFromDataUrl disabled to preserve stroke objects");
+        }
+
+        // Instead of the destructive clearAll + addImageObject pattern,
+        // we let the existing objects remain and handle visual updates through re-rendering
+
+        // TODO: Implement proper object-aware history system that:
+        // 1. Serializes object state (strokes, images, etc.) instead of canvas pixels
+        // 2. Deserializes to recreate original objects with correct types
+        // 3. Maintains undo/redo functionality without destroying object structure
 
         if (onDrawingChange) {
           onDrawingChange(dataUrl);
         }
+
+        return;
       } catch (error) {
         handleError(error, {
           operation: "load drawing",
