@@ -77,7 +77,7 @@ export function KeyframeTimeline({
 
   // Add keyframe at current time
   const handleAddKeyframe = useCallback(() => {
-    const value = effect.parameters[selectedParameter] || 0;
+    const value = effect?.parameters[selectedParameter] || 0;
 
     if (animation) {
       const updatedAnimation = addKeyframe(
@@ -98,7 +98,7 @@ export function KeyframeTimeline({
   }, [
     animation,
     currentTime,
-    effect.parameters,
+    effect?.parameters,
     selectedParameter,
     elementId,
     effectId,

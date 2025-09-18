@@ -102,7 +102,8 @@ export const useCanvasDrawing = (
     options.disabled,
   ]);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: canvasRef.current intentionally omitted to avoid unnecessary re-creations\n  const getCanvasCoordinates = useCallback((e: MouseEvent | TouchEvent) => {
+  // biome-ignore lint/correctness/useExhaustiveDependencies: canvasRef.current intentionally omitted to avoid unnecessary re-creations
+  const getCanvasCoordinates = useCallback((e: MouseEvent | TouchEvent) => {
     const canvas = canvasRef.current;
     if (!canvas) return { x: 0, y: 0 };
 
@@ -251,7 +252,8 @@ export const useCanvasDrawing = (
     ]
   );
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: canvasRef.current intentionally omitted to avoid unnecessary re-creations\n  const drawShape = useCallback(
+  // biome-ignore lint/correctness/useExhaustiveDependencies: canvasRef.current intentionally omitted to avoid unnecessary re-creations
+  const drawShape = useCallback(
     (
       start: { x: number; y: number },
       end: { x: number; y: number },
@@ -510,6 +512,36 @@ export const useCanvasDrawing = (
     ]
   );
 
+  // Create preview canvas for temporary strokes
+  const getPreviewCanvas = useCallback(() => {
+    if (!previewCanvasRef.current && canvasRef.current) {
+      // Create overlay canvas for previews
+      const canvas = canvasRef.current;
+      const previewCanvas = document.createElement("canvas");
+      previewCanvas.width = canvas.width;
+      previewCanvas.height = canvas.height;
+      previewCanvas.style.position = "absolute";
+      previewCanvas.style.pointerEvents = "none";
+      previewCanvas.style.zIndex = "3";
+
+      // Insert preview canvas as sibling to main canvas
+      canvas.parentElement?.appendChild(previewCanvas);
+      previewCanvasRef.current = previewCanvas;
+    }
+    return previewCanvasRef.current;
+  }, []);
+
+  // Clear preview canvas
+  const clearPreview = useCallback(() => {
+    const previewCanvas = getPreviewCanvas();
+    if (previewCanvas) {
+      const ctx = previewCanvas.getContext("2d");
+      if (ctx) {
+        ctx.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
+      }
+    }
+  }, [getPreviewCanvas]);
+
   const handleMouseUp = useCallback(() => {
     if (isDrawing.current) {
       console.log("🖱️ PENCIL DEBUG - Mouse up:", {
@@ -765,36 +797,6 @@ export const useCanvasDrawing = (
     },
     [handleMouseUp]
   );
-
-  // Create preview canvas for temporary strokes
-  const getPreviewCanvas = useCallback(() => {
-    if (!previewCanvasRef.current && canvasRef.current) {
-      // Create overlay canvas for previews
-      const canvas = canvasRef.current;
-      const previewCanvas = document.createElement("canvas");
-      previewCanvas.width = canvas.width;
-      previewCanvas.height = canvas.height;
-      previewCanvas.style.position = "absolute";
-      previewCanvas.style.pointerEvents = "none";
-      previewCanvas.style.zIndex = "3";
-
-      // Insert preview canvas as sibling to main canvas
-      canvas.parentElement?.appendChild(previewCanvas);
-      previewCanvasRef.current = previewCanvas;
-    }
-    return previewCanvasRef.current;
-  }, []);
-
-  // Clear preview canvas
-  const clearPreview = useCallback(() => {
-    const previewCanvas = getPreviewCanvas();
-    if (previewCanvas) {
-      const ctx = previewCanvas.getContext("2d");
-      if (ctx) {
-        ctx.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
-      }
-    }
-  }, [getPreviewCanvas]);
 
   // Cleanup animation frames and preview canvas on unmount
   useEffect(() => {

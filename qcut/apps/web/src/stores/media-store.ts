@@ -12,6 +12,7 @@ import {
   handleStorageError,
   handleMediaProcessingError,
 } from "@/lib/error-handler";
+import type { MediaItem, MediaType } from "./media-store-types";
 
 // Re-export types for backward compatibility
 export type { MediaItem, MediaType } from "./media-store-types";
