@@ -5,7 +5,7 @@
  * Electron applications, specifically designed for QCut video editor E2E tests.
  */
 
-import { test as base, expect, Page } from "@playwright/test";
+import { test as base, Page } from "@playwright/test";
 import { ElectronApplication, _electron as electron } from "playwright";
 import { resolve as pathResolve } from "path";
 
@@ -55,7 +55,7 @@ export const test = base.extend<ElectronFixtures>({
   },
 });
 
-export { expect };
+export { expect } from "@playwright/test";
 
 /**
  * Helper functions for common E2E operations

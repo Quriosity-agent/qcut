@@ -25,7 +25,6 @@ type ObserverHost = Partial<{
 
 // MutationObserver mock implementation
 export class MockMutationObserver implements MutationObserver {
-  constructor(_callback: MutationCallback) {}
   observe(_target: Node, _options?: MutationObserverInit) {}
   disconnect() {}
   takeRecords(): MutationRecord[] {
@@ -35,7 +34,6 @@ export class MockMutationObserver implements MutationObserver {
 
 // ResizeObserver mock implementation
 export class MockResizeObserver implements ResizeObserver {
-  constructor(_callback: ResizeObserverCallback) {}
   observe(_target: Element, _options?: ResizeObserverOptions) {}
   unobserve(_target: Element) {}
   disconnect() {}
@@ -47,10 +45,6 @@ export class MockIntersectionObserver implements IntersectionObserver {
   readonly rootMargin = "0px";
   readonly thresholds: ReadonlyArray<number> = [0];
 
-  constructor(
-    _callback: IntersectionObserverCallback,
-    _options?: IntersectionObserverInit
-  ) {}
   observe(_target: Element) {}
   unobserve(_target: Element) {}
   disconnect() {}
@@ -68,9 +62,9 @@ export function installBrowserMocks(
   // Force override using Object.defineProperty for better compatibility
   // This ensures we override JSDOM's native implementation
   try {
-    // Delete existing property first to ensure clean override
+    // Clear existing property first to ensure clean override
     if ("MutationObserver" in context) {
-      delete (context as any).MutationObserver;
+      (context as any).MutationObserver = undefined;
     }
 
     Object.defineProperty(context, "MutationObserver", {
