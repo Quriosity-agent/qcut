@@ -23,7 +23,8 @@
         "**/.next/**",
         "**/coverage/**",
         "**/temp/**",
-        "**/tmp/**"
+        "**/tmp/**",
+        "docs/completed/**"
       ],
       "linter": {
         "enabled": false
