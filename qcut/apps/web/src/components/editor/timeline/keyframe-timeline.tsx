@@ -179,7 +179,10 @@ export function KeyframeTimeline({
           const gapEnd = sortedKeyframes[i + 1].time - minSeparation;
 
           if (gapEnd > gapStart) {
-            const clampedTime = Math.max(gapStart, Math.min(gapEnd, targetTime));
+            const clampedTime = Math.max(
+              gapStart,
+              Math.min(gapEnd, targetTime)
+            );
             const distance = Math.abs(clampedTime - targetTime);
 
             if (distance < minDistance) {
