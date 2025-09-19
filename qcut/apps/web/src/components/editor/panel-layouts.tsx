@@ -43,19 +43,7 @@ export function DefaultLayout({ resetCounter }: LayoutProps) {
   const normalizedProperties =
     Math.round((100 - normalizedTools - normalizedPreview) * 100) / 100;
 
-  // Debug: Log actual panel sizes from store
-  if (import.meta.env.DEV) {
-    console.log(
-      `🔍 DefaultLayout panel sizes: tools=${normalizedTools.toFixed(2)}%, preview=${normalizedPreview.toFixed(2)}%, props=${normalizedProperties.toFixed(2)}%, total=${(normalizedTools + normalizedPreview + normalizedProperties).toFixed(2)}%`
-    );
-  }
-
-  // Debug: Log actual defaultSize values being passed to ResizablePanel
-  if (import.meta.env.DEV) {
-    console.log(
-      `🔧 DefaultLayout defaultSizes: tools=${normalizedTools}, preview=${normalizedPreview}, props=${normalizedProperties}, main=${mainContent}, timeline=${timeline}`
-    );
-  }
+  // Panel size calculation completed
 
   // Trigger normalization if panels are off
   React.useEffect(() => {

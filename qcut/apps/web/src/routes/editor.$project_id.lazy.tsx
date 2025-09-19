@@ -184,12 +184,7 @@ function EditorPage() {
   const activePreset = usePanelStore((s) => s.activePreset) ?? "default";
   const resetCounter = usePanelStore((s) => s.resetCounter) ?? 0;
 
-  // Debug: Log which layout is being used
-  if (import.meta.env.DEV) {
-    console.log(
-      `🎯 Editor using layout: ${activePreset}, resetCounter: ${resetCounter}`
-    );
-  }
+  // Layout selection complete
 
   usePlaybackControls();
 
