@@ -972,9 +972,10 @@ export class ExportEngine {
       progressCallback?.(100, "Export complete!");
 
       // Export investigation summary
+      const totalFramesRendered = this.calculateTotalFrames();
       console.log("\n🎆 EXPORT INVESTIGATION SUMMARY:");
       console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-      console.log(`🎥 Total frames rendered: ${frameCount}`);
+      console.log(`🎥 Total frames rendered: ${totalFramesRendered}`);
       console.log(`⏱️ Export duration: ${(Date.now() - startTime) / 1000}s`);
       console.log(`💽 Video size: ${(videoBlob.size / (1024 * 1024)).toFixed(2)} MB`);
 
