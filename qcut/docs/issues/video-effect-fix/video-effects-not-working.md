@@ -4,7 +4,9 @@
 Video effects are not being applied correctly in the QCut editor. Effects show in the UI but don't render in preview or export.
 
 ## Status
-🔧 **In Progress** - Branch: `video-effect-fix`
+✅ **RESOLVED** - Branch: `video-effect-fix`
+
+**Fix Applied**: Selection dependency removed from preview panel effects rendering.
 
 ## Related Files to Investigate
 
@@ -61,14 +63,15 @@ Video effects are not being applied correctly in the QCut editor. Effects show i
 
 ## Known Issues
 
-### Timeline Selection Issue
-- Effects only apply to selected elements
-- When selection is cleared, effects disappear
-- Need to apply effects regardless of selection state
+### ✅ Timeline Selection Issue - FIXED
+- ~~Effects only apply to selected elements~~ **RESOLVED**
+- ~~When selection is cleared, effects disappear~~ **RESOLVED**
+- ✅ Effects now apply regardless of selection state
 
-### Export Issue
+### Export Issue - Under Investigation
 - Effects show in preview but not in exported video
 - May be related to canvas context or timing
+- **Console logging added to investigate further**
 
 ## Proposed Solutions
 
@@ -79,9 +82,9 @@ Modify preview panel to apply effects to ALL elements with stored effects, not j
 Ensure effects are applied during frame rendering in export process.
 
 ## Testing Checklist
-- [ ] Effects visible in preview panel
-- [ ] Effects persist when element deselected
-- [ ] Effects appear in exported video
+- [x] Effects visible in preview panel ✅
+- [x] Effects persist when element deselected ✅
+- [ ] Effects appear in exported video 🔍 (Investigating with console logs)
 - [ ] Effects work in both Electron and browser
 - [ ] Multiple effects can be combined
 - [ ] Effect parameters update correctly
@@ -105,9 +108,62 @@ localStorage.getItem('qcut_effects_enabled')
 - Identified key files for investigation
 - Started documenting issue
 
+### 2025-09-20
+- ✅ **FIXED**: Preview panel selection dependency issue
+- ✅ **ADDED**: Comprehensive console logging for debugging
+- 🔍 **INVESTIGATING**: Export pipeline with console output analysis
+
+## Console Logging Analysis
+
+### Key Findings from Console Output
+
+#### 1. Effects Store Working Correctly
+```console
+🎨 EFFECTS STORE: Applying effect "Brighten" to element b7b82d7a-182a-43f1-9955-aa117452d2ee
+✅ EFFECTS STORE: Successfully applied effect "Brighten" (ID: d886bca6-e4ca-4b7e-ab7a-bbc381cf571f)
+🔍 EFFECTS STORE: Retrieved 1 effects for element b7b82d7a-182a-43f1-9955-aa117452d2ee
+```
+**✅ CONFIRMED**: Effects are being stored and retrieved correctly.
+
+#### 2. Preview Panel Integration
+```console
+🎬 PREVIEW PANEL: Retrieved 0 effects for element b7b82d7a-182a-43f1-9955-aa117452d2ee (before applying)
+🎬 PREVIEW PANEL: Retrieved 1 effects for element b7b82d7a-182a-43f1-9955-aa117452d2ee (after applying)
+🎨 PREVIEW PANEL: 1 enabled effects out of 1 total
+✨ PREVIEW PANEL: Generated CSS filter: "brightness(120%)"
+```
+**✅ CONFIRMED**: Preview panel correctly retrieves effects and generates CSS filters.
+
+#### 3. Element ID Tracking
+- **Element ID**: `b7b82d7a-182a-43f1-9955-aa117452d2ee`
+- **Effect ID**: `d886bca6-e4ca-4b7e-ab7a-bbc381cf571f`
+- **Effect Name**: "Brighten" (brightness: 20)
+- **CSS Output**: `brightness(120%)` (100% + 20% = 120%)
+
+#### 4. Performance Note
+```console
+effects-store.ts:477 🔍 EFFECTS STORE: Retrieved 0 effects... (repeated 39+ times)
+```
+**⚠️ OBSERVATION**: Heavy polling of effects store during UI updates. Consider optimization.
+
+### Updated Console Debug Commands
+```javascript
+// Check current applied effects
+setInterval(() => {
+  const elementId = 'b7b82d7a-182a-43f1-9955-aa117452d2ee'; // Replace with actual element ID
+  const effects = useEffectsStore.getState().getElementEffects(elementId);
+  console.log('Active effects:', effects);
+}, 2000);
+
+// Monitor export engine effects application
+// (Will log automatically during export with new logging)
+```
+
 ---
 
 **Next Steps**:
-1. Add console logging to track effects application
-2. Test effects in preview vs export
-3. Implement fix for selection dependency
+1. ✅ ~~Add console logging to track effects application~~
+2. 🔍 **IN PROGRESS**: Test effects in export pipeline using console logs
+3. ✅ ~~Implement fix for selection dependency~~
+4. 🔍 **NEW**: Analyze export engine console output during video export
+5. 🔍 **NEW**: Verify effects application in both Standard and CLI export engines
