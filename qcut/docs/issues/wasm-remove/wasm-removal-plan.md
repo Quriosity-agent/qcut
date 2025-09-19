@@ -413,3 +413,30 @@ All: FFmpeg WASM for thumbnails, video info, audio extraction
 **Created**: 2025-09-19
 **Updated**: 2025-09-19 (Implementation complete, tested, and building)
 **Branch**: wasm-remove
+**Pull Request**: [#52 - Remove WASM export engine to fix timeout issues](https://github.com/donghaozhang/qcut/pull/52)
+
+## Summary of Achievement
+
+### Problem Solved
+- ✅ Fixed FFmpeg WASM export timeout issues that were causing export failures
+- ✅ Simplified export architecture by removing problematic WASM export engine
+- ✅ Preserved all core media processing functionality (thumbnails, video info, audio extraction)
+
+### Code Impact
+- **Removed**: 436 lines of problematic WASM export code
+- **Deleted Files**: `export-engine-ffmpeg.ts`, `ffmpeg-service.ts`
+- **Modified**: Export factory simplified, WASM export disabled in Standard engine
+- **Preserved**: All WASM packages and utilities for media processing
+
+### Performance Impact
+- **Electron**: Uses native CLI FFmpeg (fastest, most reliable)
+- **Browser**: Uses MediaRecorder (stable, no timeout issues)
+- **Media Processing**: Unchanged - still uses WASM for quick operations
+
+### Testing Results
+- ✅ Build passes without errors
+- ✅ Console logging confirms correct engine selection
+- ✅ Export functionality works in both Electron and browser
+- ✅ Media processing features (thumbnails, etc.) still functional
+
+This successful removal eliminates a major source of export failures while maintaining all essential functionality. The codebase is now cleaner, more maintainable, and more reliable.
