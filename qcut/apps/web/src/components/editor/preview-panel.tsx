@@ -65,29 +65,42 @@ function useEffectsRendering(elementId: string | null, enabled = false) {
   const getElementEffects = useEffectsStore((state) => state.getElementEffects);
 
   const effects = useMemo(() => {
-    if (!enabled || !elementId) return [];
-    return getElementEffects(elementId);
+    if (!enabled || !elementId) {
+      console.log(`🎬 PREVIEW PANEL: No effects (enabled: ${enabled}, elementId: ${elementId})`);
+      return [];
+    }
+    const elementEffects = getElementEffects(elementId);
+    console.log(`🎬 PREVIEW PANEL: Retrieved ${elementEffects.length} effects for element ${elementId}`);
+    return elementEffects;
   }, [enabled, elementId, getElementEffects]);
 
   const filterStyle = useMemo(() => {
-    if (!enabled || !effects || effects.length === 0) return "";
+    if (!enabled || !effects || effects.length === 0) {
+      console.log(`🎨 PREVIEW PANEL: No filter style (enabled: ${enabled}, effects: ${effects?.length || 0})`);
+      return "";
+    }
 
     try {
       // Filter for enabled effects first
       const enabledEffects = effects.filter((e) => e.enabled);
+      console.log(`🎨 PREVIEW PANEL: ${enabledEffects.length} enabled effects out of ${effects.length} total`);
 
       // Guard against zero enabled effects
-      if (enabledEffects.length === 0) return "";
+      if (enabledEffects.length === 0) {
+        console.log(`🚫 PREVIEW PANEL: No enabled effects, returning empty filter`);
+        return "";
+      }
 
       // Merge all active effect parameters
       const mergedParams = mergeEffectParameters(
         ...enabledEffects.map((e) => e.parameters)
       );
 
-      return parametersToCSSFilters(mergedParams);
+      const cssFilter = parametersToCSSFilters(mergedParams);
+      console.log(`✨ PREVIEW PANEL: Generated CSS filter: "${cssFilter}"`);
+      return cssFilter;
     } catch (error) {
-      // Use a more specific error message without console
-      // Error will be handled silently, returning empty string
+      console.error(`❌ PREVIEW PANEL: Error generating filter style:`, error);
       return "";
     }
   }, [enabled, effects]);

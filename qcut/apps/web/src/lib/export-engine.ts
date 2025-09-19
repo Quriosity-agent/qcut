@@ -255,7 +255,9 @@ export class ExportEngine {
               const effects = useEffectsStore
                 .getState()
                 .getElementEffects(element.id);
+              console.log(`🎨 EXPORT ENGINE: Retrieved ${effects.length} effects for image element ${element.id}`);
               const enabledEffects = effects.filter((e) => e.enabled);
+              console.log(`✨ EXPORT ENGINE: ${enabledEffects.length} enabled effects for image element ${element.id}`);
 
               if (enabledEffects.length > 0) {
                 // Save context state before applying effects
@@ -265,6 +267,7 @@ export class ExportEngine {
                 const mergedParams = mergeEffectParameters(
                   ...enabledEffects.map((e) => e.parameters)
                 );
+                console.log(`🔨 EXPORT ENGINE: Applying effects to image canvas:`, mergedParams);
 
                 // Apply CSS-compatible effects to canvas context
                 applyEffectsToCanvas(this.ctx, mergedParams);
@@ -279,10 +282,12 @@ export class ExportEngine {
                 this.ctx.restore();
               } else {
                 // No enabled effects - draw normally
+                console.log(`🚫 EXPORT ENGINE: No enabled effects for image element ${element.id}, drawing normally`);
                 this.ctx.drawImage(img, x, y, width, height);
               }
             } catch (error) {
               // Log but don't fail export
+              console.error(`❌ EXPORT ENGINE: Effects failed for image element ${element.id}:`, error);
               debugWarn(`[Export] Effects failed for ${element.id}:`, error);
               // Fallback to drawing without effects
               this.ctx.drawImage(img, x, y, width, height);
@@ -416,10 +421,13 @@ export class ExportEngine {
           const effects = useEffectsStore
             .getState()
             .getElementEffects(element.id);
+          console.log(`🎨 EXPORT ENGINE: Retrieved ${effects?.length || 0} effects for video element ${element.id}`);
           if (effects && effects.length > 0) {
             const activeEffects = effects.filter((e) => e.enabled);
+            console.log(`✨ EXPORT ENGINE: ${activeEffects.length} enabled effects for video element ${element.id}`);
             if (activeEffects.length === 0) {
               // No enabled effects - draw normally
+              console.log(`🚫 EXPORT ENGINE: No enabled effects for video element ${element.id}, drawing normally`);
               this.ctx.drawImage(video, x, y, width, height);
               return;
             }
@@ -431,6 +439,7 @@ export class ExportEngine {
             const mergedParams = mergeEffectParameters(
               ...activeEffects.map((e) => e.parameters)
             );
+            console.log(`🔨 EXPORT ENGINE: Applying effects to video canvas:`, mergedParams);
 
             // Apply CSS-compatible effects to canvas context
             applyEffectsToCanvas(this.ctx, mergedParams);
@@ -445,10 +454,12 @@ export class ExportEngine {
             this.ctx.restore();
           } else {
             // No active effects - draw normally
+            console.log(`🚫 EXPORT ENGINE: No effects found for video element ${element.id}, drawing normally`);
             this.ctx.drawImage(video, x, y, width, height);
           }
         } catch (error) {
           // Log but don't fail export
+          console.error(`❌ EXPORT ENGINE: Video effects failed for element ${element.id}:`, error);
           debugWarn(`[Export] Video effects failed for ${element.id}:`, error);
           // Fallback to drawing without effects
           this.ctx.drawImage(video, x, y, width, height);

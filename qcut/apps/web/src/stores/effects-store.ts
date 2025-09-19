@@ -377,7 +377,10 @@ export const useEffectsStore = create<EffectsStore>((set, get) => ({
   selectedEffect: null,
 
   applyEffect: (elementId, preset) => {
+    console.log(`🎨 EFFECTS STORE: Applying effect "${preset.name}" to element ${elementId}`);
+
     if (!EFFECTS_ENABLED) {
+      console.warn(`❌ EFFECTS STORE: Effects disabled - cannot apply ${preset.name}`);
       toast.error("Effects are currently disabled");
       return;
     }
@@ -398,19 +401,25 @@ export const useEffectsStore = create<EffectsStore>((set, get) => ({
       return { activeEffects: newMap };
     });
 
+    console.log(`✅ EFFECTS STORE: Successfully applied effect "${preset.name}" (ID: ${newEffect.id}) to element ${elementId}`);
     toast.success(`Applied ${preset.name} effect`);
   },
 
   removeEffect: (elementId, effectId) => {
+    console.log(`🗑️ EFFECTS STORE: Removing effect ${effectId} from element ${elementId}`);
+
     set((state) => {
       const effects = state.activeEffects.get(elementId) || [];
+      const effectToRemove = effects.find(e => e.id === effectId);
       const newEffects = effects.filter((e) => e.id !== effectId);
       const newMap = new Map(state.activeEffects);
 
       if (newEffects.length === 0) {
         newMap.delete(elementId);
+        console.log(`🧹 EFFECTS STORE: Removed all effects from element ${elementId}`);
       } else {
         newMap.set(elementId, newEffects);
+        console.log(`✅ EFFECTS STORE: Removed effect "${effectToRemove?.name || 'Unknown'}" from element ${elementId}. ${newEffects.length} effects remaining.`);
       }
 
       return { activeEffects: newMap };
@@ -464,7 +473,9 @@ export const useEffectsStore = create<EffectsStore>((set, get) => ({
   },
 
   getElementEffects: (elementId) => {
-    return get().activeEffects.get(elementId) || [];
+    const effects = get().activeEffects.get(elementId) || [];
+    console.log(`🔍 EFFECTS STORE: Retrieved ${effects.length} effects for element ${elementId}:`, effects.map(e => `${e.name}(${e.enabled ? 'enabled' : 'disabled'})`));
+    return effects;
   },
 
   // Alias for backward compatibility with external callers
