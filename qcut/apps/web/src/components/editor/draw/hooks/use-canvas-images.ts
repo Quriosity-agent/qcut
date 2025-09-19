@@ -83,8 +83,8 @@ export const useCanvasImages = (
           const newImage: CanvasImage = {
             id,
             element: img,
-            x: (canvas.width - width) / 2, // Center horizontally
-            y: (canvas.height - height) / 2, // Center vertically
+            x: 20, // Top-left positioning with 20px padding
+            y: 20, // Top-left positioning with 20px padding
             width,
             height,
             rotation: 0,

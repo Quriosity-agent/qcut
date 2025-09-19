@@ -710,8 +710,8 @@ export const DrawingCanvas = forwardRef<
           const imageData = {
             id: `image-${Date.now()}`,
             element: img,
-            x: (canvas.width - width) / 2, // Center horizontally
-            y: (canvas.height - height) / 2, // Center vertically
+            x: 20, // Top-left positioning with 20px padding
+            y: 20, // Top-left positioning with 20px padding
             width,
             height,
             rotation: 0,
@@ -828,11 +828,16 @@ export const DrawingCanvas = forwardRef<
       });
     }
 
-    // Clear canvas with TRANSPARENT background (no white fill)
-    // ✅ FIX: Only clear, don't fill with white so background canvas shows through
+    // Clear and set white background for drawing canvas
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    // REMOVED: ctx.fillStyle = 'white';
-    // REMOVED: ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Set white background ONLY if there are no images
+    // If there are images, they render on the background canvas which already has white
+    const hasImages = objects.some((obj) => obj.type === "image");
+    if (!hasImages) {
+      ctx.fillStyle = 'white';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
 
     // Render non-image objects to DRAWING canvas (strokes, shapes, text)
     // Images are now rendered separately to background canvas
