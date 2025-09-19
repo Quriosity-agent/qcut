@@ -308,7 +308,30 @@ This approach:
 - ✅ Allows easy re-enablement in future
 - ✅ Minimal risk of breaking existing functionality
 
-**Status**: Planning Phase - Ready for Implementation
+## 🔍 Console Logging Added for Testing
+
+Added comprehensive console logging to track export engine usage:
+
+### Factory Selection Logging
+- `🚀 EXPORT ENGINE SELECTION: [engine] chosen for [environment]`
+- `🏗️ EXPORT ENGINE CREATION: Creating [engine] engine instance`
+
+### Standard Engine Logging
+- `🎬 STANDARD EXPORT ENGINE: Constructor called`
+- `🎬 STANDARD EXPORT ENGINE: Will use [FFmpeg WASM/MediaRecorder] for export`
+- `🎬 STANDARD EXPORT ENGINE: Export method called`
+
+### CLI Engine Logging
+- `⚡ CLI EXPORT ENGINE: Export method called`
+- `⚡ CLI EXPORT ENGINE: Using native FFmpeg CLI for video export`
+
+### Testing Instructions
+1. Run export in browser environment - look for console messages
+2. Run export in Electron environment - look for console messages
+3. Check which engine is actually selected vs. expected
+4. Verify if Standard engine uses WASM or MediaRecorder in practice
+
+**Status**: Analysis Phase - Console logging added for testing
 **Created**: 2025-09-19
-**Updated**: 2025-09-19 (Critical dependency analysis completed)
+**Updated**: 2025-09-19 (Console logging added to track actual usage)
 **Branch**: wasm-remove
