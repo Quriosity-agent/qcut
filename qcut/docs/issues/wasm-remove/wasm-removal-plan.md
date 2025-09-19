@@ -331,7 +331,47 @@ Added comprehensive console logging to track export engine usage:
 3. Check which engine is actually selected vs. expected
 4. Verify if Standard engine uses WASM or MediaRecorder in practice
 
-**Status**: Analysis Phase - Console logging added for testing
+## 🔬 ACTUAL TEST RESULTS - Electron Export
+
+### Console Output Analysis:
+```
+export-engine-factory.ts:99 🚀 EXPORT ENGINE SELECTION: CLI FFmpeg chosen for Electron environment
+export-engine-factory.ts:187 🏗️ EXPORT ENGINE CREATION: Creating cli engine instance
+export-engine.ts:94 🎬 STANDARD EXPORT ENGINE: Constructor called
+export-engine.ts:95 🎬 STANDARD EXPORT ENGINE: Will use FFmpeg WASM for export
+export-engine-cli.ts:486 ⚡ CLI EXPORT ENGINE: Export method called
+export-engine-cli.ts:487 ⚡ CLI EXPORT ENGINE: Using native FFmpeg CLI for video export
+```
+
+### 🚨 KEY FINDINGS:
+
+1. **Factory correctly selects CLI engine** for Electron (line 1)
+2. **Factory attempts to create CLI engine** (line 2)
+3. **BUT Standard Engine constructor is ALSO called!** (lines 3-4)
+4. **Standard Engine shows it would use FFmpeg WASM** if it ran (line 4)
+5. **CLI Engine export method IS called** (lines 5-6)
+6. **Final result: CLI Engine is actually used** for export
+
+### 🎯 CONCLUSION:
+
+**CLI Export Engine IS being used in Electron**, and the pattern makes sense:
+- Standard Engine constructor is called because **CLIExportEngine extends ExportEngine**
+- This is normal JavaScript class inheritance - parent constructor runs first
+- CLI Engine overrides the `export()` method, so parent's export never runs
+- Standard Engine's WASM configuration in constructor is harmless but unused
+
+This confirms:
+- ✅ **CLI Engine is the actual export engine used in Electron**
+- ✅ **Standard Engine constructor runs as parent class** (normal inheritance)
+- ✅ **CLI Engine's export() method overrides parent** - WASM never used
+- ❌ **Standard Engine's WASM configuration is irrelevant in Electron**
+
+### Implications for WASM Removal:
+- **Safe to disable WASM in Standard Engine** - it's not used in Electron anyway
+- **CLI Engine is working correctly** as the primary Electron export path
+- **Need to test browser environment** to see if Standard Engine is actually used there
+
+**Status**: Analysis Complete - CLI Engine confirmed as Electron export path
 **Created**: 2025-09-19
 **Updated**: 2025-09-19 (Console logging added to track actual usage)
 **Branch**: wasm-remove
