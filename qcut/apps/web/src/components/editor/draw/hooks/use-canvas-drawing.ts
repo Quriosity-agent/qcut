@@ -189,66 +189,13 @@ export const useCanvasDrawing = (
     [options.tool.id, options.brushSize, options.color, options.opacity]
   );
 
+  // This function is no longer used for drawing, but kept for compatibility
   // biome-ignore lint/correctness/useExhaustiveDependencies: canvasRef.current intentionally omitted to avoid unnecessary re-creations
   const drawLine = useCallback(
     (from: { x: number; y: number }, to: { x: number; y: number }) => {
-      if (options.disabled) return;
-
-      // Always log for debugging pencil issue - regardless of VITE_DEBUG_DRAW setting
-      console.log("🖌️ PENCIL DEBUG - Drawing line:", {
-        from,
-        to,
-        toolId: options.tool.id,
-        category: options.tool.category,
-        currentStrokeLength: currentStroke.current.length,
-        timestamp: Date.now(),
-      });
-
-      // For brush/pencil tools, collect points for stroke object AND draw immediately for visual feedback
-      if (options.tool.category === "brush" || options.tool.id === "eraser") {
-        // Add points to current stroke
-        if (currentStroke.current.length === 0) {
-          currentStroke.current.push(from);
-          console.log("🖌️ PENCIL DEBUG - Added first point:", {
-            point: from,
-            strokeId: "new-stroke",
-            timestamp: Date.now(),
-          });
-        }
-        currentStroke.current.push(to);
-        console.log(
-          "🖌️ PENCIL DEBUG - Added point, total points:",
-          currentStroke.current.length
-        );
-
-        // IMMEDIATE DRAWING: Draw to canvas immediately for visual feedback
-        // This will be overwritten when the final stroke object is created, but provides instant feedback
-        const canvas = canvasRef.current;
-        const ctx = canvas?.getContext("2d");
-        if (ctx) {
-          ctx.save();
-          setupCanvasContext(ctx);
-
-          ctx.beginPath();
-          ctx.moveTo(from.x, from.y);
-          ctx.lineTo(to.x, to.y);
-          ctx.stroke();
-
-          ctx.restore();
-          console.log("🖌️ PENCIL DEBUG - Drew line segment to canvas");
-        } else {
-          console.error(
-            "❌ PENCIL DEBUG - No canvas context available for immediate drawing"
-          );
-        }
-      }
+      // No-op - drawing is now handled by stroke objects
     },
-    [
-      options.tool.category,
-      options.tool.id,
-      options.disabled,
-      setupCanvasContext,
-    ]
+    []
   );
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: canvasRef.current intentionally omitted to avoid unnecessary re-creations
@@ -400,8 +347,11 @@ export const useCanvasDrawing = (
         return;
       }
 
-      // For brush tools, draw initial point
-      drawLine(pos, pos);
+      // For brush tools, add initial point to stroke
+      if (options.tool.category === "brush" || options.tool.id === "eraser") {
+        currentStroke.current = [pos];
+        console.log("🖌️ PENCIL DEBUG - Set initial point for stroke");
+      }
     },
     [
       getCanvasCoordinates,
@@ -484,17 +434,15 @@ export const useCanvasDrawing = (
       // Handle brush tools with continuous drawing
       if (!lastPos.current) return;
 
-      // Use requestAnimationFrame for smooth drawing
-      if (animationFrame.current) {
-        cancelAnimationFrame(animationFrame.current);
+      // Collect points for brush/pencil tools during drag
+      if (options.tool.category === "brush" || options.tool.id === "eraser") {
+        // Add the current position to the stroke
+        currentStroke.current.push(currentPos);
+        console.log("🖌️ PENCIL DEBUG - Added point during drag, total points:", currentStroke.current.length);
       }
 
-      animationFrame.current = requestAnimationFrame(() => {
-        if (lastPos.current) {
-          drawLine(lastPos.current, currentPos);
-          lastPos.current = currentPos;
-        }
-      });
+      // Update last position for next frame
+      lastPos.current = currentPos;
     },
     [
       getCanvasCoordinates,
@@ -726,8 +674,10 @@ export const useCanvasDrawing = (
           return;
         }
 
-        // For brush tools, draw initial point
-        drawLine(pos, pos);
+        // For brush tools, add initial point to stroke
+        if (options.tool.category === "brush" || options.tool.id === "eraser") {
+          currentStroke.current = [pos];
+        }
       }
     },
     [
@@ -772,7 +722,12 @@ export const useCanvasDrawing = (
 
         // Handle brush tools
         if (!lastPos.current) return;
-        drawLine(lastPos.current, currentPos);
+
+        // Collect points for brush/pencil tools during drag
+        if (options.tool.category === "brush" || options.tool.id === "eraser") {
+          currentStroke.current.push(currentPos);
+        }
+
         lastPos.current = currentPos;
       }
     },
