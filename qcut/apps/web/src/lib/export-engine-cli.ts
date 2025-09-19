@@ -483,6 +483,9 @@ export class CLIExportEngine extends ExportEngine {
   }
 
   async export(progressCallback?: ProgressCallback): Promise<Blob> {
+    console.log("⚡ CLI EXPORT ENGINE: Export method called");
+    console.log("⚡ CLI EXPORT ENGINE: Using native FFmpeg CLI for video export");
+
     debugLog("[CLIExportEngine] Starting CLI export...");
 
     // Log original timeline duration

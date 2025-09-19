@@ -91,6 +91,9 @@ export class ExportEngine {
       `[ExportEngine] Using ${this.useFFmpegExport ? "FFmpeg WASM" : "MediaRecorder"} for export`
     );
 
+    console.log("🎬 STANDARD EXPORT ENGINE: Constructor called");
+    console.log(`🎬 STANDARD EXPORT ENGINE: Will use ${this.useFFmpegExport ? "FFmpeg WASM" : "MediaRecorder"} for export`);
+
     // Progressive canvas quality based on export purpose
     const isPreview = settings.purpose === ExportPurpose.PREVIEW;
     const canvasOptions: CanvasRenderingContext2DSettings = {
@@ -743,6 +746,9 @@ export class ExportEngine {
 
   // Main export method - renders timeline and captures video
   async export(progressCallback?: ProgressCallback): Promise<Blob> {
+    console.log("🎬 STANDARD EXPORT ENGINE: Export method called");
+    console.log(`🎬 STANDARD EXPORT ENGINE: Will use ${this.useFFmpegExport ? "FFmpeg WASM" : "MediaRecorder"} export path`);
+
     if (this.isExporting) {
       throw new Error("Export already in progress");
     }
