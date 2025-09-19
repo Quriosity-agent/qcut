@@ -41,6 +41,8 @@ interface DrawingOptions {
   color: string;
   opacity: number;
   disabled: boolean;
+  scrollX?: number;
+  scrollY?: number;
   onDrawingStart: () => void;
   onDrawingEnd: () => void;
   onTextInput?: (position: { x: number; y: number }) => void;
@@ -103,7 +105,7 @@ export const useCanvasDrawing = (
   ]);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: canvasRef.current intentionally omitted to avoid unnecessary re-creations
-  const getCanvasCoordinates = useCallback((e: MouseEvent | TouchEvent) => {
+  const getCanvasCoordinates = useCallback((e: MouseEvent | TouchEvent, scrollX = 0, scrollY = 0) => {
     const canvas = canvasRef.current;
     if (!canvas) return { x: 0, y: 0 };
 
@@ -116,8 +118,8 @@ export const useCanvasDrawing = (
     const scaleY = canvas.height / rect.height;
 
     return {
-      x: (clientX - rect.left) * scaleX,
-      y: (clientY - rect.top) * scaleY,
+      x: (clientX - rect.left) * scaleX + scrollX,
+      y: (clientY - rect.top) * scaleY + scrollY,
     };
     // Note: canvasRef.current is intentionally not in dependencies to avoid unnecessary re-creations
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -349,7 +351,7 @@ export const useCanvasDrawing = (
 
       e.preventDefault();
       isDrawing.current = true;
-      const pos = getCanvasCoordinates(e.nativeEvent);
+      const pos = getCanvasCoordinates(e.nativeEvent, options.scrollX || 0, options.scrollY || 0);
       lastPos.current = pos;
       startPos.current = pos;
 
@@ -427,7 +429,7 @@ export const useCanvasDrawing = (
 
       if (options.disabled) return;
 
-      const currentPos = getCanvasCoordinates(e.nativeEvent);
+      const currentPos = getCanvasCoordinates(e.nativeEvent, options.scrollX || 0, options.scrollY || 0);
 
       // Debug: Log mouse move for select tool when debugging is enabled
       if (options.tool.category === "select") {
@@ -696,7 +698,7 @@ export const useCanvasDrawing = (
       if (e.touches.length === 1) {
         // Single touch only
         isDrawing.current = true;
-        const pos = getCanvasCoordinates(e.nativeEvent);
+        const pos = getCanvasCoordinates(e.nativeEvent, options.scrollX || 0, options.scrollY || 0);
         lastPos.current = pos;
         startPos.current = pos;
         options.onDrawingStart();
@@ -747,7 +749,7 @@ export const useCanvasDrawing = (
 
       e.preventDefault();
       if (e.touches.length === 1) {
-        const currentPos = getCanvasCoordinates(e.nativeEvent);
+        const currentPos = getCanvasCoordinates(e.nativeEvent, options.scrollX || 0, options.scrollY || 0);
 
         // Handle select tool dragging
         if (

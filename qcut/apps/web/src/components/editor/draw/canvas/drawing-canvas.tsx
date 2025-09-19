@@ -11,6 +11,7 @@ import {
   useWhiteDrawStore,
   selectCurrentTool,
 } from "@/stores/white-draw-store";
+import { useDrawingScrollStore } from "@/stores/drawing-scroll-store";
 import { DEFAULT_CANVAS_SIZE } from "@/stores/project-store";
 import { useCanvasDrawing } from "../hooks/use-canvas-drawing";
 import type {
@@ -23,6 +24,7 @@ import {
   type ImageObject,
 } from "../hooks/use-canvas-objects";
 import { TextInputModal } from "../components/text-input-modal";
+import { CanvasScrollbars } from "../components/canvas-scrollbars";
 import { cn } from "@/lib/utils";
 import { handleError, ErrorCategory, ErrorSeverity } from "@/lib/error-handler";
 
@@ -81,6 +83,19 @@ export const DrawingCanvas = forwardRef<
     historyIndex,
     getCurrentHistoryState,
   } = useWhiteDrawStore();
+
+  // Scroll store for canvas navigation
+  const {
+    scrollX,
+    scrollY,
+    canvasWidth,
+    canvasHeight,
+    viewportWidth,
+    viewportHeight,
+    setScrollX,
+    setScrollY,
+    setViewportSize,
+  } = useDrawingScrollStore();
 
   // Object management hook (replaces image-only management)
   const {
@@ -143,6 +158,14 @@ export const DrawingCanvas = forwardRef<
     // Responsive canvas size based on container
     return DEFAULT_CANVAS_SIZE;
   }, []);
+
+  // Update viewport size when container dimensions change
+  useEffect(() => {
+    if (containerRef.current) {
+      const { width, height } = canvasDimensions;
+      setViewportSize(width, height);
+    }
+  }, [canvasDimensions, setViewportSize]);
 
   // Export canvas contents to data URL without mutating the visible canvas
   const getCanvasDataUrl = useCallback(() => {
@@ -253,6 +276,8 @@ export const DrawingCanvas = forwardRef<
     color,
     opacity,
     disabled,
+    scrollX,
+    scrollY,
     onDrawingStart: useCallback(() => {
       if (disabled) return;
       try {
@@ -452,12 +477,11 @@ export const DrawingCanvas = forwardRef<
 
       if (!canvas || !bgCanvas || !container) return;
 
-      // Set canvas dimensions
-      const { width, height } = canvasDimensions;
-      canvas.width = width;
-      canvas.height = height;
-      bgCanvas.width = width;
-      bgCanvas.height = height;
+      // Set canvas dimensions - use larger canvas size for scrollable area
+      canvas.width = canvasWidth;
+      canvas.height = canvasHeight;
+      bgCanvas.width = canvasWidth;
+      bgCanvas.height = canvasHeight;
 
       // Clear both canvases
       const ctx = canvas.getContext("2d");
@@ -476,7 +500,7 @@ export const DrawingCanvas = forwardRef<
         }
         // Set white background
         ctx.fillStyle = "white";
-        ctx.fillRect(0, 0, width, height);
+        ctx.fillRect(0, 0, canvasWidth, canvasHeight);
         // Set default canvas properties
         ctx.lineCap = "round";
         ctx.lineJoin = "round";
@@ -495,7 +519,7 @@ export const DrawingCanvas = forwardRef<
         }
         // Set white background for background canvas too
         bgCtx.fillStyle = "white";
-        bgCtx.fillRect(0, 0, width, height);
+        bgCtx.fillRect(0, 0, canvasWidth, canvasHeight);
 
         // Draw background image if provided
         if (backgroundImage) {
@@ -547,7 +571,7 @@ export const DrawingCanvas = forwardRef<
         severity: ErrorSeverity.HIGH,
       });
     }
-  }, [canvasDimensions, backgroundImage]);
+  }, [canvasDimensions, backgroundImage, canvasWidth, canvasHeight]);
 
   // Text input handlers
   const handleTextConfirm = useCallback(
@@ -1054,32 +1078,54 @@ export const DrawingCanvas = forwardRef<
         height: canvasDimensions.height,
       }}
     >
-      {/* Background canvas for images */}
-      <canvas
-        ref={backgroundCanvasRef}
-        className="absolute inset-0 pointer-events-none"
-        style={{ zIndex: 1 }}
-      />
+      {/* Canvas viewport container */}
+      <div className="absolute inset-0 overflow-hidden">
+        {/* Background canvas for images */}
+        <canvas
+          ref={backgroundCanvasRef}
+          className="absolute pointer-events-none"
+          style={{
+            zIndex: 1,
+            transform: `translate(-${scrollX}px, -${scrollY}px)`
+          }}
+        />
 
-      {/* Drawing canvas */}
-      <canvas
-        ref={canvasRef}
-        width={canvasDimensions.width}
-        height={canvasDimensions.height}
-        className={cn(
-          "absolute inset-0 border border-gray-600",
-          !disabled && "hover:border-orange-500 transition-colors"
-        )}
-        style={{ zIndex: 2, cursor: currentTool.cursor }}
-        onMouseDown={handleMouseDown}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
-        onMouseLeave={handleMouseUp} // Stop drawing when leaving canvas
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
-        aria-label="Drawing canvas"
-        role="img"
+        {/* Drawing canvas */}
+        <canvas
+          ref={canvasRef}
+          width={canvasWidth}
+          height={canvasHeight}
+          className={cn(
+            "absolute border border-gray-600",
+            !disabled && "hover:border-orange-500 transition-colors"
+          )}
+          style={{
+            zIndex: 2,
+            cursor: currentTool.cursor,
+            transform: `translate(-${scrollX}px, -${scrollY}px)`
+          }}
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
+          onMouseLeave={handleMouseUp} // Stop drawing when leaving canvas
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+          aria-label="Drawing canvas"
+          role="img"
+        />
+      </div>
+
+      {/* Canvas Scrollbars */}
+      <CanvasScrollbars
+        canvasWidth={canvasWidth}
+        canvasHeight={canvasHeight}
+        viewportWidth={viewportWidth}
+        viewportHeight={viewportHeight}
+        scrollX={scrollX}
+        scrollY={scrollY}
+        onScrollXChange={setScrollX}
+        onScrollYChange={setScrollY}
       />
 
       {/* Loading indicator */}
