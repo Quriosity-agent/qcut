@@ -128,21 +128,8 @@ export class ExportEngineFactory {
       };
     }
 
-    // Mid-range system - use FFmpeg WASM if available (browser only)
-    if (
-      capabilities.hasSharedArrayBuffer &&
-      capabilities.hasWorkers &&
-      capabilities.deviceMemoryGB >= 8 &&
-      capabilities.performanceScore >= 60
-    ) {
-      console.log("🚀 EXPORT ENGINE SELECTION: FFmpeg WASM chosen for mid-range browser");
-      return {
-        engineType: ExportEngineType.FFMPEG,
-        reason: "Good performance browser system with FFmpeg WASM support",
-        capabilities,
-        estimatedPerformance: "medium",
-      };
-    }
+    // REMOVED: FFmpeg WASM engine - disabled due to timeout issues
+    // Now falls through to Optimized or Standard engine for browsers
 
     // Browser fallback - optimized engine if available
     if (capabilities.hasOffscreenCanvas && capabilities.hasWorkers) {
@@ -215,29 +202,15 @@ export class ExportEngineFactory {
         }
 
       case ExportEngineType.FFMPEG:
-        // FFmpeg engine for faster encoding
-        try {
-          const { FFmpegExportEngine } = await import("./export-engine-ffmpeg");
-          return new FFmpegExportEngine(
-            canvas,
-            settings,
-            tracks,
-            mediaItems,
-            totalDuration
-          );
-        } catch (error) {
-          debugWarn(
-            "Failed to load FFmpeg engine, falling back to standard:",
-            error
-          );
-          return new ExportEngine(
-            canvas,
-            settings,
-            tracks,
-            mediaItems,
-            totalDuration
-          );
-        }
+        // FFmpeg WASM engine removed - fall back to Standard engine
+        console.log("🚀 EXPORT ENGINE CREATION: FFmpeg WASM removed, using Standard engine instead");
+        return new ExportEngine(
+          canvas,
+          settings,
+          tracks,
+          mediaItems,
+          totalDuration
+        );
 
       case ExportEngineType.CLI:
         // Native FFmpeg CLI engine (Electron only)
@@ -260,40 +233,22 @@ export class ExportEngineFactory {
               error
             );
             debugLog(
-              "[ExportEngineFactory] 🔄 Falling back to FFmpeg WebAssembly engine"
+              "[ExportEngineFactory] 🔄 Falling back to Standard Canvas engine"
             );
-            // Try FFmpeg WebAssembly as fallback
-            try {
-              const { FFmpegExportEngine } = await import(
-                "./export-engine-ffmpeg"
-              );
-              return new FFmpegExportEngine(
-                canvas,
-                settings,
-                tracks,
-                mediaItems,
-                totalDuration
-              );
-            } catch (wasmError) {
-              debugWarn(
-                "[ExportEngineFactory] ⚠️  FFmpeg WebAssembly also failed, using standard engine:",
-                wasmError
-              );
-              return new ExportEngine(
-                canvas,
-                settings,
-                tracks,
-                mediaItems,
-                totalDuration
-              );
-            }
+            // FFmpeg WASM removed - use Standard engine as fallback
+            return new ExportEngine(
+              canvas,
+              settings,
+              tracks,
+              mediaItems,
+              totalDuration
+            );
           }
         } else {
           debugWarn(
-            "[ExportEngineFactory] ⚠️  CLI engine only available in Electron, using FFmpeg WASM for browser"
+            "[ExportEngineFactory] ⚠️  CLI engine only available in Electron, using Standard engine for browser"
           );
-          const { FFmpegExportEngine } = await import("./export-engine-ffmpeg");
-          return new FFmpegExportEngine(
+          return new ExportEngine(
             canvas,
             settings,
             tracks,
@@ -495,15 +450,10 @@ export class ExportEngineFactory {
     return this.detectCapabilities();
   }
 
-  // Check if FFmpeg is available
+  // FFmpeg WASM export has been removed - this method is deprecated
   static async isFFmpegAvailable(): Promise<boolean> {
-    try {
-      // Check if we can load FFmpeg
-      const { FFmpeg } = await import("@ffmpeg/ffmpeg");
-      return true;
-    } catch {
-      return false;
-    }
+    // Always return false as FFmpeg WASM export is disabled
+    return false;
   }
 
   // Check if running in Electron environment

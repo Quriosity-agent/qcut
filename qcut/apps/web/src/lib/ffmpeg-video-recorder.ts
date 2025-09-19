@@ -96,6 +96,8 @@ export class FFmpegVideoRecorder {
 }
 
 export const isFFmpegExportEnabled = (): boolean => {
-  // Enable FFmpeg WASM export by default
-  return true;
+  // Disable FFmpeg WASM export - use MediaRecorder instead
+  // WASM export has been removed due to timeout issues and complexity
+  // CLI engine is used in Electron, MediaRecorder in browser
+  return false;
 };
