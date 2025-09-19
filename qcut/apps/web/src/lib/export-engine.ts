@@ -161,6 +161,19 @@ export class ExportEngine {
       });
     });
 
+    // Log active elements for investigation
+    if (activeElements.length > 0 && currentTime % 1 === 0) { // Log every second
+      console.log(`\n🔍 EXPORT @ ${currentTime.toFixed(1)}s: ${activeElements.length} active elements`);
+      activeElements.forEach(({ element, track }) => {
+        const effects = useEffectsStore.getState().getElementEffects(element.id);
+        const hasEffects = effects && effects.length > 0;
+        console.log(`  🎥 Element: ${element.id} (${element.type}) - Effects: ${hasEffects ? effects.length : 'none'}`);
+        if (hasEffects) {
+          console.log(`    ✨ Effects applied: ${effects.map(e => `${e.name}(${e.enabled ? 'on' : 'off'})`).join(', ')}`);
+        }
+      });
+    }
+
     return activeElements;
   }
 
@@ -174,6 +187,11 @@ export class ExportEngine {
     this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
     const activeElements = this.getActiveElements(currentTime);
+
+    // Log frame rendering details for first frame and every 30th frame
+    if (currentTime === 0 || Math.floor(currentTime * this.fps) % 30 === 0) {
+      console.log(`🎨 FRAME RENDER: Time=${currentTime.toFixed(2)}s, Elements=${activeElements.length}`);
+    }
 
     // Sort elements by track type (render bottom to top)
     const sortedElements = activeElements.sort((a, b) => {
@@ -760,6 +778,14 @@ export class ExportEngine {
     console.log("🎬 STANDARD EXPORT ENGINE: Export method called");
     console.log(`🎬 STANDARD EXPORT ENGINE: Will use ${this.useFFmpegExport ? "FFmpeg WASM" : "MediaRecorder"} export path`);
 
+    // Log next investigation steps
+    console.log("\n📋 NEXT INVESTIGATION STEPS:");
+    console.log("1️⃣ Track which elements have effects applied during export");
+    console.log("2️⃣ Compare element IDs between preview and export");
+    console.log("3️⃣ Monitor CSS filter to canvas filter conversion");
+    console.log("4️⃣ Check if effects persist through entire export duration");
+    console.log("5️⃣ Verify canvas context save/restore for effects\n");
+
     if (this.isExporting) {
       throw new Error("Export already in progress");
     }
@@ -944,6 +970,38 @@ export class ExportEngine {
       this.logActualVideoDuration(videoBlob);
 
       progressCallback?.(100, "Export complete!");
+
+      // Export investigation summary
+      console.log("\n🎆 EXPORT INVESTIGATION SUMMARY:");
+      console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+      console.log(`🎥 Total frames rendered: ${frameCount}`);
+      console.log(`⏱️ Export duration: ${(Date.now() - startTime) / 1000}s`);
+      console.log(`💽 Video size: ${(videoBlob.size / (1024 * 1024)).toFixed(2)} MB`);
+
+      // Count effects applied
+      const allElements = new Set<string>();
+      const elementsWithEffects = new Set<string>();
+      this.tracks.forEach(track => {
+        track.elements.forEach(element => {
+          allElements.add(element.id);
+          const effects = useEffectsStore.getState().getElementEffects(element.id);
+          if (effects && effects.length > 0) {
+            elementsWithEffects.add(element.id);
+          }
+        });
+      });
+
+      console.log(`🎨 Elements with effects: ${elementsWithEffects.size}/${allElements.size}`);
+      if (elementsWithEffects.size > 0) {
+        console.log(`✅ Effects were found and should be applied`);
+        console.log(`⚠️ If effects are missing in export, check:`);
+        console.log(`  1. Canvas filter support in export environment`);
+        console.log(`  2. Context save/restore timing`);
+        console.log(`  3. Effect parameter conversion`);
+      } else {
+        console.log(`❌ No effects found on any elements`);
+      }
+      console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
 
       return videoBlob;
     } catch (error) {

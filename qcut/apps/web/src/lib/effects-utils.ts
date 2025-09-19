@@ -157,7 +157,12 @@ export function applyEffectsToCanvas(
   parameters: EffectParameters
 ): void {
   const filterString = parametersToCSSFilters(parameters);
+  console.log(`🎨 CANVAS EFFECTS: Applying filter to canvas context`);
+  console.log(`  🔧 Parameters:`, parameters);
+  console.log(`  ✨ CSS Filter: "${filterString || 'none'}"`);
+  console.log(`  🎯 Canvas filter before: "${ctx.filter}"`);
   ctx.filter = filterString ? filterString : "none";
+  console.log(`  ✅ Canvas filter after: "${ctx.filter}"`);
 }
 
 /**
