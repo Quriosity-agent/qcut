@@ -3,7 +3,9 @@ import { ExportSettings } from "@/types/export";
 import { TimelineTrack, TimelineElement } from "@/types/timeline";
 import { MediaItem } from "@/stores/media-store";
 import { debugLog, debugError, debugWarn } from "@/lib/debug-config";
-import type { EffectsStore } from "@/stores/effects-store";
+import { useEffectsStore } from "@/stores/effects-store";
+
+type EffectsStore = ReturnType<typeof useEffectsStore.getState>;
 
 // Module-level cached dynamic imports to avoid per-frame overhead
 let stickersModulePromise: Promise<

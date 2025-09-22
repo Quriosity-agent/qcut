@@ -66,28 +66,38 @@ function useEffectsRendering(elementId: string | null, enabled = false) {
 
   const effects = useMemo(() => {
     if (!enabled || !elementId) {
-      console.log(`🎬 PREVIEW PANEL: No effects (enabled: ${enabled}, elementId: ${elementId})`);
+      console.log(
+        `🎬 PREVIEW PANEL: No effects (enabled: ${enabled}, elementId: ${elementId})`
+      );
       return [];
     }
     const elementEffects = getElementEffects(elementId);
-    console.log(`🎬 PREVIEW PANEL: Retrieved ${elementEffects.length} effects for element ${elementId}`);
+    console.log(
+      `🎬 PREVIEW PANEL: Retrieved ${elementEffects.length} effects for element ${elementId}`
+    );
     return elementEffects;
   }, [enabled, elementId, getElementEffects]);
 
   const filterStyle = useMemo(() => {
     if (!enabled || !effects || effects.length === 0) {
-      console.log(`🎨 PREVIEW PANEL: No filter style (enabled: ${enabled}, effects: ${effects?.length || 0})`);
+      console.log(
+        `🎨 PREVIEW PANEL: No filter style (enabled: ${enabled}, effects: ${effects?.length || 0})`
+      );
       return "";
     }
 
     try {
       // Filter for enabled effects first
       const enabledEffects = effects.filter((e) => e.enabled);
-      console.log(`🎨 PREVIEW PANEL: ${enabledEffects.length} enabled effects out of ${effects.length} total`);
+      console.log(
+        `🎨 PREVIEW PANEL: ${enabledEffects.length} enabled effects out of ${effects.length} total`
+      );
 
       // Guard against zero enabled effects
       if (enabledEffects.length === 0) {
-        console.log(`🚫 PREVIEW PANEL: No enabled effects, returning empty filter`);
+        console.log(
+          `🚫 PREVIEW PANEL: No enabled effects, returning empty filter`
+        );
         return "";
       }
 

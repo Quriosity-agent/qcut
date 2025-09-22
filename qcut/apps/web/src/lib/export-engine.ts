@@ -92,7 +92,9 @@ export class ExportEngine {
     );
 
     console.log("🎬 STANDARD EXPORT ENGINE: Constructor called");
-    console.log(`🎬 STANDARD EXPORT ENGINE: Will use ${this.useFFmpegExport ? "FFmpeg WASM" : "MediaRecorder"} for export`);
+    console.log(
+      `🎬 STANDARD EXPORT ENGINE: Will use ${this.useFFmpegExport ? "FFmpeg WASM" : "MediaRecorder"} for export`
+    );
 
     // Progressive canvas quality based on export purpose
     const isPreview = settings.purpose === ExportPurpose.PREVIEW;
@@ -162,14 +164,23 @@ export class ExportEngine {
     });
 
     // Log active elements for investigation
-    if (activeElements.length > 0 && currentTime % 1 === 0) { // Log every second
-      console.log(`\n🔍 EXPORT @ ${currentTime.toFixed(1)}s: ${activeElements.length} active elements`);
+    if (activeElements.length > 0 && currentTime % 1 === 0) {
+      // Log every second
+      console.log(
+        `\n🔍 EXPORT @ ${currentTime.toFixed(1)}s: ${activeElements.length} active elements`
+      );
       activeElements.forEach(({ element, track }) => {
-        const effects = useEffectsStore.getState().getElementEffects(element.id);
+        const effects = useEffectsStore
+          .getState()
+          .getElementEffects(element.id);
         const hasEffects = effects && effects.length > 0;
-        console.log(`  🎥 Element: ${element.id} (${element.type}) - Effects: ${hasEffects ? effects.length : 'none'}`);
+        console.log(
+          `  🎥 Element: ${element.id} (${element.type}) - Effects: ${hasEffects ? effects.length : "none"}`
+        );
         if (hasEffects) {
-          console.log(`    ✨ Effects applied: ${effects.map(e => `${e.name}(${e.enabled ? 'on' : 'off'})`).join(', ')}`);
+          console.log(
+            `    ✨ Effects applied: ${effects.map((e) => `${e.name}(${e.enabled ? "on" : "off"})`).join(", ")}`
+          );
         }
       });
     }
@@ -190,7 +201,9 @@ export class ExportEngine {
 
     // Log frame rendering details for first frame and every 30th frame
     if (currentTime === 0 || Math.floor(currentTime * this.fps) % 30 === 0) {
-      console.log(`🎨 FRAME RENDER: Time=${currentTime.toFixed(2)}s, Elements=${activeElements.length}`);
+      console.log(
+        `🎨 FRAME RENDER: Time=${currentTime.toFixed(2)}s, Elements=${activeElements.length}`
+      );
     }
 
     // Sort elements by track type (render bottom to top)
@@ -273,9 +286,13 @@ export class ExportEngine {
               const effects = useEffectsStore
                 .getState()
                 .getElementEffects(element.id);
-              console.log(`🎨 EXPORT ENGINE: Retrieved ${effects.length} effects for image element ${element.id}`);
+              console.log(
+                `🎨 EXPORT ENGINE: Retrieved ${effects.length} effects for image element ${element.id}`
+              );
               const enabledEffects = effects.filter((e) => e.enabled);
-              console.log(`✨ EXPORT ENGINE: ${enabledEffects.length} enabled effects for image element ${element.id}`);
+              console.log(
+                `✨ EXPORT ENGINE: ${enabledEffects.length} enabled effects for image element ${element.id}`
+              );
 
               if (enabledEffects.length > 0) {
                 // Save context state before applying effects
@@ -285,7 +302,10 @@ export class ExportEngine {
                 const mergedParams = mergeEffectParameters(
                   ...enabledEffects.map((e) => e.parameters)
                 );
-                console.log(`🔨 EXPORT ENGINE: Applying effects to image canvas:`, mergedParams);
+                console.log(
+                  `🔨 EXPORT ENGINE: Applying effects to image canvas:`,
+                  mergedParams
+                );
 
                 // Apply CSS-compatible effects to canvas context
                 applyEffectsToCanvas(this.ctx, mergedParams);
@@ -300,12 +320,17 @@ export class ExportEngine {
                 this.ctx.restore();
               } else {
                 // No enabled effects - draw normally
-                console.log(`🚫 EXPORT ENGINE: No enabled effects for image element ${element.id}, drawing normally`);
+                console.log(
+                  `🚫 EXPORT ENGINE: No enabled effects for image element ${element.id}, drawing normally`
+                );
                 this.ctx.drawImage(img, x, y, width, height);
               }
             } catch (error) {
               // Log but don't fail export
-              console.error(`❌ EXPORT ENGINE: Effects failed for image element ${element.id}:`, error);
+              console.error(
+                `❌ EXPORT ENGINE: Effects failed for image element ${element.id}:`,
+                error
+              );
               debugWarn(`[Export] Effects failed for ${element.id}:`, error);
               // Fallback to drawing without effects
               this.ctx.drawImage(img, x, y, width, height);
@@ -439,13 +464,19 @@ export class ExportEngine {
           const effects = useEffectsStore
             .getState()
             .getElementEffects(element.id);
-          console.log(`🎨 EXPORT ENGINE: Retrieved ${effects?.length || 0} effects for video element ${element.id}`);
+          console.log(
+            `🎨 EXPORT ENGINE: Retrieved ${effects?.length || 0} effects for video element ${element.id}`
+          );
           if (effects && effects.length > 0) {
             const activeEffects = effects.filter((e) => e.enabled);
-            console.log(`✨ EXPORT ENGINE: ${activeEffects.length} enabled effects for video element ${element.id}`);
+            console.log(
+              `✨ EXPORT ENGINE: ${activeEffects.length} enabled effects for video element ${element.id}`
+            );
             if (activeEffects.length === 0) {
               // No enabled effects - draw normally
-              console.log(`🚫 EXPORT ENGINE: No enabled effects for video element ${element.id}, drawing normally`);
+              console.log(
+                `🚫 EXPORT ENGINE: No enabled effects for video element ${element.id}, drawing normally`
+              );
               this.ctx.drawImage(video, x, y, width, height);
               return;
             }
@@ -457,7 +488,10 @@ export class ExportEngine {
             const mergedParams = mergeEffectParameters(
               ...activeEffects.map((e) => e.parameters)
             );
-            console.log(`🔨 EXPORT ENGINE: Applying effects to video canvas:`, mergedParams);
+            console.log(
+              `🔨 EXPORT ENGINE: Applying effects to video canvas:`,
+              mergedParams
+            );
 
             // Apply CSS-compatible effects to canvas context
             applyEffectsToCanvas(this.ctx, mergedParams);
@@ -472,12 +506,17 @@ export class ExportEngine {
             this.ctx.restore();
           } else {
             // No active effects - draw normally
-            console.log(`🚫 EXPORT ENGINE: No effects found for video element ${element.id}, drawing normally`);
+            console.log(
+              `🚫 EXPORT ENGINE: No effects found for video element ${element.id}, drawing normally`
+            );
             this.ctx.drawImage(video, x, y, width, height);
           }
         } catch (error) {
           // Log but don't fail export
-          console.error(`❌ EXPORT ENGINE: Video effects failed for element ${element.id}:`, error);
+          console.error(
+            `❌ EXPORT ENGINE: Video effects failed for element ${element.id}:`,
+            error
+          );
           debugWarn(`[Export] Video effects failed for ${element.id}:`, error);
           // Fallback to drawing without effects
           this.ctx.drawImage(video, x, y, width, height);
@@ -776,7 +815,9 @@ export class ExportEngine {
   // Main export method - renders timeline and captures video
   async export(progressCallback?: ProgressCallback): Promise<Blob> {
     console.log("🎬 STANDARD EXPORT ENGINE: Export method called");
-    console.log(`🎬 STANDARD EXPORT ENGINE: Will use ${this.useFFmpegExport ? "FFmpeg WASM" : "MediaRecorder"} export path`);
+    console.log(
+      `🎬 STANDARD EXPORT ENGINE: Will use ${this.useFFmpegExport ? "FFmpeg WASM" : "MediaRecorder"} export path`
+    );
 
     // Log next investigation steps
     console.log("\n📋 NEXT INVESTIGATION STEPS:");
@@ -977,22 +1018,28 @@ export class ExportEngine {
       console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
       console.log(`🎥 Total frames rendered: ${totalFramesRendered}`);
       console.log(`⏱️ Export duration: ${(Date.now() - startTime) / 1000}s`);
-      console.log(`💽 Video size: ${(videoBlob.size / (1024 * 1024)).toFixed(2)} MB`);
+      console.log(
+        `💽 Video size: ${(videoBlob.size / (1024 * 1024)).toFixed(2)} MB`
+      );
 
       // Count effects applied
       const allElements = new Set<string>();
       const elementsWithEffects = new Set<string>();
-      this.tracks.forEach(track => {
-        track.elements.forEach(element => {
+      this.tracks.forEach((track) => {
+        track.elements.forEach((element) => {
           allElements.add(element.id);
-          const effects = useEffectsStore.getState().getElementEffects(element.id);
+          const effects = useEffectsStore
+            .getState()
+            .getElementEffects(element.id);
           if (effects && effects.length > 0) {
             elementsWithEffects.add(element.id);
           }
         });
       });
 
-      console.log(`🎨 Elements with effects: ${elementsWithEffects.size}/${allElements.size}`);
+      console.log(
+        `🎨 Elements with effects: ${elementsWithEffects.size}/${allElements.size}`
+      );
       if (elementsWithEffects.size > 0) {
         console.log(`✅ Effects were found and should be applied`);
         console.log(`⚠️ If effects are missing in export, check:`);

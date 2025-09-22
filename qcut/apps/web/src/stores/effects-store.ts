@@ -17,10 +17,15 @@ import {
   type EffectChain,
 } from "@/lib/effects-chaining";
 import { inferEffectType, stripCopySuffix } from "@/lib/utils/effects";
-import { FFmpegFilterChain, type EffectParameters as FFmpegEffectParameters } from "@/lib/ffmpeg-filter-chain";
+import {
+  FFmpegFilterChain,
+  type EffectParameters as FFmpegEffectParameters,
+} from "@/lib/ffmpeg-filter-chain";
 
 // Helper function to merge effect parameters for FFmpeg filter chains
-function mergeEffectParameters(...paramArrays: EffectParameters[]): FFmpegEffectParameters {
+function mergeEffectParameters(
+  ...paramArrays: EffectParameters[]
+): FFmpegEffectParameters {
   const merged: FFmpegEffectParameters = {};
 
   for (const params of paramArrays) {
@@ -397,10 +402,14 @@ export const useEffectsStore = create<EffectsStore>((set, get) => ({
   selectedEffect: null,
 
   applyEffect: (elementId, preset) => {
-    console.log(`🎨 EFFECTS STORE: Applying effect "${preset.name}" to element ${elementId}`);
+    console.log(
+      `🎨 EFFECTS STORE: Applying effect "${preset.name}" to element ${elementId}`
+    );
 
     if (!EFFECTS_ENABLED) {
-      console.warn(`❌ EFFECTS STORE: Effects disabled - cannot apply ${preset.name}`);
+      console.warn(
+        `❌ EFFECTS STORE: Effects disabled - cannot apply ${preset.name}`
+      );
       toast.error("Effects are currently disabled");
       return;
     }
@@ -421,25 +430,33 @@ export const useEffectsStore = create<EffectsStore>((set, get) => ({
       return { activeEffects: newMap };
     });
 
-    console.log(`✅ EFFECTS STORE: Successfully applied effect "${preset.name}" (ID: ${newEffect.id}) to element ${elementId}`);
+    console.log(
+      `✅ EFFECTS STORE: Successfully applied effect "${preset.name}" (ID: ${newEffect.id}) to element ${elementId}`
+    );
     toast.success(`Applied ${preset.name} effect`);
   },
 
   removeEffect: (elementId, effectId) => {
-    console.log(`🗑️ EFFECTS STORE: Removing effect ${effectId} from element ${elementId}`);
+    console.log(
+      `🗑️ EFFECTS STORE: Removing effect ${effectId} from element ${elementId}`
+    );
 
     set((state) => {
       const effects = state.activeEffects.get(elementId) || [];
-      const effectToRemove = effects.find(e => e.id === effectId);
+      const effectToRemove = effects.find((e) => e.id === effectId);
       const newEffects = effects.filter((e) => e.id !== effectId);
       const newMap = new Map(state.activeEffects);
 
       if (newEffects.length === 0) {
         newMap.delete(elementId);
-        console.log(`🧹 EFFECTS STORE: Removed all effects from element ${elementId}`);
+        console.log(
+          `🧹 EFFECTS STORE: Removed all effects from element ${elementId}`
+        );
       } else {
         newMap.set(elementId, newEffects);
-        console.log(`✅ EFFECTS STORE: Removed effect "${effectToRemove?.name || 'Unknown'}" from element ${elementId}. ${newEffects.length} effects remaining.`);
+        console.log(
+          `✅ EFFECTS STORE: Removed effect "${effectToRemove?.name || "Unknown"}" from element ${elementId}. ${newEffects.length} effects remaining.`
+        );
       }
 
       return { activeEffects: newMap };
@@ -494,7 +511,10 @@ export const useEffectsStore = create<EffectsStore>((set, get) => ({
 
   getElementEffects: (elementId) => {
     const effects = get().activeEffects.get(elementId) || [];
-    console.log(`🔍 EFFECTS STORE: Retrieved ${effects.length} effects for element ${elementId}:`, effects.map(e => `${e.name}(${e.enabled ? 'enabled' : 'disabled'})`));
+    console.log(
+      `🔍 EFFECTS STORE: Retrieved ${effects.length} effects for element ${elementId}:`,
+      effects.map((e) => `${e.name}(${e.enabled ? "enabled" : "disabled"})`)
+    );
     return effects;
   },
 
@@ -719,22 +739,29 @@ export const useEffectsStore = create<EffectsStore>((set, get) => ({
   // FFmpeg Filter Chain Implementation
   getFFmpegFilterChain: (elementId) => {
     const effects = get().getElementEffects(elementId);
-    const enabledEffects = effects.filter(e => e.enabled);
+    const enabledEffects = effects.filter((e) => e.enabled);
 
     if (enabledEffects.length === 0) {
-      console.log(`🎨 EFFECTS STORE: No enabled effects for element ${elementId} - returning empty filter chain`);
-      return '';
+      console.log(
+        `🎨 EFFECTS STORE: No enabled effects for element ${elementId} - returning empty filter chain`
+      );
+      return "";
     }
 
     // Merge all effect parameters
     const mergedParams = mergeEffectParameters(
-      ...enabledEffects.map(e => e.parameters)
+      ...enabledEffects.map((e) => e.parameters)
     );
 
     const filterChain = FFmpegFilterChain.fromEffectParameters(mergedParams);
 
-    console.log(`🎨 EFFECTS STORE: Generated FFmpeg filter chain for element ${elementId}: "${filterChain}"`);
-    console.log(`🔧 EFFECTS STORE: Based on ${enabledEffects.length} enabled effects:`, enabledEffects.map(e => e.name));
+    console.log(
+      `🎨 EFFECTS STORE: Generated FFmpeg filter chain for element ${elementId}: "${filterChain}"`
+    );
+    console.log(
+      `🔧 EFFECTS STORE: Based on ${enabledEffects.length} enabled effects:`,
+      enabledEffects.map((e) => e.name)
+    );
 
     return filterChain;
   },

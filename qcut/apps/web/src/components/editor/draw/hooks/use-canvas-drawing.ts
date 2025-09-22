@@ -438,7 +438,10 @@ export const useCanvasDrawing = (
       if (options.tool.category === "brush" || options.tool.id === "eraser") {
         // Add the current position to the stroke
         currentStroke.current.push(currentPos);
-        console.log("🖌️ PENCIL DEBUG - Added point during drag, total points:", currentStroke.current.length);
+        console.log(
+          "🖌️ PENCIL DEBUG - Added point during drag, total points:",
+          currentStroke.current.length
+        );
       }
 
       // Update last position for next frame

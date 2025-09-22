@@ -208,7 +208,10 @@ export const DrawingCanvas = forwardRef<
       const dataUrl = getCanvasDataUrl();
       if (dataUrl) {
         if (import.meta.env.DEV) {
-          console.log("💾 DRAW DEBUG - Saving to history, length:", dataUrl.length);
+          console.log(
+            "💾 DRAW DEBUG - Saving to history, length:",
+            dataUrl.length
+          );
         }
 
         // Set flag to prevent history restoration during save
@@ -297,7 +300,14 @@ export const DrawingCanvas = forwardRef<
           severity: ErrorSeverity.MEDIUM,
         });
       }
-    }, [disabled, setDrawing, setIsDrawing, saveCanvasToHistory, onDrawingChange, objects.length]),
+    }, [
+      disabled,
+      setDrawing,
+      setIsDrawing,
+      saveCanvasToHistory,
+      onDrawingChange,
+      objects.length,
+    ]),
 
     onTextInput: useCallback((canvasPosition: { x: number; y: number }) => {
       const canvas = canvasRef.current;
@@ -623,7 +633,9 @@ export const DrawingCanvas = forwardRef<
         // serializes/deserializes the actual object state instead of canvas pixels.
 
         if (import.meta.env.DEV) {
-          console.log("🚫 DRAW DEBUG - loadDrawingFromDataUrl disabled to preserve stroke objects");
+          console.log(
+            "🚫 DRAW DEBUG - loadDrawingFromDataUrl disabled to preserve stroke objects"
+          );
         }
 
         // Instead of the destructive clearAll + addImageObject pattern,
@@ -780,7 +792,11 @@ export const DrawingCanvas = forwardRef<
 
     // Add debounce protection for rapid restoration calls
     const currentCanvasData = getCanvasDataUrl();
-    if (historyState && currentCanvasData && historyState !== currentCanvasData) {
+    if (
+      historyState &&
+      currentCanvasData &&
+      historyState !== currentCanvasData
+    ) {
       // Additional protection: only restore if the difference is significant enough
       // This prevents unnecessary restorations from small timing differences
       if (Math.abs(historyState.length - currentCanvasData.length) > 100) {
@@ -789,15 +805,22 @@ export const DrawingCanvas = forwardRef<
           {
             historyStateLength: historyState.length,
             currentStateLength: currentCanvasData.length,
-            sizeDifference: Math.abs(historyState.length - currentCanvasData.length)
+            sizeDifference: Math.abs(
+              historyState.length - currentCanvasData.length
+            ),
           }
         );
         loadDrawingFromDataUrl(historyState);
       } else {
         if (import.meta.env.DEV) {
-          console.log("🚫 DRAW DEBUG - Skipping restoration due to minimal difference:", {
-            sizeDifference: Math.abs(historyState.length - currentCanvasData.length)
-          });
+          console.log(
+            "🚫 DRAW DEBUG - Skipping restoration due to minimal difference:",
+            {
+              sizeDifference: Math.abs(
+                historyState.length - currentCanvasData.length
+              ),
+            }
+          );
         }
       }
     }
@@ -835,7 +858,7 @@ export const DrawingCanvas = forwardRef<
     // If there are images, they render on the background canvas which already has white
     const hasImages = objects.some((obj) => obj.type === "image");
     if (!hasImages) {
-      ctx.fillStyle = 'white';
+      ctx.fillStyle = "white";
       ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
 

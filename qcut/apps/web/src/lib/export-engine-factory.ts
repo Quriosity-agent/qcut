@@ -238,7 +238,7 @@ export class ExportEngineFactory {
             const { CLIExportEngine } = await import("./export-engine-cli");
 
             // Get effects store for CLI engine
-            const effectsStore = useEffectsStore;
+            const effectsStore = useEffectsStore.getState();
             console.log("📦 Export: Effects store available:", !!effectsStore);
 
             return new CLIExportEngine(

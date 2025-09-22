@@ -84,14 +84,21 @@ export const useCanvasObjects = () => {
         setObjectsInternal((prev) => {
           const result = newObjects(prev);
           // Reduced verbose setObjects logging
-          if (import.meta.env.DEV && false) { // Temporarily disabled
-            console.log("📝 setObjects (function):", prev.length, "→", result.length);
+          if (import.meta.env.DEV && false) {
+            // Temporarily disabled
+            console.log(
+              "📝 setObjects (function):",
+              prev.length,
+              "→",
+              result.length
+            );
           }
           return result;
         });
       } else {
         // Reduced verbose setObjects direct logging
-        if (import.meta.env.DEV && false) { // Temporarily disabled
+        if (import.meta.env.DEV && false) {
+          // Temporarily disabled
           console.log("📝 setObjects (direct):", newObjects.length);
         }
         setObjectsInternal(newObjects);
@@ -724,7 +731,8 @@ export const useCanvasObjects = () => {
           case "image": {
             const image = obj as ImageObject;
             // Reduced verbose image debug logging
-            if (import.meta.env.DEV && false) { // Temporarily disabled
+            if (import.meta.env.DEV && false) {
+              // Temporarily disabled
               console.log("🖼️ IMAGE DEBUG - Rendering image object:", image.id);
             }
 
@@ -741,8 +749,12 @@ export const useCanvasObjects = () => {
             const centerY = obj.y + obj.height / 2;
 
             // Reduced verbose transform calculations logging
-            if (import.meta.env.DEV && false) { // Temporarily disabled
-              console.log("🖼️ IMAGE DEBUG - Transform calculations for:", image.id);
+            if (import.meta.env.DEV && false) {
+              // Temporarily disabled
+              console.log(
+                "🖼️ IMAGE DEBUG - Transform calculations for:",
+                image.id
+              );
             }
 
             ctx.translate(centerX, centerY);
@@ -752,8 +764,12 @@ export const useCanvasObjects = () => {
             try {
               ctx.drawImage(image.element, obj.x, obj.y, obj.width, obj.height);
               // Reduced verbose image success logging
-              if (import.meta.env.DEV && false) { // Temporarily disabled
-                console.log("✅ IMAGE DEBUG - Image rendered successfully:", image.id);
+              if (import.meta.env.DEV && false) {
+                // Temporarily disabled
+                console.log(
+                  "✅ IMAGE DEBUG - Image rendered successfully:",
+                  image.id
+                );
               }
             } catch (error) {
               console.error("❌ IMAGE DEBUG - Failed to render image:", {

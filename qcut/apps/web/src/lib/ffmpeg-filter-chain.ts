@@ -1,9 +1,9 @@
 export interface EffectParameters {
-  brightness?: number;  // -100 to 100
-  contrast?: number;    // -100 to 100
-  saturation?: number;  // -100 to 100
-  blur?: number;        // 0 to 20
-  hue?: number;         // 0 to 360
+  brightness?: number; // -100 to 100
+  contrast?: number; // -100 to 100
+  saturation?: number; // -100 to 100
+  blur?: number; // 0 to 20
+  hue?: number; // 0 to 360
 }
 
 export class FFmpegFilterChain {
@@ -16,13 +16,13 @@ export class FFmpegFilterChain {
   }
 
   addContrast(value: number): this {
-    const ffmpegValue = 1 + (value / 100);
+    const ffmpegValue = 1 + value / 100;
     this.filters.push(`eq=contrast=${ffmpegValue}`);
     return this;
   }
 
   addSaturation(value: number): this {
-    const ffmpegValue = 1 + (value / 100);
+    const ffmpegValue = 1 + value / 100;
     this.filters.push(`eq=saturation=${ffmpegValue}`);
     return this;
   }
@@ -38,7 +38,7 @@ export class FFmpegFilterChain {
   }
 
   build(): string {
-    return this.filters.join(',');
+    return this.filters.join(",");
   }
 
   static fromEffectParameters(params: EffectParameters): string {
