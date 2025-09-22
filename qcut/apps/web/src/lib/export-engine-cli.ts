@@ -40,7 +40,7 @@ export class CLIExportEngine extends ExportEngine {
     );
 
     // 🚨 SAFETY CHECK: Verify Electron environment
-    if (!window.electronAPI || typeof window.electronAPI.invoke !== 'function') {
+    if (!window.electronAPI || !window.electronAPI.ffmpeg || typeof window.electronAPI.ffmpeg.exportVideoCLI !== 'function') {
       console.error("❌ CLI EXPORT ENGINE: Not in Electron environment - this engine will fail!");
       console.error("❌ Use standard export engine for browser environment");
       throw new Error("CLI Export Engine requires Electron environment");
@@ -522,10 +522,8 @@ export class CLIExportEngine extends ExportEngine {
   }
 
   async export(progressCallback?: ProgressCallback): Promise<Blob> {
+    console.log("🚀 CLI EXPORT ENGINE: ✅ RUNNING - Using native FFmpeg CLI for video export");
     console.log("⚡ CLI EXPORT ENGINE: Export method called");
-    console.log(
-      "⚡ CLI EXPORT ENGINE: Using native FFmpeg CLI for video export"
-    );
 
     debugLog("[CLIExportEngine] Starting CLI export...");
 
@@ -623,12 +621,12 @@ export class CLIExportEngine extends ExportEngine {
     const session = await window.electronAPI.ffmpeg.createExportSession();
 
     // 🐛 DEBUG: Log temp folder locations for manual inspection
-    console.log(`📁 CLI EXPORT DEBUG: Export session created`);
+    console.log(`📁 CLI EXPORT TEMP FOLDER: Export session created`);
     console.log(`📁 Session ID: ${session.sessionId}`);
     console.log(`📁 Frame Directory: ${session.frameDir}`);
     console.log(`📁 Output Directory: ${session.outputDir}`);
-    console.log(`📁 Windows Temp Path: %TEMP%\\qcut-export\\${session.sessionId}\\frames`);
-    console.log(`📁 You can find debug frames at the path above after export starts`);
+    console.log(`📁 TEMP FOLDER PATH: %TEMP%\\qcut-export\\${session.sessionId}\\frames`);
+    console.log(`📁 DEBUG: You can find PNG debug frames at the path above after export starts`);
 
     return session;
   }
@@ -653,7 +651,7 @@ export class CLIExportEngine extends ExportEngine {
       await this.renderFrame(currentTime);
 
       // Save frame for video compilation
-      await this.saveFrameToDisk(frameName);
+      await this.saveFrameToDisk(frameName, currentTime);
 
       // Progress update (15% to 80% for frame rendering)
       const progress = 15 + (frame / totalFrames) * 65;
@@ -666,7 +664,7 @@ export class CLIExportEngine extends ExportEngine {
     debugLog(`[CLI] Rendered ${totalFrames} frames to ${this.frameDir}`);
   }
 
-  private async saveFrameToDisk(frameName: string): Promise<void> {
+  private async saveFrameToDisk(frameName: string, currentTime: number): Promise<void> {
     if (!window.electronAPI) {
       throw new Error("CLI export only available in Electron");
     }
@@ -686,8 +684,8 @@ export class CLIExportEngine extends ExportEngine {
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
       const timestampedDebugFrame = `debug_${timestamp}_${frameName}`;
 
-      console.log(`🖼️ CLI EXPORT DEBUG: Saving debug frame ${debugFrameName} for inspection`);
-      console.log(`🖼️ Also saving timestamped version: ${timestampedDebugFrame}`);
+      console.log(`🖼️ SAVING PNG DEBUG FRAME: ${debugFrameName} (time: ${currentTime.toFixed(3)}s)`);
+      console.log(`🖼️ ALSO SAVED: ${timestampedDebugFrame}`);
 
       try {
         // Save regular debug frame
@@ -707,10 +705,12 @@ export class CLIExportEngine extends ExportEngine {
         console.log(`✅ DEBUG: Saved ${debugFrameName} and ${timestampedDebugFrame} to temp folder`);
         console.log(`✅ DEBUG: Check %TEMP%\\qcut-export\\${this.sessionId}\\frames\\ for PNG files`);
 
-        // 🗂️ DEBUG: Auto-open folder in Windows Explorer
+        // 🗂️ DEBUG: Auto-open folder in Windows Explorer (if available)
         try {
-          await window.electronAPI.ffmpeg.openFramesFolder(this.sessionId || "debug");
-          console.log(`🗂️ DEBUG: Opened frames folder in Windows Explorer`);
+          if ('openFramesFolder' in window.electronAPI.ffmpeg) {
+            await (window.electronAPI.ffmpeg as any).openFramesFolder(this.sessionId || "debug");
+            console.log(`🗂️ DEBUG: Opened frames folder in Windows Explorer`);
+          }
         } catch (folderError) {
           console.warn(`⚠️ DEBUG: Failed to open frames folder:`, folderError);
         }
@@ -915,7 +915,8 @@ export class CLIExportEngine extends ExportEngine {
     console.log(`🔗 CLI EXPORT ENGINE: Combined filter chain: "${combinedFilterChain}"`);
 
     if (combinedFilterChain) {
-      console.log("✅ CLI EXPORT ENGINE: Effects CLI is working - filter chains will be applied to video export");
+      console.log("✅ CLI EXPORT ENGINE: ✅ EFFECTS WORKING - Filter chains will be applied to video export");
+      console.log(`🔧 CLI EXPORT ENGINE: FFmpeg filter: "${combinedFilterChain}"`);
     } else {
       console.log("ℹ️ CLI EXPORT ENGINE: No effects applied - video will export without filter chains");
     }

@@ -255,7 +255,7 @@ export class ExportEngineFactory {
               error
             );
             console.error("❌ CLI ENGINE FAILED: Falling back to Standard Canvas engine");
-            console.error("❌ Reason:", error.message);
+            console.error("❌ Reason:", error instanceof Error ? error.message : String(error));
             debugLog(
               "[ExportEngineFactory] 🔄 Falling back to Standard Canvas engine"
             );
@@ -486,9 +486,12 @@ export class ExportEngineFactory {
   // Check if running in Electron environment
   private isElectron(): boolean {
     const electronAPI = (window as any).electronAPI;
-    const hasElectronAPI = electronAPI && typeof electronAPI.invoke === 'function';
+    // Check for specific Electron API methods instead of generic invoke
+    const hasElectronAPI = electronAPI &&
+      electronAPI.ffmpeg &&
+      typeof electronAPI.ffmpeg.exportVideoCLI === 'function';
 
-    console.log(`🔍 ENVIRONMENT CHECK: electronAPI exists: ${!!electronAPI}, invoke function: ${typeof electronAPI?.invoke}`);
+    console.log(`🔍 ENVIRONMENT CHECK: electronAPI exists: ${!!electronAPI}, ffmpeg.exportVideoCLI: ${typeof electronAPI?.ffmpeg?.exportVideoCLI}`);
     console.log(`🔍 ENVIRONMENT CHECK: isElectron result: ${hasElectronAPI}`);
 
     return hasElectronAPI;
