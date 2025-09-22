@@ -17,6 +17,23 @@ import {
   type EffectChain,
 } from "@/lib/effects-chaining";
 import { inferEffectType, stripCopySuffix } from "@/lib/utils/effects";
+import { FFmpegFilterChain, type EffectParameters as FFmpegEffectParameters } from "@/lib/ffmpeg-filter-chain";
+
+// Helper function to merge effect parameters for FFmpeg filter chains
+function mergeEffectParameters(...paramArrays: EffectParameters[]): FFmpegEffectParameters {
+  const merged: FFmpegEffectParameters = {};
+
+  for (const params of paramArrays) {
+    // Only merge supported FFmpeg parameters
+    if (params.brightness !== undefined) merged.brightness = params.brightness;
+    if (params.contrast !== undefined) merged.contrast = params.contrast;
+    if (params.saturation !== undefined) merged.saturation = params.saturation;
+    if (params.blur !== undefined) merged.blur = params.blur;
+    if (params.hue !== undefined) merged.hue = params.hue;
+  }
+
+  return merged;
+}
 
 // Predefined effect presets
 const EFFECT_PRESETS: EffectPreset[] = [
@@ -367,6 +384,9 @@ interface EffectsStore {
     effectId: string,
     newIndex: number
   ) => void;
+
+  // FFmpeg Filter Chain Support
+  getFFmpegFilterChain: (elementId: string) => string;
 }
 
 export const useEffectsStore = create<EffectsStore>((set, get) => ({
@@ -694,5 +714,28 @@ export const useEffectsStore = create<EffectsStore>((set, get) => ({
         return { activeEffects: newMap };
       });
     }
+  },
+
+  // FFmpeg Filter Chain Implementation
+  getFFmpegFilterChain: (elementId) => {
+    const effects = get().getElementEffects(elementId);
+    const enabledEffects = effects.filter(e => e.enabled);
+
+    if (enabledEffects.length === 0) {
+      console.log(`🎨 EFFECTS STORE: No enabled effects for element ${elementId} - returning empty filter chain`);
+      return '';
+    }
+
+    // Merge all effect parameters
+    const mergedParams = mergeEffectParameters(
+      ...enabledEffects.map(e => e.parameters)
+    );
+
+    const filterChain = FFmpegFilterChain.fromEffectParameters(mergedParams);
+
+    console.log(`🎨 EFFECTS STORE: Generated FFmpeg filter chain for element ${elementId}: "${filterChain}"`);
+    console.log(`🔧 EFFECTS STORE: Based on ${enabledEffects.length} enabled effects:`, enabledEffects.map(e => e.name));
+
+    return filterChain;
   },
 }));
