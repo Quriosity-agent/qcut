@@ -815,10 +815,12 @@ export class CLIExportEngine extends ExportEngine {
 
     // Collect all filter chains for timeline elements
     console.log("⚡ CLI EXPORT ENGINE: Starting export with filter chains");
+    console.log("⚡ CLI EXPORT ENGINE: Effects store available:", !!this.effectsStore);
     const elementFilterChains = new Map<string, string>();
 
     this.tracks.forEach((track) => {
       track.elements.forEach((element) => {
+        console.log(`🔍 CLI EXPORT ENGINE: Checking effects for element ${element.id}`);
         if (this.effectsStore) {
           const filterChain = this.effectsStore.getFFmpegFilterChain(
             element.id
@@ -826,9 +828,17 @@ export class CLIExportEngine extends ExportEngine {
           if (filterChain) {
             elementFilterChains.set(element.id, filterChain);
             console.log(
-              `🎨 Element ${element.id} filter chain: ${filterChain}`
+              `✅ CLI EXPORT ENGINE: Element ${element.id} has filter chain: ${filterChain}`
+            );
+          } else {
+            console.log(
+              `❌ CLI EXPORT ENGINE: Element ${element.id} has no filter chain (no effects applied)`
             );
           }
+        } else {
+          console.log(
+            `❌ CLI EXPORT ENGINE: No effects store available for element ${element.id}`
+          );
         }
       });
     });
@@ -837,7 +847,13 @@ export class CLIExportEngine extends ExportEngine {
     const combinedFilterChain = Array.from(elementFilterChains.values()).join(
       ","
     );
-    console.log(`🔗 Combined filter chain: ${combinedFilterChain}`);
+    console.log(`🔗 CLI EXPORT ENGINE: Combined filter chain: "${combinedFilterChain}"`);
+
+    if (combinedFilterChain) {
+      console.log("✅ CLI EXPORT ENGINE: Effects CLI is working - filter chains will be applied to video export");
+    } else {
+      console.log("ℹ️ CLI EXPORT ENGINE: No effects applied - video will export without filter chains");
+    }
 
     // Build options AFTER validation so the filtered list is sent
     if (!this.sessionId) {

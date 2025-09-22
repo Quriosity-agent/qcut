@@ -1,5 +1,42 @@
 # FFmpeg Filter Chains - Detailed Task Breakdown
 
+## 📋 **Current Status Update** (Latest)
+
+### 🔍 **Issue Identified**: Missing Grayscale Filter Support
+**Problem**: "Black & White" effect uses `grayscale: 100` parameter, but FFmpeg filter chain only supports:
+- ✅ brightness, contrast, saturation, blur, hue
+- ❌ **Missing**: grayscale, sepia, vintage, etc.
+
+**Console Evidence**:
+```
+🔍 EFFECTS STORE: Retrieved 1 effects: ['Black & White(enabled)']
+🎨 EFFECTS STORE: Generated FFmpeg filter chain: "" (EMPTY!)
+❌ CLI EXPORT ENGINE: Element has no filter chain (no effects applied)
+```
+
+**Root Cause**: `mergeEffectParameters()` function in `effects-store.ts:26-41` only handles 5 effect types
+
+### 🚨 **Critical Environment Issue**: Browser vs Electron
+```
+TypeError: window.electronAPI?.invoke is not a function
+```
+**Problem**: CLI Export Engine running in browser instead of Electron
+**Expected**: Should only run in Electron desktop app environment
+
+### 🎯 **Immediate Next Steps**
+1. **Fix Grayscale Support** (5 min)
+   - Add `grayscale` parameter to `EffectParameters` interface in `ffmpeg-filter-chain.ts:1-7`
+   - Add `addGrayscale()` method to `FFmpegFilterChain` class
+   - Update `mergeEffectParameters()` to handle grayscale
+   - FFmpeg syntax: `hue=s=0` (removes saturation = grayscale)
+
+2. **Test in Electron** (10 min)
+   - Run `bun run electron:dev` instead of browser
+   - Verify `window.electronAPI?.invoke` is available
+   - Test video export with "Black & White" effect
+
+---
+
 ## 📋 **Revised Implementation Plan**
 Each task is designed to take **≤10 minutes** with specific file paths and clear deliverables.
 
