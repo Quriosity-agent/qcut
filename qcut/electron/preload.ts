@@ -160,6 +160,12 @@ interface ElectronAPI {
     readOutputFile: (path: string) => Promise<Buffer | null>;
     cleanupExportSession: (sessionId: string) => Promise<boolean>;
     openFramesFolder: (sessionId: string) => Promise<void>;
+    processFrame: (options: {
+      sessionId: string;
+      inputFrameName: string;
+      outputFrameName: string;
+      filterChain: string;
+    }) => Promise<void>;
 
     // FFmpeg resource helpers
     getFFmpegResourcePath: (filename: string) => Promise<string>;
@@ -263,6 +269,13 @@ const electronAPI: ElectronAPI = {
       ipcRenderer.invoke("cleanup-export-session", sessionId),
     openFramesFolder: (sessionId: string): Promise<void> =>
       ipcRenderer.invoke("open-frames-folder", sessionId),
+    processFrame: (options: {
+      sessionId: string;
+      inputFrameName: string;
+      outputFrameName: string;
+      filterChain: string;
+    }): Promise<void> =>
+      ipcRenderer.invoke("processFrame", options),
 
     // FFmpeg resource helpers
     getFFmpegResourcePath: (filename: string): Promise<string> =>

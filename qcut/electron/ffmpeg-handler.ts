@@ -118,7 +118,7 @@ interface FFmpegHandlers {
   "open-frames-folder": (sessionId: string) => Promise<OpenFolderResult>;
   "export-video-cli": (options: ExportOptions) => Promise<ExportResult>;
   "validate-filter-chain": (filterChain: string) => Promise<boolean>;
-  "process-frame": (options: FrameProcessOptions) => Promise<void>;
+  "processFrame": (options: FrameProcessOptions) => Promise<void>;
 }
 
 const tempManager = new TempManager();
@@ -452,7 +452,7 @@ exit /b %ERRORLEVEL%`;
 
   // Process single frame through FFmpeg filter
   ipcMain.handle(
-    "process-frame",
+    "processFrame",
     async (
       event: IpcMainInvokeEvent,
       { sessionId, inputFrameName, outputFrameName, filterChain }: FrameProcessOptions
