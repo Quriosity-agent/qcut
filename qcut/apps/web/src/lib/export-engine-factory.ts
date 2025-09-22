@@ -3,6 +3,7 @@ import { ExportSettings } from "@/types/export";
 import { TimelineTrack } from "@/types/timeline";
 import { MediaItem } from "@/stores/media-store";
 import { debugLog, debugError, debugWarn } from "@/lib/debug-config";
+import { useEffectsStore } from "@/stores/effects-store";
 
 // Engine types available
 export const ExportEngineType = {
@@ -219,13 +220,20 @@ export class ExportEngineFactory {
             debugLog(
               "[ExportEngineFactory] 🚀 Loading CLI FFmpeg engine for Electron"
             );
+            console.log('🏗️ EXPORT ENGINE CREATION: Creating CLI engine with effects support');
             const { CLIExportEngine } = await import("./export-engine-cli");
+
+            // Get effects store for CLI engine
+            const effectsStore = useEffectsStore;
+            console.log('📦 Export: Effects store available:', !!effectsStore);
+
             return new CLIExportEngine(
               canvas,
               settings,
               tracks,
               mediaItems,
-              totalDuration
+              totalDuration,
+              effectsStore  // NEW: Pass effects store
             );
           } catch (error) {
             debugError(

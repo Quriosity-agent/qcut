@@ -3,6 +3,7 @@ import { ExportSettings } from "@/types/export";
 import { TimelineTrack, TimelineElement } from "@/types/timeline";
 import { MediaItem } from "@/stores/media-store";
 import { debugLog, debugError, debugWarn } from "@/lib/debug-config";
+import type { EffectsStore } from "@/stores/effects-store";
 
 // Module-level cached dynamic imports to avoid per-frame overhead
 let stickersModulePromise: Promise<
@@ -19,6 +20,20 @@ export type ProgressCallback = (progress: number, message: string) => void;
 export class CLIExportEngine extends ExportEngine {
   private sessionId: string | null = null;
   private frameDir: string | null = null;
+  private effectsStore?: EffectsStore;
+
+  constructor(
+    canvas: HTMLCanvasElement,
+    settings: ExportSettings,
+    tracks: TimelineTrack[],
+    mediaItems: MediaItem[],
+    totalDuration: number,
+    effectsStore?: EffectsStore
+  ) {
+    super(canvas, settings, tracks, mediaItems, totalDuration);
+    this.effectsStore = effectsStore;
+    console.log('⚡ CLI EXPORT ENGINE: Initialized with effects support:', !!effectsStore);
+  }
 
   // Override parent's renderFrame to skip video validation issues
   async renderFrame(currentTime: number): Promise<void> {
@@ -164,9 +179,10 @@ export class CLIExportEngine extends ExportEngine {
         video.videoHeight || 480
       );
 
+      // Draw video WITHOUT canvas effects (FFmpeg will handle effects)
+      console.log(`🎥 Drawing raw video frame for element ${element.id}`);
       this.ctx.drawImage(video, x, y, width, height);
-
-      // No black frame validation for CLI export
+      // Skip: No canvas effects applied here
     } catch (error) {
       debugWarn(
         "[CLIExportEngine] Video render failed, using placeholder:",
@@ -790,6 +806,26 @@ export class CLIExportEngine extends ExportEngine {
       `[CLI Export] Validation complete. ${audioFiles.length} valid audio files.`
     );
 
+    // Collect all filter chains for timeline elements
+    console.log('⚡ CLI EXPORT ENGINE: Starting export with filter chains');
+    const elementFilterChains = new Map<string, string>();
+
+    this.tracks.forEach(track => {
+      track.elements.forEach(element => {
+        if (this.effectsStore) {
+          const filterChain = this.effectsStore.getFFmpegFilterChain(element.id);
+          if (filterChain) {
+            elementFilterChains.set(element.id, filterChain);
+            console.log(`🎨 Element ${element.id} filter chain: ${filterChain}`);
+          }
+        }
+      });
+    });
+
+    // Combine all filter chains (simplified - assumes single video element)
+    const combinedFilterChain = Array.from(elementFilterChains.values()).join(',');
+    console.log(`🔗 Combined filter chain: ${combinedFilterChain}`);
+
     // Build options AFTER validation so the filtered list is sent
     if (!this.sessionId) {
       throw new Error("No active session ID");
@@ -801,6 +837,7 @@ export class CLIExportEngine extends ExportEngine {
       fps: 30,
       quality: this.settings.quality || "medium",
       audioFiles, // Now contains only validated audio files
+      filterChain: combinedFilterChain || undefined
     };
 
     debugLog(
