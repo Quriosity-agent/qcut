@@ -35,6 +35,7 @@ function mergeEffectParameters(
     if (params.saturation !== undefined) merged.saturation = params.saturation;
     if (params.blur !== undefined) merged.blur = params.blur;
     if (params.hue !== undefined) merged.hue = params.hue;
+    if (params.grayscale !== undefined) merged.grayscale = params.grayscale;
   }
 
   return merged;
@@ -511,10 +512,13 @@ export const useEffectsStore = create<EffectsStore>((set, get) => ({
 
   getElementEffects: (elementId) => {
     const effects = get().activeEffects.get(elementId) || [];
-    console.log(
-      `🔍 EFFECTS STORE: Retrieved ${effects.length} effects for element ${elementId}:`,
-      effects.map((e) => `${e.name}(${e.enabled ? "enabled" : "disabled"})`)
-    );
+    // Only log when there are effects to avoid spam
+    if (effects.length > 0) {
+      console.log(
+        `🔍 EFFECTS STORE: Retrieved ${effects.length} effects for element ${elementId}:`,
+        effects.map((e) => `${e.name}(${e.enabled ? "enabled" : "disabled"})`)
+      );
+    }
     return effects;
   },
 

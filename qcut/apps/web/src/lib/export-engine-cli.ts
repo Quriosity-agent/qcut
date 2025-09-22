@@ -186,8 +186,19 @@ export class CLIExportEngine extends ExportEngine {
 
       // Draw video WITHOUT canvas effects (FFmpeg will handle effects)
       console.log(`🎥 Drawing raw video frame for element ${element.id}`);
+
+      // 🐛 DEBUG: Check what effects would be applied
+      if (this.effectsStore) {
+        const filterChain = this.effectsStore.getFFmpegFilterChain(element.id);
+        if (filterChain) {
+          console.log(`🎨 DEBUG: Element ${element.id} will have FFmpeg filter: "${filterChain}"`);
+        } else {
+          console.log(`📝 DEBUG: Element ${element.id} has no effects - rendering raw video`);
+        }
+      }
+
       this.ctx.drawImage(video, x, y, width, height);
-      // Skip: No canvas effects applied here
+      // Skip: No canvas effects applied here - FFmpeg will handle effects during final encoding
     } catch (error) {
       debugWarn(
         "[CLIExportEngine] Video render failed, using placeholder:",
@@ -602,7 +613,17 @@ export class CLIExportEngine extends ExportEngine {
       throw new Error("CLI export only available in Electron");
     }
 
-    return await window.electronAPI.ffmpeg.createExportSession();
+    const session = await window.electronAPI.ffmpeg.createExportSession();
+
+    // 🐛 DEBUG: Log temp folder locations for manual inspection
+    console.log(`📁 CLI EXPORT DEBUG: Export session created`);
+    console.log(`📁 Session ID: ${session.sessionId}`);
+    console.log(`📁 Frame Directory: ${session.frameDir}`);
+    console.log(`📁 Output Directory: ${session.outputDir}`);
+    console.log(`📁 Windows Temp Path: %TEMP%\\qcut-export\\${session.sessionId}\\frames`);
+    console.log(`📁 You can find debug frames at the path above after export starts`);
+
+    return session;
   }
 
   private async renderFramesToDisk(
@@ -651,6 +672,43 @@ export class CLIExportEngine extends ExportEngine {
       // Validate base64 data
       if (!base64Data || base64Data.length < 100) {
         throw new Error(`Invalid PNG data: ${base64Data.length} chars`);
+      }
+
+      // 🐛 DEBUG: Save debug frame to temp folder for inspection
+      const debugFrameName = `debug_${frameName}`;
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      const timestampedDebugFrame = `debug_${timestamp}_${frameName}`;
+
+      console.log(`🖼️ CLI EXPORT DEBUG: Saving debug frame ${debugFrameName} for inspection`);
+      console.log(`🖼️ Also saving timestamped version: ${timestampedDebugFrame}`);
+
+      try {
+        // Save regular debug frame
+        await window.electronAPI.ffmpeg.saveFrame({
+          sessionId: this.sessionId || "debug",
+          frameName: debugFrameName,
+          data: base64Data,
+        });
+
+        // Save timestamped debug frame for easier identification
+        await window.electronAPI.ffmpeg.saveFrame({
+          sessionId: this.sessionId || "debug",
+          frameName: timestampedDebugFrame,
+          data: base64Data,
+        });
+
+        console.log(`✅ DEBUG: Saved ${debugFrameName} and ${timestampedDebugFrame} to temp folder`);
+        console.log(`✅ DEBUG: Check %TEMP%\\qcut-export\\${this.sessionId}\\frames\\ for PNG files`);
+
+        // 🗂️ DEBUG: Auto-open folder in Windows Explorer
+        try {
+          await window.electronAPI.ffmpeg.openFramesFolder(this.sessionId || "debug");
+          console.log(`🗂️ DEBUG: Opened frames folder in Windows Explorer`);
+        } catch (folderError) {
+          console.warn(`⚠️ DEBUG: Failed to open frames folder:`, folderError);
+        }
+      } catch (debugError) {
+        console.warn(`⚠️ DEBUG: Failed to save debug frame:`, debugError);
       }
 
       // Save via IPC

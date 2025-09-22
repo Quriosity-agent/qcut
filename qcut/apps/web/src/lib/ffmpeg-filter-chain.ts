@@ -4,6 +4,7 @@ export interface EffectParameters {
   saturation?: number; // -100 to 100
   blur?: number; // 0 to 20
   hue?: number; // 0 to 360
+  grayscale?: number; // 0 to 100
 }
 
 export class FFmpegFilterChain {
@@ -37,6 +38,14 @@ export class FFmpegFilterChain {
     return this;
   }
 
+  addGrayscale(value: number): this {
+    // FFmpeg grayscale: hue=s=0 removes all saturation (100% grayscale)
+    // For partial grayscale, reduce saturation: hue=s=(1-value/100)
+    const saturationValue = 1 - (value / 100);
+    this.filters.push(`hue=s=${saturationValue}`);
+    return this;
+  }
+
   build(): string {
     return this.filters.join(",");
   }
@@ -49,6 +58,7 @@ export class FFmpegFilterChain {
     if (params.saturation !== undefined) chain.addSaturation(params.saturation);
     if (params.blur !== undefined) chain.addBlur(params.blur);
     if (params.hue !== undefined) chain.addHue(params.hue);
+    if (params.grayscale !== undefined) chain.addGrayscale(params.grayscale);
 
     return chain.build();
   }

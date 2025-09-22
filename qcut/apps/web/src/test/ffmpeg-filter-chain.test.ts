@@ -1,4 +1,4 @@
-import { FFmpegFilterChain } from "../ffmpeg-filter-chain";
+import { FFmpegFilterChain } from "../lib/ffmpeg-filter-chain";
 
 describe("FFmpegFilterChain", () => {
   it("should convert brightness correctly", () => {
@@ -58,5 +58,17 @@ describe("FFmpegFilterChain", () => {
     const params = { brightness: 25, blur: 1 };
     const chain = FFmpegFilterChain.fromEffectParameters(params);
     expect(chain).toBe("eq=brightness=0.25,boxblur=1:1");
+  });
+
+  it("should handle grayscale effect", () => {
+    const params = { grayscale: 100 };
+    const chain = FFmpegFilterChain.fromEffectParameters(params);
+    expect(chain).toBe("hue=s=0");
+  });
+
+  it("should handle partial grayscale effect", () => {
+    const params = { grayscale: 50 };
+    const chain = FFmpegFilterChain.fromEffectParameters(params);
+    expect(chain).toBe("hue=s=0.5");
   });
 });

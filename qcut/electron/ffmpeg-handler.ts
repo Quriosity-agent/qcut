@@ -228,6 +228,14 @@ export function setupFFmpegIPC(): void {
         // Log complete FFmpeg command for debugging
         console.log(`🚀 FFmpeg command: ffmpeg ${args.join(' ')}`);
 
+        // 🐛 DEBUG: Highlight filter chain in command
+        if (options.filterChain) {
+          console.log(`🎨 DEBUG: Filter chain applied: "${options.filterChain}"`);
+          console.log(`🎨 DEBUG: This should make the video grayscale if filter is "hue=s=0"`);
+        } else {
+          console.log(`📝 DEBUG: No filter chain - video will be rendered without effects`);
+        }
+
         // Verify input directory exists and has frames
         if (!fs.existsSync(frameDir)) {
           const error: string = `Frame directory does not exist: ${frameDir}`;
