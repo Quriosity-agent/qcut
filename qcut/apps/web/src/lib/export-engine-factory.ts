@@ -97,7 +97,9 @@ export class ExportEngineFactory {
       debugLog(
         "[ExportEngineFactory] 🖥️  Electron detected - using CLI FFmpeg (most stable)"
       );
-      console.log("🚀 EXPORT ENGINE SELECTION: CLI FFmpeg chosen for Electron environment");
+      console.log(
+        "🚀 EXPORT ENGINE SELECTION: CLI FFmpeg chosen for Electron environment"
+      );
       return {
         engineType: ExportEngineType.CLI,
         reason:
@@ -120,7 +122,9 @@ export class ExportEngineFactory {
       capabilities.performanceScore >= 80 &&
       estimatedMemoryGB < capabilities.deviceMemoryGB * 0.4
     ) {
-      console.log("🚀 EXPORT ENGINE SELECTION: WebCodecs chosen for high-end browser");
+      console.log(
+        "🚀 EXPORT ENGINE SELECTION: WebCodecs chosen for high-end browser"
+      );
       return {
         engineType: ExportEngineType.WEBCODECS,
         reason: "High-performance browser system with WebCodecs support",
@@ -134,7 +138,9 @@ export class ExportEngineFactory {
 
     // Browser fallback - optimized engine if available
     if (capabilities.hasOffscreenCanvas && capabilities.hasWorkers) {
-      console.log("🚀 EXPORT ENGINE SELECTION: Optimized Canvas chosen for modern browser");
+      console.log(
+        "🚀 EXPORT ENGINE SELECTION: Optimized Canvas chosen for modern browser"
+      );
       return {
         engineType: ExportEngineType.OPTIMIZED,
         reason: "Browser with modern Canvas APIs",
@@ -144,7 +150,9 @@ export class ExportEngineFactory {
     }
 
     // Final fallback to standard engine for maximum compatibility
-    console.log("🚀 EXPORT ENGINE SELECTION: Standard Canvas chosen as final fallback");
+    console.log(
+      "🚀 EXPORT ENGINE SELECTION: Standard Canvas chosen as final fallback"
+    );
     return {
       engineType: ExportEngineType.STANDARD,
       reason: "Using standard engine for maximum browser compatibility",
@@ -172,7 +180,9 @@ export class ExportEngineFactory {
       selectedEngineType = recommendation.engineType;
     }
 
-    console.log(`🏗️ EXPORT ENGINE CREATION: Creating ${selectedEngineType} engine instance`);
+    console.log(
+      `🏗️ EXPORT ENGINE CREATION: Creating ${selectedEngineType} engine instance`
+    );
 
     switch (selectedEngineType) {
       case ExportEngineType.OPTIMIZED:
@@ -204,7 +214,9 @@ export class ExportEngineFactory {
 
       case ExportEngineType.FFMPEG:
         // FFmpeg WASM engine removed - fall back to Standard engine
-        console.log("🚀 EXPORT ENGINE CREATION: FFmpeg WASM removed, using Standard engine instead");
+        console.log(
+          "🚀 EXPORT ENGINE CREATION: FFmpeg WASM removed, using Standard engine instead"
+        );
         return new ExportEngine(
           canvas,
           settings,
@@ -220,12 +232,14 @@ export class ExportEngineFactory {
             debugLog(
               "[ExportEngineFactory] 🚀 Loading CLI FFmpeg engine for Electron"
             );
-            console.log('🏗️ EXPORT ENGINE CREATION: Creating CLI engine with effects support');
+            console.log(
+              "🏗️ EXPORT ENGINE CREATION: Creating CLI engine with effects support"
+            );
             const { CLIExportEngine } = await import("./export-engine-cli");
 
             // Get effects store for CLI engine
             const effectsStore = useEffectsStore;
-            console.log('📦 Export: Effects store available:', !!effectsStore);
+            console.log("📦 Export: Effects store available:", !!effectsStore);
 
             return new CLIExportEngine(
               canvas,
@@ -233,7 +247,7 @@ export class ExportEngineFactory {
               tracks,
               mediaItems,
               totalDuration,
-              effectsStore  // NEW: Pass effects store
+              effectsStore // NEW: Pass effects store
             );
           } catch (error) {
             debugError(
@@ -292,7 +306,9 @@ export class ExportEngineFactory {
         }
 
       default:
-        console.log("🏗️ EXPORT ENGINE CREATION: Creating Standard Canvas engine (default case)");
+        console.log(
+          "🏗️ EXPORT ENGINE CREATION: Creating Standard Canvas engine (default case)"
+        );
         return new ExportEngine(
           canvas,
           settings,

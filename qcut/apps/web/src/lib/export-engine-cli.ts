@@ -32,7 +32,10 @@ export class CLIExportEngine extends ExportEngine {
   ) {
     super(canvas, settings, tracks, mediaItems, totalDuration);
     this.effectsStore = effectsStore;
-    console.log('⚡ CLI EXPORT ENGINE: Initialized with effects support:', !!effectsStore);
+    console.log(
+      "⚡ CLI EXPORT ENGINE: Initialized with effects support:",
+      !!effectsStore
+    );
   }
 
   // Override parent's renderFrame to skip video validation issues
@@ -500,7 +503,9 @@ export class CLIExportEngine extends ExportEngine {
 
   async export(progressCallback?: ProgressCallback): Promise<Blob> {
     console.log("⚡ CLI EXPORT ENGINE: Export method called");
-    console.log("⚡ CLI EXPORT ENGINE: Using native FFmpeg CLI for video export");
+    console.log(
+      "⚡ CLI EXPORT ENGINE: Using native FFmpeg CLI for video export"
+    );
 
     debugLog("[CLIExportEngine] Starting CLI export...");
 
@@ -807,23 +812,29 @@ export class CLIExportEngine extends ExportEngine {
     );
 
     // Collect all filter chains for timeline elements
-    console.log('⚡ CLI EXPORT ENGINE: Starting export with filter chains');
+    console.log("⚡ CLI EXPORT ENGINE: Starting export with filter chains");
     const elementFilterChains = new Map<string, string>();
 
-    this.tracks.forEach(track => {
-      track.elements.forEach(element => {
+    this.tracks.forEach((track) => {
+      track.elements.forEach((element) => {
         if (this.effectsStore) {
-          const filterChain = this.effectsStore.getFFmpegFilterChain(element.id);
+          const filterChain = this.effectsStore.getFFmpegFilterChain(
+            element.id
+          );
           if (filterChain) {
             elementFilterChains.set(element.id, filterChain);
-            console.log(`🎨 Element ${element.id} filter chain: ${filterChain}`);
+            console.log(
+              `🎨 Element ${element.id} filter chain: ${filterChain}`
+            );
           }
         }
       });
     });
 
     // Combine all filter chains (simplified - assumes single video element)
-    const combinedFilterChain = Array.from(elementFilterChains.values()).join(',');
+    const combinedFilterChain = Array.from(elementFilterChains.values()).join(
+      ","
+    );
     console.log(`🔗 Combined filter chain: ${combinedFilterChain}`);
 
     // Build options AFTER validation so the filtered list is sent
@@ -837,7 +848,7 @@ export class CLIExportEngine extends ExportEngine {
       fps: 30,
       quality: this.settings.quality || "medium",
       audioFiles, // Now contains only validated audio files
-      filterChain: combinedFilterChain || undefined
+      filterChain: combinedFilterChain || undefined,
     };
 
     debugLog(
