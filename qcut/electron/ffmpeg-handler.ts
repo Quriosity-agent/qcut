@@ -34,6 +34,8 @@ interface ExportOptions {
   quality: "high" | "medium" | "low";
   /** Optional array of audio files to mix into the video */
   audioFiles?: AudioFile[];
+  /** Optional FFmpeg filter chain string for video effects */
+  filterChain?: string;
 }
 
 /**
@@ -101,6 +103,7 @@ interface FFmpegHandlers {
   "cleanup-export-session": (sessionId: string) => Promise<void>;
   "open-frames-folder": (sessionId: string) => Promise<OpenFolderResult>;
   "export-video-cli": (options: ExportOptions) => Promise<ExportResult>;
+  "validate-filter-chain": (filterChain: string) => Promise<boolean>;
 }
 
 const tempManager = new TempManager();
@@ -218,10 +221,12 @@ export function setupFFmpegIPC(): void {
           height,
           fps,
           quality,
-          audioFiles
+          audioFiles,
+          options.filterChain
         );
 
-        // FFmpeg CLI configuration ready
+        // Log complete FFmpeg command for debugging
+        console.log(`🚀 FFmpeg command: ffmpeg ${args.join(' ')}`);
 
         // Verify input directory exists and has frames
         if (!fs.existsSync(frameDir)) {
@@ -370,6 +375,57 @@ exit /b %ERRORLEVEL%`;
       });
     }
   );
+
+  // Validate filter chain
+  ipcMain.handle(
+    "validate-filter-chain",
+    async (
+      event: IpcMainInvokeEvent,
+      filterChain: string
+    ): Promise<boolean> => {
+      try {
+        console.log(`🔍 FFMPEG HANDLER: Validating filter chain: "${filterChain}"`);
+
+        const ffmpegPath = getFFmpegPath();
+
+        const result = await new Promise<boolean>((resolve) => {
+          const ffmpeg = spawn(ffmpegPath, [
+            '-f', 'lavfi',
+            '-i', 'testsrc2=duration=0.1:size=32x32:rate=1',
+            '-vf', filterChain,
+            '-f', 'null',
+            '-'
+          ], {
+            windowsHide: true,
+            stdio: ['ignore', 'pipe', 'pipe']
+          });
+
+          ffmpeg.on('close', (code) => {
+            const isValid = code === 0;
+            console.log(`✅ FFMPEG HANDLER: Filter validation ${isValid ? 'passed' : 'failed'} with code ${code}`);
+            resolve(isValid);
+          });
+
+          ffmpeg.on('error', (err) => {
+            console.error(`❌ FFMPEG HANDLER: Filter validation error:`, err);
+            resolve(false);
+          });
+
+          // Set timeout to avoid hanging
+          setTimeout(() => {
+            ffmpeg.kill();
+            console.warn(`⏰ FFMPEG HANDLER: Filter validation timeout`);
+            resolve(false);
+          }, 5000);
+        });
+
+        return result;
+      } catch (error) {
+        console.error('❌ FFMPEG HANDLER: Filter validation exception:', error);
+        return false;
+      }
+    }
+  );
 }
 
 export function getFFmpegPath(): string {
@@ -425,7 +481,8 @@ function buildFFmpegArgs(
   height: number,
   fps: number,
   quality: "high" | "medium" | "low",
-  audioFiles: AudioFile[] = []
+  audioFiles: AudioFile[] = [],
+  filterChain?: string
 ): string[] {
   const qualitySettings: QualityMap = {
     "high": { crf: "18", preset: "slow" },
@@ -446,6 +503,12 @@ function buildFFmpegArgs(
     "-i",
     inputPattern,
   ];
+
+  // Add filter chain if provided
+  if (filterChain && filterChain.trim()) {
+    args.push("-vf", filterChain);
+    console.log(`🎨 FFmpeg applying filter chain: ${filterChain}`);
+  }
 
   // Add audio inputs if provided
   if (audioFiles && audioFiles.length > 0) {

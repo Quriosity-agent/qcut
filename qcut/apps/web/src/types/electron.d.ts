@@ -146,9 +146,11 @@ export interface ElectronAPI {
       height: number;
       fps: number;
       quality: string;
+      filterChain?: string;
     }) => Promise<{ success: boolean; outputFile: string }>;
     readOutputFile: (path: string) => Promise<Buffer>;
     cleanupExportSession: (sessionId: string) => Promise<void>;
+    validateFilterChain: (filterChain: string) => Promise<boolean>;
   };
 
   apiKeys: {
