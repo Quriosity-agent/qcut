@@ -1,12 +1,15 @@
 # Video Effects Not Working - Investigation & Fix
 
 ## Issue Description
-Video effects are not being applied correctly in the QCut editor. Effects show in the UI but don't render in preview or export.
+Video effects are not being applied correctly in the QCut editor export. Effects work in preview but not in exported video.
 
 ## Status
-✅ **RESOLVED** - Branch: `video-effect-fix`
+⚠️ **EXPORT ISSUE IDENTIFIED** - Branch: `video-effect-fix`
 
-**Fix Applied**: Selection dependency removed from preview panel effects rendering.
+**Progress**:
+- ✅ Preview panel effects working correctly
+- ❌ Export fails with `window.electronAPI?.invoke is not a function`
+- 🔍 CLI Export Engine being used in browser environment
 
 ## Related Files to Investigate
 
@@ -63,15 +66,14 @@ Video effects are not being applied correctly in the QCut editor. Effects show i
 
 ## Known Issues
 
-### ✅ Timeline Selection Issue - FIXED
-- ~~Effects only apply to selected elements~~ **RESOLVED**
-- ~~When selection is cleared, effects disappear~~ **RESOLVED**
-- ✅ Effects now apply regardless of selection state
-
-### Export Issue - Under Investigation
-- Effects show in preview but not in exported video
-- May be related to canvas context or timing
-- **Console logging added to investigate further**
+### ❌ Critical Export Error
+```console
+export-engine-cli.ts:559 Uncaught (in promise) TypeError: window.electronAPI?.invoke is not a function
+```
+**CAUSE**: CLI Export Engine selected for non-Electron environment
+- Export factory returns CLI engine even in browser
+- CLI engine requires Electron API which doesn't exist in browser
+- Need to force Standard engine for browser exports
 
 ## Proposed Solutions
 
@@ -113,57 +115,52 @@ localStorage.getItem('qcut_effects_enabled')
 - ✅ **ADDED**: Comprehensive console logging for debugging
 - 🔍 **INVESTIGATING**: Export pipeline with console output analysis
 
-## Console Logging Analysis
+## Console Output Analysis (console_message_v1.md)
 
-### Key Findings from Console Output
-
-#### 1. Effects Store Working Correctly
+### ✅ Effects Working in Preview
 ```console
-🎨 EFFECTS STORE: Applying effect "Brighten" to element b7b82d7a-182a-43f1-9955-aa117452d2ee
-✅ EFFECTS STORE: Successfully applied effect "Brighten" (ID: d886bca6-e4ca-4b7e-ab7a-bbc381cf571f)
-🔍 EFFECTS STORE: Retrieved 1 effects for element b7b82d7a-182a-43f1-9955-aa117452d2ee
+🎨 EFFECTS STORE: Applying effect "Brighten" to element 27f64590-7093-4654-b1dc-6e65d069caad
+✅ EFFECTS STORE: Successfully applied effect "Brighten" (ID: bb9d47de-dfe9-4802-887c-20ad975c135b)
+🔍 EFFECTS STORE: Retrieved 1 effects for element: ['Brighten(enabled)']
 ```
-**✅ CONFIRMED**: Effects are being stored and retrieved correctly.
 
-#### 2. Preview Panel Integration
+### ❌ Export Engine Selection Error
 ```console
-🎬 PREVIEW PANEL: Retrieved 0 effects for element b7b82d7a-182a-43f1-9955-aa117452d2ee (before applying)
-🎬 PREVIEW PANEL: Retrieved 1 effects for element b7b82d7a-182a-43f1-9955-aa117452d2ee (after applying)
-🎨 PREVIEW PANEL: 1 enabled effects out of 1 total
-✨ PREVIEW PANEL: Generated CSS filter: "brightness(120%)"
+🚀 EXPORT ENGINE SELECTION: CLI FFmpeg chosen for Electron environment
+🏗️ EXPORT ENGINE CREATION: Creating cli engine instance
+⚡ CLI EXPORT ENGINE: Using native FFmpeg CLI for video export
+export-engine-cli.ts:559 TypeError: window.electronAPI?.invoke is not a function
 ```
-**✅ CONFIRMED**: Preview panel correctly retrieves effects and generates CSS filters.
+**PROBLEM**: Export factory incorrectly selects CLI engine for browser environment
 
-#### 3. Element ID Tracking
-- **Element ID**: `b7b82d7a-182a-43f1-9955-aa117452d2ee`
-- **Effect ID**: `d886bca6-e4ca-4b7e-ab7a-bbc381cf571f`
-- **Effect Name**: "Brighten" (brightness: 20)
-- **CSS Output**: `brightness(120%)` (100% + 20% = 120%)
+### Root Cause Identified
 
-#### 4. Performance Note
-```console
-effects-store.ts:477 🔍 EFFECTS STORE: Retrieved 0 effects... (repeated 39+ times)
-```
-**⚠️ OBSERVATION**: Heavy polling of effects store during UI updates. Consider optimization.
-
-### Updated Console Debug Commands
-```javascript
-// Check current applied effects
-setInterval(() => {
-  const elementId = 'b7b82d7a-182a-43f1-9955-aa117452d2ee'; // Replace with actual element ID
-  const effects = useEffectsStore.getState().getElementEffects(elementId);
-  console.log('Active effects:', effects);
-}, 2000);
-
-// Monitor export engine effects application
-// (Will log automatically during export with new logging)
-```
+The export is failing because:
+1. **Export factory detects Electron environment incorrectly**
+2. **CLI engine is selected instead of Standard engine**
+3. **CLI engine tries to call `window.electronAPI?.invoke`** which doesn't exist in browser
+4. **Export crashes before effects can be applied**
 
 ---
 
-**Next Steps**:
-1. ✅ ~~Add console logging to track effects application~~
-2. 🔍 **IN PROGRESS**: Test effects in export pipeline using console logs
-3. ✅ ~~Implement fix for selection dependency~~
-4. 🔍 **NEW**: Analyze export engine console output during video export
-5. 🔍 **NEW**: Verify effects application in both Standard and CLI export engines
+## Solution Required
+
+### Fix Export Engine Selection
+Modify `export-engine-factory.ts` to:
+1. Properly detect browser vs Electron environment
+2. Force Standard engine for browser exports
+3. Only use CLI engine when `window.electronAPI` is available
+
+### Code Fix Location
+```typescript
+// apps/web/src/lib/export-engine-factory.ts
+// Line ~99: Fix environment detection
+const isElectron = typeof window !== 'undefined' &&
+                   window.electronAPI &&
+                   typeof window.electronAPI.invoke === 'function';
+```
+
+## Testing After Fix
+- [ ] Verify Standard engine is selected in browser
+- [ ] Confirm export completes without errors
+- [ ] Check that effects appear in exported video
