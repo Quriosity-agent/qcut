@@ -66,12 +66,66 @@ describe('Debug Image Processing - Actual Grayscale Verification', () => {
   let ctx: CanvasRenderingContext2D;
 
   beforeEach(() => {
-    // Create a real canvas for testing
-    canvas = document.createElement('canvas');
-    canvas.width = 100;
-    canvas.height = 100;
+    // Mock HTMLCanvasElement and CanvasRenderingContext2D
+    const mockImageData = {
+      data: new Uint8ClampedArray(100 * 100 * 4), // 100x100 pixels, 4 bytes per pixel
+      width: 100,
+      height: 100,
+    };
 
-    ctx = canvas.getContext('2d')!;
+    // Initialize with test pattern
+    for (let y = 0; y < 100; y++) {
+      for (let x = 0; x < 100; x++) {
+        const i = (y * 100 + x) * 4;
+
+        // Create colored quadrants
+        if (x < 50 && y < 50) {
+          // Top-left: Red
+          mockImageData.data[i] = 255; // R
+          mockImageData.data[i + 1] = 0; // G
+          mockImageData.data[i + 2] = 0; // B
+          mockImageData.data[i + 3] = 255; // A
+        } else if (x >= 50 && y < 50) {
+          // Top-right: Blue
+          mockImageData.data[i] = 0; // R
+          mockImageData.data[i + 1] = 0; // G
+          mockImageData.data[i + 2] = 255; // B
+          mockImageData.data[i + 3] = 255; // A
+        } else if (x < 50 && y >= 50) {
+          // Bottom-left: Green
+          mockImageData.data[i] = 0; // R
+          mockImageData.data[i + 1] = 255; // G
+          mockImageData.data[i + 2] = 0; // B
+          mockImageData.data[i + 3] = 255; // A
+        } else {
+          // Bottom-right: Yellow
+          mockImageData.data[i] = 255; // R
+          mockImageData.data[i + 1] = 255; // G
+          mockImageData.data[i + 2] = 0; // B
+          mockImageData.data[i + 3] = 255; // A
+        }
+      }
+    }
+
+    const mockContext = {
+      fillStyle: '',
+      fillRect: vi.fn(),
+      getImageData: vi.fn(() => mockImageData),
+      createImageData: vi.fn((w, h) => ({
+        data: new Uint8ClampedArray(w * h * 4),
+        width: w,
+        height: h,
+      })),
+    };
+
+    canvas = {
+      width: 100,
+      height: 100,
+      getContext: vi.fn(() => mockContext),
+      toDataURL: vi.fn(() => 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChAHIpqAPUwAAAABJRU5ErkJggg==')
+    } as any;
+
+    ctx = mockContext as any;
 
     // Draw a colored pattern for testing
     ctx.fillStyle = 'rgb(255, 0, 0)'; // Pure red
