@@ -254,6 +254,8 @@ export class ExportEngineFactory {
               "[ExportEngineFactory] ❌ Failed to load CLI engine:",
               error
             );
+            console.error("❌ CLI ENGINE FAILED: Falling back to Standard Canvas engine");
+            console.error("❌ Reason:", error.message);
             debugLog(
               "[ExportEngineFactory] 🔄 Falling back to Standard Canvas engine"
             );
@@ -267,6 +269,7 @@ export class ExportEngineFactory {
             );
           }
         } else {
+          console.log("🌐 BROWSER ENVIRONMENT: Using Standard Canvas engine (CLI not available in browser)");
           debugWarn(
             "[ExportEngineFactory] ⚠️  CLI engine only available in Electron, using Standard engine for browser"
           );
@@ -482,6 +485,12 @@ export class ExportEngineFactory {
 
   // Check if running in Electron environment
   private isElectron(): boolean {
-    return !!(window as any).electronAPI;
+    const electronAPI = (window as any).electronAPI;
+    const hasElectronAPI = electronAPI && typeof electronAPI.invoke === 'function';
+
+    console.log(`🔍 ENVIRONMENT CHECK: electronAPI exists: ${!!electronAPI}, invoke function: ${typeof electronAPI?.invoke}`);
+    console.log(`🔍 ENVIRONMENT CHECK: isElectron result: ${hasElectronAPI}`);
+
+    return hasElectronAPI;
   }
 }

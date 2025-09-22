@@ -38,6 +38,13 @@ export class CLIExportEngine extends ExportEngine {
       "⚡ CLI EXPORT ENGINE: Initialized with effects support:",
       !!effectsStore
     );
+
+    // 🚨 SAFETY CHECK: Verify Electron environment
+    if (!window.electronAPI || typeof window.electronAPI.invoke !== 'function') {
+      console.error("❌ CLI EXPORT ENGINE: Not in Electron environment - this engine will fail!");
+      console.error("❌ Use standard export engine for browser environment");
+      throw new Error("CLI Export Engine requires Electron environment");
+    }
   }
 
   // Override parent's renderFrame to skip video validation issues
