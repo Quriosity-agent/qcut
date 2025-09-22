@@ -71,4 +71,22 @@ describe("FFmpegFilterChain", () => {
     const chain = FFmpegFilterChain.fromEffectParameters(params);
     expect(chain).toBe("hue=s=0.5");
   });
+
+  it("should handle invert effect", () => {
+    const params = { invert: 100 };
+    const chain = FFmpegFilterChain.fromEffectParameters(params);
+    expect(chain).toBe("negate");
+  });
+
+  it("should handle partial invert effect", () => {
+    const params = { invert: 50 };
+    const chain = FFmpegFilterChain.fromEffectParameters(params);
+    expect(chain).toBe("negate");
+  });
+
+  it("should handle combined grayscale and invert effects", () => {
+    const params = { grayscale: 100, invert: 100 };
+    const chain = FFmpegFilterChain.fromEffectParameters(params);
+    expect(chain).toBe("hue=s=0,negate");
+  });
 });

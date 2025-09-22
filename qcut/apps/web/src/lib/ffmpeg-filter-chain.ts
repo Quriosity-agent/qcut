@@ -5,6 +5,7 @@ export interface EffectParameters {
   blur?: number; // 0 to 20
   hue?: number; // 0 to 360
   grayscale?: number; // 0 to 100
+  invert?: number; // 0 to 100
 }
 
 export class FFmpegFilterChain {
@@ -46,6 +47,16 @@ export class FFmpegFilterChain {
     return this;
   }
 
+  addInvert(value: number): this {
+    // FFmpeg invert: negate filter inverts colors
+    // For simplicity, we'll use negate for any non-zero value
+    // Full implementation: value >= 50 applies negate, otherwise skip
+    if (value > 0) {
+      this.filters.push(`negate`);
+    }
+    return this;
+  }
+
   build(): string {
     return this.filters.join(",");
   }
@@ -59,6 +70,7 @@ export class FFmpegFilterChain {
     if (params.blur !== undefined) chain.addBlur(params.blur);
     if (params.hue !== undefined) chain.addHue(params.hue);
     if (params.grayscale !== undefined) chain.addGrayscale(params.grayscale);
+    if (params.invert !== undefined) chain.addInvert(params.invert);
 
     return chain.build();
   }

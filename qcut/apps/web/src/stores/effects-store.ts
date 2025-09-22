@@ -36,6 +36,7 @@ function mergeEffectParameters(
     if (params.blur !== undefined) merged.blur = params.blur;
     if (params.hue !== undefined) merged.hue = params.hue;
     if (params.grayscale !== undefined) merged.grayscale = params.grayscale;
+    if (params.invert !== undefined) merged.invert = params.invert;
   }
 
   return merged;
