@@ -42,6 +42,20 @@ interface ExportOptions {
  * Individual frame data for video export
  * Contains base64 encoded frame image data
  */
+/**
+ * Options for processing a single frame through FFmpeg filters
+ */
+interface FrameProcessOptions {
+  /** Export session identifier */
+  sessionId: string;
+  /** Input frame filename (e.g., "raw_frame-0001.png") */
+  inputFrameName: string;
+  /** Output frame filename (e.g., "frame-0001.png") */
+  outputFrameName: string;
+  /** FFmpeg filter chain to apply */
+  filterChain: string;
+}
+
 interface FrameData {
   /** Export session identifier */
   sessionId: string;
@@ -104,6 +118,7 @@ interface FFmpegHandlers {
   "open-frames-folder": (sessionId: string) => Promise<OpenFolderResult>;
   "export-video-cli": (options: ExportOptions) => Promise<ExportResult>;
   "validate-filter-chain": (filterChain: string) => Promise<boolean>;
+  "process-frame": (options: FrameProcessOptions) => Promise<void>;
 }
 
 const tempManager = new TempManager();
@@ -431,6 +446,74 @@ exit /b %ERRORLEVEL%`;
       } catch (error) {
         console.error('❌ FFMPEG HANDLER: Filter validation exception:', error);
         return false;
+      }
+    }
+  );
+
+  // Process single frame through FFmpeg filter
+  ipcMain.handle(
+    "process-frame",
+    async (
+      event: IpcMainInvokeEvent,
+      { sessionId, inputFrameName, outputFrameName, filterChain }: FrameProcessOptions
+    ): Promise<void> => {
+      try {
+        console.log(`🔧 FFMPEG HANDLER: Processing frame ${outputFrameName} with filter: "${filterChain}"`);
+
+        const frameDir: string = tempManager.getFrameDir(sessionId);
+        const inputPath: string = path.join(frameDir, inputFrameName);
+        const outputPath: string = path.join(frameDir, outputFrameName);
+
+        // Verify input file exists
+        if (!fs.existsSync(inputPath)) {
+          throw new Error(`Input frame not found: ${inputPath}`);
+        }
+
+        const ffmpegPath = getFFmpegPath();
+
+        return new Promise<void>((resolve, reject) => {
+          const ffmpeg = spawn(ffmpegPath, [
+            '-i', inputPath,           // Input PNG frame
+            '-vf', filterChain,        // Apply filter chain
+            '-y',                      // Overwrite output
+            outputPath                 // Output filtered PNG
+          ], {
+            windowsHide: true,
+            stdio: ['ignore', 'pipe', 'pipe']
+          });
+
+          let stderr = '';
+
+          ffmpeg.stderr?.on('data', (data) => {
+            stderr += data.toString();
+          });
+
+          ffmpeg.on('close', (code) => {
+            if (code === 0) {
+              console.log(`✅ FFMPEG HANDLER: Frame ${outputFrameName} processed successfully`);
+              resolve();
+            } else {
+              console.error(`❌ FFMPEG HANDLER: Frame processing failed with code ${code}`);
+              console.error(`FFmpeg stderr: ${stderr}`);
+              reject(new Error(`FFmpeg frame processing failed with code ${code}: ${stderr}`));
+            }
+          });
+
+          ffmpeg.on('error', (err) => {
+            console.error(`❌ FFMPEG HANDLER: Frame processing spawn error:`, err);
+            reject(err);
+          });
+
+          // Set timeout to avoid hanging
+          setTimeout(() => {
+            ffmpeg.kill();
+            console.warn(`⏰ FFMPEG HANDLER: Frame processing timeout for ${outputFrameName}`);
+            reject(new Error(`Frame processing timeout`));
+          }, 10000); // 10 second timeout per frame
+        });
+      } catch (error) {
+        console.error(`❌ FFMPEG HANDLER: Frame processing exception for ${outputFrameName}:`, error);
+        throw error;
       }
     }
   );

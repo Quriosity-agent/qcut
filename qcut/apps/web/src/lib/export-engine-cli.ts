@@ -585,29 +585,39 @@ export class CLIExportEngine extends ExportEngine {
       progressCallback?.(100, "Export completed!");
       return videoBlob;
     } finally {
-      // For debugging: don't cleanup temp files so we can inspect frames
-      debugLog(
-        "[CLIExportEngine] 🔍 DEBUG: Keeping frames in temp directory for inspection"
-      );
-      debugLog(
-        `[CLIExportEngine] 📁 Frames location: ${this.frameDir}\\frames`
-      );
-      debugLog("[CLIExportEngine] 🧪 TEST: Try this FFmpeg command manually:");
-      (async () => {
-        // get the ffmpeg path from main process (works in dev & packaged)
-        const ffmpegPath = await window.electronAPI?.invoke("ffmpeg-path");
-        const framesDir = `${this.frameDir}\\frames`;
-        const duration = Math.ceil(this.totalDuration);
-        debugLog(
-          `"${ffmpegPath}" -y -framerate ${this.fps}` +
-            ` -i "${framesDir}\\frame-%04d.png" -c:v libx264` +
-            ` -preset fast -crf 23 -t ${duration} "output.mp4"`
-        );
-      })();
+      // DEBUG MODE: Set to false to enable automatic cleanup after export
+      const DEBUG_MODE = true; // Keep frames for inspection
 
-      // Clean up temporary files including audio
-      if (this.sessionId) {
-        await this.cleanup();
+      if (DEBUG_MODE) {
+        // For debugging: don't cleanup temp files so we can inspect frames
+        debugLog(
+          "[CLIExportEngine] 🔍 DEBUG MODE ENABLED: Keeping frames in temp directory for inspection"
+        );
+        debugLog(
+          `[CLIExportEngine] 📁 Frames location: ${this.frameDir}\\frames`
+        );
+        debugLog("[CLIExportEngine] 🧪 TEST: Try this FFmpeg command manually:");
+        (async () => {
+          // get the ffmpeg path from main process (works in dev & packaged)
+          const ffmpegPath = await window.electronAPI?.invoke("ffmpeg-path");
+          const framesDir = `${this.frameDir}\\frames`;
+          const duration = Math.ceil(this.totalDuration);
+          debugLog(
+            `"${ffmpegPath}" -y -framerate ${this.fps}` +
+              ` -i "${framesDir}\\frame-%04d.png" -c:v libx264` +
+              ` -preset fast -crf 23 -t ${duration} "output.mp4"`
+          );
+        })();
+
+        debugLog(
+          "[CLIExportEngine] ⚠️ NOTE: Frames will NOT be deleted. Set DEBUG_MODE=false to enable cleanup."
+        );
+      } else {
+        // Clean up temporary files including audio when not in debug mode
+        debugLog("[CLIExportEngine] 🧹 Cleaning up temporary files...");
+        if (this.sessionId) {
+          await this.cleanup();
+        }
       }
     }
   }
@@ -662,6 +672,16 @@ export class CLIExportEngine extends ExportEngine {
     }
 
     debugLog(`[CLI] Rendered ${totalFrames} frames to ${this.frameDir}`);
+
+    // 🗂️ DEBUG: Open folder in Windows Explorer ONCE after all frames are rendered
+    try {
+      if (window.electronAPI && 'openFramesFolder' in window.electronAPI.ffmpeg && this.sessionId) {
+        await (window.electronAPI.ffmpeg as any).openFramesFolder(this.sessionId);
+        console.log(`🗂️ DEBUG: Opened frames folder in Windows Explorer (once after all frames)`);
+      }
+    } catch (folderError) {
+      console.warn(`⚠️ DEBUG: Failed to open frames folder:`, folderError);
+    }
   }
 
   private async saveFrameToDisk(frameName: string, currentTime: number): Promise<void> {
@@ -705,15 +725,7 @@ export class CLIExportEngine extends ExportEngine {
         console.log(`✅ DEBUG: Saved ${debugFrameName} and ${timestampedDebugFrame} to temp folder`);
         console.log(`✅ DEBUG: Check %TEMP%\\qcut-export\\${this.sessionId}\\frames\\ for PNG files`);
 
-        // 🗂️ DEBUG: Auto-open folder in Windows Explorer (if available)
-        try {
-          if ('openFramesFolder' in window.electronAPI.ffmpeg) {
-            await (window.electronAPI.ffmpeg as any).openFramesFolder(this.sessionId || "debug");
-            console.log(`🗂️ DEBUG: Opened frames folder in Windows Explorer`);
-          }
-        } catch (folderError) {
-          console.warn(`⚠️ DEBUG: Failed to open frames folder:`, folderError);
-        }
+        // 🗂️ DEBUG: Explorer opening moved to renderFramesToDisk to avoid opening 30+ windows
       } catch (debugError) {
         console.warn(`⚠️ DEBUG: Failed to save debug frame:`, debugError);
       }
@@ -722,11 +734,60 @@ export class CLIExportEngine extends ExportEngine {
       if (!this.sessionId) {
         throw new Error("No active session ID");
       }
+
+      // First save the raw frame
+      const rawFrameName = `raw_${frameName}`;
       await window.electronAPI.ffmpeg.saveFrame({
         sessionId: this.sessionId,
-        frameName,
+        frameName: rawFrameName,
         data: base64Data,
       });
+
+      // Get filter chain for active elements
+      let filterChain: string | undefined;
+      const activeElements = this.getActiveElementsCLI(currentTime);
+
+      for (const { element } of activeElements) {
+        if (element.type === "media" && this.effectsStore) {
+          const elementFilter = this.effectsStore.getFFmpegFilterChain(element.id);
+          if (elementFilter) {
+            filterChain = elementFilter;
+            console.log(`🎨 Frame ${frameName}: Applying FFmpeg filter: "${filterChain}"`);
+            break; // Use first element with filters
+          }
+        }
+      }
+
+      // If we have a filter chain, process the frame through FFmpeg
+      if (filterChain && window.electronAPI.ffmpeg.processFrame) {
+        console.log(`🔧 Processing frame ${frameName} through FFmpeg with filter: ${filterChain}`);
+
+        try {
+          await window.electronAPI.ffmpeg.processFrame({
+            sessionId: this.sessionId,
+            inputFrameName: rawFrameName,
+            outputFrameName: frameName,
+            filterChain: filterChain
+          });
+
+          console.log(`✅ Frame ${frameName} filtered successfully`);
+        } catch (filterError) {
+          console.warn(`⚠️ Failed to apply FFmpeg filter to ${frameName}, using raw frame:`, filterError);
+          // Fallback: copy raw frame as final frame
+          await window.electronAPI.ffmpeg.saveFrame({
+            sessionId: this.sessionId,
+            frameName,
+            data: base64Data,
+          });
+        }
+      } else {
+        // No filter chain, just save the raw frame as the final frame
+        await window.electronAPI.ffmpeg.saveFrame({
+          sessionId: this.sessionId,
+          frameName,
+          data: base64Data,
+        });
+      }
     } catch (error) {
       debugError(`[CLIExportEngine] Failed to save frame ${frameName}:`, error);
       throw error;

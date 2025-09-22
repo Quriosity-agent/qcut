@@ -151,6 +151,12 @@ export interface ElectronAPI {
     readOutputFile: (path: string) => Promise<Buffer>;
     cleanupExportSession: (sessionId: string) => Promise<void>;
     validateFilterChain: (filterChain: string) => Promise<boolean>;
+    processFrame: (options: {
+      sessionId: string;
+      inputFrameName: string;
+      outputFrameName: string;
+      filterChain: string;
+    }) => Promise<void>;
   };
 
   apiKeys: {
