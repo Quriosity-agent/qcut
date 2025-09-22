@@ -33,7 +33,7 @@ const mockCanvas = {
     drawImage: vi.fn(),
     fillRect: vi.fn(),
     filter: 'none',
-    canvas: { toDataURL: vi.fn(() => 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==') }
+    canvas: { toDataURL: vi.fn(() => 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAQAAAAEACAYAAABccqhmAAAABHNCSVQICAgIfAhkiAAAAAlwSFlzAAAAdgAAAHYBTnsmCAAAABl0RVh0U29mdHdhcmUAd3d3Lmlua3NjYXBlLm9yZ5vuPBoAAANCSURBVHic7doxAQAAAMKg9U9tCj+gAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA4MsAH2AAAb5jQ5kAAAAASUVORK5CYII=') }
   })),
   toDataURL: vi.fn(() => 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAQAAAAEACAYAAABccqhmAAAABHNCSVQICAgIfAhkiAAAAAlwSFlzAAAAdgAAAHYBTnsmCAAAABl0RVh0U29mdHdhcmUAd3d3Lmlua3NjYXBlLm9yZ5vuPBoAAANCSURBVHic7doxAQAAAMKg9U9tCj+gAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA4MsAH2AAAb5jQ5kAAAAASUVORK5CYII='),
 };
@@ -111,6 +111,10 @@ describe('Grayscale Video Effect - Frame-by-Frame Filtering', () => {
 
   afterEach(() => {
     vi.clearAllMocks();
+    // Restore processFrame method if it was deleted
+    if (!mockElectronAPI.ffmpeg.processFrame) {
+      mockElectronAPI.ffmpeg.processFrame = vi.fn().mockResolvedValue();
+    }
   });
 
   describe('Frame-by-Frame Processing Logic', () => {
@@ -140,6 +144,9 @@ describe('Grayscale Video Effect - Frame-by-Frame Filtering', () => {
         2.0, // totalDuration
         mockEffectsStore as any
       );
+
+      // Set the sessionId to match our mock
+      (exportEngine as any).sessionId = 'test-session-123';
 
       // Mock the getActiveElementsCLI method to return our test element
       const getActiveElementsSpy = vi.spyOn(exportEngine as any, 'getActiveElementsCLI');
@@ -194,6 +201,9 @@ describe('Grayscale Video Effect - Frame-by-Frame Filtering', () => {
         mockEffectsStore as any
       );
 
+      // Set the sessionId to match our mock
+      (exportEngine as any).sessionId = 'test-session-123';
+
       const getActiveElementsSpy = vi.spyOn(exportEngine as any, 'getActiveElementsCLI');
       getActiveElementsSpy.mockReturnValue([
         { element: mockElement, track: {}, mediaItem: {} }
@@ -217,8 +227,9 @@ describe('Grayscale Video Effect - Frame-by-Frame Filtering', () => {
         filterChain: 'hue=s=0',
       });
 
-      // Should fallback to saving raw frame as final frame (called twice)
-      expect(mockElectronAPI.ffmpeg.saveFrame).toHaveBeenCalledTimes(2);
+      // Should fallback to saving raw frame as final frame
+      // Calls: 1) debug frame, 2) timestamped debug frame, 3) raw frame, 4) fallback final frame
+      expect(mockElectronAPI.ffmpeg.saveFrame).toHaveBeenCalledTimes(4);
       expect(mockElectronAPI.ffmpeg.saveFrame).toHaveBeenLastCalledWith({
         sessionId: 'test-session-123',
         frameName: 'frame-0000.png',
@@ -252,6 +263,9 @@ describe('Grayscale Video Effect - Frame-by-Frame Filtering', () => {
         2.0, // totalDuration
         mockEffectsStore as any
       );
+
+      // Set the sessionId to match our mock
+      (exportEngine as any).sessionId = 'test-session-123';
 
       const getActiveElementsSpy = vi.spyOn(exportEngine as any, 'getActiveElementsCLI');
       getActiveElementsSpy.mockReturnValue([
@@ -305,6 +319,9 @@ describe('Grayscale Video Effect - Frame-by-Frame Filtering', () => {
         mockEffectsStore as any
       );
 
+      // Set the sessionId to match our mock
+      (exportEngine as any).sessionId = 'test-session-123';
+
       const getActiveElementsSpy = vi.spyOn(exportEngine as any, 'getActiveElementsCLI');
       getActiveElementsSpy.mockReturnValue([
         { element: mockElement, track: {}, mediaItem: {} }
@@ -354,6 +371,9 @@ describe('Grayscale Video Effect - Frame-by-Frame Filtering', () => {
         2.0, // totalDuration
         mockEffectsStore as any
       );
+
+      // Set the sessionId to match our mock
+      (exportEngine as any).sessionId = 'test-session-123';
 
       const getActiveElementsSpy = vi.spyOn(exportEngine as any, 'getActiveElementsCLI');
       getActiveElementsSpy.mockReturnValue([
@@ -415,6 +435,9 @@ describe('Grayscale Video Effect - Frame-by-Frame Filtering', () => {
           2.0, // totalDuration
           mockEffectsStore as any
         );
+
+        // Set the sessionId to match our mock
+        (exportEngine as any).sessionId = 'test-session-123';
 
         // Test that the filter chain is correctly retrieved
         expect(mockEffectsStore.getFFmpegFilterChain('test-element-123')).toBe(filterChain);
