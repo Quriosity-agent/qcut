@@ -754,6 +754,29 @@ export const useEffectsStore = create<EffectsStore>((set, get) => ({
 
 ---
 
+## ⚠️ **CRITICAL COMPATIBILITY NOTES**
+
+### **Existing Architecture Discovered**
+- **CLI Export Engine**: Already exists as `CLIExportEngine` class
+- **FFmpeg Handler**: Uses `export-video-cli` IPC method, not `ffmpeg:export`
+- **Frame Processing**: Current system saves frames to disk, then processes with FFmpeg
+- **Effects Store**: Already has console logging, avoid conflicts
+
+### **Key Modifications Required**
+1. **Extend existing interfaces** instead of creating new ones
+2. **Use correct IPC method names** (`export-video-cli`, not `ffmpeg:export`)
+3. **Maintain frame-based workflow** (frames → disk → FFmpeg)
+4. **Add filter chains to existing FFmpeg command construction**
+5. **Preserve existing console logging patterns**
+
+### **Console Logging Strategy**
+- Use consistent emoji prefixes: 🎨 for effects, ⚡ for CLI engine, 🔧 for handlers
+- Add success/failure logging for debugging
+- Include filter chain values in logs
+- Maintain existing debug patterns
+
+---
+
 ## 📈 **Summary: 30 Tasks, ~4 Hours Total**
 
 ### **Time Distribution**
@@ -764,11 +787,12 @@ export const useEffectsStore = create<EffectsStore>((set, get) => ({
 - **Phase 5** (Testing): 28 minutes
 - **Phase 6** (Performance): 20 minutes
 
-### **Critical Path Files**
-1. `apps/web/src/lib/ffmpeg-filter-chain.ts` - Core filter generator
-2. `electron/ffmpeg-handler.ts` - FFmpeg processing
-3. `apps/web/src/lib/export-engine-cli.ts` - CLI integration
-4. `apps/web/src/stores/effects-store.ts` - Effects to filters conversion
+### **Critical Path Files** (Validated Against Codebase)
+1. `apps/web/src/lib/ffmpeg-filter-chain.ts` - Core filter generator (NEW FILE)
+2. `electron/ffmpeg-handler.ts` - Modify existing `export-video-cli` handler
+3. `apps/web/src/lib/export-engine-cli.ts` - Extend existing `CLIExportEngine` class
+4. `apps/web/src/stores/effects-store.ts` - Add to existing effects store
+5. `apps/web/src/types/electron.d.ts` - Extend existing ffmpeg interface
 
 ### **Success Metrics**
 - All existing effects work with FFmpeg filters
