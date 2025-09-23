@@ -36,28 +36,26 @@ describe('Debug Effects Store', () => {
     effectsStore.clearEffects(testElementId);
   });
 
-  it('should understand the effects store structure', () => {
-    console.log('Available store methods:', Object.keys(effectsStore));
-    console.log('Available presets:', effectsStore.presets?.map(p => ({ id: p.id, name: p.name, parameters: p.parameters })));
+  it('should expose expected store API and presets', () => {
+    expect(typeof effectsStore.applyEffect).toBe('function');
+    expect(typeof effectsStore.getFFmpegFilterChain).toBe('function');
+    expect(Array.isArray(effectsStore.presets)).toBe(true);
+    expect(effectsStore.presets.length).toBeGreaterThan(0);
   });
 
   it('should apply grayscale effect and check filter chain', () => {
-    // Find the Black & White preset
-    const blackWhitePreset = effectsStore.presets?.find(p => p.name === 'Black & White');
-    console.log('Black & White preset:', blackWhitePreset);
+    const blackWhitePreset = effectsStore.presets.find(p => p.name === 'Black & White');
+    expect(blackWhitePreset).toBeDefined();
 
-    if (blackWhitePreset) {
-      effectsStore.applyEffect(testElementId, blackWhitePreset);
-
-      console.log('Applied effects:', effectsStore.getElementEffects?.(testElementId));
-
-      const filterChain = effectsStore.getFFmpegFilterChain(testElementId);
-      console.log('Generated filter chain:', filterChain);
-
-      expect(filterChain).toContain('hue');
-    } else {
-      console.log('Available preset names:', effectsStore.presets?.map(p => p.name));
+    if (!blackWhitePreset) {
+      throw new Error('Black & White preset not found in effects store');
     }
+
+    effectsStore.applyEffect(testElementId, blackWhitePreset);
+    expect(effectsStore.getElementEffects(testElementId)).toHaveLength(1);
+
+    const filterChain = effectsStore.getFFmpegFilterChain(testElementId);
+    expect(filterChain).toMatch(/(^|,)hue(\=|:)/);
   });
 });
 

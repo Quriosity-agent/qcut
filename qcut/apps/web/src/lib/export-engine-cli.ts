@@ -192,17 +192,6 @@ export class CLIExportEngine extends ExportEngine {
       );
 
       // Draw video WITHOUT canvas effects (FFmpeg will handle effects)
-      console.log(`🎥 Drawing raw video frame for element ${element.id}`);
-
-      // 🐛 DEBUG: Check what effects would be applied
-      if (this.effectsStore) {
-        const filterChain = this.effectsStore.getFFmpegFilterChain(element.id);
-        if (filterChain) {
-          console.log(`🎨 DEBUG: Element ${element.id} will have FFmpeg filter: "${filterChain}"`);
-        } else {
-          console.log(`📝 DEBUG: Element ${element.id} has no effects - rendering raw video`);
-        }
-      }
 
       this.ctx.drawImage(video, x, y, width, height);
       // Skip: No canvas effects applied here - FFmpeg will handle effects during final encoding
@@ -704,8 +693,6 @@ export class CLIExportEngine extends ExportEngine {
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
       const timestampedDebugFrame = `debug_${timestamp}_${frameName}`;
 
-      console.log(`🖼️ SAVING PNG DEBUG FRAME: ${debugFrameName} (time: ${currentTime.toFixed(3)}s)`);
-      console.log(`🖼️ ALSO SAVED: ${timestampedDebugFrame}`);
 
       try {
         // Save regular debug frame
@@ -722,8 +709,6 @@ export class CLIExportEngine extends ExportEngine {
           data: base64Data,
         });
 
-        console.log(`✅ DEBUG: Saved ${debugFrameName} and ${timestampedDebugFrame} to temp folder`);
-        console.log(`✅ DEBUG: Check %TEMP%\\qcut-export\\${this.sessionId}\\frames\\ for PNG files`);
 
         // 🗂️ DEBUG: Explorer opening moved to renderFramesToDisk to avoid opening 30+ windows
       } catch (debugError) {
@@ -752,7 +737,6 @@ export class CLIExportEngine extends ExportEngine {
           const elementFilter = this.effectsStore.getFFmpegFilterChain(element.id);
           if (elementFilter) {
             filterChain = elementFilter;
-            console.log(`🎨 Frame ${frameName}: Applying FFmpeg filter: "${filterChain}"`);
             break; // Use first element with filters
           }
         }
@@ -760,7 +744,6 @@ export class CLIExportEngine extends ExportEngine {
 
       // If we have a filter chain, process the frame through FFmpeg
       if (filterChain && window.electronAPI.ffmpeg.processFrame) {
-        console.log(`🔧 Processing frame ${frameName} through FFmpeg with filter: ${filterChain}`);
 
         try {
           await window.electronAPI.ffmpeg.processFrame({
@@ -770,7 +753,6 @@ export class CLIExportEngine extends ExportEngine {
             filterChain: filterChain
           });
 
-          console.log(`✅ Frame ${frameName} filtered successfully`);
         } catch (filterError) {
           console.warn(`⚠️ Failed to apply FFmpeg filter to ${frameName}, using raw frame:`, filterError);
           // Fallback: copy raw frame as final frame

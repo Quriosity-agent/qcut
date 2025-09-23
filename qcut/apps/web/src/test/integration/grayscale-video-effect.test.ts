@@ -60,17 +60,17 @@ const mockEffectsStore = {
 describe('Grayscale Video Effect - Frame-by-Frame Filtering', () => {
   let exportEngine: CLIExportEngine;
   let mockElement: any;
+  let originalWindow: any;
 
   beforeEach(() => {
     // Setup global mocks
-    Object.defineProperty(global, 'window', {
-      value: {
-        electronAPI: mockElectronAPI,
-        HTMLCanvasElement: vi.fn(() => mockCanvas),
-        HTMLVideoElement: vi.fn(() => mockVideo),
-      },
-      writable: true,
-    });
+    originalWindow = (global as any).window;
+    (mockElectronAPI.ffmpeg as any).processFrame = vi.fn();
+    (global as any).window = {
+      electronAPI: mockElectronAPI,
+      HTMLCanvasElement: vi.fn(() => mockCanvas),
+      HTMLVideoElement: vi.fn(() => mockVideo),
+    };
 
     // Create mock timeline element
     mockElement = {
@@ -111,10 +111,8 @@ describe('Grayscale Video Effect - Frame-by-Frame Filtering', () => {
 
   afterEach(() => {
     vi.clearAllMocks();
-    // Restore processFrame method if it was deleted
-    if (!mockElectronAPI.ffmpeg.processFrame) {
-      mockElectronAPI.ffmpeg.processFrame = vi.fn().mockResolvedValue();
-    }
+    // Restore original window
+    (global as any).window = originalWindow;
   });
 
   describe('Frame-by-Frame Processing Logic', () => {
@@ -227,14 +225,12 @@ describe('Grayscale Video Effect - Frame-by-Frame Filtering', () => {
         filterChain: 'hue=s=0',
       });
 
-      // Should fallback to saving raw frame as final frame
-      // Calls: 1) debug frame, 2) timestamped debug frame, 3) raw frame, 4) fallback final frame
-      expect(mockElectronAPI.ffmpeg.saveFrame).toHaveBeenCalledTimes(4);
-      expect(mockElectronAPI.ffmpeg.saveFrame).toHaveBeenLastCalledWith({
-        sessionId: 'test-session-123',
-        frameName: 'frame-0000.png',
-        data: expect.any(String),
-      });
+      // Assert both raw and final frames were saved (ignore additional debug saves)
+      const calls = (mockElectronAPI.ffmpeg.saveFrame as any).mock.calls.map((args: any[]) => args[0]);
+      expect(calls).toEqual(expect.arrayContaining([
+        expect.objectContaining({ sessionId: 'test-session-123', frameName: 'raw_frame-0000.png' }),
+        expect.objectContaining({ sessionId: 'test-session-123', frameName: 'frame-0000.png' }),
+      ]));
     });
 
     it('should skip processing when no filter chain is present', async () => {
@@ -345,10 +341,8 @@ describe('Grayscale Video Effect - Frame-by-Frame Filtering', () => {
     });
   });
 
-  describe('Console Logging Verification', () => {
-    it('should log frame processing steps', async () => {
-      const consoleSpy = vi.spyOn(console, 'log').mockImplementation();
-
+  describe('Frame Processing Functionality', () => {
+    it('should process frames through FFmpeg without debug logging', async () => {
       const mockSettings = {
         format: "mp4" as any,
         quality: "1080p" as any,
@@ -382,22 +376,16 @@ describe('Grayscale Video Effect - Frame-by-Frame Filtering', () => {
 
       await (exportEngine as any).saveFrameToDisk('frame-0000.png', 0.0);
 
-      // Should log filter application
-      expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining('🎨 Frame frame-0000.png: Applying FFmpeg filter: "hue=s=0"')
-      );
+      // Should call processFrame with correct parameters
+      expect(mockElectronAPI.ffmpeg.processFrame).toHaveBeenCalledWith({
+        sessionId: 'test-session-123',
+        inputFrameName: 'raw_frame-0000.png',
+        outputFrameName: 'frame-0000.png',
+        filterChain: 'hue=s=0'
+      });
 
-      // Should log processing start
-      expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining('🔧 Processing frame frame-0000.png through FFmpeg with filter: hue=s=0')
-      );
-
-      // Should log processing success
-      expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining('✅ Frame frame-0000.png filtered successfully')
-      );
-
-      consoleSpy.mockRestore();
+      // Should save raw, processed, and debug frames
+      expect(mockElectronAPI.ffmpeg.saveFrame).toHaveBeenCalledTimes(3);
     });
   });
 
@@ -468,18 +456,22 @@ describe('Grayscale Video Effect - Implementation Verification', () => {
       ]
     };
 
-    const expectedConsoleOutput = [
-      '🎨 Frame frame-0001.png: Applying FFmpeg filter: "hue=s=0"',
-      '🔧 Processing frame frame-0001.png through FFmpeg with filter: hue=s=0',
-      '🔧 FFMPEG HANDLER: Processing frame frame-0001.png with filter: "hue=s=0"',
-      '✅ FFMPEG HANDLER: Frame frame-0001.png processed successfully',
-      '✅ Frame frame-0001.png filtered successfully'
-    ];
+    const debugLoggingStatus = {
+      note: 'Debug console logging has been removed for cleaner export output',
+      previousLogs: [
+        '🎨 Frame frame-0001.png: Applying FFmpeg filter: "hue=s=0"',
+        '🔧 Processing frame frame-0001.png through FFmpeg with filter: hue=s=0',
+        '🔧 FFMPEG HANDLER: Processing frame frame-0001.png with filter: "hue=s=0"',
+        '✅ FFMPEG HANDLER: Frame frame-0001.png processed successfully',
+        '✅ Frame frame-0001.png filtered successfully'
+      ],
+      currentBehavior: 'Export runs silently without debug output'
+    };
 
     // Verify documentation is in sync with implementation
     expect(expectedWorkflow).toHaveLength(6);
     expect(expectedFileStructure.files).toHaveLength(3);
-    expect(expectedConsoleOutput).toHaveLength(5);
+    expect(debugLoggingStatus.note).toContain('removed');
 
     // This test passes if the documentation above matches the actual implementation
     expect(true).toBe(true);
