@@ -804,15 +804,6 @@ export const useEffectsStore = create<EffectsStore>((set, get) => ({
     );
 
     const filterChain = FFmpegFilterChain.fromEffectParameters(mergedParams);
-
-    console.log(
-      `🎨 EFFECTS STORE: Generated FFmpeg filter chain for element ${elementId}: "${filterChain}"`
-    );
-    console.log(
-      `🔧 EFFECTS STORE: Based on ${enabledEffects.length} enabled effects:`,
-      enabledEffects.map((e) => e.name)
-    );
-
     return filterChain;
   },
 }));
