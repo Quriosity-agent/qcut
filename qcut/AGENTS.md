@@ -1,44 +1,157 @@
-# Repository Guidelines
+- No TypeScript enums, use const objects
+- Always include error handling with try-catch
 
-## Project Structure & Modules
-- Root: monorepo managed by `turbo` and `bun`.
-- `apps/web`: Vite + React app (Next-style tooling), env files in `apps/web/.env*`, build outputs to `apps/web/dist`.
-- `electron`: Main/Preload processes and FFmpeg resources; loads `apps/web/dist` in production.
-- `packages/*`: Shared libraries (auth, db, utils) used by apps.
-- `build/`: Icons and packaging assets; `docs/`: project docs; `.husky/`: git hooks.
+## Coding Guidelines & Rules
 
-## Build, Test, and Dev
-- Install deps (root workspace): `bun install` (or `npm ci`).
-- All apps dev: `npm run dev` → runs `turbo run dev` across workspaces.
-- Web only: `cd apps/web && npm run dev` (served at `http://localhost:5174`).
-- Electron (dev): `npm run electron:dev` (uses web dev server).
-- Build web: `cd apps/web && npm run build` → outputs to `apps/web/dist`.
-- Package desktop:
-  - Quick dev build (Windows exe): `npm run build:exe`
-  - Production installers:
-    - Windows: `npm run dist:win`
-    - Other platforms (macOS, Linux): `npm run dist`
-  - Note: The Windows installer script disables code signing by default
-    (`--win.forceCodeSigning=false`). Configure platform-specific code
-    signing certificates for production builds.
+### Comment Guidelines
 
-## Coding Style & Naming
-- Language: TypeScript/JavaScript, React. Prefer 2‑space indent, single quotes.
-- Lint/format: `npm run lint`, `npm run format` (Ultracite + Biome).
-- Hooks: `.husky/pre-commit` formats the repo.
-- Names: kebab‑case for files, PascalCase for components, camelCase for functions/vars.
+**Good Comments (Human-style):**
+- Explain WHY, not WHAT
+- Document non-obvious behavior or edge cases
+- Warn about performance implications or side effects
+- Explain business logic that isn't clear from code
 
-## Testing Guidelines
-- No formal test runner configured yet. For changes:
-  - Web: verify flows in `apps/web` via Vite dev and built `dist`.
-  - Electron: verify open/save dialogs, FFmpeg operations, and CSP/COEP behavior.
-  - Prefer adding small, focused tests if introducing a runner (e.g., Vitest) per package.
+Examples:
+```javascript
+// transfer, not copy; sender buffer detaches
+// satisfies: check shape; keep literals  
+// keep multibyte across chunks
+// timingSafeEqual throws on length mismatch
+```
 
-## Commits & Pull Requests
-- Commits: imperative, scoped messages (e.g., `feat(web): add timeline zoom`).
-- PRs: clear description, linked issue(s), steps to verify, screenshots/GIFs for UI, and notes on migration/ENV changes.
+**Bad Comments (AI-style):**
+- Don't explain what the code literally does
+- Don't add changelog-style comments in code
+- Don't comment every line or obvious operations
 
-## Security & Configuration
-- Secrets: use `apps/web/.env.local`; never commit secrets.
-- FFmpeg: large binaries live in `electron/resources/ffmpeg`; ensure paths remain consistent with `electron/main.js`.
-- Packaging: Windows builds use NSIS; verify installer via `npm run dist:win`.
+Avoid:
+```javascript
+// Prevent duplicate initialization
+// Check if project is already loaded  
+// Mark as initializing to prevent race conditions
+// (changed from blah to blah)
+```
+
+**Rule:** Only add comments when there's genuinely non-obvious behavior, performance considerations, or business logic that needs context. Code should be self-documenting through naming and structure.
+
+### Separation of Concerns
+
+**Core Principle:** Each file should have one single purpose/responsibility. Related functionality should be grouped together, unrelated functionality should be separated.
+
+**Good Separation:**
+- One file per major concern (auth, validation, data transformation)
+- Group related utilities together
+- Extract shared logic into dedicated files
+- Keep API routes focused on their specific endpoint logic
+
+Examples:
+```javascript
+// ✅ Good: Each file has clear responsibility
+/lib/rate-limit.ts          // Rate limiting utilities
+/lib/validation.ts          // Input validation schemas
+/lib/freesound-api.ts       // External API integration
+/api/sounds/search/route.ts // Route handler only
+```
+
+**When to Separate:**
+- File is getting long (>500 lines)
+- Multiple distinct responsibilities in one file
+- Logic could be reused elsewhere
+- Complex utilities that distract from main purpose
+
+**Rule:** One file, one responsibility. Extract shared concerns into focused utility files.
+
+### Scannable Code Guidelines
+
+**Core Principle:** Code should be scannable through proper abstraction, not comments. Use variables and helper functions to make intent clear at a glance.
+
+**Good Scannable Code:**
+- Extract complex logic into well-named variables
+- Create helper functions for multi-step operations
+- Use descriptive names that explain intent
+
+Examples:
+```javascript
+// ✅ Scannable: Intent is clear from variable names
+const isValidUser = user.isActive && user.hasPermissions;
+const shouldProcessPayment = amount > 0 && !order.isPaid;
+
+// ✅ Scannable: Complex logic extracted to helper
+const searchParams = buildFreesoundSearchParams({ query, filters, pagination });
+const transformedResults = transformFreesoundResults({ rawResults });
+```
+
+**Bad Unscannable Code:**
+```javascript
+// ❌ Hard to scan: What does this condition mean?
+if (type === "effects" || !type) {
+  params.append("filter", "duration:[* TO 30.0]");
+  params.append("filter", `avg_rating:[${min_rating} TO *]`);
+  if (commercial_only) {
+    params.append("filter", 'license:("Attribution" OR "Creative Commons 0")');
+  }
+}
+
+// ❌ Hard to scan: Complex ternary
+const sortParam = query
+  ? sort === "score"
+    ? "score"
+    : `${sort}_desc`
+  : `${sort}_desc`;
+```
+
+**Rule:** Make code scannable by extracting intent into variables and helper functions. If you need to think about what code does, extract it. The reader should understand the flow without diving into implementation details.
+
+### Ultracite Rules (Extended)
+
+**Accessibility (a11y):**
+- Always include a `title` element for icons unless there's text beside the icon
+- Always include a `type` attribute for button elements
+- Accompany `onClick` with at least one of: `onKeyUp`, `onKeyDown`, or `onKeyPress`
+- Accompany `onMouseOver`/`onMouseOut` with `onFocus`/`onBlur`
+
+**Code Complexity and Quality:**
+- Don't use primitive type aliases or misleading types
+- Don't use the comma operator
+- Use for...of statements instead of Array.forEach
+- Don't initialize variables to undefined
+- Use .flatMap() instead of map().flat() when possible
+
+**React and JSX Best Practices:**
+- Don't import `React` itself
+- Don't define React components inside other components
+- Don't use both `children` and `dangerouslySetInnerHTML` props on the same element
+- Don't insert comments as text nodes
+- Use `<>...</>` instead of `<Fragment>...</Fragment>`
+
+**Function Parameters and Props:**
+- Always use destructured props objects instead of individual parameters in functions
+- Example: `function helloWorld({ prop }: { prop: string })` instead of `function helloWorld(param: string)`
+- This applies to all functions, not just React components
+
+**Correctness and Safety:**
+- Don't assign a value to itself
+- Avoid unused imports and variables
+- Don't use await inside loops
+- Don't hardcode sensitive data like API keys and tokens
+- Don't use the TypeScript directive @ts-ignore
+- Make sure the `preconnect` attribute is used when using Google Fonts
+- Don't use the `delete` operator
+- Don't use `require()` in TypeScript/ES modules - use proper `import` statements
+
+**TypeScript Best Practices:**
+- Don't use TypeScript enums
+- Use either `T[]` or `Array<T>` consistently
+- Don't use the `any` type
+
+**Style and Consistency:**
+- Don't use global `eval()`
+- Use `String.slice()` instead of `String.substr()` and `String.substring()`
+- Don't use `else` blocks when the `if` block breaks early
+- Put default function parameters and optional function parameters last
+- Use `new` when throwing an error
+- Use `String.trimStart()` and `String.trimEnd()` over `String.trimLeft()` and `String.trimRight()`
+
+**Next.js Specific Rules:**
+- Don't use `<img>` elements in Next.js projects
+- Don't use `<head>` elements in Next.js projects

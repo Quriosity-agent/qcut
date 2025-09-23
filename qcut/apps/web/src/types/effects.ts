@@ -103,6 +103,8 @@ export interface EffectParameters {
   emboss?: number;
   edge?: number;
   pixelate?: number;
+  chromatic?: number;
+  radiance?: number;
 
   // Distortion effects
   wave?: number;

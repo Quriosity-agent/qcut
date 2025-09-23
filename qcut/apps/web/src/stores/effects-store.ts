@@ -43,7 +43,7 @@ function mergeEffectParameters(
 }
 
 // Predefined effect presets
-const EFFECT_PRESETS: EffectPreset[] = [
+const EFFECT_PRESETS: Array<EffectPreset & { isImplemented?: boolean }> = [
   {
     id: "brightness-increase",
     name: "Brighten",
@@ -51,6 +51,7 @@ const EFFECT_PRESETS: EffectPreset[] = [
     category: "basic",
     icon: "☀️",
     parameters: { brightness: 20 },
+    isImplemented: true,
   },
   {
     id: "brightness-decrease",
@@ -59,6 +60,7 @@ const EFFECT_PRESETS: EffectPreset[] = [
     category: "basic",
     icon: "🌙",
     parameters: { brightness: -20 },
+    isImplemented: true,
   },
   {
     id: "contrast-high",
@@ -67,6 +69,7 @@ const EFFECT_PRESETS: EffectPreset[] = [
     category: "basic",
     icon: "◐",
     parameters: { contrast: 30 },
+    isImplemented: true,
   },
   {
     id: "saturation-boost",
@@ -75,6 +78,7 @@ const EFFECT_PRESETS: EffectPreset[] = [
     category: "color",
     icon: "🎨",
     parameters: { saturation: 40 },
+    isImplemented: true,
   },
   {
     id: "desaturate",
@@ -83,6 +87,7 @@ const EFFECT_PRESETS: EffectPreset[] = [
     category: "color",
     icon: "🔇",
     parameters: { saturation: -30 },
+    isImplemented: true,
   },
   {
     id: "sepia",
@@ -91,6 +96,7 @@ const EFFECT_PRESETS: EffectPreset[] = [
     category: "vintage",
     icon: "📜",
     parameters: { sepia: 80 },
+    isImplemented: true,
   },
   {
     id: "grayscale",
@@ -99,6 +105,7 @@ const EFFECT_PRESETS: EffectPreset[] = [
     category: "artistic",
     icon: "⚫",
     parameters: { grayscale: 100 },
+    isImplemented: true,
   },
   {
     id: "vintage-film",
@@ -107,6 +114,7 @@ const EFFECT_PRESETS: EffectPreset[] = [
     category: "vintage",
     icon: "🎞️",
     parameters: { vintage: 70, grain: 20, vignette: 30 },
+    isImplemented: false,
   },
   {
     id: "dramatic",
@@ -115,6 +123,7 @@ const EFFECT_PRESETS: EffectPreset[] = [
     category: "cinematic",
     icon: "🎭",
     parameters: { dramatic: 60, contrast: 20 },
+    isImplemented: false,
   },
   {
     id: "warm-filter",
@@ -123,6 +132,7 @@ const EFFECT_PRESETS: EffectPreset[] = [
     category: "color",
     icon: "🔥",
     parameters: { warm: 50 },
+    isImplemented: false,
   },
   {
     id: "cool-filter",
@@ -131,6 +141,25 @@ const EFFECT_PRESETS: EffectPreset[] = [
     category: "color",
     icon: "❄️",
     parameters: { cool: 50 },
+    isImplemented: false,
+  },
+  {
+    id: "chromatic",
+    name: "Chromatic",
+    description: "Chromatic aberration effect",
+    category: "distortion",
+    icon: "🌈",
+    parameters: { chromatic: 50 },
+    isImplemented: false,
+  },
+  {
+    id: "radiance",
+    name: "Radiance",
+    description: "Soft glow and radiance effect",
+    category: "artistic",
+    icon: "✨",
+    parameters: { radiance: 60 },
+    isImplemented: false,
   },
   {
     id: "cinematic",
@@ -139,6 +168,7 @@ const EFFECT_PRESETS: EffectPreset[] = [
     category: "cinematic",
     icon: "🎬",
     parameters: { cinematic: 70, vignette: 20 },
+    isImplemented: false,
   },
   {
     id: "blur-soft",
@@ -147,6 +177,7 @@ const EFFECT_PRESETS: EffectPreset[] = [
     category: "distortion",
     icon: "🌫️",
     parameters: { blur: 2 },
+    isImplemented: true,
   },
   {
     id: "sharpen",
@@ -155,6 +186,7 @@ const EFFECT_PRESETS: EffectPreset[] = [
     category: "basic",
     icon: "🔪",
     parameters: { sharpen: 50 },
+    isImplemented: false,
   },
   {
     id: "emboss",
@@ -163,6 +195,7 @@ const EFFECT_PRESETS: EffectPreset[] = [
     category: "artistic",
     icon: "🏔️",
     parameters: { emboss: 70 },
+    isImplemented: false,
   },
   {
     id: "edge-detect",
@@ -171,6 +204,7 @@ const EFFECT_PRESETS: EffectPreset[] = [
     category: "artistic",
     icon: "📐",
     parameters: { edge: 80 },
+    isImplemented: false,
   },
   {
     id: "pixelate",
@@ -179,6 +213,7 @@ const EFFECT_PRESETS: EffectPreset[] = [
     category: "distortion",
     icon: "🧩",
     parameters: { pixelate: 10 },
+    isImplemented: false,
   },
   {
     id: "vignette",
@@ -187,6 +222,7 @@ const EFFECT_PRESETS: EffectPreset[] = [
     category: "cinematic",
     icon: "⭕",
     parameters: { vignette: 50 },
+    isImplemented: false,
   },
   {
     id: "grain",
@@ -195,6 +231,7 @@ const EFFECT_PRESETS: EffectPreset[] = [
     category: "vintage",
     icon: "🌾",
     parameters: { grain: 30 },
+    isImplemented: false,
   },
   {
     id: "invert",
@@ -203,6 +240,7 @@ const EFFECT_PRESETS: EffectPreset[] = [
     category: "artistic",
     icon: "🔄",
     parameters: { invert: 100 },
+    isImplemented: true,
   },
   // Distortion effects
   {
@@ -212,6 +250,7 @@ const EFFECT_PRESETS: EffectPreset[] = [
     category: "distortion",
     icon: "🌊",
     parameters: { wave: 50, waveFrequency: 3, waveAmplitude: 20 },
+    isImplemented: false,
   },
   {
     id: "twist",
@@ -220,6 +259,7 @@ const EFFECT_PRESETS: EffectPreset[] = [
     category: "distortion",
     icon: "🌀",
     parameters: { twist: 60, twistAngle: 180 },
+    isImplemented: false,
   },
   {
     id: "bulge",
@@ -228,6 +268,7 @@ const EFFECT_PRESETS: EffectPreset[] = [
     category: "distortion",
     icon: "🔵",
     parameters: { bulge: 50, bulgeRadius: 200 },
+    isImplemented: false,
   },
   {
     id: "fisheye",
@@ -236,6 +277,7 @@ const EFFECT_PRESETS: EffectPreset[] = [
     category: "distortion",
     icon: "👁️",
     parameters: { fisheye: 70, fisheyeStrength: 2 },
+    isImplemented: false,
   },
   // Artistic effects
   {
@@ -245,6 +287,7 @@ const EFFECT_PRESETS: EffectPreset[] = [
     category: "artistic",
     icon: "🎨",
     parameters: { oilPainting: 60, brushSize: 5 },
+    isImplemented: false,
   },
   {
     id: "watercolor",
@@ -253,6 +296,7 @@ const EFFECT_PRESETS: EffectPreset[] = [
     category: "artistic",
     icon: "💧",
     parameters: { watercolor: 70, wetness: 50 },
+    isImplemented: false,
   },
   {
     id: "pencil-sketch",
@@ -261,6 +305,7 @@ const EFFECT_PRESETS: EffectPreset[] = [
     category: "artistic",
     icon: "✏️",
     parameters: { pencilSketch: 80, strokeWidth: 2 },
+    isImplemented: false,
   },
   {
     id: "halftone",
@@ -269,6 +314,7 @@ const EFFECT_PRESETS: EffectPreset[] = [
     category: "artistic",
     icon: "⚫",
     parameters: { halftone: 50, dotSize: 4 },
+    isImplemented: false,
   },
   // Transition effects
   {
@@ -294,6 +340,7 @@ const EFFECT_PRESETS: EffectPreset[] = [
     category: "transition",
     icon: "💫",
     parameters: { dissolve: 50, dissolveProgress: 50 },
+    isImplemented: false,
   },
   {
     id: "wipe",
@@ -302,6 +349,7 @@ const EFFECT_PRESETS: EffectPreset[] = [
     category: "transition",
     icon: "➡️",
     parameters: { wipe: 100, wipeDirection: "right", wipeProgress: 50 },
+    isImplemented: false,
   },
   // Composite effects
   {
@@ -311,6 +359,7 @@ const EFFECT_PRESETS: EffectPreset[] = [
     category: "composite",
     icon: "🔲",
     parameters: { overlay: 50, overlayOpacity: 75, blendMode: "overlay" },
+    isImplemented: false,
   },
   {
     id: "multiply",
@@ -319,6 +368,7 @@ const EFFECT_PRESETS: EffectPreset[] = [
     category: "composite",
     icon: "✖️",
     parameters: { multiply: 100, blendMode: "multiply" },
+    isImplemented: false,
   },
   {
     id: "screen",
@@ -327,6 +377,7 @@ const EFFECT_PRESETS: EffectPreset[] = [
     category: "composite",
     icon: "📺",
     parameters: { screen: 100, blendMode: "screen" },
+    isImplemented: false,
   },
   {
     id: "color-dodge",
@@ -335,6 +386,7 @@ const EFFECT_PRESETS: EffectPreset[] = [
     category: "composite",
     icon: "💡",
     parameters: { colorDodge: 80, blendMode: "color-dodge" },
+    isImplemented: false,
   },
 ];
 
