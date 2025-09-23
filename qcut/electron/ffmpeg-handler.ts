@@ -240,16 +240,6 @@ export function setupFFmpegIPC(): void {
           options.filterChain
         );
 
-        // Log complete FFmpeg command for debugging
-        console.log(`🚀 FFmpeg command: ffmpeg ${args.join(' ')}`);
-
-        // 🐛 DEBUG: Highlight filter chain in command
-        if (options.filterChain) {
-          console.log(`🎨 DEBUG: Filter chain applied: "${options.filterChain}"`);
-          console.log(`🎨 DEBUG: This should make the video grayscale if filter is "hue=s=0"`);
-        } else {
-          console.log(`📝 DEBUG: No filter chain - video will be rendered without effects`);
-        }
 
         // Verify input directory exists and has frames
         if (!fs.existsSync(frameDir)) {
@@ -407,8 +397,6 @@ exit /b %ERRORLEVEL%`;
       filterChain: string
     ): Promise<boolean> => {
       try {
-        console.log(`🔍 FFMPEG HANDLER: Validating filter chain: "${filterChain}"`);
-
         const ffmpegPath = getFFmpegPath();
 
         const result = await new Promise<boolean>((resolve) => {
@@ -425,26 +413,22 @@ exit /b %ERRORLEVEL%`;
 
           ffmpeg.on('close', (code) => {
             const isValid = code === 0;
-            console.log(`✅ FFMPEG HANDLER: Filter validation ${isValid ? 'passed' : 'failed'} with code ${code}`);
             resolve(isValid);
           });
 
           ffmpeg.on('error', (err) => {
-            console.error(`❌ FFMPEG HANDLER: Filter validation error:`, err);
             resolve(false);
           });
 
           // Set timeout to avoid hanging
           setTimeout(() => {
             ffmpeg.kill();
-            console.warn(`⏰ FFMPEG HANDLER: Filter validation timeout`);
             resolve(false);
           }, 5000);
         });
 
         return result;
       } catch (error) {
-        console.error('❌ FFMPEG HANDLER: Filter validation exception:', error);
         return false;
       }
     }
@@ -458,8 +442,6 @@ exit /b %ERRORLEVEL%`;
       { sessionId, inputFrameName, outputFrameName, filterChain }: FrameProcessOptions
     ): Promise<void> => {
       try {
-        console.log(`🔧 FFMPEG HANDLER: Processing frame ${outputFrameName} with filter: "${filterChain}"`);
-
         const frameDir: string = tempManager.getFrameDir(sessionId);
         const inputPath: string = path.join(frameDir, inputFrameName);
         const outputPath: string = path.join(frameDir, outputFrameName);
@@ -490,29 +472,23 @@ exit /b %ERRORLEVEL%`;
 
           ffmpeg.on('close', (code) => {
             if (code === 0) {
-              console.log(`✅ FFMPEG HANDLER: Frame ${outputFrameName} processed successfully`);
               resolve();
             } else {
-              console.error(`❌ FFMPEG HANDLER: Frame processing failed with code ${code}`);
-              console.error(`FFmpeg stderr: ${stderr}`);
               reject(new Error(`FFmpeg frame processing failed with code ${code}: ${stderr}`));
             }
           });
 
           ffmpeg.on('error', (err) => {
-            console.error(`❌ FFMPEG HANDLER: Frame processing spawn error:`, err);
             reject(err);
           });
 
           // Set timeout to avoid hanging
           setTimeout(() => {
             ffmpeg.kill();
-            console.warn(`⏰ FFMPEG HANDLER: Frame processing timeout for ${outputFrameName}`);
             reject(new Error(`Frame processing timeout`));
           }, 10000); // 10 second timeout per frame
         });
       } catch (error) {
-        console.error(`❌ FFMPEG HANDLER: Frame processing exception for ${outputFrameName}:`, error);
         throw error;
       }
     }
@@ -598,7 +574,6 @@ function buildFFmpegArgs(
   // Add filter chain if provided
   if (filterChain && filterChain.trim()) {
     args.push("-vf", filterChain);
-    console.log(`🎨 FFmpeg applying filter chain: ${filterChain}`);
   }
 
   // Add audio inputs if provided
