@@ -483,6 +483,86 @@ export function useAIGeneration(props: UseAIGenerationProps) {
             model: modelId,
             modelName,
           });
+        } else if (response?.video_url) {
+          // Direct mode: video is ready immediately
+          console.log("🎯 DIRECT MODE TRIGGERED - Video URL:", response.video_url);
+          debugLogger.log("AIGeneration", "DIRECT_VIDEO_READY", {
+            model: modelId,
+            videoUrl: response.video_url,
+          });
+
+          const newVideo: GeneratedVideo = {
+            jobId: `direct-${Date.now()}`,
+            videoUrl: response.video_url,
+            videoPath: undefined,
+            fileSize: undefined,
+            duration: undefined,
+            prompt: prompt.trim(),
+            model: modelId,
+          };
+
+          // Add to generations array
+          generations.push({ modelId, video: newVideo });
+          console.log("📦 Added to generations array:", generations.length);
+
+          // Automatically add to media store
+          if (activeProject && addMediaItem) {
+            console.log("🔄 Attempting to add to media store...");
+            console.log("   - Project ID:", activeProject.id);
+            console.log("   - addMediaItem available:", !!addMediaItem);
+
+            try {
+              // Download video and create file
+              console.log("📥 Downloading video from URL:", response.video_url);
+              const videoResponse = await fetch(response.video_url);
+
+              if (!videoResponse.ok) {
+                throw new Error(`Failed to download video: ${videoResponse.status} ${videoResponse.statusText}`);
+              }
+
+              const blob = await videoResponse.blob();
+              console.log("✅ Downloaded video blob, size:", blob.size);
+
+              const filename = `AI-Video-${modelId}-${Date.now()}.mp4`;
+              const file = new File([blob], filename, { type: "video/mp4" });
+              console.log("📄 Created file:", filename);
+
+              // Add to media store
+              const mediaItem = {
+                name: `AI: ${newVideo.prompt.substring(0, 30)}...`,
+                type: "video" as const,
+                file,
+                url: newVideo.videoUrl,
+                duration: newVideo.duration || 5,
+                width: 1920,
+                height: 1080,
+              };
+
+              console.log("📤 Adding to media store with item:", mediaItem);
+              const newItemId = await addMediaItem(activeProject.id, mediaItem);
+
+              console.log("✅ VIDEO SUCCESSFULLY ADDED TO MEDIA STORE!");
+              console.log("   - Item ID:", newItemId);
+
+              debugLogger.log("AIGeneration", "VIDEO_ADDED_TO_MEDIA", {
+                itemId: newItemId,
+                model: modelId,
+                prompt: newVideo.prompt.substring(0, 50),
+              });
+            } catch (error) {
+              console.error("❌ FAILED TO ADD VIDEO TO MEDIA STORE:", error);
+              debugLogger.log("AIGeneration", "MEDIA_ADD_FAILED", {
+                error: error instanceof Error ? error.message : "Unknown error",
+                model: modelId,
+              });
+            }
+          } else {
+            console.warn("⚠️ Cannot add to media store:");
+            console.warn("   - activeProject:", !!activeProject);
+            console.warn("   - addMediaItem:", !!addMediaItem);
+          }
+        } else {
+          console.warn("⚠️ Response has neither job_id nor video_url:", response);
         }
       }
 
