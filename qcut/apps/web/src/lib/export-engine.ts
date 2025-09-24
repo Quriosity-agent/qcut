@@ -303,7 +303,7 @@ export class ExportEngine {
                   ...enabledEffects.map((e) => e.parameters)
                 );
                 console.log(
-                  `🔨 EXPORT ENGINE: Applying effects to image canvas:`,
+                  "🔨 EXPORT ENGINE: Applying effects to image canvas:",
                   mergedParams
                 );
 
@@ -489,7 +489,7 @@ export class ExportEngine {
               ...activeEffects.map((e) => e.parameters)
             );
             console.log(
-              `🔨 EXPORT ENGINE: Applying effects to video canvas:`,
+              "🔨 EXPORT ENGINE: Applying effects to video canvas:",
               mergedParams
             );
 
@@ -1041,13 +1041,13 @@ export class ExportEngine {
         `🎨 Elements with effects: ${elementsWithEffects.size}/${allElements.size}`
       );
       if (elementsWithEffects.size > 0) {
-        console.log(`✅ Effects were found and should be applied`);
-        console.log(`⚠️ If effects are missing in export, check:`);
-        console.log(`  1. Canvas filter support in export environment`);
-        console.log(`  2. Context save/restore timing`);
-        console.log(`  3. Effect parameter conversion`);
+        console.log("✅ Effects were found and should be applied");
+        console.log("⚠️ If effects are missing in export, check:");
+        console.log("  1. Canvas filter support in export environment");
+        console.log("  2. Context save/restore timing");
+        console.log("  3. Effect parameter conversion");
       } else {
-        console.log(`❌ No effects found on any elements`);
+        console.log("❌ No effects found on any elements");
       }
       console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
 

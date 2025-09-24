@@ -13,8 +13,11 @@ const DEBUG_KEY = "qcut_debug_mode";
  */
 export function isDebugEnabled(): boolean {
   // Check localStorage first (for runtime toggling)
-  if (typeof window !== "undefined") {
-    const localDebug = localStorage.getItem(DEBUG_KEY);
+  if (
+    typeof window !== "undefined" &&
+    typeof window.localStorage !== "undefined"
+  ) {
+    const localDebug = window.localStorage.getItem(DEBUG_KEY);
     if (localDebug !== null) {
       return localDebug === "true";
     }
@@ -33,8 +36,11 @@ export function isDebugEnabled(): boolean {
  * Enable debug mode
  */
 export function enableDebug(): void {
-  if (typeof window !== "undefined") {
-    localStorage.setItem(DEBUG_KEY, "true");
+  if (
+    typeof window !== "undefined" &&
+    typeof window.localStorage !== "undefined"
+  ) {
+    window.localStorage.setItem(DEBUG_KEY, "true");
   }
 }
 
@@ -42,8 +48,11 @@ export function enableDebug(): void {
  * Disable debug mode
  */
 export function disableDebug(): void {
-  if (typeof window !== "undefined") {
-    localStorage.setItem(DEBUG_KEY, "false");
+  if (
+    typeof window !== "undefined" &&
+    typeof window.localStorage !== "undefined"
+  ) {
+    window.localStorage.setItem(DEBUG_KEY, "false");
   }
 }
 

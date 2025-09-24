@@ -96,7 +96,7 @@ function useEffectsRendering(elementId: string | null, enabled = false) {
       // Guard against zero enabled effects
       if (enabledEffects.length === 0) {
         console.log(
-          `🚫 PREVIEW PANEL: No enabled effects, returning empty filter`
+          "🚫 PREVIEW PANEL: No enabled effects, returning empty filter"
         );
         return "";
       }
@@ -110,7 +110,7 @@ function useEffectsRendering(elementId: string | null, enabled = false) {
       console.log(`✨ PREVIEW PANEL: Generated CSS filter: "${cssFilter}"`);
       return cssFilter;
     } catch (error) {
-      console.error(`❌ PREVIEW PANEL: Error generating filter style:`, error);
+      console.error("❌ PREVIEW PANEL: Error generating filter style:", error);
       return "";
     }
   }, [enabled, effects]);

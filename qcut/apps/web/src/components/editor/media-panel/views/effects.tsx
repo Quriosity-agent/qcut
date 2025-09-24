@@ -34,7 +34,9 @@ export default function EffectsView() {
     return matchesCategory && matchesSearch;
   });
 
-  const handleApplyEffect = (preset: EffectPreset & { isImplemented?: boolean }) => {
+  const handleApplyEffect = (
+    preset: EffectPreset & { isImplemented?: boolean }
+  ) => {
     // Check if effect is implemented
     if (preset.isImplemented === false) {
       toast.info(`${preset.name} effect is coming soon!`);
@@ -130,7 +132,11 @@ export default function EffectsView() {
                   onClick={() => handleApplyEffect(preset as any)}
                   aria-label={`Apply ${preset.name} effect`}
                   draggable={isImplemented}
-                  onDragStart={isImplemented ? (e) => handleDragStart(e, preset) : undefined}
+                  onDragStart={
+                    isImplemented
+                      ? (e) => handleDragStart(e, preset)
+                      : undefined
+                  }
                   onDragEnd={isImplemented ? handleDragEnd : undefined}
                   title={
                     isImplemented

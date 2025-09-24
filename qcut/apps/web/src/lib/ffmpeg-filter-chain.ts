@@ -48,7 +48,7 @@ export class FFmpegFilterChain {
   addGrayscale(value: number): this {
     // FFmpeg grayscale: hue=s=0 removes all saturation (100% grayscale)
     // For partial grayscale, reduce saturation: hue=s=(1-value/100)
-    const saturationValue = clamp(1 - (value / 100), 0, 1);
+    const saturationValue = clamp(1 - value / 100, 0, 1);
     this.filters.push(`hue=s=${saturationValue}`);
     return this;
   }
@@ -58,7 +58,7 @@ export class FFmpegFilterChain {
     // For simplicity, we'll use negate for any non-zero value
     // Full implementation: value >= 50 applies negate, otherwise skip
     if (value > 0) {
-      this.filters.push(`negate`);
+      this.filters.push("negate");
     }
     return this;
   }

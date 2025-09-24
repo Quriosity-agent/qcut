@@ -28,15 +28,58 @@ function mergeFFmpegEffectParameters(
 ): FFmpegEffectParameters {
   const merged: FFmpegEffectParameters = {};
 
+  // Define additive parameters that should be summed, not overridden
+  const additiveParams = ["brightness", "contrast", "saturation", "hue"];
+
   for (const params of paramArrays) {
-    // Only merge supported FFmpeg parameters
-    if (params.brightness !== undefined) merged.brightness = params.brightness;
-    if (params.contrast !== undefined) merged.contrast = params.contrast;
-    if (params.saturation !== undefined) merged.saturation = params.saturation;
-    if (params.blur !== undefined) merged.blur = params.blur;
-    if (params.hue !== undefined) merged.hue = params.hue;
-    if (params.grayscale !== undefined) merged.grayscale = params.grayscale;
-    if (params.invert !== undefined) merged.invert = params.invert;
+    // Brightness - additive parameter
+    if (params.brightness !== undefined) {
+      merged.brightness = (merged.brightness || 0) + params.brightness;
+    }
+
+    // Contrast - additive parameter
+    if (params.contrast !== undefined) {
+      merged.contrast = (merged.contrast || 0) + params.contrast;
+    }
+
+    // Saturation - additive parameter
+    if (params.saturation !== undefined) {
+      merged.saturation = (merged.saturation || 0) + params.saturation;
+    }
+
+    // Hue - additive parameter
+    if (params.hue !== undefined) {
+      merged.hue = (merged.hue || 0) + params.hue;
+    }
+
+    // Blur - override parameter (last value wins)
+    if (params.blur !== undefined) {
+      merged.blur = params.blur;
+    }
+
+    // Grayscale - override parameter (last value wins)
+    if (params.grayscale !== undefined) {
+      merged.grayscale = params.grayscale;
+    }
+
+    // Invert - override parameter (last value wins)
+    if (params.invert !== undefined) {
+      merged.invert = params.invert;
+    }
+  }
+
+  // Clamp additive values to valid ranges after merging
+  if (merged.brightness !== undefined) {
+    merged.brightness = Math.max(-100, Math.min(100, merged.brightness));
+  }
+  if (merged.contrast !== undefined) {
+    merged.contrast = Math.max(-100, Math.min(100, merged.contrast));
+  }
+  if (merged.saturation !== undefined) {
+    merged.saturation = Math.max(-100, Math.min(200, merged.saturation));
+  }
+  if (merged.hue !== undefined) {
+    merged.hue = merged.hue % 360; // Keep hue within 0-360 degree range
   }
 
   return merged;

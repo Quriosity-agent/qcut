@@ -40,8 +40,14 @@ export class CLIExportEngine extends ExportEngine {
     );
 
     // 🚨 SAFETY CHECK: Verify Electron environment
-    if (!window.electronAPI || !window.electronAPI.ffmpeg || typeof window.electronAPI.ffmpeg.exportVideoCLI !== 'function') {
-      console.error("❌ CLI EXPORT ENGINE: Not in Electron environment - this engine will fail!");
+    if (
+      !window.electronAPI ||
+      !window.electronAPI.ffmpeg ||
+      typeof window.electronAPI.ffmpeg.exportVideoCLI !== "function"
+    ) {
+      console.error(
+        "❌ CLI EXPORT ENGINE: Not in Electron environment - this engine will fail!"
+      );
       console.error("❌ Use standard export engine for browser environment");
       throw new Error("CLI Export Engine requires Electron environment");
     }
@@ -511,7 +517,9 @@ export class CLIExportEngine extends ExportEngine {
   }
 
   async export(progressCallback?: ProgressCallback): Promise<Blob> {
-    console.log("🚀 CLI EXPORT ENGINE: ✅ RUNNING - Using native FFmpeg CLI for video export");
+    console.log(
+      "🚀 CLI EXPORT ENGINE: ✅ RUNNING - Using native FFmpeg CLI for video export"
+    );
     console.log("⚡ CLI EXPORT ENGINE: Export method called");
 
     debugLog("[CLIExportEngine] Starting CLI export...");
@@ -585,7 +593,9 @@ export class CLIExportEngine extends ExportEngine {
         debugLog(
           `[CLIExportEngine] 📁 Frames location: ${this.frameDir}\\frames`
         );
-        debugLog("[CLIExportEngine] 🧪 TEST: Try this FFmpeg command manually:");
+        debugLog(
+          "[CLIExportEngine] 🧪 TEST: Try this FFmpeg command manually:"
+        );
         (async () => {
           // get the ffmpeg path from main process (works in dev & packaged)
           const ffmpegPath = await window.electronAPI?.invoke("ffmpeg-path");
@@ -620,12 +630,16 @@ export class CLIExportEngine extends ExportEngine {
     const session = await window.electronAPI.ffmpeg.createExportSession();
 
     // 🐛 DEBUG: Log temp folder locations for manual inspection
-    console.log(`📁 CLI EXPORT TEMP FOLDER: Export session created`);
+    console.log("📁 CLI EXPORT TEMP FOLDER: Export session created");
     console.log(`📁 Session ID: ${session.sessionId}`);
     console.log(`📁 Frame Directory: ${session.frameDir}`);
     console.log(`📁 Output Directory: ${session.outputDir}`);
-    console.log(`📁 TEMP FOLDER PATH: %TEMP%\\qcut-export\\${session.sessionId}\\frames`);
-    console.log(`📁 DEBUG: You can find PNG debug frames at the path above after export starts`);
+    console.log(
+      `📁 TEMP FOLDER PATH: %TEMP%\\qcut-export\\${session.sessionId}\\frames`
+    );
+    console.log(
+      "📁 DEBUG: You can find PNG debug frames at the path above after export starts"
+    );
 
     return session;
   }
@@ -664,16 +678,27 @@ export class CLIExportEngine extends ExportEngine {
 
     // 🗂️ DEBUG: Open folder in Windows Explorer ONCE after all frames are rendered
     try {
-      if (window.electronAPI && 'openFramesFolder' in window.electronAPI.ffmpeg && this.sessionId) {
-        await (window.electronAPI.ffmpeg as any).openFramesFolder(this.sessionId);
-        console.log(`🗂️ DEBUG: Opened frames folder in Windows Explorer (once after all frames)`);
+      if (
+        window.electronAPI &&
+        "openFramesFolder" in window.electronAPI.ffmpeg &&
+        this.sessionId
+      ) {
+        await (window.electronAPI.ffmpeg as any).openFramesFolder(
+          this.sessionId
+        );
+        console.log(
+          "🗂️ DEBUG: Opened frames folder in Windows Explorer (once after all frames)"
+        );
       }
     } catch (folderError) {
-      console.warn(`⚠️ DEBUG: Failed to open frames folder:`, folderError);
+      console.warn("⚠️ DEBUG: Failed to open frames folder:", folderError);
     }
   }
 
-  private async saveFrameToDisk(frameName: string, currentTime: number): Promise<void> {
+  private async saveFrameToDisk(
+    frameName: string,
+    currentTime: number
+  ): Promise<void> {
     if (!window.electronAPI) {
       throw new Error("CLI export only available in Electron");
     }
@@ -690,9 +715,8 @@ export class CLIExportEngine extends ExportEngine {
 
       // 🐛 DEBUG: Save debug frame to temp folder for inspection
       const debugFrameName = `debug_${frameName}`;
-      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
       const timestampedDebugFrame = `debug_${timestamp}_${frameName}`;
-
 
       try {
         // Save regular debug frame
@@ -709,10 +733,9 @@ export class CLIExportEngine extends ExportEngine {
           data: base64Data,
         });
 
-
         // 🗂️ DEBUG: Explorer opening moved to renderFramesToDisk to avoid opening 30+ windows
       } catch (debugError) {
-        console.warn(`⚠️ DEBUG: Failed to save debug frame:`, debugError);
+        console.warn("⚠️ DEBUG: Failed to save debug frame:", debugError);
       }
 
       // Save via IPC
@@ -734,7 +757,9 @@ export class CLIExportEngine extends ExportEngine {
 
       for (const { element } of activeElements) {
         if (element.type === "media" && this.effectsStore) {
-          const elementFilter = this.effectsStore.getFFmpegFilterChain(element.id);
+          const elementFilter = this.effectsStore.getFFmpegFilterChain(
+            element.id
+          );
           if (elementFilter) {
             filterChain = elementFilter;
             break; // Use first element with filters
@@ -744,17 +769,18 @@ export class CLIExportEngine extends ExportEngine {
 
       // If we have a filter chain, process the frame through FFmpeg
       if (filterChain && window.electronAPI.ffmpeg.processFrame) {
-
         try {
           await window.electronAPI.ffmpeg.processFrame({
             sessionId: this.sessionId,
             inputFrameName: rawFrameName,
             outputFrameName: frameName,
-            filterChain: filterChain
+            filterChain,
           });
-
         } catch (filterError) {
-          console.warn(`⚠️ Failed to apply FFmpeg filter to ${frameName}, using raw frame:`, filterError);
+          console.warn(
+            `⚠️ Failed to apply FFmpeg filter to ${frameName}, using raw frame:`,
+            filterError
+          );
           // Fallback: copy raw frame as final frame
           await window.electronAPI.ffmpeg.saveFrame({
             sessionId: this.sessionId,
@@ -923,12 +949,17 @@ export class CLIExportEngine extends ExportEngine {
 
     // Collect all filter chains for timeline elements
     console.log("⚡ CLI EXPORT ENGINE: Starting export with filter chains");
-    console.log("⚡ CLI EXPORT ENGINE: Effects store available:", !!this.effectsStore);
+    console.log(
+      "⚡ CLI EXPORT ENGINE: Effects store available:",
+      !!this.effectsStore
+    );
     const elementFilterChains = new Map<string, string>();
 
     this.tracks.forEach((track) => {
       track.elements.forEach((element) => {
-        console.log(`🔍 CLI EXPORT ENGINE: Checking effects for element ${element.id}`);
+        console.log(
+          `🔍 CLI EXPORT ENGINE: Checking effects for element ${element.id}`
+        );
         if (this.effectsStore) {
           const filterChain = this.effectsStore.getFFmpegFilterChain(
             element.id
@@ -955,13 +986,21 @@ export class CLIExportEngine extends ExportEngine {
     const combinedFilterChain = Array.from(elementFilterChains.values()).join(
       ","
     );
-    console.log(`🔗 CLI EXPORT ENGINE: Combined filter chain: "${combinedFilterChain}"`);
+    console.log(
+      `🔗 CLI EXPORT ENGINE: Combined filter chain: "${combinedFilterChain}"`
+    );
 
     if (combinedFilterChain) {
-      console.log("✅ CLI EXPORT ENGINE: ✅ EFFECTS WORKING - Filter chains will be applied to video export");
-      console.log(`🔧 CLI EXPORT ENGINE: FFmpeg filter: "${combinedFilterChain}"`);
+      console.log(
+        "✅ CLI EXPORT ENGINE: ✅ EFFECTS WORKING - Filter chains will be applied to video export"
+      );
+      console.log(
+        `🔧 CLI EXPORT ENGINE: FFmpeg filter: "${combinedFilterChain}"`
+      );
     } else {
-      console.log("ℹ️ CLI EXPORT ENGINE: No effects applied - video will export without filter chains");
+      console.log(
+        "ℹ️ CLI EXPORT ENGINE: No effects applied - video will export without filter chains"
+      );
     }
 
     // Build options AFTER validation so the filtered list is sent

@@ -254,8 +254,13 @@ export class ExportEngineFactory {
               "[ExportEngineFactory] ❌ Failed to load CLI engine:",
               error
             );
-            console.error("❌ CLI ENGINE FAILED: Falling back to Standard Canvas engine");
-            console.error("❌ Reason:", error instanceof Error ? error.message : String(error));
+            console.error(
+              "❌ CLI ENGINE FAILED: Falling back to Standard Canvas engine"
+            );
+            console.error(
+              "❌ Reason:",
+              error instanceof Error ? error.message : String(error)
+            );
             debugLog(
               "[ExportEngineFactory] 🔄 Falling back to Standard Canvas engine"
             );
@@ -269,7 +274,9 @@ export class ExportEngineFactory {
             );
           }
         } else {
-          console.log("🌐 BROWSER ENVIRONMENT: Using Standard Canvas engine (CLI not available in browser)");
+          console.log(
+            "🌐 BROWSER ENVIRONMENT: Using Standard Canvas engine (CLI not available in browser)"
+          );
           debugWarn(
             "[ExportEngineFactory] ⚠️  CLI engine only available in Electron, using Standard engine for browser"
           );
@@ -487,11 +494,14 @@ export class ExportEngineFactory {
   private isElectron(): boolean {
     const electronAPI = (window as any).electronAPI;
     // Check for specific Electron API methods instead of generic invoke
-    const hasElectronAPI = electronAPI &&
+    const hasElectronAPI =
+      electronAPI &&
       electronAPI.ffmpeg &&
-      typeof electronAPI.ffmpeg.exportVideoCLI === 'function';
+      typeof electronAPI.ffmpeg.exportVideoCLI === "function";
 
-    console.log(`🔍 ENVIRONMENT CHECK: electronAPI exists: ${!!electronAPI}, ffmpeg.exportVideoCLI: ${typeof electronAPI?.ffmpeg?.exportVideoCLI}`);
+    console.log(
+      `🔍 ENVIRONMENT CHECK: electronAPI exists: ${!!electronAPI}, ffmpeg.exportVideoCLI: ${typeof electronAPI?.ffmpeg?.exportVideoCLI}`
+    );
     console.log(`🔍 ENVIRONMENT CHECK: isElectron result: ${hasElectronAPI}`);
 
     return hasElectronAPI;
