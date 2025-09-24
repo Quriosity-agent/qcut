@@ -685,6 +685,16 @@ export async function generateVideoFromImage(
         duration: request.duration || 5,
         cfg_scale: 0.5, // Default for good prompt adherence
       };
+    } else if (request.model === "kling_v2_5_turbo") {
+      // Use dedicated Kling v2.5 Turbo Pro image-to-video endpoint
+      endpoint = "fal-ai/kling-video/v2.5-turbo/pro/image-to-video";
+      payload = {
+        prompt: request.prompt || "Create a cinematic video from this image",
+        image_url: imageUrl,
+        duration: request.duration || 5,
+        cfg_scale: 0.5, // Default for good prompt adherence
+        resolution: request.resolution || "1080p",
+      };
     } else if (request.model === "wan_turbo") {
       // Use WAN Turbo image-to-video endpoint
       endpoint = "fal-ai/wan/v2.2-a14b/image-to-video/turbo";
@@ -698,6 +708,17 @@ export async function generateVideoFromImage(
             ? request.resolution
             : "720p",
         seed: Math.floor(Math.random() * 1_000_000), // Optional: for reproducibility
+      };
+    } else if (request.model === "wan_25_preview") {
+      // Use WAN v2.5 Preview image-to-video endpoint
+      endpoint = "fal-ai/wan-25-preview/image-to-video";
+      payload = {
+        prompt: request.prompt || "Create a cinematic video from this image",
+        image_url: imageUrl,
+        duration: request.duration || 5,
+        resolution: request.resolution || "1080p",
+        // WAN 2.5 supports higher quality image-to-video conversion
+        quality: "high", // Optional quality parameter
       };
     } else {
       // Use Seedance model for other cases (proven to work)
@@ -877,6 +898,9 @@ export async function estimateCost(
     "seedance_pro": { base_cost: 0.62, max_duration: 10 },
     "veo3_fast": { base_cost: 2.0, max_duration: 30 },
     "veo3": { base_cost: 3.0, max_duration: 30 },
+    "wan_turbo": { base_cost: 0.10, max_duration: 5 },
+    "kling_v2_5_turbo": { base_cost: 0.18, max_duration: 10 },
+    "wan_25_preview": { base_cost: 0.12, max_duration: 10 },
   };
 
   const modelInfo = modelCosts[request.model] || {
