@@ -10,20 +10,10 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { CLIExportEngine } from '../../lib/export-engine-cli';
 import { ExportPurpose } from '../../types/export';
+import { mockElectronAPI } from '../mocks/electron';
 
-// Mock the window.electronAPI
-const mockElectronAPI = {
-  ffmpeg: {
-    createExportSession: vi.fn(),
-    saveFrame: vi.fn(),
-    processFrame: vi.fn(), // The new method we implemented
-    exportVideoCLI: vi.fn(),
-    cleanupExportSession: vi.fn(),
-    openFramesFolder: vi.fn(),
-  },
-  platform: 'win32',
-  isElectron: true,
-};
+// Ensure processFrame method exists for this test suite
+(mockElectronAPI.ffmpeg as any).processFrame = vi.fn();
 
 // Mock HTML5 Canvas and Video elements
 const mockCanvas = {
@@ -65,7 +55,6 @@ describe('Grayscale Video Effect - Frame-by-Frame Filtering', () => {
   beforeEach(() => {
     // Setup global mocks
     originalWindow = (global as any).window;
-    (mockElectronAPI.ffmpeg as any).processFrame = vi.fn();
     (global as any).window = {
       electronAPI: mockElectronAPI,
       HTMLCanvasElement: vi.fn(() => mockCanvas),

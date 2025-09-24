@@ -23,7 +23,7 @@ import {
 } from "@/lib/ffmpeg-filter-chain";
 
 // Helper function to merge effect parameters for FFmpeg filter chains
-function mergeEffectParameters(
+function mergeFFmpegEffectParameters(
   ...paramArrays: EffectParameters[]
 ): FFmpegEffectParameters {
   const merged: FFmpegEffectParameters = {};
@@ -799,7 +799,7 @@ export const useEffectsStore = create<EffectsStore>((set, get) => ({
     }
 
     // Merge all effect parameters
-    const mergedParams = mergeEffectParameters(
+    const mergedParams = mergeFFmpegEffectParameters(
       ...enabledEffects.map((e) => e.parameters)
     );
 
