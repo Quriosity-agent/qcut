@@ -111,6 +111,7 @@ describe("Debug Image Processing - Actual Grayscale Verification", () => {
       fillStyle: "",
       fillRect: vi.fn(),
       getImageData: vi.fn(() => mockImageData),
+      putImageData: vi.fn(),
       createImageData: vi.fn((w, h) => ({
         data: new Uint8ClampedArray(w * h * 4),
         width: w,
