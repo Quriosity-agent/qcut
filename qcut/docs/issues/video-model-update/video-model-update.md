@@ -210,12 +210,150 @@ export type ProgressCallback = (status: {
 }) => void;
 ```
 
+## Compatibility Analysis ✅
+
+After analyzing the existing codebase, the proposed video model updates are **SAFE** and will **NOT** break existing features:
+
+### ✅ **Backward Compatibility Guaranteed**
+- **Endpoint Mapping**: New models use separate keys in `modelEndpoints` object - no conflicts
+- **Parameter Handling**: Model-specific logic uses conditional blocks - adding new conditions is safe
+- **API Structure**: All models use same FAL.ai response format - consistent processing
+- **Error Handling**: Existing error handling covers all FAL.ai response patterns
+- **UI Constants**: Adding models to `AI_MODELS` array is purely additive
+
+### ✅ **No Breaking Changes**
+- **Existing Models**: All current models (`kling_v2`, `wan_turbo`, `seedance`, etc.) remain unchanged
+- **Parameter Structure**: `VideoGenerationRequest` interface supports all required fields
+- **Response Handling**: `VideoGenerationResponse` format is consistent across all models
+- **Progress Tracking**: `ProgressCallback` system works with any FAL.ai model
+- **Download System**: Video download logic is model-agnostic
+
+### ✅ **Safe Implementation Pattern**
+The codebase follows a safe pattern for adding new models:
+
+```typescript
+// Safe: Additive endpoint mapping
+const modelEndpoints: { [key: string]: string } = {
+  // Existing models remain unchanged...
+  "kling_v2": "fal-ai/kling-video/v2.1/master",
+  "wan_turbo": "fal-ai/wan/v2.2-a14b/text-to-video/turbo",
+  // New models added safely without conflicts
+  "kling_v2_5_turbo": "fal-ai/kling-video/v2.5-turbo/pro/text-to-video",
+  "wan_25_preview": "fal-ai/wan-25-preview/text-to-video",
+};
+
+// Safe: Conditional parameter handling
+if (request.model === "kling_v2_5_turbo") {
+  // New model logic - doesn't affect existing models
+} else if (request.model === "wan_25_preview") {
+  // New model logic - doesn't affect existing models
+} else if (request.model === "wan_turbo") {
+  // Existing logic remains unchanged
+}
+```
+
 ## Implementation Steps
 
-1. **Research new model specifications** - Check API docs for exact parameters
-2. **Update model endpoints** - Add new endpoint configurations
-3. **Add model definitions** - Update AI_MODELS array with new models
-4. **Implement parameter handling** - Add model-specific parameter logic
-5. **Update image-to-video support** - Add new image-to-video endpoints
-6. **Test thoroughly** - Verify all functionality works correctly
-7. **Update documentation** - Update any relevant user-facing docs
+### Task 1: ✅ Research new model specifications
+**Status**: COMPLETED - API docs analyzed, parameters identified
+**Duration**: < 10 minutes
+
+### Task 2: Update model endpoints (15-20 minutes)
+**File**: `qcut/apps/web/src/lib/ai-video-client.ts`
+**Duration**: 15-20 minutes - Breaking into subtasks:
+
+#### Subtask 2.1: Add new model endpoints to modelEndpoints object (5 minutes)
+- **File**: `qcut/apps/web/src/lib/ai-video-client.ts:107-116`
+- **Action**: Add Kling v2.5 Turbo Pro and WAN 2.5 Preview endpoint mappings
+- **Code location**: Lines 107-116 in `modelEndpoints` object
+
+#### Subtask 2.2: Add parameter handling for Kling v2.5 Turbo Pro (5 minutes)
+- **File**: `qcut/apps/web/src/lib/ai-video-client.ts:131-163`
+- **Action**: Add conditional block for `kling_v2_5_turbo` model
+- **Code location**: Lines 131-163 in `generateVideo()` function
+
+#### Subtask 2.3: Add parameter handling for WAN 2.5 Preview (5 minutes)
+- **File**: `qcut/apps/web/src/lib/ai-video-client.ts:131-163`
+- **Action**: Add conditional block for `wan_25_preview` model
+- **Code location**: Lines 131-163 in `generateVideo()` function
+
+### Task 3: Add model definitions (5 minutes)
+**File**: `qcut/apps/web/src/components/editor/media-panel/views/ai-constants.ts`
+**Duration**: 5 minutes
+- **Action**: Add new models to `AI_MODELS` array
+- **Code location**: Lines 26-83 in `AI_MODELS` array
+
+### Task 4: Update image-to-video support (15-20 minutes)
+**File**: `qcut/apps/web/src/lib/ai-video-client.ts`
+**Duration**: 15-20 minutes - Breaking into subtasks:
+
+#### Subtask 4.1: Add Kling v2.5 Turbo Pro image-to-video endpoint (5 minutes)
+- **File**: `qcut/apps/web/src/lib/ai-video-client.ts:661-669`
+- **Action**: Add conditional block for `kling_v2_5_turbo` in `generateVideoFromImage()`
+- **Code location**: Lines 661-669 in `generateVideoFromImage()` function
+
+#### Subtask 4.2: Add WAN 2.5 Preview image-to-video endpoint (5 minutes)
+- **File**: `qcut/apps/web/src/lib/ai-video-client.ts:670-683`
+- **Action**: Add conditional block for `wan_25_preview` in `generateVideoFromImage()`
+- **Code location**: Lines 670-683 in `generateVideoFromImage()` function
+
+#### Subtask 4.3: Update cost estimation for new models (5 minutes)
+- **File**: `qcut/apps/web/src/lib/ai-video-client.ts:852-862`
+- **Action**: Add cost entries for new models in `estimateCost()` function
+- **Code location**: Lines 852-862 in `modelCosts` object
+
+### Task 5: Test thoroughly (25-30 minutes)
+**Duration**: 25-30 minutes - Breaking into subtasks:
+
+#### Subtask 5.1: Create integration tests for new models (10 minutes)
+- **File**: `qcut/apps/web/src/test/integration/new-video-models.test.ts` (CREATE)
+- **Action**: Create test file to verify new model functionality
+- **Dependencies**: Mock FAL.ai API responses for new models
+
+#### Subtask 5.2: Run existing regression tests (10 minutes)
+- **Files**: `qcut/apps/web/src/test/**/*.test.ts`
+- **Action**: Execute `bun run test` to ensure no breaking changes
+- **Verify**: All existing tests pass
+
+#### Subtask 5.3: Manual testing of new models (10 minutes)
+- **Action**: Test text-to-video and image-to-video generation with new models
+- **Verify**: Progress tracking, error handling, and video download work
+
+### Task 6: Update hardcoded model list (5 minutes)
+**File**: `qcut/apps/web/src/lib/ai-video-client.ts`
+**Duration**: 5 minutes
+- **Action**: Add new models to `getAvailableModels()` function
+- **Code location**: Lines 784-844 in hardcoded models array
+
+### Task 7: Update documentation (5 minutes)
+**Files**: Any user-facing documentation
+**Duration**: 5 minutes
+- **Action**: Update any UI tooltips, help text, or user guides mentioning available models
+
+## Implementation Summary
+
+**Total Estimated Time**: 60-75 minutes
+**Files to Modify**: 2 main files + 1 new test file
+1. `qcut/apps/web/src/lib/ai-video-client.ts` (Multiple sections)
+2. `qcut/apps/web/src/components/editor/media-panel/views/ai-constants.ts` (AI_MODELS array)
+3. `qcut/apps/web/src/test/integration/new-video-models.test.ts` (CREATE NEW)
+
+**Key Safety Measures**:
+- All changes are additive (no existing code modification)
+- Comprehensive testing strategy to prevent regressions
+- Each subtask can be tested independently
+
+## Testing Strategy
+
+### Regression Testing Required
+- **Existing Models**: Verify all current models still generate videos correctly
+- **Parameter Handling**: Test existing parameter validation and defaults
+- **Error Handling**: Ensure error messages remain consistent
+- **Progress Updates**: Verify progress tracking works for all models
+- **Image-to-Video**: Test existing image-to-video functionality
+
+### New Feature Testing
+- **New Models**: Test Kling v2.5 Turbo Pro and WAN 2.5 Preview generation
+- **Parameter Validation**: Verify new model-specific parameters work correctly
+- **Fallback Behavior**: Test behavior when new models are unavailable
+- **UI Integration**: Ensure new models appear correctly in model selector
