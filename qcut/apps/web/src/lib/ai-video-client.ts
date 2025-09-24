@@ -113,6 +113,8 @@ export async function generateVideo(
       "hailuo_pro": "fal-ai/minimax/hailuo-02/pro/text-to-video",
       "kling_v2": "fal-ai/kling-video/v2.1/master",
       "wan_turbo": "fal-ai/wan/v2.2-a14b/text-to-video/turbo",
+      "kling_v2_5_turbo": "fal-ai/kling-video/v2.5-turbo/pro/text-to-video",
+      "wan_25_preview": "fal-ai/wan-25-preview/text-to-video",
     };
 
     const endpoint =
@@ -155,6 +157,22 @@ export async function generateVideo(
       const validResolutions = ["480p", "580p", "720p"];
       if (!validResolutions.includes(payload.resolution)) {
         payload.resolution = "720p"; // Default to 720p for invalid resolutions
+      }
+    } else if (request.model === "kling_v2_5_turbo") {
+      // Kling v2.5 Turbo Pro - enhanced version with improved performance
+      payload.duration = request.duration || 5;
+      payload.resolution = request.resolution || "1080p";
+      payload.cfg_scale = 0.5; // Default for good prompt adherence
+      payload.aspect_ratio = "16:9"; // Standard aspect ratio
+      // Add any v2.5 turbo specific parameters as they become available
+    } else if (request.model === "wan_25_preview") {
+      // WAN v2.5 Preview - next-generation WAN model
+      payload.duration = request.duration || 5;
+      payload.resolution = request.resolution || "1080p";
+      // WAN 2.5 supports higher resolutions than previous versions
+      const validResolutions = ["720p", "1080p", "1440p"];
+      if (!validResolutions.includes(payload.resolution)) {
+        payload.resolution = "1080p"; // Default to 1080p for invalid resolutions
       }
     } else {
       // Other models (Veo, Kling)

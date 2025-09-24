@@ -30,6 +30,7 @@ export const AI_MODELS: AIModel[] = [
     description: "Premium model with unparalleled motion fluidity",
     price: "0.15",
     resolution: "1080p",
+    max_duration: 10,
   },
   {
     id: "seedance",
@@ -37,6 +38,7 @@ export const AI_MODELS: AIModel[] = [
     description: "Fast and efficient text-to-video generation",
     price: "0.18",
     resolution: "720p",
+    max_duration: 10,
   },
   {
     id: "hailuo",
@@ -44,6 +46,7 @@ export const AI_MODELS: AIModel[] = [
     description: "Standard quality with realistic physics",
     price: "0.27",
     resolution: "768p",
+    max_duration: 6,
   },
   {
     id: "hailuo_pro",
@@ -51,6 +54,7 @@ export const AI_MODELS: AIModel[] = [
     description: "Premium 1080p with ultra-realistic physics",
     price: "0.48",
     resolution: "1080p",
+    max_duration: 6,
   },
   {
     id: "seedance_pro",
@@ -58,6 +62,7 @@ export const AI_MODELS: AIModel[] = [
     description: "High quality 1080p video generation",
     price: "0.62",
     resolution: "1080p",
+    max_duration: 10,
   },
   {
     id: "veo3_fast",
@@ -65,6 +70,7 @@ export const AI_MODELS: AIModel[] = [
     description: "High quality, faster generation",
     price: "2.00",
     resolution: "1080p",
+    max_duration: 30,
   },
   {
     id: "veo3",
@@ -72,6 +78,7 @@ export const AI_MODELS: AIModel[] = [
     description: "Highest quality, slower generation",
     price: "3.00",
     resolution: "1080p",
+    max_duration: 30,
   },
   {
     id: "wan_turbo",
@@ -79,6 +86,23 @@ export const AI_MODELS: AIModel[] = [
     description: "High-speed photorealistic video generation",
     price: "0.10",
     resolution: "720p",
+    max_duration: 5,
+  },
+  {
+    id: "kling_v2_5_turbo",
+    name: "Kling v2.5 Turbo Pro",
+    description: "Latest Kling model with enhanced turbo performance",
+    price: "0.18",
+    resolution: "1080p",
+    max_duration: 10,
+  },
+  {
+    id: "wan_25_preview",
+    name: "WAN v2.5 Preview",
+    description: "Next-generation WAN model with improved quality",
+    price: "0.12",
+    resolution: "1080p",
+    max_duration: 10,
   },
 ];
 

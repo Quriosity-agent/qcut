@@ -277,14 +277,15 @@ if (request.model === "kling_v2_5_turbo") {
 **Duration**: 15-20 minutes - Breaking into subtasks:
 
 #### Subtask 2.1: Add new model endpoints to modelEndpoints object (5 minutes)
-- **File**: `qcut/apps/web/src/lib/ai-video-client.ts:107-116`
+- **File**: `qcut/apps/web/src/lib/ai-video-client.ts` (find `modelEndpoints` object)
 - **Action**: Add Kling v2.5 Turbo Pro and WAN 2.5 Preview endpoint mappings
-- **Code location**: Lines 107-116 in `modelEndpoints` object
+- **Code location**: Search for `const modelEndpoints` in the file
 
 **Implementation:**
 ```typescript
-// Update the modelEndpoints object at lines 107-116
+// Find the modelEndpoints object in ai-video-client.ts and add these two lines:
 const modelEndpoints: { [key: string]: string } = {
+  // ... existing endpoints remain unchanged ...
   "seedance": "fal-ai/bytedance/seedance/v1/lite/text-to-video",
   "seedance_pro": "fal-ai/bytedance/seedance/v1/pro/text-to-video",
   "veo3": "fal-ai/google/veo3",
@@ -299,99 +300,100 @@ const modelEndpoints: { [key: string]: string } = {
 };
 ```
 
+**Verification:** After adding, the object should have 10 total endpoints (8 existing + 2 new).
+
 #### Subtask 2.2: Add parameter handling for Kling v2.5 Turbo Pro (5 minutes)
-- **File**: `qcut/apps/web/src/lib/ai-video-client.ts:131-163`
+- **File**: `qcut/apps/web/src/lib/ai-video-client.ts` (find `generateVideo()` function)
 - **Action**: Add conditional block for `kling_v2_5_turbo` model
-- **Code location**: Lines 131-163 in `generateVideo()` function
+- **Code location**: Find the `generateVideo()` function and locate the model-specific parameter handling section
 
 **Implementation:**
 ```typescript
-// Add this new conditional block after line 163, before the "Other models" else block
+// Find the generateVideo() function and locate the model-specific conditional blocks
+// Add this new conditional block in the parameter handling section:
+
 } else if (request.model === "kling_v2_5_turbo") {
   // Kling v2.5 Turbo Pro - enhanced version with improved performance
   payload.duration = request.duration || 5;
   payload.resolution = request.resolution || "1080p";
   payload.cfg_scale = 0.5; // Default for good prompt adherence
   payload.aspect_ratio = "16:9"; // Standard aspect ratio
-  // Add any v2.5 turbo specific parameters as they become available
+  payload.enhance_prompt = true; // Enable prompt enhancement for better results
+
+  // Kling v2.5 Turbo specific optimizations
+  if (payload.duration > 10) {
+    console.warn("Kling v2.5 Turbo Pro: Duration capped at 10 seconds for optimal performance");
+    payload.duration = 10;
+  }
 ```
 
+**Location:** Insert this block alongside existing model conditionals like `} else if (request.model === "kling_v2") {`
+
 #### Subtask 2.3: Add parameter handling for WAN 2.5 Preview (5 minutes)
-- **File**: `qcut/apps/web/src/lib/ai-video-client.ts:131-163`
+- **File**: `qcut/apps/web/src/lib/ai-video-client.ts` (find `generateVideo()` function)
 - **Action**: Add conditional block for `wan_25_preview` model
-- **Code location**: Lines 131-163 in `generateVideo()` function
+- **Code location**: Add after the `kling_v2_5_turbo` conditional block
 
 **Implementation:**
 ```typescript
 // Add this new conditional block after the kling_v2_5_turbo block
 } else if (request.model === "wan_25_preview") {
-  // WAN v2.5 Preview - next-generation WAN model
+  // WAN v2.5 Preview - next-generation WAN model with improved quality
   payload.duration = request.duration || 5;
   payload.resolution = request.resolution || "1080p";
+  payload.quality = "high"; // Default to high quality for WAN 2.5
+  payload.style_preset = "cinematic"; // Enhanced cinematic style
+
   // WAN 2.5 supports higher resolutions than previous versions
   const validResolutions = ["720p", "1080p", "1440p"];
   if (!validResolutions.includes(payload.resolution)) {
-    payload.resolution = "1080p"; // Default to 1080p for invalid resolutions
+    console.warn(`WAN 2.5 Preview: Invalid resolution ${payload.resolution}, defaulting to 1080p`);
+    payload.resolution = "1080p";
+  }
+
+  // Duration optimization for WAN 2.5
+  if (payload.duration > 10) {
+    console.warn("WAN 2.5 Preview: Duration capped at 10 seconds for optimal quality");
+    payload.duration = 10;
   }
 ```
 
-### Task 3: Add model definitions (10 minutes) ⚠️ **UPDATED - INTERFACE FIX REQUIRED**
+**Location:** Insert this block after the `kling_v2_5_turbo` conditional block.
+
+### Task 3: Add model definitions (5 minutes) ✅ **INTERFACE ALREADY FIXED**
 **Files**:
 - `qcut/apps/web/src/components/editor/media-panel/views/ai-constants.ts`
-- `qcut/apps/web/src/components/editor/media-panel/views/ai-types.ts` ⚠️ **FIX REQUIRED**
-**Duration**: 10 minutes (increased due to interface fix)
-- **Action**: Add new models to `AI_MODELS` array AND fix interface mismatch
-- **Code location**: Lines 26-83 in `AI_MODELS` array, ai-types.ts:15-21
+**Duration**: 5 minutes (reduced - interface already has max_duration)
+- **Action**: Add new models to `AI_MODELS` array (interface is already correct)
+- **Code location**: Lines 26-107 in `AI_MODELS` array
 
-**⚠️ CRITICAL: Interface Fix Required First**
-```typescript
-// File: qcut/apps/web/src/components/editor/media-panel/views/ai-types.ts:15-21
-// FIX: Add missing max_duration property to match ai-video-client.ts interface
-export interface AIModel {
-  id: string;
-  name: string;
-  description: string;
-  price: string;
-  resolution: string;
-  max_duration: number; // ⚠️ ADD THIS MISSING PROPERTY
-}
-```
+**✅ GOOD NEWS: Interface Fixed**
+The `ai-types.ts:21` already has `max_duration: number` property and `ai-constants.ts` already has `max_duration` for all existing models.
 
 **Implementation:**
 ```typescript
 // File: qcut/apps/web/src/components/editor/media-panel/views/ai-constants.ts
-// Add these two new models to the AI_MODELS array after the existing models
-export const AI_MODELS: AIModel[] = [
-  // ... existing models ...
-  {
-    id: "wan_turbo",
-    name: "WAN v2.2 Turbo",
-    description: "High-speed photorealistic video generation",
-    price: "0.10",
-    resolution: "720p",
-    max_duration: 5, // ⚠️ ADD MISSING PROPERTY TO ALL EXISTING MODELS
-  },
-  // ADD THESE TWO NEW MODELS:
-  {
-    id: "kling_v2_5_turbo",
-    name: "Kling v2.5 Turbo Pro",
-    description: "Latest Kling model with enhanced turbo performance",
-    price: "0.18", // Estimated pricing - verify with actual FAL.ai pricing
-    resolution: "1080p",
-    max_duration: 10,
-  },
-  {
-    id: "wan_25_preview",
-    name: "WAN v2.5 Preview",
-    description: "Next-generation WAN model with improved quality",
-    price: "0.12", // Estimated pricing - verify with actual FAL.ai pricing
-    resolution: "1080p",
-    max_duration: 10,
-  },
-];
+// The two new models are ALREADY ADDED at lines 92-107! No changes needed.
+// Current state shows:
+{
+  id: "kling_v2_5_turbo",
+  name: "Kling v2.5 Turbo Pro",
+  description: "Latest Kling model with enhanced turbo performance",
+  price: "0.18",
+  resolution: "1080p",
+  max_duration: 10,
+},
+{
+  id: "wan_25_preview",
+  name: "WAN v2.5 Preview",
+  description: "Next-generation WAN model with improved quality",
+  price: "0.12",
+  resolution: "1080p",
+  max_duration: 10,
+},
 ```
 
-**⚠️ IMPORTANT**: All existing models in the array need `max_duration` added to match the interface.
+**✅ STATUS**: ALREADY COMPLETED - Both new models are already in the constants file with correct interface.
 
 ### Task 4: Update image-to-video support (15-20 minutes)
 **File**: `qcut/apps/web/src/lib/ai-video-client.ts`
@@ -439,33 +441,50 @@ if (request.model === "kling_v2_5_turbo") {
 ```
 
 #### Subtask 4.3: Update cost estimation for new models (5 minutes) ⚠️ **MISSING MODEL DETECTED**
-- **File**: `qcut/apps/web/src/lib/ai-video-client.ts:852-862`
+- **File**: `qcut/apps/web/src/lib/ai-video-client.ts` (find `estimateCost()` function)
 - **Action**: Add cost entries for new models AND fix missing `wan_turbo` in `estimateCost()` function
-- **Code location**: Lines 852-862 in `modelCosts` object
+- **Code location**: Find the `estimateCost()` function and locate the `modelCosts` object inside it
 
 **⚠️ CRITICAL: Missing Model in Cost Estimation**
 Current `estimateCost()` function is **missing** `wan_turbo` model that exists in constants.
 
 **Implementation:**
 ```typescript
-// Update the modelCosts object in the estimateCost() function
-const modelCosts: {
-  [key: string]: { base_cost: number; max_duration: number };
-} = {
-  "kling_v2": { base_cost: 0.15, max_duration: 10 },
-  "seedance": { base_cost: 0.18, max_duration: 10 },
-  "hailuo": { base_cost: 0.27, max_duration: 6 },
-  "hailuo_pro": { base_cost: 0.48, max_duration: 6 },
-  "seedance_pro": { base_cost: 0.62, max_duration: 10 },
-  "veo3_fast": { base_cost: 2.0, max_duration: 30 },
-  "veo3": { base_cost: 3.0, max_duration: 30 },
-  // ⚠️ ADD MISSING EXISTING MODEL:
-  "wan_turbo": { base_cost: 0.10, max_duration: 5 },
-  // ADD THESE TWO NEW MODELS:
-  "kling_v2_5_turbo": { base_cost: 0.18, max_duration: 10 },
-  "wan_25_preview": { base_cost: 0.12, max_duration: 10 },
-};
+// Find the estimateCost() function and update the modelCosts object inside it:
+export function estimateCost(model: string, duration: number): number {
+  const modelCosts: {
+    [key: string]: { base_cost: number; max_duration: number };
+  } = {
+    // Existing models
+    "kling_v2": { base_cost: 0.15, max_duration: 10 },
+    "seedance": { base_cost: 0.18, max_duration: 10 },
+    "hailuo": { base_cost: 0.27, max_duration: 6 },
+    "hailuo_pro": { base_cost: 0.48, max_duration: 6 },
+    "seedance_pro": { base_cost: 0.62, max_duration: 10 },
+    "veo3_fast": { base_cost: 2.0, max_duration: 30 },
+    "veo3": { base_cost: 3.0, max_duration: 30 },
+
+    // ⚠️ ADD MISSING EXISTING MODEL:
+    "wan_turbo": { base_cost: 0.10, max_duration: 5 },
+
+    // ADD THESE TWO NEW MODELS:
+    "kling_v2_5_turbo": { base_cost: 0.18, max_duration: 10 },
+    "wan_25_preview": { base_cost: 0.12, max_duration: 10 },
+  };
+
+  // Rest of the function logic remains unchanged...
+  const modelConfig = modelCosts[model];
+  if (!modelConfig) {
+    console.warn(`Cost estimation not available for model: ${model}`);
+    return 0.25; // Default cost fallback
+  }
+
+  const cappedDuration = Math.min(duration, modelConfig.max_duration);
+  return modelConfig.base_cost * cappedDuration;
+}
 ```
+
+**Verification:** After adding, the `modelCosts` object should have 10 total entries (7 existing + 1 missing + 2 new).
 
 ### Task 5: Test thoroughly (25-30 minutes)
 **Duration**: 25-30 minutes - Breaking into subtasks:
@@ -580,18 +599,75 @@ describe("New Video Models Integration", () => {
 **File**: `qcut/apps/web/src/lib/ai-video-client.ts`
 **Duration**: 5 minutes
 - **Action**: Add new models to `getAvailableModels()` function AND fix missing `wan_turbo`
-- **Code location**: Lines 784-844 in hardcoded models array
+- **Code location**: Find the `getAvailableModels()` function and locate the hardcoded models array
 
 **⚠️ CRITICAL: Missing Model in getAvailableModels()**
 Current `getAvailableModels()` function is **missing** `wan_turbo` model that exists in constants and endpoints.
 
 **Implementation:**
 ```typescript
-// Update the hardcoded models array in getAvailableModels() function
+// Find the getAvailableModels() function and update the models array:
 export async function getAvailableModels(): Promise<ModelsResponse> {
   return {
     models: [
-      // ... existing models (kling_v2, seedance, hailuo, hailuo_pro, seedance_pro, veo3_fast, veo3) ...
+      // Existing models should remain unchanged
+      {
+        id: "kling_v2",
+        name: "Kling v2.1",
+        description: "Premium model with unparalleled motion fluidity",
+        price: "$0.15",
+        resolution: "1080p",
+        max_duration: 10,
+      },
+      {
+        id: "seedance",
+        name: "Seedance v1 Lite",
+        description: "Fast and efficient text-to-video generation",
+        price: "$0.18",
+        resolution: "720p",
+        max_duration: 10,
+      },
+      {
+        id: "hailuo",
+        name: "Hailuo 02",
+        description: "Standard quality with realistic physics",
+        price: "$0.27",
+        resolution: "768p",
+        max_duration: 6,
+      },
+      {
+        id: "hailuo_pro",
+        name: "Hailuo 02 Pro",
+        description: "Premium 1080p with ultra-realistic physics",
+        price: "$0.48",
+        resolution: "1080p",
+        max_duration: 6,
+      },
+      {
+        id: "seedance_pro",
+        name: "Seedance v1 Pro",
+        description: "High quality 1080p video generation",
+        price: "$0.62",
+        resolution: "1080p",
+        max_duration: 10,
+      },
+      {
+        id: "veo3_fast",
+        name: "Veo3 Fast",
+        description: "High quality, faster generation",
+        price: "$2.00",
+        resolution: "1080p",
+        max_duration: 30,
+      },
+      {
+        id: "veo3",
+        name: "Veo3",
+        description: "Highest quality, slower generation",
+        price: "$3.00",
+        resolution: "1080p",
+        max_duration: 30,
+      },
+
       // ⚠️ ADD MISSING EXISTING MODEL:
       {
         id: "wan_turbo",
@@ -601,6 +677,7 @@ export async function getAvailableModels(): Promise<ModelsResponse> {
         resolution: "720p",
         max_duration: 5,
       },
+
       // ADD THESE TWO NEW MODELS:
       {
         id: "kling_v2_5_turbo",
@@ -623,29 +700,39 @@ export async function getAvailableModels(): Promise<ModelsResponse> {
 }
 ```
 
+**Verification:** After adding, the models array should have 10 total models (7 existing + 1 missing + 2 new).
+
 ### Task 7: Update documentation (5 minutes)
 **Files**: Any user-facing documentation
 **Duration**: 5 minutes
 - **Action**: Update any UI tooltips, help text, or user guides mentioning available models
 
-## Implementation Summary ⚠️ **UPDATED AFTER CODE ANALYSIS**
+## Implementation Summary ✅ **UPDATED AFTER CODE ANALYSIS**
 
-**Total Estimated Time**: 70-85 minutes (increased due to critical fixes)
-**Files to Modify**: 3 main files + 1 new test file
-1. `qcut/apps/web/src/lib/ai-video-client.ts` (Multiple sections)
-2. `qcut/apps/web/src/components/editor/media-panel/views/ai-constants.ts` (AI_MODELS array)
-3. `qcut/apps/web/src/components/editor/media-panel/views/ai-types.ts` ⚠️ **INTERFACE FIX REQUIRED**
+**Total Estimated Time**: 55-70 minutes (reduced - constants already updated)
+**Files to Modify**: 2 main files + 1 new test file
+1. `qcut/apps/web/src/lib/ai-video-client.ts` (Multiple sections) - **PRIMARY FOCUS**
+2. ~~`qcut/apps/web/src/components/editor/media-panel/views/ai-constants.ts`~~ ✅ **ALREADY COMPLETED**
+3. ~~`qcut/apps/web/src/components/editor/media-panel/views/ai-types.ts`~~ ✅ **ALREADY FIXED**
 4. `qcut/apps/web/src/test/integration/new-video-models.test.ts` (CREATE NEW)
 
-**⚠️ Critical Issues Found During Code Analysis:**
-1. **Interface Mismatch**: `AIModel` interfaces differ between files - `max_duration` property missing
-2. **Missing Model in Cost Estimation**: `wan_turbo` exists in constants but missing in `estimateCost()` function
-3. **Missing Model in API**: `wan_turbo` missing from `getAvailableModels()` function
+**✅ Progress Update:**
+1. ✅ **Interface Fixed**: `ai-types.ts` already has `max_duration` property
+2. ✅ **Constants Updated**: Both new models already added to `AI_MODELS` array
+3. 🔧 **Remaining Work**: Update `ai-video-client.ts` with endpoints and logic
 
-**✅ Benefits of This Analysis:**
-- **Prevents Runtime Errors**: Fixes interface inconsistencies before they cause TypeScript compilation errors
-- **Completes Existing Feature**: Adds missing `wan_turbo` to all necessary locations
-- **Maintains Data Consistency**: Ensures all model references are synchronized across the codebase
+**🎯 Remaining Critical Issues to Fix:**
+1. **Missing Model Endpoints**: New models need endpoints in `modelEndpoints` object
+2. **Missing Parameter Handling**: New models need conditional logic in `generateVideo()`
+3. **Missing Image-to-Video**: New models need image-to-video endpoint support
+4. **Missing Cost Estimation**: New models need cost calculation support
+5. **Missing API List**: New models need to be added to `getAvailableModels()`
+
+**✅ Benefits of Constants Being Pre-Updated:**
+- **Type Safety**: All new models already have correct TypeScript interfaces
+- **UI Integration**: New models will automatically appear in model selectors
+- **Reduced Implementation Time**: Focus only on API client logic
+- **Consistent Data**: Model definitions match between UI and API layers
 
 **Key Safety Measures**:
 - All changes are additive (no existing code modification)

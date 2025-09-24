@@ -18,6 +18,7 @@ export interface AIModel {
   description: string;
   price: string;
   resolution: string;
+  max_duration: number; // Added to match ai-video-client.ts interface
 }
 
 // Generated Video Interfaces
