@@ -411,19 +411,27 @@ exit /b %ERRORLEVEL%`;
             stdio: ['ignore', 'pipe', 'pipe']
           });
 
+          let settled = false;
+          const finish = (ok: boolean) => {
+            if (settled) return;
+            settled = true;
+            clearTimeout(timer);
+            resolve(ok);
+          };
+
           ffmpeg.on('close', (code) => {
             const isValid = code === 0;
-            resolve(isValid);
+            finish(isValid);
           });
 
           ffmpeg.on('error', (err) => {
-            resolve(false);
+            finish(false);
           });
 
           // Set timeout to avoid hanging
-          setTimeout(() => {
+          const timer = setTimeout(() => {
             ffmpeg.kill();
-            resolve(false);
+            finish(false);
           }, 5000);
         });
 

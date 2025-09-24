@@ -276,6 +276,8 @@ const electronAPI: ElectronAPI = {
       filterChain: string;
     }): Promise<void> =>
       ipcRenderer.invoke("processFrame", options),
+    validateFilterChain: (filterChain: string): Promise<boolean> =>
+      ipcRenderer.invoke("validate-filter-chain", filterChain),
 
     // FFmpeg resource helpers
     getFFmpegResourcePath: (filename: string): Promise<string> =>
