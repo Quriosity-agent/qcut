@@ -8,41 +8,47 @@ export interface EffectParameters {
   invert?: number; // 0 to 100
 }
 
+const clamp = (value: number, min: number, max: number): number => {
+  return Math.min(max, Math.max(min, value));
+};
+
 export class FFmpegFilterChain {
   private filters: string[] = [];
 
   addBrightness(value: number): this {
-    const ffmpegValue = value / 100;
+    const ffmpegValue = clamp(value / 100, -1, 1);
     this.filters.push(`eq=brightness=${ffmpegValue}`);
     return this;
   }
 
   addContrast(value: number): this {
-    const ffmpegValue = 1 + value / 100;
+    const ffmpegValue = clamp(1 + value / 100, 0, 3);
     this.filters.push(`eq=contrast=${ffmpegValue}`);
     return this;
   }
 
   addSaturation(value: number): this {
-    const ffmpegValue = 1 + value / 100;
+    const ffmpegValue = clamp(1 + value / 100, 0, 3);
     this.filters.push(`eq=saturation=${ffmpegValue}`);
     return this;
   }
 
   addBlur(radius: number): this {
-    this.filters.push(`boxblur=${radius}:1`);
+    const r = clamp(radius, 0, 100);
+    this.filters.push(`boxblur=${r}:1`);
     return this;
   }
 
   addHue(degrees: number): this {
-    this.filters.push(`hue=h=${degrees}`);
+    const d = ((degrees % 360) + 360) % 360; // Normalize to 0-359
+    this.filters.push(`hue=h=${d}`);
     return this;
   }
 
   addGrayscale(value: number): this {
     // FFmpeg grayscale: hue=s=0 removes all saturation (100% grayscale)
     // For partial grayscale, reduce saturation: hue=s=(1-value/100)
-    const saturationValue = 1 - (value / 100);
+    const saturationValue = clamp(1 - (value / 100), 0, 1);
     this.filters.push(`hue=s=${saturationValue}`);
     return this;
   }
