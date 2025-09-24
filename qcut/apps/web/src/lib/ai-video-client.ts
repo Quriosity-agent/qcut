@@ -878,6 +878,30 @@ export async function getAvailableModels(): Promise<ModelsResponse> {
         resolution: "1080p",
         max_duration: 30,
       },
+      {
+        id: "wan_turbo",
+        name: "WAN v2.2 Turbo",
+        description: "High-speed photorealistic video generation",
+        price: "$0.10",
+        resolution: "720p",
+        max_duration: 5,
+      },
+      {
+        id: "kling_v2_5_turbo",
+        name: "Kling v2.5 Turbo Pro",
+        description: "Latest Kling model with enhanced turbo performance",
+        price: "$0.18",
+        resolution: "1080p",
+        max_duration: 10,
+      },
+      {
+        id: "wan_25_preview",
+        name: "WAN v2.5 Preview",
+        description: "Next-generation WAN model with improved quality",
+        price: "$0.12",
+        resolution: "1080p",
+        max_duration: 10,
+      },
     ],
   };
 }
