@@ -400,12 +400,28 @@ export function useAIGeneration(props: UseAIGenerationProps) {
 
   // Main generation function
   const handleGenerate = useCallback(async () => {
+    console.log("\n🚀🚀🚀 handleGenerate CALLED 🚀🚀🚀");
+    console.log("Input parameters:");
+    console.log("  - activeTab:", activeTab);
+    console.log("  - prompt:", prompt?.substring(0, 100));
+    console.log("  - selectedModels:", selectedModels);
+    console.log("  - hasSelectedImage:", !!selectedImage);
+    console.log("  - activeProject:", activeProject?.id);
+    console.log("  - addMediaItem available:", !!addMediaItem);
+
     if (activeTab === "text") {
-      if (!prompt.trim() || selectedModels.length === 0) return;
+      if (!prompt.trim() || selectedModels.length === 0) {
+        console.log("❌ Validation failed - missing prompt or models");
+        return;
+      }
     } else {
-      if (!selectedImage || selectedModels.length === 0) return;
+      if (!selectedImage || selectedModels.length === 0) {
+        console.log("❌ Validation failed - missing image or models");
+        return;
+      }
     }
 
+    console.log("✅ Validation passed, starting generation...");
     setIsGenerating(true);
     setJobId(null);
 
@@ -419,11 +435,14 @@ export function useAIGeneration(props: UseAIGenerationProps) {
 
     try {
       const generations: GeneratedVideoResult[] = [];
+      console.log(`\n📦 Starting generation for ${selectedModels.length} models`);
 
       // Sequential generation to avoid rate limits
       for (let i = 0; i < selectedModels.length; i++) {
         const modelId = selectedModels[i];
         const modelName = AI_MODELS.find((m) => m.id === modelId)?.name;
+
+        console.log(`\n🎬 [${i + 1}/${selectedModels.length}] Processing model: ${modelId} (${modelName})`);
 
         setStatusMessage(
           `Generating with ${modelName} (${i + 1}/${selectedModels.length})`
@@ -434,6 +453,7 @@ export function useAIGeneration(props: UseAIGenerationProps) {
 
         // Create progress callback for this model
         const progressCallback: ProgressCallback = (status) => {
+          console.log(`  📊 Progress for ${modelId}:`, status);
           setGenerationProgress(status.progress || 0);
           setStatusMessage(status.message || `Generating with ${modelName}...`);
 
@@ -444,6 +464,7 @@ export function useAIGeneration(props: UseAIGenerationProps) {
         };
 
         if (activeTab === "text") {
+          console.log(`  📝 Calling generateVideo for ${modelId}...`);
           response = await generateVideo(
             {
               prompt: prompt.trim(),
@@ -451,13 +472,23 @@ export function useAIGeneration(props: UseAIGenerationProps) {
             },
             progressCallback
           );
+          console.log(`  ✅ generateVideo returned:`, response);
         } else if (selectedImage) {
+          console.log(`  🖼️ Calling generateVideoFromImage for ${modelId}...`);
           response = await generateVideoFromImage({
             image: selectedImage,
             prompt: prompt.trim(),
             model: modelId,
           });
+          console.log(`  ✅ generateVideoFromImage returned:`, response);
         }
+
+        console.log(`\n  🔍 Response analysis for ${modelId}:`);
+        console.log(`    - response exists:`, !!response);
+        console.log(`    - response.job_id:`, response?.job_id);
+        console.log(`    - response.video_url:`, response?.video_url);
+        console.log(`    - response.status:`, response?.status);
+        console.log(`    - Full response:`, JSON.stringify(response, null, 2));
 
         if (response?.job_id) {
           // For now, just add the response as a generated video
@@ -566,10 +597,18 @@ export function useAIGeneration(props: UseAIGenerationProps) {
         }
       }
 
+      console.log(`\n✅✅✅ GENERATION LOOP COMPLETE ✅✅✅`);
+      console.log(`  - Total generations created:`, generations.length);
+      console.log(`  - Generations:`, generations);
+
       setGeneratedVideos(generations);
       setStatusMessage(`Generated ${generations.length} videos successfully!`);
+
+      console.log(`📤 Calling onComplete callback with ${generations.length} videos`);
       onComplete?.(generations);
+      console.log(`✅ onComplete callback finished`);
     } catch (error) {
+      console.error("❌❌❌ GENERATION FAILED ❌❌❌", error);
       const errorMessage = handleApiError(error);
       onError?.(errorMessage);
       debugLogger.log("AIGeneration", "GENERATION_FAILED", {

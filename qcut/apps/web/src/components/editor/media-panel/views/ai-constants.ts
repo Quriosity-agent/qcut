@@ -22,7 +22,7 @@ export const API_CONFIG: APIConfiguration = {
   timeoutMs: 30_000, // 30 seconds
 };
 
-// AI Models Configuration (Extracted from original source)
+// AI Models Configuration with centralized endpoints and parameters
 export const AI_MODELS: AIModel[] = [
   {
     id: "kling_v2",
@@ -31,6 +31,13 @@ export const AI_MODELS: AIModel[] = [
     price: "0.15",
     resolution: "1080p",
     max_duration: 10,
+    endpoints: {
+      text_to_video: "fal-ai/kling-video/v2.1/master",
+    },
+    default_params: {
+      duration: 5,
+      resolution: "1080p",
+    },
   },
   {
     id: "seedance",
@@ -39,6 +46,13 @@ export const AI_MODELS: AIModel[] = [
     price: "0.18",
     resolution: "720p",
     max_duration: 10,
+    endpoints: {
+      text_to_video: "fal-ai/bytedance/seedance/v1/lite/text-to-video",
+    },
+    default_params: {
+      duration: 5,
+      resolution: "720p",
+    },
   },
   {
     id: "hailuo",
@@ -47,6 +61,13 @@ export const AI_MODELS: AIModel[] = [
     price: "0.27",
     resolution: "768p",
     max_duration: 6,
+    endpoints: {
+      text_to_video: "fal-ai/minimax/hailuo-02/standard/text-to-video",
+    },
+    default_params: {
+      duration: 5,
+      resolution: "768p",
+    },
   },
   {
     id: "hailuo_pro",
@@ -55,6 +76,13 @@ export const AI_MODELS: AIModel[] = [
     price: "0.48",
     resolution: "1080p",
     max_duration: 6,
+    endpoints: {
+      text_to_video: "fal-ai/minimax/hailuo-02/pro/text-to-video",
+    },
+    default_params: {
+      duration: 5,
+      resolution: "1080p",
+    },
   },
   {
     id: "seedance_pro",
@@ -63,6 +91,13 @@ export const AI_MODELS: AIModel[] = [
     price: "0.62",
     resolution: "1080p",
     max_duration: 10,
+    endpoints: {
+      text_to_video: "fal-ai/bytedance/seedance/v1/pro/text-to-video",
+    },
+    default_params: {
+      duration: 5,
+      resolution: "1080p",
+    },
   },
   {
     id: "veo3_fast",
@@ -71,6 +106,13 @@ export const AI_MODELS: AIModel[] = [
     price: "2.00",
     resolution: "1080p",
     max_duration: 30,
+    endpoints: {
+      text_to_video: "fal-ai/google/veo3/fast",
+    },
+    default_params: {
+      duration: 5,
+      resolution: "1080p",
+    },
   },
   {
     id: "veo3",
@@ -79,6 +121,13 @@ export const AI_MODELS: AIModel[] = [
     price: "3.00",
     resolution: "1080p",
     max_duration: 30,
+    endpoints: {
+      text_to_video: "fal-ai/google/veo3",
+    },
+    default_params: {
+      duration: 5,
+      resolution: "1080p",
+    },
   },
   {
     id: "wan_turbo",
@@ -87,6 +136,13 @@ export const AI_MODELS: AIModel[] = [
     price: "0.10",
     resolution: "720p",
     max_duration: 5,
+    endpoints: {
+      text_to_video: "fal-ai/wan/v2.2-a14b/text-to-video/turbo",
+    },
+    default_params: {
+      duration: 5,
+      resolution: "720p",
+    },
   },
   {
     id: "kling_v2_5_turbo",
@@ -95,6 +151,17 @@ export const AI_MODELS: AIModel[] = [
     price: "0.18",
     resolution: "1080p",
     max_duration: 10,
+    endpoints: {
+      text_to_video: "fal-ai/kling-video/v2.5-turbo/pro/text-to-video",
+      image_to_video: "fal-ai/kling-video/v2.5-turbo/pro/image-to-video",
+    },
+    default_params: {
+      duration: 5,
+      resolution: "1080p",
+      cfg_scale: 0.5,
+      aspect_ratio: "16:9",
+      enhance_prompt: true,
+    },
   },
   {
     id: "wan_25_preview",
@@ -103,6 +170,16 @@ export const AI_MODELS: AIModel[] = [
     price: "0.12",
     resolution: "1080p",
     max_duration: 10,
+    endpoints: {
+      text_to_video: "fal-ai/wan-25-preview/text-to-video",
+      image_to_video: "fal-ai/wan-25-preview/image-to-video",
+    },
+    default_params: {
+      duration: 5,
+      resolution: "1080p",
+      quality: "high",
+      style_preset: "cinematic",
+    },
   },
 ];
 

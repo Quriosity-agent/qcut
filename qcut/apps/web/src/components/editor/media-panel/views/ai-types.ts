@@ -11,6 +11,23 @@
 import { AIVideoOutputManager } from "@/lib/ai-video-output";
 import type { TProject } from "@/types/project";
 
+// Model Configuration Interfaces
+export interface AIModelEndpoints {
+  text_to_video: string;
+  image_to_video?: string;
+}
+
+export interface AIModelParameters {
+  duration?: number;
+  resolution?: string;
+  cfg_scale?: number;
+  aspect_ratio?: string;
+  quality?: string;
+  style_preset?: string;
+  enhance_prompt?: boolean;
+  [key: string]: any;
+}
+
 // Core AI Model Interface
 export interface AIModel {
   id: string;
@@ -18,7 +35,9 @@ export interface AIModel {
   description: string;
   price: string;
   resolution: string;
-  max_duration: number; // Added to match ai-video-client.ts interface
+  max_duration: number;
+  endpoints: AIModelEndpoints;
+  default_params?: AIModelParameters;
 }
 
 // Generated Video Interfaces

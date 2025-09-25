@@ -5,7 +5,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { generateVideo, generateVideoFromImage } from "../../lib/ai-video-client";
+import { generateVideo, generateVideoFromImage, estimateCost, getAvailableModels } from "../../lib/ai-video-client";
 
 describe("New Video Models Integration", () => {
   beforeEach(() => {
@@ -199,7 +199,6 @@ describe("New Video Models Integration", () => {
 
   describe("Cost Estimation", () => {
     it("should include cost data for new models", async () => {
-      const { estimateCost } = await import("../../lib/ai-video-client");
 
       // Test cost estimation for new models
       const klingCost = await estimateCost({
@@ -224,7 +223,6 @@ describe("New Video Models Integration", () => {
     });
 
     it("should include missing wan_turbo model in cost estimation", async () => {
-      const { estimateCost } = await import("../../lib/ai-video-client");
 
       const wanTurboCost = await estimateCost({
         prompt: "test",
@@ -240,7 +238,6 @@ describe("New Video Models Integration", () => {
 
   describe("Available Models API", () => {
     it("should include all new models in getAvailableModels", async () => {
-      const { getAvailableModels } = await import("../../lib/ai-video-client");
 
       const response = await getAvailableModels();
       const modelIds = response.models.map(m => m.id);

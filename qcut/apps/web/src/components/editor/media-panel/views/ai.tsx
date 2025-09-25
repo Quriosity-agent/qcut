@@ -68,14 +68,21 @@ export function AiView() {
     activeTab,
     activeProject,
     onProgress: (progress, message) => {
+      console.log(`[AI View] Progress: ${progress}% - ${message}`);
       // Progress is handled internally by the hook
     },
-    onError: setError,
+    onError: (error) => {
+      console.error(`[AI View] Error occurred:`, error);
+      setError(error);
+    },
     onComplete: (videos) => {
+      console.log(`\n🎉🎉🎉 [AI View] GENERATION COMPLETE 🎉🎉🎉`);
+      console.log(`[AI View] Received ${videos.length} videos:`, videos);
       debugLogger.log("AiView", "GENERATION_COMPLETE", {
         videoCount: videos.length,
         models: selectedModels,
       });
+      console.log(`[AI View] onComplete callback finished`);
     },
   });
 

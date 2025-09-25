@@ -4,10 +4,17 @@
  */
 
 import { handleAIServiceError, handleNetworkError } from "./error-handler";
+import { AI_MODELS } from "@/components/editor/media-panel/views/ai-constants";
+import type { AIModel } from "@/components/editor/media-panel/views/ai-types";
 
 // Direct FAL AI integration - no backend needed
 const FAL_API_KEY = import.meta.env.VITE_FAL_API_KEY;
 const FAL_API_BASE = "https://fal.run";
+
+// Helper function to get model configuration
+function getModelConfig(modelId: string): AIModel | undefined {
+  return AI_MODELS.find((m) => m.id === modelId);
+}
 
 export interface VideoGenerationRequest {
   prompt: string;
@@ -41,14 +48,7 @@ export interface GenerationStatus {
   error?: string;
 }
 
-export interface AIModel {
-  id: string;
-  name: string;
-  description: string;
-  price: string;
-  resolution: string;
-  max_duration: number;
-}
+// AIModel interface is now imported from ai-types.ts
 
 export interface ModelsResponse {
   models: AIModel[];
@@ -103,81 +103,55 @@ export async function generateVideo(
       `🔑 FAL API Key present: ${FAL_API_KEY ? "Yes (length: " + FAL_API_KEY.length + ")" : "No"}`
     );
 
-    // Map our model names to FAL endpoints
-    const modelEndpoints: { [key: string]: string } = {
-      "seedance": "fal-ai/bytedance/seedance/v1/lite/text-to-video",
-      "seedance_pro": "fal-ai/bytedance/seedance/v1/pro/text-to-video",
-      "veo3": "fal-ai/google/veo3",
-      "veo3_fast": "fal-ai/google/veo3/fast",
-      "hailuo": "fal-ai/minimax/hailuo-02/standard/text-to-video",
-      "hailuo_pro": "fal-ai/minimax/hailuo-02/pro/text-to-video",
-      "kling_v2": "fal-ai/kling-video/v2.1/master",
-      "wan_turbo": "fal-ai/wan/v2.2-a14b/text-to-video/turbo",
-      "kling_v2_5_turbo": "fal-ai/kling-video/v2.5-turbo/pro/text-to-video",
-      "wan_25_preview": "fal-ai/wan-25-preview/text-to-video",
-    };
+    // Get model configuration from centralized config
+    const modelConfig = getModelConfig(request.model);
+    if (!modelConfig) {
+      throw new Error(`Unknown model: ${request.model}`);
+    }
 
-    const endpoint =
-      modelEndpoints[request.model] ||
-      "fal-ai/minimax/hailuo-02/standard/text-to-video";
+    const endpoint = modelConfig.endpoints.text_to_video;
     const jobId = generateJobId();
 
     console.log(`🎬 Generating video with FAL AI: ${endpoint}`);
     console.log(`📝 Prompt: ${request.prompt}`);
 
-    // Build request payload based on model requirements
+    // Build request payload using centralized model configuration
     const payload: any = {
       prompt: request.prompt,
+      // Start with default parameters from model config
+      ...(modelConfig.default_params || {}),
+      // Override with request-specific parameters
+      ...(request.duration && { duration: request.duration }),
+      ...(request.resolution && { resolution: request.resolution }),
     };
 
-    // Model-specific parameter requirements
+    // Special handling for specific models that require unique parameter formats
     if (request.model === "hailuo" || request.model === "hailuo_pro") {
       // Hailuo only accepts '6' or '10' as string values for duration
-      // Standard supports 6s, Pro supports both 6s and 10s (but 10s not at 1080p)
-      const requestedDuration = request.duration || 6;
+      const requestedDuration = payload.duration || 6;
       payload.duration = requestedDuration >= 10 ? "10" : "6";
-      // Hailuo doesn't use resolution parameter directly
-    } else if (request.model === "seedance") {
-      // Seedance Lite supports 5s or 10s duration, 720p default
-      payload.duration = request.duration || 5;
-      payload.resolution = request.resolution || "720p";
-      // Optional parameters for Seedance
-      payload.aspect_ratio = "16:9"; // Default aspect ratio
-    } else if (request.model === "seedance_pro") {
-      // Seedance Pro supports 5s or 10s duration, 1080p default
-      payload.duration = request.duration || 5;
-      payload.resolution = request.resolution || "1080p";
-      // Optional parameters for Seedance Pro
-      payload.aspect_ratio = "16:9"; // Default aspect ratio
+      // Remove resolution as Hailuo doesn't use it directly
+      delete payload.resolution;
     } else if (request.model === "wan_turbo") {
-      // WAN Turbo only accepts "480p", "580p", or "720p"
-      payload.duration = request.duration || 5;
-      payload.resolution = request.resolution || "720p";
-      // Ensure resolution is valid for WAN Turbo
+      // WAN Turbo only accepts specific resolutions
       const validResolutions = ["480p", "580p", "720p"];
-      if (!validResolutions.includes(payload.resolution)) {
-        payload.resolution = "720p"; // Default to 720p for invalid resolutions
+      if (payload.resolution && !validResolutions.includes(payload.resolution)) {
+        payload.resolution = "720p";
       }
-    } else if (request.model === "kling_v2_5_turbo") {
-      // Kling v2.5 Turbo Pro - enhanced version with improved performance
-      payload.duration = request.duration || 5;
-      payload.resolution = request.resolution || "1080p";
-      payload.cfg_scale = 0.5; // Default for good prompt adherence
-      payload.aspect_ratio = "16:9"; // Standard aspect ratio
-      // Add any v2.5 turbo specific parameters as they become available
     } else if (request.model === "wan_25_preview") {
-      // WAN v2.5 Preview - next-generation WAN model
-      payload.duration = request.duration || 5;
-      payload.resolution = request.resolution || "1080p";
-      // WAN 2.5 supports higher resolutions than previous versions
+      // WAN 2.5 supports higher resolutions
       const validResolutions = ["720p", "1080p", "1440p"];
-      if (!validResolutions.includes(payload.resolution)) {
-        payload.resolution = "1080p"; // Default to 1080p for invalid resolutions
+      if (payload.resolution && !validResolutions.includes(payload.resolution)) {
+        payload.resolution = "1080p";
       }
-    } else {
-      // Other models (Veo, Kling)
-      payload.duration = request.duration || 5;
-      payload.resolution = request.resolution || "1080p";
+    }
+
+    // Validate duration doesn't exceed model's max
+    if (payload.duration && payload.duration > modelConfig.max_duration) {
+      console.warn(
+        `${modelConfig.name}: Duration capped at ${modelConfig.max_duration} seconds`
+      );
+      payload.duration = modelConfig.max_duration;
     }
 
     console.log(`📤 Sending request to ${endpoint} with payload:`, payload);
@@ -672,63 +646,44 @@ export async function generateVideoFromImage(
     const imageUrl = await imageToDataURL(request.image);
     console.log("✅ Image converted to data URL");
 
-    // 2. Generate video - choose endpoint based on model
-    let endpoint: string;
-    let payload: any;
+    // 2. Generate video using centralized model configuration
+    const modelConfig = getModelConfig(request.model);
+    if (!modelConfig) {
+      throw new Error(`Unknown model: ${request.model}`);
+    }
 
-    if (request.model === "kling_v2") {
-      // Use dedicated Kling v2.1 image-to-video endpoint
-      endpoint = "fal-ai/kling-video/v2.1/master/image-to-video";
-      payload = {
-        prompt: request.prompt || "Create a cinematic video from this image",
-        image_url: imageUrl,
-        duration: request.duration || 5,
-        cfg_scale: 0.5, // Default for good prompt adherence
-      };
-    } else if (request.model === "kling_v2_5_turbo") {
-      // Use dedicated Kling v2.5 Turbo Pro image-to-video endpoint
-      endpoint = "fal-ai/kling-video/v2.5-turbo/pro/image-to-video";
-      payload = {
-        prompt: request.prompt || "Create a cinematic video from this image",
-        image_url: imageUrl,
-        duration: request.duration || 5,
-        cfg_scale: 0.5, // Default for good prompt adherence
-        resolution: request.resolution || "1080p",
-      };
-    } else if (request.model === "wan_turbo") {
-      // Use WAN Turbo image-to-video endpoint
-      endpoint = "fal-ai/wan/v2.2-a14b/image-to-video/turbo";
-      payload = {
-        prompt: request.prompt || "Create a cinematic video from this image",
-        image_url: imageUrl,
-        // WAN Turbo image-to-video only supports specific resolutions
-        resolution:
-          request.resolution &&
-          ["480p", "580p", "720p"].includes(request.resolution)
-            ? request.resolution
-            : "720p",
-        seed: Math.floor(Math.random() * 1_000_000), // Optional: for reproducibility
-      };
+    // Check if model supports image-to-video
+    const endpoint = modelConfig.endpoints.image_to_video;
+    if (!endpoint) {
+      throw new Error(`Model ${request.model} does not support image-to-video generation`);
+    }
+
+    // Build request payload using centralized model configuration
+    const payload: any = {
+      prompt: request.prompt || "Create a cinematic video from this image",
+      image_url: imageUrl,
+      // Start with default parameters from model config
+      ...(modelConfig.default_params || {}),
+      // Override with request-specific parameters
+      ...(request.duration && { duration: request.duration }),
+      ...(request.resolution && { resolution: request.resolution }),
+    };
+
+    // Handle model-specific payload adjustments
+    if (request.model === "wan_turbo") {
+      // WAN Turbo image-to-video only supports specific resolutions
+      payload.resolution =
+        request.resolution &&
+        ["480p", "580p", "720p"].includes(request.resolution)
+          ? request.resolution
+          : "720p";
+      payload.seed = Math.floor(Math.random() * 1_000_000); // Optional: for reproducibility
     } else if (request.model === "wan_25_preview") {
-      // Use WAN v2.5 Preview image-to-video endpoint
-      endpoint = "fal-ai/wan-25-preview/image-to-video";
-      payload = {
-        prompt: request.prompt || "Create a cinematic video from this image",
-        image_url: imageUrl,
-        duration: request.duration || 5,
-        resolution: request.resolution || "1080p",
-        // WAN 2.5 supports higher quality image-to-video conversion
-        quality: "high", // Optional quality parameter
-      };
-    } else {
-      // Use Seedance model for other cases (proven to work)
-      endpoint = "fal-ai/bytedance/seedance/v1/pro/image-to-video";
-      payload = {
-        prompt: request.prompt || "Create a cinematic video from this image",
-        image_url: imageUrl,
-        resolution: request.resolution || "1080p",
-        duration: request.duration?.toString() || "5",
-      };
+      // WAN 2.5 supports higher quality image-to-video conversion
+      payload.quality = "high";
+    } else if (request.model === "seedance_pro") {
+      // Seedance requires duration as string
+      payload.duration = request.duration?.toString() || "5";
     }
 
     const jobId = generateJobId();
@@ -817,92 +772,14 @@ export async function getGenerationStatus(
 }
 
 /**
- * Get available AI models - now hardcoded since we know the FAL AI models
+ * Get available AI models - uses centralized configuration
  */
 export async function getAvailableModels(): Promise<ModelsResponse> {
   return {
-    models: [
-      {
-        id: "kling_v2",
-        name: "Kling v2.1",
-        description: "Premium model with unparalleled motion fluidity",
-        price: "$0.15",
-        resolution: "1080p",
-        max_duration: 10,
-      },
-      {
-        id: "seedance",
-        name: "Seedance v1 Lite",
-        description: "Fast and efficient text-to-video generation",
-        price: "$0.18",
-        resolution: "720p",
-        max_duration: 10,
-      },
-      {
-        id: "hailuo",
-        name: "Hailuo 02",
-        description: "Standard quality with realistic physics",
-        price: "$0.27",
-        resolution: "768p",
-        max_duration: 6,
-      },
-      {
-        id: "hailuo_pro",
-        name: "Hailuo 02 Pro",
-        description: "Premium 1080p with ultra-realistic physics",
-        price: "$0.48",
-        resolution: "1080p",
-        max_duration: 6,
-      },
-      {
-        id: "seedance_pro",
-        name: "Seedance v1 Pro",
-        description: "High quality 1080p video generation",
-        price: "$0.62",
-        resolution: "1080p",
-        max_duration: 10,
-      },
-      {
-        id: "veo3_fast",
-        name: "Veo3 Fast",
-        description: "High quality, faster generation",
-        price: "$2.00",
-        resolution: "1080p",
-        max_duration: 30,
-      },
-      {
-        id: "veo3",
-        name: "Veo3",
-        description: "Highest quality, slower generation",
-        price: "$3.00",
-        resolution: "1080p",
-        max_duration: 30,
-      },
-      {
-        id: "wan_turbo",
-        name: "WAN v2.2 Turbo",
-        description: "High-speed photorealistic video generation",
-        price: "$0.10",
-        resolution: "720p",
-        max_duration: 5,
-      },
-      {
-        id: "kling_v2_5_turbo",
-        name: "Kling v2.5 Turbo Pro",
-        description: "Latest Kling model with enhanced turbo performance",
-        price: "$0.18",
-        resolution: "1080p",
-        max_duration: 10,
-      },
-      {
-        id: "wan_25_preview",
-        name: "WAN v2.5 Preview",
-        description: "Next-generation WAN model with improved quality",
-        price: "$0.12",
-        resolution: "1080p",
-        max_duration: 10,
-      },
-    ],
+    models: AI_MODELS.map((model) => ({
+      ...model,
+      price: `$${model.price}`, // Add $ prefix for display
+    })),
   };
 }
 
@@ -912,25 +789,17 @@ export async function getAvailableModels(): Promise<ModelsResponse> {
 export async function estimateCost(
   request: VideoGenerationRequest
 ): Promise<CostEstimate> {
-  const modelCosts: {
-    [key: string]: { base_cost: number; max_duration: number };
-  } = {
-    "kling_v2": { base_cost: 0.15, max_duration: 10 },
-    "seedance": { base_cost: 0.18, max_duration: 10 },
-    "hailuo": { base_cost: 0.27, max_duration: 6 },
-    "hailuo_pro": { base_cost: 0.48, max_duration: 6 },
-    "seedance_pro": { base_cost: 0.62, max_duration: 10 },
-    "veo3_fast": { base_cost: 2.0, max_duration: 30 },
-    "veo3": { base_cost: 3.0, max_duration: 30 },
-    "wan_turbo": { base_cost: 0.10, max_duration: 5 },
-    "kling_v2_5_turbo": { base_cost: 0.18, max_duration: 10 },
-    "wan_25_preview": { base_cost: 0.12, max_duration: 10 },
-  };
-
-  const modelInfo = modelCosts[request.model] || {
-    base_cost: 1.0,
-    max_duration: 30,
-  };
+  // Use centralized model configuration
+  const modelConfig = getModelConfig(request.model);
+  const modelInfo = modelConfig
+    ? {
+        base_cost: parseFloat(modelConfig.price),
+        max_duration: modelConfig.max_duration,
+      }
+    : {
+        base_cost: 1.0,
+        max_duration: 30,
+      };
   const actualDuration = Math.min(
     request.duration || 5,
     modelInfo.max_duration
