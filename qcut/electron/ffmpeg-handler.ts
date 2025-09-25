@@ -32,6 +32,8 @@ interface ExportOptions {
   fps: number;
   /** Quality preset affecting encoding parameters */
   quality: "high" | "medium" | "low";
+  /** Duration of the video in seconds (replaces hardcoded 10s limit) */
+  duration: number;
   /** Optional array of audio files to mix into the video */
   audioFiles?: AudioFile[];
   /** Optional FFmpeg filter chain string for video effects */
@@ -211,6 +213,7 @@ export function setupFFmpegIPC(): void {
         height,
         fps,
         quality,
+        duration,
         audioFiles = [],
       } = options;
 
@@ -236,9 +239,13 @@ export function setupFFmpegIPC(): void {
           height,
           fps,
           quality,
+          duration,
           audioFiles,
           options.filterChain
         );
+
+        // Console log to verify 10-second limit fix
+        console.log(`🎯 FFmpeg Export: Using dynamic duration ${duration}s (max 600s) instead of hardcoded 10s`);
 
 
         // Verify input directory exists and has frames
@@ -556,6 +563,7 @@ function buildFFmpegArgs(
   height: number,
   fps: number,
   quality: "high" | "medium" | "low",
+  duration: number,
   audioFiles: AudioFile[] = [],
   filterChain?: string
 ): string[] {
@@ -678,7 +686,7 @@ function buildFFmpegArgs(
     "-crf",
     crf,
     "-t",
-    "10", // Limit to 10 seconds to avoid issues
+    Math.min(duration, 600).toString(), // Dynamic duration with 10min safety limit
     "-pix_fmt",
     "yuv420p",
     "-movflags",

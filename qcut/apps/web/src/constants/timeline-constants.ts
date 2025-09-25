@@ -117,3 +117,30 @@ export function snapTimeToFrame(time: number, fps: number): number {
 export function getFrameDuration(fps: number): number {
   return 1 / fps;
 }
+
+// Timeline duration utility functions
+export function calculateMinimumTimelineDuration(contentDuration: number): number {
+  // If content exists, use actual content duration; otherwise use 1 second minimum
+  return contentDuration > 0 ? contentDuration : 1;
+}
+
+export function calculateTimelineBuffer(duration: number): number {
+  // Flexible buffer: 5s minimum or 10% of duration, whichever is greater
+  return Math.max(5, duration * 0.1);
+}
+
+export function calculateDynamicTimelineDuration(
+  actualContentDuration: number,
+  minimumDuration: number = 1
+): number {
+  // Dynamic duration with configurable minimum (default 1s instead of 10s)
+  return Math.max(actualContentDuration, minimumDuration);
+}
+
+export function validateExportDuration(
+  requestedDuration: number,
+  maxDuration: number = 600 // 10 minutes safety limit
+): number {
+  // Ensure export duration is within safe bounds
+  return Math.min(Math.max(requestedDuration, 0.1), maxDuration);
+}

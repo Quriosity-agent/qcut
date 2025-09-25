@@ -73,6 +73,8 @@ import {
   getTotalTracksHeight,
   TIMELINE_CONSTANTS,
   snapTimeToFrame,
+  calculateMinimumTimelineDuration,
+  calculateTimelineBuffer,
 } from "@/constants/timeline-constants";
 import { Slider } from "@/components/ui/slider";
 
@@ -135,7 +137,8 @@ export function Timeline() {
   // Old marquee selection removed - using new SelectionBox component instead
 
   // Dynamic timeline width calculation based on playhead position and duration
-  const dynamicBuffer = Math.max(60, (duration || 0) * 0.1); // Buffer is 60s or 10% of duration, whichever is greater
+  // Use utility function to calculate flexible timeline buffer
+  const dynamicBuffer = calculateTimelineBuffer(duration || 0);
   const dynamicTimelineWidth = Math.max(
     (duration || 0) * TIMELINE_CONSTANTS.PIXELS_PER_SECOND * zoomLevel, // Base width from duration
     (currentTime + dynamicBuffer) *
@@ -344,7 +347,10 @@ export function Timeline() {
   // Update timeline duration when tracks change
   useEffect(() => {
     const totalDuration = getTotalDuration();
-    setDuration(Math.max(totalDuration, 10)); // Minimum 10 seconds for empty timeline
+    // Use utility function to calculate dynamic minimum duration
+    const minimumDuration = calculateMinimumTimelineDuration(totalDuration);
+    setDuration(Math.max(totalDuration, minimumDuration)); // Flexible minimum duration
+    console.log(`🎯 Timeline UI: Dynamic duration ${totalDuration}s (min: ${minimumDuration}s) instead of hardcoded 10s`);
   }, [setDuration, getTotalDuration]);
 
   // Old marquee system removed - using new SelectionBox component instead
