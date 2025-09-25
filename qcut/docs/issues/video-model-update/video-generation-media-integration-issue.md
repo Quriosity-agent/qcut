@@ -298,18 +298,132 @@ console.log("   - SUCCESS: Video added to media store!");
 - **Stops at Step 5**: Video download failure
 - **Stops at Step 7**: Media store call failure
 
+## Latest Test Results Analysis (video-console-v3.md)
+
+### ✅ Confirmed Working Steps
+From the updated console output:
+- **Step 1**: ✅ Pre-Generation State Check (Lines 12-16)
+  - `activeProject: true 4769ffd3-cbcf-4329-b2bf-3cd5135d9bcf` ✅
+  - `addMediaItem available: true function` ✅
+  - `mediaStoreLoading: false` ✅
+  - `mediaStoreError: null` ✅
+- **Step 2**: ✅ Post-API Response Analysis (Lines 38-43)
+  - `response received: true` ✅
+  - `response.video_url: true https://v3b.fal.media/files/b/monkey/zh1VdIX0nKbWn...` ✅
+  - Response structure: All expected fields present ✅
+
+### ❌ CRITICAL FINDING: Missing Debug Steps
+**Present from console:**
+- ✅ **Step 1**: Pre-generation state shows ALL conditions are met
+- ✅ **Step 2**: Response analysis shows video_url exists
+
+**Missing from console output:**
+- ❌ **Step 3**: Media integration condition check (**CRITICAL** - This should appear but doesn't)
+- ❌ **Steps 4-8**: All media integration execution steps
+
+### 🔍 Root Cause Identified
+**All prerequisites are met:**
+- ✅ `activeProject` exists with valid ID
+- ✅ `addMediaItem` is available as function
+- ✅ `response.video_url` exists with valid URL
+
+**But Step 3 conditional check debug logs NEVER APPEAR**, which means the media integration code block is **NOT in the execution path** after the generateVideo response.
+
+### Key Evidence Analysis:
+```
+✅ Step 1: All conditions met (activeProject=true, addMediaItem=function, video_url=exists)
+✅ Step 2: Response received with valid video_url
+❌ Step 3: NEVER REACHED - Media integration condition check missing
+❌ Steps 4-8: NEVER REACHED - Media integration execution missing
+```
+
+**This confirms**: The media integration code is **NOT executed in the current code path** despite all conditions being satisfied.
+
+## Implementation Plan
+
+### **Option 1: Handle Direct Mode in job_id Branch (Recommended)**
+Since the response has both `job_id` AND `video_url`, modify the `if (response?.job_id)` branch to check for immediate video availability:
+
+```typescript
+if (response?.job_id) {
+  if (response?.video_url) {
+    // Direct mode with job_id: video is ready immediately
+    console.log("🎯 DIRECT MODE WITH JOB_ID - Video URL:", response.video_url);
+
+    // ADD MEDIA INTEGRATION HERE (move Steps 3-8 to this location)
+    const newVideo: GeneratedVideo = { /* create video object */ };
+    generations.push({ modelId, video: newVideo });
+
+    // Media store integration (Steps 3-8)
+    if (activeProject && addMediaItem) {
+      // Download and add to media store
+    }
+  } else {
+    // Traditional polling mode: no video_url yet
+    startStatusPolling(response.job_id);
+  }
+}
+```
+
+### **Option 2: Change Conditional Logic**
+Prioritize `video_url` over `job_id` by switching the order:
+
+```typescript
+if (response?.video_url) {
+  // Direct mode: video ready immediately (EXISTING MEDIA INTEGRATION)
+  // This path will now execute
+} else if (response?.job_id) {
+  // Polling mode: video not ready yet
+  startStatusPolling(response.job_id);
+}
+```
+
 ## Status
 
 **Priority**: HIGH - Generated videos not usable in editor
-**Type**: Runtime Execution Issue - Media integration code exists but not executing
-**Root Cause**: Media store loading race condition or response structure mismatch
-**Next Step**: Add debug logging to identify why media integration conditional fails
+**Type**: **CONDITIONAL BRANCH LOGIC ERROR** - Media integration in unreachable code path
+**Root Cause**: Response has both `job_id` AND `video_url`, takes first branch instead of media integration branch
+**Next Step**: **Implement Option 1** - Add media integration to the `job_id` branch when `video_url` exists
 
-## Key Findings Summary
+## Updated Key Findings
 
 ✅ **Video Generation**: Working perfectly (FAL.ai API, direct mode, URL return)
-✅ **Code Implementation**: Media integration workflow is implemented
-❌ **Execution**: Media integration code block never executes
-🔍 **Investigation Needed**: Debug why `if (activeProject && addMediaItem && response.video_url)` condition fails
+✅ **Prerequisites Met**: activeProject exists, addMediaItem available, video_url present
+✅ **Debug Implementation**: Steps 1-2 working correctly
+❌ **Execution Path**: Media integration code (Steps 3-8) never reached in current flow
+❌ **Media Integration**: Code exists but not executed after successful generation
 
-**Files Updated**: Complete flow analysis with mermaid diagram and step-by-step breakdown added
+## Critical Discovery & Root Cause Found
+
+### 🚨 **EXECUTION PATH ISSUE IDENTIFIED**
+
+**Problem**: The media integration code (Steps 3-8) is placed in the **WRONG CONDITIONAL BRANCH**
+
+**Code Analysis** (use-ai-generation.ts:510-534):
+```typescript
+if (response?.job_id) {
+  // ✅ THIS PATH EXECUTES (because job_id exists)
+  // Polling mode - no media integration here
+  startStatusPolling(response.job_id);
+
+} else if (response?.video_url) {
+  // ❌ THIS PATH NEVER REACHED (our media integration is here)
+  console.log("🎯 DIRECT MODE TRIGGERED - Video URL:", response.video_url);
+  // Media integration Steps 3-8 are here but never execute
+}
+```
+
+**From console logs**:
+- `response.job_id: true job_nixbtstmx_1758780734496` ✅
+- `response.video_url: true https://v3b.fal.media/files/b/monkey/...` ✅
+
+**Since BOTH `job_id` AND `video_url` exist, the code takes the FIRST condition (`if job_id`) and NEVER reaches the `else if (video_url)` where our media integration is located.**
+
+### 🎯 **The Fix Plan**
+
+The media integration code needs to be moved to handle **BOTH cases**:
+
+1. **Direct mode**: `video_url` exists immediately → Download and add to media store
+2. **Polling mode**: `job_id` exists → Wait for completion, then download and add to media store
+
+**Current Issue**: Media integration only exists in the `else if (video_url)` branch, but the response has both fields, so it goes to the `if (job_id)` branch instead.

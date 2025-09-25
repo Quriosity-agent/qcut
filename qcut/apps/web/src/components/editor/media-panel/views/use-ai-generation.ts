@@ -508,29 +508,151 @@ export function useAIGeneration(props: UseAIGenerationProps) {
         console.log(`    - Full response:`, JSON.stringify(response, null, 2));
 
         if (response?.job_id) {
-          // For now, just add the response as a generated video
-          // The actual polling and download will be handled by the status polling
-          const newVideo: GeneratedVideo = {
-            jobId: response.job_id,
-            videoUrl: "", // Will be filled when polling completes
-            videoPath: undefined,
-            fileSize: undefined,
-            duration: undefined,
-            prompt: prompt.trim(),
-            model: modelId,
-          };
+          console.log("🔍 FIX VERIFICATION: Processing job_id response");
+          console.log("   - job_id exists:", !!response.job_id);
+          console.log("   - video_url exists:", !!response.video_url);
 
-          // Add to generations array so results are properly tracked
-          generations.push({ modelId, video: newVideo });
+          if (response?.video_url) {
+            // 🎯 OPTION 1 FIX: Direct mode with job_id - video is ready immediately
+            console.log("🎉 FIX SUCCESS: Direct mode with job_id detected!");
+            console.log("🎯 DIRECT MODE WITH JOB_ID - Video URL:", response.video_url);
 
-          // Start status polling for this job
-          startStatusPolling(response.job_id);
+            debugLogger.log("AIGeneration", "DIRECT_VIDEO_WITH_JOB_ID", {
+              model: modelId,
+              jobId: response.job_id,
+              videoUrl: response.video_url,
+            });
 
-          debugLogger.log("AIGeneration", "GENERATION_STARTED", {
-            jobId: response.job_id,
-            model: modelId,
-            modelName,
-          });
+            const newVideo: GeneratedVideo = {
+              jobId: response.job_id,
+              videoUrl: response.video_url,
+              videoPath: undefined,
+              fileSize: undefined,
+              duration: response.video_data?.video?.duration || undefined,
+              prompt: prompt.trim(),
+              model: modelId,
+            };
+
+            // Add to generations array
+            generations.push({ modelId, video: newVideo });
+            console.log("📦 Added to generations array:", generations.length);
+
+            // 🔥 MOVED MEDIA INTEGRATION HERE - Steps 3-8
+            console.log("🔍 DEBUG STEP 3: Media Integration Condition Check");
+            console.log("   - activeProject check:", !!activeProject, "→", activeProject?.id);
+            console.log("   - addMediaItem check:", !!addMediaItem, "→", typeof addMediaItem);
+            console.log("   - response.video_url check:", !!response.video_url, "→", !!response.video_url ? "EXISTS" : "MISSING");
+            console.log("   - WILL EXECUTE MEDIA INTEGRATION:", !!(activeProject && addMediaItem && response.video_url));
+
+            if (activeProject && addMediaItem) {
+              console.log("🔍 DEBUG STEP 4: ✅ EXECUTING Media Integration Block");
+              console.log("   - About to download from URL:", response.video_url);
+              console.log("   - Project ID for media:", activeProject.id);
+              console.log("   - addMediaItem function type:", typeof addMediaItem);
+
+              console.log("🔄 Attempting to add to media store...");
+              console.log("   - Project ID:", activeProject.id);
+              console.log("   - addMediaItem available:", !!addMediaItem);
+
+              try {
+                // Download video and create file
+                console.log("📥 Downloading video from URL:", response.video_url);
+                const videoResponse = await fetch(response.video_url);
+
+                console.log("🔍 DEBUG STEP 5: Video Download Progress");
+                console.log("   - videoResponse.ok:", videoResponse.ok);
+                console.log("   - videoResponse.status:", videoResponse.status);
+                console.log("   - videoResponse.headers content-type:", videoResponse.headers.get('content-type'));
+
+                if (!videoResponse.ok) {
+                  throw new Error(`Failed to download video: ${videoResponse.status} ${videoResponse.statusText}`);
+                }
+
+                const blob = await videoResponse.blob();
+                console.log("✅ Downloaded video blob, size:", blob.size);
+
+                const filename = `AI-Video-${modelId}-${Date.now()}.mp4`;
+                const file = new File([blob], filename, { type: "video/mp4" });
+                console.log("📄 Created file:", filename);
+
+                console.log("🔍 DEBUG STEP 6: File Creation Complete");
+                console.log("   - blob.size:", blob.size, "bytes");
+                console.log("   - blob.type:", blob.type);
+                console.log("   - file.name:", file.name);
+                console.log("   - file.size:", file.size);
+
+                // Add to media store
+                const mediaItem = {
+                  name: `AI: ${newVideo.prompt.substring(0, 30)}...`,
+                  type: "video" as const,
+                  file,
+                  url: newVideo.videoUrl,
+                  duration: newVideo.duration || 5,
+                  width: 1920,
+                  height: 1080,
+                };
+
+                console.log("📤 Adding to media store with item:", mediaItem);
+
+                console.log("🔍 DEBUG STEP 7: About to Call addMediaItem");
+                console.log("   - mediaItem structure:", JSON.stringify(mediaItem, null, 2));
+                console.log("   - projectId:", activeProject.id);
+                console.log("   - addMediaItem is function:", typeof addMediaItem === 'function');
+
+                const newItemId = await addMediaItem(activeProject.id, mediaItem);
+
+                console.log("🔍 DEBUG STEP 8: ✅ addMediaItem COMPLETED");
+                console.log("   - newItemId:", newItemId);
+                console.log("   - SUCCESS: Video added to media store!");
+
+                console.log("✅ VIDEO SUCCESSFULLY ADDED TO MEDIA STORE!");
+                console.log("   - Item ID:", newItemId);
+
+                debugLogger.log("AIGeneration", "VIDEO_ADDED_TO_MEDIA", {
+                  itemId: newItemId,
+                  model: modelId,
+                  videoUrl: response.video_url,
+                  projectId: activeProject.id,
+                });
+              } catch (error) {
+                console.error("❌ Media integration failed:", error);
+                debugLogger.log("AIGeneration", "MEDIA_INTEGRATION_FAILED", {
+                  error: error instanceof Error ? error.message : String(error),
+                  model: modelId,
+                  videoUrl: response.video_url,
+                });
+              }
+            } else {
+              console.warn("⚠️ Cannot add to media store:");
+              console.warn("   - activeProject:", !!activeProject);
+              console.warn("   - addMediaItem:", !!addMediaItem);
+            }
+          } else {
+            // Traditional polling mode: no video_url yet
+            console.log("🔍 FIX VERIFICATION: Polling mode - no video_url, starting polling");
+
+            const newVideo: GeneratedVideo = {
+              jobId: response.job_id,
+              videoUrl: "", // Will be filled when polling completes
+              videoPath: undefined,
+              fileSize: undefined,
+              duration: undefined,
+              prompt: prompt.trim(),
+              model: modelId,
+            };
+
+            // Add to generations array so results are properly tracked
+            generations.push({ modelId, video: newVideo });
+
+            // Start status polling for this job
+            startStatusPolling(response.job_id);
+
+            debugLogger.log("AIGeneration", "GENERATION_STARTED", {
+              jobId: response.job_id,
+              model: modelId,
+              modelName,
+            });
+          }
         } else if (response?.video_url) {
           // Direct mode: video is ready immediately
           console.log("🎯 DIRECT MODE TRIGGERED - Video URL:", response.video_url);
