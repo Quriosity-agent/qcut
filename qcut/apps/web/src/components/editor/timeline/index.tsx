@@ -347,10 +347,23 @@ export function Timeline() {
   // Update timeline duration when tracks change
   useEffect(() => {
     const totalDuration = getTotalDuration();
-    // Use utility function to calculate dynamic minimum duration
-    const minimumDuration = calculateMinimumTimelineDuration(totalDuration);
-    setDuration(Math.max(totalDuration, minimumDuration)); // Flexible minimum duration
-    console.log(`🎯 Timeline UI: Dynamic duration ${totalDuration}s (min: ${minimumDuration}s) instead of hardcoded 10s`);
+    // Dynamic duration: use actual content duration, with configurable minimum for empty timeline
+    const finalDuration = Math.max(totalDuration, TIMELINE_CONSTANTS.DEFAULT_EMPTY_TIMELINE_DURATION);
+    setDuration(finalDuration);
+
+    console.log(`🎯 Timeline Duration Debug:`, {
+      totalDuration,
+      finalDuration,
+      currentTimelineDuration: duration
+    });
+
+    // Also log the current tracks to debug
+    const { _tracks } = useTimelineStore.getState();
+    console.log(`🎯 Timeline Tracks:`, _tracks.map(track => ({
+      type: track.type,
+      elements: track.elements.length,
+      elementDurations: track.elements.map(el => el.duration)
+    })));
   }, [setDuration, getTotalDuration]);
 
   // Old marquee system removed - using new SelectionBox component instead
@@ -722,9 +735,18 @@ export function Timeline() {
                 {/* Time markers */}
                 {(() => {
                   // Calculate appropriate time interval based on zoom level
-                  const getTimeInterval = (zoom: number) => {
+                  const getTimeInterval = (zoom: number, totalDuration: number) => {
                     const pixelsPerSecond =
                       TIMELINE_CONSTANTS.PIXELS_PER_SECOND * zoom;
+
+                    // For very short durations, ensure we have enough markers to show progression
+                    if (totalDuration <= 5) {
+                      if (pixelsPerSecond >= 100) return 0.1; // Every 0.1s for short content
+                      if (pixelsPerSecond >= 50) return 0.25; // Every 0.25s for short content
+                      return 0.5; // Every 0.5s minimum for short content
+                    }
+
+                    // Standard intervals for longer content
                     if (pixelsPerSecond >= 200) return 0.1; // Every 0.1s when very zoomed in
                     if (pixelsPerSecond >= 100) return 0.5; // Every 0.5s when zoomed in
                     if (pixelsPerSecond >= 50) return 1; // Every 1s at normal zoom
@@ -734,8 +756,8 @@ export function Timeline() {
                     return 30; // Every 30s when extremely zoomed out
                   };
 
-                  const interval = getTimeInterval(zoomLevel);
-                  const markerCount = Math.ceil(duration / interval) + 1;
+                  const interval = getTimeInterval(zoomLevel, duration);
+                  const markerCount = Math.max(Math.ceil(duration / interval) + 1, 10); // Ensure at least 10 markers for short content
 
                   return Array.from({ length: markerCount }, (_, i) => {
                     const time = i * interval;
@@ -785,11 +807,21 @@ export function Timeline() {
                                   .toString()
                                   .padStart(2, "0")}`;
                               }
+
+                              // Better formatting for seconds - show more precision for sub-second intervals
                               if (interval >= 1) {
                                 return `${Math.floor(secs)}s`;
+                              } else if (interval >= 0.1) {
+                                return `${secs.toFixed(1)}s`;
+                              } else {
+                                return `${secs.toFixed(2)}s`;
                               }
-                              return `${secs.toFixed(1)}s`;
                             };
+
+                            // Debug log to help verify timeline markers are generating properly
+                            if (i <= 2) { // Only log first few markers to avoid spam
+                              console.log(`🎯 Timeline Marker ${i}: time=${time}s, duration=${duration}s, interval=${interval}s`);
+                            }
                             return formatTime(time);
                           })()}
                         </span>
