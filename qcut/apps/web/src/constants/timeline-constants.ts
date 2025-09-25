@@ -116,6 +116,7 @@ export const TIMELINE_CONSTANTS = {
   DEFAULT_TEXT_DURATION: 5,
   DEFAULT_IMAGE_DURATION: 5,
   DEFAULT_EMPTY_TIMELINE_DURATION: 20, // Default duration for empty timeline
+  MAX_EXPORT_DURATION: 600, // 10 minutes - balances usability vs system resources
   ZOOM_LEVELS: [0.25, 0.5, 1, 1.5, 2, 3, 4],
 } as const;
 
