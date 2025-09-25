@@ -1,5 +1,40 @@
 # AI Video Generation - Local Save & Media Panel Integration Issue
 
+## Video Generation Flow Architecture
+
+```mermaid
+graph TD
+    A[User clicks Generate in AI View] --> B[ai.tsx: Button onClick]
+    B --> C[useAIGeneration.handleGenerate]
+    C --> D[Validation: prompt, models, project]
+    D --> E[Loop through selectedModels]
+
+    E --> F[ai-video-client.generateVideo]
+    F --> G[FAL.ai API Request]
+    G --> H[FAL.ai Response with video_url]
+
+    H --> I[✅ Video URL received]
+    I --> J[useAIGeneration: Media Integration]
+
+    J --> K[Download video from FAL URL]
+    K --> L[Create File object from blob]
+    L --> M[Call addMediaItem via useAsyncMediaStoreActions]
+
+    M --> N[media-store.addMediaItem]
+    N --> O[Generate UUID for media item]
+    O --> P[Add to local state: mediaItems array]
+    P --> Q[Save to storage: storageService.saveMediaItem]
+
+    Q --> R[✅ Video appears in Media Panel]
+
+    style I fill:#90EE90
+    style R fill:#90EE90
+    style J fill:#FFB6C1
+    style K fill:#FFB6C1
+    style L fill:#FFB6C1
+    style M fill:#FFB6C1
+```
+
 ## Previous Issue Summary
 
 The initial problem was a FAL.ai account access issue (422 error) which has been **RESOLVED**. Video generation is now working successfully and FAL.ai returns video URLs properly.
@@ -7,6 +42,77 @@ The initial problem was a FAL.ai account access issue (422 error) which has been
 ## Current Problem Summary
 
 The AI video generation completes successfully and receives video URLs from FAL.ai, but **generated videos are not being saved locally or added to the media panel**. Videos generate correctly but don't appear in the project's media library for use.
+
+## Step-by-Step Function Call Analysis
+
+### ✅ Working Flow (From Prompt to Video URL)
+
+1. **User Interaction** (`ai.tsx`)
+   ```typescript
+   // User clicks "Generate" button
+   onClick={handleGenerate} // Line ~300
+   ```
+
+2. **Generation Hook** (`use-ai-generation.ts:403`)
+   ```typescript
+   const handleGenerate = useCallback(async () => {
+     console.log("🚀🚀🚀 handleGenerate CALLED 🚀🚀🚀");
+     // Validation passed, starting generation...
+   ```
+
+3. **Model Processing Loop** (`use-ai-generation.ts:438`)
+   ```typescript
+   for (const modelId of selectedModels) {
+     console.log(`🎬 [${index + 1}/${selectedModels.length}] Processing model: ${modelId}`);
+     const response = await generateVideo(request);
+   ```
+
+4. **FAL.ai API Client** (`ai-video-client.ts:115`)
+   ```typescript
+   console.log("🎬 Generating video with FAL AI:", endpoint);
+   const response = await fetch(`${FAL_API_BASE}/${endpoint}`, { ... });
+   ```
+
+5. **Direct Mode Response** (`ai-video-client.ts:235`)
+   ```typescript
+   console.log("⚡ Direct mode: video ready immediately");
+   return {
+     job_id: generateJobId(),
+     video_url: videoData.video.url, // ✅ SUCCESS: URL returned
+   }
+   ```
+
+### ❌ Broken Flow (From Video URL to Media Panel)
+
+6. **Media Integration** (`use-ai-generation.ts:540`) **← PROBLEM AREA**
+   ```typescript
+   if (activeProject && addMediaItem) {
+     console.log("🔄 Attempting to add to media store...");
+     // Download video from URL
+     const videoResponse = await fetch(response.video_url);
+     const blob = await videoResponse.blob();
+     const file = new File([blob], `ai-video-${modelId}.mp4`);
+
+     // Add to media store
+     const newItemId = await addMediaItem(activeProject.id, mediaItem);
+   }
+   ```
+
+7. **Async Media Store Hook** (`use-async-media-store.ts:92`)
+   ```typescript
+   return {
+     addMediaItem: store?.addMediaItem, // May return undefined if store not loaded
+   }
+   ```
+
+8. **Media Store Action** (`media-store.ts:324`)
+   ```typescript
+   addMediaItem: async (projectId, item) => {
+     const newItem: MediaItem = { ...item, id };
+     set(state => ({ mediaItems: [...state.mediaItems, newItem] }));
+     await storageService.saveMediaItem(projectId, newItem);
+   }
+   ```
 
 ## Current Issue Analysis
 
@@ -36,59 +142,110 @@ use-ai-generation.ts:609 ✅ onComplete callback finished
 
 **Missing**: No logs showing video download or media store integration.
 
-## Root Cause
+## Root Cause Analysis
 
-The issue is in the **media integration workflow**. While video generation succeeds and returns URLs, the system is not:
+Based on code investigation, the media integration workflow **IS IMPLEMENTED** but may have execution issues. The problem is likely:
 
-1. **Downloading videos** from FAL.ai URLs to local storage
-2. **Adding video entries** to the media store
-3. **Updating the media panel** to show new videos
+### ✅ Implementation Status
+- **Video Download**: ✅ Implemented in `use-ai-generation.ts:546-568`
+- **Media Store Integration**: ✅ Implemented using `addMediaItem` function
+- **File Creation**: ✅ Creates File object from downloaded blob
+- **Media Item Structure**: ✅ Proper MediaItem object with metadata
+
+### ❌ Potential Failure Points
+
+1. **Async Media Store Loading**
+   - `addMediaItem` may be `undefined` if store hasn't loaded yet
+   - Race condition: generation completes before media store initializes
+
+2. **Error Handling**
+   - Fetch/download errors are caught but may fail silently
+   - Storage errors may prevent media item persistence
+
+3. **Project State**
+   - `activeProject` may be null/undefined at time of media addition
+   - Project ID not properly passed through the chain
+
+### 🔍 Missing from Console Logs
+The console logs from video-console_v2.md show generation success but **no logs from media integration code**:
+
+```
+✅ Present: "GENERATION COMPLETE", "onComplete callback finished"
+❌ Missing: "Attempting to add to media store...", "VIDEO SUCCESSFULLY ADDED"
+```
+
+This suggests the media integration code block (`use-ai-generation.ts:540-594`) **is not executing at all**.
 
 ## Solutions Required
 
-### Investigation Needed
+### Immediate Debug Steps
 
-1. **Check AI View Component** (`ai.tsx`)
-   - Verify `onComplete` callback implementation
-   - Ensure it calls media store integration functions
-   - Add logging to track media addition attempts
+1. **Add Debug Logging** to determine why media integration isn't executing:
+   ```typescript
+   // In use-ai-generation.ts around line 540
+   console.log("🔍 DEBUG: Checking media integration conditions:");
+   console.log("   - activeProject:", !!activeProject, activeProject?.id);
+   console.log("   - addMediaItem:", !!addMediaItem, typeof addMediaItem);
+   console.log("   - response.video_url:", !!response.video_url, response.video_url);
+   ```
 
-2. **Check Media Store Integration**
-   - Verify `addMediaItem` function is properly called
-   - Check if media store is receiving video data
-   - Confirm media item creation workflow
+2. **Check Media Store Loading State**:
+   ```typescript
+   console.log("🔍 Media Store Debug:", {
+     mediaStoreLoading,
+     mediaStoreError,
+     addMediaItemType: typeof addMediaItem
+   });
+   ```
 
-3. **Check Video Download Process**
-   - Verify if videos are downloaded from FAL.ai URLs
-   - Check local storage/filesystem integration
-   - Confirm video file saving mechanism
+3. **Verify Response Structure**:
+   The logs show `response.video_url` exists, but check if the condition matches:
+   ```typescript
+   console.log("🔍 Response Debug:", {
+     hasVideoUrl: !!response.video_url,
+     hasJobId: !!response.job_id,
+     responseKeys: Object.keys(response)
+   });
+   ```
 
-### Likely Code Areas to Examine
+### Likely Root Causes (In Priority Order)
 
-```typescript
-// ai.tsx - onComplete callback should integrate with media store
-onComplete: (videos) => {
-  console.log(`[AI View] Received ${videos.length} videos:`, videos);
-  // MISSING: Video download and media store integration
-}
+1. **Media Store Not Loaded** (Most Likely)
+   - `useAsyncMediaStoreActions()` returns `addMediaItem: undefined`
+   - Store loading race condition with video generation completion
+
+2. **Response Structure Mismatch**
+   - Code expects `video_url` field but gets different structure
+   - Condition `if (response.video_url)` fails despite URL being present
+
+3. **Project State Issue**
+   - `activeProject` is null/undefined at execution time
+   - Project context lost during async generation
+
+### Expected vs Actual Behavior
+
+**Expected**: After successful generation, should see these logs:
+```
+🔄 Attempting to add to media store...
+📥 Downloading video from URL: https://...
+📤 Adding to media store with item: {...}
+✅ VIDEO SUCCESSFULLY ADDED TO MEDIA STORE!
 ```
 
-Expected workflow:
-1. ✅ Generate video → Get URL from FAL.ai
-2. ❌ Download video from URL → Save to local filesystem
-3. ❌ Add video to media store → Make available in media panel
-4. ❌ Update UI → Show new video in media library
-
-### Files to Check
-
-- `apps/web/src/components/editor/media-panel/views/ai.tsx` - onComplete implementation
-- `apps/web/src/stores/media-store.ts` - Media addition functions
-- `apps/web/src/lib/ai-video-output.ts` - Video download/save logic
-- `apps/web/src/components/editor/media-panel/views/use-ai-generation.ts` - Integration logic
+**Actual**: Generation completes but media integration code never executes.
 
 ## Status
 
 **Priority**: HIGH - Generated videos not usable in editor
-**Type**: Code Integration Issue
-**Fix Required**: Implement video download and media store integration workflow
-**Next Step**: Investigate media integration code flow after successful generation
+**Type**: Runtime Execution Issue - Media integration code exists but not executing
+**Root Cause**: Media store loading race condition or response structure mismatch
+**Next Step**: Add debug logging to identify why media integration conditional fails
+
+## Key Findings Summary
+
+✅ **Video Generation**: Working perfectly (FAL.ai API, direct mode, URL return)
+✅ **Code Implementation**: Media integration workflow is implemented
+❌ **Execution**: Media integration code block never executes
+🔍 **Investigation Needed**: Debug why `if (activeProject && addMediaItem && response.video_url)` condition fails
+
+**Files Updated**: Complete flow analysis with mermaid diagram and step-by-step breakdown added
