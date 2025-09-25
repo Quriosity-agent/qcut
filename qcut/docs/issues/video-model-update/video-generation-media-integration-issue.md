@@ -178,35 +178,77 @@ This suggests the media integration code block (`use-ai-generation.ts:540-594`) 
 
 ## Solutions Required
 
-### Immediate Debug Steps
+### Immediate Debug Steps - Sequential Console Logging
 
-1. **Add Debug Logging** to determine why media integration isn't executing:
-   ```typescript
-   // In use-ai-generation.ts around line 540
-   console.log("🔍 DEBUG: Checking media integration conditions:");
-   console.log("   - activeProject:", !!activeProject, activeProject?.id);
-   console.log("   - addMediaItem:", !!addMediaItem, typeof addMediaItem);
-   console.log("   - response.video_url:", !!response.video_url, response.video_url);
-   ```
+Add these numbered debug logs to quickly identify where the flow breaks:
 
-2. **Check Media Store Loading State**:
-   ```typescript
-   console.log("🔍 Media Store Debug:", {
-     mediaStoreLoading,
-     mediaStoreError,
-     addMediaItemType: typeof addMediaItem
-   });
-   ```
+**Step 1: Pre-Generation Debug** (Add at `use-ai-generation.ts:440`)
+```typescript
+console.log("🔍 DEBUG STEP 1: Pre-Generation State Check");
+console.log("   - activeProject:", !!activeProject, activeProject?.id);
+console.log("   - addMediaItem available:", !!addMediaItem, typeof addMediaItem);
+console.log("   - mediaStoreLoading:", mediaStoreLoading);
+console.log("   - mediaStoreError:", mediaStoreError);
+```
 
-3. **Verify Response Structure**:
-   The logs show `response.video_url` exists, but check if the condition matches:
-   ```typescript
-   console.log("🔍 Response Debug:", {
-     hasVideoUrl: !!response.video_url,
-     hasJobId: !!response.job_id,
-     responseKeys: Object.keys(response)
-   });
-   ```
+**Step 2: Post-API Response Debug** (Add at `use-ai-generation.ts:475` after generateVideo call)
+```typescript
+console.log("🔍 DEBUG STEP 2: Post-API Response Analysis");
+console.log("   - response received:", !!response);
+console.log("   - response.video_url:", !!response.video_url, response.video_url?.substring(0, 50) + "...");
+console.log("   - response.job_id:", !!response.job_id, response.job_id);
+console.log("   - response keys:", Object.keys(response));
+console.log("   - response.status:", response.status);
+```
+
+**Step 3: Media Integration Condition Debug** (Add at `use-ai-generation.ts:540` BEFORE the if statement)
+```typescript
+console.log("🔍 DEBUG STEP 3: Media Integration Condition Check");
+console.log("   - activeProject check:", !!activeProject, "→", activeProject?.id);
+console.log("   - addMediaItem check:", !!addMediaItem, "→", typeof addMediaItem);
+console.log("   - response.video_url check:", !!response.video_url, "→", !!response.video_url ? "EXISTS" : "MISSING");
+console.log("   - WILL EXECUTE MEDIA INTEGRATION:", !!(activeProject && addMediaItem && response.video_url));
+```
+
+**Step 4: Inside Media Integration Block** (Add at `use-ai-generation.ts:541` INSIDE the if statement)
+```typescript
+console.log("🔍 DEBUG STEP 4: ✅ EXECUTING Media Integration Block");
+console.log("   - About to download from URL:", response.video_url);
+console.log("   - Project ID for media:", activeProject.id);
+console.log("   - addMediaItem function type:", typeof addMediaItem);
+```
+
+**Step 5: Video Download Debug** (Add at `use-ai-generation.ts:547` after fetch)
+```typescript
+console.log("🔍 DEBUG STEP 5: Video Download Progress");
+console.log("   - videoResponse.ok:", videoResponse.ok);
+console.log("   - videoResponse.status:", videoResponse.status);
+console.log("   - videoResponse.headers content-type:", videoResponse.headers.get('content-type'));
+```
+
+**Step 6: File Creation Debug** (Add at `use-ai-generation.ts:552` after File creation)
+```typescript
+console.log("🔍 DEBUG STEP 6: File Creation Complete");
+console.log("   - blob.size:", blob.size, "bytes");
+console.log("   - blob.type:", blob.type);
+console.log("   - file.name:", file.name);
+console.log("   - file.size:", file.size);
+```
+
+**Step 7: Media Store Call Debug** (Add at `use-ai-generation.ts:573` before addMediaItem call)
+```typescript
+console.log("🔍 DEBUG STEP 7: About to Call addMediaItem");
+console.log("   - mediaItem structure:", JSON.stringify(mediaItem, null, 2));
+console.log("   - projectId:", activeProject.id);
+console.log("   - addMediaItem is function:", typeof addMediaItem === 'function');
+```
+
+**Step 8: Success/Error Debug** (Add at `use-ai-generation.ts:575` after addMediaItem call)
+```typescript
+console.log("🔍 DEBUG STEP 8: ✅ addMediaItem COMPLETED");
+console.log("   - newItemId:", newItemId);
+console.log("   - SUCCESS: Video added to media store!");
+```
 
 ### Likely Root Causes (In Priority Order)
 
@@ -222,17 +264,39 @@ This suggests the media integration code block (`use-ai-generation.ts:540-594`) 
    - `activeProject` is null/undefined at execution time
    - Project context lost during async generation
 
-### Expected vs Actual Behavior
+### Expected vs Actual Debug Output
 
-**Expected**: After successful generation, should see these logs:
+**With Step-by-Step Debugging, you should see:**
+
+✅ **If Working Properly:**
 ```
-🔄 Attempting to add to media store...
-📥 Downloading video from URL: https://...
-📤 Adding to media store with item: {...}
-✅ VIDEO SUCCESSFULLY ADDED TO MEDIA STORE!
+🔍 DEBUG STEP 1: Pre-Generation State Check
+   - activeProject: true project-123
+   - addMediaItem available: true function
+🔍 DEBUG STEP 2: Post-API Response Analysis
+   - response.video_url: true https://v3.fal.media/files/penguin/...
+🔍 DEBUG STEP 3: Media Integration Condition Check
+   - WILL EXECUTE MEDIA INTEGRATION: true
+🔍 DEBUG STEP 4: ✅ EXECUTING Media Integration Block
+🔍 DEBUG STEP 5: Video Download Progress
+🔍 DEBUG STEP 6: File Creation Complete
+🔍 DEBUG STEP 7: About to Call addMediaItem
+🔍 DEBUG STEP 8: ✅ addMediaItem COMPLETED
 ```
 
-**Actual**: Generation completes but media integration code never executes.
+❌ **Current Issue - Will Show Where It Stops:**
+```
+🔍 DEBUG STEP 1: Pre-Generation State Check ✅
+🔍 DEBUG STEP 2: Post-API Response Analysis ✅
+🔍 DEBUG STEP 3: Media Integration Condition Check
+   - WILL EXECUTE MEDIA INTEGRATION: false ❌ (STOPS HERE)
+```
+
+**Quick Problem Identification:**
+- **Stops at Step 1**: Media store loading issue
+- **Stops at Step 3**: Condition check failure (most likely)
+- **Stops at Step 5**: Video download failure
+- **Stops at Step 7**: Media store call failure
 
 ## Status
 
