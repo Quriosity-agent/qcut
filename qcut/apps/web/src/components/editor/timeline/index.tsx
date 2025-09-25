@@ -350,20 +350,6 @@ export function Timeline() {
     // Dynamic duration: use actual content duration, with configurable minimum for empty timeline
     const finalDuration = Math.max(totalDuration, TIMELINE_CONSTANTS.DEFAULT_EMPTY_TIMELINE_DURATION);
     setDuration(finalDuration);
-
-    console.log(`🎯 Timeline Duration Debug:`, {
-      totalDuration,
-      finalDuration,
-      currentTimelineDuration: duration
-    });
-
-    // Also log the current tracks to debug
-    const { _tracks } = useTimelineStore.getState();
-    console.log(`🎯 Timeline Tracks:`, _tracks.map(track => ({
-      type: track.type,
-      elements: track.elements.length,
-      elementDurations: track.elements.map(el => el.duration)
-    })));
   }, [setDuration, getTotalDuration]);
 
   // Old marquee system removed - using new SelectionBox component instead
@@ -818,10 +804,6 @@ export function Timeline() {
                               }
                             };
 
-                            // Debug log to help verify timeline markers are generating properly
-                            if (i <= 2) { // Only log first few markers to avoid spam
-                              console.log(`🎯 Timeline Marker ${i}: time=${time}s, duration=${duration}s, interval=${interval}s`);
-                            }
                             return formatTime(time);
                           })()}
                         </span>

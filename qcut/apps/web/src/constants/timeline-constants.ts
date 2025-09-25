@@ -62,19 +62,21 @@ export const TRACK_HEIGHTS: Record<TrackType, number> = {
 } as const;
 
 /**
- * Gets the height in pixels for a specific track type
- * @param type - The track type to get height for
- * @returns Height in pixels
+ * Different track types need different heights based on their content density:
+ * - Media tracks (65px) need space for thumbnails and waveform previews
+ * - Text tracks (25px) are compact since they just show text snippets
+ * - Audio tracks (50px) need space for waveform visualization
+ * These heights are carefully tuned for readability without wasting screen space.
  */
 export function getTrackHeight(type: TrackType): number {
   return TRACK_HEIGHTS[type];
 }
 
 /**
- * Calculates cumulative height up to (but not including) a specific track index
- * @param tracks - Array of track objects with type property
- * @param trackIndex - Index of the track to calculate height before
- * @returns Total height in pixels before the specified track index
+ * Critical for drag-drop positioning - calculates exact Y coordinate where a dragged
+ * element should land. The gap handling ensures dropped items appear in the correct
+ * track even when users don't drop precisely in the center of the track.
+ * Note: trackIndex is exclusive - we calculate height BEFORE that track.
  */
 export function getCumulativeHeightBefore(
   tracks: Array<{ type: TrackType }>,
@@ -87,9 +89,12 @@ export function getCumulativeHeightBefore(
 }
 
 /**
- * Calculates the total height of all tracks including gaps
- * @param tracks - Array of track objects with type property
- * @returns Total height in pixels including inter-track gaps
+ * Used to size the scrollable timeline container. The gap calculation is tricky:
+ * - 0 tracks = 0 gaps
+ * - 1 track = 0 gaps
+ * - 2 tracks = 1 gap
+ * - N tracks = N-1 gaps
+ * Getting this wrong causes timeline scrolling issues and misaligned drop zones.
  */
 export function getTotalTracksHeight(
   tracks: Array<{ type: TrackType }>
@@ -125,30 +130,27 @@ export const FPS_PRESETS = [
 
 // Frame snapping utilities
 /**
- * Converts time in seconds to frame number based on FPS
- * @param time - Time in seconds
- * @param fps - Frames per second
- * @returns Frame number (rounded to nearest integer)
+ * Essential for frame-accurate editing. Rounding to nearest frame prevents
+ * sub-frame positioning that would cause playback stuttering or export issues.
+ * Professional video editors always work in frame boundaries, not arbitrary decimals.
  */
 export function timeToFrame(time: number, fps: number): number {
   return Math.round(time * fps);
 }
 
 /**
- * Converts frame number to time in seconds based on FPS
- * @param frame - Frame number
- * @param fps - Frames per second
- * @returns Time in seconds
+ * Reverse conversion for display purposes. This is pure math without rounding
+ * since we're going from discrete frame numbers back to time representation.
  */
 export function frameToTime(frame: number, fps: number): number {
   return frame / fps;
 }
 
 /**
- * Snaps a time value to the nearest frame boundary
- * @param time - Time in seconds to snap
- * @param fps - Frames per second for snapping precision
- * @returns Time snapped to nearest frame boundary
+ * Critical for precise editing - ensures cuts, transitions, and effects align
+ * to frame boundaries. Without this, users get frustrating "almost but not quite"
+ * positioning that looks sloppy in final exports.
+ * WARNING: Invalid FPS (≤0) returns unmodified time to prevent crashes.
  */
 export function snapTimeToFrame(time: number, fps: number): number {
   if (fps <= 0) return time; // Fallback for invalid FPS
@@ -157,9 +159,9 @@ export function snapTimeToFrame(time: number, fps: number): number {
 }
 
 /**
- * Calculates the duration of a single frame in seconds
- * @param fps - Frames per second
- * @returns Duration of one frame in seconds
+ * Used for fine-grained timeline navigation (frame-by-frame stepping).
+ * Higher FPS = smaller time increments = more precise control but higher CPU usage
+ * for timeline rendering.
  */
 export function getFrameDuration(fps: number): number {
   return 1 / fps;
@@ -167,49 +169,62 @@ export function getFrameDuration(fps: number): number {
 
 // Timeline duration utility functions
 /**
- * Calculates the minimum timeline duration ensuring adequate workspace
- * @param contentDuration - The actual duration of content on timeline
- * @returns Minimum duration (uses default empty timeline duration for short content)
+ * Provides breathing room for editing. Empty timelines with 20s give users
+ * space to drag content without immediately hitting the end. This prevents
+ * the frustrating "timeline too small" experience that plagues amateur editors.
+ * Business rule: Never make timeline smaller than content, but always give workspace.
  */
 export function calculateMinimumTimelineDuration(contentDuration: number): number {
   // Always return at least default minimum for empty timeline, but don't limit longer content
+  if (!Number.isFinite(contentDuration) || contentDuration <= 0) {
+    return TIMELINE_CONSTANTS.DEFAULT_EMPTY_TIMELINE_DURATION;
+  }
   return Math.max(contentDuration, TIMELINE_CONSTANTS.DEFAULT_EMPTY_TIMELINE_DURATION);
 }
 
 /**
- * Calculates a flexible timeline buffer for smooth editing experience
- * @param duration - The timeline duration to calculate buffer for
- * @returns Buffer duration (5s minimum or 10% of duration, whichever is greater)
+ * Prevents "cliff edge" effect where timeline ends abruptly at content boundary.
+ * The 5s minimum handles short clips, 10% scales with longer content.
+ * UX insight: Users often need to see "what comes after" when making precise cuts.
  */
 export function calculateTimelineBuffer(duration: number): number {
   // Flexible buffer: 5s minimum or 10% of duration, whichever is greater
-  return Math.max(5, duration * 0.1);
+  const safeDuration = Number.isFinite(duration) && duration > 0 ? duration : 0;
+  return Math.max(5, safeDuration * 0.1);
 }
 
 /**
- * Calculates dynamic timeline duration with configurable minimum
- * @param actualContentDuration - The actual duration of timeline content
- * @param minimumDuration - Minimum duration to enforce (defaults to 1s)
- * @returns Timeline duration ensuring minimum is met
+ * Legacy function from the old 10-second hardcoded minimum era.
+ * Kept for backward compatibility but use calculateMinimumTimelineDuration instead.
+ * TODO: Phase this out once all callers are migrated.
  */
 export function calculateDynamicTimelineDuration(
   actualContentDuration: number,
   minimumDuration: number = 1
 ): number {
   // Dynamic duration with configurable minimum (default 1s instead of 10s)
-  return Math.max(actualContentDuration, minimumDuration);
+  const safeActual =
+    Number.isFinite(actualContentDuration) && actualContentDuration > 0
+      ? actualContentDuration
+      : 0;
+  const safeMinimum =
+    Number.isFinite(minimumDuration) && minimumDuration > 0 ? minimumDuration : 1;
+  return Math.max(safeActual, safeMinimum);
 }
 
 /**
- * Validates and constrains export duration to safe bounds
- * @param requestedDuration - The requested export duration in seconds
- * @param maxDuration - Maximum allowed duration (defaults to 600s/10min)
- * @returns Validated duration within safe bounds (0.1s minimum, maxDuration maximum)
+ * Prevents runaway exports that could crash the system or create enormous files.
+ * The 0.1s minimum catches edge cases where duration calculation goes wrong.
+ * 10-minute default limit balances usability vs. system resources - most web users
+ * aren't creating feature films.
  */
 export function validateExportDuration(
   requestedDuration: number,
   maxDuration: number = 600 // 10 minutes safety limit
 ): number {
   // Ensure export duration is within safe bounds
-  return Math.min(Math.max(requestedDuration, 0.1), maxDuration);
+  const safeMax = Number.isFinite(maxDuration) && maxDuration > 0.1 ? maxDuration : 600;
+  const safeRequested =
+    Number.isFinite(requestedDuration) && requestedDuration > 0 ? requestedDuration : 0.1;
+  return Math.min(Math.max(safeRequested, 0.1), safeMax);
 }

@@ -244,8 +244,6 @@ export function setupFFmpegIPC(): void {
           options.filterChain
         );
 
-        // Console log to verify 10-second limit fix
-        console.log(`🎯 FFmpeg Export: Using dynamic duration ${duration}s (max 600s) instead of hardcoded 10s`);
 
 
         // Verify input directory exists and has frames
