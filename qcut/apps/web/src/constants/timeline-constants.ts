@@ -216,15 +216,15 @@ export function calculateDynamicTimelineDuration(
 /**
  * Prevents runaway exports that could crash the system or create enormous files.
  * The 0.1s minimum catches edge cases where duration calculation goes wrong.
- * 10-minute default limit balances usability vs. system resources - most web users
+ * Default limit balances usability vs. system resources - most web users
  * aren't creating feature films.
  */
 export function validateExportDuration(
   requestedDuration: number,
-  maxDuration: number = 600 // 10 minutes safety limit
+  maxDuration: number = TIMELINE_CONSTANTS.MAX_EXPORT_DURATION
 ): number {
   // Ensure export duration is within safe bounds
-  const safeMax = Number.isFinite(maxDuration) && maxDuration > 0.1 ? maxDuration : 600;
+  const safeMax = Number.isFinite(maxDuration) && maxDuration > 0.1 ? maxDuration : TIMELINE_CONSTANTS.MAX_EXPORT_DURATION;
   const safeRequested =
     Number.isFinite(requestedDuration) && requestedDuration > 0 ? requestedDuration : 0.1;
   return Math.min(Math.max(safeRequested, 0.1), safeMax);

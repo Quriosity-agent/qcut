@@ -4,6 +4,10 @@ import path from "path";
 import fs from "fs";
 import { TempManager, ExportSession } from "./temp-manager.js";
 
+// Import timeline constants for shared configuration
+// Note: Using relative path since this runs in compiled electron context
+const timelineConstants = { MAX_EXPORT_DURATION: 600 }; // TODO: Import from shared constants when ES modules are supported
+
 /**
  * Audio file configuration for FFmpeg video export
  * Defines audio track placement and mixing parameters
@@ -684,7 +688,7 @@ function buildFFmpegArgs(
     "-crf",
     crf,
     "-t",
-    Math.min(duration, 600).toString(), // Dynamic duration with 10min safety limit
+    Math.min(duration, timelineConstants.MAX_EXPORT_DURATION).toString(), // Dynamic duration with configurable safety limit
     "-pix_fmt",
     "yuv420p",
     "-movflags",
