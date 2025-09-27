@@ -76,6 +76,10 @@ export function AiView() {
     selectedImage,
     activeTab,
     activeProject,
+    // Avatar-specific props
+    avatarImage,
+    audioFile,
+    sourceVideo,
     onProgress: (progress, message) => {
       console.log(`[AI View] Progress: ${progress}% - ${message}`);
       // Progress is handled internally by the hook

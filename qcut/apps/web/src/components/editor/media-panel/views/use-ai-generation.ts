@@ -12,6 +12,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import {
   generateVideo,
   generateVideoFromImage,
+  generateAvatarVideo,
   handleApiError,
   getGenerationStatus,
   ProgressCallback,
@@ -53,6 +54,9 @@ export function useAIGeneration(props: UseAIGenerationProps) {
     onComplete,
     onJobIdChange,
     onGeneratedVideoChange,
+    // Avatar-specific props
+    audioFile,
+    sourceVideo,
   } = props;
 
   // Core generation state
