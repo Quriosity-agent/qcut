@@ -165,6 +165,7 @@ export function snapTimeToFrame(time: number, fps: number): number {
  * for timeline rendering.
  */
 export function getFrameDuration(fps: number): number {
+  if (!Number.isFinite(fps) || fps <= 0) return 0;
   return 1 / fps;
 }
 
