@@ -221,6 +221,12 @@ export function setupFFmpegIPC(): void {
         audioFiles = [],
       } = options;
 
+      // Validate duration to prevent crashes or excessive resource usage
+      const validatedDuration = Math.min(
+        Math.max(duration || 0.1, 0.1),
+        timelineConstants.MAX_EXPORT_DURATION
+      );
+
       return new Promise<ExportResult>((resolve, reject) => {
         // Get session directories
         const frameDir: string = tempManager.getFrameDir(sessionId);
@@ -243,7 +249,7 @@ export function setupFFmpegIPC(): void {
           height,
           fps,
           quality,
-          duration,
+          validatedDuration,
           audioFiles,
           options.filterChain
         );
@@ -688,7 +694,7 @@ function buildFFmpegArgs(
     "-crf",
     crf,
     "-t",
-    Math.min(duration, timelineConstants.MAX_EXPORT_DURATION).toString(), // Dynamic duration with configurable safety limit
+    duration.toString(), // Duration already validated at entry point
     "-pix_fmt",
     "yuv420p",
     "-movflags",

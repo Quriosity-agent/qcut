@@ -195,19 +195,3 @@ export function calculateTimelineBuffer(duration: number): number {
   return Math.max(5, safeDuration * 0.1);
 }
 
-/**
- * Prevents runaway exports that could crash the system or create enormous files.
- * The 0.1s minimum catches edge cases where duration calculation goes wrong.
- * Default limit balances usability vs. system resources - most web users
- * aren't creating feature films.
- */
-export function validateExportDuration(
-  requestedDuration: number,
-  maxDuration: number = TIMELINE_CONSTANTS.MAX_EXPORT_DURATION
-): number {
-  // Ensure export duration is within safe bounds
-  const safeMax = Number.isFinite(maxDuration) && maxDuration > 0.1 ? maxDuration : TIMELINE_CONSTANTS.MAX_EXPORT_DURATION;
-  const safeRequested =
-    Number.isFinite(requestedDuration) && requestedDuration > 0 ? requestedDuration : 0.1;
-  return Math.min(Math.max(safeRequested, 0.1), safeMax);
-}
