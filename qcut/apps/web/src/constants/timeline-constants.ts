@@ -154,7 +154,7 @@ export function frameToTime(frame: number, fps: number): number {
  * WARNING: Invalid FPS (≤0) returns unmodified time to prevent crashes.
  */
 export function snapTimeToFrame(time: number, fps: number): number {
-  if (fps <= 0) return time; // Fallback for invalid FPS
+  if (!Number.isFinite(fps) || fps <= 0) return time; // Fallback for invalid FPS
   const frame = timeToFrame(time, fps);
   return frameToTime(frame, fps);
 }
@@ -192,25 +192,6 @@ export function calculateTimelineBuffer(duration: number): number {
   // Flexible buffer: 5s minimum or 10% of duration, whichever is greater
   const safeDuration = Number.isFinite(duration) && duration > 0 ? duration : 0;
   return Math.max(5, safeDuration * 0.1);
-}
-
-/**
- * Legacy function from the old 10-second hardcoded minimum era.
- * Kept for backward compatibility but use calculateMinimumTimelineDuration instead.
- * TODO: Phase this out once all callers are migrated.
- */
-export function calculateDynamicTimelineDuration(
-  actualContentDuration: number,
-  minimumDuration: number = 1
-): number {
-  // Dynamic duration with configurable minimum (default 1s instead of 10s)
-  const safeActual =
-    Number.isFinite(actualContentDuration) && actualContentDuration > 0
-      ? actualContentDuration
-      : 0;
-  const safeMinimum =
-    Number.isFinite(minimumDuration) && minimumDuration > 0 ? minimumDuration : 1;
-  return Math.max(safeActual, safeMinimum);
 }
 
 /**

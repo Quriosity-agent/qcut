@@ -347,10 +347,8 @@ export function Timeline() {
   // Update timeline duration when tracks change
   useEffect(() => {
     const totalDuration = getTotalDuration();
-    // Dynamic duration: use actual content duration, with configurable minimum for empty timeline
-    const finalDuration = Math.max(totalDuration, TIMELINE_CONSTANTS.DEFAULT_EMPTY_TIMELINE_DURATION);
-    setDuration(finalDuration);
-  }, [setDuration, getTotalDuration]);
+    setDuration(calculateMinimumTimelineDuration(totalDuration));
+  }, [tracks, setDuration, getTotalDuration]);
 
   // Old marquee system removed - using new SelectionBox component instead
 
