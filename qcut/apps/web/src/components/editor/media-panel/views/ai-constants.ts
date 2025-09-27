@@ -181,6 +181,57 @@ export const AI_MODELS: AIModel[] = [
       style_preset: "cinematic",
     },
   },
+
+  // Avatar Models
+  {
+    id: "wan_animate_replace",
+    name: "WAN Animate/Replace",
+    description: "Replace characters in existing videos",
+    price: "0.075", // Base price for 480p
+    resolution: "480p-720p",
+    max_duration: 30, // Supports longer videos for character replacement
+    category: "avatar",
+    requiredInputs: ["characterImage", "sourceVideo"],
+    endpoints: {
+      text_to_video: "fal-ai/wan/v2.2-14b/animate/replace",
+    },
+    default_params: {
+      resolution: "480p",
+      video_quality: "high",
+    },
+  },
+  {
+    id: "kling_avatar_pro",
+    name: "Kling Avatar Pro",
+    description: "Premium avatar video generation from image + audio",
+    price: "0.25", // Estimated pricing
+    resolution: "1080p",
+    max_duration: 10,
+    category: "avatar",
+    requiredInputs: ["characterImage", "audioFile"],
+    endpoints: {
+      text_to_video: "fal-ai/kling-video/v1/pro/ai-avatar",
+    },
+    default_params: {
+      resolution: "1080p",
+    },
+  },
+  {
+    id: "kling_avatar_standard",
+    name: "Kling Avatar Standard",
+    description: "Standard avatar video generation from image + audio",
+    price: "0.15", // Estimated pricing
+    resolution: "720p",
+    max_duration: 10,
+    category: "avatar",
+    requiredInputs: ["characterImage", "audioFile"],
+    endpoints: {
+      text_to_video: "fal-ai/kling-video/v1/standard/ai-avatar",
+    },
+    default_params: {
+      resolution: "720p",
+    },
+  },
 ];
 
 // UI Constants

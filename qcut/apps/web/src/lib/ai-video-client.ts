@@ -31,6 +31,16 @@ export interface ImageToVideoRequest {
   duration?: number;
 }
 
+export interface AvatarVideoRequest {
+  model: string;
+  characterImage: File;
+  audioFile?: File; // For Kling models
+  sourceVideo?: File; // For WAN animate/replace
+  prompt?: string;
+  resolution?: string;
+  duration?: number;
+}
+
 export interface VideoGenerationResponse {
   job_id: string;
   status: string;
@@ -748,6 +758,107 @@ export async function generateVideoFromImage(
       model: request.model,
       imageName: request.image.name,
       operation: "generateVideoFromImage",
+    });
+    throw error;
+  }
+}
+
+/**
+ * Generate avatar video using FAL AI models
+ * Supports WAN animate/replace and Kling avatar models
+ */
+export async function generateAvatarVideo(
+  request: AvatarVideoRequest
+): Promise<VideoGenerationResponse> {
+  try {
+    if (!FAL_API_KEY) {
+      throw new Error("FAL API key not configured");
+    }
+
+    console.log("🎭 Starting avatar video generation with FAL AI");
+    console.log("🎬 Model:", request.model);
+
+    // Get model configuration
+    const modelConfig = getModelConfig(request.model);
+    if (!modelConfig) {
+      throw new Error(`Unknown avatar model: ${request.model}`);
+    }
+
+    if (modelConfig.category !== "avatar") {
+      throw new Error(`Model ${request.model} is not an avatar model`);
+    }
+
+    // Convert character image to base64
+    const characterImageUrl = await imageToDataURL(request.characterImage);
+
+    // Determine endpoint and payload based on model
+    let endpoint: string;
+    let payload: any;
+
+    if (request.model === "wan_animate_replace") {
+      if (!request.sourceVideo) {
+        throw new Error("WAN Animate/Replace requires a source video");
+      }
+      // Convert source video to data URL (for WAN model)
+      const sourceVideoUrl = await imageToDataURL(request.sourceVideo);
+      endpoint = modelConfig.endpoints.text_to_video;
+      payload = {
+        video_url: sourceVideoUrl,
+        image_url: characterImageUrl,
+        resolution: request.resolution || "480p",
+        video_quality: "high",
+        ...(modelConfig.default_params || {}),
+      };
+    } else if (request.model === "kling_avatar_pro" || request.model === "kling_avatar_standard") {
+      if (!request.audioFile) {
+        throw new Error(`${request.model} requires an audio file`);
+      }
+      // Convert audio to data URL
+      const audioUrl = await imageToDataURL(request.audioFile);
+      endpoint = modelConfig.endpoints.text_to_video;
+      payload = {
+        image_url: characterImageUrl,
+        audio_url: audioUrl,
+        prompt: request.prompt || "",
+        ...(modelConfig.default_params || {}),
+      };
+    } else {
+      throw new Error(`Unsupported avatar model: ${request.model}`);
+    }
+
+    const jobId = generateJobId();
+    console.log(`🎭 Generating avatar video with: ${endpoint}`);
+    console.log("📝 Payload:", payload);
+
+    const response = await fetch(`${FAL_API_BASE}/${endpoint}`, {
+      method: "POST",
+      headers: {
+        "Authorization": `Key ${FAL_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(`Avatar generation failed: ${errorData.detail || response.statusText}`);
+    }
+
+    const result = await response.json();
+    console.log("✅ Avatar video generated:", result);
+
+    return {
+      job_id: jobId,
+      status: "completed",
+      message: `Avatar video generated successfully with ${request.model}`,
+      estimated_time: 0,
+      video_url: result.video?.url || result.video,
+      video_data: result,
+    };
+  } catch (error) {
+    handleAIServiceError(error, "Generate avatar video", {
+      model: request.model,
+      operation: "generateAvatarVideo",
     });
     throw error;
   }

@@ -12,6 +12,7 @@ import {
   Upload,
   X,
   Check,
+  UserIcon,
 } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { Textarea } from "@/components/ui/textarea";
@@ -47,6 +48,14 @@ export function AiView() {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Avatar-specific state variables
+  const [avatarImage, setAvatarImage] = useState<File | null>(null);
+  const [avatarImagePreview, setAvatarImagePreview] = useState<string | null>(null);
+  const [audioFile, setAudioFile] = useState<File | null>(null);
+  const [audioPreview, setAudioPreview] = useState<string | null>(null);
+  const [sourceVideo, setSourceVideo] = useState<File | null>(null);
+  const [sourceVideoPreview, setSourceVideoPreview] = useState<string | null>(null);
 
   // Use global AI tab state (CRITICAL: preserve global state integration)
   const { aiActiveTab: activeTab, setAiActiveTab: setActiveTab } =
@@ -274,7 +283,7 @@ export function AiView() {
               setActiveTab(value as AIActiveTab)
             }
           >
-            <TabsList className="grid w-full grid-cols-2">
+            <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="text" className="text-xs">
                 <TypeIcon className="size-3 mr-1" />
                 {!isCompact && "Text"}
@@ -282,6 +291,10 @@ export function AiView() {
               <TabsTrigger value="image" className="text-xs">
                 <ImageIcon className="size-3 mr-1" />
                 {!isCompact && "Image"}
+              </TabsTrigger>
+              <TabsTrigger value="avatar" className="text-xs">
+                <UserIcon className="size-3 mr-1" />
+                {!isCompact && "Avatar"}
               </TabsTrigger>
             </TabsList>
 
@@ -401,6 +414,270 @@ export function AiView() {
                 </div>
               </div>
             </TabsContent>
+
+            <TabsContent value="avatar" className="space-y-4">
+              {/* Avatar Image Upload */}
+              <div className="space-y-2">
+                <Label className="text-xs">
+                  Character Image {!isCompact && "(Required)"}
+                </Label>
+                <label
+                  htmlFor="avatar-image-input"
+                  className={`block border-2 border-dashed rounded-lg cursor-pointer transition-colors min-h-[120px] focus-within:outline-none focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2 ${
+                    avatarImage
+                      ? "border-primary/50 bg-primary/5 p-2"
+                      : "border-muted-foreground/25 hover:border-muted-foreground/50 p-4"
+                  }`}
+                  aria-label={avatarImage ? "Change avatar image" : "Click to upload avatar image"}
+                >
+                  {avatarImage && avatarImagePreview ? (
+                    <div className="relative flex flex-col items-center justify-center h-full">
+                      <img
+                        src={avatarImagePreview}
+                        alt={avatarImage?.name ?? "Avatar preview"}
+                        className="max-w-full max-h-32 mx-auto rounded object-contain"
+                      />
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="destructive"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setAvatarImage(null);
+                          setAvatarImagePreview(null);
+                          const input = document.getElementById('avatar-image-input') as HTMLInputElement;
+                          if (input) input.value = '';
+                        }}
+                        className="absolute top-1 right-1 h-6 w-6 p-0 flex items-center justify-center bg-red-500 hover:bg-red-600 text-white rounded-full shadow-sm"
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
+                      <div className="mt-2 text-xs text-muted-foreground text-center">
+                        {avatarImage.name}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center h-full space-y-2 text-center">
+                      <Upload className="size-8 text-muted-foreground" />
+                      <div className="text-xs text-muted-foreground">
+                        Click to upload character image
+                      </div>
+                      <div className="text-xs text-muted-foreground/70">
+                        JPG, PNG, WebP (max 10MB)
+                      </div>
+                    </div>
+                  )}
+                  <input
+                    id="avatar-image-input"
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+
+                      // Validate file
+                      if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+                        setError('Please select a valid image file (JPG, PNG, WebP)');
+                        return;
+                      }
+
+                      if (file.size > 10 * 1024 * 1024) {
+                        setError('Image file too large (max 10MB)');
+                        return;
+                      }
+
+                      setAvatarImage(file);
+                      setError(null);
+
+                      // Create preview
+                      const reader = new FileReader();
+                      reader.onload = (e) => setAvatarImagePreview(e.target?.result as string);
+                      reader.readAsDataURL(file);
+                    }}
+                    className="sr-only"
+                  />
+                </label>
+              </div>
+
+              {/* Audio File Upload (for Kling models) */}
+              <div className="space-y-2">
+                <Label className="text-xs">
+                  Audio File {!isCompact && "(For Kling Avatar models)"}
+                </Label>
+                <label
+                  htmlFor="avatar-audio-input"
+                  className={`block border-2 border-dashed rounded-lg cursor-pointer transition-colors min-h-[80px] focus-within:outline-none focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2 ${
+                    audioFile
+                      ? "border-primary/50 bg-primary/5 p-2"
+                      : "border-muted-foreground/25 hover:border-muted-foreground/50 p-4"
+                  }`}
+                  aria-label={audioFile ? "Change audio file" : "Click to upload audio file"}
+                >
+                  {audioFile ? (
+                    <div className="relative flex flex-col items-center justify-center h-full">
+                      <div className="flex items-center space-x-2">
+                        <div className="w-8 h-8 bg-primary/20 rounded-full flex items-center justify-center">
+                          <span className="text-xs">🎵</span>
+                        </div>
+                        <div>
+                          <div className="text-xs font-medium">{audioFile.name}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {(audioFile.size / 1024 / 1024).toFixed(1)} MB
+                          </div>
+                        </div>
+                      </div>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="destructive"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setAudioFile(null);
+                          const input = document.getElementById('avatar-audio-input') as HTMLInputElement;
+                          if (input) input.value = '';
+                        }}
+                        className="absolute top-1 right-1 h-6 w-6 p-0 flex items-center justify-center bg-red-500 hover:bg-red-600 text-white rounded-full shadow-sm"
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center h-full space-y-2 text-center">
+                      <Upload className="size-6 text-muted-foreground" />
+                      <div className="text-xs text-muted-foreground">
+                        Click to upload audio file
+                      </div>
+                      <div className="text-xs text-muted-foreground/70">
+                        MP3, WAV, AAC (max 50MB)
+                      </div>
+                    </div>
+                  )}
+                  <input
+                    id="avatar-audio-input"
+                    type="file"
+                    accept="audio/mpeg,audio/wav,audio/aac,audio/mp3"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+
+                      // Validate file
+                      if (!['audio/mpeg', 'audio/wav', 'audio/aac', 'audio/mp3'].includes(file.type)) {
+                        setError('Please select a valid audio file (MP3, WAV, AAC)');
+                        return;
+                      }
+
+                      if (file.size > 50 * 1024 * 1024) {
+                        setError('Audio file too large (max 50MB)');
+                        return;
+                      }
+
+                      setAudioFile(file);
+                      setError(null);
+                    }}
+                    className="sr-only"
+                  />
+                </label>
+              </div>
+
+              {/* Source Video Upload (for WAN animate/replace) */}
+              <div className="space-y-2">
+                <Label className="text-xs">
+                  Source Video {!isCompact && "(For WAN Animate/Replace)"}
+                </Label>
+                <label
+                  htmlFor="avatar-video-input"
+                  className={`block border-2 border-dashed rounded-lg cursor-pointer transition-colors min-h-[80px] focus-within:outline-none focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2 ${
+                    sourceVideo
+                      ? "border-primary/50 bg-primary/5 p-2"
+                      : "border-muted-foreground/25 hover:border-muted-foreground/50 p-4"
+                  }`}
+                  aria-label={sourceVideo ? "Change source video" : "Click to upload source video"}
+                >
+                  {sourceVideo ? (
+                    <div className="relative flex flex-col items-center justify-center h-full">
+                      <div className="flex items-center space-x-2">
+                        <div className="w-8 h-8 bg-primary/20 rounded-full flex items-center justify-center">
+                          <span className="text-xs">🎬</span>
+                        </div>
+                        <div>
+                          <div className="text-xs font-medium">{sourceVideo.name}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {(sourceVideo.size / 1024 / 1024).toFixed(1)} MB
+                          </div>
+                        </div>
+                      </div>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="destructive"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSourceVideo(null);
+                          const input = document.getElementById('avatar-video-input') as HTMLInputElement;
+                          if (input) input.value = '';
+                        }}
+                        className="absolute top-1 right-1 h-6 w-6 p-0 flex items-center justify-center bg-red-500 hover:bg-red-600 text-white rounded-full shadow-sm"
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center h-full space-y-2 text-center">
+                      <Upload className="size-6 text-muted-foreground" />
+                      <div className="text-xs text-muted-foreground">
+                        Click to upload source video
+                      </div>
+                      <div className="text-xs text-muted-foreground/70">
+                        MP4, MOV, AVI (max 100MB)
+                      </div>
+                    </div>
+                  )}
+                  <input
+                    id="avatar-video-input"
+                    type="file"
+                    accept="video/mp4,video/mov,video/avi"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+
+                      // Validate file
+                      if (!['video/mp4', 'video/mov', 'video/avi'].includes(file.type)) {
+                        setError('Please select a valid video file (MP4, MOV, AVI)');
+                        return;
+                      }
+
+                      if (file.size > 100 * 1024 * 1024) {
+                        setError('Video file too large (max 100MB)');
+                        return;
+                      }
+
+                      setSourceVideo(file);
+                      setError(null);
+                    }}
+                    className="sr-only"
+                  />
+                </label>
+              </div>
+
+              {/* Optional Prompt for Avatar */}
+              <div className="space-y-2">
+                <Label htmlFor="avatar-prompt" className="text-xs">
+                  {!isCompact && "Additional "}Prompt {!isCompact && "(optional)"}
+                </Label>
+                <Textarea
+                  id="avatar-prompt"
+                  placeholder={
+                    isCompact
+                      ? "Describe the avatar style..."
+                      : "Describe the desired avatar style or motion..."
+                  }
+                  value={prompt}
+                  onChange={(e) => setPrompt(e.target.value)}
+                  className="min-h-[40px] text-xs resize-none"
+                  maxLength={maxChars}
+                />
+              </div>
+            </TabsContent>
           </Tabs>
 
           {/* AI Model Selection */}
@@ -410,7 +687,17 @@ export function AiView() {
               {!isCompact && " (multi-select)"}
             </Label>
             <div className="space-y-1">
-              {AI_MODELS.map((model) => {
+              {AI_MODELS
+                .filter((model) => {
+                  // Filter models based on active tab
+                  if (activeTab === "avatar") {
+                    return model.category === "avatar";
+                  } else {
+                    // Show non-avatar models for text/image tabs
+                    return model.category !== "avatar";
+                  }
+                })
+                .map((model) => {
                 const inputId = `ai-model-${model.id}`;
                 const selected = isModelSelected(model.id);
                 return (
