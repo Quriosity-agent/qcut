@@ -857,12 +857,22 @@ export function AiView() {
               {generation.isGenerating ? (
                 <>
                   <Loader2 className="size-4 mr-2 animate-spin" />
-                  {isCompact ? "Generating..." : "Generating Video..."}
+                  {isCompact
+                    ? "Generating..."
+                    : activeTab === "avatar"
+                      ? "Generating Avatar..."
+                      : "Generating Video..."
+                  }
                 </>
               ) : (
                 <>
                   <BotIcon className="size-4 mr-2" />
-                  {isCompact ? "Generate" : "Generate Video"}
+                  {isCompact
+                    ? "Generate"
+                    : activeTab === "avatar"
+                      ? "Generate Avatar"
+                      : "Generate Video"
+                  }
                 </>
               )}
             </Button>

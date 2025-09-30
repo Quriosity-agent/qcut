@@ -232,6 +232,22 @@ export const AI_MODELS: AIModel[] = [
       resolution: "720p",
     },
   },
+  {
+    id: "bytedance_omnihuman_v1_5",
+    name: "ByteDance OmniHuman v1.5",
+    description: "Realistic human avatar with emotion-synced audio",
+    price: "0.20", // Estimated pricing
+    resolution: "1080p",
+    max_duration: 30, // 30 second audio limit
+    category: "avatar",
+    requiredInputs: ["characterImage", "audioFile"],
+    endpoints: {
+      text_to_video: "fal-ai/bytedance/omnihuman/v1.5",
+    },
+    default_params: {
+      resolution: "1080p",
+    },
+  },
 ];
 
 // UI Constants

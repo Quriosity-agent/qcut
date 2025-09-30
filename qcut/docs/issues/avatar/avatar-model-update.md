@@ -1,9 +1,18 @@
 # Avatar Model Integration Documentation
 
 ## Overview
-This document outlines the integration of avatar models for QCut's video editing platform. Three avatar models are being integrated to provide users with comprehensive avatar video generation capabilities.
+This document outlines the integration of avatar models for QCut's video editing platform. Four avatar models are being integrated to provide users with comprehensive avatar video generation capabilities.
 
-## Avatar Models
+## Avatar Models Summary
+
+| Model | Endpoint | Input Requirements | Best For | Pricing |
+|-------|----------|-------------------|----------|---------|
+| WAN Animate/Replace | `fal-ai/wan/v2.2-14b/animate/replace` | Image + Video | Character replacement in existing videos | $0.075-0.15/sec |
+| Kling Avatar Pro | `fal-ai/kling-video/v1/pro/ai-avatar` | Image + Audio | Premium avatar generation | ~$0.25/video |
+| Kling Avatar Standard | `fal-ai/kling-video/v1/standard/ai-avatar` | Image + Audio | Cost-effective avatar | ~$0.15/video |
+| ByteDance OmniHuman v1.5 | `fal-ai/bytedance/omnihuman/v1.5` | Image + Audio (≤30s) | Realistic human animation | TBD |
+
+## Detailed Model Specifications
 
 ### 1. WAN v2.2-14b Animate/Replace
 **API Endpoint:** `fal-ai/wan/v2.2-14b/animate/replace`
@@ -104,6 +113,43 @@ const result = await fal.subscribe("fal-ai/kling-video/v1/standard/ai-avatar", {
   input: {
     image_url: "avatar_image.jpg",
     audio_url: "speech_audio.mp3"
+  }
+});
+```
+
+---
+
+### 4. ByteDance OmniHuman v1.5
+**API Endpoint:** `fal-ai/bytedance/omnihuman/v1.5`
+**Documentation:** https://fal.ai/models/fal-ai/bytedance/omnihuman/v1.5/api
+
+**Capabilities:**
+- Generates vivid, high-quality avatar videos from static human images
+- Character emotions and movements correlate with audio input
+- Specializes in realistic human figure animation
+- Audio-synchronized lip movement and facial expressions
+
+**Required Parameters:**
+- `image_url`: URL of human figure image
+- `audio_url`: URL of audio file (must be under 30 seconds)
+
+**Optional Parameters:**
+- None specified
+
+**Output:**
+- `video.url`: Generated video file URL
+- `duration`: Video length in seconds
+
+**Constraints:**
+- Audio file must be under 30 seconds
+- Optimized for human figures (not cartoons/animals)
+
+**Example Usage:**
+```javascript
+const result = await fal.subscribe("fal-ai/bytedance/omnihuman/v1.5", {
+  input: {
+    image_url: "https://example.com/human_portrait.jpg",
+    audio_url: "https://example.com/speech.mp3"
   }
 });
 ```
@@ -678,9 +724,9 @@ const [sourceVideoPreview, setSourceVideoPreview] = useState<string | null>(null
 - Ensure avatar models only selectable on avatar tab
 - Update `canGenerate` logic for avatar requirements
 
-#### **Phase 6: Avatar Generation Logic** (35 minutes total)
+#### **✅ Phase 6: Avatar Generation Logic** (35 minutes total) - **IMPLEMENTED**
 
-**Subtask 6.1**: Create avatar video generation function (15 minutes)
+**✅ Subtask 6.1**: Create avatar video generation function (15 minutes) - **COMPLETED**
 - **File**: `qcut/apps/web/src/lib/ai-video-client.ts` (add new function)
 - **Action**: Create new `generateAvatarVideo()` function
 
@@ -785,7 +831,7 @@ export async function generateAvatarVideo(
 }
 ```
 
-**Subtask 6.2**: Update generation button logic for avatar support (10 minutes)
+**✅ Subtask 6.2**: Update generation button logic for avatar support (10 minutes) - **COMPLETED**
 - **File**: `qcut/apps/web/src/components/editor/media-panel/views/ai.tsx` (generation button section)
 - **Action**: Update the generate button to handle avatar models
 
@@ -916,7 +962,7 @@ const handleGenerateClick = useCallback(async () => {
 </Button>
 ```
 
-**Subtask 6.3**: Add avatar model cost estimation (10 minutes)
+**✅ Subtask 6.3**: Add avatar model cost estimation (10 minutes) - **COMPLETED**
 - **File**: `qcut/apps/web/src/lib/ai-video-client.ts` (lines 266-279)
 - **Action**: Add avatar models to `estimateCost()` function
 
@@ -994,20 +1040,76 @@ const modelCosts: {
 
 ### 🎯 **Implementation Priority**
 **High Priority (Core functionality):**
-1. Avatar model endpoints in `ai-video-client.ts`
-2. Avatar generation function in `ai-video-client.ts`
-3. Avatar models in `ai-constants.ts`
+1. Avatar model endpoints in `ai-video-client.ts` (Add ByteDance OmniHuman v1.5)
+2. Avatar generation function in `ai-video-client.ts` (Add OmniHuman support)
+3. Avatar models in `ai-constants.ts` (Add ByteDance OmniHuman v1.5)
 4. Avatar tab in UI (`ai.tsx`)
 
 **Medium Priority (Enhanced UX):**
 5. File upload components
-6. Model filtering logic
+6. Model filtering logic (Update to include 4th model)
 7. Progress tracking improvements
 
 **Low Priority (Polish):**
 8. Error message improvements
 9. Validation enhancements
 10. Testing coverage
+
+### 📝 **ByteDance OmniHuman v1.5 Integration Notes**
+
+**Model ID:** `bytedance_omnihuman_v1_5`
+
+**AI Constants Addition:**
+```typescript
+{
+  id: "bytedance_omnihuman_v1_5",
+  name: "ByteDance OmniHuman v1.5",
+  description: "Realistic human avatar with emotion-synced audio",
+  price: "TBD",
+  resolution: "1080p",
+  max_duration: 30, // 30 second audio limit
+  category: "avatar",
+  requiredInputs: ["image", "audio"],
+}
+```
+
+**AI Video Client Function Update:**
+```typescript
+// Add to generateAvatarVideo() function:
+else if (request.model === "bytedance_omnihuman_v1_5") {
+  if (!request.audioFile) {
+    throw new Error("ByteDance OmniHuman v1.5 requires an audio file");
+  }
+  if (request.duration && request.duration > 30) {
+    throw new Error("ByteDance OmniHuman v1.5 audio must be under 30 seconds");
+  }
+
+  const audioUrl = await imageToDataURL(request.audioFile);
+  endpoint = "fal-ai/bytedance/omnihuman/v1.5";
+  payload = {
+    image_url: characterImageUrl,
+    audio_url: audioUrl,
+  };
+}
+```
+
+**Model Filtering Update:**
+```typescript
+// Update avatar model filter in ai.tsx:
+if (activeTab === "avatar") {
+  return [
+    "wan_animate_replace",
+    "kling_avatar_pro",
+    "kling_avatar_standard",
+    "bytedance_omnihuman_v1_5" // ADD THIS
+  ].includes(model.id);
+}
+```
+
+**Validation Requirements:**
+- Character image (required)
+- Audio file under 30 seconds (required)
+- Optimized for human figures (add UI warning for non-human images)
 
 ### 🔒 **Risk Mitigation**
 - Each subtask is independent and can be tested individually

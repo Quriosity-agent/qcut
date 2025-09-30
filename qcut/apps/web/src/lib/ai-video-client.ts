@@ -822,39 +822,77 @@ export async function generateAvatarVideo(
         prompt: request.prompt || "",
         ...(modelConfig.default_params || {}),
       };
+    } else if (request.model === "bytedance_omnihuman_v1_5") {
+      if (!request.audioFile) {
+        throw new Error("ByteDance OmniHuman v1.5 requires an audio file");
+      }
+      // Convert audio to data URL
+      const audioUrl = await imageToDataURL(request.audioFile);
+      endpoint = modelConfig.endpoints.text_to_video;
+      payload = {
+        image_url: characterImageUrl,
+        audio_url: audioUrl,
+        ...(modelConfig.default_params || {}),
+      };
     } else {
       throw new Error(`Unsupported avatar model: ${request.model}`);
     }
 
     const jobId = generateJobId();
     console.log(`🎭 Generating avatar video with: ${endpoint}`);
-    console.log("📝 Payload:", payload);
-
-    const response = await fetch(`${FAL_API_BASE}/${endpoint}`, {
-      method: "POST",
-      headers: {
-        "Authorization": `Key ${FAL_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(payload),
+    console.log("📝 Payload:", {
+      ...payload,
+      video_url: payload.video_url ? `[base64 data: ${payload.video_url.length} chars]` : undefined,
+      image_url: payload.image_url ? `[base64 data: ${payload.image_url.length} chars]` : undefined,
+      audio_url: payload.audio_url ? `[base64 data: ${payload.audio_url.length} chars]` : undefined,
     });
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(`Avatar generation failed: ${errorData.detail || response.statusText}`);
+    console.log("📊 Payload size:", JSON.stringify(payload).length, "bytes");
+
+    // Add timeout to prevent hanging (3 minutes for large payloads)
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 180000); // 3 minutes
+
+    try {
+      console.log("🚀 Sending request to FAL AI...");
+      const response = await fetch(`${FAL_API_BASE}/${endpoint}`, {
+        method: "POST",
+        headers: {
+          "Authorization": `Key ${FAL_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+      console.log("📥 Received response:", response.status, response.statusText);
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.error("❌ FAL AI API error:", errorData);
+        throw new Error(`Avatar generation failed: ${errorData.detail || response.statusText}`);
+      }
+
+      const result = await response.json();
+      console.log("✅ Avatar video generated:", result);
+
+      return {
+        job_id: jobId,
+        status: "completed",
+        message: `Avatar video generated successfully with ${request.model}`,
+        estimated_time: 0,
+        video_url: result.video?.url || result.video,
+        video_data: result,
+      };
+    } catch (error) {
+      clearTimeout(timeoutId);
+      if (error instanceof Error && error.name === 'AbortError') {
+        console.error("❌ Request timeout after 3 minutes");
+        throw new Error("Avatar generation timed out after 3 minutes. The video/image files may be too large.");
+      }
+      throw error;
     }
-
-    const result = await response.json();
-    console.log("✅ Avatar video generated:", result);
-
-    return {
-      job_id: jobId,
-      status: "completed",
-      message: `Avatar video generated successfully with ${request.model}`,
-      estimated_time: 0,
-      video_url: result.video?.url || result.video,
-      video_data: result,
-    };
   } catch (error) {
     handleAIServiceError(error, "Generate avatar video", {
       model: request.model,

@@ -86,6 +86,7 @@ export interface UseAIGenerationProps {
   // ⚠️ CRITICAL ADDITIONS: Include missing dependencies from validation
   onJobIdChange?: (jobId: string | null) => void;
   // Avatar-specific props
+  avatarImage?: File | null;
   audioFile?: File | null;
   sourceVideo?: File | null;
   onGeneratedVideoChange?: (video: GeneratedVideo | null) => void;
