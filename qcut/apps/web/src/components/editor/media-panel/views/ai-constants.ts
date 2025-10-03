@@ -261,9 +261,30 @@ export const UI_CONSTANTS = {
 
 // File Upload Constants
 export const UPLOAD_CONSTANTS = {
+  // Image uploads (for image-to-video and avatar character images)
   ALLOWED_IMAGE_TYPES: ["image/jpeg", "image/png", "image/webp", "image/gif"],
   MAX_IMAGE_SIZE_BYTES: 10 * 1024 * 1024, // 10MB
+  MAX_IMAGE_SIZE_LABEL: "10MB",
   SUPPORTED_FORMATS: [".jpg", ".jpeg", ".png", ".webp", ".gif"],
+  IMAGE_FORMATS_LABEL: "JPG, PNG, WebP, GIF",
+
+  // Avatar-specific image uploads (character images only, no GIF for consistency)
+  ALLOWED_AVATAR_IMAGE_TYPES: ["image/jpeg", "image/png", "image/webp"],
+  AVATAR_IMAGE_FORMATS_LABEL: "JPG, PNG, WebP",
+
+  // Audio uploads (for Kling and ByteDance avatar models)
+  ALLOWED_AUDIO_TYPES: ["audio/mpeg", "audio/wav", "audio/aac", "audio/mp3"],
+  MAX_AUDIO_SIZE_BYTES: 50 * 1024 * 1024, // 50MB
+  MAX_AUDIO_SIZE_LABEL: "50MB",
+  SUPPORTED_AUDIO_FORMATS: [".mp3", ".wav", ".aac"],
+  AUDIO_FORMATS_LABEL: "MP3, WAV, AAC",
+
+  // Video uploads (for WAN animate/replace model)
+  ALLOWED_VIDEO_TYPES: ["video/mp4", "video/quicktime", "video/x-msvideo"],
+  MAX_VIDEO_SIZE_BYTES: 100 * 1024 * 1024, // 100MB
+  MAX_VIDEO_SIZE_LABEL: "100MB",
+  SUPPORTED_VIDEO_FORMATS: [".mp4", ".mov", ".avi"],
+  VIDEO_FORMATS_LABEL: "MP4, MOV, AVI",
 } as const;
 
 // Progress Constants
