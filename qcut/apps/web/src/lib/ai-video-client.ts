@@ -879,11 +879,10 @@ export async function generateAvatarVideo(
       const sourceVideoUrl = await fileToDataURL(request.sourceVideo);
       endpoint = modelConfig.endpoints.text_to_video;
       payload = {
+        ...(modelConfig.default_params || {}), // Defaults first
         video_url: sourceVideoUrl,
         image_url: characterImageUrl,
-        resolution: request.resolution || "480p",
-        video_quality: "high",
-        ...(modelConfig.default_params || {}),
+        ...(request.resolution && { resolution: request.resolution }), // Override default if provided
       };
     } else if (request.model === "kling_avatar_pro" || request.model === "kling_avatar_standard") {
       if (!request.audioFile) {
@@ -893,10 +892,11 @@ export async function generateAvatarVideo(
       const audioUrl = await fileToDataURL(request.audioFile);
       endpoint = modelConfig.endpoints.text_to_video;
       payload = {
+        ...(modelConfig.default_params || {}), // Defaults first
         image_url: characterImageUrl,
         audio_url: audioUrl,
-        prompt: request.prompt || "",
-        ...(modelConfig.default_params || {}),
+        ...(request.prompt && { prompt: request.prompt }), // Override default if provided
+        ...(request.resolution && { resolution: request.resolution }), // Override default if provided
       };
     } else if (request.model === "bytedance_omnihuman_v1_5") {
       if (!request.audioFile) {
@@ -906,9 +906,10 @@ export async function generateAvatarVideo(
       const audioUrl = await fileToDataURL(request.audioFile);
       endpoint = modelConfig.endpoints.text_to_video;
       payload = {
+        ...(modelConfig.default_params || {}), // Defaults first
         image_url: characterImageUrl,
         audio_url: audioUrl,
-        ...(modelConfig.default_params || {}),
+        ...(request.resolution && { resolution: request.resolution }), // Override default if provided
       };
     } else {
       throw new Error(`Unsupported avatar model: ${request.model}`);
