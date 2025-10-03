@@ -152,6 +152,3 @@ const sortParam = query
 - Use `new` when throwing an error
 - Use `String.trimStart()` and `String.trimEnd()` over `String.trimLeft()` and `String.trimRight()`
 
-**Next.js Specific Rules:**
-- Don't use `<img>` elements in Next.js projects
-- Don't use `<head>` elements in Next.js projects
