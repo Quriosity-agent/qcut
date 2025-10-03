@@ -639,13 +639,14 @@ export function AiView() {
                   <input
                     id="avatar-video-input"
                     type="file"
-                    accept="video/mp4,video/mov,video/avi"
+                    accept="video/mp4,video/quicktime,video/x-msvideo"
                     onChange={(e) => {
                       const file = e.target.files?.[0];
                       if (!file) return;
 
-                      // Validate file
-                      if (!['video/mp4', 'video/mov', 'video/avi'].includes(file.type)) {
+                      // Validate file - use correct browser MIME types
+                      const allowedVideoTypes = ['video/mp4', 'video/quicktime', 'video/x-msvideo'];
+                      if (!allowedVideoTypes.includes(file.type)) {
                         setError('Please select a valid video file (MP4, MOV, AVI)');
                         return;
                       }
