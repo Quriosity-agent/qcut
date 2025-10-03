@@ -95,8 +95,8 @@ function testGrayscaleConversion(): GrayscaleTestResult {
   // Test specific pixels (like in the test)
   const redPixel: [number, number, number] = [originalData[0], originalData[1], originalData[2]];
   const bluePixel: [number, number, number] = [originalData[200], originalData[201], originalData[202]]; // Approximate blue area
-  const greenPixel: [number, number, number] = [originalData[20000], originalData[20001], originalData[20002]]; // Approximate green area
-  const yellowPixel: [number, number, number] = [originalData[20200], originalData[20201], originalData[20202]]; // Approximate yellow area
+  const greenPixel: [number, number, number] = [originalData[20_000], originalData[20_001], originalData[20_002]]; // Approximate green area
+  const yellowPixel: [number, number, number] = [originalData[20_200], originalData[20_201], originalData[20_202]]; // Approximate yellow area
 
   console.log('✅ Original pixels:');
   console.log('  Red pixel:', redPixel);
