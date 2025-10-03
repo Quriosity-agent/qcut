@@ -18,7 +18,7 @@ export interface FileUploadConfig {
   /** File type category for display logic */
   fileType: "image" | "audio" | "video";
   /** Accepted MIME types */
-  acceptedTypes: string[];
+  acceptedTypes: readonly string[];
   /** Maximum file size in bytes */
   maxSizeBytes: number;
   /** Human-readable file size limit (e.g., "10MB") */

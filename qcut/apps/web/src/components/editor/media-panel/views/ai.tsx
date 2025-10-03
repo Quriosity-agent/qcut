@@ -427,10 +427,10 @@ export function AiView() {
                 label="Character Image"
                 helperText="Required"
                 fileType="image"
-                acceptedTypes={["image/jpeg", "image/png", "image/webp"]}
-                maxSizeBytes={10 * 1024 * 1024}
-                maxSizeLabel="10MB"
-                formatsLabel="JPG, PNG, WebP"
+                acceptedTypes={UPLOAD_CONSTANTS.ALLOWED_AVATAR_IMAGE_TYPES}
+                maxSizeBytes={UPLOAD_CONSTANTS.MAX_IMAGE_SIZE_BYTES}
+                maxSizeLabel={UPLOAD_CONSTANTS.MAX_IMAGE_SIZE_LABEL}
+                formatsLabel={UPLOAD_CONSTANTS.AVATAR_IMAGE_FORMATS_LABEL}
                 file={avatarImage}
                 preview={avatarImagePreview}
                 onFileChange={(file, preview) => {
@@ -448,10 +448,10 @@ export function AiView() {
                 label="Audio File"
                 helperText="For Kling Avatar models"
                 fileType="audio"
-                acceptedTypes={["audio/mpeg", "audio/wav", "audio/aac", "audio/mp3"]}
-                maxSizeBytes={50 * 1024 * 1024}
-                maxSizeLabel="50MB"
-                formatsLabel="MP3, WAV, AAC"
+                acceptedTypes={UPLOAD_CONSTANTS.ALLOWED_AUDIO_TYPES}
+                maxSizeBytes={UPLOAD_CONSTANTS.MAX_AUDIO_SIZE_BYTES}
+                maxSizeLabel={UPLOAD_CONSTANTS.MAX_AUDIO_SIZE_LABEL}
+                formatsLabel={UPLOAD_CONSTANTS.AUDIO_FORMATS_LABEL}
                 file={audioFile}
                 onFileChange={(file) => {
                   setAudioFile(file);
@@ -467,10 +467,10 @@ export function AiView() {
                 label="Source Video"
                 helperText="For WAN Animate/Replace"
                 fileType="video"
-                acceptedTypes={["video/mp4", "video/quicktime", "video/x-msvideo"]}
-                maxSizeBytes={100 * 1024 * 1024}
-                maxSizeLabel="100MB"
-                formatsLabel="MP4, MOV, AVI"
+                acceptedTypes={UPLOAD_CONSTANTS.ALLOWED_VIDEO_TYPES}
+                maxSizeBytes={UPLOAD_CONSTANTS.MAX_VIDEO_SIZE_BYTES}
+                maxSizeLabel={UPLOAD_CONSTANTS.MAX_VIDEO_SIZE_LABEL}
+                formatsLabel={UPLOAD_CONSTANTS.VIDEO_FORMATS_LABEL}
                 file={sourceVideo}
                 onFileChange={(file) => {
                   setSourceVideo(file);
