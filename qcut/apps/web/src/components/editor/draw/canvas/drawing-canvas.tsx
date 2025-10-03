@@ -306,7 +306,6 @@ export const DrawingCanvas = forwardRef<
       setIsDrawing,
       saveCanvasToHistory,
       onDrawingChange,
-      objects.length,
     ]),
 
     onTextInput: useCallback((canvasPosition: { x: number; y: number }) => {
@@ -659,7 +658,7 @@ export const DrawingCanvas = forwardRef<
         });
       }
     },
-    [addImageObject, clearAll, onDrawingChange, objects.length]
+    [onDrawingChange, objects.length]
   );
 
   // Image upload handler
