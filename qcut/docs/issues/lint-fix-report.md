@@ -197,20 +197,136 @@ Found 66 errors.  # ⬇️ Down from 72 (6 errors fixed)
 Found 33 warnings. # ⬇️ Down from 36 (3 warnings fixed)
 ```
 
+### ✅ Fixed: Exhaustive Dependencies Issue #4 - handleMouseMove (2025-10-03)
+
+**File**: `apps\web\src\components\editor\draw\hooks\use-canvas-drawing.ts` (Line 367)
+
+**Changes Made**:
+```typescript
+// BEFORE
+},
+[
+  getCanvasCoordinates,
+  drawLine,  // ❌ Not used in handleMouseMove callback
+  options.disabled,
+  options.tool.category,
+  options.tool.id,
+  options.onMoveObject,
+]
+
+// AFTER
+},
+[
+  getCanvasCoordinates,
+  options.disabled,
+  options.tool.category,
+  options.tool.id,
+  options.onMoveObject,
+]
+```
+
+**Impact**:
+- ✅ Removed unnecessary dependency `drawLine`
+- ✅ `drawLine` is not called in `handleMouseMove`
+- ✅ No functionality changes
+- ✅ 1 warning resolved
+
+### ✅ Fixed: Exhaustive Dependencies Issue #5 - handleTouchStart (2025-10-03)
+
+**File**: `apps\web\src\components\editor\draw\hooks\use-canvas-drawing.ts` (Line 640)
+
+**Changes Made**:
+```typescript
+// BEFORE
+},
+[
+  getCanvasCoordinates,
+  options.onDrawingStart,
+  options.disabled,
+  drawLine,  // ❌ Not used in callback
+  options.tool.category,
+  // ❌ MISSING: options.tool.id (used on line 679)
+  options.onSelectObject,
+  options.onTextInput,
+]
+
+// AFTER
+},
+[
+  getCanvasCoordinates,
+  options.onDrawingStart,
+  options.disabled,
+  options.tool.category,
+  options.tool.id,  // ✅ Added (used on line 679)
+  options.onSelectObject,
+  options.onTextInput,
+]
+```
+
+**Impact**:
+- ✅ Added missing dependency `options.tool.id` (line 679: `options.tool.id === "eraser"`)
+- ✅ Removed unnecessary dependency `drawLine`
+- ✅ Fixes reactivity bug where tool change wouldn't update callback
+- ✅ 2 warnings resolved
+
+### ✅ Fixed: Exhaustive Dependencies Issue #6 - handleTouchMove (2025-10-03)
+
+**File**: `apps\web\src\components\editor\draw\hooks\use-canvas-drawing.ts` (Line 695)
+
+**Changes Made**:
+```typescript
+// BEFORE
+},
+[
+  getCanvasCoordinates,
+  drawLine,  // ❌ Not used in callback
+  options.disabled,
+  options.tool.category,
+  // ❌ MISSING: options.tool.id (used on line 728)
+  options.onMoveObject,
+]
+
+// AFTER
+},
+[
+  getCanvasCoordinates,
+  options.disabled,
+  options.tool.category,
+  options.tool.id,  // ✅ Added (used on line 728)
+  options.onMoveObject,
+]
+```
+
+**Impact**:
+- ✅ Added missing dependency `options.tool.id` (line 728: `options.tool.id === "eraser"`)
+- ✅ Removed unnecessary dependency `drawLine`
+- ✅ Fixes reactivity bug for touch events
+- ✅ 2 warnings resolved
+
+**Lint Status After Fixes 4-6**:
+```bash
+$ bun run lint:clean
+Found 66 errors.  # Stayed at 66 (issues were warnings, not errors)
+Found 28 warnings. # ⬇️ Down from 33 (5 warnings fixed)
+```
+
 ## Summary of Fixes Applied
 
-| Fix # | File | Issue | Lines Fixed | Errors Fixed |
+| Fix # | File | Issue | Lines Fixed | Issues Fixed |
 |-------|------|-------|-------------|--------------|
-| 1 | `grayscale-converter.ts` | Numeric separators | 6 | 6 |
-| 2 | `drawing-canvas.tsx` | Exhaustive deps (`objects.length`) | 1 | 1 |
-| 3 | `drawing-canvas.tsx` | Exhaustive deps (`addImageObject`, `clearAll`) | 2 | 2 |
-| 4 | `use-canvas-drawing.ts` | Exhaustive deps (`drawLine`) | 1 | 1 |
-| **Total** | **3 files** | **4 issues** | **10 lines** | **10 errors** |
+| 1 | `grayscale-converter.ts` | Numeric separators | 6 | 6 errors |
+| 2 | `drawing-canvas.tsx` | Exhaustive deps (`objects.length`) | 1 | 1 error |
+| 3 | `drawing-canvas.tsx` | Exhaustive deps (`addImageObject`, `clearAll`) | 2 | 2 errors |
+| 4 | `use-canvas-drawing.ts` | Exhaustive deps (`drawLine` in handleMouseDown) | 1 | 1 error |
+| 5 | `use-canvas-drawing.ts` | Exhaustive deps (`drawLine` in handleMouseMove) | 1 | 1 warning |
+| 6 | `use-canvas-drawing.ts` | Exhaustive deps (handleTouchStart missing `tool.id`, extra `drawLine`) | 2 | 2 warnings |
+| 7 | `use-canvas-drawing.ts` | Exhaustive deps (handleTouchMove missing `tool.id`, extra `drawLine`) | 2 | 2 warnings |
+| **Total** | **3 files** | **7 issues** | **15 lines** | **10 errors + 5 warnings** |
 
 **Progress**:
 - ✅ **Before**: 72 errors, 36 warnings
-- ✅ **After**: 66 errors, 33 warnings
-- ✅ **Improvement**: 6 errors fixed, 3 warnings fixed
+- ✅ **After**: 66 errors, 28 warnings
+- ✅ **Improvement**: 6 errors fixed, 8 warnings fixed (14 total issues resolved)
 
 ## Remaining Issues
 

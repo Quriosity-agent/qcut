@@ -448,7 +448,6 @@ export const useCanvasDrawing = (
     },
     [
       getCanvasCoordinates,
-      drawLine,
       options.disabled,
       options.tool.category,
       options.tool.id,
@@ -686,8 +685,8 @@ export const useCanvasDrawing = (
       getCanvasCoordinates,
       options.onDrawingStart,
       options.disabled,
-      drawLine,
       options.tool.category,
+      options.tool.id,
       options.onSelectObject,
       options.onTextInput,
     ]
@@ -735,9 +734,9 @@ export const useCanvasDrawing = (
     },
     [
       getCanvasCoordinates,
-      drawLine,
       options.disabled,
       options.tool.category,
+      options.tool.id,
       options.onMoveObject,
     ]
   );
