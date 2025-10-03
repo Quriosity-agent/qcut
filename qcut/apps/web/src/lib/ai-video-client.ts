@@ -660,27 +660,28 @@ function generateJobId(): string {
 }
 
 /**
- * Converts image File to base64 data URL for inline embedding in API requests.
+ * Converts any File (image, audio, video) to base64 data URL for inline embedding in API requests.
  *
- * WHY: FAL API accepts base64 images instead of requiring separate upload endpoint.
+ * WHY: FAL API accepts base64-encoded files instead of requiring separate upload endpoint.
  * Performance: FileReader is asynchronous; wraps callback-based API in Promise for async/await usage.
  * Side effect: Entire file loaded into memory; ~33% size increase due to base64 encoding.
  *
  * Edge cases:
- * - Large images (>10MB) will cause noticeable UI lag during encoding
- * - Corrupted images cause FileReader to reject promise with DOMException
- * - Browser memory limits vary; ~50MB images may fail on mobile devices
+ * - Large files (>10MB images, >50MB videos) will cause noticeable UI lag during encoding
+ * - Corrupted files cause FileReader to reject promise with DOMException
+ * - Browser memory limits vary; large files may fail on mobile devices
+ * - Audio files: 30s MP3 (~500KB) becomes ~700KB; Video: 10s MP4 (~5MB) becomes ~6.7MB
  *
- * @param imageFile - Image file from user upload or drag-drop
- * @returns Base64-encoded data URL (e.g., "data:image/jpeg;base64,/9j/4AAQ...")
+ * @param file - File from user upload or drag-drop (image, audio, or video)
+ * @returns Base64-encoded data URL (e.g., "data:image/jpeg;base64,...", "data:audio/mpeg;base64,...", "data:video/mp4;base64,...")
  * @throws DOMException if file read fails or file is corrupted
  */
-async function imageToDataURL(imageFile: File): Promise<string> {
+async function fileToDataURL(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(reader.result as string);
     reader.onerror = reject;
-    reader.readAsDataURL(imageFile);
+    reader.readAsDataURL(file);
   });
 }
 
@@ -714,7 +715,7 @@ export async function generateVideoFromImage(
 
     // 1. Convert image to base64 data URL
     console.log("📤 Converting image to base64...");
-    const imageUrl = await imageToDataURL(request.image);
+    const imageUrl = await fileToDataURL(request.image);
     console.log("✅ Image converted to data URL");
 
     // 2. Generate video using centralized model configuration
@@ -864,7 +865,7 @@ export async function generateAvatarVideo(
     }
 
     // Convert character image to base64
-    const characterImageUrl = await imageToDataURL(request.characterImage);
+    const characterImageUrl = await fileToDataURL(request.characterImage);
 
     // Determine endpoint and payload based on model
     let endpoint: string;
@@ -875,7 +876,7 @@ export async function generateAvatarVideo(
         throw new Error("WAN Animate/Replace requires a source video");
       }
       // Convert source video to data URL (for WAN model)
-      const sourceVideoUrl = await imageToDataURL(request.sourceVideo);
+      const sourceVideoUrl = await fileToDataURL(request.sourceVideo);
       endpoint = modelConfig.endpoints.text_to_video;
       payload = {
         video_url: sourceVideoUrl,
@@ -889,7 +890,7 @@ export async function generateAvatarVideo(
         throw new Error(`${request.model} requires an audio file`);
       }
       // Convert audio to data URL
-      const audioUrl = await imageToDataURL(request.audioFile);
+      const audioUrl = await fileToDataURL(request.audioFile);
       endpoint = modelConfig.endpoints.text_to_video;
       payload = {
         image_url: characterImageUrl,
@@ -902,7 +903,7 @@ export async function generateAvatarVideo(
         throw new Error("ByteDance OmniHuman v1.5 requires an audio file");
       }
       // Convert audio to data URL
-      const audioUrl = await imageToDataURL(request.audioFile);
+      const audioUrl = await fileToDataURL(request.audioFile);
       endpoint = modelConfig.endpoints.text_to_video;
       payload = {
         image_url: characterImageUrl,
