@@ -133,20 +133,6 @@ export interface AvatarUploadState {
   sourceVideoPreview: string | null;
 }
 
-export interface AvatarModel {
-  id: string;
-  name: string;
-  description: string;
-  requiredInputs: ("characterImage" | "audioFile" | "sourceVideo")[];
-  maxDuration: number;
-  supportedResolutions: string[];
-  pricing: {
-    basePrice: number;
-    currency: string;
-    unit: string;
-  };
-}
-
 // Progress callback type from original source
 export type ProgressCallback = (progress: number, message: string) => void;
 
