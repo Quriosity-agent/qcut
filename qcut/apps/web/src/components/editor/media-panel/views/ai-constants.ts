@@ -273,7 +273,7 @@ export const UPLOAD_CONSTANTS = {
   AVATAR_IMAGE_FORMATS_LABEL: "JPG, PNG, WebP",
 
   // Audio uploads (for Kling and ByteDance avatar models)
-  ALLOWED_AUDIO_TYPES: ["audio/mpeg", "audio/wav", "audio/aac", "audio/mp3"],
+  ALLOWED_AUDIO_TYPES: ["audio/mpeg", "audio/wav", "audio/aac"], // audio/mpeg is the correct MIME type for MP3
   MAX_AUDIO_SIZE_BYTES: 50 * 1024 * 1024, // 50MB
   MAX_AUDIO_SIZE_LABEL: "50MB",
   SUPPORTED_AUDIO_FORMATS: [".mp3", ".wav", ".aac"],
