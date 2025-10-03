@@ -38,6 +38,8 @@ export interface AIModel {
   max_duration: number;
   endpoints: AIModelEndpoints;
   default_params?: AIModelParameters;
+  category?: "video" | "avatar";
+  requiredInputs?: string[];
 }
 
 // Generated Video Interfaces
@@ -76,13 +78,17 @@ export interface UseAIGenerationProps {
   prompt: string;
   selectedModels: string[];
   selectedImage: File | null;
-  activeTab: "text" | "image";
+  activeTab: "text" | "image" | "avatar";
   activeProject: TProject | null;
   onProgress: (progress: number, message: string) => void;
   onError: (error: string) => void;
   onComplete: (videos: GeneratedVideoResult[]) => void;
   // ⚠️ CRITICAL ADDITIONS: Include missing dependencies from validation
   onJobIdChange?: (jobId: string | null) => void;
+  // Avatar-specific props
+  avatarImage?: File | null;
+  audioFile?: File | null;
+  sourceVideo?: File | null;
   onGeneratedVideoChange?: (video: GeneratedVideo | null) => void;
 }
 
@@ -115,7 +121,17 @@ export interface AIHistoryState {
 }
 
 // UI State Types
-export type AIActiveTab = "text" | "image";
+export type AIActiveTab = "text" | "image" | "avatar";
+
+// Avatar-specific types
+export interface AvatarUploadState {
+  characterImage: File | null;
+  characterImagePreview: string | null;
+  audioFile: File | null;
+  audioPreview: string | null;
+  sourceVideo: File | null;
+  sourceVideoPreview: string | null;
+}
 
 // Progress callback type from original source
 export type ProgressCallback = (progress: number, message: string) => void;

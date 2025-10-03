@@ -181,6 +181,73 @@ export const AI_MODELS: AIModel[] = [
       style_preset: "cinematic",
     },
   },
+
+  // Avatar Models
+  {
+    id: "wan_animate_replace",
+    name: "WAN Animate/Replace",
+    description: "Replace characters in existing videos",
+    price: "0.075", // Base price for 480p
+    resolution: "480p-720p",
+    max_duration: 30, // Supports longer videos for character replacement
+    category: "avatar",
+    requiredInputs: ["characterImage", "sourceVideo"],
+    endpoints: {
+      text_to_video: "fal-ai/wan/v2.2-14b/animate/replace",
+    },
+    default_params: {
+      resolution: "480p",
+      video_quality: "high",
+    },
+  },
+  {
+    id: "kling_avatar_pro",
+    name: "Kling Avatar Pro",
+    description: "Premium avatar video generation from image + audio",
+    price: "0.25", // Estimated pricing
+    resolution: "1080p",
+    max_duration: 10,
+    category: "avatar",
+    requiredInputs: ["characterImage", "audioFile"],
+    endpoints: {
+      text_to_video: "fal-ai/kling-video/v1/pro/ai-avatar",
+    },
+    default_params: {
+      resolution: "1080p",
+    },
+  },
+  {
+    id: "kling_avatar_standard",
+    name: "Kling Avatar Standard",
+    description: "Standard avatar video generation from image + audio",
+    price: "0.15", // Estimated pricing
+    resolution: "720p",
+    max_duration: 10,
+    category: "avatar",
+    requiredInputs: ["characterImage", "audioFile"],
+    endpoints: {
+      text_to_video: "fal-ai/kling-video/v1/standard/ai-avatar",
+    },
+    default_params: {
+      resolution: "720p",
+    },
+  },
+  {
+    id: "bytedance_omnihuman_v1_5",
+    name: "ByteDance OmniHuman v1.5",
+    description: "Realistic human avatar with emotion-synced audio",
+    price: "0.20", // Estimated pricing
+    resolution: "1080p",
+    max_duration: 30, // 30 second audio limit
+    category: "avatar",
+    requiredInputs: ["characterImage", "audioFile"],
+    endpoints: {
+      text_to_video: "fal-ai/bytedance/omnihuman/v1.5",
+    },
+    default_params: {
+      resolution: "1080p",
+    },
+  },
 ];
 
 // UI Constants
@@ -194,9 +261,30 @@ export const UI_CONSTANTS = {
 
 // File Upload Constants
 export const UPLOAD_CONSTANTS = {
+  // Image uploads (for image-to-video and avatar character images)
   ALLOWED_IMAGE_TYPES: ["image/jpeg", "image/png", "image/webp", "image/gif"],
   MAX_IMAGE_SIZE_BYTES: 10 * 1024 * 1024, // 10MB
+  MAX_IMAGE_SIZE_LABEL: "10MB",
   SUPPORTED_FORMATS: [".jpg", ".jpeg", ".png", ".webp", ".gif"],
+  IMAGE_FORMATS_LABEL: "JPG, PNG, WebP, GIF",
+
+  // Avatar-specific image uploads (character images only, no GIF for consistency)
+  ALLOWED_AVATAR_IMAGE_TYPES: ["image/jpeg", "image/png", "image/webp"],
+  AVATAR_IMAGE_FORMATS_LABEL: "JPG, PNG, WebP",
+
+  // Audio uploads (for Kling and ByteDance avatar models)
+  ALLOWED_AUDIO_TYPES: ["audio/mpeg", "audio/wav", "audio/aac"], // audio/mpeg is the correct MIME type for MP3
+  MAX_AUDIO_SIZE_BYTES: 50 * 1024 * 1024, // 50MB
+  MAX_AUDIO_SIZE_LABEL: "50MB",
+  SUPPORTED_AUDIO_FORMATS: [".mp3", ".wav", ".aac"],
+  AUDIO_FORMATS_LABEL: "MP3, WAV, AAC",
+
+  // Video uploads (for WAN animate/replace model)
+  ALLOWED_VIDEO_TYPES: ["video/mp4", "video/quicktime", "video/x-msvideo"],
+  MAX_VIDEO_SIZE_BYTES: 100 * 1024 * 1024, // 100MB
+  MAX_VIDEO_SIZE_LABEL: "100MB",
+  SUPPORTED_VIDEO_FORMATS: [".mp4", ".mov", ".avi"],
+  VIDEO_FORMATS_LABEL: "MP4, MOV, AVI",
 } as const;
 
 // Progress Constants

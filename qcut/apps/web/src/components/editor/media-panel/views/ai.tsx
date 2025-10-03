@@ -12,6 +12,7 @@ import {
   Upload,
   X,
   Check,
+  UserIcon,
 } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { Textarea } from "@/components/ui/textarea";
@@ -25,6 +26,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { FileUpload } from "@/components/ui/file-upload";
 
 import { useTimelineStore } from "@/stores/timeline-store";
 import { useProjectStore } from "@/stores/project-store";
@@ -48,6 +50,14 @@ export function AiView() {
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Avatar-specific state variables
+  const [avatarImage, setAvatarImage] = useState<File | null>(null);
+  const [avatarImagePreview, setAvatarImagePreview] = useState<string | null>(null);
+  const [audioFile, setAudioFile] = useState<File | null>(null);
+  const [audioPreview, setAudioPreview] = useState<string | null>(null);
+  const [sourceVideo, setSourceVideo] = useState<File | null>(null);
+  const [sourceVideoPreview, setSourceVideoPreview] = useState<string | null>(null);
+
   // Use global AI tab state (CRITICAL: preserve global state integration)
   const { aiActiveTab: activeTab, setAiActiveTab: setActiveTab } =
     useMediaPanelStore();
@@ -67,6 +77,10 @@ export function AiView() {
     selectedImage,
     activeTab,
     activeProject,
+    // Avatar-specific props
+    avatarImage,
+    audioFile,
+    sourceVideo,
     onProgress: (progress, message) => {
       console.log(`[AI View] Progress: ${progress}% - ${message}`);
       // Progress is handled internally by the hook
@@ -274,7 +288,7 @@ export function AiView() {
               setActiveTab(value as AIActiveTab)
             }
           >
-            <TabsList className="grid w-full grid-cols-2">
+            <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="text" className="text-xs">
                 <TypeIcon className="size-3 mr-1" />
                 {!isCompact && "Text"}
@@ -282,6 +296,10 @@ export function AiView() {
               <TabsTrigger value="image" className="text-xs">
                 <ImageIcon className="size-3 mr-1" />
                 {!isCompact && "Image"}
+              </TabsTrigger>
+              <TabsTrigger value="avatar" className="text-xs">
+                <UserIcon className="size-3 mr-1" />
+                {!isCompact && "Avatar"}
               </TabsTrigger>
             </TabsList>
 
@@ -401,6 +419,86 @@ export function AiView() {
                 </div>
               </div>
             </TabsContent>
+
+            <TabsContent value="avatar" className="space-y-4">
+              {/* Avatar Image Upload */}
+              <FileUpload
+                id="avatar-image-input"
+                label="Character Image"
+                helperText="Required"
+                fileType="image"
+                acceptedTypes={UPLOAD_CONSTANTS.ALLOWED_AVATAR_IMAGE_TYPES}
+                maxSizeBytes={UPLOAD_CONSTANTS.MAX_IMAGE_SIZE_BYTES}
+                maxSizeLabel={UPLOAD_CONSTANTS.MAX_IMAGE_SIZE_LABEL}
+                formatsLabel={UPLOAD_CONSTANTS.AVATAR_IMAGE_FORMATS_LABEL}
+                file={avatarImage}
+                preview={avatarImagePreview}
+                onFileChange={(file, preview) => {
+                  setAvatarImage(file);
+                  setAvatarImagePreview(preview || null);
+                  if (file) setError(null);
+                }}
+                onError={setError}
+                isCompact={isCompact}
+              />
+
+              {/* Audio File Upload (for Kling models) */}
+              <FileUpload
+                id="avatar-audio-input"
+                label="Audio File"
+                helperText="For Kling Avatar models"
+                fileType="audio"
+                acceptedTypes={UPLOAD_CONSTANTS.ALLOWED_AUDIO_TYPES}
+                maxSizeBytes={UPLOAD_CONSTANTS.MAX_AUDIO_SIZE_BYTES}
+                maxSizeLabel={UPLOAD_CONSTANTS.MAX_AUDIO_SIZE_LABEL}
+                formatsLabel={UPLOAD_CONSTANTS.AUDIO_FORMATS_LABEL}
+                file={audioFile}
+                onFileChange={(file) => {
+                  setAudioFile(file);
+                  if (file) setError(null);
+                }}
+                onError={setError}
+                isCompact={isCompact}
+              />
+
+              {/* Source Video Upload (for WAN animate/replace) */}
+              <FileUpload
+                id="avatar-video-input"
+                label="Source Video"
+                helperText="For WAN Animate/Replace"
+                fileType="video"
+                acceptedTypes={UPLOAD_CONSTANTS.ALLOWED_VIDEO_TYPES}
+                maxSizeBytes={UPLOAD_CONSTANTS.MAX_VIDEO_SIZE_BYTES}
+                maxSizeLabel={UPLOAD_CONSTANTS.MAX_VIDEO_SIZE_LABEL}
+                formatsLabel={UPLOAD_CONSTANTS.VIDEO_FORMATS_LABEL}
+                file={sourceVideo}
+                onFileChange={(file) => {
+                  setSourceVideo(file);
+                  if (file) setError(null);
+                }}
+                onError={setError}
+                isCompact={isCompact}
+              />
+
+              {/* Optional Prompt for Avatar */}
+              <div className="space-y-2">
+                <Label htmlFor="avatar-prompt" className="text-xs">
+                  {!isCompact && "Additional "}Prompt {!isCompact && "(optional)"}
+                </Label>
+                <Textarea
+                  id="avatar-prompt"
+                  placeholder={
+                    isCompact
+                      ? "Describe the avatar style..."
+                      : "Describe the desired avatar style or motion..."
+                  }
+                  value={prompt}
+                  onChange={(e) => setPrompt(e.target.value)}
+                  className="min-h-[40px] text-xs resize-none"
+                  maxLength={maxChars}
+                />
+              </div>
+            </TabsContent>
           </Tabs>
 
           {/* AI Model Selection */}
@@ -410,7 +508,17 @@ export function AiView() {
               {!isCompact && " (multi-select)"}
             </Label>
             <div className="space-y-1">
-              {AI_MODELS.map((model) => {
+              {AI_MODELS
+                .filter((model) => {
+                  // Filter models based on active tab
+                  if (activeTab === "avatar") {
+                    return model.category === "avatar";
+                  } else {
+                    // Show non-avatar models for text/image tabs
+                    return model.category !== "avatar";
+                  }
+                })
+                .map((model) => {
                 const inputId = `ai-model-${model.id}`;
                 const selected = isModelSelected(model.id);
                 return (
@@ -566,12 +674,22 @@ export function AiView() {
               {generation.isGenerating ? (
                 <>
                   <Loader2 className="size-4 mr-2 animate-spin" />
-                  {isCompact ? "Generating..." : "Generating Video..."}
+                  {isCompact
+                    ? "Generating..."
+                    : activeTab === "avatar"
+                      ? "Generating Avatar..."
+                      : "Generating Video..."
+                  }
                 </>
               ) : (
                 <>
                   <BotIcon className="size-4 mr-2" />
-                  {isCompact ? "Generate" : "Generate Video"}
+                  {isCompact
+                    ? "Generate"
+                    : activeTab === "avatar"
+                      ? "Generate Avatar"
+                      : "Generate Video"
+                  }
                 </>
               )}
             </Button>

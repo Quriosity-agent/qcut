@@ -12,6 +12,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import {
   generateVideo,
   generateVideoFromImage,
+  generateAvatarVideo,
   handleApiError,
   getGenerationStatus,
   ProgressCallback,
@@ -53,6 +54,10 @@ export function useAIGeneration(props: UseAIGenerationProps) {
     onComplete,
     onJobIdChange,
     onGeneratedVideoChange,
+    // Avatar-specific props
+    avatarImage,
+    audioFile,
+    sourceVideo,
   } = props;
 
   // Core generation state
@@ -332,8 +337,10 @@ export function useAIGeneration(props: UseAIGenerationProps) {
   const handleMockGenerate = useCallback(async () => {
     if (activeTab === "text") {
       if (!prompt.trim() || selectedModels.length === 0) return;
-    } else {
+    } else if (activeTab === "image") {
       if (!selectedImage || selectedModels.length === 0) return;
+    } else if (activeTab === "avatar") {
+      if (!avatarImage || selectedModels.length === 0) return;
     }
 
     setIsGenerating(true);
@@ -414,10 +421,26 @@ export function useAIGeneration(props: UseAIGenerationProps) {
         console.log("❌ Validation failed - missing prompt or models");
         return;
       }
-    } else {
+    } else if (activeTab === "image") {
       if (!selectedImage || selectedModels.length === 0) {
         console.log("❌ Validation failed - missing image or models");
         return;
+      }
+    } else if (activeTab === "avatar") {
+      if (!avatarImage || selectedModels.length === 0) {
+        console.log("❌ Validation failed - missing avatar image or models");
+        return;
+      }
+      // Check model-specific requirements
+      for (const modelId of selectedModels) {
+        if (modelId === "wan_animate_replace" && !sourceVideo) {
+          console.log("❌ Validation failed - WAN model requires source video");
+          return;
+        }
+        if ((modelId === "kling_avatar_pro" || modelId === "kling_avatar_standard" || modelId === "bytedance_omnihuman_v1_5") && !audioFile) {
+          console.log("❌ Validation failed - Audio-based avatar model requires audio file");
+          return;
+        }
       }
     }
 
@@ -479,7 +502,7 @@ export function useAIGeneration(props: UseAIGenerationProps) {
             progressCallback
           );
           console.log(`  ✅ generateVideo returned:`, response);
-        } else if (selectedImage) {
+        } else if (activeTab === "image" && selectedImage) {
           console.log(`  🖼️ Calling generateVideoFromImage for ${modelId}...`);
           response = await generateVideoFromImage({
             image: selectedImage,
@@ -487,6 +510,16 @@ export function useAIGeneration(props: UseAIGenerationProps) {
             model: modelId,
           });
           console.log(`  ✅ generateVideoFromImage returned:`, response);
+        } else if (activeTab === "avatar" && avatarImage) {
+          console.log(`  🎭 Calling generateAvatarVideo for ${modelId}...`);
+          response = await generateAvatarVideo({
+            model: modelId,
+            characterImage: avatarImage,
+            audioFile: audioFile || undefined,
+            sourceVideo: sourceVideo || undefined,
+            prompt: prompt.trim() || undefined,
+          });
+          console.log(`  ✅ generateAvatarVideo returned:`, response);
         }
 
         console.log("🔍 DEBUG STEP 2: Post-API Response Analysis");
@@ -870,10 +903,26 @@ export function useAIGeneration(props: UseAIGenerationProps) {
     generationState,
 
     // Computed values
-    canGenerate:
-      activeTab === "text"
-        ? prompt.trim().length > 0 && selectedModels.length > 0
-        : selectedImage !== null && selectedModels.length > 0,
+    canGenerate: (() => {
+      if (selectedModels.length === 0) return false;
+
+      if (activeTab === "text") {
+        return prompt.trim().length > 0;
+      } else if (activeTab === "image") {
+        return selectedImage !== null;
+      } else if (activeTab === "avatar") {
+        if (!avatarImage) return false;
+
+        // Check model-specific requirements
+        for (const modelId of selectedModels) {
+          if (modelId === "wan_animate_replace" && !sourceVideo) return false;
+          if ((modelId === "kling_avatar_pro" || modelId === "kling_avatar_standard" || modelId === "bytedance_omnihuman_v1_5") && !audioFile) return false;
+        }
+        return true;
+      }
+
+      return false;
+    })(),
     isPolling: pollingInterval !== null,
     hasResults: generatedVideos.length > 0,
 
