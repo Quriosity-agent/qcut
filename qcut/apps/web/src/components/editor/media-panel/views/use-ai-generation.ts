@@ -403,7 +403,7 @@ export function useAIGeneration(props: UseAIGenerationProps) {
     } finally {
       setIsGenerating(false);
     }
-  }, [activeTab, prompt, selectedImage, selectedModels, onError, onComplete]);
+  }, [activeTab, prompt, selectedImage, avatarImage, selectedModels, onError, onComplete]);
 
   // Main generation function
   const handleGenerate = useCallback(async () => {
@@ -827,7 +827,14 @@ export function useAIGeneration(props: UseAIGenerationProps) {
     activeTab,
     prompt,
     selectedImage,
+    avatarImage,
+    audioFile,
+    sourceVideo,
     selectedModels,
+    activeProject,
+    addMediaItem,
+    mediaStoreLoading,
+    mediaStoreError,
     onError,
     onComplete,
     startStatusPolling,

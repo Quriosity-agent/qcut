@@ -550,6 +550,54 @@ if (activeTab === "avatar") {
 - ✅ Replaced template literals with string literals (4 style issues)
 - ✅ 8 total issues resolved (2 complexity + 6 style)
 
+### ✅ Fixed: Exhaustive Dependencies - use-ai-generation.ts Session 5 (2025-10-04)
+
+**File**: `apps\web\src\components\editor\media-panel\views\use-ai-generation.ts` (Lines 337, 409)
+
+**Changes Made**:
+```typescript
+// BEFORE (Line 337 - handleMockGenerate)
+}, [activeTab, prompt, selectedImage, selectedModels, onError, onComplete]);
+
+// AFTER
+}, [activeTab, prompt, selectedImage, avatarImage, selectedModels, onError, onComplete]);
+
+// BEFORE (Line 409 - handleGenerate)
+}, [
+  activeTab,
+  prompt,
+  selectedImage,
+  selectedModels,
+  onError,
+  onComplete,
+  startStatusPolling,
+]);
+
+// AFTER
+}, [
+  activeTab,
+  prompt,
+  selectedImage,
+  avatarImage,
+  audioFile,
+  sourceVideo,
+  selectedModels,
+  activeProject,
+  addMediaItem,
+  mediaStoreLoading,
+  mediaStoreError,
+  onError,
+  onComplete,
+  startStatusPolling,
+]);
+```
+
+**Impact**:
+- ✅ Added missing `avatarImage` dependency to handleMockGenerate
+- ✅ Added missing dependencies to handleGenerate: `avatarImage`, `audioFile`, `sourceVideo`, `activeProject`, `addMediaItem`, `mediaStoreLoading`, `mediaStoreError`
+- ✅ Fixed React hook reactivity bugs (callbacks update when dependencies change)
+- ✅ 8 correctness errors resolved (1 + 7 dependencies)
+
 ## Summary of Fixes Applied
 
 | Fix # | File | Issue | Lines Fixed | Issues Fixed |
@@ -571,7 +619,9 @@ if (activeTab === "avatar") {
 | 15 | `use-ai-generation.ts` | Extra boolean casts (lines 577, 715) | 2 | 2 complexity warnings |
 | 16 | `use-ai-generation.ts` | Useless else blocks (lines 911, 913) | 2 | 2 style warnings |
 | 17 | `use-ai-generation.ts` | Unused template literals (lines 804-806, 813) | 4 | 4 style warnings |
-| **Total** | **5 files** | **17 issues** | **43 lines** | **15 errors + 29 warnings** |
+| 18 | `use-ai-generation.ts` | Exhaustive dependencies (line 337 - handleMockGenerate) | 1 | 1 correctness error |
+| 19 | `use-ai-generation.ts` | Exhaustive dependencies (line 409 - handleGenerate) | 7 | 7 correctness errors |
+| **Total** | **5 files** | **19 issues** | **51 lines** | **23 errors + 29 warnings** |
 
 **Progress**:
 - ✅ **Before (Initial)**: 72 errors, 36 warnings
@@ -580,7 +630,8 @@ if (activeTab === "avatar") {
 - ✅ **After (2025-10-04 - Session 2)**: ~56 errors, ~20 warnings (5 errors + 3 warnings fixed)
 - ✅ **After (2025-10-04 - Session 3)**: ~56 errors, ~12 warnings (0 errors + 8 warnings fixed)
 - ✅ **After (2025-10-04 - Session 4)**: ~56 errors, ~4 warnings (0 errors + 8 warnings fixed)
-- ✅ **Total Improvement**: 16 errors fixed, 32 warnings fixed (48 total issues resolved)
+- ✅ **After (2025-10-04 - Session 5)**: ~48 errors, ~4 warnings (8 errors + 0 warnings fixed)
+- ✅ **Total Improvement**: 24 errors fixed, 32 warnings fixed (56 total issues resolved)
 
 ## Remaining Issues
 
