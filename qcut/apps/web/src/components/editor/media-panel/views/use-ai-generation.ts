@@ -501,7 +501,7 @@ export function useAIGeneration(props: UseAIGenerationProps) {
             },
             progressCallback
           );
-          console.log(`  ✅ generateVideo returned:`, response);
+          console.log("  ✅ generateVideo returned:", response);
         } else if (activeTab === "image" && selectedImage) {
           console.log(`  🖼️ Calling generateVideoFromImage for ${modelId}...`);
           response = await generateVideoFromImage({
@@ -509,7 +509,7 @@ export function useAIGeneration(props: UseAIGenerationProps) {
             prompt: prompt.trim(),
             model: modelId,
           });
-          console.log(`  ✅ generateVideoFromImage returned:`, response);
+          console.log("  ✅ generateVideoFromImage returned:", response);
         } else if (activeTab === "avatar" && avatarImage) {
           console.log(`  🎭 Calling generateAvatarVideo for ${modelId}...`);
           response = await generateAvatarVideo({
@@ -519,7 +519,7 @@ export function useAIGeneration(props: UseAIGenerationProps) {
             sourceVideo: sourceVideo || undefined,
             prompt: prompt.trim() || undefined,
           });
-          console.log(`  ✅ generateAvatarVideo returned:`, response);
+          console.log("  ✅ generateAvatarVideo returned:", response);
         }
 
         console.log("🔍 DEBUG STEP 2: Post-API Response Analysis");
@@ -534,11 +534,11 @@ export function useAIGeneration(props: UseAIGenerationProps) {
         }
 
         console.log(`\n  🔍 Response analysis for ${modelId}:`);
-        console.log(`    - response exists:`, !!response);
-        console.log(`    - response.job_id:`, response?.job_id);
-        console.log(`    - response.video_url:`, response?.video_url);
-        console.log(`    - response.status:`, response?.status);
-        console.log(`    - Full response:`, JSON.stringify(response, null, 2));
+        console.log("    - response exists:", !!response);
+        console.log("    - response.job_id:", response?.job_id);
+        console.log("    - response.video_url:", response?.video_url);
+        console.log("    - response.status:", response?.status);
+        console.log("    - Full response:", JSON.stringify(response, null, 2));
 
         if (response?.job_id) {
           console.log("🔍 FIX VERIFICATION: Processing job_id response");
