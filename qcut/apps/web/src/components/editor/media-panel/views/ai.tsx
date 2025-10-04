@@ -96,7 +96,7 @@ export function AiView() {
         videoCount: videos.length,
         models: selectedModels,
       });
-      console.log(`[AI View] onComplete callback finished`);
+      console.log("[AI View] onComplete callback finished");
     },
   });
 
@@ -513,10 +513,9 @@ export function AiView() {
                   // Filter models based on active tab
                   if (activeTab === "avatar") {
                     return model.category === "avatar";
-                  } else {
-                    // Show non-avatar models for text/image tabs
-                    return model.category !== "avatar";
                   }
+                  // Show non-avatar models for text/image tabs
+                  return model.category !== "avatar";
                 })
                 .map((model) => {
                 const inputId = `ai-model-${model.id}`;
