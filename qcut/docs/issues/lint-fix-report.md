@@ -781,11 +781,75 @@ delete (mockElectronAPI.ffmpeg as any).processFrame;
 **Remaining Issues Note**:
 All lint errors and warnings have been completely resolved! The only remaining parse errors are in documentation files (`docs/completed/*.tsx`) that have incorrect file extensions and should be `.md` files.
 
+### ✅ Fixed: Parse Error in ffmpeg-handler.ts (2025-10-05 - Session 9)
+
+**File**: `electron/ffmpeg-handler.ts` (Lines 478-525)
+
+**Problem**:
+Previous Session 7 fix removed the catch block but left the try block, creating invalid syntax:
+```
+× Expected a catch clause but instead found '}'.
+  electron\ffmpeg-handler.ts:515:5
+```
+
+**Changes Made**:
+```typescript
+// BEFORE (Invalid - try without catch)
+): Promise<void> => {
+  try {
+    const frameDir: string = tempManager.getFrameDir(sessionId);
+    const inputPath: string = path.join(frameDir, inputFrameName);
+    const outputPath: string = path.join(frameDir, outputFrameName);
+
+    // ... verification code ...
+
+    return new Promise<void>((resolve, reject) => {
+      // ... promise implementation ...
+    });
+  }  // <-- Parse error: try without catch
+}
+
+// AFTER (Valid - removed unnecessary try block)
+): Promise<void> => {
+  const frameDir: string = tempManager.getFrameDir(sessionId);
+  const inputPath: string = path.join(frameDir, inputFrameName);
+  const outputPath: string = path.join(frameDir, outputFrameName);
+
+  // Verify input file exists
+  if (!fs.existsSync(inputPath)) {
+    throw new Error(`Input frame not found: ${inputPath}`);
+  }
+
+  const ffmpegPath = getFFmpegPath();
+
+  return new Promise<void>((resolve, reject) => {
+    // ... promise implementation ...
+  });
+}
+```
+
+**Impact**:
+- ✅ Parse error completely resolved
+- ✅ All 529 files successfully formatted with Biome
+- ✅ No lint errors remaining (`bun lint:clean` shows 0 errors, 0 warnings)
+- ✅ All functionality preserved (error handling remains in Promise reject)
+
+**Verification**:
+```bash
+$ bun x @biomejs/biome format --write .
+Formatted 529 files in 25s. Fixed 1 file.
+
+$ bun lint:clean
+Checked 658 files in 24s. No fixes applied.
+```
+
 ## Remaining Issues
 
-### 1. Configuration File Formatting - NOT FIXED
-**File**: `biome.json`
-**Status**: Low priority (formatting only)
+### 1. Documentation Files with Wrong Extensions
+**Files**: `docs/completed/*.tsx`
+**Status**: These are markdown files with `.tsx` extension causing parse errors
+**Impact**: Does not affect code functionality
+**Action**: Can be renamed to `.md` if needed
 
 ## Next Steps
 
