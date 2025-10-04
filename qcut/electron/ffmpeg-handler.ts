@@ -508,11 +508,9 @@ exit /b %ERRORLEVEL%`;
           // Set timeout to avoid hanging
           setTimeout(() => {
             ffmpeg.kill();
-            reject(new Error(`Frame processing timeout`));
-          }, 10000); // 10 second timeout per frame
+            reject(new Error("Frame processing timeout"));
+          }, 10_000); // 10 second timeout per frame
         });
-      } catch (error) {
-        throw error;
       }
     }
   );

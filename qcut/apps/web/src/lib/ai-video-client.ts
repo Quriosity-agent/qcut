@@ -176,7 +176,7 @@ export async function generateVideo(
       const requestedDuration = payload.duration || 6;
       payload.duration = requestedDuration >= 10 ? "10" : "6";
       // Remove resolution as Hailuo doesn't use it directly
-      delete payload.resolution;
+      payload.resolution = undefined;
     } else if (request.model === "wan_turbo") {
       // WAN Turbo only accepts specific resolutions
       const validResolutions = ["480p", "580p", "720p"];
@@ -928,7 +928,7 @@ export async function generateAvatarVideo(
 
     // Add timeout to prevent hanging (3 minutes for large payloads)
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 180000); // 3 minutes
+    const timeoutId = setTimeout(() => controller.abort(), 180_000); // 3 minutes
 
     try {
       console.log("🚀 Sending request to FAL AI...");

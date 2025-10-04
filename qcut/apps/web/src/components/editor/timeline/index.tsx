@@ -348,7 +348,7 @@ export function Timeline() {
   useEffect(() => {
     const totalDuration = getTotalDuration();
     setDuration(calculateMinimumTimelineDuration(totalDuration));
-  }, [tracks, setDuration, getTotalDuration]);
+  }, [setDuration, getTotalDuration]);
 
   // Old marquee system removed - using new SelectionBox component instead
 
@@ -795,11 +795,11 @@ export function Timeline() {
                               // Better formatting for seconds - show more precision for sub-second intervals
                               if (interval >= 1) {
                                 return `${Math.floor(secs)}s`;
-                              } else if (interval >= 0.1) {
-                                return `${secs.toFixed(1)}s`;
-                              } else {
-                                return `${secs.toFixed(2)}s`;
                               }
+                              if (interval >= 0.1) {
+                                return `${secs.toFixed(1)}s`;
+                              }
+                              return `${secs.toFixed(2)}s`;
                             };
 
                             return formatTime(time);
