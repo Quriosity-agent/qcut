@@ -190,7 +190,6 @@ export const useCanvasDrawing = (
   );
 
   // This function is no longer used for drawing, but kept for compatibility
-  // biome-ignore lint/correctness/useExhaustiveDependencies: canvasRef.current intentionally omitted to avoid unnecessary re-creations
   const drawLine = useCallback(
     (from: { x: number; y: number }, to: { x: number; y: number }) => {
       // No-op - drawing is now handled by stroke objects

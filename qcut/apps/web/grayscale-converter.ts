@@ -144,8 +144,8 @@ function testGrayscaleConversion(): GrayscaleTestResult {
     actualValues: {
       red: convertedRedPixel[0],
       blue: grayscaleData[201],
-      green: grayscaleData[20001],
-      yellow: grayscaleData[20201]
+      green: grayscaleData[20_001],
+      yellow: grayscaleData[20_201]
     }
   };
 }
