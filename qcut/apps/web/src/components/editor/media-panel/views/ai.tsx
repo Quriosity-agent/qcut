@@ -52,11 +52,15 @@ export function AiView() {
 
   // Avatar-specific state variables
   const [avatarImage, setAvatarImage] = useState<File | null>(null);
-  const [avatarImagePreview, setAvatarImagePreview] = useState<string | null>(null);
+  const [avatarImagePreview, setAvatarImagePreview] = useState<string | null>(
+    null
+  );
   const [audioFile, setAudioFile] = useState<File | null>(null);
   const [audioPreview, setAudioPreview] = useState<string | null>(null);
   const [sourceVideo, setSourceVideo] = useState<File | null>(null);
-  const [sourceVideoPreview, setSourceVideoPreview] = useState<string | null>(null);
+  const [sourceVideoPreview, setSourceVideoPreview] = useState<string | null>(
+    null
+  );
 
   // Use global AI tab state (CRITICAL: preserve global state integration)
   const { aiActiveTab: activeTab, setAiActiveTab: setActiveTab } =
@@ -483,7 +487,8 @@ export function AiView() {
               {/* Optional Prompt for Avatar */}
               <div className="space-y-2">
                 <Label htmlFor="avatar-prompt" className="text-xs">
-                  {!isCompact && "Additional "}Prompt {!isCompact && "(optional)"}
+                  {!isCompact && "Additional "}Prompt{" "}
+                  {!isCompact && "(optional)"}
                 </Label>
                 <Textarea
                   id="avatar-prompt"
@@ -508,16 +513,14 @@ export function AiView() {
               {!isCompact && " (multi-select)"}
             </Label>
             <div className="space-y-1">
-              {AI_MODELS
-                .filter((model) => {
-                  // Filter models based on active tab
-                  if (activeTab === "avatar") {
-                    return model.category === "avatar";
-                  }
-                  // Show non-avatar models for text/image tabs
-                  return model.category !== "avatar";
-                })
-                .map((model) => {
+              {AI_MODELS.filter((model) => {
+                // Filter models based on active tab
+                if (activeTab === "avatar") {
+                  return model.category === "avatar";
+                }
+                // Show non-avatar models for text/image tabs
+                return model.category !== "avatar";
+              }).map((model) => {
                 const inputId = `ai-model-${model.id}`;
                 const selected = isModelSelected(model.id);
                 return (
@@ -677,8 +680,7 @@ export function AiView() {
                     ? "Generating..."
                     : activeTab === "avatar"
                       ? "Generating Avatar..."
-                      : "Generating Video..."
-                  }
+                      : "Generating Video..."}
                 </>
               ) : (
                 <>
@@ -687,8 +689,7 @@ export function AiView() {
                     ? "Generate"
                     : activeTab === "avatar"
                       ? "Generate Avatar"
-                      : "Generate Video"
-                  }
+                      : "Generate Video"}
                 </>
               )}
             </Button>

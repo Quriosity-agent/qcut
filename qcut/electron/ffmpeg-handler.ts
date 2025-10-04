@@ -254,8 +254,6 @@ export function setupFFmpegIPC(): void {
           options.filterChain
         );
 
-
-
         // Verify input directory exists and has frames
         if (!fs.existsSync(frameDir)) {
           const error: string = `Frame directory does not exist: ${frameDir}`;
@@ -415,16 +413,24 @@ exit /b %ERRORLEVEL%`;
         const ffmpegPath = getFFmpegPath();
 
         const result = await new Promise<boolean>((resolve) => {
-          const ffmpeg = spawn(ffmpegPath, [
-            '-f', 'lavfi',
-            '-i', 'testsrc2=duration=0.1:size=32x32:rate=1',
-            '-vf', filterChain,
-            '-f', 'null',
-            '-'
-          ], {
-            windowsHide: true,
-            stdio: ['ignore', 'pipe', 'pipe']
-          });
+          const ffmpeg = spawn(
+            ffmpegPath,
+            [
+              "-f",
+              "lavfi",
+              "-i",
+              "testsrc2=duration=0.1:size=32x32:rate=1",
+              "-vf",
+              filterChain,
+              "-f",
+              "null",
+              "-",
+            ],
+            {
+              windowsHide: true,
+              stdio: ["ignore", "pipe", "pipe"],
+            }
+          );
 
           let settled = false;
           const finish = (ok: boolean) => {
@@ -434,12 +440,12 @@ exit /b %ERRORLEVEL%`;
             resolve(ok);
           };
 
-          ffmpeg.on('close', (code) => {
+          ffmpeg.on("close", (code) => {
             const isValid = code === 0;
             finish(isValid);
           });
 
-          ffmpeg.on('error', (err) => {
+          ffmpeg.on("error", (err) => {
             finish(false);
           });
 
@@ -462,56 +468,69 @@ exit /b %ERRORLEVEL%`;
     "processFrame",
     async (
       event: IpcMainInvokeEvent,
-      { sessionId, inputFrameName, outputFrameName, filterChain }: FrameProcessOptions
+      {
+        sessionId,
+        inputFrameName,
+        outputFrameName,
+        filterChain,
+      }: FrameProcessOptions
     ): Promise<void> => {
-      try {
-        const frameDir: string = tempManager.getFrameDir(sessionId);
-        const inputPath: string = path.join(frameDir, inputFrameName);
-        const outputPath: string = path.join(frameDir, outputFrameName);
+      const frameDir: string = tempManager.getFrameDir(sessionId);
+      const inputPath: string = path.join(frameDir, inputFrameName);
+      const outputPath: string = path.join(frameDir, outputFrameName);
 
-        // Verify input file exists
-        if (!fs.existsSync(inputPath)) {
-          throw new Error(`Input frame not found: ${inputPath}`);
-        }
-
-        const ffmpegPath = getFFmpegPath();
-
-        return new Promise<void>((resolve, reject) => {
-          const ffmpeg = spawn(ffmpegPath, [
-            '-i', inputPath,           // Input PNG frame
-            '-vf', filterChain,        // Apply filter chain
-            '-y',                      // Overwrite output
-            outputPath                 // Output filtered PNG
-          ], {
-            windowsHide: true,
-            stdio: ['ignore', 'pipe', 'pipe']
-          });
-
-          let stderr = '';
-
-          ffmpeg.stderr?.on('data', (data) => {
-            stderr += data.toString();
-          });
-
-          ffmpeg.on('close', (code) => {
-            if (code === 0) {
-              resolve();
-            } else {
-              reject(new Error(`FFmpeg frame processing failed with code ${code}: ${stderr}`));
-            }
-          });
-
-          ffmpeg.on('error', (err) => {
-            reject(err);
-          });
-
-          // Set timeout to avoid hanging
-          setTimeout(() => {
-            ffmpeg.kill();
-            reject(new Error("Frame processing timeout"));
-          }, 10_000); // 10 second timeout per frame
-        });
+      // Verify input file exists
+      if (!fs.existsSync(inputPath)) {
+        throw new Error(`Input frame not found: ${inputPath}`);
       }
+
+      const ffmpegPath = getFFmpegPath();
+
+      return new Promise<void>((resolve, reject) => {
+        const ffmpeg = spawn(
+          ffmpegPath,
+          [
+            "-i",
+            inputPath, // Input PNG frame
+            "-vf",
+            filterChain, // Apply filter chain
+            "-y", // Overwrite output
+            outputPath, // Output filtered PNG
+          ],
+          {
+            windowsHide: true,
+            stdio: ["ignore", "pipe", "pipe"],
+          }
+        );
+
+        let stderr = "";
+
+        ffmpeg.stderr?.on("data", (data) => {
+          stderr += data.toString();
+        });
+
+        ffmpeg.on("close", (code) => {
+          if (code === 0) {
+            resolve();
+          } else {
+            reject(
+              new Error(
+                `FFmpeg frame processing failed with code ${code}: ${stderr}`
+              )
+            );
+          }
+        });
+
+        ffmpeg.on("error", (err) => {
+          reject(err);
+        });
+
+        // Set timeout to avoid hanging
+        setTimeout(() => {
+          ffmpeg.kill();
+          reject(new Error("Frame processing timeout"));
+        }, 10_000); // 10 second timeout per frame
+      });
     }
   );
 }

@@ -719,7 +719,10 @@ export function Timeline() {
                 {/* Time markers */}
                 {(() => {
                   // Calculate appropriate time interval based on zoom level
-                  const getTimeInterval = (zoom: number, totalDuration: number) => {
+                  const getTimeInterval = (
+                    zoom: number,
+                    totalDuration: number
+                  ) => {
                     const pixelsPerSecond =
                       TIMELINE_CONSTANTS.PIXELS_PER_SECOND * zoom;
 
@@ -741,7 +744,10 @@ export function Timeline() {
                   };
 
                   const interval = getTimeInterval(zoomLevel, duration);
-                  const markerCount = Math.max(Math.ceil(duration / interval) + 1, 10); // Ensure at least 10 markers for short content
+                  const markerCount = Math.max(
+                    Math.ceil(duration / interval) + 1,
+                    10
+                  ); // Ensure at least 10 markers for short content
 
                   return Array.from({ length: markerCount }, (_, i) => {
                     const time = i * interval;

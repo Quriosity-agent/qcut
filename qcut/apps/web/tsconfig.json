@@ -21,11 +21,6 @@
     "forceConsistentCasingInFileNames": true
   },
   "include": ["src"],
-  "exclude": [
-    "node_modules",
-    "src/app",
-    "src/migration-backup",
-    "src/test"
-  ],
+  "exclude": ["node_modules", "src/app", "src/migration-backup", "src/test"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }

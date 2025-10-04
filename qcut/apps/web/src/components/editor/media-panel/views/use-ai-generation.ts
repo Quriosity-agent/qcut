@@ -403,7 +403,15 @@ export function useAIGeneration(props: UseAIGenerationProps) {
     } finally {
       setIsGenerating(false);
     }
-  }, [activeTab, prompt, selectedImage, avatarImage, selectedModels, onError, onComplete]);
+  }, [
+    activeTab,
+    prompt,
+    selectedImage,
+    avatarImage,
+    selectedModels,
+    onError,
+    onComplete,
+  ]);
 
   // Main generation function
   const handleGenerate = useCallback(async () => {
@@ -437,8 +445,15 @@ export function useAIGeneration(props: UseAIGenerationProps) {
           console.log("❌ Validation failed - WAN model requires source video");
           return;
         }
-        if ((modelId === "kling_avatar_pro" || modelId === "kling_avatar_standard" || modelId === "bytedance_omnihuman_v1_5") && !audioFile) {
-          console.log("❌ Validation failed - Audio-based avatar model requires audio file");
+        if (
+          (modelId === "kling_avatar_pro" ||
+            modelId === "kling_avatar_standard" ||
+            modelId === "bytedance_omnihuman_v1_5") &&
+          !audioFile
+        ) {
+          console.log(
+            "❌ Validation failed - Audio-based avatar model requires audio file"
+          );
           return;
         }
       }
@@ -459,19 +474,27 @@ export function useAIGeneration(props: UseAIGenerationProps) {
     try {
       console.log("🔍 DEBUG STEP 1: Pre-Generation State Check");
       console.log("   - activeProject:", !!activeProject, activeProject?.id);
-      console.log("   - addMediaItem available:", !!addMediaItem, typeof addMediaItem);
+      console.log(
+        "   - addMediaItem available:",
+        !!addMediaItem,
+        typeof addMediaItem
+      );
       console.log("   - mediaStoreLoading:", mediaStoreLoading);
       console.log("   - mediaStoreError:", mediaStoreError);
 
       const generations: GeneratedVideoResult[] = [];
-      console.log(`\n📦 Starting generation for ${selectedModels.length} models`);
+      console.log(
+        `\n📦 Starting generation for ${selectedModels.length} models`
+      );
 
       // Sequential generation to avoid rate limits
       for (let i = 0; i < selectedModels.length; i++) {
         const modelId = selectedModels[i];
         const modelName = AI_MODELS.find((m) => m.id === modelId)?.name;
 
-        console.log(`\n🎬 [${i + 1}/${selectedModels.length}] Processing model: ${modelId} (${modelName})`);
+        console.log(
+          `\n🎬 [${i + 1}/${selectedModels.length}] Processing model: ${modelId} (${modelName})`
+        );
 
         setStatusMessage(
           `Generating with ${modelName} (${i + 1}/${selectedModels.length})`
@@ -525,8 +548,16 @@ export function useAIGeneration(props: UseAIGenerationProps) {
         console.log("🔍 DEBUG STEP 2: Post-API Response Analysis");
         console.log("   - response received:", !!response);
         if (response) {
-          console.log("   - response.video_url:", !!response.video_url, response.video_url?.substring(0, 50) + "...");
-          console.log("   - response.job_id:", !!response.job_id, response.job_id);
+          console.log(
+            "   - response.video_url:",
+            !!response.video_url,
+            response.video_url?.substring(0, 50) + "..."
+          );
+          console.log(
+            "   - response.job_id:",
+            !!response.job_id,
+            response.job_id
+          );
           console.log("   - response keys:", Object.keys(response));
           console.log("   - response.status:", response.status);
         } else {
@@ -548,7 +579,10 @@ export function useAIGeneration(props: UseAIGenerationProps) {
           if (response?.video_url) {
             // 🎯 OPTION 1 FIX: Direct mode with job_id - video is ready immediately
             console.log("🎉 FIX SUCCESS: Direct mode with job_id detected!");
-            console.log("🎯 DIRECT MODE WITH JOB_ID - Video URL:", response.video_url);
+            console.log(
+              "🎯 DIRECT MODE WITH JOB_ID - Video URL:",
+              response.video_url
+            );
 
             debugLogger.log("AIGeneration", "DIRECT_VIDEO_WITH_JOB_ID", {
               model: modelId,
@@ -572,16 +606,42 @@ export function useAIGeneration(props: UseAIGenerationProps) {
 
             // 🔥 MOVED MEDIA INTEGRATION HERE - Steps 3-8
             console.log("🔍 DEBUG STEP 3: Media Integration Condition Check");
-            console.log("   - activeProject check:", !!activeProject, "→", activeProject?.id);
-            console.log("   - addMediaItem check:", !!addMediaItem, "→", typeof addMediaItem);
-            console.log("   - response.video_url check:", !!response.video_url, "→", response.video_url ? "EXISTS" : "MISSING");
-            console.log("   - WILL EXECUTE MEDIA INTEGRATION:", !!(activeProject && addMediaItem && response.video_url));
+            console.log(
+              "   - activeProject check:",
+              !!activeProject,
+              "→",
+              activeProject?.id
+            );
+            console.log(
+              "   - addMediaItem check:",
+              !!addMediaItem,
+              "→",
+              typeof addMediaItem
+            );
+            console.log(
+              "   - response.video_url check:",
+              !!response.video_url,
+              "→",
+              response.video_url ? "EXISTS" : "MISSING"
+            );
+            console.log(
+              "   - WILL EXECUTE MEDIA INTEGRATION:",
+              !!(activeProject && addMediaItem && response.video_url)
+            );
 
             if (activeProject && addMediaItem) {
-              console.log("🔍 DEBUG STEP 4: ✅ EXECUTING Media Integration Block");
-              console.log("   - About to download from URL:", response.video_url);
+              console.log(
+                "🔍 DEBUG STEP 4: ✅ EXECUTING Media Integration Block"
+              );
+              console.log(
+                "   - About to download from URL:",
+                response.video_url
+              );
               console.log("   - Project ID for media:", activeProject.id);
-              console.log("   - addMediaItem function type:", typeof addMediaItem);
+              console.log(
+                "   - addMediaItem function type:",
+                typeof addMediaItem
+              );
 
               console.log("🔄 Attempting to add to media store...");
               console.log("   - Project ID:", activeProject.id);
@@ -589,16 +649,24 @@ export function useAIGeneration(props: UseAIGenerationProps) {
 
               try {
                 // Download video and create file
-                console.log("📥 Downloading video from URL:", response.video_url);
+                console.log(
+                  "📥 Downloading video from URL:",
+                  response.video_url
+                );
                 const videoResponse = await fetch(response.video_url);
 
                 console.log("🔍 DEBUG STEP 5: Video Download Progress");
                 console.log("   - videoResponse.ok:", videoResponse.ok);
                 console.log("   - videoResponse.status:", videoResponse.status);
-                console.log("   - videoResponse.headers content-type:", videoResponse.headers.get('content-type'));
+                console.log(
+                  "   - videoResponse.headers content-type:",
+                  videoResponse.headers.get("content-type")
+                );
 
                 if (!videoResponse.ok) {
-                  throw new Error(`Failed to download video: ${videoResponse.status} ${videoResponse.statusText}`);
+                  throw new Error(
+                    `Failed to download video: ${videoResponse.status} ${videoResponse.statusText}`
+                  );
                 }
 
                 const blob = await videoResponse.blob();
@@ -628,11 +696,20 @@ export function useAIGeneration(props: UseAIGenerationProps) {
                 console.log("📤 Adding to media store with item:", mediaItem);
 
                 console.log("🔍 DEBUG STEP 7: About to Call addMediaItem");
-                console.log("   - mediaItem structure:", JSON.stringify(mediaItem, null, 2));
+                console.log(
+                  "   - mediaItem structure:",
+                  JSON.stringify(mediaItem, null, 2)
+                );
                 console.log("   - projectId:", activeProject.id);
-                console.log("   - addMediaItem is function:", typeof addMediaItem === 'function');
+                console.log(
+                  "   - addMediaItem is function:",
+                  typeof addMediaItem === "function"
+                );
 
-                const newItemId = await addMediaItem(activeProject.id, mediaItem);
+                const newItemId = await addMediaItem(
+                  activeProject.id,
+                  mediaItem
+                );
 
                 console.log("🔍 DEBUG STEP 8: ✅ addMediaItem COMPLETED");
                 console.log("   - newItemId:", newItemId);
@@ -662,7 +739,9 @@ export function useAIGeneration(props: UseAIGenerationProps) {
             }
           } else {
             // Traditional polling mode: no video_url yet
-            console.log("🔍 FIX VERIFICATION: Polling mode - no video_url, starting polling");
+            console.log(
+              "🔍 FIX VERIFICATION: Polling mode - no video_url, starting polling"
+            );
 
             const newVideo: GeneratedVideo = {
               jobId: response.job_id,
@@ -688,7 +767,10 @@ export function useAIGeneration(props: UseAIGenerationProps) {
           }
         } else if (response?.video_url) {
           // Direct mode: video is ready immediately
-          console.log("🎯 DIRECT MODE TRIGGERED - Video URL:", response.video_url);
+          console.log(
+            "🎯 DIRECT MODE TRIGGERED - Video URL:",
+            response.video_url
+          );
           debugLogger.log("AIGeneration", "DIRECT_VIDEO_READY", {
             model: modelId,
             videoUrl: response.video_url,
@@ -710,16 +792,39 @@ export function useAIGeneration(props: UseAIGenerationProps) {
 
           // Automatically add to media store
           console.log("🔍 DEBUG STEP 3: Media Integration Condition Check");
-          console.log("   - activeProject check:", !!activeProject, "→", activeProject?.id);
-          console.log("   - addMediaItem check:", !!addMediaItem, "→", typeof addMediaItem);
-          console.log("   - response.video_url check:", !!response.video_url, "→", response.video_url ? "EXISTS" : "MISSING");
-          console.log("   - WILL EXECUTE MEDIA INTEGRATION:", !!(activeProject && addMediaItem && response.video_url));
+          console.log(
+            "   - activeProject check:",
+            !!activeProject,
+            "→",
+            activeProject?.id
+          );
+          console.log(
+            "   - addMediaItem check:",
+            !!addMediaItem,
+            "→",
+            typeof addMediaItem
+          );
+          console.log(
+            "   - response.video_url check:",
+            !!response.video_url,
+            "→",
+            response.video_url ? "EXISTS" : "MISSING"
+          );
+          console.log(
+            "   - WILL EXECUTE MEDIA INTEGRATION:",
+            !!(activeProject && addMediaItem && response.video_url)
+          );
 
           if (activeProject && addMediaItem) {
-            console.log("🔍 DEBUG STEP 4: ✅ EXECUTING Media Integration Block");
+            console.log(
+              "🔍 DEBUG STEP 4: ✅ EXECUTING Media Integration Block"
+            );
             console.log("   - About to download from URL:", response.video_url);
             console.log("   - Project ID for media:", activeProject.id);
-            console.log("   - addMediaItem function type:", typeof addMediaItem);
+            console.log(
+              "   - addMediaItem function type:",
+              typeof addMediaItem
+            );
 
             console.log("🔄 Attempting to add to media store...");
             console.log("   - Project ID:", activeProject.id);
@@ -733,10 +838,15 @@ export function useAIGeneration(props: UseAIGenerationProps) {
               console.log("🔍 DEBUG STEP 5: Video Download Progress");
               console.log("   - videoResponse.ok:", videoResponse.ok);
               console.log("   - videoResponse.status:", videoResponse.status);
-              console.log("   - videoResponse.headers content-type:", videoResponse.headers.get('content-type'));
+              console.log(
+                "   - videoResponse.headers content-type:",
+                videoResponse.headers.get("content-type")
+              );
 
               if (!videoResponse.ok) {
-                throw new Error(`Failed to download video: ${videoResponse.status} ${videoResponse.statusText}`);
+                throw new Error(
+                  `Failed to download video: ${videoResponse.status} ${videoResponse.statusText}`
+                );
               }
 
               const blob = await videoResponse.blob();
@@ -766,9 +876,15 @@ export function useAIGeneration(props: UseAIGenerationProps) {
               console.log("📤 Adding to media store with item:", mediaItem);
 
               console.log("🔍 DEBUG STEP 7: About to Call addMediaItem");
-              console.log("   - mediaItem structure:", JSON.stringify(mediaItem, null, 2));
+              console.log(
+                "   - mediaItem structure:",
+                JSON.stringify(mediaItem, null, 2)
+              );
               console.log("   - projectId:", activeProject.id);
-              console.log("   - addMediaItem is function:", typeof addMediaItem === 'function');
+              console.log(
+                "   - addMediaItem is function:",
+                typeof addMediaItem === "function"
+              );
 
               const newItemId = await addMediaItem(activeProject.id, mediaItem);
 
@@ -797,7 +913,10 @@ export function useAIGeneration(props: UseAIGenerationProps) {
             console.warn("   - addMediaItem:", !!addMediaItem);
           }
         } else {
-          console.warn("⚠️ Response has neither job_id nor video_url:", response);
+          console.warn(
+            "⚠️ Response has neither job_id nor video_url:",
+            response
+          );
         }
       }
 
@@ -808,7 +927,9 @@ export function useAIGeneration(props: UseAIGenerationProps) {
       setGeneratedVideos(generations);
       setStatusMessage(`Generated ${generations.length} videos successfully!`);
 
-      console.log(`📤 Calling onComplete callback with ${generations.length} videos`);
+      console.log(
+        `📤 Calling onComplete callback with ${generations.length} videos`
+      );
       onComplete?.(generations);
       console.log("✅ onComplete callback finished");
     } catch (error) {
@@ -925,7 +1046,13 @@ export function useAIGeneration(props: UseAIGenerationProps) {
         // Check model-specific requirements
         for (const modelId of selectedModels) {
           if (modelId === "wan_animate_replace" && !sourceVideo) return false;
-          if ((modelId === "kling_avatar_pro" || modelId === "kling_avatar_standard" || modelId === "bytedance_omnihuman_v1_5") && !audioFile) return false;
+          if (
+            (modelId === "kling_avatar_pro" ||
+              modelId === "kling_avatar_standard" ||
+              modelId === "bytedance_omnihuman_v1_5") &&
+            !audioFile
+          )
+            return false;
         }
         return true;
       }
