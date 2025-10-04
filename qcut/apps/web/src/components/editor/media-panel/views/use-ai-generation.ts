@@ -574,7 +574,7 @@ export function useAIGeneration(props: UseAIGenerationProps) {
             console.log("🔍 DEBUG STEP 3: Media Integration Condition Check");
             console.log("   - activeProject check:", !!activeProject, "→", activeProject?.id);
             console.log("   - addMediaItem check:", !!addMediaItem, "→", typeof addMediaItem);
-            console.log("   - response.video_url check:", !!response.video_url, "→", !!response.video_url ? "EXISTS" : "MISSING");
+            console.log("   - response.video_url check:", !!response.video_url, "→", response.video_url ? "EXISTS" : "MISSING");
             console.log("   - WILL EXECUTE MEDIA INTEGRATION:", !!(activeProject && addMediaItem && response.video_url));
 
             if (activeProject && addMediaItem) {
@@ -712,7 +712,7 @@ export function useAIGeneration(props: UseAIGenerationProps) {
           console.log("🔍 DEBUG STEP 3: Media Integration Condition Check");
           console.log("   - activeProject check:", !!activeProject, "→", activeProject?.id);
           console.log("   - addMediaItem check:", !!addMediaItem, "→", typeof addMediaItem);
-          console.log("   - response.video_url check:", !!response.video_url, "→", !!response.video_url ? "EXISTS" : "MISSING");
+          console.log("   - response.video_url check:", !!response.video_url, "→", response.video_url ? "EXISTS" : "MISSING");
           console.log("   - WILL EXECUTE MEDIA INTEGRATION:", !!(activeProject && addMediaItem && response.video_url));
 
           if (activeProject && addMediaItem) {
@@ -801,16 +801,16 @@ export function useAIGeneration(props: UseAIGenerationProps) {
         }
       }
 
-      console.log(`\n✅✅✅ GENERATION LOOP COMPLETE ✅✅✅`);
-      console.log(`  - Total generations created:`, generations.length);
-      console.log(`  - Generations:`, generations);
+      console.log("\n✅✅✅ GENERATION LOOP COMPLETE ✅✅✅");
+      console.log("  - Total generations created:", generations.length);
+      console.log("  - Generations:", generations);
 
       setGeneratedVideos(generations);
       setStatusMessage(`Generated ${generations.length} videos successfully!`);
 
       console.log(`📤 Calling onComplete callback with ${generations.length} videos`);
       onComplete?.(generations);
-      console.log(`✅ onComplete callback finished`);
+      console.log("✅ onComplete callback finished");
     } catch (error) {
       console.error("❌❌❌ GENERATION FAILED ❌❌❌", error);
       const errorMessage = handleApiError(error);
@@ -908,9 +908,11 @@ export function useAIGeneration(props: UseAIGenerationProps) {
 
       if (activeTab === "text") {
         return prompt.trim().length > 0;
-      } else if (activeTab === "image") {
+      }
+      if (activeTab === "image") {
         return selectedImage !== null;
-      } else if (activeTab === "avatar") {
+      }
+      if (activeTab === "avatar") {
         if (!avatarImage) return false;
 
         // Check model-specific requirements

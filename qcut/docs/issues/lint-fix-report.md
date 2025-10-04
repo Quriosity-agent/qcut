@@ -463,7 +463,7 @@ if (import.meta.env.DEV && false) {
 - ✅ Commented out debug logging properly
 - ✅ 5 correctness errors resolved
 
-### ✅ Fixed: Unused Template Literals - use-ai-generation.ts (2025-10-04)
+### ✅ Fixed: Unused Template Literals - use-ai-generation.ts Session 3 (2025-10-04)
 
 **File**: `apps\web\src\components\editor\media-panel\views\use-ai-generation.ts` (Lines 504, 512, 522, 537-541)
 
@@ -499,6 +499,57 @@ console.log("    - Full response:", JSON.stringify(response, null, 2));
 - ✅ Improved code consistency in debug logging
 - ✅ 8 style warnings resolved
 
+### ✅ Fixed: Extra Boolean Casts & Useless Else - use-ai-generation.ts Session 4 (2025-10-04)
+
+**File**: `apps\web\src\components\editor\media-panel\views\use-ai-generation.ts` (Lines 577, 715, 804-806, 813, 911, 913)
+
+**Changes Made**:
+```typescript
+// BEFORE (Lines 577, 715) - Extra boolean cast
+console.log("   - response.video_url check:", !!response.video_url, "→", !!response.video_url ? "EXISTS" : "MISSING");
+
+// AFTER
+console.log("   - response.video_url check:", !!response.video_url, "→", response.video_url ? "EXISTS" : "MISSING");
+
+// BEFORE (Lines 804-806, 813) - Unused template literals
+console.log(`\n✅✅✅ GENERATION LOOP COMPLETE ✅✅✅`);
+console.log(`  - Total generations created:`, generations.length);
+console.log(`  - Generations:`, generations);
+console.log(`✅ onComplete callback finished`);
+
+// AFTER
+console.log("\n✅✅✅ GENERATION LOOP COMPLETE ✅✅✅");
+console.log("  - Total generations created:", generations.length);
+console.log("  - Generations:", generations);
+console.log("✅ onComplete callback finished");
+
+// BEFORE (Lines 911, 913) - Useless else blocks
+if (activeTab === "text") {
+  return prompt.trim().length > 0;
+} else if (activeTab === "image") {
+  return selectedImage !== null;
+} else if (activeTab === "avatar") {
+  ...
+}
+
+// AFTER
+if (activeTab === "text") {
+  return prompt.trim().length > 0;
+}
+if (activeTab === "image") {
+  return selectedImage !== null;
+}
+if (activeTab === "avatar") {
+  ...
+}
+```
+
+**Impact**:
+- ✅ Removed unnecessary boolean double-negation (2 complexity issues)
+- ✅ Removed useless else blocks after return (2 style issues)
+- ✅ Replaced template literals with string literals (4 style issues)
+- ✅ 8 total issues resolved (2 complexity + 6 style)
+
 ## Summary of Fixes Applied
 
 | Fix # | File | Issue | Lines Fixed | Issues Fixed |
@@ -517,7 +568,10 @@ console.log("    - Full response:", JSON.stringify(response, null, 2));
 | 12 | `ai.tsx` | Useless else (line 516) | 1 | 1 style warning |
 | 13 | `use-canvas-objects.ts` | Constant conditions (lines 87, 100, 734, 752, 767) | 5 | 5 correctness errors |
 | 14 | `use-ai-generation.ts` | Unused template literals (lines 504, 512, 522, 537-541) | 8 | 8 style warnings |
-| **Total** | **5 files** | **14 issues** | **35 lines** | **15 errors + 21 warnings** |
+| 15 | `use-ai-generation.ts` | Extra boolean casts (lines 577, 715) | 2 | 2 complexity warnings |
+| 16 | `use-ai-generation.ts` | Useless else blocks (lines 911, 913) | 2 | 2 style warnings |
+| 17 | `use-ai-generation.ts` | Unused template literals (lines 804-806, 813) | 4 | 4 style warnings |
+| **Total** | **5 files** | **17 issues** | **43 lines** | **15 errors + 29 warnings** |
 
 **Progress**:
 - ✅ **Before (Initial)**: 72 errors, 36 warnings
@@ -525,7 +579,8 @@ console.log("    - Full response:", JSON.stringify(response, null, 2));
 - ✅ **After (2025-10-04 - Session 1)**: ~61 errors, ~23 warnings (5 errors + 5 warnings fixed)
 - ✅ **After (2025-10-04 - Session 2)**: ~56 errors, ~20 warnings (5 errors + 3 warnings fixed)
 - ✅ **After (2025-10-04 - Session 3)**: ~56 errors, ~12 warnings (0 errors + 8 warnings fixed)
-- ✅ **Total Improvement**: 16 errors fixed, 24 warnings fixed (40 total issues resolved)
+- ✅ **After (2025-10-04 - Session 4)**: ~56 errors, ~4 warnings (0 errors + 8 warnings fixed)
+- ✅ **Total Improvement**: 16 errors fixed, 32 warnings fixed (48 total issues resolved)
 
 ## Remaining Issues
 
