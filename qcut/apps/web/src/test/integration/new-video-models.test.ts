@@ -5,7 +5,12 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { generateVideo, generateVideoFromImage, estimateCost, getAvailableModels } from "../../lib/ai-video-client";
+import {
+  generateVideo,
+  generateVideoFromImage,
+  estimateCost,
+  getAvailableModels,
+} from "../../lib/ai-video-client";
 
 describe("New Video Models Integration", () => {
   beforeEach(() => {
@@ -19,7 +24,7 @@ describe("New Video Models Integration", () => {
   describe("Kling v2.5 Turbo Pro", () => {
     it("should generate video with correct endpoint and parameters", async () => {
       const mockResponse = {
-        video: { url: "https://fal.ai/test-video.mp4" }
+        video: { url: "https://fal.ai/test-video.mp4" },
       };
 
       (global.fetch as any).mockResolvedValueOnce({
@@ -199,7 +204,6 @@ describe("New Video Models Integration", () => {
 
   describe("Cost Estimation", () => {
     it("should include cost data for new models", async () => {
-
       // Test cost estimation for new models
       const klingCost = await estimateCost({
         prompt: "test",
@@ -223,7 +227,6 @@ describe("New Video Models Integration", () => {
     });
 
     it("should include missing wan_turbo model in cost estimation", async () => {
-
       const wanTurboCost = await estimateCost({
         prompt: "test",
         model: "wan_turbo",
@@ -231,24 +234,25 @@ describe("New Video Models Integration", () => {
       });
 
       expect(wanTurboCost.model).toBe("wan_turbo");
-      expect(wanTurboCost.base_cost).toBe(0.10);
+      expect(wanTurboCost.base_cost).toBe(0.1);
       expect(wanTurboCost.estimated_cost).toBeGreaterThan(0);
     });
   });
 
   describe("Available Models API", () => {
     it("should include all new models in getAvailableModels", async () => {
-
       const response = await getAvailableModels();
-      const modelIds = response.models.map(m => m.id);
+      const modelIds = response.models.map((m) => m.id);
 
       expect(modelIds).toContain("kling_v2_5_turbo");
       expect(modelIds).toContain("wan_25_preview");
       expect(modelIds).toContain("wan_turbo"); // Previously missing
 
       // Check model details
-      const klingModel = response.models.find(m => m.id === "kling_v2_5_turbo");
-      const wanModel = response.models.find(m => m.id === "wan_25_preview");
+      const klingModel = response.models.find(
+        (m) => m.id === "kling_v2_5_turbo"
+      );
+      const wanModel = response.models.find((m) => m.id === "wan_25_preview");
 
       expect(klingModel).toBeDefined();
       expect(klingModel?.name).toBe("Kling v2.5 Turbo Pro");
@@ -270,10 +274,12 @@ describe("New Video Models Integration", () => {
         json: async () => ({ error: "Network error" }),
       });
 
-      await expect(generateVideo({
-        prompt: "test",
-        model: "kling_v2_5_turbo",
-      })).rejects.toThrow();
+      await expect(
+        generateVideo({
+          prompt: "test",
+          model: "kling_v2_5_turbo",
+        })
+      ).rejects.toThrow();
 
       // Reset and test second model
       (global.fetch as any).mockResolvedValueOnce({
@@ -283,10 +289,12 @@ describe("New Video Models Integration", () => {
         json: async () => ({ error: "Network error" }),
       });
 
-      await expect(generateVideo({
-        prompt: "test",
-        model: "wan_25_preview",
-      })).rejects.toThrow();
+      await expect(
+        generateVideo({
+          prompt: "test",
+          model: "wan_25_preview",
+        })
+      ).rejects.toThrow();
     });
   });
 });

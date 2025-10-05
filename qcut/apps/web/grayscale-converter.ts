@@ -31,26 +31,26 @@ declare global {
 
 // Create a canvas with RGB test pattern (like in the test)
 function createRGBTestImage(): HTMLCanvasElement {
-  const canvas = document.createElement('canvas');
+  const canvas = document.createElement("canvas");
   canvas.width = 100;
   canvas.height = 100;
-  const ctx = canvas.getContext('2d')!;
+  const ctx = canvas.getContext("2d")!;
 
   // Create colored quadrants like in the test
   for (let y = 0; y < 100; y++) {
     for (let x = 0; x < 100; x++) {
       if (x < 50 && y < 50) {
         // Top-left: Red
-        ctx.fillStyle = 'rgb(255, 0, 0)';
+        ctx.fillStyle = "rgb(255, 0, 0)";
       } else if (x >= 50 && y < 50) {
         // Top-right: Blue
-        ctx.fillStyle = 'rgb(0, 0, 255)';
+        ctx.fillStyle = "rgb(0, 0, 255)";
       } else if (x < 50 && y >= 50) {
         // Bottom-left: Green
-        ctx.fillStyle = 'rgb(0, 255, 0)';
+        ctx.fillStyle = "rgb(0, 255, 0)";
       } else {
         // Bottom-right: Yellow
-        ctx.fillStyle = 'rgb(255, 255, 0)';
+        ctx.fillStyle = "rgb(255, 255, 0)";
       }
       ctx.fillRect(x, y, 1, 1);
     }
@@ -72,7 +72,7 @@ function convertToGrayscale(imageData: ImageData): ImageData {
     const grayscaleValue = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
 
     // Set RGB channels to the same grayscale value
-    data[i] = grayscaleValue;     // R
+    data[i] = grayscaleValue; // R
     data[i + 1] = grayscaleValue; // G
     data[i + 2] = grayscaleValue; // B
     // Alpha channel (data[i + 3]) remains unchanged
@@ -83,43 +83,59 @@ function convertToGrayscale(imageData: ImageData): ImageData {
 
 // Test the conversion (like in the test file)
 function testGrayscaleConversion(): GrayscaleTestResult {
-  console.log('🎨 Creating RGB test image...');
+  console.log("🎨 Creating RGB test image...");
 
   const canvas = createRGBTestImage();
-  const ctx = canvas.getContext('2d')!;
+  const ctx = canvas.getContext("2d")!;
 
   // Get original image data
   const originalImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
   const originalData = originalImageData.data;
 
   // Test specific pixels (like in the test)
-  const redPixel: [number, number, number] = [originalData[0], originalData[1], originalData[2]];
-  const bluePixel: [number, number, number] = [originalData[200], originalData[201], originalData[202]]; // Approximate blue area
-  const greenPixel: [number, number, number] = [originalData[20000], originalData[20001], originalData[20002]]; // Approximate green area
-  const yellowPixel: [number, number, number] = [originalData[20200], originalData[20201], originalData[20202]]; // Approximate yellow area
+  const redPixel: [number, number, number] = [
+    originalData[0],
+    originalData[1],
+    originalData[2],
+  ];
+  const bluePixel: [number, number, number] = [
+    originalData[200],
+    originalData[201],
+    originalData[202],
+  ]; // Approximate blue area
+  const greenPixel: [number, number, number] = [
+    originalData[20_000],
+    originalData[20_001],
+    originalData[20_002],
+  ]; // Approximate green area
+  const yellowPixel: [number, number, number] = [
+    originalData[20_200],
+    originalData[20_201],
+    originalData[20_202],
+  ]; // Approximate yellow area
 
-  console.log('✅ Original pixels:');
-  console.log('  Red pixel:', redPixel);
-  console.log('  Blue pixel:', bluePixel);
-  console.log('  Green pixel:', greenPixel);
-  console.log('  Yellow pixel:', yellowPixel);
+  console.log("✅ Original pixels:");
+  console.log("  Red pixel:", redPixel);
+  console.log("  Blue pixel:", bluePixel);
+  console.log("  Green pixel:", greenPixel);
+  console.log("  Yellow pixel:", yellowPixel);
 
   // Expected grayscale values (from the test)
   const expectedGrayscale = {
     red: Math.round(0.299 * 255 + 0.587 * 0 + 0.114 * 0), // 76
     blue: Math.round(0.299 * 0 + 0.587 * 0 + 0.114 * 255), // 29
     green: Math.round(0.299 * 0 + 0.587 * 255 + 0.114 * 0), // 150
-    yellow: Math.round(0.299 * 255 + 0.587 * 255 + 0.114 * 0) // 226
+    yellow: Math.round(0.299 * 255 + 0.587 * 255 + 0.114 * 0), // 226
   };
 
-  console.log('🔢 Expected grayscale values:');
-  console.log('  Red -> Grayscale:', expectedGrayscale.red);
-  console.log('  Blue -> Grayscale:', expectedGrayscale.blue);
-  console.log('  Green -> Grayscale:', expectedGrayscale.green);
-  console.log('  Yellow -> Grayscale:', expectedGrayscale.yellow);
+  console.log("🔢 Expected grayscale values:");
+  console.log("  Red -> Grayscale:", expectedGrayscale.red);
+  console.log("  Blue -> Grayscale:", expectedGrayscale.blue);
+  console.log("  Green -> Grayscale:", expectedGrayscale.green);
+  console.log("  Yellow -> Grayscale:", expectedGrayscale.yellow);
 
   // Convert to grayscale
-  console.log('🔄 Converting to grayscale...');
+  console.log("🔄 Converting to grayscale...");
   const grayscaleImageData = convertToGrayscale(originalImageData);
 
   // Put the grayscale data back on canvas
@@ -127,10 +143,17 @@ function testGrayscaleConversion(): GrayscaleTestResult {
 
   // Verify the conversion
   const grayscaleData = grayscaleImageData.data;
-  const convertedRedPixel: [number, number, number] = [grayscaleData[0], grayscaleData[1], grayscaleData[2]];
+  const convertedRedPixel: [number, number, number] = [
+    grayscaleData[0],
+    grayscaleData[1],
+    grayscaleData[2],
+  ];
 
-  console.log('✅ Converted red pixel:', convertedRedPixel);
-  console.log('🎯 Match expected?', convertedRedPixel[0] === expectedGrayscale.red);
+  console.log("✅ Converted red pixel:", convertedRedPixel);
+  console.log(
+    "🎯 Match expected?",
+    convertedRedPixel[0] === expectedGrayscale.red
+  );
 
   // Return both original and converted data URLs
   const originalCanvas = createRGBTestImage();
@@ -144,9 +167,9 @@ function testGrayscaleConversion(): GrayscaleTestResult {
     actualValues: {
       red: convertedRedPixel[0],
       blue: grayscaleData[201],
-      green: grayscaleData[20001],
-      yellow: grayscaleData[20201]
-    }
+      green: grayscaleData[20_001],
+      yellow: grayscaleData[20_201],
+    },
   };
 }
 
@@ -169,7 +192,7 @@ function simulateFFmpegHueFilter(imageData: ImageData): ImageData {
     // With saturation = 0, RGB values all equal the lightness
     const grayValue = Math.round(l * 255);
 
-    data[i] = grayValue;     // R
+    data[i] = grayValue; // R
     data[i + 1] = grayValue; // G
     data[i + 2] = grayValue; // B
     // Alpha unchanged
@@ -179,31 +202,31 @@ function simulateFFmpegHueFilter(imageData: ImageData): ImageData {
 }
 
 // Export for use in module environments
-if (typeof module !== 'undefined' && module.exports) {
+if (typeof module !== "undefined" && module.exports) {
   module.exports = {
     createRGBTestImage,
     convertToGrayscale,
     simulateFFmpegHueFilter,
-    testGrayscaleConversion
+    testGrayscaleConversion,
   };
 }
 
 // Auto-run test if in browser
-if (typeof window !== 'undefined') {
+if (typeof window !== "undefined") {
   // Expose functions to global scope for browser use
   window.createRGBTestImage = createRGBTestImage;
   window.convertToGrayscale = convertToGrayscale;
   window.simulateFFmpegHueFilter = simulateFFmpegHueFilter;
   window.testGrayscaleConversion = testGrayscaleConversion;
 
-  document.addEventListener('DOMContentLoaded', () => {
-    console.log('🚀 Starting grayscale conversion test...');
+  document.addEventListener("DOMContentLoaded", () => {
+    console.log("🚀 Starting grayscale conversion test...");
     const results = testGrayscaleConversion();
-    console.log('📊 Test Results:', results);
+    console.log("📊 Test Results:", results);
 
     // Create visual comparison if we have a document
     if (document.body) {
-      const container = document.createElement('div');
+      const container = document.createElement("div");
       container.innerHTML = `
         <h2>Grayscale Conversion Test</h2>
         <div style="display: flex; gap: 20px;">

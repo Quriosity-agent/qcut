@@ -151,14 +151,18 @@ export function VideoPlayer({
       }}
       onError={(e) => {
         console.error("[VideoPlayer] Video error:", e, "src:", src);
-        if (src.includes('fal.media')) {
-          console.error("🚨 CSP FIX NEEDED: FAL.ai video blocked by Content Security Policy");
-          console.error("   - Add https://fal.media https://v3.fal.media https://v3b.fal.media to media-src CSP directive");
+        if (src.includes("fal.media")) {
+          console.error(
+            "🚨 CSP FIX NEEDED: FAL.ai video blocked by Content Security Policy"
+          );
+          console.error(
+            "   - Add https://fal.media https://v3.fal.media https://v3b.fal.media to media-src CSP directive"
+          );
         }
       }}
       onCanPlay={() => {
         console.log("✅ [VideoPlayer] Video ready to play:", src);
-        if (src.includes('fal.media')) {
+        if (src.includes("fal.media")) {
           console.log("🎉 CSP FIX SUCCESS: FAL.ai video loaded successfully!");
           console.log("   - URL:", src.substring(0, 50) + "...");
         }

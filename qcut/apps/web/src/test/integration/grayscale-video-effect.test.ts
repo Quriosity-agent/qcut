@@ -147,9 +147,9 @@ describe("Grayscale Video Effect - Frame-by-Frame Filtering", () => {
     vi.clearAllMocks();
     // Clean up mocked properties
     if (typeof window !== "undefined") {
-      delete (window as any).electronAPI;
-      delete (window as any).HTMLCanvasElement;
-      delete (window as any).HTMLVideoElement;
+      (window as any).electronAPI = undefined;
+      (window as any).HTMLCanvasElement = undefined;
+      (window as any).HTMLVideoElement = undefined;
     }
   });
 
@@ -364,7 +364,7 @@ describe("Grayscale Video Effect - Frame-by-Frame Filtering", () => {
     it("should skip processing when processFrame method is not available", async () => {
       // Save original processFrame and remove it
       const originalProcessFrame = (mockElectronAPI.ffmpeg as any).processFrame;
-      delete (mockElectronAPI.ffmpeg as any).processFrame;
+      (mockElectronAPI.ffmpeg as any).processFrame = undefined;
 
       const mockSettings = {
         format: "mp4" as any,

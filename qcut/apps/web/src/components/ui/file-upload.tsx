@@ -64,7 +64,9 @@ export function FileUpload({
 
     // Validate file size
     if (selectedFile.size > maxSizeBytes) {
-      onError(`${fileType === "image" ? "Image" : fileType === "audio" ? "Audio" : "Video"} file too large (max ${maxSizeLabel})`);
+      onError(
+        `${fileType === "image" ? "Image" : fileType === "audio" ? "Audio" : "Video"} file too large (max ${maxSizeLabel})`
+      );
       return;
     }
 
@@ -145,9 +147,16 @@ export function FileUpload({
 
   const renderEmptyState = () => (
     <div className="flex flex-col items-center justify-center h-full space-y-2 text-center">
-      <Upload className={`${fileType === "image" ? "size-8" : "size-6"} text-muted-foreground`} />
+      <Upload
+        className={`${fileType === "image" ? "size-8" : "size-6"} text-muted-foreground`}
+      />
       <div className="text-xs text-muted-foreground">
-        Click to upload {fileType === "image" ? "character image" : fileType === "audio" ? "audio file" : "source video"}
+        Click to upload{" "}
+        {fileType === "image"
+          ? "character image"
+          : fileType === "audio"
+            ? "audio file"
+            : "source video"}
       </div>
       <div className="text-xs text-muted-foreground/70">
         {formatsLabel} (max {maxSizeLabel})

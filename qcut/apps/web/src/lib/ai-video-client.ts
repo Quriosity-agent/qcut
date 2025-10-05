@@ -176,17 +176,23 @@ export async function generateVideo(
       const requestedDuration = payload.duration || 6;
       payload.duration = requestedDuration >= 10 ? "10" : "6";
       // Remove resolution as Hailuo doesn't use it directly
-      delete payload.resolution;
+      payload.resolution = undefined;
     } else if (request.model === "wan_turbo") {
       // WAN Turbo only accepts specific resolutions
       const validResolutions = ["480p", "580p", "720p"];
-      if (payload.resolution && !validResolutions.includes(payload.resolution)) {
+      if (
+        payload.resolution &&
+        !validResolutions.includes(payload.resolution)
+      ) {
         payload.resolution = "720p";
       }
     } else if (request.model === "wan_25_preview") {
       // WAN 2.5 supports higher resolutions
       const validResolutions = ["720p", "1080p", "1440p"];
-      if (payload.resolution && !validResolutions.includes(payload.resolution)) {
+      if (
+        payload.resolution &&
+        !validResolutions.includes(payload.resolution)
+      ) {
         payload.resolution = "1080p";
       }
     }
@@ -727,7 +733,9 @@ export async function generateVideoFromImage(
     // Check if model supports image-to-video
     const endpoint = modelConfig.endpoints.image_to_video;
     if (!endpoint) {
-      throw new Error(`Model ${request.model} does not support image-to-video generation`);
+      throw new Error(
+        `Model ${request.model} does not support image-to-video generation`
+      );
     }
 
     // Build request payload using centralized model configuration
@@ -884,7 +892,10 @@ export async function generateAvatarVideo(
         image_url: characterImageUrl,
         ...(request.resolution && { resolution: request.resolution }), // Override default if provided
       };
-    } else if (request.model === "kling_avatar_pro" || request.model === "kling_avatar_standard") {
+    } else if (
+      request.model === "kling_avatar_pro" ||
+      request.model === "kling_avatar_standard"
+    ) {
       if (!request.audioFile) {
         throw new Error(`${request.model} requires an audio file`);
       }
@@ -919,16 +930,22 @@ export async function generateAvatarVideo(
     console.log(`🎭 Generating avatar video with: ${endpoint}`);
     console.log("📝 Payload:", {
       ...payload,
-      video_url: payload.video_url ? `[base64 data: ${payload.video_url.length} chars]` : undefined,
-      image_url: payload.image_url ? `[base64 data: ${payload.image_url.length} chars]` : undefined,
-      audio_url: payload.audio_url ? `[base64 data: ${payload.audio_url.length} chars]` : undefined,
+      video_url: payload.video_url
+        ? `[base64 data: ${payload.video_url.length} chars]`
+        : undefined,
+      image_url: payload.image_url
+        ? `[base64 data: ${payload.image_url.length} chars]`
+        : undefined,
+      audio_url: payload.audio_url
+        ? `[base64 data: ${payload.audio_url.length} chars]`
+        : undefined,
     });
 
     console.log("📊 Payload size:", JSON.stringify(payload).length, "bytes");
 
     // Add timeout to prevent hanging (3 minutes for large payloads)
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 180000); // 3 minutes
+    const timeoutId = setTimeout(() => controller.abort(), 180_000); // 3 minutes
 
     try {
       console.log("🚀 Sending request to FAL AI...");
@@ -943,12 +960,18 @@ export async function generateAvatarVideo(
       });
 
       clearTimeout(timeoutId);
-      console.log("📥 Received response:", response.status, response.statusText);
+      console.log(
+        "📥 Received response:",
+        response.status,
+        response.statusText
+      );
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         console.error("❌ FAL AI API error:", errorData);
-        throw new Error(`Avatar generation failed: ${errorData.detail || response.statusText}`);
+        throw new Error(
+          `Avatar generation failed: ${errorData.detail || response.statusText}`
+        );
       }
 
       const result = await response.json();
@@ -964,9 +987,11 @@ export async function generateAvatarVideo(
       };
     } catch (error) {
       clearTimeout(timeoutId);
-      if (error instanceof Error && error.name === 'AbortError') {
+      if (error instanceof Error && error.name === "AbortError") {
         console.error("❌ Request timeout after 3 minutes");
-        throw new Error("Avatar generation timed out after 3 minutes. The video/image files may be too large.");
+        throw new Error(
+          "Avatar generation timed out after 3 minutes. The video/image files may be too large."
+        );
       }
       throw error;
     }

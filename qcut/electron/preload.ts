@@ -274,8 +274,7 @@ const electronAPI: ElectronAPI = {
       inputFrameName: string;
       outputFrameName: string;
       filterChain: string;
-    }): Promise<void> =>
-      ipcRenderer.invoke("processFrame", options),
+    }): Promise<void> => ipcRenderer.invoke("processFrame", options),
     validateFilterChain: (filterChain: string): Promise<boolean> =>
       ipcRenderer.invoke("validate-filter-chain", filterChain),
 

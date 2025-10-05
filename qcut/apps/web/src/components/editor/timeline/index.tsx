@@ -345,6 +345,7 @@ export function Timeline() {
   );
 
   // Update timeline duration when tracks change
+  // biome-ignore lint/correctness/useExhaustiveDependencies: tracks is necessary - getTotalDuration() reads from store but reference doesn't change when tracks change
   useEffect(() => {
     const totalDuration = getTotalDuration();
     setDuration(calculateMinimumTimelineDuration(totalDuration));
@@ -719,7 +720,10 @@ export function Timeline() {
                 {/* Time markers */}
                 {(() => {
                   // Calculate appropriate time interval based on zoom level
-                  const getTimeInterval = (zoom: number, totalDuration: number) => {
+                  const getTimeInterval = (
+                    zoom: number,
+                    totalDuration: number
+                  ) => {
                     const pixelsPerSecond =
                       TIMELINE_CONSTANTS.PIXELS_PER_SECOND * zoom;
 
@@ -741,7 +745,10 @@ export function Timeline() {
                   };
 
                   const interval = getTimeInterval(zoomLevel, duration);
-                  const markerCount = Math.max(Math.ceil(duration / interval) + 1, 10); // Ensure at least 10 markers for short content
+                  const markerCount = Math.max(
+                    Math.ceil(duration / interval) + 1,
+                    10
+                  ); // Ensure at least 10 markers for short content
 
                   return Array.from({ length: markerCount }, (_, i) => {
                     const time = i * interval;
@@ -795,11 +802,11 @@ export function Timeline() {
                               // Better formatting for seconds - show more precision for sub-second intervals
                               if (interval >= 1) {
                                 return `${Math.floor(secs)}s`;
-                              } else if (interval >= 0.1) {
-                                return `${secs.toFixed(1)}s`;
-                              } else {
-                                return `${secs.toFixed(2)}s`;
                               }
+                              if (interval >= 0.1) {
+                                return `${secs.toFixed(1)}s`;
+                              }
+                              return `${secs.toFixed(2)}s`;
                             };
 
                             return formatTime(time);

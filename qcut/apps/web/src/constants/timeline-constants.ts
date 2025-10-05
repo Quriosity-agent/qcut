@@ -176,12 +176,17 @@ export function getFrameDuration(fps: number): number {
  * the frustrating "timeline too small" experience that plagues amateur editors.
  * Business rule: Never make timeline smaller than content, but always give workspace.
  */
-export function calculateMinimumTimelineDuration(contentDuration: number): number {
+export function calculateMinimumTimelineDuration(
+  contentDuration: number
+): number {
   // Always return at least default minimum for empty timeline, but don't limit longer content
   if (!Number.isFinite(contentDuration) || contentDuration <= 0) {
     return TIMELINE_CONSTANTS.DEFAULT_EMPTY_TIMELINE_DURATION;
   }
-  return Math.max(contentDuration, TIMELINE_CONSTANTS.DEFAULT_EMPTY_TIMELINE_DURATION);
+  return Math.max(
+    contentDuration,
+    TIMELINE_CONSTANTS.DEFAULT_EMPTY_TIMELINE_DURATION
+  );
 }
 
 /**
@@ -194,4 +199,3 @@ export function calculateTimelineBuffer(duration: number): number {
   const safeDuration = Number.isFinite(duration) && duration > 0 ? duration : 0;
   return Math.max(5, safeDuration * 0.1);
 }
-
