@@ -345,10 +345,11 @@ export function Timeline() {
   );
 
   // Update timeline duration when tracks change
+  // biome-ignore lint/correctness/useExhaustiveDependencies: tracks is necessary - getTotalDuration() reads from store but reference doesn't change when tracks change
   useEffect(() => {
     const totalDuration = getTotalDuration();
     setDuration(calculateMinimumTimelineDuration(totalDuration));
-  }, [setDuration, getTotalDuration]);
+  }, [tracks, setDuration, getTotalDuration]);
 
   // Old marquee system removed - using new SelectionBox component instead
 

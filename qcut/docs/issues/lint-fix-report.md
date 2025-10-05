@@ -754,7 +754,7 @@ delete (mockElectronAPI.ffmpeg as any).processFrame;
 | 17 | `use-ai-generation.ts` | Unused template literals (lines 804-806, 813) | 4 | 4 style warnings |
 | 18 | `use-ai-generation.ts` | Exhaustive dependencies (line 337 - handleMockGenerate) | 1 | 1 correctness error |
 | 19 | `use-ai-generation.ts` | Exhaustive dependencies (line 409 - handleGenerate) | 7 | 7 correctness errors |
-| 20 | `timeline/index.tsx` | Exhaustive dependencies (line 348 - unnecessary tracks) | 1 | 1 correctness error |
+| 20 | `timeline/index.tsx` | Exhaustive dependencies (line 348 - REVERTED) | 1 | ⚠️ False positive - reverted |
 | 21 | `timeline/index.tsx` | Useless else blocks (lines 798, 800) | 2 | 2 style warnings |
 | 22 | `ffmpeg-handler.ts` | Unused template literal (line 511) | 1 | 1 style warning |
 | 23 | `ffmpeg-handler.ts` | Numeric separator (line 512) | 1 | 1 nursery warning |
@@ -776,10 +776,13 @@ delete (mockElectronAPI.ffmpeg as any).processFrame;
 - ✅ **After (2025-10-04 - Session 7)**: ~46 errors, ~0 warnings (1 error + 0 warnings fixed)
 - ✅ **After (2025-10-04 - Session 8)**: ~46 errors, ~0 warnings (0 errors + 6 warnings fixed)
 - ✅ **After (2025-10-05 - Session 9)**: 0 errors, 0 warnings (Parse error fix + auto-formatting)
-- ✅ **Total Improvement**: 72 errors fixed, 36 warnings fixed (108 total issues resolved)
+- ⚠️ **After (2025-10-05 - Session 10)**: 0 errors, 0 warnings (Reverted false positive in timeline/index.tsx)
+- ✅ **Total Improvement**: 71 errors fixed, 36 warnings fixed (107 total issues resolved)
 
 **Remaining Issues Note**:
 All lint errors and warnings have been completely resolved! The only remaining parse errors are in documentation files (`docs/completed/*.tsx`) that have incorrect file extensions and should be `.md` files.
+
+**Note on Session 10**: One fix from Session 6 (removing `tracks` dependency from timeline/index.tsx) was reverted after discovering it was a false positive that would cause a bug where timeline duration wouldn't update when tracks change.
 
 ### ✅ Fixed: Parse Error in ffmpeg-handler.ts (2025-10-05 - Session 9)
 
@@ -842,6 +845,55 @@ Formatted 529 files in 25s. Fixed 1 file.
 $ bun lint:clean
 Checked 658 files in 24s. No fixes applied.
 ```
+
+### ⚠️ Reverted: False Positive in timeline/index.tsx (2025-10-05 - Session 10)
+
+**File**: `apps/web/src/components/editor/timeline/index.tsx` (Line 351)
+
+**Problem Identified**:
+Session 6 removed `tracks` from the dependency array based on a lint warning, but this was a **false positive** that would cause a runtime bug.
+
+**Why the Lint Warning Was Wrong**:
+```typescript
+// The selector pattern:
+const getTotalDuration = useTimelineStore((s) => s.getTotalDuration);
+
+// getTotalDuration is a function that reads from store:
+getTotalDuration: () => {
+  const { _tracks } = get();
+  // ... calculates duration from tracks
+}
+```
+
+The function **reference** (`getTotalDuration`) never changes, even when `tracks` changes. Therefore:
+- Without `tracks` in dependencies, the useEffect only runs on mount
+- Timeline duration would not update when tracks are added/removed/modified
+- This breaks core timeline functionality
+
+**Changes Made**:
+```typescript
+// INCORRECT FIX (Session 6)
+useEffect(() => {
+  const totalDuration = getTotalDuration();
+  setDuration(calculateMinimumTimelineDuration(totalDuration));
+}, [setDuration, getTotalDuration]); // ❌ Missing tracks
+
+// REVERTED TO ORIGINAL (Session 10)
+// biome-ignore lint/correctness/useExhaustiveDependencies: tracks is necessary - getTotalDuration() reads from store but reference doesn't change when tracks change
+useEffect(() => {
+  const totalDuration = getTotalDuration();
+  setDuration(calculateMinimumTimelineDuration(totalDuration));
+}, [tracks, setDuration, getTotalDuration]); // ✅ tracks is required
+```
+
+**Impact**:
+- ✅ Timeline duration correctly updates when tracks change
+- ✅ Added biome-ignore comment with clear explanation
+- ✅ Prevented critical runtime bug
+- ⚠️ One less lint error "fixed" (107 total instead of 108)
+
+**Lesson Learned**:
+Exhaustive dependency warnings should be carefully reviewed. Function references from Zustand stores don't trigger re-renders when their underlying data changes - the component must track the data separately.
 
 ## Remaining Issues
 
