@@ -302,7 +302,8 @@ export const initFFmpeg = async (): Promise<FFmpeg> => {
         );
         console.error("[FFmpeg Utils] Environment info:", {
           hasSharedArrayBuffer: environment.hasSharedArrayBuffer,
-          crossOriginIsolated: environment.crossOriginIsolated,
+          hasWorker: environment.hasWorker,
+          crossOriginIsolated: typeof crossOriginIsolated !== 'undefined' ? crossOriginIsolated : false,
           isElectron: electronMode,
         });
         throw loadError;
