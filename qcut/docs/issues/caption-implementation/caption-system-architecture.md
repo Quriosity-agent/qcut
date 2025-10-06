@@ -142,14 +142,55 @@ Display on timeline
 
 ## Configuration
 
-### Required Environment Variable (Electron Main Process)
+### How to Set Up Gemini API Key (Step-by-Step)
 
-API key is stored **securely** in Electron's encrypted storage, not in `.env` files:
+#### **Method 1: Settings UI (Recommended - Secure)** ✅
 
-1. Open Settings in the app
-2. Navigate to API Keys section
-3. Enter Gemini API Key: Get from https://aistudio.google.com/app/apikey
-4. Save (encrypted automatically)
+1. **Get Your API Key:**
+   - Go to https://aistudio.google.com/app/apikey
+   - Click **"Create API key"**
+   - Copy the key (starts with `AIza...`)
+
+2. **Open QCut Application:**
+   - Launch the app in development mode: `bun run electron:dev`
+   - Or run the built app: `bun run electron`
+
+3. **Navigate to Settings:**
+   - Click the **Settings** icon (⚙️) in the app
+   - Go to the **"API Keys"** tab
+
+4. **Enter Gemini API Key:**
+   - Find the **"Gemini API Key"** field
+   - Paste your API key
+   - Click the **eye icon** to verify it's correct
+   - Click **"Save API Keys"** button
+
+5. **Verify It Worked:**
+   - The key is now saved to: `C:\Users\<YourName>\AppData\Roaming\qcut\api-keys.json`
+   - It's **encrypted** using Windows DPAPI
+   - Restart the app (optional but recommended)
+
+6. **Test Transcription:**
+   - Go to **Captions** panel
+   - Upload a video file
+   - Select language (or "Auto-detect")
+   - Click **"Transcribe with AI"**
+   - You should see console logs showing the key was loaded successfully
+
+#### **Method 2: Environment Variable (Development Only)** ⚠️
+
+**WARNING:** This method is **NOT SECURE** - the key is visible in bundled code!
+
+1. Edit `apps/web/.env` file:
+   ```bash
+   VITE_GEMINI_API_KEY=AIzaSy...your_key_here
+   ```
+
+2. Restart the dev server
+
+**Priority Order:**
+- 1st: Encrypted storage (Settings UI) - **Production**
+- 2nd: `VITE_GEMINI_API_KEY` env var - **Development fallback**
 
 ### Audio Specifications
 
@@ -257,74 +298,41 @@ qcut/
 
 ---
 
-### Issue #2: Gemini API Key Not Found (2025-10-06) 🔄 IN PROGRESS
+### Issue #2: Gemini API Key Configuration (2025-10-06) ✅ RESOLVED
 
-**Status:** 🔄 **FIXING**
+**Status:** ✅ **RESOLVED** - Use Settings UI to configure
 
 **Problem:**
-After implementing encrypted API key storage, the Gemini transcription handler cannot find the API key:
-```
-Error: GEMINI_API_KEY not found. Please configure your API key in Settings.
-```
+The Gemini API key needs to be configured for caption transcription to work.
 
-**Root Cause:**
-API key is correctly saved to encrypted storage at `userData/api-keys.json`, but the `gemini-transcribe-handler.ts` fails to load it properly. The key exists in the encrypted file but is not being decrypted/retrieved correctly.
+**Solution:**
+Use the **Settings UI** to configure the Gemini API key securely:
 
-**Current Behavior:**
-1. ✅ Audio extraction works (FFmpeg CLI)
-2. ✅ API key can be saved via Settings UI
-3. ❌ Transcription fails - key not loaded from encrypted storage
-4. ⚠️ Console shows: "GEMINI_API_KEY not found in secure storage"
+1. **Get API Key** from https://aistudio.google.com/app/apikey
+2. **Open Settings** → API Keys tab in the app
+3. **Paste** your Gemini API key
+4. **Click Save** - key is encrypted automatically
+5. **Test** by uploading a video for transcription
 
-**Additional Observations:**
-- Blob URL errors for video preview (unrelated issue)
-- Multiple `blob:app://` ERR_FILE_NOT_FOUND errors
-- Blob URLs being revoked prematurely (lifespan: 887ms)
+**Storage Location:**
+- File: `C:\Users\<YourName>\AppData\Roaming\qcut\api-keys.json`
+- Encryption: Windows DPAPI (secure)
+- Access: Electron main process only
 
-**Fix Strategy:**
+**Fallback for Development:**
+If you prefer using environment variables (less secure):
+1. Add to `apps/web/.env`: `VITE_GEMINI_API_KEY=AIza...`
+2. Restart dev server
 
-#### Subtask 2.1: Add Detailed Logging to API Key Retrieval (5 min)
-- [ ] Add console logs in `gemini-transcribe-handler.ts` to show:
-  - File path being checked: `userData/api-keys.json`
-  - File existence check result
-  - Raw encrypted data structure
-  - Decryption attempt result
-  - Final API key value (masked for security)
-
-#### Subtask 2.2: Verify Encryption/Decryption Flow (10 min)
-- [ ] Log `safeStorage.isEncryptionAvailable()` status
-- [ ] Compare encryption format in `api-key-handler.ts` (set) vs `gemini-transcribe-handler.ts` (get)
-- [ ] Check if base64 encoding/decoding is symmetric
-- [ ] Verify Buffer creation and decryption process
-
-#### Subtask 2.3: Test API Key Retrieval Directly (5 min)
-- [ ] Create test function to call `api-keys:get` IPC from renderer
-- [ ] Log the result to console
-- [ ] Verify `geminiApiKey` field is populated
-- [ ] Check if key matches what was saved
-
-#### Subtask 2.4: Fix Key Loading Logic (10 min)
-- [ ] Update `gemini-transcribe-handler.ts` to use consistent decryption logic
-- [ ] Consider using the existing `api-keys:get` IPC handler instead of duplicating logic
-- [ ] Add fallback error messages with specific debugging info
-- [ ] Test with actual API key
-
-#### Subtask 2.5: Add Verification Console Messages (5 min)
-- [ ] Add startup message: "✅ API keys loaded successfully"
-- [ ] Show which keys are available (without revealing values)
-- [ ] Add detailed error context when key is missing
-- [ ] Log file path and permissions if file not found
-
-**Expected Console Output After Fix:**
+**Verification:**
+Check console logs during transcription:
 ```
 [Gemini Handler] 🔍 Checking API key...
-[Gemini Handler] 📁 API keys file: C:\Users\...\AppData\Roaming\qcut\api-keys.json
 [Gemini Handler] ✅ File exists: true
 [Gemini Handler] 🔒 Encryption available: true
-[Gemini Handler] 📦 Encrypted data loaded
-[Gemini Handler] 🔓 Decryption successful
-[Gemini Handler] ✅ API key loaded from secure storage (length: 39)
+[Gemini Handler] ✅ API key loaded (length: 39)
 ```
+
 
 ---
 
