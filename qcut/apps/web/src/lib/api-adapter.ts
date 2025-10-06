@@ -174,26 +174,12 @@ export async function transcribeAudio(
   const { retryCount = 3, fallbackToOld = true } = options;
 
   if (isFeatureEnabled("USE_ELECTRON_API")) {
-    try {
-      // New Electron IPC implementation - add missing id parameter
-      const requestWithId = { ...requestData, id: crypto.randomUUID() };
-      const result = await window.electronAPI?.transcribe.audio(requestWithId);
-
-      if (result?.success) {
-        return result;
-      }
-      if (!fallbackToOld) {
-        return result;
-      }
-      throw new Error(
-        result?.error || "IPC transcription failed, attempting fallback"
-      );
-    } catch {
-      if (fallbackToOld) {
-        return legacyTranscribe(requestData, retryCount);
-      }
-      throw new Error("IPC transcription failed and fallback disabled");
-    }
+    // DEPRECATED: This code path is no longer used after Gemini migration
+    // Transcription now happens directly via window.electronAPI.transcribe.transcribe()
+    // in captions.tsx (see Phase 2 implementation)
+    throw new Error(
+      "Legacy transcribe API deprecated. Use window.electronAPI.transcribe.transcribe() directly."
+    );
   }
 
   // Original path now also has consistent retry logic

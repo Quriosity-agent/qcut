@@ -292,6 +292,9 @@ export function CaptionsView() {
 
         // Step 2: Save audio to temp file for Electron IPC
         const audioBuffer = await audioFile.arrayBuffer();
+        if (!window.electronAPI?.audio?.saveTemp) {
+          throw new Error("Electron audio API not available");
+        }
         const tempPath = await window.electronAPI.audio.saveTemp(
           new Uint8Array(audioBuffer),
           "audio.wav"
@@ -303,6 +306,9 @@ export function CaptionsView() {
           isTranscribing: true,
         });
 
+        if (!window.electronAPI?.transcribe?.transcribe) {
+          throw new Error("Electron transcribe API not available");
+        }
         const result = await window.electronAPI.transcribe.transcribe({
           audioPath: tempPath,
           language: selectedLanguage,
