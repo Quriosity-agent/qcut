@@ -186,6 +186,9 @@ export function CaptionsView() {
         });
 
         // Step 1: Extract audio from video file (if needed)
+        console.log("[Gemini Transcription] Starting transcription process...");
+        console.log("[Gemini Transcription] File:", file.name, "Type:", file.type, "Size:", file.size);
+
         let audioFile: File;
         if (file.type.startsWith("video/")) {
           // Validate supported video formats
@@ -202,14 +205,17 @@ export function CaptionsView() {
             throw new Error(`Unsupported video format: ${file.type}`);
           }
 
+          console.log("[Gemini Transcription] Extracting audio from video...");
           toast.info("Extracting audio from video...");
 
           const audioBlob = await extractAudio(file, "wav");
           audioFile = new File([audioBlob], `${file.name}.wav`, {
             type: "audio/wav",
           });
+          console.log("[Gemini Transcription] Audio extracted:", audioFile.name, "Size:", audioFile.size);
         } else {
           audioFile = file;
+          console.log("[Gemini Transcription] Using audio file directly");
         }
 
         // DEPRECATED: Encryption/R2 upload removed for Gemini migration
@@ -291,16 +297,24 @@ export function CaptionsView() {
         // };
 
         // Step 2: Save audio to temp file for Electron IPC
+        console.log("[Gemini Transcription] Converting audio to buffer...");
         const audioBuffer = await audioFile.arrayBuffer();
+        console.log("[Gemini Transcription] Buffer size:", audioBuffer.byteLength, "bytes");
+
         if (!window.electronAPI?.audio?.saveTemp) {
           throw new Error("Electron audio API not available");
         }
+
+        console.log("[Gemini Transcription] Saving audio to temp file...");
         const tempPath = await window.electronAPI.audio.saveTemp(
           new Uint8Array(audioBuffer),
           "audio.wav"
         );
+        console.log("[Gemini Transcription] Audio saved to:", tempPath);
 
         // Step 3: Call Gemini transcription via Electron IPC
+        console.log("[Gemini Transcription] Calling Gemini API...");
+        console.log("[Gemini Transcription] Language:", selectedLanguage);
         toast.info("Transcribing with Gemini...");
         updateState({
           isTranscribing: true,
@@ -309,10 +323,18 @@ export function CaptionsView() {
         if (!window.electronAPI?.transcribe?.transcribe) {
           throw new Error("Electron transcribe API not available");
         }
+
+        const startTime = Date.now();
         const result = await window.electronAPI.transcribe.transcribe({
           audioPath: tempPath,
           language: selectedLanguage,
         });
+        const duration = ((Date.now() - startTime) / 1000).toFixed(2);
+
+        console.log("[Gemini Transcription] ✅ Transcription completed in", duration, "seconds");
+        console.log("[Gemini Transcription] Segments found:", result.segments.length);
+        console.log("[Gemini Transcription] Detected language:", result.language);
+        console.log("[Gemini Transcription] Full text:", result.text);
 
         // Complete transcription job in store
         completeTranscriptionJob(jobId, result);
@@ -322,12 +344,14 @@ export function CaptionsView() {
           result,
         });
 
+        console.log("[Gemini Transcription] 🎉 Transcription successful!");
         toast.success(
           `Transcription completed! Found ${result.segments.length} segments.`
         );
 
         // Performance: Cache the result for future use
         if (fileKey) {
+          console.log("[Gemini Transcription] Caching result for future use...");
           try {
             const cacheData = { result, timestamp: Date.now() };
             localStorage.setItem(
@@ -347,6 +371,7 @@ export function CaptionsView() {
           }
         }
       } catch (error) {
+        console.error("[Gemini Transcription] ❌ Error:", error);
         handleError(error, {
           operation: "Audio Transcription",
           category: ErrorCategory.AI_SERVICE,
@@ -361,6 +386,7 @@ export function CaptionsView() {
         const errorMessage =
           error instanceof Error ? error.message : "Transcription failed";
 
+        console.error("[Gemini Transcription] Error message:", errorMessage);
         updateState({
           isTranscribing: false,
           error: errorMessage,
