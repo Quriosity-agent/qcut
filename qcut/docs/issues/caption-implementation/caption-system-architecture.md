@@ -6,6 +6,30 @@
 
 ---
 
+## 🗑️ Files to Delete (Redundant After Migration)
+
+The following files are **no longer needed** after migrating to Gemini API and should be deleted:
+
+### Backend Files
+- [ ] `qcut/electron/transcribe-handler.ts` - Legacy Modal Whisper IPC handler (will be replaced)
+- [ ] `qcut/apps/web/src/lib/transcription/zk-encryption.ts` - Zero-knowledge encryption (no longer needed)
+- [ ] `qcut/apps/web/src/lib/transcription/transcription-utils.ts` - Modal API configuration utilities
+
+### Environment Variables to Remove
+Remove from `.env` files:
+- [ ] `MODAL_TOKEN_ID`
+- [ ] `MODAL_TOKEN_SECRET`
+- [ ] `R2_ACCOUNT_ID`
+- [ ] `R2_ACCESS_KEY_ID`
+- [ ] `R2_SECRET_ACCESS_KEY`
+- [ ] `R2_BUCKET_NAME`
+
+### Documentation Files (Example Code)
+- [ ] `qcut/docs/issues/caption-implementation/gemini-srt-example.ts` - OpenRouter example (proven broken)
+- [ ] Keep: `qcut/docs/issues/caption-implementation/gemini-native-api-example.ts` (working implementation)
+
+---
+
 ## Table of Contents
 
 1. [Overview](#overview)
