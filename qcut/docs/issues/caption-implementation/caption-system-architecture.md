@@ -24,9 +24,20 @@ Remove from `.env` files:
 - [ ] `R2_SECRET_ACCESS_KEY`
 - [ ] `R2_BUCKET_NAME`
 
-### Documentation Files (Example Code)
-- [x] `qcut/docs/issues/caption-implementation/gemini-srt-example.ts` - OpenRouter example (broken, removed) ✅ Deleted
-- [x] Keep: `qcut/docs/issues/caption-implementation/gemini-native-api-example.ts` - Working native Gemini implementation ✅ Kept
+### Documentation Files (Test/Example Files Cleaned Up)
+- [x] `qcut/docs/issues/caption-implementation/gemini-srt-example.ts` - OpenRouter example (broken) ✅ Deleted
+- [x] `qcut/docs/issues/caption-implementation/gemini-native-api-example.ts` - Test example ✅ Deleted
+- [x] `qcut/docs/issues/caption-implementation/output.srt` - Test output ✅ Deleted
+- [x] `qcut/docs/issues/caption-implementation/output-native.md` - Test output ✅ Deleted
+- [x] `qcut/docs/issues/caption-implementation/README-example.md` - Example docs ✅ Deleted
+
+### Remaining Documentation Files
+- ✅ `caption-system-architecture.md` - Main architecture documentation
+- ✅ `README.md` - Quick reference guide
+- ✅ `gemini-srt-translator-analysis.md` - External tool analysis (for translation feature)
+- ✅ `video_template.mp4` - Test video for validation
+- ✅ `.env` - Local environment variables (gitignored)
+- ✅ `.gitignore` - Excludes sensitive files
 
 ---
 
