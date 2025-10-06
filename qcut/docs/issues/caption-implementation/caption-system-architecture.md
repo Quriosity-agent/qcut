@@ -298,12 +298,16 @@ qcut/
 
 ---
 
-### Issue #2: Gemini API Key Configuration (2025-10-06) 🔄 IN PROGRESS
+### Issue #2: Gemini API Key Save Not Persisting (2025-10-06) 🔄 IN PROGRESS
 
-**Status:** 🔄 **TESTING WITH DEBUG LOGS**
+**Status:** 🔄 **DEBUGGING - Backend logs missing**
 
-**Current Task:**
-Debug why the "Save API Keys" button is not working as expected.
+**Current Issue:**
+The "Save API Keys" button returns success in the frontend, but:
+1. ✅ Frontend logs show save succeeded
+2. ❌ Backend (Electron) logs are NOT appearing
+3. ❌ Transcription still fails with "API key not found"
+4. ❌ File may not be written or is in wrong location
 
 **What to Do Now:**
 
@@ -366,12 +370,64 @@ Debug why the "Save API Keys" button is not working as expected.
 - File: `C:\Users\<YourName>\AppData\Roaming\qcut\api-keys.json`
 - Encryption: Windows DPAPI (secure)
 
-**Fallback for Development (if Settings UI fails):**
-Add to `apps/web/.env`:
-```bash
-VITE_GEMINI_API_KEY=AIzaSy...your_key_here
+**Observed Behavior (2025-10-06):**
+
+**Frontend Console (✅ Working):**
 ```
-Then restart dev server.
+[Settings] 💾 Saving API keys...
+[Settings] Gemini API key length: 39
+[Settings] 📤 Calling window.electronAPI.apiKeys.set()...
+[Settings] ✅ API keys saved successfully, result: true
+```
+
+**Backend Console (❌ NOT appearing):**
+- No `[API Keys]` logs are showing
+- This means either:
+  1. Electron main process logs aren't being displayed
+  2. IPC handler isn't being called
+  3. Compiled TypeScript is outdated
+
+**Transcription Error (Still failing):**
+```
+Error: GEMINI_API_KEY not found. Please configure your API key in Settings.
+```
+
+**Next Debugging Steps:**
+
+1. **Check if TypeScript was compiled:**
+   ```bash
+   cd qcut/electron
+   bun x tsc
+   ls dist/api-key-handler.js  # Should exist
+   ```
+
+2. **Check file existence:**
+   ```bash
+   # Windows
+   dir "C:\Users\%USERNAME%\AppData\Roaming\qcut\api-keys.json"
+
+   # Or in PowerShell
+   Test-Path "$env:APPDATA\qcut\api-keys.json"
+   ```
+
+3. **Manually check the file:**
+   ```bash
+   type "C:\Users\%USERNAME%\AppData\Roaming\qcut\api-keys.json"
+   ```
+
+4. **Use Fallback Method (TEMPORARY):**
+   Add to `apps/web/.env`:
+   ```bash
+   VITE_GEMINI_API_KEY=AIzaSyBIPgJqlXmEFxuskumUvIi59nafF6O1DN8
+   ```
+   Then restart: `bun run electron:dev`
+
+   This will bypass the Settings UI and use environment variable.
+
+**Root Cause Hypothesis:**
+- The IPC handler may not be registered properly
+- Or the compiled JavaScript is not being loaded
+- Need to verify Electron main process setup
 
 
 ---
