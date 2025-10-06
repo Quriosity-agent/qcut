@@ -3,12 +3,17 @@
 
 # Generated output files
 output.srt
+output-native.md
 
 # Temporary audio files
 *.wav
 *.mp3
 *.webm
 *.m4a
+
+# Node modules
+node_modules/
+bun.lockb
 
 # OS files
 .DS_Store

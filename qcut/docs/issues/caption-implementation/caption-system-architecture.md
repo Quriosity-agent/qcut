@@ -970,6 +970,171 @@ Parse SRT Response → Create Caption Track
 
 ---
 
+## ⚠️ CRITICAL UPDATE: OpenRouter vs Native Gemini API (2025-01-06)
+
+### Test Results Summary
+
+**Testing Environment:**
+- Video: `video_template.mp4` (3.5 seconds duration)
+- Audio: 0.11 MB WAV file (16kHz, mono)
+- Prompt: Comprehensive transcript specialist with verbatim transcription requirements
+
+### Results
+
+| Implementation | Model | Result | Accuracy |
+|---------------|-------|--------|----------|
+| **OpenRouter** | `google/gemini-2.5-flash` | ❌ **HALLUCINATED** | Generated 56+ fake subtitle blocks extending to 1+ minute (YouTube tutorial about thumbnails) |
+| **OpenRouter** | `google/gemini-2.5-pro` | ❌ **HALLUCINATED** | Generated 10-minute fake tutorial about creating custom GPTs |
+| **Native Gemini API** | `gemini-2.5-pro` | ✅ **ACCURATE** | Correctly transcribed 3.5 seconds: "You might be thinking, well, let's just give up. Why- why don't we just let everyone..." |
+
+### Critical Findings
+
+1. **OpenRouter Audio Proxy Issue**: OpenRouter does NOT properly proxy audio data to Gemini models, causing severe hallucinations
+2. **Native API Works**: Google's native Gemini API correctly processes audio and produces accurate transcriptions
+3. **Recommendation**: **MUST use native `@google/generative-ai` SDK**, NOT OpenRouter for audio transcription
+
+### Working Implementation
+
+**File:** `gemini-native-api-example.ts`
+
+```typescript
+import { GoogleGenerativeAI } from '@google/generative-ai';
+
+const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
+const model = genAI.getGenerativeModel({ model: 'gemini-2.5-pro' });
+
+const result = await model.generateContent([
+  prompt,
+  {
+    inlineData: {
+      mimeType: 'audio/wav',
+      data: audioBuffer.toString('base64')
+    }
+  }
+]);
+```
+
+### Updated Environment Variables
+
+```bash
+# Native Gemini API (RECOMMENDED)
+GEMINI_API_KEY=AIzaSyXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+
+# Get your API key from: https://aistudio.google.com/app/apikey
+```
+
+### Updated Dependencies
+
+```bash
+# Remove OpenRouter approach, use native SDK
+bun add @google/generative-ai
+```
+
+### Audio Specifications (from Gemini docs)
+
+- **Supported formats**: WAV, MP3, AIFF, AAC, OGG Vorbis, FLAC
+- **Token cost**: 32 tokens per second of audio
+- **Max length**: 9.5 hours
+- **Processing**: Downsamples to 16 Kbps, combines channels to mono
+- **File size limit**: 20 MB for inline data (use Files API for larger)
+
+### Test Output Comparison
+
+**OpenRouter (WRONG)**:
+```
+1
+00:00:00,000 --> 00:00:01,000
+Hey, what's up, guys?
+
+2
+00:00:01,000 --> 00:00:02,700
+Welcome back to my channel.
+[... continues for 1+ minute of fabricated content]
+```
+
+**Native Gemini API (CORRECT)**:
+```markdown
+# Video Title
+The Moral Question of Intervention
+
+## Table of Contents
+* [00:00:00] The Question of Giving Up
+
+## [00:00:00] The Question of Giving Up
+**Speaker 1:** You might be thinking, well, let's just give up. [00:01]
+
+Why- why don't we just let everyone... [00:03]
+```
+
+### Revised Implementation Strategy
+
+#### For QCut Caption System
+
+**DO NOT USE:**
+- ❌ OpenRouter for audio processing
+- ❌ `https://openrouter.ai/api/v1/chat/completions` endpoint for audio
+
+**USE INSTEAD:**
+- ✅ Native `@google/generative-ai` SDK
+- ✅ Direct Gemini API with proper audio inline data
+- ✅ Files API for audio > 20 MB
+
+#### Updated Electron Handler Example
+
+```typescript
+// qcut/electron/transcribe-handler.ts (CORRECTED)
+
+import { GoogleGenerativeAI } from '@google/generative-ai';
+import fs from 'node:fs/promises';
+
+ipcMain.handle('transcribe:audio', async (event, request: { audioPath: string }) => {
+  try {
+    const audioBuffer = await fs.readFile(request.audioPath);
+
+    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-pro' });
+
+    const result = await model.generateContent([
+      'Transcribe this audio verbatim with timestamps.',
+      {
+        inlineData: {
+          mimeType: 'audio/wav',
+          data: audioBuffer.toString('base64')
+        }
+      }
+    ]);
+
+    const transcript = result.response.text();
+
+    // Parse transcript to segments (implement based on output format)
+    return { transcript };
+
+  } catch (error) {
+    console.error('Gemini transcription error:', error);
+    throw error;
+  }
+});
+```
+
+### Cost Comparison (Updated)
+
+**Native Gemini 2.5 Pro:**
+- Input: $0.30/M tokens
+- Audio: 32 tokens/second
+- 10-minute video = 600 seconds = 19,200 tokens
+- Cost: ~$0.006 per 10-minute video
+
+**vs. OpenRouter (BROKEN - DO NOT USE)**
+
+### Lessons Learned
+
+1. **Always test with real data**: The 3.5-second video revealed OpenRouter's audio proxy bug
+2. **Verify API compatibility**: Third-party proxies may not support all features
+3. **Use native SDKs when available**: Direct API access provides better reliability
+4. **Document findings**: Critical for future developers and debugging
+
+---
+
 ## References
 
 ### External Documentation
