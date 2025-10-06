@@ -74,17 +74,27 @@ export function setupGeminiHandlers() {
       event,
       request: GeminiTranscriptionRequest
     ): Promise<TranscriptionResult> => {
+      console.log("[Gemini Handler] 🎯 Transcription request received");
+      console.log("[Gemini Handler] Audio path:", request.audioPath);
+      console.log("[Gemini Handler] Language:", request.language || "auto-detect");
+
       try {
         // Check for API key
         if (!process.env.GEMINI_API_KEY) {
+          console.error("[Gemini Handler] ❌ GEMINI_API_KEY not found in environment");
           throw new Error(
             "GEMINI_API_KEY not found. Get your API key from: https://aistudio.google.com/app/apikey"
           );
         }
+        console.log("[Gemini Handler] ✅ API key found");
 
         // Read audio file
+        console.log("[Gemini Handler] Reading audio file...");
         const audioBuffer = await fs.readFile(request.audioPath);
+        console.log("[Gemini Handler] Audio file size:", audioBuffer.length, "bytes");
+
         const audioBase64 = audioBuffer.toString("base64");
+        console.log("[Gemini Handler] Audio encoded to base64, length:", audioBase64.length);
 
         // Determine MIME type from extension
         const ext = path.extname(request.audioPath).toLowerCase();
@@ -100,10 +110,13 @@ export function setupGeminiHandlers() {
         const mimeType = mimeTypeMap[ext] || "audio/wav";
 
         // Initialize Gemini API
+        console.log("[Gemini Handler] Initializing Gemini API client...");
         const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
         const model = genAI.getGenerativeModel({ model: "gemini-2.5-pro" });
+        console.log("[Gemini Handler] Using model: gemini-2.5-pro");
 
         // Generate SRT transcription
+        console.log("[Gemini Handler] Sending transcription request to Gemini...");
         const prompt = `Transcribe this audio into SRT subtitle format with precise timestamps.
 
 Format requirements:
@@ -136,20 +149,38 @@ Provide ONLY the SRT content, no additional text.`;
 
         const response = await result.response;
         const srtContent = response.text();
+        console.log("[Gemini Handler] ✅ Received response from Gemini");
+        console.log("[Gemini Handler] SRT content length:", srtContent.length, "characters");
 
         // Parse SRT to segments
+        console.log("[Gemini Handler] Parsing SRT content to segments...");
         const segments = parseSrtToSegments(srtContent);
+        console.log("[Gemini Handler] ✅ Parsed", segments.length, "segments");
 
         // Extract full text
         const text = segments.map((s) => s.text).join(" ");
+        console.log("[Gemini Handler] Full text length:", text.length, "characters");
 
-        return {
+        const resultData = {
           text,
           segments,
           language: request.language || "auto",
         };
+
+        console.log("[Gemini Handler] 🎉 Transcription completed successfully!");
+        console.log("[Gemini Handler] Result:", {
+          segmentCount: segments.length,
+          textLength: text.length,
+          language: resultData.language,
+        });
+
+        return resultData;
       } catch (error: any) {
-        console.error("Gemini transcription error:", error);
+        console.error("[Gemini Handler] ❌ Error during transcription:", error);
+        console.error("[Gemini Handler] Error details:", {
+          message: error.message,
+          stack: error.stack,
+        });
         throw new Error(
           `Transcription failed: ${error.message || "Unknown error"}`
         );
@@ -157,5 +188,5 @@ Provide ONLY the SRT content, no additional text.`;
     }
   );
 
-  console.log("[Gemini] Transcription handler registered");
+  console.log("[Gemini] ✅ Transcription handler registered");
 }
