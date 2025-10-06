@@ -250,39 +250,61 @@ export const initFFmpeg = async (): Promise<FFmpeg> => {
         );
       }
 
-      // Add timeout to detect hanging with environment-specific timeouts
-      const timeoutDuration = environment.hasSharedArrayBuffer
-        ? 60_000
-        : 120_000;
+      // Add timeout to detect hanging with increased timeout for Electron
+      // Issue #1: Previous 60s timeout was insufficient for FFmpeg loading
+      const timeoutDuration = 180_000; // Increased to 180 seconds (3 minutes)
+
+      console.log(
+        `[FFmpeg Utils] ⏱️ Starting FFmpeg load with ${timeoutDuration / 1000}s timeout...`
+      );
+      console.log("[FFmpeg Utils] Core URL:", coreUrl);
+      console.log("[FFmpeg Utils] WASM URL:", wasmUrl);
 
       try {
+        const loadStartTime = Date.now();
+
         const loadPromise = ffmpeg.load({
           coreURL: coreUrl,
           wasmURL: wasmUrl,
         });
 
+        // Progress indicator
+        const progressInterval = setInterval(() => {
+          const elapsed = ((Date.now() - loadStartTime) / 1000).toFixed(1);
+          console.log(`[FFmpeg Utils] ⏳ Loading... ${elapsed}s elapsed`);
+        }, 5000); // Log every 5 seconds
+
         const timeoutPromise = new Promise((_, reject) => {
           setTimeout(
-            () =>
+            () => {
+              clearInterval(progressInterval);
               reject(
                 new Error(
-                  `FFmpeg load timeout after ${timeoutDuration / 1000} seconds`
+                  `FFmpeg load timeout after ${timeoutDuration / 1000} seconds. Check if FFmpeg files are accessible.`
                 )
-              ),
+              );
+            },
             timeoutDuration
           );
         });
 
         await Promise.race([loadPromise, timeoutPromise]);
+        clearInterval(progressInterval);
 
+        const loadDuration = ((Date.now() - loadStartTime) / 1000).toFixed(2);
         console.log(
-          "[FFmpeg Utils] ✅ FFmpeg loaded successfully with direct URLs in Electron"
+          `[FFmpeg Utils] ✅ FFmpeg loaded successfully in ${loadDuration}s`
         );
       } catch (loadError) {
         console.error(
           "[FFmpeg Utils] ❌ Failed to load FFmpeg with direct URLs:",
           loadError
         );
+        console.error("[FFmpeg Utils] Environment info:", {
+          hasSharedArrayBuffer: environment.hasSharedArrayBuffer,
+          crossOriginIsolated: environment.crossOriginIsolated,
+          isElectron: electronMode,
+        });
         throw loadError;
       }
     } else {

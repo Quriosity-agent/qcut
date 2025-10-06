@@ -1161,6 +1161,61 @@ Parse SRT Response → Create Caption Track
 - [x] Update toast notifications with actionable error messages ✅
 - [x] Add link to Gemini API key setup: https://aistudio.google.com/app/apikey ✅
 
+## 🐛 Known Issues & Fixes
+
+### Issue #1: FFmpeg Load Timeout in Electron (2025-01-06)
+
+**Problem:**
+When attempting to transcribe video files, FFmpeg fails to load in Electron environment with timeout error after 60 seconds:
+```
+Error: FFmpeg load timeout after 60 seconds
+at ffmpeg-utils.ts:268:17
+```
+
+**Root Cause:**
+FFmpeg tries to load `ffmpeg-core.js` and `ffmpeg-core.wasm` using the `app://` protocol in Electron, but the files fail to load within the 60-second timeout. The issue occurs during audio extraction from video files, which is a prerequisite for Gemini transcription.
+
+**Impact:**
+- ❌ Cannot transcribe video files (MP4, MOV, etc.)
+- ✅ Direct audio files (WAV, MP3) still work
+- Blocks Phase 4 testing with video files
+
+**Subtasks to Fix:**
+
+#### Task 4.0.1: Increase FFmpeg Load Timeout ✅ COMPLETE (5 min)
+- [x] Increase timeout from 60s to 180s in `apps/web/src/lib/ffmpeg-utils.ts` ✅
+- [x] Add better progress logging during load (logs every 5s) ✅
+- [x] Add load start/end timing with duration display ✅
+- [x] Add environment info logging on failure ✅
+- [ ] Test with video_template.mp4
+
+**Changes Made:**
+- Timeout increased: 60s → 180s (3 minutes)
+- Added progress indicator logging every 5 seconds
+- Added load duration tracking and display
+- Added detailed error context (environment, URLs, timing)
+- Console messages show: URLs, timeout duration, elapsed time, success duration
+
+#### Task 4.0.2: Optimize FFmpeg Loading Strategy (10 min)
+- [ ] Check if FFmpeg files are accessible via `app://` protocol
+- [ ] Add fallback to local file system paths if protocol fails
+- [ ] Verify file existence before attempting load
+
+#### Task 4.0.3: Add Preload Verification (5 min)
+- [ ] Add FFmpeg availability check on app startup
+- [ ] Show warning if FFmpeg not properly configured
+- [ ] Add console verification messages
+
+#### Task 4.0.4: Test and Verify Fix (10 min)
+- [ ] Test video extraction with increased timeout
+- [ ] Test direct audio file upload
+- [ ] Verify console messages show proper loading
+- [ ] Update documentation with results
+
+**Status:** 🔄 In Progress
+
+---
+
 **Phase 4: Testing & Deployment** 📋 Planned
 
 ### Task 4.1: Format Testing (15 min)
