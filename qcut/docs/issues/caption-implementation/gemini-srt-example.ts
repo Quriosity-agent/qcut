@@ -73,7 +73,7 @@ async function transcribeWithGemini(audioBuffer: Buffer, language = 'auto'): Pro
       'X-Title': 'QCut Video Editor - Gemini SRT Example'
     },
     body: JSON.stringify({
-      model: 'google/gemini-2.5-flash',
+      model: 'google/gemini-2.5-pro',
       messages: [{
         role: 'user',
         content: [
