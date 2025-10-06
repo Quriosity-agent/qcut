@@ -1102,10 +1102,16 @@ Parse SRT Response → Create Caption Track
 - [x] Document cost and performance
 
 **Phase 2: Core Implementation** 🔄 In Progress
-- [ ] Replace `electron/transcribe-handler.ts` with Gemini implementation
-- [ ] Update `captions-store.ts` to use Gemini API
-- [ ] Remove encryption/R2 dependencies
-- [ ] Add SRT parsing for Gemini output
+- [x] Delete legacy `electron/transcribe-handler.ts` ✅ Complete
+- [ ] Create new `electron/gemini-transcribe-handler.ts` with native Gemini API
+- [ ] Update `electron/main.ts` - replace transcribe-handler.js import (line 72)
+- [ ] Fix `captions.tsx` - remove imports for deleted files:
+  - Line 32: `isTranscriptionConfigured` (deleted file)
+  - Line 38: `encryptWithRandomKey` (deleted file)
+  - Line 88: `isTranscriptionConfigured()` call
+  - Line 227: `encryptWithRandomKey()` call
+- [ ] Update `captions-store.ts` to call Gemini via Electron IPC
+- [ ] Add SRT parsing for Gemini markdown output
 
 **Phase 3: UI Updates** 📋 Planned
 - [ ] Simplify caption UI (remove upload progress)
@@ -1122,13 +1128,42 @@ Parse SRT Response → Create Caption Track
 
 | File | Action | Status |
 |------|--------|--------|
-| `qcut/electron/transcribe-handler.ts` | Replace with Gemini API implementation | 📋 Pending |
-| `qcut/apps/web/src/stores/captions-store.ts` | Remove encryption logic, add Gemini calls | 📋 Pending |
-| `qcut/apps/web/src/components/editor/media-panel/views/captions.tsx` | Simplify UI | 📋 Pending |
-| `qcut/apps/web/src/lib/transcription/zk-encryption.ts` | Delete (no longer needed) | 📋 Pending |
-| `qcut/apps/web/src/lib/transcription/transcription-utils.ts` | Delete (Modal-specific) | 📋 Pending |
+| `qcut/electron/transcribe-handler.ts` | ~~Replace with Gemini API~~ **DELETED** | ✅ Done |
+| `qcut/electron/gemini-transcribe-handler.ts` | Create new Gemini IPC handler | 📋 Pending |
+| `qcut/electron/main.ts` | Update line 72: remove transcribe-handler import | 📋 Pending |
+| `qcut/apps/web/src/components/editor/media-panel/views/captions.tsx` | Remove broken imports (lines 32, 38, 88, 227) | ⚠️ **Broken** |
+| `qcut/apps/web/src/stores/captions-store.ts` | Update to call Gemini via IPC | 📋 Pending |
+| `qcut/apps/web/src/lib/transcription/zk-encryption.ts` | ~~Delete~~ | ✅ Done |
+| `qcut/apps/web/src/lib/transcription/transcription-utils.ts` | ~~Delete~~ | ✅ Done |
 | `qcut/package.json` | Add `@google/generative-ai` | ✅ Done |
 | `.env` files | Replace Modal/R2 keys with `GEMINI_API_KEY` | ✅ Done |
+
+### ⚠️ Breaking Changes Detected
+
+The following files currently have **broken imports** after deleting encryption/Modal utilities:
+
+**`captions.tsx` - 4 issues:**
+```typescript
+// Line 32: BROKEN - file deleted
+import { isTranscriptionConfigured } from "@/lib/transcription/transcription-utils";
+
+// Line 38: BROKEN - file deleted
+import { encryptWithRandomKey } from "@/lib/transcription/zk-encryption";
+
+// Line 88: BROKEN - function from deleted file
+const { configured, missingVars } = isTranscriptionConfigured();
+
+// Line 227: BROKEN - function from deleted file
+const { encryptedData, key, iv } = await encryptWithRandomKey(audioBuffer);
+```
+
+**`electron/main.ts` - 1 issue:**
+```typescript
+// Line 72: BROKEN - file deleted
+setupTranscribeHandlers = require("./transcribe-handler.js");
+```
+
+These must be fixed before the build will work.
 
 ### Cost & Performance Comparison
 
