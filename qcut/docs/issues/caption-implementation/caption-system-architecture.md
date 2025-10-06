@@ -298,40 +298,80 @@ qcut/
 
 ---
 
-### Issue #2: Gemini API Key Configuration (2025-10-06) ✅ RESOLVED
+### Issue #2: Gemini API Key Configuration (2025-10-06) 🔄 IN PROGRESS
 
-**Status:** ✅ **RESOLVED** - Use Settings UI to configure
+**Status:** 🔄 **TESTING WITH DEBUG LOGS**
 
-**Problem:**
-The Gemini API key needs to be configured for caption transcription to work.
+**Current Task:**
+Debug why the "Save API Keys" button is not working as expected.
 
-**Solution:**
-Use the **Settings UI** to configure the Gemini API key securely:
+**What to Do Now:**
 
-1. **Get API Key** from https://aistudio.google.com/app/apikey
-2. **Open Settings** → API Keys tab in the app
-3. **Paste** your Gemini API key
-4. **Click Save** - key is encrypted automatically
-5. **Test** by uploading a video for transcription
+1. **Restart the Electron App:**
+   ```bash
+   cd qcut
+   bun run electron:dev
+   ```
+
+2. **Open Settings UI:**
+   - Click the **Settings** icon (⚙️) in the app
+   - Go to the **"API Keys"** tab
+
+3. **Enter Gemini API Key:**
+   - Get your key from https://aistudio.google.com/app/apikey
+   - Paste it in the **"Gemini API Key"** field
+   - Click **"Save API Keys"** button
+
+4. **Check Console Logs:**
+
+   **Frontend logs (Browser DevTools - F12):**
+   ```
+   [Settings] 💾 Saving API keys...
+   [Settings] FAL API key length: 0
+   [Settings] Freesound API key length: 0
+   [Settings] Gemini API key length: 39
+   [Settings] 📤 Calling window.electronAPI.apiKeys.set()...
+   [Settings] ✅ API keys saved successfully, result: true
+   ```
+
+   **Backend logs (Terminal/Electron console):**
+   ```
+   [API Keys] 💾 Received save request
+   [API Keys] Keys received: { geminiApiKey: "AIzaSyBIPg... (39 chars)" }
+   [API Keys] 🔒 Encryption available: true
+   [API Keys] 🔐 Gemini key encrypted
+   [API Keys] 📁 Checking directory: C:\Users\...\AppData\Roaming\qcut
+   [API Keys] 💾 Writing to file: C:\Users\...\AppData\Roaming\qcut\api-keys.json
+   [API Keys] ✅ File written successfully
+   [API Keys] 📝 File size: 234 bytes
+   [API Keys] 🔍 Verification - Keys in file: ["geminiApiKey"]
+   ```
+
+5. **If Save Fails:**
+   - Share the console error messages
+   - Check if any errors appear in either console
+
+6. **Test Transcription:**
+   - Go to **Captions** panel
+   - Upload `video_template.mp4`
+   - Click **"Transcribe with AI"**
+   - Check for:
+     ```
+     [Gemini Handler] 🔍 Checking API key...
+     [Gemini Handler] ✅ File exists: true
+     [Gemini Handler] ✅ API key loaded (length: 39)
+     ```
 
 **Storage Location:**
 - File: `C:\Users\<YourName>\AppData\Roaming\qcut\api-keys.json`
 - Encryption: Windows DPAPI (secure)
-- Access: Electron main process only
 
-**Fallback for Development:**
-If you prefer using environment variables (less secure):
-1. Add to `apps/web/.env`: `VITE_GEMINI_API_KEY=AIza...`
-2. Restart dev server
-
-**Verification:**
-Check console logs during transcription:
+**Fallback for Development (if Settings UI fails):**
+Add to `apps/web/.env`:
+```bash
+VITE_GEMINI_API_KEY=AIzaSy...your_key_here
 ```
-[Gemini Handler] 🔍 Checking API key...
-[Gemini Handler] ✅ File exists: true
-[Gemini Handler] 🔒 Encryption available: true
-[Gemini Handler] ✅ API key loaded (length: 39)
-```
+Then restart dev server.
 
 
 ---
