@@ -29,17 +29,19 @@ import {
 } from "lucide-react";
 import { useDragDrop } from "@/hooks/use-drag-drop";
 import { cn } from "@/lib/utils";
-import { isTranscriptionConfigured } from "@/lib/transcription/transcription-utils";
+// DEPRECATED: Modal Whisper utilities removed for Gemini migration
+// import { isTranscriptionConfigured } from "@/lib/transcription/transcription-utils";
+// import { encryptWithRandomKey } from "@/lib/transcription/zk-encryption";
 import type {
   TranscriptionResult,
   TranscriptionSegment,
 } from "@/types/captions";
 import { extractAudio } from "@/lib/ffmpeg-utils";
-import { encryptWithRandomKey } from "@/lib/transcription/zk-encryption";
 // REMOVED: import { r2Client } from "@/lib/storage/r2-client";
 import { useTimelineStore } from "@/stores/timeline-store";
 import { useCaptionsStore } from "@/stores/captions-store";
-import { transcribeAudio } from "@/lib/api-adapter";
+// DEPRECATED: Modal Whisper API removed for Gemini migration
+// import { transcribeAudio } from "@/lib/api-adapter";
 
 // Helper function to convert ArrayBuffer to base64 for JSON serialization
 function arrayBufferToBase64(ab: ArrayBuffer): string {
@@ -84,8 +86,11 @@ export function CaptionsView() {
     startTranscriptionJob,
   } = useCaptionsStore();
 
-  // Check if transcription is configured
-  const { configured, missingVars } = isTranscriptionConfigured();
+  // Check if transcription is configured (Gemini)
+  // TODO: Replace with isGeminiConfigured() when implemented
+  const configured = true; // Temporary: assume configured
+  const missingVars: string[] = []; // Temporary
+  // const { configured, missingVars } = isTranscriptionConfigured();
 
   const updateState = useCallback((updates: Partial<TranscriptionState>) => {
     setState((prev) => ({ ...prev, ...updates }));
@@ -222,82 +227,105 @@ export function CaptionsView() {
           updateState({ uploadProgress: 20 });
         }
 
+        // DEPRECATED: Encryption/R2 upload removed for Gemini migration
         // Step 2: Encrypt the audio file using zero-knowledge encryption
-        toast.info("Encrypting audio file...");
-        const { encryptedData, key, iv } = await encryptWithRandomKey(
-          await audioFile.arrayBuffer()
+        // toast.info("Encrypting audio file...");
+        // const { encryptedData, key, iv } = await encryptWithRandomKey(
+        //   await audioFile.arrayBuffer()
+        // );
+        // // Convert key and IV to base64 for JSON transport
+        // const keyB64 = arrayBufferToBase64(key);
+        // const ivB64 = arrayBufferToBase64(iv);
+        // updateState({ uploadProgress: 50 });
+
+        // // Step 3: Upload encrypted file to server
+        // toast.info("Uploading to secure storage...");
+        // // Generate unique key for the audio file
+        // const timestamp = Date.now();
+        // const random = Math.random().toString(36).substring(2, 15);
+        // const lastDotIndex = audioFile.name.lastIndexOf(".");
+        // const extension =
+        //   lastDotIndex > 0 ? audioFile.name.slice(lastDotIndex + 1) : "wav";
+        // const r2Key = `transcription/${timestamp}-${random}.${extension}`;
+
+        // // Upload to server via API using multipart form-data
+        // const form = new FormData();
+        // form.append("filename", r2Key);
+        // form.append(
+        //   "file",
+        //   new Blob([encryptedData], { type: "application/octet-stream" }),
+        //   r2Key
+        // );
+        // const uploadResponse = await fetch("/api/upload-audio", {
+        //   method: "POST",
+        //   body: form,
+        // });
+
+        // if (!uploadResponse.ok) {
+        //   let message = "Upload failed";
+        //   try {
+        //     const uploadError = await uploadResponse.json();
+        //     message = uploadError.message || message;
+        //   } catch {
+        //     const text = await uploadResponse.text();
+        //     if (text) message = text;
+        //   }
+        //   throw new Error(message);
+        // }
+
+        // updateState({ uploadProgress: 70 });
+
+        // // Step 4: Call transcription API
+        // toast.info("Starting transcription...");
+        // updateState({
+        //   isUploading: false,
+        //   uploadProgress: 100,
+        //   isTranscribing: true,
+        //   transcriptionProgress: 10,
+        // });
+
+        // const apiResult = await transcribeAudio({
+        //   filename: r2Key,
+        //   language: selectedLanguage,
+        //   decryptionKey: keyB64,
+        //   iv: ivB64,
+        // });
+
+        // if (apiResult?.success === false) {
+        //   throw new Error(
+        //     apiResult.error || apiResult.message || "Transcription failed"
+        //   );
+        // }
+
+        // updateState({ transcriptionProgress: 90 });
+
+        // const result: TranscriptionResult = {
+        //   text: apiResult.text || "",
+        //   segments: apiResult.segments || [],
+        //   language: apiResult.language || selectedLanguage,
+        // };
+
+        // Step 2: Save audio to temp file for Electron IPC
+        const audioBuffer = await audioFile.arrayBuffer();
+        const tempPath = await window.electronAPI.audio.saveTemp(
+          new Uint8Array(audioBuffer),
+          "audio.wav"
         );
-        // Convert key and IV to base64 for JSON transport
-        const keyB64 = arrayBufferToBase64(key);
-        const ivB64 = arrayBufferToBase64(iv);
-        updateState({ uploadProgress: 50 });
 
-        // Step 3: Upload encrypted file to server
-        toast.info("Uploading to secure storage...");
-        // Generate unique key for the audio file
-        const timestamp = Date.now();
-        const random = Math.random().toString(36).substring(2, 15);
-        const lastDotIndex = audioFile.name.lastIndexOf(".");
-        const extension =
-          lastDotIndex > 0 ? audioFile.name.slice(lastDotIndex + 1) : "wav";
-        const r2Key = `transcription/${timestamp}-${random}.${extension}`;
-
-        // Upload to server via API using multipart form-data
-        const form = new FormData();
-        form.append("filename", r2Key);
-        form.append(
-          "file",
-          new Blob([encryptedData], { type: "application/octet-stream" }),
-          r2Key
-        );
-        const uploadResponse = await fetch("/api/upload-audio", {
-          method: "POST",
-          body: form,
-        });
-
-        if (!uploadResponse.ok) {
-          let message = "Upload failed";
-          try {
-            const uploadError = await uploadResponse.json();
-            message = uploadError.message || message;
-          } catch {
-            const text = await uploadResponse.text();
-            if (text) message = text;
-          }
-          throw new Error(message);
-        }
-
-        updateState({ uploadProgress: 70 });
-
-        // Step 4: Call transcription API
-        toast.info("Starting transcription...");
+        // Step 3: Call Gemini transcription via Electron IPC
+        toast.info("Transcribing with Gemini...");
         updateState({
           isUploading: false,
-          uploadProgress: 100,
           isTranscribing: true,
-          transcriptionProgress: 10,
+          transcriptionProgress: 50,
         });
 
-        const apiResult = await transcribeAudio({
-          filename: r2Key,
+        const result = await window.electronAPI.transcribe.transcribe({
+          audioPath: tempPath,
           language: selectedLanguage,
-          decryptionKey: keyB64,
-          iv: ivB64,
         });
-
-        if (apiResult?.success === false) {
-          throw new Error(
-            apiResult.error || apiResult.message || "Transcription failed"
-          );
-        }
 
         updateState({ transcriptionProgress: 90 });
-
-        const result: TranscriptionResult = {
-          text: apiResult.text || "",
-          segments: apiResult.segments || [],
-          language: apiResult.language || selectedLanguage,
-        };
 
         // Complete transcription job in store
         completeTranscriptionJob(jobId, result);

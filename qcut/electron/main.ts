@@ -67,12 +67,7 @@ const { setupFFmpegIPC } = require("./ffmpeg-handler.js");
 const { setupSoundIPC } = require("./sound-handler.js");
 const { setupThemeIPC } = require("./theme-handler.js");
 const { setupApiKeyIPC } = require("./api-key-handler.js");
-let setupTranscribeHandlers: HandlerFunction | null = null;
-try {
-  setupTranscribeHandlers = require("./transcribe-handler.js");
-} catch (err: any) {
-  logger.warn("[Transcribe] handler not available:", err?.message || err);
-}
+const { setupGeminiHandlers } = require("./gemini-transcribe-handler.js");
 
 let mainWindow: BrowserWindow | null = null;
 let staticServer: http.Server | null = null;
@@ -366,11 +361,7 @@ app.whenReady().then(() => {
   setupSoundIPC(); // Add sound search support
   setupThemeIPC(); // Add theme switching support
   setupApiKeyIPC(); // Add API key management support
-  if (typeof setupTranscribeHandlers === "function") {
-    setupTranscribeHandlers(); // Add transcription support
-  } else {
-    logger.warn("[Transcribe] Skipping setup; handler not initialized");
-  }
+  setupGeminiHandlers(); // Add Gemini transcription support
 
   // Configure auto-updater for production builds
   if (app.isPackaged) {

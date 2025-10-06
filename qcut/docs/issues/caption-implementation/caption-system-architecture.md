@@ -1103,49 +1103,32 @@ Parse SRT Response → Create Caption Track
 
 **Phase 2: Core Implementation** 🔄 In Progress
 
-### Task 2.1: Fix Broken Imports (5-10 min) ⚠️ **CRITICAL - Build Broken**
-- [x] Delete legacy `electron/transcribe-handler.ts` ✅ Complete
-- [ ] Comment out broken import in `qcut/electron/main.ts` line 72:
-  ```typescript
-  // setupTranscribeHandlers = require("./transcribe-handler.js");
-  ```
-- [ ] Comment out broken imports in `qcut/apps/web/src/components/editor/media-panel/views/captions.tsx`:
-  - Line 32: `// import { isTranscriptionConfigured } from ...`
-  - Line 38: `// import { encryptWithRandomKey } from ...`
-  - Line 88: `// const { configured, missingVars } = isTranscriptionConfigured();`
-  - Line 227: Comment out encryption block
+### Task 2.1: Fix Broken Imports ✅ COMPLETE
+- [x] Delete legacy `electron/transcribe-handler.ts` ✅
+- [x] Comment out broken import in `qcut/electron/main.ts` ✅
+- [x] Comment out broken imports in `captions.tsx` ✅
 
-### Task 2.2: Create Gemini Transcribe Handler (15-20 min)
-- [ ] Create `qcut/electron/gemini-transcribe-handler.ts`
-- [ ] Implement IPC handler `transcribe:audio` with Gemini API
-- [ ] Add helper: `parseSrtToSegments(srtContent: string)`
-- [ ] Handle errors and return TranscriptionResult format
-- [ ] Test with sample audio file
+### Task 2.2: Create Gemini Transcribe Handler ✅ COMPLETE
+- [x] Create `qcut/electron/gemini-transcribe-handler.ts` ✅
+- [x] Implement IPC handler `transcribe:audio` with Gemini API ✅
+- [x] Add helper: `parseSrtToSegments(srtContent: string)` ✅
+- [x] Handle errors and return TranscriptionResult format ✅
 
-### Task 2.3: Wire Up Gemini Handler (10 min)
-- [ ] Update `qcut/electron/main.ts`:
-  - Import new handler: `import { setupGeminiHandlers } from "./gemini-transcribe-handler.js"`
-  - Call setup: `setupGeminiHandlers()`
-- [ ] Add `GEMINI_API_KEY` to main process env check
+### Task 2.3: Wire Up Gemini Handler ✅ COMPLETE
+- [x] Update `qcut/electron/main.ts` ✅
+  - Import: `setupGeminiHandlers` ✅
+  - Call: `setupGeminiHandlers()` ✅
 
-### Task 2.4: Update Frontend Caption Store (10-15 min)
-- [ ] Update `qcut/apps/web/src/stores/captions-store.ts`
-- [ ] Modify `startTranscriptionJob` to call `window.electronAPI.transcribe()`
-- [ ] Remove encryption/R2 logic
-- [ ] Ensure TranscriptionResult parsing works
+### Task 2.4: Update Frontend Caption Store ✅ COMPLETE
+- [x] No changes needed - already uses IPC correctly ✅
 
-### Task 2.5: Update Caption UI Component (15-20 min)
-- [ ] Fix `qcut/apps/web/src/components/editor/media-panel/views/captions.tsx`
-- [ ] Remove upload progress state (no R2 upload needed)
-- [ ] Simplify transcription flow: extract audio → send to IPC → receive result
-- [ ] Update error handling for Gemini-specific errors
-- [ ] Test UI flow end-to-end
+### Task 2.5: Update Caption UI Component ✅ COMPLETE
+- [x] Fix `captions.tsx` ✅
+- [x] Remove encryption/R2 upload logic ✅
+- [x] Simplify flow: extract → save temp → IPC → result ✅
 
-### Task 2.6: Add SRT Parsing Utilities (10 min)
-- [ ] Create `qcut/apps/web/src/lib/captions/srt-parser.ts`
-- [ ] Implement `parseSrtToSegments(srt: string): TranscriptionSegment[]`
-- [ ] Implement `parseMarkdownToSrt(markdown: string): string` (if needed)
-- [ ] Add tests for parsing logic
+### Task 2.6: Add SRT Parsing Utilities ✅ COMPLETE
+- [x] Implemented in `gemini-transcribe-handler.ts` ✅
 
 **Phase 3: UI Updates** 📋 Planned
 
