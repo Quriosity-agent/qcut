@@ -6,11 +6,13 @@ import fs from "fs";
 interface ApiKeys {
   falApiKey: string;
   freesoundApiKey: string;
+  geminiApiKey: string;
 }
 
 interface ApiKeyData {
   falApiKey?: string;
   freesoundApiKey?: string;
+  geminiApiKey?: string;
 }
 
 interface EncryptedApiKeyData {
@@ -37,7 +39,7 @@ export function setupApiKeyIPC(): void {
   ipcMain.handle("api-keys:get", async (): Promise<ApiKeys> => {
     try {
       if (!fs.existsSync(apiKeysFilePath)) {
-        return { falApiKey: "", freesoundApiKey: "" };
+        return { falApiKey: "", freesoundApiKey: "", geminiApiKey: "" };
       }
 
       const encryptedData: EncryptedApiKeyData = JSON.parse(
@@ -45,7 +47,7 @@ export function setupApiKeyIPC(): void {
       );
 
       // Decrypt the stored keys if they exist and safeStorage is available
-      const result: ApiKeys = { falApiKey: "", freesoundApiKey: "" };
+      const result: ApiKeys = { falApiKey: "", freesoundApiKey: "", geminiApiKey: "" };
 
       if (encryptedData.falApiKey && safeStorage.isEncryptionAvailable()) {
         try {
@@ -80,10 +82,28 @@ export function setupApiKeyIPC(): void {
         result.freesoundApiKey = encryptedData.freesoundApiKey || "";
       }
 
+      if (
+        encryptedData.geminiApiKey &&
+        safeStorage.isEncryptionAvailable()
+      ) {
+        try {
+          const decryptedGemini: string = safeStorage.decryptString(
+            Buffer.from(encryptedData.geminiApiKey, "base64")
+          );
+          result.geminiApiKey = decryptedGemini;
+        } catch (error: any) {
+          // Failed to decrypt Gemini API key, falling back to plain text
+          // Fallback: treat stored value as plain text
+          result.geminiApiKey = encryptedData.geminiApiKey || "";
+        }
+      } else {
+        result.geminiApiKey = encryptedData.geminiApiKey || "";
+      }
+
       return result;
     } catch (error: any) {
       // Failed to load API keys
-      return { falApiKey: "", freesoundApiKey: "" };
+      return { falApiKey: "", freesoundApiKey: "", geminiApiKey: "" };
     }
   });
 
@@ -94,7 +114,7 @@ export function setupApiKeyIPC(): void {
     "api-keys:set",
     async (event: IpcMainInvokeEvent, keys: ApiKeyData): Promise<boolean> => {
       try {
-        const { falApiKey = "", freesoundApiKey = "" } = keys;
+        const { falApiKey = "", freesoundApiKey = "", geminiApiKey = "" } = keys;
 
         const dataToStore: EncryptedApiKeyData = {};
 
@@ -114,11 +134,20 @@ export function setupApiKeyIPC(): void {
           } else {
             dataToStore.freesoundApiKey = "";
           }
+
+          if (geminiApiKey) {
+            const encryptedGemini: Buffer =
+              safeStorage.encryptString(geminiApiKey);
+            dataToStore.geminiApiKey = encryptedGemini.toString("base64");
+          } else {
+            dataToStore.geminiApiKey = "";
+          }
         } else {
           // Fallback to plain text storage if encryption is not available
           // Encryption not available, storing API keys as plain text
           dataToStore.falApiKey = falApiKey;
           dataToStore.freesoundApiKey = freesoundApiKey;
+          dataToStore.geminiApiKey = geminiApiKey;
         }
 
         // Ensure the directory exists

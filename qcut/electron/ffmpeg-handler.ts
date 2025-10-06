@@ -115,6 +115,20 @@ interface OpenFolderResult {
   path: string;
 }
 
+interface ExtractAudioOptions {
+  /** Path to the video file */
+  videoPath: string;
+  /** Output audio format (wav, mp3, etc.) */
+  format?: string;
+}
+
+interface ExtractAudioResult {
+  /** Path to the extracted audio file in temp directory */
+  audioPath: string;
+  /** Size of the extracted audio file in bytes */
+  fileSize: number;
+}
+
 interface FFmpegHandlers {
   "ffmpeg-path": () => Promise<string>;
   "create-export-session": () => Promise<ExportSession>;
@@ -125,6 +139,7 @@ interface FFmpegHandlers {
   "export-video-cli": (options: ExportOptions) => Promise<ExportResult>;
   "validate-filter-chain": (filterChain: string) => Promise<boolean>;
   "processFrame": (options: FrameProcessOptions) => Promise<void>;
+  "extract-audio": (options: ExtractAudioOptions) => Promise<ExtractAudioResult>;
 }
 
 const tempManager = new TempManager();
@@ -533,6 +548,107 @@ exit /b %ERRORLEVEL%`;
       });
     }
   );
+
+  // Extract audio from video using FFmpeg CLI
+  ipcMain.handle(
+    "extract-audio",
+    async (
+      event: IpcMainInvokeEvent,
+      { videoPath, format = "wav" }: ExtractAudioOptions
+    ): Promise<ExtractAudioResult> => {
+      console.log("[FFmpeg Handler] Starting audio extraction...");
+      console.log("[FFmpeg Handler] Video path:", videoPath);
+      console.log("[FFmpeg Handler] Output format:", format);
+
+      // Verify input file exists
+      if (!fs.existsSync(videoPath)) {
+        throw new Error(`Video file not found: ${videoPath}`);
+      }
+
+      const ffmpegPath = getFFmpegPath();
+
+      // Create temp directory for audio extraction
+      const tempDir = path.join(app.getPath("temp"), "qcut-audio-extraction");
+      if (!fs.existsSync(tempDir)) {
+        fs.mkdirSync(tempDir, { recursive: true });
+      }
+
+      // Generate unique output filename
+      const timestamp = Date.now();
+      const outputFileName = `audio-${timestamp}.${format}`;
+      const outputPath = path.join(tempDir, outputFileName);
+
+      console.log("[FFmpeg Handler] Output path:", outputPath);
+
+      return new Promise<ExtractAudioResult>((resolve, reject) => {
+        const startTime = Date.now();
+
+        // FFmpeg command to extract audio
+        const args = [
+          "-i", videoPath,           // Input video
+          "-vn",                      // No video
+          "-acodec", "pcm_s16le",    // WAV codec (uncompressed)
+          "-ar", "16000",            // Sample rate 16kHz (optimal for Gemini)
+          "-ac", "1",                // Mono audio
+          "-y",                       // Overwrite output
+          outputPath
+        ];
+
+        console.log("[FFmpeg Handler] Running FFmpeg with args:", args.join(" "));
+
+        const ffmpeg = spawn(ffmpegPath, args, {
+          windowsHide: true,
+          stdio: ["ignore", "pipe", "pipe"],
+        });
+
+        let stderr = "";
+
+        ffmpeg.stderr?.on("data", (data) => {
+          stderr += data.toString();
+        });
+
+        ffmpeg.on("close", (code) => {
+          const duration = ((Date.now() - startTime) / 1000).toFixed(2);
+
+          if (code === 0) {
+            // Verify output file exists and get size
+            if (!fs.existsSync(outputPath)) {
+              reject(new Error("FFmpeg completed but output file not found"));
+              return;
+            }
+
+            const stats = fs.statSync(outputPath);
+            console.log(`[FFmpeg Handler] ✅ Audio extraction completed in ${duration}s`);
+            console.log(`[FFmpeg Handler] Output file size: ${stats.size} bytes`);
+
+            resolve({
+              audioPath: outputPath,
+              fileSize: stats.size,
+            });
+          } else {
+            console.error(`[FFmpeg Handler] ❌ Audio extraction failed (code ${code})`);
+            console.error(`[FFmpeg Handler] stderr:`, stderr);
+            reject(
+              new Error(
+                `FFmpeg audio extraction failed with code ${code}: ${stderr}`
+              )
+            );
+          }
+        });
+
+        ffmpeg.on("error", (err) => {
+          console.error("[FFmpeg Handler] ❌ FFmpeg process error:", err);
+          reject(err);
+        });
+
+        // Set timeout to avoid hanging (2 minutes for large files)
+        setTimeout(() => {
+          ffmpeg.kill();
+          reject(new Error("Audio extraction timeout (2 minutes)"));
+        }, 120_000);
+      });
+    }
+  );
 }
 
 export function getFFmpegPath(): string {
@@ -751,4 +867,6 @@ export type {
   FFmpegProgress,
   FFmpegHandlers,
   OpenFolderResult,
+  ExtractAudioOptions,
+  ExtractAudioResult,
 };

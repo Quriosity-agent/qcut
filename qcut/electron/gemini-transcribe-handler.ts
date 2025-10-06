@@ -1,7 +1,9 @@
-import { ipcMain } from "electron";
+import { ipcMain, app } from "electron";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import fs from "node:fs/promises";
+import fsSync from "node:fs";
 import path from "node:path";
+import { safeStorage } from "electron";
 
 interface GeminiTranscriptionRequest {
   audioPath: string;
@@ -79,14 +81,41 @@ export function setupGeminiHandlers() {
       console.log("[Gemini Handler] Language:", request.language || "auto-detect");
 
       try {
+        // Get API key from secure storage
+        const userDataPath = app.getPath("userData");
+        const apiKeysFilePath = path.join(userDataPath, "api-keys.json");
+
+        let geminiApiKey = "";
+
+        if (fsSync.existsSync(apiKeysFilePath)) {
+          const encryptedData = JSON.parse(
+            fsSync.readFileSync(apiKeysFilePath, "utf8")
+          );
+
+          if (encryptedData.geminiApiKey) {
+            if (safeStorage.isEncryptionAvailable()) {
+              try {
+                geminiApiKey = safeStorage.decryptString(
+                  Buffer.from(encryptedData.geminiApiKey, "base64")
+                );
+              } catch {
+                // Fallback to plain text if decryption fails
+                geminiApiKey = encryptedData.geminiApiKey || "";
+              }
+            } else {
+              geminiApiKey = encryptedData.geminiApiKey || "";
+            }
+          }
+        }
+
         // Check for API key
-        if (!process.env.GEMINI_API_KEY) {
-          console.error("[Gemini Handler] ❌ GEMINI_API_KEY not found in environment");
+        if (!geminiApiKey) {
+          console.error("[Gemini Handler] ❌ GEMINI_API_KEY not found in secure storage");
           throw new Error(
-            "GEMINI_API_KEY not found. Get your API key from: https://aistudio.google.com/app/apikey"
+            "GEMINI_API_KEY not found. Please configure your API key in Settings. Get your API key from: https://aistudio.google.com/app/apikey"
           );
         }
-        console.log("[Gemini Handler] ✅ API key found");
+        console.log("[Gemini Handler] ✅ API key loaded from secure storage");
 
         // Read audio file
         console.log("[Gemini Handler] Reading audio file...");
@@ -111,7 +140,7 @@ export function setupGeminiHandlers() {
 
         // Initialize Gemini API
         console.log("[Gemini Handler] Initializing Gemini API client...");
-        const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+        const genAI = new GoogleGenerativeAI(geminiApiKey);
         const model = genAI.getGenerativeModel({ model: "gemini-2.5-pro" });
         console.log("[Gemini Handler] Using model: gemini-2.5-pro");
 

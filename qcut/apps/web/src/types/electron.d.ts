@@ -162,16 +162,25 @@ export interface ElectronAPI {
       outputFrameName: string;
       filterChain: string;
     }) => Promise<void>;
+    extractAudio: (options: {
+      videoPath: string;
+      format?: string;
+    }) => Promise<{
+      audioPath: string;
+      fileSize: number;
+    }>;
   };
 
   apiKeys: {
     get: () => Promise<{
       falApiKey: string;
       freesoundApiKey: string;
+      geminiApiKey: string;
     }>;
     set: (keys: {
       falApiKey?: string;
       freesoundApiKey?: string;
+      geminiApiKey?: string;
     }) => Promise<boolean>;
     clear: () => Promise<boolean>;
   };

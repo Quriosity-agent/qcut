@@ -189,7 +189,7 @@ export function CaptionsView() {
         console.log("[Gemini Transcription] Starting transcription process...");
         console.log("[Gemini Transcription] File:", file.name, "Type:", file.type, "Size:", file.size);
 
-        let audioFile: File;
+        let audioFilePath: string;
         if (file.type.startsWith("video/")) {
           // Validate supported video formats
           const supportedVideoTypes = [
@@ -205,17 +205,47 @@ export function CaptionsView() {
             throw new Error(`Unsupported video format: ${file.type}`);
           }
 
-          console.log("[Gemini Transcription] Extracting audio from video...");
+          console.log("[Gemini Transcription] Extracting audio from video using FFmpeg CLI...");
           toast.info("Extracting audio from video...");
 
-          const audioBlob = await extractAudio(file, "wav");
-          audioFile = new File([audioBlob], `${file.name}.wav`, {
-            type: "audio/wav",
+          // Save video file to temp location first
+          if (!window.electronAPI?.audio?.saveTemp) {
+            throw new Error("Electron audio API not available");
+          }
+
+          const videoBuffer = await file.arrayBuffer();
+          const videoTempPath = await window.electronAPI.audio.saveTemp(
+            new Uint8Array(videoBuffer),
+            file.name
+          );
+          console.log("[Gemini Transcription] Video saved to temp:", videoTempPath);
+
+          // Extract audio using FFmpeg CLI (much faster than WebAssembly!)
+          if (!window.electronAPI?.ffmpeg?.extractAudio) {
+            throw new Error("Electron FFmpeg API not available");
+          }
+
+          const { audioPath, fileSize } = await window.electronAPI.ffmpeg.extractAudio({
+            videoPath: videoTempPath,
+            format: "wav"
           });
-          console.log("[Gemini Transcription] Audio extracted:", audioFile.name, "Size:", audioFile.size);
+
+          console.log("[Gemini Transcription] ✅ Audio extracted:", audioPath, "Size:", fileSize, "bytes");
+          audioFilePath = audioPath;
         } else {
-          audioFile = file;
-          console.log("[Gemini Transcription] Using audio file directly");
+          // Audio file - save directly to temp
+          console.log("[Gemini Transcription] Processing audio file directly...");
+
+          if (!window.electronAPI?.audio?.saveTemp) {
+            throw new Error("Electron audio API not available");
+          }
+
+          const audioBuffer = await file.arrayBuffer();
+          audioFilePath = await window.electronAPI.audio.saveTemp(
+            new Uint8Array(audioBuffer),
+            file.name
+          );
+          console.log("[Gemini Transcription] Audio saved to temp:", audioFilePath);
         }
 
         // DEPRECATED: Encryption/R2 upload removed for Gemini migration
@@ -296,24 +326,9 @@ export function CaptionsView() {
         //   language: apiResult.language || selectedLanguage,
         // };
 
-        // Step 2: Save audio to temp file for Electron IPC
-        console.log("[Gemini Transcription] Converting audio to buffer...");
-        const audioBuffer = await audioFile.arrayBuffer();
-        console.log("[Gemini Transcription] Buffer size:", audioBuffer.byteLength, "bytes");
-
-        if (!window.electronAPI?.audio?.saveTemp) {
-          throw new Error("Electron audio API not available");
-        }
-
-        console.log("[Gemini Transcription] Saving audio to temp file...");
-        const tempPath = await window.electronAPI.audio.saveTemp(
-          new Uint8Array(audioBuffer),
-          "audio.wav"
-        );
-        console.log("[Gemini Transcription] Audio saved to:", tempPath);
-
-        // Step 3: Call Gemini transcription via Electron IPC
+        // Step 2: Call Gemini transcription via Electron IPC (audioFilePath is already in temp)
         console.log("[Gemini Transcription] Calling Gemini API...");
+        console.log("[Gemini Transcription] Audio path:", audioFilePath);
         console.log("[Gemini Transcription] Language:", selectedLanguage);
         toast.info("Transcribing with Gemini...");
         updateState({
@@ -326,7 +341,7 @@ export function CaptionsView() {
 
         const startTime = Date.now();
         const result = await window.electronAPI.transcribe.transcribe({
-          audioPath: tempPath,
+          audioPath: audioFilePath,
           language: selectedLanguage,
         });
         const duration = ((Date.now() - startTime) / 1000).toFixed(2);

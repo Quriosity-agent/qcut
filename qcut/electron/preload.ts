@@ -91,6 +91,10 @@ interface AudioFile {
 interface ApiKeyConfig {
   FREESOUND_API_KEY?: string;
   FAL_API_KEY?: string;
+  GEMINI_API_KEY?: string;
+  freesoundApiKey?: string;
+  falApiKey?: string;
+  geminiApiKey?: string;
 }
 
 interface GitHubStarsResponse {
@@ -187,6 +191,14 @@ interface ElectronAPI {
       outputFrameName: string;
       filterChain: string;
     }) => Promise<void>;
+    extractAudio: (options: {
+      videoPath: string;
+      format?: string;
+    }) => Promise<{
+      audioPath: string;
+      fileSize: number;
+    }>;
+    validateFilterChain: (filterChain: string) => Promise<boolean>;
 
     // FFmpeg resource helpers
     getFFmpegResourcePath: (filename: string) => Promise<string>;
@@ -311,6 +323,13 @@ const electronAPI: ElectronAPI = {
       ipcRenderer.invoke("cleanup-export-session", sessionId),
     openFramesFolder: (sessionId: string): Promise<void> =>
       ipcRenderer.invoke("open-frames-folder", sessionId),
+    extractAudio: (options: {
+      videoPath: string;
+      format?: string;
+    }): Promise<{
+      audioPath: string;
+      fileSize: number;
+    }> => ipcRenderer.invoke("extract-audio", options),
     processFrame: (options: {
       sessionId: string;
       inputFrameName: string;
