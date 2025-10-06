@@ -97,26 +97,31 @@ export interface ElectronAPI {
     }>;
   };
 
-  // Transcription operations
+  // Audio operations
+  audio: {
+    saveTemp: (audioData: Uint8Array, filename: string) => Promise<string>;
+  };
+
+  // Transcription operations (Gemini API)
   transcribe: {
-    audio: (requestData: {
-      id: string;
-      filename: string;
+    transcribe: (request: {
+      audioPath: string;
       language?: string;
-      decryptionKey?: string;
-      iv?: string;
     }) => Promise<{
-      success: boolean;
-      text?: string;
-      segments?: Array<{
+      text: string;
+      segments: Array<{
         id: number;
+        seek: number;
         start: number;
         end: number;
         text: string;
+        tokens: number[];
+        temperature: number;
+        avg_logprob: number;
+        compression_ratio: number;
+        no_speech_prob: number;
       }>;
-      language?: string;
-      error?: string;
-      message?: string;
+      language: string;
     }>;
     cancel: (id: string) => Promise<{
       success: boolean;

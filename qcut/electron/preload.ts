@@ -140,11 +140,32 @@ interface ElectronAPI {
     ) => Promise<{ success: boolean; path?: string; error?: string }>;
   };
 
-  // Transcription operations
+  // Audio operations
+  audio: {
+    saveTemp: (audioData: Uint8Array, filename: string) => Promise<string>;
+  };
+
+  // Transcription operations (Gemini API)
   transcribe: {
-    audio: (
-      requestData: TranscriptionRequestData
-    ) => Promise<TranscriptionResult>;
+    transcribe: (request: {
+      audioPath: string;
+      language?: string;
+    }) => Promise<{
+      text: string;
+      segments: Array<{
+        id: number;
+        seek: number;
+        start: number;
+        end: number;
+        text: string;
+        tokens: number[];
+        temperature: number;
+        avg_logprob: number;
+        compression_ratio: number;
+        no_speech_prob: number;
+      }>;
+      language: string;
+    }>;
     cancel: (id: string) => Promise<CancelResult>;
   };
 
@@ -241,12 +262,33 @@ const electronAPI: ElectronAPI = {
       ipcRenderer.invoke("sounds:download-preview", params),
   },
 
-  // Transcription operations
+  // Audio operations
+  audio: {
+    saveTemp: (audioData: Uint8Array, filename: string): Promise<string> =>
+      ipcRenderer.invoke("audio:save-temp", audioData, filename),
+  },
+
+  // Transcription operations (Gemini API)
   transcribe: {
-    audio: (
-      requestData: TranscriptionRequestData
-    ): Promise<TranscriptionResult> =>
-      ipcRenderer.invoke("transcribe:audio", requestData),
+    transcribe: (request: {
+      audioPath: string;
+      language?: string;
+    }): Promise<{
+      text: string;
+      segments: Array<{
+        id: number;
+        seek: number;
+        start: number;
+        end: number;
+        text: string;
+        tokens: number[];
+        temperature: number;
+        avg_logprob: number;
+        compression_ratio: number;
+        no_speech_prob: number;
+      }>;
+      language: string;
+    }> => ipcRenderer.invoke("transcribe:audio", request),
     cancel: (id: string): Promise<CancelResult> =>
       ipcRenderer.invoke("transcribe:cancel", id),
   },

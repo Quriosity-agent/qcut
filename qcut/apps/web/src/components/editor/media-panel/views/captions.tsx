@@ -13,7 +13,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { LanguageSelect } from "@/components/captions/language-select";
-import { UploadProgress } from "@/components/captions/upload-progress";
+// REMOVED: UploadProgress component (Gemini migration - no R2 upload needed)
+// import { UploadProgress } from "@/components/captions/upload-progress";
 import { handleError, ErrorCategory, ErrorSeverity } from "@/lib/error-handler";
 import {
   Upload,
@@ -32,6 +33,7 @@ import { cn } from "@/lib/utils";
 // DEPRECATED: Modal Whisper utilities removed for Gemini migration
 // import { isTranscriptionConfigured } from "@/lib/transcription/transcription-utils";
 // import { encryptWithRandomKey } from "@/lib/transcription/zk-encryption";
+import { isGeminiConfigured, getGeminiSetupUrl, getGeminiSetupInstructions } from "@/lib/gemini/gemini-utils";
 import type {
   TranscriptionResult,
   TranscriptionSegment,
@@ -54,10 +56,7 @@ function arrayBufferToBase64(ab: ArrayBuffer): string {
 }
 
 interface TranscriptionState {
-  isUploading: boolean;
   isTranscribing: boolean;
-  uploadProgress: number;
-  transcriptionProgress: number;
   result: TranscriptionResult | null;
   error: string | null;
   currentFile: File | null;
@@ -66,10 +65,7 @@ interface TranscriptionState {
 export function CaptionsView() {
   const [selectedLanguage, setSelectedLanguage] = useState("auto");
   const [state, setState] = useState<TranscriptionState>({
-    isUploading: false,
     isTranscribing: false,
-    uploadProgress: 0,
-    transcriptionProgress: 0,
     result: null,
     error: null,
     currentFile: null,
@@ -87,10 +83,7 @@ export function CaptionsView() {
   } = useCaptionsStore();
 
   // Check if transcription is configured (Gemini)
-  // TODO: Replace with isGeminiConfigured() when implemented
-  const configured = true; // Temporary: assume configured
-  const missingVars: string[] = []; // Temporary
-  // const { configured, missingVars } = isTranscriptionConfigured();
+  const { configured, missingVars } = isGeminiConfigured();
 
   const updateState = useCallback((updates: Partial<TranscriptionState>) => {
     setState((prev) => ({ ...prev, ...updates }));
@@ -135,10 +128,7 @@ export function CaptionsView() {
 
   const stopTranscription = useCallback(() => {
     updateState({
-      isUploading: false,
       isTranscribing: false,
-      uploadProgress: 0,
-      transcriptionProgress: 0,
       error: "Transcription cancelled by user",
     });
     toast.info("Transcription cancelled");
@@ -183,8 +173,6 @@ export function CaptionsView() {
       }
 
       updateState({
-        isUploading: true,
-        uploadProgress: 0,
         error: null,
         result: null,
         currentFile: file,
@@ -215,16 +203,13 @@ export function CaptionsView() {
           }
 
           toast.info("Extracting audio from video...");
-          updateState({ uploadProgress: 10 });
 
           const audioBlob = await extractAudio(file, "wav");
           audioFile = new File([audioBlob], `${file.name}.wav`, {
             type: "audio/wav",
           });
-          updateState({ uploadProgress: 30 });
         } else {
           audioFile = file;
-          updateState({ uploadProgress: 20 });
         }
 
         // DEPRECATED: Encryption/R2 upload removed for Gemini migration
@@ -315,9 +300,7 @@ export function CaptionsView() {
         // Step 3: Call Gemini transcription via Electron IPC
         toast.info("Transcribing with Gemini...");
         updateState({
-          isUploading: false,
           isTranscribing: true,
-          transcriptionProgress: 50,
         });
 
         const result = await window.electronAPI.transcribe.transcribe({
@@ -325,14 +308,11 @@ export function CaptionsView() {
           language: selectedLanguage,
         });
 
-        updateState({ transcriptionProgress: 90 });
-
         // Complete transcription job in store
         completeTranscriptionJob(jobId, result);
 
         updateState({
           isTranscribing: false,
-          transcriptionProgress: 100,
           result,
         });
 
@@ -376,38 +356,61 @@ export function CaptionsView() {
           error instanceof Error ? error.message : "Transcription failed";
 
         updateState({
-          isUploading: false,
           isTranscribing: false,
           error: errorMessage,
         });
 
-        // Enhanced error messaging with actionable suggestions
+        // Gemini-specific error handling with actionable suggestions
         if (
-          errorMessage.includes("rate limit") ||
-          errorMessage.includes("429")
+          errorMessage.includes("GEMINI_API_KEY") ||
+          errorMessage.includes("API key")
         ) {
           toast.error(
-            "Rate limit exceeded. Please wait a moment before trying again."
+            "Gemini API key missing or invalid. Please add GEMINI_API_KEY to your .env file.",
+            {
+              action: {
+                label: "Get API Key",
+                onClick: () => window.open(getGeminiSetupUrl(), "_blank"),
+              },
+            }
           );
         } else if (
-          errorMessage.includes("503") ||
-          errorMessage.includes("not configured")
+          errorMessage.includes("rate limit") ||
+          errorMessage.includes("429") ||
+          errorMessage.includes("quota")
         ) {
           toast.error(
-            "Transcription service not configured. Check environment variables."
+            "Gemini API quota exceeded. Please wait a few minutes before trying again."
+          );
+        } else if (
+          errorMessage.includes("audio format") ||
+          errorMessage.includes("unsupported")
+        ) {
+          toast.error(
+            "Unsupported audio format. Please use WAV, MP3, AAC, OGG, or FLAC."
+          );
+        } else if (
+          errorMessage.includes("20 MB") ||
+          errorMessage.includes("too large")
+        ) {
+          toast.error(
+            "Audio file too large (max 20 MB). Please compress your audio or use a shorter clip."
           );
         } else if (
           errorMessage.includes("network") ||
-          errorMessage.includes("fetch")
+          errorMessage.includes("fetch") ||
+          errorMessage.includes("ECONNREFUSED")
         ) {
           toast.error(
             "Network error. Check your internet connection and try again."
           );
         } else if (
-          errorMessage.includes("413") ||
-          errorMessage.includes("too large")
+          errorMessage.includes("500") ||
+          errorMessage.includes("503")
         ) {
-          toast.error("File too large. Please use a file smaller than 100MB.");
+          toast.error(
+            "Gemini API is temporarily unavailable. Please try again in a few moments."
+          );
         } else {
           toast.error(`Transcription failed: ${errorMessage}`);
         }
@@ -482,7 +485,7 @@ export function CaptionsView() {
     onDrop: (files) => handleFileSelect(files),
   });
 
-  const isProcessing = state.isUploading || state.isTranscribing;
+  const isProcessing = state.isTranscribing;
 
   return (
     <div
@@ -491,13 +494,21 @@ export function CaptionsView() {
     >
       {/* Configuration Warning */}
       {!configured && (
-        <div className="flex items-center gap-2 p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
-          <AlertCircle className="size-4 text-yellow-500" />
-          <div className="text-sm">
-            <p className="font-medium">Transcription Not Configured</p>
-            <p className="text-muted-foreground">
-              Missing environment variables: {missingVars.join(", ")}
-            </p>
+        <div className="space-y-2 p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="size-4 text-yellow-500" />
+            <p className="text-sm font-medium">Gemini Transcription Not Configured</p>
+          </div>
+          <div className="text-xs text-muted-foreground space-y-1">
+            <p>{getGeminiSetupInstructions()}</p>
+            <a
+              href={getGeminiSetupUrl()}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-500 hover:underline inline-flex items-center gap-1"
+            >
+              Get API Key →
+            </a>
           </div>
         </div>
       )}
@@ -575,16 +586,26 @@ export function CaptionsView() {
           )}
 
           {/* Progress Display */}
-          {(state.isUploading || state.isTranscribing) && (
-            <UploadProgress
-              isUploading={state.isUploading}
-              isTranscribing={state.isTranscribing}
-              uploadProgress={state.uploadProgress}
-              transcriptionProgress={state.transcriptionProgress}
-              isEncrypted={true}
-              fileName={state.currentFile?.name}
-              onCancel={stopTranscription}
-            />
+          {state.isTranscribing && (
+            <div className="space-y-3">
+              <div className="flex items-center justify-center gap-2">
+                <Loader2 className="size-4 animate-spin" />
+                <p className="text-sm font-medium">Transcribing with Gemini...</p>
+              </div>
+              {state.currentFile && (
+                <p className="text-xs text-muted-foreground text-center">
+                  {state.currentFile.name}
+                </p>
+              )}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={stopTranscription}
+                className="w-full"
+              >
+                Cancel
+              </Button>
+            </div>
           )}
 
           {/* Success State */}
@@ -606,7 +627,7 @@ export function CaptionsView() {
               <AlertCircle className="size-8 mx-auto text-red-500" />
               <div>
                 <p className="text-sm font-medium text-red-500">
-                  Transcription Failed
+                  Gemini Transcription Failed
                 </p>
                 <p className="text-xs text-muted-foreground">{state.error}</p>
               </div>
@@ -622,16 +643,15 @@ export function CaptionsView() {
                 >
                   Try Again
                 </Button>
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => {
-                    updateState({ error: null });
-                    toast.info("Error cleared");
-                  }}
-                >
-                  Clear
-                </Button>
+                {state.error.includes("API key") && (
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => window.open(getGeminiSetupUrl(), "_blank")}
+                  >
+                    Get API Key
+                  </Button>
+                )}
               </div>
             </div>
           )}

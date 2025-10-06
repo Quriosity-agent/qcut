@@ -368,6 +368,25 @@ app.whenReady().then(() => {
     setupAutoUpdater();
   }
 
+  // Add IPC handler for saving audio to temp (for Gemini transcription)
+  ipcMain.handle(
+    "audio:save-temp",
+    async (
+      event: IpcMainInvokeEvent,
+      audioData: Uint8Array,
+      filename: string
+    ): Promise<string> => {
+      const { saveAudioToTemp } = require("./audio-temp-handler.js");
+      try {
+        const filePath = await saveAudioToTemp(audioData, filename);
+        return filePath;
+      } catch (error: any) {
+        logger.error("Failed to save audio to temp:", error);
+        throw new Error(`Failed to save audio: ${error.message}`);
+      }
+    }
+  );
+
   // Add IPC handler for saving audio files for export
   ipcMain.handle(
     "save-audio-for-export",
