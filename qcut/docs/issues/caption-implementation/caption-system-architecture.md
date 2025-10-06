@@ -1,8 +1,8 @@
 # QCut Caption System Architecture
 
-**Document Version:** 1.0
-**Last Updated:** 2025-10-05
-**Status:** Active Implementation
+**Document Version:** 2.0
+**Last Updated:** 2025-01-06
+**Status:** Migrating to Gemini API
 
 ---
 
@@ -26,23 +26,26 @@
 
 The QCut caption system provides comprehensive **AI-powered transcription** and **manual caption management** for video editing. It supports multiple languages, various export formats (SRT, VTT, ASS, TTML), and seamless timeline integration.
 
+> **⚠️ MIGRATION NOTICE (2025-01-06)**: The caption system is migrating from **Modal Whisper + R2** to **Google Gemini 2.5 Pro** for a simpler, more cost-effective architecture. See [Critical Update](#critical-update-openrouter-vs-native-gemini-api-2025-01-06) for details.
+
 ### Key Capabilities
 
-- 🎤 **AI Transcription**: Automatic speech-to-text using Modal API
-- 🌍 **Multi-language Support**: 13 languages including auto-detect
+- 🎤 **AI Transcription**: ~~Automatic speech-to-text using Modal API~~ → **Google Gemini 2.5 Pro (Native API)**
+- 🌍 **Multi-language Support**: Gemini's native multilingual capabilities with auto-detection
 - 📝 **Manual Caption Editing**: Create and edit captions manually
 - 💾 **Multiple Export Formats**: SRT, VTT, ASS, TTML
 - 🎬 **Timeline Integration**: Direct integration with video timeline
-- 🔒 **Zero-knowledge Encryption**: Secure audio upload with client-side encryption
-- 📊 **Real-time Progress Tracking**: Upload and transcription progress monitoring
+- 🔒 **~~Zero-knowledge Encryption~~**: ~~Secure audio upload with client-side encryption~~ → **Removed (no longer needed)**
+- 📊 **Real-time Progress Tracking**: ~~Upload and~~ transcription progress monitoring
 
 ---
 
 ## System Architecture Diagram
 
+### Legacy Architecture (Modal Whisper + R2)
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│                         QCut Caption System                          │
+│                         QCut Caption System (OLD)                    │
 └─────────────────────────────────────────────────────────────────────┘
                                   │
                     ┌─────────────┴─────────────┐
@@ -75,6 +78,48 @@ The QCut caption system provides comprehensive **AI-powered transcription** and 
                     │ • R2 Storage (Upload)  │
                     │ • FFmpeg (Extraction)  │
                     └────────────────────────┘
+```
+
+### New Architecture (Google Gemini 2.5 Pro) 🆕
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                    QCut Caption System (GEMINI)                      │
+└─────────────────────────────────────────────────────────────────────┘
+                                  │
+                    ┌─────────────┴─────────────┐
+                    │                           │
+        ┌───────────▼─────────┐     ┌──────────▼──────────┐
+        │   Frontend (React)  │     │  Backend (Electron)  │
+        │  apps/web/src/      │     │  electron/          │
+        └───────────┬─────────┘     └──────────┬──────────┘
+                    │                           │
+        ┌───────────┴───────────┬───────────────┴────────────┐
+        │                       │                            │
+   ┌────▼────┐          ┌──────▼──────┐           ┌────────▼────────┐
+   │  Store  │          │   Views     │           │  IPC Handlers   │
+   │ (Zustand)│         │ Components  │           │  Gemini API     │
+   └────┬────┘          └──────┬──────┘           └────────┬────────┘
+        │                      │                            │
+        │              ┌───────▼────────┐                   │
+        │              │                │                   │
+        │         ┌────▼─────┐   ┌─────▼────┐             │
+        │         │ Captions  │   │ Language │             │
+        │         │  Display  │   │  Select  │             │
+        │         └──────────┘   └──────────┘             │
+        │                                                   │
+        └───────────────────────┬───────────────────────────┘
+                                │
+                    ┌───────────▼────────────────┐
+                    │  External Services         │
+                    ├────────────────────────────┤
+                    │ • Google Gemini 2.5 Pro    │
+                    │ • FFmpeg (Extraction)      │
+                    └────────────────────────────┘
+
+Key Changes:
+✅ Removed: R2 Storage, Encryption, Modal Whisper API
+✅ Added: Native @google/generative-ai SDK
+✅ Simplified: Direct audio → Gemini → Captions workflow
 ```
 
 ---
@@ -441,7 +486,12 @@ interface CaptionTrack {
 
 ## API Integration
 
-### Modal Whisper API
+### ~~Modal Whisper API~~ (Legacy - Deprecated)
+
+> **⚠️ DEPRECATED**: The Modal Whisper + R2 approach has been replaced with Google Gemini 2.5 Pro. See new implementation below.
+
+<details>
+<summary>Legacy Modal Whisper Configuration (Click to expand)</summary>
 
 **Endpoint:** Configured via environment variables
 
@@ -464,10 +514,7 @@ interface CaptionTrack {
 }
 ```
 
-### Configuration Requirements
-
-Required environment variables:
-
+**Required environment variables:**
 ```bash
 MODAL_TOKEN_ID=xxx
 MODAL_TOKEN_SECRET=xxx
@@ -476,6 +523,57 @@ R2_ACCESS_KEY_ID=xxx
 R2_SECRET_ACCESS_KEY=xxx
 R2_BUCKET_NAME=xxx
 ```
+</details>
+
+### Google Gemini 2.5 Pro API 🆕 (Current)
+
+**SDK:** `@google/generative-ai`
+
+**Request:**
+```typescript
+import { GoogleGenerativeAI } from '@google/generative-ai';
+
+const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
+const model = genAI.getGenerativeModel({ model: 'gemini-2.5-pro' });
+
+const result = await model.generateContent([
+  'Transcribe this audio verbatim with precise timestamps in SRT format.',
+  {
+    inlineData: {
+      mimeType: 'audio/wav',
+      data: audioBase64
+    }
+  }
+]);
+
+const transcript = result.response.text();
+```
+
+**Response:**
+```typescript
+{
+  text: string;          // Generated transcript/SRT content
+  // Parse and extract segments from text response
+}
+```
+
+### Configuration Requirements
+
+**Required environment variables:**
+
+```bash
+# Native Gemini API (Current)
+GEMINI_API_KEY=AIzaSyXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+
+# Get your API key from: https://aistudio.google.com/app/apikey
+```
+
+**Audio Specifications:**
+- **Supported formats**: WAV, MP3, AIFF, AAC, OGG Vorbis, FLAC
+- **Max inline size**: 20 MB (use Files API for larger)
+- **Token cost**: 32 tokens per second of audio
+- **Max duration**: 9.5 hours
+- **Processing**: Downsamples to 16 Kbps, mono channel
 
 ---
 
@@ -967,6 +1065,56 @@ Parse SRT Response → Create Caption Track
 - [ ] Verify SRT timestamp accuracy
 - [ ] Test error handling (invalid files, API errors)
 - [ ] Verify export to SRT/VTT/ASS/TTML still works
+
+---
+
+## 🚀 Gemini API Migration Plan
+
+### Migration Roadmap
+
+**Phase 1: Proof of Concept** ✅ Complete
+- [x] Test native Gemini API with sample audio
+- [x] Verify transcription accuracy
+- [x] Document cost and performance
+
+**Phase 2: Core Implementation** 🔄 In Progress
+- [ ] Replace `electron/transcribe-handler.ts` with Gemini implementation
+- [ ] Update `captions-store.ts` to use Gemini API
+- [ ] Remove encryption/R2 dependencies
+- [ ] Add SRT parsing for Gemini output
+
+**Phase 3: UI Updates** 📋 Planned
+- [ ] Simplify caption UI (remove upload progress)
+- [ ] Update language selection for Gemini's multilingual support
+- [ ] Add Gemini-specific error handling
+
+**Phase 4: Testing & Deployment** 📋 Planned
+- [ ] Test with various audio formats
+- [ ] Verify export to SRT/VTT/ASS/TTML
+- [ ] Performance testing with long videos
+- [ ] Update documentation
+
+### Files to Modify
+
+| File | Action | Status |
+|------|--------|--------|
+| `qcut/electron/transcribe-handler.ts` | Replace with Gemini API implementation | 📋 Pending |
+| `qcut/apps/web/src/stores/captions-store.ts` | Remove encryption logic, add Gemini calls | 📋 Pending |
+| `qcut/apps/web/src/components/editor/media-panel/views/captions.tsx` | Simplify UI | 📋 Pending |
+| `qcut/apps/web/src/lib/transcription/zk-encryption.ts` | Delete (no longer needed) | 📋 Pending |
+| `qcut/apps/web/src/lib/transcription/transcription-utils.ts` | Delete (Modal-specific) | 📋 Pending |
+| `qcut/package.json` | Add `@google/generative-ai` | ✅ Done |
+| `.env` files | Replace Modal/R2 keys with `GEMINI_API_KEY` | ✅ Done |
+
+### Cost & Performance Comparison
+
+| Metric | Modal Whisper + R2 | Gemini 2.5 Pro | Savings |
+|--------|-------------------|----------------|---------|
+| **Infrastructure** | R2 storage + Modal API | Single API key | -95% complexity |
+| **Cost (10 min video)** | ~$0.05 + storage | ~$0.006 | -88% |
+| **Latency** | Upload + Transcribe | Direct transcribe | -50% faster |
+| **Setup** | 6 env variables | 1 env variable | -83% config |
+| **Dependencies** | Encryption, R2, Modal | Native SDK only | Minimal |
 
 ---
 
