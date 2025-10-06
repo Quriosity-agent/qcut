@@ -6,14 +6,14 @@
 
 ---
 
-## 🗑️ Files to Delete (Redundant After Migration)
+## 🗑️ Files Deleted (Cleanup Complete) ✅
 
-The following files are **no longer needed** after migrating to Gemini API and should be deleted:
+The following files have been **removed** as part of the Gemini API migration:
 
-### Backend Files
-- [ ] `qcut/electron/transcribe-handler.ts` - Legacy Modal Whisper IPC handler (will be replaced)
-- [ ] `qcut/apps/web/src/lib/transcription/zk-encryption.ts` - Zero-knowledge encryption (no longer needed)
-- [ ] `qcut/apps/web/src/lib/transcription/transcription-utils.ts` - Modal API configuration utilities
+### Backend Files (Deleted)
+- [x] `qcut/electron/transcribe-handler.ts` - Legacy Modal Whisper IPC handler ✅ Deleted
+- [x] `qcut/apps/web/src/lib/transcription/zk-encryption.ts` - Zero-knowledge encryption ✅ Deleted
+- [x] `qcut/apps/web/src/lib/transcription/transcription-utils.ts` - Modal API configuration utilities ✅ Deleted
 
 ### Environment Variables to Remove
 Remove from `.env` files:
@@ -25,8 +25,8 @@ Remove from `.env` files:
 - [ ] `R2_BUCKET_NAME`
 
 ### Documentation Files (Example Code)
-- [ ] `qcut/docs/issues/caption-implementation/gemini-srt-example.ts` - OpenRouter example (proven broken)
-- [ ] Keep: `qcut/docs/issues/caption-implementation/gemini-native-api-example.ts` (working implementation)
+- [x] `qcut/docs/issues/caption-implementation/gemini-srt-example.ts` - OpenRouter example (broken, removed) ✅ Deleted
+- [x] Keep: `qcut/docs/issues/caption-implementation/gemini-native-api-example.ts` - Working native Gemini implementation ✅ Kept
 
 ---
 
