@@ -616,6 +616,360 @@ apps/web/src/test/e2e/ai-transcription-caption-generation.e2e.ts
 
 ---
 
+## Alternative Implementation: Gemini 2.5 Flash for SRT Generation
+
+### Overview
+
+Replace Modal Whisper API with **Google Gemini 2.5 Flash** via OpenRouter for direct audio-to-SRT transcription. Gemini supports multimodal input (text, image, audio) with 1M token context and built-in reasoning capabilities.
+
+### Key Advantages
+
+✅ **Simpler Architecture**: Single API call, no R2 storage or encryption needed
+✅ **Direct Audio Input**: Base64 audio sent directly in request
+✅ **No Infrastructure**: Eliminates R2, Modal, encryption complexity
+✅ **Huge Context**: 1,048,576 tokens (handles very long videos)
+✅ **Cost Effective**: $0.30/M input tokens, $2.50/M output tokens
+
+### Files to Remove
+
+```
+qcut/apps/web/src/lib/transcription/
+├── zk-encryption.ts                 # DELETE: No encryption needed
+└── transcription-utils.ts           # DELETE: Modal-specific config
+
+qcut/electron/
+└── transcribe-handler.ts            # MODIFY: Remove R2 upload logic
+```
+
+### Files to Modify
+
+#### 1. **Environment Variables** (`.env`)
+
+```bash
+# REMOVE these Modal/R2 variables:
+# MODAL_TOKEN_ID=xxx
+# MODAL_TOKEN_SECRET=xxx
+# R2_ACCOUNT_ID=xxx
+# R2_ACCESS_KEY_ID=xxx
+# R2_SECRET_ACCESS_KEY=xxx
+# R2_BUCKET_NAME=xxx
+
+# ADD OpenRouter API key:
+OPENROUTER_API_KEY=sk-or-v1-xxx
+```
+
+#### 2. **Types** (`qcut/apps/web/src/types/captions.ts`)
+
+```typescript
+// MODIFY: Add Gemini-specific types
+interface GeminiTranscriptionRequest {
+  audioBase64: string;
+  mimeType: 'audio/wav' | 'audio/mp3' | 'audio/webm';
+  language?: string;
+}
+
+interface GeminiTranscriptionResponse {
+  srtContent: string;
+  detectedLanguage?: string;
+}
+
+// KEEP existing types:
+// TranscriptionSegment, CaptionTrack, etc.
+```
+
+#### 3. **Electron IPC Handler** (`qcut/electron/transcribe-handler.ts`)
+
+```typescript
+// REPLACE entire file with:
+
+import { ipcMain } from 'electron';
+import fs from 'node:fs/promises';
+import path from 'node:path';
+
+interface GeminiTranscriptionRequest {
+  audioPath: string;
+  language?: string;
+}
+
+ipcMain.handle('transcribe:audio', async (event, request: GeminiTranscriptionRequest) => {
+  try {
+    // 1. Read audio file
+    const audioBuffer = await fs.readFile(request.audioPath);
+    const audioBase64 = audioBuffer.toString('base64');
+
+    // 2. Determine MIME type from extension
+    const ext = path.extname(request.audioPath).toLowerCase();
+    const mimeTypeMap: Record<string, string> = {
+      '.wav': 'audio/wav',
+      '.mp3': 'audio/mp3',
+      '.webm': 'audio/webm',
+      '.m4a': 'audio/mp4'
+    };
+    const mimeType = mimeTypeMap[ext] || 'audio/wav';
+
+    // 3. Call Gemini API via OpenRouter
+    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
+        'Content-Type': 'application/json',
+        'HTTP-Referer': 'https://qcut.app',
+        'X-Title': 'QCut Video Editor'
+      },
+      body: JSON.stringify({
+        model: 'google/gemini-2.5-flash',
+        messages: [{
+          role: 'user',
+          content: [
+            {
+              type: 'text',
+              text: `Transcribe this audio into SRT subtitle format with precise timestamps.
+
+Format requirements:
+1. Number each subtitle block sequentially (1, 2, 3...)
+2. Use timestamp format: HH:MM:SS,mmm --> HH:MM:SS,mmm
+3. Each subtitle should be 1-2 sentences maximum
+4. Add blank line between blocks
+5. Detect and use proper ${request.language || 'language (auto-detect)'}
+
+Example:
+1
+00:00:00,000 --> 00:00:03,500
+Hello, welcome to the video.
+
+2
+00:00:03,500 --> 00:00:07,200
+Today we'll learn about captions.`
+            },
+            {
+              type: 'audio_url',
+              audio_url: {
+                url: `data:${mimeType};base64,${audioBase64}`
+              }
+            }
+          ]
+        }],
+        max_tokens: 8192,
+        temperature: 0.3  // Lower temperature for consistent formatting
+      })
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`Gemini API error: ${response.status} - ${error}`);
+    }
+
+    const result = await response.json();
+    const srtContent = result.choices[0].message.content;
+
+    // 4. Parse SRT to segments
+    const segments = parseSrtToSegments(srtContent);
+
+    return {
+      text: segments.map(s => s.text).join(' '),
+      segments,
+      language: request.language || 'auto'
+    };
+
+  } catch (error) {
+    console.error('Gemini transcription error:', error);
+    throw error;
+  }
+});
+
+// Helper function to parse SRT format
+function parseSrtToSegments(srtContent: string) {
+  const blocks = srtContent.trim().split(/\n\n+/);
+
+  return blocks.map((block, index) => {
+    const lines = block.split('\n');
+    if (lines.length < 3) return null;
+
+    // Parse timestamp line: "00:00:00,000 --> 00:00:03,500"
+    const timestampMatch = lines[1].match(/(\d{2}):(\d{2}):(\d{2}),(\d{3})\s*-->\s*(\d{2}):(\d{2}):(\d{2}),(\d{3})/);
+    if (!timestampMatch) return null;
+
+    const startTime = parseTimestamp(timestampMatch.slice(1, 5));
+    const endTime = parseTimestamp(timestampMatch.slice(5, 9));
+    const text = lines.slice(2).join(' ');
+
+    return {
+      id: index,
+      seek: 0,
+      start: startTime,
+      end: endTime,
+      text,
+      tokens: [],
+      temperature: 0.3,
+      avg_logprob: 0,
+      compression_ratio: 0,
+      no_speech_prob: 0
+    };
+  }).filter(Boolean);
+}
+
+function parseTimestamp(parts: string[]): number {
+  const [h, m, s, ms] = parts.map(Number);
+  return h * 3600 + m * 60 + s + ms / 1000;
+}
+```
+
+#### 4. **Caption Store** (`qcut/apps/web/src/stores/captions-store.ts`)
+
+```typescript
+// MODIFY: Update startTranscriptionJob to handle Gemini
+
+startTranscriptionJob: async (job) => {
+  const jobId = generateId();
+
+  set((state) => ({
+    transcriptionJobs: [
+      ...state.transcriptionJobs,
+      {
+        id: jobId,
+        status: 'processing',
+        progress: 0,
+        startedAt: new Date().toISOString(),
+        ...job
+      }
+    ],
+    activeJob: jobId
+  }));
+
+  try {
+    // Call Electron IPC (no encryption, no R2)
+    const result = await window.electronAPI.transcribe({
+      audioPath: job.audioPath,
+      language: job.language
+    });
+
+    get().completeTranscriptionJob(jobId, result);
+
+  } catch (error) {
+    get().failTranscriptionJob(jobId, error.message);
+  }
+}
+```
+
+#### 5. **Caption View UI** (`qcut/apps/web/src/components/editor/media-panel/views/captions.tsx`)
+
+```typescript
+// MODIFY: Remove encryption/upload progress tracking
+
+const handleTranscribe = async () => {
+  if (!selectedFile) return;
+
+  // Extract audio if video file
+  let audioPath = selectedFile.path;
+  if (selectedFile.type.startsWith('video/')) {
+    setStatus('Extracting audio...');
+    audioPath = await extractAudio(selectedFile.path);
+  }
+
+  // Start transcription (simpler - no encryption step)
+  setStatus('Transcribing with Gemini...');
+  await startTranscriptionJob({
+    audioPath,
+    language: selectedLanguage,
+    fileName: selectedFile.name
+  });
+};
+```
+
+### Files to Create
+
+#### 6. **New Gemini API Client** (`qcut/apps/web/src/lib/ai/gemini-client.ts`)
+
+```typescript
+// Optional: Shared Gemini API utilities
+
+export interface GeminiMessage {
+  role: 'user' | 'assistant';
+  content: Array<{
+    type: 'text' | 'audio_url';
+    text?: string;
+    audio_url?: { url: string };
+  }>;
+}
+
+export async function callGeminiAPI(
+  messages: GeminiMessage[],
+  options?: {
+    maxTokens?: number;
+    temperature?: number;
+  }
+) {
+  const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${import.meta.env.VITE_OPENROUTER_API_KEY}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      model: 'google/gemini-2.5-flash',
+      messages,
+      max_tokens: options?.maxTokens || 8192,
+      temperature: options?.temperature || 0.3
+    })
+  });
+
+  if (!response.ok) {
+    throw new Error(`Gemini API error: ${response.status}`);
+  }
+
+  return response.json();
+}
+```
+
+### Implementation Summary
+
+#### Removed Dependencies
+- ❌ R2 Storage (Cloudflare)
+- ❌ Modal Whisper API
+- ❌ Zero-knowledge encryption (AES-256-CBC)
+- ❌ Encrypted file uploads
+
+#### Simplified Workflow
+```
+User Upload → FFmpeg Extract (if video) →
+Base64 Encode → Gemini API Call →
+Parse SRT Response → Create Caption Track
+```
+
+#### Cost Comparison
+
+**Old (Modal Whisper + R2):**
+- R2 storage: ~$0.015/GB/month
+- Modal API: Custom pricing
+- Infrastructure: R2 credentials, encryption overhead
+
+**New (Gemini 2.5 Flash):**
+- Input: $0.30/M tokens (~$0.01 per 10min audio)
+- Output: $2.50/M tokens (~$0.05 per SRT file)
+- Infrastructure: Single API key
+
+### Migration Steps
+
+1. **Remove Modal/R2 environment variables**
+2. **Add `OPENROUTER_API_KEY` to `.env`**
+3. **Delete `zk-encryption.ts` and `transcription-utils.ts`**
+4. **Replace `electron/transcribe-handler.ts` with Gemini implementation**
+5. **Update `captions-store.ts` to remove encryption logic**
+6. **Simplify `captions.tsx` UI (no upload progress)**
+7. **Test with sample audio files**
+
+### Testing Checklist
+
+- [ ] Extract audio from video files (FFmpeg)
+- [ ] Transcribe short audio (< 5 min)
+- [ ] Transcribe long audio (> 30 min)
+- [ ] Test multiple languages
+- [ ] Verify SRT timestamp accuracy
+- [ ] Test error handling (invalid files, API errors)
+- [ ] Verify export to SRT/VTT/ASS/TTML still works
+
+---
+
 ## References
 
 ### External Documentation

@@ -81,3 +81,7 @@ __pypackages__/
 /qcut/docs/completed/**
 !/qcut/docs/completed/.gitkeep
 !/qcut/docs/completed/README.md
+
+# Caption implementation examples (sensitive files)
+/qcut/docs/issues/caption-implementation/.env
+/qcut/docs/issues/caption-implementation/output.srt

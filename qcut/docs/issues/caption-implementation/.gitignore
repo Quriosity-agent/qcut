@@ -1,0 +1,15 @@
+# Environment variables (contains API keys)
+.env
+
+# Generated output files
+output.srt
+
+# Temporary audio files
+*.wav
+*.mp3
+*.webm
+*.m4a
+
+# OS files
+.DS_Store
+Thumbs.db
