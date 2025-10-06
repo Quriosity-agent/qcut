@@ -1102,27 +1102,96 @@ Parse SRT Response → Create Caption Track
 - [x] Document cost and performance
 
 **Phase 2: Core Implementation** 🔄 In Progress
+
+### Task 2.1: Fix Broken Imports (5-10 min) ⚠️ **CRITICAL - Build Broken**
 - [x] Delete legacy `electron/transcribe-handler.ts` ✅ Complete
-- [ ] Create new `electron/gemini-transcribe-handler.ts` with native Gemini API
-- [ ] Update `electron/main.ts` - replace transcribe-handler.js import (line 72)
-- [ ] Fix `captions.tsx` - remove imports for deleted files:
-  - Line 32: `isTranscriptionConfigured` (deleted file)
-  - Line 38: `encryptWithRandomKey` (deleted file)
-  - Line 88: `isTranscriptionConfigured()` call
-  - Line 227: `encryptWithRandomKey()` call
-- [ ] Update `captions-store.ts` to call Gemini via Electron IPC
-- [ ] Add SRT parsing for Gemini markdown output
+- [ ] Comment out broken import in `qcut/electron/main.ts` line 72:
+  ```typescript
+  // setupTranscribeHandlers = require("./transcribe-handler.js");
+  ```
+- [ ] Comment out broken imports in `qcut/apps/web/src/components/editor/media-panel/views/captions.tsx`:
+  - Line 32: `// import { isTranscriptionConfigured } from ...`
+  - Line 38: `// import { encryptWithRandomKey } from ...`
+  - Line 88: `// const { configured, missingVars } = isTranscriptionConfigured();`
+  - Line 227: Comment out encryption block
+
+### Task 2.2: Create Gemini Transcribe Handler (15-20 min)
+- [ ] Create `qcut/electron/gemini-transcribe-handler.ts`
+- [ ] Implement IPC handler `transcribe:audio` with Gemini API
+- [ ] Add helper: `parseSrtToSegments(srtContent: string)`
+- [ ] Handle errors and return TranscriptionResult format
+- [ ] Test with sample audio file
+
+### Task 2.3: Wire Up Gemini Handler (10 min)
+- [ ] Update `qcut/electron/main.ts`:
+  - Import new handler: `import { setupGeminiHandlers } from "./gemini-transcribe-handler.js"`
+  - Call setup: `setupGeminiHandlers()`
+- [ ] Add `GEMINI_API_KEY` to main process env check
+
+### Task 2.4: Update Frontend Caption Store (10-15 min)
+- [ ] Update `qcut/apps/web/src/stores/captions-store.ts`
+- [ ] Modify `startTranscriptionJob` to call `window.electronAPI.transcribe()`
+- [ ] Remove encryption/R2 logic
+- [ ] Ensure TranscriptionResult parsing works
+
+### Task 2.5: Update Caption UI Component (15-20 min)
+- [ ] Fix `qcut/apps/web/src/components/editor/media-panel/views/captions.tsx`
+- [ ] Remove upload progress state (no R2 upload needed)
+- [ ] Simplify transcription flow: extract audio → send to IPC → receive result
+- [ ] Update error handling for Gemini-specific errors
+- [ ] Test UI flow end-to-end
+
+### Task 2.6: Add SRT Parsing Utilities (10 min)
+- [ ] Create `qcut/apps/web/src/lib/captions/srt-parser.ts`
+- [ ] Implement `parseSrtToSegments(srt: string): TranscriptionSegment[]`
+- [ ] Implement `parseMarkdownToSrt(markdown: string): string` (if needed)
+- [ ] Add tests for parsing logic
 
 **Phase 3: UI Updates** 📋 Planned
-- [ ] Simplify caption UI (remove upload progress)
-- [ ] Update language selection for Gemini's multilingual support
-- [ ] Add Gemini-specific error handling
+
+### Task 3.1: Simplify Caption UI (10-15 min)
+- [ ] Remove upload progress components from `qcut/apps/web/src/components/editor/media-panel/views/captions.tsx`
+- [ ] Remove `isUploading` and `uploadProgress` state
+- [ ] Update UI to show only: "Extracting audio..." → "Transcribing..." → "Complete"
+- [ ] Clean up unused imports (`UploadProgress` component)
+
+### Task 3.2: Update Configuration Check (5 min)
+- [ ] Create `qcut/apps/web/src/lib/gemini/gemini-utils.ts`
+- [ ] Add `isGeminiConfigured()` function to check `GEMINI_API_KEY`
+- [ ] Replace old `isTranscriptionConfigured()` calls
+- [ ] Update UI to show Gemini-specific setup instructions
+
+### Task 3.3: Improve Error Handling (10 min)
+- [ ] Add Gemini-specific error messages in `qcut/apps/web/src/components/editor/media-panel/views/captions.tsx`
+- [ ] Handle: API key missing, quota exceeded, audio format errors
+- [ ] Update toast notifications with actionable error messages
+- [ ] Add link to Gemini API key setup: https://aistudio.google.com/app/apikey
 
 **Phase 4: Testing & Deployment** 📋 Planned
-- [ ] Test with various audio formats
-- [ ] Verify export to SRT/VTT/ASS/TTML
-- [ ] Performance testing with long videos
-- [ ] Update documentation
+
+### Task 4.1: Format Testing (15 min)
+- [ ] Test WAV audio input → `qcut/docs/issues/caption-implementation/video_template.mp4`
+- [ ] Test MP3 audio input
+- [ ] Test direct audio file upload (no video)
+- [ ] Verify all formats: SRT, VTT, ASS, TTML export
+
+### Task 4.2: Performance Testing (20 min)
+- [ ] Test short video (< 5 min) - measure time
+- [ ] Test medium video (10-30 min) - check token usage
+- [ ] Test long video (1+ hour) - verify Files API if > 20MB
+- [ ] Document actual costs and timing
+
+### Task 4.3: Integration Testing (15 min)
+- [ ] Test full flow: video upload → extract → transcribe → add to timeline
+- [ ] Verify caption display on timeline
+- [ ] Test caption editing after import
+- [ ] Verify caption export downloads correctly
+
+### Task 4.4: Documentation & Cleanup (10 min)
+- [ ] Update main README with Gemini setup instructions
+- [ ] Remove Modal/R2 from environment variable docs
+- [ ] Update `.env.example` with `GEMINI_API_KEY`
+- [ ] Archive old Modal Whisper documentation
 
 ### Files to Modify
 
