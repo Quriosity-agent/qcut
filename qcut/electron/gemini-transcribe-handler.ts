@@ -128,16 +128,22 @@ export function setupGeminiHandlers() {
           console.error(`[Gemini Handler] ❌ API keys file not found at: ${apiKeysFilePath}`);
         }
 
+        // Fallback to environment variable if no encrypted key found (development only)
+        if (!geminiApiKey && process.env.VITE_GEMINI_API_KEY) {
+          geminiApiKey = process.env.VITE_GEMINI_API_KEY;
+          console.log("[Gemini Handler] 🔄 Using API key from environment variable (development mode)");
+        }
+
         // Check for API key
         if (!geminiApiKey) {
-          console.error("[Gemini Handler] ❌ GEMINI_API_KEY not found in secure storage");
+          console.error("[Gemini Handler] ❌ GEMINI_API_KEY not found in secure storage or environment");
           console.error("[Gemini Handler] 💡 File exists:", fileExists);
-          console.error("[Gemini Handler] 💡 Please configure your API key in Settings");
+          console.error("[Gemini Handler] 💡 Please configure your API key in Settings → API Keys");
           throw new Error(
             "GEMINI_API_KEY not found. Please configure your API key in Settings. Get your API key from: https://aistudio.google.com/app/apikey"
           );
         }
-        console.log(`[Gemini Handler] ✅ API key loaded from secure storage (length: ${geminiApiKey.length})`);
+        console.log(`[Gemini Handler] ✅ API key loaded (length: ${geminiApiKey.length})`);
 
         // Read audio file
         console.log("[Gemini Handler] Reading audio file...");
