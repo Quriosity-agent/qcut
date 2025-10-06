@@ -288,8 +288,10 @@ function BackgroundView() {
 function ApiKeysView() {
   const [falApiKey, setFalApiKey] = useState("");
   const [freesoundApiKey, setFreesoundApiKey] = useState("");
+  const [geminiApiKey, setGeminiApiKey] = useState("");
   const [showFalKey, setShowFalKey] = useState(false);
   const [showFreesoundKey, setShowFreesoundKey] = useState(false);
+  const [showGeminiKey, setShowGeminiKey] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isTestingFreesound, setIsTestingFreesound] = useState(false);
   const [freesoundTestResult, setFreesoundTestResult] = useState<{
@@ -310,6 +312,7 @@ function ApiKeysView() {
         if (keys) {
           setFalApiKey(keys.falApiKey || "");
           setFreesoundApiKey(keys.freesoundApiKey || "");
+          setGeminiApiKey(keys.geminiApiKey || "");
         }
       }
     } catch (error) {
@@ -334,6 +337,7 @@ function ApiKeysView() {
         await window.electronAPI.apiKeys.set({
           falApiKey: falApiKey.trim(),
           freesoundApiKey: freesoundApiKey.trim(),
+          geminiApiKey: geminiApiKey.trim(),
         });
         console.log("✅ API keys saved successfully");
         // Clear test results after saving
@@ -350,7 +354,7 @@ function ApiKeysView() {
         },
       });
     }
-  }, [falApiKey, freesoundApiKey]);
+  }, [falApiKey, freesoundApiKey, geminiApiKey]);
 
   // Test Freesound API key
   const testFreesoundKey = useCallback(async () => {
@@ -478,6 +482,46 @@ function ApiKeysView() {
               {freesoundTestResult.message}
             </div>
           )}
+        </div>
+      </PropertyGroup>
+
+      {/* Gemini API Key */}
+      <PropertyGroup title="Gemini API Key">
+        <div className="flex flex-col gap-2">
+          <div className="text-xs text-muted-foreground">
+            For AI caption transcription. Get your key at{" "}
+            <a
+              href="https://aistudio.google.com/app/apikey"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-mono text-primary hover:underline"
+            >
+              aistudio.google.com/app/apikey
+            </a>
+          </div>
+          <div className="flex-1 relative">
+            <Input
+              type={showGeminiKey ? "text" : "password"}
+              placeholder="Enter your Gemini API key (AIza...)"
+              value={geminiApiKey}
+              onChange={(e) => setGeminiApiKey(e.target.value)}
+              className="bg-panel-accent pr-10"
+              data-testid="gemini-api-key-input"
+            />
+            <Button
+              type="button"
+              variant="text"
+              size="sm"
+              className="absolute right-0 top-0 h-full px-3"
+              onClick={() => setShowGeminiKey(!showGeminiKey)}
+            >
+              {showGeminiKey ? (
+                <EyeOffIcon className="h-4 w-4" />
+              ) : (
+                <EyeIcon className="h-4 w-4" />
+              )}
+            </Button>
+          </div>
         </div>
       </PropertyGroup>
 
