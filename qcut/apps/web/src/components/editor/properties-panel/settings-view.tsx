@@ -332,19 +332,32 @@ function ApiKeysView() {
 
   // Save API keys
   const saveApiKeys = useCallback(async () => {
+    console.log("[Settings] 💾 Saving API keys...");
+    console.log("[Settings] FAL API key length:", falApiKey.trim().length);
+    console.log("[Settings] Freesound API key length:", freesoundApiKey.trim().length);
+    console.log("[Settings] Gemini API key length:", geminiApiKey.trim().length);
+
     try {
-      if (window.electronAPI?.invoke) {
-        await window.electronAPI.apiKeys.set({
-          falApiKey: falApiKey.trim(),
-          freesoundApiKey: freesoundApiKey.trim(),
-          geminiApiKey: geminiApiKey.trim(),
-        });
-        console.log("✅ API keys saved successfully");
-        // Clear test results after saving
-        setFreesoundTestResult(null);
-        setFalTestResult(null);
+      if (!window.electronAPI?.apiKeys) {
+        console.error("[Settings] ❌ window.electronAPI.apiKeys not available");
+        throw new Error("Electron API not available");
       }
+
+      console.log("[Settings] 📤 Calling window.electronAPI.apiKeys.set()...");
+
+      const result = await window.electronAPI.apiKeys.set({
+        falApiKey: falApiKey.trim(),
+        freesoundApiKey: freesoundApiKey.trim(),
+        geminiApiKey: geminiApiKey.trim(),
+      });
+
+      console.log("[Settings] ✅ API keys saved successfully, result:", result);
+
+      // Clear test results after saving
+      setFreesoundTestResult(null);
+      setFalTestResult(null);
     } catch (error) {
+      console.error("[Settings] ❌ Error saving API keys:", error);
       handleError(error, {
         operation: "Save API Keys",
         category: ErrorCategory.STORAGE,

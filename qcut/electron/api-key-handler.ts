@@ -113,16 +113,27 @@ export function setupApiKeyIPC(): void {
   ipcMain.handle(
     "api-keys:set",
     async (event: IpcMainInvokeEvent, keys: ApiKeyData): Promise<boolean> => {
+      console.log("[API Keys] 💾 Received save request");
+      console.log("[API Keys] Keys received:", {
+        falApiKey: keys.falApiKey ? `${keys.falApiKey.substring(0, 10)}... (${keys.falApiKey.length} chars)` : "empty",
+        freesoundApiKey: keys.freesoundApiKey ? `${keys.freesoundApiKey.substring(0, 10)}... (${keys.freesoundApiKey.length} chars)` : "empty",
+        geminiApiKey: keys.geminiApiKey ? `${keys.geminiApiKey.substring(0, 10)}... (${keys.geminiApiKey.length} chars)` : "empty"
+      });
+
       try {
         const { falApiKey = "", freesoundApiKey = "", geminiApiKey = "" } = keys;
 
         const dataToStore: EncryptedApiKeyData = {};
 
+        const encryptionAvailable = safeStorage.isEncryptionAvailable();
+        console.log("[API Keys] 🔒 Encryption available:", encryptionAvailable);
+
         // Encrypt keys if safeStorage is available, otherwise store as plain text
-        if (safeStorage.isEncryptionAvailable()) {
+        if (encryptionAvailable) {
           if (falApiKey) {
             const encryptedFal: Buffer = safeStorage.encryptString(falApiKey);
             dataToStore.falApiKey = encryptedFal.toString("base64");
+            console.log("[API Keys] 🔐 FAL key encrypted");
           } else {
             dataToStore.falApiKey = "";
           }
@@ -131,6 +142,7 @@ export function setupApiKeyIPC(): void {
             const encryptedFreesound: Buffer =
               safeStorage.encryptString(freesoundApiKey);
             dataToStore.freesoundApiKey = encryptedFreesound.toString("base64");
+            console.log("[API Keys] 🔐 Freesound key encrypted");
           } else {
             dataToStore.freesoundApiKey = "";
           }
@@ -139,12 +151,13 @@ export function setupApiKeyIPC(): void {
             const encryptedGemini: Buffer =
               safeStorage.encryptString(geminiApiKey);
             dataToStore.geminiApiKey = encryptedGemini.toString("base64");
+            console.log("[API Keys] 🔐 Gemini key encrypted");
           } else {
             dataToStore.geminiApiKey = "";
           }
         } else {
           // Fallback to plain text storage if encryption is not available
-          // Encryption not available, storing API keys as plain text
+          console.log("[API Keys] ⚠️ Encryption not available, storing as plain text");
           dataToStore.falApiKey = falApiKey;
           dataToStore.freesoundApiKey = freesoundApiKey;
           dataToStore.geminiApiKey = geminiApiKey;
@@ -152,21 +165,30 @@ export function setupApiKeyIPC(): void {
 
         // Ensure the directory exists
         const dir: string = path.dirname(apiKeysFilePath);
+        console.log("[API Keys] 📁 Checking directory:", dir);
         if (!fs.existsSync(dir)) {
+          console.log("[API Keys] 📁 Creating directory...");
           fs.mkdirSync(dir, { recursive: true });
         }
 
         // Write encrypted data to file with restrictive permissions
+        console.log("[API Keys] 💾 Writing to file:", apiKeysFilePath);
         fs.writeFileSync(
           apiKeysFilePath,
           JSON.stringify(dataToStore, null, 2),
           { mode: 0o600 }
         );
 
-        // API keys saved successfully
+        console.log("[API Keys] ✅ File written successfully");
+        console.log("[API Keys] 📝 File size:", fs.statSync(apiKeysFilePath).size, "bytes");
+
+        // Verify the file was written
+        const savedData = JSON.parse(fs.readFileSync(apiKeysFilePath, "utf8"));
+        console.log("[API Keys] 🔍 Verification - Keys in file:", Object.keys(savedData));
+
         return true;
       } catch (error: any) {
-        // Failed to save API keys
+        console.error("[API Keys] ❌ Error saving:", error);
         throw new Error(`Failed to save API keys: ${error?.message || error}`);
       }
     }
