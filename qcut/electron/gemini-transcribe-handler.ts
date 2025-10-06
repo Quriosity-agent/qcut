@@ -82,40 +82,62 @@ export function setupGeminiHandlers() {
 
       try {
         // Get API key from secure storage
+        console.log("[Gemini Handler] 🔍 Checking API key...");
         const userDataPath = app.getPath("userData");
         const apiKeysFilePath = path.join(userDataPath, "api-keys.json");
+        console.log(`[Gemini Handler] 📁 API keys file: ${apiKeysFilePath}`);
 
         let geminiApiKey = "";
 
-        if (fsSync.existsSync(apiKeysFilePath)) {
-          const encryptedData = JSON.parse(
-            fsSync.readFileSync(apiKeysFilePath, "utf8")
-          );
+        const fileExists = fsSync.existsSync(apiKeysFilePath);
+        console.log(`[Gemini Handler] ✅ File exists: ${fileExists}`);
+
+        if (fileExists) {
+          const fileContent = fsSync.readFileSync(apiKeysFilePath, "utf8");
+          console.log(`[Gemini Handler] 📄 File content length: ${fileContent.length} bytes`);
+
+          const encryptedData = JSON.parse(fileContent);
+          console.log(`[Gemini Handler] 📦 Keys in file: ${Object.keys(encryptedData).join(", ")}`);
+          console.log(`[Gemini Handler] 🔑 geminiApiKey field exists: ${!!encryptedData.geminiApiKey}`);
 
           if (encryptedData.geminiApiKey) {
-            if (safeStorage.isEncryptionAvailable()) {
+            const encryptionAvailable = safeStorage.isEncryptionAvailable();
+            console.log(`[Gemini Handler] 🔒 Encryption available: ${encryptionAvailable}`);
+
+            if (encryptionAvailable) {
               try {
+                console.log("[Gemini Handler] 🔓 Attempting decryption...");
                 geminiApiKey = safeStorage.decryptString(
                   Buffer.from(encryptedData.geminiApiKey, "base64")
                 );
-              } catch {
+                console.log(`[Gemini Handler] ✅ Decryption successful (key length: ${geminiApiKey.length})`);
+              } catch (decryptError: any) {
+                console.error("[Gemini Handler] ❌ Decryption failed:", decryptError.message);
+                console.log("[Gemini Handler] 🔄 Falling back to plain text...");
                 // Fallback to plain text if decryption fails
                 geminiApiKey = encryptedData.geminiApiKey || "";
               }
             } else {
+              console.log("[Gemini Handler] 📝 Using plain text (encryption not available)");
               geminiApiKey = encryptedData.geminiApiKey || "";
             }
+          } else {
+            console.error("[Gemini Handler] ❌ geminiApiKey field is missing in encrypted data");
           }
+        } else {
+          console.error(`[Gemini Handler] ❌ API keys file not found at: ${apiKeysFilePath}`);
         }
 
         // Check for API key
         if (!geminiApiKey) {
           console.error("[Gemini Handler] ❌ GEMINI_API_KEY not found in secure storage");
+          console.error("[Gemini Handler] 💡 File exists:", fileExists);
+          console.error("[Gemini Handler] 💡 Please configure your API key in Settings");
           throw new Error(
             "GEMINI_API_KEY not found. Please configure your API key in Settings. Get your API key from: https://aistudio.google.com/app/apikey"
           );
         }
-        console.log("[Gemini Handler] ✅ API key loaded from secure storage");
+        console.log(`[Gemini Handler] ✅ API key loaded from secure storage (length: ${geminiApiKey.length})`);
 
         // Read audio file
         console.log("[Gemini Handler] Reading audio file...");

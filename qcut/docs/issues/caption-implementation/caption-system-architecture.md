@@ -234,6 +234,97 @@ qcut/
 | **FFmpeg not found** | Check FFmpeg installation in `electron/resources/` |
 | **Transcription fails** | Verify API key, check audio format compatibility |
 | **Export fails** | Ensure segments have valid start/end times |
+| **Blob URL errors** | See Issue #2 below - revoked blob URLs for video preview |
+
+---
+
+## Known Issues
+
+### Issue #1: FFmpeg Audio Extraction (2025-10-06) ✅ RESOLVED
+
+**Status:** ✅ **FIXED**
+
+**Problem:** FFmpeg WebAssembly took 15+ seconds to load, causing timeout errors.
+
+**Solution:** Replaced with native FFmpeg CLI via Electron IPC
+- Audio extraction: 15+ seconds → 1-2 seconds (8-15x faster)
+- No WASM loading delays
+- More reliable native process execution
+
+**Files Modified:**
+- `electron/ffmpeg-handler.ts` - Added `extract-audio` IPC handler
+- `apps/web/src/components/editor/media-panel/views/captions.tsx` - Use FFmpeg CLI
+
+---
+
+### Issue #2: Gemini API Key Not Found (2025-10-06) 🔄 IN PROGRESS
+
+**Status:** 🔄 **FIXING**
+
+**Problem:**
+After implementing encrypted API key storage, the Gemini transcription handler cannot find the API key:
+```
+Error: GEMINI_API_KEY not found. Please configure your API key in Settings.
+```
+
+**Root Cause:**
+API key is correctly saved to encrypted storage at `userData/api-keys.json`, but the `gemini-transcribe-handler.ts` fails to load it properly. The key exists in the encrypted file but is not being decrypted/retrieved correctly.
+
+**Current Behavior:**
+1. ✅ Audio extraction works (FFmpeg CLI)
+2. ✅ API key can be saved via Settings UI
+3. ❌ Transcription fails - key not loaded from encrypted storage
+4. ⚠️ Console shows: "GEMINI_API_KEY not found in secure storage"
+
+**Additional Observations:**
+- Blob URL errors for video preview (unrelated issue)
+- Multiple `blob:app://` ERR_FILE_NOT_FOUND errors
+- Blob URLs being revoked prematurely (lifespan: 887ms)
+
+**Fix Strategy:**
+
+#### Subtask 2.1: Add Detailed Logging to API Key Retrieval (5 min)
+- [ ] Add console logs in `gemini-transcribe-handler.ts` to show:
+  - File path being checked: `userData/api-keys.json`
+  - File existence check result
+  - Raw encrypted data structure
+  - Decryption attempt result
+  - Final API key value (masked for security)
+
+#### Subtask 2.2: Verify Encryption/Decryption Flow (10 min)
+- [ ] Log `safeStorage.isEncryptionAvailable()` status
+- [ ] Compare encryption format in `api-key-handler.ts` (set) vs `gemini-transcribe-handler.ts` (get)
+- [ ] Check if base64 encoding/decoding is symmetric
+- [ ] Verify Buffer creation and decryption process
+
+#### Subtask 2.3: Test API Key Retrieval Directly (5 min)
+- [ ] Create test function to call `api-keys:get` IPC from renderer
+- [ ] Log the result to console
+- [ ] Verify `geminiApiKey` field is populated
+- [ ] Check if key matches what was saved
+
+#### Subtask 2.4: Fix Key Loading Logic (10 min)
+- [ ] Update `gemini-transcribe-handler.ts` to use consistent decryption logic
+- [ ] Consider using the existing `api-keys:get` IPC handler instead of duplicating logic
+- [ ] Add fallback error messages with specific debugging info
+- [ ] Test with actual API key
+
+#### Subtask 2.5: Add Verification Console Messages (5 min)
+- [ ] Add startup message: "✅ API keys loaded successfully"
+- [ ] Show which keys are available (without revealing values)
+- [ ] Add detailed error context when key is missing
+- [ ] Log file path and permissions if file not found
+
+**Expected Console Output After Fix:**
+```
+[Gemini Handler] 🔍 Checking API key...
+[Gemini Handler] 📁 API keys file: C:\Users\...\AppData\Roaming\qcut\api-keys.json
+[Gemini Handler] ✅ File exists: true
+[Gemini Handler] 🔒 Encryption available: true
+[Gemini Handler] 📦 Encrypted data loaded
+[Gemini Handler] 🔓 Decryption successful
+[Gemini Handler] ✅ API key loaded from secure storage (length: 39)
+```
 
 ---
 
