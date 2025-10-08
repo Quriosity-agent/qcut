@@ -72,6 +72,9 @@ export class ExportEngine {
   // Video element cache for performance
   private videoCache = new Map<string, HTMLVideoElement>();
 
+  // Track images used during export
+  private usedImages = new Set<string>();
+
   constructor(
     canvas: HTMLCanvasElement,
     settings: ExportSettings,
@@ -268,6 +271,12 @@ export class ExportEngine {
     element: TimelineElement,
     mediaItem: MediaItem
   ): Promise<void> {
+    // Track which image is being used
+    this.usedImages.add(mediaItem.id);
+
+    // Log which image is being used
+    console.log(`🖼️ EXPORT: Using image - ID: ${mediaItem.id}, Name: ${mediaItem.name || 'Unnamed'}, URL: ${mediaItem.url}`);
+
     return new Promise((resolve, reject) => {
       const img = new Image();
       img.crossOrigin = "anonymous";
@@ -279,6 +288,8 @@ export class ExportEngine {
             img.width,
             img.height
           );
+
+          console.log(`🖼️ EXPORT: Rendered image "${mediaItem.name || mediaItem.id}" at position (${x}, ${y}) with size ${width}x${height}`);
 
           // Apply effects if enabled
           if (EFFECTS_ENABLED) {
@@ -834,6 +845,9 @@ export class ExportEngine {
     this.isExporting = true;
     this.abortController = new AbortController();
 
+    // Reset tracking for this export
+    this.usedImages.clear();
+
     // Log original timeline duration and export optimizations
     debugLog(
       `[ExportEngine] 📏 Original timeline duration: ${this.totalDuration.toFixed(3)}s`
@@ -1048,6 +1062,17 @@ export class ExportEngine {
         console.log("  3. Effect parameter conversion");
       } else {
         console.log("❌ No effects found on any elements");
+      }
+
+      // Log summary of images used
+      console.log(`\n🖼️ Images used in export: ${this.usedImages.size}`);
+      if (this.usedImages.size > 0) {
+        this.usedImages.forEach((imageId) => {
+          const mediaItem = this.mediaItems.find((item) => item.id === imageId);
+          if (mediaItem) {
+            console.log(`  📸 ${mediaItem.name || 'Unnamed'} (ID: ${imageId})`);
+          }
+        });
       }
       console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
 
