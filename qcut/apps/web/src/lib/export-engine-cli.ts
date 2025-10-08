@@ -162,8 +162,16 @@ export class CLIExportEngine extends ExportEngine {
         video.src = mediaItem.url;
         video.crossOrigin = "anonymous";
 
+        console.log(`🎥 LOADING VIDEO: ${mediaItem.name || mediaItem.id}`);
+        console.log(`   URL: ${mediaItem.url.substring(0, 50)}...`);
+
         await new Promise<void>((resolve, reject) => {
-          video!.onloadeddata = () => resolve();
+          video!.onloadeddata = () => {
+            console.log(`✅ VIDEO LOADED: ${mediaItem.name || mediaItem.id}`);
+            console.log(`   Duration: ${video!.duration}s`);
+            console.log(`   Size: ${video!.videoWidth}x${video!.videoHeight}`);
+            resolve();
+          };
           video!.onerror = () => reject(new Error("Failed to load video"));
           setTimeout(() => reject(new Error("Video load timeout")), 5000);
         });
@@ -173,22 +181,42 @@ export class CLIExportEngine extends ExportEngine {
 
       // Seek to the correct time
       const seekTime = timeOffset + element.trimStart;
+
+      console.log(`⏱️ SEEKING VIDEO: ${mediaItem.name || mediaItem.id}`);
+      console.log(`   Target time: ${seekTime.toFixed(3)}s`);
+      console.log(`   Current time BEFORE seek: ${video.currentTime.toFixed(3)}s`);
+      console.log(`   timeOffset: ${timeOffset.toFixed(3)}s, trimStart: ${element.trimStart}`);
+
+      const beforeSeekTime = video.currentTime;
       video.currentTime = seekTime;
 
       // Wait for seek with more generous timeout
+      let seekSucceeded = false;
       await new Promise<void>((resolve, reject) => {
         const timeout = setTimeout(() => {
-          debugWarn(
-            "[CLIExportEngine] Video seek timeout, using current frame"
-          );
+          console.error(`❌ VIDEO SEEK TIMEOUT for ${mediaItem.name || mediaItem.id}`);
+          console.error(`   Requested: ${seekTime.toFixed(3)}s`);
+          console.error(`   Actual: ${video.currentTime.toFixed(3)}s`);
+          console.error(`   ⚠️ USING WRONG FRAME - THIS IS THE BUG!`);
+          seekSucceeded = false;
           resolve(); // Don't reject, just use whatever frame we have
         }, 3000); // Increased timeout
 
         video.onseeked = () => {
           clearTimeout(timeout);
+          seekSucceeded = true;
+          console.log(`✅ VIDEO SEEK SUCCESS: ${mediaItem.name || mediaItem.id}`);
+          console.log(`   Requested: ${seekTime.toFixed(3)}s`);
+          console.log(`   Actual: ${video.currentTime.toFixed(3)}s`);
+          console.log(`   Delta: ${Math.abs(video.currentTime - seekTime).toFixed(3)}s`);
           setTimeout(() => resolve(), 200); // Longer stabilization
         };
       });
+
+      console.log(`📸 CAPTURING FRAME from ${mediaItem.name || mediaItem.id}`);
+      console.log(`   Final currentTime: ${video.currentTime.toFixed(3)}s`);
+      console.log(`   Seek succeeded: ${seekSucceeded}`);
+      console.log(`   Time changed: ${beforeSeekTime !== video.currentTime}`);
 
       // Calculate bounds and draw
       const { x, y, width, height } = this.calculateElementBounds(
@@ -200,6 +228,7 @@ export class CLIExportEngine extends ExportEngine {
       // Draw video WITHOUT canvas effects (FFmpeg will handle effects)
 
       this.ctx.drawImage(video, x, y, width, height);
+      console.log(`🖼️ DREW VIDEO FRAME at position (${x}, ${y}) size ${width}x${height}`);
       // Skip: No canvas effects applied here - FFmpeg will handle effects during final encoding
     } catch (error) {
       debugWarn(
@@ -215,6 +244,12 @@ export class CLIExportEngine extends ExportEngine {
 
   // Enhanced image rendering for CLI with better blob URL handling
   private renderImageCLI(element: any, mediaItem: any): Promise<void> {
+    console.log(`🖼️ LOADING IMAGE: ${mediaItem.name || mediaItem.id}`);
+    console.log(`   ID: ${mediaItem.id}`);
+    console.log(`   URL: ${mediaItem.url?.substring(0, 60)}...`);
+    console.log(`   Type: ${mediaItem.url?.startsWith('blob:') ? 'BLOB' : 'REGULAR'}`);
+    console.log(`   Has file data: ${!!(mediaItem.file && mediaItem.file.size > 0)}`);
+
     return new Promise((resolve) => {
       try {
         // For generated images with blob URLs, try to get the actual file data first
@@ -223,20 +258,20 @@ export class CLIExportEngine extends ExportEngine {
           mediaItem.file &&
           mediaItem.file.size > 0
         ) {
-          debugLog(
-            `[CLIExportEngine] Using file data for generated image: ${mediaItem.name}`
-          );
+          console.log(`🔄 USING FILE DATA for blob image: ${mediaItem.name || mediaItem.id}`);
+          console.log(`   File size: ${mediaItem.file.size} bytes`);
 
           // Create a new blob URL from the file data to ensure it's accessible
           const newBlobUrl = URL.createObjectURL(mediaItem.file);
+          console.log(`   New blob URL: ${newBlobUrl.substring(0, 60)}...`);
 
           const img = new Image();
           img.crossOrigin = "anonymous";
 
           const timeout = setTimeout(() => {
-            debugWarn(
-              `[CLIExportEngine] Generated image timeout: ${mediaItem.url}`
-            );
+            console.error(`❌ IMAGE TIMEOUT: ${mediaItem.name || mediaItem.id}`);
+            console.error(`   Original URL: ${mediaItem.url}`);
+            console.error(`   ⚠️ SKIPPING THIS IMAGE - THIS IS A BUG!`);
             URL.revokeObjectURL(newBlobUrl);
             resolve();
           }, 8000); // Increased timeout for generated images
@@ -244,19 +279,22 @@ export class CLIExportEngine extends ExportEngine {
           img.onload = () => {
             try {
               clearTimeout(timeout);
+              console.log(`✅ IMAGE LOADED: ${mediaItem.name || mediaItem.id}`);
+              console.log(`   Size: ${img.width}x${img.height}`);
+
               const { x, y, width, height } = this.calculateElementBounds(
                 element,
                 img.width,
                 img.height
               );
+
               this.ctx.drawImage(img, x, y, width, height);
+              console.log(`🖼️ DREW IMAGE at position (${x}, ${y}) size ${width}x${height}`);
+
               URL.revokeObjectURL(newBlobUrl);
               resolve();
             } catch (error) {
-              debugWarn(
-                "[CLIExportEngine] Generated image render failed:",
-                error
-              );
+              console.error(`❌ IMAGE RENDER FAILED: ${mediaItem.name || mediaItem.id}`, error);
               URL.revokeObjectURL(newBlobUrl);
               resolve();
             }
@@ -264,9 +302,8 @@ export class CLIExportEngine extends ExportEngine {
 
           img.onerror = () => {
             clearTimeout(timeout);
-            debugWarn(
-              `[CLIExportEngine] Failed to load generated image: ${mediaItem.url}`
-            );
+            console.error(`❌ IMAGE LOAD ERROR: ${mediaItem.name || mediaItem.id}`);
+            console.error(`   URL: ${mediaItem.url}`);
             URL.revokeObjectURL(newBlobUrl);
             resolve();
           };
@@ -276,39 +313,50 @@ export class CLIExportEngine extends ExportEngine {
         }
 
         // Fallback to original URL loading for regular images
+        console.log(`📂 USING REGULAR URL for image: ${mediaItem.name || mediaItem.id}`);
+
         const img = new Image();
         img.crossOrigin = "anonymous";
 
         const timeout = setTimeout(() => {
-          debugWarn(`[CLIExportEngine] Image load timeout: ${mediaItem.url}`);
+          console.error(`❌ IMAGE TIMEOUT: ${mediaItem.name || mediaItem.id}`);
+          console.error(`   URL: ${mediaItem.url}`);
+          console.error(`   ⚠️ SKIPPING THIS IMAGE - THIS IS A BUG!`);
           resolve();
         }, 5000); // Standard timeout for regular images
 
         img.onload = () => {
           try {
             clearTimeout(timeout);
+            console.log(`✅ IMAGE LOADED: ${mediaItem.name || mediaItem.id}`);
+            console.log(`   Size: ${img.width}x${img.height}`);
+
             const { x, y, width, height } = this.calculateElementBounds(
               element,
               img.width,
               img.height
             );
+
             this.ctx.drawImage(img, x, y, width, height);
+            console.log(`🖼️ DREW IMAGE at position (${x}, ${y}) size ${width}x${height}`);
+
             resolve();
           } catch (error) {
-            debugWarn("[CLIExportEngine] Image render failed:", error);
+            console.error(`❌ IMAGE RENDER FAILED: ${mediaItem.name || mediaItem.id}`, error);
             resolve();
           }
         };
 
         img.onerror = () => {
           clearTimeout(timeout);
-          debugWarn(`[CLIExportEngine] Failed to load image: ${mediaItem.url}`);
+          console.error(`❌ IMAGE LOAD ERROR: ${mediaItem.name || mediaItem.id}`);
+          console.error(`   URL: ${mediaItem.url}`);
           resolve();
         };
 
         img.src = mediaItem.url!;
       } catch (error) {
-        debugWarn("[CLIExportEngine] Image setup failed:", error);
+        console.error(`❌ IMAGE SETUP FAILED: ${mediaItem.name || mediaItem.id}`, error);
         resolve();
       }
     });
@@ -660,11 +708,27 @@ export class CLIExportEngine extends ExportEngine {
       const currentTime = frame * frameTime;
       const frameName = `frame-${frame.toString().padStart(4, "0")}.png`;
 
+      // Log frame start
+      console.log(`\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+      console.log(`📸 RENDERING FRAME ${frame + 1}/${totalFrames}`);
+      console.log(`   Time: ${currentTime.toFixed(3)}s`);
+      console.log(`   File: ${frameName}`);
+
+      // Get active elements for logging
+      const activeElements = this.getActiveElementsCLI(currentTime);
+      console.log(`   Active elements: ${activeElements.length}`);
+      activeElements.forEach(({ element, mediaItem }, index) => {
+        console.log(`   ${index + 1}. [${element.type.toUpperCase()}] ${mediaItem?.name || element.id}`);
+      });
+
       // Render frame with all elements including stickers
       await this.renderFrame(currentTime);
 
       // Save frame for video compilation
       await this.saveFrameToDisk(frameName, currentTime);
+
+      console.log(`✅ FRAME ${frame + 1} COMPLETE`);
+      console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
 
       // Progress update (15% to 80% for frame rendering)
       const progress = 15 + (frame / totalFrames) * 65;

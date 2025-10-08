@@ -244,22 +244,107 @@ console.log('💬 CAPTION STATE:', {
    - Update TypeScript definitions
    - Add missing FFmpeg method types
 
-## Expected Console Output After Fix
+## Expected Console Output After Debug Logging Added
+
+### Frame Rendering Output
 
 ```
-🚀 CLI EXPORT ENGINE: ✅ RUNNING - Using native FFmpeg CLI for video export
-📁 Session ID: 1759895540812
-📁 Frame Directory: C:\Users\zdhpe\AppData\Local\Temp\qcut-export\1759895540812\frames
-🔍 FRAME CAPTURE DEBUG: { hasElectronAPI: true, hasFFmpegAPI: true, ... }
-📸 ATTEMPTING FRAME CAPTURE: { frameNumber: 1, timestamp: 0.033, ... }
-✅ FRAME CAPTURED: { frameNumber: 1, path: '...frame-0001.png', size: 245632 }
-📸 ATTEMPTING FRAME CAPTURE: { frameNumber: 2, timestamp: 0.066, ... }
-✅ FRAME CAPTURED: { frameNumber: 2, path: '...frame-0002.png', size: 243891 }
-...
-✅ ALL FRAMES CAPTURED: { total: 180, duration: 6.0s, fps: 30 }
-🎬 STARTING FFMPEG VIDEO ASSEMBLY...
-✅ VIDEO EXPORT COMPLETE: output.mp4
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📸 RENDERING FRAME 1/180
+   Time: 0.000s
+   File: frame-0000.png
+   Active elements: 2
+   1. [MEDIA] background-image.png
+   2. [TEXT] caption-text-123
+
+🖼️ LOADING IMAGE: background-image.png
+   ID: img-abc123
+   URL: blob:app://./1234-5678-9abc-def0...
+   Type: BLOB
+   Has file data: true
+🔄 USING FILE DATA for blob image: background-image.png
+   File size: 245632 bytes
+   New blob URL: blob:app://./new-url-here...
+✅ IMAGE LOADED: background-image.png
+   Size: 1920x1080
+🖼️ DREW IMAGE at position (0, 0) size 1920x1080
+
+✅ FRAME 1 COMPLETE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📸 RENDERING FRAME 2/180
+   Time: 0.033s
+   File: frame-0001.png
+   Active elements: 1
+   1. [MEDIA] video-clip.mp4
+
+🎥 LOADING VIDEO: video-clip.mp4
+   URL: blob:app://./video-123...
+✅ VIDEO LOADED: video-clip.mp4
+   Duration: 10.5s
+   Size: 1920x1080
+⏱️ SEEKING VIDEO: video-clip.mp4
+   Target time: 0.033s
+   Current time BEFORE seek: 0.000s
+   timeOffset: 0.033s, trimStart: 0
+✅ VIDEO SEEK SUCCESS: video-clip.mp4
+   Requested: 0.033s
+   Actual: 0.033s
+   Delta: 0.000s
+📸 CAPTURING FRAME from video-clip.mp4
+   Final currentTime: 0.033s
+   Seek succeeded: true
+   Time changed: true
+🖼️ DREW VIDEO FRAME at position (0, 0) size 1920x1080
+
+✅ FRAME 2 COMPLETE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+### Error Indicators to Watch For
+
+#### Video Seek Timeout (THE BUG):
+```
+❌ VIDEO SEEK TIMEOUT for video-clip.mp4
+   Requested: 2.500s
+   Actual: 0.000s
+   ⚠️ USING WRONG FRAME - THIS IS THE BUG!
+```
+
+#### Image Load Failure:
+```
+❌ IMAGE TIMEOUT: caption-bg.png
+   Original URL: blob:app://./abc-123
+   ⚠️ SKIPPING THIS IMAGE - THIS IS A BUG!
+```
+
+#### Same Image Every Frame:
+```
+📸 RENDERING FRAME 1/180
+   1. [MEDIA] image-A.png
+🖼️ LOADING IMAGE: image-A.png
+
+📸 RENDERING FRAME 2/180
+   1. [MEDIA] image-B.png  ← Should be different
+🖼️ LOADING IMAGE: image-A.png  ← BUT SAME IMAGE LOADS! 🐛
+```
+
+## What to Check in Console Logs
+
+### ✅ Good Signs
+- [ ] Video seek shows `✅ VIDEO SEEK SUCCESS`
+- [ ] `Seek succeeded: true` for all video frames
+- [ ] `Final currentTime` matches `Target time` (within 0.01s)
+- [ ] Different images/videos load for different timeline elements
+- [ ] No timeout errors
+
+### ❌ Bad Signs (Bugs)
+- [ ] `❌ VIDEO SEEK TIMEOUT` messages
+- [ ] `Seek succeeded: false`
+- [ ] `Final currentTime` stuck at 0.000s or same value
+- [ ] Same image name appears for all frames when timeline has different images
+- [ ] Many `❌ IMAGE TIMEOUT` or `❌ IMAGE LOAD ERROR` messages
 
 ## Related Documentation
 
