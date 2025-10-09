@@ -251,7 +251,7 @@ export const AI_MODELS: AIModel[] = [
     id: "sora2_text_to_video",
     name: "Sora 2 Text-to-Video",
     description: "OpenAI's state-of-the-art text-to-video generation (720p)",
-    price: "0.40", // Base price for 4s (will be calculated: duration × 0.10)
+    price: "0.10/s", // $0.10 per second (4s = $0.40, 8s = $0.80, 12s = $1.20)
     resolution: "720p",
     max_duration: 12, // 4, 8, or 12 seconds
     category: "text",
@@ -286,7 +286,7 @@ export const AI_MODELS: AIModel[] = [
     id: "sora2_image_to_video",
     name: "Sora 2 Image-to-Video",
     description: "Convert images to dynamic videos with Sora 2 (720p)",
-    price: "0.40", // Base price for 4s (calculated: duration × 0.10)
+    price: "0.10/s", // $0.10 per second (4s = $0.40, 8s = $0.80, 12s = $1.20)
     resolution: "720p",
     max_duration: 12,
     category: "image",
