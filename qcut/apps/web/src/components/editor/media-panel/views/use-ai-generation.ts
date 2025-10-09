@@ -1086,6 +1086,16 @@ export function useAIGeneration(props: UseAIGenerationProps) {
     // Media store state
     mediaStoreLoading,
     mediaStoreError,
+
+    // Sora 2 state
+    duration,
+    setDuration,
+    aspectRatio,
+    setAspectRatio,
+    resolution,
+    setResolution,
+    isSora2Selected,
+    hasSora2Pro,
   };
 }
 

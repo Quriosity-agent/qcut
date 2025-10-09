@@ -206,12 +206,32 @@ export function AiView() {
   };
 
   // Calculate cost helpers
-  const maxChars = 500;
+  const maxChars = generation.isSora2Selected ? 5000 : 500;
   const remainingChars = maxChars - prompt.length;
 
   const totalCost = selectedModels.reduce((total, modelId) => {
     const model = AI_MODELS.find((m) => m.id === modelId);
-    return total + (model ? parseFloat(model.price) : 0);
+    let modelCost = model ? parseFloat(model.price) : 0;
+
+    // Adjust for Sora 2 duration and resolution
+    if (modelId.startsWith('sora2_')) {
+      // Pro models have resolution-based pricing
+      if (modelId === 'sora2_text_to_video_pro' || modelId === 'sora2_image_to_video_pro') {
+        if (generation.resolution === '1080p') {
+          modelCost = generation.duration * 0.50; // $0.50/s for 1080p
+        } else if (generation.resolution === '720p') {
+          modelCost = generation.duration * 0.30; // $0.30/s for 720p
+        } else {
+          // auto resolution - use 720p pricing as default
+          modelCost = generation.duration * 0.30;
+        }
+      } else {
+        // Standard models: $0.10/s
+        modelCost = generation.duration * 0.10;
+      }
+    }
+
+    return total + modelCost;
   }, 0);
 
   // Handle media store loading/error states
@@ -329,6 +349,9 @@ export function AiView() {
                   className={`text-xs ${remainingChars < 50 ? "text-orange-500" : remainingChars < 20 ? "text-red-500" : "text-muted-foreground"} text-right`}
                 >
                   {remainingChars} characters remaining
+                  {generation.isSora2Selected && (
+                    <span className="ml-2 text-primary">(Sora 2: 5000 max)</span>
+                  )}
                 </div>
               </div>
             </TabsContent>
@@ -583,6 +606,70 @@ export function AiView() {
               </div>
             )}
           </div>
+
+          {/* Sora 2 Settings Panel - Only shows when Sora 2 models selected */}
+          {generation.isSora2Selected && (
+            <div className="space-y-3 p-3 bg-muted/30 rounded-md border border-muted">
+              <Label className="text-xs font-medium">Sora 2 Settings</Label>
+
+              {/* Duration selector */}
+              <div className="space-y-1">
+                <Label htmlFor="sora2-duration" className="text-xs">Duration</Label>
+                <Select
+                  value={generation.duration.toString()}
+                  onValueChange={(v) => generation.setDuration(Number(v) as 4 | 8 | 12)}
+                >
+                  <SelectTrigger id="sora2-duration" className="h-8 text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="4">4 seconds ($0.10/s)</SelectItem>
+                    <SelectItem value="8">8 seconds ($0.10/s)</SelectItem>
+                    <SelectItem value="12">12 seconds ($0.10/s)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Aspect ratio selector */}
+              <div className="space-y-1">
+                <Label htmlFor="sora2-aspect" className="text-xs">Aspect Ratio</Label>
+                <Select
+                  value={generation.aspectRatio}
+                  onValueChange={(v) => generation.setAspectRatio(v as "16:9" | "9:16")}
+                >
+                  <SelectTrigger id="sora2-aspect" className="h-8 text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="16:9">16:9 (Landscape)</SelectItem>
+                    <SelectItem value="9:16">9:16 (Portrait)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Resolution selector - only for Pro models */}
+              {generation.hasSora2Pro && (
+                <div className="space-y-1">
+                  <Label htmlFor="sora2-resolution" className="text-xs">
+                    Resolution (Pro)
+                  </Label>
+                  <Select
+                    value={generation.resolution}
+                    onValueChange={(v) => generation.setResolution(v as any)}
+                  >
+                    <SelectTrigger id="sora2-resolution" className="h-8 text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="auto">Auto</SelectItem>
+                      <SelectItem value="720p">720p ($0.30/s)</SelectItem>
+                      <SelectItem value="1080p">1080p ($0.50/s)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Error display */}
           {error && (
