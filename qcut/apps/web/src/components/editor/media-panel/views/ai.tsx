@@ -215,8 +215,16 @@ export function AiView() {
 
     // Adjust for Sora 2 duration and resolution
     if (modelId.startsWith('sora2_')) {
+      // CRITICAL: Remix inherits duration from source video, not UI duration control
+      // Cannot calculate accurate price without knowing source video duration
+      if (modelId === 'sora2_video_to_video_remix') {
+        // Remix pricing: $0.10/s * (source video duration)
+        // Since we don't track source video duration yet, return 0 and show "varies" message
+        // TODO: Track source video duration from previously generated videos for accurate pricing
+        modelCost = 0; // Will display "Price varies" in UI
+      }
       // Pro models have resolution-based pricing
-      if (modelId === 'sora2_text_to_video_pro' || modelId === 'sora2_image_to_video_pro') {
+      else if (modelId === 'sora2_text_to_video_pro' || modelId === 'sora2_image_to_video_pro') {
         if (generation.resolution === '1080p') {
           modelCost = generation.duration * 0.50; // $0.50/s for 1080p
         } else if (generation.resolution === '720p') {
@@ -226,13 +234,16 @@ export function AiView() {
           modelCost = generation.duration * 0.30;
         }
       } else {
-        // Standard models: $0.10/s
+        // Standard models: $0.10/s * (user-selected duration)
         modelCost = generation.duration * 0.10;
       }
     }
 
     return total + modelCost;
   }, 0);
+
+  // Check if remix model is selected to show special pricing note
+  const hasRemixSelected = selectedModels.includes('sora2_video_to_video_remix');
 
   // Handle media store loading/error states
   if (generation.mediaStoreError) {
@@ -600,9 +611,16 @@ export function AiView() {
 
             {/* Cost display */}
             {selectedModels.length > 0 && (
-              <div className="text-xs text-muted-foreground text-right">
-                Total estimated cost:{" "}
-                <span className="font-medium">${totalCost.toFixed(2)}</span>
+              <div className="space-y-1">
+                <div className="text-xs text-muted-foreground text-right">
+                  Total estimated cost:{" "}
+                  <span className="font-medium">${totalCost.toFixed(2)}</span>
+                </div>
+                {hasRemixSelected && (
+                  <div className="text-xs text-orange-500 text-right">
+                    Note: Remix pricing varies by source video duration
+                  </div>
+                )}
               </div>
             )}
           </div>

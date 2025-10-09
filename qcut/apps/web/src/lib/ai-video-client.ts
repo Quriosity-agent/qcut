@@ -161,18 +161,50 @@ function convertSora2Parameters(
  *
  * WHY: Sora 2 always returns video as an object with url and content_type properties
  * API Response format (confirmed from FAL API docs):
- *  - All models return: { video: { url: "https://...", content_type: "video/mp4" }, video_id: "..." }
+ *  - All models return: { video: { url: "https://...", content_type: "video/mp4", duration?, width?, height? }, video_id: "..." }
  *
  * @param response - Raw FAL API response
- * @returns Parsed video URL and video ID
+ * @param requestedDuration - Duration requested in the API call (required since API doesn't always return it)
+ * @param requestedResolution - Resolution requested in the API call
+ * @param requestedAspectRatio - Aspect ratio requested in the API call
+ * @returns Parsed video result with all metadata
  * @throws Error if response format is invalid
  */
-function parseSora2Response(response: any): { videoUrl: string; videoId: string } {
+function parseSora2Response(
+  response: any,
+  requestedDuration: 4 | 8 | 12,
+  requestedResolution: string = "auto",
+  requestedAspectRatio: string = "16:9"
+): {
+  videoUrl: string;
+  videoId: string;
+  duration: 4 | 8 | 12;
+  resolution: string;
+  aspectRatio: string;
+} {
   // Sora 2 always returns video as object with url property
   if (response.video?.url) {
+    // Extract resolution from API response if available, otherwise use requested value
+    let resolution = requestedResolution;
+    if (response.video.width && response.video.height) {
+      // Convert dimensions to resolution string (e.g., "1920x1080" -> "1080p")
+      const height = response.video.height;
+      if (height >= 1080) {
+        resolution = "1080p";
+      } else if (height >= 720) {
+        resolution = "720p";
+      } else {
+        resolution = `${height}p`;
+      }
+    }
+
     return {
       videoUrl: response.video.url,
       videoId: response.video_id,
+      // Use API-provided duration if available, otherwise fall back to requested
+      duration: (response.video.duration as 4 | 8 | 12) || requestedDuration,
+      resolution,
+      aspectRatio: requestedAspectRatio,
     };
   }
 
@@ -474,9 +506,20 @@ export async function generateVideo(
       let videoUrl = queueResult.video.url;
       if (isSora2Model(request.model)) {
         try {
-          const parsed = parseSora2Response(queueResult);
+          const parsed = parseSora2Response(
+            queueResult,
+            request.duration || 4,
+            request.resolution,
+            request.aspect_ratio
+          );
           videoUrl = parsed.videoUrl;
-          console.log("✅ Sora 2 response parsed:", { videoUrl, videoId: parsed.videoId });
+          console.log("✅ Sora 2 response parsed:", {
+            videoUrl,
+            videoId: parsed.videoId,
+            duration: parsed.duration,
+            resolution: parsed.resolution,
+            aspectRatio: parsed.aspectRatio,
+          });
         } catch (error) {
           console.warn("⚠️ Failed to parse as Sora 2 response, using default format");
         }
@@ -541,9 +584,20 @@ export async function generateVideo(
       let videoUrl = directResult.video.url;
       if (isSora2Model(request.model)) {
         try {
-          const parsed = parseSora2Response(directResult);
+          const parsed = parseSora2Response(
+            directResult,
+            request.duration || 4,
+            request.resolution,
+            request.aspect_ratio
+          );
           videoUrl = parsed.videoUrl;
-          console.log("✅ Sora 2 direct response parsed:", { videoUrl, videoId: parsed.videoId });
+          console.log("✅ Sora 2 direct response parsed:", {
+            videoUrl,
+            videoId: parsed.videoId,
+            duration: parsed.duration,
+            resolution: parsed.resolution,
+            aspectRatio: parsed.aspectRatio,
+          });
         } catch (error) {
           console.warn("⚠️ Failed to parse as Sora 2 response, using default format");
         }
