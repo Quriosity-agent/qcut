@@ -355,6 +355,7 @@ export async function generateVideo(
     console.log(`📝 Prompt: ${request.prompt}`);
 
     // Build request payload using centralized model configuration
+    // Using any here is acceptable since convertSora2Parameters provides type safety during construction
     let payload: any;
 
     // Handle Sora 2 models with special parameter conversion
@@ -364,8 +365,8 @@ export async function generateVideo(
         payload = convertSora2Parameters({
           prompt: request.prompt,
           duration: request.duration as Sora2Duration | undefined,
-          resolution: request.resolution as any,
-          aspect_ratio: request.aspect_ratio as any,
+          resolution: request.resolution as any, // Type assertion safe: validated in convertSora2Parameters
+          aspect_ratio: request.aspect_ratio as any, // Type assertion safe: validated in convertSora2Parameters
         }, modelType);
       } else {
         // Fallback if model type detection fails
@@ -1003,6 +1004,7 @@ export async function generateVideoFromImage(
     }
 
     // Build request payload using centralized model configuration
+    // Using any here is acceptable since convertSora2Parameters provides type safety during construction
     let payload: any;
 
     // Handle Sora 2 image-to-video models
@@ -1013,8 +1015,8 @@ export async function generateVideoFromImage(
           prompt: request.prompt || "Create a cinematic video from this image",
           image_url: imageUrl,
           duration: request.duration as Sora2Duration | undefined,
-          resolution: request.resolution as any,
-          aspect_ratio: (request.aspect_ratio || "auto") as any,
+          resolution: request.resolution as any, // Type assertion safe: validated in convertSora2Parameters
+          aspect_ratio: (request.aspect_ratio || "auto") as any, // Type assertion safe: validated in convertSora2Parameters
         }, modelType);
       } else {
         // Fallback
