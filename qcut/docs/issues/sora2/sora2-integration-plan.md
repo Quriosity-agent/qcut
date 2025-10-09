@@ -3,11 +3,12 @@
 ## Overview
 Integration of OpenAI's Sora 2 video generation models (text-to-video and image-to-video) via FAL AI API into QCut's AI video generation panel.
 
-**4 Models Total**:
+**5 Models Total**:
 - Sora 2 Text-to-Video (Standard) - 720p, $0.10/s
 - Sora 2 Text-to-Video Pro - 720p/1080p, $0.30-0.50/s
 - Sora 2 Image-to-Video (Standard) - 720p, $0.10/s
 - Sora 2 Image-to-Video Pro - 720p/1080p, $0.30-0.50/s
+- Sora 2 Video-to-Video Remix - Requires existing Sora video, $0.10/s
 
 **⚠️ Non-Breaking Integration Strategy**: This integration will be additive only - no existing features will be modified or removed. Sora 2 models will be added as new options alongside existing AI models.
 
@@ -70,6 +71,17 @@ export interface Sora2ImageToVideoProInput {
 }
 
 /**
+ * Sora 2 Video-to-Video Remix API Input
+ * IMPORTANT: video_id must be from a previously generated Sora video
+ * Cannot use arbitrary video uploads
+ */
+export interface Sora2VideoToVideoRemixInput {
+  prompt: string;
+  video_id: string; // MUST be from prior Sora generation
+  api_key?: string;
+}
+
+/**
  * Sora 2 API Response Format
  */
 export interface Sora2Response {
@@ -95,7 +107,8 @@ export type Sora2ModelType =
   | 'sora2-text-to-video'
   | 'sora2-text-to-video-pro'
   | 'sora2-image-to-video'
-  | 'sora2-image-to-video-pro';
+  | 'sora2-image-to-video-pro'
+  | 'sora2-video-to-video-remix';
 
 /**
  * Sora 2 generation settings
@@ -117,7 +130,7 @@ export interface Sora2Settings {
 **Location**: At the end of the `AI_MODELS` array (after existing models).
 
 ```typescript
-// ADD these 4 models at the END of the AI_MODELS array:
+// ADD these 5 models at the END of the AI_MODELS array:
 
 {
   id: "sora2-text-to-video",
@@ -155,6 +168,16 @@ export interface Sora2Settings {
   category: "regular",
   endpoint: "https://fal.run/fal-ai/sora-2/image-to-video/pro",
 },
+{
+  id: "sora2-video-to-video-remix",
+  name: "Sora 2 Video-to-Video Remix",
+  description: "Transform Sora-generated videos with style changes and edits",
+  price: "0.00", // Price calculated dynamically based on source video duration
+  resolution: "Preserves source resolution",
+  category: "regular",
+  endpoint: "https://fal.run/fal-ai/sora-2/video-to-video/remix",
+  // IMPORTANT: Requires video_id from previously generated Sora video
+},
 ```
 
 ---
@@ -172,11 +195,12 @@ function isSora2Model(modelId: string): boolean {
   return modelId.startsWith('sora2-');
 }
 
-function getSora2ModelType(modelId: string): 'text-to-video' | 'text-to-video-pro' | 'image-to-video' | 'image-to-video-pro' | null {
+function getSora2ModelType(modelId: string): 'text-to-video' | 'text-to-video-pro' | 'image-to-video' | 'image-to-video-pro' | 'video-to-video-remix' | null {
   if (modelId === 'sora2-text-to-video') return 'text-to-video';
   if (modelId === 'sora2-text-to-video-pro') return 'text-to-video-pro';
   if (modelId === 'sora2-image-to-video') return 'image-to-video';
   if (modelId === 'sora2-image-to-video-pro') return 'image-to-video-pro';
+  if (modelId === 'sora2-video-to-video-remix') return 'video-to-video-remix';
   return null;
 }
 
@@ -219,6 +243,15 @@ function convertSora2Parameters(params: any, modelType: string) {
       ...base,
       image_url: params.image_url,
       resolution: params.resolution || "auto", // Can be auto, 720p, or 1080p
+    };
+  }
+
+  // Video-to-Video Remix - transforms existing Sora videos
+  if (modelType === 'video-to-video-remix') {
+    return {
+      prompt: params.prompt || "",
+      video_id: params.video_id, // REQUIRED: from previous Sora generation
+      // Note: No duration/aspect_ratio - preserved from source video
     };
   }
 
@@ -519,7 +552,7 @@ const totalCost = selectedModels.reduce((total, modelId) => {
 1. ✅ `qcut/apps/web/src/types/sora2.ts` - New type definitions
 
 ### Files to MODIFY:
-1. ✅ `qcut/apps/web/src/components/editor/media-panel/views/ai-constants.ts` - Add 4 models to array
+1. ✅ `qcut/apps/web/src/components/editor/media-panel/views/ai-constants.ts` - Add 5 models to array
 2. ✅ `qcut/apps/web/src/lib/fal-ai-client.ts` - Add helper functions and extend existing
 3. ✅ `qcut/apps/web/src/components/editor/media-panel/views/use-ai-generation.ts` - Add state variables
 4. ✅ `qcut/apps/web/src/components/editor/media-panel/views/ai.tsx` - Add conditional UI
@@ -530,13 +563,14 @@ const totalCost = selectedModels.reduce((total, modelId) => {
 
 Before marking implementation complete, verify:
 
-- [ ] **No modifications to existing model definitions** - Only appended 3 new models
+- [ ] **No modifications to existing model definitions** - Only appended 5 new models
 - [ ] **No changes to existing functions** - Only added new helper functions
 - [ ] **Conditional UI rendering** - Sora 2 UI only appears when Sora 2 models selected
 - [ ] **Existing models still work** - Test image generation with existing models
 - [ ] **Cost calculation works for both** - Test with Sora 2 and non-Sora 2 models
 - [ ] **Prompt length correct** - 500 chars for existing, 5000 for Sora 2
 - [ ] **No breaking changes** - All existing code paths work identically
+- [ ] **Video-to-Video Remix requires video_id** - UI prompts for existing Sora video selection
 
 ---
 
@@ -544,11 +578,14 @@ Before marking implementation complete, verify:
 
 ### Sora 2 Feature Tests
 - [ ] Generate text-to-video with Sora 2 (4s, 8s, 12s durations)
+- [ ] Generate text-to-video Pro with 1080p resolution
 - [ ] Generate image-to-video standard
 - [ ] Generate image-to-video Pro (720p and 1080p)
+- [ ] Test video-to-video remix with existing Sora video_id
 - [ ] Test aspect ratios (16:9, 9:16)
 - [ ] Verify cost calculations are correct
 - [ ] Test with max prompt length (5000 chars)
+- [ ] Verify remix model rejects invalid video_id
 
 ### Regression Tests (CRITICAL)
 - [ ] **Existing text-to-image models still work**
@@ -625,12 +662,55 @@ Before marking implementation complete, verify:
 
 **Response**: Same format as standard
 
+### 5. Sora 2 Video-to-Video Remix
+- **Endpoint**: `https://fal.run/fal-ai/sora-2/video-to-video/remix`
+- **Pricing**: $0.10/s (based on source video duration)
+
+**⚠️ CRITICAL CONSTRAINT**: This model **ONLY** works with `video_id` from previously generated Sora videos. It **CANNOT** accept arbitrary video uploads.
+
+**Parameters**:
+- `prompt` (required): Text describing the transformation/remix
+- `video_id` (required): **Must be from prior Sora generation** (stored in `Sora2Response.video_id`)
+- `api_key` (optional): OpenAI API key
+
+**Response**: Same format as other Sora models
+```json
+{
+  "video": {
+    "content_type": "video/mp4",
+    "url": "https://..."
+  },
+  "video_id": "unique-id"
+}
+```
+
+**Use Cases**:
+- Style transformation (e.g., "make it look like an oil painting")
+- Scene reinterpretation (e.g., "change setting to winter")
+- Creative edits while preserving motion and structure
+- Post-processing effects on Sora-generated videos
+
+**Implementation Notes**:
+- UI should provide dropdown/selector for previously generated Sora videos
+- Store `video_id` from all Sora generations for future remix operations
+- Display error if user tries to use non-Sora video
+- Duration/resolution inherited from source video (not configurable)
+
+---
+
 ### Key Differences: Pro vs Standard
 - ✅ **Pro models support 1080p resolution**
 - 💰 **Pro pricing**: $0.30/s (720p), $0.50/s (1080p) vs **Standard**: $0.10/s
 - 🎨 **Pro generates higher quality, more detailed videos**
 - 🎯 **Text-to-Video Pro** defaults to 1080p
 - 🎯 **Image-to-Video Pro** defaults to auto-select resolution
+
+### Video-to-Video Remix Special Characteristics
+- 🎬 **Post-processing feature**: Transforms existing Sora videos only
+- 🔒 **Restricted input**: Cannot use arbitrary video files
+- 💾 **Requires history**: Must track previous Sora generations
+- 🎨 **Preserves motion**: Maintains structure while changing style/appearance
+- 💰 **Duration-based pricing**: Inherits duration from source video ($0.10/s)
 
 ---
 
@@ -657,3 +737,15 @@ Before marking implementation complete, verify:
 - **Existing models**: No additional settings
 - **Sora 2**: Duration, aspect ratio, resolution selectors
 - **Solution**: Conditional panel rendering
+
+### Video History Tracking (for Remix Model)
+- **Challenge**: Video-to-Video Remix requires `video_id` from previous Sora generations
+- **Solution**: Store all Sora generation results with metadata
+  - Create `sora-video-history` storage (IndexedDB)
+  - Track: `video_id`, `videoUrl`, `prompt`, `duration`, `timestamp`
+  - UI provides dropdown to select from history
+  - Display thumbnails/preview for easy selection
+- **User Experience**:
+  - Show "No Sora videos available" message if history empty
+  - Suggest generating video first before using Remix
+  - Allow deletion of old videos from history
