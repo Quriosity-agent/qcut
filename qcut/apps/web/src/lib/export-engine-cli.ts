@@ -34,10 +34,6 @@ export class CLIExportEngine extends ExportEngine {
   ) {
     super(canvas, settings, tracks, mediaItems, totalDuration);
     this.effectsStore = effectsStore;
-    console.log(
-      "⚡ CLI EXPORT ENGINE: Initialized with effects support:",
-      !!effectsStore
-    );
 
     // 🚨 SAFETY CHECK: Verify Electron environment
     if (
@@ -45,10 +41,6 @@ export class CLIExportEngine extends ExportEngine {
       !window.electronAPI.ffmpeg ||
       typeof window.electronAPI.ffmpeg.exportVideoCLI !== "function"
     ) {
-      console.error(
-        "❌ CLI EXPORT ENGINE: Not in Electron environment - this engine will fail!"
-      );
-      console.error("❌ Use standard export engine for browser environment");
       throw new Error("CLI Export Engine requires Electron environment");
     }
   }
@@ -162,16 +154,8 @@ export class CLIExportEngine extends ExportEngine {
         video.src = mediaItem.url;
         video.crossOrigin = "anonymous";
 
-        console.log(`🎥 LOADING VIDEO: ${mediaItem.name || mediaItem.id}`);
-        console.log(`   URL: ${mediaItem.url.substring(0, 50)}...`);
-
         await new Promise<void>((resolve, reject) => {
-          video!.onloadeddata = () => {
-            console.log(`✅ VIDEO LOADED: ${mediaItem.name || mediaItem.id}`);
-            console.log(`   Duration: ${video!.duration}s`);
-            console.log(`   Size: ${video!.videoWidth}x${video!.videoHeight}`);
-            resolve();
-          };
+          video!.onloadeddata = () => resolve();
           video!.onerror = () => reject(new Error("Failed to load video"));
           setTimeout(() => reject(new Error("Video load timeout")), 5000);
         });
@@ -181,42 +165,19 @@ export class CLIExportEngine extends ExportEngine {
 
       // Seek to the correct time
       const seekTime = timeOffset + element.trimStart;
-
-      console.log(`⏱️ SEEKING VIDEO: ${mediaItem.name || mediaItem.id}`);
-      console.log(`   Target time: ${seekTime.toFixed(3)}s`);
-      console.log(`   Current time BEFORE seek: ${video.currentTime.toFixed(3)}s`);
-      console.log(`   timeOffset: ${timeOffset.toFixed(3)}s, trimStart: ${element.trimStart}`);
-
-      const beforeSeekTime = video.currentTime;
       video.currentTime = seekTime;
 
-      // Wait for seek with more generous timeout
-      let seekSucceeded = false;
-      await new Promise<void>((resolve, reject) => {
+      // Wait for seek with generous timeout
+      await new Promise<void>((resolve) => {
         const timeout = setTimeout(() => {
-          console.error(`❌ VIDEO SEEK TIMEOUT for ${mediaItem.name || mediaItem.id}`);
-          console.error(`   Requested: ${seekTime.toFixed(3)}s`);
-          console.error(`   Actual: ${video.currentTime.toFixed(3)}s`);
-          console.error(`   ⚠️ USING WRONG FRAME - THIS IS THE BUG!`);
-          seekSucceeded = false;
           resolve(); // Don't reject, just use whatever frame we have
-        }, 3000); // Increased timeout
+        }, 3000);
 
         video.onseeked = () => {
           clearTimeout(timeout);
-          seekSucceeded = true;
-          console.log(`✅ VIDEO SEEK SUCCESS: ${mediaItem.name || mediaItem.id}`);
-          console.log(`   Requested: ${seekTime.toFixed(3)}s`);
-          console.log(`   Actual: ${video.currentTime.toFixed(3)}s`);
-          console.log(`   Delta: ${Math.abs(video.currentTime - seekTime).toFixed(3)}s`);
           setTimeout(() => resolve(), 200); // Longer stabilization
         };
       });
-
-      console.log(`📸 CAPTURING FRAME from ${mediaItem.name || mediaItem.id}`);
-      console.log(`   Final currentTime: ${video.currentTime.toFixed(3)}s`);
-      console.log(`   Seek succeeded: ${seekSucceeded}`);
-      console.log(`   Time changed: ${beforeSeekTime !== video.currentTime}`);
 
       // Calculate bounds and draw
       const { x, y, width, height } = this.calculateElementBounds(
@@ -226,10 +187,7 @@ export class CLIExportEngine extends ExportEngine {
       );
 
       // Draw video WITHOUT canvas effects (FFmpeg will handle effects)
-
       this.ctx.drawImage(video, x, y, width, height);
-      console.log(`🖼️ DREW VIDEO FRAME at position (${x}, ${y}) size ${width}x${height}`);
-      // Skip: No canvas effects applied here - FFmpeg will handle effects during final encoding
     } catch (error) {
       debugWarn(
         "[CLIExportEngine] Video render failed, using placeholder:",
@@ -244,12 +202,6 @@ export class CLIExportEngine extends ExportEngine {
 
   // Enhanced image rendering for CLI with better blob URL handling
   private renderImageCLI(element: any, mediaItem: any): Promise<void> {
-    console.log(`🖼️ LOADING IMAGE: ${mediaItem.name || mediaItem.id}`);
-    console.log(`   ID: ${mediaItem.id}`);
-    console.log(`   URL: ${mediaItem.url?.substring(0, 60)}...`);
-    console.log(`   Type: ${mediaItem.url?.startsWith('blob:') ? 'BLOB' : 'REGULAR'}`);
-    console.log(`   Has file data: ${!!(mediaItem.file && mediaItem.file.size > 0)}`);
-
     return new Promise((resolve) => {
       try {
         // For generated images with blob URLs, try to get the actual file data first
@@ -258,20 +210,13 @@ export class CLIExportEngine extends ExportEngine {
           mediaItem.file &&
           mediaItem.file.size > 0
         ) {
-          console.log(`🔄 USING FILE DATA for blob image: ${mediaItem.name || mediaItem.id}`);
-          console.log(`   File size: ${mediaItem.file.size} bytes`);
-
           // Create a new blob URL from the file data to ensure it's accessible
           const newBlobUrl = URL.createObjectURL(mediaItem.file);
-          console.log(`   New blob URL: ${newBlobUrl.substring(0, 60)}...`);
 
           const img = new Image();
           img.crossOrigin = "anonymous";
 
           const timeout = setTimeout(() => {
-            console.error(`❌ IMAGE TIMEOUT: ${mediaItem.name || mediaItem.id}`);
-            console.error(`   Original URL: ${mediaItem.url}`);
-            console.error(`   ⚠️ SKIPPING THIS IMAGE - THIS IS A BUG!`);
             URL.revokeObjectURL(newBlobUrl);
             resolve();
           }, 8000); // Increased timeout for generated images
@@ -279,8 +224,6 @@ export class CLIExportEngine extends ExportEngine {
           img.onload = () => {
             try {
               clearTimeout(timeout);
-              console.log(`✅ IMAGE LOADED: ${mediaItem.name || mediaItem.id}`);
-              console.log(`   Size: ${img.width}x${img.height}`);
 
               const { x, y, width, height } = this.calculateElementBounds(
                 element,
@@ -289,12 +232,10 @@ export class CLIExportEngine extends ExportEngine {
               );
 
               this.ctx.drawImage(img, x, y, width, height);
-              console.log(`🖼️ DREW IMAGE at position (${x}, ${y}) size ${width}x${height}`);
 
               URL.revokeObjectURL(newBlobUrl);
               resolve();
             } catch (error) {
-              console.error(`❌ IMAGE RENDER FAILED: ${mediaItem.name || mediaItem.id}`, error);
               URL.revokeObjectURL(newBlobUrl);
               resolve();
             }
@@ -302,8 +243,6 @@ export class CLIExportEngine extends ExportEngine {
 
           img.onerror = () => {
             clearTimeout(timeout);
-            console.error(`❌ IMAGE LOAD ERROR: ${mediaItem.name || mediaItem.id}`);
-            console.error(`   URL: ${mediaItem.url}`);
             URL.revokeObjectURL(newBlobUrl);
             resolve();
           };
@@ -313,23 +252,16 @@ export class CLIExportEngine extends ExportEngine {
         }
 
         // Fallback to original URL loading for regular images
-        console.log(`📂 USING REGULAR URL for image: ${mediaItem.name || mediaItem.id}`);
-
         const img = new Image();
         img.crossOrigin = "anonymous";
 
         const timeout = setTimeout(() => {
-          console.error(`❌ IMAGE TIMEOUT: ${mediaItem.name || mediaItem.id}`);
-          console.error(`   URL: ${mediaItem.url}`);
-          console.error(`   ⚠️ SKIPPING THIS IMAGE - THIS IS A BUG!`);
           resolve();
         }, 5000); // Standard timeout for regular images
 
         img.onload = () => {
           try {
             clearTimeout(timeout);
-            console.log(`✅ IMAGE LOADED: ${mediaItem.name || mediaItem.id}`);
-            console.log(`   Size: ${img.width}x${img.height}`);
 
             const { x, y, width, height } = this.calculateElementBounds(
               element,
@@ -338,25 +270,20 @@ export class CLIExportEngine extends ExportEngine {
             );
 
             this.ctx.drawImage(img, x, y, width, height);
-            console.log(`🖼️ DREW IMAGE at position (${x}, ${y}) size ${width}x${height}`);
 
             resolve();
           } catch (error) {
-            console.error(`❌ IMAGE RENDER FAILED: ${mediaItem.name || mediaItem.id}`, error);
             resolve();
           }
         };
 
         img.onerror = () => {
           clearTimeout(timeout);
-          console.error(`❌ IMAGE LOAD ERROR: ${mediaItem.name || mediaItem.id}`);
-          console.error(`   URL: ${mediaItem.url}`);
           resolve();
         };
 
         img.src = mediaItem.url!;
       } catch (error) {
-        console.error(`❌ IMAGE SETUP FAILED: ${mediaItem.name || mediaItem.id}`, error);
         resolve();
       }
     });
@@ -565,11 +492,6 @@ export class CLIExportEngine extends ExportEngine {
   }
 
   async export(progressCallback?: ProgressCallback): Promise<Blob> {
-    console.log(
-      "🚀 CLI EXPORT ENGINE: ✅ RUNNING - Using native FFmpeg CLI for video export"
-    );
-    console.log("⚡ CLI EXPORT ENGINE: Export method called");
-
     debugLog("[CLIExportEngine] Starting CLI export...");
 
     // Log original timeline duration
@@ -678,19 +600,6 @@ export class CLIExportEngine extends ExportEngine {
     }
 
     const session = await window.electronAPI.ffmpeg.createExportSession();
-
-    // 🐛 DEBUG: Log temp folder locations for manual inspection
-    console.log("📁 CLI EXPORT TEMP FOLDER: Export session created");
-    console.log(`📁 Session ID: ${session.sessionId}`);
-    console.log(`📁 Frame Directory: ${session.frameDir}`);
-    console.log(`📁 Output Directory: ${session.outputDir}`);
-    console.log(
-      `📁 TEMP FOLDER PATH: %TEMP%\\qcut-export\\${session.sessionId}\\frames`
-    );
-    console.log(
-      "📁 DEBUG: You can find PNG debug frames at the path above after export starts"
-    );
-
     return session;
   }
 
@@ -710,27 +619,11 @@ export class CLIExportEngine extends ExportEngine {
       const currentTime = frame * frameTime;
       const frameName = `frame-${frame.toString().padStart(4, "0")}.png`;
 
-      // Log frame start
-      console.log(`\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
-      console.log(`📸 RENDERING FRAME ${frame + 1}/${totalFrames}`);
-      console.log(`   Time: ${currentTime.toFixed(3)}s`);
-      console.log(`   File: ${frameName}`);
-
-      // Get active elements for logging
-      const activeElements = this.getActiveElementsCLI(currentTime);
-      console.log(`   Active elements: ${activeElements.length}`);
-      activeElements.forEach(({ element, mediaItem }, index) => {
-        console.log(`   ${index + 1}. [${element.type.toUpperCase()}] ${mediaItem?.name || element.id}`);
-      });
-
       // Render frame with all elements including stickers
       await this.renderFrame(currentTime);
 
       // Save frame for video compilation
       await this.saveFrameToDisk(frameName, currentTime);
-
-      console.log(`✅ FRAME ${frame + 1} COMPLETE`);
-      console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
 
       // Progress update (15% to 80% for frame rendering)
       const progress = 15 + (frame / totalFrames) * 65;
@@ -741,24 +634,6 @@ export class CLIExportEngine extends ExportEngine {
     }
 
     debugLog(`[CLI] Rendered ${totalFrames} frames to ${this.frameDir}`);
-
-    // 🗂️ DEBUG: Open folder in Windows Explorer ONCE after all frames are rendered
-    try {
-      if (
-        window.electronAPI &&
-        "openFramesFolder" in window.electronAPI.ffmpeg &&
-        this.sessionId
-      ) {
-        await (window.electronAPI.ffmpeg as any).openFramesFolder(
-          this.sessionId
-        );
-        console.log(
-          "🗂️ DEBUG: Opened frames folder in Windows Explorer (once after all frames)"
-        );
-      }
-    } catch (folderError) {
-      console.warn("⚠️ DEBUG: Failed to open frames folder:", folderError);
-    }
   }
 
   private async saveFrameToDisk(
@@ -1014,36 +889,17 @@ export class CLIExportEngine extends ExportEngine {
     );
 
     // Collect all filter chains for timeline elements
-    console.log("⚡ CLI EXPORT ENGINE: Starting export with filter chains");
-    console.log(
-      "⚡ CLI EXPORT ENGINE: Effects store available:",
-      !!this.effectsStore
-    );
     const elementFilterChains = new Map<string, string>();
 
     this.tracks.forEach((track) => {
       track.elements.forEach((element) => {
-        console.log(
-          `🔍 CLI EXPORT ENGINE: Checking effects for element ${element.id}`
-        );
         if (this.effectsStore) {
           const filterChain = this.effectsStore.getFFmpegFilterChain(
             element.id
           );
           if (filterChain) {
             elementFilterChains.set(element.id, filterChain);
-            console.log(
-              `✅ CLI EXPORT ENGINE: Element ${element.id} has filter chain: ${filterChain}`
-            );
-          } else {
-            console.log(
-              `❌ CLI EXPORT ENGINE: Element ${element.id} has no filter chain (no effects applied)`
-            );
           }
-        } else {
-          console.log(
-            `❌ CLI EXPORT ENGINE: No effects store available for element ${element.id}`
-          );
         }
       });
     });
@@ -1052,22 +908,6 @@ export class CLIExportEngine extends ExportEngine {
     const combinedFilterChain = Array.from(elementFilterChains.values()).join(
       ","
     );
-    console.log(
-      `🔗 CLI EXPORT ENGINE: Combined filter chain: "${combinedFilterChain}"`
-    );
-
-    if (combinedFilterChain) {
-      console.log(
-        "✅ CLI EXPORT ENGINE: ✅ EFFECTS WORKING - Filter chains will be applied to video export"
-      );
-      console.log(
-        `🔧 CLI EXPORT ENGINE: FFmpeg filter: "${combinedFilterChain}"`
-      );
-    } else {
-      console.log(
-        "ℹ️ CLI EXPORT ENGINE: No effects applied - video will export without filter chains"
-      );
-    }
 
     // Build options AFTER validation so the filtered list is sent
     if (!this.sessionId) {
