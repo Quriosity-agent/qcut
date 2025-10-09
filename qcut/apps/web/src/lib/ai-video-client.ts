@@ -363,9 +363,9 @@ export async function generateVideo(
       if (modelType) {
         payload = convertSora2Parameters({
           prompt: request.prompt,
-          duration: request.duration,
-          resolution: request.resolution,
-          aspect_ratio: request.aspect_ratio,
+          duration: request.duration as Sora2Duration | undefined,
+          resolution: request.resolution as any,
+          aspect_ratio: request.aspect_ratio as any,
         }, modelType);
       } else {
         // Fallback if model type detection fails
@@ -509,7 +509,7 @@ export async function generateVideo(
         try {
           const parsed = parseSora2Response(
             queueResult,
-            request.duration || 4,
+            (request.duration as Sora2Duration) || 4,
             request.resolution,
             request.aspect_ratio
           );
@@ -587,7 +587,7 @@ export async function generateVideo(
         try {
           const parsed = parseSora2Response(
             directResult,
-            request.duration || 4,
+            (request.duration as Sora2Duration) || 4,
             request.resolution,
             request.aspect_ratio
           );
@@ -1012,9 +1012,9 @@ export async function generateVideoFromImage(
         payload = convertSora2Parameters({
           prompt: request.prompt || "Create a cinematic video from this image",
           image_url: imageUrl,
-          duration: request.duration,
-          resolution: request.resolution,
-          aspect_ratio: request.aspect_ratio || "auto",
+          duration: request.duration as Sora2Duration | undefined,
+          resolution: request.resolution as any,
+          aspect_ratio: (request.aspect_ratio || "auto") as any,
         }, modelType);
       } else {
         // Fallback
