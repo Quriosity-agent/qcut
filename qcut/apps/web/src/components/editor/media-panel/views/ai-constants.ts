@@ -268,8 +268,9 @@ export const AI_MODELS: AIModel[] = [
     id: "sora2_text_to_video_pro",
     name: "Sora 2 Text-to-Video Pro",
     description: "High-quality text-to-video with 1080p support",
-    price: "1.20", // Base price for 4s @ 720p (calculated based on resolution)
+    price: "0.30-0.50", // 720p: $0.30/4s ($0.075/s), 1080p: $0.50/4s ($0.125/s)
     resolution: "720p / 1080p",
+    supportedResolutions: ["720p", "1080p"], // For programmatic filtering
     max_duration: 12,
     category: "text",
     endpoints: {
@@ -302,8 +303,9 @@ export const AI_MODELS: AIModel[] = [
     id: "sora2_image_to_video_pro",
     name: "Sora 2 Image-to-Video Pro",
     description: "High-quality image-to-video with 1080p support",
-    price: "1.20", // Base price for 4s @ 720p (calculated based on resolution)
+    price: "0.30-0.50", // 720p: $0.30/4s ($0.075/s), 1080p: $0.50/4s ($0.125/s)
     resolution: "720p / 1080p",
+    supportedResolutions: ["720p", "1080p"], // For programmatic filtering
     max_duration: 12,
     category: "image",
     endpoints: {
@@ -429,9 +431,17 @@ export const MODEL_HELPERS = {
 
   /**
    * Get models by resolution
+   * Checks both the main resolution field and supportedResolutions array for Pro models
    */
   getModelsByResolution: (resolution: string): AIModel[] => {
-    return AI_MODELS.filter((model) => model.resolution === resolution);
+    return AI_MODELS.filter((model) => {
+      // Check supportedResolutions array first (for Pro models)
+      if (model.supportedResolutions?.includes(resolution)) {
+        return true;
+      }
+      // Fallback to exact resolution match
+      return model.resolution === resolution;
+    });
   },
 
   /**

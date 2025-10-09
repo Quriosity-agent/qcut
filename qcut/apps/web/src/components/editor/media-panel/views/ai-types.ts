@@ -40,6 +40,7 @@ export interface AIModel {
   default_params?: AIModelParameters;
   category?: "text" | "image" | "video" | "avatar";
   requiredInputs?: string[];
+  supportedResolutions?: string[]; // For models supporting multiple resolutions (e.g., Pro models)
 }
 
 // Generated Video Interfaces
