@@ -325,6 +325,7 @@ export const AI_MODELS: AIModel[] = [
     resolution: "Preserves source",
     max_duration: 12, // Inherits from source video
     category: "avatar", // Video-to-video remix is a transformation feature, similar to avatar models
+    requiredInputs: ["videoId"], // Prevent selection until source Sora video is chosen
     endpoints: {
       text_to_video: "fal-ai/sora-2/video-to-video/remix", // Reuses text_to_video endpoint type
     },

@@ -390,13 +390,13 @@ export async function generateVideo(
       if (modelType) {
         const sora2Payload = convertSora2Parameters({
           prompt: request.prompt,
-          duration: request.duration as Sora2Duration | undefined,
-          resolution: request.resolution as any, // Type assertion safe: validated in convertSora2Parameters
-          aspect_ratio: request.aspect_ratio as any, // Type assertion safe: validated in convertSora2Parameters
-        }, modelType);
+          duration: request.duration,
+          resolution: request.resolution,
+          aspect_ratio: request.aspect_ratio,
+        } as any, modelType); // Type assertion at object level - convertSora2Parameters handles validation
 
         // Strip the 'type' discriminator before sending to API
-        const { type, ...apiPayload } = sora2Payload;
+        const { type, ...apiPayload} = sora2Payload;
         payload = apiPayload;
       } else {
         // Fallback if model type detection fails
@@ -540,7 +540,7 @@ export async function generateVideo(
         try {
           const parsed = parseSora2Response(
             queueResult,
-            (request.duration as Sora2Duration) || 4,
+            (request.duration || 4) as Sora2Duration,
             request.resolution,
             request.aspect_ratio
           );
@@ -618,7 +618,7 @@ export async function generateVideo(
         try {
           const parsed = parseSora2Response(
             directResult,
-            (request.duration as Sora2Duration) || 4,
+            (request.duration || 4) as Sora2Duration,
             request.resolution,
             request.aspect_ratio
           );
@@ -1044,10 +1044,10 @@ export async function generateVideoFromImage(
         const sora2Payload = convertSora2Parameters({
           prompt: request.prompt || "Create a cinematic video from this image",
           image_url: imageUrl,
-          duration: request.duration as Sora2Duration | undefined,
-          resolution: request.resolution as any, // Type assertion safe: validated in convertSora2Parameters
-          aspect_ratio: (request.aspect_ratio || "auto") as any, // Type assertion safe: validated in convertSora2Parameters
-        }, modelType);
+          duration: request.duration,
+          resolution: request.resolution,
+          aspect_ratio: request.aspect_ratio || "auto",
+        } as any, modelType); // Type assertion at object level - convertSora2Parameters handles validation
 
         // Strip the 'type' discriminator before sending to API
         const { type, ...apiPayload } = sora2Payload;
