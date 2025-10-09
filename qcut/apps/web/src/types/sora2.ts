@@ -4,13 +4,23 @@
  */
 
 /**
+ * Shared type definitions for Sora 2 parameters
+ * These ensure consistency across all Sora 2 model interfaces
+ */
+export type Sora2Duration = 4 | 8 | 12;
+export type Sora2AspectRatio = "9:16" | "16:9";
+export type Sora2AspectRatioWithAuto = "auto" | Sora2AspectRatio;
+export type Sora2Resolution = "720p" | "1080p";
+export type Sora2ResolutionWithAuto = "auto" | Sora2Resolution;
+
+/**
  * Sora 2 Text-to-Video Standard API Input
  */
 export interface Sora2TextToVideoInput {
   prompt: string;
-  resolution?: "720p";
-  aspect_ratio?: "9:16" | "16:9";
-  duration?: 4 | 8 | 12;
+  resolution?: "720p"; // Standard only supports 720p
+  aspect_ratio?: Sora2AspectRatio;
+  duration?: Sora2Duration;
   api_key?: string;
 }
 
@@ -20,9 +30,9 @@ export interface Sora2TextToVideoInput {
  */
 export interface Sora2TextToVideoProInput {
   prompt: string;
-  resolution?: "720p" | "1080p"; // Pro adds 1080p
-  aspect_ratio?: "9:16" | "16:9";
-  duration?: 4 | 8 | 12;
+  resolution?: Sora2Resolution; // Pro adds 1080p
+  aspect_ratio?: Sora2AspectRatio;
+  duration?: Sora2Duration;
   api_key?: string;
 }
 
@@ -32,9 +42,9 @@ export interface Sora2TextToVideoProInput {
 export interface Sora2ImageToVideoInput {
   prompt: string;
   image_url: string;
-  resolution?: "auto" | "720p";
-  aspect_ratio?: "auto" | "9:16" | "16:9";
-  duration?: 4 | 8 | 12;
+  resolution?: Sora2ResolutionWithAuto; // Supports auto or 720p
+  aspect_ratio?: Sora2AspectRatioWithAuto;
+  duration?: Sora2Duration;
   api_key?: string;
 }
 
@@ -45,9 +55,9 @@ export interface Sora2ImageToVideoInput {
 export interface Sora2ImageToVideoProInput {
   prompt: string;
   image_url: string;
-  resolution?: "auto" | "720p" | "1080p"; // Pro adds 1080p
-  aspect_ratio?: "auto" | "9:16" | "16:9";
-  duration?: 4 | 8 | 12;
+  resolution?: Sora2ResolutionWithAuto; // Pro adds 1080p
+  aspect_ratio?: Sora2AspectRatioWithAuto;
+  duration?: Sora2Duration;
   api_key?: string;
 }
 
@@ -87,9 +97,9 @@ export interface Sora2Response {
 export interface Sora2VideoResult {
   videoUrl: string;
   videoId: string;
-  duration: 4 | 8 | 12;
-  resolution: string;
-  aspectRatio: string;
+  duration: Sora2Duration;
+  resolution: string; // Keep as string since API may return various formats
+  aspectRatio: string; // Keep as string for flexibility
 }
 
 /**
@@ -107,7 +117,7 @@ export type Sora2ModelType =
  * Sora 2 generation settings
  */
 export interface Sora2Settings {
-  duration: 4 | 8 | 12;
-  aspectRatio: "9:16" | "16:9";
-  resolution: "auto" | "720p" | "1080p";
+  duration: Sora2Duration;
+  aspectRatio: Sora2AspectRatio;
+  resolution: Sora2ResolutionWithAuto;
 }

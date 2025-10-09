@@ -12,6 +12,7 @@ import type {
   Sora2ImageToVideoInput,
   Sora2ImageToVideoProInput,
   Sora2VideoToVideoRemixInput,
+  Sora2Duration,
 } from "@/types/sora2";
 
 // Direct FAL AI integration - no backend needed
@@ -172,13 +173,13 @@ function convertSora2Parameters(
  */
 function parseSora2Response(
   response: any,
-  requestedDuration: 4 | 8 | 12,
+  requestedDuration: Sora2Duration,
   requestedResolution: string = "auto",
   requestedAspectRatio: string = "16:9"
 ): {
   videoUrl: string;
   videoId: string;
-  duration: 4 | 8 | 12;
+  duration: Sora2Duration;
   resolution: string;
   aspectRatio: string;
 } {
@@ -202,7 +203,7 @@ function parseSora2Response(
       videoUrl: response.video.url,
       videoId: response.video_id,
       // Use API-provided duration if available, otherwise fall back to requested
-      duration: (response.video.duration as 4 | 8 | 12) || requestedDuration,
+      duration: (response.video.duration as Sora2Duration) || requestedDuration,
       resolution,
       aspectRatio: requestedAspectRatio,
     };
