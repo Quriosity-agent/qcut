@@ -3,6 +3,12 @@
 ## Overview
 Integration of OpenAI's Sora 2 video generation models (text-to-video and image-to-video) via FAL AI API into QCut's AI video generation panel.
 
+**4 Models Total**:
+- Sora 2 Text-to-Video (Standard) - 720p, $0.10/s
+- Sora 2 Text-to-Video Pro - 720p/1080p, $0.30-0.50/s
+- Sora 2 Image-to-Video (Standard) - 720p, $0.10/s
+- Sora 2 Image-to-Video Pro - 720p/1080p, $0.30-0.50/s
+
 **⚠️ Non-Breaking Integration Strategy**: This integration will be additive only - no existing features will be modified or removed. Sora 2 models will be added as new options alongside existing AI models.
 
 ---
@@ -16,11 +22,23 @@ Integration of OpenAI's Sora 2 video generation models (text-to-video and image-
 
 ```typescript
 /**
- * Sora 2 Text-to-Video API Input
+ * Sora 2 Text-to-Video Standard API Input
  */
 export interface Sora2TextToVideoInput {
   prompt: string;
   resolution?: "720p";
+  aspect_ratio?: "9:16" | "16:9";
+  duration?: 4 | 8 | 12;
+  api_key?: string;
+}
+
+/**
+ * Sora 2 Text-to-Video Pro API Input
+ * Extends standard with 1080p support
+ */
+export interface Sora2TextToVideoProInput {
+  prompt: string;
+  resolution?: "720p" | "1080p"; // Pro adds 1080p
   aspect_ratio?: "9:16" | "16:9";
   duration?: 4 | 8 | 12;
   api_key?: string;
@@ -75,6 +93,7 @@ export interface Sora2VideoResult {
  */
 export type Sora2ModelType =
   | 'sora2-text-to-video'
+  | 'sora2-text-to-video-pro'
   | 'sora2-image-to-video'
   | 'sora2-image-to-video-pro';
 
@@ -98,7 +117,7 @@ export interface Sora2Settings {
 **Location**: At the end of the `AI_MODELS` array (after existing models).
 
 ```typescript
-// ADD these 3 models at the END of the AI_MODELS array:
+// ADD these 4 models at the END of the AI_MODELS array:
 
 {
   id: "sora2-text-to-video",
@@ -108,6 +127,15 @@ export interface Sora2Settings {
   resolution: "720p",
   category: "regular", // NOT avatar category
   endpoint: "https://fal.run/fal-ai/sora-2/text-to-video",
+},
+{
+  id: "sora2-text-to-video-pro",
+  name: "Sora 2 Text-to-Video Pro",
+  description: "High-quality text-to-video with 1080p support",
+  price: "1.20", // Base price for 4s @ 720p (will adjust based on resolution)
+  resolution: "720p / 1080p",
+  category: "regular",
+  endpoint: "https://fal.run/fal-ai/sora-2/text-to-video/pro",
 },
 {
   id: "sora2-image-to-video",
@@ -144,8 +172,9 @@ function isSora2Model(modelId: string): boolean {
   return modelId.startsWith('sora2-');
 }
 
-function getSora2ModelType(modelId: string): 'text-to-video' | 'image-to-video' | 'image-to-video-pro' | null {
+function getSora2ModelType(modelId: string): 'text-to-video' | 'text-to-video-pro' | 'image-to-video' | 'image-to-video-pro' | null {
   if (modelId === 'sora2-text-to-video') return 'text-to-video';
+  if (modelId === 'sora2-text-to-video-pro') return 'text-to-video-pro';
   if (modelId === 'sora2-image-to-video') return 'image-to-video';
   if (modelId === 'sora2-image-to-video-pro') return 'image-to-video-pro';
   return null;
@@ -159,7 +188,7 @@ function convertSora2Parameters(params: any, modelType: string) {
     aspect_ratio: params.aspect_ratio || "16:9",
   };
 
-  // Text-to-video only has basic resolution
+  // Text-to-video standard - 720p only
   if (modelType === 'text-to-video') {
     return {
       ...base,
@@ -167,7 +196,15 @@ function convertSora2Parameters(params: any, modelType: string) {
     };
   }
 
-  // Image-to-video models require image_url
+  // Text-to-video Pro - supports 1080p
+  if (modelType === 'text-to-video-pro') {
+    return {
+      ...base,
+      resolution: params.resolution || "1080p", // Default 1080p, can be 720p or 1080p
+    };
+  }
+
+  // Image-to-video standard - auto or 720p
   if (modelType === 'image-to-video') {
     return {
       ...base,
@@ -176,12 +213,12 @@ function convertSora2Parameters(params: any, modelType: string) {
     };
   }
 
-  // Pro model supports 1080p
+  // Image-to-video Pro - supports 1080p
   if (modelType === 'image-to-video-pro') {
     return {
       ...base,
       image_url: params.image_url,
-      resolution: params.resolution || "720p", // Can be auto, 720p, or 1080p
+      resolution: params.resolution || "auto", // Can be auto, 720p, or 1080p
     };
   }
 
@@ -278,7 +315,7 @@ const [resolution, setResolution] = useState<"auto" | "720p" | "1080p">("720p");
 ```typescript
 // ADD: Sora 2 detection
 const isSora2Selected = selectedModels.some(id => id.startsWith('sora2-'));
-const hasSora2Pro = selectedModels.includes('sora2-image-to-video-pro');
+const hasSora2Pro = selectedModels.includes('sora2-text-to-video-pro') || selectedModels.includes('sora2-image-to-video-pro');
 ```
 
 **Step 4.3**: Extend generation parameters (in `handleGenerate` function, before API call):
@@ -295,11 +332,14 @@ const params: any = {
 if (modelId.startsWith('sora2-')) {
   params.duration = duration;
   params.aspect_ratio = aspectRatio;
-  if (modelId === 'sora2-image-to-video-pro') {
+
+  // Pro models support resolution selection
+  if (modelId === 'sora2-text-to-video-pro' || modelId === 'sora2-image-to-video-pro') {
     params.resolution = resolution;
   }
-  // For image-to-video models, add image_url
-  if (modelId !== 'sora2-text-to-video' && selectedImage) {
+
+  // Image-to-video models require image_url
+  if (modelId.includes('image-to-video') && selectedImage) {
     params.image_url = selectedImage; // Ensure image is converted to URL
   }
 }
@@ -434,10 +474,8 @@ const totalCost = selectedModels.reduce((total, modelId) => {
 
   // ADD: Adjust for Sora 2 duration and resolution
   if (modelId.startsWith('sora2-')) {
-    const durationMultiplier = generation.duration / 4;
-
-    // Pro model has resolution-based pricing
-    if (modelId === 'sora2-image-to-video-pro') {
+    // Pro models have resolution-based pricing
+    if (modelId === 'sora2-text-to-video-pro' || modelId === 'sora2-image-to-video-pro') {
       if (generation.resolution === '1080p') {
         modelCost = generation.duration * 0.50; // $0.50/s for 1080p
       } else if (generation.resolution === '720p') {
@@ -481,7 +519,7 @@ const totalCost = selectedModels.reduce((total, modelId) => {
 1. ✅ `qcut/apps/web/src/types/sora2.ts` - New type definitions
 
 ### Files to MODIFY:
-1. ✅ `qcut/apps/web/src/components/editor/media-panel/views/ai-constants.ts` - Add 3 models to array
+1. ✅ `qcut/apps/web/src/components/editor/media-panel/views/ai-constants.ts` - Add 4 models to array
 2. ✅ `qcut/apps/web/src/lib/fal-ai-client.ts` - Add helper functions and extend existing
 3. ✅ `qcut/apps/web/src/components/editor/media-panel/views/use-ai-generation.ts` - Add state variables
 4. ✅ `qcut/apps/web/src/components/editor/media-panel/views/ai.tsx` - Add conditional UI
@@ -524,50 +562,75 @@ Before marking implementation complete, verify:
 
 ## 📖 API Documentation
 
-### Sora 2 Text-to-Video
+### 1. Sora 2 Text-to-Video (Standard)
 - **Endpoint**: `https://fal.run/fal-ai/sora-2/text-to-video`
-- **Pricing**: $0.1 per second
+- **Pricing**: $0.10/s
 
 **Parameters**:
 - `prompt` (required): Text description (max 5000 chars)
 - `resolution`: "720p" (fixed)
-- `aspect_ratio`: "9:16" or "16:9"
-- `duration`: 4, 8, or 12 seconds
+- `aspect_ratio`: "9:16" or "16:9" (default: "16:9")
+- `duration`: 4, 8, or 12 seconds (default: 4)
+- `api_key` (optional): OpenAI API key for direct billing
 
 **Response**:
 ```json
 {
-  "video": "https://...",
+  "video": {
+    "content_type": "video/mp4",
+    "url": "https://..."
+  },
   "video_id": "unique-id"
 }
 ```
 
-### Sora 2 Image-to-Video (Standard)
+### 2. Sora 2 Text-to-Video Pro
+- **Endpoint**: `https://fal.run/fal-ai/sora-2/text-to-video/pro`
+- **Pricing**: $0.30/s (720p), $0.50/s (1080p)
+
+**Parameters**:
+- `prompt` (required): Text description (max 5000 chars)
+- `resolution`: **"720p" or "1080p"** (default: "1080p")
+- `aspect_ratio`: "9:16" or "16:9" (default: "16:9")
+- `duration`: 4, 8, or 12 seconds (default: 4)
+- `api_key` (optional): OpenAI API key
+
+**Response**: Same as standard
+
+### 3. Sora 2 Image-to-Video (Standard)
 - **Endpoint**: `https://fal.run/fal-ai/sora-2/image-to-video`
-- **Pricing**: $0.1 per second
+- **Pricing**: $0.10/s
 
 **Parameters**:
 - `prompt` (required): Text description
 - `image_url` (required): Starting image URL
-- `resolution`: "auto" or "720p"
-- `aspect_ratio`: "auto", "9:16", or "16:9"
-- `duration`: 4, 8, or 12 seconds
+- `resolution`: "auto" or "720p" (default: "auto")
+- `aspect_ratio`: "auto", "9:16", or "16:9" (default: "auto")
+- `duration`: 4, 8, or 12 seconds (default: 4)
+- `api_key` (optional): OpenAI API key
 
-### Sora 2 Image-to-Video Pro
+**Response**: Same format as text-to-video
+
+### 4. Sora 2 Image-to-Video Pro
 - **Endpoint**: `https://fal.run/fal-ai/sora-2/image-to-video/pro`
 - **Pricing**: $0.30/s (720p), $0.50/s (1080p)
 
 **Parameters**:
 - `prompt` (required): Text description
 - `image_url` (required): Starting image URL
-- `resolution`: "auto", "720p", or **"1080p"** (Pro only)
-- `aspect_ratio`: "auto", "9:16", or "16:9"
-- `duration`: 4, 8, or 12 seconds
+- `resolution`: **"auto", "720p", or "1080p"** (default: "auto")
+- `aspect_ratio`: "auto", "9:16", or "16:9" (default: "auto")
+- `duration`: 4, 8, or 12 seconds (default: 4)
+- `api_key` (optional): OpenAI API key
 
-**Key Differences Pro vs Standard**:
-- ✅ Pro supports 1080p resolution
-- 💰 Pro pricing: $0.30-0.50/s vs Standard: $0.10/s
-- 🎨 Pro generates higher quality videos
+**Response**: Same format as standard
+
+### Key Differences: Pro vs Standard
+- ✅ **Pro models support 1080p resolution**
+- 💰 **Pro pricing**: $0.30/s (720p), $0.50/s (1080p) vs **Standard**: $0.10/s
+- 🎨 **Pro generates higher quality, more detailed videos**
+- 🎯 **Text-to-Video Pro** defaults to 1080p
+- 🎯 **Image-to-Video Pro** defaults to auto-select resolution
 
 ---
 
