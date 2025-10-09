@@ -1,5 +1,82 @@
 # Sora 2 Video Generation Integration Plan
 
+---
+
+## ⚠️ CRITICAL CODEBASE ANALYSIS (Read This First!)
+
+**This section documents the ACTUAL codebase structure to prevent implementation errors.**
+
+### Current Architecture Reality Check
+
+The existing QCut AI video generation system has a **completely different architecture** than initially assumed:
+
+#### 1. **AI Models Configuration** (`ai-constants.ts`)
+- **Current structure**: Models use `endpoints` object with multiple endpoint types (`text_to_video`, `image_to_video`)
+- **Current properties**: `id`, `name`, `description`, `price`, `resolution`, `max_duration`, `endpoints`, `default_params`, `category`
+- **Avatar category exists**: Models can be filtered by `category: "avatar"` vs regular models
+- **Example structure**:
+```typescript
+{
+  id: "kling_v2_5_turbo",
+  name: "Kling v2.5 Turbo Pro",
+  description: "Latest Kling model with enhanced turbo performance",
+  price: "0.18",
+  resolution: "1080p",
+  max_duration: 10,
+  endpoints: {
+    text_to_video: "fal-ai/kling-video/v2.5-turbo/pro/text-to-video",
+    image_to_video: "fal-ai/kling-video/v2.5-turbo/pro/image-to-video",
+  },
+  default_params: {
+    duration: 5,
+    resolution: "1080p",
+    cfg_scale: 0.5,
+    aspect_ratio: "16:9",
+    enhance_prompt: true,
+  },
+}
+```
+
+#### 2. **FAL AI Client** (`fal-ai-client.ts`)
+- **Current reality**: This file is for **TEXT-TO-IMAGE** generation only!
+- **Actual purpose**: Handles image generation models (Imagen4, SeedDream, FLUX, etc.)
+- **NOT for video**: The `FalAIClient` class only returns `imageUrl`, not `videoUrl`
+- **Response type**: `FalImageResponse` with `images` array or single `image` object
+- **⚠️ CRITICAL**: Do NOT modify this file for Sora 2 video integration
+
+#### 3. **Video Generation Client** (`ai-video-client.ts` - not yet read)
+- **Where video logic actually lives**: Video generation is handled separately
+- **Functions**: `generateVideo()`, `generateVideoFromImage()`, `generateAvatarVideo()`
+- **This is the file that needs Sora 2 integration**
+
+#### 4. **State Management** (`use-ai-generation.ts`)
+- **Current Hook Pattern**: Already has avatar-specific props (`avatarImage`, `audioFile`, `sourceVideo`)
+- **Tab system**: `activeTab` can be "text" | "image" | "avatar"
+- **Model filtering**: UI already filters models by category based on active tab
+
+#### 5. **UI Structure** (`ai.tsx`)
+- **Three tabs**: Text, Image, Avatar
+- **Model selection**: Multi-select checkbox system filtering by `model.category`
+- **Cost calculation**: Basic multiplication of `parseFloat(model.price)`
+- **Responsive**: Uses `isCompact` and `isCollapsed` states for panel width
+
+### What This Means for Sora 2 Integration
+
+#### ✅ DO:
+1. Add Sora 2 models to `AI_MODELS` array in `ai-constants.ts` with proper structure
+2. Modify video generation client (likely `ai-video-client.ts`) to handle Sora 2 endpoints
+3. Add Sora 2 state variables to `use-ai-generation.ts` hook
+4. Add conditional UI to `ai.tsx` for Sora 2 settings
+5. Update cost calculation in `ai.tsx` to handle duration-based pricing
+
+#### ❌ DON'T:
+1. ~~Modify `fal-ai-client.ts`~~ - This is for image generation only
+2. ~~Add `convertParametersForModel()` to `fal-ai-client.ts`~~ - Video params handled elsewhere
+3. ~~Expect `endpoint` to be a simple string~~ - Use `endpoints.text_to_video` pattern
+4. ~~Create simple model definitions~~ - Must include `endpoints`, `default_params`, `max_duration`
+
+---
+
 ## Overview
 Integration of OpenAI's Sora 2 video generation models (text-to-video and image-to-video) via FAL AI API into QCut's AI video generation panel.
 
@@ -127,65 +204,108 @@ export interface Sora2Settings {
 
 **✅ Non-Breaking**: Append to existing `AI_MODELS` array only.
 
-**Location**: At the end of the `AI_MODELS` array (after existing models).
+**Location**: At the end of the `AI_MODELS` array (after existing models, around line 251).
+
+**⚠️ CORRECTED MODEL STRUCTURE** (matches existing pattern):
 
 ```typescript
 // ADD these 5 models at the END of the AI_MODELS array:
 
 {
-  id: "sora2-text-to-video",
+  id: "sora2_text_to_video",
   name: "Sora 2 Text-to-Video",
-  description: "OpenAI's state-of-the-art text-to-video model",
-  price: "0.40", // Base price for 4s (will be multiplied by duration)
+  description: "OpenAI's state-of-the-art text-to-video generation (720p)",
+  price: "0.40", // Base price for 4s (will be calculated: duration × 0.10)
   resolution: "720p",
-  category: "regular", // NOT avatar category
-  endpoint: "https://fal.run/fal-ai/sora-2/text-to-video",
+  max_duration: 12, // 4, 8, or 12 seconds
+  endpoints: {
+    text_to_video: "fal-ai/sora-2/text-to-video",
+  },
+  default_params: {
+    duration: 4,
+    resolution: "720p",
+    aspect_ratio: "16:9",
+  },
 },
 {
-  id: "sora2-text-to-video-pro",
+  id: "sora2_text_to_video_pro",
   name: "Sora 2 Text-to-Video Pro",
   description: "High-quality text-to-video with 1080p support",
-  price: "1.20", // Base price for 4s @ 720p (will adjust based on resolution)
+  price: "1.20", // Base price for 4s @ 720p (calculated based on resolution)
   resolution: "720p / 1080p",
-  category: "regular",
-  endpoint: "https://fal.run/fal-ai/sora-2/text-to-video/pro",
+  max_duration: 12,
+  endpoints: {
+    text_to_video: "fal-ai/sora-2/text-to-video/pro",
+  },
+  default_params: {
+    duration: 4,
+    resolution: "1080p", // Pro defaults to 1080p
+    aspect_ratio: "16:9",
+  },
 },
 {
-  id: "sora2-image-to-video",
+  id: "sora2_image_to_video",
   name: "Sora 2 Image-to-Video",
-  description: "Convert images to dynamic videos with Sora 2",
-  price: "0.40", // Base price for 4s
+  description: "Convert images to dynamic videos with Sora 2 (720p)",
+  price: "0.40", // Base price for 4s (calculated: duration × 0.10)
   resolution: "720p",
-  category: "regular",
-  endpoint: "https://fal.run/fal-ai/sora-2/image-to-video",
+  max_duration: 12,
+  endpoints: {
+    image_to_video: "fal-ai/sora-2/image-to-video",
+  },
+  default_params: {
+    duration: 4,
+    resolution: "auto",
+    aspect_ratio: "auto", // Auto-detect from image
+  },
 },
 {
-  id: "sora2-image-to-video-pro",
+  id: "sora2_image_to_video_pro",
   name: "Sora 2 Image-to-Video Pro",
   description: "High-quality image-to-video with 1080p support",
-  price: "1.20", // Base price for 4s @ 720p (will adjust based on resolution)
+  price: "1.20", // Base price for 4s @ 720p (calculated based on resolution)
   resolution: "720p / 1080p",
-  category: "regular",
-  endpoint: "https://fal.run/fal-ai/sora-2/image-to-video/pro",
+  max_duration: 12,
+  endpoints: {
+    image_to_video: "fal-ai/sora-2/image-to-video/pro",
+  },
+  default_params: {
+    duration: 4,
+    resolution: "auto",
+    aspect_ratio: "auto",
+  },
 },
 {
-  id: "sora2-video-to-video-remix",
+  id: "sora2_video_to_video_remix",
   name: "Sora 2 Video-to-Video Remix",
-  description: "Transform Sora-generated videos with style changes and edits",
+  description: "Transform Sora-generated videos with style changes (requires existing Sora video)",
   price: "0.00", // Price calculated dynamically based on source video duration
-  resolution: "Preserves source resolution",
-  category: "regular",
-  endpoint: "https://fal.run/fal-ai/sora-2/video-to-video/remix",
-  // IMPORTANT: Requires video_id from previously generated Sora video
+  resolution: "Preserves source",
+  max_duration: 12, // Inherits from source video
+  endpoints: {
+    text_to_video: "fal-ai/sora-2/video-to-video/remix", // Reuses text_to_video endpoint type
+  },
+  default_params: {
+    // No duration/resolution - inherited from source video
+  },
 },
 ```
 
+**Key Changes from Original Plan**:
+1. Using underscores in `id` (e.g., `sora2_text_to_video`) to match existing naming convention
+2. Added `max_duration: 12` to all models
+3. Changed from single `endpoint` to `endpoints` object with `text_to_video` or `image_to_video` keys
+4. Added `default_params` object matching existing pattern
+5. Removed `category` field (defaults to regular/non-avatar)
+
 ---
 
-### Task 3: Extend FAL AI Client
-**File to MODIFY**: `qcut/apps/web/src/lib/fal-ai-client.ts`
+### Task 3: Extend Video Generation Client
+**File to MODIFY**: `qcut/apps/web/src/lib/ai-video-client.ts` (NOT `fal-ai-client.ts`!)
 
-**✅ Non-Breaking**: Add new functions without modifying existing logic.
+**⚠️ CRITICAL CORRECTION**: The original plan incorrectly referenced `fal-ai-client.ts`, which is for IMAGE generation only. Video generation logic is in `ai-video-client.ts`.
+
+**✅ Non-Breaking**: Add new functions for Sora 2 without modifying existing video generation logic.
 
 **Step 3.1**: Add helper functions (insert before `convertParametersForModel` function):
 
@@ -491,10 +611,10 @@ Find this section:
 )}
 ```
 
-**Step 5.3**: Update cost calculation (find existing `totalCost` calculation):
+**Step 5.3**: Update cost calculation (find existing `totalCost` calculation around line 212):
 
 ```typescript
-// FIND this code:
+// FIND this code (around line 212 in ai.tsx):
 const totalCost = selectedModels.reduce((total, modelId) => {
   const model = AI_MODELS.find((m) => m.id === modelId);
   return total + (model ? parseFloat(model.price) : 0);
@@ -506,9 +626,9 @@ const totalCost = selectedModels.reduce((total, modelId) => {
   let modelCost = model ? parseFloat(model.price) : 0;
 
   // ADD: Adjust for Sora 2 duration and resolution
-  if (modelId.startsWith('sora2-')) {
+  if (modelId.startsWith('sora2_')) { // Note: underscore not hyphen!
     // Pro models have resolution-based pricing
-    if (modelId === 'sora2-text-to-video-pro' || modelId === 'sora2-image-to-video-pro') {
+    if (modelId === 'sora2_text_to_video_pro' || modelId === 'sora2_image_to_video_pro') {
       if (generation.resolution === '1080p') {
         modelCost = generation.duration * 0.50; // $0.50/s for 1080p
       } else if (generation.resolution === '720p') {
@@ -749,3 +869,59 @@ Before marking implementation complete, verify:
   - Show "No Sora videos available" message if history empty
   - Suggest generating video first before using Remix
   - Allow deletion of old videos from history
+
+---
+
+## 📝 Corrections Made After Codebase Analysis
+
+This section documents the critical corrections made to the integration plan after analyzing the actual codebase:
+
+### Major Corrections
+
+1. **File Reference Correction** ❌→✅
+   - **Wrong**: Modify `fal-ai-client.ts` for video generation
+   - **Right**: Modify `ai-video-client.ts` - `fal-ai-client.ts` is for IMAGE generation only
+
+2. **Model Structure Correction** ❌→✅
+   - **Wrong**: Simple `endpoint` string property
+   - **Right**: `endpoints` object with `text_to_video`/`image_to_video` keys
+   - **Added**: `max_duration`, `default_params` objects
+
+3. **Model ID Naming Convention** ❌→✅
+   - **Wrong**: `sora2-text-to-video` (hyphens)
+   - **Right**: `sora2_text_to_video` (underscores)
+   - **Reason**: Matches existing naming pattern (e.g., `kling_v2_5_turbo`)
+
+4. **Category Field** ❌→✅
+   - **Wrong**: Explicitly add `category: "regular"`
+   - **Right**: Omit category field (defaults to regular/non-avatar)
+   - **Reason**: Only avatar models explicitly set `category: "avatar"`
+
+### Minor Corrections
+
+5. **Cost Calculation Logic**
+   - Updated to use `modelId.startsWith('sora2_')` with underscore
+   - Corrected model ID comparisons to use underscores
+
+6. **Detection Flags**
+   - Updated `isSora2Selected` to check for underscore pattern
+   - Corrected all model ID references throughout the plan
+
+### Files Requiring Changes (Corrected List)
+
+1. ✅ **CREATE**: `qcut/apps/web/src/types/sora2.ts` - Type definitions
+2. ✅ **MODIFY**: `qcut/apps/web/src/components/editor/media-panel/views/ai-constants.ts` - Add 5 models
+3. ✅ **MODIFY**: `qcut/apps/web/src/lib/ai-video-client.ts` - ⚠️ NOT `fal-ai-client.ts`!
+4. ✅ **MODIFY**: `qcut/apps/web/src/components/editor/media-panel/views/use-ai-generation.ts` - State management
+5. ✅ **MODIFY**: `qcut/apps/web/src/components/editor/media-panel/views/ai.tsx` - UI components
+
+### Implementation Checklist Update
+
+Before implementation, verify:
+- ✅ Using `ai-video-client.ts` (not `fal-ai-client.ts`)
+- ✅ Model IDs use underscores (`sora2_text_to_video`)
+- ✅ Model objects include `endpoints` object (not single `endpoint`)
+- ✅ Model objects include `max_duration` and `default_params`
+- ✅ All detection logic uses underscore pattern (`startsWith('sora2_')`)
+
+**These corrections are CRITICAL for successful integration. Implementing the original plan would cause errors.**
