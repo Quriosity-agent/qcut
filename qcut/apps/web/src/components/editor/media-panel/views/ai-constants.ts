@@ -322,7 +322,7 @@ export const AI_MODELS: AIModel[] = [
     price: "0.00", // Price calculated dynamically based on source video duration
     resolution: "Preserves source",
     max_duration: 12, // Inherits from source video
-    category: "text", // Remix can be used from text tab (requires video_id from previous generation)
+    category: "avatar", // Video-to-video remix is a transformation feature, similar to avatar models
     endpoints: {
       text_to_video: "fal-ai/sora-2/video-to-video/remix", // Reuses text_to_video endpoint type
     },
