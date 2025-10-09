@@ -7,6 +7,12 @@
    - Added `getPath()` method to `window.electronAPI.ffmpeg`
    - Updated type definitions in `electron.d.ts` and `preload.ts`
 
+2. **Missing duration parameter in FFmpeg export** - Fixed in export-engine-cli.ts:1082
+   - **Bug**: `exportOptions` was missing the `duration` field
+   - **Impact**: FFmpeg used fallback duration instead of actual timeline duration, resulting in videos with fewer frames than rendered
+   - **Fix**: Added `duration: this.totalDuration` to exportOptions object
+   - **Files modified**: `apps/web/src/lib/export-engine-cli.ts`
+
 ### ✅ Working Correctly
 1. **Frame rendering** - All 32 frames render successfully (console_v3.md)
 2. **Video seeking** - 100% success rate, zero timeout errors
@@ -16,8 +22,29 @@
 
 ### ❓ Needs Verification
 
-#### Task 1: Verify FFmpeg CLI Export Completion
-**Current Status**: Unknown - console_v3.md ends after frame rendering
+#### Task 1: Verify Frame Count Matches in Output Video
+**Current Status**: Fixed duration parameter, needs testing
+
+**Issue found (console_v4.md)**:
+- User reported: Output video `debugv4.mp4` contains fewer frames than expected
+- Console shows: 51 frames rendered (frames 7-51 visible, likely 1-6 also rendered)
+- Timeline duration: ~1.67 seconds
+- Expected frames at 30fps: 51 frames ✓ (rendered correctly)
+- **Problem**: Output video had fewer frames than captured
+
+**Root cause identified**:
+- `export-engine-cli.ts:1076` - `exportOptions` object was missing `duration` field
+- FFmpeg handler receives `undefined` duration → uses fallback/default duration
+- `ffmpeg-handler.ts:240` applies validation but without explicit duration value
+- Result: FFmpeg `-t` parameter gets wrong duration, cutting off frames
+
+**Fix applied**:
+- Added `duration: this.totalDuration` to exportOptions (line 1082)
+- Now passes actual timeline duration to FFmpeg CLI
+- FFmpeg will encode all rendered frames instead of cutting them short
+
+#### Task 2: Verify FFmpeg CLI Export Completion
+**Current Status**: Previous - Unknown from console_v3.md
 
 **What to check**:
 - [ ] Does FFmpeg CLI actually run and create output.mp4?

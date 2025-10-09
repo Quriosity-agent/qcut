@@ -1079,6 +1079,7 @@ export class CLIExportEngine extends ExportEngine {
       height: this.canvas.height,
       fps: 30,
       quality: this.settings.quality || "medium",
+      duration: this.totalDuration, // CRITICAL: Pass timeline duration to FFmpeg
       audioFiles, // Now contains only validated audio files
       filterChain: combinedFilterChain || undefined,
     };
