@@ -64,9 +64,20 @@ export interface Sora2VideoToVideoRemixInput {
 
 /**
  * Sora 2 API Response Format
+ * Confirmed from FAL API documentation: video is always an object, never a string
  */
 export interface Sora2Response {
-  video: string | { url: string; content_type: string };
+  video: {
+    url: string;
+    content_type: string;
+    file_name?: string;
+    file_size?: number;
+    width?: number;
+    height?: number;
+    fps?: number;
+    duration?: number;
+    num_frames?: number;
+  };
   video_id: string;
 }
 
@@ -83,13 +94,14 @@ export interface Sora2VideoResult {
 
 /**
  * Type guard for Sora 2 models
+ * NOTE: Uses underscores to match actual model IDs in ai-constants.ts
  */
 export type Sora2ModelType =
-  | 'sora2-text-to-video'
-  | 'sora2-text-to-video-pro'
-  | 'sora2-image-to-video'
-  | 'sora2-image-to-video-pro'
-  | 'sora2-video-to-video-remix';
+  | 'sora2_text_to_video'
+  | 'sora2_text_to_video_pro'
+  | 'sora2_image_to_video'
+  | 'sora2_image_to_video_pro'
+  | 'sora2_video_to_video_remix';
 
 /**
  * Sora 2 generation settings

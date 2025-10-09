@@ -623,9 +623,21 @@ export function AiView() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="4">4 seconds ($0.10/s)</SelectItem>
-                    <SelectItem value="8">8 seconds ($0.10/s)</SelectItem>
-                    <SelectItem value="12">12 seconds ($0.10/s)</SelectItem>
+                    <SelectItem value="4">
+                      4 seconds {generation.hasSora2Pro
+                        ? (generation.resolution === '1080p' ? '($0.50/s)' : '($0.30/s)')
+                        : '($0.10/s)'}
+                    </SelectItem>
+                    <SelectItem value="8">
+                      8 seconds {generation.hasSora2Pro
+                        ? (generation.resolution === '1080p' ? '($0.50/s)' : '($0.30/s)')
+                        : '($0.10/s)'}
+                    </SelectItem>
+                    <SelectItem value="12">
+                      12 seconds {generation.hasSora2Pro
+                        ? (generation.resolution === '1080p' ? '($0.50/s)' : '($0.30/s)')
+                        : '($0.10/s)'}
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>

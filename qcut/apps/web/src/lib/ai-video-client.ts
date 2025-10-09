@@ -6,6 +6,13 @@
 import { handleAIServiceError, handleNetworkError } from "./error-handler";
 import { AI_MODELS } from "@/components/editor/media-panel/views/ai-constants";
 import type { AIModel } from "@/components/editor/media-panel/views/ai-types";
+import type {
+  Sora2TextToVideoInput,
+  Sora2TextToVideoProInput,
+  Sora2ImageToVideoInput,
+  Sora2ImageToVideoProInput,
+  Sora2VideoToVideoRemixInput,
+} from "@/types/sora2";
 
 // Direct FAL AI integration - no backend needed
 const FAL_API_KEY = import.meta.env.VITE_FAL_API_KEY;
@@ -45,12 +52,20 @@ function isSora2Model(modelId: string): boolean {
  * @returns Specific model type or null if not a Sora 2 model
  */
 function getSora2ModelType(modelId: string): 'text-to-video' | 'text-to-video-pro' | 'image-to-video' | 'image-to-video-pro' | 'video-to-video-remix' | null {
-  if (modelId === 'sora2_text_to_video') return 'text-to-video';
-  if (modelId === 'sora2_text_to_video_pro') return 'text-to-video-pro';
-  if (modelId === 'sora2_image_to_video') return 'image-to-video';
-  if (modelId === 'sora2_image_to_video_pro') return 'image-to-video-pro';
-  if (modelId === 'sora2_video_to_video_remix') return 'video-to-video-remix';
-  return null;
+  switch (modelId) {
+    case 'sora2_text_to_video':
+      return 'text-to-video';
+    case 'sora2_text_to_video_pro':
+      return 'text-to-video-pro';
+    case 'sora2_image_to_video':
+      return 'image-to-video';
+    case 'sora2_image_to_video_pro':
+      return 'image-to-video-pro';
+    case 'sora2_video_to_video_remix':
+      return 'video-to-video-remix';
+    default:
+      return null;
+  }
 }
 
 /**
@@ -60,56 +75,77 @@ function getSora2ModelType(modelId: string): 'text-to-video' | 'text-to-video-pr
  * Business logic:
  *  - Standard models: 720p only
  *  - Pro models: 720p or 1080p
- *  - Image-to-video: Requires image_url parameter
- *  - Video-to-video: Requires video_id from previous Sora generation
+ *  - Image-to-video: Requires image_url parameter (validated at runtime)
+ *  - Video-to-video: Requires video_id from previous Sora generation (validated at runtime)
  *
- * @param params - Raw parameters from UI
+ * @param params - Typed parameters from UI (union of all Sora 2 input types)
  * @param modelType - Specific Sora 2 model variant
  * @returns Formatted parameters for FAL API
+ * @throws Error if required parameters are missing for the model type
  */
-function convertSora2Parameters(params: any, modelType: string) {
+function convertSora2Parameters(
+  params:
+    | Sora2TextToVideoInput
+    | Sora2TextToVideoProInput
+    | Sora2ImageToVideoInput
+    | Sora2ImageToVideoProInput
+    | Sora2VideoToVideoRemixInput,
+  modelType: 'text-to-video' | 'text-to-video-pro' | 'image-to-video' | 'image-to-video-pro' | 'video-to-video-remix'
+) {
   const base = {
     prompt: params.prompt || "",
-    duration: params.duration || 4, // 4, 8, or 12
-    aspect_ratio: params.aspect_ratio || "16:9",
+    duration: 'duration' in params ? params.duration || 4 : 4, // 4, 8, or 12
+    aspect_ratio: 'aspect_ratio' in params ? params.aspect_ratio || "16:9" : "16:9",
   };
 
   // Text-to-video standard - 720p only
   if (modelType === 'text-to-video') {
     return {
       ...base,
-      resolution: "720p",
+      resolution: "720p" as const,
     };
   }
 
   // Text-to-video Pro - supports 1080p
   if (modelType === 'text-to-video-pro') {
+    const resolution = 'resolution' in params ? params.resolution || "1080p" : "1080p";
     return {
       ...base,
-      resolution: params.resolution || "1080p", // Default 1080p, can be 720p or 1080p
+      resolution, // Default 1080p, can be 720p or 1080p
     };
   }
 
   // Image-to-video standard - auto or 720p
   if (modelType === 'image-to-video') {
+    if (!('image_url' in params) || !params.image_url) {
+      throw new Error("Sora 2 image-to-video requires image_url parameter");
+    }
+    const resolution = params.resolution || "auto";
     return {
       ...base,
       image_url: params.image_url,
-      resolution: params.resolution || "auto",
+      resolution,
     };
   }
 
   // Image-to-video Pro - supports 1080p
   if (modelType === 'image-to-video-pro') {
+    if (!('image_url' in params) || !params.image_url) {
+      throw new Error("Sora 2 image-to-video-pro requires image_url parameter");
+    }
+    const resolution = params.resolution || "auto";
     return {
       ...base,
       image_url: params.image_url,
-      resolution: params.resolution || "auto", // Can be auto, 720p, or 1080p
+      resolution, // Can be auto, 720p, or 1080p
     };
   }
 
   // Video-to-Video Remix - transforms existing Sora videos
   if (modelType === 'video-to-video-remix') {
+    if (!('video_id' in params) || !params.video_id) {
+      throw new Error("Sora 2 video-to-video remix requires video_id from a previous Sora generation");
+    }
     return {
       prompt: params.prompt || "",
       video_id: params.video_id, // REQUIRED: from previous Sora generation
@@ -123,25 +159,16 @@ function convertSora2Parameters(params: any, modelType: string) {
 /**
  * Parses Sora 2 API response format
  *
- * WHY: Sora 2 can return video as string URL or object with url property
- * Edge cases:
- *  - Text-to-video returns: { video: "https://..." }
- *  - Image-to-video returns: { video: { url: "https://...", content_type: "video/mp4" } }
+ * WHY: Sora 2 always returns video as an object with url and content_type properties
+ * API Response format (confirmed from FAL API docs):
+ *  - All models return: { video: { url: "https://...", content_type: "video/mp4" }, video_id: "..." }
  *
  * @param response - Raw FAL API response
  * @returns Parsed video URL and video ID
  * @throws Error if response format is invalid
  */
 function parseSora2Response(response: any): { videoUrl: string; videoId: string } {
-  // Handle string response (text-to-video)
-  if (typeof response.video === 'string') {
-    return {
-      videoUrl: response.video,
-      videoId: response.video_id,
-    };
-  }
-
-  // Handle object response (image-to-video)
+  // Sora 2 always returns video as object with url property
   if (response.video?.url) {
     return {
       videoUrl: response.video.url,
@@ -149,7 +176,7 @@ function parseSora2Response(response: any): { videoUrl: string; videoId: string 
     };
   }
 
-  throw new Error('Invalid Sora 2 response format');
+  throw new Error('Invalid Sora 2 response format: missing video.url property');
 }
 
 export interface VideoGenerationRequest {
