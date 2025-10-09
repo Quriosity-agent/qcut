@@ -169,6 +169,7 @@ export interface ElectronAPI {
       audioPath: string;
       fileSize: number;
     }>;
+    getPath: () => Promise<string>;
   };
 
   apiKeys: {

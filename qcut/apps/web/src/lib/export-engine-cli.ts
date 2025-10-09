@@ -646,14 +646,16 @@ export class CLIExportEngine extends ExportEngine {
         );
         (async () => {
           // get the ffmpeg path from main process (works in dev & packaged)
-          const ffmpegPath = await window.electronAPI?.invoke("ffmpeg-path");
-          const framesDir = `${this.frameDir}\\frames`;
-          const duration = Math.ceil(this.totalDuration);
-          debugLog(
-            `"${ffmpegPath}" -y -framerate ${this.fps}` +
-              ` -i "${framesDir}\\frame-%04d.png" -c:v libx264` +
-              ` -preset fast -crf 23 -t ${duration} "output.mp4"`
-          );
+          if (window.electronAPI?.ffmpeg?.getPath) {
+            const ffmpegPath = await window.electronAPI.ffmpeg.getPath();
+            const framesDir = `${this.frameDir}\\frames`;
+            const duration = Math.ceil(this.totalDuration);
+            debugLog(
+              `"${ffmpegPath}" -y -framerate ${this.fps}` +
+                ` -i "${framesDir}\\frame-%04d.png" -c:v libx264` +
+                ` -preset fast -crf 23 -t ${duration} "output.mp4"`
+            );
+          }
         })();
 
         debugLog(

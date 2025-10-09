@@ -203,6 +203,7 @@ interface ElectronAPI {
     // FFmpeg resource helpers
     getFFmpegResourcePath: (filename: string) => Promise<string>;
     checkFFmpegResource: (filename: string) => Promise<boolean>;
+    getPath: () => Promise<string>;
   };
 
   // API key operations
@@ -344,6 +345,7 @@ const electronAPI: ElectronAPI = {
       ipcRenderer.invoke("get-ffmpeg-resource-path", filename),
     checkFFmpegResource: (filename: string): Promise<boolean> =>
       ipcRenderer.invoke("check-ffmpeg-resource", filename),
+    getPath: (): Promise<string> => ipcRenderer.invoke("ffmpeg-path"),
   },
 
   // API key operations
