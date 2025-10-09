@@ -70,6 +70,25 @@ function getSora2ModelType(modelId: string): 'text-to-video' | 'text-to-video-pr
 }
 
 /**
+ * Base payload type for all Sora 2 models (common properties)
+ */
+type Sora2BasePayload = {
+  prompt: string;
+  duration: number;
+  aspect_ratio: string;
+};
+
+/**
+ * Discriminated union for Sora 2 payloads with type field for narrowing
+ */
+type Sora2Payload =
+  | { type: 'text-to-video'; prompt: string; duration: number; aspect_ratio: string; resolution: "720p" }
+  | { type: 'text-to-video-pro'; prompt: string; duration: number; aspect_ratio: string; resolution: string }
+  | { type: 'image-to-video'; prompt: string; duration: number; aspect_ratio: string; resolution: string; image_url: string }
+  | { type: 'image-to-video-pro'; prompt: string; duration: number; aspect_ratio: string; resolution: string; image_url: string }
+  | { type: 'video-to-video-remix'; prompt: string; video_id: string }; // No duration/aspect_ratio
+
+/**
  * Converts parameters for Sora 2 models
  *
  * WHY: Sora 2 API expects specific parameter formats that differ from other models
@@ -81,7 +100,7 @@ function getSora2ModelType(modelId: string): 'text-to-video' | 'text-to-video-pr
  *
  * @param params - Typed parameters from UI (union of all Sora 2 input types)
  * @param modelType - Specific Sora 2 model variant
- * @returns Formatted parameters for FAL API
+ * @returns Formatted parameters for FAL API with type discriminator
  * @throws Error if required parameters are missing for the model type
  */
 function convertSora2Parameters(
@@ -92,7 +111,7 @@ function convertSora2Parameters(
     | Sora2ImageToVideoProInput
     | Sora2VideoToVideoRemixInput,
   modelType: 'text-to-video' | 'text-to-video-pro' | 'image-to-video' | 'image-to-video-pro' | 'video-to-video-remix'
-) {
+): Sora2Payload {
   const base = {
     prompt: params.prompt || "",
     duration: 'duration' in params ? params.duration || 4 : 4, // 4, 8, or 12
@@ -102,6 +121,7 @@ function convertSora2Parameters(
   // Text-to-video standard - 720p only
   if (modelType === 'text-to-video') {
     return {
+      type: 'text-to-video',
       ...base,
       resolution: "720p" as const,
     };
@@ -111,6 +131,7 @@ function convertSora2Parameters(
   if (modelType === 'text-to-video-pro') {
     const resolution = 'resolution' in params ? params.resolution || "1080p" : "1080p";
     return {
+      type: 'text-to-video-pro',
       ...base,
       resolution, // Default 1080p, can be 720p or 1080p
     };
@@ -123,6 +144,7 @@ function convertSora2Parameters(
     }
     const resolution = params.resolution || "auto";
     return {
+      type: 'image-to-video',
       ...base,
       image_url: params.image_url,
       resolution,
@@ -136,6 +158,7 @@ function convertSora2Parameters(
     }
     const resolution = params.resolution || "auto";
     return {
+      type: 'image-to-video-pro',
       ...base,
       image_url: params.image_url,
       resolution, // Can be auto, 720p, or 1080p
@@ -148,13 +171,16 @@ function convertSora2Parameters(
       throw new Error("Sora 2 video-to-video remix requires video_id from a previous Sora generation");
     }
     return {
+      type: 'video-to-video-remix',
       prompt: params.prompt || "",
       video_id: params.video_id, // REQUIRED: from previous Sora generation
       // Note: No duration/aspect_ratio - preserved from source video
     };
   }
 
-  return base;
+  // TypeScript exhaustiveness check - should never reach here
+  const _exhaustive: never = modelType;
+  throw new Error(`Unknown Sora 2 model type: ${_exhaustive}`);
 }
 
 /**
@@ -355,19 +381,23 @@ export async function generateVideo(
     console.log(`📝 Prompt: ${request.prompt}`);
 
     // Build request payload using centralized model configuration
-    // Using any here is acceptable since convertSora2Parameters provides type safety during construction
-    let payload: any;
+    // Sora 2 payloads are strongly typed during construction, then converted to plain object
+    let payload: Record<string, any>;
 
     // Handle Sora 2 models with special parameter conversion
     if (isSora2Model(request.model)) {
       const modelType = getSora2ModelType(request.model);
       if (modelType) {
-        payload = convertSora2Parameters({
+        const sora2Payload = convertSora2Parameters({
           prompt: request.prompt,
           duration: request.duration as Sora2Duration | undefined,
           resolution: request.resolution as any, // Type assertion safe: validated in convertSora2Parameters
           aspect_ratio: request.aspect_ratio as any, // Type assertion safe: validated in convertSora2Parameters
         }, modelType);
+
+        // Strip the 'type' discriminator before sending to API
+        const { type, ...apiPayload } = sora2Payload;
+        payload = apiPayload;
       } else {
         // Fallback if model type detection fails
         payload = {
@@ -387,41 +417,41 @@ export async function generateVideo(
         ...(request.duration && { duration: request.duration }),
         ...(request.resolution && { resolution: request.resolution }),
       };
-    }
 
-    // Special handling for specific models that require unique parameter formats (NON-SORA models)
-    if (request.model === "hailuo" || request.model === "hailuo_pro") {
-      // Hailuo only accepts '6' or '10' as string values for duration
-      const requestedDuration = payload.duration || 6;
-      payload.duration = requestedDuration >= 10 ? "10" : "6";
-      // Remove resolution as Hailuo doesn't use it directly
-      payload.resolution = undefined;
-    } else if (request.model === "wan_turbo") {
-      // WAN Turbo only accepts specific resolutions
-      const validResolutions = ["480p", "580p", "720p"];
-      if (
-        payload.resolution &&
-        !validResolutions.includes(payload.resolution)
-      ) {
-        payload.resolution = "720p";
+      // Special handling for specific models that require unique parameter formats (NON-SORA models)
+      if (request.model === "hailuo" || request.model === "hailuo_pro") {
+        // Hailuo only accepts '6' or '10' as string values for duration
+        const requestedDuration = payload.duration || 6;
+        payload.duration = requestedDuration >= 10 ? "10" : "6";
+        // Remove resolution as Hailuo doesn't use it directly
+        payload.resolution = undefined;
+      } else if (request.model === "wan_turbo") {
+        // WAN Turbo only accepts specific resolutions
+        const validResolutions = ["480p", "580p", "720p"];
+        if (
+          payload.resolution &&
+          !validResolutions.includes(payload.resolution)
+        ) {
+          payload.resolution = "720p";
+        }
+      } else if (request.model === "wan_25_preview") {
+        // WAN 2.5 supports higher resolutions
+        const validResolutions = ["720p", "1080p", "1440p"];
+        if (
+          payload.resolution &&
+          !validResolutions.includes(payload.resolution)
+        ) {
+          payload.resolution = "1080p";
+        }
       }
-    } else if (request.model === "wan_25_preview") {
-      // WAN 2.5 supports higher resolutions
-      const validResolutions = ["720p", "1080p", "1440p"];
-      if (
-        payload.resolution &&
-        !validResolutions.includes(payload.resolution)
-      ) {
-        payload.resolution = "1080p";
-      }
-    }
 
-    // Validate duration doesn't exceed model's max
-    if (payload.duration && payload.duration > modelConfig.max_duration) {
-      console.warn(
-        `${modelConfig.name}: Duration capped at ${modelConfig.max_duration} seconds`
-      );
-      payload.duration = modelConfig.max_duration;
+      // Validate duration doesn't exceed model's max
+      if (payload.duration && payload.duration > modelConfig.max_duration) {
+        console.warn(
+          `${modelConfig.name}: Duration capped at ${modelConfig.max_duration} seconds`
+        );
+        payload.duration = modelConfig.max_duration;
+      }
     }
 
     console.log(`📤 Sending request to ${endpoint} with payload:`, payload);
@@ -1004,20 +1034,24 @@ export async function generateVideoFromImage(
     }
 
     // Build request payload using centralized model configuration
-    // Using any here is acceptable since convertSora2Parameters provides type safety during construction
-    let payload: any;
+    // Sora 2 payloads are strongly typed during construction, then converted to plain object
+    let payload: Record<string, any>;
 
     // Handle Sora 2 image-to-video models
     if (isSora2Model(request.model)) {
       const modelType = getSora2ModelType(request.model);
       if (modelType && (modelType === 'image-to-video' || modelType === 'image-to-video-pro')) {
-        payload = convertSora2Parameters({
+        const sora2Payload = convertSora2Parameters({
           prompt: request.prompt || "Create a cinematic video from this image",
           image_url: imageUrl,
           duration: request.duration as Sora2Duration | undefined,
           resolution: request.resolution as any, // Type assertion safe: validated in convertSora2Parameters
           aspect_ratio: (request.aspect_ratio || "auto") as any, // Type assertion safe: validated in convertSora2Parameters
         }, modelType);
+
+        // Strip the 'type' discriminator before sending to API
+        const { type, ...apiPayload } = sora2Payload;
+        payload = apiPayload;
       } else {
         // Fallback
         payload = {
@@ -1039,23 +1073,23 @@ export async function generateVideoFromImage(
         ...(request.duration && { duration: request.duration }),
         ...(request.resolution && { resolution: request.resolution }),
       };
-    }
 
-    // Handle model-specific payload adjustments
-    if (request.model === "wan_turbo") {
-      // WAN Turbo image-to-video only supports specific resolutions
-      payload.resolution =
-        request.resolution &&
-        ["480p", "580p", "720p"].includes(request.resolution)
-          ? request.resolution
-          : "720p";
-      payload.seed = Math.floor(Math.random() * 1_000_000); // Optional: for reproducibility
-    } else if (request.model === "wan_25_preview") {
-      // WAN 2.5 supports higher quality image-to-video conversion
-      payload.quality = "high";
-    } else if (request.model === "seedance_pro") {
-      // Seedance requires duration as string
-      payload.duration = request.duration?.toString() || "5";
+      // Handle model-specific payload adjustments (NON-SORA models)
+      if (request.model === "wan_turbo") {
+        // WAN Turbo image-to-video only supports specific resolutions
+        payload.resolution =
+          request.resolution &&
+          ["480p", "580p", "720p"].includes(request.resolution)
+            ? request.resolution
+            : "720p";
+        payload.seed = Math.floor(Math.random() * 1_000_000); // Optional: for reproducibility
+      } else if (request.model === "wan_25_preview") {
+        // WAN 2.5 supports higher quality image-to-video conversion
+        payload.quality = "high";
+      } else if (request.model === "seedance_pro") {
+        // Seedance requires duration as string
+        payload.duration = request.duration?.toString() || "5";
+      }
     }
 
     const jobId = generateJobId();
