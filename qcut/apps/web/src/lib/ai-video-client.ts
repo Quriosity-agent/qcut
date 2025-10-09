@@ -285,6 +285,10 @@ export async function generateVideo(
     }
 
     const endpoint = modelConfig.endpoints.text_to_video;
+    if (!endpoint) {
+      throw new Error(`Model ${request.model} does not support text-to-video generation`);
+    }
+
     const jobId = generateJobId();
 
     console.log(`🎬 Generating video with FAL AI: ${endpoint}`);
@@ -1089,7 +1093,10 @@ export async function generateAvatarVideo(
       }
       // Convert source video to data URL (for WAN model)
       const sourceVideoUrl = await fileToDataURL(request.sourceVideo);
-      endpoint = modelConfig.endpoints.text_to_video;
+      endpoint = modelConfig.endpoints.text_to_video || '';
+      if (!endpoint) {
+        throw new Error(`Model ${request.model} does not have a valid endpoint`);
+      }
       payload = {
         ...(modelConfig.default_params || {}), // Defaults first
         video_url: sourceVideoUrl,
@@ -1105,7 +1112,10 @@ export async function generateAvatarVideo(
       }
       // Convert audio to data URL
       const audioUrl = await fileToDataURL(request.audioFile);
-      endpoint = modelConfig.endpoints.text_to_video;
+      endpoint = modelConfig.endpoints.text_to_video || '';
+      if (!endpoint) {
+        throw new Error(`Model ${request.model} does not have a valid endpoint`);
+      }
       payload = {
         ...(modelConfig.default_params || {}), // Defaults first
         image_url: characterImageUrl,
@@ -1119,7 +1129,10 @@ export async function generateAvatarVideo(
       }
       // Convert audio to data URL
       const audioUrl = await fileToDataURL(request.audioFile);
-      endpoint = modelConfig.endpoints.text_to_video;
+      endpoint = modelConfig.endpoints.text_to_video || '';
+      if (!endpoint) {
+        throw new Error(`Model ${request.model} does not have a valid endpoint`);
+      }
       payload = {
         ...(modelConfig.default_params || {}), // Defaults first
         image_url: characterImageUrl,

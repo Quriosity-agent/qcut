@@ -13,7 +13,7 @@ import type { TProject } from "@/types/project";
 
 // Model Configuration Interfaces
 export interface AIModelEndpoints {
-  text_to_video: string;
+  text_to_video?: string;
   image_to_video?: string;
 }
 

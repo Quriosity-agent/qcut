@@ -3,9 +3,6 @@
  *
  * Extracted from ai.tsx as part of safe refactoring process.
  * This file contains all constants and configuration used by the AI video generation feature.
- *
- * @see ai-view-refactoring-guide.md for refactoring plan
- * @see ai-refactoring-subtasks.md for implementation tracking
  */
 
 import type { AIModel, APIConfiguration } from "./ai-types";
