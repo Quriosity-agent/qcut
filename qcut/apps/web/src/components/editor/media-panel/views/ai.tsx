@@ -552,8 +552,15 @@ export function AiView() {
                 if (activeTab === "avatar") {
                   return model.category === "avatar";
                 }
-                // Show non-avatar models for text/image tabs
-                return model.category !== "avatar";
+                if (activeTab === "text") {
+                  // Show text-to-video models (excluding avatar and image-to-video)
+                  return model.category === "text" || (!model.category && model.category !== "avatar");
+                }
+                if (activeTab === "image") {
+                  // Show image-to-video models
+                  return model.category === "image";
+                }
+                return false;
               }).map((model) => {
                 const inputId = `ai-model-${model.id}`;
                 const selected = isModelSelected(model.id);

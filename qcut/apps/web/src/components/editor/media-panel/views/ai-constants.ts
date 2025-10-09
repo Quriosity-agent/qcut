@@ -254,6 +254,7 @@ export const AI_MODELS: AIModel[] = [
     price: "0.40", // Base price for 4s (will be calculated: duration × 0.10)
     resolution: "720p",
     max_duration: 12, // 4, 8, or 12 seconds
+    category: "text",
     endpoints: {
       text_to_video: "fal-ai/sora-2/text-to-video",
     },
@@ -270,6 +271,7 @@ export const AI_MODELS: AIModel[] = [
     price: "1.20", // Base price for 4s @ 720p (calculated based on resolution)
     resolution: "720p / 1080p",
     max_duration: 12,
+    category: "text",
     endpoints: {
       text_to_video: "fal-ai/sora-2/text-to-video/pro",
     },
@@ -286,6 +288,7 @@ export const AI_MODELS: AIModel[] = [
     price: "0.40", // Base price for 4s (calculated: duration × 0.10)
     resolution: "720p",
     max_duration: 12,
+    category: "image",
     endpoints: {
       image_to_video: "fal-ai/sora-2/image-to-video",
     },
@@ -302,6 +305,7 @@ export const AI_MODELS: AIModel[] = [
     price: "1.20", // Base price for 4s @ 720p (calculated based on resolution)
     resolution: "720p / 1080p",
     max_duration: 12,
+    category: "image",
     endpoints: {
       image_to_video: "fal-ai/sora-2/image-to-video/pro",
     },
@@ -318,6 +322,7 @@ export const AI_MODELS: AIModel[] = [
     price: "0.00", // Price calculated dynamically based on source video duration
     resolution: "Preserves source",
     max_duration: 12, // Inherits from source video
+    category: "text", // Remix can be used from text tab (requires video_id from previous generation)
     endpoints: {
       text_to_video: "fal-ai/sora-2/video-to-video/remix", // Reuses text_to_video endpoint type
     },

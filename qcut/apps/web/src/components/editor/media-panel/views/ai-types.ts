@@ -38,7 +38,7 @@ export interface AIModel {
   max_duration: number;
   endpoints: AIModelEndpoints;
   default_params?: AIModelParameters;
-  category?: "video" | "avatar";
+  category?: "text" | "image" | "video" | "avatar";
   requiredInputs?: string[];
 }
 
