@@ -91,6 +91,15 @@ export function useAIGeneration(props: UseAIGenerationProps) {
     () => new AIVideoOutputManager("./ai-generated-videos")
   );
 
+  // Sora 2 specific state
+  const [duration, setDuration] = useState<4 | 8 | 12>(4);
+  const [aspectRatio, setAspectRatio] = useState<"16:9" | "9:16">("16:9");
+  const [resolution, setResolution] = useState<"auto" | "720p" | "1080p">("720p");
+
+  // Sora 2 detection flags
+  const isSora2Selected = selectedModels.some(id => id.startsWith('sora2_'));
+  const hasSora2Pro = selectedModels.includes('sora2_text_to_video_pro') || selectedModels.includes('sora2_image_to_video_pro');
+
   // Store hooks
   const {
     addMediaItem,
@@ -521,6 +530,12 @@ export function useAIGeneration(props: UseAIGenerationProps) {
             {
               prompt: prompt.trim(),
               model: modelId,
+              // Add Sora 2 specific parameters if Sora 2 model
+              ...(modelId.startsWith('sora2_') && {
+                duration,
+                aspect_ratio: aspectRatio,
+                resolution,
+              }),
             },
             progressCallback
           );
@@ -531,6 +546,12 @@ export function useAIGeneration(props: UseAIGenerationProps) {
             image: selectedImage,
             prompt: prompt.trim(),
             model: modelId,
+            // Add Sora 2 specific parameters if Sora 2 model
+            ...(modelId.startsWith('sora2_') && {
+              duration,
+              aspect_ratio: aspectRatio,
+              resolution,
+            }),
           });
           console.log("  ✅ generateVideoFromImage returned:", response);
         } else if (activeTab === "avatar" && avatarImage) {

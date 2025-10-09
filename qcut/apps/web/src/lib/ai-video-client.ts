@@ -24,11 +24,140 @@ function getModelConfig(modelId: string): AIModel | undefined {
   return AI_MODELS.find((m) => m.id === modelId);
 }
 
+/**
+ * Checks if a model is a Sora 2 model
+ *
+ * WHY: Sora 2 models require different parameter handling and response parsing
+ *
+ * @param modelId - Model identifier to check
+ * @returns true if model is a Sora 2 model
+ */
+function isSora2Model(modelId: string): boolean {
+  return modelId.startsWith('sora2_');
+}
+
+/**
+ * Gets the specific Sora 2 model type
+ *
+ * WHY: Different Sora 2 variants support different parameters (resolution, input types)
+ *
+ * @param modelId - Sora 2 model identifier
+ * @returns Specific model type or null if not a Sora 2 model
+ */
+function getSora2ModelType(modelId: string): 'text-to-video' | 'text-to-video-pro' | 'image-to-video' | 'image-to-video-pro' | 'video-to-video-remix' | null {
+  if (modelId === 'sora2_text_to_video') return 'text-to-video';
+  if (modelId === 'sora2_text_to_video_pro') return 'text-to-video-pro';
+  if (modelId === 'sora2_image_to_video') return 'image-to-video';
+  if (modelId === 'sora2_image_to_video_pro') return 'image-to-video-pro';
+  if (modelId === 'sora2_video_to_video_remix') return 'video-to-video-remix';
+  return null;
+}
+
+/**
+ * Converts parameters for Sora 2 models
+ *
+ * WHY: Sora 2 API expects specific parameter formats that differ from other models
+ * Business logic:
+ *  - Standard models: 720p only
+ *  - Pro models: 720p or 1080p
+ *  - Image-to-video: Requires image_url parameter
+ *  - Video-to-video: Requires video_id from previous Sora generation
+ *
+ * @param params - Raw parameters from UI
+ * @param modelType - Specific Sora 2 model variant
+ * @returns Formatted parameters for FAL API
+ */
+function convertSora2Parameters(params: any, modelType: string) {
+  const base = {
+    prompt: params.prompt || "",
+    duration: params.duration || 4, // 4, 8, or 12
+    aspect_ratio: params.aspect_ratio || "16:9",
+  };
+
+  // Text-to-video standard - 720p only
+  if (modelType === 'text-to-video') {
+    return {
+      ...base,
+      resolution: "720p",
+    };
+  }
+
+  // Text-to-video Pro - supports 1080p
+  if (modelType === 'text-to-video-pro') {
+    return {
+      ...base,
+      resolution: params.resolution || "1080p", // Default 1080p, can be 720p or 1080p
+    };
+  }
+
+  // Image-to-video standard - auto or 720p
+  if (modelType === 'image-to-video') {
+    return {
+      ...base,
+      image_url: params.image_url,
+      resolution: params.resolution || "auto",
+    };
+  }
+
+  // Image-to-video Pro - supports 1080p
+  if (modelType === 'image-to-video-pro') {
+    return {
+      ...base,
+      image_url: params.image_url,
+      resolution: params.resolution || "auto", // Can be auto, 720p, or 1080p
+    };
+  }
+
+  // Video-to-Video Remix - transforms existing Sora videos
+  if (modelType === 'video-to-video-remix') {
+    return {
+      prompt: params.prompt || "",
+      video_id: params.video_id, // REQUIRED: from previous Sora generation
+      // Note: No duration/aspect_ratio - preserved from source video
+    };
+  }
+
+  return base;
+}
+
+/**
+ * Parses Sora 2 API response format
+ *
+ * WHY: Sora 2 can return video as string URL or object with url property
+ * Edge cases:
+ *  - Text-to-video returns: { video: "https://..." }
+ *  - Image-to-video returns: { video: { url: "https://...", content_type: "video/mp4" } }
+ *
+ * @param response - Raw FAL API response
+ * @returns Parsed video URL and video ID
+ * @throws Error if response format is invalid
+ */
+function parseSora2Response(response: any): { videoUrl: string; videoId: string } {
+  // Handle string response (text-to-video)
+  if (typeof response.video === 'string') {
+    return {
+      videoUrl: response.video,
+      videoId: response.video_id,
+    };
+  }
+
+  // Handle object response (image-to-video)
+  if (response.video?.url) {
+    return {
+      videoUrl: response.video.url,
+      videoId: response.video_id,
+    };
+  }
+
+  throw new Error('Invalid Sora 2 response format');
+}
+
 export interface VideoGenerationRequest {
   prompt: string;
   model: string;
   resolution?: string;
   duration?: number;
+  aspect_ratio?: string; // Added for Sora 2 support
 }
 
 export interface ImageToVideoRequest {
@@ -37,6 +166,7 @@ export interface ImageToVideoRequest {
   prompt?: string;
   resolution?: string;
   duration?: number;
+  aspect_ratio?: string; // Added for Sora 2 support
 }
 
 export interface AvatarVideoRequest {
@@ -161,16 +291,40 @@ export async function generateVideo(
     console.log(`📝 Prompt: ${request.prompt}`);
 
     // Build request payload using centralized model configuration
-    const payload: any = {
-      prompt: request.prompt,
-      // Start with default parameters from model config
-      ...(modelConfig.default_params || {}),
-      // Override with request-specific parameters
-      ...(request.duration && { duration: request.duration }),
-      ...(request.resolution && { resolution: request.resolution }),
-    };
+    let payload: any;
 
-    // Special handling for specific models that require unique parameter formats
+    // Handle Sora 2 models with special parameter conversion
+    if (isSora2Model(request.model)) {
+      const modelType = getSora2ModelType(request.model);
+      if (modelType) {
+        payload = convertSora2Parameters({
+          prompt: request.prompt,
+          duration: request.duration,
+          resolution: request.resolution,
+          aspect_ratio: request.aspect_ratio,
+        }, modelType);
+      } else {
+        // Fallback if model type detection fails
+        payload = {
+          prompt: request.prompt,
+          ...(modelConfig.default_params || {}),
+          ...(request.duration && { duration: request.duration }),
+          ...(request.resolution && { resolution: request.resolution }),
+        };
+      }
+    } else {
+      // Existing models use default payload structure
+      payload = {
+        prompt: request.prompt,
+        // Start with default parameters from model config
+        ...(modelConfig.default_params || {}),
+        // Override with request-specific parameters
+        ...(request.duration && { duration: request.duration }),
+        ...(request.resolution && { resolution: request.resolution }),
+      };
+    }
+
+    // Special handling for specific models that require unique parameter formats (NON-SORA models)
     if (request.model === "hailuo" || request.model === "hailuo_pro") {
       // Hailuo only accepts '6' or '10' as string values for duration
       const requestedDuration = payload.duration || 6;
@@ -285,11 +439,23 @@ export async function generateVideo(
     if (queueResult.video && queueResult.video.url) {
       console.log("⚡ Direct mode: video ready immediately");
 
+      // Parse Sora 2 response if needed
+      let videoUrl = queueResult.video.url;
+      if (isSora2Model(request.model)) {
+        try {
+          const parsed = parseSora2Response(queueResult);
+          videoUrl = parsed.videoUrl;
+          console.log("✅ Sora 2 response parsed:", { videoUrl, videoId: parsed.videoId });
+        } catch (error) {
+          console.warn("⚠️ Failed to parse as Sora 2 response, using default format");
+        }
+      }
+
       // Handle streaming download if requested
       if (downloadOptions?.downloadToMemory) {
         console.log("📥 Starting streaming download of video...");
         const videoData = await streamVideoDownload(
-          queueResult.video.url,
+          videoUrl,
           downloadOptions
         );
         if (downloadOptions.onComplete) {
@@ -312,7 +478,7 @@ export async function generateVideo(
         status: "completed",
         message: `Video generated successfully with ${request.model}`,
         estimated_time: Math.floor((Date.now() - startTime) / 1000),
-        video_url: queueResult.video.url,
+        video_url: videoUrl,
         video_data: queueResult,
       };
     }
@@ -340,11 +506,23 @@ export async function generateVideo(
     console.log("✅ Direct API result:", directResult);
 
     if (directResult.video && directResult.video.url) {
+      // Parse Sora 2 response if needed
+      let videoUrl = directResult.video.url;
+      if (isSora2Model(request.model)) {
+        try {
+          const parsed = parseSora2Response(directResult);
+          videoUrl = parsed.videoUrl;
+          console.log("✅ Sora 2 direct response parsed:", { videoUrl, videoId: parsed.videoId });
+        } catch (error) {
+          console.warn("⚠️ Failed to parse as Sora 2 response, using default format");
+        }
+      }
+
       // Handle streaming download if requested
       if (downloadOptions?.downloadToMemory) {
         console.log("📥 Starting streaming download of direct video...");
         const videoData = await streamVideoDownload(
-          directResult.video.url,
+          videoUrl,
           downloadOptions
         );
         if (downloadOptions.onComplete) {
@@ -366,7 +544,7 @@ export async function generateVideo(
         status: "completed",
         message: `Video generated successfully with ${request.model}`,
         estimated_time: Math.floor((Date.now() - startTime) / 1000),
-        video_url: directResult.video.url,
+        video_url: videoUrl,
         video_data: directResult,
       };
     }
@@ -739,15 +917,41 @@ export async function generateVideoFromImage(
     }
 
     // Build request payload using centralized model configuration
-    const payload: any = {
-      prompt: request.prompt || "Create a cinematic video from this image",
-      image_url: imageUrl,
-      // Start with default parameters from model config
-      ...(modelConfig.default_params || {}),
-      // Override with request-specific parameters
-      ...(request.duration && { duration: request.duration }),
-      ...(request.resolution && { resolution: request.resolution }),
-    };
+    let payload: any;
+
+    // Handle Sora 2 image-to-video models
+    if (isSora2Model(request.model)) {
+      const modelType = getSora2ModelType(request.model);
+      if (modelType && (modelType === 'image-to-video' || modelType === 'image-to-video-pro')) {
+        payload = convertSora2Parameters({
+          prompt: request.prompt || "Create a cinematic video from this image",
+          image_url: imageUrl,
+          duration: request.duration,
+          resolution: request.resolution,
+          aspect_ratio: request.aspect_ratio || "auto",
+        }, modelType);
+      } else {
+        // Fallback
+        payload = {
+          prompt: request.prompt || "Create a cinematic video from this image",
+          image_url: imageUrl,
+          ...(modelConfig.default_params || {}),
+          ...(request.duration && { duration: request.duration }),
+          ...(request.resolution && { resolution: request.resolution }),
+        };
+      }
+    } else {
+      // Existing models use default payload structure
+      payload = {
+        prompt: request.prompt || "Create a cinematic video from this image",
+        image_url: imageUrl,
+        // Start with default parameters from model config
+        ...(modelConfig.default_params || {}),
+        // Override with request-specific parameters
+        ...(request.duration && { duration: request.duration }),
+        ...(request.resolution && { resolution: request.resolution }),
+      };
+    }
 
     // Handle model-specific payload adjustments
     if (request.model === "wan_turbo") {

@@ -248,6 +248,86 @@ export const AI_MODELS: AIModel[] = [
       resolution: "1080p",
     },
   },
+
+  // Sora 2 Models
+  {
+    id: "sora2_text_to_video",
+    name: "Sora 2 Text-to-Video",
+    description: "OpenAI's state-of-the-art text-to-video generation (720p)",
+    price: "0.40", // Base price for 4s (will be calculated: duration × 0.10)
+    resolution: "720p",
+    max_duration: 12, // 4, 8, or 12 seconds
+    endpoints: {
+      text_to_video: "fal-ai/sora-2/text-to-video",
+    },
+    default_params: {
+      duration: 4,
+      resolution: "720p",
+      aspect_ratio: "16:9",
+    },
+  },
+  {
+    id: "sora2_text_to_video_pro",
+    name: "Sora 2 Text-to-Video Pro",
+    description: "High-quality text-to-video with 1080p support",
+    price: "1.20", // Base price for 4s @ 720p (calculated based on resolution)
+    resolution: "720p / 1080p",
+    max_duration: 12,
+    endpoints: {
+      text_to_video: "fal-ai/sora-2/text-to-video/pro",
+    },
+    default_params: {
+      duration: 4,
+      resolution: "1080p", // Pro defaults to 1080p
+      aspect_ratio: "16:9",
+    },
+  },
+  {
+    id: "sora2_image_to_video",
+    name: "Sora 2 Image-to-Video",
+    description: "Convert images to dynamic videos with Sora 2 (720p)",
+    price: "0.40", // Base price for 4s (calculated: duration × 0.10)
+    resolution: "720p",
+    max_duration: 12,
+    endpoints: {
+      image_to_video: "fal-ai/sora-2/image-to-video",
+    },
+    default_params: {
+      duration: 4,
+      resolution: "auto",
+      aspect_ratio: "auto", // Auto-detect from image
+    },
+  },
+  {
+    id: "sora2_image_to_video_pro",
+    name: "Sora 2 Image-to-Video Pro",
+    description: "High-quality image-to-video with 1080p support",
+    price: "1.20", // Base price for 4s @ 720p (calculated based on resolution)
+    resolution: "720p / 1080p",
+    max_duration: 12,
+    endpoints: {
+      image_to_video: "fal-ai/sora-2/image-to-video/pro",
+    },
+    default_params: {
+      duration: 4,
+      resolution: "auto",
+      aspect_ratio: "auto",
+    },
+  },
+  {
+    id: "sora2_video_to_video_remix",
+    name: "Sora 2 Video-to-Video Remix",
+    description: "Transform Sora-generated videos with style changes (requires existing Sora video)",
+    price: "0.00", // Price calculated dynamically based on source video duration
+    resolution: "Preserves source",
+    max_duration: 12, // Inherits from source video
+    endpoints: {
+      text_to_video: "fal-ai/sora-2/video-to-video/remix", // Reuses text_to_video endpoint type
+    },
+    default_params: {
+      // No duration/resolution - inherited from source video
+    },
+  },
 ];
 
 // UI Constants
