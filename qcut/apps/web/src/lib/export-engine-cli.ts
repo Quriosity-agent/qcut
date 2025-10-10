@@ -510,12 +510,28 @@ export class CLIExportEngine extends ExportEngine {
     this.sessionId = session.sessionId;
     this.frameDir = session.frameDir;
 
+    // Check feature flag to disable optimization if needed
+    const skipOptimization = localStorage.getItem('qcut_skip_export_optimization') === 'true';
+
     // Analyze timeline to determine optimization strategy
     debugLog("[CLIExportEngine] 🔍 Analyzing timeline for export optimization...");
     this.exportAnalysis = analyzeTimelineForExport(
       this.tracks,
       this.mediaItems
     );
+
+    // Override analysis if feature flag is set
+    if (skipOptimization) {
+      debugLog('[CLIExportEngine] 🔧 Optimization disabled via feature flag');
+      this.exportAnalysis = {
+        ...this.exportAnalysis,
+        needsImageProcessing: true,
+        canUseDirectCopy: false,
+        optimizationStrategy: 'image-pipeline',
+        reason: 'Optimization disabled by feature flag'
+      };
+    }
+
     debugLog("[CLIExportEngine] 📊 Export Analysis:", this.exportAnalysis);
 
     try {
@@ -524,16 +540,48 @@ export class CLIExportEngine extends ExportEngine {
       await this.preloadAllVideos();
 
       // Render frames to disk ONLY if image processing is needed
-      if (this.exportAnalysis?.needsImageProcessing) {
-        debugLog('[CLIExportEngine] 🎨 Image processing required - rendering frames to disk');
-        debugLog(`[CLIExportEngine] Reason: ${this.exportAnalysis.reason}`);
-        progressCallback?.(15, "Rendering frames...");
+      try {
+        if (this.exportAnalysis?.needsImageProcessing) {
+          debugLog('[CLIExportEngine] 🎨 Image processing required - rendering frames to disk');
+          debugLog(`[CLIExportEngine] Reason: ${this.exportAnalysis.reason}`);
+          progressCallback?.(15, "Rendering frames...");
+          await this.renderFramesToDisk(progressCallback);
+        } else {
+          debugLog('[CLIExportEngine] ⚡ Skipping frame rendering - using direct video processing');
+          debugLog(`[CLIExportEngine] Optimization: ${this.exportAnalysis?.optimizationStrategy}`);
+          progressCallback?.(15, "Preparing direct video processing...");
+          // Frame rendering skipped - will use direct FFmpeg video copy
+        }
+      } catch (error) {
+        // Fallback: Force image pipeline if optimization fails
+        debugWarn('[CLIExportEngine] ⚠️ Direct processing preparation failed, falling back to image pipeline:', error);
+
+        // Safe default for exportAnalysis if it's null
+        const analysisBase: ExportAnalysis = this.exportAnalysis || {
+          needsImageProcessing: false,
+          hasImageElements: false,
+          hasTextElements: false,
+          hasStickers: false,
+          hasEffects: false,
+          hasMultipleVideoSources: false,
+          hasOverlappingVideos: false,
+          canUseDirectCopy: false,
+          optimizationStrategy: 'image-pipeline',
+          reason: 'Initial analysis failed'
+        };
+
+        // Force image processing
+        this.exportAnalysis = {
+          ...analysisBase,
+          needsImageProcessing: true,
+          canUseDirectCopy: false,
+          optimizationStrategy: 'image-pipeline',
+          reason: 'Fallback due to optimization error'
+        };
+
+        // Render frames as fallback
+        progressCallback?.(15, "Rendering frames (fallback)...");
         await this.renderFramesToDisk(progressCallback);
-      } else {
-        debugLog('[CLIExportEngine] ⚡ Skipping frame rendering - using direct video processing');
-        debugLog(`[CLIExportEngine] Optimization: ${this.exportAnalysis?.optimizationStrategy}`);
-        progressCallback?.(15, "Preparing direct video processing...");
-        // Frame rendering skipped - will use direct FFmpeg video copy
       }
 
       // Export with FFmpeg CLI
