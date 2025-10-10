@@ -522,6 +522,7 @@ export class CLIExportEngine extends ExportEngine {
 
     // Override analysis if feature flag is set
     if (skipOptimization) {
+      console.log('🔧 [EXPORT OPTIMIZATION] Feature flag enabled - forcing image pipeline');
       debugLog('[CLIExportEngine] 🔧 Optimization disabled via feature flag');
       this.exportAnalysis = {
         ...this.exportAnalysis,
@@ -532,6 +533,17 @@ export class CLIExportEngine extends ExportEngine {
       };
     }
 
+    console.log('📊 [EXPORT OPTIMIZATION] Analysis Result:', {
+      needsImageProcessing: this.exportAnalysis.needsImageProcessing,
+      canUseDirectCopy: this.exportAnalysis.canUseDirectCopy,
+      optimizationStrategy: this.exportAnalysis.optimizationStrategy,
+      reason: this.exportAnalysis.reason,
+      hasImageElements: this.exportAnalysis.hasImageElements,
+      hasTextElements: this.exportAnalysis.hasTextElements,
+      hasStickers: this.exportAnalysis.hasStickers,
+      hasEffects: this.exportAnalysis.hasEffects,
+      hasOverlappingVideos: this.exportAnalysis.hasOverlappingVideos
+    });
     debugLog("[CLIExportEngine] 📊 Export Analysis:", this.exportAnalysis);
 
     try {
@@ -542,17 +554,22 @@ export class CLIExportEngine extends ExportEngine {
       // Render frames to disk ONLY if image processing is needed
       try {
         if (this.exportAnalysis?.needsImageProcessing) {
+          console.log('🎨 [EXPORT OPTIMIZATION] Image processing required - RENDERING FRAMES');
+          console.log('📝 [EXPORT OPTIMIZATION] Reason:', this.exportAnalysis.reason);
           debugLog('[CLIExportEngine] 🎨 Image processing required - rendering frames to disk');
           debugLog(`[CLIExportEngine] Reason: ${this.exportAnalysis.reason}`);
           progressCallback?.(15, "Rendering frames...");
           await this.renderFramesToDisk(progressCallback);
         } else {
+          console.log('⚡ [EXPORT OPTIMIZATION] Skipping frame rendering - using direct video copy!');
+          console.log('📝 [EXPORT OPTIMIZATION] Strategy:', this.exportAnalysis?.optimizationStrategy);
           debugLog('[CLIExportEngine] ⚡ Skipping frame rendering - using direct video processing');
           debugLog(`[CLIExportEngine] Optimization: ${this.exportAnalysis?.optimizationStrategy}`);
           progressCallback?.(15, "Preparing direct video processing...");
           // Frame rendering skipped - will use direct FFmpeg video copy
         }
       } catch (error) {
+        console.error('❌ [EXPORT OPTIMIZATION] Error in frame rendering decision:', error);
         // Fallback: Force image pipeline if optimization fails
         debugWarn('[CLIExportEngine] ⚠️ Direct processing preparation failed, falling back to image pipeline:', error);
 
@@ -991,6 +1008,18 @@ export class CLIExportEngine extends ExportEngine {
       filterChain: combinedFilterChain || undefined,
       useDirectCopy: this.exportAnalysis?.canUseDirectCopy || false,
     };
+
+    console.log('🎬 [EXPORT OPTIMIZATION] Sending to FFmpeg with useDirectCopy =', exportOptions.useDirectCopy);
+    console.log('📦 [EXPORT OPTIMIZATION] Export options:', {
+      sessionId: exportOptions.sessionId,
+      useDirectCopy: exportOptions.useDirectCopy,
+      width: exportOptions.width,
+      height: exportOptions.height,
+      fps: exportOptions.fps,
+      duration: exportOptions.duration,
+      hasAudio: audioFiles.length > 0,
+      hasFilterChain: !!exportOptions.filterChain
+    });
 
     debugLog(
       "[CLI Export] Starting FFmpeg export with options:",

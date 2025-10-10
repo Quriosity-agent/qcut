@@ -239,6 +239,19 @@ export function setupFFmpegIPC(): void {
         useDirectCopy = false,
       } = options;
 
+      console.log('🎬 [FFmpeg Handler] Received export request with useDirectCopy =', useDirectCopy);
+      console.log('📦 [FFmpeg Handler] Export options:', {
+        sessionId,
+        useDirectCopy,
+        width,
+        height,
+        fps,
+        duration,
+        quality,
+        hasAudio: audioFiles.length > 0,
+        hasFilterChain: !!options.filterChain
+      });
+
       // Validate duration to prevent crashes or excessive resource usage
       const validatedDuration = Math.min(
         Math.max(duration || 0.1, 0.1),
@@ -276,13 +289,18 @@ export function setupFFmpegIPC(): void {
         // Verify input based on processing mode
         if (useDirectCopy) {
           // Direct copy mode: validate video sources from timeline
-          console.log('[FFmpeg Handler] 🚀 Direct copy mode - skipping frame validation');
+          console.log('🚀 [FFmpeg Handler] Direct copy mode detected - SKIPPING frame validation');
+          console.log('⚡ [FFmpeg Handler] Frames directory will not be checked:', frameDir);
           // TODO: Validate that video source files exist in timeline
           // For now, we'll build direct video FFmpeg command instead of frame-based
         } else {
+          console.log('🎨 [FFmpeg Handler] Frame-based mode - validating frames exist');
+          console.log('📁 [FFmpeg Handler] Looking for frames in:', frameDir);
+
           // Frame-based mode: verify frames exist
           if (!fs.existsSync(frameDir)) {
             const error: string = `Frame directory does not exist: ${frameDir}`;
+            console.error('❌ [FFmpeg Handler] Frame directory not found!');
             reject(new Error(error));
             return;
           }
@@ -291,8 +309,11 @@ export function setupFFmpegIPC(): void {
             .readdirSync(frameDir)
             .filter((f: string) => f.startsWith("frame-") && f.endsWith(".png"));
 
+          console.log(`📊 [FFmpeg Handler] Found ${frameFiles.length} frame files`);
+
           if (frameFiles.length === 0) {
             const error: string = `No frame files found in: ${frameDir}`;
+            console.error('❌ [FFmpeg Handler] No frames found! This will cause export to fail.');
             reject(new Error(error));
             return;
           }
