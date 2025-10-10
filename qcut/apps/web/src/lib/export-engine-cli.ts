@@ -520,16 +520,25 @@ export class CLIExportEngine extends ExportEngine {
       this.mediaItems
     );
 
-    // Override analysis if feature flag is set
-    if (skipOptimization) {
-      console.log('🔧 [EXPORT OPTIMIZATION] Feature flag enabled - forcing image pipeline');
-      debugLog('[CLIExportEngine] 🔧 Optimization disabled via feature flag');
+    // TEMPORARY: Force image pipeline until direct copy is fully implemented
+    // TODO: Remove this once buildFFmpegArgs implements direct video copy logic
+    const forceImagePipeline = true;
+
+    // Override analysis if feature flag is set OR if forcing image pipeline
+    if (skipOptimization || forceImagePipeline) {
+      if (forceImagePipeline) {
+        console.log('🔧 [EXPORT OPTIMIZATION] Direct copy not yet implemented - forcing image pipeline');
+        debugLog('[CLIExportEngine] 🔧 Direct copy feature incomplete, using image pipeline');
+      } else {
+        console.log('🔧 [EXPORT OPTIMIZATION] Feature flag enabled - forcing image pipeline');
+        debugLog('[CLIExportEngine] 🔧 Optimization disabled via feature flag');
+      }
       this.exportAnalysis = {
         ...this.exportAnalysis,
         needsImageProcessing: true,
         canUseDirectCopy: false,
         optimizationStrategy: 'image-pipeline',
-        reason: 'Optimization disabled by feature flag'
+        reason: forceImagePipeline ? 'Direct copy not yet implemented' : 'Optimization disabled by feature flag'
       };
     }
 
