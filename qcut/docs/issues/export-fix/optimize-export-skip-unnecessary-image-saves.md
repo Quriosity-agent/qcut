@@ -1091,6 +1091,9 @@ See Phase 4 and 5 for detailed test procedures.
 
 ### Final Validation 🚧
 - [x] Build successful (bun run build completed without errors)
+- [x] Export error diagnosed (see Debugging section below)
+- [x] Temporary fix applied (direct copy disabled)
+- [ ] Direct copy FFmpeg implementation (pending)
 - [ ] No existing features broken (manual testing required)
 - [ ] Performance improvement verified (manual testing required)
 - [ ] Documentation updated
@@ -1113,3 +1116,104 @@ See Phase 4 and 5 for detailed test procedures.
 - Track optimization usage rate
 - Monitor performance improvements
 - Detect edge cases where optimization fails
+
+## Debugging & Discovery (2025-01-10)
+
+### Problem Encountered
+After implementing Phases 1-4, export was failing with error:
+```
+Error: No frame files found in: C:\Users\zdhpe\AppData\Local\Temp\qcut-export\1760076795727\frames
+```
+
+### Root Cause Analysis
+
+**What Was Working:**
+- ✅ Timeline analysis correctly detected video-only exports
+- ✅ Frame rendering was successfully skipped (optimization working)
+- ✅ `useDirectCopy=true` flag properly passed to FFmpeg handler
+- ✅ Frame validation correctly skipped in FFmpeg handler
+
+**What Was Broken:**
+- ❌ `buildFFmpegArgs()` function still building frame-based FFmpeg commands
+- ❌ FFmpeg trying to read `frame-%04d.png` files that don't exist
+- ❌ Direct video copy logic NOT implemented yet (only placeholder TODO)
+
+**The Issue:**
+The optimization was **only half-implemented**:
+1. Frame rendering correctly skipped (saves time/CPU/disk)
+2. Frame validation correctly skipped (no error checking for missing frames)
+3. **BUT** FFmpeg command still tries to use frames as input → FAIL
+
+See `electron/ffmpeg-handler.ts:467-473`:
+```typescript
+if (useDirectCopy) {
+  // TODO: Implement direct video copy/concat logic
+  // This requires video source paths from timeline elements
+  // For now, fall back to frame-based processing
+  console.log('[buildFFmpegArgs] ⚠️ Direct copy requested but not yet implemented - using frame-based');
+  // Continue with frame-based processing below
+}
+```
+
+### Temporary Fix Applied
+
+**Commit:** `62d3ab6` - fix: temporarily disable direct copy optimization until fully implemented
+
+**Changes:** `apps/web/src/lib/export-engine-cli.ts:523-543`
+- Added `const forceImagePipeline = true;` to disable direct copy
+- Exports now work correctly (using frame rendering as before)
+- Preserves all existing functionality
+
+**Console Output:**
+```
+🔧 [EXPORT OPTIMIZATION] Direct copy not yet implemented - forcing image pipeline
+```
+
+### Next Steps for Full Implementation
+
+To complete the optimization, `buildFFmpegArgs()` needs to:
+
+1. **For single video:** Use FFmpeg copy mode
+   ```typescript
+   // Instead of: -i frame-%04d.png
+   // Use: -i /path/to/video.mp4 -c copy
+   ```
+
+2. **For sequential videos:** Use FFmpeg concat demuxer
+   ```typescript
+   // Create concat file listing videos
+   // Use: -f concat -safe 0 -i concat.txt -c copy
+   ```
+
+3. **Pass video source paths:** Modify `exportOptions` to include:
+   ```typescript
+   {
+     // ... existing options
+     videoSources: [{ path: '/path/to/video.mp4', startTime: 0, duration: 10 }],
+     useDirectCopy: true
+   }
+   ```
+
+### Enhanced Logging Added
+
+**Commits:**
+- `398ddb6` - debug: add comprehensive console logging to track export optimization flow
+- `e3d1220` - debug: add visible error logging for FFmpeg export failures
+
+**New Console Logs:**
+- Analysis results with all detection flags
+- Frame rendering decision (skip vs render)
+- FFmpeg options with `useDirectCopy` flag
+- Export success/failure messages with error details
+
+These logs helped diagnose the exact failure point and confirm the optimization was working up until FFmpeg execution.
+
+### Status
+
+- **Analysis & Detection:** ✅ Fully implemented and tested (8/8 tests passing)
+- **Conditional Frame Rendering:** ✅ Working correctly (frames skipped when appropriate)
+- **IPC Communication:** ✅ `useDirectCopy` flag properly propagated
+- **Frame Validation:** ✅ Correctly skipped in direct copy mode
+- **FFmpeg Direct Copy:** ❌ **NOT IMPLEMENTED** (placeholder only)
+
+**Current Behavior:** Exports work correctly using traditional frame-based pipeline. Direct copy optimization disabled until FFmpeg implementation is complete.
