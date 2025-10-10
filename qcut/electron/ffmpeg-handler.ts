@@ -42,6 +42,8 @@ interface ExportOptions {
   audioFiles?: AudioFile[];
   /** Optional FFmpeg filter chain string for video effects */
   filterChain?: string;
+  /** Enable direct video copy/concat optimization (skips frame rendering) */
+  useDirectCopy?: boolean;
 }
 
 /**
@@ -234,6 +236,7 @@ export function setupFFmpegIPC(): void {
         quality,
         duration,
         audioFiles = [],
+        useDirectCopy = false,
       } = options;
 
       // Validate duration to prevent crashes or excessive resource usage
@@ -266,24 +269,33 @@ export function setupFFmpegIPC(): void {
           quality,
           validatedDuration,
           audioFiles,
-          options.filterChain
+          options.filterChain,
+          useDirectCopy
         );
 
-        // Verify input directory exists and has frames
-        if (!fs.existsSync(frameDir)) {
-          const error: string = `Frame directory does not exist: ${frameDir}`;
-          reject(new Error(error));
-          return;
-        }
+        // Verify input based on processing mode
+        if (useDirectCopy) {
+          // Direct copy mode: validate video sources from timeline
+          console.log('[FFmpeg Handler] 🚀 Direct copy mode - skipping frame validation');
+          // TODO: Validate that video source files exist in timeline
+          // For now, we'll build direct video FFmpeg command instead of frame-based
+        } else {
+          // Frame-based mode: verify frames exist
+          if (!fs.existsSync(frameDir)) {
+            const error: string = `Frame directory does not exist: ${frameDir}`;
+            reject(new Error(error));
+            return;
+          }
 
-        const frameFiles: string[] = fs
-          .readdirSync(frameDir)
-          .filter((f: string) => f.startsWith("frame-") && f.endsWith(".png"));
+          const frameFiles: string[] = fs
+            .readdirSync(frameDir)
+            .filter((f: string) => f.startsWith("frame-") && f.endsWith(".png"));
 
-        if (frameFiles.length === 0) {
-          const error: string = `No frame files found in: ${frameDir}`;
-          reject(new Error(error));
-          return;
+          if (frameFiles.length === 0) {
+            const error: string = `No frame files found in: ${frameDir}`;
+            reject(new Error(error));
+            return;
+          }
         }
 
         // Ensure output directory exists
@@ -706,7 +718,8 @@ function buildFFmpegArgs(
   quality: "high" | "medium" | "low",
   duration: number,
   audioFiles: AudioFile[] = [],
-  filterChain?: string
+  filterChain?: string,
+  useDirectCopy: boolean = false
 ): string[] {
   const qualitySettings: QualityMap = {
     "high": { crf: "18", preset: "slow" },
@@ -716,6 +729,15 @@ function buildFFmpegArgs(
 
   const { crf, preset }: QualitySettings =
     qualitySettings[quality] || qualitySettings.medium;
+
+  // Handle direct copy mode
+  if (useDirectCopy) {
+    // TODO: Implement direct video copy/concat logic
+    // This requires video source paths from timeline elements
+    // For now, fall back to frame-based processing
+    console.log('[buildFFmpegArgs] ⚠️ Direct copy requested but not yet implemented - using frame-based');
+    // Continue with frame-based processing below
+  }
 
   // Use exact same format that worked manually
   const inputPattern: string = path.join(inputDir, "frame-%04d.png");

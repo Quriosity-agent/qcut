@@ -80,6 +80,7 @@ interface ExportOptions {
   duration: number;
   audioFiles?: AudioFile[];
   metadata?: Record<string, string>;
+  useDirectCopy?: boolean;
 }
 
 interface AudioFile {

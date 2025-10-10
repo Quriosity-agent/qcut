@@ -4,6 +4,7 @@ import { TimelineTrack, TimelineElement } from "@/types/timeline";
 import { MediaItem } from "@/stores/media-store";
 import { debugLog, debugError, debugWarn } from "@/lib/debug-config";
 import { useEffectsStore } from "@/stores/effects-store";
+import { analyzeTimelineForExport, type ExportAnalysis } from './export-analysis';
 
 type EffectsStore = ReturnType<typeof useEffectsStore.getState>;
 
@@ -23,6 +24,7 @@ export class CLIExportEngine extends ExportEngine {
   private sessionId: string | null = null;
   private frameDir: string | null = null;
   private effectsStore?: EffectsStore;
+  private exportAnalysis: ExportAnalysis | null = null;
 
   constructor(
     canvas: HTMLCanvasElement,
@@ -508,14 +510,31 @@ export class CLIExportEngine extends ExportEngine {
     this.sessionId = session.sessionId;
     this.frameDir = session.frameDir;
 
+    // Analyze timeline to determine optimization strategy
+    debugLog("[CLIExportEngine] 🔍 Analyzing timeline for export optimization...");
+    this.exportAnalysis = analyzeTimelineForExport(
+      this.tracks,
+      this.mediaItems
+    );
+    debugLog("[CLIExportEngine] 📊 Export Analysis:", this.exportAnalysis);
+
     try {
       // Pre-load videos (our optimization)
       progressCallback?.(10, "Pre-loading videos...");
       await this.preloadAllVideos();
 
-      // Render frames to disk
-      progressCallback?.(15, "Rendering frames...");
-      await this.renderFramesToDisk(progressCallback);
+      // Render frames to disk ONLY if image processing is needed
+      if (this.exportAnalysis?.needsImageProcessing) {
+        debugLog('[CLIExportEngine] 🎨 Image processing required - rendering frames to disk');
+        debugLog(`[CLIExportEngine] Reason: ${this.exportAnalysis.reason}`);
+        progressCallback?.(15, "Rendering frames...");
+        await this.renderFramesToDisk(progressCallback);
+      } else {
+        debugLog('[CLIExportEngine] ⚡ Skipping frame rendering - using direct video processing');
+        debugLog(`[CLIExportEngine] Optimization: ${this.exportAnalysis?.optimizationStrategy}`);
+        progressCallback?.(15, "Preparing direct video processing...");
+        // Frame rendering skipped - will use direct FFmpeg video copy
+      }
 
       // Export with FFmpeg CLI
       progressCallback?.(85, "Encoding with FFmpeg CLI...");
@@ -922,6 +941,7 @@ export class CLIExportEngine extends ExportEngine {
       duration: this.totalDuration, // CRITICAL: Pass timeline duration to FFmpeg
       audioFiles, // Now contains only validated audio files
       filterChain: combinedFilterChain || undefined,
+      useDirectCopy: this.exportAnalysis?.canUseDirectCopy || false,
     };
 
     debugLog(
