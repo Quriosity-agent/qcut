@@ -429,6 +429,7 @@ export class CLIExportEngine extends ExportEngine {
     trimStart: number;
     trimEnd: number;
   }> {
+    console.log('🎬 [VIDEO SOURCES] Starting extraction...');
     const videoSources: Array<{
       path: string;
       startTime: number;
@@ -448,8 +449,18 @@ export class CLIExportEngine extends ExportEngine {
         const mediaItem = this.mediaItems.find((item) => item.id === (element as any).mediaId);
         if (!mediaItem || mediaItem.type !== "video") return;
 
+        console.log('🎥 [VIDEO SOURCES] Found video element:', {
+          elementId: element.id,
+          mediaId: mediaItem.id,
+          hasLocalPath: !!mediaItem.localPath,
+          localPath: mediaItem.localPath,
+          hasUrl: !!mediaItem.url,
+          urlType: mediaItem.url?.substring(0, 20)
+        });
+
         // Check if we have a local path (required for direct copy)
         if (!mediaItem.localPath) {
+          console.log(`❌ [VIDEO SOURCES] Video ${mediaItem.id} has no localPath - cannot use direct copy`);
           debugWarn(`[CLIExportEngine] Video ${mediaItem.id} has no localPath, cannot use direct copy`);
           return;
         }
@@ -461,12 +472,15 @@ export class CLIExportEngine extends ExportEngine {
           trimStart: element.trimStart,
           trimEnd: element.trimEnd,
         });
+
+        console.log('✅ [VIDEO SOURCES] Added video source:', mediaItem.localPath);
       });
     });
 
     // Sort by start time
     videoSources.sort((a, b) => a.startTime - b.startTime);
 
+    console.log(`📦 [VIDEO SOURCES] Extraction complete: ${videoSources.length} sources`);
     debugLog(`[CLIExportEngine] Extracted ${videoSources.length} video sources for direct copy`);
     return videoSources;
   }

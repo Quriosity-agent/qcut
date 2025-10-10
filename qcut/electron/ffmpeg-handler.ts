@@ -258,10 +258,12 @@ export function setupFFmpegIPC(): void {
         useDirectCopy = false,
       } = options;
 
-      console.log('🎬 [FFmpeg Handler] Received export request with useDirectCopy =', useDirectCopy);
-      console.log('📦 [FFmpeg Handler] Export options:', {
+      console.log('🎬 [FFmpeg Handler] Export request received:', {
         sessionId,
         useDirectCopy,
+        hasVideoSources: !!options.videoSources,
+        videoSourceCount: options.videoSources?.length || 0,
+        videoSourcePaths: options.videoSources?.map(v => v.path) || [],
         width,
         height,
         fps,
@@ -308,11 +310,28 @@ export function setupFFmpegIPC(): void {
 
         // Verify input based on processing mode
         if (useDirectCopy) {
-          // Direct copy mode: validate video sources from timeline
-          console.log('🚀 [FFmpeg Handler] Direct copy mode detected - SKIPPING frame validation');
-          console.log('⚡ [FFmpeg Handler] Frames directory will not be checked:', frameDir);
-          // TODO: Validate that video source files exist in timeline
-          // For now, we'll build direct video FFmpeg command instead of frame-based
+          console.log('🚀 [FFmpeg Handler] Direct copy mode detected');
+
+          // Validate that video sources were provided
+          if (!options.videoSources || options.videoSources.length === 0) {
+            const error = 'Direct copy mode requested but no video sources provided. Frames were not rendered.';
+            console.error('❌ [FFmpeg Handler]', error);
+            reject(new Error(error));
+            return;
+          }
+
+          // Validate each video source file exists
+          for (const video of options.videoSources) {
+            if (!fs.existsSync(video.path)) {
+              const error = `Video source not found: ${video.path}`;
+              console.error('❌ [FFmpeg Handler]', error);
+              reject(new Error(error));
+              return;
+            }
+          }
+
+          console.log(`✅ [FFmpeg Handler] Direct copy validation PASSED`);
+          console.log(`📂 [FFmpeg Handler] Validated ${options.videoSources.length} video source(s)`);
         } else {
           console.log('🎨 [FFmpeg Handler] Frame-based mode - validating frames exist');
           console.log('📁 [FFmpeg Handler] Looking for frames in:', frameDir);
@@ -337,6 +356,8 @@ export function setupFFmpegIPC(): void {
             reject(new Error(error));
             return;
           }
+
+          console.log(`✅ [FFmpeg Handler] Frame validation PASSED`);
         }
 
         // Ensure output directory exists
@@ -763,6 +784,14 @@ function buildFFmpegArgs(
   useDirectCopy: boolean = false,
   videoSources?: VideoSource[]
 ): string[] {
+  console.log(`[buildFFmpegArgs] Building FFmpeg arguments:`, {
+    useDirectCopy,
+    hasVideoSources: !!videoSources,
+    videoSourceCount: videoSources?.length || 0,
+    quality,
+    duration
+  });
+
   const qualitySettings: QualityMap = {
     "high": { crf: "18", preset: "slow" },
     "medium": { crf: "23", preset: "fast" },
@@ -907,12 +936,16 @@ function buildFFmpegArgs(
     return args;
   }
 
-  // Fall back to frame-based processing if direct copy not available
+  // If we reach here with useDirectCopy=true, something is wrong
   if (useDirectCopy) {
-    console.log('[buildFFmpegArgs] ⚠️ Direct copy requested but videoSources not provided - using frame-based');
+    throw new Error(
+      'Direct copy requested but no video sources available. ' +
+      'This indicates a configuration error - frames were not rendered and video sources are unavailable.'
+    );
   }
 
-  // Use exact same format that worked manually
+  // Frame-based processing (normal path)
+  console.log('[buildFFmpegArgs] Using frame-based processing');
   const inputPattern: string = path.join(inputDir, "frame-%04d.png");
 
   const args: string[] = [

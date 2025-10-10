@@ -35,6 +35,8 @@ export function analyzeTimelineForExport(
   let hasEffects = false;
   let videoElementCount = 0;
   const videoTimeRanges: Array<{ start: number; end: number }> = [];
+  const videoElements: MediaElement[] = [];
+  let allVideosHaveLocalPath = true;
 
   // Iterate through all tracks and elements
   for (const track of tracks) {
@@ -73,6 +75,12 @@ export function analyzeTimelineForExport(
           const endTime = element.startTime +
             (element.duration - element.trimStart - element.trimEnd);
           videoTimeRanges.push({ start: startTime, end: endTime });
+          videoElements.push(mediaElement);
+
+          // Check if this video has a localPath (required for direct copy)
+          if (!mediaItem.localPath) {
+            allVideosHaveLocalPath = false;
+          }
         }
 
         // Check for effects on this element
@@ -103,13 +111,15 @@ export function analyzeTimelineForExport(
   // - Single video source with no processing needed, OR
   // - Multiple video sources without overlaps (sequential concatenation) and no processing
   // - No image elements, text overlays, stickers, or effects
+  // - All videos have localPath (filesystem access required for FFmpeg)
   const canUseDirectCopy =
     videoElementCount >= 1 &&
     !hasOverlappingVideos &&
     !hasImageElements &&
     !hasTextElements &&
     !hasStickers &&
-    !hasEffects;
+    !hasEffects &&
+    allVideosHaveLocalPath;
 
   // Determine optimization strategy
   const optimizationStrategy: 'image-pipeline' | 'direct-copy' =
@@ -130,7 +140,37 @@ export function analyzeTimelineForExport(
     if (hasStickers) reasons.push('stickers');
     if (hasEffects) reasons.push('effects');
     if (hasOverlappingVideos) reasons.push('overlapping videos');
+    if (!allVideosHaveLocalPath) reasons.push('videos without filesystem paths');
     reason = `Image processing required due to: ${reasons.join(', ')}`;
+  }
+
+  // Log localPath validation for debugging
+  console.log('🔍 [EXPORT ANALYSIS] Video localPath validation:', {
+    totalVideos: videoElementCount,
+    videosWithLocalPath: videoElements.filter(el => {
+      const media = mediaItemsMap.get(el.mediaId);
+      return media?.localPath;
+    }).length,
+    allHaveLocalPath: allVideosHaveLocalPath
+  });
+
+  if (!allVideosHaveLocalPath && videoElementCount > 0) {
+    console.log('⚠️ [EXPORT ANALYSIS] Some videos lack localPath - direct copy disabled');
+    const videosWithoutLocalPath = videoElements
+      .filter(el => {
+        const media = mediaItemsMap.get(el.mediaId);
+        return !media?.localPath;
+      })
+      .map(el => {
+        const media = mediaItemsMap.get(el.mediaId);
+        return {
+          elementId: el.id,
+          mediaId: media?.id,
+          hasUrl: !!media?.url,
+          urlType: media?.url?.substring(0, 20)
+        };
+      });
+    console.log('📝 [EXPORT ANALYSIS] Videos without localPath:', videosWithoutLocalPath);
   }
 
   return {
