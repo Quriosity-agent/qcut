@@ -22,6 +22,23 @@ interface AudioFile {
 }
 
 /**
+ * Video source configuration for direct copy optimization
+ * Contains file path and timing information for video elements
+ */
+interface VideoSource {
+  /** File system path to the video file */
+  path: string;
+  /** Start time in the final timeline (seconds) */
+  startTime: number;
+  /** Duration to use from this video (seconds) */
+  duration: number;
+  /** Trim start time within the source video (seconds) */
+  trimStart?: number;
+  /** Trim end time within the source video (seconds) */
+  trimEnd?: number;
+}
+
+/**
  * Configuration options for video export operations
  * Contains all parameters needed for FFmpeg video generation
  */
@@ -44,6 +61,8 @@ interface ExportOptions {
   filterChain?: string;
   /** Enable direct video copy/concat optimization (skips frame rendering) */
   useDirectCopy?: boolean;
+  /** Video sources for direct copy optimization (when useDirectCopy=true) */
+  videoSources?: VideoSource[];
 }
 
 /**
@@ -283,7 +302,8 @@ export function setupFFmpegIPC(): void {
           validatedDuration,
           audioFiles,
           options.filterChain,
-          useDirectCopy
+          useDirectCopy,
+          options.videoSources
         );
 
         // Verify input based on processing mode
@@ -740,7 +760,8 @@ function buildFFmpegArgs(
   duration: number,
   audioFiles: AudioFile[] = [],
   filterChain?: string,
-  useDirectCopy: boolean = false
+  useDirectCopy: boolean = false,
+  videoSources?: VideoSource[]
 ): string[] {
   const qualitySettings: QualityMap = {
     "high": { crf: "18", preset: "slow" },
@@ -752,12 +773,143 @@ function buildFFmpegArgs(
     qualitySettings[quality] || qualitySettings.medium;
 
   // Handle direct copy mode
+  if (useDirectCopy && videoSources && videoSources.length > 0) {
+    console.log(`[buildFFmpegArgs] ✅ Using direct copy optimization with ${videoSources.length} video source(s)`);
+
+    const args: string[] = ["-y"]; // Overwrite output
+
+    // Single video: use direct copy with trim
+    if (videoSources.length === 1) {
+      const video = videoSources[0];
+
+      // Validate video file exists
+      if (!fs.existsSync(video.path)) {
+        console.error(`[buildFFmpegArgs] ❌ Video source not found: ${video.path}`);
+        throw new Error(`Video source not found: ${video.path}`);
+      }
+
+      console.log(`[buildFFmpegArgs] Single video direct copy: ${video.path}`);
+
+      // Apply trim if specified
+      if (video.trimStart && video.trimStart > 0) {
+        args.push("-ss", video.trimStart.toString());
+      }
+
+      args.push("-i", video.path);
+
+      // Set duration if specified
+      if (video.duration) {
+        args.push("-t", video.duration.toString());
+      }
+
+      // Add audio inputs if provided
+      if (audioFiles && audioFiles.length > 0) {
+        audioFiles.forEach((audioFile: AudioFile) => {
+          if (!fs.existsSync(audioFile.path)) {
+            throw new Error(`Audio file not found: ${audioFile.path}`);
+          }
+          args.push("-i", audioFile.path);
+        });
+
+        // Build audio mixing filter
+        if (audioFiles.length === 1) {
+          const audioFile = audioFiles[0];
+          if (audioFile.startTime > 0) {
+            args.push(
+              "-filter_complex",
+              `[1:a]adelay=${Math.round(audioFile.startTime * 1000)}|${Math.round(audioFile.startTime * 1000)}[audio]`,
+              "-map", "0:v",
+              "-map", "[audio]"
+            );
+          } else {
+            args.push("-map", "0:v", "-map", "1:a");
+          }
+        } else {
+          // Multiple audio files
+          const inputMaps: string[] = audioFiles.map((_, i) => `[${i + 1}:a]`);
+          const mixFilter = `${inputMaps.join("")}amix=inputs=${audioFiles.length}:duration=longest[audio]`;
+          args.push(
+            "-filter_complex",
+            mixFilter,
+            "-map", "0:v",
+            "-map", "[audio]"
+          );
+        }
+        args.push("-c:a", "aac", "-b:a", "128k");
+      }
+
+      // Use direct stream copy for video
+      args.push("-c:v", "copy");
+
+    } else {
+      // Multiple videos: use concat demuxer
+      console.log(`[buildFFmpegArgs] Multiple video concat: ${videoSources.length} sources`);
+
+      // Create concat file content
+      const concatFileContent = videoSources.map(video => {
+        // Validate each video file exists
+        if (!fs.existsSync(video.path)) {
+          console.error(`[buildFFmpegArgs] ❌ Video source not found: ${video.path}`);
+          throw new Error(`Video source not found: ${video.path}`);
+        }
+
+        // Escape single quotes in file path for concat file format
+        const escapedPath = video.path.replace(/'/g, "'\\''");
+        return `file '${escapedPath}'`;
+      }).join('\n');
+
+      // Write concat file to temp directory
+      const concatFilePath = path.join(inputDir, 'concat-list.txt');
+      fs.writeFileSync(concatFilePath, concatFileContent);
+      console.log(`[buildFFmpegArgs] Created concat file: ${concatFilePath}`);
+
+      // Use concat demuxer
+      args.push(
+        "-f", "concat",
+        "-safe", "0",
+        "-i", concatFilePath
+      );
+
+      // Add audio inputs if provided
+      if (audioFiles && audioFiles.length > 0) {
+        audioFiles.forEach((audioFile: AudioFile) => {
+          if (!fs.existsSync(audioFile.path)) {
+            throw new Error(`Audio file not found: ${audioFile.path}`);
+          }
+          args.push("-i", audioFile.path);
+        });
+
+        // Build audio mixing filter
+        const audioInputOffset = 1; // Concat is input 0, audio starts at 1
+        const inputMaps: string[] = audioFiles.map((_, i) => `[${i + audioInputOffset}:a]`);
+        const mixFilter = `${inputMaps.join("")}amix=inputs=${audioFiles.length}:duration=longest[audio]`;
+
+        args.push(
+          "-filter_complex",
+          mixFilter,
+          "-map", "0:v",
+          "-map", "[audio]"
+        );
+        args.push("-c:a", "aac", "-b:a", "128k");
+      }
+
+      // Use direct stream copy for video
+      args.push("-c:v", "copy");
+    }
+
+    // Add common output settings
+    args.push(
+      "-movflags", "+faststart",
+      outputFile
+    );
+
+    console.log(`[buildFFmpegArgs] ✅ Direct copy command built with ${args.length} arguments`);
+    return args;
+  }
+
+  // Fall back to frame-based processing if direct copy not available
   if (useDirectCopy) {
-    // TODO: Implement direct video copy/concat logic
-    // This requires video source paths from timeline elements
-    // For now, fall back to frame-based processing
-    console.log('[buildFFmpegArgs] ⚠️ Direct copy requested but not yet implemented - using frame-based');
-    // Continue with frame-based processing below
+    console.log('[buildFFmpegArgs] ⚠️ Direct copy requested but videoSources not provided - using frame-based');
   }
 
   // Use exact same format that worked manually

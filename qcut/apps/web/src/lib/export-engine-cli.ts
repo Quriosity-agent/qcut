@@ -419,6 +419,58 @@ export class CLIExportEngine extends ExportEngine {
     return activeElements;
   }
 
+  /**
+   * Extract video source paths from timeline for direct copy optimization
+   */
+  private extractVideoSources(): Array<{
+    path: string;
+    startTime: number;
+    duration: number;
+    trimStart: number;
+    trimEnd: number;
+  }> {
+    const videoSources: Array<{
+      path: string;
+      startTime: number;
+      duration: number;
+      trimStart: number;
+      trimEnd: number;
+    }> = [];
+
+    // Iterate through all tracks to find video elements
+    this.tracks.forEach((track) => {
+      if (track.type !== "media") return;
+
+      track.elements.forEach((element) => {
+        if (element.hidden) return;
+        if (element.type !== "media") return;
+
+        const mediaItem = this.mediaItems.find((item) => item.id === (element as any).mediaId);
+        if (!mediaItem || mediaItem.type !== "video") return;
+
+        // Check if we have a local path (required for direct copy)
+        if (!mediaItem.localPath) {
+          debugWarn(`[CLIExportEngine] Video ${mediaItem.id} has no localPath, cannot use direct copy`);
+          return;
+        }
+
+        videoSources.push({
+          path: mediaItem.localPath,
+          startTime: element.startTime,
+          duration: element.duration,
+          trimStart: element.trimStart,
+          trimEnd: element.trimEnd,
+        });
+      });
+    });
+
+    // Sort by start time
+    videoSources.sort((a, b) => a.startTime - b.startTime);
+
+    debugLog(`[CLIExportEngine] Extracted ${videoSources.length} video sources for direct copy`);
+    return videoSources;
+  }
+
   private async prepareAudioFiles(): Promise<
     Array<{ path: string; startTime: number; volume: number }>
   > {
@@ -520,9 +572,8 @@ export class CLIExportEngine extends ExportEngine {
       this.mediaItems
     );
 
-    // TEMPORARY: Force image pipeline until direct copy is fully implemented
-    // TODO: Remove this once buildFFmpegArgs implements direct video copy logic
-    const forceImagePipeline = true;
+    // Direct copy optimization now fully implemented
+    const forceImagePipeline = false;
 
     // Override analysis if feature flag is set OR if forcing image pipeline
     if (skipOptimization || forceImagePipeline) {
@@ -1002,6 +1053,11 @@ export class CLIExportEngine extends ExportEngine {
       ","
     );
 
+    // Extract video sources for direct copy optimization
+    const videoSources = this.exportAnalysis?.canUseDirectCopy
+      ? this.extractVideoSources()
+      : [];
+
     // Build options AFTER validation so the filtered list is sent
     if (!this.sessionId) {
       throw new Error("No active session ID");
@@ -1016,6 +1072,7 @@ export class CLIExportEngine extends ExportEngine {
       audioFiles, // Now contains only validated audio files
       filterChain: combinedFilterChain || undefined,
       useDirectCopy: this.exportAnalysis?.canUseDirectCopy || false,
+      videoSources: videoSources.length > 0 ? videoSources : undefined,
     };
 
     console.log('🎬 [EXPORT OPTIMIZATION] Sending to FFmpeg with useDirectCopy =', exportOptions.useDirectCopy);
