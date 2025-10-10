@@ -412,11 +412,64 @@ export class CLIExportEngine extends ExportEngine {
 
 **References:** `apps/web/src/lib/export-engine-cli.ts:606-637`
 
+**⚠️ IMPORTANT:** Skipping frame rendering requires updating FFmpeg handler to support direct video processing (see Task 2.4).
+
 ---
 
-#### Task 2.3: Update FFmpeg CLI Export Logic (< 20 min)
+#### Task 2.3: Update TypeScript Interfaces (< 10 min)
+**Files:** `electron/preload.ts` and `electron/ffmpeg-handler.ts`
+**Description:** Add `useDirectCopy` property to ExportOptions interfaces for type safety
+
+**Changes:**
+
+**File 1: `electron/preload.ts`** - Update interface at line 74:
+```typescript
+interface ExportOptions {
+  sessionId: string;
+  outputPath: string;
+  width: number;
+  height: number;
+  fps: number;
+  duration: number;
+  audioFiles?: AudioFile[];
+  metadata?: Record<string, string>;
+  useDirectCopy?: boolean; // ADD THIS LINE
+}
+```
+
+**File 2: `electron/ffmpeg-handler.ts`** - Update interface at line 28:
+```typescript
+interface ExportOptions {
+  /** Unique identifier for the export session */
+  sessionId: string;
+  /** Output video width in pixels */
+  width: number;
+  /** Output video height in pixels */
+  height: number;
+  /** Target frames per second */
+  fps: number;
+  /** Quality preset affecting encoding parameters */
+  quality: "high" | "medium" | "low";
+  /** Duration of the video in seconds (replaces hardcoded 10s limit) */
+  duration: number;
+  /** Optional array of audio files to mix into the video */
+  audioFiles?: AudioFile[];
+  /** Optional FFmpeg filter chain string for video effects */
+  filterChain?: string;
+  /** Enable direct video copy/concat optimization (skips frame rendering) */
+  useDirectCopy?: boolean; // ADD THIS LINE
+}
+```
+
+**References:**
+- `electron/preload.ts:74-83` - ExportOptions interface for renderer process
+- `electron/ffmpeg-handler.ts:28-45` - ExportOptions interface for main process
+
+---
+
+#### Task 2.4: Pass useDirectCopy Flag to FFmpeg Handler (< 10 min)
 **File:** `apps/web/src/lib/export-engine-cli.ts`
-**Description:** Modify `exportWithCLI()` to handle both image-based and direct video processing
+**Description:** Add useDirectCopy flag to export options passed to FFmpeg handler
 
 **Changes:**
 
@@ -435,11 +488,141 @@ export class CLIExportEngine extends ExportEngine {
     };
 ```
 
-**Note:** The actual FFmpeg command modification will happen in `electron/ffmpeg-handler.ts` where it checks the `useDirectCopy` flag and builds appropriate FFmpeg commands (either frame-based or direct copy).
+**References:** `apps/web/src/lib/export-engine-cli.ts:916-925`
+
+---
+
+#### Task 2.5: Modify FFmpeg Handler for Direct Video Processing (< 20 min)
+**File:** `electron/ffmpeg-handler.ts`
+**Description:** Update FFmpeg handler to skip frame validation and use direct video processing when `useDirectCopy` is true
+
+**Changes:**
+
+**Step 1:** Extract `useDirectCopy` from options (after line 236):
+```typescript
+      const {
+        sessionId,
+        width,
+        height,
+        fps,
+        quality,
+        duration,
+        audioFiles = [],
+        useDirectCopy = false, // ADD THIS LINE
+      } = options;
+```
+
+**Step 2:** REPLACE the frame validation block (lines 272-287) with conditional logic:
+
+**REPLACE THIS:**
+```typescript
+        // Verify input directory exists and has frames
+        if (!fs.existsSync(frameDir)) {
+          const error: string = `Frame directory does not exist: ${frameDir}`;
+          reject(new Error(error));
+          return;
+        }
+
+        const frameFiles: string[] = fs
+          .readdirSync(frameDir)
+          .filter((f: string) => f.startsWith("frame-") && f.endsWith(".png"));
+
+        if (frameFiles.length === 0) {
+          const error: string = `No frame files found in: ${frameDir}`;
+          reject(new Error(error));
+          return;
+        }
+```
+
+**WITH:**
+```typescript
+        // Verify input based on processing mode
+        if (useDirectCopy) {
+          // Direct copy mode: validate video sources from timeline
+          debugLog('[FFmpeg Handler] 🚀 Direct copy mode - skipping frame validation');
+          // TODO: Validate that video source files exist in timeline
+          // For now, we'll build direct video FFmpeg command instead of frame-based
+        } else {
+          // Frame-based mode: verify frames exist
+          if (!fs.existsSync(frameDir)) {
+            const error: string = `Frame directory does not exist: ${frameDir}`;
+            reject(new Error(error));
+            return;
+          }
+
+          const frameFiles: string[] = fs
+            .readdirSync(frameDir)
+            .filter((f: string) => f.startsWith("frame-") && f.endsWith(".png"));
+
+          if (frameFiles.length === 0) {
+            const error: string = `No frame files found in: ${frameDir}`;
+            reject(new Error(error));
+            return;
+          }
+        }
+```
+
+**Step 3:** Update buildFFmpegArgs to accept useDirectCopy (line 260):
+```typescript
+        const args: string[] = buildFFmpegArgs(
+          frameDir,
+          outputFile,
+          width,
+          height,
+          fps,
+          quality,
+          validatedDuration,
+          audioFiles,
+          options.filterChain,
+          useDirectCopy // ADD THIS PARAMETER
+        );
+```
+
+**Step 4:** Update buildFFmpegArgs function signature (line 431):
+```typescript
+function buildFFmpegArgs(
+  inputDir: string,
+  outputFile: string,
+  width: number,
+  height: number,
+  fps: number,
+  quality: "high" | "medium" | "low",
+  duration: number,
+  audioFiles: AudioFile[] = [],
+  filterChain?: string,
+  useDirectCopy: boolean = false // ADD THIS PARAMETER
+): string[] {
+```
+
+**Step 5:** Add conditional FFmpeg command building inside buildFFmpegArgs (after line 452):
+```typescript
+  const qualitySettings: QualityMap = {
+    "high": { crf: "18", preset: "slow" },
+    "medium": { crf: "23", preset: "fast" },
+    "low": { crf: "28", preset: "veryfast" },
+  };
+
+  const { crf, preset }: QualitySettings =
+    qualitySettings[quality] || qualitySettings.medium;
+
+  // ADD THIS BLOCK: Handle direct copy mode
+  if (useDirectCopy) {
+    // TODO: Implement direct video copy/concat logic
+    // This requires video source paths from timeline elements
+    // For now, fall back to frame-based processing
+    debugLog('[buildFFmpegArgs] ⚠️ Direct copy requested but not yet implemented - using frame-based');
+    // Continue with frame-based processing below
+  }
+
+  // Use exact same format that worked manually
+  const inputPattern: string = path.join(inputDir, "frame-%04d.png");
+```
+
+**Note:** Task 2.5 provides the infrastructure for direct video processing. Full implementation requires passing video source paths from timeline (future enhancement in Phase 5).
 
 **References:**
-- `apps/web/src/lib/export-engine-cli.ts:916-925` - Export options building
-- `electron/ffmpeg-handler.ts` - FFmpeg IPC handlers (implementation not shown here)
+- `electron/ffmpeg-handler.ts:223-287` - Export video CLI handler
+- `electron/ffmpeg-handler.ts:431-570` - buildFFmpegArgs function
 
 ---
 
