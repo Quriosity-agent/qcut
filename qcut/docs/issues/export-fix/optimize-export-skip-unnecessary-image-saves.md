@@ -123,7 +123,7 @@ Modify the export engine to intelligently determine when image saves are necessa
 ```typescript
 // Location: apps/web/src/lib/export-analysis.ts
 
-import type { TimelineTrack, TimelineElement, MediaElement } from '@/types/timeline';
+import type { TimelineTrack, MediaElement } from '@/types/timeline';
 import type { MediaItem } from '@/stores/media-store-types';
 
 export interface ExportAnalysis {
@@ -143,13 +143,11 @@ export interface ExportAnalysis {
  * Analyzes timeline to determine if image processing is required for export
  * @param tracks - Timeline tracks containing all elements
  * @param mediaItems - All media items in the project
- * @param totalDuration - Total duration of the timeline
  * @returns Analysis result with optimization recommendations
  */
 export function analyzeTimelineForExport(
   tracks: TimelineTrack[],
-  mediaItems: MediaItem[],
-  totalDuration: number
+  mediaItems: MediaItem[]
 ): ExportAnalysis {
   // Create a map for fast media item lookup
   const mediaItemsMap = new Map(mediaItems.map(item => [item.id, item]));
@@ -224,16 +222,17 @@ export function analyzeTimelineForExport(
     hasEffects ||
     hasOverlappingVideos;
 
-  // Can only use direct copy if:
-  // - Single video source
-  // - No image elements
-  // - No text overlays
-  // - No stickers
-  // - No effects
-  // - No overlapping videos
+  // Can use direct copy/concat if:
+  // - Single video source with no processing needed, OR
+  // - Multiple video sources without overlaps (sequential concatenation) and no processing
+  // - No image elements, text overlays, stickers, or effects
   const canUseDirectCopy =
-    videoElementCount === 1 &&
-    !needsImageProcessing;
+    videoElementCount >= 1 &&
+    !hasOverlappingVideos &&
+    !hasImageElements &&
+    !hasTextElements &&
+    !hasStickers &&
+    !hasEffects;
 
   // Determine optimization strategy
   const optimizationStrategy: 'image-pipeline' | 'direct-copy' =
@@ -242,7 +241,11 @@ export function analyzeTimelineForExport(
   // Generate reason for strategy choice
   let reason = '';
   if (canUseDirectCopy) {
-    reason = 'Single video with no overlays, effects, or compositing - using direct copy';
+    if (videoElementCount === 1) {
+      reason = 'Single video with no overlays, effects, or compositing - using direct copy';
+    } else {
+      reason = 'Sequential videos without overlaps - using FFmpeg concat demuxer';
+    }
   } else {
     const reasons: string[] = [];
     if (hasImageElements) reasons.push('image elements');
@@ -250,9 +253,6 @@ export function analyzeTimelineForExport(
     if (hasStickers) reasons.push('stickers');
     if (hasEffects) reasons.push('effects');
     if (hasOverlappingVideos) reasons.push('overlapping videos');
-    if (reasons.length === 0 && hasMultipleVideoSources) {
-      reasons.push('multiple video sources');
-    }
     reason = `Image processing required due to: ${reasons.join(', ')}`;
   }
 
@@ -354,8 +354,7 @@ export class CLIExportEngine extends ExportEngine {
     debugLog("[CLIExportEngine] 🔍 Analyzing timeline for export optimization...");
     this.exportAnalysis = analyzeTimelineForExport(
       this.tracks,
-      this.mediaItems,
-      this.totalDuration
+      this.mediaItems
     );
     debugLog("[CLIExportEngine] 📊 Export Analysis:", this.exportAnalysis);
 
@@ -467,8 +466,7 @@ export class CLIExportEngine extends ExportEngine {
     debugLog("[CLIExportEngine] 🔍 Analyzing timeline for export optimization...");
     this.exportAnalysis = analyzeTimelineForExport(
       this.tracks,
-      this.mediaItems,
-      this.totalDuration
+      this.mediaItems
     );
 
     // Override analysis if feature flag is set
@@ -627,7 +625,7 @@ describe('Export Analysis', () => {
 
     const mediaItems: MediaItem[] = [createMediaItem('video-1', 'video')];
 
-    const result = analyzeTimelineForExport(tracks, mediaItems, 10);
+    const result = analyzeTimelineForExport(tracks, mediaItems);
 
     expect(result.needsImageProcessing).toBe(false);
     expect(result.canUseDirectCopy).toBe(true);
@@ -654,7 +652,7 @@ describe('Export Analysis', () => {
       createMediaItem('image-1', 'image'),
     ];
 
-    const result = analyzeTimelineForExport(tracks, mediaItems, 10);
+    const result = analyzeTimelineForExport(tracks, mediaItems);
 
     expect(result.needsImageProcessing).toBe(true);
     expect(result.canUseDirectCopy).toBe(false);
@@ -680,7 +678,7 @@ describe('Export Analysis', () => {
 
     const mediaItems: MediaItem[] = [createMediaItem('video-1', 'video')];
 
-    const result = analyzeTimelineForExport(tracks, mediaItems, 10);
+    const result = analyzeTimelineForExport(tracks, mediaItems);
 
     expect(result.needsImageProcessing).toBe(true);
     expect(result.hasTextElements).toBe(true);
@@ -705,7 +703,7 @@ describe('Export Analysis', () => {
 
     const mediaItems: MediaItem[] = [createMediaItem('video-1', 'video')];
 
-    const result = analyzeTimelineForExport(tracks, mediaItems, 10);
+    const result = analyzeTimelineForExport(tracks, mediaItems);
 
     expect(result.needsImageProcessing).toBe(true);
     expect(result.hasStickers).toBe(true);
@@ -722,7 +720,7 @@ describe('Export Analysis', () => {
 
     const mediaItems: MediaItem[] = [createMediaItem('video-1', 'video')];
 
-    const result = analyzeTimelineForExport(tracks, mediaItems, 10);
+    const result = analyzeTimelineForExport(tracks, mediaItems);
 
     expect(result.needsImageProcessing).toBe(true);
     expect(result.hasEffects).toBe(true);
@@ -745,7 +743,7 @@ describe('Export Analysis', () => {
       createMediaItem('video-2', 'video'),
     ];
 
-    const result = analyzeTimelineForExport(tracks, mediaItems, 10);
+    const result = analyzeTimelineForExport(tracks, mediaItems);
 
     expect(result.needsImageProcessing).toBe(true);
     expect(result.hasOverlappingVideos).toBe(true);
@@ -768,7 +766,7 @@ describe('Export Analysis', () => {
       createMediaItem('video-2', 'video'),
     ];
 
-    const result = analyzeTimelineForExport(tracks, mediaItems, 10);
+    const result = analyzeTimelineForExport(tracks, mediaItems);
 
     expect(result.hasOverlappingVideos).toBe(false);
     // Multiple video sources, so still needs processing for concatenation
@@ -791,7 +789,7 @@ describe('Export Analysis', () => {
       createMediaItem('image-1', 'image'),
     ];
 
-    const result = analyzeTimelineForExport(tracks, mediaItems, 10);
+    const result = analyzeTimelineForExport(tracks, mediaItems);
 
     expect(result.hasImageElements).toBe(false);
     expect(result.canUseDirectCopy).toBe(true);
