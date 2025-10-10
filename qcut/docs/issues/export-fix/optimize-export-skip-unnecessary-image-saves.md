@@ -700,14 +700,28 @@ function buildFFmpegArgs(
         // Fallback: Force image pipeline if optimization fails
         debugWarn('[CLIExportEngine] ⚠️ Direct processing preparation failed, falling back to image pipeline:', error);
 
+        // Safe default for exportAnalysis if it's null
+        const analysisBase: ExportAnalysis = this.exportAnalysis || {
+          needsImageProcessing: false,
+          hasImageElements: false,
+          hasTextElements: false,
+          hasStickers: false,
+          hasEffects: false,
+          hasMultipleVideoSources: false,
+          hasOverlappingVideos: false,
+          canUseDirectCopy: false,
+          optimizationStrategy: 'image-pipeline',
+          reason: 'Initial analysis failed'
+        };
+
         // Force image processing
         this.exportAnalysis = {
-          ...this.exportAnalysis,
+          ...analysisBase,
           needsImageProcessing: true,
           canUseDirectCopy: false,
           optimizationStrategy: 'image-pipeline',
           reason: 'Fallback due to optimization error'
-        } as ExportAnalysis;
+        };
 
         // Render frames as fallback
         progressCallback?.(15, "Rendering frames (fallback)...");
