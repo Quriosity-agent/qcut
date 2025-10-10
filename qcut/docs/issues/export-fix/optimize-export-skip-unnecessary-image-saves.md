@@ -53,6 +53,30 @@ Currently, the export engine saves all images to disk even when they are not nee
 | `apps/web/src/stores/effects-store.ts` | Effects management | `getFFmpegFilterChain()` |
 | `apps/web/src/stores/stickers-overlay-store.ts` | Sticker overlays | `getVisibleStickersAtTime()` |
 
+### Related Files by Category
+
+#### Core Export Files
+- `apps/web/src/lib/export-engine-factory.ts` - Export engine selection
+- `apps/web/src/lib/export-engine-cli.ts` - CLI export (Electron, primary)
+- `apps/web/src/lib/export-engine.ts` - Base export engine
+- `apps/web/src/lib/export-engine-optimized.ts` - Browser optimized export
+- `electron/ffmpeg-handler.ts` - FFmpeg IPC handlers
+
+#### Type Definitions
+- `apps/web/src/types/timeline.ts:5` - TrackType definition
+- `apps/web/src/types/timeline.ts:115-119` - TimelineElement types
+- `apps/web/src/types/export.ts` - ExportSettings types
+
+#### State Management
+- `apps/web/src/stores/timeline-store.ts` - Timeline state
+- `apps/web/src/stores/media-store.ts` - Media items
+- `apps/web/src/stores/effects-store.ts` - Effects management
+- `apps/web/src/stores/stickers-overlay-store.ts` - Sticker overlays
+
+#### Utilities
+- `apps/web/src/lib/ffmpeg-utils.ts` - FFmpeg utilities
+- `apps/web/src/lib/debug-config.ts` - Debug logging
+
 ## Proposed Solution
 
 Modify the export engine to intelligently determine when image saves are necessary by analyzing timeline content BEFORE rendering begins.
@@ -590,30 +614,6 @@ See Phase 5 for detailed test procedures including:
 | Performance metrics | 5.10 | 40-60% improvement for simple exports |
 | Feature flag | 5.11 | Disables optimization |
 | Error fallback | 5.12 | Graceful degradation |
-
-## Related Files & References
-
-### Core Export Files
-- `apps/web/src/lib/export-engine-factory.ts` - Export engine selection
-- `apps/web/src/lib/export-engine-cli.ts` - CLI export (Electron, primary)
-- `apps/web/src/lib/export-engine.ts` - Base export engine
-- `apps/web/src/lib/export-engine-optimized.ts` - Browser optimized export
-- `electron/ffmpeg-handler.ts` - FFmpeg IPC handlers
-
-### Type Definitions
-- `apps/web/src/types/timeline.ts:5` - TrackType definition
-- `apps/web/src/types/timeline.ts:115-119` - TimelineElement types
-- `apps/web/src/types/export.ts` - ExportSettings types
-
-### State Management
-- `apps/web/src/stores/timeline-store.ts` - Timeline state
-- `apps/web/src/stores/media-store.ts` - Media items
-- `apps/web/src/stores/effects-store.ts` - Effects management
-- `apps/web/src/stores/stickers-overlay-store.ts` - Sticker overlays
-
-### Utilities
-- `apps/web/src/lib/ffmpeg-utils.ts` - FFmpeg utilities
-- `apps/web/src/lib/debug-config.ts` - Debug logging
 
 ## Priority
 
