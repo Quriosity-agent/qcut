@@ -1032,9 +1032,18 @@ export class CLIExportEngine extends ExportEngine {
     try {
       const result =
         await window.electronAPI.ffmpeg.exportVideoCLI(exportOptions);
+      console.log('✅ [EXPORT OPTIMIZATION] FFmpeg export completed successfully!');
       debugLog("[CLI Export] FFmpeg export completed successfully:", result);
       return result.outputFile;
     } catch (error) {
+      console.error('❌ [EXPORT OPTIMIZATION] FFmpeg export FAILED!', error);
+      console.error('❌ [EXPORT OPTIMIZATION] Error message:', error instanceof Error ? error.message : String(error));
+      console.error('❌ [EXPORT OPTIMIZATION] Error details:', {
+        message: error instanceof Error ? error.message : String(error),
+        code: (error as any)?.code,
+        stderr: (error as any)?.stderr,
+        stdout: (error as any)?.stdout,
+      });
       debugError("[CLI Export] FFmpeg export failed:", error);
       debugError("[CLI Export] Error details:", {
         message: error instanceof Error ? error.message : String(error),
