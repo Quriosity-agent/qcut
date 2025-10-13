@@ -1203,32 +1203,12 @@ export const useTimelineStore = create<TimelineStore>((set, get) => {
 
       if (splitTime <= effectiveStart || splitTime >= effectiveEnd) return null;
 
-      console.log('✂️ [TIMELINE STORE] Starting split operation:', {
-        elementId,
-        elementName: element.name,
-        splitTime,
-        originalDuration: element.duration,
-        currentTrimStart: element.trimStart,
-        currentTrimEnd: element.trimEnd,
-        effectiveStart,
-        effectiveEnd,
-      });
-
       get().pushHistory();
 
       const relativeTime = splitTime - element.startTime;
       const firstDuration = relativeTime;
       const secondDuration =
         element.duration - element.trimStart - element.trimEnd - relativeTime;
-
-      console.log('📊 [TIMELINE STORE] Split calculations:', {
-        relativeTime,
-        firstDuration,
-        secondDuration,
-        leftPart_newTrimEnd: element.trimEnd + secondDuration,
-        rightPart_newTrimStart: element.trimStart + firstDuration,
-        rightPart_newStartTime: splitTime,
-      });
 
       const secondElementId = generateUUID();
 
@@ -1245,27 +1225,6 @@ export const useTimelineStore = create<TimelineStore>((set, get) => {
         trimStart: element.trimStart + firstDuration,
         name: getElementNameWithSuffix(element.name, "right"),
       };
-
-      console.log('✅ [TIMELINE STORE] Split complete - created 2 elements:', {
-        leftPart: {
-          id: leftPart.id,
-          name: leftPart.name,
-          startTime: leftPart.startTime,
-          duration: leftPart.duration,
-          trimStart: leftPart.trimStart,
-          trimEnd: leftPart.trimEnd,
-          effectiveDuration: leftPart.duration - leftPart.trimStart - leftPart.trimEnd,
-        },
-        rightPart: {
-          id: rightPart.id,
-          name: rightPart.name,
-          startTime: rightPart.startTime,
-          duration: rightPart.duration,
-          trimStart: rightPart.trimStart,
-          trimEnd: rightPart.trimEnd,
-          effectiveDuration: rightPart.duration - rightPart.trimStart - rightPart.trimEnd,
-        },
-      });
 
       updateTracksAndSave(
         get()._tracks.map((track) =>
