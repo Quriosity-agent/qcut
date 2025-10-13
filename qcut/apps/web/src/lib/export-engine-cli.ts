@@ -625,22 +625,24 @@ export class CLIExportEngine extends ExportEngine {
       progressCallback?.(10, "Pre-loading videos...");
       await this.preloadAllVideos();
 
-      // Render frames to disk ONLY if image processing is needed
+      // Render frames to disk UNLESS we can use direct copy optimization
       try {
-        if (this.exportAnalysis?.needsImageProcessing) {
-          console.log('🎨 [EXPORT OPTIMIZATION] Image processing required - RENDERING FRAMES');
+        if (!this.exportAnalysis?.canUseDirectCopy) {
+          // If we CAN'T use direct copy, we MUST render frames
+          console.log('🎨 [EXPORT OPTIMIZATION] Cannot use direct copy - RENDERING FRAMES');
           console.log('📝 [EXPORT OPTIMIZATION] Reason:', this.exportAnalysis.reason);
-          debugLog('[CLIExportEngine] 🎨 Image processing required - rendering frames to disk');
+          debugLog('[CLIExportEngine] 🎨 Cannot use direct copy - rendering frames to disk');
           debugLog(`[CLIExportEngine] Reason: ${this.exportAnalysis.reason}`);
           progressCallback?.(15, "Rendering frames...");
           await this.renderFramesToDisk(progressCallback);
         } else {
-          console.log('⚡ [EXPORT OPTIMIZATION] Skipping frame rendering - using direct video copy!');
+          // Only skip rendering if direct copy is actually possible
+          console.log('⚡ [EXPORT OPTIMIZATION] Using direct video copy - skipping frame rendering');
           console.log('📝 [EXPORT OPTIMIZATION] Strategy:', this.exportAnalysis?.optimizationStrategy);
-          debugLog('[CLIExportEngine] ⚡ Skipping frame rendering - using direct video processing');
+          debugLog('[CLIExportEngine] ⚡ Using direct video copy - skipping frame rendering');
           debugLog(`[CLIExportEngine] Optimization: ${this.exportAnalysis?.optimizationStrategy}`);
           progressCallback?.(15, "Preparing direct video processing...");
-          // Frame rendering skipped - will use direct FFmpeg video copy
+          // Direct copy optimization is possible - skip frame rendering
         }
       } catch (error) {
         console.error('❌ [EXPORT OPTIMIZATION] Error in frame rendering decision:', error);

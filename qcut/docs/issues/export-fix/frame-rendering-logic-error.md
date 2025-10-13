@@ -1,8 +1,10 @@
-# Export Frame Rendering Logic Error
+# Export Frame Rendering Logic Error [FIXED ✅]
 
 ## Issue Summary
 
-Export fails with error: **"No frame files found in: C:\Users\zdhpe\AppData\Local\Temp\qcut-export\1760314550216\frames"**
+~~Export fails with error: **"No frame files found in: C:\Users\zdhpe\AppData\Local\Temp\qcut-export\1760314550216\frames"**~~
+
+**Status:** ✅ FIXED - The issue has been resolved by correcting the frame rendering decision logic.
 
 ## Error Analysis
 
@@ -94,7 +96,53 @@ The rendering decision logic needs to be fixed to:
    - Effects are applied to videos
    - Direct copy optimization is disabled
 
+## The Fix Applied [NEW]
+
+### What Changed
+
+**File:** `qcut/apps/web/src/lib/export-engine-cli.ts`
+**Line:** 630
+
+**Before (WRONG):**
+```typescript
+if (this.exportAnalysis?.needsImageProcessing) {
+  // Only rendered frames if overlays were detected
+  await this.renderFramesToDisk(progressCallback);
+} else {
+  // Skipped frame rendering (BUG: even when direct copy wasn't possible)
+}
+```
+
+**After (FIXED):**
+```typescript
+if (!this.exportAnalysis?.canUseDirectCopy) {
+  // If we CAN'T use direct copy, we MUST render frames
+  await this.renderFramesToDisk(progressCallback);
+} else {
+  // Only skip rendering if direct copy is actually possible
+}
+```
+
+### Why This Fix Works
+
+The original code incorrectly assumed that if no image processing was needed (no overlays), it could skip frame rendering. However, there's a scenario where:
+- No overlays exist (`needsImageProcessing = false`)
+- BUT videos lack `localPath` (`canUseDirectCopy = false`)
+- Result: Frames should be rendered, but weren't
+
+The fix directly checks whether direct copy optimization is possible. If not, frames are always rendered, regardless of overlay status.
+
+### Test Results
+
+| Scenario | Before Fix | After Fix |
+|----------|------------|-----------|
+| Video with overlays | ✅ Rendered frames | ✅ Rendered frames |
+| Video with localPath, no overlays | ✅ Skipped frames | ✅ Skipped frames |
+| **Video without localPath, no overlays** | ❌ **Skipped frames (CRASH)** | ✅ **Rendered frames** |
+
 ## Related Files
 
 - Console output: `console_v2.md`
 - Main export client: `qcut/apps/web/src/lib/ai-video-client.ts`
+- Deep analysis: `ultrathink-fix-analysis.md`
+- Fixed file: `qcut/apps/web/src/lib/export-engine-cli.ts`
