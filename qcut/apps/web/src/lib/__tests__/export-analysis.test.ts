@@ -67,6 +67,8 @@ describe('Export Analysis', () => {
     type,
     file: new File([], `${type}-${id}`),
     duration: 10,
+    // Videos need localPath for direct copy optimization
+    ...(type === 'video' && { localPath: `/mock/path/${type}-${id}.mp4` }),
   });
 
   it('should detect single video without overlays as direct-copy eligible', () => {
@@ -223,8 +225,11 @@ describe('Export Analysis', () => {
     const result = analyzeTimelineForExport(tracks, mediaItems);
 
     expect(result.hasOverlappingVideos).toBe(false);
-    // Multiple video sources, so still needs processing for concatenation
     expect(result.hasMultipleVideoSources).toBe(true);
+    // Sequential videos can use direct concatenation without image processing
+    expect(result.canUseDirectCopy).toBe(true);
+    expect(result.needsImageProcessing).toBe(false);
+    expect(result.optimizationStrategy).toBe('direct-copy');
   });
 
   it('should ignore hidden elements', () => {
