@@ -102,6 +102,25 @@ export interface ElectronAPI {
     saveTemp: (audioData: Uint8Array, filename: string) => Promise<string>;
   };
 
+  /**
+   * Video temp file management API
+   * Saves video files to temporary directory for FFmpeg direct copy optimization
+   */
+  video?: {
+    /**
+     * Save video data to temp directory
+     * @param videoData - Video file data as Uint8Array
+     * @param filename - Original filename (will be sanitized)
+     * @param sessionId - Optional session ID for session-based cleanup
+     * @returns Absolute path to saved temp file
+     */
+    saveTemp: (
+      videoData: Uint8Array,
+      filename: string,
+      sessionId?: string
+    ) => Promise<string>;
+  };
+
   // Transcription operations (Gemini API)
   transcribe: {
     transcribe: (request: {

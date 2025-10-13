@@ -150,6 +150,15 @@ interface ElectronAPI {
     saveTemp: (audioData: Uint8Array, filename: string) => Promise<string>;
   };
 
+  // Video temp file operations
+  video?: {
+    saveTemp: (
+      videoData: Uint8Array,
+      filename: string,
+      sessionId?: string
+    ) => Promise<string>;
+  };
+
   // Transcription operations (Gemini API)
   transcribe: {
     transcribe: (request: {
@@ -280,6 +289,16 @@ const electronAPI: ElectronAPI = {
   audio: {
     saveTemp: (audioData: Uint8Array, filename: string): Promise<string> =>
       ipcRenderer.invoke("audio:save-temp", audioData, filename),
+  },
+
+  // Video temp file operations
+  video: {
+    saveTemp: (
+      videoData: Uint8Array,
+      filename: string,
+      sessionId?: string
+    ): Promise<string> =>
+      ipcRenderer.invoke("video:save-temp", videoData, filename, sessionId),
   },
 
   // Transcription operations (Gemini API)

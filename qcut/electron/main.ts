@@ -405,6 +405,30 @@ app.whenReady().then(() => {
     }
   );
 
+  // Add IPC handler for saving video files to temp directory
+  // Location: In app.whenReady().then(() => { ... })
+  // Place AFTER: save-audio-for-export handler
+  // Place BEFORE: fetch-github-stars handler
+  ipcMain.handle(
+    "video:save-temp",
+    async (
+      event: IpcMainInvokeEvent,
+      videoData: Uint8Array,
+      filename: string,
+      sessionId?: string
+    ): Promise<string> => {
+      const { saveVideoToTemp } = require("./video-temp-handler.js");
+      try {
+        const filePath = await saveVideoToTemp(videoData, filename, sessionId);
+        logger.log(`✅ [Video Temp] Saved video to: ${filePath}`);
+        return filePath;
+      } catch (error: any) {
+        logger.error("❌ [Video Temp] Failed to save video:", error);
+        throw new Error(`Failed to save video: ${error.message}`);
+      }
+    }
+  );
+
   // Add IPC handler for GitHub API requests to bypass CORS
   ipcMain.handle("fetch-github-stars", async (): Promise<{ stars: number }> => {
     try {
@@ -891,6 +915,10 @@ app.on("window-all-closed", () => {
     // Clean up audio temp files
     const { cleanupAllAudioFiles } = require("./audio-temp-handler.js");
     cleanupAllAudioFiles();
+
+    // Clean up video temp files
+    const { cleanupAllVideoFiles } = require("./video-temp-handler.js");
+    cleanupAllVideoFiles();
 
     // Close the static server when quitting
     if (staticServer) {
