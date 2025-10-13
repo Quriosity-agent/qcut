@@ -71,9 +71,16 @@ export function analyzeTimelineForExport(
         // Track video elements and their time ranges
         if (mediaItem.type === 'video') {
           videoElementCount++;
+          const effectiveDuration = element.duration - element.trimStart - element.trimEnd;
+
+          // Validate effective duration is positive
+          if (effectiveDuration <= 0) {
+            console.warn(`[EXPORT ANALYSIS] Invalid video duration for element ${element.id}: duration=${element.duration}, trimStart=${element.trimStart}, trimEnd=${element.trimEnd}`);
+            continue; // Skip this element
+          }
+
           const startTime = element.startTime;
-          const endTime = element.startTime +
-            (element.duration - element.trimStart - element.trimEnd);
+          const endTime = element.startTime + effectiveDuration;
           videoTimeRanges.push({ start: startTime, end: endTime });
           videoElements.push(mediaElement);
 

@@ -596,17 +596,6 @@ export class CLIExportEngine extends ExportEngine {
       };
     }
 
-    console.log('📊 [EXPORT OPTIMIZATION] Analysis Result:', {
-      needsImageProcessing: this.exportAnalysis.needsImageProcessing,
-      canUseDirectCopy: this.exportAnalysis.canUseDirectCopy,
-      optimizationStrategy: this.exportAnalysis.optimizationStrategy,
-      reason: this.exportAnalysis.reason,
-      hasImageElements: this.exportAnalysis.hasImageElements,
-      hasTextElements: this.exportAnalysis.hasTextElements,
-      hasStickers: this.exportAnalysis.hasStickers,
-      hasEffects: this.exportAnalysis.hasEffects,
-      hasOverlappingVideos: this.exportAnalysis.hasOverlappingVideos
-    });
     debugLog("[CLIExportEngine] 📊 Export Analysis:", this.exportAnalysis);
 
     try {

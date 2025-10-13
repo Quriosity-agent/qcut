@@ -258,21 +258,6 @@ export function setupFFmpegIPC(): void {
         useDirectCopy = false,
       } = options;
 
-      console.log('🎬 [FFmpeg Handler] Export request received:', {
-        sessionId,
-        useDirectCopy,
-        hasVideoSources: !!options.videoSources,
-        videoSourceCount: options.videoSources?.length || 0,
-        videoSourcePaths: options.videoSources?.map(v => v.path) || [],
-        width,
-        height,
-        fps,
-        duration,
-        quality,
-        hasAudio: audioFiles.length > 0,
-        hasFilterChain: !!options.filterChain
-      });
-
       // Validate duration to prevent crashes or excessive resource usage
       const validatedDuration = Math.min(
         Math.max(duration || 0.1, 0.1),
@@ -310,12 +295,9 @@ export function setupFFmpegIPC(): void {
 
         // Verify input based on processing mode
         if (useDirectCopy) {
-          console.log('🚀 [FFmpeg Handler] Direct copy mode detected');
-
           // Validate that video sources were provided
           if (!options.videoSources || options.videoSources.length === 0) {
             const error = 'Direct copy mode requested but no video sources provided. Frames were not rendered.';
-            console.error('❌ [FFmpeg Handler]', error);
             reject(new Error(error));
             return;
           }
@@ -324,22 +306,14 @@ export function setupFFmpegIPC(): void {
           for (const video of options.videoSources) {
             if (!fs.existsSync(video.path)) {
               const error = `Video source not found: ${video.path}`;
-              console.error('❌ [FFmpeg Handler]', error);
               reject(new Error(error));
               return;
             }
           }
-
-          console.log(`✅ [FFmpeg Handler] Direct copy validation PASSED`);
-          console.log(`📂 [FFmpeg Handler] Validated ${options.videoSources.length} video source(s)`);
         } else {
-          console.log('🎨 [FFmpeg Handler] Frame-based mode - validating frames exist');
-          console.log('📁 [FFmpeg Handler] Looking for frames in:', frameDir);
-
           // Frame-based mode: verify frames exist
           if (!fs.existsSync(frameDir)) {
             const error: string = `Frame directory does not exist: ${frameDir}`;
-            console.error('❌ [FFmpeg Handler] Frame directory not found!');
             reject(new Error(error));
             return;
           }
@@ -348,16 +322,11 @@ export function setupFFmpegIPC(): void {
             .readdirSync(frameDir)
             .filter((f: string) => f.startsWith("frame-") && f.endsWith(".png"));
 
-          console.log(`📊 [FFmpeg Handler] Found ${frameFiles.length} frame files`);
-
           if (frameFiles.length === 0) {
             const error: string = `No frame files found in: ${frameDir}`;
-            console.error('❌ [FFmpeg Handler] No frames found! This will cause export to fail.');
             reject(new Error(error));
             return;
           }
-
-          console.log(`✅ [FFmpeg Handler] Frame validation PASSED`);
         }
 
         // Ensure output directory exists
@@ -630,10 +599,6 @@ exit /b %ERRORLEVEL%`;
       event: IpcMainInvokeEvent,
       { videoPath, format = "wav" }: ExtractAudioOptions
     ): Promise<ExtractAudioResult> => {
-      console.log("[FFmpeg Handler] Starting audio extraction...");
-      console.log("[FFmpeg Handler] Video path:", videoPath);
-      console.log("[FFmpeg Handler] Output format:", format);
-
       // Verify input file exists
       if (!fs.existsSync(videoPath)) {
         throw new Error(`Video file not found: ${videoPath}`);
@@ -652,8 +617,6 @@ exit /b %ERRORLEVEL%`;
       const outputFileName = `audio-${timestamp}.${format}`;
       const outputPath = path.join(tempDir, outputFileName);
 
-      console.log("[FFmpeg Handler] Output path:", outputPath);
-
       return new Promise<ExtractAudioResult>((resolve, reject) => {
         const startTime = Date.now();
 
@@ -668,8 +631,6 @@ exit /b %ERRORLEVEL%`;
           outputPath
         ];
 
-        console.log("[FFmpeg Handler] Running FFmpeg with args:", args.join(" "));
-
         const ffmpeg = spawn(ffmpegPath, args, {
           windowsHide: true,
           stdio: ["ignore", "pipe", "pipe"],
@@ -682,8 +643,6 @@ exit /b %ERRORLEVEL%`;
         });
 
         ffmpeg.on("close", (code) => {
-          const duration = ((Date.now() - startTime) / 1000).toFixed(2);
-
           if (code === 0) {
             // Verify output file exists and get size
             if (!fs.existsSync(outputPath)) {
@@ -692,16 +651,12 @@ exit /b %ERRORLEVEL%`;
             }
 
             const stats = fs.statSync(outputPath);
-            console.log(`[FFmpeg Handler] ✅ Audio extraction completed in ${duration}s`);
-            console.log(`[FFmpeg Handler] Output file size: ${stats.size} bytes`);
 
             resolve({
               audioPath: outputPath,
               fileSize: stats.size,
             });
           } else {
-            console.error(`[FFmpeg Handler] ❌ Audio extraction failed (code ${code})`);
-            console.error(`[FFmpeg Handler] stderr:`, stderr);
             reject(
               new Error(
                 `FFmpeg audio extraction failed with code ${code}: ${stderr}`
@@ -711,7 +666,6 @@ exit /b %ERRORLEVEL%`;
         });
 
         ffmpeg.on("error", (err) => {
-          console.error("[FFmpeg Handler] ❌ FFmpeg process error:", err);
           reject(err);
         });
 
@@ -784,14 +738,6 @@ function buildFFmpegArgs(
   useDirectCopy: boolean = false,
   videoSources?: VideoSource[]
 ): string[] {
-  console.log(`[buildFFmpegArgs] Building FFmpeg arguments:`, {
-    useDirectCopy,
-    hasVideoSources: !!videoSources,
-    videoSourceCount: videoSources?.length || 0,
-    quality,
-    duration
-  });
-
   const qualitySettings: QualityMap = {
     "high": { crf: "18", preset: "slow" },
     "medium": { crf: "23", preset: "fast" },
@@ -803,8 +749,6 @@ function buildFFmpegArgs(
 
   // Handle direct copy mode
   if (useDirectCopy && videoSources && videoSources.length > 0) {
-    console.log(`[buildFFmpegArgs] ✅ Using direct copy optimization with ${videoSources.length} video source(s)`);
-
     const args: string[] = ["-y"]; // Overwrite output
 
     // Single video: use direct copy with trim
@@ -813,35 +757,15 @@ function buildFFmpegArgs(
 
       // Validate video file exists
       if (!fs.existsSync(video.path)) {
-        console.error(`[buildFFmpegArgs] ❌ Video source not found: ${video.path}`);
         throw new Error(`Video source not found: ${video.path}`);
       }
 
-      console.log(`[buildFFmpegArgs] 🎬 Single video direct copy - analyzing trim values...`);
-      console.log(`[buildFFmpegArgs] Video source:`, {
-        path: video.path.substring(video.path.lastIndexOf('\\') + 1),
-        fullPath: video.path,
-        originalDuration: video.duration,
-        trimStart: video.trimStart || 0,
-        trimEnd: video.trimEnd || 0,
-        hasTrimStart: !!(video.trimStart && video.trimStart > 0),
-        hasTrimEnd: !!(video.trimEnd && video.trimEnd > 0)
-      });
-
       // Calculate effective duration (subtract trim values)
       const effectiveDuration = video.duration - (video.trimStart || 0) - (video.trimEnd || 0);
-      console.log(`[buildFFmpegArgs] 📊 Duration calculation:`, {
-        originalDuration: video.duration,
-        trimStart: video.trimStart || 0,
-        trimEnd: video.trimEnd || 0,
-        effectiveDuration: effectiveDuration,
-        isSplit: (video.trimStart || 0) > 0 || (video.trimEnd || 0) > 0
-      });
 
       // Apply trim start (seek to position)
       if (video.trimStart && video.trimStart > 0) {
         args.push("-ss", video.trimStart.toString());
-        console.log(`[buildFFmpegArgs] ✂️ Adding trim start: -ss ${video.trimStart}`);
       }
 
       args.push("-i", video.path);
@@ -849,10 +773,7 @@ function buildFFmpegArgs(
       // Set effective duration (subtract trim values)
       if (video.duration) {
         args.push("-t", effectiveDuration.toString());
-        console.log(`[buildFFmpegArgs] ⏱️ Adding duration: -t ${effectiveDuration} (original: ${video.duration})`);
       }
-
-      console.log(`[buildFFmpegArgs] 🚀 FFmpeg command preview: ffmpeg -y ${video.trimStart && video.trimStart > 0 ? `-ss ${video.trimStart}` : ''} -i "${video.path}" -t ${effectiveDuration} -c copy`);
 
       // Add audio inputs if provided
       if (audioFiles && audioFiles.length > 0) {
@@ -895,13 +816,10 @@ function buildFFmpegArgs(
 
     } else {
       // Multiple videos: use concat demuxer
-      console.log(`[buildFFmpegArgs] Multiple video concat: ${videoSources.length} sources`);
-
       // Create concat file content
       const concatFileContent = videoSources.map(video => {
         // Validate each video file exists
         if (!fs.existsSync(video.path)) {
-          console.error(`[buildFFmpegArgs] ❌ Video source not found: ${video.path}`);
           throw new Error(`Video source not found: ${video.path}`);
         }
 
@@ -913,7 +831,6 @@ function buildFFmpegArgs(
       // Write concat file to temp directory
       const concatFilePath = path.join(inputDir, 'concat-list.txt');
       fs.writeFileSync(concatFilePath, concatFileContent);
-      console.log(`[buildFFmpegArgs] Created concat file: ${concatFilePath}`);
 
       // Use concat demuxer
       args.push(
@@ -955,7 +872,6 @@ function buildFFmpegArgs(
       outputFile
     );
 
-    console.log(`[buildFFmpegArgs] ✅ Direct copy command built with ${args.length} arguments`);
     return args;
   }
 
@@ -968,7 +884,6 @@ function buildFFmpegArgs(
   }
 
   // Frame-based processing (normal path)
-  console.log('[buildFFmpegArgs] Using frame-based processing');
   const inputPattern: string = path.join(inputDir, "frame-%04d.png");
 
   const args: string[] = [
