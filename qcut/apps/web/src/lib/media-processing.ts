@@ -163,10 +163,10 @@ export async function processMediaFiles(
 
         // Save video files to temp directory for FFmpeg direct copy optimization
         if (fileType === "video" && window.electronAPI?.video?.saveTemp) {
-          try {
-            // Check file size to prevent memory issues
-            const MAX_INSTANT_LOAD = 500 * 1024 * 1024; // 500MB
+          // Check file size to prevent memory issues
+          const MAX_INSTANT_LOAD = 500 * 1024 * 1024; // 500MB
 
+          try {
             if (file.size > MAX_INSTANT_LOAD) {
               debugLog(
                 `[Media Processing] ⚠️ Large file detected (${(file.size / 1024 / 1024).toFixed(2)}MB) - this may take a moment`

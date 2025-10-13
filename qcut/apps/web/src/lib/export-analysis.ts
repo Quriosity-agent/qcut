@@ -173,6 +173,44 @@ export function analyzeTimelineForExport(
     console.log('📝 [EXPORT ANALYSIS] Videos without localPath:', videosWithoutLocalPath);
   }
 
+  // Log detailed analysis results
+  console.log('📊 [EXPORT ANALYSIS] Complete analysis result:', {
+    videoElementCount,
+    hasOverlappingVideos,
+    hasImageElements,
+    hasTextElements,
+    hasStickers,
+    hasEffects,
+    allVideosHaveLocalPath,
+    canUseDirectCopy,
+    optimizationStrategy,
+    reason
+  });
+
+  // Log video elements with trim information
+  if (videoElementCount > 0) {
+    const videoTrimInfo = videoElements.map(el => {
+      const media = mediaItemsMap.get(el.mediaId);
+      return {
+        elementId: el.id,
+        hasTrim: el.trimStart > 0 || el.trimEnd > 0,
+        trimStart: el.trimStart,
+        trimEnd: el.trimEnd,
+        duration: el.duration,
+        effectiveDuration: el.duration - el.trimStart - el.trimEnd,
+        hasLocalPath: !!media?.localPath,
+        localPath: media?.localPath?.substring(media.localPath.lastIndexOf('\\') + 1) || 'NONE'
+      };
+    });
+    console.log('🎬 [EXPORT ANALYSIS] Video elements with trim info:', videoTrimInfo);
+  }
+
+  if (canUseDirectCopy) {
+    console.log('✅ [EXPORT ANALYSIS] Using DIRECT COPY optimization - Fast export! 🚀');
+  } else {
+    console.log('⚠️ [EXPORT ANALYSIS] Using IMAGE PIPELINE - Slow export (frame-by-frame)');
+  }
+
   return {
     needsImageProcessing,
     hasImageElements,

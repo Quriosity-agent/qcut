@@ -817,19 +817,42 @@ function buildFFmpegArgs(
         throw new Error(`Video source not found: ${video.path}`);
       }
 
-      console.log(`[buildFFmpegArgs] Single video direct copy: ${video.path}`);
+      console.log(`[buildFFmpegArgs] 🎬 Single video direct copy - analyzing trim values...`);
+      console.log(`[buildFFmpegArgs] Video source:`, {
+        path: video.path.substring(video.path.lastIndexOf('\\') + 1),
+        fullPath: video.path,
+        originalDuration: video.duration,
+        trimStart: video.trimStart || 0,
+        trimEnd: video.trimEnd || 0,
+        hasTrimStart: !!(video.trimStart && video.trimStart > 0),
+        hasTrimEnd: !!(video.trimEnd && video.trimEnd > 0)
+      });
 
-      // Apply trim if specified
+      // Calculate effective duration (subtract trim values)
+      const effectiveDuration = video.duration - (video.trimStart || 0) - (video.trimEnd || 0);
+      console.log(`[buildFFmpegArgs] 📊 Duration calculation:`, {
+        originalDuration: video.duration,
+        trimStart: video.trimStart || 0,
+        trimEnd: video.trimEnd || 0,
+        effectiveDuration: effectiveDuration,
+        isSplit: (video.trimStart || 0) > 0 || (video.trimEnd || 0) > 0
+      });
+
+      // Apply trim start (seek to position)
       if (video.trimStart && video.trimStart > 0) {
         args.push("-ss", video.trimStart.toString());
+        console.log(`[buildFFmpegArgs] ✂️ Adding trim start: -ss ${video.trimStart}`);
       }
 
       args.push("-i", video.path);
 
-      // Set duration if specified
+      // Set effective duration (subtract trim values)
       if (video.duration) {
-        args.push("-t", video.duration.toString());
+        args.push("-t", effectiveDuration.toString());
+        console.log(`[buildFFmpegArgs] ⏱️ Adding duration: -t ${effectiveDuration} (original: ${video.duration})`);
       }
+
+      console.log(`[buildFFmpegArgs] 🚀 FFmpeg command preview: ffmpeg -y ${video.trimStart && video.trimStart > 0 ? `-ss ${video.trimStart}` : ''} -i "${video.path}" -t ${effectiveDuration} -c copy`);
 
       // Add audio inputs if provided
       if (audioFiles && audioFiles.length > 0) {

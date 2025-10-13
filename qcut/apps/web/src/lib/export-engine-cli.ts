@@ -429,7 +429,6 @@ export class CLIExportEngine extends ExportEngine {
     trimStart: number;
     trimEnd: number;
   }> {
-    console.log('🎬 [VIDEO SOURCES] Starting extraction...');
     const videoSources: Array<{
       path: string;
       startTime: number;
@@ -449,18 +448,8 @@ export class CLIExportEngine extends ExportEngine {
         const mediaItem = this.mediaItems.find((item) => item.id === (element as any).mediaId);
         if (!mediaItem || mediaItem.type !== "video") return;
 
-        console.log('🎥 [VIDEO SOURCES] Found video element:', {
-          elementId: element.id,
-          mediaId: mediaItem.id,
-          hasLocalPath: !!mediaItem.localPath,
-          localPath: mediaItem.localPath,
-          hasUrl: !!mediaItem.url,
-          urlType: mediaItem.url?.substring(0, 20)
-        });
-
         // Check if we have a local path (required for direct copy)
         if (!mediaItem.localPath) {
-          console.log(`❌ [VIDEO SOURCES] Video ${mediaItem.id} has no localPath - cannot use direct copy`);
           debugWarn(`[CLIExportEngine] Video ${mediaItem.id} has no localPath, cannot use direct copy`);
           return;
         }
@@ -472,15 +461,12 @@ export class CLIExportEngine extends ExportEngine {
           trimStart: element.trimStart,
           trimEnd: element.trimEnd,
         });
-
-        console.log('✅ [VIDEO SOURCES] Added video source:', mediaItem.localPath);
       });
     });
 
     // Sort by start time
     videoSources.sort((a, b) => a.startTime - b.startTime);
 
-    console.log(`📦 [VIDEO SOURCES] Extraction complete: ${videoSources.length} sources`);
     debugLog(`[CLIExportEngine] Extracted ${videoSources.length} video sources for direct copy`);
     return videoSources;
   }
@@ -488,14 +474,12 @@ export class CLIExportEngine extends ExportEngine {
   private async prepareAudioFiles(): Promise<
     Array<{ path: string; startTime: number; volume: number }>
   > {
-    console.log('🎵 [AUDIO PREP] Starting audio file preparation...');
     const results: Array<{ path: string; startTime: number; volume: number }> =
       [];
     const { useTimelineStore } = await import("@/stores/timeline-store");
     const { useMediaStore } = await import("@/stores/media-store");
 
     const audioElements = useTimelineStore.getState().getAudioElements();
-    console.log('🎵 [AUDIO PREP] Timeline audio elements found:', audioElements.length);
     const concurrency = 4;
     const queue = [...audioElements];
     const workers = Array.from({ length: concurrency }, async () => {
@@ -507,17 +491,8 @@ export class CLIExportEngine extends ExportEngine {
             (m) => m.id === (audioElement.element as any).mediaId
           );
         if (!mediaItem?.url) {
-          console.log('⚠️ [AUDIO PREP] Skipping audio element - no media item or URL:', (audioElement.element as any).mediaId);
           continue;
         }
-
-        console.log('🎵 [AUDIO PREP] Found audio media item:', {
-          id: mediaItem.id,
-          name: mediaItem.name,
-          hasUrl: !!mediaItem.url,
-          urlType: mediaItem.url?.substring(0, 20),
-          fileSize: (mediaItem as any).file?.size || 'unknown'
-        });
         try {
           const response = await fetch(mediaItem.url);
           if (!response.ok) {
@@ -552,17 +527,10 @@ export class CLIExportEngine extends ExportEngine {
               startTime: audioElement.absoluteStart ?? 0,
               volume: (audioElement.element as any).volume ?? 1.0,
             });
-            console.log('✅ [AUDIO PREP] Saved temp audio file:', {
-              originalName: mediaItem.name,
-              tempPath: result.path,
-              startTime: audioElement.absoluteStart,
-              volume: (audioElement.element as any).volume
-            });
             debugLog(
               `[CLIExportEngine] Prepared audio file: ${filename} at ${audioElement.absoluteStart}s`
             );
           } else {
-            console.error('❌ [AUDIO PREP] Failed to save audio file:', result?.error);
             debugWarn(
               `[CLIExportEngine] Failed to save audio file: ${result?.error}`
             );
@@ -573,16 +541,6 @@ export class CLIExportEngine extends ExportEngine {
       }
     });
     await Promise.all(workers);
-
-    console.log('🎵 [AUDIO PREP] Preparation complete:', {
-      totalElements: audioElements.length,
-      successfullyPrepared: results.length,
-      failed: audioElements.length - results.length
-    });
-
-    if (results.length === 0 && audioElements.length > 0) {
-      console.error('❌ [AUDIO PREP] WARNING: No audio files were prepared despite having audio elements!');
-    }
 
     debugLog(
       `[CLIExportEngine] Prepared ${results.length} audio files for export`
@@ -660,23 +618,18 @@ export class CLIExportEngine extends ExportEngine {
       try {
         if (!this.exportAnalysis?.canUseDirectCopy) {
           // If we CAN'T use direct copy, we MUST render frames
-          console.log('🎨 [EXPORT OPTIMIZATION] Cannot use direct copy - RENDERING FRAMES');
-          console.log('📝 [EXPORT OPTIMIZATION] Reason:', this.exportAnalysis.reason);
           debugLog('[CLIExportEngine] 🎨 Cannot use direct copy - rendering frames to disk');
           debugLog(`[CLIExportEngine] Reason: ${this.exportAnalysis.reason}`);
           progressCallback?.(15, "Rendering frames...");
           await this.renderFramesToDisk(progressCallback);
         } else {
           // Only skip rendering if direct copy is actually possible
-          console.log('⚡ [EXPORT OPTIMIZATION] Using direct video copy - skipping frame rendering');
-          console.log('📝 [EXPORT OPTIMIZATION] Strategy:', this.exportAnalysis?.optimizationStrategy);
           debugLog('[CLIExportEngine] ⚡ Using direct video copy - skipping frame rendering');
           debugLog(`[CLIExportEngine] Optimization: ${this.exportAnalysis?.optimizationStrategy}`);
           progressCallback?.(15, "Preparing direct video processing...");
           // Direct copy optimization is possible - skip frame rendering
         }
       } catch (error) {
-        console.error('❌ [EXPORT OPTIMIZATION] Error in frame rendering decision:', error);
         // Fallback: Force image pipeline if optimization fails
         debugWarn('[CLIExportEngine] ⚠️ Direct processing preparation failed, falling back to image pipeline:', error);
 
@@ -1121,32 +1074,6 @@ export class CLIExportEngine extends ExportEngine {
       useDirectCopy: this.exportAnalysis?.canUseDirectCopy || false,
       videoSources: videoSources.length > 0 ? videoSources : undefined,
     };
-
-    // Log audio files being sent to FFmpeg
-    if (audioFiles.length > 0) {
-      console.log('📦 [FFMPEG AUDIO] Sending audio files to FFmpeg:', {
-        count: audioFiles.length,
-        files: audioFiles.map(f => ({
-          path: f.path.substring(f.path.lastIndexOf('\\') + 1), // filename only
-          startTime: f.startTime,
-          volume: f.volume
-        }))
-      });
-    } else {
-      console.log('⚠️ [FFMPEG AUDIO] No audio files - output will be silent');
-    }
-
-    console.log('🎬 [EXPORT OPTIMIZATION] Sending to FFmpeg with useDirectCopy =', exportOptions.useDirectCopy);
-    console.log('📦 [EXPORT OPTIMIZATION] Export options:', {
-      sessionId: exportOptions.sessionId,
-      useDirectCopy: exportOptions.useDirectCopy,
-      width: exportOptions.width,
-      height: exportOptions.height,
-      fps: exportOptions.fps,
-      duration: exportOptions.duration,
-      hasAudio: audioFiles.length > 0,
-      hasFilterChain: !!exportOptions.filterChain
-    });
 
     debugLog(
       "[CLI Export] Starting FFmpeg export with options:",
