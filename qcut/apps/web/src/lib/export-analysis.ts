@@ -3,16 +3,30 @@
 import type { TimelineTrack, MediaElement } from '@/types/timeline';
 import type { MediaItem } from '@/stores/media-store-types';
 
+/**
+ * Analysis result determining export optimization strategy.
+ * Direct copy is 15-48x faster but requires specific conditions.
+ */
 export interface ExportAnalysis {
+  /** Requires frame-by-frame rendering (slow path) */
   needsImageProcessing: boolean;
+  /** Contains static images requiring canvas compositing */
   hasImageElements: boolean;
+  /** Contains text overlays requiring canvas rendering */
   hasTextElements: boolean;
+  /** Contains stickers requiring canvas compositing */
   hasStickers: boolean;
+  /** Contains visual effects requiring FFmpeg filters */
   hasEffects: boolean;
+  /** Multiple videos that may need concatenation */
   hasMultipleVideoSources: boolean;
+  /** Videos overlap in time; requires compositing, not concat */
   hasOverlappingVideos: boolean;
+  /** Can use FFmpeg direct copy/concat (fast path) */
   canUseDirectCopy: boolean;
+  /** Which export pipeline to use */
   optimizationStrategy: 'image-pipeline' | 'direct-copy';
+  /** Human-readable explanation of strategy choice */
   reason: string;
 }
 
@@ -233,7 +247,13 @@ export function analyzeTimelineForExport(
 }
 
 /**
- * Checks if any video time ranges overlap (indicates need for compositing)
+ * Detects overlapping videos to determine if compositing is required.
+ *
+ * Overlaps prevent direct FFmpeg concat; requires frame-by-frame compositing.
+ * Sequential videos (no overlap) can use fast concat demuxer.
+ *
+ * @param ranges - Video time ranges from timeline elements
+ * @returns true if any videos overlap (need compositing), false if sequential
  */
 function checkForOverlappingRanges(ranges: Array<{ start: number; end: number }>): boolean {
   if (ranges.length < 2) return false;

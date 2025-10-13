@@ -107,11 +107,20 @@ interface ExportResult {
   message?: string;
 }
 
+/**
+ * FFmpeg encoding quality configuration.
+ * CRF controls quality (lower=better); preset controls speed.
+ */
 interface QualitySettings {
+  /** Constant Rate Factor: 18 (high), 23 (medium), 28 (low) */
   crf: string;
+  /** Encoding speed: slow (best quality), fast, veryfast */
   preset: string;
 }
 
+/**
+ * Maps quality levels to FFmpeg encoding parameters.
+ */
 interface QualityMap {
   [key: string]: QualitySettings;
   high: QualitySettings;
@@ -119,18 +128,35 @@ interface QualityMap {
   low: QualitySettings;
 }
 
+/**
+ * FFmpeg export progress data parsed from stderr output.
+ * Used for UI progress bar updates during video encoding.
+ */
 interface FFmpegProgress {
+  /** Current frame number being encoded */
   frame?: number | null;
+  /** Elapsed time in HH:MM:SS.ss format */
   time?: string | null;
 }
 
+/**
+ * Enhanced error type for FFmpeg process failures.
+ * Includes exit code, signal, and captured stdio for debugging.
+ */
 interface FFmpegError extends Error {
+  /** Process exit code if exited normally */
   code?: number;
+  /** Signal name if process was killed (e.g., "SIGTERM") */
   signal?: string;
+  /** FFmpeg stderr output containing error details */
   stderr?: string;
+  /** FFmpeg stdout output (usually empty) */
   stdout?: string;
 }
 
+/**
+ * Result from opening frames folder in system file explorer.
+ */
 interface OpenFolderResult {
   success: boolean;
   path: string;
@@ -165,6 +191,12 @@ interface FFmpegHandlers {
 
 const tempManager = new TempManager();
 
+/**
+ * Registers all FFmpeg-related IPC handlers for video export operations.
+ *
+ * Must be called during Electron main process initialization; handlers
+ * won't be available to renderer process until registered.
+ */
 export function setupFFmpegIPC(): void {
   // Handle ffmpeg-path request
   ipcMain.handle("ffmpeg-path", async (): Promise<string> => {
@@ -679,6 +711,15 @@ exit /b %ERRORLEVEL%`;
   );
 }
 
+/**
+ * Resolves FFmpeg binary path for current environment (dev/packaged).
+ *
+ * Packaged apps expect FFmpeg in resources folder; dev mode searches
+ * bundled resources then system PATH. Throws if FFmpeg not found.
+ *
+ * @returns Absolute path to FFmpeg binary or "ffmpeg" for system PATH
+ * @throws Error if FFmpeg not found in expected locations
+ */
 export function getFFmpegPath(): string {
   let ffmpegPath: string;
 
@@ -725,6 +766,26 @@ export function getFFmpegPath(): string {
   return ffmpegPath;
 }
 
+/**
+ * Constructs FFmpeg command-line arguments for video export.
+ *
+ * Supports two modes: direct copy (fast, lossless concat) and image pipeline
+ * (slow, frame-by-frame encoding). Direct copy requires sequential videos
+ * with no overlays/effects; falls back to image pipeline otherwise.
+ *
+ * @param inputDir - Directory containing frame images or concat file
+ * @param outputFile - Path where output video will be saved
+ * @param width - Output video width in pixels
+ * @param height - Output video height in pixels
+ * @param fps - Target frames per second
+ * @param quality - Encoding quality preset (affects CRF and preset)
+ * @param duration - Video duration in seconds
+ * @param audioFiles - Audio tracks to mix into video
+ * @param filterChain - Optional FFmpeg filter string for effects
+ * @param useDirectCopy - Enable fast direct copy mode if possible
+ * @param videoSources - Video file paths for direct copy mode
+ * @returns Array of FFmpeg command-line arguments
+ */
 function buildFFmpegArgs(
   inputDir: string,
   outputFile: string,
@@ -1004,6 +1065,15 @@ function buildFFmpegArgs(
   return args;
 }
 
+/**
+ * Extracts progress information from FFmpeg stderr output.
+ *
+ * FFmpeg writes progress to stderr (not stdout); this parser extracts
+ * frame numbers and timestamps for UI progress updates.
+ *
+ * @param output - Raw stderr text from FFmpeg process
+ * @returns Parsed frame/time data, or null if no progress info found
+ */
 function parseProgress(output: string): FFmpegProgress | null {
   // Parse FFmpeg progress from output
   const frameMatch: RegExpMatchArray | null = output.match(/frame=\s*(\d+)/);
