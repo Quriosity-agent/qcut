@@ -11,7 +11,11 @@ Text layers added to the timeline are **not being rendered** in the exported vid
 
 ## Root Cause
 
-The CLI FFmpeg export engine (`export-engine-cli.ts`) uses native FFmpeg commands to quickly concatenate video and audio segments, but **does not implement text overlay functionality**. Text rendering is only implemented in the Canvas-based export engines (Standard and Optimized), which are slower but support full composition features.
+The CLI FFmpeg export engine (`export-engine-cli.ts`) uses native FFmpeg commands to quickly concatenate video and audio segments, but **does not implement text overlay functionality** using FFmpeg's `drawtext` filter. Text rendering is currently only implemented in the Canvas-based export engines (Standard and Optimized), which are slower but support full composition features.
+
+## Solution
+
+**FFmpeg has native `drawtext` filter support.** The proper fix is to implement text rendering in the CLI engine using FFmpeg's built-in `drawtext` filter. This maintains performance while adding full text support. See [implementation details](#solution) below.
 
 ### Current Engine Selection Logic
 
@@ -134,9 +138,9 @@ if (forceRegularEngine) {
 - **Not persistent**: Must be set every time the app restarts
 - **Hidden feature**: Not documented or exposed in UI
 
-## Proposed Solutions
+## Solution
 
-### Solution 1: Add FFmpeg Drawtext Filter Support to CLI Engine ⭐ **REQUIRED & RECOMMENDED**
+### Add FFmpeg Drawtext Filter Support to CLI Engine ⭐ **REQUIRED**
 
 **This is the proper solution.** FFmpeg has native `drawtext` filter support that can handle text overlays efficiently. Implement this filter in the CLI export engine to render text layers directly via FFmpeg commands.
 
@@ -217,102 +221,216 @@ private buildTextOverlayFilter(textElements: TimelineElement[]): string {
 }
 ```
 
-### Solution 2: Hybrid Export Mode
+## Implementation Plan
 
-Use CLI engine for video/audio processing, then add a Canvas-based text overlay pass.
+**Implement FFmpeg Drawtext** - ~8-12 hours
 
-**Pros:**
-- Best of both worlds (speed + full text features)
-- Maintains Canvas text rendering capabilities
+### Phase 1: Convert Canvas/Timeline Text to FFmpeg Parameters (3-4 hours)
 
-**Cons:**
-- Complex architecture (two-pass export)
-- Slower than pure CLI (but faster than pure Canvas)
-- Increased code complexity
+**Subtask 1.1: Analyze Current Canvas Text Rendering**
+- Study how text is currently rendered in Canvas engines (`export-engine-optimized.ts` lines 363-400)
+- Document text element properties: `content`, `x`, `y`, `fontSize`, `fontFamily`, `color`, `rotation`
+- Understand how text timing works in timeline: `startTime`, `duration`, `trimStart`, `trimEnd`
+- Map Canvas text properties to FFmpeg drawtext parameters
 
-**Implementation Estimate**: 12-16 hours
+**Subtask 1.2: Create Text-to-FFmpeg Converter**
+- Implement `convertTextElementToDrawtext()` function
+- Convert text positioning: Canvas coordinates → FFmpeg x/y coordinates
+- Convert text styling: Canvas font/color → FFmpeg fontsize/fontcolor/fontfile
+- Handle text rotation: Canvas rotation → FFmpeg rotation parameter
+- Add default values and fallbacks for missing properties
 
-### Solution 3: Automatic Engine Fallback Detection
+**Subtask 1.3: Handle Text Timing from Timeline**
+- Extract text timing from timeline element: `element.startTime` and `element.duration`
+- Convert timeline timestamps to FFmpeg `enable='between(t,start,end)'` filter
+- Handle text trimming: account for `trimStart` and `trimEnd` in timing calculations
+- Ensure timing matches what user sees in editor preview
 
-Detect if timeline contains text layers and automatically fallback to Canvas engine.
+### Phase 2: Build FFmpeg Filter Chain (2-3 hours)
 
-**Pros:**
-- Simple implementation
-- Zero configuration needed
-- Clear logic
+**Subtask 2.1: Implement Filter Builder**
+- Create `buildTextOverlayFilter()` method in CLI export engine
+- Detect all text elements from timeline tracks
+- Sort text layers by z-index/track order (bottom to top rendering)
+- Generate drawtext filter for each text element
+- Chain multiple filters using comma separation
 
-**Cons:**
-- Performance hit for projects with text
-- Users lose CLI speed benefits
-- No middle ground
+**Subtask 2.2: Handle Special Characters**
+- Implement `escapeTextForFFmpeg()` function
+- Escape FFmpeg special characters: `\`, `'`, `:`, `[`, `]`
+- Handle newlines in text content (`\n`)
+- Support Unicode characters and emojis
+- Test with various special characters
 
-**Implementation Estimate**: 2-4 hours
+**Subtask 2.3: Handle Font Files**
+- Map font family names to system font paths
+- Windows fonts path: `C:/Windows/Fonts/`
+- Handle common fonts: Arial, Times New Roman, Courier, etc.
+- Provide fallback font if specified font not found
+- Add font path resolution for Electron environment
 
-**Example implementation:**
+### Phase 3: Integrate into CLI Export Engine (2-3 hours)
+
+**Subtask 3.1: Detect Text Layers in Timeline**
+- Scan timeline tracks for text elements before export
+- Check if any text layers exist: `track.elements.some(el => el.type === "text")`
+- Log text layer detection for debugging
+- Store text elements for filter generation
+
+**Subtask 3.2: Add Text Filters to FFmpeg Command**
+- Locate where video filters are applied in CLI export engine
+- Insert text overlay filters into FFmpeg filter chain
+- Combine with existing filters (transitions, effects)
+- Proper filter ordering: video effects → text overlays
+- Handle case with no text layers (skip text filters)
+
+**Subtask 3.3: Integration Testing**
+- Test FFmpeg command generation with text filters
+- Verify filter syntax is correct
+- Test with actual FFmpeg CLI execution
+- Debug any FFmpeg errors related to drawtext
+
+### Phase 4: Testing & Validation (1-2 hours)
+
+**Subtask 4.1: Basic Text Rendering Tests**
+- [ ] Single text layer at fixed position
+- [ ] Multiple text layers at different positions
+- [ ] Overlapping text layers (z-index ordering)
+- [ ] Text with different fonts and sizes
+- [ ] Text with different colors
+
+**Subtask 4.2: Text Timing Tests**
+- [ ] Text appearing at specific time (startTime)
+- [ ] Text disappearing at specific time (startTime + duration)
+- [ ] Multiple text layers with different timing
+- [ ] Text with trimStart/trimEnd applied
+
+**Subtask 4.3: Special Cases**
+- [ ] Text with special characters: quotes, colons, slashes
+- [ ] Text with Unicode characters and emojis
+- [ ] Text with newlines (multi-line text)
+- [ ] Very long text content (>200 characters)
+- [ ] Empty or whitespace-only text (should skip)
+
+**Subtask 4.4: Integration Tests**
+- [ ] Export video with text + video clips
+- [ ] Export video with text + transitions
+- [ ] Export video with text + video effects
+- [ ] Verify text timing matches editor preview
+- [ ] Compare output with Canvas engine (visual parity)
+
+### Expected Code Structure
+
 ```typescript
-async getEngineRecommendation(
-  settings: ExportSettings,
-  duration: number,
-  tracks: TimelineTrack[] // NEW: Add tracks parameter
-): Promise<EngineRecommendation> {
-  // Check if any tracks contain text elements
-  const hasTextLayers = tracks.some(track =>
-    track.elements.some(el => el.type === "text")
-  );
+// In export-engine-cli.ts
 
-  if (this.isElectron() && !forceRegularEngine && !hasTextLayers) {
-    // Use CLI engine only if no text layers
-    return {
-      engineType: ExportEngineType.CLI,
-      reason: "Electron environment - using CLI FFmpeg (no text layers)",
-      capabilities,
-      estimatedPerformance: "high",
-    };
+/**
+ * Convert text element to FFmpeg drawtext filter
+ */
+private convertTextElementToDrawtext(element: TimelineElement): string {
+  if (element.type !== "text" || !element.content?.trim()) return "";
+
+  // Extract properties
+  const text = this.escapeTextForFFmpeg(element.content);
+  const x = element.x ?? 50;
+  const y = element.y ?? 50;
+  const fontSize = element.fontSize ?? 24;
+  const fontColor = element.color ?? "white";
+  const fontFamily = element.fontFamily ?? "Arial";
+
+  // Resolve font file path
+  const fontFile = this.resolveFontPath(fontFamily);
+
+  // Calculate timing
+  const startTime = element.startTime + (element.trimStart ?? 0);
+  const endTime = startTime + element.duration - (element.trimEnd ?? 0);
+
+  // Build drawtext filter
+  return `drawtext=` +
+    `fontfile='${fontFile}':` +
+    `text='${text}':` +
+    `fontsize=${fontSize}:` +
+    `fontcolor=${fontColor}:` +
+    `x=${x}:` +
+    `y=${y}:` +
+    `borderw=2:` +
+    `bordercolor=black:` +
+    `enable='between(t,${startTime},${endTime})'`;
+}
+
+/**
+ * Build complete text overlay filter chain
+ */
+private buildTextOverlayFilter(tracks: TimelineTrack[]): string {
+  const textElements: TimelineElement[] = [];
+
+  // Collect all text elements from timeline
+  for (const track of tracks) {
+    for (const element of track.elements) {
+      if (element.type === "text" && !element.hidden) {
+        textElements.push(element);
+      }
+    }
   }
 
-  if (hasTextLayers) {
-    debugLog("[ExportEngineFactory] Text layers detected - using Canvas engine");
-    // Fall through to Canvas engine selection
+  if (textElements.length === 0) return "";
+
+  // Sort by z-index/track order
+  textElements.sort((a, b) => (a.startTime - b.startTime));
+
+  // Convert each to drawtext filter
+  const filters = textElements
+    .map(el => this.convertTextElementToDrawtext(el))
+    .filter(f => f !== "");
+
+  return filters.join(',');
+}
+
+/**
+ * Escape text for FFmpeg
+ */
+private escapeTextForFFmpeg(text: string): string {
+  return text
+    .replace(/\\/g, '\\\\')   // Escape backslash
+    .replace(/'/g, "\\'")      // Escape single quote
+    .replace(/:/g, '\\:')      // Escape colon
+    .replace(/\[/g, '\\[')     // Escape left bracket
+    .replace(/\]/g, '\\]');    // Escape right bracket
+}
+
+/**
+ * Resolve font family to system font path
+ */
+private resolveFontPath(fontFamily: string): string {
+  const fontMap: Record<string, string> = {
+    'Arial': 'C:/Windows/Fonts/arial.ttf',
+    'Times New Roman': 'C:/Windows/Fonts/times.ttf',
+    'Courier New': 'C:/Windows/Fonts/cour.ttf',
+    // Add more fonts as needed
+  };
+
+  return fontMap[fontFamily] || fontMap['Arial'];
+}
+
+/**
+ * Integrate text filters into FFmpeg command
+ */
+async exportVideo(tracks: TimelineTrack[], ...): Promise<void> {
+  // ... existing code ...
+
+  // Build text overlay filters
+  const textFilter = this.buildTextOverlayFilter(tracks);
+
+  // Add to FFmpeg filter chain
+  if (textFilter) {
+    filterComplex += `,${textFilter}`;
   }
 
-  // ... rest of engine selection logic
+  // ... rest of export logic ...
 }
 ```
 
-### Solution 4: Add User Setting for Engine Selection
-
-Add UI option to let users choose between "Fast Export" (CLI, no text) and "Full Quality Export" (Canvas, with text).
-
-**Pros:**
-- User control
-- Clear expectations
-- Simple implementation
-
-**Cons:**
-- Requires UI changes
-- User must understand trade-offs
-- May confuse users
-
-**Implementation Estimate**: 4-6 hours
-
-## Recommended Implementation Plan
-
-**Phase 1: Implement FFmpeg Drawtext (Solution 1)** - ~8-12 hours ⭐ **PRIMARY SOLUTION**
-1. Add text element detection in CLI export engine
-2. Implement `buildTextOverlayFilter()` method to generate drawtext filters
-3. Implement `escapeTextForFFmpeg()` for special character handling
-4. Add text timing support using `enable='between(t,start,end)'`
-5. Handle font paths for system fonts in Electron
-6. Build filter chain for multiple text layers
-7. Integrate text filters into existing FFmpeg command pipeline
-8. Test with various text layer configurations:
-   - Single text layer
-   - Multiple overlapping text layers
-   - Different fonts, sizes, colors
-   - Special characters and Unicode
-   - Text timing and animations
-
-**This is the complete solution.** Once implemented, the CLI engine will have full text support with native FFmpeg performance. No fallbacks or engine switching needed.
+**This is the complete solution.** Once implemented, the CLI engine will have full text support with native FFmpeg performance. Text rendering will match what users see in the canvas/timeline preview, with proper timing and styling.
 
 ## Related Files
 

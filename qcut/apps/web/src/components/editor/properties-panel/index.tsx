@@ -174,8 +174,9 @@ export function PropertiesPanel() {
           <SettingsView />
         ) : (
           <ScrollArea className="h-full bg-panel rounded-sm">
-            {selectedElements.length > 0
-              ? selectedElements.map(({ trackId, elementId }) => {
+            {selectedElements.length > 0 ? (
+              <div className="p-5 space-y-4">
+                {selectedElements.map(({ trackId, elementId }) => {
                   const track = tracks.find((t) => t.id === trackId);
                   const element = track?.elements.find(
                     (e) => e.id === elementId
@@ -200,8 +201,11 @@ export function PropertiesPanel() {
                       {renderElementProperties(element, trackId)}
                     </div>
                   );
-                })
-              : emptyView}
+                })}
+              </div>
+            ) : (
+              emptyView
+            )}
           </ScrollArea>
         )}
       </div>
