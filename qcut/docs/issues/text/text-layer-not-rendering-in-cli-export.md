@@ -1,10 +1,15 @@
 # Issue: Text Layers Not Rendering in CLI FFmpeg Export
 
-**Status**: 🔴 Critical Issue - **NOT YET FIXED**
+**Status**: 🟡 Partially Fixed - **Phase 1 & 2 Implemented, Phase 3 Pending**
 **Priority**: High
 **Affects**: Electron users (desktop app)
 **Created**: 2025-01-14
-**Implementation Status**: ⚠️ **This document is an implementation guide. The solution has NOT been implemented yet.**
+**Last Updated**: 2025-01-14
+**Implementation Status**:
+- ✅ **Phase 1**: Helper methods implemented in `export-engine-cli.ts`
+- ✅ **Phase 2**: Text filters integrated into export pipeline
+- ⏳ **Phase 3**: Electron FFmpeg handler updates pending
+- ⏳ **Phase 4**: Testing pending
 
 ## Problem Summary
 
@@ -139,11 +144,11 @@ if (forceRegularEngine) {
 - **Not persistent**: Must be set every time the app restarts
 - **Hidden feature**: Not documented or exposed in UI
 
-## Proposed Solution (Not Yet Implemented)
+## Solution Implementation Progress
 
-### Add FFmpeg Drawtext Filter Support to CLI Engine ⭐ **REQUIRED**
+### Add FFmpeg Drawtext Filter Support to CLI Engine ⭐ **IN PROGRESS**
 
-**⚠️ NOTE: This is a proposed implementation guide. The text rendering functionality described below has NOT been implemented yet.**
+**✅ UPDATE: Phase 1 and Phase 2 have been successfully implemented as of 2025-01-14.**
 
 **This is the proper solution.** FFmpeg has native `drawtext` filter support that can handle text overlays efficiently. Implement this filter in the CLI export engine to render text layers directly via FFmpeg commands.
 
@@ -226,11 +231,11 @@ private buildTextOverlayFilter(textElements: TimelineElement[]): string {
 
 ## Implementation Plan
 
-**⚠️ STATUS: Not yet implemented - this is a detailed implementation guide**
+**📊 STATUS: Phases 1 & 2 Complete, Phase 3 Pending**
 
 **Implement FFmpeg Drawtext** - ~6-8 hours
 
-### Phase 1: Add Helper Methods to CLI Export Engine (2-3 hours)
+### Phase 1: Add Helper Methods to CLI Export Engine ✅ **COMPLETED**
 
 **File to modify**: `apps/web/src/lib/export-engine-cli.ts`
 
@@ -574,7 +579,7 @@ All four helper methods have been provided with complete, production-ready code:
 
 Total new code for Phase 1: ~271 lines
 
-### Phase 2: Integrate Text Filters into Export Pipeline (2-3 hours)
+### Phase 2: Integrate Text Filters into Export Pipeline ✅ **COMPLETED**
 
 **File to modify**: `apps/web/src/lib/export-engine-cli.ts`
 

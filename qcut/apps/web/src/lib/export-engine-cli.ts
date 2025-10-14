@@ -1,6 +1,6 @@
 import { ExportEngine } from "./export-engine";
 import { ExportSettings } from "@/types/export";
-import { TimelineTrack, TimelineElement } from "@/types/timeline";
+import { TimelineTrack, TimelineElement, type TextElement } from "@/types/timeline";
 import { MediaItem } from "@/stores/media-store";
 import { debugLog, debugError, debugWarn } from "@/lib/debug-config";
 import { useEffectsStore } from "@/stores/effects-store";
@@ -386,6 +386,282 @@ export class CLIExportEngine extends ExportEngine {
 
   private cacheVideo(url: string, video: HTMLVideoElement): void {
     this.cliVideoCache.set(url, video);
+  }
+
+  /**
+   * Escape special characters for FFmpeg drawtext filter
+   * FFmpeg drawtext uses ':' as delimiter and requires escaping for special chars
+   */
+  private escapeTextForFFmpeg(text: string): string {
+    // FFmpeg drawtext filter requires escaping these characters:
+    // '\' -> '\\'
+    // ':' -> '\:'
+    // '[' -> '\['
+    // ']' -> '\]'
+    // ',' -> '\,'
+    // ';' -> '\;'
+    // "'" -> "\\'" (escaped apostrophe)
+    // '%' -> '\\%' (prevent expansion tokens)
+    // Newlines -> literal '\n' string
+
+    return text
+      .replace(/\\/g, '\\\\')     // Escape backslashes first
+      .replace(/:/g, '\\:')        // Escape colons (filter delimiter)
+      .replace(/\[/g, '\\[')       // Escape opening brackets
+      .replace(/\]/g, '\\]')       // Escape closing brackets
+      .replace(/,/g, '\\,')        // Escape commas (filter separator)
+      .replace(/;/g, '\\;')        // Escape semicolons
+      .replace(/'/g, "\\'")        // Escape single quotes
+      .replace(/%/g, '\\%')        // Escape percent signs (expansion tokens)
+      .replace(/\n/g, '\\n')       // Convert newlines to literal \n
+      .replace(/\r/g, '')          // Remove carriage returns
+      .replace(/=/g, '\\=');       // Escape equals signs
+  }
+
+  /**
+   * Resolve font family name to actual font file path
+   * Supports Windows, macOS, and Linux with platform-aware paths
+   */
+  private resolveFontPath(fontFamily: string, fontWeight?: string, fontStyle?: string): string {
+    // Normalize font family name for comparison
+    const normalizedFamily = fontFamily.toLowerCase().replace(/['"]/g, '');
+    const isBold = fontWeight === 'bold';
+    const isItalic = fontStyle === 'italic';
+
+    // Detect platform
+    const platform = navigator.platform.toLowerCase();
+    const isWindows = platform.includes('win');
+    const isMac = platform.includes('mac');
+    const isLinux = platform.includes('linux');
+
+    // Platform-specific font paths
+    const fontBasePath = isWindows
+      ? 'C:/Windows/Fonts/'
+      : isMac
+      ? '/System/Library/Fonts/'
+      : '/usr/share/fonts/truetype/liberation/'; // Common Linux font path
+
+    // Font mapping with variations for bold/italic
+    const fontMap: Record<string, {regular: string, bold?: string, italic?: string, boldItalic?: string}> = {
+      'arial': isWindows ? {
+        regular: 'arial.ttf',
+        bold: 'arialbd.ttf',
+        italic: 'ariali.ttf',
+        boldItalic: 'arialbi.ttf'
+      } : isMac ? {
+        regular: 'Helvetica.ttc',
+        bold: 'Helvetica.ttc',
+        italic: 'Helvetica.ttc',
+        boldItalic: 'Helvetica.ttc'
+      } : {
+        regular: 'LiberationSans-Regular.ttf',
+        bold: 'LiberationSans-Bold.ttf',
+        italic: 'LiberationSans-Italic.ttf',
+        boldItalic: 'LiberationSans-BoldItalic.ttf'
+      },
+      'times new roman': isWindows ? {
+        regular: 'times.ttf',
+        bold: 'timesbd.ttf',
+        italic: 'timesi.ttf',
+        boldItalic: 'timesbi.ttf'
+      } : isMac ? {
+        regular: 'Times.ttc',
+        bold: 'Times.ttc',
+        italic: 'Times.ttc',
+        boldItalic: 'Times.ttc'
+      } : {
+        regular: 'LiberationSerif-Regular.ttf',
+        bold: 'LiberationSerif-Bold.ttf',
+        italic: 'LiberationSerif-Italic.ttf',
+        boldItalic: 'LiberationSerif-BoldItalic.ttf'
+      },
+      'courier new': isWindows ? {
+        regular: 'cour.ttf',
+        bold: 'courbd.ttf',
+        italic: 'couri.ttf',
+        boldItalic: 'courbi.ttf'
+      } : isMac ? {
+        regular: 'Courier.ttc',
+        bold: 'Courier.ttc',
+        italic: 'Courier.ttc',
+        boldItalic: 'Courier.ttc'
+      } : {
+        regular: 'LiberationMono-Regular.ttf',
+        bold: 'LiberationMono-Bold.ttf',
+        italic: 'LiberationMono-Italic.ttf',
+        boldItalic: 'LiberationMono-BoldItalic.ttf'
+      }
+    };
+
+    // Find matching font or default to Arial/Helvetica/Liberation Sans
+    const fontConfig = fontMap[normalizedFamily] || fontMap['arial'];
+
+    // Select appropriate font variant
+    let fontFile = fontConfig.regular;
+    if (isBold && isItalic && fontConfig.boldItalic) {
+      fontFile = fontConfig.boldItalic;
+    } else if (isBold && fontConfig.bold) {
+      fontFile = fontConfig.bold;
+    } else if (isItalic && fontConfig.italic) {
+      fontFile = fontConfig.italic;
+    }
+
+    // Return full path
+    return `${fontBasePath}${fontFile}`;
+  }
+
+  /**
+   * Convert a TextElement to FFmpeg drawtext filter string
+   * Includes all positioning, styling, and timing parameters
+   */
+  private convertTextElementToDrawtext(element: TextElement): string {
+    // Skip empty text elements
+    if (!element.content || !element.content.trim()) {
+      return '';
+    }
+
+    // Skip hidden elements
+    if (element.hidden) {
+      return '';
+    }
+
+    // Escape the text content for FFmpeg
+    const escapedText = this.escapeTextForFFmpeg(element.content);
+
+    // Get font file path based on font family and style
+    const fontPath = this.resolveFontPath(
+      element.fontFamily || 'Arial',
+      element.fontWeight,
+      element.fontStyle
+    );
+
+    // Convert CSS color to FFmpeg format (remove # if present)
+    let fontColor = element.color || '#ffffff';
+    if (fontColor.startsWith('#')) {
+      // Convert #RRGGBB to 0xRRGGBB format for FFmpeg
+      fontColor = '0x' + fontColor.substring(1);
+    }
+
+    // Calculate actual display timing (accounting for trim)
+    const startTime = element.startTime + element.trimStart;
+    const endTime = element.startTime + element.duration - element.trimEnd;
+
+    // Build base filter parameters
+    const filterParams: string[] = [
+      `text='${escapedText}'`,
+      `fontfile='${fontPath}'`,
+      `fontsize=${element.fontSize || 24}`,
+      `fontcolor=${fontColor}`,
+    ];
+
+    // Position (preserve element's x/y offsets when centering)
+    const canvasWidth = this.canvas.width;
+    const canvasHeight = this.canvas.height;
+
+    // Use element's x/y coordinates directly (they're already relative to canvas)
+    let xExpr = `${Math.round(element.x || 50)}`;
+    let yExpr = `${Math.round(element.y || 50)}`;
+
+    // Apply text alignment while preserving offsets
+    if (element.textAlign === 'center') {
+      // Center text horizontally at the specified x position
+      xExpr = `(w-text_w)/2+${Math.round(element.x || 0)}`;
+    } else if (element.textAlign === 'right') {
+      // Right align text at the specified x position
+      xExpr = `w-text_w-50+${Math.round(element.x || 0)}`;
+    }
+
+    filterParams.push(`x=${xExpr}`);
+    filterParams.push(`y=${yExpr}`);
+
+    // Add text border for better readability
+    filterParams.push('borderw=2');
+    filterParams.push('bordercolor=black');
+
+    // Handle opacity if not fully opaque
+    if (element.opacity !== undefined && element.opacity < 1) {
+      // FFmpeg uses alpha channel in range 0-255
+      const alpha = Math.round(element.opacity * 255);
+      filterParams.push(`alpha=${alpha}/255`);
+    }
+
+    // Handle rotation if present
+    if (element.rotation && element.rotation !== 0) {
+      // Convert degrees to radians for FFmpeg
+      const radians = (element.rotation * Math.PI) / 180;
+      filterParams.push(`angle=${radians}`);
+    }
+
+    // Background color if not transparent
+    if (element.backgroundColor && element.backgroundColor !== 'transparent') {
+      let bgColor = element.backgroundColor;
+      if (bgColor.startsWith('#')) {
+        bgColor = '0x' + bgColor.substring(1);
+      }
+      filterParams.push(`box=1`);
+      filterParams.push(`boxcolor=${bgColor}@0.5`);
+      filterParams.push(`boxborderw=5`);
+    }
+
+    // Add timing - text only appears during its timeline duration
+    filterParams.push(`enable='between(t,${startTime},${endTime})'`);
+
+    // Combine all parameters into drawtext filter
+    return `drawtext=${filterParams.join(':')}`;
+  }
+
+  /**
+   * Build complete FFmpeg filter chain for all text overlays
+   * Collects all text elements from timeline and converts to drawtext filters
+   */
+  private buildTextOverlayFilters(): string {
+    const textFilters: string[] = [];
+
+    // Iterate through all tracks to find text elements
+    for (const track of this.tracks) {
+      // Only process text tracks
+      if (track.type !== 'text') {
+        continue;
+      }
+
+      // Process each element in the track
+      for (const element of track.elements) {
+        // Skip non-text elements (shouldn't happen on text track, but be safe)
+        if (element.type !== 'text') {
+          continue;
+        }
+
+        // Skip hidden elements
+        if (element.hidden) {
+          continue;
+        }
+
+        // Convert element to drawtext filter
+        const textElement = element as TextElement;
+        const filterString = this.convertTextElementToDrawtext(textElement);
+
+        // Only add non-empty filter strings
+        if (filterString) {
+          textFilters.push(filterString);
+        }
+      }
+    }
+
+    // Sort filters by start time for consistent rendering order
+    // Extract start times and sort
+    const sortedFilters = textFilters.sort((a, b) => {
+      // Extract enable parameter to get start time
+      const extractStartTime = (filter: string): number => {
+        const enableMatch = filter.match(/enable='between\(t,([0-9.]+),/);
+        return enableMatch ? parseFloat(enableMatch[1]) : 0;
+      };
+
+      return extractStartTime(a) - extractStartTime(b);
+    });
+
+    // Join all filters with comma separator
+    // Empty string if no text elements found
+    return sortedFilters.join(',');
   }
 
   // Helper to get active elements (CLI-specific version)
@@ -1042,8 +1318,17 @@ export class CLIExportEngine extends ExportEngine {
       ","
     );
 
+    // Build text overlay filter chain for FFmpeg drawtext
+    const textFilterChain = this.buildTextOverlayFilters();
+    if (textFilterChain) {
+      debugLog(`[CLI Export] Text filter chain generated: ${textFilterChain}`);
+      debugLog(`[CLI Export] Text filter count: ${(textFilterChain.match(/drawtext=/g) || []).length}`);
+    }
+
     // Extract video sources for direct copy optimization
-    const videoSources = this.exportAnalysis?.canUseDirectCopy
+    // IMPORTANT: Disable direct copy if we have text filters
+    const hasTextFilters = textFilterChain && textFilterChain.length > 0;
+    const videoSources = (this.exportAnalysis?.canUseDirectCopy && !hasTextFilters)
       ? this.extractVideoSources()
       : [];
 
@@ -1060,7 +1345,8 @@ export class CLIExportEngine extends ExportEngine {
       duration: this.totalDuration, // CRITICAL: Pass timeline duration to FFmpeg
       audioFiles, // Now contains only validated audio files
       filterChain: combinedFilterChain || undefined,
-      useDirectCopy: this.exportAnalysis?.canUseDirectCopy || false,
+      textFilterChain: textFilterChain || undefined,  // Add text filter chain
+      useDirectCopy: (this.exportAnalysis?.canUseDirectCopy && !hasTextFilters) || false, // Disable direct copy when text present
       videoSources: videoSources.length > 0 ? videoSources : undefined,
     };
 
