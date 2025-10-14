@@ -186,7 +186,9 @@ interface FFmpegHandlers {
   "export-video-cli": (options: ExportOptions) => Promise<ExportResult>;
   "validate-filter-chain": (filterChain: string) => Promise<boolean>;
   "processFrame": (options: FrameProcessOptions) => Promise<void>;
-  "extract-audio": (options: ExtractAudioOptions) => Promise<ExtractAudioResult>;
+  "extract-audio": (
+    options: ExtractAudioOptions
+  ) => Promise<ExtractAudioResult>;
 }
 
 const tempManager = new TempManager();
@@ -325,169 +327,220 @@ export function setupFFmpegIPC(): void {
           options.videoSources
         );
 
-        // Verify input based on processing mode
-        if (useDirectCopy) {
-          // Validate that video sources were provided
-          if (!options.videoSources || options.videoSources.length === 0) {
-            const error = 'Direct copy mode requested but no video sources provided. Frames were not rendered.';
-            reject(new Error(error));
-            return;
-          }
+        // Use async IIFE to handle validation properly
+        (async () => {
+          // Verify input based on processing mode
+          if (useDirectCopy) {
+            // Validate that video sources were provided
+            if (!options.videoSources || options.videoSources.length === 0) {
+              const error =
+                "Direct copy mode requested but no video sources provided. Frames were not rendered.";
+              reject(new Error(error));
+              return;
+            }
 
-          // Validate each video source file exists
-          for (const video of options.videoSources) {
-            if (!fs.existsSync(video.path)) {
-              const error = `Video source not found: ${video.path}`;
+            // Validate each video source file exists
+            for (const video of options.videoSources) {
+              if (!fs.existsSync(video.path)) {
+                const error = `Video source not found: ${video.path}`;
+                reject(new Error(error));
+                return;
+              }
+            }
+
+            // Validate codec compatibility for concat (only if multiple videos)
+            if (options.videoSources.length > 1) {
+              try {
+                const probeResults = await Promise.all(
+                  options.videoSources.map((video) =>
+                    probeVideoFile(video.path)
+                  )
+                );
+
+                // Compare all videos against the first one
+                const reference = probeResults[0];
+                for (let i = 1; i < probeResults.length; i++) {
+                  const current = probeResults[i];
+
+                  if (
+                    reference.codec !== current.codec ||
+                    reference.width !== current.width ||
+                    reference.height !== current.height ||
+                    reference.pix_fmt !== current.pix_fmt ||
+                    reference.fps !== current.fps
+                  ) {
+                    const error =
+                      "Video codec mismatch detected - direct copy requires identical encoding:\n\n" +
+                      `Reference: ${path.basename(reference.path)}\n` +
+                      `  Codec: ${reference.codec}, Resolution: ${reference.width}x${reference.height}\n` +
+                      `  Pixel Format: ${reference.pix_fmt}, FPS: ${reference.fps}\n\n` +
+                      `Mismatched: ${path.basename(current.path)}\n` +
+                      `  Codec: ${current.codec}, Resolution: ${current.width}x${current.height}\n` +
+                      `  Pixel Format: ${current.pix_fmt}, FPS: ${current.fps}\n\n` +
+                      "All videos must have identical codec, resolution, pixel format, and frame rate for direct copy mode.";
+                    reject(new Error(error));
+                    return;
+                  }
+                }
+              } catch (probeError: any) {
+                reject(
+                  new Error(
+                    `Failed to validate video compatibility: ${probeError.message}`
+                  )
+                );
+                return;
+              }
+            }
+          } else {
+            // Frame-based mode: verify frames exist
+            if (!fs.existsSync(frameDir)) {
+              const error: string = `Frame directory does not exist: ${frameDir}`;
+              reject(new Error(error));
+              return;
+            }
+
+            const frameFiles: string[] = fs
+              .readdirSync(frameDir)
+              .filter(
+                (f: string) => f.startsWith("frame-") && f.endsWith(".png")
+              );
+
+            if (frameFiles.length === 0) {
+              const error: string = `No frame files found in: ${frameDir}`;
               reject(new Error(error));
               return;
             }
           }
-        } else {
-          // Frame-based mode: verify frames exist
-          if (!fs.existsSync(frameDir)) {
-            const error: string = `Frame directory does not exist: ${frameDir}`;
-            reject(new Error(error));
-            return;
+
+          // Ensure output directory exists
+          const outputDirPath: string = path.dirname(outputFile);
+          if (!fs.existsSync(outputDirPath)) {
+            fs.mkdirSync(outputDirPath, { recursive: true });
           }
 
-          const frameFiles: string[] = fs
-            .readdirSync(frameDir)
-            .filter((f: string) => f.startsWith("frame-") && f.endsWith(".png"));
+          // Test simple command first: create 1-second video from first frame only
+          const simpleArgs: string[] = [
+            "-y",
+            "-f",
+            "image2",
+            "-i",
+            path.join(frameDir, "frame-0000.png"),
+            "-c:v",
+            "libx264",
+            "-t",
+            "1",
+            "-pix_fmt",
+            "yuv420p",
+            outputFile,
+          ];
 
-          if (frameFiles.length === 0) {
-            const error: string = `No frame files found in: ${frameDir}`;
-            reject(new Error(error));
-            return;
-          }
-        }
+          // Attempt to spawn FFmpeg process directly instead of requiring manual run
+          const inputPattern: string = path.join(frameDir, "frame-%04d.png");
 
-        // Ensure output directory exists
-        const outputDirPath: string = path.dirname(outputFile);
-        if (!fs.existsSync(outputDirPath)) {
-          fs.mkdirSync(outputDirPath, { recursive: true });
-        }
+          // =============================
+          // Try to run FFmpeg directly
+          // =============================
+          try {
+            const ffmpegProc: ChildProcess = spawn(ffmpegPath, args, {
+              windowsHide: true,
+              stdio: ["ignore", "pipe", "pipe"],
+            });
 
-        // Test simple command first: create 1-second video from first frame only
-        const simpleArgs: string[] = [
-          "-y",
-          "-f",
-          "image2",
-          "-i",
-          path.join(frameDir, "frame-0000.png"),
-          "-c:v",
-          "libx264",
-          "-t",
-          "1",
-          "-pix_fmt",
-          "yuv420p",
-          outputFile,
-        ];
+            let stderrOutput = "";
+            let stdoutOutput = "";
 
-        // Attempt to spawn FFmpeg process directly instead of requiring manual run
-        const inputPattern: string = path.join(frameDir, "frame-%04d.png");
+            ffmpegProc.stdout?.on("data", (chunk: Buffer) => {
+              const text: string = chunk.toString();
+              stdoutOutput += text;
+            });
 
-        // =============================
-        // Try to run FFmpeg directly
-        // =============================
-        try {
-          const ffmpegProc: ChildProcess = spawn(ffmpegPath, args, {
-            windowsHide: true,
-            stdio: ["ignore", "pipe", "pipe"],
-          });
+            ffmpegProc.stderr?.on("data", (chunk: Buffer) => {
+              const text: string = chunk.toString();
+              stderrOutput += text;
 
-          let stderrOutput = "";
-          let stdoutOutput = "";
-
-          ffmpegProc.stdout?.on("data", (chunk: Buffer) => {
-            const text: string = chunk.toString();
-            stdoutOutput += text;
-          });
-
-          ffmpegProc.stderr?.on("data", (chunk: Buffer) => {
-            const text: string = chunk.toString();
-            stderrOutput += text;
-
-            const progress: FFmpegProgress | null = parseProgress(text);
-            if (progress) {
-              event.sender?.send?.("ffmpeg-progress", progress);
-            }
-          });
-
-          ffmpegProc.on("error", (err: Error) => {
-            reject(err);
-          });
-
-          ffmpegProc.on(
-            "close",
-            (code: number | null, signal: string | null) => {
-              if (code === 0) {
-                resolve({ success: true, outputFile, method: "spawn" });
-              } else {
-                const error: FFmpegError = new Error(
-                  `FFmpeg exited with code ${code}`
-                ) as FFmpegError;
-                error.code = code || undefined;
-                error.signal = signal || undefined;
-                error.stderr = stderrOutput;
-                error.stdout = stdoutOutput;
-                reject(error);
+              const progress: FFmpegProgress | null = parseProgress(text);
+              if (progress) {
+                event.sender?.send?.("ffmpeg-progress", progress);
               }
-            }
+            });
+
+            ffmpegProc.on("error", (err: Error) => {
+              reject(err);
+            });
+
+            ffmpegProc.on(
+              "close",
+              (code: number | null, signal: string | null) => {
+                if (code === 0) {
+                  resolve({ success: true, outputFile, method: "spawn" });
+                } else {
+                  const error: FFmpegError = new Error(
+                    `FFmpeg exited with code ${code}`
+                  ) as FFmpegError;
+                  error.code = code || undefined;
+                  error.signal = signal || undefined;
+                  error.stderr = stderrOutput;
+                  error.stdout = stdoutOutput;
+                  reject(error);
+                }
+              }
+            );
+
+            // If spawn succeeded we exit early and skip manual fallback logic below.
+            return;
+          } catch (spawnErr: any) {
+            // Direct spawn failed, falling back to manual instructions
+          }
+
+          const batchFile: string = path.join(
+            tempManager.getOutputDir(sessionId),
+            "ffmpeg_run.bat"
           );
 
-          // If spawn succeeded we exit early and skip manual fallback logic below.
-          return;
-        } catch (spawnErr: any) {
-          // Direct spawn failed, falling back to manual instructions
-        }
-
-        const batchFile: string = path.join(
-          tempManager.getOutputDir(sessionId),
-          "ffmpeg_run.bat"
-        );
-
-        // Create batch file content using Windows CMD syntax
-        const ffmpegDir: string = path.dirname(ffmpegPath);
-        const ffmpegExe: string = path.basename(ffmpegPath);
-        const batchContent: string = `@echo off
+          // Create batch file content using Windows CMD syntax
+          const ffmpegDir: string = path.dirname(ffmpegPath);
+          const ffmpegExe: string = path.basename(ffmpegPath);
+          const batchContent: string = `@echo off
 cd /d "${ffmpegDir}"
 echo Starting FFmpeg export...
 ${ffmpegExe} -y -framerate 30 -i "${inputPattern}" -c:v libx264 -preset fast -crf 23 -t 5 -pix_fmt yuv420p -movflags +faststart "${outputFile}"
 echo FFmpeg exit code: %ERRORLEVEL%
 exit /b %ERRORLEVEL%`;
 
-        // Creating batch file workaround
+          // Creating batch file workaround
 
-        // Write batch file
-        fs.writeFileSync(batchFile, batchContent);
+          // Write batch file
+          fs.writeFileSync(batchFile, batchContent);
 
-        // Since Electron process spawning is restricted on Windows, provide manual export option
-        // Windows process spawning restricted, frames ready for manual export
+          // Since Electron process spawning is restricted on Windows, provide manual export option
+          // Windows process spawning restricted, frames ready for manual export
 
-        // Check if user has already created the video manually
-        const checkForManualVideo = (): void => {
-          if (fs.existsSync(outputFile)) {
-            const stats: fs.Stats = fs.statSync(outputFile);
-            // Found manually created video
-            resolve({
-              success: true,
-              outputFile,
-              method: "manual",
-              message: "Video created manually - frames exported successfully!",
-            });
-          } else {
-            // Provide helpful error with manual instructions
-            reject(
-              new Error(
-                `FFmpeg process spawning restricted by Windows. Please run the command manually:\n\ncd "${path.dirname(ffmpegPath)}" && ${path.basename(ffmpegPath)} -y -framerate 30 -i "${inputPattern}" -c:v libx264 -preset fast -crf 23 -t 5 -pix_fmt yuv420p "${outputFile}"\n\nFrames location: ${frameDir}`
-              )
-            );
-          }
-        };
+          // Check if user has already created the video manually
+          const checkForManualVideo = (): void => {
+            if (fs.existsSync(outputFile)) {
+              const stats: fs.Stats = fs.statSync(outputFile);
+              // Found manually created video
+              resolve({
+                success: true,
+                outputFile,
+                method: "manual",
+                message:
+                  "Video created manually - frames exported successfully!",
+              });
+            } else {
+              // Provide helpful error with manual instructions
+              reject(
+                new Error(
+                  `FFmpeg process spawning restricted by Windows. Please run the command manually:\n\ncd "${path.dirname(ffmpegPath)}" && ${path.basename(ffmpegPath)} -y -framerate 30 -i "${inputPattern}" -c:v libx264 -preset fast -crf 23 -t 5 -pix_fmt yuv420p "${outputFile}"\n\nFrames location: ${frameDir}`
+                )
+              );
+            }
+          };
 
-        // Check immediately and also after a short delay
-        checkForManualVideo();
-        setTimeout(checkForManualVideo, 2000);
+          // Check immediately and also after a short delay
+          checkForManualVideo();
+          setTimeout(checkForManualVideo, 2000);
+        })().catch(reject); // Close async IIFE and catch any unhandled errors
       });
     }
   );
@@ -654,13 +707,17 @@ exit /b %ERRORLEVEL%`;
 
         // FFmpeg command to extract audio
         const args = [
-          "-i", videoPath,           // Input video
-          "-vn",                      // No video
-          "-acodec", "pcm_s16le",    // WAV codec (uncompressed)
-          "-ar", "16000",            // Sample rate 16kHz (optimal for Gemini)
-          "-ac", "1",                // Mono audio
-          "-y",                       // Overwrite output
-          outputPath
+          "-i",
+          videoPath, // Input video
+          "-vn", // No video
+          "-acodec",
+          "pcm_s16le", // WAV codec (uncompressed)
+          "-ar",
+          "16000", // Sample rate 16kHz (optimal for Gemini)
+          "-ac",
+          "1", // Mono audio
+          "-y", // Overwrite output
+          outputPath,
         ];
 
         const ffmpeg = spawn(ffmpegPath, args, {
@@ -709,6 +766,103 @@ exit /b %ERRORLEVEL%`;
       });
     }
   );
+}
+
+/**
+ * Video stream properties extracted from ffprobe
+ */
+interface VideoProbeResult {
+  path: string;
+  codec: string;
+  width: number;
+  height: number;
+  pix_fmt: string;
+  fps: string;
+}
+
+/**
+ * Probes a video file to extract codec information using ffprobe.
+ * Used for validating codec compatibility in direct-copy mode.
+ *
+ * @param videoPath - Absolute path to video file
+ * @returns Promise resolving to video stream properties
+ * @throws Error if ffprobe fails or video stream not found
+ */
+async function probeVideoFile(videoPath: string): Promise<VideoProbeResult> {
+  // Get ffprobe path (same directory as ffmpeg)
+  const ffmpegPath = getFFmpegPath();
+  const ffprobeDir = path.dirname(ffmpegPath);
+  const ffprobeExe = process.platform === "win32" ? "ffprobe.exe" : "ffprobe";
+  const ffprobePath = path.join(ffprobeDir, ffprobeExe);
+
+  return new Promise<VideoProbeResult>((resolve, reject) => {
+    const args = [
+      "-v",
+      "quiet",
+      "-print_format",
+      "json",
+      "-show_streams",
+      videoPath,
+    ];
+
+    const ffprobe = spawn(ffprobePath, args, {
+      windowsHide: true,
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+
+    let stdout = "";
+    let stderr = "";
+
+    ffprobe.stdout?.on("data", (data) => {
+      stdout += data.toString();
+    });
+
+    ffprobe.stderr?.on("data", (data) => {
+      stderr += data.toString();
+    });
+
+    ffprobe.on("close", (code) => {
+      if (code !== 0) {
+        reject(new Error(`ffprobe failed with code ${code}: ${stderr}`));
+        return;
+      }
+
+      try {
+        const probeData = JSON.parse(stdout);
+        const videoStream = probeData.streams?.find(
+          (s: any) => s.codec_type === "video"
+        );
+
+        if (!videoStream) {
+          reject(new Error(`No video stream found in: ${videoPath}`));
+          return;
+        }
+
+        resolve({
+          path: videoPath,
+          codec: videoStream.codec_name,
+          width: videoStream.width,
+          height: videoStream.height,
+          pix_fmt: videoStream.pix_fmt,
+          fps: videoStream.r_frame_rate,
+        });
+      } catch (parseErr: any) {
+        reject(
+          new Error(`Failed to parse ffprobe output: ${parseErr.message}`)
+        );
+      }
+    });
+
+    ffprobe.on("error", (err) => {
+      reject(new Error(`Failed to spawn ffprobe: ${err.message}`));
+    });
+
+    // Timeout after 10 seconds
+    setTimeout(() => {
+      ffprobe.kill();
+      reject(new Error(`ffprobe timeout for: ${videoPath}`));
+    }, 10_000);
+  });
 }
 
 /**
@@ -796,7 +950,7 @@ function buildFFmpegArgs(
   duration: number,
   audioFiles: AudioFile[] = [],
   filterChain?: string,
-  useDirectCopy: boolean = false,
+  useDirectCopy = false,
   videoSources?: VideoSource[]
 ): string[] {
   const qualitySettings: QualityMap = {
@@ -822,7 +976,8 @@ function buildFFmpegArgs(
       }
 
       // Calculate effective duration (subtract trim values)
-      const effectiveDuration = video.duration - (video.trimStart || 0) - (video.trimEnd || 0);
+      const effectiveDuration =
+        video.duration - (video.trimStart || 0) - (video.trimEnd || 0);
 
       // Apply trim start (seek to position)
       if (video.trimStart && video.trimStart > 0) {
@@ -852,8 +1007,10 @@ function buildFFmpegArgs(
             args.push(
               "-filter_complex",
               `[1:a]adelay=${Math.round(audioFile.startTime * 1000)}|${Math.round(audioFile.startTime * 1000)}[audio]`,
-              "-map", "0:v",
-              "-map", "[audio]"
+              "-map",
+              "0:v",
+              "-map",
+              "[audio]"
             );
           } else {
             args.push("-map", "0:v", "-map", "1:a");
@@ -865,8 +1022,10 @@ function buildFFmpegArgs(
           args.push(
             "-filter_complex",
             mixFilter,
-            "-map", "0:v",
-            "-map", "[audio]"
+            "-map",
+            "0:v",
+            "-map",
+            "[audio]"
           );
         }
         args.push("-c:a", "aac", "-b:a", "128k");
@@ -874,31 +1033,40 @@ function buildFFmpegArgs(
 
       // Use direct stream copy for video
       args.push("-c:v", "copy");
-
     } else {
       // Multiple videos: use concat demuxer
       // Create concat file content
-      const concatFileContent = videoSources.map(video => {
-        // Validate each video file exists
-        if (!fs.existsSync(video.path)) {
-          throw new Error(`Video source not found: ${video.path}`);
-        }
+      const concatFileContent = videoSources
+        .map((video) => {
+          // Validate each video file exists
+          if (!fs.existsSync(video.path)) {
+            throw new Error(`Video source not found: ${video.path}`);
+          }
 
-        // Escape single quotes in file path for concat file format
-        const escapedPath = video.path.replace(/'/g, "'\\''");
-        return `file '${escapedPath}'`;
-      }).join('\n');
+          // Concat demuxer doesn't support per-source trims
+          if (
+            (video.trimStart && video.trimStart > 0) ||
+            (video.trimEnd && video.trimEnd > 0)
+          ) {
+            throw new Error(
+              `Video '${path.basename(video.path)}' has trim values (trimStart=${video.trimStart || 0}s, trimEnd=${video.trimEnd || 0}s). ` +
+                `The concat demuxer doesn't support per-video trimming in multi-video mode. ` +
+                "Please disable direct copy mode or pre-trim videos before export."
+            );
+          }
+
+          // Escape single quotes in file path for concat file format
+          const escapedPath = video.path.replace(/'/g, "'\\''");
+          return `file '${escapedPath}'`;
+        })
+        .join("\n");
 
       // Write concat file to temp directory
-      const concatFilePath = path.join(inputDir, 'concat-list.txt');
+      const concatFilePath = path.join(inputDir, "concat-list.txt");
       fs.writeFileSync(concatFilePath, concatFileContent);
 
       // Use concat demuxer
-      args.push(
-        "-f", "concat",
-        "-safe", "0",
-        "-i", concatFilePath
-      );
+      args.push("-f", "concat", "-safe", "0", "-i", concatFilePath);
 
       // Add audio inputs if provided
       if (audioFiles && audioFiles.length > 0) {
@@ -911,14 +1079,18 @@ function buildFFmpegArgs(
 
         // Build audio mixing filter
         const audioInputOffset = 1; // Concat is input 0, audio starts at 1
-        const inputMaps: string[] = audioFiles.map((_, i) => `[${i + audioInputOffset}:a]`);
+        const inputMaps: string[] = audioFiles.map(
+          (_, i) => `[${i + audioInputOffset}:a]`
+        );
         const mixFilter = `${inputMaps.join("")}amix=inputs=${audioFiles.length}:duration=longest[audio]`;
 
         args.push(
           "-filter_complex",
           mixFilter,
-          "-map", "0:v",
-          "-map", "[audio]"
+          "-map",
+          "0:v",
+          "-map",
+          "[audio]"
         );
         args.push("-c:a", "aac", "-b:a", "128k");
       }
@@ -928,10 +1100,7 @@ function buildFFmpegArgs(
     }
 
     // Add common output settings
-    args.push(
-      "-movflags", "+faststart",
-      outputFile
-    );
+    args.push("-movflags", "+faststart", outputFile);
 
     return args;
   }
@@ -939,8 +1108,8 @@ function buildFFmpegArgs(
   // If we reach here with useDirectCopy=true, something is wrong
   if (useDirectCopy) {
     throw new Error(
-      'Direct copy requested but no video sources available. ' +
-      'This indicates a configuration error - frames were not rendered and video sources are unavailable.'
+      "Direct copy requested but no video sources available. " +
+        "This indicates a configuration error - frames were not rendered and video sources are unavailable."
     );
   }
 
