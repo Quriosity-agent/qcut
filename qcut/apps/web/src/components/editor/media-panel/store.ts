@@ -46,6 +46,10 @@ export const tabs: { [key in Tab]: { icon: LucideIcon; label: string } } = {
     icon: SlidersHorizontalIcon,
     label: "Adjustment",
   },
+  ai: {
+    icon: BotIcon,
+    label: "AI Video",
+  },
   "nano-edit": {
     icon: PaletteIcon,
     label: "Nano Edit",
@@ -81,10 +85,6 @@ export const tabs: { [key in Tab]: { icon: LucideIcon; label: string } } = {
   filters: {
     icon: BlendIcon,
     label: "Filters",
-  },
-  ai: {
-    icon: BotIcon,
-    label: "AI Video",
   },
   sounds: {
     icon: VolumeXIcon,
