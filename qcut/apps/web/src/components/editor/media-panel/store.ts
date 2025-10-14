@@ -74,6 +74,10 @@ export const tabs: { [key in Tab]: { icon: LucideIcon; label: string } } = {
     icon: StickerIcon,
     label: "Stickers",
   },
+  sounds: {
+    icon: VolumeXIcon,
+    label: "Sounds",
+  },
   effects: {
     icon: SparklesIcon,
     label: "Effects",
@@ -85,10 +89,6 @@ export const tabs: { [key in Tab]: { icon: LucideIcon; label: string } } = {
   filters: {
     icon: BlendIcon,
     label: "Filters",
-  },
-  sounds: {
-    icon: VolumeXIcon,
-    label: "Sounds",
   },
 };
 
