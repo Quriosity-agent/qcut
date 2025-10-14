@@ -1842,7 +1842,7 @@ export function AudioSyncTab() {
   /**
    * Handle video file change
    */
-  const handleVideoChange = (file: File | null, preview: string | null) => {
+  const handleVideoChange = (file: File | null, preview: string | undefined | null) => {
     if (file) {
       const validation = VIDEO_EDIT_HELPERS.validateVideoFile(file);
       if (!validation.valid) {
@@ -1852,7 +1852,7 @@ export function AudioSyncTab() {
     }
 
     setSourceVideo(file);
-    setVideoPreview(preview);
+    setVideoPreview(preview ?? null);  // Coerce undefined to null for type safety
     setError(null);
     reset();
   };
@@ -2055,14 +2055,16 @@ export function AudioSyncTab() {
               />
             )}
             <div className="flex gap-2">
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => window.open(result.videoUrl!, "_blank")}
-                className="text-xs"
-              >
-                Download Video
-              </Button>
+              {result.videoUrl && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => window.open(result.videoUrl!, "_blank")}
+                  className="text-xs"
+                >
+                  Download Video
+                </Button>
+              )}
             </div>
           </div>
         </Card>
@@ -2099,7 +2101,7 @@ export function AudioSyncTab() {
 }
 ```
 
-**Review Comment:** Same `FileUpload` nuance here: `setVideoPreview(preview)` can receive `undefined`, which clashes with the `string | null` state typing (`qcut/apps/web/src/components/editor/media-panel/views/video-edit-audio-sync.tsx:184`). Coerce to `preview ?? null`. Also trim the unused `Upload` icon import, and guard `window.open(result.videoUrl!, ...)` so we only attempt it when `videoUrl` is defined (`.../video-edit-audio-sync.tsx:205`).
+**Review Comment:** ✅ FIXED - 1) Added `preview ?? null` coercion in `handleVideoChange` for type safety. 2) Removed unused `Upload` icon import. 3) Added null guard `{result.videoUrl &&` before window.open call.
 
 ### Subtask 6.2: Update Main Video Edit View (10 min)
 **File to Modify**: `qcut/apps/web/src/components/editor/media-panel/views/video-edit.tsx`
@@ -2115,7 +2117,7 @@ import { AudioSyncTab } from "./video-edit-audio-sync";
 </TabsContent>
 ```
 
-**Review Comment:** After wiring in the tab components, `video-edit.tsx` still imports `Button` (and later `Loader2`) without using them—lint will complain (`qcut/apps/web/src/components/editor/media-panel/views/video-edit.tsx:242`). Also, please source `VideoEditTab` from the shared types file instead of redefining it locally so we don’t maintain two copies (`video-edit.tsx:247`).
+**Review Comment:** ✅ FIXED - Already addressed in Task 1.4. The skeleton code now imports `VideoEditTab` from `video-edit-types.ts` and removes unused imports (`Button`, `Loader2`).
 
 ---
 
@@ -2136,7 +2138,7 @@ import { AudioSyncTab } from "./video-edit-audio-sync";
  */
 
 import { useState } from "react";
-import { Upload, Loader2, Maximize2, Film, DollarSign } from "lucide-react";
+import { Loader2, Maximize2, Film, DollarSign } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
@@ -2191,10 +2193,15 @@ export function UpscaleTab() {
 
   /**
    * Handle video file change
+   * WHY: Topaz supports up to 500MB files (larger than default 100MB)
    */
-  const handleVideoChange = (file: File | null, preview: string | null) => {
+  const handleVideoChange = (file: File | null, preview: string | undefined | null) => {
     if (file) {
-      const validation = VIDEO_EDIT_HELPERS.validateVideoFile(file);
+      // Validate with Topaz's 500MB limit
+      const validation = VIDEO_EDIT_HELPERS.validateVideoFile(
+        file,
+        VIDEO_EDIT_UPLOAD_CONSTANTS.TOPAZ_MAX_VIDEO_SIZE_BYTES
+      );
       if (!validation.valid) {
         setError(validation.error!);
         return;
@@ -2202,7 +2209,7 @@ export function UpscaleTab() {
     }
 
     setSourceVideo(file);
-    setVideoPreview(preview);
+    setVideoPreview(preview ?? null);  // Coerce undefined to null for type safety
     setError(null);
     reset();
   };
