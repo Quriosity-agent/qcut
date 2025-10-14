@@ -194,6 +194,8 @@ export default function VideoEditView() {
 }
 ```
 
+**Review Comment:** Tasks 1.1–1.3 match existing patterns. For Task 1.4 ensure the skeleton drops unused symbols (`Loader2`, `Button`, `isProcessing`) or wires them into the JSX; our lint step fails on unused imports/state.
+
 ---
 
 ## Task 2: Create Type Definitions and Constants (30 minutes)
@@ -542,6 +544,8 @@ export const VIDEO_EDIT_HELPERS = {
   },
 } as const;
 ```
+
+**Review Comment:** 1) Once `video-edit-types.ts` exists, make `video-edit.tsx` import `VideoEditTab` from it instead of re-declaring the type—keeping two definitions will drift immediately (`qcut/apps/web/src/components/editor/media-panel/views/video-edit.tsx`). 2) The shared upload cap remains 100MB, but `topaz_upscale` is specced for 500MB; with `VIDEO_EDIT_UPLOAD_CONSTANTS.MAX_VIDEO_SIZE_BYTES` hard-coded to 100MB you'll reject the files that model is supposed to handle (`video-edit-constants.ts`). Please adjust the limits (or make them model-specific).
 
 ---
 
@@ -1035,6 +1039,8 @@ export function useVideoEditProcessing(props: UseVideoEditProcessingProps) {
   };
 }
 ```
+
+**Review Comment:** `use-video-edit-processing.ts` imports `useProjectStore` but never consumes it (`qcut/apps/web/src/components/editor/media-panel/views/use-video-edit-processing.ts:573`); our lint config flags unused imports, so please drop it or actually use the store before landing.
 
 ### Subtask 3.3: Export Hook from Index (5 min)
 **File to Create**: `qcut/apps/web/src/components/editor/media-panel/views/video-edit-exports.ts`
