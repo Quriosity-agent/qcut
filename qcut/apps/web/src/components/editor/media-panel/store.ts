@@ -14,6 +14,7 @@ import {
   VolumeXIcon,
   PaletteIcon,
   PenTool,
+  Wand2Icon,
 } from "lucide-react";
 import { create } from "zustand";
 
@@ -22,6 +23,7 @@ export type Tab =
   | "audio"
   | "text"
   | "stickers"
+  | "video-edit"
   | "effects"
   | "transitions"
   | "captions"
@@ -69,6 +71,10 @@ export const tabs: { [key in Tab]: { icon: LucideIcon; label: string } } = {
   stickers: {
     icon: StickerIcon,
     label: "Stickers",
+  },
+  "video-edit": {
+    icon: Wand2Icon,
+    label: "Video Edit",
   },
   sounds: {
     icon: VolumeXIcon,
