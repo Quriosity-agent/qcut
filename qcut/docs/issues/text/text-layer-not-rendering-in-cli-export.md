@@ -1,9 +1,10 @@
 # Issue: Text Layers Not Rendering in CLI FFmpeg Export
 
-**Status**: 🔴 Critical Issue
+**Status**: 🔴 Critical Issue - **NOT YET FIXED**
 **Priority**: High
 **Affects**: Electron users (desktop app)
 **Created**: 2025-01-14
+**Implementation Status**: ⚠️ **This document is an implementation guide. The solution has NOT been implemented yet.**
 
 ## Problem Summary
 
@@ -138,9 +139,11 @@ if (forceRegularEngine) {
 - **Not persistent**: Must be set every time the app restarts
 - **Hidden feature**: Not documented or exposed in UI
 
-## Solution
+## Proposed Solution (Not Yet Implemented)
 
 ### Add FFmpeg Drawtext Filter Support to CLI Engine ⭐ **REQUIRED**
+
+**⚠️ NOTE: This is a proposed implementation guide. The text rendering functionality described below has NOT been implemented yet.**
 
 **This is the proper solution.** FFmpeg has native `drawtext` filter support that can handle text overlays efficiently. Implement this filter in the CLI export engine to render text layers directly via FFmpeg commands.
 
@@ -222,6 +225,8 @@ private buildTextOverlayFilter(textElements: TimelineElement[]): string {
 ```
 
 ## Implementation Plan
+
+**⚠️ STATUS: Not yet implemented - this is a detailed implementation guide**
 
 **Implement FFmpeg Drawtext** - ~6-8 hours
 
@@ -650,6 +655,8 @@ const exportOptions = {
 };
 ```
 
+**Implementation Note**: When `textFilterChain` is non-empty, ensure `useDirectCopy` is set to false (and skip `videoSources`) so the pipeline falls back to the frame-rendering path that can apply the text filters. Direct copy mode uses `-c:v copy` which bypasses all filters.
+
 **What to DELETE:** Nothing needs to be deleted.
 
 **Subtask 2.2: Handle TypeScript types**
@@ -662,6 +669,8 @@ import { TextElement } from "@/types/timeline";
 
 **TypeScript interface updates (if needed):**
 The ExportOptions interface is defined in `electron/ffmpeg-handler.ts`, so no changes needed in this file. Phase 3 will handle the interface update in the Electron handler.
+
+**TypeScript Note**: Use `import type { TextElement } from "@/types/timeline"` at the top of the file and remove any runtime `require()` calls. TypeScript types are compile-time only and don't exist at runtime.
 
 **Summary of Phase 2 changes:**
 - **ADD**: 5 lines of code for text filter generation and logging
@@ -750,6 +759,8 @@ const args: string[] = buildFFmpegArgs(
 );
 ```
 
+**Defensive Programming Note**: In the electron handler, add a defensive guard: if `textFilterChain` is present, force `useDirectCopy` to `false` before the `if (useDirectCopy)` block. This prevents the direct-copy branch from being taken when text overlays are present.
+
 **Subtask 3.2: Add text filters to FFmpeg command**
 
 **What to MODIFY in buildFFmpegArgs function signature (line 634-646):**
@@ -823,6 +834,8 @@ if (textFilterChain && textFilterChain.includes(',drawtext=')) {
   args.push("-vf", combinedFilterChain);
 }
 ```
+
+**FFmpeg Filter Note**: The frame-based path already uses `-filter_complex` for audio mixing when there are multiple tracks. Keep video/text filters under `-vf` (multiple `drawtext` filters chain fine there) to avoid conflicting `-filter_complex` parameters which would cause "Error initializing complex filters".
 
 **Subtask 3.3: Test FFmpeg command generation**
 
@@ -1013,3 +1026,10 @@ The CLI FFmpeg engine was implemented for performance reasons:
 **Last Updated**: 2025-01-14
 **Assignee**: TBD
 **Related Issues**: None yet
+
+**Implementation Considerations for Phase 1 Helper Methods**:
+- **escapeTextForFFmpeg()**: Must escape `%` to `\\%` to prevent FFmpeg from treating it as an expansion token (e.g., `100%` would break)
+- **resolveFontPath()**: Currently Windows-only (`C:/Windows/Fonts/`). Needs platform-aware paths for macOS (`/System/Library/Fonts/`) and Linux (`/usr/share/fonts/`), or use fontconfig names as fallback
+- **convertTextElementToDrawtext()**: When applying text alignment, preserve the element's x/y offsets from timeline position instead of overwriting with canvas-center expressions
+- **buildTextOverlayFilters()**: Use TypeScript type imports only (`import type { TextElement }`), no runtime `require()` calls
+- **Cross-platform font handling**: Consider using FFmpeg's built-in font selection (e.g., `fontfile=Arial` instead of full paths) when available
