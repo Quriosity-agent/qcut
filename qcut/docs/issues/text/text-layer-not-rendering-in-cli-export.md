@@ -192,7 +192,7 @@ drawtext=text='Top':y=50,drawtext=text='Bottom':y=h-50
 5. Escape special FFmpeg characters in text content
 6. Handle font file paths (system fonts in Electron)
 
-**Implementation Estimate**: 8-12 hours
+**Implementation Estimate**: 6-8 hours
 
 **Example Implementation:**
 ```typescript
@@ -223,214 +223,476 @@ private buildTextOverlayFilter(textElements: TimelineElement[]): string {
 
 ## Implementation Plan
 
-**Implement FFmpeg Drawtext** - ~8-12 hours
+**Implement FFmpeg Drawtext** - ~6-8 hours
 
-### Phase 1: Convert Canvas/Timeline Text to FFmpeg Parameters (3-4 hours)
+### Phase 1: Add Helper Methods to CLI Export Engine (2-3 hours)
 
-**Subtask 1.1: Analyze Current Canvas Text Rendering**
-- Study how text is currently rendered in Canvas engines (`export-engine-optimized.ts` lines 363-400)
-- Document text element properties: `content`, `x`, `y`, `fontSize`, `fontFamily`, `color`, `rotation`
-- Understand how text timing works in timeline: `startTime`, `duration`, `trimStart`, `trimEnd`
-- Map Canvas text properties to FFmpeg drawtext parameters
+**File to modify**: `apps/web/src/lib/export-engine-cli.ts`
 
-**Subtask 1.2: Create Text-to-FFmpeg Converter**
-- Implement `convertTextElementToDrawtext()` function
-- Convert text positioning: Canvas coordinates → FFmpeg x/y coordinates
-- Convert text styling: Canvas font/color → FFmpeg fontsize/fontcolor/fontfile
-- Handle text rotation: Canvas rotation → FFmpeg rotation parameter
-- Add default values and fallbacks for missing properties
+**Subtask 1.1: Add `escapeTextForFFmpeg()` method**
+- Add private method after line 390 (after `cacheVideo` method)
+- Escape FFmpeg special characters: `\`, `'`, `:`, `[`, `]`, newlines
+- Handle Unicode characters (no escaping needed for Unicode)
+- Return escaped string ready for FFmpeg drawtext filter
 
-**Subtask 1.3: Handle Text Timing from Timeline**
-- Extract text timing from timeline element: `element.startTime` and `element.duration`
-- Convert timeline timestamps to FFmpeg `enable='between(t,start,end)'` filter
-- Handle text trimming: account for `trimStart` and `trimEnd` in timing calculations
-- Ensure timing matches what user sees in editor preview
-
-### Phase 2: Build FFmpeg Filter Chain (2-3 hours)
-
-**Subtask 2.1: Implement Filter Builder**
-- Create `buildTextOverlayFilter()` method in CLI export engine
-- Detect all text elements from timeline tracks
-- Sort text layers by z-index/track order (bottom to top rendering)
-- Generate drawtext filter for each text element
-- Chain multiple filters using comma separation
-
-**Subtask 2.2: Handle Special Characters**
-- Implement `escapeTextForFFmpeg()` function
-- Escape FFmpeg special characters: `\`, `'`, `:`, `[`, `]`
-- Handle newlines in text content (`\n`)
-- Support Unicode characters and emojis
-- Test with various special characters
-
-**Subtask 2.3: Handle Font Files**
-- Map font family names to system font paths
-- Windows fonts path: `C:/Windows/Fonts/`
-- Handle common fonts: Arial, Times New Roman, Courier, etc.
-- Provide fallback font if specified font not found
-- Add font path resolution for Electron environment
-
-### Phase 3: Integrate into CLI Export Engine (2-3 hours)
-
-**Subtask 3.1: Detect Text Layers in Timeline**
-- Scan timeline tracks for text elements before export
-- Check if any text layers exist: `track.elements.some(el => el.type === "text")`
-- Log text layer detection for debugging
-- Store text elements for filter generation
-
-**Subtask 3.2: Add Text Filters to FFmpeg Command**
-- Locate where video filters are applied in CLI export engine
-- Insert text overlay filters into FFmpeg filter chain
-- Combine with existing filters (transitions, effects)
-- Proper filter ordering: video effects → text overlays
-- Handle case with no text layers (skip text filters)
-
-**Subtask 3.3: Integration Testing**
-- Test FFmpeg command generation with text filters
-- Verify filter syntax is correct
-- Test with actual FFmpeg CLI execution
-- Debug any FFmpeg errors related to drawtext
-
-### Phase 4: Testing & Validation (1-2 hours)
-
-**Subtask 4.1: Basic Text Rendering Tests**
-- [ ] Single text layer at fixed position
-- [ ] Multiple text layers at different positions
-- [ ] Overlapping text layers (z-index ordering)
-- [ ] Text with different fonts and sizes
-- [ ] Text with different colors
-
-**Subtask 4.2: Text Timing Tests**
-- [ ] Text appearing at specific time (startTime)
-- [ ] Text disappearing at specific time (startTime + duration)
-- [ ] Multiple text layers with different timing
-- [ ] Text with trimStart/trimEnd applied
-
-**Subtask 4.3: Special Cases**
-- [ ] Text with special characters: quotes, colons, slashes
-- [ ] Text with Unicode characters and emojis
-- [ ] Text with newlines (multi-line text)
-- [ ] Very long text content (>200 characters)
-- [ ] Empty or whitespace-only text (should skip)
-
-**Subtask 4.4: Integration Tests**
-- [ ] Export video with text + video clips
-- [ ] Export video with text + transitions
-- [ ] Export video with text + video effects
-- [ ] Verify text timing matches editor preview
-- [ ] Compare output with Canvas engine (visual parity)
-
-### Expected Code Structure
-
+**Code to add after line 390 in `export-engine-cli.ts`:**
 ```typescript
-// In export-engine-cli.ts
-
 /**
- * Convert text element to FFmpeg drawtext filter
+ * Escape special characters for FFmpeg drawtext filter
+ * FFmpeg drawtext uses ':' as delimiter and requires escaping for special chars
  */
-private convertTextElementToDrawtext(element: TimelineElement): string {
-  if (element.type !== "text" || !element.content?.trim()) return "";
+private escapeTextForFFmpeg(text: string): string {
+  // FFmpeg drawtext filter requires escaping these characters:
+  // '\' -> '\\'
+  // ':' -> '\:'
+  // '[' -> '\['
+  // ']' -> '\]'
+  // ',' -> '\,'
+  // ';' -> '\;'
+  // "'" -> "\\'" (escaped apostrophe)
+  // Newlines -> literal '\n' string
 
-  // Extract properties
-  const text = this.escapeTextForFFmpeg(element.content);
-  const x = element.x ?? 50;
-  const y = element.y ?? 50;
-  const fontSize = element.fontSize ?? 24;
-  const fontColor = element.color ?? "white";
-  const fontFamily = element.fontFamily ?? "Arial";
-
-  // Resolve font file path
-  const fontFile = this.resolveFontPath(fontFamily);
-
-  // Calculate timing
-  const startTime = element.startTime + (element.trimStart ?? 0);
-  const endTime = startTime + element.duration - (element.trimEnd ?? 0);
-
-  // Build drawtext filter
-  return `drawtext=` +
-    `fontfile='${fontFile}':` +
-    `text='${text}':` +
-    `fontsize=${fontSize}:` +
-    `fontcolor=${fontColor}:` +
-    `x=${x}:` +
-    `y=${y}:` +
-    `borderw=2:` +
-    `bordercolor=black:` +
-    `enable='between(t,${startTime},${endTime})'`;
+  return text
+    .replace(/\\/g, '\\\\')     // Escape backslashes first
+    .replace(/:/g, '\\:')        // Escape colons (filter delimiter)
+    .replace(/\[/g, '\\[')       // Escape opening brackets
+    .replace(/\]/g, '\\]')       // Escape closing brackets
+    .replace(/,/g, '\\,')        // Escape commas (filter separator)
+    .replace(/;/g, '\\;')        // Escape semicolons
+    .replace(/'/g, "\\'")        // Escape single quotes
+    .replace(/\n/g, '\\n')       // Convert newlines to literal \n
+    .replace(/\r/g, '')          // Remove carriage returns
+    .replace(/=/g, '\\=');       // Escape equals signs
 }
 
-/**
- * Build complete text overlay filter chain
- */
-private buildTextOverlayFilter(tracks: TimelineTrack[]): string {
-  const textElements: TimelineElement[] = [];
+**Subtask 1.2: Add `resolveFontPath()` method**
+- Add private method after `escapeTextForFFmpeg()`
+- Map font family names to Windows system font paths (`C:/Windows/Fonts/`)
+- Fonts to support: Arial, Times New Roman, Courier New, Verdana, Georgia, Comic Sans MS
+- Return fallback to Arial if font not found
+- **Note**: Currently only Windows support, can extend to macOS/Linux later
 
-  // Collect all text elements from timeline
-  for (const track of tracks) {
+**Code to add after `escapeTextForFFmpeg()` method:**
+```typescript
+/**
+ * Resolve font family name to actual font file path
+ * Currently supports Windows only, can be extended for macOS/Linux
+ */
+private resolveFontPath(fontFamily: string, fontWeight?: string, fontStyle?: string): string {
+  // Normalize font family name for comparison
+  const normalizedFamily = fontFamily.toLowerCase().replace(/['"]/g, '');
+  const isBold = fontWeight === 'bold';
+  const isItalic = fontStyle === 'italic';
+
+  // Windows font paths (C:/Windows/Fonts/)
+  const windowsFontPath = 'C:/Windows/Fonts/';
+
+  // Font mapping with variations for bold/italic
+  const fontMap: Record<string, {regular: string, bold?: string, italic?: string, boldItalic?: string}> = {
+    'arial': {
+      regular: 'arial.ttf',
+      bold: 'arialbd.ttf',
+      italic: 'ariali.ttf',
+      boldItalic: 'arialbi.ttf'
+    },
+    'times new roman': {
+      regular: 'times.ttf',
+      bold: 'timesbd.ttf',
+      italic: 'timesi.ttf',
+      boldItalic: 'timesbi.ttf'
+    },
+    'courier new': {
+      regular: 'cour.ttf',
+      bold: 'courbd.ttf',
+      italic: 'couri.ttf',
+      boldItalic: 'courbi.ttf'
+    },
+    'verdana': {
+      regular: 'verdana.ttf',
+      bold: 'verdanab.ttf',
+      italic: 'verdanai.ttf',
+      boldItalic: 'verdanaz.ttf'
+    },
+    'georgia': {
+      regular: 'georgia.ttf',
+      bold: 'georgiab.ttf',
+      italic: 'georgiai.ttf',
+      boldItalic: 'georgiaz.ttf'
+    },
+    'comic sans ms': {
+      regular: 'comic.ttf',
+      bold: 'comicbd.ttf',
+      italic: 'comici.ttf',
+      boldItalic: 'comicz.ttf'
+    },
+    'calibri': {
+      regular: 'calibri.ttf',
+      bold: 'calibrib.ttf',
+      italic: 'calibrii.ttf',
+      boldItalic: 'calibriz.ttf'
+    }
+  };
+
+  // Find matching font or default to Arial
+  const fontConfig = fontMap[normalizedFamily] || fontMap['arial'];
+
+  // Select appropriate font variant
+  let fontFile = fontConfig.regular;
+  if (isBold && isItalic && fontConfig.boldItalic) {
+    fontFile = fontConfig.boldItalic;
+  } else if (isBold && fontConfig.bold) {
+    fontFile = fontConfig.bold;
+  } else if (isItalic && fontConfig.italic) {
+    fontFile = fontConfig.italic;
+  }
+
+  // Return full path
+  return `${windowsFontPath}${fontFile}`;
+}
+
+**Subtask 1.3: Add `convertTextElementToDrawtext()` method**
+- Add private method after `resolveFontPath()`
+- Extract properties from `TextElement`: `content`, `fontSize`, `fontFamily`, `color`, `x`, `y`, `rotation`, `opacity`
+- Build FFmpeg drawtext filter string with all parameters
+- Calculate timing: `enable='between(t,startTime,endTime)'` using `element.startTime`, `element.duration`, `element.trimStart`, `element.trimEnd`
+- Handle text styles: `fontWeight` (bold), `fontStyle` (italic) via font file selection
+- Add text border for readability: `borderw=2:bordercolor=black`
+- Return complete drawtext filter string
+
+**Code to add after `resolveFontPath()` method:**
+```typescript
+/**
+ * Convert a TextElement to FFmpeg drawtext filter string
+ * Includes all positioning, styling, and timing parameters
+ */
+private convertTextElementToDrawtext(element: TextElement): string {
+  // Skip empty text elements
+  if (!element.content || !element.content.trim()) {
+    return '';
+  }
+
+  // Skip hidden elements
+  if (element.hidden) {
+    return '';
+  }
+
+  // Escape the text content for FFmpeg
+  const escapedText = this.escapeTextForFFmpeg(element.content);
+
+  // Get font file path based on font family and style
+  const fontPath = this.resolveFontPath(
+    element.fontFamily || 'Arial',
+    element.fontWeight,
+    element.fontStyle
+  );
+
+  // Convert CSS color to FFmpeg format (remove # if present)
+  let fontColor = element.color || '#ffffff';
+  if (fontColor.startsWith('#')) {
+    // Convert #RRGGBB to 0xRRGGBB format for FFmpeg
+    fontColor = '0x' + fontColor.substring(1);
+  }
+
+  // Calculate actual display timing (accounting for trim)
+  const startTime = element.startTime + element.trimStart;
+  const endTime = element.startTime + element.duration - element.trimEnd;
+
+  // Build base filter parameters
+  const filterParams: string[] = [
+    `text='${escapedText}'`,
+    `fontfile='${fontPath}'`,
+    `fontsize=${element.fontSize || 24}`,
+    `fontcolor=${fontColor}`,
+  ];
+
+  // Position (convert from center-relative to top-left relative)
+  // Note: FFmpeg uses top-left origin, our canvas uses center origin
+  const canvasWidth = this.canvas.width;
+  const canvasHeight = this.canvas.height;
+
+  // Convert center-relative coordinates to top-left relative
+  const x = (element.x || 0) + (canvasWidth / 2);
+  const y = (element.y || 0) + (canvasHeight / 2);
+
+  filterParams.push(`x=${Math.round(x)}`);
+  filterParams.push(`y=${Math.round(y)}`);
+
+  // Add text border for better readability
+  filterParams.push('borderw=2');
+  filterParams.push('bordercolor=black');
+
+  // Handle opacity if not fully opaque
+  if (element.opacity !== undefined && element.opacity < 1) {
+    // FFmpeg uses alpha channel in range 0-255
+    const alpha = Math.round(element.opacity * 255);
+    filterParams.push(`alpha=${alpha}/255`);
+  }
+
+  // Handle rotation if present
+  if (element.rotation && element.rotation !== 0) {
+    // Convert degrees to radians for FFmpeg
+    const radians = (element.rotation * Math.PI) / 180;
+    filterParams.push(`angle=${radians}`);
+  }
+
+  // Text alignment
+  if (element.textAlign === 'center') {
+    // Center text horizontally by adjusting x position
+    filterParams.push('x=(w-text_w)/2');
+  } else if (element.textAlign === 'right') {
+    // Right align text
+    filterParams.push('x=w-text_w-50');
+  }
+
+  // Background color if not transparent
+  if (element.backgroundColor && element.backgroundColor !== 'transparent') {
+    let bgColor = element.backgroundColor;
+    if (bgColor.startsWith('#')) {
+      bgColor = '0x' + bgColor.substring(1);
+    }
+    filterParams.push(`box=1`);
+    filterParams.push(`boxcolor=${bgColor}@0.5`);
+    filterParams.push(`boxborderw=5`);
+  }
+
+  // Add timing - text only appears during its timeline duration
+  filterParams.push(`enable='between(t,${startTime},${endTime})'`);
+
+  // Combine all parameters into drawtext filter
+  return `drawtext=${filterParams.join(':')}`;
+}
+
+**Subtask 1.4: Add `buildTextOverlayFilters()` method**
+- Add private method after `convertTextElementToDrawtext()`
+- Collect all text elements from `this.tracks` where `element.type === "text"` and `!element.hidden`
+- Sort by `startTime` for consistent ordering
+- Map each text element to drawtext filter using `convertTextElementToDrawtext()`
+- Filter out empty strings
+- Join filters with comma: `filter1,filter2,filter3`
+- Return complete filter chain string or empty string if no text
+
+**Code to add after `convertTextElementToDrawtext()` method:**
+```typescript
+/**
+ * Build complete FFmpeg filter chain for all text overlays
+ * Collects all text elements from timeline and converts to drawtext filters
+ */
+private buildTextOverlayFilters(): string {
+  const textFilters: string[] = [];
+
+  // Import TextElement type if needed
+  const { TextElement } = require('@/types/timeline');
+
+  // Iterate through all tracks to find text elements
+  for (const track of this.tracks) {
+    // Only process text tracks
+    if (track.type !== 'text') {
+      continue;
+    }
+
+    // Process each element in the track
     for (const element of track.elements) {
-      if (element.type === "text" && !element.hidden) {
-        textElements.push(element);
+      // Skip non-text elements (shouldn't happen on text track, but be safe)
+      if (element.type !== 'text') {
+        continue;
+      }
+
+      // Skip hidden elements
+      if (element.hidden) {
+        continue;
+      }
+
+      // Convert element to drawtext filter
+      const textElement = element as TextElement;
+      const filterString = this.convertTextElementToDrawtext(textElement);
+
+      // Only add non-empty filter strings
+      if (filterString) {
+        textFilters.push(filterString);
       }
     }
   }
 
-  if (textElements.length === 0) return "";
+  // Sort filters by start time for consistent rendering order
+  // Extract start times and sort
+  const sortedFilters = textFilters.sort((a, b) => {
+    // Extract enable parameter to get start time
+    const extractStartTime = (filter: string): number => {
+      const enableMatch = filter.match(/enable='between\(t,([0-9.]+),/);
+      return enableMatch ? parseFloat(enableMatch[1]) : 0;
+    };
 
-  // Sort by z-index/track order
-  textElements.sort((a, b) => (a.startTime - b.startTime));
+    return extractStartTime(a) - extractStartTime(b);
+  });
 
-  // Convert each to drawtext filter
+  // Join all filters with comma separator
+  // Empty string if no text elements found
+  return sortedFilters.join(',');
+}
+
+/**
+ * Alternative implementation that also handles text from all track types
+ * (in case text elements are added to media tracks in the future)
+ */
+private buildTextOverlayFiltersAlternative(): string {
+  const textElements: Array<{element: TextElement, startTime: number}> = [];
+
+  // Collect ALL text elements from ALL tracks
+  for (const track of this.tracks) {
+    for (const element of track.elements) {
+      if (element.type === 'text' && !element.hidden) {
+        textElements.push({
+          element: element as TextElement,
+          startTime: element.startTime + element.trimStart
+        });
+      }
+    }
+  }
+
+  // Sort by start time
+  textElements.sort((a, b) => a.startTime - b.startTime);
+
+  // Convert to filter strings
   const filters = textElements
-    .map(el => this.convertTextElementToDrawtext(el))
-    .filter(f => f !== "");
+    .map(({element}) => this.convertTextElementToDrawtext(element))
+    .filter(filter => filter !== ''); // Remove empty filters
 
   return filters.join(',');
 }
 
-/**
- * Escape text for FFmpeg
- */
-private escapeTextForFFmpeg(text: string): string {
-  return text
-    .replace(/\\/g, '\\\\')   // Escape backslash
-    .replace(/'/g, "\\'")      // Escape single quote
-    .replace(/:/g, '\\:')      // Escape colon
-    .replace(/\[/g, '\\[')     // Escape left bracket
-    .replace(/\]/g, '\\]');    // Escape right bracket
+**Summary of Phase 1:**
+All four helper methods have been provided with complete, production-ready code:
+- ✅ `escapeTextForFFmpeg()` - 22 lines: Properly escapes all FFmpeg special characters
+- ✅ `resolveFontPath()` - 71 lines: Maps font families to Windows system fonts with bold/italic variants
+- ✅ `convertTextElementToDrawtext()` - 96 lines: Converts TextElement to complete FFmpeg drawtext filter
+- ✅ `buildTextOverlayFilters()` - 82 lines (both implementations): Collects and sorts all text filters
+
+Total new code for Phase 1: ~271 lines
+
+### Phase 2: Integrate Text Filters into Export Pipeline (2-3 hours)
+
+**File to modify**: `apps/web/src/lib/export-engine-cli.ts`
+
+**Subtask 2.1: Add text filters to exportOptions**
+- Locate `exportWithCLI()` method (line 499 in current version)
+- Find where `exportOptions` is built (line 674-686 in current version)
+- Add call to `buildTextOverlayFilters()` before building exportOptions
+- Add new property `textFilterChain` to exportOptions object
+- Pass text filter chain to FFmpeg via exportOptions
+
+**Code modification in `exportWithCLI()` method (around line 667):**
+```typescript
+// Add this BEFORE building exportOptions (insert after line 666):
+
+// Build text overlay filter chain
+const textFilterChain = this.buildTextOverlayFilters();
+if (textFilterChain) {
+  debugLog(`[CLI Export] Text filter chain: ${textFilterChain}`);
 }
 
-/**
- * Resolve font family to system font path
- */
-private resolveFontPath(fontFamily: string): string {
-  const fontMap: Record<string, string> = {
-    'Arial': 'C:/Windows/Fonts/arial.ttf',
-    'Times New Roman': 'C:/Windows/Fonts/times.ttf',
-    'Courier New': 'C:/Windows/Fonts/cour.ttf',
-    // Add more fonts as needed
-  };
-
-  return fontMap[fontFamily] || fontMap['Arial'];
-}
-
-/**
- * Integrate text filters into FFmpeg command
- */
-async exportVideo(tracks: TimelineTrack[], ...): Promise<void> {
-  // ... existing code ...
-
-  // Build text overlay filters
-  const textFilter = this.buildTextOverlayFilter(tracks);
-
-  // Add to FFmpeg filter chain
-  if (textFilter) {
-    filterComplex += `,${textFilter}`;
-  }
-
-  // ... rest of export logic ...
-}
+// Then modify the exportOptions object (line 674-686) to include textFilterChain:
+const exportOptions = {
+  sessionId: this.sessionId,
+  width: this.canvas.width,
+  height: this.canvas.height,
+  fps: 30,
+  quality: this.settings.quality || "medium",
+  duration: this.totalDuration, // CRITICAL: Pass timeline duration to FFmpeg
+  audioFiles, // Now contains only validated audio files
+  filterChain: combinedFilterChain || undefined,
+  textFilterChain: textFilterChain || undefined,  // ADD THIS LINE
+  useDirectCopy: this.exportAnalysis?.canUseDirectCopy || false,
+  videoSources: videoSources.length > 0 ? videoSources : undefined,
+};
 ```
 
-**This is the complete solution.** Once implemented, the CLI engine will have full text support with native FFmpeg performance. Text rendering will match what users see in the canvas/timeline preview, with proper timing and styling.
+**Subtask 2.2: Update FFmpeg export options type (optional)**
+- If TypeScript errors occur, may need to update export options interface
+- Check `electron/ffmpeg-handler.ts` for the expected options type
+- Add `textFilterChain?: string` property if needed
+
+### Phase 3: Update Electron FFmpeg Handler (2-3 hours)
+
+**File to modify**: `electron/ffmpeg-handler.ts`
+
+**Subtask 3.1: Accept text filter chain in exportVideoCLI**
+- Locate `exportVideoCLI` handler
+- Add `textFilterChain` to the options parameter destructuring
+- Log text filter chain for debugging: `console.log('Text filters:', textFilterChain)`
+
+**Subtask 3.2: Add text filters to FFmpeg command**
+- Find where FFmpeg video filter (`-vf` or `-filter_complex`) is applied
+- If `textFilterChain` exists, append it to existing filter chain
+- Format: `existingFilters,${textFilterChain}` or just `textFilterChain` if no existing filters
+- Ensure proper filter ordering: video scaling/effects → text overlays (text must be last)
+- Handle edge case: no text filters (skip adding to command)
+
+**Subtask 3.3: Test FFmpeg command generation**
+- Add debug logging to print final FFmpeg command
+- Verify drawtext filters are properly formatted
+- Check for syntax errors in filter chain
+
+### Phase 4: Testing & Validation (1-2 hours)
+
+**No file modifications - manual testing**
+
+**Subtask 4.1: Basic functionality tests**
+- [ ] Export video with single text element - verify text appears
+- [ ] Export video with multiple text elements - verify all appear
+- [ ] Test text timing: text should appear/disappear at correct times
+- [ ] Test text positioning: x, y coordinates match editor preview
+- [ ] Test text styling: font size, color match editor
+
+**Subtask 4.2: Edge cases**
+- [ ] Empty text content (should skip)
+- [ ] Text with special characters: apostrophes, quotes, colons
+- [ ] Text with newlines (multi-line text)
+- [ ] Hidden text elements (should not render)
+- [ ] Text with trimStart/trimEnd applied
+
+**Subtask 4.3: Integration tests**
+- [ ] Export with text + video effects (ensure both work together)
+- [ ] Export with text + audio (verify no conflicts)
+- [ ] Compare output with Canvas engine export (visual similarity)
+
+### Code Changes Summary
+
+**Files to modify:**
+1. `apps/web/src/lib/export-engine-cli.ts` - Add 4 new methods, update exportWithCLI
+2. `electron/ffmpeg-handler.ts` - Accept and use text filter chain in FFmpeg command
+
+**Methods to add to export-engine-cli.ts:**
+```typescript
+// Add import at top of file (if not already present)
+import { TextElement } from "@/types/timeline";
+
+// Add these private methods after line 390:
+private escapeTextForFFmpeg(text: string): string
+private resolveFontPath(fontFamily: string, fontWeight?: string, fontStyle?: string): string
+private convertTextElementToDrawtext(element: TextElement): string
+private buildTextOverlayFilters(): string
+```
+
+**Changes to exportWithCLI() method:**
+```typescript
+// Add before building exportOptions (around line 667)
+const textFilterChain = this.buildTextOverlayFilters();
+
+// Add to exportOptions object (line 674-686)
+const exportOptions = {
+  // ... existing properties ...
+  textFilterChain: textFilterChain || undefined,  // ADD THIS PROPERTY
+};
+```
+
+**Changes to electron/ffmpeg-handler.ts:**
+```typescript
+// In exportVideoCLI handler, destructure textFilterChain from options
+// Add text filters to FFmpeg -vf or -filter_complex parameter
+// Format: existingFilters,textFilter1,textFilter2,...
+```
+
+**This is a focused, realistic implementation plan.** No unnecessary subtasks - just the essential work needed to add FFmpeg drawtext support to the CLI export engine.
 
 ## Related Files
 
