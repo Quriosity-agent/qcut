@@ -2464,7 +2464,7 @@ export function UpscaleTab() {
 
 **Review Comment:** A couple blockers here: 1) `handleVideoChange` still feeds `preview` directly into `setVideoPreview`, so we hit the same `string | null` vs `undefined` type mismatch as the other tabs (`qcut/apps/web/src/components/editor/media-panel/views/video-edit-upscale.tsx:219`). 2) `VIDEO_EDIT_HELPERS.validateVideoFile` enforces the global 100 MB cap, so even though `FileUpload` allows 500 MB, the validation path will reject larger Topaz inputs—either pass a model-aware max into the helper or create a dedicated validator (`video-edit-upscale.tsx:218` together with `video-edit-constants.ts`). Also trim the unused `Upload` import and guard the `window.open(result.videoUrl!, ...)` call (`video-edit-upscale.tsx:238`).
 
-### Subtask 7.2: Update Main Video Edit View (10 min)
+### Subtask 7.2: Update Main Video Edit View (10 min) ✅
 **File to Modify**: `qcut/apps/web/src/components/editor/media-panel/views/video-edit.tsx`
 
 **Final Complete Code:**

@@ -119,6 +119,20 @@ export function AudioSyncTab() {
 
   return (
     <div className="space-y-4">
+      {/* Model Info */}
+      <Card className="p-3 bg-primary/5 border-primary/20">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-xs font-medium text-primary">MMAudio V2</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Synchronized audio generation with prompt control</p>
+          </div>
+          <div className="text-right">
+            <p className="text-xs font-semibold">$0.001/sec</p>
+            <p className="text-xs text-muted-foreground">~$0.01 for 10s</p>
+          </div>
+        </div>
+      </Card>
+
       {/* Video Upload */}
       <FileUpload
         id="mmaudio-video-input"

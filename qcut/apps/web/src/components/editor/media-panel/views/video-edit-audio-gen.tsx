@@ -101,6 +101,20 @@ export function AudioGenTab() {
 
   return (
     <div className="space-y-4">
+      {/* Model Info */}
+      <Card className="p-3 bg-primary/5 border-primary/20">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-xs font-medium text-primary">Kling Video to Audio</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Generate audio from video content</p>
+          </div>
+          <div className="text-right">
+            <p className="text-xs font-semibold">$0.25</p>
+            <p className="text-xs text-muted-foreground">per video</p>
+          </div>
+        </div>
+      </Card>
+
       {/* Video Upload */}
       <FileUpload
         id="kling-video-input"

@@ -9,7 +9,7 @@
  * Performance: Direct client-to-FAL reduces latency by ~500ms vs backend proxy
  */
 
-import * as fal from "@fal-ai/client";
+import { fal } from "@fal-ai/client";
 import { debugLog, debugError } from "@/lib/debug-config";
 import type {
   KlingVideoToAudioParams,
@@ -76,9 +76,9 @@ class VideoEditClient {
 
       // Try Electron API if available
       if (!this.apiKey && window.electronAPI?.apiKeys) {
-        const apiKeyData = await window.electronAPI.apiKeys.get("fal");
-        if (apiKeyData?.value) {
-          this.apiKey = apiKeyData.value;
+        const keys = await window.electronAPI.apiKeys.get();
+        if (keys?.falApiKey) {
+          this.apiKey = keys.falApiKey;
         }
       }
 
@@ -322,34 +322,39 @@ class VideoEditClient {
   /**
    * Get job status (for manual polling if needed)
    * WHY: Some integrations may need custom polling logic
+   *
+   * NOTE: Currently disabled as fal.subscribe handles polling internally.
+   * The onQueueUpdate callback in subscribe provides real-time status updates.
    */
-  async getJobStatus(jobId: string): Promise<FalStatusResponse> {
-    await this.ensureInitialized();
-
-    try {
-      const result = await fal.status(jobId) as any;
-      return result;
-    } catch (error) {
-      debugError("Failed to get job status:", error);
-      throw new Error(this.handleApiError(error));
-    }
-  }
+  // async getJobStatus(jobId: string): Promise<FalStatusResponse> {
+  //   await this.ensureInitialized();
+  //   try {
+  //     // fal.status may not be available in current client version
+  //     // Use fal.subscribe with request_id instead
+  //     throw new Error("Method not implemented - use fal.subscribe instead");
+  //   } catch (error) {
+  //     debugError("Failed to get job status:", error);
+  //     throw new Error(this.handleApiError(error));
+  //   }
+  // }
 
   /**
    * Cancel job
    * WHY: Allow users to cancel long-running operations
+   *
+   * NOTE: Currently disabled as fal.subscribe handles the entire lifecycle.
+   * To cancel, the component should abort the subscribe promise.
    */
-  async cancelJob(jobId: string): Promise<void> {
-    await this.ensureInitialized();
-
-    try {
-      await fal.cancel(jobId);
-      debugLog(`Cancelled job: ${jobId}`);
-    } catch (error) {
-      debugError("Failed to cancel job:", error);
-      // Don't throw - cancellation errors are non-critical
-    }
-  }
+  // async cancelJob(jobId: string): Promise<void> {
+  //   await this.ensureInitialized();
+  //   try {
+  //     // fal.cancel may not be available in current client version
+  //     throw new Error("Method not implemented - abort the subscribe promise instead");
+  //   } catch (error) {
+  //     debugError("Failed to cancel job:", error);
+  //     // Don't throw - cancellation errors are non-critical
+  //   }
+  // }
 }
 
 // Export singleton instance

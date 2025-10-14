@@ -128,6 +128,20 @@ export function UpscaleTab() {
 
   return (
     <div className="space-y-4">
+      {/* Model Info */}
+      <Card className="p-3 bg-primary/5 border-primary/20">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-xs font-medium text-primary">Topaz Video Upscale</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Professional upscaling up to 8x with AI enhancement</p>
+          </div>
+          <div className="text-right">
+            <p className="text-xs font-semibold">$0.50 - $5.00</p>
+            <p className="text-xs text-muted-foreground">varies by factor</p>
+          </div>
+        </div>
+      </Card>
+
       {/* Video Upload */}
       <FileUpload
         id="topaz-video-input"
