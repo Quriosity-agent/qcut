@@ -4,6 +4,9 @@ import { useState } from "react";
 import { Wand2Icon } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { VideoEditTab } from "./video-edit-types";
+import { AudioGenTab } from "./video-edit-audio-gen";
+import { AudioSyncTab } from "./video-edit-audio-sync";
+import { UpscaleTab } from "./video-edit-upscale";
 
 export default function VideoEditView() {
   const [activeTab, setActiveTab] = useState<VideoEditTab>("audio-gen");
@@ -29,24 +32,18 @@ export default function VideoEditView() {
         </TabsList>
 
         {/* Kling Video to Audio Tab */}
-        <TabsContent value="audio-gen" className="flex-1 space-y-4">
-          <div className="text-sm text-muted-foreground">
-            Kling Video to Audio - Implementation pending
-          </div>
+        <TabsContent value="audio-gen" className="flex-1 space-y-4 overflow-y-auto">
+          <AudioGenTab />
         </TabsContent>
 
         {/* MMAudio V2 Tab */}
-        <TabsContent value="audio-sync" className="flex-1 space-y-4">
-          <div className="text-sm text-muted-foreground">
-            MMAudio V2 - Implementation pending
-          </div>
+        <TabsContent value="audio-sync" className="flex-1 space-y-4 overflow-y-auto">
+          <AudioSyncTab />
         </TabsContent>
 
         {/* Topaz Upscale Tab */}
-        <TabsContent value="upscale" className="flex-1 space-y-4">
-          <div className="text-sm text-muted-foreground">
-            Topaz Upscale - Implementation pending
-          </div>
+        <TabsContent value="upscale" className="flex-1 space-y-4 overflow-y-auto">
+          <UpscaleTab />
         </TabsContent>
       </Tabs>
     </div>
