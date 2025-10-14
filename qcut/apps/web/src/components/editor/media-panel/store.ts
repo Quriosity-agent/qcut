@@ -38,6 +38,22 @@ export const tabs: { [key in Tab]: { icon: LucideIcon; label: string } } = {
     icon: VideoIcon,
     label: "Media",
   },
+  text2image: {
+    icon: WandIcon,
+    label: "AI Images",
+  },
+  adjustment: {
+    icon: SlidersHorizontalIcon,
+    label: "Adjustment",
+  },
+  "nano-edit": {
+    icon: PaletteIcon,
+    label: "Nano Edit",
+  },
+  draw: {
+    icon: PenTool,
+    label: "Draw",
+  },
   audio: {
     icon: MusicIcon,
     label: "Audio",
@@ -66,18 +82,6 @@ export const tabs: { [key in Tab]: { icon: LucideIcon; label: string } } = {
     icon: BlendIcon,
     label: "Filters",
   },
-  adjustment: {
-    icon: SlidersHorizontalIcon,
-    label: "Adjustment",
-  },
-  text2image: {
-    icon: WandIcon,
-    label: "AI Images",
-  },
-  "nano-edit": {
-    icon: PaletteIcon,
-    label: "Nano Edit",
-  },
   ai: {
     icon: BotIcon,
     label: "AI Video",
@@ -85,10 +89,6 @@ export const tabs: { [key in Tab]: { icon: LucideIcon; label: string } } = {
   sounds: {
     icon: VolumeXIcon,
     label: "Sounds",
-  },
-  draw: {
-    icon: PenTool,
-    label: "Draw",
   },
 };
 
