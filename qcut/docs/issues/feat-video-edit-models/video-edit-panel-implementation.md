@@ -2402,14 +2402,16 @@ export function UpscaleTab() {
                 <p>Output size: {(result.fileSize / 1024 / 1024).toFixed(1)} MB</p>
               )}
             </div>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => window.open(result.videoUrl!, "_blank")}
-              className="w-full text-xs"
-            >
-              Download Upscaled Video
-            </Button>
+            {result.videoUrl && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => window.open(result.videoUrl!, "_blank")}
+                className="w-full text-xs"
+              >
+                Download Upscaled Video
+              </Button>
+            )}
           </div>
         </Card>
       )}
