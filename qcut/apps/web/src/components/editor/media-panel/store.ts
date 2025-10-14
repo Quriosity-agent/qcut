@@ -58,6 +58,10 @@ export const tabs: { [key in Tab]: { icon: LucideIcon; label: string } } = {
     icon: PenTool,
     label: "Draw",
   },
+  captions: {
+    icon: CaptionsIcon,
+    label: "Captions",
+  },
   audio: {
     icon: MusicIcon,
     label: "Audio",
@@ -77,10 +81,6 @@ export const tabs: { [key in Tab]: { icon: LucideIcon; label: string } } = {
   transitions: {
     icon: ArrowLeftRightIcon,
     label: "Transitions",
-  },
-  captions: {
-    icon: CaptionsIcon,
-    label: "Captions",
   },
   filters: {
     icon: BlendIcon,
