@@ -1,0 +1,256 @@
+// Location: apps/web/src/lib/__tests__/export-analysis.test.ts
+
+import { describe, it, expect } from 'vitest';
+import { analyzeTimelineForExport } from '../export-analysis';
+import type { TimelineTrack } from '@/types/timeline';
+import type { MediaItem } from '@/stores/media-store-types';
+
+describe('Export Analysis', () => {
+  // Helper to create mock timeline elements
+  const createMediaElement = (
+    id: string,
+    mediaId: string,
+    startTime: number,
+    duration: number,
+    options: { effectIds?: string[]; hidden?: boolean } = {}
+  ) => ({
+    id,
+    type: 'media' as const,
+    mediaId,
+    name: `Element ${id}`,
+    startTime,
+    duration,
+    trimStart: 0,
+    trimEnd: 0,
+    hidden: options.hidden || false,
+    effectIds: options.effectIds,
+  });
+
+  const createTextElement = (id: string, startTime: number, duration: number) => ({
+    id,
+    type: 'text' as const,
+    name: `Text ${id}`,
+    content: 'Sample text',
+    fontSize: 24,
+    fontFamily: 'Arial',
+    color: '#ffffff',
+    backgroundColor: 'transparent',
+    textAlign: 'left' as const,
+    fontWeight: 'normal' as const,
+    fontStyle: 'normal' as const,
+    textDecoration: 'none' as const,
+    startTime,
+    duration,
+    trimStart: 0,
+    trimEnd: 0,
+    x: 100,
+    y: 100,
+    rotation: 0,
+    opacity: 1,
+  });
+
+  const createStickerElement = (id: string, stickerId: string, startTime: number, duration: number) => ({
+    id,
+    type: 'sticker' as const,
+    stickerId,
+    mediaId: 'sticker-media-' + id,
+    name: `Sticker ${id}`,
+    startTime,
+    duration,
+    trimStart: 0,
+    trimEnd: 0,
+  });
+
+  const createMediaItem = (id: string, type: 'image' | 'video' | 'audio'): MediaItem => ({
+    id,
+    name: `${type}-${id}`,
+    type,
+    file: new File([], `${type}-${id}`),
+    duration: 10,
+    // Videos need localPath for direct copy optimization
+    ...(type === 'video' && { localPath: `/mock/path/${type}-${id}.mp4` }),
+  });
+
+  it('should detect single video without overlays as direct-copy eligible', () => {
+    const tracks: TimelineTrack[] = [{
+      id: 'track-1',
+      name: 'Main Track',
+      type: 'media',
+      elements: [createMediaElement('el-1', 'video-1', 0, 10)],
+    }];
+
+    const mediaItems: MediaItem[] = [createMediaItem('video-1', 'video')];
+
+    const result = analyzeTimelineForExport(tracks, mediaItems);
+
+    expect(result.needsImageProcessing).toBe(false);
+    expect(result.canUseDirectCopy).toBe(true);
+    expect(result.optimizationStrategy).toBe('direct-copy');
+    expect(result.hasImageElements).toBe(false);
+    expect(result.hasTextElements).toBe(false);
+    expect(result.hasStickers).toBe(false);
+    expect(result.hasEffects).toBe(false);
+  });
+
+  it('should detect image elements and require image processing', () => {
+    const tracks: TimelineTrack[] = [{
+      id: 'track-1',
+      name: 'Main Track',
+      type: 'media',
+      elements: [
+        createMediaElement('el-1', 'video-1', 0, 5),
+        createMediaElement('el-2', 'image-1', 5, 5),
+      ],
+    }];
+
+    const mediaItems: MediaItem[] = [
+      createMediaItem('video-1', 'video'),
+      createMediaItem('image-1', 'image'),
+    ];
+
+    const result = analyzeTimelineForExport(tracks, mediaItems);
+
+    expect(result.needsImageProcessing).toBe(true);
+    expect(result.canUseDirectCopy).toBe(false);
+    expect(result.hasImageElements).toBe(true);
+    expect(result.optimizationStrategy).toBe('image-pipeline');
+  });
+
+  it('should detect text elements and require image processing', () => {
+    const tracks: TimelineTrack[] = [
+      {
+        id: 'track-1',
+        name: 'Video Track',
+        type: 'media',
+        elements: [createMediaElement('el-1', 'video-1', 0, 10)],
+      },
+      {
+        id: 'track-2',
+        name: 'Text Track',
+        type: 'text',
+        elements: [createTextElement('text-1', 0, 10)],
+      },
+    ];
+
+    const mediaItems: MediaItem[] = [createMediaItem('video-1', 'video')];
+
+    const result = analyzeTimelineForExport(tracks, mediaItems);
+
+    expect(result.needsImageProcessing).toBe(true);
+    expect(result.hasTextElements).toBe(true);
+    expect(result.canUseDirectCopy).toBe(false);
+  });
+
+  it('should detect sticker elements and require image processing', () => {
+    const tracks: TimelineTrack[] = [
+      {
+        id: 'track-1',
+        name: 'Video Track',
+        type: 'media',
+        elements: [createMediaElement('el-1', 'video-1', 0, 10)],
+      },
+      {
+        id: 'track-2',
+        name: 'Sticker Track',
+        type: 'sticker',
+        elements: [createStickerElement('sticker-1', 'sticker-id-1', 0, 10)],
+      },
+    ];
+
+    const mediaItems: MediaItem[] = [createMediaItem('video-1', 'video')];
+
+    const result = analyzeTimelineForExport(tracks, mediaItems);
+
+    expect(result.needsImageProcessing).toBe(true);
+    expect(result.hasStickers).toBe(true);
+    expect(result.canUseDirectCopy).toBe(false);
+  });
+
+  it('should detect effects and require image processing', () => {
+    const tracks: TimelineTrack[] = [{
+      id: 'track-1',
+      name: 'Main Track',
+      type: 'media',
+      elements: [createMediaElement('el-1', 'video-1', 0, 10, { effectIds: ['effect-1'] })],
+    }];
+
+    const mediaItems: MediaItem[] = [createMediaItem('video-1', 'video')];
+
+    const result = analyzeTimelineForExport(tracks, mediaItems);
+
+    expect(result.needsImageProcessing).toBe(true);
+    expect(result.hasEffects).toBe(true);
+    expect(result.canUseDirectCopy).toBe(false);
+  });
+
+  it('should detect overlapping videos and require image processing', () => {
+    const tracks: TimelineTrack[] = [{
+      id: 'track-1',
+      name: 'Main Track',
+      type: 'media',
+      elements: [
+        createMediaElement('el-1', 'video-1', 0, 8),
+        createMediaElement('el-2', 'video-2', 5, 5), // Overlaps with el-1
+      ],
+    }];
+
+    const mediaItems: MediaItem[] = [
+      createMediaItem('video-1', 'video'),
+      createMediaItem('video-2', 'video'),
+    ];
+
+    const result = analyzeTimelineForExport(tracks, mediaItems);
+
+    expect(result.needsImageProcessing).toBe(true);
+    expect(result.hasOverlappingVideos).toBe(true);
+    expect(result.canUseDirectCopy).toBe(false);
+  });
+
+  it('should not count sequential videos as overlapping', () => {
+    const tracks: TimelineTrack[] = [{
+      id: 'track-1',
+      name: 'Main Track',
+      type: 'media',
+      elements: [
+        createMediaElement('el-1', 'video-1', 0, 5),
+        createMediaElement('el-2', 'video-2', 5, 5), // Sequential, not overlapping
+      ],
+    }];
+
+    const mediaItems: MediaItem[] = [
+      createMediaItem('video-1', 'video'),
+      createMediaItem('video-2', 'video'),
+    ];
+
+    const result = analyzeTimelineForExport(tracks, mediaItems);
+
+    expect(result.hasOverlappingVideos).toBe(false);
+    expect(result.hasMultipleVideoSources).toBe(true);
+    // Sequential videos can use direct concatenation without image processing
+    expect(result.canUseDirectCopy).toBe(true);
+    expect(result.needsImageProcessing).toBe(false);
+    expect(result.optimizationStrategy).toBe('direct-copy');
+  });
+
+  it('should ignore hidden elements', () => {
+    const tracks: TimelineTrack[] = [{
+      id: 'track-1',
+      name: 'Main Track',
+      type: 'media',
+      elements: [
+        createMediaElement('el-1', 'video-1', 0, 10),
+        createMediaElement('el-2', 'image-1', 0, 10, { hidden: true }),
+      ],
+    }];
+
+    const mediaItems: MediaItem[] = [
+      createMediaItem('video-1', 'video'),
+      createMediaItem('image-1', 'image'),
+    ];
+
+    const result = analyzeTimelineForExport(tracks, mediaItems);
+
+    expect(result.hasImageElements).toBe(false);
+    expect(result.canUseDirectCopy).toBe(true);
+  });
+});

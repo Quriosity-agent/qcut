@@ -76,6 +76,7 @@ export async function processMediaFiles(
       let height: number | undefined;
       let fps: number | undefined;
       let url: string | undefined;
+      let localPath: string | undefined;
 
       try {
         // Create URL that works in both web and Electron environments
@@ -160,6 +161,66 @@ export async function processMediaFiles(
           debugLog("[Media Processing] ✅ Audio duration extracted:", duration);
         }
 
+        // Save video files to temp directory for FFmpeg direct copy optimization
+        if (fileType === "video" && window.electronAPI?.video?.saveTemp) {
+          // Check file size to prevent memory issues
+          const MAX_INSTANT_LOAD = 500 * 1024 * 1024; // 500MB
+
+          try {
+            if (file.size > MAX_INSTANT_LOAD) {
+              debugLog(
+                `[Media Processing] ⚠️ Large file detected (${(file.size / 1024 / 1024).toFixed(2)}MB) - this may take a moment`
+              );
+            }
+
+            debugLog(
+              `[Media Processing] 💾 Saving video to temp filesystem: ${file.name}`
+            );
+
+            // Read file as ArrayBuffer
+            const arrayBuffer = await file.arrayBuffer();
+            const uint8Array = new Uint8Array(arrayBuffer);
+
+            // Save to temp directory via Electron IPC
+            localPath = await window.electronAPI.video.saveTemp(
+              uint8Array,
+              file.name
+            );
+
+            // Validate returned path
+            if (!localPath || localPath.trim() === "") {
+              debugError(
+                "[Media Processing] ⚠️ Invalid localPath returned:",
+                localPath
+              );
+              localPath = undefined;
+            } else {
+              debugLog(
+                `[Media Processing] ✅ Video saved to temp: ${localPath}`
+              );
+            }
+          } catch (error) {
+            debugError(
+              "[Media Processing] ⚠️ Failed to save video to temp:",
+              error
+            );
+
+            if (file.size > MAX_INSTANT_LOAD) {
+              debugError(
+                `[Media Processing] Large file (${(file.size / 1024 / 1024).toFixed(2)}MB) may have caused memory issue`
+              );
+            }
+
+            debugLog(
+              "[Media Processing] Continuing without localPath (fallback to slow rendering)"
+            );
+          }
+        } else if (fileType === "video") {
+          debugLog(
+            "[Media Processing] ℹ️ Electron API not available - skipping temp file creation"
+          );
+        }
+
         const processedItem = {
           name: file.name,
           type: fileType,
@@ -170,6 +231,7 @@ export async function processMediaFiles(
           width,
           height,
           fps,
+          localPath,
         };
 
         debugLog("[Media Processing] ➕ Adding processed item:", {
@@ -230,6 +292,7 @@ export async function processMediaFiles(
             height:
               fileType === "video" || fileType === "image" ? 1080 : undefined,
             fps: fileType === "video" ? 30 : undefined,
+            localPath: undefined,
           };
 
           processedItems.push(minimalItem);

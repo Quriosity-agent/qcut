@@ -4,6 +4,7 @@ import { TimelineTrack, TimelineElement } from "@/types/timeline";
 import { MediaItem } from "@/stores/media-store";
 import { debugLog, debugError, debugWarn } from "@/lib/debug-config";
 import { useEffectsStore } from "@/stores/effects-store";
+import { analyzeTimelineForExport, type ExportAnalysis } from './export-analysis';
 
 type EffectsStore = ReturnType<typeof useEffectsStore.getState>;
 
@@ -23,6 +24,7 @@ export class CLIExportEngine extends ExportEngine {
   private sessionId: string | null = null;
   private frameDir: string | null = null;
   private effectsStore?: EffectsStore;
+  private exportAnalysis: ExportAnalysis | null = null;
 
   constructor(
     canvas: HTMLCanvasElement,
@@ -417,6 +419,58 @@ export class CLIExportEngine extends ExportEngine {
     return activeElements;
   }
 
+  /**
+   * Extract video source paths from timeline for direct copy optimization
+   */
+  private extractVideoSources(): Array<{
+    path: string;
+    startTime: number;
+    duration: number;
+    trimStart: number;
+    trimEnd: number;
+  }> {
+    const videoSources: Array<{
+      path: string;
+      startTime: number;
+      duration: number;
+      trimStart: number;
+      trimEnd: number;
+    }> = [];
+
+    // Iterate through all tracks to find video elements
+    this.tracks.forEach((track) => {
+      if (track.type !== "media") return;
+
+      track.elements.forEach((element) => {
+        if (element.hidden) return;
+        if (element.type !== "media") return;
+
+        const mediaItem = this.mediaItems.find((item) => item.id === (element as any).mediaId);
+        if (!mediaItem || mediaItem.type !== "video") return;
+
+        // Check if we have a local path (required for direct copy)
+        if (!mediaItem.localPath) {
+          debugWarn(`[CLIExportEngine] Video ${mediaItem.id} has no localPath, cannot use direct copy`);
+          return;
+        }
+
+        videoSources.push({
+          path: mediaItem.localPath,
+          startTime: element.startTime,
+          duration: element.duration,
+          trimStart: element.trimStart,
+          trimEnd: element.trimEnd,
+        });
+      });
+    });
+
+    // Sort by start time
+    videoSources.sort((a, b) => a.startTime - b.startTime);
+
+    debugLog(`[CLIExportEngine] Extracted ${videoSources.length} video sources for direct copy`);
+    return videoSources;
+  }
+
   private async prepareAudioFiles(): Promise<
     Array<{ path: string; startTime: number; volume: number }>
   > {
@@ -436,7 +490,9 @@ export class CLIExportEngine extends ExportEngine {
           .mediaItems.find(
             (m) => m.id === (audioElement.element as any).mediaId
           );
-        if (!mediaItem?.url) continue;
+        if (!mediaItem?.url) {
+          continue;
+        }
         try {
           const response = await fetch(mediaItem.url);
           if (!response.ok) {
@@ -485,6 +541,7 @@ export class CLIExportEngine extends ExportEngine {
       }
     });
     await Promise.all(workers);
+
     debugLog(
       `[CLIExportEngine] Prepared ${results.length} audio files for export`
     );
@@ -508,14 +565,90 @@ export class CLIExportEngine extends ExportEngine {
     this.sessionId = session.sessionId;
     this.frameDir = session.frameDir;
 
+    // Check feature flag to disable optimization if needed
+    const skipOptimization = localStorage.getItem('qcut_skip_export_optimization') === 'true';
+
+    // Analyze timeline to determine optimization strategy
+    debugLog("[CLIExportEngine] 🔍 Analyzing timeline for export optimization...");
+    this.exportAnalysis = analyzeTimelineForExport(
+      this.tracks,
+      this.mediaItems
+    );
+
+    // Direct copy optimization now fully implemented
+    const forceImagePipeline = false;
+
+    // Override analysis if feature flag is set OR if forcing image pipeline
+    if (skipOptimization || forceImagePipeline) {
+      if (forceImagePipeline) {
+        console.log('🔧 [EXPORT OPTIMIZATION] Direct copy not yet implemented - forcing image pipeline');
+        debugLog('[CLIExportEngine] 🔧 Direct copy feature incomplete, using image pipeline');
+      } else {
+        console.log('🔧 [EXPORT OPTIMIZATION] Feature flag enabled - forcing image pipeline');
+        debugLog('[CLIExportEngine] 🔧 Optimization disabled via feature flag');
+      }
+      this.exportAnalysis = {
+        ...this.exportAnalysis,
+        needsImageProcessing: true,
+        canUseDirectCopy: false,
+        optimizationStrategy: 'image-pipeline',
+        reason: forceImagePipeline ? 'Direct copy not yet implemented' : 'Optimization disabled by feature flag'
+      };
+    }
+
+    debugLog("[CLIExportEngine] 📊 Export Analysis:", this.exportAnalysis);
+
     try {
       // Pre-load videos (our optimization)
       progressCallback?.(10, "Pre-loading videos...");
       await this.preloadAllVideos();
 
-      // Render frames to disk
-      progressCallback?.(15, "Rendering frames...");
-      await this.renderFramesToDisk(progressCallback);
+      // Render frames to disk UNLESS we can use direct copy optimization
+      try {
+        if (!this.exportAnalysis?.canUseDirectCopy) {
+          // If we CAN'T use direct copy, we MUST render frames
+          debugLog('[CLIExportEngine] 🎨 Cannot use direct copy - rendering frames to disk');
+          debugLog(`[CLIExportEngine] Reason: ${this.exportAnalysis.reason}`);
+          progressCallback?.(15, "Rendering frames...");
+          await this.renderFramesToDisk(progressCallback);
+        } else {
+          // Only skip rendering if direct copy is actually possible
+          debugLog('[CLIExportEngine] ⚡ Using direct video copy - skipping frame rendering');
+          debugLog(`[CLIExportEngine] Optimization: ${this.exportAnalysis?.optimizationStrategy}`);
+          progressCallback?.(15, "Preparing direct video processing...");
+          // Direct copy optimization is possible - skip frame rendering
+        }
+      } catch (error) {
+        // Fallback: Force image pipeline if optimization fails
+        debugWarn('[CLIExportEngine] ⚠️ Direct processing preparation failed, falling back to image pipeline:', error);
+
+        // Safe default for exportAnalysis if it's null
+        const analysisBase: ExportAnalysis = this.exportAnalysis || {
+          needsImageProcessing: false,
+          hasImageElements: false,
+          hasTextElements: false,
+          hasStickers: false,
+          hasEffects: false,
+          hasMultipleVideoSources: false,
+          hasOverlappingVideos: false,
+          canUseDirectCopy: false,
+          optimizationStrategy: 'image-pipeline',
+          reason: 'Initial analysis failed'
+        };
+
+        // Force image processing
+        this.exportAnalysis = {
+          ...analysisBase,
+          needsImageProcessing: true,
+          canUseDirectCopy: false,
+          optimizationStrategy: 'image-pipeline',
+          reason: 'Fallback due to optimization error'
+        };
+
+        // Render frames as fallback
+        progressCallback?.(15, "Rendering frames (fallback)...");
+        await this.renderFramesToDisk(progressCallback);
+      }
 
       // Export with FFmpeg CLI
       progressCallback?.(85, "Encoding with FFmpeg CLI...");
@@ -909,6 +1042,11 @@ export class CLIExportEngine extends ExportEngine {
       ","
     );
 
+    // Extract video sources for direct copy optimization
+    const videoSources = this.exportAnalysis?.canUseDirectCopy
+      ? this.extractVideoSources()
+      : [];
+
     // Build options AFTER validation so the filtered list is sent
     if (!this.sessionId) {
       throw new Error("No active session ID");
@@ -922,6 +1060,8 @@ export class CLIExportEngine extends ExportEngine {
       duration: this.totalDuration, // CRITICAL: Pass timeline duration to FFmpeg
       audioFiles, // Now contains only validated audio files
       filterChain: combinedFilterChain || undefined,
+      useDirectCopy: this.exportAnalysis?.canUseDirectCopy || false,
+      videoSources: videoSources.length > 0 ? videoSources : undefined,
     };
 
     debugLog(
@@ -935,9 +1075,18 @@ export class CLIExportEngine extends ExportEngine {
     try {
       const result =
         await window.electronAPI.ffmpeg.exportVideoCLI(exportOptions);
+      console.log('✅ [EXPORT OPTIMIZATION] FFmpeg export completed successfully!');
       debugLog("[CLI Export] FFmpeg export completed successfully:", result);
       return result.outputFile;
     } catch (error) {
+      console.error('❌ [EXPORT OPTIMIZATION] FFmpeg export FAILED!', error);
+      console.error('❌ [EXPORT OPTIMIZATION] Error message:', error instanceof Error ? error.message : String(error));
+      console.error('❌ [EXPORT OPTIMIZATION] Error details:', {
+        message: error instanceof Error ? error.message : String(error),
+        code: (error as any)?.code,
+        stderr: (error as any)?.stderr,
+        stdout: (error as any)?.stdout,
+      });
       debugError("[CLI Export] FFmpeg export failed:", error);
       debugError("[CLI Export] Error details:", {
         message: error instanceof Error ? error.message : String(error),

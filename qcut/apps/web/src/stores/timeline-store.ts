@@ -1212,28 +1212,27 @@ export const useTimelineStore = create<TimelineStore>((set, get) => {
 
       const secondElementId = generateUUID();
 
+      const leftPart = {
+        ...element,
+        trimEnd: element.trimEnd + secondDuration,
+        name: getElementNameWithSuffix(element.name, "left"),
+      };
+
+      const rightPart = {
+        ...element,
+        id: secondElementId,
+        startTime: splitTime,
+        trimStart: element.trimStart + firstDuration,
+        name: getElementNameWithSuffix(element.name, "right"),
+      };
+
       updateTracksAndSave(
         get()._tracks.map((track) =>
           track.id === trackId
             ? {
                 ...track,
                 elements: track.elements.flatMap((c) =>
-                  c.id === elementId
-                    ? [
-                        {
-                          ...c,
-                          trimEnd: c.trimEnd + secondDuration,
-                          name: getElementNameWithSuffix(c.name, "left"),
-                        },
-                        {
-                          ...c,
-                          id: secondElementId,
-                          startTime: splitTime,
-                          trimStart: c.trimStart + firstDuration,
-                          name: getElementNameWithSuffix(c.name, "right"),
-                        },
-                      ]
-                    : [c]
+                  c.id === elementId ? [leftPart, rightPart] : [c]
                 ),
               }
             : track
