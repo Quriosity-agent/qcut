@@ -1455,6 +1455,8 @@ export const videoEditClient = new VideoEditClient();
 export type { VideoEditClient };
 ```
 
+**Review Comment:** The client currently imports `@fal-ai/serverless-client` (`qcut/apps/web/src/lib/video-edit-client.ts:108`), but the web app only ships the browser SDK `@fal-ai/client`. Pulling in the serverless package (and not adding it to `package.json`) will break the build. Please stick with `@fal-ai/client` like `fal-ai-service.ts` or wire up the right dependency.
+
 ### Subtask 4.3: Add Client Export to Lib Index (10 min)
 **File to Modify**: `qcut/apps/web/src/lib/index.ts` (if exists) or create export
 
@@ -1465,6 +1467,8 @@ export { videoEditClient } from "./video-edit-client";
 export type { VideoEditClient } from "./video-edit-client";
 ```
 
+**Review Comment:** No additional concerns with the export wiring—once the client dependency note above is addressed, this fits our existing lib exports.
+
 ---
 
 ## Task 5: Create UI Components - Audio Gen Tab (45 minutes)
@@ -1472,6 +1476,8 @@ export type { VideoEditClient } from "./video-edit-client";
 ### Subtask 5.1: Read FileUpload Component Usage (5 min)
 **File to Read**: `qcut/apps/web/src/components/editor/media-panel/views/ai.tsx`
 **Lines to Study**: 800-900 (FileUpload usage pattern)
+
+**Review Comment:** Reading-only guidance for 5.1; nothing to validate here.
 
 ### Subtask 5.2: Create Audio Gen Tab Component (30 min)
 **File to Create**: `qcut/apps/web/src/components/editor/media-panel/views/video-edit-audio-gen.tsx`
