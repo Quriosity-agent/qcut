@@ -574,31 +574,44 @@ Total new code for Phase 1: ~271 lines
 **File to modify**: `apps/web/src/lib/export-engine-cli.ts`
 
 **Subtask 2.1: Add text filters to exportOptions**
-- Locate `exportWithCLI()` method (line 499 in current version)
-- Find where `exportOptions` is built (line 674-686 in current version)
-- Add call to `buildTextOverlayFilters()` before building exportOptions
-- Add new property `textFilterChain` to exportOptions object
-- Pass text filter chain to FFmpeg via exportOptions
 
-**Code modification in `exportWithCLI()` method (around line 667):**
+**What to ADD after line 666 (before building exportOptions):**
 ```typescript
-// Add this BEFORE building exportOptions (insert after line 666):
+// ADD these lines after line 666:
 
-// Build text overlay filter chain
+// Build text overlay filter chain for FFmpeg drawtext
 const textFilterChain = this.buildTextOverlayFilters();
 if (textFilterChain) {
-  debugLog(`[CLI Export] Text filter chain: ${textFilterChain}`);
+  debugLog(`[CLI Export] Text filter chain generated: ${textFilterChain}`);
+  debugLog(`[CLI Export] Text filter count: ${(textFilterChain.match(/drawtext=/g) || []).length}`);
 }
+```
 
-// Then modify the exportOptions object (line 674-686) to include textFilterChain:
+**What to MODIFY in exportOptions (lines 674-686):**
+```typescript
+// ORIGINAL CODE (lines 674-686):
 const exportOptions = {
   sessionId: this.sessionId,
   width: this.canvas.width,
   height: this.canvas.height,
   fps: 30,
   quality: this.settings.quality || "medium",
-  duration: this.totalDuration, // CRITICAL: Pass timeline duration to FFmpeg
-  audioFiles, // Now contains only validated audio files
+  duration: this.totalDuration,
+  audioFiles,
+  filterChain: combinedFilterChain || undefined,
+  useDirectCopy: this.exportAnalysis?.canUseDirectCopy || false,
+  videoSources: videoSources.length > 0 ? videoSources : undefined,
+};
+
+// MODIFIED CODE (ADD textFilterChain property after filterChain):
+const exportOptions = {
+  sessionId: this.sessionId,
+  width: this.canvas.width,
+  height: this.canvas.height,
+  fps: 30,
+  quality: this.settings.quality || "medium",
+  duration: this.totalDuration,
+  audioFiles,
   filterChain: combinedFilterChain || undefined,
   textFilterChain: textFilterChain || undefined,  // ADD THIS LINE
   useDirectCopy: this.exportAnalysis?.canUseDirectCopy || false,
@@ -606,10 +619,55 @@ const exportOptions = {
 };
 ```
 
-**Subtask 2.2: Update FFmpeg export options type (optional)**
-- If TypeScript errors occur, may need to update export options interface
-- Check `electron/ffmpeg-handler.ts` for the expected options type
-- Add `textFilterChain?: string` property if needed
+**Complete code section with changes (lines 666-686):**
+```typescript
+// Line 666: (existing code)
+const combinedFilterChain = Array.from(elementFilterChains.values()).join(",");
+
+// ADD: Build text overlay filter chain (new lines 667-672)
+const textFilterChain = this.buildTextOverlayFilters();
+if (textFilterChain) {
+  debugLog(`[CLI Export] Text filter chain generated: ${textFilterChain}`);
+  debugLog(`[CLI Export] Text filter count: ${(textFilterChain.match(/drawtext=/g) || []).length}`);
+}
+
+// MODIFIED: Add textFilterChain to exportOptions (lines 674-686)
+if (!this.sessionId) {
+  throw new Error("No active session ID");
+}
+const exportOptions = {
+  sessionId: this.sessionId,
+  width: this.canvas.width,
+  height: this.canvas.height,
+  fps: 30,
+  quality: this.settings.quality || "medium",
+  duration: this.totalDuration,
+  audioFiles,
+  filterChain: combinedFilterChain || undefined,
+  textFilterChain: textFilterChain || undefined,  // ADDED
+  useDirectCopy: this.exportAnalysis?.canUseDirectCopy || false,
+  videoSources: videoSources.length > 0 ? videoSources : undefined,
+};
+```
+
+**What to DELETE:** Nothing needs to be deleted.
+
+**Subtask 2.2: Handle TypeScript types**
+
+**What to ADD at the top of the file (if not already present):**
+```typescript
+// Add this import after line 7 (after other imports):
+import { TextElement } from "@/types/timeline";
+```
+
+**TypeScript interface updates (if needed):**
+The ExportOptions interface is defined in `electron/ffmpeg-handler.ts`, so no changes needed in this file. Phase 3 will handle the interface update in the Electron handler.
+
+**Summary of Phase 2 changes:**
+- **ADD**: 5 lines of code for text filter generation and logging
+- **MODIFY**: 1 line in exportOptions to include textFilterChain
+- **DELETE**: Nothing
+- **Total changes**: 6 lines of code
 
 ### Phase 3: Update Electron FFmpeg Handler (2-3 hours)
 
@@ -810,9 +868,9 @@ All modifications to `electron/ffmpeg-handler.ts`:
 - ✅ **MODIFY** export-video-cli handler to destructure textFilterChain (line 292)
 - ✅ **ADD** debug logging for textFilterChain (after line 299)
 - ✅ **MODIFY** buildFFmpegArgs call to pass textFilterChain (line 327)
-- ✅ **MODIFY** buildFFmpegArgs function signature to accept textFilterChain (line 954)
-- ✅ **REPLACE** filter application logic to combine filterChain and textFilterChain (lines 1127-1130)
-- ✅ **ADD** debug logging for FFmpeg command generation (before line 1234)
+- ✅ **MODIFY** buildFFmpegArgs function signature to accept textFilterChain (line 645)
+- ✅ **REPLACE** filter application logic to combine filterChain and textFilterChain (lines 818-821)
+- ✅ **ADD** debug logging for FFmpeg command generation (before line 925)
 
 Total code changes for Phase 3: ~50 lines (mostly modifications to existing code)
 
@@ -859,10 +917,14 @@ private buildTextOverlayFilters(): string
 
 **Changes to exportWithCLI() method:**
 ```typescript
-// Add before building exportOptions (around line 667)
+// ADD after line 666 (before building exportOptions):
 const textFilterChain = this.buildTextOverlayFilters();
+if (textFilterChain) {
+  debugLog(`[CLI Export] Text filter chain generated: ${textFilterChain}`);
+  debugLog(`[CLI Export] Text filter count: ${(textFilterChain.match(/drawtext=/g) || []).length}`);
+}
 
-// Add to exportOptions object (line 674-686)
+// MODIFY exportOptions object (line 682 - add one property):
 const exportOptions = {
   // ... existing properties ...
   textFilterChain: textFilterChain || undefined,  // ADD THIS PROPERTY
@@ -886,9 +948,10 @@ const exportOptions = {
 - All code provided and production-ready
 
 ### Phase 2 (Complete): Export Pipeline Integration
-- ✅ **5 lines** added to `exportWithCLI()` method
-- ✅ **1 line** modified in exportOptions
-- Minimal changes to integrate text filters
+- ✅ **5 lines** added to `exportWithCLI()` method for text filter generation
+- ✅ **1 line** modified in exportOptions to include textFilterChain
+- ✅ **1 import** added for TextElement type (if needed)
+- Minimal changes to integrate text filters (6 total lines)
 
 ### Phase 3 (Complete): Electron FFmpeg Handler
 - ✅ **~50 lines** of modifications to `ffmpeg-handler.ts`
