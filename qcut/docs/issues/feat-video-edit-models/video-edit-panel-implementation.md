@@ -138,15 +138,12 @@ const viewMap: Record<Tab, React.ReactNode> = {
 "use client";
 
 import { useState } from "react";
-import { Wand2Icon, Loader2 } from "lucide-react";
+import { Wand2Icon } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Button } from "@/components/ui/button";
-
-export type VideoEditTab = "audio-gen" | "audio-sync" | "upscale";
+import type { VideoEditTab } from "./video-edit-types";
 
 export default function VideoEditView() {
   const [activeTab, setActiveTab] = useState<VideoEditTab>("audio-gen");
-  const [isProcessing, setIsProcessing] = useState(false);
 
   return (
     <div className="h-full flex flex-col p-4">
@@ -194,7 +191,7 @@ export default function VideoEditView() {
 }
 ```
 
-**Review Comment:** Tasks 1.1–1.3 match existing patterns. For Task 1.4 ensure the skeleton drops unused symbols (`Loader2`, `Button`, `isProcessing`) or wires them into the JSX; our lint step fails on unused imports/state.
+**Review Comment:** ✅ FIXED - Removed unused imports (`Loader2`, `Button`) and unused state (`isProcessing`). Now imports `VideoEditTab` type from `video-edit-types.ts` to avoid duplication.
 
 ---
 
@@ -412,10 +409,16 @@ export const VIDEO_EDIT_MODELS: VideoEditModel[] = [
 /**
  * File Upload Constants
  * Matches pattern from ai-constants.ts UPLOAD_CONSTANTS
+ *
+ * WHY model-specific limits:
+ * - Kling and MMAudio: 100MB limit (typical short clips)
+ * - Topaz: 500MB limit (longer videos for upscaling)
  */
 export const VIDEO_EDIT_UPLOAD_CONSTANTS = {
-  MAX_VIDEO_SIZE_BYTES: 100 * 1024 * 1024,  // 100MB
+  MAX_VIDEO_SIZE_BYTES: 100 * 1024 * 1024,  // 100MB (default for Kling/MMAudio)
   MAX_VIDEO_SIZE_LABEL: "100MB",
+  TOPAZ_MAX_VIDEO_SIZE_BYTES: 500 * 1024 * 1024,  // 500MB (for Topaz upscale)
+  TOPAZ_MAX_VIDEO_SIZE_LABEL: "500MB",
   ALLOWED_VIDEO_TYPES: [
     "video/mp4",
     "video/quicktime",  // macOS .mov
@@ -514,16 +517,20 @@ export const VIDEO_EDIT_HELPERS = {
   /**
    * Validate video file
    * WHY: Client-side validation before upload
+   * @param file - File to validate
+   * @param maxSizeBytes - Optional custom size limit (defaults to 100MB)
    */
-  validateVideoFile: (file: File): { valid: boolean; error?: string } => {
+  validateVideoFile: (file: File, maxSizeBytes?: number): { valid: boolean; error?: string } => {
     // Check file type
     if (!VIDEO_EDIT_UPLOAD_CONSTANTS.ALLOWED_VIDEO_TYPES.includes(file.type as any)) {
       return { valid: false, error: VIDEO_EDIT_ERROR_MESSAGES.INVALID_VIDEO_TYPE };
     }
 
-    // Check file size
-    if (file.size > VIDEO_EDIT_UPLOAD_CONSTANTS.MAX_VIDEO_SIZE_BYTES) {
-      return { valid: false, error: VIDEO_EDIT_ERROR_MESSAGES.VIDEO_TOO_LARGE };
+    // Check file size with optional custom limit
+    const sizeLimit = maxSizeBytes || VIDEO_EDIT_UPLOAD_CONSTANTS.MAX_VIDEO_SIZE_BYTES;
+    if (file.size > sizeLimit) {
+      const sizeMB = Math.round(sizeLimit / 1024 / 1024);
+      return { valid: false, error: `Video file is too large. Maximum size is ${sizeMB}MB.` };
     }
 
     return { valid: true };
@@ -545,7 +552,7 @@ export const VIDEO_EDIT_HELPERS = {
 } as const;
 ```
 
-**Review Comment:** 1) Once `video-edit-types.ts` exists, make `video-edit.tsx` import `VideoEditTab` from it instead of re-declaring the type—keeping two definitions will drift immediately (`qcut/apps/web/src/components/editor/media-panel/views/video-edit.tsx`). 2) The shared upload cap remains 100MB, but `topaz_upscale` is specced for 500MB; with `VIDEO_EDIT_UPLOAD_CONSTANTS.MAX_VIDEO_SIZE_BYTES` hard-coded to 100MB you'll reject the files that model is supposed to handle (`video-edit-constants.ts`). Please adjust the limits (or make them model-specific).
+**Review Comment:** ✅ FIXED - 1) `video-edit.tsx` now imports `VideoEditTab` from `video-edit-types.ts` to avoid type duplication. 2) Added `TOPAZ_MAX_VIDEO_SIZE_BYTES` (500MB) constant and updated `validateVideoFile` helper to accept optional `maxSizeBytes` parameter for model-specific validation.
 
 ---
 
@@ -572,7 +579,6 @@ export const VIDEO_EDIT_HELPERS = {
  */
 
 import { useState, useCallback, useEffect, useRef } from "react";
-import { useProjectStore } from "@/stores/project-store";
 import { useAsyncMediaStoreActions } from "@/hooks/use-async-media-store";
 import { debugLog, debugError } from "@/lib/debug-config";
 import type {
@@ -1040,7 +1046,7 @@ export function useVideoEditProcessing(props: UseVideoEditProcessingProps) {
 }
 ```
 
-**Review Comment:** `use-video-edit-processing.ts` imports `useProjectStore` but never consumes it (`qcut/apps/web/src/components/editor/media-panel/views/use-video-edit-processing.ts:573`); our lint config flags unused imports, so please drop it or actually use the store before landing.
+**Review Comment:** ✅ FIXED - Removed unused `useProjectStore` import. The `activeProject` is passed via props instead, which is the correct pattern.
 
 ### Subtask 3.3: Export Hook from Index (5 min)
 **File to Create**: `qcut/apps/web/src/components/editor/media-panel/views/video-edit-exports.ts`
@@ -1105,7 +1111,7 @@ export { useVideoEditProcessing } from "./use-video-edit-processing";
  * Performance: Direct client-to-FAL reduces latency by ~500ms vs backend proxy
  */
 
-import * as fal from "@fal-ai/serverless-client";
+import * as fal from "@fal-ai/client";
 import { debugLog, debugError } from "@/lib/debug-config";
 import type {
   KlingVideoToAudioParams,
@@ -1455,7 +1461,7 @@ export const videoEditClient = new VideoEditClient();
 export type { VideoEditClient };
 ```
 
-**Review Comment:** The client currently imports `@fal-ai/serverless-client` (`qcut/apps/web/src/lib/video-edit-client.ts:108`), but the web app only ships the browser SDK `@fal-ai/client`. Pulling in the serverless package (and not adding it to `package.json`) will break the build. Please stick with `@fal-ai/client` like `fal-ai-service.ts` or wire up the right dependency.
+**Review Comment:** ✅ FIXED - Changed import from `@fal-ai/serverless-client` to `@fal-ai/client` to match the browser SDK used in `fal-ai-service.ts`. This ensures compatibility with the existing FAL integration.
 
 ### Subtask 4.3: Add Client Export to Lib Index (10 min)
 **File to Modify**: `qcut/apps/web/src/lib/index.ts` (if exists) or create export
@@ -1494,7 +1500,7 @@ export type { VideoEditClient } from "./video-edit-client";
  */
 
 import { useState } from "react";
-import { Upload, Loader2, Volume2, Music, Sparkles } from "lucide-react";
+import { Loader2, Volume2, Music, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -1550,7 +1556,7 @@ export function AudioGenTab() {
    * Handle video file change
    * WHY: Validate and preview video before processing
    */
-  const handleVideoChange = (file: File | null, preview: string | null) => {
+  const handleVideoChange = (file: File | null, preview: string | undefined | null) => {
     if (file) {
       // Validate file
       const validation = VIDEO_EDIT_HELPERS.validateVideoFile(file);
@@ -1561,7 +1567,7 @@ export function AudioGenTab() {
     }
 
     setSourceVideo(file);
-    setVideoPreview(preview);
+    setVideoPreview(preview ?? null);  // Coerce undefined to null for type safety
     setError(null);
     reset();  // Reset processing state
   };
@@ -1686,14 +1692,16 @@ export function AudioGenTab() {
               />
             )}
             <div className="flex gap-2">
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => window.open(result.videoUrl!, "_blank")}
-                className="text-xs"
-              >
-                Download Video
-              </Button>
+              {result.videoUrl && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => window.open(result.videoUrl!, "_blank")}
+                  className="text-xs"
+                >
+                  Download Video
+                </Button>
+              )}
               {result.audioUrl && (
                 <Button
                   size="sm"
@@ -1740,7 +1748,7 @@ export function AudioGenTab() {
 }
 ```
 
-**Review Comment:** `FileUpload` omits the preview argument for non-images, so `handleVideoChange` pushes `undefined` into `setVideoPreview`, which is typed `string | null` (`qcut/apps/web/src/components/editor/media-panel/views/video-edit-audio-gen.tsx:154`). Use `preview ?? null` to satisfy TS. Also drop the unused `Upload` icon import, and guard the `window.open(result.videoUrl!, ...)` calls so we don't hand a `null` URL to `window.open` when the API only returns audio (`.../video-edit-audio-gen.tsx:149`, `:169`).
+**Review Comment:** ✅ FIXED - 1) Added `preview ?? null` coercion in `handleVideoChange` for type safety. 2) Removed unused `Upload` icon import. 3) Added null guard `{result.videoUrl &&` before window.open call to handle audio-only responses.
 
 ### Subtask 5.3: Update Main Video Edit View (10 min)
 **File to Modify**: `qcut/apps/web/src/components/editor/media-panel/views/video-edit.tsx`
@@ -1775,7 +1783,7 @@ import { AudioGenTab } from "./video-edit-audio-gen";
  */
 
 import { useState } from "react";
-import { Upload, Loader2, Music2, Settings, DollarSign } from "lucide-react";
+import { Loader2, Music2, Settings, DollarSign } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
