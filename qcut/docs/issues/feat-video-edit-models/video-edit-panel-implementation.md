@@ -1740,6 +1740,8 @@ export function AudioGenTab() {
 }
 ```
 
+**Review Comment:** `FileUpload` omits the preview argument for non-images, so `handleVideoChange` pushes `undefined` into `setVideoPreview`, which is typed `string | null` (`qcut/apps/web/src/components/editor/media-panel/views/video-edit-audio-gen.tsx:154`). Use `preview ?? null` to satisfy TS. Also drop the unused `Upload` icon import, and guard the `window.open(result.videoUrl!, ...)` calls so we don't hand a `null` URL to `window.open` when the API only returns audio (`.../video-edit-audio-gen.tsx:149`, `:169`).
+
 ### Subtask 5.3: Update Main Video Edit View (10 min)
 **File to Modify**: `qcut/apps/web/src/components/editor/media-panel/views/video-edit.tsx`
 
@@ -2089,6 +2091,8 @@ export function AudioSyncTab() {
 }
 ```
 
+**Review Comment:** Same `FileUpload` nuance here: `setVideoPreview(preview)` can receive `undefined`, which clashes with the `string | null` state typing (`qcut/apps/web/src/components/editor/media-panel/views/video-edit-audio-sync.tsx:184`). Coerce to `preview ?? null`. Also trim the unused `Upload` icon import, and guard `window.open(result.videoUrl!, ...)` so we only attempt it when `videoUrl` is defined (`.../video-edit-audio-sync.tsx:205`).
+
 ### Subtask 6.2: Update Main Video Edit View (10 min)
 **File to Modify**: `qcut/apps/web/src/components/editor/media-panel/views/video-edit.tsx`
 
@@ -2102,6 +2106,8 @@ import { AudioSyncTab } from "./video-edit-audio-sync";
   <AudioSyncTab />
 </TabsContent>
 ```
+
+**Review Comment:** After wiring in the tab components, `video-edit.tsx` still imports `Button` (and later `Loader2`) without using them—lint will complain (`qcut/apps/web/src/components/editor/media-panel/views/video-edit.tsx:242`). Also, please source `VideoEditTab` from the shared types file instead of redefining it locally so we don’t maintain two copies (`video-edit.tsx:247`).
 
 ---
 
@@ -2425,6 +2431,8 @@ export function UpscaleTab() {
 }
 ```
 
+**Review Comment:** A couple blockers here: 1) `handleVideoChange` still feeds `preview` directly into `setVideoPreview`, so we hit the same `string | null` vs `undefined` type mismatch as the other tabs (`qcut/apps/web/src/components/editor/media-panel/views/video-edit-upscale.tsx:219`). 2) `VIDEO_EDIT_HELPERS.validateVideoFile` enforces the global 100 MB cap, so even though `FileUpload` allows 500 MB, the validation path will reject larger Topaz inputs—either pass a model-aware max into the helper or create a dedicated validator (`video-edit-upscale.tsx:218` together with `video-edit-constants.ts`). Also trim the unused `Upload` import and guard the `window.open(result.videoUrl!, ...)` call (`video-edit-upscale.tsx:238`).
+
 ### Subtask 7.2: Update Main Video Edit View (10 min)
 **File to Modify**: `qcut/apps/web/src/components/editor/media-panel/views/video-edit.tsx`
 
@@ -2484,6 +2492,8 @@ export default function VideoEditView() {
   );
 }
 ```
+
+**Review Comment:** Final reminder for this view: drop the unused `Button`/`Loader2` imports and pull `VideoEditTab` from `video-edit-types.ts` so we reference the shared type (`qcut/apps/web/src/components/editor/media-panel/views/video-edit.tsx:244`).
 
 ---
 
