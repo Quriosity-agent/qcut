@@ -59,6 +59,8 @@ interface ExportOptions {
   audioFiles?: AudioFile[];
   /** Optional FFmpeg filter chain string for video effects */
   filterChain?: string;
+  /** Optional FFmpeg drawtext filter chain for text overlays */
+  textFilterChain?: string;
   /** Enable direct video copy/concat optimization (skips frame rendering) */
   useDirectCopy?: boolean;
   /** Video sources for direct copy optimization (when useDirectCopy=true) */
@@ -289,8 +291,12 @@ export function setupFFmpegIPC(): void {
         quality,
         duration,
         audioFiles = [],
+        textFilterChain,
         useDirectCopy = false,
       } = options;
+
+      // Defensive: Force disable direct copy when text overlays are present
+      const effectiveUseDirectCopy = textFilterChain ? false : useDirectCopy;
 
       // Validate duration to prevent crashes or excessive resource usage
       const validatedDuration = Math.min(
@@ -323,14 +329,15 @@ export function setupFFmpegIPC(): void {
           validatedDuration,
           audioFiles,
           options.filterChain,
-          useDirectCopy,
+          textFilterChain,
+          effectiveUseDirectCopy,
           options.videoSources
         );
 
         // Use async IIFE to handle validation properly
         (async () => {
           // Verify input based on processing mode
-          if (useDirectCopy) {
+          if (effectiveUseDirectCopy) {
             // Validate that video sources were provided
             if (!options.videoSources || options.videoSources.length === 0) {
               const error =
@@ -950,6 +957,7 @@ function buildFFmpegArgs(
   duration: number,
   audioFiles: AudioFile[] = [],
   filterChain?: string,
+  textFilterChain?: string,
   useDirectCopy = false,
   videoSources?: VideoSource[]
 ): string[] {
@@ -1124,9 +1132,20 @@ function buildFFmpegArgs(
     inputPattern,
   ];
 
-  // Add filter chain if provided
+  // Combine filter chains if provided (both video effects and text overlays)
+  const combinedFilters: string[] = [];
+
   if (filterChain && filterChain.trim()) {
-    args.push("-vf", filterChain);
+    combinedFilters.push(filterChain);
+  }
+
+  if (textFilterChain && textFilterChain.trim()) {
+    combinedFilters.push(textFilterChain);
+  }
+
+  // Apply combined filters if any exist
+  if (combinedFilters.length > 0) {
+    args.push("-vf", combinedFilters.join(','));
   }
 
   // Add audio inputs if provided
