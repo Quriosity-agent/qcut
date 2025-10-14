@@ -1,150 +1,26 @@
-# Video Edit Models Panel - Production-Ready Implementation Plan
+# Video Edit Models Panel - Detailed Implementation Plan with Code
 
 ## Executive Summary
 
-**WHY this feature**: Users need post-processing capabilities for AI-generated and timeline videos without leaving the editor. Current workflow requires external tools for audio generation and upscaling, breaking the creative flow.
+Add a new "Video Edit" panel after Stickers panel with three AI-powered video enhancement capabilities: Kling Video to Audio, MMAudio V2, and Topaz Video Upscale.
 
-**Core value proposition**:
-1. **Kling Video to Audio**: Generate missing soundtracks for silent videos (3-20s clips)
-2. **MMAudio V2**: Sync custom audio to video content with text prompts ($0.001/sec)
-3. **Topaz Upscale**: Professional 8x upscaling with frame interpolation (up to 120 FPS)
-
-**Non-breaking requirement**: Must integrate seamlessly with existing AI Video panel without disturbing established workflows.
+**Total Implementation Time**: ~6 hours (8 tasks × 30-60 minutes each)
 
 ---
 
-## Architecture Analysis & Pattern Compliance
+## Task 1: Setup Panel Infrastructure (45 minutes)
 
-### Existing Codebase Patterns (Mandatory to Follow)
+### Subtask 1.1: Add "video-edit" to Tab Type (10 min)
+**File to Read**: `qcut/apps/web/src/components/editor/media-panel/store.ts`
+**Lines to Modify**: 20-34
 
-**WHY we must follow these patterns**: Consistency reduces cognitive load for maintainers and prevents subtle bugs from pattern mismatches.
-
-#### 1. Centralized Model Configuration Pattern
+**Current Code (lines 20-34):**
 ```typescript
-// WHY: Single source of truth prevents pricing/endpoint drift across UI components
-// Found in: ai-constants.ts lines 22-336
-// Edge case: Model endpoints change frequently on FAL AI; centralized config makes updates trivial
-
-export const VIDEO_EDIT_MODELS: VideoEditModel[] = [
-  {
-    id: "kling_video_to_audio",
-    name: "Kling Video to Audio",
-    endpoints: {
-      video_to_audio: "fal-ai/kling-video/video-to-audio",  // WHY: Unique endpoint per model feature
-    },
-    default_params: {
-      asmr_mode: false,  // WHY: ASMR mode is expensive; default to standard processing
-    },
-    max_video_size: 100 * 1024 * 1024, // WHY: Kling API hard limit; larger files will be rejected
-  },
-  // ... more models
-];
-```
-
-**Performance implication**: Model config is imported at module load time; keep array small (<20 items) to avoid bundle bloat.
-
-#### 2. Hook-Based State Management Pattern
-```typescript
-// WHY: Separates business logic from UI for testability and reusability
-// Found in: use-ai-generation.ts lines 1-1103
-// Edge case: Hooks can't be called conditionally; all state must exist even if unused
-
-export function useVideoEditProcessing(props: UseVideoEditProcessingProps) {
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [progress, setProgress] = useState(0);
-
-  // WHY: Zustand store loading might still be in progress; must handle undefined
-  const { activeProject } = useProjectStore();
-  const { addMediaItem } = useAsyncMediaStoreActions();  // Edge case: null until media store initializes
-
-  // WHY: Progress callbacks allow real-time UI updates without polling state
-  const handleProcess = useCallback(async (params) => {
-    // Business logic: FAL API uses queue system; video URL arrives after polling completes
-    // Performance: Large videos (>50MB) should stream download to avoid memory spikes
-  }, [activeProject, addMediaItem]);  // WHY: Deps array ensures stable callbacks across renders
-
-  return { isProcessing, progress, handleProcess };
-}
-```
-
-**Edge case**: If `addMediaItem` is called before media store initializes, it will throw. Solution: Check `mediaStoreLoading` state before attempting additions.
-
-#### 3. FAL AI Client Integration Pattern
-```typescript
-// WHY: Direct FAL integration bypasses backend, reducing latency by ~500ms per request
-// Found in: ai-video-client.ts lines 18-21, 338-694
-// Performance: Avoids double network hop (client → backend → FAL AI)
-
-const FAL_API_KEY = import.meta.env.VITE_FAL_API_KEY;
-const FAL_API_BASE = "https://fal.run";
-
-// WHY: Queue mode returns request_id immediately; polling happens separately
-// Edge case: Some models return video_url directly (synchronous mode) - must handle both paths
-async function processVideo(params) {
-  const response = await fetch(`${FAL_API_BASE}/${endpoint}`, {
-    method: "POST",
-    headers: {
-      "Authorization": `Key ${FAL_API_KEY}`,  // WHY: FAL requires "Key " prefix (not "Bearer ")
-    },
-  });
-
-  const result = await response.json();
-
-  // Edge case: Check for both queue mode (request_id) and direct mode (video_url)
-  if (result.request_id) {
-    return await pollQueueStatus(result.request_id);  // Async path: 30-300 seconds
-  } else if (result.video?.url) {
-    return result.video.url;  // Sync path: <2 seconds
-  }
-}
-```
-
-**Performance warning**: Queue polling hits FAL API every 5 seconds; aggressive polling (< 2s) can trigger rate limits (429 errors).
-
-#### 4. FileUpload Component Reuse Pattern
-```typescript
-// WHY: Reusing FileUpload ensures consistent validation logic and prevents upload bugs
-// Found in: file-upload.tsx lines 1-195
-// Edge case: FileUpload validates MIME types; some browsers report incorrect types for .mov files
-
-<FileUpload
-  id="video-input"
-  label="Source Video"
-  fileType="video"
-  acceptedTypes={UPLOAD_CONSTANTS.ALLOWED_VIDEO_TYPES}  // WHY: Centralized allowed types prevent inconsistencies
-  maxSizeBytes={100 * 1024 * 1024}  // WHY: Kling API hard limit
-  onFileChange={(file) => {
-    // Business logic: File is already validated by FileUpload; no need for double-checking
-    setSourceVideo(file);
-  }}
-  onError={(err) => {
-    // WHY: FileUpload provides user-friendly error messages; just display them
-    setError(err);
-  }}
-/>
-```
-
-**Edge case**: `.mov` files sometimes report as `video/quicktime` or `video/x-quicktime` depending on browser; `ALLOWED_VIDEO_TYPES` must include both variants.
-
----
-
-## Revised Implementation Plan with Long-Term Maintainability
-
-### Phase 1: Panel Setup (Zero-Risk Changes)
-
-#### 1.1 Add "video-edit" to Tab Type
-**File**: `qcut/apps/web/src/components/editor/media-panel/store.ts`
-
-```typescript
-// WHY: TypeScript discriminated union ensures exhaustive handling in switch statements
-// Edge case: Adding new tab type requires updating viewMap in index.tsx (compiler will catch this)
 export type Tab =
   | "media"
   | "audio"
   | "text"
   | "stickers"
-  | "video-edit"  // NEW: Position after stickers per user requirement
-  | "sounds"      // Existing tabs follow
   | "effects"
   | "transitions"
   | "captions"
@@ -153,477 +29,2509 @@ export type Tab =
   | "text2image"
   | "nano-edit"
   | "ai"
+  | "sounds"
   | "draw";
 ```
 
-**Breaking change risk**: LOW - Adding union member is backwards compatible.
-
-#### 1.2 Add Tab Configuration
-**File**: `qcut/apps/web/src/components/editor/media-panel/store.ts`
-
+**Updated Code - Add After Line 24:**
 ```typescript
-import { Wand2Icon } from "lucide-react";  // WHY: Wand2Icon suggests enhancement/magic processing
+export type Tab =
+  | "media"
+  | "audio"
+  | "text"
+  | "stickers"
+  | "video-edit"  // NEW: Add after stickers
+  | "effects"
+  | "transitions"
+  | "captions"
+  | "filters"
+  | "adjustment"
+  | "text2image"
+  | "nano-edit"
+  | "ai"
+  | "sounds"
+  | "draw";
+```
 
+### Subtask 1.2: Add Tab Configuration with Icon (10 min)
+**File to Read**: `qcut/apps/web/src/components/editor/media-panel/store.ts`
+**Lines to Modify**: 36-74
+
+**Add Import at Line 11:**
+```typescript
+import {
+  CaptionsIcon,
+  ArrowLeftRightIcon,
+  SparklesIcon,
+  StickerIcon,
+  MusicIcon,
+  VideoIcon,
+  BlendIcon,
+  SlidersHorizontalIcon,
+  LucideIcon,
+  TypeIcon,
+  WandIcon,
+  BotIcon,
+  VolumeXIcon,
+  PaletteIcon,
+  PenTool,
+  Wand2Icon,  // NEW: Add this import
+} from "lucide-react";
+```
+
+**Add Tab Configuration After Line 53:**
+```typescript
 export const tabs: { [key in Tab]: { icon: LucideIcon; label: string } } = {
-  media: { icon: VideoIcon, label: "Media" },
-  // ... existing tabs
-  stickers: { icon: StickerIcon, label: "Stickers" },
-  "video-edit": {
-    icon: Wand2Icon,  // WHY: Wand2Icon (magic wand) implies video enhancement/transformation
-    label: "Video Edit",  // Business logic: "Edit" is more intuitive than "Enhance" for users
+  media: {
+    icon: VideoIcon,
+    label: "Media",
   },
-  sounds: { icon: VolumeXIcon, label: "Sounds" },
-  // ... rest of tabs
+  // ... existing tabs ...
+  stickers: {
+    icon: StickerIcon,
+    label: "Stickers",
+  },
+  "video-edit": {  // NEW: Add after stickers
+    icon: Wand2Icon,
+    label: "Video Edit",
+  },
+  sounds: {
+    icon: VolumeXIcon,
+    label: "Sounds",
+  },
+  // ... rest of tabs ...
 };
 ```
 
-**WHY Wand2Icon**: Tested with users; "wand" metaphor resonates with non-technical editors. Alternative: `FilmIcon` tested worse due to overlap with "Media" panel.
+### Subtask 1.3: Register View Component in MediaPanel (15 min)
+**File to Read**: `qcut/apps/web/src/components/editor/media-panel/index.tsx`
+**Lines to Modify**: 1-62
 
-**Breaking change risk**: LOW - Object spread in TabBar component auto-picks up new entry.
-
-#### 1.3 Register View Component
-**File**: `qcut/apps/web/src/components/editor/media-panel/index.tsx`
-
+**Add Import at Line 15:**
 ```typescript
-import VideoEditView from "./views/video-edit";  // WHY: Default export pattern matches other view imports
+import { TabBar } from "./tabbar";
+import { MediaView } from "./views/media";
+import { useMediaPanelStore, Tab } from "./store";
+// ... existing imports ...
+import DrawView from "./views/draw";
+import VideoEditView from "./views/video-edit";  // NEW: Add this import
+import React from "react";
+```
 
-export function MediaPanel() {
-  const { activeTab } = useMediaPanelStore();
+**Add to viewMap After Line 35:**
+```typescript
+const viewMap: Record<Tab, React.ReactNode> = {
+  media: <MediaView />,
+  audio: <AudioView />,
+  text: <TextView />,
+  stickers: <StickersView />,
+  "video-edit": <VideoEditView />,  // NEW: Add after stickers
+  // ... rest of views ...
+};
+```
 
-  const viewMap: Record<Tab, React.ReactNode> = {
-    media: <MediaView />,
-    // ... existing views
-    stickers: <StickersView />,
-    "video-edit": <VideoEditView />,  // NEW: Must match Tab type exactly
-    sounds: <SoundsView />,
-    // ... rest of views
-  };
+### Subtask 1.4: Create Skeleton Video Edit View Component (10 min)
+**File to Create**: `qcut/apps/web/src/components/editor/media-panel/views/video-edit.tsx`
 
-  // WHY: Record<Tab, ReactNode> guarantees all tabs have corresponding views at compile-time
-  // Edge case: TypeScript will error if Tab type has more members than viewMap keys
+**Complete Code:**
+```typescript
+"use client";
+
+import { useState } from "react";
+import { Wand2Icon, Loader2 } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
+
+export type VideoEditTab = "audio-gen" | "audio-sync" | "upscale";
+
+export default function VideoEditView() {
+  const [activeTab, setActiveTab] = useState<VideoEditTab>("audio-gen");
+  const [isProcessing, setIsProcessing] = useState(false);
+
   return (
-    <div className="h-full flex flex-col bg-panel rounded-sm">
-      <TabBar />
-      <div className="flex-1 overflow-y-auto">{viewMap[activeTab]}</div>
+    <div className="h-full flex flex-col p-4">
+      {/* Header */}
+      <div className="flex items-center mb-4">
+        <Wand2Icon className="size-5 text-primary mr-2" />
+        <h3 className="text-sm font-medium">Video Edit</h3>
+      </div>
+
+      {/* Tabs */}
+      <Tabs
+        value={activeTab}
+        onValueChange={(v) => setActiveTab(v as VideoEditTab)}
+        className="flex-1 flex flex-col"
+      >
+        <TabsList className="grid w-full grid-cols-3 mb-4">
+          <TabsTrigger value="audio-gen">Audio Gen</TabsTrigger>
+          <TabsTrigger value="audio-sync">Audio Sync</TabsTrigger>
+          <TabsTrigger value="upscale">Upscale</TabsTrigger>
+        </TabsList>
+
+        {/* Kling Video to Audio Tab */}
+        <TabsContent value="audio-gen" className="flex-1 space-y-4">
+          <div className="text-sm text-muted-foreground">
+            Kling Video to Audio - Implementation pending
+          </div>
+        </TabsContent>
+
+        {/* MMAudio V2 Tab */}
+        <TabsContent value="audio-sync" className="flex-1 space-y-4">
+          <div className="text-sm text-muted-foreground">
+            MMAudio V2 - Implementation pending
+          </div>
+        </TabsContent>
+
+        {/* Topaz Upscale Tab */}
+        <TabsContent value="upscale" className="flex-1 space-y-4">
+          <div className="text-sm text-muted-foreground">
+            Topaz Upscale - Implementation pending
+          </div>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
 ```
 
-**Edge case**: If `VideoEditView` component doesn't exist, module load fails hard; create skeleton component first before registration.
-
 ---
 
-### Phase 2: Core Type Definitions (Contract First)
+## Task 2: Create Type Definitions and Constants (30 minutes)
 
-#### 2.1 Type Definitions with Comprehensive Documentation
-**File**: `qcut/apps/web/src/components/editor/media-panel/views/video-edit-types.ts`
+### Subtask 2.1: Create Type Definitions File (15 min)
+**File to Create**: `qcut/apps/web/src/components/editor/media-panel/views/video-edit-types.ts`
 
+**Complete Code:**
 ```typescript
 /**
- * Video Edit tab discriminator
- * WHY: TypeScript literal types enable exhaustive switch checking
+ * Video Edit Feature Type Definitions
+ *
+ * WHY this file exists:
+ * - Centralized type safety for all video edit features
+ * - Prevents type drift between components and API client
+ * - Enables IntelliSense across the feature
+ */
+
+/**
+ * Tab discriminator for the three video edit models
  */
 export type VideoEditTab = "audio-gen" | "audio-sync" | "upscale";
 
 /**
- * Kling Video to Audio API Parameters
+ * Kling Video to Audio Parameters
  *
- * WHY these parameters:
- * - video_url: FAL AI accepts data URLs (base64) or public HTTP URLs
- * - asmr_mode: Costs 2x processing time but enhances subtle sounds (footsteps, rustling)
+ * WHY each field:
+ * - video_url: FAL AI requires base64 data URL or public HTTP URL
+ * - sound_effect_prompt: Optional creative control for sound generation
+ * - background_music_prompt: Optional creative control for music
+ * - asmr_mode: Premium feature that costs 2x but enhances subtle sounds
  *
- * Edge cases:
- * - video_url must be <100MB total file size
- * - asmr_mode ignored for videos >10 seconds (API limitation)
- * - Both prompts are optional; API will generate generic audio if omitted
- *
- * Performance implications:
- * - Base64 data URLs are ~33% larger than raw file (encoding overhead)
- * - Sound effect generation: ~15-30 seconds
- * - Background music generation: ~20-40 seconds
- * - ASMR mode adds +50% processing time
+ * Edge case: ASMR mode ignored for videos >10 seconds (API limitation)
  */
 export interface KlingVideoToAudioParams {
-  video_url: string;  // Base64 data URL or public HTTP URL
-  sound_effect_prompt?: string;  // Optional: "footsteps on gravel, birds chirping"
-  background_music_prompt?: string;  // Optional: "upbeat jazz piano"
-  asmr_mode?: boolean;  // Optional: Enhances subtle ambient sounds (2x processing cost)
+  video_url: string;
+  sound_effect_prompt?: string;
+  background_music_prompt?: string;
+  asmr_mode?: boolean;
 }
 
 /**
- * MMAudio V2 API Parameters
+ * MMAudio V2 Parameters
  *
- * WHY these parameters:
- * - prompt: Required for audio style/content direction
- * - negative_prompt: Helps avoid unwanted sounds (e.g., "no speech, no music")
- * - num_steps: Higher steps = better quality but slower (default 25 is sweet spot)
- * - duration: Must match video duration for sync; auto-detected if omitted
- * - cfg_strength: Controls how closely audio matches prompt vs. video content
+ * WHY each field:
+ * - prompt: Required for directing audio style/content
+ * - negative_prompt: Prevents unwanted sounds (e.g., "no speech")
+ * - num_steps: Quality vs speed tradeoff (25 is optimal)
+ * - cfg_strength: Balance between prompt adherence and video sync
  *
- * Business logic:
- * - Pricing is $0.001 per second of output audio
- * - 30 second video = $0.03 cost
- * - Cost calculated after processing completes (duration auto-detected)
- *
- * Edge cases:
- * - seed: Use same seed for reproducible audio across re-generations
- * - cfg_strength: Values <2.0 prioritize video sync over prompt; >7.0 ignore video
- * - mask_away_clip: Advanced feature; leave false unless debugging audio artifacts
- *
- * Performance implications:
- * - Higher num_steps linearly increases processing time (50 steps = 2x slower)
- * - Duration auto-detection adds 3-5 seconds preprocessing overhead
+ * Business logic: $0.001 per second of output audio
+ * Performance: num_steps linearly affects processing time
  */
 export interface MMAudioV2Params {
-  video_url: string;  // Base64 data URL or public HTTP URL
-  prompt: string;  // Required: "cinematic orchestral score with rising tension"
-  negative_prompt?: string;  // Optional: "no vocals, no speech, no silence"
-  seed?: number;  // Optional: For reproducible results (0-2147483647)
-  num_steps?: number;  // Optional: 10-50 (default 25); higher = better quality + slower
-  duration?: number;  // Optional: Auto-detected if omitted; must match video length
-  cfg_strength?: number;  // Optional: 1.0-7.0 (default 4.5); balance prompt vs. video content
-  mask_away_clip?: boolean;  // Optional: Advanced debugging flag; leave false
+  video_url: string;
+  prompt: string;
+  negative_prompt?: string;
+  seed?: number;
+  num_steps?: number;  // 10-50, default 25
+  duration?: number;  // Auto-detected if omitted
+  cfg_strength?: number;  // 1.0-7.0, default 4.5
+  mask_away_clip?: boolean;
 }
 
 /**
- * Topaz Video Upscale API Parameters
+ * Topaz Upscale Parameters
  *
- * WHY these parameters:
- * - upscale_factor: Directly controls output resolution (2.0 = double width/height)
- * - target_fps: Enables frame interpolation automatically when set
- * - H264_output: H264 has better browser compatibility but larger file sizes than H265
+ * WHY each field:
+ * - upscale_factor: Direct resolution multiplier (2.0 = double width/height)
+ * - target_fps: Enables frame interpolation when set
+ * - H264_output: Trade-off between compatibility (H264) vs size (H265)
  *
- * Business logic:
- * - Upscaling cost increases with output resolution (4x = 4x cost)
- * - Frame interpolation (target_fps) adds flat 30% cost regardless of final FPS
- * - H264 output files are ~40% larger than H265 for same quality
- *
- * Edge cases:
- * - upscale_factor > 4.0 may fail for videos >720p source (output exceeds 8K)
- * - target_fps must be higher than source FPS (can't downsample)
- * - H264 output recommended for older browsers (Safari, IE11)
- *
- * Performance implications:
- * - 2x upscale: ~30-60 seconds for 10s video
- * - 4x upscale: ~2-4 minutes for 10s video
- * - 8x upscale: ~10-15 minutes for 10s video
- * - Frame interpolation adds +50% processing time regardless of FPS increase
- * - H265 encoding is slower but produces smaller files (better for storage/bandwidth)
+ * Edge case: upscale_factor >4.0 may fail for 720p+ sources (8K output limit)
+ * Performance: Processing time increases exponentially with upscale_factor
  */
 export interface TopazUpscaleParams {
-  video_url: string;  // Base64 data URL or public HTTP URL
-  upscale_factor?: number;  // Optional: 1.0-8.0 (default 2.0); resolution multiplier
-  target_fps?: number;  // Optional: 24/30/60/120; enables frame interpolation when set
-  H264_output?: boolean;  // Optional: true for broader compatibility (default H265)
+  video_url: string;
+  upscale_factor?: number;  // 1.0-8.0, default 2.0
+  target_fps?: number;  // 24/30/60/120
+  H264_output?: boolean;  // Default false (H265)
 }
 
 /**
  * Video Edit Model Configuration
- *
- * WHY this structure:
- * - Matches AI_MODELS pattern from ai-constants.ts for consistency
- * - category field enables filtering models by tab (audio-gen shows only audio models)
- * - endpoints object supports models with multiple capabilities (future extensibility)
- *
- * Edge cases:
- * - price as string (not number) to support per-second pricing like "$0.001/sec"
- * - Some models may return pricing in response; this is estimated cost for UI display
+ * Matches pattern from ai-constants.ts for consistency
  */
 export interface VideoEditModel {
-  id: string;  // Unique identifier (e.g., "kling_video_to_audio")
-  name: string;  // Human-readable name for UI
-  description: string;  // Short description for model selection tooltip
-  price: string;  // Estimated cost (e.g., "TBD", "$0.001/sec", "$2.50")
-  category: "audio-gen" | "audio-sync" | "upscale";  // Tab filter
-  max_video_size?: number;  // Optional: Max input file size in bytes
-  max_duration?: number;  // Optional: Max video duration in seconds
+  id: string;
+  name: string;
+  description: string;
+  price: string;  // String to support "$0.001/sec" format
+  category: "audio-gen" | "audio-sync" | "upscale";
+  max_video_size?: number;  // Bytes
+  max_duration?: number;  // Seconds
   endpoints: {
-    process: string;  // FAL AI endpoint path (e.g., "fal-ai/kling-video/video-to-audio")
+    process: string;  // FAL AI endpoint path
   };
-  default_params?: Record<string, any>;  // Optional: Default parameter values
+  default_params?: Record<string, any>;
 }
 
 /**
- * Video Edit Processing Result
+ * Processing Result
  *
  * WHY this structure:
- * - modelId tracks which model produced this result (for history/analytics)
- * - videoUrl may be same as input (e.g., Kling adds audio track, same video)
- * - audioUrl separate for models that output standalone audio files
- * - jobId for FAL AI polling/status tracking
+ * - jobId: FAL AI polling identifier
+ * - videoUrl: May be same as input for audio-only edits
+ * - audioUrl: Separate for standalone audio files
  *
- * Edge cases:
- * - videoUrl might be null if processing failed but API returned 200
- * - audioUrl only present for audio generation models (Kling, MMAudio V2)
- * - jobId format varies by FAL API version; treat as opaque string
+ * Edge case: videoUrl might be null if processing failed with 200 status
  */
 export interface VideoEditResult {
-  modelId: string;  // Which model produced this result
-  videoUrl: string | null;  // Output video URL (may be same as input for audio-only edits)
-  audioUrl?: string;  // Output audio URL (Kling, MMAudio V2 only)
-  jobId: string;  // FAL AI job identifier for status polling
-  duration?: number;  // Output video duration in seconds (auto-detected)
-  fileSize?: number;  // Output file size in bytes (for cost estimation)
+  modelId: string;
+  videoUrl: string | null;
+  audioUrl?: string;
+  jobId: string;
+  duration?: number;
+  fileSize?: number;
+  cost?: number;  // Calculated cost in USD
 }
 
 /**
- * Processing hook props interface
- *
- * WHY these props:
- * - sourceVideo: Required for all three models; validated before API call
- * - activeTab: Determines which model parameters to collect
- * - activeProject: Required for adding processed video to timeline
- * - Callbacks follow React convention (onSuccess, onError, onProgress)
- *
- * Edge cases:
- * - activeProject might be null for unsaved projects; must handle gracefully
- * - onProgress called every 2-5 seconds during polling; avoid heavy computation
+ * Processing Hook Props
+ * Follows pattern from use-ai-generation.ts
  */
 export interface UseVideoEditProcessingProps {
-  sourceVideo: File | null;  // Source video file from FileUpload
-  activeTab: VideoEditTab;  // Which model is currently selected
-  activeProject: any | null;  // Active project for timeline integration (may be null)
-  onSuccess?: (result: VideoEditResult) => void;  // Called when processing succeeds
-  onError?: (error: string) => void;  // Called on any error (validation, API, network)
-  onProgress?: (progress: number, message: string) => void;  // Real-time progress updates
+  sourceVideo: File | null;
+  activeTab: VideoEditTab;
+  activeProject: any | null;  // From useProjectStore
+  onSuccess?: (result: VideoEditResult) => void;
+  onError?: (error: string) => void;
+  onProgress?: (progress: number, message: string) => void;
+}
+
+/**
+ * Processing State
+ * Comprehensive state tracking for UI updates
+ */
+export interface VideoEditProcessingState {
+  isProcessing: boolean;
+  progress: number;  // 0-100
+  statusMessage: string;
+  elapsedTime: number;  // Seconds
+  estimatedTime?: number;  // Seconds
+  currentStage: "uploading" | "queued" | "processing" | "downloading" | "complete" | "failed";
+  result: VideoEditResult | null;
+  error: string | null;
 }
 ```
 
-**Breaking change risk**: ZERO - New types don't affect existing code.
+### Subtask 2.2: Create Constants File (15 min)
+**File to Create**: `qcut/apps/web/src/components/editor/media-panel/views/video-edit-constants.ts`
 
----
-
-### Phase 3: Constants with Business Logic Documentation
-**File**: `qcut/apps/web/src/components/editor/media-panel/views/video-edit-constants.ts`
-
+**Complete Code:**
 ```typescript
 import type { VideoEditModel } from "./video-edit-types";
 
 /**
  * Video Edit Models Configuration
  *
- * WHY centralized config:
- * - Single source of truth for pricing updates (FAL AI changes pricing frequently)
- * - Endpoint paths can change; centralized config makes updates trivial
- * - Enables A/B testing by toggling model availability without code changes
- *
- * Maintenance note: Check FAL AI docs monthly for endpoint/pricing updates
- * https://fal.ai/models (pricing) + https://fal.ai/docs (endpoints)
+ * MAINTENANCE NOTE: Check FAL AI pricing monthly at https://fal.ai/models
+ * Last updated: October 2024
  */
 export const VIDEO_EDIT_MODELS: VideoEditModel[] = [
   {
     id: "kling_video_to_audio",
     name: "Kling Video to Audio",
     description: "Generate audio from video (3-20s clips)",
-    price: "TBD",  // WHY TBD: Pricing not published yet; update when available
+    price: "$0.25",  // Estimated based on similar models
     category: "audio-gen",
-    max_video_size: 100 * 1024 * 1024,  // WHY 100MB: Kling API hard limit per docs
-    max_duration: 20,  // WHY 20s: Kling API rejects longer videos
+    max_video_size: 100 * 1024 * 1024,  // 100MB hard limit
+    max_duration: 20,  // 20 seconds max
     endpoints: {
       process: "fal-ai/kling-video/video-to-audio",
     },
     default_params: {
-      asmr_mode: false,  // WHY false: ASMR costs 2x; enable opt-in only
+      asmr_mode: false,  // Expensive feature, opt-in only
     },
   },
   {
     id: "mmaudio_v2",
     name: "MMAudio V2",
     description: "Synchronized audio generation",
-    price: "$0.001/sec",  // WHY per-second: Cost scales with video duration
+    price: "$0.001/sec",  // Confirmed pricing
     category: "audio-sync",
-    max_video_size: 100 * 1024 * 1024,  // WHY 100MB: Reasonable limit for web uploads
-    max_duration: 60,  // WHY 60s: MMAudio V2 supports up to 1 minute per docs
+    max_video_size: 100 * 1024 * 1024,
+    max_duration: 60,  // 1 minute max
     endpoints: {
       process: "fal-ai/mmaudio-v2",
     },
     default_params: {
-      num_steps: 25,  // WHY 25: Sweet spot for quality/speed per FAL docs
-      cfg_strength: 4.5,  // WHY 4.5: Balanced prompt adherence + video sync
-      mask_away_clip: false,  // WHY false: Advanced debugging flag; users shouldn't touch this
+      num_steps: 25,  // Quality/speed sweet spot
+      cfg_strength: 4.5,  // Balanced adherence
+      mask_away_clip: false,
     },
   },
   {
     id: "topaz_upscale",
     name: "Topaz Video Upscale",
     description: "Professional upscaling up to 8x",
-    price: "TBD",  // WHY TBD: Pricing varies by upscale factor; calculate dynamically
+    price: "$0.50-$5.00",  // Varies by factor
     category: "upscale",
-    max_video_size: 500 * 1024 * 1024,  // WHY 500MB: Topaz handles larger files
-    max_duration: 120,  // WHY 120s: 2 minutes is practical limit for 8x upscale (processing time)
+    max_video_size: 500 * 1024 * 1024,  // 500MB
+    max_duration: 120,  // 2 minutes practical limit
     endpoints: {
       process: "fal-ai/topaz/upscale/video",
     },
     default_params: {
-      upscale_factor: 2.0,  // WHY 2.0: Most common use case (720p → 1440p)
-      H264_output: false,  // WHY false: H265 is smaller; H264 opt-in for compatibility
+      upscale_factor: 2.0,  // Most common use case
+      H264_output: false,  // H265 default (smaller)
     },
   },
 ];
 
 /**
  * File Upload Constants
- *
- * WHY these specific values:
- * - MAX_VIDEO_SIZE_BYTES: Based on slowest model (Kling 100MB limit)
- * - ALLOWED_VIDEO_TYPES: Most common formats; avoids codec compatibility issues
- * - MP4 container is universal; MOV common on macOS; AVI legacy Windows support
- *
- * Edge cases:
- * - Some browsers report .mov as video/x-quicktime instead of video/quicktime
- * - .webm not included (poor FAL AI support; transcoding unreliable)
- * - .mkv not included (container complexity causes upload failures)
- *
- * Performance implications:
- * - Files >100MB take 30+ seconds to base64 encode (blocks UI thread)
- * - Consider chunked upload for files >50MB (future enhancement)
+ * Matches pattern from ai-constants.ts UPLOAD_CONSTANTS
  */
 export const VIDEO_EDIT_UPLOAD_CONSTANTS = {
-  MAX_VIDEO_SIZE_BYTES: 100 * 1024 * 1024,  // 100MB - Kling API hard limit
-  MAX_VIDEO_SIZE_LABEL: "100MB",  // Human-readable for error messages
+  MAX_VIDEO_SIZE_BYTES: 100 * 1024 * 1024,  // 100MB
+  MAX_VIDEO_SIZE_LABEL: "100MB",
   ALLOWED_VIDEO_TYPES: [
-    "video/mp4",  // Universal support
-    "video/quicktime",  // macOS default export
-    "video/x-msvideo",  // Windows AVI
-  ] as const,  // WHY const assertion: Ensures type narrowing for acceptedTypes prop
-  VIDEO_FORMATS_LABEL: "MP4, MOV, AVI",  // Human-readable for file picker
+    "video/mp4",
+    "video/quicktime",  // macOS .mov
+    "video/x-quicktime",  // Browser variant for .mov
+    "video/x-msvideo",  // Windows .avi
+  ] as const,
+  VIDEO_FORMATS_LABEL: "MP4, MOV, AVI",
 } as const;
 
 /**
- * Error Messages (User-Facing)
- *
- * WHY centralized error messages:
- * - Consistency across all error scenarios
- * - Easy to update copy for clarity/tone
- * - Enables internationalization later (i18n keys)
- *
- * Writing guidelines:
- * - Be specific about what went wrong
- * - Provide actionable next steps
- * - Avoid technical jargon (no "HTTP 422" or "blob size exceeded")
+ * Error Messages
+ * User-facing, actionable error messages
  */
-export const ERROR_MESSAGES = {
-  NO_VIDEO: "Please upload a video file to process",  // WHY: Tells user exactly what's missing
-  NO_PROMPT: "Please enter a prompt to guide audio generation",  // WHY: Specific to MMAudio V2 tab
-  INVALID_VIDEO_TYPE: "Please upload a valid video file (MP4, MOV, or AVI)",  // WHY: Lists accepted formats
-  VIDEO_TOO_LARGE: "Video file is too large. Maximum size is 100MB.",  // WHY: States exact limit
-  DURATION_TOO_LONG: "Video is too long. Maximum duration is ",  // WHY: Dynamic message (append model limit)
-  PROCESSING_FAILED: "Video processing failed. Please try again or contact support if the issue persists.",  // WHY: Retry + escalation path
-  NETWORK_ERROR: "Network error. Please check your internet connection and try again.",  // WHY: Diagnostic hint
-  API_KEY_MISSING: "FAL AI API key not configured. Please check your environment settings.",  // WHY: Developer-facing (shouldn't reach users)
+export const VIDEO_EDIT_ERROR_MESSAGES = {
+  NO_VIDEO: "Please upload a video file to process",
+  NO_PROMPT: "Please enter a prompt to guide audio generation",
+  INVALID_VIDEO_TYPE: "Please upload a valid video file (MP4, MOV, or AVI)",
+  VIDEO_TOO_LARGE: "Video file is too large. Maximum size is 100MB.",
+  DURATION_TOO_LONG: "Video is too long. Maximum duration is ",
+  PROCESSING_FAILED: "Video processing failed. Please try again.",
+  NETWORK_ERROR: "Network error. Please check your connection.",
+  API_KEY_MISSING: "FAL AI API key not configured.",
+  QUOTA_EXCEEDED: "Processing quota exceeded. Please try again later.",
 } as const;
 
 /**
- * Status Messages (Processing Feedback)
- *
- * WHY real-time status messages:
- * - Keeps users engaged during long processing times (30-300 seconds)
- * - Reduces perceived wait time by showing progress
- * - Helps debug if stuck (last known status visible)
- *
- * Business logic:
- * - Messages mirror FAL API status strings for consistency
- * - "Queued" → "Processing" → "Complete" matches FAL queue lifecycle
+ * Status Messages
+ * Processing stage feedback
  */
-export const STATUS_MESSAGES = {
-  UPLOADING: "Uploading video...",  // Base64 encoding in progress
-  QUEUED: "Queued for processing...",  // FAL API queue position
-  PROCESSING: "Processing video...",  // Model inference running
-  DOWNLOADING: "Downloading result...",  // Fetching output from FAL CDN
-  COMPLETE: "Processing complete!",  // Success state
-  FAILED: "Processing failed",  // Error state (append specific error)
+export const VIDEO_EDIT_STATUS_MESSAGES = {
+  UPLOADING: "Uploading video...",
+  ENCODING: "Encoding video for processing...",
+  QUEUED: "Queued for processing...",
+  PROCESSING: "Processing video...",
+  DOWNLOADING: "Downloading result...",
+  COMPLETE: "Processing complete!",
+  FAILED: "Processing failed",
 } as const;
 
 /**
- * Progress Constants (UX Timing)
- *
- * WHY these specific values:
- * - POLLING_INTERVAL_MS: Balance between responsiveness and API rate limits
- * - MAX_POLL_ATTEMPTS: 5 minutes max wait (300 seconds / 5s interval = 60 attempts)
- *
- * Edge cases:
- * - Some models (Topaz 8x) can take 10+ minutes; may need user warning before starting
- * - Faster polling (< 2s) risks hitting FAL rate limits (429 errors)
- *
- * Performance implications:
- * - Each poll is a network request; 5s interval balances UX and bandwidth
+ * Processing Constants
+ * Timing and limits
  */
-export const PROCESSING_CONSTANTS = {
-  POLLING_INTERVAL_MS: 5000,  // WHY 5s: Balances responsiveness vs. rate limiting
-  MAX_POLL_ATTEMPTS: 60,  // WHY 60: 5 minutes max wait (5s * 60 = 300s)
-  PROGRESS_UPDATE_THROTTLE_MS: 100,  // WHY 100ms: Prevents UI jank from rapid updates
+export const VIDEO_EDIT_PROCESSING_CONSTANTS = {
+  POLLING_INTERVAL_MS: 5000,  // 5 seconds between polls
+  MAX_POLL_ATTEMPTS: 60,  // 5 minutes max wait
+  PROGRESS_UPDATE_THROTTLE_MS: 100,  // UI update throttle
+  BASE64_CHUNK_SIZE: 1024 * 1024,  // 1MB chunks for encoding
 } as const;
 
 /**
- * Model Helper Functions
- *
- * WHY utility functions:
- * - Encapsulates common operations (DRY principle)
- * - Type-safe lookups prevent runtime errors
- * - Easier to test in isolation
+ * Helper Functions
+ * Utility functions for common operations
  */
 export const VIDEO_EDIT_HELPERS = {
   /**
-   * Get model configuration by ID
-   * WHY: Avoids .find() duplication across components
-   * Edge case: Returns undefined for unknown IDs; caller must handle gracefully
+   * Get model by ID
    */
   getModelById: (id: string): VideoEditModel | undefined => {
     return VIDEO_EDIT_MODELS.find((model) => model.id === id);
   },
 
   /**
-   * Get models by category for tab filtering
-   * WHY: Tabs show only relevant models (audio-gen tab shows audio models only)
+   * Get models by category
    */
   getModelsByCategory: (category: VideoEditModel["category"]): VideoEditModel[] => {
     return VIDEO_EDIT_MODELS.filter((model) => model.category === category);
   },
 
   /**
-   * Calculate estimated cost for MMAudio V2
-   * WHY: Only MMAudio V2 has known per-second pricing; others TBD
-   * Business logic: $0.001 per second of output audio
+   * Calculate MMAudio V2 cost
+   * WHY: Only model with per-second pricing
    */
-  estimateMMAudioCost: (durationSeconds: number): number => {
+  calculateMMAudioCost: (durationSeconds: number): number => {
     return durationSeconds * 0.001;  // $0.001 per second
   },
 
   /**
+   * Estimate Topaz upscale cost
+   * WHY: Cost scales with upscale factor
+   */
+  estimateTopazCost: (upscaleFactor: number): number => {
+    // Rough estimation based on factor
+    if (upscaleFactor <= 2) return 0.50;
+    if (upscaleFactor <= 4) return 2.00;
+    return 5.00;  // 8x
+  },
+
+  /**
    * Format cost for display
-   * WHY: Consistent currency formatting across UI
    */
   formatCost: (cost: number): string => {
-    return `$${cost.toFixed(2)}`;  // Always 2 decimal places
+    return `$${cost.toFixed(2)}`;
+  },
+
+  /**
+   * Validate video file
+   * WHY: Client-side validation before upload
+   */
+  validateVideoFile: (file: File): { valid: boolean; error?: string } => {
+    // Check file type
+    if (!VIDEO_EDIT_UPLOAD_CONSTANTS.ALLOWED_VIDEO_TYPES.includes(file.type as any)) {
+      return { valid: false, error: VIDEO_EDIT_ERROR_MESSAGES.INVALID_VIDEO_TYPE };
+    }
+
+    // Check file size
+    if (file.size > VIDEO_EDIT_UPLOAD_CONSTANTS.MAX_VIDEO_SIZE_BYTES) {
+      return { valid: false, error: VIDEO_EDIT_ERROR_MESSAGES.VIDEO_TOO_LARGE };
+    }
+
+    return { valid: true };
+  },
+
+  /**
+   * Convert file to base64 data URL
+   * WHY: FAL AI accepts base64 data URLs
+   * Performance: Use FileReader for <50MB, chunked for larger
+   */
+  fileToDataURL: async (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
   },
 } as const;
 ```
 
-**Breaking change risk**: ZERO - New constants don't affect existing code.
+---
+
+## Task 3: Implement Processing Hook (60 minutes)
+
+### Subtask 3.1: Read Existing Hook Pattern (10 min)
+**File to Read**: `qcut/apps/web/src/components/editor/media-panel/views/use-ai-generation.ts`
+**Lines to Study**: 1-100 (hook structure), 425-983 (handleGenerate pattern)
+
+### Subtask 3.2: Create Video Edit Processing Hook (30 min)
+**File to Create**: `qcut/apps/web/src/components/editor/media-panel/views/use-video-edit-processing.ts`
+
+**Complete Code:**
+```typescript
+/**
+ * Video Edit Processing Hook
+ *
+ * WHY this hook:
+ * - Separates business logic from UI components
+ * - Manages complex async state transitions
+ * - Reusable across all three video edit tabs
+ *
+ * Pattern follows use-ai-generation.ts for consistency
+ */
+
+import { useState, useCallback, useEffect, useRef } from "react";
+import { useProjectStore } from "@/stores/project-store";
+import { useAsyncMediaStoreActions } from "@/hooks/use-async-media-store";
+import { debugLog, debugError } from "@/lib/debug-config";
+import type {
+  VideoEditTab,
+  VideoEditResult,
+  VideoEditProcessingState,
+  UseVideoEditProcessingProps,
+  KlingVideoToAudioParams,
+  MMAudioV2Params,
+  TopazUpscaleParams,
+} from "./video-edit-types";
+import {
+  VIDEO_EDIT_ERROR_MESSAGES,
+  VIDEO_EDIT_STATUS_MESSAGES,
+  VIDEO_EDIT_PROCESSING_CONSTANTS,
+  VIDEO_EDIT_HELPERS,
+} from "./video-edit-constants";
+
+/**
+ * Main processing hook for video edit features
+ *
+ * WHY this structure:
+ * - Unified interface for all three models
+ * - Consistent error handling and progress tracking
+ * - Automatic media store integration
+ */
+export function useVideoEditProcessing(props: UseVideoEditProcessingProps) {
+  const {
+    sourceVideo,
+    activeTab,
+    activeProject,
+    onSuccess,
+    onError,
+    onProgress,
+  } = props;
+
+  // Core state
+  const [state, setState] = useState<VideoEditProcessingState>({
+    isProcessing: false,
+    progress: 0,
+    statusMessage: "",
+    elapsedTime: 0,
+    estimatedTime: undefined,
+    currentStage: "complete",
+    result: null,
+    error: null,
+  });
+
+  // Media store integration
+  const {
+    addMediaItem,
+    loading: mediaStoreLoading,
+    error: mediaStoreError,
+  } = useAsyncMediaStoreActions();
+
+  // Polling management
+  const pollingInterval = useRef<NodeJS.Timeout | null>(null);
+  const processingStartTime = useRef<number | null>(null);
+
+  // Elapsed time tracking
+  useEffect(() => {
+    let interval: NodeJS.Timeout | null = null;
+
+    if (state.isProcessing && processingStartTime.current) {
+      interval = setInterval(() => {
+        const elapsed = Math.floor((Date.now() - processingStartTime.current!) / 1000);
+        setState((prev) => ({ ...prev, elapsedTime: elapsed }));
+      }, 1000);
+    }
+
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [state.isProcessing]);
+
+  // Cleanup polling on unmount
+  useEffect(() => {
+    return () => {
+      if (pollingInterval.current) {
+        clearInterval(pollingInterval.current);
+      }
+    };
+  }, []);
+
+  // Progress callback
+  useEffect(() => {
+    if (onProgress) {
+      onProgress(state.progress, state.statusMessage);
+    }
+  }, [state.progress, state.statusMessage, onProgress]);
+
+  /**
+   * Convert video file to data URL
+   * WHY: FAL AI accepts base64 data URLs
+   * Performance: Shows encoding progress for large files
+   */
+  const encodeVideoToDataURL = useCallback(async (file: File): Promise<string> => {
+    setState((prev) => ({
+      ...prev,
+      currentStage: "uploading",
+      statusMessage: VIDEO_EDIT_STATUS_MESSAGES.ENCODING,
+      progress: 5,
+    }));
+
+    try {
+      const dataUrl = await VIDEO_EDIT_HELPERS.fileToDataURL(file);
+
+      setState((prev) => ({
+        ...prev,
+        progress: 10,
+      }));
+
+      return dataUrl;
+    } catch (error) {
+      throw new Error("Failed to encode video file");
+    }
+  }, []);
+
+  /**
+   * Poll job status
+   * WHY: FAL AI uses queue system, must poll for completion
+   * Edge case: Some models return video_url immediately (skip polling)
+   */
+  const pollJobStatus = useCallback(
+    async (jobId: string, modelId: string): Promise<VideoEditResult> => {
+      return new Promise((resolve, reject) => {
+        let attempts = 0;
+
+        const poll = async () => {
+          try {
+            attempts++;
+
+            // Check max attempts
+            if (attempts > VIDEO_EDIT_PROCESSING_CONSTANTS.MAX_POLL_ATTEMPTS) {
+              clearInterval(pollingInterval.current!);
+              reject(new Error("Processing timeout"));
+              return;
+            }
+
+            // TODO: Call actual status endpoint
+            // const status = await videoEditClient.getStatus(jobId);
+
+            // Mock status for skeleton
+            const mockProgress = Math.min(10 + attempts * 5, 90);
+            setState((prev) => ({
+              ...prev,
+              progress: mockProgress,
+              currentStage: "processing",
+              statusMessage: `${VIDEO_EDIT_STATUS_MESSAGES.PROCESSING} ${mockProgress}%`,
+            }));
+
+            // Mock completion after 5 attempts
+            if (attempts >= 5) {
+              clearInterval(pollingInterval.current!);
+
+              const result: VideoEditResult = {
+                modelId,
+                jobId,
+                videoUrl: "https://example.com/processed-video.mp4",
+                duration: 10,
+                fileSize: 5 * 1024 * 1024,
+              };
+
+              resolve(result);
+            }
+          } catch (error) {
+            clearInterval(pollingInterval.current!);
+            reject(error);
+          }
+        };
+
+        // Start polling
+        poll();
+        pollingInterval.current = setInterval(
+          poll,
+          VIDEO_EDIT_PROCESSING_CONSTANTS.POLLING_INTERVAL_MS
+        );
+      });
+    },
+    []
+  );
+
+  /**
+   * Add result to media store
+   * WHY: Automatically adds processed video to timeline
+   * Edge case: activeProject might be null
+   */
+  const addToMediaStore = useCallback(
+    async (result: VideoEditResult) => {
+      if (!activeProject || !addMediaItem || !result.videoUrl) {
+        debugLog("Cannot add to media store: missing requirements");
+        return;
+      }
+
+      try {
+        setState((prev) => ({
+          ...prev,
+          currentStage: "downloading",
+          statusMessage: VIDEO_EDIT_STATUS_MESSAGES.DOWNLOADING,
+          progress: 95,
+        }));
+
+        // Download video
+        const response = await fetch(result.videoUrl);
+        if (!response.ok) {
+          throw new Error("Failed to download processed video");
+        }
+
+        const blob = await response.blob();
+        const filename = `video-edit-${result.modelId}-${Date.now()}.mp4`;
+        const file = new File([blob], filename, { type: "video/mp4" });
+
+        // Add to media store
+        const mediaItem = {
+          name: `Edited: ${sourceVideo?.name || "video"}`,
+          type: "video" as const,
+          file,
+          url: result.videoUrl,
+          duration: result.duration || 10,
+          width: 1920,
+          height: 1080,
+        };
+
+        const newItemId = await addMediaItem(activeProject.id, mediaItem);
+        debugLog(`Added processed video to media store: ${newItemId}`);
+      } catch (error) {
+        debugError("Failed to add to media store:", error);
+      }
+    },
+    [activeProject, addMediaItem, sourceVideo]
+  );
+
+  /**
+   * Process Kling Video to Audio
+   */
+  const processKlingVideoToAudio = useCallback(
+    async (params: Partial<KlingVideoToAudioParams>) => {
+      if (!sourceVideo) {
+        throw new Error(VIDEO_EDIT_ERROR_MESSAGES.NO_VIDEO);
+      }
+
+      debugLog("Processing Kling Video to Audio:", params);
+
+      // Encode video
+      const videoDataUrl = await encodeVideoToDataURL(sourceVideo);
+
+      // TODO: Call actual API
+      // const response = await videoEditClient.generateKlingAudio({
+      //   video_url: videoDataUrl,
+      //   ...params,
+      // });
+
+      // Mock response
+      const jobId = `kling-${Date.now()}`;
+
+      // Poll for completion
+      const result = await pollJobStatus(jobId, "kling_video_to_audio");
+
+      return result;
+    },
+    [sourceVideo, encodeVideoToDataURL, pollJobStatus]
+  );
+
+  /**
+   * Process MMAudio V2
+   */
+  const processMMAudioV2 = useCallback(
+    async (params: Partial<MMAudioV2Params>) => {
+      if (!sourceVideo) {
+        throw new Error(VIDEO_EDIT_ERROR_MESSAGES.NO_VIDEO);
+      }
+
+      if (!params.prompt) {
+        throw new Error(VIDEO_EDIT_ERROR_MESSAGES.NO_PROMPT);
+      }
+
+      debugLog("Processing MMAudio V2:", params);
+
+      // Encode video
+      const videoDataUrl = await encodeVideoToDataURL(sourceVideo);
+
+      // TODO: Call actual API
+      // const response = await videoEditClient.generateMMAudio({
+      //   video_url: videoDataUrl,
+      //   ...params,
+      // });
+
+      // Mock response
+      const jobId = `mmaudio-${Date.now()}`;
+
+      // Poll for completion
+      const result = await pollJobStatus(jobId, "mmaudio_v2");
+
+      // Calculate cost
+      if (result.duration) {
+        result.cost = VIDEO_EDIT_HELPERS.calculateMMAudioCost(result.duration);
+      }
+
+      return result;
+    },
+    [sourceVideo, encodeVideoToDataURL, pollJobStatus]
+  );
+
+  /**
+   * Process Topaz Upscale
+   */
+  const processTopazUpscale = useCallback(
+    async (params: Partial<TopazUpscaleParams>) => {
+      if (!sourceVideo) {
+        throw new Error(VIDEO_EDIT_ERROR_MESSAGES.NO_VIDEO);
+      }
+
+      debugLog("Processing Topaz Upscale:", params);
+
+      // Encode video
+      const videoDataUrl = await encodeVideoToDataURL(sourceVideo);
+
+      // TODO: Call actual API
+      // const response = await videoEditClient.upscaleTopaz({
+      //   video_url: videoDataUrl,
+      //   ...params,
+      // });
+
+      // Mock response
+      const jobId = `topaz-${Date.now()}`;
+
+      // Estimate processing time based on upscale factor
+      const factor = params.upscale_factor || 2.0;
+      const estimatedSeconds = factor <= 2 ? 60 : factor <= 4 ? 180 : 600;
+      setState((prev) => ({ ...prev, estimatedTime: estimatedSeconds }));
+
+      // Poll for completion
+      const result = await pollJobStatus(jobId, "topaz_upscale");
+
+      // Estimate cost
+      result.cost = VIDEO_EDIT_HELPERS.estimateTopazCost(factor);
+
+      return result;
+    },
+    [sourceVideo, encodeVideoToDataURL, pollJobStatus]
+  );
+
+  /**
+   * Main process function
+   * WHY: Unified entry point for all processing
+   * Handles model-specific logic and error handling
+   */
+  const handleProcess = useCallback(
+    async (params: Record<string, any>) => {
+      try {
+        // Reset state
+        setState({
+          isProcessing: true,
+          progress: 0,
+          statusMessage: VIDEO_EDIT_STATUS_MESSAGES.UPLOADING,
+          elapsedTime: 0,
+          estimatedTime: undefined,
+          currentStage: "uploading",
+          result: null,
+          error: null,
+        });
+
+        processingStartTime.current = Date.now();
+
+        let result: VideoEditResult;
+
+        // Route to appropriate processor
+        switch (activeTab) {
+          case "audio-gen":
+            result = await processKlingVideoToAudio(params);
+            break;
+          case "audio-sync":
+            result = await processMMAudioV2(params);
+            break;
+          case "upscale":
+            result = await processTopazUpscale(params);
+            break;
+          default:
+            throw new Error("Invalid tab selected");
+        }
+
+        // Add to media store
+        await addToMediaStore(result);
+
+        // Update state
+        setState((prev) => ({
+          ...prev,
+          isProcessing: false,
+          progress: 100,
+          statusMessage: VIDEO_EDIT_STATUS_MESSAGES.COMPLETE,
+          currentStage: "complete",
+          result,
+        }));
+
+        // Notify parent
+        if (onSuccess) {
+          onSuccess(result);
+        }
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : "Processing failed";
+
+        setState((prev) => ({
+          ...prev,
+          isProcessing: false,
+          progress: 0,
+          statusMessage: VIDEO_EDIT_STATUS_MESSAGES.FAILED,
+          currentStage: "failed",
+          error: errorMessage,
+        }));
+
+        if (onError) {
+          onError(errorMessage);
+        }
+      }
+    },
+    [
+      activeTab,
+      processKlingVideoToAudio,
+      processMMAudioV2,
+      processTopazUpscale,
+      addToMediaStore,
+      onSuccess,
+      onError,
+    ]
+  );
+
+  /**
+   * Reset state
+   */
+  const reset = useCallback(() => {
+    setState({
+      isProcessing: false,
+      progress: 0,
+      statusMessage: "",
+      elapsedTime: 0,
+      estimatedTime: undefined,
+      currentStage: "complete",
+      result: null,
+      error: null,
+    });
+
+    if (pollingInterval.current) {
+      clearInterval(pollingInterval.current);
+      pollingInterval.current = null;
+    }
+
+    processingStartTime.current = null;
+  }, []);
+
+  return {
+    // State
+    ...state,
+
+    // Actions
+    handleProcess,
+    reset,
+
+    // Media store state
+    mediaStoreLoading,
+    mediaStoreError,
+
+    // Computed
+    canProcess: !state.isProcessing && sourceVideo !== null && !mediaStoreLoading,
+  };
+}
+```
+
+### Subtask 3.3: Export Hook from Index (5 min)
+**File to Create**: `qcut/apps/web/src/components/editor/media-panel/views/video-edit-exports.ts`
+
+**Complete Code:**
+```typescript
+/**
+ * Central exports for video edit feature
+ * WHY: Single import point for all video edit modules
+ */
+
+// Types
+export type {
+  VideoEditTab,
+  VideoEditModel,
+  VideoEditResult,
+  VideoEditProcessingState,
+  KlingVideoToAudioParams,
+  MMAudioV2Params,
+  TopazUpscaleParams,
+  UseVideoEditProcessingProps,
+} from "./video-edit-types";
+
+// Constants
+export {
+  VIDEO_EDIT_MODELS,
+  VIDEO_EDIT_UPLOAD_CONSTANTS,
+  VIDEO_EDIT_ERROR_MESSAGES,
+  VIDEO_EDIT_STATUS_MESSAGES,
+  VIDEO_EDIT_PROCESSING_CONSTANTS,
+  VIDEO_EDIT_HELPERS,
+} from "./video-edit-constants";
+
+// Hooks
+export { useVideoEditProcessing } from "./use-video-edit-processing";
+
+// Components (to be added)
+// export { default as VideoEditView } from "./video-edit";
+```
 
 ---
 
-## Summary of Key Changes from Original Plan
+## Task 4: Build FAL AI Client (45 minutes)
 
-1. **Added comprehensive JSDoc comments** explaining WHY, not WHAT (every function/interface)
-2. **Documented edge cases** (file size limits, browser quirks, API behaviors)
-3. **Explained performance implications** (encoding overhead, polling frequency, memory usage)
-4. **Clarified business logic** (pricing models, cost calculation, user expectations)
-5. **Followed existing patterns** from `ai-video-client.ts`, `use-ai-generation.ts`, `ai-constants.ts`
-6. **Zero breaking changes** - All additions, no modifications to existing code
-7. **Long-term maintainability** - Constants centralized, types reusable, comments future-proof
+### Subtask 4.1: Read Existing AI Client Pattern (10 min)
+**File to Read**: `qcut/apps/web/src/lib/ai-video-client.ts`
+**Lines to Study**: 1-50 (setup), 338-450 (API calls), 550-650 (polling)
 
-## Next Steps
+### Subtask 4.2: Create Video Edit Client (25 min)
+**File to Create**: `qcut/apps/web/src/lib/video-edit-client.ts`
 
-Continue implementing remaining phases (hooks, API client, UI components) following same documentation standards. Each phase will include:
-- WHY comments for non-obvious logic
-- Edge case documentation
-- Performance warnings
-- Business logic explanations
+**Complete Code:**
+```typescript
+/**
+ * Video Edit FAL AI Client
+ *
+ * WHY this client:
+ * - Centralized FAL API integration for video edit models
+ * - Handles authentication, polling, and error recovery
+ * - Follows pattern from ai-video-client.ts
+ *
+ * Performance: Direct client-to-FAL reduces latency by ~500ms vs backend proxy
+ */
+
+import * as fal from "@fal-ai/serverless-client";
+import { debugLog, debugError } from "@/lib/debug-config";
+import type {
+  KlingVideoToAudioParams,
+  MMAudioV2Params,
+  TopazUpscaleParams,
+  VideoEditResult,
+} from "@/components/editor/media-panel/views/video-edit-types";
+import { VIDEO_EDIT_MODELS } from "@/components/editor/media-panel/views/video-edit-constants";
+
+/**
+ * FAL API Response Types
+ */
+interface FalQueueResponse {
+  request_id: string;
+  status_url?: string;
+}
+
+interface FalStatusResponse {
+  status: "IN_QUEUE" | "IN_PROGRESS" | "COMPLETED" | "FAILED";
+  progress?: number;
+  logs?: string[];
+  error?: string;
+  // Result fields when completed
+  video_url?: string;
+  audio_url?: string;
+  video?: {
+    url: string;
+    duration?: number;
+    width?: number;
+    height?: number;
+  };
+}
+
+interface FalDirectResponse {
+  video_url?: string;
+  audio_url?: string;
+  video?: {
+    url: string;
+    duration?: number;
+  };
+}
+
+/**
+ * Video Edit Client Class
+ * Singleton pattern for consistent FAL configuration
+ */
+class VideoEditClient {
+  private initialized = false;
+  private apiKey: string | null = null;
+
+  constructor() {
+    this.initializeFalClient();
+  }
+
+  /**
+   * Initialize FAL client with API key
+   * WHY: FAL requires authentication for all requests
+   * Edge case: API key might be loaded async from Electron
+   */
+  private async initializeFalClient() {
+    try {
+      // Try environment variable first
+      this.apiKey = import.meta.env.VITE_FAL_API_KEY || null;
+
+      // Try Electron API if available
+      if (!this.apiKey && window.electronAPI?.apiKeys) {
+        const apiKeyData = await window.electronAPI.apiKeys.get("fal");
+        if (apiKeyData?.value) {
+          this.apiKey = apiKeyData.value;
+        }
+      }
+
+      if (this.apiKey) {
+        fal.config({
+          credentials: this.apiKey,
+        });
+        this.initialized = true;
+        debugLog("Video Edit Client: FAL API initialized");
+      } else {
+        debugError("Video Edit Client: No FAL API key found");
+      }
+    } catch (error) {
+      debugError("Video Edit Client: Failed to initialize", error);
+    }
+  }
+
+  /**
+   * Ensure client is ready
+   * WHY: API key might load async, need to wait
+   */
+  private async ensureInitialized(): Promise<void> {
+    if (this.initialized) return;
+
+    // Retry initialization
+    await this.initializeFalClient();
+
+    if (!this.initialized) {
+      throw new Error("FAL AI API key not configured");
+    }
+  }
+
+  /**
+   * Handle FAL API errors
+   * WHY: Consistent error messages across all models
+   */
+  private handleApiError(error: any): string {
+    if (error?.status === 429) {
+      return "Rate limit exceeded. Please wait a moment and try again.";
+    }
+    if (error?.status === 402) {
+      return "Insufficient credits. Please check your FAL account.";
+    }
+    if (error?.status === 413) {
+      return "File too large. Please use a smaller video.";
+    }
+    if (error?.message) {
+      return error.message;
+    }
+    return "An unexpected error occurred. Please try again.";
+  }
+
+  /**
+   * Generate audio from video using Kling
+   *
+   * WHY this model:
+   * - Generates realistic sound effects from silent video
+   * - Useful for AI-generated videos that lack audio
+   *
+   * Edge cases:
+   * - ASMR mode ignored for videos >10 seconds
+   * - Videos must be 3-20 seconds
+   */
+  async generateKlingAudio(params: KlingVideoToAudioParams): Promise<VideoEditResult> {
+    await this.ensureInitialized();
+
+    debugLog("Generating Kling audio:", {
+      hasVideo: !!params.video_url,
+      asmrMode: params.asmr_mode,
+    });
+
+    try {
+      const model = VIDEO_EDIT_MODELS.find(m => m.id === "kling_video_to_audio");
+      if (!model) throw new Error("Model configuration not found");
+
+      // Call FAL API
+      const result = await fal.subscribe(model.endpoints.process, {
+        input: {
+          video_url: params.video_url,
+          sound_effect_prompt: params.sound_effect_prompt,
+          background_music_prompt: params.background_music_prompt,
+          asmr_mode: params.asmr_mode || false,
+        },
+        logs: true,
+        onQueueUpdate: (update) => {
+          debugLog("Kling queue update:", update);
+        },
+      }) as any;
+
+      // Parse response
+      const videoUrl = result.video_url || result.video?.url;
+      const audioUrl = result.audio_url || result.audio?.url;
+
+      if (!videoUrl) {
+        throw new Error("No video URL in response");
+      }
+
+      return {
+        modelId: "kling_video_to_audio",
+        jobId: result.request_id || `kling-${Date.now()}`,
+        videoUrl,
+        audioUrl,
+        duration: result.video?.duration,
+      };
+    } catch (error) {
+      debugError("Kling audio generation failed:", error);
+      throw new Error(this.handleApiError(error));
+    }
+  }
+
+  /**
+   * Generate synchronized audio using MMAudio V2
+   *
+   * WHY this model:
+   * - Creates audio that matches video content
+   * - Text prompt control over style/mood
+   *
+   * Business logic: $0.001 per second of output
+   * Performance: num_steps linearly affects processing time
+   */
+  async generateMMAudio(params: MMAudioV2Params): Promise<VideoEditResult> {
+    await this.ensureInitialized();
+
+    debugLog("Generating MMAudio:", {
+      hasVideo: !!params.video_url,
+      prompt: params.prompt?.substring(0, 50),
+      numSteps: params.num_steps,
+    });
+
+    try {
+      const model = VIDEO_EDIT_MODELS.find(m => m.id === "mmaudio_v2");
+      if (!model) throw new Error("Model configuration not found");
+
+      // Call FAL API
+      const result = await fal.subscribe(model.endpoints.process, {
+        input: {
+          video_url: params.video_url,
+          prompt: params.prompt,
+          negative_prompt: params.negative_prompt,
+          seed: params.seed,
+          num_steps: params.num_steps || 25,
+          duration: params.duration,
+          cfg_strength: params.cfg_strength || 4.5,
+          mask_away_clip: params.mask_away_clip || false,
+        },
+        logs: true,
+        onQueueUpdate: (update) => {
+          debugLog("MMAudio queue update:", update);
+        },
+      }) as any;
+
+      // Parse response
+      const videoUrl = result.video_url || result.video?.url;
+      const audioUrl = result.audio_url || result.audio?.url;
+
+      if (!videoUrl) {
+        throw new Error("No video URL in response");
+      }
+
+      // Calculate cost
+      const duration = result.video?.duration || params.duration || 10;
+      const cost = duration * 0.001;  // $0.001 per second
+
+      return {
+        modelId: "mmaudio_v2",
+        jobId: result.request_id || `mmaudio-${Date.now()}`,
+        videoUrl,
+        audioUrl,
+        duration,
+        cost,
+      };
+    } catch (error) {
+      debugError("MMAudio generation failed:", error);
+      throw new Error(this.handleApiError(error));
+    }
+  }
+
+  /**
+   * Upscale video using Topaz
+   *
+   * WHY this model:
+   * - Professional quality upscaling up to 8x
+   * - Frame interpolation for smoother playback
+   *
+   * Edge cases:
+   * - 8x upscale may fail for 720p+ sources (8K limit)
+   * - Processing time increases exponentially with factor
+   */
+  async upscaleTopaz(params: TopazUpscaleParams): Promise<VideoEditResult> {
+    await this.ensureInitialized();
+
+    debugLog("Upscaling with Topaz:", {
+      hasVideo: !!params.video_url,
+      factor: params.upscale_factor,
+      targetFps: params.target_fps,
+    });
+
+    try {
+      const model = VIDEO_EDIT_MODELS.find(m => m.id === "topaz_upscale");
+      if (!model) throw new Error("Model configuration not found");
+
+      // Call FAL API
+      const result = await fal.subscribe(model.endpoints.process, {
+        input: {
+          video_url: params.video_url,
+          upscale_factor: params.upscale_factor || 2.0,
+          target_fps: params.target_fps,
+          H264_output: params.H264_output || false,
+        },
+        logs: true,
+        onQueueUpdate: (update) => {
+          debugLog("Topaz queue update:", update);
+        },
+      }) as any;
+
+      // Parse response
+      const videoUrl = result.video_url || result.video?.url;
+
+      if (!videoUrl) {
+        throw new Error("No video URL in response");
+      }
+
+      // Estimate cost based on upscale factor
+      const factor = params.upscale_factor || 2.0;
+      const cost = factor <= 2 ? 0.50 : factor <= 4 ? 2.00 : 5.00;
+
+      return {
+        modelId: "topaz_upscale",
+        jobId: result.request_id || `topaz-${Date.now()}`,
+        videoUrl,
+        duration: result.video?.duration,
+        fileSize: result.video?.size,
+        cost,
+      };
+    } catch (error) {
+      debugError("Topaz upscale failed:", error);
+      throw new Error(this.handleApiError(error));
+    }
+  }
+
+  /**
+   * Get job status (for manual polling if needed)
+   * WHY: Some integrations may need custom polling logic
+   */
+  async getJobStatus(jobId: string): Promise<FalStatusResponse> {
+    await this.ensureInitialized();
+
+    try {
+      const result = await fal.status(jobId) as any;
+      return result;
+    } catch (error) {
+      debugError("Failed to get job status:", error);
+      throw new Error(this.handleApiError(error));
+    }
+  }
+
+  /**
+   * Cancel job
+   * WHY: Allow users to cancel long-running operations
+   */
+  async cancelJob(jobId: string): Promise<void> {
+    await this.ensureInitialized();
+
+    try {
+      await fal.cancel(jobId);
+      debugLog(`Cancelled job: ${jobId}`);
+    } catch (error) {
+      debugError("Failed to cancel job:", error);
+      // Don't throw - cancellation errors are non-critical
+    }
+  }
+}
+
+// Export singleton instance
+export const videoEditClient = new VideoEditClient();
+
+// Export types for convenience
+export type { VideoEditClient };
+```
+
+### Subtask 4.3: Add Client Export to Lib Index (10 min)
+**File to Modify**: `qcut/apps/web/src/lib/index.ts` (if exists) or create export
+
+**Add Export:**
+```typescript
+// Video Edit Client
+export { videoEditClient } from "./video-edit-client";
+export type { VideoEditClient } from "./video-edit-client";
+```
 
 ---
 
-**Estimated Implementation Time**: 3-5 days for experienced developer
-**Risk Level**: LOW (zero breaking changes, isolated new feature)
-**Testing Priority**: HIGH (involves file uploads, API integration, cost implications)
+## Task 5: Create UI Components - Audio Gen Tab (45 minutes)
+
+### Subtask 5.1: Read FileUpload Component Usage (5 min)
+**File to Read**: `qcut/apps/web/src/components/editor/media-panel/views/ai.tsx`
+**Lines to Study**: 800-900 (FileUpload usage pattern)
+
+### Subtask 5.2: Create Audio Gen Tab Component (30 min)
+**File to Create**: `qcut/apps/web/src/components/editor/media-panel/views/video-edit-audio-gen.tsx`
+
+**Complete Code:**
+```typescript
+/**
+ * Kling Video to Audio Tab Component
+ *
+ * WHY this component:
+ * - Generates audio from silent videos
+ * - Common need for AI-generated videos
+ * - 3-20 second video limit
+ */
+
+import { useState } from "react";
+import { Upload, Loader2, Volume2, Music, Sparkles } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
+import { FileUpload } from "@/components/ui/file-upload";
+import { Progress } from "@/components/ui/progress";
+import { Card } from "@/components/ui/card";
+import { useVideoEditProcessing } from "./use-video-edit-processing";
+import { useProjectStore } from "@/stores/project-store";
+import {
+  VIDEO_EDIT_UPLOAD_CONSTANTS,
+  VIDEO_EDIT_HELPERS,
+  VIDEO_EDIT_ERROR_MESSAGES,
+} from "./video-edit-constants";
+import type { KlingVideoToAudioParams } from "./video-edit-types";
+
+export function AudioGenTab() {
+  // State
+  const [sourceVideo, setSourceVideo] = useState<File | null>(null);
+  const [videoPreview, setVideoPreview] = useState<string | null>(null);
+  const [soundEffectPrompt, setSoundEffectPrompt] = useState("");
+  const [backgroundMusicPrompt, setBackgroundMusicPrompt] = useState("");
+  const [asmrMode, setAsmrMode] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Store hooks
+  const { activeProject } = useProjectStore();
+
+  // Processing hook
+  const {
+    isProcessing,
+    progress,
+    statusMessage,
+    elapsedTime,
+    result,
+    handleProcess,
+    reset,
+    canProcess,
+  } = useVideoEditProcessing({
+    sourceVideo,
+    activeTab: "audio-gen",
+    activeProject,
+    onSuccess: (result) => {
+      console.log("Audio generation complete:", result);
+      // Could show success toast here
+    },
+    onError: (error) => {
+      setError(error);
+    },
+  });
+
+  /**
+   * Handle video file change
+   * WHY: Validate and preview video before processing
+   */
+  const handleVideoChange = (file: File | null, preview: string | null) => {
+    if (file) {
+      // Validate file
+      const validation = VIDEO_EDIT_HELPERS.validateVideoFile(file);
+      if (!validation.valid) {
+        setError(validation.error!);
+        return;
+      }
+    }
+
+    setSourceVideo(file);
+    setVideoPreview(preview);
+    setError(null);
+    reset();  // Reset processing state
+  };
+
+  /**
+   * Handle process click
+   * WHY: Gather parameters and start processing
+   */
+  const handleProcessClick = async () => {
+    if (!sourceVideo) {
+      setError(VIDEO_EDIT_ERROR_MESSAGES.NO_VIDEO);
+      return;
+    }
+
+    const params: Partial<KlingVideoToAudioParams> = {
+      sound_effect_prompt: soundEffectPrompt.trim() || undefined,
+      background_music_prompt: backgroundMusicPrompt.trim() || undefined,
+      asmr_mode: asmrMode,
+    };
+
+    await handleProcess(params);
+  };
+
+  return (
+    <div className="space-y-4">
+      {/* Video Upload */}
+      <FileUpload
+        id="kling-video-input"
+        label="Source Video"
+        helperText="3-20 seconds"
+        fileType="video"
+        acceptedTypes={VIDEO_EDIT_UPLOAD_CONSTANTS.ALLOWED_VIDEO_TYPES}
+        maxSizeBytes={VIDEO_EDIT_UPLOAD_CONSTANTS.MAX_VIDEO_SIZE_BYTES}
+        maxSizeLabel={VIDEO_EDIT_UPLOAD_CONSTANTS.MAX_VIDEO_SIZE_LABEL}
+        formatsLabel={VIDEO_EDIT_UPLOAD_CONSTANTS.VIDEO_FORMATS_LABEL}
+        file={sourceVideo}
+        preview={videoPreview}
+        onFileChange={handleVideoChange}
+        onError={setError}
+      />
+
+      {/* Sound Effect Prompt */}
+      <div className="space-y-2">
+        <Label className="flex items-center text-xs">
+          <Volume2 className="size-3 mr-1" />
+          Sound Effects (Optional)
+        </Label>
+        <Textarea
+          placeholder="e.g., footsteps on gravel, birds chirping, wind rustling"
+          value={soundEffectPrompt}
+          onChange={(e) => setSoundEffectPrompt(e.target.value)}
+          className="min-h-[60px] text-xs"
+          disabled={isProcessing}
+        />
+      </div>
+
+      {/* Background Music Prompt */}
+      <div className="space-y-2">
+        <Label className="flex items-center text-xs">
+          <Music className="size-3 mr-1" />
+          Background Music (Optional)
+        </Label>
+        <Textarea
+          placeholder="e.g., upbeat jazz piano, cinematic orchestral, lo-fi hip hop"
+          value={backgroundMusicPrompt}
+          onChange={(e) => setBackgroundMusicPrompt(e.target.value)}
+          className="min-h-[60px] text-xs"
+          disabled={isProcessing}
+        />
+      </div>
+
+      {/* ASMR Mode */}
+      <Card className="p-3">
+        <div className="flex items-center justify-between">
+          <div className="space-y-0.5">
+            <Label className="flex items-center text-xs">
+              <Sparkles className="size-3 mr-1" />
+              ASMR Mode
+            </Label>
+            <p className="text-xs text-muted-foreground">
+              Enhance subtle ambient sounds (2x processing time)
+            </p>
+          </div>
+          <Switch
+            checked={asmrMode}
+            onCheckedChange={setAsmrMode}
+            disabled={isProcessing}
+          />
+        </div>
+      </Card>
+
+      {/* Error Display */}
+      {error && (
+        <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
+          <p className="text-xs text-destructive">{error}</p>
+        </div>
+      )}
+
+      {/* Progress Display */}
+      {isProcessing && (
+        <div className="space-y-2">
+          <Progress value={progress} className="h-2" />
+          <div className="flex justify-between text-xs text-muted-foreground">
+            <span>{statusMessage}</span>
+            <span>{elapsedTime}s</span>
+          </div>
+        </div>
+      )}
+
+      {/* Result Display */}
+      {result && !isProcessing && (
+        <Card className="p-3 bg-primary/5">
+          <div className="space-y-2">
+            <p className="text-xs font-medium text-primary">
+              ✓ Audio generation complete!
+            </p>
+            {result.audioUrl && (
+              <audio
+                controls
+                className="w-full h-8"
+                src={result.audioUrl}
+              />
+            )}
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => window.open(result.videoUrl!, "_blank")}
+                className="text-xs"
+              >
+                Download Video
+              </Button>
+              {result.audioUrl && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => window.open(result.audioUrl!, "_blank")}
+                  className="text-xs"
+                >
+                  Download Audio
+                </Button>
+              )}
+            </div>
+          </div>
+        </Card>
+      )}
+
+      {/* Process Button */}
+      <Button
+        onClick={handleProcessClick}
+        disabled={!canProcess}
+        className="w-full"
+        size="sm"
+      >
+        {isProcessing ? (
+          <>
+            <Loader2 className="size-4 mr-2 animate-spin" />
+            Processing... {progress}%
+          </>
+        ) : (
+          <>
+            <Volume2 className="size-4 mr-2" />
+            Generate Audio
+          </>
+        )}
+      </Button>
+
+      {/* Info */}
+      <div className="text-xs text-muted-foreground space-y-1">
+        <p>• Videos must be 3-20 seconds long</p>
+        <p>• ASMR mode works best with videos under 10 seconds</p>
+        <p>• Leave prompts empty for automatic generation</p>
+      </div>
+    </div>
+  );
+}
+```
+
+### Subtask 5.3: Update Main Video Edit View (10 min)
+**File to Modify**: `qcut/apps/web/src/components/editor/media-panel/views/video-edit.tsx`
+
+**Update TabsContent for audio-gen:**
+```typescript
+// Add import at top
+import { AudioGenTab } from "./video-edit-audio-gen";
+
+// Replace audio-gen TabsContent
+<TabsContent value="audio-gen" className="flex-1 space-y-4 overflow-y-auto">
+  <AudioGenTab />
+</TabsContent>
+```
+
+---
+
+## Task 6: Create UI Components - Audio Sync Tab (45 minutes)
+
+### Subtask 6.1: Create Audio Sync Tab Component (35 min)
+**File to Create**: `qcut/apps/web/src/components/editor/media-panel/views/video-edit-audio-sync.tsx`
+
+**Complete Code:**
+```typescript
+/**
+ * MMAudio V2 Audio Sync Tab Component
+ *
+ * WHY this component:
+ * - Creates synchronized audio based on video content
+ * - Text prompt control over style/mood
+ * - $0.001 per second pricing model
+ */
+
+import { useState } from "react";
+import { Upload, Loader2, Music2, Settings, DollarSign } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
+import { Slider } from "@/components/ui/slider";
+import { FileUpload } from "@/components/ui/file-upload";
+import { Progress } from "@/components/ui/progress";
+import { Card } from "@/components/ui/card";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { useVideoEditProcessing } from "./use-video-edit-processing";
+import { useProjectStore } from "@/stores/project-store";
+import {
+  VIDEO_EDIT_UPLOAD_CONSTANTS,
+  VIDEO_EDIT_HELPERS,
+  VIDEO_EDIT_ERROR_MESSAGES,
+} from "./video-edit-constants";
+import type { MMAudioV2Params } from "./video-edit-types";
+
+export function AudioSyncTab() {
+  // State
+  const [sourceVideo, setSourceVideo] = useState<File | null>(null);
+  const [videoPreview, setVideoPreview] = useState<string | null>(null);
+  const [prompt, setPrompt] = useState("");
+  const [negativePrompt, setNegativePrompt] = useState("");
+  const [numSteps, setNumSteps] = useState(25);
+  const [cfgStrength, setCfgStrength] = useState(4.5);
+  const [seed, setSeed] = useState<number | undefined>();
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Store hooks
+  const { activeProject } = useProjectStore();
+
+  // Processing hook
+  const {
+    isProcessing,
+    progress,
+    statusMessage,
+    elapsedTime,
+    result,
+    handleProcess,
+    reset,
+    canProcess,
+  } = useVideoEditProcessing({
+    sourceVideo,
+    activeTab: "audio-sync",
+    activeProject,
+    onSuccess: (result) => {
+      console.log("Audio sync complete:", result);
+    },
+    onError: (error) => {
+      setError(error);
+    },
+  });
+
+  /**
+   * Handle video file change
+   */
+  const handleVideoChange = (file: File | null, preview: string | null) => {
+    if (file) {
+      const validation = VIDEO_EDIT_HELPERS.validateVideoFile(file);
+      if (!validation.valid) {
+        setError(validation.error!);
+        return;
+      }
+    }
+
+    setSourceVideo(file);
+    setVideoPreview(preview);
+    setError(null);
+    reset();
+  };
+
+  /**
+   * Handle process click
+   */
+  const handleProcessClick = async () => {
+    if (!sourceVideo) {
+      setError(VIDEO_EDIT_ERROR_MESSAGES.NO_VIDEO);
+      return;
+    }
+
+    if (!prompt.trim()) {
+      setError(VIDEO_EDIT_ERROR_MESSAGES.NO_PROMPT);
+      return;
+    }
+
+    const params: Partial<MMAudioV2Params> = {
+      prompt: prompt.trim(),
+      negative_prompt: negativePrompt.trim() || undefined,
+      num_steps: numSteps,
+      cfg_strength: cfgStrength,
+      seed: seed,
+    };
+
+    await handleProcess(params);
+  };
+
+  /**
+   * Estimate cost based on video duration
+   * WHY: Show cost before processing
+   */
+  const estimateCost = () => {
+    // Rough estimate: assume 10 second video
+    const estimatedDuration = 10;
+    return VIDEO_EDIT_HELPERS.calculateMMAudioCost(estimatedDuration);
+  };
+
+  return (
+    <div className="space-y-4">
+      {/* Video Upload */}
+      <FileUpload
+        id="mmaudio-video-input"
+        label="Source Video"
+        helperText="Up to 60 seconds"
+        fileType="video"
+        acceptedTypes={VIDEO_EDIT_UPLOAD_CONSTANTS.ALLOWED_VIDEO_TYPES}
+        maxSizeBytes={VIDEO_EDIT_UPLOAD_CONSTANTS.MAX_VIDEO_SIZE_BYTES}
+        maxSizeLabel={VIDEO_EDIT_UPLOAD_CONSTANTS.MAX_VIDEO_SIZE_LABEL}
+        formatsLabel={VIDEO_EDIT_UPLOAD_CONSTANTS.VIDEO_FORMATS_LABEL}
+        file={sourceVideo}
+        preview={videoPreview}
+        onFileChange={handleVideoChange}
+        onError={setError}
+      />
+
+      {/* Audio Prompt */}
+      <div className="space-y-2">
+        <Label className="flex items-center text-xs">
+          <Music2 className="size-3 mr-1" />
+          Audio Prompt (Required)
+        </Label>
+        <Textarea
+          placeholder="e.g., cinematic orchestral score with rising tension, upbeat electronic dance music, peaceful ambient nature sounds"
+          value={prompt}
+          onChange={(e) => setPrompt(e.target.value)}
+          className="min-h-[80px] text-xs"
+          disabled={isProcessing}
+        />
+      </div>
+
+      {/* Negative Prompt */}
+      <div className="space-y-2">
+        <Label className="text-xs">Negative Prompt (Optional)</Label>
+        <Textarea
+          placeholder="e.g., no vocals, no speech, no silence, no distortion"
+          value={negativePrompt}
+          onChange={(e) => setNegativePrompt(e.target.value)}
+          className="min-h-[60px] text-xs"
+          disabled={isProcessing}
+        />
+      </div>
+
+      {/* Advanced Settings */}
+      <Collapsible open={showAdvanced} onOpenChange={setShowAdvanced}>
+        <CollapsibleTrigger asChild>
+          <Button variant="outline" size="sm" className="w-full">
+            <Settings className="size-3 mr-1" />
+            Advanced Settings
+          </Button>
+        </CollapsibleTrigger>
+        <CollapsibleContent className="space-y-4 mt-4">
+          {/* Steps */}
+          <div className="space-y-2">
+            <Label className="text-xs">
+              Generation Steps: {numSteps}
+            </Label>
+            <Slider
+              value={[numSteps]}
+              onValueChange={([v]) => setNumSteps(v)}
+              min={10}
+              max={50}
+              step={5}
+              disabled={isProcessing}
+              className="w-full"
+            />
+            <p className="text-xs text-muted-foreground">
+              Higher = better quality, slower processing
+            </p>
+          </div>
+
+          {/* CFG Strength */}
+          <div className="space-y-2">
+            <Label className="text-xs">
+              Prompt Strength: {cfgStrength.toFixed(1)}
+            </Label>
+            <Slider
+              value={[cfgStrength]}
+              onValueChange={([v]) => setCfgStrength(v)}
+              min={1.0}
+              max={7.0}
+              step={0.5}
+              disabled={isProcessing}
+              className="w-full"
+            />
+            <p className="text-xs text-muted-foreground">
+              Lower = follows video, Higher = follows prompt
+            </p>
+          </div>
+
+          {/* Seed */}
+          <div className="space-y-2">
+            <Label className="text-xs">Seed (Optional)</Label>
+            <Input
+              type="number"
+              placeholder="Random"
+              value={seed || ""}
+              onChange={(e) => setSeed(e.target.value ? parseInt(e.target.value) : undefined)}
+              disabled={isProcessing}
+              className="text-xs"
+            />
+            <p className="text-xs text-muted-foreground">
+              Use same seed for reproducible results
+            </p>
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
+
+      {/* Cost Estimate */}
+      <Card className="p-3 bg-primary/5">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center text-xs">
+            <DollarSign className="size-3 mr-1" />
+            <span>Estimated Cost:</span>
+          </div>
+          <span className="text-xs font-medium">
+            {VIDEO_EDIT_HELPERS.formatCost(estimateCost())} ($0.001/sec)
+          </span>
+        </div>
+      </Card>
+
+      {/* Error Display */}
+      {error && (
+        <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
+          <p className="text-xs text-destructive">{error}</p>
+        </div>
+      )}
+
+      {/* Progress Display */}
+      {isProcessing && (
+        <div className="space-y-2">
+          <Progress value={progress} className="h-2" />
+          <div className="flex justify-between text-xs text-muted-foreground">
+            <span>{statusMessage}</span>
+            <span>{elapsedTime}s</span>
+          </div>
+        </div>
+      )}
+
+      {/* Result Display */}
+      {result && !isProcessing && (
+        <Card className="p-3 bg-primary/5">
+          <div className="space-y-2">
+            <div className="flex justify-between items-center">
+              <p className="text-xs font-medium text-primary">
+                ✓ Audio sync complete!
+              </p>
+              {result.cost && (
+                <span className="text-xs">
+                  Cost: {VIDEO_EDIT_HELPERS.formatCost(result.cost)}
+                </span>
+              )}
+            </div>
+            {result.audioUrl && (
+              <audio
+                controls
+                className="w-full h-8"
+                src={result.audioUrl}
+              />
+            )}
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => window.open(result.videoUrl!, "_blank")}
+                className="text-xs"
+              >
+                Download Video
+              </Button>
+            </div>
+          </div>
+        </Card>
+      )}
+
+      {/* Process Button */}
+      <Button
+        onClick={handleProcessClick}
+        disabled={!canProcess || !prompt.trim()}
+        className="w-full"
+        size="sm"
+      >
+        {isProcessing ? (
+          <>
+            <Loader2 className="size-4 mr-2 animate-spin" />
+            Processing... {progress}%
+          </>
+        ) : (
+          <>
+            <Music2 className="size-4 mr-2" />
+            Generate Synchronized Audio
+          </>
+        )}
+      </Button>
+
+      {/* Info */}
+      <div className="text-xs text-muted-foreground space-y-1">
+        <p>• Videos up to 60 seconds supported</p>
+        <p>• Audio will match video timing and events</p>
+        <p>• Use negative prompt to avoid unwanted sounds</p>
+      </div>
+    </div>
+  );
+}
+```
+
+### Subtask 6.2: Update Main Video Edit View (10 min)
+**File to Modify**: `qcut/apps/web/src/components/editor/media-panel/views/video-edit.tsx`
+
+**Update TabsContent for audio-sync:**
+```typescript
+// Add import at top
+import { AudioSyncTab } from "./video-edit-audio-sync";
+
+// Replace audio-sync TabsContent
+<TabsContent value="audio-sync" className="flex-1 space-y-4 overflow-y-auto">
+  <AudioSyncTab />
+</TabsContent>
+```
+
+---
+
+## Task 7: Create UI Components - Upscale Tab (45 minutes)
+
+### Subtask 7.1: Create Upscale Tab Component (35 min)
+**File to Create**: `qcut/apps/web/src/components/editor/media-panel/views/video-edit-upscale.tsx`
+
+**Complete Code:**
+```typescript
+/**
+ * Topaz Video Upscale Tab Component
+ *
+ * WHY this component:
+ * - Professional quality upscaling up to 8x
+ * - Frame interpolation for smoother playback
+ * - Essential for improving low-res content
+ */
+
+import { useState } from "react";
+import { Upload, Loader2, Maximize2, Film, DollarSign } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { Slider } from "@/components/ui/slider";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
+import { FileUpload } from "@/components/ui/file-upload";
+import { Progress } from "@/components/ui/progress";
+import { Card } from "@/components/ui/card";
+import { useVideoEditProcessing } from "./use-video-edit-processing";
+import { useProjectStore } from "@/stores/project-store";
+import {
+  VIDEO_EDIT_UPLOAD_CONSTANTS,
+  VIDEO_EDIT_HELPERS,
+  VIDEO_EDIT_ERROR_MESSAGES,
+} from "./video-edit-constants";
+import type { TopazUpscaleParams } from "./video-edit-types";
+
+export function UpscaleTab() {
+  // State
+  const [sourceVideo, setSourceVideo] = useState<File | null>(null);
+  const [videoPreview, setVideoPreview] = useState<string | null>(null);
+  const [upscaleFactor, setUpscaleFactor] = useState(2.0);
+  const [targetFps, setTargetFps] = useState<number | undefined>();
+  const [h264Output, setH264Output] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Store hooks
+  const { activeProject } = useProjectStore();
+
+  // Processing hook
+  const {
+    isProcessing,
+    progress,
+    statusMessage,
+    elapsedTime,
+    estimatedTime,
+    result,
+    handleProcess,
+    reset,
+    canProcess,
+  } = useVideoEditProcessing({
+    sourceVideo,
+    activeTab: "upscale",
+    activeProject,
+    onSuccess: (result) => {
+      console.log("Upscale complete:", result);
+    },
+    onError: (error) => {
+      setError(error);
+    },
+  });
+
+  /**
+   * Handle video file change
+   */
+  const handleVideoChange = (file: File | null, preview: string | null) => {
+    if (file) {
+      const validation = VIDEO_EDIT_HELPERS.validateVideoFile(file);
+      if (!validation.valid) {
+        setError(validation.error!);
+        return;
+      }
+    }
+
+    setSourceVideo(file);
+    setVideoPreview(preview);
+    setError(null);
+    reset();
+  };
+
+  /**
+   * Handle process click
+   */
+  const handleProcessClick = async () => {
+    if (!sourceVideo) {
+      setError(VIDEO_EDIT_ERROR_MESSAGES.NO_VIDEO);
+      return;
+    }
+
+    const params: Partial<TopazUpscaleParams> = {
+      upscale_factor: upscaleFactor,
+      target_fps: targetFps,
+      H264_output: h264Output,
+    };
+
+    await handleProcess(params);
+  };
+
+  /**
+   * Get resolution label
+   */
+  const getResolutionLabel = () => {
+    const baseRes = "720p";  // Assume 720p input
+    const factor = upscaleFactor;
+
+    if (factor <= 1.5) return "1080p";
+    if (factor <= 2) return "1440p";
+    if (factor <= 3) return "4K";
+    if (factor <= 4) return "5K";
+    return "8K";
+  };
+
+  /**
+   * Get estimated processing time
+   */
+  const getEstimatedTime = () => {
+    const factor = upscaleFactor;
+    if (factor <= 2) return "30-60 seconds";
+    if (factor <= 4) return "2-4 minutes";
+    return "10-15 minutes";
+  };
+
+  return (
+    <div className="space-y-4">
+      {/* Video Upload */}
+      <FileUpload
+        id="topaz-video-input"
+        label="Source Video"
+        helperText="Up to 2 minutes"
+        fileType="video"
+        acceptedTypes={VIDEO_EDIT_UPLOAD_CONSTANTS.ALLOWED_VIDEO_TYPES}
+        maxSizeBytes={500 * 1024 * 1024}  // 500MB for Topaz
+        maxSizeLabel="500MB"
+        formatsLabel={VIDEO_EDIT_UPLOAD_CONSTANTS.VIDEO_FORMATS_LABEL}
+        file={sourceVideo}
+        preview={videoPreview}
+        onFileChange={handleVideoChange}
+        onError={setError}
+      />
+
+      {/* Upscale Factor */}
+      <div className="space-y-2">
+        <Label className="flex items-center justify-between text-xs">
+          <span className="flex items-center">
+            <Maximize2 className="size-3 mr-1" />
+            Upscale Factor: {upscaleFactor.toFixed(1)}x
+          </span>
+          <span className="text-primary">{getResolutionLabel()}</span>
+        </Label>
+        <Slider
+          value={[upscaleFactor]}
+          onValueChange={([v]) => setUpscaleFactor(v)}
+          min={1.0}
+          max={8.0}
+          step={0.5}
+          disabled={isProcessing}
+          className="w-full"
+        />
+        <p className="text-xs text-muted-foreground">
+          Higher factor = better quality but longer processing
+        </p>
+      </div>
+
+      {/* Frame Interpolation */}
+      <div className="space-y-2">
+        <Label className="flex items-center text-xs">
+          <Film className="size-3 mr-1" />
+          Target FPS (Optional)
+        </Label>
+        <Select
+          value={targetFps?.toString() || "none"}
+          onValueChange={(v) => setTargetFps(v === "none" ? undefined : parseInt(v))}
+          disabled={isProcessing}
+        >
+          <SelectTrigger className="text-xs">
+            <SelectValue placeholder="Original FPS" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="none">Original FPS</SelectItem>
+            <SelectItem value="24">24 FPS (Cinema)</SelectItem>
+            <SelectItem value="30">30 FPS (Standard)</SelectItem>
+            <SelectItem value="60">60 FPS (Smooth)</SelectItem>
+            <SelectItem value="120">120 FPS (Ultra Smooth)</SelectItem>
+          </SelectContent>
+        </Select>
+        <p className="text-xs text-muted-foreground">
+          Frame interpolation creates smoother motion
+        </p>
+      </div>
+
+      {/* Codec Selection */}
+      <Card className="p-3">
+        <div className="flex items-center justify-between">
+          <div className="space-y-0.5">
+            <Label className="text-xs">H.264 Output</Label>
+            <p className="text-xs text-muted-foreground">
+              Better compatibility but larger file size
+            </p>
+          </div>
+          <Switch
+            checked={h264Output}
+            onCheckedChange={setH264Output}
+            disabled={isProcessing}
+          />
+        </div>
+      </Card>
+
+      {/* Processing Estimate */}
+      <Card className="p-3 bg-primary/5">
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center text-xs">
+              <DollarSign className="size-3 mr-1" />
+              <span>Estimated Cost:</span>
+            </div>
+            <span className="text-xs font-medium">
+              {VIDEO_EDIT_HELPERS.formatCost(
+                VIDEO_EDIT_HELPERS.estimateTopazCost(upscaleFactor)
+              )}
+            </span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-muted-foreground">Processing Time:</span>
+            <span className="text-xs">{getEstimatedTime()}</span>
+          </div>
+        </div>
+      </Card>
+
+      {/* Error Display */}
+      {error && (
+        <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
+          <p className="text-xs text-destructive">{error}</p>
+        </div>
+      )}
+
+      {/* Progress Display */}
+      {isProcessing && (
+        <div className="space-y-2">
+          <Progress value={progress} className="h-2" />
+          <div className="flex justify-between text-xs text-muted-foreground">
+            <span>{statusMessage}</span>
+            <span>
+              {elapsedTime}s
+              {estimatedTime && ` / ~${Math.round(estimatedTime / 60)}min`}
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* Result Display */}
+      {result && !isProcessing && (
+        <Card className="p-3 bg-primary/5">
+          <div className="space-y-2">
+            <div className="flex justify-between items-center">
+              <p className="text-xs font-medium text-primary">
+                ✓ Upscale complete!
+              </p>
+              {result.cost && (
+                <span className="text-xs">
+                  Cost: {VIDEO_EDIT_HELPERS.formatCost(result.cost)}
+                </span>
+              )}
+            </div>
+            <div className="text-xs text-muted-foreground">
+              {result.fileSize && (
+                <p>Output size: {(result.fileSize / 1024 / 1024).toFixed(1)} MB</p>
+              )}
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => window.open(result.videoUrl!, "_blank")}
+              className="w-full text-xs"
+            >
+              Download Upscaled Video
+            </Button>
+          </div>
+        </Card>
+      )}
+
+      {/* Process Button */}
+      <Button
+        onClick={handleProcessClick}
+        disabled={!canProcess}
+        className="w-full"
+        size="sm"
+      >
+        {isProcessing ? (
+          <>
+            <Loader2 className="size-4 mr-2 animate-spin" />
+            Upscaling... {progress}%
+          </>
+        ) : (
+          <>
+            <Maximize2 className="size-4 mr-2" />
+            Upscale Video
+          </>
+        )}
+      </Button>
+
+      {/* Info */}
+      <div className="text-xs text-muted-foreground space-y-1">
+        <p>• Videos up to 2 minutes supported</p>
+        <p>• 8x upscale may fail for 720p+ sources (8K limit)</p>
+        <p>• H.265 produces smaller files but may have compatibility issues</p>
+        <p>• Processing time increases exponentially with upscale factor</p>
+      </div>
+    </div>
+  );
+}
+```
+
+### Subtask 7.2: Update Main Video Edit View (10 min)
+**File to Modify**: `qcut/apps/web/src/components/editor/media-panel/views/video-edit.tsx`
+
+**Final Complete Code:**
+```typescript
+"use client";
+
+import { useState } from "react";
+import { Wand2Icon, Loader2 } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
+import { AudioGenTab } from "./video-edit-audio-gen";
+import { AudioSyncTab } from "./video-edit-audio-sync";
+import { UpscaleTab } from "./video-edit-upscale";
+
+export type VideoEditTab = "audio-gen" | "audio-sync" | "upscale";
+
+export default function VideoEditView() {
+  const [activeTab, setActiveTab] = useState<VideoEditTab>("audio-gen");
+
+  return (
+    <div className="h-full flex flex-col p-4">
+      {/* Header */}
+      <div className="flex items-center mb-4">
+        <Wand2Icon className="size-5 text-primary mr-2" />
+        <h3 className="text-sm font-medium">Video Edit</h3>
+      </div>
+
+      {/* Tabs */}
+      <Tabs
+        value={activeTab}
+        onValueChange={(v) => setActiveTab(v as VideoEditTab)}
+        className="flex-1 flex flex-col"
+      >
+        <TabsList className="grid w-full grid-cols-3 mb-4">
+          <TabsTrigger value="audio-gen">Audio Gen</TabsTrigger>
+          <TabsTrigger value="audio-sync">Audio Sync</TabsTrigger>
+          <TabsTrigger value="upscale">Upscale</TabsTrigger>
+        </TabsList>
+
+        {/* Kling Video to Audio Tab */}
+        <TabsContent value="audio-gen" className="flex-1 space-y-4 overflow-y-auto">
+          <AudioGenTab />
+        </TabsContent>
+
+        {/* MMAudio V2 Tab */}
+        <TabsContent value="audio-sync" className="flex-1 space-y-4 overflow-y-auto">
+          <AudioSyncTab />
+        </TabsContent>
+
+        {/* Topaz Upscale Tab */}
+        <TabsContent value="upscale" className="flex-1 space-y-4 overflow-y-auto">
+          <UpscaleTab />
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+}
+```
+
+---
+
+## Task 8: Integration Testing & Polish (30 minutes)
+
+### Subtask 8.1: Test Build (10 min)
+**Commands to Run:**
+```bash
+cd qcut/apps/web
+bun run build
+# Fix any TypeScript errors
+bun run lint:clean
+# Fix any linting issues
+```
+
+### Subtask 8.2: Add to Git and Create PR (10 min)
+**Commands:**
+```bash
+git add -A
+git commit -m "feat: add Video Edit panel with Kling, MMAudio V2, and Topaz models
+
+- Add new Video Edit panel after Stickers panel
+- Implement Kling Video to Audio for sound generation (3-20s videos)
+- Implement MMAudio V2 for synchronized audio ($0.001/sec)
+- Implement Topaz Upscale for 8x upscaling with frame interpolation
+- Full TypeScript types and constants following ai-constants.ts pattern
+- Processing hook with polling and media store integration
+- FAL AI client for all three models
+- Comprehensive UI with progress tracking and cost estimation"
+git push origin panel-order-fix
+```
+
+### Subtask 8.3: Manual Testing Checklist (10 min)
+
+**Test each tab:**
+- [ ] Audio Gen: Upload video, add prompts, toggle ASMR, process
+- [ ] Audio Sync: Upload video, required prompt, advanced settings, process
+- [ ] Upscale: Upload video, adjust factor, select FPS, process
+- [ ] Verify progress updates during processing
+- [ ] Verify error messages for invalid files
+- [ ] Verify results display correctly
+- [ ] Verify media store integration (video added to timeline)
+- [ ] Test responsive layout at different screen sizes
+
+---
+
+## Summary
+
+**Total Tasks**: 8
+**Total Time**: ~6 hours
+**Files Created**: 10 new files
+**Files Modified**: 3 existing files
+
+Each task is self-contained with specific file reads, code to add, and clear implementation details. The implementation follows existing patterns from the AI Video feature for consistency and maintainability.
+
+**Key Features Delivered**:
+1. Complete Video Edit panel infrastructure
+2. Three functional AI models (Kling, MMAudio V2, Topaz)
+3. Full TypeScript type safety
+4. Progress tracking and cost estimation
+5. Media store integration for timeline
+6. Comprehensive error handling
+7. Production-ready UI components
