@@ -624,7 +624,7 @@ export class CLIExportEngine extends ExportEngine {
    * Collects all text elements from timeline and converts to drawtext filters
    */
   private buildTextOverlayFilters(): string {
-    const textFilters: string[] = [];
+    const textElements: TextElement[] = [];
 
     // Iterate through all tracks to find text elements
     for (const track of this.tracks) {
@@ -645,32 +645,27 @@ export class CLIExportEngine extends ExportEngine {
           continue;
         }
 
-        // Convert element to drawtext filter
-        const textElement = element as TextElement;
-        const filterString = this.convertTextElementToDrawtext(textElement);
-
-        // Only add non-empty filter strings
-        if (filterString) {
-          textFilters.push(filterString);
-        }
+        // Collect text element
+        textElements.push(element as TextElement);
       }
     }
 
-    // Sort filters by start time for consistent rendering order
-    // Extract start times and sort
-    const sortedFilters = textFilters.sort((a, b) => {
-      // Extract enable parameter to get start time
-      const extractStartTime = (filter: string): number => {
-        const enableMatch = filter.match(/enable='between\(t,([0-9.]+),/);
-        return enableMatch ? parseFloat(enableMatch[1]) : 0;
-      };
-
-      return extractStartTime(a) - extractStartTime(b);
+    // Sort by z-index/track order for proper layering
+    // WHY: In FFmpeg, later filters draw on top. We must sort by z-index to ensure
+    // text with higher z-index is drawn last (appears on top).
+    textElements.sort((a, b) => {
+      const aOrder = a.zIndex ?? a.trackIndex ?? 0;
+      const bOrder = b.zIndex ?? b.trackIndex ?? 0;
+      return aOrder - bOrder;
     });
 
+    // Convert each to drawtext filter
+    const filters = textElements
+      .map(el => this.convertTextElementToDrawtext(el))
+      .filter(f => f !== "");
+
     // Join all filters with comma separator
-    // Empty string if no text elements found
-    return sortedFilters.join(',');
+    return filters.join(',');
   }
 
   // Helper to get active elements (CLI-specific version)

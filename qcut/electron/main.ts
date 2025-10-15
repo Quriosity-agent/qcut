@@ -364,6 +364,7 @@ app.whenReady().then(() => {
   setupThemeIPC(); // Add theme switching support
   setupApiKeyIPC(); // Add API key management support
   setupGeminiHandlers(); // Add Gemini transcription support
+  setupFontResolverIPC(); // Add font resolution support
 
   // Configure auto-updater for production builds
   if (app.isPackaged) {
