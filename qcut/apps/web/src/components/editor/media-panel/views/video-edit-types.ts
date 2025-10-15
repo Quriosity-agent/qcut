@@ -7,6 +7,8 @@
  * - Enables IntelliSense across the feature
  */
 
+import type { TProject } from "@/types/project";
+
 /**
  * Tab discriminator for the three video edit models
  */
@@ -116,7 +118,7 @@ export interface VideoEditResult {
 export interface UseVideoEditProcessingProps {
   sourceVideo: File | null;
   activeTab: VideoEditTab;
-  activeProject: any | null;  // From useProjectStore
+  activeProject: TProject | null;  // From useProjectStore
   onSuccess?: (result: VideoEditResult) => void;
   onError?: (error: string) => void;
   onProgress?: (progress: number, message: string) => void;

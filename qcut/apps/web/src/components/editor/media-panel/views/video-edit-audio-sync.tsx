@@ -7,7 +7,7 @@
  * - $0.001 per second pricing model
  */
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import { Loader2, Music2, Settings, DollarSign } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -39,6 +39,7 @@ export function AudioSyncTab() {
   const [seed, setSeed] = useState<number | undefined>();
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const audioDescriptionId = useId();
 
   // Store hooks
   const { activeProject } = useProjectStore();
@@ -117,6 +118,15 @@ export function AudioSyncTab() {
     const estimatedDuration = 10;
     return VIDEO_EDIT_HELPERS.calculateMMAudioCost(estimatedDuration);
   };
+
+  // Audio description for accessibility
+  const audioDescription = [
+    "Generated audio preview",
+    prompt.trim() && `Based on prompt: ${prompt.trim()}`,
+    negativePrompt.trim() && `Negative prompt: ${negativePrompt.trim()}`
+  ]
+    .filter(Boolean)
+    .join(". ");
 
   return (
     <div className="space-y-4">
@@ -288,11 +298,17 @@ export function AudioSyncTab() {
               )}
             </div>
             {result.audioUrl && (
-              <audio
-                controls
-                className="w-full h-8"
-                src={result.audioUrl}
-              />
+              <>
+                <p id={audioDescriptionId} className="sr-only">
+                  {audioDescription}
+                </p>
+                <audio
+                  controls
+                  className="w-full h-8"
+                  src={result.audioUrl}
+                  aria-describedby={audioDescriptionId}
+                />
+              </>
             )}
             <div className="flex gap-2">
               {result.videoUrl && (
