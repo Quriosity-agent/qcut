@@ -6,6 +6,7 @@ import TransformationSelector from "./TransformationSelector";
 import { THUMBNAIL_TEMPLATES } from "../constants/transformations";
 import type { Transformation } from "@/types/nano-edit";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
+import { openInNewTab } from "@/lib/utils";
 
 export const ThumbnailGenerator: React.FC = () => {
   const { addAsset, isProcessing, assets } = useNanoEditStore();
@@ -101,7 +102,7 @@ export const ThumbnailGenerator: React.FC = () => {
               <div key={asset.id} className="relative group">
                 <button
                   type="button"
-                  onClick={() => window.open(asset.url, "_blank")}
+                  onClick={() => openInNewTab(asset.url)}
                   className="w-full h-20 overflow-hidden rounded border border-gray-600 group-hover:border-blue-500 transition-colors"
                   aria-label="Open generated thumbnail in new tab"
                 >

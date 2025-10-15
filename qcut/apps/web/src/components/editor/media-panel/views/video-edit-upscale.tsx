@@ -25,6 +25,7 @@ import {
   VIDEO_EDIT_ERROR_MESSAGES,
 } from "./video-edit-constants";
 import type { TopazUpscaleParams } from "./video-edit-types";
+import { openInNewTab } from "@/lib/utils";
 
 export function UpscaleTab() {
   // State
@@ -288,9 +289,10 @@ export function UpscaleTab() {
             </div>
             {result.videoUrl && (
               <Button
+                type="button"
                 size="sm"
                 variant="outline"
-                onClick={() => window.open(result.videoUrl!, "_blank")}
+                onClick={() => openInNewTab(result.videoUrl)}
                 className="w-full text-xs"
               >
                 Download Upscaled Video

@@ -3,6 +3,7 @@ import { useNanoEditStore } from "@/stores/nano-edit-store";
 import { FalAiService } from "@/services/ai/fal-ai-service";
 import { PromptInput } from "./PromptInput";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
+import { openInNewTab } from "@/lib/utils";
 
 export const LogoEnhancer: React.FC = () => {
   const { addAsset, isProcessing, assets, setProcessing } = useNanoEditStore();
@@ -123,7 +124,7 @@ export const LogoEnhancer: React.FC = () => {
                 <div className="w-full h-20 bg-gray-700 rounded border border-gray-600 group-hover:border-blue-500 transition-colors flex items-center justify-center">
                   <button
                     type="button"
-                    onClick={() => window.open(asset.url, "_blank")}
+                    onClick={() => openInNewTab(asset.url)}
                     className="flex items-center justify-center w-full h-full"
                     aria-label="Open generated logo in new tab"
                   >

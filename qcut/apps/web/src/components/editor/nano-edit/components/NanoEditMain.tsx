@@ -6,6 +6,7 @@ import { useNanoEditStore } from "@/stores/nano-edit-store";
 import { useAsyncMediaStoreActions } from "@/hooks/use-async-media-store";
 import { useParams } from "@tanstack/react-router";
 import { createObjectURL } from "@/lib/blob-manager";
+import { openInNewTab } from "@/lib/utils";
 import TransformationSelector from "./TransformationSelector";
 import ImageEditorCanvas from "./ImageEditorCanvas";
 import MultiImageUploader from "./MultiImageUploader";
@@ -486,7 +487,7 @@ const NanoEditMain: React.FC = () => {
                 <ResultDisplay
                   content={generatedContent}
                   onUseImageAsInput={handleUseImageAsInput}
-                  onImageClick={(url) => window.open(url, "_blank")}
+                  onImageClick={openInNewTab}
                   originalImageUrl={primaryImageUrl}
                 />
               )}

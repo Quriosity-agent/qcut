@@ -26,6 +26,7 @@ import {
   VIDEO_EDIT_ERROR_MESSAGES,
 } from "./video-edit-constants";
 import type { MMAudioV2Params } from "./video-edit-types";
+import { openInNewTab } from "@/lib/utils";
 
 export function AudioSyncTab() {
   // State
@@ -296,9 +297,10 @@ export function AudioSyncTab() {
             <div className="flex gap-2">
               {result.videoUrl && (
                 <Button
+                  type="button"
                   size="sm"
                   variant="outline"
-                  onClick={() => window.open(result.videoUrl!, "_blank")}
+                  onClick={() => openInNewTab(result.videoUrl)}
                   className="text-xs"
                 >
                   Download Video

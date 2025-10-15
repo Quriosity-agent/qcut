@@ -76,6 +76,19 @@ export function getPlatformAlternateKey() {
 }
 
 /**
+ * Opens a URL in a new tab with tabnabbing protection.
+ * No-op on the server or if the browser blocks popups.
+ */
+export function openInNewTab(url: string): void {
+  if (typeof window === "undefined") return;
+
+  const win = window.open(url, "_blank", "noopener,noreferrer");
+  if (win) {
+    win.opener = null;
+  }
+}
+
+/**
  * Generates a consistent ID for a file based on its properties
  * This ensures the same file always gets the same ID
  */

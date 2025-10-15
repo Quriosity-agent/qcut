@@ -24,6 +24,7 @@ import {
   VIDEO_EDIT_ERROR_MESSAGES,
 } from "./video-edit-constants";
 import type { KlingVideoToAudioParams } from "./video-edit-types";
+import { openInNewTab } from "@/lib/utils";
 
 export function AudioGenTab() {
   // State
@@ -222,10 +223,7 @@ export function AudioGenTab() {
                   type="button"
                   size="sm"
                   variant="outline"
-                  onClick={() => {
-                    const win = window.open(result.videoUrl!, "_blank", "noopener,noreferrer");
-                    if (win) win.opener = null;
-                  }}
+                  onClick={() => openInNewTab(result.videoUrl)}
                   className="text-xs"
                 >
                   Download Video
@@ -236,10 +234,7 @@ export function AudioGenTab() {
                   type="button"
                   size="sm"
                   variant="outline"
-                  onClick={() => {
-                    const win = window.open(result.audioUrl!, "_blank", "noopener,noreferrer");
-                    if (win) win.opener = null;
-                  }}
+                  onClick={() => openInNewTab(result.audioUrl)}
                   className="text-xs"
                 >
                   Download Audio

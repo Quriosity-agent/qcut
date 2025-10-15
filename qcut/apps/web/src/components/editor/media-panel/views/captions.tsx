@@ -29,7 +29,7 @@ import {
   Plus,
 } from "lucide-react";
 import { useDragDrop } from "@/hooks/use-drag-drop";
-import { cn } from "@/lib/utils";
+import { cn, openInNewTab } from "@/lib/utils";
 // DEPRECATED: Modal Whisper utilities removed for Gemini migration
 // import { isTranscriptionConfigured } from "@/lib/transcription/transcription-utils";
 // import { encryptWithRandomKey } from "@/lib/transcription/zk-encryption";
@@ -417,7 +417,7 @@ export function CaptionsView() {
             {
               action: {
                 label: "Get API Key",
-                onClick: () => window.open(getGeminiSetupUrl(), "_blank"),
+                onClick: () => openInNewTab(getGeminiSetupUrl()),
               },
             }
           );
@@ -694,7 +694,7 @@ export function CaptionsView() {
                   <Button
                     variant="secondary"
                     size="sm"
-                    onClick={() => window.open(getGeminiSetupUrl(), "_blank")}
+                  onClick={() => openInNewTab(getGeminiSetupUrl())}
                   >
                     Get API Key
                   </Button>

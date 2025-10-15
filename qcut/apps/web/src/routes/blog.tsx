@@ -3,6 +3,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { Header } from "@/components/header";
 import { Button } from "@/components/ui/button";
 import { ExternalLink } from "lucide-react";
+import { openInNewTab } from "@/lib/utils";
 
 export const Route = createFileRoute("/blog")({
   component: BlogPage,
@@ -16,7 +17,7 @@ function BlogPage() {
       shell.openExternal("https://github.com/donghaozhang/qcut");
     } else {
       // Running in browser
-      window.open("https://github.com/donghaozhang/qcut", "_blank");
+      openInNewTab("https://github.com/donghaozhang/qcut");
     }
   };
 
