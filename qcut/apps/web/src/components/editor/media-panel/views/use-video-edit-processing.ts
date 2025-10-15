@@ -167,8 +167,8 @@ export function useVideoEditProcessing(props: UseVideoEditProcessingProps) {
           file,
           url: result.videoUrl,
           duration: result.duration || 10,
-          width: 1920,
-          height: 1080,
+          width: result.width || 1920,
+          height: result.height || 1080,
         };
 
         const newItemId = await addMediaItem(activeProject.id, mediaItem);
