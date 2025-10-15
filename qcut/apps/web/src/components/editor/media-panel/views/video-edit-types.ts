@@ -74,6 +74,16 @@ export interface TopazUpscaleParams {
 }
 
 /**
+ * Union type for default parameters
+ * WHY: Type-safe default parameters without using 'any'
+ * Excludes 'video_url' since it's runtime-provided
+ */
+type VideoEditDefaultParams =
+  | Omit<Partial<KlingVideoToAudioParams>, 'video_url'>
+  | Omit<Partial<MMAudioV2Params>, 'video_url'>
+  | Omit<Partial<TopazUpscaleParams>, 'video_url'>;
+
+/**
  * Video Edit Model Configuration
  * Matches pattern from ai-constants.ts for consistency
  */
@@ -88,7 +98,7 @@ export interface VideoEditModel {
   endpoints: {
     process: string;  // FAL AI endpoint path
   };
-  default_params?: Record<string, any>;
+  default_params?: VideoEditDefaultParams;
 }
 
 /**

@@ -22,6 +22,11 @@ import type {
   MMAudioV2Params,
   TopazUpscaleParams,
 } from "./video-edit-types";
+
+type VideoEditParams =
+  | Partial<KlingVideoToAudioParams>
+  | Partial<MMAudioV2Params>
+  | Partial<TopazUpscaleParams>;
 import {
   VIDEO_EDIT_ERROR_MESSAGES,
   VIDEO_EDIT_STATUS_MESSAGES,
@@ -334,7 +339,7 @@ export function useVideoEditProcessing(props: UseVideoEditProcessingProps) {
    * Handles model-specific logic and error handling
    */
   const handleProcess = useCallback(
-    async (params: Record<string, any>) => {
+    async (params: VideoEditParams) => {
       try {
         // Reset state
         setState({
@@ -355,13 +360,19 @@ export function useVideoEditProcessing(props: UseVideoEditProcessingProps) {
         // Route to appropriate processor
         switch (activeTab) {
           case "audio-gen":
-            result = await processKlingVideoToAudio(params);
+            result = await processKlingVideoToAudio(
+              params as Partial<KlingVideoToAudioParams>
+            );
             break;
           case "audio-sync":
-            result = await processMMAudioV2(params);
+            result = await processMMAudioV2(
+              params as Partial<MMAudioV2Params>
+            );
             break;
           case "upscale":
-            result = await processTopazUpscale(params);
+            result = await processTopazUpscale(
+              params as Partial<TopazUpscaleParams>
+            );
             break;
           default:
             throw new Error("Invalid tab selected");

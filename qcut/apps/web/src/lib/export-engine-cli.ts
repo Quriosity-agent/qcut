@@ -463,7 +463,10 @@ export class CLIExportEngine extends ExportEngine {
     const isItalic = fontStyle === 'italic';
 
     // Detect platform using Electron API (reliable)
-    const platform = window.electronAPI?.platform || 'win32'; // Safe fallback to Windows
+    const platform = window.electronAPI?.platform;
+    if (!platform) {
+      throw new Error("Platform information not available. Ensure Electron API is initialized.");
+    }
     const isWindows = platform === 'win32';
     const isMac = platform === 'darwin';
     const isLinux = platform === 'linux';
