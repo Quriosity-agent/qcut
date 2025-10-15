@@ -11,16 +11,14 @@ export const VIDEO_EDIT_MODELS: VideoEditModel[] = [
     id: "kling_video_to_audio",
     name: "Kling Video to Audio",
     description: "Generate audio from video (3-20s clips)",
-    price: "$0.25",  // Estimated based on similar models
+    price: "$0.035",  // Official FAL AI pricing
     category: "audio-gen",
     max_video_size: 100 * 1024 * 1024,  // 100MB hard limit
-    max_duration: 20,  // 20 seconds max
+    max_duration: 20,  // 20 seconds max per API docs
     endpoints: {
       process: "fal-ai/kling-video/video-to-audio",
     },
-    default_params: {
-      asmr_mode: false,  // Expensive feature, opt-in only
-    },
+    default_params: {},  // Prompts are optional
   },
   {
     id: "mmaudio_v2",

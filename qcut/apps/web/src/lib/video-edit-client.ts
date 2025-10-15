@@ -135,18 +135,27 @@ class VideoEditClient {
    * Generate audio from video using Kling
    *
    * WHY this model:
-   * - Generates realistic sound effects from silent video
-   * - Useful for AI-generated videos that lack audio
+   * - Generates sound effects and background music for videos
+   * - Works with 3-20 second videos
+   * - Can enhance videos with ASMR mode
    *
    * Edge cases:
-   * - ASMR mode ignored for videos >10 seconds
    * - Videos must be 3-20 seconds
+   * - Max 200 characters for prompts
    */
   async generateKlingAudio(params: KlingVideoToAudioParams): Promise<VideoEditResult> {
     await this.ensureInitialized();
 
-    debugLog("Generating Kling audio:", {
+    console.log("=== KLING VIDEO TO AUDIO DEBUG START ===");
+    console.log("1. Input params received:", params);
+    console.log("2. Video URL type:", typeof params.video_url);
+    console.log("3. Video URL length:", params.video_url?.length);
+    console.log("4. Video URL preview:", params.video_url?.substring(0, 100) + "...");
+
+    debugLog("Generating audio with Kling:", {
       hasVideo: !!params.video_url,
+      soundEffect: params.sound_effect_prompt,
+      bgMusic: params.background_music_prompt,
       asmrMode: params.asmr_mode,
     });
 
@@ -154,16 +163,33 @@ class VideoEditClient {
       const model = VIDEO_EDIT_MODELS.find(m => m.id === "kling_video_to_audio");
       if (!model) throw new Error("Model configuration not found");
 
+      // Build the input payload
+      const inputPayload: any = {
+        video_url: params.video_url,
+      };
+
+      // Add optional parameters only if they have values
+      if (params.sound_effect_prompt && params.sound_effect_prompt.trim()) {
+        inputPayload.sound_effect_prompt = params.sound_effect_prompt;
+      }
+      if (params.background_music_prompt && params.background_music_prompt.trim()) {
+        inputPayload.background_music_prompt = params.background_music_prompt;
+      }
+      if (params.asmr_mode !== undefined) {
+        inputPayload.asmr_mode = params.asmr_mode;
+      }
+
+      console.log("5. Final payload being sent to FAL:", JSON.stringify(inputPayload, null, 2));
+      console.log("6. Endpoint:", model.endpoints.process);
+      console.log("7. FAL initialized?", this.initialized);
+      console.log("8. API Key available?", !!this.apiKey);
+
       // Call FAL API
       const result = await fal.subscribe(model.endpoints.process, {
-        input: {
-          video_url: params.video_url,
-          sound_effect_prompt: params.sound_effect_prompt,
-          background_music_prompt: params.background_music_prompt,
-          asmr_mode: params.asmr_mode || false,
-        },
+        input: inputPayload,
         logs: true,
         onQueueUpdate: (update) => {
+          console.log("9. Queue update received:", update);
           debugLog("Kling queue update:", update);
         },
       }) as any;
@@ -176,6 +202,9 @@ class VideoEditClient {
         throw new Error("No video URL in response");
       }
 
+      console.log("10. Result received:", result);
+      console.log("=== KLING VIDEO TO AUDIO DEBUG END ===");
+
       return {
         modelId: "kling_video_to_audio",
         jobId: result.request_id || `kling-${Date.now()}`,
@@ -183,7 +212,25 @@ class VideoEditClient {
         audioUrl,
         duration: result.video?.duration,
       };
-    } catch (error) {
+    } catch (error: any) {
+      console.error("=== KLING ERROR DEBUG ===");
+      console.error("Error type:", error?.constructor?.name);
+      console.error("Error message:", error?.message);
+      console.error("Error status:", error?.status);
+      console.error("Error statusText:", error?.statusText);
+      console.error("Error body:", error?.body);
+      console.error("Full error object:", error);
+      console.error("Error response:", error?.response);
+      if (error?.response) {
+        try {
+          const responseText = await error.response.text();
+          console.error("Response text:", responseText);
+        } catch (e) {
+          console.error("Could not read response text");
+        }
+      }
+      console.error("=== END ERROR DEBUG ===");
+
       debugError("Kling audio generation failed:", error);
       throw new Error(this.handleApiError(error));
     }

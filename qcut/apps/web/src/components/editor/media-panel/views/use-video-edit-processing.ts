@@ -12,6 +12,7 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { useAsyncMediaStoreActions } from "@/hooks/use-async-media-store";
 import { debugLog, debugError } from "@/lib/debug-config";
+import { videoEditClient } from "@/lib/video-edit-client";
 import type {
   VideoEditTab,
   VideoEditResult,
@@ -128,69 +129,6 @@ export function useVideoEditProcessing(props: UseVideoEditProcessingProps) {
     }
   }, []);
 
-  /**
-   * Poll job status
-   * WHY: FAL AI uses queue system, must poll for completion
-   * Edge case: Some models return video_url immediately (skip polling)
-   */
-  const pollJobStatus = useCallback(
-    async (jobId: string, modelId: string): Promise<VideoEditResult> => {
-      return new Promise((resolve, reject) => {
-        let attempts = 0;
-
-        const poll = async () => {
-          try {
-            attempts++;
-
-            // Check max attempts
-            if (attempts > VIDEO_EDIT_PROCESSING_CONSTANTS.MAX_POLL_ATTEMPTS) {
-              clearInterval(pollingInterval.current!);
-              reject(new Error("Processing timeout"));
-              return;
-            }
-
-            // TODO: Call actual status endpoint
-            // const status = await videoEditClient.getStatus(jobId);
-
-            // Mock status for skeleton
-            const mockProgress = Math.min(10 + attempts * 5, 90);
-            setState((prev) => ({
-              ...prev,
-              progress: mockProgress,
-              currentStage: "processing",
-              statusMessage: `${VIDEO_EDIT_STATUS_MESSAGES.PROCESSING} ${mockProgress}%`,
-            }));
-
-            // Mock completion after 5 attempts
-            if (attempts >= 5) {
-              clearInterval(pollingInterval.current!);
-
-              const result: VideoEditResult = {
-                modelId,
-                jobId,
-                videoUrl: "https://example.com/processed-video.mp4",
-                duration: 10,
-                fileSize: 5 * 1024 * 1024,
-              };
-
-              resolve(result);
-            }
-          } catch (error) {
-            clearInterval(pollingInterval.current!);
-            reject(error);
-          }
-        };
-
-        // Start polling
-        poll();
-        pollingInterval.current = setInterval(
-          poll,
-          VIDEO_EDIT_PROCESSING_CONSTANTS.POLLING_INTERVAL_MS
-        );
-      });
-    },
-    []
-  );
 
   /**
    * Add result to media store
@@ -212,7 +150,7 @@ export function useVideoEditProcessing(props: UseVideoEditProcessingProps) {
           progress: 95,
         }));
 
-        // Download video
+        // Download video from FAL AI URL
         const response = await fetch(result.videoUrl);
         if (!response.ok) {
           throw new Error("Failed to download processed video");
@@ -251,26 +189,50 @@ export function useVideoEditProcessing(props: UseVideoEditProcessingProps) {
         throw new Error(VIDEO_EDIT_ERROR_MESSAGES.NO_VIDEO);
       }
 
+      console.log("=== PROCESSING KLING DEBUG ===");
+      console.log("Source video:", sourceVideo);
+      console.log("Video file size:", sourceVideo.size);
+      console.log("Video file type:", sourceVideo.type);
+      console.log("Input params:", params);
+
       debugLog("Processing Kling Video to Audio:", params);
 
+      // Update progress state
+      setState((prev) => ({
+        ...prev,
+        currentStage: "uploading",
+        statusMessage: VIDEO_EDIT_STATUS_MESSAGES.UPLOADING,
+        progress: 10,
+      }));
+
       // Encode video
+      console.log("Starting video encoding to base64...");
       const videoDataUrl = await encodeVideoToDataURL(sourceVideo);
+      console.log("Video encoded. Data URL length:", videoDataUrl.length);
+      console.log("Data URL starts with:", videoDataUrl.substring(0, 50));
 
-      // TODO: Call actual API
-      // const response = await videoEditClient.generateKlingAudio({
-      //   video_url: videoDataUrl,
-      //   ...params,
-      // });
+      setState((prev) => ({
+        ...prev,
+        currentStage: "processing",
+        statusMessage: VIDEO_EDIT_STATUS_MESSAGES.PROCESSING,
+        progress: 20,
+      }));
 
-      // Mock response
-      const jobId = `kling-${Date.now()}`;
+      // Call actual FAL AI API
+      console.log("Calling videoEditClient.generateKlingAudio with params:", {
+        video_url: `[base64 data, length: ${videoDataUrl.length}]`,
+        ...params,
+      });
 
-      // Poll for completion
-      const result = await pollJobStatus(jobId, "kling_video_to_audio");
+      const result = await videoEditClient.generateKlingAudio({
+        video_url: videoDataUrl,
+        ...params,
+      });
 
+      console.log("=== END PROCESSING KLING DEBUG ===");
       return result;
     },
-    [sourceVideo, encodeVideoToDataURL, pollJobStatus]
+    [sourceVideo, encodeVideoToDataURL]
   );
 
   /**
@@ -288,29 +250,39 @@ export function useVideoEditProcessing(props: UseVideoEditProcessingProps) {
 
       debugLog("Processing MMAudio V2:", params);
 
+      // Update progress state
+      setState((prev) => ({
+        ...prev,
+        currentStage: "uploading",
+        statusMessage: VIDEO_EDIT_STATUS_MESSAGES.UPLOADING,
+        progress: 10,
+      }));
+
       // Encode video
       const videoDataUrl = await encodeVideoToDataURL(sourceVideo);
 
-      // TODO: Call actual API
-      // const response = await videoEditClient.generateMMAudio({
-      //   video_url: videoDataUrl,
-      //   ...params,
-      // });
+      setState((prev) => ({
+        ...prev,
+        currentStage: "processing",
+        statusMessage: VIDEO_EDIT_STATUS_MESSAGES.PROCESSING,
+        progress: 20,
+      }));
 
-      // Mock response
-      const jobId = `mmaudio-${Date.now()}`;
-
-      // Poll for completion
-      const result = await pollJobStatus(jobId, "mmaudio_v2");
-
-      // Calculate cost
-      if (result.duration) {
-        result.cost = VIDEO_EDIT_HELPERS.calculateMMAudioCost(result.duration);
-      }
+      // Call actual FAL AI API
+      const result = await videoEditClient.generateMMAudio({
+        video_url: videoDataUrl,
+        prompt: params.prompt!, // We already validated prompt exists above
+        negative_prompt: params.negative_prompt,
+        seed: params.seed,
+        num_steps: params.num_steps,
+        duration: params.duration,
+        cfg_strength: params.cfg_strength,
+        mask_away_clip: params.mask_away_clip,
+      });
 
       return result;
     },
-    [sourceVideo, encodeVideoToDataURL, pollJobStatus]
+    [sourceVideo, encodeVideoToDataURL]
   );
 
   /**
@@ -324,32 +296,36 @@ export function useVideoEditProcessing(props: UseVideoEditProcessingProps) {
 
       debugLog("Processing Topaz Upscale:", params);
 
-      // Encode video
-      const videoDataUrl = await encodeVideoToDataURL(sourceVideo);
-
-      // TODO: Call actual API
-      // const response = await videoEditClient.upscaleTopaz({
-      //   video_url: videoDataUrl,
-      //   ...params,
-      // });
-
-      // Mock response
-      const jobId = `topaz-${Date.now()}`;
-
       // Estimate processing time based on upscale factor
       const factor = params.upscale_factor || 2.0;
       const estimatedSeconds = factor <= 2 ? 60 : factor <= 4 ? 180 : 600;
-      setState((prev) => ({ ...prev, estimatedTime: estimatedSeconds }));
+      setState((prev) => ({
+        ...prev,
+        estimatedTime: estimatedSeconds,
+        currentStage: "uploading",
+        statusMessage: VIDEO_EDIT_STATUS_MESSAGES.UPLOADING,
+        progress: 10,
+      }));
 
-      // Poll for completion
-      const result = await pollJobStatus(jobId, "topaz_upscale");
+      // Encode video
+      const videoDataUrl = await encodeVideoToDataURL(sourceVideo);
 
-      // Estimate cost
-      result.cost = VIDEO_EDIT_HELPERS.estimateTopazCost(factor);
+      setState((prev) => ({
+        ...prev,
+        currentStage: "processing",
+        statusMessage: VIDEO_EDIT_STATUS_MESSAGES.PROCESSING,
+        progress: 20,
+      }));
+
+      // Call actual FAL AI API
+      const result = await videoEditClient.upscaleTopaz({
+        video_url: videoDataUrl,
+        ...params,
+      });
 
       return result;
     },
-    [sourceVideo, encodeVideoToDataURL, pollJobStatus]
+    [sourceVideo, encodeVideoToDataURL]
   );
 
   /**

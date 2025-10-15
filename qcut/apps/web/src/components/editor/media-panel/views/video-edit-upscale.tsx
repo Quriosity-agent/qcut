@@ -149,8 +149,8 @@ export function UpscaleTab() {
         helperText="Up to 2 minutes"
         fileType="video"
         acceptedTypes={VIDEO_EDIT_UPLOAD_CONSTANTS.ALLOWED_VIDEO_TYPES}
-        maxSizeBytes={500 * 1024 * 1024}  // 500MB for Topaz
-        maxSizeLabel="500MB"
+        maxSizeBytes={VIDEO_EDIT_UPLOAD_CONSTANTS.TOPAZ_MAX_VIDEO_SIZE_BYTES}
+        maxSizeLabel={VIDEO_EDIT_UPLOAD_CONSTANTS.TOPAZ_MAX_VIDEO_SIZE_LABEL}
         formatsLabel={VIDEO_EDIT_UPLOAD_CONSTANTS.VIDEO_FORMATS_LABEL}
         file={sourceVideo}
         preview={videoPreview}

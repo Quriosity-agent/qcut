@@ -2,9 +2,9 @@
  * Kling Video to Audio Tab Component
  *
  * WHY this component:
- * - Generates audio from silent videos
- * - Common need for AI-generated videos
- * - 3-20 second video limit
+ * - Generates audio for videos (3-20 seconds)
+ * - Creates sound effects and background music
+ * - Supports ASMR mode for enhanced audio
  */
 
 import { useState } from "react";
@@ -82,7 +82,7 @@ export function AudioGenTab() {
 
   /**
    * Handle process click
-   * WHY: Gather parameters and start processing
+   * WHY: Start audio generation with optional prompts
    */
   const handleProcessClick = async () => {
     if (!sourceVideo) {
@@ -90,6 +90,7 @@ export function AudioGenTab() {
       return;
     }
 
+    // Include optional prompts if provided
     const params: Partial<KlingVideoToAudioParams> = {
       sound_effect_prompt: soundEffectPrompt.trim() || undefined,
       background_music_prompt: backgroundMusicPrompt.trim() || undefined,
@@ -109,7 +110,7 @@ export function AudioGenTab() {
             <p className="text-xs text-muted-foreground mt-0.5">Generate audio from video content</p>
           </div>
           <div className="text-right">
-            <p className="text-xs font-semibold">$0.25</p>
+            <p className="text-xs font-semibold">$0.035</p>
             <p className="text-xs text-muted-foreground">per video</p>
           </div>
         </div>
@@ -138,11 +139,12 @@ export function AudioGenTab() {
           Sound Effects (Optional)
         </Label>
         <Textarea
-          placeholder="e.g., footsteps on gravel, birds chirping, wind rustling"
+          placeholder="e.g., footsteps on gravel, birds chirping, wind rustling (max 200 chars)"
           value={soundEffectPrompt}
           onChange={(e) => setSoundEffectPrompt(e.target.value)}
           className="min-h-[60px] text-xs"
           disabled={isProcessing}
+          maxLength={200}
         />
       </div>
 
@@ -153,11 +155,12 @@ export function AudioGenTab() {
           Background Music (Optional)
         </Label>
         <Textarea
-          placeholder="e.g., upbeat jazz piano, cinematic orchestral, lo-fi hip hop"
+          placeholder="e.g., upbeat jazz piano, cinematic orchestral, lo-fi hip hop (max 200 chars)"
           value={backgroundMusicPrompt}
           onChange={(e) => setBackgroundMusicPrompt(e.target.value)}
           className="min-h-[60px] text-xs"
           disabled={isProcessing}
+          maxLength={200}
         />
       </div>
 
@@ -170,7 +173,7 @@ export function AudioGenTab() {
               ASMR Mode
             </Label>
             <p className="text-xs text-muted-foreground">
-              Enhance subtle ambient sounds (2x processing time)
+              Enhance detailed sound effects for immersive content
             </p>
           </div>
           <Switch
@@ -262,8 +265,8 @@ export function AudioGenTab() {
       {/* Info */}
       <div className="text-xs text-muted-foreground space-y-1">
         <p>• Videos must be 3-20 seconds long</p>
-        <p>• ASMR mode works best with videos under 10 seconds</p>
-        <p>• Leave prompts empty for automatic generation</p>
+        <p>• Prompts are optional (max 200 characters each)</p>
+        <p>• Generates sound effects and background music</p>
       </div>
     </div>
   );
