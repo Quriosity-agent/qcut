@@ -566,8 +566,9 @@ export class CLIExportEngine extends ExportEngine {
     // Calculate actual display timing (accounting for trim)
     const trimStart = element.trimStart ?? 0;
     const trimEnd = element.trimEnd ?? 0;
+    const duration = element.duration ?? 0;
     const startTime = element.startTime + trimStart;
-    const endTime = element.startTime + element.duration - trimEnd;
+    const endTime = element.startTime + duration - trimEnd;
 
     // Build base filter parameters
     const filterParams: string[] = [
@@ -575,7 +576,6 @@ export class CLIExportEngine extends ExportEngine {
       `fontfile=${escapedFontPath}`,
       `fontsize=${element.fontSize || 24}`,
       `fontcolor=${fontColor}`,
-      `text_align=${element.textAlign}`,
     ];
 
     // Helper to format numeric offsets with explicit sign when positive
@@ -589,16 +589,20 @@ export class CLIExportEngine extends ExportEngine {
     const yOffset = Math.round(element.y ?? 0);
 
     // Default to centered placement with offset
-    let xExpr = `(w-text_w)/2${formatOffset(xOffset)}`;
+    const anchorXExpr = `w/2${formatOffset(xOffset)}`;
+    let xExpr = `${anchorXExpr}-(text_w/2)`;
     let yExpr = `(h-text_h)/2${formatOffset(yOffset)}`;
 
     // Apply text alignment while preserving offsets
-    if (element.textAlign === 'center') {
-      // Already centered; keep offset
-      xExpr = `(w-text_w)/2${formatOffset(xOffset)}`;
+    if (element.textAlign === 'left') {
+      // Left-align: anchor left edge at canvas center + offset
+      xExpr = `${anchorXExpr}`;
+    } else if (element.textAlign === 'center') {
+      // Center-align: already centered; keep offset
+      xExpr = `${anchorXExpr}-(text_w/2)`;
     } else if (element.textAlign === 'right') {
-      // Align right edge at the center + offset point
-      xExpr = `w-text_w-((w-text_w)/2${formatOffset(-xOffset)})`;
+      // Right-align: place right edge at canvas center + offset
+      xExpr = `${anchorXExpr}-text_w`;
     }
 
     filterParams.push(`x=${xExpr}`);
