@@ -108,6 +108,8 @@ export interface VideoEditResult {
   jobId: string;
   duration?: number;
   fileSize?: number;
+  width?: number;  // Video width in pixels
+  height?: number;  // Video height in pixels
   cost?: number;  // Calculated cost in USD
 }
 
