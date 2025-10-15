@@ -49,8 +49,15 @@ interface FalDirectResponse {
   video?: {
     url: string;
     duration?: number;
+    size?: number;
+  };
+  audio?: {
+    url: string;
+    duration?: number;
   };
 }
+
+type FalDirectResult = FalDirectResponse & { request_id?: string };
 
 /**
  * Video Edit Client Class
@@ -192,7 +199,7 @@ class VideoEditClient {
           console.log("9. Queue update received:", update);
           debugLog("Kling queue update:", update);
         },
-      }) as any;
+      }) as FalDirectResult;
 
       // Parse response
       const videoUrl = result.video_url || result.video?.url;
@@ -275,7 +282,7 @@ class VideoEditClient {
         onQueueUpdate: (update) => {
           debugLog("MMAudio queue update:", update);
         },
-      }) as any;
+      }) as FalDirectResult;
 
       // Parse response
       const videoUrl = result.video_url || result.video?.url;
@@ -339,7 +346,7 @@ class VideoEditClient {
         onQueueUpdate: (update) => {
           debugLog("Topaz queue update:", update);
         },
-      }) as any;
+      }) as FalDirectResult;
 
       // Parse response
       const videoUrl = result.video_url || result.video?.url;
