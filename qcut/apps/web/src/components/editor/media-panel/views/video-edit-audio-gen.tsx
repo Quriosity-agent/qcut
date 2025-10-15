@@ -223,7 +223,7 @@ export function AudioGenTab() {
                   type="button"
                   size="sm"
                   variant="outline"
-                  onClick={() => openInNewTab(result.videoUrl)}
+                  onClick={() => openInNewTab(result.videoUrl!)}
                   className="text-xs"
                 >
                   Download Video
@@ -234,7 +234,7 @@ export function AudioGenTab() {
                   type="button"
                   size="sm"
                   variant="outline"
-                  onClick={() => openInNewTab(result.audioUrl)}
+                  onClick={() => openInNewTab(result.audioUrl!)}
                   className="text-xs"
                 >
                   Download Audio

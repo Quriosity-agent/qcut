@@ -300,7 +300,7 @@ export function AudioSyncTab() {
                   type="button"
                   size="sm"
                   variant="outline"
-                  onClick={() => openInNewTab(result.videoUrl)}
+                  onClick={() => openInNewTab(result.videoUrl!)}
                   className="text-xs"
                 >
                   Download Video

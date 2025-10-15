@@ -292,7 +292,7 @@ export function UpscaleTab() {
                 type="button"
                 size="sm"
                 variant="outline"
-                onClick={() => openInNewTab(result.videoUrl)}
+                onClick={() => openInNewTab(result.videoUrl!)}
                 className="w-full text-xs"
               >
                 Download Upscaled Video

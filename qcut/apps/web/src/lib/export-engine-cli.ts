@@ -543,8 +543,10 @@ export class CLIExportEngine extends ExportEngine {
     }
 
     // Calculate actual display timing (accounting for trim)
-    const startTime = element.startTime + element.trimStart;
-    const endTime = element.startTime + element.duration - element.trimEnd;
+    const trimStart = element.trimStart ?? 0;
+    const trimEnd = element.trimEnd ?? 0;
+    const startTime = element.startTime + trimStart;
+    const endTime = element.startTime + element.duration - trimEnd;
 
     // Build base filter parameters
     const filterParams: string[] = [
@@ -552,23 +554,30 @@ export class CLIExportEngine extends ExportEngine {
       `fontfile='${fontPath}'`,
       `fontsize=${element.fontSize || 24}`,
       `fontcolor=${fontColor}`,
+      `text_align=${element.textAlign}`,
     ];
 
-    // Position (preserve element's x/y offsets when centering)
-    const canvasWidth = this.canvas.width;
-    const canvasHeight = this.canvas.height;
+    // Helper to format numeric offsets with explicit sign when positive
+    const formatOffset = (value: number): string => {
+      if (value === 0) return '';
+      return value > 0 ? `+${value}` : `${value}`;
+    };
 
-    // Use element's x/y coordinates directly (they're already relative to canvas)
-    let xExpr = `${Math.round(element.x || 50)}`;
-    let yExpr = `${Math.round(element.y || 50)}`;
+    // Element x/y are relative to canvas center; convert to FFmpeg coordinates
+    const xOffset = Math.round(element.x ?? 0);
+    const yOffset = Math.round(element.y ?? 0);
+
+    // Default to centered placement with offset
+    let xExpr = `(w-text_w)/2${formatOffset(xOffset)}`;
+    let yExpr = `(h-text_h)/2${formatOffset(yOffset)}`;
 
     // Apply text alignment while preserving offsets
     if (element.textAlign === 'center') {
-      // Center text horizontally at the specified x position
-      xExpr = `(w-text_w)/2+${Math.round(element.x || 0)}`;
+      // Already centered; keep offset
+      xExpr = `(w-text_w)/2${formatOffset(xOffset)}`;
     } else if (element.textAlign === 'right') {
-      // Right align text at the specified x position
-      xExpr = `w-text_w-50+${Math.round(element.x || 0)}`;
+      // Align right edge at the center + offset point
+      xExpr = `w-text_w-((w-text_w)/2${formatOffset(-xOffset)})`;
     }
 
     filterParams.push(`x=${xExpr}`);

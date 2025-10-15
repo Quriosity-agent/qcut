@@ -14,6 +14,7 @@ import {
 import * as path from "path";
 import * as fs from "fs";
 import * as http from "http";
+import * as os from "os";
 
 // Type definitions
 interface Logger {
@@ -68,6 +69,7 @@ const { setupSoundIPC } = require("./sound-handler.js");
 const { setupThemeIPC } = require("./theme-handler.js");
 const { setupApiKeyIPC } = require("./api-key-handler.js");
 const { setupGeminiHandlers } = require("./gemini-transcribe-handler.js");
+const { setupFontResolverIPC } = require("./font-resolver-handler.js");
 
 let mainWindow: BrowserWindow | null = null;
 let staticServer: http.Server | null = null;
