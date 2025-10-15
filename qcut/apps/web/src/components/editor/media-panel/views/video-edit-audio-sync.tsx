@@ -241,7 +241,7 @@ export function AudioSyncTab() {
               type="number"
               placeholder="Random"
               value={seed || ""}
-              onChange={(e) => setSeed(e.target.value ? parseInt(e.target.value) : undefined)}
+              onChange={(e) => setSeed(e.target.value ? parseInt(e.target.value, 10) : undefined)}
               disabled={isProcessing}
               className="text-xs"
             />
