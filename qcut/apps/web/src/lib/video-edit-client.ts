@@ -40,6 +40,7 @@ interface FalStatusResponse {
     duration?: number;
     width?: number;
     height?: number;
+    size?: number;
   };
 }
 
@@ -49,6 +50,8 @@ interface FalDirectResponse {
   video?: {
     url: string;
     duration?: number;
+    width?: number;
+    height?: number;
     size?: number;
   };
   audio?: {
@@ -62,6 +65,8 @@ interface FalDirectResponse {
     video?: {
       url: string;
       duration?: number;
+      width?: number;
+      height?: number;
       size?: number;
     };
     audio?: {
