@@ -190,7 +190,9 @@ export function UpscaleTab() {
         </Label>
         <Select
           value={targetFps?.toString() || "none"}
-          onValueChange={(v) => setTargetFps(v === "none" ? undefined : parseInt(v))}
+          onValueChange={(v) =>
+            setTargetFps(v === "none" ? undefined : parseInt(v, 10))
+          }
           disabled={isProcessing}
         >
           <SelectTrigger className="text-xs">

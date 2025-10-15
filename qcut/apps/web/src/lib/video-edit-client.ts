@@ -55,9 +55,26 @@ interface FalDirectResponse {
     url: string;
     duration?: number;
   };
+  // Some FAL models wrap response in data property
+  data?: {
+    video_url?: string;
+    audio_url?: string;
+    video?: {
+      url: string;
+      duration?: number;
+      size?: number;
+    };
+    audio?: {
+      url: string;
+      duration?: number;
+    };
+  };
 }
 
-type FalDirectResult = FalDirectResponse & { request_id?: string };
+type FalDirectResult = FalDirectResponse & {
+  request_id?: string;
+  requestId?: string; // Some responses use camelCase
+};
 
 /**
  * Video Edit Client Class
@@ -139,6 +156,66 @@ class VideoEditClient {
   }
 
   /**
+   * Parse FAL API response defensively
+   * WHY: Some FAL models return data directly, others wrap it in a data property
+   * Pattern from fal-ai-service.ts to handle multiple response structures
+   */
+  private parseResponse(result: FalDirectResult): {
+    videoUrl: string | null;
+    audioUrl: string | null;
+    duration: number | undefined;
+    fileSize: number | undefined;
+    jobId: string;
+  } {
+    console.log("[FAL Response Parser] Raw result:", result);
+
+    // Try multiple response structures (defensive programming)
+    let videoUrl: string | null = null;
+    let audioUrl: string | null = null;
+    let duration: number | undefined;
+    let fileSize: number | undefined;
+
+    // Check direct properties first
+    if (result.video_url) {
+      videoUrl = result.video_url;
+    } else if (result.video?.url) {
+      videoUrl = result.video.url;
+    }
+    // Check data property wrapper (some FAL models use this)
+    else if (result.data?.video_url) {
+      videoUrl = result.data.video_url;
+    } else if (result.data?.video?.url) {
+      videoUrl = result.data.video.url;
+    }
+
+    // Check audio URL
+    if (result.audio_url) {
+      audioUrl = result.audio_url;
+    } else if (result.audio?.url) {
+      audioUrl = result.audio.url;
+    }
+    // Check data property wrapper for audio
+    else if (result.data?.audio_url) {
+      audioUrl = result.data.audio_url;
+    } else if (result.data?.audio?.url) {
+      audioUrl = result.data.audio.url;
+    }
+
+    // Get duration from various sources
+    duration = result.video?.duration || result.data?.video?.duration;
+
+    // Get file size from various sources
+    fileSize = result.video?.size || result.data?.video?.size;
+
+    // Get job/request ID (handle both snake_case and camelCase)
+    const jobId = result.requestId || result.request_id || `fal-${Date.now()}`;
+
+    console.log("[FAL Response Parser] Parsed:", { videoUrl, audioUrl, duration, fileSize, jobId });
+
+    return { videoUrl, audioUrl, duration, fileSize, jobId };
+  }
+
+  /**
    * Generate audio from video using Kling
    *
    * WHY this model:
@@ -201,11 +278,10 @@ class VideoEditClient {
         },
       }) as FalDirectResult;
 
-      // Parse response
-      const videoUrl = result.video_url || result.video?.url;
-      const audioUrl = result.audio_url || result.audio?.url;
+      // Parse response defensively
+      const parsed = this.parseResponse(result);
 
-      if (!videoUrl) {
+      if (!parsed.videoUrl) {
         throw new Error("No video URL in response");
       }
 
@@ -214,10 +290,10 @@ class VideoEditClient {
 
       return {
         modelId: "kling_video_to_audio",
-        jobId: result.request_id || `kling-${Date.now()}`,
-        videoUrl,
-        audioUrl,
-        duration: result.video?.duration,
+        jobId: parsed.jobId,
+        videoUrl: parsed.videoUrl,
+        audioUrl: parsed.audioUrl || undefined,
+        duration: parsed.duration,
       };
     } catch (error: any) {
       console.error("=== KLING ERROR DEBUG ===");
@@ -284,23 +360,22 @@ class VideoEditClient {
         },
       }) as FalDirectResult;
 
-      // Parse response
-      const videoUrl = result.video_url || result.video?.url;
-      const audioUrl = result.audio_url || result.audio?.url;
+      // Parse response defensively
+      const parsed = this.parseResponse(result);
 
-      if (!videoUrl) {
+      if (!parsed.videoUrl) {
         throw new Error("No video URL in response");
       }
 
       // Calculate cost
-      const duration = result.video?.duration || params.duration || 10;
+      const duration = parsed.duration || params.duration || 10;
       const cost = duration * 0.001;  // $0.001 per second
 
       return {
         modelId: "mmaudio_v2",
-        jobId: result.request_id || `mmaudio-${Date.now()}`,
-        videoUrl,
-        audioUrl,
+        jobId: parsed.jobId,
+        videoUrl: parsed.videoUrl,
+        audioUrl: parsed.audioUrl || undefined,
         duration,
         cost,
       };
@@ -348,10 +423,10 @@ class VideoEditClient {
         },
       }) as FalDirectResult;
 
-      // Parse response
-      const videoUrl = result.video_url || result.video?.url;
+      // Parse response defensively
+      const parsed = this.parseResponse(result);
 
-      if (!videoUrl) {
+      if (!parsed.videoUrl) {
         throw new Error("No video URL in response");
       }
 
@@ -361,10 +436,10 @@ class VideoEditClient {
 
       return {
         modelId: "topaz_upscale",
-        jobId: result.request_id || `topaz-${Date.now()}`,
-        videoUrl,
-        duration: result.video?.duration,
-        fileSize: result.video?.size,
+        jobId: parsed.jobId,
+        videoUrl: parsed.videoUrl,
+        duration: parsed.duration,
+        fileSize: parsed.fileSize,
         cost,
       };
     } catch (error) {

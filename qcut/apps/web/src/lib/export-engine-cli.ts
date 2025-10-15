@@ -1363,7 +1363,7 @@ export class CLIExportEngine extends ExportEngine {
 
     // Extract video sources for direct copy optimization
     // IMPORTANT: Disable direct copy if we have text filters
-    const hasTextFilters = textFilterChain && textFilterChain.length > 0;
+    const hasTextFilters = textFilterChain.length > 0;
     const videoSources = (this.exportAnalysis?.canUseDirectCopy && !hasTextFilters)
       ? this.extractVideoSources()
       : [];
@@ -1381,8 +1381,8 @@ export class CLIExportEngine extends ExportEngine {
       duration: this.totalDuration, // CRITICAL: Pass timeline duration to FFmpeg
       audioFiles, // Now contains only validated audio files
       filterChain: combinedFilterChain || undefined,
-      textFilterChain: textFilterChain || undefined,  // Add text filter chain
-      useDirectCopy: (this.exportAnalysis?.canUseDirectCopy && !hasTextFilters) || false, // Disable direct copy when text present
+      textFilterChain: hasTextFilters ? textFilterChain : undefined,  // Add text filter chain
+      useDirectCopy: !!(this.exportAnalysis?.canUseDirectCopy && !hasTextFilters), // Disable direct copy when text present
       videoSources: videoSources.length > 0 ? videoSources : undefined,
     };
 
