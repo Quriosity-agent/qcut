@@ -219,9 +219,13 @@ export function AudioGenTab() {
             <div className="flex gap-2">
               {result.videoUrl && (
                 <Button
+                  type="button"
                   size="sm"
                   variant="outline"
-                  onClick={() => window.open(result.videoUrl!, "_blank")}
+                  onClick={() => {
+                    const win = window.open(result.videoUrl!, "_blank", "noopener,noreferrer");
+                    if (win) win.opener = null;
+                  }}
                   className="text-xs"
                 >
                   Download Video
@@ -229,9 +233,13 @@ export function AudioGenTab() {
               )}
               {result.audioUrl && (
                 <Button
+                  type="button"
                   size="sm"
                   variant="outline"
-                  onClick={() => window.open(result.audioUrl!, "_blank")}
+                  onClick={() => {
+                    const win = window.open(result.audioUrl!, "_blank", "noopener,noreferrer");
+                    if (win) win.opener = null;
+                  }}
                   className="text-xs"
                 >
                   Download Audio
