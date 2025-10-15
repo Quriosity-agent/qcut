@@ -419,6 +419,26 @@ export class CLIExportEngine extends ExportEngine {
   }
 
   /**
+   * Escape file system paths for FFmpeg filter arguments.
+   * Ensures separators, spaces, and delimiters are escaped.
+   */
+  private escapePathForFFmpeg(path: string): string {
+    return path
+      .replace(/\\/g, '\\\\')   // Windows backslashes
+      .replace(/:/g, '\\:')     // Drive letter separator
+      .replace(/ /g, '\\ ')     // Spaces in path segments
+      .replace(/,/g, '\\,')     // Filter delimiters
+      .replace(/;/g, '\\;')
+      .replace(/\[/g, '\\[')
+      .replace(/\]/g, '\\]')
+      .replace(/\(/g, '\\(')
+      .replace(/\)/g, '\\)')
+      .replace(/'/g, "\\'")
+      .replace(/%/g, '\\%')
+      .replace(/=/g, '\\=');
+  }
+
+  /**
    * Resolve font family name to actual font file path
    * Supports Windows, macOS, and Linux with platform-aware paths
    */
@@ -534,6 +554,7 @@ export class CLIExportEngine extends ExportEngine {
       element.fontWeight,
       element.fontStyle
     );
+    const escapedFontPath = this.escapePathForFFmpeg(fontPath);
 
     // Convert CSS color to FFmpeg format (remove # if present)
     let fontColor = element.color || '#ffffff';
@@ -551,7 +572,7 @@ export class CLIExportEngine extends ExportEngine {
     // Build base filter parameters
     const filterParams: string[] = [
       `text='${escapedText}'`,
-      `fontfile='${fontPath}'`,
+      `fontfile=${escapedFontPath}`,
       `fontsize=${element.fontSize || 24}`,
       `fontcolor=${fontColor}`,
       `text_align=${element.textAlign}`,
@@ -624,17 +645,21 @@ export class CLIExportEngine extends ExportEngine {
    * Collects all text elements from timeline and converts to drawtext filters
    */
   private buildTextOverlayFilters(): string {
-    const textElements: TextElement[] = [];
+    const textElementsWithOrder: Array<{ element: TextElement; trackIndex: number; elementIndex: number }> = [];
 
     // Iterate through all tracks to find text elements
-    for (const track of this.tracks) {
+    for (let trackIndex = 0; trackIndex < this.tracks.length; trackIndex++) {
+      const track = this.tracks[trackIndex];
+
       // Only process text tracks
       if (track.type !== 'text') {
         continue;
       }
 
       // Process each element in the track
-      for (const element of track.elements) {
+      for (let elementIndex = 0; elementIndex < track.elements.length; elementIndex++) {
+        const element = track.elements[elementIndex];
+
         // Skip non-text elements (shouldn't happen on text track, but be safe)
         if (element.type !== 'text') {
           continue;
@@ -645,23 +670,30 @@ export class CLIExportEngine extends ExportEngine {
           continue;
         }
 
-        // Collect text element
-        textElements.push(element as TextElement);
+        // Collect text element with its order information
+        textElementsWithOrder.push({
+          element: element as TextElement,
+          trackIndex,
+          elementIndex
+        });
       }
     }
 
-    // Sort by z-index/track order for proper layering
-    // WHY: In FFmpeg, later filters draw on top. We must sort by z-index to ensure
-    // text with higher z-index is drawn last (appears on top).
-    textElements.sort((a, b) => {
-      const aOrder = a.zIndex ?? a.trackIndex ?? 0;
-      const bOrder = b.zIndex ?? b.trackIndex ?? 0;
-      return aOrder - bOrder;
+    // Sort by track order, then by element order within track for proper layering
+    // WHY: In FFmpeg, later filters draw on top. Lower track index = background, higher = foreground.
+    // Elements within the same track maintain their timeline order.
+    textElementsWithOrder.sort((a, b) => {
+      // First sort by track index (track rendering order)
+      if (a.trackIndex !== b.trackIndex) {
+        return a.trackIndex - b.trackIndex;
+      }
+      // If same track, sort by element index (order in track)
+      return a.elementIndex - b.elementIndex;
     });
 
     // Convert each to drawtext filter
-    const filters = textElements
-      .map(el => this.convertTextElementToDrawtext(el))
+    const filters = textElementsWithOrder
+      .map(item => this.convertTextElementToDrawtext(item.element))
       .filter(f => f !== "");
 
     // Join all filters with comma separator
