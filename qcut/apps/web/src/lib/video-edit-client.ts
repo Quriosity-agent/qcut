@@ -165,6 +165,8 @@ class VideoEditClient {
     audioUrl: string | null;
     duration: number | undefined;
     fileSize: number | undefined;
+    width: number | undefined;
+    height: number | undefined;
     jobId: string;
   } {
     console.log("[FAL Response Parser] Raw result:", result);
@@ -174,6 +176,8 @@ class VideoEditClient {
     let audioUrl: string | null = null;
     let duration: number | undefined;
     let fileSize: number | undefined;
+    let width: number | undefined;
+    let height: number | undefined;
 
     // Check direct properties first
     if (result.video_url) {
@@ -207,12 +211,16 @@ class VideoEditClient {
     // Get file size from various sources
     fileSize = result.video?.size || result.data?.video?.size;
 
+    // Get video dimensions from various sources
+    width = result.video?.width || result.data?.video?.width;
+    height = result.video?.height || result.data?.video?.height;
+
     // Get job/request ID (handle both snake_case and camelCase)
     const jobId = result.requestId || result.request_id || `fal-${Date.now()}`;
 
-    console.log("[FAL Response Parser] Parsed:", { videoUrl, audioUrl, duration, fileSize, jobId });
+    console.log("[FAL Response Parser] Parsed:", { videoUrl, audioUrl, duration, fileSize, width, height, jobId });
 
-    return { videoUrl, audioUrl, duration, fileSize, jobId };
+    return { videoUrl, audioUrl, duration, fileSize, width, height, jobId };
   }
 
   /**
@@ -294,6 +302,8 @@ class VideoEditClient {
         videoUrl: parsed.videoUrl,
         audioUrl: parsed.audioUrl || undefined,
         duration: parsed.duration,
+        width: parsed.width,
+        height: parsed.height,
       };
     } catch (error: any) {
       console.error("=== KLING ERROR DEBUG ===");
@@ -377,6 +387,8 @@ class VideoEditClient {
         videoUrl: parsed.videoUrl,
         audioUrl: parsed.audioUrl || undefined,
         duration,
+        width: parsed.width,
+        height: parsed.height,
         cost,
       };
     } catch (error) {
@@ -440,6 +452,8 @@ class VideoEditClient {
         videoUrl: parsed.videoUrl,
         duration: parsed.duration,
         fileSize: parsed.fileSize,
+        width: parsed.width,
+        height: parsed.height,
         cost,
       };
     } catch (error) {
