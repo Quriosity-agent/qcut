@@ -25,6 +25,7 @@ export class CLIExportEngine extends ExportEngine {
   private frameDir: string | null = null;
   private effectsStore?: EffectsStore;
   private exportAnalysis: ExportAnalysis | null = null;
+  private disableCanvasTextRendering = true;
 
   constructor(
     canvas: HTMLCanvasElement,
@@ -105,7 +106,9 @@ export class CLIExportEngine extends ExportEngine {
     if (element.type === "media" && mediaItem) {
       await this.renderMediaElementCLI(element, mediaItem, elementTimeOffset);
     } else if (element.type === "text") {
-      this.renderTextElementCLI(element);
+      if (!this.disableCanvasTextRendering) {
+        this.renderTextElementCLI(element);
+      }
     } else if (element.type === "sticker") {
       debugLog(
         `[CLI_STICKER_DEBUG] Found sticker element: ${element.id} at time ${currentTime}`
@@ -293,6 +296,7 @@ export class CLIExportEngine extends ExportEngine {
 
   // Simple text rendering for CLI
   private renderTextElementCLI(element: any): void {
+    if (this.disableCanvasTextRendering) return;
     if (element.type !== "text" || !element.content?.trim()) return;
 
     this.ctx.fillStyle = element.color || "#ffffff";
@@ -439,81 +443,83 @@ export class CLIExportEngine extends ExportEngine {
   }
 
   /**
-   * Resolve font family name to actual font file path
-   * Supports Windows, macOS, and Linux with platform-aware paths
+   * Resolve font family name for FFmpeg drawtext filter
+   *
+   * WHY this approach:
+   * - Linux/macOS: Use font= parameter (fontconfig resolution) - more robust
+   * - Windows: Use fontfile= with absolute paths - Windows lacks fontconfig
+   *
+   * Returns either:
+   * - {useFontconfig: true, fontName: 'Arial:style=Bold'} for Linux/macOS
+   * - {useFontconfig: false, fontPath: 'C:/Windows/Fonts/arial.ttf'} for Windows
    */
-  private resolveFontPath(fontFamily: string, fontWeight?: string, fontStyle?: string): string {
+  private resolveFontPath(fontFamily: string, fontWeight?: string, fontStyle?: string):
+    | { useFontconfig: true; fontName: string }
+    | { useFontconfig: false; fontPath: string } {
+
     // Normalize font family name for comparison
     const normalizedFamily = fontFamily.toLowerCase().replace(/['"]/g, '');
     const isBold = fontWeight === 'bold';
     const isItalic = fontStyle === 'italic';
 
-    // Detect platform
-    const platform = navigator.platform.toLowerCase();
-    const isWindows = platform.includes('win');
-    const isMac = platform.includes('mac');
-    const isLinux = platform.includes('linux');
+    // Detect platform using Electron API (reliable)
+    const platform = window.electronAPI?.platform || 'win32'; // Safe fallback to Windows
+    const isWindows = platform === 'win32';
+    const isMac = platform === 'darwin';
+    const isLinux = platform === 'linux';
 
-    // Platform-specific font paths
-    const fontBasePath = isWindows
-      ? 'C:/Windows/Fonts/'
-      : isMac
-      ? '/System/Library/Fonts/'
-      : '/usr/share/fonts/truetype/liberation/'; // Common Linux font path
+    // For Linux and macOS, use fontconfig (font= parameter)
+    // This lets the system resolve fonts - much more robust!
+    if (isLinux || isMac) {
+      // Map common fonts to system equivalents
+      const fontNameMap: Record<string, string> = {
+        'arial': isMac ? 'Helvetica' : 'Liberation Sans',
+        'times new roman': isMac ? 'Times' : 'Liberation Serif',
+        'courier new': isMac ? 'Courier' : 'Liberation Mono',
+      };
 
-    // Font mapping with variations for bold/italic
+      const fontName = fontNameMap[normalizedFamily] || normalizedFamily;
+
+      // Build fontconfig style string
+      const styles: string[] = [];
+      if (isBold) styles.push('Bold');
+      if (isItalic) styles.push('Italic');
+
+      const styleString = styles.length > 0 ? `:style=${styles.join(' ')}` : '';
+
+      return {
+        useFontconfig: true,
+        fontName: `${fontName}${styleString}`
+      };
+    }
+
+    // For Windows, use explicit font file paths
+    // Windows doesn't have fontconfig, so we need absolute paths
+    const fontBasePath = 'C:/Windows/Fonts/';
+
+    // Font file mapping for Windows
     const fontMap: Record<string, {regular: string, bold?: string, italic?: string, boldItalic?: string}> = {
-      'arial': isWindows ? {
+      'arial': {
         regular: 'arial.ttf',
         bold: 'arialbd.ttf',
         italic: 'ariali.ttf',
         boldItalic: 'arialbi.ttf'
-      } : isMac ? {
-        regular: 'Helvetica.ttc',
-        bold: 'Helvetica.ttc',
-        italic: 'Helvetica.ttc',
-        boldItalic: 'Helvetica.ttc'
-      } : {
-        regular: 'LiberationSans-Regular.ttf',
-        bold: 'LiberationSans-Bold.ttf',
-        italic: 'LiberationSans-Italic.ttf',
-        boldItalic: 'LiberationSans-BoldItalic.ttf'
       },
-      'times new roman': isWindows ? {
+      'times new roman': {
         regular: 'times.ttf',
         bold: 'timesbd.ttf',
         italic: 'timesi.ttf',
         boldItalic: 'timesbi.ttf'
-      } : isMac ? {
-        regular: 'Times.ttc',
-        bold: 'Times.ttc',
-        italic: 'Times.ttc',
-        boldItalic: 'Times.ttc'
-      } : {
-        regular: 'LiberationSerif-Regular.ttf',
-        bold: 'LiberationSerif-Bold.ttf',
-        italic: 'LiberationSerif-Italic.ttf',
-        boldItalic: 'LiberationSerif-BoldItalic.ttf'
       },
-      'courier new': isWindows ? {
+      'courier new': {
         regular: 'cour.ttf',
         bold: 'courbd.ttf',
         italic: 'couri.ttf',
         boldItalic: 'courbi.ttf'
-      } : isMac ? {
-        regular: 'Courier.ttc',
-        bold: 'Courier.ttc',
-        italic: 'Courier.ttc',
-        boldItalic: 'Courier.ttc'
-      } : {
-        regular: 'LiberationMono-Regular.ttf',
-        bold: 'LiberationMono-Bold.ttf',
-        italic: 'LiberationMono-Italic.ttf',
-        boldItalic: 'LiberationMono-BoldItalic.ttf'
       }
     };
 
-    // Find matching font or default to Arial/Helvetica/Liberation Sans
+    // Find matching font or default to Arial
     const fontConfig = fontMap[normalizedFamily] || fontMap['arial'];
 
     // Select appropriate font variant
@@ -526,8 +532,11 @@ export class CLIExportEngine extends ExportEngine {
       fontFile = fontConfig.italic;
     }
 
-    // Return full path
-    return `${fontBasePath}${fontFile}`;
+    // Return full path for Windows
+    return {
+      useFontconfig: false,
+      fontPath: `${fontBasePath}${fontFile}`
+    };
   }
 
   /**
@@ -548,13 +557,12 @@ export class CLIExportEngine extends ExportEngine {
     // Escape the text content for FFmpeg
     const escapedText = this.escapeTextForFFmpeg(element.content);
 
-    // Get font file path based on font family and style
-    const fontPath = this.resolveFontPath(
+    // Get font configuration based on platform
+    const fontConfig = this.resolveFontPath(
       element.fontFamily || 'Arial',
       element.fontWeight,
       element.fontStyle
     );
-    const escapedFontPath = this.escapePathForFFmpeg(fontPath);
 
     // Convert CSS color to FFmpeg format (remove # if present)
     let fontColor = element.color || '#ffffff';
@@ -573,10 +581,20 @@ export class CLIExportEngine extends ExportEngine {
     // Build base filter parameters
     const filterParams: string[] = [
       `text='${escapedText}'`,
-      `fontfile=${escapedFontPath}`,
       `fontsize=${element.fontSize || 24}`,
       `fontcolor=${fontColor}`,
     ];
+
+    // Add font parameter (fontconfig on Linux/macOS, fontfile on Windows)
+    if (fontConfig.useFontconfig) {
+      // Linux/macOS: Use font= with fontconfig name
+      // No escaping needed for font names
+      filterParams.push(`font='${fontConfig.fontName}'`);
+    } else {
+      // Windows: Use fontfile= with escaped path
+      const escapedFontPath = this.escapePathForFFmpeg(fontConfig.fontPath);
+      filterParams.push(`fontfile=${escapedFontPath}`);
+    }
 
     // Helper to format numeric offsets with explicit sign when positive
     const formatOffset = (value: number): string => {

@@ -171,7 +171,7 @@ export const VIDEO_EDIT_HELPERS = {
    */
   validateVideoFile: (file: File, maxSizeBytes?: number): { valid: boolean; error?: string } => {
     // Check file type
-    if (!VIDEO_EDIT_UPLOAD_CONSTANTS.ALLOWED_VIDEO_TYPES.includes(file.type as any)) {
+    if (!(VIDEO_EDIT_UPLOAD_CONSTANTS.ALLOWED_VIDEO_TYPES as readonly string[]).includes(file.type)) {
       return { valid: false, error: VIDEO_EDIT_ERROR_MESSAGES.INVALID_VIDEO_TYPE };
     }
 
