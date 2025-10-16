@@ -1528,6 +1528,7 @@ import { Switch } from "@/components/ui/switch";
 import { FileUpload } from "@/components/ui/file-upload";
 import { Progress } from "@/components/ui/progress";
 import { Card } from "@/components/ui/card";
+import { openInNewTab } from "@/lib/utils";
 import { useVideoEditProcessing } from "./use-video-edit-processing";
 import { useProjectStore } from "@/stores/project-store";
 import {
@@ -1716,7 +1717,7 @@ export function AudioGenTab() {
                 <Button
                   size="sm"
                   variant="outline"
-                  onClick={() => window.open(result.videoUrl!, "_blank")}
+                  onClick={() => openInNewTab(result.videoUrl)}
                   className="text-xs"
                 >
                   Download Video
@@ -1726,7 +1727,7 @@ export function AudioGenTab() {
                 <Button
                   size="sm"
                   variant="outline"
-                  onClick={() => window.open(result.audioUrl!, "_blank")}
+                  onClick={() => openInNewTab(result.audioUrl)}
                   className="text-xs"
                 >
                   Download Audio
