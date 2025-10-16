@@ -82,6 +82,22 @@ type FalDirectResult = FalDirectResponse & {
 };
 
 /**
+ * FAL Subscribe Result
+ * The actual structure returned by fal.subscribe()
+ */
+interface FalSubscribeResult {
+  data: FalDirectResponse;
+  requestId: string;
+}
+
+type KlingInputPayload = {
+  video_url: string;
+  sound_effect_prompt?: string;
+  background_music_prompt?: string;
+  asmr_mode?: boolean;
+};
+
+/**
  * Video Edit Client Class
  * Singleton pattern for consistent FAL configuration
  */
@@ -306,7 +322,7 @@ class VideoEditClient {
       if (!model) throw new Error("Model configuration not found");
 
       // Build the input payload
-      const inputPayload: any = {
+      const inputPayload: KlingInputPayload = {
         video_url: params.video_url,
       };
 
@@ -334,10 +350,10 @@ class VideoEditClient {
           console.log("9. Queue update received:", update);
           debugLog("Kling queue update:", update);
         },
-      }) as FalDirectResult;
+      }) as FalSubscribeResult;
 
       // Parse response defensively
-      const parsed = this.parseResponse(result);
+      const parsed = this.parseResponse({ ...result.data, requestId: result.requestId });
 
       if (!parsed.videoUrl) {
         throw new Error("No video URL in response");
@@ -440,10 +456,10 @@ class VideoEditClient {
         onQueueUpdate: (update) => {
           debugLog("MMAudio queue update:", update);
         },
-      }) as FalDirectResult;
+      }) as FalSubscribeResult;
 
       // Parse response defensively
-      const parsed = this.parseResponse(result);
+      const parsed = this.parseResponse({ ...result.data, requestId: result.requestId });
 
       if (!parsed.videoUrl) {
         throw new Error("No video URL in response");
@@ -505,10 +521,10 @@ class VideoEditClient {
         onQueueUpdate: (update) => {
           debugLog("Topaz queue update:", update);
         },
-      }) as FalDirectResult;
+      }) as FalSubscribeResult;
 
       // Parse response defensively
-      const parsed = this.parseResponse(result);
+      const parsed = this.parseResponse({ ...result.data, requestId: result.requestId });
 
       if (!parsed.videoUrl) {
         throw new Error("No video URL in response");

@@ -104,6 +104,18 @@ export function UpscaleTab() {
   };
 
   /**
+   * Handle result download
+   */
+  const videoResultUrl = result?.videoUrl ?? null;
+  const handleDownloadClick = () => {
+    if (!videoResultUrl) {
+      return;
+    }
+
+    openInNewTab(videoResultUrl);
+  };
+
+  /**
    * Get resolution label
    */
   const getResolutionLabel = () => {
@@ -289,13 +301,13 @@ export function UpscaleTab() {
                 <p>Output size: {(result.fileSize / 1024 / 1024).toFixed(1)} MB</p>
               )}
             </div>
-            {result.videoUrl && (
+            {videoResultUrl && (
               <Button
                 type="button"
                 size="sm"
                 variant="outline"
-                onClick={() => openInNewTab(result.videoUrl!)}
-                className="w-full text-xs"
+                onClick={handleDownloadClick}
+                className="w-full"
               >
                 Download Upscaled Video
               </Button>
@@ -306,6 +318,7 @@ export function UpscaleTab() {
 
       {/* Process Button */}
       <Button
+        type="button"
         onClick={handleProcessClick}
         disabled={!canProcess}
         className="w-full"

@@ -719,7 +719,10 @@ export function useVideoEditProcessing(props: UseVideoEditProcessingProps) {
 
             // Check max attempts
             if (attempts > VIDEO_EDIT_PROCESSING_CONSTANTS.MAX_POLL_ATTEMPTS) {
-              clearInterval(pollingInterval.current!);
+              if (pollingInterval.current) {
+                clearInterval(pollingInterval.current);
+                pollingInterval.current = null;
+              }
               reject(new Error("Processing timeout"));
               return;
             }
@@ -738,7 +741,10 @@ export function useVideoEditProcessing(props: UseVideoEditProcessingProps) {
 
             // Mock completion after 5 attempts
             if (attempts >= 5) {
-              clearInterval(pollingInterval.current!);
+              if (pollingInterval.current) {
+                clearInterval(pollingInterval.current);
+                pollingInterval.current = null;
+              }
 
               const result: VideoEditResult = {
                 modelId,
@@ -751,17 +757,21 @@ export function useVideoEditProcessing(props: UseVideoEditProcessingProps) {
               resolve(result);
             }
           } catch (error) {
-            clearInterval(pollingInterval.current!);
+            if (pollingInterval.current) {
+              clearInterval(pollingInterval.current);
+              pollingInterval.current = null;
+            }
             reject(error);
           }
         };
 
         // Start polling
-        poll();
         pollingInterval.current = setInterval(
           poll,
           VIDEO_EDIT_PROCESSING_CONSTANTS.POLLING_INTERVAL_MS
         );
+        // Kick off immediately
+        void poll();
       });
     },
     []
