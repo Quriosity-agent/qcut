@@ -325,11 +325,21 @@ export function setupFFmpegIPC(): void {
         duration,
         audioFiles = [],
         textFilterChain,
+        stickerFilterChain,
+        stickerSources,
         useDirectCopy = false,
       } = options;
 
-      // Defensive: Force disable direct copy when text overlays are present
-      const effectiveUseDirectCopy = textFilterChain ? false : useDirectCopy;
+      // Validate sticker configuration
+      if (stickerFilterChain && (!stickerSources || stickerSources.length === 0)) {
+        throw new Error("Sticker filter chain provided without sticker sources");
+      }
+
+      // Disable direct copy when stickers are present
+      const effectiveUseDirectCopy = useDirectCopy &&
+        !textFilterChain &&
+        !stickerFilterChain &&
+        !options.filterChain;
 
       // Validate duration to prevent crashes or excessive resource usage
       const validatedDuration = Math.min(
@@ -364,7 +374,9 @@ export function setupFFmpegIPC(): void {
           options.filterChain,
           textFilterChain,
           effectiveUseDirectCopy,
-          options.videoSources
+          options.videoSources,
+          stickerFilterChain,
+          stickerSources
         );
 
         // Use async IIFE to handle validation properly
@@ -1238,17 +1250,30 @@ function buildFFmpegArgs(
   // Combine filter chains if provided (video effects, stickers, then text)
   const combinedFilters: string[] = [];
 
+  // Step 1: Video effects (brightness, contrast, etc.)
   if (filterChain && filterChain.trim()) {
     combinedFilters.push(filterChain);
   }
 
+  // Step 2: Sticker overlays (before text for proper layering)
+  if (stickerFilterChain && stickerFilterChain.trim()) {
+    combinedFilters.push(stickerFilterChain);
+  }
+
+  // Step 3: Text overlays (on top of everything)
   if (textFilterChain && textFilterChain.trim()) {
     combinedFilters.push(textFilterChain);
   }
 
   // Apply combined filters if any exist
   if (combinedFilters.length > 0) {
-    args.push("-vf", combinedFilters.join(','));
+    // For complex filters with multiple inputs, use filter_complex
+    if (stickerSources && stickerSources.length > 0) {
+      args.push("-filter_complex", combinedFilters.join(';'));
+    } else {
+      // Simple filters can use -vf
+      args.push("-vf", combinedFilters.join(','));
+    }
   }
 
   // Add audio inputs if provided
@@ -1267,10 +1292,11 @@ function buildFFmpegArgs(
     if (audioFiles.length === 1) {
       // Single audio file - apply delay if needed
       const audioFile: AudioFile = audioFiles[0];
+      const audioInputIndex = 1 + stickerCount; // Account for stickers
       if (audioFile.startTime > 0) {
         args.push(
           "-filter_complex",
-          `[1:a]adelay=${Math.round(audioFile.startTime * 1000)}|${Math.round(audioFile.startTime * 1000)}[audio]`,
+          `[${audioInputIndex}:a]adelay=${Math.round(audioFile.startTime * 1000)}|${Math.round(audioFile.startTime * 1000)}[audio]`,
           "-map",
           "0:v",
           "-map",
@@ -1278,7 +1304,7 @@ function buildFFmpegArgs(
         );
       } else {
         // No delay needed
-        args.push("-map", "0:v", "-map", "1:a");
+        args.push("-map", "0:v", "-map", `${audioInputIndex}:a`);
       }
     } else {
       // Multiple audio files - mix them together
@@ -1286,7 +1312,8 @@ function buildFFmpegArgs(
       const inputMaps: string[] = [];
 
       audioFiles.forEach((audioFile: AudioFile, index: number) => {
-        const inputIndex: number = index + 1; // +1 because video is input 0
+        // Adjust index to account for stickers: video [0] + stickers + audio
+        const inputIndex: number = index + 1 + stickerCount;
         let audioFilter = `[${inputIndex}:a]`;
 
         // Apply volume if specified

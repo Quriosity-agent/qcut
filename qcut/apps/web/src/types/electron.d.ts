@@ -1,3 +1,5 @@
+import type { StickerSource } from '../../../../electron/ffmpeg-handler';
+
 export interface ElectronAPI {
   // System info
   platform: string;
@@ -164,6 +166,12 @@ export interface ElectronAPI {
       frameName: string;
       data: string;
     }) => Promise<string>;
+    saveStickerForExport: (data: {
+      sessionId: string;
+      stickerId: string;
+      imageData: ArrayBuffer;
+      format?: string;
+    }) => Promise<{ success: boolean; path?: string; error?: string }>;
     exportVideoCLI: (options: {
       sessionId: string;
       width: number;
@@ -171,6 +179,13 @@ export interface ElectronAPI {
       fps: number;
       quality: string;
       filterChain?: string;
+      textFilterChain?: string;
+      stickerFilterChain?: string;
+      stickerSources?: StickerSource[];
+      duration?: number;
+      audioFiles?: any[];
+      useDirectCopy?: boolean;
+      videoSources?: any[];
     }) => Promise<{ success: boolean; outputFile: string }>;
     readOutputFile: (path: string) => Promise<Buffer>;
     cleanupExportSession: (sessionId: string) => Promise<void>;

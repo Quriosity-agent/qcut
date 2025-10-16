@@ -351,6 +351,13 @@ const electronAPI: ElectronAPI = {
       audioPath: string;
       fileSize: number;
     }> => ipcRenderer.invoke("extract-audio", options),
+    saveStickerForExport: (data: {
+      sessionId: string;
+      stickerId: string;
+      imageData: ArrayBuffer;
+      format?: string;
+    }): Promise<{ success: boolean; path?: string; error?: string }> =>
+      ipcRenderer.invoke("save-sticker-for-export", data),
     processFrame: (options: {
       sessionId: string;
       inputFrameName: string;
