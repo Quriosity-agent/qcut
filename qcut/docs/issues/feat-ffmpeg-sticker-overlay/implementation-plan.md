@@ -52,13 +52,13 @@ interface StickerSource {
   id: string;
   /** File system path to the sticker image */
   path: string;
-  /** X position as percentage (0-100) of canvas width */
+  /** X position in pixels (top-left corner) */
   x: number;
-  /** Y position as percentage (0-100) of canvas height */
+  /** Y position in pixels (top-left corner) */
   y: number;
-  /** Width as percentage (0-100) of canvas width */
+  /** Width in pixels */
   width: number;
-  /** Height as percentage (0-100) of canvas height */
+  /** Height in pixels */
   height: number;
   /** Start time in seconds for sticker appearance */
   startTime: number;
@@ -68,7 +68,7 @@ interface StickerSource {
   zIndex: number;
   /** Opacity (0-1, optional) */
   opacity?: number;
-  /** Rotation in degrees (optional) */
+  /** Rotation in degrees (optional) - not currently implemented in filters */
   rotation?: number;
 }
 ```
@@ -113,17 +113,18 @@ interface StickerSource {
 
         // Create stickers directory if it doesn't exist
         if (!fs.existsSync(stickerDir)) {
-          fs.mkdirSync(stickerDir, { recursive: true });
+          await fs.promises.mkdir(stickerDir, { recursive: true });
         }
 
         const filename = `sticker_${stickerId}.${format}`;
         const stickerPath = path.join(stickerDir, filename);
 
-        // Write image data to file
-        fs.writeFileSync(stickerPath, Buffer.from(imageData));
+        // Write image data to file asynchronously
+        const buffer = Buffer.from(imageData);
+        await fs.promises.writeFile(stickerPath, buffer);
 
         debugLog(
-          `[FFmpeg] Saved sticker ${stickerId} to: ${stickerPath} (${Buffer.from(imageData).length} bytes)`
+          `[FFmpeg] Saved sticker ${stickerId} to: ${stickerPath} (${buffer.length} bytes)`
         );
 
         return {
@@ -169,6 +170,7 @@ function buildFFmpegArgs(
 **Add sticker input handling (after line 1133, before combinedFilters):**
 ```typescript
   // Add sticker image inputs
+  const stickerCount = stickerSources?.length || 0;
   if (stickerSources && stickerSources.length > 0) {
     // Validate each sticker file exists
     for (const sticker of stickerSources) {
@@ -207,11 +209,24 @@ function buildFFmpegArgs(
   if (combinedFilters.length > 0) {
     // For complex filters with multiple inputs, use filter_complex
     if (stickerSources && stickerSources.length > 0) {
-      args.push("-filter_complex", combinedFilters.join(','));
+      args.push("-filter_complex", combinedFilters.join(';'));
     } else {
       // Simple filters can use -vf
       args.push("-vf", combinedFilters.join(','));
     }
+  }
+```
+
+**Update audio mixing logic (find audio processing section and update indices):**
+```typescript
+  // When processing audio inputs, account for sticker inputs shifting the indices
+  // Audio inputs now start at index (1 + stickerCount) instead of index 1
+  if (audioFiles.length > 0) {
+    audioFiles.forEach((audio, index) => {
+      // Adjust index to account for stickers
+      const audioInputIndex = index + 1 + stickerCount;
+      // Use audioInputIndex in filter references like [${audioInputIndex}:a]
+    });
   }
 ```
 
@@ -235,6 +250,20 @@ function buildFFmpegArgs(
         stickerSources,          // ADD THIS
         useDirectCopy = false,
       } = options;
+```
+
+**Add validation for sticker filters and disable direct copy (after line 300):**
+```typescript
+      // Validate sticker configuration
+      if (stickerFilterChain && (!stickerSources || stickerSources.length === 0)) {
+        throw new Error("Sticker filter chain provided without sticker sources");
+      }
+
+      // Disable direct copy when stickers are present
+      const effectiveUseDirectCopy = useDirectCopy &&
+        !textFilterChain &&
+        !stickerFilterChain &&
+        !options.filterChain;
 ```
 
 **Update buildFFmpegArgs call (line 322, add new parameters):**
@@ -273,6 +302,8 @@ function buildFFmpegArgs(
     }) => Promise<{ success: boolean; path?: string; error?: string }>;
     readOutputFile: (outputPath: string) => Promise<Buffer>;
 ```
+
+**Comment:** After wiring the handler here, we also need to extend the exported `ElectronAPI['ffmpeg'].exportVideoCLI` options type so renderer calls that include `stickerFilterChain` / `stickerSources` type-check correctly.
 
 ---
 
@@ -335,6 +366,8 @@ function buildFFmpegArgs(
     }
   }
 ```
+
+**Comment:** This module ships in the renderer bundle, so importing Node's `fs`/calling `fs.existsSync` will explode at build time—let's drop that branch or move the existence check behind a preload helper instead.
 
 ---
 
@@ -436,6 +469,8 @@ function buildFFmpegArgs(
   }
 ```
 
+**Comment:** Please sort the accumulated array by `zIndex` before returning so the overlay order is deterministic instead of relying on store ordering.
+
 ---
 
 ### Task 8: Add Build Sticker Overlay Filters Method (20 min)
@@ -507,6 +542,8 @@ function buildFFmpegArgs(
   }
 ```
 
+**Comment:** We're carrying `rotation` through the pipeline but not applying it—either wire in a `rotate` step here or drop the property from `StickerSource` so expectations stay aligned.
+
 ---
 
 ### Task 9: Update exportWithCLI to Include Stickers (20 min)
@@ -574,6 +611,8 @@ function buildFFmpegArgs(
     };
 ```
 
+**Comment:** Let's type `stickerSources` as the new `StickerSource[]` instead of `Array<any>` to keep renderer-side checks honest and aligned with what the main process expects.
+
 ---
 
 ### Task 10: Fix Type Export (5 min)
@@ -594,6 +633,8 @@ export type {
   StickerSource,          // ADD THIS
 };
 ```
+
+**Comment:** 👍 This export will help share the type downstream.
 
 ---
 
@@ -618,6 +659,8 @@ const debugError = (...args: any[]) => {
 };
 ```
 
+**Comment:** If we want to keep packaged builds quieter, consider mirroring the `NODE_ENV` guard for `debugWarn`/`debugError` as well so they only surface in development.
+
 ---
 
 ### Task 12: Update Method Access in Electron API (10 min)
@@ -639,6 +682,8 @@ const debugError = (...args: any[]) => {
       extractAudio: (options: any) => ipcRenderer.invoke("extract-audio", options),
     },
 ```
+
+**Comment:** Don’t forget to sync the preload typings so `window.electronAPI.ffmpeg.saveStickerForExport` exists from TypeScript’s perspective.
 
 ---
 
@@ -1212,6 +1257,8 @@ async function testStickerOverlay() {
 testStickerOverlay();
 ```
 
+**Comment:** Could we reuse the existing `getFFmpegPath()` logic here? On machines where FFmpeg isn’t on PATH (e.g. Windows packaging), the script will fail as written.
+
 ---
 
 ### Task 14: Create Integration Test (20 min)
@@ -1400,6 +1447,8 @@ describe('FFmpeg Sticker Export Integration', () => {
   });
 });
 ```
+
+**Comment:** `extractStickerSources()` issues a `fetch`, so the Vitest environment will need a mocked `global.fetch` & `Response`/`Blob` (plus maybe store resets) or the test will fail before it reaches the assertions.
 
 ---
 
