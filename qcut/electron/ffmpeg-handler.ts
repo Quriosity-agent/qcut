@@ -39,6 +39,35 @@ interface VideoSource {
 }
 
 /**
+ * Sticker source configuration for FFmpeg overlay
+ * Contains file path and positioning information for stickers
+ */
+interface StickerSource {
+  /** Unique identifier for the sticker */
+  id: string;
+  /** File system path to the sticker image */
+  path: string;
+  /** X position in pixels (top-left corner) */
+  x: number;
+  /** Y position in pixels (top-left corner) */
+  y: number;
+  /** Width in pixels */
+  width: number;
+  /** Height in pixels */
+  height: number;
+  /** Start time in seconds for sticker appearance */
+  startTime: number;
+  /** End time in seconds for sticker disappearance */
+  endTime: number;
+  /** Layer order (higher = on top) */
+  zIndex: number;
+  /** Opacity (0-1, optional) */
+  opacity?: number;
+  /** Rotation in degrees (optional) */
+  rotation?: number;
+}
+
+/**
  * Configuration options for video export operations
  * Contains all parameters needed for FFmpeg video generation
  */
@@ -61,6 +90,10 @@ interface ExportOptions {
   filterChain?: string;
   /** Optional FFmpeg drawtext filter chain for text overlays */
   textFilterChain?: string;
+  /** Optional FFmpeg overlay filter chain for stickers */
+  stickerFilterChain?: string;
+  /** Sticker image sources for overlay (when stickerFilterChain is provided) */
+  stickerSources?: StickerSource[];
   /** Enable direct video copy/concat optimization (skips frame rendering) */
   useDirectCopy?: boolean;
   /** Video sources for direct copy optimization (when useDirectCopy=true) */
@@ -773,6 +806,59 @@ exit /b %ERRORLEVEL%`;
       });
     }
   );
+
+  // Save sticker image for export
+  ipcMain.handle(
+    "save-sticker-for-export",
+    async (
+      event: IpcMainInvokeEvent,
+      {
+        sessionId,
+        stickerId,
+        imageData,
+        format = "png",
+      }: {
+        sessionId: string;
+        stickerId: string;
+        imageData: ArrayBuffer;
+        format?: string;
+      }
+    ): Promise<{ success: boolean; path?: string; error?: string }> => {
+      try {
+        const stickerDir = path.join(
+          tempManager.getFrameDir(sessionId),
+          "stickers"
+        );
+
+        // Create stickers directory if it doesn't exist
+        if (!fs.existsSync(stickerDir)) {
+          await fs.promises.mkdir(stickerDir, { recursive: true });
+        }
+
+        const filename = `sticker_${stickerId}.${format}`;
+        const stickerPath = path.join(stickerDir, filename);
+
+        // Write image data to file asynchronously
+        const buffer = Buffer.from(imageData);
+        await fs.promises.writeFile(stickerPath, buffer);
+
+        console.log(
+          `[FFmpeg] Saved sticker ${stickerId} to: ${stickerPath} (${buffer.length} bytes)`
+        );
+
+        return {
+          success: true,
+          path: stickerPath,
+        };
+      } catch (error: any) {
+        console.error(`[FFmpeg] Failed to save sticker ${stickerId}:`, error);
+        return {
+          success: false,
+          error: error.message,
+        };
+      }
+    }
+  );
 }
 
 /**
@@ -959,7 +1045,9 @@ function buildFFmpegArgs(
   filterChain?: string,
   textFilterChain?: string,
   useDirectCopy = false,
-  videoSources?: VideoSource[]
+  videoSources?: VideoSource[],
+  stickerFilterChain?: string,
+  stickerSources?: StickerSource[]
 ): string[] {
   const qualitySettings: QualityMap = {
     "high": { crf: "18", preset: "slow" },
@@ -1132,7 +1220,22 @@ function buildFFmpegArgs(
     inputPattern,
   ];
 
-  // Combine filter chains if provided (both video effects and text overlays)
+  // Add sticker image inputs
+  const stickerCount = stickerSources?.length || 0;
+  if (stickerSources && stickerSources.length > 0) {
+    // Validate each sticker file exists
+    for (const sticker of stickerSources) {
+      if (!fs.existsSync(sticker.path)) {
+        console.warn(`[FFmpeg] Sticker file not found: ${sticker.path}`);
+        continue;
+      }
+      // Add as input (will be indexed as [1], [2], etc. after base video [0])
+      args.push("-loop", "1");  // Loop single image
+      args.push("-i", sticker.path);
+    }
+  }
+
+  // Combine filter chains if provided (video effects, stickers, then text)
   const combinedFilters: string[] = [];
 
   if (filterChain && filterChain.trim()) {
@@ -1293,4 +1396,5 @@ export type {
   OpenFolderResult,
   ExtractAudioOptions,
   ExtractAudioResult,
+  StickerSource,
 };
