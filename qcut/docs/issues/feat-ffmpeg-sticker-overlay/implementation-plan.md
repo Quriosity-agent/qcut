@@ -38,7 +38,7 @@ interface OverlaySticker {
 
 ## Implementation Tasks (< 20 min each)
 
-### Task 1: Add Sticker Export Interface Types (10 min)
+### Task 1: Add Sticker Export Interface Types ✅ COMPLETED
 **File:** `C:\Users\zdhpe\Desktop\vite_opencut\OpenCut-main\qcut\electron\ffmpeg-handler.ts`
 
 **Add after line 40 (after VideoSource interface):**
@@ -83,7 +83,7 @@ interface StickerSource {
 
 ---
 
-### Task 2: Add Sticker Save IPC Handler (15 min)
+### Task 2: Add Sticker Save IPC Handler ✅ COMPLETED
 **File:** `C:\Users\zdhpe\Desktop\vite_opencut\OpenCut-main\qcut\electron\ffmpeg-handler.ts`
 
 **Add after extract-audio handler (after line 775):**
@@ -144,7 +144,7 @@ interface StickerSource {
 
 ---
 
-### Task 3: Update buildFFmpegArgs to Support Stickers (20 min)
+### Task 3: Update buildFFmpegArgs to Support Stickers ✅ COMPLETED
 **File:** `C:\Users\zdhpe\Desktop\vite_opencut\OpenCut-main\qcut\electron\ffmpeg-handler.ts`
 
 **Modify function signature (line 950):**
@@ -232,7 +232,7 @@ function buildFFmpegArgs(
 
 ---
 
-### Task 4: Update export-video-cli Handler (10 min)
+### Task 4: Update export-video-cli Handler ✅ COMPLETED
 **File:** `C:\Users\zdhpe\Desktop\vite_opencut\OpenCut-main\qcut\electron\ffmpeg-handler.ts`
 
 **Update handler destructuring (line 286, add after textFilterChain):**
@@ -288,7 +288,7 @@ function buildFFmpegArgs(
 
 ---
 
-### Task 5: Add TypeScript Type Definitions (5 min)
+### Task 5: Add TypeScript Type Definitions ✅ COMPLETED
 **File:** `C:\Users\zdhpe\Desktop\vite_opencut\OpenCut-main\qcut\apps\web\src\types\electron.d.ts`
 
 **Find FFmpegHandlers interface (around line 30), add new handler:**
@@ -1129,11 +1129,11 @@ No files need to be removed for this implementation.
 
 ## Implementation Checklist
 
-### Phase 1: Core FFmpeg Integration
-- [ ] Update `ExportOptions` interface in `ffmpeg-handler.ts`
-- [ ] Add `stickerFilterChain` and `stickerSources` parameters to `buildFFmpegArgs()`
-- [ ] Implement sticker input handling in FFmpeg command builder
-- [ ] Add `save-sticker-for-export` IPC handler
+### Phase 1: Core FFmpeg Integration ✅ COMPLETED
+- [x] Update `ExportOptions` interface in `ffmpeg-handler.ts`
+- [x] Add `stickerFilterChain` and `stickerSources` parameters to `buildFFmpegArgs()`
+- [x] Implement sticker input handling in FFmpeg command builder
+- [x] Add `save-sticker-for-export` IPC handler
 
 ### Phase 2: Export Engine Integration
 - [ ] Implement `extractStickerSources()` in `export-engine-cli.ts`
@@ -1141,9 +1141,10 @@ No files need to be removed for this implementation.
 - [ ] Implement `downloadStickerToTemp()` helper
 - [ ] Update `exportWithCLI()` to include sticker data
 
-### Phase 3: Type Safety
-- [ ] Add `save-sticker-for-export` to `FFmpegHandlers` interface
-- [ ] Update `ExportOptions` type definitions
+### Phase 3: Type Safety ✅ COMPLETED
+- [x] Add `save-sticker-for-export` to `FFmpegHandlers` interface
+- [x] Update `ExportOptions` type definitions
+- [x] Expose `saveStickerForExport` in `preload.ts`
 
 ### Phase 4: Testing
 - [ ] Test with single sticker
