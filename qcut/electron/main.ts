@@ -69,7 +69,7 @@ const { setupSoundIPC } = require("./sound-handler.js");
 const { setupThemeIPC } = require("./theme-handler.js");
 const { setupApiKeyIPC } = require("./api-key-handler.js");
 const { setupGeminiHandlers } = require("./gemini-transcribe-handler.js");
-const { setupFontResolverIPC } = require("./font-resolver-handler.js");
+// Note: font-resolver-handler removed - not implemented
 
 let mainWindow: BrowserWindow | null = null;
 let staticServer: http.Server | null = null;
@@ -364,7 +364,7 @@ app.whenReady().then(() => {
   setupThemeIPC(); // Add theme switching support
   setupApiKeyIPC(); // Add API key management support
   setupGeminiHandlers(); // Add Gemini transcription support
-  setupFontResolverIPC(); // Add font resolution support
+  // Note: font-resolver removed - handler not implemented
 
   // Configure auto-updater for production builds
   if (app.isPackaged) {

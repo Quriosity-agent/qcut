@@ -28,6 +28,8 @@ import {
 import type { MMAudioV2Params } from "./video-edit-types";
 import { openInNewTab } from "@/lib/utils";
 
+const DEFAULT_ESTIMATED_DURATION_SECONDS = 10;
+
 export function AudioSyncTab() {
   // State
   const [sourceVideo, setSourceVideo] = useState<File | null>(null);
@@ -39,6 +41,7 @@ export function AudioSyncTab() {
   const [seed, setSeed] = useState<number | undefined>();
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [videoDuration, setVideoDuration] = useState<number | null>(null);
   const audioDescriptionId = useId();
 
   // Store hooks
@@ -69,19 +72,57 @@ export function AudioSyncTab() {
   /**
    * Handle video file change
    */
-  const handleVideoChange = (file: File | null, preview: string | undefined | null) => {
-    if (file) {
-      const validation = VIDEO_EDIT_HELPERS.validateVideoFile(file);
-      if (!validation.valid) {
-        setError(validation.error!);
+  const getVideoDuration = ({ file }: { file: File }): Promise<number> => {
+    return new Promise((resolve, reject) => {
+      try {
+        const video = document.createElement("video");
+        video.preload = "metadata";
+        video.onloadedmetadata = () => {
+          window.URL.revokeObjectURL(video.src);
+          resolve(video.duration);
+        };
+        video.onerror = () => {
+          window.URL.revokeObjectURL(video.src);
+          reject(new Error("Failed to load video metadata"));
+        };
+        video.src = window.URL.createObjectURL(file);
+      } catch (metadataError: unknown) {
+        reject(metadataError instanceof Error ? metadataError : new Error("Failed to read video metadata"));
+      }
+    });
+  };
+
+  const handleVideoChange = async (file: File | null, preview: string | undefined | null) => {
+    try {
+      if (file) {
+        const validation = VIDEO_EDIT_HELPERS.validateVideoFile(file);
+        if (!validation.valid) {
+          setError(validation.error!);
+          return;
+        }
+      }
+
+      setSourceVideo(file);
+      setVideoPreview(preview ?? null); // Coerce undefined to null for type safety
+      setVideoDuration(null);
+      setError(null);
+      reset();
+
+      if (!file) {
         return;
       }
-    }
 
-    setSourceVideo(file);
-    setVideoPreview(preview ?? null);  // Coerce undefined to null for type safety
-    setError(null);
-    reset();
+      const duration = await getVideoDuration({ file });
+      if (Number.isFinite(duration) && duration > 0) {
+        setVideoDuration(duration);
+      } else {
+        setVideoDuration(null);
+      }
+    } catch (metadataError: unknown) {
+      console.error("AudioSyncTab: Failed to read video metadata", metadataError);
+      setVideoDuration(null);
+      setError("Unable to read video duration. Please try a different file.");
+    }
   };
 
   /**
@@ -114,9 +155,11 @@ export function AudioSyncTab() {
    * WHY: Show cost before processing
    */
   const estimateCost = () => {
-    // Rough estimate: assume 10 second video
-    const estimatedDuration = 10;
-    return VIDEO_EDIT_HELPERS.calculateMMAudioCost(estimatedDuration);
+    const durationForEstimate =
+      videoDuration && Number.isFinite(videoDuration) && videoDuration > 0
+        ? videoDuration
+        : DEFAULT_ESTIMATED_DURATION_SECONDS;
+    return VIDEO_EDIT_HELPERS.calculateMMAudioCost(durationForEstimate);
   };
 
   // Audio description for accessibility
