@@ -161,6 +161,37 @@ class VideoEditClient {
   }
 
   /**
+   * Upload video file to FAL storage
+   *
+   * WHY: FAL endpoints require publicly accessible URLs, not blob/data URLs
+   *
+   * @param file - Video file to upload (File or Blob)
+   * @returns Publicly accessible URL for the uploaded video
+   *
+   * Edge cases:
+   * - Files over 90MB use multi-part upload automatically
+   * - Upload time scales with file size
+   */
+  async uploadVideo(file: File | Blob): Promise<string> {
+    await this.ensureInitialized();
+
+    try {
+      debugLog("Uploading video to FAL storage:", {
+        size: file.size,
+        type: file.type,
+      });
+
+      const url = await fal.storage.upload(file);
+
+      debugLog("Video uploaded successfully:", url);
+      return url;
+    } catch (error) {
+      debugError("Failed to upload video:", error);
+      throw new Error(this.handleApiError(error));
+    }
+  }
+
+  /**
    * Parse FAL API response defensively
    * WHY: Some FAL models return data directly, others wrap it in a data property
    * Pattern from fal-ai-service.ts to handle multiple response structures
@@ -249,6 +280,20 @@ class VideoEditClient {
     console.log("3. Video URL length:", params.video_url?.length);
     console.log("4. Video URL preview:", params.video_url?.substring(0, 100) + "...");
 
+    // Validate video URL before making API call
+    if (!params.video_url) {
+      throw new Error("Video URL is required");
+    }
+    if (params.video_url.startsWith("blob:")) {
+      throw new Error("Blob URLs are not supported. The video must be uploaded to a publicly accessible URL first (e.g., using FAL storage).");
+    }
+    if (params.video_url.startsWith("data:")) {
+      throw new Error("Data URLs are not supported. The video must be uploaded to a publicly accessible URL first (e.g., using FAL storage).");
+    }
+    if (!params.video_url.startsWith("http://") && !params.video_url.startsWith("https://")) {
+      throw new Error(`Invalid video URL format: ${params.video_url.substring(0, 50)}... URLs must start with http:// or https://`);
+    }
+
     debugLog("Generating audio with Kling:", {
       hasVideo: !!params.video_url,
       soundEffect: params.sound_effect_prompt,
@@ -317,6 +362,19 @@ class VideoEditClient {
       console.error("Error status:", error?.status);
       console.error("Error statusText:", error?.statusText);
       console.error("Error body:", error?.body);
+
+      // Log validation details if available
+      if (error?.body?.detail) {
+        console.error("Validation errors:");
+        if (Array.isArray(error.body.detail)) {
+          error.body.detail.forEach((detail: any, index: number) => {
+            console.error(`  ${index + 1}.`, detail);
+          });
+        } else {
+          console.error("  ", error.body.detail);
+        }
+      }
+
       console.error("Full error object:", error);
       console.error("Error response:", error?.response);
       if (error?.response) {
@@ -330,6 +388,15 @@ class VideoEditClient {
       console.error("=== END ERROR DEBUG ===");
 
       debugError("Kling audio generation failed:", error);
+
+      // Provide better error message for 422 validation errors
+      if (error?.status === 422 && error?.body?.detail) {
+        const details = Array.isArray(error.body.detail)
+          ? error.body.detail.map((d: any) => d.msg || JSON.stringify(d)).join(", ")
+          : String(error.body.detail);
+        throw new Error(`Validation error: ${details}`);
+      }
+
       throw new Error(this.handleApiError(error));
     }
   }

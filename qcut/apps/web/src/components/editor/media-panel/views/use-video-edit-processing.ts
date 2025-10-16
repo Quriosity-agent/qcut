@@ -108,34 +108,6 @@ export function useVideoEditProcessing(props: UseVideoEditProcessingProps) {
   }, [state.progress, state.statusMessage, onProgress]);
 
   /**
-   * Convert video file to data URL
-   * WHY: FAL AI accepts base64 data URLs
-   * Performance: Shows encoding progress for large files
-   */
-  const encodeVideoToDataURL = useCallback(async (file: File): Promise<string> => {
-    setState((prev) => ({
-      ...prev,
-      currentStage: "uploading",
-      statusMessage: VIDEO_EDIT_STATUS_MESSAGES.ENCODING,
-      progress: 5,
-    }));
-
-    try {
-      const dataUrl = await VIDEO_EDIT_HELPERS.fileToDataURL(file);
-
-      setState((prev) => ({
-        ...prev,
-        progress: 10,
-      }));
-
-      return dataUrl;
-    } catch (error) {
-      throw new Error("Failed to encode video file");
-    }
-  }, []);
-
-
-  /**
    * Add result to media store
    * WHY: Automatically adds processed video to timeline
    * Edge case: activeProject might be null
@@ -210,11 +182,10 @@ export function useVideoEditProcessing(props: UseVideoEditProcessingProps) {
         progress: 10,
       }));
 
-      // Encode video
-      console.log("Starting video encoding to base64...");
-      const videoDataUrl = await encodeVideoToDataURL(sourceVideo);
-      console.log("Video encoded. Data URL length:", videoDataUrl.length);
-      console.log("Data URL starts with:", videoDataUrl.substring(0, 50));
+      // Upload video to FAL storage (required for API)
+      console.log("Uploading video to FAL storage...");
+      const videoUrl = await videoEditClient.uploadVideo(sourceVideo);
+      console.log("Video uploaded. URL:", videoUrl);
 
       setState((prev) => ({
         ...prev,
@@ -225,19 +196,19 @@ export function useVideoEditProcessing(props: UseVideoEditProcessingProps) {
 
       // Call actual FAL AI API
       console.log("Calling videoEditClient.generateKlingAudio with params:", {
-        video_url: `[base64 data, length: ${videoDataUrl.length}]`,
+        video_url: videoUrl,
         ...params,
       });
 
       const result = await videoEditClient.generateKlingAudio({
-        video_url: videoDataUrl,
+        video_url: videoUrl,
         ...params,
       });
 
       console.log("=== END PROCESSING KLING DEBUG ===");
       return result;
     },
-    [sourceVideo, encodeVideoToDataURL]
+    [sourceVideo]
   );
 
   /**
@@ -263,8 +234,8 @@ export function useVideoEditProcessing(props: UseVideoEditProcessingProps) {
         progress: 10,
       }));
 
-      // Encode video
-      const videoDataUrl = await encodeVideoToDataURL(sourceVideo);
+      // Upload video to FAL storage (required for API)
+      const videoUrl = await videoEditClient.uploadVideo(sourceVideo);
 
       setState((prev) => ({
         ...prev,
@@ -275,7 +246,7 @@ export function useVideoEditProcessing(props: UseVideoEditProcessingProps) {
 
       // Call actual FAL AI API
       const result = await videoEditClient.generateMMAudio({
-        video_url: videoDataUrl,
+        video_url: videoUrl,
         prompt: params.prompt!, // We already validated prompt exists above
         negative_prompt: params.negative_prompt,
         seed: params.seed,
@@ -287,7 +258,7 @@ export function useVideoEditProcessing(props: UseVideoEditProcessingProps) {
 
       return result;
     },
-    [sourceVideo, encodeVideoToDataURL]
+    [sourceVideo]
   );
 
   /**
@@ -312,8 +283,8 @@ export function useVideoEditProcessing(props: UseVideoEditProcessingProps) {
         progress: 10,
       }));
 
-      // Encode video
-      const videoDataUrl = await encodeVideoToDataURL(sourceVideo);
+      // Upload video to FAL storage (required for API)
+      const videoUrl = await videoEditClient.uploadVideo(sourceVideo);
 
       setState((prev) => ({
         ...prev,
@@ -322,15 +293,15 @@ export function useVideoEditProcessing(props: UseVideoEditProcessingProps) {
         progress: 20,
       }));
 
-      // Call actual FAL AI API
+      // Call actual FAL API
       const result = await videoEditClient.upscaleTopaz({
-        video_url: videoDataUrl,
+        video_url: videoUrl,
         ...params,
       });
 
       return result;
     },
-    [sourceVideo, encodeVideoToDataURL]
+    [sourceVideo]
   );
 
   /**
