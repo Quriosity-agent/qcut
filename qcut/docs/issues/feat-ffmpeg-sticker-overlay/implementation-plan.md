@@ -68,7 +68,7 @@ interface StickerSource {
   zIndex: number;
   /** Opacity (0-1, optional) */
   opacity?: number;
-  /** Rotation in degrees (optional) - not currently implemented in filters */
+  /** Rotation in degrees (optional) */
   rotation?: number;
 }
 ```
@@ -303,7 +303,24 @@ function buildFFmpegArgs(
     readOutputFile: (outputPath: string) => Promise<Buffer>;
 ```
 
-**Comment:** After wiring the handler here, we also need to extend the exported `ElectronAPI['ffmpeg'].exportVideoCLI` options type so renderer calls that include `stickerFilterChain` / `stickerSources` type-check correctly.
+**Update ExportOptions type to include sticker fields:**
+```typescript
+interface ExportOptions {
+  sessionId: string;
+  width: number;
+  height: number;
+  fps: number;
+  quality: "high" | "medium" | "low";
+  duration: number;
+  audioFiles?: AudioFile[];
+  filterChain?: string;
+  textFilterChain?: string;
+  stickerFilterChain?: string;        // ADD THIS
+  stickerSources?: StickerSource[];    // ADD THIS
+  useDirectCopy?: boolean;
+  videoSources?: VideoSource[];
+}
+```
 
 ---
 
@@ -324,9 +341,9 @@ function buildFFmpegArgs(
     );
 
     try {
-      // Check if already has local path
-      if (mediaItem.localPath && fs.existsSync(mediaItem.localPath)) {
-        debugLog(`[CLIExportEngine] Using existing local path: ${mediaItem.localPath}`);
+      // Check if already has local path (without filesystem check in renderer)
+      if (mediaItem.localPath) {
+        debugLog(`[CLIExportEngine] Using provided local path: ${mediaItem.localPath}`);
         return mediaItem.localPath;
       }
 
@@ -366,8 +383,6 @@ function buildFFmpegArgs(
     }
   }
 ```
-
-**Comment:** This module ships in the renderer bundle, so importing Node's `fs`/calling `fs.existsSync` will explode at build time—let's drop that branch or move the existence check behind a preload helper instead.
 
 ---
 
@@ -460,6 +475,9 @@ function buildFFmpegArgs(
         }
       }
 
+      // Sort by zIndex for proper layering order
+      stickerSources.sort((a, b) => a.zIndex - b.zIndex);
+
       debugLog(`[CLIExportEngine] Extracted ${stickerSources.length} valid sticker sources`);
       return stickerSources;
     } catch (error) {
@@ -468,8 +486,6 @@ function buildFFmpegArgs(
     }
   }
 ```
-
-**Comment:** Please sort the accumulated array by `zIndex` before returning so the overlay order is deterministic instead of relying on store ordering.
 
 ---
 
@@ -500,8 +516,17 @@ function buildFFmpegArgs(
       const outputLabel = index === stickerSources.length - 1 ? '' : `[v${index + 1}]`;
 
       // Scale sticker to desired size
-      const scaleFilter = `[${inputIndex}:v]scale=${sticker.width}:${sticker.height}[scaled${index}]`;
+      let currentInput = `[${inputIndex}:v]`;
+      const scaleFilter = `${currentInput}scale=${sticker.width}:${sticker.height}[scaled${index}]`;
       filters.push(scaleFilter);
+      currentInput = `[scaled${index}]`;
+
+      // Apply rotation if needed (before opacity)
+      if (sticker.rotation !== undefined && sticker.rotation !== 0) {
+        const rotateFilter = `${currentInput}rotate=${sticker.rotation}*PI/180:c=none[rotated${index}]`;
+        filters.push(rotateFilter);
+        currentInput = `[rotated${index}]`;
+      }
 
       // Build overlay filter with timing
       let overlayParams = [
@@ -517,7 +542,7 @@ function buildFFmpegArgs(
       // Add opacity if not fully opaque
       if (sticker.opacity !== undefined && sticker.opacity < 1) {
         // Apply opacity using format and geq filters before overlay
-        const opacityFilter = `[scaled${index}]format=rgba,geq=r='r(X,Y)':g='g(X,Y)':b='b(X,Y)':a='${sticker.opacity}*alpha(X,Y)'[alpha${index}]`;
+        const opacityFilter = `${currentInput}format=rgba,geq=r='r(X,Y)':g='g(X,Y)':b='b(X,Y)':a='${sticker.opacity}*alpha(X,Y)'[alpha${index}]`;
         filters.push(opacityFilter);
 
         // Update overlay to use opacity-adjusted input
@@ -525,7 +550,7 @@ function buildFFmpegArgs(
         filters.push(overlayFilter);
       } else {
         // Direct overlay without opacity adjustment
-        const overlayFilter = `[${lastOutput}][scaled${index}]overlay=${overlayParams.join(':')}${outputLabel}`;
+        const overlayFilter = `[${lastOutput}]${currentInput}overlay=${overlayParams.join(':')}${outputLabel}`;
         filters.push(overlayFilter);
       }
 
@@ -541,8 +566,6 @@ function buildFFmpegArgs(
     return filterChain;
   }
 ```
-
-**Comment:** We're carrying `rotation` through the pipeline but not applying it—either wire in a `rotate` step here or drop the property from `StickerSource` so expectations stay aligned.
 
 ---
 
@@ -560,7 +583,7 @@ function buildFFmpegArgs(
 
     // ADD: Extract and build sticker overlays
     let stickerFilterChain: string | undefined;
-    let stickerSources: Array<any> | undefined;
+    let stickerSources: StickerSource[] | undefined;
 
     // Only process stickers if not using direct copy
     if (!this.exportAnalysis?.canUseDirectCopy) {
@@ -611,7 +634,6 @@ function buildFFmpegArgs(
     };
 ```
 
-**Comment:** Let's type `stickerSources` as the new `StickerSource[]` instead of `Array<any>` to keep renderer-side checks honest and aligned with what the main process expects.
 
 ---
 
@@ -634,8 +656,6 @@ export type {
 };
 ```
 
-**Comment:** 👍 This export will help share the type downstream.
-
 ---
 
 ### Task 11: Add Debug Logging Helper (5 min)
@@ -651,15 +671,17 @@ const debugLog = (...args: any[]) => {
 };
 
 const debugWarn = (...args: any[]) => {
-  console.warn('[FFmpeg]', ...args);
+  if (process.env.NODE_ENV !== 'production') {
+    console.warn('[FFmpeg]', ...args);
+  }
 };
 
 const debugError = (...args: any[]) => {
-  console.error('[FFmpeg]', ...args);
+  if (process.env.NODE_ENV !== 'production') {
+    console.error('[FFmpeg]', ...args);
+  }
 };
 ```
-
-**Comment:** If we want to keep packaged builds quieter, consider mirroring the `NODE_ENV` guard for `debugWarn`/`debugError` as well so they only surface in development.
 
 ---
 
@@ -683,7 +705,21 @@ const debugError = (...args: any[]) => {
     },
 ```
 
-**Comment:** Don’t forget to sync the preload typings so `window.electronAPI.ffmpeg.saveStickerForExport` exists from TypeScript’s perspective.
+**Also update the ElectronAPI interface to include the new method in the ffmpeg property:**
+```typescript
+interface ElectronAPI {
+  ffmpeg: {
+    // ... existing methods ...
+    saveStickerForExport: (data: {
+      sessionId: string;
+      stickerId: string;
+      imageData: ArrayBuffer;
+      format?: string;
+    }) => Promise<{ success: boolean; path?: string; error?: string }>;
+    // ... rest of methods ...
+  };
+}
+```
 
 ---
 
@@ -1146,7 +1182,24 @@ const fs = require('fs');
 
 // Test configuration
 const TEST_DIR = path.join(__dirname, 'temp-test-stickers');
-const FFMPEG_PATH = 'ffmpeg';  // Assumes FFmpeg is in PATH
+
+// Get FFmpeg path from Electron resources or system PATH
+function getFFmpegPath() {
+  const electronPath = path.join(
+    __dirname,
+    '..',
+    'electron',
+    'resources',
+    process.platform === 'win32' ? 'ffmpeg.exe' : 'ffmpeg'
+  );
+  if (fs.existsSync(electronPath)) {
+    return electronPath;
+  }
+  // Fallback to system PATH
+  return 'ffmpeg';
+}
+
+const FFMPEG_PATH = getFFmpegPath();
 
 // Create test directory
 if (!fs.existsSync(TEST_DIR)) {
@@ -1257,8 +1310,6 @@ async function testStickerOverlay() {
 testStickerOverlay();
 ```
 
-**Comment:** Could we reuse the existing `getFFmpegPath()` logic here? On machines where FFmpeg isn’t on PATH (e.g. Windows packaging), the script will fail as written.
-
 ---
 
 ### Task 14: Create Integration Test (20 min)
@@ -1279,6 +1330,22 @@ describe('FFmpeg Sticker Export Integration', () => {
     canvas = document.createElement('canvas');
     canvas.width = 1920;
     canvas.height = 1080;
+
+    // Mock fetch for blob URLs
+    global.fetch = vi.fn().mockImplementation((url) => {
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        blob: () => Promise.resolve(new Blob(['test-image-data'], { type: 'image/png' }))
+      });
+    });
+
+    // Mock Blob
+    global.Blob = class Blob {
+      constructor(public parts: any[], public options?: any) {}
+      get type() { return this.options?.type || 'application/octet-stream'; }
+      async arrayBuffer() { return new ArrayBuffer(0); }
+    } as any;
 
     // Mock Electron API
     window.electronAPI = {
@@ -1301,6 +1368,9 @@ describe('FFmpeg Sticker Export Integration', () => {
 
   afterEach(() => {
     vi.clearAllMocks();
+    // Reset store states if needed
+    useStickersOverlayStore.setState({ stickers: [] });
+    useMediaStore.setState({ mediaItems: [] });
   });
 
   it('should extract sticker sources with local paths', async () => {
@@ -1447,8 +1517,6 @@ describe('FFmpeg Sticker Export Integration', () => {
   });
 });
 ```
-
-**Comment:** `extractStickerSources()` issues a `fetch`, so the Vitest environment will need a mocked `global.fetch` & `Response`/`Blob` (plus maybe store resets) or the test will fail before it reaches the assertions.
 
 ---
 
