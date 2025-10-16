@@ -1824,6 +1824,7 @@ import {
   VIDEO_EDIT_ERROR_MESSAGES,
 } from "./video-edit-constants";
 import type { MMAudioV2Params } from "./video-edit-types";
+import { openInNewTab } from "@/lib/utils";
 
 export function AudioSyncTab() {
   // State
@@ -2082,7 +2083,7 @@ export function AudioSyncTab() {
                 <Button
                   size="sm"
                   variant="outline"
-                  onClick={() => window.open(result.videoUrl!, "_blank")}
+                  onClick={() => openInNewTab(result.videoUrl)}
                   className="text-xs"
                 >
                   Download Video
@@ -2180,6 +2181,7 @@ import {
   VIDEO_EDIT_ERROR_MESSAGES,
 } from "./video-edit-constants";
 import type { TopazUpscaleParams } from "./video-edit-types";
+import { openInNewTab } from "@/lib/utils";
 
 export function UpscaleTab() {
   // State
@@ -2431,7 +2433,7 @@ export function UpscaleTab() {
               <Button
                 size="sm"
                 variant="outline"
-                onClick={() => window.open(result.videoUrl!, "_blank")}
+                onClick={() => openInNewTab(result.videoUrl)}
                 className="w-full text-xs"
               >
                 Download Upscaled Video
