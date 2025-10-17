@@ -1724,6 +1724,23 @@ export class CLIExportEngine extends ExportEngine {
       this.exportAnalysis?.optimizationStrategy === 'direct-video-with-filters';
     const videoInput = canUseMode2 ? this.extractVideoInputPath() : null;
 
+    // Log Mode 2 detection result
+    if (canUseMode2 && videoInput) {
+      console.log('⚡ [MODE 2 EXPORT] ============================================');
+      console.log('⚡ [MODE 2 EXPORT] Mode 2 optimization enabled!');
+      console.log(`⚡ [MODE 2 EXPORT] Video input: ${videoInput.path}`);
+      console.log(`⚡ [MODE 2 EXPORT] Trim start: ${videoInput.trimStart}s`);
+      console.log(`⚡ [MODE 2 EXPORT] Trim end: ${videoInput.trimEnd}s`);
+      console.log(`⚡ [MODE 2 EXPORT] Text filters: ${hasTextFilters ? 'YES' : 'NO'}`);
+      console.log(`⚡ [MODE 2 EXPORT] Sticker filters: ${hasStickerFilters ? 'YES' : 'NO'}`);
+      console.log('⚡ [MODE 2 EXPORT] Frame rendering: SKIPPED (using direct video)');
+      console.log('⚡ [MODE 2 EXPORT] Expected speedup: 3-5x faster than frame rendering');
+      console.log('⚡ [MODE 2 EXPORT] ============================================');
+    } else if (canUseMode2 && !videoInput) {
+      console.log('⚠️ [MODE 2 EXPORT] Mode 2 requested but video input extraction failed');
+      console.log('⚠️ [MODE 2 EXPORT] Falling back to standard export');
+    }
+
     const videoSources = (this.exportAnalysis?.canUseDirectCopy && !hasTextFilters && !hasStickerFilters)
       ? this.extractVideoSources()
       : [];
@@ -1746,6 +1763,11 @@ export class CLIExportEngine extends ExportEngine {
       stickerSources,                         // ADD THIS
       useDirectCopy: !!(this.exportAnalysis?.canUseDirectCopy && !hasTextFilters && !hasStickerFilters), // Disable direct copy when text or stickers present
       videoSources: videoSources.length > 0 ? videoSources : undefined,
+      // Mode 2: Direct video input with filters
+      useVideoInput: !!videoInput,
+      videoInputPath: videoInput?.path,
+      trimStart: videoInput?.trimStart || 0,
+      trimEnd: videoInput?.trimEnd || 0,
     };
 
     console.log('🚀 [FFMPEG EXPORT DEBUG] ============================================');

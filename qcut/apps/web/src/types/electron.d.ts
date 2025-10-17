@@ -186,6 +186,11 @@ export interface ElectronAPI {
       audioFiles?: any[];
       useDirectCopy?: boolean;
       videoSources?: any[];
+      // Mode 2: Direct video input with filters
+      useVideoInput?: boolean;
+      videoInputPath?: string;
+      trimStart?: number;
+      trimEnd?: number;
     }) => Promise<{ success: boolean; outputFile: string }>;
     readOutputFile: (path: string) => Promise<Buffer>;
     cleanupExportSession: (sessionId: string) => Promise<void>;

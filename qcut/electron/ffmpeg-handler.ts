@@ -1109,6 +1109,11 @@ function buildFFmpegArgs(
   // MODE 2: Direct video input with FFmpeg filters (text/stickers)
   // =============================================================================
   if (useVideoInput && videoInputPath) {
+    console.log('⚡ [MODE 2] ============================================');
+    console.log('⚡ [MODE 2] Entering Mode 2: Direct video input with filters');
+    console.log(`⚡ [MODE 2] Video input path: ${videoInputPath}`);
+    console.log(`⚡ [MODE 2] Trim settings: start=${trimStart || 0}s, end=${trimEnd || 0}s`);
+    console.log(`⚡ [MODE 2] Duration: ${duration}s`);
     debugLog('[FFmpeg] MODE 2: Using direct video input with filters');
     const args: string[] = ["-y"]; // Overwrite output
 
@@ -1116,6 +1121,7 @@ function buildFFmpegArgs(
     if (!fs.existsSync(videoInputPath)) {
       throw new Error(`Video source not found: ${videoInputPath}`);
     }
+    console.log('⚡ [MODE 2] ✅ Video file validated successfully');
 
     // Apply trim start (seek to position) BEFORE input for faster seeking
     if (trimStart && trimStart > 0) {
@@ -1147,27 +1153,38 @@ function buildFFmpegArgs(
     // Apply video effects first (if any)
     if (filterChain) {
       filters.push(filterChain);
+      console.log(`⚡ [MODE 2] Video effects filter: ${filterChain.substring(0, 100)}...`);
     }
 
     // Apply sticker overlays (middle layer)
     if (stickerFilterChain) {
       filters.push(stickerFilterChain);
+      console.log(`⚡ [MODE 2] Sticker filter chain: ${stickerFilterChain.substring(0, 100)}...`);
     }
 
     // Apply text overlays (on top of everything)
     if (textFilterChain) {
       filters.push(textFilterChain);
+      console.log(`⚡ [MODE 2] Text filter chain: ${textFilterChain.substring(0, 100)}...`);
     }
+
+    // Log filter summary
+    console.log(`⚡ [MODE 2] Total filters: ${filters.length}`);
+    console.log(`⚡ [MODE 2] Filters: ${filters.length > 0 ? filters.map((f, i) => `[${i}] ${f.substring(0, 50)}`).join(', ') : 'none'}`);
 
     // Apply combined filters if any exist
     if (filters.length > 0) {
       if (stickerSources && stickerSources.length > 0) {
         // Complex filter with multiple inputs
         args.push("-filter_complex", filters.join(';'));
+        console.log('⚡ [MODE 2] Using -filter_complex (multiple inputs)');
       } else {
         // Simple filters can use -vf
         args.push("-vf", filters.join(','));
+        console.log('⚡ [MODE 2] Using -vf (single input)');
       }
+    } else {
+      console.log('⚡ [MODE 2] No filters applied');
     }
 
     // Add audio inputs and mixing (if provided)
@@ -1211,6 +1228,12 @@ function buildFFmpegArgs(
     args.push("-movflags", "+faststart");
     args.push(outputFile);
 
+    console.log('⚡ [MODE 2] ✅ FFmpeg args built successfully');
+    console.log(`⚡ [MODE 2] Codec settings: libx264, preset=${preset}, crf=${crf}`);
+    console.log(`⚡ [MODE 2] Audio files: ${audioFiles?.length || 0}`);
+    console.log(`⚡ [MODE 2] Sticker inputs: ${stickerCount}`);
+    console.log(`⚡ [MODE 2] Total args count: ${args.length}`);
+    console.log('⚡ [MODE 2] ============================================');
     debugLog('[FFmpeg] MODE 2 args built successfully');
     return args;
   }

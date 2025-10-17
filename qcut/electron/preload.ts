@@ -81,6 +81,11 @@ interface ExportOptions {
   audioFiles?: AudioFile[];
   metadata?: Record<string, string>;
   useDirectCopy?: boolean;
+  // Mode 2: Direct video input with filters
+  useVideoInput?: boolean;
+  videoInputPath?: string;
+  trimStart?: number;
+  trimEnd?: number;
 }
 
 interface AudioFile {
