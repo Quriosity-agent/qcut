@@ -487,7 +487,7 @@ const args: string[] = buildFFmpegArgs(
         if (element.hidden) continue;
         if (element.type !== 'media') continue;
 
-        const item = this.mediaItems.find(m => m.id === element.mediaId);
+        const item = this.mediaItems.find(m => m.id === (element as any).mediaId);
         if (item && item.type === 'video' && item.localPath) {
           if (videoElement) {
             // Multiple videos found, can't use single video input
@@ -745,7 +745,8 @@ if (useVideoInput && videoInputPath) {
   debugLog('[FFmpeg] MODE 2: Using direct video input with filters');
   console.log('⚡ [MODE 2] Direct video input mode activated');
   console.log(`⚡ [MODE 2] Video: ${path.basename(videoInputPath)}`);
-  console.log(`⚡ [MODE 2] Filters: ${filters.length > 0 ? filters.join(', ') : 'none'}`);
+  const activeFilters = [filterChain, stickerFilterChain, textFilterChain].filter(Boolean);
+  console.log(`⚡ [MODE 2] Filters: ${activeFilters.length > 0 ? activeFilters.join(' + ') : 'none'}`);
 ```
 
 **Subtasks**:
@@ -753,7 +754,7 @@ if (useVideoInput && videoInputPath) {
 - [ ] Add Mode 2 execution logging to ffmpeg-handler.ts (3 min)
 - [ ] Verify all debug logs are working (4 min)
 
-**Comment:** In the proposed FFmpeg log snippet we reference a `filters` array that doesn’t exist in scope today; either build that variable or log the individual chains (`filterChain`, `stickerFilterChain`, `textFilterChain`) so the message compiles without additional plumbing.
+**Comment:** ✅ FIXED - The logging code now builds a local `activeFilters` array from the individual filter chains to avoid scope issues. This provides clean logging without requiring additional plumbing.
 
 ---
 
@@ -797,6 +798,16 @@ if (useVideoInput && videoInputPath) {
 - **Expected**: Falls back to Mode 3 (can't use Mode 2 with multiple videos)
 - **Verification**: Graceful fallback, export still completes
 - **Pass Criteria**: No crashes, correct fallback behavior
+
+**6. Test Mode 2 with Trimmed Video**
+- **Setup**: 1 video clip (10s duration, trimmed to 3-7s = 4s effective) + 1 text element
+- **Expected**: Mode 2 activates, exported video is exactly 4 seconds
+- **Verification**:
+  - FFmpeg receives correct `-ss 3` and `-t 4` flags
+  - Exported video duration matches trimmed timeline (4.0s ± 0.1s)
+  - Text overlay appears at correct times relative to trimmed video
+  - No double-trimming occurs
+- **Pass Criteria**: Export completes without frame rendering, duration is accurate, trim math is correct
 
 **Subtasks**:
 - [ ] Test Mode 2 with text only (PRIMARY - 4 min)
