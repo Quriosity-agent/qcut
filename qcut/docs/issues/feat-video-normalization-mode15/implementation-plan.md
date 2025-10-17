@@ -122,6 +122,8 @@ optimizationStrategy:
   | 'video-normalization';        // Mode 1.5: Normalize + concat (NEW!)
 ```
 
+**Comment**: Implemented via union update in export-analysis; follow-up logging adjustments will land with Mode 1.5 detection.
+
 ### Task 1.2: Add Video Properties Interface
 **File**: `apps/web/src/lib/export-analysis.ts`
 **Location**: After ExportAnalysis interface (around line 35)
@@ -138,6 +140,8 @@ interface VideoProperties {
   pixelFormat?: string;
 }
 ```
+
+**Comment**: Interface added and exported; note that codec metadata currently depends on optional MediaItem metadata.
 
 ---
 
@@ -179,6 +183,8 @@ function extractVideoProperties(
   };
 }
 ```
+
+**Comment**: Helper implemented with fallbacks to MediaItem metadata and returns null when core fields missing; ready for property comparison logic.
 
 **IMPORTANT NOTE**: MediaItem interface may need to be updated to include video metadata (width, height, fps). Check if this data is already available in the media store.
 
@@ -233,6 +239,8 @@ function checkVideoPropertiesMatch(
   return true;
 }
 ```
+
+**Comment**: Plan looks good—consider tolerances for fps rounding and guard against missing metadata causing false negatives.
 
 ---
 
@@ -312,6 +320,8 @@ if (canUseDirectCopy) {
 }
 ```
 
+**Comment**: Agree with the decision tree but we should source export width, height, and fps from the actual export settings rather than hard coding defaults.
+
 ### Task 3.2: Update Reason String
 **File**: `apps/web/src/lib/export-analysis.ts`
 **Location**: Lines 167-184 (reason generation)
@@ -324,6 +334,8 @@ if (optimizationStrategy === 'video-normalization') {
 }
 ```
 
+**Comment**: Ensure reason strings clearly explain the Mode 1.5 selection so telemetry and debugging remain informative without altering other mode messaging.
+
 ### Task 3.3: Update Console Logging
 **File**: `apps/web/src/lib/export-analysis.ts`
 **Location**: Lines 247-254 (console logging)
@@ -333,6 +345,8 @@ if (optimizationStrategy === 'video-normalization') {
 } else if (optimizationStrategy === 'video-normalization') {
   console.log('⚡ [EXPORT ANALYSIS] MODE 1.5: Using VIDEO NORMALIZATION - Fast export with padding! ⚡');
 ```
+
+**Comment**: Logging plan makes sense; include a normalization-specific marker so QA can distinguish it from Mode 3 fallbacks in telemetry.
 
 ---
 
@@ -461,6 +475,8 @@ function normalizeVideo(
 }
 ```
 
+**Comment**: When wiring normalizeVideo ensure trim handling mirrors the CLI duration math and reuse shared FFmpeg utilities where possible to avoid drift.
+
 ---
 
 ## PHASE 5: FFmpeg Handler - Update Export Flow
@@ -577,6 +593,8 @@ if (options.optimizationStrategy === 'video-normalization') {
 }
 ```
 
+**Comment**: IPC branch plan aligns with the normalization flow; remember to clean up temporary normalized outputs so repeated exports do not bloat disk usage.
+
 ---
 
 ## PHASE 6: Update ExportOptions Interface
@@ -608,6 +626,8 @@ interface ExportOptions {
   videoSources?: VideoSource[];
 }
 ```
+
+**Comment**: Export options type will need the Mode 1.5 string plus normalized source metadata; confirm the structure still serializes cleanly across the preload bridge.
 
 ---
 
@@ -642,6 +662,8 @@ const exportOptions = {
   optimizationStrategy: this.exportAnalysis?.optimizationStrategy,
 };
 ```
+
+**Comment**: Passing the new strategy through the export options is straightforward; remember to extend related tests so the widened string union stays type-safe end-to-end.
 
 ---
 

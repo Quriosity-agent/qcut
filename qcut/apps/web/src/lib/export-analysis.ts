@@ -29,9 +29,86 @@ export interface ExportAnalysis {
   /** Can use FFmpeg direct copy/concat (fast path) */
   canUseDirectCopy: boolean;
   /** Which export pipeline to use */
-  optimizationStrategy: 'image-pipeline' | 'direct-copy' | 'direct-video-with-filters';
+  optimizationStrategy:
+    | 'image-pipeline'
+    | 'direct-copy'
+    | 'direct-video-with-filters'
+    | 'video-normalization';
   /** Human-readable explanation of strategy choice */
   reason: string;
+}
+
+/**
+ * Video metadata used to determine when normalization is required.
+ */
+export interface VideoProperties {
+  width: number;
+  height: number;
+  fps: number;
+  codec?: string;
+  pixelFormat?: string;
+}
+
+/**
+ * Extracts the intrinsic video properties for a media element.
+ */
+function extractVideoProperties(
+  element: MediaElement,
+  mediaItemsMap: Map<string, MediaItem>
+): VideoProperties | null {
+  const mediaItem = mediaItemsMap.get(element.mediaId);
+
+  if (!mediaItem || mediaItem.type !== 'video') {
+    return null;
+  }
+
+  const metadata = mediaItem.metadata as Record<string, any> | undefined;
+
+  const width =
+    typeof mediaItem.width === 'number' && mediaItem.width > 0
+      ? mediaItem.width
+      : typeof metadata?.width === 'number' && metadata.width > 0
+        ? metadata.width
+        : undefined;
+  const height =
+    typeof mediaItem.height === 'number' && mediaItem.height > 0
+      ? mediaItem.height
+      : typeof metadata?.height === 'number' && metadata.height > 0
+        ? metadata.height
+        : undefined;
+  const fps =
+    typeof mediaItem.fps === 'number' && mediaItem.fps > 0
+      ? mediaItem.fps
+      : typeof metadata?.fps === 'number' && metadata.fps > 0
+        ? metadata.fps
+        : typeof metadata?.video?.fps === 'number' && metadata.video.fps > 0
+          ? metadata.video.fps
+          : undefined;
+
+  if (!width || !height || !fps) {
+    return null;
+  }
+
+  const codec =
+    typeof metadata?.video?.codec === 'string'
+      ? metadata.video.codec
+      : typeof metadata?.codec === 'string'
+        ? metadata.codec
+        : undefined;
+  const pixelFormat =
+    typeof metadata?.video?.pixelFormat === 'string'
+      ? metadata.video.pixelFormat
+      : typeof metadata?.pixelFormat === 'string'
+        ? metadata.pixelFormat
+        : undefined;
+
+  return {
+    width,
+    height,
+    fps,
+    codec,
+    pixelFormat
+  };
 }
 
 /**
@@ -171,7 +248,11 @@ export function analyzeTimelineForExport(
     allVideosHaveLocalPath;
 
   // Determine optimization strategy
-  let optimizationStrategy: 'image-pipeline' | 'direct-copy' | 'direct-video-with-filters';
+  let optimizationStrategy:
+    | 'image-pipeline'
+    | 'direct-copy'
+    | 'direct-video-with-filters'
+    | 'video-normalization';
   if (canUseDirectCopy) {
     optimizationStrategy = 'direct-copy';
   } else if (!needsFrameRendering && needsFilterEncoding && videoElementCount === 1) {
