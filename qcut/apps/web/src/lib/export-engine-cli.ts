@@ -296,8 +296,14 @@ export class CLIExportEngine extends ExportEngine {
 
   // Simple text rendering for CLI
   private renderTextElementCLI(element: any): void {
-    if (this.disableCanvasTextRendering) return;
+    if (this.disableCanvasTextRendering) {
+      console.log(`⏭️  [TEXT RENDERING] Skipping canvas text render for "${element.content?.substring(0, 30)}..." - will be rendered by FFmpeg`);
+      return;
+    }
+
     if (element.type !== "text" || !element.content?.trim()) return;
+
+    console.log(`⚠️  [TEXT RENDERING] WARNING: Rendering text on canvas (slow): "${element.content?.substring(0, 30)}..."`);
 
     this.ctx.fillStyle = element.color || "#ffffff";
     this.ctx.font = `${element.fontSize || 24}px ${element.fontFamily || "Arial"}`;
@@ -843,6 +849,10 @@ export class CLIExportEngine extends ExportEngine {
       const format = blob.type?.split('/')[1] || 'png';
 
       // Save via Electron IPC
+      if (!window.electronAPI?.ffmpeg?.saveStickerForExport) {
+        throw new Error('Electron API not available for sticker export');
+      }
+
       const result = await window.electronAPI.ffmpeg.saveStickerForExport({
         sessionId: this.sessionId!,
         stickerId: sticker.id,
@@ -1300,6 +1310,11 @@ export class CLIExportEngine extends ExportEngine {
     const totalFrames = this.calculateTotalFrames();
     const frameTime = 1 / 30; // fps
 
+    console.log('🎨 [FRAME RENDERING DEBUG] ============================================');
+    console.log(`🎨 [FRAME RENDERING DEBUG] Starting frame rendering: ${totalFrames} frames`);
+    console.log(`🎨 [FRAME RENDERING DEBUG] Canvas text rendering: ${this.disableCanvasTextRendering ? 'DISABLED (using FFmpeg)' : 'ENABLED'}`);
+    console.log('🎨 [FRAME RENDERING DEBUG] ============================================');
+
     debugLog(`[CLI] Rendering ${totalFrames} frames to disk...`);
 
     for (let frame = 0; frame < totalFrames; frame++) {
@@ -1601,35 +1616,40 @@ export class CLIExportEngine extends ExportEngine {
     );
 
     // Build text overlay filter chain for FFmpeg drawtext
+    console.log('🔍 [TEXT EXPORT DEBUG] Starting text filter chain generation...');
     const textFilterChain = this.buildTextOverlayFilters();
     if (textFilterChain) {
+      console.log('✅ [TEXT EXPORT DEBUG] Text filter chain generated successfully');
+      console.log(`📊 [TEXT EXPORT DEBUG] Text filter chain: ${textFilterChain}`);
+      console.log(`📈 [TEXT EXPORT DEBUG] Text element count: ${(textFilterChain.match(/drawtext=/g) || []).length}`);
+      console.log('🎯 [TEXT EXPORT DEBUG] Text will be rendered by FFmpeg CLI (not canvas)');
       debugLog(`[CLI Export] Text filter chain generated: ${textFilterChain}`);
       debugLog(`[CLI Export] Text filter count: ${(textFilterChain.match(/drawtext=/g) || []).length}`);
+    } else {
+      console.log('ℹ️ [TEXT EXPORT DEBUG] No text elements found in timeline');
     }
 
     // ADD: Extract and build sticker overlays
+    // IMPORTANT: Always extract stickers if they exist, regardless of direct copy mode
     let stickerFilterChain: string | undefined;
-    let stickerSources: Array<any> | undefined;
+    let stickerSources: Array<any> = [];
 
-    // Only process stickers if not using direct copy
-    if (!this.exportAnalysis?.canUseDirectCopy) {
-      try {
-        // Extract sticker sources with local file paths
-        stickerSources = await this.extractStickerSources();
+    try {
+      // Extract sticker sources with local file paths (always check for stickers)
+      stickerSources = await this.extractStickerSources();
 
-        if (stickerSources.length > 0) {
-          // Build FFmpeg overlay filter chain
-          stickerFilterChain = this.buildStickerOverlayFilters(stickerSources);
+      if (stickerSources.length > 0) {
+        // Build FFmpeg overlay filter chain
+        stickerFilterChain = this.buildStickerOverlayFilters(stickerSources);
 
-          debugLog(`[CLI Export] Sticker sources: ${stickerSources.length}`);
-          debugLog(`[CLI Export] Sticker filter chain: ${stickerFilterChain}`);
-        }
-      } catch (error) {
-        debugWarn('[CLI Export] Failed to process stickers, continuing without:', error);
-        // Continue export without stickers if processing fails
-        stickerSources = undefined;
-        stickerFilterChain = undefined;
+        debugLog(`[CLI Export] Sticker sources: ${stickerSources.length}`);
+        debugLog(`[CLI Export] Sticker filter chain: ${stickerFilterChain}`);
       }
+    } catch (error) {
+      debugWarn('[CLI Export] Failed to process stickers, continuing without:', error);
+      // Continue export without stickers if processing fails
+      stickerSources = [];
+      stickerFilterChain = undefined;
     }
 
     // Extract video sources for direct copy optimization
@@ -1660,6 +1680,25 @@ export class CLIExportEngine extends ExportEngine {
       videoSources: videoSources.length > 0 ? videoSources : undefined,
     };
 
+    console.log('🚀 [FFMPEG EXPORT DEBUG] ============================================');
+    console.log('🚀 [FFMPEG EXPORT DEBUG] Starting FFmpeg CLI export process');
+    console.log('🚀 [FFMPEG EXPORT DEBUG] Export configuration:');
+    console.log(`   - Session ID: ${exportOptions.sessionId}`);
+    console.log(`   - Dimensions: ${exportOptions.width}x${exportOptions.height}`);
+    console.log(`   - FPS: ${exportOptions.fps}`);
+    console.log(`   - Duration: ${exportOptions.duration}s`);
+    console.log(`   - Quality: ${exportOptions.quality}`);
+    console.log(`   - Audio files: ${exportOptions.audioFiles?.length || 0}`);
+    console.log(`   - Text elements: ${hasTextFilters ? 'YES (using FFmpeg drawtext)' : 'NO'}`);
+    console.log(`   - Sticker overlays: ${hasStickerFilters ? `YES (${stickerSources.length} stickers)` : 'NO'}`);
+    console.log(`   - Direct copy mode: ${exportOptions.useDirectCopy ? 'ENABLED' : 'DISABLED'}`);
+    console.log(`   - Video sources: ${exportOptions.videoSources?.length || 0}`);
+    if (hasTextFilters) {
+      console.log('📝 [TEXT RENDERING] Text will be rendered directly by FFmpeg (not canvas)');
+      console.log(`📝 [TEXT RENDERING] Text filter chain length: ${textFilterChain.length} characters`);
+    }
+    console.log('🚀 [FFMPEG EXPORT DEBUG] ============================================');
+
     debugLog(
       "[CLI Export] Starting FFmpeg export with options:",
       exportOptions
@@ -1669,8 +1708,14 @@ export class CLIExportEngine extends ExportEngine {
     // For now, use basic invoke without progress tracking
 
     try {
+      console.log('⏳ [FFMPEG EXPORT DEBUG] Invoking FFmpeg CLI...');
+      const startTime = Date.now();
+
       const result =
         await window.electronAPI.ffmpeg.exportVideoCLI(exportOptions);
+
+      const duration = ((Date.now() - startTime) / 1000).toFixed(2);
+      console.log(`✅ [FFMPEG EXPORT DEBUG] FFmpeg export completed in ${duration}s`);
       console.log('✅ [EXPORT OPTIMIZATION] FFmpeg export completed successfully!');
       debugLog("[CLI Export] FFmpeg export completed successfully:", result);
       return result.outputFile;
