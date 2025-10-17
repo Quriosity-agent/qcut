@@ -244,10 +244,13 @@ export function analyzeTimelineForExport(
     console.log('🎬 [EXPORT ANALYSIS] Video elements with trim info:', videoTrimInfo);
   }
 
-  if (canUseDirectCopy) {
-    console.log('✅ [EXPORT ANALYSIS] Using DIRECT COPY optimization - Fast export! 🚀');
+  // Log optimization strategy with clear mode indicators
+  if (optimizationStrategy === 'direct-copy') {
+    console.log('✅ [EXPORT ANALYSIS] MODE 1: Using DIRECT COPY optimization - Fast export! 🚀');
+  } else if (optimizationStrategy === 'direct-video-with-filters') {
+    console.log('⚡ [EXPORT ANALYSIS] MODE 2: Using DIRECT VIDEO WITH FILTERS - Fast export with text/stickers! ⚡');
   } else {
-    console.log('⚠️ [EXPORT ANALYSIS] Using IMAGE PIPELINE - Slow export (frame-by-frame)');
+    console.log('🎨 [EXPORT ANALYSIS] MODE 3: Using IMAGE PIPELINE - Slow export (frame-by-frame)');
   }
 
   return {

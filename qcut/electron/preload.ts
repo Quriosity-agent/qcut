@@ -214,6 +214,12 @@ interface ElectronAPI {
       fileSize: number;
     }>;
     validateFilterChain: (filterChain: string) => Promise<boolean>;
+    saveStickerForExport: (data: {
+      sessionId: string;
+      stickerId: string;
+      imageData: ArrayBuffer;
+      format?: string;
+    }) => Promise<{ success: boolean; path?: string; error?: string }>;
 
     // FFmpeg resource helpers
     getFFmpegResourcePath: (filename: string) => Promise<string>;

@@ -414,7 +414,7 @@ export function setupFFmpegIPC(): void {
         (async () => {
           // Verify input based on processing mode
           if (effectiveUseDirectCopy) {
-            // Validate that video sources were provided
+            // MODE 1: Direct copy - validate video sources
             if (!options.videoSources || options.videoSources.length === 0) {
               const error =
                 "Direct copy mode requested but no video sources provided. Frames were not rendered.";
@@ -474,10 +474,27 @@ export function setupFFmpegIPC(): void {
                 return;
               }
             }
+          } else if (options.useVideoInput && options.videoInputPath) {
+            // MODE 2: Direct video input with filters - validate video file exists
+            console.log('⚡ [MODE 2 VALIDATION] Validating video input file...');
+            console.log(`⚡ [MODE 2 VALIDATION] Video path: ${options.videoInputPath}`);
+
+            if (!fs.existsSync(options.videoInputPath)) {
+              const error = `Mode 2 video input not found: ${options.videoInputPath}`;
+              console.error(`❌ [MODE 2 VALIDATION] ${error}`);
+              reject(new Error(error));
+              return;
+            }
+
+            console.log('⚡ [MODE 2 VALIDATION] ✅ Video file validated successfully');
+            console.log('⚡ [MODE 2 VALIDATION] Frame rendering: SKIPPED (using direct video input)');
           } else {
-            // Frame-based mode: verify frames exist
+            // MODE 3: Frame-based mode - verify frames exist
+            console.log('🎨 [MODE 3 VALIDATION] Validating frame files...');
+
             if (!fs.existsSync(frameDir)) {
               const error: string = `Frame directory does not exist: ${frameDir}`;
+              console.error(`❌ [MODE 3 VALIDATION] ${error}`);
               reject(new Error(error));
               return;
             }
@@ -490,9 +507,12 @@ export function setupFFmpegIPC(): void {
 
             if (frameFiles.length === 0) {
               const error: string = `No frame files found in: ${frameDir}`;
+              console.error(`❌ [MODE 3 VALIDATION] ${error}`);
               reject(new Error(error));
               return;
             }
+
+            console.log(`🎨 [MODE 3 VALIDATION] ✅ Found ${frameFiles.length} frame files`);
           }
 
           // Ensure output directory exists
