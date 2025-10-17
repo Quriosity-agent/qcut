@@ -649,29 +649,67 @@ export class ExportEngine {
     this.ctx.fillText(element.content, x, y);
   }
 
-  // Calculate element bounds based on element properties and media dimensions
+  /**
+   * Calculate element bounds with smart resolution adjustment.
+   *
+   * WHY this logic matters:
+   * - Prevents upscaling of small videos (quality degradation)
+   * - Ensures consistent output resolution for all clips
+   * - Black padding maintains aspect ratio without distortion
+   *
+   * Scaling rules:
+   * 1. If video is SMALLER than canvas in BOTH dimensions:
+   *    - Keep original size, center with black padding
+   * 2. If video is LARGER than canvas in ANY dimension:
+   *    - Scale down to fit while maintaining aspect ratio
+   * 3. Always center the result
+   *
+   * @param element - Timeline element being rendered
+   * @param mediaWidth - Original width of the media
+   * @param mediaHeight - Original height of the media
+   * @returns Bounds object with x, y, width, height for canvas rendering
+   */
   protected calculateElementBounds(
     element: TimelineElement,
     mediaWidth: number,
     mediaHeight: number
   ) {
-    // Default positioning and sizing
     const canvasAspect = this.canvas.width / this.canvas.height;
     const mediaAspect = mediaWidth / mediaHeight;
 
-    let width = this.canvas.width;
-    let height = this.canvas.height;
+    let width: number;
+    let height: number;
 
-    // Maintain aspect ratio - fit to canvas
-    if (mediaAspect > canvasAspect) {
-      // Media is wider - fit to width
-      height = width / mediaAspect;
+    // Check if media is smaller than canvas in both dimensions
+    const isSmaller = mediaWidth <= this.canvas.width && mediaHeight <= this.canvas.height;
+
+    if (isSmaller) {
+      // Video is smaller - use original size, no upscaling
+      // Black padding will be added automatically by canvas background
+      width = mediaWidth;
+      height = mediaHeight;
+
+      debugLog(
+        `[ExportEngine] Video smaller than canvas (${mediaWidth}x${mediaHeight} vs ${this.canvas.width}x${this.canvas.height}), keeping original size with padding`
+      );
     } else {
-      // Media is taller - fit to height
-      width = height * mediaAspect;
+      // Video is larger - scale down to fit canvas while maintaining aspect ratio
+      if (mediaAspect > canvasAspect) {
+        // Media is wider relative to canvas - fit to canvas width
+        width = this.canvas.width;
+        height = width / mediaAspect;
+      } else {
+        // Media is taller relative to canvas - fit to canvas height
+        width = this.canvas.height * mediaAspect;
+        height = this.canvas.height;
+      }
+
+      debugLog(
+        `[ExportEngine] Video larger than canvas, scaling down from ${mediaWidth}x${mediaHeight} to ${Math.round(width)}x${Math.round(height)}`
+      );
     }
 
-    // Center the element
+    // Center the element on canvas (black padding fills the rest)
     const x = (this.canvas.width - width) / 2;
     const y = (this.canvas.height - height) / 2;
 
