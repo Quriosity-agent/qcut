@@ -1907,6 +1907,8 @@ export class CLIExportEngine extends ExportEngine {
       videoInputPath: videoInput?.path,
       trimStart: videoInput?.trimStart || 0,
       trimEnd: videoInput?.trimEnd || 0,
+      // Mode 1.5: Video normalization
+      optimizationStrategy: this.exportAnalysis?.optimizationStrategy,
     };
 
     console.log('🚀 [FFMPEG EXPORT DEBUG] ============================================');

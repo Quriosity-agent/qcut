@@ -71,6 +71,14 @@ interface FrameData {
   imageData: ArrayBuffer | Buffer;
 }
 
+interface VideoSource {
+  path: string;
+  startTime: number;
+  duration: number;
+  trimStart?: number;
+  trimEnd?: number;
+}
+
 interface ExportOptions {
   sessionId: string;
   outputPath: string;
@@ -81,11 +89,14 @@ interface ExportOptions {
   audioFiles?: AudioFile[];
   metadata?: Record<string, string>;
   useDirectCopy?: boolean;
+  videoSources?: VideoSource[];
   // Mode 2: Direct video input with filters
   useVideoInput?: boolean;
   videoInputPath?: string;
   trimStart?: number;
   trimEnd?: number;
+  // Mode 1.5: Video normalization (NEW!)
+  optimizationStrategy?: 'image-pipeline' | 'direct-copy' | 'direct-video-with-filters' | 'video-normalization';
 }
 
 interface AudioFile {
@@ -420,6 +431,7 @@ export type {
   ExportSession,
   FrameData,
   ExportOptions,
+  VideoSource,
   AudioFile,
   ApiKeyConfig,
   GitHubStarsResponse,
