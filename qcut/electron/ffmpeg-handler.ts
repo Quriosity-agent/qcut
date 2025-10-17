@@ -8,6 +8,25 @@ import { TempManager, ExportSession } from "./temp-manager.js";
 // Note: Using relative path since this runs in compiled electron context
 const timelineConstants = { MAX_EXPORT_DURATION: 600 }; // TODO: Import from shared constants when ES modules are supported
 
+// Debug logging for development
+const debugLog = (...args: any[]) => {
+  if (process.env.NODE_ENV !== 'production') {
+    console.log('[FFmpeg]', ...args);
+  }
+};
+
+const debugWarn = (...args: any[]) => {
+  if (process.env.NODE_ENV !== 'production') {
+    console.warn('[FFmpeg]', ...args);
+  }
+};
+
+const debugError = (...args: any[]) => {
+  if (process.env.NODE_ENV !== 'production') {
+    console.error('[FFmpeg]', ...args);
+  }
+};
+
 /**
  * Audio file configuration for FFmpeg video export
  * Defines audio track placement and mixing parameters

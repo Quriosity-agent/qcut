@@ -808,6 +808,227 @@ export class CLIExportEngine extends ExportEngine {
     return videoSources;
   }
 
+  /**
+   * Download sticker blob/data URL to temp directory for FFmpeg access
+   */
+  private async downloadStickerToTemp(
+    sticker: any,
+    mediaItem: any
+  ): Promise<string> {
+    debugLog(
+      `[CLIExportEngine] Downloading sticker ${sticker.id} to temp directory`
+    );
+
+    try {
+      // Check if already has local path
+      if (mediaItem.localPath) {
+        debugLog(`[CLIExportEngine] Using provided local path: ${mediaItem.localPath}`);
+        return mediaItem.localPath;
+      }
+
+      // Fetch blob/data URL
+      if (!mediaItem.url) {
+        throw new Error(`No URL for sticker media item ${mediaItem.id}`);
+      }
+
+      const response = await fetch(mediaItem.url);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch sticker: ${response.status} ${response.statusText}`);
+      }
+
+      const blob = await response.blob();
+      const arrayBuffer = await blob.arrayBuffer();
+
+      // Determine format from blob type or default to png
+      const format = blob.type?.split('/')[1] || 'png';
+
+      // Save via Electron IPC
+      const result = await window.electronAPI.ffmpeg.saveStickerForExport({
+        sessionId: this.sessionId!,
+        stickerId: sticker.id,
+        imageData: arrayBuffer,
+        format,
+      });
+
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to save sticker');
+      }
+
+      debugLog(`[CLIExportEngine] Downloaded sticker to: ${result.path}`);
+      return result.path!;
+    } catch (error) {
+      debugError(`[CLIExportEngine] Failed to download sticker ${sticker.id}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Extract sticker sources from overlay store for FFmpeg processing
+   * Returns array of sticker data with local file paths
+   */
+  private async extractStickerSources(): Promise<Array<{
+    id: string;
+    path: string;
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    startTime: number;
+    endTime: number;
+    zIndex: number;
+    opacity?: number;
+    rotation?: number;
+  }>> {
+    debugLog("[CLIExportEngine] Extracting sticker sources for FFmpeg overlay");
+
+    try {
+      // Import stickers store dynamically
+      const { useStickersOverlayStore } = await import('@/stores/stickers-overlay-store');
+      const stickersStore = useStickersOverlayStore.getState();
+
+      // Get all stickers for export
+      const allStickers = stickersStore.getStickersForExport();
+
+      if (allStickers.length === 0) {
+        debugLog("[CLIExportEngine] No stickers to export");
+        return [];
+      }
+
+      debugLog(`[CLIExportEngine] Processing ${allStickers.length} stickers for export`);
+
+      const stickerSources = [];
+
+      // Process each sticker
+      for (const sticker of allStickers) {
+        try {
+          // Find media item for this sticker
+          const mediaItem = this.mediaItems.find(m => m.id === sticker.mediaItemId);
+
+          if (!mediaItem) {
+            debugWarn(`[CLIExportEngine] Media item not found for sticker ${sticker.id}`);
+            continue;
+          }
+
+          // Download sticker to temp directory if needed
+          const localPath = await this.downloadStickerToTemp(sticker, mediaItem);
+
+          // Convert percentage positions to pixel coordinates
+          // Note: FFmpeg overlay uses top-left corner, not center
+          const pixelX = (sticker.position.x / 100) * this.canvas.width;
+          const pixelY = (sticker.position.y / 100) * this.canvas.height;
+
+          // Convert percentage size to pixels (using smaller dimension as base)
+          const baseSize = Math.min(this.canvas.width, this.canvas.height);
+          const pixelWidth = (sticker.size.width / 100) * baseSize;
+          const pixelHeight = (sticker.size.height / 100) * baseSize;
+
+          // Adjust for center-based positioning (sticker position is center, not top-left)
+          const topLeftX = pixelX - pixelWidth / 2;
+          const topLeftY = pixelY - pixelHeight / 2;
+
+          stickerSources.push({
+            id: sticker.id,
+            path: localPath,
+            x: Math.round(topLeftX),
+            y: Math.round(topLeftY),
+            width: Math.round(pixelWidth),
+            height: Math.round(pixelHeight),
+            startTime: sticker.timing?.startTime ?? 0,
+            endTime: sticker.timing?.endTime ?? this.totalDuration,
+            zIndex: sticker.zIndex,
+            opacity: sticker.opacity,
+            rotation: sticker.rotation,
+          });
+
+          debugLog(`[CLIExportEngine] Processed sticker ${sticker.id}: ${pixelWidth}x${pixelHeight} at (${topLeftX}, ${topLeftY})`);
+        } catch (error) {
+          debugError(`[CLIExportEngine] Failed to process sticker ${sticker.id}:`, error);
+        }
+      }
+
+      // Sort by zIndex for proper layering order
+      stickerSources.sort((a, b) => a.zIndex - b.zIndex);
+
+      debugLog(`[CLIExportEngine] Extracted ${stickerSources.length} valid sticker sources`);
+      return stickerSources;
+    } catch (error) {
+      debugError("[CLIExportEngine] Failed to extract sticker sources:", error);
+      return [];
+    }
+  }
+
+  /**
+   * Build FFmpeg overlay filter chain for stickers
+   * Creates complex filter graph for multiple sticker overlays
+   */
+  private buildStickerOverlayFilters(stickerSources: Array<any>): string {
+    if (!stickerSources || stickerSources.length === 0) {
+      return '';
+    }
+
+    debugLog(`[CLIExportEngine] Building overlay filters for ${stickerSources.length} stickers`);
+
+    // Build complex filter for multiple overlays
+    // Input streams: [0] = base video, [1] = first sticker, [2] = second sticker, etc.
+
+    const filters: string[] = [];
+    let lastOutput = '0:v';  // Start with base video stream
+
+    stickerSources.forEach((sticker, index) => {
+      const inputIndex = index + 1;  // Sticker inputs start at 1 (0 is base video)
+      const outputLabel = index === stickerSources.length - 1 ? '' : `[v${index + 1}]`;
+
+      // Scale sticker to desired size
+      let currentInput = `[${inputIndex}:v]`;
+      const scaleFilter = `${currentInput}scale=${sticker.width}:${sticker.height}[scaled${index}]`;
+      filters.push(scaleFilter);
+      currentInput = `[scaled${index}]`;
+
+      // Apply rotation if needed (before opacity)
+      if (sticker.rotation !== undefined && sticker.rotation !== 0) {
+        const rotateFilter = `${currentInput}rotate=${sticker.rotation}*PI/180:c=none[rotated${index}]`;
+        filters.push(rotateFilter);
+        currentInput = `[rotated${index}]`;
+      }
+
+      // Build overlay filter with timing
+      let overlayParams = [
+        `x=${sticker.x}`,
+        `y=${sticker.y}`,
+      ];
+
+      // Add timing constraint
+      if (sticker.startTime !== 0 || sticker.endTime !== this.totalDuration) {
+        overlayParams.push(`enable='between(t,${sticker.startTime},${sticker.endTime})'`);
+      }
+
+      // Add opacity if not fully opaque
+      if (sticker.opacity !== undefined && sticker.opacity < 1) {
+        // Apply opacity using format and geq filters before overlay
+        const opacityFilter = `${currentInput}format=rgba,geq=r='r(X,Y)':g='g(X,Y)':b='b(X,Y)':a='${sticker.opacity}*alpha(X,Y)'[alpha${index}]`;
+        filters.push(opacityFilter);
+
+        // Update overlay to use opacity-adjusted input
+        const overlayFilter = `[${lastOutput}][alpha${index}]overlay=${overlayParams.join(':')}${outputLabel}`;
+        filters.push(overlayFilter);
+      } else {
+        // Direct overlay without opacity adjustment
+        const overlayFilter = `[${lastOutput}]${currentInput}overlay=${overlayParams.join(':')}${outputLabel}`;
+        filters.push(overlayFilter);
+      }
+
+      // Update last output for chaining
+      if (outputLabel) {
+        lastOutput = outputLabel.replace('[', '').replace(']', '');
+      }
+    });
+
+    const filterChain = filters.join(';');
+    debugLog(`[CLIExportEngine] Generated sticker filter chain: ${filterChain}`);
+
+    return filterChain;
+  }
+
   private async prepareAudioFiles(): Promise<
     Array<{ path: string; startTime: number; volume: number }>
   > {
@@ -1386,10 +1607,36 @@ export class CLIExportEngine extends ExportEngine {
       debugLog(`[CLI Export] Text filter count: ${(textFilterChain.match(/drawtext=/g) || []).length}`);
     }
 
+    // ADD: Extract and build sticker overlays
+    let stickerFilterChain: string | undefined;
+    let stickerSources: Array<any> | undefined;
+
+    // Only process stickers if not using direct copy
+    if (!this.exportAnalysis?.canUseDirectCopy) {
+      try {
+        // Extract sticker sources with local file paths
+        stickerSources = await this.extractStickerSources();
+
+        if (stickerSources.length > 0) {
+          // Build FFmpeg overlay filter chain
+          stickerFilterChain = this.buildStickerOverlayFilters(stickerSources);
+
+          debugLog(`[CLI Export] Sticker sources: ${stickerSources.length}`);
+          debugLog(`[CLI Export] Sticker filter chain: ${stickerFilterChain}`);
+        }
+      } catch (error) {
+        debugWarn('[CLI Export] Failed to process stickers, continuing without:', error);
+        // Continue export without stickers if processing fails
+        stickerSources = undefined;
+        stickerFilterChain = undefined;
+      }
+    }
+
     // Extract video sources for direct copy optimization
-    // IMPORTANT: Disable direct copy if we have text filters
+    // IMPORTANT: Disable direct copy if we have text filters OR sticker filters
     const hasTextFilters = textFilterChain.length > 0;
-    const videoSources = (this.exportAnalysis?.canUseDirectCopy && !hasTextFilters)
+    const hasStickerFilters = (stickerFilterChain?.length ?? 0) > 0;
+    const videoSources = (this.exportAnalysis?.canUseDirectCopy && !hasTextFilters && !hasStickerFilters)
       ? this.extractVideoSources()
       : [];
 
@@ -1407,7 +1654,9 @@ export class CLIExportEngine extends ExportEngine {
       audioFiles, // Now contains only validated audio files
       filterChain: combinedFilterChain || undefined,
       textFilterChain: hasTextFilters ? textFilterChain : undefined,  // Add text filter chain
-      useDirectCopy: !!(this.exportAnalysis?.canUseDirectCopy && !hasTextFilters), // Disable direct copy when text present
+      stickerFilterChain,                    // ADD THIS
+      stickerSources,                         // ADD THIS
+      useDirectCopy: !!(this.exportAnalysis?.canUseDirectCopy && !hasTextFilters && !hasStickerFilters), // Disable direct copy when text or stickers present
       videoSources: videoSources.length > 0 ? videoSources : undefined,
     };
 
