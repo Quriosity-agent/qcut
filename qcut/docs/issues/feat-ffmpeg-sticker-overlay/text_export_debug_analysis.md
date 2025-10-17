@@ -172,6 +172,8 @@ return {
 - [ ] Update return statement to include new fields (2 min)
 - [ ] Update reason generation for Mode 2 (5 min)
 
+**Comment:** When we expand `ExportAnalysis`, remember that `apps/web/src/lib/export-engine-cli.ts:1125-1215` and the unit specs under `apps/web/src/lib/__tests__/export-analysis.test.ts` assume the older shape. The new Mode 2 guard should also confirm the lone video element has a `localPath`; otherwise the renderer can’t hand FFmpeg a filesystem path even if the timeline only contains text overlays.
+
 ---
 
 ### Task 2: Update FFmpeg Handler to Support Video File Input (~30 min)
@@ -450,6 +452,8 @@ const args: string[] = buildFFmpegArgs(
 - [ ] Update IPC handler call to pass new parameters (3 min)
 - [ ] Test Mode 2 argument construction (7 min)
 
+**Comment:** The Mode 2 branch has to keep the audio-stream indexes aligned with the existing mixing code—once we append sticker inputs the current `[${index + 1}:a]` math breaks unless we offset by `stickerSources.length`. Also, `duration` already reflects the trimmed timeline; subtracting `trimEnd` again here would shorten the export, so please derive the effective span from the video element instead of re-trimming the overall duration.
+
 ---
 
 ### Task 3: Update CLI Export Engine Logic (~35 min)
@@ -652,6 +656,8 @@ const args: string[] = buildFFmpegArgs(
 - [ ] Add console logging for Mode 2 detection (3 min)
 - [ ] Add error handling for video input failures (6 min)
 
+**Comment:** `extractVideoInputPath()` will need a `MediaElement` import from `@/types/timeline`, and we should guard accesses like `element.mediaId` after the type check to keep TypeScript happy. While wiring Mode 2 into `export()`/`exportWithCLI()`, don’t forget to clear `videoInput` if the selected media lacks a `localPath`; otherwise we’ll skip frame rendering yet still fall back to the slow pipeline later when FFmpeg can’t open the file.
+
 ---
 
 ### Task 4: Update TypeScript Type Definitions (~10 min)
@@ -710,6 +716,8 @@ exportVideoCLI: (options: {
 - [ ] Verify type consistency with ffmpeg-handler.ts (3 min)
 - [ ] Verify type consistency with export-engine-cli.ts (2 min)
 
+**Comment:** After extending the options shape, make sure the preload typing (`electron/preload.ts`) forwards the new fields and that any shared `ExportOptions` re-export (via `electron/ffmpeg-handler.ts`) stays in sync—otherwise the renderer and main process will drift on the expected payload.
+
 ---
 
 ### Task 5: Add Debug Logging (~10 min)
@@ -745,6 +753,8 @@ if (useVideoInput && videoInputPath) {
 - [ ] Add Mode 2 selection logging to export-analysis.ts (3 min)
 - [ ] Add Mode 2 execution logging to ffmpeg-handler.ts (3 min)
 - [ ] Verify all debug logs are working (4 min)
+
+**Comment:** In the proposed FFmpeg log snippet we reference a `filters` array that doesn’t exist in scope today; either build that variable or log the individual chains (`filterChain`, `stickerFilterChain`, `textFilterChain`) so the message compiles without additional plumbing.
 
 ---
 
@@ -796,6 +806,8 @@ if (useVideoInput && videoInputPath) {
 - [ ] Test Mode 1 with no overlays (2 min)
 - [ ] Test error handling with multiple videos (2 min)
 - [ ] Document performance improvements (2 min)
+
+**Comment:** Let’s add one scenario that covers trimmed clips—Mode 2 relies on `trimStart/trimEnd`, so we should verify the exported length still matches the trimmed timeline and that the CLI doesn’t regress to frame rendering when trims are present.
 
 ---
 
