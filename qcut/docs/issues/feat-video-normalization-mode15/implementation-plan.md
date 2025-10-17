@@ -617,114 +617,218 @@ async function normalizeVideo(
 
 ### Task 5.1: Add Mode 1.5 Handling in IPC Handler
 **File**: `electron/ffmpeg-handler.ts`
-**Location**: In export-video-cli IPC handler, after validation (around line 520)
+**Location**: In export-video-cli IPC handler, inside async IIFE at line 414 (FIRST check before other modes)
 
-**ADD THIS BLOCK BEFORE EXISTING MODE CHECKS**:
+**CONTEXT**: The export-video-cli handler has an async IIFE starting at line 414 that handles mode validation and FFmpeg spawning. Mode 1.5 needs to intercept at the very start of this IIFE, before the existing mode checks.
+
+**INSERT THIS BLOCK at line 415 (first line inside async IIFE, before "// Verify input based on processing mode" comment)**:
 ```typescript
-// MODE 1.5: Video Normalization
-if (options.optimizationStrategy === 'video-normalization') {
-  console.log('⚡ [MODE 1.5 EXPORT] ============================================');
-  console.log('⚡ [MODE 1.5 EXPORT] Mode 1.5: Video Normalization enabled!');
-  console.log(`⚡ [MODE 1.5 EXPORT] Number of videos: ${options.videoSources?.length || 0}`);
-  console.log(`⚡ [MODE 1.5 EXPORT] Target resolution: ${options.width}x${options.height}`);
-  console.log(`⚡ [MODE 1.5 EXPORT] Target FPS: ${options.fps}`);
-  console.log('⚡ [MODE 1.5 EXPORT] Expected speedup: 5-7x faster than frame rendering');
-  console.log('⚡ [MODE 1.5 EXPORT] ============================================');
+          // =============================================================================
+          // MODE 1.5: Video Normalization with FFmpeg Padding
+          // =============================================================================
+          // WHY Mode 1.5 exists:
+          // - Mode 1 (direct copy) requires identical video properties
+          // - Videos with different resolutions/fps fail Mode 1 validation
+          // - Mode 3 (frame rendering) is 5-7x slower than normalization
+          // - Mode 1.5 normalizes videos to common properties, then uses fast concat
+          //
+          // Performance: ~2-3 seconds (vs 10-15s for Mode 3)
+          //
+          // This check must come BEFORE other mode validations because it handles
+          // a special case where videos need preprocessing before concatenation.
+          if (options.optimizationStrategy === 'video-normalization') {
+            console.log('⚡ [MODE 1.5 EXPORT] ============================================');
+            console.log('⚡ [MODE 1.5 EXPORT] Mode 1.5: Video Normalization with Padding');
+            console.log(`⚡ [MODE 1.5 EXPORT] Number of videos: ${options.videoSources?.length || 0}`);
+            console.log(`⚡ [MODE 1.5 EXPORT] Target resolution: ${width}x${height}`);
+            console.log(`⚡ [MODE 1.5 EXPORT] Target FPS: ${fps}`);
+            console.log('⚡ [MODE 1.5 EXPORT] Expected speedup: 5-7x faster than Mode 3');
+            console.log('⚡ [MODE 1.5 EXPORT] ============================================');
 
-  try {
-    // Validate video sources exist
-    if (!options.videoSources || options.videoSources.length === 0) {
-      throw new Error('Mode 1.5 requires video sources');
-    }
+            try {
+              // Validate video sources exist
+              if (!options.videoSources || options.videoSources.length === 0) {
+                const error = 'Mode 1.5 requires video sources but none provided';
+                console.error(`❌ [MODE 1.5 EXPORT] ${error}`);
+                reject(new Error(error));
+                return;
+              }
 
-    // Step 1: Normalize all videos
-    console.log(`⚡ [MODE 1.5 EXPORT] Step 1: Normalizing ${options.videoSources.length} videos...`);
-    const normalizedPaths: string[] = [];
+              // Validate each video source file exists before processing
+              for (let i = 0; i < options.videoSources.length; i++) {
+                const source = options.videoSources[i];
+                if (!fs.existsSync(source.path)) {
+                  const error = `Video source ${i + 1} not found: ${source.path}`;
+                  console.error(`❌ [MODE 1.5 EXPORT] ${error}`);
+                  reject(new Error(error));
+                  return;
+                }
+              }
 
-    for (let i = 0; i < options.videoSources.length; i++) {
-      const source = options.videoSources[i];
-      const normalizedPath = path.join(frameDir, `normalized_video_${i}.mp4`);
+              console.log(`⚡ [MODE 1.5 EXPORT] ✅ All ${options.videoSources.length} video sources validated`);
 
-      console.log(`⚡ [MODE 1.5 EXPORT] Normalizing video ${i + 1}/${options.videoSources.length}...`);
-      console.log(`⚡ [MODE 1.5 EXPORT]   Source: ${source.path}`);
-      console.log(`⚡ [MODE 1.5 EXPORT]   Trim: ${source.trimStart}s - ${source.trimEnd}s`);
+              // Step 1: Normalize all videos to target resolution and fps
+              console.log(`⚡ [MODE 1.5 EXPORT] Step 1/3: Normalizing ${options.videoSources.length} videos...`);
+              const normalizedPaths: string[] = [];
 
-      await normalizeVideo(
-        source.path,
-        normalizedPath,
-        options.width,
-        options.height,
-        options.fps,
-        source.trimStart || 0,
-        source.trimEnd || 0
-      );
+              for (let i = 0; i < options.videoSources.length; i++) {
+                const source = options.videoSources[i];
+                const normalizedPath = path.join(frameDir, `normalized_video_${i}.mp4`);
 
-      normalizedPaths.push(normalizedPath);
-      console.log(`⚡ [MODE 1.5 EXPORT] ✅ Video ${i + 1} normalized`);
-    }
+                console.log(`⚡ [MODE 1.5 EXPORT] Normalizing video ${i + 1}/${options.videoSources.length}...`);
+                console.log(`⚡ [MODE 1.5 EXPORT]   Source: ${path.basename(source.path)}`);
+                console.log(`⚡ [MODE 1.5 EXPORT]   Duration: ${source.duration}s`);
+                console.log(`⚡ [MODE 1.5 EXPORT]   Trim: start=${source.trimStart || 0}s, end=${source.trimEnd || 0}s`);
 
-    // Step 2: Create concat list file
-    console.log('⚡ [MODE 1.5 EXPORT] Step 2: Creating concat list...');
-    const concatListPath = path.join(frameDir, 'concat_list.txt');
-    const concatContent = normalizedPaths
-      .map(p => `file '${p.replace(/\\/g, '/')}'`)
-      .join('\n');
+                // Call normalizeVideo function (defined earlier in this file)
+                await normalizeVideo(
+                  source.path,
+                  normalizedPath,
+                  width,
+                  height,
+                  fps,
+                  source.trimStart || 0,
+                  source.trimEnd || 0
+                );
 
-    fs.writeFileSync(concatListPath, concatContent, 'utf-8');
-    console.log(`⚡ [MODE 1.5 EXPORT] Concat list created: ${concatListPath}`);
+                normalizedPaths.push(normalizedPath);
+                  console.log(`⚡ [MODE 1.5 EXPORT] ✅ Video ${i + 1}/${options.videoSources.length} normalized`);
+              }
 
-    // Step 3: Concat normalized videos using demuxer (fast!)
-    console.log('⚡ [MODE 1.5 EXPORT] Step 3: Concatenating videos...');
+              console.log(`⚡ [MODE 1.5 EXPORT] All videos normalized successfully`);
 
-    const concatArgs = [
-      '-f', 'concat',
-      '-safe', '0',
-      '-i', concatListPath,
-      '-c', 'copy',  // Direct copy - no re-encoding!
-      '-y',
-      options.outputPath
-    ];
+              // Step 2/3: Create concat list file for FFmpeg concat demuxer
+              console.log(`⚡ [MODE 1.5 EXPORT] Step 2/3: Creating concat list...`);
+              const concatListPath = path.join(frameDir, 'concat-list.txt');
 
-    // Execute concat
-    await new Promise<void>((resolve, reject) => {
-      const concatProcess = spawn(getFfmpegPath(), concatArgs);
+              // Escape Windows backslashes for FFmpeg concat file format
+              // FFmpeg requires forward slashes in file paths
+              const concatContent = normalizedPaths
+                .map(p => {
+                  // Escape single quotes in path (FFmpeg concat file format)
+                  const escapedPath = p.replace(/'/g, "'\\''").replace(/\\/g, '/');
+                  return `file '${escapedPath}'`;
+                })
+                .join('\n');
 
-      concatProcess.on('close', (code) => {
-        if (code === 0) {
-          console.log('⚡ [MODE 1.5 EXPORT] ✅ Concatenation complete');
-          resolve();
-        } else {
-          reject(new Error(`Concat failed with code ${code}`));
-        }
-      });
+              fs.writeFileSync(concatListPath, concatContent, 'utf-8');
+              console.log(`⚡ [MODE 1.5 EXPORT] ✅ Concat list created: ${normalizedPaths.length} videos`);
+              console.log(`⚡ [MODE 1.5 EXPORT] Concat list path: ${concatListPath}`);
 
-      concatProcess.on('error', reject);
-    });
+              // Step 3/3: Concatenate normalized videos using FFmpeg concat demuxer (fast!)
+              console.log(`⚡ [MODE 1.5 EXPORT] Step 3/3: Concatenating ${normalizedPaths.length} normalized videos...`);
+              console.log(`⚡ [MODE 1.5 EXPORT] Using concat demuxer (no re-encoding = fast!)`);
 
-    // Step 4: Mix audio if needed
-    if (options.audioFiles && options.audioFiles.length > 0) {
-      console.log('⚡ [MODE 1.5 EXPORT] Step 4: Mixing audio...');
-      // Use existing audio mixing logic
-      // ... (call existing audio mixing function)
-    }
+              // Build concat command arguments
+              const concatArgs: string[] = [
+                '-y',               // Overwrite output
+                '-f', 'concat',     // Use concat demuxer
+                '-safe', '0',       // Allow absolute paths
+                '-i', concatListPath, // Input concat list file
+                '-c', 'copy',       // Direct copy - no re-encoding!
+                '-movflags', '+faststart', // Optimize for streaming
+                outputFile
+              ];
 
-    console.log('⚡ [MODE 1.5 EXPORT] ============================================');
-    console.log('⚡ [MODE 1.5 EXPORT] ✅ Export complete!');
-    console.log(`⚡ [MODE 1.5 EXPORT] Output: ${options.outputPath}`);
-    console.log('⚡ [MODE 1.5 EXPORT] ============================================');
+              console.log(`⚡ [MODE 1.5 EXPORT] FFmpeg concat command: ffmpeg ${concatArgs.join(' ')}`);
 
-    resolve({
-      success: true,
-      outputPath: options.outputPath
-    });
+              // Execute concat with progress monitoring
+              await new Promise<void>((concatResolve, concatReject) => {
+                const concatProcess: ChildProcess = spawn(ffmpegPath, concatArgs, {
+                  windowsHide: true,
+                  stdio: ['ignore', 'pipe', 'pipe']
+                });
 
-    return; // Exit early - don't continue to other modes
-  } catch (error) {
-    console.error('❌ [MODE 1.5 EXPORT] Normalization failed, falling back to Mode 3');
-    console.error('❌ [MODE 1.5 EXPORT] Error:', error);
-    // Fall through to Mode 3 (frame rendering) as fallback
-  }
-}
+                let concatStderr = '';
+                let concatStdout = '';
+
+                // Capture stdout
+                concatProcess.stdout?.on('data', (chunk: Buffer) => {
+                  concatStdout += chunk.toString();
+                });
+
+                // Capture stderr and monitor progress
+                concatProcess.stderr?.on('data', (chunk: Buffer) => {
+                  const text = chunk.toString();
+                  concatStderr += text;
+
+                  // Parse progress for progress events
+                  const progress: FFmpegProgress | null = parseProgress(text);
+                  if (progress) {
+                    event.sender?.send?.('ffmpeg-progress', progress);
+                  }
+                });
+
+                // Handle process completion
+                concatProcess.on('close', (code: number | null) => {
+                  if (code === 0) {
+                    // Verify output file exists
+                    if (fs.existsSync(outputFile)) {
+                      const stats = fs.statSync(outputFile);
+                      console.log(`⚡ [MODE 1.5 EXPORT] ✅ Concatenation complete!`);
+                      console.log(`⚡ [MODE 1.5 EXPORT] Output size: ${(stats.size / 1024 / 1024).toFixed(2)} MB`);
+                      concatResolve();
+                    } else {
+                      const error = `Output file not created: ${outputFile}`;
+                      console.error(`❌ [MODE 1.5 EXPORT] ${error}`);
+                      concatReject(new Error(error));
+                    }
+                  } else {
+                    console.error(`❌ [MODE 1.5 EXPORT] Concatenation failed with code ${code}`);
+                    console.error(`❌ [MODE 1.5 EXPORT] FFmpeg stderr:\n${concatStderr}`);
+                    concatReject(new Error(`FFmpeg concat failed with code ${code}`));
+                  }
+                });
+
+                // Handle process errors
+                concatProcess.on('error', (err: Error) => {
+                  console.error(`❌ [MODE 1.5 EXPORT] FFmpeg process error:`, err);
+                  concatReject(err);
+                });
+              });
+
+              // TODO: Step 4 (future): Mix audio if needed
+              // Note: Audio mixing is not yet implemented for Mode 1.5
+              // For now, Mode 1.5 only supports video-only exports
+              // Audio mixing would require:
+              // 1. Re-muxing the concatenated video with audio tracks
+              // 2. Using FFmpeg's -filter_complex for audio mixing
+              // 3. Similar logic to Mode 1 audio mixing (lines 954-992 in buildFFmpegArgs)
+              if (audioFiles && audioFiles.length > 0) {
+                console.warn('⚠️ [MODE 1.5 EXPORT] Audio mixing not yet implemented for Mode 1.5');
+                console.warn('⚠️ [MODE 1.5 EXPORT] Falling back to Mode 3 for audio support');
+                throw new Error('Audio mixing not supported in Mode 1.5 - falling back to Mode 3');
+              }
+
+              // Success! Export complete
+              console.log('⚡ [MODE 1.5 EXPORT] ============================================');
+              console.log('⚡ [MODE 1.5 EXPORT] ✅ Export complete!');
+              console.log(`⚡ [MODE 1.5 EXPORT] Output: ${outputFile}`);
+              console.log(`⚡ [MODE 1.5 EXPORT] Mode: video-normalization (5-7x faster than Mode 3)`);
+              console.log('⚡ [MODE 1.5 EXPORT] ============================================');
+
+              // Return success result
+              resolve({
+                success: true,
+                outputFile: outputFile,
+                method: 'spawn'
+              });
+
+              return; // Exit early - don't continue to other mode validations
+
+            } catch (error: any) {
+              // Mode 1.5 failed - fall back to Mode 3 (frame rendering)
+              console.error('❌ [MODE 1.5 EXPORT] ============================================');
+              console.error('❌ [MODE 1.5 EXPORT] Normalization failed, falling back to Mode 3');
+              console.error('❌ [MODE 1.5 EXPORT] Error:', error.message || error);
+              console.error('❌ [MODE 1.5 EXPORT] ============================================');
+
+              // Don't reject - fall through to Mode 3 validation below
+              // This ensures exports don't fail if normalization has issues
+            }
+          }
+
+          // Continue with existing mode validations (Mode 1, 2, 3) below...
 ```
 
 **Comment**: IPC branch plan aligns with the normalization flow; remember to clean up temporary normalized outputs so repeated exports do not bloat disk usage.
