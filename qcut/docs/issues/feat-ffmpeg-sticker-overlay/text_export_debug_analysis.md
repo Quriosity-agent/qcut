@@ -1,300 +1,18 @@
-# Text Export Debug Analysis
+# Mode 2 Implementation: Direct Video Input with Filters
 
-## 1. What is Happening
+**Objective**: Enable FFmpeg to use video file directly as input when only text/sticker overlays are present, eliminating unnecessary frame rendering.
 
-Based on console logs from `text_export_console.md`, the text export process is working **CORRECTLY** but **SLOWLY** because it's using the **image pipeline** instead of direct copy optimization.
+**Estimated Total Time**: ~120 minutes (2 hours)
 
-### Current Flow:
-1. ✅ Text filter chain is generated successfully (line 418-421)
-2. ✅ Text is being rendered by FFmpeg CLI drawtext (NOT canvas)
-3. ❌ **SLOW**: 58 frames are being rendered to disk individually (line 354)
-4. ✅ FFmpeg export completes in 2.89s (line 439)
+**Problem**: Text overlays currently force frame rendering (slow). We should use video file directly with FFmpeg filters (fast).
 
-### Key Evidence:
-```
-Line 355: Canvas text rendering: DISABLED (using FFmpeg)
-Line 419: Text filter chain: drawtext=text='Default text':fontsize=48...
-Line 421: Text will be rendered by FFmpeg CLI (not canvas)
-Line 354: Starting frame rendering: 58 frames
-```
+**Solution**: Implement Mode 2 - Direct video input with filters applied during re-encoding.
 
 ---
 
-## 2. Console Messages to Identify the Bug
+## Three Export Modes
 
-### Add these console messages to track the slowdown:
-
-#### A. Track why image pipeline is chosen (export-analysis.ts)
-```typescript
-// In analyzeTimelineForExport function
-console.log('🔍 [EXPORT ANALYSIS BUG] Checking optimization eligibility:');
-console.log(`   - Has text elements: ${hasTextElements}`);
-console.log(`   - Has stickers: ${hasStickers}`);
-console.log(`   - Has effects: ${hasEffects}`);
-console.log(`   - Has image elements: ${hasImageElements}`);
-console.log(`   - Multiple videos: ${hasMultipleVideoSources}`);
-console.log(`   - Overlapping videos: ${hasOverlappingVideos}`);
-console.log(`   - CAN use direct copy: ${canUseDirectCopy}`);
-console.log(`   - REASON: ${reason}`);
-```
-
-**File**: `qcut/apps/web/src/lib/export-analysis.ts`
-
-#### B. Track frame-by-frame rendering overhead (export-engine-cli.ts)
-```typescript
-// In renderFramesToDisk function
-const renderStart = Date.now();
-
-for (let frame = 0; frame < totalFrames; frame++) {
-  const frameStart = Date.now();
-
-  await this.renderFrame(currentTime);
-  await this.saveFrameToDisk(frameName, currentTime);
-
-  const frameTime = Date.now() - frameStart;
-
-  // Log slow frames
-  if (frameTime > 100) {
-    console.warn(`⚠️ [FRAME RENDERING] Slow frame ${frame}: ${frameTime}ms`);
-  }
-}
-
-const totalRenderTime = ((Date.now() - renderStart) / 1000).toFixed(2);
-console.log(`⏱️ [FRAME RENDERING] Total frame rendering time: ${totalRenderTime}s`);
-console.log(`⏱️ [FRAME RENDERING] Average per frame: ${(totalRenderTime * 1000 / totalFrames).toFixed(2)}ms`);
-```
-
-**File**: `qcut/apps/web/src/lib/export-engine-cli.ts` (lines 1301-1332)
-
-#### C. Track FFmpeg filter application (export-engine-cli.ts)
-```typescript
-// In exportWithCLI function, after building filter chains
-console.log('🎬 [FILTER CHAIN DEBUG] ============================================');
-console.log(`   - Video effects filter: ${combinedFilterChain || 'NONE'}`);
-console.log(`   - Text overlay filter: ${textFilterChain || 'NONE'}`);
-console.log(`   - Sticker overlay filter: ${stickerFilterChain || 'NONE'}`);
-console.log(`   - Total filter complexity: ${(combinedFilterChain?.length || 0) + (textFilterChain?.length || 0) + (stickerFilterChain?.length || 0)} chars`);
-console.log('🎬 [FILTER CHAIN DEBUG] ============================================');
-```
-
-**File**: `qcut/apps/web/src/lib/export-engine-cli.ts` (after line 1637)
-
----
-
-## 3. Why Text is NOT Rendered (Answer: IT IS!)
-
-**Text IS being rendered correctly by FFmpeg drawtext filter.**
-
-Evidence from console logs:
-- Line 419: `Text filter chain: drawtext=text='Default text':fontsize=48:fontcolor=0xffffff:fontfile=C:/Windows/Fonts/arial.ttf...`
-- Line 421: `Text will be rendered by FFmpeg CLI (not canvas)`
-- Line 432: `Text elements: YES (using FFmpeg drawtext)`
-
-### The confusion:
-Text is rendered, but the export is slow because:
-1. **58 frames are rendered individually** to PNG files (canvas → disk)
-2. **Each frame is saved as a separate file** (slow I/O)
-3. **FFmpeg then processes all 58 PNGs** + applies text filter
-4. **Total time: 2.89s for 1.93s video** (frame rendering overhead)
-
----
-
-## 4. Do We Use FFmpeg CLI for Text? Why So Slow?
-
-### Yes, FFmpeg CLI is used for text rendering
-
-**Process breakdown:**
-
-```
-Step 1: Frame Rendering (SLOW - 58 frames)
-  ├─ Render frame 0 → save to disk (frame-0000.png)
-  ├─ Render frame 1 → save to disk (frame-0001.png)
-  ├─ ...
-  └─ Render frame 57 → save to disk (frame-0057.png)
-  Time: ~2-3 seconds for 58 frames
-
-Step 2: FFmpeg Processing (FAST)
-  ├─ Read all PNGs: ffmpeg -framerate 30 -i frame-%04d.png
-  ├─ Apply text filter: drawtext=text='Default text'...
-  └─ Encode to MP4: -c:v libx264 -crf 23
-  Time: ~2.89s (includes frame reading)
-```
-
-### Why is it slow?
-
-**Root Cause**: Image Pipeline Overhead
-
-1. **Canvas Rendering**: Each frame is rendered on HTML canvas (even without text)
-2. **PNG Encoding**: Each frame is converted to PNG (base64 → Buffer)
-3. **Disk I/O**: 58 individual file writes
-4. **FFmpeg Input**: Reading 58 PNG files from disk
-
-### Optimization opportunity:
-
-If we could use **direct copy mode**, the process would be:
-```
-Step 1: Direct Copy (FAST)
-  └─ Use existing video file directly
-  Time: 0s (no frame rendering)
-
-Step 2: FFmpeg Processing (FAST)
-  ├─ Copy video stream: -c:v copy
-  ├─ Apply text overlay: -vf drawtext=...
-  └─ Encode to MP4: -c:v libx264
-  Time: ~0.5-1s
-```
-
-### Current limitation:
-
-**Direct copy is disabled when text is present** (line 1663 in export-engine-cli.ts):
-```typescript
-useDirectCopy: !!(this.exportAnalysis?.canUseDirectCopy && !hasTextFilters && !hasStickerFilters)
-```
-
-This is by design because FFmpeg's `-c:v copy` (stream copy) cannot apply filters. When text/stickers are present, we MUST re-encode the video.
-
-However, we could optimize by:
-1. **Skipping frame rendering** if we have a single video source
-2. **Using the video file directly** as FFmpeg input
-3. **Applying text filter during encoding** (instead of reading PNGs)
-
----
-
-## 5. Relevant File Paths
-
-### Core Export Logic
-- `qcut/apps/web/src/lib/export-engine-cli.ts` - Main CLI export engine (frame rendering, FFmpeg invocation)
-- `qcut/apps/web/src/lib/export-analysis.ts` - Export optimization analysis (determines image vs direct copy)
-- `qcut/apps/web/src/lib/export-engine-factory.ts` - Engine selection logic
-
-### FFmpeg Integration
-- `qcut/electron/ffmpeg-handler.ts` - Electron IPC handlers for FFmpeg operations
-- `qcut/apps/web/src/types/electron.d.ts` - TypeScript definitions for Electron API
-
-### Text Rendering
-- `qcut/apps/web/src/lib/export-engine-cli.ts:672-726` - `buildTextOverlayFilters()` function
-- `qcut/apps/web/src/lib/export-engine-cli.ts:549-666` - `convertTextElementToDrawtext()` function
-- `qcut/apps/web/src/lib/export-engine-cli.ts:297-317` - `renderTextElementCLI()` function (canvas text - disabled)
-
-### Frame Rendering
-- `qcut/apps/web/src/lib/export-engine-cli.ts:1301-1332` - `renderFramesToDisk()` function
-- `qcut/apps/web/src/lib/export-engine-cli.ts:1334-1439` - `saveFrameToDisk()` function
-
-### Export Configuration
-- `qcut/apps/web/src/lib/export-engine-cli.ts:1441-1729` - `exportWithCLI()` function
-- `qcut/apps/web/src/hooks/use-export-progress.ts` - Export UI hook with engine selection
-
----
-
-## Summary
-
-| Aspect | Status | Details |
-|--------|--------|---------|
-| **Text rendering method** | ✅ Correct | Using FFmpeg drawtext filter (not canvas) |
-| **Filter chain generation** | ✅ Working | Text filter properly generated |
-| **Export completion** | ✅ Success | Video exported successfully |
-| **Performance** | ❌ Slow | Image pipeline overhead (58 frame writes) |
-| **Root cause** | Image pipeline | Direct copy disabled when text present |
-| **Optimization needed** | Use video file directly | Skip frame rendering for single video + text |
-
-### Recommendation:
-
-Implement **hybrid optimization**: Use video file directly as FFmpeg input (instead of rendering frames) when:
-- Single video source
-- Text/sticker overlays present
-- No video effects applied
-
-This would eliminate frame rendering overhead while still allowing text/sticker filters.
-
----
-
-## 6. Deep Analysis: Do We Need Frame Rendering for Text?
-
-**Updated: 2025-10-17**
-
-### Current Understanding of Text Export Flow
-
-**What's happening now:**
-
-1. User exports a video with text elements
-2. System renders 58 frames to disk (frame-0000.png, frame-0001.png, etc.)
-3. Each frame is a full canvas render (video + any images)
-4. FFmpeg then reads these 58 PNG files
-5. FFmpeg applies text drawtext filter on top
-6. FFmpeg encodes to final MP4
-
-**The key insight:**
-
-Text IS being rendered by FFmpeg drawtext filter (correctly), but we're **unnecessarily rendering frames to disk** when we could skip that step entirely.
-
-### Do We Need Frame Rendering for Text?
-
-**NO - We should NOT need frame rendering for text-only overlays!**
-
-#### Scenario 1: Single video + text overlay
-- **Current (slow)**: Render 58 frames → Save to disk → FFmpeg reads PNGs → Apply text filter
-- **Optimal (fast)**: FFmpeg reads video file directly → Apply text filter → Encode
-- **Performance gain**: ~5-10x faster (no frame rendering overhead)
-
-#### Scenario 2: Single video + text + stickers
-- **Current (slow)**: Render 58 frames → Save to disk → FFmpeg reads PNGs → Apply text + sticker filters
-- **Optimal (fast)**: FFmpeg reads video file directly → Apply text + sticker overlay filters → Encode
-- **Performance gain**: ~5-10x faster
-
-#### Scenario 3: Multiple videos or images (requires compositing)
-- **Current (correct)**: Render frames → FFmpeg processes
-- **Reason**: Canvas compositing needed for multiple video layers or image elements
-
-### When DO We Need Frame Rendering?
-
-Frame rendering is ONLY needed when:
-1. ✅ **Multiple overlapping videos** (compositing required)
-2. ✅ **Image elements mixed with video** (canvas compositing)
-3. ✅ **Video effects applied on canvas** (transformations, filters that can't be done in FFmpeg)
-
-### When DON'T We Need Frame Rendering?
-
-We can skip frame rendering when:
-1. ✅ **Single video source**
-2. ✅ **Text overlays** (FFmpeg drawtext)
-3. ✅ **Sticker overlays** (FFmpeg overlay filter)
-4. ✅ **No canvas-based effects**
-
-### The Bug Identified
-
-**Location**: `export-engine-cli.ts` line 1176-1181:
-
-```typescript
-if (!this.exportAnalysis?.canUseDirectCopy) {
-  // If we CAN'T use direct copy, we MUST render frames
-  await this.renderFramesToDisk(progressCallback);
-} else {
-  // Using direct video copy - skipping frame rendering
-}
-```
-
-**Location**: `export-engine-cli.ts` line 1368-1372:
-
-```typescript
-const hasTextFilters = textFilterChain.length > 0;
-const hasStickerFilters = (stickerFilterChain?.length ?? 0) > 0;
-const videoSources = (this.exportAnalysis?.canUseDirectCopy && !hasTextFilters && !hasStickerFilters)
-  ? this.extractVideoSources()
-  : [];
-```
-
-**The problem:** When text or stickers are present, `canUseDirectCopy` is set to `false` (in export-analysis.ts), which forces frame rendering.
-
-But this is **WRONG**! We should:
-1. ✅ **Use video file directly as input** (not rendered frames)
-2. ✅ **Apply text/sticker filters** (FFmpeg can do this)
-3. ✅ **Re-encode with filters** (can't use `-c:v copy`, but don't need frame rendering)
-
-### The Confusion: Direct Copy vs Frame Rendering
-
-There are actually **THREE** export modes, not two:
-
-#### Mode 1: Direct Copy Mode (fastest)
+### Mode 1: Direct Copy (fastest)
 ```bash
 ffmpeg -i video.mp4 -c:v copy -c:a copy output.mp4
 ```
@@ -302,7 +20,7 @@ ffmpeg -i video.mp4 -c:v copy -c:a copy output.mp4
 - Only works with NO filters/overlays
 - **Speed**: ~0.1-0.5s for typical video
 
-#### Mode 2: Direct Video Input with Filters (fast) ⚠️ **THIS IS MISSING!**
+### Mode 2: Direct Video Input with Filters (fast) ⚠️ **THIS IS MISSING!**
 ```bash
 ffmpeg -i video.mp4 -vf "drawtext=text='Hello':fontsize=48" output.mp4
 ```
@@ -311,7 +29,7 @@ ffmpeg -i video.mp4 -vf "drawtext=text='Hello':fontsize=48" output.mp4
 - **This is what we should use for text/stickers!**
 - **Speed**: ~1-2s for typical video (10x faster than frame rendering)
 
-#### Mode 3: Frame Rendering Mode (slow)
+### Mode 3: Frame Rendering (slow)
 ```bash
 ffmpeg -framerate 30 -i frame-%04d.png -vf "drawtext=..." output.mp4
 ```
@@ -320,50 +38,9 @@ ffmpeg -framerate 30 -i frame-%04d.png -vf "drawtext=..." output.mp4
 - Only needed for compositing multiple videos/images
 - **Speed**: ~5-10s for typical video
 
-### The Fix Needed
+---
 
-We need to distinguish between:
-- **Needs re-encoding** (text/stickers present - use video file with filters) ← **Mode 2**
-- **Needs frame rendering** (multiple videos, images, complex compositing) ← **Mode 3**
-
-**Current bug in `export-analysis.ts`:**
-```typescript
-// WRONG: Treats text/stickers as requiring "image processing"
-const needsImageProcessing =
-  hasImageElements ||
-  hasTextElements ||      // ← WRONG! Text doesn't need image processing
-  hasStickers ||          // ← WRONG! Stickers need overlay filters, not image processing
-  hasEffects ||
-  hasOverlappingVideos;
-```
-
-**Correct logic should be:**
-```typescript
-// Separate concerns: frame rendering vs filter application
-const needsFrameRendering =
-  hasImageElements ||           // Images need canvas compositing
-  hasOverlappingVideos ||       // Multiple videos need compositing
-  hasCanvasEffects;             // Canvas-only effects
-
-const needsFilterEncoding =
-  hasTextElements ||            // Text uses FFmpeg drawtext
-  hasStickers ||                // Stickers use FFmpeg overlay
-  hasFFmpegEffects;             // FFmpeg-compatible effects
-
-const canUseDirectCopy =
-  !needsFrameRendering &&
-  !needsFilterEncoding &&
-  videoElementCount >= 1;
-```
-
-### Implementation Strategy
-
-1. **Add new export mode**: `direct-video-with-filters`
-2. **Update export analysis** to distinguish frame rendering from filter encoding
-3. **Modify FFmpeg handler** to accept video file path as input (instead of frame sequence)
-4. **Update CLI export engine** to skip frame rendering when using direct video input
-
-### Expected Performance Improvement
+## Expected Performance Improvement
 
 For **single video + text overlay** (1.93s video, 58 frames @ 30fps):
 
@@ -373,34 +50,11 @@ For **single video + text overlay** (1.93s video, 58 frames @ 30fps):
 | FFmpeg encoding | ~2.89s | - | - |
 | **Total** | **~5-6s** | **~1-2s** | **3-5x faster** |
 
-### Code Changes Required
-
-1. **`export-analysis.ts`**: Add `needsFrameRendering` vs `needsFilterEncoding` distinction
-2. **`export-engine-cli.ts`**: Add logic to use video file directly when frame rendering not needed
-3. **`ffmpeg-handler.ts`**: Support video file input path (already partially implemented)
-4. **Type definitions**: Update `ExportOptions` to include `videoInputPath` parameter
-
-### Summary
-
-**Current behavior:** Text overlays → Frame rendering (WRONG - unnecessarily slow)
-
-**Correct behavior:** Text overlays → Direct video input + FFmpeg filters (FAST)
-
-**Root cause:** Conflating "needs re-encoding" with "needs frame rendering"
-
-**Solution:** Implement Mode 2 (direct video input with filters) for text/sticker overlays
-
 ---
 
-## 7. Implementation Plan: Add Mode 2 (Direct Video Input with Filters)
+## Implementation Tasks
 
-**Objective**: Enable FFmpeg to use video file directly as input when only text/sticker overlays are present, eliminating unnecessary frame rendering.
-
-**Estimated Total Time**: ~120-150 minutes
-
-### Task Breakdown
-
-#### Task 1: Update Export Analysis Logic (~20 min)
+### Task 1: Update Export Analysis Logic (~20 min)
 **File**: `qcut/apps/web/src/lib/export-analysis.ts`
 
 **Changes**:
@@ -450,7 +104,7 @@ For **single video + text overlay** (1.93s video, 58 frames @ 30fps):
 
 ---
 
-#### Task 2: Update FFmpeg Handler to Support Video File Input (~30 min)
+### Task 2: Update FFmpeg Handler to Support Video File Input (~30 min)
 **File**: `qcut/electron/ffmpeg-handler.ts`
 
 **Changes**:
@@ -544,7 +198,7 @@ For **single video + text overlay** (1.93s video, 58 frames @ 30fps):
 
 ---
 
-#### Task 3: Update CLI Export Engine Logic (~35 min)
+### Task 3: Update CLI Export Engine Logic (~35 min)
 **File**: `qcut/apps/web/src/lib/export-engine-cli.ts`
 
 **Changes**:
@@ -649,7 +303,7 @@ For **single video + text overlay** (1.93s video, 58 frames @ 30fps):
 
 ---
 
-#### Task 4: Update TypeScript Type Definitions (~10 min)
+### Task 4: Update TypeScript Type Definitions (~10 min)
 **File**: `qcut/apps/web/src/types/electron.d.ts`
 
 **Changes**:
@@ -693,7 +347,7 @@ For **single video + text overlay** (1.93s video, 58 frames @ 30fps):
 
 ---
 
-#### Task 5: Add Debug Logging and Console Messages (~10 min)
+### Task 5: Add Debug Logging and Console Messages (~10 min)
 **Files**:
 - `qcut/apps/web/src/lib/export-analysis.ts`
 - `qcut/apps/web/src/lib/export-engine-cli.ts`
@@ -726,7 +380,7 @@ For **single video + text overlay** (1.93s video, 58 frames @ 30fps):
 
 ---
 
-#### Task 6: Testing and Validation (~15 min)
+### Task 6: Testing and Validation (~15 min)
 
 **Test Cases**:
 1. **Test Mode 2: Single video + text overlay**
@@ -760,7 +414,7 @@ For **single video + text overlay** (1.93s video, 58 frames @ 30fps):
 
 ---
 
-### Implementation Checklist
+## Implementation Checklist
 
 **Phase 1: Analysis and Type Definitions** (~30 min)
 - [ ] Task 1: Update Export Analysis Logic (20 min)
@@ -780,7 +434,7 @@ For **single video + text overlay** (1.93s video, 58 frames @ 30fps):
 
 ---
 
-### Success Criteria
+## Success Criteria
 
 1. ✅ Export analysis correctly identifies Mode 2 scenarios
 2. ✅ FFmpeg handler builds correct args for video input mode
@@ -793,7 +447,7 @@ For **single video + text overlay** (1.93s video, 58 frames @ 30fps):
 
 ---
 
-### Risk Mitigation
+## Risk Mitigation
 
 **Risk 1**: Video input path not accessible by FFmpeg
 - **Mitigation**: Add path validation before starting export
