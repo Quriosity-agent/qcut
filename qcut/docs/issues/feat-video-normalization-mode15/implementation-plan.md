@@ -1,9 +1,16 @@
 # Mode 1.5: Video Normalization with Padding
 
 **Feature**: FFmpeg-based video normalization for mismatched resolutions/fps
-**Status**: Planning
+**Status**: In Progress - Phase 1 Partial (3/6 tasks complete)
 **Priority**: High
 **Performance Target**: 2-3 seconds (5-7x faster than Mode 3)
+
+**Progress Summary:**
+- ✅ Type definitions complete (VideoProperties interface, union type update)
+- ✅ Video property extraction helper implemented with metadata fallbacks
+- ⏳ Property matching logic pending
+- ⏳ Export analysis integration pending
+- ⏳ FFmpeg normalization handler pending
 
 ---
 
@@ -190,19 +197,28 @@ function extractVideoProperties(
 
 ### Task 2.2: Check Video Properties Match
 **File**: `apps/web/src/lib/export-analysis.ts`
-**Location**: Before analyzeTimelineForExport function (around line 300)
+**Location**: After extractVideoProperties function (around line 113)
 
 ```typescript
 /**
- * Check if all videos match the target export properties
- * Used to determine if normalization is needed
+ * Checks if all videos match the target export properties.
+ *
+ * WHY this check is critical:
+ * - Mode 1 direct copy requires identical video properties
+ * - Mismatches cause FFmpeg concat demuxer to fail
+ * - Mode 1.5 normalization can fix mismatches (5-7x faster than Mode 3)
+ *
+ * Edge cases handled:
+ * - Missing metadata: Returns false (triggers normalization)
+ * - FPS tolerance: Uses 0.1 fps tolerance for floating point comparison
+ * - Null properties: Treats as mismatch to ensure safe fallback
  *
  * @param videoElements - Array of video elements from timeline
- * @param mediaItemsMap - Map of media items
+ * @param mediaItemsMap - Map of media items for fast lookup
  * @param targetWidth - Export target width
  * @param targetHeight - Export target height
  * @param targetFps - Export target fps
- * @returns true if all videos match, false if normalization needed
+ * @returns true if all videos match export settings, false if normalization needed
  */
 function checkVideoPropertiesMatch(
   videoElements: MediaElement[],
@@ -214,33 +230,47 @@ function checkVideoPropertiesMatch(
   console.log('🔍 [MODE 1.5 DETECTION] Checking video properties...');
   console.log(`🔍 [MODE 1.5 DETECTION] Target: ${targetWidth}x${targetHeight} @ ${targetFps}fps`);
 
+  // Edge case: No videos to check
+  if (videoElements.length === 0) {
+    console.log('⚠️ [MODE 1.5 DETECTION] No video elements to check');
+    return true; // No videos = no mismatches
+  }
+
+  // Check each video against export settings
   for (let i = 0; i < videoElements.length; i++) {
     const props = extractVideoProperties(videoElements[i], mediaItemsMap);
 
+    // Missing metadata = needs normalization
     if (!props) {
-      console.log(`⚠️ [MODE 1.5 DETECTION] Video ${i}: No properties found`);
-      return false; // Can't determine, needs normalization
+      console.log(`⚠️ [MODE 1.5 DETECTION] Video ${i}: No properties found - triggering normalization`);
+      return false;
     }
 
     console.log(`🔍 [MODE 1.5 DETECTION] Video ${i}: ${props.width}x${props.height} @ ${props.fps}fps`);
 
-    // Check if video properties match export target
-    if (
-      props.width !== targetWidth ||
-      props.height !== targetHeight ||
-      props.fps !== targetFps
-    ) {
-      console.log(`⚠️ [MODE 1.5 DETECTION] Video ${i} properties mismatch - normalization needed`);
+    // Resolution must match exactly
+    if (props.width !== targetWidth || props.height !== targetHeight) {
+      console.log(`⚠️ [MODE 1.5 DETECTION] Video ${i} resolution mismatch - normalization needed`);
+      console.log(`   Expected: ${targetWidth}x${targetHeight}, Got: ${props.width}x${props.height}`);
+      return false;
+    }
+
+    // FPS comparison with tolerance (floating point safety)
+    const fpsTolerance = 0.1;
+    const fpsDiff = Math.abs(props.fps - targetFps);
+    if (fpsDiff > fpsTolerance) {
+      console.log(`⚠️ [MODE 1.5 DETECTION] Video ${i} FPS mismatch - normalization needed`);
+      console.log(`   Expected: ${targetFps}fps, Got: ${props.fps}fps, Diff: ${fpsDiff.toFixed(2)}fps`);
       return false;
     }
   }
 
-  console.log('✅ [MODE 1.5 DETECTION] All videos match export settings');
+  console.log('✅ [MODE 1.5 DETECTION] All videos match export settings - can use direct copy');
   return true;
 }
 ```
 
-**Comment**: Plan looks good—consider tolerances for fps rounding and guard against missing metadata causing false negatives.
+**Implementation Status**: ⏳ Pending - Requires access to export width/height/fps from analysis context
 
 ---
 
@@ -248,12 +278,16 @@ function checkVideoPropertiesMatch(
 
 ### Task 3.1: Modify analyzeTimelineForExport Function
 **File**: `apps/web/src/lib/export-analysis.ts`
-**Location**: Lines 157-165 (optimization strategy determination)
+**Location**: Lines 250-262 (optimization strategy determination)
 
-**CURRENT CODE**:
+**CURRENT CODE** (lines 250-262):
 ```typescript
 // Determine optimization strategy
-let optimizationStrategy: 'image-pipeline' | 'direct-copy' | 'direct-video-with-filters';
+let optimizationStrategy:
+  | 'image-pipeline'
+  | 'direct-copy'
+  | 'direct-video-with-filters'
+  | 'video-normalization';
 if (canUseDirectCopy) {
   optimizationStrategy = 'direct-copy';
 } else if (!needsFrameRendering && needsFilterEncoding && videoElementCount === 1) {
@@ -266,20 +300,26 @@ if (canUseDirectCopy) {
 **REPLACE WITH**:
 ```typescript
 // Determine optimization strategy
-let optimizationStrategy: 'image-pipeline' | 'direct-copy' | 'direct-video-with-filters' | 'video-normalization';
+let optimizationStrategy:
+  | 'image-pipeline'
+  | 'direct-copy'
+  | 'direct-video-with-filters'
+  | 'video-normalization';
 
-// Mode decision tree:
-// 1. Can we use direct copy? (Mode 1)
-// 2. Single video with filters? (Mode 2)
-// 3. Multiple videos that need normalization? (Mode 1.5 - NEW!)
-// 4. Default to frame rendering (Mode 3)
+// Mode decision tree (priority order):
+// 1. Can we use direct copy? (Mode 1 - fastest)
+// 2. Single video with filters? (Mode 2 - fast)
+// 3. Multiple videos that need normalization? (Mode 1.5 - NEW!, medium-fast)
+// 4. Default to frame rendering (Mode 3 - slow but most flexible)
 
 if (canUseDirectCopy) {
-  // Mode 1: Direct copy - fastest path
+  // Mode 1: Direct copy - fastest path (no re-encoding)
   optimizationStrategy = 'direct-copy';
+  console.log('✅ [MODE DETECTION] Selected Mode 1: Direct copy (15-48x speedup)');
 } else if (!needsFrameRendering && needsFilterEncoding && videoElementCount === 1) {
-  // Mode 2: Single video with filters
+  // Mode 2: Single video with FFmpeg filters (text/stickers)
   optimizationStrategy = 'direct-video-with-filters';
+  console.log('⚡ [MODE DETECTION] Selected Mode 2: Direct video with filters (3-5x speedup)');
 } else if (
   videoElementCount > 1 &&
   !hasOverlappingVideos &&
@@ -289,15 +329,19 @@ if (canUseDirectCopy) {
   !hasEffects &&
   allVideosHaveLocalPath
 ) {
-  // Mode 1.5: Multiple videos that MIGHT need normalization
-  // Check if videos match export properties
+  // Mode 1.5: Multiple sequential videos - check if normalization needed
+  console.log('🔍 [MODE DETECTION] Multiple sequential videos detected - checking properties...');
 
-  // Note: We need export dimensions and fps here
-  // For now, we'll assume standard export settings
-  // TODO: Pass export settings to this function
-  const targetWidth = 1280;  // Should come from export settings
-  const targetHeight = 720;  // Should come from export settings
-  const targetFps = 30;      // Should come from export settings
+  // CRITICAL: Need export settings to validate video properties
+  // For now, use canvas dimensions from first video element (fallback)
+  // TODO: Pass export settings as parameter to analyzeTimelineForExport
+  const firstVideo = videoElements[0];
+  const firstMediaItem = mediaItemsMap.get(firstVideo.mediaId);
+  const targetWidth = firstMediaItem?.width || 1280;  // Fallback to 720p
+  const targetHeight = firstMediaItem?.height || 720;
+  const targetFps = (firstMediaItem as any)?.fps || 30;
+
+  console.log(`🔍 [MODE DETECTION] Using target: ${targetWidth}x${targetHeight} @ ${targetFps}fps`);
 
   const videosMatch = checkVideoPropertiesMatch(
     videoElements,
@@ -308,19 +352,27 @@ if (canUseDirectCopy) {
   );
 
   if (videosMatch) {
-    // All videos match export settings - use direct copy
+    // All videos match - can use direct copy without normalization
     optimizationStrategy = 'direct-copy';
+    console.log('✅ [MODE DETECTION] Videos match - using Mode 1: Direct copy');
   } else {
-    // Videos need normalization - use Mode 1.5
+    // Videos need normalization before concat
     optimizationStrategy = 'video-normalization';
+    console.log('⚡ [MODE DETECTION] Selected Mode 1.5: Video normalization (5-7x speedup)');
   }
 } else {
   // Mode 3: Frame rendering - slowest but most flexible
   optimizationStrategy = 'image-pipeline';
+  console.log('🎨 [MODE DETECTION] Selected Mode 3: Frame rendering (baseline speed)');
 }
 ```
 
-**Comment**: Agree with the decision tree but we should source export width, height, and fps from the actual export settings rather than hard coding defaults.
+**CRITICAL NOTES**:
+1. **Export settings missing**: Currently using first video dimensions as fallback. Should pass `exportWidth`, `exportHeight`, `exportFps` as parameters.
+2. **Canvas dimensions**: Real export settings should come from `ExportEngine` canvas or settings.
+3. **Function signature update needed**: `analyzeTimelineForExport(tracks, mediaItems, exportSettings?)` with optional export settings parameter.
+
+**Implementation Status**: ⏳ Pending - Requires export settings parameter
 
 ### Task 3.2: Update Reason String
 **File**: `apps/web/src/lib/export-analysis.ts`
@@ -996,10 +1048,10 @@ if (hasMixedCodecs) {
 ## Implementation Checklist
 
 ### Phase 1: Detection
-- [ ] Add `VideoProperties` interface
-- [ ] Implement `extractVideoProperties()` function
+- [x] Add `VideoProperties` interface ✅ **DONE** (export-analysis.ts:44-50)
+- [x] Implement `extractVideoProperties()` function ✅ **DONE** (export-analysis.ts:55-112)
 - [ ] Implement `checkVideoPropertiesMatch()` function
-- [ ] Update `ExportAnalysis` interface with `video-normalization` strategy
+- [x] Update `ExportAnalysis` interface with `video-normalization` strategy ✅ **DONE** (export-analysis.ts:32-36)
 - [ ] Update `analyzeTimelineForExport()` to detect mismatches
 - [ ] Add console logging for Mode 1.5 detection
 
