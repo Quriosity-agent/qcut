@@ -10,6 +10,10 @@ import type { MediaItem } from '@/stores/media-store-types';
 export interface ExportAnalysis {
   /** Requires frame-by-frame rendering (slow path) */
   needsImageProcessing: boolean;
+  /** Requires frame rendering (images/overlapping videos need canvas compositing) */
+  needsFrameRendering: boolean;
+  /** Requires FFmpeg filter encoding (text/stickers can use filters instead of frames) */
+  needsFilterEncoding: boolean;
   /** Contains static images requiring canvas compositing */
   hasImageElements: boolean;
   /** Contains text overlays requiring canvas rendering */
@@ -25,7 +29,7 @@ export interface ExportAnalysis {
   /** Can use FFmpeg direct copy/concat (fast path) */
   canUseDirectCopy: boolean;
   /** Which export pipeline to use */
-  optimizationStrategy: 'image-pipeline' | 'direct-copy';
+  optimizationStrategy: 'image-pipeline' | 'direct-copy' | 'direct-video-with-filters';
   /** Human-readable explanation of strategy choice */
   reason: string;
 }
@@ -120,13 +124,21 @@ export function analyzeTimelineForExport(
   // Note: This check happens at runtime via useStickersOverlayStore.getState()
   // For analysis, we rely on timeline sticker elements
 
-  // Determine if image processing is needed
+  // Separate frame rendering (canvas compositing) from filter encoding (FFmpeg filters)
+  const needsFrameRendering =
+    hasImageElements ||           // Images require canvas compositing
+    hasOverlappingVideos;         // Multiple videos require compositing
+    // Note: Effects analysis pending - for now assume all effects need frame rendering
+
+  const needsFilterEncoding =
+    hasTextElements ||            // Text uses FFmpeg drawtext
+    hasStickers;                  // Stickers use FFmpeg overlay
+    // Note: Effects can be added here once FFmpeg-compatible effects are identified
+
   const needsImageProcessing =
-    hasImageElements ||
-    hasTextElements ||
-    hasStickers ||
-    hasEffects ||
-    hasOverlappingVideos;
+    needsFrameRendering ||
+    needsFilterEncoding ||
+    hasEffects;
 
   // Can use direct copy/concat if:
   // - Single video source with no processing needed, OR
@@ -143,8 +155,14 @@ export function analyzeTimelineForExport(
     allVideosHaveLocalPath;
 
   // Determine optimization strategy
-  const optimizationStrategy: 'image-pipeline' | 'direct-copy' =
-    canUseDirectCopy ? 'direct-copy' : 'image-pipeline';
+  let optimizationStrategy: 'image-pipeline' | 'direct-copy' | 'direct-video-with-filters';
+  if (canUseDirectCopy) {
+    optimizationStrategy = 'direct-copy';
+  } else if (!needsFrameRendering && needsFilterEncoding && videoElementCount === 1) {
+    optimizationStrategy = 'direct-video-with-filters';  // NEW MODE 2
+  } else {
+    optimizationStrategy = 'image-pipeline';
+  }
 
   // Generate reason for strategy choice
   let reason = '';
@@ -234,6 +252,8 @@ export function analyzeTimelineForExport(
 
   return {
     needsImageProcessing,
+    needsFrameRendering,      // NEW: Separate frame rendering flag
+    needsFilterEncoding,      // NEW: Separate filter encoding flag
     hasImageElements,
     hasTextElements,
     hasStickers,

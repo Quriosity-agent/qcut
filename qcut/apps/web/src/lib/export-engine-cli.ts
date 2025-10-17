@@ -815,6 +815,52 @@ export class CLIExportEngine extends ExportEngine {
   }
 
   /**
+   * Extract single video input path for Mode 2 optimization
+   * Returns video path and trim info only if exactly one video exists
+   */
+  private extractVideoInputPath(): { path: string; trimStart: number; trimEnd: number } | null {
+    debugLog("[CLIExportEngine] Extracting video input path for Mode 2...");
+
+    let videoElement: TimelineElement | null = null;
+    let mediaItem: MediaItem | null = null;
+
+    // Iterate through all tracks to find video elements
+    for (const track of this.tracks) {
+      if (track.type !== 'media') continue;
+
+      for (const element of track.elements) {
+        if (element.hidden) continue;
+        if (element.type !== 'media') continue;
+
+        const item = this.mediaItems.find(m => m.id === (element as any).mediaId);
+        if (item && item.type === 'video' && item.localPath) {
+          if (videoElement) {
+            // Multiple videos found, can't use single video input
+            debugLog("[CLIExportEngine] Multiple videos found, Mode 2 not applicable");
+            return null;
+          }
+          videoElement = element;
+          mediaItem = item;
+        }
+      }
+    }
+
+    if (!videoElement || !mediaItem?.localPath) {
+      debugLog("[CLIExportEngine] No video with localPath found");
+      return null;
+    }
+
+    const result = {
+      path: mediaItem.localPath,
+      trimStart: videoElement.trimStart || 0,
+      trimEnd: videoElement.trimEnd || 0
+    };
+
+    debugLog(`[CLIExportEngine] Video input extracted: ${result.path}`);
+    return result;
+  }
+
+  /**
    * Download sticker blob/data URL to temp directory for FFmpeg access
    */
   private async downloadStickerToTemp(
@@ -1171,20 +1217,36 @@ export class CLIExportEngine extends ExportEngine {
       progressCallback?.(10, "Pre-loading videos...");
       await this.preloadAllVideos();
 
-      // Render frames to disk UNLESS we can use direct copy optimization
+      // Determine if we can use Mode 2 (direct video input with filters)
+      const canUseMode2 =
+        this.exportAnalysis?.optimizationStrategy === 'direct-video-with-filters';
+      const videoInput = canUseMode2 ? this.extractVideoInputPath() : null;
+
+      // Render frames to disk UNLESS we can use direct copy or Mode 2
       try {
-        if (!this.exportAnalysis?.canUseDirectCopy) {
-          // If we CAN'T use direct copy, we MUST render frames
-          debugLog('[CLIExportEngine] 🎨 Cannot use direct copy - rendering frames to disk');
+        if (this.exportAnalysis?.optimizationStrategy === 'image-pipeline') {
+          // Mode 3: Frame rendering required
+          debugLog('[CLIExportEngine] 🎨 MODE 3: Frame rendering required');
           debugLog(`[CLIExportEngine] Reason: ${this.exportAnalysis.reason}`);
           progressCallback?.(15, "Rendering frames...");
           await this.renderFramesToDisk(progressCallback);
-        } else {
-          // Only skip rendering if direct copy is actually possible
-          debugLog('[CLIExportEngine] ⚡ Using direct video copy - skipping frame rendering');
+        } else if (videoInput) {
+          // Mode 2: Direct video input with filters
+          debugLog('[CLIExportEngine] ⚡ MODE 2: Using direct video input with filters');
+          debugLog(`[CLIExportEngine] Video path: ${videoInput.path}`);
+          debugLog(`[CLIExportEngine] Trim: ${videoInput.trimStart}s - ${videoInput.trimEnd}s`);
+          progressCallback?.(15, "Preparing video with filters...");
+          // Skip frame rendering entirely!
+        } else if (this.exportAnalysis?.canUseDirectCopy) {
+          // Mode 1: Direct copy
+          debugLog('[CLIExportEngine] ⚡ MODE 1: Using direct video copy');
           debugLog(`[CLIExportEngine] Optimization: ${this.exportAnalysis?.optimizationStrategy}`);
-          progressCallback?.(15, "Preparing direct video processing...");
-          // Direct copy optimization is possible - skip frame rendering
+          progressCallback?.(15, "Preparing direct video copy...");
+        } else {
+          // Fallback to frame rendering
+          debugLog('[CLIExportEngine] ⚠️ Falling back to frame rendering');
+          progressCallback?.(15, "Rendering frames...");
+          await this.renderFramesToDisk(progressCallback);
         }
       } catch (error) {
         // Fallback: Force image pipeline if optimization fails
@@ -1656,6 +1718,12 @@ export class CLIExportEngine extends ExportEngine {
     // IMPORTANT: Disable direct copy if we have text filters OR sticker filters
     const hasTextFilters = textFilterChain.length > 0;
     const hasStickerFilters = (stickerFilterChain?.length ?? 0) > 0;
+
+    // Determine which mode to use and extract appropriate video info
+    const canUseMode2 =
+      this.exportAnalysis?.optimizationStrategy === 'direct-video-with-filters';
+    const videoInput = canUseMode2 ? this.extractVideoInputPath() : null;
+
     const videoSources = (this.exportAnalysis?.canUseDirectCopy && !hasTextFilters && !hasStickerFilters)
       ? this.extractVideoSources()
       : [];

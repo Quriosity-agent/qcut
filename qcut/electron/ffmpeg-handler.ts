@@ -117,6 +117,14 @@ interface ExportOptions {
   useDirectCopy?: boolean;
   /** Video sources for direct copy optimization (when useDirectCopy=true) */
   videoSources?: VideoSource[];
+  /** Use video file instead of frames (Mode 2 optimization) */
+  useVideoInput?: boolean;
+  /** Direct video file path for Mode 2 */
+  videoInputPath?: string;
+  /** Video trim start time in seconds */
+  trimStart?: number;
+  /** Video trim end time in seconds */
+  trimEnd?: number;
 }
 
 /**
@@ -395,7 +403,11 @@ export function setupFFmpegIPC(): void {
           effectiveUseDirectCopy,
           options.videoSources,
           stickerFilterChain,
-          stickerSources
+          stickerSources,
+          options.useVideoInput || false,
+          options.videoInputPath,
+          options.trimStart,
+          options.trimEnd
         );
 
         // Use async IIFE to handle validation properly
@@ -1078,7 +1090,11 @@ function buildFFmpegArgs(
   useDirectCopy = false,
   videoSources?: VideoSource[],
   stickerFilterChain?: string,
-  stickerSources?: StickerSource[]
+  stickerSources?: StickerSource[],
+  useVideoInput = false,
+  videoInputPath?: string,
+  trimStart?: number,
+  trimEnd?: number
 ): string[] {
   const qualitySettings: QualityMap = {
     "high": { crf: "18", preset: "slow" },
@@ -1088,6 +1104,119 @@ function buildFFmpegArgs(
 
   const { crf, preset }: QualitySettings =
     qualitySettings[quality] || qualitySettings.medium;
+
+  // =============================================================================
+  // MODE 2: Direct video input with FFmpeg filters (text/stickers)
+  // =============================================================================
+  if (useVideoInput && videoInputPath) {
+    debugLog('[FFmpeg] MODE 2: Using direct video input with filters');
+    const args: string[] = ["-y"]; // Overwrite output
+
+    // Validate video file exists
+    if (!fs.existsSync(videoInputPath)) {
+      throw new Error(`Video source not found: ${videoInputPath}`);
+    }
+
+    // Apply trim start (seek to position) BEFORE input for faster seeking
+    if (trimStart && trimStart > 0) {
+      args.push("-ss", trimStart.toString());
+    }
+
+    // Video input
+    args.push("-i", videoInputPath);
+
+    // Set duration (duration parameter already reflects trimmed timeline)
+    if (duration) {
+      args.push("-t", duration.toString());
+    }
+
+    // Add sticker image inputs (after video input)
+    if (stickerSources && stickerSources.length > 0) {
+      for (const sticker of stickerSources) {
+        if (!fs.existsSync(sticker.path)) {
+          debugWarn(`[FFmpeg] Sticker file not found: ${sticker.path}`);
+          continue;
+        }
+        args.push("-loop", "1", "-i", sticker.path);
+      }
+    }
+
+    // Build complete filter chain
+    const filters: string[] = [];
+
+    // Apply video effects first (if any)
+    if (filterChain) {
+      filters.push(filterChain);
+    }
+
+    // Apply sticker overlays (middle layer)
+    if (stickerFilterChain) {
+      filters.push(stickerFilterChain);
+    }
+
+    // Apply text overlays (on top of everything)
+    if (textFilterChain) {
+      filters.push(textFilterChain);
+    }
+
+    // Apply combined filters if any exist
+    if (filters.length > 0) {
+      if (stickerSources && stickerSources.length > 0) {
+        // Complex filter with multiple inputs
+        args.push("-filter_complex", filters.join(';'));
+      } else {
+        // Simple filters can use -vf
+        args.push("-vf", filters.join(','));
+      }
+    }
+
+    // Add audio inputs and mixing (if provided)
+    const stickerCount = stickerSources?.length || 0;
+    if (audioFiles && audioFiles.length > 0) {
+      audioFiles.forEach((audioFile: AudioFile) => {
+        if (!fs.existsSync(audioFile.path)) {
+          throw new Error(`Audio file not found: ${audioFile.path}`);
+        }
+        args.push("-i", audioFile.path);
+      });
+
+      // Audio mixing logic (same as frame mode but adjust input indices)
+      if (audioFiles.length === 1) {
+        const audioFile = audioFiles[0];
+        const audioInputIndex = 1 + stickerCount; // Account for stickers
+        if (audioFile.startTime > 0) {
+          args.push(
+            "-filter_complex",
+            `[${audioInputIndex}:a]adelay=${Math.round(audioFile.startTime * 1000)}|${Math.round(audioFile.startTime * 1000)}[audio]`,
+            "-map", "0:v",
+            "-map", "[audio]"
+          );
+        } else {
+          args.push("-map", "0:v", "-map", `${audioInputIndex}:a`);
+        }
+      } else {
+        // Multiple audio files mixing
+        const inputMaps: string[] = audioFiles.map((_, i) => `[${i + 1 + stickerCount}:a]`);
+        const mixFilter = `${inputMaps.join("")}amix=inputs=${audioFiles.length}:duration=longest[audio]`;
+        args.push("-filter_complex", mixFilter, "-map", "0:v", "-map", "[audio]");
+      }
+      args.push("-c:a", "aac", "-b:a", "128k");
+    }
+
+    // Video codec settings
+    args.push("-c:v", "libx264");
+    args.push("-preset", preset);
+    args.push("-crf", crf);
+    args.push("-pix_fmt", "yuv420p");
+    args.push("-movflags", "+faststart");
+    args.push(outputFile);
+
+    debugLog('[FFmpeg] MODE 2 args built successfully');
+    return args;
+  }
+  // =============================================================================
+  // END MODE 2
+  // =============================================================================
 
   // Handle direct copy mode
   if (useDirectCopy && videoSources && videoSources.length > 0) {
