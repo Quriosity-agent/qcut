@@ -57,360 +57,745 @@ For **single video + text overlay** (1.93s video, 58 frames @ 30fps):
 ### Task 1: Update Export Analysis Logic (~20 min)
 **File**: `qcut/apps/web/src/lib/export-analysis.ts`
 
-**Changes**:
-1. Add new fields to `ExportAnalysis` interface:
-   - `needsFrameRendering: boolean` - Requires canvas compositing
-   - `needsFilterEncoding: boolean` - Requires FFmpeg filters but not frame rendering
-   - `optimizationStrategy: 'direct-copy' | 'direct-video-with-filters' | 'frame-rendering'`
+**Current State (Lines 10-31)**:
+```typescript
+export interface ExportAnalysis {
+  needsImageProcessing: boolean;
+  hasImageElements: boolean;
+  hasTextElements: boolean;
+  hasStickers: boolean;
+  hasEffects: boolean;
+  hasMultipleVideoSources: boolean;
+  hasOverlappingVideos: boolean;
+  canUseDirectCopy: boolean;
+  optimizationStrategy: 'image-pipeline' | 'direct-copy';  // ❌ Missing Mode 2
+  reason: string;
+}
+```
 
-2. Update `analyzeTimelineForExport()` logic:
-   ```typescript
-   // Separate frame rendering from filter encoding
-   const needsFrameRendering =
-     hasImageElements ||           // Images require canvas compositing
-     hasOverlappingVideos ||       // Multiple videos require compositing
-     (hasEffects && !isFFmpegCompatible);  // Canvas-only effects
+**Changes Required**:
 
-   const needsFilterEncoding =
-     hasTextElements ||            // Text uses FFmpeg drawtext
-     hasStickers ||                // Stickers use FFmpeg overlay
-     (hasEffects && isFFmpegCompatible);   // FFmpeg-compatible effects
+**1. Update Interface (Lines 10-31) - ADD 3 new fields:**
+```typescript
+export interface ExportAnalysis {
+  needsImageProcessing: boolean;
+  needsFrameRendering: boolean;        // ✅ ADD THIS
+  needsFilterEncoding: boolean;        // ✅ ADD THIS
+  hasImageElements: boolean;
+  hasTextElements: boolean;
+  hasStickers: boolean;
+  hasEffects: boolean;
+  hasMultipleVideoSources: boolean;
+  hasOverlappingVideos: boolean;
+  canUseDirectCopy: boolean;
+  optimizationStrategy: 'image-pipeline' | 'direct-copy' | 'direct-video-with-filters';  // ✅ ADD third mode
+  reason: string;
+}
+```
 
-   const canUseDirectCopy =
-     videoElementCount >= 1 &&
-     !needsFrameRendering &&
-     !needsFilterEncoding &&
-     allVideosHaveLocalPath;
+**2. Replace Logic (Lines 124-129) - COMPLETELY REWRITE:**
 
-   // Determine strategy
-   let optimizationStrategy;
-   if (canUseDirectCopy) {
-     optimizationStrategy = 'direct-copy';
-   } else if (!needsFrameRendering && needsFilterEncoding && videoElementCount === 1) {
-     optimizationStrategy = 'direct-video-with-filters';  // NEW MODE
-   } else {
-     optimizationStrategy = 'frame-rendering';
-   }
-   ```
+**BEFORE (Lines 124-129):**
+```typescript
+// ❌ WRONG: Treats text/stickers as requiring "image processing"
+const needsImageProcessing =
+  hasImageElements ||
+  hasTextElements ||      // ← Text doesn't need image processing
+  hasStickers ||          // ← Stickers need overlay filters, not image processing
+  hasEffects ||
+  hasOverlappingVideos;
+```
 
-3. Update reason generation to reflect new logic
+**AFTER (Replace lines 124-129):**
+```typescript
+// Separate frame rendering (canvas compositing) from filter encoding (FFmpeg filters)
+const needsFrameRendering =
+  hasImageElements ||           // Images require canvas compositing
+  hasOverlappingVideos;         // Multiple videos require compositing
+  // Note: Effects analysis pending - for now assume all effects need frame rendering
+
+const needsFilterEncoding =
+  hasTextElements ||            // Text uses FFmpeg drawtext
+  hasStickers;                  // Stickers use FFmpeg overlay
+  // Note: Effects can be added here once FFmpeg-compatible effects are identified
+
+const needsImageProcessing =
+  needsFrameRendering ||
+  needsFilterEncoding;
+```
+
+**3. Update Strategy Logic (Lines 145-148) - REPLACE:**
+
+**BEFORE (Lines 145-148):**
+```typescript
+// Determine optimization strategy
+const optimizationStrategy: 'image-pipeline' | 'direct-copy' =
+  canUseDirectCopy ? 'direct-copy' : 'image-pipeline';
+```
+
+**AFTER (Replace lines 145-148):**
+```typescript
+// Determine optimization strategy
+let optimizationStrategy: 'image-pipeline' | 'direct-copy' | 'direct-video-with-filters';
+if (canUseDirectCopy) {
+  optimizationStrategy = 'direct-copy';
+} else if (!needsFrameRendering && needsFilterEncoding && videoElementCount === 1) {
+  optimizationStrategy = 'direct-video-with-filters';  // ✅ NEW MODE 2
+} else {
+  optimizationStrategy = 'image-pipeline';
+}
+```
+
+**4. Update Return Statement (Lines 116-127) - ADD new fields:**
+```typescript
+return {
+  needsImageProcessing,
+  needsFrameRendering,      // ✅ ADD THIS
+  needsFilterEncoding,      // ✅ ADD THIS
+  hasImageElements,
+  hasTextElements,
+  hasStickers,
+  hasEffects,
+  hasMultipleVideoSources,
+  hasOverlappingVideos,
+  canUseDirectCopy,
+  optimizationStrategy,
+  reason
+};
+```
 
 **Subtasks**:
-- [ ] Add new interface fields (5 min)
-- [ ] Implement `needsFrameRendering` logic (5 min)
-- [ ] Implement `needsFilterEncoding` logic (5 min)
-- [ ] Update strategy determination (3 min)
-- [ ] Update reason generation (2 min)
+- [ ] Add `needsFrameRendering` and `needsFilterEncoding` to interface (2 min)
+- [ ] Add 'direct-video-with-filters' to optimizationStrategy type (1 min)
+- [ ] Replace lines 124-129 with new separation logic (5 min)
+- [ ] Replace lines 145-148 with new strategy determination (5 min)
+- [ ] Update return statement to include new fields (2 min)
+- [ ] Update reason generation for Mode 2 (5 min)
 
 ---
 
 ### Task 2: Update FFmpeg Handler to Support Video File Input (~30 min)
 **File**: `qcut/electron/ffmpeg-handler.ts`
 
-**Changes**:
-1. Update `ExportOptions` interface to include:
-   ```typescript
-   interface ExportOptions {
-     // ... existing fields
-     videoInputPath?: string;           // NEW: Direct video file path
-     useVideoInput?: boolean;           // NEW: Use video file instead of frames
-     trimStart?: number;                // NEW: Video trim start time
-     trimEnd?: number;                  // NEW: Video trim end time
-   }
-   ```
+**Current State (Lines 93-120)**:
+```typescript
+interface ExportOptions {
+  sessionId: string;
+  width: number;
+  height: number;
+  fps: number;
+  quality: "high" | "medium" | "low";
+  duration: number;
+  audioFiles?: AudioFile[];
+  filterChain?: string;
+  textFilterChain?: string;
+  stickerFilterChain?: string;
+  stickerSources?: StickerSource[];
+  useDirectCopy?: boolean;
+  videoSources?: VideoSource[];
+  // ❌ MISSING: videoInputPath, useVideoInput, trimStart, trimEnd for Mode 2
+}
+```
 
-2. Update `buildFFmpegArgs()` to handle video input mode:
-   ```typescript
-   function buildFFmpegArgs(/* params */): string[] {
-     const args: string[] = ['-y']; // Overwrite output
+**Changes Required**:
 
-     if (useVideoInput && videoInputPath) {
-       // MODE 2: Direct video input with filters
+**1. Add New Fields to ExportOptions Interface (Lines 93-120) - ADD 4 fields:**
+```typescript
+interface ExportOptions {
+  sessionId: string;
+  width: number;
+  height: number;
+  fps: number;
+  quality: "high" | "medium" | "low";
+  duration: number;
+  audioFiles?: AudioFile[];
+  filterChain?: string;
+  textFilterChain?: string;
+  stickerFilterChain?: string;
+  stickerSources?: StickerSource[];
+  useDirectCopy?: boolean;
+  videoSources?: VideoSource[];
+  // ✅ ADD THESE 4 FIELDS:
+  useVideoInput?: boolean;       // NEW: Use video file instead of frames
+  videoInputPath?: string;        // NEW: Direct video file path
+  trimStart?: number;             // NEW: Video trim start time (seconds)
+  trimEnd?: number;               // NEW: Video trim end time (seconds)
+}
+```
 
-       // Trim video if needed
-       if (trimStart > 0) {
-         args.push('-ss', trimStart.toString());
-       }
+**2. Update buildFFmpegArgs Function Signature (Lines 1067-1082) - ADD new parameters:**
 
-       // Video input
-       args.push('-i', videoInputPath);
+**BEFORE (Lines 1067-1082):**
+```typescript
+function buildFFmpegArgs(
+  inputDir: string,
+  outputFile: string,
+  width: number,
+  height: number,
+  fps: number,
+  quality: "high" | "medium" | "low",
+  duration: number,
+  audioFiles: AudioFile[] = [],
+  filterChain?: string,
+  textFilterChain?: string,
+  useDirectCopy = false,
+  videoSources?: VideoSource[],
+  stickerFilterChain?: string,
+  stickerSources?: StickerSource[]
+): string[] {
+```
 
-       // Duration limit
-       if (duration) {
-         args.push('-t', duration.toString());
-       }
+**AFTER (Replace lines 1067-1082):**
+```typescript
+function buildFFmpegArgs(
+  inputDir: string,
+  outputFile: string,
+  width: number,
+  height: number,
+  fps: number,
+  quality: "high" | "medium" | "low",
+  duration: number,
+  audioFiles: AudioFile[] = [],
+  filterChain?: string,
+  textFilterChain?: string,
+  useDirectCopy = false,
+  videoSources?: VideoSource[],
+  stickerFilterChain?: string,
+  stickerSources?: StickerSource[],
+  // ✅ ADD THESE 4 PARAMETERS:
+  useVideoInput = false,
+  videoInputPath?: string,
+  trimStart?: number,
+  trimEnd?: number
+): string[] {
+```
 
-       // Add sticker inputs
-       if (stickerSources && stickerSources.length > 0) {
-         for (const sticker of stickerSources) {
-           args.push('-loop', '1', '-i', sticker.path);
-         }
-       }
+**3. Insert Mode 2 Logic After Line 1091 (BEFORE direct copy check):**
 
-       // Build complete filter chain
-       const filters: string[] = [];
+**INSERT THIS CODE BLOCK after line 1091 (after qualitySettings):**
+```typescript
+  const { crf, preset }: QualitySettings =
+    qualitySettings[quality] || qualitySettings.medium;
 
-       // Apply sticker overlays first (if any)
-       if (stickerFilterChain) {
-         filters.push(stickerFilterChain);
-       }
+  // ✅ INSERT THIS BLOCK HERE (NEW MODE 2 LOGIC):
+  // =============================================================================
+  // MODE 2: Direct video input with FFmpeg filters (text/stickers)
+  // =============================================================================
+  if (useVideoInput && videoInputPath) {
+    debugLog('[FFmpeg] MODE 2: Using direct video input with filters');
+    const args: string[] = ["-y"]; // Overwrite output
 
-       // Apply text overlays (on top of stickers)
-       if (textFilterChain) {
-         filters.push(textFilterChain);
-       }
+    // Validate video file exists
+    if (!fs.existsSync(videoInputPath)) {
+      throw new Error(`Video source not found: ${videoInputPath}`);
+    }
 
-       // Apply video effects (if any)
-       if (filterChain) {
-         filters.push(filterChain);
-       }
+    // Apply trim start (seek to position) BEFORE input for faster seeking
+    if (trimStart && trimStart > 0) {
+      args.push("-ss", trimStart.toString());
+    }
 
-       if (filters.length > 0) {
-         args.push('-vf', filters.join(','));
-       }
+    // Video input
+    args.push("-i", videoInputPath);
 
-     } else {
-       // MODE 3: Frame sequence input (existing logic)
-       args.push('-framerate', fps.toString());
-       args.push('-i', `${frameDir}/frame-%04d.png`);
-       // ... existing frame-based logic
-     }
+    // Set duration (trim end handled by limiting output duration)
+    if (duration) {
+      const effectiveDuration = trimEnd ? duration - trimEnd : duration;
+      args.push("-t", effectiveDuration.toString());
+    }
 
-     // Audio mixing (common to both modes)
-     // ... existing audio logic
+    // Add sticker image inputs (after video input)
+    if (stickerSources && stickerSources.length > 0) {
+      for (const sticker of stickerSources) {
+        if (!fs.existsSync(sticker.path)) {
+          debugWarn(`[FFmpeg] Sticker file not found: ${sticker.path}`);
+          continue;
+        }
+        args.push("-loop", "1", "-i", sticker.path);
+      }
+    }
 
-     // Encoding settings (common to both modes)
-     args.push('-c:v', 'libx264');
-     args.push('-preset', preset);
-     args.push('-crf', crf.toString());
+    // Build complete filter chain
+    const filters: string[] = [];
 
-     return args;
-   }
-   ```
+    // Apply video effects first (if any)
+    if (filterChain) {
+      filters.push(filterChain);
+    }
+
+    // Apply sticker overlays (middle layer)
+    if (stickerFilterChain) {
+      filters.push(stickerFilterChain);
+    }
+
+    // Apply text overlays (on top of everything)
+    if (textFilterChain) {
+      filters.push(textFilterChain);
+    }
+
+    // Apply combined filters if any exist
+    if (filters.length > 0) {
+      if (stickerSources && stickerSources.length > 0) {
+        // Complex filter with multiple inputs
+        args.push("-filter_complex", filters.join(';'));
+      } else {
+        // Simple filters can use -vf
+        args.push("-vf", filters.join(','));
+      }
+    }
+
+    // Add audio inputs and mixing (if provided)
+    const stickerCount = stickerSources?.length || 0;
+    if (audioFiles && audioFiles.length > 0) {
+      audioFiles.forEach((audioFile: AudioFile) => {
+        if (!fs.existsSync(audioFile.path)) {
+          throw new Error(`Audio file not found: ${audioFile.path}`);
+        }
+        args.push("-i", audioFile.path);
+      });
+
+      // Audio mixing logic (same as frame mode but adjust input indices)
+      if (audioFiles.length === 1) {
+        const audioFile = audioFiles[0];
+        const audioInputIndex = 1 + stickerCount; // Account for stickers
+        if (audioFile.startTime > 0) {
+          args.push(
+            "-filter_complex",
+            `[${audioInputIndex}:a]adelay=${Math.round(audioFile.startTime * 1000)}|${Math.round(audioFile.startTime * 1000)}[audio]`,
+            "-map", "0:v",
+            "-map", "[audio]"
+          );
+        } else {
+          args.push("-map", "0:v", "-map", `${audioInputIndex}:a`);
+        }
+      } else {
+        // Multiple audio files mixing
+        const inputMaps: string[] = audioFiles.map((_, i) => `[${i + 1 + stickerCount}:a]`);
+        const mixFilter = `${inputMaps.join("")}amix=inputs=${audioFiles.length}:duration=longest[audio]`;
+        args.push("-filter_complex", mixFilter, "-map", "0:v", "-map", "[audio]");
+      }
+      args.push("-c:a", "aac", "-b:a", "128k");
+    }
+
+    // Video codec settings
+    args.push("-c:v", "libx264");
+    args.push("-preset", preset);
+    args.push("-crf", crf);
+    args.push("-pix_fmt", "yuv420p");
+    args.push("-movflags", "+faststart");
+    args.push(outputFile);
+
+    debugLog('[FFmpeg] MODE 2 args built successfully');
+    return args;
+  }
+  // =============================================================================
+  // END MODE 2
+  // =============================================================================
+
+  // Handle direct copy mode (existing code continues...)
+  if (useDirectCopy && videoSources && videoSources.length > 0) {
+```
+
+**4. Update IPC Handler Call (Lines 384-399) - Pass new parameters:**
+
+**BEFORE (Lines 384-399):**
+```typescript
+const args: string[] = buildFFmpegArgs(
+  frameDir,
+  outputFile,
+  width,
+  height,
+  fps,
+  quality,
+  validatedDuration,
+  audioFiles,
+  options.filterChain,
+  textFilterChain,
+  effectiveUseDirectCopy,
+  options.videoSources,
+  stickerFilterChain,
+  stickerSources
+);
+```
+
+**AFTER (Replace lines 384-399):**
+```typescript
+const args: string[] = buildFFmpegArgs(
+  frameDir,
+  outputFile,
+  width,
+  height,
+  fps,
+  quality,
+  validatedDuration,
+  audioFiles,
+  options.filterChain,
+  textFilterChain,
+  effectiveUseDirectCopy,
+  options.videoSources,
+  stickerFilterChain,
+  stickerSources,
+  // ✅ ADD THESE 4 PARAMETERS:
+  options.useVideoInput || false,
+  options.videoInputPath,
+  options.trimStart,
+  options.trimEnd
+);
+```
 
 **Subtasks**:
-- [ ] Add new ExportOptions fields (3 min)
-- [ ] Implement video input mode detection (5 min)
-- [ ] Add video trim support (-ss, -t flags) (5 min)
-- [ ] Update sticker input handling for video mode (7 min)
-- [ ] Build complete filter chain for video mode (7 min)
-- [ ] Test FFmpeg args construction (3 min)
+- [ ] Add 4 new fields to ExportOptions interface (3 min)
+- [ ] Update buildFFmpegArgs function signature with 4 new parameters (2 min)
+- [ ] Insert Mode 2 logic block after line 1091 (15 min)
+- [ ] Update IPC handler call to pass new parameters (3 min)
+- [ ] Test Mode 2 argument construction (7 min)
 
 ---
 
 ### Task 3: Update CLI Export Engine Logic (~35 min)
 **File**: `qcut/apps/web/src/lib/export-engine-cli.ts`
 
-**Changes**:
-1. Add method to extract video input path:
-   ```typescript
-   private extractVideoInputPath(): { path: string; trimStart: number; trimEnd: number } | null {
-     // Find the single video element
-     let videoElement: MediaElement | null = null;
-     let mediaItem: MediaItem | null = null;
+**Current Situation**:
+- Lines 768-815: `extractVideoSources()` method exists but extracts ALL videos
+- Lines 1174-1219: Frame rendering logic at lines 1176-1182
+- Lines 541-544: Video sources extracted but disabled if text/stickers present
 
-     for (const track of this.tracks) {
-       if (track.type !== 'media') continue;
+**Changes Required**:
 
-       for (const element of track.elements) {
-         if (element.hidden) continue;
-         if (element.type !== 'media') continue;
+**1. Add New Method extractVideoInputPath() - INSERT after line 815:**
 
-         const item = this.mediaItems.find(m => m.id === element.mediaId);
-         if (item && item.type === 'video' && item.localPath) {
-           if (videoElement) {
-             // Multiple videos found, can't use single video input
-             return null;
-           }
-           videoElement = element;
-           mediaItem = item;
-         }
-       }
-     }
+**INSERT THIS METHOD after extractVideoSources() method (after line 815):**
+```typescript
+  /**
+   * Extract single video input path for Mode 2 optimization
+   * Returns video path and trim info only if exactly one video exists
+   */
+  private extractVideoInputPath(): { path: string; trimStart: number; trimEnd: number } | null {
+    debugLog("[CLIExportEngine] Extracting video input path for Mode 2...");
 
-     if (!videoElement || !mediaItem?.localPath) {
-       return null;
-     }
+    let videoElement: MediaElement | null = null;
+    let mediaItem: MediaItem | null = null;
 
-     return {
-       path: mediaItem.localPath,
-       trimStart: videoElement.trimStart || 0,
-       trimEnd: videoElement.trimEnd || 0
-     };
-   }
-   ```
+    // Iterate through all tracks to find video elements
+    for (const track of this.tracks) {
+      if (track.type !== 'media') continue;
 
-2. Update `export()` method to skip frame rendering for Mode 2:
-   ```typescript
-   async export(progressCallback?: ProgressCallback): Promise<Blob> {
-     // ... existing setup code
+      for (const element of track.elements) {
+        if (element.hidden) continue;
+        if (element.type !== 'media') continue;
 
-     // Determine if we can use direct video input
-     const canUseVideoInput =
-       this.exportAnalysis?.optimizationStrategy === 'direct-video-with-filters';
+        const item = this.mediaItems.find(m => m.id === element.mediaId);
+        if (item && item.type === 'video' && item.localPath) {
+          if (videoElement) {
+            // Multiple videos found, can't use single video input
+            debugLog("[CLIExportEngine] Multiple videos found, Mode 2 not applicable");
+            return null;
+          }
+          videoElement = element;
+          mediaItem = item;
+        }
+      }
+    }
 
-     const videoInput = canUseVideoInput ? this.extractVideoInputPath() : null;
+    if (!videoElement || !mediaItem?.localPath) {
+      debugLog("[CLIExportEngine] No video with localPath found");
+      return null;
+    }
 
-     try {
-       await this.preloadAllVideos();
+    const result = {
+      path: mediaItem.localPath,
+      trimStart: videoElement.trimStart || 0,
+      trimEnd: videoElement.trimEnd || 0
+    };
 
-       // Only render frames if we MUST use frame rendering mode
-       if (this.exportAnalysis?.optimizationStrategy === 'frame-rendering') {
-         debugLog('[CLIExportEngine] Using frame rendering mode');
-         progressCallback?.(15, "Rendering frames...");
-         await this.renderFramesToDisk(progressCallback);
-       } else if (videoInput) {
-         debugLog('[CLIExportEngine] Using direct video input with filters mode');
-         debugLog(`[CLIExportEngine] Video path: ${videoInput.path}`);
-         progressCallback?.(15, "Preparing video with filters...");
-         // Skip frame rendering entirely!
-       } else {
-         debugLog('[CLIExportEngine] Using direct copy mode');
-         progressCallback?.(15, "Preparing direct video copy...");
-       }
+    debugLog(`[CLIExportEngine] Video input extracted: ${result.path}`);
+    return result;
+  }
+```
 
-       // ... rest of export logic
-     }
-   }
-   ```
+**2. Update export() Method - MODIFY lines 1174-1188:**
 
-3. Update `exportWithCLI()` to pass video input options:
-   ```typescript
-   const exportOptions = {
-     sessionId: this.sessionId,
-     // ... existing fields
+**BEFORE (Lines 1174-1188):**
+```typescript
+      // Render frames to disk UNLESS we can use direct copy optimization
+      try {
+        if (!this.exportAnalysis?.canUseDirectCopy) {
+          // If we CAN'T use direct copy, we MUST render frames
+          debugLog('[CLIExportEngine] 🎨 Cannot use direct copy - rendering frames to disk');
+          debugLog(`[CLIExportEngine] Reason: ${this.exportAnalysis.reason}`);
+          progressCallback?.(15, "Rendering frames...");
+          await this.renderFramesToDisk(progressCallback);
+        } else {
+          // Only skip rendering if direct copy is actually possible
+          debugLog('[CLIExportEngine] ⚡ Using direct video copy - skipping frame rendering');
+          debugLog(`[CLIExportEngine] Optimization: ${this.exportAnalysis?.optimizationStrategy}`);
+          progressCallback?.(15, "Preparing direct video processing...");
+          // Direct copy optimization is possible - skip frame rendering
+        }
+```
 
-     // NEW: Video input mode
-     useVideoInput: !!videoInput,
-     videoInputPath: videoInput?.path,
-     trimStart: videoInput?.trimStart || 0,
-     trimEnd: videoInput?.trimEnd || 0,
+**AFTER (Replace lines 1174-1188):**
+```typescript
+      // Determine if we can use Mode 2 (direct video input with filters)
+      const canUseMode2 =
+        this.exportAnalysis?.optimizationStrategy === 'direct-video-with-filters';
+      const videoInput = canUseMode2 ? this.extractVideoInputPath() : null;
 
-     // Filter chains (already implemented)
-     textFilterChain: hasTextFilters ? textFilterChain : undefined,
-     stickerFilterChain,
-     stickerSources,
-   };
-   ```
+      // Render frames to disk UNLESS we can use direct copy or Mode 2
+      try {
+        if (this.exportAnalysis?.optimizationStrategy === 'image-pipeline') {
+          // Mode 3: Frame rendering required
+          debugLog('[CLIExportEngine] 🎨 MODE 3: Frame rendering required');
+          debugLog(`[CLIExportEngine] Reason: ${this.exportAnalysis.reason}`);
+          progressCallback?.(15, "Rendering frames...");
+          await this.renderFramesToDisk(progressCallback);
+        } else if (videoInput) {
+          // Mode 2: Direct video input with filters
+          debugLog('[CLIExportEngine] ⚡ MODE 2: Using direct video input with filters');
+          debugLog(`[CLIExportEngine] Video path: ${videoInput.path}`);
+          debugLog(`[CLIExportEngine] Trim: ${videoInput.trimStart}s - ${videoInput.trimEnd}s`);
+          progressCallback?.(15, "Preparing video with filters...");
+          // Skip frame rendering entirely!
+        } else if (this.exportAnalysis?.canUseDirectCopy) {
+          // Mode 1: Direct copy
+          debugLog('[CLIExportEngine] ⚡ MODE 1: Using direct video copy');
+          debugLog(`[CLIExportEngine] Optimization: ${this.exportAnalysis?.optimizationStrategy}`);
+          progressCallback?.(15, "Preparing direct video copy...");
+        } else {
+          // Fallback to frame rendering
+          debugLog('[CLIExportEngine] ⚠️ Falling back to frame rendering');
+          progressCallback?.(15, "Rendering frames...");
+          await this.renderFramesToDisk(progressCallback);
+        }
+```
+
+**3. Update exportWithCLI() Method - MODIFY lines 540-563:**
+
+**BEFORE (Lines 540-563 - the videoSources extraction logic):**
+```typescript
+    // Extract video sources for direct copy optimization
+    // IMPORTANT: Disable direct copy if we have text filters OR sticker filters
+    const hasTextFilters = textFilterChain.length > 0;
+    const hasStickerFilters = (stickerFilterChain?.length ?? 0) > 0;
+    const videoSources = (this.exportAnalysis?.canUseDirectCopy && !hasTextFilters && !hasStickerFilters)
+      ? this.extractVideoSources()
+      : [];
+```
+
+**AFTER (Replace lines 540-563):**
+```typescript
+    // Extract video sources for direct copy optimization
+    // IMPORTANT: Disable direct copy if we have text filters OR sticker filters
+    const hasTextFilters = textFilterChain.length > 0;
+    const hasStickerFilters = (stickerFilterChain?.length ?? 0) > 0;
+
+    // Determine which mode to use and extract appropriate video info
+    const canUseMode2 =
+      this.exportAnalysis?.optimizationStrategy === 'direct-video-with-filters';
+    const videoInput = canUseMode2 ? this.extractVideoInputPath() : null;
+
+    const videoSources = (this.exportAnalysis?.canUseDirectCopy && !hasTextFilters && !hasStickerFilters)
+      ? this.extractVideoSources()
+      : [];
+```
+
+**4. Update exportOptions Object - MODIFY lines 549-563:**
+
+**BEFORE (Lines 549-563):**
+```typescript
+    const exportOptions = {
+      sessionId: this.sessionId,
+      width: this.canvas.width,
+      height: this.canvas.height,
+      fps: 30,
+      quality: this.settings.quality || "medium",
+      duration: this.totalDuration,
+      audioFiles,
+      filterChain: combinedFilterChain || undefined,
+      textFilterChain: hasTextFilters ? textFilterChain : undefined,
+      stickerFilterChain,
+      stickerSources,
+      useDirectCopy: !!(this.exportAnalysis?.canUseDirectCopy && !hasTextFilters && !hasStickerFilters),
+      videoSources: videoSources.length > 0 ? videoSources : undefined,
+    };
+```
+
+**AFTER (Replace lines 549-563):**
+```typescript
+    const exportOptions = {
+      sessionId: this.sessionId,
+      width: this.canvas.width,
+      height: this.canvas.height,
+      fps: 30,
+      quality: this.settings.quality || "medium",
+      duration: this.totalDuration,
+      audioFiles,
+      filterChain: combinedFilterChain || undefined,
+      textFilterChain: hasTextFilters ? textFilterChain : undefined,
+      stickerFilterChain,
+      stickerSources,
+      useDirectCopy: !!(this.exportAnalysis?.canUseDirectCopy && !hasTextFilters && !hasStickerFilters),
+      videoSources: videoSources.length > 0 ? videoSources : undefined,
+      // ✅ ADD THESE 4 FIELDS FOR MODE 2:
+      useVideoInput: !!videoInput,
+      videoInputPath: videoInput?.path,
+      trimStart: videoInput?.trimStart || 0,
+      trimEnd: videoInput?.trimEnd || 0,
+    };
+```
 
 **Subtasks**:
-- [ ] Implement extractVideoInputPath() method (10 min)
-- [ ] Update export() to detect Mode 2 (5 min)
-- [ ] Skip frame rendering for Mode 2 (5 min)
-- [ ] Add console logging for Mode 2 (3 min)
-- [ ] Update exportWithCLI() options (5 min)
-- [ ] Add error handling for video input failures (7 min)
+- [ ] Add extractVideoInputPath() method after line 815 (10 min)
+- [ ] Update export() method to detect and handle Mode 2 (8 min)
+- [ ] Update exportWithCLI() to extract video input for Mode 2 (5 min)
+- [ ] Add Mode 2 fields to exportOptions object (3 min)
+- [ ] Add console logging for Mode 2 detection (3 min)
+- [ ] Add error handling for video input failures (6 min)
 
 ---
 
 ### Task 4: Update TypeScript Type Definitions (~10 min)
 **File**: `qcut/apps/web/src/types/electron.d.ts`
 
-**Changes**:
-1. Update ExportAnalysis interface:
-   ```typescript
-   export interface ExportAnalysis {
-     needsImageProcessing: boolean;
-     needsFrameRendering: boolean;        // NEW
-     needsFilterEncoding: boolean;        // NEW
-     hasImageElements: boolean;
-     hasTextElements: boolean;
-     hasStickers: boolean;
-     hasEffects: boolean;
-     hasMultipleVideoSources: boolean;
-     hasOverlappingVideos: boolean;
-     canUseDirectCopy: boolean;
-     optimizationStrategy: 'direct-copy' | 'direct-video-with-filters' | 'frame-rendering';  // UPDATED
-     reason: string;
-   }
-   ```
+**Current State (Lines 175-189)**:
+```typescript
+exportVideoCLI: (options: {
+  sessionId: string;
+  width: number;
+  height: number;
+  fps: number;
+  quality: string;
+  filterChain?: string;
+  textFilterChain?: string;
+  stickerFilterChain?: string;
+  stickerSources?: StickerSource[];
+  duration?: number;
+  audioFiles?: any[];
+  useDirectCopy?: boolean;
+  videoSources?: any[];
+  // ❌ MISSING: useVideoInput, videoInputPath, trimStart, trimEnd
+}) => Promise<{ success: boolean; outputFile: string }>;
+```
 
-2. Update exportVideoCLI options:
-   ```typescript
-   exportVideoCLI: (options: {
-     sessionId: string;
-     // ... existing fields
+**Changes Required**:
 
-     // NEW fields
-     useVideoInput?: boolean;
-     videoInputPath?: string;
-     trimStart?: number;
-     trimEnd?: number;
-   }) => Promise<{ success: boolean; outputFile: string }>;
-   ```
+**ADD 4 New Fields to exportVideoCLI Options (After line 188, before closing }):**
+```typescript
+exportVideoCLI: (options: {
+  sessionId: string;
+  width: number;
+  height: number;
+  fps: number;
+  quality: string;
+  filterChain?: string;
+  textFilterChain?: string;
+  stickerFilterChain?: string;
+  stickerSources?: StickerSource[];
+  duration?: number;
+  audioFiles?: any[];
+  useDirectCopy?: boolean;
+  videoSources?: any[];
+  // ✅ ADD THESE 4 FIELDS:
+  useVideoInput?: boolean;    // Use video file instead of frames
+  videoInputPath?: string;    // Direct video file path
+  trimStart?: number;         // Video trim start time (seconds)
+  trimEnd?: number;           // Video trim end time (seconds)
+}) => Promise<{ success: boolean; outputFile: string }>;
+```
+
+**Note**: ExportAnalysis interface update is handled in Task 1 - no changes needed here since it's defined in `export-analysis.ts`, not in this file.
 
 **Subtasks**:
-- [ ] Update ExportAnalysis interface (3 min)
-- [ ] Update exportVideoCLI options (3 min)
-- [ ] Update FFmpeg handler types (2 min)
-- [ ] Verify type consistency across files (2 min)
+- [ ] Add 4 new fields to exportVideoCLI options (5 min)
+- [ ] Verify type consistency with ffmpeg-handler.ts (3 min)
+- [ ] Verify type consistency with export-engine-cli.ts (2 min)
 
 ---
 
-### Task 5: Add Debug Logging and Console Messages (~10 min)
-**Files**:
-- `qcut/apps/web/src/lib/export-analysis.ts`
-- `qcut/apps/web/src/lib/export-engine-cli.ts`
+### Task 5: Add Debug Logging (~10 min)
+**Files**: `qcut/apps/web/src/lib/export-analysis.ts`, `qcut/apps/web/src/lib/export-engine-cli.ts`
 
-**Changes**:
-1. Add console logging for optimization strategy selection:
-   ```typescript
-   // In export-analysis.ts
-   console.log('🎯 [EXPORT OPTIMIZATION] Strategy selected:', optimizationStrategy);
-   console.log('🎯 [EXPORT OPTIMIZATION] Needs frame rendering:', needsFrameRendering);
-   console.log('🎯 [EXPORT OPTIMIZATION] Needs filter encoding:', needsFilterEncoding);
-   ```
+**Note**: Most logging is already included in Task 1-3 code changes. This task is for adding any additional helpful logging.
 
-2. Add console logging for Mode 2 execution:
-   ```typescript
-   // In export-engine-cli.ts
-   if (videoInput) {
-     console.log('⚡ [MODE 2] Using direct video input with filters');
-     console.log(`⚡ [MODE 2] Video path: ${videoInput.path}`);
-     console.log(`⚡ [MODE 2] Trim: ${videoInput.trimStart}s - ${videoInput.trimEnd}s`);
-     console.log('⚡ [MODE 2] Skipping frame rendering - performance boost expected!');
-   }
-   ```
+**Additional Logging to Add**:
+
+**1. In export-analysis.ts (After line 148 - after strategy determination):**
+```typescript
+// Log optimization strategy decision
+if (optimizationStrategy === 'direct-video-with-filters') {
+  console.log('🎯 [EXPORT OPTIMIZATION] MODE 2 SELECTED: Direct video input with filters');
+  console.log('🎯 [EXPORT OPTIMIZATION] Performance boost: ~3-5x faster than frame rendering');
+} else if (optimizationStrategy === 'direct-copy') {
+  console.log('🎯 [EXPORT OPTIMIZATION] MODE 1 SELECTED: Direct copy (fastest)');
+} else {
+  console.log('🎯 [EXPORT OPTIMIZATION] MODE 3 SELECTED: Frame rendering (slowest)');
+}
+```
+
+**2. In ffmpeg-handler.ts (Inside Mode 2 block after line 285):**
+```typescript
+if (useVideoInput && videoInputPath) {
+  debugLog('[FFmpeg] MODE 2: Using direct video input with filters');
+  console.log('⚡ [MODE 2] Direct video input mode activated');
+  console.log(`⚡ [MODE 2] Video: ${path.basename(videoInputPath)}`);
+  console.log(`⚡ [MODE 2] Filters: ${filters.length > 0 ? filters.join(', ') : 'none'}`);
+```
 
 **Subtasks**:
-- [ ] Add strategy selection logging (3 min)
-- [ ] Add Mode 2 detection logging (3 min)
-- [ ] Add performance comparison logging (2 min)
-- [ ] Add error state logging (2 min)
+- [ ] Add Mode 2 selection logging to export-analysis.ts (3 min)
+- [ ] Add Mode 2 execution logging to ffmpeg-handler.ts (3 min)
+- [ ] Verify all debug logs are working (4 min)
 
 ---
 
 ### Task 6: Testing and Validation (~15 min)
 
-**Test Cases**:
-1. **Test Mode 2: Single video + text overlay**
-   - Timeline: 1 video clip + 1 text element
-   - Expected: Direct video input mode, no frame rendering
-   - Verify: Console shows "MODE 2" messages
-   - Verify: Export completes faster than before
+**Test Scenarios**:
 
-2. **Test Mode 3: Single video + image element**
-   - Timeline: 1 video clip + 1 image element
-   - Expected: Frame rendering mode
-   - Verify: Console shows frame rendering messages
+**1. Test Mode 2: Single video + text overlay (PRIMARY TEST)**
+- **Setup**: Create timeline with 1 video clip + 1 text element
+- **Expected Behavior**:
+  - Console shows: `🎯 [EXPORT OPTIMIZATION] MODE 2 SELECTED`
+  - Console shows: `⚡ [MODE 2] Using direct video input with filters`
+  - Export skips frame rendering step
+  - Export completes 3-5x faster than previous implementation
+- **Verification**:
+  - Check console logs for Mode 2 messages
+  - Verify text appears correctly on exported video
+  - Measure export time vs baseline
+- **Pass Criteria**: Export completes without frame rendering, text renders correctly
 
-3. **Test Mode 2: Single video + text + stickers**
-   - Timeline: 1 video clip + text + sticker overlays
-   - Expected: Direct video input mode with overlay filters
-   - Verify: All overlays appear correctly
+**2. Test Mode 2: Single video + text + stickers**
+- **Setup**: 1 video + multiple text elements + sticker overlays
+- **Expected**: Mode 2 activates, filters chain includes text and sticker overlays
+- **Verification**: All overlays visible in correct order (stickers → text)
+- **Pass Criteria**: All overlays render correctly, export completes without frame rendering
 
-4. **Test Mode 1: Single video, no overlays**
-   - Timeline: 1 video clip, no text/stickers
-   - Expected: Direct copy mode
-   - Verify: Fastest export time
+**3. Test Mode 3 Fallback: Single video + image element**
+- **Setup**: 1 video + 1 image element
+- **Expected**: Falls back to frame rendering (Mode 3)
+- **Verification**: Console shows `MODE 3: Frame rendering required`
+- **Pass Criteria**: Export completes with frame rendering, no errors
+
+**4. Test Mode 1: Single video, no overlays**
+- **Setup**: 1 video clip only (no text/stickers/effects)
+- **Expected**: Mode 1 direct copy (fastest)
+- **Verification**: Console shows `MODE 1 SELECTED: Direct copy`
+- **Pass Criteria**: Export completes almost instantly with direct copy
+
+**5. Test Error Handling: Multiple videos + text**
+- **Setup**: 2+ video clips + text overlay
+- **Expected**: Falls back to Mode 3 (can't use Mode 2 with multiple videos)
+- **Verification**: Graceful fallback, export still completes
+- **Pass Criteria**: No crashes, correct fallback behavior
 
 **Subtasks**:
-- [ ] Test Mode 2 with text only (3 min)
+- [ ] Test Mode 2 with text only (PRIMARY - 4 min)
 - [ ] Test Mode 2 with text + stickers (3 min)
-- [ ] Test Mode 3 with images (3 min)
+- [ ] Test Mode 3 fallback with images (2 min)
 - [ ] Test Mode 1 with no overlays (2 min)
-- [ ] Verify console logging accuracy (2 min)
-- [ ] Measure performance improvement (2 min)
+- [ ] Test error handling with multiple videos (2 min)
+- [ ] Document performance improvements (2 min)
 
 ---
 
