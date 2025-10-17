@@ -300,10 +300,9 @@ function buildFFmpegArgs(
     // Video input
     args.push("-i", videoInputPath);
 
-    // Set duration (trim end handled by limiting output duration)
+    // Set duration (duration parameter already reflects trimmed timeline)
     if (duration) {
-      const effectiveDuration = trimEnd ? duration - trimEnd : duration;
-      args.push("-t", effectiveDuration.toString());
+      args.push("-t", duration.toString());
     }
 
     // Add sticker image inputs (after video input)
@@ -477,7 +476,7 @@ const args: string[] = buildFFmpegArgs(
   private extractVideoInputPath(): { path: string; trimStart: number; trimEnd: number } | null {
     debugLog("[CLIExportEngine] Extracting video input path for Mode 2...");
 
-    let videoElement: MediaElement | null = null;
+    let videoElement: TimelineElement | null = null;
     let mediaItem: MediaItem | null = null;
 
     // Iterate through all tracks to find video elements
