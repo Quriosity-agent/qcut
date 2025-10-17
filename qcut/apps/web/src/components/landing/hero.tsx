@@ -2,8 +2,6 @@
 
 import { motion } from "motion/react";
 import { Button } from "../ui/button";
-import { SponsorButton } from "../ui/sponsor-button";
-import { VercelIcon } from "../icons";
 import { ArrowRight } from "lucide-react";
 
 import { Handlebars } from "./handlebars";
@@ -25,18 +23,6 @@ export function Hero() {
         transition={{ duration: 1 }}
         className="max-w-3xl mx-auto w-full flex-1 flex flex-col justify-center"
       >
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.6, duration: 0.8 }}
-          className="mb-4 flex justify-center"
-        >
-          <SponsorButton
-            href="https://vercel.com/home?utm_source=opencut"
-            logo={VercelIcon}
-            companyName="Vercel"
-          />
-        </motion.div>
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
