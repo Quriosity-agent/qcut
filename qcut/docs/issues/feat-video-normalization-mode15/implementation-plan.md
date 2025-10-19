@@ -1,18 +1,110 @@
 # Mode 1.5: Video Normalization with Padding
 
 **Feature**: FFmpeg-based video normalization for mismatched resolutions/fps
-**Status**: Ready for Testing
+**Status**: 🐛 **BUG DETECTED - Mode 1.5 Detection Not Working**
 **Priority**: High
 **Performance Target**: 2-3 seconds (5-7x faster than Mode 3)
 
 ---
 
+## ⚠️ CRITICAL BUG - Mode 1.5 Detection Bypassed
+
+### Bug Analysis (2025-10-20)
+
+**Symptom**: Mode 1.5 is never triggered, even when videos have different properties. Export fails with "Video codec mismatch detected".
+
+**Console Evidence** (from `console.md`):
+```
+Line 749: ✅ [MODE DETECTION] Selected Mode 1: Direct copy (15-48x speedup)  ← WRONG!
+Line 752: 🎬 [EXPORT ANALYSIS] Video elements with trim info: Array(3)
+Line 753: ✅ [EXPORT ANALYSIS] MODE 1: Using DIRECT COPY optimization - Fast export! 🚀  ← WRONG!
+
+MISSING LOGS (should appear but don't):
+  🔍 [MODE 1.5 DETECTION] Checking video properties...
+  🔍 [MODE 1.5 DETECTION] Video 0: 752x416 @ 24fps
+  🔍 [MODE 1.5 DETECTION] Video 1: 1280x720 @ 30fps
+
+Line 774: ❌ FFmpeg export FAILED! Error: Video codec mismatch detected
+  Reference: video-1760912964015-6f7cf28dd13f9d63-video_part1.mp4
+    Codec: h264, Resolution: 752x416
+  Mismatched: video-1760912964015-6f7cf28dd13f9d63-video_part2.mp4
+    Codec: h264, Resolution: 1280x720, FPS: 30/1
+```
+
+**Root Cause** (export-analysis.ts:148-195):
+
+The decision tree logic is **BROKEN**:
+
+1. **Line 126-133**: `canUseDirectCopy` is calculated with these conditions:
+   ```typescript
+   const canUseDirectCopy =
+     videoElementCount >= 1 &&
+     !hasOverlappingVideos &&
+     !hasImageElements &&
+     !hasTextElements &&
+     !hasStickers &&
+     !hasEffects &&
+     allVideosHaveLocalPath;
+   ```
+
+2. **Line 148-151**: If `canUseDirectCopy === true`, Mode 1 is selected **immediately**:
+   ```typescript
+   if (canUseDirectCopy) {
+     optimizationStrategy = 'direct-copy';
+     console.log('✅ [MODE DETECTION] Selected Mode 1: Direct copy');
+   }
+   ```
+
+3. **Line 156-163**: Mode 1.5 block has **IDENTICAL conditions** to `canUseDirectCopy`:
+   ```typescript
+   } else if (
+     videoElementCount > 1 &&
+     !hasOverlappingVideos &&
+     !hasImageElements &&
+     !hasTextElements &&
+     !hasStickers &&
+     !hasEffects &&
+     allVideosHaveLocalPath
+   ) {
+     // Mode 1.5 detection - THIS NEVER RUNS!
+   ```
+
+**Why It Fails**:
+- When conditions are met, `canUseDirectCopy` is `true`
+- Mode 1 is selected immediately without checking video properties
+- The `else if` block with Mode 1.5 detection is **NEVER REACHED**
+- Export proceeds with Mode 1 (direct copy) for mismatched videos
+- FFmpeg concat demuxer fails with codec mismatch error
+
+**The Fix**:
+When `canUseDirectCopy === true` AND `videoElementCount > 1`, we MUST check video properties BEFORE deciding between Mode 1 and Mode 1.5. The target dimensions/fps for those comparisons must come from the export canvas (with sensible fallbacks), not from whichever clip happens to be first.
+
+**Correct Logic**:
+```typescript
+if (canUseDirectCopy) {
+  if (videoElementCount > 1) {
+    // Multiple videos - check properties FIRST
+    const videosMatch = checkVideoPropertiesMatch(...);
+    if (videosMatch) {
+      optimizationStrategy = 'direct-copy';  // Mode 1
+    } else {
+      optimizationStrategy = 'video-normalization';  // Mode 1.5
+    }
+  } else {
+    // Single video - always use direct copy
+    optimizationStrategy = 'direct-copy';  // Mode 1
+  }
+}
+```
+
+---
+
 ## Progress Summary
 
-- ✅ **Phase 1 (Detection)**: Complete - Video property detection and Mode 1.5 selection logic
+- ❌ **Phase 1 (Detection)**: BROKEN - Mode 1.5 detection logic is bypassed
 - ✅ **Phase 2 (Normalization)**: Complete - normalizeVideo() function with FFmpeg padding
 - ✅ **Phase 3 (Integration)**: Complete - Full integration with export pipeline
-- ⏳ **Phase 4 (Testing)**: Pending - Test with different video properties
+- ⏳ **Phase 4 (Testing)**: Blocked - Cannot test until Phase 1 is fixed
 - ⏳ **Phase 5 (Documentation)**: Pending - Update user-facing docs
 
 ---
@@ -46,8 +138,8 @@ Mismatched: video2.mp4
 Use FFmpeg's **scale + pad filters** to normalize videos before concatenation:
 
 1. **Detect video property mismatches** during export analysis
-2. **Normalize each video** (pad to target resolution, convert fps)
-3. **Concatenate normalized videos** using direct copy (fast!)
+2. **Normalize each video** (pad to target resolution, convert fps, re-encode audio to AAC 48kHz stereo)
+3. **Concatenate normalized videos** using direct copy for video + stream copy for normalized audio (fast!)
 
 ---
 
@@ -62,7 +154,7 @@ ffmpeg -i input.mp4 \
   -vf "scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2:black" \
   -r 30 \
   -c:v libx264 -preset ultrafast -crf 18 \
-  -c:a copy \
+  -c:a aac -b:a 192k -ar 48000 -ac 2 \
   -async 1 \
   normalized_output.mp4
 ```
@@ -77,7 +169,7 @@ ffmpeg -i input.mp4 \
 - `-r 30` - Convert to target fps
 - `-preset ultrafast` - Fast encoding
 - `-crf 18` - High quality (visually lossless)
-- `-c:a copy` - Copy audio without re-encoding
+- `-c:a aac -b:a 192k -ar 48000 -ac 2` - Normalize audio into a single codec/sample layout for concat compat
 - `-async 1` - Resample audio to prevent desync
 
 ### Implementation Flow
@@ -86,9 +178,11 @@ ffmpeg -i input.mp4 \
    - Detect multiple videos with different properties
    - Check resolution, fps, and codec mismatches
    - Select `'video-normalization'` strategy
+   - Use `resolveExportCanvasSettings()` helper to pull width/height/fps from export options before comparisons
 
 2. **FFmpeg Handler** (`ffmpeg-handler.ts`)
    - `normalizeVideo()` function normalizes each video
+   - Re-encodes audio tracks to AAC 48kHz stereo to guarantee concat compatibility
    - Creates concat list file
    - Concatenates normalized videos with direct copy
 
@@ -138,7 +232,7 @@ ffmpeg -i input.mp4 \
 5. **With Audio**
    - Video 1: 1280x720 with audio track
    - Video 2: 1920x1080 with different audio codec
-   - Expected: Audio preserved/copied during normalization
+   - Expected: Both audio tracks re-encoded to AAC 48kHz stereo and remain in sync after concat
 
 6. **Extreme Aspect Ratios**
    - Video 1: 16:9 (1920x1080)
@@ -176,7 +270,7 @@ Record export times for each test:
 
 ### 4. Audio Sync Issues
 **Problem**: FPS conversion may cause audio desync
-**Solution**: Use `-async 1` flag to ensure audio sync
+**Solution**: Re-encode audio to AAC 48kHz stereo and use `-async 1` to ensure sync across clips
 
 ### 5. Normalization Failure
 **Problem**: FFmpeg normalization fails for any reason
@@ -244,8 +338,10 @@ Implement audio mixing for Mode 1.5:
 - [x] Video property extraction (`extractVideoProperties()`)
 - [x] Video property matching (`checkVideoPropertiesMatch()`)
 - [x] Export analysis logic updated (Mode 1.5 detection)
+- [x] Export canvas resolver helper (derives target width/height/fps from project settings)
 - [x] Normalization function (`normalizeVideo()`)
 - [x] FFmpeg filter chain (scale + pad)
+- [x] Audio normalization (AAC 48kHz stereo transcode)
 - [x] Trim handling during normalization
 - [x] Progress reporting
 - [x] IPC handler Mode 1.5 flow
@@ -322,6 +418,112 @@ When Mode 1.5 is active, look for these logs:
 - Mode 1.5 bridges the gap between Mode 1 (very fast but restrictive) and Mode 3 (slow but flexible)
 - The key insight: **padding is much faster than canvas rendering**
 - FFmpeg's `ultrafast` preset provides good quality while maintaining speed
-- Audio handling is critical - must use `-async 1` to prevent desync
+- Audio handling is critical - re-encode to AAC 48kHz stereo and use `-async 1` to prevent desync
 - Fallback to Mode 3 ensures exports never fail due to normalization issues
 - Black bars are an acceptable tradeoff for 5-7x performance improvement
+
+---
+
+## 🔧 Fix Required
+
+**File**: `apps/web/src/lib/export-analysis.ts`
+**Location**: Lines 148-195 (decision tree logic)
+
+**Current Code (BROKEN)**:
+```typescript
+if (canUseDirectCopy) {
+  // Mode 1: Direct copy - fastest path (no re-encoding)
+  optimizationStrategy = 'direct-copy';
+  console.log('✅ [MODE DETECTION] Selected Mode 1: Direct copy (15-48x speedup)');
+} else if (!needsFrameRendering && needsFilterEncoding && videoElementCount === 1) {
+  // Mode 2: Single video with FFmpeg filters (text/stickers)
+  optimizationStrategy = 'direct-video-with-filters';
+  console.log('⚡ [MODE DETECTION] Selected Mode 2: Direct video with filters (3-5x speedup)');
+} else if (
+  videoElementCount > 1 &&
+  !hasOverlappingVideos &&
+  !hasImageElements &&
+  !hasTextElements &&
+  !hasStickers &&
+  !hasEffects &&
+  allVideosHaveLocalPath
+) {
+  // Mode 1.5: Multiple sequential videos - THIS NEVER RUNS!
+  // ...checkVideoPropertiesMatch logic...
+}
+```
+
+**Fixed Code (CORRECT)**:
+```typescript
+if (canUseDirectCopy) {
+  if (videoElementCount > 1) {
+    // Multiple videos - check properties to decide Mode 1 vs 1.5
+    console.log('🔍 [MODE DETECTION] Multiple sequential videos detected - checking properties...');
+
+    const firstVideo = videoElements[0];
+    const firstMediaItem = mediaItemsMap.get(firstVideo.mediaId);
+    const exportCanvasSettings = resolveExportCanvasSettings({
+      exportOptions,
+      projectSettings,
+      fallbackWidth: firstMediaItem?.width ?? 1280,
+      fallbackHeight: firstMediaItem?.height ?? 720,
+      fallbackFps: (firstMediaItem as any)?.fps ?? 30,
+    });
+    const { width: targetWidth, height: targetHeight, fps: targetFps } = exportCanvasSettings;
+
+    console.log(`🔍 [MODE DETECTION] Using target: ${targetWidth}x${targetHeight} @ ${targetFps}fps`);
+
+    const videosMatch = checkVideoPropertiesMatch(
+      videoElements,
+      mediaItemsMap,
+      targetWidth,
+      targetHeight,
+      targetFps
+    );
+
+    if (videosMatch) {
+      // All videos match - can use direct copy
+      optimizationStrategy = 'direct-copy';
+      console.log('✅ [MODE DETECTION] Videos match - using Mode 1: Direct copy (15-48x speedup)');
+    } else {
+      // Videos need normalization
+      optimizationStrategy = 'video-normalization';
+      console.log('⚡ [MODE DETECTION] Selected Mode 1.5: Video normalization (5-7x speedup)');
+    }
+  } else {
+    // Single video - always direct copy
+    optimizationStrategy = 'direct-copy';
+    console.log('✅ [MODE DETECTION] Selected Mode 1: Direct copy (15-48x speedup)');
+  }
+} else if (!needsFrameRendering && needsFilterEncoding && videoElementCount === 1) {
+  // Mode 2: Single video with FFmpeg filters (text/stickers)
+  optimizationStrategy = 'direct-video-with-filters';
+  console.log('⚡ [MODE DETECTION] Selected Mode 2: Direct video with filters (3-5x speedup)');
+} else {
+  // Mode 3: Frame rendering - slowest but most flexible
+  optimizationStrategy = 'image-pipeline';
+  console.log('🎨 [MODE DETECTION] Selected Mode 3: Frame rendering (baseline speed)');
+}
+```
+
+**Changes Summary**:
+1. Remove the duplicate `else if` block (lines 156-195)
+2. Move Mode 1.5 detection INSIDE the `canUseDirectCopy` block
+3. Resolve target width/height/fps from export canvas settings before property comparisons
+4. Check video properties when `videoElementCount > 1`
+5. Select Mode 1 for single videos (no property check needed)
+6. Select Mode 1.5 when properties don't match
+7. Update console logs for clarity
+
+**Expected Behavior After Fix**:
+```
+🔍 [MODE DETECTION] Multiple sequential videos detected - checking properties...
+🔍 [MODE DETECTION] Using target: 1280x720 @ 30fps
+🔍 [MODE 1.5 DETECTION] Checking video properties...
+🔍 [MODE 1.5 DETECTION] Target: 1280x720 @ 30fps
+🔍 [MODE 1.5 DETECTION] Video 0: 752x416 @ 24fps
+⚠️ [MODE 1.5 DETECTION] Video 0 resolution mismatch - normalization needed
+   Expected: 1280x720, Got: 752x416
+⚡ [MODE DETECTION] Selected Mode 1.5: Video normalization (5-7x speedup)
+⚡ [EXPORT ANALYSIS] MODE 1.5: Using VIDEO NORMALIZATION - Fast export with padding! ⚡
+```
