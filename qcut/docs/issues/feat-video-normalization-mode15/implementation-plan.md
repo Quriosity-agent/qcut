@@ -383,6 +383,7 @@ When Mode 1.5 is active, look for these logs:
 
 ```
 🔍 [MODE DETECTION] Multiple sequential videos detected - checking properties...
+🧭 [MODE DETECTION] Using export canvas target: 1280x720 @ 30fps
 🔍 [MODE 1.5 DETECTION] Checking video properties...
 🔍 [MODE 1.5 DETECTION] Video 0: 752x416 @ 24fps
 🔍 [MODE 1.5 DETECTION] Video 1: 1280x720 @ 30fps
@@ -390,16 +391,18 @@ When Mode 1.5 is active, look for these logs:
 ⚡ [MODE DETECTION] Selected Mode 1.5: Video normalization (5-7x speedup)
 ⚡ [EXPORT ANALYSIS] MODE 1.5: Using VIDEO NORMALIZATION - Fast export with padding! ⚡
 
-⚡ [MODE 1.5 EXPORT] Mode 1.5: Video Normalization with Padding
-⚡ [MODE 1.5 EXPORT] Number of videos: 2
-⚡ [MODE 1.5 EXPORT] Target resolution: 1280x720
-⚡ [MODE 1.5 EXPORT] Target FPS: 30
+🎬 [MODE 1.5 EXPORT] Mode 1.5: Video Normalization with Padding
+🎬 [MODE 1.5 EXPORT] Number of videos: 2
+🎯 [MODE 1.5 EXPORT] Target resolution: 1280x720
+🎯 [MODE 1.5 EXPORT] Target FPS: 30
+🎧 [MODE 1.5 EXPORT] Audio codec: AAC 48kHz stereo
 ⚡ [MODE 1.5 EXPORT] Expected speedup: 5-7x faster than Mode 3
 
-⚡ [MODE 1.5 NORMALIZE] Starting video normalization...
-⚡ [MODE 1.5 NORMALIZE] ✅ Normalization complete
-⚡ [MODE 1.5 EXPORT] ✅ Concatenation complete!
-⚡ [MODE 1.5 EXPORT] ✅ Export complete!
+🛠️ [MODE 1.5 NORMALIZE] Starting video normalization...
+🎧 [MODE 1.5 NORMALIZE] Re-encoding audio to AAC 48kHz stereo...
+🎧 [MODE 1.5 NORMALIZE] ✅ Normalization complete
+🎞️ [MODE 1.5 EXPORT] ✅ Concatenation complete!
+✅ [MODE 1.5 EXPORT] ✅ Export complete!
 ```
 
 ---
