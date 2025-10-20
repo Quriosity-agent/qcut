@@ -7,18 +7,43 @@
 
 ---
 
-## ✅ BUG FIXED - Mode 1.5 Detection Now Working!
+## ✅ BUGS FIXED - Mode 1.5 Detection & Duration Now Working!
 
-### Bug Analysis & Fix (2025-10-20)
+### Bug 1: Mode 1.5 Detection (Fixed 2025-10-20)
 
 **Previous Issue**: Mode 1.5 was never triggered because the detection logic was in an unreachable `else if` block.
 
-**Fix Applied** (2025-10-20):
+**Fix Applied**:
 - ✅ Moved Mode 1.5 detection INSIDE the `canUseDirectCopy` block
 - ✅ Added property checking for multiple videos before Mode 1 selection
 - ✅ Added comprehensive console logging for debugging
 - ✅ Added audio normalization to AAC 48kHz stereo in FFmpeg handler
 - ✅ Enhanced console messages to track Mode 1.5 detection flow
+
+### Bug 2: Video Duration Preservation (Fixed 2025-10-20)
+
+**Issue**: Video duration was being incorrectly calculated, potentially changing the video length.
+
+**Root Cause**:
+- `normalizeVideo()` was not receiving the actual video duration from `VideoSource`
+- Duration calculation was treating `trimEnd` as absolute time instead of trim amount
+
+**Fix Applied**:
+- ✅ Pass `source.duration` from Mode 1.5 to `normalizeVideo()` function
+- ✅ Correctly calculate: `effectiveDuration = duration - trimStart - trimEnd`
+- ✅ Preserve original timeline duration during normalization
+- ✅ Added comprehensive duration verification using ffprobe
+- ✅ Check duration after each video normalization
+- ✅ Verify final concatenated video total duration
+
+**Duration Verification Feature**:
+The system now performs multiple duration checks:
+1. **Before Normalization**: Logs expected input duration and trim values
+2. **During Normalization**: Verifies FFmpeg -t parameter is set correctly
+3. **After Normalization**: Uses ffprobe to check actual output duration
+4. **After Concatenation**: Verifies total duration matches sum of all video segments
+
+This helps identify any duration drift or miscalculations immediately during export.
 
 **Console Evidence** (from `console.md`):
 ```
@@ -593,20 +618,41 @@ args.push(
    - ✅ Added comprehensive console logging
    - ✅ Uses `resolveExportCanvasSettings()` for target dimensions
 
-2. **`electron/ffmpeg-handler.ts`** (Lines 1319-1328)
-   - ✅ Changed audio from `-c:a copy` to AAC transcoding
+2. **`electron/ffmpeg-handler.ts`**
+   - ✅ Lines 1319-1328: Changed audio from `-c:a copy` to AAC transcoding
    - ✅ Added AAC 48kHz stereo normalization
    - ✅ Added console logging for audio transcoding
+   - ✅ Lines 465-475: Fixed Mode 1.5 to pass `source.duration` to normalizeVideo
+   - ✅ Lines 1257-1313: Fixed duration calculation in normalizeVideo function
+   - ✅ Preserves original video duration by using `effectiveDuration = duration - trimStart - trimEnd`
 
 ### Console Messages Added:
 
 The fix adds these key console messages for easy debugging:
 
+**Mode Detection:**
 - `🎯 [MODE DETECTION] Direct copy eligible - N video(s), checking requirements...`
 - `🔍 [MODE DETECTION] Multiple sequential videos detected - checking properties for Mode 1 vs Mode 1.5...`
 - `🧭 [MODE DETECTION] Using export canvas target: WxH @ Ffps (source: TYPE)`
 - `⚡ [MODE DETECTION] Videos have different properties - using Mode 1.5: Video normalization`
 - `🎬 [MODE 1.5] Videos will be normalized to match export canvas before concatenation`
+
+**Duration Verification (NEW):**
+- `📏 [MODE 1.5 EXPORT] Expected duration: Xs (this is what will be passed to normalizeVideo)`
+- `📏 [MODE 1.5 EXPORT] Expected output duration after trim: Xs`
+- `📏 [MODE 1.5 NORMALIZE] DURATION CHECK:`
+- `📏 [MODE 1.5 NORMALIZE] - Input duration parameter: Xs (this is what should be preserved)`
+- `📏 [MODE 1.5 NORMALIZE] - Calculated effective duration: Xs`
+- `📏 [MODE 1.5 NORMALIZE] VERIFYING OUTPUT DURATION...`
+- `📏 [MODE 1.5 NORMALIZE] - Expected duration: Xs`
+- `📏 [MODE 1.5 NORMALIZE] - Actual duration: Xs`
+- `✅ [MODE 1.5 NORMALIZE] - Duration preserved correctly (within 0.1s tolerance)`
+- `⚠️ [MODE 1.5 NORMALIZE] - DURATION MISMATCH: Difference of Xs detected!`
+- `📏 [MODE 1.5 EXPORT] FINAL DURATION CHECK...`
+- `📏 [MODE 1.5 EXPORT] - Expected total duration: Xs`
+- `📏 [MODE 1.5 EXPORT] - Actual total duration: Xs`
+
+**Audio Processing:**
 - `🎧 [MODE 1.5 NORMALIZE] Transcoding audio to AAC 48kHz stereo for compatibility...`
 
 ## 📋 Implementation Steps to Fix Mode 1.5 (COMPLETED)

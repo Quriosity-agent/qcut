@@ -458,16 +458,20 @@ export function setupFFmpegIPC(): void {
 
                 console.log(`⚡ [MODE 1.5 EXPORT] Normalizing video ${i + 1}/${options.videoSources.length}...`);
                 console.log(`⚡ [MODE 1.5 EXPORT]   Source: ${path.basename(source.path)}`);
-                console.log(`⚡ [MODE 1.5 EXPORT]   Duration: ${source.duration}s`);
+                console.log(`⚡ [MODE 1.5 EXPORT]   Expected duration: ${source.duration}s (this is what will be passed to normalizeVideo)`);
                 console.log(`⚡ [MODE 1.5 EXPORT]   Trim: start=${source.trimStart || 0}s, end=${source.trimEnd || 0}s`);
+                const expectedOutputDuration = source.duration - (source.trimStart || 0) - (source.trimEnd || 0);
+                console.log(`⚡ [MODE 1.5 EXPORT]   Expected output duration after trim: ${expectedOutputDuration}s`);
 
                 // Call normalizeVideo function (defined earlier in this file)
+                // IMPORTANT: Pass source.duration to preserve video length
                 await normalizeVideo(
                   source.path,
                   normalizedPath,
                   width,
                   height,
                   fps,
+                  source.duration,  // Pass the actual duration from VideoSource
                   source.trimStart || 0,
                   source.trimEnd || 0
                 );
@@ -548,7 +552,54 @@ export function setupFFmpegIPC(): void {
                       const stats = fs.statSync(outputFile);
                       console.log(`⚡ [MODE 1.5 EXPORT] ✅ Concatenation complete!`);
                       console.log(`⚡ [MODE 1.5 EXPORT] Output size: ${(stats.size / 1024 / 1024).toFixed(2)} MB`);
-                      concatResolve();
+
+                      // Calculate what the total duration should be
+                      let expectedTotalDuration = 0;
+                      for (const source of options.videoSources!) {
+                        const effectiveDuration = source.duration - (source.trimStart || 0) - (source.trimEnd || 0);
+                        expectedTotalDuration += effectiveDuration;
+                      }
+
+                      // Quick ffprobe to verify final duration
+                      console.log(`⚡ [MODE 1.5 EXPORT] 📏 FINAL DURATION CHECK...`);
+                      const ffprobeDir = path.dirname(ffmpegPath);
+                      const ffprobeExe = process.platform === "win32" ? "ffprobe.exe" : "ffprobe";
+                      const ffprobePath = path.join(ffprobeDir, ffprobeExe);
+
+                      const finalProbe = spawn(ffprobePath, [
+                        "-v", "error",
+                        "-show_entries", "format=duration",
+                        "-of", "default=noprint_wrappers=1:nokey=1",
+                        outputFile
+                      ], {
+                        windowsHide: true,
+                        stdio: ["ignore", "pipe", "pipe"]
+                      });
+
+                      let finalDuration = "";
+                      finalProbe.stdout?.on("data", (chunk: Buffer) => {
+                        finalDuration += chunk.toString().trim();
+                      });
+
+                      finalProbe.on("close", (probeCode: number | null) => {
+                        if (probeCode === 0 && finalDuration) {
+                          const actualFinalDuration = parseFloat(finalDuration);
+                          console.log(`⚡ [MODE 1.5 EXPORT]   - Expected total duration: ${expectedTotalDuration.toFixed(2)}s`);
+                          console.log(`⚡ [MODE 1.5 EXPORT]   - Actual total duration: ${actualFinalDuration.toFixed(2)}s`);
+                          const difference = Math.abs(actualFinalDuration - expectedTotalDuration);
+                          if (difference > 0.5) {
+                            console.warn(`⚠️ [MODE 1.5 EXPORT]   - FINAL DURATION MISMATCH: Difference of ${difference.toFixed(2)}s!`);
+                          } else {
+                            console.log(`⚡ [MODE 1.5 EXPORT]   - ✅ Final duration correct (within 0.5s tolerance)`);
+                          }
+                        }
+                        concatResolve();
+                      });
+
+                      finalProbe.on("error", () => {
+                        // Silently continue if probe fails
+                        concatResolve();
+                      });
                     } else {
                       const error = `Output file not created: ${outputFile}`;
                       console.error(`❌ [MODE 1.5 EXPORT] ${error}`);
@@ -1246,8 +1297,9 @@ async function probeVideoFile(videoPath: string): Promise<VideoProbeResult> {
  * @param targetWidth - Target width in pixels (from export settings)
  * @param targetHeight - Target height in pixels (from export settings)
  * @param targetFps - Target frame rate (from export settings)
- * @param trimStart - Trim start time in seconds (0 = no trim)
- * @param trimEnd - Trim end time in seconds (0 = no trim)
+ * @param duration - Duration to use from this video (seconds)
+ * @param trimStart - Trim start time within the source video (seconds, 0 = no trim)
+ * @param trimEnd - Trim amount from the end of the video (seconds, 0 = no trim)
  * @returns Promise that resolves when normalization completes
  * @throws Error if FFmpeg process fails or file not found
  */
@@ -1257,6 +1309,7 @@ async function normalizeVideo(
   targetWidth: number,
   targetHeight: number,
   targetFps: number,
+  duration: number,
   trimStart: number = 0,
   trimEnd: number = 0
 ): Promise<void> {
@@ -1266,7 +1319,15 @@ async function normalizeVideo(
     console.log(`⚡ [MODE 1.5 NORMALIZE] Input: ${path.basename(inputPath)}`);
     console.log(`⚡ [MODE 1.5 NORMALIZE] Output: ${path.basename(outputPath)}`);
     console.log(`⚡ [MODE 1.5 NORMALIZE] Target: ${targetWidth}x${targetHeight} @ ${targetFps}fps`);
-    console.log(`⚡ [MODE 1.5 NORMALIZE] Trim: start=${trimStart}s, end=${trimEnd}s`);
+    console.log(`⚡ [MODE 1.5 NORMALIZE] 📏 DURATION CHECK:`);
+    console.log(`⚡ [MODE 1.5 NORMALIZE]   - Input duration parameter: ${duration}s (this is what should be preserved)`);
+    console.log(`⚡ [MODE 1.5 NORMALIZE]   - Trim start: ${trimStart}s`);
+    console.log(`⚡ [MODE 1.5 NORMALIZE]   - Trim end: ${trimEnd}s`);
+
+    // Calculate effective duration (preserve original video length)
+    const effectiveDuration = duration - trimStart - trimEnd;
+    console.log(`⚡ [MODE 1.5 NORMALIZE]   - Calculated effective duration: ${effectiveDuration}s`);
+    console.log(`⚡ [MODE 1.5 NORMALIZE]   - This will be set with FFmpeg -t parameter`);
 
     // Validate input file exists
     if (!fs.existsSync(inputPath)) {
@@ -1294,12 +1355,13 @@ async function normalizeVideo(
     // Input file
     args.push('-i', inputPath);
 
-    // Set duration (if trim specified)
-    // Note: trimEnd is absolute time, need to calculate duration
-    if (trimEnd && trimEnd > trimStart) {
-      const duration = trimEnd - trimStart;
-      args.push('-t', duration.toString());
-      console.log(`⚡ [MODE 1.5 NORMALIZE] Setting duration: -t ${duration}s`);
+    // Set effective duration (duration after trimming)
+    // This preserves the original video length from the timeline
+    if (effectiveDuration > 0) {
+      args.push('-t', effectiveDuration.toString());
+      console.log(`⚡ [MODE 1.5 NORMALIZE] Setting output duration: -t ${effectiveDuration}s`);
+    } else {
+      console.warn(`⚠️ [MODE 1.5 NORMALIZE] Invalid effective duration: ${effectiveDuration}s, skipping duration parameter`);
     }
 
     // Video filters (scale + pad)
@@ -1382,8 +1444,53 @@ async function normalizeVideo(
           const stats = fs.statSync(outputPath);
           console.log(`⚡ [MODE 1.5 NORMALIZE] ✅ Normalization complete: ${path.basename(outputPath)}`);
           console.log(`⚡ [MODE 1.5 NORMALIZE] Output size: ${(stats.size / 1024 / 1024).toFixed(2)} MB`);
-          console.log('⚡ [MODE 1.5 NORMALIZE] ============================================');
-          resolve();
+
+          // Try to get actual duration of the output file
+          console.log(`⚡ [MODE 1.5 NORMALIZE] 📏 VERIFYING OUTPUT DURATION...`);
+          const ffmpegPath = getFFmpegPath();
+          const ffprobeDir = path.dirname(ffmpegPath);
+          const ffprobeExe = process.platform === "win32" ? "ffprobe.exe" : "ffprobe";
+          const ffprobePath = path.join(ffprobeDir, ffprobeExe);
+
+          // Quick ffprobe to get duration
+          const probeProcess = spawn(ffprobePath, [
+            "-v", "error",
+            "-show_entries", "format=duration",
+            "-of", "default=noprint_wrappers=1:nokey=1",
+            outputPath
+          ], {
+            windowsHide: true,
+            stdio: ["ignore", "pipe", "pipe"]
+          });
+
+          let actualDuration = "";
+          probeProcess.stdout?.on("data", (chunk: Buffer) => {
+            actualDuration += chunk.toString().trim();
+          });
+
+          probeProcess.on("close", (probeCode: number | null) => {
+            if (probeCode === 0 && actualDuration) {
+              const actualDurationFloat = parseFloat(actualDuration);
+              console.log(`⚡ [MODE 1.5 NORMALIZE]   - Expected duration: ${effectiveDuration}s`);
+              console.log(`⚡ [MODE 1.5 NORMALIZE]   - Actual duration: ${actualDurationFloat.toFixed(2)}s`);
+              const difference = Math.abs(actualDurationFloat - effectiveDuration);
+              if (difference > 0.1) {
+                console.warn(`⚠️ [MODE 1.5 NORMALIZE]   - DURATION MISMATCH: Difference of ${difference.toFixed(2)}s detected!`);
+              } else {
+                console.log(`⚡ [MODE 1.5 NORMALIZE]   - ✅ Duration preserved correctly (within 0.1s tolerance)`);
+              }
+            } else {
+              console.log(`⚡ [MODE 1.5 NORMALIZE]   - Could not verify actual duration (ffprobe unavailable)`);
+            }
+            console.log('⚡ [MODE 1.5 NORMALIZE] ============================================');
+            resolve();
+          });
+
+          probeProcess.on("error", () => {
+            console.log(`⚡ [MODE 1.5 NORMALIZE]   - Could not verify actual duration (ffprobe error)`);
+            console.log('⚡ [MODE 1.5 NORMALIZE] ============================================');
+            resolve();
+          });
         } else {
           const error = `Output file not created: ${outputPath}`;
           console.error(`❌ [MODE 1.5 NORMALIZE] ${error}`);
