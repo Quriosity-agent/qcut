@@ -1316,8 +1316,16 @@ async function normalizeVideo(
       '-pix_fmt', 'yuv420p'    // Pixel format (ensures compatibility)
     );
 
-    // Audio settings (copy without re-encoding for speed)
-    args.push('-c:a', 'copy');
+    // Audio settings - normalize to AAC for concat compatibility
+    // WHY: FFmpeg concat requires identical audio codec/sample rate/channels across all inputs
+    // Transcoding to AAC 48kHz stereo ensures all normalized videos can be concatenated
+    console.log('🎧 [MODE 1.5 NORMALIZE] Transcoding audio to AAC 48kHz stereo for compatibility...');
+    args.push(
+      '-c:a', 'aac',         // Transcode to AAC codec (widely compatible)
+      '-b:a', '192k',        // Audio bitrate 192kbps (good quality)
+      '-ar', '48000',        // Sample rate 48kHz (standard for video)
+      '-ac', '2'             // Stereo (2 channels)
+    );
 
     // Audio sync (critical for fps conversion)
     // WHY: FPS changes can cause audio drift, -async 1 resamples to maintain sync

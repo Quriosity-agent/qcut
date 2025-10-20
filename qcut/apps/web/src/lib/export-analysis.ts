@@ -401,54 +401,69 @@ export function analyzeTimelineForExport(
   // 4. Default to frame rendering (Mode 3 - slow but most flexible)
 
   if (canUseDirectCopy) {
-    // Mode 1: Direct copy - fastest path (no re-encoding)
-    optimizationStrategy = 'direct-copy';
-    console.log('✅ [MODE DETECTION] Selected Mode 1: Direct copy (15-48x speedup)');
+    console.log(`🎯 [MODE DETECTION] Direct copy eligible - ${videoElementCount} video(s), checking requirements...`);
+
+    // For multiple videos, we need to check if they have matching properties
+    if (videoElementCount > 1) {
+      console.log('🔍 [MODE DETECTION] Multiple sequential videos detected - checking properties for Mode 1 vs Mode 1.5...');
+
+      // Get export canvas settings (use export settings or first video as fallback)
+      const firstVideo = videoElements[0];
+      const firstMediaItem = mediaItemsMap.get(firstVideo.mediaId);
+
+      const canvasSettings = resolveExportCanvasSettings({
+        exportSettings: exportCanvas,
+        fallbackWidth: firstMediaItem?.width,
+        fallbackHeight: firstMediaItem?.height,
+        fallbackFps: (firstMediaItem as any)?.fps
+      });
+
+      console.log(`🧭 [MODE DETECTION] Using export canvas target: ${canvasSettings.width}x${canvasSettings.height} @ ${canvasSettings.fps}fps (source: ${canvasSettings.source})`);
+
+      // Check if all videos match the export settings
+      const videosMatch = checkVideoPropertiesMatch(
+        videoElements,
+        mediaItemsMap,
+        canvasSettings.width,
+        canvasSettings.height,
+        canvasSettings.fps
+      );
+
+      if (videosMatch) {
+        // Mode 1: All videos match, can use direct copy
+        optimizationStrategy = 'direct-copy';
+        console.log('✅ [MODE DETECTION] All videos match export settings - using Mode 1: Direct copy (15-48x speedup)');
+      } else {
+        // Mode 1.5: Videos need normalization
+        optimizationStrategy = 'video-normalization';
+        console.log('⚡ [MODE DETECTION] Videos have different properties - using Mode 1.5: Video normalization (5-7x speedup)');
+        console.log('🎬 [MODE 1.5] Videos will be normalized to match export canvas before concatenation');
+      }
+    } else {
+      // Single video - always use direct copy (Mode 1)
+      optimizationStrategy = 'direct-copy';
+      console.log('✅ [MODE DETECTION] Single video - using Mode 1: Direct copy (15-48x speedup)');
+    }
   } else if (!needsFrameRendering && needsFilterEncoding && videoElementCount === 1) {
     // Mode 2: Single video with FFmpeg filters (text/stickers)
     optimizationStrategy = 'direct-video-with-filters';
     console.log('⚡ [MODE DETECTION] Selected Mode 2: Direct video with filters (3-5x speedup)');
-  } else if (
-    videoElementCount > 1 &&
-    !hasOverlappingVideos &&
-    !hasImageElements &&
-    !hasTextElements &&
-    !hasStickers &&
-    !hasEffects &&
-    allVideosHaveLocalPath
-  ) {
-    // Mode 1.5: Multiple sequential videos - check if normalization needed
-    console.log('🔍 [MODE DETECTION] Multiple sequential videos detected - checking properties...');
-
-    const firstVideo = videoElements[0];
-    const firstMediaItem = mediaItemsMap.get(firstVideo.mediaId);
-    const targetWidth = firstMediaItem?.width || 1280;  // Fallback to 720p
-    const targetHeight = firstMediaItem?.height || 720;
-    const targetFps = (firstMediaItem as any)?.fps || 30;
-
-    console.log(`🔍 [MODE DETECTION] Using target: ${targetWidth}x${targetHeight} @ ${targetFps}fps`);
-
-    const videosMatch = checkVideoPropertiesMatch(
-      videoElements,
-      mediaItemsMap,
-      targetWidth,
-      targetHeight,
-      targetFps
-    );
-
-    if (videosMatch) {
-      // All videos match - can use direct copy without normalization
-      optimizationStrategy = 'direct-copy';
-      console.log('✅ [MODE DETECTION] Videos match - using Mode 1: Direct copy');
-    } else {
-      // Videos need normalization before concat
-      optimizationStrategy = 'video-normalization';
-      console.log('⚡ [MODE DETECTION] Selected Mode 1.5: Video normalization (5-7x speedup)');
-    }
   } else {
     // Mode 3: Frame rendering - slowest but most flexible
     optimizationStrategy = 'image-pipeline';
     console.log('🎨 [MODE DETECTION] Selected Mode 3: Frame rendering (baseline speed)');
+
+    // Log why Mode 3 was selected
+    const reasons: string[] = [];
+    if (hasImageElements) reasons.push('has image elements');
+    if (hasTextElements && needsFrameRendering) reasons.push('text needs frame rendering');
+    if (hasStickers && needsFrameRendering) reasons.push('stickers need frame rendering');
+    if (hasEffects) reasons.push('has effects');
+    if (hasOverlappingVideos) reasons.push('videos overlap');
+    if (!allVideosHaveLocalPath) reasons.push('videos lack local paths');
+    if (videoElementCount === 0) reasons.push('no video elements');
+
+    console.log(`   Reasons: ${reasons.join(', ')}`);
   }
 
   // Generate reason for strategy choice
