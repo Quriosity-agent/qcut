@@ -22,6 +22,7 @@ import { debugLogger } from "@/lib/debug-logger";
 import { getMediaStoreUtils } from "@/stores/media-store-loader";
 import { debugLog, debugError, debugWarn } from "@/lib/debug-config";
 import { useAsyncMediaStoreActions } from "@/hooks/use-async-media-store";
+import { falAIClient } from "@/lib/fal-ai-client";
 
 import {
   AI_MODELS,
@@ -96,9 +97,34 @@ export function useAIGeneration(props: UseAIGenerationProps) {
   const [aspectRatio, setAspectRatio] = useState<"16:9" | "9:16">("16:9");
   const [resolution, setResolution] = useState<"auto" | "720p" | "1080p">("720p");
 
+  // Veo 3.1 specific state
+  const [veo31Settings, setVeo31Settings] = useState<{
+    resolution: "720p" | "1080p";
+    duration: "4s" | "6s" | "8s";
+    aspectRatio: "9:16" | "16:9" | "1:1" | "auto";
+    generateAudio: boolean;
+    enhancePrompt: boolean;
+    autoFix: boolean;
+  }>({
+    resolution: "720p",
+    duration: "8s",
+    aspectRatio: "16:9",
+    generateAudio: true,
+    enhancePrompt: true,
+    autoFix: true,
+  });
+
+  // Veo 3.1 frame state (for frame-to-video model)
+  const [firstFrame, setFirstFrame] = useState<File | null>(null);
+  const [lastFrame, setLastFrame] = useState<File | null>(null);
+
   // Sora 2 detection flags
   const isSora2Selected = selectedModels.some(id => id.startsWith('sora2_'));
   const hasSora2Pro = selectedModels.includes('sora2_text_to_video_pro') || selectedModels.includes('sora2_image_to_video_pro');
+
+  // Veo 3.1 detection flags
+  const isVeo31Selected = selectedModels.some(id => id.startsWith('veo31_'));
+  const hasVeo31FrameToVideo = selectedModels.includes('veo31_frame_to_video') || selectedModels.includes('veo31_fast_frame_to_video');
 
   // Store hooks
   const {
@@ -194,6 +220,33 @@ export function useAIGeneration(props: UseAIGenerationProps) {
 
       debugLog(`📥 Download complete: ${result.length} bytes`);
       return result;
+    },
+    []
+  );
+
+  // Helper function to upload image to FAL and get URL (for Veo 3.1)
+  const uploadImageToFal = useCallback(
+    async (file: File): Promise<string> => {
+      debugLog("📤 Uploading image to FAL:", file.name);
+
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const response = await fetch("https://fal.run/upload", {
+        method: "POST",
+        headers: {
+          "Authorization": `Key ${falAIClient.hasApiKey() ? (falAIClient as any).apiKey : ""}`,
+        },
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to upload image: ${response.status} ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      debugLog(`📤 Upload complete: ${data.url}`);
+      return data.url;
     },
     []
   );
@@ -1002,6 +1055,31 @@ export function useAIGeneration(props: UseAIGenerationProps) {
       setPollingInterval(null);
     }
   }, [pollingInterval]);
+
+  // Veo 3.1 setter functions
+  const setVeo31Resolution = useCallback((resolution: "720p" | "1080p") => {
+    setVeo31Settings(prev => ({ ...prev, resolution }));
+  }, []);
+
+  const setVeo31Duration = useCallback((duration: "4s" | "6s" | "8s") => {
+    setVeo31Settings(prev => ({ ...prev, duration }));
+  }, []);
+
+  const setVeo31AspectRatio = useCallback((aspectRatio: "9:16" | "16:9" | "1:1" | "auto") => {
+    setVeo31Settings(prev => ({ ...prev, aspectRatio }));
+  }, []);
+
+  const setVeo31GenerateAudio = useCallback((generateAudio: boolean) => {
+    setVeo31Settings(prev => ({ ...prev, generateAudio }));
+  }, []);
+
+  const setVeo31EnhancePrompt = useCallback((enhancePrompt: boolean) => {
+    setVeo31Settings(prev => ({ ...prev, enhancePrompt }));
+  }, []);
+
+  const setVeo31AutoFix = useCallback((autoFix: boolean) => {
+    setVeo31Settings(prev => ({ ...prev, autoFix }));
+  }, []);
 
   // Export the complete generation state
   const generationState: AIGenerationState = {
