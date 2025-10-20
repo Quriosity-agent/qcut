@@ -422,18 +422,21 @@ export function analyzeTimelineForExport(
         exportSettings: exportCanvas,
         fallbackWidth: firstMediaItem?.width,
         fallbackHeight: firstMediaItem?.height,
-        fallbackFps: (firstMediaItem as any)?.fps
+        fallbackFps: firstMediaItem?.fps
       });
+      const targetWidth = canvasSettings.width;
+      const targetHeight = canvasSettings.height;
+      const targetFps = canvasSettings.fps;
 
-      console.log(`🧭 [MODE DETECTION] Using export canvas target: ${canvasSettings.width}x${canvasSettings.height} @ ${canvasSettings.fps}fps (source: ${canvasSettings.source})`);
+      console.log(🔍 [MODE DETECTION] Using target: x @ fps (source: ));
 
       // Check if all videos match the export settings
       const videosMatch = checkVideoPropertiesMatch(
         videoElements,
         mediaItemsMap,
-        canvasSettings.width,
-        canvasSettings.height,
-        canvasSettings.fps
+        targetWidth,
+        targetHeight,
+        targetFps
       );
 
       if (videosMatch) {

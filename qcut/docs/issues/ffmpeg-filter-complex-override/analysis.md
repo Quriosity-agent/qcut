@@ -6,7 +6,137 @@
 
 **Severity**: High - Results in silent data loss where visual elements disappear from exported videos
 
-**Affects**: Lines 1395-1426, 1646-1652 in `export-engine-cli.ts` and FFmpeg argument builder in `electron/ffmpeg-handler.ts`
+**Affected Files**:
+- `C:\Users\zdhpe\Desktop\vite_opencut\OpenCut-main\qcut\electron\ffmpeg-handler.ts` (lines 1592-2068)
+  - `buildFFmpegArgs()` function contains the bug
+- `C:\Users\zdhpe\Desktop\vite_opencut\OpenCut-main\qcut\apps\web\src\lib\export-engine-cli.ts`
+  - Filter chain preparation (lines 323-357)
+
+---
+
+## Concrete Code Examples from Source
+
+### Bug Location: `electron/ffmpeg-handler.ts`
+
+The `buildFFmpegArgs()` function (lines 1592-2068) contains multiple locations where duplicate `-filter_complex` arguments are pushed, causing the override bug:
+
+#### **Mode 2: Direct Video Input with Filters (Lines 1624-1752)**
+
+**First -filter_complex push (line 1692):**
+```typescript
+// Apply combined filters if any exist
+if (filters.length > 0) {
+  if (stickerSources && stickerSources.length > 0) {
+    // Complex filter with multiple inputs
+    args.push("-filter_complex", filters.join(';'));  // ← VIDEO FILTERS
+    console.log('⚡ [MODE 2] Using -filter_complex (multiple inputs)');
+  } else {
+    // Simple filters can use -vf
+    args.push("-vf", filters.join(','));
+    console.log('⚡ [MODE 2] Using -vf (single input)');
+  }
+}
+```
+
+**Second -filter_complex push (line 1719) - OVERRIDES FIRST:**
+```typescript
+if (audioFiles && audioFiles.length > 0) {
+  audioFiles.forEach((audioFile: AudioFile) => {
+    // ... file validation ...
+    args.push("-i", audioFile.path);
+  });
+
+  // Audio mixing logic
+  if (audioFiles.length === 1) {
+    const audioFile = audioFiles[0];
+    const audioInputIndex = 1 + stickerCount;
+    if (audioFile.startTime > 0) {
+      args.push(
+        "-filter_complex",  // ← AUDIO FILTER - OVERRIDES VIDEO FILTERS!
+        `[${audioInputIndex}:a]adelay=${Math.round(audioFile.startTime * 1000)}...`,
+        "-map", "0:v",
+        "-map", "[audio]"
+      );
+    }
+  }
+}
+```
+
+**Third -filter_complex push (line 1731) - ALSO OVERRIDES:**
+```typescript
+} else {
+  // Multiple audio files mixing
+  const inputMaps: string[] = audioFiles.map((_, i) => `[${i + 1 + stickerCount}:a]`);
+  const mixFilter = `${inputMaps.join("")}amix=inputs=${audioFiles.length}:duration=longest[audio]`;
+  args.push("-filter_complex", mixFilter, "-map", "0:v", "-map", "[audio]");
+  // ↑ AUDIO MIXING - OVERRIDES ALL VIDEO FILTERS!
+}
+```
+
+#### **Mode 3: Frame-Based Processing (Lines 1908-2068)**
+
+**First -filter_complex push (line 1956):**
+```typescript
+// Apply combined filters if any exist
+if (combinedFilters.length > 0) {
+  // For complex filters with multiple inputs, use filter_complex
+  if (stickerSources && stickerSources.length > 0) {
+    args.push("-filter_complex", combinedFilters.join(';'));  // ← VIDEO FILTERS
+  } else {
+    // Simple filters can use -vf
+    args.push("-vf", combinedFilters.join(','));
+  }
+}
+```
+
+**Second -filter_complex push (line 1982) - OVERRIDES FIRST:**
+```typescript
+// Build complex filter for audio mixing with timing
+if (audioFiles.length === 1) {
+  const audioFile: AudioFile = audioFiles[0];
+  const audioInputIndex = 1 + stickerCount;
+  if (audioFile.startTime > 0) {
+    args.push(
+      "-filter_complex",  // ← AUDIO FILTER - OVERRIDES VIDEO FILTERS!
+      `[${audioInputIndex}:a]adelay=${Math.round(audioFile.startTime * 1000)}...`,
+      "-map", "0:v",
+      "-map", "[audio]"
+    );
+  }
+}
+```
+
+**Third -filter_complex push (line 2037) - ALSO OVERRIDES:**
+```typescript
+} else {
+  // Multiple audio files - mix them together
+  const filterParts: string[] = [];
+  const inputMaps: string[] = [];
+
+  // ... build audio filters ...
+
+  const mixFilter: string = `${inputMaps.join("")}amix=inputs=${audioFiles.length}:duration=longest[audio]`;
+  const fullFilter: string = filterParts.length > 0
+    ? `${filterParts.join("; ")}; ${mixFilter}`
+    : mixFilter;
+
+  args.push(
+    "-filter_complex",  // ← AUDIO MIXING - OVERRIDES ALL VIDEO FILTERS!
+    fullFilter,
+    "-map", "0:v",
+    "-map", "[audio]"
+  );
+}
+```
+
+### Result: Visual Elements Silently Lost
+
+When both video filters (stickers/text) and audio mixing are present:
+1. First `-filter_complex` with video filters is added to args array
+2. Second `-filter_complex` with audio filters is added to args array
+3. FFmpeg processes args sequentially and **uses only the last** `-filter_complex`
+4. **All stickers and text overlays disappear** from the exported video
+5. **No error message** - silent data loss
 
 ---
 
@@ -198,32 +328,44 @@ ffmpeg \
 
 **Goal**: Make video filter chain return labeled output instead of appending to args
 
-**Current Code Location**: `export-engine-cli.ts:1135-1213` (buildStickerOverlayFilters)
+**Current Code Locations**:
+- `export-engine-cli.ts:1137-1203` - `buildStickerOverlayFilters()` function
+- `export-engine-cli.ts:758-812` - `buildTextOverlayFilters()` function
 
 **Refactor Needed**:
-- Accept base video label as parameter
-- Return `{ filterString, outputLabel }` instead of string
-- Ensure all intermediate stages use unique labels
-- Handle empty filter cases (no stickers, no text)
+- Accept base video label as parameter (e.g., `"[0:v]"`)
+- Return `{ filterString: string, outputLabel: string }` instead of just string
+- Ensure all intermediate stages use unique labels (`[v0]`, `[v1]`, `[vout]`)
+- Handle empty filter cases (no stickers, no text) → return base label
+- Update callers to use new interface
 
 **Benefits**:
 - Composable filter chains
 - Testable in isolation
 - Clear input/output contract
+- No side effects on args array
 
-### Phase 2: Refactor Audio Filter Builder
+### Phase 2: Create Audio Filter Builder
 
-**Goal**: Build audio filter chain with labeled output
+**Goal**: Extract and unify audio mixing logic with labeled output
 
-**Current Code Location**: `electron/ffmpeg-handler.ts` (audio mixing logic)
+**Current Code Locations**:
+- `electron/ffmpeg-handler.ts:1705-1734` - Mode 2 audio mixing
+- `electron/ffmpeg-handler.ts:1963-2048` - Mode 3 audio mixing
+- **Problem**: Audio logic is duplicated and directly pushes to args array
 
 **Refactor Needed**:
-- Build adelay + volume + amix chain
-- Return `{ filterString, outputLabel: "[aout]" }`
-- Handle edge cases (no audio, single audio, multiple audio)
-- Proper padding/duration handling
+- Create new function `buildAudioFilterChain()` in ffmpeg-handler.ts
+- Accept parameters: `audioFiles`, `stickerInputCount`, `totalDuration`
+- Build adelay + volume + amix chain with labeled outputs
+- Return `{ filterString: string, outputLabel: "[aout]", needsMapping: boolean }`
+- Handle edge cases:
+  - No audio: return `null`
+  - Single audio without delay: return simple mapping
+  - Multiple audio: return amix filter chain
 
 **Benefits**:
+- DRY principle (eliminates duplication between Mode 2 and Mode 3)
 - Explicit audio graph structure
 - Easier to debug audio sync issues
 - Supports complex audio scenarios
@@ -232,18 +374,51 @@ ffmpeg \
 
 **Goal**: Combine video + audio graphs into single -filter_complex
 
-**Current Code Location**: `electron/ffmpeg-handler.ts` (buildFFmpegArgs)
+**Current Code Locations**:
+- `electron/ffmpeg-handler.ts:1688-1700` - Mode 2 filter application (line 1692 VIDEO + line 1719/1731 AUDIO)
+- `electron/ffmpeg-handler.ts:1952-1961` - Mode 3 filter application (line 1956 VIDEO + line 1982/2037 AUDIO)
+- **Problem**: Multiple `-filter_complex` pushes override each other
 
 **Refactor Needed**:
-- Remove duplicate `-filter_complex` appends
-- Build unified graph string
-- Update `-map` arguments to use labels
-- Handle fallback when no audio (`-map 0:a?`)
+1. **Remove all existing `-filter_complex` pushes**:
+   - Delete lines 1692, 1719, 1731 (Mode 2)
+   - Delete lines 1956, 1982, 2037 (Mode 3)
+
+2. **Create unified filter assembly logic**:
+   ```typescript
+   // Collect all filter parts
+   const videoFilterResult = buildVideoFilterChain(...);
+   const audioFilterResult = buildAudioFilterChain(...);
+
+   // Combine into single -filter_complex
+   if (videoFilterResult && audioFilterResult) {
+     const unifiedGraph = `${videoFilterResult.filterString};${audioFilterResult.filterString}`;
+     args.push("-filter_complex", unifiedGraph);
+     args.push("-map", `[${videoFilterResult.outputLabel}]`);
+     args.push("-map", `[${audioFilterResult.outputLabel}]`);
+   } else if (videoFilterResult) {
+     // Video filters only
+     args.push("-filter_complex", videoFilterResult.filterString);
+     args.push("-map", `[${videoFilterResult.outputLabel}]`);
+   } else if (audioFilterResult) {
+     // Audio filters only
+     args.push("-filter_complex", audioFilterResult.filterString);
+     args.push("-map", "0:v");
+     args.push("-map", `[${audioFilterResult.outputLabel}]`);
+   }
+   ```
+
+3. **Handle edge cases**:
+   - No filters at all: use direct stream mapping (`-map 0:v`, `-map 0:a?`)
+   - Video only: use video filter output label
+   - Audio only: map video directly, use audio filter output label
 
 **Benefits**:
-- Fixes the override bug
+- **Fixes the critical bug**: Only ONE `-filter_complex` in final command
 - Single source of truth for filter graph
-- Proper stream mapping
+- Proper stream mapping with labeled outputs
+- Clear separation of concerns
+- Much easier to debug and extend
 
 ### Phase 4: Testing & Validation
 
@@ -382,10 +557,19 @@ Input 4: audio2.mp3  ← Index = 2 + 2 stickers = 4 ✓
 ## Dependencies & Prerequisites
 
 ### Code Locations
-1. **Video Filter Building**: `apps/web/src/lib/export-engine-cli.ts:1135-1213`
-2. **Audio Mixing Logic**: `electron/ffmpeg-handler.ts` (buildFFmpegArgs)
-3. **Sticker Extraction**: `apps/web/src/lib/export-engine-cli.ts:1018-1122`
-4. **Text Filter Building**: `apps/web/src/lib/export-engine-cli.ts:724-778`
+
+**Primary Bug Location:**
+- **File**: `electron/ffmpeg-handler.ts`
+- **Function**: `buildFFmpegArgs()` (lines 1592-2068)
+- **Specific Problem Lines**:
+  - **Mode 2**: Lines 1692 (video filters), 1719 (audio override #1), 1731 (audio override #2)
+  - **Mode 3**: Lines 1956 (video filters), 1982 (audio override #1), 2037 (audio override #2)
+
+**Filter Chain Preparation:**
+- **Video Filter Building**: `apps/web/src/lib/export-engine-cli.ts:1137-1203` (`buildStickerOverlayFilters`)
+- **Text Filter Building**: `apps/web/src/lib/export-engine-cli.ts:758-812` (`buildTextOverlayFilters`)
+- **Sticker Extraction**: `apps/web/src/lib/export-engine-cli.ts:1032-1109` (`extractStickerSources`)
+- **Filter Chain Assembly**: `apps/web/src/lib/export-engine-cli.ts:301-357` (in `exportWithCLI` method)
 
 ### Type Definitions Needed
 ```typescript
@@ -469,10 +653,20 @@ interface AudioFilterParams {
 - [Complex Filtergraphs](https://trac.ffmpeg.org/wiki/FilteringGuide#Complexfiltergraphs)
 - [Stream Mapping](https://trac.ffmpeg.org/wiki/Map)
 
-### Related Code
-- Sticker overlay implementation: `export-engine-cli.ts:1135-1213`
-- Text overlay implementation: `export-engine-cli.ts:724-778`
-- Audio mixing: `ffmpeg-handler.ts` (buildFFmpegArgs)
+### Related Code Files
+
+**Primary Bug Location:**
+- `electron/ffmpeg-handler.ts:1592-2068` - `buildFFmpegArgs()` function (contains duplicate `-filter_complex` pushes)
+
+**Filter Chain Builders:**
+- `apps/web/src/lib/export-engine-cli.ts:1137-1203` - `buildStickerOverlayFilters()` (sticker overlay implementation)
+- `apps/web/src/lib/export-engine-cli.ts:758-812` - `buildTextOverlayFilters()` (text overlay implementation)
+- `apps/web/src/lib/export-engine-cli.ts:1032-1109` - `extractStickerSources()` (sticker source extraction)
+- `apps/web/src/lib/export-engine-cli.ts:301-357` - Filter chain assembly in `exportWithCLI()`
+
+**Audio Mixing (Duplicated Code):**
+- `electron/ffmpeg-handler.ts:1705-1734` - Mode 2 audio mixing logic
+- `electron/ffmpeg-handler.ts:1963-2048` - Mode 3 audio mixing logic (duplicate of Mode 2)
 
 ### Similar Issues
 - None found in current codebase (new issue)
