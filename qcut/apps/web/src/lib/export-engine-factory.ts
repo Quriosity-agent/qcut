@@ -87,10 +87,17 @@ export class ExportEngineFactory {
     const forceRegularEngine =
       localStorage.getItem("qcut_force_regular_engine") === "true";
 
+    console.log("🔍 EXPORT ENGINE DEBUG - Starting engine selection:");
+    console.log("  - Force regular engine override:", forceRegularEngine);
+    console.log("  - Is Electron environment:", this.isElectron());
+    console.log("  - Window.electronAPI exists:", !!(window as any).electronAPI);
+    console.log("  - FFmpeg CLI available:", !!(window as any).electronAPI?.ffmpeg?.exportVideoCLI);
+
     if (forceRegularEngine) {
       debugLog(
         "[ExportEngineFactory] 🔧 DEBUG OVERRIDE: Forcing regular export engine for sticker debugging"
       );
+      console.log("⚠️ EXPORT ENGINE: Using regular engine due to debug override");
     }
 
     if (this.isElectron() && !forceRegularEngine) {
@@ -100,6 +107,8 @@ export class ExportEngineFactory {
       console.log(
         "🚀 EXPORT ENGINE SELECTION: CLI FFmpeg chosen for Electron environment"
       );
+      console.log("  - Reason: Native FFmpeg provides best performance");
+      console.log("  - Expected performance: HIGH");
       return {
         engineType: ExportEngineType.CLI,
         reason:
@@ -141,6 +150,10 @@ export class ExportEngineFactory {
       console.log(
         "🚀 EXPORT ENGINE SELECTION: Optimized Canvas chosen for modern browser"
       );
+      console.log("  - Reason: Not in Electron, using browser Canvas APIs");
+      console.log("  - Has OffscreenCanvas:", capabilities.hasOffscreenCanvas);
+      console.log("  - Has Workers:", capabilities.hasWorkers);
+      console.log("  ⚠️ NOT USING FFMPEG - Browser environment detected");
       return {
         engineType: ExportEngineType.OPTIMIZED,
         reason: "Browser with modern Canvas APIs",
@@ -153,6 +166,9 @@ export class ExportEngineFactory {
     console.log(
       "🚀 EXPORT ENGINE SELECTION: Standard Canvas chosen as final fallback"
     );
+    console.log("  - Reason: Limited browser capabilities");
+    console.log("  - Performance score:", capabilities.performanceScore);
+    console.log("  ⚠️ NOT USING FFMPEG - Using fallback Canvas engine");
     return {
       engineType: ExportEngineType.STANDARD,
       reason: "Using standard engine for maximum browser compatibility",
@@ -171,13 +187,21 @@ export class ExportEngineFactory {
     totalDuration: number,
     engineType?: ExportEngineType
   ): Promise<ExportEngine> {
+    console.log("🏗️ EXPORT ENGINE CREATION - Starting engine creation:");
+    console.log("  - Requested engine type:", engineType || "auto-select");
+    console.log("  - Total duration:", totalDuration);
+    console.log("  - Export settings:", settings);
+
     let selectedEngineType = engineType;
     if (!selectedEngineType) {
+      console.log("  - No engine type specified, getting recommendation...");
       const recommendation = await this.getEngineRecommendation(
         settings,
         totalDuration
       );
       selectedEngineType = recommendation.engineType;
+      console.log("  - Recommended engine:", selectedEngineType);
+      console.log("  - Recommendation reason:", recommendation.reason);
     }
 
     console.log(
@@ -227,8 +251,13 @@ export class ExportEngineFactory {
 
       case ExportEngineType.CLI:
         // Native FFmpeg CLI engine (Electron only)
+        console.log("📌 CLI ENGINE SELECTED - Checking Electron availability...");
         if (this.isElectron()) {
           try {
+            console.log("✅ Electron detected - Loading CLI FFmpeg engine");
+            console.log("  - electronAPI available:", !!(window as any).electronAPI);
+            console.log("  - ffmpeg.exportVideoCLI available:", !!(window as any).electronAPI?.ffmpeg?.exportVideoCLI);
+
             debugLog(
               "[ExportEngineFactory] 🚀 Loading CLI FFmpeg engine for Electron"
             );
@@ -236,12 +265,13 @@ export class ExportEngineFactory {
               "🏗️ EXPORT ENGINE CREATION: Creating CLI engine with effects support"
             );
             const { CLIExportEngine } = await import("./export-engine-cli");
+            console.log("✅ CLI Export Engine module loaded successfully");
 
             // Get effects store for CLI engine
             const effectsStore = useEffectsStore.getState();
             console.log("📦 Export: Effects store available:", !!effectsStore);
 
-            return new CLIExportEngine(
+            const cliEngine = new CLIExportEngine(
               canvas,
               settings,
               tracks,
@@ -249,6 +279,8 @@ export class ExportEngineFactory {
               totalDuration,
               effectsStore // NEW: Pass effects store
             );
+            console.log("🚀 SUCCESS: CLI FFmpeg engine created and ready to use");
+            return cliEngine;
           } catch (error) {
             debugError(
               "[ExportEngineFactory] ❌ Failed to load CLI engine:",
@@ -261,10 +293,12 @@ export class ExportEngineFactory {
               "❌ Reason:",
               error instanceof Error ? error.message : String(error)
             );
+            console.error("❌ Full error details:", error);
             debugLog(
               "[ExportEngineFactory] 🔄 Falling back to Standard Canvas engine"
             );
             // FFmpeg WASM removed - use Standard engine as fallback
+            console.log("⚠️ FALLBACK: Using Standard Canvas engine instead of FFmpeg");
             return new ExportEngine(
               canvas,
               settings,
@@ -277,6 +311,9 @@ export class ExportEngineFactory {
           console.log(
             "🌐 BROWSER ENVIRONMENT: Using Standard Canvas engine (CLI not available in browser)"
           );
+          console.log("  - isElectron() returned false");
+          console.log("  - electronAPI exists:", !!(window as any).electronAPI);
+          console.log("  ⚠️ NOT USING FFMPEG - Browser environment detected");
           debugWarn(
             "[ExportEngineFactory] ⚠️  CLI engine only available in Electron, using Standard engine for browser"
           );
@@ -493,6 +530,18 @@ export class ExportEngineFactory {
   // Check if running in Electron environment
   private isElectron(): boolean {
     const electronAPI = (window as any).electronAPI;
+
+    console.log("🔍 DETAILED ELECTRON DETECTION:");
+    console.log("  - window.electronAPI exists:", !!electronAPI);
+
+    if (electronAPI) {
+      console.log("  - electronAPI.ffmpeg exists:", !!electronAPI.ffmpeg);
+      if (electronAPI.ffmpeg) {
+        console.log("  - Available ffmpeg methods:", Object.keys(electronAPI.ffmpeg));
+        console.log("  - exportVideoCLI type:", typeof electronAPI.ffmpeg.exportVideoCLI);
+      }
+    }
+
     // Check for specific Electron API methods instead of generic invoke
     const hasElectronAPI =
       electronAPI &&
@@ -503,6 +552,17 @@ export class ExportEngineFactory {
       `🔍 ENVIRONMENT CHECK: electronAPI exists: ${!!electronAPI}, ffmpeg.exportVideoCLI: ${typeof electronAPI?.ffmpeg?.exportVideoCLI}`
     );
     console.log(`🔍 ENVIRONMENT CHECK: isElectron result: ${hasElectronAPI}`);
+
+    if (!hasElectronAPI) {
+      console.log("⚠️ NOT DETECTED AS ELECTRON - Missing requirements:");
+      if (!electronAPI) {
+        console.log("  - window.electronAPI is not defined");
+      } else if (!electronAPI.ffmpeg) {
+        console.log("  - electronAPI.ffmpeg is not defined");
+      } else if (typeof electronAPI.ffmpeg.exportVideoCLI !== "function") {
+        console.log("  - electronAPI.ffmpeg.exportVideoCLI is not a function");
+      }
+    }
 
     return hasElectronAPI;
   }

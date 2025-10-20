@@ -5,11 +5,7 @@
 
 ### Comment Guidelines
 
-**Good Comments (Human-style):**
-- Explain WHY, not WHAT
-- Document non-obvious behavior or edge cases
-- Warn about performance implications or side effects
-- Explain business logic that isn't clear from code
+ 
 
 Examples:
 ```javascript

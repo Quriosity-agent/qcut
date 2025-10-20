@@ -71,6 +71,14 @@ interface FrameData {
   imageData: ArrayBuffer | Buffer;
 }
 
+interface VideoSource {
+  path: string;
+  startTime: number;
+  duration: number;
+  trimStart?: number;
+  trimEnd?: number;
+}
+
 interface ExportOptions {
   sessionId: string;
   outputPath: string;
@@ -81,6 +89,14 @@ interface ExportOptions {
   audioFiles?: AudioFile[];
   metadata?: Record<string, string>;
   useDirectCopy?: boolean;
+  videoSources?: VideoSource[];
+  // Mode 2: Direct video input with filters
+  useVideoInput?: boolean;
+  videoInputPath?: string;
+  trimStart?: number;
+  trimEnd?: number;
+  // Mode 1.5: Video normalization (NEW!)
+  optimizationStrategy?: 'image-pipeline' | 'direct-copy' | 'direct-video-with-filters' | 'video-normalization';
 }
 
 interface AudioFile {
@@ -209,6 +225,12 @@ interface ElectronAPI {
       fileSize: number;
     }>;
     validateFilterChain: (filterChain: string) => Promise<boolean>;
+    saveStickerForExport: (data: {
+      sessionId: string;
+      stickerId: string;
+      imageData: Uint8Array;
+      format?: string;
+    }) => Promise<{ success: boolean; path?: string; error?: string }>;
 
     // FFmpeg resource helpers
     getFFmpegResourcePath: (filename: string) => Promise<string>;
@@ -351,6 +373,21 @@ const electronAPI: ElectronAPI = {
       audioPath: string;
       fileSize: number;
     }> => ipcRenderer.invoke("extract-audio", options),
+    /**
+     * Save sticker image data to temp directory for FFmpeg export
+     * @param data.sessionId - Export session ID for organizing temp files
+     * @param data.stickerId - Unique sticker identifier for filename generation
+     * @param data.imageData - Sticker image data as Uint8Array
+     * @param data.format - Optional image format (default: png)
+     * @returns Promise resolving to success status, absolute file path, or error message
+     */
+    saveStickerForExport: (data: {
+      sessionId: string;
+      stickerId: string;
+      imageData: Uint8Array;
+      format?: string;
+    }): Promise<{ success: boolean; path?: string; error?: string }> =>
+      ipcRenderer.invoke("save-sticker-for-export", data),
     processFrame: (options: {
       sessionId: string;
       inputFrameName: string;
@@ -402,6 +439,7 @@ export type {
   ExportSession,
   FrameData,
   ExportOptions,
+  VideoSource,
   AudioFile,
   ApiKeyConfig,
   GitHubStarsResponse,

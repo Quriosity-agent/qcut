@@ -81,19 +81,30 @@ export function useExportProgress() {
 
       // Let factory auto-recommend for Electron, otherwise use manual selection
       let selectedEngineType: ExportEngineType | undefined;
+
+      console.log("🎬 EXPORT HOOK - Selecting engine type:");
+      console.log("  - isElectron():", isElectron());
+      console.log("  - User selected engine:", exportSettings.engineType);
+
       if (isElectron()) {
         debugLog(
           "[ExportPanel] 🖥️  Electron detected - letting factory auto-recommend engine"
         );
+        console.log("  ✅ Electron detected - letting factory auto-select FFmpeg CLI");
         selectedEngineType = undefined; // Let factory decide
       } else {
+        console.log("  🌐 Browser mode - using user selection");
         if (exportSettings.engineType === "auto") {
+          console.log("    - Auto mode: letting factory decide");
           selectedEngineType = undefined;
         } else if (exportSettings.engineType === "cli") {
+          console.log("    - CLI mode selected");
           selectedEngineType = ExportEngineType.CLI;
         } else if (exportSettings.engineType === "ffmpeg") {
+          console.log("    - FFmpeg WASM mode selected");
           selectedEngineType = ExportEngineType.FFMPEG;
         } else {
+          console.log("    - Standard Canvas mode selected");
           selectedEngineType = ExportEngineType.STANDARD;
         }
       }
