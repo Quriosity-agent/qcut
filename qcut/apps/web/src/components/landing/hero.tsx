@@ -28,7 +28,7 @@ export function Hero() {
           animate={{ opacity: 1 }}
           transition={{ delay: 0.4, duration: 0.8 }}
         >
-          The AI video editor make your dream come true.
+          The AI video editor makes your dream come true.
         </motion.p>
       </motion.div>
     </div>
