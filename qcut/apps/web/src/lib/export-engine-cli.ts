@@ -966,8 +966,8 @@ export class CLIExportEngine extends ExportEngine {
    * @throws Error if download fails or Electron API unavailable
    */
   private async downloadStickerToTemp(
-    sticker: any,
-    mediaItem: any
+    sticker: { id: string; [key: string]: unknown },
+    mediaItem: MediaItem
   ): Promise<string> {
     debugLog(
       `[CLIExportEngine] Downloading sticker ${sticker.id} to temp directory`
