@@ -1126,7 +1126,7 @@ exit /b %ERRORLEVEL%`;
       }: {
         sessionId: string;
         stickerId: string;
-        imageData: ArrayBuffer;
+        imageData: Uint8Array;
         format?: string;
       }
     ): Promise<{ success: boolean; path?: string; error?: string }> => {

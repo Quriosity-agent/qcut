@@ -970,6 +970,7 @@ export class CLIExportEngine extends ExportEngine {
 
       const blob = await response.blob();
       const arrayBuffer = await blob.arrayBuffer();
+      const imageBytes = new Uint8Array(arrayBuffer);
 
       // Determine format from blob type or default to png
       const format = blob.type?.split('/')[1] || 'png';
@@ -982,7 +983,7 @@ export class CLIExportEngine extends ExportEngine {
       const result = await window.electronAPI.ffmpeg.saveStickerForExport({
         sessionId: this.sessionId!,
         stickerId: sticker.id,
-        imageData: arrayBuffer,
+        imageData: imageBytes,
         format,
       });
 

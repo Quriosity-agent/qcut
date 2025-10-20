@@ -170,14 +170,14 @@ export interface ElectronAPI {
      * Save sticker image data to temp directory for FFmpeg export
      * @param data.sessionId - Export session ID for organizing temp files
      * @param data.stickerId - Unique sticker identifier for filename generation
-     * @param data.imageData - Sticker image data as ArrayBuffer
+     * @param data.imageData - Sticker image data as Uint8Array
      * @param data.format - Optional image format (default: png)
      * @returns Promise resolving to success status, absolute file path, or error message
      */
     saveStickerForExport: (data: {
       sessionId: string;
       stickerId: string;
-      imageData: ArrayBuffer;
+      imageData: Uint8Array;
       format?: string;
     }) => Promise<{ success: boolean; path?: string; error?: string }>;
     exportVideoCLI: (options: {
