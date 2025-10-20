@@ -5,6 +5,12 @@ import {
   ErrorCategory,
   ErrorSeverity,
 } from "./error-handler";
+import type {
+  Veo31TextToVideoInput,
+  Veo31ImageToVideoInput,
+  Veo31FrameToVideoInput,
+  Veo31Response,
+} from "@/types/ai-generation";
 
 // Types for API responses
 interface FalImageResponse {
@@ -497,6 +503,272 @@ class FalAIClient {
       estimatedCost: model.estimatedCost,
       features: model.strengths,
     };
+  }
+
+  // ============================================
+  // Veo 3.1 FAST Methods (budget-friendly, faster)
+  // ============================================
+
+  /**
+   * Generate video from text using Veo 3.1 Fast
+   * @param params Veo 3.1 text-to-video parameters
+   * @returns Generation result with video URL or error
+   */
+  async generateVeo31FastTextToVideo(
+    params: Veo31TextToVideoInput
+  ): Promise<GenerationResult> {
+    try {
+      const endpoint = "https://fal.run/fal-ai/veo3.1/fast";
+
+      console.log("[Veo 3.1 Fast] Generating text-to-video with params:", params);
+
+      const response = await this.makeRequest(endpoint, params);
+
+      if (!(response as any).video?.url) {
+        throw new Error("No video URL in Veo 3.1 Fast response");
+      }
+
+      return {
+        success: true,
+        imageUrl: (response as any).video.url, // Reusing imageUrl field for video URL
+        metadata: {
+          duration: params.duration || "8s",
+          resolution: params.resolution || "720p",
+          aspectRatio: params.aspect_ratio || "16:9",
+          hasAudio: params.generate_audio !== false,
+          variant: "fast",
+        } as any,
+      };
+    } catch (error) {
+      handleAIServiceError(error, "Veo 3.1 Fast text-to-video generation", {
+        operation: "generateVeo31FastTextToVideo",
+      });
+
+      return {
+        success: false,
+        error:
+          error instanceof Error ? error.message : "Veo 3.1 Fast generation failed",
+      };
+    }
+  }
+
+  /**
+   * Generate video from image using Veo 3.1 Fast
+   * @param params Veo 3.1 image-to-video parameters
+   * @returns Generation result with video URL or error
+   */
+  async generateVeo31FastImageToVideo(
+    params: Veo31ImageToVideoInput
+  ): Promise<GenerationResult> {
+    try {
+      const endpoint = "https://fal.run/fal-ai/veo3.1/fast/image-to-video";
+
+      console.log("[Veo 3.1 Fast] Generating image-to-video with params:", params);
+
+      const response = await this.makeRequest(endpoint, params);
+
+      if (!(response as any).video?.url) {
+        throw new Error("No video URL in Veo 3.1 Fast response");
+      }
+
+      return {
+        success: true,
+        imageUrl: (response as any).video.url,
+        metadata: {
+          duration: params.duration || "8s",
+          resolution: params.resolution || "720p",
+          aspectRatio: params.aspect_ratio || "16:9",
+          hasAudio: params.generate_audio !== false,
+          variant: "fast",
+        } as any,
+      };
+    } catch (error) {
+      handleAIServiceError(error, "Veo 3.1 Fast image-to-video generation", {
+        operation: "generateVeo31FastImageToVideo",
+      });
+
+      return {
+        success: false,
+        error:
+          error instanceof Error ? error.message : "Veo 3.1 Fast generation failed",
+      };
+    }
+  }
+
+  /**
+   * Generate video from first and last frames using Veo 3.1 Fast
+   * @param params Veo 3.1 frame-to-video parameters
+   * @returns Generation result with video URL or error
+   */
+  async generateVeo31FastFrameToVideo(
+    params: Veo31FrameToVideoInput
+  ): Promise<GenerationResult> {
+    try {
+      const endpoint = "https://fal.run/fal-ai/veo3.1/fast/first-last-frame-to-video";
+
+      console.log("[Veo 3.1 Fast] Generating frame-to-video with params:", params);
+
+      const response = await this.makeRequest(endpoint, params);
+
+      if (!(response as any).video?.url) {
+        throw new Error("No video URL in Veo 3.1 Fast response");
+      }
+
+      return {
+        success: true,
+        imageUrl: (response as any).video.url,
+        metadata: {
+          duration: params.duration || "8s",
+          resolution: params.resolution || "720p",
+          aspectRatio: params.aspect_ratio || "auto",
+          hasAudio: params.generate_audio !== false,
+          variant: "fast",
+        } as any,
+      };
+    } catch (error) {
+      handleAIServiceError(error, "Veo 3.1 Fast frame-to-video generation", {
+        operation: "generateVeo31FastFrameToVideo",
+      });
+
+      return {
+        success: false,
+        error:
+          error instanceof Error ? error.message : "Veo 3.1 Fast generation failed",
+      };
+    }
+  }
+
+  // ============================================
+  // Veo 3.1 STANDARD Methods (premium quality)
+  // ============================================
+
+  /**
+   * Generate video from text using Veo 3.1 Standard
+   * @param params Veo 3.1 text-to-video parameters
+   * @returns Generation result with video URL or error
+   */
+  async generateVeo31TextToVideo(
+    params: Veo31TextToVideoInput
+  ): Promise<GenerationResult> {
+    try {
+      const endpoint = "https://fal.run/fal-ai/veo3.1"; // No /fast suffix
+
+      console.log("[Veo 3.1 Standard] Generating text-to-video with params:", params);
+
+      const response = await this.makeRequest(endpoint, params);
+
+      if (!(response as any).video?.url) {
+        throw new Error("No video URL in Veo 3.1 Standard response");
+      }
+
+      return {
+        success: true,
+        imageUrl: (response as any).video.url,
+        metadata: {
+          duration: params.duration || "8s",
+          resolution: params.resolution || "720p",
+          aspectRatio: params.aspect_ratio || "16:9",
+          hasAudio: params.generate_audio !== false,
+          variant: "standard",
+        } as any,
+      };
+    } catch (error) {
+      handleAIServiceError(error, "Veo 3.1 Standard text-to-video generation", {
+        operation: "generateVeo31TextToVideo",
+      });
+
+      return {
+        success: false,
+        error:
+          error instanceof Error ? error.message : "Veo 3.1 Standard generation failed",
+      };
+    }
+  }
+
+  /**
+   * Generate video from image using Veo 3.1 Standard
+   * @param params Veo 3.1 image-to-video parameters
+   * @returns Generation result with video URL or error
+   */
+  async generateVeo31ImageToVideo(
+    params: Veo31ImageToVideoInput
+  ): Promise<GenerationResult> {
+    try {
+      const endpoint = "https://fal.run/fal-ai/veo3.1/image-to-video"; // No /fast
+
+      console.log("[Veo 3.1 Standard] Generating image-to-video with params:", params);
+
+      const response = await this.makeRequest(endpoint, params);
+
+      if (!(response as any).video?.url) {
+        throw new Error("No video URL in Veo 3.1 Standard response");
+      }
+
+      return {
+        success: true,
+        imageUrl: (response as any).video.url,
+        metadata: {
+          duration: params.duration || "8s",
+          resolution: params.resolution || "720p",
+          aspectRatio: params.aspect_ratio || "16:9",
+          hasAudio: params.generate_audio !== false,
+          variant: "standard",
+        } as any,
+      };
+    } catch (error) {
+      handleAIServiceError(error, "Veo 3.1 Standard image-to-video generation", {
+        operation: "generateVeo31ImageToVideo",
+      });
+
+      return {
+        success: false,
+        error:
+          error instanceof Error ? error.message : "Veo 3.1 Standard generation failed",
+      };
+    }
+  }
+
+  /**
+   * Generate video from first and last frames using Veo 3.1 Standard
+   * @param params Veo 3.1 frame-to-video parameters
+   * @returns Generation result with video URL or error
+   */
+  async generateVeo31FrameToVideo(
+    params: Veo31FrameToVideoInput
+  ): Promise<GenerationResult> {
+    try {
+      const endpoint = "https://fal.run/fal-ai/veo3.1/first-last-frame-to-video"; // No /fast
+
+      console.log("[Veo 3.1 Standard] Generating frame-to-video with params:", params);
+
+      const response = await this.makeRequest(endpoint, params);
+
+      if (!(response as any).video?.url) {
+        throw new Error("No video URL in Veo 3.1 Standard response");
+      }
+
+      return {
+        success: true,
+        imageUrl: (response as any).video.url,
+        metadata: {
+          duration: params.duration || "8s",
+          resolution: params.resolution || "720p",
+          aspectRatio: params.aspect_ratio || "auto",
+          hasAudio: params.generate_audio !== false,
+          variant: "standard",
+        } as any,
+      };
+    } catch (error) {
+      handleAIServiceError(error, "Veo 3.1 Standard frame-to-video generation", {
+        operation: "generateVeo31FrameToVideo",
+      });
+
+      return {
+        success: false,
+        error:
+          error instanceof Error ? error.message : "Veo 3.1 Standard generation failed",
+      };
+    }
   }
 }
 
