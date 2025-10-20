@@ -154,6 +154,8 @@ This document provides detailed code snippets for all modifications needed to in
     },
   },
 ```
+> **Reviewer Comment:** This flag should also cover `'veo31_fast_frame_to_video'`; otherwise the fast frame variant skips the frame-upload requirement and downstream validation.
+> **Reviewer Comment:** Make sure `resetGenerationState` (and any exported state snapshots) clear these new Veo 3.1 fields—right now nothing resets `veo31Settings`/`firstFrame`/`lastFrame`, so stale data will leak between generations.
 > **Reviewer Comment:** `default_params.duration` should stay numeric (e.g., `8`) to satisfy the existing `AIModelParameters` type and match how Sora 2 models specify duration.
 
 ### Task 1.2: Add Veo 3.1 Upload Constants
@@ -620,6 +622,7 @@ import type {
   const [firstFrame, setFirstFrame] = useState<File | null>(null);
   const [lastFrame, setLastFrame] = useState<File | null>(null);
 ```
+> **Reviewer Comment:** Make sure `resetGenerationState` (and any shared state snapshots) also clears `veo31Settings`, `firstFrame`, and `lastFrame` so Veo 3.1 selections don't bleed into the next run.
 
 ### Task 4.2: Add Veo 3.1 Detection Flags
 
@@ -632,6 +635,7 @@ import type {
   const isVeo31Selected = selectedModels.some(id => id.startsWith('veo31_'));
   const hasVeo31FrameToVideo = selectedModels.includes('veo31_frame_to_video');
 ```
+> **Reviewer Comment:** Also include `'veo31_fast_frame_to_video'` here so we still require frame uploads for the fast variant.
 
 ### Task 4.3: Add Veo 3.1 Setter Functions
 
@@ -657,6 +661,7 @@ import type {
     setVeo31Settings(prev => ({ ...prev, generateAudio }));
   }, []);
 ```
+> **Reviewer Comment:** The settings panel also needs to toggle `enhancePrompt`/`autoFix`, so let's add dedicated wrappers for those rather than forcing callers to reach into `setVeo31Settings` manually.
 
 ### Task 4.4: Extend handleGenerate with Veo 3.1 Logic
 
@@ -683,6 +688,7 @@ import type {
           console.log("  ✅ generateVideo returned:", response);
         }
 ```
+> **Reviewer Comment:** We'll need to bring `falAIClient` (plus the `FalAIClient` import/instance) and `uploadImageToFal` into scope, and the generated return shape is still `GenerationResult` (no `job_id`/`video_url`), so the downstream response handling will break unless we adapt it; don't forget to add the new `veo31Settings`/`firstFrame` dependencies to the `handleGenerate` callback as well.
 
 **REPLACE with:**
 
@@ -843,6 +849,7 @@ import type {
     setLastFrame,
   };
 ```
+> **Reviewer Comment:** After exposing these helpers, remember to update `canGenerate`/validation so frame-to-video models stay disabled until both frames are set; otherwise the button still lights up with missing inputs.
 
 ---
 
