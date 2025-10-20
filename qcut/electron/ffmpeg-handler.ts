@@ -1283,14 +1283,14 @@ async function probeVideoFile(videoPath: string): Promise<VideoProbeResult> {
  *
  * Edge cases handled:
  * - Trim timing: `-ss` before input (fast seeking), `-t` for duration
- * - Audio sync: `-async 1` prevents desync during fps conversion
+ * - Audio sync: `aresample=async=1` filter prevents desync during fps conversion
  * - Overwrite: `-y` flag for automated workflows
  * - Progress monitoring: Parses FFmpeg stderr for frame progress
  *
  * Performance characteristics:
  * - ~0.5-1s per video with ultrafast preset
  * - CRF 18 = visually lossless quality
- * - Audio copy = no audio re-encoding overhead
+ * - Audio transcoded to AAC 48kHz stereo for concat compatibility
  *
  * @param inputPath - Absolute path to source video file
  * @param outputPath - Absolute path for normalized output (in temp directory)
@@ -1390,8 +1390,9 @@ async function normalizeVideo(
     );
 
     // Audio sync (critical for fps conversion)
-    // WHY: FPS changes can cause audio drift, -async 1 resamples to maintain sync
-    args.push('-async', '1');
+    // WHY: FPS changes can cause audio drift, aresample filter maintains sync
+    // NOTE: -async flag was removed in FFmpeg 5.0 (Jan 2022), replaced with aresample filter
+    args.push('-af', 'aresample=async=1');
 
     // Output file
     args.push(outputPath);

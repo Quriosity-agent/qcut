@@ -193,7 +193,7 @@ ffmpeg -i input.mp4 \
   -r 30 \
   -c:v libx264 -preset ultrafast -crf 18 \
   -c:a aac -b:a 192k -ar 48000 -ac 2 \
-  -async 1 \
+  -af "aresample=async=1" \
   normalized_output.mp4
 ```
 
@@ -208,7 +208,7 @@ ffmpeg -i input.mp4 \
 - `-preset ultrafast` - Fast encoding
 - `-crf 18` - High quality (visually lossless)
 - `-c:a aac -b:a 192k -ar 48000 -ac 2` - Normalize audio into a single codec/sample layout for concat compat
-- `-async 1` - Resample audio to prevent desync
+- `-af "aresample=async=1"` - Resample audio to prevent desync (replaces deprecated -async flag)
 
 ### Implementation Flow
 
@@ -308,7 +308,7 @@ Record export times for each test:
 
 ### 4. Audio Sync Issues
 **Problem**: FPS conversion may cause audio desync
-**Solution**: Re-encode audio to AAC 48kHz stereo and use `-async 1` to ensure sync across clips
+**Solution**: Re-encode audio to AAC 48kHz stereo and use `aresample=async=1` audio filter to ensure sync across clips
 
 ### 5. Normalization Failure
 **Problem**: FFmpeg normalization fails for any reason
@@ -462,7 +462,7 @@ When Mode 1.5 is active, you'll now see these logs:
 - Mode 1.5 bridges the gap between Mode 1 (very fast but restrictive) and Mode 3 (slow but flexible)
 - The key insight: **padding is much faster than canvas rendering**
 - FFmpeg's `ultrafast` preset provides good quality while maintaining speed
-- Audio handling is critical - re-encode to AAC 48kHz stereo and use `-async 1` to prevent desync
+- Audio handling is critical - re-encode to AAC 48kHz stereo and use `aresample=async=1` filter to prevent desync
 - Fallback to Mode 3 ensures exports never fail due to normalization issues
 - Black bars are an acceptable tradeoff for 5-7x performance improvement
 
@@ -602,9 +602,12 @@ args.push(
   '-ar', '48000',
   '-ac', '2'
 );
+
+// Audio sync filter (replaces deprecated -async flag)
+args.push('-af', 'aresample=async=1');
 ```
 
-- Keep the existing `args.push('-async', '1');` immediately after this block to preserve drift protection.
+- The `aresample=async=1` filter replaces the deprecated `-async` flag (removed in FFmpeg 5.0) to preserve drift protection.
 
 ---
 
