@@ -373,6 +373,14 @@ const electronAPI: ElectronAPI = {
       audioPath: string;
       fileSize: number;
     }> => ipcRenderer.invoke("extract-audio", options),
+    /**
+     * Save sticker image data to temp directory for FFmpeg export
+     * @param data.sessionId - Export session ID for organizing temp files
+     * @param data.stickerId - Unique sticker identifier for filename generation
+     * @param data.imageData - Sticker image data as ArrayBuffer
+     * @param data.format - Optional image format (default: png)
+     * @returns Promise resolving to success status, absolute file path, or error message
+     */
     saveStickerForExport: (data: {
       sessionId: string;
       stickerId: string;
