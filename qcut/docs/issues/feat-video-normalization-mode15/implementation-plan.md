@@ -97,6 +97,12 @@ if (canUseDirectCopy) {
 }
 ```
 
+### Audio Normalization Gap
+
+- `electron/ffmpeg-handler.ts:1320` (within `normalizeVideo()`) still pushes `-c:a copy`, so Mode 1.5 inherits whatever codec/layout the source clip had.
+- FFmpeg concat only works when every intermediate shares codec, sample rate, and channel layout. Mixed inputs (AAC + Opus, mono + stereo, etc.) trigger the same failure we see today.
+- We must transcode during normalization to a stable profile (AAC @ 48 kHz stereo) before concatenation.
+
 ---
 
 ## Progress Summary
@@ -182,7 +188,7 @@ ffmpeg -i input.mp4 \
 
 2. **FFmpeg Handler** (`ffmpeg-handler.ts`)
    - `normalizeVideo()` function normalizes each video
-   - Re-encodes audio tracks to AAC 48kHz stereo to guarantee concat compatibility
+   - TODO: Re-encode audio tracks to AAC 48kHz stereo to guarantee concat compatibility
    - Creates concat list file
    - Concatenates normalized videos with direct copy
 
@@ -338,10 +344,8 @@ Implement audio mixing for Mode 1.5:
 - [x] Video property extraction (`extractVideoProperties()`)
 - [x] Video property matching (`checkVideoPropertiesMatch()`)
 - [x] Export analysis logic updated (Mode 1.5 detection)
-- [x] Export canvas resolver helper (derives target width/height/fps from project settings)
 - [x] Normalization function (`normalizeVideo()`)
 - [x] FFmpeg filter chain (scale + pad)
-- [x] Audio normalization (AAC 48kHz stereo transcode)
 - [x] Trim handling during normalization
 - [x] Progress reporting
 - [x] IPC handler Mode 1.5 flow
@@ -358,6 +362,8 @@ Implement audio mixing for Mode 1.5:
 - [ ] Test with extreme aspect ratios
 - [ ] Test with trimmed videos
 - [ ] Test with audio tracks
+- [ ] Export canvas resolver helper (derive target width/height/fps from export options)
+- [ ] Audio normalization (AAC 48kHz stereo transcode in `normalizeVideo()`)
 - [ ] Performance benchmarks vs Mode 3
 - [ ] Update user-facing documentation
 - [ ] Add to manual test plan
@@ -530,3 +536,27 @@ if (canUseDirectCopy) {
 ⚡ [MODE DETECTION] Selected Mode 1.5: Video normalization (5-7x speedup)
 ⚡ [EXPORT ANALYSIS] MODE 1.5: Using VIDEO NORMALIZATION - Fast export with padding! ⚡
 ```
+
+**Audio Normalization Fix (`electron/ffmpeg-handler.ts`)**
+
+- *Current issue*: `normalizeVideo()` still copies audio (`-c:a copy`), so concat fails when source codecs/layouts differ.
+- *Required change*: Transcode intermediates to AAC 48 kHz stereo so every segment matches before concat.
+
+```typescript
+// Audio settings (copy without re-encoding for speed)
+args.push('-c:a', 'copy');
+```
+
+should become:
+
+```typescript
+// Audio settings - normalize codecs/layout for concat compatibility
+args.push(
+  '-c:a', 'aac',
+  '-b:a', '192k',
+  '-ar', '48000',
+  '-ac', '2'
+);
+```
+
+- Keep the existing `args.push('-async', '1');` immediately after this block to preserve drift protection.

@@ -39,6 +39,76 @@ export interface ExportAnalysis {
 }
 
 /**
+ * Optional export canvas properties supplied by the export engine.
+ * Width/height come from export settings; fps is often a fixed project value.
+ */
+export interface ExportCanvasOptions {
+  width?: number;
+  height?: number;
+  fps?: number;
+}
+
+type CanvasSettingSource = 'export-settings' | 'media-fallback' | 'default';
+
+interface ResolvedCanvasSettings {
+  width: number;
+  height: number;
+  fps: number;
+  source: CanvasSettingSource;
+}
+
+function resolveExportCanvasSettings(params: {
+  exportSettings?: ExportCanvasOptions | null;
+  fallbackWidth?: number | null;
+  fallbackHeight?: number | null;
+  fallbackFps?: number | null;
+}): ResolvedCanvasSettings {
+  const { exportSettings, fallbackWidth, fallbackHeight, fallbackFps } = params;
+
+  const exportWidth = exportSettings?.width;
+  const exportHeight = exportSettings?.height;
+  const exportFps = exportSettings?.fps;
+
+  const hasExportDimensions =
+    typeof exportWidth === 'number' &&
+    exportWidth > 0 &&
+    typeof exportHeight === 'number' &&
+    exportHeight > 0;
+  const hasExportFps = typeof exportFps === 'number' && exportFps > 0;
+
+  const resolvedWidth = hasExportDimensions
+    ? exportWidth!
+    : typeof fallbackWidth === 'number' && fallbackWidth > 0
+      ? fallbackWidth
+      : 1280;
+
+  const resolvedHeight = hasExportDimensions
+    ? exportHeight!
+    : typeof fallbackHeight === 'number' && fallbackHeight > 0
+      ? fallbackHeight
+      : 720;
+
+  const resolvedFps = hasExportFps
+    ? exportFps!
+    : typeof fallbackFps === 'number' && fallbackFps > 0
+      ? fallbackFps
+      : 30;
+
+  const source: CanvasSettingSource = hasExportDimensions
+    ? 'export-settings'
+    : typeof fallbackWidth === 'number' && typeof fallbackHeight === 'number'
+      ? 'media-fallback'
+      : 'default';
+
+  return {
+    width: resolvedWidth,
+    height: resolvedHeight,
+    fps: resolvedFps,
+    source
+  };
+}
+
+/**
  * Video metadata used to determine when normalization is required.
  */
 export interface VideoProperties {
@@ -204,7 +274,8 @@ function checkVideoPropertiesMatch(
  */
 export function analyzeTimelineForExport(
   tracks: TimelineTrack[],
-  mediaItems: MediaItem[]
+  mediaItems: MediaItem[],
+  exportCanvas?: ExportCanvasOptions
 ): ExportAnalysis {
   // Create a map for fast media item lookup
   const mediaItemsMap = new Map(mediaItems.map(item => [item.id, item]));
@@ -349,9 +420,6 @@ export function analyzeTimelineForExport(
     // Mode 1.5: Multiple sequential videos - check if normalization needed
     console.log('🔍 [MODE DETECTION] Multiple sequential videos detected - checking properties...');
 
-    // CRITICAL: Need export settings to validate video properties
-    // For now, use canvas dimensions from first video element (fallback)
-    // TODO: Pass export settings as parameter to analyzeTimelineForExport
     const firstVideo = videoElements[0];
     const firstMediaItem = mediaItemsMap.get(firstVideo.mediaId);
     const targetWidth = firstMediaItem?.width || 1280;  // Fallback to 720p
