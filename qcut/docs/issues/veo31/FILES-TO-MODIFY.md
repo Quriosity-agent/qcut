@@ -870,6 +870,7 @@ import type {
   const [lastFrame, setLastFrame] = useState<File | null>(null);
   const [lastFramePreview, setLastFramePreview] = useState<string | null>(null);
 ```
+> **Reviewer Comment:** Remember to clear these new frame states inside `resetGenerationState` (and anywhere else we reset the panel), otherwise previews from the previous run linger when the user starts fresh.
 
 ### Task 5.2: Update Cost Calculation
 
@@ -922,6 +923,7 @@ import type {
     return total + modelCost;
   }, 0);
 ```
+> **Reviewer Comment:** Let's guard against `parseInt` returning `NaN` (e.g., if the duration string ever changes) and double-check the defaults—image/frame variants only support 8s today, so the UI and pricing model should stay in sync.
 
 ### Task 5.3: Add Veo 3.1 Settings Panel
 
@@ -1063,6 +1065,7 @@ import type {
             </div>
           )}
 ```
+> **Reviewer Comment:** Nice start—let's also surface controls for `enhancePrompt`/`autoFix` so the UI can toggle every flag we expose on `veo31Settings`, and consider moving the pricing helper into a memo to avoid recalculating on every render.
 
 ### Task 5.4: Add Frame Upload UI (for frame-to-video)
 
@@ -1128,6 +1131,7 @@ import type {
                   </div>
                 )}
 ```
+> **Reviewer Comment:** Please make sure the `FileUpload` removal path clears both the local preview state and `generation`’s frame refs (e.g., via `onRemove`), otherwise the hook will still think frames are present after the user deletes them.
 
 ---
 
