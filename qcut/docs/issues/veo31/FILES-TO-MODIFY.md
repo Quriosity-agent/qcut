@@ -3,7 +3,19 @@
 **Quick Reference with Actual Code Examples**
 **Last Updated:** 2025-10-20
 
-This document provides detailed code snippets for all modifications needed to integrate Veo 3.1. Each section shows EXACTLY what to add, modify, or delete based on the existing codebase patterns.
+This document provides detailed code snippets for all modifications needed to integrate **6 Veo 3.1 models** (3 Fast + 3 Standard). Each section shows EXACTLY what to add, modify, or delete based on the existing codebase patterns.
+
+## Model Variants
+
+**Fast Models** (50% cheaper, faster processing):
+- `veo31_fast_text_to_video`: $0.10/s (no audio), $0.15/s (with audio)
+- `veo31_fast_image_to_video`: $0.10/s (no audio), $0.15/s (with audio)
+- `veo31_fast_frame_to_video`: $0.10/s (no audio), $0.15/s (with audio)
+
+**Standard Models** (premium quality):
+- `veo31_text_to_video`: $0.20/s (no audio), $0.40/s (with audio)
+- `veo31_image_to_video`: $0.20/s (no audio), $0.40/s (with audio)
+- `veo31_frame_to_video`: $0.20/s (no audio), $0.40/s (with audio)
 
 ---
 
@@ -11,18 +23,18 @@ This document provides detailed code snippets for all modifications needed to in
 
 **Path:** `qcut/apps/web/src/components/editor/media-panel/views/ai-constants.ts`
 
-### Task 1.1: Add Veo 3.1 Model Definitions
+### Task 1.1: Add Veo 3.1 Model Definitions (6 Models Total)
 
 **Location:** Add after line 336 (after the last Sora 2 model, before the closing `];`)
 
 **Code to ADD:**
 
 ```typescript
-  // Veo 3.1 Models
+  // Veo 3.1 Models - Fast Variants (50% cheaper, faster processing)
   {
-    id: "veo31_text_to_video",
-    name: "Veo 3.1 Text-to-Video",
-    description: "Google's Veo 3.1 Fast - Generate videos from text prompts",
+    id: "veo31_fast_text_to_video",
+    name: "Veo 3.1 Fast Text-to-Video",
+    description: "Google's Veo 3.1 Fast - Generate videos from text prompts (faster, budget-friendly)",
     price: "1.20", // 8s @ $0.15/s with audio (default)
     resolution: "720p / 1080p",
     supportedResolutions: ["720p", "1080p"],
@@ -41,9 +53,9 @@ This document provides detailed code snippets for all modifications needed to in
     },
   },
   {
-    id: "veo31_image_to_video",
-    name: "Veo 3.1 Image-to-Video",
-    description: "Google's Veo 3.1 Fast - Animate static images with motion",
+    id: "veo31_fast_image_to_video",
+    name: "Veo 3.1 Fast Image-to-Video",
+    description: "Google's Veo 3.1 Fast - Animate static images with motion (faster, budget-friendly)",
     price: "1.20", // 8s @ $0.15/s with audio (default)
     resolution: "720p / 1080p",
     supportedResolutions: ["720p", "1080p"],
@@ -60,9 +72,9 @@ This document provides detailed code snippets for all modifications needed to in
     },
   },
   {
-    id: "veo31_frame_to_video",
-    name: "Veo 3.1 Frame-to-Video",
-    description: "Google's Veo 3.1 Fast - Animate between first and last frames",
+    id: "veo31_fast_frame_to_video",
+    name: "Veo 3.1 Fast Frame-to-Video",
+    description: "Google's Veo 3.1 Fast - Animate between first and last frames (faster, budget-friendly)",
     price: "1.20", // 8s @ $0.15/s with audio (default)
     resolution: "720p / 1080p",
     supportedResolutions: ["720p", "1080p"],
@@ -71,6 +83,68 @@ This document provides detailed code snippets for all modifications needed to in
     requiredInputs: ["firstFrame", "lastFrame"],
     endpoints: {
       text_to_video: "fal-ai/veo3.1/fast/first-last-frame-to-video",
+    },
+    default_params: {
+      duration: "8s",
+      resolution: "720p",
+      aspect_ratio: "auto",
+      generate_audio: true,
+    },
+  },
+
+  // Veo 3.1 Models - Standard Variants (premium quality)
+  {
+    id: "veo31_text_to_video",
+    name: "Veo 3.1 Text-to-Video",
+    description: "Google's Veo 3.1 - Premium quality video generation from text prompts",
+    price: "3.20", // 8s @ $0.40/s with audio (default)
+    resolution: "720p / 1080p",
+    supportedResolutions: ["720p", "1080p"],
+    max_duration: 8, // 4s, 6s, or 8s
+    category: "text",
+    endpoints: {
+      text_to_video: "fal-ai/veo3.1", // No /fast suffix
+    },
+    default_params: {
+      duration: "8s",
+      resolution: "720p",
+      aspect_ratio: "16:9",
+      generate_audio: true,
+      enhance_prompt: true,
+      auto_fix: true,
+    },
+  },
+  {
+    id: "veo31_image_to_video",
+    name: "Veo 3.1 Image-to-Video",
+    description: "Google's Veo 3.1 - Premium quality image animation with motion",
+    price: "3.20", // 8s @ $0.40/s with audio (default)
+    resolution: "720p / 1080p",
+    supportedResolutions: ["720p", "1080p"],
+    max_duration: 8, // Currently only 8s supported
+    category: "image",
+    endpoints: {
+      image_to_video: "fal-ai/veo3.1/image-to-video", // No /fast
+    },
+    default_params: {
+      duration: "8s",
+      resolution: "720p",
+      aspect_ratio: "16:9",
+      generate_audio: true,
+    },
+  },
+  {
+    id: "veo31_frame_to_video",
+    name: "Veo 3.1 Frame-to-Video",
+    description: "Google's Veo 3.1 - Premium quality animation between first and last frames",
+    price: "3.20", // 8s @ $0.40/s with audio (default)
+    resolution: "720p / 1080p",
+    supportedResolutions: ["720p", "1080p"],
+    max_duration: 8, // Currently only 8s supported
+    category: "image", // Uses image tab (requires frame uploads)
+    requiredInputs: ["firstFrame", "lastFrame"],
+    endpoints: {
+      text_to_video: "fal-ai/veo3.1/first-last-frame-to-video", // No /fast
     },
     default_params: {
       duration: "8s",
@@ -232,30 +306,34 @@ import type {
 } from "@/types/ai-generation";
 ```
 
-### Task 3.2: Add Veo 3.1 Client Methods
+### Task 3.2: Add Veo 3.1 Client Methods (6 Methods Total)
 
 **Location:** Add inside `FalAIClient` class, after line 500 (after `getModelCapabilities` method, before closing `}`)
 
 **Code to ADD:**
 
 ```typescript
+  // ============================================
+  // Veo 3.1 FAST Methods (budget-friendly, faster)
+  // ============================================
+
   /**
-   * Generate video from text using Veo 3.1
+   * Generate video from text using Veo 3.1 Fast
    * @param params Veo 3.1 text-to-video parameters
    * @returns Generation result with video URL or error
    */
-  async generateVeo31TextToVideo(
+  async generateVeo31FastTextToVideo(
     params: Veo31TextToVideoInput
   ): Promise<GenerationResult> {
     try {
       const endpoint = "https://fal.run/fal-ai/veo3.1/fast";
 
-      console.log("[Veo 3.1] Generating text-to-video with params:", params);
+      console.log("[Veo 3.1 Fast] Generating text-to-video with params:", params);
 
       const response = await this.makeRequest(endpoint, params);
 
       if (!response.video?.url) {
-        throw new Error("No video URL in Veo 3.1 response");
+        throw new Error("No video URL in Veo 3.1 Fast response");
       }
 
       return {
@@ -266,38 +344,39 @@ import type {
           resolution: params.resolution || "720p",
           aspectRatio: params.aspect_ratio || "16:9",
           hasAudio: params.generate_audio !== false,
+          variant: "fast",
         },
       };
     } catch (error) {
-      handleAIServiceError(error, "Veo 3.1 text-to-video generation", {
-        operation: "generateVeo31TextToVideo",
+      handleAIServiceError(error, "Veo 3.1 Fast text-to-video generation", {
+        operation: "generateVeo31FastTextToVideo",
       });
 
       return {
         success: false,
         error:
-          error instanceof Error ? error.message : "Veo 3.1 generation failed",
+          error instanceof Error ? error.message : "Veo 3.1 Fast generation failed",
       };
     }
   }
 
   /**
-   * Generate video from image using Veo 3.1
+   * Generate video from image using Veo 3.1 Fast
    * @param params Veo 3.1 image-to-video parameters
    * @returns Generation result with video URL or error
    */
-  async generateVeo31ImageToVideo(
+  async generateVeo31FastImageToVideo(
     params: Veo31ImageToVideoInput
   ): Promise<GenerationResult> {
     try {
       const endpoint = "https://fal.run/fal-ai/veo3.1/fast/image-to-video";
 
-      console.log("[Veo 3.1] Generating image-to-video with params:", params);
+      console.log("[Veo 3.1 Fast] Generating image-to-video with params:", params);
 
       const response = await this.makeRequest(endpoint, params);
 
       if (!response.video?.url) {
-        throw new Error("No video URL in Veo 3.1 response");
+        throw new Error("No video URL in Veo 3.1 Fast response");
       }
 
       return {
@@ -308,38 +387,39 @@ import type {
           resolution: params.resolution || "720p",
           aspectRatio: params.aspect_ratio || "16:9",
           hasAudio: params.generate_audio !== false,
+          variant: "fast",
         },
       };
     } catch (error) {
-      handleAIServiceError(error, "Veo 3.1 image-to-video generation", {
-        operation: "generateVeo31ImageToVideo",
+      handleAIServiceError(error, "Veo 3.1 Fast image-to-video generation", {
+        operation: "generateVeo31FastImageToVideo",
       });
 
       return {
         success: false,
         error:
-          error instanceof Error ? error.message : "Veo 3.1 generation failed",
+          error instanceof Error ? error.message : "Veo 3.1 Fast generation failed",
       };
     }
   }
 
   /**
-   * Generate video from first and last frames using Veo 3.1
+   * Generate video from first and last frames using Veo 3.1 Fast
    * @param params Veo 3.1 frame-to-video parameters
    * @returns Generation result with video URL or error
    */
-  async generateVeo31FrameToVideo(
+  async generateVeo31FastFrameToVideo(
     params: Veo31FrameToVideoInput
   ): Promise<GenerationResult> {
     try {
       const endpoint = "https://fal.run/fal-ai/veo3.1/fast/first-last-frame-to-video";
 
-      console.log("[Veo 3.1] Generating frame-to-video with params:", params);
+      console.log("[Veo 3.1 Fast] Generating frame-to-video with params:", params);
 
       const response = await this.makeRequest(endpoint, params);
 
       if (!response.video?.url) {
-        throw new Error("No video URL in Veo 3.1 response");
+        throw new Error("No video URL in Veo 3.1 Fast response");
       }
 
       return {
@@ -350,17 +430,151 @@ import type {
           resolution: params.resolution || "720p",
           aspectRatio: params.aspect_ratio || "auto",
           hasAudio: params.generate_audio !== false,
+          variant: "fast",
         },
       };
     } catch (error) {
-      handleAIServiceError(error, "Veo 3.1 frame-to-video generation", {
+      handleAIServiceError(error, "Veo 3.1 Fast frame-to-video generation", {
+        operation: "generateVeo31FastFrameToVideo",
+      });
+
+      return {
+        success: false,
+        error:
+          error instanceof Error ? error.message : "Veo 3.1 Fast generation failed",
+      };
+    }
+  }
+
+  // ============================================
+  // Veo 3.1 STANDARD Methods (premium quality)
+  // ============================================
+
+  /**
+   * Generate video from text using Veo 3.1 Standard
+   * @param params Veo 3.1 text-to-video parameters
+   * @returns Generation result with video URL or error
+   */
+  async generateVeo31TextToVideo(
+    params: Veo31TextToVideoInput
+  ): Promise<GenerationResult> {
+    try {
+      const endpoint = "https://fal.run/fal-ai/veo3.1"; // No /fast suffix
+
+      console.log("[Veo 3.1 Standard] Generating text-to-video with params:", params);
+
+      const response = await this.makeRequest(endpoint, params);
+
+      if (!response.video?.url) {
+        throw new Error("No video URL in Veo 3.1 Standard response");
+      }
+
+      return {
+        success: true,
+        imageUrl: response.video.url,
+        metadata: {
+          duration: params.duration || "8s",
+          resolution: params.resolution || "720p",
+          aspectRatio: params.aspect_ratio || "16:9",
+          hasAudio: params.generate_audio !== false,
+          variant: "standard",
+        },
+      };
+    } catch (error) {
+      handleAIServiceError(error, "Veo 3.1 Standard text-to-video generation", {
+        operation: "generateVeo31TextToVideo",
+      });
+
+      return {
+        success: false,
+        error:
+          error instanceof Error ? error.message : "Veo 3.1 Standard generation failed",
+      };
+    }
+  }
+
+  /**
+   * Generate video from image using Veo 3.1 Standard
+   * @param params Veo 3.1 image-to-video parameters
+   * @returns Generation result with video URL or error
+   */
+  async generateVeo31ImageToVideo(
+    params: Veo31ImageToVideoInput
+  ): Promise<GenerationResult> {
+    try {
+      const endpoint = "https://fal.run/fal-ai/veo3.1/image-to-video"; // No /fast
+
+      console.log("[Veo 3.1 Standard] Generating image-to-video with params:", params);
+
+      const response = await this.makeRequest(endpoint, params);
+
+      if (!response.video?.url) {
+        throw new Error("No video URL in Veo 3.1 Standard response");
+      }
+
+      return {
+        success: true,
+        imageUrl: response.video.url,
+        metadata: {
+          duration: params.duration || "8s",
+          resolution: params.resolution || "720p",
+          aspectRatio: params.aspect_ratio || "16:9",
+          hasAudio: params.generate_audio !== false,
+          variant: "standard",
+        },
+      };
+    } catch (error) {
+      handleAIServiceError(error, "Veo 3.1 Standard image-to-video generation", {
+        operation: "generateVeo31ImageToVideo",
+      });
+
+      return {
+        success: false,
+        error:
+          error instanceof Error ? error.message : "Veo 3.1 Standard generation failed",
+      };
+    }
+  }
+
+  /**
+   * Generate video from first and last frames using Veo 3.1 Standard
+   * @param params Veo 3.1 frame-to-video parameters
+   * @returns Generation result with video URL or error
+   */
+  async generateVeo31FrameToVideo(
+    params: Veo31FrameToVideoInput
+  ): Promise<GenerationResult> {
+    try {
+      const endpoint = "https://fal.run/fal-ai/veo3.1/first-last-frame-to-video"; // No /fast
+
+      console.log("[Veo 3.1 Standard] Generating frame-to-video with params:", params);
+
+      const response = await this.makeRequest(endpoint, params);
+
+      if (!response.video?.url) {
+        throw new Error("No video URL in Veo 3.1 Standard response");
+      }
+
+      return {
+        success: true,
+        imageUrl: response.video.url,
+        metadata: {
+          duration: params.duration || "8s",
+          resolution: params.resolution || "720p",
+          aspectRatio: params.aspect_ratio || "auto",
+          hasAudio: params.generate_audio !== false,
+          variant: "standard",
+        },
+      };
+    } catch (error) {
+      handleAIServiceError(error, "Veo 3.1 Standard frame-to-video generation", {
         operation: "generateVeo31FrameToVideo",
       });
 
       return {
         success: false,
         error:
-          error instanceof Error ? error.message : "Veo 3.1 generation failed",
+          error instanceof Error ? error.message : "Veo 3.1 Standard generation failed",
       };
     }
   }
@@ -470,8 +684,20 @@ import type {
         if (activeTab === "text") {
           console.log(`  📝 Calling generateVideo for ${modelId}...`);
 
-          // Veo 3.1 text-to-video
-          if (modelId === 'veo31_text_to_video') {
+          // Veo 3.1 Fast text-to-video
+          if (modelId === 'veo31_fast_text_to_video') {
+            response = await falAIClient.generateVeo31FastTextToVideo({
+              prompt: prompt.trim(),
+              aspect_ratio: veo31Settings.aspectRatio === "auto" ? undefined : veo31Settings.aspectRatio as any,
+              duration: veo31Settings.duration,
+              resolution: veo31Settings.resolution,
+              generate_audio: veo31Settings.generateAudio,
+              enhance_prompt: veo31Settings.enhancePrompt,
+              auto_fix: veo31Settings.autoFix,
+            });
+          }
+          // Veo 3.1 Standard text-to-video
+          else if (modelId === 'veo31_text_to_video') {
             response = await falAIClient.generateVeo31TextToVideo({
               prompt: prompt.trim(),
               aspect_ratio: veo31Settings.aspectRatio === "auto" ? undefined : veo31Settings.aspectRatio as any,
@@ -508,8 +734,22 @@ import type {
         } else if (activeTab === "image" && selectedImage) {
           console.log(`  🖼️ Calling generateVideoFromImage for ${modelId}...`);
 
-          // Veo 3.1 image-to-video
-          if (modelId === 'veo31_image_to_video') {
+          // Veo 3.1 Fast image-to-video
+          if (modelId === 'veo31_fast_image_to_video') {
+            // Upload image to get URL first
+            const imageUrl = await uploadImageToFal(selectedImage);
+
+            response = await falAIClient.generateVeo31FastImageToVideo({
+              prompt: prompt.trim(),
+              image_url: imageUrl,
+              aspect_ratio: veo31Settings.aspectRatio as "16:9" | "9:16",
+              duration: veo31Settings.duration as "8s",
+              resolution: veo31Settings.resolution,
+              generate_audio: veo31Settings.generateAudio,
+            });
+          }
+          // Veo 3.1 Standard image-to-video
+          else if (modelId === 'veo31_image_to_video') {
             // Upload image to get URL first
             const imageUrl = await uploadImageToFal(selectedImage);
 
@@ -522,7 +762,23 @@ import type {
               generate_audio: veo31Settings.generateAudio,
             });
           }
-          // Veo 3.1 frame-to-video
+          // Veo 3.1 Fast frame-to-video
+          else if (modelId === 'veo31_fast_frame_to_video' && firstFrame && lastFrame) {
+            // Upload both frames to get URLs
+            const firstFrameUrl = await uploadImageToFal(firstFrame);
+            const lastFrameUrl = await uploadImageToFal(lastFrame);
+
+            response = await falAIClient.generateVeo31FastFrameToVideo({
+              prompt: prompt.trim(),
+              first_frame_url: firstFrameUrl,
+              last_frame_url: lastFrameUrl,
+              aspect_ratio: veo31Settings.aspectRatio as any,
+              duration: veo31Settings.duration as "8s",
+              resolution: veo31Settings.resolution,
+              generate_audio: veo31Settings.generateAudio,
+            });
+          }
+          // Veo 3.1 Standard frame-to-video
           else if (modelId === 'veo31_frame_to_video' && firstFrame && lastFrame) {
             // Upload both frames to get URLs
             const firstFrameUrl = await uploadImageToFal(firstFrame);
@@ -637,7 +893,16 @@ import type {
     // ADD: Veo 3.1 pricing calculation
     else if (modelId.startsWith('veo31_')) {
       const durationSeconds = parseInt(generation.veo31Settings.duration); // "4s" -> 4
-      const pricePerSecond = generation.veo31Settings.generateAudio ? 0.15 : 0.10;
+
+      // Determine if this is a fast or standard model
+      const isFastModel = modelId.includes('_fast_');
+
+      // Fast models: $0.10/s (no audio) or $0.15/s (with audio)
+      // Standard models: $0.20/s (no audio) or $0.40/s (with audio)
+      const pricePerSecond = isFastModel
+        ? (generation.veo31Settings.generateAudio ? 0.15 : 0.10)
+        : (generation.veo31Settings.generateAudio ? 0.40 : 0.20);
+
       modelCost = durationSeconds * pricePerSecond;
     }
 
@@ -674,7 +939,7 @@ import type {
                 </Select>
               </div>
 
-              {/* Duration selector */}
+              {/* Duration selector with pricing display */}
               <div className="space-y-1">
                 <Label htmlFor="veo31-duration" className="text-xs">Duration</Label>
                 <Select
@@ -685,15 +950,42 @@ import type {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="4s">
-                      4 seconds ({generation.veo31Settings.generateAudio ? "$0.60" : "$0.40"})
-                    </SelectItem>
-                    <SelectItem value="6s">
-                      6 seconds ({generation.veo31Settings.generateAudio ? "$0.90" : "$0.60"})
-                    </SelectItem>
-                    <SelectItem value="8s">
-                      8 seconds ({generation.veo31Settings.generateAudio ? "$1.20" : "$0.80"})
-                    </SelectItem>
+                    {(() => {
+                      // Check if fast or standard models are selected
+                      const hasFastModel = selectedModels.some(id => id.includes('veo31_fast_'));
+                      const hasStandardModel = selectedModels.some(id => id.startsWith('veo31_') && !id.includes('_fast_'));
+                      const hasAudio = generation.veo31Settings.generateAudio;
+
+                      // Calculate pricing for each duration
+                      const getPricing = (seconds: number) => {
+                        if (hasFastModel && !hasStandardModel) {
+                          // Fast only
+                          return hasAudio ? `$${(seconds * 0.15).toFixed(2)}` : `$${(seconds * 0.10).toFixed(2)}`;
+                        } else if (hasStandardModel && !hasFastModel) {
+                          // Standard only
+                          return hasAudio ? `$${(seconds * 0.40).toFixed(2)}` : `$${(seconds * 0.20).toFixed(2)}`;
+                        } else {
+                          // Both - show range
+                          const fastPrice = hasAudio ? seconds * 0.15 : seconds * 0.10;
+                          const stdPrice = hasAudio ? seconds * 0.40 : seconds * 0.20;
+                          return `$${fastPrice.toFixed(2)}-$${stdPrice.toFixed(2)}`;
+                        }
+                      };
+
+                      return (
+                        <>
+                          <SelectItem value="4s">
+                            4 seconds ({getPricing(4)})
+                          </SelectItem>
+                          <SelectItem value="6s">
+                            6 seconds ({getPricing(6)})
+                          </SelectItem>
+                          <SelectItem value="8s">
+                            8 seconds ({getPricing(8)})
+                          </SelectItem>
+                        </>
+                      );
+                    })()}
                   </SelectContent>
                 </Select>
               </div>
@@ -731,11 +1023,29 @@ import type {
                 />
               </div>
 
-              {/* Audio pricing note */}
+              {/* Audio pricing note with fast/standard differentiation */}
               <div className="text-xs text-muted-foreground">
-                {generation.veo31Settings.generateAudio
-                  ? "With audio: $0.15/second"
-                  : "Without audio: $0.10/second"}
+                {(() => {
+                  // Check if any selected model is fast or standard
+                  const hasFastModel = selectedModels.some(id => id.includes('veo31_fast_'));
+                  const hasStandardModel = selectedModels.some(id => id.startsWith('veo31_') && !id.includes('_fast_'));
+
+                  // Show pricing based on selected models
+                  if (hasFastModel && !hasStandardModel) {
+                    return generation.veo31Settings.generateAudio
+                      ? "Fast: $0.15/second with audio"
+                      : "Fast: $0.10/second without audio";
+                  } else if (hasStandardModel && !hasFastModel) {
+                    return generation.veo31Settings.generateAudio
+                      ? "Standard: $0.40/second with audio"
+                      : "Standard: $0.20/second without audio";
+                  } else {
+                    // Both fast and standard selected
+                    return generation.veo31Settings.generateAudio
+                      ? "Fast: $0.15/s | Standard: $0.40/s (with audio)"
+                      : "Fast: $0.10/s | Standard: $0.20/s (no audio)";
+                  }
+                })()}
               </div>
             </div>
           )}
@@ -814,22 +1124,34 @@ import type {
 
 | File | Lines Added | Changes Type |
 |------|-------------|--------------|
-| `ai-constants.ts` | ~110 | Add 3 models + constants + errors |
-| `fal-ai-client.ts` | ~150 | Add 3 API client methods + types import |
-| `use-ai-generation.ts` | ~120 | Add state, setters, detection, generation logic |
-| `ai.tsx` | ~150 | Add settings panel + frame uploads + cost calc |
+| `ai-constants.ts` | ~230 | Add 6 models (3 fast + 3 standard) + constants + errors |
+| `fal-ai-client.ts` | ~290 | Add 6 API client methods (fast + standard variants) + types import |
+| `use-ai-generation.ts` | ~180 | Add state, setters, detection, generation logic for all variants |
+| `ai.tsx` | ~200 | Add settings panel + frame uploads + dynamic pricing display |
 
 ### Files Created (1)
 
 | File | Lines | Purpose |
 |------|-------|---------|
-| `ai-generation.ts` | ~90 | TypeScript type definitions |
+| `ai-generation.ts` | ~90 | TypeScript type definitions (shared by fast and standard) |
 
 ### Total Impact
 
-- **~620 lines of code** added
+- **~990 lines of code** added
 - **0 lines deleted** (non-breaking)
-- **~30 lines modified** (cost calc, generation logic)
+- **~50 lines modified** (cost calc with fast/standard differentiation, generation logic)
+
+### Model Breakdown
+
+**Fast Models (3):**
+- `veo31_fast_text_to_video`: Text → Video (fast, budget-friendly)
+- `veo31_fast_image_to_video`: Image → Video (fast, budget-friendly)
+- `veo31_fast_frame_to_video`: Frames → Video (fast, budget-friendly)
+
+**Standard Models (3):**
+- `veo31_text_to_video`: Text → Video (premium quality)
+- `veo31_image_to_video`: Image → Video (premium quality)
+- `veo31_frame_to_video`: Frames → Video (premium quality)
 
 ---
 
@@ -848,17 +1170,19 @@ After making changes, verify:
 - [ ] All functions have proper JSDoc comments
 
 ### Functionality
-- [ ] Veo 3.1 models appear in AI panel
-- [ ] Settings panel shows when Veo 3.1 selected
-- [ ] Cost calculation includes Veo 3.1
-- [ ] Frame uploads work for frame-to-video
+- [ ] All 6 Veo 3.1 models appear in AI panel (3 fast + 3 standard)
+- [ ] Settings panel shows when any Veo 3.1 model selected
+- [ ] Cost calculation correctly differentiates fast ($0.10-0.15/s) vs standard ($0.20-0.40/s)
+- [ ] Duration pricing updates dynamically based on audio toggle
+- [ ] Frame uploads work for both fast and standard frame-to-video
 - [ ] No console errors
 
 ### Integration
 - [ ] Existing Sora 2/Kling/WAN models still work
 - [ ] No regressions in other features
 - [ ] Tab switching works correctly
-- [ ] Multi-model selection includes Veo 3.1
+- [ ] Multi-model selection includes both fast and standard Veo 3.1 models
+- [ ] Pricing displays correctly when mixing fast and standard models
 
 ---
 
@@ -903,42 +1227,46 @@ async function uploadImageToFal(file: File): Promise<string> {
 ### Step 1: Types (5 min)
 1. Create `qcut/apps/web/src/types/ai-generation.ts`
 2. Copy the full type definitions from Task 2 above
+3. Note: Types are shared between fast and standard models
 
-### Step 2: Constants (10 min)
+### Step 2: Constants (15 min)
 1. Open `ai-constants.ts`
-2. Add 3 model definitions after line 336
+2. Add 6 model definitions after line 336 (3 fast + 3 standard)
 3. Add upload constants to UPLOAD_CONSTANTS
 4. Add error messages to ERROR_MESSAGES
 
-### Step 3: Client (20 min)
+### Step 3: Client (35 min)
 1. Open `fal-ai-client.ts`
 2. Add type imports at top
-3. Add 3 methods inside FalAIClient class
+3. Add 6 methods inside FalAIClient class (3 fast + 3 standard variants)
 4. Add uploadImageToFal helper (if not exists)
 
-### Step 4: Hook (30 min)
+### Step 4: Hook (45 min)
 1. Open `use-ai-generation.ts`
 2. Add state variables after Sora 2 state
 3. Add detection flags after Sora 2 flags
 4. Add setter functions before return
-5. Modify handleGenerate with Veo 3.1 logic
+5. Modify handleGenerate with Veo 3.1 logic (handle both fast and standard)
 6. Add Veo 3.1 fields to return statement
 
-### Step 5: UI (45 min)
+### Step 5: UI (60 min)
 1. Open `ai.tsx`
 2. Add frame upload state after line 63
-3. Modify cost calculation after line 212
-4. Add settings panel after line 709
+3. Modify cost calculation with fast/standard differentiation
+4. Add settings panel with dynamic pricing display
 5. Add frame upload UI after line 458
+6. Test pricing display for various model combinations
 
-### Step 6: Test (20 min)
+### Step 6: Test (30 min)
 1. Run `bun x tsc --noEmit`
 2. Run `bun run lint:clean`
 3. Run `bun run dev`
-4. Test Veo 3.1 model selection
-5. Verify settings panel appears
+4. Test all 6 Veo 3.1 model selections
+5. Verify settings panel appears with correct pricing
+6. Test fast + standard model mixing
+7. Verify cost calculation accuracy
 
-**Total Time: ~2.5 hours**
+**Total Time: ~3.5 hours** (increased from 2.5 hours due to 2x model count)
 
 ---
 
@@ -947,8 +1275,11 @@ async function uploadImageToFal(file: File): Promise<string> {
 - All code examples are based on existing patterns in the codebase
 - Veo 3.1 follows the same pattern as Sora 2 (good reference)
 - Frame-to-video uses the FileUpload component (same as avatar)
-- Cost calculation reuses existing logic structure
+- Cost calculation reuses existing logic structure with fast/standard differentiation
 - No breaking changes - all modifications are additive
+- **Fast vs Standard**: Fast models use `/fast` in endpoint URLs and cost 50% less ($0.10-0.15/s vs $0.20-0.40/s)
+- TypeScript interfaces are shared between fast and standard variants (same parameters)
+- UI dynamically displays pricing based on selected model mix (fast only, standard only, or both)
 
 ---
 

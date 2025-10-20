@@ -7,7 +7,13 @@
 
 ## Executive Summary
 
-This document outlines the integration plan for adding three Google Veo 3.1 AI video generation models to the QCut video editor. The integration will extend the existing AI features panel to support Google's latest video generation capabilities while maintaining backward compatibility with existing features.
+This document outlines the integration plan for adding **six Google Veo 3.1 AI video generation models** (3 Fast + 3 Standard variants) to the QCut video editor. The integration will extend the existing AI features panel to support Google's latest video generation capabilities while maintaining backward compatibility with existing features.
+
+**Model Variants:**
+- **Fast Models** (50% cheaper, faster processing): $0.10-0.15/second
+- **Standard Models** (premium quality): $0.20-0.40/second
+
+The implementation details in this document primarily use Fast model examples, but all patterns apply to both variants with different endpoint URLs and pricing.
 
 ---
 
@@ -725,13 +731,23 @@ git reset --hard origin/master
 
 ### API Usage Costs (Estimates)
 
+**Fast Models:**
+
 | Duration | Audio ON | Audio OFF |
 |----------|----------|-----------|
 | 4 seconds | $0.60 | $0.40 |
 | 6 seconds | $0.90 | $0.60 |
 | 8 seconds | $1.20 | $0.80 |
 
-**Development Testing Budget:** $20-50 (assuming 20-50 test generations)
+**Standard Models (Premium Quality):**
+
+| Duration | Audio ON | Audio OFF |
+|----------|----------|-----------|
+| 4 seconds | $1.60 | $0.80 |
+| 6 seconds | $2.40 | $1.20 |
+| 8 seconds | $3.20 | $1.60 |
+
+**Development Testing Budget:** $30-100 (assuming 20-50 test generations across both variants)
 
 ---
 
@@ -739,7 +755,8 @@ git reset --hard origin/master
 
 ### Technical Success
 
-- ✅ All 3 Veo 3.1 models functional
+- ✅ All 6 Veo 3.1 models functional (3 fast + 3 standard)
+- ✅ Cost calculation correctly differentiates fast vs standard pricing
 - ✅ Zero regressions in existing features
 - ✅ TypeScript compilation passes
 - ✅ All tests pass (unit + integration)
