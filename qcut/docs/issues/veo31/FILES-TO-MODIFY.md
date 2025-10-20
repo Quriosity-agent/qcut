@@ -154,6 +154,7 @@ This document provides detailed code snippets for all modifications needed to in
     },
   },
 ```
+> **Reviewer Comment:** `default_params.duration` should stay numeric (e.g., `8`) to satisfy the existing `AIModelParameters` type and match how Sora 2 models specify duration.
 
 ### Task 1.2: Add Veo 3.1 Upload Constants
 
@@ -167,6 +168,7 @@ This document provides detailed code snippets for all modifications needed to in
   MAX_VEO31_FRAME_SIZE_LABEL: "8MB",
   ALLOWED_VEO31_ASPECT_RATIOS: ["16:9", "9:16"],
 ```
+> **Reviewer Comment:** Constants fit the existing upload pattern; no additional gaps spotted.
 
 ### Task 1.3: Add Veo 3.1 Error Messages
 
@@ -181,6 +183,7 @@ This document provides detailed code snippets for all modifications needed to in
   VEO31_MISSING_LAST_FRAME: "Last frame is required for Veo 3.1 frame-to-video",
   VEO31_FRAME_ASPECT_MISMATCH: "First and last frames must have matching aspect ratios",
 ```
+> **Reviewer Comment:** Messages cover all new validation branches and align with current error wording.
 
 ---
 
@@ -284,6 +287,7 @@ export interface GeneratedVideoResult {
   video: GeneratedVideo;
 }
 ```
+> **Reviewer Comment:** This shared Veo31Settings.duration union exposes 4s/6s to flows that only accept 8s, so we end up forcing casts later; let's either narrow it here or split per-mode settings to keep the types sound.
 
 ---
 
@@ -305,6 +309,7 @@ import type {
   Veo31Response,
 } from "@/types/ai-generation";
 ```
+> **Reviewer Comment:** Once we add this import we must actually use `Veo31Response` (e.g. typing the `makeRequest` result), otherwise lint/TS will flag it as unused.
 
 ### Task 3.2: Add Veo 3.1 Client Methods (6 Methods Total)
 
@@ -579,6 +584,7 @@ import type {
     }
   }
 ```
+> **Reviewer Comment:** `makeRequest` currently returns `FalImageResponse` (no `video` field) and `GenerationResult.metadata` only allows `seed/timings/dimensions`; this code will fail type-checking unless those core types are extended or the responses are cast appropriately.
 
 ---
 
