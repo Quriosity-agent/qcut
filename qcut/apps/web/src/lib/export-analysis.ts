@@ -132,45 +132,53 @@ function extractVideoProperties(
     return null;
   }
 
-  const metadata = mediaItem.metadata as Record<string, any> | undefined;
+  const metadata = mediaItem.metadata;
 
-  const width =
-    typeof mediaItem.width === 'number' && mediaItem.width > 0
-      ? mediaItem.width
-      : typeof metadata?.width === 'number' && metadata.width > 0
-        ? metadata.width
-        : undefined;
-  const height =
-    typeof mediaItem.height === 'number' && mediaItem.height > 0
-      ? mediaItem.height
-      : typeof metadata?.height === 'number' && metadata.height > 0
-        ? metadata.height
-        : undefined;
-  const fps =
-    typeof mediaItem.fps === 'number' && mediaItem.fps > 0
-      ? mediaItem.fps
-      : typeof metadata?.fps === 'number' && metadata.fps > 0
-        ? metadata.fps
-        : typeof metadata?.video?.fps === 'number' && metadata.video.fps > 0
-          ? metadata.video.fps
-          : undefined;
+  const isRecord = (value: unknown): value is Record<string, unknown> =>
+    typeof value === 'object' && value !== null;
+
+  const selectPositiveNumber = (candidates: unknown[]): number | undefined => {
+    for (const candidate of candidates) {
+      if (typeof candidate === 'number' && candidate > 0) {
+        return candidate;
+      }
+    }
+    return undefined;
+  };
+
+  const selectString = (candidates: unknown[]): string | undefined => {
+    for (const candidate of candidates) {
+      if (typeof candidate === 'string') {
+        return candidate;
+      }
+    }
+    return undefined;
+  };
+
+  const metadataRecord = isRecord(metadata) ? metadata : undefined;
+  const rawVideoMetadata = metadataRecord?.video;
+  const videoMetadata = isRecord(rawVideoMetadata) ? rawVideoMetadata : undefined;
+
+  const width = selectPositiveNumber([mediaItem.width, metadataRecord?.width]);
+  const height = selectPositiveNumber([mediaItem.height, metadataRecord?.height]);
+  const fps = selectPositiveNumber([
+    mediaItem.fps,
+    metadataRecord?.fps,
+    videoMetadata?.fps
+  ]);
 
   if (!width || !height || !fps) {
     return null;
   }
 
-  const codec =
-    typeof metadata?.video?.codec === 'string'
-      ? metadata.video.codec
-      : typeof metadata?.codec === 'string'
-        ? metadata.codec
-        : undefined;
-  const pixelFormat =
-    typeof metadata?.video?.pixelFormat === 'string'
-      ? metadata.video.pixelFormat
-      : typeof metadata?.pixelFormat === 'string'
-        ? metadata.pixelFormat
-        : undefined;
+  const codec = selectString([
+    videoMetadata?.codec,
+    metadataRecord?.codec
+  ]);
+  const pixelFormat = selectString([
+    videoMetadata?.pixelFormat,
+    metadataRecord?.pixelFormat
+  ]);
 
   return {
     width,
