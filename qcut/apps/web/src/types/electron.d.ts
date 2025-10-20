@@ -1,4 +1,5 @@
 import type { StickerSource } from '../../../../electron/ffmpeg-handler';
+import type { VideoSourceInput, AudioFileInput } from '../lib/export-engine-cli';
 
 export interface ElectronAPI {
   // System info
@@ -191,9 +192,9 @@ export interface ElectronAPI {
       stickerFilterChain?: string;
       stickerSources?: StickerSource[];
       duration?: number;
-      audioFiles?: any[];
+      audioFiles?: AudioFileInput[];
       useDirectCopy?: boolean;
-      videoSources?: any[];
+      videoSources?: VideoSourceInput[];
       // Mode 2: Direct video input with filters
       useVideoInput?: boolean;
       videoInputPath?: string;

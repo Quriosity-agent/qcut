@@ -20,6 +20,26 @@ let stickerHelperModulePromise: Promise<
 
 export type ProgressCallback = (progress: number, message: string) => void;
 
+/**
+ * Video source input for FFmpeg direct copy optimization
+ */
+export interface VideoSourceInput {
+  path: string;
+  startTime: number;
+  duration: number;
+  trimStart: number;
+  trimEnd: number;
+}
+
+/**
+ * Audio file input for FFmpeg export
+ */
+export interface AudioFileInput {
+  path: string;
+  startTime: number;
+  volume: number;
+}
+
 export class CLIExportEngine extends ExportEngine {
   private sessionId: string | null = null;
   private frameDir: string | null = null;
@@ -811,20 +831,8 @@ export class CLIExportEngine extends ExportEngine {
   /**
    * Extract video source paths from timeline for direct copy optimization
    */
-  private extractVideoSources(): Array<{
-    path: string;
-    startTime: number;
-    duration: number;
-    trimStart: number;
-    trimEnd: number;
-  }> {
-    const videoSources: Array<{
-      path: string;
-      startTime: number;
-      duration: number;
-      trimStart: number;
-      trimEnd: number;
-    }> = [];
+  private extractVideoSources(): VideoSourceInput[] {
+    const videoSources: VideoSourceInput[] = [];
 
     // Iterate through all tracks to find video elements
     this.tracks.forEach((track) => {
@@ -980,8 +988,12 @@ export class CLIExportEngine extends ExportEngine {
         throw new Error('Electron API not available for sticker export');
       }
 
+      if (!this.sessionId) {
+        throw new Error('No active export session');
+      }
+
       const result = await window.electronAPI.ffmpeg.saveStickerForExport({
-        sessionId: this.sessionId!,
+        sessionId: this.sessionId,
         stickerId: sticker.id,
         imageData: imageBytes,
         format,
@@ -1188,11 +1200,8 @@ export class CLIExportEngine extends ExportEngine {
     return filterChain;
   }
 
-  private async prepareAudioFiles(): Promise<
-    Array<{ path: string; startTime: number; volume: number }>
-  > {
-    const results: Array<{ path: string; startTime: number; volume: number }> =
-      [];
+  private async prepareAudioFiles(): Promise<AudioFileInput[]> {
+    const results: AudioFileInput[] = [];
     const { useTimelineStore } = await import("@/stores/timeline-store");
     const { useMediaStore } = await import("@/stores/media-store");
 
