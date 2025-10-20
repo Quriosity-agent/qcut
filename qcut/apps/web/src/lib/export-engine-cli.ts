@@ -40,6 +40,20 @@ export interface AudioFileInput {
   volume: number;
 }
 
+interface StickerSourceForFilter {
+  id: string;
+  path: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  startTime: number;
+  endTime: number;
+  zIndex: number;
+  opacity?: number;
+  rotation?: number;
+}
+
 export class CLIExportEngine extends ExportEngine {
   private sessionId: string | null = null;
   private frameDir: string | null = null;
@@ -1015,19 +1029,7 @@ export class CLIExportEngine extends ExportEngine {
    * Extract sticker sources from overlay store for FFmpeg processing
    * Returns array of sticker data with local file paths
    */
-  private async extractStickerSources(): Promise<Array<{
-    id: string;
-    path: string;
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-    startTime: number;
-    endTime: number;
-    zIndex: number;
-    opacity?: number;
-    rotation?: number;
-  }>> {
+  private async extractStickerSources(): Promise<StickerSourceForFilter[]> {
     debugLog("[CLIExportEngine] Extracting sticker sources for FFmpeg overlay");
 
     try {
@@ -1045,7 +1047,7 @@ export class CLIExportEngine extends ExportEngine {
 
       debugLog(`[CLIExportEngine] Processing ${allStickers.length} stickers for export`);
 
-      const stickerSources = [];
+      const stickerSources: StickerSourceForFilter[] = [];
 
       // Process each sticker
       for (const sticker of allStickers) {
@@ -1132,7 +1134,7 @@ export class CLIExportEngine extends ExportEngine {
    * @param stickerSources - Array of sticker data with position, size, timing
    * @returns FFmpeg complex filter chain string
    */
-  private buildStickerOverlayFilters(stickerSources: Array<any>): string {
+  private buildStickerOverlayFilters(stickerSources: StickerSourceForFilter[]): string {
     if (!stickerSources || stickerSources.length === 0) {
       return '';
     }
@@ -1843,7 +1845,7 @@ export class CLIExportEngine extends ExportEngine {
     // ADD: Extract and build sticker overlays
     // IMPORTANT: Always extract stickers if they exist, regardless of direct copy mode
     let stickerFilterChain: string | undefined;
-    let stickerSources: Array<any> = [];
+    let stickerSources: StickerSourceForFilter[] = [];
 
     try {
       // Extract sticker sources with local file paths (always check for stickers)

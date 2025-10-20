@@ -76,29 +76,28 @@ function resolveExportCanvasSettings(params: {
     exportHeight > 0;
   const hasExportFps = typeof exportFps === 'number' && exportFps > 0;
 
-  const resolvedWidth = hasExportDimensions
-    ? exportWidth!
-    : typeof fallbackWidth === 'number' && fallbackWidth > 0
-      ? fallbackWidth
-      : 1280;
+  // Use clear conditional logic instead of nested ternaries
+  let resolvedWidth = 1280;
+  let resolvedHeight = 720;
+  let source: CanvasSettingSource = 'default';
 
-  const resolvedHeight = hasExportDimensions
-    ? exportHeight!
-    : typeof fallbackHeight === 'number' && fallbackHeight > 0
-      ? fallbackHeight
-      : 720;
+  if (hasExportDimensions) {
+    resolvedWidth = exportWidth!;
+    resolvedHeight = exportHeight!;
+    source = 'export-settings';
+  } else if (typeof fallbackWidth === 'number' && fallbackWidth > 0 &&
+             typeof fallbackHeight === 'number' && fallbackHeight > 0) {
+    resolvedWidth = fallbackWidth;
+    resolvedHeight = fallbackHeight;
+    source = 'media-fallback';
+  }
 
-  const resolvedFps = hasExportFps
-    ? exportFps!
-    : typeof fallbackFps === 'number' && fallbackFps > 0
-      ? fallbackFps
-      : 30;
-
-  const source: CanvasSettingSource = hasExportDimensions
-    ? 'export-settings'
-    : typeof fallbackWidth === 'number' && typeof fallbackHeight === 'number'
-      ? 'media-fallback'
-      : 'default';
+  let resolvedFps = 30;
+  if (hasExportFps) {
+    resolvedFps = exportFps!;
+  } else if (typeof fallbackFps === 'number' && fallbackFps > 0) {
+    resolvedFps = fallbackFps;
+  }
 
   return {
     width: resolvedWidth,
