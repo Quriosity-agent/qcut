@@ -954,16 +954,22 @@ import { REVE_EDIT_MODEL } from "./ai-constants";
 - Add "Clear Image" button
 - Location: Around line 660 in ai.tsx (after frame upload section)
 
+**Comment:** Mirror the Veo frame uploader by wiring keyboard focus states and an accessible label for the clear action.
+
 **Task 2.8: Image Validation UI (15 min)**
 - Display validation errors from `handleImageUploadForEdit`
 - Show file size and dimensions
 - Disable generate button if validation fails
+
+**Comment:** Track the validation state in `use-ai-generation` so the disabled state stays consistent even if the same file is reselected.
 
 **Task 2.9-2.13: Additional UI Components**
 - Edit prompt input (reuse existing prompt textarea)
 - Variations & format selectors (similar to Task 1.6)
 - Result preview grid (similar to existing video results)
 - Testing checklists
+
+**Comment:** Consider breaking the Reve edit controls into a subcomponent to keep `ai.tsx` manageable while reusing existing grid and prompt primitives.
 
 **Reference Pattern** (from Veo 3.1 frame upload, line 461):
 ```tsx
