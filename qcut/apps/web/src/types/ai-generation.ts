@@ -1,0 +1,90 @@
+/**
+ * Type definitions for AI video generation features
+ * Including Veo 3.1 integration
+ */
+
+// ============================================
+// Veo 3.1 Type Definitions
+// ============================================
+
+/**
+ * Veo 3.1 Text-to-Video Input Parameters
+ */
+export interface Veo31TextToVideoInput {
+  prompt: string; // Required: Text description for video
+  aspect_ratio?: "9:16" | "16:9" | "1:1"; // Default: "16:9"
+  duration?: "4s" | "6s" | "8s"; // Default: "8s"
+  resolution?: "720p" | "1080p"; // Default: "720p"
+  generate_audio?: boolean; // Default: true
+  negative_prompt?: string; // Optional: What to avoid
+  enhance_prompt?: boolean; // Default: true
+  seed?: number; // For reproducibility
+  auto_fix?: boolean; // Policy compliance, default: true
+}
+
+/**
+ * Veo 3.1 Image-to-Video Input Parameters
+ */
+export interface Veo31ImageToVideoInput {
+  prompt: string; // Required: Animation description
+  image_url: string; // Required: Input image URL (720p+, 16:9 or 9:16)
+  aspect_ratio?: "16:9" | "9:16"; // Default: "16:9"
+  duration?: "8s"; // Currently only "8s" supported
+  resolution?: "720p" | "1080p"; // Default: "720p"
+  generate_audio?: boolean; // Default: true
+}
+
+/**
+ * Veo 3.1 First-Last-Frame-to-Video Input Parameters
+ */
+export interface Veo31FrameToVideoInput {
+  prompt: string; // Required: Animation description
+  first_frame_url: string; // Required: Opening frame URL
+  last_frame_url: string; // Required: Closing frame URL
+  aspect_ratio?: "9:16" | "16:9"; // Default: "16:9"
+  duration?: "8s"; // Currently only "8s" supported
+  resolution?: "720p" | "1080p"; // Default: "720p"
+  generate_audio?: boolean; // Default: true
+}
+
+/**
+ * Veo 3.1 API Response
+ */
+export interface Veo31Response {
+  video: {
+    url: string;
+    content_type: string;
+    file_name: string;
+  };
+}
+
+/**
+ * Veo 3.1 Settings State
+ */
+export interface Veo31Settings {
+  resolution: "720p" | "1080p";
+  duration: "4s" | "6s" | "8s";
+  aspectRatio: "9:16" | "16:9" | "1:1" | "auto";
+  generateAudio: boolean;
+  enhancePrompt: boolean;
+  autoFix: boolean;
+}
+
+// ============================================
+// Existing Generation Types (for reference)
+// ============================================
+
+export interface GeneratedVideo {
+  jobId: string;
+  videoUrl: string;
+  videoPath?: string;
+  fileSize?: number;
+  duration?: number;
+  prompt: string;
+  model: string;
+}
+
+export interface GeneratedVideoResult {
+  modelId: string;
+  video: GeneratedVideo;
+}

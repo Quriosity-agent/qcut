@@ -22,6 +22,7 @@ import { debugLogger } from "@/lib/debug-logger";
 import { getMediaStoreUtils } from "@/stores/media-store-loader";
 import { debugLog, debugError, debugWarn } from "@/lib/debug-config";
 import { useAsyncMediaStoreActions } from "@/hooks/use-async-media-store";
+import { falAIClient } from "@/lib/fal-ai-client";
 
 import {
   AI_MODELS,
@@ -37,6 +38,11 @@ import type {
   UseAIGenerationProps,
   ProgressCallback as AIProgressCallback,
 } from "./ai-types";
+
+const VEO31_FRAME_MODELS = new Set([
+  "veo31_fast_frame_to_video",
+  "veo31_frame_to_video",
+]);
 
 /**
  * Custom hook for managing AI video generation
@@ -96,9 +102,36 @@ export function useAIGeneration(props: UseAIGenerationProps) {
   const [aspectRatio, setAspectRatio] = useState<"16:9" | "9:16">("16:9");
   const [resolution, setResolution] = useState<"auto" | "720p" | "1080p">("720p");
 
+  // Veo 3.1 specific state
+  const [veo31Settings, setVeo31Settings] = useState<{
+    resolution: "720p" | "1080p";
+    duration: "4s" | "6s" | "8s";
+    aspectRatio: "9:16" | "16:9" | "1:1" | "auto";
+    generateAudio: boolean;
+    enhancePrompt: boolean;
+    autoFix: boolean;
+  }>({
+    resolution: "720p",
+    duration: "8s",
+    aspectRatio: "16:9",
+    generateAudio: true,
+    enhancePrompt: true,
+    autoFix: true,
+  });
+
+  // Veo 3.1 frame state (for frame-to-video model)
+  const [firstFrame, setFirstFrame] = useState<File | null>(null);
+  const [lastFrame, setLastFrame] = useState<File | null>(null);
+
   // Sora 2 detection flags
   const isSora2Selected = selectedModels.some(id => id.startsWith('sora2_'));
   const hasSora2Pro = selectedModels.includes('sora2_text_to_video_pro') || selectedModels.includes('sora2_image_to_video_pro');
+
+  // Veo 3.1 detection flags
+  const isVeo31Selected = selectedModels.some(id => id.startsWith('veo31_'));
+  const hasVeo31FrameToVideo = selectedModels.some((id) =>
+    VEO31_FRAME_MODELS.has(id)
+  );
 
   // Store hooks
   const {
@@ -194,6 +227,23 @@ export function useAIGeneration(props: UseAIGenerationProps) {
 
       debugLog(`📥 Download complete: ${result.length} bytes`);
       return result;
+    },
+    []
+  );
+
+  // Helper function to upload image to FAL and get URL (for Veo 3.1)
+  const uploadImageToFal = useCallback(
+    async (file: File): Promise<string> => {
+      debugLog("📤 Uploading image to FAL:", file.name);
+
+      try {
+        const url = await falAIClient.uploadImageToFal(file);
+        debugLog(`📤 Upload complete: ${url}`);
+        return url;
+      } catch (error) {
+        debugError("❌ Failed to upload image to FAL", error);
+        throw error instanceof Error ? error : new Error(String(error));
+      }
     },
     []
   );
@@ -347,7 +397,17 @@ export function useAIGeneration(props: UseAIGenerationProps) {
     if (activeTab === "text") {
       if (!prompt.trim() || selectedModels.length === 0) return;
     } else if (activeTab === "image") {
-      if (!selectedImage || selectedModels.length === 0) return;
+      if (selectedModels.length === 0) return;
+
+      const hasFrameModel = selectedModels.some((id) =>
+        VEO31_FRAME_MODELS.has(id)
+      );
+      const hasImageModel = selectedModels.some(
+        (id) => !VEO31_FRAME_MODELS.has(id)
+      );
+
+      if (hasFrameModel && (!firstFrame || !lastFrame)) return;
+      if (hasImageModel && !selectedImage) return;
     } else if (activeTab === "avatar") {
       if (!avatarImage || selectedModels.length === 0) return;
     }
@@ -439,8 +499,27 @@ export function useAIGeneration(props: UseAIGenerationProps) {
         return;
       }
     } else if (activeTab === "image") {
-      if (!selectedImage || selectedModels.length === 0) {
-        console.log("❌ Validation failed - missing image or models");
+      if (selectedModels.length === 0) {
+        console.log("❌ Validation failed - missing models for image tab");
+        return;
+      }
+
+      const hasFrameModel = selectedModels.some((id) =>
+        VEO31_FRAME_MODELS.has(id)
+      );
+      const hasImageModel = selectedModels.some(
+        (id) => !VEO31_FRAME_MODELS.has(id)
+      );
+
+      if (hasFrameModel && (!firstFrame || !lastFrame)) {
+        console.log(
+          "❌ Validation failed - frame-to-video models require first and last frames"
+        );
+        return;
+      }
+
+      if (hasImageModel && !selectedImage) {
+        console.log("❌ Validation failed - image-to-video models require an image");
         return;
       }
     } else if (activeTab === "avatar") {
@@ -526,8 +605,169 @@ export function useAIGeneration(props: UseAIGenerationProps) {
 
         if (activeTab === "text") {
           console.log(`  📝 Calling generateVideo for ${modelId}...`);
-          response = await generateVideo(
-            {
+
+          // Veo 3.1 Fast text-to-video
+          if (modelId === 'veo31_fast_text_to_video') {
+            response = await falAIClient.generateVeo31FastTextToVideo({
+              prompt: prompt.trim(),
+              aspect_ratio: (() => {
+                const ar = veo31Settings.aspectRatio;
+                return ar === "auto" ? undefined : ar; // "16:9" | "9:16" | "1:1" | undefined
+              })(),
+              duration: veo31Settings.duration,
+              resolution: veo31Settings.resolution,
+              generate_audio: veo31Settings.generateAudio,
+              enhance_prompt: veo31Settings.enhancePrompt,
+              auto_fix: veo31Settings.autoFix,
+            });
+          }
+          // Veo 3.1 Standard text-to-video
+          else if (modelId === 'veo31_text_to_video') {
+            response = await falAIClient.generateVeo31TextToVideo({
+              prompt: prompt.trim(),
+              aspect_ratio: (() => {
+                const ar = veo31Settings.aspectRatio;
+                return ar === "auto" ? undefined : ar; // "16:9" | "9:16" | "1:1" | undefined
+              })(),
+              duration: veo31Settings.duration,
+              resolution: veo31Settings.resolution,
+              generate_audio: veo31Settings.generateAudio,
+              enhance_prompt: veo31Settings.enhancePrompt,
+              auto_fix: veo31Settings.autoFix,
+            });
+          }
+          // Regular text-to-video generation
+          else {
+            response = await generateVideo(
+              {
+                prompt: prompt.trim(),
+                model: modelId,
+                // Add Sora 2 specific parameters if Sora 2 model
+                ...(modelId.startsWith('sora2_') && {
+                  duration,
+                  aspect_ratio: aspectRatio,
+                  resolution,
+                }),
+              },
+              progressCallback
+            );
+          }
+          console.log("  ✅ generateVideo returned:", response);
+        } else if (activeTab === "image") {
+          console.log(`  🖼️ Calling generateVideoFromImage for ${modelId}...`);
+
+          // Veo 3.1 Fast image-to-video
+          if (modelId === 'veo31_fast_image_to_video') {
+            if (!selectedImage) {
+              console.log(
+                "  ⚠️ Skipping model - image-to-video requires a selected image"
+              );
+              continue;
+            }
+
+            // Upload image to get URL first
+            const imageFile = selectedImage;
+            const imageUrl = await uploadImageToFal(imageFile);
+            const imageAspectRatio =
+              veo31Settings.aspectRatio === "16:9" || veo31Settings.aspectRatio === "9:16"
+                ? veo31Settings.aspectRatio
+                : "16:9";
+
+            response = await falAIClient.generateVeo31FastImageToVideo({
+              prompt: prompt.trim(),
+              image_url: imageUrl,
+              aspect_ratio: imageAspectRatio,
+              duration: "8s",
+              resolution: veo31Settings.resolution,
+              generate_audio: veo31Settings.generateAudio,
+            });
+          }
+          // Veo 3.1 Standard image-to-video
+          else if (modelId === 'veo31_image_to_video') {
+            if (!selectedImage) {
+              console.log(
+                "  ⚠️ Skipping model - image-to-video requires a selected image"
+              );
+              continue;
+            }
+
+            // Upload image to get URL first
+            const imageFile = selectedImage;
+            const imageUrl = await uploadImageToFal(imageFile);
+            const imageAspectRatio =
+              veo31Settings.aspectRatio === "16:9" || veo31Settings.aspectRatio === "9:16"
+                ? veo31Settings.aspectRatio
+                : "16:9";
+
+            response = await falAIClient.generateVeo31ImageToVideo({
+              prompt: prompt.trim(),
+              image_url: imageUrl,
+              aspect_ratio: imageAspectRatio,
+              duration: "8s",
+              resolution: veo31Settings.resolution,
+              generate_audio: veo31Settings.generateAudio,
+            });
+          }
+          // Veo 3.1 Fast frame-to-video
+          else if (modelId === 'veo31_fast_frame_to_video' && firstFrame && lastFrame) {
+            // Upload both frames to get URLs
+            const frameStart = firstFrame;
+            const frameEnd = lastFrame;
+            const firstFrameUrl = await uploadImageToFal(frameStart);
+            const lastFrameUrl = await uploadImageToFal(frameEnd);
+            const frameAspectRatio =
+              veo31Settings.aspectRatio === "16:9" || veo31Settings.aspectRatio === "9:16"
+                ? veo31Settings.aspectRatio
+                : "16:9";
+
+            response = await falAIClient.generateVeo31FastFrameToVideo({
+              prompt: prompt.trim(),
+              first_frame_url: firstFrameUrl,
+              last_frame_url: lastFrameUrl,
+              aspect_ratio: frameAspectRatio,
+              duration: "8s",
+              resolution: veo31Settings.resolution,
+              generate_audio: veo31Settings.generateAudio,
+            });
+          }
+          // Veo 3.1 Standard frame-to-video
+          else if (modelId === 'veo31_frame_to_video' && firstFrame && lastFrame) {
+            // Upload both frames to get URLs
+            const frameStart = firstFrame;
+            const frameEnd = lastFrame;
+            const firstFrameUrl = await uploadImageToFal(frameStart);
+            const lastFrameUrl = await uploadImageToFal(frameEnd);
+            const frameAspectRatio =
+              veo31Settings.aspectRatio === "16:9" || veo31Settings.aspectRatio === "9:16"
+                ? veo31Settings.aspectRatio
+                : "16:9";
+
+            response = await falAIClient.generateVeo31FrameToVideo({
+              prompt: prompt.trim(),
+              first_frame_url: firstFrameUrl,
+              last_frame_url: lastFrameUrl,
+              aspect_ratio: frameAspectRatio,
+              duration: "8s",
+              resolution: veo31Settings.resolution,
+              generate_audio: veo31Settings.generateAudio,
+            });
+          } else if (VEO31_FRAME_MODELS.has(modelId)) {
+            console.log(
+              "  ⚠️ Skipping model - frame-to-video requires selected first and last frames"
+            );
+            continue;
+          }
+          // Regular image-to-video generation
+          else {
+            if (!selectedImage) {
+              console.log(
+                "  ⚠️ Skipping model - image-to-video requires a selected image"
+              );
+              continue;
+            }
+
+            response = await generateVideoFromImage({
+              image: selectedImage,
               prompt: prompt.trim(),
               model: modelId,
               // Add Sora 2 specific parameters if Sora 2 model
@@ -536,23 +776,8 @@ export function useAIGeneration(props: UseAIGenerationProps) {
                 aspect_ratio: aspectRatio,
                 resolution,
               }),
-            },
-            progressCallback
-          );
-          console.log("  ✅ generateVideo returned:", response);
-        } else if (activeTab === "image" && selectedImage) {
-          console.log(`  🖼️ Calling generateVideoFromImage for ${modelId}...`);
-          response = await generateVideoFromImage({
-            image: selectedImage,
-            prompt: prompt.trim(),
-            model: modelId,
-            // Add Sora 2 specific parameters if Sora 2 model
-            ...(modelId.startsWith('sora2_') && {
-              duration,
-              aspect_ratio: aspectRatio,
-              resolution,
-            }),
-          });
+            });
+          }
           console.log("  ✅ generateVideoFromImage returned:", response);
         } else if (activeTab === "avatar" && avatarImage) {
           console.log(`  🎭 Calling generateAvatarVideo for ${modelId}...`);
@@ -980,6 +1205,10 @@ export function useAIGeneration(props: UseAIGenerationProps) {
     onError,
     onComplete,
     startStatusPolling,
+    veo31Settings,
+    firstFrame,
+    lastFrame,
+    uploadImageToFal,
   ]);
 
   // Reset generation state
@@ -996,12 +1225,49 @@ export function useAIGeneration(props: UseAIGenerationProps) {
     setGeneratedVideo(null);
     setGeneratedVideos([]);
 
+    // Reset Veo 3.1 state
+    setVeo31Settings({
+      resolution: "720p",
+      duration: "8s",
+      aspectRatio: "16:9",
+      generateAudio: true,
+      enhancePrompt: true,
+      autoFix: true,
+    });
+    setFirstFrame(null);
+    setLastFrame(null);
+
     // Critical: Cleanup polling interval
     if (pollingInterval) {
       clearInterval(pollingInterval);
       setPollingInterval(null);
     }
   }, [pollingInterval]);
+
+  // Veo 3.1 setter functions
+  const setVeo31Resolution = useCallback((resolution: "720p" | "1080p") => {
+    setVeo31Settings(prev => ({ ...prev, resolution }));
+  }, []);
+
+  const setVeo31Duration = useCallback((duration: "4s" | "6s" | "8s") => {
+    setVeo31Settings(prev => ({ ...prev, duration }));
+  }, []);
+
+  const setVeo31AspectRatio = useCallback((aspectRatio: "9:16" | "16:9" | "1:1" | "auto") => {
+    setVeo31Settings(prev => ({ ...prev, aspectRatio }));
+  }, []);
+
+  const setVeo31GenerateAudio = useCallback((generateAudio: boolean) => {
+    setVeo31Settings(prev => ({ ...prev, generateAudio }));
+  }, []);
+
+  const setVeo31EnhancePrompt = useCallback((enhancePrompt: boolean) => {
+    setVeo31Settings(prev => ({ ...prev, enhancePrompt }));
+  }, []);
+
+  const setVeo31AutoFix = useCallback((autoFix: boolean) => {
+    setVeo31Settings(prev => ({ ...prev, autoFix }));
+  }, []);
 
   // Export the complete generation state
   const generationState: AIGenerationState = {
@@ -1059,7 +1325,20 @@ export function useAIGeneration(props: UseAIGenerationProps) {
         return prompt.trim().length > 0;
       }
       if (activeTab === "image") {
-        return selectedImage !== null;
+        // Check if frame-to-video models are selected
+        const hasFrameToVideoModel = selectedModels.some(
+          id => id === "veo31_fast_frame_to_video" || id === "veo31_frame_to_video"
+        );
+
+        // If frame-to-video models are selected, both frames are required
+        if (hasFrameToVideoModel) {
+          if (!firstFrame || !lastFrame) return false;
+        } else {
+          // For regular image-to-video, require at least one image
+          if (!selectedImage) return false;
+        }
+
+        return true;
       }
       if (activeTab === "avatar") {
         if (!avatarImage) return false;
@@ -1096,6 +1375,22 @@ export function useAIGeneration(props: UseAIGenerationProps) {
     setResolution,
     isSora2Selected,
     hasSora2Pro,
+
+    // Veo 3.1 state
+    veo31Settings,
+    setVeo31Settings,
+    setVeo31Resolution,
+    setVeo31Duration,
+    setVeo31AspectRatio,
+    setVeo31GenerateAudio,
+    setVeo31EnhancePrompt,
+    setVeo31AutoFix,
+    isVeo31Selected,
+    hasVeo31FrameToVideo,
+    firstFrame,
+    setFirstFrame,
+    lastFrame,
+    setLastFrame,
   };
 }
 

@@ -428,7 +428,7 @@ export function analyzeTimelineForExport(
       const targetHeight = canvasSettings.height;
       const targetFps = canvasSettings.fps;
 
-      console.log(🔍 [MODE DETECTION] Using target: x @ fps (source: ));
+      console.log(`🔍 [MODE DETECTION] Using target: ${targetWidth}x${targetHeight} @ ${targetFps}fps (source: ${canvasSettings.source})`);
 
       // Check if all videos match the export settings
       const videosMatch = checkVideoPropertiesMatch(
