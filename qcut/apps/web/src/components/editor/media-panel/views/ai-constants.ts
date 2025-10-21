@@ -386,7 +386,7 @@ export const AI_MODELS: AIModel[] = [
     category: "image", // Uses image tab (requires frame uploads)
     requiredInputs: ["firstFrame", "lastFrame"],
     endpoints: {
-      text_to_video: "fal-ai/veo3.1/fast/first-last-frame-to-video",
+      image_to_video: "fal-ai/veo3.1/fast/first-last-frame-to-video",
     },
     default_params: {
       duration: 8, // Numeric to match existing pattern
@@ -448,7 +448,7 @@ export const AI_MODELS: AIModel[] = [
     category: "image", // Uses image tab (requires frame uploads)
     requiredInputs: ["firstFrame", "lastFrame"],
     endpoints: {
-      text_to_video: "fal-ai/veo3.1/first-last-frame-to-video", // No /fast
+      image_to_video: "fal-ai/veo3.1/first-last-frame-to-video", // No /fast
     },
     default_params: {
       duration: 8, // Numeric to match existing pattern
