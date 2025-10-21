@@ -609,6 +609,8 @@ const calculateModelCost = (modelId: string): number => {
 
 **No additional work needed** - proceed to Task 2.2
 
+**Comment:** Nothing else required here; exporting the types ensures both the client and UI stay in sync.
+
 ---
 
 ### Task 2.2: Image Upload Helper (20 min)
@@ -637,6 +639,8 @@ const imageUrl = await falClient.uploadImageToFal(file);
 ```
 
 **No code changes needed** - existing method is perfect for Reve Edit
+
+**Comment:** Verify the helper returns a durable HTTPS URL from FAL - some endpoints expire quickly and could break delayed edits.
 
 ---
 
@@ -785,6 +789,8 @@ export async function validateReveEditImage(
 
 **Breaking Change Check**: ✅ New file - no existing code modified
 
+**Comment:** Utility looks solid; add a couple of unit tests so regressions in dimension parsing get caught early.
+
 ---
 
 ### Task 2.4: FAL Client Method (20 min)
@@ -798,6 +804,8 @@ export async function validateReveEditImage(
 
 **No additional work needed** - proceed to Task 2.5
 
+**Comment:** Ensure the UI routes all edit requests through `generateReveEdit` to avoid duplicating request logic elsewhere.
+
 ---
 
 ### Task 2.5: Model Constants (10 min)
@@ -810,6 +818,8 @@ export async function validateReveEditImage(
 - [x] Error messages added to `ERROR_MESSAGES` object
 
 **No additional work needed** - proceed to Task 2.6
+
+**Comment:** Keep these constraints aligned with `validateReveEditImage`; mismatches will produce conflicting validation copy.
 
 ---
 
@@ -926,6 +936,8 @@ import { REVE_EDIT_MODEL } from "./ai-constants";
 ```
 
 **Breaking Change Check**: ✅ New state only - no existing state modified
+
+**Comment:** Add `falAIClient` (or the factory that supplies it) to the `useCallback` dependency list; the lint rules will likely flag it otherwise.
 
 ---
 
