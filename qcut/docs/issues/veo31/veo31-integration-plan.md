@@ -1,7 +1,7 @@
 # Veo 3.1 Integration Plan
 
-**Version:** 1.2
-**Date:** 2025-10-21 (Updated)
+**Version:** 1.3
+**Date:** 2025-10-22 (Updated)
 **Branch:** `veo31`
 **Status:** ✅ Implementation Complete (61%) - Ready for Testing (Phase 5)
 
@@ -44,11 +44,26 @@ The implementation details in this document primarily use Fast model examples, b
 ### 🎯 Implementation Complete - Ready for Testing!
 All backend and UI implementation is complete. The Veo 3.1 integration is now fully functional and ready for comprehensive testing.
 
-### ⏳ What's Next
-1. **Phase 5:** End-to-end testing (all 6 models)
-2. **Phase 5:** Integration testing with existing features
-3. **Phase 5:** Performance testing
-4. **Phase 6:** Final deployment
+### ⏳ What's Next - Phase 5 Testing Priorities
+
+**Critical Path:**
+1. **Smoke Test All 6 Models** - Verify each endpoint is callable and returns video
+   - Fast Text-to-Video (4s, 6s, 8s durations)
+   - Fast Image-to-Video (8s only, test both 16:9 and 9:16)
+   - Fast Frame-to-Video (8s only, test first/last frame upload)
+   - Standard variants (same tests, verify higher quality/cost)
+
+2. **Pricing Validation** - Confirm cost calculator matches actual charges
+   - Fast with audio: $0.15/s | without: $0.10/s
+   - Standard with audio: $0.40/s | without: $0.20/s
+   - Verify UI shows correct estimates for all duration/audio combinations
+
+3. **Integration Testing** - Ensure no regressions with existing features
+   - Multi-model generation (Veo + Sora/Reve)
+   - History panel displays Veo results correctly
+   - Export/download workflow works with Veo videos
+
+4. **Phase 6:** Code review and deployment
 
 ---
 
@@ -600,14 +615,43 @@ export const ERROR_MESSAGES = {
   - **Validation:** ✅ Invalid inputs rejected with clear messages, generate button disabled appropriately
 
 ### Phase 5: Testing & Polish ❌ NOT STARTED
-**Estimated Time:** 3-4 hours | **Status:** Pending Phase 4 completion
+**Estimated Time:** 3-4 hours | **Status:** Ready to Begin
+
+**Pre-Testing Checklist:**
+- [x] All 6 model endpoints defined in `ai-constants.ts`
+- [x] FAL AI client methods implemented for all variants
+- [x] State management integrated in `use-ai-generation.ts`
+- [x] UI settings panel with all 7 controls
+- [x] Frame upload UI with validation
+- [x] Cost calculation supports dual pricing (Fast/Standard)
+- [x] TypeScript compilation passes with no errors
+- [ ] FAL API key configured in environment
+- [ ] Test budget allocated ($30-100 recommended)
+
+---
 
 - [ ] **Task 5.1:** ❌ End-to-end testing (NOT STARTED)
-  - Test all three Veo 3.1 models
-  - Test with/without audio
-  - Test different resolutions
-  - Test error scenarios
-  - **Validation:** All workflows complete successfully
+  - **Fast Text-to-Video Tests:**
+    - 4s video at 720p with audio ($0.60)
+    - 6s video at 1080p without audio ($0.60)
+    - 8s video with enhance_prompt enabled ($0.80-1.20)
+  - **Fast Image-to-Video Tests:**
+    - 8s with 16:9 image, audio on ($1.20)
+    - 8s with 9:16 image, audio off ($0.80)
+    - Reject oversized image (>8MB)
+  - **Fast Frame-to-Video Tests:**
+    - 8s with valid first/last frames ($0.80-1.20)
+    - Test aspect ratio auto-detection
+    - Validate both frames required
+  - **Standard Variant Tests:**
+    - Repeat all Fast tests with Standard models
+    - Verify higher pricing: $0.20/s (no audio), $0.40/s (audio)
+    - Confirm quality difference vs Fast (manual review)
+  - **Error Scenarios:**
+    - Invalid aspect ratios
+    - Missing API key
+    - Network failures
+  - **Validation:** All 6 models generate videos successfully, pricing matches estimates
 
 - [ ] **Task 5.2:** ❌ Integration testing with existing features (NOT STARTED)
   - Test alongside Sora 2 models
@@ -701,18 +745,29 @@ describe("AI Panel - Veo 3.1 Integration", () => {
 
 ### Manual Testing Checklist
 
-- [ ] Generate text-to-video at 720p with audio
-- [ ] Generate text-to-video at 1080p without audio
-- [ ] Generate image-to-video with 16:9 image
-- [ ] Generate image-to-video with 9:16 image
-- [ ] Generate frame-to-video with first/last frames
-- [ ] Test with oversized image (should reject)
-- [ ] Test with invalid aspect ratio (should reject)
-- [ ] Test multi-model generation (Veo + Sora)
-- [ ] Test history panel with Veo results
-- [ ] Test cost calculation updates
-- [ ] Test progress tracking during generation
-- [ ] Test error handling for API failures
+**Fast Models (3 variants):**
+- [ ] Fast Text-to-Video: 4s/6s/8s durations, both audio modes, both resolutions
+- [ ] Fast Image-to-Video: 16:9 and 9:16 images, audio on/off, 720p/1080p
+- [ ] Fast Frame-to-Video: first/last frame upload, aspect ratio auto/manual, validation
+
+**Standard Models (3 variants):**
+- [ ] Standard Text-to-Video: verify quality difference vs Fast, confirm pricing ($0.20-0.40/s)
+- [ ] Standard Image-to-Video: same test matrix as Fast, validate cost ($1.60-3.20 for 8s)
+- [ ] Standard Frame-to-Video: verify premium quality justifies 2x-4x cost
+
+**Validation & Edge Cases:**
+- [ ] Reject oversized image (>8MB) with clear error message
+- [ ] Reject invalid aspect ratios (not 16:9/9:16)
+- [ ] Validate both frames required for frame-to-video
+- [ ] Show correct pricing in UI before generation
+- [ ] Settings panel toggles work (audio, enhance, auto-fix, resolution, duration, aspect ratio)
+
+**Integration:**
+- [ ] Multi-model generation: Veo Fast + Veo Standard + Sora
+- [ ] History panel displays all 6 Veo variants correctly
+- [ ] Cost calculation updates dynamically as settings change
+- [ ] Progress tracking shows elapsed time during generation
+- [ ] Error handling for API failures (network, quota, invalid input)
 
 ---
 
@@ -902,6 +957,7 @@ git reset --hard origin/master
 | 2025-10-20 | 1.0 | Initial integration plan created | Claude Code |
 | 2025-10-21 | 1.1 | **Updated with implementation progress**<br/>- Added progress summary (44% complete, 7/18 tasks)<br/>- Marked Phase 1 complete (3/3 tasks)<br/>- Marked Phase 2 partial (1/2 tasks, tests deferred)<br/>- Marked Phase 3 complete (2/2 tasks)<br/>- Marked Phase 4 in progress (1/4 tasks)<br/>- Added implementation details for completed tasks<br/>- Added commit references<br/>- Added file line numbers for reference<br/>- Identified next steps (UI implementation) | Claude Code |
 | 2025-10-21 | 1.2 | **Phase 4 UI Implementation Complete**<br/>- Completed all Phase 4 tasks (4/4 tasks, ~3.5 hours)<br/>- Added Veo 3.1 settings panel with 7 controls<br/>- Implemented frame upload UI with previews<br/>- Added validation logic and error messages<br/>- Updated progress to 61% complete (11/18 tasks)<br/>- **Status:** Ready for Phase 5 testing | Claude Code |
+| 2025-10-22 | 1.3 | **Testing Plan Refinement**<br/>- Added detailed Phase 5 testing priorities<br/>- Expanded manual testing checklist for 6 model variants<br/>- Added pre-testing checklist with readiness verification<br/>- Clarified Fast vs Standard testing requirements<br/>- Added specific test scenarios with expected costs<br/>- Updated "What's Next" with critical path items | Claude Code |
 
 ---
 
