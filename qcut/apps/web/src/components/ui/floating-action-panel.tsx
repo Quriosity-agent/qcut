@@ -321,10 +321,10 @@ export function FloatingActionPanelModelOption({
 }: FloatingActionPanelModelOptionProps) {
   return (
     <div
-      className={`flex items-center gap-3 p-2 hover:bg-gray-50 hover:bg-opacity-50 rounded-md cursor-pointer transition-colors border ${
+      className={`flex items-center gap-3 p-2 hover:bg-gray-50 dark:hover:bg-gray-800 hover:bg-opacity-50 rounded-md cursor-pointer transition-colors border ${
         checked
           ? "bg-transparent border-[#05c7c7]/50"
-          : "bg-transparent border-gray-100"
+          : "bg-transparent border-gray-100 dark:border-gray-700"
       }`}
       onClick={() => onCheckedChange?.(!checked)}
     >
@@ -336,7 +336,7 @@ export function FloatingActionPanelModelOption({
       />
       <label
         className={`text-sm leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 font-medium cursor-pointer flex-1 ${
-          checked ? "text-[#05c7c7]" : "text-gray-900"
+          checked ? "text-[#05c7c7]" : "text-gray-900 dark:text-gray-100"
         }`}
         htmlFor={id}
       >
