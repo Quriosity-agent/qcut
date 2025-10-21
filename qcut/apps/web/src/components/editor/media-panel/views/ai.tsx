@@ -518,6 +518,12 @@ export function AiView() {
                             const file = e.target.files?.[0];
                             if (!file) return;
 
+                            // Enforce MIME type (accept can be bypassed via drag/drop)
+                            if (!["image/jpeg", "image/png"].includes(file.type)) {
+                              setError(ERROR_MESSAGES.INVALID_FILE_TYPE);
+                              return;
+                            }
+
                             // Validate file size (8MB for Veo 3.1)
                             if (file.size > UPLOAD_CONSTANTS.MAX_VEO31_FRAME_SIZE_BYTES) {
                               setError(ERROR_MESSAGES.VEO31_IMAGE_TOO_LARGE);
@@ -595,6 +601,12 @@ export function AiView() {
                           onChange={(e) => {
                             const file = e.target.files?.[0];
                             if (!file) return;
+
+                            // Enforce MIME type (accept can be bypassed via drag/drop)
+                            if (!["image/jpeg", "image/png"].includes(file.type)) {
+                              setError(ERROR_MESSAGES.INVALID_FILE_TYPE);
+                              return;
+                            }
 
                             // Validate file size (8MB for Veo 3.1)
                             if (file.size > UPLOAD_CONSTANTS.MAX_VEO31_FRAME_SIZE_BYTES) {
