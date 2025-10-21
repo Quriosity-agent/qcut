@@ -592,7 +592,7 @@ class FalAIClient {
 
       console.log("[Veo 3.1 Fast] Generating text-to-video with params:", params);
 
-      const response = await this.makeRequest<Veo31Response>(endpoint, params);
+      const response = await this.makeRequest<Veo31Response>(endpoint, params as unknown as Record<string, unknown>);
 
       if (!response.video?.url) {
         throw new Error("No video URL in Veo 3.1 Fast response");
@@ -631,7 +631,7 @@ class FalAIClient {
 
       console.log("[Veo 3.1 Fast] Generating image-to-video with params:", params);
 
-      const response = await this.makeRequest<Veo31Response>(endpoint, params);
+      const response = await this.makeRequest<Veo31Response>(endpoint, params as unknown as Record<string, unknown>);
 
       if (!response.video?.url) {
         throw new Error("No video URL in Veo 3.1 Fast response");
@@ -670,7 +670,7 @@ class FalAIClient {
 
       console.log("[Veo 3.1 Fast] Generating frame-to-video with params:", params);
 
-      const response = await this.makeRequest<Veo31Response>(endpoint, params);
+      const response = await this.makeRequest<Veo31Response>(endpoint, params as unknown as Record<string, unknown>);
 
       if (!response.video?.url) {
         throw new Error("No video URL in Veo 3.1 Fast response");
@@ -713,7 +713,7 @@ class FalAIClient {
 
       console.log("[Veo 3.1 Standard] Generating text-to-video with params:", params);
 
-      const response = await this.makeRequest<Veo31Response>(endpoint, params);
+      const response = await this.makeRequest<Veo31Response>(endpoint, params as unknown as Record<string, unknown>);
 
       if (!response.video?.url) {
         throw new Error("No video URL in Veo 3.1 Standard response");
@@ -752,7 +752,7 @@ class FalAIClient {
 
       console.log("[Veo 3.1 Standard] Generating image-to-video with params:", params);
 
-      const response = await this.makeRequest<Veo31Response>(endpoint, params);
+      const response = await this.makeRequest<Veo31Response>(endpoint, params as unknown as Record<string, unknown>);
 
       if (!response.video?.url) {
         throw new Error("No video URL in Veo 3.1 Standard response");
@@ -791,7 +791,7 @@ class FalAIClient {
 
       console.log("[Veo 3.1 Standard] Generating frame-to-video with params:", params);
 
-      const response = await this.makeRequest<Veo31Response>(endpoint, params);
+      const response = await this.makeRequest<Veo31Response>(endpoint, params as unknown as Record<string, unknown>);
 
       if (!response.video?.url) {
         throw new Error("No video URL in Veo 3.1 Standard response");
