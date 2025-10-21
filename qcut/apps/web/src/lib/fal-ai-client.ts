@@ -817,6 +817,93 @@ class FalAIClient {
       };
     }
   }
+
+  /**
+   * Generate images with Reve Text-to-Image model
+   *
+   * @param params - Reve text-to-image parameters
+   * @returns Image generation response with URLs
+   *
+   * @example
+   * const result = await client.generateReveTextToImage({
+   *   prompt: "A serene mountain landscape at sunset",
+   *   aspect_ratio: "16:9",
+   *   num_images: 2,
+   *   output_format: "png"
+   * });
+   */
+  async generateReveTextToImage(
+    params: import("@/types/ai-generation").ReveTextToImageInput
+  ): Promise<import("@/types/ai-generation").ReveTextToImageOutput> {
+    try {
+      const endpoint = "https://fal.run/fal-ai/reve/text-to-image";
+
+      console.log("[Reve Text-to-Image] Generating with params:", params);
+
+      const response = await this.makeRequest<import("@/types/ai-generation").ReveTextToImageOutput>(
+        endpoint,
+        params as unknown as Record<string, unknown>
+      );
+
+      if (!response.images || response.images.length === 0) {
+        throw new Error("No images in Reve Text-to-Image response");
+      }
+
+      console.log(`[Reve Text-to-Image] Generated ${response.images.length} image(s)`);
+      return response;
+    } catch (error) {
+      handleAIServiceError(error, "Reve Text-to-Image generation", {
+        operation: "generateReveTextToImage",
+        params,
+      });
+
+      const errorMessage = error instanceof Error ? error.message : "Reve Text-to-Image generation failed";
+      throw new Error(errorMessage);
+    }
+  }
+
+  /**
+   * Edit images with Reve Edit model
+   *
+   * @param params - Reve edit parameters
+   * @returns Edited image response with URLs
+   *
+   * @example
+   * const result = await client.generateReveEdit({
+   *   prompt: "Make the sky sunset orange",
+   *   image_url: "https://example.com/image.jpg",
+   *   num_images: 2
+   * });
+   */
+  async generateReveEdit(
+    params: import("@/types/ai-generation").ReveEditInput
+  ): Promise<import("@/types/ai-generation").ReveEditOutput> {
+    try {
+      const endpoint = "https://fal.run/fal-ai/reve/edit";
+
+      console.log("[Reve Edit] Editing image with params:", params);
+
+      const response = await this.makeRequest<import("@/types/ai-generation").ReveEditOutput>(
+        endpoint,
+        params as unknown as Record<string, unknown>
+      );
+
+      if (!response.images || response.images.length === 0) {
+        throw new Error("No images in Reve Edit response");
+      }
+
+      console.log(`[Reve Edit] Generated ${response.images.length} edited image(s)`);
+      return response;
+    } catch (error) {
+      handleAIServiceError(error, "Reve Edit generation", {
+        operation: "generateReveEdit",
+        params,
+      });
+
+      const errorMessage = error instanceof Error ? error.message : "Reve Edit generation failed";
+      throw new Error(errorMessage);
+    }
+  }
 }
 
 // Add model-specific parameter conversion for image editing

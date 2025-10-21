@@ -533,6 +533,12 @@ export const ERROR_MESSAGES = {
   VEO31_MISSING_FIRST_FRAME: "First frame is required for Veo 3.1 frame-to-video",
   VEO31_MISSING_LAST_FRAME: "Last frame is required for Veo 3.1 frame-to-video",
   VEO31_FRAME_ASPECT_MISMATCH: "First and last frames must have matching aspect ratios",
+
+  // Reve specific errors
+  REVE_IMAGE_TOO_LARGE: "Image must be under 10MB for Reve Edit",
+  REVE_INVALID_DIMENSIONS: "Image dimensions must be between 128×128 and 4096×4096 pixels",
+  REVE_INVALID_FORMAT: "Please upload PNG, JPEG, WebP, AVIF, or HEIF image",
+  REVE_PROMPT_TOO_LONG: "Prompt must be under 2560 characters",
 } as const;
 
 // Status Messages
@@ -606,6 +612,56 @@ export const MODEL_HELPERS = {
   getModelDisplayName: (model: AIModel): string => {
     return `${model.name} ($${model.price})`;
   },
+} as const;
+
+// ============================================
+// Reve Model Constants
+// ============================================
+
+/**
+ * Reve Text-to-Image Model Configuration
+ */
+export const REVE_TEXT_TO_IMAGE_MODEL = {
+  endpoint: "fal-ai/reve/text-to-image",
+  pricing: {
+    perImage: 0.04, // $0.04 per image
+  },
+  aspectRatios: [
+    { value: "16:9", label: "16:9 (Landscape)" },
+    { value: "9:16", label: "9:16 (Portrait)" },
+    { value: "3:2", label: "3:2 (Standard)" },
+    { value: "2:3", label: "2:3 (Portrait)" },
+    { value: "4:3", label: "4:3 (Classic)" },
+    { value: "3:4", label: "3:4 (Portrait)" },
+    { value: "1:1", label: "1:1 (Square)" },
+  ],
+  defaultAspectRatio: "3:2" as const,
+  outputFormats: ["png", "jpeg", "webp"] as const,
+  defaultOutputFormat: "png" as const,
+  numImagesRange: { min: 1, max: 4 },
+  defaultNumImages: 1,
+  promptMaxLength: 2560,
+} as const;
+
+/**
+ * Reve Edit Model Configuration
+ */
+export const REVE_EDIT_MODEL = {
+  endpoint: "fal-ai/reve/edit",
+  pricing: {
+    perImage: 0.04, // $0.04 per edit (estimated - TBD from fal.ai)
+  },
+  imageConstraints: {
+    supportedFormats: ["image/png", "image/jpeg", "image/webp", "image/avif", "image/heif"] as const,
+    maxFileSizeBytes: 10 * 1024 * 1024, // 10 MB
+    maxFileSizeLabel: "10MB" as const,
+    minDimensions: { width: 128, height: 128 },
+    maxDimensions: { width: 4096, height: 4096 },
+  },
+  outputFormats: ["png", "jpeg", "webp"] as const,
+  defaultOutputFormat: "png" as const,
+  numImagesRange: { min: 1, max: 4 },
+  defaultNumImages: 1,
 } as const;
 
 // Export individual constants for convenience

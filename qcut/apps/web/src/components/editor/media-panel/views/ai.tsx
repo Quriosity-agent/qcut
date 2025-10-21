@@ -68,6 +68,13 @@ export function AiView() {
   const [lastFrame, setLastFrame] = useState<File | null>(null);
   const [lastFramePreview, setLastFramePreview] = useState<string | null>(null);
 
+  // Reve Text-to-Image state
+  const [reveAspectRatio, setReveAspectRatio] = useState<
+    "16:9" | "9:16" | "3:2" | "2:3" | "4:3" | "3:4" | "1:1"
+  >("3:2");
+  const [reveNumImages, setReveNumImages] = useState<number>(1);
+  const [reveOutputFormat, setReveOutputFormat] = useState<"png" | "jpeg" | "webp">("png");
+
   // Use global AI tab state (CRITICAL: preserve global state integration)
   const { aiActiveTab: activeTab, setAiActiveTab: setActiveTab } =
     useMediaPanelStore();
@@ -146,6 +153,15 @@ export function AiView() {
       }
     };
   }, []);
+
+  // Reset Reve state when model is deselected
+  useEffect(() => {
+    if (!selectedModels.some(id => id === "reve-text-to-image")) {
+      setReveAspectRatio("3:2");
+      setReveNumImages(1);
+      setReveOutputFormat("png");
+    }
+  }, [selectedModels]);
 
   // Image handling
   const handleImageSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -258,6 +274,10 @@ export function AiView() {
         : (generation.veo31Settings.generateAudio ? 0.40 : 0.20);
 
       modelCost = durationSeconds * pricePerSecond;
+    }
+    // Reve Text-to-Image pricing calculation
+    else if (modelId === "reve-text-to-image") {
+      modelCost = 0.04 * reveNumImages; // $0.04 per image
     }
 
     return total + modelCost;
@@ -812,6 +832,17 @@ export function AiView() {
                     Note: Remix pricing varies by source video duration
                   </div>
                 )}
+                {selectedModels.some(id => id === "reve-text-to-image") && (
+                  <div className="text-xs text-muted-foreground text-right">
+                    <span className="font-medium">Reve Cost:</span> $
+                    {(0.04 * reveNumImages).toFixed(2)}
+                    {reveNumImages > 1 && (
+                      <span className="ml-1 opacity-75">
+                        (${(0.04).toFixed(2)} × {reveNumImages} images)
+                      </span>
+                    )}
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -992,6 +1023,168 @@ export function AiView() {
                   className="h-4 w-4"
                 />
               </div>
+            </div>
+          )}
+
+          {/* Reve Text-to-Image Settings */}
+          {selectedModels.some(id => id === "reve-text-to-image") && (
+            <div className="space-y-3 p-3 bg-muted/30 rounded-md border border-muted">
+              <Label className="text-xs font-medium">Reve Text-to-Image Settings</Label>
+
+              {/* Aspect Ratio Selector */}
+              <div className="space-y-1">
+                <Label htmlFor="reve-aspect" className="text-xs">Aspect Ratio</Label>
+                <Select
+                  value={reveAspectRatio}
+                  onValueChange={(v) => setReveAspectRatio(v as typeof reveAspectRatio)}
+                >
+                  <SelectTrigger id="reve-aspect" className="h-8 text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="16:9">16:9 (Landscape)</SelectItem>
+                    <SelectItem value="9:16">9:16 (Portrait)</SelectItem>
+                    <SelectItem value="3:2">3:2 (Standard)</SelectItem>
+                    <SelectItem value="2:3">2:3 (Portrait)</SelectItem>
+                    <SelectItem value="4:3">4:3 (Classic)</SelectItem>
+                    <SelectItem value="3:4">3:4 (Portrait)</SelectItem>
+                    <SelectItem value="1:1">1:1 (Square)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Number of Images */}
+              <div className="space-y-1">
+                <Label htmlFor="reve-num-images" className="text-xs">Number of Images</Label>
+                <Select
+                  value={String(reveNumImages)}
+                  onValueChange={(v) => setReveNumImages(Number(v))}
+                >
+                  <SelectTrigger id="reve-num-images" className="h-8 text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="1">1 image ($0.04)</SelectItem>
+                    <SelectItem value="2">2 images ($0.08)</SelectItem>
+                    <SelectItem value="3">3 images ($0.12)</SelectItem>
+                    <SelectItem value="4">4 images ($0.16)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Output Format */}
+              <div className="space-y-1">
+                <Label htmlFor="reve-format" className="text-xs">Output Format</Label>
+                <Select
+                  value={reveOutputFormat}
+                  onValueChange={(v) => setReveOutputFormat(v as typeof reveOutputFormat)}
+                >
+                  <SelectTrigger id="reve-format" className="h-8 text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="png">PNG</SelectItem>
+                    <SelectItem value="jpeg">JPEG</SelectItem>
+                    <SelectItem value="webp">WebP</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          )}
+
+          {/* Reve Edit Image Upload - Shows when Reve Edit functionality is needed */}
+          {activeTab === "image" && selectedModels.some(id => id === "reve-text-to-image") && (
+            <div className="space-y-3 p-3 bg-muted/30 rounded-md border border-muted">
+              <Label className="text-xs font-medium">Reve Edit (Optional)</Label>
+              <p className="text-xs text-muted-foreground">
+                Upload an image to edit it with Reve AI, or leave empty for text-to-image generation.
+              </p>
+
+              {/* Image Upload */}
+              <div className="space-y-2">
+                <Label className="text-xs">Source Image (Optional)</Label>
+                <label
+                  htmlFor="reve-edit-image-input"
+                  className={`block border-2 border-dashed rounded-lg cursor-pointer transition-colors min-h-[100px] focus-within:outline-none focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2 ${
+                    generation.uploadedImageForEdit
+                      ? "border-primary/50 bg-primary/5 p-2"
+                      : "border-muted-foreground/25 hover:border-muted-foreground/50 p-3"
+                  }`}
+                  aria-label={generation.uploadedImageForEdit ? "Change image" : "Upload image to edit"}
+                >
+                  {generation.uploadedImageForEdit && generation.uploadedImagePreview ? (
+                    <div className="relative flex flex-col items-center justify-center h-full">
+                      <img
+                        src={generation.uploadedImagePreview}
+                        alt={generation.uploadedImageForEdit.name}
+                        className="max-w-full max-h-20 mx-auto rounded object-contain"
+                      />
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="destructive"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          generation.clearUploadedImageForEdit();
+                        }}
+                        className="absolute top-1 right-1 h-6 w-6 p-0 flex items-center justify-center bg-red-500 hover:bg-red-600 text-white rounded-full shadow-sm"
+                        aria-label="Remove uploaded image"
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
+                      <div className="mt-1 text-xs text-muted-foreground text-center">
+                        {generation.uploadedImageForEdit.name}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center h-full space-y-1 text-center">
+                      <Upload className="size-6 text-muted-foreground" />
+                      <div className="text-xs text-muted-foreground">
+                        Upload image to edit
+                      </div>
+                      <div className="text-xs text-muted-foreground/70">
+                        PNG, JPEG, WebP, AVIF, HEIF (max 10MB)
+                      </div>
+                      <div className="text-xs text-muted-foreground/70">
+                        128×128 to 4096×4096 pixels
+                      </div>
+                    </div>
+                  )}
+                  <input
+                    id="reve-edit-image-input"
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp,image/avif,image/heif"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+
+                      try {
+                        await generation.handleImageUploadForEdit(file);
+                        setError(null);
+                      } catch (err) {
+                        setError(err instanceof Error ? err.message : "Failed to upload image");
+                      }
+                    }}
+                    className="sr-only"
+                  />
+                </label>
+              </div>
+
+              {generation.uploadedImageForEdit && (
+                <div className="space-y-2">
+                  <Label className="text-xs">Edit Instructions</Label>
+                  <Textarea
+                    value={prompt}
+                    onChange={(e) => setPrompt(e.target.value)}
+                    placeholder="Describe the edits you want to make (e.g., 'Make the sky sunset orange', 'Add snow to the ground')"
+                    className="min-h-[80px] text-xs resize-none"
+                    maxLength={2560}
+                  />
+                  <div className="text-xs text-muted-foreground text-right">
+                    {prompt.length} / 2560 characters
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
