@@ -291,73 +291,86 @@ interface ReveTextToImageOutput {
 ### Phase 1: Reve Text-to-Image (Easier)
 **Total Effort**: 2-3 hours | **All subtasks**: <20 minutes each
 
+> **📝 Detailed Implementation Guide**: See [`IMPLEMENTATION-TASKS.md`](./IMPLEMENTATION-TASKS.md) for complete, copy-paste ready code for all tasks
+
 #### 1.1 Type Definitions (15 min)
-**File**: `apps/web/src/types/ai-generation.ts`
+**File**: `apps/web/src/types/ai-generation.ts` (ADD after line 91)
 - [ ] Add `ReveTextToImageInput` interface
 - [ ] Add `ReveTextToImageOutput` interface
-- [ ] Export types for use in client and UI components
+- [ ] Add `ReveEditInput` interface
+- [ ] Add `ReveEditOutput` interface
+- [ ] Export all types for use in client and UI components
+- [ ] **Code**: See [IMPLEMENTATION-TASKS.md - Task 1.1](./IMPLEMENTATION-TASKS.md#task-11-add-type-definitions-15-min)
 - [ ] **Maintainability**: Follow existing naming conventions (e.g., `Veo31*Input/Output`)
 - [ ] **Breaking Change Check**: ✅ Additive only - no existing types modified
 
 #### 1.2 Model Constants (10 min)
-**File**: `apps/web/src/components/editor/media-panel/views/ai-constants.ts`
-- [ ] Add `REVE_TEXT_TO_IMAGE_MODEL` constant
-- [ ] Define aspect ratio options array
-- [ ] Define output format options array
-- [ ] Add pricing constant ($0.04 per image)
+**File**: `apps/web/src/components/editor/media-panel/views/ai-constants.ts` (ADD after line 637)
+- [ ] Add `REVE_TEXT_TO_IMAGE_MODEL` constant with endpoint, pricing, aspect ratios
+- [ ] Add `REVE_EDIT_MODEL` constant with endpoint, pricing, image constraints
+- [ ] Add Reve error messages to `ERROR_MESSAGES` object
+- [ ] **Code**: See [IMPLEMENTATION-TASKS.md - Task 1.2](./IMPLEMENTATION-TASKS.md#task-12-add-model-constants-10-min)
 - [ ] **Maintainability**: Use same structure as existing model constants
 - [ ] **Breaking Change Check**: ✅ No changes to existing constants
 
-#### 1.3 FAL Client Method (20 min)
-**File**: `apps/web/src/lib/fal-ai-client.ts`
+#### 1.3 FAL Client Methods (20 min)
+**File**: `apps/web/src/lib/fal-ai-client.ts` (ADD at end of class, ~line 820)
 - [ ] Add `generateReveTextToImage()` method
-- [ ] Handle parameter mapping (aspect_ratio, num_images, output_format)
-- [ ] Add error handling with typed error responses
+- [ ] Add `generateReveEdit()` method
 - [ ] Add JSDoc comments with usage examples
+- [ ] Handle parameter mapping and error responses
+- [ ] **Code**: See [IMPLEMENTATION-TASKS.md - Task 1.3](./IMPLEMENTATION-TASKS.md#task-13-add-fal-client-method-20-min)
 - [ ] **Maintainability**: Follow existing `generateVeo31*()` method patterns
-- [ ] **Breaking Change Check**: ✅ New method only - no existing methods touched
+- [ ] **Breaking Change Check**: ✅ New methods only - no existing methods touched
 
 #### 1.4 Model Configuration (15 min)
-**File**: Check if `apps/web/src/lib/text2image-models.ts` exists
-- [ ] If file exists: Add Reve model to configuration array
-- [ ] If file doesn't exist: Add model to appropriate UI constants file
-- [ ] Configure default parameters (aspect_ratio: "3:2", num_images: 1)
-- [ ] Add pricing display configuration
+**Files**: Check `apps/web/src/lib/text2image-models.ts` OR `ai-constants.ts`
+- [ ] If text2image-models.ts exists: Add Reve model configuration
+- [ ] If doesn't exist: Add to AI_MODELS array in ai-constants.ts
+- [ ] Configure default parameters (aspect_ratio: "3:2", num_images: 1, price: 0.04)
+- [ ] **Code**: See [IMPLEMENTATION-TASKS.md - Task 1.4](./IMPLEMENTATION-TASKS.md#task-14-check-for-text2image-modelsts-15-min)
 - [ ] **Maintainability**: Follow existing model configuration schema
 - [ ] **Breaking Change Check**: ✅ Additive only - appending to model list
 
 #### 1.5 UI Integration Test (15 min)
-**Goal**: Verify if existing AI UI works with Reve model
-- [ ] Test if existing `ai.tsx` component auto-detects new model
-- [ ] Check if aspect ratio selector already exists (reuse if possible)
-- [ ] Verify num_images selector works correctly
+**Goal**: Verify existing AI UI works with Reve model
+- [ ] Run app: `cd qcut/apps/web && bun dev`
+- [ ] Check if Reve model appears in model selector
+- [ ] Verify num_images selector works (1-4)
+- [ ] Check if aspect ratio selector exists (may need to add)
 - [ ] Test output format selector
+- [ ] **Checklist**: See [IMPLEMENTATION-TASKS.md - Task 1.5](./IMPLEMENTATION-TASKS.md#task-15-test-ui-integration-15-min)
 - [ ] **Maintainability**: Maximize reuse of existing UI components
 - [ ] **Breaking Change Check**: ✅ No UI changes yet - testing only
 
 #### 1.6 Aspect Ratio UI Enhancement (20 min) - *If needed from 1.5*
-**File**: `apps/web/src/components/editor/media-panel/views/ai.tsx`
-- [ ] Add aspect ratio selector for Reve model only (conditional rendering)
-- [ ] Use existing Select/Dropdown component from UI library
-- [ ] Add labels and tooltips for aspect ratio options
-- [ ] Ensure default value matches model constant (3:2)
+**File**: `apps/web/src/components/editor/media-panel/views/ai.tsx` (Model-specific settings section)
+- [ ] Add aspect ratio Select component with 7 options (16:9, 9:16, 3:2, 2:3, 4:3, 3:4, 1:1)
+- [ ] Add state: `const [reveAspectRatio, setReveAspectRatio] = useState("3:2")`
+- [ ] Use conditional rendering: `{selectedModel === "reve_text_to_image" && ...}`
+- [ ] **Code**: See [IMPLEMENTATION-TASKS.md - Task 1.6](./IMPLEMENTATION-TASKS.md#task-16-add-aspect-ratio-ui-20-min---conditional-on-task-15)
 - [ ] **Maintainability**: Component should work for future aspect-ratio models
 - [ ] **Breaking Change Check**: ✅ Conditional - only shows for Reve model
 
 #### 1.7 Pricing Display Update (10 min)
-**File**: `apps/web/src/components/editor/media-panel/views/ai.tsx`
-- [ ] Update cost calculation logic to include Reve pricing
-- [ ] Display per-image cost ($0.04)
-- [ ] Calculate total cost based on num_images
+**File**: `apps/web/src/components/editor/media-panel/views/ai.tsx` (Pricing section)
+- [ ] Modify `calculateCost()` to handle "reve_text_to_image" and "reve_edit"
+- [ ] Display: "$0.04 × {numImages} images" format
+- [ ] Use `REVE_TEXT_TO_IMAGE_MODEL.pricing.perImage` constant
+- [ ] **Code**: See [IMPLEMENTATION-TASKS.md - Task 1.7](./IMPLEMENTATION-TASKS.md#task-17-update-pricing-display-10-min)
 - [ ] **Maintainability**: Use centralized pricing constants
 - [ ] **Breaking Change Check**: ✅ Additive - extends existing pricing display
 
 #### 1.8 Manual Testing (20 min)
-- [ ] Generate single image with default settings
-- [ ] Generate 4 images (max) in one request
-- [ ] Test all aspect ratios (16:9, 9:16, 3:2, 2:3, 4:3, 3:4, 1:1)
-- [ ] Verify output format selection (png, jpeg, webp)
-- [ ] Confirm pricing calculation accuracy
+**Checklist**: 7 test scenarios to verify Phase 1 works
+- [ ] Test 1: Generate 1 image with defaults (3:2, PNG)
+- [ ] Test 2: Generate 4 images (max batch)
+- [ ] Test 3: All aspect ratios (16:9, 9:16, 3:2, 2:3, 4:3, 3:4, 1:1)
+- [ ] Test 4: All formats (PNG, JPEG, WebP)
+- [ ] Test 5: Pricing ($0.04, $0.08, $0.16)
+- [ ] Test 6: Long prompt (2560 chars)
+- [ ] Test 7: Verify existing models unaffected
+- [ ] **Checklist**: See [IMPLEMENTATION-TASKS.md - Task 1.8](./IMPLEMENTATION-TASKS.md#task-18-manual-testing-checklist-20-min)
 - [ ] **Breaking Change Check**: ✅ Verify existing models still work
 
 ---
@@ -365,118 +378,100 @@ interface ReveTextToImageOutput {
 ### Phase 2: Reve Edit (Image Editing)
 **Total Effort**: 4-6 hours | **All subtasks**: <20 minutes each
 
+> **📝 Detailed Implementation Guide**: See [`IMPLEMENTATION-TASKS.md`](./IMPLEMENTATION-TASKS.md) for complete code (Tasks 2.1-2.6)
+
 #### 2.1 Type Definitions (10 min)
-**File**: `apps/web/src/types/ai-generation.ts`
-- [ ] Add `ReveEditInput` interface
-- [ ] Add `ReveEditOutput` interface
-- [ ] Add image validation constraints as constants
-- [ ] **Maintainability**: Reuse common types (e.g., `output_format`)
-- [ ] **Breaking Change Check**: ✅ Additive only
+**Status**: ✅ COMPLETED in Task 1.1
+- [x] `ReveEditInput` interface already added
+- [x] `ReveEditOutput` interface already added
+- [ ] **Verification**: Confirm interfaces exist in ai-generation.ts
+- [ ] **Code**: See [IMPLEMENTATION-TASKS.md - Task 2.1](./IMPLEMENTATION-TASKS.md#task-21-type-definitions-10-min)
+- [ ] **Breaking Change Check**: ✅ Already verified as additive
 
 #### 2.2 Image Upload Helper (20 min)
-**File**: `apps/web/src/lib/fal-ai-client.ts`
-- [ ] Add `uploadImageForReveEdit()` helper method
-- [ ] Support both file upload and base64 conversion
-- [ ] Return publicly accessible URL or data URI
-- [ ] **Maintainability**: Reuse existing `uploadImage()` if available (check Veo 3.1 frame upload)
-- [ ] **Breaking Change Check**: ✅ New helper only
+**Status**: ✅ EXISTS - Reuse existing method
+- [x] `uploadImageToFal()` method exists (line 161-219)
+- [ ] **Verification**: Confirm method signature matches Reve Edit needs
+- [ ] **Code**: See [IMPLEMENTATION-TASKS.md - Task 2.2](./IMPLEMENTATION-TASKS.md#task-22-image-upload-helper-20-min)
+- [ ] **Maintainability**: Reuse existing upload infrastructure
+- [ ] **Breaking Change Check**: ✅ No changes needed
 
 #### 2.3 Image Validation Utilities (15 min)
-**File**: `apps/web/src/lib/image-validation.ts` (create if doesn't exist)
-- [ ] Add `validateReveEditImage()` function
-- [ ] Check MIME type (PNG, JPEG, WebP, AVIF, HEIF)
-- [ ] Validate file size (max 10 MB)
-- [ ] Validate dimensions (128×128 to 4096×4096)
-- [ ] Return typed error messages
-- [ ] **Maintainability**: Make generic for future image models
-- [ ] **Breaking Change Check**: ✅ New utility file
+**File**: `apps/web/src/lib/image-validation.ts` (CREATE NEW FILE)
+- [ ] Create `validateImageUpload()` generic function
+- [ ] Create `getImageDimensions()` helper
+- [ ] Create `validateReveEditImage()` specific validator
+- [ ] Check: MIME type, file size (10MB), dimensions (128-4096px)
+- [ ] **Code**: See [IMPLEMENTATION-TASKS.md - Task 2.3](./IMPLEMENTATION-TASKS.md#task-23-image-validation-utilities-15-min)
+- [ ] **Maintainability**: Generic design for future image models
+- [ ] **Breaking Change Check**: ✅ New file - no existing code modified
 
 #### 2.4 FAL Client Method (20 min)
-**File**: `apps/web/src/lib/fal-ai-client.ts`
-- [ ] Add `generateReveEdit()` method
-- [ ] Integrate image upload helper
-- [ ] Handle parameter mapping (prompt, image_url, num_images, output_format)
-- [ ] Add error handling with typed responses
-- [ ] **Maintainability**: Follow same pattern as `generateReveTextToImage()`
-- [ ] **Breaking Change Check**: ✅ New method only
+**Status**: ✅ COMPLETED in Task 1.3
+- [x] `generateReveEdit()` method already added (~line 850-890)
+- [ ] **Verification**: Confirm method exists and handles all parameters
+- [ ] **Code**: See [IMPLEMENTATION-TASKS.md - Task 2.4](./IMPLEMENTATION-TASKS.md#task-24-fal-client-method-20-min)
+- [ ] **Breaking Change Check**: ✅ Already verified as additive
 
 #### 2.5 Model Constants (10 min)
-**File**: `apps/web/src/components/editor/media-panel/views/ai-constants.ts`
-- [ ] Add `REVE_EDIT_MODEL` constant
-- [ ] Define validation constraints (file size, dimensions, formats)
-- [ ] Add error messages for validation failures
-- [ ] Add pricing constant (TBD - estimate $0.04-0.08)
-- [ ] **Maintainability**: Use same structure as other model constants
-- [ ] **Breaking Change Check**: ✅ Additive only
+**Status**: ✅ COMPLETED in Task 1.2
+- [x] `REVE_EDIT_MODEL` constant already added (~line 670-690)
+- [x] Validation constraints, error messages, pricing defined
+- [ ] **Verification**: Confirm constant exists with all required fields
+- [ ] **Code**: See [IMPLEMENTATION-TASKS.md - Task 2.5](./IMPLEMENTATION-TASKS.md#task-25-model-constants-10-min)
+- [ ] **Breaking Change Check**: ✅ Already verified as additive
 
 #### 2.6 State Management (15 min)
 **File**: `apps/web/src/components/editor/media-panel/views/use-ai-generation.ts`
-- [ ] Add `uploadedImageForEdit` state (similar to Veo 3.1 frame upload)
-- [ ] Add `uploadedImagePreview` state for UI preview
-- [ ] Add `handleImageUpload()` function
-- [ ] Add `clearUploadedImage()` function
-- [ ] **Maintainability**: Reuse Veo 3.1 frame upload patterns
+- [ ] Add `uploadedImageForEdit`, `uploadedImagePreview`, `uploadedImageUrl` state
+- [ ] Add `handleImageUploadForEdit()` function with validation
+- [ ] Add `clearUploadedImage()` cleanup function
+- [ ] Add import: `validateReveEditImage` from image-validation.ts
+- [ ] Update return object with new state/functions
+- [ ] **Code**: See [IMPLEMENTATION-TASKS.md - Task 2.6](./IMPLEMENTATION-TASKS.md#task-26-state-management-15-min)
+- [ ] **Maintainability**: Follow Veo 3.1 frame upload pattern
 - [ ] **Breaking Change Check**: ✅ New state only - no existing state modified
 
-#### 2.7 Image Upload UI Component (20 min)
+#### 2.7-2.13: UI Implementation (Remaining 2-3 hours)
+
+> **⚠️ TODO**: These UI tasks need detailed implementation guide with code examples
+>
+> **Status**: Documented in main plan but need copy-paste ready code like Tasks 1.1-2.6
+>
+> **Summary of remaining tasks**:
+> - 2.7: Image Upload UI Component (20 min) - File input, preview, clear button
+> - 2.8: Image Validation UI (15 min) - Error display, tooltip constraints
+> - 2.9: Edit Prompt Input (10 min) - Text input with examples
+> - 2.10: Variations & Format Selector (10 min) - Dropdowns for num_images and format
+> - 2.11: Result Preview & Download (20 min) - Image grid, download, add to timeline
+> - 2.12: Integration Testing (20 min) - Upload/edit various formats
+> - 2.13: End-to-End Testing (20 min) - Complete workflow validation
+
 **File**: `apps/web/src/components/editor/media-panel/views/ai.tsx`
-- [ ] Add Reve Edit section with conditional rendering
-- [ ] Add file input with accept="image/png,image/jpeg,image/webp"
-- [ ] Add image preview component
-- [ ] Add "Clear Image" button
-- [ ] Add file size and dimension display
-- [ ] **Maintainability**: Reuse Veo 3.1 frame upload UI components
-- [ ] **Breaking Change Check**: ✅ New section only
 
-#### 2.8 Image Validation UI (15 min)
-**File**: `apps/web/src/components/editor/media-panel/views/ai.tsx`
-- [ ] Add client-side validation on file selection
-- [ ] Display validation errors in UI (file size, dimensions, format)
-- [ ] Disable generate button if validation fails
-- [ ] Add tooltips explaining constraints
-- [ ] **Maintainability**: Use centralized validation utilities
-- [ ] **Breaking Change Check**: ✅ New validation only
+**Actions Needed**:
+- [ ] Add Reve Edit tab/section with conditional rendering (`selectedModel === "reve_edit"`)
+- [ ] Reuse Veo 3.1 frame upload UI patterns for image upload
+- [ ] Add validation error display using validation utilities from Task 2.3
+- [ ] Add edit prompt input (similar to text-to-video prompt)
+- [ ] Add num_images selector (1-4) and output_format selector (png/jpeg/webp)
+- [ ] Add result preview grid (similar to Veo 3.1 results)
+- [ ] Add download and "Add to Timeline" buttons
 
-#### 2.9 Edit Prompt Input (10 min)
-**File**: `apps/web/src/components/editor/media-panel/views/ai.tsx`
-- [ ] Add text input for edit instructions
-- [ ] Add placeholder example ("Give him a friend", "Make the sky sunset")
-- [ ] Reuse existing prompt input component if available
-- [ ] **Maintainability**: Component should match existing prompt inputs
-- [ ] **Breaking Change Check**: ✅ New input only
+**Testing Checklists**:
+- [ ] Upload PNG, JPEG, WebP images (valid formats)
+- [ ] Test file size limits (reject >10MB)
+- [ ] Test dimension limits (reject <128px or >4096px)
+- [ ] Generate 1-4 variations per edit
+- [ ] Verify all output formats work
+- [ ] Confirm existing AI features unaffected
 
-#### 2.10 Variations & Format Selector (10 min)
-**File**: `apps/web/src/components/editor/media-panel/views/ai.tsx`
-- [ ] Add num_images selector (1-4)
-- [ ] Add output_format selector (png, jpeg, webp)
-- [ ] Use existing Select components
-- [ ] **Maintainability**: Reuse Reve Text-to-Image selectors
-- [ ] **Breaking Change Check**: ✅ New UI controls only
+**Maintainability**:
+- Reuse existing UI components (Select, Input, Button, etc.)
+- Follow Veo 3.1 frame upload UI patterns
+- Use validation utilities from `image-validation.ts`
 
-#### 2.11 Result Preview & Download (20 min)
-**File**: `apps/web/src/components/editor/media-panel/views/ai.tsx`
-- [ ] Display generated edited images in grid
-- [ ] Add download buttons for each result
-- [ ] Add "Add to Timeline" functionality (reuse existing)
-- [ ] Show image metadata (size, dimensions, format)
-- [ ] **Maintainability**: Reuse existing result display components
-- [ ] **Breaking Change Check**: ✅ New results section only
-
-#### 2.12 Integration Testing (20 min)
-- [ ] Upload PNG image and apply edit
-- [ ] Upload JPEG image and apply edit
-- [ ] Test file size validation (try 11 MB file)
-- [ ] Test dimension validation (try 5000×5000 image)
-- [ ] Generate 4 variations of one edit
-- [ ] Test all output formats
-- [ ] **Breaking Change Check**: ✅ Verify existing AI features still work
-
-#### 2.13 End-to-End Testing (20 min)
-- [ ] Complete workflow: Upload → Edit → Preview → Download → Add to Timeline
-- [ ] Test error handling (network failure, invalid API key)
-- [ ] Verify pricing calculation
-- [ ] Test with different image formats (PNG, JPEG, WebP)
-- [ ] **Breaking Change Check**: ✅ Full regression test of AI panel
+**Breaking Change Check**: ✅ All changes are conditional/additive
 
 ---
 
