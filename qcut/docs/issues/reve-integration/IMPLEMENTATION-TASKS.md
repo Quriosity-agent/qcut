@@ -72,6 +72,8 @@ export interface ReveEditOutput {
 
 **Breaking Change Check**: ✅ Additive only - no existing types modified
 
+**Comment:** Interfaces cover Reve request/response; double-check FAL edit payload always returns `content_type` so the non-null type stays accurate.
+
 ---
 
 ### Task 1.2: Add Model Constants (10 min)
@@ -153,6 +155,8 @@ export const ERROR_MESSAGES = {
 ```
 
 **Breaking Change Check**: ✅ New exports only - no existing constants modified
+
+**Comment:** Constants align with the validation plan; keep the Reve entries in `ERROR_MESSAGES` synchronized with the helpers from Task 2.3.
 
 ---
 
@@ -254,6 +258,8 @@ export const ERROR_MESSAGES = {
 ```
 
 **Breaking Change Check**: ✅ New methods only - no existing methods modified
+
+**Comment:** Methods follow existing client patterns; consider gating the console logs behind a debug flag so production logs stay lean.
 
 ---
 
@@ -361,6 +367,8 @@ export const MODEL_CATEGORIES = {
 
 **Breaking Change Check**: ✅ Additive only - appending to existing model list
 
+**Comment:** Make sure `AI_MODELS` or related selectors include `reve-text-to-image`; otherwise the new config never surfaces in the UI.
+
 ---
 
 ### Task 1.5: Test UI Integration (15 min)
@@ -384,6 +392,8 @@ export const MODEL_CATEGORIES = {
 - [ ] Pricing displays correctly ($0.04 per image)
 
 **Breaking Change Check**: ✅ No changes - testing only
+
+**Comment:** During verification also watch the network tab for FAL errors so we catch auth or quota issues before Phase 2.
 
 ---
 
@@ -479,6 +489,8 @@ export const MODEL_CATEGORIES = {
 
 **Breaking Change Check**: ✅ Conditional rendering - only shows when Reve model selected
 
+**Comment:** Remember to reset the Reve state when the model is deselected so stale selections do not bleed into other generators.
+
 ---
 
 ### Task 1.7: Update Pricing Display (10 min)
@@ -527,6 +539,8 @@ const calculateModelCost = (modelId: string): number => {
 ```
 
 **Breaking Change Check**: ✅ Additive - extends existing pricing display
+
+**Comment:** Confirm `calculateModelCost` has access to the latest `reveNumImages`; if the helper is hoisted, pass the count explicitly to avoid stale closures.
 
 ---
 
@@ -578,6 +592,8 @@ const calculateModelCost = (modelId: string): number => {
 - [ ] No console errors in existing features
 
 **Breaking Change Check**: ✅ All existing features verified
+
+**Comment:** Nice coverage - after adding validation logic, include a negative test to confirm invalid images surface the new error messages.
 
 ---
 
