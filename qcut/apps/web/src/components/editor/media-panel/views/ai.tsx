@@ -62,6 +62,12 @@ export function AiView() {
     null
   );
 
+  // Veo 3.1 frame upload state
+  const [firstFrame, setFirstFrame] = useState<File | null>(null);
+  const [firstFramePreview, setFirstFramePreview] = useState<string | null>(null);
+  const [lastFrame, setLastFrame] = useState<File | null>(null);
+  const [lastFramePreview, setLastFramePreview] = useState<string | null>(null);
+
   // Use global AI tab state (CRITICAL: preserve global state integration)
   const { aiActiveTab: activeTab, setAiActiveTab: setActiveTab } =
     useMediaPanelStore();
@@ -237,6 +243,21 @@ export function AiView() {
         // Standard models: $0.10/s * (user-selected duration)
         modelCost = generation.duration * 0.10;
       }
+    }
+    // Veo 3.1 pricing calculation
+    else if (modelId.startsWith('veo31_')) {
+      const durationSeconds = parseInt(generation.veo31Settings.duration); // "4s" -> 4
+
+      // Determine if this is a fast or standard model
+      const isFastModel = modelId.includes('_fast_');
+
+      // Fast models: $0.10/s (no audio) or $0.15/s (with audio)
+      // Standard models: $0.20/s (no audio) or $0.40/s (with audio)
+      const pricePerSecond = isFastModel
+        ? (generation.veo31Settings.generateAudio ? 0.15 : 0.10)
+        : (generation.veo31Settings.generateAudio ? 0.40 : 0.20);
+
+      modelCost = durationSeconds * pricePerSecond;
     }
 
     return total + modelCost;
@@ -435,6 +456,169 @@ export function AiView() {
                 <p id="ai-image-help" className="sr-only">
                   JPG, PNG, WebP, GIF (max 10MB)
                 </p>
+
+                {/* Veo 3.1 Frame Upload - Only shows when frame-to-video models selected */}
+                {generation.hasVeo31FrameToVideo && (
+                  <div className="space-y-3 p-3 bg-muted/30 rounded-md border border-muted">
+                    <Label className="text-xs font-medium">Frame-to-Video Frames</Label>
+
+                    {/* First Frame Upload */}
+                    <div className="space-y-2">
+                      <Label className="text-xs">First Frame (Required)</Label>
+                      <label
+                        htmlFor="first-frame-input"
+                        className={`block border-2 border-dashed rounded-lg cursor-pointer transition-colors min-h-[100px] focus-within:outline-none focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2 ${
+                          firstFrame
+                            ? "border-primary/50 bg-primary/5 p-2"
+                            : "border-muted-foreground/25 hover:border-muted-foreground/50 p-3"
+                        }`}
+                        aria-label={firstFrame ? "Change first frame" : "Upload first frame"}
+                      >
+                        {firstFrame && firstFramePreview ? (
+                          <div className="relative flex flex-col items-center justify-center h-full">
+                            <img
+                              src={firstFramePreview}
+                              alt={firstFrame.name}
+                              className="max-w-full max-h-20 mx-auto rounded object-contain"
+                            />
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="destructive"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setFirstFrame(null);
+                                setFirstFramePreview(null);
+                                generation.setFirstFrame(null);
+                              }}
+                              className="absolute top-1 right-1 h-6 w-6 p-0 flex items-center justify-center bg-red-500 hover:bg-red-600 text-white rounded-full shadow-sm"
+                            >
+                              <X className="h-3 w-3" />
+                            </Button>
+                            <div className="mt-1 text-xs text-muted-foreground text-center">
+                              {firstFrame.name}
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="flex flex-col items-center justify-center h-full space-y-1 text-center">
+                            <Upload className="size-6 text-muted-foreground" />
+                            <div className="text-xs text-muted-foreground">
+                              Upload first frame
+                            </div>
+                            <div className="text-xs text-muted-foreground/70">
+                              JPG, PNG (max 8MB)
+                            </div>
+                          </div>
+                        )}
+                        <input
+                          id="first-frame-input"
+                          type="file"
+                          accept="image/jpeg,image/png"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (!file) return;
+
+                            // Validate file size (8MB for Veo 3.1)
+                            if (file.size > UPLOAD_CONSTANTS.MAX_VEO31_FRAME_SIZE_BYTES) {
+                              setError(ERROR_MESSAGES.VEO31_IMAGE_TOO_LARGE);
+                              return;
+                            }
+
+                            setFirstFrame(file);
+                            generation.setFirstFrame(file);
+                            setError(null);
+
+                            // Create preview
+                            const reader = new FileReader();
+                            reader.onload = (e) => {
+                              setFirstFramePreview(e.target?.result as string);
+                            };
+                            reader.readAsDataURL(file);
+                          }}
+                          className="sr-only"
+                        />
+                      </label>
+                    </div>
+
+                    {/* Last Frame Upload */}
+                    <div className="space-y-2">
+                      <Label className="text-xs">Last Frame (Required)</Label>
+                      <label
+                        htmlFor="last-frame-input"
+                        className={`block border-2 border-dashed rounded-lg cursor-pointer transition-colors min-h-[100px] focus-within:outline-none focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2 ${
+                          lastFrame
+                            ? "border-primary/50 bg-primary/5 p-2"
+                            : "border-muted-foreground/25 hover:border-muted-foreground/50 p-3"
+                        }`}
+                        aria-label={lastFrame ? "Change last frame" : "Upload last frame"}
+                      >
+                        {lastFrame && lastFramePreview ? (
+                          <div className="relative flex flex-col items-center justify-center h-full">
+                            <img
+                              src={lastFramePreview}
+                              alt={lastFrame.name}
+                              className="max-w-full max-h-20 mx-auto rounded object-contain"
+                            />
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="destructive"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setLastFrame(null);
+                                setLastFramePreview(null);
+                                generation.setLastFrame(null);
+                              }}
+                              className="absolute top-1 right-1 h-6 w-6 p-0 flex items-center justify-center bg-red-500 hover:bg-red-600 text-white rounded-full shadow-sm"
+                            >
+                              <X className="h-3 w-3" />
+                            </Button>
+                            <div className="mt-1 text-xs text-muted-foreground text-center">
+                              {lastFrame.name}
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="flex flex-col items-center justify-center h-full space-y-1 text-center">
+                            <Upload className="size-6 text-muted-foreground" />
+                            <div className="text-xs text-muted-foreground">
+                              Upload last frame
+                            </div>
+                            <div className="text-xs text-muted-foreground/70">
+                              JPG, PNG (max 8MB)
+                            </div>
+                          </div>
+                        )}
+                        <input
+                          id="last-frame-input"
+                          type="file"
+                          accept="image/jpeg,image/png"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (!file) return;
+
+                            // Validate file size (8MB for Veo 3.1)
+                            if (file.size > UPLOAD_CONSTANTS.MAX_VEO31_FRAME_SIZE_BYTES) {
+                              setError(ERROR_MESSAGES.VEO31_IMAGE_TOO_LARGE);
+                              return;
+                            }
+
+                            setLastFrame(file);
+                            generation.setLastFrame(file);
+                            setError(null);
+
+                            // Create preview
+                            const reader = new FileReader();
+                            reader.onload = (e) => {
+                              setLastFramePreview(e.target?.result as string);
+                            };
+                            reader.readAsDataURL(file);
+                          }}
+                          className="sr-only"
+                        />
+                      </label>
+                    </div>
+                  </div>
+                )}
 
                 {/* Prompt for image-to-video */}
                 <div className="space-y-2">
@@ -708,6 +892,109 @@ export function AiView() {
             </div>
           )}
 
+          {/* Veo 3.1 Settings Panel - Only shows when Veo 3.1 models selected */}
+          {generation.isVeo31Selected && (
+            <div className="space-y-3 p-3 bg-muted/30 rounded-md border border-muted">
+              <Label className="text-xs font-medium">Veo 3.1 Settings</Label>
+
+              {/* Resolution selector */}
+              <div className="space-y-1">
+                <Label htmlFor="veo31-resolution" className="text-xs">Resolution</Label>
+                <Select
+                  value={generation.veo31Settings.resolution}
+                  onValueChange={(v) => generation.setVeo31Resolution(v as "720p" | "1080p")}
+                >
+                  <SelectTrigger id="veo31-resolution" className="h-8 text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="720p">720p</SelectItem>
+                    <SelectItem value="1080p">1080p</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Duration selector */}
+              <div className="space-y-1">
+                <Label htmlFor="veo31-duration" className="text-xs">Duration</Label>
+                <Select
+                  value={generation.veo31Settings.duration}
+                  onValueChange={(v) => generation.setVeo31Duration(v as "4s" | "6s" | "8s")}
+                >
+                  <SelectTrigger id="veo31-duration" className="h-8 text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="4s">
+                      4 seconds ({generation.veo31Settings.generateAudio ? '$0.60 Fast / $1.60 Std' : '$0.40 Fast / $0.80 Std'})
+                    </SelectItem>
+                    <SelectItem value="6s">
+                      6 seconds ({generation.veo31Settings.generateAudio ? '$0.90 Fast / $2.40 Std' : '$0.60 Fast / $1.20 Std'})
+                    </SelectItem>
+                    <SelectItem value="8s">
+                      8 seconds ({generation.veo31Settings.generateAudio ? '$1.20 Fast / $3.20 Std' : '$0.80 Fast / $1.60 Std'})
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Aspect ratio selector */}
+              <div className="space-y-1">
+                <Label htmlFor="veo31-aspect" className="text-xs">Aspect Ratio</Label>
+                <Select
+                  value={generation.veo31Settings.aspectRatio}
+                  onValueChange={(v) => generation.setVeo31AspectRatio(v as "9:16" | "16:9" | "1:1" | "auto")}
+                >
+                  <SelectTrigger id="veo31-aspect" className="h-8 text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="16:9">16:9 (Landscape)</SelectItem>
+                    <SelectItem value="9:16">9:16 (Portrait)</SelectItem>
+                    <SelectItem value="1:1">1:1 (Square)</SelectItem>
+                    <SelectItem value="auto">Auto</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Audio toggle */}
+              <div className="flex items-center justify-between">
+                <Label htmlFor="veo31-audio" className="text-xs">Generate Audio</Label>
+                <input
+                  id="veo31-audio"
+                  type="checkbox"
+                  checked={generation.veo31Settings.generateAudio}
+                  onChange={(e) => generation.setVeo31GenerateAudio(e.target.checked)}
+                  className="h-4 w-4"
+                />
+              </div>
+
+              {/* Enhance prompt toggle */}
+              <div className="flex items-center justify-between">
+                <Label htmlFor="veo31-enhance" className="text-xs">Enhance Prompt</Label>
+                <input
+                  id="veo31-enhance"
+                  type="checkbox"
+                  checked={generation.veo31Settings.enhancePrompt}
+                  onChange={(e) => generation.setVeo31EnhancePrompt(e.target.checked)}
+                  className="h-4 w-4"
+                />
+              </div>
+
+              {/* Auto-fix toggle */}
+              <div className="flex items-center justify-between">
+                <Label htmlFor="veo31-autofix" className="text-xs">Auto Fix (Policy Compliance)</Label>
+                <input
+                  id="veo31-autofix"
+                  type="checkbox"
+                  checked={generation.veo31Settings.autoFix}
+                  onChange={(e) => generation.setVeo31AutoFix(e.target.checked)}
+                  className="h-4 w-4"
+                />
+              </div>
+            </div>
+          )}
+
           {/* Error display */}
           {error && (
             <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-md">
@@ -784,6 +1071,29 @@ export function AiView() {
                     </div>
                   );
                 })}
+              </div>
+            </div>
+          )}
+
+          {/* Validation messages - show when generation is blocked */}
+          {!generation.canGenerate && selectedModels.length > 0 && (
+            <div className="p-3 bg-orange-500/10 border border-orange-500/20 rounded-md">
+              <div className="text-xs text-orange-600 dark:text-orange-400 space-y-1">
+                {activeTab === "text" && !prompt.trim() && (
+                  <div>⚠️ Please enter a prompt to generate video</div>
+                )}
+                {activeTab === "image" && !selectedImage && !generation.hasVeo31FrameToVideo && (
+                  <div>⚠️ Please upload an image for video generation</div>
+                )}
+                {activeTab === "image" && generation.hasVeo31FrameToVideo && !firstFrame && (
+                  <div>⚠️ Please upload the first frame (required for frame-to-video)</div>
+                )}
+                {activeTab === "image" && generation.hasVeo31FrameToVideo && !lastFrame && (
+                  <div>⚠️ Please upload the last frame (required for frame-to-video)</div>
+                )}
+                {activeTab === "avatar" && !avatarImage && (
+                  <div>⚠️ Please upload a character image</div>
+                )}
               </div>
             </div>
           )}

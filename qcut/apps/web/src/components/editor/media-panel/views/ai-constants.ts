@@ -453,7 +453,7 @@ export const AI_MODELS: AIModel[] = [
     default_params: {
       duration: 8, // Numeric to match existing pattern
       resolution: "720p",
-      aspect_ratio: "auto",
+      aspect_ratio: "16:9",
       generate_audio: true,
     },
   },

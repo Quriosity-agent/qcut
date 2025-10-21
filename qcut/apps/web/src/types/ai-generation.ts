@@ -41,7 +41,7 @@ export interface Veo31FrameToVideoInput {
   prompt: string; // Required: Animation description
   first_frame_url: string; // Required: Opening frame URL
   last_frame_url: string; // Required: Closing frame URL
-  aspect_ratio?: "auto" | "9:16" | "16:9" | "1:1"; // Default: "auto"
+  aspect_ratio?: "9:16" | "16:9"; // Default: "16:9"
   duration?: "8s"; // Currently only "8s" supported
   resolution?: "720p" | "1080p"; // Default: "720p"
   generate_audio?: boolean; // Default: true
