@@ -246,7 +246,7 @@ export function AiView() {
     }
     // Veo 3.1 pricing calculation
     else if (modelId.startsWith('veo31_')) {
-      const durationSeconds = parseInt(generation.veo31Settings.duration); // "4s" -> 4
+      const durationSeconds = Number.parseInt(generation.veo31Settings.duration, 10); // "4s" -> 4
 
       // Determine if this is a fast or standard model
       const isFastModel = modelId.includes('_fast_');

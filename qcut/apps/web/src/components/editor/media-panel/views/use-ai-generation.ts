@@ -574,7 +574,10 @@ export function useAIGeneration(props: UseAIGenerationProps) {
           if (modelId === 'veo31_fast_text_to_video') {
             response = await falAIClient.generateVeo31FastTextToVideo({
               prompt: prompt.trim(),
-              aspect_ratio: veo31Settings.aspectRatio === "auto" ? undefined : veo31Settings.aspectRatio as any,
+              aspect_ratio: (() => {
+                const ar = veo31Settings.aspectRatio;
+                return ar === "auto" ? undefined : ar; // "16:9" | "9:16" | "1:1" | undefined
+              })(),
               duration: veo31Settings.duration,
               resolution: veo31Settings.resolution,
               generate_audio: veo31Settings.generateAudio,
@@ -586,7 +589,10 @@ export function useAIGeneration(props: UseAIGenerationProps) {
           else if (modelId === 'veo31_text_to_video') {
             response = await falAIClient.generateVeo31TextToVideo({
               prompt: prompt.trim(),
-              aspect_ratio: veo31Settings.aspectRatio === "auto" ? undefined : veo31Settings.aspectRatio as any,
+              aspect_ratio: (() => {
+                const ar = veo31Settings.aspectRatio;
+                return ar === "auto" ? undefined : ar; // "16:9" | "9:16" | "1:1" | undefined
+              })(),
               duration: veo31Settings.duration,
               resolution: veo31Settings.resolution,
               generate_audio: veo31Settings.generateAudio,
