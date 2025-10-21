@@ -45,6 +45,12 @@ interface GenerationResult {
   };
 }
 
+interface UploadError extends Error {
+  status?: number;
+  statusText?: string;
+  errorData?: unknown;
+}
+
 export interface GenerationSettings {
   imageSize: string | number;
   seed?: number;
@@ -177,18 +183,18 @@ class FalAIClient {
 
       if (!response.ok) {
         const errorMessage = `FAL image upload failed: ${response.status} ${response.statusText}`;
-        const error = new Error(errorMessage);
-        (error as any).status = response.status;
-        (error as any).statusText = response.statusText;
-        (error as any).errorData = data;
+        const error = new Error(errorMessage) as UploadError;
+        error.status = response.status;
+        error.statusText = response.statusText;
+        error.errorData = data;
         throw error;
       }
 
       if (!data || typeof data.url !== "string") {
         const error = new Error(
           "FAL image upload response is missing a url field."
-        );
-        (error as any).errorData = data;
+        ) as UploadError;
+        error.errorData = data;
         throw error;
       }
 
@@ -196,21 +202,16 @@ class FalAIClient {
     } catch (error) {
       const normalizedError =
         error instanceof Error ? error : new Error(String(error));
-      const metadata: Record<string, any> = {
+      const metadata: Record<string, unknown> = {
         filename: file.name,
         fileSize: file.size,
         fileType: file.type,
       };
 
-      if ("status" in normalizedError) {
-        metadata.status = (normalizedError as any).status;
-      }
-      if ("statusText" in normalizedError) {
-        metadata.statusText = (normalizedError as any).statusText;
-      }
-      if ("errorData" in normalizedError) {
-        metadata.errorData = (normalizedError as any).errorData;
-      }
+      const uploadError = normalizedError as UploadError;
+      if (uploadError.status) metadata.status = uploadError.status;
+      if (uploadError.statusText) metadata.statusText = uploadError.statusText;
+      if (uploadError.errorData) metadata.errorData = uploadError.errorData;
 
       handleAIServiceError(normalizedError, "FAL image upload", metadata);
       throw normalizedError;

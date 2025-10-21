@@ -39,6 +39,11 @@ import type {
   ProgressCallback as AIProgressCallback,
 } from "./ai-types";
 
+const VEO31_FRAME_MODELS = new Set([
+  "veo31_fast_frame_to_video",
+  "veo31_frame_to_video",
+]);
+
 /**
  * Custom hook for managing AI video generation
  * Handles generation logic, progress tracking, polling, and API integration
@@ -124,7 +129,9 @@ export function useAIGeneration(props: UseAIGenerationProps) {
 
   // Veo 3.1 detection flags
   const isVeo31Selected = selectedModels.some(id => id.startsWith('veo31_'));
-  const hasVeo31FrameToVideo = selectedModels.includes('veo31_frame_to_video') || selectedModels.includes('veo31_fast_frame_to_video');
+  const hasVeo31FrameToVideo = selectedModels.some((id) =>
+    VEO31_FRAME_MODELS.has(id)
+  );
 
   // Store hooks
   const {
@@ -390,7 +397,17 @@ export function useAIGeneration(props: UseAIGenerationProps) {
     if (activeTab === "text") {
       if (!prompt.trim() || selectedModels.length === 0) return;
     } else if (activeTab === "image") {
-      if (!selectedImage || selectedModels.length === 0) return;
+      if (selectedModels.length === 0) return;
+
+      const hasFrameModel = selectedModels.some((id) =>
+        VEO31_FRAME_MODELS.has(id)
+      );
+      const hasImageModel = selectedModels.some(
+        (id) => !VEO31_FRAME_MODELS.has(id)
+      );
+
+      if (hasFrameModel && (!firstFrame || !lastFrame)) return;
+      if (hasImageModel && !selectedImage) return;
     } else if (activeTab === "avatar") {
       if (!avatarImage || selectedModels.length === 0) return;
     }
@@ -482,8 +499,27 @@ export function useAIGeneration(props: UseAIGenerationProps) {
         return;
       }
     } else if (activeTab === "image") {
-      if (!selectedImage || selectedModels.length === 0) {
-        console.log("❌ Validation failed - missing image or models");
+      if (selectedModels.length === 0) {
+        console.log("❌ Validation failed - missing models for image tab");
+        return;
+      }
+
+      const hasFrameModel = selectedModels.some((id) =>
+        VEO31_FRAME_MODELS.has(id)
+      );
+      const hasImageModel = selectedModels.some(
+        (id) => !VEO31_FRAME_MODELS.has(id)
+      );
+
+      if (hasFrameModel && (!firstFrame || !lastFrame)) {
+        console.log(
+          "❌ Validation failed - frame-to-video models require first and last frames"
+        );
+        return;
+      }
+
+      if (hasImageModel && !selectedImage) {
+        console.log("❌ Validation failed - image-to-video models require an image");
         return;
       }
     } else if (activeTab === "avatar") {
@@ -617,13 +653,21 @@ export function useAIGeneration(props: UseAIGenerationProps) {
             );
           }
           console.log("  ✅ generateVideo returned:", response);
-        } else if (activeTab === "image" && selectedImage) {
+        } else if (activeTab === "image") {
           console.log(`  🖼️ Calling generateVideoFromImage for ${modelId}...`);
 
           // Veo 3.1 Fast image-to-video
           if (modelId === 'veo31_fast_image_to_video') {
+            if (!selectedImage) {
+              console.log(
+                "  ⚠️ Skipping model - image-to-video requires a selected image"
+              );
+              continue;
+            }
+
             // Upload image to get URL first
-            const imageUrl = await uploadImageToFal(selectedImage);
+            const imageFile = selectedImage;
+            const imageUrl = await uploadImageToFal(imageFile);
             const imageAspectRatio =
               veo31Settings.aspectRatio === "16:9" || veo31Settings.aspectRatio === "9:16"
                 ? veo31Settings.aspectRatio
@@ -633,15 +677,23 @@ export function useAIGeneration(props: UseAIGenerationProps) {
               prompt: prompt.trim(),
               image_url: imageUrl,
               aspect_ratio: imageAspectRatio,
-              duration: veo31Settings.duration as "8s",
+              duration: "8s",
               resolution: veo31Settings.resolution,
               generate_audio: veo31Settings.generateAudio,
             });
           }
           // Veo 3.1 Standard image-to-video
           else if (modelId === 'veo31_image_to_video') {
+            if (!selectedImage) {
+              console.log(
+                "  ⚠️ Skipping model - image-to-video requires a selected image"
+              );
+              continue;
+            }
+
             // Upload image to get URL first
-            const imageUrl = await uploadImageToFal(selectedImage);
+            const imageFile = selectedImage;
+            const imageUrl = await uploadImageToFal(imageFile);
             const imageAspectRatio =
               veo31Settings.aspectRatio === "16:9" || veo31Settings.aspectRatio === "9:16"
                 ? veo31Settings.aspectRatio
@@ -651,7 +703,7 @@ export function useAIGeneration(props: UseAIGenerationProps) {
               prompt: prompt.trim(),
               image_url: imageUrl,
               aspect_ratio: imageAspectRatio,
-              duration: veo31Settings.duration as "8s",
+              duration: "8s",
               resolution: veo31Settings.resolution,
               generate_audio: veo31Settings.generateAudio,
             });
@@ -659,8 +711,10 @@ export function useAIGeneration(props: UseAIGenerationProps) {
           // Veo 3.1 Fast frame-to-video
           else if (modelId === 'veo31_fast_frame_to_video' && firstFrame && lastFrame) {
             // Upload both frames to get URLs
-            const firstFrameUrl = await uploadImageToFal(firstFrame);
-            const lastFrameUrl = await uploadImageToFal(lastFrame);
+            const frameStart = firstFrame;
+            const frameEnd = lastFrame;
+            const firstFrameUrl = await uploadImageToFal(frameStart);
+            const lastFrameUrl = await uploadImageToFal(frameEnd);
             const frameAspectRatio =
               veo31Settings.aspectRatio === "16:9" || veo31Settings.aspectRatio === "9:16"
                 ? veo31Settings.aspectRatio
@@ -671,7 +725,7 @@ export function useAIGeneration(props: UseAIGenerationProps) {
               first_frame_url: firstFrameUrl,
               last_frame_url: lastFrameUrl,
               aspect_ratio: frameAspectRatio,
-              duration: veo31Settings.duration as "8s",
+              duration: "8s",
               resolution: veo31Settings.resolution,
               generate_audio: veo31Settings.generateAudio,
             });
@@ -679,8 +733,10 @@ export function useAIGeneration(props: UseAIGenerationProps) {
           // Veo 3.1 Standard frame-to-video
           else if (modelId === 'veo31_frame_to_video' && firstFrame && lastFrame) {
             // Upload both frames to get URLs
-            const firstFrameUrl = await uploadImageToFal(firstFrame);
-            const lastFrameUrl = await uploadImageToFal(lastFrame);
+            const frameStart = firstFrame;
+            const frameEnd = lastFrame;
+            const firstFrameUrl = await uploadImageToFal(frameStart);
+            const lastFrameUrl = await uploadImageToFal(frameEnd);
             const frameAspectRatio =
               veo31Settings.aspectRatio === "16:9" || veo31Settings.aspectRatio === "9:16"
                 ? veo31Settings.aspectRatio
@@ -691,13 +747,25 @@ export function useAIGeneration(props: UseAIGenerationProps) {
               first_frame_url: firstFrameUrl,
               last_frame_url: lastFrameUrl,
               aspect_ratio: frameAspectRatio,
-              duration: veo31Settings.duration as "8s",
+              duration: "8s",
               resolution: veo31Settings.resolution,
               generate_audio: veo31Settings.generateAudio,
             });
+          } else if (VEO31_FRAME_MODELS.has(modelId)) {
+            console.log(
+              "  ⚠️ Skipping model - frame-to-video requires selected first and last frames"
+            );
+            continue;
           }
           // Regular image-to-video generation
           else {
+            if (!selectedImage) {
+              console.log(
+                "  ⚠️ Skipping model - image-to-video requires a selected image"
+              );
+              continue;
+            }
+
             response = await generateVideoFromImage({
               image: selectedImage,
               prompt: prompt.trim(),
