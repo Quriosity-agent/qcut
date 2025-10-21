@@ -86,6 +86,7 @@ export const useText2ImageStore = create<Text2ImageStore>()(
         "flux-pro-v11-ultra",
         "wan-v2-2",
         "qwen-image",
+        "reve-text-to-image", // Add Reve Text-to-Image
       ], // Default to all models
       toggleModel: (modelKey) =>
         set((state) => ({
@@ -114,6 +115,7 @@ export const useText2ImageStore = create<Text2ImageStore>()(
               "seeddream-v3",
               "seeddream-v4",
               "nano-banana",
+              "reve-text-to-image",
             ],
           });
         } else if (mode === "single" && selectedModels.length === 0) {
