@@ -467,10 +467,10 @@ class FalAIClient {
     prompt: string,
     settings: GenerationSettings
   ): Promise<MultiModelGenerationResult> {
-    console.log(
-      `Starting multi-model generation with ${modelKeys.length} models:`,
-      modelKeys
-    );
+    debugLogger.log(FAL_LOG_COMPONENT, "MULTI_MODEL_GENERATION_START", {
+      modelKeys,
+      modelCount: modelKeys.length,
+    });
 
     // Create promises for all model generations
     const generationPromises = modelKeys.map(async (modelKey) => {
@@ -530,7 +530,9 @@ class FalAIClient {
   // API key management
   setApiKey(apiKey: string): void {
     this.apiKey = apiKey;
-    console.log("[FalAI] API key updated");
+    debugLogger.log(FAL_LOG_COMPONENT, "API_KEY_UPDATED", {
+      keyLength: apiKey?.length ?? 0,
+    });
   }
 
   hasApiKey(): boolean {
