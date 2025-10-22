@@ -108,6 +108,24 @@ const truncateRevePrompt = (prompt: string): string => {
     : prompt;
 };
 
+const validateRevePrompt = (prompt: string): void => {
+  if (typeof prompt !== "string") {
+    throw new Error("Prompt must be provided as a string.");
+  }
+
+  const trimmedPrompt = prompt.trim();
+
+  if (!trimmedPrompt) {
+    throw new Error("Prompt cannot be empty.");
+  }
+
+  if (trimmedPrompt.length > MAX_REVE_PROMPT_LENGTH) {
+    throw new Error(
+      `Prompt must be ${MAX_REVE_PROMPT_LENGTH} characters or fewer.`
+    );
+  }
+};
+
 const validateReveNumImages = (value?: number): void => {
   if (value === undefined || value === null) {
     return;
@@ -952,11 +970,12 @@ class FalAIClient {
     try {
       sanitizedParams = {
         ...params,
-        prompt: truncateRevePrompt(params.prompt),
+        prompt: truncateRevePrompt(params.prompt.trim()),
         num_images: clampReveNumImages(params.num_images),
       };
 
-      // Validate sanitized numeric parameters remain within expected bounds
+      // Validate sanitized inputs before issuing the request
+      validateRevePrompt(sanitizedParams.prompt);
       validateReveNumImages(sanitizedParams.num_images);
 
       // Retrieve endpoint from single source of truth
@@ -966,13 +985,14 @@ class FalAIClient {
       }
       const endpoint = model.endpoint;
 
-      debugLogger.log(FAL_LOG_COMPONENT, "REVE_TEXT_TO_IMAGE_REQUEST", {
-        promptLength: sanitizedParams.prompt.length,
-        promptPreview: sanitizedParams.prompt.slice(0, 120),
-        num_images: sanitizedParams.num_images,
-        aspect_ratio: sanitizedParams.aspect_ratio,
-        output_format: sanitizedParams.output_format,
-      });
+      {
+        const { prompt, ...rest } = sanitizedParams;
+        debugLogger.log(FAL_LOG_COMPONENT, "REVE_TEXT_TO_IMAGE_REQUEST", {
+          ...rest,
+          promptLength: prompt.length,
+          promptPreview: prompt.slice(0, 120),
+        });
+      }
 
       const response = await this.makeRequest<ReveTextToImageOutput>(
         endpoint,
@@ -994,7 +1014,7 @@ class FalAIClient {
           sanitizedParams ??
           {
             ...params,
-            prompt: truncateRevePrompt(params.prompt),
+            prompt: truncateRevePrompt(params.prompt.trim()),
             num_images: clampReveNumImages(params.num_images),
           },
       });
@@ -1024,9 +1044,13 @@ class FalAIClient {
     try {
       sanitizedParams = {
         ...params,
-        prompt: truncateRevePrompt(params.prompt),
+        prompt: truncateRevePrompt(params.prompt.trim()),
         num_images: clampReveNumImages(params.num_images),
       };
+
+      // Validate sanitized inputs before issuing the request
+      validateRevePrompt(sanitizedParams.prompt);
+      validateReveNumImages(sanitizedParams.num_images);
 
       const trimmedImageUrl = sanitizedParams.image_url?.trim();
       if (!trimmedImageUrl || !/^(https?:|data:)/i.test(trimmedImageUrl)) {
@@ -1045,13 +1069,15 @@ class FalAIClient {
       }
       const endpoint = `https://fal.run/${modelConfig.endpoint}`;
 
-      debugLogger.log(FAL_LOG_COMPONENT, "REVE_EDIT_REQUEST", {
-        promptLength: sanitizedParams.prompt.length,
-        promptPreview: sanitizedParams.prompt.slice(0, 120),
-        hasImage: !!sanitizedParams.image_url,
-        num_images: sanitizedParams.num_images,
-        output_format: sanitizedParams.output_format,
-      });
+      {
+        const { prompt, image_url, ...rest } = sanitizedParams;
+        debugLogger.log(FAL_LOG_COMPONENT, "REVE_EDIT_REQUEST", {
+          ...rest,
+          hasImage: !!image_url,
+          promptLength: prompt.length,
+          promptPreview: prompt.slice(0, 120),
+        });
+      }
 
       const response = await this.makeRequest<ReveEditOutput>(
         endpoint,
