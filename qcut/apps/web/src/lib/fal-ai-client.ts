@@ -562,7 +562,9 @@ class FalAIClient {
     try {
       // Check API key first
       if (!this.hasApiKey()) {
-        console.warn("[FalAI] Cannot test model availability: no API key");
+        debugLogger.warn(FAL_LOG_COMPONENT, "MODEL_TEST_SKIPPED_NO_KEY", {
+          modelKey,
+        });
         return false;
       }
 
