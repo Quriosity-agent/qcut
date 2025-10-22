@@ -1,4 +1,5 @@
 import { TEXT2IMAGE_MODELS, type Text2ImageModel } from "./text2image-models";
+import { debugLogger, type LogData } from "./debug-logger";
 import {
   handleAIServiceError,
   handleError,
@@ -60,6 +61,7 @@ export interface GenerationSettings {
   seed?: number;
 }
 
+const FAL_LOG_COMPONENT = "FalAIClient";
 const MIN_REVE_IMAGES = 1;
 const MAX_REVE_IMAGES = 4;
 const MAX_REVE_PROMPT_LENGTH = 2560;
@@ -88,6 +90,8 @@ class FalAIClient {
 
   constructor() {
     // Try to get API key from environment variables
+    // TODO: Move API key retrieval to a secure backend/Electron IPC channel so the key never ships to the browser bundle.
+    // Short-term mitigation: avoid logging the key and rely on server-side rate limiting as documented in ops runbook.
     this.apiKey =
       import.meta.env.VITE_FAL_API_KEY ||
       (typeof window !== "undefined" &&
@@ -95,8 +99,10 @@ class FalAIClient {
       null;
 
     if (!this.apiKey) {
-      console.warn(
-        "[FalAI] No API key found. Set VITE_FAL_API_KEY environment variable to enable text-to-image generation."
+      debugLogger.error(
+        FAL_LOG_COMPONENT,
+        "API_KEY_MISSING",
+        "FAL API key not found at initialization. Set VITE_FAL_API_KEY or configure it in Settings."
       );
     }
   }
@@ -117,8 +123,10 @@ class FalAIClient {
       ? endpoint
       : `${this.baseUrl}${endpoint}`;
 
-    console.log("[FalAI] Making direct API request to:", requestUrl);
-    console.log("[FalAI] Request params:", params);
+    debugLogger.log(FAL_LOG_COMPONENT, "REQUEST_START", {
+      endpoint: requestUrl,
+      params,
+    });
 
     // Make direct API call to fal.run instead of proxy
     const response = await fetch(requestUrl, {
@@ -130,7 +138,10 @@ class FalAIClient {
       body: JSON.stringify(params),
     });
 
-    console.log("[FalAI] Response status:", response.status);
+    debugLogger.log(FAL_LOG_COMPONENT, "REQUEST_STATUS", {
+      endpoint: requestUrl,
+      status: response.status,
+    });
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
@@ -173,7 +184,10 @@ class FalAIClient {
     }
 
     const result = (await response.json()) as T;
-    console.log("[FalAI] API response:", result);
+    debugLogger.log(FAL_LOG_COMPONENT, "REQUEST_SUCCESS", {
+      endpoint: requestUrl,
+      response: result as LogData,
+    });
     return result;
   }
 
