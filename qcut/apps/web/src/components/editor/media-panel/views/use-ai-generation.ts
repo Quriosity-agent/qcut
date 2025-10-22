@@ -1311,7 +1311,7 @@ export function useAIGeneration(props: UseAIGenerationProps) {
       clearUploadedImageForEdit();
       throw err;
     }
-  }, []);
+  }, [falAIClient]);
 
   /**
    * Clear uploaded image for Reve Edit
