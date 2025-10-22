@@ -46,6 +46,22 @@ import {
 } from "./ai-constants";
 import type { AIActiveTab } from "./ai-types";
 
+type ReveAspectRatioOption =
+  (typeof REVE_TEXT_TO_IMAGE_MODEL.aspectRatios)[number]["value"];
+type ReveOutputFormatOption =
+  (typeof REVE_TEXT_TO_IMAGE_MODEL.outputFormats)[number];
+
+const REVE_NUM_IMAGE_OPTIONS = Array.from(
+  {
+    length:
+      REVE_TEXT_TO_IMAGE_MODEL.numImagesRange.max -
+      REVE_TEXT_TO_IMAGE_MODEL.numImagesRange.min +
+      1,
+  },
+  (_, index) =>
+    REVE_TEXT_TO_IMAGE_MODEL.numImagesRange.min + index
+);
+
 export function AiView() {
   // UI-only state (not related to generation logic)
   const [prompt, setPrompt] = useState("");
@@ -74,11 +90,16 @@ export function AiView() {
   const [lastFramePreview, setLastFramePreview] = useState<string | null>(null);
 
   // Reve Text-to-Image state
-  const [reveAspectRatio, setReveAspectRatio] = useState<
-    "16:9" | "9:16" | "3:2" | "2:3" | "4:3" | "3:4" | "1:1"
-  >("3:2");
-  const [reveNumImages, setReveNumImages] = useState<number>(1);
-  const [reveOutputFormat, setReveOutputFormat] = useState<"png" | "jpeg" | "webp">("png");
+  const [reveAspectRatio, setReveAspectRatio] = useState<ReveAspectRatioOption>(
+    REVE_TEXT_TO_IMAGE_MODEL.defaultAspectRatio
+  );
+  const [reveNumImages, setReveNumImages] = useState<number>(
+    REVE_TEXT_TO_IMAGE_MODEL.defaultNumImages
+  );
+  const [reveOutputFormat, setReveOutputFormat] =
+    useState<ReveOutputFormatOption>(
+      REVE_TEXT_TO_IMAGE_MODEL.defaultOutputFormat
+    );
 
   // Use global AI tab state (CRITICAL: preserve global state integration)
   const { aiActiveTab: activeTab, setAiActiveTab: setActiveTab } =
@@ -1044,19 +1065,21 @@ export function AiView() {
                 <Label htmlFor="reve-aspect" className="text-xs">Aspect Ratio</Label>
                 <Select
                   value={reveAspectRatio}
-                  onValueChange={(v) => setReveAspectRatio(v as typeof reveAspectRatio)}
+                  onValueChange={(value) =>
+                    setReveAspectRatio(value as ReveAspectRatioOption)
+                  }
                 >
                   <SelectTrigger id="reve-aspect" className="h-8 text-xs">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="16:9">16:9 (Landscape)</SelectItem>
-                    <SelectItem value="9:16">9:16 (Portrait)</SelectItem>
-                    <SelectItem value="3:2">3:2 (Standard)</SelectItem>
-                    <SelectItem value="2:3">2:3 (Portrait)</SelectItem>
-                    <SelectItem value="4:3">4:3 (Classic)</SelectItem>
-                    <SelectItem value="3:4">3:4 (Portrait)</SelectItem>
-                    <SelectItem value="1:1">1:1 (Square)</SelectItem>
+                    {REVE_TEXT_TO_IMAGE_MODEL.aspectRatios.map(
+                      ({ value, label }) => (
+                        <SelectItem key={value} value={value}>
+                          {label}
+                        </SelectItem>
+                      )
+                    )}
                   </SelectContent>
                 </Select>
               </div>
@@ -1072,22 +1095,15 @@ export function AiView() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="1">
-                      1 image ($
-                      {REVE_TEXT_TO_IMAGE_MODEL.pricing.perImage.toFixed(2)})
-                    </SelectItem>
-                    <SelectItem value="2">
-                      2 images ($
-                      {(REVE_TEXT_TO_IMAGE_MODEL.pricing.perImage * 2).toFixed(2)})
-                    </SelectItem>
-                    <SelectItem value="3">
-                      3 images ($
-                      {(REVE_TEXT_TO_IMAGE_MODEL.pricing.perImage * 3).toFixed(2)})
-                    </SelectItem>
-                    <SelectItem value="4">
-                      4 images ($
-                      {(REVE_TEXT_TO_IMAGE_MODEL.pricing.perImage * 4).toFixed(2)})
-                    </SelectItem>
+                    {REVE_NUM_IMAGE_OPTIONS.map((count) => {
+                      const totalPrice =
+                        REVE_TEXT_TO_IMAGE_MODEL.pricing.perImage * count;
+                      return (
+                        <SelectItem key={count} value={String(count)}>
+                          {count} image{count > 1 ? "s" : ""} (${totalPrice.toFixed(2)})
+                        </SelectItem>
+                      );
+                    })}
                   </SelectContent>
                 </Select>
               </div>
@@ -1097,15 +1113,19 @@ export function AiView() {
                 <Label htmlFor="reve-format" className="text-xs">Output Format</Label>
                 <Select
                   value={reveOutputFormat}
-                  onValueChange={(v) => setReveOutputFormat(v as typeof reveOutputFormat)}
+                  onValueChange={(value) =>
+                    setReveOutputFormat(value as ReveOutputFormatOption)
+                  }
                 >
                   <SelectTrigger id="reve-format" className="h-8 text-xs">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="png">PNG</SelectItem>
-                    <SelectItem value="jpeg">JPEG</SelectItem>
-                    <SelectItem value="webp">WebP</SelectItem>
+                    {REVE_TEXT_TO_IMAGE_MODEL.outputFormats.map((format) => (
+                      <SelectItem key={format} value={format}>
+                        {format.toUpperCase()}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
