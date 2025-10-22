@@ -76,17 +76,16 @@ const clampReveNumImages = (value?: number): number => {
 };
 
 const truncateRevePrompt = (prompt: string): string => {
+  if (prompt.length > MAX_REVE_PROMPT_LENGTH) {
+    debugLogger.warn(FAL_LOG_COMPONENT, "REVE_PROMPT_TRUNCATED", {
+      originalLength: prompt.length,
+      maxLength: MAX_REVE_PROMPT_LENGTH,
+    });
+  }
+
   return prompt.length > MAX_REVE_PROMPT_LENGTH
     ? prompt.slice(0, MAX_REVE_PROMPT_LENGTH)
     : prompt;
-};
-
-const validateRevePrompt = (prompt: string): void => {
-  if (prompt.length > MAX_REVE_PROMPT_LENGTH) {
-    throw new Error(
-      `Prompt is ${prompt.length} characters but the Reve models support a maximum of ${MAX_REVE_PROMPT_LENGTH}.`
-    );
-  }
 };
 
 const validateReveNumImages = (value?: number): void => {
@@ -937,8 +936,7 @@ class FalAIClient {
         num_images: clampReveNumImages(params.num_images),
       };
 
-      // Validation after sanitization ensures clamped values are still valid
-      validateRevePrompt(sanitizedParams.prompt);
+      // Validate sanitized numeric parameters remain within expected bounds
       validateReveNumImages(sanitizedParams.num_images);
 
       // Retrieve endpoint from single source of truth
@@ -1000,14 +998,15 @@ class FalAIClient {
     let sanitizedParams: ReveEditInput | null = null;
 
     try {
-      validateRevePrompt(params.prompt);
-      validateReveNumImages(params.num_images);
-
       sanitizedParams = {
         ...params,
         prompt: truncateRevePrompt(params.prompt),
         num_images: clampReveNumImages(params.num_images),
       };
+
+      // Validation after sanitization ensures clamped values are still valid
+      validateRevePrompt(sanitizedParams.prompt);
+      validateReveNumImages(sanitizedParams.num_images);
 
       // Retrieve endpoint from single source of truth
       const { MODEL_ENDPOINTS } = await import("@/lib/image-edit-client");
@@ -1046,8 +1045,7 @@ class FalAIClient {
           },
       });
 
-      const errorMessage = error instanceof Error ? error.message : "Reve Edit generation failed";
-      throw new Error(errorMessage);
+      throw error instanceof Error ? error : new Error("Reve Edit generation failed");
     }
   }
 }
