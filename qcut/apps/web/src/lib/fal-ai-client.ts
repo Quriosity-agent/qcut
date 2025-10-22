@@ -931,14 +931,15 @@ class FalAIClient {
     let sanitizedParams: ReveTextToImageInput | null = null;
 
     try {
-      validateRevePrompt(params.prompt);
-      validateReveNumImages(params.num_images);
-
       sanitizedParams = {
         ...params,
         prompt: truncateRevePrompt(params.prompt),
         num_images: clampReveNumImages(params.num_images),
       };
+
+      // Validation after sanitization ensures clamped values are still valid
+      validateRevePrompt(sanitizedParams.prompt);
+      validateReveNumImages(sanitizedParams.num_images);
 
       // Retrieve endpoint from single source of truth
       const model = TEXT2IMAGE_MODELS["reve-text-to-image"];
