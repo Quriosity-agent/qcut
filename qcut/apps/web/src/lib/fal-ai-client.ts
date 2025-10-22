@@ -644,7 +644,9 @@ class FalAIClient {
     try {
       const endpoint = "https://fal.run/fal-ai/veo3.1/fast";
 
-      console.log("[Veo 3.1 Fast] Generating text-to-video with params:", params);
+      debugLogger.log(FAL_LOG_COMPONENT, "VEO31_FAST_TEXT_TO_VIDEO_REQUEST", {
+        params,
+      });
 
       const response = await this.makeRequest<Veo31Response>(endpoint, params as unknown as Record<string, unknown>);
 
@@ -683,7 +685,9 @@ class FalAIClient {
     try {
       const endpoint = "https://fal.run/fal-ai/veo3.1/fast/image-to-video";
 
-      console.log("[Veo 3.1 Fast] Generating image-to-video with params:", params);
+      debugLogger.log(FAL_LOG_COMPONENT, "VEO31_FAST_IMAGE_TO_VIDEO_REQUEST", {
+        params,
+      });
 
       const response = await this.makeRequest<Veo31Response>(endpoint, params as unknown as Record<string, unknown>);
 
@@ -722,7 +726,9 @@ class FalAIClient {
     try {
       const endpoint = "https://fal.run/fal-ai/veo3.1/fast/first-last-frame-to-video";
 
-      console.log("[Veo 3.1 Fast] Generating frame-to-video with params:", params);
+      debugLogger.log(FAL_LOG_COMPONENT, "VEO31_FAST_FRAME_TO_VIDEO_REQUEST", {
+        params,
+      });
 
       const response = await this.makeRequest<Veo31Response>(endpoint, params as unknown as Record<string, unknown>);
 
@@ -765,7 +771,9 @@ class FalAIClient {
     try {
       const endpoint = "https://fal.run/fal-ai/veo3.1"; // No /fast suffix
 
-      console.log("[Veo 3.1 Standard] Generating text-to-video with params:", params);
+      debugLogger.log(FAL_LOG_COMPONENT, "VEO31_STANDARD_TEXT_TO_VIDEO_REQUEST", {
+        params,
+      });
 
       const response = await this.makeRequest<Veo31Response>(endpoint, params as unknown as Record<string, unknown>);
 
@@ -804,7 +812,9 @@ class FalAIClient {
     try {
       const endpoint = "https://fal.run/fal-ai/veo3.1/image-to-video"; // No /fast
 
-      console.log("[Veo 3.1 Standard] Generating image-to-video with params:", params);
+      debugLogger.log(FAL_LOG_COMPONENT, "VEO31_STANDARD_IMAGE_TO_VIDEO_REQUEST", {
+        params,
+      });
 
       const response = await this.makeRequest<Veo31Response>(endpoint, params as unknown as Record<string, unknown>);
 
@@ -843,7 +853,9 @@ class FalAIClient {
     try {
       const endpoint = "https://fal.run/fal-ai/veo3.1/first-last-frame-to-video"; // No /fast
 
-      console.log("[Veo 3.1 Standard] Generating frame-to-video with params:", params);
+      debugLogger.log(FAL_LOG_COMPONENT, "VEO31_STANDARD_FRAME_TO_VIDEO_REQUEST", {
+        params,
+      });
 
       const response = await this.makeRequest<Veo31Response>(endpoint, params as unknown as Record<string, unknown>);
 
@@ -902,7 +914,9 @@ class FalAIClient {
       }
       const endpoint = model.endpoint;
 
-      console.log("[Reve Text-to-Image] Generating with params:", sanitizedParams);
+      debugLogger.log(FAL_LOG_COMPONENT, "REVE_TEXT_TO_IMAGE_REQUEST", {
+        params: sanitizedParams,
+      });
 
       const response = await this.makeRequest<ReveTextToImageOutput>(
         endpoint,
@@ -913,7 +927,9 @@ class FalAIClient {
         throw new Error("No images in Reve Text-to-Image response");
       }
 
-      console.log(`[Reve Text-to-Image] Generated ${response.images.length} image(s)`);
+      debugLogger.log(FAL_LOG_COMPONENT, "REVE_TEXT_TO_IMAGE_COMPLETED", {
+        imageCount: response.images.length,
+      });
       return response;
     } catch (error) {
       handleAIServiceError(error, "Reve Text-to-Image generation", {
@@ -957,7 +973,9 @@ class FalAIClient {
       }
       const endpoint = `https://fal.run/${modelConfig.endpoint}`;
 
-      console.log("[Reve Edit] Editing image with params:", sanitizedParams);
+      debugLogger.log(FAL_LOG_COMPONENT, "REVE_EDIT_REQUEST", {
+        params: sanitizedParams,
+      });
 
       const response = await this.makeRequest<ReveEditOutput>(
         endpoint,
@@ -968,7 +986,9 @@ class FalAIClient {
         throw new Error("No images in Reve Edit response");
       }
 
-      console.log(`[Reve Edit] Generated ${response.images.length} edited image(s)`);
+      debugLogger.log(FAL_LOG_COMPONENT, "REVE_EDIT_COMPLETED", {
+        imageCount: response.images.length,
+      });
       return response;
     } catch (error) {
       handleAIServiceError(error, "Reve Edit generation", {
