@@ -1005,9 +1005,10 @@ class FalAIClient {
     } catch (error) {
       handleAIServiceError(error, "Reve Text-to-Image generation", {
         operation: "generateReveTextToImage",
-        promptLength: sanitizedParams?.prompt.length ?? params.prompt.length,
+        promptLength: sanitizedParams?.prompt.length ?? params.prompt?.length,
         num_images: sanitizedParams?.num_images ?? params.num_images,
         aspect_ratio: sanitizedParams?.aspect_ratio ?? params.aspect_ratio,
+        output_format: sanitizedParams?.output_format ?? params.output_format,
       });
 
       throw error instanceof Error ? error : new Error("Reve Text-to-Image generation failed");
