@@ -67,12 +67,32 @@ const MAX_REVE_IMAGES = 4;
 const MAX_REVE_PROMPT_LENGTH = 2560;
 
 const clampReveNumImages = (value?: number): number => {
+  if (value === undefined || value === null) {
+    return MIN_REVE_IMAGES;
+  }
+
   if (typeof value !== "number" || Number.isNaN(value)) {
+    debugLogger.warn(FAL_LOG_COMPONENT, "REVE_NUM_IMAGES_INVALID", {
+      input: value,
+      defaultValue: MIN_REVE_IMAGES,
+    });
     return MIN_REVE_IMAGES;
   }
 
   const rounded = Math.floor(value);
-  return Math.min(Math.max(rounded, MIN_REVE_IMAGES), MAX_REVE_IMAGES);
+  const clamped = Math.min(Math.max(rounded, MIN_REVE_IMAGES), MAX_REVE_IMAGES);
+
+  if (rounded !== value || clamped !== rounded) {
+    debugLogger.warn(FAL_LOG_COMPONENT, "REVE_NUM_IMAGES_ADJUSTED", {
+      originalValue: value,
+      roundedValue: rounded,
+      clampedValue: clamped,
+      min: MIN_REVE_IMAGES,
+      max: MAX_REVE_IMAGES,
+    });
+  }
+
+  return clamped;
 };
 
 const truncateRevePrompt = (prompt: string): string => {
@@ -947,7 +967,11 @@ class FalAIClient {
       const endpoint = model.endpoint;
 
       debugLogger.log(FAL_LOG_COMPONENT, "REVE_TEXT_TO_IMAGE_REQUEST", {
-        params: sanitizedParams,
+        promptLength: sanitizedParams.prompt.length,
+        promptPreview: sanitizedParams.prompt.slice(0, 120),
+        num_images: sanitizedParams.num_images,
+        aspect_ratio: sanitizedParams.aspect_ratio,
+        output_format: sanitizedParams.output_format,
       });
 
       const response = await this.makeRequest<ReveTextToImageOutput>(
@@ -1004,9 +1028,14 @@ class FalAIClient {
         num_images: clampReveNumImages(params.num_images),
       };
 
-      // Validation after sanitization ensures clamped values are still valid
-      validateRevePrompt(sanitizedParams.prompt);
-      validateReveNumImages(sanitizedParams.num_images);
+      const trimmedImageUrl = sanitizedParams.image_url?.trim();
+      if (!trimmedImageUrl || !/^(https?:|data:)/i.test(trimmedImageUrl)) {
+        throw new Error("image_url must be http(s) or data: URI");
+      }
+      sanitizedParams = {
+        ...sanitizedParams,
+        image_url: trimmedImageUrl,
+      };
 
       // Retrieve endpoint from single source of truth
       const { MODEL_ENDPOINTS } = await import("@/lib/image-edit-client");
@@ -1017,7 +1046,11 @@ class FalAIClient {
       const endpoint = `https://fal.run/${modelConfig.endpoint}`;
 
       debugLogger.log(FAL_LOG_COMPONENT, "REVE_EDIT_REQUEST", {
-        params: sanitizedParams,
+        promptLength: sanitizedParams.prompt.length,
+        promptPreview: sanitizedParams.prompt.slice(0, 120),
+        hasImage: !!sanitizedParams.image_url,
+        num_images: sanitizedParams.num_images,
+        output_format: sanitizedParams.output_format,
       });
 
       const response = await this.makeRequest<ReveEditOutput>(
@@ -1036,13 +1069,9 @@ class FalAIClient {
     } catch (error) {
       handleAIServiceError(error, "Reve Edit generation", {
         operation: "generateReveEdit",
-        params:
-          sanitizedParams ??
-          {
-            ...params,
-            prompt: truncateRevePrompt(params.prompt),
-            num_images: clampReveNumImages(params.num_images),
-          },
+        promptLength: sanitizedParams?.prompt.length ?? params.prompt.length,
+        num_images: sanitizedParams?.num_images ?? params.num_images,
+        hasImage: !!(sanitizedParams?.image_url ?? params.image_url),
       });
 
       throw error instanceof Error ? error : new Error("Reve Edit generation failed");
