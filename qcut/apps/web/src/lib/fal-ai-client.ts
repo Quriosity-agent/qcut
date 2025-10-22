@@ -970,13 +970,9 @@ class FalAIClient {
     try {
       sanitizedParams = {
         ...params,
-        prompt: truncateRevePrompt(params.prompt.trim()),
+        prompt: truncateRevePrompt(params.prompt),
         num_images: clampReveNumImages(params.num_images),
       };
-
-      // Validate sanitized inputs before issuing the request
-      validateRevePrompt(sanitizedParams.prompt);
-      validateReveNumImages(sanitizedParams.num_images);
 
       // Retrieve endpoint from single source of truth
       const model = TEXT2IMAGE_MODELS["reve-text-to-image"];
@@ -985,14 +981,13 @@ class FalAIClient {
       }
       const endpoint = model.endpoint;
 
-      {
-        const { prompt, ...rest } = sanitizedParams;
-        debugLogger.log(FAL_LOG_COMPONENT, "REVE_TEXT_TO_IMAGE_REQUEST", {
-          ...rest,
-          promptLength: prompt.length,
-          promptPreview: prompt.slice(0, 120),
-        });
-      }
+      debugLogger.log(FAL_LOG_COMPONENT, "REVE_TEXT_TO_IMAGE_REQUEST", {
+        promptLength: sanitizedParams.prompt.length,
+        promptPreview: sanitizedParams.prompt.slice(0, 120),
+        num_images: sanitizedParams.num_images,
+        aspect_ratio: sanitizedParams.aspect_ratio,
+        output_format: sanitizedParams.output_format,
+      });
 
       const response = await this.makeRequest<ReveTextToImageOutput>(
         endpoint,
@@ -1010,13 +1005,9 @@ class FalAIClient {
     } catch (error) {
       handleAIServiceError(error, "Reve Text-to-Image generation", {
         operation: "generateReveTextToImage",
-        params:
-          sanitizedParams ??
-          {
-            ...params,
-            prompt: truncateRevePrompt(params.prompt.trim()),
-            num_images: clampReveNumImages(params.num_images),
-          },
+        promptLength: sanitizedParams?.prompt.length ?? params.prompt.length,
+        num_images: sanitizedParams?.num_images ?? params.num_images,
+        aspect_ratio: sanitizedParams?.aspect_ratio ?? params.aspect_ratio,
       });
 
       throw error instanceof Error ? error : new Error("Reve Text-to-Image generation failed");
