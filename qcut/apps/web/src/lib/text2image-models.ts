@@ -646,6 +646,79 @@ export const TEXT2IMAGE_MODELS: Record<string, Text2ImageModel> = {
       "Standard prompt length limits",
     ],
   },
+
+  "reve-text-to-image": {
+    id: "reve-text-to-image",
+    name: "Reve Text-to-Image",
+    description:
+      "Cost-effective AI image generation with strong aesthetic quality and accurate text rendering",
+    provider: "fal.ai",
+    endpoint: "https://fal.run/fal-ai/reve/text-to-image",
+
+    qualityRating: 4,
+    speedRating: 4,
+
+    estimatedCost: "$0.04",
+    costPerImage: 4, // cents
+
+    maxResolution: "Auto (aspect-ratio dependent)",
+    supportedAspectRatios: ["16:9", "9:16", "3:2", "2:3", "4:3", "3:4", "1:1"],
+
+    defaultParams: {
+      aspect_ratio: "3:2",
+      num_images: 1,
+      output_format: "png",
+    },
+
+    availableParams: [
+      {
+        name: "aspect_ratio",
+        type: "select",
+        options: ["16:9", "9:16", "3:2", "2:3", "4:3", "3:4", "1:1"],
+        default: "3:2",
+        description: "Output image aspect ratio",
+      },
+      {
+        name: "num_images",
+        type: "number",
+        min: 1,
+        max: 4,
+        default: 1,
+        description: "Number of images to generate",
+      },
+      {
+        name: "output_format",
+        type: "select",
+        options: ["png", "jpeg", "webp"],
+        default: "png",
+        description: "Output image format",
+      },
+    ],
+
+    bestFor: [
+      "Cost-effective image generation",
+      "Text rendering in images",
+      "General-purpose image creation",
+      "Aesthetic quality outputs",
+      "Multiple aspect ratios",
+    ],
+
+    strengths: [
+      "Very affordable ($0.04 per image)",
+      "Strong aesthetic quality",
+      "Accurate text rendering",
+      "Flexible aspect ratios (7 options)",
+      "Multiple output formats",
+      "Fast generation speed",
+    ],
+
+    limitations: [
+      "Lower resolution than premium models",
+      "Limited customization parameters",
+      "No guidance scale control",
+      "No seed control for reproducibility",
+    ],
+  },
 };
 
 // Helper functions
@@ -709,13 +782,13 @@ export function recommendModelsForPrompt(prompt: string): string[] {
 export const MODEL_CATEGORIES = {
   PHOTOREALISTIC: ["imagen4-ultra", "wan-v2-2"],
   ARTISTIC: ["seeddream-v3", "seeddream-v4", "qwen-image"], // Add V4 to artistic
-  VERSATILE: ["qwen-image", "flux-pro-v11-ultra", "nano-banana"], // Add nano-banana
-  FAST: ["seeddream-v3", "nano-banana", "qwen-image"], // Add nano-banana to fast
+  VERSATILE: ["qwen-image", "flux-pro-v11-ultra", "nano-banana", "reve-text-to-image"], // Add nano-banana, reve-text-to-image
+  FAST: ["seeddream-v3", "nano-banana", "qwen-image", "reve-text-to-image"], // Add nano-banana, reve-text-to-image to fast
   HIGH_QUALITY: [
     "imagen4-ultra",
     "wan-v2-2",
     "flux-pro-v11-ultra",
     "seeddream-v4",
   ], // Add V4
-  COST_EFFECTIVE: ["seeddream-v3", "nano-banana", "qwen-image"], // Add nano-banana
+  COST_EFFECTIVE: ["seeddream-v3", "nano-banana", "qwen-image", "reve-text-to-image"], // Add nano-banana, reve-text-to-image
 } as const;

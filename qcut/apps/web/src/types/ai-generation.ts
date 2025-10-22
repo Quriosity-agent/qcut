@@ -88,3 +88,57 @@ export interface GeneratedVideoResult {
   modelId: string;
   video: GeneratedVideo;
 }
+
+// ============================================
+// Reve Models Type Definitions
+// ============================================
+
+/**
+ * Reve Text-to-Image Input Parameters
+ */
+export interface ReveTextToImageInput {
+  prompt: string; // Required: 1-2560 characters
+  aspect_ratio?: "16:9" | "9:16" | "3:2" | "2:3" | "4:3" | "3:4" | "1:1"; // Default: "3:2"
+  num_images?: number; // 1-4, default: 1
+  output_format?: "png" | "jpeg" | "webp"; // Default: "png"
+  sync_mode?: boolean; // Default: false
+}
+
+/**
+ * Reve Text-to-Image Output
+ */
+export interface ReveTextToImageOutput {
+  images: Array<{
+    url: string;
+    content_type?: string;
+    file_name?: string;
+    file_size?: number;
+    width?: number;
+    height?: number;
+  }>;
+}
+
+/**
+ * Reve Edit Input Parameters
+ */
+export interface ReveEditInput {
+  prompt: string; // Required: editing instructions
+  image_url: string; // Required: image to edit (URL or base64 data URI)
+  num_images?: number; // 1-4, default: 1
+  output_format?: "png" | "jpeg" | "webp"; // Default: "png"
+  sync_mode?: boolean; // Default: false
+}
+
+/**
+ * Reve Edit Output
+ */
+export interface ReveEditOutput {
+  images: Array<{
+    url: string;
+    content_type?: string;
+    file_name?: string;
+    file_size?: number;
+    width?: number;
+    height?: number;
+  }>;
+}

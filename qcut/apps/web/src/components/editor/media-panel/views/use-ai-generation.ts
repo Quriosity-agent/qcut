@@ -23,6 +23,7 @@ import { getMediaStoreUtils } from "@/stores/media-store-loader";
 import { debugLog, debugError, debugWarn } from "@/lib/debug-config";
 import { useAsyncMediaStoreActions } from "@/hooks/use-async-media-store";
 import { falAIClient } from "@/lib/fal-ai-client";
+import { validateReveEditImage } from "@/lib/image-validation";
 
 import {
   AI_MODELS,
@@ -30,6 +31,7 @@ import {
   PROGRESS_CONSTANTS,
   STATUS_MESSAGES,
   ERROR_MESSAGES,
+  REVE_EDIT_MODEL,
 } from "./ai-constants";
 import type {
   GeneratedVideo,
@@ -122,6 +124,11 @@ export function useAIGeneration(props: UseAIGenerationProps) {
   // Veo 3.1 frame state (for frame-to-video model)
   const [firstFrame, setFirstFrame] = useState<File | null>(null);
   const [lastFrame, setLastFrame] = useState<File | null>(null);
+
+  // Reve Edit state
+  const [uploadedImageForEdit, setUploadedImageForEdit] = useState<File | null>(null);
+  const [uploadedImagePreview, setUploadedImagePreview] = useState<string | null>(null);
+  const [uploadedImageUrl, setUploadedImageUrl] = useState<string | null>(null);
 
   // Sora 2 detection flags
   const isSora2Selected = selectedModels.some(id => id.startsWith('sora2_'));
@@ -1269,6 +1276,55 @@ export function useAIGeneration(props: UseAIGenerationProps) {
     setVeo31Settings(prev => ({ ...prev, autoFix }));
   }, []);
 
+  /**
+   * Handle image upload for Reve Edit
+   */
+  const handleImageUploadForEdit = useCallback(async (file: File) => {
+    try {
+      // Validate image first
+      const validation = await validateReveEditImage(file);
+
+      if (!validation.valid) {
+        const errorMessage = validation.error || "Invalid image file";
+        console.error("[Reve Edit] Validation failed:", errorMessage);
+        // Note: Error should be handled by parent component
+        throw new Error(errorMessage);
+      }
+
+      // Create preview
+      const preview = URL.createObjectURL(file);
+      setUploadedImagePreview(preview);
+      setUploadedImageForEdit(file);
+
+      // Upload to FAL storage
+      const imageUrl = await falAIClient.uploadImageToFal(file);
+      setUploadedImageUrl(imageUrl);
+
+      console.log("[Reve Edit] Image uploaded successfully:", {
+        fileName: file.name,
+        fileSize: `${(file.size / 1024 / 1024).toFixed(2)}MB`,
+        dimensions: validation.dimensions,
+        url: imageUrl,
+      });
+    } catch (err) {
+      console.error("[Reve Edit] Image upload failed:", err);
+      clearUploadedImageForEdit();
+      throw err;
+    }
+  }, [falAIClient]);
+
+  /**
+   * Clear uploaded image for Reve Edit
+   */
+  const clearUploadedImageForEdit = useCallback(() => {
+    if (uploadedImagePreview) {
+      URL.revokeObjectURL(uploadedImagePreview);
+    }
+    setUploadedImageForEdit(null);
+    setUploadedImagePreview(null);
+    setUploadedImageUrl(null);
+  }, [uploadedImagePreview]);
+
   // Export the complete generation state
   const generationState: AIGenerationState = {
     isGenerating,
@@ -1391,6 +1447,13 @@ export function useAIGeneration(props: UseAIGenerationProps) {
     setFirstFrame,
     lastFrame,
     setLastFrame,
+
+    // Reve Edit state
+    uploadedImageForEdit,
+    uploadedImagePreview,
+    uploadedImageUrl,
+    handleImageUploadForEdit,
+    clearUploadedImageForEdit,
   };
 }
 

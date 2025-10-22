@@ -1,4 +1,5 @@
 import { TEXT2IMAGE_MODELS, type Text2ImageModel } from "./text2image-models";
+import { debugLogger } from "./debug-logger";
 import {
   handleAIServiceError,
   handleError,
@@ -10,6 +11,10 @@ import type {
   Veo31ImageToVideoInput,
   Veo31FrameToVideoInput,
   Veo31Response,
+  ReveTextToImageInput,
+  ReveTextToImageOutput,
+  ReveEditInput,
+  ReveEditOutput,
 } from "@/types/ai-generation";
 import type { VideoGenerationResponse } from "./ai-video-client";
 
@@ -56,6 +61,91 @@ export interface GenerationSettings {
   seed?: number;
 }
 
+const FAL_LOG_COMPONENT = "FalAIClient";
+const MIN_REVE_IMAGES = 1;
+const MAX_REVE_IMAGES = 4;
+const MAX_REVE_PROMPT_LENGTH = 2560;
+
+const clampReveNumImages = (value?: number): number => {
+  if (value === undefined || value === null) {
+    return MIN_REVE_IMAGES;
+  }
+
+  if (typeof value !== "number" || Number.isNaN(value)) {
+    debugLogger.warn(FAL_LOG_COMPONENT, "REVE_NUM_IMAGES_INVALID", {
+      input: value,
+      defaultValue: MIN_REVE_IMAGES,
+    });
+    return MIN_REVE_IMAGES;
+  }
+
+  const rounded = Math.floor(value);
+  const clamped = Math.min(Math.max(rounded, MIN_REVE_IMAGES), MAX_REVE_IMAGES);
+
+  if (rounded !== value || clamped !== rounded) {
+    debugLogger.warn(FAL_LOG_COMPONENT, "REVE_NUM_IMAGES_ADJUSTED", {
+      originalValue: value,
+      roundedValue: rounded,
+      clampedValue: clamped,
+      min: MIN_REVE_IMAGES,
+      max: MAX_REVE_IMAGES,
+    });
+  }
+
+  return clamped;
+};
+
+const truncateRevePrompt = (prompt: string): string => {
+  if (prompt.length > MAX_REVE_PROMPT_LENGTH) {
+    debugLogger.warn(FAL_LOG_COMPONENT, "REVE_PROMPT_TRUNCATED", {
+      originalLength: prompt.length,
+      maxLength: MAX_REVE_PROMPT_LENGTH,
+    });
+  }
+
+  return prompt.length > MAX_REVE_PROMPT_LENGTH
+    ? prompt.slice(0, MAX_REVE_PROMPT_LENGTH)
+    : prompt;
+};
+
+const validateRevePrompt = (prompt: string): void => {
+  if (typeof prompt !== "string") {
+    throw new Error("Prompt must be provided as a string.");
+  }
+
+  const trimmedPrompt = prompt.trim();
+
+  if (!trimmedPrompt) {
+    throw new Error("Prompt cannot be empty.");
+  }
+
+  if (trimmedPrompt.length > MAX_REVE_PROMPT_LENGTH) {
+    throw new Error(
+      `Prompt must be ${MAX_REVE_PROMPT_LENGTH} characters or fewer.`
+    );
+  }
+};
+
+const validateReveNumImages = (value?: number): void => {
+  if (value === undefined || value === null) {
+    return;
+  }
+
+  if (!Number.isFinite(value)) {
+    throw new Error("Number of images must be a finite value.");
+  }
+
+  if (!Number.isInteger(value)) {
+    throw new Error("Number of images must be a whole number.");
+  }
+
+  if (value < MIN_REVE_IMAGES || value > MAX_REVE_IMAGES) {
+    throw new Error(
+      `Reve supports between ${MIN_REVE_IMAGES} and ${MAX_REVE_IMAGES} images per request. You requested ${value}.`
+    );
+  }
+};
+
 // Multi-model generation result
 export type MultiModelGenerationResult = Record<string, GenerationResult>;
 
@@ -65,6 +155,8 @@ class FalAIClient {
 
   constructor() {
     // Try to get API key from environment variables
+    // TODO: Move API key retrieval to a secure backend/Electron IPC channel so the key never ships to the browser bundle.
+    // Short-term mitigation: avoid logging the key and rely on server-side rate limiting as documented in ops runbook.
     this.apiKey =
       import.meta.env.VITE_FAL_API_KEY ||
       (typeof window !== "undefined" &&
@@ -72,8 +164,10 @@ class FalAIClient {
       null;
 
     if (!this.apiKey) {
-      console.warn(
-        "[FalAI] No API key found. Set VITE_FAL_API_KEY environment variable to enable text-to-image generation."
+      debugLogger.error(
+        FAL_LOG_COMPONENT,
+        "API_KEY_MISSING",
+        "FAL API key not found at initialization. Set VITE_FAL_API_KEY or configure it in Settings."
       );
     }
   }
@@ -94,8 +188,10 @@ class FalAIClient {
       ? endpoint
       : `${this.baseUrl}${endpoint}`;
 
-    console.log("[FalAI] Making direct API request to:", requestUrl);
-    console.log("[FalAI] Request params:", params);
+    debugLogger.log(FAL_LOG_COMPONENT, "REQUEST_START", {
+      endpoint: requestUrl,
+      params,
+    });
 
     // Make direct API call to fal.run instead of proxy
     const response = await fetch(requestUrl, {
@@ -107,7 +203,10 @@ class FalAIClient {
       body: JSON.stringify(params),
     });
 
-    console.log("[FalAI] Response status:", response.status);
+    debugLogger.log(FAL_LOG_COMPONENT, "REQUEST_STATUS", {
+      endpoint: requestUrl,
+      status: response.status,
+    });
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
@@ -150,7 +249,10 @@ class FalAIClient {
     }
 
     const result = (await response.json()) as T;
-    console.log("[FalAI] API response:", result);
+    debugLogger.log(FAL_LOG_COMPONENT, "REQUEST_SUCCESS", {
+      endpoint: requestUrl,
+      responseType: typeof result,
+    });
     return result;
   }
 
@@ -313,8 +415,13 @@ class FalAIClient {
           if (validV4Sizes.includes(settings.imageSize)) {
             params.image_size = settings.imageSize;
           } else {
-            console.warn(
-              `[SeedDream V4] Invalid image_size "${settings.imageSize}", defaulting to "square_hd"`
+            debugLogger.warn(
+              FAL_LOG_COMPONENT,
+              "SEEDDREAM_V4_INVALID_IMAGE_SIZE",
+              {
+                requestedSize: settings.imageSize,
+                fallback: "square_hd",
+              }
             );
             params.image_size = "square_hd";
           }
@@ -331,9 +438,10 @@ class FalAIClient {
           } else {
             params.image_size = "square"; // 1024x1024
           }
-          console.log(
-            `[SeedDream V4] Converted numeric size ${settings.imageSize} -> "${params.image_size}"`
-          );
+          debugLogger.log(FAL_LOG_COMPONENT, "SEEDDREAM_V4_SIZE_COERCED", {
+            inputSize: settings.imageSize,
+            coercedSize: params.image_size,
+          });
         } else {
           // Default fallback
           params.image_size = "square_hd";
@@ -366,7 +474,13 @@ class FalAIClient {
 
       const params = this.convertSettingsToParams(model, prompt, settings);
 
-      console.log(`Generating with ${model.name}:`, { prompt, params });
+      debugLogger.log(FAL_LOG_COMPONENT, "MODEL_GENERATION_START", {
+        model: model.name,
+        modelKey,
+        promptPreview: prompt.slice(0, 120),
+        promptLength: prompt.length,
+        params,
+      });
 
       const response = await this.makeRequest(model.endpoint, params);
 
@@ -418,10 +532,10 @@ class FalAIClient {
     prompt: string,
     settings: GenerationSettings
   ): Promise<MultiModelGenerationResult> {
-    console.log(
-      `Starting multi-model generation with ${modelKeys.length} models:`,
-      modelKeys
-    );
+    debugLogger.log(FAL_LOG_COMPONENT, "MULTI_MODEL_GENERATION_START", {
+      modelKeys,
+      modelCount: modelKeys.length,
+    });
 
     // Create promises for all model generations
     const generationPromises = modelKeys.map(async (modelKey) => {
@@ -481,7 +595,9 @@ class FalAIClient {
   // API key management
   setApiKey(apiKey: string): void {
     this.apiKey = apiKey;
-    console.log("[FalAI] API key updated");
+    debugLogger.log(FAL_LOG_COMPONENT, "API_KEY_UPDATED", {
+      keyLength: apiKey?.length ?? 0,
+    });
   }
 
   hasApiKey(): boolean {
@@ -511,7 +627,9 @@ class FalAIClient {
     try {
       // Check API key first
       if (!this.hasApiKey()) {
-        console.warn("[FalAI] Cannot test model availability: no API key");
+        debugLogger.warn(FAL_LOG_COMPONENT, "MODEL_TEST_SKIPPED_NO_KEY", {
+          modelKey,
+        });
         return false;
       }
 
@@ -591,7 +709,9 @@ class FalAIClient {
     try {
       const endpoint = "https://fal.run/fal-ai/veo3.1/fast";
 
-      console.log("[Veo 3.1 Fast] Generating text-to-video with params:", params);
+      debugLogger.log(FAL_LOG_COMPONENT, "VEO31_FAST_TEXT_TO_VIDEO_REQUEST", {
+        params,
+      });
 
       const response = await this.makeRequest<Veo31Response>(endpoint, params as unknown as Record<string, unknown>);
 
@@ -630,7 +750,9 @@ class FalAIClient {
     try {
       const endpoint = "https://fal.run/fal-ai/veo3.1/fast/image-to-video";
 
-      console.log("[Veo 3.1 Fast] Generating image-to-video with params:", params);
+      debugLogger.log(FAL_LOG_COMPONENT, "VEO31_FAST_IMAGE_TO_VIDEO_REQUEST", {
+        params,
+      });
 
       const response = await this.makeRequest<Veo31Response>(endpoint, params as unknown as Record<string, unknown>);
 
@@ -669,7 +791,9 @@ class FalAIClient {
     try {
       const endpoint = "https://fal.run/fal-ai/veo3.1/fast/first-last-frame-to-video";
 
-      console.log("[Veo 3.1 Fast] Generating frame-to-video with params:", params);
+      debugLogger.log(FAL_LOG_COMPONENT, "VEO31_FAST_FRAME_TO_VIDEO_REQUEST", {
+        params,
+      });
 
       const response = await this.makeRequest<Veo31Response>(endpoint, params as unknown as Record<string, unknown>);
 
@@ -712,7 +836,9 @@ class FalAIClient {
     try {
       const endpoint = "https://fal.run/fal-ai/veo3.1"; // No /fast suffix
 
-      console.log("[Veo 3.1 Standard] Generating text-to-video with params:", params);
+      debugLogger.log(FAL_LOG_COMPONENT, "VEO31_STANDARD_TEXT_TO_VIDEO_REQUEST", {
+        params,
+      });
 
       const response = await this.makeRequest<Veo31Response>(endpoint, params as unknown as Record<string, unknown>);
 
@@ -751,7 +877,9 @@ class FalAIClient {
     try {
       const endpoint = "https://fal.run/fal-ai/veo3.1/image-to-video"; // No /fast
 
-      console.log("[Veo 3.1 Standard] Generating image-to-video with params:", params);
+      debugLogger.log(FAL_LOG_COMPONENT, "VEO31_STANDARD_IMAGE_TO_VIDEO_REQUEST", {
+        params,
+      });
 
       const response = await this.makeRequest<Veo31Response>(endpoint, params as unknown as Record<string, unknown>);
 
@@ -790,7 +918,9 @@ class FalAIClient {
     try {
       const endpoint = "https://fal.run/fal-ai/veo3.1/first-last-frame-to-video"; // No /fast
 
-      console.log("[Veo 3.1 Standard] Generating frame-to-video with params:", params);
+      debugLogger.log(FAL_LOG_COMPONENT, "VEO31_STANDARD_FRAME_TO_VIDEO_REQUEST", {
+        params,
+      });
 
       const response = await this.makeRequest<Veo31Response>(endpoint, params as unknown as Record<string, unknown>);
 
@@ -815,6 +945,154 @@ class FalAIClient {
         status: "failed",
         message: errorMessage,
       };
+    }
+  }
+
+  /**
+   * Generate images with Reve Text-to-Image model
+   *
+   * @param params - Reve text-to-image parameters
+   * @returns Image generation response with URLs
+   *
+   * @example
+   * const result = await client.generateReveTextToImage({
+   *   prompt: "A serene mountain landscape at sunset",
+   *   aspect_ratio: "16:9",
+   *   num_images: 2,
+   *   output_format: "png"
+   * });
+   */
+  async generateReveTextToImage(
+    params: ReveTextToImageInput
+  ): Promise<ReveTextToImageOutput> {
+    let sanitizedParams: ReveTextToImageInput | null = null;
+
+    try {
+      sanitizedParams = {
+        ...params,
+        prompt: truncateRevePrompt(params.prompt),
+        num_images: clampReveNumImages(params.num_images),
+      };
+
+      // Retrieve endpoint from single source of truth
+      const model = TEXT2IMAGE_MODELS["reve-text-to-image"];
+      if (!model) {
+        throw new Error("Reve text-to-image model not found in configuration");
+      }
+      const endpoint = model.endpoint;
+
+      debugLogger.log(FAL_LOG_COMPONENT, "REVE_TEXT_TO_IMAGE_REQUEST", {
+        promptLength: sanitizedParams.prompt.length,
+        promptPreview: sanitizedParams.prompt.slice(0, 120),
+        num_images: sanitizedParams.num_images,
+        aspect_ratio: sanitizedParams.aspect_ratio,
+        output_format: sanitizedParams.output_format,
+      });
+
+      const response = await this.makeRequest<ReveTextToImageOutput>(
+        endpoint,
+        sanitizedParams as unknown as Record<string, unknown>
+      );
+
+      if (!response.images || response.images.length === 0) {
+        throw new Error("No images in Reve Text-to-Image response");
+      }
+
+      debugLogger.log(FAL_LOG_COMPONENT, "REVE_TEXT_TO_IMAGE_COMPLETED", {
+        imageCount: response.images.length,
+      });
+      return response;
+    } catch (error) {
+      handleAIServiceError(error, "Reve Text-to-Image generation", {
+        operation: "generateReveTextToImage",
+        promptLength: sanitizedParams?.prompt.length ?? params.prompt?.length,
+        num_images: sanitizedParams?.num_images ?? params.num_images,
+        aspect_ratio: sanitizedParams?.aspect_ratio ?? params.aspect_ratio,
+        output_format: sanitizedParams?.output_format ?? params.output_format,
+      });
+
+      throw error instanceof Error ? error : new Error("Reve Text-to-Image generation failed");
+    }
+  }
+
+  /**
+   * Edit images with Reve Edit model
+   *
+   * @param params - Reve edit parameters
+   * @returns Edited image response with URLs
+   *
+   * @example
+   * const result = await client.generateReveEdit({
+   *   prompt: "Make the sky sunset orange",
+   *   image_url: "https://example.com/image.jpg",
+   *   num_images: 2
+   * });
+   */
+  async generateReveEdit(
+    params: ReveEditInput
+  ): Promise<ReveEditOutput> {
+    let sanitizedParams: ReveEditInput | null = null;
+
+    try {
+      sanitizedParams = {
+        ...params,
+        prompt: truncateRevePrompt(params.prompt.trim()),
+        num_images: clampReveNumImages(params.num_images),
+      };
+
+      // Validate sanitized inputs before issuing the request
+      validateRevePrompt(sanitizedParams.prompt);
+      validateReveNumImages(sanitizedParams.num_images);
+
+      const trimmedImageUrl = sanitizedParams.image_url?.trim();
+      if (!trimmedImageUrl || !/^(https?:|data:)/i.test(trimmedImageUrl)) {
+        throw new Error("image_url must be http(s) or data: URI");
+      }
+      sanitizedParams = {
+        ...sanitizedParams,
+        image_url: trimmedImageUrl,
+      };
+
+      // Retrieve endpoint from single source of truth
+      const { MODEL_ENDPOINTS } = await import("@/lib/image-edit-client");
+      const modelConfig = MODEL_ENDPOINTS["reve-edit"];
+      if (!modelConfig) {
+        throw new Error("Reve edit model not found in configuration");
+      }
+      const endpoint = `https://fal.run/${modelConfig.endpoint}`;
+
+      {
+        const { prompt, image_url, ...rest } = sanitizedParams;
+        debugLogger.log(FAL_LOG_COMPONENT, "REVE_EDIT_REQUEST", {
+          ...rest,
+          hasImage: !!image_url,
+          promptLength: prompt.length,
+          promptPreview: prompt.slice(0, 120),
+        });
+      }
+
+      const response = await this.makeRequest<ReveEditOutput>(
+        endpoint,
+        sanitizedParams as unknown as Record<string, unknown>
+      );
+
+      if (!response.images || response.images.length === 0) {
+        throw new Error("No images in Reve Edit response");
+      }
+
+      debugLogger.log(FAL_LOG_COMPONENT, "REVE_EDIT_COMPLETED", {
+        imageCount: response.images.length,
+      });
+      return response;
+    } catch (error) {
+      handleAIServiceError(error, "Reve Edit generation", {
+        operation: "generateReveEdit",
+        promptLength: sanitizedParams?.prompt.length ?? params.prompt.length,
+        num_images: sanitizedParams?.num_images ?? params.num_images,
+        hasImage: !!(sanitizedParams?.image_url ?? params.image_url),
+      });
+
+      throw error instanceof Error ? error : new Error("Reve Edit generation failed");
     }
   }
 }
@@ -871,18 +1149,20 @@ function convertV4Parameters(params: any) {
   let imageUrls =
     params.image_urls || (params.imageUrl ? [params.imageUrl] : []);
   if (Array.isArray(imageUrls) && imageUrls.length > 10) {
-    console.warn(
-      `[FAL AI] Truncating image_urls from ${imageUrls.length} to 10 (max allowed)`
-    );
+    debugLogger.warn(FAL_LOG_COMPONENT, "FAL_V4_IMAGE_URLS_TRUNCATED", {
+      originalCount: imageUrls.length,
+      maxAllowed: 10,
+    });
     imageUrls = imageUrls.slice(0, 10);
   }
 
   // Sanitize prompt - truncate to 5000 characters max
   let prompt = params.prompt || "";
   if (prompt.length > 5000) {
-    console.warn(
-      `[FAL AI] Truncating prompt from ${prompt.length} to 5000 characters (max allowed)`
-    );
+    debugLogger.warn(FAL_LOG_COMPONENT, "FAL_V4_PROMPT_TRUNCATED", {
+      originalLength: prompt.length,
+      maxLength: 5000,
+    });
     prompt = prompt.substring(0, 5000);
   }
 
@@ -902,9 +1182,10 @@ function convertV4Parameters(params: any) {
     typeof imageSize === "string" &&
     !validPresets.includes(imageSize)
   ) {
-    console.warn(
-      `[FAL AI] Invalid image_size "${imageSize}", defaulting to "square_hd"`
-    );
+    debugLogger.warn(FAL_LOG_COMPONENT, "FAL_V4_IMAGE_SIZE_INVALID", {
+      requestedSize: imageSize,
+      fallback: "square_hd",
+    });
     imageSize = "square_hd";
   }
 
@@ -941,9 +1222,10 @@ function convertNanoBananaParameters(params: any) {
   const imageUrls = Array.isArray(urls) ? urls.slice(0, 10) : [];
 
   if (Array.isArray(urls) && urls.length > 10) {
-    console.warn(
-      `[FAL AI Nano Banana] Truncating image_urls from ${urls.length} to 10 (max allowed)`
-    );
+    debugLogger.warn(FAL_LOG_COMPONENT, "FAL_NANO_IMAGE_URLS_TRUNCATED", {
+      originalCount: urls.length,
+      maxAllowed: 10,
+    });
   }
 
   // Clamp num_images to valid range (1-4)
@@ -953,9 +1235,12 @@ function convertNanoBananaParameters(params: any) {
   );
 
   if (numImages !== (params.num_images ?? params.numImages ?? 1)) {
-    console.warn(
-      `[FAL AI Nano Banana] Clamping num_images to ${numImages} (valid range: 1-4)`
-    );
+    debugLogger.warn(FAL_LOG_COMPONENT, "FAL_NANO_NUM_IMAGES_CLAMPED", {
+      requested: params.num_images ?? params.numImages ?? 1,
+      clamped: numImages,
+      min: 1,
+      max: 4,
+    });
   }
 
   // Normalize output format to uppercase
@@ -965,9 +1250,10 @@ function convertNanoBananaParameters(params: any) {
   ).toUpperCase();
 
   if (!validFormats.includes(outputFormat)) {
-    console.warn(
-      `[FAL AI Nano Banana] Invalid output_format "${outputFormat}", defaulting to "PNG"`
-    );
+    debugLogger.warn(FAL_LOG_COMPONENT, "FAL_NANO_OUTPUT_FORMAT_INVALID", {
+      requestedFormat: outputFormat,
+      fallback: "PNG",
+    });
     outputFormat = "PNG";
   }
 
@@ -998,9 +1284,10 @@ function convertFluxParameters(params: any) {
   const imageUrls = Array.isArray(urls) ? urls.slice(0, 10) : [];
 
   if (Array.isArray(urls) && urls.length > 10) {
-    console.warn(
-      `[FAL AI FLUX] Truncating image_urls from ${urls.length} to 10 (max allowed)`
-    );
+    debugLogger.warn(FAL_LOG_COMPONENT, "FAL_FLUX_IMAGE_URLS_TRUNCATED", {
+      originalCount: urls.length,
+      maxAllowed: 10,
+    });
   }
 
   // Clamp num_images to valid range (1-4) - consistent with other models
@@ -1010,9 +1297,12 @@ function convertFluxParameters(params: any) {
   );
 
   if (numImages !== (params.num_images ?? params.numImages ?? 1)) {
-    console.warn(
-      `[FAL AI FLUX] Clamping num_images to ${numImages} (valid range: 1-4)`
-    );
+    debugLogger.warn(FAL_LOG_COMPONENT, "FAL_FLUX_NUM_IMAGES_CLAMPED", {
+      requested: params.num_images ?? params.numImages ?? 1,
+      clamped: numImages,
+      min: 1,
+      max: 4,
+    });
   }
 
   // Clamp guidance_scale to reasonable range

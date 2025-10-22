@@ -18,7 +18,8 @@ export interface ImageEditRequest {
     | "flux-kontext"
     | "flux-kontext-max"
     | "seeddream-v4"
-    | "nano-banana";
+    | "nano-banana"
+    | "reve-edit";
   guidanceScale?: number;
   steps?: number;
   seed?: number;
@@ -28,9 +29,9 @@ export interface ImageEditRequest {
   // New V4-specific parameters
   imageSize?: string | number; // String presets ("square_hd", "square", etc.) or custom pixel values for V4
   maxImages?: number; // 1-10 for V4
-  syncMode?: boolean; // V4 and Nano Banana
+  syncMode?: boolean; // V4, Nano Banana, and Reve Edit
   enableSafetyChecker?: boolean; // V4
-  outputFormat?: "JPEG" | "PNG"; // Nano Banana only
+  outputFormat?: "JPEG" | "PNG" | "png" | "jpeg" | "webp"; // Nano Banana and Reve Edit
 }
 
 export interface ImageEditResponse {
@@ -55,7 +56,7 @@ interface ModelEndpoint {
   defaultParams: Record<string, any>;
 }
 
-const MODEL_ENDPOINTS: Record<string, ModelEndpoint> = {
+export const MODEL_ENDPOINTS: Record<string, ModelEndpoint> = {
   "seededit": {
     endpoint: "fal-ai/bytedance/seededit/v3/edit-image",
     defaultParams: {
@@ -99,6 +100,16 @@ const MODEL_ENDPOINTS: Record<string, ModelEndpoint> = {
     defaultParams: {
       num_images: 1,
       output_format: "PNG",
+      sync_mode: false,
+    },
+  },
+
+  // Add Reve Edit endpoint
+  "reve-edit": {
+    endpoint: "fal-ai/reve/edit",
+    defaultParams: {
+      num_images: 1,
+      output_format: "png",
       sync_mode: false,
     },
   },
@@ -710,6 +721,30 @@ export function getImageEditModels() {
           type: "select",
           options: ["JPEG", "PNG"],
           default: "PNG",
+        },
+        syncMode: { type: "boolean", default: false },
+      },
+    },
+
+    // Add Reve Edit model
+    {
+      id: "reve-edit",
+      name: "Reve Edit",
+      description: "Cost-effective image editing with strong aesthetic quality",
+      provider: "fal.ai",
+      estimatedCost: "$0.04",
+      features: [
+        "Cost-effective editing",
+        "Strong aesthetics",
+        "Fast processing",
+        "Multiple formats",
+      ],
+      parameters: {
+        numImages: { min: 1, max: 4, default: 1, step: 1 },
+        outputFormat: {
+          type: "select",
+          options: ["png", "jpeg", "webp"],
+          default: "png",
         },
         syncMode: { type: "boolean", default: false },
       },

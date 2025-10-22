@@ -38,8 +38,29 @@ import { debugLogger } from "@/lib/debug-logger";
 // Import extracted hooks and types
 import { useAIGeneration } from "./use-ai-generation";
 import { useAIHistory } from "./use-ai-history";
-import { AI_MODELS, ERROR_MESSAGES, UPLOAD_CONSTANTS } from "./ai-constants";
+import {
+  AI_MODELS,
+  ERROR_MESSAGES,
+  REVE_TEXT_TO_IMAGE_MODEL,
+  UPLOAD_CONSTANTS,
+} from "./ai-constants";
 import type { AIActiveTab } from "./ai-types";
+
+type ReveAspectRatioOption =
+  (typeof REVE_TEXT_TO_IMAGE_MODEL.aspectRatios)[number]["value"];
+type ReveOutputFormatOption =
+  (typeof REVE_TEXT_TO_IMAGE_MODEL.outputFormats)[number];
+
+const REVE_NUM_IMAGE_OPTIONS = Array.from(
+  {
+    length:
+      REVE_TEXT_TO_IMAGE_MODEL.numImagesRange.max -
+      REVE_TEXT_TO_IMAGE_MODEL.numImagesRange.min +
+      1,
+  },
+  (_, index) =>
+    REVE_TEXT_TO_IMAGE_MODEL.numImagesRange.min + index
+);
 
 export function AiView() {
   // UI-only state (not related to generation logic)
@@ -67,6 +88,18 @@ export function AiView() {
   const [firstFramePreview, setFirstFramePreview] = useState<string | null>(null);
   const [lastFrame, setLastFrame] = useState<File | null>(null);
   const [lastFramePreview, setLastFramePreview] = useState<string | null>(null);
+
+  // Reve Text-to-Image state
+  const [reveAspectRatio, setReveAspectRatio] = useState<ReveAspectRatioOption>(
+    REVE_TEXT_TO_IMAGE_MODEL.defaultAspectRatio
+  );
+  const [reveNumImages, setReveNumImages] = useState<number>(
+    REVE_TEXT_TO_IMAGE_MODEL.defaultNumImages
+  );
+  const [reveOutputFormat, setReveOutputFormat] =
+    useState<ReveOutputFormatOption>(
+      REVE_TEXT_TO_IMAGE_MODEL.defaultOutputFormat
+    );
 
   // Use global AI tab state (CRITICAL: preserve global state integration)
   const { aiActiveTab: activeTab, setAiActiveTab: setActiveTab } =
@@ -146,6 +179,15 @@ export function AiView() {
       }
     };
   }, []);
+
+  // Reset Reve state when model is deselected
+  useEffect(() => {
+    if (!selectedModels.some(id => id === "reve-text-to-image")) {
+      setReveAspectRatio("3:2");
+      setReveNumImages(1);
+      setReveOutputFormat("png");
+    }
+  }, [selectedModels]);
 
   // Image handling
   const handleImageSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -258,6 +300,11 @@ export function AiView() {
         : (generation.veo31Settings.generateAudio ? 0.40 : 0.20);
 
       modelCost = durationSeconds * pricePerSecond;
+    }
+    // Reve Text-to-Image pricing calculation
+    else if (modelId === "reve-text-to-image") {
+      modelCost =
+        REVE_TEXT_TO_IMAGE_MODEL.pricing.perImage * reveNumImages; // Use configured per-image pricing
     }
 
     return total + modelCost;
@@ -812,6 +859,19 @@ export function AiView() {
                     Note: Remix pricing varies by source video duration
                   </div>
                 )}
+                {selectedModels.some(id => id === "reve-text-to-image") && (
+                  <div className="text-xs text-muted-foreground text-right">
+                    <span className="font-medium">Reve Cost:</span> $
+                    {(
+                      REVE_TEXT_TO_IMAGE_MODEL.pricing.perImage * reveNumImages
+                    ).toFixed(2)}
+                    {reveNumImages > 1 && (
+                      <span className="ml-1 opacity-75">
+                        ({REVE_TEXT_TO_IMAGE_MODEL.pricing.perImage.toFixed(2)} × {reveNumImages} images)
+                      </span>
+                    )}
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -992,6 +1052,179 @@ export function AiView() {
                   className="h-4 w-4"
                 />
               </div>
+            </div>
+          )}
+
+          {/* Reve Text-to-Image Settings */}
+          {selectedModels.some(id => id === "reve-text-to-image") && (
+            <div className="space-y-3 p-3 bg-muted/30 rounded-md border border-muted">
+              <Label className="text-xs font-medium">Reve Text-to-Image Settings</Label>
+
+              {/* Aspect Ratio Selector */}
+              <div className="space-y-1">
+                <Label htmlFor="reve-aspect" className="text-xs">Aspect Ratio</Label>
+                <Select
+                  value={reveAspectRatio}
+                  onValueChange={(value) =>
+                    setReveAspectRatio(value as ReveAspectRatioOption)
+                  }
+                >
+                  <SelectTrigger id="reve-aspect" className="h-8 text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {REVE_TEXT_TO_IMAGE_MODEL.aspectRatios.map(
+                      ({ value, label }) => (
+                        <SelectItem key={value} value={value}>
+                          {label}
+                        </SelectItem>
+                      )
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Number of Images */}
+              <div className="space-y-1">
+                <Label htmlFor="reve-num-images" className="text-xs">Number of Images</Label>
+                <Select
+                  value={String(reveNumImages)}
+                  onValueChange={(v) => setReveNumImages(Number(v))}
+                >
+                  <SelectTrigger id="reve-num-images" className="h-8 text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {REVE_NUM_IMAGE_OPTIONS.map((count) => {
+                      const totalPrice =
+                        REVE_TEXT_TO_IMAGE_MODEL.pricing.perImage * count;
+                      return (
+                        <SelectItem key={count} value={String(count)}>
+                          {count} image{count > 1 ? "s" : ""} (${totalPrice.toFixed(2)})
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Output Format */}
+              <div className="space-y-1">
+                <Label htmlFor="reve-format" className="text-xs">Output Format</Label>
+                <Select
+                  value={reveOutputFormat}
+                  onValueChange={(value) =>
+                    setReveOutputFormat(value as ReveOutputFormatOption)
+                  }
+                >
+                  <SelectTrigger id="reve-format" className="h-8 text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {REVE_TEXT_TO_IMAGE_MODEL.outputFormats.map((format) => (
+                      <SelectItem key={format} value={format}>
+                        {format.toUpperCase()}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          )}
+
+          {/* Reve Edit Image Upload - Shows when Reve Edit functionality is needed */}
+          {activeTab === "image" && selectedModels.some(id => id === "reve-text-to-image") && (
+            <div className="space-y-3 p-3 bg-muted/30 rounded-md border border-muted">
+              <Label className="text-xs font-medium">Reve Edit (Optional)</Label>
+              <p className="text-xs text-muted-foreground">
+                Upload an image to edit it with Reve AI, or leave empty for text-to-image generation.
+              </p>
+
+              {/* Image Upload */}
+              <div className="space-y-2">
+                <Label className="text-xs">Source Image (Optional)</Label>
+                <label
+                  htmlFor="reve-edit-image-input"
+                  className={`block border-2 border-dashed rounded-lg cursor-pointer transition-colors min-h-[100px] focus-within:outline-none focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2 ${
+                    generation.uploadedImageForEdit
+                      ? "border-primary/50 bg-primary/5 p-2"
+                      : "border-muted-foreground/25 hover:border-muted-foreground/50 p-3"
+                  }`}
+                  aria-label={generation.uploadedImageForEdit ? "Change image" : "Upload image to edit"}
+                >
+                  {generation.uploadedImageForEdit && generation.uploadedImagePreview ? (
+                    <div className="relative flex flex-col items-center justify-center h-full">
+                      <img
+                        src={generation.uploadedImagePreview}
+                        alt={generation.uploadedImageForEdit.name}
+                        className="max-w-full max-h-20 mx-auto rounded object-contain"
+                      />
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="destructive"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          generation.clearUploadedImageForEdit();
+                        }}
+                        className="absolute top-1 right-1 h-6 w-6 p-0 flex items-center justify-center bg-red-500 hover:bg-red-600 text-white rounded-full shadow-sm"
+                        aria-label="Remove uploaded image"
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
+                      <div className="mt-1 text-xs text-muted-foreground text-center">
+                        {generation.uploadedImageForEdit.name}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center h-full space-y-1 text-center">
+                      <Upload className="size-6 text-muted-foreground" />
+                      <div className="text-xs text-muted-foreground">
+                        Upload image to edit
+                      </div>
+                      <div className="text-xs text-muted-foreground/70">
+                        PNG, JPEG, WebP, AVIF, HEIF (max 10MB)
+                      </div>
+                      <div className="text-xs text-muted-foreground/70">
+                        128×128 to 4096×4096 pixels
+                      </div>
+                    </div>
+                  )}
+                  <input
+                    id="reve-edit-image-input"
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp,image/avif,image/heif"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+
+                      try {
+                        await generation.handleImageUploadForEdit(file);
+                        setError(null);
+                      } catch (err) {
+                        setError(err instanceof Error ? err.message : "Failed to upload image");
+                      }
+                    }}
+                    className="sr-only"
+                  />
+                </label>
+              </div>
+
+              {generation.uploadedImageForEdit && (
+                <div className="space-y-2">
+                  <Label className="text-xs">Edit Instructions</Label>
+                  <Textarea
+                    value={prompt}
+                    onChange={(e) => setPrompt(e.target.value)}
+                    placeholder="Describe the edits you want to make (e.g., 'Make the sky sunset orange', 'Add snow to the ground')"
+                    className="min-h-[80px] text-xs resize-none"
+                    maxLength={2560}
+                  />
+                  <div className="text-xs text-muted-foreground text-right">
+                    {prompt.length} / 2560 characters
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
