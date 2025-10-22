@@ -135,7 +135,7 @@ export interface ReveEditInput {
 export interface ReveEditOutput {
   images: Array<{
     url: string;
-    content_type: string;
+    content_type?: string;
     file_name?: string;
     file_size?: number;
     width?: number;

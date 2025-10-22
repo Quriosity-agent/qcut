@@ -976,8 +976,7 @@ class FalAIClient {
           },
       });
 
-      const errorMessage = error instanceof Error ? error.message : "Reve Text-to-Image generation failed";
-      throw new Error(errorMessage);
+      throw error instanceof Error ? error : new Error("Reve Text-to-Image generation failed");
     }
   }
 
