@@ -1,5 +1,5 @@
 import { TEXT2IMAGE_MODELS, type Text2ImageModel } from "./text2image-models";
-import { debugLogger, type LogData } from "./debug-logger";
+import { debugLogger } from "./debug-logger";
 import {
   handleAIServiceError,
   handleError,
@@ -186,7 +186,7 @@ class FalAIClient {
     const result = (await response.json()) as T;
     debugLogger.log(FAL_LOG_COMPONENT, "REQUEST_SUCCESS", {
       endpoint: requestUrl,
-      response: result as LogData,
+      responseType: typeof result,
     });
     return result;
   }
@@ -350,8 +350,13 @@ class FalAIClient {
           if (validV4Sizes.includes(settings.imageSize)) {
             params.image_size = settings.imageSize;
           } else {
-            console.warn(
-              `[SeedDream V4] Invalid image_size "${settings.imageSize}", defaulting to "square_hd"`
+            debugLogger.warn(
+              FAL_LOG_COMPONENT,
+              "SEEDDREAM_V4_INVALID_IMAGE_SIZE",
+              {
+                requestedSize: settings.imageSize,
+                fallback: "square_hd",
+              }
             );
             params.image_size = "square_hd";
           }
@@ -368,9 +373,10 @@ class FalAIClient {
           } else {
             params.image_size = "square"; // 1024x1024
           }
-          console.log(
-            `[SeedDream V4] Converted numeric size ${settings.imageSize} -> "${params.image_size}"`
-          );
+          debugLogger.log(FAL_LOG_COMPONENT, "SEEDDREAM_V4_SIZE_COERCED", {
+            inputSize: settings.imageSize,
+            coercedSize: params.image_size,
+          });
         } else {
           // Default fallback
           params.image_size = "square_hd";
@@ -403,7 +409,13 @@ class FalAIClient {
 
       const params = this.convertSettingsToParams(model, prompt, settings);
 
-      console.log(`Generating with ${model.name}:`, { prompt, params });
+      debugLogger.log(FAL_LOG_COMPONENT, "MODEL_GENERATION_START", {
+        model: model.name,
+        modelKey,
+        promptPreview: prompt.slice(0, 120),
+        promptLength: prompt.length,
+        params,
+      });
 
       const response = await this.makeRequest(model.endpoint, params);
 
