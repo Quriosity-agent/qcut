@@ -27,7 +27,8 @@ export interface AdjustmentState {
     | "flux-kontext"
     | "flux-kontext-max"
     | "seeddream-v4"
-    | "nano-banana";
+    | "nano-banana"
+    | "reve-edit";
 
   // Parameters
   prompt: string;
@@ -42,9 +43,9 @@ export interface AdjustmentState {
     // Add new V4-specific parameters (optional for backward compatibility)
     imageSize?: string; // "square_hd", "square", etc. for V4
     maxImages?: number; // 1-10 for V4
-    syncMode?: boolean; // V4 and Nano Banana
+    syncMode?: boolean; // V4, Nano Banana, and Reve Edit
     enableSafetyChecker?: boolean; // V4
-    outputFormat?: "JPEG" | "PNG"; // Nano Banana only
+    outputFormat?: "JPEG" | "PNG" | "png" | "jpeg" | "webp"; // Nano Banana and Reve Edit
   };
 
   // Edit history
@@ -145,6 +146,18 @@ const getDefaultParameters = (model: AdjustmentState["selectedModel"]) => {
         numImages: 1,
         // Nano Banana-specific parameters
         outputFormat: "PNG" as const,
+        syncMode: false,
+      };
+    case "reve-edit":
+      // Add Reve Edit parameters
+      return {
+        guidanceScale: 2.5, // Not used but kept for interface consistency
+        steps: 20, // Not used but kept for interface consistency
+        seed: undefined,
+        safetyTolerance: 2, // Not used but kept for interface consistency
+        numImages: 1,
+        // Reve Edit-specific parameters
+        outputFormat: "png" as const,
         syncMode: false,
       };
   }
