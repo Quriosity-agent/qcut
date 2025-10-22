@@ -56,7 +56,7 @@ interface ModelEndpoint {
   defaultParams: Record<string, any>;
 }
 
-const MODEL_ENDPOINTS: Record<string, ModelEndpoint> = {
+export const MODEL_ENDPOINTS: Record<string, ModelEndpoint> = {
   "seededit": {
     endpoint: "fal-ai/bytedance/seededit/v3/edit-image",
     defaultParams: {

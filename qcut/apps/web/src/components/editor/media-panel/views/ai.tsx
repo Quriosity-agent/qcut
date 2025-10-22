@@ -38,7 +38,12 @@ import { debugLogger } from "@/lib/debug-logger";
 // Import extracted hooks and types
 import { useAIGeneration } from "./use-ai-generation";
 import { useAIHistory } from "./use-ai-history";
-import { AI_MODELS, ERROR_MESSAGES, UPLOAD_CONSTANTS } from "./ai-constants";
+import {
+  AI_MODELS,
+  ERROR_MESSAGES,
+  REVE_TEXT_TO_IMAGE_MODEL,
+  UPLOAD_CONSTANTS,
+} from "./ai-constants";
 import type { AIActiveTab } from "./ai-types";
 
 export function AiView() {
@@ -277,7 +282,8 @@ export function AiView() {
     }
     // Reve Text-to-Image pricing calculation
     else if (modelId === "reve-text-to-image") {
-      modelCost = 0.04 * reveNumImages; // $0.04 per image
+      modelCost =
+        REVE_TEXT_TO_IMAGE_MODEL.pricing.perImage * reveNumImages; // Use configured per-image pricing
     }
 
     return total + modelCost;
@@ -835,10 +841,15 @@ export function AiView() {
                 {selectedModels.some(id => id === "reve-text-to-image") && (
                   <div className="text-xs text-muted-foreground text-right">
                     <span className="font-medium">Reve Cost:</span> $
-                    {(0.04 * reveNumImages).toFixed(2)}
+                    {(
+                      REVE_TEXT_TO_IMAGE_MODEL.pricing.perImage * reveNumImages
+                    ).toFixed(2)}
                     {reveNumImages > 1 && (
                       <span className="ml-1 opacity-75">
-                        (${(0.04).toFixed(2)} × {reveNumImages} images)
+                        (
+                          ${REVE_TEXT_TO_IMAGE_MODEL.pricing.perImage.toFixed(2)} ×{" "}
+                          {reveNumImages} images
+                        )
                       </span>
                     )}
                   </div>
@@ -1064,10 +1075,22 @@ export function AiView() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="1">1 image ($0.04)</SelectItem>
-                    <SelectItem value="2">2 images ($0.08)</SelectItem>
-                    <SelectItem value="3">3 images ($0.12)</SelectItem>
-                    <SelectItem value="4">4 images ($0.16)</SelectItem>
+                    <SelectItem value="1">
+                      1 image ($
+                      {REVE_TEXT_TO_IMAGE_MODEL.pricing.perImage.toFixed(2)})
+                    </SelectItem>
+                    <SelectItem value="2">
+                      2 images ($
+                      {(REVE_TEXT_TO_IMAGE_MODEL.pricing.perImage * 2).toFixed(2)})
+                    </SelectItem>
+                    <SelectItem value="3">
+                      3 images ($
+                      {(REVE_TEXT_TO_IMAGE_MODEL.pricing.perImage * 3).toFixed(2)})
+                    </SelectItem>
+                    <SelectItem value="4">
+                      4 images ($
+                      {(REVE_TEXT_TO_IMAGE_MODEL.pricing.perImage * 4).toFixed(2)})
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>

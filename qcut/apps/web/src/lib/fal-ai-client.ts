@@ -836,7 +836,12 @@ class FalAIClient {
     params: import("@/types/ai-generation").ReveTextToImageInput
   ): Promise<import("@/types/ai-generation").ReveTextToImageOutput> {
     try {
-      const endpoint = "https://fal.run/fal-ai/reve/text-to-image";
+      // Retrieve endpoint from single source of truth
+      const model = TEXT2IMAGE_MODELS["reve-text-to-image"];
+      if (!model) {
+        throw new Error("Reve text-to-image model not found in configuration");
+      }
+      const endpoint = model.endpoint;
 
       console.log("[Reve Text-to-Image] Generating with params:", params);
 
@@ -879,7 +884,13 @@ class FalAIClient {
     params: import("@/types/ai-generation").ReveEditInput
   ): Promise<import("@/types/ai-generation").ReveEditOutput> {
     try {
-      const endpoint = "https://fal.run/fal-ai/reve/edit";
+      // Retrieve endpoint from single source of truth
+      const { MODEL_ENDPOINTS } = await import("@/lib/image-edit-client");
+      const modelConfig = MODEL_ENDPOINTS["reve-edit"];
+      if (!modelConfig) {
+        throw new Error("Reve edit model not found in configuration");
+      }
+      const endpoint = `https://fal.run/${modelConfig.endpoint}`;
 
       console.log("[Reve Edit] Editing image with params:", params);
 
