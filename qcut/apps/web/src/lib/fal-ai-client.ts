@@ -81,6 +81,34 @@ const truncateRevePrompt = (prompt: string): string => {
     : prompt;
 };
 
+const validateRevePrompt = (prompt: string): void => {
+  if (prompt.length > MAX_REVE_PROMPT_LENGTH) {
+    throw new Error(
+      `Prompt is ${prompt.length} characters but the Reve models support a maximum of ${MAX_REVE_PROMPT_LENGTH}.`
+    );
+  }
+};
+
+const validateReveNumImages = (value?: number): void => {
+  if (value === undefined || value === null) {
+    return;
+  }
+
+  if (!Number.isFinite(value)) {
+    throw new Error("Number of images must be a finite value.");
+  }
+
+  if (!Number.isInteger(value)) {
+    throw new Error("Number of images must be a whole number.");
+  }
+
+  if (value < MIN_REVE_IMAGES || value > MAX_REVE_IMAGES) {
+    throw new Error(
+      `Reve supports between ${MIN_REVE_IMAGES} and ${MAX_REVE_IMAGES} images per request. You requested ${value}.`
+    );
+  }
+};
+
 // Multi-model generation result
 export type MultiModelGenerationResult = Record<string, GenerationResult>;
 
@@ -900,13 +928,18 @@ class FalAIClient {
   async generateReveTextToImage(
     params: ReveTextToImageInput
   ): Promise<ReveTextToImageOutput> {
-    const sanitizedParams: ReveTextToImageInput = {
-      ...params,
-      prompt: truncateRevePrompt(params.prompt),
-      num_images: clampReveNumImages(params.num_images),
-    };
+    let sanitizedParams: ReveTextToImageInput | null = null;
 
     try {
+      validateRevePrompt(params.prompt);
+      validateReveNumImages(params.num_images);
+
+      sanitizedParams = {
+        ...params,
+        prompt: truncateRevePrompt(params.prompt),
+        num_images: clampReveNumImages(params.num_images),
+      };
+
       // Retrieve endpoint from single source of truth
       const model = TEXT2IMAGE_MODELS["reve-text-to-image"];
       if (!model) {
@@ -934,7 +967,13 @@ class FalAIClient {
     } catch (error) {
       handleAIServiceError(error, "Reve Text-to-Image generation", {
         operation: "generateReveTextToImage",
-        params: sanitizedParams,
+        params:
+          sanitizedParams ??
+          {
+            ...params,
+            prompt: truncateRevePrompt(params.prompt),
+            num_images: clampReveNumImages(params.num_images),
+          },
       });
 
       const errorMessage = error instanceof Error ? error.message : "Reve Text-to-Image generation failed";
@@ -958,13 +997,18 @@ class FalAIClient {
   async generateReveEdit(
     params: ReveEditInput
   ): Promise<ReveEditOutput> {
-    const sanitizedParams: ReveEditInput = {
-      ...params,
-      prompt: truncateRevePrompt(params.prompt),
-      num_images: clampReveNumImages(params.num_images),
-    };
+    let sanitizedParams: ReveEditInput | null = null;
 
     try {
+      validateRevePrompt(params.prompt);
+      validateReveNumImages(params.num_images);
+
+      sanitizedParams = {
+        ...params,
+        prompt: truncateRevePrompt(params.prompt),
+        num_images: clampReveNumImages(params.num_images),
+      };
+
       // Retrieve endpoint from single source of truth
       const { MODEL_ENDPOINTS } = await import("@/lib/image-edit-client");
       const modelConfig = MODEL_ENDPOINTS["reve-edit"];
@@ -993,7 +1037,13 @@ class FalAIClient {
     } catch (error) {
       handleAIServiceError(error, "Reve Edit generation", {
         operation: "generateReveEdit",
-        params: sanitizedParams,
+        params:
+          sanitizedParams ??
+          {
+            ...params,
+            prompt: truncateRevePrompt(params.prompt),
+            num_images: clampReveNumImages(params.num_images),
+          },
       });
 
       const errorMessage = error instanceof Error ? error.message : "Reve Edit generation failed";
@@ -1054,18 +1104,20 @@ function convertV4Parameters(params: any) {
   let imageUrls =
     params.image_urls || (params.imageUrl ? [params.imageUrl] : []);
   if (Array.isArray(imageUrls) && imageUrls.length > 10) {
-    console.warn(
-      `[FAL AI] Truncating image_urls from ${imageUrls.length} to 10 (max allowed)`
-    );
+    debugLogger.warn(FAL_LOG_COMPONENT, "FAL_V4_IMAGE_URLS_TRUNCATED", {
+      originalCount: imageUrls.length,
+      maxAllowed: 10,
+    });
     imageUrls = imageUrls.slice(0, 10);
   }
 
   // Sanitize prompt - truncate to 5000 characters max
   let prompt = params.prompt || "";
   if (prompt.length > 5000) {
-    console.warn(
-      `[FAL AI] Truncating prompt from ${prompt.length} to 5000 characters (max allowed)`
-    );
+    debugLogger.warn(FAL_LOG_COMPONENT, "FAL_V4_PROMPT_TRUNCATED", {
+      originalLength: prompt.length,
+      maxLength: 5000,
+    });
     prompt = prompt.substring(0, 5000);
   }
 
@@ -1085,9 +1137,10 @@ function convertV4Parameters(params: any) {
     typeof imageSize === "string" &&
     !validPresets.includes(imageSize)
   ) {
-    console.warn(
-      `[FAL AI] Invalid image_size "${imageSize}", defaulting to "square_hd"`
-    );
+    debugLogger.warn(FAL_LOG_COMPONENT, "FAL_V4_IMAGE_SIZE_INVALID", {
+      requestedSize: imageSize,
+      fallback: "square_hd",
+    });
     imageSize = "square_hd";
   }
 
@@ -1124,9 +1177,10 @@ function convertNanoBananaParameters(params: any) {
   const imageUrls = Array.isArray(urls) ? urls.slice(0, 10) : [];
 
   if (Array.isArray(urls) && urls.length > 10) {
-    console.warn(
-      `[FAL AI Nano Banana] Truncating image_urls from ${urls.length} to 10 (max allowed)`
-    );
+    debugLogger.warn(FAL_LOG_COMPONENT, "FAL_NANO_IMAGE_URLS_TRUNCATED", {
+      originalCount: urls.length,
+      maxAllowed: 10,
+    });
   }
 
   // Clamp num_images to valid range (1-4)
@@ -1136,9 +1190,12 @@ function convertNanoBananaParameters(params: any) {
   );
 
   if (numImages !== (params.num_images ?? params.numImages ?? 1)) {
-    console.warn(
-      `[FAL AI Nano Banana] Clamping num_images to ${numImages} (valid range: 1-4)`
-    );
+    debugLogger.warn(FAL_LOG_COMPONENT, "FAL_NANO_NUM_IMAGES_CLAMPED", {
+      requested: params.num_images ?? params.numImages ?? 1,
+      clamped: numImages,
+      min: 1,
+      max: 4,
+    });
   }
 
   // Normalize output format to uppercase
@@ -1148,9 +1205,10 @@ function convertNanoBananaParameters(params: any) {
   ).toUpperCase();
 
   if (!validFormats.includes(outputFormat)) {
-    console.warn(
-      `[FAL AI Nano Banana] Invalid output_format "${outputFormat}", defaulting to "PNG"`
-    );
+    debugLogger.warn(FAL_LOG_COMPONENT, "FAL_NANO_OUTPUT_FORMAT_INVALID", {
+      requestedFormat: outputFormat,
+      fallback: "PNG",
+    });
     outputFormat = "PNG";
   }
 
@@ -1181,9 +1239,10 @@ function convertFluxParameters(params: any) {
   const imageUrls = Array.isArray(urls) ? urls.slice(0, 10) : [];
 
   if (Array.isArray(urls) && urls.length > 10) {
-    console.warn(
-      `[FAL AI FLUX] Truncating image_urls from ${urls.length} to 10 (max allowed)`
-    );
+    debugLogger.warn(FAL_LOG_COMPONENT, "FAL_FLUX_IMAGE_URLS_TRUNCATED", {
+      originalCount: urls.length,
+      maxAllowed: 10,
+    });
   }
 
   // Clamp num_images to valid range (1-4) - consistent with other models
@@ -1193,9 +1252,12 @@ function convertFluxParameters(params: any) {
   );
 
   if (numImages !== (params.num_images ?? params.numImages ?? 1)) {
-    console.warn(
-      `[FAL AI FLUX] Clamping num_images to ${numImages} (valid range: 1-4)`
-    );
+    debugLogger.warn(FAL_LOG_COMPONENT, "FAL_FLUX_NUM_IMAGES_CLAMPED", {
+      requested: params.num_images ?? params.numImages ?? 1,
+      clamped: numImages,
+      min: 1,
+      max: 4,
+    });
   }
 
   // Clamp guidance_scale to reasonable range
