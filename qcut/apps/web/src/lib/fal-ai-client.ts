@@ -10,6 +10,10 @@ import type {
   Veo31ImageToVideoInput,
   Veo31FrameToVideoInput,
   Veo31Response,
+  ReveTextToImageInput,
+  ReveTextToImageOutput,
+  ReveEditInput,
+  ReveEditOutput,
 } from "@/types/ai-generation";
 import type { VideoGenerationResponse } from "./ai-video-client";
 
@@ -55,6 +59,25 @@ export interface GenerationSettings {
   imageSize: string | number;
   seed?: number;
 }
+
+const MIN_REVE_IMAGES = 1;
+const MAX_REVE_IMAGES = 4;
+const MAX_REVE_PROMPT_LENGTH = 2560;
+
+const clampReveNumImages = (value?: number): number => {
+  if (typeof value !== "number" || Number.isNaN(value)) {
+    return MIN_REVE_IMAGES;
+  }
+
+  const rounded = Math.floor(value);
+  return Math.min(Math.max(rounded, MIN_REVE_IMAGES), MAX_REVE_IMAGES);
+};
+
+const truncateRevePrompt = (prompt: string): string => {
+  return prompt.length > MAX_REVE_PROMPT_LENGTH
+    ? prompt.slice(0, MAX_REVE_PROMPT_LENGTH)
+    : prompt;
+};
 
 // Multi-model generation result
 export type MultiModelGenerationResult = Record<string, GenerationResult>;
@@ -833,8 +856,14 @@ class FalAIClient {
    * });
    */
   async generateReveTextToImage(
-    params: import("@/types/ai-generation").ReveTextToImageInput
-  ): Promise<import("@/types/ai-generation").ReveTextToImageOutput> {
+    params: ReveTextToImageInput
+  ): Promise<ReveTextToImageOutput> {
+    const sanitizedParams: ReveTextToImageInput = {
+      ...params,
+      prompt: truncateRevePrompt(params.prompt),
+      num_images: clampReveNumImages(params.num_images),
+    };
+
     try {
       // Retrieve endpoint from single source of truth
       const model = TEXT2IMAGE_MODELS["reve-text-to-image"];
@@ -843,11 +872,11 @@ class FalAIClient {
       }
       const endpoint = model.endpoint;
 
-      console.log("[Reve Text-to-Image] Generating with params:", params);
+      console.log("[Reve Text-to-Image] Generating with params:", sanitizedParams);
 
-      const response = await this.makeRequest<import("@/types/ai-generation").ReveTextToImageOutput>(
+      const response = await this.makeRequest<ReveTextToImageOutput>(
         endpoint,
-        params as unknown as Record<string, unknown>
+        sanitizedParams as unknown as Record<string, unknown>
       );
 
       if (!response.images || response.images.length === 0) {
@@ -859,7 +888,7 @@ class FalAIClient {
     } catch (error) {
       handleAIServiceError(error, "Reve Text-to-Image generation", {
         operation: "generateReveTextToImage",
-        params,
+        params: sanitizedParams,
       });
 
       const errorMessage = error instanceof Error ? error.message : "Reve Text-to-Image generation failed";
@@ -881,8 +910,14 @@ class FalAIClient {
    * });
    */
   async generateReveEdit(
-    params: import("@/types/ai-generation").ReveEditInput
-  ): Promise<import("@/types/ai-generation").ReveEditOutput> {
+    params: ReveEditInput
+  ): Promise<ReveEditOutput> {
+    const sanitizedParams: ReveEditInput = {
+      ...params,
+      prompt: truncateRevePrompt(params.prompt),
+      num_images: clampReveNumImages(params.num_images),
+    };
+
     try {
       // Retrieve endpoint from single source of truth
       const { MODEL_ENDPOINTS } = await import("@/lib/image-edit-client");
@@ -892,11 +927,11 @@ class FalAIClient {
       }
       const endpoint = `https://fal.run/${modelConfig.endpoint}`;
 
-      console.log("[Reve Edit] Editing image with params:", params);
+      console.log("[Reve Edit] Editing image with params:", sanitizedParams);
 
-      const response = await this.makeRequest<import("@/types/ai-generation").ReveEditOutput>(
+      const response = await this.makeRequest<ReveEditOutput>(
         endpoint,
-        params as unknown as Record<string, unknown>
+        sanitizedParams as unknown as Record<string, unknown>
       );
 
       if (!response.images || response.images.length === 0) {
@@ -908,7 +943,7 @@ class FalAIClient {
     } catch (error) {
       handleAIServiceError(error, "Reve Edit generation", {
         operation: "generateReveEdit",
-        params,
+        params: sanitizedParams,
       });
 
       const errorMessage = error instanceof Error ? error.message : "Reve Edit generation failed";

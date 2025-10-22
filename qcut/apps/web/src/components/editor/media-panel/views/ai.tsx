@@ -846,10 +846,7 @@ export function AiView() {
                     ).toFixed(2)}
                     {reveNumImages > 1 && (
                       <span className="ml-1 opacity-75">
-                        (
-                          ${REVE_TEXT_TO_IMAGE_MODEL.pricing.perImage.toFixed(2)} ×{" "}
-                          {reveNumImages} images
-                        )
+                        ({REVE_TEXT_TO_IMAGE_MODEL.pricing.perImage.toFixed(2)} × {reveNumImages} images)
                       </span>
                     )}
                   </div>
