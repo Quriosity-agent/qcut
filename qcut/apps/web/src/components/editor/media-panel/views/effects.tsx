@@ -11,7 +11,7 @@ import type { EffectCategory, EffectPreset } from "@/types/effects";
 export default function EffectsView() {
   const { presets, selectedCategory, setSelectedCategory, applyEffect } =
     useEffectsStore();
-  const { selectedElements } = useTimelineStore();
+  const { selectedElements, autoShowEffectsTrack } = useTimelineStore();
   const [searchQuery, setSearchQuery] = useState("");
   const [draggedEffect, setDraggedEffect] = useState<EffectPreset | null>(null);
 
@@ -47,6 +47,10 @@ export default function EffectsView() {
     const selectedElementId = selectedElements[0]?.elementId;
     if (selectedElementId) {
       applyEffect(selectedElementId, preset);
+
+      // Auto-show effects track when effect is applied
+      autoShowEffectsTrack();
+
       toast.success(`Applied ${preset.name} effect`);
     } else {
       toast.info("Please select an element on the timeline first");

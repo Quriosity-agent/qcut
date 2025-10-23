@@ -24,6 +24,7 @@ import {
   Bookmark,
   Sticker,
   LayersIcon,
+  Sparkles,
 } from "lucide-react";
 import {
   Tooltip,
@@ -1081,6 +1082,8 @@ function TimelineToolbar({
   const toggleSnapping = useTimelineStore((s) => s.toggleSnapping);
   const rippleEditingEnabled = useTimelineStore((s) => s.rippleEditingEnabled);
   const toggleRippleEditing = useTimelineStore((s) => s.toggleRippleEditing);
+  const showEffectsTrack = useTimelineStore((s) => s.showEffectsTrack);
+  const toggleEffectsTrack = useTimelineStore((s) => s.toggleEffectsTrack);
   const currentTime = usePlaybackStore((s) => s.currentTime);
   const duration = usePlaybackStore((s) => s.duration);
   const isPlaying = usePlaybackStore((s) => s.isPlaying);
@@ -1474,6 +1477,24 @@ function TimelineToolbar({
                 : "Enable Ripple Editing"}
             </TooltipContent>
           </Tooltip>
+          {EFFECTS_ENABLED && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="text" size="icon" onClick={toggleEffectsTrack}>
+                  <Sparkles
+                    className={`h-4 w-4 ${
+                      showEffectsTrack ? "text-primary" : ""
+                    }`}
+                  />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                {showEffectsTrack
+                  ? "Hide Effects Track"
+                  : "Show Effects Track"}
+              </TooltipContent>
+            </Tooltip>
+          )}
         </TooltipProvider>
 
         <div className="h-6 w-px bg-border mx-1" />
