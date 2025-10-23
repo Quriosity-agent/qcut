@@ -145,32 +145,42 @@ bun x playwright test --project=electron
 **Checkpoint Timestamp**: 2025-10-23 15:38:30 (via Python)
 
 ### Status at This Time:
-- **Tests Completed**: 40/66 (61%)
+- **Tests Completed**: 40/66 (60%)
 - **Tests Running**: Text Overlay Testing (suite in progress)
-- **Last Completed Test**: text-overlay-testing.e2e.t (Panel state and functionality) at 15:26
-- **Test Suite Started**: 15:06 (32 minutes ago)
-- **Estimated Remaining**: ~8-10 minutes (26 tests pending)
+- **Last Completed Test**: text-overlay-testing.e2e.t (State across panel switches) at 15:27:48
+- **Test Suite Started**: 15:06 (35+ minutes ago)
+- **Estimated Remaining**: ~5-8 minutes (26 tests pending)
 
-### Recent Activity:
+### Recent Activity (from Python script):
 ```
-15:26 ✓ Text Overlay - Panel state and functionality
-15:25 ✓ Sticker Overlay - State across interactions
-15:25 ✓ Sticker Overlay - Rendering
-15:24 ✓ Sticker Overlay - Panel categories and search
-15:24 ✓ Sticker Overlay - Canvas placement
-15:23 ✓ Sticker Overlay - Drag and drop to canvas
+15:27:48 ✓ Text Overlay - State across panel switches
+15:26:48 ✓ Text Overlay - Panel state and functionality
+15:25:29 ✓ Sticker Overlay - State across interactions
+15:25:05 ✓ Sticker Overlay - Rendering
+15:24:44 ✓ Sticker Overlay - Panel categories and search
 ```
 
 ### Checkpoint Verification Instructions:
 ```bash
-# Check progress later by running:
+# Quick check - Use the Python progress script:
+cd qcut
+python docs/issues/e2e-test-errors/check-test-progress.py
+
+# Manual check alternative:
 cd qcut
 python -c "from datetime import datetime; print('Current time:', datetime.now().strftime('%Y-%m-%d %H:%M:%S'))"
 ls -1 docs/completed/test-results-raw/ | wc -l
 # Compare count with 40 above - should be higher if tests progressed
 ```
 
-**Note**: If test count hasn't increased after 10+ minutes, tests may have stalled or completed.
+**Script Location**: `docs/issues/e2e-test-errors/check-test-progress.py`
+
+**What to expect**:
+- ✅ Test count > 40: Tests are progressing
+- ⚠️  Test count = 40: Tests may be slow or stalled
+- ✅ Test count = 66: All tests complete!
+
+**Note**: If test count hasn't increased after 10+ minutes, check if tests completed or stalled.
 
 ---
 
