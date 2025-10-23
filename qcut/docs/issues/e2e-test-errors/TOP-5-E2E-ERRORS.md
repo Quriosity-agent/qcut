@@ -1,15 +1,91 @@
 # E2E Test Fixes - QCut Playwright Tests
 
-**Last Updated**: 2025-10-23 17:39:45 (Checkpoint #7 - Manual Cleanup Complete)
-**Status**: ✅ READY FOR TESTING - Database Cleaned & Fixtures Fixed
+**Last Updated**: 2025-10-23 17:51:57 (Checkpoint #8 - Database Cleanup VERIFIED)
+**Status**: ✅ MAJOR PROGRESS - 67% Pass Rate | New Issue: Modal Dialog Blocking
 **Test Location**: `qcut/apps/web/src/test/e2e/`
 
 **Quick Summary**:
 - ✅ 68 `waitForTimeout` fixes completed successfully
-- ✅ **Database cleanup implemented** in test fixtures (Checkpoint #6)
-- ✅ **Manual cleanup performed** - All 118 accumulated projects deleted
-- ✅ **Test infrastructure fixed** - cleanupDatabase() function added
-- 🎯 **Ready**: Re-run full test suite to verify fixes work
+- ✅ **Database cleanup VERIFIED** - cleanupDatabase() function working correctly
+- ✅ **Sticker tests**: 4/6 PASSED (67%) - Major improvement from 0/6!
+- ✅ **No project accumulation** - Database stays clean between tests
+- ⚠️ **New Issue**: Modal dialog blocking 2 test interactions (not infrastructure)
+
+---
+
+## 🎉 Checkpoint #8: Database Cleanup Success Confirmed!
+
+### Date: 2025-10-23 17:51:57
+**Action**: Re-ran sticker overlay tests after database cleanup
+
+**Test Command**:
+```bash
+cd qcut
+bun x playwright test --project=electron sticker-overlay-testing.e2e.ts
+```
+
+**Results**: ✅ **MAJOR IMPROVEMENT**
+- ✅ **4/6 tests PASSED** (67% pass rate)
+- ❌ **2/6 tests FAILED** (33% failure rate)
+- ⏱️ **Runtime**: 3.1 minutes
+- ✅ **Database cleanup WORKING** - 0 projects accumulated after tests
+
+### 🎯 Comparison: Before vs After Cleanup
+
+| Metric | Checkpoint #6 (Before) | Checkpoint #8 (After) | Change |
+|--------|------------------------|----------------------|---------|
+| **Tests Passed** | 0/6 (0%) | 4/6 (67%) | **+67%** ✅ |
+| **Tests Failed** | 6/6 (100%) | 2/6 (33%) | **-67%** ✅ |
+| **Failure Point** | createTestProject() timeout | Modal dialog blocking clicks | **Different issue** |
+| **Projects Accumulated** | 118+ accumulating | 0 (stays clean) | **Fixed!** ✅ |
+| **Infrastructure** | Broken | Working | **Fixed!** ✅ |
+
+### ✅ Tests That NOW PASS (4 tests)
+
+1. **Test 3**: should manipulate stickers on canvas after placement ✅
+2. **Test 4**: should handle sticker panel categories and search ✅
+3. **Test 5**: should handle sticker overlay rendering ✅
+4. **Test 6**: should maintain sticker panel state across interactions ✅
+
+### ❌ Tests Still Failing (2 tests) - NEW ISSUE
+
+**Test 1**: should access stickers panel and interact with sticker items
+**Test 2**: should support sticker drag and drop to canvas
+
+**Failure Reason**: Modal dialog intercepting clicks
+```
+TimeoutError: locator.click: Timeout 30000ms exceeded.
+- <div data-state="open" aria-hidden="true" class="fixed inset-0 z-100 bg-black/20 backdrop-blur-md...></div> intercepts pointer events
+```
+
+**Root Cause**:
+- A modal backdrop overlay is staying open after project creation
+- The `data-state="open"` backdrop blocks all click interactions
+- This is a **UI issue**, NOT an infrastructure/database issue
+- Tests successfully create projects and load editor now
+
+### 🔍 Database Cleanup Verification
+
+**Before Test Run**: 0 projects in database ✅
+**After Test Run**: 0 projects in database ✅
+
+**Verified**:
+- ✅ IndexedDB directory not recreated (cleanupDatabase working)
+- ✅ No project files in projects/ directory
+- ✅ Tests properly isolated from each other
+- ✅ No state pollution between test runs
+
+### 📊 Success Metrics
+
+**Infrastructure Fixes Validated**:
+- ✅ Database cleanup function working correctly
+- ✅ Tests can create projects successfully
+- ✅ Editor loads properly for each test
+- ✅ No accumulation of test data
+
+**Remaining Work**:
+- ⚠️ Fix modal dialog issue (application/UI bug, not test infrastructure)
+- 🎯 Expected: 6/6 tests passing once modal issue resolved
 
 ---
 
