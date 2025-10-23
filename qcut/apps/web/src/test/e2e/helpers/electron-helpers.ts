@@ -36,22 +36,45 @@ export async function cleanupDatabase(page: Page) {
   try {
     // Check if page is still open before attempting cleanup
     if (page.isClosed()) {
-      console.log('Page already closed, skipping cleanup');
+      console.log('🧹 Page already closed, skipping cleanup');
       return;
     }
 
-    await page.evaluate(async () => {
+    console.log('🧹 Starting database cleanup...');
+
+    const cleanupStats = await page.evaluate(async () => {
+      const stats = {
+        databasesFound: 0,
+        databasesDeleted: 0,
+        localStorageItems: 0,
+        sessionStorageItems: 0,
+        cachesCleared: 0,
+      };
+
       // Clear all IndexedDB databases
       const databases = await indexedDB.databases();
+      stats.databasesFound = databases.length;
+
+      console.log(`📊 Found ${databases.length} IndexedDB database(s) to delete`);
+
       await Promise.all(
         databases.map((db) => {
           if (db.name) {
+            console.log(`  🗑️  Deleting database: ${db.name}`);
             return new Promise<void>((resolve, reject) => {
               const request = indexedDB.deleteDatabase(db.name!);
-              request.onsuccess = () => resolve();
-              request.onerror = () => reject(request.error);
+              request.onsuccess = () => {
+                stats.databasesDeleted++;
+                console.log(`  ✅ Deleted database: ${db.name}`);
+                resolve();
+              };
+              request.onerror = () => {
+                console.error(`  ❌ Failed to delete database: ${db.name}`);
+                reject(request.error);
+              };
               request.onblocked = () => {
-                console.warn(`Database ${db.name} deletion blocked`);
+                console.warn(`  ⚠️  Database ${db.name} deletion blocked, continuing anyway`);
+                stats.databasesDeleted++;
                 resolve(); // Resolve anyway to prevent hanging
               };
             });
@@ -60,18 +83,50 @@ export async function cleanupDatabase(page: Page) {
         })
       );
 
-      // Clear localStorage and sessionStorage
-      localStorage.clear();
-      sessionStorage.clear();
+      // Count localStorage items before clearing
+      stats.localStorageItems = localStorage.length;
+      if (stats.localStorageItems > 0) {
+        console.log(`📦 Clearing ${stats.localStorageItems} localStorage item(s)`);
+        localStorage.clear();
+      }
+
+      // Count sessionStorage items before clearing
+      stats.sessionStorageItems = sessionStorage.length;
+      if (stats.sessionStorageItems > 0) {
+        console.log(`📦 Clearing ${stats.sessionStorageItems} sessionStorage item(s)`);
+        sessionStorage.clear();
+      }
 
       // Clear any service worker caches if present
       if ("caches" in window) {
         const cacheNames = await caches.keys();
-        await Promise.all(cacheNames.map((name) => caches.delete(name)));
+        stats.cachesCleared = cacheNames.length;
+        if (stats.cachesCleared > 0) {
+          console.log(`🗄️  Clearing ${stats.cachesCleared} service worker cache(s)`);
+          await Promise.all(cacheNames.map((name) => {
+            console.log(`  🗑️  Deleting cache: ${name}`);
+            return caches.delete(name);
+          }));
+        }
       }
+
+      return stats;
     });
+
+    // Print summary
+    console.log('✅ Database cleanup completed:');
+    console.log(`   📊 Databases deleted: ${cleanupStats.databasesDeleted}/${cleanupStats.databasesFound}`);
+    console.log(`   📦 localStorage items cleared: ${cleanupStats.localStorageItems}`);
+    console.log(`   📦 sessionStorage items cleared: ${cleanupStats.sessionStorageItems}`);
+    console.log(`   🗄️  Caches cleared: ${cleanupStats.cachesCleared}`);
+
+    if (cleanupStats.databasesDeleted > 0 || cleanupStats.localStorageItems > 0 || cleanupStats.sessionStorageItems > 0) {
+      console.log(`🎉 Successfully cleaned up test data - tests will start with clean slate!`);
+    } else {
+      console.log('✨ Database already clean - no data to remove');
+    }
   } catch (error) {
-    console.warn("Database cleanup encountered an error:", error);
+    console.warn("⚠️  Database cleanup encountered an error:", error);
     // Don't throw - allow test to continue even if cleanup partially fails
   }
 }
