@@ -27,7 +27,7 @@ export interface ElectronFixtures {
 }
 
 export const test = base.extend<ElectronFixtures>({
-  electronApp: async (_, use) => {
+  electronApp: async ({}, use) => {
     // Launch Electron app
     const electronApp = await electron.launch({
       args: ["dist/electron/main.js"],
@@ -168,11 +168,11 @@ export async function createTestProject(
   // Wait for any of the project creation buttons to be in the DOM (they might be hidden by responsive CSS)
   await page.waitForSelector(
     '[data-testid="new-project-button"], [data-testid="new-project-button-mobile"], [data-testid="new-project-button-empty-state"]',
-    { state: "attached" }
+    { state: "attached", timeout: 5000 }
   );
 
-  // Small delay to ensure page is stable
-  await page.waitForTimeout(1000);
+  // Wait for page to be stable - ensure all buttons are properly initialized
+  await page.waitForLoadState("domcontentloaded", { timeout: 3000 });
 
   // Check if we're in empty state (no projects)
   const emptyStateButton = page.getByTestId("new-project-button-empty-state");

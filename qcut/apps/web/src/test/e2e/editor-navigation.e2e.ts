@@ -34,11 +34,8 @@ test.describe("Editor Navigation Test", () => {
     const projectCards = page.getByTestId("project-list-item");
     const projectCount = await projectCards.count();
 
-    if (projectCount === 0) {
-      console.log("No existing projects to test with");
-      test.skip();
-      return;
-    }
+    // Properly skip test if no projects exist
+    test.skip(projectCount === 0, "No existing projects to test with");
 
     // Setup a listener for console errors
     const errors: string[] = [];
@@ -65,10 +62,12 @@ test.describe("Editor Navigation Test", () => {
           '[data-testid="editor-container"], [data-testid="timeline-track"], .editor-layout'
         )
         .first();
-      await Promise.race([
-        page.waitForURL(/editor/i, { timeout: 15_000 }),
-        editorLocator.waitFor({ state: "visible", timeout: 15_000 }),
-      ]);
+
+      // Wait for URL to change to editor route
+      await page.waitForURL(/editor/i, { timeout: 15_000 });
+
+      // Then verify editor UI loaded
+      await editorLocator.waitFor({ state: "visible", timeout: 10_000 });
 
       // Check for any console errors
       if (errors.length > 0) {

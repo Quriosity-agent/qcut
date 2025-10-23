@@ -82,10 +82,10 @@ test.describe("Simple Navigation Test", () => {
     // Click and wait a bit
     await headerButton.click();
 
-    // Wait for potential project creation (should still be on projects page)
-    await page.waitForTimeout(2000);
+    // Wait for projects page to be stable after route interception
+    await page.waitForLoadState("networkidle", { timeout: 5000 });
 
     // Verify we're still on projects page
-    await expect(page.getByText("Your Projects")).toBeVisible();
+    await expect(page.getByText("Your Projects")).toBeVisible({ timeout: 5000 });
   });
 });
