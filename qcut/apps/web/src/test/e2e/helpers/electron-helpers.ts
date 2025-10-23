@@ -26,6 +26,50 @@ export interface ElectronFixtures {
   page: Page;
 }
 
+/**
+ * Cleans up all persistent storage (IndexedDB, localStorage, sessionStorage)
+ * to ensure test isolation and prevent state pollution between tests.
+ *
+ * @param page - The Playwright page instance
+ */
+export async function cleanupDatabase(page: Page) {
+  try {
+    await page.evaluate(async () => {
+      // Clear all IndexedDB databases
+      const databases = await indexedDB.databases();
+      await Promise.all(
+        databases.map((db) => {
+          if (db.name) {
+            return new Promise<void>((resolve, reject) => {
+              const request = indexedDB.deleteDatabase(db.name!);
+              request.onsuccess = () => resolve();
+              request.onerror = () => reject(request.error);
+              request.onblocked = () => {
+                console.warn(`Database ${db.name} deletion blocked`);
+                resolve(); // Resolve anyway to prevent hanging
+              };
+            });
+          }
+          return Promise.resolve();
+        })
+      );
+
+      // Clear localStorage and sessionStorage
+      localStorage.clear();
+      sessionStorage.clear();
+
+      // Clear any service worker caches if present
+      if ("caches" in window) {
+        const cacheNames = await caches.keys();
+        await Promise.all(cacheNames.map((name) => caches.delete(name)));
+      }
+    });
+  } catch (error) {
+    console.warn("Database cleanup encountered an error:", error);
+    // Don't throw - allow test to continue even if cleanup partially fails
+  }
+}
+
 export const test = base.extend<ElectronFixtures>({
   electronApp: async ({}, use) => {
     // Launch Electron app
@@ -48,10 +92,16 @@ export const test = base.extend<ElectronFixtures>({
     // Wait for the app to be ready using proper state-based waiting
     await page.waitForLoadState("domcontentloaded");
 
+    // Clean up any leftover data from previous test runs BEFORE starting test
+    await cleanupDatabase(page);
+
     // Navigate to projects page for E2E testing
     await navigateToProjects(page);
 
     await use(page);
+
+    // Clean up after test completes to ensure next test starts fresh
+    await cleanupDatabase(page);
   },
 });
 
