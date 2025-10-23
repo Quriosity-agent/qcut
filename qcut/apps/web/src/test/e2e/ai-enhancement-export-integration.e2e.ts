@@ -161,7 +161,13 @@ test.describe("AI Enhancement & Export Integration", () => {
     await expect(playButton).toHaveAttribute("data-playing", "true");
 
     // Let video play to see enhancements
-    await page.waitForTimeout(3000);
+    await page.waitForFunction(
+      () => {
+        const timeDisplay = document.querySelector('[data-testid*="time"], [data-testid*="current-time"]');
+        return timeDisplay && parseFloat(timeDisplay.textContent || '0') > 1;
+      },
+      { timeout: 5000 }
+    ).catch(() => {});
 
     // Pause video
     await playButton.click();

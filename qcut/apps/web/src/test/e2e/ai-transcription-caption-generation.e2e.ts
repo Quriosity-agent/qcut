@@ -265,13 +265,21 @@ test.describe("AI Transcription & Caption Generation", () => {
   test("4A.6 - Export project with embedded captions", async ({ page }) => {
     // Set up captions on timeline first
     await page.getByTestId("captions-panel-tab").click();
-    await page.waitForTimeout(500);
+    await page.waitForSelector('[data-testid="ai-transcription-panel"]', { timeout: 3000 }).catch(() => {});
 
     // Generate captions if needed
     const transcribeButton = page.getByTestId("transcription-upload-button");
     if (await transcribeButton.isVisible()) {
       await transcribeButton.click();
-      await page.waitForTimeout(3000);
+      // Wait for transcription processing
+      await page.waitForFunction(
+        () => {
+          const panel = document.querySelector('[data-testid="ai-transcription-panel"]');
+          const loading = document.querySelector('[data-testid*="loading"], [data-testid*="processing"]');
+          return panel && !loading;
+        },
+        { timeout: 10000 }
+      ).catch(() => {});
     }
 
     // Apply captions to timeline for export
