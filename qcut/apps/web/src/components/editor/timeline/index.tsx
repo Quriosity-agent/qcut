@@ -93,6 +93,7 @@ export function Timeline() {
     (s) => s.clearSelectedElements
   );
   const snappingEnabled = useTimelineStore((s) => s.snappingEnabled);
+  const showEffectsTrack = useTimelineStore((s) => s.showEffectsTrack);
   const setSelectedElements = useTimelineStore((s) => s.setSelectedElements);
   const toggleTrackMute = useTimelineStore((s) => s.toggleTrackMute);
   const dragState = useTimelineStore((s) => s.dragState);
@@ -873,7 +874,7 @@ export function Timeline() {
                     </div>
                   ))}
                   {/* Effects Track Label */}
-                  {EFFECTS_ENABLED && tracks.length > 0 && (
+                  {EFFECTS_ENABLED && tracks.length > 0 && showEffectsTrack && (
                     <div
                       className="flex items-center px-3 border-t-2 border-purple-500/30 group bg-purple-500/10"
                       style={{ height: "64px" }}
@@ -925,7 +926,7 @@ export function Timeline() {
                     Math.min(
                       800,
                       getTotalTracksHeight(tracks) +
-                        (EFFECTS_ENABLED && tracks.length > 0
+                        (EFFECTS_ENABLED && tracks.length > 0 && showEffectsTrack
                           ? TIMELINE_CONSTANTS.TRACK_HEIGHT
                           : 0)
                     )
@@ -1005,7 +1006,7 @@ export function Timeline() {
                       </ContextMenu>
                     ))}
                     {/* Effects Timeline Visualization */}
-                    {EFFECTS_ENABLED && tracks.length > 0 && (
+                    {EFFECTS_ENABLED && tracks.length > 0 && showEffectsTrack && (
                       <div
                         className="absolute left-0 right-0 border-t-2 border-purple-500/30"
                         style={{

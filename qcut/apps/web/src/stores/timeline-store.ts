@@ -77,6 +77,13 @@ interface TimelineStore {
   /** Toggle ripple editing mode on/off */
   toggleRippleEditing: () => void;
 
+  /** Whether the effects track is visible in the timeline */
+  showEffectsTrack: boolean;
+  /** Toggle effects track visibility */
+  toggleEffectsTrack: () => void;
+  /** Automatically show effects track (called when effects are applied) */
+  autoShowEffectsTrack: () => void;
+
   /** Array of currently selected timeline elements */
   selectedElements: { trackId: string; elementId: string }[];
   /** Select an element, optionally as part of multi-selection */
@@ -409,6 +416,11 @@ export const useTimelineStore = create<TimelineStore>((set, get) => {
 
     // Snapping settings defaults
     snappingEnabled: true,
+
+    // Effects track visibility - load from localStorage, default to false
+    showEffectsTrack: typeof window !== 'undefined'
+      ? localStorage.getItem('timeline-showEffectsTrack') === 'true'
+      : false,
 
     getSortedTracks: () => {
       const { _tracks } = get();
@@ -1754,6 +1766,30 @@ export const useTimelineStore = create<TimelineStore>((set, get) => {
       set((state) => ({
         rippleEditingEnabled: !state.rippleEditingEnabled,
       }));
+    },
+
+    // Effects track visibility functions
+    toggleEffectsTrack: () => {
+      const { showEffectsTrack } = get();
+      const newValue = !showEffectsTrack;
+      set({ showEffectsTrack: newValue });
+
+      // Persist to localStorage
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('timeline-showEffectsTrack', String(newValue));
+      }
+    },
+
+    autoShowEffectsTrack: () => {
+      const { showEffectsTrack } = get();
+      if (!showEffectsTrack) {
+        set({ showEffectsTrack: true });
+
+        // Persist to localStorage
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('timeline-showEffectsTrack', 'true');
+        }
+      }
     },
 
     checkElementOverlap: (trackId, startTime, duration, excludeElementId) => {
