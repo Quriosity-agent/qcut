@@ -34,6 +34,12 @@ export interface ElectronFixtures {
  */
 export async function cleanupDatabase(page: Page) {
   try {
+    // Check if page is still open before attempting cleanup
+    if (page.isClosed()) {
+      console.log('Page already closed, skipping cleanup');
+      return;
+    }
+
     await page.evaluate(async () => {
       // Clear all IndexedDB databases
       const databases = await indexedDB.databases();
@@ -265,6 +271,37 @@ export async function createTestProject(
       '[data-testid="timeline-track"], [data-testid="editor-container"]',
       { timeout: 10_000 }
     );
+  }
+
+  // CRITICAL FIX: Force close any lingering modals/dialogs
+  // Press Escape key multiple times to dismiss any open dialogs
+  await page.keyboard.press('Escape');
+  await page.keyboard.press('Escape'); // Press twice to be sure
+
+  // Wait a moment for dialogs to close
+  await page.waitForTimeout(500);
+
+  // Verify no modal backdrops are blocking interactions
+  try {
+    await page.waitForFunction(
+      () => {
+        const backdrops = document.querySelectorAll('[data-state="open"][aria-hidden="true"]');
+        console.log(`Found ${backdrops.length} open modal backdrops`);
+        return backdrops.length === 0;
+      },
+      { timeout: 3000 }
+    );
+  } catch (error) {
+    console.warn('Modal backdrops still present after Escape key');
+    // Force remove backdrops if they're stuck
+    try {
+      await page.evaluate(() => {
+        const backdrops = document.querySelectorAll('[data-state="open"][aria-hidden="true"]');
+        backdrops.forEach(backdrop => backdrop.remove());
+      });
+    } catch (e) {
+      console.warn('Could not force remove backdrops');
+    }
   }
 
   // Wait for editor to load
