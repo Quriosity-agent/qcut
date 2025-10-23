@@ -55,7 +55,7 @@ test.describe("AI Transcription & Caption Generation", () => {
   test("4A.2 - Generate transcription with AI service", async ({ page }) => {
     // Navigate to captions panel
     await page.getByTestId("captions-panel-tab").click();
-    await page.waitForTimeout(500);
+    await page.waitForSelector('[data-testid="ai-transcription-panel"]', { timeout: 3000 }).catch(() => {});
 
     // Verify AI transcription panel is visible
     await expect(page.getByTestId("ai-transcription-panel")).toBeVisible();
@@ -90,7 +90,7 @@ test.describe("AI Transcription & Caption Generation", () => {
   test("4A.3 - Edit and customize generated captions", async ({ page }) => {
     // Navigate to captions panel and generate transcription first
     await page.getByTestId("captions-panel-tab").click();
-    await page.waitForTimeout(500);
+    await page.waitForSelector('[data-testid="ai-transcription-panel"]', { timeout: 3000 }).catch(() => {});
     await expect(page.getByTestId("ai-transcription-panel")).toBeVisible();
 
     // Generate transcription if not already available
@@ -116,7 +116,7 @@ test.describe("AI Transcription & Caption Generation", () => {
     if ((await captionItems.count()) > 0) {
       // Click on first caption item to edit
       await captionItems.first().click();
-      await page.waitForTimeout(500);
+      await page.waitForSelector('input[type="text"], textarea', { timeout: 3000 }).catch(() => {});
 
       // Try to edit caption text (assuming there's an editable field)
       const editableField = page
@@ -125,7 +125,7 @@ test.describe("AI Transcription & Caption Generation", () => {
       if (await editableField.isVisible()) {
         await editableField.fill("Edited caption text");
         await page.keyboard.press("Enter");
-        await page.waitForTimeout(500);
+        await page.waitForLoadState("domcontentloaded", { timeout: 2000 }).catch(() => {});
       }
     }
 
@@ -140,14 +140,22 @@ test.describe("AI Transcription & Caption Generation", () => {
   test("4A.4 - Apply captions to timeline", async ({ page }) => {
     // Navigate to captions panel and ensure transcription is available
     await page.getByTestId("captions-panel-tab").click();
-    await page.waitForTimeout(500);
+    await page.waitForSelector('[data-testid="ai-transcription-panel"]', { timeout: 3000 }).catch(() => {});
     await expect(page.getByTestId("ai-transcription-panel")).toBeVisible();
 
     // Generate transcription if needed
     const transcribeButton = page.getByTestId("transcription-upload-button");
     if (await transcribeButton.isVisible()) {
       await transcribeButton.click();
-      await page.waitForTimeout(3000);
+      // Wait for transcription processing
+      await page.waitForFunction(
+        () => {
+          const panel = document.querySelector('[data-testid="ai-transcription-panel"]');
+          const loading = document.querySelector('[data-testid*="loading"], [data-testid*="processing"]');
+          return panel && !loading;
+        },
+        { timeout: 10000 }
+      ).catch(() => {});
     }
 
     // Look for apply/add to timeline button
@@ -185,13 +193,21 @@ test.describe("AI Transcription & Caption Generation", () => {
   test("4A.5 - Preview captions in video preview", async ({ page }) => {
     // Set up captions on timeline first
     await page.getByTestId("captions-panel-tab").click();
-    await page.waitForTimeout(500);
+    await page.waitForSelector('[data-testid="ai-transcription-panel"]', { timeout: 3000 }).catch(() => {});
 
     // Generate and apply captions if needed
     const transcribeButton = page.getByTestId("transcription-upload-button");
     if (await transcribeButton.isVisible()) {
       await transcribeButton.click();
-      await page.waitForTimeout(3000);
+      // Wait for transcription processing
+      await page.waitForFunction(
+        () => {
+          const panel = document.querySelector('[data-testid="ai-transcription-panel"]');
+          const loading = document.querySelector('[data-testid*="loading"], [data-testid*="processing"]');
+          return panel && !loading;
+        },
+        { timeout: 10000 }
+      ).catch(() => {});
     }
 
     // Apply captions to timeline
@@ -210,13 +226,25 @@ test.describe("AI Transcription & Caption Generation", () => {
     // Click play button to start preview
     const playButton = page.locator('[data-testid="play-pause-button"]');
     await playButton.click();
-    await page.waitForTimeout(500);
+    await page.waitForFunction(
+      () => {
+        const btn = document.querySelector('[data-testid="play-pause-button"]');
+        return btn && btn.getAttribute('data-playing') === 'true';
+      },
+      { timeout: 3000 }
+    ).catch(() => {});
 
     // Verify video is playing
     await expect(playButton).toHaveAttribute("data-playing", "true");
 
     // Let video play for a few seconds to show captions
-    await page.waitForTimeout(3000);
+    await page.waitForFunction(
+      () => {
+        const timeDisplay = document.querySelector('[data-testid*="time"], [data-testid*="current-time"]');
+        return timeDisplay && parseFloat(timeDisplay.textContent || '0') > 1;
+      },
+      { timeout: 5000 }
+    ).catch(() => {});
 
     // Pause video
     await playButton.click();
@@ -262,7 +290,7 @@ test.describe("AI Transcription & Caption Generation", () => {
     // Open export dialog
     const exportButton = page.locator('[data-testid*="export"]').first();
     await exportButton.click();
-    await page.waitForTimeout(1000);
+    await page.waitForSelector('[data-testid*="export-dialog"], [role="dialog"]', { timeout: 3000 }).catch(() => {});
 
     // Verify export dialog appears
     const exportDialog = page
@@ -291,7 +319,7 @@ test.describe("AI Transcription & Caption Generation", () => {
     );
     if (await startExportButton.isVisible()) {
       await startExportButton.click();
-      await page.waitForTimeout(2000);
+      await page.waitForSelector('[data-testid*="export-status"], [data-testid*="export-progress"]', { timeout: 5000 }).catch(() => {});
 
       // Verify export is in progress or completed
       // This would show success message or progress indicator
