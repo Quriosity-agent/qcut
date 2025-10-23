@@ -108,7 +108,7 @@ test.describe("Auto-Save & Export File Management", () => {
 
     if ((await mediaItem.isVisible()) && (await timelineTrack.isVisible())) {
       await mediaItem.dragTo(timelineTrack);
-      await page.waitForTimeout(1000);
+      await page.waitForSelector('[data-testid="timeline-element"]', { timeout: 5000 }).catch(() => {});
     }
 
     // Look for auto-save indicator
@@ -121,7 +121,13 @@ test.describe("Auto-Save & Export File Management", () => {
     expect(autoSaveExists).toBe(true);
 
     // Wait for auto-save to trigger with 1-second interval
-    await page.waitForTimeout(2000);
+    await page.waitForFunction(
+      () => {
+        const indicator = document.querySelector('[data-testid="auto-save-indicator"]');
+        return indicator && indicator.textContent && /saved|auto/i.test(indicator.textContent);
+      },
+      { timeout: 5000 }
+    ).catch(() => {});
 
     // Verify auto-save completed (indicator updated or project saved)
     if (await autoSaveIndicator.isVisible()) {
@@ -198,7 +204,8 @@ test.describe("Auto-Save & Export File Management", () => {
 
       // Simulate force quit by closing and reopening app
       await localElectronApp.close();
-      await new Promise((resolve) => setTimeout(resolve, 2000)); // Wait for clean shutdown
+      // Wait for app process to fully terminate
+      await new Promise((resolve) => setTimeout(resolve, 1000)); // Brief wait for process cleanup
 
       // Restart application with new instances
       localElectronApp = await startElectronApp();
@@ -276,7 +283,7 @@ test.describe("Auto-Save & Export File Management", () => {
 
     // Add content
     await page.click('[data-testid="import-media-button"]');
-    await page.waitForTimeout(1000);
+    await page.waitForSelector('[data-testid="media-item"], input[type="file"]', { timeout: 3000 }).catch(() => {});
 
     const mediaItem = page.locator('[data-testid="media-item"]').first();
     const timelineTrack = page
@@ -285,13 +292,13 @@ test.describe("Auto-Save & Export File Management", () => {
 
     if ((await mediaItem.isVisible()) && (await timelineTrack.isVisible())) {
       await mediaItem.dragTo(timelineTrack);
-      await page.waitForTimeout(1000);
+      await page.waitForSelector('[data-testid="timeline-element"]', { timeout: 5000 }).catch(() => {});
     }
 
     // Open export dialog
     const exportButton = page.locator('[data-testid*="export"]').first();
     await exportButton.click();
-    await page.waitForTimeout(1000);
+    await page.waitForSelector('[data-testid*="export-dialog"], [role="dialog"]', { timeout: 3000 }).catch(() => {});
 
     // Look for export dialog
     const exportDialog = page
@@ -310,7 +317,7 @@ test.describe("Auto-Save & Export File Management", () => {
       );
       if (await filenameInput.isVisible()) {
         await filenameInput.fill("Test Video (Special & Characters) [2024]");
-        await page.waitForTimeout(500);
+        await page.waitForLoadState("domcontentloaded", { timeout: 2000 }).catch(() => {});
       }
 
       // Look for custom export location button
@@ -375,7 +382,11 @@ test.describe("Auto-Save & Export File Management", () => {
       );
       if (await startExportButton.isVisible()) {
         await startExportButton.click();
-        await page.waitForTimeout(2000);
+        // Wait for export to start
+        await Promise.race([
+          page.waitForSelector('[data-testid="export-status"]', { timeout: 5000 }).catch(() => {}),
+          page.waitForSelector('[data-testid="export-progress-bar"]', { timeout: 5000 }).catch(() => {})
+        ]);
 
         // Verify export started
         const exportStatus = page.locator('[data-testid="export-status"]');
@@ -389,15 +400,27 @@ test.describe("Auto-Save & Export File Management", () => {
           await expect(progressBar).toBeVisible();
         }
 
-        // Wait a moment to see progress, then cancel to avoid long wait
-        await page.waitForTimeout(3000);
+        // Wait for progress to update
+        await page.waitForFunction(
+          () => {
+            const progress = document.querySelector('[data-testid="export-progress-bar"]');
+            return progress && progress.getAttribute('value');
+          },
+          { timeout: 5000 }
+        ).catch(() => {});
 
         const cancelButton = page.locator(
           '[data-testid="export-cancel-button"]'
         );
         if (await cancelButton.isVisible()) {
           await cancelButton.click();
-          await page.waitForTimeout(1000);
+          await page.waitForFunction(
+            () => {
+              const status = document.querySelector('[data-testid="export-status"]');
+              return status && /cancel|stop|abort/i.test(status.textContent || '');
+            },
+            { timeout: 3000 }
+          ).catch(() => {});
         }
       }
     }
@@ -409,7 +432,7 @@ test.describe("Auto-Save & Export File Management", () => {
     // Open export dialog
     const exportButton = page.locator('[data-testid*="export"]').first();
     await exportButton.click();
-    await page.waitForTimeout(1000);
+    await page.waitForSelector('[data-testid*="export-dialog"], [role="dialog"]', { timeout: 3000 }).catch(() => {});
 
     const exportDialog = page
       .locator('[data-testid*="export-dialog"], .export')
@@ -432,7 +455,7 @@ test.describe("Auto-Save & Export File Management", () => {
           .first();
         if (await highQualityOption.isVisible()) {
           await highQualityOption.click();
-          await page.waitForTimeout(500);
+          await page.waitForLoadState("domcontentloaded", { timeout: 2000 }).catch(() => {});
         }
       }
 
@@ -451,7 +474,7 @@ test.describe("Auto-Save & Export File Management", () => {
           .first();
         if (await mp4Option.isVisible()) {
           await mp4Option.click();
-          await page.waitForTimeout(500);
+          await page.waitForLoadState("domcontentloaded", { timeout: 2000 }).catch(() => {});
         }
       }
 
@@ -461,7 +484,7 @@ test.describe("Auto-Save & Export File Management", () => {
       );
       if (await captionCheckbox.isVisible()) {
         await captionCheckbox.check();
-        await page.waitForTimeout(500);
+        await page.waitForLoadState("domcontentloaded", { timeout: 2000 }).catch(() => {});
 
         // Look for caption format options
         const captionFormatSelect = page.locator(
@@ -483,7 +506,7 @@ test.describe("Auto-Save & Export File Management", () => {
       );
       if (await audioCheckbox.isVisible()) {
         await audioCheckbox.check();
-        await page.waitForTimeout(500);
+        await page.waitForLoadState("domcontentloaded", { timeout: 2000 }).catch(() => {});
       }
     }
   });
@@ -502,21 +525,21 @@ test.describe("Auto-Save & Export File Management", () => {
 
     // Test file operations work on current platform
     await page.click('[data-testid="new-project-button"]');
-    await page.waitForTimeout(2000);
+    await page.waitForSelector('[data-testid="timeline-track"]', { timeout: 5000 });
 
     // Save project
     await page.click('[data-testid="save-project-button"]');
-    await page.waitForTimeout(500);
+    await page.waitForSelector('[data-testid="project-name-input"]', { timeout: 3000 }).catch(() => {});
 
     const nameInput = page.locator('[data-testid="project-name-input"]');
     if (await nameInput.isVisible()) {
       await nameInput.fill(`CrossPlatform Test ${platform.platform}`);
-      await page.waitForTimeout(500);
+      await page.waitForLoadState("domcontentloaded", { timeout: 2000 }).catch(() => {});
 
       const confirmButton = page.locator('[data-testid="save-confirm-button"]');
       if (await confirmButton.isVisible()) {
         await confirmButton.click();
-        await page.waitForTimeout(2000);
+        await page.waitForSelector('[data-testid="save-status"]', { timeout: 5000 }).catch(() => {});
 
         // Verify save succeeded
         const saveStatus = page.locator('[data-testid="save-status"]');
@@ -528,7 +551,7 @@ test.describe("Auto-Save & Export File Management", () => {
 
     // Test file import works
     await page.click('[data-testid="import-media-button"]');
-    await page.waitForTimeout(1000);
+    await page.waitForSelector('input[type="file"]', { timeout: 3000 }).catch(() => {});
 
     // Verify import dialog/functionality
     const fileInput = page.locator('input[type="file"]');
@@ -549,11 +572,11 @@ test.describe("Auto-Save & Export File Management", () => {
   }) => {
     // Create a comprehensive project
     await page.click('[data-testid="new-project-button"]');
-    await page.waitForTimeout(2000);
+    await page.waitForSelector('[data-testid="timeline-track"]', { timeout: 5000 });
 
     // Add media
     await page.click('[data-testid="import-media-button"]');
-    await page.waitForTimeout(1000);
+    await page.waitForSelector('[data-testid="media-item"], input[type="file"]', { timeout: 3000 }).catch(() => {});
 
     // Add to timeline
     const mediaItem = page.locator('[data-testid="media-item"]').first();
@@ -563,23 +586,23 @@ test.describe("Auto-Save & Export File Management", () => {
 
     if ((await mediaItem.isVisible()) && (await timelineTrack.isVisible())) {
       await mediaItem.dragTo(timelineTrack);
-      await page.waitForTimeout(1000);
+      await page.waitForSelector('[data-testid="timeline-element"]', { timeout: 5000 }).catch(() => {});
     }
 
     // Add text overlay
     await page.click('[data-testid="text-panel-tab"]');
-    await page.waitForTimeout(500);
+    await page.waitForSelector('[data-testid="text-panel"]', { timeout: 3000 }).catch(() => {});
 
     const textButton = page.locator('[data-testid="text-overlay-button"]');
     if (await textButton.isVisible()) {
       await textButton.click();
-      await page.waitForTimeout(1000);
+      await page.waitForSelector('[data-testid="timeline-element"], [data-testid="text-input-box"]', { timeout: 5000 }).catch(() => {});
     }
 
     // Open comprehensive export
     const exportButton = page.locator('[data-testid*="export"]').first();
     await exportButton.click();
-    await page.waitForTimeout(1000);
+    await page.waitForSelector('[data-testid*="export-dialog"]', { timeout: 3000 }).catch(() => {});
 
     const exportDialog = page.locator('[data-testid*="export-dialog"]').first();
     if (await exportDialog.isVisible()) {
@@ -587,7 +610,7 @@ test.describe("Auto-Save & Export File Management", () => {
       await page
         .locator('[data-testid="export-filename-input"]')
         .fill("Comprehensive Export Test");
-      await page.waitForTimeout(500);
+      await page.waitForLoadState("domcontentloaded", { timeout: 2000 }).catch(() => {});
 
       // Enable all export features
       const captionCheckbox = page.locator(
@@ -622,7 +645,11 @@ test.describe("Auto-Save & Export File Management", () => {
       const startButton = page.locator('[data-testid="export-start-button"]');
       if (await startButton.isVisible()) {
         await startButton.click();
-        await page.waitForTimeout(2000);
+        // Wait for export to start
+        await Promise.race([
+          page.waitForSelector('[data-testid="export-status"]', { timeout: 5000 }).catch(() => {}),
+          page.waitForSelector('[data-testid="export-progress-bar"]', { timeout: 5000 }).catch(() => {})
+        ]);
 
         // Monitor export progress
         const progressBar = page.locator('[data-testid="export-progress-bar"]');
@@ -636,15 +663,27 @@ test.describe("Auto-Save & Export File Management", () => {
           await expect(exportStatus).toContainText(/export|render|process/i);
         }
 
-        // Let it run for a few seconds, then cancel to avoid long test times
-        await page.waitForTimeout(5000);
+        // Wait for progress to update
+        await page.waitForFunction(
+          () => {
+            const progress = document.querySelector('[data-testid="export-progress-bar"]');
+            return progress && progress.getAttribute('value');
+          },
+          { timeout: 10000 }
+        ).catch(() => {});
 
         const cancelButton = page.locator(
           '[data-testid="export-cancel-button"]'
         );
         if (await cancelButton.isVisible()) {
           await cancelButton.click();
-          await page.waitForTimeout(1000);
+          await page.waitForFunction(
+            () => {
+              const status = document.querySelector('[data-testid="export-status"]');
+              return status && /cancel|stop|abort/i.test(status.textContent || '');
+            },
+            { timeout: 3000 }
+          ).catch(() => {});
 
           // Verify cancellation worked
           if (await exportStatus.isVisible()) {

@@ -71,7 +71,7 @@
   },
   "build": {
     "appId": "com.qcut.videoeditor",
-    "productName": "QCut Video Editor",
+    "productName": "QCut AI Video Editor",
     "copyright": "Copyright © 2024 QCut Team",
     "afterPack": "./dist/scripts/afterPack.js",
     "directories": {
@@ -159,7 +159,7 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "QCut Video Editor",
+      "shortcutName": "QCut AI Video Editor",
       "installerIcon": "build/icon.ico",
       "uninstallerIcon": "build/icon.ico",
       "installerHeaderIcon": "build/icon.ico",
