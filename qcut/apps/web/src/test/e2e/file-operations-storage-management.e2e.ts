@@ -27,12 +27,14 @@ test.describe("File Operations & Storage Management", () => {
 
     // Open import dialog
     await page.click('[data-testid="import-media-button"]');
-    await page.waitForTimeout(500);
+
+    // Wait for file input to be ready
+    await page.waitForSelector('input[type="file"]', { timeout: 2000 }).catch(() => {});
 
     // Verify import functionality is available
     await expect(
       page.locator('[data-testid="import-media-button"]')
-    ).toBeVisible();
+    ).toBeVisible({ timeout: 2000 });
 
     // Import progress would be visible during file upload
     // Note: In real tests, you would mock large file uploads to see progress
@@ -90,7 +92,9 @@ test.describe("File Operations & Storage Management", () => {
 
     // Add media to trigger storage operations
     await page.click('[data-testid="import-media-button"]');
-    await page.waitForTimeout(1000);
+
+    // Wait for file input to be available
+    await page.waitForSelector('input[type="file"]', { timeout: 2000 }).catch(() => {});
 
     // Simulate storage quota issues via JavaScript
     await page.evaluate(() => {
@@ -106,7 +110,12 @@ test.describe("File Operations & Storage Management", () => {
 
     // Try to save project which should trigger storage operations
     await page.click('[data-testid="save-project-button"]');
-    await page.waitForTimeout(2000);
+
+    // Wait for save operation to complete or warning to appear
+    await Promise.race([
+      page.waitForSelector('[data-testid="storage-warning"]', { timeout: 3000 }).catch(() => {}),
+      page.waitForSelector('[data-testid="save-status"]', { timeout: 3000 }).catch(() => {})
+    ]);
 
     // Look for storage warning messages
     const storageWarning = page.locator('[data-testid="storage-warning"]');
@@ -119,7 +128,9 @@ test.describe("File Operations & Storage Management", () => {
     // Verify project operations still work despite storage issues
     await page.getByTestId("project-name-input").fill("Storage Test Project");
     await page.click('[data-testid="save-confirm-button"]');
-    await page.waitForTimeout(1000);
+
+    // Wait for save status to appear
+    await page.waitForSelector('[data-testid="save-status"]', { timeout: 3000 }).catch(() => {});
 
     // Project should still save (using fallback storage)
     const saveStatus = page.locator('[data-testid="save-status"]');
@@ -232,7 +243,9 @@ test.describe("File Operations & Storage Management", () => {
 
     // For now, verify the import system accepts files
     await page.click('[data-testid="import-media-button"]');
-    await page.waitForTimeout(500);
+
+    // Wait for file input to be available
+    await page.waitForSelector('input[type="file"]', { timeout: 2000 }).catch(() => {});
 
     // File input should be available (even if hidden)
     const fileInput = page.locator('input[type="file"]');
@@ -257,11 +270,15 @@ test.describe("File Operations & Storage Management", () => {
       .getByTestId("project-name-input")
       .fill("Storage Integration Test");
     await page.click('[data-testid="save-confirm-button"]');
-    await page.waitForTimeout(2000);
+
+    // Wait for save to complete
+    await page.waitForSelector('[data-testid="save-status"]', { timeout: 3000 }).catch(() => {});
 
     // Navigate back to projects list
     await page.click('[data-testid="projects-tab"]');
-    await page.waitForTimeout(1000);
+
+    // Wait for project list to load
+    await page.waitForSelector('[data-testid="project-list-item"]', { timeout: 3000 });
 
     // Verify saved project appears in list
     const projectListItems = page.locator('[data-testid="project-list-item"]');
@@ -287,7 +304,9 @@ test.describe("File Operations & Storage Management", () => {
 
     // Import media
     await page.click('[data-testid="import-media-button"]');
-    await page.waitForTimeout(1000);
+
+    // Wait for file input to be ready
+    await page.waitForSelector('input[type="file"]', { timeout: 2000 }).catch(() => {});
 
     // Get platform information
     const platform = await page.evaluate(() => navigator.platform);
@@ -301,7 +320,9 @@ test.describe("File Operations & Storage Management", () => {
 
       // Click on media item to verify it loads
       await firstItem.click();
-      await page.waitForTimeout(500);
+
+      // Wait for item to be active/selected
+      await page.waitForSelector('[data-testid="media-item"][data-selected="true"]', { timeout: 2000 }).catch(() => {});
 
       // Verify item is selected/active
       const activeItem = page

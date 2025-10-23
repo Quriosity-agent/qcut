@@ -45,14 +45,30 @@ test.describe("Timeline Controls & Editing Operations (Test #2 Part 2)", () => {
 
     // Zoom in
     await zoomInButton.click();
-    await page.waitForTimeout(100);
+    // Wait for zoom level to update
+    await page.waitForFunction(
+      (initial) => {
+        const slider = document.querySelector("[data-zoom-level]");
+        return slider && Number(slider.getAttribute("data-zoom-level")) > Number(initial);
+      },
+      initialZoom,
+      { timeout: 2000 }
+    );
 
     const zoomedInLevel = await zoomSlider.getAttribute("data-zoom-level");
     expect(Number(zoomedInLevel)).toBeGreaterThan(Number(initialZoom));
 
     // Zoom out
     await zoomOutButton.click();
-    await page.waitForTimeout(100);
+    // Wait for zoom level to decrease
+    await page.waitForFunction(
+      (zoomedIn) => {
+        const slider = document.querySelector("[data-zoom-level]");
+        return slider && Number(slider.getAttribute("data-zoom-level")) < Number(zoomedIn);
+      },
+      zoomedInLevel,
+      { timeout: 2000 }
+    );
 
     const zoomedOutLevel = await zoomSlider.getAttribute("data-zoom-level");
     expect(Number(zoomedOutLevel)).toBeLessThan(Number(zoomedInLevel));
@@ -130,8 +146,8 @@ test.describe("Timeline Controls & Editing Operations (Test #2 Part 2)", () => {
     const timeDisplay = page.getByTestId("current-time-display");
     const initialTime = await timeDisplay.textContent();
 
-    // Verify time display updates or stays consistent
-    await page.waitForTimeout(500);
+    // Ensure time display is visible and stable
+    await expect(timeDisplay).toBeVisible({ timeout: 2000 });
     const currentTime = await timeDisplay.textContent();
 
     // Time should be formatted correctly

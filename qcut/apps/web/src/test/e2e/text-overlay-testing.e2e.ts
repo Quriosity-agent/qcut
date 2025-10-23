@@ -69,12 +69,13 @@ test.describe("Text Overlay Testing (Subtask 3B)", () => {
     if (await draggableElement.isVisible()) {
       // Drag text element to timeline
       await draggableElement.dragTo(timeline);
-      await page.waitForTimeout(1000);
     } else {
       // If no draggable element, try clicking the text overlay button to add text
       await textOverlayButton.click();
-      await page.waitForTimeout(1000);
     }
+
+    // Wait for text overlay element to appear on timeline
+    await page.waitForSelector('[data-testid="timeline-element"]', { timeout: 5000 });
 
     // Verify that a text element was added to the timeline
     const timelineElementsAfter = await page
@@ -189,12 +190,13 @@ test.describe("Text Overlay Testing (Subtask 3B)", () => {
 
     // Switch to another panel and back
     await page.getByTestId("media-panel-tab").click();
-    await page.waitForTimeout(200);
+    // Wait for media panel to be visible
+    await expect(page.getByTestId("media-panel")).toBeVisible({ timeout: 2000 });
 
     await page.getByTestId("text-panel-tab").click();
 
     // Verify text panel is still functional
-    await expect(page.getByTestId("text-panel")).toBeVisible();
+    await expect(page.getByTestId("text-panel")).toBeVisible({ timeout: 2000 });
     await expect(textOverlayButton).toBeVisible();
 
     // Test that text overlay is still interactive

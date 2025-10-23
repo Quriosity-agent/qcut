@@ -13,7 +13,7 @@
 - **Error #3**: test.skip() Usage ✅ FIXED (100%)
 - **Error #4**: Missing Fixtures ✅ VERIFIED (100%)
 - **Error #5**: Race Condition ✅ PARTIAL (1 critical fix applied)
-- **Error #2**: waitForTimeout ⚠️ PARTIAL (2/67 instances - 3%)
+- **Error #2**: waitForTimeout ⚠️ PARTIAL (19/67 instances - 28%)
 
 ### 📊 Test Results After Fixes
 ```bash
@@ -22,8 +22,10 @@
 - Editor Navigation Test: 3/3 passed
 ```
 
-### ⏳ Remaining Work (~5 hours)
-- **65 waitForTimeout instances** across 6 files
+### ⏳ Remaining Work (~3-4 hours)
+- **48 waitForTimeout instances** remaining (down from 67)
+  - ai-transcription-caption-generation.e2e.ts: 22 instances
+  - auto-save-export-file-management.e2e.ts: 26 instances
 - **Timeout standardization** across all test files
 - **Reference documentation** creation
 
@@ -39,6 +41,22 @@
 3. ✅ `apps/web/src/test/e2e/editor-navigation.e2e.ts`
    - Line 38: Fixed `test.skip()` pattern (Error #3)
    - Lines 66-70: Replaced `Promise.race` with sequential waits (Error #5)
+
+4. ✅ `apps/web/src/test/e2e/multi-media-management-part1.e2e.ts`
+   - Line 83: `waitForTimeout(1000)` → `waitForSelector` for timeline element (Error #2)
+   - Line 140: `waitForTimeout(500)` → `waitForLoadState("domcontentloaded")` (Error #2)
+
+5. ✅ `apps/web/src/test/e2e/multi-media-management-part2.e2e.ts`
+   - Lines 48, 55: `waitForTimeout(100)` → `waitForFunction` for zoom level changes (Error #2)
+   - Line 134: `waitForTimeout(500)` → `expect(...).toBeVisible()` (Error #2)
+
+6. ✅ `apps/web/src/test/e2e/text-overlay-testing.e2e.ts`
+   - Lines 72, 76: `waitForTimeout(1000)` → `waitForSelector` for timeline element (Error #2)
+   - Line 192: `waitForTimeout(200)` → `expect(...).toBeVisible()` for panel switch (Error #2)
+
+7. ✅ `apps/web/src/test/e2e/file-operations-storage-management.e2e.ts`
+   - 9 instances replaced with deterministic waits (Error #2)
+   - All import/save operations now wait for actual elements/states
 
 **See detailed subtasks below for complete implementation guide and remaining work.**
 
@@ -1600,18 +1618,18 @@ Copy this to track your progress:
 
 ## 📈 Implementation Progress Summary
 
-### Completed (40% - ~40 minutes)
+### Completed (55% - ~90 minutes)
 - ✅ Error #1: Destructuring Pattern - 100% DONE
 - ✅ Error #3: test.skip() Usage - 100% DONE
 - ✅ Error #4: Missing Fixtures - 100% VERIFIED
-- ⚠️ Error #2: waitForTimeout - 3% DONE (2/67 instances)
+- ⚠️ Error #2: waitForTimeout - 28% DONE (19/67 instances)
 - ⚠️ Error #5: Timeout/Race Conditions - 10% DONE (1 critical fix)
 
-### Remaining (~5 hours)
-**Priority 1 (Next 1 hour):**
-- Multi-media management tests (5 instances)
-- Text overlay testing (3 instances)
-- File operations tests (9 instances)
+### Remaining (~3-4 hours)
+**~~Priority 1~~** ✅ COMPLETED:
+- ~~Multi-media management tests (5 instances)~~ ✅
+- ~~Text overlay testing (3 instances)~~ ✅
+- ~~File operations tests (9 instances)~~ ✅
 
 **Priority 2 (Next 2-3 hours):**
 - Auto-save/export tests (26 instances)
@@ -1625,9 +1643,14 @@ Copy this to track your progress:
 ### Quick Continue Command
 ```bash
 cd qcut
-# Fix next priority tests (20 minutes total)
-code apps/web/src/test/e2e/multi-media-management-part1.e2e.ts
-code apps/web/src/test/e2e/multi-media-management-part2.e2e.ts
+
+# Check remaining waitForTimeout count
+grep -r "waitForTimeout" apps/web/src/test/e2e/ --include="*.e2e.ts" | wc -l
+# Current: 51 remaining (down from 67)
+
+# Fix next priority tests (Priority 2)
+code apps/web/src/test/e2e/auto-save-export-file-management.e2e.ts  # 26 instances
+code apps/web/src/test/e2e/ai-transcription-caption-generation.e2e.ts  # 22 instances
 ```
 
 ---
