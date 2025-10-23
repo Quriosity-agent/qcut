@@ -110,3 +110,4 @@ playwright/.cache/
 docs/completed/test-results/
 docs/completed/test-results-raw/
 .git-rewrite
+test-output.json
