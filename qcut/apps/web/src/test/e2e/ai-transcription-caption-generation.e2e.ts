@@ -39,7 +39,7 @@ test.describe("AI Transcription & Caption Generation", () => {
   }) => {
     // Media file already uploaded in beforeEach - switch to Captions tab
     await page.getByTestId("captions-panel-tab").click();
-    await page.waitForTimeout(500);
+    await page.waitForSelector('[data-testid="ai-transcription-panel"]', { timeout: 3000 }).catch(() => {});
 
     // Verify AI transcription panel is visible
     await expect(page.getByTestId("ai-transcription-panel")).toBeVisible();
@@ -62,11 +62,18 @@ test.describe("AI Transcription & Caption Generation", () => {
 
     // Click transcription upload/generate button
     await page.getByTestId("transcription-upload-button").click();
-    await page.waitForTimeout(1000);
+    await page.waitForLoadState("networkidle", { timeout: 3000 }).catch(() => {});
 
     // Wait for transcription processing (mock or actual service)
-    // In a real test, you might wait for loading indicators to disappear
-    await page.waitForTimeout(3000);
+    // Wait for AI processing to complete
+    await page.waitForFunction(
+      () => {
+        const panel = document.querySelector('[data-testid="ai-transcription-panel"]');
+        const loading = document.querySelector('[data-testid*="loading"], [data-testid*="processing"]');
+        return panel && !loading;
+      },
+      { timeout: 10000 }
+    ).catch(() => {});
 
     // Verify transcription results appear in the panel
     // This would depend on your specific UI implementation
@@ -90,7 +97,15 @@ test.describe("AI Transcription & Caption Generation", () => {
     const transcribeButton = page.getByTestId("transcription-upload-button");
     if (await transcribeButton.isVisible()) {
       await transcribeButton.click();
-      await page.waitForTimeout(3000); // Wait for transcription processing
+      // Wait for transcription processing
+      await page.waitForFunction(
+        () => {
+          const panel = document.querySelector('[data-testid="ai-transcription-panel"]');
+          const loading = document.querySelector('[data-testid*="loading"], [data-testid*="processing"]');
+          return panel && !loading;
+        },
+        { timeout: 10000 }
+      ).catch(() => {});
     }
 
     // Look for editable caption elements
@@ -142,7 +157,7 @@ test.describe("AI Transcription & Caption Generation", () => {
 
     if (await applyButton.isVisible()) {
       await applyButton.click();
-      await page.waitForTimeout(1000);
+      await page.waitForSelector('[data-testid="timeline-element"]', { timeout: 5000 }).catch(() => {});
     }
 
     // Verify captions appear on timeline
@@ -185,7 +200,7 @@ test.describe("AI Transcription & Caption Generation", () => {
       .first();
     if (await applyButton.isVisible()) {
       await applyButton.click();
-      await page.waitForTimeout(1000);
+      await page.waitForSelector('[data-testid="timeline-element"]', { timeout: 5000 }).catch(() => {});
     }
 
     // Ensure timeline has content
@@ -237,7 +252,7 @@ test.describe("AI Transcription & Caption Generation", () => {
       .first();
     if (await applyButton.isVisible()) {
       await applyButton.click();
-      await page.waitForTimeout(1000);
+      await page.waitForSelector('[data-testid="timeline-element"]', { timeout: 5000 }).catch(() => {});
     }
 
     // Verify timeline has elements before export
