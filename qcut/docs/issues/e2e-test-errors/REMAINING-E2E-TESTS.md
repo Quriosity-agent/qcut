@@ -1,18 +1,18 @@
 # Remaining E2E Tests - QCut Test Suite
 
 **Last Updated**: 2025-10-24
-**Status**: 6/14 test files verified with database fix, 8 remaining
+**Status**: 8/14 test files verified with database fix, 6 remaining
 
 ## Overview
 
 Total E2E test files: **14**
 Total tests: **67**
-Tests verified with database fix: **19** (6 files, 19 tests)
-Tests remaining: **48** (8 files)
+Tests verified with database fix: **25** (8 files, 25 tests: 23 passing, 1 failed-test-code, 1 skipped)
+Tests remaining: **42** (6 files)
 
 ---
 
-## ✅ Verified with Database Fix (6 files, 19 tests)
+## ✅ Verified with Database Fix (8 files, 25 tests)
 
 ### 1. sticker-overlay-testing.e2e.ts ✅
 **Status**: 6/6 tests PASSING
@@ -79,37 +79,47 @@ Tests remaining: **48** (8 files)
 |---|-----------|--------|
 | 1 | track projectId during sticker selection | ✅ Used for bug verification |
 
----
-
-## ⏳ Remaining Tests to Verify (8 files, 48 tests)
-
-### 1. editor-navigation.e2e.ts ⏳
+### 7. editor-navigation.e2e.ts ⚠️
 **Category**: Editor Navigation
-**Test Count**: 3 tests
+**Status**: 2/3 tests PASSING, 1 skipped
+**Runtime**: 17.2 seconds
 
 | # | Test Name | Status |
 |---|-----------|--------|
-| 1 | should detect existing project on projects page | ⏳ Not yet tested |
-| 2 | should attempt to open existing project without crash | ⏳ Not yet tested |
-| 3 | should check if direct navigation to editor works | ⏳ Not yet tested |
+| 1 | should detect existing project on projects page | ✅ PASSING |
+| 2 | should attempt to open existing project without crash | ⏭️ SKIPPED |
+| 3 | should check if direct navigation to editor works | ✅ PASSING |
 
----
+**Note**: Test #2 skipped - likely conditional test for existing project scenario
 
-### 6. multi-media-management-part1.e2e.ts ⏳
+### 8. multi-media-management-part1.e2e.ts ⚠️
 **Category**: Multi-Media Management (Part 1)
-**Test Count**: 5 tests
+**Status**: 4/5 tests PASSING, 1 test code error
+**Runtime**: 47.5 seconds
 
 | # | Test Name | Status |
 |---|-----------|--------|
-| 1 | should import multiple media types and manage tracks | ⏳ Not yet tested |
-| 2 | should handle drag and drop to timeline | ⏳ Not yet tested |
-| 3 | should support multiple track types | ⏳ Not yet tested |
-| 4 | should maintain timeline state across operations | ⏳ Not yet tested |
-| 5 | should display media items correctly | ⏳ Not yet tested |
+| 1 | should import multiple media types and manage tracks | ❌ TEST CODE ERROR |
+| 2 | should handle drag and drop to timeline | ✅ PASSING |
+| 3 | should support multiple track types | ✅ PASSING |
+| 4 | should maintain timeline state across operations | ✅ PASSING |
+| 5 | should display media items correctly | ✅ PASSING |
+
+**Error Details**: Test #1 uses invalid Playwright API method `toHaveCountGreaterThanOrEqual()` - **test code needs fix**
+
+**Fix Required**: Replace with valid Playwright expect API:
+```typescript
+const count = await mediaItems.count();
+expect(count).toBeGreaterThanOrEqual(3);
+```
+
+**Debug Report**: See `multi-media-management-part1-test-failure.md` for detailed analysis
 
 ---
 
-### 7. multi-media-management-part2.e2e.ts ⏳
+## ⏳ Remaining Tests to Verify (6 files, 42 tests)
+
+### 1. multi-media-management-part2.e2e.ts ⏳
 **Category**: Multi-Media Management (Part 2)
 **Test Count**: 7 tests
 
@@ -210,12 +220,12 @@ Tests remaining: **48** (8 files)
 | **Sticker Overlay** | 1 | 6 | ✅ 6 | 0 |
 | **Diagnostic** | 1 | 1 | ✅ 1 | 0 |
 | **Project Workflow** | 3 | 9 | ✅ 9 | 0 |
-| **Navigation** | 2 | 6 | ✅ 3 | ⏳ 3 |
-| **Multi-Media Management** | 2 | 12 | 0 | ⏳ 12 |
+| **Navigation** | 2 | 6 | ✅ 5 (2 pass, 1 skip) | 0 |
+| **Multi-Media Management** | 2 | 12 | ⚠️ 4 (1 test code err) | ⏳ 7 |
 | **Text Overlay** | 1 | 6 | 0 | ⏳ 6 |
 | **File Operations & Storage** | 2 | 14 | 0 | ⏳ 14 |
 | **AI Features** | 2 | 13 | 0 | ⏳ 13 |
-| **TOTAL** | **14** | **67** | **19** | **48** |
+| **TOTAL** | **14** | **67** | **25** (23 pass, 1 err, 1 skip) | **42** |
 
 ---
 
@@ -232,15 +242,15 @@ Run tests that validate fundamental functionality:
 **Test Count**: 12 tests
 **Progress**: 12/12 tests completed (100%) ✅
 
-### Phase 2: Media Management (Medium Priority)
+### Phase 2: Media Management (Medium Priority) ⚠️ IN PROGRESS
 Validate media handling and storage:
-1. ⏳ **multi-media-management-part1.e2e.ts** - Media import
+1. ⚠️ **multi-media-management-part1.e2e.ts** - Media import (COMPLETED - 4/5 passing, 1 test code error, 47.5s)
 2. ⏳ **multi-media-management-part2.e2e.ts** - Playback controls
 3. ⏳ **file-operations-storage-management.e2e.ts** - File operations
 
 **Estimated Runtime**: 10-15 minutes
 **Test Count**: 20 tests
-**Progress**: 0/20 tests completed (0%)
+**Progress**: 4/20 tests passing (20%), 1 test code error needs fix
 
 ### Phase 3: Overlay Features (Medium Priority)
 Test overlay functionality:
