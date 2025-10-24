@@ -5,6 +5,20 @@
 **Test Results**: 0/6 PASSED, 6/6 FAILED
 **Runtime**: ~3 minutes
 
+## ✅ **UPDATE**: Welcome Screen Fix Applied (2025-10-24)
+
+**Fix Implemented**: Added `localStorage.setItem('hasSeenOnboarding', 'true')` to test setup in `electron-helpers.ts`
+
+**Impact**: This fix should resolve Tests 1, 2, and 4 failures by preventing the "Welcome to QCut Beta" onboarding modal from appearing during tests.
+
+**Status**:
+- Tests 1, 2, 4: Welcome screen blocking issue **FIXED** (needs re-verification)
+- Test 3: Still needs media preparation before export
+- Test 5: Still needs investigation of save-project button existence
+- Test 6: **APPLICATION BUG** - Modal blocking issue still requires application-level fix
+
+**Commit**: `a9831e6b` - "fix: skip welcome screen in E2E tests by setting hasSeenOnboarding flag"
+
 ## Test Results Summary
 
 | # | Test Name | Status | Root Cause |
