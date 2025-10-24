@@ -342,6 +342,32 @@ export async function cleanupAllDatabases() {
 ### Test Files Created
 - `qcut/apps/web/src/test/e2e/debug-projectid.e2e.ts` - Diagnostic test with checkpoints
 
+## Debugging Tools
+
+### inspect-databases.js
+**Location**: `qcut/docs/issues/e2e-test-errors/inspect-databases.js`
+
+**Purpose**: Browser console script to inspect IndexedDB databases during test execution
+
+**Usage**:
+1. Run E2E test with browser visible: `bun x playwright test --project=electron --headed`
+2. Open browser DevTools console
+3. Paste the script and run it
+4. View grouped database counts and patterns
+
+**Key Feature**: Uses `indexedDB.databases()` API to list all databases - the same API we suspect is used for ghost project ID scanning.
+
+**Output Example**:
+```
+📊 Total databases found: 378
+
+📋 Database groups:
+  video-editor-media-*: 188 databases
+  video-editor-timelines-*: 188 databases
+  qcut-projects: 1 database
+  frame-cache: 1 database
+```
+
 ## Related Commits
 
 - `8e316ff1` - debug: add stack trace logging to IndexedDBAdapter constructor
