@@ -202,6 +202,12 @@ export const test = base.extend<ElectronFixtures>({
     // Clean up any leftover data from previous test runs BEFORE starting test
     await cleanupDatabase(page);
 
+    // Skip onboarding/welcome screen for all E2E tests
+    // Set the flag AFTER cleanup so tests don't see the "Welcome to QCut Beta" modal
+    await page.evaluate(() => {
+      localStorage.setItem('hasSeenOnboarding', 'true');
+    });
+
     // Navigate to projects page for E2E testing
     await navigateToProjects(page);
 
