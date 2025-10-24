@@ -344,29 +344,23 @@ export async function cleanupAllDatabases() {
 
 ## Debugging Tools
 
-### inspect-databases.js
-**Location**: `qcut/docs/issues/e2e-test-errors/inspect-databases.js`
+### E2E Diagnostic Test
+**Location**: `qcut/apps/web/src/test/e2e/debug-projectid.e2e.ts`
 
-**Purpose**: Browser console script to inspect IndexedDB databases during test execution
+**Purpose**: Automated test that tracks database creation at multiple checkpoints during project and sticker panel interactions
 
 **Usage**:
-1. Run E2E test with browser visible: `bun x playwright test --project=electron --headed`
-2. Open browser DevTools console
-3. Paste the script and run it
-4. View grouped database counts and patterns
-
-**Key Feature**: Uses `indexedDB.databases()` API to list all databases - the same API we suspect is used for ghost project ID scanning.
-
-**Output Example**:
+```bash
+bun x playwright test --project=electron apps/web/src/test/e2e/debug-projectid.e2e.ts
 ```
-📊 Total databases found: 378
 
-📋 Database groups:
-  video-editor-media-*: 188 databases
-  video-editor-timelines-*: 188 databases
-  qcut-projects: 1 database
-  frame-cache: 1 database
-```
+**Key Features**:
+- Tracks database counts at 8 checkpoints throughout the test flow
+- Identifies unique project IDs in media databases
+- Calculates excess databases automatically
+- Provides detailed summary of database proliferation
+
+**Note**: This test was instrumental in identifying and verifying the fix for the database proliferation bug
 
 ## Related Commits
 
