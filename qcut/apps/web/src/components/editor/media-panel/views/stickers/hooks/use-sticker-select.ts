@@ -26,6 +26,9 @@ export function useStickerSelect() {
         return;
       }
 
+      // DEBUG: Log activeProject.id
+      console.log(`[StickerSelect] activeProject.id = ${activeProject.id}, iconId = ${iconId}`);
+
       let createdObjectUrl: string | null = null;
       try {
         // Download the actual SVG content with transparency

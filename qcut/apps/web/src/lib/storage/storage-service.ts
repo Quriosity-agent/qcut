@@ -82,6 +82,10 @@ class StorageService {
 
   // Helper to get project-specific media adapters
   private getProjectMediaAdapters(projectId: string) {
+    // DEBUG: Track project IDs being used
+    console.log(`[StorageService] getProjectMediaAdapters called with projectId: ${projectId}`);
+    console.trace('[StorageService] Call stack');
+
     const mediaMetadataAdapter = new IndexedDBAdapter<MediaFileData>(
       `${this.config.mediaDb}-${projectId}`,
       "media-metadata",
@@ -189,6 +193,16 @@ class StorageService {
     await this.initializeStorage();
 
     const projectIds = await this.projectsAdapter.list();
+
+    // DEBUG: Log how many project IDs found
+    console.error(`[StorageService.loadAllProjects] Found ${projectIds.length} project IDs to load`);
+    if (projectIds.length > 0 && projectIds.length <= 10) {
+      console.error(`[StorageService.loadAllProjects] Project IDs:`, projectIds);
+    } else if (projectIds.length > 10) {
+      console.error(`[StorageService.loadAllProjects] First 5 project IDs:`, projectIds.slice(0, 5));
+      console.error(`[StorageService.loadAllProjects] Last 5 project IDs:`, projectIds.slice(-5));
+    }
+
     const projects: TProject[] = [];
 
     for (const id of projectIds) {
@@ -211,6 +225,9 @@ class StorageService {
 
   // Media operations - now project-specific
   async saveMediaItem(projectId: string, mediaItem: MediaItem): Promise<void> {
+    // DEBUG: Log projectId at entry point
+    console.log(`[StorageService.saveMediaItem] Called with projectId: ${projectId}, mediaItem.id: ${mediaItem.id}, mediaItem.name: ${mediaItem.name}`);
+
     const { mediaMetadataAdapter, mediaFilesAdapter } =
       this.getProjectMediaAdapters(projectId);
 
