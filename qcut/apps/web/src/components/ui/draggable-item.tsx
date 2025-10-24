@@ -27,6 +27,7 @@ export interface DraggableMediaItemProps {
   variant?: "default" | "card";
   isDraggable?: boolean;
   stopPropagation?: boolean;
+  "data-testid"?: string;
 }
 
 export function DraggableMediaItem({
@@ -43,6 +44,7 @@ export function DraggableMediaItem({
   variant = "default",
   isDraggable = true,
   stopPropagation = true,
+  "data-testid": dataTestId,
 }: DraggableMediaItemProps) {
   const [isDragging, setIsDragging] = useState(false);
   const [dragPosition, setDragPosition] = useState({ x: 0, y: 0 });
@@ -99,7 +101,7 @@ export function DraggableMediaItem({
 
   return (
     <>
-      <div ref={dragRef} className="relative group w-28 h-28">
+      <div ref={dragRef} className="relative group w-28 h-28" data-testid={dataTestId}>
         <div
           className={cn(
             "flex flex-col gap-1 p-0 h-auto w-full relative cursor-default",
