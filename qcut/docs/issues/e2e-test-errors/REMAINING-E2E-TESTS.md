@@ -1,18 +1,18 @@
 # Remaining E2E Tests - QCut Test Suite
 
 **Last Updated**: 2025-10-24
-**Status**: 9/14 test files verified with database fix, 5 remaining
+**Status**: 10/14 test files verified with database fix, 4 remaining
 
 ## Overview
 
 Total E2E test files: **14**
 Total tests: **67**
-Tests verified with database fix: **32** (9 files, 32 tests: 29 passing, 1 failed-app-bug, 1 failed-test-code, 1 skipped)
-Tests remaining: **35** (5 files)
+Tests verified with database fix: **38** (10 files, 38 tests: 31 passing, 1 failed-app-bug, 1 failed-test-code, 1 skipped, 4 failed-test-infrastructure, 2 not-tested)
+Tests remaining: **29** (4 files)
 
 ---
 
-## ✅ Verified with Database Fix (9 files, 32 tests)
+## ✅ Verified with Database Fix (10 files, 38 tests)
 
 ### 1. sticker-overlay-testing.e2e.ts ✅
 **Status**: 6/6 tests PASSING
@@ -144,9 +144,46 @@ expect(count).toBeGreaterThanOrEqual(3);
 
 **Debug Report**: See `multi-media-management-part2-test-failure.md` for detailed analysis
 
+### 10. file-operations-storage-management.e2e.ts ⚠️
+**Category**: File Operations & Storage (Subtask 5A)
+**Status**: 2/8 tests PASSING, 4 failed (test infrastructure), 2 not tested
+**Runtime**: ~5 minutes (tests 7-8 not completed)
+
+| # | Test Name | Status |
+|---|-----------|--------|
+| 1 | 5A.1 - Import media files with progress tracking | ✅ PASSING |
+| 2 | 5A.2 - Handle large file imports | ✅ PASSING |
+| 3 | 5A.3 - Test storage quota and fallback system | ❌ FAILED (TEST INFRA) |
+| 4 | 5A.4 - Verify thumbnail generation for media | ❌ FAILED (TEST INFRA) |
+| 5 | 5A.5 - Test drag and drop file operations | ❌ FAILED (TEST INFRA) |
+| 6 | 5A.6 - Test file format support and validation | ❌ FAILED (TEST INFRA) |
+| 7 | 5A.7 - Test storage service integration | ⏳ NOT TESTED (excessive runtime) |
+| 8 | 5A.8 - Test cross-platform file path handling | ⏳ NOT TESTED (excessive runtime) |
+
+**Issue Summary**: Tests 3-6 fail due to missing test infrastructure/fixtures
+- Test #3: Missing `save-project-button` element
+- Tests #4-5: `media-item` not appearing after import (missing test files)
+- Test #6: `import-media-button` not found (navigation issue)
+- Tests #7-8: Not completed due to excessive runtime (>5 minutes)
+
+**Root Cause**: Tests written for incomplete features or missing test fixtures
+
+**Impact**:
+- Basic file operations work (tests 1-2 pass)
+- Advanced features may not be implemented yet
+- Test infrastructure needs completion
+
+**Fix Required**:
+- Add test media file fixtures
+- Implement missing features (save-project button)
+- Fix test navigation/setup issues
+- Consider marking tests as `.skip()` until features complete
+
+**Debug Report**: See `file-operations-storage-management-test-failure.md` for detailed analysis
+
 ---
 
-## ⏳ Remaining Tests to Verify (5 files, 35 tests)
+## ⏳ Remaining Tests to Verify (4 files, 29 tests)
 
 ### 1. text-overlay-testing.e2e.ts ⏳
 **Category**: Text Overlay Features
@@ -163,24 +200,7 @@ expect(count).toBeGreaterThanOrEqual(3);
 
 ---
 
-### 2. file-operations-storage-management.e2e.ts ⏳
-**Category**: File Operations & Storage (Subtask 5A)
-**Test Count**: 8 tests
-
-| # | Test Name | Status |
-|---|-----------|--------|
-| 1 | 5A.1 - Import media files with progress tracking | ⏳ Not yet tested |
-| 2 | 5A.2 - Handle large file imports | ⏳ Not yet tested |
-| 3 | 5A.3 - Test storage quota and fallback system | ⏳ Not yet tested |
-| 4 | 5A.4 - Verify thumbnail generation for media | ⏳ Not yet tested |
-| 5 | 5A.5 - Test drag and drop file operations | ⏳ Not yet tested |
-| 6 | 5A.6 - Test file format support and validation | ⏳ Not yet tested |
-| 7 | 5A.7 - Test storage service integration | ⏳ Not yet tested |
-| 8 | 5A.8 - Test cross-platform file path handling | ⏳ Not yet tested |
-
----
-
-### 3. auto-save-export-file-management.e2e.ts ⏳
+### 2. auto-save-export-file-management.e2e.ts ⏳
 **Category**: Auto-Save & Export (Subtask 5B)
 **Test Count**: 6 tests
 
@@ -195,7 +215,7 @@ expect(count).toBeGreaterThanOrEqual(3);
 
 ---
 
-### 4. ai-transcription-caption-generation.e2e.ts ⏳
+### 3. ai-transcription-caption-generation.e2e.ts ⏳
 **Category**: AI Transcription & Captions (Subtask 4A)
 **Test Count**: 6 tests
 
@@ -210,7 +230,7 @@ expect(count).toBeGreaterThanOrEqual(3);
 
 ---
 
-### 5. ai-enhancement-export-integration.e2e.ts ⏳
+### 4. ai-enhancement-export-integration.e2e.ts ⏳
 **Category**: AI Enhancement & Export (Subtask 4B)
 **Test Count**: 7 tests
 
@@ -236,9 +256,9 @@ expect(count).toBeGreaterThanOrEqual(3);
 | **Navigation** | 2 | 6 | ✅ 5 (2 pass, 1 skip) | 0 |
 | **Multi-Media Management** | 2 | 12 | ⚠️ 10 (1 app bug, 1 test err) | ⏳ 2 |
 | **Text Overlay** | 1 | 6 | 0 | ⏳ 6 |
-| **File Operations & Storage** | 2 | 14 | 0 | ⏳ 14 |
+| **File Operations & Storage** | 2 | 14 | ⚠️ 6 (2 pass, 4 test infra, 2 not tested) | ⏳ 8 |
 | **AI Features** | 2 | 13 | 0 | ⏳ 13 |
-| **TOTAL** | **14** | **67** | **32** (29 pass, 1 app bug, 1 test err, 1 skip) | **35** |
+| **TOTAL** | **14** | **67** | **38** (31 pass, 1 app bug, 1 test err, 1 skip, 4 test infra, 2 not tested) | **29** |
 
 ---
 
@@ -259,11 +279,11 @@ Run tests that validate fundamental functionality:
 Validate media handling and storage:
 1. ⚠️ **multi-media-management-part1.e2e.ts** - Media import (COMPLETED - 4/5 passing, 1 test code error, 47.5s)
 2. ⚠️ **multi-media-management-part2.e2e.ts** - Playback controls (COMPLETED - 6/7 passing, 1 app bug, ~2 min)
-3. ⏳ **file-operations-storage-management.e2e.ts** - File operations
+3. ⚠️ **file-operations-storage-management.e2e.ts** - File operations (COMPLETED - 2/8 passing, 4 test infra issues, 2 not tested, ~5 min)
 
-**Estimated Runtime**: 10-15 minutes
+**Estimated Runtime**: 15-20 minutes
 **Test Count**: 20 tests
-**Progress**: 10/20 tests passing (50%), 1 app bug (modal blocking zoom), 1 test code error
+**Progress**: 12/20 tests passing (60%), 1 app bug (modal blocking zoom), 1 test code error, 4 test infrastructure issues, 2 not tested
 
 ### Phase 3: Overlay Features (Medium Priority)
 Test overlay functionality:
