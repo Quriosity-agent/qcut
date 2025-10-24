@@ -49,11 +49,13 @@ export async function cleanupDatabase(page: Page) {
         localStorageItems: 0,
         sessionStorageItems: 0,
         cachesCleared: 0,
+        databaseNames: [] as string[],
       };
 
       // Clear all IndexedDB databases
       const databases = await indexedDB.databases();
       stats.databasesFound = databases.length;
+      stats.databaseNames = databases.map(db => db.name || 'unnamed').filter(name => name !== 'unnamed');
 
       console.log(`📊 Found ${databases.length} IndexedDB database(s) to delete`);
 
@@ -122,6 +124,17 @@ export async function cleanupDatabase(page: Page) {
 
     if (cleanupStats.databasesDeleted > 0 || cleanupStats.localStorageItems > 0 || cleanupStats.sessionStorageItems > 0) {
       console.log(`🎉 Successfully cleaned up test data - tests will start with clean slate!`);
+
+      // Log database name samples for debugging
+      if (cleanupStats.databaseNames && cleanupStats.databaseNames.length > 0) {
+        console.log(`\n📝 Database samples (first 10):`);
+        cleanupStats.databaseNames.slice(0, 10).forEach((name, i) => {
+          console.log(`   ${i + 1}. ${name}`);
+        });
+        if (cleanupStats.databaseNames.length > 10) {
+          console.log(`   ... and ${cleanupStats.databaseNames.length - 10} more`);
+        }
+      }
     } else {
       console.log('✨ Database already clean - no data to remove');
     }
