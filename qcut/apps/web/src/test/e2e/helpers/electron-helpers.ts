@@ -163,6 +163,23 @@ export const test = base.extend<ElectronFixtures>({
   page: async ({ electronApp }, use) => {
     const page = await electronApp.firstWindow();
 
+    // Enable console log capture from renderer process
+    page.on('console', (msg) => {
+      const type = msg.type();
+      const text = msg.text();
+
+      // Log renderer console messages with prefix for clarity
+      const prefix = `[RENDERER ${type.toUpperCase()}]`;
+
+      if (type === 'error') {
+        console.error(`${prefix} ${text}`);
+      } else if (type === 'warning') {
+        console.warn(`${prefix} ${text}`);
+      } else {
+        console.log(`${prefix} ${text}`);
+      }
+    });
+
     // Wait for the app to be ready using proper state-based waiting
     await page.waitForLoadState("domcontentloaded");
 

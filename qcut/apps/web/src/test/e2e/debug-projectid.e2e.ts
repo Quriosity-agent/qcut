@@ -7,14 +7,43 @@ import { test, expect, createTestProject } from "./helpers/electron-helpers";
 
 test.describe("Debug ProjectId Bug", () => {
   test("track projectId during sticker selection", async ({ page }) => {
-    // Track all console messages
-    const consoleLogs: Array<{ type: string; text: string }> = [];
-    page.on("console", (msg) => {
-      consoleLogs.push({ type: msg.type(), text: msg.text() });
+    console.log("\n\n========================================");
+    console.log("🔍 STARTING DATABASE BUG INVESTIGATION");
+    console.log("========================================\n");
+
+    // CHECKPOINT 1: Before creating project
+    console.log("📍 CHECKPOINT 1: Before creating project");
+    const beforeCreate = await page.evaluate(async () => {
+      const dbs = await indexedDB.databases();
+      return {
+        total: dbs.length,
+        names: dbs.map(db => db.name).filter(n => n),
+      };
     });
+    console.log(`   Databases: ${beforeCreate.total}`);
+    console.log(`   Names: ${beforeCreate.names.join(", ")}\n`);
 
     // Create test project
     await createTestProject(page, "ProjectId Debug Test");
+
+    // CHECKPOINT 2: After creating project
+    console.log("📍 CHECKPOINT 2: After creating project");
+    const afterCreate = await page.evaluate(async () => {
+      const dbs = await indexedDB.databases();
+      const mediaDbNames = dbs
+        .map(db => db.name)
+        .filter(name => name && name.startsWith('video-editor-media-'));
+      return {
+        total: dbs.length,
+        mediaDbs: mediaDbNames.length,
+        mediaDbSamples: mediaDbNames.slice(0, 5),
+        allNames: dbs.map(db => db.name).filter(n => n),
+      };
+    });
+    console.log(`   Total databases: ${afterCreate.total}`);
+    console.log(`   Media databases: ${afterCreate.mediaDbs}`);
+    console.log(`   Media DB samples: ${afterCreate.mediaDbSamples.join(", ")}`);
+    console.log(`   All databases: ${afterCreate.allNames.join(", ")}\n`);
 
     // Get the project ID from the browser context
     const projectId = await page.evaluate(() => {
@@ -32,96 +61,118 @@ test.describe("Debug ProjectId Bug", () => {
       return match ? match[1] : null;
     });
 
-    console.log(`\n\n========================================`);
-    console.log(`[DEBUG TEST] Initial project ID: ${projectId}`);
-    console.log(`========================================\n\n`);
+    console.log(`📍 CHECKPOINT 3: Project ID from store`);
+    console.log(`   Project ID: ${projectId}\n`);
+
+    // CHECKPOINT 4: Inspect qcut-projects database contents
+    console.log("📍 CHECKPOINT 4: Inspecting qcut-projects database");
+    const projectsDbContents = await page.evaluate(async () => {
+      try {
+        const db = await new Promise<IDBDatabase>((resolve, reject) => {
+          const request = indexedDB.open('qcut-projects', 1);
+          request.onsuccess = () => resolve(request.result);
+          request.onerror = () => reject(request.error);
+        });
+
+        const transaction = db.transaction(['projects'], 'readonly');
+        const store = transaction.objectStore('projects');
+        const allKeys = await new Promise<any[]>((resolve, reject) => {
+          const req = store.getAllKeys();
+          req.onsuccess = () => resolve(req.result as any[]);
+          req.onerror = () => reject(req.error);
+        });
+
+        return {
+          projectCount: allKeys.length,
+          projectIds: allKeys,
+        };
+      } catch (error) {
+        return {
+          projectCount: -1,
+          projectIds: [],
+          error: String(error),
+        };
+      }
+    });
+    console.log(`   Projects in qcut-projects DB: ${projectsDbContents.projectCount}`);
+    console.log(`   Project IDs: ${projectsDbContents.projectIds.join(", ")}`);
+    if (projectsDbContents.error) {
+      console.log(`   Error: ${projectsDbContents.error}`);
+    }
+    console.log("");
 
     // Open stickers panel
+    console.log("📍 CHECKPOINT 5: Opening stickers panel");
     await page.getByTestId("stickers-panel-tab").click();
     await expect(page.getByTestId("stickers-panel")).toBeVisible();
+
+    // CHECKPOINT 6: After opening stickers panel
+    const afterStickers = await page.evaluate(async () => {
+      const dbs = await indexedDB.databases();
+      const mediaDbNames = dbs
+        .map(db => db.name)
+        .filter(name => name && name.startsWith('video-editor-media-'));
+      return {
+        total: dbs.length,
+        mediaDbs: mediaDbNames.length,
+      };
+    });
+    console.log(`   Databases after opening stickers: ${afterStickers.total}`);
+    console.log(`   Media databases: ${afterStickers.mediaDbs}\n`);
 
     // Wait for stickers to load
     const stickerItems = page.getByTestId("sticker-item");
     await stickerItems.first().waitFor({ state: "attached", timeout: 5000 }).catch(() => {});
 
     const itemCount = await stickerItems.count();
-    console.log(`\n[DEBUG TEST] Found ${itemCount} sticker items\n`);
+    console.log(`📍 CHECKPOINT 7: Sticker panel loaded`);
+    console.log(`   Found ${itemCount} sticker items\n`);
 
-    if (itemCount > 0) {
-      // Click on first 5 stickers and check projectId after each click
-      const clickCount = Math.min(5, itemCount);
+    // FINAL CHECKPOINT: Get final database count
+    console.log("📍 CHECKPOINT 8: Final database state");
+    const finalStats = await page.evaluate(async () => {
+      const dbs = await indexedDB.databases();
+      const mediaDbNames = dbs
+        .map(db => db.name)
+        .filter(name => name && name.startsWith('video-editor-media-'));
 
-      for (let i = 0; i < clickCount; i++) {
-        console.log(`\n[DEBUG TEST] === Clicking sticker ${i + 1} ===`);
+      // Get unique project IDs from media database names
+      const projectIdsFromDbs = mediaDbNames.map(name => {
+        const match = name.match(/video-editor-media-(.+)/);
+        return match ? match[1] : null;
+      }).filter(id => id);
 
-        // Click sticker
-        await stickerItems.nth(i).click();
-        await page.waitForTimeout(500); // Wait for operation to complete
+      return {
+        total: dbs.length,
+        mediaDbs: mediaDbNames.length,
+        uniqueProjectIds: [...new Set(projectIdsFromDbs)],
+        firstFiveMediaDbs: mediaDbNames.slice(0, 5),
+        lastFiveMediaDbs: mediaDbNames.slice(-5),
+      };
+    });
 
-        // Check projectId after click
-        const projectIdAfterClick = await page.evaluate(() => {
-          // Try multiple ways to get the project ID
-          const url = window.location.href;
-          const urlMatch = url.match(/\/editor\/([^/]+)/);
-          const urlId = urlMatch ? urlMatch[1] : null;
-
-          // Check if we can access stores
-          let storeId = null;
-          try {
-            // @ts-ignore
-            if (window.useProjectStore) {
-              // @ts-ignore
-              const state = window.useProjectStore.getState();
-              storeId = state.activeProject?.id;
-            }
-          } catch (e) {
-            console.log("[DEBUG TEST] Could not access store:", e);
-          }
-
-          return { urlId, storeId };
-        });
-
-        console.log(`[DEBUG TEST] After sticker ${i + 1} click:`, projectIdAfterClick);
-
-        // Check how many databases exist
-        const dbCount = await page.evaluate(async () => {
-          const databases = await indexedDB.databases();
-          const mediaDb = databases.filter(db => db.name?.startsWith("video-editor-media-"));
-          console.log(`[DEBUG TEST] Total databases: ${databases.length}, Media databases: ${mediaDb.length}`);
-
-          if (mediaDb.length > 0 && mediaDb.length <= 10) {
-            console.log(`[DEBUG TEST] Media database names:`, mediaDb.map(db => db.name));
-          } else if (mediaDb.length > 10) {
-            console.log(`[DEBUG TEST] First 5 media databases:`, mediaDb.slice(0, 5).map(db => db.name));
-            console.log(`[DEBUG TEST] Last 5 media databases:`, mediaDb.slice(-5).map(db => db.name));
-          }
-
-          return { total: databases.length, mediaDbCount: mediaDb.length };
-        });
-
-        console.log(`[DEBUG TEST] Database count after sticker ${i + 1}: ${dbCount.mediaDbCount} media databases`);
-      }
-    }
-
-    // Print all collected console logs
-    console.log(`\n\n========================================`);
-    console.log(`COLLECTED CONSOLE LOGS (${consoleLogs.length} total):`);
-    console.log(`========================================\n`);
-
-    const relevantLogs = consoleLogs.filter(log =>
-      log.text.includes("ProjectId") ||
-      log.text.includes("StickerSelect") ||
-      log.text.includes("MediaStore") ||
-      log.text.includes("StorageService") ||
-      log.text.includes("DEBUG TEST")
-    );
-
-    relevantLogs.forEach(log => {
-      console.log(`[${log.type.toUpperCase()}] ${log.text}`);
+    console.log(`   Total databases: ${finalStats.total}`);
+    console.log(`   Media databases: ${finalStats.mediaDbs}`);
+    console.log(`   Unique project IDs in media DBs: ${finalStats.uniqueProjectIds.length}`);
+    console.log(`   First 5 media databases:`);
+    finalStats.firstFiveMediaDbs.forEach((name, i) => {
+      console.log(`      ${i + 1}. ${name}`);
+    });
+    console.log(`   Last 5 media databases:`);
+    finalStats.lastFiveMediaDbs.forEach((name, i) => {
+      console.log(`      ${i + 1}. ${name}`);
     });
 
     console.log(`\n========================================`);
-    console.log(`END OF DEBUG TEST`);
-    console.log(`========================================\n\n`);
+    console.log(`🚨 BUG ANALYSIS SUMMARY`);
+    console.log(`========================================`);
+    console.log(`Expected media databases: 1`);
+    console.log(`Actual media databases: ${finalStats.mediaDbs}`);
+    console.log(`Excess databases: ${finalStats.mediaDbs - 1}`);
+    console.log(`Projects in qcut-projects DB: ${projectsDbContents.projectCount}`);
+    console.log(`Unique project IDs in media DBs: ${finalStats.uniqueProjectIds.length}`);
+    console.log(`\n💡 If unique project IDs > 1, the bug is generating multiple project IDs`);
+    console.log(`   If unique project IDs == 1, the bug is creating duplicate databases for the same project`);
+    console.log(`========================================\n`);
   });
 });
