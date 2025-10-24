@@ -1,18 +1,18 @@
 # Remaining E2E Tests - QCut Test Suite
 
 **Last Updated**: 2025-10-24
-**Status**: 3/14 test files verified with database fix, 11 remaining
+**Status**: 4/14 test files verified with database fix, 10 remaining
 
 ## Overview
 
 Total E2E test files: **14**
 Total tests: **67**
-Tests verified with database fix: **9** (3 files, 9 tests)
-Tests remaining: **58** (11 files)
+Tests verified with database fix: **12** (4 files, 12 tests)
+Tests remaining: **55** (10 files)
 
 ---
 
-## ✅ Verified with Database Fix (3 files, 9 tests)
+## ✅ Verified with Database Fix (4 files, 12 tests)
 
 ### 1. sticker-overlay-testing.e2e.ts ✅
 **Status**: 6/6 tests PASSING
@@ -37,7 +37,18 @@ Tests remaining: **58** (11 files)
 | 1 | should create project and import media | ✅ PASSING |
 | 2 | should handle file upload process | ✅ PASSING |
 
-### 3. debug-projectid.e2e.ts ✅
+### 3. project-workflow-part2.e2e.ts ✅
+**Category**: Timeline Operations (Subtask 1B)
+**Status**: 3/3 tests PASSING
+**Runtime**: 15.2 seconds
+
+| # | Test Name | Status |
+|---|-----------|--------|
+| 1 | should add media to timeline and perform basic edits | ✅ PASSING |
+| 2 | should handle timeline element operations | ✅ PASSING |
+| 3 | should support timeline element manipulation | ✅ PASSING |
+
+### 4. debug-projectid.e2e.ts ✅
 **Status**: Diagnostic test - used for investigation
 **Runtime**: ~1 minute
 
@@ -47,21 +58,9 @@ Tests remaining: **58** (11 files)
 
 ---
 
-## ⏳ Remaining Tests to Verify (11 files, 58 tests)
+## ⏳ Remaining Tests to Verify (10 files, 55 tests)
 
-### 1. project-workflow-part2.e2e.ts ⏳
-**Category**: Timeline Operations (Subtask 1B)
-**Test Count**: 3 tests
-
-| # | Test Name | Status |
-|---|-----------|--------|
-| 1 | should add media to timeline and perform basic edits | ⏳ Not yet tested |
-| 2 | should handle timeline element operations | ⏳ Not yet tested |
-| 3 | should support timeline element manipulation | ⏳ Not yet tested |
-
----
-
-### 3. project-workflow-part3.e2e.ts ⏳
+### 1. project-workflow-part3.e2e.ts ⏳
 **Category**: Project Persistence & Export (Subtask 1C)
 **Test Count**: 4 tests
 
@@ -212,13 +211,13 @@ Tests remaining: **58** (11 files)
 |----------|-------|-------|----------|-----------|
 | **Sticker Overlay** | 1 | 6 | ✅ 6 | 0 |
 | **Diagnostic** | 1 | 1 | ✅ 1 | 0 |
-| **Project Workflow** | 3 | 9 | ✅ 2 | ⏳ 7 |
+| **Project Workflow** | 3 | 9 | ✅ 5 | ⏳ 4 |
 | **Navigation** | 2 | 6 | 0 | ⏳ 6 |
 | **Multi-Media Management** | 2 | 12 | 0 | ⏳ 12 |
 | **Text Overlay** | 1 | 6 | 0 | ⏳ 6 |
 | **File Operations & Storage** | 2 | 14 | 0 | ⏳ 14 |
 | **AI Features** | 2 | 13 | 0 | ⏳ 13 |
-| **TOTAL** | **14** | **67** | **9** | **58** |
+| **TOTAL** | **14** | **67** | **12** | **55** |
 
 ---
 
@@ -228,12 +227,12 @@ Tests remaining: **58** (11 files)
 Run tests that validate fundamental functionality:
 1. ⏳ **simple-navigation.e2e.ts** - Basic app navigation
 2. ✅ **project-workflow-part1.e2e.ts** - Project creation (COMPLETED - 2/2 passing)
-3. ⏳ **project-workflow-part2.e2e.ts** - Timeline operations
+3. ✅ **project-workflow-part2.e2e.ts** - Timeline operations (COMPLETED - 3/3 passing)
 4. ⏳ **project-workflow-part3.e2e.ts** - Project persistence
 
 **Estimated Runtime**: 8-12 minutes
 **Test Count**: 12 tests
-**Progress**: 2/12 tests completed (16.7%)
+**Progress**: 5/12 tests completed (41.7%)
 
 ### Phase 2: Media Management (Medium Priority)
 Validate media handling and storage:
