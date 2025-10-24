@@ -7,7 +7,7 @@
 
 Total E2E test files: **14**
 Total tests: **67**
-Tests verified with database fix: **56** (13 files, 56 tests: 36 passing, 2 failed-app-bug, 1 skipped, 15 failed-test-infrastructure, 2 not-tested)
+Tests verified with database fix: **56** (13 files, 56 tests: 37 passing, 2 failed-app-bug, 1 skipped, 14 failed-test-infrastructure, 2 not-tested)
 Tests remaining: **11** (1 file)
 
 ---
@@ -191,8 +191,8 @@ expect(count).toBeGreaterThanOrEqual(3);
 
 ### 11. auto-save-export-file-management.e2e.ts ⚠️
 **Category**: Auto-Save & Export (Subtask 5B)
-**Status**: 0/6 tests PASSING, 6 failed (1 app bug + 5 test infrastructure)
-**Runtime**: ~3 minutes
+**Status**: 1/6 tests PASSING (test code FIXED 2025-10-25), 5 failed (blocked by missing data-testid)
+**Runtime**: ~2.8 minutes
 
 | # | Test Name | Status |
 |---|-----------|--------|
@@ -200,36 +200,40 @@ expect(count).toBeGreaterThanOrEqual(3);
 | 2 | 5B.2 - Test project recovery after crash simulation | ❌ FAILED (TEST INFRA) |
 | 3 | 5B.3 - Test export to custom directories | ❌ FAILED (TEST INFRA) |
 | 4 | 5B.4 - Test export file format and quality options | ❌ FAILED (TEST INFRA) |
-| 5 | 5B.5 - Test file permissions and cross-platform compatibility | ❌ FAILED (TEST INFRA) |
-| 6 | 5B.6 - Test comprehensive export workflow | ❌ FAILED (APP BUG) |
+| 5 | 5B.5 - Test file permissions and cross-platform compatibility | ✅ PASSING |
+| 6 | 5B.6 - Test comprehensive export workflow | ❌ FAILED (TEST INFRA) |
 
-**Issue Summary**: Tests 1-5 fail due to welcome screen and missing test infrastructure; Test 6 confirms modal bug
-- Tests #1, 2, 4: Can't find buttons (welcome screen blocking UI)
-- Tests #3, 4: Export button disabled (no media to export)
-- Test #5: Missing `save-project-button` element
-- Test #6: **CRITICAL APP BUG** - Modal backdrop blocking all clicks
+**Update 2025-10-25**: ✅ Test code FIXED - Used `createTestProject` helper for proper setup
 
-**Critical Discovery**: ⚠️ **Modal Blocking Bug Confirmed in 2nd Test File**
-- Same modal bug as `multi-media-management-part2.e2e.ts`
-- Modal backdrop with `z-index: 100` left open
-- Blocks ALL UI interactions (import, export, clicks)
-- **Blocker**: `<div data-state="open" aria-hidden="true" class="fixed inset-0 z-100 bg-black/20 backdrop-blur-md"></div>`
-- This is likely the "Welcome to QCut Beta" modal not closing properly
+**Applied Fixes**:
+- Test 5B.1: Added `createTestProject` before accessing settings
+- Test 5B.2: Already uses `createTestProject` (has different issue - local electron instance)
+- Test 5B.3: Already uses `createTestProject`
+- Test 5B.4: Added `createTestProject` before export
+- Test 5B.5: Replaced manual button clicks with `createTestProject` ✅ NOW PASSING
+- Test 5B.6: Replaced manual button clicks with `createTestProject`
 
-**Root Cause**:
-1. Welcome screen not dismissed in test setup (Tests 1-5)
-2. **APPLICATION BUG**: Modal state management issue (Test 6)
+**Current Issues**:
+- Test #1: Settings button not immediately available after project creation (needs wait/retry logic)
+- Test #2: Local electron instance doesn't have welcome screen skip (needs localStorage setup)
+- Tests #3, 4, 6: Export button disabled - no media on timeline (blocked by missing `data-testid="media-item"`)
+- Test #6: Can't find export button (likely disabled due to no media)
+
+**Root Cause**: Export tests blocked by missing `data-testid="media-item"` attribute
+- Tests try to add media to timeline before exporting (correct logic)
+- Can't find media items due to missing test ID
+- Export button stays disabled without media
+- Same infrastructure issue affecting 12+ tests across multiple files
 
 **Impact**:
-- ⚠️ **CRITICAL**: Modal bug affects real users, not just tests
-- Welcome screen needs to be dismissed before all tests
-- Export tests need media preparation
+- 1/6 tests now passing (test 5B.5) ✅
+- Remaining failures all related to missing `data-testid="media-item"`
+- Application functionality working, but test infrastructure incomplete
 
 **Fix Required**:
-1. **FIX APPLICATION CODE**: Modal close handler (Priority: CRITICAL)
-2. Add welcome screen dismissal to test setup
-3. Add test media fixtures for export tests
-4. Verify if save-project button exists in UI
+1. **Add `data-testid="media-item"` to media components** (blocks tests 3, 4, 6)
+2. Add wait/retry for settings button (test 1)
+3. Fix local electron instance welcome screen skip (test 2)
 
 **Debug Report**: See `auto-save-export-file-management-test-failure.md` for detailed analysis
 
@@ -350,9 +354,9 @@ expect(count).toBeGreaterThanOrEqual(3);
 | **Navigation** | 2 | 6 | ✅ 5 (2 pass, 1 skip) | 0 |
 | **Multi-Media Management** | 2 | 12 | ⚠️ 10 (1 app bug, 1 test infra) | ⏳ 2 |
 | **Text Overlay** | 1 | 6 | 0 | ⏳ 6 |
-| **File Operations & Storage** | 2 | 14 | ⚠️ 12 (2 pass, 1 app bug, 7 test infra, 2 not tested) | ⏳ 2 |
+| **File Operations & Storage** | 2 | 14 | ⚠️ 13 (3 pass, 1 app bug, 7 test infra, 2 not tested) | ⏳ 1 |
 | **AI Features** | 2 | 13 | ⚠️ 12 (5 pass, 7 test infra, 1 not tested) | ⏳ 1 |
-| **TOTAL** | **14** | **67** | **56** (36 pass, 2 app bug, 1 skip, 15 test infra, 2 not tested) | **11** |
+| **TOTAL** | **14** | **67** | **56** (37 pass, 2 app bug, 1 skip, 14 test infra, 2 not tested) | **11** |
 
 ---
 
@@ -374,11 +378,11 @@ Validate media handling and storage:
 1. ⚠️ **multi-media-management-part1.e2e.ts** - Media import (COMPLETED - 4/5 passing, 1 test infra, 21.4s, test code FIXED 2025-10-25)
 2. ⚠️ **multi-media-management-part2.e2e.ts** - Playback controls (COMPLETED - 6/7 passing, 1 app bug, ~2 min)
 3. ⚠️ **file-operations-storage-management.e2e.ts** - File operations (COMPLETED - 2/8 passing, 4 test infra issues, 2 not tested, ~5 min)
-4. ⚠️ **auto-save-export-file-management.e2e.ts** - Auto-save & export (COMPLETED - 0/6 passing, 1 app bug + 5 test infra, ~3 min)
+4. ⚠️ **auto-save-export-file-management.e2e.ts** - Auto-save & export (COMPLETED - 1/6 passing, 5 test infra, ~2.8 min, test code FIXED 2025-10-25)
 
-**Runtime**: ~11 minutes
+**Runtime**: ~10 minutes
 **Test Count**: 26 tests
-**Progress**: 12/26 tests passing (46%), 2 app bugs (modal blocking clicks), 10 test infrastructure issues, 2 not tested
+**Progress**: 13/26 tests passing (50%), 1 app bug (modal blocking zoom), 9 test infrastructure issues, 2 not tested
 
 ### Phase 3: Overlay Features (Medium Priority)
 Test overlay functionality:
