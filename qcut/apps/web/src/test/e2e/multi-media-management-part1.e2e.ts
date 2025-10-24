@@ -38,7 +38,8 @@ test.describe("Multi-Media Import & Track Management (Test #2 Part 1)", () => {
 
     // Verify media items are imported
     const mediaItems = page.locator('[data-testid="media-item"]');
-    await expect(mediaItems).toHaveCountGreaterThanOrEqual(3);
+    const count = await mediaItems.count();
+    expect(count).toBeGreaterThanOrEqual(3);
 
     // 2. Verify media panel can handle multiple items
     const importButton = page.getByTestId("import-media-button");
