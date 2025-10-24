@@ -115,6 +115,22 @@ export async function cleanupDatabase(page: Page) {
       return stats;
     });
 
+    // Clear Electron file system storage (project .json files)
+    try {
+      await page.evaluate(async () => {
+        // @ts-ignore - electronAPI is exposed via preload
+        if (window.electronAPI?.storage?.clear) {
+          console.log('📂 Clearing Electron file system storage (project .json files)...');
+          // @ts-ignore
+          await window.electronAPI.storage.clear();
+          console.log('✅ Electron file system storage cleared');
+        }
+      });
+    } catch (error) {
+      console.warn('⚠️  Failed to clear Electron file system storage:', error);
+      // Continue anyway - not critical
+    }
+
     // Print summary
     console.log('✅ Database cleanup completed:');
     console.log(`   📊 Databases deleted: ${cleanupStats.databasesDeleted}/${cleanupStats.databasesFound}`);
