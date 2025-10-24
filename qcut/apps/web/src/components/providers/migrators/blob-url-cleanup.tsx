@@ -29,18 +29,6 @@ export function BlobUrlCleanup({ children }: { children: React.ReactNode }) {
       try {
         // Clean up projects with blob URL thumbnails
         const projects = await storageService.loadAllProjects();
-
-        // DEBUG: DIAGNOSTIC - throw error to make project count visible in test output
-        if (projects.length > 5) {
-          const errorMsg = `🚨 BlobUrlCleanup DIAGNOSTIC: Found ${projects.length} projects! IDs: ${projects.slice(0, 10).map(p => p.id).join(", ")}${projects.length > 10 ? "..." : ""}`;
-          console.error(errorMsg);
-          // Temporarily throw to make this visible in E2E tests
-          throw new Error(errorMsg);
-        }
-
-        console.error(`[BlobUrlCleanup] Processing ${projects.length} projects`);
-
-
         let projectsUpdated = 0;
 
         for (const project of projects) {
