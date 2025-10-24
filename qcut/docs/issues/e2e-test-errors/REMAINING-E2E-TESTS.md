@@ -1,18 +1,18 @@
 # Remaining E2E Tests - QCut Test Suite
 
-**Last Updated**: 2025-10-24
-**Status**: 12/14 test files verified with database fix, 2 remaining
+**Last Updated**: 2025-10-25
+**Status**: 13/14 test files verified with database fix, 1 remaining
 
 ## Overview
 
 Total E2E test files: **14**
 Total tests: **67**
-Tests verified with database fix: **49** (12 files, 49 tests: 36 passing, 2 failed-app-bug, 1 failed-test-code, 1 skipped, 7 failed-test-infrastructure, 2 not-tested)
-Tests remaining: **18** (2 files)
+Tests verified with database fix: **56** (13 files, 56 tests: 36 passing, 2 failed-app-bug, 1 failed-test-code, 1 skipped, 14 failed-test-infrastructure, 2 not-tested)
+Tests remaining: **11** (1 file)
 
 ---
 
-## ✅ Verified with Database Fix (12 files, 49 tests)
+## ✅ Verified with Database Fix (13 files, 56 tests)
 
 ### 1. sticker-overlay-testing.e2e.ts ✅
 **Status**: 6/6 tests PASSING
@@ -269,9 +269,53 @@ expect(count).toBeGreaterThanOrEqual(3);
 
 **Debug Report**: See `ai-transcription-caption-generation-test-results.md` for detailed analysis
 
+### 13. ai-enhancement-export-integration.e2e.ts ❌
+**Category**: AI Enhancement & Export (Subtask 4B)
+**Status**: 0/7 tests PASSING, 7 failed (test infrastructure)
+**Runtime**: ~3-4 minutes
+
+| # | Test Name | Status |
+|---|-----------|--------|
+| 1 | 4B.1 - Access AI enhancement tools | ❌ FAILED (TEST INFRA) |
+| 2 | 4B.2 - Apply AI enhancement effects to media | ❌ FAILED (TEST INFRA) |
+| 3 | 4B.3 - Use enhanced media in timeline | ❌ FAILED (TEST INFRA) |
+| 4 | 4B.4 - Preview enhanced media with effects | ❌ FAILED (TEST INFRA) |
+| 5 | 4B.5 - Export enhanced project with AI effects | ❌ FAILED (TEST INFRA) |
+| 6 | 4B.6 - Batch apply AI enhancements to multiple assets | ❌ FAILED (TEST INFRA) |
+| 7 | 4B.7 - Integration with project export workflow | ❌ FAILED (TEST INFRA) |
+
+**Issue Summary**: All tests fail in `beforeEach` setup due to missing test infrastructure
+- All tests fail at the same point: waiting for `[data-testid="media-item"]`
+- Media successfully imported and visible in UI
+- Element exists but lacks required test ID attribute
+- Same root cause as file-operations-storage-management tests 3-6
+
+**Root Cause**: Missing `data-testid="media-item"` attribute on media components
+
+**Evidence**:
+- Error: `locator('[data-testid="media-item"]').first()` not found
+- Media file `sample-video.mp4` visible in UI (confirmed in error-context.md)
+- Element structure exists but missing test ID
+
+**Impact**:
+- **High** - Blocks entire AI enhancement test coverage (7 tests)
+- Cannot verify AI enhancement features
+- Cannot test AI-enhanced media workflows
+- Cannot validate AI export integration
+
+**Fix Required**:
+1. Add `data-testid="media-item"` to media item components
+2. Verify other AI-related test IDs also exist:
+   - `[data-testid="ai-panel-tab"]`
+   - `[data-testid="ai-features-panel"]`
+   - `[data-testid="ai-enhance-button"]`
+3. Consider systematic test ID audit across all components
+
+**Debug Report**: See `ai-enhancement-export-integration-test-failure.md` for detailed analysis
+
 ---
 
-## ⏳ Remaining Tests to Verify (2 files, 18 tests)
+## ⏳ Remaining Tests to Verify (1 file, 11 tests)
 
 ### 1. text-overlay-testing.e2e.ts ⏳
 **Category**: Text Overlay Features
@@ -288,22 +332,6 @@ expect(count).toBeGreaterThanOrEqual(3);
 
 ---
 
-### 2. ai-enhancement-export-integration.e2e.ts ⏳
-**Category**: AI Enhancement & Export (Subtask 4B)
-**Test Count**: 7 tests
-
-| # | Test Name | Status |
-|---|-----------|--------|
-| 1 | 4B.1 - Access AI enhancement tools | ⏳ Not yet tested |
-| 2 | 4B.2 - Apply AI enhancement effects to media | ⏳ Not yet tested |
-| 3 | 4B.3 - Use enhanced media in timeline | ⏳ Not yet tested |
-| 4 | 4B.4 - Preview enhanced media with effects | ⏳ Not yet tested |
-| 5 | 4B.5 - Export enhanced project with AI effects | ⏳ Not yet tested |
-| 6 | 4B.6 - Batch apply AI enhancements to multiple assets | ⏳ Not yet tested |
-| 7 | 4B.7 - Integration with project export workflow | ⏳ Not yet tested |
-
----
-
 ## 📊 Test Coverage by Category
 
 | Category | Files | Tests | Verified | Remaining |
@@ -315,8 +343,8 @@ expect(count).toBeGreaterThanOrEqual(3);
 | **Multi-Media Management** | 2 | 12 | ⚠️ 10 (1 app bug, 1 test err) | ⏳ 2 |
 | **Text Overlay** | 1 | 6 | 0 | ⏳ 6 |
 | **File Operations & Storage** | 2 | 14 | ⚠️ 12 (2 pass, 1 app bug, 7 test infra, 2 not tested) | ⏳ 2 |
-| **AI Features** | 2 | 13 | ✅ 5 (5 pass, 1 not tested) | ⏳ 7 |
-| **TOTAL** | **14** | **67** | **49** (36 pass, 2 app bug, 1 test err, 1 skip, 7 test infra, 2 not tested) | **18** |
+| **AI Features** | 2 | 13 | ⚠️ 12 (5 pass, 7 test infra, 1 not tested) | ⏳ 1 |
+| **TOTAL** | **14** | **67** | **56** (36 pass, 2 app bug, 1 test err, 1 skip, 14 test infra, 2 not tested) | **11** |
 
 ---
 
@@ -352,13 +380,13 @@ Test overlay functionality:
 **Test Count**: 6 tests
 **Progress**: 0/6 tests completed (0%)
 
-### Phase 4: Advanced Features (Lower Priority) ⚠️ IN PROGRESS
+### Phase 4: Advanced Features (Lower Priority) ⚠️ COMPLETED
 AI and export features:
-1. ⚠️ **ai-transcription-caption-generation.e2e.ts** - AI transcription (COMPLETED - 5/5 passing, 1 test infrastructure, ~4 min)
-2. ⏳ **ai-enhancement-export-integration.e2e.ts** - AI enhancement
+1. ⚠️ **ai-transcription-caption-generation.e2e.ts** - AI transcription (COMPLETED - 5/5 passing, 1 not tested, ~4 min)
+2. ❌ **ai-enhancement-export-integration.e2e.ts** - AI enhancement (COMPLETED - 0/7 passing, 7 test infra, ~3-4 min)
 
 **Test Count**: 13 tests
-**Progress**: 5/13 tests completed (38.5%), 5 passing, 1 test infrastructure issue (excessive runtime)
+**Progress**: 12/13 tests verified (92.3%), 5 passing, 7 test infrastructure failures, 1 not tested
 
 ---
 
