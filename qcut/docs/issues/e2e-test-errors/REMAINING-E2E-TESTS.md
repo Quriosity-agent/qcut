@@ -1,18 +1,18 @@
 # Remaining E2E Tests - QCut Test Suite
 
 **Last Updated**: 2025-10-24
-**Status**: 8/14 test files verified with database fix, 6 remaining
+**Status**: 9/14 test files verified with database fix, 5 remaining
 
 ## Overview
 
 Total E2E test files: **14**
 Total tests: **67**
-Tests verified with database fix: **25** (8 files, 25 tests: 23 passing, 1 failed-test-code, 1 skipped)
-Tests remaining: **42** (6 files)
+Tests verified with database fix: **32** (9 files, 32 tests: 29 passing, 1 failed-app-bug, 1 failed-test-code, 1 skipped)
+Tests remaining: **35** (5 files)
 
 ---
 
-## ✅ Verified with Database Fix (8 files, 25 tests)
+## ✅ Verified with Database Fix (9 files, 32 tests)
 
 ### 1. sticker-overlay-testing.e2e.ts ✅
 **Status**: 6/6 tests PASSING
@@ -115,27 +115,40 @@ expect(count).toBeGreaterThanOrEqual(3);
 
 **Debug Report**: See `multi-media-management-part1-test-failure.md` for detailed analysis
 
----
-
-## ⏳ Remaining Tests to Verify (6 files, 42 tests)
-
-### 1. multi-media-management-part2.e2e.ts ⏳
+### 9. multi-media-management-part2.e2e.ts ⚠️
 **Category**: Multi-Media Management (Part 2)
-**Test Count**: 7 tests
+**Status**: 6/7 tests PASSING, 1 application bug
+**Runtime**: ~2 minutes
 
 | # | Test Name | Status |
 |---|-----------|--------|
-| 1 | should control playback with play/pause buttons | ⏳ Not yet tested |
-| 2 | should handle zoom controls | ⏳ Not yet tested |
-| 3 | should display current time and duration | ⏳ Not yet tested |
-| 4 | should handle split clip functionality | ⏳ Not yet tested |
-| 5 | should handle timeline element selection and editing | ⏳ Not yet tested |
-| 6 | should maintain playback state | ⏳ Not yet tested |
-| 7 | should handle timeline scrolling and navigation | ⏳ Not yet tested |
+| 1 | should control playback with play/pause buttons | ✅ PASSING |
+| 2 | should handle zoom controls | ❌ APP BUG |
+| 3 | should display current time and duration | ✅ PASSING |
+| 4 | should handle split clip functionality | ✅ PASSING |
+| 5 | should handle timeline element selection and editing | ✅ PASSING |
+| 6 | should maintain playback state | ✅ PASSING |
+| 7 | should handle timeline scrolling and navigation | ✅ PASSING |
+
+**Error Details**: Test #2 fails due to **application bug** - modal/backdrop blocks zoom button interaction
+
+**Issue**: Modal with `z-index: 100` intercepts pointer events, preventing click on zoom button
+- Error: `TimeoutError: locator.click: Timeout 30000ms exceeded`
+- Root Cause: `<div data-state="open" aria-hidden="true">` backdrop blocks all clicks
+- Component Issue: Modal state management - modal doesn't close properly
+
+**Application Fix Required**:
+- Investigate why modal/dialog persists after previous test
+- Fix modal close handler or state management
+- Ensure proper modal cleanup between tests
+
+**Debug Report**: See `multi-media-management-part2-test-failure.md` for detailed analysis
 
 ---
 
-### 8. text-overlay-testing.e2e.ts ⏳
+## ⏳ Remaining Tests to Verify (5 files, 35 tests)
+
+### 1. text-overlay-testing.e2e.ts ⏳
 **Category**: Text Overlay Features
 **Test Count**: 6 tests
 
@@ -150,7 +163,7 @@ expect(count).toBeGreaterThanOrEqual(3);
 
 ---
 
-### 9. file-operations-storage-management.e2e.ts ⏳
+### 2. file-operations-storage-management.e2e.ts ⏳
 **Category**: File Operations & Storage (Subtask 5A)
 **Test Count**: 8 tests
 
@@ -167,7 +180,7 @@ expect(count).toBeGreaterThanOrEqual(3);
 
 ---
 
-### 10. auto-save-export-file-management.e2e.ts ⏳
+### 3. auto-save-export-file-management.e2e.ts ⏳
 **Category**: Auto-Save & Export (Subtask 5B)
 **Test Count**: 6 tests
 
@@ -182,7 +195,7 @@ expect(count).toBeGreaterThanOrEqual(3);
 
 ---
 
-### 11. ai-transcription-caption-generation.e2e.ts ⏳
+### 4. ai-transcription-caption-generation.e2e.ts ⏳
 **Category**: AI Transcription & Captions (Subtask 4A)
 **Test Count**: 6 tests
 
@@ -197,7 +210,7 @@ expect(count).toBeGreaterThanOrEqual(3);
 
 ---
 
-### 12. ai-enhancement-export-integration.e2e.ts ⏳
+### 5. ai-enhancement-export-integration.e2e.ts ⏳
 **Category**: AI Enhancement & Export (Subtask 4B)
 **Test Count**: 7 tests
 
@@ -221,11 +234,11 @@ expect(count).toBeGreaterThanOrEqual(3);
 | **Diagnostic** | 1 | 1 | ✅ 1 | 0 |
 | **Project Workflow** | 3 | 9 | ✅ 9 | 0 |
 | **Navigation** | 2 | 6 | ✅ 5 (2 pass, 1 skip) | 0 |
-| **Multi-Media Management** | 2 | 12 | ⚠️ 4 (1 test code err) | ⏳ 7 |
+| **Multi-Media Management** | 2 | 12 | ⚠️ 10 (1 app bug, 1 test err) | ⏳ 2 |
 | **Text Overlay** | 1 | 6 | 0 | ⏳ 6 |
 | **File Operations & Storage** | 2 | 14 | 0 | ⏳ 14 |
 | **AI Features** | 2 | 13 | 0 | ⏳ 13 |
-| **TOTAL** | **14** | **67** | **25** (23 pass, 1 err, 1 skip) | **42** |
+| **TOTAL** | **14** | **67** | **32** (29 pass, 1 app bug, 1 test err, 1 skip) | **35** |
 
 ---
 
@@ -245,12 +258,12 @@ Run tests that validate fundamental functionality:
 ### Phase 2: Media Management (Medium Priority) ⚠️ IN PROGRESS
 Validate media handling and storage:
 1. ⚠️ **multi-media-management-part1.e2e.ts** - Media import (COMPLETED - 4/5 passing, 1 test code error, 47.5s)
-2. ⏳ **multi-media-management-part2.e2e.ts** - Playback controls
+2. ⚠️ **multi-media-management-part2.e2e.ts** - Playback controls (COMPLETED - 6/7 passing, 1 app bug, ~2 min)
 3. ⏳ **file-operations-storage-management.e2e.ts** - File operations
 
 **Estimated Runtime**: 10-15 minutes
 **Test Count**: 20 tests
-**Progress**: 4/20 tests passing (20%), 1 test code error needs fix
+**Progress**: 10/20 tests passing (50%), 1 app bug (modal blocking zoom), 1 test code error
 
 ### Phase 3: Overlay Features (Medium Priority)
 Test overlay functionality:
