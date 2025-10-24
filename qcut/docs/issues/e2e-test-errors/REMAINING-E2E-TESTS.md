@@ -1,18 +1,18 @@
 # Remaining E2E Tests - QCut Test Suite
 
 **Last Updated**: 2025-10-24
-**Status**: 10/14 test files verified with database fix, 4 remaining
+**Status**: 11/14 test files verified with database fix, 3 remaining
 
 ## Overview
 
 Total E2E test files: **14**
 Total tests: **67**
-Tests verified with database fix: **38** (10 files, 38 tests: 31 passing, 1 failed-app-bug, 1 failed-test-code, 1 skipped, 4 failed-test-infrastructure, 2 not-tested)
-Tests remaining: **29** (4 files)
+Tests verified with database fix: **44** (11 files, 44 tests: 31 passing, 2 failed-app-bug, 1 failed-test-code, 1 skipped, 7 failed-test-infrastructure, 2 not-tested)
+Tests remaining: **23** (3 files)
 
 ---
 
-## ✅ Verified with Database Fix (10 files, 38 tests)
+## ✅ Verified with Database Fix (11 files, 44 tests)
 
 ### 1. sticker-overlay-testing.e2e.ts ✅
 **Status**: 6/6 tests PASSING
@@ -181,9 +181,53 @@ expect(count).toBeGreaterThanOrEqual(3);
 
 **Debug Report**: See `file-operations-storage-management-test-failure.md` for detailed analysis
 
+### 11. auto-save-export-file-management.e2e.ts ⚠️
+**Category**: Auto-Save & Export (Subtask 5B)
+**Status**: 0/6 tests PASSING, 6 failed (1 app bug + 5 test infrastructure)
+**Runtime**: ~3 minutes
+
+| # | Test Name | Status |
+|---|-----------|--------|
+| 1 | 5B.1 - Configure and test auto-save functionality | ❌ FAILED (TEST INFRA) |
+| 2 | 5B.2 - Test project recovery after crash simulation | ❌ FAILED (TEST INFRA) |
+| 3 | 5B.3 - Test export to custom directories | ❌ FAILED (TEST INFRA) |
+| 4 | 5B.4 - Test export file format and quality options | ❌ FAILED (TEST INFRA) |
+| 5 | 5B.5 - Test file permissions and cross-platform compatibility | ❌ FAILED (TEST INFRA) |
+| 6 | 5B.6 - Test comprehensive export workflow | ❌ FAILED (APP BUG) |
+
+**Issue Summary**: Tests 1-5 fail due to welcome screen and missing test infrastructure; Test 6 confirms modal bug
+- Tests #1, 2, 4: Can't find buttons (welcome screen blocking UI)
+- Tests #3, 4: Export button disabled (no media to export)
+- Test #5: Missing `save-project-button` element
+- Test #6: **CRITICAL APP BUG** - Modal backdrop blocking all clicks
+
+**Critical Discovery**: ⚠️ **Modal Blocking Bug Confirmed in 2nd Test File**
+- Same modal bug as `multi-media-management-part2.e2e.ts`
+- Modal backdrop with `z-index: 100` left open
+- Blocks ALL UI interactions (import, export, clicks)
+- **Blocker**: `<div data-state="open" aria-hidden="true" class="fixed inset-0 z-100 bg-black/20 backdrop-blur-md"></div>`
+- This is likely the "Welcome to QCut Beta" modal not closing properly
+
+**Root Cause**:
+1. Welcome screen not dismissed in test setup (Tests 1-5)
+2. **APPLICATION BUG**: Modal state management issue (Test 6)
+
+**Impact**:
+- ⚠️ **CRITICAL**: Modal bug affects real users, not just tests
+- Welcome screen needs to be dismissed before all tests
+- Export tests need media preparation
+
+**Fix Required**:
+1. **FIX APPLICATION CODE**: Modal close handler (Priority: CRITICAL)
+2. Add welcome screen dismissal to test setup
+3. Add test media fixtures for export tests
+4. Verify if save-project button exists in UI
+
+**Debug Report**: See `auto-save-export-file-management-test-failure.md` for detailed analysis
+
 ---
 
-## ⏳ Remaining Tests to Verify (4 files, 29 tests)
+## ⏳ Remaining Tests to Verify (3 files, 23 tests)
 
 ### 1. text-overlay-testing.e2e.ts ⏳
 **Category**: Text Overlay Features
@@ -200,22 +244,7 @@ expect(count).toBeGreaterThanOrEqual(3);
 
 ---
 
-### 2. auto-save-export-file-management.e2e.ts ⏳
-**Category**: Auto-Save & Export (Subtask 5B)
-**Test Count**: 6 tests
-
-| # | Test Name | Status |
-|---|-----------|--------|
-| 1 | 5B.1 - Configure and test auto-save functionality | ⏳ Not yet tested |
-| 2 | 5B.2 - Test project recovery after crash simulation | ⏳ Not yet tested |
-| 3 | 5B.3 - Test export to custom directories | ⏳ Not yet tested |
-| 4 | 5B.4 - Test export file format and quality options | ⏳ Not yet tested |
-| 5 | 5B.5 - Test file permissions and cross-platform compatibility | ⏳ Not yet tested |
-| 6 | 5B.6 - Test comprehensive export workflow with all features | ⏳ Not yet tested |
-
----
-
-### 3. ai-transcription-caption-generation.e2e.ts ⏳
+### 2. ai-transcription-caption-generation.e2e.ts ⏳
 **Category**: AI Transcription & Captions (Subtask 4A)
 **Test Count**: 6 tests
 
@@ -230,7 +259,7 @@ expect(count).toBeGreaterThanOrEqual(3);
 
 ---
 
-### 4. ai-enhancement-export-integration.e2e.ts ⏳
+### 3. ai-enhancement-export-integration.e2e.ts ⏳
 **Category**: AI Enhancement & Export (Subtask 4B)
 **Test Count**: 7 tests
 
@@ -256,9 +285,9 @@ expect(count).toBeGreaterThanOrEqual(3);
 | **Navigation** | 2 | 6 | ✅ 5 (2 pass, 1 skip) | 0 |
 | **Multi-Media Management** | 2 | 12 | ⚠️ 10 (1 app bug, 1 test err) | ⏳ 2 |
 | **Text Overlay** | 1 | 6 | 0 | ⏳ 6 |
-| **File Operations & Storage** | 2 | 14 | ⚠️ 6 (2 pass, 4 test infra, 2 not tested) | ⏳ 8 |
+| **File Operations & Storage** | 2 | 14 | ⚠️ 12 (2 pass, 1 app bug, 7 test infra, 2 not tested) | ⏳ 2 |
 | **AI Features** | 2 | 13 | 0 | ⏳ 13 |
-| **TOTAL** | **14** | **67** | **38** (31 pass, 1 app bug, 1 test err, 1 skip, 4 test infra, 2 not tested) | **29** |
+| **TOTAL** | **14** | **67** | **44** (31 pass, 2 app bug, 1 test err, 1 skip, 7 test infra, 2 not tested) | **23** |
 
 ---
 
@@ -275,15 +304,16 @@ Run tests that validate fundamental functionality:
 **Test Count**: 12 tests
 **Progress**: 12/12 tests completed (100%) ✅
 
-### Phase 2: Media Management (Medium Priority) ⚠️ IN PROGRESS
+### Phase 2: Media Management (Medium Priority) ⚠️ COMPLETED
 Validate media handling and storage:
 1. ⚠️ **multi-media-management-part1.e2e.ts** - Media import (COMPLETED - 4/5 passing, 1 test code error, 47.5s)
 2. ⚠️ **multi-media-management-part2.e2e.ts** - Playback controls (COMPLETED - 6/7 passing, 1 app bug, ~2 min)
 3. ⚠️ **file-operations-storage-management.e2e.ts** - File operations (COMPLETED - 2/8 passing, 4 test infra issues, 2 not tested, ~5 min)
+4. ⚠️ **auto-save-export-file-management.e2e.ts** - Auto-save & export (COMPLETED - 0/6 passing, 1 app bug + 5 test infra, ~3 min)
 
-**Estimated Runtime**: 15-20 minutes
-**Test Count**: 20 tests
-**Progress**: 12/20 tests passing (60%), 1 app bug (modal blocking zoom), 1 test code error, 4 test infrastructure issues, 2 not tested
+**Runtime**: ~14 minutes
+**Test Count**: 26 tests
+**Progress**: 12/26 tests passing (46%), 2 app bugs (modal blocking clicks), 1 test code error, 9 test infrastructure issues, 2 not tested
 
 ### Phase 3: Overlay Features (Medium Priority)
 Test overlay functionality:
