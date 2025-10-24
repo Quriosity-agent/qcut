@@ -9,6 +9,13 @@ export class IndexedDBAdapter<T> implements StorageAdapter<T> {
     this.dbName = dbName;
     this.storeName = storeName;
     this.version = version;
+
+    // DEBUG: Track database creation with stack trace
+    if (dbName.startsWith('video-editor-media-') || dbName.startsWith('video-editor-timelines-')) {
+      const stack = new Error().stack;
+      console.error(`[IndexedDBAdapter] Creating database: ${dbName}`);
+      console.error('[IndexedDBAdapter] Call stack:', stack);
+    }
   }
 
   private async getDB(): Promise<IDBDatabase> {
