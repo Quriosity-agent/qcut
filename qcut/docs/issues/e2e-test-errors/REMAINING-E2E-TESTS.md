@@ -1,14 +1,21 @@
 # Remaining E2E Tests - QCut Test Suite
 
-**Last Updated**: 2025-10-25
-**Status**: 13/14 test files verified with database fix, 1 remaining
+**Last Updated**: 2025-10-25 (Step 1 Verification Complete)
+**Status**: 13/14 test files verified with database fix + data-testid fix, 1 remaining
+
+## ✅ Critical Fix Applied: data-testid="media-item" Support Added
+**Date**: 2025-10-25
+**Impact**: Media items now have proper test IDs - media import working across all tests
+**Result**: 1 additional test passing, other failures revealed to be different issues
 
 ## Overview
 
 Total E2E test files: **14**
 Total tests: **67**
-Tests verified with database fix: **56** (13 files, 56 tests: 37 passing, 2 failed-app-bug, 1 skipped, 14 failed-test-infrastructure, 2 not-tested)
+Tests verified with database fix: **56** (13 files, 56 tests: 38 passing, 2 failed-app-bug, 1 skipped, 13 failed-test-infrastructure, 2 not-tested)
 Tests remaining: **11** (1 file)
+
+**Progress Since data-testid Fix**: +1 passing test (multi-media-management-part1 #1)
 
 ---
 
@@ -92,34 +99,26 @@ Tests remaining: **11** (1 file)
 
 **Note**: Test #2 skipped - likely conditional test for existing project scenario
 
-### 8. multi-media-management-part1.e2e.ts ⚠️
+### 8. multi-media-management-part1.e2e.ts ✅
 **Category**: Multi-Media Management (Part 1)
-**Status**: 4/5 tests PASSING, 1 test infrastructure issue (test code FIXED 2025-10-25)
+**Status**: 5/5 tests PASSING (test code + data-testid FIXED 2025-10-25)
 **Runtime**: 21.4 seconds
 
 | # | Test Name | Status |
 |---|-----------|--------|
-| 1 | should import multiple media types and manage tracks | ❌ FAILED (TEST INFRA) |
+| 1 | should import multiple media types and manage tracks | ✅ PASSING (FIXED!) |
 | 2 | should handle drag and drop to timeline | ✅ PASSING |
 | 3 | should support multiple track types | ✅ PASSING |
 | 4 | should maintain timeline state across operations | ✅ PASSING |
 | 5 | should display media items correctly | ✅ PASSING |
 
-**Update 2025-10-25**: ✅ Test code error FIXED - now reveals infrastructure issue
+**Update 2025-10-25**: ✅✅ FULLY FIXED - Test code + data-testid support added
 
-**Original Issue**: Invalid Playwright API `toHaveCountGreaterThanOrEqual()`
-**Applied Fix**:
-```typescript
-const count = await mediaItems.count();
-expect(count).toBeGreaterThanOrEqual(3);
-```
+**Fixes Applied**:
+1. **Test Code Fix**: Replaced invalid `toHaveCountGreaterThanOrEqual()` with correct Playwright API
+2. **Component Fix**: Added `data-testid` prop support to `DraggableMediaItem` component
 
-**Current Issue**: Missing `data-testid="media-item"` attribute on media components
-- Media files successfully imported (video, audio, image) ✅
-- Locator finds 0 elements (expected >= 3) ❌
-- Same infrastructure issue as file-operations and ai-enhancement tests
-
-**Fix Required**: Add `data-testid="media-item"` to media components (blocks 12+ tests across 3 files)
+**Result**: All 5 tests now passing! ✅
 
 **Debug Report**: See `multi-media-management-part1-test-failure.md` for detailed analysis
 
@@ -283,7 +282,7 @@ expect(count).toBeGreaterThanOrEqual(3);
 
 ### 13. ai-enhancement-export-integration.e2e.ts ❌
 **Category**: AI Enhancement & Export (Subtask 4B)
-**Status**: 0/7 tests PASSING, 7 failed (test infrastructure)
+**Status**: 0/7 tests PASSING, 7 failed (test infrastructure - different missing test IDs)
 **Runtime**: ~3-4 minutes
 
 | # | Test Name | Status |
@@ -296,32 +295,36 @@ expect(count).toBeGreaterThanOrEqual(3);
 | 6 | 4B.6 - Batch apply AI enhancements to multiple assets | ❌ FAILED (TEST INFRA) |
 | 7 | 4B.7 - Integration with project export workflow | ❌ FAILED (TEST INFRA) |
 
-**Issue Summary**: All tests fail in `beforeEach` setup due to missing test infrastructure
-- All tests fail at the same point: waiting for `[data-testid="media-item"]`
-- Media successfully imported and visible in UI
-- Element exists but lacks required test ID attribute
-- Same root cause as file-operations-storage-management tests 3-6
+**Update 2025-10-25**: ✅ `data-testid="media-item"` FIX VERIFIED - Media import working!
 
-**Root Cause**: Missing `data-testid="media-item"` attribute on media components
+**What's Now Working**:
+- ✅ Media import successful - `sample-video.mp4` imported and saved
+- ✅ `data-testid="media-item"` present and working
+- ✅ Media can be found by tests
 
-**Evidence**:
-- Error: `locator('[data-testid="media-item"]').first()` not found
-- Media file `sample-video.mp4` visible in UI (confirmed in error-context.md)
-- Element structure exists but missing test ID
+**Current Issue**: Different missing test ID: `[data-testid="ai-enhancement-panel"]`
+- Test fails AFTER successful media import
+- Looking for AI enhancement panel that doesn't have test ID
+- Error: `locator('[data-testid="ai-enhancement-panel"]').first()` not found
+
+**Root Cause**: AI-specific UI components missing test IDs
+
+**Evidence from Verification**:
+- Media import works perfectly ✅
+- Test proceeds past media import step ✅
+- Fails when looking for AI panel (new blocker) ❌
 
 **Impact**:
-- **High** - Blocks entire AI enhancement test coverage (7 tests)
-- Cannot verify AI enhancement features
-- Cannot test AI-enhanced media workflows
-- Cannot validate AI export integration
+- **Medium** - Blocks AI enhancement test coverage (7 tests)
+- Media infrastructure working correctly
+- Only AI panel components need test IDs
 
 **Fix Required**:
-1. Add `data-testid="media-item"` to media item components
-2. Verify other AI-related test IDs also exist:
+1. Add `data-testid="ai-enhancement-panel"` to AI enhancement panel component
+2. Verify other AI-related test IDs:
    - `[data-testid="ai-panel-tab"]`
    - `[data-testid="ai-features-panel"]`
    - `[data-testid="ai-enhance-button"]`
-3. Consider systematic test ID audit across all components
 
 **Debug Report**: See `ai-enhancement-export-integration-test-failure.md` for detailed analysis
 
@@ -352,11 +355,11 @@ expect(count).toBeGreaterThanOrEqual(3);
 | **Diagnostic** | 1 | 1 | ✅ 1 | 0 |
 | **Project Workflow** | 3 | 9 | ✅ 9 | 0 |
 | **Navigation** | 2 | 6 | ✅ 5 (2 pass, 1 skip) | 0 |
-| **Multi-Media Management** | 2 | 12 | ⚠️ 10 (1 app bug, 1 test infra) | ⏳ 2 |
+| **Multi-Media Management** | 2 | 12 | ✅ 11 (10 pass, 1 app bug) | ⏳ 1 |
 | **Text Overlay** | 1 | 6 | 0 | ⏳ 6 |
 | **File Operations & Storage** | 2 | 14 | ⚠️ 13 (3 pass, 1 app bug, 7 test infra, 2 not tested) | ⏳ 1 |
 | **AI Features** | 2 | 13 | ⚠️ 12 (5 pass, 7 test infra, 1 not tested) | ⏳ 1 |
-| **TOTAL** | **14** | **67** | **56** (37 pass, 2 app bug, 1 skip, 14 test infra, 2 not tested) | **11** |
+| **TOTAL** | **14** | **67** | **56** (38 pass, 2 app bug, 1 skip, 13 test infra, 2 not tested) | **11** |
 
 ---
 
