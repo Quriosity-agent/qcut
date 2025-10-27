@@ -224,8 +224,12 @@ test.describe("AI Transcription & Caption Generation", () => {
     await expect(timelineElements.first()).toBeVisible();
 
     // Click play button to start preview
-    const playButton = page.getByTestId("play-button");
-    const pauseButton = page.getByTestId("pause-button");
+    const previewToolbar = page
+      .locator('[data-testid="preview-panel"]')
+      .locator('[data-toolbar]')
+      .first();
+    const playButton = previewToolbar.getByTestId("play-button");
+    const pauseButton = previewToolbar.getByTestId("pause-button");
 
     // Normalize playback state in case previous tests left the player running
     if (await pauseButton.isVisible().catch(() => false)) {
