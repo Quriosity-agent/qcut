@@ -4,6 +4,8 @@ import {
   createTestProject,
   startElectronApp,
   getMainWindow,
+  navigateToProjects,
+  cleanupDatabase,
 } from "./helpers/electron-helpers";
 
 test.describe("Auto-Save & Export File Management", () => {
@@ -14,7 +16,9 @@ test.describe("Auto-Save & Export File Management", () => {
     await createTestProject(page, "Auto-Save Config Test");
 
     // Navigate to settings to configure auto-save
-    await page.click('[data-testid="settings-button"]');
+    const settingsTab = page.getByTestId("panel-tab-settings");
+    await settingsTab.waitFor({ state: "visible", timeout: 5000 });
+    await settingsTab.click();
     await page.waitForSelector(
       '[data-testid="settings-tabs"], [data-testid="project-info-tab"]',
       {
@@ -141,6 +145,13 @@ test.describe("Auto-Save & Export File Management", () => {
     let localPage = await getMainWindow(localElectronApp);
 
     try {
+      // Align manual Electron launch with the standard fixture setup expectations
+      await cleanupDatabase(localPage);
+      await localPage.evaluate(() => {
+        localStorage.setItem("hasSeenOnboarding", "true");
+      });
+      await navigateToProjects(localPage);
+
       // Create project with content using helper
       await createTestProject(localPage, "Recovery Test Project");
 

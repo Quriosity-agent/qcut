@@ -13,6 +13,7 @@ export function PanelTabs({ activeTab, onTabChange }: PanelTabsProps) {
     <div className="flex border-b border-border">
       <button
         type="button"
+        data-testid="panel-tab-properties"
         onClick={() => onTabChange(PanelView.PROPERTIES)}
         className={cn(
           "px-3 py-2 text-sm font-medium border-b-2 transition-colors",
@@ -26,6 +27,7 @@ export function PanelTabs({ activeTab, onTabChange }: PanelTabsProps) {
       <div className="flex items-center">
         <button
           type="button"
+          data-testid="panel-tab-export"
           onClick={() => onTabChange(PanelView.EXPORT)}
           className={cn(
             "px-3 py-2 text-sm font-medium border-b-2 transition-colors flex items-center gap-2",
@@ -49,6 +51,7 @@ export function PanelTabs({ activeTab, onTabChange }: PanelTabsProps) {
       </div>
       <button
         type="button"
+        data-testid="panel-tab-settings"
         onClick={() => onTabChange(PanelView.SETTINGS)}
         className={cn(
           "px-3 py-2 text-sm font-medium border-b-2 transition-colors",
