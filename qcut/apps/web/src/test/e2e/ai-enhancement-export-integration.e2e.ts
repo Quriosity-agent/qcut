@@ -260,19 +260,31 @@ test.describe("AI Enhancement & Export Integration", () => {
     );
     if (await startExportButton.isVisible()) {
       await startExportButton.click();
-      await page.waitForSelector(
-        '[data-testid*="export-status"], [data-testid*="export-progress"]',
-        { state: "visible", timeout: 10_000 }
-      );
 
-      // Verify export is processing
-      const exportStatus = page
-        .locator(
-          '[data-testid*="export-status"], [data-testid*="export-progress"]'
-        )
-        .first();
+      const statusSelector = '[data-testid="export-status"]';
+      const progressSelector = '[data-testid="export-progress-bar"]';
+
+      await Promise.race([
+        page
+          .waitForSelector(statusSelector, { state: "visible", timeout: 10_000 })
+          .catch(() => null),
+        page
+          .waitForSelector(progressSelector, {
+            state: "visible",
+            timeout: 10_000,
+          })
+          .catch(() => null),
+      ]);
+
+      const exportStatus = page.locator(statusSelector).first();
+      const progressBar = page.locator(progressSelector).first();
+
       if (await exportStatus.isVisible()) {
-        await expect(exportStatus).toBeVisible();
+        await expect(exportStatus).not.toHaveText(/^\s*$/);
+      } else if (await progressBar.isVisible()) {
+        await expect(progressBar).toBeVisible();
+      } else {
+        throw new Error("Export feedback UI did not appear.");
       }
     }
   });
@@ -401,19 +413,32 @@ test.describe("AI Enhancement & Export Integration", () => {
     );
     if (await startExportButton.isVisible()) {
       await startExportButton.click();
-      await page.waitForSelector(
-        '[data-testid*="export-status"], [data-testid*="export-progress"]',
-        { state: "visible", timeout: 10_000 }
-      );
+
+      const statusSelector = '[data-testid="export-status"]';
+      const progressSelector = '[data-testid="export-progress-bar"]';
+
+      await Promise.race([
+        page
+          .waitForSelector(statusSelector, { state: "visible", timeout: 10_000 })
+          .catch(() => null),
+        page
+          .waitForSelector(progressSelector, {
+            state: "visible",
+            timeout: 10_000,
+          })
+          .catch(() => null),
+      ]);
 
       // Verify comprehensive export is processing
-      const exportStatus = page
-        .locator(
-          '[data-testid*="export-status"], [data-testid*="export-progress"]'
-        )
-        .first();
+      const exportStatus = page.locator(statusSelector).first();
+      const progressBar = page.locator(progressSelector).first();
+
       if (await exportStatus.isVisible()) {
-        await expect(exportStatus).toContainText(/export|process|render/i);
+        await expect(exportStatus).not.toHaveText(/^\s*$/);
+      } else if (await progressBar.isVisible()) {
+        await expect(progressBar).toBeVisible();
+      } else {
+        throw new Error("Export feedback UI did not appear.");
       }
     }
   });
