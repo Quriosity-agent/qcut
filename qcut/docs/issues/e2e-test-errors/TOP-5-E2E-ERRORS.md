@@ -1,5 +1,69 @@
 # E2E Test Fixes - QCut Playwright Tests
 
+## 📝 TODO - Next Actions (2025-10-27 14:00:17)
+
+### Priority 1: Verify AI Enhancement Tests ⭐
+**Test File**: `apps/web/src/test/e2e/ai-enhancement-export-integration.e2e.ts`
+**Status**: Ready to test - fix applied and committed
+
+#### What Was Fixed:
+- **Issue**: All 7 tests failing at line 56 looking for `[data-testid="ai-enhancement-panel"]`
+- **Root Cause**: AI view component had `ai-features-panel` but missing the inner `ai-enhancement-panel` test ID
+- **Fix Applied**: Added `data-testid="ai-enhancement-panel"` to `apps/web/src/components/editor/media-panel/views/ai.tsx:386`
+- **Commit**: e26fc4a7 - "fix: add ai-enhancement-panel test ID and organize E2E docs"
+
+#### Test Coverage (7 tests):
+1. **4B.1**: Access AI enhancement tools - Verifies AI panel navigation
+2. **4B.2**: Apply AI effects to media - Tests effect selection and application
+3. **4B.3**: Use enhanced media in timeline - Drag/drop to timeline
+4. **4B.4**: Preview enhanced media - Video playback with effects
+5. **4B.5**: Export enhanced project - Export with AI effects applied
+6. **4B.6**: Batch apply enhancements - Multiple assets processing
+7. **4B.7**: Integration with export workflow - End-to-end workflow
+
+#### Test Flow:
+```
+✅ Create project → ✅ Import video → ✅ Wait for media-item (fixed earlier)
+→ ✅ Click AI panel tab → ✅ Wait for ai-features-panel
+→ ⏳ Wait for ai-enhancement-panel (JUST FIXED - needs verification)
+```
+
+#### Expected Results:
+- **Current**: 0/7 passing (100% blocked by missing test ID)
+- **After Fix**: 7/7 passing (+7 tests, +10.4% improvement)
+- **Impact**: Validates entire AI enhancement workflow is testable
+
+#### How to Verify:
+```bash
+cd qcut && bun x playwright test apps/web/src/test/e2e/ai-enhancement-export-integration.e2e.ts
+```
+
+- [ ] Run test suite to verify fix
+- [ ] Expected: All 7 tests should now pass
+- [ ] If passing: Update REMAINING-E2E-TESTS.md (0/7 → 7/7)
+- [ ] If still failing: Check for additional missing test IDs in error output
+
+### Priority 2: Text Overlay Quick Wins 🎨
+- [ ] Fix test #3: Change `.bg-accent` selector to `.bg-accent.first()`
+- [ ] Fix test #5: Add `data-testid="media-panel"` to media panel component
+- [ ] Expected: 4/6 → 6/6 passing (+2 tests, +3%)
+- [ ] Estimated time: 10-15 minutes
+
+### Priority 3: Auto-Save Export Investigation 💾
+- [ ] Investigate 5 tests blocked by missing test IDs
+- [ ] Document missing test IDs needed
+- [ ] Apply fixes similar to AI enhancement fix
+
+### Current Metrics (as of 2025-10-27)
+```
+Total Tests: 67
+✅ Passing: 43 (64.2%)
+🎯 Target: 52 (77.6%) with quick wins
+📈 Progress: +6 tests since data-testid fix began
+```
+
+---
+
 **Last Updated**: 2025-10-24 (Checkpoint #11 - 🎉 Database Proliferation Bug FIXED!)
 **Status**: ✅✅✅ COMPLETE SUCCESS - Root Cause Eliminated!
 **Test Location**: `qcut/apps/web/src/test/e2e/`
