@@ -1263,7 +1263,7 @@ function TimelineToolbar({
                 size="icon"
                 onClick={toggle}
                 className="mr-2"
-                data-testid={isPlaying ? "pause-button" : "play-button"}
+                data-testid={isPlaying ? "timeline-pause-button" : "timeline-play-button"}
                 data-playing={isPlaying}
               >
                 {isPlaying ? (

@@ -88,54 +88,101 @@ test.describe("File Operations & Storage Management", () => {
   test("5A.3 - Test storage quota and fallback system", async ({ page }) => {
     // Setup: Create project to test storage operations
 
-    await createTestProject(page, "Storage Quota Test Project");
+    const originalProjectName = "Storage Quota Test Project";
+    const updatedProjectName = "Storage Quota Fallback Project";
 
-    // Add media to trigger storage operations
-    await page.click('[data-testid="import-media-button"]');
+    await createTestProject(page, originalProjectName);
 
-    // Wait for file input to be available
-    await page.waitForSelector('input[type="file"]', { timeout: 2000 }).catch(() => {});
-
-    // Simulate storage quota issues via JavaScript
-    await page.evaluate(() => {
-      // Mock storage quota exceeded scenario
-      if (window.navigator?.storage) {
-        (window.navigator.storage as any).estimate = () =>
-          Promise.resolve({
-            quota: 1_000_000, // 1MB quota
-            usage: 900_000, // 90% used
-          });
-      }
+    // Capture active project identifier from the current editor route
+    const projectId = await page.evaluate(() => {
+      const match = window.location.href.match(/editor\/([^/?#]+)/);
+      return match ? match[1] : null;
     });
-
-    // Try to save project which should trigger storage operations
-    await page.click('[data-testid="save-project-button"]');
-
-    // Wait for save operation to complete or warning to appear
-    await Promise.race([
-      page.waitForSelector('[data-testid="storage-warning"]', { timeout: 3000 }).catch(() => {}),
-      page.waitForSelector('[data-testid="save-status"]', { timeout: 3000 }).catch(() => {})
-    ]);
-
-    // Look for storage warning messages
-    const storageWarning = page.locator('[data-testid="storage-warning"]');
-
-    // Storage warning might appear
-    if (await storageWarning.isVisible({ timeout: 3000 })) {
-      await expect(storageWarning).toContainText(/storage|fallback|space/i);
+    if (!projectId) {
+      throw new Error("Failed to determine active project ID from editor URL");
     }
 
-    // Verify project operations still work despite storage issues
-    await page.getByTestId("project-name-input").fill("Storage Test Project");
-    await page.click('[data-testid="save-confirm-button"]');
+    const storageKey = `video-editor-projects_projects_${projectId}`;
 
-    // Wait for save status to appear
-    await page.waitForSelector('[data-testid="save-status"]', { timeout: 3000 }).catch(() => {});
+    // Baseline: ensure project persisted with the expected name before quota changes
+    const initialProjectSnapshot = await page.evaluate(async (key) => {
+      const api = (window as any).electronAPI;
+      if (!api?.storage?.load) {
+        return null;
+      }
+      const data = await api.storage.load(key);
+      return data ? { name: data.name } : null;
+    }, storageKey);
+    expect(initialProjectSnapshot).not.toBeNull();
+    expect(initialProjectSnapshot?.name).toBe(originalProjectName);
 
-    // Project should still save (using fallback storage)
-    const saveStatus = page.locator('[data-testid="save-status"]');
-    if (await saveStatus.isVisible()) {
-      await expect(saveStatus).toContainText(/saved|complete/i);
+    // Simulate storage quota pressure to validate fallback handling
+    const quotaOverrideApplied = await page.evaluate(() => {
+      if (!navigator.storage?.estimate) {
+        return false;
+      }
+      const originalEstimate = navigator.storage.estimate.bind(navigator.storage);
+      (window as any).__originalStorageEstimate__ = originalEstimate;
+      navigator.storage.estimate = async () => ({
+        quota: 1_000_000, // 1MB quota
+        usage: 900_000, // 90% used
+      });
+      return true;
+    });
+    expect(quotaOverrideApplied).toBeTruthy();
+
+    const quotaInfo = await page.evaluate(async () => {
+      if (!navigator.storage?.estimate) {
+        return null;
+      }
+      const estimate = await navigator.storage.estimate();
+      return {
+        quota: estimate.quota ?? 0,
+        usage: estimate.usage ?? 0,
+      };
+    });
+    expect(quotaInfo).not.toBeNull();
+    expect(quotaInfo!.quota).toBe(1_000_000);
+    expect(quotaInfo!.usage).toBe(900_000);
+    expect(quotaInfo!.usage / quotaInfo!.quota).toBeGreaterThanOrEqual(0.8);
+
+    try {
+      // Trigger a storage write via the rename flow (calls storageService.saveProject)
+      const projectMenuTrigger = page
+        .getByRole("button", { name: new RegExp(originalProjectName, "i") })
+        .first();
+      await projectMenuTrigger.click();
+      await page.getByRole("menuitem", { name: "Rename project" }).click();
+
+      const renameInput = page.getByPlaceholder("Enter a new name");
+      await renameInput.fill(updatedProjectName);
+      await page.getByRole("button", { name: "Rename" }).click();
+
+      // Confirm header updates to the new project name, indicating UI state persisted
+      await expect(
+        page.getByRole("button", { name: new RegExp(updatedProjectName, "i") })
+      ).toBeVisible();
+
+      // Verify the project snapshot stored on disk reflects the rename
+      const storedProject = await page.evaluate(async (key) => {
+        const api = (window as any).electronAPI;
+        if (!api?.storage?.load) {
+          return null;
+        }
+        const data = await api.storage.load(key);
+        return data ? { name: data.name } : null;
+      }, storageKey);
+      expect(storedProject).not.toBeNull();
+      expect(storedProject?.name).toBe(updatedProjectName);
+    } finally {
+      // Restore the original storage estimate implementation for subsequent tests
+      await page.evaluate(() => {
+        const originalEstimate = (window as any).__originalStorageEstimate__;
+        if (originalEstimate && navigator.storage) {
+          navigator.storage.estimate = originalEstimate;
+        }
+        delete (window as any).__originalStorageEstimate__;
+      });
     }
   });
 

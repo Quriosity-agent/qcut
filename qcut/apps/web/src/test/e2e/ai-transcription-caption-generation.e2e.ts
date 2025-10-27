@@ -228,8 +228,8 @@ test.describe("AI Transcription & Caption Generation", () => {
       .locator('[data-testid="preview-panel"]')
       .locator('[data-toolbar]')
       .first();
-    const playButton = previewToolbar.getByTestId("play-button");
-    const pauseButton = previewToolbar.getByTestId("pause-button");
+    const playButton = previewToolbar.getByTestId("preview-play-button");
+    const pauseButton = previewToolbar.getByTestId("preview-pause-button");
 
     // Normalize playback state in case previous tests left the player running
     if (await pauseButton.isVisible().catch(() => false)) {
@@ -243,7 +243,7 @@ test.describe("AI Transcription & Caption Generation", () => {
     await page
       .waitForFunction(
         () => {
-          const btn = document.querySelector('[data-testid="pause-button"]');
+          const btn = document.querySelector('[data-testid="preview-pause-button"]');
           return btn && btn.getAttribute("data-playing") === "true";
         },
         { timeout: 3000 }

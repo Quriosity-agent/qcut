@@ -165,8 +165,8 @@ test.describe("AI Enhancement & Export Integration", () => {
       .locator('[data-testid="preview-panel"]')
       .locator('[data-toolbar]')
       .first();
-    const playButton = previewToolbar.getByTestId("play-button");
-    const pauseButton = previewToolbar.getByTestId("pause-button");
+    const playButton = previewToolbar.getByTestId("preview-play-button");
+    const pauseButton = previewToolbar.getByTestId("preview-pause-button");
 
     // Ensure we start from a paused state before testing playback toggles
     if (await pauseButton.isVisible().catch(() => false)) {
@@ -182,7 +182,7 @@ test.describe("AI Enhancement & Export Integration", () => {
     await page
       .waitForFunction(
         () => {
-          const btn = document.querySelector('[data-testid="pause-button"]');
+          const btn = document.querySelector('[data-testid="preview-pause-button"]');
           return btn && btn.getAttribute("data-playing") === "true";
         },
         { timeout: 3000 }

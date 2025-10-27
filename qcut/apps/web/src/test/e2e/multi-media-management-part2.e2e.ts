@@ -6,8 +6,9 @@ test.describe("Timeline Controls & Editing Operations (Test #2 Part 2)", () => {
     await page.waitForSelector('[data-testid="timeline-track"]');
 
     // Test play/pause functionality
-    const playButton = page.getByTestId("play-button");
-    const pauseButton = page.getByTestId("pause-button");
+    const timelineToolbar = page.getByTestId("timeline-toolbar");
+    const playButton = timelineToolbar.getByTestId("timeline-play-button");
+    const pauseButton = timelineToolbar.getByTestId("timeline-pause-button");
 
     // Initially should show play button
     if (await playButton.isVisible({ timeout: 1000 }).catch(() => false)) {
