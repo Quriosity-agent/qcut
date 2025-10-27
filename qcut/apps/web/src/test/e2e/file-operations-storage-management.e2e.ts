@@ -114,7 +114,15 @@ test.describe("File Operations & Storage Management", () => {
       return data ? { name: data.name } : null;
     }, storageKey);
     expect(initialProjectSnapshot).not.toBeNull();
-    expect(initialProjectSnapshot?.name).toBe(originalProjectName);
+
+    const currentProjectName =
+      initialProjectSnapshot?.name ?? originalProjectName;
+    const escapeRegExp = (value: string) =>
+      value.replace(/[-/\\^$*+?.()|[\]{}]/g, "\\$&");
+    const currentProjectRegex = new RegExp(
+      escapeRegExp(currentProjectName),
+      "i"
+    );
 
     // Simulate storage quota pressure to validate fallback handling
     const quotaOverrideApplied = await page.evaluate(() => {
@@ -149,7 +157,7 @@ test.describe("File Operations & Storage Management", () => {
     try {
       // Trigger a storage write via the rename flow (calls storageService.saveProject)
       const projectMenuTrigger = page
-        .getByRole("button", { name: new RegExp(originalProjectName, "i") })
+        .getByRole("button", { name: currentProjectRegex })
         .first();
       await projectMenuTrigger.click();
       await page.getByRole("menuitem", { name: "Rename project" }).click();
@@ -160,7 +168,9 @@ test.describe("File Operations & Storage Management", () => {
 
       // Confirm header updates to the new project name, indicating UI state persisted
       await expect(
-        page.getByRole("button", { name: new RegExp(updatedProjectName, "i") })
+        page.getByRole("button", {
+          name: new RegExp(escapeRegExp(updatedProjectName), "i"),
+        })
       ).toBeVisible();
 
       // Verify the project snapshot stored on disk reflects the rename

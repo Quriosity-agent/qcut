@@ -7,7 +7,7 @@
 ## Fix Details
 - Added logic in `apps/web/src/test/e2e/file-operations-storage-management.e2e.ts:88` to:
   - Capture the active project identifier from the editor URL.
-  - Verify baseline project persistence via `electronAPI.storage.load`.
+  - Dynamically read the persisted project metadata via `electronAPI.storage.load`, accommodating the app’s default “New Project” title.
   - Override `navigator.storage.estimate` to emulate a high-usage quota scenario.
   - Trigger persistence through the rename workflow and confirm the stored payload reflects the updated name.
   - Restore the original quota estimator after the assertions.
