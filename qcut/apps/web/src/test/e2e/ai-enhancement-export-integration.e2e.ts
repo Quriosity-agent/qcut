@@ -203,6 +203,28 @@ test.describe("AI Enhancement & Export Integration", () => {
    * Verifies export functionality works correctly with AI-enhanced content.
    */
   test("4B.5 - Export enhanced project with AI effects", async ({ page }) => {
+    // Ensure there is timeline content so the export button can be enabled
+    const timelineElements = page.locator('[data-testid="timeline-element"]');
+    if ((await timelineElements.count()) === 0) {
+      const mediaItem = page.locator('[data-testid="media-item"]').first();
+      const timelineTrack = page
+        .locator('[data-testid="timeline-track"]')
+        .first();
+
+      await expect(mediaItem).toBeVisible();
+      await expect(timelineTrack).toBeVisible();
+
+      await mediaItem.hover();
+      await page.mouse.down();
+      await timelineTrack.hover();
+      await page.mouse.up();
+
+      await page.waitForSelector('[data-testid="timeline-element"]', {
+        state: "visible",
+      });
+    }
+    expect(await timelineElements.count()).toBeGreaterThan(0);
+
     // Open export dialog
     const exportButton = page.locator('[data-testid*="export"]').first();
     await exportButton.click();
@@ -305,7 +327,9 @@ test.describe("AI Enhancement & Export Integration", () => {
       }
     }
 
-    // Verify enhanced assets are available
+    // Switch back to media panel to verify enhanced assets since AI tab hides media grid
+    await page.click('[data-testid="media-panel-tab"]');
+    await expect(mediaItems.first()).toBeVisible();
     expect(await mediaItems.count()).toBeGreaterThan(0);
   });
 
