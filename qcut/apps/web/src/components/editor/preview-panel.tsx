@@ -803,7 +803,10 @@ export function PreviewPanel() {
   // Handle media loading states
   if (mediaItemsError) {
     return (
-      <div className="h-full w-full flex flex-col min-h-0 min-w-0 bg-panel rounded-sm">
+      <div
+        className="h-full w-full flex flex-col min-h-0 min-w-0 bg-panel rounded-sm"
+        data-testid="preview-panel"
+      >
         <div className="flex-1 flex items-center justify-center p-3">
           <div className="text-center">
             <div className="text-red-500 mb-2">Failed to load media items</div>

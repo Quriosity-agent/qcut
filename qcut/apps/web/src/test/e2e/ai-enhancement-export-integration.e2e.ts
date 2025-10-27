@@ -192,7 +192,7 @@ test.describe("AI Enhancement & Export Integration", () => {
     await expect(playButton).toBeVisible();
 
     // Verify preview panel is showing enhanced content
-    const previewPanel = page.locator('[data-panel="preview"]');
+    const previewPanel = page.locator('[data-testid="preview-panel"]');
     await expect(previewPanel).toBeVisible();
   });
 
