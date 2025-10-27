@@ -383,7 +383,7 @@ export function AiView() {
           </div>
         </div>
       ) : (
-        <div className="flex-1 overflow-y-auto space-y-4">
+        <div className="flex-1 overflow-y-auto space-y-4" data-testid="ai-enhancement-panel">
           {/* Tab selector */}
           <Tabs
             value={activeTab}
