@@ -144,6 +144,7 @@ export function EditorHeader() {
         size="sm"
         className="h-7 text-xs !bg-linear-to-r from-cyan-400 to-blue-500 text-white hover:opacity-85 transition-opacity"
         onClick={handleExport}
+        data-testid="export-button"
       >
         <Download className="h-4 w-4" />
         <span className="text-sm">Export</span>

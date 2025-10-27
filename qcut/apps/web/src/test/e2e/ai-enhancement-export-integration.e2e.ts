@@ -63,6 +63,9 @@ test.describe("AI Enhancement & Export Integration", () => {
    * Tests the ability to select and apply AI enhancement effects to imported media.
    */
   test("4B.2 - Apply AI enhancement effects to media", async ({ page }) => {
+    const mediaItems = page.locator('[data-testid="media-item"]');
+    const initialMediaCount = await mediaItems.count();
+
     // Ensure we're in AI panel
     await page.click('[data-testid="ai-panel-tab"]');
     await page.waitForSelector('[data-testid="ai-enhancement-panel"]', {
@@ -87,9 +90,14 @@ test.describe("AI Enhancement & Export Integration", () => {
       // Wait for processing to complete
       await page.waitForLoadState("networkidle");
 
+      // Switch back to the media tab to validate library contents since the AI tab hides media items
+      await page.click('[data-testid="media-panel-tab"]');
+      await expect(mediaItems.first()).toBeVisible();
+
       // Verify enhancement was applied (new asset created or existing modified)
-      const mediaItems = page.locator('[data-testid="media-item"]');
-      expect(await mediaItems.count()).toBeGreaterThan(0);
+      expect(await mediaItems.count()).toBeGreaterThanOrEqual(
+        initialMediaCount
+      );
     }
   });
 
