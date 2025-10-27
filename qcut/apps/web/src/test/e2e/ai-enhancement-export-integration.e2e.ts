@@ -173,7 +173,17 @@ test.describe("AI Enhancement & Export Integration", () => {
     await expect(playButton).toBeVisible();
     await playButton.click();
     await expect(pauseButton).toBeVisible();
-    await expect(pauseButton).toHaveAttribute("data-playing", "true");
+
+    // Wait for playback state to be fully updated
+    await page
+      .waitForFunction(
+        () => {
+          const btn = document.querySelector('[data-testid="pause-button"]');
+          return btn && btn.getAttribute("data-playing") === "true";
+        },
+        { timeout: 3000 }
+      )
+      .catch(() => {});
 
     // Verify video is playing
     await expect(pauseButton).toHaveAttribute("data-playing", "true");

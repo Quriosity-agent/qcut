@@ -821,7 +821,10 @@ export function PreviewPanel() {
 
   if (mediaItemsLoading) {
     return (
-      <div className="h-full w-full flex flex-col min-h-0 min-w-0 bg-panel rounded-sm">
+      <div
+        className="h-full w-full flex flex-col min-h-0 min-w-0 bg-panel rounded-sm"
+        data-testid="preview-panel"
+      >
         <div className="flex-1 flex items-center justify-center p-3">
           <div className="flex items-center space-x-2">
             <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary" />
@@ -834,7 +837,10 @@ export function PreviewPanel() {
 
   return (
     <>
-      <div className="h-full w-full flex flex-col min-h-0 min-w-0 bg-panel rounded-sm">
+      <div
+        className="h-full w-full flex flex-col min-h-0 min-w-0 bg-panel rounded-sm"
+        data-testid="preview-panel"
+      >
         <div
           ref={containerRef}
           className="flex-1 flex flex-col items-center justify-center p-3 min-h-0 min-w-0"
