@@ -1249,7 +1249,10 @@ function TimelineToolbar({
   // Check if the current time is bookmarked
   const currentBookmarked = isBookmarked(currentTime);
   return (
-    <div className="flex items-center justify-between px-2 py-1 border-b h-10">
+    <div
+      className="flex items-center justify-between px-2 py-1 border-b h-10"
+      data-testid="timeline-toolbar"
+    >
       <div className="flex items-center gap-1">
         <TooltipProvider delayDuration={500}>
           {/* Play/Pause Button */}

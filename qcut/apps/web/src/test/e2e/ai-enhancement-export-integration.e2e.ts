@@ -161,8 +161,12 @@ test.describe("AI Enhancement & Export Integration", () => {
     }
 
     // Click play to preview enhanced media
-    const playButton = page.locator('[data-testid="play-button"]').first();
-    const pauseButton = page.locator('[data-testid="pause-button"]').first();
+    const previewToolbar = page
+      .locator('[data-testid="preview-panel"]')
+      .locator('[data-toolbar]')
+      .first();
+    const playButton = previewToolbar.getByTestId("play-button");
+    const pauseButton = previewToolbar.getByTestId("pause-button");
 
     // Ensure we start from a paused state before testing playback toggles
     if (await pauseButton.isVisible().catch(() => false)) {
