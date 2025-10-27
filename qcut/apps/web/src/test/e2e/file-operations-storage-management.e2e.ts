@@ -6,7 +6,12 @@
  * and cross-platform file handling capabilities.
  */
 
-import { test, expect, createTestProject } from "./helpers/electron-helpers";
+import {
+  test,
+  expect,
+  createTestProject,
+  importTestVideo,
+} from "./helpers/electron-helpers";
 
 /**
  * Test suite for File Operations & Storage Management (Test #5A)
@@ -206,7 +211,7 @@ test.describe("File Operations & Storage Management", () => {
     await createTestProject(page, "Thumbnail Generation Test");
 
     // Import media to ensure we have items to test thumbnails for
-    await page.click('[data-testid="import-media-button"]');
+    await importTestVideo(page);
     await page.waitForSelector('[data-testid="media-item"]', {
       state: "visible",
       timeout: 10_000,
@@ -246,8 +251,8 @@ test.describe("File Operations & Storage Management", () => {
     // Setup: Create project and ensure we have media to drag
     await createTestProject(page, "Drag Drop Test Project");
 
-    // Import media to ensure we have items for drag-and-drop testing
-    await page.click('[data-testid="import-media-button"]');
+    // Import media so there is a tangible item to drag from the media panel
+    await importTestVideo(page);
     await page.waitForSelector('[data-testid="media-item"]', {
       state: "visible",
       timeout: 10_000,
