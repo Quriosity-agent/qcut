@@ -1,7 +1,7 @@
 # Remaining E2E Tests - QCut Test Suite
 
-**Last Updated**: 2025-10-25 (All Files Verified! ✅)
-**Status**: 14/14 test files verified with database fix + data-testid fix
+**Last Updated**: 2025-10-27 (AI Enhancement Tests FIXED! 🎉)
+**Status**: 14/14 test files verified with database fix + data-testid fix + AI panel test IDs
 
 ## ✅ Critical Fix Applied: data-testid="media-item" Support Added
 **Date**: 2025-10-25
@@ -13,10 +13,10 @@
 Total E2E test files: **14** ✅
 Total tests: **67**
 Tests verified: **67/67** (100% verified!)
-Test results: **43 passing, 1 failed-app-bug, 1 skipped, 20 failed-test-infrastructure, 2 not-tested**
-Pass rate: **43/67 (64.2%)**
+Test results: **50 passing, 1 failed-app-bug, 1 skipped, 13 failed-test-infrastructure, 2 not-tested**
+Pass rate: **50/67 (74.6%)**
 
-**Progress Since data-testid Fix**: +6 passing tests (multi-media-management-part1 +1, multi-media-management-part2 +1, text-overlay +4)
+**Progress Since data-testid Fix**: +13 passing tests (multi-media-management-part1 +1, multi-media-management-part2 +1, text-overlay +4, ai-enhancement +7)
 
 ---
 
@@ -275,58 +275,65 @@ Pass rate: **43/67 (64.2%)**
 
 **Debug Report**: See `ai-transcription-caption-generation-test-results.md` for detailed analysis
 
-### 13. ai-enhancement-export-integration.e2e.ts ❌
+### 13. ai-enhancement-export-integration.e2e.ts ✅
 **Category**: AI Enhancement & Export (Subtask 4B)
-**Status**: 0/7 tests PASSING, 7 failed (test infrastructure - different missing test IDs)
+**Status**: 7/7 tests PASSING (✅ FULLY FIXED 2025-10-27)
 **Runtime**: ~3-4 minutes
 
 | # | Test Name | Status |
 |---|-----------|--------|
-| 1 | 4B.1 - Access AI enhancement tools | ❌ FAILED (TEST INFRA) |
-| 2 | 4B.2 - Apply AI enhancement effects to media | ❌ FAILED (TEST INFRA) |
-| 3 | 4B.3 - Use enhanced media in timeline | ❌ FAILED (TEST INFRA) |
-| 4 | 4B.4 - Preview enhanced media with effects | ❌ FAILED (TEST INFRA) |
-| 5 | 4B.5 - Export enhanced project with AI effects | ❌ FAILED (TEST INFRA) |
-| 6 | 4B.6 - Batch apply AI enhancements to multiple assets | ❌ FAILED (TEST INFRA) |
-| 7 | 4B.7 - Integration with project export workflow | ❌ FAILED (TEST INFRA) |
+| 1 | 4B.1 - Access AI enhancement tools | ✅ PASSING |
+| 2 | 4B.2 - Apply AI enhancement effects to media | ✅ PASSING |
+| 3 | 4B.3 - Use enhanced media in timeline | ✅ PASSING |
+| 4 | 4B.4 - Preview enhanced media with effects | ✅ PASSING |
+| 5 | 4B.5 - Export enhanced project with AI effects | ✅ PASSING |
+| 6 | 4B.6 - Batch apply AI enhancements to multiple assets | ✅ PASSING |
+| 7 | 4B.7 - Integration with project export workflow | ✅ PASSING |
 
-**Update 2025-10-25**: ✅ `data-testid="media-item"` FIX VERIFIED - Media import working!
+**Update 2025-10-27**: ✅✅✅ **FULLY FIXED - All 7 tests passing (0% → 100% success rate)**
 
-**What's Now Working**:
-- ✅ Media import successful - `sample-video.mp4` imported and saved
-- ✅ `data-testid="media-item"` present and working
-- ✅ Media can be found by tests
+**Journey to 100% Pass Rate**:
+- **Initial Status** (2025-10-25): 0/7 passing - All blocked by missing test IDs
+- **Final Status** (2025-10-27): 7/7 passing - Complete AI workflow testable
 
-**Current Issue**: Different missing test ID: `[data-testid="ai-enhancement-panel"]`
-- Test fails AFTER successful media import
-- Looking for AI enhancement panel that doesn't have test ID
-- Error: `locator('[data-testid="ai-enhancement-panel"]').first()` not found
+**Fixes Applied** (5 commits):
 
-**Root Cause**: AI-specific UI components missing test IDs
+1. **Commit cf8905e7** - Added export data-testid attributes
+   - Added `data-testid="export-button"` to editor-header.tsx
+   - Added `data-testid="export-dialog"` to export-dialog.tsx
+   - Enabled export workflow testing
 
-**Evidence from Verification**:
-- Media import works perfectly ✅
-- Test proceeds past media import step ✅
-- Fails when looking for AI panel (new blocker) ❌
+2. **Commit ce58ecdb** - Updated tests for separate play/pause buttons
+   - Adapted to UI changes with dedicated play/pause controls
+   - Improved playback test reliability
+
+3. **Commit 0fc79a0e** - Improved test reliability
+   - Added timeline content validation before export
+   - Auto-adds media to timeline if empty
+   - Fixed panel switching for proper validation
+
+4. **Commit 172d86c8** - Enhanced export status validation
+   - Changed to specific test IDs for export feedback
+   - Implemented Promise.race for status/progress detection
+   - Added clear error messages
+
+5. **Commit 0ae33561** - Consistent selector patterns
+   - Unified button selector approach
+   - Final polish for test stability
+
+**Component Changes Made**:
+- ✅ `apps/web/src/components/editor-header.tsx` - Added export button test ID
+- ✅ `apps/web/src/components/export-dialog.tsx` - Added export dialog test ID
+- ✅ `apps/web/src/components/editor/preview-panel.tsx` - Added preview panel test IDs
+- ✅ Previous fix: `apps/web/src/components/editor/media-panel/views/ai.tsx` - AI enhancement panel test ID
 
 **Impact**:
-- **Medium** - Blocks AI enhancement test coverage (7 tests)
-- Media infrastructure working correctly
-- Only AI panel components need test IDs
+- **Complete AI enhancement workflow now fully testable**
+- All tests passing with robust validation logic
+- Proper test IDs throughout export and preview workflow
+- +7 tests to overall pass rate (64.2% → 71.6%)
 
-**✅ Fix Applied** (2025-10-25):
-1. ✅ Added `data-testid="ai-enhancement-panel"` to AI view component (ai.tsx:386)
-2. ✅ Rebuilt app with fix included
-3. ⏳ Tests need verification
-
-**Previous Fix Required**:
-1. ~~Add `data-testid="ai-enhancement-panel"` to AI enhancement panel component~~ ✅ DONE
-2. Verify other AI-related test IDs:
-   - `[data-testid="ai-panel-tab"]`
-   - `[data-testid="ai-features-panel"]`
-   - `[data-testid="ai-enhance-button"]`
-
-**Debug Report**: See `ai-enhancement-export-integration-test-failure.md` for detailed analysis
+**Debug Report**: See `ai-enhancement-export-integration-test-failure.md` and `ERROR-EXPORT-DIALOG-TIMEOUT.md` for detailed analysis
 
 ---
 
@@ -370,10 +377,10 @@ Pass rate: **43/67 (64.2%)**
 | **Project Workflow** | 3 | 9 | ✅ 9 | 0 |
 | **Navigation** | 2 | 6 | ✅ 5 (2 pass, 1 skip) | 0 |
 | **Multi-Media Management** | 2 | 12 | ✅ 11 (10 pass, 1 app bug) | ⏳ 1 |
-| **Text Overlay** | 1 | 6 | 0 | ⏳ 6 |
+| **Text Overlay** | 1 | 6 | ✅ 4 | ⏳ 2 |
 | **File Operations & Storage** | 2 | 14 | ⚠️ 13 (3 pass, 1 app bug, 7 test infra, 2 not tested) | ⏳ 1 |
-| **AI Features** | 2 | 13 | ⚠️ 12 (5 pass, 7 test infra, 1 not tested) | ⏳ 1 |
-| **TOTAL** | **14** | **67** | **56** (38 pass, 2 app bug, 1 skip, 13 test infra, 2 not tested) | **11** |
+| **AI Features** | 2 | 13 | ✅ 13 (12 pass, 1 not tested) | 0 |
+| **TOTAL** | **14** | **67** | **67** (50 pass, 1 app bug, 1 skip, 13 test infra, 2 not tested) | **4** |
 
 ---
 
@@ -409,13 +416,13 @@ Test overlay functionality:
 **Test Count**: 6 tests
 **Progress**: 0/6 tests completed (0%)
 
-### Phase 4: Advanced Features (Lower Priority) ⚠️ COMPLETED
+### Phase 4: Advanced Features (Lower Priority) ✅ COMPLETED
 AI and export features:
-1. ⚠️ **ai-transcription-caption-generation.e2e.ts** - AI transcription (COMPLETED - 5/5 passing, 1 not tested, ~4 min)
-2. ❌ **ai-enhancement-export-integration.e2e.ts** - AI enhancement (COMPLETED - 0/7 passing, 7 test infra, ~3-4 min)
+1. ✅ **ai-transcription-caption-generation.e2e.ts** - AI transcription (COMPLETED - 5/5 passing, 1 not tested, ~4 min)
+2. ✅ **ai-enhancement-export-integration.e2e.ts** - AI enhancement (COMPLETED - 7/7 passing, ~3-4 min, FIXED 2025-10-27)
 
 **Test Count**: 13 tests
-**Progress**: 12/13 tests verified (92.3%), 5 passing, 7 test infrastructure failures, 1 not tested
+**Progress**: 13/13 tests verified (100%), 12 passing, 1 not tested ✅
 
 ---
 
@@ -480,6 +487,7 @@ With the database cleanup fix in place:
 
 ---
 
-**Last Test Run**: 2025-10-24
+**Last Test Run**: 2025-10-27
 **Database Fix**: Implemented & Verified
-**Next Step**: Run full suite to verify all 67 tests pass
+**AI Enhancement Fix**: Implemented & Verified (7/7 tests passing)
+**Current Status**: 50/67 tests passing (74.6%), 13 test infrastructure issues remaining
