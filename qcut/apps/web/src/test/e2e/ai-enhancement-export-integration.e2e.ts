@@ -161,12 +161,22 @@ test.describe("AI Enhancement & Export Integration", () => {
     }
 
     // Click play to preview enhanced media
-    const playButton = page.locator('[data-testid="play-pause-button"]');
+    const playButton = page.getByTestId("play-button");
+    const pauseButton = page.getByTestId("pause-button");
+
+    // Ensure we start from a paused state before testing playback toggles
+    if (await pauseButton.isVisible().catch(() => false)) {
+      await pauseButton.click();
+      await expect(playButton).toBeVisible();
+    }
+
+    await expect(playButton).toBeVisible();
     await playButton.click();
-    await expect(playButton).toHaveAttribute("data-playing", "true");
+    await expect(pauseButton).toBeVisible();
+    await expect(pauseButton).toHaveAttribute("data-playing", "true");
 
     // Verify video is playing
-    await expect(playButton).toHaveAttribute("data-playing", "true");
+    await expect(pauseButton).toHaveAttribute("data-playing", "true");
 
     // Let video play to see enhancements
     await page.waitForFunction(
@@ -178,8 +188,8 @@ test.describe("AI Enhancement & Export Integration", () => {
     ).catch(() => {});
 
     // Pause video
-    await playButton.click();
-    await expect(playButton).toHaveAttribute("data-playing", "false");
+    await pauseButton.click();
+    await expect(playButton).toBeVisible();
 
     // Verify preview panel is showing enhanced content
     const previewPanel = page

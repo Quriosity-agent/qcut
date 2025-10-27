@@ -224,18 +224,30 @@ test.describe("AI Transcription & Caption Generation", () => {
     await expect(timelineElements.first()).toBeVisible();
 
     // Click play button to start preview
-    const playButton = page.locator('[data-testid="play-pause-button"]');
+    const playButton = page.getByTestId("play-button");
+    const pauseButton = page.getByTestId("pause-button");
+
+    // Normalize playback state in case previous tests left the player running
+    if (await pauseButton.isVisible().catch(() => false)) {
+      await pauseButton.click();
+      await expect(playButton).toBeVisible();
+    }
+
+    await expect(playButton).toBeVisible();
     await playButton.click();
-    await page.waitForFunction(
-      () => {
-        const btn = document.querySelector('[data-testid="play-pause-button"]');
-        return btn && btn.getAttribute('data-playing') === 'true';
-      },
-      { timeout: 3000 }
-    ).catch(() => {});
+    await expect(pauseButton).toBeVisible();
+    await page
+      .waitForFunction(
+        () => {
+          const btn = document.querySelector('[data-testid="pause-button"]');
+          return btn && btn.getAttribute("data-playing") === "true";
+        },
+        { timeout: 3000 }
+      )
+      .catch(() => {});
 
     // Verify video is playing
-    await expect(playButton).toHaveAttribute("data-playing", "true");
+    await expect(pauseButton).toHaveAttribute("data-playing", "true");
 
     // Let video play for a few seconds to show captions
     await page.waitForFunction(
@@ -247,8 +259,8 @@ test.describe("AI Transcription & Caption Generation", () => {
     ).catch(() => {});
 
     // Pause video
-    await playButton.click();
-    await expect(playButton).toHaveAttribute("data-playing", "false");
+    await pauseButton.click();
+    await expect(playButton).toBeVisible();
 
     // Verify preview panel shows captions overlay
     // This would depend on your specific implementation
