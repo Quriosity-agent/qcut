@@ -162,10 +162,44 @@ test.describe("File Operations & Storage Management", () => {
     try {
       // Trigger a storage write via the rename flow (calls storageService.saveProject)
       const projectMenuTrigger = page
-        .getByRole("button", { name: currentProjectRegex })
+        .locator(
+          [
+            '[data-testid="project-title-button"]',
+            '[data-testid="project-menu-button"]',
+            '[data-testid="project-options-button"]',
+            "button",
+          ].join(", ")
+        )
+        .filter({ hasText: currentProjectRegex })
         .first();
-      await projectMenuTrigger.click();
-      await page.getByRole("menuitem", { name: "Rename project" }).click();
+
+      await projectMenuTrigger
+        .waitFor({ state: "visible", timeout: 5000 })
+        .catch(() => {});
+      expect(await projectMenuTrigger.isVisible()).toBe(true);
+
+      await projectMenuTrigger.click().catch(() => {});
+
+      const renameMenuItem = page
+        .locator('[role="menuitem"], button')
+        .filter({ hasText: /rename/i })
+        .first();
+
+      const renameMenuVisible = await renameMenuItem
+        .waitFor({ state: "visible", timeout: 3000 })
+        .then(() => true)
+        .catch(async () => {
+          // Retry opening the project menu once more if the first attempt did not render the menu yet
+          await projectMenuTrigger.click().catch(() => {});
+          return renameMenuItem
+            .waitFor({ state: "visible", timeout: 2000 })
+            .then(() => true)
+            .catch(() => false);
+        });
+
+      expect(renameMenuVisible).toBe(true);
+
+      await renameMenuItem.click();
 
       const renameInput = page.getByPlaceholder("Enter a new name");
       await renameInput.fill(updatedProjectName);
