@@ -50,7 +50,10 @@ test.describe("Timeline Controls & Editing Operations (Test #2 Part 2)", () => {
     await page.waitForFunction(
       (initial) => {
         const slider = document.querySelector("[data-zoom-level]");
-        return slider && Number(slider.getAttribute("data-zoom-level")) > Number(initial);
+        return (
+          slider &&
+          Number(slider.getAttribute("data-zoom-level")) > Number(initial)
+        );
       },
       initialZoom,
       { timeout: 2000 }
@@ -65,7 +68,10 @@ test.describe("Timeline Controls & Editing Operations (Test #2 Part 2)", () => {
     await page.waitForFunction(
       (zoomedIn) => {
         const slider = document.querySelector("[data-zoom-level]");
-        return slider && Number(slider.getAttribute("data-zoom-level")) < Number(zoomedIn);
+        return (
+          slider &&
+          Number(slider.getAttribute("data-zoom-level")) < Number(zoomedIn)
+        );
       },
       zoomedInLevel,
       { timeout: 2000 }

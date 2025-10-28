@@ -86,6 +86,8 @@ test.describe("Simple Navigation Test", () => {
     await page.waitForLoadState("networkidle", { timeout: 5000 });
 
     // Verify we're still on projects page
-    await expect(page.getByText("Your Projects")).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText("Your Projects")).toBeVisible({
+      timeout: 5000,
+    });
   });
 });

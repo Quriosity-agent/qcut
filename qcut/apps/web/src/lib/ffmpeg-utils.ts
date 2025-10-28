@@ -275,17 +275,14 @@ export const initFFmpeg = async (): Promise<FFmpeg> => {
         }, 5000); // Log every 5 seconds
 
         const timeoutPromise = new Promise((_, reject) => {
-          setTimeout(
-            () => {
-              clearInterval(progressInterval);
-              reject(
-                new Error(
-                  `FFmpeg load timeout after ${timeoutDuration / 1000} seconds. Check if FFmpeg files are accessible.`
-                )
-              );
-            },
-            timeoutDuration
-          );
+          setTimeout(() => {
+            clearInterval(progressInterval);
+            reject(
+              new Error(
+                `FFmpeg load timeout after ${timeoutDuration / 1000} seconds. Check if FFmpeg files are accessible.`
+              )
+            );
+          }, timeoutDuration);
         });
 
         await Promise.race([loadPromise, timeoutPromise]);
@@ -303,7 +300,10 @@ export const initFFmpeg = async (): Promise<FFmpeg> => {
         console.error("[FFmpeg Utils] Environment info:", {
           hasSharedArrayBuffer: environment.hasSharedArrayBuffer,
           hasWorker: environment.hasWorker,
-          crossOriginIsolated: typeof crossOriginIsolated !== 'undefined' ? crossOriginIsolated : false,
+          crossOriginIsolated:
+            typeof crossOriginIsolated !== "undefined"
+              ? crossOriginIsolated
+              : false,
           isElectron: electronMode,
         });
         throw loadError;

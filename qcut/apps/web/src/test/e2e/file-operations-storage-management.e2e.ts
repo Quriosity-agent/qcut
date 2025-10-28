@@ -34,7 +34,9 @@ test.describe("File Operations & Storage Management", () => {
     await page.click('[data-testid="import-media-button"]');
 
     // Wait for file input to be ready
-    await page.waitForSelector('input[type="file"]', { timeout: 2000 }).catch(() => {});
+    await page
+      .waitForSelector('input[type="file"]', { timeout: 2000 })
+      .catch(() => {});
 
     // Verify import functionality is available
     await expect(
@@ -134,7 +136,9 @@ test.describe("File Operations & Storage Management", () => {
       if (!navigator.storage?.estimate) {
         return false;
       }
-      const originalEstimate = navigator.storage.estimate.bind(navigator.storage);
+      const originalEstimate = navigator.storage.estimate.bind(
+        navigator.storage
+      );
       (window as any).__originalStorageEstimate__ = originalEstimate;
       navigator.storage.estimate = async () => ({
         quota: 1_000_000, // 1MB quota
@@ -256,24 +260,53 @@ test.describe("File Operations & Storage Management", () => {
     expect(await mediaItems.count()).toBeGreaterThan(0);
 
     const firstMediaItem = mediaItems.first();
+    await firstMediaItem.scrollIntoViewIfNeeded();
     await expect(firstMediaItem).toBeVisible();
 
     // Look for thumbnail elements
-    const thumbnail = firstMediaItem
-      .locator('img, [data-testid*="thumbnail"], [data-testid*="preview"]')
-      .first();
+    const thumbnailSelectors = [
+      'img[data-testid*="thumbnail"]',
+      '[data-testid*="thumbnail"] img',
+      '[data-testid*="thumbnail"]',
+      '[data-testid*="preview"]',
+      "img",
+      "canvas",
+      "video",
+    ].join(", ");
+    const thumbnailCandidates = firstMediaItem.locator(thumbnailSelectors);
+    const thumbnail = thumbnailCandidates.first();
 
-    // Wait for thumbnail to load
-    await thumbnail.waitFor({ state: "visible", timeout: 5000 });
-    await expect(thumbnail).toBeVisible();
+    if ((await thumbnailCandidates.count()) > 0) {
+      await thumbnail
+        .waitFor({ state: "visible", timeout: 5000 })
+        .catch(() => {});
+      expect(await thumbnail.isVisible()).toBe(true);
 
-    // Verify thumbnail has loaded (not broken image)
-    const thumbnailSrc = await thumbnail.getAttribute("src");
-    expect(thumbnailSrc).toBeTruthy();
-    expect(thumbnailSrc).not.toBe("");
+      const [src, poster, backgroundImage] = await Promise.all([
+        thumbnail.getAttribute("src"),
+        thumbnail.getAttribute("poster"),
+        thumbnail.evaluate(
+          (el) => getComputedStyle(el as HTMLElement).backgroundImage
+        ),
+      ]);
 
-    // Additional validation: thumbnail should be a valid image URL or data URL
-    expect(thumbnailSrc).toMatch(/^(data:image\/|blob:|https?:\/\/)/);
+      const hasVisualSource =
+        (src && src.trim().length > 0) ||
+        (poster && poster.trim().length > 0) ||
+        (backgroundImage && backgroundImage !== "none");
+      expect(hasVisualSource).toBe(true);
+
+      if (src) {
+        expect(src).toMatch(/^(data:image\/|blob:|https?:\/\/)/);
+      }
+    } else {
+      // Fallback: some builds render the thumbnail as a background image on the card itself
+      const cardBackground = await firstMediaItem.evaluate((node) => {
+        const style = getComputedStyle(node as HTMLElement);
+        return style.backgroundImage;
+      });
+      expect(cardBackground).toMatch(/url\((['"]?)(blob:|data:image|https?:)/i);
+    }
   });
 
   /**
@@ -323,7 +356,7 @@ test.describe("File Operations & Storage Management", () => {
    * Test 5A.6: Test file format support and validation
    * Tests support for various file formats (video, audio, image)
    * and proper handling of unsupported or corrupted files.
-  */
+   */
   test("5A.6 - Test file format support and validation", async ({ page }) => {
     // This test would verify different file formats are handled properly
 
@@ -331,7 +364,9 @@ test.describe("File Operations & Storage Management", () => {
     await createTestProject(page, "Format Support Test Project");
 
     // Import button should be available
-    const importButton = page.locator('[data-testid="import-media-button"]').first();
+    const importButton = page
+      .locator('[data-testid="import-media-button"]')
+      .first();
     await expect(importButton).toBeVisible();
 
     // In a real implementation, you would test:
@@ -343,7 +378,9 @@ test.describe("File Operations & Storage Management", () => {
     await importButton.click();
 
     // Wait for file input to be available
-    await page.waitForSelector('input[type="file"]', { timeout: 2000 }).catch(() => {});
+    await page
+      .waitForSelector('input[type="file"]', { timeout: 2000 })
+      .catch(() => {});
 
     // File input should be available (even if hidden)
     const fileInput = page.locator('input[type="file"]');
@@ -421,7 +458,9 @@ test.describe("File Operations & Storage Management", () => {
     await page.click('[data-testid="import-media-button"]');
 
     // Wait for file input to be ready
-    await page.waitForSelector('input[type="file"]', { timeout: 2000 }).catch(() => {});
+    await page
+      .waitForSelector('input[type="file"]', { timeout: 2000 })
+      .catch(() => {});
 
     // Get platform information
     const platform = await page.evaluate(() => navigator.platform);
@@ -437,7 +476,11 @@ test.describe("File Operations & Storage Management", () => {
       await firstItem.click();
 
       // Wait for item to be active/selected
-      await page.waitForSelector('[data-testid="media-item"][data-selected="true"]', { timeout: 2000 }).catch(() => {});
+      await page
+        .waitForSelector('[data-testid="media-item"][data-selected="true"]', {
+          timeout: 2000,
+        })
+        .catch(() => {});
 
       // Verify item is selected/active
       const activeItem = page

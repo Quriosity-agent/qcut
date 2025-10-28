@@ -454,9 +454,10 @@ export const useTimelineStore = create<TimelineStore>((set, get) => {
     snappingEnabled: true,
 
     // Effects track visibility - load from localStorage, default to false
-    showEffectsTrack: typeof window !== 'undefined'
-      ? localStorage.getItem('timeline-showEffectsTrack') === 'true'
-      : false,
+    showEffectsTrack:
+      typeof window !== "undefined"
+        ? localStorage.getItem("timeline-showEffectsTrack") === "true"
+        : false,
 
     getSortedTracks: () => {
       const { _tracks } = get();
@@ -1811,8 +1812,8 @@ export const useTimelineStore = create<TimelineStore>((set, get) => {
       set({ showEffectsTrack: newValue });
 
       // Persist to localStorage
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('timeline-showEffectsTrack', String(newValue));
+      if (typeof window !== "undefined") {
+        localStorage.setItem("timeline-showEffectsTrack", String(newValue));
       }
     },
 
@@ -1822,8 +1823,8 @@ export const useTimelineStore = create<TimelineStore>((set, get) => {
         set({ showEffectsTrack: true });
 
         // Persist to localStorage
-        if (typeof window !== 'undefined') {
-          localStorage.setItem('timeline-showEffectsTrack', 'true');
+        if (typeof window !== "undefined") {
+          localStorage.setItem("timeline-showEffectsTrack", "true");
         }
       }
     },

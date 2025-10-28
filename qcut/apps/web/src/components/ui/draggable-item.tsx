@@ -101,7 +101,11 @@ export function DraggableMediaItem({
 
   return (
     <>
-      <div ref={dragRef} className="relative group w-28 h-28" data-testid={dataTestId}>
+      <div
+        ref={dragRef}
+        className="relative group w-28 h-28"
+        data-testid={dataTestId}
+      >
         <div
           className={cn(
             "flex flex-col gap-1 p-0 h-auto w-full relative cursor-default",

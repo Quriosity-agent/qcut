@@ -102,7 +102,9 @@ export function useAIGeneration(props: UseAIGenerationProps) {
   // Sora 2 specific state
   const [duration, setDuration] = useState<4 | 8 | 12>(4);
   const [aspectRatio, setAspectRatio] = useState<"16:9" | "9:16">("16:9");
-  const [resolution, setResolution] = useState<"auto" | "720p" | "1080p">("720p");
+  const [resolution, setResolution] = useState<"auto" | "720p" | "1080p">(
+    "720p"
+  );
 
   // Veo 3.1 specific state
   const [veo31Settings, setVeo31Settings] = useState<{
@@ -126,16 +128,22 @@ export function useAIGeneration(props: UseAIGenerationProps) {
   const [lastFrame, setLastFrame] = useState<File | null>(null);
 
   // Reve Edit state
-  const [uploadedImageForEdit, setUploadedImageForEdit] = useState<File | null>(null);
-  const [uploadedImagePreview, setUploadedImagePreview] = useState<string | null>(null);
+  const [uploadedImageForEdit, setUploadedImageForEdit] = useState<File | null>(
+    null
+  );
+  const [uploadedImagePreview, setUploadedImagePreview] = useState<
+    string | null
+  >(null);
   const [uploadedImageUrl, setUploadedImageUrl] = useState<string | null>(null);
 
   // Sora 2 detection flags
-  const isSora2Selected = selectedModels.some(id => id.startsWith('sora2_'));
-  const hasSora2Pro = selectedModels.includes('sora2_text_to_video_pro') || selectedModels.includes('sora2_image_to_video_pro');
+  const isSora2Selected = selectedModels.some((id) => id.startsWith("sora2_"));
+  const hasSora2Pro =
+    selectedModels.includes("sora2_text_to_video_pro") ||
+    selectedModels.includes("sora2_image_to_video_pro");
 
   // Veo 3.1 detection flags
-  const isVeo31Selected = selectedModels.some(id => id.startsWith('veo31_'));
+  const isVeo31Selected = selectedModels.some((id) => id.startsWith("veo31_"));
   const hasVeo31FrameToVideo = selectedModels.some((id) =>
     VEO31_FRAME_MODELS.has(id)
   );
@@ -239,21 +247,18 @@ export function useAIGeneration(props: UseAIGenerationProps) {
   );
 
   // Helper function to upload image to FAL and get URL (for Veo 3.1)
-  const uploadImageToFal = useCallback(
-    async (file: File): Promise<string> => {
-      debugLog("📤 Uploading image to FAL:", file.name);
+  const uploadImageToFal = useCallback(async (file: File): Promise<string> => {
+    debugLog("📤 Uploading image to FAL:", file.name);
 
-      try {
-        const url = await falAIClient.uploadImageToFal(file);
-        debugLog(`📤 Upload complete: ${url}`);
-        return url;
-      } catch (error) {
-        debugError("❌ Failed to upload image to FAL", error);
-        throw error instanceof Error ? error : new Error(String(error));
-      }
-    },
-    []
-  );
+    try {
+      const url = await falAIClient.uploadImageToFal(file);
+      debugLog(`📤 Upload complete: ${url}`);
+      return url;
+    } catch (error) {
+      debugError("❌ Failed to upload image to FAL", error);
+      throw error instanceof Error ? error : new Error(String(error));
+    }
+  }, []);
 
   // Status polling function
   const startStatusPolling = useCallback(
@@ -526,7 +531,9 @@ export function useAIGeneration(props: UseAIGenerationProps) {
       }
 
       if (hasImageModel && !selectedImage) {
-        console.log("❌ Validation failed - image-to-video models require an image");
+        console.log(
+          "❌ Validation failed - image-to-video models require an image"
+        );
         return;
       }
     } else if (activeTab === "avatar") {
@@ -614,7 +621,7 @@ export function useAIGeneration(props: UseAIGenerationProps) {
           console.log(`  📝 Calling generateVideo for ${modelId}...`);
 
           // Veo 3.1 Fast text-to-video
-          if (modelId === 'veo31_fast_text_to_video') {
+          if (modelId === "veo31_fast_text_to_video") {
             response = await falAIClient.generateVeo31FastTextToVideo({
               prompt: prompt.trim(),
               aspect_ratio: (() => {
@@ -629,7 +636,7 @@ export function useAIGeneration(props: UseAIGenerationProps) {
             });
           }
           // Veo 3.1 Standard text-to-video
-          else if (modelId === 'veo31_text_to_video') {
+          else if (modelId === "veo31_text_to_video") {
             response = await falAIClient.generateVeo31TextToVideo({
               prompt: prompt.trim(),
               aspect_ratio: (() => {
@@ -650,7 +657,7 @@ export function useAIGeneration(props: UseAIGenerationProps) {
                 prompt: prompt.trim(),
                 model: modelId,
                 // Add Sora 2 specific parameters if Sora 2 model
-                ...(modelId.startsWith('sora2_') && {
+                ...(modelId.startsWith("sora2_") && {
                   duration,
                   aspect_ratio: aspectRatio,
                   resolution,
@@ -664,7 +671,7 @@ export function useAIGeneration(props: UseAIGenerationProps) {
           console.log(`  🖼️ Calling generateVideoFromImage for ${modelId}...`);
 
           // Veo 3.1 Fast image-to-video
-          if (modelId === 'veo31_fast_image_to_video') {
+          if (modelId === "veo31_fast_image_to_video") {
             if (!selectedImage) {
               console.log(
                 "  ⚠️ Skipping model - image-to-video requires a selected image"
@@ -676,7 +683,8 @@ export function useAIGeneration(props: UseAIGenerationProps) {
             const imageFile = selectedImage;
             const imageUrl = await uploadImageToFal(imageFile);
             const imageAspectRatio =
-              veo31Settings.aspectRatio === "16:9" || veo31Settings.aspectRatio === "9:16"
+              veo31Settings.aspectRatio === "16:9" ||
+              veo31Settings.aspectRatio === "9:16"
                 ? veo31Settings.aspectRatio
                 : "16:9";
 
@@ -690,7 +698,7 @@ export function useAIGeneration(props: UseAIGenerationProps) {
             });
           }
           // Veo 3.1 Standard image-to-video
-          else if (modelId === 'veo31_image_to_video') {
+          else if (modelId === "veo31_image_to_video") {
             if (!selectedImage) {
               console.log(
                 "  ⚠️ Skipping model - image-to-video requires a selected image"
@@ -702,7 +710,8 @@ export function useAIGeneration(props: UseAIGenerationProps) {
             const imageFile = selectedImage;
             const imageUrl = await uploadImageToFal(imageFile);
             const imageAspectRatio =
-              veo31Settings.aspectRatio === "16:9" || veo31Settings.aspectRatio === "9:16"
+              veo31Settings.aspectRatio === "16:9" ||
+              veo31Settings.aspectRatio === "9:16"
                 ? veo31Settings.aspectRatio
                 : "16:9";
 
@@ -716,14 +725,19 @@ export function useAIGeneration(props: UseAIGenerationProps) {
             });
           }
           // Veo 3.1 Fast frame-to-video
-          else if (modelId === 'veo31_fast_frame_to_video' && firstFrame && lastFrame) {
+          else if (
+            modelId === "veo31_fast_frame_to_video" &&
+            firstFrame &&
+            lastFrame
+          ) {
             // Upload both frames to get URLs
             const frameStart = firstFrame;
             const frameEnd = lastFrame;
             const firstFrameUrl = await uploadImageToFal(frameStart);
             const lastFrameUrl = await uploadImageToFal(frameEnd);
             const frameAspectRatio =
-              veo31Settings.aspectRatio === "16:9" || veo31Settings.aspectRatio === "9:16"
+              veo31Settings.aspectRatio === "16:9" ||
+              veo31Settings.aspectRatio === "9:16"
                 ? veo31Settings.aspectRatio
                 : "16:9";
 
@@ -738,14 +752,19 @@ export function useAIGeneration(props: UseAIGenerationProps) {
             });
           }
           // Veo 3.1 Standard frame-to-video
-          else if (modelId === 'veo31_frame_to_video' && firstFrame && lastFrame) {
+          else if (
+            modelId === "veo31_frame_to_video" &&
+            firstFrame &&
+            lastFrame
+          ) {
             // Upload both frames to get URLs
             const frameStart = firstFrame;
             const frameEnd = lastFrame;
             const firstFrameUrl = await uploadImageToFal(frameStart);
             const lastFrameUrl = await uploadImageToFal(frameEnd);
             const frameAspectRatio =
-              veo31Settings.aspectRatio === "16:9" || veo31Settings.aspectRatio === "9:16"
+              veo31Settings.aspectRatio === "16:9" ||
+              veo31Settings.aspectRatio === "9:16"
                 ? veo31Settings.aspectRatio
                 : "16:9";
 
@@ -778,7 +797,7 @@ export function useAIGeneration(props: UseAIGenerationProps) {
               prompt: prompt.trim(),
               model: modelId,
               // Add Sora 2 specific parameters if Sora 2 model
-              ...(modelId.startsWith('sora2_') && {
+              ...(modelId.startsWith("sora2_") && {
                 duration,
                 aspect_ratio: aspectRatio,
                 resolution,
@@ -1253,65 +1272,71 @@ export function useAIGeneration(props: UseAIGenerationProps) {
 
   // Veo 3.1 setter functions
   const setVeo31Resolution = useCallback((resolution: "720p" | "1080p") => {
-    setVeo31Settings(prev => ({ ...prev, resolution }));
+    setVeo31Settings((prev) => ({ ...prev, resolution }));
   }, []);
 
   const setVeo31Duration = useCallback((duration: "4s" | "6s" | "8s") => {
-    setVeo31Settings(prev => ({ ...prev, duration }));
+    setVeo31Settings((prev) => ({ ...prev, duration }));
   }, []);
 
-  const setVeo31AspectRatio = useCallback((aspectRatio: "9:16" | "16:9" | "1:1" | "auto") => {
-    setVeo31Settings(prev => ({ ...prev, aspectRatio }));
-  }, []);
+  const setVeo31AspectRatio = useCallback(
+    (aspectRatio: "9:16" | "16:9" | "1:1" | "auto") => {
+      setVeo31Settings((prev) => ({ ...prev, aspectRatio }));
+    },
+    []
+  );
 
   const setVeo31GenerateAudio = useCallback((generateAudio: boolean) => {
-    setVeo31Settings(prev => ({ ...prev, generateAudio }));
+    setVeo31Settings((prev) => ({ ...prev, generateAudio }));
   }, []);
 
   const setVeo31EnhancePrompt = useCallback((enhancePrompt: boolean) => {
-    setVeo31Settings(prev => ({ ...prev, enhancePrompt }));
+    setVeo31Settings((prev) => ({ ...prev, enhancePrompt }));
   }, []);
 
   const setVeo31AutoFix = useCallback((autoFix: boolean) => {
-    setVeo31Settings(prev => ({ ...prev, autoFix }));
+    setVeo31Settings((prev) => ({ ...prev, autoFix }));
   }, []);
 
   /**
    * Handle image upload for Reve Edit
    */
-  const handleImageUploadForEdit = useCallback(async (file: File) => {
-    try {
-      // Validate image first
-      const validation = await validateReveEditImage(file);
+  const handleImageUploadForEdit = useCallback(
+    async (file: File) => {
+      try {
+        // Validate image first
+        const validation = await validateReveEditImage(file);
 
-      if (!validation.valid) {
-        const errorMessage = validation.error || "Invalid image file";
-        console.error("[Reve Edit] Validation failed:", errorMessage);
-        // Note: Error should be handled by parent component
-        throw new Error(errorMessage);
+        if (!validation.valid) {
+          const errorMessage = validation.error || "Invalid image file";
+          console.error("[Reve Edit] Validation failed:", errorMessage);
+          // Note: Error should be handled by parent component
+          throw new Error(errorMessage);
+        }
+
+        // Create preview
+        const preview = URL.createObjectURL(file);
+        setUploadedImagePreview(preview);
+        setUploadedImageForEdit(file);
+
+        // Upload to FAL storage
+        const imageUrl = await falAIClient.uploadImageToFal(file);
+        setUploadedImageUrl(imageUrl);
+
+        console.log("[Reve Edit] Image uploaded successfully:", {
+          fileName: file.name,
+          fileSize: `${(file.size / 1024 / 1024).toFixed(2)}MB`,
+          dimensions: validation.dimensions,
+          url: imageUrl,
+        });
+      } catch (err) {
+        console.error("[Reve Edit] Image upload failed:", err);
+        clearUploadedImageForEdit();
+        throw err;
       }
-
-      // Create preview
-      const preview = URL.createObjectURL(file);
-      setUploadedImagePreview(preview);
-      setUploadedImageForEdit(file);
-
-      // Upload to FAL storage
-      const imageUrl = await falAIClient.uploadImageToFal(file);
-      setUploadedImageUrl(imageUrl);
-
-      console.log("[Reve Edit] Image uploaded successfully:", {
-        fileName: file.name,
-        fileSize: `${(file.size / 1024 / 1024).toFixed(2)}MB`,
-        dimensions: validation.dimensions,
-        url: imageUrl,
-      });
-    } catch (err) {
-      console.error("[Reve Edit] Image upload failed:", err);
-      clearUploadedImageForEdit();
-      throw err;
-    }
-  }, [falAIClient]);
+    },
+    [falAIClient]
+  );
 
   /**
    * Clear uploaded image for Reve Edit
@@ -1383,7 +1408,8 @@ export function useAIGeneration(props: UseAIGenerationProps) {
       if (activeTab === "image") {
         // Check if frame-to-video models are selected
         const hasFrameToVideoModel = selectedModels.some(
-          id => id === "veo31_fast_frame_to_video" || id === "veo31_frame_to_video"
+          (id) =>
+            id === "veo31_fast_frame_to_video" || id === "veo31_frame_to_video"
         );
 
         // If frame-to-video models are selected, both frames are required

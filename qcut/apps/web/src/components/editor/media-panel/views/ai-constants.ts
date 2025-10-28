@@ -320,7 +320,8 @@ export const AI_MODELS: AIModel[] = [
   {
     id: "sora2_video_to_video_remix",
     name: "Sora 2 Video-to-Video Remix",
-    description: "Transform Sora-generated videos with style changes (requires existing Sora video)",
+    description:
+      "Transform Sora-generated videos with style changes (requires existing Sora video)",
     price: "0.00", // Price calculated dynamically based on source video duration
     resolution: "Preserves source",
     max_duration: 12, // Inherits from source video
@@ -338,7 +339,8 @@ export const AI_MODELS: AIModel[] = [
   {
     id: "veo31_fast_text_to_video",
     name: "Veo 3.1 Fast Text-to-Video",
-    description: "Google's Veo 3.1 Fast - Generate videos from text prompts (faster, budget-friendly)",
+    description:
+      "Google's Veo 3.1 Fast - Generate videos from text prompts (faster, budget-friendly)",
     price: "1.20", // 8s @ $0.15/s with audio (default)
     resolution: "720p / 1080p",
     supportedResolutions: ["720p", "1080p"],
@@ -359,7 +361,8 @@ export const AI_MODELS: AIModel[] = [
   {
     id: "veo31_fast_image_to_video",
     name: "Veo 3.1 Fast Image-to-Video",
-    description: "Google's Veo 3.1 Fast - Animate static images with motion (faster, budget-friendly)",
+    description:
+      "Google's Veo 3.1 Fast - Animate static images with motion (faster, budget-friendly)",
     price: "1.20", // 8s @ $0.15/s with audio (default)
     resolution: "720p / 1080p",
     supportedResolutions: ["720p", "1080p"],
@@ -378,7 +381,8 @@ export const AI_MODELS: AIModel[] = [
   {
     id: "veo31_fast_frame_to_video",
     name: "Veo 3.1 Fast Frame-to-Video",
-    description: "Google's Veo 3.1 Fast - Animate between first and last frames (faster, budget-friendly)",
+    description:
+      "Google's Veo 3.1 Fast - Animate between first and last frames (faster, budget-friendly)",
     price: "1.20", // 8s @ $0.15/s with audio (default)
     resolution: "720p / 1080p",
     supportedResolutions: ["720p", "1080p"],
@@ -400,7 +404,8 @@ export const AI_MODELS: AIModel[] = [
   {
     id: "veo31_text_to_video",
     name: "Veo 3.1 Text-to-Video",
-    description: "Google's Veo 3.1 - Premium quality video generation from text prompts",
+    description:
+      "Google's Veo 3.1 - Premium quality video generation from text prompts",
     price: "3.20", // 8s @ $0.40/s with audio (default)
     resolution: "720p / 1080p",
     supportedResolutions: ["720p", "1080p"],
@@ -421,7 +426,8 @@ export const AI_MODELS: AIModel[] = [
   {
     id: "veo31_image_to_video",
     name: "Veo 3.1 Image-to-Video",
-    description: "Google's Veo 3.1 - Premium quality image animation with motion",
+    description:
+      "Google's Veo 3.1 - Premium quality image animation with motion",
     price: "3.20", // 8s @ $0.40/s with audio (default)
     resolution: "720p / 1080p",
     supportedResolutions: ["720p", "1080p"],
@@ -440,7 +446,8 @@ export const AI_MODELS: AIModel[] = [
   {
     id: "veo31_frame_to_video",
     name: "Veo 3.1 Frame-to-Video",
-    description: "Google's Veo 3.1 - Premium quality animation between first and last frames",
+    description:
+      "Google's Veo 3.1 - Premium quality animation between first and last frames",
     price: "3.20", // 8s @ $0.40/s with audio (default)
     resolution: "720p / 1080p",
     supportedResolutions: ["720p", "1080p"],
@@ -529,14 +536,18 @@ export const ERROR_MESSAGES = {
 
   // Veo 3.1 specific errors
   VEO31_IMAGE_TOO_LARGE: "Image must be under 8MB for Veo 3.1",
-  VEO31_INVALID_ASPECT_RATIO: "Veo 3.1 requires 16:9 or 9:16 aspect ratio for images",
-  VEO31_MISSING_FIRST_FRAME: "First frame is required for Veo 3.1 frame-to-video",
+  VEO31_INVALID_ASPECT_RATIO:
+    "Veo 3.1 requires 16:9 or 9:16 aspect ratio for images",
+  VEO31_MISSING_FIRST_FRAME:
+    "First frame is required for Veo 3.1 frame-to-video",
   VEO31_MISSING_LAST_FRAME: "Last frame is required for Veo 3.1 frame-to-video",
-  VEO31_FRAME_ASPECT_MISMATCH: "First and last frames must have matching aspect ratios",
+  VEO31_FRAME_ASPECT_MISMATCH:
+    "First and last frames must have matching aspect ratios",
 
   // Reve specific errors
   REVE_IMAGE_TOO_LARGE: "Image must be under 10MB for Reve Edit",
-  REVE_INVALID_DIMENSIONS: "Image dimensions must be between 128×128 and 4096×4096 pixels",
+  REVE_INVALID_DIMENSIONS:
+    "Image dimensions must be between 128×128 and 4096×4096 pixels",
   REVE_INVALID_FORMAT: "Please upload PNG, JPEG, WebP, AVIF, or HEIF image",
   REVE_PROMPT_TOO_LONG: "Prompt must be under 2560 characters",
 } as const;
@@ -652,7 +663,13 @@ export const REVE_EDIT_MODEL = {
     perImage: 0.04, // $0.04 per edit (estimated - TBD from fal.ai)
   },
   imageConstraints: {
-    supportedFormats: ["image/png", "image/jpeg", "image/webp", "image/avif", "image/heif"] as const,
+    supportedFormats: [
+      "image/png",
+      "image/jpeg",
+      "image/webp",
+      "image/avif",
+      "image/heif",
+    ] as const,
     maxFileSizeBytes: 10 * 1024 * 1024, // 10 MB
     maxFileSizeLabel: "10MB" as const,
     minDimensions: { width: 128, height: 128 },

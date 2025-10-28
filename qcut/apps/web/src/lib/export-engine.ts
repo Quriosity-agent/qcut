@@ -275,7 +275,9 @@ export class ExportEngine {
     this.usedImages.add(mediaItem.id);
 
     // Log which image is being used
-    console.log(`🖼️ EXPORT: Using image - ID: ${mediaItem.id}, Name: ${mediaItem.name || 'Unnamed'}, URL: ${mediaItem.url}`);
+    console.log(
+      `🖼️ EXPORT: Using image - ID: ${mediaItem.id}, Name: ${mediaItem.name || "Unnamed"}, URL: ${mediaItem.url}`
+    );
 
     return new Promise((resolve, reject) => {
       const img = new Image();
@@ -289,7 +291,9 @@ export class ExportEngine {
             img.height
           );
 
-          console.log(`🖼️ EXPORT: Rendered image "${mediaItem.name || mediaItem.id}" at position (${x}, ${y}) with size ${width}x${height}`);
+          console.log(
+            `🖼️ EXPORT: Rendered image "${mediaItem.name || mediaItem.id}" at position (${x}, ${y}) with size ${width}x${height}`
+          );
 
           // Apply effects if enabled
           if (EFFECTS_ENABLED) {
@@ -681,7 +685,8 @@ export class ExportEngine {
     let height: number;
 
     // Check if media is smaller than canvas in both dimensions
-    const isSmaller = mediaWidth <= this.canvas.width && mediaHeight <= this.canvas.height;
+    const isSmaller =
+      mediaWidth <= this.canvas.width && mediaHeight <= this.canvas.height;
 
     if (isSmaller) {
       // Video is smaller - use original size, no upscaling
@@ -1108,7 +1113,7 @@ export class ExportEngine {
         this.usedImages.forEach((imageId) => {
           const mediaItem = this.mediaItems.find((item) => item.id === imageId);
           if (mediaItem) {
-            console.log(`  📸 ${mediaItem.name || 'Unnamed'} (ID: ${imageId})`);
+            console.log(`  📸 ${mediaItem.name || "Unnamed"} (ID: ${imageId})`);
           }
         });
       }

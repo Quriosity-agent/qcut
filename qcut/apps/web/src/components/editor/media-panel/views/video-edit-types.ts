@@ -49,9 +49,9 @@ export interface MMAudioV2Params {
   prompt: string;
   negative_prompt?: string;
   seed?: number;
-  num_steps?: number;  // 10-50, default 25
-  duration?: number;  // Auto-detected if omitted
-  cfg_strength?: number;  // 1.0-7.0, default 4.5
+  num_steps?: number; // 10-50, default 25
+  duration?: number; // Auto-detected if omitted
+  cfg_strength?: number; // 1.0-7.0, default 4.5
   mask_away_clip?: boolean;
 }
 
@@ -68,9 +68,9 @@ export interface MMAudioV2Params {
  */
 export interface TopazUpscaleParams {
   video_url: string;
-  upscale_factor?: number;  // 1.0-8.0, default 2.0
-  target_fps?: number;  // 24/30/60/120
-  H264_output?: boolean;  // Default false (H265)
+  upscale_factor?: number; // 1.0-8.0, default 2.0
+  target_fps?: number; // 24/30/60/120
+  H264_output?: boolean; // Default false (H265)
 }
 
 /**
@@ -79,9 +79,9 @@ export interface TopazUpscaleParams {
  * Excludes 'video_url' since it's runtime-provided
  */
 type VideoEditDefaultParams =
-  | Omit<Partial<KlingVideoToAudioParams>, 'video_url'>
-  | Omit<Partial<MMAudioV2Params>, 'video_url'>
-  | Omit<Partial<TopazUpscaleParams>, 'video_url'>;
+  | Omit<Partial<KlingVideoToAudioParams>, "video_url">
+  | Omit<Partial<MMAudioV2Params>, "video_url">
+  | Omit<Partial<TopazUpscaleParams>, "video_url">;
 
 /**
  * Video Edit Model Configuration
@@ -91,12 +91,12 @@ export interface VideoEditModel {
   id: string;
   name: string;
   description: string;
-  price: string;  // String to support "$0.001/sec" format
+  price: string; // String to support "$0.001/sec" format
   category: "audio-gen" | "audio-sync" | "upscale";
-  max_video_size?: number;  // Bytes
-  max_duration?: number;  // Seconds
+  max_video_size?: number; // Bytes
+  max_duration?: number; // Seconds
   endpoints: {
-    process: string;  // FAL AI endpoint path
+    process: string; // FAL AI endpoint path
   };
   default_params?: VideoEditDefaultParams;
 }
@@ -118,9 +118,9 @@ export interface VideoEditResult {
   jobId: string;
   duration?: number;
   fileSize?: number;
-  width?: number;  // Video width in pixels
-  height?: number;  // Video height in pixels
-  cost?: number;  // Calculated cost in USD
+  width?: number; // Video width in pixels
+  height?: number; // Video height in pixels
+  cost?: number; // Calculated cost in USD
 }
 
 /**
@@ -130,7 +130,7 @@ export interface VideoEditResult {
 export interface UseVideoEditProcessingProps {
   sourceVideo: File | null;
   activeTab: VideoEditTab;
-  activeProject: TProject | null;  // From useProjectStore
+  activeProject: TProject | null; // From useProjectStore
   onSuccess?: (result: VideoEditResult) => void;
   onError?: (error: string) => void;
   onProgress?: (progress: number, message: string) => void;
@@ -142,11 +142,17 @@ export interface UseVideoEditProcessingProps {
  */
 export interface VideoEditProcessingState {
   isProcessing: boolean;
-  progress: number;  // 0-100
+  progress: number; // 0-100
   statusMessage: string;
-  elapsedTime: number;  // Seconds
-  estimatedTime?: number;  // Seconds
-  currentStage: "uploading" | "queued" | "processing" | "downloading" | "complete" | "failed";
+  elapsedTime: number; // Seconds
+  estimatedTime?: number; // Seconds
+  currentStage:
+    | "uploading"
+    | "queued"
+    | "processing"
+    | "downloading"
+    | "complete"
+    | "failed";
   result: VideoEditResult | null;
   error: string | null;
 }

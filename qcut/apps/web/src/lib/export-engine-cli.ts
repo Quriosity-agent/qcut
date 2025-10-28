@@ -1,10 +1,17 @@
 import { ExportEngine } from "./export-engine";
 import { ExportSettings } from "@/types/export";
-import { TimelineTrack, TimelineElement, type TextElement } from "@/types/timeline";
+import {
+  TimelineTrack,
+  TimelineElement,
+  type TextElement,
+} from "@/types/timeline";
 import { MediaItem } from "@/stores/media-store";
 import { debugLog, debugError, debugWarn } from "@/lib/debug-config";
 import { useEffectsStore } from "@/stores/effects-store";
-import { analyzeTimelineForExport, type ExportAnalysis } from './export-analysis';
+import {
+  analyzeTimelineForExport,
+  type ExportAnalysis,
+} from "./export-analysis";
 
 type EffectsStore = ReturnType<typeof useEffectsStore.getState>;
 
@@ -331,13 +338,17 @@ export class CLIExportEngine extends ExportEngine {
   // Simple text rendering for CLI
   private renderTextElementCLI(element: any): void {
     if (this.disableCanvasTextRendering) {
-      console.log(`⏭️  [TEXT RENDERING] Skipping canvas text render for "${element.content?.substring(0, 30)}..." - will be rendered by FFmpeg`);
+      console.log(
+        `⏭️  [TEXT RENDERING] Skipping canvas text render for "${element.content?.substring(0, 30)}..." - will be rendered by FFmpeg`
+      );
       return;
     }
 
     if (element.type !== "text" || !element.content?.trim()) return;
 
-    console.log(`⚠️  [TEXT RENDERING] WARNING: Rendering text on canvas (slow): "${element.content?.substring(0, 30)}..."`);
+    console.log(
+      `⚠️  [TEXT RENDERING] WARNING: Rendering text on canvas (slow): "${element.content?.substring(0, 30)}..."`
+    );
 
     this.ctx.fillStyle = element.color || "#ffffff";
     this.ctx.font = `${element.fontSize || 24}px ${element.fontFamily || "Arial"}`;
@@ -449,17 +460,17 @@ export class CLIExportEngine extends ExportEngine {
     // Newlines -> literal '\n' string
 
     return text
-      .replace(/\\/g, '\\\\')     // Escape backslashes first
-      .replace(/:/g, '\\:')        // Escape colons (filter delimiter)
-      .replace(/\[/g, '\\[')       // Escape opening brackets
-      .replace(/\]/g, '\\]')       // Escape closing brackets
-      .replace(/,/g, '\\,')        // Escape commas (filter separator)
-      .replace(/;/g, '\\;')        // Escape semicolons
-      .replace(/'/g, "\\'")        // Escape single quotes
-      .replace(/%/g, '\\%')        // Escape percent signs (expansion tokens)
-      .replace(/\n/g, '\\n')       // Convert newlines to literal \n
-      .replace(/\r/g, '')          // Remove carriage returns
-      .replace(/=/g, '\\=');       // Escape equals signs
+      .replace(/\\/g, "\\\\") // Escape backslashes first
+      .replace(/:/g, "\\:") // Escape colons (filter delimiter)
+      .replace(/\[/g, "\\[") // Escape opening brackets
+      .replace(/\]/g, "\\]") // Escape closing brackets
+      .replace(/,/g, "\\,") // Escape commas (filter separator)
+      .replace(/;/g, "\\;") // Escape semicolons
+      .replace(/'/g, "\\'") // Escape single quotes
+      .replace(/%/g, "\\%") // Escape percent signs (expansion tokens)
+      .replace(/\n/g, "\\n") // Convert newlines to literal \n
+      .replace(/\r/g, "") // Remove carriage returns
+      .replace(/=/g, "\\="); // Escape equals signs
   }
 
   /**
@@ -468,18 +479,18 @@ export class CLIExportEngine extends ExportEngine {
    */
   private escapePathForFFmpeg(path: string): string {
     return path
-      .replace(/\\/g, '\\\\')   // Windows backslashes
-      .replace(/:/g, '\\:')     // Drive letter separator
-      .replace(/ /g, '\\ ')     // Spaces in path segments
-      .replace(/,/g, '\\,')     // Filter delimiters
-      .replace(/;/g, '\\;')
-      .replace(/\[/g, '\\[')
-      .replace(/\]/g, '\\]')
-      .replace(/\(/g, '\\(')
-      .replace(/\)/g, '\\)')
+      .replace(/\\/g, "\\\\") // Windows backslashes
+      .replace(/:/g, "\\:") // Drive letter separator
+      .replace(/ /g, "\\ ") // Spaces in path segments
+      .replace(/,/g, "\\,") // Filter delimiters
+      .replace(/;/g, "\\;")
+      .replace(/\[/g, "\\[")
+      .replace(/\]/g, "\\]")
+      .replace(/\(/g, "\\(")
+      .replace(/\)/g, "\\)")
       .replace(/'/g, "\\'")
-      .replace(/%/g, '\\%')
-      .replace(/=/g, '\\=');
+      .replace(/%/g, "\\%")
+      .replace(/=/g, "\\=");
   }
 
   /**
@@ -511,77 +522,85 @@ export class CLIExportEngine extends ExportEngine {
    * @returns Font configuration for fontconfig (Linux/macOS) or file path (Windows)
    * @throws Error if platform detection fails
    */
-  private resolveFontPath(fontFamily: string, fontWeight?: string, fontStyle?: string):
+  private resolveFontPath(
+    fontFamily: string,
+    fontWeight?: string,
+    fontStyle?: string
+  ):
     | { useFontconfig: true; fontName: string }
     | { useFontconfig: false; fontPath: string } {
-
     // Normalize font family name for comparison
-    const normalizedFamily = fontFamily.toLowerCase().replace(/['"]/g, '');
-    const isBold = fontWeight === 'bold';
-    const isItalic = fontStyle === 'italic';
+    const normalizedFamily = fontFamily.toLowerCase().replace(/['"]/g, "");
+    const isBold = fontWeight === "bold";
+    const isItalic = fontStyle === "italic";
 
     // Detect platform using Electron API (reliable)
     const platform = window.electronAPI?.platform;
     if (!platform) {
-      throw new Error("Platform information not available. Ensure Electron API is initialized.");
+      throw new Error(
+        "Platform information not available. Ensure Electron API is initialized."
+      );
     }
-    const isWindows = platform === 'win32';
-    const isMac = platform === 'darwin';
-    const isLinux = platform === 'linux';
+    const isWindows = platform === "win32";
+    const isMac = platform === "darwin";
+    const isLinux = platform === "linux";
 
     // For Linux and macOS, use fontconfig (font= parameter)
     // This lets the system resolve fonts - much more robust!
     if (isLinux || isMac) {
       // Map common fonts to system equivalents
       const fontNameMap: Record<string, string> = {
-        'arial': isMac ? 'Helvetica' : 'Liberation Sans',
-        'times new roman': isMac ? 'Times' : 'Liberation Serif',
-        'courier new': isMac ? 'Courier' : 'Liberation Mono',
+        "arial": isMac ? "Helvetica" : "Liberation Sans",
+        "times new roman": isMac ? "Times" : "Liberation Serif",
+        "courier new": isMac ? "Courier" : "Liberation Mono",
       };
 
       const fontName = fontNameMap[normalizedFamily] || normalizedFamily;
 
       // Build fontconfig style string
       const styles: string[] = [];
-      if (isBold) styles.push('Bold');
-      if (isItalic) styles.push('Italic');
+      if (isBold) styles.push("Bold");
+      if (isItalic) styles.push("Italic");
 
-      const styleString = styles.length > 0 ? `:style=${styles.join(' ')}` : '';
+      const styleString = styles.length > 0 ? `:style=${styles.join(" ")}` : "";
 
       return {
         useFontconfig: true,
-        fontName: `${fontName}${styleString}`
+        fontName: `${fontName}${styleString}`,
       };
     }
 
     // For Windows, use explicit font file paths
     // Windows doesn't have fontconfig, so we need absolute paths
-    const fontBasePath = 'C:/Windows/Fonts/';
+    const fontBasePath = "C:/Windows/Fonts/";
 
     // Font file mapping for Windows
-    const fontMap: Record<string, {regular: string, bold?: string, italic?: string, boldItalic?: string}> = {
-      'arial': {
-        regular: 'arial.ttf',
-        bold: 'arialbd.ttf',
-        italic: 'ariali.ttf',
-        boldItalic: 'arialbi.ttf'
+    const fontMap: Record<
+      string,
+      { regular: string; bold?: string; italic?: string; boldItalic?: string }
+    > = {
+      "arial": {
+        regular: "arial.ttf",
+        bold: "arialbd.ttf",
+        italic: "ariali.ttf",
+        boldItalic: "arialbi.ttf",
       },
-      'times new roman': {
-        regular: 'times.ttf',
-        bold: 'timesbd.ttf',
-        italic: 'timesi.ttf',
-        boldItalic: 'timesbi.ttf'
+      "times new roman": {
+        regular: "times.ttf",
+        bold: "timesbd.ttf",
+        italic: "timesi.ttf",
+        boldItalic: "timesbi.ttf",
       },
-      'courier new': {
-        regular: 'cour.ttf',
-        bold: 'courbd.ttf',
-        italic: 'couri.ttf',
-        boldItalic: 'courbi.ttf'
-      }
+      "courier new": {
+        regular: "cour.ttf",
+        bold: "courbd.ttf",
+        italic: "couri.ttf",
+        boldItalic: "courbi.ttf",
+      },
     };
 
     // Find matching font or default to Arial
-    const fontConfig = fontMap[normalizedFamily] || fontMap['arial'];
+    const fontConfig = fontMap[normalizedFamily] || fontMap["arial"];
 
     // Select appropriate font variant
     let fontFile = fontConfig.regular;
@@ -596,7 +615,7 @@ export class CLIExportEngine extends ExportEngine {
     // Return full path for Windows
     return {
       useFontconfig: false,
-      fontPath: `${fontBasePath}${fontFile}`
+      fontPath: `${fontBasePath}${fontFile}`,
     };
   }
 
@@ -607,12 +626,12 @@ export class CLIExportEngine extends ExportEngine {
   private convertTextElementToDrawtext(element: TextElement): string {
     // Skip empty text elements
     if (!element.content || !element.content.trim()) {
-      return '';
+      return "";
     }
 
     // Skip hidden elements
     if (element.hidden) {
-      return '';
+      return "";
     }
 
     // Escape the text content for FFmpeg
@@ -620,16 +639,16 @@ export class CLIExportEngine extends ExportEngine {
 
     // Get font configuration based on platform
     const fontConfig = this.resolveFontPath(
-      element.fontFamily || 'Arial',
+      element.fontFamily || "Arial",
       element.fontWeight,
       element.fontStyle
     );
 
     // Convert CSS color to FFmpeg format (remove # if present)
-    let fontColor = element.color || '#ffffff';
-    if (fontColor.startsWith('#')) {
+    let fontColor = element.color || "#ffffff";
+    if (fontColor.startsWith("#")) {
       // Convert #RRGGBB to 0xRRGGBB format for FFmpeg
-      fontColor = '0x' + fontColor.substring(1);
+      fontColor = "0x" + fontColor.substring(1);
     }
 
     // Calculate actual display timing (accounting for trim)
@@ -659,7 +678,7 @@ export class CLIExportEngine extends ExportEngine {
 
     // Helper to format numeric offsets with explicit sign when positive
     const formatOffset = (value: number): string => {
-      if (value === 0) return '';
+      if (value === 0) return "";
       return value > 0 ? `+${value}` : `${value}`;
     };
 
@@ -670,16 +689,16 @@ export class CLIExportEngine extends ExportEngine {
     // Default to centered placement with offset
     const anchorXExpr = `w/2${formatOffset(xOffset)}`;
     let xExpr = `${anchorXExpr}-(text_w/2)`;
-    let yExpr = `(h-text_h)/2${formatOffset(yOffset)}`;
+    const yExpr = `(h-text_h)/2${formatOffset(yOffset)}`;
 
     // Apply text alignment while preserving offsets
-    if (element.textAlign === 'left') {
+    if (element.textAlign === "left") {
       // Left-align: anchor left edge at canvas center + offset
       xExpr = `${anchorXExpr}`;
-    } else if (element.textAlign === 'center') {
+    } else if (element.textAlign === "center") {
       // Center-align: already centered; keep offset
       xExpr = `${anchorXExpr}-(text_w/2)`;
-    } else if (element.textAlign === 'right') {
+    } else if (element.textAlign === "right") {
       // Right-align: place right edge at canvas center + offset
       xExpr = `${anchorXExpr}-text_w`;
     }
@@ -688,8 +707,8 @@ export class CLIExportEngine extends ExportEngine {
     filterParams.push(`y=${yExpr}`);
 
     // Add text border for better readability
-    filterParams.push('borderw=2');
-    filterParams.push('bordercolor=black');
+    filterParams.push("borderw=2");
+    filterParams.push("bordercolor=black");
 
     // Handle opacity if not fully opaque
     if (element.opacity !== undefined && element.opacity < 1) {
@@ -706,21 +725,21 @@ export class CLIExportEngine extends ExportEngine {
     }
 
     // Background color if not transparent
-    if (element.backgroundColor && element.backgroundColor !== 'transparent') {
+    if (element.backgroundColor && element.backgroundColor !== "transparent") {
       let bgColor = element.backgroundColor;
-      if (bgColor.startsWith('#')) {
-        bgColor = '0x' + bgColor.substring(1);
+      if (bgColor.startsWith("#")) {
+        bgColor = "0x" + bgColor.substring(1);
       }
-      filterParams.push(`box=1`);
+      filterParams.push("box=1");
       filterParams.push(`boxcolor=${bgColor}@0.5`);
-      filterParams.push(`boxborderw=5`);
+      filterParams.push("boxborderw=5");
     }
 
     // Add timing - text only appears during its timeline duration
     filterParams.push(`enable='between(t,${startTime},${endTime})'`);
 
     // Combine all parameters into drawtext filter
-    return `drawtext=${filterParams.join(':')}`;
+    return `drawtext=${filterParams.join(":")}`;
   }
 
   /**
@@ -756,23 +775,31 @@ export class CLIExportEngine extends ExportEngine {
    * @returns Comma-separated FFmpeg drawtext filter chain
    */
   private buildTextOverlayFilters(): string {
-    const textElementsWithOrder: Array<{ element: TextElement; trackIndex: number; elementIndex: number }> = [];
+    const textElementsWithOrder: Array<{
+      element: TextElement;
+      trackIndex: number;
+      elementIndex: number;
+    }> = [];
 
     // Iterate through all tracks to find text elements
     for (let trackIndex = 0; trackIndex < this.tracks.length; trackIndex++) {
       const track = this.tracks[trackIndex];
 
       // Only process text tracks
-      if (track.type !== 'text') {
+      if (track.type !== "text") {
         continue;
       }
 
       // Process each element in the track
-      for (let elementIndex = 0; elementIndex < track.elements.length; elementIndex++) {
+      for (
+        let elementIndex = 0;
+        elementIndex < track.elements.length;
+        elementIndex++
+      ) {
         const element = track.elements[elementIndex];
 
         // Skip non-text elements (shouldn't happen on text track, but be safe)
-        if (element.type !== 'text') {
+        if (element.type !== "text") {
           continue;
         }
 
@@ -785,7 +812,7 @@ export class CLIExportEngine extends ExportEngine {
         textElementsWithOrder.push({
           element: element as TextElement,
           trackIndex,
-          elementIndex
+          elementIndex,
         });
       }
     }
@@ -804,11 +831,11 @@ export class CLIExportEngine extends ExportEngine {
 
     // Convert each to drawtext filter
     const filters = textElementsWithOrder
-      .map(item => this.convertTextElementToDrawtext(item.element))
-      .filter(f => f !== "");
+      .map((item) => this.convertTextElementToDrawtext(item.element))
+      .filter((f) => f !== "");
 
     // Join all filters with comma separator
-    return filters.join(',');
+    return filters.join(",");
   }
 
   // Helper to get active elements (CLI-specific version)
@@ -856,12 +883,16 @@ export class CLIExportEngine extends ExportEngine {
         if (element.hidden) return;
         if (element.type !== "media") return;
 
-        const mediaItem = this.mediaItems.find((item) => item.id === (element as any).mediaId);
+        const mediaItem = this.mediaItems.find(
+          (item) => item.id === (element as any).mediaId
+        );
         if (!mediaItem || mediaItem.type !== "video") return;
 
         // Check if we have a local path (required for direct copy)
         if (!mediaItem.localPath) {
-          debugWarn(`[CLIExportEngine] Video ${mediaItem.id} has no localPath, cannot use direct copy`);
+          debugWarn(
+            `[CLIExportEngine] Video ${mediaItem.id} has no localPath, cannot use direct copy`
+          );
           return;
         }
 
@@ -878,7 +909,9 @@ export class CLIExportEngine extends ExportEngine {
     // Sort by start time
     videoSources.sort((a, b) => a.startTime - b.startTime);
 
-    debugLog(`[CLIExportEngine] Extracted ${videoSources.length} video sources for direct copy`);
+    debugLog(
+      `[CLIExportEngine] Extracted ${videoSources.length} video sources for direct copy`
+    );
     return videoSources;
   }
 
@@ -901,7 +934,11 @@ export class CLIExportEngine extends ExportEngine {
    *
    * @returns Video path and trim info if exactly one video exists, null otherwise
    */
-  private extractVideoInputPath(): { path: string; trimStart: number; trimEnd: number } | null {
+  private extractVideoInputPath(): {
+    path: string;
+    trimStart: number;
+    trimEnd: number;
+  } | null {
     debugLog("[CLIExportEngine] Extracting video input path for Mode 2...");
 
     let videoElement: TimelineElement | null = null;
@@ -909,17 +946,21 @@ export class CLIExportEngine extends ExportEngine {
 
     // Iterate through all tracks to find video elements
     for (const track of this.tracks) {
-      if (track.type !== 'media') continue;
+      if (track.type !== "media") continue;
 
       for (const element of track.elements) {
         if (element.hidden) continue;
-        if (element.type !== 'media') continue;
+        if (element.type !== "media") continue;
 
-        const item = this.mediaItems.find(m => m.id === (element as any).mediaId);
-        if (item && item.type === 'video' && item.localPath) {
+        const item = this.mediaItems.find(
+          (m) => m.id === (element as any).mediaId
+        );
+        if (item && item.type === "video" && item.localPath) {
           if (videoElement) {
             // Multiple videos found, can't use single video input
-            debugLog("[CLIExportEngine] Multiple videos found, Mode 2 not applicable");
+            debugLog(
+              "[CLIExportEngine] Multiple videos found, Mode 2 not applicable"
+            );
             return null;
           }
           videoElement = element;
@@ -936,7 +977,7 @@ export class CLIExportEngine extends ExportEngine {
     const result = {
       path: mediaItem.localPath,
       trimStart: videoElement.trimStart || 0,
-      trimEnd: videoElement.trimEnd || 0
+      trimEnd: videoElement.trimEnd || 0,
     };
 
     debugLog(`[CLIExportEngine] Video input extracted: ${result.path}`);
@@ -976,7 +1017,9 @@ export class CLIExportEngine extends ExportEngine {
     try {
       // Check if already has local path
       if (mediaItem.localPath) {
-        debugLog(`[CLIExportEngine] Using provided local path: ${mediaItem.localPath}`);
+        debugLog(
+          `[CLIExportEngine] Using provided local path: ${mediaItem.localPath}`
+        );
         return mediaItem.localPath;
       }
 
@@ -987,7 +1030,9 @@ export class CLIExportEngine extends ExportEngine {
 
       const response = await fetch(mediaItem.url);
       if (!response.ok) {
-        throw new Error(`Failed to fetch sticker: ${response.status} ${response.statusText}`);
+        throw new Error(
+          `Failed to fetch sticker: ${response.status} ${response.statusText}`
+        );
       }
 
       const blob = await response.blob();
@@ -995,15 +1040,15 @@ export class CLIExportEngine extends ExportEngine {
       const imageBytes = new Uint8Array(arrayBuffer);
 
       // Determine format from blob type or default to png
-      const format = blob.type?.split('/')[1] || 'png';
+      const format = blob.type?.split("/")[1] || "png";
 
       // Save via Electron IPC
       if (!window.electronAPI?.ffmpeg?.saveStickerForExport) {
-        throw new Error('Electron API not available for sticker export');
+        throw new Error("Electron API not available for sticker export");
       }
 
       if (!this.sessionId) {
-        throw new Error('No active export session');
+        throw new Error("No active export session");
       }
 
       const result = await window.electronAPI.ffmpeg.saveStickerForExport({
@@ -1014,13 +1059,16 @@ export class CLIExportEngine extends ExportEngine {
       });
 
       if (!result.success) {
-        throw new Error(result.error || 'Failed to save sticker');
+        throw new Error(result.error || "Failed to save sticker");
       }
 
       debugLog(`[CLIExportEngine] Downloaded sticker to: ${result.path}`);
       return result.path!;
     } catch (error) {
-      debugError(`[CLIExportEngine] Failed to download sticker ${sticker.id}:`, error);
+      debugError(
+        `[CLIExportEngine] Failed to download sticker ${sticker.id}:`,
+        error
+      );
       throw error;
     }
   }
@@ -1034,7 +1082,9 @@ export class CLIExportEngine extends ExportEngine {
 
     try {
       // Import stickers store dynamically
-      const { useStickersOverlayStore } = await import('@/stores/stickers-overlay-store');
+      const { useStickersOverlayStore } = await import(
+        "@/stores/stickers-overlay-store"
+      );
       const stickersStore = useStickersOverlayStore.getState();
 
       // Get all stickers for export
@@ -1045,7 +1095,9 @@ export class CLIExportEngine extends ExportEngine {
         return [];
       }
 
-      debugLog(`[CLIExportEngine] Processing ${allStickers.length} stickers for export`);
+      debugLog(
+        `[CLIExportEngine] Processing ${allStickers.length} stickers for export`
+      );
 
       const stickerSources: StickerSourceForFilter[] = [];
 
@@ -1053,15 +1105,22 @@ export class CLIExportEngine extends ExportEngine {
       for (const sticker of allStickers) {
         try {
           // Find media item for this sticker
-          const mediaItem = this.mediaItems.find(m => m.id === sticker.mediaItemId);
+          const mediaItem = this.mediaItems.find(
+            (m) => m.id === sticker.mediaItemId
+          );
 
           if (!mediaItem) {
-            debugWarn(`[CLIExportEngine] Media item not found for sticker ${sticker.id}`);
+            debugWarn(
+              `[CLIExportEngine] Media item not found for sticker ${sticker.id}`
+            );
             continue;
           }
 
           // Download sticker to temp directory if needed
-          const localPath = await this.downloadStickerToTemp(sticker, mediaItem);
+          const localPath = await this.downloadStickerToTemp(
+            sticker,
+            mediaItem
+          );
 
           // Convert percentage positions to pixel coordinates
           // Note: FFmpeg overlay uses top-left corner, not center
@@ -1091,16 +1150,23 @@ export class CLIExportEngine extends ExportEngine {
             rotation: sticker.rotation,
           });
 
-          debugLog(`[CLIExportEngine] Processed sticker ${sticker.id}: ${pixelWidth}x${pixelHeight} at (${topLeftX}, ${topLeftY})`);
+          debugLog(
+            `[CLIExportEngine] Processed sticker ${sticker.id}: ${pixelWidth}x${pixelHeight} at (${topLeftX}, ${topLeftY})`
+          );
         } catch (error) {
-          debugError(`[CLIExportEngine] Failed to process sticker ${sticker.id}:`, error);
+          debugError(
+            `[CLIExportEngine] Failed to process sticker ${sticker.id}:`,
+            error
+          );
         }
       }
 
       // Sort by zIndex for proper layering order
       stickerSources.sort((a, b) => a.zIndex - b.zIndex);
 
-      debugLog(`[CLIExportEngine] Extracted ${stickerSources.length} valid sticker sources`);
+      debugLog(
+        `[CLIExportEngine] Extracted ${stickerSources.length} valid sticker sources`
+      );
       return stickerSources;
     } catch (error) {
       debugError("[CLIExportEngine] Failed to extract sticker sources:", error);
@@ -1134,22 +1200,27 @@ export class CLIExportEngine extends ExportEngine {
    * @param stickerSources - Array of sticker data with position, size, timing
    * @returns FFmpeg complex filter chain string
    */
-  private buildStickerOverlayFilters(stickerSources: StickerSourceForFilter[]): string {
+  private buildStickerOverlayFilters(
+    stickerSources: StickerSourceForFilter[]
+  ): string {
     if (!stickerSources || stickerSources.length === 0) {
-      return '';
+      return "";
     }
 
-    debugLog(`[CLIExportEngine] Building overlay filters for ${stickerSources.length} stickers`);
+    debugLog(
+      `[CLIExportEngine] Building overlay filters for ${stickerSources.length} stickers`
+    );
 
     // Build complex filter for multiple overlays
     // Input streams: [0] = base video, [1] = first sticker, [2] = second sticker, etc.
 
     const filters: string[] = [];
-    let lastOutput = '0:v';  // Start with base video stream
+    let lastOutput = "0:v"; // Start with base video stream
 
     stickerSources.forEach((sticker, index) => {
-      const inputIndex = index + 1;  // Sticker inputs start at 1 (0 is base video)
-      const outputLabel = index === stickerSources.length - 1 ? '' : `[v${index + 1}]`;
+      const inputIndex = index + 1; // Sticker inputs start at 1 (0 is base video)
+      const outputLabel =
+        index === stickerSources.length - 1 ? "" : `[v${index + 1}]`;
 
       // Scale sticker to desired size
       let currentInput = `[${inputIndex}:v]`;
@@ -1165,14 +1236,13 @@ export class CLIExportEngine extends ExportEngine {
       }
 
       // Build overlay filter with timing
-      let overlayParams = [
-        `x=${sticker.x}`,
-        `y=${sticker.y}`,
-      ];
+      const overlayParams = [`x=${sticker.x}`, `y=${sticker.y}`];
 
       // Add timing constraint
       if (sticker.startTime !== 0 || sticker.endTime !== this.totalDuration) {
-        overlayParams.push(`enable='between(t,${sticker.startTime},${sticker.endTime})'`);
+        overlayParams.push(
+          `enable='between(t,${sticker.startTime},${sticker.endTime})'`
+        );
       }
 
       // Add opacity if not fully opaque
@@ -1182,22 +1252,24 @@ export class CLIExportEngine extends ExportEngine {
         filters.push(opacityFilter);
 
         // Update overlay to use opacity-adjusted input
-        const overlayFilter = `[${lastOutput}][alpha${index}]overlay=${overlayParams.join(':')}${outputLabel}`;
+        const overlayFilter = `[${lastOutput}][alpha${index}]overlay=${overlayParams.join(":")}${outputLabel}`;
         filters.push(overlayFilter);
       } else {
         // Direct overlay without opacity adjustment
-        const overlayFilter = `[${lastOutput}]${currentInput}overlay=${overlayParams.join(':')}${outputLabel}`;
+        const overlayFilter = `[${lastOutput}]${currentInput}overlay=${overlayParams.join(":")}${outputLabel}`;
         filters.push(overlayFilter);
       }
 
       // Update last output for chaining
       if (outputLabel) {
-        lastOutput = outputLabel.replace('[', '').replace(']', '');
+        lastOutput = outputLabel.replace("[", "").replace("]", "");
       }
     });
 
-    const filterChain = filters.join(';');
-    debugLog(`[CLIExportEngine] Generated sticker filter chain: ${filterChain}`);
+    const filterChain = filters.join(";");
+    debugLog(
+      `[CLIExportEngine] Generated sticker filter chain: ${filterChain}`
+    );
 
     return filterChain;
   }
@@ -1331,10 +1403,13 @@ export class CLIExportEngine extends ExportEngine {
     this.frameDir = session.frameDir;
 
     // Check feature flag to disable optimization if needed
-    const skipOptimization = localStorage.getItem('qcut_skip_export_optimization') === 'true';
+    const skipOptimization =
+      localStorage.getItem("qcut_skip_export_optimization") === "true";
 
     // Analyze timeline to determine optimization strategy
-    debugLog("[CLIExportEngine] 🔍 Analyzing timeline for export optimization...");
+    debugLog(
+      "[CLIExportEngine] 🔍 Analyzing timeline for export optimization..."
+    );
     this.exportAnalysis = analyzeTimelineForExport(
       this.tracks,
       this.mediaItems
@@ -1346,18 +1421,26 @@ export class CLIExportEngine extends ExportEngine {
     // Override analysis if feature flag is set OR if forcing image pipeline
     if (skipOptimization || forceImagePipeline) {
       if (forceImagePipeline) {
-        console.log('🔧 [EXPORT OPTIMIZATION] Direct copy not yet implemented - forcing image pipeline');
-        debugLog('[CLIExportEngine] 🔧 Direct copy feature incomplete, using image pipeline');
+        console.log(
+          "🔧 [EXPORT OPTIMIZATION] Direct copy not yet implemented - forcing image pipeline"
+        );
+        debugLog(
+          "[CLIExportEngine] 🔧 Direct copy feature incomplete, using image pipeline"
+        );
       } else {
-        console.log('🔧 [EXPORT OPTIMIZATION] Feature flag enabled - forcing image pipeline');
-        debugLog('[CLIExportEngine] 🔧 Optimization disabled via feature flag');
+        console.log(
+          "🔧 [EXPORT OPTIMIZATION] Feature flag enabled - forcing image pipeline"
+        );
+        debugLog("[CLIExportEngine] 🔧 Optimization disabled via feature flag");
       }
       this.exportAnalysis = {
         ...this.exportAnalysis,
         needsImageProcessing: true,
         canUseDirectCopy: false,
-        optimizationStrategy: 'image-pipeline',
-        reason: forceImagePipeline ? 'Direct copy not yet implemented' : 'Optimization disabled by feature flag'
+        optimizationStrategy: "image-pipeline",
+        reason: forceImagePipeline
+          ? "Direct copy not yet implemented"
+          : "Optimization disabled by feature flag",
       };
     }
 
@@ -1370,38 +1453,48 @@ export class CLIExportEngine extends ExportEngine {
 
       // Determine if we can use Mode 2 (direct video input with filters)
       const canUseMode2 =
-        this.exportAnalysis?.optimizationStrategy === 'direct-video-with-filters';
+        this.exportAnalysis?.optimizationStrategy ===
+        "direct-video-with-filters";
       const videoInput = canUseMode2 ? this.extractVideoInputPath() : null;
 
       // Render frames to disk UNLESS we can use direct copy or Mode 2
       try {
-        if (this.exportAnalysis?.optimizationStrategy === 'image-pipeline') {
+        if (this.exportAnalysis?.optimizationStrategy === "image-pipeline") {
           // Mode 3: Frame rendering required
-          debugLog('[CLIExportEngine] 🎨 MODE 3: Frame rendering required');
+          debugLog("[CLIExportEngine] 🎨 MODE 3: Frame rendering required");
           debugLog(`[CLIExportEngine] Reason: ${this.exportAnalysis.reason}`);
           progressCallback?.(15, "Rendering frames...");
           await this.renderFramesToDisk(progressCallback);
         } else if (videoInput) {
           // Mode 2: Direct video input with filters
-          debugLog('[CLIExportEngine] ⚡ MODE 2: Using direct video input with filters');
+          debugLog(
+            "[CLIExportEngine] ⚡ MODE 2: Using direct video input with filters"
+          );
           debugLog(`[CLIExportEngine] Video path: ${videoInput.path}`);
-          debugLog(`[CLIExportEngine] Trim: ${videoInput.trimStart}s - ${videoInput.trimEnd}s`);
+          debugLog(
+            `[CLIExportEngine] Trim: ${videoInput.trimStart}s - ${videoInput.trimEnd}s`
+          );
           progressCallback?.(15, "Preparing video with filters...");
           // Skip frame rendering entirely!
         } else if (this.exportAnalysis?.canUseDirectCopy) {
           // Mode 1: Direct copy
-          debugLog('[CLIExportEngine] ⚡ MODE 1: Using direct video copy');
-          debugLog(`[CLIExportEngine] Optimization: ${this.exportAnalysis?.optimizationStrategy}`);
+          debugLog("[CLIExportEngine] ⚡ MODE 1: Using direct video copy");
+          debugLog(
+            `[CLIExportEngine] Optimization: ${this.exportAnalysis?.optimizationStrategy}`
+          );
           progressCallback?.(15, "Preparing direct video copy...");
         } else {
           // Fallback to frame rendering
-          debugLog('[CLIExportEngine] ⚠️ Falling back to frame rendering');
+          debugLog("[CLIExportEngine] ⚠️ Falling back to frame rendering");
           progressCallback?.(15, "Rendering frames...");
           await this.renderFramesToDisk(progressCallback);
         }
       } catch (error) {
         // Fallback: Force image pipeline if optimization fails
-        debugWarn('[CLIExportEngine] ⚠️ Direct processing preparation failed, falling back to image pipeline:', error);
+        debugWarn(
+          "[CLIExportEngine] ⚠️ Direct processing preparation failed, falling back to image pipeline:",
+          error
+        );
 
         // Safe default for exportAnalysis if it's null
         const analysisBase: ExportAnalysis = this.exportAnalysis || {
@@ -1413,8 +1506,8 @@ export class CLIExportEngine extends ExportEngine {
           hasMultipleVideoSources: false,
           hasOverlappingVideos: false,
           canUseDirectCopy: false,
-          optimizationStrategy: 'image-pipeline',
-          reason: 'Initial analysis failed'
+          optimizationStrategy: "image-pipeline",
+          reason: "Initial analysis failed",
         };
 
         // Force image processing
@@ -1422,8 +1515,8 @@ export class CLIExportEngine extends ExportEngine {
           ...analysisBase,
           needsImageProcessing: true,
           canUseDirectCopy: false,
-          optimizationStrategy: 'image-pipeline',
-          reason: 'Fallback due to optimization error'
+          optimizationStrategy: "image-pipeline",
+          reason: "Fallback due to optimization error",
         };
 
         // Render frames as fallback
@@ -1523,10 +1616,18 @@ export class CLIExportEngine extends ExportEngine {
     const totalFrames = this.calculateTotalFrames();
     const frameTime = 1 / 30; // fps
 
-    console.log('🎨 [FRAME RENDERING DEBUG] ============================================');
-    console.log(`🎨 [FRAME RENDERING DEBUG] Starting frame rendering: ${totalFrames} frames`);
-    console.log(`🎨 [FRAME RENDERING DEBUG] Canvas text rendering: ${this.disableCanvasTextRendering ? 'DISABLED (using FFmpeg)' : 'ENABLED'}`);
-    console.log('🎨 [FRAME RENDERING DEBUG] ============================================');
+    console.log(
+      "🎨 [FRAME RENDERING DEBUG] ============================================"
+    );
+    console.log(
+      `🎨 [FRAME RENDERING DEBUG] Starting frame rendering: ${totalFrames} frames`
+    );
+    console.log(
+      `🎨 [FRAME RENDERING DEBUG] Canvas text rendering: ${this.disableCanvasTextRendering ? "DISABLED (using FFmpeg)" : "ENABLED"}`
+    );
+    console.log(
+      "🎨 [FRAME RENDERING DEBUG] ============================================"
+    );
 
     debugLog(`[CLI] Rendering ${totalFrames} frames to disk...`);
 
@@ -1829,17 +1930,29 @@ export class CLIExportEngine extends ExportEngine {
     );
 
     // Build text overlay filter chain for FFmpeg drawtext
-    console.log('🔍 [TEXT EXPORT DEBUG] Starting text filter chain generation...');
+    console.log(
+      "🔍 [TEXT EXPORT DEBUG] Starting text filter chain generation..."
+    );
     const textFilterChain = this.buildTextOverlayFilters();
     if (textFilterChain) {
-      console.log('✅ [TEXT EXPORT DEBUG] Text filter chain generated successfully');
-      console.log(`📊 [TEXT EXPORT DEBUG] Text filter chain: ${textFilterChain}`);
-      console.log(`📈 [TEXT EXPORT DEBUG] Text element count: ${(textFilterChain.match(/drawtext=/g) || []).length}`);
-      console.log('🎯 [TEXT EXPORT DEBUG] Text will be rendered by FFmpeg CLI (not canvas)');
+      console.log(
+        "✅ [TEXT EXPORT DEBUG] Text filter chain generated successfully"
+      );
+      console.log(
+        `📊 [TEXT EXPORT DEBUG] Text filter chain: ${textFilterChain}`
+      );
+      console.log(
+        `📈 [TEXT EXPORT DEBUG] Text element count: ${(textFilterChain.match(/drawtext=/g) || []).length}`
+      );
+      console.log(
+        "🎯 [TEXT EXPORT DEBUG] Text will be rendered by FFmpeg CLI (not canvas)"
+      );
       debugLog(`[CLI Export] Text filter chain generated: ${textFilterChain}`);
-      debugLog(`[CLI Export] Text filter count: ${(textFilterChain.match(/drawtext=/g) || []).length}`);
+      debugLog(
+        `[CLI Export] Text filter count: ${(textFilterChain.match(/drawtext=/g) || []).length}`
+      );
     } else {
-      console.log('ℹ️ [TEXT EXPORT DEBUG] No text elements found in timeline');
+      console.log("ℹ️ [TEXT EXPORT DEBUG] No text elements found in timeline");
     }
 
     // ADD: Extract and build sticker overlays
@@ -1859,7 +1972,10 @@ export class CLIExportEngine extends ExportEngine {
         debugLog(`[CLI Export] Sticker filter chain: ${stickerFilterChain}`);
       }
     } catch (error) {
-      debugWarn('[CLI Export] Failed to process stickers, continuing without:', error);
+      debugWarn(
+        "[CLI Export] Failed to process stickers, continuing without:",
+        error
+      );
       // Continue export without stickers if processing fails
       stickerSources = [];
       stickerFilterChain = undefined;
@@ -1872,29 +1988,46 @@ export class CLIExportEngine extends ExportEngine {
 
     // Determine which mode to use and extract appropriate video info
     const canUseMode2 =
-      this.exportAnalysis?.optimizationStrategy === 'direct-video-with-filters';
+      this.exportAnalysis?.optimizationStrategy === "direct-video-with-filters";
     const videoInput = canUseMode2 ? this.extractVideoInputPath() : null;
 
     // Log Mode 2 detection result
     if (canUseMode2 && videoInput) {
-      console.log('⚡ [MODE 2 EXPORT] ============================================');
-      console.log('⚡ [MODE 2 EXPORT] Mode 2 optimization enabled!');
+      console.log(
+        "⚡ [MODE 2 EXPORT] ============================================"
+      );
+      console.log("⚡ [MODE 2 EXPORT] Mode 2 optimization enabled!");
       console.log(`⚡ [MODE 2 EXPORT] Video input: ${videoInput.path}`);
       console.log(`⚡ [MODE 2 EXPORT] Trim start: ${videoInput.trimStart}s`);
       console.log(`⚡ [MODE 2 EXPORT] Trim end: ${videoInput.trimEnd}s`);
-      console.log(`⚡ [MODE 2 EXPORT] Text filters: ${hasTextFilters ? 'YES' : 'NO'}`);
-      console.log(`⚡ [MODE 2 EXPORT] Sticker filters: ${hasStickerFilters ? 'YES' : 'NO'}`);
-      console.log('⚡ [MODE 2 EXPORT] Frame rendering: SKIPPED (using direct video)');
-      console.log('⚡ [MODE 2 EXPORT] Expected speedup: 3-5x faster than frame rendering');
-      console.log('⚡ [MODE 2 EXPORT] ============================================');
+      console.log(
+        `⚡ [MODE 2 EXPORT] Text filters: ${hasTextFilters ? "YES" : "NO"}`
+      );
+      console.log(
+        `⚡ [MODE 2 EXPORT] Sticker filters: ${hasStickerFilters ? "YES" : "NO"}`
+      );
+      console.log(
+        "⚡ [MODE 2 EXPORT] Frame rendering: SKIPPED (using direct video)"
+      );
+      console.log(
+        "⚡ [MODE 2 EXPORT] Expected speedup: 3-5x faster than frame rendering"
+      );
+      console.log(
+        "⚡ [MODE 2 EXPORT] ============================================"
+      );
     } else if (canUseMode2 && !videoInput) {
-      console.log('⚠️ [MODE 2 EXPORT] Mode 2 requested but video input extraction failed');
-      console.log('⚠️ [MODE 2 EXPORT] Falling back to standard export');
+      console.log(
+        "⚠️ [MODE 2 EXPORT] Mode 2 requested but video input extraction failed"
+      );
+      console.log("⚠️ [MODE 2 EXPORT] Falling back to standard export");
     }
 
-    const videoSources = (this.exportAnalysis?.canUseDirectCopy && !hasTextFilters && !hasStickerFilters)
-      ? this.extractVideoSources()
-      : [];
+    const videoSources =
+      this.exportAnalysis?.canUseDirectCopy &&
+      !hasTextFilters &&
+      !hasStickerFilters
+        ? this.extractVideoSources()
+        : [];
 
     // Build options AFTER validation so the filtered list is sent
     if (!this.sessionId) {
@@ -1909,10 +2042,14 @@ export class CLIExportEngine extends ExportEngine {
       duration: this.totalDuration, // CRITICAL: Pass timeline duration to FFmpeg
       audioFiles, // Now contains only validated audio files
       filterChain: combinedFilterChain || undefined,
-      textFilterChain: hasTextFilters ? textFilterChain : undefined,  // Add text filter chain
-      stickerFilterChain,                    // ADD THIS
-      stickerSources,                         // ADD THIS
-      useDirectCopy: !!(this.exportAnalysis?.canUseDirectCopy && !hasTextFilters && !hasStickerFilters), // Disable direct copy when text or stickers present
+      textFilterChain: hasTextFilters ? textFilterChain : undefined, // Add text filter chain
+      stickerFilterChain, // ADD THIS
+      stickerSources, // ADD THIS
+      useDirectCopy: !!(
+        this.exportAnalysis?.canUseDirectCopy &&
+        !hasTextFilters &&
+        !hasStickerFilters
+      ), // Disable direct copy when text or stickers present
       videoSources: videoSources.length > 0 ? videoSources : undefined,
       // Mode 2: Direct video input with filters
       useVideoInput: !!videoInput,
@@ -1923,24 +2060,42 @@ export class CLIExportEngine extends ExportEngine {
       optimizationStrategy: this.exportAnalysis?.optimizationStrategy,
     };
 
-    console.log('🚀 [FFMPEG EXPORT DEBUG] ============================================');
-    console.log('🚀 [FFMPEG EXPORT DEBUG] Starting FFmpeg CLI export process');
-    console.log('🚀 [FFMPEG EXPORT DEBUG] Export configuration:');
+    console.log(
+      "🚀 [FFMPEG EXPORT DEBUG] ============================================"
+    );
+    console.log("🚀 [FFMPEG EXPORT DEBUG] Starting FFmpeg CLI export process");
+    console.log("🚀 [FFMPEG EXPORT DEBUG] Export configuration:");
     console.log(`   - Session ID: ${exportOptions.sessionId}`);
-    console.log(`   - Dimensions: ${exportOptions.width}x${exportOptions.height}`);
+    console.log(
+      `   - Dimensions: ${exportOptions.width}x${exportOptions.height}`
+    );
     console.log(`   - FPS: ${exportOptions.fps}`);
     console.log(`   - Duration: ${exportOptions.duration}s`);
     console.log(`   - Quality: ${exportOptions.quality}`);
     console.log(`   - Audio files: ${exportOptions.audioFiles?.length || 0}`);
-    console.log(`   - Text elements: ${hasTextFilters ? 'YES (using FFmpeg drawtext)' : 'NO'}`);
-    console.log(`   - Sticker overlays: ${hasStickerFilters ? `YES (${stickerSources.length} stickers)` : 'NO'}`);
-    console.log(`   - Direct copy mode: ${exportOptions.useDirectCopy ? 'ENABLED' : 'DISABLED'}`);
-    console.log(`   - Video sources: ${exportOptions.videoSources?.length || 0}`);
+    console.log(
+      `   - Text elements: ${hasTextFilters ? "YES (using FFmpeg drawtext)" : "NO"}`
+    );
+    console.log(
+      `   - Sticker overlays: ${hasStickerFilters ? `YES (${stickerSources.length} stickers)` : "NO"}`
+    );
+    console.log(
+      `   - Direct copy mode: ${exportOptions.useDirectCopy ? "ENABLED" : "DISABLED"}`
+    );
+    console.log(
+      `   - Video sources: ${exportOptions.videoSources?.length || 0}`
+    );
     if (hasTextFilters) {
-      console.log('📝 [TEXT RENDERING] Text will be rendered directly by FFmpeg (not canvas)');
-      console.log(`📝 [TEXT RENDERING] Text filter chain length: ${textFilterChain.length} characters`);
+      console.log(
+        "📝 [TEXT RENDERING] Text will be rendered directly by FFmpeg (not canvas)"
+      );
+      console.log(
+        `📝 [TEXT RENDERING] Text filter chain length: ${textFilterChain.length} characters`
+      );
     }
-    console.log('🚀 [FFMPEG EXPORT DEBUG] ============================================');
+    console.log(
+      "🚀 [FFMPEG EXPORT DEBUG] ============================================"
+    );
 
     debugLog(
       "[CLI Export] Starting FFmpeg export with options:",
@@ -1951,21 +2106,28 @@ export class CLIExportEngine extends ExportEngine {
     // For now, use basic invoke without progress tracking
 
     try {
-      console.log('⏳ [FFMPEG EXPORT DEBUG] Invoking FFmpeg CLI...');
+      console.log("⏳ [FFMPEG EXPORT DEBUG] Invoking FFmpeg CLI...");
       const startTime = Date.now();
 
       const result =
         await window.electronAPI.ffmpeg.exportVideoCLI(exportOptions);
 
       const duration = ((Date.now() - startTime) / 1000).toFixed(2);
-      console.log(`✅ [FFMPEG EXPORT DEBUG] FFmpeg export completed in ${duration}s`);
-      console.log('✅ [EXPORT OPTIMIZATION] FFmpeg export completed successfully!');
+      console.log(
+        `✅ [FFMPEG EXPORT DEBUG] FFmpeg export completed in ${duration}s`
+      );
+      console.log(
+        "✅ [EXPORT OPTIMIZATION] FFmpeg export completed successfully!"
+      );
       debugLog("[CLI Export] FFmpeg export completed successfully:", result);
       return result.outputFile;
     } catch (error) {
-      console.error('❌ [EXPORT OPTIMIZATION] FFmpeg export FAILED!', error);
-      console.error('❌ [EXPORT OPTIMIZATION] Error message:', error instanceof Error ? error.message : String(error));
-      console.error('❌ [EXPORT OPTIMIZATION] Error details:', {
+      console.error("❌ [EXPORT OPTIMIZATION] FFmpeg export FAILED!", error);
+      console.error(
+        "❌ [EXPORT OPTIMIZATION] Error message:",
+        error instanceof Error ? error.message : String(error)
+      );
+      console.error("❌ [EXPORT OPTIMIZATION] Error details:", {
         message: error instanceof Error ? error.message : String(error),
         code: (error as any)?.code,
         stderr: (error as any)?.stderr,

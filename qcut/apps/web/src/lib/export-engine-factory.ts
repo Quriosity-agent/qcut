@@ -90,14 +90,22 @@ export class ExportEngineFactory {
     console.log("🔍 EXPORT ENGINE DEBUG - Starting engine selection:");
     console.log("  - Force regular engine override:", forceRegularEngine);
     console.log("  - Is Electron environment:", this.isElectron());
-    console.log("  - Window.electronAPI exists:", !!(window as any).electronAPI);
-    console.log("  - FFmpeg CLI available:", !!(window as any).electronAPI?.ffmpeg?.exportVideoCLI);
+    console.log(
+      "  - Window.electronAPI exists:",
+      !!(window as any).electronAPI
+    );
+    console.log(
+      "  - FFmpeg CLI available:",
+      !!(window as any).electronAPI?.ffmpeg?.exportVideoCLI
+    );
 
     if (forceRegularEngine) {
       debugLog(
         "[ExportEngineFactory] 🔧 DEBUG OVERRIDE: Forcing regular export engine for sticker debugging"
       );
-      console.log("⚠️ EXPORT ENGINE: Using regular engine due to debug override");
+      console.log(
+        "⚠️ EXPORT ENGINE: Using regular engine due to debug override"
+      );
     }
 
     if (this.isElectron() && !forceRegularEngine) {
@@ -251,12 +259,20 @@ export class ExportEngineFactory {
 
       case ExportEngineType.CLI:
         // Native FFmpeg CLI engine (Electron only)
-        console.log("📌 CLI ENGINE SELECTED - Checking Electron availability...");
+        console.log(
+          "📌 CLI ENGINE SELECTED - Checking Electron availability..."
+        );
         if (this.isElectron()) {
           try {
             console.log("✅ Electron detected - Loading CLI FFmpeg engine");
-            console.log("  - electronAPI available:", !!(window as any).electronAPI);
-            console.log("  - ffmpeg.exportVideoCLI available:", !!(window as any).electronAPI?.ffmpeg?.exportVideoCLI);
+            console.log(
+              "  - electronAPI available:",
+              !!(window as any).electronAPI
+            );
+            console.log(
+              "  - ffmpeg.exportVideoCLI available:",
+              !!(window as any).electronAPI?.ffmpeg?.exportVideoCLI
+            );
 
             debugLog(
               "[ExportEngineFactory] 🚀 Loading CLI FFmpeg engine for Electron"
@@ -279,7 +295,9 @@ export class ExportEngineFactory {
               totalDuration,
               effectsStore // NEW: Pass effects store
             );
-            console.log("🚀 SUCCESS: CLI FFmpeg engine created and ready to use");
+            console.log(
+              "🚀 SUCCESS: CLI FFmpeg engine created and ready to use"
+            );
             return cliEngine;
           } catch (error) {
             debugError(
@@ -298,7 +316,9 @@ export class ExportEngineFactory {
               "[ExportEngineFactory] 🔄 Falling back to Standard Canvas engine"
             );
             // FFmpeg WASM removed - use Standard engine as fallback
-            console.log("⚠️ FALLBACK: Using Standard Canvas engine instead of FFmpeg");
+            console.log(
+              "⚠️ FALLBACK: Using Standard Canvas engine instead of FFmpeg"
+            );
             return new ExportEngine(
               canvas,
               settings,
@@ -537,8 +557,14 @@ export class ExportEngineFactory {
     if (electronAPI) {
       console.log("  - electronAPI.ffmpeg exists:", !!electronAPI.ffmpeg);
       if (electronAPI.ffmpeg) {
-        console.log("  - Available ffmpeg methods:", Object.keys(electronAPI.ffmpeg));
-        console.log("  - exportVideoCLI type:", typeof electronAPI.ffmpeg.exportVideoCLI);
+        console.log(
+          "  - Available ffmpeg methods:",
+          Object.keys(electronAPI.ffmpeg)
+        );
+        console.log(
+          "  - exportVideoCLI type:",
+          typeof electronAPI.ffmpeg.exportVideoCLI
+        );
       }
     }
 

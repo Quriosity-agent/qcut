@@ -83,7 +83,9 @@ test.describe("Multi-Media Import & Track Management (Test #2 Part 1)", () => {
       await firstMedia.dragTo(timeline);
 
       // Wait for timeline element to appear after drag-and-drop
-      await page.waitForSelector('[data-testid="timeline-element"]', { timeout: 5000 });
+      await page.waitForSelector('[data-testid="timeline-element"]', {
+        timeout: 5000,
+      });
 
       // Verify element was added to timeline
       const timelineElementsAfter = await page

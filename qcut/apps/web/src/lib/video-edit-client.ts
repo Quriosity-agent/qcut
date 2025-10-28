@@ -270,7 +270,15 @@ class VideoEditClient {
     // Get job/request ID (handle both snake_case and camelCase)
     const jobId = result.requestId || result.request_id || `fal-${Date.now()}`;
 
-    console.log("[FAL Response Parser] Parsed:", { videoUrl, audioUrl, duration, fileSize, width, height, jobId });
+    console.log("[FAL Response Parser] Parsed:", {
+      videoUrl,
+      audioUrl,
+      duration,
+      fileSize,
+      width,
+      height,
+      jobId,
+    });
 
     return { videoUrl, audioUrl, duration, fileSize, width, height, jobId };
   }
@@ -287,27 +295,41 @@ class VideoEditClient {
    * - Videos must be 3-20 seconds
    * - Max 200 characters for prompts
    */
-  async generateKlingAudio(params: KlingVideoToAudioParams): Promise<VideoEditResult> {
+  async generateKlingAudio(
+    params: KlingVideoToAudioParams
+  ): Promise<VideoEditResult> {
     await this.ensureInitialized();
 
     console.log("=== KLING VIDEO TO AUDIO DEBUG START ===");
     console.log("1. Input params received:", params);
     console.log("2. Video URL type:", typeof params.video_url);
     console.log("3. Video URL length:", params.video_url?.length);
-    console.log("4. Video URL preview:", params.video_url?.substring(0, 100) + "...");
+    console.log(
+      "4. Video URL preview:",
+      params.video_url?.substring(0, 100) + "..."
+    );
 
     // Validate video URL before making API call
     if (!params.video_url) {
       throw new Error("Video URL is required");
     }
     if (params.video_url.startsWith("blob:")) {
-      throw new Error("Blob URLs are not supported. The video must be uploaded to a publicly accessible URL first (e.g., using FAL storage).");
+      throw new Error(
+        "Blob URLs are not supported. The video must be uploaded to a publicly accessible URL first (e.g., using FAL storage)."
+      );
     }
     if (params.video_url.startsWith("data:")) {
-      throw new Error("Data URLs are not supported. The video must be uploaded to a publicly accessible URL first (e.g., using FAL storage).");
+      throw new Error(
+        "Data URLs are not supported. The video must be uploaded to a publicly accessible URL first (e.g., using FAL storage)."
+      );
     }
-    if (!params.video_url.startsWith("http://") && !params.video_url.startsWith("https://")) {
-      throw new Error(`Invalid video URL format: ${params.video_url.substring(0, 50)}... URLs must start with http:// or https://`);
+    if (
+      !params.video_url.startsWith("http://") &&
+      !params.video_url.startsWith("https://")
+    ) {
+      throw new Error(
+        `Invalid video URL format: ${params.video_url.substring(0, 50)}... URLs must start with http:// or https://`
+      );
     }
 
     debugLog("Generating audio with Kling:", {
@@ -318,7 +340,9 @@ class VideoEditClient {
     });
 
     try {
-      const model = VIDEO_EDIT_MODELS.find(m => m.id === "kling_video_to_audio");
+      const model = VIDEO_EDIT_MODELS.find(
+        (m) => m.id === "kling_video_to_audio"
+      );
       if (!model) throw new Error("Model configuration not found");
 
       // Build the input payload
@@ -330,30 +354,39 @@ class VideoEditClient {
       if (params.sound_effect_prompt && params.sound_effect_prompt.trim()) {
         inputPayload.sound_effect_prompt = params.sound_effect_prompt;
       }
-      if (params.background_music_prompt && params.background_music_prompt.trim()) {
+      if (
+        params.background_music_prompt &&
+        params.background_music_prompt.trim()
+      ) {
         inputPayload.background_music_prompt = params.background_music_prompt;
       }
       if (params.asmr_mode !== undefined) {
         inputPayload.asmr_mode = params.asmr_mode;
       }
 
-      console.log("5. Final payload being sent to FAL:", JSON.stringify(inputPayload, null, 2));
+      console.log(
+        "5. Final payload being sent to FAL:",
+        JSON.stringify(inputPayload, null, 2)
+      );
       console.log("6. Endpoint:", model.endpoints.process);
       console.log("7. FAL initialized?", this.initialized);
       console.log("8. API Key available?", !!this.apiKey);
 
       // Call FAL API
-      const result = await fal.subscribe(model.endpoints.process, {
+      const result = (await fal.subscribe(model.endpoints.process, {
         input: inputPayload,
         logs: true,
         onQueueUpdate: (update) => {
           console.log("9. Queue update received:", update);
           debugLog("Kling queue update:", update);
         },
-      }) as FalSubscribeResult;
+      })) as FalSubscribeResult;
 
       // Parse response defensively
-      const parsed = this.parseResponse({ ...result.data, requestId: result.requestId });
+      const parsed = this.parseResponse({
+        ...result.data,
+        requestId: result.requestId,
+      });
 
       if (!parsed.videoUrl) {
         throw new Error("No video URL in response");
@@ -408,7 +441,9 @@ class VideoEditClient {
       // Provide better error message for 422 validation errors
       if (error?.status === 422 && error?.body?.detail) {
         const details = Array.isArray(error.body.detail)
-          ? error.body.detail.map((d: any) => d.msg || JSON.stringify(d)).join(", ")
+          ? error.body.detail
+              .map((d: any) => d.msg || JSON.stringify(d))
+              .join(", ")
           : String(error.body.detail);
         throw new Error(`Validation error: ${details}`);
       }
@@ -437,11 +472,11 @@ class VideoEditClient {
     });
 
     try {
-      const model = VIDEO_EDIT_MODELS.find(m => m.id === "mmaudio_v2");
+      const model = VIDEO_EDIT_MODELS.find((m) => m.id === "mmaudio_v2");
       if (!model) throw new Error("Model configuration not found");
 
       // Call FAL API
-      const result = await fal.subscribe(model.endpoints.process, {
+      const result = (await fal.subscribe(model.endpoints.process, {
         input: {
           video_url: params.video_url,
           prompt: params.prompt,
@@ -456,10 +491,13 @@ class VideoEditClient {
         onQueueUpdate: (update) => {
           debugLog("MMAudio queue update:", update);
         },
-      }) as FalSubscribeResult;
+      })) as FalSubscribeResult;
 
       // Parse response defensively
-      const parsed = this.parseResponse({ ...result.data, requestId: result.requestId });
+      const parsed = this.parseResponse({
+        ...result.data,
+        requestId: result.requestId,
+      });
 
       if (!parsed.videoUrl) {
         throw new Error("No video URL in response");
@@ -467,7 +505,7 @@ class VideoEditClient {
 
       // Calculate cost
       const duration = parsed.duration || params.duration || 10;
-      const cost = duration * 0.001;  // $0.001 per second
+      const cost = duration * 0.001; // $0.001 per second
 
       return {
         modelId: "mmaudio_v2",
@@ -506,11 +544,11 @@ class VideoEditClient {
     });
 
     try {
-      const model = VIDEO_EDIT_MODELS.find(m => m.id === "topaz_upscale");
+      const model = VIDEO_EDIT_MODELS.find((m) => m.id === "topaz_upscale");
       if (!model) throw new Error("Model configuration not found");
 
       // Call FAL API
-      const result = await fal.subscribe(model.endpoints.process, {
+      const result = (await fal.subscribe(model.endpoints.process, {
         input: {
           video_url: params.video_url,
           upscale_factor: params.upscale_factor || 2.0,
@@ -521,10 +559,13 @@ class VideoEditClient {
         onQueueUpdate: (update) => {
           debugLog("Topaz queue update:", update);
         },
-      }) as FalSubscribeResult;
+      })) as FalSubscribeResult;
 
       // Parse response defensively
-      const parsed = this.parseResponse({ ...result.data, requestId: result.requestId });
+      const parsed = this.parseResponse({
+        ...result.data,
+        requestId: result.requestId,
+      });
 
       if (!parsed.videoUrl) {
         throw new Error("No video URL in response");
@@ -532,7 +573,7 @@ class VideoEditClient {
 
       // Estimate cost based on upscale factor
       const factor = params.upscale_factor || 2.0;
-      const cost = factor <= 2 ? 0.50 : factor <= 4 ? 2.00 : 5.00;
+      const cost = factor <= 2 ? 0.5 : factor <= 4 ? 2.0 : 5.0;
 
       return {
         modelId: "topaz_upscale",

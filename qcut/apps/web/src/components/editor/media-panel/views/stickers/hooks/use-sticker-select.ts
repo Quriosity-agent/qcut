@@ -27,7 +27,9 @@ export function useStickerSelect() {
       }
 
       // DEBUG: Log activeProject.id
-      console.log(`[StickerSelect] activeProject.id = ${activeProject.id}, iconId = ${iconId}`);
+      console.log(
+        `[StickerSelect] activeProject.id = ${activeProject.id}, iconId = ${iconId}`
+      );
 
       let createdObjectUrl: string | null = null;
       try {

@@ -81,7 +81,9 @@ export function useVideoEditProcessing(props: UseVideoEditProcessingProps) {
 
     if (state.isProcessing && processingStartTime.current) {
       interval = setInterval(() => {
-        const elapsed = Math.floor((Date.now() - processingStartTime.current!) / 1000);
+        const elapsed = Math.floor(
+          (Date.now() - processingStartTime.current!) / 1000
+        );
         setState((prev) => ({ ...prev, elapsedTime: elapsed }));
       }, 1000);
     }
@@ -336,9 +338,7 @@ export function useVideoEditProcessing(props: UseVideoEditProcessingProps) {
             );
             break;
           case "audio-sync":
-            result = await processMMAudioV2(
-              params as Partial<MMAudioV2Params>
-            );
+            result = await processMMAudioV2(params as Partial<MMAudioV2Params>);
             break;
           case "upscale":
             result = await processTopazUpscale(
@@ -367,7 +367,8 @@ export function useVideoEditProcessing(props: UseVideoEditProcessingProps) {
           onSuccess(result);
         }
       } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : "Processing failed";
+        const errorMessage =
+          error instanceof Error ? error.message : "Processing failed";
 
         setState((prev) => ({
           ...prev,
@@ -430,6 +431,7 @@ export function useVideoEditProcessing(props: UseVideoEditProcessingProps) {
     mediaStoreError,
 
     // Computed
-    canProcess: !state.isProcessing && sourceVideo !== null && !mediaStoreLoading,
+    canProcess:
+      !state.isProcessing && sourceVideo !== null && !mediaStoreLoading,
   };
 }

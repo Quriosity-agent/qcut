@@ -11,10 +11,13 @@ export class IndexedDBAdapter<T> implements StorageAdapter<T> {
     this.version = version;
 
     // DEBUG: Track database creation with stack trace
-    if (dbName.startsWith('video-editor-media-') || dbName.startsWith('video-editor-timelines-')) {
+    if (
+      dbName.startsWith("video-editor-media-") ||
+      dbName.startsWith("video-editor-timelines-")
+    ) {
       const stack = new Error().stack;
       console.log(`[IndexedDBAdapter] Creating database: ${dbName}`);
-      console.log('[IndexedDBAdapter] Call stack:', stack);
+      console.log("[IndexedDBAdapter] Call stack:", stack);
     }
   }
 

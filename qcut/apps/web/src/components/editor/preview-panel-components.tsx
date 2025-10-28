@@ -142,7 +142,9 @@ export function FullscreenToolbar({
           onClick={toggle}
           disabled={!hasAnyElements}
           className="h-auto p-0 text-white hover:text-white/80"
-          data-testid={isPlaying ? "preview-pause-button" : "preview-play-button"}
+          data-testid={
+            isPlaying ? "preview-pause-button" : "preview-play-button"
+          }
           data-playing={isPlaying}
         >
           {isPlaying ? (
@@ -390,7 +392,9 @@ export function PreviewToolbar({
           onClick={toggle}
           disabled={!hasAnyElements}
           className="h-auto p-0 text-white hover:text-white/80"
-          data-testid={isPlaying ? "preview-pause-button" : "preview-play-button"}
+          data-testid={
+            isPlaying ? "preview-pause-button" : "preview-play-button"
+          }
           data-playing={isPlaying}
         >
           {isPlaying ? (

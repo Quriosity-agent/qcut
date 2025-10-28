@@ -230,7 +230,10 @@ export function ExportDialog() {
   }
 
   return (
-    <div className="h-full flex flex-col bg-background p-4" data-testid="export-dialog">
+    <div
+      className="h-full flex flex-col bg-background p-4"
+      data-testid="export-dialog"
+    >
       <div className="flex items-center justify-between p-4 border-b border-border">
         <div>
           <h2 className="text-lg font-semibold">Export Video</h2>

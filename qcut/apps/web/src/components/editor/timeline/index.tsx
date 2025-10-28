@@ -927,7 +927,9 @@ export function Timeline() {
                     Math.min(
                       800,
                       getTotalTracksHeight(tracks) +
-                        (EFFECTS_ENABLED && tracks.length > 0 && showEffectsTrack
+                        (EFFECTS_ENABLED &&
+                        tracks.length > 0 &&
+                        showEffectsTrack
                           ? TIMELINE_CONSTANTS.TRACK_HEIGHT
                           : 0)
                     )
@@ -1007,22 +1009,24 @@ export function Timeline() {
                       </ContextMenu>
                     ))}
                     {/* Effects Timeline Visualization */}
-                    {EFFECTS_ENABLED && tracks.length > 0 && showEffectsTrack && (
-                      <div
-                        className="absolute left-0 right-0 border-t-2 border-purple-500/30"
-                        style={{
-                          top: `${getTotalTracksHeight(tracks)}px`,
-                          height: `${TIMELINE_CONSTANTS.TRACK_HEIGHT}px`,
-                        }}
-                      >
-                        <EffectsTimeline
-                          tracks={tracks}
-                          pixelsPerSecond={
-                            TIMELINE_CONSTANTS.PIXELS_PER_SECOND * zoomLevel
-                          }
-                        />
-                      </div>
-                    )}
+                    {EFFECTS_ENABLED &&
+                      tracks.length > 0 &&
+                      showEffectsTrack && (
+                        <div
+                          className="absolute left-0 right-0 border-t-2 border-purple-500/30"
+                          style={{
+                            top: `${getTotalTracksHeight(tracks)}px`,
+                            height: `${TIMELINE_CONSTANTS.TRACK_HEIGHT}px`,
+                          }}
+                        >
+                          <EffectsTimeline
+                            tracks={tracks}
+                            pixelsPerSecond={
+                              TIMELINE_CONSTANTS.PIXELS_PER_SECOND * zoomLevel
+                            }
+                          />
+                        </div>
+                      )}
                   </>
                 )}
               </div>
@@ -1263,7 +1267,9 @@ function TimelineToolbar({
                 size="icon"
                 onClick={toggle}
                 className="mr-2"
-                data-testid={isPlaying ? "timeline-pause-button" : "timeline-play-button"}
+                data-testid={
+                  isPlaying ? "timeline-pause-button" : "timeline-play-button"
+                }
                 data-playing={isPlaying}
               >
                 {isPlaying ? (
@@ -1492,9 +1498,7 @@ function TimelineToolbar({
                 </Button>
               </TooltipTrigger>
               <TooltipContent>
-                {showEffectsTrack
-                  ? "Hide Effects Track"
-                  : "Show Effects Track"}
+                {showEffectsTrack ? "Hide Effects Track" : "Show Effects Track"}
               </TooltipContent>
             </Tooltip>
           )}

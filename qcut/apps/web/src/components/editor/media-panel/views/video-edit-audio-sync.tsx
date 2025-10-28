@@ -17,7 +17,11 @@ import { Slider } from "@/components/ui/slider";
 import { FileUpload } from "@/components/ui/file-upload";
 import { Progress } from "@/components/ui/progress";
 import { Card } from "@/components/ui/card";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import { useVideoEditProcessing } from "./use-video-edit-processing";
 import { useProjectStore } from "@/stores/project-store";
 import {
@@ -87,12 +91,19 @@ export function AudioSyncTab() {
         };
         video.src = window.URL.createObjectURL(file);
       } catch (metadataError: unknown) {
-        reject(metadataError instanceof Error ? metadataError : new Error("Failed to read video metadata"));
+        reject(
+          metadataError instanceof Error
+            ? metadataError
+            : new Error("Failed to read video metadata")
+        );
       }
     });
   };
 
-  const handleVideoChange = async (file: File | null, preview: string | undefined | null) => {
+  const handleVideoChange = async (
+    file: File | null,
+    preview: string | undefined | null
+  ) => {
     try {
       if (file) {
         const validation = VIDEO_EDIT_HELPERS.validateVideoFile(file);
@@ -119,7 +130,10 @@ export function AudioSyncTab() {
         setVideoDuration(null);
       }
     } catch (metadataError: unknown) {
-      console.error("AudioSyncTab: Failed to read video metadata", metadataError);
+      console.error(
+        "AudioSyncTab: Failed to read video metadata",
+        metadataError
+      );
       setVideoDuration(null);
       setError("Unable to read video duration. Please try a different file.");
     }
@@ -144,7 +158,7 @@ export function AudioSyncTab() {
       negative_prompt: negativePrompt.trim() || undefined,
       num_steps: numSteps,
       cfg_strength: cfgStrength,
-      seed: seed,
+      seed,
     };
 
     await handleProcess(params);
@@ -166,7 +180,7 @@ export function AudioSyncTab() {
   const audioDescription = [
     "Generated audio preview",
     prompt.trim() && `Based on prompt: ${prompt.trim()}`,
-    negativePrompt.trim() && `Negative prompt: ${negativePrompt.trim()}`
+    negativePrompt.trim() && `Negative prompt: ${negativePrompt.trim()}`,
   ]
     .filter(Boolean)
     .join(". ");
@@ -178,7 +192,9 @@ export function AudioSyncTab() {
         <div className="flex items-center justify-between">
           <div>
             <p className="text-xs font-medium text-primary">MMAudio V2</p>
-            <p className="text-xs text-muted-foreground mt-0.5">Synchronized audio generation with prompt control</p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Synchronized audio generation with prompt control
+            </p>
           </div>
           <div className="text-right">
             <p className="text-xs font-semibold">$0.001/sec</p>
@@ -241,9 +257,7 @@ export function AudioSyncTab() {
         <CollapsibleContent className="space-y-4 mt-4">
           {/* Steps */}
           <div className="space-y-2">
-            <Label className="text-xs">
-              Generation Steps: {numSteps}
-            </Label>
+            <Label className="text-xs">Generation Steps: {numSteps}</Label>
             <Slider
               value={[numSteps]}
               onValueChange={([v]) => setNumSteps(v)}
@@ -284,7 +298,11 @@ export function AudioSyncTab() {
               type="number"
               placeholder="Random"
               value={seed || ""}
-              onChange={(e) => setSeed(e.target.value ? parseInt(e.target.value, 10) : undefined)}
+              onChange={(e) =>
+                setSeed(
+                  e.target.value ? parseInt(e.target.value, 10) : undefined
+                )
+              }
               disabled={isProcessing}
               className="text-xs"
             />

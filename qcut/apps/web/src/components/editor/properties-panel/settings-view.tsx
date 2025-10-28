@@ -334,8 +334,14 @@ function ApiKeysView() {
   const saveApiKeys = useCallback(async () => {
     console.log("[Settings] 💾 Saving API keys...");
     console.log("[Settings] FAL API key length:", falApiKey.trim().length);
-    console.log("[Settings] Freesound API key length:", freesoundApiKey.trim().length);
-    console.log("[Settings] Gemini API key length:", geminiApiKey.trim().length);
+    console.log(
+      "[Settings] Freesound API key length:",
+      freesoundApiKey.trim().length
+    );
+    console.log(
+      "[Settings] Gemini API key length:",
+      geminiApiKey.trim().length
+    );
 
     try {
       if (!window.electronAPI?.apiKeys) {

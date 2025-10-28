@@ -96,7 +96,11 @@ interface ExportOptions {
   trimStart?: number;
   trimEnd?: number;
   // Mode 1.5: Video normalization (NEW!)
-  optimizationStrategy?: 'image-pipeline' | 'direct-copy' | 'direct-video-with-filters' | 'video-normalization';
+  optimizationStrategy?:
+    | "image-pipeline"
+    | "direct-copy"
+    | "direct-video-with-filters"
+    | "video-normalization";
 }
 
 interface AudioFile {
@@ -177,10 +181,7 @@ interface ElectronAPI {
 
   // Transcription operations (Gemini API)
   transcribe: {
-    transcribe: (request: {
-      audioPath: string;
-      language?: string;
-    }) => Promise<{
+    transcribe: (request: { audioPath: string; language?: string }) => Promise<{
       text: string;
       segments: Array<{
         id: number;
@@ -217,10 +218,7 @@ interface ElectronAPI {
       outputFrameName: string;
       filterChain: string;
     }) => Promise<void>;
-    extractAudio: (options: {
-      videoPath: string;
-      format?: string;
-    }) => Promise<{
+    extractAudio: (options: { videoPath: string; format?: string }) => Promise<{
       audioPath: string;
       fileSize: number;
     }>;

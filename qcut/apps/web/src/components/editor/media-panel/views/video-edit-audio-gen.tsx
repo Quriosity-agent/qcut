@@ -65,7 +65,10 @@ export function AudioGenTab() {
    * Handle video file change
    * WHY: Validate and preview video before processing
    */
-  const handleVideoChange = (file: File | null, preview: string | undefined | null) => {
+  const handleVideoChange = (
+    file: File | null,
+    preview: string | undefined | null
+  ) => {
     if (file) {
       // Validate file
       const validation = VIDEO_EDIT_HELPERS.validateVideoFile(file);
@@ -76,9 +79,9 @@ export function AudioGenTab() {
     }
 
     setSourceVideo(file);
-    setVideoPreview(preview ?? null);  // Coerce undefined to null for type safety
+    setVideoPreview(preview ?? null); // Coerce undefined to null for type safety
     setError(null);
-    reset();  // Reset processing state
+    reset(); // Reset processing state
   };
 
   /**
@@ -107,8 +110,12 @@ export function AudioGenTab() {
       <Card className="p-3 bg-primary/5 border-primary/20">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-xs font-medium text-primary">Kling Video to Audio</p>
-            <p className="text-xs text-muted-foreground mt-0.5">Generate audio from video content</p>
+            <p className="text-xs font-medium text-primary">
+              Kling Video to Audio
+            </p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Generate audio from video content
+            </p>
           </div>
           <div className="text-right">
             <p className="text-xs font-semibold">$0.035</p>
@@ -211,11 +218,7 @@ export function AudioGenTab() {
               ✓ Audio generation complete!
             </p>
             {result.audioUrl && (
-              <audio
-                controls
-                className="w-full h-8"
-                src={result.audioUrl}
-              />
+              <audio controls className="w-full h-8" src={result.audioUrl} />
             )}
             <div className="flex gap-2">
               {result.videoUrl && (

@@ -47,7 +47,11 @@ export function setupApiKeyIPC(): void {
       );
 
       // Decrypt the stored keys if they exist and safeStorage is available
-      const result: ApiKeys = { falApiKey: "", freesoundApiKey: "", geminiApiKey: "" };
+      const result: ApiKeys = {
+        falApiKey: "",
+        freesoundApiKey: "",
+        geminiApiKey: "",
+      };
 
       if (encryptedData.falApiKey && safeStorage.isEncryptionAvailable()) {
         try {
@@ -82,10 +86,7 @@ export function setupApiKeyIPC(): void {
         result.freesoundApiKey = encryptedData.freesoundApiKey || "";
       }
 
-      if (
-        encryptedData.geminiApiKey &&
-        safeStorage.isEncryptionAvailable()
-      ) {
+      if (encryptedData.geminiApiKey && safeStorage.isEncryptionAvailable()) {
         try {
           const decryptedGemini: string = safeStorage.decryptString(
             Buffer.from(encryptedData.geminiApiKey, "base64")
@@ -115,13 +116,23 @@ export function setupApiKeyIPC(): void {
     async (event: IpcMainInvokeEvent, keys: ApiKeyData): Promise<boolean> => {
       console.log("[API Keys] 💾 Received save request");
       console.log("[API Keys] Keys received:", {
-        falApiKey: keys.falApiKey ? `${keys.falApiKey.substring(0, 10)}... (${keys.falApiKey.length} chars)` : "empty",
-        freesoundApiKey: keys.freesoundApiKey ? `${keys.freesoundApiKey.substring(0, 10)}... (${keys.freesoundApiKey.length} chars)` : "empty",
-        geminiApiKey: keys.geminiApiKey ? `${keys.geminiApiKey.substring(0, 10)}... (${keys.geminiApiKey.length} chars)` : "empty"
+        falApiKey: keys.falApiKey
+          ? `${keys.falApiKey.substring(0, 10)}... (${keys.falApiKey.length} chars)`
+          : "empty",
+        freesoundApiKey: keys.freesoundApiKey
+          ? `${keys.freesoundApiKey.substring(0, 10)}... (${keys.freesoundApiKey.length} chars)`
+          : "empty",
+        geminiApiKey: keys.geminiApiKey
+          ? `${keys.geminiApiKey.substring(0, 10)}... (${keys.geminiApiKey.length} chars)`
+          : "empty",
       });
 
       try {
-        const { falApiKey = "", freesoundApiKey = "", geminiApiKey = "" } = keys;
+        const {
+          falApiKey = "",
+          freesoundApiKey = "",
+          geminiApiKey = "",
+        } = keys;
 
         const dataToStore: EncryptedApiKeyData = {};
 
@@ -157,7 +168,9 @@ export function setupApiKeyIPC(): void {
           }
         } else {
           // Fallback to plain text storage if encryption is not available
-          console.log("[API Keys] ⚠️ Encryption not available, storing as plain text");
+          console.log(
+            "[API Keys] ⚠️ Encryption not available, storing as plain text"
+          );
           dataToStore.falApiKey = falApiKey;
           dataToStore.freesoundApiKey = freesoundApiKey;
           dataToStore.geminiApiKey = geminiApiKey;
@@ -180,11 +193,18 @@ export function setupApiKeyIPC(): void {
         );
 
         console.log("[API Keys] ✅ File written successfully");
-        console.log("[API Keys] 📝 File size:", fs.statSync(apiKeysFilePath).size, "bytes");
+        console.log(
+          "[API Keys] 📝 File size:",
+          fs.statSync(apiKeysFilePath).size,
+          "bytes"
+        );
 
         // Verify the file was written
         const savedData = JSON.parse(fs.readFileSync(apiKeysFilePath, "utf8"));
-        console.log("[API Keys] 🔍 Verification - Keys in file:", Object.keys(savedData));
+        console.log(
+          "[API Keys] 🔍 Verification - Keys in file:",
+          Object.keys(savedData)
+        );
 
         return true;
       } catch (error: any) {

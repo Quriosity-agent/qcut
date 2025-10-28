@@ -29,8 +29,8 @@ export function isGeminiConfigured(): ConfigurationStatus {
   // Check for Gemini API key in Electron environment
   // Note: The API key is stored in the main process, not accessible from renderer
   // This check validates that the Electron API is available
-  if (typeof window === 'undefined' || !window.electronAPI?.transcribe) {
-    missingVars.push('Electron IPC not available');
+  if (typeof window === "undefined" || !window.electronAPI?.transcribe) {
+    missingVars.push("Electron IPC not available");
   }
 
   const configured = missingVars.length === 0;
@@ -45,7 +45,7 @@ export function isGeminiConfigured(): ConfigurationStatus {
  * Get Gemini API setup instructions URL
  */
 export function getGeminiSetupUrl(): string {
-  return 'https://aistudio.google.com/app/apikey';
+  return "https://aistudio.google.com/app/apikey";
 }
 
 /**
@@ -64,12 +64,12 @@ export function getGeminiSetupInstructions(): string {
  * @throws Error if Gemini is not supported in current environment
  */
 export function validateGeminiEnvironment(): void {
-  if (typeof window === 'undefined') {
-    throw new Error('Gemini transcription requires browser environment');
+  if (typeof window === "undefined") {
+    throw new Error("Gemini transcription requires browser environment");
   }
 
   if (!window.electronAPI?.transcribe) {
-    throw new Error('Gemini transcription requires Electron environment');
+    throw new Error("Gemini transcription requires Electron environment");
   }
 }
 
@@ -77,12 +77,12 @@ export function validateGeminiEnvironment(): void {
  * Supported audio formats for Gemini API
  */
 export const GEMINI_SUPPORTED_FORMATS = [
-  'audio/wav',
-  'audio/mp3',
-  'audio/aiff',
-  'audio/aac',
-  'audio/ogg',
-  'audio/flac',
+  "audio/wav",
+  "audio/mp3",
+  "audio/aiff",
+  "audio/aac",
+  "audio/ogg",
+  "audio/flac",
 ] as const;
 
 /**
@@ -97,17 +97,17 @@ export function isGeminiSupportedFormat(mimeType: string): boolean {
  */
 export function getFileExtensionFromMimeType(mimeType: string): string {
   const mimeToExtension: Record<string, string> = {
-    'audio/wav': 'wav',
-    'audio/mp3': 'mp3',
-    'audio/mpeg': 'mp3',
-    'audio/aiff': 'aiff',
-    'audio/aac': 'aac',
-    'audio/ogg': 'ogg',
-    'audio/flac': 'flac',
-    'audio/webm': 'webm',
-    'audio/mp4': 'm4a',
-    'audio/x-m4a': 'm4a',
+    "audio/wav": "wav",
+    "audio/mp3": "mp3",
+    "audio/mpeg": "mp3",
+    "audio/aiff": "aiff",
+    "audio/aac": "aac",
+    "audio/ogg": "ogg",
+    "audio/flac": "flac",
+    "audio/webm": "webm",
+    "audio/mp4": "m4a",
+    "audio/x-m4a": "m4a",
   };
 
-  return mimeToExtension[mimeType] || 'wav';
+  return mimeToExtension[mimeType] || "wav";
 }

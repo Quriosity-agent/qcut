@@ -10,20 +10,20 @@ const timelineConstants = { MAX_EXPORT_DURATION: 600 }; // TODO: Import from sha
 
 // Debug logging for development
 const debugLog = (...args: any[]) => {
-  if (process.env.NODE_ENV !== 'production') {
-    console.log('[FFmpeg]', ...args);
+  if (process.env.NODE_ENV !== "production") {
+    console.log("[FFmpeg]", ...args);
   }
 };
 
 const debugWarn = (...args: any[]) => {
-  if (process.env.NODE_ENV !== 'production') {
-    console.warn('[FFmpeg]', ...args);
+  if (process.env.NODE_ENV !== "production") {
+    console.warn("[FFmpeg]", ...args);
   }
 };
 
 const debugError = (...args: any[]) => {
-  if (process.env.NODE_ENV !== 'production') {
-    console.error('[FFmpeg]', ...args);
+  if (process.env.NODE_ENV !== "production") {
+    console.error("[FFmpeg]", ...args);
   }
 };
 
@@ -126,7 +126,11 @@ interface ExportOptions {
   /** Video trim end time in seconds */
   trimEnd?: number;
   /** Optimization strategy for export mode selection (Mode 1, 1.5, 2, or 3) */
-  optimizationStrategy?: 'image-pipeline' | 'direct-copy' | 'direct-video-with-filters' | 'video-normalization';
+  optimizationStrategy?:
+    | "image-pipeline"
+    | "direct-copy"
+    | "direct-video-with-filters"
+    | "video-normalization";
 }
 
 /**
@@ -360,12 +364,18 @@ export function setupFFmpegIPC(): void {
       } = options;
 
       // Validate sticker configuration
-      if (stickerFilterChain && (!stickerSources || stickerSources.length === 0)) {
-        throw new Error("Sticker filter chain provided without sticker sources");
+      if (
+        stickerFilterChain &&
+        (!stickerSources || stickerSources.length === 0)
+      ) {
+        throw new Error(
+          "Sticker filter chain provided without sticker sources"
+        );
       }
 
       // Disable direct copy when stickers are present
-      const effectiveUseDirectCopy = useDirectCopy &&
+      const effectiveUseDirectCopy =
+        useDirectCopy &&
         !textFilterChain &&
         !stickerFilterChain &&
         !options.filterChain;
@@ -417,19 +427,32 @@ export function setupFFmpegIPC(): void {
           // =============================================================================
           // MODE 1.5: Video Normalization with FFmpeg Padding
           // =============================================================================
-          if (options.optimizationStrategy === 'video-normalization') {
-            console.log('⚡ [MODE 1.5 EXPORT] ============================================');
-            console.log('⚡ [MODE 1.5 EXPORT] Mode 1.5: Video Normalization with Padding');
-            console.log(`⚡ [MODE 1.5 EXPORT] Number of videos: ${options.videoSources?.length || 0}`);
-            console.log(`⚡ [MODE 1.5 EXPORT] Target resolution: ${width}x${height}`);
+          if (options.optimizationStrategy === "video-normalization") {
+            console.log(
+              "⚡ [MODE 1.5 EXPORT] ============================================"
+            );
+            console.log(
+              "⚡ [MODE 1.5 EXPORT] Mode 1.5: Video Normalization with Padding"
+            );
+            console.log(
+              `⚡ [MODE 1.5 EXPORT] Number of videos: ${options.videoSources?.length || 0}`
+            );
+            console.log(
+              `⚡ [MODE 1.5 EXPORT] Target resolution: ${width}x${height}`
+            );
             console.log(`⚡ [MODE 1.5 EXPORT] Target FPS: ${fps}`);
-            console.log('⚡ [MODE 1.5 EXPORT] Expected speedup: 5-7x faster than Mode 3');
-            console.log('⚡ [MODE 1.5 EXPORT] ============================================');
+            console.log(
+              "⚡ [MODE 1.5 EXPORT] Expected speedup: 5-7x faster than Mode 3"
+            );
+            console.log(
+              "⚡ [MODE 1.5 EXPORT] ============================================"
+            );
 
             try {
               // Validate video sources exist
               if (!options.videoSources || options.videoSources.length === 0) {
-                const error = 'Mode 1.5 requires video sources but none provided';
+                const error =
+                  "Mode 1.5 requires video sources but none provided";
                 console.error(`❌ [MODE 1.5 EXPORT] ${error}`);
                 reject(new Error(error));
                 return;
@@ -446,22 +469,42 @@ export function setupFFmpegIPC(): void {
                 }
               }
 
-              console.log(`⚡ [MODE 1.5 EXPORT] ✅ All ${options.videoSources.length} video sources validated`);
+              console.log(
+                `⚡ [MODE 1.5 EXPORT] ✅ All ${options.videoSources.length} video sources validated`
+              );
 
               // Step 1: Normalize all videos to target resolution and fps
-              console.log(`⚡ [MODE 1.5 EXPORT] Step 1/3: Normalizing ${options.videoSources.length} videos...`);
+              console.log(
+                `⚡ [MODE 1.5 EXPORT] Step 1/3: Normalizing ${options.videoSources.length} videos...`
+              );
               const normalizedPaths: string[] = [];
 
               for (let i = 0; i < options.videoSources.length; i++) {
                 const source = options.videoSources[i];
-                const normalizedPath = path.join(frameDir, `normalized_video_${i}.mp4`);
+                const normalizedPath = path.join(
+                  frameDir,
+                  `normalized_video_${i}.mp4`
+                );
 
-                console.log(`⚡ [MODE 1.5 EXPORT] Normalizing video ${i + 1}/${options.videoSources.length}...`);
-                console.log(`⚡ [MODE 1.5 EXPORT]   Source: ${path.basename(source.path)}`);
-                console.log(`⚡ [MODE 1.5 EXPORT]   Expected duration: ${source.duration}s (this is what will be passed to normalizeVideo)`);
-                console.log(`⚡ [MODE 1.5 EXPORT]   Trim: start=${source.trimStart || 0}s, end=${source.trimEnd || 0}s`);
-                const expectedOutputDuration = source.duration - (source.trimStart || 0) - (source.trimEnd || 0);
-                console.log(`⚡ [MODE 1.5 EXPORT]   Expected output duration after trim: ${expectedOutputDuration}s`);
+                console.log(
+                  `⚡ [MODE 1.5 EXPORT] Normalizing video ${i + 1}/${options.videoSources.length}...`
+                );
+                console.log(
+                  `⚡ [MODE 1.5 EXPORT]   Source: ${path.basename(source.path)}`
+                );
+                console.log(
+                  `⚡ [MODE 1.5 EXPORT]   Expected duration: ${source.duration}s (this is what will be passed to normalizeVideo)`
+                );
+                console.log(
+                  `⚡ [MODE 1.5 EXPORT]   Trim: start=${source.trimStart || 0}s, end=${source.trimEnd || 0}s`
+                );
+                const expectedOutputDuration =
+                  source.duration -
+                  (source.trimStart || 0) -
+                  (source.trimEnd || 0);
+                console.log(
+                  `⚡ [MODE 1.5 EXPORT]   Expected output duration after trim: ${expectedOutputDuration}s`
+                );
 
                 // Call normalizeVideo function (defined earlier in this file)
                 // IMPORTANT: Pass source.duration to preserve video length
@@ -471,110 +514,156 @@ export function setupFFmpegIPC(): void {
                   width,
                   height,
                   fps,
-                  source.duration,  // Pass the actual duration from VideoSource
+                  source.duration, // Pass the actual duration from VideoSource
                   source.trimStart || 0,
                   source.trimEnd || 0
                 );
 
                 normalizedPaths.push(normalizedPath);
-                console.log(`⚡ [MODE 1.5 EXPORT] ✅ Video ${i + 1}/${options.videoSources.length} normalized`);
+                console.log(
+                  `⚡ [MODE 1.5 EXPORT] ✅ Video ${i + 1}/${options.videoSources.length} normalized`
+                );
               }
 
-              console.log(`⚡ [MODE 1.5 EXPORT] All videos normalized successfully`);
+              console.log(
+                "⚡ [MODE 1.5 EXPORT] All videos normalized successfully"
+              );
 
               // Step 2/3: Create concat list file for FFmpeg concat demuxer
-              console.log(`⚡ [MODE 1.5 EXPORT] Step 2/3: Creating concat list...`);
-              const concatListPath = path.join(frameDir, 'concat-list.txt');
+              console.log(
+                "⚡ [MODE 1.5 EXPORT] Step 2/3: Creating concat list..."
+              );
+              const concatListPath = path.join(frameDir, "concat-list.txt");
 
               // Escape Windows backslashes for FFmpeg concat file format
               // FFmpeg requires forward slashes in file paths
               const concatContent = normalizedPaths
-                .map(p => {
+                .map((p) => {
                   // Escape single quotes in path (FFmpeg concat file format)
-                  const escapedPath = p.replace(/'/g, "'\\''").replace(/\\/g, '/');
+                  const escapedPath = p
+                    .replace(/'/g, "'\\''")
+                    .replace(/\\/g, "/");
                   return `file '${escapedPath}'`;
                 })
-                .join('\n');
+                .join("\n");
 
-              fs.writeFileSync(concatListPath, concatContent, 'utf-8');
-              console.log(`⚡ [MODE 1.5 EXPORT] ✅ Concat list created: ${normalizedPaths.length} videos`);
-              console.log(`⚡ [MODE 1.5 EXPORT] Concat list path: ${concatListPath}`);
+              fs.writeFileSync(concatListPath, concatContent, "utf-8");
+              console.log(
+                `⚡ [MODE 1.5 EXPORT] ✅ Concat list created: ${normalizedPaths.length} videos`
+              );
+              console.log(
+                `⚡ [MODE 1.5 EXPORT] Concat list path: ${concatListPath}`
+              );
 
               // Step 3/3: Concatenate normalized videos using FFmpeg concat demuxer (fast!)
-              console.log(`⚡ [MODE 1.5 EXPORT] Step 3/3: Concatenating ${normalizedPaths.length} normalized videos...`);
-              console.log(`⚡ [MODE 1.5 EXPORT] Using concat demuxer (no re-encoding = fast!)`);
+              console.log(
+                `⚡ [MODE 1.5 EXPORT] Step 3/3: Concatenating ${normalizedPaths.length} normalized videos...`
+              );
+              console.log(
+                "⚡ [MODE 1.5 EXPORT] Using concat demuxer (no re-encoding = fast!)"
+              );
 
               // Build concat command arguments
               const concatArgs: string[] = [
-                '-y',               // Overwrite output
-                '-f', 'concat',     // Use concat demuxer
-                '-safe', '0',       // Allow absolute paths
-                '-i', concatListPath, // Input concat list file
-                '-c', 'copy',       // Direct copy - no re-encoding!
-                '-movflags', '+faststart', // Optimize for streaming
-                outputFile
+                "-y", // Overwrite output
+                "-f",
+                "concat", // Use concat demuxer
+                "-safe",
+                "0", // Allow absolute paths
+                "-i",
+                concatListPath, // Input concat list file
+                "-c",
+                "copy", // Direct copy - no re-encoding!
+                "-movflags",
+                "+faststart", // Optimize for streaming
+                outputFile,
               ];
 
-              console.log(`⚡ [MODE 1.5 EXPORT] FFmpeg concat command: ffmpeg ${concatArgs.join(' ')}`);
+              console.log(
+                `⚡ [MODE 1.5 EXPORT] FFmpeg concat command: ffmpeg ${concatArgs.join(" ")}`
+              );
 
               // Execute concat with progress monitoring
               await new Promise<void>((concatResolve, concatReject) => {
-                const concatProcess: ChildProcess = spawn(ffmpegPath, concatArgs, {
-                  windowsHide: true,
-                  stdio: ['ignore', 'pipe', 'pipe']
-                });
+                const concatProcess: ChildProcess = spawn(
+                  ffmpegPath,
+                  concatArgs,
+                  {
+                    windowsHide: true,
+                    stdio: ["ignore", "pipe", "pipe"],
+                  }
+                );
 
-                let concatStderr = '';
-                let concatStdout = '';
+                let concatStderr = "";
+                let concatStdout = "";
 
                 // Capture stdout
-                concatProcess.stdout?.on('data', (chunk: Buffer) => {
+                concatProcess.stdout?.on("data", (chunk: Buffer) => {
                   concatStdout += chunk.toString();
                 });
 
                 // Capture stderr and monitor progress
-                concatProcess.stderr?.on('data', (chunk: Buffer) => {
+                concatProcess.stderr?.on("data", (chunk: Buffer) => {
                   const text = chunk.toString();
                   concatStderr += text;
 
                   // Parse progress for progress events
                   const progress: FFmpegProgress | null = parseProgress(text);
                   if (progress) {
-                    event.sender?.send?.('ffmpeg-progress', progress);
+                    event.sender?.send?.("ffmpeg-progress", progress);
                   }
                 });
 
                 // Handle process completion
-                concatProcess.on('close', (code: number | null) => {
+                concatProcess.on("close", (code: number | null) => {
                   if (code === 0) {
                     // Verify output file exists
                     if (fs.existsSync(outputFile)) {
                       const stats = fs.statSync(outputFile);
-                      console.log(`⚡ [MODE 1.5 EXPORT] ✅ Concatenation complete!`);
-                      console.log(`⚡ [MODE 1.5 EXPORT] Output size: ${(stats.size / 1024 / 1024).toFixed(2)} MB`);
+                      console.log(
+                        "⚡ [MODE 1.5 EXPORT] ✅ Concatenation complete!"
+                      );
+                      console.log(
+                        `⚡ [MODE 1.5 EXPORT] Output size: ${(stats.size / 1024 / 1024).toFixed(2)} MB`
+                      );
 
                       // Calculate what the total duration should be
                       let expectedTotalDuration = 0;
                       for (const source of options.videoSources!) {
-                        const effectiveDuration = source.duration - (source.trimStart || 0) - (source.trimEnd || 0);
+                        const effectiveDuration =
+                          source.duration -
+                          (source.trimStart || 0) -
+                          (source.trimEnd || 0);
                         expectedTotalDuration += effectiveDuration;
                       }
 
                       // Quick ffprobe to verify final duration
-                      console.log(`⚡ [MODE 1.5 EXPORT] 📏 FINAL DURATION CHECK...`);
+                      console.log(
+                        "⚡ [MODE 1.5 EXPORT] 📏 FINAL DURATION CHECK..."
+                      );
                       const ffprobeDir = path.dirname(ffmpegPath);
-                      const ffprobeExe = process.platform === "win32" ? "ffprobe.exe" : "ffprobe";
+                      const ffprobeExe =
+                        process.platform === "win32"
+                          ? "ffprobe.exe"
+                          : "ffprobe";
                       const ffprobePath = path.join(ffprobeDir, ffprobeExe);
 
-                      const finalProbe = spawn(ffprobePath, [
-                        "-v", "error",
-                        "-show_entries", "format=duration",
-                        "-of", "default=noprint_wrappers=1:nokey=1",
-                        outputFile
-                      ], {
-                        windowsHide: true,
-                        stdio: ["ignore", "pipe", "pipe"]
-                      });
+                      const finalProbe = spawn(
+                        ffprobePath,
+                        [
+                          "-v",
+                          "error",
+                          "-show_entries",
+                          "format=duration",
+                          "-of",
+                          "default=noprint_wrappers=1:nokey=1",
+                          outputFile,
+                        ],
+                        {
+                          windowsHide: true,
+                          stdio: ["ignore", "pipe", "pipe"],
+                        }
+                      );
 
                       let finalDuration = "";
                       finalProbe.stdout?.on("data", (chunk: Buffer) => {
@@ -584,13 +673,23 @@ export function setupFFmpegIPC(): void {
                       finalProbe.on("close", (probeCode: number | null) => {
                         if (probeCode === 0 && finalDuration) {
                           const actualFinalDuration = parseFloat(finalDuration);
-                          console.log(`⚡ [MODE 1.5 EXPORT]   - Expected total duration: ${expectedTotalDuration.toFixed(2)}s`);
-                          console.log(`⚡ [MODE 1.5 EXPORT]   - Actual total duration: ${actualFinalDuration.toFixed(2)}s`);
-                          const difference = Math.abs(actualFinalDuration - expectedTotalDuration);
+                          console.log(
+                            `⚡ [MODE 1.5 EXPORT]   - Expected total duration: ${expectedTotalDuration.toFixed(2)}s`
+                          );
+                          console.log(
+                            `⚡ [MODE 1.5 EXPORT]   - Actual total duration: ${actualFinalDuration.toFixed(2)}s`
+                          );
+                          const difference = Math.abs(
+                            actualFinalDuration - expectedTotalDuration
+                          );
                           if (difference > 0.5) {
-                            console.warn(`⚠️ [MODE 1.5 EXPORT]   - FINAL DURATION MISMATCH: Difference of ${difference.toFixed(2)}s!`);
+                            console.warn(
+                              `⚠️ [MODE 1.5 EXPORT]   - FINAL DURATION MISMATCH: Difference of ${difference.toFixed(2)}s!`
+                            );
                           } else {
-                            console.log(`⚡ [MODE 1.5 EXPORT]   - ✅ Final duration correct (within 0.5s tolerance)`);
+                            console.log(
+                              "⚡ [MODE 1.5 EXPORT]   - ✅ Final duration correct (within 0.5s tolerance)"
+                            );
                           }
                         }
                         concatResolve();
@@ -606,48 +705,77 @@ export function setupFFmpegIPC(): void {
                       concatReject(new Error(error));
                     }
                   } else {
-                    console.error(`❌ [MODE 1.5 EXPORT] Concatenation failed with code ${code}`);
-                    console.error(`❌ [MODE 1.5 EXPORT] FFmpeg stderr:\n${concatStderr}`);
-                    concatReject(new Error(`FFmpeg concat failed with code ${code}`));
+                    console.error(
+                      `❌ [MODE 1.5 EXPORT] Concatenation failed with code ${code}`
+                    );
+                    console.error(
+                      `❌ [MODE 1.5 EXPORT] FFmpeg stderr:\n${concatStderr}`
+                    );
+                    concatReject(
+                      new Error(`FFmpeg concat failed with code ${code}`)
+                    );
                   }
                 });
 
                 // Handle process errors
-                concatProcess.on('error', (err: Error) => {
-                  console.error(`❌ [MODE 1.5 EXPORT] FFmpeg process error:`, err);
+                concatProcess.on("error", (err: Error) => {
+                  console.error(
+                    "❌ [MODE 1.5 EXPORT] FFmpeg process error:",
+                    err
+                  );
                   concatReject(err);
                 });
               });
 
               // TODO: Audio mixing not yet implemented for Mode 1.5
               if (audioFiles && audioFiles.length > 0) {
-                console.warn('⚠️ [MODE 1.5 EXPORT] Audio mixing not yet implemented for Mode 1.5');
-                console.warn('⚠️ [MODE 1.5 EXPORT] Falling back to Mode 3 for audio support');
-                throw new Error('Audio mixing not supported in Mode 1.5 - falling back to Mode 3');
+                console.warn(
+                  "⚠️ [MODE 1.5 EXPORT] Audio mixing not yet implemented for Mode 1.5"
+                );
+                console.warn(
+                  "⚠️ [MODE 1.5 EXPORT] Falling back to Mode 3 for audio support"
+                );
+                throw new Error(
+                  "Audio mixing not supported in Mode 1.5 - falling back to Mode 3"
+                );
               }
 
               // Success! Export complete
-              console.log('⚡ [MODE 1.5 EXPORT] ============================================');
-              console.log('⚡ [MODE 1.5 EXPORT] ✅ Export complete!');
+              console.log(
+                "⚡ [MODE 1.5 EXPORT] ============================================"
+              );
+              console.log("⚡ [MODE 1.5 EXPORT] ✅ Export complete!");
               console.log(`⚡ [MODE 1.5 EXPORT] Output: ${outputFile}`);
-              console.log(`⚡ [MODE 1.5 EXPORT] Mode: video-normalization (5-7x faster than Mode 3)`);
-              console.log('⚡ [MODE 1.5 EXPORT] ============================================');
+              console.log(
+                "⚡ [MODE 1.5 EXPORT] Mode: video-normalization (5-7x faster than Mode 3)"
+              );
+              console.log(
+                "⚡ [MODE 1.5 EXPORT] ============================================"
+              );
 
               // Return success result
               resolve({
                 success: true,
-                outputFile: outputFile,
-                method: 'spawn'
+                outputFile,
+                method: "spawn",
               });
 
               return; // Exit early - don't continue to other mode validations
-
             } catch (error: any) {
               // Mode 1.5 failed - fall back to Mode 3 (frame rendering)
-              console.error('❌ [MODE 1.5 EXPORT] ============================================');
-              console.error('❌ [MODE 1.5 EXPORT] Normalization failed, falling back to Mode 3');
-              console.error('❌ [MODE 1.5 EXPORT] Error:', error.message || error);
-              console.error('❌ [MODE 1.5 EXPORT] ============================================');
+              console.error(
+                "❌ [MODE 1.5 EXPORT] ============================================"
+              );
+              console.error(
+                "❌ [MODE 1.5 EXPORT] Normalization failed, falling back to Mode 3"
+              );
+              console.error(
+                "❌ [MODE 1.5 EXPORT] Error:",
+                error.message || error
+              );
+              console.error(
+                "❌ [MODE 1.5 EXPORT] ============================================"
+              );
 
               // Don't reject - fall through to Mode 3 validation below
               // This ensures exports don't fail if normalization has issues
@@ -719,8 +847,12 @@ export function setupFFmpegIPC(): void {
             }
           } else if (options.useVideoInput && options.videoInputPath) {
             // MODE 2: Direct video input with filters - validate video file exists
-            console.log('⚡ [MODE 2 VALIDATION] Validating video input file...');
-            console.log(`⚡ [MODE 2 VALIDATION] Video path: ${options.videoInputPath}`);
+            console.log(
+              "⚡ [MODE 2 VALIDATION] Validating video input file..."
+            );
+            console.log(
+              `⚡ [MODE 2 VALIDATION] Video path: ${options.videoInputPath}`
+            );
 
             if (!fs.existsSync(options.videoInputPath)) {
               const error = `Mode 2 video input not found: ${options.videoInputPath}`;
@@ -729,11 +861,15 @@ export function setupFFmpegIPC(): void {
               return;
             }
 
-            console.log('⚡ [MODE 2 VALIDATION] ✅ Video file validated successfully');
-            console.log('⚡ [MODE 2 VALIDATION] Frame rendering: SKIPPED (using direct video input)');
+            console.log(
+              "⚡ [MODE 2 VALIDATION] ✅ Video file validated successfully"
+            );
+            console.log(
+              "⚡ [MODE 2 VALIDATION] Frame rendering: SKIPPED (using direct video input)"
+            );
           } else {
             // MODE 3: Frame-based mode - verify frames exist
-            console.log('🎨 [MODE 3 VALIDATION] Validating frame files...');
+            console.log("🎨 [MODE 3 VALIDATION] Validating frame files...");
 
             if (!fs.existsSync(frameDir)) {
               const error: string = `Frame directory does not exist: ${frameDir}`;
@@ -755,7 +891,9 @@ export function setupFFmpegIPC(): void {
               return;
             }
 
-            console.log(`🎨 [MODE 3 VALIDATION] ✅ Found ${frameFiles.length} frame files`);
+            console.log(
+              `🎨 [MODE 3 VALIDATION] ✅ Found ${frameFiles.length} frame files`
+            );
           }
 
           // Ensure output directory exists
@@ -1310,24 +1448,34 @@ async function normalizeVideo(
   targetHeight: number,
   targetFps: number,
   duration: number,
-  trimStart: number = 0,
-  trimEnd: number = 0
+  trimStart = 0,
+  trimEnd = 0
 ): Promise<void> {
   return new Promise<void>((resolve, reject) => {
-    console.log('⚡ [MODE 1.5 NORMALIZE] ============================================');
-    console.log('⚡ [MODE 1.5 NORMALIZE] Starting video normalization...');
+    console.log(
+      "⚡ [MODE 1.5 NORMALIZE] ============================================"
+    );
+    console.log("⚡ [MODE 1.5 NORMALIZE] Starting video normalization...");
     console.log(`⚡ [MODE 1.5 NORMALIZE] Input: ${path.basename(inputPath)}`);
     console.log(`⚡ [MODE 1.5 NORMALIZE] Output: ${path.basename(outputPath)}`);
-    console.log(`⚡ [MODE 1.5 NORMALIZE] Target: ${targetWidth}x${targetHeight} @ ${targetFps}fps`);
-    console.log(`⚡ [MODE 1.5 NORMALIZE] 📏 DURATION CHECK:`);
-    console.log(`⚡ [MODE 1.5 NORMALIZE]   - Input duration parameter: ${duration}s (this is what should be preserved)`);
+    console.log(
+      `⚡ [MODE 1.5 NORMALIZE] Target: ${targetWidth}x${targetHeight} @ ${targetFps}fps`
+    );
+    console.log("⚡ [MODE 1.5 NORMALIZE] 📏 DURATION CHECK:");
+    console.log(
+      `⚡ [MODE 1.5 NORMALIZE]   - Input duration parameter: ${duration}s (this is what should be preserved)`
+    );
     console.log(`⚡ [MODE 1.5 NORMALIZE]   - Trim start: ${trimStart}s`);
     console.log(`⚡ [MODE 1.5 NORMALIZE]   - Trim end: ${trimEnd}s`);
 
     // Calculate effective duration (preserve original video length)
     const effectiveDuration = duration - trimStart - trimEnd;
-    console.log(`⚡ [MODE 1.5 NORMALIZE]   - Calculated effective duration: ${effectiveDuration}s`);
-    console.log(`⚡ [MODE 1.5 NORMALIZE]   - This will be set with FFmpeg -t parameter`);
+    console.log(
+      `⚡ [MODE 1.5 NORMALIZE]   - Calculated effective duration: ${effectiveDuration}s`
+    );
+    console.log(
+      "⚡ [MODE 1.5 NORMALIZE]   - This will be set with FFmpeg -t parameter"
+    );
 
     // Validate input file exists
     if (!fs.existsSync(inputPath)) {
@@ -1343,62 +1491,80 @@ async function normalizeVideo(
     const filterChain = `scale=${targetWidth}:${targetHeight}:force_original_aspect_ratio=decrease,pad=${targetWidth}:${targetHeight}:(ow-iw)/2:(oh-ih)/2:black`;
     console.log(`⚡ [MODE 1.5 NORMALIZE] Filter chain: ${filterChain}`);
 
-    const args: string[] = ['-y']; // Overwrite output
+    const args: string[] = ["-y"]; // Overwrite output
 
     // Apply trim start (seek to position) BEFORE input for faster seeking
     // WHY before input: Input seeking is much faster than output seeking
     if (trimStart && trimStart > 0) {
-      args.push('-ss', trimStart.toString());
-      console.log(`⚡ [MODE 1.5 NORMALIZE] Applying input seek: -ss ${trimStart}s`);
+      args.push("-ss", trimStart.toString());
+      console.log(
+        `⚡ [MODE 1.5 NORMALIZE] Applying input seek: -ss ${trimStart}s`
+      );
     }
 
     // Input file
-    args.push('-i', inputPath);
+    args.push("-i", inputPath);
 
     // Set effective duration (duration after trimming)
     // This preserves the original video length from the timeline
     if (effectiveDuration > 0) {
-      args.push('-t', effectiveDuration.toString());
-      console.log(`⚡ [MODE 1.5 NORMALIZE] Setting output duration: -t ${effectiveDuration}s`);
+      args.push("-t", effectiveDuration.toString());
+      console.log(
+        `⚡ [MODE 1.5 NORMALIZE] Setting output duration: -t ${effectiveDuration}s`
+      );
     } else {
-      console.warn(`⚠️ [MODE 1.5 NORMALIZE] Invalid effective duration: ${effectiveDuration}s, skipping duration parameter`);
+      console.warn(
+        `⚠️ [MODE 1.5 NORMALIZE] Invalid effective duration: ${effectiveDuration}s, skipping duration parameter`
+      );
     }
 
     // Video filters (scale + pad)
-    args.push('-vf', filterChain);
+    args.push("-vf", filterChain);
 
     // Frame rate conversion
-    args.push('-r', targetFps.toString());
+    args.push("-r", targetFps.toString());
 
     // Video encoding settings (matching Mode 2 patterns)
     args.push(
-      '-c:v', 'libx264',       // H.264 codec (universal compatibility)
-      '-preset', 'ultrafast',  // Fast encoding (prioritize speed over compression)
-      '-crf', '18',            // High quality (18 = visually lossless)
-      '-pix_fmt', 'yuv420p'    // Pixel format (ensures compatibility)
+      "-c:v",
+      "libx264", // H.264 codec (universal compatibility)
+      "-preset",
+      "ultrafast", // Fast encoding (prioritize speed over compression)
+      "-crf",
+      "18", // High quality (18 = visually lossless)
+      "-pix_fmt",
+      "yuv420p" // Pixel format (ensures compatibility)
     );
 
     // Audio settings - normalize to AAC for concat compatibility
     // WHY: FFmpeg concat requires identical audio codec/sample rate/channels across all inputs
     // Transcoding to AAC 48kHz stereo ensures all normalized videos can be concatenated
-    console.log('🎧 [MODE 1.5 NORMALIZE] Transcoding audio to AAC 48kHz stereo for compatibility...');
+    console.log(
+      "🎧 [MODE 1.5 NORMALIZE] Transcoding audio to AAC 48kHz stereo for compatibility..."
+    );
     args.push(
-      '-c:a', 'aac',         // Transcode to AAC codec (widely compatible)
-      '-b:a', '192k',        // Audio bitrate 192kbps (good quality)
-      '-ar', '48000',        // Sample rate 48kHz (standard for video)
-      '-ac', '2'             // Stereo (2 channels)
+      "-c:a",
+      "aac", // Transcode to AAC codec (widely compatible)
+      "-b:a",
+      "192k", // Audio bitrate 192kbps (good quality)
+      "-ar",
+      "48000", // Sample rate 48kHz (standard for video)
+      "-ac",
+      "2" // Stereo (2 channels)
     );
 
     // Audio sync (critical for fps conversion)
     // WHY: FPS changes can cause audio drift, aresample filter maintains sync
     // NOTE: -async flag was removed in FFmpeg 5.0 (Jan 2022), replaced with aresample filter
-    args.push('-af', 'aresample=async=1');
+    args.push("-af", "aresample=async=1");
 
     // Output file
     args.push(outputPath);
 
-    console.log(`⚡ [MODE 1.5 NORMALIZE] FFmpeg command: ffmpeg ${args.join(' ')}`);
-    console.log('⚡ [MODE 1.5 NORMALIZE] Starting FFmpeg process...');
+    console.log(
+      `⚡ [MODE 1.5 NORMALIZE] FFmpeg command: ffmpeg ${args.join(" ")}`
+    );
+    console.log("⚡ [MODE 1.5 NORMALIZE] Starting FFmpeg process...");
 
     // Get FFmpeg path
     const ffmpegPath = getFFmpegPath();
@@ -1406,63 +1572,79 @@ async function normalizeVideo(
     // Spawn FFmpeg process (matching existing patterns in buildFFmpegArgs)
     const ffmpegProcess = spawn(ffmpegPath, args, {
       windowsHide: true,
-      stdio: ['ignore', 'pipe', 'pipe']
+      stdio: ["ignore", "pipe", "pipe"],
     });
 
-    let stderrOutput = '';
-    let stdoutOutput = '';
+    let stderrOutput = "";
+    let stdoutOutput = "";
 
     // Capture stdout (usually empty)
-    ffmpegProcess.stdout?.on('data', (chunk: Buffer) => {
+    ffmpegProcess.stdout?.on("data", (chunk: Buffer) => {
       stdoutOutput += chunk.toString();
     });
 
     // Capture stderr for progress and errors
-    ffmpegProcess.stderr?.on('data', (chunk: Buffer) => {
+    ffmpegProcess.stderr?.on("data", (chunk: Buffer) => {
       const text = chunk.toString();
       stderrOutput += text;
 
       // Log progress (FFmpeg outputs progress to stderr)
       // Extract frame count for progress monitoring
-      if (text.includes('frame=')) {
+      if (text.includes("frame=")) {
         const frameMatch = text.match(/frame=\s*(\d+)/);
         const timeMatch = text.match(/time=(\d+:\d+:\d+\.\d+)/);
         if (frameMatch || timeMatch) {
-          const frame = frameMatch ? frameMatch[1] : '?';
-          const time = timeMatch ? timeMatch[1] : '?';
-          process.stdout.write(`⚡ [MODE 1.5 NORMALIZE] Progress: frame=${frame} time=${time}\r`);
+          const frame = frameMatch ? frameMatch[1] : "?";
+          const time = timeMatch ? timeMatch[1] : "?";
+          process.stdout.write(
+            `⚡ [MODE 1.5 NORMALIZE] Progress: frame=${frame} time=${time}\r`
+          );
         }
       }
     });
 
     // Handle process completion
-    ffmpegProcess.on('close', (code: number | null) => {
-      process.stdout.write('\n'); // Clear progress line
+    ffmpegProcess.on("close", (code: number | null) => {
+      process.stdout.write("\n"); // Clear progress line
 
       if (code === 0) {
         // Verify output file was created
         if (fs.existsSync(outputPath)) {
           const stats = fs.statSync(outputPath);
-          console.log(`⚡ [MODE 1.5 NORMALIZE] ✅ Normalization complete: ${path.basename(outputPath)}`);
-          console.log(`⚡ [MODE 1.5 NORMALIZE] Output size: ${(stats.size / 1024 / 1024).toFixed(2)} MB`);
+          console.log(
+            `⚡ [MODE 1.5 NORMALIZE] ✅ Normalization complete: ${path.basename(outputPath)}`
+          );
+          console.log(
+            `⚡ [MODE 1.5 NORMALIZE] Output size: ${(stats.size / 1024 / 1024).toFixed(2)} MB`
+          );
 
           // Try to get actual duration of the output file
-          console.log(`⚡ [MODE 1.5 NORMALIZE] 📏 VERIFYING OUTPUT DURATION...`);
+          console.log(
+            "⚡ [MODE 1.5 NORMALIZE] 📏 VERIFYING OUTPUT DURATION..."
+          );
           const ffmpegPath = getFFmpegPath();
           const ffprobeDir = path.dirname(ffmpegPath);
-          const ffprobeExe = process.platform === "win32" ? "ffprobe.exe" : "ffprobe";
+          const ffprobeExe =
+            process.platform === "win32" ? "ffprobe.exe" : "ffprobe";
           const ffprobePath = path.join(ffprobeDir, ffprobeExe);
 
           // Quick ffprobe to get duration
-          const probeProcess = spawn(ffprobePath, [
-            "-v", "error",
-            "-show_entries", "format=duration",
-            "-of", "default=noprint_wrappers=1:nokey=1",
-            outputPath
-          ], {
-            windowsHide: true,
-            stdio: ["ignore", "pipe", "pipe"]
-          });
+          const probeProcess = spawn(
+            ffprobePath,
+            [
+              "-v",
+              "error",
+              "-show_entries",
+              "format=duration",
+              "-of",
+              "default=noprint_wrappers=1:nokey=1",
+              outputPath,
+            ],
+            {
+              windowsHide: true,
+              stdio: ["ignore", "pipe", "pipe"],
+            }
+          );
 
           let actualDuration = "";
           probeProcess.stdout?.on("data", (chunk: Buffer) => {
@@ -1472,24 +1654,42 @@ async function normalizeVideo(
           probeProcess.on("close", (probeCode: number | null) => {
             if (probeCode === 0 && actualDuration) {
               const actualDurationFloat = parseFloat(actualDuration);
-              console.log(`⚡ [MODE 1.5 NORMALIZE]   - Expected duration: ${effectiveDuration}s`);
-              console.log(`⚡ [MODE 1.5 NORMALIZE]   - Actual duration: ${actualDurationFloat.toFixed(2)}s`);
-              const difference = Math.abs(actualDurationFloat - effectiveDuration);
+              console.log(
+                `⚡ [MODE 1.5 NORMALIZE]   - Expected duration: ${effectiveDuration}s`
+              );
+              console.log(
+                `⚡ [MODE 1.5 NORMALIZE]   - Actual duration: ${actualDurationFloat.toFixed(2)}s`
+              );
+              const difference = Math.abs(
+                actualDurationFloat - effectiveDuration
+              );
               if (difference > 0.1) {
-                console.warn(`⚠️ [MODE 1.5 NORMALIZE]   - DURATION MISMATCH: Difference of ${difference.toFixed(2)}s detected!`);
+                console.warn(
+                  `⚠️ [MODE 1.5 NORMALIZE]   - DURATION MISMATCH: Difference of ${difference.toFixed(2)}s detected!`
+                );
               } else {
-                console.log(`⚡ [MODE 1.5 NORMALIZE]   - ✅ Duration preserved correctly (within 0.1s tolerance)`);
+                console.log(
+                  "⚡ [MODE 1.5 NORMALIZE]   - ✅ Duration preserved correctly (within 0.1s tolerance)"
+                );
               }
             } else {
-              console.log(`⚡ [MODE 1.5 NORMALIZE]   - Could not verify actual duration (ffprobe unavailable)`);
+              console.log(
+                "⚡ [MODE 1.5 NORMALIZE]   - Could not verify actual duration (ffprobe unavailable)"
+              );
             }
-            console.log('⚡ [MODE 1.5 NORMALIZE] ============================================');
+            console.log(
+              "⚡ [MODE 1.5 NORMALIZE] ============================================"
+            );
             resolve();
           });
 
           probeProcess.on("error", () => {
-            console.log(`⚡ [MODE 1.5 NORMALIZE]   - Could not verify actual duration (ffprobe error)`);
-            console.log('⚡ [MODE 1.5 NORMALIZE] ============================================');
+            console.log(
+              "⚡ [MODE 1.5 NORMALIZE]   - Could not verify actual duration (ffprobe error)"
+            );
+            console.log(
+              "⚡ [MODE 1.5 NORMALIZE] ============================================"
+            );
             resolve();
           });
         } else {
@@ -1498,17 +1698,25 @@ async function normalizeVideo(
           reject(new Error(error));
         }
       } else {
-        console.error(`❌ [MODE 1.5 NORMALIZE] Normalization failed with code ${code}`);
-        console.error(`❌ [MODE 1.5 NORMALIZE] FFmpeg stderr:\n${stderrOutput}`);
-        console.error('❌ [MODE 1.5 NORMALIZE] ============================================');
+        console.error(
+          `❌ [MODE 1.5 NORMALIZE] Normalization failed with code ${code}`
+        );
+        console.error(
+          `❌ [MODE 1.5 NORMALIZE] FFmpeg stderr:\n${stderrOutput}`
+        );
+        console.error(
+          "❌ [MODE 1.5 NORMALIZE] ============================================"
+        );
         reject(new Error(`FFmpeg normalization failed with code ${code}`));
       }
     });
 
     // Handle process errors
-    ffmpegProcess.on('error', (error: Error) => {
-      console.error(`❌ [MODE 1.5 NORMALIZE] FFmpeg process error:`, error);
-      console.error('❌ [MODE 1.5 NORMALIZE] ============================================');
+    ffmpegProcess.on("error", (error: Error) => {
+      console.error("❌ [MODE 1.5 NORMALIZE] FFmpeg process error:", error);
+      console.error(
+        "❌ [MODE 1.5 NORMALIZE] ============================================"
+      );
       reject(error);
     });
   });
@@ -1622,19 +1830,21 @@ function buildFFmpegArgs(
   // MODE 2: Direct video input with FFmpeg filters (text/stickers)
   // =============================================================================
   if (useVideoInput && videoInputPath) {
-    console.log('⚡ [MODE 2] ============================================');
-    console.log('⚡ [MODE 2] Entering Mode 2: Direct video input with filters');
+    console.log("⚡ [MODE 2] ============================================");
+    console.log("⚡ [MODE 2] Entering Mode 2: Direct video input with filters");
     console.log(`⚡ [MODE 2] Video input path: ${videoInputPath}`);
-    console.log(`⚡ [MODE 2] Trim settings: start=${trimStart || 0}s, end=${trimEnd || 0}s`);
+    console.log(
+      `⚡ [MODE 2] Trim settings: start=${trimStart || 0}s, end=${trimEnd || 0}s`
+    );
     console.log(`⚡ [MODE 2] Duration: ${duration}s`);
-    debugLog('[FFmpeg] MODE 2: Using direct video input with filters');
+    debugLog("[FFmpeg] MODE 2: Using direct video input with filters");
     const args: string[] = ["-y"]; // Overwrite output
 
     // Validate video file exists
     if (!fs.existsSync(videoInputPath)) {
       throw new Error(`Video source not found: ${videoInputPath}`);
     }
-    console.log('⚡ [MODE 2] ✅ Video file validated successfully');
+    console.log("⚡ [MODE 2] ✅ Video file validated successfully");
 
     // Apply trim start (seek to position) BEFORE input for faster seeking
     if (trimStart && trimStart > 0) {
@@ -1666,38 +1876,46 @@ function buildFFmpegArgs(
     // Apply video effects first (if any)
     if (filterChain) {
       filters.push(filterChain);
-      console.log(`⚡ [MODE 2] Video effects filter: ${filterChain.substring(0, 100)}...`);
+      console.log(
+        `⚡ [MODE 2] Video effects filter: ${filterChain.substring(0, 100)}...`
+      );
     }
 
     // Apply sticker overlays (middle layer)
     if (stickerFilterChain) {
       filters.push(stickerFilterChain);
-      console.log(`⚡ [MODE 2] Sticker filter chain: ${stickerFilterChain.substring(0, 100)}...`);
+      console.log(
+        `⚡ [MODE 2] Sticker filter chain: ${stickerFilterChain.substring(0, 100)}...`
+      );
     }
 
     // Apply text overlays (on top of everything)
     if (textFilterChain) {
       filters.push(textFilterChain);
-      console.log(`⚡ [MODE 2] Text filter chain: ${textFilterChain.substring(0, 100)}...`);
+      console.log(
+        `⚡ [MODE 2] Text filter chain: ${textFilterChain.substring(0, 100)}...`
+      );
     }
 
     // Log filter summary
     console.log(`⚡ [MODE 2] Total filters: ${filters.length}`);
-    console.log(`⚡ [MODE 2] Filters: ${filters.length > 0 ? filters.map((f, i) => `[${i}] ${f.substring(0, 50)}`).join(', ') : 'none'}`);
+    console.log(
+      `⚡ [MODE 2] Filters: ${filters.length > 0 ? filters.map((f, i) => `[${i}] ${f.substring(0, 50)}`).join(", ") : "none"}`
+    );
 
     // Apply combined filters if any exist
     if (filters.length > 0) {
       if (stickerSources && stickerSources.length > 0) {
         // Complex filter with multiple inputs
-        args.push("-filter_complex", filters.join(';'));
-        console.log('⚡ [MODE 2] Using -filter_complex (multiple inputs)');
+        args.push("-filter_complex", filters.join(";"));
+        console.log("⚡ [MODE 2] Using -filter_complex (multiple inputs)");
       } else {
         // Simple filters can use -vf
-        args.push("-vf", filters.join(','));
-        console.log('⚡ [MODE 2] Using -vf (single input)');
+        args.push("-vf", filters.join(","));
+        console.log("⚡ [MODE 2] Using -vf (single input)");
       }
     } else {
-      console.log('⚡ [MODE 2] No filters applied');
+      console.log("⚡ [MODE 2] No filters applied");
     }
 
     // Add audio inputs and mixing (if provided)
@@ -1718,17 +1936,28 @@ function buildFFmpegArgs(
           args.push(
             "-filter_complex",
             `[${audioInputIndex}:a]adelay=${Math.round(audioFile.startTime * 1000)}|${Math.round(audioFile.startTime * 1000)}[audio]`,
-            "-map", "0:v",
-            "-map", "[audio]"
+            "-map",
+            "0:v",
+            "-map",
+            "[audio]"
           );
         } else {
           args.push("-map", "0:v", "-map", `${audioInputIndex}:a`);
         }
       } else {
         // Multiple audio files mixing
-        const inputMaps: string[] = audioFiles.map((_, i) => `[${i + 1 + stickerCount}:a]`);
+        const inputMaps: string[] = audioFiles.map(
+          (_, i) => `[${i + 1 + stickerCount}:a]`
+        );
         const mixFilter = `${inputMaps.join("")}amix=inputs=${audioFiles.length}:duration=longest[audio]`;
-        args.push("-filter_complex", mixFilter, "-map", "0:v", "-map", "[audio]");
+        args.push(
+          "-filter_complex",
+          mixFilter,
+          "-map",
+          "0:v",
+          "-map",
+          "[audio]"
+        );
       }
       args.push("-c:a", "aac", "-b:a", "128k");
     }
@@ -1741,13 +1970,15 @@ function buildFFmpegArgs(
     args.push("-movflags", "+faststart");
     args.push(outputFile);
 
-    console.log('⚡ [MODE 2] ✅ FFmpeg args built successfully');
-    console.log(`⚡ [MODE 2] Codec settings: libx264, preset=${preset}, crf=${crf}`);
+    console.log("⚡ [MODE 2] ✅ FFmpeg args built successfully");
+    console.log(
+      `⚡ [MODE 2] Codec settings: libx264, preset=${preset}, crf=${crf}`
+    );
     console.log(`⚡ [MODE 2] Audio files: ${audioFiles?.length || 0}`);
     console.log(`⚡ [MODE 2] Sticker inputs: ${stickerCount}`);
     console.log(`⚡ [MODE 2] Total args count: ${args.length}`);
-    console.log('⚡ [MODE 2] ============================================');
-    debugLog('[FFmpeg] MODE 2 args built successfully');
+    console.log("⚡ [MODE 2] ============================================");
+    debugLog("[FFmpeg] MODE 2 args built successfully");
     return args;
   }
   // =============================================================================
@@ -1926,7 +2157,7 @@ function buildFFmpegArgs(
         continue;
       }
       // Add as input (will be indexed as [1], [2], etc. after base video [0])
-      args.push("-loop", "1");  // Loop single image
+      args.push("-loop", "1"); // Loop single image
       args.push("-i", sticker.path);
     }
   }
@@ -1953,10 +2184,10 @@ function buildFFmpegArgs(
   if (combinedFilters.length > 0) {
     // For complex filters with multiple inputs, use filter_complex
     if (stickerSources && stickerSources.length > 0) {
-      args.push("-filter_complex", combinedFilters.join(';'));
+      args.push("-filter_complex", combinedFilters.join(";"));
     } else {
       // Simple filters can use -vf
-      args.push("-vf", combinedFilters.join(','));
+      args.push("-vf", combinedFilters.join(","));
     }
   }
 

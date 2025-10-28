@@ -75,7 +75,9 @@ test.describe("Text Overlay Testing (Subtask 3B)", () => {
     }
 
     // Wait for text overlay element to appear on timeline
-    await page.waitForSelector('[data-testid="timeline-element"]', { timeout: 5000 });
+    await page.waitForSelector('[data-testid="timeline-element"]', {
+      timeout: 5000,
+    });
 
     // Verify that a text element was added to the timeline
     const timelineElementsAfter = await page
@@ -191,7 +193,9 @@ test.describe("Text Overlay Testing (Subtask 3B)", () => {
     // Switch to another panel and back
     await page.getByTestId("media-panel-tab").click();
     // Wait for media panel to be visible
-    await expect(page.getByTestId("media-panel")).toBeVisible({ timeout: 2000 });
+    await expect(page.getByTestId("media-panel")).toBeVisible({
+      timeout: 2000,
+    });
 
     await page.getByTestId("text-panel-tab").click();
 

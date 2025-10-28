@@ -782,7 +782,12 @@ export function recommendModelsForPrompt(prompt: string): string[] {
 export const MODEL_CATEGORIES = {
   PHOTOREALISTIC: ["imagen4-ultra", "wan-v2-2"],
   ARTISTIC: ["seeddream-v3", "seeddream-v4", "qwen-image"], // Add V4 to artistic
-  VERSATILE: ["qwen-image", "flux-pro-v11-ultra", "nano-banana", "reve-text-to-image"], // Add nano-banana, reve-text-to-image
+  VERSATILE: [
+    "qwen-image",
+    "flux-pro-v11-ultra",
+    "nano-banana",
+    "reve-text-to-image",
+  ], // Add nano-banana, reve-text-to-image
   FAST: ["seeddream-v3", "nano-banana", "qwen-image", "reve-text-to-image"], // Add nano-banana, reve-text-to-image to fast
   HIGH_QUALITY: [
     "imagen4-ultra",
@@ -790,5 +795,10 @@ export const MODEL_CATEGORIES = {
     "flux-pro-v11-ultra",
     "seeddream-v4",
   ], // Add V4
-  COST_EFFECTIVE: ["seeddream-v3", "nano-banana", "qwen-image", "reve-text-to-image"], // Add nano-banana, reve-text-to-image
+  COST_EFFECTIVE: [
+    "seeddream-v3",
+    "nano-banana",
+    "qwen-image",
+    "reve-text-to-image",
+  ], // Add nano-banana, reve-text-to-image
 } as const;

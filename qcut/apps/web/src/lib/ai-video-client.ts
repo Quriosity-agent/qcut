@@ -41,7 +41,7 @@ function getModelConfig(modelId: string): AIModel | undefined {
  * @returns true if model is a Sora 2 model
  */
 function isSora2Model(modelId: string): boolean {
-  return modelId.startsWith('sora2_');
+  return modelId.startsWith("sora2_");
 }
 
 /**
@@ -52,18 +52,26 @@ function isSora2Model(modelId: string): boolean {
  * @param modelId - Sora 2 model identifier
  * @returns Specific model type or null if not a Sora 2 model
  */
-function getSora2ModelType(modelId: string): 'text-to-video' | 'text-to-video-pro' | 'image-to-video' | 'image-to-video-pro' | 'video-to-video-remix' | null {
+function getSora2ModelType(
+  modelId: string
+):
+  | "text-to-video"
+  | "text-to-video-pro"
+  | "image-to-video"
+  | "image-to-video-pro"
+  | "video-to-video-remix"
+  | null {
   switch (modelId) {
-    case 'sora2_text_to_video':
-      return 'text-to-video';
-    case 'sora2_text_to_video_pro':
-      return 'text-to-video-pro';
-    case 'sora2_image_to_video':
-      return 'image-to-video';
-    case 'sora2_image_to_video_pro':
-      return 'image-to-video-pro';
-    case 'sora2_video_to_video_remix':
-      return 'video-to-video-remix';
+    case "sora2_text_to_video":
+      return "text-to-video";
+    case "sora2_text_to_video_pro":
+      return "text-to-video-pro";
+    case "sora2_image_to_video":
+      return "image-to-video";
+    case "sora2_image_to_video_pro":
+      return "image-to-video-pro";
+    case "sora2_video_to_video_remix":
+      return "video-to-video-remix";
     default:
       return null;
   }
@@ -82,11 +90,37 @@ type Sora2BasePayload = {
  * Discriminated union for Sora 2 payloads with type field for narrowing
  */
 type Sora2Payload =
-  | { type: 'text-to-video'; prompt: string; duration: number; aspect_ratio: string; resolution: "720p" }
-  | { type: 'text-to-video-pro'; prompt: string; duration: number; aspect_ratio: string; resolution: string }
-  | { type: 'image-to-video'; prompt: string; duration: number; aspect_ratio: string; resolution: string; image_url: string }
-  | { type: 'image-to-video-pro'; prompt: string; duration: number; aspect_ratio: string; resolution: string; image_url: string }
-  | { type: 'video-to-video-remix'; prompt: string; video_id: string }; // No duration/aspect_ratio
+  | {
+      type: "text-to-video";
+      prompt: string;
+      duration: number;
+      aspect_ratio: string;
+      resolution: "720p";
+    }
+  | {
+      type: "text-to-video-pro";
+      prompt: string;
+      duration: number;
+      aspect_ratio: string;
+      resolution: string;
+    }
+  | {
+      type: "image-to-video";
+      prompt: string;
+      duration: number;
+      aspect_ratio: string;
+      resolution: string;
+      image_url: string;
+    }
+  | {
+      type: "image-to-video-pro";
+      prompt: string;
+      duration: number;
+      aspect_ratio: string;
+      resolution: string;
+      image_url: string;
+    }
+  | { type: "video-to-video-remix"; prompt: string; video_id: string }; // No duration/aspect_ratio
 
 /**
  * Converts parameters for Sora 2 models
@@ -110,41 +144,48 @@ function convertSora2Parameters(
     | Sora2ImageToVideoInput
     | Sora2ImageToVideoProInput
     | Sora2VideoToVideoRemixInput,
-  modelType: 'text-to-video' | 'text-to-video-pro' | 'image-to-video' | 'image-to-video-pro' | 'video-to-video-remix'
+  modelType:
+    | "text-to-video"
+    | "text-to-video-pro"
+    | "image-to-video"
+    | "image-to-video-pro"
+    | "video-to-video-remix"
 ): Sora2Payload {
   const base = {
     prompt: params.prompt || "",
-    duration: 'duration' in params ? params.duration || 4 : 4, // 4, 8, or 12
-    aspect_ratio: 'aspect_ratio' in params ? params.aspect_ratio || "16:9" : "16:9",
+    duration: "duration" in params ? params.duration || 4 : 4, // 4, 8, or 12
+    aspect_ratio:
+      "aspect_ratio" in params ? params.aspect_ratio || "16:9" : "16:9",
   };
 
   // Text-to-video standard - 720p only
-  if (modelType === 'text-to-video') {
+  if (modelType === "text-to-video") {
     return {
-      type: 'text-to-video',
+      type: "text-to-video",
       ...base,
       resolution: "720p" as const,
     };
   }
 
   // Text-to-video Pro - supports 1080p
-  if (modelType === 'text-to-video-pro') {
-    const resolution = 'resolution' in params ? params.resolution || "1080p" : "1080p";
+  if (modelType === "text-to-video-pro") {
+    const resolution =
+      "resolution" in params ? params.resolution || "1080p" : "1080p";
     return {
-      type: 'text-to-video-pro',
+      type: "text-to-video-pro",
       ...base,
       resolution, // Default 1080p, can be 720p or 1080p
     };
   }
 
   // Image-to-video standard - auto or 720p
-  if (modelType === 'image-to-video') {
-    if (!('image_url' in params) || !params.image_url) {
+  if (modelType === "image-to-video") {
+    if (!("image_url" in params) || !params.image_url) {
       throw new Error("Sora 2 image-to-video requires image_url parameter");
     }
     const resolution = params.resolution || "auto";
     return {
-      type: 'image-to-video',
+      type: "image-to-video",
       ...base,
       image_url: params.image_url,
       resolution,
@@ -152,13 +193,13 @@ function convertSora2Parameters(
   }
 
   // Image-to-video Pro - supports 1080p
-  if (modelType === 'image-to-video-pro') {
-    if (!('image_url' in params) || !params.image_url) {
+  if (modelType === "image-to-video-pro") {
+    if (!("image_url" in params) || !params.image_url) {
       throw new Error("Sora 2 image-to-video-pro requires image_url parameter");
     }
     const resolution = params.resolution || "auto";
     return {
-      type: 'image-to-video-pro',
+      type: "image-to-video-pro",
       ...base,
       image_url: params.image_url,
       resolution, // Can be auto, 720p, or 1080p
@@ -166,12 +207,14 @@ function convertSora2Parameters(
   }
 
   // Video-to-Video Remix - transforms existing Sora videos
-  if (modelType === 'video-to-video-remix') {
-    if (!('video_id' in params) || !params.video_id) {
-      throw new Error("Sora 2 video-to-video remix requires video_id from a previous Sora generation");
+  if (modelType === "video-to-video-remix") {
+    if (!("video_id" in params) || !params.video_id) {
+      throw new Error(
+        "Sora 2 video-to-video remix requires video_id from a previous Sora generation"
+      );
     }
     return {
-      type: 'video-to-video-remix',
+      type: "video-to-video-remix",
       prompt: params.prompt || "",
       video_id: params.video_id, // REQUIRED: from previous Sora generation
       // Note: No duration/aspect_ratio - preserved from source video
@@ -200,8 +243,8 @@ function convertSora2Parameters(
 function parseSora2Response(
   response: any,
   requestedDuration: Sora2Duration,
-  requestedResolution: string = "auto",
-  requestedAspectRatio: string = "16:9"
+  requestedResolution = "auto",
+  requestedAspectRatio = "16:9"
 ): {
   videoUrl: string;
   videoId: string;
@@ -235,7 +278,7 @@ function parseSora2Response(
     };
   }
 
-  throw new Error('Invalid Sora 2 response format: missing video.url property');
+  throw new Error("Invalid Sora 2 response format: missing video.url property");
 }
 
 export interface VideoGenerationRequest {
@@ -372,7 +415,9 @@ export async function generateVideo(
 
     const endpoint = modelConfig.endpoints.text_to_video;
     if (!endpoint) {
-      throw new Error(`Model ${request.model} does not support text-to-video generation`);
+      throw new Error(
+        `Model ${request.model} does not support text-to-video generation`
+      );
     }
 
     const jobId = generateJobId();
@@ -388,15 +433,18 @@ export async function generateVideo(
     if (isSora2Model(request.model)) {
       const modelType = getSora2ModelType(request.model);
       if (modelType) {
-        const sora2Payload = convertSora2Parameters({
-          prompt: request.prompt,
-          duration: request.duration,
-          resolution: request.resolution,
-          aspect_ratio: request.aspect_ratio,
-        } as any, modelType); // Type assertion at object level - convertSora2Parameters handles validation
+        const sora2Payload = convertSora2Parameters(
+          {
+            prompt: request.prompt,
+            duration: request.duration,
+            resolution: request.resolution,
+            aspect_ratio: request.aspect_ratio,
+          } as any,
+          modelType
+        ); // Type assertion at object level - convertSora2Parameters handles validation
 
         // Strip the 'type' discriminator before sending to API
-        const { type, ...apiPayload} = sora2Payload;
+        const { type, ...apiPayload } = sora2Payload;
         payload = apiPayload;
       } else {
         // Fallback if model type detection fails
@@ -553,17 +601,16 @@ export async function generateVideo(
             aspectRatio: parsed.aspectRatio,
           });
         } catch (error) {
-          console.warn("⚠️ Failed to parse as Sora 2 response, using default format");
+          console.warn(
+            "⚠️ Failed to parse as Sora 2 response, using default format"
+          );
         }
       }
 
       // Handle streaming download if requested
       if (downloadOptions?.downloadToMemory) {
         console.log("📥 Starting streaming download of video...");
-        const videoData = await streamVideoDownload(
-          videoUrl,
-          downloadOptions
-        );
+        const videoData = await streamVideoDownload(videoUrl, downloadOptions);
         if (downloadOptions.onComplete) {
           downloadOptions.onComplete(videoData);
         }
@@ -631,17 +678,16 @@ export async function generateVideo(
             aspectRatio: parsed.aspectRatio,
           });
         } catch (error) {
-          console.warn("⚠️ Failed to parse as Sora 2 response, using default format");
+          console.warn(
+            "⚠️ Failed to parse as Sora 2 response, using default format"
+          );
         }
       }
 
       // Handle streaming download if requested
       if (downloadOptions?.downloadToMemory) {
         console.log("📥 Starting streaming download of direct video...");
-        const videoData = await streamVideoDownload(
-          videoUrl,
-          downloadOptions
-        );
+        const videoData = await streamVideoDownload(videoUrl, downloadOptions);
         if (downloadOptions.onComplete) {
           downloadOptions.onComplete(videoData);
         }
@@ -1040,14 +1086,21 @@ export async function generateVideoFromImage(
     // Handle Sora 2 image-to-video models
     if (isSora2Model(request.model)) {
       const modelType = getSora2ModelType(request.model);
-      if (modelType && (modelType === 'image-to-video' || modelType === 'image-to-video-pro')) {
-        const sora2Payload = convertSora2Parameters({
-          prompt: request.prompt || "Create a cinematic video from this image",
-          image_url: imageUrl,
-          duration: request.duration,
-          resolution: request.resolution,
-          aspect_ratio: request.aspect_ratio || "auto",
-        } as any, modelType); // Type assertion at object level - convertSora2Parameters handles validation
+      if (
+        modelType &&
+        (modelType === "image-to-video" || modelType === "image-to-video-pro")
+      ) {
+        const sora2Payload = convertSora2Parameters(
+          {
+            prompt:
+              request.prompt || "Create a cinematic video from this image",
+            image_url: imageUrl,
+            duration: request.duration,
+            resolution: request.resolution,
+            aspect_ratio: request.aspect_ratio || "auto",
+          } as any,
+          modelType
+        ); // Type assertion at object level - convertSora2Parameters handles validation
 
         // Strip the 'type' discriminator before sending to API
         const { type, ...apiPayload } = sora2Payload;
@@ -1211,9 +1264,11 @@ export async function generateAvatarVideo(
       }
       // Convert source video to data URL (for WAN model)
       const sourceVideoUrl = await fileToDataURL(request.sourceVideo);
-      endpoint = modelConfig.endpoints.text_to_video || '';
+      endpoint = modelConfig.endpoints.text_to_video || "";
       if (!endpoint) {
-        throw new Error(`Model ${request.model} does not have a valid endpoint`);
+        throw new Error(
+          `Model ${request.model} does not have a valid endpoint`
+        );
       }
       payload = {
         ...(modelConfig.default_params || {}), // Defaults first
@@ -1230,9 +1285,11 @@ export async function generateAvatarVideo(
       }
       // Convert audio to data URL
       const audioUrl = await fileToDataURL(request.audioFile);
-      endpoint = modelConfig.endpoints.text_to_video || '';
+      endpoint = modelConfig.endpoints.text_to_video || "";
       if (!endpoint) {
-        throw new Error(`Model ${request.model} does not have a valid endpoint`);
+        throw new Error(
+          `Model ${request.model} does not have a valid endpoint`
+        );
       }
       payload = {
         ...(modelConfig.default_params || {}), // Defaults first
@@ -1247,9 +1304,11 @@ export async function generateAvatarVideo(
       }
       // Convert audio to data URL
       const audioUrl = await fileToDataURL(request.audioFile);
-      endpoint = modelConfig.endpoints.text_to_video || '';
+      endpoint = modelConfig.endpoints.text_to_video || "";
       if (!endpoint) {
-        throw new Error(`Model ${request.model} does not have a valid endpoint`);
+        throw new Error(
+          `Model ${request.model} does not have a valid endpoint`
+        );
       }
       payload = {
         ...(modelConfig.default_params || {}), // Defaults first

@@ -279,9 +279,9 @@ class FalAIClient {
         body: formData,
       });
 
-      const data = (await response.json().catch(() => null)) as
-        | { url?: string }
-        | null;
+      const data = (await response.json().catch(() => null)) as {
+        url?: string;
+      } | null;
 
       if (!response.ok) {
         const errorMessage = `FAL image upload failed: ${response.status} ${response.statusText}`;
@@ -713,7 +713,10 @@ class FalAIClient {
         params,
       });
 
-      const response = await this.makeRequest<Veo31Response>(endpoint, params as unknown as Record<string, unknown>);
+      const response = await this.makeRequest<Veo31Response>(
+        endpoint,
+        params as unknown as Record<string, unknown>
+      );
 
       if (!response.video?.url) {
         throw new Error("No video URL in Veo 3.1 Fast response");
@@ -730,7 +733,10 @@ class FalAIClient {
         operation: "generateVeo31FastTextToVideo",
       });
 
-      const errorMessage = error instanceof Error ? error.message : "Veo 3.1 Fast generation failed";
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : "Veo 3.1 Fast generation failed";
       return {
         job_id: `veo31_fast_error_${Date.now()}`,
         status: "failed",
@@ -754,7 +760,10 @@ class FalAIClient {
         params,
       });
 
-      const response = await this.makeRequest<Veo31Response>(endpoint, params as unknown as Record<string, unknown>);
+      const response = await this.makeRequest<Veo31Response>(
+        endpoint,
+        params as unknown as Record<string, unknown>
+      );
 
       if (!response.video?.url) {
         throw new Error("No video URL in Veo 3.1 Fast response");
@@ -771,7 +780,10 @@ class FalAIClient {
         operation: "generateVeo31FastImageToVideo",
       });
 
-      const errorMessage = error instanceof Error ? error.message : "Veo 3.1 Fast generation failed";
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : "Veo 3.1 Fast generation failed";
       return {
         job_id: `veo31_fast_img2vid_error_${Date.now()}`,
         status: "failed",
@@ -789,13 +801,17 @@ class FalAIClient {
     params: Veo31FrameToVideoInput
   ): Promise<VideoGenerationResponse> {
     try {
-      const endpoint = "https://fal.run/fal-ai/veo3.1/fast/first-last-frame-to-video";
+      const endpoint =
+        "https://fal.run/fal-ai/veo3.1/fast/first-last-frame-to-video";
 
       debugLogger.log(FAL_LOG_COMPONENT, "VEO31_FAST_FRAME_TO_VIDEO_REQUEST", {
         params,
       });
 
-      const response = await this.makeRequest<Veo31Response>(endpoint, params as unknown as Record<string, unknown>);
+      const response = await this.makeRequest<Veo31Response>(
+        endpoint,
+        params as unknown as Record<string, unknown>
+      );
 
       if (!response.video?.url) {
         throw new Error("No video URL in Veo 3.1 Fast response");
@@ -812,7 +828,10 @@ class FalAIClient {
         operation: "generateVeo31FastFrameToVideo",
       });
 
-      const errorMessage = error instanceof Error ? error.message : "Veo 3.1 Fast generation failed";
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : "Veo 3.1 Fast generation failed";
       return {
         job_id: `veo31_fast_frame2vid_error_${Date.now()}`,
         status: "failed",
@@ -836,11 +855,18 @@ class FalAIClient {
     try {
       const endpoint = "https://fal.run/fal-ai/veo3.1"; // No /fast suffix
 
-      debugLogger.log(FAL_LOG_COMPONENT, "VEO31_STANDARD_TEXT_TO_VIDEO_REQUEST", {
-        params,
-      });
+      debugLogger.log(
+        FAL_LOG_COMPONENT,
+        "VEO31_STANDARD_TEXT_TO_VIDEO_REQUEST",
+        {
+          params,
+        }
+      );
 
-      const response = await this.makeRequest<Veo31Response>(endpoint, params as unknown as Record<string, unknown>);
+      const response = await this.makeRequest<Veo31Response>(
+        endpoint,
+        params as unknown as Record<string, unknown>
+      );
 
       if (!response.video?.url) {
         throw new Error("No video URL in Veo 3.1 Standard response");
@@ -857,7 +883,10 @@ class FalAIClient {
         operation: "generateVeo31TextToVideo",
       });
 
-      const errorMessage = error instanceof Error ? error.message : "Veo 3.1 Standard generation failed";
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : "Veo 3.1 Standard generation failed";
       return {
         job_id: `veo31_std_error_${Date.now()}`,
         status: "failed",
@@ -877,11 +906,18 @@ class FalAIClient {
     try {
       const endpoint = "https://fal.run/fal-ai/veo3.1/image-to-video"; // No /fast
 
-      debugLogger.log(FAL_LOG_COMPONENT, "VEO31_STANDARD_IMAGE_TO_VIDEO_REQUEST", {
-        params,
-      });
+      debugLogger.log(
+        FAL_LOG_COMPONENT,
+        "VEO31_STANDARD_IMAGE_TO_VIDEO_REQUEST",
+        {
+          params,
+        }
+      );
 
-      const response = await this.makeRequest<Veo31Response>(endpoint, params as unknown as Record<string, unknown>);
+      const response = await this.makeRequest<Veo31Response>(
+        endpoint,
+        params as unknown as Record<string, unknown>
+      );
 
       if (!response.video?.url) {
         throw new Error("No video URL in Veo 3.1 Standard response");
@@ -894,11 +930,18 @@ class FalAIClient {
         video_url: response.video.url,
       };
     } catch (error) {
-      handleAIServiceError(error, "Veo 3.1 Standard image-to-video generation", {
-        operation: "generateVeo31ImageToVideo",
-      });
+      handleAIServiceError(
+        error,
+        "Veo 3.1 Standard image-to-video generation",
+        {
+          operation: "generateVeo31ImageToVideo",
+        }
+      );
 
-      const errorMessage = error instanceof Error ? error.message : "Veo 3.1 Standard generation failed";
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : "Veo 3.1 Standard generation failed";
       return {
         job_id: `veo31_std_img2vid_error_${Date.now()}`,
         status: "failed",
@@ -916,13 +959,21 @@ class FalAIClient {
     params: Veo31FrameToVideoInput
   ): Promise<VideoGenerationResponse> {
     try {
-      const endpoint = "https://fal.run/fal-ai/veo3.1/first-last-frame-to-video"; // No /fast
+      const endpoint =
+        "https://fal.run/fal-ai/veo3.1/first-last-frame-to-video"; // No /fast
 
-      debugLogger.log(FAL_LOG_COMPONENT, "VEO31_STANDARD_FRAME_TO_VIDEO_REQUEST", {
-        params,
-      });
+      debugLogger.log(
+        FAL_LOG_COMPONENT,
+        "VEO31_STANDARD_FRAME_TO_VIDEO_REQUEST",
+        {
+          params,
+        }
+      );
 
-      const response = await this.makeRequest<Veo31Response>(endpoint, params as unknown as Record<string, unknown>);
+      const response = await this.makeRequest<Veo31Response>(
+        endpoint,
+        params as unknown as Record<string, unknown>
+      );
 
       if (!response.video?.url) {
         throw new Error("No video URL in Veo 3.1 Standard response");
@@ -935,11 +986,18 @@ class FalAIClient {
         video_url: response.video.url,
       };
     } catch (error) {
-      handleAIServiceError(error, "Veo 3.1 Standard frame-to-video generation", {
-        operation: "generateVeo31FrameToVideo",
-      });
+      handleAIServiceError(
+        error,
+        "Veo 3.1 Standard frame-to-video generation",
+        {
+          operation: "generateVeo31FrameToVideo",
+        }
+      );
 
-      const errorMessage = error instanceof Error ? error.message : "Veo 3.1 Standard generation failed";
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : "Veo 3.1 Standard generation failed";
       return {
         job_id: `veo31_std_frame2vid_error_${Date.now()}`,
         status: "failed",
@@ -1011,7 +1069,9 @@ class FalAIClient {
         output_format: sanitizedParams?.output_format ?? params.output_format,
       });
 
-      throw error instanceof Error ? error : new Error("Reve Text-to-Image generation failed");
+      throw error instanceof Error
+        ? error
+        : new Error("Reve Text-to-Image generation failed");
     }
   }
 
@@ -1028,9 +1088,7 @@ class FalAIClient {
    *   num_images: 2
    * });
    */
-  async generateReveEdit(
-    params: ReveEditInput
-  ): Promise<ReveEditOutput> {
+  async generateReveEdit(params: ReveEditInput): Promise<ReveEditOutput> {
     let sanitizedParams: ReveEditInput | null = null;
 
     try {
@@ -1092,7 +1150,9 @@ class FalAIClient {
         hasImage: !!(sanitizedParams?.image_url ?? params.image_url),
       });
 
-      throw error instanceof Error ? error : new Error("Reve Edit generation failed");
+      throw error instanceof Error
+        ? error
+        : new Error("Reve Edit generation failed");
     }
   }
 }

@@ -90,7 +90,9 @@ export function useExportProgress() {
         debugLog(
           "[ExportPanel] 🖥️  Electron detected - letting factory auto-recommend engine"
         );
-        console.log("  ✅ Electron detected - letting factory auto-select FFmpeg CLI");
+        console.log(
+          "  ✅ Electron detected - letting factory auto-select FFmpeg CLI"
+        );
         selectedEngineType = undefined; // Let factory decide
       } else {
         console.log("  🌐 Browser mode - using user selection");

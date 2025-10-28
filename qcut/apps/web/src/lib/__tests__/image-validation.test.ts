@@ -1,5 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { validateImageUpload, validateReveEditImage, getImageDimensions } from "../image-validation";
+import {
+  validateImageUpload,
+  validateReveEditImage,
+  getImageDimensions,
+} from "../image-validation";
 
 describe("Image Validation", () => {
   beforeEach(() => {
@@ -66,7 +70,9 @@ describe("Image Validation", () => {
     });
 
     it("should reject non-image file types", async () => {
-      const mockFile = new File(["data"], "file.pdf", { type: "application/pdf" });
+      const mockFile = new File(["data"], "file.pdf", {
+        type: "application/pdf",
+      });
 
       const result = await validateReveEditImage(mockFile);
 
@@ -92,9 +98,13 @@ describe("Image Validation", () => {
 
   describe("getImageDimensions", () => {
     it("should handle image loading errors gracefully", async () => {
-      const invalidFile = new File(["invalid"], "broken.png", { type: "image/png" });
+      const invalidFile = new File(["invalid"], "broken.png", {
+        type: "image/png",
+      });
 
-      await expect(getImageDimensions(invalidFile)).rejects.toThrow("Failed to load image");
+      await expect(getImageDimensions(invalidFile)).rejects.toThrow(
+        "Failed to load image"
+      );
     });
   });
 });

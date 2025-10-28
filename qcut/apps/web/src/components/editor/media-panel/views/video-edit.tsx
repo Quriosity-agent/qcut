@@ -32,17 +32,26 @@ export default function VideoEditView() {
         </TabsList>
 
         {/* Kling Video to Audio Tab */}
-        <TabsContent value="audio-gen" className="flex-1 space-y-4 overflow-y-auto">
+        <TabsContent
+          value="audio-gen"
+          className="flex-1 space-y-4 overflow-y-auto"
+        >
           <AudioGenTab />
         </TabsContent>
 
         {/* MMAudio V2 Tab */}
-        <TabsContent value="audio-sync" className="flex-1 space-y-4 overflow-y-auto">
+        <TabsContent
+          value="audio-sync"
+          className="flex-1 space-y-4 overflow-y-auto"
+        >
           <AudioSyncTab />
         </TabsContent>
 
         {/* Topaz Upscale Tab */}
-        <TabsContent value="upscale" className="flex-1 space-y-4 overflow-y-auto">
+        <TabsContent
+          value="upscale"
+          className="flex-1 space-y-4 overflow-y-auto"
+        >
           <UpscaleTab />
         </TabsContent>
       </Tabs>

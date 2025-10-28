@@ -33,7 +33,11 @@ import { cn, openInNewTab } from "@/lib/utils";
 // DEPRECATED: Modal Whisper utilities removed for Gemini migration
 // import { isTranscriptionConfigured } from "@/lib/transcription/transcription-utils";
 // import { encryptWithRandomKey } from "@/lib/transcription/zk-encryption";
-import { isGeminiConfigured, getGeminiSetupUrl, getGeminiSetupInstructions } from "@/lib/gemini/gemini-utils";
+import {
+  isGeminiConfigured,
+  getGeminiSetupUrl,
+  getGeminiSetupInstructions,
+} from "@/lib/gemini/gemini-utils";
 import type {
   TranscriptionResult,
   TranscriptionSegment,
@@ -187,7 +191,14 @@ export function CaptionsView() {
 
         // Step 1: Extract audio from video file (if needed)
         console.log("[Gemini Transcription] Starting transcription process...");
-        console.log("[Gemini Transcription] File:", file.name, "Type:", file.type, "Size:", file.size);
+        console.log(
+          "[Gemini Transcription] File:",
+          file.name,
+          "Type:",
+          file.type,
+          "Size:",
+          file.size
+        );
 
         let audioFilePath: string;
         if (file.type.startsWith("video/")) {
@@ -205,7 +216,9 @@ export function CaptionsView() {
             throw new Error(`Unsupported video format: ${file.type}`);
           }
 
-          console.log("[Gemini Transcription] Extracting audio from video using FFmpeg CLI...");
+          console.log(
+            "[Gemini Transcription] Extracting audio from video using FFmpeg CLI..."
+          );
           toast.info("Extracting audio from video...");
 
           // Save video file to temp location first
@@ -218,23 +231,35 @@ export function CaptionsView() {
             new Uint8Array(videoBuffer),
             file.name
           );
-          console.log("[Gemini Transcription] Video saved to temp:", videoTempPath);
+          console.log(
+            "[Gemini Transcription] Video saved to temp:",
+            videoTempPath
+          );
 
           // Extract audio using FFmpeg CLI (much faster than WebAssembly!)
           if (!window.electronAPI?.ffmpeg?.extractAudio) {
             throw new Error("Electron FFmpeg API not available");
           }
 
-          const { audioPath, fileSize } = await window.electronAPI.ffmpeg.extractAudio({
-            videoPath: videoTempPath,
-            format: "wav"
-          });
+          const { audioPath, fileSize } =
+            await window.electronAPI.ffmpeg.extractAudio({
+              videoPath: videoTempPath,
+              format: "wav",
+            });
 
-          console.log("[Gemini Transcription] ✅ Audio extracted:", audioPath, "Size:", fileSize, "bytes");
+          console.log(
+            "[Gemini Transcription] ✅ Audio extracted:",
+            audioPath,
+            "Size:",
+            fileSize,
+            "bytes"
+          );
           audioFilePath = audioPath;
         } else {
           // Audio file - save directly to temp
-          console.log("[Gemini Transcription] Processing audio file directly...");
+          console.log(
+            "[Gemini Transcription] Processing audio file directly..."
+          );
 
           if (!window.electronAPI?.audio?.saveTemp) {
             throw new Error("Electron audio API not available");
@@ -245,7 +270,10 @@ export function CaptionsView() {
             new Uint8Array(audioBuffer),
             file.name
           );
-          console.log("[Gemini Transcription] Audio saved to temp:", audioFilePath);
+          console.log(
+            "[Gemini Transcription] Audio saved to temp:",
+            audioFilePath
+          );
         }
 
         // DEPRECATED: Encryption/R2 upload removed for Gemini migration
@@ -346,9 +374,19 @@ export function CaptionsView() {
         });
         const duration = ((Date.now() - startTime) / 1000).toFixed(2);
 
-        console.log("[Gemini Transcription] ✅ Transcription completed in", duration, "seconds");
-        console.log("[Gemini Transcription] Segments found:", result.segments.length);
-        console.log("[Gemini Transcription] Detected language:", result.language);
+        console.log(
+          "[Gemini Transcription] ✅ Transcription completed in",
+          duration,
+          "seconds"
+        );
+        console.log(
+          "[Gemini Transcription] Segments found:",
+          result.segments.length
+        );
+        console.log(
+          "[Gemini Transcription] Detected language:",
+          result.language
+        );
         console.log("[Gemini Transcription] Full text:", result.text);
 
         // Complete transcription job in store
@@ -366,7 +404,9 @@ export function CaptionsView() {
 
         // Performance: Cache the result for future use
         if (fileKey) {
-          console.log("[Gemini Transcription] Caching result for future use...");
+          console.log(
+            "[Gemini Transcription] Caching result for future use..."
+          );
           try {
             const cacheData = { result, timestamp: Date.now() };
             localStorage.setItem(
@@ -544,7 +584,9 @@ export function CaptionsView() {
         <div className="space-y-2 p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
           <div className="flex items-center gap-2">
             <AlertCircle className="size-4 text-yellow-500" />
-            <p className="text-sm font-medium">Gemini Transcription Not Configured</p>
+            <p className="text-sm font-medium">
+              Gemini Transcription Not Configured
+            </p>
           </div>
           <div className="text-xs text-muted-foreground space-y-1">
             <p>{getGeminiSetupInstructions()}</p>
@@ -637,7 +679,9 @@ export function CaptionsView() {
             <div className="space-y-3">
               <div className="flex items-center justify-center gap-2">
                 <Loader2 className="size-4 animate-spin" />
-                <p className="text-sm font-medium">Transcribing with Gemini...</p>
+                <p className="text-sm font-medium">
+                  Transcribing with Gemini...
+                </p>
               </div>
               {state.currentFile && (
                 <p className="text-xs text-muted-foreground text-center">
@@ -694,7 +738,7 @@ export function CaptionsView() {
                   <Button
                     variant="secondary"
                     size="sm"
-                  onClick={() => openInNewTab(getGeminiSetupUrl())}
+                    onClick={() => openInNewTab(getGeminiSetupUrl())}
                   >
                     Get API Key
                   </Button>

@@ -1,5 +1,8 @@
-import type { StickerSource } from '../../../../electron/ffmpeg-handler';
-import type { VideoSourceInput, AudioFileInput } from '../lib/export-engine-cli';
+import type { StickerSource } from "../../../../electron/ffmpeg-handler";
+import type {
+  VideoSourceInput,
+  AudioFileInput,
+} from "../lib/export-engine-cli";
 
 export interface ElectronAPI {
   // System info
@@ -126,10 +129,7 @@ export interface ElectronAPI {
 
   // Transcription operations (Gemini API)
   transcribe: {
-    transcribe: (request: {
-      audioPath: string;
-      language?: string;
-    }) => Promise<{
+    transcribe: (request: { audioPath: string; language?: string }) => Promise<{
       text: string;
       segments: Array<{
         id: number;
@@ -210,10 +210,7 @@ export interface ElectronAPI {
       outputFrameName: string;
       filterChain: string;
     }) => Promise<void>;
-    extractAudio: (options: {
-      videoPath: string;
-      format?: string;
-    }) => Promise<{
+    extractAudio: (options: { videoPath: string; format?: string }) => Promise<{
       audioPath: string;
       fileSize: number;
     }>;

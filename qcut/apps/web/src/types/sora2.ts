@@ -107,11 +107,11 @@ export interface Sora2VideoResult {
  * NOTE: Uses underscores to match actual model IDs in ai-constants.ts
  */
 export type Sora2ModelType =
-  | 'sora2_text_to_video'
-  | 'sora2_text_to_video_pro'
-  | 'sora2_image_to_video'
-  | 'sora2_image_to_video_pro'
-  | 'sora2_video_to_video_remix';
+  | "sora2_text_to_video"
+  | "sora2_text_to_video_pro"
+  | "sora2_image_to_video"
+  | "sora2_image_to_video_pro"
+  | "sora2_video_to_video_remix";
 
 /**
  * Sora 2 generation settings

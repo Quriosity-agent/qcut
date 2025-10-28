@@ -71,7 +71,10 @@ export async function saveVideoToTemp(
   try {
     await fs.promises.mkdir(tempDir, { recursive: true });
   } catch (error) {
-    console.error("[Video Temp Handler] Failed to create temp directory:", error);
+    console.error(
+      "[Video Temp Handler] Failed to create temp directory:",
+      error
+    );
     throw error;
   }
 
@@ -88,7 +91,11 @@ export async function saveVideoToTemp(
   try {
     await fs.promises.writeFile(filePath, buffer);
   } catch (error) {
-    console.error("[Video Temp Handler] Failed to write file:", filePath, error);
+    console.error(
+      "[Video Temp Handler] Failed to write file:",
+      filePath,
+      error
+    );
     throw error;
   }
 
@@ -118,7 +125,10 @@ export async function cleanupVideoFiles(sessionId: string): Promise<void> {
         .map((f) => fs.promises.unlink(path.join(tempDir, f)).catch(() => {}))
     );
   } catch (error) {
-    console.error("[Video Temp Handler] Failed to cleanup session videos:", error);
+    console.error(
+      "[Video Temp Handler] Failed to cleanup session videos:",
+      error
+    );
   }
 }
 
@@ -134,6 +144,9 @@ export async function cleanupAllVideoFiles(): Promise<void> {
     console.log("[Video Temp Handler] Cleaned up all video temp files");
   } catch (error) {
     // Directory doesn't exist or cleanup failed - not critical
-    console.error("[Video Temp Handler] Failed to cleanup video temp files:", error);
+    console.error(
+      "[Video Temp Handler] Failed to cleanup video temp files:",
+      error
+    );
   }
 }

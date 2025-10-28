@@ -12,7 +12,13 @@ import { Loader2, Maximize2, Film, DollarSign } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { FileUpload } from "@/components/ui/file-upload";
 import { Progress } from "@/components/ui/progress";
@@ -66,7 +72,10 @@ export function UpscaleTab() {
    * Handle video file change
    * WHY: Topaz supports up to 500MB files (larger than default 100MB)
    */
-  const handleVideoChange = (file: File | null, preview: string | undefined | null) => {
+  const handleVideoChange = (
+    file: File | null,
+    preview: string | undefined | null
+  ) => {
     if (file) {
       // Validate with Topaz's 500MB limit
       const validation = VIDEO_EDIT_HELPERS.validateVideoFile(
@@ -80,7 +89,7 @@ export function UpscaleTab() {
     }
 
     setSourceVideo(file);
-    setVideoPreview(preview ?? null);  // Coerce undefined to null for type safety
+    setVideoPreview(preview ?? null); // Coerce undefined to null for type safety
     setError(null);
     reset();
   };
@@ -119,7 +128,7 @@ export function UpscaleTab() {
    * Get resolution label
    */
   const getResolutionLabel = () => {
-    const baseRes = "720p";  // Assume 720p input
+    const baseRes = "720p"; // Assume 720p input
     const factor = upscaleFactor;
 
     if (factor <= 1.5) return "1080p";
@@ -145,8 +154,12 @@ export function UpscaleTab() {
       <Card className="p-3 bg-primary/5 border-primary/20">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-xs font-medium text-primary">Topaz Video Upscale</p>
-            <p className="text-xs text-muted-foreground mt-0.5">Professional upscaling up to 8x with AI enhancement</p>
+            <p className="text-xs font-medium text-primary">
+              Topaz Video Upscale
+            </p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Professional upscaling up to 8x with AI enhancement
+            </p>
           </div>
           <div className="text-right">
             <p className="text-xs font-semibold">$0.50 - $5.00</p>
@@ -255,7 +268,9 @@ export function UpscaleTab() {
             </span>
           </div>
           <div className="flex items-center justify-between">
-            <span className="text-xs text-muted-foreground">Processing Time:</span>
+            <span className="text-xs text-muted-foreground">
+              Processing Time:
+            </span>
             <span className="text-xs">{getEstimatedTime()}</span>
           </div>
         </div>
@@ -298,7 +313,9 @@ export function UpscaleTab() {
             </div>
             <div className="text-xs text-muted-foreground">
               {result.fileSize && (
-                <p>Output size: {(result.fileSize / 1024 / 1024).toFixed(1)} MB</p>
+                <p>
+                  Output size: {(result.fileSize / 1024 / 1024).toFixed(1)} MB
+                </p>
               )}
             </div>
             {videoResultUrl && (

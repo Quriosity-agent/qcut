@@ -36,11 +36,11 @@ export async function cleanupDatabase(page: Page) {
   try {
     // Check if page is still open before attempting cleanup
     if (page.isClosed()) {
-      console.log('🧹 Page already closed, skipping cleanup');
+      console.log("🧹 Page already closed, skipping cleanup");
       return;
     }
 
-    console.log('🧹 Starting database cleanup...');
+    console.log("🧹 Starting database cleanup...");
 
     const cleanupStats = await page.evaluate(async () => {
       const stats = {
@@ -55,9 +55,13 @@ export async function cleanupDatabase(page: Page) {
       // Clear all IndexedDB databases
       const databases = await indexedDB.databases();
       stats.databasesFound = databases.length;
-      stats.databaseNames = databases.map(db => db.name || 'unnamed').filter(name => name !== 'unnamed');
+      stats.databaseNames = databases
+        .map((db) => db.name || "unnamed")
+        .filter((name) => name !== "unnamed");
 
-      console.log(`📊 Found ${databases.length} IndexedDB database(s) to delete`);
+      console.log(
+        `📊 Found ${databases.length} IndexedDB database(s) to delete`
+      );
 
       await Promise.all(
         databases.map((db) => {
@@ -75,7 +79,9 @@ export async function cleanupDatabase(page: Page) {
                 reject(request.error);
               };
               request.onblocked = () => {
-                console.warn(`  ⚠️  Database ${db.name} deletion blocked, continuing anyway`);
+                console.warn(
+                  `  ⚠️  Database ${db.name} deletion blocked, continuing anyway`
+                );
                 stats.databasesDeleted++;
                 resolve(); // Resolve anyway to prevent hanging
               };
@@ -88,14 +94,18 @@ export async function cleanupDatabase(page: Page) {
       // Count localStorage items before clearing
       stats.localStorageItems = localStorage.length;
       if (stats.localStorageItems > 0) {
-        console.log(`📦 Clearing ${stats.localStorageItems} localStorage item(s)`);
+        console.log(
+          `📦 Clearing ${stats.localStorageItems} localStorage item(s)`
+        );
         localStorage.clear();
       }
 
       // Count sessionStorage items before clearing
       stats.sessionStorageItems = sessionStorage.length;
       if (stats.sessionStorageItems > 0) {
-        console.log(`📦 Clearing ${stats.sessionStorageItems} sessionStorage item(s)`);
+        console.log(
+          `📦 Clearing ${stats.sessionStorageItems} sessionStorage item(s)`
+        );
         sessionStorage.clear();
       }
 
@@ -104,11 +114,15 @@ export async function cleanupDatabase(page: Page) {
         const cacheNames = await caches.keys();
         stats.cachesCleared = cacheNames.length;
         if (stats.cachesCleared > 0) {
-          console.log(`🗄️  Clearing ${stats.cachesCleared} service worker cache(s)`);
-          await Promise.all(cacheNames.map((name) => {
-            console.log(`  🗑️  Deleting cache: ${name}`);
-            return caches.delete(name);
-          }));
+          console.log(
+            `🗄️  Clearing ${stats.cachesCleared} service worker cache(s)`
+          );
+          await Promise.all(
+            cacheNames.map((name) => {
+              console.log(`  🗑️  Deleting cache: ${name}`);
+              return caches.delete(name);
+            })
+          );
         }
       }
 
@@ -118,41 +132,57 @@ export async function cleanupDatabase(page: Page) {
     // Clear Electron file system storage (project .json files)
     try {
       await page.evaluate(async () => {
-        // @ts-ignore - electronAPI is exposed via preload
+        // @ts-expect-error - electronAPI is exposed via preload
         if (window.electronAPI?.storage?.clear) {
-          console.log('📂 Clearing Electron file system storage (project .json files)...');
-          // @ts-ignore
+          console.log(
+            "📂 Clearing Electron file system storage (project .json files)..."
+          );
+          // @ts-expect-error
           await window.electronAPI.storage.clear();
-          console.log('✅ Electron file system storage cleared');
+          console.log("✅ Electron file system storage cleared");
         }
       });
     } catch (error) {
-      console.warn('⚠️  Failed to clear Electron file system storage:', error);
+      console.warn("⚠️  Failed to clear Electron file system storage:", error);
       // Continue anyway - not critical
     }
 
     // Print summary
-    console.log('✅ Database cleanup completed:');
-    console.log(`   📊 Databases deleted: ${cleanupStats.databasesDeleted}/${cleanupStats.databasesFound}`);
-    console.log(`   📦 localStorage items cleared: ${cleanupStats.localStorageItems}`);
-    console.log(`   📦 sessionStorage items cleared: ${cleanupStats.sessionStorageItems}`);
+    console.log("✅ Database cleanup completed:");
+    console.log(
+      `   📊 Databases deleted: ${cleanupStats.databasesDeleted}/${cleanupStats.databasesFound}`
+    );
+    console.log(
+      `   📦 localStorage items cleared: ${cleanupStats.localStorageItems}`
+    );
+    console.log(
+      `   📦 sessionStorage items cleared: ${cleanupStats.sessionStorageItems}`
+    );
     console.log(`   🗄️  Caches cleared: ${cleanupStats.cachesCleared}`);
 
-    if (cleanupStats.databasesDeleted > 0 || cleanupStats.localStorageItems > 0 || cleanupStats.sessionStorageItems > 0) {
-      console.log(`🎉 Successfully cleaned up test data - tests will start with clean slate!`);
+    if (
+      cleanupStats.databasesDeleted > 0 ||
+      cleanupStats.localStorageItems > 0 ||
+      cleanupStats.sessionStorageItems > 0
+    ) {
+      console.log(
+        "🎉 Successfully cleaned up test data - tests will start with clean slate!"
+      );
 
       // Log database name samples for debugging
       if (cleanupStats.databaseNames && cleanupStats.databaseNames.length > 0) {
-        console.log(`\n📝 Database samples (first 10):`);
+        console.log("\n📝 Database samples (first 10):");
         cleanupStats.databaseNames.slice(0, 10).forEach((name, i) => {
           console.log(`   ${i + 1}. ${name}`);
         });
         if (cleanupStats.databaseNames.length > 10) {
-          console.log(`   ... and ${cleanupStats.databaseNames.length - 10} more`);
+          console.log(
+            `   ... and ${cleanupStats.databaseNames.length - 10} more`
+          );
         }
       }
     } else {
-      console.log('✨ Database already clean - no data to remove');
+      console.log("✨ Database already clean - no data to remove");
     }
   } catch (error) {
     console.warn("⚠️  Database cleanup encountered an error:", error);
@@ -180,16 +210,16 @@ export const test = base.extend<ElectronFixtures>({
     const page = await electronApp.firstWindow();
 
     // Enable console log capture from renderer process
-    page.on('console', (msg) => {
+    page.on("console", (msg) => {
       const type = msg.type();
       const text = msg.text();
 
       // Log renderer console messages with prefix for clarity
       const prefix = `[RENDERER ${type.toUpperCase()}]`;
 
-      if (type === 'error') {
+      if (type === "error") {
         console.error(`${prefix} ${text}`);
-      } else if (type === 'warning') {
+      } else if (type === "warning") {
         console.warn(`${prefix} ${text}`);
       } else {
         console.log(`${prefix} ${text}`);
@@ -205,7 +235,7 @@ export const test = base.extend<ElectronFixtures>({
     // Skip onboarding/welcome screen for all E2E tests
     // Set the flag AFTER cleanup so tests don't see the "Welcome to QCut Beta" modal
     await page.evaluate(() => {
-      localStorage.setItem('hasSeenOnboarding', 'true');
+      localStorage.setItem("hasSeenOnboarding", "true");
     });
 
     // Navigate to projects page for E2E testing
@@ -382,8 +412,8 @@ export async function createTestProject(
 
   // CRITICAL FIX: Force close any lingering modals/dialogs
   // Press Escape key multiple times to dismiss any open dialogs
-  await page.keyboard.press('Escape');
-  await page.keyboard.press('Escape'); // Press twice to be sure
+  await page.keyboard.press("Escape");
+  await page.keyboard.press("Escape"); // Press twice to be sure
 
   // Wait a moment for dialogs to close
   await page.waitForTimeout(500);
@@ -392,22 +422,26 @@ export async function createTestProject(
   try {
     await page.waitForFunction(
       () => {
-        const backdrops = document.querySelectorAll('[data-state="open"][aria-hidden="true"]');
+        const backdrops = document.querySelectorAll(
+          '[data-state="open"][aria-hidden="true"]'
+        );
         console.log(`Found ${backdrops.length} open modal backdrops`);
         return backdrops.length === 0;
       },
       { timeout: 3000 }
     );
   } catch (error) {
-    console.warn('Modal backdrops still present after Escape key');
+    console.warn("Modal backdrops still present after Escape key");
     // Force remove backdrops if they're stuck
     try {
       await page.evaluate(() => {
-        const backdrops = document.querySelectorAll('[data-state="open"][aria-hidden="true"]');
-        backdrops.forEach(backdrop => backdrop.remove());
+        const backdrops = document.querySelectorAll(
+          '[data-state="open"][aria-hidden="true"]'
+        );
+        backdrops.forEach((backdrop) => backdrop.remove());
       });
     } catch (e) {
-      console.warn('Could not force remove backdrops');
+      console.warn("Could not force remove backdrops");
     }
   }
 

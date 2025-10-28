@@ -163,7 +163,7 @@ test.describe("AI Enhancement & Export Integration", () => {
     // Click play to preview enhanced media
     const previewToolbar = page
       .locator('[data-testid="preview-panel"]')
-      .locator('[data-toolbar]')
+      .locator("[data-toolbar]")
       .first();
     const playButton = previewToolbar.getByTestId("preview-play-button");
     const pauseButton = previewToolbar.getByTestId("preview-pause-button");
@@ -182,7 +182,9 @@ test.describe("AI Enhancement & Export Integration", () => {
     await page
       .waitForFunction(
         () => {
-          const btn = document.querySelector('[data-testid="preview-pause-button"]');
+          const btn = document.querySelector(
+            '[data-testid="preview-pause-button"]'
+          );
           return btn && btn.getAttribute("data-playing") === "true";
         },
         { timeout: 3000 }
@@ -193,13 +195,17 @@ test.describe("AI Enhancement & Export Integration", () => {
     await expect(pauseButton).toHaveAttribute("data-playing", "true");
 
     // Let video play to see enhancements
-    await page.waitForFunction(
-      () => {
-        const timeDisplay = document.querySelector('[data-testid*="time"], [data-testid*="current-time"]');
-        return timeDisplay && parseFloat(timeDisplay.textContent || '0') > 1;
-      },
-      { timeout: 5000 }
-    ).catch(() => {});
+    await page
+      .waitForFunction(
+        () => {
+          const timeDisplay = document.querySelector(
+            '[data-testid*="time"], [data-testid*="current-time"]'
+          );
+          return timeDisplay && parseFloat(timeDisplay.textContent || "0") > 1;
+        },
+        { timeout: 5000 }
+      )
+      .catch(() => {});
 
     // Pause video
     await pauseButton.click();
@@ -278,7 +284,10 @@ test.describe("AI Enhancement & Export Integration", () => {
 
       await Promise.race([
         page
-          .waitForSelector(statusSelector, { state: "visible", timeout: 10_000 })
+          .waitForSelector(statusSelector, {
+            state: "visible",
+            timeout: 10_000,
+          })
           .catch(() => null),
         page
           .waitForSelector(progressSelector, {
@@ -431,7 +440,10 @@ test.describe("AI Enhancement & Export Integration", () => {
 
       await Promise.race([
         page
-          .waitForSelector(statusSelector, { state: "visible", timeout: 10_000 })
+          .waitForSelector(statusSelector, {
+            state: "visible",
+            timeout: 10_000,
+          })
           .catch(() => null),
         page
           .waitForSelector(progressSelector, {

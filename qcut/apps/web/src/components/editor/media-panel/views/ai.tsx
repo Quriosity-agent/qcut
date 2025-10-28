@@ -58,8 +58,7 @@ const REVE_NUM_IMAGE_OPTIONS = Array.from(
       REVE_TEXT_TO_IMAGE_MODEL.numImagesRange.min +
       1,
   },
-  (_, index) =>
-    REVE_TEXT_TO_IMAGE_MODEL.numImagesRange.min + index
+  (_, index) => REVE_TEXT_TO_IMAGE_MODEL.numImagesRange.min + index
 );
 
 export function AiView() {
@@ -85,7 +84,9 @@ export function AiView() {
 
   // Veo 3.1 frame upload state
   const [firstFrame, setFirstFrame] = useState<File | null>(null);
-  const [firstFramePreview, setFirstFramePreview] = useState<string | null>(null);
+  const [firstFramePreview, setFirstFramePreview] = useState<string | null>(
+    null
+  );
   const [lastFrame, setLastFrame] = useState<File | null>(null);
   const [lastFramePreview, setLastFramePreview] = useState<string | null>(null);
 
@@ -182,7 +183,7 @@ export function AiView() {
 
   // Reset Reve state when model is deselected
   useEffect(() => {
-    if (!selectedModels.some(id => id === "reve-text-to-image")) {
+    if (!selectedModels.some((id) => id === "reve-text-to-image")) {
       setReveAspectRatio("3:2");
       setReveNumImages(1);
       setReveOutputFormat("png");
@@ -262,56 +263,67 @@ export function AiView() {
     let modelCost = model ? parseFloat(model.price) : 0;
 
     // Adjust for Sora 2 duration and resolution
-    if (modelId.startsWith('sora2_')) {
+    if (modelId.startsWith("sora2_")) {
       // CRITICAL: Remix inherits duration from source video, not UI duration control
       // Cannot calculate accurate price without knowing source video duration
-      if (modelId === 'sora2_video_to_video_remix') {
+      if (modelId === "sora2_video_to_video_remix") {
         // Remix pricing: $0.10/s * (source video duration)
         // Since we don't track source video duration yet, return 0 and show "varies" message
         // TODO: Track source video duration from previously generated videos for accurate pricing
         modelCost = 0; // Will display "Price varies" in UI
       }
       // Pro models have resolution-based pricing
-      else if (modelId === 'sora2_text_to_video_pro' || modelId === 'sora2_image_to_video_pro') {
-        if (generation.resolution === '1080p') {
-          modelCost = generation.duration * 0.50; // $0.50/s for 1080p
-        } else if (generation.resolution === '720p') {
-          modelCost = generation.duration * 0.30; // $0.30/s for 720p
+      else if (
+        modelId === "sora2_text_to_video_pro" ||
+        modelId === "sora2_image_to_video_pro"
+      ) {
+        if (generation.resolution === "1080p") {
+          modelCost = generation.duration * 0.5; // $0.50/s for 1080p
+        } else if (generation.resolution === "720p") {
+          modelCost = generation.duration * 0.3; // $0.30/s for 720p
         } else {
           // auto resolution - use 720p pricing as default
-          modelCost = generation.duration * 0.30;
+          modelCost = generation.duration * 0.3;
         }
       } else {
         // Standard models: $0.10/s * (user-selected duration)
-        modelCost = generation.duration * 0.10;
+        modelCost = generation.duration * 0.1;
       }
     }
     // Veo 3.1 pricing calculation
-    else if (modelId.startsWith('veo31_')) {
-      const durationSeconds = Number.parseInt(generation.veo31Settings.duration, 10); // "4s" -> 4
+    else if (modelId.startsWith("veo31_")) {
+      const durationSeconds = Number.parseInt(
+        generation.veo31Settings.duration,
+        10
+      ); // "4s" -> 4
 
       // Determine if this is a fast or standard model
-      const isFastModel = modelId.includes('_fast_');
+      const isFastModel = modelId.includes("_fast_");
 
       // Fast models: $0.10/s (no audio) or $0.15/s (with audio)
       // Standard models: $0.20/s (no audio) or $0.40/s (with audio)
       const pricePerSecond = isFastModel
-        ? (generation.veo31Settings.generateAudio ? 0.15 : 0.10)
-        : (generation.veo31Settings.generateAudio ? 0.40 : 0.20);
+        ? generation.veo31Settings.generateAudio
+          ? 0.15
+          : 0.1
+        : generation.veo31Settings.generateAudio
+          ? 0.4
+          : 0.2;
 
       modelCost = durationSeconds * pricePerSecond;
     }
     // Reve Text-to-Image pricing calculation
     else if (modelId === "reve-text-to-image") {
-      modelCost =
-        REVE_TEXT_TO_IMAGE_MODEL.pricing.perImage * reveNumImages; // Use configured per-image pricing
+      modelCost = REVE_TEXT_TO_IMAGE_MODEL.pricing.perImage * reveNumImages; // Use configured per-image pricing
     }
 
     return total + modelCost;
   }, 0);
 
   // Check if remix model is selected to show special pricing note
-  const hasRemixSelected = selectedModels.includes('sora2_video_to_video_remix');
+  const hasRemixSelected = selectedModels.includes(
+    "sora2_video_to_video_remix"
+  );
 
   // Handle media store loading/error states
   if (generation.mediaStoreError) {
@@ -383,7 +395,10 @@ export function AiView() {
           </div>
         </div>
       ) : (
-        <div className="flex-1 overflow-y-auto space-y-4" data-testid="ai-enhancement-panel">
+        <div
+          className="flex-1 overflow-y-auto space-y-4"
+          data-testid="ai-enhancement-panel"
+        >
           {/* Tab selector */}
           <Tabs
             value={activeTab}
@@ -429,7 +444,9 @@ export function AiView() {
                 >
                   {remainingChars} characters remaining
                   {generation.isSora2Selected && (
-                    <span className="ml-2 text-primary">(Sora 2: 5000 max)</span>
+                    <span className="ml-2 text-primary">
+                      (Sora 2: 5000 max)
+                    </span>
                   )}
                 </div>
               </div>
@@ -507,7 +524,9 @@ export function AiView() {
                 {/* Veo 3.1 Frame Upload - Only shows when frame-to-video models selected */}
                 {generation.hasVeo31FrameToVideo && (
                   <div className="space-y-3 p-3 bg-muted/30 rounded-md border border-muted">
-                    <Label className="text-xs font-medium">Frame-to-Video Frames</Label>
+                    <Label className="text-xs font-medium">
+                      Frame-to-Video Frames
+                    </Label>
 
                     {/* First Frame Upload */}
                     <div className="space-y-2">
@@ -519,7 +538,11 @@ export function AiView() {
                             ? "border-primary/50 bg-primary/5 p-2"
                             : "border-muted-foreground/25 hover:border-muted-foreground/50 p-3"
                         }`}
-                        aria-label={firstFrame ? "Change first frame" : "Upload first frame"}
+                        aria-label={
+                          firstFrame
+                            ? "Change first frame"
+                            : "Upload first frame"
+                        }
                       >
                         {firstFrame && firstFramePreview ? (
                           <div className="relative flex flex-col items-center justify-center h-full">
@@ -566,7 +589,10 @@ export function AiView() {
                             if (!file) return;
 
                             // Validate file size (8MB for Veo 3.1)
-                            if (file.size > UPLOAD_CONSTANTS.MAX_VEO31_FRAME_SIZE_BYTES) {
+                            if (
+                              file.size >
+                              UPLOAD_CONSTANTS.MAX_VEO31_FRAME_SIZE_BYTES
+                            ) {
                               setError(ERROR_MESSAGES.VEO31_IMAGE_TOO_LARGE);
                               return;
                             }
@@ -597,7 +623,9 @@ export function AiView() {
                             ? "border-primary/50 bg-primary/5 p-2"
                             : "border-muted-foreground/25 hover:border-muted-foreground/50 p-3"
                         }`}
-                        aria-label={lastFrame ? "Change last frame" : "Upload last frame"}
+                        aria-label={
+                          lastFrame ? "Change last frame" : "Upload last frame"
+                        }
                       >
                         {lastFrame && lastFramePreview ? (
                           <div className="relative flex flex-col items-center justify-center h-full">
@@ -644,7 +672,10 @@ export function AiView() {
                             if (!file) return;
 
                             // Validate file size (8MB for Veo 3.1)
-                            if (file.size > UPLOAD_CONSTANTS.MAX_VEO31_FRAME_SIZE_BYTES) {
+                            if (
+                              file.size >
+                              UPLOAD_CONSTANTS.MAX_VEO31_FRAME_SIZE_BYTES
+                            ) {
                               setError(ERROR_MESSAGES.VEO31_IMAGE_TOO_LARGE);
                               return;
                             }
@@ -785,7 +816,10 @@ export function AiView() {
                 }
                 if (activeTab === "text") {
                   // Show text-to-video models (excluding avatar and image-to-video)
-                  return model.category === "text" || (!model.category && model.category !== "avatar");
+                  return (
+                    model.category === "text" ||
+                    (!model.category && model.category !== "avatar")
+                  );
                 }
                 if (activeTab === "image") {
                   // Show image-to-video models
@@ -859,7 +893,7 @@ export function AiView() {
                     Note: Remix pricing varies by source video duration
                   </div>
                 )}
-                {selectedModels.some(id => id === "reve-text-to-image") && (
+                {selectedModels.some((id) => id === "reve-text-to-image") && (
                   <div className="text-xs text-muted-foreground text-right">
                     <span className="font-medium">Reve Cost:</span> $
                     {(
@@ -867,7 +901,8 @@ export function AiView() {
                     ).toFixed(2)}
                     {reveNumImages > 1 && (
                       <span className="ml-1 opacity-75">
-                        ({REVE_TEXT_TO_IMAGE_MODEL.pricing.perImage.toFixed(2)} × {reveNumImages} images)
+                        ({REVE_TEXT_TO_IMAGE_MODEL.pricing.perImage.toFixed(2)}{" "}
+                        × {reveNumImages} images)
                       </span>
                     )}
                   </div>
@@ -883,29 +918,42 @@ export function AiView() {
 
               {/* Duration selector */}
               <div className="space-y-1">
-                <Label htmlFor="sora2-duration" className="text-xs">Duration</Label>
+                <Label htmlFor="sora2-duration" className="text-xs">
+                  Duration
+                </Label>
                 <Select
                   value={generation.duration.toString()}
-                  onValueChange={(v) => generation.setDuration(Number(v) as 4 | 8 | 12)}
+                  onValueChange={(v) =>
+                    generation.setDuration(Number(v) as 4 | 8 | 12)
+                  }
                 >
                   <SelectTrigger id="sora2-duration" className="h-8 text-xs">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="4">
-                      4 seconds {generation.hasSora2Pro
-                        ? (generation.resolution === '1080p' ? '($0.50/s)' : '($0.30/s)')
-                        : '($0.10/s)'}
+                      4 seconds{" "}
+                      {generation.hasSora2Pro
+                        ? generation.resolution === "1080p"
+                          ? "($0.50/s)"
+                          : "($0.30/s)"
+                        : "($0.10/s)"}
                     </SelectItem>
                     <SelectItem value="8">
-                      8 seconds {generation.hasSora2Pro
-                        ? (generation.resolution === '1080p' ? '($0.50/s)' : '($0.30/s)')
-                        : '($0.10/s)'}
+                      8 seconds{" "}
+                      {generation.hasSora2Pro
+                        ? generation.resolution === "1080p"
+                          ? "($0.50/s)"
+                          : "($0.30/s)"
+                        : "($0.10/s)"}
                     </SelectItem>
                     <SelectItem value="12">
-                      12 seconds {generation.hasSora2Pro
-                        ? (generation.resolution === '1080p' ? '($0.50/s)' : '($0.30/s)')
-                        : '($0.10/s)'}
+                      12 seconds{" "}
+                      {generation.hasSora2Pro
+                        ? generation.resolution === "1080p"
+                          ? "($0.50/s)"
+                          : "($0.30/s)"
+                        : "($0.10/s)"}
                     </SelectItem>
                   </SelectContent>
                 </Select>
@@ -913,10 +961,14 @@ export function AiView() {
 
               {/* Aspect ratio selector */}
               <div className="space-y-1">
-                <Label htmlFor="sora2-aspect" className="text-xs">Aspect Ratio</Label>
+                <Label htmlFor="sora2-aspect" className="text-xs">
+                  Aspect Ratio
+                </Label>
                 <Select
                   value={generation.aspectRatio}
-                  onValueChange={(v) => generation.setAspectRatio(v as "16:9" | "9:16")}
+                  onValueChange={(v) =>
+                    generation.setAspectRatio(v as "16:9" | "9:16")
+                  }
                 >
                   <SelectTrigger id="sora2-aspect" className="h-8 text-xs">
                     <SelectValue />
@@ -938,7 +990,10 @@ export function AiView() {
                     value={generation.resolution}
                     onValueChange={(v) => generation.setResolution(v as any)}
                   >
-                    <SelectTrigger id="sora2-resolution" className="h-8 text-xs">
+                    <SelectTrigger
+                      id="sora2-resolution"
+                      className="h-8 text-xs"
+                    >
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -959,10 +1014,14 @@ export function AiView() {
 
               {/* Resolution selector */}
               <div className="space-y-1">
-                <Label htmlFor="veo31-resolution" className="text-xs">Resolution</Label>
+                <Label htmlFor="veo31-resolution" className="text-xs">
+                  Resolution
+                </Label>
                 <Select
                   value={generation.veo31Settings.resolution}
-                  onValueChange={(v) => generation.setVeo31Resolution(v as "720p" | "1080p")}
+                  onValueChange={(v) =>
+                    generation.setVeo31Resolution(v as "720p" | "1080p")
+                  }
                 >
                   <SelectTrigger id="veo31-resolution" className="h-8 text-xs">
                     <SelectValue />
@@ -976,23 +1035,39 @@ export function AiView() {
 
               {/* Duration selector */}
               <div className="space-y-1">
-                <Label htmlFor="veo31-duration" className="text-xs">Duration</Label>
+                <Label htmlFor="veo31-duration" className="text-xs">
+                  Duration
+                </Label>
                 <Select
                   value={generation.veo31Settings.duration}
-                  onValueChange={(v) => generation.setVeo31Duration(v as "4s" | "6s" | "8s")}
+                  onValueChange={(v) =>
+                    generation.setVeo31Duration(v as "4s" | "6s" | "8s")
+                  }
                 >
                   <SelectTrigger id="veo31-duration" className="h-8 text-xs">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="4s">
-                      4 seconds ({generation.veo31Settings.generateAudio ? '$0.60 Fast / $1.60 Std' : '$0.40 Fast / $0.80 Std'})
+                      4 seconds (
+                      {generation.veo31Settings.generateAudio
+                        ? "$0.60 Fast / $1.60 Std"
+                        : "$0.40 Fast / $0.80 Std"}
+                      )
                     </SelectItem>
                     <SelectItem value="6s">
-                      6 seconds ({generation.veo31Settings.generateAudio ? '$0.90 Fast / $2.40 Std' : '$0.60 Fast / $1.20 Std'})
+                      6 seconds (
+                      {generation.veo31Settings.generateAudio
+                        ? "$0.90 Fast / $2.40 Std"
+                        : "$0.60 Fast / $1.20 Std"}
+                      )
                     </SelectItem>
                     <SelectItem value="8s">
-                      8 seconds ({generation.veo31Settings.generateAudio ? '$1.20 Fast / $3.20 Std' : '$0.80 Fast / $1.60 Std'})
+                      8 seconds (
+                      {generation.veo31Settings.generateAudio
+                        ? "$1.20 Fast / $3.20 Std"
+                        : "$0.80 Fast / $1.60 Std"}
+                      )
                     </SelectItem>
                   </SelectContent>
                 </Select>
@@ -1000,10 +1075,16 @@ export function AiView() {
 
               {/* Aspect ratio selector */}
               <div className="space-y-1">
-                <Label htmlFor="veo31-aspect" className="text-xs">Aspect Ratio</Label>
+                <Label htmlFor="veo31-aspect" className="text-xs">
+                  Aspect Ratio
+                </Label>
                 <Select
                   value={generation.veo31Settings.aspectRatio}
-                  onValueChange={(v) => generation.setVeo31AspectRatio(v as "9:16" | "16:9" | "1:1" | "auto")}
+                  onValueChange={(v) =>
+                    generation.setVeo31AspectRatio(
+                      v as "9:16" | "16:9" | "1:1" | "auto"
+                    )
+                  }
                 >
                   <SelectTrigger id="veo31-aspect" className="h-8 text-xs">
                     <SelectValue />
@@ -1019,31 +1100,41 @@ export function AiView() {
 
               {/* Audio toggle */}
               <div className="flex items-center justify-between">
-                <Label htmlFor="veo31-audio" className="text-xs">Generate Audio</Label>
+                <Label htmlFor="veo31-audio" className="text-xs">
+                  Generate Audio
+                </Label>
                 <input
                   id="veo31-audio"
                   type="checkbox"
                   checked={generation.veo31Settings.generateAudio}
-                  onChange={(e) => generation.setVeo31GenerateAudio(e.target.checked)}
+                  onChange={(e) =>
+                    generation.setVeo31GenerateAudio(e.target.checked)
+                  }
                   className="h-4 w-4"
                 />
               </div>
 
               {/* Enhance prompt toggle */}
               <div className="flex items-center justify-between">
-                <Label htmlFor="veo31-enhance" className="text-xs">Enhance Prompt</Label>
+                <Label htmlFor="veo31-enhance" className="text-xs">
+                  Enhance Prompt
+                </Label>
                 <input
                   id="veo31-enhance"
                   type="checkbox"
                   checked={generation.veo31Settings.enhancePrompt}
-                  onChange={(e) => generation.setVeo31EnhancePrompt(e.target.checked)}
+                  onChange={(e) =>
+                    generation.setVeo31EnhancePrompt(e.target.checked)
+                  }
                   className="h-4 w-4"
                 />
               </div>
 
               {/* Auto-fix toggle */}
               <div className="flex items-center justify-between">
-                <Label htmlFor="veo31-autofix" className="text-xs">Auto Fix (Policy Compliance)</Label>
+                <Label htmlFor="veo31-autofix" className="text-xs">
+                  Auto Fix (Policy Compliance)
+                </Label>
                 <input
                   id="veo31-autofix"
                   type="checkbox"
@@ -1056,13 +1147,17 @@ export function AiView() {
           )}
 
           {/* Reve Text-to-Image Settings */}
-          {selectedModels.some(id => id === "reve-text-to-image") && (
+          {selectedModels.some((id) => id === "reve-text-to-image") && (
             <div className="space-y-3 p-3 bg-muted/30 rounded-md border border-muted">
-              <Label className="text-xs font-medium">Reve Text-to-Image Settings</Label>
+              <Label className="text-xs font-medium">
+                Reve Text-to-Image Settings
+              </Label>
 
               {/* Aspect Ratio Selector */}
               <div className="space-y-1">
-                <Label htmlFor="reve-aspect" className="text-xs">Aspect Ratio</Label>
+                <Label htmlFor="reve-aspect" className="text-xs">
+                  Aspect Ratio
+                </Label>
                 <Select
                   value={reveAspectRatio}
                   onValueChange={(value) =>
@@ -1086,7 +1181,9 @@ export function AiView() {
 
               {/* Number of Images */}
               <div className="space-y-1">
-                <Label htmlFor="reve-num-images" className="text-xs">Number of Images</Label>
+                <Label htmlFor="reve-num-images" className="text-xs">
+                  Number of Images
+                </Label>
                 <Select
                   value={String(reveNumImages)}
                   onValueChange={(v) => setReveNumImages(Number(v))}
@@ -1100,7 +1197,8 @@ export function AiView() {
                         REVE_TEXT_TO_IMAGE_MODEL.pricing.perImage * count;
                       return (
                         <SelectItem key={count} value={String(count)}>
-                          {count} image{count > 1 ? "s" : ""} (${totalPrice.toFixed(2)})
+                          {count} image{count > 1 ? "s" : ""} ($
+                          {totalPrice.toFixed(2)})
                         </SelectItem>
                       );
                     })}
@@ -1110,7 +1208,9 @@ export function AiView() {
 
               {/* Output Format */}
               <div className="space-y-1">
-                <Label htmlFor="reve-format" className="text-xs">Output Format</Label>
+                <Label htmlFor="reve-format" className="text-xs">
+                  Output Format
+                </Label>
                 <Select
                   value={reveOutputFormat}
                   onValueChange={(value) =>
@@ -1133,100 +1233,113 @@ export function AiView() {
           )}
 
           {/* Reve Edit Image Upload - Shows when Reve Edit functionality is needed */}
-          {activeTab === "image" && selectedModels.some(id => id === "reve-text-to-image") && (
-            <div className="space-y-3 p-3 bg-muted/30 rounded-md border border-muted">
-              <Label className="text-xs font-medium">Reve Edit (Optional)</Label>
-              <p className="text-xs text-muted-foreground">
-                Upload an image to edit it with Reve AI, or leave empty for text-to-image generation.
-              </p>
+          {activeTab === "image" &&
+            selectedModels.some((id) => id === "reve-text-to-image") && (
+              <div className="space-y-3 p-3 bg-muted/30 rounded-md border border-muted">
+                <Label className="text-xs font-medium">
+                  Reve Edit (Optional)
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  Upload an image to edit it with Reve AI, or leave empty for
+                  text-to-image generation.
+                </p>
 
-              {/* Image Upload */}
-              <div className="space-y-2">
-                <Label className="text-xs">Source Image (Optional)</Label>
-                <label
-                  htmlFor="reve-edit-image-input"
-                  className={`block border-2 border-dashed rounded-lg cursor-pointer transition-colors min-h-[100px] focus-within:outline-none focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2 ${
-                    generation.uploadedImageForEdit
-                      ? "border-primary/50 bg-primary/5 p-2"
-                      : "border-muted-foreground/25 hover:border-muted-foreground/50 p-3"
-                  }`}
-                  aria-label={generation.uploadedImageForEdit ? "Change image" : "Upload image to edit"}
-                >
-                  {generation.uploadedImageForEdit && generation.uploadedImagePreview ? (
-                    <div className="relative flex flex-col items-center justify-center h-full">
-                      <img
-                        src={generation.uploadedImagePreview}
-                        alt={generation.uploadedImageForEdit.name}
-                        className="max-w-full max-h-20 mx-auto rounded object-contain"
-                      />
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="destructive"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          generation.clearUploadedImageForEdit();
-                        }}
-                        className="absolute top-1 right-1 h-6 w-6 p-0 flex items-center justify-center bg-red-500 hover:bg-red-600 text-white rounded-full shadow-sm"
-                        aria-label="Remove uploaded image"
-                      >
-                        <X className="h-3 w-3" />
-                      </Button>
-                      <div className="mt-1 text-xs text-muted-foreground text-center">
-                        {generation.uploadedImageForEdit.name}
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="flex flex-col items-center justify-center h-full space-y-1 text-center">
-                      <Upload className="size-6 text-muted-foreground" />
-                      <div className="text-xs text-muted-foreground">
-                        Upload image to edit
-                      </div>
-                      <div className="text-xs text-muted-foreground/70">
-                        PNG, JPEG, WebP, AVIF, HEIF (max 10MB)
-                      </div>
-                      <div className="text-xs text-muted-foreground/70">
-                        128×128 to 4096×4096 pixels
-                      </div>
-                    </div>
-                  )}
-                  <input
-                    id="reve-edit-image-input"
-                    type="file"
-                    accept="image/png,image/jpeg,image/webp,image/avif,image/heif"
-                    onChange={async (e) => {
-                      const file = e.target.files?.[0];
-                      if (!file) return;
-
-                      try {
-                        await generation.handleImageUploadForEdit(file);
-                        setError(null);
-                      } catch (err) {
-                        setError(err instanceof Error ? err.message : "Failed to upload image");
-                      }
-                    }}
-                    className="sr-only"
-                  />
-                </label>
-              </div>
-
-              {generation.uploadedImageForEdit && (
+                {/* Image Upload */}
                 <div className="space-y-2">
-                  <Label className="text-xs">Edit Instructions</Label>
-                  <Textarea
-                    value={prompt}
-                    onChange={(e) => setPrompt(e.target.value)}
-                    placeholder="Describe the edits you want to make (e.g., 'Make the sky sunset orange', 'Add snow to the ground')"
-                    className="min-h-[80px] text-xs resize-none"
-                    maxLength={2560}
-                  />
-                  <div className="text-xs text-muted-foreground text-right">
-                    {prompt.length} / 2560 characters
-                  </div>
+                  <Label className="text-xs">Source Image (Optional)</Label>
+                  <label
+                    htmlFor="reve-edit-image-input"
+                    className={`block border-2 border-dashed rounded-lg cursor-pointer transition-colors min-h-[100px] focus-within:outline-none focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2 ${
+                      generation.uploadedImageForEdit
+                        ? "border-primary/50 bg-primary/5 p-2"
+                        : "border-muted-foreground/25 hover:border-muted-foreground/50 p-3"
+                    }`}
+                    aria-label={
+                      generation.uploadedImageForEdit
+                        ? "Change image"
+                        : "Upload image to edit"
+                    }
+                  >
+                    {generation.uploadedImageForEdit &&
+                    generation.uploadedImagePreview ? (
+                      <div className="relative flex flex-col items-center justify-center h-full">
+                        <img
+                          src={generation.uploadedImagePreview}
+                          alt={generation.uploadedImageForEdit.name}
+                          className="max-w-full max-h-20 mx-auto rounded object-contain"
+                        />
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="destructive"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            generation.clearUploadedImageForEdit();
+                          }}
+                          className="absolute top-1 right-1 h-6 w-6 p-0 flex items-center justify-center bg-red-500 hover:bg-red-600 text-white rounded-full shadow-sm"
+                          aria-label="Remove uploaded image"
+                        >
+                          <X className="h-3 w-3" />
+                        </Button>
+                        <div className="mt-1 text-xs text-muted-foreground text-center">
+                          {generation.uploadedImageForEdit.name}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center justify-center h-full space-y-1 text-center">
+                        <Upload className="size-6 text-muted-foreground" />
+                        <div className="text-xs text-muted-foreground">
+                          Upload image to edit
+                        </div>
+                        <div className="text-xs text-muted-foreground/70">
+                          PNG, JPEG, WebP, AVIF, HEIF (max 10MB)
+                        </div>
+                        <div className="text-xs text-muted-foreground/70">
+                          128×128 to 4096×4096 pixels
+                        </div>
+                      </div>
+                    )}
+                    <input
+                      id="reve-edit-image-input"
+                      type="file"
+                      accept="image/png,image/jpeg,image/webp,image/avif,image/heif"
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+
+                        try {
+                          await generation.handleImageUploadForEdit(file);
+                          setError(null);
+                        } catch (err) {
+                          setError(
+                            err instanceof Error
+                              ? err.message
+                              : "Failed to upload image"
+                          );
+                        }
+                      }}
+                      className="sr-only"
+                    />
+                  </label>
                 </div>
-              )}
-            </div>
-          )}
+
+                {generation.uploadedImageForEdit && (
+                  <div className="space-y-2">
+                    <Label className="text-xs">Edit Instructions</Label>
+                    <Textarea
+                      value={prompt}
+                      onChange={(e) => setPrompt(e.target.value)}
+                      placeholder="Describe the edits you want to make (e.g., 'Make the sky sunset orange', 'Add snow to the ground')"
+                      className="min-h-[80px] text-xs resize-none"
+                      maxLength={2560}
+                    />
+                    <div className="text-xs text-muted-foreground text-right">
+                      {prompt.length} / 2560 characters
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
 
           {/* Error display */}
           {error && (
@@ -1315,15 +1428,27 @@ export function AiView() {
                 {activeTab === "text" && !prompt.trim() && (
                   <div>⚠️ Please enter a prompt to generate video</div>
                 )}
-                {activeTab === "image" && !selectedImage && !generation.hasVeo31FrameToVideo && (
-                  <div>⚠️ Please upload an image for video generation</div>
-                )}
-                {activeTab === "image" && generation.hasVeo31FrameToVideo && !firstFrame && (
-                  <div>⚠️ Please upload the first frame (required for frame-to-video)</div>
-                )}
-                {activeTab === "image" && generation.hasVeo31FrameToVideo && !lastFrame && (
-                  <div>⚠️ Please upload the last frame (required for frame-to-video)</div>
-                )}
+                {activeTab === "image" &&
+                  !selectedImage &&
+                  !generation.hasVeo31FrameToVideo && (
+                    <div>⚠️ Please upload an image for video generation</div>
+                  )}
+                {activeTab === "image" &&
+                  generation.hasVeo31FrameToVideo &&
+                  !firstFrame && (
+                    <div>
+                      ⚠️ Please upload the first frame (required for
+                      frame-to-video)
+                    </div>
+                  )}
+                {activeTab === "image" &&
+                  generation.hasVeo31FrameToVideo &&
+                  !lastFrame && (
+                    <div>
+                      ⚠️ Please upload the last frame (required for
+                      frame-to-video)
+                    </div>
+                  )}
                 {activeTab === "avatar" && !avatarImage && (
                   <div>⚠️ Please upload a character image</div>
                 )}

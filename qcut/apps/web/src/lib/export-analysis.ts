@@ -1,7 +1,7 @@
 // Location: apps/web/src/lib/export-analysis.ts
 
-import type { TimelineTrack, MediaElement } from '@/types/timeline';
-import type { MediaItem } from '@/stores/media-store-types';
+import type { TimelineTrack, MediaElement } from "@/types/timeline";
+import type { MediaItem } from "@/stores/media-store-types";
 
 /**
  * Analysis result determining export optimization strategy.
@@ -30,10 +30,10 @@ export interface ExportAnalysis {
   canUseDirectCopy: boolean;
   /** Which export pipeline to use */
   optimizationStrategy:
-    | 'image-pipeline'
-    | 'direct-copy'
-    | 'direct-video-with-filters'
-    | 'video-normalization';
+    | "image-pipeline"
+    | "direct-copy"
+    | "direct-video-with-filters"
+    | "video-normalization";
   /** Human-readable explanation of strategy choice */
   reason: string;
 }
@@ -48,7 +48,7 @@ export interface ExportCanvasOptions {
   fps?: number;
 }
 
-type CanvasSettingSource = 'export-settings' | 'media-fallback' | 'default';
+type CanvasSettingSource = "export-settings" | "media-fallback" | "default";
 
 interface ResolvedCanvasSettings {
   width: number;
@@ -70,32 +70,36 @@ function resolveExportCanvasSettings(params: {
   const exportFps = exportSettings?.fps;
 
   const hasExportDimensions =
-    typeof exportWidth === 'number' &&
+    typeof exportWidth === "number" &&
     exportWidth > 0 &&
-    typeof exportHeight === 'number' &&
+    typeof exportHeight === "number" &&
     exportHeight > 0;
-  const hasExportFps = typeof exportFps === 'number' && exportFps > 0;
+  const hasExportFps = typeof exportFps === "number" && exportFps > 0;
 
   // Use clear conditional logic instead of nested ternaries
   let resolvedWidth = 1280;
   let resolvedHeight = 720;
-  let source: CanvasSettingSource = 'default';
+  let source: CanvasSettingSource = "default";
 
   if (hasExportDimensions) {
     resolvedWidth = exportWidth!;
     resolvedHeight = exportHeight!;
-    source = 'export-settings';
-  } else if (typeof fallbackWidth === 'number' && fallbackWidth > 0 &&
-             typeof fallbackHeight === 'number' && fallbackHeight > 0) {
+    source = "export-settings";
+  } else if (
+    typeof fallbackWidth === "number" &&
+    fallbackWidth > 0 &&
+    typeof fallbackHeight === "number" &&
+    fallbackHeight > 0
+  ) {
     resolvedWidth = fallbackWidth;
     resolvedHeight = fallbackHeight;
-    source = 'media-fallback';
+    source = "media-fallback";
   }
 
   let resolvedFps = 30;
   if (hasExportFps) {
     resolvedFps = exportFps!;
-  } else if (typeof fallbackFps === 'number' && fallbackFps > 0) {
+  } else if (typeof fallbackFps === "number" && fallbackFps > 0) {
     resolvedFps = fallbackFps;
   }
 
@@ -103,7 +107,7 @@ function resolveExportCanvasSettings(params: {
     width: resolvedWidth,
     height: resolvedHeight,
     fps: resolvedFps,
-    source
+    source,
   };
 }
 
@@ -127,56 +131,58 @@ function extractVideoProperties(
 ): VideoProperties | null {
   const mediaItem = mediaItemsMap.get(element.mediaId);
 
-  if (!mediaItem || mediaItem.type !== 'video') {
+  if (!mediaItem || mediaItem.type !== "video") {
     return null;
   }
 
   const metadata = mediaItem.metadata;
 
   const isRecord = (value: unknown): value is Record<string, unknown> =>
-    typeof value === 'object' && value !== null;
+    typeof value === "object" && value !== null;
 
   const selectPositiveNumber = (candidates: unknown[]): number | undefined => {
     for (const candidate of candidates) {
-      if (typeof candidate === 'number' && candidate > 0) {
+      if (typeof candidate === "number" && candidate > 0) {
         return candidate;
       }
     }
-    return undefined;
+    return;
   };
 
   const selectString = (candidates: unknown[]): string | undefined => {
     for (const candidate of candidates) {
-      if (typeof candidate === 'string') {
+      if (typeof candidate === "string") {
         return candidate;
       }
     }
-    return undefined;
+    return;
   };
 
   const metadataRecord = isRecord(metadata) ? metadata : undefined;
   const rawVideoMetadata = metadataRecord?.video;
-  const videoMetadata = isRecord(rawVideoMetadata) ? rawVideoMetadata : undefined;
+  const videoMetadata = isRecord(rawVideoMetadata)
+    ? rawVideoMetadata
+    : undefined;
 
   const width = selectPositiveNumber([mediaItem.width, metadataRecord?.width]);
-  const height = selectPositiveNumber([mediaItem.height, metadataRecord?.height]);
+  const height = selectPositiveNumber([
+    mediaItem.height,
+    metadataRecord?.height,
+  ]);
   const fps = selectPositiveNumber([
     mediaItem.fps,
     metadataRecord?.fps,
-    videoMetadata?.fps
+    videoMetadata?.fps,
   ]);
 
   if (!width || !height || !fps) {
     return null;
   }
 
-  const codec = selectString([
-    videoMetadata?.codec,
-    metadataRecord?.codec
-  ]);
+  const codec = selectString([videoMetadata?.codec, metadataRecord?.codec]);
   const pixelFormat = selectString([
     videoMetadata?.pixelFormat,
-    metadataRecord?.pixelFormat
+    metadataRecord?.pixelFormat,
   ]);
 
   return {
@@ -184,7 +190,7 @@ function extractVideoProperties(
     height,
     fps,
     codec,
-    pixelFormat
+    pixelFormat,
   };
 }
 
@@ -215,12 +221,14 @@ function checkVideoPropertiesMatch(
   targetHeight: number,
   targetFps: number
 ): boolean {
-  console.log('🔍 [MODE 1.5 DETECTION] Checking video properties...');
-  console.log(`🔍 [MODE 1.5 DETECTION] Target: ${targetWidth}x${targetHeight} @ ${targetFps}fps`);
+  console.log("🔍 [MODE 1.5 DETECTION] Checking video properties...");
+  console.log(
+    `🔍 [MODE 1.5 DETECTION] Target: ${targetWidth}x${targetHeight} @ ${targetFps}fps`
+  );
 
   // Edge case: No videos to check
   if (videoElements.length === 0) {
-    console.log('⚠️ [MODE 1.5 DETECTION] No video elements to check');
+    console.log("⚠️ [MODE 1.5 DETECTION] No video elements to check");
     return true; // No videos = no mismatches
   }
 
@@ -230,16 +238,24 @@ function checkVideoPropertiesMatch(
 
     // Missing metadata = needs normalization
     if (!props) {
-      console.log(`⚠️ [MODE 1.5 DETECTION] Video ${i}: No properties found - triggering normalization`);
+      console.log(
+        `⚠️ [MODE 1.5 DETECTION] Video ${i}: No properties found - triggering normalization`
+      );
       return false;
     }
 
-    console.log(`🔍 [MODE 1.5 DETECTION] Video ${i}: ${props.width}x${props.height} @ ${props.fps}fps`);
+    console.log(
+      `🔍 [MODE 1.5 DETECTION] Video ${i}: ${props.width}x${props.height} @ ${props.fps}fps`
+    );
 
     // Resolution must match exactly
     if (props.width !== targetWidth || props.height !== targetHeight) {
-      console.log(`⚠️ [MODE 1.5 DETECTION] Video ${i} resolution mismatch - normalization needed`);
-      console.log(`   Expected: ${targetWidth}x${targetHeight}, Got: ${props.width}x${props.height}`);
+      console.log(
+        `⚠️ [MODE 1.5 DETECTION] Video ${i} resolution mismatch - normalization needed`
+      );
+      console.log(
+        `   Expected: ${targetWidth}x${targetHeight}, Got: ${props.width}x${props.height}`
+      );
       return false;
     }
 
@@ -247,13 +263,19 @@ function checkVideoPropertiesMatch(
     const fpsTolerance = 0.1;
     const fpsDiff = Math.abs(props.fps - targetFps);
     if (fpsDiff > fpsTolerance) {
-      console.log(`⚠️ [MODE 1.5 DETECTION] Video ${i} FPS mismatch - normalization needed`);
-      console.log(`   Expected: ${targetFps}fps, Got: ${props.fps}fps, Diff: ${fpsDiff.toFixed(2)}fps`);
+      console.log(
+        `⚠️ [MODE 1.5 DETECTION] Video ${i} FPS mismatch - normalization needed`
+      );
+      console.log(
+        `   Expected: ${targetFps}fps, Got: ${props.fps}fps, Diff: ${fpsDiff.toFixed(2)}fps`
+      );
       return false;
     }
   }
 
-  console.log('✅ [MODE 1.5 DETECTION] All videos match export settings - can use direct copy');
+  console.log(
+    "✅ [MODE 1.5 DETECTION] All videos match export settings - can use direct copy"
+  );
   return true;
 }
 
@@ -285,7 +307,7 @@ export function analyzeTimelineForExport(
   exportCanvas?: ExportCanvasOptions
 ): ExportAnalysis {
   // Create a map for fast media item lookup
-  const mediaItemsMap = new Map(mediaItems.map(item => [item.id, item]));
+  const mediaItemsMap = new Map(mediaItems.map((item) => [item.id, item]));
 
   let hasImageElements = false;
   let hasTextElements = false;
@@ -303,37 +325,40 @@ export function analyzeTimelineForExport(
       if (element.hidden) continue;
 
       // Check for text elements
-      if (element.type === 'text') {
+      if (element.type === "text") {
         hasTextElements = true;
         continue;
       }
 
       // Check for sticker elements
-      if (element.type === 'sticker') {
+      if (element.type === "sticker") {
         hasStickers = true;
         continue;
       }
 
       // Check for media elements (video/image)
-      if (element.type === 'media') {
+      if (element.type === "media") {
         const mediaElement = element as MediaElement;
         const mediaItem = mediaItemsMap.get(mediaElement.mediaId);
 
         if (!mediaItem) continue;
 
         // Check if media item is an image
-        if (mediaItem.type === 'image') {
+        if (mediaItem.type === "image") {
           hasImageElements = true;
         }
 
         // Track video elements and their time ranges
-        if (mediaItem.type === 'video') {
+        if (mediaItem.type === "video") {
           videoElementCount++;
-          const effectiveDuration = element.duration - element.trimStart - element.trimEnd;
+          const effectiveDuration =
+            element.duration - element.trimStart - element.trimEnd;
 
           // Validate effective duration is positive
           if (effectiveDuration <= 0) {
-            console.warn(`[EXPORT ANALYSIS] Invalid video duration for element ${element.id}: duration=${element.duration}, trimStart=${element.trimStart}, trimEnd=${element.trimEnd}`);
+            console.warn(
+              `[EXPORT ANALYSIS] Invalid video duration for element ${element.id}: duration=${element.duration}, trimStart=${element.trimStart}, trimEnd=${element.trimEnd}`
+            );
             continue; // Skip this element
           }
 
@@ -366,19 +391,17 @@ export function analyzeTimelineForExport(
 
   // Separate frame rendering (canvas compositing) from filter encoding (FFmpeg filters)
   const needsFrameRendering =
-    hasImageElements ||           // Images require canvas compositing
-    hasOverlappingVideos;         // Multiple videos require compositing
-    // Note: Effects analysis pending - for now assume all effects need frame rendering
+    hasImageElements || // Images require canvas compositing
+    hasOverlappingVideos; // Multiple videos require compositing
+  // Note: Effects analysis pending - for now assume all effects need frame rendering
 
   const needsFilterEncoding =
-    hasTextElements ||            // Text uses FFmpeg drawtext
-    hasStickers;                  // Stickers use FFmpeg overlay
-    // Note: Effects can be added here once FFmpeg-compatible effects are identified
+    hasTextElements || // Text uses FFmpeg drawtext
+    hasStickers; // Stickers use FFmpeg overlay
+  // Note: Effects can be added here once FFmpeg-compatible effects are identified
 
   const needsImageProcessing =
-    needsFrameRendering ||
-    needsFilterEncoding ||
-    hasEffects;
+    needsFrameRendering || needsFilterEncoding || hasEffects;
 
   // Can use direct copy/concat if:
   // - Single video source with no processing needed, OR
@@ -396,10 +419,10 @@ export function analyzeTimelineForExport(
 
   // Determine optimization strategy
   let optimizationStrategy:
-    | 'image-pipeline'
-    | 'direct-copy'
-    | 'direct-video-with-filters'
-    | 'video-normalization';
+    | "image-pipeline"
+    | "direct-copy"
+    | "direct-video-with-filters"
+    | "video-normalization";
 
   // Mode decision tree (priority order):
   // 1. Can we use direct copy? (Mode 1 - fastest)
@@ -408,11 +431,15 @@ export function analyzeTimelineForExport(
   // 4. Default to frame rendering (Mode 3 - slow but most flexible)
 
   if (canUseDirectCopy) {
-    console.log(`🎯 [MODE DETECTION] Direct copy eligible - ${videoElementCount} video(s), checking requirements...`);
+    console.log(
+      `🎯 [MODE DETECTION] Direct copy eligible - ${videoElementCount} video(s), checking requirements...`
+    );
 
     // For multiple videos, we need to check if they have matching properties
     if (videoElementCount > 1) {
-      console.log('🔍 [MODE DETECTION] Multiple sequential videos detected - checking properties for Mode 1 vs Mode 1.5...');
+      console.log(
+        "🔍 [MODE DETECTION] Multiple sequential videos detected - checking properties for Mode 1 vs Mode 1.5..."
+      );
 
       // Get export canvas settings (use export settings or first video as fallback)
       const firstVideo = videoElements[0];
@@ -422,13 +449,15 @@ export function analyzeTimelineForExport(
         exportSettings: exportCanvas,
         fallbackWidth: firstMediaItem?.width,
         fallbackHeight: firstMediaItem?.height,
-        fallbackFps: firstMediaItem?.fps
+        fallbackFps: firstMediaItem?.fps,
       });
       const targetWidth = canvasSettings.width;
       const targetHeight = canvasSettings.height;
       const targetFps = canvasSettings.fps;
 
-      console.log(`🔍 [MODE DETECTION] Using target: ${targetWidth}x${targetHeight} @ ${targetFps}fps (source: ${canvasSettings.source})`);
+      console.log(
+        `🔍 [MODE DETECTION] Using target: ${targetWidth}x${targetHeight} @ ${targetFps}fps (source: ${canvasSettings.source})`
+      );
 
       // Check if all videos match the export settings
       const videosMatch = checkVideoPropertiesMatch(
@@ -441,95 +470,122 @@ export function analyzeTimelineForExport(
 
       if (videosMatch) {
         // Mode 1: All videos match, can use direct copy
-        optimizationStrategy = 'direct-copy';
-        console.log('✅ [MODE DETECTION] All videos match export settings - using Mode 1: Direct copy (15-48x speedup)');
+        optimizationStrategy = "direct-copy";
+        console.log(
+          "✅ [MODE DETECTION] All videos match export settings - using Mode 1: Direct copy (15-48x speedup)"
+        );
       } else {
         // Mode 1.5: Videos need normalization
-        optimizationStrategy = 'video-normalization';
-        console.log('⚡ [MODE DETECTION] Videos have different properties - using Mode 1.5: Video normalization (5-7x speedup)');
-        console.log('🎬 [MODE 1.5] Videos will be normalized to match export canvas before concatenation');
+        optimizationStrategy = "video-normalization";
+        console.log(
+          "⚡ [MODE DETECTION] Videos have different properties - using Mode 1.5: Video normalization (5-7x speedup)"
+        );
+        console.log(
+          "🎬 [MODE 1.5] Videos will be normalized to match export canvas before concatenation"
+        );
       }
     } else {
       // Single video - always use direct copy (Mode 1)
-      optimizationStrategy = 'direct-copy';
-      console.log('✅ [MODE DETECTION] Single video - using Mode 1: Direct copy (15-48x speedup)');
+      optimizationStrategy = "direct-copy";
+      console.log(
+        "✅ [MODE DETECTION] Single video - using Mode 1: Direct copy (15-48x speedup)"
+      );
     }
-  } else if (!needsFrameRendering && needsFilterEncoding && videoElementCount === 1) {
+  } else if (
+    !needsFrameRendering &&
+    needsFilterEncoding &&
+    videoElementCount === 1
+  ) {
     // Mode 2: Single video with FFmpeg filters (text/stickers)
-    optimizationStrategy = 'direct-video-with-filters';
-    console.log('⚡ [MODE DETECTION] Selected Mode 2: Direct video with filters (3-5x speedup)');
+    optimizationStrategy = "direct-video-with-filters";
+    console.log(
+      "⚡ [MODE DETECTION] Selected Mode 2: Direct video with filters (3-5x speedup)"
+    );
   } else {
     // Mode 3: Frame rendering - slowest but most flexible
-    optimizationStrategy = 'image-pipeline';
-    console.log('🎨 [MODE DETECTION] Selected Mode 3: Frame rendering (baseline speed)');
+    optimizationStrategy = "image-pipeline";
+    console.log(
+      "🎨 [MODE DETECTION] Selected Mode 3: Frame rendering (baseline speed)"
+    );
 
     // Log why Mode 3 was selected
     const reasons: string[] = [];
-    if (hasImageElements) reasons.push('has image elements');
-    if (hasTextElements && needsFrameRendering) reasons.push('text needs frame rendering');
-    if (hasStickers && needsFrameRendering) reasons.push('stickers need frame rendering');
-    if (hasEffects) reasons.push('has effects');
-    if (hasOverlappingVideos) reasons.push('videos overlap');
-    if (!allVideosHaveLocalPath) reasons.push('videos lack local paths');
-    if (videoElementCount === 0) reasons.push('no video elements');
+    if (hasImageElements) reasons.push("has image elements");
+    if (hasTextElements && needsFrameRendering)
+      reasons.push("text needs frame rendering");
+    if (hasStickers && needsFrameRendering)
+      reasons.push("stickers need frame rendering");
+    if (hasEffects) reasons.push("has effects");
+    if (hasOverlappingVideos) reasons.push("videos overlap");
+    if (!allVideosHaveLocalPath) reasons.push("videos lack local paths");
+    if (videoElementCount === 0) reasons.push("no video elements");
 
-    console.log(`   Reasons: ${reasons.join(', ')}`);
+    console.log(`   Reasons: ${reasons.join(", ")}`);
   }
 
   // Generate reason for strategy choice
-  let reason = '';
-  if (optimizationStrategy === 'direct-copy') {
+  let reason = "";
+  if (optimizationStrategy === "direct-copy") {
     if (videoElementCount === 1) {
-      reason = 'Single video with no overlays, effects, or compositing - using direct copy';
+      reason =
+        "Single video with no overlays, effects, or compositing - using direct copy";
     } else {
-      reason = 'Sequential videos without overlaps - using FFmpeg concat demuxer';
+      reason =
+        "Sequential videos without overlaps - using FFmpeg concat demuxer";
     }
-  } else if (optimizationStrategy === 'direct-video-with-filters') {
-    reason = 'Single video with text/sticker overlays - using FFmpeg filters';
-  } else if (optimizationStrategy === 'video-normalization') {
-    reason = 'Multiple videos with different properties - using FFmpeg normalization';
+  } else if (optimizationStrategy === "direct-video-with-filters") {
+    reason = "Single video with text/sticker overlays - using FFmpeg filters";
+  } else if (optimizationStrategy === "video-normalization") {
+    reason =
+      "Multiple videos with different properties - using FFmpeg normalization";
   } else {
     const reasons: string[] = [];
-    if (hasImageElements) reasons.push('image elements');
-    if (hasTextElements) reasons.push('text overlays');
-    if (hasStickers) reasons.push('stickers');
-    if (hasEffects) reasons.push('effects');
-    if (hasOverlappingVideos) reasons.push('overlapping videos');
-    if (!allVideosHaveLocalPath) reasons.push('videos without filesystem paths');
-    reason = `Image processing required due to: ${reasons.join(', ')}`;
+    if (hasImageElements) reasons.push("image elements");
+    if (hasTextElements) reasons.push("text overlays");
+    if (hasStickers) reasons.push("stickers");
+    if (hasEffects) reasons.push("effects");
+    if (hasOverlappingVideos) reasons.push("overlapping videos");
+    if (!allVideosHaveLocalPath)
+      reasons.push("videos without filesystem paths");
+    reason = `Image processing required due to: ${reasons.join(", ")}`;
   }
 
   // Log localPath validation for debugging
-  console.log('🔍 [EXPORT ANALYSIS] Video localPath validation:', {
+  console.log("🔍 [EXPORT ANALYSIS] Video localPath validation:", {
     totalVideos: videoElementCount,
-    videosWithLocalPath: videoElements.filter(el => {
+    videosWithLocalPath: videoElements.filter((el) => {
       const media = mediaItemsMap.get(el.mediaId);
       return media?.localPath;
     }).length,
-    allHaveLocalPath: allVideosHaveLocalPath
+    allHaveLocalPath: allVideosHaveLocalPath,
   });
 
   if (!allVideosHaveLocalPath && videoElementCount > 0) {
-    console.log('⚠️ [EXPORT ANALYSIS] Some videos lack localPath - direct copy disabled');
+    console.log(
+      "⚠️ [EXPORT ANALYSIS] Some videos lack localPath - direct copy disabled"
+    );
     const videosWithoutLocalPath = videoElements
-      .filter(el => {
+      .filter((el) => {
         const media = mediaItemsMap.get(el.mediaId);
         return !media?.localPath;
       })
-      .map(el => {
+      .map((el) => {
         const media = mediaItemsMap.get(el.mediaId);
         return {
           elementId: el.id,
           mediaId: media?.id,
           hasUrl: !!media?.url,
-          urlType: media?.url?.substring(0, 20)
+          urlType: media?.url?.substring(0, 20),
         };
       });
-    console.log('📝 [EXPORT ANALYSIS] Videos without localPath:', videosWithoutLocalPath);
+    console.log(
+      "📝 [EXPORT ANALYSIS] Videos without localPath:",
+      videosWithoutLocalPath
+    );
   }
 
   // Log detailed analysis results
-  console.log('📊 [EXPORT ANALYSIS] Complete analysis result:', {
+  console.log("📊 [EXPORT ANALYSIS] Complete analysis result:", {
     videoElementCount,
     hasOverlappingVideos,
     hasImageElements,
@@ -539,12 +595,12 @@ export function analyzeTimelineForExport(
     allVideosHaveLocalPath,
     canUseDirectCopy,
     optimizationStrategy,
-    reason
+    reason,
   });
 
   // Log video elements with trim information
   if (videoElementCount > 0) {
-    const videoTrimInfo = videoElements.map(el => {
+    const videoTrimInfo = videoElements.map((el) => {
       const media = mediaItemsMap.get(el.mediaId);
       return {
         elementId: el.id,
@@ -554,27 +610,40 @@ export function analyzeTimelineForExport(
         duration: el.duration,
         effectiveDuration: el.duration - el.trimStart - el.trimEnd,
         hasLocalPath: !!media?.localPath,
-        localPath: media?.localPath?.substring(media.localPath.lastIndexOf('\\') + 1) || 'NONE'
+        localPath:
+          media?.localPath?.substring(media.localPath.lastIndexOf("\\") + 1) ||
+          "NONE",
       };
     });
-    console.log('🎬 [EXPORT ANALYSIS] Video elements with trim info:', videoTrimInfo);
+    console.log(
+      "🎬 [EXPORT ANALYSIS] Video elements with trim info:",
+      videoTrimInfo
+    );
   }
 
   // Log optimization strategy with clear mode indicators
-  if (optimizationStrategy === 'direct-copy') {
-    console.log('✅ [EXPORT ANALYSIS] MODE 1: Using DIRECT COPY optimization - Fast export! 🚀');
-  } else if (optimizationStrategy === 'direct-video-with-filters') {
-    console.log('⚡ [EXPORT ANALYSIS] MODE 2: Using DIRECT VIDEO WITH FILTERS - Fast export with text/stickers! ⚡');
-  } else if (optimizationStrategy === 'video-normalization') {
-    console.log('⚡ [EXPORT ANALYSIS] MODE 1.5: Using VIDEO NORMALIZATION - Fast export with padding! ⚡');
+  if (optimizationStrategy === "direct-copy") {
+    console.log(
+      "✅ [EXPORT ANALYSIS] MODE 1: Using DIRECT COPY optimization - Fast export! 🚀"
+    );
+  } else if (optimizationStrategy === "direct-video-with-filters") {
+    console.log(
+      "⚡ [EXPORT ANALYSIS] MODE 2: Using DIRECT VIDEO WITH FILTERS - Fast export with text/stickers! ⚡"
+    );
+  } else if (optimizationStrategy === "video-normalization") {
+    console.log(
+      "⚡ [EXPORT ANALYSIS] MODE 1.5: Using VIDEO NORMALIZATION - Fast export with padding! ⚡"
+    );
   } else {
-    console.log('🎨 [EXPORT ANALYSIS] MODE 3: Using IMAGE PIPELINE - Slow export (frame-by-frame)');
+    console.log(
+      "🎨 [EXPORT ANALYSIS] MODE 3: Using IMAGE PIPELINE - Slow export (frame-by-frame)"
+    );
   }
 
   return {
     needsImageProcessing,
-    needsFrameRendering,      // NEW: Separate frame rendering flag
-    needsFilterEncoding,      // NEW: Separate filter encoding flag
+    needsFrameRendering, // NEW: Separate frame rendering flag
+    needsFilterEncoding, // NEW: Separate filter encoding flag
     hasImageElements,
     hasTextElements,
     hasStickers,
@@ -583,7 +652,7 @@ export function analyzeTimelineForExport(
     hasOverlappingVideos,
     canUseDirectCopy,
     optimizationStrategy,
-    reason
+    reason,
   };
 }
 
@@ -596,7 +665,9 @@ export function analyzeTimelineForExport(
  * @param ranges - Video time ranges from timeline elements
  * @returns true if any videos overlap (need compositing), false if sequential
  */
-function checkForOverlappingRanges(ranges: Array<{ start: number; end: number }>): boolean {
+function checkForOverlappingRanges(
+  ranges: Array<{ start: number; end: number }>
+): boolean {
   if (ranges.length < 2) return false;
 
   // Sort ranges by start time
