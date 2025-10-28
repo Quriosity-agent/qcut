@@ -6,6 +6,7 @@ import {
   getMainWindow,
   navigateToProjects,
   cleanupDatabase,
+  importTestVideo,
 } from "./helpers/electron-helpers";
 
 test.describe("Auto-Save & Export File Management", () => {
@@ -293,10 +294,13 @@ test.describe("Auto-Save & Export File Management", () => {
   }) => {
     // Create a project to export
     await createTestProject(page, "Export Directory Test Project");
+    await importTestVideo(page);
+    await page.waitForSelector('[data-testid="media-item"]', {
+      state: "visible",
+      timeout: 10_000,
+    });
 
     // Add content
-    await page.click('[data-testid="import-media-button"]');
-    await page.waitForSelector('[data-testid="media-item"], input[type="file"]', { timeout: 3000 }).catch(() => {});
 
     const mediaItem = page.locator('[data-testid="media-item"]').first();
     const timelineTrack = page
@@ -353,26 +357,28 @@ test.describe("Auto-Save & Export File Management", () => {
           });
         });
 
-        await customLocationButton.click();
+        try {
+          await customLocationButton.click();
 
-        // Wait for export location to be updated in UI
-        await page
-          .getByTestId("export-location-display")
-          .waitFor({ state: "visible", timeout: 5000 })
-          .catch(() => {
-            // If no specific location display, just verify dialog interaction completed
-            return expect(page.getByTestId("export-dialog")).toBeVisible();
+          // Wait for export location to be updated in UI
+          await page
+            .getByTestId("export-location-display")
+            .waitFor({ state: "visible", timeout: 5000 })
+            .catch(() => {
+              // If no specific location display, just verify dialog interaction completed
+              return expect(page.getByTestId("export-dialog")).toBeVisible();
+            });
+        } finally {
+          await electronApp.evaluate(({ dialog }) => {
+            // @ts-expect-error read from global and clean up
+            if (global.__origShowOpenDialog__) {
+              // @ts-expect-error
+              dialog.showOpenDialog = global.__origShowOpenDialog__;
+              // @ts-expect-error
+              global.__origShowOpenDialog__ = undefined;
+            }
           });
-
-        await electronApp.evaluate(({ dialog }) => {
-          // @ts-expect-error read from global and clean up
-          if (global.__origShowOpenDialog__) {
-            // @ts-expect-error
-            dialog.showOpenDialog = global.__origShowOpenDialog__;
-            // @ts-expect-error
-            global.__origShowOpenDialog__ = undefined;
-          }
-        });
+        }
       }
 
       // Set export quality
@@ -393,14 +399,16 @@ test.describe("Auto-Save & Export File Management", () => {
       const startExportButton = page
         .locator('[data-testid="export-start-button"]')
         .first();
-      if (await startExportButton.isVisible()) {
-        if (await startExportButton.isEnabled()) {
-          await startExportButton.click();
-          // Wait for export to start
-          await Promise.race([
-            page.waitForSelector('[data-testid="export-status"]', { timeout: 5000 }).catch(() => {}),
-            page.waitForSelector('[data-testid="export-progress-bar"]', { timeout: 5000 }).catch(() => {})
-          ]);
+
+      await expect(startExportButton).toBeVisible({ timeout: 5000 });
+      await expect(startExportButton).toBeEnabled({ timeout: 10_000 });
+      await startExportButton.click();
+
+      // Wait for export to start
+      await Promise.race([
+        page.waitForSelector('[data-testid="export-status"]', { timeout: 5000 }).catch(() => {}),
+        page.waitForSelector('[data-testid="export-progress-bar"]', { timeout: 5000 }).catch(() => {})
+      ]);
 
           // Verify export started
           const exportStatus = page.locator('[data-testid="export-status"]');
@@ -426,19 +434,15 @@ test.describe("Auto-Save & Export File Management", () => {
           const cancelButton = page.locator(
             '[data-testid="export-cancel-button"]'
           );
-          if (await cancelButton.isVisible()) {
-            await cancelButton.click();
-            await page.waitForFunction(
-              () => {
-                const status = document.querySelector('[data-testid="export-status"]');
-                return status && /cancel|stop|abort/i.test(status.textContent || '');
-              },
-              { timeout: 3000 }
-            ).catch(() => {});
-          }
-        } else {
-          await expect(startExportButton).toBeDisabled();
-        }
+      if (await cancelButton.isVisible()) {
+        await cancelButton.click();
+        await page.waitForFunction(
+          () => {
+            const status = document.querySelector('[data-testid="export-status"]');
+            return status && /cancel|stop|abort/i.test(status.textContent || '');
+          },
+          { timeout: 3000 }
+        ).catch(() => {});
       }
     }
   });
