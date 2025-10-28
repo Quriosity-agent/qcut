@@ -100,12 +100,15 @@ test.describe("Auto-Save & Export File Management", () => {
 
     // Make some changes to trigger auto-save (project already created at test start)
     await page.click('[data-testid="import-media-button"]');
-    // Wait for import dialog to appear
-    await expect(
-      page
-        .locator('input[type="file"], [data-testid="file-upload-area"]')
-        .first()
-    ).toBeVisible();
+    // File picker input is often hidden; just ensure it exists in the DOM
+    const uploadArea = page.locator(
+      'input[type="file"], [data-testid="file-upload-area"]'
+    );
+    await uploadArea
+      .first()
+      .waitFor({ state: "attached", timeout: 5000 })
+      .catch(() => {});
+    expect(await uploadArea.count()).toBeGreaterThan(0);
 
     // Add media to timeline if possible
     const mediaItem = page.locator('[data-testid="media-item"]').first();
@@ -300,17 +303,24 @@ test.describe("Auto-Save & Export File Management", () => {
       timeout: 10_000,
     });
 
-    // Add content
-
+    // Add imported media to the timeline so export validations pass
     const mediaItem = page.locator('[data-testid="media-item"]').first();
     const timelineTrack = page
       .locator('[data-testid="timeline-track"]')
       .first();
 
-    if ((await mediaItem.isVisible()) && (await timelineTrack.isVisible())) {
-      await mediaItem.dragTo(timelineTrack);
-      await page.waitForSelector('[data-testid="timeline-element"]', { timeout: 5000 }).catch(() => {});
-    }
+    await mediaItem.scrollIntoViewIfNeeded().catch(() => {});
+    await expect(mediaItem).toBeVisible({ timeout: 5000 });
+    await expect(timelineTrack).toBeVisible({ timeout: 5000 });
+
+    await mediaItem.dragTo(timelineTrack);
+    await page
+      .locator('[data-testid="timeline-element"]')
+      .first()
+      .waitFor({ state: "visible", timeout: 5000 });
+
+    // Wait for timeline duration to propagate to the export store
+    await page.waitForTimeout(250);
 
     // Open export dialog
     const exportButton = page.locator('[data-testid*="export"]').first();
@@ -410,30 +420,30 @@ test.describe("Auto-Save & Export File Management", () => {
         page.waitForSelector('[data-testid="export-progress-bar"]', { timeout: 5000 }).catch(() => {})
       ]);
 
-          // Verify export started
-          const exportStatus = page.locator('[data-testid="export-status"]');
-          if (await exportStatus.isVisible()) {
-            await expect(exportStatus).toContainText(/export|process|render/i);
-          }
+      // Verify export started
+      const exportStatus = page.locator('[data-testid="export-status"]');
+      if (await exportStatus.isVisible()) {
+        await expect(exportStatus).toContainText(/export|process|render/i);
+      }
 
-          // Look for export progress
-          const progressBar = page.locator('[data-testid="export-progress-bar"]');
-          if (await progressBar.isVisible()) {
-            await expect(progressBar).toBeVisible();
-          }
+      // Look for export progress
+      const progressBar = page.locator('[data-testid="export-progress-bar"]');
+      if (await progressBar.isVisible()) {
+        await expect(progressBar).toBeVisible();
+      }
 
-          // Wait for progress to update
-          await page.waitForFunction(
-            () => {
-              const progress = document.querySelector('[data-testid="export-progress-bar"]');
-              return progress && progress.getAttribute('value');
-            },
-            { timeout: 5000 }
-          ).catch(() => {});
+      // Wait for progress to update
+      await page.waitForFunction(
+        () => {
+          const progress = document.querySelector('[data-testid="export-progress-bar"]');
+          return progress && progress.getAttribute('value');
+        },
+        { timeout: 5000 }
+      ).catch(() => {});
 
-          const cancelButton = page.locator(
-            '[data-testid="export-cancel-button"]'
-          );
+      const cancelButton = page.locator(
+        '[data-testid="export-cancel-button"]'
+      );
       if (await cancelButton.isVisible()) {
         await cancelButton.click();
         await page.waitForFunction(
