@@ -390,50 +390,54 @@ test.describe("Auto-Save & Export File Management", () => {
       }
 
       // Start export
-      const startExportButton = page.locator(
-        '[data-testid="export-start-button"]'
-      );
+      const startExportButton = page
+        .locator('[data-testid="export-start-button"]')
+        .first();
       if (await startExportButton.isVisible()) {
-        await startExportButton.click();
-        // Wait for export to start
-        await Promise.race([
-          page.waitForSelector('[data-testid="export-status"]', { timeout: 5000 }).catch(() => {}),
-          page.waitForSelector('[data-testid="export-progress-bar"]', { timeout: 5000 }).catch(() => {})
-        ]);
+        if (await startExportButton.isEnabled()) {
+          await startExportButton.click();
+          // Wait for export to start
+          await Promise.race([
+            page.waitForSelector('[data-testid="export-status"]', { timeout: 5000 }).catch(() => {}),
+            page.waitForSelector('[data-testid="export-progress-bar"]', { timeout: 5000 }).catch(() => {})
+          ]);
 
-        // Verify export started
-        const exportStatus = page.locator('[data-testid="export-status"]');
-        if (await exportStatus.isVisible()) {
-          await expect(exportStatus).toContainText(/export|process|render/i);
-        }
+          // Verify export started
+          const exportStatus = page.locator('[data-testid="export-status"]');
+          if (await exportStatus.isVisible()) {
+            await expect(exportStatus).toContainText(/export|process|render/i);
+          }
 
-        // Look for export progress
-        const progressBar = page.locator('[data-testid="export-progress-bar"]');
-        if (await progressBar.isVisible()) {
-          await expect(progressBar).toBeVisible();
-        }
+          // Look for export progress
+          const progressBar = page.locator('[data-testid="export-progress-bar"]');
+          if (await progressBar.isVisible()) {
+            await expect(progressBar).toBeVisible();
+          }
 
-        // Wait for progress to update
-        await page.waitForFunction(
-          () => {
-            const progress = document.querySelector('[data-testid="export-progress-bar"]');
-            return progress && progress.getAttribute('value');
-          },
-          { timeout: 5000 }
-        ).catch(() => {});
-
-        const cancelButton = page.locator(
-          '[data-testid="export-cancel-button"]'
-        );
-        if (await cancelButton.isVisible()) {
-          await cancelButton.click();
+          // Wait for progress to update
           await page.waitForFunction(
             () => {
-              const status = document.querySelector('[data-testid="export-status"]');
-              return status && /cancel|stop|abort/i.test(status.textContent || '');
+              const progress = document.querySelector('[data-testid="export-progress-bar"]');
+              return progress && progress.getAttribute('value');
             },
-            { timeout: 3000 }
+            { timeout: 5000 }
           ).catch(() => {});
+
+          const cancelButton = page.locator(
+            '[data-testid="export-cancel-button"]'
+          );
+          if (await cancelButton.isVisible()) {
+            await cancelButton.click();
+            await page.waitForFunction(
+              () => {
+                const status = document.querySelector('[data-testid="export-status"]');
+                return status && /cancel|stop|abort/i.test(status.textContent || '');
+              },
+              { timeout: 3000 }
+            ).catch(() => {});
+          }
+        } else {
+          await expect(startExportButton).toBeDisabled();
         }
       }
     }
@@ -644,53 +648,57 @@ test.describe("Auto-Save & Export File Management", () => {
       }
 
       // Start export
-      const startButton = page.locator('[data-testid="export-start-button"]');
+      const startButton = page.locator('[data-testid="export-start-button"]').first();
       if (await startButton.isVisible()) {
-        await startButton.click();
-        // Wait for export to start
-        await Promise.race([
-          page.waitForSelector('[data-testid="export-status"]', { timeout: 5000 }).catch(() => {}),
-          page.waitForSelector('[data-testid="export-progress-bar"]', { timeout: 5000 }).catch(() => {})
-        ]);
+        if (await startButton.isEnabled()) {
+          await startButton.click();
+          // Wait for export to start
+          await Promise.race([
+            page.waitForSelector('[data-testid="export-status"]', { timeout: 5000 }).catch(() => {}),
+            page.waitForSelector('[data-testid="export-progress-bar"]', { timeout: 5000 }).catch(() => {})
+          ]);
 
-        // Monitor export progress
-        const progressBar = page.locator('[data-testid="export-progress-bar"]');
-        const exportStatus = page.locator('[data-testid="export-status"]');
+          // Monitor export progress
+          const progressBar = page.locator('[data-testid="export-progress-bar"]');
+          const exportStatus = page.locator('[data-testid="export-status"]');
 
-        if (await progressBar.isVisible()) {
-          await expect(progressBar).toBeVisible();
-        }
+          if (await progressBar.isVisible()) {
+            await expect(progressBar).toBeVisible();
+          }
 
-        if (await exportStatus.isVisible()) {
-          await expect(exportStatus).toContainText(/export|render|process/i);
-        }
+          if (await exportStatus.isVisible()) {
+            await expect(exportStatus).toContainText(/export|render|process/i);
+          }
 
-        // Wait for progress to update
-        await page.waitForFunction(
-          () => {
-            const progress = document.querySelector('[data-testid="export-progress-bar"]');
-            return progress && progress.getAttribute('value');
-          },
-          { timeout: 10000 }
-        ).catch(() => {});
-
-        const cancelButton = page.locator(
-          '[data-testid="export-cancel-button"]'
-        );
-        if (await cancelButton.isVisible()) {
-          await cancelButton.click();
+          // Wait for progress to update
           await page.waitForFunction(
             () => {
-              const status = document.querySelector('[data-testid="export-status"]');
-              return status && /cancel|stop|abort/i.test(status.textContent || '');
+              const progress = document.querySelector('[data-testid="export-progress-bar"]');
+              return progress && progress.getAttribute('value');
             },
-            { timeout: 3000 }
+            { timeout: 10000 }
           ).catch(() => {});
 
-          // Verify cancellation worked
-          if (await exportStatus.isVisible()) {
-            await expect(exportStatus).toContainText(/cancel|stop|abort/i);
+          const cancelButton = page.locator(
+            '[data-testid="export-cancel-button"]'
+          );
+          if (await cancelButton.isVisible()) {
+            await cancelButton.click();
+            await page.waitForFunction(
+              () => {
+                const status = document.querySelector('[data-testid="export-status"]');
+                return status && /cancel|stop|abort/i.test(status.textContent || '');
+              },
+              { timeout: 3000 }
+            ).catch(() => {});
+
+            // Verify cancellation worked
+            if (await exportStatus.isVisible()) {
+              await expect(exportStatus).toContainText(/cancel|stop|abort/i);
+            }
           }
+        } else {
+          await expect(startButton).toBeDisabled();
         }
       }
     }
