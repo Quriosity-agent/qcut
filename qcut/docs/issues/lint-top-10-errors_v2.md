@@ -59,6 +59,25 @@ Add `firstFrame` and `lastFrame` to the dependency array:
 ]);
 ```
 
+> **Comment:** Keep the mock generator aligned with the selected frame range so validation reacts to the latest frame updates.
+
+```typescript
+// apps/web/src/components/editor/media-panel/views/use-ai-generation.ts
+const handleMockGenerate = useCallback(async () => {
+  // ...existing logic
+}, [
+  activeTab,
+  prompt,
+  selectedImage,
+  avatarImage,
+  selectedModels,
+  onError,
+  onComplete,
+  firstFrame, // ensure frame validation reads the latest first frame
+  lastFrame,  // ensure frame validation reads the latest last frame
+]);
+```
+
 ### 3. Why This Fixes the Problem Without Introducing New Issues
 
 **Root Cause:** The `useCallback` hook creates a memoized version of the function. When the function uses variables from the outer scope (`firstFrame`, `lastFrame`) but doesn't list them in dependencies, it may capture stale values.
@@ -145,6 +164,37 @@ Add all missing dependencies to the dependency array:
 ]);
 ```
 
+> **Comment:** Keep the primary generator in sync with live editor settings and helpers so network requests use the latest parameters.
+
+```typescript
+// apps/web/src/components/editor/media-panel/views/use-ai-generation.ts
+const handleGenerate = useCallback(async () => {
+  // ...existing logic
+}, [
+  activeTab,
+  prompt,
+  selectedImage,
+  avatarImage,
+  audioFile,
+  sourceVideo,
+  selectedModels,
+  activeProject,
+  addMediaItem,
+  mediaStoreLoading,
+  mediaStoreError,
+  onError,
+  onComplete,
+  startStatusPolling,
+  veo31Settings,
+  firstFrame,       // ensures frame validation matches current first frame
+  lastFrame,        // ensures frame validation matches current last frame
+  uploadImageToFal, // ensures we call the latest upload helper implementation
+  aspectRatio,      // keeps generated payload aligned with chosen aspect ratio
+  duration,         // keeps generated payload aligned with chosen duration
+  resolution,       // keeps generated payload aligned with chosen resolution
+]);
+```
+
 ### 3. Why This Fixes the Problem Without Introducing New Issues
 
 **Root Cause:** This is the main generation function that uses multiple state values and functions. Missing dependencies cause stale closures where the function doesn't see updated values.
@@ -228,6 +278,18 @@ Remove `falAIClient` and add `clearUploadedImageForEdit`:
 ```typescript
   },
   [clearUploadedImageForEdit]  // ✅ Correct dependency
+);
+```
+
+> **Comment:** Keep the edit upload handler wired to the latest cleanup helper while avoiding unnecessary dependency churn from the stable client instance.
+
+```typescript
+// apps/web/src/components/editor/media-panel/views/use-ai-generation.ts
+const handleImageUploadForEdit = useCallback(
+  async (file: File) => {
+    // ...existing logic
+  },
+  [clearUploadedImageForEdit] // ensures error cleanup uses the freshest callback reference
 );
 ```
 
