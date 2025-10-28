@@ -16,7 +16,7 @@ Tests verified: **67/67** (100% verified!)
 Test results: **55 passing, 1 failed-app-bug, 1 skipped, 8 failed-test-infrastructure, 2 not-tested**
 Pass rate: **55/67 (82.1%)**
 
-**Progress Since data-testid Fix**: +18 passing tests (multi-media-management-part1 +1, multi-media-management-part2 +1, text-overlay +4, ai-enhancement +7, auto-save-export +5)
+**Progress Since data-testid Fix**: +19 passing tests (multi-media-management-part1 +1, multi-media-management-part2 +1, text-overlay +4, ai-enhancement +7, auto-save-export +5, file-operations-storage-management +1)
 
 ---
 
