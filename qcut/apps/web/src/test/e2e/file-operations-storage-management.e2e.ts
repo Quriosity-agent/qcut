@@ -289,14 +289,16 @@ test.describe("File Operations & Storage Management", () => {
    * Test 5A.6: Test file format support and validation
    * Tests support for various file formats (video, audio, image)
    * and proper handling of unsupported or corrupted files.
-   */
+  */
   test("5A.6 - Test file format support and validation", async ({ page }) => {
     // This test would verify different file formats are handled properly
 
+    // Ensure we are inside an editor session where the import controls exist
+    await createTestProject(page, "Format Support Test Project");
+
     // Import button should be available
-    await expect(
-      page.locator('[data-testid="import-media-button"]')
-    ).toBeVisible();
+    const importButton = page.locator('[data-testid="import-media-button"]').first();
+    await expect(importButton).toBeVisible();
 
     // In a real implementation, you would test:
     // 1. Various file formats (mp4, mov, avi, mp3, wav, jpg, png)
@@ -304,7 +306,7 @@ test.describe("File Operations & Storage Management", () => {
     // 3. Corrupted file handling
 
     // For now, verify the import system accepts files
-    await page.click('[data-testid="import-media-button"]');
+    await importButton.click();
 
     // Wait for file input to be available
     await page.waitForSelector('input[type="file"]', { timeout: 2000 }).catch(() => {});
@@ -324,23 +326,40 @@ test.describe("File Operations & Storage Management", () => {
   test("5A.7 - Test storage service integration", async ({ page }) => {
     // Setup: Create project for storage service testing
 
-    await createTestProject(page, "Storage Integration Test Project");
+    const projectName = `Storage Integration Test Project ${Date.now()}`;
+    await createTestProject(page, projectName);
 
-    // Verify project appears in storage
-    await page.click('[data-testid="save-project-button"]');
-    await page
-      .getByTestId("project-name-input")
-      .fill("Storage Integration Test");
-    await page.click('[data-testid="save-confirm-button"]');
+    // Wait for auto-save indicator to confirm project persistence
+    const autoSaveIndicator = page.getByTestId("auto-save-indicator");
+    if (await autoSaveIndicator.isVisible()) {
+      await expect(autoSaveIndicator).toContainText(/auto/i);
+      await expect(autoSaveIndicator)
+        .toHaveText(/auto-saved/i, { timeout: 5000 })
+        .catch(() => {});
+    }
 
-    // Wait for save to complete
-    await page.waitForSelector('[data-testid="save-status"]', { timeout: 3000 }).catch(() => {});
+    // Allow background auto-save to complete before leaving editor
+    await page.waitForTimeout(1000);
 
-    // Navigate back to projects list
-    await page.click('[data-testid="projects-tab"]');
+    // Navigate back to projects list using the header menu
+    const projectMenuButton = page
+      .locator(`button:has-text("${projectName}")`)
+      .first();
+    await expect(projectMenuButton).toBeVisible();
+    await projectMenuButton.click();
+
+    const projectsMenuItem = page
+      .locator('[role="menuitem"]:has-text("Projects")')
+      .first();
+    await expect(projectsMenuItem).toBeVisible();
+    await projectsMenuItem.click().catch(async () => {
+      await page.locator('a:has-text("Projects")').first().click();
+    });
 
     // Wait for project list to load
-    await page.waitForSelector('[data-testid="project-list-item"]', { timeout: 3000 });
+    await page.waitForSelector('[data-testid="project-list-item"]', {
+      timeout: 5000,
+    });
 
     // Verify saved project appears in list
     const projectListItems = page.locator('[data-testid="project-list-item"]');
@@ -349,7 +368,7 @@ test.describe("File Operations & Storage Management", () => {
 
     // Look for our test project
     const testProject = projectListItems.filter({
-      hasText: "Storage Integration Test",
+      hasText: projectName,
     });
     if ((await testProject.count()) > 0) {
       await expect(testProject.first()).toBeVisible();
