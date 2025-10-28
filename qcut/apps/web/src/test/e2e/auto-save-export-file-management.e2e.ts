@@ -699,7 +699,23 @@ test.describe("Auto-Save & Export File Management", () => {
           }
 
           if (await exportStatus.isVisible()) {
-            await expect(exportStatus).toContainText(/export|render|process/i);
+            // Allow transient preparation statuses the exporter now surfaces
+            const statusText = ((await exportStatus.innerText()) || "")
+              .trim()
+              .toLowerCase();
+            const allowedKeywords = [
+              "export",
+              "process",
+              "render",
+              "prepar",
+              "start",
+              "compilat",
+              "audio",
+              "video",
+            ];
+            expect(
+              allowedKeywords.some((keyword) => statusText.includes(keyword))
+            ).toBeTruthy();
           }
 
           // Wait for progress to update

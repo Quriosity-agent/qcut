@@ -13,8 +13,8 @@
 Total E2E test files: **14** ✅
 Total tests: **67**
 Tests verified: **67/67** (100% verified!)
-Test results: **55 passing, 1 failed-app-bug, 1 skipped, 8 failed-test-infrastructure, 2 not-tested**
-Pass rate: **55/67 (82.1%)**
+Test results: **56 passing, 1 failed-app-bug, 1 skipped, 7 failed-test-infrastructure, 2 not-tested**
+Pass rate: **56/67 (83.6%)**
 
 **Progress Since data-testid Fix**: +19 passing tests (multi-media-management-part1 +1, multi-media-management-part2 +1, text-overlay +4, ai-enhancement +7, auto-save-export +5, file-operations-storage-management +1)
 
@@ -201,7 +201,7 @@ Pass rate: **55/67 (82.1%)**
 
 **Key Fixes**:
 - 5B.1 now treats the hidden file input as intentional and falls back to IndexedDB detection when the indicator stays off-screen.
-- 5B.3 expands the export-status regex and waits for the start button to enable before clicking, matching the FFmpeg workflow messages.
+- 5B.3/5B.6 tolerate the exporter’s new `Preparing…` and `Starting…` phases by asserting on a keyword list once the start button enables, aligning with the FFmpeg warm-up messages.
 
 **Impact**:
 - ✅ Auto-save and export verified end-to-end without flaky assertions.
@@ -357,9 +357,9 @@ Pass rate: **55/67 (82.1%)**
 | **Navigation** | 2 | 6 | ✅ 5 (2 pass, 1 skip) | 0 |
 | **Multi-Media Management** | 2 | 12 | ✅ 11 (10 pass, 1 app bug) | ⏳ 1 |
 | **Text Overlay** | 1 | 6 | ✅ 4 | ⏳ 2 |
-| **File Operations & Storage** | 2 | 14 | ⚠️ 14 (8 pass, 4 test infra, 2 not tested) | ⏳ 0 |
+| **File Operations & Storage** | 2 | 14 | ⚠️ 14 (9 pass, 3 test infra, 2 not tested) | ⏳ 0 |
 | **AI Features** | 2 | 13 | ✅ 13 (12 pass, 1 not tested) | 0 |
-| **TOTAL** | **14** | **67** | **67** (55 pass, 1 app bug, 1 skip, 8 test infra, 2 not tested) | **4** |
+| **TOTAL** | **14** | **67** | **67** (56 pass, 1 app bug, 1 skip, 7 test infra, 2 not tested) | **4** |
 
 ---
 
@@ -385,7 +385,7 @@ Validate media handling and storage:
 
 **Runtime**: ~10 minutes
 **Test Count**: 26 tests
-**Progress**: 16/26 tests passing (61.5%), 1 app bug (modal blocking zoom), 6 test infrastructure issues, 2 not tested
+**Progress**: 17/26 tests passing (65.4%), 1 app bug (modal blocking zoom), 5 test infrastructure issues, 2 not tested
 
 ### Phase 3: Overlay Features (Medium Priority)
 Test overlay functionality:
@@ -470,4 +470,4 @@ With the database cleanup fix in place:
 **Database Fix**: Implemented & Verified
 **AI Enhancement Fix**: Implemented & Verified (7/7 tests passing)
 **5B Auto-Save/Export Fix**: Improved from 1/6 to 6/6 passing (2025-10-28)
-**Current Status**: 55/67 tests passing (82.1%), 8 test infrastructure issues remaining
+**Current Status**: 56/67 tests passing (83.6%), 7 test infrastructure issues remaining
