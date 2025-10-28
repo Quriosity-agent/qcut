@@ -15,12 +15,13 @@ export function Onboarding() {
   const [step, setStep] = useState(0);
   const [isOpen, setIsOpen] = useState(false);
 
-  useEffect(() => {
-    const hasSeenOnboarding = localStorage.getItem("hasSeenOnboarding");
-    if (!hasSeenOnboarding) {
-      setIsOpen(true);
-    }
-  }, []);
+  // Disabled: Welcome modal no longer shows automatically
+  // useEffect(() => {
+  //   const hasSeenOnboarding = localStorage.getItem("hasSeenOnboarding");
+  //   if (!hasSeenOnboarding) {
+  //     setIsOpen(true);
+  //   }
+  // }, []);
 
   const handleNext = () => {
     setStep(step + 1);
