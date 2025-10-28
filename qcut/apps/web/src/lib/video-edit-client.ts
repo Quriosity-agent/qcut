@@ -226,10 +226,6 @@ class VideoEditClient {
     // Try multiple response structures (defensive programming)
     let videoUrl: string | null = null;
     let audioUrl: string | null = null;
-    let duration: number | undefined;
-    let fileSize: number | undefined;
-    let width: number | undefined;
-    let height: number | undefined;
 
     // Check direct properties first
     if (result.video_url) {
@@ -258,14 +254,14 @@ class VideoEditClient {
     }
 
     // Get duration from various sources
-    duration = result.video?.duration || result.data?.video?.duration;
+    const duration = result.video?.duration || result.data?.video?.duration;
 
     // Get file size from various sources
-    fileSize = result.video?.size || result.data?.video?.size;
+    const fileSize = result.video?.size || result.data?.video?.size;
 
     // Get video dimensions from various sources
-    width = result.video?.width || result.data?.video?.width;
-    height = result.video?.height || result.data?.video?.height;
+    const width = result.video?.width || result.data?.video?.width;
+    const height = result.video?.height || result.data?.video?.height;
 
     // Get job/request ID (handle both snake_case and camelCase)
     const jobId = result.requestId || result.request_id || `fal-${Date.now()}`;

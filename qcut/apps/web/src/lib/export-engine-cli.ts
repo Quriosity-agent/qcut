@@ -600,7 +600,7 @@ export class CLIExportEngine extends ExportEngine {
     };
 
     // Find matching font or default to Arial
-    const fontConfig = fontMap[normalizedFamily] || fontMap["arial"];
+    const fontConfig = fontMap[normalizedFamily] || fontMap.arial;
 
     // Select appropriate font variant
     let fontFile = fontConfig.regular;
