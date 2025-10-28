@@ -126,14 +126,8 @@ test.describe("Auto-Save & Export File Management", () => {
       '[data-testid="auto-save-indicator"]'
     );
 
-    // Auto-save indicator might be hidden or not yet rendered; wait briefly
-    let autoSaveExists = (await autoSaveIndicator.count()) > 0;
-    if (!autoSaveExists) {
-      await page.waitForTimeout(500);
-      autoSaveExists = (await autoSaveIndicator.count()) > 0;
-    }
-
-    if (autoSaveExists) {
+    let indicatorHandled = false;
+    if ((await autoSaveIndicator.count()) > 0) {
       // Wait for auto-save to trigger with 1-second interval
       await page
         .waitForFunction(
@@ -149,7 +143,10 @@ test.describe("Auto-Save & Export File Management", () => {
       if (await autoSaveIndicator.isVisible()) {
         await expect(autoSaveIndicator).toContainText(/saved|auto/i);
       }
-    } else {
+      indicatorHandled = true;
+    }
+
+    if (!indicatorHandled) {
       // Fallback: verify that an auto-save timeline database was created
       const autoSaveDetected = await page
         .waitForFunction(async () => {
