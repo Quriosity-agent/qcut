@@ -1429,10 +1429,10 @@ const message3 = "Error occurred: " + (apiError instanceof Error ? apiError.mess
 
 ### How to Fix
 
-**Manual Fix Required** (Not auto-fixable):
-1. Find error string concatenations
-2. Replace with `.message` property access
-3. Add type check for safety
+**Implementation Plan (Ready)**:
+1. Locate error string concatenations that build stack traces for IndexedDB debug logging.
+2. Swap them for `.message` access (with a fallback `String(error)` cast) so the message is always human-readable.
+3. Optionally add an `Error` with a `cause` to preserve the original stack.
 
 ```bash
 # Find potential issues
@@ -1662,13 +1662,13 @@ bun x @biomejs/biome check apps/web/src/lib/
 
 ### Phase 3: Code Refactoring (Medium Impact, Requires Testing) ⚠️ REMAINING
 8. ⚠️ **useExhaustiveDependencies** (7 instances) - NEEDS MANUAL REVIEW
-9. ⚠️ **useErrorMessage** (1 instance) - NEEDS MANUAL FIX
-10. ⚠️ **noDelete** (1 instance) - NEEDS REVIEW
-11. ⚠️ **useConst** (4 remaining) - Complex reassignment patterns
-12. ⚠️ **noEmptyPattern** (1 instance) - Likely intentional
-13. ⚠️ **useLiteralKeys** (1 instance) - Minor optimization
+9. 📝 **useErrorMessage** (1 instance) - Plan ready (add debug message)
+10. 📝 **noDelete** (1 instance) - Plan ready (replace `delete`)
+11. 📝 **useConst** (4 remaining) - Plan ready (convert to `const`)
+12. 📝 **noEmptyPattern** (1 instance) - Plan ready (rename unused param)
+13. 📝 **useLiteralKeys** (1 instance) - Plan ready (dot notation)
 
-**Status**: ⚠️ 15 errors remaining, all require manual attention
+**Status**: ⚠️ 15 errors remaining; only the hook dependencies need deeper review. All other items have ready-to-apply fixes documented above.
 **Command for unsafe fixes**: `bun x @biomejs/biome check --write --unsafe .` (NOT RECOMMENDED without review)
 
 ---
@@ -1721,22 +1721,22 @@ bun x @biomejs/biome check apps/web/src/lib/
 
 ## Next Steps
 
-### For Manual Fixes
+### Must Review
 1. **Review hook dependencies** (7 instances) - `apps/web/src/components/editor/media-panel/views/use-ai-generation.ts`
-2. **Refactor useConst issues** (4 instances) - `apps/web/src/lib/video-edit-client.ts`
-3. **Fix error handling** (1 instance) - `apps/web/src/lib/storage/indexeddb-adapter.ts`
 
-### Optional Improvements
-- Consider fixing delete operator in test cleanup
-- Review empty pattern in Playwright helper
-- Apply literal keys optimization
+### Quick Wins (Plan Ready)
+- **useConst** (4 instances) - `apps/web/src/lib/video-edit-client.ts` → swap `let` → `const`
+- **useErrorMessage** (1 instance) - `apps/web/src/lib/storage/indexeddb-adapter.ts` → add debug message
+- **noDelete** (1 instance) - `apps/web/src/test/e2e/file-operations-storage-management.e2e.ts` → avoid `delete`
+- **noEmptyPattern** (1 instance) - `apps/web/src/test/e2e/helpers/electron-helpers.ts` → rename unused param
+- **useLiteralKeys** (1 instance) - `apps/web/src/lib/export-engine-cli.ts` → dot notation fallback
 
 ---
 
 ## Notes
 
 - ✅ 93% of errors were auto-fixable and have been fixed
-- ⚠️ Remaining 8 errors require manual review due to complexity
+- 📝 Remaining quick wins have implementation plans; only the hook dependency fixes need deeper React review
 - ✅ All style issues resolved
 - ⚠️ Hook dependency warnings need React expertise
 - ✅ Codebase is now significantly cleaner and more maintainable
