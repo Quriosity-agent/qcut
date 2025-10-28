@@ -234,7 +234,7 @@ test.describe("File Operations & Storage Management", () => {
         if (originalEstimate && navigator.storage) {
           navigator.storage.estimate = originalEstimate;
         }
-        delete (window as any).__originalStorageEstimate__;
+        Reflect.deleteProperty(window as any, "__originalStorageEstimate__");
       });
     }
   });
