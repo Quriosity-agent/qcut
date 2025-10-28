@@ -492,6 +492,8 @@ export function useAIGeneration(props: UseAIGenerationProps) {
     selectedModels,
     onError,
     onComplete,
+    firstFrame,
+    lastFrame,
   ]);
 
   // Main generation function
@@ -1232,6 +1234,9 @@ export function useAIGeneration(props: UseAIGenerationProps) {
     onComplete,
     startStatusPolling,
     veo31Settings,
+    aspectRatio,
+    duration,
+    resolution,
     firstFrame,
     lastFrame,
     uploadImageToFal,
@@ -1299,6 +1304,18 @@ export function useAIGeneration(props: UseAIGenerationProps) {
   }, []);
 
   /**
+   * Clear uploaded image for Reve Edit
+   */
+  const clearUploadedImageForEdit = useCallback(() => {
+    if (uploadedImagePreview) {
+      URL.revokeObjectURL(uploadedImagePreview);
+    }
+    setUploadedImageForEdit(null);
+    setUploadedImagePreview(null);
+    setUploadedImageUrl(null);
+  }, [uploadedImagePreview]);
+
+  /**
    * Handle image upload for Reve Edit
    */
   const handleImageUploadForEdit = useCallback(
@@ -1335,20 +1352,8 @@ export function useAIGeneration(props: UseAIGenerationProps) {
         throw err;
       }
     },
-    [falAIClient]
+    [clearUploadedImageForEdit]
   );
-
-  /**
-   * Clear uploaded image for Reve Edit
-   */
-  const clearUploadedImageForEdit = useCallback(() => {
-    if (uploadedImagePreview) {
-      URL.revokeObjectURL(uploadedImagePreview);
-    }
-    setUploadedImageForEdit(null);
-    setUploadedImagePreview(null);
-    setUploadedImageUrl(null);
-  }, [uploadedImagePreview]);
 
   // Export the complete generation state
   const generationState: AIGenerationState = {

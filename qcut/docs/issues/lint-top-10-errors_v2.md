@@ -9,7 +9,7 @@
 ## Error 1 & 2: Missing `firstFrame` and `lastFrame` dependencies in `handleMockGenerate`
 
 ### 1. File Path & Code Location
-**File:** `apps/web/src/components/editor/media-panel/views/use-ai-generation.ts:408-495`
+**File:** `apps/web/src/components/editor/media-panel/views/use-ai-generation.ts:408-497`
 
 ```typescript
 // Line 408-421
@@ -78,6 +78,8 @@ const handleMockGenerate = useCallback(async () => {
 ]);
 ```
 
+> **Status:** ✅ Applied in `apps/web/src/components/editor/media-panel/views/use-ai-generation.ts:495` and `apps/web/src/components/editor/media-panel/views/use-ai-generation.ts:496`.
+
 ### 3. Why This Fixes the Problem Without Introducing New Issues
 
 **Root Cause:** The `useCallback` hook creates a memoized version of the function. When the function uses variables from the outer scope (`firstFrame`, `lastFrame`) but doesn't list them in dependencies, it may capture stale values.
@@ -93,7 +95,7 @@ const handleMockGenerate = useCallback(async () => {
 ## Error 3-8: Missing multiple dependencies in `handleGenerate`
 
 ### 1. File Path & Code Location
-**File:** `apps/web/src/components/editor/media-panel/views/use-ai-generation.ts:498-1238`
+**File:** `apps/web/src/components/editor/media-panel/views/use-ai-generation.ts:500-1246`
 
 ```typescript
 // Line 498
@@ -195,6 +197,8 @@ const handleGenerate = useCallback(async () => {
 ]);
 ```
 
+> **Status:** ✅ Applied in `apps/web/src/components/editor/media-panel/views/use-ai-generation.ts:1237-1239`.
+
 ### 3. Why This Fixes the Problem Without Introducing New Issues
 
 **Root Cause:** This is the main generation function that uses multiple state values and functions. Missing dependencies cause stale closures where the function doesn't see updated values.
@@ -233,7 +237,7 @@ const handleGenerate = useCallback(async () => {
 ## Error 9 & 10: Incorrect dependencies in `handleImageUploadForEdit`
 
 ### 1. File Path & Code Location
-**File:** `apps/web/src/components/editor/media-panel/views/use-ai-generation.ts:1304-1339`
+**File:** `apps/web/src/components/editor/media-panel/views/use-ai-generation.ts:1309-1355`
 
 ```typescript
 // Line 1304-1339
@@ -293,6 +297,8 @@ const handleImageUploadForEdit = useCallback(
 );
 ```
 
+> **Status:** ✅ Applied in `apps/web/src/components/editor/media-panel/views/use-ai-generation.ts:1355`.
+
 ### 3. Why This Fixes the Problem Without Introducing New Issues
 
 **Root Cause:** Two separate issues:
@@ -330,22 +336,24 @@ const handleImageUploadForEdit = useCallback(
 
 All 10 errors are React Hook dependency issues in the same file: `use-ai-generation.ts`
 
-| Error | Hook | Line | Missing/Extra Dependency | Type |
-|-------|------|------|-------------------------|------|
-| 1 | `handleMockGenerate` | 408 | `firstFrame` | Missing |
-| 2 | `handleMockGenerate` | 408 | `lastFrame` | Missing |
-| 3 | `handleGenerate` | 498 | `aspectRatio` | Missing |
-| 4 | `handleGenerate` | 498 | `duration` | Missing |
-| 5 | `handleGenerate` | 498 | `resolution` | Missing |
-| 6 | `handleGenerate` | 498 | `uploadImageToFal` | Missing |
-| 7 | `handleGenerate` | 498 | `firstFrame` | Missing |
-| 8 | `handleGenerate` | 498 | `lastFrame` | Missing |
-| 9 | `handleImageUploadForEdit` | 1304 | `clearUploadedImageForEdit` | Missing |
-| 10 | `handleImageUploadForEdit` | 1304 | `falAIClient` | Extra (should remove) |
+| Error | Hook | Line | Missing/Extra Dependency | Type | Status |
+|-------|------|------|-------------------------|------|--------|
+| 1 | `handleMockGenerate` | 408 | `firstFrame` | Missing | Fixed |
+| 2 | `handleMockGenerate` | 408 | `lastFrame` | Missing | Fixed |
+| 3 | `handleGenerate` | 500 | `aspectRatio` | Missing | Fixed |
+| 4 | `handleGenerate` | 500 | `duration` | Missing | Fixed |
+| 5 | `handleGenerate` | 500 | `resolution` | Missing | Fixed |
+| 6 | `handleGenerate` | 500 | `uploadImageToFal` | Missing | Fixed |
+| 7 | `handleGenerate` | 500 | `firstFrame` | Missing | Fixed |
+| 8 | `handleGenerate` | 500 | `lastFrame` | Missing | Fixed |
+| 9 | `handleImageUploadForEdit` | 1321 | `clearUploadedImageForEdit` | Missing | Fixed |
+| 10 | `handleImageUploadForEdit` | 1321 | `falAIClient` | Extra (removed) | Fixed |
+
+> ✅ All dependency fixes above are now live in `apps/web/src/components/editor/media-panel/views/use-ai-generation.ts`.
 
 ## Key Takeaways
 
-1. **All errors are fixable with Biome's autofix:** Run `bun run lint:clean --write` to apply fixes automatically
+1. **All errors are now resolved:** keep running `bun run lint:clean --write` to prevent regressions
 2. **These are real bugs:** Missing dependencies can cause stale closures and incorrect behavior
 3. **No risk in fixing:** Adding correct dependencies makes the code work as intended
 4. **Pattern to watch:** Always include values used inside useCallback/useEffect in dependency arrays
@@ -354,7 +362,7 @@ All 10 errors are React Hook dependency issues in the same file: `use-ai-generat
 ## Recommended Action
 
 ```bash
-# Auto-fix all these errors
+# Verify lint is clean after the applied fixes
 cd c:\Users\zdhpe\Desktop\vite_opencut\OpenCut-main\qcut
 bun run lint:clean --write
 ```
