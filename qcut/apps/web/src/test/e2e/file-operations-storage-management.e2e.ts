@@ -332,9 +332,14 @@ test.describe("File Operations & Storage Management", () => {
     const mediaItem = page.locator('[data-testid="media-item"]').first();
 
     await expect(mediaItem).toBeVisible();
+    await mediaItem.scrollIntoViewIfNeeded();
+
     await expect(timelineTrack).toBeVisible();
+    await timelineTrack.scrollIntoViewIfNeeded();
 
     // Perform drag and drop
+    await mediaItem.hover();
+    await timelineTrack.hover();
     await mediaItem.dragTo(timelineTrack);
 
     // Wait for timeline element to appear with proper state-based waiting
@@ -343,6 +348,14 @@ test.describe("File Operations & Storage Management", () => {
     );
     await expect(timelineElement).toBeVisible({ timeout: 5000 });
 
+    // Ensure timeline has at least one persisted item (avoid flakes on slow storage)
+    await page
+      .waitForFunction(
+        () => document.querySelectorAll('[data-testid="timeline-element"]').length > 0,
+        { timeout: 5000 }
+      )
+      .catch(() => {});
+
     // Verify element has proper metadata with robust numeric validation
     const duration = await timelineElement.getAttribute("data-duration");
     if (duration) {
@@ -350,6 +363,25 @@ test.describe("File Operations & Storage Management", () => {
       expect(Number.isFinite(seconds)).toBe(true);
       expect(seconds).toBeGreaterThan(0);
     }
+
+    // Cross-check the drop target stored the media identifier
+    const dropMetadata = await timelineElement.evaluate((node) => {
+      const element = node as HTMLElement;
+      return {
+        mediaId:
+          element.getAttribute("data-media-id") ??
+          element.dataset.mediaId ??
+          element.getAttribute("data-id") ??
+          element.dataset.id ??
+          null,
+        elementId:
+          element.getAttribute("data-element-id") ?? element.dataset.elementId ?? null,
+        type: element.getAttribute("data-type") ?? element.dataset.type ?? null,
+      };
+    });
+    expect(
+      Boolean(dropMetadata.mediaId || dropMetadata.elementId)
+    ).toBe(true);
   });
 
   /**

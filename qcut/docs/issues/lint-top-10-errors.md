@@ -1,7 +1,7 @@
 # Top 10 Lint Errors Analysis
 
-**Generated**: 2025-10-28
-**Last Updated**: 2025-10-28 (After auto-fix)
+**Generated**: 2025-10-28 14:20
+**Last Updated**: 2025-10-28 16:54 (After auto-fix and detailed analysis)
 **Linter**: Biome with Ultracite configuration
 
 ## 🎯 Fix Results
@@ -12,6 +12,7 @@
 - **Files Checked**: 675 files
 
 ### After Auto-Fix ✅
+**Completed**: 2025-10-28 16:30
 - **Total Errors**: 8 errors (93% reduction! 🎉)
 - **Total Warnings**: 7 warnings (82% reduction!)
 - **Files Fixed**: 84 files automatically fixed
@@ -33,6 +34,479 @@
 ❌ **1 instance** - Delete operator (needs context review)
 ❌ **1 instance** - Empty object pattern (likely intentional)
 ❌ **1 instance** - Use literal keys (minor optimization)
+
+---
+
+# Current Remaining Errors (Detailed Analysis)
+
+**Last Checked**: 2025-10-28 16:54
+**Total Remaining**: 9 errors (from original 111)
+**Success Rate**: 92% of errors fixed
+
+This section provides detailed analysis of each remaining error type with:
+1. **Relevant file path and code**
+2. **How to fix**
+3. **Why the fix won't introduce new problems**
+
+---
+
+## Error #1: useExhaustiveDependencies (7 instances) ⚠️ HIGH PRIORITY
+
+**File**: `apps/web/src/components/editor/media-panel/views/use-ai-generation.ts`
+**Lines**: 408 (2 errors), 498 (3 errors), 1304 (2 errors)
+**Severity**: Correctness - can cause stale closures and bugs
+
+### Current Code (Problem)
+
+```typescript
+// Line 408 - Missing firstFrame and lastFrame dependencies
+const handleMockGenerate = useCallback(async () => {
+  if (activeTab === "image") {
+    const hasFrameModel = selectedModels.some((id) =>
+      VEO31_FRAME_MODELS.has(id)
+    );
+    const hasImageModel = selectedModels.some(
+      (id) => !VEO31_FRAME_MODELS.has(id)
+    );
+
+    // ❌ Using firstFrame and lastFrame but not in dependency array
+    if (hasFrameModel && (!firstFrame || !lastFrame)) return;
+    if (hasImageModel && !selectedImage) return;
+  }
+  // ... rest of function
+}, [
+  activeTab,
+  prompt,
+  selectedImage,
+  avatarImage,
+  selectedModels,
+  onError,
+  onComplete,
+  // ❌ MISSING: firstFrame, lastFrame
+]);
+
+// Line 498 - Missing aspectRatio, duration, resolution dependencies
+const handleGenerate = useCallback(async () => {
+  // ... lots of code ...
+
+  // ❌ Using these values but not in dependency array
+  ...(modelId.startsWith("sora2_") && {
+    duration,           // ❌ Not in dependencies
+    aspect_ratio: aspectRatio,  // ❌ Not in dependencies
+    resolution,         // ❌ Not in dependencies
+  }),
+}, [
+  activeTab,
+  prompt,
+  selectedImage,
+  // ... other deps
+  // ❌ MISSING: aspectRatio, duration, resolution
+]);
+
+// Line 1304 - Wrong dependencies
+const handleImageUploadForEdit = useCallback(
+  async (file: File) => {
+    try {
+      // ... upload logic
+    } catch (err) {
+      // ❌ Using clearUploadedImageForEdit but not in deps
+      clearUploadedImageForEdit();
+      throw err;
+    }
+  },
+  [falAIClient]  // ❌ falAIClient shouldn't be here (outer scope)
+                 // ❌ MISSING: clearUploadedImageForEdit
+);
+```
+
+### How to Fix
+
+```typescript
+// Fix #1 - Add missing frame dependencies
+const handleMockGenerate = useCallback(async () => {
+  // ... same code ...
+}, [
+  activeTab,
+  prompt,
+  selectedImage,
+  avatarImage,
+  selectedModels,
+  onError,
+  onComplete,
+  firstFrame,   // ✅ Added
+  lastFrame,    // ✅ Added
+]);
+
+// Fix #2 - Add missing Sora 2 parameters
+const handleGenerate = useCallback(async () => {
+  // ... same code ...
+}, [
+  activeTab,
+  prompt,
+  selectedImage,
+  // ... other deps
+  aspectRatio,  // ✅ Added
+  duration,     // ✅ Added
+  resolution,   // ✅ Added
+]);
+
+// Fix #3 - Correct dependencies
+const handleImageUploadForEdit = useCallback(
+  async (file: File) => {
+    // ... same code ...
+  },
+  [clearUploadedImageForEdit]  // ✅ Fixed: removed falAIClient, added clearUploadedImageForEdit
+);
+```
+
+### Why This Fix Won't Introduce New Problems
+
+✅ **Prevents Real Bugs**
+- **Current Bug**: If `firstFrame` changes, the validation still uses the old value
+- **Example Scenario**: User uploads a new first frame → validation checks against old frame → wrong behavior
+- **After Fix**: Validation always uses current frame values
+
+✅ **Correct React Behavior**
+- React's official rule: "All values from component scope used inside useCallback must be in dependencies"
+- This is enforced by `eslint-plugin-react-hooks` in most React projects
+- Following React best practices
+
+✅ **No Performance Impact**
+- **Concern**: "Will this cause excessive re-renders?"
+- **Reality**: The callback re-creates only when dependencies change (which is correct behavior)
+- **Example**: If `aspectRatio` changes, you WANT the new function with new aspectRatio
+
+⚠️ **Potential Issue (Rare)**
+- If dependencies change frequently, the callback recreates often
+- **Mitigation**: Use `useRef` for values that shouldn't trigger re-creation
+- **For this code**: All dependencies are form inputs that SHOULD trigger updates
+
+🎯 **Recommendation**
+Apply these fixes - they fix actual bugs without introducing problems. The linter is correct here.
+
+---
+
+## Error #2: useConst (4 instances) ⚠️ MEDIUM PRIORITY
+
+**File**: `apps/web/src/lib/video-edit-client.ts`
+**Lines**: 229-232
+**Severity**: Style - reduces code safety
+
+### Current Code (Problem)
+
+```typescript
+// Try multiple response structures (defensive programming)
+let videoUrl: string | null = null;
+let audioUrl: string | null = null;
+let duration: number | undefined;   // ❌ Line 229
+let fileSize: number | undefined;   // ❌ Line 230
+let width: number | undefined;      // ❌ Line 231
+let height: number | undefined;     // ❌ Line 232
+
+// ... lots of if-else logic ...
+
+// Later - each variable is assigned exactly once:
+duration = result.video?.duration || result.data?.video?.duration;
+fileSize = result.video?.size || result.data?.video?.size;
+width = result.video?.width || result.data?.video?.width;
+height = result.video?.height || result.data?.video?.height;
+```
+
+### Why Linter Flags This
+
+The linter sees that `duration`, `fileSize`, `width`, and `height` are:
+- Declared with `let`
+- Only assigned once (never reassigned after initial assignment)
+- Should therefore use `const`
+
+### How to Fix
+
+```typescript
+// Option 1: Use const with direct assignment
+let videoUrl: string | null = null;
+let audioUrl: string | null = null;
+
+// These are only assigned once - use const
+const duration = result.video?.duration || result.data?.video?.duration;
+const fileSize = result.video?.size || result.data?.video?.size;
+const width = result.video?.width || result.data?.video?.width;
+const height = result.video?.height || result.data?.video?.height;
+```
+
+### Why This Fix Won't Introduce New Problems
+
+✅ **Improves Code Safety**
+- `const` prevents accidental reassignment
+- If someone tries to modify later: `duration = 10;` → compile error
+- Makes code intent clearer: "this value doesn't change"
+
+✅ **No Behavioral Changes**
+- Runtime behavior is identical
+- `const` vs `let` only affects mutability, not the value itself
+- Zero performance difference
+
+✅ **TypeScript Benefits**
+- Better type narrowing with `const`
+- Example: `const x = "test"` → type is `"test"` (literal)
+- With `let`: `let x = "test"` → type is `string` (wider)
+
+⚠️ **Why It Looks Wrong**
+- The declarations are far from assignments (separated by ~30 lines)
+- This is why it LOOKS like they might be reassigned
+- But analysis shows: one assignment only
+
+🎯 **Recommendation**
+Safe to apply. Move declarations closer to assignments for clarity.
+
+---
+
+## Error #3: useLiteralKeys (1 instance) ✅ LOW PRIORITY
+
+**File**: `apps/web/src/lib/export-engine-cli.ts`
+**Line**: 603
+**Severity**: Style - minor optimization
+
+### Current Code (Problem)
+
+```typescript
+// Find matching font or default to Arial
+const fontConfig = fontMap[normalizedFamily] || fontMap["arial"];
+//                                                       ^^^^^^^
+//                                              ❌ Using string literal
+```
+
+### How to Fix
+
+```typescript
+// Use dot notation instead
+const fontConfig = fontMap[normalizedFamily] || fontMap.arial;
+//                                                      ^^^^^^
+//                                              ✅ Literal key
+```
+
+### Why This Fix Won't Introduce New Problems
+
+✅ **Identical Behavior**
+- `fontMap["arial"]` and `fontMap.arial` are exactly the same
+- No runtime differences whatsoever
+- Both access the same property
+
+✅ **Better Readability**
+- Dot notation is more standard for known keys
+- String notation is for dynamic keys: `obj[variableName]`
+- Makes intent clearer: "arial" is a fixed key, not variable
+
+✅ **Slightly Better Performance**
+- JavaScript engines optimize dot notation better
+- Difference is negligible (nanoseconds)
+- More about code clarity than performance
+
+🎯 **Recommendation**
+Safe to apply. Trivial cosmetic change.
+
+---
+
+## Error #4: useErrorMessage (1 instance) ⚠️ LOW PRIORITY
+
+**File**: `apps/web/src/lib/storage/indexeddb-adapter.ts`
+**Line**: 18
+**Severity**: Suspicious - missing error message
+
+### Current Code (Problem)
+
+```typescript
+// DEBUG: Track database creation with stack trace
+if (
+  dbName.startsWith("video-editor-media-") ||
+  dbName.startsWith("video-editor-timelines-")
+) {
+  const stack = new Error().stack;  // ❌ Error without message
+  console.log(`[IndexedDBAdapter] Creating database: ${dbName}`);
+  console.log("[IndexedDBAdapter] Call stack:", stack);
+}
+```
+
+### How to Fix
+
+```typescript
+// Add descriptive error message
+const stack = new Error("Stack trace for database creation").stack;
+// OR
+const error = new Error("Debugging database creation");
+const stack = error.stack;
+console.log(`[IndexedDBAdapter] Creating database: ${dbName}`);
+console.log("[IndexedDBAdapter] Call stack:", stack);
+```
+
+### Why This Fix Won't Introduce New Problems
+
+✅ **Better Debugging**
+- Error message shows up in stack traces
+- Makes debugging easier: "Stack trace for database creation" vs empty error
+- Useful in production error logs
+
+✅ **No Functional Changes**
+- This is debug logging code only
+- Not thrown, just used for stack trace
+- Adding message doesn't affect behavior
+
+✅ **Follows Best Practices**
+- All errors should have descriptive messages
+- Even when using Error just for stack trace
+- Makes code intent clearer
+
+🎯 **Recommendation**
+Safe to apply. Improves debugging without changing behavior.
+
+---
+
+## Error #5: noDelete (1 instance) ✅ LOW PRIORITY
+
+**File**: `apps/web/src/test/e2e/file-operations-storage-management.e2e.ts`
+**Line**: 237
+**Severity**: Performance - delete is slow
+
+### Current Code (Problem)
+
+```typescript
+// Test cleanup
+const originalEstimate = (window as any).__originalStorageEstimate__;
+if (originalEstimate && navigator.storage) {
+  navigator.storage.estimate = originalEstimate;
+}
+delete (window as any).__originalStorageEstimate__;  // ❌ Using delete
+```
+
+### How to Fix
+
+```typescript
+// Use undefined assignment instead
+const originalEstimate = (window as any).__originalStorageEstimate__;
+if (originalEstimate && navigator.storage) {
+  navigator.storage.estimate = originalEstimate;
+}
+(window as any).__originalStorageEstimate__ = undefined;  // ✅ Faster
+```
+
+### Why This Fix Won't Introduce New Problems
+
+✅ **Performance Improvement**
+- `delete` triggers "dictionary mode" in V8 engine
+- Makes all property access slower (~50x)
+- `= undefined` keeps object in "fast mode"
+
+✅ **Functionally Equivalent (For This Use Case)**
+- This is test cleanup code
+- No code checks `'__originalStorageEstimate__' in window`
+- Only checks if value exists: `if (window.__originalStorageEstimate__)`
+- `undefined` works the same as deleted for this check
+
+✅ **When You MUST Use Delete**
+```typescript
+// Only use delete if:
+if ('prop' in obj)  // You need 'in' operator to return false
+Object.keys(obj)    // You need property to not appear in keys
+JSON.stringify(obj) // You need property omitted from JSON
+
+// For this test case: None of these apply
+```
+
+🎯 **Recommendation**
+Safe to apply. Improves performance without changing test behavior.
+
+---
+
+## Error #6: noEmptyPattern (1 instance) ℹ️ INFORMATIONAL
+
+**File**: `apps/web/src/test/e2e/helpers/electron-helpers.ts`
+**Line**: 194
+**Severity**: Style - empty destructuring
+
+### Current Code (Likely Intentional)
+
+```typescript
+export const test = base.extend<ElectronFixtures>({
+  electronApp: async ({}, use) => {  // ❌ Empty object pattern
+    // Launch Electron app
+    const electronApp = await electron.launch({
+      args: ["dist/electron/main.js"],
+      // ...
+    });
+    await use(electronApp);
+  },
+});
+```
+
+### Why This Exists
+
+This is Playwright's fixture pattern:
+- First parameter: dependencies from other fixtures (none in this case)
+- Second parameter: `use` function to provide the fixture
+- Empty `{}` means no dependencies
+
+### How to Fix
+
+```typescript
+// Option 1: Use underscore to indicate intentional unused param
+export const test = base.extend<ElectronFixtures>({
+  electronApp: async (_, use) => {  // ✅ _ indicates intentional
+    // ...
+  },
+});
+
+// Option 2: Comment explaining why it's empty
+export const test = base.extend<ElectronFixtures>({
+  // No fixture dependencies needed
+  electronApp: async ({}, use) => {
+    // ...
+  },
+});
+```
+
+### Why This Fix Won't Introduce New Problems
+
+✅ **Better Code Intent**
+- `_` is standard JavaScript convention for "intentionally unused"
+- Makes it clear this isn't a mistake
+- Used in many codebases (Node.js, React, etc.)
+
+✅ **No Functional Changes**
+- `_` and `{}` behave identically
+- Both ignore the first parameter
+- Pure cosmetic change
+
+✅ **Silences Linter**
+- Most linters recognize `_` as intentional
+- Won't flag as error
+- Standard practice in TypeScript/JavaScript
+
+🎯 **Recommendation**
+Low priority - this is likely intentional. Use `_` to silence linter.
+
+---
+
+## Summary of Remaining Errors
+
+| Priority | Error Type | Count | Fix Difficulty | Risk Level |
+|----------|-----------|-------|----------------|------------|
+| 🔴 HIGH | useExhaustiveDependencies | 7 | Medium | Low - Fixes bugs |
+| 🟡 MEDIUM | useConst | 4 | Easy | None |
+| 🟢 LOW | useLiteralKeys | 1 | Trivial | None |
+| 🟢 LOW | useErrorMessage | 1 | Easy | None |
+| 🟢 LOW | noDelete | 1 | Trivial | None |
+| ℹ️ INFO | noEmptyPattern | 1 | Trivial | None |
+
+### Recommended Fix Order
+
+1. **useExhaustiveDependencies** (7 errors) - Fixes actual bugs ✅
+2. **useConst** (4 errors) - Improves code safety ✅
+3. **useLiteralKeys** (1 error) - Cosmetic improvement ✅
+4. **useErrorMessage** (1 error) - Better debugging ✅
+5. **noDelete** (1 error) - Performance improvement ✅
+6. **noEmptyPattern** (1 error) - Silences linter ✅
+
+**Total Time to Fix**: ~15 minutes for all errors
+**Risk Level**: Very low - all fixes improve existing code
 
 ---
 

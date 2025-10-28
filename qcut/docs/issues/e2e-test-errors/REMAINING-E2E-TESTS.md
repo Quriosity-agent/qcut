@@ -13,8 +13,8 @@
 Total E2E test files: **14** ✅
 Total tests: **67**
 Tests verified: **67/67** (100% verified!)
-Test results: **58 passing, 1 failed-app-bug, 1 skipped, 5 failed-test-infrastructure, 2 not-tested**
-Pass rate: **58/67 (86.6%)**
+Test results: **59 passing, 1 failed-app-bug, 1 skipped, 4 failed-test-infrastructure, 2 not-tested**
+Pass rate: **59/67 (88.1%)**
 
 **Progress Since data-testid Fix**: +19 passing tests (multi-media-management-part1 +1, multi-media-management-part2 +1, text-overlay +4, ai-enhancement +7, auto-save-export +5, file-operations-storage-management +1)
 
@@ -148,7 +148,7 @@ Pass rate: **58/67 (86.6%)**
 
 ### 10. file-operations-storage-management.e2e.ts ⚠️
 **Category**: File Operations & Storage (Subtask 5A)
-**Status**: 5/8 tests PASSING, 1 failed (test infrastructure), 2 not tested
+**Status**: 6/8 tests PASSING, 0 failed, 2 not tested
 **Runtime**: ~5 minutes (tests 7-8 not completed)
 
 | # | Test Name | Status |
@@ -157,28 +157,27 @@ Pass rate: **58/67 (86.6%)**
 | 2 | 5A.2 - Handle large file imports | ✅ PASSING |
 | 3 | 5A.3 - Test storage quota and fallback system | ✅ PASSING |
 | 4 | 5A.4 - Verify thumbnail generation for media | ✅ PASSING |
-| 5 | 5A.5 - Test drag and drop file operations | ❌ FAILED (TEST INFRA) |
+| 5 | 5A.5 - Test drag and drop file operations | ✅ PASSING |
 | 6 | 5A.6 - Test file format support and validation | ✅ PASSING |
 | 7 | 5A.7 - Test storage service integration | ⏳ NOT TESTED (excessive runtime) |
 | 8 | 5A.8 - Test cross-platform file path handling | ⏳ NOT TESTED (excessive runtime) |
 
-**Issue Summary**: Test 5 still fails due to missing test infrastructure/fixtures
-- Test #5: `media-item` drag target occasionally missing after import (needs deterministic fixtures)
+**Issue Summary**: Tests 7-8 remain unverified due to runtime limits
+- Tests #7-8: Not completed due to excessive runtime (>5 minutes) and require dedicated storage mocks
 - Tests #7-8: Not completed due to excessive runtime (>5 minutes)
 
 **Root Cause**: Tests written for incomplete features or missing test fixtures (media assets, thumbnail generation coverage)
 
 **Impact**:
-- Basic file operations work (tests 1-4 pass reliably after menu selector and thumbnail fallbacks)
+- Core file operations work end-to-end (tests 1-5 pass reliably after selector/drag enhancements)
 - File format validation path verified (test 6 remains passing)
 - Advanced features may not be implemented yet
 - Test infrastructure needs completion
 
 **Fix Required**:
-- Add deterministic test media fixtures so thumbnails render consistently
-- Ensure drag target wiring exposes `data-testid="media-item"` assets during import mocks
-- Fix test navigation/setup issues
-- Consider marking tests as `.skip()` until features complete
+- Provide deterministic storage/media fixtures so long-running tests can finish
+- Add targeted timeouts or background processing mocks for tests 7-8
+- Consider marking tests as `.skip()` until storage service integration stabilizes
 
 **Debug Report**: See `file-operations-storage-management-test-failure.md` for detailed analysis
 
@@ -356,9 +355,9 @@ Pass rate: **58/67 (86.6%)**
 | **Navigation** | 2 | 6 | ✅ 5 (2 pass, 1 skip) | 0 |
 | **Multi-Media Management** | 2 | 12 | ✅ 11 (10 pass, 1 app bug) | ⏳ 1 |
 | **Text Overlay** | 1 | 6 | ✅ 4 | ⏳ 2 |
-| **File Operations & Storage** | 2 | 14 | ⚠️ 14 (11 pass, 1 test infra, 2 not tested) | ⏳ 0 |
+| **File Operations & Storage** | 2 | 14 | ⚠️ 14 (12 pass, 0 test infra, 2 not tested) | ⏳ 0 |
 | **AI Features** | 2 | 13 | ✅ 13 (12 pass, 1 not tested) | 0 |
-| **TOTAL** | **14** | **67** | **67** (56 pass, 1 app bug, 1 skip, 7 test infra, 2 not tested) | **4** |
+| **TOTAL** | **14** | **67** | **67** (59 pass, 1 app bug, 1 skip, 4 test infra, 2 not tested) | **4** |
 
 ---
 
@@ -379,12 +378,12 @@ Run tests that validate fundamental functionality:
 Validate media handling and storage:
 1. ⚠️ **multi-media-management-part1.e2e.ts** - Media import (COMPLETED - 4/5 passing, 1 test infra, 21.4s, test code FIXED 2025-10-25)
 2. ⚠️ **multi-media-management-part2.e2e.ts** - Playback controls (COMPLETED - 6/7 passing, 1 app bug, ~2 min)
-3. ⚠️ **file-operations-storage-management.e2e.ts** - File operations (COMPLETED - 2/8 passing, 4 test infra issues, 2 not tested, ~5 min)
+3. ⚠️ **file-operations-storage-management.e2e.ts** - File operations (COMPLETED - 6/8 passing, 0 test infra issues, 2 not tested, ~5 min)
 4. ✅ **auto-save-export-file-management.e2e.ts** - Auto-save & export (COMPLETED - 6/6 passing, ~1.9 min, FIXED 2025-10-28)
 
 **Runtime**: ~10 minutes
 **Test Count**: 26 tests
-**Progress**: 19/26 tests passing (73.1%), 1 app bug (modal blocking zoom), 3 test infrastructure issues, 2 not tested
+**Progress**: 20/26 tests passing (76.9%), 1 app bug (modal blocking zoom), 2 test infrastructure issues, 2 not tested
 
 ### Phase 3: Overlay Features (Medium Priority)
 Test overlay functionality:
@@ -469,4 +468,4 @@ With the database cleanup fix in place:
 **Database Fix**: Implemented & Verified
 **AI Enhancement Fix**: Implemented & Verified (7/7 tests passing)
 **5B Auto-Save/Export Fix**: Improved from 1/6 to 6/6 passing (2025-10-28)
-**Current Status**: 57/67 tests passing (85.1%), 6 test infrastructure issues remaining
+**Current Status**: 59/67 tests passing (88.1%), 4 test infrastructure issues remaining
