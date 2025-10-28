@@ -47,9 +47,9 @@
 
 # Current Remaining Errors (Detailed Analysis)
 
-**Last Checked**: 2025-10-28 16:54
-**Total Remaining**: 9 errors (from original 111)
-**Success Rate**: 92% of errors fixed
+**Last Checked**: 2025-10-28 17:32
+**Total Remaining**: 7 errors (from original 111)
+**Success Rate**: 94% of errors fixed
 
 This section provides detailed analysis of each remaining error type with:
 1. **Relevant file path and code**
@@ -1570,7 +1570,7 @@ bun x @biomejs/biome check apps/web/src/lib/
 **Result**: ✅ All Phase 1 fixes applied successfully (84 files fixed)
 
 ### Phase 2: Manual Review Required (High Impact, Medium Risk) ✅ COMPLETED
-5. ✅ **useConst** (2/6 instances fixed) - Partially complete
+5. ✅ **useConst** (6/6 instances fixed) - Includes manual updates on 2025-10-28
 6. ✅ **noTsIgnore** (3 instances) - FIXED (replaced with @ts-expect-error)
 7. ✅ **useConsistentObjectDefinition** (2 instances) - FIXED
 
@@ -1578,13 +1578,9 @@ bun x @biomejs/biome check apps/web/src/lib/
 
 ### Phase 3: Code Refactoring (Medium Impact, Requires Testing) ⚠️ REMAINING
 8. ⚠️ **useExhaustiveDependencies** (7 instances) - NEEDS MANUAL REVIEW
-9. 📝 **useErrorMessage** (1 instance) - Plan ready (add debug message)
-10. 📝 **noDelete** (1 instance) - Plan ready (replace `delete`)
-11. 📝 **useConst** (4 remaining) - Plan ready (convert to `const`)
-12. 📝 **noEmptyPattern** (1 instance) - Plan ready (rename unused param)
-13. 📝 **useLiteralKeys** (1 instance) - Plan ready (dot notation)
+9. ⚠️ **Biome formatter cleanup** (timeline E2E spec) - Optional tidy-up
 
-**Status**: ⚠️ 15 errors remaining; only the hook dependencies need deeper review. All other items have ready-to-apply fixes documented above.
+**Status**: ⚠️ 7 errors + 1 formatter warning remaining; hook dependency fixes are the only functional work left.
 **Command for unsafe fixes**: `bun x @biomejs/biome check --write --unsafe .` (NOT RECOMMENDED without review)
 
 ---
