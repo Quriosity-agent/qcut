@@ -28,6 +28,7 @@ import { DeleteProjectDialog } from "./delete-project-dialog";
 import { FaDiscord, FaGithub } from "react-icons/fa6";
 import { useExportStore } from "@/stores/export-store";
 import { PanelPresetSelector } from "./panel-preset-selector";
+import { AutoSaveIndicator } from "./editor/auto-save-indicator";
 
 export function EditorHeader() {
   const { getTotalDuration } = useTimelineStore();
@@ -138,6 +139,7 @@ export function EditorHeader() {
 
   const rightContent = (
     <nav className="flex items-center gap-2">
+      <AutoSaveIndicator className="whitespace-nowrap" />
       <PanelPresetSelector />
       <KeyboardShortcutsHelp />
       <Button

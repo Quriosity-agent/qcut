@@ -60,6 +60,13 @@ interface TimelineStore {
   /** Redo stack for restoring undone states */
   redoStack: TimelineTrack[][];
 
+  /** Auto-save status message for UI feedback */
+  autoSaveStatus: string;
+  /** Whether an auto-save operation is currently running */
+  isAutoSaving: boolean;
+  /** Timestamp (ms) of the last successful auto-save */
+  lastAutoSaveAt: number | null;
+
   /** Always returns properly ordered tracks with main track ensured */
   tracks: TimelineTrack[];
 
@@ -354,6 +361,10 @@ export const useTimelineStore = create<TimelineStore>((set, get) => {
 
   // Helper to auto-save timeline changes
   const autoSaveTimeline = async () => {
+    set({
+      isAutoSaving: true,
+      autoSaveStatus: "Auto-saving...",
+    });
     try {
       const { useProjectStore } = await import("./project-store");
       const activeProject = useProjectStore.getState().activeProject;
@@ -369,7 +380,16 @@ export const useTimelineStore = create<TimelineStore>((set, get) => {
             tracks: get()._tracks,
             sceneId,
           });
+          set({
+            isAutoSaving: false,
+            autoSaveStatus: "Auto-saved",
+            lastAutoSaveAt: Date.now(),
+          });
         } catch (error) {
+          set({
+            isAutoSaving: false,
+            autoSaveStatus: "Auto-save failed",
+          });
           handleError(error, {
             operation: "Auto-save Timeline",
             category: ErrorCategory.STORAGE,
@@ -381,8 +401,17 @@ export const useTimelineStore = create<TimelineStore>((set, get) => {
             },
           });
         }
+      } else {
+        set({
+          isAutoSaving: false,
+          autoSaveStatus: "Auto-save idle",
+        });
       }
     } catch (error) {
+      set({
+        isAutoSaving: false,
+        autoSaveStatus: "Auto-save failed",
+      });
       handleError(error, {
         operation: "Access Project Store",
         category: ErrorCategory.STORAGE,
@@ -399,6 +428,10 @@ export const useTimelineStore = create<TimelineStore>((set, get) => {
   const updateTracksAndSave = (newTracks: TimelineTrack[]) => {
     updateTracks(newTracks);
     // Auto-save in background
+    set({
+      isAutoSaving: true,
+      autoSaveStatus: "Auto-saving...",
+    });
     setTimeout(autoSaveTimeline, 100);
   };
 
@@ -411,6 +444,9 @@ export const useTimelineStore = create<TimelineStore>((set, get) => {
     tracks: sortedInitialTracks,
     history: [],
     redoStack: [],
+    autoSaveStatus: "Auto-save idle",
+    isAutoSaving: false,
+    lastAutoSaveAt: null,
     selectedElements: [],
     rippleEditingEnabled: false,
 
