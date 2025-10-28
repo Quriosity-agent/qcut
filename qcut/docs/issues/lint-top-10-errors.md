@@ -30,11 +30,11 @@
 
 ### Remaining Errors (Manual Fix Required)
 ❌ **7 instances** - Hook dependency warnings (needs manual review)
-❌ **4 instances** - useConst (variables with complex reassignment patterns)
-❌ **1 instance** - Error message handling (needs manual refactoring)
-❌ **1 instance** - Delete operator (needs context review)
-❌ **1 instance** - Empty object pattern (likely intentional)
-❌ **1 instance** - Use literal keys (minor optimization)
+📝 **4 instances** - useConst (plan ready – convert single-assignment `let` → `const`)
+📝 **1 instance** - Error message handling (plan ready – add descriptive `Error` message)
+📝 **1 instance** - Delete operator (plan ready – switch to non-`delete` cleanup)
+📝 **1 instance** - Empty object pattern (plan ready – rename to `_` helper)
+📝 **1 instance** - Use literal keys (plan ready – change to dot notation)
 
 ---
 
@@ -259,6 +259,13 @@ const height = result.video?.height || result.data?.video?.height;
 🎯 **Recommendation**
 Safe to apply. Move declarations closer to assignments for clarity.
 
+#### ✅ Implementation Plan (Ready)
+1. Change the four `let` declarations for `duration`, `fileSize`, `width`, and `height` to `const` inside `parseResponse`.
+2. Keep `videoUrl` and `audioUrl` as `let` because they are reassigned while parsing different response shapes.
+3. (Optional) Move the new `const` declarations down next to the return block to make the single-assignment intent obvious.
+
+⏱ Effort: ~2 minutes · 🧪 Verification: run `bun test` or the relevant smoke suite if you want an extra safety net (not required).
+
 ---
 
 ## Error #3: useLiteralKeys (1 instance) ✅ LOW PRIORITY
@@ -304,6 +311,12 @@ const fontConfig = fontMap[normalizedFamily] || fontMap.arial;
 
 🎯 **Recommendation**
 Safe to apply. Trivial cosmetic change.
+
+#### ✅ Implementation Plan (Ready)
+1. Update `getFontConfigForWindows` so the fallback uses dot notation: `fontMap.arial`.
+2. Leave the rest of the mapping untouched—this keeps behavior identical while satisfying the linter.
+
+⏱ Effort: <1 minute · 🧪 Verification: none required (string access only).
 
 ---
 
@@ -358,6 +371,12 @@ console.log("[IndexedDBAdapter] Call stack:", stack);
 
 🎯 **Recommendation**
 Safe to apply. Improves debugging without changing behavior.
+
+#### ✅ Implementation Plan (Ready)
+1. Instantiate the debug `Error` with a short message such as `"Stack trace for database creation"` before accessing `.stack`.
+2. Leave the surrounding logging intact so the additional context shows up automatically.
+
+⏱ Effort: <1 minute · 🧪 Verification: none required (debug logging only).
 
 ---
 
@@ -414,6 +433,12 @@ JSON.stringify(obj) // You need property omitted from JSON
 
 🎯 **Recommendation**
 Safe to apply. Improves performance without changing test behavior.
+
+#### ✅ Implementation Plan (Ready)
+1. Replace the `delete` statement with a safer alternative (`Reflect.deleteProperty(window as any, "__originalStorageEstimate__")` or assign `undefined`) in the Playwright teardown.
+2. Keep the rest of the cleanup logic identical to preserve test semantics.
+
+⏱ Effort: ~2 minutes · 🧪 Verification: optional—rerun the `file-operations-storage-management` e2e spec if you want confirmation.
 
 ---
 
@@ -484,6 +509,12 @@ export const test = base.extend<ElectronFixtures>({
 🎯 **Recommendation**
 Low priority - this is likely intentional. Use `_` to silence linter.
 
+#### ✅ Implementation Plan (Ready)
+1. Change the empty destructuring to a throwaway identifier (e.g., `async (_, use)` or `async (_options, use)`).
+2. Keep all fixture logic unchanged to avoid impacting Playwright startup.
+
+⏱ Effort: <1 minute · 🧪 Verification: none required.
+
 ---
 
 ## Summary of Remaining Errors
@@ -491,20 +522,20 @@ Low priority - this is likely intentional. Use `_` to silence linter.
 | Priority | Error Type | Count | Fix Difficulty | Risk Level |
 |----------|-----------|-------|----------------|------------|
 | 🔴 HIGH | useExhaustiveDependencies | 7 | Medium | Low - Fixes bugs |
-| 🟡 MEDIUM | useConst | 4 | Easy | None |
-| 🟢 LOW | useLiteralKeys | 1 | Trivial | None |
-| 🟢 LOW | useErrorMessage | 1 | Easy | None |
-| 🟢 LOW | noDelete | 1 | Trivial | None |
-| ℹ️ INFO | noEmptyPattern | 1 | Trivial | None |
+| 🟡 MEDIUM | useConst | 4 | Easy | None (plan ready) |
+| 🟢 LOW | useLiteralKeys | 1 | Trivial | None (plan ready) |
+| 🟢 LOW | useErrorMessage | 1 | Easy | None (plan ready) |
+| 🟢 LOW | noDelete | 1 | Trivial | None (plan ready) |
+| ℹ️ INFO | noEmptyPattern | 1 | Trivial | None (plan ready) |
 
 ### Recommended Fix Order
 
 1. **useExhaustiveDependencies** (7 errors) - Fixes actual bugs ✅
-2. **useConst** (4 errors) - Improves code safety ✅
-3. **useLiteralKeys** (1 error) - Cosmetic improvement ✅
-4. **useErrorMessage** (1 error) - Better debugging ✅
-5. **noDelete** (1 error) - Performance improvement ✅
-6. **noEmptyPattern** (1 error) - Silences linter ✅
+2. **useConst** (4 errors) - Improves code safety ✅ _(plan ready)_
+3. **useLiteralKeys** (1 error) - Cosmetic improvement ✅ _(plan ready)_
+4. **useErrorMessage** (1 error) - Better debugging ✅ _(plan ready)_
+5. **noDelete** (1 error) - Performance improvement ✅ _(plan ready)_
+6. **noEmptyPattern** (1 error) - Silences linter ✅ _(plan ready)_
 
 **Total Time to Fix**: ~15 minutes for all errors
 **Risk Level**: Very low - all fixes improve existing code
@@ -517,14 +548,14 @@ Low priority - this is likely intentional. Use `_` to silence linter.
 |------|------|----------------|--------|-----------|
 | 1 | `lint/style/noUnusedTemplateLiteral` | 33 | ✅ **FIXED** | 0 |
 | 2 | `lint/correctness/useExhaustiveDependencies` | 7 | ⚠️ Needs Review | 7 |
-| 3 | `lint/style/useConst` | 6 | ⚠️ Partial | 4 |
+| 3 | `lint/style/useConst` | 6 | ⚠️ Partial (plan ready) | 4 |
 | 4 | `lint/nursery/useNumericSeparators` | 6 | ✅ **FIXED** | 0 |
 | 5 | `lint/style/noInferrableTypes` | 4 | ✅ **FIXED** | 0 |
 | 6 | `lint/nursery/noTsIgnore` | 3 | ✅ **FIXED** | 0 |
 | 7 | `lint/nursery/useConsistentObjectDefinition` | 2 | ✅ **FIXED** | 0 |
 | 8 | `lint/nursery/noUselessUndefined` | 2 | ✅ **FIXED** | 0 |
-| 9 | `lint/suspicious/useErrorMessage` | 1 | ❌ Manual | 1 |
-| 10 | `lint/performance/noDelete` | 1 | ❌ Manual | 1 |
+| 9 | `lint/suspicious/useErrorMessage` | 1 | 📝 Plan Ready | 1 |
+| 10 | `lint/performance/noDelete` | 1 | 📝 Plan Ready | 1 |
 
 **Success Rate**: 51/68 errors fixed automatically (75%)
 
@@ -1339,12 +1370,12 @@ const b: number | undefined = bar();  // ✅ Works
 
 ---
 
-## 9. useErrorMessage (1 instance) ❌ NEEDS MANUAL FIX
+## 9. useErrorMessage (1 instance) 📝 PLAN READY
 
-**Status**: ❌ Requires manual fix
+**Status**: 📝 Implementation plan documented – awaiting code change
 **Remaining**: 1 error
 **Location**: `apps/web/src/lib/storage/indexeddb-adapter.ts:15`
-**Reason**: Not auto-fixable, needs proper error handling refactoring
+**Reason**: Not auto-fixable; needs a descriptive message added to the debug `Error`
 
 ### Description
 Error objects should use `.message` property instead of string concatenation. Direct concatenation can produce `[object Object]` instead of the error message.
