@@ -148,7 +148,7 @@ Pass rate: **55/67 (82.1%)**
 
 ### 10. file-operations-storage-management.e2e.ts ⚠️
 **Category**: File Operations & Storage (Subtask 5A)
-**Status**: 2/8 tests PASSING, 4 failed (test infrastructure), 2 not tested
+**Status**: 3/8 tests PASSING, 3 failed (test infrastructure), 2 not tested
 **Runtime**: ~5 minutes (tests 7-8 not completed)
 
 | # | Test Name | Status |
@@ -158,20 +158,20 @@ Pass rate: **55/67 (82.1%)**
 | 3 | 5A.3 - Test storage quota and fallback system | ❌ FAILED (TEST INFRA) |
 | 4 | 5A.4 - Verify thumbnail generation for media | ❌ FAILED (TEST INFRA) |
 | 5 | 5A.5 - Test drag and drop file operations | ❌ FAILED (TEST INFRA) |
-| 6 | 5A.6 - Test file format support and validation | ❌ FAILED (TEST INFRA) |
+| 6 | 5A.6 - Test file format support and validation | ✅ PASSING |
 | 7 | 5A.7 - Test storage service integration | ⏳ NOT TESTED (excessive runtime) |
 | 8 | 5A.8 - Test cross-platform file path handling | ⏳ NOT TESTED (excessive runtime) |
 
-**Issue Summary**: Tests 3-6 fail due to missing test infrastructure/fixtures
+**Issue Summary**: Tests 3-5 still fail due to missing test infrastructure/fixtures
 - Test #3: Missing `save-project-button` element
 - Tests #4-5: `media-item` not appearing after import (missing test files)
-- Test #6: `import-media-button` not found (navigation issue)
 - Tests #7-8: Not completed due to excessive runtime (>5 minutes)
 
 **Root Cause**: Tests written for incomplete features or missing test fixtures
 
 **Impact**:
 - Basic file operations work (tests 1-2 pass)
+- File format validation path verified (test 6 now passes after project setup fix)
 - Advanced features may not be implemented yet
 - Test infrastructure needs completion
 
