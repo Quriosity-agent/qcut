@@ -1205,7 +1205,7 @@ describe("Additional AI Video Models", () => {
 ```
 
 #### Review & Comments
-- `ai-video-client-additional.test.ts` now lives in `qcut/apps/web/src/lib/__tests__`, covering prompt validation, payload shaping, and BGM handling for both helpers.
+- `ai-video-client-additional.test.ts` now lives in `qcut/apps/web/src/lib/__tests__`, covering prompt validation, payload shaping, and BGM/audio handling for Vidu Q2 plus the new LTX V2 fast image-to-video helper.
 - Tests stub `VITE_FAL_API_KEY` plus `global.fetch`, matching the existing suite conventions so no shared harness changes were required.
 - Local `bun` binary is missing (`bun run check-types` failed); re-run `bun run test ai-video-client-additional.test.ts` once the CLI is available.
 
