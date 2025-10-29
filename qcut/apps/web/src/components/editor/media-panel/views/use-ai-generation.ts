@@ -622,7 +622,7 @@ export function useAIGeneration(props: UseAIGenerationProps) {
         };
 
         if (activeTab === "text") {
-          console.log(`  📝 Calling generateVideo for ${modelId}...`);
+          console.log(`  📝 Processing text-to-video model ${modelId}...`);
 
           // Veo 3.1 Fast text-to-video
           if (modelId === "veo31_fast_text_to_video") {
@@ -654,6 +654,32 @@ export function useAIGeneration(props: UseAIGenerationProps) {
               auto_fix: veo31Settings.autoFix,
             });
           }
+          // Hailuo 2.3 text-to-video models
+          else if (
+            modelId === "hailuo23_standard_t2v" ||
+            modelId === "hailuo23_pro_t2v"
+          ) {
+            const friendlyName = modelName || modelId;
+            progressCallback({
+              status: "processing",
+              progress: 10,
+              message: `Submitting ${friendlyName} request...`,
+            });
+
+            const textRequest = {
+              model: modelId,
+              prompt: prompt.trim(),
+              duration: hailuoT2VDuration,
+            };
+
+            response = await generateVideoFromText(textRequest);
+
+            progressCallback({
+              status: "completed",
+              progress: 100,
+              message: `Video generated with ${friendlyName}`,
+            });
+          }
           // Regular text-to-video generation
           else {
             response = await generateVideo(
@@ -670,7 +696,7 @@ export function useAIGeneration(props: UseAIGenerationProps) {
               progressCallback
             );
           }
-          console.log("  ✅ generateVideo returned:", response);
+          console.log("  ✅ Text-to-video response:", response);
         } else if (activeTab === "image") {
           console.log(`  🖼️ Calling generateVideoFromImage for ${modelId}...`);
 

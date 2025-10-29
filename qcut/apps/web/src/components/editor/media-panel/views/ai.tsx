@@ -101,6 +101,7 @@ export function AiView() {
     useState<ReveOutputFormatOption>(
       REVE_TEXT_TO_IMAGE_MODEL.defaultOutputFormat
     );
+  const [hailuoT2VDuration, setHailuoT2VDuration] = useState<6 | 10>(6);
 
   // Use global AI tab state (CRITICAL: preserve global state integration)
   const { aiActiveTab: activeTab, setAiActiveTab: setActiveTab } =
@@ -125,6 +126,7 @@ export function AiView() {
     avatarImage,
     audioFile,
     sourceVideo,
+    hailuoT2VDuration,
     onProgress: (progress, message) => {
       console.log(`[AI View] Progress: ${progress}% - ${message}`);
       // Progress is handled internally by the hook
@@ -168,6 +170,10 @@ export function AiView() {
   };
 
   const isModelSelected = (modelId: string) => selectedModels.includes(modelId);
+  const hailuoStandardSelected = selectedModels.includes(
+    "hailuo23_standard_t2v"
+  );
+  const hailuoProSelected = selectedModels.includes("hailuo23_pro_t2v");
 
   // Track active FileReader for cleanup
   const fileReaderRef = useRef<FileReader | null>(null);
@@ -189,6 +195,15 @@ export function AiView() {
       setReveOutputFormat("png");
     }
   }, [selectedModels]);
+
+  useEffect(() => {
+    if (
+      !selectedModels.includes("hailuo23_standard_t2v") &&
+      hailuoT2VDuration !== 6
+    ) {
+      setHailuoT2VDuration(6);
+    }
+  }, [selectedModels, hailuoT2VDuration]);
 
   // Image handling
   const handleImageSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -449,6 +464,41 @@ export function AiView() {
                     </span>
                   )}
                 </div>
+                {hailuoProSelected && (
+                  <div className="text-xs text-muted-foreground text-left">
+                    Tip: Add camera cues like [Pan left], [Zoom in], or [Track forward] to guide Pro shots.
+                  </div>
+                )}
+                {hailuoStandardSelected && (
+                  <div className="space-y-1 text-left">
+                    <Label
+                      htmlFor="hailuo-standard-duration"
+                      className="text-xs font-medium"
+                    >
+                      Hailuo 2.3 Duration
+                    </Label>
+                    <Select
+                      value={hailuoT2VDuration.toString()}
+                      onValueChange={(value) =>
+                        setHailuoT2VDuration(value === "10" ? 10 : 6)
+                      }
+                    >
+                      <SelectTrigger
+                        id="hailuo-standard-duration"
+                        className="h-8 text-xs"
+                      >
+                        <SelectValue placeholder="Select duration" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="6">6 seconds ($0.28)</SelectItem>
+                        <SelectItem value="10">10 seconds ($0.56)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <div className="text-xs text-muted-foreground">
+                      6s: $0.28 | 10s: $0.56
+                    </div>
+                  </div>
+                )}
               </div>
             </TabsContent>
 
