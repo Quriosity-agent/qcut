@@ -91,6 +91,8 @@ export interface UseAIGenerationProps {
   audioFile?: File | null;
   sourceVideo?: File | null;
   onGeneratedVideoChange?: (video: GeneratedVideo | null) => void;
+  // Hailuo text-to-video options
+  hailuoT2VDuration?: 6 | 10;
 }
 
 // ⚠️ ENHANCED: Complete generation state interface

@@ -12,6 +12,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import {
   generateVideo,
   generateVideoFromImage,
+  generateVideoFromText,
   generateAvatarVideo,
   handleApiError,
   getGenerationStatus,
@@ -66,6 +67,7 @@ export function useAIGeneration(props: UseAIGenerationProps) {
     avatarImage,
     audioFile,
     sourceVideo,
+    hailuoT2VDuration = 6,
   } = props;
 
   // Core generation state
