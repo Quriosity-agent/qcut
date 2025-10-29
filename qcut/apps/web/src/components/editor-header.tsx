@@ -69,6 +69,7 @@ export function EditorHeader() {
           <Button
             variant="secondary"
             className="h-auto py-1.5 px-2.5 flex items-center justify-center"
+            data-testid="project-menu-button"
           >
             <ChevronDown className="text-muted-foreground" />
             <span className="text-[0.85rem] mr-2">{activeProject?.name}</span>

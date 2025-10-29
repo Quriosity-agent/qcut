@@ -453,9 +453,7 @@ test.describe("File Operations & Storage Management", () => {
     await page.waitForTimeout(1000);
 
     // Navigate back to projects list using the header menu
-    const projectMenuButton = page
-      .locator(`button:has-text("${projectName}")`)
-      .first();
+    const projectMenuButton = page.getByTestId("project-menu-button");
     await expect(projectMenuButton).toBeVisible({ timeout: 10000 });
     await projectMenuButton.click();
 
