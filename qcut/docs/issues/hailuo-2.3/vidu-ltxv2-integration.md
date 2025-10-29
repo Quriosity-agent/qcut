@@ -96,9 +96,9 @@ LTXV2_I2V_MISSING_IMAGE: "Image is required for LTX Video 2.0 Fast image-to-vide
 ```
 
 #### Review & Comments
-- `AI_MODELS` now includes `vidu_q2_turbo_i2v` and `ltxv2_pro_t2v` directly after the Hailuo entries (`ai-constants.ts:135`), with `category: "image"`/`"text"` to preserve existing tab filters.
-- The matching Vidu/LTX validation messages were appended to the shared `ERROR_MESSAGES` map (`ai-constants.ts:588`), so UI surfaces model-specific guidance.
-- `supportedResolutions` on the LTX entry advertises 1080p/1440p/2160p; update once pricing changes land.
+- `AI_MODELS` now includes `vidu_q2_turbo_i2v`, `ltxv2_pro_t2v`, and `ltxv2_fast_i2v` after the Hailuo entries (`ai-constants.ts:135`), keeping category filters intact.
+- The matching Vidu/LTX validation messages were appended to the shared `ERROR_MESSAGES` map (`ai-constants.ts:688`), so UI surfaces model-specific guidance.
+- `supportedResolutions` on the LTX entries advertise the available tiers; update when Fal publishes pricing changes.
 
 ---
 
