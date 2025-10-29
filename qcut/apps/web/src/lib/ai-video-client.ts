@@ -298,6 +298,14 @@ export interface ImageToVideoRequest {
   aspect_ratio?: string; // Added for Sora 2 support
 }
 
+export interface TextToVideoRequest {
+  model: string;
+  prompt: string;
+  duration?: 6 | 10; // Only for Standard model
+  prompt_optimizer?: boolean;
+  resolution?: string;
+}
+
 export interface AvatarVideoRequest {
   model: string;
   characterImage: File;
@@ -1207,6 +1215,143 @@ export async function generateVideoFromImage(
       model: request.model,
       imageName: request.image.name,
       operation: "generateVideoFromImage",
+    });
+    throw error;
+  }
+}
+
+/**
+ * Generates AI video from text prompt using FAL AI's Hailuo 2.3 text-to-video models.
+ *
+ * WHY: Hailuo 2.3 offers budget-friendly text-to-video generation without requiring image input.
+ * Side effect: Sends text prompt directly to FAL API without image conversion overhead.
+ * Performance: Faster than image-to-video as no base64 encoding required.
+ *
+ * Edge cases:
+ * - Standard model supports duration of 6s or 10s (different pricing)
+ * - Pro model has fixed pricing regardless of duration
+ * - Pro model supports camera control via bracketed notation (e.g., [Pan left], [Zoom in])
+ *
+ * @param request - Text prompt, model ID, and generation parameters
+ * @returns VideoGenerationResponse with job_id and final video_url
+ * @throws Error if FAL_API_KEY missing or model doesn't support text-to-video
+ */
+export async function generateVideoFromText(
+  request: TextToVideoRequest
+): Promise<VideoGenerationResponse> {
+  try {
+    if (!FAL_API_KEY) {
+      throw new Error("FAL API key not configured");
+    }
+
+    console.log("?? Starting text-to-video generation with FAL AI");
+    console.log("?? Prompt:", request.prompt);
+    console.log("?? Model:", request.model);
+
+    // Get model configuration from centralized config
+    const modelConfig = getModelConfig(request.model);
+    if (!modelConfig) {
+      throw new Error(`Unknown model: ${request.model}`);
+    }
+
+    // Check if model supports text-to-video
+    const endpoint = modelConfig.endpoints.text_to_video;
+    if (!endpoint) {
+      throw new Error(
+        `Model ${request.model} does not support text-to-video generation`
+      );
+    }
+
+    // Build request payload for Hailuo 2.3 models
+    const payload: Record<string, any> = {
+      prompt: request.prompt,
+      // Start with default parameters from model config
+      ...(modelConfig.default_params || {}),
+    };
+
+    // Allow overriding resolution if provided
+    if (request.resolution) {
+      payload.resolution = request.resolution;
+    }
+
+    // Handle duration parameter (Hailuo 2.3 specific)
+    if (request.model === "hailuo23_standard_t2v") {
+      // Standard model: 6s or 10s with different pricing
+      const requestedDuration = request.duration || 6;
+      payload.duration = requestedDuration >= 10 ? "10" : "6";
+    } else if (request.model === "hailuo23_pro_t2v") {
+      // Pro model: fixed pricing, duration can be 6 or 10
+      const requestedDuration = request.duration || 6;
+      payload.duration = requestedDuration >= 10 ? "10" : "6";
+    }
+
+    // Handle prompt_optimizer (both models support it)
+    if (request.prompt_optimizer !== undefined) {
+      payload.prompt_optimizer = request.prompt_optimizer;
+    }
+
+    const jobId = generateJobId();
+    console.log(`?? Generating text-to-video with: ${endpoint}`);
+    console.log("?? Payload:", payload);
+
+    const response = await fetch(`${FAL_API_BASE}/${endpoint}`, {
+      method: "POST",
+      headers: {
+        Authorization: `Key ${FAL_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+
+      // Handle specific error cases with user-friendly messages
+      if (errorData.detail && errorData.detail.includes("User is locked")) {
+        if (errorData.detail.includes("Exhausted balance")) {
+          throw new Error(
+            "Your FAL.ai account balance has been exhausted. Please top up your balance at fal.ai/dashboard/billing to continue generating videos."
+          );
+        }
+        throw new Error(
+          "Your FAL.ai account is temporarily locked. Please check your account status at fal.ai/dashboard."
+        );
+      }
+
+      if (response.status === 401) {
+        throw new Error(
+          "Invalid FAL.ai API key. Please check your API key configuration."
+        );
+      }
+
+      if (response.status === 429) {
+        throw new Error(
+          "Rate limit exceeded. Please wait a moment before trying again."
+        );
+      }
+
+      throw new Error(
+        `FAL API error: ${errorData.detail || response.statusText}`
+      );
+    }
+
+    const result = await response.json();
+    console.log("? FAL API response:", result);
+
+    // Return in our expected format
+    return {
+      job_id: jobId,
+      status: "completed",
+      message: `Video generated successfully from text with ${request.model}`,
+      estimated_time: 0,
+      video_url: result.video?.url || result.video,
+      video_data: result,
+    };
+  } catch (error) {
+    handleAIServiceError(error, "Generate video from text", {
+      model: request.model,
+      prompt: request.prompt?.substring(0, 100), // Log first 100 chars only
+      operation: "generateVideoFromText",
     });
     throw error;
   }

@@ -132,6 +132,42 @@ export const AI_MODELS: AIModel[] = [
       prompt_optimizer: true,
     },
   },
+  // Hailuo 2.3 Text-to-Video Models
+  {
+    id: "hailuo23_standard_t2v",
+    name: "Hailuo 2.3 Standard T2V",
+    description: "Budget-friendly text-to-video with 768p quality",
+    price: "0.28", // 6s: $0.28, 10s: $0.56
+    resolution: "768p",
+    max_duration: 10,
+    category: "text",
+    endpoints: {
+      text_to_video: "fal-ai/minimax/hailuo-2.3/standard/text-to-video",
+    },
+    default_params: {
+      duration: 6,
+      resolution: "768p",
+      prompt_optimizer: true,
+    },
+  },
+  {
+    id: "hailuo23_pro_t2v",
+    name: "Hailuo 2.3 Pro T2V",
+    description:
+      "Premium 1080p text-to-video with cinematic camera control (use [Pan left], [Zoom in] in prompts)",
+    price: "0.49",
+    resolution: "1080p",
+    max_duration: 10,
+    category: "text",
+    endpoints: {
+      text_to_video: "fal-ai/minimax/hailuo-2.3/pro/text-to-video",
+    },
+    default_params: {
+      duration: 6,
+      resolution: "1080p",
+      prompt_optimizer: true,
+    },
+  },
   {
     id: "seedance_pro",
     name: "Seedance v1 Pro",
