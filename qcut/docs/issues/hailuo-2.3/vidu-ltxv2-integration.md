@@ -54,6 +54,28 @@ Add two new model configurations to the `AI_MODELS` array:
     generate_audio: true,
   },
 },
+
+// LTX Video 2.0 Fast Image-to-Video
+{
+  id: "ltxv2_fast_i2v",
+  name: "LTX Video 2.0 Fast I2V",
+  description: "Image-to-video with audio generation (2-6s, up to 1080p)",
+  price: "0.05", // $0.05/second for 1080p
+  resolution: "1080p",
+  max_duration: 6,
+  category: "image",
+  endpoints: {
+    image_to_video: "fal-ai/ltxv-2/image-to-video/fast",
+  },
+  default_params: {
+    duration: 4,
+    resolution: "1080p",
+    aspect_ratio: "16:9",
+    fps: 25,
+    generate_audio: true,
+  },
+  supportedResolutions: ["720p", "1080p"],
+},
 ```
 
 **Add error messages** (in `ERROR_MESSAGES` object):
@@ -68,6 +90,9 @@ VIDU_Q2_MISSING_IMAGE: "Image is required for Vidu Q2 image-to-video generation"
 LTXV2_INVALID_DURATION: "Duration must be 6, 8, or 10 seconds for LTX Video 2.0",
 LTXV2_INVALID_RESOLUTION: "Resolution must be 1080p, 1440p, or 2160p for LTX Video 2.0",
 LTXV2_EMPTY_PROMPT: "Please enter a text prompt for LTX Video 2.0",
+LTXV2_I2V_INVALID_DURATION: "Duration must be between 2 and 6 seconds for LTX Video 2.0 Fast",
+LTXV2_I2V_INVALID_RESOLUTION: "Resolution must be 720p or 1080p for LTX Video 2.0 Fast",
+LTXV2_I2V_MISSING_IMAGE: "Image is required for LTX Video 2.0 Fast image-to-video generation",
 ```
 
 #### Review & Comments
