@@ -631,6 +631,16 @@ export const ERROR_MESSAGES = {
   VEO31_FRAME_ASPECT_MISMATCH:
     "First and last frames must have matching aspect ratios",
 
+  // Hailuo 2.3 Text-to-Video errors
+  HAILUO23_T2V_PROMPT_TOO_LONG_STANDARD:
+    "Prompt exceeds 1500 character limit for Hailuo 2.3 Standard",
+  HAILUO23_T2V_PROMPT_TOO_LONG_PRO:
+    "Prompt exceeds 2000 character limit for Hailuo 2.3 Pro",
+  HAILUO23_T2V_EMPTY_PROMPT:
+    "Please enter a text prompt for video generation",
+  HAILUO23_T2V_INVALID_DURATION:
+    "Duration must be either 6 or 10 seconds for Hailuo 2.3 models",
+
   // Reve specific errors
   REVE_IMAGE_TOO_LARGE: "Image must be under 10MB for Reve Edit",
   REVE_INVALID_DIMENSIONS:

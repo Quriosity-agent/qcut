@@ -1221,6 +1221,37 @@ export async function generateVideoFromImage(
 }
 
 /**
+ * Validates prompt length for Hailuo 2.3 text-to-video models
+ *
+ * @param prompt - User's text prompt
+ * @param modelId - Model identifier
+ * @throws Error if prompt exceeds model's character limit
+ */
+function validateHailuo23Prompt(prompt: string, modelId: string): void {
+  const maxLengths: Record<string, number> = {
+    hailuo23_standard_t2v: 1500,
+    hailuo23_pro_t2v: 2000,
+  };
+
+  const maxLength = maxLengths[modelId];
+  if (maxLength && prompt.length > maxLength) {
+    throw new Error(
+      `Prompt too long for ${modelId}. Maximum ${maxLength} characters allowed (current: ${prompt.length})`
+    );
+  }
+}
+
+/**
+ * Checks if model is a Hailuo 2.3 text-to-video model
+ *
+ * @param modelId - Model identifier to check
+ * @returns true if model is Hailuo 2.3 T2V
+ */
+function isHailuo23TextToVideo(modelId: string): boolean {
+  return modelId === "hailuo23_standard_t2v" || modelId === "hailuo23_pro_t2v";
+}
+
+/**
  * Generates AI video from text prompt using FAL AI's Hailuo 2.3 text-to-video models.
  *
  * WHY: Hailuo 2.3 offers budget-friendly text-to-video generation without requiring image input.
@@ -1244,8 +1275,10 @@ export async function generateVideoFromText(
       throw new Error("FAL API key not configured");
     }
 
+    const trimmedPrompt = request.prompt.trim();
+
     console.log("?? Starting text-to-video generation with FAL AI");
-    console.log("?? Prompt:", request.prompt);
+    console.log("?? Prompt:", trimmedPrompt);
     console.log("?? Model:", request.model);
 
     // Get model configuration from centralized config
@@ -1262,9 +1295,28 @@ export async function generateVideoFromText(
       );
     }
 
+    // Ensure prompt validity before making API call
+    if (!trimmedPrompt) {
+      throw new Error("Text prompt is required for text-to-video generation");
+    }
+
+    if (isHailuo23TextToVideo(request.model)) {
+      validateHailuo23Prompt(trimmedPrompt, request.model);
+
+      if (
+        request.duration !== undefined &&
+        request.duration !== 6 &&
+        request.duration !== 10
+      ) {
+        throw new Error(
+          "Duration must be either 6 or 10 seconds for Hailuo 2.3 models"
+        );
+      }
+    }
+
     // Build request payload for Hailuo 2.3 models
     const payload: Record<string, any> = {
-      prompt: request.prompt,
+      prompt: trimmedPrompt,
       // Start with default parameters from model config
       ...(modelConfig.default_params || {}),
     };
@@ -1277,12 +1329,12 @@ export async function generateVideoFromText(
     // Handle duration parameter (Hailuo 2.3 specific)
     if (request.model === "hailuo23_standard_t2v") {
       // Standard model: 6s or 10s with different pricing
-      const requestedDuration = request.duration || 6;
-      payload.duration = requestedDuration >= 10 ? "10" : "6";
+      const requestedDuration = request.duration ?? 6;
+      payload.duration = requestedDuration === 10 ? "10" : "6";
     } else if (request.model === "hailuo23_pro_t2v") {
       // Pro model: fixed pricing, duration can be 6 or 10
-      const requestedDuration = request.duration || 6;
-      payload.duration = requestedDuration >= 10 ? "10" : "6";
+      const requestedDuration = request.duration ?? 6;
+      payload.duration = requestedDuration === 10 ? "10" : "6";
     }
 
     // Handle prompt_optimizer (both models support it)
