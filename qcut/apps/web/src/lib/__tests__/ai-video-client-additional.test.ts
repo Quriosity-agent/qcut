@@ -2,10 +2,12 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import {
   generateViduQ2Video,
   generateLTXV2Video,
+  generateLTXV2ImageVideo,
 } from "@/lib/ai-video-client";
 import type {
   ViduQ2I2VRequest,
   LTXV2T2VRequest,
+  LTXV2I2VRequest,
 } from "@/lib/ai-video-client";
 
 const originalFetch = globalThis.fetch;
@@ -155,6 +157,76 @@ describe("AI video client – additional models", () => {
       expect(payload.resolution).toBe("1440p");
       expect(payload.fps).toBe(50);
       expect(payload.generate_audio).toBe(false);
+    });
+  });
+
+  describe("generateLTXV2ImageVideo", () => {
+    it("requires a prompt", async () => {
+      const request: LTXV2I2VRequest = {
+        model: "ltxv2_fast_i2v",
+        prompt: "",
+        image_url: "https://example.com/frame.png",
+      };
+
+      await expect(generateLTXV2ImageVideo(request)).rejects.toThrow(
+        /Please enter a text prompt/i
+      );
+    });
+
+    it("requires an image url", async () => {
+      const request: LTXV2I2VRequest = {
+        model: "ltxv2_fast_i2v",
+        prompt: "A nighttime aerial shot over a futuristic city",
+        image_url: "",
+      };
+
+      await expect(generateLTXV2ImageVideo(request)).rejects.toThrow(
+        /Image is required/i
+      );
+    });
+
+    it("rejects invalid duration", async () => {
+      const request: LTXV2I2VRequest = {
+        model: "ltxv2_fast_i2v",
+        prompt: "A drone shot over the coast",
+        image_url: "https://example.com/frame.png",
+        duration: 8 as any,
+      };
+
+      await expect(generateLTXV2ImageVideo(request)).rejects.toThrow(
+        /Duration must be between 2 and 6 seconds/i
+      );
+    });
+
+    it("sends expected payload", async () => {
+      const fetchMock = vi
+        .fn()
+        .mockResolvedValue({ ok: true, json: async () => ({ video: { url: "https://example.com/video.mp4" } }) });
+      globalThis.fetch = fetchMock as unknown as typeof globalThis.fetch;
+
+      const request: LTXV2I2VRequest = {
+        model: "ltxv2_fast_i2v",
+        prompt: "Slow cinematic dolly forward through a forest",
+        image_url: "https://example.com/frame.png",
+        duration: 5,
+        resolution: "720p",
+        fps: 50,
+        generate_audio: false,
+      };
+
+      await generateLTXV2ImageVideo(request);
+
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      const [, options] = fetchMock.mock.calls[0];
+      const payload = JSON.parse(
+        (options as Record<string, unknown>).body as string
+      );
+
+      expect(payload.duration).toBe(5);
+      expect(payload.resolution).toBe("720p");
+      expect(payload.fps).toBe(50);
+      expect(payload.generate_audio).toBe(false);
+      expect(payload.image_url).toBe("https://example.com/frame.png");
     });
   });
 });
