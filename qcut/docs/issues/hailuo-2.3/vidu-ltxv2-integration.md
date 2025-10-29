@@ -56,7 +56,7 @@ Add two new model configurations to the `AI_MODELS` array:
 },
 ```
 
-**Add error messages** (in `AI_ERROR_MESSAGES`):
+**Add error messages** (in `ERROR_MESSAGES` object):
 
 ```typescript
 // Vidu Q2 errors
@@ -72,7 +72,7 @@ LTXV2_EMPTY_PROMPT: "Please enter a text prompt for LTX Video 2.0",
 
 #### Review & Comments
 - `AI_MODELS` currently stops at the Hailuo entries and jumps to `seedance_pro`; there is no `vidu_q2_turbo_i2v` or `ltxv2_pro_t2v` in `qcut/apps/web/src/components/editor/media-panel/views/ai-constants.ts:121`, so this is still pending.
-- The error constants block in the same file (`qcut/apps/web/src/components/editor/media-panel/views/ai-constants.ts:578`) does not contain the Vidu/LTX keys yet; once added, use the existing `ERROR_MESSAGES` object name (the doc calls it `AI_ERROR_MESSAGES`).
+- The error constants block in the same file (`qcut/apps/web/src/components/editor/media-panel/views/ai-constants.ts:578`) does not contain the Vidu/LTX keys yet; once added, use the existing `ERROR_MESSAGES` object name.
 - Double-check that both models get the appropriate `category` (`"image"` vs `"text"`) so existing tab filters continue to work without regressing current selections.
 
 ---
