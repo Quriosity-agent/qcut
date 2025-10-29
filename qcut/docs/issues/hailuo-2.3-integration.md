@@ -66,6 +66,11 @@ cd qcut/apps/web
 bun run check-types  # Should pass without errors
 ```
 
+#### Review & Comments
+- The `AI_MODELS` array still jumps from the `hailuo23_pro` image-to-video entry directly to `seedance_pro` without the new Hailuo T2V configurations (`qcut/apps/web/src/components/editor/media-panel/views/ai-constants.ts`, around line 134).
+- Add the requested `// Hailuo 2.3 Text-to-Video Models` marker before inserting the two configurations so future updates can locate them quickly.
+- Once the entries exist, double-check that the `category: "text"` field is present; the text tab relies on that flag to surface the models.
+
 ---
 
 ### Subtask 2: Implement T2V Client Function (15-20 minutes)
@@ -250,6 +255,11 @@ cd qcut/apps/web
 bun run check-types  # Should pass without errors
 ```
 
+#### Review & Comments
+- `TextToVideoRequest` has not been defined after `ImageToVideoRequest`; the interface block is still missing in `qcut/apps/web/src/lib/ai-video-client.ts:292`.
+- `generateVideoFromText` is absent; the file jumps from `generateVideoFromImage` straight into `generateAvatarVideo`, so the text-only flow is not wired up yet.
+- When implementing, reuse the existing `generateJobId`, `getModelConfig`, and error helpers to stay consistent with the image-to-video path.
+
 ---
 
 ### Subtask 3: Update UI Components (10-15 minutes)
@@ -348,6 +358,11 @@ const isImageToVideo = selectedModelConfig?.category === "image";
 **Backward Compatibility:** ✅ UI changes are additive; existing I2V workflows remain unchanged.
 
 **Note:** If no UI components exist, this subtask can be skipped for now. The models will be available via API but not yet exposed in the UI.
+
+#### Review & Comments
+- `qcut/apps/web/src/components/editor/media-panel/views/ai.tsx` already filters models by `activeTab`, but the new Hailuo T2V entries are missing, so the text tab shows no dedicated options yet.
+- There is currently no duration selector or prompt guidance tied to `hailuo23_*_t2v`; hook the logic into the existing pattern used for Sora/Veo settings panels when adding those controls.
+- A broader grep for `TextToVideoRequest` and `hailuo23_standard_t2v` returns nothing, confirming UI wiring and client support both remain to be implemented.
 
 ---
 
@@ -470,6 +485,11 @@ Find this section in `generateVideoFromText`:
 cd qcut/apps/web
 bun run check-types  # Should pass without errors
 ```
+
+#### Review & Comments
+- `validateHailuo23Prompt` and `isHailuo23TextToVideo` have not been introduced; `qcut/apps/web/src/lib/ai-video-client.ts:1213` still jumps straight from `generateVideoFromImage` to `generateAvatarVideo`.
+- The additional prompt/duration validation block is also missing because `generateVideoFromText` has not been created yet (see `qcut/apps/web/src/lib/ai-video-client.ts:1213`).
+- `ERROR_MESSAGES` in `qcut/apps/web/src/components/editor/media-panel/views/ai-constants.ts:577` still lacks the Hailuo 2.3 entries, so users won't see tailored validation feedback until those constants land.
 
 ---
 
@@ -699,6 +719,11 @@ bun run test ai-video-client.test.ts
 # Run all tests to ensure nothing broke
 bun run test
 ```
+
+#### Review & Comments
+- No `ai-video-client.test.ts` exists yet under `qcut/apps/web/src/__tests__` or `qcut/apps/web/src/lib/__tests__`; only `export-analysis.test.ts` and `image-validation.test.ts` live there currently.
+- Because `generateVideoFromText` is still absent (`qcut/apps/web/src/lib/ai-video-client.ts:1213`), the proposed suite can't run—add the implementation first, then wire the Vitest mocks.
+- When you add the tests, reuse the existing `lib/__tests__` folder so tooling picks them up automatically (`qcut/apps/web/src/lib/__tests__`).
 
 **Backward Compatibility:** ✅ New tests; existing tests remain valid and passing.
 
@@ -1317,4 +1342,3 @@ After completing T2V implementation:
 - [ ] Verify existing projects load without errors
 - [ ] Check that I2V UI flows work exactly as before
 - [ ] Confirm no TypeScript errors in existing code
-
