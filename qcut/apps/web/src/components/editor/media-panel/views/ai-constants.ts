@@ -82,6 +82,57 @@ export const AI_MODELS: AIModel[] = [
     },
   },
   {
+    id: "hailuo23_standard",
+    name: "Hailuo 2.3 Standard",
+    description: "Budget-friendly image-to-video with 768p quality",
+    price: "0.28",
+    resolution: "768p",
+    max_duration: 10,
+    category: "image",
+    endpoints: {
+      image_to_video: "fal-ai/minimax/hailuo-2.3/standard/image-to-video",
+    },
+    default_params: {
+      duration: 6,
+      resolution: "768p",
+      prompt_optimizer: true,
+    },
+  },
+  {
+    id: "hailuo23_fast_pro",
+    name: "Hailuo 2.3 Fast Pro",
+    description: "Balanced 1080p image-to-video with faster generation",
+    price: "0.33",
+    resolution: "1080p",
+    max_duration: 10,
+    category: "image",
+    endpoints: {
+      image_to_video: "fal-ai/minimax/hailuo-2.3-fast/pro/image-to-video",
+    },
+    default_params: {
+      duration: 6,
+      resolution: "1080p",
+      prompt_optimizer: true,
+    },
+  },
+  {
+    id: "hailuo23_pro",
+    name: "Hailuo 2.3 Pro",
+    description: "Premium 1080p image-to-video with highest fidelity",
+    price: "0.49",
+    resolution: "1080p",
+    max_duration: 10,
+    category: "image",
+    endpoints: {
+      image_to_video: "fal-ai/minimax/hailuo-2.3/pro/image-to-video",
+    },
+    default_params: {
+      duration: 6,
+      resolution: "1080p",
+      prompt_optimizer: true,
+    },
+  },
+  {
     id: "seedance_pro",
     name: "Seedance v1 Pro",
     description: "High quality 1080p video generation",
