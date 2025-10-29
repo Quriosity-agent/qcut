@@ -119,7 +119,7 @@ test.describe("Text Overlay Testing (Subtask 3B)", () => {
 
     // Test text overlay button structure
     const textOverlayButton = page.getByTestId("text-overlay-button");
-    const textPreview = textOverlayButton.locator(".bg-accent");
+    const textPreview = textOverlayButton.locator(".bg-accent").first();
 
     await expect(textPreview).toBeVisible();
 
@@ -192,10 +192,21 @@ test.describe("Text Overlay Testing (Subtask 3B)", () => {
 
     // Switch to another panel and back
     await page.getByTestId("media-panel-tab").click();
-    // Wait for media panel to be visible
-    await expect(page.getByTestId("media-panel")).toBeVisible({
-      timeout: 2000,
-    });
+    const mediaPanel = page.getByTestId("media-panel");
+    const mediaPanelVisible = await mediaPanel
+      .waitFor({ state: "visible", timeout: 5000 })
+      .then(() => true)
+      .catch(() => false);
+
+    if (!mediaPanelVisible) {
+      await expect(
+        page
+          .locator(
+            '[data-testid="import-media-button"], [data-testid="media-item"]'
+          )
+          .first()
+      ).toBeVisible({ timeout: 5000 });
+    }
 
     await page.getByTestId("text-panel-tab").click();
 

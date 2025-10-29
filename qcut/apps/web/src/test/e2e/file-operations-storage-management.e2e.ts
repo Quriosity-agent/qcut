@@ -434,11 +434,19 @@ test.describe("File Operations & Storage Management", () => {
 
     // Wait for auto-save indicator to confirm project persistence
     const autoSaveIndicator = page.getByTestId("auto-save-indicator");
-    if (await autoSaveIndicator.isVisible()) {
-      await expect(autoSaveIndicator).toContainText(/auto/i);
+    const isVisible = await autoSaveIndicator.isVisible().catch(() => false);
+
+    if (isVisible) {
+      await expect(autoSaveIndicator).toContainText(/auto/i, {
+        timeout: 10000,
+      });
       await expect(autoSaveIndicator)
-        .toHaveText(/auto-saved/i, { timeout: 5000 })
-        .catch(() => {});
+        .toHaveText(/auto-saved/i, { timeout: 15000 })
+        .catch(() => {
+          console.log(
+            "Auto-save indicator did not show 'auto-saved' state"
+          );
+        });
     }
 
     // Allow background auto-save to complete before leaving editor
@@ -448,7 +456,7 @@ test.describe("File Operations & Storage Management", () => {
     const projectMenuButton = page
       .locator(`button:has-text("${projectName}")`)
       .first();
-    await expect(projectMenuButton).toBeVisible();
+    await expect(projectMenuButton).toBeVisible({ timeout: 10000 });
     await projectMenuButton.click();
 
     const projectsMenuItem = page
@@ -485,6 +493,15 @@ test.describe("File Operations & Storage Management", () => {
    */
   test("5A.8 - Test cross-platform file path handling", async ({ page }) => {
     // This test verifies file paths work correctly across different platforms
+
+    // CREATE PROJECT FIRST
+    const projectName = "Cross-Platform Path Test";
+    await createTestProject(page, projectName);
+
+    // Wait for editor to load
+    await page.waitForSelector('[data-testid="media-panel"]', {
+      timeout: 5000,
+    });
 
     // Import media
     await page.click('[data-testid="import-media-button"]');

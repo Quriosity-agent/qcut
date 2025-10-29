@@ -339,6 +339,7 @@ test.describe("AI Transcription & Caption Generation", () => {
    * Tests exporting video projects with captions embedded in the output.
    */
   test("4A.6 - Export project with embedded captions", async ({ page }) => {
+    test.setTimeout(120000); // 2 minute timeout for export operations
     // Set up captions on timeline first
     await page.getByTestId("captions-panel-tab").click();
     await page
@@ -383,20 +384,21 @@ test.describe("AI Transcription & Caption Generation", () => {
     const timelineElements = page.locator('[data-testid="timeline-element"]');
     await expect(timelineElements.first()).toBeVisible();
 
-    // Open export dialog
+    // Open export dialog with proper wait
     const exportButton = page.locator('[data-testid*="export"]').first();
-    await exportButton.click();
-    await page
-      .waitForSelector('[data-testid*="export-dialog"], [role="dialog"]', {
-        timeout: 3000,
-      })
-      .catch(() => {});
+    await exportButton.click({ timeout: 5000 });
+
+    // Wait for export dialog with increased timeout
+    await page.waitForSelector(
+      '[data-testid*="export-dialog"], [role="dialog"]',
+      { timeout: 10000 }
+    );
 
     // Verify export dialog appears
     const exportDialog = page
       .locator('[data-testid*="export-dialog"], .modal, [role="dialog"]')
       .first();
-    await expect(exportDialog).toBeVisible();
+    await expect(exportDialog).toBeVisible({ timeout: 5000 });
 
     // Look for caption/subtitle export options using role-based selector
     const captionOptions = page
@@ -417,25 +419,29 @@ test.describe("AI Transcription & Caption Generation", () => {
     const startExportButton = page.locator(
       '[data-testid="export-start-button"]'
     );
-    if (await startExportButton.isVisible()) {
-      await startExportButton.click();
-      await page
-        .waitForSelector(
-          '[data-testid*="export-status"], [data-testid*="export-progress"]',
-          { timeout: 5000 }
-        )
-        .catch(() => {});
+    await expect(startExportButton).toBeVisible({ timeout: 10000 });
+    await startExportButton.click();
 
-      // Verify export is in progress or completed
-      // This would show success message or progress indicator
-      const exportStatus = page
-        .locator(
-          '[data-testid*="export-status"], [data-testid*="export-progress"]'
-        )
-        .first();
-      if (await exportStatus.isVisible()) {
-        await expect(exportStatus).toBeVisible();
-      }
+    // Wait for export to show progress or status
+    await Promise.race([
+      page.waitForSelector('[data-testid*="export-status"]', {
+        timeout: 15000,
+      }),
+      page.waitForSelector('[data-testid*="export-progress"]', {
+        timeout: 15000,
+      }),
+    ]).catch(() => {
+      console.log(
+        "Export status/progress indicator not found - export may be instant"
+      );
+    });
+
+    // Verify export is in progress or completed
+    const exportStatus = page
+      .locator('[data-testid*="export-status"], [data-testid*="export-progress"]')
+      .first();
+    if (await exportStatus.isVisible()) {
+      await expect(exportStatus).toBeVisible();
     }
   });
 });

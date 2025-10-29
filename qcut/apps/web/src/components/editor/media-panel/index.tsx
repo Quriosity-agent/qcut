@@ -64,7 +64,10 @@ export function MediaPanel() {
   };
 
   return (
-    <div className="h-full flex flex-col bg-panel rounded-sm">
+    <div
+      className="h-full flex flex-col bg-panel rounded-sm"
+      data-testid="media-panel"
+    >
       <TabBar />
       <div className="flex-1 overflow-y-auto">{viewMap[activeTab]}</div>
     </div>
