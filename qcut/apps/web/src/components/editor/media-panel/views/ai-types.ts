@@ -93,6 +93,16 @@ export interface UseAIGenerationProps {
   onGeneratedVideoChange?: (video: GeneratedVideo | null) => void;
   // Hailuo text-to-video options
   hailuoT2VDuration?: 6 | 10;
+  // Vidu Q2 Turbo options
+  viduQ2Duration?: 2 | 3 | 4 | 5 | 6 | 7 | 8;
+  viduQ2Resolution?: "720p" | "1080p";
+  viduQ2MovementAmplitude?: "auto" | "small" | "medium" | "large";
+  viduQ2EnableBGM?: boolean;
+  // LTX Video 2.0 options
+  ltxv2Duration?: 6 | 8 | 10;
+  ltxv2Resolution?: "1080p" | "1440p" | "2160p";
+  ltxv2FPS?: 25 | 50;
+  ltxv2GenerateAudio?: boolean;
 }
 
 // ⚠️ ENHANCED: Complete generation state interface

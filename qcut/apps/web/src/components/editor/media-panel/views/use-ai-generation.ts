@@ -13,6 +13,8 @@ import {
   generateVideo,
   generateVideoFromImage,
   generateVideoFromText,
+  generateViduQ2Video,
+  generateLTXV2Video,
   generateAvatarVideo,
   handleApiError,
   getGenerationStatus,
@@ -68,6 +70,14 @@ export function useAIGeneration(props: UseAIGenerationProps) {
     audioFile,
     sourceVideo,
     hailuoT2VDuration = 6,
+    viduQ2Duration = 4,
+    viduQ2Resolution = "720p",
+    viduQ2MovementAmplitude = "auto",
+    viduQ2EnableBGM = false,
+    ltxv2Duration = 6,
+    ltxv2Resolution = "1080p",
+    ltxv2FPS = 25,
+    ltxv2GenerateAudio = true,
   } = props;
 
   // Core generation state
@@ -680,6 +690,30 @@ export function useAIGeneration(props: UseAIGenerationProps) {
               message: `Video generated with ${friendlyName}`,
             });
           }
+          // LTX Video 2.0 text-to-video
+          else if (modelId === "ltxv2_pro_t2v") {
+            const friendlyName = modelName || modelId;
+            progressCallback({
+              status: "processing",
+              progress: 10,
+              message: `Submitting ${friendlyName} request...`,
+            });
+
+            response = await generateLTXV2Video({
+              model: modelId,
+              prompt: prompt.trim(),
+              duration: ltxv2Duration,
+              resolution: ltxv2Resolution,
+              fps: ltxv2FPS,
+              generate_audio: ltxv2GenerateAudio,
+            });
+
+            progressCallback({
+              status: "completed",
+              progress: 100,
+              message: `Video with audio generated using ${friendlyName}`,
+            });
+          }
           // Regular text-to-video generation
           else {
             response = await generateVideo(
@@ -812,6 +846,39 @@ export function useAIGeneration(props: UseAIGenerationProps) {
               "  ⚠️ Skipping model - frame-to-video requires selected first and last frames"
             );
             continue;
+          }
+          // Vidu Q2 Turbo image-to-video
+          else if (modelId === "vidu_q2_turbo_i2v") {
+            if (!selectedImage) {
+              console.log(
+                "  ⚠️ Skipping model - Vidu Q2 requires a selected image"
+              );
+              continue;
+            }
+
+            const imageUrl = await uploadImageToFal(selectedImage);
+            const friendlyName = modelName || modelId;
+            progressCallback({
+              status: "processing",
+              progress: 10,
+              message: `Submitting ${friendlyName} request...`,
+            });
+
+            response = await generateViduQ2Video({
+              model: modelId,
+              prompt: prompt.trim(),
+              image_url: imageUrl,
+              duration: viduQ2Duration,
+              resolution: viduQ2Resolution,
+              movement_amplitude: viduQ2MovementAmplitude,
+              bgm: viduQ2EnableBGM,
+            });
+
+            progressCallback({
+              status: "completed",
+              progress: 100,
+              message: `Video generated with ${friendlyName}`,
+            });
           }
           // Regular image-to-video generation
           else {

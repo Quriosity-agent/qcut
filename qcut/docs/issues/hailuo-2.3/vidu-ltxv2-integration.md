@@ -9,7 +9,7 @@ Documentation for integrating two additional AI video models into QCut:
 ## Implementation Subtasks
 
 ### Subtask 1: Add Model Configurations (5-10 minutes)
-**Current Status:** ❌ Not implemented
+**Current Status:** ✅ Implemented
 **Location:** `qcut/apps/web/src/components/editor/media-panel/views/ai-constants.ts`
 
 Add two new model configurations to the `AI_MODELS` array:
@@ -71,14 +71,14 @@ LTXV2_EMPTY_PROMPT: "Please enter a text prompt for LTX Video 2.0",
 ```
 
 #### Review & Comments
-- `AI_MODELS` currently stops at the Hailuo entries and jumps to `seedance_pro`; there is no `vidu_q2_turbo_i2v` or `ltxv2_pro_t2v` in `qcut/apps/web/src/components/editor/media-panel/views/ai-constants.ts:121`, so this is still pending.
-- The error constants block in the same file (`qcut/apps/web/src/components/editor/media-panel/views/ai-constants.ts:578`) does not contain the Vidu/LTX keys yet; once added, use the existing `ERROR_MESSAGES` object name.
-- Double-check that both models get the appropriate `category` (`"image"` vs `"text"`) so existing tab filters continue to work without regressing current selections.
+- `AI_MODELS` now includes `vidu_q2_turbo_i2v` and `ltxv2_pro_t2v` directly after the Hailuo entries (`ai-constants.ts:135`), with `category: "image"`/`"text"` to preserve existing tab filters.
+- The matching Vidu/LTX validation messages were appended to the shared `ERROR_MESSAGES` map (`ai-constants.ts:588`), so UI surfaces model-specific guidance.
+- `supportedResolutions` on the LTX entry advertises 1080p/1440p/2160p; update once pricing changes land.
 
 ---
 
 ### Subtask 2: Implement Client Functions (20-30 minutes)
-**Current Status:** ❌ Not implemented
+**Current Status:** ✅ Implemented
 **Location:** `qcut/apps/web/src/lib/ai-video-client.ts`
 
 #### A) Add TypeScript Interfaces
@@ -351,14 +351,14 @@ export async function generateLTXV2Video(
 ```
 
 #### Review & Comments
-- Neither `ViduQ2I2VRequest` nor `LTXV2T2VRequest` exists yet in `qcut/apps/web/src/lib/ai-video-client.ts:292`; the file still only exposes the generic request interfaces.
-- The new client functions are also missing—`generateVideoFromImage` still flows straight into `generateAvatarVideo` at `qcut/apps/web/src/lib/ai-video-client.ts:1213`, so we need to slot the Vidu/LTX helpers in there to avoid bolting them into `generateVideo` directly.
-- Please reuse the existing error helper (`handleAIServiceError`) and `generateJobId` for both implementations so behaviour matches the other model integrations and doesn’t regress logging or telemetry.
+- `ViduQ2I2VRequest` and `LTXV2T2VRequest` ship alongside the existing request interfaces (`ai-video-client.ts:301`), so downstream imports can stay centralised.
+- `generateViduQ2Video`/`generateLTXV2Video` now bridge the gap between the Hailuo text handler and avatar flow (`ai-video-client.ts:1348`), reusing `generateJobId` plus `handleAIServiceError` for consistent logging.
+- Validation helpers guard prompt length, duration windows, resolution bands, and align with the new `ERROR_MESSAGES`; extend them if future variants arrive.
 
 ---
 
 ### Subtask 3: Update UI Components (15-20 minutes)
-**Current Status:** ❌ Not implemented
+**Current Status:** ✅ Implemented
 
 #### A) Add Type Definitions
 
@@ -698,14 +698,14 @@ Add UI controls for LTX Video 2.0:
 ```
 
 #### Review & Comments
-- `useAIGeneration` does not currently accept any of the Vidu/LTX props; see `qcut/apps/web/src/components/editor/media-panel/views/ai-types.ts:78`, which still only exposes the Hailuo duration flag.
-- The hook implementation in `qcut/apps/web/src/components/editor/media-panel/views/use-ai-generation.ts` still imports only `generateVideo`, `generateVideoFromImage`, and `generateAvatarVideo`; there is no wiring for `generateViduQ2Video` or `generateLTXV2Video`, so adding the imports/calls is required to avoid falling back to the generic path.
-- `ai.tsx` lacks the additional state selectors; currently only the existing Sora/Veo controls render (`qcut/apps/web/src/components/editor/media-panel/views/ai.tsx:914` onward), so ensure the new panels slot into the same pattern without breaking the current layout.
+- `UseAIGenerationProps` now carries the Vidu/LTX knobs (`ai-types.ts:78`), and the hook forwards their defaults into the new client calls.
+- `use-ai-generation.ts` imports the fresh helpers and routes Vidu/LTX requests with custom progress feedback (`use-ai-generation.ts:612`), while keeping the legacy fallback intact.
+- `ai.tsx` exposes state + UI controls for both models (duration, resolution, motion, audio) so the new options appear alongside the existing panels without disturbing Sora/Veo layouts.
 
 ---
 
 ### Subtask 4: Write Tests (20-25 minutes)
-**Current Status:** ❌ Not implemented
+**Current Status:** ✅ Implemented
 **Location:** Create new file `qcut/apps/web/src/lib/__tests__/ai-video-client-additional.test.ts`
 
 Create comprehensive test suite:
@@ -1180,9 +1180,9 @@ describe("Additional AI Video Models", () => {
 ```
 
 #### Review & Comments
-- No `ai-video-client-additional.test.ts` (or similar) exists yet under `qcut/apps/web/src/lib/__tests__`; only `export-analysis.test.ts` and `image-validation.test.ts` are present.
-- Because `generateViduQ2Video`/`generateLTXV2Video` are not implemented (`qcut/apps/web/src/lib/ai-video-client.ts:1213`), this suite would currently fail—add the client functions first, then wire up the Vitest cases.
-- Mirror the existing Vitest setup (env stubbing + fetch mock reset) so the new file stays in line with the established testing pattern.
+- `ai-video-client-additional.test.ts` now lives in `qcut/apps/web/src/lib/__tests__`, covering prompt validation, payload shaping, and BGM handling for both helpers.
+- Tests stub `VITE_FAL_API_KEY` plus `global.fetch`, matching the existing suite conventions so no shared harness changes were required.
+- Local `bun` binary is missing (`bun run check-types` failed); re-run `bun run test ai-video-client-additional.test.ts` once the CLI is available.
 
 ---
 

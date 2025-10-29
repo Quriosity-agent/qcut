@@ -27,6 +27,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FileUpload } from "@/components/ui/file-upload";
+import { Checkbox } from "@/components/ui/checkbox";
 
 import { useTimelineStore } from "@/stores/timeline-store";
 import { useProjectStore } from "@/stores/project-store";
@@ -97,11 +98,25 @@ export function AiView() {
   const [reveNumImages, setReveNumImages] = useState<number>(
     REVE_TEXT_TO_IMAGE_MODEL.defaultNumImages
   );
-  const [reveOutputFormat, setReveOutputFormat] =
-    useState<ReveOutputFormatOption>(
-      REVE_TEXT_TO_IMAGE_MODEL.defaultOutputFormat
-    );
-  const [hailuoT2VDuration, setHailuoT2VDuration] = useState<6 | 10>(6);
+const [reveOutputFormat, setReveOutputFormat] =
+  useState<ReveOutputFormatOption>(
+    REVE_TEXT_TO_IMAGE_MODEL.defaultOutputFormat
+  );
+const [hailuoT2VDuration, setHailuoT2VDuration] = useState<6 | 10>(6);
+const [viduQ2Duration, setViduQ2Duration] = useState<2 | 3 | 4 | 5 | 6 | 7 | 8>(4);
+const [viduQ2Resolution, setViduQ2Resolution] = useState<"720p" | "1080p">(
+  "720p"
+);
+const [viduQ2MovementAmplitude, setViduQ2MovementAmplitude] = useState<
+  "auto" | "small" | "medium" | "large"
+>("auto");
+const [viduQ2EnableBGM, setViduQ2EnableBGM] = useState(false);
+const [ltxv2Duration, setLTXV2Duration] = useState<6 | 8 | 10>(6);
+const [ltxv2Resolution, setLTXV2Resolution] = useState<
+  "1080p" | "1440p" | "2160p"
+>("1080p");
+const [ltxv2FPS, setLTXV2FPS] = useState<25 | 50>(25);
+const [ltxv2GenerateAudio, setLTXV2GenerateAudio] = useState(true);
 
   // Use global AI tab state (CRITICAL: preserve global state integration)
   const { aiActiveTab: activeTab, setAiActiveTab: setActiveTab } =
@@ -127,6 +142,14 @@ export function AiView() {
     audioFile,
     sourceVideo,
     hailuoT2VDuration,
+    viduQ2Duration,
+    viduQ2Resolution,
+    viduQ2MovementAmplitude,
+    viduQ2EnableBGM,
+    ltxv2Duration,
+    ltxv2Resolution,
+    ltxv2FPS,
+    ltxv2GenerateAudio,
     onProgress: (progress, message) => {
       console.log(`[AI View] Progress: ${progress}% - ${message}`);
       // Progress is handled internally by the hook
@@ -174,6 +197,8 @@ export function AiView() {
     "hailuo23_standard_t2v"
   );
   const hailuoProSelected = selectedModels.includes("hailuo23_pro_t2v");
+  const viduQ2Selected = selectedModels.includes("vidu_q2_turbo_i2v");
+  const ltxv2Selected = selectedModels.includes("ltxv2_pro_t2v");
 
   // Track active FileReader for cleanup
   const fileReaderRef = useRef<FileReader | null>(null);
@@ -204,6 +229,30 @@ export function AiView() {
       setHailuoT2VDuration(6);
     }
   }, [selectedModels, hailuoT2VDuration]);
+
+  useEffect(() => {
+    if (!viduQ2Selected) {
+      setViduQ2Duration(4);
+      setViduQ2Resolution("720p");
+      setViduQ2MovementAmplitude("auto");
+      setViduQ2EnableBGM(false);
+    }
+  }, [viduQ2Selected]);
+
+  useEffect(() => {
+    if (viduQ2Duration !== 4 && viduQ2EnableBGM) {
+      setViduQ2EnableBGM(false);
+    }
+  }, [viduQ2Duration, viduQ2EnableBGM]);
+
+  useEffect(() => {
+    if (!ltxv2Selected) {
+      setLTXV2Duration(6);
+      setLTXV2Resolution("1080p");
+      setLTXV2FPS(25);
+      setLTXV2GenerateAudio(true);
+    }
+  }, [ltxv2Selected]);
 
   // Image handling
   const handleImageSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -499,6 +548,106 @@ export function AiView() {
                     </div>
                   </div>
                 )}
+                {ltxv2Selected && (
+                  <div className="space-y-2 text-left border-t pt-3">
+                    <Label className="text-xs font-medium">
+                      LTX Video 2.0 Settings
+                    </Label>
+                    <div className="space-y-1">
+                      <Label htmlFor="ltxv2-duration" className="text-xs">
+                        Duration
+                      </Label>
+                      <Select
+                        value={ltxv2Duration.toString()}
+                        onValueChange={(value) =>
+                          setLTXV2Duration(Number(value) as 6 | 8 | 10)
+                        }
+                      >
+                        <SelectTrigger
+                          id="ltxv2-duration"
+                          className="h-8 text-xs"
+                        >
+                          <SelectValue placeholder="Select duration" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="6">6 seconds</SelectItem>
+                          <SelectItem value="8">8 seconds</SelectItem>
+                          <SelectItem value="10">10 seconds</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-1">
+                      <Label htmlFor="ltxv2-resolution" className="text-xs">
+                        Resolution
+                      </Label>
+                      <Select
+                        value={ltxv2Resolution}
+                        onValueChange={(value) =>
+                          setLTXV2Resolution(
+                            value as "1080p" | "1440p" | "2160p"
+                          )
+                        }
+                      >
+                        <SelectTrigger
+                          id="ltxv2-resolution"
+                          className="h-8 text-xs"
+                        >
+                          <SelectValue placeholder="Select resolution" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="1080p">1080p</SelectItem>
+                          <SelectItem value="1440p">1440p</SelectItem>
+                          <SelectItem value="2160p">2160p (4K)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <div className="text-xs text-muted-foreground">
+                        Cost: $
+                        {(
+                          ltxv2Duration *
+                          (ltxv2Resolution === "1080p"
+                            ? 0.06
+                            : ltxv2Resolution === "1440p"
+                            ? 0.12
+                            : 0.24)
+                        ).toFixed(2)}
+                      </div>
+                    </div>
+
+                    <div className="space-y-1">
+                      <Label htmlFor="ltxv2-fps" className="text-xs">
+                        Frame Rate
+                      </Label>
+                      <Select
+                        value={ltxv2FPS.toString()}
+                        onValueChange={(value) =>
+                          setLTXV2FPS(Number(value) as 25 | 50)
+                        }
+                      >
+                        <SelectTrigger id="ltxv2-fps" className="h-8 text-xs">
+                          <SelectValue placeholder="Select frame rate" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="25">25 FPS</SelectItem>
+                          <SelectItem value="50">50 FPS</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="ltxv2-audio"
+                        checked={ltxv2GenerateAudio}
+                        onCheckedChange={(checked) =>
+                          setLTXV2GenerateAudio(Boolean(checked))
+                        }
+                      />
+                      <Label htmlFor="ltxv2-audio" className="text-xs">
+                        Generate audio
+                      </Label>
+                    </div>
+                  </div>
+                )}
               </div>
             </TabsContent>
 
@@ -767,6 +916,114 @@ export function AiView() {
                     maxLength={maxChars}
                   />
                 </div>
+                {viduQ2Selected && (
+                  <div className="space-y-3 text-left border-t pt-3">
+                    <Label className="text-sm font-semibold">
+                      Vidu Q2 Turbo Settings
+                    </Label>
+
+                    <div className="space-y-1">
+                      <Label htmlFor="vidu-duration" className="text-xs">
+                        Duration
+                      </Label>
+                      <Select
+                        value={viduQ2Duration.toString()}
+                        onValueChange={(value) =>
+                          setViduQ2Duration(
+                            Number(value) as 2 | 3 | 4 | 5 | 6 | 7 | 8
+                          )
+                        }
+                      >
+                        <SelectTrigger
+                          id="vidu-duration"
+                          className="h-8 text-xs"
+                        >
+                          <SelectValue placeholder="Select duration" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="2">2 seconds</SelectItem>
+                          <SelectItem value="3">3 seconds</SelectItem>
+                          <SelectItem value="4">4 seconds</SelectItem>
+                          <SelectItem value="5">5 seconds</SelectItem>
+                          <SelectItem value="6">6 seconds</SelectItem>
+                          <SelectItem value="7">7 seconds</SelectItem>
+                          <SelectItem value="8">8 seconds</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-1">
+                      <Label htmlFor="vidu-resolution" className="text-xs">
+                        Resolution
+                      </Label>
+                      <Select
+                        value={viduQ2Resolution}
+                        onValueChange={(value) =>
+                          setViduQ2Resolution(value as "720p" | "1080p")
+                        }
+                      >
+                        <SelectTrigger
+                          id="vidu-resolution"
+                          className="h-8 text-xs"
+                        >
+                          <SelectValue placeholder="Select resolution" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="720p">720p ($0.05/sec)</SelectItem>
+                          <SelectItem value="1080p">
+                            1080p ($0.20 base + $0.05/sec)
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-1">
+                      <Label htmlFor="vidu-movement" className="text-xs">
+                        Movement Amplitude
+                      </Label>
+                      <Select
+                        value={viduQ2MovementAmplitude}
+                        onValueChange={(value) =>
+                          setViduQ2MovementAmplitude(
+                            value as "auto" | "small" | "medium" | "large"
+                          )
+                        }
+                      >
+                        <SelectTrigger
+                          id="vidu-movement"
+                          className="h-8 text-xs"
+                        >
+                          <SelectValue placeholder="Select motion" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="auto">Auto</SelectItem>
+                          <SelectItem value="small">Small</SelectItem>
+                          <SelectItem value="medium">Medium</SelectItem>
+                          <SelectItem value="large">Large</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {viduQ2Duration === 4 && (
+                      <div className="flex items-center space-x-2">
+                        <Checkbox
+                          id="vidu-bgm"
+                          checked={viduQ2EnableBGM}
+                          onCheckedChange={(checked) =>
+                            setViduQ2EnableBGM(Boolean(checked))
+                          }
+                        />
+                        <Label htmlFor="vidu-bgm" className="text-xs">
+                          Add background music (4-second videos only)
+                        </Label>
+                      </div>
+                    )}
+
+                    <div className="text-xs text-muted-foreground">
+                      Pricing: 720p @ $0.05/sec • 1080p adds $0.20 base fee
+                    </div>
+                  </div>
+                )}
               </div>
             </TabsContent>
 

@@ -168,6 +168,45 @@ export const AI_MODELS: AIModel[] = [
       prompt_optimizer: true,
     },
   },
+  // Vidu Q2 Image-to-Video Turbo
+  {
+    id: "vidu_q2_turbo_i2v",
+    name: "Vidu Q2 Turbo I2V",
+    description: "High-quality image-to-video with motion control (2-8s)",
+    price: "0.05", // $0.05/second for 720p
+    resolution: "720p",
+    max_duration: 8,
+    category: "image",
+    endpoints: {
+      image_to_video: "fal-ai/vidu/q2/image-to-video/turbo",
+    },
+    default_params: {
+      duration: 4,
+      resolution: "720p",
+      movement_amplitude: "auto",
+    },
+  },
+  // LTX Video 2.0 Pro Text-to-Video
+  {
+    id: "ltxv2_pro_t2v",
+    name: "LTX Video 2.0 Pro T2V",
+    description: "Text-to-video with audio generation (6-10s, up to 4K)",
+    price: "0.06", // $0.06/second for 1080p
+    resolution: "1080p",
+    max_duration: 10,
+    category: "text",
+    endpoints: {
+      text_to_video: "fal-ai/ltxv-2/text-to-video",
+    },
+    default_params: {
+      duration: 6,
+      resolution: "1080p",
+      aspect_ratio: "16:9",
+      fps: 25,
+      generate_audio: true,
+    },
+    supportedResolutions: ["1080p", "1440p", "2160p"],
+  },
   {
     id: "seedance_pro",
     name: "Seedance v1 Pro",
@@ -647,6 +686,18 @@ export const ERROR_MESSAGES = {
     "Image dimensions must be between 128×128 and 4096×4096 pixels",
   REVE_INVALID_FORMAT: "Please upload PNG, JPEG, WebP, AVIF, or HEIF image",
   REVE_PROMPT_TOO_LONG: "Prompt must be under 2560 characters",
+  // Vidu Q2 errors
+  VIDU_Q2_PROMPT_TOO_LONG: "Prompt exceeds 3000 character limit for Vidu Q2",
+  VIDU_Q2_INVALID_DURATION:
+    "Duration must be between 2 and 8 seconds for Vidu Q2",
+  VIDU_Q2_MISSING_IMAGE:
+    "Image is required for Vidu Q2 image-to-video generation",
+  // LTX Video 2.0 errors
+  LTXV2_INVALID_DURATION:
+    "Duration must be 6, 8, or 10 seconds for LTX Video 2.0",
+  LTXV2_INVALID_RESOLUTION:
+    "Resolution must be 1080p, 1440p, or 2160p for LTX Video 2.0",
+  LTXV2_EMPTY_PROMPT: "Please enter a text prompt for LTX Video 2.0",
 } as const;
 
 // Status Messages
