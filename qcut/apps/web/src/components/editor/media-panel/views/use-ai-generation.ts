@@ -15,6 +15,7 @@ import {
   generateVideoFromText,
   generateViduQ2Video,
   generateLTXV2Video,
+  generateLTXV2ImageVideo,
   generateAvatarVideo,
   handleApiError,
   getGenerationStatus,
@@ -78,6 +79,10 @@ export function useAIGeneration(props: UseAIGenerationProps) {
     ltxv2Resolution = "1080p",
     ltxv2FPS = 25,
     ltxv2GenerateAudio = true,
+    ltxv2ImageDuration = 4,
+    ltxv2ImageResolution = "1080p",
+    ltxv2ImageFPS = 25,
+    ltxv2ImageGenerateAudio = true,
   } = props;
 
   // Core generation state
@@ -878,6 +883,39 @@ export function useAIGeneration(props: UseAIGenerationProps) {
               status: "completed",
               progress: 100,
               message: `Video generated with ${friendlyName}`,
+            });
+          }
+          // LTX Video 2.0 Fast image-to-video
+          else if (modelId === "ltxv2_fast_i2v") {
+            if (!selectedImage) {
+              console.log(
+                "  ⚠️ Skipping model - LTX V2 Fast requires a selected image"
+              );
+              continue;
+            }
+
+            const imageUrl = await uploadImageToFal(selectedImage);
+            const friendlyName = modelName || modelId;
+            progressCallback({
+              status: "processing",
+              progress: 10,
+              message: `Submitting ${friendlyName} request...`,
+            });
+
+            response = await generateLTXV2ImageVideo({
+              model: modelId,
+              prompt: prompt.trim(),
+              image_url: imageUrl,
+              duration: ltxv2ImageDuration,
+              resolution: ltxv2ImageResolution,
+              fps: ltxv2ImageFPS,
+              generate_audio: ltxv2ImageGenerateAudio,
+            });
+
+            progressCallback({
+              status: "completed",
+              progress: 100,
+              message: `Video with audio generated using ${friendlyName}`,
             });
           }
           // Regular image-to-video generation

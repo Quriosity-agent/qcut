@@ -327,6 +327,17 @@ export interface LTXV2T2VRequest {
   generate_audio?: boolean;
 }
 
+export interface LTXV2I2VRequest {
+  model: string;
+  prompt: string;
+  image_url: string;
+  duration?: 2 | 3 | 4 | 5 | 6;
+  resolution?: "720p" | "1080p";
+  aspect_ratio?: "16:9";
+  fps?: 25 | 50;
+  generate_audio?: boolean;
+}
+
 export interface AvatarVideoRequest {
   model: string;
   characterImage: File;
@@ -1300,6 +1311,22 @@ function validateLTXV2Resolution(resolution: string): void {
   }
 }
 
+function validateLTXV2I2VDuration(duration: number): void {
+  if (duration < 2 || duration > 6) {
+    throw new Error(
+      "Duration must be between 2 and 6 seconds for LTX Video 2.0 Fast"
+    );
+  }
+}
+
+function validateLTXV2I2VResolution(resolution: string): void {
+  if (!["720p", "1080p"].includes(resolution)) {
+    throw new Error(
+      "Resolution must be 720p or 1080p for LTX Video 2.0 Fast"
+    );
+  }
+}
+
 /**
  * Generates AI video from text prompt using FAL AI's Hailuo 2.3 text-to-video models.
  *
@@ -1684,6 +1711,132 @@ export async function generateLTXV2Video(
       model: request.model,
       prompt: request.prompt?.substring(0, 100),
       operation: "generateLTXV2Video",
+    });
+    throw error;
+  }
+}
+
+/**
+ * Generate video from image using LTX Video 2.0 Fast.
+ *
+ * @param request - Prompt, model ID, image URL, and optional parameters
+ */
+export async function generateLTXV2ImageVideo(
+  request: LTXV2I2VRequest
+): Promise<VideoGenerationResponse> {
+  try {
+    if (!FAL_API_KEY) {
+      throw new Error("FAL API key not configured");
+    }
+
+    const trimmedPrompt = request.prompt?.trim() ?? "";
+    if (!trimmedPrompt) {
+      throw new Error(
+        "Please enter a text prompt for LTX Video 2.0 Fast image-to-video"
+      );
+    }
+
+    if (!request.image_url) {
+      throw new Error(
+        "Image is required for LTX Video 2.0 Fast image-to-video generation"
+      );
+    }
+
+    const modelConfig = getModelConfig(request.model);
+    if (!modelConfig) {
+      throw new Error(`Unknown model: ${request.model}`);
+    }
+
+    const endpoint = modelConfig.endpoints.image_to_video;
+    if (!endpoint) {
+      throw new Error(
+        `Model ${request.model} does not support image-to-video generation`
+      );
+    }
+
+    const duration =
+      request.duration ??
+      (typeof modelConfig.default_params?.duration === "number"
+        ? (modelConfig.default_params.duration as number)
+        : 4);
+    validateLTXV2I2VDuration(duration);
+
+    const resolution =
+      request.resolution ??
+      (modelConfig.default_params?.resolution as string) ??
+      "1080p";
+    validateLTXV2I2VResolution(resolution);
+
+    const fps =
+      request.fps ??
+      (modelConfig.default_params?.fps as number | undefined) ??
+      25;
+    if (![25, 50].includes(fps)) {
+      throw new Error("FPS must be either 25 or 50 for LTX Video 2.0 Fast");
+    }
+
+    const payload: Record<string, any> = {
+      ...(modelConfig.default_params || {}),
+      prompt: trimmedPrompt,
+      image_url: request.image_url,
+      duration,
+      resolution,
+      aspect_ratio: request.aspect_ratio ?? "16:9",
+      fps,
+      generate_audio:
+        request.generate_audio !== undefined
+          ? request.generate_audio
+          : modelConfig.default_params?.generate_audio ?? true,
+    };
+
+    const jobId = generateJobId();
+    console.log("🎬 Starting LTX Video 2.0 Fast image-to-video generation");
+    console.log("📝 Prompt:", trimmedPrompt.substring(0, 100));
+    console.log("🖼️ Image URL provided:", Boolean(request.image_url));
+
+    const response = await fetch(`${FAL_API_BASE}/${endpoint}`, {
+      method: "POST",
+      headers: {
+        Authorization: `Key ${FAL_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+
+      if (response.status === 401) {
+        throw new Error(
+          "Invalid FAL.ai API key. Please check your API key configuration."
+        );
+      }
+
+      if (response.status === 429) {
+        throw new Error(
+          "Rate limit exceeded. Please wait a moment before trying again."
+        );
+      }
+
+      throw new Error(
+        `FAL API error: ${errorData.detail || response.statusText}`
+      );
+    }
+
+    const result = await response.json();
+    return {
+      job_id: jobId,
+      status: "completed",
+      message: `Video generated successfully with ${request.model}`,
+      estimated_time: 0,
+      video_url: result.video?.url || result.video,
+      video_data: result,
+    };
+  } catch (error) {
+    handleAIServiceError(error, "Generate LTX Video 2.0 Fast image-to-video", {
+      model: request.model,
+      prompt: request.prompt?.substring(0, 100),
+      operation: "generateLTXV2ImageVideo",
     });
     throw error;
   }

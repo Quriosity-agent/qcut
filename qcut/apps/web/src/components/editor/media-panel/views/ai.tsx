@@ -117,6 +117,12 @@ const [ltxv2Resolution, setLTXV2Resolution] = useState<
 >("1080p");
 const [ltxv2FPS, setLTXV2FPS] = useState<25 | 50>(25);
 const [ltxv2GenerateAudio, setLTXV2GenerateAudio] = useState(true);
+const [ltxv2ImageDuration, setLTXV2ImageDuration] = useState<2 | 3 | 4 | 5 | 6>(4);
+const [ltxv2ImageResolution, setLTXV2ImageResolution] = useState<
+  "720p" | "1080p"
+>("1080p");
+const [ltxv2ImageFPS, setLTXV2ImageFPS] = useState<25 | 50>(25);
+const [ltxv2ImageGenerateAudio, setLTXV2ImageGenerateAudio] = useState(true);
 
   // Use global AI tab state (CRITICAL: preserve global state integration)
   const { aiActiveTab: activeTab, setAiActiveTab: setActiveTab } =
@@ -150,6 +156,10 @@ const [ltxv2GenerateAudio, setLTXV2GenerateAudio] = useState(true);
     ltxv2Resolution,
     ltxv2FPS,
     ltxv2GenerateAudio,
+    ltxv2ImageDuration,
+    ltxv2ImageResolution,
+    ltxv2ImageFPS,
+    ltxv2ImageGenerateAudio,
     onProgress: (progress, message) => {
       console.log(`[AI View] Progress: ${progress}% - ${message}`);
       // Progress is handled internally by the hook
@@ -198,7 +208,8 @@ const [ltxv2GenerateAudio, setLTXV2GenerateAudio] = useState(true);
   );
   const hailuoProSelected = selectedModels.includes("hailuo23_pro_t2v");
   const viduQ2Selected = selectedModels.includes("vidu_q2_turbo_i2v");
-  const ltxv2Selected = selectedModels.includes("ltxv2_pro_t2v");
+  const ltxv2TextSelected = selectedModels.includes("ltxv2_pro_t2v");
+  const ltxv2ImageSelected = selectedModels.includes("ltxv2_fast_i2v");
 
   // Track active FileReader for cleanup
   const fileReaderRef = useRef<FileReader | null>(null);
