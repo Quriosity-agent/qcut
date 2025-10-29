@@ -42,6 +42,55 @@ This document describes the integration of MiniMax's Hailuo 2.3 models into QCut
 - **Pricing**: $0.49 per video
 - **Use Case**: Premium text-to-video with cinematic camera control
 
+---
+
+## Additional Models for Future Integration
+
+### 6. Vidu Q2 Turbo (Image-to-Video)
+- **Endpoint**: `fal-ai/vidu/q2/image-to-video/turbo`
+- **Resolution**: 720p / 1080p
+- **Pricing**:
+  - 720p: $0.05 per second (e.g., 4s = $0.20, 8s = $0.40)
+  - 1080p: $0.20 base + $0.05 per second (e.g., 4s = $0.40, 8s = $0.60)
+- **Duration Options**: 2-8 seconds
+- **Special Features**:
+  - Movement amplitude control (auto/small/medium/large)
+  - Background music (BGM) for 4-second videos only
+  - Max prompt: 3000 characters
+- **Use Case**: Flexible duration options with fine-grained motion control
+
+### 7. Seedance v1 Pro Fast (Image-to-Video)
+- **Endpoint**: `fal-ai/bytedance/seedance/v1/pro/fast/image-to-video`
+- **Resolution**: 480p / 720p / 1080p
+- **Pricing**:
+  - 1080p 5s: ~$0.243
+  - Token-based: $1.00 per million tokens
+  - Formula: `(height × width × FPS × duration) / 1024`
+- **Duration Options**: 2-12 seconds (default: 5s)
+- **Special Features**:
+  - Camera lock option (`camera_fixed`)
+  - Aspect ratio auto-detection or manual selection (21:9, 16:9, 4:3, 1:1, 3:4, 9:16)
+  - Safety checker toggle
+  - Seed control for reproducibility
+- **Use Case**: Long-form image-to-video (up to 12s) with camera control
+
+### 8. Seedance v1 Pro Fast (Text-to-Video)
+- **Endpoint**: `fal-ai/bytedance/seedance/v1/pro/fast/text-to-video`
+- **Resolution**: 480p / 720p / 1080p
+- **Pricing**:
+  - 1080p 5s: ~$0.245
+  - Token-based: $1.00 per million tokens
+  - Formula: `(height × width × FPS × duration) / 1024`
+- **Duration Options**: 2-12 seconds (default: 5s)
+- **Special Features**:
+  - Camera lock option (`camera_fixed`)
+  - Aspect ratio selection (21:9, 16:9, 4:3, 1:1, 3:4, 9:16, default: 16:9)
+  - Safety checker toggle
+  - Seed control for reproducibility
+- **Use Case**: Long-form text-to-video (up to 12s) with multi-aspect ratio support
+
+---
+
 ## API Parameters
 
 ### Image-to-Video Parameters
@@ -67,6 +116,45 @@ All three image-to-video models share the same parameter structure:
 - `prompt` (required, string, max 2000 characters): Text description for video generation
 - `prompt_optimizer` (optional, boolean, default: true): Enables automatic prompt enhancement
 - **Camera Control**: Supports cinematic movements via bracketed notation (e.g., `[Pan left]`, `[Zoom in]`, `[Track forward]`)
+
+### Additional Models Parameters
+
+#### Vidu Q2 Turbo (Image-to-Video)
+**Required:**
+- `prompt` (string, max 3000 characters): Text description
+- `image_url` (string): Starting frame URL
+
+**Optional:**
+- `duration` (number, 2-8): Video duration in seconds (default: 4)
+- `resolution` (enum: "720p" | "1080p"): Output quality (default: "720p")
+- `movement_amplitude` (enum: "auto" | "small" | "medium" | "large"): Motion intensity (default: "auto")
+- `bgm` (boolean): Enable background music (only for 4-second videos)
+- `seed` (integer): For reproducible results
+
+#### Seedance v1 Pro Fast (Image-to-Video)
+**Required:**
+- `prompt` (string): Text description for video animation
+- `image_url` (string): Starting frame URL
+
+**Optional:**
+- `duration` (number, 2-12): Video length in seconds (default: 5)
+- `resolution` (enum: "480p" | "720p" | "1080p"): Output quality (default: "1080p")
+- `aspect_ratio` (enum: "21:9" | "16:9" | "4:3" | "1:1" | "3:4" | "9:16" | "auto"): Video dimensions (default: "auto")
+- `camera_fixed` (boolean): Lock camera position (default: false)
+- `seed` (integer): For reproducibility (use -1 for random)
+- `enable_safety_checker` (boolean): Content moderation (default: true)
+
+#### Seedance v1 Pro Fast (Text-to-Video)
+**Required:**
+- `prompt` (string): Text description for video generation
+
+**Optional:**
+- `duration` (number, 2-12): Video length in seconds (default: 5)
+- `resolution` (enum: "480p" | "720p" | "1080p"): Output quality (default: "1080p")
+- `aspect_ratio` (enum: "21:9" | "16:9" | "4:3" | "1:1" | "3:4" | "9:16"): Video dimensions (default: "16:9")
+- `camera_fixed` (boolean): Lock camera position (default: false)
+- `seed` (integer): For reproducibility (use -1 for random)
+- `enable_safety_checker` (boolean): Content moderation (default: true)
 
 ## API Response Format
 
@@ -1143,23 +1231,28 @@ The models do NOT require special parameter conversion (unlike Sora 2 models). T
 - [Hailuo 2.3 Pro T2V](https://fal.ai/models/fal-ai/minimax/hailuo-2.3/pro/text-to-video)
 - [Hailuo 2.3 Standard T2V](https://fal.ai/models/fal-ai/minimax/hailuo-2.3/standard/text-to-video)
 
+### Additional Models (Future Integration)
+- [Vidu Q2 Turbo I2V](https://fal.ai/models/fal-ai/vidu/q2/image-to-video/turbo/api)
+- [Seedance v1 Pro Fast I2V](https://fal.ai/models/fal-ai/bytedance/seedance/v1/pro/fast/image-to-video/api)
+- [Seedance v1 Pro Fast T2V](https://fal.ai/models/fal-ai/bytedance/seedance/v1/pro/fast/text-to-video/api)
+
 ### Documentation
 - [FAL AI API Documentation](https://fal.ai/docs)
 
 ## Implementation Date
 - **Initial Documentation**: 2025-10-29
-- **Last Updated**: 2025-10-29
+- **Last Updated**: 2025-01-29 (Added 3 additional models for future integration)
 
 ## Status
 
-### Image-to-Video Models
+### Hailuo 2.3 Image-to-Video Models
 ✅ **COMPLETED** - All three I2V models fully integrated
 - ✅ Model configurations added to `ai-constants.ts`
 - ✅ Client function `generateVideoFromImage()` supports all models
 - ✅ FAL API integration working
 - ✅ Pricing configured correctly
 
-### Text-to-Video Models
+### Hailuo 2.3 Text-to-Video Models
 ⏳ **DOCUMENTED** - Implementation pending
 
 **Documentation Status:**
@@ -1176,6 +1269,40 @@ The models do NOT require special parameter conversion (unlike Sora 2 models). T
 - ⏳ `generateVideoFromText()` function not yet implemented
 - ⏳ UI components not yet updated
 - ⏳ Tests not yet written
+
+### Additional Models (Future Integration)
+📋 **DOCUMENTED** - Ready for future implementation
+
+**Models Added:**
+1. **Vidu Q2 Turbo** (Image-to-Video)
+   - Resolution: 720p/1080p
+   - Duration: 2-8 seconds
+   - Pricing: $0.05/s (720p), $0.20 base + $0.05/s (1080p)
+   - Special: Movement amplitude control, BGM support
+
+2. **Seedance v1 Pro Fast** (Image-to-Video)
+   - Resolution: 480p/720p/1080p
+   - Duration: 2-12 seconds
+   - Pricing: ~$0.243 (1080p 5s), token-based
+   - Special: Camera lock, aspect ratio control, up to 12s duration
+
+3. **Seedance v1 Pro Fast** (Text-to-Video)
+   - Resolution: 480p/720p/1080p
+   - Duration: 2-12 seconds
+   - Pricing: ~$0.245 (1080p 5s), token-based
+   - Special: Camera lock, aspect ratio control, up to 12s duration
+
+**Documentation Status:**
+- ✅ API endpoints documented
+- ✅ Pricing structure documented
+- ✅ Parameter specifications documented
+- ✅ Special features identified
+- ✅ FAL API references added
+
+**Implementation Status:**
+- ⏳ Not yet added to codebase
+- ⏳ Awaiting prioritization for implementation
+- ⏳ Can be implemented using same patterns as Hailuo 2.3 models
 
 ### Next Steps
 1. Review and approve this documentation
