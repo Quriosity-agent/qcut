@@ -100,7 +100,9 @@ describe("generateVideoFromText - Hailuo 2.3 Text-to-Video", () => {
       await generateVideoFromText(request);
 
       const [, options] = fetchMock.mock.calls[0];
-      const callPayload = JSON.parse((options as RequestInit).body as string);
+      const callPayload = JSON.parse(
+        (options as Record<string, unknown>).body as string
+      );
       expect(callPayload.duration).toBe("6");
     });
 
@@ -122,7 +124,9 @@ describe("generateVideoFromText - Hailuo 2.3 Text-to-Video", () => {
       await generateVideoFromText(request);
 
       const [, options] = fetchMock.mock.calls[0];
-      const callPayload = JSON.parse((options as RequestInit).body as string);
+      const callPayload = JSON.parse(
+        (options as Record<string, unknown>).body as string
+      );
       expect(callPayload.duration).toBe("10");
     });
   });
@@ -190,7 +194,9 @@ describe("generateVideoFromText - Hailuo 2.3 Text-to-Video", () => {
       await generateVideoFromText(request);
 
       const [, options] = fetchMock.mock.calls[0];
-      const callPayload = JSON.parse((options as RequestInit).body as string);
+      const callPayload = JSON.parse(
+        (options as Record<string, unknown>).body as string
+      );
       expect(callPayload.prompt_optimizer).toBe(false);
     });
   });
@@ -203,15 +209,15 @@ describe("generateVideoFromText - Hailuo 2.3 Text-to-Video", () => {
         duration: 6,
       };
 
-      const mockFetch = vi
+      const fetchMock = vi
         .fn()
         .mockResolvedValue({
           ok: false,
           status: 401,
           statusText: "Unauthorized",
           json: async () => ({ detail: "Invalid API key" }),
-        }) as unknown as typeof globalThis.fetch;
-      globalThis.fetch = mockFetch;
+        });
+      globalThis.fetch = fetchMock as unknown as typeof globalThis.fetch;
 
       await expect(generateVideoFromText(request)).rejects.toThrow(
         /Invalid FAL.ai API key/
