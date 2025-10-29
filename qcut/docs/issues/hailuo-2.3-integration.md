@@ -1,315 +1,5 @@
 # Hailuo 2.3 Integration
 
-## Overview
-This document describes the integration of MiniMax's Hailuo 2.3 models into QCut. Hailuo 2.3 offers multiple variants optimized for different use cases across both image-to-video and text-to-video generation: Standard (budget-friendly), Fast Pro (balanced), and Pro (premium quality).
-
-## Image-to-Video Models
-
-### 1. Hailuo 2.3 Standard (Image-to-Video)
-- **Endpoint**: `fal-ai/minimax/hailuo-2.3/standard/image-to-video`
-- **Resolution**: 768p
-- **Pricing**:
-  - 6-second video: $0.28
-  - 10-second video: $0.56
-- **Use Case**: Budget-friendly image-to-video generation
-
-### 2. Hailuo 2.3 Fast Pro (Image-to-Video)
-- **Endpoint**: `fal-ai/minimax/hailuo-2.3-fast/pro/image-to-video`
-- **Resolution**: 1080p
-- **Pricing**: $0.33 per video
-- **Use Case**: Balanced performance and quality with faster generation times
-
-### 3. Hailuo 2.3 Pro (Image-to-Video)
-- **Endpoint**: `fal-ai/minimax/hailuo-2.3/pro/image-to-video`
-- **Resolution**: 1080p
-- **Pricing**: $0.49 per video
-- **Use Case**: Premium quality with highest fidelity
-
-## Text-to-Video Models
-
-### 4. Hailuo 2.3 Standard (Text-to-Video)
-- **Endpoint**: `fal-ai/minimax/hailuo-2.3/standard/text-to-video`
-- **Resolution**: 768p
-- **Pricing**:
-  - 6-second video: $0.28
-  - 10-second video: $0.56
-- **Duration Options**: 6s or 10s
-- **Use Case**: Budget-friendly text-to-video generation
-
-### 5. Hailuo 2.3 Pro (Text-to-Video)
-- **Endpoint**: `fal-ai/minimax/hailuo-2.3/pro/text-to-video`
-- **Resolution**: 1080p
-- **Pricing**: $0.49 per video
-- **Use Case**: Premium text-to-video with cinematic camera control
-
----
-
-## Additional Models for Future Integration
-
-### 6. Vidu Q2 Turbo (Image-to-Video)
-- **Endpoint**: `fal-ai/vidu/q2/image-to-video/turbo`
-- **Resolution**: 720p / 1080p
-- **Pricing**:
-  - 720p: $0.05 per second (e.g., 4s = $0.20, 8s = $0.40)
-  - 1080p: $0.20 base + $0.05 per second (e.g., 4s = $0.40, 8s = $0.60)
-- **Duration Options**: 2-8 seconds
-- **Special Features**:
-  - Movement amplitude control (auto/small/medium/large)
-  - Background music (BGM) for 4-second videos only
-  - Max prompt: 3000 characters
-- **Use Case**: Flexible duration options with fine-grained motion control
-
-### 7. Seedance v1 Pro Fast (Image-to-Video)
-- **Endpoint**: `fal-ai/bytedance/seedance/v1/pro/fast/image-to-video`
-- **Resolution**: 480p / 720p / 1080p
-- **Pricing**:
-  - 1080p 5s: ~$0.243
-  - Token-based: $1.00 per million tokens
-  - Formula: `(height × width × FPS × duration) / 1024`
-- **Duration Options**: 2-12 seconds (default: 5s)
-- **Special Features**:
-  - Camera lock option (`camera_fixed`)
-  - Aspect ratio auto-detection or manual selection (21:9, 16:9, 4:3, 1:1, 3:4, 9:16)
-  - Safety checker toggle
-  - Seed control for reproducibility
-- **Use Case**: Long-form image-to-video (up to 12s) with camera control
-
-### 8. Seedance v1 Pro Fast (Text-to-Video)
-- **Endpoint**: `fal-ai/bytedance/seedance/v1/pro/fast/text-to-video`
-- **Resolution**: 480p / 720p / 1080p
-- **Pricing**:
-  - 1080p 5s: ~$0.245
-  - Token-based: $1.00 per million tokens
-  - Formula: `(height × width × FPS × duration) / 1024`
-- **Duration Options**: 2-12 seconds (default: 5s)
-- **Special Features**:
-  - Camera lock option (`camera_fixed`)
-  - Aspect ratio selection (21:9, 16:9, 4:3, 1:1, 3:4, 9:16, default: 16:9)
-  - Safety checker toggle
-  - Seed control for reproducibility
-- **Use Case**: Long-form text-to-video (up to 12s) with multi-aspect ratio support
-
----
-
-## API Parameters
-
-### Image-to-Video Parameters
-
-All three image-to-video models share the same parameter structure:
-
-### Required Parameters
-- `prompt` (string, max 2000 characters): Text description of desired video animation
-- `image_url` (string): URL of the input image (first frame)
-
-### Optional Parameters
-- `prompt_optimizer` (boolean, default: true): Enables automatic prompt enhancement
-- `end_image_url` (string): Optional URL for the final frame
-
-### Text-to-Video Parameters
-
-#### Standard Text-to-Video
-- `prompt` (required, string, max 1500 characters): Text description for video generation
-- `prompt_optimizer` (optional, boolean, default: true): Enables automatic prompt enhancement
-- `duration` (optional, enum: "6" or "10"): Video length in seconds (default: 6)
-
-#### Pro Text-to-Video
-- `prompt` (required, string, max 2000 characters): Text description for video generation
-- `prompt_optimizer` (optional, boolean, default: true): Enables automatic prompt enhancement
-- **Camera Control**: Supports cinematic movements via bracketed notation (e.g., `[Pan left]`, `[Zoom in]`, `[Track forward]`)
-
-### Additional Models Parameters
-
-#### Vidu Q2 Turbo (Image-to-Video)
-**Required:**
-- `prompt` (string, max 3000 characters): Text description
-- `image_url` (string): Starting frame URL
-
-**Optional:**
-- `duration` (number, 2-8): Video duration in seconds (default: 4)
-- `resolution` (enum: "720p" | "1080p"): Output quality (default: "720p")
-- `movement_amplitude` (enum: "auto" | "small" | "medium" | "large"): Motion intensity (default: "auto")
-- `bgm` (boolean): Enable background music (only for 4-second videos)
-- `seed` (integer): For reproducible results
-
-#### Seedance v1 Pro Fast (Image-to-Video)
-**Required:**
-- `prompt` (string): Text description for video animation
-- `image_url` (string): Starting frame URL
-
-**Optional:**
-- `duration` (number, 2-12): Video length in seconds (default: 5)
-- `resolution` (enum: "480p" | "720p" | "1080p"): Output quality (default: "1080p")
-- `aspect_ratio` (enum: "21:9" | "16:9" | "4:3" | "1:1" | "3:4" | "9:16" | "auto"): Video dimensions (default: "auto")
-- `camera_fixed` (boolean): Lock camera position (default: false)
-- `seed` (integer): For reproducibility (use -1 for random)
-- `enable_safety_checker` (boolean): Content moderation (default: true)
-
-#### Seedance v1 Pro Fast (Text-to-Video)
-**Required:**
-- `prompt` (string): Text description for video generation
-
-**Optional:**
-- `duration` (number, 2-12): Video length in seconds (default: 5)
-- `resolution` (enum: "480p" | "720p" | "1080p"): Output quality (default: "1080p")
-- `aspect_ratio` (enum: "21:9" | "16:9" | "4:3" | "1:1" | "3:4" | "9:16"): Video dimensions (default: "16:9")
-- `camera_fixed` (boolean): Lock camera position (default: false)
-- `seed` (integer): For reproducibility (use -1 for random)
-- `enable_safety_checker` (boolean): Content moderation (default: true)
-
-## API Response Format
-
-```json
-{
-  "video": {
-    "url": "https://storage.googleapis.com/falserverless/output.mp4"
-  }
-}
-```
-
-## Relevant File Paths
-
-### Core Files (Already Modified)
-- **`qcut/apps/web/src/components/editor/media-panel/views/ai-constants.ts`**
-  - Model definitions and configurations
-  - Image-to-video models already added
-  - Text-to-video models need to be added
-
-- **`qcut/apps/web/src/lib/ai-video-client.ts`**
-  - Client-side API integration with FAL
-  - `generateVideoFromImage()` function already supports I2V models
-  - Needs new `generateVideoFromText()` function for T2V models
-
-### Supporting Files (May Need Updates)
-- **`qcut/apps/web/src/types/ai-video.ts`** (if exists)
-  - Type definitions for requests/responses
-  - May need `TextToVideoRequest` interface
-
-- **`qcut/apps/web/src/components/editor/media-panel/views/AIVideoPanel.tsx`** (if exists)
-  - UI component for AI video generation
-  - May need text-to-video input controls
-
-- **`qcut/apps/web/src/components/editor/media-panel/MediaPanel.tsx`** (if exists)
-  - Parent component that may route to AI video functionality
-
-### Testing Files
-- **`qcut/apps/web/src/__tests__/ai-video-client.test.ts`** (if exists)
-  - Unit tests for AI video generation functions
-
-- **`qcut/apps/web/src/__tests__/integration/ai-models.test.ts`** (if exists)
-  - Integration tests for AI model configuration
-
-## Integration Points
-
-### 1. Model Configuration (`ai-constants.ts`)
-**Status: ✅ Completed for I2V, ⏳ Pending for T2V**
-
-Added three image-to-video models to the `AI_MODELS` array:
-- `hailuo23_standard` (Image-to-Video)
-- `hailuo23_fast_pro` (Image-to-Video)
-- `hailuo23_pro` (Image-to-Video)
-
-**Text-to-Video models pending integration:**
-- `hailuo23_standard_t2v` (Text-to-Video, 768p, $0.28/$0.56)
-- `hailuo23_pro_t2v` (Text-to-Video, 1080p, $0.49)
-
-### 2. AI Video Client (`ai-video-client.ts`)
-
-#### Image-to-Video
-The existing `generateVideoFromImage()` function supports these models without modification:
-- Converts image files to base64 data URLs
-- Constructs proper API payloads with `prompt` and `image_url`
-- Handles FAL API responses with `video.url` extraction
-
-#### Text-to-Video (Pending Implementation)
-Text-to-video models will require a new function:
-- Direct text prompt without image input
-- Support for duration parameter (Standard model)
-- Camera control support (Pro model)
-- Same FAL API response handling
-
-## Usage Examples
-
-### Image-to-Video Example
-
-```typescript
-const request: ImageToVideoRequest = {
-  image: userUploadedImageFile,
-  model: "hailuo23_pro",
-  prompt: "The camera follows the mountain biker as they navigate a technical forest trail at high speed",
-  duration: 6, // For standard model: 6s or 10s
-};
-
-const response = await generateVideoFromImage(request);
-console.log("Video URL:", response.video_url);
-```
-
-### Text-to-Video Example (Pending Implementation)
-
-```typescript
-// Standard Text-to-Video (with duration control)
-const request: TextToVideoRequest = {
-  model: "hailuo23_standard_t2v",
-  prompt: "A mountain biker navigating a technical forest trail at high speed, with dynamic camera movement following the action",
-  duration: 10, // 6 or 10 seconds
-  prompt_optimizer: true
-};
-
-const response = await generateVideoFromText(request);
-console.log("Video URL:", response.video_url);
-
-// Pro Text-to-Video (with camera control)
-const requestPro: TextToVideoRequest = {
-  model: "hailuo23_pro_t2v",
-  prompt: "[Track forward] A serene mountain landscape at sunset with clouds drifting across the sky [Pan right]",
-  prompt_optimizer: true
-};
-
-const responsePro = await generateVideoFromText(requestPro);
-console.log("Video URL:", responsePro.video_url);
-```
-
-## ⚠️ Critical Implementation Rules
-
-### 🔒 DO NOT Break Existing Features
-This implementation follows an **ADDITIVE-ONLY** approach to ensure zero breaking changes:
-
-1. **✅ DO: Add new models**
-   - New model IDs: `hailuo23_standard_t2v`, `hailuo23_pro_t2v`
-   - New category type: `"text"` (alongside existing `"image"`)
-   - New function: `generateVideoFromText()`
-
-2. **❌ DO NOT: Modify existing implementations**
-   - ❌ Do not change existing model configurations (`hailuo23_standard`, `hailuo23_fast_pro`, `hailuo23_pro`)
-   - ❌ Do not modify `generateVideoFromImage()` function signature or behavior
-   - ❌ Do not change existing TypeScript interfaces or types
-   - ❌ Do not alter existing UI components for I2V workflows
-
-3. **✅ DO: Maintain backward compatibility**
-   - Existing projects using I2V models must continue to work without changes
-   - Existing API calls must produce identical results
-   - Existing UI workflows must remain unchanged
-   - Existing tests must pass without modification
-
-4. **✅ DO: Use feature detection**
-   - Check `model.category` to determine I2V vs T2V workflow
-   - Conditionally render UI based on selected model type
-   - Gracefully handle models without T2V support
-
-### 📋 Pre-Implementation Checklist
-Before making any code changes:
-- [ ] Verify all existing I2V models are working correctly
-- [ ] Run existing test suite to establish baseline (all tests passing)
-- [ ] Create a git branch for T2V implementation
-- [ ] Document current I2V workflow behavior for regression testing
-
-### 📋 Post-Implementation Validation
-After completing T2V implementation:
-- [ ] Run full test suite - all existing tests must still pass
-- [ ] Manually test all I2V models - behavior unchanged
-- [ ] Verify existing projects load without errors
-- [ ] Check that I2V UI flows work exactly as before
-- [ ] Confirm no TypeScript errors in existing code
-
 ---
 
 ## Implementation Subtasks (Text-to-Video)
@@ -1314,3 +1004,317 @@ The models do NOT require special parameter conversion (unlike Sora 2 models). T
 7. Execute Subtask 5: Write tests (15-20 min)
 8. Run post-implementation validation checklist
 9. Create pull request with all changes
+
+---
+
+
+## Overview
+This document describes the integration of MiniMax's Hailuo 2.3 models into QCut. Hailuo 2.3 offers multiple variants optimized for different use cases across both image-to-video and text-to-video generation: Standard (budget-friendly), Fast Pro (balanced), and Pro (premium quality).
+
+## Image-to-Video Models
+
+### 1. Hailuo 2.3 Standard (Image-to-Video)
+- **Endpoint**: `fal-ai/minimax/hailuo-2.3/standard/image-to-video`
+- **Resolution**: 768p
+- **Pricing**:
+  - 6-second video: $0.28
+  - 10-second video: $0.56
+- **Use Case**: Budget-friendly image-to-video generation
+
+### 2. Hailuo 2.3 Fast Pro (Image-to-Video)
+- **Endpoint**: `fal-ai/minimax/hailuo-2.3-fast/pro/image-to-video`
+- **Resolution**: 1080p
+- **Pricing**: $0.33 per video
+- **Use Case**: Balanced performance and quality with faster generation times
+
+### 3. Hailuo 2.3 Pro (Image-to-Video)
+- **Endpoint**: `fal-ai/minimax/hailuo-2.3/pro/image-to-video`
+- **Resolution**: 1080p
+- **Pricing**: $0.49 per video
+- **Use Case**: Premium quality with highest fidelity
+
+## Text-to-Video Models
+
+### 4. Hailuo 2.3 Standard (Text-to-Video)
+- **Endpoint**: `fal-ai/minimax/hailuo-2.3/standard/text-to-video`
+- **Resolution**: 768p
+- **Pricing**:
+  - 6-second video: $0.28
+  - 10-second video: $0.56
+- **Duration Options**: 6s or 10s
+- **Use Case**: Budget-friendly text-to-video generation
+
+### 5. Hailuo 2.3 Pro (Text-to-Video)
+- **Endpoint**: `fal-ai/minimax/hailuo-2.3/pro/text-to-video`
+- **Resolution**: 1080p
+- **Pricing**: $0.49 per video
+- **Use Case**: Premium text-to-video with cinematic camera control
+
+---
+
+## Additional Models for Future Integration
+
+### 6. Vidu Q2 Turbo (Image-to-Video)
+- **Endpoint**: `fal-ai/vidu/q2/image-to-video/turbo`
+- **Resolution**: 720p / 1080p
+- **Pricing**:
+  - 720p: $0.05 per second (e.g., 4s = $0.20, 8s = $0.40)
+  - 1080p: $0.20 base + $0.05 per second (e.g., 4s = $0.40, 8s = $0.60)
+- **Duration Options**: 2-8 seconds
+- **Special Features**:
+  - Movement amplitude control (auto/small/medium/large)
+  - Background music (BGM) for 4-second videos only
+  - Max prompt: 3000 characters
+- **Use Case**: Flexible duration options with fine-grained motion control
+
+### 7. Seedance v1 Pro Fast (Image-to-Video)
+- **Endpoint**: `fal-ai/bytedance/seedance/v1/pro/fast/image-to-video`
+- **Resolution**: 480p / 720p / 1080p
+- **Pricing**:
+  - 1080p 5s: ~$0.243
+  - Token-based: $1.00 per million tokens
+  - Formula: `(height × width × FPS × duration) / 1024`
+- **Duration Options**: 2-12 seconds (default: 5s)
+- **Special Features**:
+  - Camera lock option (`camera_fixed`)
+  - Aspect ratio auto-detection or manual selection (21:9, 16:9, 4:3, 1:1, 3:4, 9:16)
+  - Safety checker toggle
+  - Seed control for reproducibility
+- **Use Case**: Long-form image-to-video (up to 12s) with camera control
+
+### 8. Seedance v1 Pro Fast (Text-to-Video)
+- **Endpoint**: `fal-ai/bytedance/seedance/v1/pro/fast/text-to-video`
+- **Resolution**: 480p / 720p / 1080p
+- **Pricing**:
+  - 1080p 5s: ~$0.245
+  - Token-based: $1.00 per million tokens
+  - Formula: `(height × width × FPS × duration) / 1024`
+- **Duration Options**: 2-12 seconds (default: 5s)
+- **Special Features**:
+  - Camera lock option (`camera_fixed`)
+  - Aspect ratio selection (21:9, 16:9, 4:3, 1:1, 3:4, 9:16, default: 16:9)
+  - Safety checker toggle
+  - Seed control for reproducibility
+- **Use Case**: Long-form text-to-video (up to 12s) with multi-aspect ratio support
+
+---
+
+## API Parameters
+
+### Image-to-Video Parameters
+
+All three image-to-video models share the same parameter structure:
+
+### Required Parameters
+- `prompt` (string, max 2000 characters): Text description of desired video animation
+- `image_url` (string): URL of the input image (first frame)
+
+### Optional Parameters
+- `prompt_optimizer` (boolean, default: true): Enables automatic prompt enhancement
+- `end_image_url` (string): Optional URL for the final frame
+
+### Text-to-Video Parameters
+
+#### Standard Text-to-Video
+- `prompt` (required, string, max 1500 characters): Text description for video generation
+- `prompt_optimizer` (optional, boolean, default: true): Enables automatic prompt enhancement
+- `duration` (optional, enum: "6" or "10"): Video length in seconds (default: 6)
+
+#### Pro Text-to-Video
+- `prompt` (required, string, max 2000 characters): Text description for video generation
+- `prompt_optimizer` (optional, boolean, default: true): Enables automatic prompt enhancement
+- **Camera Control**: Supports cinematic movements via bracketed notation (e.g., `[Pan left]`, `[Zoom in]`, `[Track forward]`)
+
+### Additional Models Parameters
+
+#### Vidu Q2 Turbo (Image-to-Video)
+**Required:**
+- `prompt` (string, max 3000 characters): Text description
+- `image_url` (string): Starting frame URL
+
+**Optional:**
+- `duration` (number, 2-8): Video duration in seconds (default: 4)
+- `resolution` (enum: "720p" | "1080p"): Output quality (default: "720p")
+- `movement_amplitude` (enum: "auto" | "small" | "medium" | "large"): Motion intensity (default: "auto")
+- `bgm` (boolean): Enable background music (only for 4-second videos)
+- `seed` (integer): For reproducible results
+
+#### Seedance v1 Pro Fast (Image-to-Video)
+**Required:**
+- `prompt` (string): Text description for video animation
+- `image_url` (string): Starting frame URL
+
+**Optional:**
+- `duration` (number, 2-12): Video length in seconds (default: 5)
+- `resolution` (enum: "480p" | "720p" | "1080p"): Output quality (default: "1080p")
+- `aspect_ratio` (enum: "21:9" | "16:9" | "4:3" | "1:1" | "3:4" | "9:16" | "auto"): Video dimensions (default: "auto")
+- `camera_fixed` (boolean): Lock camera position (default: false)
+- `seed` (integer): For reproducibility (use -1 for random)
+- `enable_safety_checker` (boolean): Content moderation (default: true)
+
+#### Seedance v1 Pro Fast (Text-to-Video)
+**Required:**
+- `prompt` (string): Text description for video generation
+
+**Optional:**
+- `duration` (number, 2-12): Video length in seconds (default: 5)
+- `resolution` (enum: "480p" | "720p" | "1080p"): Output quality (default: "1080p")
+- `aspect_ratio` (enum: "21:9" | "16:9" | "4:3" | "1:1" | "3:4" | "9:16"): Video dimensions (default: "16:9")
+- `camera_fixed` (boolean): Lock camera position (default: false)
+- `seed` (integer): For reproducibility (use -1 for random)
+- `enable_safety_checker` (boolean): Content moderation (default: true)
+
+## API Response Format
+
+```json
+{
+  "video": {
+    "url": "https://storage.googleapis.com/falserverless/output.mp4"
+  }
+}
+```
+
+## Relevant File Paths
+
+### Core Files (Already Modified)
+- **`qcut/apps/web/src/components/editor/media-panel/views/ai-constants.ts`**
+  - Model definitions and configurations
+  - Image-to-video models already added
+  - Text-to-video models need to be added
+
+- **`qcut/apps/web/src/lib/ai-video-client.ts`**
+  - Client-side API integration with FAL
+  - `generateVideoFromImage()` function already supports I2V models
+  - Needs new `generateVideoFromText()` function for T2V models
+
+### Supporting Files (May Need Updates)
+- **`qcut/apps/web/src/types/ai-video.ts`** (if exists)
+  - Type definitions for requests/responses
+  - May need `TextToVideoRequest` interface
+
+- **`qcut/apps/web/src/components/editor/media-panel/views/AIVideoPanel.tsx`** (if exists)
+  - UI component for AI video generation
+  - May need text-to-video input controls
+
+- **`qcut/apps/web/src/components/editor/media-panel/MediaPanel.tsx`** (if exists)
+  - Parent component that may route to AI video functionality
+
+### Testing Files
+- **`qcut/apps/web/src/__tests__/ai-video-client.test.ts`** (if exists)
+  - Unit tests for AI video generation functions
+
+- **`qcut/apps/web/src/__tests__/integration/ai-models.test.ts`** (if exists)
+  - Integration tests for AI model configuration
+
+## Integration Points
+
+### 1. Model Configuration (`ai-constants.ts`)
+**Status: ✅ Completed for I2V, ⏳ Pending for T2V**
+
+Added three image-to-video models to the `AI_MODELS` array:
+- `hailuo23_standard` (Image-to-Video)
+- `hailuo23_fast_pro` (Image-to-Video)
+- `hailuo23_pro` (Image-to-Video)
+
+**Text-to-Video models pending integration:**
+- `hailuo23_standard_t2v` (Text-to-Video, 768p, $0.28/$0.56)
+- `hailuo23_pro_t2v` (Text-to-Video, 1080p, $0.49)
+
+### 2. AI Video Client (`ai-video-client.ts`)
+
+#### Image-to-Video
+The existing `generateVideoFromImage()` function supports these models without modification:
+- Converts image files to base64 data URLs
+- Constructs proper API payloads with `prompt` and `image_url`
+- Handles FAL API responses with `video.url` extraction
+
+#### Text-to-Video (Pending Implementation)
+Text-to-video models will require a new function:
+- Direct text prompt without image input
+- Support for duration parameter (Standard model)
+- Camera control support (Pro model)
+- Same FAL API response handling
+
+## Usage Examples
+
+### Image-to-Video Example
+
+```typescript
+const request: ImageToVideoRequest = {
+  image: userUploadedImageFile,
+  model: "hailuo23_pro",
+  prompt: "The camera follows the mountain biker as they navigate a technical forest trail at high speed",
+  duration: 6, // For standard model: 6s or 10s
+};
+
+const response = await generateVideoFromImage(request);
+console.log("Video URL:", response.video_url);
+```
+
+### Text-to-Video Example (Pending Implementation)
+
+```typescript
+// Standard Text-to-Video (with duration control)
+const request: TextToVideoRequest = {
+  model: "hailuo23_standard_t2v",
+  prompt: "A mountain biker navigating a technical forest trail at high speed, with dynamic camera movement following the action",
+  duration: 10, // 6 or 10 seconds
+  prompt_optimizer: true
+};
+
+const response = await generateVideoFromText(request);
+console.log("Video URL:", response.video_url);
+
+// Pro Text-to-Video (with camera control)
+const requestPro: TextToVideoRequest = {
+  model: "hailuo23_pro_t2v",
+  prompt: "[Track forward] A serene mountain landscape at sunset with clouds drifting across the sky [Pan right]",
+  prompt_optimizer: true
+};
+
+const responsePro = await generateVideoFromText(requestPro);
+console.log("Video URL:", responsePro.video_url);
+```
+
+## ⚠️ Critical Implementation Rules
+
+### 🔒 DO NOT Break Existing Features
+This implementation follows an **ADDITIVE-ONLY** approach to ensure zero breaking changes:
+
+1. **✅ DO: Add new models**
+   - New model IDs: `hailuo23_standard_t2v`, `hailuo23_pro_t2v`
+   - New category type: `"text"` (alongside existing `"image"`)
+   - New function: `generateVideoFromText()`
+
+2. **❌ DO NOT: Modify existing implementations**
+   - ❌ Do not change existing model configurations (`hailuo23_standard`, `hailuo23_fast_pro`, `hailuo23_pro`)
+   - ❌ Do not modify `generateVideoFromImage()` function signature or behavior
+   - ❌ Do not change existing TypeScript interfaces or types
+   - ❌ Do not alter existing UI components for I2V workflows
+
+3. **✅ DO: Maintain backward compatibility**
+   - Existing projects using I2V models must continue to work without changes
+   - Existing API calls must produce identical results
+   - Existing UI workflows must remain unchanged
+   - Existing tests must pass without modification
+
+4. **✅ DO: Use feature detection**
+   - Check `model.category` to determine I2V vs T2V workflow
+   - Conditionally render UI based on selected model type
+   - Gracefully handle models without T2V support
+
+### 📋 Pre-Implementation Checklist
+Before making any code changes:
+- [ ] Verify all existing I2V models are working correctly
+- [ ] Run existing test suite to establish baseline (all tests passing)
+- [ ] Create a git branch for T2V implementation
+- [ ] Document current I2V workflow behavior for regression testing
+
+### 📋 Post-Implementation Validation
+After completing T2V implementation:
+- [ ] Run full test suite - all existing tests must still pass
+- [ ] Manually test all I2V models - behavior unchanged
+- [ ] Verify existing projects load without errors
+- [ ] Check that I2V UI flows work exactly as before
+- [ ] Confirm no TypeScript errors in existing code
+
