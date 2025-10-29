@@ -7,7 +7,9 @@
 ### Subtask 1: Add T2V Model Configurations (5-10 minutes)
 **File:** `qcut/apps/web/src/components/editor/media-panel/views/ai-constants.ts`
 
-**Location:** Add to the `AI_MODELS` array after line 134 (after `hailuo23_pro` image-to-video model)
+**Current Status:** ❌ Not implemented - The `AI_MODELS` array currently jumps from `hailuo23_pro` (line 134) directly to `seedance_pro` (line 136) without any Hailuo T2V configurations.
+
+**Location:** Add to the `AI_MODELS` array after line 134 (after `hailuo23_pro` image-to-video model, before `seedance_pro`)
 
 **Code to ADD:**
 
@@ -52,8 +54,9 @@
 **Tasks:**
 - [ ] Open `qcut/apps/web/src/components/editor/media-panel/views/ai-constants.ts`
 - [ ] Locate line 134 (end of `hailuo23_pro` image-to-video model)
-- [ ] Add a comment: `// Hailuo 2.3 Text-to-Video Models`
-- [ ] Paste the two model configurations above
+- [ ] Add a comment: `// Hailuo 2.3 Text-to-Video Models` (helps future developers locate these entries)
+- [ ] Paste the two model configurations above between `hailuo23_pro` and `seedance_pro`
+- [ ] **CRITICAL**: Verify that `category: "text"` is present in both models - the text tab UI relies on this flag to surface T2V models
 - [ ] Verify no syntax errors (check for trailing commas)
 - [ ] Save file
 
@@ -66,19 +69,18 @@ cd qcut/apps/web
 bun run check-types  # Should pass without errors
 ```
 
-#### Review & Comments
-- The `AI_MODELS` array still jumps from the `hailuo23_pro` image-to-video entry directly to `seedance_pro` without the new Hailuo T2V configurations (`qcut/apps/web/src/components/editor/media-panel/views/ai-constants.ts`, around line 134).
-- Add the requested `// Hailuo 2.3 Text-to-Video Models` marker before inserting the two configurations so future updates can locate them quickly.
-- Once the entries exist, double-check that the `category: "text"` field is present; the text tab relies on that flag to surface the models.
-
 ---
 
 ### Subtask 2: Implement T2V Client Function (15-20 minutes)
 **File:** `qcut/apps/web/src/lib/ai-video-client.ts`
 
+**Current Status:** ❌ Not implemented
+- `TextToVideoRequest` interface does not exist after line 299 (only `AvatarVideoRequest` follows `ImageToVideoRequest`)
+- `generateVideoFromText()` function is absent - file jumps from `generateVideoFromImage()` (ends line 1213) directly to `generateAvatarVideo()` (starts line 1215)
+
 #### Part A: Add TypeScript Interface
 
-**Location:** Add after line 299 (after `ImageToVideoRequest` interface)
+**Location:** Add after line 299 (after `ImageToVideoRequest` interface, before `AvatarVideoRequest`)
 
 **Code to ADD:**
 
@@ -93,15 +95,15 @@ export interface TextToVideoRequest {
 ```
 
 **Tasks:**
-- [ ] Locate the `ImageToVideoRequest` interface (around line 292-299)
-- [ ] Add the `TextToVideoRequest` interface immediately after it
+- [ ] Locate the `ImageToVideoRequest` interface (line 292-299)
+- [ ] Add the `TextToVideoRequest` interface immediately after line 299, before `AvatarVideoRequest`
 - [ ] Save file
 
 ---
 
 #### Part B: Add Main Function
 
-**Location:** Add after line 1213 (after `generateVideoFromImage` function ends)
+**Location:** Add after line 1213 (after `generateVideoFromImage()` function ends, before `generateAvatarVideo()` starts at line 1215)
 
 **Code to ADD:**
 
@@ -240,8 +242,12 @@ export async function generateVideoFromText(
 ```
 
 **Tasks:**
-- [ ] Locate line 1213 (end of `generateVideoFromImage` function)
-- [ ] Add the new `generateVideoFromText` function
+- [ ] Locate line 1213 (end of `generateVideoFromImage()` function)
+- [ ] Insert the new `generateVideoFromText()` function between lines 1213-1215 (before `generateAvatarVideo()`)
+- [ ] **IMPORTANT**: Reuse existing helper functions to maintain consistency:
+  - `generateJobId()` - for unique job IDs
+  - `getModelConfig()` - for model configuration lookup
+  - `handleAIServiceError()` - for standardized error handling
 - [ ] Verify proper indentation and formatting
 - [ ] Ensure all imports are available (they should be from existing code)
 - [ ] Save file
@@ -255,17 +261,18 @@ cd qcut/apps/web
 bun run check-types  # Should pass without errors
 ```
 
-#### Review & Comments
-- `TextToVideoRequest` has not been defined after `ImageToVideoRequest`; the interface block is still missing in `qcut/apps/web/src/lib/ai-video-client.ts:292`.
-- `generateVideoFromText` is absent; the file jumps from `generateVideoFromImage` straight into `generateAvatarVideo`, so the text-only flow is not wired up yet.
-- When implementing, reuse the existing `generateJobId`, `getModelConfig`, and error helpers to stay consistent with the image-to-video path.
-
 ---
 
 ### Subtask 3: Update UI Components (10-15 minutes)
 **Status:** ⏸️ **OPTIONAL** - UI components may not exist yet or may need discovery
 
-**Action Required:** Search for AI video UI components before implementation
+**Current Status:** ❌ Not implemented
+- `qcut/apps/web/src/components/editor/media-panel/views/ai.tsx` exists and filters models by `activeTab`
+- However, no Hailuo T2V entries exist yet, so the text tab shows no T2V-specific options
+- No duration selector or prompt guidance is tied to `hailuo23_*_t2v` models
+- Search confirms: `TextToVideoRequest` and `hailuo23_standard_t2v` return no results in UI code
+
+**Action Required:** Search for AI video UI components before implementation, then integrate T2V controls using existing Sora/Veo settings panel patterns
 
 **Search Commands:**
 ```bash
@@ -357,12 +364,13 @@ const isImageToVideo = selectedModelConfig?.category === "image";
 
 **Backward Compatibility:** ✅ UI changes are additive; existing I2V workflows remain unchanged.
 
-**Note:** If no UI components exist, this subtask can be skipped for now. The models will be available via API but not yet exposed in the UI.
+**Implementation Notes:**
+- Hook duration selector and prompt guidance into existing pattern used for Sora/Veo settings panels
+- The text tab already has infrastructure for filtering by `activeTab` - leverage this for T2V models
+- Add camera control hints specific to `hailuo23_pro_t2v` model
+- Add duration selector with pricing notes for `hailuo23_standard_t2v` model
 
-#### Review & Comments
-- `qcut/apps/web/src/components/editor/media-panel/views/ai.tsx` already filters models by `activeTab`, but the new Hailuo T2V entries are missing, so the text tab shows no dedicated options yet.
-- There is currently no duration selector or prompt guidance tied to `hailuo23_*_t2v`; hook the logic into the existing pattern used for Sora/Veo settings panels when adding those controls.
-- A broader grep for `TextToVideoRequest` and `hailuo23_standard_t2v` returns nothing, confirming UI wiring and client support both remain to be implemented.
+**Note:** If no suitable UI components exist, this subtask can be skipped for now. The models will be available via API but not yet exposed in the UI.
 
 ---
 
