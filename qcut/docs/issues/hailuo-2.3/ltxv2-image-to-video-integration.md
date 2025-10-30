@@ -38,13 +38,13 @@ LTX Video 2.0 Image-to-Video transforms static images into high-quality videos w
 
 | Parameter | Type | Required | Default | Options | Description |
 |-----------|------|----------|---------|---------|-------------|
-| `image_url` | string | ✓ | — | Valid URL | Input image (PNG, JPEG, WebP, AVIF, HEIF, max 7MB) |
-| `prompt` | string | ✓ | — | Text | Natural language description of desired motion/action |
-| `duration` | integer | ✗ | 6 | 6, 8, 10 | Video length in seconds |
-| `resolution` | string | ✗ | 1080p | 1080p, 1440p, 2160p | Output quality |
-| `aspect_ratio` | string | ✗ | 16:9 | 16:9 | Video aspect ratio (currently only 16:9) |
-| `fps` | integer | ✗ | 25 | 25, 50 | Frames per second |
-| `generate_audio` | boolean | ✗ | true | true/false | Generate synchronized audio |
+| `image_url` | string | Yes | - | Valid URL | Input image (PNG, JPEG, WebP, AVIF, HEIF, max 7MB) |
+| `prompt` | string | Yes | - | Text | Natural language description of desired motion/action |
+| `duration` | integer | Optional | 6 | 6, 8, 10 | Video length in seconds |
+| `resolution` | string | Optional | 1080p | 1080p, 1440p, 2160p | Output quality |
+| `aspect_ratio` | string | Optional | 16:9 | 16:9 | Video aspect ratio (currently only 16:9) |
+| `fps` | integer | Optional | 25 | 25, 50 | Frames per second |
+| `generate_audio` | boolean | Optional | true | true/false | Generate synchronized audio |
 
 ### Response Format
 ```typescript
@@ -60,8 +60,8 @@ LTX Video 2.0 Image-to-Video transforms static images into high-quality videos w
     num_frames: number;     // Total frame count
   }
 }
-```
 
+```
 ### Supported Image Formats
 - PNG
 - JPEG
@@ -102,7 +102,7 @@ Add to the `AI_MODELS` array:
   id: "ltxv2_i2v",
   name: "LTX Video 2.0 I2V",
   description: "Image-to-video with audio generation (6-10s, up to 4K)",
-  price: "0.06", // Base price for 1080p
+  price: "0.36", // 6 second baseline @ $0.06/sec (UI expects display-ready total)
   resolution: "1080p",
   max_duration: 10,
   category: "image",
@@ -120,17 +120,22 @@ Add to the `AI_MODELS` array:
   supportedDurations: [6, 8, 10],
 },
 ```
+> NOTE: Keep the existing `ltxv2_fast_i2v` entry unchanged. The UI presents both variants, so do not overwrite the fast model configuration.
+
+Update `AIModel` in `qcut/apps/web/src/components/editor/media-panel/views/ai-types.ts` to include an optional `supportedDurations?: number[];` property so the new metadata type-checks.
 
 Add error messages to `ERROR_MESSAGES`:
 
 ```typescript
-LTXV2_I2V_EMPTY_PROMPT: "Please enter a prompt describing the desired video motion",
-LTXV2_I2V_MISSING_IMAGE: "Image is required for LTX Video 2.0 image-to-video generation",
-LTXV2_I2V_INVALID_DURATION: "Duration must be 6, 8, or 10 seconds for LTX Video 2.0",
-LTXV2_I2V_INVALID_RESOLUTION: "Resolution must be 1080p, 1440p, or 2160p for LTX Video 2.0",
-LTXV2_I2V_IMAGE_TOO_LARGE: "Image file must be under 7MB for LTX Video 2.0",
-LTXV2_I2V_INVALID_FORMAT: "Image must be PNG, JPEG, WebP, AVIF, or HEIF format",
+LTXV2_STD_I2V_EMPTY_PROMPT: "Please enter a prompt describing the desired video motion",
+LTXV2_STD_I2V_MISSING_IMAGE: "Image is required for LTX Video 2.0 image-to-video generation",
+LTXV2_STD_I2V_INVALID_DURATION: "Duration must be 6, 8, or 10 seconds for LTX Video 2.0",
+LTXV2_STD_I2V_INVALID_RESOLUTION: "Resolution must be 1080p, 1440p, or 2160p for LTX Video 2.0",
+LTXV2_STD_I2V_IMAGE_TOO_LARGE: "Image file must be under 7MB for LTX Video 2.0",
+LTXV2_STD_I2V_INVALID_FORMAT: "Image must be PNG, JPEG, WebP, AVIF, or HEIF format",
 ```
+Keep the existing fast-model error keys (`LTXV2_I2V_*`) as-is so current validations continue to work.
+
 
 ---
 
@@ -145,8 +150,8 @@ export interface LTXV2I2VRequest {
   model: string;
   prompt: string;
   image_url: string;
-  duration?: 6 | 8 | 10;
-  resolution?: "1080p" | "1440p" | "2160p";
+  duration?: 2 | 3 | 4 | 5 | 6 | 8 | 10;
+  resolution?: "720p" | "1080p" | "1440p" | "2160p";
   aspect_ratio?: "16:9";
   fps?: 25 | 50;
   generate_audio?: boolean;
@@ -156,22 +161,42 @@ export interface LTXV2I2VRequest {
 #### B) Add Validation Helpers
 
 ```typescript
-function validateLTXV2I2VDuration(duration: number): void {
-  if (![6, 8, 10].includes(duration)) {
-    throw new Error("Duration must be 6, 8, or 10 seconds for LTX Video 2.0 I2V");
-  }
-}
+const LTXV2_STANDARD_DURATIONS = [6, 8, 10] as const;
+const LTXV2_STANDARD_RESOLUTIONS = ["1080p", "1440p", "2160p"] as const;
+const LTXV2_FAST_DURATIONS = [2, 3, 4, 5, 6] as const;
+const LTXV2_FAST_RESOLUTIONS = ["720p", "1080p"] as const;
 
-function validateLTXV2I2VResolution(resolution: string): void {
-  if (!["1080p", "1440p", "2160p"].includes(resolution)) {
-    throw new Error("Resolution must be 1080p, 1440p, or 2160p for LTX Video 2.0 I2V");
-  }
-}
-
-function isLTXV2I2VModel(modelId: string): boolean {
+function isStandardLTXV2I2V(modelId: string): boolean {
   return modelId === "ltxv2_i2v";
 }
-```
+
+function validateLTXV2I2VDuration(duration: number, modelId: string): void {
+  const allowedDurations = isStandardLTXV2I2V(modelId)
+    ? LTXV2_STANDARD_DURATIONS
+    : LTXV2_FAST_DURATIONS;
+
+  if (!allowedDurations.includes(duration)) {
+    throw new Error(
+      isStandardLTXV2I2V(modelId)
+        ? "Duration must be 6, 8, or 10 seconds for LTX Video 2.0"
+        : "Duration must be between 2 and 6 seconds for LTX Video 2.0 Fast"
+    );
+  }
+}
+
+function validateLTXV2I2VResolution(resolution: string, modelId: string): void {
+  const allowedResolutions = isStandardLTXV2I2V(modelId)
+    ? LTXV2_STANDARD_RESOLUTIONS
+    : LTXV2_FAST_RESOLUTIONS;
+
+  if (!allowedResolutions.includes(resolution)) {
+    throw new Error(
+      isStandardLTXV2I2V(modelId)
+        ? "Resolution must be 1080p, 1440p, or 2160p for LTX Video 2.0"
+        : "Resolution must be 720p or 1080p for LTX Video 2.0 Fast"
+    );
+  }
+}
 
 #### C) Implement Main Function
 
@@ -187,15 +212,30 @@ export async function generateLTXV2ImageVideo(
       throw new Error("FAL API key not configured");
     }
 
-    const trimmedPrompt = request.prompt.trim();
+    const trimmedPrompt = request.prompt?.trim() ?? "";
+    const isStandard = isStandardLTXV2I2V(request.model);
 
-    // Get model configuration
+    if (!trimmedPrompt) {
+      throw new Error(
+        isStandard
+          ? "Please enter a prompt describing the desired video motion"
+          : "Please enter a text prompt for LTX Video 2.0 Fast image-to-video"
+      );
+    }
+
+    if (!request.image_url) {
+      throw new Error(
+        isStandard
+          ? "Image URL is required for LTX Video 2.0 image-to-video generation"
+          : "Image is required for LTX Video 2.0 Fast image-to-video generation"
+      );
+    }
+
     const modelConfig = getModelConfig(request.model);
     if (!modelConfig) {
       throw new Error(`Unknown model: ${request.model}`);
     }
 
-    // Check image-to-video support
     const endpoint = modelConfig.endpoints.image_to_video;
     if (!endpoint) {
       throw new Error(
@@ -203,51 +243,59 @@ export async function generateLTXV2ImageVideo(
       );
     }
 
-    // Validate inputs
-    if (!trimmedPrompt) {
-      throw new Error("Prompt is required for LTX Video 2.0 I2V generation");
+    const duration =
+      request.duration ??
+      (typeof modelConfig.default_params?.duration === "number"
+        ? (modelConfig.default_params.duration as number)
+        : isStandard
+          ? 6
+          : 4);
+    validateLTXV2I2VDuration(duration, request.model);
+
+    const resolution =
+      request.resolution ??
+      (modelConfig.default_params?.resolution as string | undefined) ??
+      (isStandard ? "1080p" : "1080p");
+    validateLTXV2I2VResolution(resolution, request.model);
+
+    const fps =
+      request.fps ??
+      (modelConfig.default_params?.fps as number | undefined) ??
+      25;
+    if (![25, 50].includes(fps)) {
+      throw new Error("FPS must be either 25 or 50 for LTX Video 2.0");
     }
 
-    if (!request.image_url) {
-      throw new Error("Image URL is required for LTX Video 2.0 I2V generation");
-    }
-
-    // Validate duration and resolution
-    if (request.duration !== undefined) {
-      validateLTXV2I2VDuration(request.duration);
-    }
-
-    if (request.resolution !== undefined) {
-      validateLTXV2I2VResolution(request.resolution);
-    }
-
-    // Build payload
     const payload: Record<string, any> = {
+      ...(modelConfig.default_params || {}),
       image_url: request.image_url,
       prompt: trimmedPrompt,
-      duration: request.duration ?? 6,
-      resolution: request.resolution ?? "1080p",
+      duration,
+      resolution,
       aspect_ratio: request.aspect_ratio ?? "16:9",
-      fps: request.fps ?? 25,
-      generate_audio: request.generate_audio ?? true,
+      fps,
+      generate_audio:
+        request.generate_audio !== undefined
+          ? request.generate_audio
+          : modelConfig.default_params?.generate_audio ?? true,
     };
 
-    // Make API call to FAL
     const response = await fetch(`${FAL_API_BASE}/${endpoint}`, {
       method: "POST",
       headers: {
-        "Authorization": `Key ${FAL_API_KEY}`,
+        Authorization: `Key ${FAL_API_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify(payload),
     });
 
-    // Error handling
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
 
       if (response.status === 401) {
-        throw new Error("Invalid FAL.ai API key. Please check your API key configuration.");
+        throw new Error(
+          "Invalid FAL.ai API key. Please check your API key configuration."
+        );
       }
 
       if (response.status === 429) {
@@ -255,7 +303,9 @@ export async function generateLTXV2ImageVideo(
       }
 
       if (response.status === 413) {
-        throw new Error("Image file too large. Maximum size is 7MB.");
+        throw new Error(
+          "Image file too large. Maximum size is 7MB for LTX Video 2.0 image-to-video."
+        );
       }
 
       throw new Error(`FAL API error: ${errorData.detail || response.statusText}`);
@@ -279,8 +329,8 @@ export async function generateLTXV2ImageVideo(
     throw error;
   }
 }
-```
 
+```
 ---
 
 ### Subtask 3: Update UI Components
@@ -512,7 +562,7 @@ describe("LTX Video 2.0 Image-to-Video", () => {
       };
 
       await expect(generateLTXV2ImageVideo(request)).rejects.toThrow(
-        /Prompt is required/
+        /video motion/
       );
     });
 
@@ -793,6 +843,8 @@ describe("LTX Video 2.0 Image-to-Video", () => {
   });
 });
 ```
+Add mirrored coverage for `ltxv2_fast_i2v` to confirm existing 2-6 second, 720/1080p behaviour continues to pass.
+
 
 ---
 
@@ -1024,3 +1076,4 @@ curl -X POST https://fal.run/fal-ai/ltxv-2/image-to-video \
 - Comprehensive test suite
 - UI component specifications
 - Best practices and examples
+

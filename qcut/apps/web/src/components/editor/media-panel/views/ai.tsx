@@ -117,6 +117,12 @@ const [ltxv2Resolution, setLTXV2Resolution] = useState<
 >("1080p");
 const [ltxv2FPS, setLTXV2FPS] = useState<25 | 50>(25);
 const [ltxv2GenerateAudio, setLTXV2GenerateAudio] = useState(true);
+const [ltxv2I2VDuration, setLTXV2I2VDuration] = useState<6 | 8 | 10>(6);
+const [ltxv2I2VResolution, setLTXV2I2VResolution] = useState<
+  "1080p" | "1440p" | "2160p"
+>("1080p");
+const [ltxv2I2VFPS, setLTXV2I2VFPS] = useState<25 | 50>(25);
+const [ltxv2I2VGenerateAudio, setLTXV2I2VGenerateAudio] = useState(true);
 const [ltxv2ImageDuration, setLTXV2ImageDuration] = useState<2 | 3 | 4 | 5 | 6>(4);
 const [ltxv2ImageResolution, setLTXV2ImageResolution] = useState<
   "720p" | "1080p"
@@ -156,6 +162,10 @@ const [ltxv2ImageGenerateAudio, setLTXV2ImageGenerateAudio] = useState(true);
     ltxv2Resolution,
     ltxv2FPS,
     ltxv2GenerateAudio,
+    ltxv2I2VDuration,
+    ltxv2I2VResolution,
+    ltxv2I2VFPS,
+    ltxv2I2VGenerateAudio,
     ltxv2ImageDuration,
     ltxv2ImageResolution,
     ltxv2ImageFPS,
@@ -209,6 +219,7 @@ const [ltxv2ImageGenerateAudio, setLTXV2ImageGenerateAudio] = useState(true);
   const hailuoProSelected = selectedModels.includes("hailuo23_pro_t2v");
   const viduQ2Selected = selectedModels.includes("vidu_q2_turbo_i2v");
   const ltxv2TextSelected = selectedModels.includes("ltxv2_pro_t2v");
+  const ltxv2I2VSelected = selectedModels.includes("ltxv2_i2v");
   const ltxv2ImageSelected = selectedModels.includes("ltxv2_fast_i2v");
 
   // Track active FileReader for cleanup
@@ -264,6 +275,15 @@ const [ltxv2ImageGenerateAudio, setLTXV2ImageGenerateAudio] = useState(true);
       setLTXV2GenerateAudio(true);
     }
   }, [ltxv2TextSelected]);
+
+  useEffect(() => {
+    if (!ltxv2I2VSelected) {
+      setLTXV2I2VDuration(6);
+      setLTXV2I2VResolution("1080p");
+      setLTXV2I2VFPS(25);
+      setLTXV2I2VGenerateAudio(true);
+    }
+  }, [ltxv2I2VSelected]);
 
   useEffect(() => {
     if (!ltxv2ImageSelected) {
@@ -1041,6 +1061,123 @@ const [ltxv2ImageGenerateAudio, setLTXV2ImageGenerateAudio] = useState(true);
 
                     <div className="text-xs text-muted-foreground">
                       Pricing: 720p @ $0.05/sec • 1080p adds $0.20 base fee
+                    </div>
+                  </div>
+                )}
+                {ltxv2I2VSelected && (
+                  <div className="space-y-3 text-left border-t pt-3">
+                    <Label className="text-sm font-semibold">
+                      LTX Video 2.0 Settings
+                    </Label>
+
+                    <div className="space-y-1">
+                      <Label
+                        htmlFor="ltxv2-i2v-duration"
+                        className="text-xs font-medium"
+                      >
+                        Duration
+                      </Label>
+                      <Select
+                        value={ltxv2I2VDuration.toString()}
+                        onValueChange={(value) =>
+                          setLTXV2I2VDuration(Number(value) as 6 | 8 | 10)
+                        }
+                      >
+                        <SelectTrigger
+                          id="ltxv2-i2v-duration"
+                          className="h-8 text-xs"
+                        >
+                          <SelectValue placeholder="Select duration" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="6">6 seconds</SelectItem>
+                          <SelectItem value="8">8 seconds</SelectItem>
+                          <SelectItem value="10">10 seconds</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-1">
+                      <Label
+                        htmlFor="ltxv2-i2v-resolution"
+                        className="text-xs font-medium"
+                      >
+                        Resolution
+                      </Label>
+                      <Select
+                        value={ltxv2I2VResolution}
+                        onValueChange={(value) =>
+                          setLTXV2I2VResolution(
+                            value as "1080p" | "1440p" | "2160p"
+                          )
+                        }
+                      >
+                        <SelectTrigger
+                          id="ltxv2-i2v-resolution"
+                          className="h-8 text-xs"
+                        >
+                          <SelectValue placeholder="Select resolution" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="1080p">1080p ($0.06/sec)</SelectItem>
+                          <SelectItem value="1440p">1440p ($0.12/sec)</SelectItem>
+                          <SelectItem value="2160p">4K ($0.24/sec)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <div className="text-xs text-muted-foreground">
+                        Estimated cost: $
+                        {(
+                          ltxv2I2VDuration *
+                          (ltxv2I2VResolution === "1080p"
+                            ? 0.06
+                            : ltxv2I2VResolution === "1440p"
+                              ? 0.12
+                              : 0.24)
+                        ).toFixed(2)}
+                      </div>
+                    </div>
+
+                    <div className="space-y-1">
+                      <Label
+                        htmlFor="ltxv2-i2v-fps"
+                        className="text-xs font-medium"
+                      >
+                        Frame Rate
+                      </Label>
+                      <Select
+                        value={ltxv2I2VFPS.toString()}
+                        onValueChange={(value) =>
+                          setLTXV2I2VFPS(Number(value) as 25 | 50)
+                        }
+                      >
+                        <SelectTrigger
+                          id="ltxv2-i2v-fps"
+                          className="h-8 text-xs"
+                        >
+                          <SelectValue placeholder="Select frame rate" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="25">25 FPS (Standard)</SelectItem>
+                          <SelectItem value="50">50 FPS (High)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="ltxv2-i2v-audio"
+                        checked={ltxv2I2VGenerateAudio}
+                        onCheckedChange={(checked) =>
+                          setLTXV2I2VGenerateAudio(Boolean(checked))
+                        }
+                      />
+                      <Label htmlFor="ltxv2-i2v-audio" className="text-xs">
+                        Generate synchronized audio
+                      </Label>
+                    </div>
+
+                    <div className="text-xs text-muted-foreground">
+                      Transforms your image into a high-quality video with matching audio.
                     </div>
                   </div>
                 )}

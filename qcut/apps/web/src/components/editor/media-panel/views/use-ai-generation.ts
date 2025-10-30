@@ -79,6 +79,10 @@ export function useAIGeneration(props: UseAIGenerationProps) {
     ltxv2Resolution = "1080p",
     ltxv2FPS = 25,
     ltxv2GenerateAudio = true,
+    ltxv2I2VDuration = 6,
+    ltxv2I2VResolution = "1080p",
+    ltxv2I2VFPS = 25,
+    ltxv2I2VGenerateAudio = true,
     ltxv2ImageDuration = 4,
     ltxv2ImageResolution = "1080p",
     ltxv2ImageFPS = 25,
@@ -883,6 +887,39 @@ export function useAIGeneration(props: UseAIGenerationProps) {
               status: "completed",
               progress: 100,
               message: `Video generated with ${friendlyName}`,
+            });
+          }
+          // LTX Video 2.0 standard image-to-video
+          else if (modelId === "ltxv2_i2v") {
+            if (!selectedImage) {
+              console.log(
+                "  ?? Skipping model - LTX V2 standard requires a selected image"
+              );
+              continue;
+            }
+
+            const imageUrl = await uploadImageToFal(selectedImage);
+            const friendlyName = modelName || modelId;
+            progressCallback({
+              status: "processing",
+              progress: 10,
+              message: `Submitting ${friendlyName} request...`,
+            });
+
+            response = await generateLTXV2ImageVideo({
+              model: modelId,
+              prompt: prompt.trim(),
+              image_url: imageUrl,
+              duration: ltxv2I2VDuration,
+              resolution: ltxv2I2VResolution,
+              fps: ltxv2I2VFPS,
+              generate_audio: ltxv2I2VGenerateAudio,
+            });
+
+            progressCallback({
+              status: "completed",
+              progress: 100,
+              message: `Video with audio generated using ${friendlyName}`,
             });
           }
           // LTX Video 2.0 Fast image-to-video

@@ -331,8 +331,8 @@ export interface LTXV2I2VRequest {
   model: string;
   prompt: string;
   image_url: string;
-  duration?: 2 | 3 | 4 | 5 | 6;
-  resolution?: "720p" | "1080p";
+  duration?: 2 | 3 | 4 | 5 | 6 | 8 | 10;
+  resolution?: "720p" | "1080p" | "1440p" | "2160p";
   aspect_ratio?: "16:9";
   fps?: 25 | 50;
   generate_audio?: boolean;
@@ -1219,9 +1219,20 @@ export async function generateVideoFromImage(
         );
       }
 
+      if (response.status === 413) {
+        throw new Error(
+          "Image file too large. Maximum size is 7MB for LTX Video 2.0 image-to-video."
+        );
+      }
       if (response.status === 429) {
         throw new Error(
           "Rate limit exceeded. Please wait a moment before trying again."
+        );
+      }
+
+      if (response.status === 413) {
+        throw new Error(
+          "Image file too large. Maximum size is 7MB for LTX Video 2.0 image-to-video."
         );
       }
 
@@ -1311,18 +1322,43 @@ function validateLTXV2Resolution(resolution: string): void {
   }
 }
 
-function validateLTXV2I2VDuration(duration: number): void {
-  if (duration < 2 || duration > 6) {
+const LTXV2_STANDARD_I2V_DURATIONS = [6, 8, 10] as const;
+const LTXV2_STANDARD_I2V_RESOLUTIONS = ["1080p", "1440p", "2160p"] as const;
+const LTXV2_FAST_I2V_DURATIONS = [2, 3, 4, 5, 6] as const;
+const LTXV2_FAST_I2V_RESOLUTIONS = ["720p", "1080p"] as const;
+
+function isStandardLTXV2ImageModel(modelId: string): boolean {
+  return modelId === "ltxv2_i2v";
+}
+
+function validateLTXV2I2VDuration(duration: number, modelId: string): void {
+  const allowedDurations = isStandardLTXV2ImageModel(modelId)
+    ? LTXV2_STANDARD_I2V_DURATIONS
+    : LTXV2_FAST_I2V_DURATIONS;
+
+  if (!allowedDurations.includes(duration as (typeof allowedDurations)[number])) {
     throw new Error(
-      "Duration must be between 2 and 6 seconds for LTX Video 2.0 Fast"
+      isStandardLTXV2ImageModel(modelId)
+        ? "Duration must be 6, 8, or 10 seconds for LTX Video 2.0"
+        : "Duration must be between 2 and 6 seconds for LTX Video 2.0 Fast"
     );
   }
 }
 
-function validateLTXV2I2VResolution(resolution: string): void {
-  if (!["720p", "1080p"].includes(resolution)) {
+function validateLTXV2I2VResolution(resolution: string, modelId: string): void {
+  const allowedResolutions = isStandardLTXV2ImageModel(modelId)
+    ? LTXV2_STANDARD_I2V_RESOLUTIONS
+    : LTXV2_FAST_I2V_RESOLUTIONS;
+
+  if (
+    !allowedResolutions.includes(
+      resolution as (typeof allowedResolutions)[number]
+    )
+  ) {
     throw new Error(
-      "Resolution must be 720p or 1080p for LTX Video 2.0 Fast"
+      isStandardLTXV2ImageModel(modelId)
+        ? "Resolution must be 1080p, 1440p, or 2160p for LTX Video 2.0"
+        : "Resolution must be 720p or 1080p for LTX Video 2.0 Fast"
     );
   }
 }
@@ -1455,6 +1491,12 @@ export async function generateVideoFromText(
       if (response.status === 429) {
         throw new Error(
           "Rate limit exceeded. Please wait a moment before trying again."
+        );
+      }
+
+      if (response.status === 413) {
+        throw new Error(
+          "Image file too large. Maximum size is 7MB for LTX Video 2.0 image-to-video."
         );
       }
 
@@ -1730,15 +1772,20 @@ export async function generateLTXV2ImageVideo(
     }
 
     const trimmedPrompt = request.prompt?.trim() ?? "";
+    const isStandardModel = isStandardLTXV2ImageModel(request.model);
     if (!trimmedPrompt) {
       throw new Error(
-        "Please enter a text prompt for LTX Video 2.0 Fast image-to-video"
+        isStandardModel
+          ? "Please enter a prompt describing the desired video motion"
+          : "Please enter a text prompt for LTX Video 2.0 Fast image-to-video"
       );
     }
 
     if (!request.image_url) {
       throw new Error(
-        "Image is required for LTX Video 2.0 Fast image-to-video generation"
+        isStandardModel
+          ? "Image URL is required for LTX Video 2.0 image-to-video generation"
+          : "Image is required for LTX Video 2.0 Fast image-to-video generation"
       );
     }
 
@@ -1754,25 +1801,27 @@ export async function generateLTXV2ImageVideo(
       );
     }
 
-    const duration =
-      request.duration ??
-      (typeof modelConfig.default_params?.duration === "number"
+    const defaultDuration =
+      typeof modelConfig.default_params?.duration === "number"
         ? (modelConfig.default_params.duration as number)
-        : 4);
-    validateLTXV2I2VDuration(duration);
+        : isStandardModel
+          ? 6
+          : 4;
+    const duration = request.duration ?? defaultDuration;
+    validateLTXV2I2VDuration(duration, request.model);
 
-    const resolution =
-      request.resolution ??
-      (modelConfig.default_params?.resolution as string) ??
-      "1080p";
-    validateLTXV2I2VResolution(resolution);
+    const defaultResolution =
+      (modelConfig.default_params?.resolution as string | undefined) ??
+      (isStandardModel ? "1080p" : "1080p");
+    const resolution = request.resolution ?? defaultResolution;
+    validateLTXV2I2VResolution(resolution, request.model);
 
     const fps =
       request.fps ??
       (modelConfig.default_params?.fps as number | undefined) ??
       25;
     if (![25, 50].includes(fps)) {
-      throw new Error("FPS must be either 25 or 50 for LTX Video 2.0 Fast");
+      throw new Error("FPS must be either 25 or 50 for LTX Video 2.0");
     }
 
     const payload: Record<string, any> = {
@@ -1790,7 +1839,7 @@ export async function generateLTXV2ImageVideo(
     };
 
     const jobId = generateJobId();
-    console.log("🎬 Starting LTX Video 2.0 Fast image-to-video generation");
+    console.log(`?? Starting ${isStandardModel ? "LTX Video 2.0" : "LTX Video 2.0 Fast"} image-to-video generation`);
     console.log("📝 Prompt:", trimmedPrompt.substring(0, 100));
     console.log("🖼️ Image URL provided:", Boolean(request.image_url));
 
@@ -1812,6 +1861,11 @@ export async function generateLTXV2ImageVideo(
         );
       }
 
+      if (response.status === 413) {
+        throw new Error(
+          "Image file too large. Maximum size is 7MB for LTX Video 2.0 image-to-video."
+        );
+      }
       if (response.status === 429) {
         throw new Error(
           "Rate limit exceeded. Please wait a moment before trying again."
@@ -1833,7 +1887,7 @@ export async function generateLTXV2ImageVideo(
       video_data: result,
     };
   } catch (error) {
-    handleAIServiceError(error, "Generate LTX Video 2.0 Fast image-to-video", {
+    handleAIServiceError(error, "Generate LTX Video 2.0 image-to-video", {
       model: request.model,
       prompt: request.prompt?.substring(0, 100),
       operation: "generateLTXV2ImageVideo",

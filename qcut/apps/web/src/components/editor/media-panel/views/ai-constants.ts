@@ -207,6 +207,28 @@ export const AI_MODELS: AIModel[] = [
     },
     supportedResolutions: ["1080p", "1440p", "2160p"],
   },
+  // LTX Video 2.0 Standard Image-to-Video
+  {
+    id: "ltxv2_i2v",
+    name: "LTX Video 2.0 I2V",
+    description: "Image-to-video with audio generation (6-10s, up to 4K)",
+    price: "0.36", // 6 second baseline @ $0.06/sec to match UI expectation
+    resolution: "1080p",
+    max_duration: 10,
+    category: "image",
+    endpoints: {
+      image_to_video: "fal-ai/ltxv-2/image-to-video",
+    },
+    default_params: {
+      duration: 6,
+      resolution: "1080p",
+      aspect_ratio: "16:9",
+      fps: 25,
+      generate_audio: true,
+    },
+    supportedResolutions: ["1080p", "1440p", "2160p"],
+    supportedDurations: [6, 8, 10],
+  },
   // LTX Video 2.0 Fast Image-to-Video
   {
     id: "ltxv2_fast_i2v",
@@ -719,6 +741,18 @@ export const ERROR_MESSAGES = {
   LTXV2_INVALID_RESOLUTION:
     "Resolution must be 1080p, 1440p, or 2160p for LTX Video 2.0",
   LTXV2_EMPTY_PROMPT: "Please enter a text prompt for LTX Video 2.0",
+  LTXV2_STD_I2V_EMPTY_PROMPT:
+    "Please enter a prompt describing the desired video motion",
+  LTXV2_STD_I2V_MISSING_IMAGE:
+    "Image URL is required for LTX Video 2.0 image-to-video generation",
+  LTXV2_STD_I2V_INVALID_DURATION:
+    "Duration must be 6, 8, or 10 seconds for LTX Video 2.0",
+  LTXV2_STD_I2V_INVALID_RESOLUTION:
+    "Resolution must be 1080p, 1440p, or 2160p for LTX Video 2.0",
+  LTXV2_STD_I2V_IMAGE_TOO_LARGE:
+    "Image file must be under 7MB for LTX Video 2.0 image-to-video",
+  LTXV2_STD_I2V_INVALID_FORMAT:
+    "Image must be PNG, JPEG, WebP, AVIF, or HEIF for LTX Video 2.0 image-to-video",
   LTXV2_I2V_INVALID_DURATION:
     "Duration must be between 2 and 6 seconds for LTX Video 2.0 Fast",
   LTXV2_I2V_INVALID_RESOLUTION:

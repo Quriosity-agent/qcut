@@ -228,5 +228,104 @@ describe("AI video client – additional models", () => {
       expect(payload.generate_audio).toBe(false);
       expect(payload.image_url).toBe("https://example.com/frame.png");
     });
+
+    it("requires a prompt for the standard model", async () => {
+      const request: LTXV2I2VRequest = {
+        model: "ltxv2_i2v",
+        prompt: "",
+        image_url: "https://example.com/frame.png",
+      };
+
+      await expect(generateLTXV2ImageVideo(request)).rejects.toThrow(
+        /video motion/i
+      );
+    });
+
+    it("requires an image url for the standard model", async () => {
+      const request: LTXV2I2VRequest = {
+        model: "ltxv2_i2v",
+        prompt: "A sweeping aerial shot of a coastal city",
+        image_url: "",
+      };
+
+      await expect(generateLTXV2ImageVideo(request)).rejects.toThrow(
+        /Image URL is required/i
+      );
+    });
+
+    it("sends expected payload for the standard model", async () => {
+      const fetchMock = vi
+        .fn()
+        .mockResolvedValue({ ok: true, json: async () => ({ video: { url: "https://example.com/video.mp4" } }) });
+      globalThis.fetch = fetchMock as unknown as typeof globalThis.fetch;
+
+      const request: LTXV2I2VRequest = {
+        model: "ltxv2_i2v",
+        prompt: "A slow cinematic reveal of a futuristic skyline at sunset",
+        image_url: "https://example.com/frame.png",
+        duration: 10,
+        resolution: "2160p",
+        fps: 50,
+        generate_audio: false,
+      };
+
+      await generateLTXV2ImageVideo(request);
+
+      const [, options] = fetchMock.mock.calls[0];
+      const payload = JSON.parse(
+        (options as Record<string, unknown>).body as string
+      );
+
+      expect(payload.duration).toBe(10);
+      expect(payload.resolution).toBe("2160p");
+      expect(payload.fps).toBe(50);
+      expect(payload.generate_audio).toBe(false);
+    });
+
+    it("rejects invalid duration for the standard model", async () => {
+      const request: LTXV2I2VRequest = {
+        model: "ltxv2_i2v",
+        prompt: "A smooth orbit around a mountain peak",
+        image_url: "https://example.com/frame.png",
+        duration: 4 as any,
+      };
+
+      await expect(generateLTXV2ImageVideo(request)).rejects.toThrow(
+        /Duration must be 6, 8, or 10 seconds/i
+      );
+    });
+
+    it("rejects invalid resolution for the standard model", async () => {
+      const request: LTXV2I2VRequest = {
+        model: "ltxv2_i2v",
+        prompt: "A steady glide through a neon alley",
+        image_url: "https://example.com/frame.png",
+        resolution: "720p" as any,
+      };
+
+      await expect(generateLTXV2ImageVideo(request)).rejects.toThrow(
+        /Resolution must be 1080p, 1440p, or 2160p/i
+      );
+    });
+
+    it("surfaces 413 errors with helpful guidance for the standard model", async () => {
+      const request: LTXV2I2VRequest = {
+        model: "ltxv2_i2v",
+        prompt: "A tranquil lakeside scene with gentle camera movement",
+        image_url: "https://example.com/large-image.png",
+      };
+
+      const fetchMock = vi.fn().mockResolvedValue({
+        ok: false,
+        status: 413,
+        statusText: "Payload Too Large",
+        json: async () => ({ detail: "Image exceeds limit" }),
+      });
+      globalThis.fetch = fetchMock as unknown as typeof globalThis.fetch;
+
+      await expect(generateLTXV2ImageVideo(request)).rejects.toThrow(
+        /Maximum size is 7MB/i
+      );
+    });
   });
 });

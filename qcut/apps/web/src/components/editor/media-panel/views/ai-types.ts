@@ -41,6 +41,7 @@ export interface AIModel {
   category?: "text" | "image" | "video" | "avatar";
   requiredInputs?: string[];
   supportedResolutions?: string[]; // For models supporting multiple resolutions (e.g., Pro models)
+  supportedDurations?: number[];
 }
 
 // Generated Video Interfaces
@@ -103,6 +104,11 @@ export interface UseAIGenerationProps {
   ltxv2Resolution?: "1080p" | "1440p" | "2160p";
   ltxv2FPS?: 25 | 50;
   ltxv2GenerateAudio?: boolean;
+  // LTX Video 2.0 standard image-to-video options
+  ltxv2I2VDuration?: 6 | 8 | 10;
+  ltxv2I2VResolution?: "1080p" | "1440p" | "2160p";
+  ltxv2I2VFPS?: 25 | 50;
+  ltxv2I2VGenerateAudio?: boolean;
   // LTX Video 2.0 Fast image-to-video options
   ltxv2ImageDuration?: 2 | 3 | 4 | 5 | 6;
   ltxv2ImageResolution?: "720p" | "1080p";
