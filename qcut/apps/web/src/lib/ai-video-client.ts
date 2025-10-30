@@ -1219,20 +1219,9 @@ export async function generateVideoFromImage(
         );
       }
 
-      if (response.status === 413) {
-        throw new Error(
-          "Image file too large. Maximum size is 7MB for LTX Video 2.0 image-to-video."
-        );
-      }
       if (response.status === 429) {
         throw new Error(
           "Rate limit exceeded. Please wait a moment before trying again."
-        );
-      }
-
-      if (response.status === 413) {
-        throw new Error(
-          "Image file too large. Maximum size is 7MB for LTX Video 2.0 image-to-video."
         );
       }
 
@@ -1488,15 +1477,15 @@ export async function generateVideoFromText(
         );
       }
 
-      if (response.status === 429) {
+      if (response.status === 413) {
         throw new Error(
-          "Rate limit exceeded. Please wait a moment before trying again."
+          "Request too large for text-to-video generation. Please shorten your prompt or reduce optional parameters."
         );
       }
 
-      if (response.status === 413) {
+      if (response.status === 429) {
         throw new Error(
-          "Image file too large. Maximum size is 7MB for LTX Video 2.0 image-to-video."
+          "Rate limit exceeded. Please wait a moment before trying again."
         );
       }
 

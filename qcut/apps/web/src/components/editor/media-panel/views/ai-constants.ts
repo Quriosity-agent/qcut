@@ -85,7 +85,7 @@ export const AI_MODELS: AIModel[] = [
     id: "hailuo23_standard",
     name: "Hailuo 2.3 Standard",
     description: "Budget-friendly image-to-video with 768p quality",
-    price: "0.28",
+    price: "0.28-0.56", // 6s: $0.28, 10s: $0.56
     resolution: "768p",
     max_duration: 10,
     category: "image",
@@ -137,7 +137,7 @@ export const AI_MODELS: AIModel[] = [
     id: "hailuo23_standard_t2v",
     name: "Hailuo 2.3 Standard T2V",
     description: "Budget-friendly text-to-video with 768p quality",
-    price: "0.28", // 6s: $0.28, 10s: $0.56
+    price: "0.28-0.56", // 6s: $0.28, 10s: $0.56
     resolution: "768p",
     max_duration: 10,
     category: "text",
