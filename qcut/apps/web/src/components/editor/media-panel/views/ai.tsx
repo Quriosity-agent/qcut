@@ -125,7 +125,7 @@ const [ltxv2I2VFPS, setLTXV2I2VFPS] = useState<25 | 50>(25);
 const [ltxv2I2VGenerateAudio, setLTXV2I2VGenerateAudio] = useState(true);
 const [ltxv2ImageDuration, setLTXV2ImageDuration] = useState<2 | 3 | 4 | 5 | 6>(4);
 const [ltxv2ImageResolution, setLTXV2ImageResolution] = useState<
-  "720p" | "1080p"
+  "1080p" | "1440p" | "2160p"
 >("1080p");
 const [ltxv2ImageFPS, setLTXV2ImageFPS] = useState<25 | 50>(25);
 const [ltxv2ImageGenerateAudio, setLTXV2ImageGenerateAudio] = useState(true);
@@ -1232,7 +1232,7 @@ const [ltxv2ImageGenerateAudio, setLTXV2ImageGenerateAudio] = useState(true);
                       <Select
                         value={ltxv2ImageResolution}
                         onValueChange={(value) =>
-                          setLTXV2ImageResolution(value as "720p" | "1080p")
+                          setLTXV2ImageResolution(value as "1080p" | "1440p" | "2160p")
                         }
                       >
                         <SelectTrigger
@@ -1242,8 +1242,9 @@ const [ltxv2ImageGenerateAudio, setLTXV2ImageGenerateAudio] = useState(true);
                           <SelectValue placeholder="Select resolution" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="720p">720p ($0.05/sec)</SelectItem>
-                          <SelectItem value="1080p">1080p ($0.05/sec)</SelectItem>
+                          <SelectItem value="1080p">1080p ($0.04/sec)</SelectItem>
+                          <SelectItem value="1440p">1440p ($0.08/sec)</SelectItem>
+                          <SelectItem value="2160p">4K ($0.16/sec)</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>

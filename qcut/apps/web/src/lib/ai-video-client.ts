@@ -16,8 +16,17 @@ import type {
 } from "@/types/sora2";
 
 // Direct FAL AI integration - no backend needed
-const FAL_API_KEY = import.meta.env.VITE_FAL_API_KEY;
 const FAL_API_BASE = "https://fal.run";
+
+/**
+ * Retrieves the current FAL API key from environment at call time.
+ *
+ * WHY: Tests stub environment variables after module load; reading lazily keeps
+ * stubs in sync instead of freezing the value during import.
+ */
+function getFalApiKey(): string | undefined {
+  return import.meta.env.VITE_FAL_API_KEY;
+}
 
 /**
  * Retrieves model configuration from the centralized AI_MODELS registry.
@@ -332,7 +341,7 @@ export interface LTXV2I2VRequest {
   prompt: string;
   image_url: string;
   duration?: 2 | 3 | 4 | 5 | 6 | 8 | 10;
-  resolution?: "720p" | "1080p" | "1440p" | "2160p";
+  resolution?: "1080p" | "1440p" | "2160p"; // Fast: 1080p/1440p/2160p, Standard: 1080p/1440p/2160p
   aspect_ratio?: "16:9";
   fps?: 25 | 50;
   generate_audio?: boolean;
@@ -429,7 +438,8 @@ export async function generateVideo(
   }
 ): Promise<VideoGenerationResponse> {
   try {
-    if (!FAL_API_KEY) {
+    const falApiKey = getFalApiKey();
+    if (!falApiKey) {
       const error = new Error(
         "FAL API key not configured. Please set VITE_FAL_API_KEY in your environment variables."
       );
@@ -444,7 +454,7 @@ export async function generateVideo(
     }
 
     console.log(
-      `🔑 FAL API Key present: ${FAL_API_KEY ? "Yes (length: " + FAL_API_KEY.length + ")" : "No"}`
+      `🔑 FAL API Key present: ${falApiKey ? "Yes (length: " + falApiKey.length + ")" : "No"}`
     );
 
     // Get model configuration from centralized config
@@ -563,7 +573,7 @@ export async function generateVideo(
     const queueResponse = await fetch(`${FAL_API_BASE}/${endpoint}`, {
       method: "POST",
       headers: {
-        "Authorization": `Key ${FAL_API_KEY}`,
+        "Authorization": `Key ${falApiKey}`,
         "Content-Type": "application/json",
         // Try different queue headers
         "X-Fal-Queue": "true",
@@ -681,7 +691,7 @@ export async function generateVideo(
     const directResponse = await fetch(`${FAL_API_BASE}/${endpoint}`, {
       method: "POST",
       headers: {
-        "Authorization": `Key ${FAL_API_KEY}`,
+        "Authorization": `Key ${falApiKey}`,
         "Content-Type": "application/json",
         // No queue headers for direct mode
       },
@@ -795,6 +805,10 @@ async function pollQueueStatus(
     onComplete?: (totalData: Uint8Array) => void;
   }
 ): Promise<VideoGenerationResponse> {
+  const falApiKey = getFalApiKey();
+  if (!falApiKey) {
+    throw new Error("FAL API key not configured");
+  }
   const maxAttempts = 60; // 5 minutes max (5s intervals)
   let attempts = 0;
 
@@ -808,7 +822,7 @@ async function pollQueueStatus(
         `${FAL_API_BASE}/queue/requests/${requestId}/status`,
         {
           headers: {
-            "Authorization": `Key ${FAL_API_KEY}`,
+            "Authorization": `Key ${falApiKey}`,
           },
         }
       );
@@ -838,7 +852,7 @@ async function pollQueueStatus(
           `${FAL_API_BASE}/queue/requests/${requestId}`,
           {
             headers: {
-              "Authorization": `Key ${FAL_API_KEY}`,
+              "Authorization": `Key ${falApiKey}`,
             },
           }
         );
@@ -1092,7 +1106,8 @@ export async function generateVideoFromImage(
   request: ImageToVideoRequest
 ): Promise<VideoGenerationResponse> {
   try {
-    if (!FAL_API_KEY) {
+    const falApiKey = getFalApiKey();
+    if (!falApiKey) {
       throw new Error("FAL API key not configured");
     }
 
@@ -1192,7 +1207,7 @@ export async function generateVideoFromImage(
     const response = await fetch(`${FAL_API_BASE}/${endpoint}`, {
       method: "POST",
       headers: {
-        "Authorization": `Key ${FAL_API_KEY}`,
+        "Authorization": `Key ${falApiKey}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify(payload),
@@ -1314,7 +1329,7 @@ function validateLTXV2Resolution(resolution: string): void {
 const LTXV2_STANDARD_I2V_DURATIONS = [6, 8, 10] as const;
 const LTXV2_STANDARD_I2V_RESOLUTIONS = ["1080p", "1440p", "2160p"] as const;
 const LTXV2_FAST_I2V_DURATIONS = [2, 3, 4, 5, 6] as const;
-const LTXV2_FAST_I2V_RESOLUTIONS = ["720p", "1080p"] as const;
+const LTXV2_FAST_I2V_RESOLUTIONS = ["1080p", "1440p", "2160p"] as const;
 
 function isStandardLTXV2ImageModel(modelId: string): boolean {
   return modelId === "ltxv2_i2v";
@@ -1347,7 +1362,7 @@ function validateLTXV2I2VResolution(resolution: string, modelId: string): void {
     throw new Error(
       isStandardLTXV2ImageModel(modelId)
         ? "Resolution must be 1080p, 1440p, or 2160p for LTX Video 2.0"
-        : "Resolution must be 720p or 1080p for LTX Video 2.0 Fast"
+        : "Resolution must be 1080p, 1440p, or 2160p for LTX Video 2.0 Fast"
     );
   }
 }
@@ -1372,7 +1387,8 @@ export async function generateVideoFromText(
   request: TextToVideoRequest
 ): Promise<VideoGenerationResponse> {
   try {
-    if (!FAL_API_KEY) {
+    const falApiKey = getFalApiKey();
+    if (!falApiKey) {
       throw new Error("FAL API key not configured");
     }
 
@@ -1428,14 +1444,14 @@ export async function generateVideoFromText(
     }
 
     // Handle duration parameter (Hailuo 2.3 specific)
-    if (request.model === "hailuo23_standard_t2v") {
-      // Standard model: 6s or 10s with different pricing
+    if (
+      request.model === "hailuo23_standard_t2v" ||
+      request.model === "hailuo23_pro_t2v"
+    ) {
+      // Standard model has tiered pricing for 6s/10s.
+      // Pro model has fixed pricing but supports both durations.
       const requestedDuration = request.duration ?? 6;
-      payload.duration = requestedDuration === 10 ? "10" : "6";
-    } else if (request.model === "hailuo23_pro_t2v") {
-      // Pro model: fixed pricing, duration can be 6 or 10
-      const requestedDuration = request.duration ?? 6;
-      payload.duration = requestedDuration === 10 ? "10" : "6";
+      payload.duration = requestedDuration >= 10 ? "10" : "6";
     }
 
     // Handle prompt_optimizer (both models support it)
@@ -1450,7 +1466,7 @@ export async function generateVideoFromText(
     const response = await fetch(`${FAL_API_BASE}/${endpoint}`, {
       method: "POST",
       headers: {
-        Authorization: `Key ${FAL_API_KEY}`,
+        Authorization: `Key ${falApiKey}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify(payload),
@@ -1525,7 +1541,8 @@ export async function generateViduQ2Video(
   request: ViduQ2I2VRequest
 ): Promise<VideoGenerationResponse> {
   try {
-    if (!FAL_API_KEY) {
+    const falApiKey = getFalApiKey();
+    if (!falApiKey) {
       throw new Error("FAL API key not configured");
     }
 
@@ -1597,7 +1614,7 @@ export async function generateViduQ2Video(
     const response = await fetch(`${FAL_API_BASE}/${endpoint}`, {
       method: "POST",
       headers: {
-        Authorization: `Key ${FAL_API_KEY}`,
+        Authorization: `Key ${falApiKey}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify(payload),
@@ -1649,7 +1666,8 @@ export async function generateLTXV2Video(
   request: LTXV2T2VRequest
 ): Promise<VideoGenerationResponse> {
   try {
-    if (!FAL_API_KEY) {
+    const falApiKey = getFalApiKey();
+    if (!falApiKey) {
       throw new Error("FAL API key not configured");
     }
 
@@ -1702,7 +1720,7 @@ export async function generateLTXV2Video(
     const response = await fetch(`${FAL_API_BASE}/${endpoint}`, {
       method: "POST",
       headers: {
-        Authorization: `Key ${FAL_API_KEY}`,
+        Authorization: `Key ${falApiKey}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify(payload),
@@ -1756,7 +1774,8 @@ export async function generateLTXV2ImageVideo(
   request: LTXV2I2VRequest
 ): Promise<VideoGenerationResponse> {
   try {
-    if (!FAL_API_KEY) {
+    const falApiKey = getFalApiKey();
+    if (!falApiKey) {
       throw new Error("FAL API key not configured");
     }
 
@@ -1835,7 +1854,7 @@ export async function generateLTXV2ImageVideo(
     const response = await fetch(`${FAL_API_BASE}/${endpoint}`, {
       method: "POST",
       headers: {
-        Authorization: `Key ${FAL_API_KEY}`,
+        Authorization: `Key ${falApiKey}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify(payload),
@@ -1907,7 +1926,8 @@ export async function generateAvatarVideo(
   request: AvatarVideoRequest
 ): Promise<VideoGenerationResponse> {
   try {
-    if (!FAL_API_KEY) {
+    const falApiKey = getFalApiKey();
+    if (!falApiKey) {
       throw new Error("FAL API key not configured");
     }
 
@@ -2019,7 +2039,7 @@ export async function generateAvatarVideo(
       const response = await fetch(`${FAL_API_BASE}/${endpoint}`, {
         method: "POST",
         headers: {
-          "Authorization": `Key ${FAL_API_KEY}`,
+          "Authorization": `Key ${falApiKey}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify(payload),
