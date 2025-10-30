@@ -1,9 +1,19 @@
 import { StorageAdapter } from "./types";
 import { handleStorageError } from "@/lib/error-handler";
 
+/**
+ * Electron IPC-based storage adapter for desktop application
+ * Delegates storage operations to the Electron main process via IPC
+ * @template T - The type of data to be stored
+ */
 export class ElectronStorageAdapter<T> implements StorageAdapter<T> {
   private prefix: string;
 
+  /**
+   * Creates a new Electron storage adapter
+   * @param dbName - Database name used for key prefixing
+   * @param storeName - Store name used for key prefixing
+   */
   constructor(dbName: string, storeName: string) {
     this.prefix = `${dbName}_${storeName}_`;
   }
@@ -12,6 +22,11 @@ export class ElectronStorageAdapter<T> implements StorageAdapter<T> {
     return (window as any)?.electronAPI;
   }
 
+  /**
+   * Retrieves a value from Electron storage by key
+   * @param key - The key to retrieve
+   * @returns Promise resolving to the stored value, or null if not found or on error
+   */
   async get(key: string): Promise<T | null> {
     try {
       const fullKey = `${this.prefix}${key}`;
@@ -35,6 +50,13 @@ export class ElectronStorageAdapter<T> implements StorageAdapter<T> {
     }
   }
 
+  /**
+   * Stores a value in Electron storage with the specified key
+   * @param key - The key to store the value under
+   * @param value - The value to store
+   * @returns Promise that resolves when the value is stored
+   * @throws Error if storage operation fails
+   */
   async set(key: string, value: T): Promise<void> {
     try {
       const fullKey = `${this.prefix}${key}`;
@@ -57,6 +79,12 @@ export class ElectronStorageAdapter<T> implements StorageAdapter<T> {
     }
   }
 
+  /**
+   * Removes a value from Electron storage by key
+   * @param key - The key to remove
+   * @returns Promise that resolves when the value is removed
+   * @throws Error if removal fails
+   */
   async remove(key: string): Promise<void> {
     try {
       const fullKey = `${this.prefix}${key}`;
@@ -79,6 +107,11 @@ export class ElectronStorageAdapter<T> implements StorageAdapter<T> {
     }
   }
 
+  /**
+   * Lists all keys in Electron storage with the current prefix
+   * @returns Promise resolving to an array of keys (without prefix)
+   * @throws Error if listing fails
+   */
   async list(): Promise<string[]> {
     try {
       const api = this.getElectronAPI();
@@ -110,6 +143,11 @@ export class ElectronStorageAdapter<T> implements StorageAdapter<T> {
     }
   }
 
+  /**
+   * Clears all keys with the current prefix from Electron storage
+   * @returns Promise that resolves when all prefixed keys are removed
+   * @throws Error if clearing fails
+   */
   async clear(): Promise<void> {
     try {
       const api = this.getElectronAPI();

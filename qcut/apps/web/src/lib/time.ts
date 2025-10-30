@@ -1,6 +1,14 @@
 // Time-related utility functions
 
-// Helper function to format time in various formats (MM:SS, HH:MM:SS, HH:MM:SS:CS, HH:MM:SS:FF)
+/**
+ * Formats time in seconds to a human-readable timecode string
+ * Supports multiple timecode formats including minutes:seconds, hours:minutes:seconds,
+ * and frame-accurate formats with centiseconds or frame numbers
+ * @param timeInSeconds - Time value in seconds (can include fractional seconds)
+ * @param format - Output format: "MM:SS", "HH:MM:SS", "HH:MM:SS:CS" (centiseconds), or "HH:MM:SS:FF" (frames)
+ * @param fps - Frames per second, used for "HH:MM:SS:FF" format (default: 30)
+ * @returns Formatted timecode string
+ */
 export const formatTimeCode = (
   timeInSeconds: number,
   format: "MM:SS" | "HH:MM:SS" | "HH:MM:SS:CS" | "HH:MM:SS:FF" = "HH:MM:SS:CS",
@@ -24,6 +32,14 @@ export const formatTimeCode = (
   }
 };
 
+/**
+ * Parses a timecode string and converts it to seconds
+ * Validates the format and returns null for invalid timecodes
+ * @param timeCode - Timecode string to parse (e.g., "01:23:45:67")
+ * @param format - Expected format: "MM:SS", "HH:MM:SS", "HH:MM:SS:CS" (centiseconds), or "HH:MM:SS:FF" (frames)
+ * @param fps - Frames per second for "HH:MM:SS:FF" format (default: 30)
+ * @returns Time in seconds, or null if the timecode is invalid
+ */
 export const parseTimeCode = (
   timeCode: string,
   format: "MM:SS" | "HH:MM:SS" | "HH:MM:SS:CS" | "HH:MM:SS:FF" = "HH:MM:SS:CS",

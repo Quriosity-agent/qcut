@@ -21,9 +21,17 @@ interface Logger {
   warn(message?: any, ...optionalParams: any[]): void;
 }
 
+/**
+ * Manages temporary files and directories for video export operations
+ * Handles session-based cleanup and automatic cleanup of old sessions
+ */
 class TempManager {
   private tempDir: string;
 
+  /**
+   * Creates a new TempManager instance
+   * Initializes the temp directory for export operations
+   */
   constructor() {
     this.tempDir = path.join(app.getPath("temp"), "qcut-export");
     this.ensureTempDir();
@@ -35,6 +43,10 @@ class TempManager {
     }
   }
 
+  /**
+   * Creates a new export session with dedicated directories
+   * @returns Export session object with sessionId and directory paths
+   */
   createExportSession(): ExportSession {
     const sessionId: string = Date.now().toString();
     const sessionDir: string = path.join(this.tempDir, sessionId);
@@ -53,6 +65,11 @@ class TempManager {
     };
   }
 
+  /**
+   * Cleans up all temporary files for a specific export session
+   * Removes audio files and session directories
+   * @param sessionId - The session ID to clean up
+   */
   cleanup(sessionId: string): void {
     // Clean up audio files first
     try {
@@ -73,6 +90,10 @@ class TempManager {
     }
   }
 
+  /**
+   * Automatically cleans up export sessions older than 1 hour
+   * Should be called periodically to prevent disk space buildup
+   */
   cleanupOldSessions(): void {
     // Clean up sessions older than 1 hour
     const cutoff: number = Date.now() - 60 * 60 * 1000;
@@ -88,12 +109,20 @@ class TempManager {
     }
   }
 
-  // Get temp directory path for debugging
+  /**
+   * Gets the base temporary directory path
+   * Useful for debugging and diagnostics
+   * @returns Absolute path to the temp directory
+   */
   getTempDir(): string {
     return this.tempDir;
   }
 
-  // Get session directory path
+  /**
+   * Gets the directory path for a specific export session
+   * @param sessionId - The session ID
+   * @returns Absolute path to the session directory
+   */
   getSessionDir(sessionId: string): string {
     return path.join(this.tempDir, sessionId);
   }

@@ -1,10 +1,21 @@
 import { StorageAdapter } from "./types";
 
+/**
+ * IndexedDB-based storage adapter for persistent browser storage
+ * Provides a key-value interface backed by IndexedDB
+ * @template T - The type of data to be stored
+ */
 export class IndexedDBAdapter<T> implements StorageAdapter<T> {
   private dbName: string;
   private storeName: string;
   private version: number;
 
+  /**
+   * Creates a new IndexedDB storage adapter
+   * @param dbName - Name of the IndexedDB database
+   * @param storeName - Name of the object store within the database
+   * @param version - Database version number (default: 1)
+   */
   constructor(dbName: string, storeName: string, version = 1) {
     this.dbName = dbName;
     this.storeName = storeName;
@@ -47,6 +58,11 @@ export class IndexedDBAdapter<T> implements StorageAdapter<T> {
     });
   }
 
+  /**
+   * Retrieves a value from storage by key
+   * @param key - The key to retrieve
+   * @returns Promise resolving to the stored value, or null if not found
+   */
   async get(key: string): Promise<T | null> {
     const db = await this.getDB();
     const transaction = db.transaction([this.storeName], "readonly");
@@ -59,6 +75,12 @@ export class IndexedDBAdapter<T> implements StorageAdapter<T> {
     });
   }
 
+  /**
+   * Stores a value in IndexedDB with the specified key
+   * @param key - The key to store the value under
+   * @param value - The value to store
+   * @returns Promise that resolves when the value is stored
+   */
   async set(key: string, value: T): Promise<void> {
     const db = await this.getDB();
     const transaction = db.transaction([this.storeName], "readwrite");
@@ -71,6 +93,11 @@ export class IndexedDBAdapter<T> implements StorageAdapter<T> {
     });
   }
 
+  /**
+   * Removes a value from storage by key
+   * @param key - The key to remove
+   * @returns Promise that resolves when the value is removed
+   */
   async remove(key: string): Promise<void> {
     const db = await this.getDB();
     const transaction = db.transaction([this.storeName], "readwrite");
@@ -83,6 +110,10 @@ export class IndexedDBAdapter<T> implements StorageAdapter<T> {
     });
   }
 
+  /**
+   * Lists all keys in the storage
+   * @returns Promise resolving to an array of all keys in the store
+   */
   async list(): Promise<string[]> {
     const db = await this.getDB();
     const transaction = db.transaction([this.storeName], "readonly");

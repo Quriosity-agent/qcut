@@ -3,6 +3,12 @@
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 
+/**
+ * Combines CSS class names using clsx and tailwind-merge
+ * Merges Tailwind CSS classes intelligently, removing conflicts
+ * @param inputs - Array of class values to be merged
+ * @returns Merged and deduplicated class name string
+ */
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
@@ -44,10 +50,21 @@ export function generateUUID(): string {
   );
 }
 
+/**
+ * Type guard to check if a value is a DOM element
+ * @param el - Value to check
+ * @returns True if the value is an HTMLElement or Element instance
+ */
 export function isDOMElement(el: any): el is HTMLElement {
   return !!el && (el instanceof Element || el instanceof HTMLElement);
 }
 
+/**
+ * Determines if an HTML element can receive text input
+ * Checks for contentEditable, input, and textarea elements
+ * @param el - The HTML element to check
+ * @returns True if the element accepts keyboard text input
+ */
 export function isTypableElement(el: HTMLElement): boolean {
   // If content editable, then it is editable
   if (el.isContentEditable || el.contentEditable === "true") return true;
@@ -63,14 +80,30 @@ export function isTypableElement(el: HTMLElement): boolean {
 
   return false;
 }
+
+/**
+ * Detects if the current device is an Apple product
+ * Checks for Mac, iPhone, iPod, or iPad in the platform string
+ * @returns True if the device is running macOS or iOS
+ */
 export function isAppleDevice() {
   return /(Mac|iPhone|iPod|iPad)/i.test(navigator.platform);
 }
 
+/**
+ * Returns the platform-specific special/modifier key symbol
+ * Used for displaying keyboard shortcuts in the UI
+ * @returns "⌘" on Apple devices, "Ctrl" on other platforms
+ */
 export function getPlatformSpecialKey() {
   return isAppleDevice() ? "⌘" : "Ctrl";
 }
 
+/**
+ * Returns the platform-specific alternate/option key symbol
+ * Used for displaying keyboard shortcuts in the UI
+ * @returns "⌥" on Apple devices, "Alt" on other platforms
+ */
 export function getPlatformAlternateKey() {
   return isAppleDevice() ? "⌥" : "Alt";
 }

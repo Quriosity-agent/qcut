@@ -180,6 +180,13 @@ const updateLastUsed = () => {
   scheduleFFmpegCleanup();
 };
 
+/**
+ * Initializes the FFmpeg WebAssembly instance
+ * Loads FFmpeg core and WASM files with fallback strategies for Electron and browser environments
+ * Returns cached instance if already initialized
+ * @returns Promise resolving to the initialized FFmpeg instance
+ * @throws Error if FFmpeg initialization fails or resources cannot be loaded
+ */
 export const initFFmpeg = async (): Promise<FFmpeg> => {
   if (ffmpeg && isFFmpegLoaded) {
     return ffmpeg;
@@ -464,14 +471,29 @@ export const initFFmpeg = async (): Promise<FFmpeg> => {
   return ffmpeg;
 };
 
+/**
+ * Checks if FFmpeg is loaded and ready for use
+ * @returns True if FFmpeg instance exists and is successfully loaded
+ */
 export const isFFmpegReady = (): boolean => {
   return ffmpeg !== null && isFFmpegLoaded;
 };
 
+/**
+ * Gets the current FFmpeg instance without initializing it
+ * @returns The FFmpeg instance if it exists, null otherwise
+ */
 export const getFFmpegInstance = (): FFmpeg | null => {
   return ffmpeg;
 };
 
+/**
+ * Generates a thumbnail image from a video file at a specific time
+ * @param videoFile - The video file to extract a thumbnail from
+ * @param timeInSeconds - The timestamp in seconds to capture (default: 1)
+ * @returns Promise resolving to a blob URL of the generated thumbnail image
+ * @throws Error if thumbnail generation fails
+ */
 export const generateThumbnail = async (
   videoFile: File,
   timeInSeconds = 1
@@ -555,6 +577,16 @@ export const generateThumbnail = async (
   }
 };
 
+/**
+ * Trims a video file to a specific time range
+ * Uses stream copy for fast processing without re-encoding
+ * @param videoFile - The video file to trim
+ * @param startTime - Start time in seconds
+ * @param endTime - End time in seconds
+ * @param onProgress - Optional callback for progress updates (0-100)
+ * @returns Promise resolving to a Blob containing the trimmed video
+ * @throws Error if trimming fails
+ */
 export const trimVideo = async (
   videoFile: File,
   startTime: number,
@@ -613,6 +645,13 @@ export const trimVideo = async (
   return blob;
 };
 
+/**
+ * Extracts metadata information from a video file
+ * Analyzes the video to determine duration, dimensions, and frame rate
+ * @param videoFile - The video file to analyze
+ * @returns Promise resolving to an object containing video metadata (duration, width, height, fps)
+ * @throws Error if video analysis fails or metadata cannot be parsed
+ */
 export const getVideoInfo = async (
   videoFile: File
 ): Promise<{
@@ -708,6 +747,13 @@ export const getVideoInfo = async (
   };
 };
 
+/**
+ * Converts a video file to WebM format using VP9 and Opus codecs
+ * @param videoFile - The video file to convert
+ * @param onProgress - Optional callback for progress updates (0-100)
+ * @returns Promise resolving to a Blob containing the WebM video
+ * @throws Error if conversion fails
+ */
 export const convertToWebM = async (
   videoFile: File,
   onProgress?: (progress: number) => void
@@ -764,6 +810,14 @@ export const convertToWebM = async (
   return blob;
 };
 
+/**
+ * Extracts audio from a video file and saves it in the specified format
+ * Supports MP3 and WAV output formats
+ * @param videoFile - The video file to extract audio from
+ * @param format - Output audio format: "mp3" or "wav" (default: "mp3")
+ * @returns Promise resolving to a Blob containing the extracted audio
+ * @throws Error if audio extraction fails or video format is unsupported
+ */
 export const extractAudio = async (
   videoFile: File,
   format: "mp3" | "wav" = "mp3"
@@ -811,6 +865,11 @@ export const extractAudio = async (
   return blob;
 };
 
+/**
+ * Terminates the FFmpeg instance and cleans up resources
+ * Cancels any scheduled cleanup timers
+ * @returns Promise that resolves when FFmpeg is terminated
+ */
 export const terminateFFmpeg = async (): Promise<void> => {
   if (!ffmpeg || !isFFmpegLoaded) return;
 
@@ -831,6 +890,11 @@ export const terminateFFmpeg = async (): Promise<void> => {
   }
 };
 
+/**
+ * Forces immediate cleanup of FFmpeg resources
+ * Useful for manual resource management or error recovery
+ * @returns Promise that resolves when cleanup is complete
+ */
 export const forceFFmpegCleanup = async (): Promise<void> => {
   if (ffmpeg) {
     debugLog("[FFmpeg Utils] 🧹 Force cleaning FFmpeg instance");
