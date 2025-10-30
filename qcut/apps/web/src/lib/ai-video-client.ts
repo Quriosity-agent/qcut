@@ -1336,16 +1336,18 @@ function isStandardLTXV2ImageModel(modelId: string): boolean {
 }
 
 function validateLTXV2I2VDuration(duration: number, modelId: string): void {
-  const allowedDurations = isStandardLTXV2ImageModel(modelId)
-    ? LTXV2_STANDARD_I2V_DURATIONS
-    : LTXV2_FAST_I2V_DURATIONS;
+  const isStandard = isStandardLTXV2ImageModel(modelId);
 
-  if (!allowedDurations.includes(duration as (typeof allowedDurations)[number])) {
-    throw new Error(
-      isStandardLTXV2ImageModel(modelId)
-        ? "Duration must be 6, 8, or 10 seconds for LTX Video 2.0"
-        : "Duration must be between 2 and 6 seconds for LTX Video 2.0 Fast"
-    );
+  if (isStandard) {
+    const allowedDurations = LTXV2_STANDARD_I2V_DURATIONS;
+    if (!allowedDurations.includes(duration as typeof allowedDurations[number])) {
+      throw new Error("Duration must be 6, 8, or 10 seconds for LTX Video 2.0");
+    }
+  } else {
+    const allowedDurations = LTXV2_FAST_I2V_DURATIONS;
+    if (!allowedDurations.includes(duration as typeof allowedDurations[number])) {
+      throw new Error("Duration must be between 2 and 6 seconds for LTX Video 2.0 Fast");
+    }
   }
 }
 
@@ -2216,7 +2218,7 @@ export function handleApiError(error: unknown): string {
  * @returns true if VITE_FAL_API_KEY is set, false otherwise
  */
 export async function isApiAvailable(): Promise<boolean> {
-  return !!FAL_API_KEY;
+  return !!getFalApiKey();
 }
 
 /**
