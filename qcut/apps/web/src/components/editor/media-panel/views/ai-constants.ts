@@ -234,7 +234,7 @@ export const AI_MODELS: AIModel[] = [
     id: "ltxv2_fast_i2v",
     name: "LTX Video 2.0 Fast I2V",
     description: "Image-to-video with audio generation (2-6s, up to 4K)",
-    price: "0.04", // $0.04/second for 1080p (base pricing)
+    price: "0.04-0.16", // $0.04/$0.08/$0.16 per second for 1080p/1440p/2160p
     resolution: "1080p",
     max_duration: 6,
     category: "image",

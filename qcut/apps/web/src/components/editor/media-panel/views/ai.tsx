@@ -426,6 +426,17 @@ const [ltxv2ImageGenerateAudio, setLTXV2ImageGenerateAudio] = useState(true);
     else if (modelId === "hailuo23_standard_t2v") {
       modelCost = hailuoT2VDuration === 10 ? 0.56 : 0.28;
     }
+    // LTX Video 2.0 Fast I2V resolution-based pricing
+    else if (modelId === "ltxv2_fast_i2v") {
+      // Pricing: $0.04/$0.08/$0.16 per second for 1080p/1440p/2160p
+      const pricePerSecond =
+        ltxv2ImageResolution === "1080p"
+          ? 0.04
+          : ltxv2ImageResolution === "1440p"
+            ? 0.08
+            : 0.16; // 2160p
+      modelCost = ltxv2ImageDuration * pricePerSecond;
+    }
 
     return total + modelCost;
   }, 0);
