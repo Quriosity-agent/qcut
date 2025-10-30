@@ -1577,8 +1577,12 @@ export async function generateViduQ2Video(
     const duration = request.duration ?? defaultDuration;
     validateViduQ2Duration(duration);
 
+    // Extract and exclude bgm from defaults to avoid using delete operator
+    const defaults = { ...(modelConfig.default_params || {}) };
+    const { bgm: _bgm, ...defaultsSansBgm } = defaults;
+
     const payload: Record<string, any> = {
-      ...(modelConfig.default_params || {}),
+      ...defaultsSansBgm,
       prompt: trimmedPrompt,
       image_url: request.image_url,
       duration,
@@ -1598,12 +1602,11 @@ export async function generateViduQ2Video(
       payload.seed = request.seed;
     }
 
+    // Only add bgm for 4-second videos when explicitly requested
     const shouldIncludeBgm =
       request.bgm !== undefined && (request.duration ?? defaultDuration) === 4;
     if (shouldIncludeBgm) {
       payload.bgm = request.bgm;
-    } else if ("bgm" in payload) {
-      delete payload.bgm;
     }
 
     const jobId = generateJobId();
