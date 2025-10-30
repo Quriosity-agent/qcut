@@ -376,9 +376,9 @@ export async function generateLTXV2Video(
 ```
 
 #### Review & Comments
-- `ViduQ2I2VRequest` and `LTXV2T2VRequest` ship alongside the existing request interfaces (`ai-video-client.ts:301`), so downstream imports can stay centralised.
-- `generateViduQ2Video`/`generateLTXV2Video` now bridge the gap between the Hailuo text handler and avatar flow (`ai-video-client.ts:1348`), reusing `generateJobId` plus `handleAIServiceError` for consistent logging.
-- Validation helpers guard prompt length, duration windows, resolution bands, and align with the new `ERROR_MESSAGES`; extend them if future variants arrive.
+- `ViduQ2I2VRequest`, `LTXV2T2VRequest`, and `LTXV2I2VRequest` live with the existing request interfaces (`ai-video-client.ts:309`), so downstream imports stay centralised.
+- `generateViduQ2Video`, `generateLTXV2Video`, and `generateLTXV2ImageVideo` bridge the gap between the Hailuo text handler and avatar flow (`ai-video-client.ts:1466`), reusing `generateJobId` plus `handleAIServiceError` for consistent logging.
+- Validation helpers cover prompt length, duration windows, resolution bands, and image requirements for every new path; extend them if Fal publishes additional constraints.
 
 ---
 
