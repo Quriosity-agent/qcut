@@ -244,10 +244,12 @@ const [ltxv2ImageGenerateAudio, setLTXV2ImageGenerateAudio] = useState(true);
   }, [selectedModels]);
 
   useEffect(() => {
-    if (
-      !selectedModels.includes("hailuo23_standard_t2v") &&
-      hailuoT2VDuration !== 6
-    ) {
+    // Only reset duration if NEITHER Standard nor Pro is selected
+    const hasHailuoT2VModel =
+      selectedModels.includes("hailuo23_standard_t2v") ||
+      selectedModels.includes("hailuo23_pro_t2v");
+
+    if (!hasHailuoT2VModel && hailuoT2VDuration !== 6) {
       setHailuoT2VDuration(6);
     }
   }, [selectedModels, hailuoT2VDuration]);
@@ -558,9 +560,42 @@ const [ltxv2ImageGenerateAudio, setLTXV2ImageGenerateAudio] = useState(true);
                   )}
                 </div>
                 {hailuoProSelected && (
-                  <div className="text-xs text-muted-foreground text-left">
-                    Tip: Add camera cues like [Pan left], [Zoom in], or [Track forward] to guide Pro shots.
-                  </div>
+                  <>
+                    <div className="text-xs text-muted-foreground text-left">
+                      Tip: Add camera cues like [Pan left], [Zoom in], or [Track forward] to guide Pro shots.
+                    </div>
+                    {/* Show duration selector for Pro if Standard is not selected */}
+                    {!hailuoStandardSelected && (
+                      <div className="space-y-1 text-left mt-2">
+                        <Label
+                          htmlFor="hailuo-pro-duration"
+                          className="text-xs font-medium"
+                        >
+                          Hailuo 2.3 Pro Duration
+                        </Label>
+                        <Select
+                          value={hailuoT2VDuration.toString()}
+                          onValueChange={(value) =>
+                            setHailuoT2VDuration(value === "10" ? 10 : 6)
+                          }
+                        >
+                          <SelectTrigger
+                            id="hailuo-pro-duration"
+                            className="h-8 text-xs"
+                          >
+                            <SelectValue placeholder="Select duration" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="6">6 seconds ($0.49)</SelectItem>
+                            <SelectItem value="10">10 seconds ($0.49)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <div className="text-xs text-muted-foreground">
+                          Pro: Fixed price $0.49 for 6s or 10s
+                        </div>
+                      </div>
+                    )}
+                  </>
                 )}
                 {hailuoStandardSelected && (
                   <div className="space-y-1 text-left">
@@ -568,7 +603,7 @@ const [ltxv2ImageGenerateAudio, setLTXV2ImageGenerateAudio] = useState(true);
                       htmlFor="hailuo-standard-duration"
                       className="text-xs font-medium"
                     >
-                      Hailuo 2.3 Duration
+                      Hailuo 2.3 {hailuoProSelected ? "Shared" : "Standard"} Duration
                     </Label>
                     <Select
                       value={hailuoT2VDuration.toString()}
@@ -583,12 +618,15 @@ const [ltxv2ImageGenerateAudio, setLTXV2ImageGenerateAudio] = useState(true);
                         <SelectValue placeholder="Select duration" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="6">6 seconds ($0.28)</SelectItem>
-                        <SelectItem value="10">10 seconds ($0.56)</SelectItem>
+                        <SelectItem value="6">6 seconds ({hailuoProSelected ? "Standard: $0.28, Pro: $0.49" : "$0.28"})</SelectItem>
+                        <SelectItem value="10">10 seconds ({hailuoProSelected ? "Standard: $0.56, Pro: $0.49" : "$0.56"})</SelectItem>
                       </SelectContent>
                     </Select>
                     <div className="text-xs text-muted-foreground">
-                      6s: $0.28 | 10s: $0.56
+                      {hailuoProSelected
+                        ? "Duration applies to both Standard and Pro models"
+                        : "Standard: 6s: $0.28 | 10s: $0.56"
+                      }
                     </div>
                   </div>
                 )}
