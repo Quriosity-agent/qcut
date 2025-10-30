@@ -420,6 +420,10 @@ const [ltxv2ImageGenerateAudio, setLTXV2ImageGenerateAudio] = useState(true);
     else if (modelId === "reve-text-to-image") {
       modelCost = REVE_TEXT_TO_IMAGE_MODEL.pricing.perImage * reveNumImages; // Use configured per-image pricing
     }
+    // Hailuo 2.3 Standard T2V dynamic pricing based on duration
+    else if (modelId === "hailuo23_standard_t2v") {
+      modelCost = hailuoT2VDuration === 10 ? 0.56 : 0.28;
+    }
 
     return total + modelCost;
   }, 0);
