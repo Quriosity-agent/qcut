@@ -207,6 +207,28 @@ export const AI_MODELS: AIModel[] = [
     },
     supportedResolutions: ["1080p", "1440p", "2160p"],
   },
+  // LTX Video 2.0 Fast Text-to-Video
+  {
+    id: "ltxv2_fast_t2v",
+    name: "LTX Video 2.0 Fast T2V",
+    description: "Text-to-video with audio generation (6-20s, up to 4K)",
+    price: "0.04-0.16", // $0.04/$0.08/$0.16 per second for 1080p/1440p/2160p
+    resolution: "1080p",
+    max_duration: 20,
+    category: "text",
+    endpoints: {
+      text_to_video: "fal-ai/ltxv-2/text-to-video/fast",
+    },
+    default_params: {
+      duration: 6,
+      resolution: "1080p",
+      aspect_ratio: "16:9",
+      fps: 25,
+      generate_audio: true,
+    },
+    supportedResolutions: ["1080p", "1440p", "2160p"],
+    supportedDurations: [6, 8, 10, 12, 14, 16, 18, 20],
+  },
   // LTX Video 2.0 Standard Image-to-Video
   {
     id: "ltxv2_i2v",
@@ -742,6 +764,10 @@ export const ERROR_MESSAGES = {
   LTXV2_INVALID_RESOLUTION:
     "Resolution must be 1080p, 1440p, or 2160p for LTX Video 2.0",
   LTXV2_EMPTY_PROMPT: "Please enter a text prompt for LTX Video 2.0",
+  LTXV2_FAST_T2V_INVALID_DURATION:
+    "Duration must be 6, 8, 10, 12, 14, 16, 18, or 20 seconds for LTX Video 2.0 Fast Text-to-Video",
+  LTXV2_FAST_T2V_EXTENDED_DURATION_CONSTRAINT:
+    "Videos longer than 10 seconds require 1080p resolution and 25 FPS for LTX Video 2.0 Fast",
   LTXV2_STD_I2V_EMPTY_PROMPT:
     "Please enter a prompt describing the desired video motion",
   LTXV2_STD_I2V_MISSING_IMAGE:

@@ -104,6 +104,11 @@ export interface UseAIGenerationProps {
   ltxv2Resolution?: "1080p" | "1440p" | "2160p";
   ltxv2FPS?: 25 | 50;
   ltxv2GenerateAudio?: boolean;
+  // LTX Video 2.0 Fast text-to-video options
+  ltxv2FastDuration?: 6 | 8 | 10 | 12 | 14 | 16 | 18 | 20;
+  ltxv2FastResolution?: "1080p" | "1440p" | "2160p";
+  ltxv2FastFPS?: 25 | 50;
+  ltxv2FastGenerateAudio?: boolean;
   // LTX Video 2.0 standard image-to-video options
   ltxv2I2VDuration?: 6 | 8 | 10;
   ltxv2I2VResolution?: "1080p" | "1440p" | "2160p";

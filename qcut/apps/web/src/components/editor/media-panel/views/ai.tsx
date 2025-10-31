@@ -142,6 +142,17 @@ const [ltxv2Resolution, setLTXV2Resolution] = useState<
 >("1080p");
 const [ltxv2FPS, setLTXV2FPS] = useState<25 | 50>(25);
 const [ltxv2GenerateAudio, setLTXV2GenerateAudio] = useState(true);
+const [ltxv2FastDuration, setLTXV2FastDuration] = useState<LTXV2FastDuration>(
+  LTXV2_FAST_CONFIG.DURATIONS[0]
+);
+const [ltxv2FastResolution, setLTXV2FastResolution] =
+  useState<LTXV2FastResolution>(
+    LTXV2_FAST_CONFIG.RESOLUTIONS.STANDARD[0]
+  );
+const [ltxv2FastFPS, setLTXV2FastFPS] = useState<LTXV2FastFps>(
+  LTXV2_FAST_CONFIG.FPS_OPTIONS.STANDARD[0]
+);
+const [ltxv2FastGenerateAudio, setLTXV2FastGenerateAudio] = useState(true);
 const [ltxv2I2VDuration, setLTXV2I2VDuration] = useState<6 | 8 | 10>(6);
 const [ltxv2I2VResolution, setLTXV2I2VResolution] = useState<
   "1080p" | "1440p" | "2160p"
@@ -192,6 +203,10 @@ const [ltxv2ImageGenerateAudio, setLTXV2ImageGenerateAudio] = useState(true);
     ltxv2Resolution,
     ltxv2FPS,
     ltxv2GenerateAudio,
+    ltxv2FastDuration,
+    ltxv2FastResolution,
+    ltxv2FastFPS,
+    ltxv2FastGenerateAudio,
     ltxv2I2VDuration,
     ltxv2I2VResolution,
     ltxv2I2VFPS,
@@ -246,16 +261,20 @@ const [ltxv2ImageGenerateAudio, setLTXV2ImageGenerateAudio] = useState(true);
   const hailuoStandardSelected = selectedModels.includes(
     "hailuo23_standard_t2v"
   );
-  const hailuoProSelected = selectedModels.includes("hailuo23_pro_t2v");
-  const viduQ2Selected = selectedModels.includes("vidu_q2_turbo_i2v");
-  const ltxv2TextSelected = selectedModels.includes("ltxv2_pro_t2v");
-  const ltxv2I2VSelected = selectedModels.includes("ltxv2_i2v");
-  const ltxv2ImageSelected = selectedModels.includes("ltxv2_fast_i2v");
-  const ltxv2FastExtendedResolutions =
-    LTXV2_FAST_CONFIG.RESOLUTIONS.EXTENDED;
-  const ltxv2FastExtendedFps = LTXV2_FAST_CONFIG.FPS_OPTIONS.EXTENDED;
-  const isExtendedLTXV2FastDuration =
-    ltxv2ImageDuration > LTXV2_FAST_CONFIG.EXTENDED_DURATION_THRESHOLD;
+const hailuoProSelected = selectedModels.includes("hailuo23_pro_t2v");
+const viduQ2Selected = selectedModels.includes("vidu_q2_turbo_i2v");
+const ltxv2ProTextSelected = selectedModels.includes("ltxv2_pro_t2v");
+const ltxv2FastTextSelected = selectedModels.includes("ltxv2_fast_t2v");
+const ltxv2TextSelected = ltxv2ProTextSelected || ltxv2FastTextSelected;
+const ltxv2I2VSelected = selectedModels.includes("ltxv2_i2v");
+const ltxv2ImageSelected = selectedModels.includes("ltxv2_fast_i2v");
+const ltxv2FastExtendedResolutions =
+  LTXV2_FAST_CONFIG.RESOLUTIONS.EXTENDED;
+const ltxv2FastExtendedFps = LTXV2_FAST_CONFIG.FPS_OPTIONS.EXTENDED;
+const isExtendedLTXV2FastImageDuration =
+  ltxv2ImageDuration > LTXV2_FAST_CONFIG.EXTENDED_DURATION_THRESHOLD;
+const isExtendedLTXV2FastTextDuration =
+  ltxv2FastDuration > LTXV2_FAST_CONFIG.EXTENDED_DURATION_THRESHOLD;
 
   // Track active FileReader for cleanup
   const fileReaderRef = useRef<FileReader | null>(null);
@@ -304,14 +323,23 @@ const [ltxv2ImageGenerateAudio, setLTXV2ImageGenerateAudio] = useState(true);
     }
   }, [viduQ2Duration, viduQ2EnableBGM]);
 
-  useEffect(() => {
-    if (!ltxv2TextSelected) {
-      setLTXV2Duration(6);
-      setLTXV2Resolution("1080p");
-      setLTXV2FPS(25);
-      setLTXV2GenerateAudio(true);
-    }
-  }, [ltxv2TextSelected]);
+useEffect(() => {
+  if (!ltxv2ProTextSelected) {
+    setLTXV2Duration(6);
+    setLTXV2Resolution("1080p");
+    setLTXV2FPS(25);
+    setLTXV2GenerateAudio(true);
+  }
+}, [ltxv2ProTextSelected]);
+
+useEffect(() => {
+  if (!ltxv2FastTextSelected) {
+    setLTXV2FastDuration(LTXV2_FAST_CONFIG.DURATIONS[0]);
+    setLTXV2FastResolution(LTXV2_FAST_CONFIG.RESOLUTIONS.STANDARD[0]);
+    setLTXV2FastFPS(LTXV2_FAST_CONFIG.FPS_OPTIONS.STANDARD[0]);
+    setLTXV2FastGenerateAudio(true);
+  }
+}, [ltxv2FastTextSelected]);
 
   useEffect(() => {
     if (!ltxv2I2VSelected) {
@@ -331,12 +359,19 @@ const [ltxv2ImageGenerateAudio, setLTXV2ImageGenerateAudio] = useState(true);
     }
   }, [ltxv2ImageSelected]);
 
-  useEffect(() => {
-    if (!ltxv2ImageSelected) {
-      return;
-    }
+useEffect(() => {
+  if (!ltxv2FastTextSelected && !ltxv2ImageSelected) {
+    return;
+  }
 
-    if (ltxv2ImageDuration <= LTXV2_FAST_CONFIG.EXTENDED_DURATION_THRESHOLD) {
+  const enforceFastConstraints = (
+    duration: number,
+    currentResolution: LTXV2FastResolution,
+    setResolution: (value: LTXV2FastResolution) => void,
+    currentFps: LTXV2FastFps,
+    setFps: (value: LTXV2FastFps) => void
+  ) => {
+    if (duration <= LTXV2_FAST_CONFIG.EXTENDED_DURATION_THRESHOLD) {
       return;
     }
 
@@ -347,19 +382,44 @@ const [ltxv2ImageGenerateAudio, setLTXV2ImageGenerateAudio] = useState(true);
       LTXV2_FAST_CONFIG.FPS_OPTIONS.EXTENDED[0] ??
       LTXV2_FAST_CONFIG.FPS_OPTIONS.STANDARD[0];
 
-    if (ltxv2ImageResolution !== enforcedResolution) {
-      setLTXV2ImageResolution(enforcedResolution);
+    if (currentResolution !== enforcedResolution) {
+      setResolution(enforcedResolution);
     }
 
-    if (ltxv2ImageFPS !== enforcedFps) {
-      setLTXV2ImageFPS(enforcedFps);
+    if (currentFps !== enforcedFps) {
+      setFps(enforcedFps);
     }
-  }, [
-    ltxv2ImageSelected,
-    ltxv2ImageDuration,
-    ltxv2ImageResolution,
-    ltxv2ImageFPS,
-  ]);
+  };
+
+  if (ltxv2FastTextSelected) {
+    enforceFastConstraints(
+      ltxv2FastDuration,
+      ltxv2FastResolution,
+      setLTXV2FastResolution,
+      ltxv2FastFPS,
+      setLTXV2FastFPS
+    );
+  }
+
+  if (ltxv2ImageSelected) {
+    enforceFastConstraints(
+      ltxv2ImageDuration,
+      ltxv2ImageResolution,
+      setLTXV2ImageResolution,
+      ltxv2ImageFPS,
+      setLTXV2ImageFPS
+    );
+  }
+}, [
+  ltxv2FastTextSelected,
+  ltxv2FastDuration,
+  ltxv2FastResolution,
+  ltxv2FastFPS,
+  ltxv2ImageSelected,
+  ltxv2ImageDuration,
+  ltxv2ImageResolution,
+  ltxv2ImageFPS,
+]);
 
   // Image handling
   const handleImageSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -706,10 +766,10 @@ const [ltxv2ImageGenerateAudio, setLTXV2ImageGenerateAudio] = useState(true);
                     </div>
                   </div>
                 )}
-                {ltxv2TextSelected && (
+                {ltxv2ProTextSelected && (
                   <div className="space-y-2 text-left border-t pt-3">
                     <Label className="text-xs font-medium">
-                      LTX Video 2.0 Settings
+                      LTX Video 2.0 Pro Settings
                     </Label>
                     <div className="space-y-1">
                       <Label htmlFor="ltxv2-duration" className="text-xs">
@@ -1361,7 +1421,7 @@ const [ltxv2ImageGenerateAudio, setLTXV2ImageGenerateAudio] = useState(true);
                         <SelectContent>
                           {LTXV2_FAST_CONFIG.RESOLUTIONS.STANDARD.map((resolutionOption) => {
                             const disabled =
-                              isExtendedLTXV2FastDuration &&
+                              isExtendedLTXV2FastImageDuration &&
                               !ltxv2FastExtendedResolutions.includes(
                                 resolutionOption as (typeof ltxv2FastExtendedResolutions)[number]
                               );
@@ -1400,7 +1460,7 @@ const [ltxv2ImageGenerateAudio, setLTXV2ImageGenerateAudio] = useState(true);
                         <SelectContent>
                           {LTXV2_FAST_CONFIG.FPS_OPTIONS.STANDARD.map((fpsOption) => {
                             const disabled =
-                              isExtendedLTXV2FastDuration &&
+                              isExtendedLTXV2FastImageDuration &&
                               !ltxv2FastExtendedFps.includes(
                                 fpsOption as (typeof ltxv2FastExtendedFps)[number]
                               );
@@ -1432,9 +1492,157 @@ const [ltxv2ImageGenerateAudio, setLTXV2ImageGenerateAudio] = useState(true);
                       </Label>
                     </div>
 
-                    {isExtendedLTXV2FastDuration && (
+                    {isExtendedLTXV2FastImageDuration && (
                       <div className="text-xs text-muted-foreground">
                         {ERROR_MESSAGES.LTXV2_I2V_EXTENDED_DURATION_CONSTRAINT}
+                      </div>
+                    )}
+
+                    <div className="text-xs text-muted-foreground">
+                      6-20 second clips with optional audio at up to 4K. Longer clips automatically use 1080p at 25 FPS.
+                    </div>
+                  </div>
+                )}
+                {ltxv2FastTextSelected && (
+                  <div className="space-y-3 text-left border-t pt-3">
+                    <Label className="text-sm font-semibold">
+                      LTX Video 2.0 Fast Settings
+                    </Label>
+
+                    <div className="space-y-1">
+                      <Label htmlFor="ltxv2-fast-duration" className="text-xs font-medium">
+                        Duration
+                      </Label>
+                      <Select
+                        value={ltxv2FastDuration.toString()}
+                        onValueChange={(value) =>
+                          setLTXV2FastDuration(
+                            Number(value) as LTXV2FastDuration
+                          )
+                        }
+                      >
+                        <SelectTrigger
+                          id="ltxv2-fast-duration"
+                          className="h-8 text-xs"
+                        >
+                          <SelectValue placeholder="Select duration" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {LTXV2_FAST_CONFIG.DURATIONS.map((durationOption) => (
+                            <SelectItem
+                              key={durationOption}
+                              value={durationOption.toString()}
+                            >
+                              {durationOption} seconds
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-1">
+                      <Label
+                        htmlFor="ltxv2-fast-resolution"
+                        className="text-xs font-medium"
+                      >
+                        Resolution
+                      </Label>
+                      <Select
+                        value={ltxv2FastResolution}
+                        onValueChange={(value) =>
+                          setLTXV2FastResolution(value as LTXV2FastResolution)
+                        }
+                      >
+                        <SelectTrigger
+                          id="ltxv2-fast-resolution"
+                          className="h-8 text-xs"
+                        >
+                          <SelectValue placeholder="Select resolution" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {LTXV2_FAST_CONFIG.RESOLUTIONS.STANDARD.map((resolutionOption) => {
+                            const disabled =
+                              isExtendedLTXV2FastTextDuration &&
+                              !ltxv2FastExtendedResolutions.includes(
+                                resolutionOption as (typeof ltxv2FastExtendedResolutions)[number]
+                              );
+
+                            return (
+                              <SelectItem
+                                key={resolutionOption}
+                                value={resolutionOption}
+                                disabled={disabled}
+                              >
+                                {LTXV2_FAST_RESOLUTION_LABELS[resolutionOption]}
+                                {LTXV2_FAST_RESOLUTION_PRICE_SUFFIX[resolutionOption] ?? ""}
+                              </SelectItem>
+                            );
+                          })}
+                        </SelectContent>
+                      </Select>
+                      <div className="text-xs text-muted-foreground">
+                        Estimated cost: $
+                        {(
+                          ltxv2FastDuration *
+                          (LTXV2_FAST_CONFIG.PRICING[ltxv2FastResolution] ?? 0)
+                        ).toFixed(2)}
+                      </div>
+                    </div>
+
+                    <div className="space-y-1">
+                      <Label htmlFor="ltxv2-fast-fps" className="text-xs font-medium">
+                        Frame Rate
+                      </Label>
+                      <Select
+                        value={ltxv2FastFPS.toString()}
+                        onValueChange={(value) =>
+                          setLTXV2FastFPS(Number(value) as LTXV2FastFps)
+                        }
+                      >
+                        <SelectTrigger
+                          id="ltxv2-fast-fps"
+                          className="h-8 text-xs"
+                        >
+                          <SelectValue placeholder="Select frame rate" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {LTXV2_FAST_CONFIG.FPS_OPTIONS.STANDARD.map((fpsOption) => {
+                            const disabled =
+                              isExtendedLTXV2FastTextDuration &&
+                              !ltxv2FastExtendedFps.includes(
+                                fpsOption as (typeof ltxv2FastExtendedFps)[number]
+                              );
+
+                            return (
+                              <SelectItem
+                                key={fpsOption}
+                                value={fpsOption.toString()}
+                                disabled={disabled}
+                              >
+                                {LTXV2_FAST_FPS_LABELS[fpsOption]}
+                              </SelectItem>
+                            );
+                          })}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="ltxv2-fast-audio"
+                        checked={ltxv2FastGenerateAudio}
+                        onCheckedChange={(checked) =>
+                          setLTXV2FastGenerateAudio(Boolean(checked))
+                        }
+                      />
+                      <Label htmlFor="ltxv2-fast-audio" className="text-xs">
+                        Generate audio
+                      </Label>
+                    </div>
+
+                    {isExtendedLTXV2FastTextDuration && (
+                      <div className="text-xs text-muted-foreground">
+                        {ERROR_MESSAGES.LTXV2_FAST_T2V_EXTENDED_DURATION_CONSTRAINT}
                       </div>
                     )}
 
