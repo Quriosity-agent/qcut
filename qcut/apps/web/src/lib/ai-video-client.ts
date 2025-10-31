@@ -4,7 +4,10 @@
  */
 
 import { handleAIServiceError, handleNetworkError } from "./error-handler";
-import { AI_MODELS } from "@/components/editor/media-panel/views/ai-constants";
+import {
+  AI_MODELS,
+  ERROR_MESSAGES,
+} from "@/components/editor/media-panel/views/ai-constants";
 import type { AIModel } from "@/components/editor/media-panel/views/ai-types";
 import type {
   Sora2TextToVideoInput,
@@ -1320,7 +1323,7 @@ function validateViduQ2Prompt(prompt: string): void {
  */
 function validateViduQ2Duration(duration: number): void {
   if (duration < 2 || duration > 8) {
-    throw new Error("Duration must be between 2 and 8 seconds for Vidu Q2");
+    throw new Error(ERROR_MESSAGES.VIDU_Q2_INVALID_DURATION);
   }
 }
 
@@ -1332,7 +1335,7 @@ function validateViduQ2Duration(duration: number): void {
  */
 function validateLTXV2Duration(duration: number): void {
   if (![6, 8, 10].includes(duration)) {
-    throw new Error("Duration must be 6, 8, or 10 seconds for LTX Video 2.0");
+    throw new Error(ERROR_MESSAGES.LTXV2_INVALID_DURATION);
   }
 }
 
@@ -1344,9 +1347,7 @@ function validateLTXV2Duration(duration: number): void {
  */
 function validateLTXV2Resolution(resolution: string): void {
   if (!["1080p", "1440p", "2160p"].includes(resolution)) {
-    throw new Error(
-      "Resolution must be 1080p, 1440p, or 2160p for LTX Video 2.0"
-    );
+    throw new Error(ERROR_MESSAGES.LTXV2_INVALID_RESOLUTION);
   }
 }
 
@@ -1378,7 +1379,7 @@ function validateLTXV2I2VDuration(duration: number, modelId: string): void {
   if (isStandard) {
     const allowedDurations = LTXV2_STANDARD_I2V_DURATIONS;
     if (!allowedDurations.includes(duration as typeof allowedDurations[number])) {
-      throw new Error("Duration must be 6, 8, or 10 seconds for LTX Video 2.0");
+      throw new Error(ERROR_MESSAGES.LTXV2_STD_I2V_INVALID_DURATION);
     }
   } else {
     const allowedDurations = LTXV2_FAST_I2V_DURATIONS;
@@ -1407,8 +1408,8 @@ function validateLTXV2I2VResolution(resolution: string, modelId: string): void {
   ) {
     throw new Error(
       isStandardLTXV2ImageModel(modelId)
-        ? "Resolution must be 1080p, 1440p, or 2160p for LTX Video 2.0"
-        : "Resolution must be 1080p, 1440p, or 2160p for LTX Video 2.0 Fast"
+        ? ERROR_MESSAGES.LTXV2_STD_I2V_INVALID_RESOLUTION
+        : ERROR_MESSAGES.LTXV2_I2V_INVALID_RESOLUTION
     );
   }
 }

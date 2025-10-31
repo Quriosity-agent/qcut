@@ -4,6 +4,7 @@ import type {
   LTXV2T2VRequest,
   LTXV2I2VRequest,
 } from "@/lib/ai-video-client";
+import { ERROR_MESSAGES } from "@/components/editor/media-panel/views/ai-constants";
 
 const originalFetch = globalThis.fetch;
 
@@ -135,7 +136,7 @@ describe("AI video client – additional models", () => {
       };
 
       await expect(generateLTXV2Video(request)).rejects.toThrow(
-        /Resolution must be 1080p, 1440p, or 2160p/i
+        ERROR_MESSAGES.LTXV2_INVALID_RESOLUTION
       );
     });
 
@@ -246,7 +247,7 @@ describe("AI video client – additional models", () => {
       };
 
       await expect(generateLTXV2ImageVideo(request)).rejects.toThrow(
-        /Resolution must be 1080p, 1440p, or 2160p for LTX Video 2.0 Fast/i
+        ERROR_MESSAGES.LTXV2_I2V_INVALID_RESOLUTION
       );
     });
 
@@ -325,7 +326,7 @@ describe("AI video client – additional models", () => {
       };
 
       await expect(generateLTXV2ImageVideo(request)).rejects.toThrow(
-        /Resolution must be 1080p, 1440p, or 2160p/i
+        ERROR_MESSAGES.LTXV2_STD_I2V_INVALID_RESOLUTION
       );
     });
 
