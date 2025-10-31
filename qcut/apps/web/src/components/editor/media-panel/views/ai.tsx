@@ -553,14 +553,15 @@ useEffect(() => {
     }
     // LTX Video 2.0 Fast I2V resolution-based pricing
     else if (modelId === "ltxv2_fast_i2v") {
-      // Pricing: $0.04/$0.08/$0.16 per second for 1080p/1440p/2160p
       const pricePerSecond =
-        ltxv2ImageResolution === "1080p"
-          ? 0.04
-          : ltxv2ImageResolution === "1440p"
-            ? 0.08
-            : 0.16; // 2160p
+        LTXV2_FAST_CONFIG.PRICING[ltxv2ImageResolution] ?? 0;
       modelCost = ltxv2ImageDuration * pricePerSecond;
+    }
+    // LTX Video 2.0 Fast T2V resolution-based pricing
+    else if (modelId === "ltxv2_fast_t2v") {
+      const pricePerSecond =
+        LTXV2_FAST_CONFIG.PRICING[ltxv2FastResolution] ?? 0;
+      modelCost = ltxv2FastDuration * pricePerSecond;
     }
 
     return total + modelCost;
