@@ -7,6 +7,7 @@ import { handleAIServiceError, handleNetworkError } from "./error-handler";
 import {
   AI_MODELS,
   ERROR_MESSAGES,
+  LTXV2_FAST_CONFIG,
 } from "@/components/editor/media-panel/views/ai-constants";
 import type { AIModel } from "@/components/editor/media-panel/views/ai-types";
 import type {
@@ -1353,8 +1354,14 @@ function validateLTXV2Resolution(resolution: string): void {
 
 const LTXV2_STANDARD_I2V_DURATIONS = [6, 8, 10] as const;
 const LTXV2_STANDARD_I2V_RESOLUTIONS = ["1080p", "1440p", "2160p"] as const;
-const LTXV2_FAST_I2V_DURATIONS = [2, 3, 4, 5, 6] as const;
-const LTXV2_FAST_I2V_RESOLUTIONS = ["1080p", "1440p", "2160p"] as const;
+const LTXV2_FAST_I2V_DURATIONS = LTXV2_FAST_CONFIG.DURATIONS;
+const LTXV2_FAST_I2V_RESOLUTIONS = LTXV2_FAST_CONFIG.RESOLUTIONS.STANDARD;
+const LTXV2_FAST_EXTENDED_THRESHOLD =
+  LTXV2_FAST_CONFIG.EXTENDED_DURATION_THRESHOLD;
+const LTXV2_FAST_EXTENDED_RESOLUTIONS =
+  LTXV2_FAST_CONFIG.RESOLUTIONS.EXTENDED;
+const LTXV2_FAST_EXTENDED_FPS = LTXV2_FAST_CONFIG.FPS_OPTIONS.EXTENDED;
+const LTXV2_FAST_I2V_FPS = LTXV2_FAST_CONFIG.FPS_OPTIONS.STANDARD;
 
 /**
  * Checks if model is a standard LTX Video 2.0 image-to-video model
@@ -1384,7 +1391,7 @@ function validateLTXV2I2VDuration(duration: number, modelId: string): void {
   } else {
     const allowedDurations = LTXV2_FAST_I2V_DURATIONS;
     if (!allowedDurations.includes(duration as typeof allowedDurations[number])) {
-      throw new Error("Duration must be between 2 and 6 seconds for LTX Video 2.0 Fast");
+      throw new Error(ERROR_MESSAGES.LTXV2_I2V_INVALID_DURATION);
     }
   }
 }
@@ -1411,6 +1418,28 @@ function validateLTXV2I2VResolution(resolution: string, modelId: string): void {
         ? ERROR_MESSAGES.LTXV2_STD_I2V_INVALID_RESOLUTION
         : ERROR_MESSAGES.LTXV2_I2V_INVALID_RESOLUTION
     );
+  }
+}
+
+function validateLTXV2FastExtendedConstraints(
+  duration: number,
+  resolution: string,
+  fps: number
+): void {
+  if (duration <= LTXV2_FAST_EXTENDED_THRESHOLD) {
+    return;
+  }
+
+  const hasAllowedResolution = LTXV2_FAST_EXTENDED_RESOLUTIONS.includes(
+    resolution as (typeof LTXV2_FAST_EXTENDED_RESOLUTIONS)[number]
+  );
+
+  const hasAllowedFps = LTXV2_FAST_EXTENDED_FPS.includes(
+    fps as (typeof LTXV2_FAST_EXTENDED_FPS)[number]
+  );
+
+  if (!hasAllowedResolution || !hasAllowedFps) {
+    throw new Error(ERROR_MESSAGES.LTXV2_I2V_EXTENDED_DURATION_CONSTRAINT);
   }
 }
 
@@ -1864,7 +1893,7 @@ export async function generateLTXV2ImageVideo(
         ? (modelConfig.default_params.duration as number)
         : isStandardModel
           ? 6
-          : 4;
+          : 6;
     const duration = request.duration ?? defaultDuration;
     validateLTXV2I2VDuration(duration, request.model);
 
@@ -1880,6 +1909,10 @@ export async function generateLTXV2ImageVideo(
       25;
     if (![25, 50].includes(fps)) {
       throw new Error("FPS must be either 25 or 50 for LTX Video 2.0");
+    }
+
+    if (!isStandardModel) {
+      validateLTXV2FastExtendedConstraints(duration, resolution, fps);
     }
 
     const payload: Record<string, any> = {

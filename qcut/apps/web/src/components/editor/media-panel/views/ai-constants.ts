@@ -233,22 +233,23 @@ export const AI_MODELS: AIModel[] = [
   {
     id: "ltxv2_fast_i2v",
     name: "LTX Video 2.0 Fast I2V",
-    description: "Image-to-video with audio generation (2-6s, up to 4K)",
+    description: "Image-to-video with audio generation (6-20s, up to 4K)",
     price: "0.04-0.16", // $0.04/$0.08/$0.16 per second for 1080p/1440p/2160p
     resolution: "1080p",
-    max_duration: 6,
+    max_duration: 20,
     category: "image",
     endpoints: {
       image_to_video: "fal-ai/ltxv-2/image-to-video/fast",
     },
     default_params: {
-      duration: 4,
+      duration: 6,
       resolution: "1080p",
       aspect_ratio: "16:9",
       fps: 25,
       generate_audio: true,
     },
     supportedResolutions: ["1080p", "1440p", "2160p"],
+    supportedDurations: [6, 8, 10, 12, 14, 16, 18, 20],
   },
   {
     id: "seedance_pro",

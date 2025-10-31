@@ -42,6 +42,7 @@ import { useAIHistory } from "./use-ai-history";
 import {
   AI_MODELS,
   ERROR_MESSAGES,
+  LTXV2_FAST_CONFIG,
   REVE_TEXT_TO_IMAGE_MODEL,
   UPLOAD_CONSTANTS,
 } from "./ai-constants";
@@ -51,6 +52,11 @@ type ReveAspectRatioOption =
   (typeof REVE_TEXT_TO_IMAGE_MODEL.aspectRatios)[number]["value"];
 type ReveOutputFormatOption =
   (typeof REVE_TEXT_TO_IMAGE_MODEL.outputFormats)[number];
+type LTXV2FastDuration = (typeof LTXV2_FAST_CONFIG.DURATIONS)[number];
+type LTXV2FastResolution =
+  (typeof LTXV2_FAST_CONFIG.RESOLUTIONS.STANDARD)[number];
+type LTXV2FastFps =
+  (typeof LTXV2_FAST_CONFIG.FPS_OPTIONS.STANDARD)[number];
 
 const REVE_NUM_IMAGE_OPTIONS = Array.from(
   {
@@ -123,11 +129,16 @@ const [ltxv2I2VResolution, setLTXV2I2VResolution] = useState<
 >("1080p");
 const [ltxv2I2VFPS, setLTXV2I2VFPS] = useState<25 | 50>(25);
 const [ltxv2I2VGenerateAudio, setLTXV2I2VGenerateAudio] = useState(true);
-const [ltxv2ImageDuration, setLTXV2ImageDuration] = useState<2 | 3 | 4 | 5 | 6>(4);
-const [ltxv2ImageResolution, setLTXV2ImageResolution] = useState<
-  "1080p" | "1440p" | "2160p"
->("1080p");
-const [ltxv2ImageFPS, setLTXV2ImageFPS] = useState<25 | 50>(25);
+const [
+  ltxv2ImageDuration,
+  setLTXV2ImageDuration,
+] = useState<LTXV2FastDuration>(LTXV2_FAST_CONFIG.DURATIONS[0]);
+const [ltxv2ImageResolution, setLTXV2ImageResolution] = useState<LTXV2FastResolution>(
+  LTXV2_FAST_CONFIG.RESOLUTIONS.STANDARD[0]
+);
+const [ltxv2ImageFPS, setLTXV2ImageFPS] = useState<LTXV2FastFps>(
+  LTXV2_FAST_CONFIG.FPS_OPTIONS.STANDARD[0]
+);
 const [ltxv2ImageGenerateAudio, setLTXV2ImageGenerateAudio] = useState(true);
 
   // Use global AI tab state (CRITICAL: preserve global state integration)
@@ -289,12 +300,42 @@ const [ltxv2ImageGenerateAudio, setLTXV2ImageGenerateAudio] = useState(true);
 
   useEffect(() => {
     if (!ltxv2ImageSelected) {
-      setLTXV2ImageDuration(4);
-      setLTXV2ImageResolution("1080p");
-      setLTXV2ImageFPS(25);
+      setLTXV2ImageDuration(LTXV2_FAST_CONFIG.DURATIONS[0]);
+      setLTXV2ImageResolution(LTXV2_FAST_CONFIG.RESOLUTIONS.STANDARD[0]);
+      setLTXV2ImageFPS(LTXV2_FAST_CONFIG.FPS_OPTIONS.STANDARD[0]);
       setLTXV2ImageGenerateAudio(true);
     }
   }, [ltxv2ImageSelected]);
+
+  useEffect(() => {
+    if (!ltxv2ImageSelected) {
+      return;
+    }
+
+    if (ltxv2ImageDuration <= LTXV2_FAST_CONFIG.EXTENDED_DURATION_THRESHOLD) {
+      return;
+    }
+
+    const enforcedResolution =
+      LTXV2_FAST_CONFIG.RESOLUTIONS.EXTENDED[0] ??
+      LTXV2_FAST_CONFIG.RESOLUTIONS.STANDARD[0];
+    const enforcedFps =
+      LTXV2_FAST_CONFIG.FPS_OPTIONS.EXTENDED[0] ??
+      LTXV2_FAST_CONFIG.FPS_OPTIONS.STANDARD[0];
+
+    if (ltxv2ImageResolution !== enforcedResolution) {
+      setLTXV2ImageResolution(enforcedResolution);
+    }
+
+    if (ltxv2ImageFPS !== enforcedFps) {
+      setLTXV2ImageFPS(enforcedFps);
+    }
+  }, [
+    ltxv2ImageSelected,
+    ltxv2ImageDuration,
+    ltxv2ImageResolution,
+    ltxv2ImageFPS,
+  ]);
 
   // Image handling
   const handleImageSelect = (event: React.ChangeEvent<HTMLInputElement>) => {

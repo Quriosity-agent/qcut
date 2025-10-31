@@ -83,7 +83,7 @@ export function useAIGeneration(props: UseAIGenerationProps) {
     ltxv2I2VResolution = "1080p",
     ltxv2I2VFPS = 25,
     ltxv2I2VGenerateAudio = true,
-    ltxv2ImageDuration = 4,
+    ltxv2ImageDuration = 6,
     ltxv2ImageResolution = "1080p",
     ltxv2ImageFPS = 25,
     ltxv2ImageGenerateAudio = true,
