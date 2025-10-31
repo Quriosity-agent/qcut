@@ -1298,6 +1298,12 @@ function isHailuo23TextToVideo(modelId: string): boolean {
   return modelId === "hailuo23_standard_t2v" || modelId === "hailuo23_pro_t2v";
 }
 
+/**
+ * Validates prompt length for Vidu Q2 models
+ *
+ * @param prompt - Text prompt to validate
+ * @throws Error if prompt exceeds 3000 character limit
+ */
 function validateViduQ2Prompt(prompt: string): void {
   if (prompt.length > 3000) {
     throw new Error(
@@ -1306,18 +1312,36 @@ function validateViduQ2Prompt(prompt: string): void {
   }
 }
 
+/**
+ * Validates duration for Vidu Q2 video generation
+ *
+ * @param duration - Duration in seconds
+ * @throws Error if duration is not between 2 and 8 seconds
+ */
 function validateViduQ2Duration(duration: number): void {
   if (duration < 2 || duration > 8) {
     throw new Error("Duration must be between 2 and 8 seconds for Vidu Q2");
   }
 }
 
+/**
+ * Validates duration for LTX Video 2.0 generation
+ *
+ * @param duration - Duration in seconds
+ * @throws Error if duration is not 6, 8, or 10 seconds
+ */
 function validateLTXV2Duration(duration: number): void {
   if (![6, 8, 10].includes(duration)) {
     throw new Error("Duration must be 6, 8, or 10 seconds for LTX Video 2.0");
   }
 }
 
+/**
+ * Validates resolution for LTX Video 2.0 generation
+ *
+ * @param resolution - Video resolution (e.g., "1080p")
+ * @throws Error if resolution is not 1080p, 1440p, or 2160p
+ */
 function validateLTXV2Resolution(resolution: string): void {
   if (!["1080p", "1440p", "2160p"].includes(resolution)) {
     throw new Error(
@@ -1331,10 +1355,23 @@ const LTXV2_STANDARD_I2V_RESOLUTIONS = ["1080p", "1440p", "2160p"] as const;
 const LTXV2_FAST_I2V_DURATIONS = [2, 3, 4, 5, 6] as const;
 const LTXV2_FAST_I2V_RESOLUTIONS = ["1080p", "1440p", "2160p"] as const;
 
+/**
+ * Checks if model is a standard LTX Video 2.0 image-to-video model
+ *
+ * @param modelId - Model identifier to check
+ * @returns true if model is standard LTX V2 I2V (not Fast variant)
+ */
 function isStandardLTXV2ImageModel(modelId: string): boolean {
   return modelId === "ltxv2_i2v";
 }
 
+/**
+ * Validates duration for LTX Video 2.0 image-to-video generation
+ *
+ * @param duration - Duration in seconds
+ * @param modelId - Model identifier (standard vs fast variant)
+ * @throws Error if duration is invalid for the specified model
+ */
 function validateLTXV2I2VDuration(duration: number, modelId: string): void {
   const isStandard = isStandardLTXV2ImageModel(modelId);
 
@@ -1351,6 +1388,13 @@ function validateLTXV2I2VDuration(duration: number, modelId: string): void {
   }
 }
 
+/**
+ * Validates resolution for LTX Video 2.0 image-to-video generation
+ *
+ * @param resolution - Video resolution (e.g., "1080p")
+ * @param modelId - Model identifier (standard vs fast variant)
+ * @throws Error if resolution is invalid for the specified model
+ */
 function validateLTXV2I2VResolution(resolution: string, modelId: string): void {
   const allowedResolutions = isStandardLTXV2ImageModel(modelId)
     ? LTXV2_STANDARD_I2V_RESOLUTIONS

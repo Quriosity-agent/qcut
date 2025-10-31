@@ -756,7 +756,7 @@ export const ERROR_MESSAGES = {
   LTXV2_I2V_INVALID_DURATION:
     "Duration must be between 2 and 6 seconds for LTX Video 2.0 Fast",
   LTXV2_I2V_INVALID_RESOLUTION:
-    "Resolution must be 720p or 1080p for LTX Video 2.0 Fast",
+    "Resolution must be 1080p, 1440p, or 2160p for LTX Video 2.0 Fast",
   LTXV2_I2V_MISSING_IMAGE:
     "Image is required for LTX Video 2.0 Fast image-to-video generation",
 } as const;
