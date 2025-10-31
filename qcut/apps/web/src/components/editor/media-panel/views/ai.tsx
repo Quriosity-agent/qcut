@@ -58,6 +58,25 @@ type LTXV2FastResolution =
 type LTXV2FastFps =
   (typeof LTXV2_FAST_CONFIG.FPS_OPTIONS.STANDARD)[number];
 
+const LTXV2_FAST_RESOLUTION_LABELS: Record<LTXV2FastResolution, string> = {
+  "1080p": "1080p (Full HD)",
+  "1440p": "1440p (QHD)",
+  "2160p": "2160p (4K)",
+};
+
+const LTXV2_FAST_RESOLUTION_PRICE_SUFFIX: Partial<
+  Record<LTXV2FastResolution, string>
+> = {
+  "1080p": " ($0.04/sec)",
+  "1440p": " ($0.08/sec)",
+  "2160p": " ($0.16/sec)",
+};
+
+const LTXV2_FAST_FPS_LABELS: Record<LTXV2FastFps, string> = {
+  25: "25 FPS (Standard)",
+  50: "50 FPS (High)",
+};
+
 const REVE_NUM_IMAGE_OPTIONS = Array.from(
   {
     length:
@@ -232,6 +251,11 @@ const [ltxv2ImageGenerateAudio, setLTXV2ImageGenerateAudio] = useState(true);
   const ltxv2TextSelected = selectedModels.includes("ltxv2_pro_t2v");
   const ltxv2I2VSelected = selectedModels.includes("ltxv2_i2v");
   const ltxv2ImageSelected = selectedModels.includes("ltxv2_fast_i2v");
+  const ltxv2FastExtendedResolutions =
+    LTXV2_FAST_CONFIG.RESOLUTIONS.EXTENDED;
+  const ltxv2FastExtendedFps = LTXV2_FAST_CONFIG.FPS_OPTIONS.EXTENDED;
+  const isExtendedLTXV2FastDuration =
+    ltxv2ImageDuration > LTXV2_FAST_CONFIG.EXTENDED_DURATION_THRESHOLD;
 
   // Track active FileReader for cleanup
   const fileReaderRef = useRef<FileReader | null>(null);
@@ -1292,7 +1316,7 @@ const [ltxv2ImageGenerateAudio, setLTXV2ImageGenerateAudio] = useState(true);
                         value={ltxv2ImageDuration.toString()}
                         onValueChange={(value) =>
                           setLTXV2ImageDuration(
-                            Number(value) as 2 | 3 | 4 | 5 | 6
+                            Number(value) as LTXV2FastDuration
                           )
                         }
                       >
@@ -1303,11 +1327,14 @@ const [ltxv2ImageGenerateAudio, setLTXV2ImageGenerateAudio] = useState(true);
                           <SelectValue placeholder="Select duration" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="2">2 seconds</SelectItem>
-                          <SelectItem value="3">3 seconds</SelectItem>
-                          <SelectItem value="4">4 seconds</SelectItem>
-                          <SelectItem value="5">5 seconds</SelectItem>
-                          <SelectItem value="6">6 seconds</SelectItem>
+                          {LTXV2_FAST_CONFIG.DURATIONS.map((durationOption) => (
+                            <SelectItem
+                              key={durationOption}
+                              value={durationOption.toString()}
+                            >
+                              {durationOption} seconds
+                            </SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                     </div>
@@ -1322,7 +1349,7 @@ const [ltxv2ImageGenerateAudio, setLTXV2ImageGenerateAudio] = useState(true);
                       <Select
                         value={ltxv2ImageResolution}
                         onValueChange={(value) =>
-                          setLTXV2ImageResolution(value as "1080p" | "1440p" | "2160p")
+                          setLTXV2ImageResolution(value as LTXV2FastResolution)
                         }
                       >
                         <SelectTrigger
@@ -1332,9 +1359,24 @@ const [ltxv2ImageGenerateAudio, setLTXV2ImageGenerateAudio] = useState(true);
                           <SelectValue placeholder="Select resolution" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="1080p">1080p ($0.04/sec)</SelectItem>
-                          <SelectItem value="1440p">1440p ($0.08/sec)</SelectItem>
-                          <SelectItem value="2160p">4K ($0.16/sec)</SelectItem>
+                          {LTXV2_FAST_CONFIG.RESOLUTIONS.STANDARD.map((resolutionOption) => {
+                            const disabled =
+                              isExtendedLTXV2FastDuration &&
+                              !ltxv2FastExtendedResolutions.includes(
+                                resolutionOption as (typeof ltxv2FastExtendedResolutions)[number]
+                              );
+
+                            return (
+                              <SelectItem
+                                key={resolutionOption}
+                                value={resolutionOption}
+                                disabled={disabled}
+                              >
+                                {LTXV2_FAST_RESOLUTION_LABELS[resolutionOption]}
+                                {LTXV2_FAST_RESOLUTION_PRICE_SUFFIX[resolutionOption] ?? ""}
+                              </SelectItem>
+                            );
+                          })}
                         </SelectContent>
                       </Select>
                     </div>
@@ -1346,7 +1388,7 @@ const [ltxv2ImageGenerateAudio, setLTXV2ImageGenerateAudio] = useState(true);
                       <Select
                         value={ltxv2ImageFPS.toString()}
                         onValueChange={(value) =>
-                          setLTXV2ImageFPS(Number(value) as 25 | 50)
+                          setLTXV2ImageFPS(Number(value) as LTXV2FastFps)
                         }
                       >
                         <SelectTrigger
@@ -1356,8 +1398,23 @@ const [ltxv2ImageGenerateAudio, setLTXV2ImageGenerateAudio] = useState(true);
                           <SelectValue placeholder="Select frame rate" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="25">25 FPS</SelectItem>
-                          <SelectItem value="50">50 FPS</SelectItem>
+                          {LTXV2_FAST_CONFIG.FPS_OPTIONS.STANDARD.map((fpsOption) => {
+                            const disabled =
+                              isExtendedLTXV2FastDuration &&
+                              !ltxv2FastExtendedFps.includes(
+                                fpsOption as (typeof ltxv2FastExtendedFps)[number]
+                              );
+
+                            return (
+                              <SelectItem
+                                key={fpsOption}
+                                value={fpsOption.toString()}
+                                disabled={disabled}
+                              >
+                                {LTXV2_FAST_FPS_LABELS[fpsOption]}
+                              </SelectItem>
+                            );
+                          })}
                         </SelectContent>
                       </Select>
                     </div>
@@ -1375,8 +1432,14 @@ const [ltxv2ImageGenerateAudio, setLTXV2ImageGenerateAudio] = useState(true);
                       </Label>
                     </div>
 
+                    {isExtendedLTXV2FastDuration && (
+                      <div className="text-xs text-muted-foreground">
+                        {ERROR_MESSAGES.LTXV2_I2V_EXTENDED_DURATION_CONSTRAINT}
+                      </div>
+                    )}
+
                     <div className="text-xs text-muted-foreground">
-                      2-6 second clips with optional audio at up to 1080p.
+                      6-20 second clips with optional audio at up to 4K. Longer clips automatically use 1080p at 25 FPS.
                     </div>
                   </div>
                 )}

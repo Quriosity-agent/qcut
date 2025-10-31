@@ -1907,7 +1907,11 @@ export async function generateLTXV2ImageVideo(
       request.fps ??
       (modelConfig.default_params?.fps as number | undefined) ??
       25;
-    if (![25, 50].includes(fps)) {
+    if (
+      !LTXV2_FAST_I2V_FPS.includes(
+        fps as (typeof LTXV2_FAST_I2V_FPS)[number]
+      )
+    ) {
       throw new Error("FPS must be either 25 or 50 for LTX Video 2.0");
     }
 
