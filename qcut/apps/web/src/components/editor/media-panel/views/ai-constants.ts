@@ -748,15 +748,15 @@ export const ERROR_MESSAGES = {
   LTXV2_STD_I2V_INVALID_DURATION:
     "Duration must be 6, 8, or 10 seconds for LTX Video 2.0",
   LTXV2_STD_I2V_INVALID_RESOLUTION:
-    "Resolution must be 1080p, 1440p, or 2160p for LTX Video 2.0",
+    "Resolution must be 1080p (1920x1080), 1440p (2560x1440), or 2160p (3840x2160) for LTX Video 2.0 Standard",
   LTXV2_STD_I2V_IMAGE_TOO_LARGE:
     "Image file must be under 7MB for LTX Video 2.0 image-to-video",
   LTXV2_STD_I2V_INVALID_FORMAT:
     "Image must be PNG, JPEG, WebP, AVIF, or HEIF for LTX Video 2.0 image-to-video",
   LTXV2_I2V_INVALID_DURATION:
-    "Duration must be between 2 and 6 seconds for LTX Video 2.0 Fast",
+    "Duration must be between 2-6 seconds for LTX Video 2.0 Fast I2V generation",
   LTXV2_I2V_INVALID_RESOLUTION:
-    "Resolution must be 1080p, 1440p, or 2160p for LTX Video 2.0 Fast",
+    "Resolution must be 1080p (1920x1080), 1440p (2560x1440), or 2160p (3840x2160) for LTX Video 2.0 Fast",
   LTXV2_I2V_MISSING_IMAGE:
     "Image is required for LTX Video 2.0 Fast image-to-video generation",
 } as const;
