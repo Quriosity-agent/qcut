@@ -1,9 +1,4 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import {
-  generateViduQ2Video,
-  generateLTXV2Video,
-  generateLTXV2ImageVideo,
-} from "@/lib/ai-video-client";
 import type {
   ViduQ2I2VRequest,
   LTXV2T2VRequest,
@@ -13,14 +8,27 @@ import type {
 const originalFetch = globalThis.fetch;
 
 describe("AI video client – additional models", () => {
-  beforeEach(() => {
-    vi.unstubAllEnvs();
-    vi.stubEnv("VITE_FAL_API_KEY", "test-api-key");
+  // Module-level variables to hold dynamically imported functions
+  let generateViduQ2Video: typeof import("@/lib/ai-video-client")["generateViduQ2Video"];
+  let generateLTXV2Video: typeof import("@/lib/ai-video-client")["generateLTXV2Video"];
+  let generateLTXV2ImageVideo: typeof import("@/lib/ai-video-client")["generateLTXV2ImageVideo"];
+
+  beforeEach(async () => {
+    // Clear all mocks first
     vi.clearAllMocks();
+
+    // Set environment variable BEFORE importing the module
+    // Using import.meta.env directly since vi.stubEnv is not available
+    (import.meta.env as any).VITE_FAL_API_KEY = "test-api-key";
+
+    // Dynamically import the module AFTER setting the environment
+    const aiVideoClient = await import("@/lib/ai-video-client");
+    generateViduQ2Video = aiVideoClient.generateViduQ2Video;
+    generateLTXV2Video = aiVideoClient.generateLTXV2Video;
+    generateLTXV2ImageVideo = aiVideoClient.generateLTXV2ImageVideo;
   });
 
   afterEach(() => {
-    vi.unstubAllEnvs();
     vi.clearAllMocks();
     globalThis.fetch = originalFetch;
   });
