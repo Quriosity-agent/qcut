@@ -754,11 +754,34 @@ export const ERROR_MESSAGES = {
   LTXV2_STD_I2V_INVALID_FORMAT:
     "Image must be PNG, JPEG, WebP, AVIF, or HEIF for LTX Video 2.0 image-to-video",
   LTXV2_I2V_INVALID_DURATION:
-    "Duration must be between 2-6 seconds for LTX Video 2.0 Fast I2V generation",
+    "Duration must be 6, 8, 10, 12, 14, 16, 18, or 20 seconds for LTX Video 2.0 Fast",
   LTXV2_I2V_INVALID_RESOLUTION:
     "Resolution must be 1080p (1920x1080), 1440p (2560x1440), or 2160p (3840x2160) for LTX Video 2.0 Fast",
+  LTXV2_I2V_EXTENDED_DURATION_CONSTRAINT:
+    "Videos longer than 10 seconds require 1080p resolution and 25 FPS for LTX Video 2.0 Fast",
   LTXV2_I2V_MISSING_IMAGE:
     "Image is required for LTX Video 2.0 Fast image-to-video generation",
+} as const;
+
+// LTX Video 2.0 Fast Configuration
+export const LTXV2_FAST_CONFIG = {
+  DURATIONS: [6, 8, 10, 12, 14, 16, 18, 20] as const,
+  RESOLUTIONS: {
+    STANDARD: ["1080p", "1440p", "2160p"] as const,
+    EXTENDED: ["1080p"] as const, // For videos > 10 seconds
+  },
+  FPS_OPTIONS: {
+    STANDARD: [25, 50] as const,
+    EXTENDED: [25] as const, // For videos > 10 seconds
+  },
+  EXTENDED_DURATION_THRESHOLD: 10,
+  MAX_IMAGE_SIZE_MB: 7,
+  SUPPORTED_FORMATS: ["PNG", "JPEG", "WebP", "AVIF", "HEIF"] as const,
+  PRICING: {
+    "1080p": 0.04, // per second
+    "1440p": 0.08, // per second
+    "2160p": 0.16, // per second
+  },
 } as const;
 
 // Status Messages
