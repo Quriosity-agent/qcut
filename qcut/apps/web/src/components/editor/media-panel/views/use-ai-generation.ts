@@ -893,7 +893,7 @@ export function useAIGeneration(props: UseAIGenerationProps) {
           else if (modelId === "ltxv2_i2v") {
             if (!selectedImage) {
               console.log(
-                "  ?? Skipping model - LTX V2 standard requires a selected image"
+                "  ⚠️ Skipping model - LTX V2 standard requires a selected image"
               );
               continue;
             }
