@@ -1373,20 +1373,19 @@ function isFastLTXV2TextModel(modelId: string): boolean {
  */
 function validateLTXV2T2VDuration(duration: number, modelId: string): void {
   const isFast = isFastLTXV2TextModel(modelId);
-  const allowedDurations = isFast
-    ? LTXV2_FAST_T2V_DURATIONS
-    : LTXV2_STANDARD_T2V_DURATIONS;
 
-  if (
-    !allowedDurations.includes(
-      duration as (typeof allowedDurations)[number]
-    )
-  ) {
-    throw new Error(
-      isFast
-        ? ERROR_MESSAGES.LTXV2_FAST_T2V_INVALID_DURATION
-        : ERROR_MESSAGES.LTXV2_INVALID_DURATION
-    );
+  if (isFast) {
+    if (!LTXV2_FAST_T2V_DURATIONS.includes(
+      duration as (typeof LTXV2_FAST_T2V_DURATIONS)[number]
+    )) {
+      throw new Error(ERROR_MESSAGES.LTXV2_FAST_T2V_INVALID_DURATION);
+    }
+  } else {
+    if (!LTXV2_STANDARD_T2V_DURATIONS.includes(
+      duration as (typeof LTXV2_STANDARD_T2V_DURATIONS)[number]
+    )) {
+      throw new Error(ERROR_MESSAGES.LTXV2_INVALID_DURATION);
+    }
   }
 }
 

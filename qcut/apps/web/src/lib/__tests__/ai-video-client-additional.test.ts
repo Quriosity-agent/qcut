@@ -146,13 +146,67 @@ describe("AI video client – additional models", () => {
         .mockResolvedValue({ ok: true, json: async () => ({ video: { url: "https://example.com/video.mp4" } }) });
       globalThis.fetch = fetchMock as unknown as typeof globalThis.fetch;
 
+    const request: LTXV2T2VRequest = {
+      model: "ltxv2_pro_t2v",
+      prompt: "A cinematic tracking shot through neon-lit streets",
+      duration: 8,
+      resolution: "1440p",
+      fps: 50,
+      generate_audio: false,
+    };
+
+    await generateLTXV2Video(request);
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [, options] = fetchMock.mock.calls[0];
+    const payload = JSON.parse(
+      (options as Record<string, unknown>).body as string
+    );
+    expect(payload.duration).toBe(8);
+    expect(payload.resolution).toBe("1440p");
+    expect(payload.fps).toBe(50);
+    expect(payload.generate_audio).toBe(false);
+  });
+
+    it("rejects invalid duration for the fast model", async () => {
       const request: LTXV2T2VRequest = {
-        model: "ltxv2_pro_t2v",
-        prompt: "A cinematic tracking shot through neon-lit streets",
-        duration: 8,
+        model: "ltxv2_fast_t2v",
+        prompt: "A dynamic aerial flythrough of a canyon at sunrise",
+        duration: 5 as any,
+      };
+
+      await expect(generateLTXV2Video(request)).rejects.toThrow(
+        ERROR_MESSAGES.LTXV2_FAST_T2V_INVALID_DURATION
+      );
+    });
+
+    it("enforces extended duration constraints for the fast model", async () => {
+      const request: LTXV2T2VRequest = {
+        model: "ltxv2_fast_t2v",
+        prompt: "A dramatic ocean storm captured from a helicopter",
+        duration: 12,
         resolution: "1440p",
-        fps: 50,
-        generate_audio: false,
+        fps: 25,
+      };
+
+      await expect(generateLTXV2Video(request)).rejects.toThrow(
+        ERROR_MESSAGES.LTXV2_FAST_T2V_EXTENDED_DURATION_CONSTRAINT
+      );
+    });
+
+    it("sends expected payload for the fast model", async () => {
+      const fetchMock = vi
+        .fn()
+        .mockResolvedValue({ ok: true, json: async () => ({ video: { url: "https://example.com/video.mp4" } }) });
+      globalThis.fetch = fetchMock as unknown as typeof globalThis.fetch;
+
+      const request: LTXV2T2VRequest = {
+        model: "ltxv2_fast_t2v",
+        prompt: "A timelapse of blooming flowers in a glasshouse",
+        duration: 14,
+        resolution: "1080p",
+        fps: 25,
+        generate_audio: true,
       };
 
       await generateLTXV2Video(request);
@@ -162,10 +216,10 @@ describe("AI video client – additional models", () => {
       const payload = JSON.parse(
         (options as Record<string, unknown>).body as string
       );
-      expect(payload.duration).toBe(8);
-      expect(payload.resolution).toBe("1440p");
-      expect(payload.fps).toBe(50);
-      expect(payload.generate_audio).toBe(false);
+      expect(payload.duration).toBe(14);
+      expect(payload.resolution).toBe("1080p");
+      expect(payload.fps).toBe(25);
+      expect(payload.generate_audio).toBe(true);
     });
   });
 
