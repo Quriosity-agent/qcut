@@ -58,21 +58,6 @@ export const AI_MODELS: AIModel[] = [
     },
   },
   {
-    id: "kling_v2",
-    name: "Kling v2.1",
-    description: "Premium model with unparalleled motion fluidity",
-    price: "0.15",
-    resolution: "1080p",
-    max_duration: 10,
-    endpoints: {
-      text_to_video: "fal-ai/kling-video/v2.1/master",
-    },
-    default_params: {
-      duration: 5,
-      resolution: "1080p",
-    },
-  },
-  {
     id: "seedance",
     name: "Seedance v1 Lite",
     description: "Fast and efficient text-to-video generation",
@@ -654,6 +639,21 @@ export const AI_MODELS: AIModel[] = [
       resolution: "720p",
       aspect_ratio: "16:9",
       generate_audio: true,
+    },
+  },
+  {
+    id: "kling_v2",
+    name: "Kling v2.1",
+    description: "Premium model with unparalleled motion fluidity",
+    price: "0.15",
+    resolution: "1080p",
+    max_duration: 10,
+    endpoints: {
+      text_to_video: "fal-ai/kling-video/v2.1/master",
+    },
+    default_params: {
+      duration: 5,
+      resolution: "1080p",
     },
   },
 ];
