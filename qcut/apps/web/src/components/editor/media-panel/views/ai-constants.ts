@@ -21,6 +21,42 @@ export const API_CONFIG: APIConfiguration = {
 
 // AI Models Configuration with centralized endpoints and parameters
 export const AI_MODELS: AIModel[] = [
+  // Sora 2 Models - placed at top as requested
+  {
+    id: "sora2_text_to_video",
+    name: "Sora 2 Text-to-Video",
+    description: "OpenAI's state-of-the-art text-to-video generation (720p)",
+    price: "0.10/s", // $0.10 per second (4s = $0.40, 8s = $0.80, 12s = $1.20)
+    resolution: "720p",
+    max_duration: 12, // 4, 8, or 12 seconds
+    category: "text",
+    endpoints: {
+      text_to_video: "fal-ai/sora-2/text-to-video",
+    },
+    default_params: {
+      duration: 4,
+      resolution: "720p",
+      aspect_ratio: "16:9",
+    },
+  },
+  {
+    id: "sora2_text_to_video_pro",
+    name: "Sora 2 Text-to-Video Pro",
+    description: "High-quality text-to-video with 1080p support",
+    price: "0.30-0.50", // 720p: $0.30/4s ($0.075/s), 1080p: $0.50/4s ($0.125/s)
+    resolution: "720p / 1080p",
+    supportedResolutions: ["720p", "1080p"], // For programmatic filtering
+    max_duration: 12,
+    category: "text",
+    endpoints: {
+      text_to_video: "fal-ai/sora-2/text-to-video/pro",
+    },
+    default_params: {
+      duration: 4,
+      resolution: "1080p", // Pro defaults to 1080p
+      aspect_ratio: "16:9",
+    },
+  },
   {
     id: "kling_v2",
     name: "Kling v2.1",
@@ -438,42 +474,6 @@ export const AI_MODELS: AIModel[] = [
     },
   },
 
-  // Sora 2 Models
-  {
-    id: "sora2_text_to_video",
-    name: "Sora 2 Text-to-Video",
-    description: "OpenAI's state-of-the-art text-to-video generation (720p)",
-    price: "0.10/s", // $0.10 per second (4s = $0.40, 8s = $0.80, 12s = $1.20)
-    resolution: "720p",
-    max_duration: 12, // 4, 8, or 12 seconds
-    category: "text",
-    endpoints: {
-      text_to_video: "fal-ai/sora-2/text-to-video",
-    },
-    default_params: {
-      duration: 4,
-      resolution: "720p",
-      aspect_ratio: "16:9",
-    },
-  },
-  {
-    id: "sora2_text_to_video_pro",
-    name: "Sora 2 Text-to-Video Pro",
-    description: "High-quality text-to-video with 1080p support",
-    price: "0.30-0.50", // 720p: $0.30/4s ($0.075/s), 1080p: $0.50/4s ($0.125/s)
-    resolution: "720p / 1080p",
-    supportedResolutions: ["720p", "1080p"], // For programmatic filtering
-    max_duration: 12,
-    category: "text",
-    endpoints: {
-      text_to_video: "fal-ai/sora-2/text-to-video/pro",
-    },
-    default_params: {
-      duration: 4,
-      resolution: "1080p", // Pro defaults to 1080p
-      aspect_ratio: "16:9",
-    },
-  },
   {
     id: "sora2_image_to_video",
     name: "Sora 2 Image-to-Video",
