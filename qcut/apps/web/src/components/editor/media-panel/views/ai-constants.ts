@@ -58,6 +58,24 @@ export const AI_MODELS: AIModel[] = [
     },
   },
   {
+    id: "wan_25_preview",
+    name: "WAN v2.5 Preview",
+    description: "Next-generation WAN model with improved quality",
+    price: "0.12",
+    resolution: "1080p",
+    max_duration: 10,
+    endpoints: {
+      text_to_video: "fal-ai/wan-25-preview/text-to-video",
+      image_to_video: "fal-ai/wan-25-preview/image-to-video",
+    },
+    default_params: {
+      duration: 5,
+      resolution: "1080p",
+      quality: "high",
+      style_preset: "cinematic",
+    },
+  },
+  {
     id: "seedance",
     name: "Seedance v1 Lite",
     description: "Fast and efficient text-to-video generation",
@@ -341,24 +359,6 @@ export const AI_MODELS: AIModel[] = [
       cfg_scale: 0.5,
       aspect_ratio: "16:9",
       enhance_prompt: true,
-    },
-  },
-  {
-    id: "wan_25_preview",
-    name: "WAN v2.5 Preview",
-    description: "Next-generation WAN model with improved quality",
-    price: "0.12",
-    resolution: "1080p",
-    max_duration: 10,
-    endpoints: {
-      text_to_video: "fal-ai/wan-25-preview/text-to-video",
-      image_to_video: "fal-ai/wan-25-preview/image-to-video",
-    },
-    default_params: {
-      duration: 5,
-      resolution: "1080p",
-      quality: "high",
-      style_preset: "cinematic",
     },
   },
 
