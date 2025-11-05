@@ -95,10 +95,11 @@ getRequiredInputs: (modelId: string): string[] => {
 } as const;
 ```
 
+**Note:** Confirm the Veo 3.1 Frame-to-Video entries in `AI_MODELS` declare `requiredInputs: ['firstFrame', 'lastFrame']`; update the dataset if new models are added.
+
 ---
 
 #### Task 1.3: Write unit tests for helper functions (25 min)
-> **Review:** These expectations only pass once `AI_MODELS` exposes `requiredInputs` for the F2V models; update that dataset (or stub it in the test) before landing the file.
 
 **File:** `qcut/apps/web/src/components/editor/media-panel/views/__tests__/ai-constants.test.ts` (NEW)
 **Create:** New test file
@@ -155,10 +156,11 @@ describe('MODEL_HELPERS', () => {
 
 **Action:** Create new file at specified path with above content
 
+**Tip:** If additional F2V models are introduced, update `AI_MODELS` (or mock it within the test) so `MODEL_HELPERS` continues to surface the correct required inputs.
+
 ---
 
 #### Task 1.4: Document type changes in inline comments (10 min)
-> **Review:** Good context, but avoid baking in a `2025-11` date; tie the note to a release or migration doc so it stays accurate over time.
 
 **File:** `qcut/apps/web/src/components/editor/media-panel/views/ai-types.ts`
 **Read:** Lines 1-9 (file header comments)
@@ -188,11 +190,12 @@ describe('MODEL_HELPERS', () => {
  * @see ai-view-refactoring-guide.md for refactoring plan
  * @see ai-refactoring-subtasks.md for implementation tracking
  *
- * ## Frame-to-Video (F2V) Support (Added 2025-11)
+ * ## Frame-to-Video (F2V) Support
  * Added firstFrame/lastFrame props to support Veo 3.1 Frame-to-Video models.
  * - firstFrame: Required for F2V models, used as single image for I2V models
  * - lastFrame: Optional - when provided, enables frame-to-frame animation
  * - Backward compatible: existing I2V code continues to work with firstFrame only
+ * - See docs/development/migrations/frame-to-video-support.md for rollout details
  */
 ```
 
@@ -203,7 +206,6 @@ describe('MODEL_HELPERS', () => {
 ### Phase 2: Component Extraction (90-120 minutes)
 
 #### Task 2.1: Create `ai-image-upload.tsx` component (30 min)
-> **Review:** The props here still have the one-argument callbacks from Task 1.1 and we lost the explicit `clearImage` affordance; update the types (or only pass one arg) and confirm `FileUpload` still lets users remove a frame.
 
 **File:** `qcut/apps/web/src/components/editor/media-panel/views/ai-image-upload.tsx` (NEW)
 **Read:**
@@ -324,36 +326,28 @@ export function AIImageUploadSection({
 
 **Action:** Create new file with above content
 
----
-
-#### Task 2.2: Implement conditional rendering logic (25 min)
-> **Review:** If all the conditional logic already lives inside `AIImageUploadSection`, clarify what extra work remains here or drop the task to avoid double-booking effort.
-
-**Note:** ✅ Already completed in Task 2.1 (lines 614-677 of new component)
-
-The component already includes:
-- `MODEL_HELPERS.requiresFrameToFrame()` check (line 614-616)
-- Dual FileUpload for F2V mode (lines 618-657)
-- Single FileUpload for I2V mode (lines 660-676)
+**Note:** The shared `FileUpload` component already exposes a remove button, so no additional `clearImage` helper is required in this component.
 
 ---
 
-#### Task 2.3: Add component prop validation (15 min)
-> **Review:** As we're in TypeScript, adding runtime PropTypes-style validation provides little value and adds bundle weight; I'd skip unless we have a non-TS consumer.
+#### Task 2.2: Confirm conditional rendering logic (10 min)
+
+**Action:** Use Storybook or a lightweight DOM test to confirm `AIImageUploadSection` toggles between single- and dual-upload layouts when `MODEL_HELPERS.requiresFrameToFrame` changes. Once verified, mark the legacy inline JSX in `ai.tsx` for removal.
+
+---
+
+#### Task 2.3: Finalize component prop typing (15 min)
 
 **File:** `qcut/apps/web/src/components/editor/media-panel/views/ai-image-upload.tsx`
-**Read:** Lines where props are destructured
-**Modify:** Add PropTypes or TypeScript validation:
-- Ensure callbacks are functions
-- Validate file types are File | null
-- Check selectedModels is string array
-
-**Action:** Add runtime validation for development mode
+**Goal:** Keep validation in TypeScript by reusing shared types instead of runtime PropTypes.
+**Action Items:**
+- Export `AIImageUploadSectionProps` for reuse in consuming components/hooks.
+- Ensure callbacks align with `UseAIGenerationProps` signatures (including optional preview string).
+- Add JSDoc annotations where helpful so storybook/IDE hints stay accurate.
 
 ---
 
 #### Task 2.4: Create Storybook stories for testing (20 min)
-> **Review:** Storybook won't give you real `File` objects from an input; prebuild mock files or previews so the dual-frame states render predictably.
 
 **File:** `qcut/apps/web/src/components/editor/media-panel/views/ai-image-upload.stories.tsx` (NEW)
 **Read:** Existing `.stories.tsx` files in codebase for patterns
@@ -365,10 +359,11 @@ The component already includes:
 
 **Action:** Create visual test cases for all states
 
+**Tip:** Stub file inputs by seeding mock `File` objects (via `new File([...], 'first.png', { type: 'image/png' })`) or static preview URLs so Storybook renders deterministic thumbnails.
+
 ---
 
 #### Task 2.5: Write component unit tests (30 min)
-> **Review:** Include coverage for the error path (for example, verifying `onError` fires when validation fails) so we lock in the behavior that Task 3.x depends on.
 
 **File:** `qcut/apps/web/src/components/editor/media-panel/views/__tests__/ai-image-upload.test.tsx` (NEW)
 **Read:**
@@ -380,6 +375,7 @@ The component already includes:
 - Renders dual upload for F2V models
 - Calls onChange handlers correctly
 - Shows/hides optional label appropriately
+- Emits validation errors via `onError` when the underlying `FileUpload` reports bad types/oversized files
 
 **Action:** Achieve >90% code coverage for component
 
@@ -388,7 +384,6 @@ The component already includes:
 ### Phase 3: Integration (90-120 minutes)
 
 #### Task 3.1: Add state variables to `ai.tsx` (15 min)
-> **Review:** The proposed `useEffect` never resets `selectedImage` or `imagePreview` when `firstFrame` becomes `null`, so the old preview lingers; add an `else` branch to clear them.
 
 **File:** `qcut/apps/web/src/components/editor/media-panel/views/ai.tsx`
 **Read:** Lines 89-98 (state declarations section at component start)
@@ -423,6 +418,10 @@ useEffect(() => {
     // F2V mode - clear selectedImage to avoid confusion
     setSelectedImage(null);
     setImagePreview(null);
+  } else {
+    // Frames cleared - ensure legacy state is also cleared
+    setSelectedImage(null);
+    setImagePreview(null);
   }
 }, [firstFrame, lastFrame, firstFramePreview]);
 ```
@@ -443,7 +442,6 @@ const fileInputRef = useRef<HTMLInputElement>(null);
 ---
 
 #### Task 3.2: Integrate `AIImageUploadSection` component (20 min)
-> **Review:** After replacing the markup we no longer use `fileInputRef` or expose a clear button; make sure the new component handles both or remove the dead state or ref.
 
 **File:** `qcut/apps/web/src/components/editor/media-panel/views/ai.tsx`
 **Read:** Lines 873-940 (current image upload JSX)
@@ -549,10 +547,11 @@ import { AIImageUploadSection } from "./ai-image-upload";
 
 **Result:** Lines 874-940 reduced to ~15 lines with new component
 
+**Cleanup:** Remove `fileInputRef`, `handleImageSelect`, and any `clearImage` helper now superseded by `FileUpload`'s internal remove button.
+
 ---
 
 #### Task 3.3: Implement validation logic (30 min)
-> **Review:** Aspect-ratio validation is async; load the images (for example, via `createImageBitmap` or `Image.decode`) before comparing or the check will run on width or height 0.
 
 **File:** `qcut/apps/web/src/components/editor/media-panel/views/ai.tsx`
 **Read:** Lines searching for "validation" or form submit handler
@@ -562,12 +561,11 @@ import { AIImageUploadSection } from "./ai-image-upload";
 - Add file size validation (8MB limit for Veo 3.1)
 
 **Create:** Helper function `validateFrameAspectRatio(file1, file2)` if needed
-**Action:** Add validation rules before generation starts
+**Action:** Add validation rules before generation starts (load images via `createImageBitmap`/`Image.decode` so width/height are available before comparing aspect ratios)
 
 ---
 
 #### Task 3.4: Update API calls to handle frame data (25 min)
-> **Review:** Double-check the Veo API contract (key names, multipart shape); sending `firstFrame` or `lastFrame` under the wrong field will 400 the request.
 
 **File:** `qcut/apps/web/src/components/editor/media-panel/views/ai.tsx`
 **Read:** Search for API call functions (likely around "fal.run" or generation logic)
@@ -576,22 +574,21 @@ import { AIImageUploadSection } from "./ai-image-upload";
 - Send firstFrame/lastFrame to API instead of single image
 - Handle FormData construction for dual frame upload
 
-**Reference:** Check Veo 3.1 API docs for frame upload format
-**Action:** Update payload construction for F2V models
+**Reference:** Check Veo 3.1 API docs for frame upload format (field names: e.g., `first_frame`, `last_frame`)
+**Action:** Update payload construction for F2V models and confirm multipart keys match the API spec
 
 ---
 
 #### Task 3.5: Test with Veo 3.1 models (30 min)
-> **Review:** Add a regression pass for switching between F2V and I2V models without reload; we've hit stale state bugs there before.
 
 **File:** Manual testing in development environment
 
 **Test Cases:**
-1. Select Veo 3.1 Fast Frame-to-Video → verify dual upload appears
-2. Upload only first frame → verify error or fallback behavior
-3. Upload both frames with matching aspect ratio → verify generation succeeds
-4. Upload frames with mismatched aspect ratio → verify validation error
-5. Switch to standard I2V model → verify UI switches to single upload
+1. Select Veo 3.1 Fast Frame-to-Video — verify dual upload appears
+2. Upload only first frame — verify error or fallback behavior
+3. Upload both frames with matching aspect ratio — verify generation succeeds
+4. Upload frames with mismatched aspect ratio — verify validation error
+5. Switch between F2V and I2V models multiple times without reload — verify state resets and UI switches correctly
 
 **Action:** End-to-end testing of feature workflow
 
@@ -600,7 +597,6 @@ import { AIImageUploadSection } from "./ai-image-upload";
 ### Phase 4: Polish & Documentation (45-60 minutes)
 
 #### Task 4.1: Update history panel to display frames (20 min)
-> **Review:** Verify the history API actually returns first or last frame URLs; otherwise render a fallback so the panel does not flash broken thumbnails.
 
 **File:** `qcut/apps/web/src/components/editor/media-panel/views/ai-history-panel.tsx`
 **Read:** Entire file (understand current history display logic)
@@ -609,12 +605,11 @@ import { AIImageUploadSection } from "./ai-image-upload";
 - Show thumbnail for lastFrame if available (with label)
 - Add visual indicator for F2V generations vs I2V
 
-**Action:** Enhance history UI to distinguish frame-based generations
+**Action:** Enhance history UI to distinguish frame-based generations and provide a placeholder when frame URLs are missing
 
 ---
 
 #### Task 4.2: Add error handling for edge cases (15 min)
-> **Review:** Register the new strings in `ERROR_MESSAGES` (and any i18n tables) and update spots that exhaustively switch on the error enum.
 
 **File:** `qcut/apps/web/src/components/editor/media-panel/views/ai.tsx`
 **Read:** Error handling section and error state management
@@ -624,8 +619,8 @@ import { AIImageUploadSection } from "./ai-image-upload";
 - "Frame file size exceeds 8MB limit"
 - "Invalid frame format (must be PNG, JPEG, WebP, AVIF, HEIF)"
 
-**Reference:** `ai-constants.ts` lines 719-791 (ERROR_MESSAGES)
-**Action:** Add new error constants and handling logic
+**Reference:** `ai-constants.ts` lines 719-791 (ERROR_MESSAGES) + any i18n/enum switch statements
+**Action:** Add new error constants, wire them into the error enum/i18n tables, and display the strings in the UI
 
 ---
 

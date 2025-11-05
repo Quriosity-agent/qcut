@@ -882,6 +882,28 @@ export const MODEL_HELPERS = {
   getModelDisplayName: (model: AIModel): string => {
     return `${model.name} ($${model.price})`;
   },
+
+  /**
+   * Check if model requires first + last frame inputs
+   * Used to determine if F2V upload UI should be shown
+   * @param modelId - Model ID to check
+   * @returns true if model supports frame-to-frame animation
+   */
+  requiresFrameToFrame: (modelId: string): boolean => {
+    const model = AI_MODELS.find(m => m.id === modelId);
+    return model?.requiredInputs?.includes('firstFrame') ?? false;
+  },
+
+  /**
+   * Get required inputs for a model
+   * Centralizes input requirements for maintainability
+   * @param modelId - Model ID to check
+   * @returns Array of required input keys (e.g., ['firstFrame', 'lastFrame'])
+   */
+  getRequiredInputs: (modelId: string): string[] => {
+    const model = AI_MODELS.find(m => m.id === modelId);
+    return model?.requiredInputs || [];
+  },
 } as const;
 
 // ============================================
