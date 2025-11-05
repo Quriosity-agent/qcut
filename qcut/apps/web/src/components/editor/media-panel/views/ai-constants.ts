@@ -163,128 +163,43 @@ export const AI_MODELS: AIModel[] = [
       auto_fix: true,
     },
   },
+  // Sora 2 Image-to-Video Models
   {
-    id: "hailuo23_standard",
-    name: "Hailuo 2.3 Standard",
-    description: "Budget-friendly image-to-video with 768p quality",
-    price: "0.28-0.56", // 6s: $0.28, 10s: $0.56
-    resolution: "768p",
-    max_duration: 10,
-    category: "image",
-    endpoints: {
-      image_to_video: "fal-ai/minimax/hailuo-2.3/standard/image-to-video",
-    },
-    default_params: {
-      duration: 6,
-      resolution: "768p",
-      prompt_optimizer: true,
-    },
-  },
-  {
-    id: "hailuo23_fast_pro",
-    name: "Hailuo 2.3 Fast Pro",
-    description: "Balanced 1080p image-to-video with faster generation",
-    price: "0.33",
-    resolution: "1080p",
-    max_duration: 10,
-    category: "image",
-    endpoints: {
-      image_to_video: "fal-ai/minimax/hailuo-2.3-fast/pro/image-to-video",
-    },
-    default_params: {
-      duration: 6,
-      resolution: "1080p",
-      prompt_optimizer: true,
-    },
-  },
-  {
-    id: "hailuo23_pro",
-    name: "Hailuo 2.3 Pro",
-    description: "Premium 1080p image-to-video with highest fidelity",
-    price: "0.49",
-    resolution: "1080p",
-    max_duration: 10,
-    category: "image",
-    endpoints: {
-      image_to_video: "fal-ai/minimax/hailuo-2.3/pro/image-to-video",
-    },
-    default_params: {
-      duration: 6,
-      resolution: "1080p",
-      prompt_optimizer: true,
-    },
-  },
-  // Hailuo 2.3 Text-to-Video Models
-  {
-    id: "hailuo23_standard_t2v",
-    name: "Hailuo 2.3 Standard T2V",
-    description: "Budget-friendly text-to-video with 768p quality",
-    price: "0.28-0.56", // 6s: $0.28, 10s: $0.56
-    resolution: "768p",
-    max_duration: 10,
-    category: "text",
-    endpoints: {
-      text_to_video: "fal-ai/minimax/hailuo-2.3/standard/text-to-video",
-    },
-    default_params: {
-      duration: 6,
-      resolution: "768p",
-      prompt_optimizer: true,
-    },
-  },
-  {
-    id: "hailuo23_pro_t2v",
-    name: "Hailuo 2.3 Pro T2V",
-    description:
-      "Premium 1080p text-to-video with cinematic camera control (use [Pan left], [Zoom in] in prompts)",
-    price: "0.49",
-    resolution: "1080p",
-    max_duration: 10,
-    category: "text",
-    endpoints: {
-      text_to_video: "fal-ai/minimax/hailuo-2.3/pro/text-to-video",
-    },
-    default_params: {
-      duration: 6,
-      resolution: "1080p",
-      prompt_optimizer: true,
-    },
-  },
-  {
-    id: "seedance",
-    name: "Seedance v1 Lite",
-    description: "Fast and efficient text-to-video generation",
-    price: "0.18",
+    id: "sora2_image_to_video",
+    name: "Sora 2 Image-to-Video",
+    description: "Convert images to dynamic videos with Sora 2 (720p)",
+    price: "0.10/s", // $0.10 per second (4s = $0.40, 8s = $0.80, 12s = $1.20)
     resolution: "720p",
-    max_duration: 10,
-    category: "text",
-    endpoints: {
-      text_to_video: "fal-ai/bytedance/seedance/v1/lite/text-to-video",
-    },
-    default_params: {
-      duration: 5,
-      resolution: "720p",
-    },
-  },
-  // Vidu Q2 Image-to-Video Turbo
-  {
-    id: "vidu_q2_turbo_i2v",
-    name: "Vidu Q2 Turbo I2V",
-    description: "High-quality image-to-video with motion control (2-8s)",
-    price: "0.05", // $0.05/second for 720p
-    resolution: "720p",
-    max_duration: 8,
+    max_duration: 12,
     category: "image",
     endpoints: {
-      image_to_video: "fal-ai/vidu/q2/image-to-video/turbo",
+      image_to_video: "fal-ai/sora-2/image-to-video",
     },
     default_params: {
       duration: 4,
-      resolution: "720p",
-      movement_amplitude: "auto",
+      resolution: "auto",
+      aspect_ratio: "auto", // Auto-detect from image
     },
   },
-  // LTX Video 2.0 Standard Image-to-Video
+  {
+    id: "sora2_image_to_video_pro",
+    name: "Sora 2 Image-to-Video Pro",
+    description: "High-quality image-to-video with 1080p support",
+    price: "0.30-0.50", // 720p: $0.30/4s ($0.075/s), 1080p: $0.50/4s ($0.125/s)
+    resolution: "720p / 1080p",
+    supportedResolutions: ["720p", "1080p"], // For programmatic filtering
+    max_duration: 12,
+    category: "image",
+    endpoints: {
+      image_to_video: "fal-ai/sora-2/image-to-video/pro",
+    },
+    default_params: {
+      duration: 4,
+      resolution: "auto",
+      aspect_ratio: "auto",
+    },
+  },
+  // LTX Video 2.0 Image-to-Video Models
   {
     id: "ltxv2_i2v",
     name: "LTX Video 2.0 I2V",
@@ -306,7 +221,6 @@ export const AI_MODELS: AIModel[] = [
     supportedResolutions: ["1080p", "1440p", "2160p"],
     supportedDurations: [6, 8, 10],
   },
-  // LTX Video 2.0 Fast Image-to-Video
   {
     id: "ltxv2_fast_i2v",
     name: "LTX Video 2.0 Fast I2V",
@@ -328,6 +242,7 @@ export const AI_MODELS: AIModel[] = [
     supportedResolutions: ["1080p", "1440p", "2160p"],
     supportedDurations: [6, 8, 10, 12, 14, 16, 18, 20],
   },
+  // Veo 3.1 Image-to-Video Models
   {
     id: "veo31_fast_image_to_video",
     name: "Veo 3.1 Fast Image-to-Video",
@@ -410,6 +325,128 @@ export const AI_MODELS: AIModel[] = [
       generate_audio: true,
     },
   },
+  // Hailuo 2.3 Image-to-Video Models
+  {
+    id: "hailuo23_standard",
+    name: "Hailuo 2.3 Standard",
+    description: "Budget-friendly image-to-video with 768p quality",
+    price: "0.28-0.56", // 6s: $0.28, 10s: $0.56
+    resolution: "768p",
+    max_duration: 10,
+    category: "image",
+    endpoints: {
+      image_to_video: "fal-ai/minimax/hailuo-2.3/standard/image-to-video",
+    },
+    default_params: {
+      duration: 6,
+      resolution: "768p",
+      prompt_optimizer: true,
+    },
+  },
+  {
+    id: "hailuo23_fast_pro",
+    name: "Hailuo 2.3 Fast Pro",
+    description: "Balanced 1080p image-to-video with faster generation",
+    price: "0.33",
+    resolution: "1080p",
+    max_duration: 10,
+    category: "image",
+    endpoints: {
+      image_to_video: "fal-ai/minimax/hailuo-2.3-fast/pro/image-to-video",
+    },
+    default_params: {
+      duration: 6,
+      resolution: "1080p",
+      prompt_optimizer: true,
+    },
+  },
+  {
+    id: "hailuo23_pro",
+    name: "Hailuo 2.3 Pro",
+    description: "Premium 1080p image-to-video with highest fidelity",
+    price: "0.49",
+    resolution: "1080p",
+    max_duration: 10,
+    category: "image",
+    endpoints: {
+      image_to_video: "fal-ai/minimax/hailuo-2.3/pro/image-to-video",
+    },
+    default_params: {
+      duration: 6,
+      resolution: "1080p",
+      prompt_optimizer: true,
+    },
+  },
+  // Vidu Q2 Image-to-Video
+  {
+    id: "vidu_q2_turbo_i2v",
+    name: "Vidu Q2 Turbo I2V",
+    description: "High-quality image-to-video with motion control (2-8s)",
+    price: "0.05", // $0.05/second for 720p
+    resolution: "720p",
+    max_duration: 8,
+    category: "image",
+    endpoints: {
+      image_to_video: "fal-ai/vidu/q2/image-to-video/turbo",
+    },
+    default_params: {
+      duration: 4,
+      resolution: "720p",
+      movement_amplitude: "auto",
+    },
+  },
+  // Hailuo 2.3 Text-to-Video Models
+  {
+    id: "hailuo23_standard_t2v",
+    name: "Hailuo 2.3 Standard T2V",
+    description: "Budget-friendly text-to-video with 768p quality",
+    price: "0.28-0.56", // 6s: $0.28, 10s: $0.56
+    resolution: "768p",
+    max_duration: 10,
+    category: "text",
+    endpoints: {
+      text_to_video: "fal-ai/minimax/hailuo-2.3/standard/text-to-video",
+    },
+    default_params: {
+      duration: 6,
+      resolution: "768p",
+      prompt_optimizer: true,
+    },
+  },
+  {
+    id: "hailuo23_pro_t2v",
+    name: "Hailuo 2.3 Pro T2V",
+    description:
+      "Premium 1080p text-to-video with cinematic camera control (use [Pan left], [Zoom in] in prompts)",
+    price: "0.49",
+    resolution: "1080p",
+    max_duration: 10,
+    category: "text",
+    endpoints: {
+      text_to_video: "fal-ai/minimax/hailuo-2.3/pro/text-to-video",
+    },
+    default_params: {
+      duration: 6,
+      resolution: "1080p",
+      prompt_optimizer: true,
+    },
+  },
+  {
+    id: "seedance",
+    name: "Seedance v1 Lite",
+    description: "Fast and efficient text-to-video generation",
+    price: "0.18",
+    resolution: "720p",
+    max_duration: 10,
+    category: "text",
+    endpoints: {
+      text_to_video: "fal-ai/bytedance/seedance/v1/lite/text-to-video",
+    },
+    default_params: {
+      duration: 5,
+      resolution: "720p",
+    },
+  },
   {
     id: "seedance_pro",
     name: "Seedance v1 Pro",
@@ -423,6 +460,26 @@ export const AI_MODELS: AIModel[] = [
     default_params: {
       duration: 5,
       resolution: "1080p",
+    },
+  },
+  {
+    id: "kling_v2_5_turbo",
+    name: "Kling v2.5 Turbo Pro",
+    description: "Latest Kling model with enhanced turbo performance",
+    price: "0.18",
+    resolution: "1080p",
+    max_duration: 10,
+    category: "text",
+    endpoints: {
+      text_to_video: "fal-ai/kling-video/v2.5-turbo/pro/text-to-video",
+      image_to_video: "fal-ai/kling-video/v2.5-turbo/pro/image-to-video",
+    },
+    default_params: {
+      duration: 5,
+      resolution: "1080p",
+      cfg_scale: 0.5,
+      aspect_ratio: "16:9",
+      enhance_prompt: true,
     },
   },
   {
@@ -468,25 +525,6 @@ export const AI_MODELS: AIModel[] = [
     default_params: {
       duration: 5,
       resolution: "720p",
-    },
-  },
-  {
-    id: "kling_v2_5_turbo",
-    name: "Kling v2.5 Turbo Pro",
-    description: "Latest Kling model with enhanced turbo performance",
-    price: "0.18",
-    resolution: "1080p",
-    max_duration: 10,
-    endpoints: {
-      text_to_video: "fal-ai/kling-video/v2.5-turbo/pro/text-to-video",
-      image_to_video: "fal-ai/kling-video/v2.5-turbo/pro/image-to-video",
-    },
-    default_params: {
-      duration: 5,
-      resolution: "1080p",
-      cfg_scale: 0.5,
-      aspect_ratio: "16:9",
-      enhance_prompt: true,
     },
   },
 
@@ -554,42 +592,6 @@ export const AI_MODELS: AIModel[] = [
     },
     default_params: {
       resolution: "1080p",
-    },
-  },
-
-  {
-    id: "sora2_image_to_video",
-    name: "Sora 2 Image-to-Video",
-    description: "Convert images to dynamic videos with Sora 2 (720p)",
-    price: "0.10/s", // $0.10 per second (4s = $0.40, 8s = $0.80, 12s = $1.20)
-    resolution: "720p",
-    max_duration: 12,
-    category: "image",
-    endpoints: {
-      image_to_video: "fal-ai/sora-2/image-to-video",
-    },
-    default_params: {
-      duration: 4,
-      resolution: "auto",
-      aspect_ratio: "auto", // Auto-detect from image
-    },
-  },
-  {
-    id: "sora2_image_to_video_pro",
-    name: "Sora 2 Image-to-Video Pro",
-    description: "High-quality image-to-video with 1080p support",
-    price: "0.30-0.50", // 720p: $0.30/4s ($0.075/s), 1080p: $0.50/4s ($0.125/s)
-    resolution: "720p / 1080p",
-    supportedResolutions: ["720p", "1080p"], // For programmatic filtering
-    max_duration: 12,
-    category: "image",
-    endpoints: {
-      image_to_video: "fal-ai/sora-2/image-to-video/pro",
-    },
-    default_params: {
-      duration: 4,
-      resolution: "auto",
-      aspect_ratio: "auto",
     },
   },
   {
