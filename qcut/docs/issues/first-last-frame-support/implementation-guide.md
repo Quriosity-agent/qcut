@@ -625,7 +625,6 @@ import { AIImageUploadSection } from "./ai-image-upload";
 ---
 
 #### Task 4.3: Write user-facing documentation (10 min)
-> **Review:** Sync terminology with product (they call it 'Frame Pair') and surface the 8MB limit here so support has a single source of truth.
 
 **File:** `qcut/docs/features/first-last-frame-support.md` (NEW)
 **Create:** User guide with:
@@ -635,12 +634,11 @@ import { AIImageUploadSection } from "./ai-image-upload";
 - Tips for best results
 - Troubleshooting common issues
 
-**Action:** Write clear, non-technical documentation for end users
+**Action:** Write clear, non-technical documentation for end users (use product term "Frame Pair" and reiterate the 8MB per-frame limit)
 
 ---
 
 #### Task 4.4: Create migration guide for developers (15 min)
-> **Review:** Call out that folks need to regenerate Vitest snapshots or tests after adopting the new helpers; CI will fail otherwise.
 
 **File:** `qcut/docs/development/migrations/frame-to-video-support.md` (NEW)
 **Create:** Developer guide with:
@@ -650,7 +648,7 @@ import { AIImageUploadSection } from "./ai-image-upload";
 - Backward compatibility notes
 - How to add future F2V models
 
-**Action:** Document architectural changes for future maintainers
+**Action:** Document architectural changes for future maintainers, including a reminder to re-run Vitest (and regenerate snapshots) after adopting the new helpers
 
 ---
 

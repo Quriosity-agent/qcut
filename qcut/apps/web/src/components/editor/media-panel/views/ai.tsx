@@ -34,6 +34,7 @@ import { useProjectStore } from "@/stores/project-store";
 import { usePanelStore } from "@/stores/panel-store";
 import { useMediaPanelStore } from "../store";
 import { AIHistoryPanel } from "./ai-history-panel";
+import { AIImageUploadSection } from "./ai-image-upload";
 import { debugLogger } from "@/lib/debug-logger";
 
 // Import extracted hooks and types
@@ -93,8 +94,14 @@ export function AiView() {
   const [selectedModels, setSelectedModels] = useState<string[]>([]);
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+
+  // Frame-to-Video state variables
+  const [firstFrame, setFirstFrame] = useState<File | null>(null);
+  const [firstFramePreview, setFirstFramePreview] = useState<string | null>(null);
+  const [lastFrame, setLastFrame] = useState<File | null>(null);
+  const [lastFramePreview, setLastFramePreview] = useState<string | null>(null);
+
   const [error, setError] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Avatar-specific state variables
   const [avatarImage, setAvatarImage] = useState<File | null>(null);
@@ -276,17 +283,6 @@ const isExtendedLTXV2FastImageDuration =
 const isExtendedLTXV2FastTextDuration =
   ltxv2FastDuration > LTXV2_FAST_CONFIG.EXTENDED_DURATION_THRESHOLD;
 
-  // Track active FileReader for cleanup
-  const fileReaderRef = useRef<FileReader | null>(null);
-
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      if (fileReaderRef.current) {
-        fileReaderRef.current.abort();
-      }
-    };
-  }, []);
 
   // Reset Reve state when model is deselected
   useEffect(() => {
@@ -421,63 +417,22 @@ useEffect(() => {
   ltxv2ImageFPS,
 ]);
 
-  // Image handling
-  const handleImageSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    // Validate file type
-    if (
-      !(UPLOAD_CONSTANTS.ALLOWED_IMAGE_TYPES as readonly string[]).includes(
-        file.type
-      )
-    ) {
-      setError(ERROR_MESSAGES.INVALID_FILE_TYPE);
-      return;
+  // Sync firstFrame with selectedImage for backward compatibility
+  useEffect(() => {
+    if (firstFrame && !lastFrame) {
+      // Single image mode - maintain backward compatibility with I2V code
+      setSelectedImage(firstFrame);
+      setImagePreview(firstFramePreview);
+    } else if (firstFrame && lastFrame) {
+      // F2V mode - clear selectedImage to avoid confusion
+      setSelectedImage(null);
+      setImagePreview(null);
+    } else {
+      // Frames cleared - ensure legacy state is also cleared
+      setSelectedImage(null);
+      setImagePreview(null);
     }
-
-    // Validate file size
-    if (file.size > UPLOAD_CONSTANTS.MAX_IMAGE_SIZE_BYTES) {
-      setError(ERROR_MESSAGES.FILE_TOO_LARGE);
-      return;
-    }
-
-    setSelectedImage(file);
-    setError(null);
-
-    // Abort any previous reader
-    if (fileReaderRef.current) {
-      fileReaderRef.current.abort();
-    }
-
-    // Create preview with cleanup
-    const reader = new FileReader();
-    fileReaderRef.current = reader;
-
-    reader.onload = (e) => {
-      // Only update if this reader is still current
-      if (fileReaderRef.current === reader) {
-        setImagePreview(e.target?.result as string);
-      }
-    };
-
-    reader.readAsDataURL(file);
-
-    debugLogger.log("AiView", "IMAGE_SELECTED", {
-      fileName: file.name,
-      fileSize: file.size,
-      fileType: file.type,
-    });
-  };
-
-  // Clear image selection
-  const clearImage = () => {
-    setSelectedImage(null);
-    setImagePreview(null);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
-    }
-  };
+  }, [firstFrame, lastFrame, firstFramePreview]);
 
   // Reset generation state
   const resetGenerationState = () => {
@@ -871,250 +826,30 @@ useEffect(() => {
             </TabsContent>
 
             <TabsContent value="image" className="space-y-4">
-              {/* Image upload */}
-              <div className="space-y-2">
-                <Label className="text-xs">
-                  {!isCompact && "Upload "}Image
-                  {!isCompact && " for Video Generation"}
-                </Label>
-
-                <label
-                  htmlFor="ai-image-input"
-                  className={`block border-2 border-dashed rounded-lg cursor-pointer transition-colors min-h-[120px] focus-within:outline-none focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2 ${
-                    selectedImage
-                      ? "border-primary/50 bg-primary/5 p-2"
-                      : "border-muted-foreground/25 hover:border-muted-foreground/50 p-4"
-                  }`}
-                  aria-label={
-                    selectedImage
-                      ? "Change selected image"
-                      : "Click to upload an image"
+              {/* Image upload - supports both I2V and F2V modes */}
+              <AIImageUploadSection
+                selectedModels={selectedModels}
+                firstFrame={firstFrame}
+                firstFramePreview={firstFramePreview}
+                lastFrame={lastFrame}
+                lastFramePreview={lastFramePreview}
+                onFirstFrameChange={(file, preview) => {
+                  setFirstFrame(file);
+                  setFirstFramePreview(preview || null);
+                  if (generation.setFirstFrame) {
+                    generation.setFirstFrame(file);
                   }
-                >
-                  {selectedImage && imagePreview ? (
-                    <div className="relative flex flex-col items-center justify-center h-full">
-                      <img
-                        src={imagePreview}
-                        alt={selectedImage?.name ?? "File preview"}
-                        className="max-w-full max-h-32 mx-auto rounded object-contain"
-                      />
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="destructive"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          clearImage();
-                        }}
-                        className="absolute top-1 right-1 h-6 w-6 p-0 flex items-center justify-center bg-red-500 hover:bg-red-600 text-white rounded-full shadow-sm"
-                      >
-                        <X className="h-3 w-3" />
-                      </Button>
-                      <div className="mt-2 text-xs text-muted-foreground text-center">
-                        {selectedImage.name}
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="flex flex-col items-center justify-center h-full space-y-2 text-center">
-                      <Upload className="size-8 text-muted-foreground" />
-                      <div className="text-xs text-muted-foreground">
-                        Click to upload an image
-                      </div>
-                      <div className="text-xs text-muted-foreground/70">
-                        JPG, PNG, WebP, GIF (max 10MB)
-                      </div>
-                    </div>
-                  )}
-                  <input
-                    ref={fileInputRef}
-                    id="ai-image-input"
-                    type="file"
-                    accept={UPLOAD_CONSTANTS.SUPPORTED_FORMATS.join(",")}
-                    onChange={handleImageSelect}
-                    className="sr-only"
-                    aria-describedby="ai-image-help"
-                  />
-                </label>
-                <p id="ai-image-help" className="sr-only">
-                  JPG, PNG, WebP, GIF (max 10MB)
-                </p>
-
-                {/* Veo 3.1 Frame Upload - Only shows when frame-to-video models selected */}
-                {generation.hasVeo31FrameToVideo && (
-                  <div className="space-y-3 p-3 bg-muted/30 rounded-md border border-muted">
-                    <Label className="text-xs font-medium">
-                      Frame-to-Video Frames
-                    </Label>
-
-                    {/* First Frame Upload */}
-                    <div className="space-y-2">
-                      <Label className="text-xs">First Frame (Required)</Label>
-                      <label
-                        htmlFor="first-frame-input"
-                        className={`block border-2 border-dashed rounded-lg cursor-pointer transition-colors min-h-[100px] focus-within:outline-none focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2 ${
-                          firstFrame
-                            ? "border-primary/50 bg-primary/5 p-2"
-                            : "border-muted-foreground/25 hover:border-muted-foreground/50 p-3"
-                        }`}
-                        aria-label={
-                          firstFrame
-                            ? "Change first frame"
-                            : "Upload first frame"
-                        }
-                      >
-                        {firstFrame && firstFramePreview ? (
-                          <div className="relative flex flex-col items-center justify-center h-full">
-                            <img
-                              src={firstFramePreview}
-                              alt={firstFrame.name}
-                              className="max-w-full max-h-20 mx-auto rounded object-contain"
-                            />
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant="destructive"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setFirstFrame(null);
-                                setFirstFramePreview(null);
-                                generation.setFirstFrame(null);
-                              }}
-                              className="absolute top-1 right-1 h-6 w-6 p-0 flex items-center justify-center bg-red-500 hover:bg-red-600 text-white rounded-full shadow-sm"
-                            >
-                              <X className="h-3 w-3" />
-                            </Button>
-                            <div className="mt-1 text-xs text-muted-foreground text-center">
-                              {firstFrame.name}
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="flex flex-col items-center justify-center h-full space-y-1 text-center">
-                            <Upload className="size-6 text-muted-foreground" />
-                            <div className="text-xs text-muted-foreground">
-                              Upload first frame
-                            </div>
-                            <div className="text-xs text-muted-foreground/70">
-                              JPG, PNG (max 8MB)
-                            </div>
-                          </div>
-                        )}
-                        <input
-                          id="first-frame-input"
-                          type="file"
-                          accept="image/jpeg,image/png"
-                          onChange={(e) => {
-                            const file = e.target.files?.[0];
-                            if (!file) return;
-
-                            // Validate file size (8MB for Veo 3.1)
-                            if (
-                              file.size >
-                              UPLOAD_CONSTANTS.MAX_VEO31_FRAME_SIZE_BYTES
-                            ) {
-                              setError(ERROR_MESSAGES.VEO31_IMAGE_TOO_LARGE);
-                              return;
-                            }
-
-                            setFirstFrame(file);
-                            generation.setFirstFrame(file);
-                            setError(null);
-
-                            // Create preview
-                            const reader = new FileReader();
-                            reader.onload = (e) => {
-                              setFirstFramePreview(e.target?.result as string);
-                            };
-                            reader.readAsDataURL(file);
-                          }}
-                          className="sr-only"
-                        />
-                      </label>
-                    </div>
-
-                    {/* Last Frame Upload */}
-                    <div className="space-y-2">
-                      <Label className="text-xs">Last Frame (Required)</Label>
-                      <label
-                        htmlFor="last-frame-input"
-                        className={`block border-2 border-dashed rounded-lg cursor-pointer transition-colors min-h-[100px] focus-within:outline-none focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2 ${
-                          lastFrame
-                            ? "border-primary/50 bg-primary/5 p-2"
-                            : "border-muted-foreground/25 hover:border-muted-foreground/50 p-3"
-                        }`}
-                        aria-label={
-                          lastFrame ? "Change last frame" : "Upload last frame"
-                        }
-                      >
-                        {lastFrame && lastFramePreview ? (
-                          <div className="relative flex flex-col items-center justify-center h-full">
-                            <img
-                              src={lastFramePreview}
-                              alt={lastFrame.name}
-                              className="max-w-full max-h-20 mx-auto rounded object-contain"
-                            />
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant="destructive"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setLastFrame(null);
-                                setLastFramePreview(null);
-                                generation.setLastFrame(null);
-                              }}
-                              className="absolute top-1 right-1 h-6 w-6 p-0 flex items-center justify-center bg-red-500 hover:bg-red-600 text-white rounded-full shadow-sm"
-                            >
-                              <X className="h-3 w-3" />
-                            </Button>
-                            <div className="mt-1 text-xs text-muted-foreground text-center">
-                              {lastFrame.name}
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="flex flex-col items-center justify-center h-full space-y-1 text-center">
-                            <Upload className="size-6 text-muted-foreground" />
-                            <div className="text-xs text-muted-foreground">
-                              Upload last frame
-                            </div>
-                            <div className="text-xs text-muted-foreground/70">
-                              JPG, PNG (max 8MB)
-                            </div>
-                          </div>
-                        )}
-                        <input
-                          id="last-frame-input"
-                          type="file"
-                          accept="image/jpeg,image/png"
-                          onChange={(e) => {
-                            const file = e.target.files?.[0];
-                            if (!file) return;
-
-                            // Validate file size (8MB for Veo 3.1)
-                            if (
-                              file.size >
-                              UPLOAD_CONSTANTS.MAX_VEO31_FRAME_SIZE_BYTES
-                            ) {
-                              setError(ERROR_MESSAGES.VEO31_IMAGE_TOO_LARGE);
-                              return;
-                            }
-
-                            setLastFrame(file);
-                            generation.setLastFrame(file);
-                            setError(null);
-
-                            // Create preview
-                            const reader = new FileReader();
-                            reader.onload = (e) => {
-                              setLastFramePreview(e.target?.result as string);
-                            };
-                            reader.readAsDataURL(file);
-                          }}
-                          className="sr-only"
-                        />
-                      </label>
-                    </div>
-                  </div>
-                )}
+                }}
+                onLastFrameChange={(file, preview) => {
+                  setLastFrame(file);
+                  setLastFramePreview(preview || null);
+                  if (generation.setLastFrame) {
+                    generation.setLastFrame(file);
+                  }
+                }}
+                onError={setError}
+                isCompact={isCompact}
+              />
 
                 {/* Prompt for image-to-video */}
                 <div className="space-y-2">
