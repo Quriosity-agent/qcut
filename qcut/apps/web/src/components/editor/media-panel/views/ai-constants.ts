@@ -75,20 +75,48 @@ export const AI_MODELS: AIModel[] = [
       style_preset: "cinematic",
     },
   },
+  // LTX Video 2.0 Pro Text-to-Video
   {
-    id: "seedance",
-    name: "Seedance v1 Lite",
-    description: "Fast and efficient text-to-video generation",
-    price: "0.18",
-    resolution: "720p",
+    id: "ltxv2_pro_t2v",
+    name: "LTX Video 2.0 Pro T2V",
+    description: "Text-to-video with audio generation (6-10s, up to 4K)",
+    price: "0.06", // $0.06/second for 1080p
+    resolution: "1080p",
     max_duration: 10,
+    category: "text",
     endpoints: {
-      text_to_video: "fal-ai/bytedance/seedance/v1/lite/text-to-video",
+      text_to_video: "fal-ai/ltxv-2/text-to-video",
     },
     default_params: {
-      duration: 5,
-      resolution: "720p",
+      duration: 6,
+      resolution: "1080p",
+      aspect_ratio: "16:9",
+      fps: 25,
+      generate_audio: true,
     },
+    supportedResolutions: ["1080p", "1440p", "2160p"],
+  },
+  // LTX Video 2.0 Fast Text-to-Video
+  {
+    id: "ltxv2_fast_t2v",
+    name: "LTX Video 2.0 Fast T2V",
+    description: "Text-to-video with audio generation (6-20s, up to 4K)",
+    price: "0.04-0.16", // $0.04/$0.08/$0.16 per second for 1080p/1440p/2160p
+    resolution: "1080p",
+    max_duration: 20,
+    category: "text",
+    endpoints: {
+      text_to_video: "fal-ai/ltxv-2/text-to-video/fast",
+    },
+    default_params: {
+      duration: 6,
+      resolution: "1080p",
+      aspect_ratio: "16:9",
+      fps: 25,
+      generate_audio: true,
+    },
+    supportedResolutions: ["1080p", "1440p", "2160p"],
+    supportedDurations: [6, 8, 10, 12, 14, 16, 18, 20],
   },
   {
     id: "hailuo23_standard",
@@ -177,6 +205,22 @@ export const AI_MODELS: AIModel[] = [
       prompt_optimizer: true,
     },
   },
+  {
+    id: "seedance",
+    name: "Seedance v1 Lite",
+    description: "Fast and efficient text-to-video generation",
+    price: "0.18",
+    resolution: "720p",
+    max_duration: 10,
+    category: "text",
+    endpoints: {
+      text_to_video: "fal-ai/bytedance/seedance/v1/lite/text-to-video",
+    },
+    default_params: {
+      duration: 5,
+      resolution: "720p",
+    },
+  },
   // Vidu Q2 Image-to-Video Turbo
   {
     id: "vidu_q2_turbo_i2v",
@@ -194,49 +238,6 @@ export const AI_MODELS: AIModel[] = [
       resolution: "720p",
       movement_amplitude: "auto",
     },
-  },
-  // LTX Video 2.0 Pro Text-to-Video
-  {
-    id: "ltxv2_pro_t2v",
-    name: "LTX Video 2.0 Pro T2V",
-    description: "Text-to-video with audio generation (6-10s, up to 4K)",
-    price: "0.06", // $0.06/second for 1080p
-    resolution: "1080p",
-    max_duration: 10,
-    category: "text",
-    endpoints: {
-      text_to_video: "fal-ai/ltxv-2/text-to-video",
-    },
-    default_params: {
-      duration: 6,
-      resolution: "1080p",
-      aspect_ratio: "16:9",
-      fps: 25,
-      generate_audio: true,
-    },
-    supportedResolutions: ["1080p", "1440p", "2160p"],
-  },
-  // LTX Video 2.0 Fast Text-to-Video
-  {
-    id: "ltxv2_fast_t2v",
-    name: "LTX Video 2.0 Fast T2V",
-    description: "Text-to-video with audio generation (6-20s, up to 4K)",
-    price: "0.04-0.16", // $0.04/$0.08/$0.16 per second for 1080p/1440p/2160p
-    resolution: "1080p",
-    max_duration: 20,
-    category: "text",
-    endpoints: {
-      text_to_video: "fal-ai/ltxv-2/text-to-video/fast",
-    },
-    default_params: {
-      duration: 6,
-      resolution: "1080p",
-      aspect_ratio: "16:9",
-      fps: 25,
-      generate_audio: true,
-    },
-    supportedResolutions: ["1080p", "1440p", "2160p"],
-    supportedDurations: [6, 8, 10, 12, 14, 16, 18, 20],
   },
   // LTX Video 2.0 Standard Image-to-Video
   {
