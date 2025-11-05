@@ -118,6 +118,51 @@ export const AI_MODELS: AIModel[] = [
     supportedResolutions: ["1080p", "1440p", "2160p"],
     supportedDurations: [6, 8, 10, 12, 14, 16, 18, 20],
   },
+  // Veo 3.1 Models - Fast and Standard Text-to-Video
+  {
+    id: "veo31_fast_text_to_video",
+    name: "Veo 3.1 Fast Text-to-Video",
+    description:
+      "Google's Veo 3.1 Fast - Generate videos from text prompts (faster, budget-friendly)",
+    price: "1.20", // 8s @ $0.15/s with audio (default)
+    resolution: "720p / 1080p",
+    supportedResolutions: ["720p", "1080p"],
+    max_duration: 8, // 4s, 6s, or 8s
+    category: "text",
+    endpoints: {
+      text_to_video: "fal-ai/veo3.1/fast",
+    },
+    default_params: {
+      duration: 8, // Numeric to match existing pattern (Sora 2, etc.)
+      resolution: "720p",
+      aspect_ratio: "16:9",
+      generate_audio: true,
+      enhance_prompt: true,
+      auto_fix: true,
+    },
+  },
+  {
+    id: "veo31_text_to_video",
+    name: "Veo 3.1 Text-to-Video",
+    description:
+      "Google's Veo 3.1 - Premium quality video generation from text prompts",
+    price: "3.20", // 8s @ $0.40/s with audio (default)
+    resolution: "720p / 1080p",
+    supportedResolutions: ["720p", "1080p"],
+    max_duration: 8, // 4s, 6s, or 8s
+    category: "text",
+    endpoints: {
+      text_to_video: "fal-ai/veo3.1", // No /fast suffix
+    },
+    default_params: {
+      duration: 8, // Numeric to match existing pattern
+      resolution: "720p",
+      aspect_ratio: "16:9",
+      generate_audio: true,
+      enhance_prompt: true,
+      auto_fix: true,
+    },
+  },
   {
     id: "hailuo23_standard",
     name: "Hailuo 2.3 Standard",
@@ -282,6 +327,88 @@ export const AI_MODELS: AIModel[] = [
     },
     supportedResolutions: ["1080p", "1440p", "2160p"],
     supportedDurations: [6, 8, 10, 12, 14, 16, 18, 20],
+  },
+  {
+    id: "veo31_fast_image_to_video",
+    name: "Veo 3.1 Fast Image-to-Video",
+    description:
+      "Google's Veo 3.1 Fast - Animate static images with motion (faster, budget-friendly)",
+    price: "1.20", // 8s @ $0.15/s with audio (default)
+    resolution: "720p / 1080p",
+    supportedResolutions: ["720p", "1080p"],
+    max_duration: 8, // Currently only 8s supported
+    category: "image",
+    endpoints: {
+      image_to_video: "fal-ai/veo3.1/fast/image-to-video",
+    },
+    default_params: {
+      duration: 8, // Numeric to match existing pattern
+      resolution: "720p",
+      aspect_ratio: "16:9",
+      generate_audio: true,
+    },
+  },
+  {
+    id: "veo31_fast_frame_to_video",
+    name: "Veo 3.1 Fast Frame-to-Video",
+    description:
+      "Google's Veo 3.1 Fast - Animate between first and last frames (faster, budget-friendly)",
+    price: "1.20", // 8s @ $0.15/s with audio (default)
+    resolution: "720p / 1080p",
+    supportedResolutions: ["720p", "1080p"],
+    max_duration: 8, // Currently only 8s supported
+    category: "image", // Uses image tab (requires frame uploads)
+    requiredInputs: ["firstFrame", "lastFrame"],
+    endpoints: {
+      image_to_video: "fal-ai/veo3.1/fast/first-last-frame-to-video",
+    },
+    default_params: {
+      duration: 8, // Numeric to match existing pattern
+      resolution: "720p",
+      aspect_ratio: "auto",
+      generate_audio: true,
+    },
+  },
+  {
+    id: "veo31_image_to_video",
+    name: "Veo 3.1 Image-to-Video",
+    description:
+      "Google's Veo 3.1 - Premium quality image animation with motion",
+    price: "3.20", // 8s @ $0.40/s with audio (default)
+    resolution: "720p / 1080p",
+    supportedResolutions: ["720p", "1080p"],
+    max_duration: 8, // Currently only 8s supported
+    category: "image",
+    endpoints: {
+      image_to_video: "fal-ai/veo3.1/image-to-video", // No /fast
+    },
+    default_params: {
+      duration: 8, // Numeric to match existing pattern
+      resolution: "720p",
+      aspect_ratio: "16:9",
+      generate_audio: true,
+    },
+  },
+  {
+    id: "veo31_frame_to_video",
+    name: "Veo 3.1 Frame-to-Video",
+    description:
+      "Google's Veo 3.1 - Premium quality animation between first and last frames",
+    price: "3.20", // 8s @ $0.40/s with audio (default)
+    resolution: "720p / 1080p",
+    supportedResolutions: ["720p", "1080p"],
+    max_duration: 8, // Currently only 8s supported
+    category: "image", // Uses image tab (requires frame uploads)
+    requiredInputs: ["firstFrame", "lastFrame"],
+    endpoints: {
+      image_to_video: "fal-ai/veo3.1/first-last-frame-to-video", // No /fast
+    },
+    default_params: {
+      duration: 8, // Numeric to match existing pattern
+      resolution: "720p",
+      aspect_ratio: "16:9",
+      generate_audio: true,
+    },
   },
   {
     id: "seedance_pro",
@@ -480,136 +607,6 @@ export const AI_MODELS: AIModel[] = [
     },
     default_params: {
       // No duration/resolution - inherited from source video
-    },
-  },
-
-  // Veo 3.1 Models - Fast Variants (50% cheaper, faster processing)
-  {
-    id: "veo31_fast_text_to_video",
-    name: "Veo 3.1 Fast Text-to-Video",
-    description:
-      "Google's Veo 3.1 Fast - Generate videos from text prompts (faster, budget-friendly)",
-    price: "1.20", // 8s @ $0.15/s with audio (default)
-    resolution: "720p / 1080p",
-    supportedResolutions: ["720p", "1080p"],
-    max_duration: 8, // 4s, 6s, or 8s
-    category: "text",
-    endpoints: {
-      text_to_video: "fal-ai/veo3.1/fast",
-    },
-    default_params: {
-      duration: 8, // Numeric to match existing pattern (Sora 2, etc.)
-      resolution: "720p",
-      aspect_ratio: "16:9",
-      generate_audio: true,
-      enhance_prompt: true,
-      auto_fix: true,
-    },
-  },
-  {
-    id: "veo31_fast_image_to_video",
-    name: "Veo 3.1 Fast Image-to-Video",
-    description:
-      "Google's Veo 3.1 Fast - Animate static images with motion (faster, budget-friendly)",
-    price: "1.20", // 8s @ $0.15/s with audio (default)
-    resolution: "720p / 1080p",
-    supportedResolutions: ["720p", "1080p"],
-    max_duration: 8, // Currently only 8s supported
-    category: "image",
-    endpoints: {
-      image_to_video: "fal-ai/veo3.1/fast/image-to-video",
-    },
-    default_params: {
-      duration: 8, // Numeric to match existing pattern
-      resolution: "720p",
-      aspect_ratio: "16:9",
-      generate_audio: true,
-    },
-  },
-  {
-    id: "veo31_fast_frame_to_video",
-    name: "Veo 3.1 Fast Frame-to-Video",
-    description:
-      "Google's Veo 3.1 Fast - Animate between first and last frames (faster, budget-friendly)",
-    price: "1.20", // 8s @ $0.15/s with audio (default)
-    resolution: "720p / 1080p",
-    supportedResolutions: ["720p", "1080p"],
-    max_duration: 8, // Currently only 8s supported
-    category: "image", // Uses image tab (requires frame uploads)
-    requiredInputs: ["firstFrame", "lastFrame"],
-    endpoints: {
-      image_to_video: "fal-ai/veo3.1/fast/first-last-frame-to-video",
-    },
-    default_params: {
-      duration: 8, // Numeric to match existing pattern
-      resolution: "720p",
-      aspect_ratio: "auto",
-      generate_audio: true,
-    },
-  },
-
-  // Veo 3.1 Models - Standard Variants (premium quality)
-  {
-    id: "veo31_text_to_video",
-    name: "Veo 3.1 Text-to-Video",
-    description:
-      "Google's Veo 3.1 - Premium quality video generation from text prompts",
-    price: "3.20", // 8s @ $0.40/s with audio (default)
-    resolution: "720p / 1080p",
-    supportedResolutions: ["720p", "1080p"],
-    max_duration: 8, // 4s, 6s, or 8s
-    category: "text",
-    endpoints: {
-      text_to_video: "fal-ai/veo3.1", // No /fast suffix
-    },
-    default_params: {
-      duration: 8, // Numeric to match existing pattern
-      resolution: "720p",
-      aspect_ratio: "16:9",
-      generate_audio: true,
-      enhance_prompt: true,
-      auto_fix: true,
-    },
-  },
-  {
-    id: "veo31_image_to_video",
-    name: "Veo 3.1 Image-to-Video",
-    description:
-      "Google's Veo 3.1 - Premium quality image animation with motion",
-    price: "3.20", // 8s @ $0.40/s with audio (default)
-    resolution: "720p / 1080p",
-    supportedResolutions: ["720p", "1080p"],
-    max_duration: 8, // Currently only 8s supported
-    category: "image",
-    endpoints: {
-      image_to_video: "fal-ai/veo3.1/image-to-video", // No /fast
-    },
-    default_params: {
-      duration: 8, // Numeric to match existing pattern
-      resolution: "720p",
-      aspect_ratio: "16:9",
-      generate_audio: true,
-    },
-  },
-  {
-    id: "veo31_frame_to_video",
-    name: "Veo 3.1 Frame-to-Video",
-    description:
-      "Google's Veo 3.1 - Premium quality animation between first and last frames",
-    price: "3.20", // 8s @ $0.40/s with audio (default)
-    resolution: "720p / 1080p",
-    supportedResolutions: ["720p", "1080p"],
-    max_duration: 8, // Currently only 8s supported
-    category: "image", // Uses image tab (requires frame uploads)
-    requiredInputs: ["firstFrame", "lastFrame"],
-    endpoints: {
-      image_to_video: "fal-ai/veo3.1/first-last-frame-to-video", // No /fast
-    },
-    default_params: {
-      duration: 8, // Numeric to match existing pattern
-      resolution: "720p",
-      aspect_ratio: "16:9",
-      generate_audio: true,
     },
   },
   {
