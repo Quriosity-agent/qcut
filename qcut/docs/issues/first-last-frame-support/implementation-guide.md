@@ -13,7 +13,6 @@ This guide provides detailed step-by-step instructions for implementing Frame-to
 ### Phase 1: Foundation (60-90 minutes)
 
 #### Task 1.1: Update `ai-types.ts` with new interfaces (15 min)
-> **Review:** Align the new callbacks with the `FileUpload` signature (it passes `(file, preview)`); otherwise Task 2.1 will fail TypeScript checks when it forwards both arguments.
 
 **File:** `qcut/apps/web/src/components/editor/media-panel/views/ai-types.ts`
 **Read:** Lines 79-122 (UseAIGenerationProps interface)
@@ -27,9 +26,9 @@ firstFrame?: File | null;
 /** Last frame image file for F2V models. Optional - enables frame-to-frame animation. */
 lastFrame?: File | null;
 /** Callback when first frame changes. */
-onFirstFrameChange?: (file: File | null) => void;
+onFirstFrameChange?: (file: File | null, preview?: string | null) => void;
 /** Callback when last frame changes. */
-onLastFrameChange?: (file: File | null) => void;
+onLastFrameChange?: (file: File | null, preview?: string | null) => void;
 ```
 
 **Exact Change:**
@@ -40,7 +39,6 @@ onLastFrameChange?: (file: File | null) => void;
 ---
 
 #### Task 1.2: Add helper functions to `ai-constants.ts` (20 min)
-> **Review:** Instead of hard-coding `frameToVideoModels`, lean on metadata in `AI_MODELS` and make sure the Veo entries declare `requiredInputs`, or `getRequiredInputs` stays empty and the tests in Task 1.3 break.
 
 **File:** `qcut/apps/web/src/components/editor/media-panel/views/ai-constants.ts`
 **Read:** Lines 836-885 (MODEL_HELPERS section)
@@ -63,12 +61,8 @@ getModelDisplayName: (model: AIModel): string => {
  * @returns true if model supports frame-to-frame animation
  */
 requiresFrameToFrame: (modelId: string): boolean => {
-  const frameToVideoModels = [
-    'veo31_fast_frame_to_video',
-    'veo31_frame_to_video',
-    // Add future F2V models here as they become available
-  ];
-  return frameToVideoModels.includes(modelId);
+  const model = AI_MODELS.find(m => m.id === modelId);
+  return model?.requiredInputs?.includes('firstFrame') ?? false;
 },
 
 /**
@@ -90,11 +84,8 @@ getModelDisplayName: (model: AIModel): string => {
 },
 
 requiresFrameToFrame: (modelId: string): boolean => {
-  const frameToVideoModels = [
-    'veo31_fast_frame_to_video',
-    'veo31_frame_to_video',
-  ];
-  return frameToVideoModels.includes(modelId);
+  const model = AI_MODELS.find(m => m.id === modelId);
+  return model?.requiredInputs?.includes('firstFrame') ?? false;
 },
 
 getRequiredInputs: (modelId: string): string[] => {
