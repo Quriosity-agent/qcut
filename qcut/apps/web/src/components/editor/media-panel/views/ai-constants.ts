@@ -73,36 +73,6 @@ export const AI_MODELS: AIModel[] = [
     },
   },
   {
-    id: "hailuo",
-    name: "Hailuo 02",
-    description: "Standard quality with realistic physics",
-    price: "0.27",
-    resolution: "768p",
-    max_duration: 6,
-    endpoints: {
-      text_to_video: "fal-ai/minimax/hailuo-02/standard/text-to-video",
-    },
-    default_params: {
-      duration: 5,
-      resolution: "768p",
-    },
-  },
-  {
-    id: "hailuo_pro",
-    name: "Hailuo 02 Pro",
-    description: "Premium 1080p with ultra-realistic physics",
-    price: "0.48",
-    resolution: "1080p",
-    max_duration: 6,
-    endpoints: {
-      text_to_video: "fal-ai/minimax/hailuo-02/pro/text-to-video",
-    },
-    default_params: {
-      duration: 5,
-      resolution: "1080p",
-    },
-  },
-  {
     id: "hailuo23_standard",
     name: "Hailuo 2.3 Standard",
     description: "Budget-friendly image-to-video with 768p quality",
@@ -639,6 +609,36 @@ export const AI_MODELS: AIModel[] = [
       resolution: "720p",
       aspect_ratio: "16:9",
       generate_audio: true,
+    },
+  },
+  {
+    id: "hailuo",
+    name: "Hailuo 02",
+    description: "Standard quality with realistic physics",
+    price: "0.27",
+    resolution: "768p",
+    max_duration: 6,
+    endpoints: {
+      text_to_video: "fal-ai/minimax/hailuo-02/standard/text-to-video",
+    },
+    default_params: {
+      duration: 5,
+      resolution: "768p",
+    },
+  },
+  {
+    id: "hailuo_pro",
+    name: "Hailuo 02 Pro",
+    description: "Premium 1080p with ultra-realistic physics",
+    price: "0.48",
+    resolution: "1080p",
+    max_duration: 6,
+    endpoints: {
+      text_to_video: "fal-ai/minimax/hailuo-02/pro/text-to-video",
+    },
+    default_params: {
+      duration: 5,
+      resolution: "1080p",
     },
   },
   {
