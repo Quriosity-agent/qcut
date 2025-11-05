@@ -374,32 +374,210 @@ if (selectedModels.some(id => MODEL_HELPERS.requiresFrameToFrame(id))) {
 ### 3. Implementation Subtasks (Estimated: 4-6 hours)
 
 **Phase 1: Foundation (60-90 minutes)**
-- [ ] Task 1.1: Update `ai-types.ts` with new interfaces (15 min)
-- [ ] Task 1.2: Add helper functions to `ai-constants.ts` (20 min)
-- [ ] Task 1.3: Write unit tests for helper functions (25 min)
-- [ ] Task 1.4: Document type changes in inline comments (10 min)
+
+- [ ] **Task 1.1: Update `ai-types.ts` with new interfaces** (15 min)
+  - **File:** `qcut/apps/web/src/components/editor/media-panel/views/ai-types.ts`
+  - **Read:** Lines 79-100 (UseAIGenerationProps interface)
+  - **Modify:** Add new properties after line 100:
+    ```typescript
+    firstFrame?: File | null;
+    lastFrame?: File | null;
+    onFirstFrameChange?: (file: File | null) => void;
+    onLastFrameChange?: (file: File | null) => void;
+    ```
+  - **Action:** Insert new properties with JSDoc comments explaining their purpose
+
+- [ ] **Task 1.2: Add helper functions to `ai-constants.ts`** (20 min)
+  - **File:** `qcut/apps/web/src/components/editor/media-panel/views/ai-constants.ts`
+  - **Read:** Lines 836-885 (MODEL_HELPERS section)
+  - **Modify:** Add two new helper functions after line 885:
+    - `requiresFrameToFrame(modelId: string): boolean`
+    - `getRequiredInputs(modelId: string): string[]`
+  - **Action:** Implement helper methods for F2V model detection
+
+- [ ] **Task 1.3: Write unit tests for helper functions** (25 min)
+  - **File:** `qcut/apps/web/src/components/editor/media-panel/views/__tests__/ai-constants.test.ts` (NEW)
+  - **Read:** Existing test files in `__tests__` directory for patterns
+  - **Create:** New test file with test cases:
+    - Test `requiresFrameToFrame()` returns true for veo31 F2V models
+    - Test `requiresFrameToFrame()` returns false for I2V models
+    - Test `getRequiredInputs()` returns correct inputs for each model type
+  - **Action:** Use Vitest framework (already configured)
+
+- [ ] **Task 1.4: Document type changes in inline comments** (10 min)
+  - **File:** `qcut/apps/web/src/components/editor/media-panel/views/ai-types.ts`
+  - **Read:** Lines 1-10 (file header comments)
+  - **Modify:** Update header comment to document F2V support
+  - **Action:** Add JSDoc comments above new properties explaining:
+    - When firstFrame is required vs optional
+    - That lastFrame being null falls back to I2V behavior
+    - Migration notes for existing code
+
+---
 
 **Phase 2: Component Extraction (90-120 minutes)**
-- [ ] Task 2.1: Create `ai-image-upload.tsx` component (30 min)
-- [ ] Task 2.2: Implement conditional rendering logic (25 min)
-- [ ] Task 2.3: Add component prop validation (15 min)
-- [ ] Task 2.4: Create Storybook stories for testing (20 min)
-- [ ] Task 2.5: Write component unit tests (30 min)
+
+- [ ] **Task 2.1: Create `ai-image-upload.tsx` component** (30 min)
+  - **File:** `qcut/apps/web/src/components/editor/media-panel/views/ai-image-upload.tsx` (NEW)
+  - **Read:**
+    - `qcut/apps/web/src/components/editor/media-panel/views/ai.tsx` lines 873-920 (current image upload section)
+    - `qcut/apps/web/src/components/ui/file-upload.tsx` (understand FileUpload API)
+  - **Create:** New component file with:
+    - Interface `AIImageUploadSectionProps`
+    - Component `AIImageUploadSection`
+    - Conditional rendering for F2V vs I2V models
+  - **Action:** Extract and refactor existing upload UI into reusable component
+
+- [ ] **Task 2.2: Implement conditional rendering logic** (25 min)
+  - **File:** `qcut/apps/web/src/components/editor/media-panel/views/ai-image-upload.tsx`
+  - **Read:** `ai-constants.ts` MODEL_HELPERS section (to use helper functions)
+  - **Modify:** Inside component body:
+    - Check if selected models require F2V via `MODEL_HELPERS.requiresFrameToFrame()`
+    - Render two FileUpload components for F2V
+    - Render single FileUpload for standard I2V
+  - **Action:** Implement branching logic with clear separation
+
+- [ ] **Task 2.3: Add component prop validation** (15 min)
+  - **File:** `qcut/apps/web/src/components/editor/media-panel/views/ai-image-upload.tsx`
+  - **Read:** Lines where props are destructured
+  - **Modify:** Add PropTypes or TypeScript validation:
+    - Ensure callbacks are functions
+    - Validate file types are File | null
+    - Check selectedModels is string array
+  - **Action:** Add runtime validation for development mode
+
+- [ ] **Task 2.4: Create Storybook stories for testing** (20 min)
+  - **File:** `qcut/apps/web/src/components/editor/media-panel/views/ai-image-upload.stories.tsx` (NEW)
+  - **Read:** Existing `.stories.tsx` files in codebase for patterns
+  - **Create:** Stories for:
+    - Standard I2V mode (single upload)
+    - F2V mode (dual upload)
+    - F2V with only first frame provided
+    - F2V with both frames provided
+  - **Action:** Create visual test cases for all states
+
+- [ ] **Task 2.5: Write component unit tests** (30 min)
+  - **File:** `qcut/apps/web/src/components/editor/media-panel/views/__tests__/ai-image-upload.test.tsx` (NEW)
+  - **Read:**
+    - `qcut/apps/web/src/components/ui/__tests__/` for test patterns
+    - Vitest and React Testing Library docs
+  - **Create:** Tests for:
+    - Renders single upload for I2V models
+    - Renders dual upload for F2V models
+    - Calls onChange handlers correctly
+    - Shows/hides optional label appropriately
+  - **Action:** Achieve >90% code coverage for component
+
+---
 
 **Phase 3: Integration (90-120 minutes)**
-- [ ] Task 3.1: Add state variables to `ai.tsx` (15 min)
-- [ ] Task 3.2: Integrate `AIImageUploadSection` component (20 min)
-- [ ] Task 3.3: Implement validation logic (30 min)
-- [ ] Task 3.4: Update API calls to handle frame data (25 min)
-- [ ] Task 3.5: Test with Veo 3.1 models (30 min)
+
+- [ ] **Task 3.1: Add state variables to `ai.tsx`** (15 min)
+  - **File:** `qcut/apps/web/src/components/editor/media-panel/views/ai.tsx`
+  - **Read:** Lines 200-300 (state declarations section)
+  - **Modify:** Add after existing image state variables:
+    ```typescript
+    const [firstFrame, setFirstFrame] = useState<File | null>(null);
+    const [lastFrame, setLastFrame] = useState<File | null>(null);
+    ```
+  - **Add:** useEffect hook to sync firstFrame with selectedImage for backward compatibility
+  - **Action:** Insert state management for frame uploads
+
+- [ ] **Task 3.2: Integrate `AIImageUploadSection` component** (20 min)
+  - **File:** `qcut/apps/web/src/components/editor/media-panel/views/ai.tsx`
+  - **Read:** Lines 873-920 (current image upload JSX)
+  - **Replace:** Entire `<div className="space-y-2">` section with:
+    ```typescript
+    <AIImageUploadSection
+      selectedModels={selectedModels}
+      firstFrame={firstFrame}
+      lastFrame={lastFrame}
+      onFirstFrameChange={setFirstFrame}
+      onLastFrameChange={setLastFrame}
+      isCompact={isCompact}
+    />
+    ```
+  - **Action:** Replace inline upload UI with extracted component
+
+- [ ] **Task 3.3: Implement validation logic** (30 min)
+  - **File:** `qcut/apps/web/src/components/editor/media-panel/views/ai.tsx`
+  - **Read:** Lines searching for "validation" or form submit handler
+  - **Modify:** In form validation section (before API calls):
+    - Add check for F2V models requiring firstFrame
+    - Add optional aspect ratio validation if both frames provided
+    - Add file size validation (8MB limit for Veo 3.1)
+  - **Create:** Helper function `validateFrameAspectRatio(file1, file2)` if needed
+  - **Action:** Add validation rules before generation starts
+
+- [ ] **Task 3.4: Update API calls to handle frame data** (25 min)
+  - **File:** `qcut/apps/web/src/components/editor/media-panel/views/ai.tsx`
+  - **Read:** Search for API call functions (likely around "fal.run" or generation logic)
+  - **Modify:** In generation function:
+    - Detect if model requires F2V
+    - Send firstFrame/lastFrame to API instead of single image
+    - Handle FormData construction for dual frame upload
+  - **Reference:** Check Veo 3.1 API docs for frame upload format
+  - **Action:** Update payload construction for F2V models
+
+- [ ] **Task 3.5: Test with Veo 3.1 models** (30 min)
+  - **File:** Manual testing in development environment
+  - **Test Cases:**
+    1. Select Veo 3.1 Fast Frame-to-Video → verify dual upload appears
+    2. Upload only first frame → verify error or fallback behavior
+    3. Upload both frames with matching aspect ratio → verify generation succeeds
+    4. Upload frames with mismatched aspect ratio → verify validation error
+    5. Switch to standard I2V model → verify UI switches to single upload
+  - **Action:** End-to-end testing of feature workflow
+
+---
 
 **Phase 4: Polish & Documentation (45-60 minutes)**
-- [ ] Task 4.1: Update history panel to display frames (20 min)
-- [ ] Task 4.2: Add error handling for edge cases (15 min)
-- [ ] Task 4.3: Write user-facing documentation (10 min)
-- [ ] Task 4.4: Create migration guide for developers (15 min)
+
+- [ ] **Task 4.1: Update history panel to display frames** (20 min)
+  - **File:** `qcut/apps/web/src/components/editor/media-panel/views/ai-history-panel.tsx`
+  - **Read:** Entire file (understand current history display logic)
+  - **Modify:** In history item rendering:
+    - Show thumbnail for firstFrame if available
+    - Show thumbnail for lastFrame if available (with label)
+    - Add visual indicator for F2V generations vs I2V
+  - **Action:** Enhance history UI to distinguish frame-based generations
+
+- [ ] **Task 4.2: Add error handling for edge cases** (15 min)
+  - **File:** `qcut/apps/web/src/components/editor/media-panel/views/ai.tsx`
+  - **Read:** Error handling section and error state management
+  - **Add:** Error messages for:
+    - "First frame required for Frame-to-Video models"
+    - "Frame aspect ratios must match"
+    - "Frame file size exceeds 8MB limit"
+    - "Invalid frame format (must be PNG, JPEG, WebP, AVIF, HEIF)"
+  - **Reference:** `ai-constants.ts` lines 719-791 (ERROR_MESSAGES)
+  - **Action:** Add new error constants and handling logic
+
+- [ ] **Task 4.3: Write user-facing documentation** (10 min)
+  - **File:** `qcut/docs/features/first-last-frame-support.md` (NEW)
+  - **Create:** User guide with:
+    - Overview of F2V feature
+    - Which models support it
+    - Step-by-step usage instructions
+    - Tips for best results
+    - Troubleshooting common issues
+  - **Action:** Write clear, non-technical documentation for end users
+
+- [ ] **Task 4.4: Create migration guide for developers** (15 min)
+  - **File:** `qcut/docs/development/migrations/frame-to-video-support.md` (NEW)
+  - **Create:** Developer guide with:
+    - Changes to `ai-types.ts` interfaces
+    - New helper functions in `ai-constants.ts`
+    - Component extraction rationale
+    - Backward compatibility notes
+    - How to add future F2V models
+  - **Action:** Document architectural changes for future maintainers
+
+---
 
 **Total Estimated Time:** 4-6 hours (245-390 minutes)
+
+**Note:** Each task is designed to be completed independently. Read the specified file sections first to understand the context before making modifications.
 
 ### 4. Long-Term Maintainability Strategy
 
