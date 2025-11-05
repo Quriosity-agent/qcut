@@ -122,6 +122,44 @@ For first frame + last frame support implementation:
 - Supported formats: PNG, JPEG, WebP, AVIF, HEIF
 - Aspect ratio constraints: 16:9 or 9:16
 
+### UI Design Proposal
+
+**Current State:**
+- Single "Upload Image for Video Generation" area
+- Works for standard image-to-video models (I2V)
+
+**Proposed Design:**
+The image upload section should be divided into two separate upload areas:
+
+1. **First Frame** (Required)
+   - Label: "Upload First Frame"
+   - Upload button/dropzone for the starting frame
+   - File format: JPG, PNG, WebP, GIF (max 10MB)
+   - This field is always required for Frame-to-Video models
+
+2. **Last Frame** (Optional)
+   - Label: "Upload Last Frame (optional)"
+   - Upload button/dropzone for the ending frame
+   - File format: JPG, PNG, WebP, GIF (max 10MB)
+   - This field is optional - when provided, enables frame-to-frame animation
+   - When empty, models behave as standard image-to-video
+
+**Dynamic Behavior:**
+- When a Frame-to-Video model is selected (Veo 3.1 Frame-to-Video models):
+  - Show both "First Frame" and "Last Frame" upload sections
+  - Last frame section displays "(optional)" label
+  - Validate aspect ratio matching between frames if both are provided
+
+- When a standard Image-to-Video model is selected:
+  - Show single "Upload Image" section (current behavior)
+  - Hide the last frame upload section
+
+**Benefits:**
+- Backward compatible with existing single-image models
+- Clear visual distinction between required and optional inputs
+- Enables advanced frame-to-frame animation capabilities
+- Maintains simple UX for users who only need basic I2V functionality
+
 ---
 
 ## Model Comparison
