@@ -116,13 +116,7 @@ export function AiView() {
     null
   );
 
-  // Veo 3.1 frame upload state
-  const [firstFrame, setFirstFrame] = useState<File | null>(null);
-  const [firstFramePreview, setFirstFramePreview] = useState<string | null>(
-    null
-  );
-  const [lastFrame, setLastFrame] = useState<File | null>(null);
-  const [lastFramePreview, setLastFramePreview] = useState<string | null>(null);
+  // Veo 3.1 frame upload state - already declared above as Frame-to-Video state variables
 
   // Reve Text-to-Image state
   const [reveAspectRatio, setReveAspectRatio] = useState<ReveAspectRatioOption>(
@@ -2180,19 +2174,19 @@ export function AiView() {
             )}
           </div>
         </div>
+      )}
 
-        {/* History Panel */}
-        <AIHistoryPanel
-          isOpen={history.isHistoryPanelOpen}
-          onClose={history.closeHistoryPanel}
-          generationHistory={history.generationHistory}
-          onSelectVideo={(video) => {
-            generation.setGeneratedVideo(video);
-            history.closeHistoryPanel();
-          }}
-          onRemoveFromHistory={history.removeFromHistory}
-          aiModels={AI_MODELS}
-        />
-      </div>
+      <AIHistoryPanel
+        isOpen={history.isHistoryPanelOpen}
+        onClose={history.closeHistoryPanel}
+        generationHistory={history.generationHistory}
+        onSelectVideo={(video) => {
+          generation.setGeneratedVideo(video);
+          history.closeHistoryPanel();
+        }}
+        onRemoveFromHistory={history.removeFromHistory}
+        aiModels={AI_MODELS}
+      />
+    </div>
     );
 }
