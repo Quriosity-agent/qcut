@@ -627,6 +627,83 @@ function generateJobId(): string {
 export function getImageEditModels() {
   return [
     {
+      id: "nano-banana",
+      name: "Nano Banana",
+      description: "Smart AI-powered editing with Google/Gemini technology",
+      provider: "Google",
+      estimatedCost: "$0.039",
+      features: [
+        "Smart understanding",
+        "Cost effective",
+        "Multiple formats",
+        "Edit descriptions",
+      ],
+      parameters: {
+        numImages: { min: 1, max: 4, default: 1, step: 1 },
+        outputFormat: {
+          type: "select",
+          options: ["JPEG", "PNG"],
+          default: "PNG",
+        },
+        syncMode: { type: "boolean", default: false },
+      },
+    },
+    {
+      id: "reve-edit",
+      name: "Reve Edit",
+      description: "Cost-effective image editing with strong aesthetic quality",
+      provider: "fal.ai",
+      estimatedCost: "$0.04",
+      features: [
+        "Cost-effective editing",
+        "Strong aesthetics",
+        "Fast processing",
+        "Multiple formats",
+      ],
+      parameters: {
+        numImages: { min: 1, max: 4, default: 1, step: 1 },
+        outputFormat: {
+          type: "select",
+          options: ["png", "jpeg", "webp"],
+          default: "png",
+        },
+        syncMode: { type: "boolean", default: false },
+      },
+    },
+    {
+      id: "seeddream-v4",
+      name: "SeedDream v4",
+      description: "Advanced multi-image editing with unified architecture",
+      provider: "ByteDance",
+      estimatedCost: "$0.04-0.08",
+      features: [
+        "Multi-image processing",
+        "Flexible sizing",
+        "Enhanced prompts",
+        "Advanced controls",
+      ],
+      parameters: {
+        imageSize: {
+          type: "select",
+          options: [
+            "square_hd",
+            "square",
+            "portrait_3_4",
+            "portrait_9_16",
+            "landscape_4_3",
+            "landscape_16_9",
+          ],
+          default: "square_hd",
+          customRange: { min: 1024, max: 4096, step: 64 },
+        },
+        maxImages: { min: 1, max: 6, default: 1, step: 1 },
+        numImages: { min: 1, max: 4, default: 1, step: 1 },
+        syncMode: { type: "boolean", default: false },
+        enableSafetyChecker: { type: "boolean", default: true },
+        seed: { optional: true },
+      },
+    },
+    {
       id: "seededit",
       name: "SeedEdit v3",
       description: "Precise photo editing with content preservation",
@@ -664,89 +741,6 @@ export function getImageEditModels() {
         steps: { min: 1, max: 50, default: 28, step: 1 },
         safetyTolerance: { min: 1, max: 6, default: 2, step: 1 },
         numImages: { min: 1, max: 4, default: 1, step: 1 },
-      },
-    },
-
-    // Add new SeedDream V4 model
-    {
-      id: "seeddream-v4",
-      name: "SeedDream v4",
-      description: "Advanced multi-image editing with unified architecture",
-      provider: "ByteDance",
-      estimatedCost: "$0.04-0.08",
-      features: [
-        "Multi-image processing",
-        "Flexible sizing",
-        "Enhanced prompts",
-        "Advanced controls",
-      ],
-      parameters: {
-        imageSize: {
-          type: "select",
-          options: [
-            "square_hd",
-            "square",
-            "portrait_3_4",
-            "portrait_9_16",
-            "landscape_4_3",
-            "landscape_16_9",
-          ],
-          default: "square_hd",
-          customRange: { min: 1024, max: 4096, step: 64 }, // Allow custom numeric values
-        },
-        maxImages: { min: 1, max: 6, default: 1, step: 1 }, // Corrected max from 10 to 6
-        numImages: { min: 1, max: 4, default: 1, step: 1 },
-        syncMode: { type: "boolean", default: false },
-        enableSafetyChecker: { type: "boolean", default: true },
-        seed: { optional: true },
-      },
-    },
-
-    // Add Nano Banana model
-    {
-      id: "nano-banana",
-      name: "Nano Banana",
-      description: "Smart AI-powered editing with Google/Gemini technology",
-      provider: "Google",
-      estimatedCost: "$0.039",
-      features: [
-        "Smart understanding",
-        "Cost effective",
-        "Multiple formats",
-        "Edit descriptions",
-      ],
-      parameters: {
-        numImages: { min: 1, max: 4, default: 1, step: 1 },
-        outputFormat: {
-          type: "select",
-          options: ["JPEG", "PNG"],
-          default: "PNG",
-        },
-        syncMode: { type: "boolean", default: false },
-      },
-    },
-
-    // Add Reve Edit model
-    {
-      id: "reve-edit",
-      name: "Reve Edit",
-      description: "Cost-effective image editing with strong aesthetic quality",
-      provider: "fal.ai",
-      estimatedCost: "$0.04",
-      features: [
-        "Cost-effective editing",
-        "Strong aesthetics",
-        "Fast processing",
-        "Multiple formats",
-      ],
-      parameters: {
-        numImages: { min: 1, max: 4, default: 1, step: 1 },
-        outputFormat: {
-          type: "select",
-          options: ["png", "jpeg", "webp"],
-          default: "png",
-        },
-        syncMode: { type: "boolean", default: false },
       },
     },
   ];

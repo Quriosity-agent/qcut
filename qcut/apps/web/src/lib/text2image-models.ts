@@ -721,6 +721,28 @@ export const TEXT2IMAGE_MODELS: Record<string, Text2ImageModel> = {
   },
 };
 
+// ============================================
+// Shared priority order (cheapest ➜ premium)
+// ============================================
+export const TEXT2IMAGE_MODEL_ORDER = [
+  "nano-banana",
+  "seeddream-v4",
+  "reve-text-to-image",
+  "wan-v2-2",
+  "imagen4-ultra",
+  "qwen-image",
+  "flux-pro-v11-ultra",
+  "seeddream-v3",
+] as const;
+
+export type Text2ImageModelId = (typeof TEXT2IMAGE_MODEL_ORDER)[number];
+
+export function getText2ImageModelEntriesInPriorityOrder() {
+  return TEXT2IMAGE_MODEL_ORDER.map(
+    (modelId) => [modelId, TEXT2IMAGE_MODELS[modelId]] as const
+  );
+}
+
 // Helper functions
 export function getModelById(id: string): Text2ImageModel | undefined {
   return TEXT2IMAGE_MODELS[id];

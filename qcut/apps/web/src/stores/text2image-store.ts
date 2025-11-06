@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { devtools } from "zustand/middleware";
 import { handleError, ErrorCategory, ErrorSeverity } from "@/lib/error-handler";
+import { TEXT2IMAGE_MODEL_ORDER } from "@/lib/text2image-models";
 
 // Debug flag - set to false to disable console logs
 const DEBUG_TEXT2IMAGE_STORE = process.env.NODE_ENV === "development" && false;
@@ -78,16 +79,7 @@ export const useText2ImageStore = create<Text2ImageStore>()(
       setPrompt: (prompt) => set({ prompt }),
 
       // Model selection
-      selectedModels: [
-        "imagen4-ultra",
-        "seeddream-v3",
-        "seeddream-v4", // Add new SeedDream V4
-        "nano-banana", // Add new Nano Banana
-        "flux-pro-v11-ultra",
-        "wan-v2-2",
-        "qwen-image",
-        "reve-text-to-image", // Add Reve Text-to-Image
-      ], // Default to all models
+      selectedModels: [...TEXT2IMAGE_MODEL_ORDER], // Default to all models in curated priority order
       toggleModel: (modelKey) =>
         set((state) => ({
           selectedModels: state.selectedModels.includes(modelKey)
@@ -107,20 +99,13 @@ export const useText2ImageStore = create<Text2ImageStore>()(
           // Keep only the first selected model for single mode
           set({ selectedModels: selectedModels.slice(0, 1) });
         } else if (mode === "multi" && selectedModels.length === 0) {
-          // Select first three models by default for multi mode
+          // Select the first six models in curated order for multi mode
           set({
-            selectedModels: [
-              "imagen4-ultra",
-              "wan-v2-2",
-              "seeddream-v3",
-              "seeddream-v4",
-              "nano-banana",
-              "reve-text-to-image",
-            ],
+            selectedModels: TEXT2IMAGE_MODEL_ORDER.slice(0, 6),
           });
         } else if (mode === "single" && selectedModels.length === 0) {
           // Select first model by default for single mode
-          set({ selectedModels: ["imagen4-ultra"] });
+          set({ selectedModels: [TEXT2IMAGE_MODEL_ORDER[0]] });
         }
       },
 
