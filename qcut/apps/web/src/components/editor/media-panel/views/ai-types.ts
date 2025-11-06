@@ -6,6 +6,13 @@
  *
  * @see ai-view-refactoring-guide.md for refactoring plan
  * @see ai-refactoring-subtasks.md for implementation tracking
+ *
+ * ## Frame-to-Video (F2V) Support
+ * Added firstFrame/lastFrame props to support Veo 3.1 Frame-to-Video models.
+ * - firstFrame: Required for F2V models, used as single image for I2V models
+ * - lastFrame: Optional - when provided, enables frame-to-frame animation
+ * - Backward compatible: existing I2V code continues to work with firstFrame only
+ * - See docs/development/migrations/frame-to-video-support.md for rollout details
  */
 
 import { AIVideoOutputManager } from "@/lib/ai-video-output";
@@ -104,16 +111,31 @@ export interface UseAIGenerationProps {
   ltxv2Resolution?: "1080p" | "1440p" | "2160p";
   ltxv2FPS?: 25 | 50;
   ltxv2GenerateAudio?: boolean;
+  // LTX Video 2.0 Fast text-to-video options
+  ltxv2FastDuration?: 6 | 8 | 10 | 12 | 14 | 16 | 18 | 20;
+  ltxv2FastResolution?: "1080p" | "1440p" | "2160p";
+  ltxv2FastFPS?: 25 | 50;
+  ltxv2FastGenerateAudio?: boolean;
   // LTX Video 2.0 standard image-to-video options
   ltxv2I2VDuration?: 6 | 8 | 10;
   ltxv2I2VResolution?: "1080p" | "1440p" | "2160p";
   ltxv2I2VFPS?: 25 | 50;
   ltxv2I2VGenerateAudio?: boolean;
   // LTX Video 2.0 Fast image-to-video options
-  ltxv2ImageDuration?: 2 | 3 | 4 | 5 | 6;
-  ltxv2ImageResolution?: "1080p" | "1440p" | "2160p";  // Fast I2V supports 1080p/1440p/2160p, not 720p
+  ltxv2ImageDuration?: 6 | 8 | 10 | 12 | 14 | 16 | 18 | 20;
+  ltxv2ImageResolution?: "1080p" | "1440p" | "2160p"; // Fast I2V supports 1080p/1440p/2160p, not 720p
   ltxv2ImageFPS?: 25 | 50;
   ltxv2ImageGenerateAudio?: boolean;
+
+  // First + Last Frame support for Frame-to-Video models (Veo 3.1)
+  /** First frame image file for F2V models. Required when F2V model selected. */
+  firstFrame?: File | null;
+  /** Last frame image file for F2V models. Optional - enables frame-to-frame animation. */
+  lastFrame?: File | null;
+  /** Callback when first frame changes. */
+  onFirstFrameChange?: (file: File | null, preview?: string | null) => void;
+  /** Callback when last frame changes. */
+  onLastFrameChange?: (file: File | null, preview?: string | null) => void;
 }
 
 // ⚠️ ENHANCED: Complete generation state interface

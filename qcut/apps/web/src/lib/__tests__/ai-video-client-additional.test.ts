@@ -4,6 +4,7 @@ import type {
   LTXV2T2VRequest,
   LTXV2I2VRequest,
 } from "@/lib/ai-video-client";
+import { ERROR_MESSAGES } from "@/components/editor/media-panel/views/ai-constants";
 
 const originalFetch = globalThis.fetch;
 
@@ -62,7 +63,12 @@ describe("AI video client – additional models", () => {
     it("sends expected payload including duration, resolution and BGM", async () => {
       const fetchMock = vi
         .fn()
-        .mockResolvedValue({ ok: true, json: async () => ({ video: { url: "https://example.com/video.mp4" } }) });
+        .mockResolvedValue({
+          ok: true,
+          json: async () => ({
+            video: { url: "https://example.com/video.mp4" },
+          }),
+        });
       globalThis.fetch = fetchMock as unknown as typeof globalThis.fetch;
 
       const request: ViduQ2I2VRequest = {
@@ -94,7 +100,12 @@ describe("AI video client – additional models", () => {
     it("omits BGM flag when duration is not 4 seconds", async () => {
       const fetchMock = vi
         .fn()
-        .mockResolvedValue({ ok: true, json: async () => ({ video: { url: "https://example.com/video.mp4" } }) });
+        .mockResolvedValue({
+          ok: true,
+          json: async () => ({
+            video: { url: "https://example.com/video.mp4" },
+          }),
+        });
       globalThis.fetch = fetchMock as unknown as typeof globalThis.fetch;
 
       const request: ViduQ2I2VRequest = {
@@ -135,14 +146,19 @@ describe("AI video client – additional models", () => {
       };
 
       await expect(generateLTXV2Video(request)).rejects.toThrow(
-        /Resolution must be 1080p, 1440p, or 2160p/i
+        ERROR_MESSAGES.LTXV2_INVALID_RESOLUTION
       );
     });
 
     it("sends expected payload with duration, resolution and fps", async () => {
       const fetchMock = vi
         .fn()
-        .mockResolvedValue({ ok: true, json: async () => ({ video: { url: "https://example.com/video.mp4" } }) });
+        .mockResolvedValue({
+          ok: true,
+          json: async () => ({
+            video: { url: "https://example.com/video.mp4" },
+          }),
+        });
       globalThis.fetch = fetchMock as unknown as typeof globalThis.fetch;
 
       const request: LTXV2T2VRequest = {
@@ -165,6 +181,65 @@ describe("AI video client – additional models", () => {
       expect(payload.resolution).toBe("1440p");
       expect(payload.fps).toBe(50);
       expect(payload.generate_audio).toBe(false);
+    });
+
+    it("rejects invalid duration for the fast model", async () => {
+      const request: LTXV2T2VRequest = {
+        model: "ltxv2_fast_t2v",
+        prompt: "A dynamic aerial flythrough of a canyon at sunrise",
+        duration: 5 as any,
+      };
+
+      await expect(generateLTXV2Video(request)).rejects.toThrow(
+        ERROR_MESSAGES.LTXV2_FAST_T2V_INVALID_DURATION
+      );
+    });
+
+    it("enforces extended duration constraints for the fast model", async () => {
+      const request: LTXV2T2VRequest = {
+        model: "ltxv2_fast_t2v",
+        prompt: "A dramatic ocean storm captured from a helicopter",
+        duration: 12,
+        resolution: "1440p",
+        fps: 25,
+      };
+
+      await expect(generateLTXV2Video(request)).rejects.toThrow(
+        ERROR_MESSAGES.LTXV2_FAST_T2V_EXTENDED_DURATION_CONSTRAINT
+      );
+    });
+
+    it("sends expected payload for the fast model", async () => {
+      const fetchMock = vi
+        .fn()
+        .mockResolvedValue({
+          ok: true,
+          json: async () => ({
+            video: { url: "https://example.com/video.mp4" },
+          }),
+        });
+      globalThis.fetch = fetchMock as unknown as typeof globalThis.fetch;
+
+      const request: LTXV2T2VRequest = {
+        model: "ltxv2_fast_t2v",
+        prompt: "A timelapse of blooming flowers in a glasshouse",
+        duration: 14,
+        resolution: "1080p",
+        fps: 25,
+        generate_audio: true,
+      };
+
+      await generateLTXV2Video(request);
+
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      const [, options] = fetchMock.mock.calls[0];
+      const payload = JSON.parse(
+        (options as Record<string, unknown>).body as string
+      );
+      expect(payload.duration).toBe(14);
+      expect(payload.resolution).toBe("1080p");
+      expect(payload.fps).toBe(25);
+      expect(payload.generate_audio).toBe(true);
     });
   });
 
@@ -198,27 +273,32 @@ describe("AI video client – additional models", () => {
         model: "ltxv2_fast_i2v",
         prompt: "A drone shot over the coast",
         image_url: "https://example.com/frame.png",
-        duration: 8 as any,
+        duration: 5 as any,
       };
 
       await expect(generateLTXV2ImageVideo(request)).rejects.toThrow(
-        /Duration must be between 2 and 6 seconds/i
+        ERROR_MESSAGES.LTXV2_I2V_INVALID_DURATION
       );
     });
 
     it("sends expected payload", async () => {
       const fetchMock = vi
         .fn()
-        .mockResolvedValue({ ok: true, json: async () => ({ video: { url: "https://example.com/video.mp4" } }) });
+        .mockResolvedValue({
+          ok: true,
+          json: async () => ({
+            video: { url: "https://example.com/video.mp4" },
+          }),
+        });
       globalThis.fetch = fetchMock as unknown as typeof globalThis.fetch;
 
       const request: LTXV2I2VRequest = {
         model: "ltxv2_fast_i2v",
         prompt: "Slow cinematic dolly forward through a forest",
         image_url: "https://example.com/frame.png",
-        duration: 5,
-        resolution: "1080p",  // Fixed: 720p is not supported by LTX Video 2.0 Fast I2V
-        fps: 50,
+        duration: 12,
+        resolution: "1080p", // Fixed: 720p is not supported by LTX Video 2.0 Fast I2V
+        fps: 25,
         generate_audio: false,
       };
 
@@ -230,11 +310,41 @@ describe("AI video client – additional models", () => {
         (options as Record<string, unknown>).body as string
       );
 
-      expect(payload.duration).toBe(5);
-      expect(payload.resolution).toBe("1080p");  // Fixed: expecting correct resolution
-      expect(payload.fps).toBe(50);
+      expect(payload.duration).toBe(12);
+      expect(payload.resolution).toBe("1080p"); // Fixed: expecting correct resolution
+      expect(payload.fps).toBe(25);
       expect(payload.generate_audio).toBe(false);
       expect(payload.image_url).toBe("https://example.com/frame.png");
+    });
+
+    it("requires 1080p resolution when duration exceeds 10 seconds", async () => {
+      const request: LTXV2I2VRequest = {
+        model: "ltxv2_fast_i2v",
+        prompt: "Extended aerial glide over a mountain range",
+        image_url: "https://example.com/frame.png",
+        duration: 12,
+        resolution: "1440p" as any,
+        fps: 25,
+      };
+
+      await expect(generateLTXV2ImageVideo(request)).rejects.toThrow(
+        ERROR_MESSAGES.LTXV2_I2V_EXTENDED_DURATION_CONSTRAINT
+      );
+    });
+
+    it("requires 25 FPS when duration exceeds 10 seconds", async () => {
+      const request: LTXV2I2VRequest = {
+        model: "ltxv2_fast_i2v",
+        prompt: "A sweeping orbit around a neon high-rise",
+        image_url: "https://example.com/frame.png",
+        duration: 14,
+        resolution: "1080p",
+        fps: 50 as any,
+      };
+
+      await expect(generateLTXV2ImageVideo(request)).rejects.toThrow(
+        ERROR_MESSAGES.LTXV2_I2V_EXTENDED_DURATION_CONSTRAINT
+      );
     });
 
     it("rejects unsupported 720p resolution for fast model", async () => {
@@ -242,11 +352,11 @@ describe("AI video client – additional models", () => {
         model: "ltxv2_fast_i2v",
         prompt: "Camera pans across a landscape",
         image_url: "https://example.com/frame.png",
-        resolution: "720p" as any,  // Intentionally using unsupported resolution
+        resolution: "720p" as any, // Intentionally using unsupported resolution
       };
 
       await expect(generateLTXV2ImageVideo(request)).rejects.toThrow(
-        /Resolution must be 1080p, 1440p, or 2160p for LTX Video 2.0 Fast/i
+        ERROR_MESSAGES.LTXV2_I2V_INVALID_RESOLUTION
       );
     });
 
@@ -277,7 +387,12 @@ describe("AI video client – additional models", () => {
     it("sends expected payload for the standard model", async () => {
       const fetchMock = vi
         .fn()
-        .mockResolvedValue({ ok: true, json: async () => ({ video: { url: "https://example.com/video.mp4" } }) });
+        .mockResolvedValue({
+          ok: true,
+          json: async () => ({
+            video: { url: "https://example.com/video.mp4" },
+          }),
+        });
       globalThis.fetch = fetchMock as unknown as typeof globalThis.fetch;
 
       const request: LTXV2I2VRequest = {
@@ -325,7 +440,7 @@ describe("AI video client – additional models", () => {
       };
 
       await expect(generateLTXV2ImageVideo(request)).rejects.toThrow(
-        /Resolution must be 1080p, 1440p, or 2160p/i
+        ERROR_MESSAGES.LTXV2_STD_I2V_INVALID_RESOLUTION
       );
     });
 

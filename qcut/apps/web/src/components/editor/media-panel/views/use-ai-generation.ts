@@ -79,11 +79,15 @@ export function useAIGeneration(props: UseAIGenerationProps) {
     ltxv2Resolution = "1080p",
     ltxv2FPS = 25,
     ltxv2GenerateAudio = true,
+    ltxv2FastDuration = 6,
+    ltxv2FastResolution = "1080p",
+    ltxv2FastFPS = 25,
+    ltxv2FastGenerateAudio = true,
     ltxv2I2VDuration = 6,
     ltxv2I2VResolution = "1080p",
     ltxv2I2VFPS = 25,
     ltxv2I2VGenerateAudio = true,
-    ltxv2ImageDuration = 4,
+    ltxv2ImageDuration = 6,
     ltxv2ImageResolution = "1080p",
     ltxv2ImageFPS = 25,
     ltxv2ImageGenerateAudio = true,
@@ -715,6 +719,30 @@ export function useAIGeneration(props: UseAIGenerationProps) {
               resolution: ltxv2Resolution,
               fps: ltxv2FPS,
               generate_audio: ltxv2GenerateAudio,
+            });
+
+            progressCallback({
+              status: "completed",
+              progress: 100,
+              message: `Video with audio generated using ${friendlyName}`,
+            });
+          }
+          // LTX Video 2.0 fast text-to-video
+          else if (modelId === "ltxv2_fast_t2v") {
+            const friendlyName = modelName || modelId;
+            progressCallback({
+              status: "processing",
+              progress: 10,
+              message: `Submitting ${friendlyName} request...`,
+            });
+
+            response = await generateLTXV2Video({
+              model: modelId,
+              prompt: prompt.trim(),
+              duration: ltxv2FastDuration,
+              resolution: ltxv2FastResolution,
+              fps: ltxv2FastFPS,
+              generate_audio: ltxv2FastGenerateAudio,
             });
 
             progressCallback({

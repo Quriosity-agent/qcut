@@ -351,7 +351,9 @@ test.describe("File Operations & Storage Management", () => {
     // Ensure timeline has at least one persisted item (avoid flakes on slow storage)
     await page
       .waitForFunction(
-        () => document.querySelectorAll('[data-testid="timeline-element"]').length > 0,
+        () =>
+          document.querySelectorAll('[data-testid="timeline-element"]').length >
+          0,
         { timeout: 5000 }
       )
       .catch(() => {});
@@ -375,13 +377,13 @@ test.describe("File Operations & Storage Management", () => {
           element.dataset.id ??
           null,
         elementId:
-          element.getAttribute("data-element-id") ?? element.dataset.elementId ?? null,
+          element.getAttribute("data-element-id") ??
+          element.dataset.elementId ??
+          null,
         type: element.getAttribute("data-type") ?? element.dataset.type ?? null,
       };
     });
-    expect(
-      Boolean(dropMetadata.mediaId || dropMetadata.elementId)
-    ).toBe(true);
+    expect(Boolean(dropMetadata.mediaId || dropMetadata.elementId)).toBe(true);
   });
 
   /**
@@ -438,14 +440,12 @@ test.describe("File Operations & Storage Management", () => {
 
     if (isVisible) {
       await expect(autoSaveIndicator).toContainText(/auto/i, {
-        timeout: 10000,
+        timeout: 10_000,
       });
       await expect(autoSaveIndicator)
-        .toHaveText(/auto-saved/i, { timeout: 15000 })
+        .toHaveText(/auto-saved/i, { timeout: 15_000 })
         .catch(() => {
-          console.log(
-            "Auto-save indicator did not show 'auto-saved' state"
-          );
+          console.log("Auto-save indicator did not show 'auto-saved' state");
         });
     }
 
@@ -454,7 +454,7 @@ test.describe("File Operations & Storage Management", () => {
 
     // Navigate back to projects list using the header menu
     const projectMenuButton = page.getByTestId("project-menu-button");
-    await expect(projectMenuButton).toBeVisible({ timeout: 10000 });
+    await expect(projectMenuButton).toBeVisible({ timeout: 10_000 });
     await projectMenuButton.click();
 
     const projectsMenuItem = page

@@ -14,7 +14,7 @@ import {
   Check,
   UserIcon,
 } from "lucide-react";
-import { useState, useRef, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
@@ -34,6 +34,7 @@ import { useProjectStore } from "@/stores/project-store";
 import { usePanelStore } from "@/stores/panel-store";
 import { useMediaPanelStore } from "../store";
 import { AIHistoryPanel } from "./ai-history-panel";
+import { AIImageUploadSection } from "./ai-image-upload";
 import { debugLogger } from "@/lib/debug-logger";
 
 // Import extracted hooks and types
@@ -42,6 +43,7 @@ import { useAIHistory } from "./use-ai-history";
 import {
   AI_MODELS,
   ERROR_MESSAGES,
+  LTXV2_FAST_CONFIG,
   REVE_TEXT_TO_IMAGE_MODEL,
   UPLOAD_CONSTANTS,
 } from "./ai-constants";
@@ -51,6 +53,29 @@ type ReveAspectRatioOption =
   (typeof REVE_TEXT_TO_IMAGE_MODEL.aspectRatios)[number]["value"];
 type ReveOutputFormatOption =
   (typeof REVE_TEXT_TO_IMAGE_MODEL.outputFormats)[number];
+type LTXV2FastDuration = (typeof LTXV2_FAST_CONFIG.DURATIONS)[number];
+type LTXV2FastResolution =
+  (typeof LTXV2_FAST_CONFIG.RESOLUTIONS.STANDARD)[number];
+type LTXV2FastFps = (typeof LTXV2_FAST_CONFIG.FPS_OPTIONS.STANDARD)[number];
+
+const LTXV2_FAST_RESOLUTION_LABELS: Record<LTXV2FastResolution, string> = {
+  "1080p": "1080p (Full HD)",
+  "1440p": "1440p (QHD)",
+  "2160p": "2160p (4K)",
+};
+
+const LTXV2_FAST_RESOLUTION_PRICE_SUFFIX: Partial<
+  Record<LTXV2FastResolution, string>
+> = {
+  "1080p": " ($0.04/sec)",
+  "1440p": " ($0.08/sec)",
+  "2160p": " ($0.16/sec)",
+};
+
+const LTXV2_FAST_FPS_LABELS: Record<LTXV2FastFps, string> = {
+  25: "25 FPS (Standard)",
+  50: "50 FPS (High)",
+};
 
 const REVE_NUM_IMAGE_OPTIONS = Array.from(
   {
@@ -68,8 +93,16 @@ export function AiView() {
   const [selectedModels, setSelectedModels] = useState<string[]>([]);
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+
+  // Frame-to-Video state variables
+  const [firstFrame, setFirstFrame] = useState<File | null>(null);
+  const [firstFramePreview, setFirstFramePreview] = useState<string | null>(
+    null
+  );
+  const [lastFrame, setLastFrame] = useState<File | null>(null);
+  const [lastFramePreview, setLastFramePreview] = useState<string | null>(null);
+
   const [error, setError] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Avatar-specific state variables
   const [avatarImage, setAvatarImage] = useState<File | null>(null);
@@ -98,37 +131,50 @@ export function AiView() {
   const [reveNumImages, setReveNumImages] = useState<number>(
     REVE_TEXT_TO_IMAGE_MODEL.defaultNumImages
   );
-const [reveOutputFormat, setReveOutputFormat] =
-  useState<ReveOutputFormatOption>(
-    REVE_TEXT_TO_IMAGE_MODEL.defaultOutputFormat
+  const [reveOutputFormat, setReveOutputFormat] =
+    useState<ReveOutputFormatOption>(
+      REVE_TEXT_TO_IMAGE_MODEL.defaultOutputFormat
+    );
+  const [hailuoT2VDuration, setHailuoT2VDuration] = useState<6 | 10>(6);
+  const [viduQ2Duration, setViduQ2Duration] = useState<
+    2 | 3 | 4 | 5 | 6 | 7 | 8
+  >(4);
+  const [viduQ2Resolution, setViduQ2Resolution] = useState<"720p" | "1080p">(
+    "720p"
   );
-const [hailuoT2VDuration, setHailuoT2VDuration] = useState<6 | 10>(6);
-const [viduQ2Duration, setViduQ2Duration] = useState<2 | 3 | 4 | 5 | 6 | 7 | 8>(4);
-const [viduQ2Resolution, setViduQ2Resolution] = useState<"720p" | "1080p">(
-  "720p"
-);
-const [viduQ2MovementAmplitude, setViduQ2MovementAmplitude] = useState<
-  "auto" | "small" | "medium" | "large"
->("auto");
-const [viduQ2EnableBGM, setViduQ2EnableBGM] = useState(false);
-const [ltxv2Duration, setLTXV2Duration] = useState<6 | 8 | 10>(6);
-const [ltxv2Resolution, setLTXV2Resolution] = useState<
-  "1080p" | "1440p" | "2160p"
->("1080p");
-const [ltxv2FPS, setLTXV2FPS] = useState<25 | 50>(25);
-const [ltxv2GenerateAudio, setLTXV2GenerateAudio] = useState(true);
-const [ltxv2I2VDuration, setLTXV2I2VDuration] = useState<6 | 8 | 10>(6);
-const [ltxv2I2VResolution, setLTXV2I2VResolution] = useState<
-  "1080p" | "1440p" | "2160p"
->("1080p");
-const [ltxv2I2VFPS, setLTXV2I2VFPS] = useState<25 | 50>(25);
-const [ltxv2I2VGenerateAudio, setLTXV2I2VGenerateAudio] = useState(true);
-const [ltxv2ImageDuration, setLTXV2ImageDuration] = useState<2 | 3 | 4 | 5 | 6>(4);
-const [ltxv2ImageResolution, setLTXV2ImageResolution] = useState<
-  "1080p" | "1440p" | "2160p"
->("1080p");
-const [ltxv2ImageFPS, setLTXV2ImageFPS] = useState<25 | 50>(25);
-const [ltxv2ImageGenerateAudio, setLTXV2ImageGenerateAudio] = useState(true);
+  const [viduQ2MovementAmplitude, setViduQ2MovementAmplitude] = useState<
+    "auto" | "small" | "medium" | "large"
+  >("auto");
+  const [viduQ2EnableBGM, setViduQ2EnableBGM] = useState(false);
+  const [ltxv2Duration, setLTXV2Duration] = useState<6 | 8 | 10>(6);
+  const [ltxv2Resolution, setLTXV2Resolution] = useState<
+    "1080p" | "1440p" | "2160p"
+  >("1080p");
+  const [ltxv2FPS, setLTXV2FPS] = useState<25 | 50>(25);
+  const [ltxv2GenerateAudio, setLTXV2GenerateAudio] = useState(true);
+  const [ltxv2FastDuration, setLTXV2FastDuration] = useState<LTXV2FastDuration>(
+    LTXV2_FAST_CONFIG.DURATIONS[0]
+  );
+  const [ltxv2FastResolution, setLTXV2FastResolution] =
+    useState<LTXV2FastResolution>(LTXV2_FAST_CONFIG.RESOLUTIONS.STANDARD[0]);
+  const [ltxv2FastFPS, setLTXV2FastFPS] = useState<LTXV2FastFps>(
+    LTXV2_FAST_CONFIG.FPS_OPTIONS.STANDARD[0]
+  );
+  const [ltxv2FastGenerateAudio, setLTXV2FastGenerateAudio] = useState(true);
+  const [ltxv2I2VDuration, setLTXV2I2VDuration] = useState<6 | 8 | 10>(6);
+  const [ltxv2I2VResolution, setLTXV2I2VResolution] = useState<
+    "1080p" | "1440p" | "2160p"
+  >("1080p");
+  const [ltxv2I2VFPS, setLTXV2I2VFPS] = useState<25 | 50>(25);
+  const [ltxv2I2VGenerateAudio, setLTXV2I2VGenerateAudio] = useState(true);
+  const [ltxv2ImageDuration, setLTXV2ImageDuration] =
+    useState<LTXV2FastDuration>(LTXV2_FAST_CONFIG.DURATIONS[0]);
+  const [ltxv2ImageResolution, setLTXV2ImageResolution] =
+    useState<LTXV2FastResolution>(LTXV2_FAST_CONFIG.RESOLUTIONS.STANDARD[0]);
+  const [ltxv2ImageFPS, setLTXV2ImageFPS] = useState<LTXV2FastFps>(
+    LTXV2_FAST_CONFIG.FPS_OPTIONS.STANDARD[0]
+  );
+  const [ltxv2ImageGenerateAudio, setLTXV2ImageGenerateAudio] = useState(true);
 
   // Use global AI tab state (CRITICAL: preserve global state integration)
   const { aiActiveTab: activeTab, setAiActiveTab: setActiveTab } =
@@ -162,6 +208,10 @@ const [ltxv2ImageGenerateAudio, setLTXV2ImageGenerateAudio] = useState(true);
     ltxv2Resolution,
     ltxv2FPS,
     ltxv2GenerateAudio,
+    ltxv2FastDuration,
+    ltxv2FastResolution,
+    ltxv2FastFPS,
+    ltxv2FastGenerateAudio,
     ltxv2I2VDuration,
     ltxv2I2VResolution,
     ltxv2I2VFPS,
@@ -218,21 +268,17 @@ const [ltxv2ImageGenerateAudio, setLTXV2ImageGenerateAudio] = useState(true);
   );
   const hailuoProSelected = selectedModels.includes("hailuo23_pro_t2v");
   const viduQ2Selected = selectedModels.includes("vidu_q2_turbo_i2v");
-  const ltxv2TextSelected = selectedModels.includes("ltxv2_pro_t2v");
+  const ltxv2ProTextSelected = selectedModels.includes("ltxv2_pro_t2v");
+  const ltxv2FastTextSelected = selectedModels.includes("ltxv2_fast_t2v");
+  const ltxv2TextSelected = ltxv2ProTextSelected || ltxv2FastTextSelected;
   const ltxv2I2VSelected = selectedModels.includes("ltxv2_i2v");
   const ltxv2ImageSelected = selectedModels.includes("ltxv2_fast_i2v");
-
-  // Track active FileReader for cleanup
-  const fileReaderRef = useRef<FileReader | null>(null);
-
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      if (fileReaderRef.current) {
-        fileReaderRef.current.abort();
-      }
-    };
-  }, []);
+  const ltxv2FastExtendedResolutions = LTXV2_FAST_CONFIG.RESOLUTIONS.EXTENDED;
+  const ltxv2FastExtendedFps = LTXV2_FAST_CONFIG.FPS_OPTIONS.EXTENDED;
+  const isExtendedLTXV2FastImageDuration =
+    ltxv2ImageDuration > LTXV2_FAST_CONFIG.EXTENDED_DURATION_THRESHOLD;
+  const isExtendedLTXV2FastTextDuration =
+    ltxv2FastDuration > LTXV2_FAST_CONFIG.EXTENDED_DURATION_THRESHOLD;
 
   // Reset Reve state when model is deselected
   useEffect(() => {
@@ -270,13 +316,22 @@ const [ltxv2ImageGenerateAudio, setLTXV2ImageGenerateAudio] = useState(true);
   }, [viduQ2Duration, viduQ2EnableBGM]);
 
   useEffect(() => {
-    if (!ltxv2TextSelected) {
+    if (!ltxv2ProTextSelected) {
       setLTXV2Duration(6);
       setLTXV2Resolution("1080p");
       setLTXV2FPS(25);
       setLTXV2GenerateAudio(true);
     }
-  }, [ltxv2TextSelected]);
+  }, [ltxv2ProTextSelected]);
+
+  useEffect(() => {
+    if (!ltxv2FastTextSelected) {
+      setLTXV2FastDuration(LTXV2_FAST_CONFIG.DURATIONS[0]);
+      setLTXV2FastResolution(LTXV2_FAST_CONFIG.RESOLUTIONS.STANDARD[0]);
+      setLTXV2FastFPS(LTXV2_FAST_CONFIG.FPS_OPTIONS.STANDARD[0]);
+      setLTXV2FastGenerateAudio(true);
+    }
+  }, [ltxv2FastTextSelected]);
 
   useEffect(() => {
     if (!ltxv2I2VSelected) {
@@ -289,70 +344,91 @@ const [ltxv2ImageGenerateAudio, setLTXV2ImageGenerateAudio] = useState(true);
 
   useEffect(() => {
     if (!ltxv2ImageSelected) {
-      setLTXV2ImageDuration(4);
-      setLTXV2ImageResolution("1080p");
-      setLTXV2ImageFPS(25);
+      setLTXV2ImageDuration(LTXV2_FAST_CONFIG.DURATIONS[0]);
+      setLTXV2ImageResolution(LTXV2_FAST_CONFIG.RESOLUTIONS.STANDARD[0]);
+      setLTXV2ImageFPS(LTXV2_FAST_CONFIG.FPS_OPTIONS.STANDARD[0]);
       setLTXV2ImageGenerateAudio(true);
     }
   }, [ltxv2ImageSelected]);
 
-  // Image handling
-  const handleImageSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    // Validate file type
-    if (
-      !(UPLOAD_CONSTANTS.ALLOWED_IMAGE_TYPES as readonly string[]).includes(
-        file.type
-      )
-    ) {
-      setError(ERROR_MESSAGES.INVALID_FILE_TYPE);
+  useEffect(() => {
+    if (!ltxv2FastTextSelected && !ltxv2ImageSelected) {
       return;
     }
 
-    // Validate file size
-    if (file.size > UPLOAD_CONSTANTS.MAX_IMAGE_SIZE_BYTES) {
-      setError(ERROR_MESSAGES.FILE_TOO_LARGE);
-      return;
-    }
+    const enforceFastConstraints = (
+      duration: number,
+      currentResolution: LTXV2FastResolution,
+      setResolution: (value: LTXV2FastResolution) => void,
+      currentFps: LTXV2FastFps,
+      setFps: (value: LTXV2FastFps) => void
+    ) => {
+      if (duration <= LTXV2_FAST_CONFIG.EXTENDED_DURATION_THRESHOLD) {
+        return;
+      }
 
-    setSelectedImage(file);
-    setError(null);
+      const enforcedResolution =
+        LTXV2_FAST_CONFIG.RESOLUTIONS.EXTENDED[0] ??
+        LTXV2_FAST_CONFIG.RESOLUTIONS.STANDARD[0];
+      const enforcedFps =
+        LTXV2_FAST_CONFIG.FPS_OPTIONS.EXTENDED[0] ??
+        LTXV2_FAST_CONFIG.FPS_OPTIONS.STANDARD[0];
 
-    // Abort any previous reader
-    if (fileReaderRef.current) {
-      fileReaderRef.current.abort();
-    }
+      if (currentResolution !== enforcedResolution) {
+        setResolution(enforcedResolution);
+      }
 
-    // Create preview with cleanup
-    const reader = new FileReader();
-    fileReaderRef.current = reader;
-
-    reader.onload = (e) => {
-      // Only update if this reader is still current
-      if (fileReaderRef.current === reader) {
-        setImagePreview(e.target?.result as string);
+      if (currentFps !== enforcedFps) {
+        setFps(enforcedFps);
       }
     };
 
-    reader.readAsDataURL(file);
-
-    debugLogger.log("AiView", "IMAGE_SELECTED", {
-      fileName: file.name,
-      fileSize: file.size,
-      fileType: file.type,
-    });
-  };
-
-  // Clear image selection
-  const clearImage = () => {
-    setSelectedImage(null);
-    setImagePreview(null);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
+    if (ltxv2FastTextSelected) {
+      enforceFastConstraints(
+        ltxv2FastDuration,
+        ltxv2FastResolution,
+        setLTXV2FastResolution,
+        ltxv2FastFPS,
+        setLTXV2FastFPS
+      );
     }
-  };
+
+    if (ltxv2ImageSelected) {
+      enforceFastConstraints(
+        ltxv2ImageDuration,
+        ltxv2ImageResolution,
+        setLTXV2ImageResolution,
+        ltxv2ImageFPS,
+        setLTXV2ImageFPS
+      );
+    }
+  }, [
+    ltxv2FastTextSelected,
+    ltxv2FastDuration,
+    ltxv2FastResolution,
+    ltxv2FastFPS,
+    ltxv2ImageSelected,
+    ltxv2ImageDuration,
+    ltxv2ImageResolution,
+    ltxv2ImageFPS,
+  ]);
+
+  // Sync firstFrame with selectedImage for backward compatibility
+  useEffect(() => {
+    if (firstFrame && !lastFrame) {
+      // Single image mode - maintain backward compatibility with I2V code
+      setSelectedImage(firstFrame);
+      setImagePreview(firstFramePreview);
+    } else if (firstFrame && lastFrame) {
+      // F2V mode - clear selectedImage to avoid confusion
+      setSelectedImage(null);
+      setImagePreview(null);
+    } else {
+      // Frames cleared - ensure legacy state is also cleared
+      setSelectedImage(null);
+      setImagePreview(null);
+    }
+  }, [firstFrame, lastFrame, firstFramePreview]);
 
   // Reset generation state
   const resetGenerationState = () => {
@@ -428,14 +504,15 @@ const [ltxv2ImageGenerateAudio, setLTXV2ImageGenerateAudio] = useState(true);
     }
     // LTX Video 2.0 Fast I2V resolution-based pricing
     else if (modelId === "ltxv2_fast_i2v") {
-      // Pricing: $0.04/$0.08/$0.16 per second for 1080p/1440p/2160p
       const pricePerSecond =
-        ltxv2ImageResolution === "1080p"
-          ? 0.04
-          : ltxv2ImageResolution === "1440p"
-            ? 0.08
-            : 0.16; // 2160p
+        LTXV2_FAST_CONFIG.PRICING[ltxv2ImageResolution] ?? 0;
       modelCost = ltxv2ImageDuration * pricePerSecond;
+    }
+    // LTX Video 2.0 Fast T2V resolution-based pricing
+    else if (modelId === "ltxv2_fast_t2v") {
+      const pricePerSecond =
+        LTXV2_FAST_CONFIG.PRICING[ltxv2FastResolution] ?? 0;
+      modelCost = ltxv2FastDuration * pricePerSecond;
     }
 
     return total + modelCost;
@@ -641,10 +718,10 @@ const [ltxv2ImageGenerateAudio, setLTXV2ImageGenerateAudio] = useState(true);
                     </div>
                   </div>
                 )}
-                {ltxv2TextSelected && (
+                {ltxv2ProTextSelected && (
                   <div className="space-y-2 text-left border-t pt-3">
                     <Label className="text-xs font-medium">
-                      LTX Video 2.0 Settings
+                      LTX Video 2.0 Pro Settings
                     </Label>
                     <div className="space-y-1">
                       <Label htmlFor="ltxv2-duration" className="text-xs">
@@ -745,250 +822,30 @@ const [ltxv2ImageGenerateAudio, setLTXV2ImageGenerateAudio] = useState(true);
             </TabsContent>
 
             <TabsContent value="image" className="space-y-4">
-              {/* Image upload */}
-              <div className="space-y-2">
-                <Label className="text-xs">
-                  {!isCompact && "Upload "}Image
-                  {!isCompact && " for Video Generation"}
-                </Label>
-
-                <label
-                  htmlFor="ai-image-input"
-                  className={`block border-2 border-dashed rounded-lg cursor-pointer transition-colors min-h-[120px] focus-within:outline-none focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2 ${
-                    selectedImage
-                      ? "border-primary/50 bg-primary/5 p-2"
-                      : "border-muted-foreground/25 hover:border-muted-foreground/50 p-4"
-                  }`}
-                  aria-label={
-                    selectedImage
-                      ? "Change selected image"
-                      : "Click to upload an image"
+              {/* Image upload - supports both I2V and F2V modes */}
+              <AIImageUploadSection
+                selectedModels={selectedModels}
+                firstFrame={firstFrame}
+                firstFramePreview={firstFramePreview}
+                lastFrame={lastFrame}
+                lastFramePreview={lastFramePreview}
+                onFirstFrameChange={(file, preview) => {
+                  setFirstFrame(file);
+                  setFirstFramePreview(preview || null);
+                  if (generation.setFirstFrame) {
+                    generation.setFirstFrame(file);
                   }
-                >
-                  {selectedImage && imagePreview ? (
-                    <div className="relative flex flex-col items-center justify-center h-full">
-                      <img
-                        src={imagePreview}
-                        alt={selectedImage?.name ?? "File preview"}
-                        className="max-w-full max-h-32 mx-auto rounded object-contain"
-                      />
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="destructive"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          clearImage();
-                        }}
-                        className="absolute top-1 right-1 h-6 w-6 p-0 flex items-center justify-center bg-red-500 hover:bg-red-600 text-white rounded-full shadow-sm"
-                      >
-                        <X className="h-3 w-3" />
-                      </Button>
-                      <div className="mt-2 text-xs text-muted-foreground text-center">
-                        {selectedImage.name}
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="flex flex-col items-center justify-center h-full space-y-2 text-center">
-                      <Upload className="size-8 text-muted-foreground" />
-                      <div className="text-xs text-muted-foreground">
-                        Click to upload an image
-                      </div>
-                      <div className="text-xs text-muted-foreground/70">
-                        JPG, PNG, WebP, GIF (max 10MB)
-                      </div>
-                    </div>
-                  )}
-                  <input
-                    ref={fileInputRef}
-                    id="ai-image-input"
-                    type="file"
-                    accept={UPLOAD_CONSTANTS.SUPPORTED_FORMATS.join(",")}
-                    onChange={handleImageSelect}
-                    className="sr-only"
-                    aria-describedby="ai-image-help"
-                  />
-                </label>
-                <p id="ai-image-help" className="sr-only">
-                  JPG, PNG, WebP, GIF (max 10MB)
-                </p>
-
-                {/* Veo 3.1 Frame Upload - Only shows when frame-to-video models selected */}
-                {generation.hasVeo31FrameToVideo && (
-                  <div className="space-y-3 p-3 bg-muted/30 rounded-md border border-muted">
-                    <Label className="text-xs font-medium">
-                      Frame-to-Video Frames
-                    </Label>
-
-                    {/* First Frame Upload */}
-                    <div className="space-y-2">
-                      <Label className="text-xs">First Frame (Required)</Label>
-                      <label
-                        htmlFor="first-frame-input"
-                        className={`block border-2 border-dashed rounded-lg cursor-pointer transition-colors min-h-[100px] focus-within:outline-none focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2 ${
-                          firstFrame
-                            ? "border-primary/50 bg-primary/5 p-2"
-                            : "border-muted-foreground/25 hover:border-muted-foreground/50 p-3"
-                        }`}
-                        aria-label={
-                          firstFrame
-                            ? "Change first frame"
-                            : "Upload first frame"
-                        }
-                      >
-                        {firstFrame && firstFramePreview ? (
-                          <div className="relative flex flex-col items-center justify-center h-full">
-                            <img
-                              src={firstFramePreview}
-                              alt={firstFrame.name}
-                              className="max-w-full max-h-20 mx-auto rounded object-contain"
-                            />
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant="destructive"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setFirstFrame(null);
-                                setFirstFramePreview(null);
-                                generation.setFirstFrame(null);
-                              }}
-                              className="absolute top-1 right-1 h-6 w-6 p-0 flex items-center justify-center bg-red-500 hover:bg-red-600 text-white rounded-full shadow-sm"
-                            >
-                              <X className="h-3 w-3" />
-                            </Button>
-                            <div className="mt-1 text-xs text-muted-foreground text-center">
-                              {firstFrame.name}
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="flex flex-col items-center justify-center h-full space-y-1 text-center">
-                            <Upload className="size-6 text-muted-foreground" />
-                            <div className="text-xs text-muted-foreground">
-                              Upload first frame
-                            </div>
-                            <div className="text-xs text-muted-foreground/70">
-                              JPG, PNG (max 8MB)
-                            </div>
-                          </div>
-                        )}
-                        <input
-                          id="first-frame-input"
-                          type="file"
-                          accept="image/jpeg,image/png"
-                          onChange={(e) => {
-                            const file = e.target.files?.[0];
-                            if (!file) return;
-
-                            // Validate file size (8MB for Veo 3.1)
-                            if (
-                              file.size >
-                              UPLOAD_CONSTANTS.MAX_VEO31_FRAME_SIZE_BYTES
-                            ) {
-                              setError(ERROR_MESSAGES.VEO31_IMAGE_TOO_LARGE);
-                              return;
-                            }
-
-                            setFirstFrame(file);
-                            generation.setFirstFrame(file);
-                            setError(null);
-
-                            // Create preview
-                            const reader = new FileReader();
-                            reader.onload = (e) => {
-                              setFirstFramePreview(e.target?.result as string);
-                            };
-                            reader.readAsDataURL(file);
-                          }}
-                          className="sr-only"
-                        />
-                      </label>
-                    </div>
-
-                    {/* Last Frame Upload */}
-                    <div className="space-y-2">
-                      <Label className="text-xs">Last Frame (Required)</Label>
-                      <label
-                        htmlFor="last-frame-input"
-                        className={`block border-2 border-dashed rounded-lg cursor-pointer transition-colors min-h-[100px] focus-within:outline-none focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2 ${
-                          lastFrame
-                            ? "border-primary/50 bg-primary/5 p-2"
-                            : "border-muted-foreground/25 hover:border-muted-foreground/50 p-3"
-                        }`}
-                        aria-label={
-                          lastFrame ? "Change last frame" : "Upload last frame"
-                        }
-                      >
-                        {lastFrame && lastFramePreview ? (
-                          <div className="relative flex flex-col items-center justify-center h-full">
-                            <img
-                              src={lastFramePreview}
-                              alt={lastFrame.name}
-                              className="max-w-full max-h-20 mx-auto rounded object-contain"
-                            />
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant="destructive"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setLastFrame(null);
-                                setLastFramePreview(null);
-                                generation.setLastFrame(null);
-                              }}
-                              className="absolute top-1 right-1 h-6 w-6 p-0 flex items-center justify-center bg-red-500 hover:bg-red-600 text-white rounded-full shadow-sm"
-                            >
-                              <X className="h-3 w-3" />
-                            </Button>
-                            <div className="mt-1 text-xs text-muted-foreground text-center">
-                              {lastFrame.name}
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="flex flex-col items-center justify-center h-full space-y-1 text-center">
-                            <Upload className="size-6 text-muted-foreground" />
-                            <div className="text-xs text-muted-foreground">
-                              Upload last frame
-                            </div>
-                            <div className="text-xs text-muted-foreground/70">
-                              JPG, PNG (max 8MB)
-                            </div>
-                          </div>
-                        )}
-                        <input
-                          id="last-frame-input"
-                          type="file"
-                          accept="image/jpeg,image/png"
-                          onChange={(e) => {
-                            const file = e.target.files?.[0];
-                            if (!file) return;
-
-                            // Validate file size (8MB for Veo 3.1)
-                            if (
-                              file.size >
-                              UPLOAD_CONSTANTS.MAX_VEO31_FRAME_SIZE_BYTES
-                            ) {
-                              setError(ERROR_MESSAGES.VEO31_IMAGE_TOO_LARGE);
-                              return;
-                            }
-
-                            setLastFrame(file);
-                            generation.setLastFrame(file);
-                            setError(null);
-
-                            // Create preview
-                            const reader = new FileReader();
-                            reader.onload = (e) => {
-                              setLastFramePreview(e.target?.result as string);
-                            };
-                            reader.readAsDataURL(file);
-                          }}
-                          className="sr-only"
-                        />
-                      </label>
-                    </div>
-                  </div>
-                )}
+                }}
+                onLastFrameChange={(file, preview) => {
+                  setLastFrame(file);
+                  setLastFramePreview(preview || null);
+                  if (generation.setLastFrame) {
+                    generation.setLastFrame(file);
+                  }
+                }}
+                onError={setError}
+                isCompact={isCompact}
+              />
 
                 {/* Prompt for image-to-video */}
                 <div className="space-y-2">
@@ -1251,7 +1108,7 @@ const [ltxv2ImageGenerateAudio, setLTXV2ImageGenerateAudio] = useState(true);
                         value={ltxv2ImageDuration.toString()}
                         onValueChange={(value) =>
                           setLTXV2ImageDuration(
-                            Number(value) as 2 | 3 | 4 | 5 | 6
+                            Number(value) as LTXV2FastDuration
                           )
                         }
                       >
@@ -1262,11 +1119,14 @@ const [ltxv2ImageGenerateAudio, setLTXV2ImageGenerateAudio] = useState(true);
                           <SelectValue placeholder="Select duration" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="2">2 seconds</SelectItem>
-                          <SelectItem value="3">3 seconds</SelectItem>
-                          <SelectItem value="4">4 seconds</SelectItem>
-                          <SelectItem value="5">5 seconds</SelectItem>
-                          <SelectItem value="6">6 seconds</SelectItem>
+                          {LTXV2_FAST_CONFIG.DURATIONS.map((durationOption) => (
+                            <SelectItem
+                              key={durationOption}
+                              value={durationOption.toString()}
+                            >
+                              {durationOption} seconds
+                            </SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                     </div>
@@ -1281,7 +1141,7 @@ const [ltxv2ImageGenerateAudio, setLTXV2ImageGenerateAudio] = useState(true);
                       <Select
                         value={ltxv2ImageResolution}
                         onValueChange={(value) =>
-                          setLTXV2ImageResolution(value as "1080p" | "1440p" | "2160p")
+                          setLTXV2ImageResolution(value as LTXV2FastResolution)
                         }
                       >
                         <SelectTrigger
@@ -1291,9 +1151,24 @@ const [ltxv2ImageGenerateAudio, setLTXV2ImageGenerateAudio] = useState(true);
                           <SelectValue placeholder="Select resolution" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="1080p">1080p ($0.04/sec)</SelectItem>
-                          <SelectItem value="1440p">1440p ($0.08/sec)</SelectItem>
-                          <SelectItem value="2160p">4K ($0.16/sec)</SelectItem>
+                          {LTXV2_FAST_CONFIG.RESOLUTIONS.STANDARD.map((resolutionOption) => {
+                            const disabled =
+                              isExtendedLTXV2FastImageDuration &&
+                              !ltxv2FastExtendedResolutions.includes(
+                                resolutionOption as (typeof ltxv2FastExtendedResolutions)[number]
+                              );
+
+                            return (
+                              <SelectItem
+                                key={resolutionOption}
+                                value={resolutionOption}
+                                disabled={disabled}
+                              >
+                                {LTXV2_FAST_RESOLUTION_LABELS[resolutionOption]}
+                                {LTXV2_FAST_RESOLUTION_PRICE_SUFFIX[resolutionOption] ?? ""}
+                              </SelectItem>
+                            );
+                          })}
                         </SelectContent>
                       </Select>
                     </div>
@@ -1305,7 +1180,7 @@ const [ltxv2ImageGenerateAudio, setLTXV2ImageGenerateAudio] = useState(true);
                       <Select
                         value={ltxv2ImageFPS.toString()}
                         onValueChange={(value) =>
-                          setLTXV2ImageFPS(Number(value) as 25 | 50)
+                          setLTXV2ImageFPS(Number(value) as LTXV2FastFps)
                         }
                       >
                         <SelectTrigger
@@ -1315,8 +1190,23 @@ const [ltxv2ImageGenerateAudio, setLTXV2ImageGenerateAudio] = useState(true);
                           <SelectValue placeholder="Select frame rate" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="25">25 FPS</SelectItem>
-                          <SelectItem value="50">50 FPS</SelectItem>
+                          {LTXV2_FAST_CONFIG.FPS_OPTIONS.STANDARD.map((fpsOption) => {
+                            const disabled =
+                              isExtendedLTXV2FastImageDuration &&
+                              !ltxv2FastExtendedFps.includes(
+                                fpsOption as (typeof ltxv2FastExtendedFps)[number]
+                              );
+
+                            return (
+                              <SelectItem
+                                key={fpsOption}
+                                value={fpsOption.toString()}
+                                disabled={disabled}
+                              >
+                                {LTXV2_FAST_FPS_LABELS[fpsOption]}
+                              </SelectItem>
+                            );
+                          })}
                         </SelectContent>
                       </Select>
                     </div>
@@ -1334,12 +1224,165 @@ const [ltxv2ImageGenerateAudio, setLTXV2ImageGenerateAudio] = useState(true);
                       </Label>
                     </div>
 
+                    {isExtendedLTXV2FastImageDuration && (
+                      <div className="text-xs text-muted-foreground">
+                        {ERROR_MESSAGES.LTXV2_I2V_EXTENDED_DURATION_CONSTRAINT}
+                      </div>
+                    )}
+
                     <div className="text-xs text-muted-foreground">
-                      2-6 second clips with optional audio at up to 1080p.
+                      6-20 second clips with optional audio at up to 4K. Longer clips automatically use 1080p at 25 FPS.
                     </div>
                   </div>
                 )}
-              </div>
+                {ltxv2FastTextSelected && (
+                  <div className="space-y-3 text-left border-t pt-3">
+                    <Label className="text-sm font-semibold">
+                      LTX Video 2.0 Fast Settings
+                    </Label>
+
+                    <div className="space-y-1">
+                      <Label htmlFor="ltxv2-fast-duration" className="text-xs font-medium">
+                        Duration
+                      </Label>
+                      <Select
+                        value={ltxv2FastDuration.toString()}
+                        onValueChange={(value) =>
+                          setLTXV2FastDuration(
+                            Number(value) as LTXV2FastDuration
+                          )
+                        }
+                      >
+                        <SelectTrigger
+                          id="ltxv2-fast-duration"
+                          className="h-8 text-xs"
+                        >
+                          <SelectValue placeholder="Select duration" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {LTXV2_FAST_CONFIG.DURATIONS.map((durationOption) => (
+                            <SelectItem
+                              key={durationOption}
+                              value={durationOption.toString()}
+                            >
+                              {durationOption} seconds
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-1">
+                      <Label
+                        htmlFor="ltxv2-fast-resolution"
+                        className="text-xs font-medium"
+                      >
+                        Resolution
+                      </Label>
+                      <Select
+                        value={ltxv2FastResolution}
+                        onValueChange={(value) =>
+                          setLTXV2FastResolution(value as LTXV2FastResolution)
+                        }
+                      >
+                        <SelectTrigger
+                          id="ltxv2-fast-resolution"
+                          className="h-8 text-xs"
+                        >
+                          <SelectValue placeholder="Select resolution" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {LTXV2_FAST_CONFIG.RESOLUTIONS.STANDARD.map((resolutionOption) => {
+                            const disabled =
+                              isExtendedLTXV2FastTextDuration &&
+                              !ltxv2FastExtendedResolutions.includes(
+                                resolutionOption as (typeof ltxv2FastExtendedResolutions)[number]
+                              );
+
+                            return (
+                              <SelectItem
+                                key={resolutionOption}
+                                value={resolutionOption}
+                                disabled={disabled}
+                              >
+                                {LTXV2_FAST_RESOLUTION_LABELS[resolutionOption]}
+                                {LTXV2_FAST_RESOLUTION_PRICE_SUFFIX[resolutionOption] ?? ""}
+                              </SelectItem>
+                            );
+                          })}
+                        </SelectContent>
+                      </Select>
+                      <div className="text-xs text-muted-foreground">
+                        Estimated cost: $
+                        {(
+                          ltxv2FastDuration *
+                          (LTXV2_FAST_CONFIG.PRICING[ltxv2FastResolution] ?? 0)
+                        ).toFixed(2)}
+                      </div>
+                    </div>
+
+                    <div className="space-y-1">
+                      <Label htmlFor="ltxv2-fast-fps" className="text-xs font-medium">
+                        Frame Rate
+                      </Label>
+                      <Select
+                        value={ltxv2FastFPS.toString()}
+                        onValueChange={(value) =>
+                          setLTXV2FastFPS(Number(value) as LTXV2FastFps)
+                        }
+                      >
+                        <SelectTrigger
+                          id="ltxv2-fast-fps"
+                          className="h-8 text-xs"
+                        >
+                          <SelectValue placeholder="Select frame rate" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {LTXV2_FAST_CONFIG.FPS_OPTIONS.STANDARD.map((fpsOption) => {
+                            const disabled =
+                              isExtendedLTXV2FastTextDuration &&
+                              !ltxv2FastExtendedFps.includes(
+                                fpsOption as (typeof ltxv2FastExtendedFps)[number]
+                              );
+
+                            return (
+                              <SelectItem
+                                key={fpsOption}
+                                value={fpsOption.toString()}
+                                disabled={disabled}
+                              >
+                                {LTXV2_FAST_FPS_LABELS[fpsOption]}
+                              </SelectItem>
+                            );
+                          })}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="ltxv2-fast-audio"
+                        checked={ltxv2FastGenerateAudio}
+                        onCheckedChange={(checked) =>
+                          setLTXV2FastGenerateAudio(Boolean(checked))
+                        }
+                      />
+                      <Label htmlFor="ltxv2-fast-audio" className="text-xs">
+                        Generate audio
+                      </Label>
+                    </div>
+
+                    {isExtendedLTXV2FastTextDuration && (
+                      <div className="text-xs text-muted-foreground">
+                        {ERROR_MESSAGES.LTXV2_FAST_T2V_EXTENDED_DURATION_CONSTRAINT}
+                      </div>
+                    )}
+
+                    <div className="text-xs text-muted-foreground">
+                      6-20 second clips with optional audio at up to 4K. Longer clips automatically use 1080p at 25 FPS.
+                    </div>
+                  </div>
+                )}
             </TabsContent>
 
             <TabsContent value="avatar" className="space-y-4">
@@ -2137,20 +2180,19 @@ const [ltxv2ImageGenerateAudio, setLTXV2ImageGenerateAudio] = useState(true);
             )}
           </div>
         </div>
-      )}
 
-      {/* History Panel */}
-      <AIHistoryPanel
-        isOpen={history.isHistoryPanelOpen}
-        onClose={history.closeHistoryPanel}
-        generationHistory={history.generationHistory}
-        onSelectVideo={(video) => {
-          generation.setGeneratedVideo(video);
-          history.closeHistoryPanel();
-        }}
-        onRemoveFromHistory={history.removeFromHistory}
-        aiModels={AI_MODELS}
-      />
-    </div>
-  );
+        {/* History Panel */}
+        <AIHistoryPanel
+          isOpen={history.isHistoryPanelOpen}
+          onClose={history.closeHistoryPanel}
+          generationHistory={history.generationHistory}
+          onSelectVideo={(video) => {
+            generation.setGeneratedVideo(video);
+            history.closeHistoryPanel();
+          }}
+          onRemoveFromHistory={history.removeFromHistory}
+          aiModels={AI_MODELS}
+        />
+      </div>
+    );
 }
