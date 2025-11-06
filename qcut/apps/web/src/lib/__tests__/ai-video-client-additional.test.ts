@@ -63,7 +63,12 @@ describe("AI video client – additional models", () => {
     it("sends expected payload including duration, resolution and BGM", async () => {
       const fetchMock = vi
         .fn()
-        .mockResolvedValue({ ok: true, json: async () => ({ video: { url: "https://example.com/video.mp4" } }) });
+        .mockResolvedValue({
+          ok: true,
+          json: async () => ({
+            video: { url: "https://example.com/video.mp4" },
+          }),
+        });
       globalThis.fetch = fetchMock as unknown as typeof globalThis.fetch;
 
       const request: ViduQ2I2VRequest = {
@@ -95,7 +100,12 @@ describe("AI video client – additional models", () => {
     it("omits BGM flag when duration is not 4 seconds", async () => {
       const fetchMock = vi
         .fn()
-        .mockResolvedValue({ ok: true, json: async () => ({ video: { url: "https://example.com/video.mp4" } }) });
+        .mockResolvedValue({
+          ok: true,
+          json: async () => ({
+            video: { url: "https://example.com/video.mp4" },
+          }),
+        });
       globalThis.fetch = fetchMock as unknown as typeof globalThis.fetch;
 
       const request: ViduQ2I2VRequest = {
@@ -143,30 +153,35 @@ describe("AI video client – additional models", () => {
     it("sends expected payload with duration, resolution and fps", async () => {
       const fetchMock = vi
         .fn()
-        .mockResolvedValue({ ok: true, json: async () => ({ video: { url: "https://example.com/video.mp4" } }) });
+        .mockResolvedValue({
+          ok: true,
+          json: async () => ({
+            video: { url: "https://example.com/video.mp4" },
+          }),
+        });
       globalThis.fetch = fetchMock as unknown as typeof globalThis.fetch;
 
-    const request: LTXV2T2VRequest = {
-      model: "ltxv2_pro_t2v",
-      prompt: "A cinematic tracking shot through neon-lit streets",
-      duration: 8,
-      resolution: "1440p",
-      fps: 50,
-      generate_audio: false,
-    };
+      const request: LTXV2T2VRequest = {
+        model: "ltxv2_pro_t2v",
+        prompt: "A cinematic tracking shot through neon-lit streets",
+        duration: 8,
+        resolution: "1440p",
+        fps: 50,
+        generate_audio: false,
+      };
 
-    await generateLTXV2Video(request);
+      await generateLTXV2Video(request);
 
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-    const [, options] = fetchMock.mock.calls[0];
-    const payload = JSON.parse(
-      (options as Record<string, unknown>).body as string
-    );
-    expect(payload.duration).toBe(8);
-    expect(payload.resolution).toBe("1440p");
-    expect(payload.fps).toBe(50);
-    expect(payload.generate_audio).toBe(false);
-  });
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      const [, options] = fetchMock.mock.calls[0];
+      const payload = JSON.parse(
+        (options as Record<string, unknown>).body as string
+      );
+      expect(payload.duration).toBe(8);
+      expect(payload.resolution).toBe("1440p");
+      expect(payload.fps).toBe(50);
+      expect(payload.generate_audio).toBe(false);
+    });
 
     it("rejects invalid duration for the fast model", async () => {
       const request: LTXV2T2VRequest = {
@@ -197,7 +212,12 @@ describe("AI video client – additional models", () => {
     it("sends expected payload for the fast model", async () => {
       const fetchMock = vi
         .fn()
-        .mockResolvedValue({ ok: true, json: async () => ({ video: { url: "https://example.com/video.mp4" } }) });
+        .mockResolvedValue({
+          ok: true,
+          json: async () => ({
+            video: { url: "https://example.com/video.mp4" },
+          }),
+        });
       globalThis.fetch = fetchMock as unknown as typeof globalThis.fetch;
 
       const request: LTXV2T2VRequest = {
@@ -264,7 +284,12 @@ describe("AI video client – additional models", () => {
     it("sends expected payload", async () => {
       const fetchMock = vi
         .fn()
-        .mockResolvedValue({ ok: true, json: async () => ({ video: { url: "https://example.com/video.mp4" } }) });
+        .mockResolvedValue({
+          ok: true,
+          json: async () => ({
+            video: { url: "https://example.com/video.mp4" },
+          }),
+        });
       globalThis.fetch = fetchMock as unknown as typeof globalThis.fetch;
 
       const request: LTXV2I2VRequest = {
@@ -272,7 +297,7 @@ describe("AI video client – additional models", () => {
         prompt: "Slow cinematic dolly forward through a forest",
         image_url: "https://example.com/frame.png",
         duration: 12,
-        resolution: "1080p",  // Fixed: 720p is not supported by LTX Video 2.0 Fast I2V
+        resolution: "1080p", // Fixed: 720p is not supported by LTX Video 2.0 Fast I2V
         fps: 25,
         generate_audio: false,
       };
@@ -286,7 +311,7 @@ describe("AI video client – additional models", () => {
       );
 
       expect(payload.duration).toBe(12);
-      expect(payload.resolution).toBe("1080p");  // Fixed: expecting correct resolution
+      expect(payload.resolution).toBe("1080p"); // Fixed: expecting correct resolution
       expect(payload.fps).toBe(25);
       expect(payload.generate_audio).toBe(false);
       expect(payload.image_url).toBe("https://example.com/frame.png");
@@ -327,7 +352,7 @@ describe("AI video client – additional models", () => {
         model: "ltxv2_fast_i2v",
         prompt: "Camera pans across a landscape",
         image_url: "https://example.com/frame.png",
-        resolution: "720p" as any,  // Intentionally using unsupported resolution
+        resolution: "720p" as any, // Intentionally using unsupported resolution
       };
 
       await expect(generateLTXV2ImageVideo(request)).rejects.toThrow(
@@ -362,7 +387,12 @@ describe("AI video client – additional models", () => {
     it("sends expected payload for the standard model", async () => {
       const fetchMock = vi
         .fn()
-        .mockResolvedValue({ ok: true, json: async () => ({ video: { url: "https://example.com/video.mp4" } }) });
+        .mockResolvedValue({
+          ok: true,
+          json: async () => ({
+            video: { url: "https://example.com/video.mp4" },
+          }),
+        });
       globalThis.fetch = fetchMock as unknown as typeof globalThis.fetch;
 
       const request: LTXV2I2VRequest = {

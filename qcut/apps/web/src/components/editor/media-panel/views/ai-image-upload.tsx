@@ -89,7 +89,7 @@ export function AIImageUploadSection({
   return (
     <FileUpload
       id="ai-image-input"
-      label={!isCompact ? "Upload Image for Video Generation" : "Image"}
+      label={isCompact ? "Image" : "Upload Image for Video Generation"}
       fileType="image"
       acceptedTypes={UPLOAD_CONSTANTS.ALLOWED_IMAGE_TYPES}
       maxSizeBytes={UPLOAD_CONSTANTS.MAX_IMAGE_SIZE_BYTES}

@@ -339,7 +339,7 @@ test.describe("AI Transcription & Caption Generation", () => {
    * Tests exporting video projects with captions embedded in the output.
    */
   test("4A.6 - Export project with embedded captions", async ({ page }) => {
-    test.setTimeout(120000); // 2 minute timeout for export operations
+    test.setTimeout(120_000); // 2 minute timeout for export operations
     // Set up captions on timeline first
     await page.getByTestId("captions-panel-tab").click();
     await page
@@ -391,7 +391,7 @@ test.describe("AI Transcription & Caption Generation", () => {
     // Wait for export dialog with increased timeout
     await page.waitForSelector(
       '[data-testid*="export-dialog"], [role="dialog"]',
-      { timeout: 10000 }
+      { timeout: 10_000 }
     );
 
     // Verify export dialog appears
@@ -419,16 +419,16 @@ test.describe("AI Transcription & Caption Generation", () => {
     const startExportButton = page.locator(
       '[data-testid="export-start-button"]'
     );
-    await expect(startExportButton).toBeVisible({ timeout: 10000 });
+    await expect(startExportButton).toBeVisible({ timeout: 10_000 });
     await startExportButton.click();
 
     // Wait for export to show progress or status
     await Promise.race([
       page.waitForSelector('[data-testid*="export-status"]', {
-        timeout: 15000,
+        timeout: 15_000,
       }),
       page.waitForSelector('[data-testid*="export-progress"]', {
-        timeout: 15000,
+        timeout: 15_000,
       }),
     ]).catch(() => {
       console.log(
@@ -438,7 +438,9 @@ test.describe("AI Transcription & Caption Generation", () => {
 
     // Verify export is in progress or completed
     const exportStatus = page
-      .locator('[data-testid*="export-status"], [data-testid*="export-progress"]')
+      .locator(
+        '[data-testid*="export-status"], [data-testid*="export-progress"]'
+      )
       .first();
     if (await exportStatus.isVisible()) {
       await expect(exportStatus).toBeVisible();

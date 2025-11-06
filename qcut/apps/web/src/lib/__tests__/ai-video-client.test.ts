@@ -64,12 +64,10 @@ describe("generateVideoFromText - Hailuo 2.3 Text-to-Video", () => {
         duration: 6,
       };
 
-      const fetchMock = vi
-        .fn()
-        .mockResolvedValue({
-          ok: true,
-          json: async () => ({ video: { url: "https://example.com/video.mp4" } }),
-        });
+      const fetchMock = vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ video: { url: "https://example.com/video.mp4" } }),
+      });
       globalThis.fetch = fetchMock as unknown as typeof globalThis.fetch;
 
       const result = await generateVideoFromText(request);
@@ -98,12 +96,10 @@ describe("generateVideoFromText - Hailuo 2.3 Text-to-Video", () => {
         duration: 6,
       };
 
-      const fetchMock = vi
-        .fn()
-        .mockResolvedValue({
-          ok: true,
-          json: async () => ({ video: { url: "https://example.com/video.mp4" } }),
-        });
+      const fetchMock = vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ video: { url: "https://example.com/video.mp4" } }),
+      });
       globalThis.fetch = fetchMock as unknown as typeof globalThis.fetch;
 
       await generateVideoFromText(request);
@@ -122,12 +118,10 @@ describe("generateVideoFromText - Hailuo 2.3 Text-to-Video", () => {
         duration: 10,
       };
 
-      const fetchMock = vi
-        .fn()
-        .mockResolvedValue({
-          ok: true,
-          json: async () => ({ video: { url: "https://example.com/video.mp4" } }),
-        });
+      const fetchMock = vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ video: { url: "https://example.com/video.mp4" } }),
+      });
       globalThis.fetch = fetchMock as unknown as typeof globalThis.fetch;
 
       await generateVideoFromText(request);
@@ -148,12 +142,10 @@ describe("generateVideoFromText - Hailuo 2.3 Text-to-Video", () => {
         duration: 6,
       };
 
-      const fetchMock = vi
-        .fn()
-        .mockResolvedValue({
-          ok: true,
-          json: async () => ({ video: { url: "https://example.com/video.mp4" } }),
-        });
+      const fetchMock = vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ video: { url: "https://example.com/video.mp4" } }),
+      });
       globalThis.fetch = fetchMock as unknown as typeof globalThis.fetch;
 
       await generateVideoFromText(request);
@@ -171,12 +163,10 @@ describe("generateVideoFromText - Hailuo 2.3 Text-to-Video", () => {
         duration: 6,
       };
 
-      const fetchMock = vi
-        .fn()
-        .mockResolvedValue({
-          ok: true,
-          json: async () => ({ video: { url: "https://example.com/video.mp4" } }),
-        });
+      const fetchMock = vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ video: { url: "https://example.com/video.mp4" } }),
+      });
       globalThis.fetch = fetchMock as unknown as typeof globalThis.fetch;
 
       await generateVideoFromText(request);
@@ -192,12 +182,10 @@ describe("generateVideoFromText - Hailuo 2.3 Text-to-Video", () => {
         prompt_optimizer: false,
       };
 
-      const fetchMock = vi
-        .fn()
-        .mockResolvedValue({
-          ok: true,
-          json: async () => ({ video: { url: "https://example.com/video.mp4" } }),
-        });
+      const fetchMock = vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ video: { url: "https://example.com/video.mp4" } }),
+      });
       globalThis.fetch = fetchMock as unknown as typeof globalThis.fetch;
 
       await generateVideoFromText(request);
@@ -218,14 +206,12 @@ describe("generateVideoFromText - Hailuo 2.3 Text-to-Video", () => {
         duration: 6,
       };
 
-      const fetchMock = vi
-        .fn()
-        .mockResolvedValue({
-          ok: false,
-          status: 401,
-          statusText: "Unauthorized",
-          json: async () => ({ detail: "Invalid API key" }),
-        });
+      const fetchMock = vi.fn().mockResolvedValue({
+        ok: false,
+        status: 401,
+        statusText: "Unauthorized",
+        json: async () => ({ detail: "Invalid API key" }),
+      });
       globalThis.fetch = fetchMock as unknown as typeof globalThis.fetch;
 
       await expect(generateVideoFromText(request)).rejects.toThrow(

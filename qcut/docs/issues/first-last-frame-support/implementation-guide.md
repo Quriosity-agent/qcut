@@ -8,6 +8,12 @@ This guide provides detailed step-by-step instructions for implementing Frame-to
 
 ---
 
+## QA Findings - 2025-11-05
+- Desktop bundle still shows the single uploader with placeholder `Click to upload an image`; the current component renders `Click to upload character image` (see `qcut/apps/web/src/components/ui/file-upload.tsx:154`), so the shipped build is still on the legacy layout.
+- Frame pair layout flips in `qcut/apps/web/src/components/editor/media-panel/views/ai-image-upload.tsx:42`, which renders both uploaders whenever any selected model passes `MODEL_HELPERS.requiresFrameToFrame`.
+- Both Veo 3.1 frame-to-video configs (`qcut/apps/web/src/components/editor/media-panel/views/ai-constants.ts:267` and `qcut/apps/web/src/components/editor/media-panel/views/ai-constants.ts:308`) declare `requiredInputs: ["firstFrame", "lastFrame"]`, so the helper at `qcut/apps/web/src/components/editor/media-panel/views/ai-constants.ts:893` should evaluate to true as soon as those models are selected.
+- Because the UI never switches, the packaged app is likely still bundling the pre-refactor uploader; rebuild the desktop assets (or inspect the packaged bundle) to make sure `ai-image-upload.tsx` ships, and add temporary logging of `selectedModels` in `qcut/apps/web/src/components/editor/media-panel/views/ai-image-upload.tsx:42` if more telemetry is needed.
+
 ## Implementation Subtasks (Estimated: 4-6 hours)
 
 ### Phase 1: Foundation (60-90 minutes)
@@ -670,8 +676,8 @@ Use this checklist to track implementation progress:
 
 **Phase 2: Component Extraction**
 - [ ] Task 2.1: Create component
-- [ ] Task 2.2: Conditional rendering (✅ done in 2.1)
-- [ ] Task 2.3: Prop validation
+- [ ] Task 2.2: Confirm conditional rendering
+- [ ] Task 2.3: Prop typing
 - [ ] Task 2.4: Storybook stories
 - [ ] Task 2.5: Unit tests
 
@@ -687,3 +693,7 @@ Use this checklist to track implementation progress:
 - [ ] Task 4.2: Error handling
 - [ ] Task 4.3: User docs
 - [ ] Task 4.4: Developer docs
+
+
+
+

@@ -741,8 +741,7 @@ export const ERROR_MESSAGES = {
     "Prompt exceeds 1500 character limit for Hailuo 2.3 Standard",
   HAILUO23_T2V_PROMPT_TOO_LONG_PRO:
     "Prompt exceeds 2000 character limit for Hailuo 2.3 Pro",
-  HAILUO23_T2V_EMPTY_PROMPT:
-    "Please enter a text prompt for video generation",
+  HAILUO23_T2V_EMPTY_PROMPT: "Please enter a text prompt for video generation",
   HAILUO23_T2V_INVALID_DURATION:
     "Duration must be either 6 or 10 seconds for Hailuo 2.3 models",
 
@@ -890,8 +889,8 @@ export const MODEL_HELPERS = {
    * @returns true if model supports frame-to-frame animation
    */
   requiresFrameToFrame: (modelId: string): boolean => {
-    const model = AI_MODELS.find(m => m.id === modelId);
-    return model?.requiredInputs?.includes('firstFrame') ?? false;
+    const model = AI_MODELS.find((m) => m.id === modelId);
+    return model?.requiredInputs?.includes("firstFrame") ?? false;
   },
 
   /**
@@ -901,7 +900,7 @@ export const MODEL_HELPERS = {
    * @returns Array of required input keys (e.g., ['firstFrame', 'lastFrame'])
    */
   getRequiredInputs: (modelId: string): string[] => {
-    const model = AI_MODELS.find(m => m.id === modelId);
+    const model = AI_MODELS.find((m) => m.id === modelId);
     return model?.requiredInputs || [];
   },
 } as const;

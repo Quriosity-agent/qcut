@@ -1349,8 +1349,7 @@ const LTXV2_FAST_I2V_DURATIONS = LTXV2_FAST_CONFIG.DURATIONS;
 const LTXV2_FAST_I2V_RESOLUTIONS = LTXV2_FAST_CONFIG.RESOLUTIONS.STANDARD;
 const LTXV2_FAST_EXTENDED_THRESHOLD =
   LTXV2_FAST_CONFIG.EXTENDED_DURATION_THRESHOLD;
-const LTXV2_FAST_EXTENDED_RESOLUTIONS =
-  LTXV2_FAST_CONFIG.RESOLUTIONS.EXTENDED;
+const LTXV2_FAST_EXTENDED_RESOLUTIONS = LTXV2_FAST_CONFIG.RESOLUTIONS.EXTENDED;
 const LTXV2_FAST_EXTENDED_FPS = LTXV2_FAST_CONFIG.FPS_OPTIONS.EXTENDED;
 const LTXV2_FAST_I2V_FPS = LTXV2_FAST_CONFIG.FPS_OPTIONS.STANDARD;
 
@@ -1375,15 +1374,19 @@ function validateLTXV2T2VDuration(duration: number, modelId: string): void {
   const isFast = isFastLTXV2TextModel(modelId);
 
   if (isFast) {
-    if (!LTXV2_FAST_T2V_DURATIONS.includes(
-      duration as (typeof LTXV2_FAST_T2V_DURATIONS)[number]
-    )) {
+    if (
+      !LTXV2_FAST_T2V_DURATIONS.includes(
+        duration as (typeof LTXV2_FAST_T2V_DURATIONS)[number]
+      )
+    ) {
       throw new Error(ERROR_MESSAGES.LTXV2_FAST_T2V_INVALID_DURATION);
     }
   } else {
-    if (!LTXV2_STANDARD_T2V_DURATIONS.includes(
-      duration as (typeof LTXV2_STANDARD_T2V_DURATIONS)[number]
-    )) {
+    if (
+      !LTXV2_STANDARD_T2V_DURATIONS.includes(
+        duration as (typeof LTXV2_STANDARD_T2V_DURATIONS)[number]
+      )
+    ) {
       throw new Error(ERROR_MESSAGES.LTXV2_INVALID_DURATION);
     }
   }
@@ -1411,12 +1414,16 @@ function validateLTXV2I2VDuration(duration: number, modelId: string): void {
 
   if (isStandard) {
     const allowedDurations = LTXV2_STANDARD_I2V_DURATIONS;
-    if (!allowedDurations.includes(duration as typeof allowedDurations[number])) {
+    if (
+      !allowedDurations.includes(duration as (typeof allowedDurations)[number])
+    ) {
       throw new Error(ERROR_MESSAGES.LTXV2_STD_I2V_INVALID_DURATION);
     }
   } else {
     const allowedDurations = LTXV2_FAST_I2V_DURATIONS;
-    if (!allowedDurations.includes(duration as typeof allowedDurations[number])) {
+    if (
+      !allowedDurations.includes(duration as (typeof allowedDurations)[number])
+    ) {
       throw new Error(ERROR_MESSAGES.LTXV2_I2V_INVALID_DURATION);
     }
   }
@@ -1826,7 +1833,7 @@ export async function generateLTXV2Video(
       generate_audio:
         request.generate_audio !== undefined
           ? request.generate_audio
-          : modelConfig.default_params?.generate_audio ?? true,
+          : (modelConfig.default_params?.generate_audio ?? true),
     };
 
     const jobId = generateJobId();
@@ -1946,9 +1953,7 @@ export async function generateLTXV2ImageVideo(
       (modelConfig.default_params?.fps as number | undefined) ??
       25;
     if (
-      !LTXV2_FAST_I2V_FPS.includes(
-        fps as (typeof LTXV2_FAST_I2V_FPS)[number]
-      )
+      !LTXV2_FAST_I2V_FPS.includes(fps as (typeof LTXV2_FAST_I2V_FPS)[number])
     ) {
       throw new Error("FPS must be either 25 or 50 for LTX Video 2.0");
     }
@@ -1968,11 +1973,13 @@ export async function generateLTXV2ImageVideo(
       generate_audio:
         request.generate_audio !== undefined
           ? request.generate_audio
-          : modelConfig.default_params?.generate_audio ?? true,
+          : (modelConfig.default_params?.generate_audio ?? true),
     };
 
     const jobId = generateJobId();
-    console.log(`?? Starting ${isStandardModel ? "LTX Video 2.0" : "LTX Video 2.0 Fast"} image-to-video generation`);
+    console.log(
+      `?? Starting ${isStandardModel ? "LTX Video 2.0" : "LTX Video 2.0 Fast"} image-to-video generation`
+    );
     console.log("📝 Prompt:", trimmedPrompt.substring(0, 100));
     console.log("🖼️ Image URL provided:", Boolean(request.image_url));
 

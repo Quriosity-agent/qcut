@@ -123,7 +123,7 @@ export interface UseAIGenerationProps {
   ltxv2I2VGenerateAudio?: boolean;
   // LTX Video 2.0 Fast image-to-video options
   ltxv2ImageDuration?: 6 | 8 | 10 | 12 | 14 | 16 | 18 | 20;
-  ltxv2ImageResolution?: "1080p" | "1440p" | "2160p";  // Fast I2V supports 1080p/1440p/2160p, not 720p
+  ltxv2ImageResolution?: "1080p" | "1440p" | "2160p"; // Fast I2V supports 1080p/1440p/2160p, not 720p
   ltxv2ImageFPS?: 25 | 50;
   ltxv2ImageGenerateAudio?: boolean;
 

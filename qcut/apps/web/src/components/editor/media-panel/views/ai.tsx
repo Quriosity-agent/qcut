@@ -14,7 +14,7 @@ import {
   Check,
   UserIcon,
 } from "lucide-react";
-import { useState, useRef, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
@@ -56,8 +56,7 @@ type ReveOutputFormatOption =
 type LTXV2FastDuration = (typeof LTXV2_FAST_CONFIG.DURATIONS)[number];
 type LTXV2FastResolution =
   (typeof LTXV2_FAST_CONFIG.RESOLUTIONS.STANDARD)[number];
-type LTXV2FastFps =
-  (typeof LTXV2_FAST_CONFIG.FPS_OPTIONS.STANDARD)[number];
+type LTXV2FastFps = (typeof LTXV2_FAST_CONFIG.FPS_OPTIONS.STANDARD)[number];
 
 const LTXV2_FAST_RESOLUTION_LABELS: Record<LTXV2FastResolution, string> = {
   "1080p": "1080p (Full HD)",
@@ -97,7 +96,9 @@ export function AiView() {
 
   // Frame-to-Video state variables
   const [firstFrame, setFirstFrame] = useState<File | null>(null);
-  const [firstFramePreview, setFirstFramePreview] = useState<string | null>(null);
+  const [firstFramePreview, setFirstFramePreview] = useState<string | null>(
+    null
+  );
   const [lastFrame, setLastFrame] = useState<File | null>(null);
   const [lastFramePreview, setLastFramePreview] = useState<string | null>(null);
 
@@ -130,53 +131,50 @@ export function AiView() {
   const [reveNumImages, setReveNumImages] = useState<number>(
     REVE_TEXT_TO_IMAGE_MODEL.defaultNumImages
   );
-const [reveOutputFormat, setReveOutputFormat] =
-  useState<ReveOutputFormatOption>(
-    REVE_TEXT_TO_IMAGE_MODEL.defaultOutputFormat
+  const [reveOutputFormat, setReveOutputFormat] =
+    useState<ReveOutputFormatOption>(
+      REVE_TEXT_TO_IMAGE_MODEL.defaultOutputFormat
+    );
+  const [hailuoT2VDuration, setHailuoT2VDuration] = useState<6 | 10>(6);
+  const [viduQ2Duration, setViduQ2Duration] = useState<
+    2 | 3 | 4 | 5 | 6 | 7 | 8
+  >(4);
+  const [viduQ2Resolution, setViduQ2Resolution] = useState<"720p" | "1080p">(
+    "720p"
   );
-const [hailuoT2VDuration, setHailuoT2VDuration] = useState<6 | 10>(6);
-const [viduQ2Duration, setViduQ2Duration] = useState<2 | 3 | 4 | 5 | 6 | 7 | 8>(4);
-const [viduQ2Resolution, setViduQ2Resolution] = useState<"720p" | "1080p">(
-  "720p"
-);
-const [viduQ2MovementAmplitude, setViduQ2MovementAmplitude] = useState<
-  "auto" | "small" | "medium" | "large"
->("auto");
-const [viduQ2EnableBGM, setViduQ2EnableBGM] = useState(false);
-const [ltxv2Duration, setLTXV2Duration] = useState<6 | 8 | 10>(6);
-const [ltxv2Resolution, setLTXV2Resolution] = useState<
-  "1080p" | "1440p" | "2160p"
->("1080p");
-const [ltxv2FPS, setLTXV2FPS] = useState<25 | 50>(25);
-const [ltxv2GenerateAudio, setLTXV2GenerateAudio] = useState(true);
-const [ltxv2FastDuration, setLTXV2FastDuration] = useState<LTXV2FastDuration>(
-  LTXV2_FAST_CONFIG.DURATIONS[0]
-);
-const [ltxv2FastResolution, setLTXV2FastResolution] =
-  useState<LTXV2FastResolution>(
-    LTXV2_FAST_CONFIG.RESOLUTIONS.STANDARD[0]
+  const [viduQ2MovementAmplitude, setViduQ2MovementAmplitude] = useState<
+    "auto" | "small" | "medium" | "large"
+  >("auto");
+  const [viduQ2EnableBGM, setViduQ2EnableBGM] = useState(false);
+  const [ltxv2Duration, setLTXV2Duration] = useState<6 | 8 | 10>(6);
+  const [ltxv2Resolution, setLTXV2Resolution] = useState<
+    "1080p" | "1440p" | "2160p"
+  >("1080p");
+  const [ltxv2FPS, setLTXV2FPS] = useState<25 | 50>(25);
+  const [ltxv2GenerateAudio, setLTXV2GenerateAudio] = useState(true);
+  const [ltxv2FastDuration, setLTXV2FastDuration] = useState<LTXV2FastDuration>(
+    LTXV2_FAST_CONFIG.DURATIONS[0]
   );
-const [ltxv2FastFPS, setLTXV2FastFPS] = useState<LTXV2FastFps>(
-  LTXV2_FAST_CONFIG.FPS_OPTIONS.STANDARD[0]
-);
-const [ltxv2FastGenerateAudio, setLTXV2FastGenerateAudio] = useState(true);
-const [ltxv2I2VDuration, setLTXV2I2VDuration] = useState<6 | 8 | 10>(6);
-const [ltxv2I2VResolution, setLTXV2I2VResolution] = useState<
-  "1080p" | "1440p" | "2160p"
->("1080p");
-const [ltxv2I2VFPS, setLTXV2I2VFPS] = useState<25 | 50>(25);
-const [ltxv2I2VGenerateAudio, setLTXV2I2VGenerateAudio] = useState(true);
-const [
-  ltxv2ImageDuration,
-  setLTXV2ImageDuration,
-] = useState<LTXV2FastDuration>(LTXV2_FAST_CONFIG.DURATIONS[0]);
-const [ltxv2ImageResolution, setLTXV2ImageResolution] = useState<LTXV2FastResolution>(
-  LTXV2_FAST_CONFIG.RESOLUTIONS.STANDARD[0]
-);
-const [ltxv2ImageFPS, setLTXV2ImageFPS] = useState<LTXV2FastFps>(
-  LTXV2_FAST_CONFIG.FPS_OPTIONS.STANDARD[0]
-);
-const [ltxv2ImageGenerateAudio, setLTXV2ImageGenerateAudio] = useState(true);
+  const [ltxv2FastResolution, setLTXV2FastResolution] =
+    useState<LTXV2FastResolution>(LTXV2_FAST_CONFIG.RESOLUTIONS.STANDARD[0]);
+  const [ltxv2FastFPS, setLTXV2FastFPS] = useState<LTXV2FastFps>(
+    LTXV2_FAST_CONFIG.FPS_OPTIONS.STANDARD[0]
+  );
+  const [ltxv2FastGenerateAudio, setLTXV2FastGenerateAudio] = useState(true);
+  const [ltxv2I2VDuration, setLTXV2I2VDuration] = useState<6 | 8 | 10>(6);
+  const [ltxv2I2VResolution, setLTXV2I2VResolution] = useState<
+    "1080p" | "1440p" | "2160p"
+  >("1080p");
+  const [ltxv2I2VFPS, setLTXV2I2VFPS] = useState<25 | 50>(25);
+  const [ltxv2I2VGenerateAudio, setLTXV2I2VGenerateAudio] = useState(true);
+  const [ltxv2ImageDuration, setLTXV2ImageDuration] =
+    useState<LTXV2FastDuration>(LTXV2_FAST_CONFIG.DURATIONS[0]);
+  const [ltxv2ImageResolution, setLTXV2ImageResolution] =
+    useState<LTXV2FastResolution>(LTXV2_FAST_CONFIG.RESOLUTIONS.STANDARD[0]);
+  const [ltxv2ImageFPS, setLTXV2ImageFPS] = useState<LTXV2FastFps>(
+    LTXV2_FAST_CONFIG.FPS_OPTIONS.STANDARD[0]
+  );
+  const [ltxv2ImageGenerateAudio, setLTXV2ImageGenerateAudio] = useState(true);
 
   // Use global AI tab state (CRITICAL: preserve global state integration)
   const { aiActiveTab: activeTab, setAiActiveTab: setActiveTab } =
@@ -268,21 +266,19 @@ const [ltxv2ImageGenerateAudio, setLTXV2ImageGenerateAudio] = useState(true);
   const hailuoStandardSelected = selectedModels.includes(
     "hailuo23_standard_t2v"
   );
-const hailuoProSelected = selectedModels.includes("hailuo23_pro_t2v");
-const viduQ2Selected = selectedModels.includes("vidu_q2_turbo_i2v");
-const ltxv2ProTextSelected = selectedModels.includes("ltxv2_pro_t2v");
-const ltxv2FastTextSelected = selectedModels.includes("ltxv2_fast_t2v");
-const ltxv2TextSelected = ltxv2ProTextSelected || ltxv2FastTextSelected;
-const ltxv2I2VSelected = selectedModels.includes("ltxv2_i2v");
-const ltxv2ImageSelected = selectedModels.includes("ltxv2_fast_i2v");
-const ltxv2FastExtendedResolutions =
-  LTXV2_FAST_CONFIG.RESOLUTIONS.EXTENDED;
-const ltxv2FastExtendedFps = LTXV2_FAST_CONFIG.FPS_OPTIONS.EXTENDED;
-const isExtendedLTXV2FastImageDuration =
-  ltxv2ImageDuration > LTXV2_FAST_CONFIG.EXTENDED_DURATION_THRESHOLD;
-const isExtendedLTXV2FastTextDuration =
-  ltxv2FastDuration > LTXV2_FAST_CONFIG.EXTENDED_DURATION_THRESHOLD;
-
+  const hailuoProSelected = selectedModels.includes("hailuo23_pro_t2v");
+  const viduQ2Selected = selectedModels.includes("vidu_q2_turbo_i2v");
+  const ltxv2ProTextSelected = selectedModels.includes("ltxv2_pro_t2v");
+  const ltxv2FastTextSelected = selectedModels.includes("ltxv2_fast_t2v");
+  const ltxv2TextSelected = ltxv2ProTextSelected || ltxv2FastTextSelected;
+  const ltxv2I2VSelected = selectedModels.includes("ltxv2_i2v");
+  const ltxv2ImageSelected = selectedModels.includes("ltxv2_fast_i2v");
+  const ltxv2FastExtendedResolutions = LTXV2_FAST_CONFIG.RESOLUTIONS.EXTENDED;
+  const ltxv2FastExtendedFps = LTXV2_FAST_CONFIG.FPS_OPTIONS.EXTENDED;
+  const isExtendedLTXV2FastImageDuration =
+    ltxv2ImageDuration > LTXV2_FAST_CONFIG.EXTENDED_DURATION_THRESHOLD;
+  const isExtendedLTXV2FastTextDuration =
+    ltxv2FastDuration > LTXV2_FAST_CONFIG.EXTENDED_DURATION_THRESHOLD;
 
   // Reset Reve state when model is deselected
   useEffect(() => {
@@ -319,23 +315,23 @@ const isExtendedLTXV2FastTextDuration =
     }
   }, [viduQ2Duration, viduQ2EnableBGM]);
 
-useEffect(() => {
-  if (!ltxv2ProTextSelected) {
-    setLTXV2Duration(6);
-    setLTXV2Resolution("1080p");
-    setLTXV2FPS(25);
-    setLTXV2GenerateAudio(true);
-  }
-}, [ltxv2ProTextSelected]);
+  useEffect(() => {
+    if (!ltxv2ProTextSelected) {
+      setLTXV2Duration(6);
+      setLTXV2Resolution("1080p");
+      setLTXV2FPS(25);
+      setLTXV2GenerateAudio(true);
+    }
+  }, [ltxv2ProTextSelected]);
 
-useEffect(() => {
-  if (!ltxv2FastTextSelected) {
-    setLTXV2FastDuration(LTXV2_FAST_CONFIG.DURATIONS[0]);
-    setLTXV2FastResolution(LTXV2_FAST_CONFIG.RESOLUTIONS.STANDARD[0]);
-    setLTXV2FastFPS(LTXV2_FAST_CONFIG.FPS_OPTIONS.STANDARD[0]);
-    setLTXV2FastGenerateAudio(true);
-  }
-}, [ltxv2FastTextSelected]);
+  useEffect(() => {
+    if (!ltxv2FastTextSelected) {
+      setLTXV2FastDuration(LTXV2_FAST_CONFIG.DURATIONS[0]);
+      setLTXV2FastResolution(LTXV2_FAST_CONFIG.RESOLUTIONS.STANDARD[0]);
+      setLTXV2FastFPS(LTXV2_FAST_CONFIG.FPS_OPTIONS.STANDARD[0]);
+      setLTXV2FastGenerateAudio(true);
+    }
+  }, [ltxv2FastTextSelected]);
 
   useEffect(() => {
     if (!ltxv2I2VSelected) {
@@ -355,67 +351,67 @@ useEffect(() => {
     }
   }, [ltxv2ImageSelected]);
 
-useEffect(() => {
-  if (!ltxv2FastTextSelected && !ltxv2ImageSelected) {
-    return;
-  }
-
-  const enforceFastConstraints = (
-    duration: number,
-    currentResolution: LTXV2FastResolution,
-    setResolution: (value: LTXV2FastResolution) => void,
-    currentFps: LTXV2FastFps,
-    setFps: (value: LTXV2FastFps) => void
-  ) => {
-    if (duration <= LTXV2_FAST_CONFIG.EXTENDED_DURATION_THRESHOLD) {
+  useEffect(() => {
+    if (!ltxv2FastTextSelected && !ltxv2ImageSelected) {
       return;
     }
 
-    const enforcedResolution =
-      LTXV2_FAST_CONFIG.RESOLUTIONS.EXTENDED[0] ??
-      LTXV2_FAST_CONFIG.RESOLUTIONS.STANDARD[0];
-    const enforcedFps =
-      LTXV2_FAST_CONFIG.FPS_OPTIONS.EXTENDED[0] ??
-      LTXV2_FAST_CONFIG.FPS_OPTIONS.STANDARD[0];
+    const enforceFastConstraints = (
+      duration: number,
+      currentResolution: LTXV2FastResolution,
+      setResolution: (value: LTXV2FastResolution) => void,
+      currentFps: LTXV2FastFps,
+      setFps: (value: LTXV2FastFps) => void
+    ) => {
+      if (duration <= LTXV2_FAST_CONFIG.EXTENDED_DURATION_THRESHOLD) {
+        return;
+      }
 
-    if (currentResolution !== enforcedResolution) {
-      setResolution(enforcedResolution);
+      const enforcedResolution =
+        LTXV2_FAST_CONFIG.RESOLUTIONS.EXTENDED[0] ??
+        LTXV2_FAST_CONFIG.RESOLUTIONS.STANDARD[0];
+      const enforcedFps =
+        LTXV2_FAST_CONFIG.FPS_OPTIONS.EXTENDED[0] ??
+        LTXV2_FAST_CONFIG.FPS_OPTIONS.STANDARD[0];
+
+      if (currentResolution !== enforcedResolution) {
+        setResolution(enforcedResolution);
+      }
+
+      if (currentFps !== enforcedFps) {
+        setFps(enforcedFps);
+      }
+    };
+
+    if (ltxv2FastTextSelected) {
+      enforceFastConstraints(
+        ltxv2FastDuration,
+        ltxv2FastResolution,
+        setLTXV2FastResolution,
+        ltxv2FastFPS,
+        setLTXV2FastFPS
+      );
     }
 
-    if (currentFps !== enforcedFps) {
-      setFps(enforcedFps);
+    if (ltxv2ImageSelected) {
+      enforceFastConstraints(
+        ltxv2ImageDuration,
+        ltxv2ImageResolution,
+        setLTXV2ImageResolution,
+        ltxv2ImageFPS,
+        setLTXV2ImageFPS
+      );
     }
-  };
-
-  if (ltxv2FastTextSelected) {
-    enforceFastConstraints(
-      ltxv2FastDuration,
-      ltxv2FastResolution,
-      setLTXV2FastResolution,
-      ltxv2FastFPS,
-      setLTXV2FastFPS
-    );
-  }
-
-  if (ltxv2ImageSelected) {
-    enforceFastConstraints(
-      ltxv2ImageDuration,
-      ltxv2ImageResolution,
-      setLTXV2ImageResolution,
-      ltxv2ImageFPS,
-      setLTXV2ImageFPS
-    );
-  }
-}, [
-  ltxv2FastTextSelected,
-  ltxv2FastDuration,
-  ltxv2FastResolution,
-  ltxv2FastFPS,
-  ltxv2ImageSelected,
-  ltxv2ImageDuration,
-  ltxv2ImageResolution,
-  ltxv2ImageFPS,
-]);
+  }, [
+    ltxv2FastTextSelected,
+    ltxv2FastDuration,
+    ltxv2FastResolution,
+    ltxv2FastFPS,
+    ltxv2ImageSelected,
+    ltxv2ImageDuration,
+    ltxv2ImageResolution,
+    ltxv2ImageFPS,
+  ]);
 
   // Sync firstFrame with selectedImage for backward compatibility
   useEffect(() => {
@@ -1387,7 +1383,6 @@ useEffect(() => {
                     </div>
                   </div>
                 )}
-              </div>
             </TabsContent>
 
             <TabsContent value="avatar" className="space-y-4">
@@ -2185,20 +2180,19 @@ useEffect(() => {
             )}
           </div>
         </div>
-      )}
 
-      {/* History Panel */}
-      <AIHistoryPanel
-        isOpen={history.isHistoryPanelOpen}
-        onClose={history.closeHistoryPanel}
-        generationHistory={history.generationHistory}
-        onSelectVideo={(video) => {
-          generation.setGeneratedVideo(video);
-          history.closeHistoryPanel();
-        }}
-        onRemoveFromHistory={history.removeFromHistory}
-        aiModels={AI_MODELS}
-      />
-    </div>
-  );
+        {/* History Panel */}
+        <AIHistoryPanel
+          isOpen={history.isHistoryPanelOpen}
+          onClose={history.closeHistoryPanel}
+          generationHistory={history.generationHistory}
+          onSelectVideo={(video) => {
+            generation.setGeneratedVideo(video);
+            history.closeHistoryPanel();
+          }}
+          onRemoveFromHistory={history.removeFromHistory}
+          aiModels={AI_MODELS}
+        />
+      </div>
+    );
 }
