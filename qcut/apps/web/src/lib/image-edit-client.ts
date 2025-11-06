@@ -626,82 +626,6 @@ function generateJobId(): string {
  */
 export function getImageEditModels() {
   return [
-    {
-      id: "seededit",
-      name: "SeedEdit v3",
-      description: "Precise photo editing with content preservation",
-      provider: "ByteDance",
-      estimatedCost: "$0.05-0.10",
-      features: ["Photo retouching", "Object modification", "Realistic edits"],
-      parameters: {
-        guidanceScale: { min: 1, max: 10, default: 1.0, step: 0.1 },
-        seed: { optional: true },
-      },
-    },
-    {
-      id: "flux-kontext",
-      name: "FLUX Pro Kontext",
-      description: "Context-aware editing with scene transformations",
-      provider: "FLUX",
-      estimatedCost: "$0.15-0.25",
-      features: ["Style changes", "Object replacement", "Scene modification"],
-      parameters: {
-        guidanceScale: { min: 1, max: 20, default: 3.5, step: 0.5 },
-        steps: { min: 1, max: 50, default: 28, step: 1 },
-        safetyTolerance: { min: 1, max: 6, default: 2, step: 1 },
-        numImages: { min: 1, max: 4, default: 1, step: 1 },
-      },
-    },
-    {
-      id: "flux-kontext-max",
-      name: "FLUX Pro Kontext Max",
-      description: "Advanced editing for complex tasks and typography",
-      provider: "FLUX",
-      estimatedCost: "$0.25-0.40",
-      features: ["Complex edits", "Typography", "Professional adjustments"],
-      parameters: {
-        guidanceScale: { min: 1, max: 20, default: 3.5, step: 0.5 },
-        steps: { min: 1, max: 50, default: 28, step: 1 },
-        safetyTolerance: { min: 1, max: 6, default: 2, step: 1 },
-        numImages: { min: 1, max: 4, default: 1, step: 1 },
-      },
-    },
-
-    // Add new SeedDream V4 model
-    {
-      id: "seeddream-v4",
-      name: "SeedDream v4",
-      description: "Advanced multi-image editing with unified architecture",
-      provider: "ByteDance",
-      estimatedCost: "$0.04-0.08",
-      features: [
-        "Multi-image processing",
-        "Flexible sizing",
-        "Enhanced prompts",
-        "Advanced controls",
-      ],
-      parameters: {
-        imageSize: {
-          type: "select",
-          options: [
-            "square_hd",
-            "square",
-            "portrait_3_4",
-            "portrait_9_16",
-            "landscape_4_3",
-            "landscape_16_9",
-          ],
-          default: "square_hd",
-          customRange: { min: 1024, max: 4096, step: 64 }, // Allow custom numeric values
-        },
-        maxImages: { min: 1, max: 6, default: 1, step: 1 }, // Corrected max from 10 to 6
-        numImages: { min: 1, max: 4, default: 1, step: 1 },
-        syncMode: { type: "boolean", default: false },
-        enableSafetyChecker: { type: "boolean", default: true },
-        seed: { optional: true },
-      },
-    },
-
     // Add Nano Banana model
     {
       id: "nano-banana",
@@ -747,6 +671,82 @@ export function getImageEditModels() {
           default: "png",
         },
         syncMode: { type: "boolean", default: false },
+      },
+    },
+
+    // Add new SeedDream V4 model
+    {
+      id: "seeddream-v4",
+      name: "SeedDream v4",
+      description: "Advanced multi-image editing with unified architecture",
+      provider: "ByteDance",
+      estimatedCost: "$0.04-0.08",
+      features: [
+        "Multi-image processing",
+        "Flexible sizing",
+        "Enhanced prompts",
+        "Advanced controls",
+      ],
+      parameters: {
+        imageSize: {
+          type: "select",
+          options: [
+            "square_hd",
+            "square",
+            "portrait_3_4",
+            "portrait_9_16",
+            "landscape_4_3",
+            "landscape_16_9",
+          ],
+          default: "square_hd",
+          customRange: { min: 1024, max: 4096, step: 64 }, // Allow custom numeric values
+        },
+        maxImages: { min: 1, max: 6, default: 1, step: 1 }, // Corrected max from 10 to 6
+        numImages: { min: 1, max: 4, default: 1, step: 1 },
+        syncMode: { type: "boolean", default: false },
+        enableSafetyChecker: { type: "boolean", default: true },
+        seed: { optional: true },
+      },
+    },
+
+    {
+      id: "seededit",
+      name: "SeedEdit v3",
+      description: "Precise photo editing with content preservation",
+      provider: "ByteDance",
+      estimatedCost: "$0.05-0.10",
+      features: ["Photo retouching", "Object modification", "Realistic edits"],
+      parameters: {
+        guidanceScale: { min: 1, max: 10, default: 1.0, step: 0.1 },
+        seed: { optional: true },
+      },
+    },
+    {
+      id: "flux-kontext",
+      name: "FLUX Pro Kontext",
+      description: "Context-aware editing with scene transformations",
+      provider: "FLUX",
+      estimatedCost: "$0.15-0.25",
+      features: ["Style changes", "Object replacement", "Scene modification"],
+      parameters: {
+        guidanceScale: { min: 1, max: 20, default: 3.5, step: 0.5 },
+        steps: { min: 1, max: 50, default: 28, step: 1 },
+        safetyTolerance: { min: 1, max: 6, default: 2, step: 1 },
+        numImages: { min: 1, max: 4, default: 1, step: 1 },
+      },
+    },
+    {
+      id: "flux-kontext-max",
+      name: "FLUX Pro Kontext Max",
+      description: "Advanced editing for complex tasks and typography",
+      provider: "FLUX",
+      estimatedCost: "$0.25-0.40",
+      features: ["Complex edits", "Typography", "Professional adjustments"],
+      parameters: {
+        guidanceScale: { min: 1, max: 20, default: 3.5, step: 0.5 },
+        steps: { min: 1, max: 50, default: 28, step: 1 },
+        safetyTolerance: { min: 1, max: 6, default: 2, step: 1 },
+        numImages: { min: 1, max: 4, default: 1, step: 1 },
       },
     },
   ];

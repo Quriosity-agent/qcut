@@ -1,17 +1,16 @@
 # Image Edit Feature - Model Order Update
 
-## Quick Summary - What to Do
+## Quick Summary
 
-**Single Change Required:** Reorder the models in one function to display cheapest first.
+**Single Change Completed:** Models in `getImageEditModels()` now render cheapest-first in the adjustment panel.
 
-### The Change
-1. **File to modify:** `qcut/apps/web/src/lib/image-edit-client.ts`
-2. **Function to update:** `getImageEditModels()` (Line 627)
-3. **Action:** Move the model objects into price order (see updated code below)
+### Change Details
+- Updated `qcut/apps/web/src/lib/image-edit-client.ts` so the model array order matches pricing (Nano Banana → FLUX Pro Kontext Max).
+- Verified the adjustment store (`qcut/apps/web/src/stores/adjustment-store.ts`) still defaults to `"seededit"`, keeping the prior default selection.
 
 ### Current vs Desired Order
-| Current Order | -> | New Order (by price) |
-|--------------|---|---------------------|
+| Previous Order | -> | New Order (by price) |
+|----------------|----|----------------------|
 | 1. SeedEdit v3 ($0.05-0.10) | -> | 1. Nano Banana ($0.039) |
 | 2. FLUX Pro Kontext ($0.15-0.25) | -> | 2. Reve Edit ($0.04) |
 | 3. FLUX Pro Kontext Max ($0.25-0.40) | -> | 3. SeedDream v4 ($0.04-0.08) |
@@ -206,7 +205,16 @@ export function getImageEditModels() {
 ### What This Change Does
 - **Reorders models by price** (cheapest first: $0.039 -> $0.40)
 - **Keeps all functionality intact** - Only changes display order
-- **Maintains SeedEdit v3 as default** - Can be kept via `selectedModel` state in adjustment store
+- **Maintains SeedEdit v3 as default** via existing `selectedModel` state in adjustment store
+
+### Code Reference
+```typescript
+export function getImageEditModels() {
+  return [
+    /* Nano Banana, Reve Edit, SeedDream v4, SeedEdit v3, FLUX Pro Kontext, FLUX Pro Kontext Max */
+  ];
+}
+```
 
 ### Default Model Configuration
 If you want to keep SeedEdit v3 as default despite not being first, check:
@@ -220,8 +228,8 @@ If you want to keep SeedEdit v3 as default despite not being first, check:
 <!-- Reviewer: Plan validated; proceed with the reorder when ready. -->
 ---
 
-*Last Updated: November 2025*
-*Status: Planning Phase*
+*Last Updated: March 2024*
+*Status: Completed*
 
 
 
