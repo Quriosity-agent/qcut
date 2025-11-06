@@ -101,21 +101,16 @@ Create a distinct "MODEL TYPE" selector above the current model list:
 │                                      │
 │ • MODEL SELECTION                    │
 │ ┌─────────────────────────────────┐ │
-│ │ ☐ Aura SR            $0.01/img  │ │
 │ │ ☑ Crystal Upscaler   $0.02/img  │ │
-│ │ ☐ ESRGAN Ultra       $0.03/img  │ │
-│ │ ☐ Real-ESRGAN 4x     $0.04/img  │ │
 │ │ ☐ SeedVR Upscale     $0.05/img  │ │
-│ │ ☐ GFPGAN Face        $0.06/img  │ │
-│ │ ☐ CodeFormer         $0.07/img  │ │
 │ │ ☐ Topaz Upscale      $0.10/img  │ │
 │ └─────────────────────────────────┘ │
 │                                      │
 │ • UPSCALE SETTINGS                   │
 │ Scale Factor: [2x] [4x] [8x] [16x]   │
-│ Face Enhancement: [Toggle]           │
 │ Denoise Level: [Slider 0-100]       │
 │ Creativity: [Slider 0-100]           │
+│ Overlapping Tiles: [Toggle]          │
 └─────────────────────────────────────┘
 ```
 
@@ -151,13 +146,8 @@ interface UpscaleModel {
 #### 3. Upscale Models Configuration
 ```typescript
 export const UPSCALE_MODEL_ORDER = [
-  "aura-sr",           // Fastest, most affordable
-  "crystal-upscaler",  // Good balance
-  "esrgan-ultra",      // General purpose
-  "real-esrgan-4x",    // Natural images
-  "seedvr-upscale",    // High quality
-  "gfpgan-face",       // Face enhancement
-  "codeformer",        // Face restoration
+  "crystal-upscaler",  // Good balance of price and quality
+  "seedvr-upscale",    // High quality with creativity control
   "topaz-upscale"      // Professional grade
 ] as const;
 
