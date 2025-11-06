@@ -26,7 +26,10 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useText2ImageStore } from "@/stores/text2image-store";
-import { TEXT2IMAGE_MODELS } from "@/lib/text2image-models";
+import {
+  TEXT2IMAGE_MODELS,
+  TEXT2IMAGE_MODEL_ORDER,
+} from "@/lib/text2image-models";
 import {
   FloatingActionPanelRoot,
   FloatingActionPanelTrigger,
@@ -190,28 +193,31 @@ export function Text2ImageView() {
                 {open && (
                   <div className="w-full border rounded-md bg-background/90 backdrop-blur-sm max-h-[250px] overflow-y-auto shadow-md mt-1">
                     <div className="p-2 space-y-1">
-                      {Object.entries(TEXT2IMAGE_MODELS).map(([key, model]) => (
-                        <FloatingActionPanelModelOption
-                          key={key}
-                          id={key}
-                          name={model.name}
-                          checked={selectedModels.includes(key)}
-                          onCheckedChange={(checked) => {
-                            if (generationMode === "single") {
-                              // Clear all selections and select only this one
-                              selectedModels.forEach((m) => {
-                                if (m !== key) toggleModel(m);
-                              });
-                              if (checked && !selectedModels.includes(key)) {
-                                toggleModel(key);
+                      {TEXT2IMAGE_MODEL_ORDER.map((modelId) => {
+                        const model = TEXT2IMAGE_MODELS[modelId];
+                        return (
+                          <FloatingActionPanelModelOption
+                            key={modelId}
+                            id={modelId}
+                            name={model.name}
+                            checked={selectedModels.includes(modelId)}
+                            onCheckedChange={(checked) => {
+                              if (generationMode === "single") {
+                                // Clear all selections and select only this one
+                                selectedModels.forEach((m) => {
+                                  if (m !== modelId) toggleModel(m);
+                                });
+                                if (checked && !selectedModels.includes(modelId)) {
+                                  toggleModel(modelId);
+                                }
+                              } else {
+                                // Multi-model mode - just toggle
+                                toggleModel(modelId);
                               }
-                            } else {
-                              // Multi-model mode - just toggle
-                              toggleModel(key);
-                            }
-                          }}
-                        />
-                      ))}
+                            }}
+                          />
+                        );
+                      })}
                     </div>
                   </div>
                 )}

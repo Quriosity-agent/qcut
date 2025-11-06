@@ -626,7 +626,6 @@ function generateJobId(): string {
  */
 export function getImageEditModels() {
   return [
-    // Add Nano Banana model
     {
       id: "nano-banana",
       name: "Nano Banana",
@@ -649,8 +648,6 @@ export function getImageEditModels() {
         syncMode: { type: "boolean", default: false },
       },
     },
-
-    // Add Reve Edit model
     {
       id: "reve-edit",
       name: "Reve Edit",
@@ -673,8 +670,6 @@ export function getImageEditModels() {
         syncMode: { type: "boolean", default: false },
       },
     },
-
-    // Add new SeedDream V4 model
     {
       id: "seeddream-v4",
       name: "SeedDream v4",
@@ -699,16 +694,15 @@ export function getImageEditModels() {
             "landscape_16_9",
           ],
           default: "square_hd",
-          customRange: { min: 1024, max: 4096, step: 64 }, // Allow custom numeric values
+          customRange: { min: 1024, max: 4096, step: 64 },
         },
-        maxImages: { min: 1, max: 6, default: 1, step: 1 }, // Corrected max from 10 to 6
+        maxImages: { min: 1, max: 6, default: 1, step: 1 },
         numImages: { min: 1, max: 4, default: 1, step: 1 },
         syncMode: { type: "boolean", default: false },
         enableSafetyChecker: { type: "boolean", default: true },
         seed: { optional: true },
       },
     },
-
     {
       id: "seededit",
       name: "SeedEdit v3",
