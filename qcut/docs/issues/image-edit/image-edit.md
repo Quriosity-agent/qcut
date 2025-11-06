@@ -56,6 +56,25 @@ The Image Edit feature will provide users with tools to modify and enhance image
 - [ ] Implement export options
 - [ ] Performance optimization
 
+## Model Selection
+
+The Image Edit feature supports multiple AI models for image generation and editing. The models are displayed in the following order:
+
+### Available Models (Priority Order)
+1. **Nano Banana** - $0.039 per generation
+2. **SeedDream v4** - $0.04-$0.08 per generation
+3. **Reve Edit** - $0.04 per generation
+4. **FLUX Pro Kontext Max** - $0.25-$0.40 per generation
+5. **FLUX Pro Kontext** - $0.15-$0.25 per generation
+6. **SeedEdit v3** - $0.05-$0.10 per generation (Currently selected default)
+
+### Model Selection UI
+- Models are displayed in a dropdown list under the "MODEL SELECTION" header
+- Current selection is highlighted with a checkmark
+- Pricing information is shown for each model
+- Users can upload images to edit via drag & drop or click to browse
+- Supported formats: JPEG, PNG, WebP
+
 ## API Design
 
 ### Image Edit Client Methods
@@ -80,6 +99,17 @@ interface ImageEditClient {
   enhanceImage(options: EnhanceOptions): Promise<void>;
   removeBackground(): Promise<void>;
   upscaleImage(scale: number): Promise<void>;
+
+  // Model selection
+  selectModel(modelName: string): void;
+  getAvailableModels(): ModelInfo[];
+}
+
+interface ModelInfo {
+  name: string;
+  pricing: string;
+  capabilities: string[];
+  isDefault?: boolean;
 }
 ```
 
@@ -139,5 +169,5 @@ interface ImageEditClient {
 
 ---
 
-*Last Updated: November 2024*
+*Last Updated: November 2025*
 *Status: Planning Phase*
