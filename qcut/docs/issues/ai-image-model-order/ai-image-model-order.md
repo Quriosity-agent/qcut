@@ -101,17 +101,21 @@ Create a distinct "MODEL TYPE" selector above the current model list:
 │                                      │
 │ • MODEL SELECTION                    │
 │ ┌─────────────────────────────────┐ │
-│ │ ☑ ESRGAN Ultra       $0.02/img  │ │
-│ │ ☐ Real-ESRGAN 4x     $0.03/img  │ │
-│ │ ☐ GFPGAN Face        $0.04/img  │ │
-│ │ ☐ CodeFormer         $0.05/img  │ │
 │ │ ☐ Aura SR            $0.01/img  │ │
+│ │ ☑ Crystal Upscaler   $0.02/img  │ │
+│ │ ☐ ESRGAN Ultra       $0.03/img  │ │
+│ │ ☐ Real-ESRGAN 4x     $0.04/img  │ │
+│ │ ☐ SeedVR Upscale     $0.05/img  │ │
+│ │ ☐ GFPGAN Face        $0.06/img  │ │
+│ │ ☐ CodeFormer         $0.07/img  │ │
+│ │ ☐ Topaz Upscale      $0.10/img  │ │
 │ └─────────────────────────────────┘ │
 │                                      │
 │ • UPSCALE SETTINGS                   │
-│ Scale Factor: [2x] [4x] [8x]         │
+│ Scale Factor: [2x] [4x] [8x] [16x]   │
 │ Face Enhancement: [Toggle]           │
 │ Denoise Level: [Slider 0-100]       │
+│ Creativity: [Slider 0-100]           │
 └─────────────────────────────────────┘
 ```
 
@@ -147,18 +151,46 @@ interface UpscaleModel {
 #### 3. Upscale Models Configuration
 ```typescript
 export const UPSCALE_MODEL_ORDER = [
-  "esrgan-ultra",
-  "real-esrgan-4x",
-  "gfpgan-face",
-  "codeformer",
-  "aura-sr"
+  "aura-sr",           // Fastest, most affordable
+  "crystal-upscaler",  // Good balance
+  "esrgan-ultra",      // General purpose
+  "real-esrgan-4x",    // Natural images
+  "seedvr-upscale",    // High quality
+  "gfpgan-face",       // Face enhancement
+  "codeformer",        // Face restoration
+  "topaz-upscale"      // Professional grade
 ] as const;
 
 export const UPSCALE_MODELS: Record<string, UpscaleModel> = {
+  "aura-sr": {
+    id: "aura-sr",
+    name: "Aura SR",
+    price: "0.01",
+    maxScale: 4,
+    supportedScales: [2, 4],
+    features: {
+      denoising: true
+    },
+    endpoint: "fal-ai/aura-sr",
+    category: "upscale"
+  },
+  "crystal-upscaler": {
+    id: "crystal-upscaler",
+    name: "Crystal Upscaler",
+    price: "0.02",
+    maxScale: 10,
+    supportedScales: [2, 4, 8, 10],
+    features: {
+      denoising: true,
+      sharpening: true
+    },
+    endpoint: "fal-ai/crystal-upscaler",
+    category: "upscale"
+  },
   "esrgan-ultra": {
     id: "esrgan-ultra",
     name: "ESRGAN Ultra",
-    price: "0.02",
+    price: "0.03",
     maxScale: 8,
     supportedScales: [2, 4, 8],
     features: {
@@ -171,7 +203,7 @@ export const UPSCALE_MODELS: Record<string, UpscaleModel> = {
   "real-esrgan-4x": {
     id: "real-esrgan-4x",
     name: "Real-ESRGAN 4x",
-    price: "0.03",
+    price: "0.04",
     maxScale: 4,
     supportedScales: [2, 4],
     features: {
@@ -181,10 +213,24 @@ export const UPSCALE_MODELS: Record<string, UpscaleModel> = {
     endpoint: "fal-ai/real-esrgan",
     category: "upscale"
   },
+  "seedvr-upscale": {
+    id: "seedvr-upscale",
+    name: "SeedVR Upscale",
+    price: "0.05",
+    maxScale: 16,
+    supportedScales: [2, 4, 8, 16],
+    features: {
+      denoising: true,
+      sharpening: true,
+      creativity: true  // Supports creative enhancement
+    },
+    endpoint: "fal-ai/seedvr/upscale/image",
+    category: "upscale"
+  },
   "gfpgan-face": {
     id: "gfpgan-face",
     name: "GFPGAN Face",
-    price: "0.04",
+    price: "0.06",
     maxScale: 4,
     supportedScales: [2, 4],
     features: {
@@ -197,7 +243,7 @@ export const UPSCALE_MODELS: Record<string, UpscaleModel> = {
   "codeformer": {
     id: "codeformer",
     name: "CodeFormer",
-    price: "0.05",
+    price: "0.07",
     maxScale: 4,
     supportedScales: [1, 2, 4],
     features: {
@@ -208,16 +254,19 @@ export const UPSCALE_MODELS: Record<string, UpscaleModel> = {
     endpoint: "fal-ai/codeformer",
     category: "upscale"
   },
-  "aura-sr": {
-    id: "aura-sr",
-    name: "Aura SR",
-    price: "0.01",
-    maxScale: 4,
-    supportedScales: [2, 4],
+  "topaz-upscale": {
+    id: "topaz-upscale",
+    name: "Topaz Upscale",
+    price: "0.10",
+    maxScale: 16,
+    supportedScales: [2, 4, 8, 16],
     features: {
-      denoising: true
+      denoising: true,
+      sharpening: true,
+      faceEnhancement: true,
+      professionalGrade: true  // Highest quality
     },
-    endpoint: "fal-ai/aura-sr",
+    endpoint: "fal-ai/topaz/upscale/image",
     category: "upscale"
   }
 };
@@ -226,11 +275,14 @@ export const UPSCALE_MODELS: Record<string, UpscaleModel> = {
 #### 4. Upscale Settings Component
 ```typescript
 interface UpscaleSettings {
-  scaleFactor: 2 | 4 | 8;
+  scaleFactor: 2 | 4 | 8 | 10 | 16;
   faceEnhancement: boolean;
   denoise: boolean;
   denoiseLevel: number; // 0-100
   preserveDetails: boolean;
+  creativity: number; // 0-100 for SeedVR
+  overlappingTiles: boolean; // For Topaz
+  outputFormat: 'png' | 'jpeg' | 'webp';
 }
 ```
 
@@ -240,9 +292,11 @@ interface UpscaleSettings {
 2. **Model List Update**: UI shows upscale models with pricing
 3. **Model Selection**: User selects one or more upscale models
 4. **Settings Configuration**:
-   - Scale factor selector appears (2x, 4x, 8x)
+   - Scale factor selector appears (2x, 4x, 8x, 16x based on model)
    - Enhancement toggles based on model capabilities
    - Denoise slider for fine-tuning
+   - Creativity slider for SeedVR (0-100)
+   - Overlapping tiles toggle for Topaz
 5. **Image Input**: User uploads image or selects from existing
 6. **Processing**: "Upscale Image" button initiates processing
 7. **Result**: Before/after preview with download option
@@ -261,6 +315,19 @@ interface UpscaleSettings {
 - **Progress Indicator**: Display processing stages
 - **Preview**: Split-screen before/after comparison
 
+### Model Capabilities Comparison
+
+| Model | Max Scale | Best For | Special Features |
+|-------|-----------|----------|------------------|
+| **Aura SR** | 4x | Quick results | Fast processing |
+| **Crystal Upscaler** | 10x | Balanced quality | Good price/performance |
+| **ESRGAN Ultra** | 8x | General images | Versatile |
+| **Real-ESRGAN 4x** | 4x | Natural photos | Realistic textures |
+| **SeedVR Upscale** | 16x | Creative upscaling | Creativity slider |
+| **GFPGAN Face** | 4x | Portraits | Face enhancement |
+| **CodeFormer** | 4x | Face restoration | Advanced face repair |
+| **Topaz Upscale** | 16x | Professional work | Highest quality, tiling |
+
 ### Advantages of Option 1
 
 1. **Clear Separation**: Users immediately understand they're in "upscale mode"
@@ -268,6 +335,7 @@ interface UpscaleSettings {
 3. **Consistency**: Follows existing pattern of model selection with pricing
 4. **Scalability**: Easy to add more upscale models in the future
 5. **User Experience**: Intuitive workflow from model selection to result
+6. **Model Variety**: 8 different models covering all use cases from quick to professional
 
 ---
 *Last Updated: November 2025* · *Status: In Progress - Upscale Integration*
