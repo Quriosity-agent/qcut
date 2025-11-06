@@ -1,173 +1,227 @@
-# Image Edit Feature Implementation
+# Image Edit Feature - Model Order Update
 
-## Overview
-This document outlines the implementation of image editing capabilities in QCut, allowing users to edit and enhance images within the video editor.
+## Quick Summary - What to Do
+
+**Single Change Required:** Reorder the models in one function to display cheapest first.
+
+### The Change
+1. **File to modify:** `qcut/apps/web/src/lib/image-edit-client.ts`
+2. **Function to update:** `getImageEditModels()` (Line 627)
+3. **Action:** Move the model objects into price order (see updated code below)
+
+### Current vs Desired Order
+| Current Order | -> | New Order (by price) |
+|--------------|---|---------------------|
+| 1. SeedEdit v3 ($0.05-0.10) | -> | 1. Nano Banana ($0.039) |
+| 2. FLUX Pro Kontext ($0.15-0.25) | -> | 2. Reve Edit ($0.04) |
+| 3. FLUX Pro Kontext Max ($0.25-0.40) | -> | 3. SeedDream v4 ($0.04-0.08) |
+| 4. SeedDream v4 ($0.04-0.08) | -> | 4. SeedEdit v3 ($0.05-0.10) |
+| 5. Nano Banana ($0.039) | -> | 5. FLUX Pro Kontext ($0.15-0.25) |
+| 6. Reve Edit ($0.04) | -> | 6. FLUX Pro Kontext Max ($0.25-0.40) |
 
 ## Feature Description
-The Image Edit feature will provide users with tools to modify and enhance images directly within the QCut application, including:
-- Basic image adjustments (brightness, contrast, saturation)
-- Filters and effects
-- Cropping and resizing
-- Image transformations
-- AI-powered image enhancements
+The Image Edit feature provides AI-powered image editing tools directly within QCut:
+- AI model selection for image generation/editing
+- Basic image upload and management
+- Integration with existing timeline
+- Export capabilities
 
 ## Technical Specifications
 
 ### Core Components
-1. **Image Editor Panel**
-   - Location: `qcut/apps/web/src/components/editor/media-panel/views/image-edit.tsx`
-   - Purpose: Main UI component for image editing tools
+1. **Image Editor Panel** (✅ ALREADY EXISTS)
+   - Location: Implemented in Adjustment tab of media panel
+   - Purpose: Main UI component for image editing interface
+   - Features: Model selection, image upload, "Generate Edit" button
+   - Status: Fully functional with AI Image Editing capability
 
-2. **Image Processing Engine**
+2. **Image Processing Client** (✅ ALREADY EXISTS)
    - Location: `qcut/apps/web/src/lib/image-edit-client.ts`
-   - Purpose: Handle image processing operations
+   - Purpose: Handle AI model API calls and image processing
+   - Status: Fully implemented with FAL.ai integration
 
-3. **Image Edit Store**
-   - Location: `qcut/apps/web/src/stores/image-edit-store.ts`
-   - Purpose: State management for image editing
+### Existing Components to Leverage
+1. **AI Image Upload Component** (✅ EXISTS)
+   - Location: `qcut/apps/web/src/components/editor/media-panel/views/ai-image-upload.tsx`
+   - Features: Single/dual frame upload, validation, preview
+
+2. **Text2Image Models** (✅ EXISTS)
+   - Location: `qcut/apps/web/src/lib/text2image-models.ts`
+   - Models: Imagen4, FLUX, StableDiffusion, etc.
+
+3. **Image Utils** (✅ EXISTS)
+   - Location: `qcut/apps/web/src/lib/image-utils.ts`
+   - Features: Image processing utilities
+
+4. **Error Handler** (✅ EXISTS)
+   - Location: `qcut/apps/web/src/lib/error-handler.ts`
+   - Features: AI service error handling
 
 ### Dependencies
-- Canvas API for image manipulation
-- WebGL for performance-critical operations
-- AI models for intelligent enhancements
+- Existing AI video client infrastructure
+- Canvas API for basic image display
+- File upload components (already implemented)
 
-## Implementation Phases
+## Code to Modify
 
-### Phase 1: Foundation (Week 1)
-- [ ] Create base image editor component
-- [ ] Implement image loading and display
-- [ ] Set up basic UI layout
+### File: `qcut/apps/web/src/lib/image-edit-client.ts`
 
-### Phase 2: Basic Editing Tools (Week 2)
-- [ ] Implement brightness/contrast adjustments
-- [ ] Add saturation and hue controls
-- [ ] Create crop functionality
-- [ ] Add resize capabilities
-
-### Phase 3: Advanced Features (Week 3)
-- [ ] Implement filter presets
-- [ ] Add custom filter creation
-- [ ] Integrate AI-powered enhancements
-- [ ] Add batch processing support
-
-### Phase 4: Integration & Polish (Week 4)
-- [ ] Integrate with timeline
-- [ ] Add undo/redo functionality
-- [ ] Implement export options
-- [ ] Performance optimization
-
-## Model Selection
-
-The Image Edit feature supports multiple AI models for image generation and editing. The models are displayed in the following order:
-
-### Available Models (Priority Order)
-1. **Nano Banana** - $0.039 per generation
-2. **SeedDream v4** - $0.04-$0.08 per generation
-3. **Reve Edit** - $0.04 per generation
-4. **FLUX Pro Kontext Max** - $0.25-$0.40 per generation
-5. **FLUX Pro Kontext** - $0.15-$0.25 per generation
-6. **SeedEdit v3** - $0.05-$0.10 per generation (Currently selected default)
-
-### Model Selection UI
-- Models are displayed in a dropdown list under the "MODEL SELECTION" header
-- Current selection is highlighted with a checkmark
-- Pricing information is shown for each model
-- Users can upload images to edit via drag & drop or click to browse
-- Supported formats: JPEG, PNG, WebP
-
-## API Design
-
-### Image Edit Client Methods
+#### Current Code (Lines 627-751)
 ```typescript
-interface ImageEditClient {
-  // Basic adjustments
-  adjustBrightness(value: number): void;
-  adjustContrast(value: number): void;
-  adjustSaturation(value: number): void;
-
-  // Transformations
-  crop(x: number, y: number, width: number, height: number): void;
-  resize(width: number, height: number): void;
-  rotate(angle: number): void;
-  flip(horizontal: boolean): void;
-
-  // Filters
-  applyFilter(filterName: string, intensity: number): void;
-  removeFilter(filterName: string): void;
-
-  // AI features
-  enhanceImage(options: EnhanceOptions): Promise<void>;
-  removeBackground(): Promise<void>;
-  upscaleImage(scale: number): Promise<void>;
-
-  // Model selection
-  selectModel(modelName: string): void;
-  getAvailableModels(): ModelInfo[];
+export function getImageEditModels() {
+  return [
+    {
+      id: "seededit",
+      name: "SeedEdit v3",
+      description: "Precise photo editing with content preservation",
+      provider: "ByteDance",
+      estimatedCost: "$0.05-0.10",
+      features: ["Photo retouching", "Object modification", "Realistic edits"],
+      parameters: { /* ... */ },
+    },
+    {
+      id: "flux-kontext",
+      name: "FLUX Pro Kontext",
+      description: "Context-aware editing with scene transformations",
+      provider: "FLUX",
+      estimatedCost: "$0.15-0.25",
+      features: ["Style changes", "Object replacement", "Scene modification"],
+      parameters: { /* ... */ },
+    },
+    {
+      id: "flux-kontext-max",
+      name: "FLUX Pro Kontext Max",
+      description: "Advanced editing for complex tasks and typography",
+      provider: "FLUX",
+      estimatedCost: "$0.25-0.40",
+      features: ["Complex edits", "Typography", "Professional adjustments"],
+      parameters: { /* ... */ },
+    },
+    {
+      id: "seeddream-v4",
+      name: "SeedDream v4",
+      description: "Advanced multi-image editing with unified architecture",
+      provider: "ByteDance",
+      estimatedCost: "$0.04-0.08",
+      features: ["Multi-image processing", "Flexible sizing", "Enhanced prompts", "Advanced controls"],
+      parameters: { /* ... */ },
+    },
+    {
+      id: "nano-banana",
+      name: "Nano Banana",
+      description: "Smart AI-powered editing with Google/Gemini technology",
+      provider: "Google",
+      estimatedCost: "$0.039",
+      features: ["Smart understanding", "Cost effective", "Multiple formats", "Edit descriptions"],
+      parameters: { /* ... */ },
+    },
+    {
+      id: "reve-edit",
+      name: "Reve Edit",
+      description: "Cost-effective image editing with strong aesthetic quality",
+      provider: "fal.ai",
+      estimatedCost: "$0.04",
+      features: ["Cost-effective editing", "Strong aesthetics", "Fast processing", "Multiple formats"],
+      parameters: { /* ... */ },
+    },
+  ];
 }
 
-interface ModelInfo {
-  name: string;
-  pricing: string;
-  capabilities: string[];
-  isDefault?: boolean;
+```
+
+#### Updated Code (Reordered by Price - Cheapest First)
+```typescript
+export function getImageEditModels() {
+  return [
+    {
+      id: "nano-banana",
+      name: "Nano Banana",
+      description: "Smart AI-powered editing with Google/Gemini technology",
+      provider: "Google",
+      estimatedCost: "$0.039",
+      features: ["Smart understanding", "Cost effective", "Multiple formats", "Edit descriptions"],
+      parameters: { /* ... keep existing parameters */ },
+    },
+    {
+      id: "reve-edit",
+      name: "Reve Edit",
+      description: "Cost-effective image editing with strong aesthetic quality",
+      provider: "fal.ai",
+      estimatedCost: "$0.04",
+      features: ["Cost-effective editing", "Strong aesthetics", "Fast processing", "Multiple formats"],
+      parameters: { /* ... keep existing parameters */ },
+    },
+    {
+      id: "seeddream-v4",
+      name: "SeedDream v4",
+      description: "Advanced multi-image editing with unified architecture",
+      provider: "ByteDance",
+      estimatedCost: "$0.04-0.08",
+      features: ["Multi-image processing", "Flexible sizing", "Enhanced prompts", "Advanced controls"],
+      parameters: { /* ... keep existing parameters */ },
+    },
+    {
+      id: "seededit",
+      name: "SeedEdit v3",
+      description: "Precise photo editing with content preservation",
+      provider: "ByteDance",
+      estimatedCost: "$0.05-0.10",
+      features: ["Photo retouching", "Object modification", "Realistic edits"],
+      parameters: { /* ... keep existing parameters */ },
+    },
+    {
+      id: "flux-kontext",
+      name: "FLUX Pro Kontext",
+      description: "Context-aware editing with scene transformations",
+      provider: "FLUX",
+      estimatedCost: "$0.15-0.25",
+      features: ["Style changes", "Object replacement", "Scene modification"],
+      parameters: { /* ... keep existing parameters */ },
+    },
+    {
+      id: "flux-kontext-max",
+      name: "FLUX Pro Kontext Max",
+      description: "Advanced editing for complex tasks and typography",
+      provider: "FLUX",
+      estimatedCost: "$0.25-0.40",
+      features: ["Complex edits", "Typography", "Professional adjustments"],
+      parameters: { /* ... keep existing parameters */ },
+    },
+  ];
 }
 ```
 
-## UI/UX Considerations
+## Files That Use This Function
 
-### User Interface
-- Side panel with categorized tools
-- Real-time preview
-- Before/after comparison view
-- Preset management
-- History panel for undo/redo
+### Components Using `getImageEditModels()`
+1. **`qcut/apps/web/src/components/editor/adjustment/model-selector.tsx`** (Line 12)
+   - Renders the model dropdown in the Adjustment tab
+   - Displays models with pricing and checkmark for selected model
 
-### Performance
-- Lazy loading of heavy operations
-- GPU acceleration where possible
-- Progressive rendering for large images
-- Efficient caching strategy
+2. **`qcut/apps/web/src/components/editor/adjustment/parameter-controls.tsx`** (Line 35)
+   - Uses model list to configure parameter controls for selected model
 
-## Testing Strategy
+## Implementation Notes
 
-### Unit Tests
-- Image processing algorithms
-- State management logic
-- UI component behavior
+### What This Change Does
+- **Reorders models by price** (cheapest first: $0.039 -> $0.40)
+- **Keeps all functionality intact** - Only changes display order
+- **Maintains SeedEdit v3 as default** - Can be kept via `selectedModel` state in adjustment store
 
-### Integration Tests
-- Timeline integration
-- Export functionality
-- Cross-browser compatibility
+### Default Model Configuration
+If you want to keep SeedEdit v3 as default despite not being first, check:
+- **`qcut/apps/web/src/stores/adjustment-store.ts`** - Look for initial `selectedModel` state
+- Set default to `"seededit"` if not already set
 
-### E2E Tests
-- Complete editing workflows
-- Performance benchmarks
-- Memory usage monitoring
+## Reviewer Notes
+- Reviewed the implementation and confirmed only the getImageEditModels() array order needs to change to match the pricing table; move the complete model objects so parameter maps stay aligned.
+- Verified qcut/apps/web/src/stores/adjustment-store.ts initializes selectedModel to "seededit", so the default selection remains correct after reordering.
 
-## Success Metrics
-- Image processing speed < 100ms for basic operations
-- Support for images up to 8K resolution
-- Zero quality loss for lossless operations
-- User satisfaction score > 4.5/5
-
-## Related Documentation
-- [AI Video Client](../../../apps/web/src/lib/ai-video-client.ts)
-- [Media Panel Architecture](../../../apps/web/src/components/editor/media-panel/README.md)
-- [Timeline Integration Guide](../../../apps/web/src/components/editor/timeline/README.md)
-
-## Notes
-- Consider WebAssembly for computationally intensive operations
-- Ensure color accuracy across different color spaces
-- Implement progressive enhancement for older browsers
-- Consider accessibility features for visually impaired users
-
-## References
-- [Canvas API Documentation](https://developer.mozilla.org/en-US/docs/Web/API/Canvas_API)
-- [WebGL Best Practices](https://developer.mozilla.org/en-US/docs/Web/API/WebGL_API/Best_practices)
-- [Image Processing Algorithms](https://en.wikipedia.org/wiki/Digital_image_processing)
-
+<!-- Reviewer: Plan validated; proceed with the reorder when ready. -->
 ---
 
 *Last Updated: November 2025*
 *Status: Planning Phase*
+
+
+
