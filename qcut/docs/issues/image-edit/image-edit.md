@@ -61,74 +61,7 @@ The Image Edit feature provides AI-powered image editing tools directly within Q
 - Canvas API for basic image display
 - File upload components (already implemented)
 
-## Code to Modify
-
-### File: `qcut/apps/web/src/lib/image-edit-client.ts`
-
-#### Current Code (Lines 627-751)
-```typescript
-export function getImageEditModels() {
-  return [
-    {
-      id: "seededit",
-      name: "SeedEdit v3",
-      description: "Precise photo editing with content preservation",
-      provider: "ByteDance",
-      estimatedCost: "$0.05-0.10",
-      features: ["Photo retouching", "Object modification", "Realistic edits"],
-      parameters: { /* ... */ },
-    },
-    {
-      id: "flux-kontext",
-      name: "FLUX Pro Kontext",
-      description: "Context-aware editing with scene transformations",
-      provider: "FLUX",
-      estimatedCost: "$0.15-0.25",
-      features: ["Style changes", "Object replacement", "Scene modification"],
-      parameters: { /* ... */ },
-    },
-    {
-      id: "flux-kontext-max",
-      name: "FLUX Pro Kontext Max",
-      description: "Advanced editing for complex tasks and typography",
-      provider: "FLUX",
-      estimatedCost: "$0.25-0.40",
-      features: ["Complex edits", "Typography", "Professional adjustments"],
-      parameters: { /* ... */ },
-    },
-    {
-      id: "seeddream-v4",
-      name: "SeedDream v4",
-      description: "Advanced multi-image editing with unified architecture",
-      provider: "ByteDance",
-      estimatedCost: "$0.04-0.08",
-      features: ["Multi-image processing", "Flexible sizing", "Enhanced prompts", "Advanced controls"],
-      parameters: { /* ... */ },
-    },
-    {
-      id: "nano-banana",
-      name: "Nano Banana",
-      description: "Smart AI-powered editing with Google/Gemini technology",
-      provider: "Google",
-      estimatedCost: "$0.039",
-      features: ["Smart understanding", "Cost effective", "Multiple formats", "Edit descriptions"],
-      parameters: { /* ... */ },
-    },
-    {
-      id: "reve-edit",
-      name: "Reve Edit",
-      description: "Cost-effective image editing with strong aesthetic quality",
-      provider: "fal.ai",
-      estimatedCost: "$0.04",
-      features: ["Cost-effective editing", "Strong aesthetics", "Fast processing", "Multiple formats"],
-      parameters: { /* ... */ },
-    },
-  ];
-}
-
-```
-
-#### Updated Code (Reordered by Price - Cheapest First)
+## Code Reference
 ```typescript
 export function getImageEditModels() {
   return [
@@ -206,15 +139,6 @@ export function getImageEditModels() {
 - **Reorders models by price** (cheapest first: $0.039 -> $0.40)
 - **Keeps all functionality intact** - Only changes display order
 - **Maintains SeedEdit v3 as default** via existing `selectedModel` state in adjustment store
-
-### Code Reference
-```typescript
-export function getImageEditModels() {
-  return [
-    /* Nano Banana, Reve Edit, SeedDream v4, SeedEdit v3, FLUX Pro Kontext, FLUX Pro Kontext Max */
-  ];
-}
-```
 
 ### Default Model Configuration
 If you want to keep SeedEdit v3 as default despite not being first, check:
