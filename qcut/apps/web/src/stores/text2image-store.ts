@@ -17,6 +17,35 @@ import {
 // Debug flag - set to false to disable console logs
 const DEBUG_TEXT2IMAGE_STORE = process.env.NODE_ENV === "development" && false;
 
+const clamp = (value: number, min: number, max: number) =>
+  Math.min(Math.max(value, min), max);
+
+const createDefaultUpscaleSettings = (
+  modelId: UpscaleModelId = UPSCALE_MODEL_ORDER[0]
+): UpscaleSettings => {
+  const model = UPSCALE_MODELS[modelId];
+  const scaleOptions =
+    model.controls.scaleFactor.options ?? model.supportedScales;
+  const defaultScale =
+    scaleOptions && scaleOptions.length > 0
+      ? scaleOptions[0]
+      : model.defaultParams.scale_factor || 2;
+
+  return {
+    selectedModel: modelId,
+    scaleFactor: defaultScale,
+    denoise: Math.round((model.defaultParams.denoise ?? 0.5) * 100),
+    creativity: Math.round((model.defaultParams.creativity ?? 0) * 100),
+    overlappingTiles: Boolean(model.defaultParams.overlapping_tiles),
+    outputFormat: (model.defaultParams.output_format ?? "png") as
+      | "png"
+      | "jpeg"
+      | "webp",
+  };
+};
+
+const DEFAULT_UPSCALE_SETTINGS = createDefaultUpscaleSettings();
+
 export type Text2ImageModelType = "generation" | "edit" | "upscale";
 
 export interface GenerationResult {
@@ -53,10 +82,18 @@ interface Text2ImageStore {
   prompt: string;
   setPrompt: (prompt: string) => void;
 
+  // Model type
+  modelType: Text2ImageModelType;
+  setModelType: (type: Text2ImageModelType) => void;
+
   // Model selection
   selectedModels: string[];
   toggleModel: (modelKey: string) => void;
   clearModelSelection: () => void;
+
+  // Upscale settings
+  upscaleSettings: UpscaleSettings;
+  setUpscaleSettings: (settings: Partial<UpscaleSettings>) => void;
 
   // Generation mode
   generationMode: "single" | "multi";
@@ -64,6 +101,7 @@ interface Text2ImageStore {
 
   // Generation state
   isGenerating: boolean;
+  isUpscaling: boolean;
   generationResults: Record<string, GenerationResult>;
 
   // Result selection (for multi-model mode)
@@ -76,6 +114,12 @@ interface Text2ImageStore {
     prompt: string,
     settings: GenerationSettings
   ) => Promise<void>;
+  upscaleImage: (
+    imageUrl: string,
+    options?: {
+      onProgress?: ImageEditProgressCallback;
+    }
+  ) => Promise<ImageEditResponse>;
   addSelectedToMedia: (results?: SelectedResult[]) => Promise<void>;
   clearResults: () => void;
 
@@ -86,11 +130,13 @@ interface Text2ImageStore {
     models: string[];
     results: Record<string, GenerationResult>;
     createdAt: Date;
+    mode: Text2ImageModelType;
   }>;
   addToHistory: (
     prompt: string,
     models: string[],
-    results: Record<string, GenerationResult>
+    results: Record<string, GenerationResult>,
+    mode?: Text2ImageModelType
   ) => void;
 }
 
