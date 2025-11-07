@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Progress } from "@/components/ui/progress";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
   Select,
@@ -31,11 +32,20 @@ import {
   TEXT2IMAGE_MODEL_ORDER,
 } from "@/lib/text2image-models";
 import {
+  UPSCALE_MODEL_ORDER,
+  UPSCALE_MODELS,
+} from "@/lib/upscale-models";
+import {
   FloatingActionPanelRoot,
   FloatingActionPanelTrigger,
   FloatingActionPanelContent,
   FloatingActionPanelModelOption,
 } from "@/components/ui/floating-action-panel";
+import { FileUpload } from "@/components/ui/file-upload";
+import { ModelTypeSelector } from "./model-type-selector";
+import { UpscaleSettings } from "./upscale-settings";
+import { useUpscaleGeneration } from "./use-upscale-generation";
+import { UPLOAD_CONSTANTS } from "./ai-constants";
 
 // Debug flag - set to false to disable console logs
 const DEBUG_TEXT2IMAGE = process.env.NODE_ENV === "development" && false;
@@ -57,6 +67,11 @@ export function Text2ImageView() {
     toggleResultSelection,
     addSelectedToMedia,
     clearResults,
+    modelType,
+    setModelType,
+    upscaleSettings,
+    setUpscaleSettings,
+    isUpscaling,
   } = useText2ImageStore();
 
   if (DEBUG_TEXT2IMAGE) {
@@ -73,6 +88,24 @@ export function Text2ImageView() {
 
   const [imageSize, setImageSize] = useState("square_hd");
   const [seed, setSeed] = useState("");
+  const [upscaleImageFile, setUpscaleImageFile] = useState<File | null>(null);
+  const [upscaleImagePreview, setUpscaleImagePreview] = useState<
+    string | null
+  >(null);
+  const [localUpscaleError, setLocalUpscaleError] = useState<string | null>(
+    null
+  );
+
+  const {
+    handleUpscale,
+    isProcessing: isUpscaleProcessing,
+    progress: upscaleProgress,
+    error: upscaleError,
+    resultUrl: upscaleResultUrl,
+    reset: resetUpscaleResult,
+  } = useUpscaleGeneration();
+
+  const selectedUpscaleModel = UPSCALE_MODELS[upscaleSettings.selectedModel];
 
   const selectedModelCount = selectedModels.length;
   const hasResults = Object.keys(generationResults).length > 0;

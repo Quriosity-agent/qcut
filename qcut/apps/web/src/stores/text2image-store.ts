@@ -147,6 +147,10 @@ export const useText2ImageStore = create<Text2ImageStore>()(
       prompt: "",
       setPrompt: (prompt) => set({ prompt }),
 
+      // Model type state
+      modelType: "generation",
+      setModelType: (type) => set({ modelType: type }),
+
       // Model selection
       selectedModels: [...TEXT2IMAGE_MODEL_ORDER], // Default to all models in curated priority order
       toggleModel: (modelKey) =>
@@ -156,6 +160,56 @@ export const useText2ImageStore = create<Text2ImageStore>()(
             : [...state.selectedModels, modelKey],
         })),
       clearModelSelection: () => set({ selectedModels: [] }),
+
+      // Upscale settings
+      upscaleSettings: DEFAULT_UPSCALE_SETTINGS,
+      setUpscaleSettings: (settings) =>
+        set((state) => {
+          const previous = state.upscaleSettings;
+          const nextModelId = settings.selectedModel ?? previous.selectedModel;
+          const model = UPSCALE_MODELS[nextModelId];
+          const scaleOptions =
+            model.controls.scaleFactor.options ?? model.supportedScales;
+
+          let nextScale =
+            settings.scaleFactor ??
+            (nextModelId === previous.selectedModel
+              ? previous.scaleFactor
+              : scaleOptions?.[0] ??
+                model.defaultParams.scale_factor ??
+                previous.scaleFactor);
+
+          if (scaleOptions && !scaleOptions.includes(nextScale)) {
+            nextScale = scaleOptions[0] ?? nextScale;
+          }
+
+          const nextDenoise =
+            settings.denoise !== undefined ? settings.denoise : previous.denoise;
+          const nextCreativity =
+            settings.creativity !== undefined
+              ? settings.creativity
+              : previous.creativity;
+          const nextOverlapping =
+            settings.overlappingTiles !== undefined
+              ? settings.overlappingTiles
+              : previous.overlappingTiles;
+          const nextFormat = settings.outputFormat ?? previous.outputFormat;
+
+          return {
+            upscaleSettings: {
+              selectedModel: nextModelId,
+              scaleFactor: nextScale,
+              denoise: clamp(nextDenoise, 0, 100),
+              creativity: model.features.creativity
+                ? clamp(nextCreativity, 0, 100)
+                : 0,
+              overlappingTiles: model.features.overlappingTiles
+                ? nextOverlapping
+                : false,
+              outputFormat: nextFormat,
+            },
+          };
+        }),
 
       // Generation mode
       generationMode: "multi", // Default to multi-model mode
@@ -180,6 +234,7 @@ export const useText2ImageStore = create<Text2ImageStore>()(
 
       // Generation state
       isGenerating: false,
+      isUpscaling: false,
       generationResults: {},
 
       // Result selection
@@ -273,6 +328,7 @@ export const useText2ImageStore = create<Text2ImageStore>()(
                 imageUrl: result.imageUrl,
                 prompt,
                 settings,
+                mode: "generation",
               });
             }
           }
@@ -312,7 +368,7 @@ export const useText2ImageStore = create<Text2ImageStore>()(
           }
 
           // Add to history
-          get().addToHistory(prompt, selectedModels, finalResults);
+          get().addToHistory(prompt, selectedModels, finalResults, "generation");
         } catch (error) {
           handleError(error, {
             operation: "Multi-Model Image Generation",
@@ -338,6 +394,75 @@ export const useText2ImageStore = create<Text2ImageStore>()(
             generationResults: errorResults,
             isGenerating: false,
           });
+        }
+      },
+
+      upscaleImage: async (imageUrl, options) => {
+        const { upscaleSettings } = get();
+        const model = UPSCALE_MODELS[upscaleSettings.selectedModel];
+
+        set({ isUpscaling: true });
+
+        try {
+          const request: ImageUpscaleRequest = {
+            imageUrl,
+            model: upscaleSettings.selectedModel,
+            scaleFactor: upscaleSettings.scaleFactor,
+            denoise: Number((upscaleSettings.denoise / 100).toFixed(2)),
+            outputFormat: upscaleSettings.outputFormat,
+          };
+
+          if (model.features.creativity) {
+            request.creativity = Number(
+              (upscaleSettings.creativity / 100).toFixed(2)
+            );
+          }
+          if (model.features.overlappingTiles) {
+            request.overlappingTiles = upscaleSettings.overlappingTiles;
+          }
+
+          const response = await runUpscaleImage(request, options?.onProgress);
+
+          if (response.status === "completed" && response.result_url) {
+            const promptLabel = `Upscale ${upscaleSettings.scaleFactor}x`;
+            const result: GenerationResult = {
+              status: "success",
+              imageUrl: response.result_url,
+              generatedAt: new Date(),
+            };
+
+            await get().addSelectedToMedia([
+              {
+                modelKey: request.model,
+                imageUrl: response.result_url,
+                prompt: promptLabel,
+                settings: { ...upscaleSettings },
+                mode: "upscale",
+              },
+            ]);
+
+            get().addToHistory(
+              promptLabel,
+              [request.model],
+              { [request.model]: result },
+              "upscale"
+            );
+          }
+
+          return response;
+        } catch (error) {
+          handleError(error, {
+            operation: "Upscale Image",
+            category: ErrorCategory.AI_SERVICE,
+            severity: ErrorSeverity.HIGH,
+            metadata: {
+              model: upscaleSettings.selectedModel,
+              scaleFactor: upscaleSettings.scaleFactor,
+            },
+          });
+          throw error;
+        } finally {
+          set({ isUpscaling: false });
         }
       },
 
@@ -399,15 +524,23 @@ export const useText2ImageStore = create<Text2ImageStore>()(
           const mediaItems = resultsToAdd.map((result) => ({
             url: result.imageUrl,
             type: "image" as const,
-            name: `Generated: ${result.prompt.slice(0, 30)}${result.prompt.length > 30 ? "..." : ""}`,
+            name: `${
+              result.mode === "upscale" ? "Upscaled" : "Generated"
+            }: ${result.prompt.slice(0, 30)}${
+              result.prompt.length > 30 ? "..." : ""
+            }`,
             size: 0, // Will be determined when loaded
             duration: 0,
             metadata: {
-              source: "text2image" as const,
+              source:
+                (result.mode === "upscale"
+                  ? "image-upscale"
+                  : "text2image") as const,
               model: result.modelKey,
               prompt: result.prompt,
               settings: result.settings,
               generatedAt: new Date(),
+              mode: result.mode,
             },
           }));
 
@@ -453,7 +586,7 @@ export const useText2ImageStore = create<Text2ImageStore>()(
 
       // History
       generationHistory: [],
-      addToHistory: (prompt, models, results) =>
+      addToHistory: (prompt, models, results, mode = "generation") =>
         set((state) => ({
           generationHistory: [
             {
@@ -462,6 +595,7 @@ export const useText2ImageStore = create<Text2ImageStore>()(
               models,
               results,
               createdAt: new Date(),
+              mode,
             },
             ...state.generationHistory.slice(0, 49), // Keep last 50 entries
           ],

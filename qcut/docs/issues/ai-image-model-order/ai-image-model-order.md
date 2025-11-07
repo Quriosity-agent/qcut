@@ -486,6 +486,7 @@ setUpscaleSettings: (settings) =>
   })),
 ```
 **Note:** Reusing existing store pattern avoids creating separate store file
+**Status:** ✅ Completed – text2image-store.ts now tracks the selected model type, persists upscale settings with validation, exposes `upscaleImage`, and records upscale runs in history/media pipelines (2025-11-07).
 
 ### Phase 4: UI Components (Reuse Existing Components)
 
@@ -511,6 +512,7 @@ export function ModelTypeSelector({
   );
 }
 ```
+**Status:** ✅ Completed – Added `model-type-selector.tsx` with accessible buttons, model-type copy, and `data-testid`s so E2E tests can toggle between Generation/Edit/Upscale (2025-11-07).
 
 #### Task 4.2: Create Upscale Settings Component
 > **Reviewer (Codex):** Have this component read and update upscaleSettings from the store and drive sliders from UPSCALE_MODELS metadata, otherwise it is just a placeholder that cannot persist user choices.
@@ -527,6 +529,7 @@ export function UpscaleSettings({ model }: { model: string }) {
 }
 ```
 **Reference:** Copy patterns from `qcut/apps/web/src/components/editor/media-panel/views/video-edit-upscale.tsx`
+**Status:** ✅ Completed – Added `upscale-settings.tsx` that binds sliders/toggles to `useText2ImageStore`, reads metadata from the catalog, and exposes `data-testid`s for the scale/denoise/creativity controls (2025-11-07).
 
 #### Task 4.3: Integrate into Text2Image View
 > **Reviewer (Codex):** Toggling modelType should not blank out selectedModels or strand edit mode, so add the necessary guards and an edit branch before replacing the existing generation selector wholesale.
