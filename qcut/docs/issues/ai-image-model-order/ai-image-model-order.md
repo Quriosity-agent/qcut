@@ -421,6 +421,7 @@ export async function upscaleImage(
   // ... rest following editImage pattern
 }
 ```
+**Status:** ✅ Completed – image-edit-client.ts now registers the three upscale endpoints with tailored defaults and exposes a full `upscaleImage` helper that mirrors `editImage`, including queue polling and progress callbacks (2025-11-07).
 
 #### Task 2.2: Create Upscale Request Interface
 > **Reviewer (Codex):** Reuse UpscaleModelId for ImageUpscaleRequest.model and expose typed settings so UI sliders can rely on defined ranges instead of spreading string literals and any throughout the code.
