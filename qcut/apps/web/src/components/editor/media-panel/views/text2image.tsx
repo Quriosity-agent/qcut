@@ -573,7 +573,9 @@ export function Text2ImageView() {
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="text-sm font-medium">{model.name}</p>
-                        <p className="text-xs text-muted-foreground">{model.bestFor[0]}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {model.bestFor[0] ?? model.description}
+                        </p>
                       </div>
                       <Badge variant={isSelected ? "default" : "outline"}>
                         {model.estimatedCost}
