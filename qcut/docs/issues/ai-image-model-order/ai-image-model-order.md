@@ -438,6 +438,7 @@ export interface ImageUpscaleRequest {
   outputFormat?: "png" | "jpeg" | "webp";
 }
 ```
+**Status:** ✅ Completed – Added the strongly-typed `ImageUpscaleRequest` (using `UpscaleModelId`) so UI and client code can rely on shared settings metadata (2025-11-07).
 
 ### Phase 3: Store Management (Extend Existing Store)
 

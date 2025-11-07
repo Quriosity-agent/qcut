@@ -2,9 +2,22 @@ import { create } from "zustand";
 import { devtools } from "zustand/middleware";
 import { handleError, ErrorCategory, ErrorSeverity } from "@/lib/error-handler";
 import { TEXT2IMAGE_MODEL_ORDER } from "@/lib/text2image-models";
+import {
+  UPSCALE_MODEL_ORDER,
+  UPSCALE_MODELS,
+  type UpscaleModelId,
+} from "@/lib/upscale-models";
+import {
+  type ImageEditProgressCallback,
+  type ImageEditResponse,
+  type ImageUpscaleRequest,
+  upscaleImage as runUpscaleImage,
+} from "@/lib/image-edit-client";
 
 // Debug flag - set to false to disable console logs
 const DEBUG_TEXT2IMAGE_STORE = process.env.NODE_ENV === "development" && false;
+
+export type Text2ImageModelType = "generation" | "edit" | "upscale";
 
 export interface GenerationResult {
   status: "loading" | "success" | "error";
@@ -18,11 +31,21 @@ export interface GenerationSettings {
   seed?: number;
 }
 
+export interface UpscaleSettings {
+  selectedModel: UpscaleModelId;
+  scaleFactor: number;
+  denoise: number; // 0-100 slider value
+  creativity: number; // 0-100 slider value
+  overlappingTiles: boolean;
+  outputFormat: "png" | "jpeg" | "webp";
+}
+
 export interface SelectedResult {
   modelKey: string;
   imageUrl: string;
   prompt: string;
-  settings: GenerationSettings;
+  settings: GenerationSettings | UpscaleSettings;
+  mode: Text2ImageModelType;
 }
 
 interface Text2ImageStore {
