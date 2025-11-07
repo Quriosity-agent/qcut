@@ -20,6 +20,67 @@ const DEBUG_TEXT2IMAGE_STORE = process.env.NODE_ENV === "development" && false;
 const clamp = (value: number, min: number, max: number) =>
   Math.min(Math.max(value, min), max);
 
+const arraysEqual = (a: string[], b: string[]) =>
+  a.length === b.length && a.every((value, index) => value === b[index]);
+
+const computeUpscaleSettings = (
+  previous: UpscaleSettings,
+  settings: Partial<UpscaleSettings>
+): UpscaleSettings => {
+  const nextModelId = settings.selectedModel ?? previous.selectedModel;
+  const model = UPSCALE_MODELS[nextModelId];
+  const scaleOptions =
+    model.controls.scaleFactor.options ?? model.supportedScales;
+
+  let nextScale =
+    settings.scaleFactor ??
+    (nextModelId === previous.selectedModel
+      ? previous.scaleFactor
+      : scaleOptions?.[0] ??
+        model.defaultParams.scale_factor ??
+        previous.scaleFactor);
+
+  if (scaleOptions && !scaleOptions.includes(nextScale)) {
+    nextScale = scaleOptions[0] ?? nextScale;
+  }
+
+  const nextDenoise =
+    settings.denoise !== undefined ? settings.denoise : previous.denoise;
+  const nextCreativity =
+    settings.creativity !== undefined
+      ? settings.creativity
+      : previous.creativity;
+  const nextOverlapping =
+    settings.overlappingTiles !== undefined
+      ? settings.overlappingTiles
+      : previous.overlappingTiles;
+  const nextFormat = settings.outputFormat ?? previous.outputFormat;
+
+  return {
+    selectedModel: nextModelId,
+    scaleFactor: nextScale,
+    denoise: clamp(nextDenoise, 0, 100),
+    creativity: model.features.creativity
+      ? clamp(nextCreativity, 0, 100)
+      : 0,
+    overlappingTiles: model.features.overlappingTiles
+      ? nextOverlapping
+      : false,
+    outputFormat: nextFormat,
+  };
+};
+
+const areUpscaleSettingsEqual = (
+  a: UpscaleSettings,
+  b: UpscaleSettings
+) =>
+  a.selectedModel === b.selectedModel &&
+  a.scaleFactor === b.scaleFactor &&
+  a.denoise === b.denoise &&
+  a.creativity === b.creativity &&
+  a.overlappingTiles === b.overlappingTiles &&
+  a.outputFormat === b.outputFormat;
+
 const createDefaultUpscaleSettings = (
   modelId: UpscaleModelId = UPSCALE_MODEL_ORDER[0]
 ): UpscaleSettings => {
@@ -88,7 +149,9 @@ interface Text2ImageStore {
 
   // Model selection
   selectedModels: string[];
+  setModelSelection: (modelKey: string, isSelected: boolean) => void;
   toggleModel: (modelKey: string) => void;
+  selectModels: (models: string[]) => void;
   clearModelSelection: () => void;
 
   // Upscale settings
@@ -153,12 +216,30 @@ export const useText2ImageStore = create<Text2ImageStore>()(
 
       // Model selection
       selectedModels: [...TEXT2IMAGE_MODEL_ORDER], // Default to all models in curated priority order
-      toggleModel: (modelKey) =>
-        set((state) => ({
-          selectedModels: state.selectedModels.includes(modelKey)
-            ? state.selectedModels.filter((m) => m !== modelKey)
-            : [...state.selectedModels, modelKey],
-        })),
+      setModelSelection: (modelKey, isSelected) =>
+        set((state) => {
+          const alreadySelected = state.selectedModels.includes(modelKey);
+          if (alreadySelected === isSelected) {
+            return state;
+          }
+
+          const nextSelected = isSelected
+            ? [...state.selectedModels, modelKey]
+            : state.selectedModels.filter((m) => m !== modelKey);
+
+          return { selectedModels: nextSelected };
+        }),
+      toggleModel: (modelKey) => {
+        const state = get();
+        const shouldSelect = !state.selectedModels.includes(modelKey);
+        state.setModelSelection(modelKey, shouldSelect);
+      },
+      selectModels: (models) =>
+        set((state) =>
+          arraysEqual(state.selectedModels, models)
+            ? state
+            : { selectedModels: models }
+        ),
       clearModelSelection: () => set({ selectedModels: [] }),
 
       // Upscale settings
