@@ -142,3 +142,10 @@ export interface ReveEditOutput {
     height?: number;
   }>;
 }
+
+export type UpscaleModelId = import("@/lib/upscale-models").UpscaleModelId;
+export interface UpscaleResult {
+  url: string;
+  scale: number;
+  dimensions: { width: number; height: number };
+}

@@ -110,6 +110,34 @@ export function Text2ImageView() {
   const selectedModelCount = selectedModels.length;
   const hasResults = Object.keys(generationResults).length > 0;
   const selectedResultCount = selectedResults.length;
+  const isUpscaleRunning = isUpscaling || isUpscaleProcessing;
+  const combinedUpscaleError = localUpscaleError || upscaleError;
+  const canUpscale = Boolean(upscaleImageFile) && !isUpscaleRunning;
+
+  const handleUpscaleImageChange = (
+    file: File | null,
+    preview?: string | null
+  ) => {
+    setUpscaleImageFile(file);
+    setUpscaleImagePreview(preview ?? null);
+    setLocalUpscaleError(null);
+    if (!file) {
+      resetUpscaleResult();
+    }
+  };
+
+  const handleUpscaleSubmit = async () => {
+    if (!upscaleImageFile) {
+      setLocalUpscaleError("Please upload an image to upscale.");
+      return;
+    }
+    setLocalUpscaleError(null);
+    try {
+      await handleUpscale(upscaleImageFile);
+    } catch (error) {
+      if (DEBUG_TEXT2IMAGE) console.error("Upscale failed:", error);
+    }
+  };
 
   const handleGenerate = async () => {
     if (!prompt.trim()) {
@@ -146,6 +174,9 @@ export function Text2ImageView() {
 
   return (
     <div className="p-4 space-y-6">
+      <ModelTypeSelector selected={modelType} onChange={setModelType} />
+      {modelType === "generation" && (
+        <>
       {/* Generate Button */}
       <Button
         onClick={handleGenerate}
@@ -395,6 +426,7 @@ export function Text2ImageView() {
                                   imageSize,
                                   seed: seed ? parseInt(seed) : undefined,
                                 },
+                                mode: "generation",
                               },
                             ])
                           }
@@ -446,6 +478,7 @@ export function Text2ImageView() {
                                       imageSize,
                                       seed: seed ? parseInt(seed) : undefined,
                                     },
+                                    mode: "generation",
                                   })
                                 }
                               />
@@ -478,6 +511,7 @@ export function Text2ImageView() {
                                     imageSize,
                                     seed: seed ? parseInt(seed) : undefined,
                                   },
+                                  mode: "generation",
                                 })
                               }
                             />
@@ -508,6 +542,143 @@ export function Text2ImageView() {
                 )}
               </div>
             )}
+          </CardContent>
+        </Card>
+      )}
+        </>
+      )
+      {modelType === "upscale" && (
+        <div className="space-y-4" data-testid="upscale-panel">
+          <Card className="border-0 shadow-none">
+            <CardHeader className="pb-2 pt-3">
+              <CardTitle className="text-sm">Select Upscale Model</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {UPSCALE_MODEL_ORDER.map((modelId) => {
+                const model = UPSCALE_MODELS[modelId];
+                const isSelected = upscaleSettings.selectedModel === modelId;
+                return (
+                  <button
+                    key={modelId}
+                    type="button"
+                    onClick={() => setUpscaleSettings({ selectedModel: modelId })}
+                    className={cn(
+                      "w-full rounded-lg border p-3 text-left transition-colors",
+                      isSelected
+                        ? "border-primary bg-primary/5"
+                        : "border-muted-foreground/20 hover:border-primary/40"
+                    )}
+                    data-testid={`upscale-model-option-${modelId}`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium">{model.name}</p>
+                        <p className="text-xs text-muted-foreground">{model.bestFor[0]}</p>
+                      </div>
+                      <Badge variant={isSelected ? "default" : "outline"}>
+                        {model.estimatedCost}
+                      </Badge>
+                    </div>
+                    <div className="mt-2 flex flex-wrap gap-2 text-[10px] text-muted-foreground">
+                      {model.bestFor.slice(0, 2).map((tag) => (
+                        <span key={tag} className="rounded-full bg-muted px-2 py-0.5">
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  </button>
+                );
+              })}
+            </CardContent>
+          </Card>
+
+          <Card className="border-0 shadow-none">
+            <CardHeader className="pb-2 pt-3">
+              <CardTitle className="text-sm">Upscale Settings</CardTitle>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <UpscaleSettings />
+            </CardContent>
+          </Card>
+
+          <Card className="border-0 shadow-none">
+            <CardHeader className="pb-2 pt-3">
+              <CardTitle className="text-sm">Source Image</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <FileUpload
+                id="upscale-image-input"
+                label="Image to Upscale"
+                helperText="Required"
+                fileType="image"
+                acceptedTypes={UPLOAD_CONSTANTS.ALLOWED_IMAGE_TYPES}
+                maxSizeBytes={UPLOAD_CONSTANTS.MAX_IMAGE_SIZE_BYTES}
+                maxSizeLabel={UPLOAD_CONSTANTS.MAX_IMAGE_SIZE_LABEL}
+                formatsLabel={UPLOAD_CONSTANTS.IMAGE_FORMATS_LABEL}
+                file={upscaleImageFile}
+                preview={upscaleImagePreview}
+                onFileChange={handleUpscaleImageChange}
+                onError={(message) => setLocalUpscaleError(message)}
+                isCompact
+              />
+
+              {combinedUpscaleError && (
+                <p className="text-xs text-destructive">{combinedUpscaleError}</p>
+              )}
+
+              <Button
+                onClick={handleUpscaleSubmit}
+                disabled={!canUpscale}
+                className="w-full"
+                size="lg"
+                data-testid="upscale-image-button"
+              >
+                {isUpscaleRunning ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Upscaling...
+                  </>
+                ) : (
+                  <>
+                    <Wand2 className="w-4 h-4 mr-2" />
+                    Upscale Image
+                  </>
+                )}
+              </Button>
+
+              {isUpscaleRunning && (
+                <div className="space-y-2">
+                  <Progress value={upscaleProgress} className="h-2" />
+                  <p className="text-xs text-muted-foreground text-right">
+                    {Math.round(upscaleProgress)}%
+                  </p>
+                </div>
+              )}
+
+              {upscaleResultUrl && (
+                <div className="space-y-2" data-testid="upscale-result-preview">
+                  <Label className="text-xs">Latest Result</Label>
+                  <BlobImage
+                    src={upscaleResultUrl}
+                    alt={`Upscaled with ${selectedUpscaleModel.name}`}
+                    className="w-full rounded-lg border"
+                    crossOrigin="anonymous"
+                  />
+                  <p className="text-[10px] text-muted-foreground">
+                    Added automatically to the media panel.
+                  </p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {modelType === "edit" && (
+        <Card className="border border-dashed border-muted-foreground/40">
+          <CardContent className="py-10 text-center text-sm text-muted-foreground">
+            Image edit presets live inside the Adjustment panel. Switch to the
+            Edit workspace to access the full workflow.
           </CardContent>
         </Card>
       )}

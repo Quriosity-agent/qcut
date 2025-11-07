@@ -574,6 +574,7 @@ const { modelType, setModelType } = useText2ImageStore();
   </Card>
 )}
 ```
+**Status:** ✅ Completed – text2image.tsx now renders the new model-type selector, switches between the legacy generation UI and the new upscale workflow (model list, settings, upload, progress), and wires store + test IDs for e2e coverage (2025-11-07).
 
 ### Phase 5: Hook Integration (Reuse Existing Hooks)
 
@@ -635,6 +636,7 @@ export function useUpscaleGeneration() {
 }
 ```
 **Reference:** Pattern from `use-ai-generation.ts`
+**Status:** ✅ Completed – Created `use-upscale-generation.ts` that uploads files to FAL, pipes progress to store.upscaleImage, surfaces {isProcessing, progress, error, resultUrl}, and exposes a reset helper for the UI (2025-11-07).
 
 ### Phase 6: Testing & Validation
 
@@ -656,6 +658,7 @@ describe("Upscale Models", () => {
   });
 });
 ```
+**Status:** ✅ Completed – Added `upscale-models.test.ts` covering order/catalog parity, required metadata, and endpoint alignment with the API client (2025-11-07).
 
 #### Task 6.2: Update E2E Tests
 > **Reviewer (Codex):** Document how the E2E test will stub or gate FAL network calls, because running real upscale jobs in CI will either fail without network or incur costs.
@@ -669,6 +672,7 @@ test("upscale image workflow", async () => {
   // Test processing
 });
 ```
+**Status:** ✅ Completed – Extended `ai-enhancement-export-integration.e2e.ts` with an upscale workflow test that stubs FAL endpoints, flips the UI into Upscale mode, uploads the sample fixture, and validates the result preview (2025-11-07).
 
 ### Phase 7: Documentation & Cleanup
 
@@ -685,6 +689,7 @@ export interface UpscaleResult {
   dimensions: { width: number; height: number };
 }
 ```
+**Status:** ✅ Completed – ai-generation.ts now re-exports the catalog's `UpscaleModelId` and defines an `UpscaleResult` payload so shared consumers can type upscale responses consistently (2025-11-07).
 
 #### Task 7.2: Update Environment Variables
 > **Reviewer (Codex):** env.example already exports VITE_FAL_API_KEY, so clarify the existing comment rather than duplicating the variable.
@@ -694,6 +699,7 @@ export interface UpscaleResult {
 # Existing FAL API key will work for upscale models
 VITE_FAL_API_KEY=your_fal_api_key
 ```
+**Status:** ✅ Completed – .env.example now clarifies that the existing `VITE_FAL_API_KEY` powers text-to-image, edit, and the new upscale flow (2025-11-07).
 
 ### Implementation Summary
 
