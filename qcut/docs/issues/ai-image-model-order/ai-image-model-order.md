@@ -262,6 +262,8 @@ interface UpscaleSettings {
 ### Phase 1: Model Infrastructure (Reuse Existing Patterns)
 
 #### Task 1.1: Create Upscale Models Configuration
+> **Reviewer (Codex):** Derive UpscaleModelId from UPSCALE_MODEL_ORDER and type UPSCALE_MODELS accordingly so IDs stay in sync, and consider extracting shared fields from Text2ImageModel to avoid duplicating quality or cost metadata.
+
 **File to Create:** `qcut/apps/web/src/lib/upscale-models.ts`
 ```typescript
 // Reuse pattern from text2image-models.ts
@@ -315,6 +317,8 @@ export const UPSCALE_MODELS: Record<string, UpscaleModel> = {
 **Reference:** Copy structure from `qcut/apps/web/src/lib/text2image-models.ts`
 
 #### Task 1.2: Extend AI Types
+> **Reviewer (Codex):** Before extending ModelCategory, add the alias to ai-types.ts and make sure every consumer (AI tabs, etc.) understands the new upscale option, otherwise widening the union will just break type checking.
+
 **File to Modify:** `qcut/apps/web/src/components/editor/media-panel/views/ai-types.ts`
 ```typescript
 // Add to existing AIModel interface extensions
@@ -336,6 +340,8 @@ export type ModelCategory = "text" | "image" | "video" | "avatar" | "upscale";
 ```
 
 #### Task 1.3: Update AI Constants
+> **Reviewer (Codex):** Place the FAL endpoints next to the upscale catalog rather than ai-constants.ts so lightweight image code does not need to import the thousand line video config to access three strings.
+
 **File to Modify:** `qcut/apps/web/src/components/editor/media-panel/views/ai-constants.ts`
 ```typescript
 // Add upscale model endpoints
@@ -349,6 +355,8 @@ export const UPSCALE_MODEL_ENDPOINTS = {
 ### Phase 2: Client Integration (Extend Existing Client)
 
 #### Task 2.1: Extend Image Edit Client
+> **Reviewer (Codex):** FAL upscale endpoints take a single image_url plus scale or denoise controls, so spell out that payload instead of saying the rest follows editImage, and drop prompt specific bits that do not apply.
+
 **File to Modify:** `qcut/apps/web/src/lib/image-edit-client.ts`
 ```typescript
 // Add to existing MODEL_ENDPOINTS (follows existing pattern)
@@ -412,6 +420,8 @@ export async function upscaleImage(
 ```
 
 #### Task 2.2: Create Upscale Request Interface
+> **Reviewer (Codex):** Reuse UpscaleModelId for ImageUpscaleRequest.model and expose typed settings so UI sliders can rely on defined ranges instead of spreading string literals and any throughout the code.
+
 **File to Modify:** `qcut/apps/web/src/lib/image-edit-client.ts`
 ```typescript
 export interface ImageUpscaleRequest {
@@ -428,6 +438,8 @@ export interface ImageUpscaleRequest {
 ### Phase 3: Store Management (Extend Existing Store)
 
 #### Task 3.1: Extend Text2Image Store for Upscale Models
+> **Reviewer (Codex):** Add a concrete UpscaleSettings type, initialize modelType or upscaleSettings in the store, and wire the new upscaleImage action through persistence or history so existing selectors keep working.
+
 **File to Modify:** `qcut/apps/web/src/stores/text2image-store.ts`
 ```typescript
 // Add to existing Text2ImageStore interface
@@ -473,6 +485,8 @@ setUpscaleSettings: (settings) =>
 ### Phase 4: UI Components (Reuse Existing Components)
 
 #### Task 4.1: Create Model Type Selector
+> **Reviewer (Codex):** This selector mixes ModelCategory with generation or edit or upscale labels, so create a dedicated union or reuse generationMode, and wrap the buttons in the shared Button component with aria pressed for accessibility.
+
 **File to Create:** `qcut/apps/web/src/components/editor/media-panel/views/model-type-selector.tsx`
 ```typescript
 // Reusable component for all model types
@@ -494,6 +508,8 @@ export function ModelTypeSelector({
 ```
 
 #### Task 4.2: Create Upscale Settings Component
+> **Reviewer (Codex):** Have this component read and update upscaleSettings from the store and drive sliders from UPSCALE_MODELS metadata, otherwise it is just a placeholder that cannot persist user choices.
+
 **File to Create:** `qcut/apps/web/src/components/editor/media-panel/views/upscale-settings.tsx`
 ```typescript
 // Reuse UI components from existing views
@@ -508,6 +524,8 @@ export function UpscaleSettings({ model }: { model: string }) {
 **Reference:** Copy patterns from `qcut/apps/web/src/components/editor/media-panel/views/video-edit-upscale.tsx`
 
 #### Task 4.3: Integrate into Text2Image View
+> **Reviewer (Codex):** Toggling modelType should not blank out selectedModels or strand edit mode, so add the necessary guards and an edit branch before replacing the existing generation selector wholesale.
+
 **File to Modify:** `qcut/apps/web/src/components/editor/media-panel/views/text2image.tsx`
 ```typescript
 // Add to imports
@@ -552,6 +570,8 @@ const { modelType, setModelType } = useText2ImageStore();
 ### Phase 5: Hook Integration (Reuse Existing Hooks)
 
 #### Task 5.1: Create Upscale Hook (Following Existing Pattern)
+> **Reviewer (Codex):** Mirror use-ai-generation.ts by typing the settings, resetting progress on each call, and routing successful outputs back through addSelectedToMedia and history instead of bypassing the store.
+
 **File to Create:** `qcut/apps/web/src/components/editor/media-panel/views/use-upscale-generation.ts`
 ```typescript
 // Follow pattern from use-ai-generation.ts
@@ -611,6 +631,8 @@ export function useUpscaleGeneration() {
 ### Phase 6: Testing & Validation
 
 #### Task 6.1: Add Upscale Tests
+> **Reviewer (Codex):** Replace the TODOs with real assertions, for example verifying order arrays match the catalog and every model exposes the fields that the settings UI requires.
+
 **File to Create:** `qcut/apps/web/src/test/upscale-models.test.ts`
 ```typescript
 // Test model configuration and API integration
@@ -628,6 +650,8 @@ describe("Upscale Models", () => {
 ```
 
 #### Task 6.2: Update E2E Tests
+> **Reviewer (Codex):** Document how the E2E test will stub or gate FAL network calls, because running real upscale jobs in CI will either fail without network or incur costs.
+
 **File to Modify:** `qcut/apps/web/src/test/e2e/ai-enhancement-export-integration.e2e.ts`
 ```typescript
 // Add upscale workflow tests
@@ -641,6 +665,8 @@ test("upscale image workflow", async () => {
 ### Phase 7: Documentation & Cleanup
 
 #### Task 7.1: Update Type Definitions
+> **Reviewer (Codex):** ai-generation.ts is explicitly scoped to video models per its header comment, so create a dedicated image or upscale types module instead of packing new types into that file.
+
 **File to Modify:** `qcut/apps/web/src/types/ai-generation.ts`
 ```typescript
 // Add upscale-related types to centralized location
@@ -653,6 +679,8 @@ export interface UpscaleResult {
 ```
 
 #### Task 7.2: Update Environment Variables
+> **Reviewer (Codex):** env.example already exports VITE_FAL_API_KEY, so clarify the existing comment rather than duplicating the variable.
+
 **File to Modify:** `qcut/apps/web/.env.example`
 ```env
 # Existing FAL API key will work for upscale models
