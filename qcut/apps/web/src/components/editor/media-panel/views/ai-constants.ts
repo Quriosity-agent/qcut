@@ -6,10 +6,12 @@
  */
 
 import type { AIModel, APIConfiguration } from "./ai-types";
+import { UPSCALE_MODEL_ENDPOINTS as UPSCALE_MODEL_ENDPOINT_MAP } from "@/lib/upscale-models";
 
 // FAL API Configuration
 export const FAL_API_KEY = import.meta.env.VITE_FAL_API_KEY;
 export const FAL_API_BASE = "https://fal.run";
+export const UPSCALE_MODEL_ENDPOINTS = UPSCALE_MODEL_ENDPOINT_MAP;
 
 // API Configuration
 export const API_CONFIG: APIConfiguration = {

@@ -4,6 +4,10 @@
  */
 
 import { handleAIServiceError } from "./error-handler";
+import {
+  UPSCALE_MODEL_ENDPOINTS,
+  type UpscaleModelId,
+} from "./upscale-models";
 
 const FAL_API_KEY = import.meta.env.VITE_FAL_API_KEY;
 const FAL_API_BASE = "https://fal.run";
@@ -32,6 +36,16 @@ export interface ImageEditRequest {
   syncMode?: boolean; // V4, Nano Banana, and Reve Edit
   enableSafetyChecker?: boolean; // V4
   outputFormat?: "JPEG" | "PNG" | "png" | "jpeg" | "webp"; // Nano Banana and Reve Edit
+}
+
+export interface ImageUpscaleRequest {
+  imageUrl: string;
+  model: UpscaleModelId;
+  scaleFactor?: number;
+  denoise?: number;
+  creativity?: number;
+  overlappingTiles?: boolean;
+  outputFormat?: "png" | "jpeg" | "webp";
 }
 
 export interface ImageEditResponse {
@@ -111,6 +125,34 @@ export const MODEL_ENDPOINTS: Record<string, ModelEndpoint> = {
       num_images: 1,
       output_format: "png",
       sync_mode: false,
+    },
+  },
+
+  // Upscale models
+  "crystal-upscaler": {
+    endpoint: UPSCALE_MODEL_ENDPOINTS["crystal-upscaler"],
+    defaultParams: {
+      scale_factor: 4,
+      denoise: 0.5,
+      output_format: "png",
+    },
+  },
+  "seedvr-upscale": {
+    endpoint: UPSCALE_MODEL_ENDPOINTS["seedvr-upscale"],
+    defaultParams: {
+      scale_factor: 6,
+      denoise: 0.35,
+      creativity: 0.4,
+      output_format: "png",
+    },
+  },
+  "topaz-upscale": {
+    endpoint: UPSCALE_MODEL_ENDPOINTS["topaz-upscale"],
+    defaultParams: {
+      scale_factor: 6,
+      denoise: 0.25,
+      overlapping_tiles: true,
+      output_format: "png",
     },
   },
 };

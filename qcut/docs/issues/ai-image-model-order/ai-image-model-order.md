@@ -314,6 +314,7 @@ export const UPSCALE_MODELS: Record<string, UpscaleModel> = {
   // Implementation here
 };
 ```
+**Status:** ✅ Completed – Added `qcut/apps/web/src/lib/upscale-models.ts` with the curated catalog, derived IDs, endpoint map, and helper for ordered iteration (2025-11-07).
 **Reference:** Copy structure from `qcut/apps/web/src/lib/text2image-models.ts`
 
 #### Task 1.2: Extend AI Types
@@ -338,6 +339,7 @@ export interface UpscaleModelParameters {
 // Extend existing category type
 export type ModelCategory = "text" | "image" | "video" | "avatar" | "upscale";
 ```
+**Status:** ✅ Completed – ai-types.ts now exports Upscale endpoints/parameter interfaces and a shared `ModelCategory` union that includes the upscale option (2025-11-07).
 
 #### Task 1.3: Update AI Constants
 > **Reviewer (Codex):** Place the FAL endpoints next to the upscale catalog rather than ai-constants.ts so lightweight image code does not need to import the thousand line video config to access three strings.
@@ -351,6 +353,7 @@ export const UPSCALE_MODEL_ENDPOINTS = {
   "topaz-upscale": "fal-ai/topaz/upscale/image",
 };
 ```
+**Status:** ✅ Completed – ai-constants.ts now re-exports `UPSCALE_MODEL_ENDPOINTS` from the shared catalog so lightweight image code can import just the curated map without pulling in video configuration (2025-11-07).
 
 ### Phase 2: Client Integration (Extend Existing Client)
 

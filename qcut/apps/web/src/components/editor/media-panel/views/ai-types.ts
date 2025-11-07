@@ -24,6 +24,10 @@ export interface AIModelEndpoints {
   image_to_video?: string;
 }
 
+export interface UpscaleModelEndpoints {
+  upscale: string;
+}
+
 export interface AIModelParameters {
   duration?: number;
   resolution?: string;
@@ -35,6 +39,17 @@ export interface AIModelParameters {
   [key: string]: any;
 }
 
+export interface UpscaleModelParameters {
+  scale_factor?: number;
+  denoise?: number;
+  creativity?: number;
+  overlapping_tiles?: boolean;
+  output_format?: "png" | "jpeg" | "webp";
+  [key: string]: any;
+}
+
+export type ModelCategory = "text" | "image" | "video" | "avatar" | "upscale";
+
 // Core AI Model Interface
 export interface AIModel {
   id: string;
@@ -45,7 +60,7 @@ export interface AIModel {
   max_duration: number;
   endpoints: AIModelEndpoints;
   default_params?: AIModelParameters;
-  category?: "text" | "image" | "video" | "avatar";
+  category?: ModelCategory;
   requiredInputs?: string[];
   supportedResolutions?: string[]; // For models supporting multiple resolutions (e.g., Pro models)
   supportedDurations?: number[];
