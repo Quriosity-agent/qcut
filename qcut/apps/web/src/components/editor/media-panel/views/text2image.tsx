@@ -57,7 +57,8 @@ export function Text2ImageView() {
     prompt,
     setPrompt,
     selectedModels,
-    toggleModel,
+    setModelSelection,
+    selectModels,
     generationMode,
     setGenerationMode,
     isGenerating,
@@ -259,25 +260,24 @@ export function Text2ImageView() {
                     <div className="p-2 space-y-1">
                       {TEXT2IMAGE_MODEL_ORDER.map((modelId) => {
                         const model = TEXT2IMAGE_MODELS[modelId];
+                        const isSelected = selectedModels.includes(modelId);
                         return (
                           <FloatingActionPanelModelOption
                             key={modelId}
                             id={modelId}
                             name={model.name}
-                            checked={selectedModels.includes(modelId)}
+                            checked={isSelected}
                             onCheckedChange={(checked) => {
                               if (generationMode === "single") {
-                                // Clear all selections and select only this one
-                                selectedModels.forEach((m) => {
-                                  if (m !== modelId) toggleModel(m);
-                                });
-                                if (checked && !selectedModels.includes(modelId)) {
-                                  toggleModel(modelId);
+                                if (checked) {
+                                  selectModels([modelId]);
+                                } else {
+                                  selectModels([]);
                                 }
-                              } else {
-                                // Multi-model mode - just toggle
-                                toggleModel(modelId);
+                                return;
                               }
+
+                              setModelSelection(modelId, checked);
                             }}
                           />
                         );

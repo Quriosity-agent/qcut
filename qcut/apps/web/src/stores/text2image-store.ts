@@ -212,7 +212,10 @@ export const useText2ImageStore = create<Text2ImageStore>()(
 
       // Model type state
       modelType: "generation",
-      setModelType: (type) => set({ modelType: type }),
+      setModelType: (type) => {
+        if (type === get().modelType) return;
+        set({ modelType: type });
+      },
 
       // Model selection
       selectedModels: [...TEXT2IMAGE_MODEL_ORDER], // Default to all models in curated priority order
@@ -240,76 +243,44 @@ export const useText2ImageStore = create<Text2ImageStore>()(
             ? state
             : { selectedModels: models }
         ),
-      clearModelSelection: () => set({ selectedModels: [] }),
+      clearModelSelection: () => {
+        get().selectModels([]);
+      },
 
       // Upscale settings
       upscaleSettings: DEFAULT_UPSCALE_SETTINGS,
       setUpscaleSettings: (settings) =>
         set((state) => {
-          const previous = state.upscaleSettings;
-          const nextModelId = settings.selectedModel ?? previous.selectedModel;
-          const model = UPSCALE_MODELS[nextModelId];
-          const scaleOptions =
-            model.controls.scaleFactor.options ?? model.supportedScales;
-
-          let nextScale =
-            settings.scaleFactor ??
-            (nextModelId === previous.selectedModel
-              ? previous.scaleFactor
-              : scaleOptions?.[0] ??
-                model.defaultParams.scale_factor ??
-                previous.scaleFactor);
-
-          if (scaleOptions && !scaleOptions.includes(nextScale)) {
-            nextScale = scaleOptions[0] ?? nextScale;
+          const nextSettings = computeUpscaleSettings(
+            state.upscaleSettings,
+            settings
+          );
+          if (areUpscaleSettingsEqual(nextSettings, state.upscaleSettings)) {
+            return state;
           }
-
-          const nextDenoise =
-            settings.denoise !== undefined ? settings.denoise : previous.denoise;
-          const nextCreativity =
-            settings.creativity !== undefined
-              ? settings.creativity
-              : previous.creativity;
-          const nextOverlapping =
-            settings.overlappingTiles !== undefined
-              ? settings.overlappingTiles
-              : previous.overlappingTiles;
-          const nextFormat = settings.outputFormat ?? previous.outputFormat;
-
-          return {
-            upscaleSettings: {
-              selectedModel: nextModelId,
-              scaleFactor: nextScale,
-              denoise: clamp(nextDenoise, 0, 100),
-              creativity: model.features.creativity
-                ? clamp(nextCreativity, 0, 100)
-                : 0,
-              overlappingTiles: model.features.overlappingTiles
-                ? nextOverlapping
-                : false,
-              outputFormat: nextFormat,
-            },
-          };
+          return { upscaleSettings: nextSettings };
         }),
 
       // Generation mode
       generationMode: "multi", // Default to multi-model mode
       setGenerationMode: (mode) => {
+        if (mode === get().generationMode) {
+          return;
+        }
+
         set({ generationMode: mode });
 
-        // Auto-adjust model selection based on mode
-        const { selectedModels } = get();
-        if (mode === "single" && selectedModels.length > 1) {
-          // Keep only the first selected model for single mode
-          set({ selectedModels: selectedModels.slice(0, 1) });
+        const state = get();
+        const { selectedModels, selectModels } = state;
+
+        if (mode === "single") {
+          if (selectedModels.length === 0) {
+            selectModels([TEXT2IMAGE_MODEL_ORDER[0]]);
+          } else if (selectedModels.length > 1) {
+            selectModels([selectedModels[0]]);
+          }
         } else if (mode === "multi" && selectedModels.length === 0) {
-          // Select the first six models in curated order for multi mode
-          set({
-            selectedModels: TEXT2IMAGE_MODEL_ORDER.slice(0, 6),
-          });
-        } else if (mode === "single" && selectedModels.length === 0) {
-          // Select first model by default for single mode
-          set({ selectedModels: [TEXT2IMAGE_MODEL_ORDER[0]] });
+          selectModels(TEXT2IMAGE_MODEL_ORDER.slice(0, 6));
         }
       },
 
