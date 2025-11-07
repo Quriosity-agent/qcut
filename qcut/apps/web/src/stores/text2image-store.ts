@@ -107,6 +107,9 @@ const createDefaultUpscaleSettings = (
 
 const DEFAULT_UPSCALE_SETTINGS = createDefaultUpscaleSettings();
 
+const normalizeModelSelection = (models: string[]) =>
+  TEXT2IMAGE_MODEL_ORDER.filter((modelId) => models.includes(modelId));
+
 export type Text2ImageModelType = "generation" | "edit" | "upscale";
 
 export interface GenerationResult {
@@ -229,8 +232,13 @@ export const useText2ImageStore = create<Text2ImageStore>()(
           const nextSelected = isSelected
             ? [...state.selectedModels, modelKey]
             : state.selectedModels.filter((m) => m !== modelKey);
+          const normalized = normalizeModelSelection(nextSelected);
 
-          return { selectedModels: nextSelected };
+          if (arraysEqual(state.selectedModels, normalized)) {
+            return state;
+          }
+
+          return { selectedModels: normalized };
         }),
       toggleModel: (modelKey) => {
         const state = get();
@@ -238,11 +246,12 @@ export const useText2ImageStore = create<Text2ImageStore>()(
         state.setModelSelection(modelKey, shouldSelect);
       },
       selectModels: (models) =>
-        set((state) =>
-          arraysEqual(state.selectedModels, models)
+        set((state) => {
+          const normalized = normalizeModelSelection(models);
+          return arraysEqual(state.selectedModels, normalized)
             ? state
-            : { selectedModels: models }
-        ),
+            : { selectedModels: normalized };
+        }),
       clearModelSelection: () => {
         get().selectModels([]);
       },
