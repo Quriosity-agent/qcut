@@ -265,32 +265,74 @@ interface UpscaleSettings {
 **File to Create:** `qcut/apps/web/src/lib/upscale-models.ts`
 ```typescript
 // Reuse pattern from text2image-models.ts
-import type { UpscaleModel } from "@/components/editor/media-panel/views/ai-types";
+export interface UpscaleModel {
+  id: string;
+  name: string;
+  description: string;
+  provider: string;
+  endpoint: string;
 
-export const UPSCALE_MODEL_ORDER = [...] as const;
-export const UPSCALE_MODELS: Record<string, UpscaleModel> = {...};
-export function getUpscaleModelEntriesInPriorityOrder() {...}
+  // Quality indicators
+  qualityRating: number;
+  speedRating: number;
+
+  // Cost information
+  estimatedCost: string;
+  costPerImage: number;
+
+  // Technical specifications
+  maxScale: number;
+  supportedScales: number[];
+
+  // Model-specific parameters
+  defaultParams: Record<string, any>;
+
+  // Features
+  features: {
+    denoising?: boolean;
+    sharpening?: boolean;
+    creativity?: boolean;
+    overlappingTiles?: boolean;
+    faceEnhancement?: boolean;
+  };
+
+  // Use case recommendations
+  bestFor: string[];
+  strengths: string[];
+  limitations: string[];
+}
+
+export const UPSCALE_MODEL_ORDER = [
+  "crystal-upscaler",
+  "seedvr-upscale",
+  "topaz-upscale"
+] as const;
+
+export const UPSCALE_MODELS: Record<string, UpscaleModel> = {
+  // Implementation here
+};
 ```
 **Reference:** Copy structure from `qcut/apps/web/src/lib/text2image-models.ts`
 
 #### Task 1.2: Extend AI Types
 **File to Modify:** `qcut/apps/web/src/components/editor/media-panel/views/ai-types.ts`
 ```typescript
-// Add to existing file
-export interface UpscaleModel extends BaseAIModel {
-  category: 'upscale';
-  maxScale: number;
-  supportedScales: number[];
-  features: {
-    denoising?: boolean;
-    sharpening?: boolean;
-    creativity?: boolean;
-    overlappingTiles?: boolean;
-    professionalGrade?: boolean;
-  };
+// Add to existing AIModel interface extensions
+export interface UpscaleModelEndpoints {
+  upscale: string;
 }
 
-export type ModelCategory = 'generation' | 'edit' | 'upscale';
+export interface UpscaleModelParameters {
+  scale_factor?: number;
+  denoise?: number;
+  creativity?: number;
+  overlapping_tiles?: boolean;
+  output_format?: "png" | "jpeg" | "webp";
+  [key: string]: any;
+}
+
+// Extend existing category type
+export type ModelCategory = "text" | "image" | "video" | "avatar" | "upscale";
 ```
 
 #### Task 1.3: Update AI Constants
@@ -309,9 +351,9 @@ export const UPSCALE_MODEL_ENDPOINTS = {
 #### Task 2.1: Extend Image Edit Client
 **File to Modify:** `qcut/apps/web/src/lib/image-edit-client.ts`
 ```typescript
-// Add to existing MODEL_ENDPOINTS
+// Add to existing MODEL_ENDPOINTS (follows existing pattern)
 export const MODEL_ENDPOINTS: Record<string, ModelEndpoint> = {
-  // ... existing models ...
+  // ... existing models (seededit, flux-kontext, etc.) ...
 
   // Add upscale models
   "crystal-upscaler": {
@@ -319,6 +361,7 @@ export const MODEL_ENDPOINTS: Record<string, ModelEndpoint> = {
     defaultParams: {
       scale_factor: 4,
       denoise: 0.5,
+      output_format: "png",
     },
   },
   "seedvr-upscale": {
@@ -326,6 +369,7 @@ export const MODEL_ENDPOINTS: Record<string, ModelEndpoint> = {
     defaultParams: {
       scale_factor: 4,
       creativity: 0.3,
+      output_format: "png",
     },
   },
   "topaz-upscale": {
@@ -333,16 +377,37 @@ export const MODEL_ENDPOINTS: Record<string, ModelEndpoint> = {
     defaultParams: {
       scale_factor: 4,
       overlapping_tiles: true,
+      output_format: "png",
     },
   },
 };
 
-// Add new function for upscaling (reuse existing pattern)
+// Add new function following editImage pattern
 export async function upscaleImage(
   request: ImageUpscaleRequest,
   onProgress?: ImageEditProgressCallback
 ): Promise<ImageEditResponse> {
-  // Reuse pattern from editImage function
+  // Validate API key (same as editImage)
+  if (!FAL_API_KEY) {
+    throw new Error("FAL API key not configured");
+  }
+
+  const modelConfig = MODEL_ENDPOINTS[request.model];
+  if (!modelConfig) {
+    throw new Error(`Unsupported model: ${request.model}`);
+  }
+
+  // Build payload following existing pattern
+  const payload: any = {
+    image_url: request.imageUrl,
+    ...modelConfig.defaultParams,
+  };
+
+  // Override with user parameters
+  if (request.scaleFactor !== undefined) {
+    payload.scale_factor = request.scaleFactor;
+  }
+  // ... rest following editImage pattern
 }
 ```
 
@@ -362,30 +427,48 @@ export interface ImageUpscaleRequest {
 
 ### Phase 3: Store Management (Extend Existing Store)
 
-#### Task 3.1: Create Upscale Store
-**File to Create:** `qcut/apps/web/src/stores/upscale-store.ts`
+#### Task 3.1: Extend Text2Image Store for Upscale Models
+**File to Modify:** `qcut/apps/web/src/stores/text2image-store.ts`
 ```typescript
-// Reuse pattern from text2image-store.ts
-import { create } from "zustand";
-import { UPSCALE_MODEL_ORDER } from "@/lib/upscale-models";
+// Add to existing Text2ImageStore interface
+interface Text2ImageStore {
+  // ... existing state ...
 
-interface UpscaleStore {
-  selectedModel: string;
-  scaleFactor: number;
-  modelSettings: Record<string, any>;
-  setSelectedModel: (model: string) => void;
-  setScaleFactor: (factor: number) => void;
-  updateModelSettings: (settings: Record<string, any>) => void;
+  // Model type state
+  modelType: "generation" | "edit" | "upscale";
+  setModelType: (type: "generation" | "edit" | "upscale") => void;
+
+  // Upscale-specific state
+  upscaleSettings: {
+    selectedModel: string;
+    scaleFactor: number;
+    denoise: number;
+    creativity: number;
+    overlappingTiles: boolean;
+  };
+  setUpscaleSettings: (settings: Partial<UpscaleSettings>) => void;
+
+  // Upscale actions
+  upscaleImage: (imageUrl: string) => Promise<void>;
 }
 
-export const useUpscaleStore = create<UpscaleStore>((set) => ({
-  selectedModel: UPSCALE_MODEL_ORDER[0],
+// Add to implementation
+modelType: "generation",
+setModelType: (type) => set({ modelType: type }),
+
+upscaleSettings: {
+  selectedModel: "crystal-upscaler",
   scaleFactor: 4,
-  modelSettings: {},
-  // ... methods
-}));
+  denoise: 0.5,
+  creativity: 0.3,
+  overlappingTiles: false,
+},
+setUpscaleSettings: (settings) =>
+  set((state) => ({
+    upscaleSettings: { ...state.upscaleSettings, ...settings },
+  })),
 ```
-**Reference:** Copy pattern from `qcut/apps/web/src/stores/text2image-store.ts`
+**Note:** Reusing existing store pattern avoids creating separate store file
 
 ### Phase 4: UI Components (Reuse Existing Components)
 
@@ -424,41 +507,106 @@ export function UpscaleSettings({ model }: { model: string }) {
 ```
 **Reference:** Copy patterns from `qcut/apps/web/src/components/editor/media-panel/views/video-edit-upscale.tsx`
 
-#### Task 4.3: Integrate into AI Images View
+#### Task 4.3: Integrate into Text2Image View
 **File to Modify:** `qcut/apps/web/src/components/editor/media-panel/views/text2image.tsx`
 ```typescript
-// Add model type selector at top
+// Add to imports
 import { ModelTypeSelector } from "./model-type-selector";
-import { useUpscaleStore } from "@/stores/upscale-store";
+import { UPSCALE_MODEL_ORDER, UPSCALE_MODELS } from "@/lib/upscale-models";
 
-// Add state for model type
-const [modelType, setModelType] = useState<ModelCategory>('generation');
+// Inside component, add model type state from store
+const { modelType, setModelType } = useText2ImageStore();
 
-// Conditionally render based on model type
-{modelType === 'upscale' && <UpscaleModelsList />}
+// Replace existing model selection Card with conditional rendering
+{modelType === 'generation' && (
+  // Existing generation model selection
+  <Card className="border-0 shadow-none">
+    <CardHeader className="pb-2 pt-3">
+      <CardTitle className="text-sm">
+        {generationMode === "single"
+          ? "Select Model"
+          : `Select Models (${selectedModelCount} chosen)`}
+      </CardTitle>
+    </CardHeader>
+    <CardContent className="pt-0">
+      {/* Existing FloatingActionPanelRoot code */}
+    </CardContent>
+  </Card>
+)}
+
+{modelType === 'upscale' && (
+  // New upscale model selection
+  <Card className="border-0 shadow-none">
+    <CardHeader className="pb-2 pt-3">
+      <CardTitle className="text-sm">Select Upscale Model</CardTitle>
+    </CardHeader>
+    <CardContent>
+      {UPSCALE_MODEL_ORDER.map((modelId) => (
+        // Render upscale model options
+      ))}
+    </CardContent>
+  </Card>
+)}
 ```
 
 ### Phase 5: Hook Integration (Reuse Existing Hooks)
 
-#### Task 5.1: Extend AI Generation Hook
-**File to Modify:** `qcut/apps/web/src/components/editor/media-panel/views/use-ai-generation.ts`
+#### Task 5.1: Create Upscale Hook (Following Existing Pattern)
+**File to Create:** `qcut/apps/web/src/components/editor/media-panel/views/use-upscale-generation.ts`
 ```typescript
-// Add upscale handling to existing hook
-export function useAIGeneration() {
-  // ... existing code ...
+// Follow pattern from use-ai-generation.ts
+import { useState, useCallback } from "react";
+import { upscaleImage } from "@/lib/image-edit-client";
+import { getMediaStoreUtils } from "@/stores/media-store-loader";
+import { debugLog, debugError } from "@/lib/debug-config";
 
-  const handleUpscale = async (request: ImageUpscaleRequest) => {
-    // Reuse existing progress tracking pattern
-    const response = await upscaleImage(request, onProgress);
-    // Handle response
-  };
+export function useUpscaleGeneration() {
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleUpscale = useCallback(async (
+    imageUrl: string,
+    model: string,
+    settings: any
+  ) => {
+    setIsProcessing(true);
+    setError(null);
+
+    try {
+      const response = await upscaleImage({
+        imageUrl,
+        model,
+        ...settings
+      }, (status) => {
+        // Progress callback
+        if (status.progress) {
+          setProgress(status.progress);
+        }
+      });
+
+      // Add to media store
+      const mediaUtils = await getMediaStoreUtils();
+      await mediaUtils.addImage(response.result_url);
+
+      return response;
+    } catch (err) {
+      setError(err.message);
+      debugError("Upscale failed:", err);
+    } finally {
+      setIsProcessing(false);
+    }
+  }, []);
 
   return {
-    // ... existing returns ...
     handleUpscale,
+    isProcessing,
+    progress,
+    error,
   };
 }
 ```
+**Reference:** Pattern from `use-ai-generation.ts`
 
 ### Phase 6: Testing & Validation
 
@@ -511,17 +659,33 @@ export interface UpscaleResult {
 VITE_FAL_API_KEY=your_fal_api_key
 ```
 
+### Implementation Summary
+
+#### Files to Create (4 files):
+1. `qcut/apps/web/src/lib/upscale-models.ts` - Model configurations
+2. `qcut/apps/web/src/components/editor/media-panel/views/model-type-selector.tsx` - UI selector
+3. `qcut/apps/web/src/components/editor/media-panel/views/upscale-settings.tsx` - Settings UI
+4. `qcut/apps/web/src/components/editor/media-panel/views/use-upscale-generation.ts` - Hook
+
+#### Files to Modify (6 files):
+1. `qcut/apps/web/src/components/editor/media-panel/views/ai-types.ts` - Add types
+2. `qcut/apps/web/src/components/editor/media-panel/views/ai-constants.ts` - Add endpoints
+3. `qcut/apps/web/src/lib/image-edit-client.ts` - Add upscale function
+4. `qcut/apps/web/src/stores/text2image-store.ts` - Add upscale state
+5. `qcut/apps/web/src/components/editor/media-panel/views/text2image.tsx` - Integrate UI
+6. `qcut/apps/web/src/types/ai-generation.ts` - Add upscale types
+
 ### Maintenance Strategy
 
 1. **Code Reuse Principles:**
-   - Reuse existing FAL API client patterns from `image-edit-client.ts`
-   - Copy store patterns from `text2image-store.ts`
-   - Reuse UI components from `video-edit-upscale.tsx`
-   - Extend existing hooks instead of creating new ones
+   - Reuse Text2ImageModel interface structure for UpscaleModel
+   - Extend existing image-edit-client.ts with MODEL_ENDPOINTS pattern
+   - Reuse text2image-store.ts instead of creating new store
+   - Follow use-ai-generation.ts pattern for hooks
 
 2. **Naming Conventions:**
    - Follow existing pattern: `{feature}-{type}.{ext}`
-   - Example: `upscale-models.ts`, `upscale-store.ts`, `upscale-settings.tsx`
+   - Example: `upscale-models.ts`, `upscale-settings.tsx`
 
 3. **Testing Strategy:**
    - Unit tests for model configuration
@@ -529,15 +693,15 @@ VITE_FAL_API_KEY=your_fal_api_key
    - E2E tests for complete workflow
 
 4. **Long-term Maintenance:**
-   - Keep all upscale logic in dedicated files for easy updates
+   - Keep upscale models in centralized configuration
    - Use TypeScript interfaces for type safety
-   - Document FAL API changes in comments
+   - Document FAL API endpoint changes
    - Version control model configurations
 
 5. **Performance Considerations:**
    - Lazy load upscale components only when needed
    - Cache model configurations
-   - Reuse existing image preview components
+   - Reuse existing image preview components from text2image view
 
 ---
 *Last Updated: November 2025* · *Status: In Progress - Upscale Integration with Implementation Plan*
