@@ -49,7 +49,7 @@ export function ModelTypeSelector({
           key={option.id}
           type="button"
           size="sm"
-          variant={selected === option.id ? "default" : "ghost"}
+          variant={selected === option.id ? "default" : "outline"}
           aria-pressed={selected === option.id}
           onClick={() => onChange(option.id)}
           className={cn(

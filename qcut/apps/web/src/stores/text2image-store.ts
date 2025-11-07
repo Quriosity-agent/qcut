@@ -533,9 +533,9 @@ export const useText2ImageStore = create<Text2ImageStore>()(
             duration: 0,
             metadata: {
               source:
-                (result.mode === "upscale"
-                  ? "image-upscale"
-                  : "text2image") as const,
+                result.mode === "upscale"
+                  ? ("image-upscale" as const)
+                  : ("text2image" as const),
               model: result.modelKey,
               prompt: result.prompt,
               settings: result.settings,

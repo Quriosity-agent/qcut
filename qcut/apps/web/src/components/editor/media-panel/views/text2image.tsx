@@ -546,7 +546,7 @@ export function Text2ImageView() {
         </Card>
       )}
         </>
-      )
+      )}
       {modelType === "upscale" && (
         <div className="space-y-4" data-testid="upscale-panel">
           <Card className="border-0 shadow-none">
