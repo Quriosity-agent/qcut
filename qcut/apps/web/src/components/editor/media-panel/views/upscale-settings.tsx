@@ -18,12 +18,8 @@ interface UpscaleSettingsProps {
 }
 
 export function UpscaleSettings({ className }: UpscaleSettingsProps) {
-  const { upscaleSettings, setUpscaleSettings } = useText2ImageStore(
-    (state) => ({
-      upscaleSettings: state.upscaleSettings,
-      setUpscaleSettings: state.setUpscaleSettings,
-    })
-  );
+  const upscaleSettings = useText2ImageStore((state) => state.upscaleSettings);
+  const setUpscaleSettings = useText2ImageStore((state) => state.setUpscaleSettings);
 
   const model = UPSCALE_MODELS[upscaleSettings.selectedModel as UpscaleModelId];
   const scaleOptions =

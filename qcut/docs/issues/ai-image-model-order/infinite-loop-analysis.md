@@ -277,34 +277,7 @@ at L3 (react-dom.development.js:16708:7)                // ← State update queu
 
 ---
 
-## Solutions
-
-### ✅ Solution 1: Use Shallow Equality (Recommended)
-
-Install and use Zustand's `shallow` comparison:
-
-```typescript
-import { useText2ImageStore } from "@/stores/text2image-store";
-import { shallow } from "zustand/shallow";
-
-export function UpscaleSettings({ className }: UpscaleSettingsProps) {
-  const { upscaleSettings, setUpscaleSettings } = useText2ImageStore(
-    (state) => ({
-      upscaleSettings: state.upscaleSettings,
-      setUpscaleSettings: state.setUpscaleSettings,
-    }),
-    shallow  // ← Compare object properties, not reference
-  );
-
-  // Rest of component...
-}
-```
-
-**How it works**: Zustand will compare the object's properties instead of the object reference, preventing unnecessary re-renders.
-
----
-
-### ✅ Solution 2: Split into Separate Subscriptions
+## Solution: Split into Separate Subscriptions
 
 Subscribe to each piece of state independently:
 
@@ -322,61 +295,7 @@ export function UpscaleSettings({ className }: UpscaleSettingsProps) {
 
 ---
 
-### ✅ Solution 3: Use Custom Equality Function
-
-Create a custom comparator for fine-grained control:
-
-```typescript
-const upscaleSettingsSelector = (state: Text2ImageStore) => ({
-  upscaleSettings: state.upscaleSettings,
-  setUpscaleSettings: state.setUpscaleSettings,
-});
-
-const isEqual = (a: any, b: any) => {
-  return (
-    a.upscaleSettings === b.upscaleSettings &&
-    a.setUpscaleSettings === b.setUpscaleSettings
-  );
-};
-
-export function UpscaleSettings({ className }: UpscaleSettingsProps) {
-  const { upscaleSettings, setUpscaleSettings } = useText2ImageStore(
-    upscaleSettingsSelector,
-    isEqual
-  );
-
-  // Rest of component...
-}
-```
-
----
-
-### ✅ Solution 4: Extract Selector Outside Component
-
-Define the selector outside to maintain referential stability:
-
-```typescript
-// Outside component (module scope)
-const selectUpscaleSettings = (state: Text2ImageStore) => ({
-  upscaleSettings: state.upscaleSettings,
-  setUpscaleSettings: state.setUpscaleSettings,
-});
-
-export function UpscaleSettings({ className }: UpscaleSettingsProps) {
-  const { upscaleSettings, setUpscaleSettings } = useText2ImageStore(
-    selectUpscaleSettings,
-    shallow
-  );
-
-  // Rest of component...
-}
-```
-
----
-
-## Implementation Recommendation
-
-**Use Solution 2** (Split Subscriptions) for this specific case because:
+## Why This Solution is Best
 
 1. ✅ **Simple**: No additional dependencies (no need to import `shallow`)
 2. ✅ **Performant**: Only re-renders when `upscaleSettings` changes
@@ -384,7 +303,78 @@ export function UpscaleSettings({ className }: UpscaleSettingsProps) {
 4. ✅ **Consistent**: Matches pattern used in `use-upscale-generation.ts:9`
 5. ✅ **Readable**: Clear and explicit about what state is being used
 
-### Recommended Code Change
+---
+
+## Implementation Subtasks
+
+### 📋 Task Breakdown
+
+#### 1. **Locate the File**
+   - **Path**: `qcut/apps/web/src/components/editor/media-panel/views/upscale-settings.tsx`
+   - **Lines**: 21-26
+   - **Component**: `UpscaleSettings`
+
+#### 2. **Identify the Problematic Code**
+   ```typescript
+   // Current problematic code (lines 21-26)
+   const { upscaleSettings, setUpscaleSettings } = useText2ImageStore(
+     (state) => ({
+       upscaleSettings: state.upscaleSettings,
+       setUpscaleSettings: state.setUpscaleSettings,
+     })
+   );
+   ```
+
+#### 3. **Apply the Fix**
+   Replace the above code with:
+   ```typescript
+   // Fixed code - split subscriptions
+   const upscaleSettings = useText2ImageStore((state) => state.upscaleSettings);
+   const setUpscaleSettings = useText2ImageStore((state) => state.setUpscaleSettings);
+   ```
+
+#### 4. **Verify Type Imports**
+   - Ensure `useText2ImageStore` is imported correctly
+   - No additional imports needed (no `shallow` required)
+
+#### 5. **Test in Development Mode**
+   - [ ] Run `bun dev`
+   - [ ] Navigate to editor view
+   - [ ] Switch to "Upscale" model type
+   - [ ] Verify no console errors
+   - [ ] Check React DevTools for re-render loops
+
+#### 6. **Test Functionality**
+   - [ ] Adjust scale factor buttons
+   - [ ] Move denoise slider
+   - [ ] Move creativity slider (if available)
+   - [ ] Toggle overlapping tiles switch (if available)
+   - [ ] Verify all settings update correctly
+
+#### 7. **Build Verification**
+   - [ ] Run `bun run build`
+   - [ ] Ensure TypeScript compilation succeeds
+   - [ ] Check for any new type errors
+
+#### 8. **Production Testing**
+   - [ ] Run `bun run electron`
+   - [ ] Test in production build
+   - [ ] Verify no performance issues
+   - [ ] Check console for runtime errors
+
+#### 9. **Cross-Component Verification**
+   - [ ] Verify `text2image.tsx` still works
+   - [ ] Check model type switching works
+   - [ ] Ensure upscale functionality integrates properly
+
+#### 10. **Git Commit**
+   - [ ] Stage the changes: `git add upscale-settings.tsx`
+   - [ ] Commit with clear message: `fix: resolve infinite loop in UpscaleSettings component`
+   - [ ] Include reference to error: `Fixes maximum update depth exceeded error`
+
+---
+
+## Code Diff
 
 **File**: `qcut/apps/web/src/components/editor/media-panel/views/upscale-settings.tsx`
 
