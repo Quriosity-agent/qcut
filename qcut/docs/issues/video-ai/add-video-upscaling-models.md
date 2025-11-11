@@ -1255,7 +1255,7 @@ const handleUpscaleVideoUrlBlur = async () => {
       </div>
     </Card>
   )}
-</TabPanel>
+</TabsContent>
 ```
 <!-- REVIEW: The snippet starts with `<TabsContent>` but closes with `</TabPanel>`. Double-check which component the real UI uses so we don't end up with mismatched tab primitives. -->
 <!-- REVIEW: The FlashVSR cost estimator references `videoWidth`, `videoHeight`, and `videoFrames`, but the doc never shows where those values are sourced. Consider adding guidance on how to derive these (e.g., metadata extraction when a clip is uploaded) so the helper can compile. -->
