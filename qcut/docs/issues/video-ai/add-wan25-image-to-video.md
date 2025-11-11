@@ -1,72 +1,103 @@
-# Adding WAN 2.5 Image-to-Video Model to QCut
+# Adding Seedance Image-to-Video Models to QCut
 
 ## Overview
-This document describes how to add the WAN 2.5 Preview image-to-video model to QCut's AI video generation panel. The model is already partially configured but needs to be exposed in the image-to-video category UI.
+This document describes how to add the ByteDance Seedance v1 Pro image-to-video models to QCut's AI video generation panel. These models animate static images based on text descriptions, generating high-quality videos with flexible resolution and duration options.
+
+**Model Positioning**: The Seedance image-to-video models should be placed **after the LTX models** in the `ai-constants.ts` file (specifically after `ltxv2_fast_i2v`).
 
 ## Model Information
 
-### API Endpoint
-- **Model ID**: `fal-ai/wan-25-preview/image-to-video`
-- **Documentation**: https://fal.ai/models/fal-ai/wan-25-preview/image-to-video/api
-- **Base URL**: `https://fal.run/fal-ai/wan-25-preview/image-to-video`
+### Two Model Variants
+
+#### 1. Seedance v1 Pro Fast I2V
+- **Model ID**: `fal-ai/bytedance/seedance/v1/pro/fast/image-to-video`
+- **Documentation**: https://fal.ai/models/fal-ai/bytedance/seedance/v1/pro/fast/image-to-video/api
+- **Description**: Fast image-to-video generation with balanced quality and speed
+
+#### 2. Seedance v1 Pro I2V
+- **Model ID**: `fal-ai/bytedance/seedance/v1/pro/image-to-video`
+- **Documentation**: https://fal.ai/models/fal-ai/bytedance/seedance/v1/pro/image-to-video/api
+- **Description**: Premium quality image-to-video with highest fidelity
 
 ### Capabilities
-- **Input**: Image URL + text prompt describing motion
-- **Resolution Options**: 480p, 720p, 1080p (default: 1080p)
-- **Duration Options**: 5s, 10s (default: 5s)
-- **Audio Support**: Yes (WAV/MP3, 3-30s, max 15MB)
-- **Prompt Expansion**: LLM-based prompt enhancement (enabled by default)
+- **Input**: Image URL + text prompt describing desired animation
+- **Resolution Options**: 480p, 720p, 1080p
+- **Duration Options**: 2-12 seconds (in 1-second increments, default: 5s)
+- **Aspect Ratios**: 21:9, 16:9, 4:3, 1:1, 3:4, 9:16, auto (maintains original image aspect ratio)
+- **Camera Control**: Fixed camera position option
+- **Seed Support**: Reproducible results with seed parameter
+- **End Frame**: Optional end-frame image for specific video conclusions (Pro only)
 - **Safety Checker**: Content filtering (enabled by default)
 
 ### Pricing
-- **480p**: $0.05/second
-- **720p**: $0.10/second
-- **1080p**: $0.15/second
+
+#### Seedance v1 Pro Fast
+- **Calculation**: $1.00 per million video tokens
+- **Formula**: tokens = (height × width × FPS × duration) / 1024
+- **Example**: ~$0.243 per 1080p 5-second video
+
+#### Seedance v1 Pro
+- **Calculation**: $2.50 per million video tokens
+- **Formula**: tokens = (height × width × FPS × duration) / 1024
+- **Example**: ~$0.62 per 1080p 5-second video
 
 ### Image Requirements
-- **Formats**: JPEG, JPG, PNG (no alpha channel), BMP, WEBP
-- **Resolution Range**: 360-2000 pixels (width/height)
-- **Max File Size**: 10MB
+- **Formats**: JPEG, PNG, WebP (standard image formats)
+- **Input Method**: URL (publicly accessible) or file upload
+- **Aspect Ratio**: Auto-detection or manual specification
 
 ## Current Implementation Status
 
 ### ✅ Already Implemented
-The WAN 2.5 model is already defined in the constants but only for **text-to-video**:
+The Seedance Lite and Pro models are already defined in the constants but only for **text-to-video**:
 
 ```typescript
 // File: qcut/apps/web/src/components/editor/media-panel/views/ai-constants.ts
 {
-  id: "wan_25_preview",
-  name: "WAN v2.5 Preview",
-  description: "Next-generation WAN model with improved quality",
-  price: "0.12",
+  id: "seedance",
+  name: "Seedance v1 Lite",
+  description: "Fast and efficient text-to-video generation",
+  price: "0.18",
+  resolution: "720p",
+  max_duration: 10,
+  category: "text",
+  endpoints: {
+    text_to_video: "fal-ai/bytedance/seedance/v1/lite/text-to-video",
+  },
+  default_params: {
+    duration: 5,
+    resolution: "720p",
+  },
+},
+{
+  id: "seedance_pro",
+  name: "Seedance v1 Pro",
+  description: "High quality 1080p video generation",
+  price: "0.62",
   resolution: "1080p",
   max_duration: 10,
   endpoints: {
-    text_to_video: "fal-ai/wan-25-preview/text-to-video",
-    image_to_video: "fal-ai/wan-25-preview/image-to-video", // ✅ Endpoint defined
+    text_to_video: "fal-ai/bytedance/seedance/v1/pro/text-to-video",
   },
   default_params: {
     duration: 5,
     resolution: "1080p",
-    quality: "high",
-    style_preset: "cinematic",
   },
 }
 ```
 
 ### ❌ Missing Implementation
-- **No image-to-video category entry**: The model needs to be added as a separate entry with `category: "image"`
-- **Missing in UI**: The image-to-video tab doesn't show WAN 2.5 as an option
+- **No image-to-video category entries**: Need to add Pro Fast and Pro models with `category: "image"`
+- **Missing in UI**: The image-to-video tab doesn't show Seedance models as options
 
 ## Implementation Plan
 
 ### Step 1: Add Image-to-Video Model Entry
-Add a new model configuration to `ai-constants.ts` in the image category section:
+Add a new model configuration to `ai-constants.ts` in the image category section **after the LTX models** (after `ltxv2_fast_i2v` which ends around line 252):
 
 ```typescript
 // File: qcut/apps/web/src/components/editor/media-panel/views/ai-constants.ts
-// Add after the existing wan_25_preview (text-to-video) entry
+// Add after the LTX Video 2.0 Fast I2V model (ltxv2_fast_i2v)
 
 {
   id: "wan_25_preview_i2v",
@@ -181,7 +212,7 @@ The model should automatically appear in the image-to-video model selector. Addi
 ## Files to Modify
 
 1. **`qcut/apps/web/src/components/editor/media-panel/views/ai-constants.ts`**
-   - Add new model entry with `category: "image"`
+   - Add new model entry with `category: "image"` after the LTX models (after line ~252)
 
 2. **`qcut/apps/web/src/components/editor/media-panel/views/use-ai-generation.ts`**
    - Add/update image-to-video generation handler for WAN 2.5
