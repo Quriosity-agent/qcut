@@ -227,7 +227,7 @@ export const UPSCALE_MODELS: Record<UpscaleModelId, UpscaleModel> = {
     qualityRating: 4,
     speedRating: 4,
     maxScale: 16,
-    supportedScales: [2, 4, 8, 12, 16],
+    supportedScales: [2, 4, 6, 8, 12, 16],
     defaultParams: {
       scale_factor: 6,
       denoise: 0.35,
@@ -258,7 +258,7 @@ export const UPSCALE_MODELS: Record<UpscaleModelId, UpscaleModel> = {
       scaleFactor: {
         type: "select",
         label: "Scale Factor",
-        options: [2, 4, 8, 12, 16],
+        options: [2, 4, 6, 8, 12, 16],
         default: 6,
         description: "Upscale multiplier (SeedVR supports up to 16x)",
       },
