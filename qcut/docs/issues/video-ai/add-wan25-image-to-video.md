@@ -7,14 +7,15 @@ This document describes how to add new image-to-video models to QCut's AI video 
 
 ## Quick Implementation Summary
 
-This guide covers adding **three image-to-video models**:
+This guide covers adding **four image-to-video models**:
 
 ### Seedance Models (Pending Implementation)
 1. **Seedance v1 Pro Fast I2V** - Fast generation (~$0.24/5s, 2-12s duration)
 2. **Seedance v1 Pro I2V** - Premium quality (~$0.62/5s, 2-12s duration)
 
-### Kling Model (Partially Implemented)
-3. **Kling v2.5 Turbo Pro I2V** - Already has endpoint defined, needs handler implementation ($0.35/5s, 5-10s duration)
+### Models with Existing Endpoints (Partially Implemented)
+3. **Kling v2.5 Turbo Pro I2V** - Endpoint defined, needs handler ($0.35/5s, 5-10s duration)
+4. **WAN 2.5 Preview I2V** - Endpoint defined, needs handler ($0.05-$0.15/s, 5-10s duration)
 
 **Files to modify**: 4 main files
 - `ai-constants.ts` - Add model definitions (or update existing)
@@ -22,7 +23,7 @@ This guide covers adding **three image-to-video models**:
 - `ai-video-client.ts` - Add API client function
 - `ai-types.ts` - Add TypeScript types
 
-**Estimated implementation time**: 3-4 hours (all three models)
+**Estimated implementation time**: 5-6 hours (all four models)
 
 ## Architecture Considerations
 
@@ -60,7 +61,7 @@ modelOptions?: Record<string, {
 #### 2. Seedance v1 Pro I2V
 - **Model ID**: `fal-ai/bytedance/seedance/v1/pro/image-to-video`
 - **Documentation**: https://fal.ai/models/fal-ai/bytedance/seedance/v1/pro/image-to-video/api
-- **Description**: Premium quality image-to-video with highest fidelity
+- **Description**: Premium quality image-to-video with highest fidelity and frame-to-frame animation
 
 ### Capabilities
 - **Input**: Image URL + text prompt describing desired animation
@@ -69,7 +70,10 @@ modelOptions?: Record<string, {
 - **Aspect Ratios**: 21:9, 16:9, 4:3, 1:1, 3:4, 9:16, auto (maintains original image aspect ratio)
 - **Camera Control**: Fixed camera position option
 - **Seed Support**: Reproducible results with seed parameter
-- **End Frame**: Optional end-frame image for specific video conclusions (Pro only)
+- **Frame-to-Frame Animation**:
+  - **First Frame** (`image_url`): Required starting frame
+  - **Last Frame** (`end_image_url`): Optional ending frame for controlled transitions (Pro only)
+  - When both frames provided, generates smooth transition video between them
 - **Safety Checker**: Content filtering (enabled by default)
 
 ### Pricing
@@ -117,6 +121,46 @@ modelOptions?: Record<string, {
 - **Input Method**: URL-based or base64 data URI format
 - **Formats**: Standard image formats (JPEG, PNG, WebP)
 - **File Hosting**: Supports fal.storage uploads or hosted files
+
+---
+
+### WAN 2.5 Preview Model
+
+#### Model Details
+- **Model ID**: `fal-ai/wan-25-preview/image-to-video`
+- **Documentation**: https://fal.ai/models/fal-ai/wan-25-preview/image-to-video/api
+- **Description**: Next-generation WAN model with improved quality and subject-consistent motion synthesis
+
+#### Capabilities
+- **Input**: Image URL + text prompt (max 800 characters)
+- **Resolution Options**: 480p, 720p, 1080p (default: 1080p)
+- **Duration Options**: 5s, 10s (default: 5s)
+- **Audio Support**: Optional background music (WAV/MP3, 3-30 seconds, max 15MB)
+- **Prompt Expansion**: LLM-based prompt enhancement (enabled by default)
+- **Negative Prompt**: Content to avoid (max 500 characters)
+- **Seed Support**: Reproducible results with seed parameter
+- **Safety Checker**: Content filtering (enabled by default)
+
+#### Pricing (Per Second Basis)
+- **480p**: $0.05/second
+- **720p**: $0.10/second
+- **1080p**: $0.15/second
+
+**Cost Examples:**
+- 5s @ 480p = $0.25
+- 5s @ 720p = $0.50
+- 5s @ 1080p = $0.75
+- 10s @ 1080p = $1.50
+
+#### Image Requirements (WAN 2.5)
+- **Formats**: JPEG, JPG, PNG (no alpha channel), BMP, WEBP
+- **Resolution Range**: 360-2000 pixels (width and height)
+- **Max File Size**: 10MB
+- **Input Method**: URL (publicly accessible) or base64 data URI
+
+#### Processing Time
+- **5-second video**: 1-3 minutes
+- **10-second video**: 3-5 minutes
 
 ## Current Implementation Status
 
@@ -190,6 +234,32 @@ The Kling v2.5 Turbo Pro model **already has the image-to-video endpoint defined
 1. **Option A**: Add a separate `kling_v2_5_turbo_i2v` entry with `category: "image"`
 2. **Option B**: Update the handler to support both text and image inputs for the same model ID
 
+#### WAN 2.5 Preview - Partially Implemented
+The WAN 2.5 Preview model **also has the image-to-video endpoint defined** in `ai-constants.ts` (line 69-85):
+
+```typescript
+{
+  id: "wan_25_preview",
+  name: "WAN v2.5 Preview",
+  description: "Next-generation WAN model with improved quality",
+  price: "0.12", // ⚠️ Note: This is text-to-video price, I2V varies by resolution
+  resolution: "1080p",
+  max_duration: 10,
+  endpoints: {
+    text_to_video: "fal-ai/wan-25-preview/text-to-video",
+    image_to_video: "fal-ai/wan-25-preview/image-to-video", // ✅ Endpoint exists
+  },
+  default_params: {
+    duration: 5,
+    resolution: "1080p",
+    quality: "high",
+    style_preset: "cinematic",
+  },
+}
+```
+
+**Status**: Similar to Kling, the endpoint exists but the model is categorized as "text" only.
+
 ### ❌ Missing Implementation
 
 #### Seedance Models
@@ -200,6 +270,11 @@ The Kling v2.5 Turbo Pro model **already has the image-to-video endpoint defined
 - **No image-to-video handler**: `use-ai-generation.ts` needs an image-to-video handler
 - **No API client function**: Need `generateKlingImageVideo()` function in `ai-video-client.ts`
 - **Missing in UI**: Not appearing in image-to-video tab (due to `category: "text"`)
+
+#### WAN 2.5 Preview I2V
+- **No image-to-video handler**: `use-ai-generation.ts` needs an image-to-video handler
+- **No API client function**: Need `generateWAN25ImageVideo()` function in `ai-video-client.ts`
+- **Missing in UI**: Not appearing in image-to-video tab (due to no separate I2V entry)
 
 ## Implementation Plan
 
@@ -285,9 +360,30 @@ Add dedicated image-to-video entries for both Seedance and Kling models:
   },
   supportedDurations: [5, 10],
 },
+// WAN 2.5 Preview I2V
+{
+  id: "wan_25_preview_i2v",
+  name: "WAN v2.5 Preview I2V",
+  description: "Next-gen WAN with improved quality and motion synthesis (5-10s)",
+  price: "0.75", // $0.75 for 5s @ 1080p (varies by resolution)
+  resolution: "480p / 720p / 1080p",
+  supportedResolutions: ["480p", "720p", "1080p"],
+  max_duration: 10,
+  category: "image", // ⭐ Key: Makes it appear in image-to-video tab
+  endpoints: {
+    image_to_video: "fal-ai/wan-25-preview/image-to-video",
+  },
+  default_params: {
+    duration: 5,
+    resolution: "1080p",
+    enable_prompt_expansion: true,
+    enable_safety_checker: true,
+  },
+  supportedDurations: [5, 10],
+},
 ```
 
-#### Approach B: Update Existing Kling Entry
+#### Approach B: Update Existing Entries
 Alternatively, change the existing `kling_v2_5_turbo` model's category from `"text"` to support both:
 
 ```typescript
@@ -308,7 +404,7 @@ Alternatively, change the existing `kling_v2_5_turbo` model's category from `"te
 }
 ```
 
-**Note**: This requires additional handler logic to check which tab is active and route accordingly.
+**Note**: Approach B requires additional handler logic to check which tab is active and route accordingly.
 
 **Recommendation**: Use **Approach A** (separate entries) for cleaner separation and easier maintenance.
 
@@ -379,12 +475,12 @@ else if (modelId === "seedance_pro_i2v") {
   response = await generateSeedanceVideo({
     model: modelId,
     prompt: prompt.trim(),
-    image_url: imageUrl,
+    image_url: imageUrl, // First frame (required)
     duration: seedanceDuration,
     resolution: seedanceResolution,
     aspect_ratio: seedanceAspectRatio,
     camera_fixed: seedanceCameraFixed,
-    end_frame_url: seedanceEndFrameUrl, // Optional, Pro only
+    end_image_url: seedanceEndImageUrl, // Last frame (optional, Pro only)
   });
 
   progressCallback({
@@ -425,6 +521,38 @@ else if (modelId === "kling_v2_5_turbo_i2v") {
     message: `Video generated with ${friendlyName}`,
   });
 }
+// WAN 2.5 Preview I2V
+else if (modelId === "wan_25_preview_i2v") {
+  if (!selectedImage) {
+    console.log("  ⚠️ Skipping model - WAN 2.5 Preview requires a selected image");
+    continue;
+  }
+
+  const imageUrl = await uploadImageToFal(selectedImage);
+  const friendlyName = modelName || modelId;
+  progressCallback({
+    status: "processing",
+    progress: 10,
+    message: `Submitting ${friendlyName} request...`,
+  });
+
+  response = await generateWAN25ImageVideo({
+    model: modelId,
+    prompt: prompt.trim(),
+    image_url: imageUrl,
+    duration: wan25Duration, // Add new state variable
+    resolution: wan25Resolution, // Add new state variable
+    audio_url: wan25AudioUrl, // Add new state variable (optional)
+    negative_prompt: wan25NegativePrompt, // Add new state variable
+    enable_prompt_expansion: wan25EnablePromptExpansion, // Add new state variable
+  });
+
+  progressCallback({
+    status: "completed",
+    progress: 100,
+    message: `Video generated with ${friendlyName}`,
+  });
+}
 ```
 
 **Additional Changes in same file**:
@@ -446,7 +574,7 @@ seedanceDuration = 5,
 seedanceResolution = "1080p",
 seedanceAspectRatio = "16:9",
 seedanceCameraFixed = false,
-seedanceEndFrameUrl,
+seedanceEndImageUrl, // Optional last frame
 
 // Kling defaults
 klingDuration = 5,
@@ -454,6 +582,13 @@ klingCfgScale = 0.5,
 klingAspectRatio = "16:9",
 klingEnhancePrompt = true,
 klingNegativePrompt = "blur, distort, and low quality",
+
+// WAN 2.5 defaults
+wan25Duration = 5,
+wan25Resolution = "1080p",
+wan25AudioUrl, // Optional
+wan25NegativePrompt, // Optional
+wan25EnablePromptExpansion = true,
 ```
 
 ### Step 3: Add API Client Function
@@ -470,6 +605,7 @@ klingNegativePrompt = "blur, distort, and low quality",
 - `generateViduQ2Video()` - Vidu-specific
 - **`generateSeedanceVideo()`** - Seedance-specific (new)
 - **`generateKlingImageVideo()`** - Kling I2V-specific (new)
+- **`generateWAN25ImageVideo()`** - WAN 2.5 I2V-specific (new)
 
 Each model-specific function provides:
 - Type-safe parameter interfaces
@@ -706,11 +842,140 @@ export async function generateKlingImageVideo(
     throw error;
   }
 }
+
+/**
+ * WAN 2.5 Preview Image-to-Video Request Interface
+ */
+export interface WAN25I2VRequest {
+  model: string;
+  prompt: string;
+  image_url: string;
+  duration?: 5 | 10;
+  resolution?: "480p" | "720p" | "1080p";
+  audio_url?: string; // Optional background music
+  negative_prompt?: string; // Max 500 characters
+  enable_prompt_expansion?: boolean;
+  seed?: number;
+  enable_safety_checker?: boolean;
+}
+
+/**
+ * Generate video from image using WAN 2.5 Preview.
+ *
+ * @param request - Prompt, model ID, image URL, and optional parameters
+ */
+export async function generateWAN25ImageVideo(
+  request: WAN25I2VRequest
+): Promise<VideoGenerationResponse> {
+  try {
+    const falApiKey = getFalApiKey();
+    if (!falApiKey) {
+      throw new Error("FAL API key not configured");
+    }
+
+    const trimmedPrompt = request.prompt?.trim() ?? "";
+    if (!trimmedPrompt) {
+      throw new Error("Please enter a prompt describing the desired motion");
+    }
+
+    if (trimmedPrompt.length > 800) {
+      throw new Error("Prompt exceeds maximum length of 800 characters");
+    }
+
+    if (!request.image_url) {
+      throw new Error("Image URL is required for WAN 2.5 image-to-video generation");
+    }
+
+    const modelConfig = getModelConfig(request.model);
+    if (!modelConfig) {
+      throw new Error(`Unknown model: ${request.model}`);
+    }
+
+    const endpoint = modelConfig.endpoints.image_to_video;
+    if (!endpoint) {
+      throw new Error(`Model ${request.model} does not support image-to-video generation`);
+    }
+
+    const duration = request.duration ?? 5;
+    const resolution = request.resolution ?? "1080p";
+
+    const payload: Record<string, unknown> = {
+      prompt: trimmedPrompt,
+      image_url: request.image_url,
+      duration,
+      resolution,
+      enable_prompt_expansion: request.enable_prompt_expansion ?? true,
+      enable_safety_checker: request.enable_safety_checker ?? true,
+    };
+
+    // Add optional parameters
+    if (request.audio_url) {
+      payload.audio_url = request.audio_url;
+    }
+
+    if (request.negative_prompt) {
+      if (request.negative_prompt.length > 500) {
+        throw new Error("Negative prompt exceeds maximum length of 500 characters");
+      }
+      payload.negative_prompt = request.negative_prompt;
+    }
+
+    if (request.seed !== undefined) {
+      payload.seed = request.seed;
+    }
+
+    const jobId = `wan25-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+
+    const response = await fetch(`${FAL_API_BASE}/${endpoint}`, {
+      method: "POST",
+      headers: {
+        Authorization: `Key ${falApiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+
+      if (response.status === 401) {
+        throw new Error("Invalid FAL.ai API key. Please check your API key configuration.");
+      }
+
+      if (response.status === 429) {
+        throw new Error("Rate limit exceeded. Please wait a moment before trying again.");
+      }
+
+      throw new Error(`FAL API error: ${errorData.detail || response.statusText}`);
+    }
+
+    const result = await response.json();
+    return {
+      job_id: jobId,
+      status: "completed",
+      message: `Video generated successfully with ${request.model}`,
+      estimated_time: 0,
+      video_url: result.video?.url || result.video || result.url,
+      video_data: result,
+    };
+  } catch (error) {
+    handleAIServiceError(error, "Generate WAN 2.5 Preview video", {
+      model: request.model,
+      prompt: request.prompt?.substring(0, 100),
+      operation: "generateWAN25ImageVideo",
+    });
+    throw error;
+  }
+}
 ```
 
 **Import Addition**: In `use-ai-generation.ts`, find the imports section at the top of the file and add:
 ```typescript
-import { generateSeedanceVideo, generateKlingImageVideo } from "@/lib/ai-video-client";
+import {
+  generateSeedanceVideo,
+  generateKlingImageVideo,
+  generateWAN25ImageVideo
+} from "@/lib/ai-video-client";
 ```
 
 **Note**: The imports should be added alongside existing imports like `generateLTXV2ImageVideo`, `generateViduQ2Video`, etc. from the same module.
@@ -739,18 +1004,214 @@ klingCfgScale?: number; // 0-1 range
 klingAspectRatio?: "16:9" | "9:16" | "1:1" | "4:3" | "3:4";
 klingEnhancePrompt?: boolean;
 klingNegativePrompt?: string;
+
+// WAN 2.5 Preview I2V options
+wan25Duration?: 5 | 10;
+wan25Resolution?: "480p" | "720p" | "1080p";
+wan25AudioUrl?: string; // Optional background music
+wan25NegativePrompt?: string; // Max 500 characters
+wan25EnablePromptExpansion?: boolean;
 ```
 
-### Step 5: Add UI Controls (Optional - for full implementation)
-The models should automatically appear in the image-to-video model selector. Additional controls to consider:
+### Step 5: Add UI Controls for User Selection
 
-1. **Resolution Selector** (480p / 720p / 1080p)
-2. **Duration Selector** (2-12 seconds in 1-second increments)
-3. **Aspect Ratio Selector** (21:9, 16:9, 4:3, 1:1, 3:4, 9:16, auto)
-4. **Camera Fixed Toggle** (locks camera position, default: off)
-5. **Seed Input** (optional, for reproducible results)
-6. **End Frame Upload** (optional, Pro model only)
-7. **Safety Checker Toggle** (default: on)
+**File**: `qcut/apps/web/src/components/editor/media-panel/views/ai.tsx` (or relevant UI component)
+
+**Purpose**: Allow users to configure model-specific parameters through the UI before generating videos.
+
+**Why Important**: Each model has different capabilities (resolutions, durations, aspect ratios). Users need UI controls to select these options rather than being limited to default values.
+
+#### UI Controls to Implement
+
+The following controls should be added to the image-to-video tab UI, with visibility controlled by the selected model:
+
+##### 1. **Resolution Selector**
+- **Type**: Dropdown/Select component
+- **Options**: Model-dependent
+  - Seedance: 480p, 720p, 1080p
+  - Kling: 1080p only
+  - WAN 2.5: 480p, 720p, 1080p
+- **Default**: 1080p
+- **Implementation**: Read from `model.supportedResolutions` array
+
+##### 2. **Duration Selector**
+- **Type**: Slider or Dropdown
+- **Options**: Model-dependent
+  - Seedance: 2-12 seconds (1s increments)
+  - Kling: 5s, 10s
+  - WAN 2.5: 5s, 10s
+- **Default**: 5 seconds
+- **Implementation**: Read from `model.supportedDurations` array
+- **Display**: Show estimated cost based on selected duration
+
+##### 3. **Aspect Ratio Selector**
+- **Type**: Grid of ratio buttons or Dropdown
+- **Options**: Model-dependent
+  - Seedance: 21:9, 16:9, 4:3, 1:1, 3:4, 9:16, auto
+  - Kling: 16:9, 9:16, 1:1, 4:3, 3:4
+  - WAN 2.5: Not supported (uses image aspect ratio)
+- **Default**: 16:9
+- **Visibility**: Show only for models that support aspect ratio selection
+
+##### 4. **Camera Fixed Toggle** (Seedance Only)
+- **Type**: Checkbox or Toggle Switch
+- **Label**: "Lock Camera Position"
+- **Description**: "Prevents camera movement for stable shots"
+- **Default**: Off
+- **Visibility**: Show only when Seedance model selected
+
+##### 5. **CFG Scale Slider** (Kling Only)
+- **Type**: Slider (0-1 range, step 0.1)
+- **Label**: "Prompt Adherence"
+- **Description**: "Controls how closely the video follows your prompt"
+- **Default**: 0.5
+- **Visibility**: Show only when Kling model selected
+
+##### 6. **Prompt Expansion Toggle** (Kling, WAN 2.5)
+- **Type**: Checkbox or Toggle Switch
+- **Label**: "Enhance Prompt with AI"
+- **Description**: "Uses LLM to improve prompt quality"
+- **Default**: On
+- **Visibility**: Show for Kling and WAN 2.5 models
+
+##### 7. **Negative Prompt Input** (Kling, WAN 2.5)
+- **Type**: Text input or Textarea
+- **Label**: "Negative Prompt (Optional)"
+- **Placeholder**: "blur, distort, low quality"
+- **Max Length**:
+  - Kling: No specific limit
+  - WAN 2.5: 500 characters
+- **Visibility**: Show for Kling and WAN 2.5 models
+
+##### 8. **Audio Upload** (WAN 2.5 Only)
+- **Type**: File upload component
+- **Label**: "Background Music (Optional)"
+- **Accepted Formats**: WAV, MP3
+- **Duration Limit**: 3-30 seconds
+- **File Size Limit**: 15MB
+- **Visibility**: Show only when WAN 2.5 model selected
+
+##### 9. **End Frame Upload** (Seedance Pro Only)
+- **Type**: Image upload component
+- **Label**: "End Frame (Optional)"
+- **Description**: "Target final frame for controlled video conclusion"
+- **Visibility**: Show only when `seedance_pro_i2v` model selected
+
+##### 10. **Seed Input** (All Models)
+- **Type**: Number input
+- **Label**: "Seed (Optional)"
+- **Description**: "Use same seed for reproducible results"
+- **Visibility**: Show as advanced option (collapsible section)
+
+#### Implementation Pattern
+
+```typescript
+// Example: Dynamic UI based on selected model
+const selectedModel = AI_MODELS.find(m => m.id === selectedModelId);
+
+return (
+  <div className="model-controls">
+    {/* Resolution Selector - Show if model supports multiple resolutions */}
+    {selectedModel?.supportedResolutions && selectedModel.supportedResolutions.length > 1 && (
+      <ResolutionSelector
+        options={selectedModel.supportedResolutions}
+        value={currentResolution}
+        onChange={setResolution}
+      />
+    )}
+
+    {/* Duration Selector - Always show */}
+    {selectedModel?.supportedDurations && (
+      <DurationSelector
+        options={selectedModel.supportedDurations}
+        value={currentDuration}
+        onChange={setDuration}
+        pricePerSecond={calculatePricePerSecond(selectedModel)}
+      />
+    )}
+
+    {/* Aspect Ratio - Show only if supported */}
+    {selectedModel?.default_params?.aspect_ratio && (
+      <AspectRatioSelector
+        value={currentAspectRatio}
+        onChange={setAspectRatio}
+      />
+    )}
+
+    {/* Model-specific controls */}
+    {selectedModelId === "seedance_pro_fast_i2v" || selectedModelId === "seedance_pro_i2v" ? (
+      <>
+        <CameraFixedToggle value={cameraFixed} onChange={setCameraFixed} />
+        {selectedModelId === "seedance_pro_i2v" && (
+          <EndFrameUpload value={endFrame} onChange={setEndFrame} />
+        )}
+      </>
+    ) : null}
+
+    {selectedModelId === "kling_v2_5_turbo_i2v" ? (
+      <>
+        <CFGScaleSlider value={cfgScale} onChange={setCfgScale} />
+        <PromptExpansionToggle value={enhancePrompt} onChange={setEnhancePrompt} />
+        <NegativePromptInput value={negativePrompt} onChange={setNegativePrompt} />
+      </>
+    ) : null}
+
+    {selectedModelId === "wan_25_preview_i2v" ? (
+      <>
+        <PromptExpansionToggle value={enablePromptExpansion} onChange={setEnablePromptExpansion} />
+        <NegativePromptInput
+          value={negativePrompt}
+          onChange={setNegativePrompt}
+          maxLength={500}
+        />
+        <AudioUpload
+          value={audioFile}
+          onChange={setAudioFile}
+          acceptedFormats={["audio/wav", "audio/mp3"]}
+          maxSize={15 * 1024 * 1024} // 15MB
+        />
+      </>
+    ) : null}
+  </div>
+);
+```
+
+#### Cost Display
+
+Add a cost estimator that updates in real-time based on user selections:
+
+```typescript
+function calculateEstimatedCost(model: AIModel, resolution: string, duration: number): string {
+  if (model.id === "wan_25_preview_i2v") {
+    // WAN 2.5 has per-second pricing by resolution
+    const rates = { "480p": 0.05, "720p": 0.10, "1080p": 0.15 };
+    return `$${(rates[resolution] * duration).toFixed(2)}`;
+  }
+  // Other models have fixed pricing
+  return `$${model.price}`;
+}
+
+// In UI component
+<CostEstimate>
+  Estimated cost: {calculateEstimatedCost(selectedModel, resolution, duration)}
+</CostEstimate>
+```
+
+#### User Experience Considerations
+
+1. **Smart Defaults**: Pre-fill with model's `default_params` from `ai-constants.ts`
+2. **Validation Feedback**: Show errors for invalid combinations (e.g., 20s duration on Kling)
+3. **Help Text**: Include tooltips explaining what each parameter does
+4. **Responsive Design**: Controls should work on mobile and desktop
+5. **Cost Transparency**: Always show estimated cost before generation
+6. **Save Preferences**: Remember user's last selections per model (localStorage)
+
+#### Accessibility
+
+- All controls should be keyboard navigable
+- Use proper ARIA labels
+- Provide screen reader descriptions for sliders and toggles
+- Ensure sufficient color contrast for all UI elements
 
 ### Step 6: API Request/Response Format
 
@@ -804,15 +1265,17 @@ The models should automatically appear in the image-to-video model selector. Add
 ### Step 7: Testing Checklist
 
 **Seedance Pro Fast I2V:**
-- [ ] Model appears in image-to-video tab UI
+- [ ] Model appears in image-to-video tab UI model selector dropdown
 - [ ] Image upload works correctly
 - [ ] Prompt input is functional
-- [ ] Resolution selector works (480p/720p/1080p)
-- [ ] Duration selector works (2-12 seconds)
-- [ ] Aspect ratio selector works (21:9, 16:9, 4:3, 1:1, 3:4, 9:16, auto)
-- [ ] Camera fixed toggle works
-- [ ] Seed input for reproducibility works
+- [ ] **UI Control: Resolution selector** appears and allows user to choose 480p/720p/1080p
+- [ ] **UI Control: Duration slider/selector** allows user to choose 2-12 seconds
+- [ ] **UI Control: Aspect ratio selector** displays all 7 options + auto for user selection
+- [ ] **UI Control: Camera fixed toggle** visible and functional (locks camera when enabled)
+- [ ] **UI Control: Seed input** (advanced options) allows manual seed entry
+- [ ] Real-time cost estimator updates based on user's duration selection
 - [ ] Progress indicator shows during generation
+- [ ] Generated video matches user-selected resolution and duration
 - [ ] Generated video downloads correctly
 - [ ] Video can be added to timeline
 - [ ] Error handling works (invalid image, API errors)
@@ -821,40 +1284,83 @@ The models should automatically appear in the image-to-video model selector. Add
 
 **Seedance Pro I2V:**
 - [ ] Model appears in image-to-video tab UI
-- [ ] All Pro Fast features work
-- [ ] End frame upload is optional and works (Pro exclusive)
+- [ ] All Pro Fast UI controls work
+- [ ] **UI Control: End frame upload** appears only for Pro model (optional image upload)
 - [ ] Cost calculation is accurate (~$0.62 per 1080p 5s video)
+- [ ] Generated video interpolates between start image and end frame when both provided
+
+**Kling v2.5 Turbo Pro I2V:**
+- [ ] Model appears in image-to-video tab UI
+- [ ] Image upload works correctly
+- [ ] Prompt input is functional (max 2,500 characters)
+- [ ] **UI Control: Duration selector** allows user to choose 5s or 10s
+- [ ] **UI Control: CFG scale slider** (0-1) for prompt adherence control
+- [ ] **UI Control: Aspect ratio selector** displays 5 ratio options for user selection
+- [ ] **UI Control: Prompt expansion toggle** enabled by default
+- [ ] **UI Control: Negative prompt text input** for quality directives
+- [ ] Cost updates correctly ($0.35 for 5s, $0.70 for 10s)
+- [ ] Generated video matches user-selected parameters
+- [ ] CFG scale affects how closely video follows prompt
+
+**WAN 2.5 Preview I2V:**
+- [ ] Model appears in image-to-video tab UI
+- [ ] Image upload works correctly
+- [ ] Prompt input is functional (max 800 characters)
+- [ ] **UI Control: Resolution selector** allows user to choose 480p/720p/1080p
+- [ ] **UI Control: Duration selector** allows user to choose 5s or 10s
+- [ ] **UI Control: Audio file upload** (optional) accepts WAV/MP3 files (3-30s, max 15MB)
+- [ ] **UI Control: Negative prompt input** (max 500 chars) for content to avoid
+- [ ] **UI Control: Prompt expansion toggle** enabled by default
+- [ ] **Dynamic cost display** updates based on resolution + duration selection:
+  - [ ] 480p: $0.05/s
+  - [ ] 720p: $0.10/s
+  - [ ] 1080p: $0.15/s
+- [ ] Audio synchronizes with generated video when provided
+- [ ] Generated video matches user-selected resolution and duration
 
 ## Files to Modify Summary
 
 ### 1. `qcut/apps/web/src/components/editor/media-panel/views/ai-constants.ts`
    - **Location**: `AI_MODELS` array, after `ltxv2_fast_i2v`
-   - **Changes**: Add three model entries with `category: "image"`
+   - **Changes**: Add four model entries with `category: "image"`
    - **Models**:
      - `seedance_pro_fast_i2v` - Seedance Pro Fast
      - `seedance_pro_i2v` - Seedance Pro
      - `kling_v2_5_turbo_i2v` - Kling v2.5 Turbo Pro I2V
+     - `wan_25_preview_i2v` - WAN 2.5 Preview I2V
 
 ### 2. `qcut/apps/web/src/components/editor/media-panel/views/use-ai-generation.ts`
-   - **Import section**: Add `generateSeedanceVideo` and `generateKlingImageVideo` imports
-   - **Props interface**: Add Seedance and Kling specific props
-   - **Destructure section**: Add default values for new props
-   - **handleGenerate function**: Add handlers for all three models in image tab section
+   - **Import section**: Add `generateSeedanceVideo`, `generateKlingImageVideo`, and `generateWAN25ImageVideo` imports
+   - **Props interface**: Add Seedance, Kling, and WAN 2.5 specific props
+   - **Destructure section**: Add default values for all new props
+   - **handleGenerate function**: Add handlers for all four models in image tab section
 
 ### 3. `qcut/apps/web/src/lib/ai-video-client.ts`
    - **Interfaces section**:
      - Add `SeedanceI2VRequest` interface
      - Add `KlingI2VRequest` interface
+     - Add `WAN25I2VRequest` interface
    - **Functions section**:
      - Add `generateSeedanceVideo` function
      - Add `generateKlingImageVideo` function
-   - **Exports**: Ensure both functions are exported
+     - Add `generateWAN25ImageVideo` function
+   - **Exports**: Ensure all three functions are exported
 
 ### 4. `qcut/apps/web/src/components/editor/media-panel/views/ai-types.ts`
-   - **UseAIGenerationProps interface**: Add prop types for Seedance and Kling models
+   - **UseAIGenerationProps interface**: Add prop types for Seedance, Kling, and WAN 2.5 models
 
-### 5. `qcut/apps/web/src/test/integration/new-video-models.test.ts` (Optional)
-   - Add test cases for all three models
+### 5. `qcut/apps/web/src/components/editor/media-panel/views/ai.tsx` (UI Component)
+   - **Add UI Controls**: Implement user-selectable controls for:
+     - Resolution selector (dropdown)
+     - Duration selector (slider/dropdown)
+     - Aspect ratio selector (button grid)
+     - Model-specific controls (toggles, sliders, file uploads)
+   - **Dynamic visibility**: Show/hide controls based on selected model
+   - **Cost estimator**: Real-time price calculation based on user selections
+   - **Validation**: Ensure user selections are within model limits
+
+### 6. `qcut/apps/web/src/test/integration/new-video-models.test.ts` (Optional)
+   - Add test cases for all four models
 
 ## Maintenance Notes
 
@@ -970,6 +1476,7 @@ console.log("Seed used:", result.seed);
 - [FAL.ai Seedance v1 Pro Fast Image-to-Video API](https://fal.ai/models/fal-ai/bytedance/seedance/v1/pro/fast/image-to-video/api)
 - [FAL.ai Seedance v1 Pro Image-to-Video API](https://fal.ai/models/fal-ai/bytedance/seedance/v1/pro/image-to-video/api)
 - [FAL.ai Kling v2.5 Turbo Pro Image-to-Video API](https://fal.ai/models/fal-ai/kling-video/v2.5-turbo/pro/image-to-video/api)
+- [FAL.ai WAN 2.5 Preview Image-to-Video API](https://fal.ai/models/fal-ai/wan-25-preview/image-to-video/api)
 
 ### Internal Codebase
 - [QCut AI Constants](../../apps/web/src/components/editor/media-panel/views/ai-constants.ts)
@@ -1009,8 +1516,15 @@ Use this section to track progress when implementing:
 - [ ] Type definitions added
 - [ ] Integration testing completed
 
+### WAN 2.5 Preview I2V
+- [ ] Model definition added to `ai-constants.ts`
+- [ ] Handler added to `use-ai-generation.ts`
+- [ ] API client function implemented
+- [ ] Type definitions added
+- [ ] Integration testing completed
+
 ### Overall
-- [ ] All three models appear in image-to-video tab UI
+- [ ] All four models appear in image-to-video tab UI
 - [ ] Documentation updated with any deviations from plan
 - [ ] Consider refactoring props pattern (see Future Refactoring Opportunity below)
 
