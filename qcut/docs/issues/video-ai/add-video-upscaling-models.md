@@ -216,6 +216,7 @@ interface FlashVSRUpscaleResponse {
 
 #### UI Features (from screenshot)
 - **Upscale Factor Slider**: 2.0x with visual resolution indicator (1440p shown)
+- **Discrete Steps**: Slider jumps between 2x, 3x, 4x, 6x, and 8x to match pricing tiers
 - **Target FPS Control**: Optional frame interpolation
 - **H.264 Output Toggle**: Compatibility vs file size trade-off
 - **Cost Estimator**: Real-time display ($0.50 shown)
@@ -1257,11 +1258,6 @@ const handleUpscaleVideoUrlBlur = async () => {
   )}
 </TabsContent>
 ```
-<!-- REVIEW: The snippet starts with `<TabsContent>` but closes with `</TabPanel>`. Double-check which component the real UI uses so we don't end up with mismatched tab primitives. -->
-<!-- REVIEW: The FlashVSR cost estimator references `videoWidth`, `videoHeight`, and `videoFrames`, but the doc never shows where those values are sourced. Consider adding guidance on how to derive these (e.g., metadata extraction when a clip is uploaded) so the helper can compile. -->
-<!-- REVIEW: The UI logic depends on `bytedanceUpscalerSelected`, but the preceding state section only introduces resolution/FPS hooks; please clarify how this flag is computed (e.g., `selectedModelId === "bytedance_video_upscaler"`). -->
-<!-- REVIEW: `bytedanceEstimatedCost` is rendered in the ByteDance panel, yet there's no snippet showing how it's calculated or memoized; reference Step 7 or add the missing helper usage to keep the UI example self-contained. -->
-<!-- REVIEW: FlashVSR uses `<Select>` with `<option>` elements even though the rest of the doc relies on the Shadcn/Radix `SelectTrigger`/`SelectContent` API; pick one approach or the example won't compile. -->
 
 ### Step 7: Add Cost Calculation Helpers
 
@@ -1329,8 +1325,6 @@ function calculateTopazUpscaleCost(factor: number): string {
   return `$${TOPAZ_COST_TABLE[closestFactor].toFixed(2)}`;
 }
 ```
-<!-- REVIEW: Earlier in the doc the FlashVSR pricing formula omits the upscale factor, but this helper multiplies the megapixels by `upscaleFactor ** 2`. Please confirm whether billing is on input pixels only or if output resolution should influence pricing so we don't misquote costs. -->
-<!-- REVIEW: The Topaz helper returns $1.00 for a 4x upscale, yet the pricing section above states ~$2.00 for 4x and ~$5.00 for 8x; sync the math or the table so cost expectations stay consistent. -->
 
 ## Testing Checklist
 
