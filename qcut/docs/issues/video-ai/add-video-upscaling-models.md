@@ -209,6 +209,63 @@ interface FlashVSRUpscaleResponse {
 
 ## Implementation Plan
 
+**Total Estimated Time**: ~95 minutes (1.5 hours)
+
+This implementation has been broken down into **5 subtasks** of 15-25 minutes each for better manageability:
+
+| Subtask | Duration | Focus | Status |
+|---------|----------|-------|--------|
+| 1. Core Infrastructure | 20 min | Constants, types, video upload | ⏸️ Not Started |
+| 2. ByteDance Upscaler | 20 min | API client, handler, UI, costs | ⏸️ Not Started |
+| 3. FlashVSR Upscaler | 25 min | API client, handler, UI, costs | ⏸️ Not Started |
+| 4. Topaz Upscaler Stub | 10 min | Stubs for future implementation | ⏸️ Not Started |
+| 5. Testing & Integration | 20 min | End-to-end testing, validation | ⏸️ Not Started |
+
+### Subtask Breakdown
+
+#### Subtask 1: Core Infrastructure Setup (20 minutes)
+- Add model entries to `ai-constants.ts` for all three upscalers
+- Add type definitions in `ai-types.ts`
+- Add `uploadVideoToFal()` helper in `fal-ai-client.ts`
+- Add "upscale" tab to UI navigation
+
+**Deliverable**: Models appear in UI dropdown, video upload infrastructure ready
+
+#### Subtask 2: ByteDance Upscaler Implementation (20 minutes)
+- Add `upscaleByteDanceVideo()` API client function
+- Add ByteDance generation handler in `use-ai-generation.ts`
+- Add ByteDance UI controls (resolution/FPS selectors)
+- Add ByteDance cost calculation helper
+
+**Deliverable**: Fully functional ByteDance upscaler with UI controls
+
+#### Subtask 3: FlashVSR Upscaler Implementation (25 minutes)
+- Add `upscaleFlashVSRVideo()` API client function
+- Add FlashVSR generation handler in `use-ai-generation.ts`
+- Add FlashVSR UI controls (upscale factor, acceleration, quality, formats)
+- Add FlashVSR cost calculation helper
+
+**Deliverable**: Fully functional FlashVSR upscaler with advanced controls
+
+#### Subtask 4: Topaz Upscaler Stub (10 minutes)
+- Add `upscaleTopazVideo()` API client stub
+- Add Topaz generation handler stub
+- Add Topaz UI controls (upscale factor, frame interpolation)
+- Add Topaz cost calculation helper
+
+**Deliverable**: Topaz upscaler UI ready, awaiting API endpoint
+
+#### Subtask 5: Testing & Integration (20 minutes)
+- Test ByteDance upscaler end-to-end
+- Test FlashVSR upscaler end-to-end
+- Verify all UI controls function correctly
+- Test cost calculations accuracy
+- Handle edge cases and errors
+
+**Deliverable**: Production-ready upscaling feature
+
+---
+
 ### Step 1: Add Video Upscale Category to Constants
 
 **File**: `qcut/apps/web/src/components/editor/media-panel/views/ai-constants.ts`
@@ -1032,6 +1089,29 @@ function calculateTopazUpscaleCost(factor: number): string {
 - [ ] File size limit enforced (500MB max)
 - [ ] Duration limit enforced (2 minutes max)
 
+### FlashVSR Video Upscaler
+- [ ] Model appears in upscale tab UI
+- [ ] Video upload works (local file)
+- [ ] Video URL input works (remote URL)
+- [ ] Upscale factor slider works (1x to 4x, continuous)
+- [ ] Acceleration mode selector displays all options (regular/high/full)
+- [ ] Quality slider works (0-100)
+- [ ] Output format selector works (X264/VP9/ProRes/GIF)
+- [ ] Output quality selector works (low/medium/high/maximum)
+- [ ] Write mode selector works (fast/balanced/small)
+- [ ] Color fix toggle works
+- [ ] Preserve audio toggle works
+- [ ] Seed input accepts and uses custom seeds
+- [ ] Cost estimator calculates based on megapixels (width × height × frames)
+- [ ] Video uploads successfully to FAL storage
+- [ ] Upscaling request completes successfully
+- [ ] Upscaled video downloads correctly
+- [ ] Output video matches selected upscale factor
+- [ ] Output format matches selection (MP4, WebM, MOV, GIF)
+- [ ] Audio preservation works when enabled
+- [ ] Error handling works (invalid video, API errors)
+- [ ] Acceleration modes impact processing speed as expected
+
 ### Topaz Video Upscaler
 - [ ] Model appears in upscale tab UI (when implemented)
 - [ ] Upscale factor slider works (2x to 8x)
@@ -1042,12 +1122,12 @@ function calculateTopazUpscaleCost(factor: number): string {
 
 ## Files to Modify Summary
 
-1. **`ai-constants.ts`** - Add ByteDance and Topaz upscaler models with `category: "upscale"`
-2. **`ai-types.ts`** - Add upscaling-specific props
-3. **`ai-video-client.ts`** - Add `upscaleByteDanceVideo()` and `upscaleTopazVideo()` functions
+1. **`ai-constants.ts`** - Add ByteDance, FlashVSR, and Topaz upscaler models with `category: "upscale"`
+2. **`ai-types.ts`** - Add upscaling-specific props for all three models
+3. **`ai-video-client.ts`** - Add `upscaleByteDanceVideo()`, `upscaleFlashVSRVideo()`, and `upscaleTopazVideo()` functions
 4. **`fal-ai-client.ts`** - Add `uploadVideoToFal()` helper
-5. **`use-ai-generation.ts`** - Add upscale tab handler
-6. **`ai.tsx`** - Add upscale tab UI with controls
+5. **`use-ai-generation.ts`** - Add upscale tab handlers for all three models
+6. **`ai.tsx`** - Add upscale tab UI with model-specific controls
 
 ## API Examples
 
@@ -1088,6 +1168,83 @@ curl -X POST https://fal.run/fal-ai/bytedance-upscaler/upscale/video \
   }'
 ```
 
+---
+
+### FlashVSR Video Upscaler
+
+**JavaScript Client:**
+```javascript
+import { fal } from "@fal-ai/client";
+
+const result = await fal.subscribe(
+  "fal-ai/flashvsr/upscale/video",
+  {
+    input: {
+      video_url: "https://example.com/video.mp4",
+      upscale_factor: 4,
+      acceleration: "high",
+      quality: 80,
+      color_fix: true,
+      preserve_audio: true,
+      output_format: "X264",
+      output_quality: "high",
+      output_write_mode: "balanced",
+      seed: 42
+    },
+    logs: true,
+    onQueueUpdate: (update) => {
+      console.log("Progress:", update.status);
+    }
+  }
+);
+
+console.log("Upscaled video URL:", result.video.url);
+console.log("Seed used:", result.seed);
+console.log("File size:", result.video.file_size);
+```
+
+**cURL Example:**
+```bash
+curl -X POST https://fal.run/fal-ai/flashvsr/upscale/video \
+  -H "Authorization: Key YOUR_FAL_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "video_url": "https://example.com/video.mp4",
+    "upscale_factor": 3.5,
+    "acceleration": "regular",
+    "quality": 70,
+    "color_fix": true,
+    "preserve_audio": false,
+    "output_format": "VP9",
+    "output_quality": "maximum"
+  }'
+```
+
+**ProRes Professional Example:**
+```javascript
+// For professional workflows requiring lossless quality
+const result = await fal.subscribe(
+  "fal-ai/flashvsr/upscale/video",
+  {
+    input: {
+      video_url: "https://example.com/source.mp4",
+      upscale_factor: 2.0,
+      acceleration: "regular",  // Best quality
+      quality: 100,             // Maximum tile blending
+      color_fix: true,
+      preserve_audio: true,
+      output_format: "PRORES4444",  // Professional codec
+      output_quality: "maximum",
+      output_write_mode: "balanced"
+    }
+  }
+);
+
+// Result will be .mov file with ProRes 4444 codec
+```
+
+---
+
 ## Use Cases
 
 ### ByteDance Upscaler
@@ -1097,6 +1254,16 @@ curl -X POST https://fal.run/fal-ai/bytedance-upscaler/upscale/video \
 - **Archive Enhancement**: Improve quality of older video content
 - **Social Media**: Prepare content for high-resolution platforms
 
+### FlashVSR Upscaler
+- **Speed-Critical Workflows**: Fastest upscaling when time is essential
+- **Flexible Scaling**: Precise upscale factors (e.g., 2.3x, 3.7x) for exact target resolutions
+- **Professional Outputs**: ProRes 4444 support for broadcast/film workflows
+- **Web Optimization**: VP9/WebM output for modern web delivery
+- **Animation/GIF Creation**: Built-in GIF output for social media
+- **Audio Preservation**: Maintain original audio tracks during upscaling
+- **Batch Processing**: Fast/full acceleration modes for large-scale jobs
+- **Cost-Effective**: Megapixel-based pricing can be economical for shorter clips
+
 ### Topaz Video Upscale
 - **Professional Enhancement**: 8x upscaling for professional workflows
 - **Film Restoration**: Enhance vintage or degraded footage
@@ -1105,22 +1272,40 @@ curl -X POST https://fal.run/fal-ai/bytedance-upscaler/upscale/video \
 
 ## Implementation Notes
 
-1. **Video Upload Size**: ByteDance supports up to 500MB and 2 minutes. Consider adding compression for larger files.
+1. **Video Upload Size**: ByteDance supports up to 500MB and 2 minutes. FlashVSR file size limits should be confirmed. Consider adding compression for larger files.
 
-2. **Processing Time**: Upscaling is compute-intensive. Implement proper queue management and status polling.
+2. **Processing Time**: Upscaling is compute-intensive. Implement proper queue management and status polling. FlashVSR offers acceleration modes to optimize speed vs quality trade-offs.
 
-3. **Cost Management**: 4K/60fps can be expensive. Show clear cost estimates before processing.
+3. **Cost Management**:
+   - ByteDance: 4K/60fps can be expensive. Show clear cost estimates before processing.
+   - FlashVSR: Megapixel-based pricing means longer videos cost more. Calculate costs based on: `(width × height × frames × upscale_factor²) × $0.0005 / 1,000,000`
+   - Display real-time cost estimates as users adjust upscale factors.
 
-4. **Format Support**: Ensure input videos are in supported formats (MP4, MOV, AVI).
+4. **Format Support**:
+   - ByteDance: MP4, MOV, AVI
+   - FlashVSR: Standard video formats, with multiple output options (X264, VP9, ProRes, GIF)
+   - Ensure input videos are in supported formats.
 
-5. **Output Quality**: ByteDance uses AI enhancement algorithms that work best on real-world footage (not synthetic/cartoon content).
+5. **Output Quality**:
+   - ByteDance uses AI enhancement algorithms that work best on real-world footage (not synthetic/cartoon content).
+   - FlashVSR offers granular quality control (0-100) and multiple acceleration modes for different use cases.
 
-6. **Topaz Integration**: Topaz API endpoint needs to be confirmed/implemented.
+6. **Audio Handling**: FlashVSR's `preserve_audio` option requires FFmpeg processing. Make this clear in the UI and handle any audio encoding errors gracefully.
+
+7. **Professional Workflows**: FlashVSR's ProRes 4444 output can produce very large files (suitable for professional editing but not web delivery). Warn users about file sizes when this format is selected.
+
+8. **Acceleration Trade-offs**: Document that FlashVSR's acceleration modes impact quality:
+   - `regular`: Best quality, standard speed
+   - `high`: 30-40% faster, minimal quality loss
+   - `full`: 50-60% faster, noticeable quality reduction
+
+9. **Topaz Integration**: Topaz API endpoint needs to be confirmed/implemented.
 
 ## Related Documentation
 
 ### External APIs
 - [FAL.ai ByteDance Video Upscaler API](https://fal.ai/models/fal-ai/bytedance-upscaler/upscale/video/api)
+- [FAL.ai FlashVSR Video Upscaler API](https://fal.ai/models/fal-ai/flashvsr/upscale/video/api)
 - [FAL.ai Storage Upload API](https://fal.ai/docs/storage/upload)
 
 ### Internal References
@@ -1130,6 +1315,24 @@ curl -X POST https://fal.run/fal-ai/bytedance-upscaler/upscale/video \
 ## Document Status
 
 - **Created**: 2025-11-11
+- **Last Updated**: 2025-11-11
 - **Implementation Status**: Pending
 - **Document Type**: Implementation Guide
-- **Models Covered**: ByteDance Video Upscaler (fal.ai), Topaz Video Upscale
+- **Models Covered**:
+  1. ByteDance Video Upscaler (fal.ai) - Resolution-based upscaling with FPS options
+  2. FlashVSR Video Upscaler (fal.ai) - Fastest upscaling with flexible scaling and format options
+  3. Topaz Video Upscale - Professional upscaling up to 8x (API TBD)
+
+## Model Comparison Summary
+
+| Feature | ByteDance | FlashVSR | Topaz |
+|---------|-----------|----------|-------|
+| **Max Upscale** | 4K resolution | 4x factor | 8x factor |
+| **Speed** | Standard | Fastest (3 modes) | Standard |
+| **Pricing** | Per-second | Per-megapixel | Per-factor |
+| **Output Formats** | MP4 | MP4, WebM, ProRes, GIF | MP4 |
+| **FPS Control** | 30/60fps | Original (preserve) | Original/Interpolated |
+| **Audio** | Included | Optional preserve | Included |
+| **Quality Control** | Resolution tiers | 0-100 scale + acceleration | H.264 toggle |
+| **Best For** | Fixed resolution targets | Flexible scaling, speed | Maximum quality |
+| **Unique Features** | FPS doubling | ProRes output, GIF export | 8x upscaling |
