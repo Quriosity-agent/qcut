@@ -124,7 +124,7 @@ interface ByteDanceUpscaleResponse {
 #### Pricing
 **Megapixel-based billing:**
 - **Formula**: $0.0005 per megapixel of video data
-- **Calculation**: width × height × frames × $0.0005 / 1,000,000
+- **Calculation**: _output_ width × _output_ height × frames × $0.0005 / 1,000,000 (multiply the original dimensions by the selected upscale factor before computing the area)
 
 **Cost Examples:**
 - 1920×1080, 121 frames = 250.88 megapixels = **$0.125**
@@ -1299,9 +1299,10 @@ function calculateFlashVSRUpscaleCost(
   frames: number,
   upscaleFactor: number
 ): string {
-  // Formula: width × height × frames × upscale_factor² × $0.0005 / 1,000,000
-  // Upscaling increases dimensions, so area is multiplied by factor²
-  const megapixels = (width * height * frames * (upscaleFactor ** 2)) / 1_000_000;
+  // FlashVSR bills on *output* megapixels, so scale width/height by the factor first.
+  const outputWidth = width * upscaleFactor;
+  const outputHeight = height * upscaleFactor;
+  const megapixels = (outputWidth * outputHeight * frames) / 1_000_000;
   const costPerMegapixel = 0.0005;
   const totalCost = megapixels * costPerMegapixel;
 
@@ -1312,9 +1313,20 @@ function calculateFlashVSRUpscaleCost(
  * Calculate Topaz upscale cost based on upscale factor
  */
 function calculateTopazUpscaleCost(factor: number): string {
-  const baseCost = 0.50; // $0.50 for 2x
-  const cost = baseCost * (factor / 2.0);
-  return `$${cost.toFixed(2)}`;
+  const TOPAZ_COST_TABLE: Record<number, number> = {
+    2: 0.5,
+    3: 1.0,
+    4: 2.0,
+    6: 3.5,
+    8: 5.0,
+  };
+
+  const supportedFactors = Object.keys(TOPAZ_COST_TABLE).map(Number);
+  const closestFactor = supportedFactors.reduce((closest, current) =>
+    Math.abs(current - factor) < Math.abs(closest - factor) ? current : closest
+  );
+
+  return `$${TOPAZ_COST_TABLE[closestFactor].toFixed(2)}`;
 }
 ```
 <!-- REVIEW: Earlier in the doc the FlashVSR pricing formula omits the upscale factor, but this helper multiplies the megapixels by `upscaleFactor ** 2`. Please confirm whether billing is on input pixels only or if output resolution should influence pricing so we don't misquote costs. -->
