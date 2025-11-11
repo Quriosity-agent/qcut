@@ -25,6 +25,15 @@ This guide covers adding **four image-to-video models**:
 - `qcut/apps/web/src/lib/ai-video-client.ts`
 - `qcut/apps/web/src/lib/fal-ai-client.ts`
 
+## Implementation Snapshot (Repo – Feb 2025)
+
+The repository already carries the full set of Seedance, Kling, and WAN 2.5 integrations that this document describes. Use the notes below as a quick reference when validating or extending the rollout:
+
+- **Model registry** – `qcut/apps/web/src/components/editor/media-panel/views/ai-constants.ts:253-366` declares `seedance_pro_fast_i2v`, `seedance_pro_i2v`, `kling_v2_5_turbo_i2v`, and `wan_25_preview_i2v`, complete with supported durations/resolutions, aspect ratios, and `perSecondPricing` for WAN.
+- **Type surface & hook routing** – `qcut/apps/web/src/components/editor/media-panel/views/ai-types.ts:172-209` exposes the new option props, while `qcut/apps/web/src/components/editor/media-panel/views/use-ai-generation.ts:11-115` destructures them and `use-ai-generation.ts:295-321` adds the shared `uploadAudioToFal` helper. The image tab router (`use-ai-generation.ts:1033-1155`) now calls `generateSeedanceVideo`, `generateKlingImageVideo`, and `generateWAN25ImageVideo`, threading `imageSeed`, end frames, CFG scale, and WAN audio URLs as needed.
+- **UI controls & pricing** – `qcut/apps/web/src/components/editor/media-panel/views/ai.tsx:208-318` manages the new state, and the image tab renders dedicated “Seedance Settings,” “Kling v2.5 Turbo Settings,” and “WAN 2.5 Preview Settings” cards (`ai.tsx:1622-2023`) with duration/resolution selectors, camera-fixed toggles, optional end-frame/audio uploads, and live cost estimates driven by `perSecondPricing` (`ai.tsx:702-724`).
+- **Client helpers & uploads** – `qcut/apps/web/src/lib/ai-video-client.ts:2040-2425` implements the Seedance/Kling/WAN request builders with prompt validation, queue-safe payloads, and error handling, and `qcut/apps/web/src/lib/fal-ai-client.ts:327-338` introduces `uploadAudioToFal`, which the WAN handler uses for background music.
+
 **Estimated implementation time**: 5-6 hours (all four models)
 
 ## Architecture Considerations
