@@ -232,6 +232,19 @@ export function AiView() {
     activeProject?.id?.startsWith("project-") &&
     /^project-\d{13}$/.test(activeProject?.id || "");
 
+  const cleanedSeedanceEndFrameUrl = seedanceEndFrameUrl?.trim()
+    ? seedanceEndFrameUrl.trim()
+    : undefined;
+  const cleanedKlingNegativePrompt = klingNegativePrompt.trim()
+    ? klingNegativePrompt.trim()
+    : undefined;
+  const cleanedWan25AudioUrl = wan25AudioUrl?.trim()
+    ? wan25AudioUrl.trim()
+    : undefined;
+  const cleanedWan25NegativePrompt = wan25NegativePrompt.trim()
+    ? wan25NegativePrompt.trim()
+    : undefined;
+
   // Use extracted hooks
   const generation = useAIGeneration({
     prompt,
@@ -264,6 +277,24 @@ export function AiView() {
     ltxv2ImageResolution,
     ltxv2ImageFPS,
     ltxv2ImageGenerateAudio,
+    seedanceDuration,
+    seedanceResolution,
+    seedanceAspectRatio,
+    seedanceCameraFixed,
+    seedanceEndFrameUrl: cleanedSeedanceEndFrameUrl,
+    seedanceEndFrameFile,
+    imageSeed,
+    klingDuration,
+    klingCfgScale,
+    klingAspectRatio,
+    klingEnhancePrompt,
+    klingNegativePrompt: cleanedKlingNegativePrompt,
+    wan25Duration,
+    wan25Resolution,
+    wan25AudioUrl: cleanedWan25AudioUrl,
+    wan25AudioFile,
+    wan25NegativePrompt: cleanedWan25NegativePrompt,
+    wan25EnablePromptExpansion,
     onProgress: (progress, message) => {
       console.log(`[AI View] Progress: ${progress}% - ${message}`);
       // Progress is handled internally by the hook
@@ -598,6 +629,30 @@ export function AiView() {
       const pricePerSecond =
         LTXV2_FAST_CONFIG.PRICING[ltxv2FastResolution] ?? 0;
       modelCost = ltxv2FastDuration * pricePerSecond;
+    }
+    // Seedance image-to-video pricing (scale relative to default duration)
+    else if (
+      modelId === "seedance_pro_fast_i2v" ||
+      modelId === "seedance_pro_i2v"
+    ) {
+      const basePrice = model ? Number.parseFloat(model.price) : 0;
+      const defaultDuration =
+        (model?.default_params?.duration as number | undefined) ?? 5;
+      modelCost = basePrice * (seedanceDuration / (defaultDuration || 5));
+    }
+    // Kling v2.5 Turbo Pro image-to-video pricing
+    else if (modelId === "kling_v2_5_turbo_i2v") {
+      const basePrice = model ? Number.parseFloat(model.price) : 0;
+      const defaultDuration =
+        (model?.default_params?.duration as number | undefined) ?? 5;
+      modelCost = basePrice * (klingDuration / (defaultDuration || 5));
+    }
+    // WAN 2.5 Preview image-to-video pricing (per-second by resolution)
+    else if (modelId === "wan_25_preview_i2v") {
+      const perSecond =
+        model?.perSecondPricing?.[wan25Resolution] ??
+        Number.parseFloat(model?.price ?? "0");
+      modelCost = perSecond * wan25Duration;
     }
 
     return total + modelCost;
