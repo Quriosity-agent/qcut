@@ -106,7 +106,7 @@ const DEFAULT_UPSCALE_SETTINGS = createDefaultUpscaleSettings();
 const normalizeModelSelection = (models: string[]) =>
   TEXT2IMAGE_MODEL_ORDER.filter((modelId) => models.includes(modelId));
 
-export type Text2ImageModelType = "generation" | "edit" | "upscale";
+export type Text2ImageModelType = "generation" | "upscale";
 
 export interface GenerationResult {
   status: "loading" | "success" | "error";

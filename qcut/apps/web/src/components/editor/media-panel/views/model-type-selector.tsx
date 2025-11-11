@@ -3,8 +3,9 @@
  *
  * Provides a segmented control for switching between different AI model workflows:
  * - Generation: Text-to-image creation
- * - Edit: Image editing with prompts
  * - Upscale: Image quality enhancement
+ *
+ * Note: Image editing functionality is available in the separate Adjustment panel.
  *
  * @module ModelTypeSelector
  */
@@ -15,7 +16,7 @@ import { cn } from "@/lib/utils";
 /**
  * Available model type options for AI workflows
  */
-export type ModelTypeOption = "generation" | "edit" | "upscale";
+export type ModelTypeOption = "generation" | "upscale";
 
 /**
  * Props for the ModelTypeSelector component
@@ -44,11 +45,6 @@ const MODEL_TYPE_OPTIONS: Array<{
     description: "Text → Image",
   },
   {
-    id: "edit",
-    label: "Edit",
-    description: "Prompt-guided",
-  },
-  {
     id: "upscale",
     label: "Upscale",
     description: "Enhance quality",
@@ -58,7 +54,7 @@ const MODEL_TYPE_OPTIONS: Array<{
 /**
  * Segmented control component for selecting AI model workflow type
  *
- * Displays three options (Generation, Edit, Upscale) as buttons with visual
+ * Displays two options (Generation, Upscale) as buttons with visual
  * feedback for the currently selected option. Uses proper ARIA attributes for
  * accessibility.
  *

@@ -708,15 +708,6 @@ export function Text2ImageView() {
           </Card>
         </div>
       )}
-
-      {modelType === "edit" && (
-        <Card className="border border-dashed border-muted-foreground/40">
-          <CardContent className="py-10 text-center text-sm text-muted-foreground">
-            Image edit presets live inside the Adjustment panel. Switch to the
-            Edit workspace to access the full workflow.
-          </CardContent>
-        </Card>
-      )}
     </div>
   );
 }
