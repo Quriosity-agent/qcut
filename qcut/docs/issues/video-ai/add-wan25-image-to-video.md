@@ -280,7 +280,10 @@ The WAN 2.5 Preview model **also has the image-to-video endpoint defined** in `a
 
 ### Step 1: Add Image-to-Video Model Entries
 
-> **Reviewer note (Codex):** WAN 2.5 pricing later depends on per-resolution rates ($0.05/$0.10/$0.15 per second), yet this section only exposes a flat `price: "0.75"`, so downstream UI/tests can never compute the dynamic costs listed in Step 7. The same Step 7 requires “all 7 aspect ratios + auto”, but these model configs don’t publish a `supportedAspectRatios` list, forcing callers to hard-code values instead of deriving them from this table.
+Add enough metadata here so the UI never has to hard-code options:
+
+- Include `supportedAspectRatios` arrays alongside `supportedResolutions`/`supportedDurations` (Seedance needs seven ratios plus `"auto"`, Kling five ratios, WAN can omit because it uses the source image).
+- Keep the flat `price` string for consistency, but also add any extra pricing data the UI needs (e.g., `perSecondPricing` for WAN 2.5 with the 0.05/0.10/0.15 rates).
 
 **File**: `qcut/apps/web/src/components/editor/media-panel/views/ai-constants.ts`
 
@@ -303,6 +306,7 @@ Add dedicated image-to-video entries for both Seedance and Kling models:
   price: "0.24", // ~$0.243 per 1080p 5-second video
   resolution: "480p / 720p / 1080p",
   supportedResolutions: ["480p", "720p", "1080p"],
+  supportedAspectRatios: ["21:9", "16:9", "4:3", "1:1", "3:4", "9:16", "auto"],
   max_duration: 12,
   category: "image", // ⭐ Key: This makes it appear in image-to-video tab
   endpoints: {
@@ -325,6 +329,7 @@ Add dedicated image-to-video entries for both Seedance and Kling models:
   price: "0.62", // ~$0.62 per 1080p 5-second video
   resolution: "480p / 720p / 1080p",
   supportedResolutions: ["480p", "720p", "1080p"],
+  supportedAspectRatios: ["21:9", "16:9", "4:3", "1:1", "3:4", "9:16", "auto"],
   max_duration: 12,
   category: "image",
   endpoints: {
@@ -347,6 +352,7 @@ Add dedicated image-to-video entries for both Seedance and Kling models:
   price: "0.35", // $0.35 for 5s, $0.07 per additional second
   resolution: "1080p",
   supportedResolutions: ["1080p"],
+  supportedAspectRatios: ["16:9", "9:16", "1:1", "4:3", "3:4"],
   max_duration: 10,
   category: "image", // ⭐ Key: Makes it appear in image-to-video tab
   endpoints: {
@@ -368,6 +374,7 @@ Add dedicated image-to-video entries for both Seedance and Kling models:
   name: "WAN v2.5 Preview I2V",
   description: "Next-gen WAN with improved quality and motion synthesis (5-10s)",
   price: "0.75", // $0.75 for 5s @ 1080p (varies by resolution)
+  perSecondPricing: { "480p": 0.05, "720p": 0.10, "1080p": 0.15 },
   resolution: "480p / 720p / 1080p",
   supportedResolutions: ["480p", "720p", "1080p"],
   max_duration: 10,
@@ -412,7 +419,11 @@ Alternatively, change the existing `kling_v2_5_turbo` model's category from `"te
 
 ### Step 2: Add Generation Handler in use-ai-generation.ts
 
-> **Reviewer note (Codex):** The Seedance end-frame prop is named `seedanceEndFrameUrl` in the props block, `seedanceEndImageUrl` in the destructuring snippet, and then forwarded as `end_frame_url` in the API call—one of these spellings will drop the value. There’s also no upload path for the optional end-frame image (unlike `uploadImageToFal` for the start frame), so the handler would submit `undefined`. WAN audio has the same gap: the handler expects a ready `audio_url`, but Step 5 only collects a local WAV/MP3 file without explaining how it’s uploaded. Finally, seeds are mentioned several times (UI + testing), yet no `seed` prop/state is threaded through this handler.
+While wiring the handlers, make sure the data flow is complete:
+
+- Use a consistent local prop name (`seedanceEndFrameUrl`) and map it to the API's `end_frame_url`.
+- If the user supplies a new end frame (or WAN audio track) as a `File`, upload it via a helper (`uploadImageToFal` / new `uploadAudioToFal`) before invoking the client so `end_frame_url`/`audio_url` are real URLs.
+- Thread a `seed` prop through the hook (shared across models) and pass it to the model-specific request objects so the Seed control and reproducibility checklist work.
 
 **File**: `qcut/apps/web/src/components/editor/media-panel/views/use-ai-generation.ts`
 
@@ -438,6 +449,9 @@ else if (modelId === "seedance_pro_fast_i2v") {
   }
 
   const imageUrl = await uploadImageToFal(selectedImage);
+  const endFrameUrl = seedanceEndFrameFile
+    ? await uploadImageToFal(seedanceEndFrameFile)
+    : seedanceEndFrameUrl;
   const friendlyName = modelName || modelId;
   progressCallback({
     status: "processing",
@@ -484,7 +498,8 @@ else if (modelId === "seedance_pro_i2v") {
     resolution: seedanceResolution,
     aspect_ratio: seedanceAspectRatio,
     camera_fixed: seedanceCameraFixed,
-    end_image_url: seedanceEndImageUrl, // Last frame (optional, Pro only)
+    end_frame_url: endFrameUrl ?? undefined, // Last frame (optional, Pro only)
+    seed: imageSeed ?? undefined,
   });
 
   progressCallback({
