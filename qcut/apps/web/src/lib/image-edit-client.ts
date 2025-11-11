@@ -4,10 +4,7 @@
  */
 
 import { handleAIServiceError } from "./error-handler";
-import {
-  UPSCALE_MODEL_ENDPOINTS,
-  type UpscaleModelId,
-} from "./upscale-models";
+import { UPSCALE_MODEL_ENDPOINTS, type UpscaleModelId } from "./upscale-models";
 
 const FAL_API_KEY = import.meta.env.VITE_FAL_API_KEY;
 const FAL_API_BASE = "https://fal.run";
@@ -569,7 +566,9 @@ export async function upscaleImage(
         errorData.detail && typeof errorData.detail === "string"
           ? errorData.detail
           : errorData.message || response.statusText;
-      throw new Error(`Upscale API error: ${response.status} - ${errorMessage}`);
+      throw new Error(
+        `Upscale API error: ${response.status} - ${errorMessage}`
+      );
     }
 
     const result = await response.json();
@@ -618,7 +617,9 @@ export async function upscaleImage(
         status: "failed",
         progress: 0,
         message:
-          error instanceof Error ? error.message : "Upscaling failed unexpectedly",
+          error instanceof Error
+            ? error.message
+            : "Upscaling failed unexpectedly",
         elapsedTime: Math.floor((Date.now() - startTime) / 1000),
       });
     }

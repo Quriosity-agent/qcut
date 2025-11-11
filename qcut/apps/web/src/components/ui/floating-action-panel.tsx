@@ -330,12 +330,20 @@ export function FloatingActionPanelModelOption({
 
   return (
     <div
+      role="button"
+      tabIndex={0}
       className={`flex items-center gap-3 p-2 hover:bg-gray-50 dark:hover:bg-gray-800 hover:bg-opacity-50 rounded-md cursor-pointer transition-colors border ${
         checked
           ? "bg-transparent border-[#05c7c7]/50"
           : "bg-transparent border-gray-100 dark:border-gray-700"
       }`}
       onClick={handleToggle}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          handleToggle();
+        }
+      }}
     >
       <FloatingActionPanelCheckbox
         id={id}

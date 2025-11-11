@@ -39,7 +39,9 @@ export function useUpscaleGeneration() {
         return response;
       } catch (err) {
         setError(
-          err instanceof Error ? err.message : "Upscale request failed unexpectedly"
+          err instanceof Error
+            ? err.message
+            : "Upscale request failed unexpectedly"
         );
         throw err;
       } finally {

@@ -18,8 +18,8 @@ export function Hero() {
           transition={{ delay: 0.2, duration: 0.8 }}
           className="inline-block font-bold tracking-tighter text-4xl md:text-[4rem]"
         >
-          <h1>The Open Source</h1>
-          <Handlebars>Video Editor</Handlebars>
+          <h1>The AI native</h1>
+          <Handlebars>Content Creation</Handlebars>
         </motion.div>
 
         <motion.p
@@ -28,7 +28,7 @@ export function Hero() {
           animate={{ opacity: 1 }}
           transition={{ delay: 0.4, duration: 0.8 }}
         >
-          The AI video editor makes your dream come true.
+          The AI native content creation tool makes your dream come true.
         </motion.p>
       </motion.div>
     </div>

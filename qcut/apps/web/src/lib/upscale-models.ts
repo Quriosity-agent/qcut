@@ -95,11 +95,7 @@ export const UPSCALE_MODELS: Record<UpscaleModelId, UpscaleModel> = {
       denoising: true,
       sharpening: true,
     },
-    bestFor: [
-      "Social posts",
-      "Marketing graphics",
-      "Quick client previews",
-    ],
+    bestFor: ["Social posts", "Marketing graphics", "Quick client previews"],
     strengths: [
       "Great price/performance balance",
       "Fast results (under 20s for 4x in tests)",
@@ -226,11 +222,7 @@ export const UPSCALE_MODELS: Record<UpscaleModelId, UpscaleModel> = {
       overlappingTiles: true,
       faceEnhancement: true,
     },
-    bestFor: [
-      "Print-ready artwork",
-      "Portrait photography",
-      "Product renders",
-    ],
+    bestFor: ["Print-ready artwork", "Portrait photography", "Product renders"],
     strengths: [
       "Tile overlap avoids seam artifacts",
       "Face detection reduces smoothing",

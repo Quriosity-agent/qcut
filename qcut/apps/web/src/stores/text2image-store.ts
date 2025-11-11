@@ -2,16 +2,13 @@ import { create } from "zustand";
 import { devtools } from "zustand/middleware";
 import { handleError, ErrorCategory, ErrorSeverity } from "@/lib/error-handler";
 import { TEXT2IMAGE_MODEL_ORDER } from "@/lib/text2image-models";
-import {
-  UPSCALE_MODEL_ORDER,
-  UPSCALE_MODELS,
-  type UpscaleModelId,
-} from "@/lib/upscale-models";
-import {
-  type ImageEditProgressCallback,
-  type ImageEditResponse,
-  type ImageUpscaleRequest,
-  upscaleImage as runUpscaleImage,
+import { UPSCALE_MODEL_ORDER, UPSCALE_MODELS } from "@/lib/upscale-models";
+import type { UpscaleModelId } from "@/lib/upscale-models";
+import { upscaleImage as runUpscaleImage } from "@/lib/image-edit-client";
+import type {
+  ImageEditProgressCallback,
+  ImageEditResponse,
+  ImageUpscaleRequest,
 } from "@/lib/image-edit-client";
 
 // Debug flag - set to false to disable console logs
@@ -29,6 +26,10 @@ const computeUpscaleSettings = (
 ): UpscaleSettings => {
   const nextModelId = settings.selectedModel ?? previous.selectedModel;
   const model = UPSCALE_MODELS[nextModelId];
+  const defaults =
+    nextModelId === previous.selectedModel
+      ? previous
+      : createDefaultUpscaleSettings(nextModelId);
   const scaleOptions =
     model.controls.scaleFactor.options ?? model.supportedScales;
 
@@ -36,25 +37,23 @@ const computeUpscaleSettings = (
     settings.scaleFactor ??
     (nextModelId === previous.selectedModel
       ? previous.scaleFactor
-      : scaleOptions?.[0] ??
-        model.defaultParams.scale_factor ??
-        previous.scaleFactor);
+      : defaults.scaleFactor);
 
   if (scaleOptions && !scaleOptions.includes(nextScale)) {
-    nextScale = scaleOptions[0] ?? nextScale;
+    nextScale = scaleOptions[0] ?? defaults.scaleFactor;
   }
 
   const nextDenoise =
-    settings.denoise !== undefined ? settings.denoise : previous.denoise;
+    settings.denoise !== undefined ? settings.denoise : defaults.denoise;
   const nextCreativity =
     settings.creativity !== undefined
       ? settings.creativity
-      : previous.creativity;
+      : defaults.creativity;
   const nextOverlapping =
     settings.overlappingTiles !== undefined
       ? settings.overlappingTiles
-      : previous.overlappingTiles;
-  const nextFormat = settings.outputFormat ?? previous.outputFormat;
+      : defaults.overlappingTiles;
+  const nextFormat = settings.outputFormat ?? defaults.outputFormat;
 
   return {
     selectedModel: nextModelId,
@@ -62,18 +61,15 @@ const computeUpscaleSettings = (
     denoise: clamp(nextDenoise, 0, 100),
     creativity: model.features.creativity
       ? clamp(nextCreativity, 0, 100)
-      : 0,
+      : defaults.creativity,
     overlappingTiles: model.features.overlappingTiles
       ? nextOverlapping
-      : false,
+      : defaults.overlappingTiles,
     outputFormat: nextFormat,
   };
 };
 
-const areUpscaleSettingsEqual = (
-  a: UpscaleSettings,
-  b: UpscaleSettings
-) =>
+const areUpscaleSettingsEqual = (a: UpscaleSettings, b: UpscaleSettings) =>
   a.selectedModel === b.selectedModel &&
   a.scaleFactor === b.scaleFactor &&
   a.denoise === b.denoise &&
@@ -429,7 +425,12 @@ export const useText2ImageStore = create<Text2ImageStore>()(
           }
 
           // Add to history
-          get().addToHistory(prompt, selectedModels, finalResults, "generation");
+          get().addToHistory(
+            prompt,
+            selectedModels,
+            finalResults,
+            "generation"
+          );
         } catch (error) {
           handleError(error, {
             operation: "Multi-Model Image Generation",
