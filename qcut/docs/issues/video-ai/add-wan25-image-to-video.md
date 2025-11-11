@@ -280,6 +280,8 @@ The WAN 2.5 Preview model **also has the image-to-video endpoint defined** in `a
 
 ### Step 1: Add Image-to-Video Model Entries
 
+> **Reviewer note (Codex):** WAN 2.5 pricing later depends on per-resolution rates ($0.05/$0.10/$0.15 per second), yet this section only exposes a flat `price: "0.75"`, so downstream UI/tests can never compute the dynamic costs listed in Step 7. The same Step 7 requires “all 7 aspect ratios + auto”, but these model configs don’t publish a `supportedAspectRatios` list, forcing callers to hard-code values instead of deriving them from this table.
+
 **File**: `qcut/apps/web/src/components/editor/media-panel/views/ai-constants.ts`
 
 **Location**: In the `AI_MODELS` array, after the LTX Video 2.0 Fast I2V model (`ltxv2_fast_i2v`)
@@ -409,6 +411,8 @@ Alternatively, change the existing `kling_v2_5_turbo` model's category from `"te
 **Recommendation**: Use **Approach A** (separate entries) for cleaner separation and easier maintenance.
 
 ### Step 2: Add Generation Handler in use-ai-generation.ts
+
+> **Reviewer note (Codex):** The Seedance end-frame prop is named `seedanceEndFrameUrl` in the props block, `seedanceEndImageUrl` in the destructuring snippet, and then forwarded as `end_frame_url` in the API call—one of these spellings will drop the value. There’s also no upload path for the optional end-frame image (unlike `uploadImageToFal` for the start frame), so the handler would submit `undefined`. WAN audio has the same gap: the handler expects a ready `audio_url`, but Step 5 only collects a local WAV/MP3 file without explaining how it’s uploaded. Finally, seeds are mentioned several times (UI + testing), yet no `seed` prop/state is threaded through this handler.
 
 **File**: `qcut/apps/web/src/components/editor/media-panel/views/use-ai-generation.ts`
 
@@ -592,6 +596,8 @@ wan25EnablePromptExpansion = true,
 ```
 
 ### Step 3: Add API Client Function
+
+> **Reviewer note (Codex):** Please reconcile `end_frame_url` vs. `end_image_url`; the overview and JSON samples use the latter while this section uses the former, and the wrong key will silently ignore the uploaded frame. The WAN helper still assumes an `audio_url` that never exists unless you define an upload workflow, so the optional soundtrack feature can’t be exercised.
 
 **File**: `qcut/apps/web/src/lib/ai-video-client.ts`
 
@@ -982,6 +988,8 @@ import {
 
 ### Step 4: Update Type Definitions
 
+> **Reviewer note (Codex):** The props interface introduces `seedanceEndFrameUrl`, but the destructuring example immediately below references `seedanceEndImageUrl`, which guarantees either `undefined` or TS errors. No `seed` prop is defined even though later sections require a seed input and the handlers/API stubs don’t accept one, so those controls/checklists could never pass.
+
 **File**: `qcut/apps/web/src/components/editor/media-panel/views/ai-types.ts`
 
 **Location**: In the `UseAIGenerationProps` interface, after the LTX Video 2.0 Fast I2V options section
@@ -1014,6 +1022,8 @@ wan25EnablePromptExpansion?: boolean;
 ```
 
 ### Step 5: Add UI Controls for User Selection
+
+> **Reviewer note (Codex):** The aspect-ratio selector example checks `selectedModel?.default_params?.aspect_ratio`, but nothing in the model configs lists all supported ratios, so you can’t render the “all 7 options + auto” that Step 7 tests for. The WAN audio upload control yields a `File`, yet there’s no guidance on uploading it to FAL and populating `wan25AudioUrl`. Similarly, the “Seed Input (All Models)” UI has nowhere to store/send the seed because earlier steps never added the prop or handler wiring.
 
 **File**: `qcut/apps/web/src/components/editor/media-panel/views/ai.tsx` (or relevant UI component)
 
@@ -1215,6 +1225,8 @@ function calculateEstimatedCost(model: AIModel, resolution: string, duration: nu
 
 ### Step 6: API Request/Response Format
 
+> **Reviewer note (Codex):** This JSON sample uses `end_frame_url`, while Step 1 and the capabilities section label the parameter `end_image_url`. Please settle on a single name so integrators know which field the API will honor.
+
 **Request (Pro Fast):**
 ```json
 {
@@ -1263,6 +1275,8 @@ function calculateEstimatedCost(model: AIModel, resolution: string, duration: nu
 ```
 
 ### Step 7: Testing Checklist
+
+> **Reviewer note (Codex):** Several acceptance bullets are currently impossible: Seedance/Kling pricing checks expect duration-aware math, but Step 5’s estimator always returns the flat `model.price` for non-WAN models; the Seedance end-frame and WAN audio tests require upload flows that haven’t been defined; and seed-entry tests can’t run because no seed prop or API parameter exists yet.
 
 **Seedance Pro Fast I2V:**
 - [ ] Model appears in image-to-video tab UI model selector dropdown
