@@ -95,6 +95,8 @@ export interface AIModel {
   requiredInputs?: string[];
   supportedResolutions?: string[]; // For models supporting multiple resolutions (e.g., Pro models)
   supportedDurations?: number[];
+  supportedAspectRatios?: string[];
+  perSecondPricing?: Record<string, number>;
 }
 
 // Generated Video Interfaces
@@ -172,6 +174,39 @@ export interface UseAIGenerationProps {
   ltxv2ImageResolution?: "1080p" | "1440p" | "2160p"; // Fast I2V supports 1080p/1440p/2160p, not 720p
   ltxv2ImageFPS?: 25 | 50;
   ltxv2ImageGenerateAudio?: boolean;
+  // Seedance image-to-video options
+  seedanceDuration?: 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12;
+  seedanceResolution?: "480p" | "720p" | "1080p";
+  seedanceAspectRatio?:
+    | "21:9"
+    | "16:9"
+    | "4:3"
+    | "1:1"
+    | "3:4"
+    | "9:16"
+    | "auto";
+  seedanceCameraFixed?: boolean;
+  seedanceEndFrameUrl?: string;
+  seedanceEndFrameFile?: File | null;
+  imageSeed?: number;
+  // Kling v2.5 Turbo Pro I2V options
+  klingDuration?: 5 | 10;
+  klingCfgScale?: number;
+  klingAspectRatio?:
+    | "16:9"
+    | "9:16"
+    | "1:1"
+    | "4:3"
+    | "3:4";
+  klingEnhancePrompt?: boolean;
+  klingNegativePrompt?: string;
+  // WAN 2.5 Preview I2V options
+  wan25Duration?: 5 | 10;
+  wan25Resolution?: "480p" | "720p" | "1080p";
+  wan25AudioUrl?: string;
+  wan25AudioFile?: File | null;
+  wan25NegativePrompt?: string;
+  wan25EnablePromptExpansion?: boolean;
 
   // First + Last Frame support for Frame-to-Video models (Veo 3.1)
   /** First frame image file for F2V models. Required when F2V model selected. */

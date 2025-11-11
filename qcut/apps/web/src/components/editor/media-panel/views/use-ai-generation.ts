@@ -91,6 +91,24 @@ export function useAIGeneration(props: UseAIGenerationProps) {
     ltxv2ImageResolution = "1080p",
     ltxv2ImageFPS = 25,
     ltxv2ImageGenerateAudio = true,
+    seedanceDuration = 5,
+    seedanceResolution = "1080p",
+    seedanceAspectRatio = "16:9",
+    seedanceCameraFixed = false,
+    seedanceEndFrameUrl,
+    seedanceEndFrameFile = null,
+    imageSeed,
+    klingDuration = 5,
+    klingCfgScale = 0.5,
+    klingAspectRatio = "16:9",
+    klingEnhancePrompt = true,
+    klingNegativePrompt,
+    wan25Duration = 5,
+    wan25Resolution = "1080p",
+    wan25AudioUrl,
+    wan25AudioFile = null,
+    wan25NegativePrompt,
+    wan25EnablePromptExpansion = true,
   } = props;
 
   // Core generation state
@@ -285,7 +303,19 @@ export function useAIGeneration(props: UseAIGenerationProps) {
     }
   }, []);
 
-  // Status polling function
+  // Helper function to upload audio for WAN 2.5 background music support
+  const uploadAudioToFal = useCallback(async (file: File): Promise<string> => {
+    debugLog("?? Uploading audio to FAL:", file.name);
+
+    try {
+      const url = await falAIClient.uploadAudioToFal(file);
+      debugLog(?? Audio upload complete: );
+      return url;
+    } catch (error) {
+      debugError("? Failed to upload audio to FAL", error);
+      throw error instanceof Error ? error : new Error(String(error));
+    }
+  }, []);  // Status polling function
   const startStatusPolling = useCallback(
     (jobId: string): Promise<void> => {
       let hasResolved = false;

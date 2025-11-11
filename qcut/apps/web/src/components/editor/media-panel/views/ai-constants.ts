@@ -250,6 +250,120 @@ export const AI_MODELS: AIModel[] = [
     supportedResolutions: ["1080p", "1440p", "2160p"],
     supportedDurations: [6, 8, 10, 12, 14, 16, 18, 20],
   },
+  // Seedance Image-to-Video Models
+  {
+    id: "seedance_pro_fast_i2v",
+    name: "Seedance v1 Pro Fast I2V",
+    description:
+      "Fast image-to-video generation with balanced quality and speed (2-12s)",
+    price: "0.24", // ~$0.24 per 1080p 5-second video
+    resolution: "480p / 720p / 1080p",
+    max_duration: 12,
+    category: "image",
+    endpoints: {
+      image_to_video:
+        "fal-ai/bytedance/seedance/v1/pro/fast/image-to-video",
+    },
+    default_params: {
+      duration: 5,
+      resolution: "1080p",
+      aspect_ratio: "16:9",
+      camera_fixed: false,
+      enable_safety_checker: true,
+    },
+    supportedResolutions: ["480p", "720p", "1080p"],
+    supportedDurations: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+    supportedAspectRatios: [
+      "21:9",
+      "16:9",
+      "4:3",
+      "1:1",
+      "3:4",
+      "9:16",
+      "auto",
+    ],
+  },
+  {
+    id: "seedance_pro_i2v",
+    name: "Seedance v1 Pro I2V",
+    description: "Premium quality image-to-video with highest fidelity (2-12s)",
+    price: "0.62", // ~$0.62 per 1080p 5-second video
+    resolution: "480p / 720p / 1080p",
+    max_duration: 12,
+    category: "image",
+    endpoints: {
+      image_to_video: "fal-ai/bytedance/seedance/v1/pro/image-to-video",
+    },
+    default_params: {
+      duration: 5,
+      resolution: "1080p",
+      aspect_ratio: "16:9",
+      camera_fixed: false,
+      enable_safety_checker: true,
+    },
+    supportedResolutions: ["480p", "720p", "1080p"],
+    supportedDurations: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+    supportedAspectRatios: [
+      "21:9",
+      "16:9",
+      "4:3",
+      "1:1",
+      "3:4",
+      "9:16",
+      "auto",
+    ],
+  },
+  // Kling & WAN Image-to-Video Models
+  {
+    id: "kling_v2_5_turbo_i2v",
+    name: "Kling v2.5 Turbo Pro I2V",
+    description:
+      "Top-tier Kling model with cinematic motion and multi-ratio output",
+    price: "0.35", // $0.35 per 5s clip
+    resolution: "1080p",
+    max_duration: 10,
+    category: "image",
+    endpoints: {
+      image_to_video:
+        "fal-ai/kling-video/v2.5-turbo/pro/image-to-video",
+    },
+    default_params: {
+      duration: 5,
+      resolution: "1080p",
+      aspect_ratio: "16:9",
+      cfg_scale: 0.5,
+      enhance_prompt: true,
+      negative_prompt: "blur, distort, low quality",
+    },
+    supportedResolutions: ["1080p"],
+    supportedDurations: [5, 10],
+    supportedAspectRatios: ["16:9", "9:16", "1:1", "4:3", "3:4"],
+  },
+  {
+    id: "wan_25_preview_i2v",
+    name: "WAN v2.5 Preview I2V",
+    description:
+      "Animate images with WAN 2.5 Preview, optional music + prompt expansion",
+    price: "0.05-0.15/s",
+    resolution: "480p / 720p / 1080p",
+    max_duration: 10,
+    category: "image",
+    endpoints: {
+      image_to_video: "fal-ai/wan-25-preview/image-to-video",
+    },
+    default_params: {
+      duration: 5,
+      resolution: "1080p",
+      enable_prompt_expansion: true,
+    },
+    supportedResolutions: ["480p", "720p", "1080p"],
+    supportedDurations: [5, 10],
+    perSecondPricing: {
+      "480p": 0.05,
+      "720p": 0.1,
+      "1080p": 0.15,
+    },
+  },
   // Veo 3.1 Image-to-Video Models
   {
     id: "veo31_fast_image_to_video",

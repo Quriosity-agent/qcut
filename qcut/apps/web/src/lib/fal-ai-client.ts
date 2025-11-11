@@ -256,11 +256,10 @@ class FalAIClient {
     return result;
   }
 
-  /**
-   * Uploads a file to FAL storage and returns the resulting URL.
-   * Centralized here so the API key from this instance is reused safely.
-   */
-  async uploadImageToFal(file: File): Promise<string> {
+  private async uploadFileToFal(
+    file: File,
+    fileType: "image" | "audio" | "asset" = "asset"
+  ): Promise<string> {
     if (!this.apiKey) {
       throw new Error(
         "FAL API key is required for asset upload. Please set the VITE_FAL_API_KEY environment variable."
@@ -284,7 +283,7 @@ class FalAIClient {
       } | null;
 
       if (!response.ok) {
-        const errorMessage = `FAL image upload failed: ${response.status} ${response.statusText}`;
+        const errorMessage = `FAL ${fileType} upload failed: ${response.status} ${response.statusText}`;
         const error = new Error(errorMessage) as UploadError;
         error.status = response.status;
         error.statusText = response.statusText;
@@ -294,7 +293,7 @@ class FalAIClient {
 
       if (!data || typeof data.url !== "string") {
         const error = new Error(
-          "FAL image upload response is missing a url field."
+          `FAL ${fileType} upload response is missing a url field.`
         ) as UploadError;
         error.errorData = data;
         throw error;
@@ -308,6 +307,7 @@ class FalAIClient {
         filename: file.name,
         fileSize: file.size,
         fileType: file.type,
+        uploadType: fileType,
       };
 
       const uploadError = normalizedError as UploadError;
@@ -315,9 +315,27 @@ class FalAIClient {
       if (uploadError.statusText) metadata.statusText = uploadError.statusText;
       if (uploadError.errorData) metadata.errorData = uploadError.errorData;
 
-      handleAIServiceError(normalizedError, "FAL image upload", metadata);
+      handleAIServiceError(
+        normalizedError,
+        `FAL ${fileType} upload`,
+        metadata
+      );
       throw normalizedError;
     }
+  }
+
+  /**
+   * Uploads an image file to FAL storage and returns the resulting URL.
+   */
+  async uploadImageToFal(file: File): Promise<string> {
+    return this.uploadFileToFal(file, "image");
+  }
+
+  /**
+   * Uploads an audio file (MP3/WAV) to FAL storage and returns the resulting URL.
+   */
+  async uploadAudioToFal(file: File): Promise<string> {
+    return this.uploadFileToFal(file, "audio");
   }
 
   private convertSettingsToParams(
