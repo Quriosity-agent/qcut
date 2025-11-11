@@ -1016,7 +1016,150 @@ export function useAIGeneration(props: UseAIGenerationProps) {
               message: `Video with audio generated using ${friendlyName}`,
             });
           }
-          // Regular image-to-video generation
+          // Seedance v1 Pro Fast image-to-video
+          else if (modelId === "seedance_pro_fast_i2v") {
+            if (!selectedImage) {
+              console.log(
+                "  ?? Skipping model - Seedance Pro Fast requires a selected image"
+              );
+              continue;
+            }
+
+            const imageUrl = await uploadImageToFal(selectedImage);
+            const friendlyName = modelName || modelId;
+            progressCallback({
+              status: "processing",
+              progress: 10,
+              message: `Submitting ${friendlyName} request...`,
+            });
+
+            response = await generateSeedanceVideo({
+              model: modelId,
+              prompt: prompt.trim(),
+              image_url: imageUrl,
+              duration: seedanceDuration,
+              resolution: seedanceResolution,
+              aspect_ratio: seedanceAspectRatio,
+              camera_fixed: seedanceCameraFixed,
+              seed: imageSeed ?? undefined,
+            });
+
+            progressCallback({
+              status: "completed",
+              progress: 100,
+              message: `Video generated with ${friendlyName}`,
+            });
+          }
+          // Seedance v1 Pro image-to-video (end frame optional)
+          else if (modelId === "seedance_pro_i2v") {
+            if (!selectedImage) {
+              console.log(
+                "  ?? Skipping model - Seedance Pro requires a selected image"
+              );
+              continue;
+            }
+
+            const imageUrl = await uploadImageToFal(selectedImage);
+            const friendlyName = modelName || modelId;
+            const endFrameUrl = seedanceEndFrameFile
+              ? await uploadImageToFal(seedanceEndFrameFile)
+              : seedanceEndFrameUrl;
+            progressCallback({
+              status: "processing",
+              progress: 10,
+              message: `Submitting ${friendlyName} request...`,
+            });
+
+            response = await generateSeedanceVideo({
+              model: modelId,
+              prompt: prompt.trim(),
+              image_url: imageUrl,
+              duration: seedanceDuration,
+              resolution: seedanceResolution,
+              aspect_ratio: seedanceAspectRatio,
+              camera_fixed: seedanceCameraFixed,
+              end_frame_url: endFrameUrl ?? undefined,
+              seed: imageSeed ?? undefined,
+            });
+
+            progressCallback({
+              status: "completed",
+              progress: 100,
+              message: `Video generated with ${friendlyName}`,
+            });
+          }
+          // Kling v2.5 Turbo Pro image-to-video
+          else if (modelId === "kling_v2_5_turbo_i2v") {
+            if (!selectedImage) {
+              console.log(
+                "  ?? Skipping model - Kling v2.5 requires a selected image"
+              );
+              continue;
+            }
+
+            const imageUrl = await uploadImageToFal(selectedImage);
+            const friendlyName = modelName || modelId;
+            progressCallback({
+              status: "processing",
+              progress: 10,
+              message: `Submitting ${friendlyName} request...`,
+            });
+
+            response = await generateKlingImageVideo({
+              model: modelId,
+              prompt: prompt.trim(),
+              image_url: imageUrl,
+              duration: klingDuration,
+              cfg_scale: klingCfgScale,
+              aspect_ratio: klingAspectRatio,
+              enhance_prompt: klingEnhancePrompt,
+              negative_prompt: klingNegativePrompt,
+            });
+
+            progressCallback({
+              status: "completed",
+              progress: 100,
+              message: `Video generated with ${friendlyName}`,
+            });
+          }
+          // WAN 2.5 Preview image-to-video
+          else if (modelId === "wan_25_preview_i2v") {
+            if (!selectedImage) {
+              console.log(
+                "  ?? Skipping model - WAN 2.5 requires a selected image"
+              );
+              continue;
+            }
+
+            const imageUrl = await uploadImageToFal(selectedImage);
+            const friendlyName = modelName || modelId;
+            const audioUrl = wan25AudioFile
+              ? await uploadAudioToFal(wan25AudioFile)
+              : wan25AudioUrl;
+            progressCallback({
+              status: "processing",
+              progress: 10,
+              message: `Submitting ${friendlyName} request...`,
+            });
+
+            response = await generateWAN25ImageVideo({
+              model: modelId,
+              prompt: prompt.trim(),
+              image_url: imageUrl,
+              duration: wan25Duration,
+              resolution: wan25Resolution,
+              audio_url: audioUrl ?? undefined,
+              negative_prompt: wan25NegativePrompt,
+              enable_prompt_expansion: wan25EnablePromptExpansion,
+              seed: imageSeed ?? undefined,
+            });
+
+            progressCallback({
+              status: "completed",
+              progress: 100,
+              message: `Video generated with ${friendlyName}`,
+            });
+          }          // Regular image-to-video generation
           else {
             if (!selectedImage) {
               console.log(
@@ -1471,6 +1614,25 @@ export function useAIGeneration(props: UseAIGenerationProps) {
     firstFrame,
     lastFrame,
     uploadImageToFal,
+    seedanceDuration,
+    seedanceResolution,
+    seedanceAspectRatio,
+    seedanceCameraFixed,
+    seedanceEndFrameUrl,
+    seedanceEndFrameFile,
+    klingDuration,
+    klingCfgScale,
+    klingAspectRatio,
+    klingEnhancePrompt,
+    klingNegativePrompt,
+    wan25Duration,
+    wan25Resolution,
+    wan25AudioUrl,
+    wan25AudioFile,
+    wan25NegativePrompt,
+    wan25EnablePromptExpansion,
+    imageSeed,
+    uploadAudioToFal,
   ]);
 
   // Reset generation state
