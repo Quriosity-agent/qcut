@@ -3,6 +3,22 @@
 ## Overview
 This document describes how to add video upscaling models to QCut's AI video enhancement panel. Video upscaling uses AI to increase video resolution and enhance quality, supporting upscaling from standard definition to 1080p, 2K, or 4K.
 
+## Codebase Reference (Current State - 2025)
+
+This guide uses actual patterns and line numbers from the current codebase. Key files:
+
+| File | Current Line Range | Purpose |
+|------|-------------------|---------|
+| `ai-constants.ts` | 253-366 | Image-to-video models (reference for upscale models) |
+| `ai-constants.ts` | 793-823 | UPLOAD_CONSTANTS (video upload limits) |
+| `ai-types.ts` | 134-209 | UseAIGenerationProps interface (add upscale props here) |
+| `ai-video-client.ts` | 2040-2176 | generateSeedanceVideo (reference pattern) |
+| `use-ai-generation.ts` | 1020-1155 | Image tab handler (reference for upscale handler) |
+| `ai.tsx` | 1622-2059 | Image tab UI (reference for upscale UI) |
+| `fal-ai-client.ts` | 259-339 | File upload methods (add uploadVideoToFal) |
+
+**Note**: Line numbers are approximate and may shift as code evolves. Use the patterns as reference.
+
 ## Model Information
 
 ### 1. ByteDance Video Upscaler (fal.ai)
@@ -270,26 +286,20 @@ This implementation has been broken down into **5 subtasks** of 15-25 minutes ea
 
 **File**: `qcut/apps/web/src/components/editor/media-panel/views/ai-constants.ts`
 
-**Action**: Add a new category for video upscaling models
+**Action**: Add new upscaling models to the `AI_MODELS` array (around line 253+)
+
+**Pattern Reference**: Follow the structure used by existing models like `seedance_pro_fast_i2v` (lines 254-285)
 
 ```typescript
+// Add these after the existing image-to-video models (around line 366)
+
 // ByteDance Video Upscaler
 {
   id: "bytedance_video_upscaler",
   name: "ByteDance Video Upscaler",
   description: "AI-powered video upscaling to 1080p, 2K, or 4K with optional 60fps",
   price: "0.072", // Base price per 10s @ 1080p
-  perSecondPricing: {
-    "1080p_30fps": 0.0072,
-    "2k_30fps": 0.0144,
-    "4k_30fps": 0.0288,
-    "1080p_60fps": 0.0144,
-    "2k_60fps": 0.0288,
-    "4k_60fps": 0.0576
-  },
   resolution: "1080p / 2K / 4K",
-  supportedResolutions: ["1080p", "2k", "4k"],
-  supportedFPS: ["30fps", "60fps"],
   max_duration: 120, // 2 minutes max
   category: "upscale", // New category for video enhancement
   endpoints: {
@@ -298,6 +308,16 @@ This implementation has been broken down into **5 subtasks** of 15-25 minutes ea
   default_params: {
     target_resolution: "1080p",
     target_fps: "30fps",
+  },
+  supportedResolutions: ["1080p", "2k", "4k"],
+  supportedFPS: ["30fps", "60fps"],
+  perSecondPricing: {
+    "1080p_30fps": 0.0072,
+    "2k_30fps": 0.0144,
+    "4k_30fps": 0.0288,
+    "1080p_60fps": 0.0144,
+    "2k_60fps": 0.0288,
+    "4k_60fps": 0.0576,
   },
 },
 
@@ -355,9 +375,13 @@ This implementation has been broken down into **5 subtasks** of 15-25 minutes ea
 
 **File**: `qcut/apps/web/src/components/editor/media-panel/views/ai-types.ts`
 
-**Action**: Add upscaling-specific types
+**Action**: Add upscaling-specific types to `UseAIGenerationProps` interface (around line 134)
+
+**Pattern Reference**: Follow the structure of existing props like `seedanceDuration`, `klingCfgScale` (lines 175-209)
 
 ```typescript
+// Add these to the UseAIGenerationProps interface (around line 209)
+
 // ByteDance Upscaler options
 bytedanceTargetResolution?: "1080p" | "2k" | "4k";
 bytedanceTargetFPS?: "30fps" | "60fps";
@@ -383,11 +407,18 @@ sourceVideoFile?: File | null;
 sourceVideoUrl?: string;
 ```
 
+**Also update**: `activeTab` type to include "upscale":
+```typescript
+activeTab: "text" | "image" | "avatar" | "upscale"; // Line 138
+```
+
 ### Step 3: Add API Client Function
 
 **File**: `qcut/apps/web/src/lib/ai-video-client.ts`
 
-**Action**: Implement ByteDance upscaler function
+**Action**: Add upscaler functions after existing generation functions (around line 2425+)
+
+**Pattern Reference**: Follow the structure of `generateSeedanceVideo` (lines 2058-2176)
 
 ```typescript
 /**
@@ -401,8 +432,6 @@ export interface ByteDanceUpscaleRequest {
 
 /**
  * Upscale video using ByteDance Video Upscaler
- *
- * @param request - Video URL and upscaling parameters
  */
 export async function upscaleByteDanceVideo(
   request: ByteDanceUpscaleRequest
@@ -417,41 +446,53 @@ export async function upscaleByteDanceVideo(
       throw new Error("Video URL is required for upscaling");
     }
 
+    const modelConfig = getModelConfig("bytedance_video_upscaler");
+    if (!modelConfig) {
+      throw new Error("ByteDance upscaler model not found");
+    }
+
+    const endpoint = modelConfig.endpoints.upscale_video;
+    if (!endpoint) {
+      throw new Error("ByteDance upscaler endpoint not configured");
+    }
+
     const targetResolution = request.target_resolution ?? "1080p";
     const targetFPS = request.target_fps ?? "30fps";
 
-    const payload = {
+    const payload: Record<string, unknown> = {
       video_url: request.video_url,
       target_resolution: targetResolution,
       target_fps: targetFPS,
     };
 
-    const jobId = `bytedance-upscale-${Date.now()}-${Math.random().toString(36).substring(7)}`;
-
-    const response = await fetch(
-      `${FAL_API_BASE}/fal-ai/bytedance-upscaler/upscale/video`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Key ${falApiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
-      }
-    );
+    const jobId = generateJobId();
+    const response = await fetch(`${FAL_API_BASE}/${endpoint}`, {
+      method: "POST",
+      headers: {
+        Authorization: `Key ${falApiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
 
       if (response.status === 401) {
-        throw new Error("Invalid FAL.ai API key. Please check your API key configuration.");
+        throw new Error(
+          "Invalid FAL.ai API key. Please check your API key configuration."
+        );
       }
 
       if (response.status === 429) {
-        throw new Error("Rate limit exceeded. Please wait a moment before trying again.");
+        throw new Error(
+          "Rate limit exceeded. Please wait a moment before trying again."
+        );
       }
 
-      throw new Error(`FAL API error: ${errorData.detail || response.statusText}`);
+      throw new Error(
+        `FAL API error: ${errorData.detail || response.statusText}`
+      );
     }
 
     const result = await response.json();
@@ -606,51 +647,43 @@ export async function upscaleTopazVideo(
 
 **File**: `qcut/apps/web/src/lib/fal-ai-client.ts`
 
-**Action**: Add video upload function (if not already present)
+**Action**: Add video upload method to `FalAIClient` class (after line 339)
+
+**Pattern Reference**: Follow the structure of `uploadAudioToFal` (lines 337-339) and `uploadFileToFal` (lines 259-325)
 
 ```typescript
 /**
- * Upload video file to FAL storage
+ * Uploads a video file (MP4/MOV/AVI) to FAL storage and returns the resulting URL.
  */
-export async function uploadVideoToFal(file: File): Promise<string> {
-  try {
-    const falApiKey = getFalApiKey();
-    if (!falApiKey) {
-      throw new Error("FAL API key not configured");
-    }
-
-    const formData = new FormData();
-    formData.append("file", file);
-
-    const response = await fetch("https://fal.run/storage/upload", {
-      method: "POST",
-      headers: {
-        Authorization: `Key ${falApiKey}`,
-      },
-      body: formData,
-    });
-
-    if (!response.ok) {
-      throw new Error(`Failed to upload video: ${response.statusText}`);
-    }
-
-    const result = await response.json();
-    return result.url;
-  } catch (error) {
-    console.error("Error uploading video to FAL:", error);
-    throw error;
-  }
+async uploadVideoToFal(file: File): Promise<string> {
+  return this.uploadFileToFal(file, "video");
 }
+```
+
+**Note**: The `uploadFileToFal` private method already handles all file types. Just add the public wrapper method.
+
+**Also add to UPLOAD_CONSTANTS** in `ai-constants.ts` (if not already present, around line 813):
+```typescript
+// Video uploads (for upscaling and video-to-video models)
+ALLOWED_VIDEO_TYPES: ["video/mp4", "video/quicktime", "video/x-msvideo"],
+MAX_VIDEO_SIZE_BYTES: 500 * 1024 * 1024, // 500MB for upscaling
+MAX_VIDEO_SIZE_LABEL: "500MB",
+SUPPORTED_VIDEO_FORMATS: [".mp4", ".mov", ".avi"],
+VIDEO_FORMATS_LABEL: "MP4, MOV, AVI",
 ```
 
 ### Step 5: Add Generation Handler
 
 **File**: `qcut/apps/web/src/components/editor/media-panel/views/use-ai-generation.ts`
 
-**Action**: Add handler for video upscaling
+**Action**: Add upscale tab handler in the main generation loop (around line 1155+, after image tab handler ends)
+
+**Pattern Reference**: Follow the structure of the image tab handler (lines 1019-1155)
 
 ```typescript
-// Add new tab handler for upscale category
+// Add after the image tab handler (around line 1155)
+
+// Upscale Tab - Video Enhancement
 else if (activeTab === "upscale") {
   // ByteDance Video Upscaler
   if (modelId === "bytedance_video_upscaler") {
@@ -660,7 +693,7 @@ else if (activeTab === "upscale") {
     }
 
     const videoUrl = sourceVideoFile
-      ? await uploadVideoToFal(sourceVideoFile)
+      ? await falAIClient.uploadVideoToFal(sourceVideoFile)
       : sourceVideoUrl!;
 
     const friendlyName = modelName || modelId;
@@ -745,74 +778,138 @@ else if (activeTab === "upscale") {
 
 **File**: `qcut/apps/web/src/components/editor/media-panel/views/ai.tsx`
 
-**Action**: Add upscale tab with UI controls
+**Action**: Add upscale tab and UI controls
 
-```typescript
-// Add new "Upscale" tab to the tab navigation
-<Tab value="upscale">Video Upscale</Tab>
+**Pattern Reference**: Follow the UI structure in the image tab (lines 1622-2059)
 
-// Add tab panel for upscale models
-<TabPanel value="upscale">
+#### 6a. Add tab to navigation (around line 850)
+```tsx
+<TabsList>
+  <TabsTrigger value="text">Text</TabsTrigger>
+  <TabsTrigger value="image">Image</TabsTrigger>
+  <TabsTrigger value="avatar">Avatar</TabsTrigger>
+  <TabsTrigger value="upscale">Upscale</TabsTrigger> {/* Add this */}
+</TabsList>
+```
+
+#### 6b. Add state variables (around line 220)
+```tsx
+// Upscale tab state
+const [sourceVideoFile, setSourceVideoFile] = useState<File | null>(null);
+const [sourceVideoUrl, setSourceVideoUrl] = useState<string>("");
+const [bytedanceTargetResolution, setBytedanceTargetResolution] =
+  useState<"1080p" | "2k" | "4k">("1080p");
+const [bytedanceTargetFPS, setBytedanceTargetFPS] =
+  useState<"30fps" | "60fps">("30fps");
+```
+
+#### 6c. Add tab content (after line 2059)
+```tsx
+<TabsContent value="upscale" className="space-y-4">
   {/* Video Upload Section */}
-  <div className="video-upload-section">
-    <h3>Upload Video for Upscaling</h3>
+  <div className="space-y-3 text-left">
+    <Label className="text-sm font-semibold">
+      Upload Video for Upscaling
+    </Label>
     <FileUpload
-      accept="video/mp4,video/mov,video/avi"
-      maxSize={500 * 1024 * 1024} // 500MB
-      onFileSelect={setSourceVideoFile}
+      id="upscale-video-upload"
+      label="Upload Source Video"
+      helperText="MP4, MOV, or AVI up to 500MB, max 2 minutes"
+      fileType="video"
+      acceptedTypes={UPLOAD_CONSTANTS.ALLOWED_VIDEO_TYPES}
+      maxSizeBytes={500 * 1024 * 1024}
+      maxSizeLabel="500MB"
+      formatsLabel={UPLOAD_CONSTANTS.VIDEO_FORMATS_LABEL}
+      file={sourceVideoFile}
+      preview={null}
+      onFileChange={(file) => {
+        setSourceVideoFile(file);
+        if (file) setSourceVideoUrl("");
+      }}
+      onError={setError}
+      isCompact={isCompact}
     />
-    <p className="help-text">
+    <div className="text-xs text-muted-foreground">
       Or provide video URL:
-    </p>
+    </div>
     <Input
+      type="url"
       value={sourceVideoUrl}
-      onChange={(e) => setSourceVideoUrl(e.target.value)}
+      onChange={(e) => {
+        setSourceVideoUrl(e.target.value);
+        if (e.target.value) setSourceVideoFile(null);
+      }}
       placeholder="https://example.com/video.mp4"
+      className="h-8 text-xs"
     />
   </div>
 
   {/* ByteDance Upscaler Settings */}
-  {selectedModelId === "bytedance_video_upscaler" && (
-    <Card className="model-settings">
-      <h4>ByteDance Upscaler Settings</h4>
+  {bytedanceUpscalerSelected && (
+    <div className="space-y-3 text-left border-t pt-3">
+      <Label className="text-sm font-semibold">
+        ByteDance Upscaler Settings
+      </Label>
 
-      {/* Target Resolution */}
-      <div className="control-group">
-        <Label>Target Resolution</Label>
-        <Select
-          value={bytedanceTargetResolution}
-          onChange={setBytedanceTargetResolution}
-        >
-          <option value="1080p">1080p (Full HD)</option>
-          <option value="2k">2K (2560×1440)</option>
-          <option value="4k">4K (3840×2160)</option>
-        </Select>
-      </div>
+      <div className="grid gap-3 sm:grid-cols-2">
+        {/* Target Resolution */}
+        <div className="space-y-1">
+          <Label htmlFor="bytedance-resolution" className="text-xs">
+            Target Resolution
+          </Label>
+          <Select
+            value={bytedanceTargetResolution}
+            onValueChange={(value) =>
+              setBytedanceTargetResolution(value as "1080p" | "2k" | "4k")
+            }
+          >
+            <SelectTrigger
+              id="bytedance-resolution"
+              className="h-8 text-xs"
+            >
+              <SelectValue placeholder="Select resolution" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="1080p">1080p (Full HD)</SelectItem>
+              <SelectItem value="2k">2K (2560×1440)</SelectItem>
+              <SelectItem value="4k">4K (3840×2160)</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
 
-      {/* Target FPS */}
-      <div className="control-group">
-        <Label>Target Frame Rate</Label>
-        <Select
-          value={bytedanceTargetFPS}
-          onChange={setBytedanceTargetFPS}
-        >
-          <option value="30fps">30 FPS</option>
-          <option value="60fps">60 FPS (2x cost)</option>
-        </Select>
+        {/* Target FPS */}
+        <div className="space-y-1">
+          <Label htmlFor="bytedance-fps" className="text-xs">
+            Target Frame Rate
+          </Label>
+          <Select
+            value={bytedanceTargetFPS}
+            onValueChange={(value) =>
+              setBytedanceTargetFPS(value as "30fps" | "60fps")
+            }
+          >
+            <SelectTrigger
+              id="bytedance-fps"
+              className="h-8 text-xs"
+            >
+              <SelectValue placeholder="Select FPS" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="30fps">30 FPS</SelectItem>
+              <SelectItem value="60fps">60 FPS (2x cost)</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       {/* Cost Estimator */}
-      <div className="cost-estimate">
-        <Label>Estimated Cost (per 10 seconds):</Label>
-        <span className="cost-value">
-          {calculateByteDanceUpscaleCost(
-            bytedanceTargetResolution,
-            bytedanceTargetFPS,
-            10 // 10 seconds example
-          )}
-        </span>
+      <div className="text-xs text-muted-foreground">
+        Estimated cost (10s): ${bytedanceEstimatedCost.toFixed(3)}
       </div>
-    </Card>
+      <div className="text-xs text-muted-foreground">
+        AI-powered upscaling to 1080p, 2K, or 4K with optional 60fps enhancement.
+      </div>
+    </div>
   )}
 
   {/* FlashVSR Upscaler Settings */}
