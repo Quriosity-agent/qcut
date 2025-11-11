@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -57,6 +58,19 @@ type LTXV2FastDuration = (typeof LTXV2_FAST_CONFIG.DURATIONS)[number];
 type LTXV2FastResolution =
   (typeof LTXV2_FAST_CONFIG.RESOLUTIONS.STANDARD)[number];
 type LTXV2FastFps = (typeof LTXV2_FAST_CONFIG.FPS_OPTIONS.STANDARD)[number];
+type SeedanceDuration = 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12;
+type SeedanceResolution = "480p" | "720p" | "1080p";
+type SeedanceAspectRatio =
+  | "21:9"
+  | "16:9"
+  | "4:3"
+  | "1:1"
+  | "3:4"
+  | "9:16"
+  | "auto";
+type KlingAspectRatio = "16:9" | "9:16" | "1:1" | "4:3" | "3:4";
+type Wan25Resolution = "480p" | "720p" | "1080p";
+type Wan25Duration = 5 | 10;
 
 const LTXV2_FAST_RESOLUTION_LABELS: Record<LTXV2FastResolution, string> = {
   "1080p": "1080p (Full HD)",
@@ -169,6 +183,42 @@ export function AiView() {
     LTXV2_FAST_CONFIG.FPS_OPTIONS.STANDARD[0]
   );
   const [ltxv2ImageGenerateAudio, setLTXV2ImageGenerateAudio] = useState(true);
+  const [seedanceDuration, setSeedanceDuration] =
+    useState<SeedanceDuration>(5);
+  const [seedanceResolution, setSeedanceResolution] =
+    useState<SeedanceResolution>("1080p");
+  const [seedanceAspectRatio, setSeedanceAspectRatio] =
+    useState<SeedanceAspectRatio>("16:9");
+  const [seedanceCameraFixed, setSeedanceCameraFixed] = useState(false);
+  const [seedanceEndFrameUrl, setSeedanceEndFrameUrl] = useState<
+    string | undefined
+  >(undefined);
+  const [seedanceEndFrameFile, setSeedanceEndFrameFile] = useState<File | null>(
+    null
+  );
+  const [seedanceEndFramePreview, setSeedanceEndFramePreview] = useState<
+    string | null
+  >(null);
+  const [klingDuration, setKlingDuration] = useState<5 | 10>(5);
+  const [klingCfgScale, setKlingCfgScale] = useState(0.5);
+  const [klingAspectRatio, setKlingAspectRatio] =
+    useState<KlingAspectRatio>("16:9");
+  const [klingEnhancePrompt, setKlingEnhancePrompt] = useState(true);
+  const [klingNegativePrompt, setKlingNegativePrompt] = useState("");
+  const [wan25Duration, setWan25Duration] = useState<Wan25Duration>(5);
+  const [wan25Resolution, setWan25Resolution] =
+    useState<Wan25Resolution>("1080p");
+  const [wan25AudioUrl, setWan25AudioUrl] = useState<string | undefined>(
+    undefined
+  );
+  const [wan25AudioFile, setWan25AudioFile] = useState<File | null>(null);
+  const [wan25AudioPreview, setWan25AudioPreview] = useState<string | null>(
+    null
+  );
+  const [wan25NegativePrompt, setWan25NegativePrompt] = useState("");
+  const [wan25EnablePromptExpansion, setWan25EnablePromptExpansion] =
+    useState(true);
+  const [imageSeed, setImageSeed] = useState<number | undefined>(undefined);
 
   // Use global AI tab state (CRITICAL: preserve global state integration)
   const { aiActiveTab: activeTab, setAiActiveTab: setActiveTab } =
@@ -273,6 +323,13 @@ export function AiView() {
     ltxv2ImageDuration > LTXV2_FAST_CONFIG.EXTENDED_DURATION_THRESHOLD;
   const isExtendedLTXV2FastTextDuration =
     ltxv2FastDuration > LTXV2_FAST_CONFIG.EXTENDED_DURATION_THRESHOLD;
+  const seedanceFastSelected = selectedModels.includes(
+    "seedance_pro_fast_i2v"
+  );
+  const seedanceProSelected = selectedModels.includes("seedance_pro_i2v");
+  const seedanceSelected = seedanceFastSelected || seedanceProSelected;
+  const klingI2VSelected = selectedModels.includes("kling_v2_5_turbo_i2v");
+  const wan25Selected = selectedModels.includes("wan_25_preview_i2v");
 
   // Reset Reve state when model is deselected
   useEffect(() => {
