@@ -1,51 +1,108 @@
 /**
- * Upscale model catalog
+ * Upscale Model Catalog
  *
- * Mirrors the structure used for text-to-image models so UI and stores share
- * a single source of truth for capabilities, pricing, and supported controls.
+ * Comprehensive configuration for AI image upscaling models offered by FAL.ai.
+ * This module mirrors the structure used for text-to-image models so UI components
+ * and stores share a single source of truth for model capabilities, pricing, and
+ * supported controls.
+ *
+ * Each model has distinct characteristics:
+ * - **Crystal Upscaler**: Budget-friendly, fast, good for social media
+ * - **SeedVR**: Creative upscaling with detail hallucination up to 16x
+ * - **Topaz**: Professional-grade with tile overlap for artifact-free results
+ *
+ * @module UpscaleModels
  */
 
+/**
+ * Priority order for upscale models (fastest/cheapest to slowest/most expensive)
+ */
 export const UPSCALE_MODEL_ORDER = [
   "crystal-upscaler",
   "seedvr-upscale",
   "topaz-upscale",
 ] as const;
 
+/**
+ * Type-safe upscale model identifier
+ */
 export type UpscaleModelId = (typeof UPSCALE_MODEL_ORDER)[number];
 
+/**
+ * Feature flags indicating which upscaling capabilities a model supports
+ */
 export interface UpscaleModelFeatureFlags {
+  /** Whether the model supports noise reduction */
   denoising: boolean;
+  /** Whether the model supports sharpening */
   sharpening: boolean;
+  /** Whether the model supports creative detail synthesis */
   creativity?: boolean;
+  /** Whether the model supports overlapping tile processing to avoid seams */
   overlappingTiles?: boolean;
+  /** Whether the model has specialized face enhancement algorithms */
   faceEnhancement?: boolean;
 }
 
+/**
+ * Configuration for a single upscale control (slider, toggle, or selector)
+ *
+ * Defines the UI control type, range, default value, and user-facing labels
+ * for each adjustable parameter in an upscale model.
+ */
 export interface UpscaleModelControlConfig {
+  /** Display label for the control */
   label: string;
+  /** Minimum value (for sliders) */
   min?: number;
+  /** Maximum value (for sliders) */
   max?: number;
+  /** Step increment (for sliders) */
   step?: number;
+  /** Default value for the control */
   default: number | boolean;
+  /** Unit label (e.g., "%" or "x") */
   unit?: string;
+  /** Tooltip or help text explaining the control */
   description?: string;
+  /** Discrete options for select controls */
   options?: number[];
+  /** UI control type */
   type: "slider" | "toggle" | "select";
 }
 
+/**
+ * Complete configuration for an upscale model
+ *
+ * Includes all information needed to render UI, make API calls, and
+ * display pricing/capability information to users.
+ */
 export interface UpscaleModel {
+  /** Unique model identifier */
   id: UpscaleModelId;
+  /** Human-readable model name */
   name: string;
+  /** Brief description of model capabilities */
   description: string;
+  /** Provider/vendor name */
   provider: string;
+  /** FAL.ai API endpoint path */
   endpoint: string;
+  /** Pricing tier category */
   priceTier: "budget" | "mid" | "pro";
+  /** Display string for estimated cost (e.g., "$0.02 / image") */
   estimatedCost: string;
+  /** Numeric cost per image for sorting/comparison */
   costPerImage: number;
+  /** Quality rating (1-5 scale) */
   qualityRating: number;
+  /** Speed rating (1-5 scale, higher = faster) */
   speedRating: number;
+  /** Maximum supported scale factor */
   maxScale: number;
+  /** Array of all supported scale factors */
   supportedScales: number[];
+  /** Default parameter values sent to the API */
   defaultParams: {
     scale_factor: number;
     denoise?: number;
@@ -53,10 +110,15 @@ export interface UpscaleModel {
     overlapping_tiles?: boolean;
     output_format: "png" | "jpeg" | "webp";
   };
+  /** Feature flags for model capabilities */
   features: UpscaleModelFeatureFlags;
+  /** Use cases where this model excels */
   bestFor: string[];
+  /** Key advantages of this model */
   strengths: string[];
+  /** Known limitations or trade-offs */
   limitations: string[];
+  /** UI control configurations for adjustable parameters */
   controls: {
     scaleFactor: UpscaleModelControlConfig;
     denoise?: UpscaleModelControlConfig;
@@ -65,6 +127,9 @@ export interface UpscaleModel {
   };
 }
 
+/**
+ * Mapping of model IDs to their FAL.ai API endpoint paths
+ */
 export const UPSCALE_MODEL_ENDPOINTS: Record<UpscaleModelId, string> = {
   "crystal-upscaler": "fal-ai/crystal-upscaler",
   "seedvr-upscale": "fal-ai/seedvr/upscale/image",
@@ -261,6 +326,27 @@ export const UPSCALE_MODELS: Record<UpscaleModelId, UpscaleModel> = {
   },
 };
 
+/**
+ * Returns upscale model entries in their defined priority order
+ *
+ * Creates an array of [modelId, modelConfig] tuples ordered from fastest/most
+ * affordable to professional-grade models. Useful for rendering model selection
+ * UIs in a consistent order.
+ *
+ * @returns Array of tuples containing model IDs and their complete configuration
+ *
+ * @example
+ * ```ts
+ * const models = getUpscaleModelEntriesInPriorityOrder();
+ * models.forEach(([id, config]) => {
+ *   console.log(`${config.name}: ${config.estimatedCost}`);
+ * });
+ * // Output:
+ * // Crystal Upscaler: $0.02 / image
+ * // SeedVR Upscale: $0.05 / image
+ * // Topaz Upscale: $0.10 / image
+ * ```
+ */
 export function getUpscaleModelEntriesInPriorityOrder() {
   return UPSCALE_MODEL_ORDER.map(
     (modelId) => [modelId, UPSCALE_MODELS[modelId]] as const

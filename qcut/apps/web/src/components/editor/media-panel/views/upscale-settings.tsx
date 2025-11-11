@@ -1,3 +1,20 @@
+/**
+ * Upscale Settings Panel Component
+ *
+ * Provides a comprehensive settings interface for AI image upscaling models.
+ * Dynamically renders controls based on the selected upscale model's capabilities:
+ * - Scale factor selection (2x-16x depending on model)
+ * - Denoise slider (0-100%)
+ * - Creativity slider (for models that support it)
+ * - Overlapping tiles toggle (for premium models)
+ * - Output format selector (PNG/JPEG/WebP)
+ *
+ * Each upscale model has different features and pricing tiers, and this panel
+ * adapts to show only the relevant controls for the selected model.
+ *
+ * @module UpscaleSettingsPanel
+ */
+
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
@@ -17,10 +34,37 @@ import {
   useText2ImageStore,
 } from "@/stores/text2image-store";
 
+/**
+ * Props for the UpscaleSettingsPanel component
+ */
 interface UpscaleSettingsProps {
+  /** Optional CSS class names for styling */
   className?: string;
 }
 
+/**
+ * Settings panel for configuring AI image upscaling parameters
+ *
+ * This component renders a dynamic form that adapts to the capabilities of the
+ * currently selected upscale model. It includes:
+ * - Model name, description, and cost badge
+ * - Scale factor buttons for quick selection
+ * - Denoise slider for noise reduction control
+ * - Conditional creativity slider (SeedVR models only)
+ * - Conditional overlapping tiles toggle (Topaz models only)
+ * - Output format dropdown (PNG/JPEG/WebP)
+ *
+ * The component is connected to the text2image store and automatically syncs
+ * all settings changes.
+ *
+ * @param props - Component props
+ * @returns A settings panel with model-specific controls
+ *
+ * @example
+ * ```tsx
+ * <UpscaleSettingsPanel className="p-4" />
+ * ```
+ */
 export function UpscaleSettingsPanel({ className }: UpscaleSettingsProps) {
   const upscaleSettings = useText2ImageStore((state) => state.upscaleSettings);
   const setUpscaleSettings = useText2ImageStore(
@@ -31,6 +75,15 @@ export function UpscaleSettingsPanel({ className }: UpscaleSettingsProps) {
   const scaleOptions =
     model.controls.scaleFactor.options ?? model.supportedScales;
 
+  /**
+   * Handles slider value changes and updates the store
+   *
+   * Extracts the first value from the slider array and updates the corresponding
+   * setting in the upscale settings store.
+   *
+   * @param key - The settings key to update (denoise or creativity)
+   * @param value - Array containing the new slider value
+   */
   const handleSliderChange = (key: keyof UpscaleSettings, value: number[]) => {
     setUpscaleSettings({ [key]: value[0] } as Partial<UpscaleSettings>);
   };

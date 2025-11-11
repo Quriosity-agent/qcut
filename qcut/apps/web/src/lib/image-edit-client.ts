@@ -130,7 +130,7 @@ export const MODEL_ENDPOINTS: Record<string, ModelEndpoint> = {
     endpoint: UPSCALE_MODEL_ENDPOINTS["crystal-upscaler"],
     defaultParams: {
       scale_factor: 4,
-      denoise: 0.5,
+      denoise: 0.45,
       output_format: "png",
     },
   },
