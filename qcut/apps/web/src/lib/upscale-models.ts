@@ -24,6 +24,11 @@ export const UPSCALE_MODEL_ORDER = [
 ] as const;
 
 /**
+ * Supported upscale multipliers exposed in the UI
+ */
+export type UpscaleScaleFactor = 2 | 4 | 6 | 8 | 10 | 12 | 16;
+
+/**
  * Type-safe upscale model identifier
  */
 export type UpscaleModelId = (typeof UPSCALE_MODEL_ORDER)[number];
@@ -101,10 +106,10 @@ export interface UpscaleModel {
   /** Maximum supported scale factor */
   maxScale: number;
   /** Array of all supported scale factors */
-  supportedScales: number[];
+  supportedScales: UpscaleScaleFactor[];
   /** Default parameter values sent to the API */
   defaultParams: {
-    scale_factor: number;
+    scale_factor: UpscaleScaleFactor;
     denoise?: number;
     creativity?: number;
     overlapping_tiles?: boolean;

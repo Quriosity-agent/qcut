@@ -3,7 +3,10 @@ import { devtools } from "zustand/middleware";
 import { handleError, ErrorCategory, ErrorSeverity } from "@/lib/error-handler";
 import { TEXT2IMAGE_MODEL_ORDER } from "@/lib/text2image-models";
 import { UPSCALE_MODEL_ORDER, UPSCALE_MODELS } from "@/lib/upscale-models";
-import type { UpscaleModelId } from "@/lib/upscale-models";
+import type {
+  UpscaleModelId,
+  UpscaleScaleFactor,
+} from "@/lib/upscale-models";
 import { upscaleImage as runUpscaleImage } from "@/lib/image-edit-client";
 import type {
   ImageEditProgressCallback,
@@ -30,16 +33,17 @@ const computeUpscaleSettings = (
     nextModelId === previous.selectedModel
       ? previous
       : createDefaultUpscaleSettings(nextModelId);
-  const scaleOptions =
-    model.controls.scaleFactor.options ?? model.supportedScales;
+  const scaleOptions = (
+    model.controls.scaleFactor.options ?? model.supportedScales
+  ) as UpscaleScaleFactor[];
 
-  let nextScale =
+  let nextScale: UpscaleScaleFactor =
     settings.scaleFactor ??
     (nextModelId === previous.selectedModel
       ? previous.scaleFactor
       : defaults.scaleFactor);
 
-  if (scaleOptions && !scaleOptions.includes(nextScale)) {
+  if (!scaleOptions.includes(nextScale)) {
     nextScale = scaleOptions[0] ?? defaults.scaleFactor;
   }
 
@@ -81,12 +85,11 @@ const createDefaultUpscaleSettings = (
   modelId: UpscaleModelId = UPSCALE_MODEL_ORDER[0]
 ): UpscaleSettings => {
   const model = UPSCALE_MODELS[modelId];
-  const scaleOptions =
-    model.controls.scaleFactor.options ?? model.supportedScales;
+  const scaleOptions = (
+    model.controls.scaleFactor.options ?? model.supportedScales
+  ) as UpscaleScaleFactor[];
   const defaultScale =
-    scaleOptions && scaleOptions.length > 0
-      ? scaleOptions[0]
-      : model.defaultParams.scale_factor || 2;
+    scaleOptions.length > 0 ? scaleOptions[0] : model.defaultParams.scale_factor;
 
   return {
     selectedModel: modelId,
@@ -122,10 +125,10 @@ export interface GenerationSettings {
 
 export interface UpscaleSettings {
   selectedModel: UpscaleModelId;
-  scaleFactor: number;
+  scaleFactor: UpscaleScaleFactor;
   denoise: number; // 0-100 slider value
-  creativity: number; // 0-100 slider value
-  overlappingTiles: boolean;
+  creativity?: number; // 0-100 slider value (SeedVR only)
+  overlappingTiles?: boolean; // Topaz only
   outputFormat: "png" | "jpeg" | "webp";
 }
 
@@ -476,11 +479,11 @@ export const useText2ImageStore = create<Text2ImageStore>()(
 
           if (model.features.creativity) {
             request.creativity = Number(
-              (upscaleSettings.creativity / 100).toFixed(2)
+              ((upscaleSettings.creativity ?? 0) / 100).toFixed(2)
             );
           }
           if (model.features.overlappingTiles) {
-            request.overlappingTiles = upscaleSettings.overlappingTiles;
+            request.overlappingTiles = Boolean(upscaleSettings.overlappingTiles);
           }
 
           const response = await runUpscaleImage(request, options?.onProgress);
