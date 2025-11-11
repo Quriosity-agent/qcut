@@ -136,6 +136,29 @@ export const UPSCALE_MODEL_ENDPOINTS: Record<UpscaleModelId, string> = {
   "topaz-upscale": "fal-ai/topaz/upscale/image",
 };
 
+/**
+ * Complete catalog of available upscale models with full configuration
+ *
+ * This is the single source of truth for all upscale model information including:
+ * - API endpoints and parameters
+ * - Pricing and performance characteristics
+ * - UI control configurations
+ * - Feature flags and capabilities
+ * - Marketing copy (descriptions, strengths, limitations)
+ *
+ * Used throughout the application by:
+ * - UpscaleSettingsPanel for rendering dynamic controls
+ * - text2image store for API calls and parameter management
+ * - Model selection UIs for displaying options
+ *
+ * @example
+ * ```ts
+ * const model = UPSCALE_MODELS['crystal-upscaler'];
+ * console.log(model.name); // "Crystal Upscaler"
+ * console.log(model.maxScale); // 10
+ * console.log(model.features.creativity); // false
+ * ```
+ */
 export const UPSCALE_MODELS: Record<UpscaleModelId, UpscaleModel> = {
   "crystal-upscaler": {
     id: "crystal-upscaler",

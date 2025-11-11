@@ -9,8 +9,14 @@ import type { AIModel, APIConfiguration } from "./ai-types";
 import { UPSCALE_MODEL_ENDPOINTS as UPSCALE_MODEL_ENDPOINT_MAP } from "@/lib/upscale-models";
 
 // FAL API Configuration
+/** FAL.ai API key from environment variables */
 export const FAL_API_KEY = import.meta.env.VITE_FAL_API_KEY;
+/** Base URL for FAL.ai API endpoints */
 export const FAL_API_BASE = "https://fal.run";
+/**
+ * Map of upscale model IDs to their FAL.ai endpoint paths
+ * Re-exported from @/lib/upscale-models for convenient access alongside AI model constants
+ */
 export const UPSCALE_MODEL_ENDPOINTS = UPSCALE_MODEL_ENDPOINT_MAP;
 
 // API Configuration
