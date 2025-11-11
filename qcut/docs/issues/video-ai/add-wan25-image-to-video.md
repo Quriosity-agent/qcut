@@ -449,9 +449,9 @@ else if (modelId === "seedance_pro_fast_i2v") {
   }
 
   const imageUrl = await uploadImageToFal(selectedImage);
-  const endFrameUrl = seedanceEndFrameFile
-    ? await uploadImageToFal(seedanceEndFrameFile)
-    : seedanceEndFrameUrl;
+  const audioUrl = wan25AudioFile
+    ? await uploadAudioToFal(wan25AudioFile)
+    : wan25AudioUrl;
   const friendlyName = modelName || modelId;
   progressCallback({
     status: "processing",
@@ -467,6 +467,7 @@ else if (modelId === "seedance_pro_fast_i2v") {
     resolution: seedanceResolution, // Add new state variable
     aspect_ratio: seedanceAspectRatio, // Add new state variable
     camera_fixed: seedanceCameraFixed, // Add new state variable
+    seed: imageSeed ?? undefined,
   });
 
   progressCallback({
@@ -484,6 +485,9 @@ else if (modelId === "seedance_pro_i2v") {
 
   const imageUrl = await uploadImageToFal(selectedImage);
   const friendlyName = modelName || modelId;
+  const endFrameUrl = seedanceEndFrameFile
+    ? await uploadImageToFal(seedanceEndFrameFile)
+    : seedanceEndFrameUrl;
   progressCallback({
     status: "processing",
     progress: 10,
@@ -561,9 +565,10 @@ else if (modelId === "wan_25_preview_i2v") {
     image_url: imageUrl,
     duration: wan25Duration, // Add new state variable
     resolution: wan25Resolution, // Add new state variable
-    audio_url: wan25AudioUrl, // Add new state variable (optional)
+    audio_url: audioUrl ?? undefined, // Optional music track
     negative_prompt: wan25NegativePrompt, // Add new state variable
     enable_prompt_expansion: wan25EnablePromptExpansion, // Add new state variable
+    seed: imageSeed ?? undefined,
   });
 
   progressCallback({
@@ -593,7 +598,9 @@ seedanceDuration = 5,
 seedanceResolution = "1080p",
 seedanceAspectRatio = "16:9",
 seedanceCameraFixed = false,
-seedanceEndImageUrl, // Optional last frame
+seedanceEndFrameUrl,
+seedanceEndFrameFile,
+imageSeed,
 
 // Kling defaults
 klingDuration = 5,
@@ -606,13 +613,17 @@ klingNegativePrompt = "blur, distort, and low quality",
 wan25Duration = 5,
 wan25Resolution = "1080p",
 wan25AudioUrl, // Optional
+wan25AudioFile, // Optional local upload
 wan25NegativePrompt, // Optional
 wan25EnablePromptExpansion = true,
 ```
 
 ### Step 3: Add API Client Function
 
-> **Reviewer note (Codex):** Please reconcile `end_frame_url` vs. `end_image_url`; the overview and JSON samples use the latter while this section uses the former, and the wrong key will silently ignore the uploaded frame. The WAN helper still assumes an `audio_url` that never exists unless you define an upload workflow, so the optional soundtrack feature can’t be exercised.
+Align the client interfaces with the FAL docs:
+
+- Stick to the official parameter names (`end_frame_url` for Seedance Pro, `audio_url` for WAN 2.5) and pass through `seed` when provided.
+- If you need to upload audio blobs, add a small `uploadAudioToFal` helper next to `uploadImageToFal` so UI code can turn `File` objects into URLs before invoking these functions.
 
 **File**: `qcut/apps/web/src/lib/ai-video-client.ts`
 
@@ -1003,7 +1014,10 @@ import {
 
 ### Step 4: Update Type Definitions
 
-> **Reviewer note (Codex):** The props interface introduces `seedanceEndFrameUrl`, but the destructuring example immediately below references `seedanceEndImageUrl`, which guarantees either `undefined` or TS errors. No `seed` prop is defined even though later sections require a seed input and the handlers/API stubs don’t accept one, so those controls/checklists could never pass.
+Keep the hook props and destructuring in sync:
+
+- Use a single naming convention (`seedanceEndFrameUrl`) and pair it with a `seedanceEndFrameFile` so you can distinguish between an existing URL and a freshly uploaded file.
+- Add shared props for the manual seed (`imageSeed?`) and WAN audio upload (`wan25AudioFile?`) so the UI controls have somewhere to store their state.
 
 **File**: `qcut/apps/web/src/components/editor/media-panel/views/ai-types.ts`
 
@@ -1019,7 +1033,9 @@ seedanceDuration?: 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12;
 seedanceResolution?: "480p" | "720p" | "1080p";
 seedanceAspectRatio?: "21:9" | "16:9" | "4:3" | "1:1" | "3:4" | "9:16" | "auto";
 seedanceCameraFixed?: boolean;
-seedanceEndFrameUrl?: string; // For Pro model only
+seedanceEndFrameUrl?: string; // Existing hosted URL
+seedanceEndFrameFile?: File | null; // Newly uploaded file
+imageSeed?: number; // Shared manual seed for reproducibility
 
 // Kling v2.5 Turbo Pro I2V options
 klingDuration?: 5 | 10;
@@ -1032,13 +1048,18 @@ klingNegativePrompt?: string;
 wan25Duration?: 5 | 10;
 wan25Resolution?: "480p" | "720p" | "1080p";
 wan25AudioUrl?: string; // Optional background music
+wan25AudioFile?: File | null; // Local upload before sending
 wan25NegativePrompt?: string; // Max 500 characters
 wan25EnablePromptExpansion?: boolean;
 ```
 
 ### Step 5: Add UI Controls for User Selection
 
-> **Reviewer note (Codex):** The aspect-ratio selector example checks `selectedModel?.default_params?.aspect_ratio`, but nothing in the model configs lists all supported ratios, so you can’t render the “all 7 options + auto” that Step 7 tests for. The WAN audio upload control yields a `File`, yet there’s no guidance on uploading it to FAL and populating `wan25AudioUrl`. Similarly, the “Seed Input (All Models)” UI has nowhere to store/send the seed because earlier steps never added the prop or handler wiring.
+Back the controls with the new metadata/state:
+
+- Drive resolution/duration/aspect-ratio pickers from `model.supportedResolutions`, `model.supportedDurations`, and `model.supportedAspectRatios` so every option Step 7 lists is selectable without hard-coded arrays.
+- When the user selects a Seedance end frame or WAN audio track, store the `File` in `seedanceEndFrameFile` / `wan25AudioFile`, upload it via the helper, and update the corresponding URL prop so the handler/API receive a real `*_url`.
+- Wire the “Seed” input to `imageSeed` and pass it through to every model handler that supports deterministic runs.
 
 **File**: `qcut/apps/web/src/components/editor/media-panel/views/ai.tsx` (or relevant UI component)
 
@@ -1207,13 +1228,21 @@ Add a cost estimator that updates in real-time based on user selections:
 
 ```typescript
 function calculateEstimatedCost(model: AIModel, resolution: string, duration: number): string {
-  if (model.id === "wan_25_preview_i2v") {
-    // WAN 2.5 has per-second pricing by resolution
-    const rates = { "480p": 0.05, "720p": 0.10, "1080p": 0.15 };
-    return `$${(rates[resolution] * duration).toFixed(2)}`;
+  if (model?.perSecondPricing) {
+    const rate = model.perSecondPricing[resolution];
+    if (rate != null) {
+      return `$${(rate * duration).toFixed(2)}`;
+    }
   }
-  // Other models have fixed pricing
-  return `$${model.price}`;
+
+  const basePrice = Number(model?.price ?? 0);
+  const baseDuration = model?.default_params?.duration ?? 5;
+  if (basePrice && baseDuration) {
+    const scaled = (basePrice / baseDuration) * duration;
+    return `$${scaled.toFixed(2)}`;
+  }
+
+  return "$0.00";
 }
 
 // In UI component
@@ -1240,7 +1269,7 @@ function calculateEstimatedCost(model: AIModel, resolution: string, duration: nu
 
 ### Step 6: API Request/Response Format
 
-> **Reviewer note (Codex):** This JSON sample uses `end_frame_url`, while Step 1 and the capabilities section label the parameter `end_image_url`. Please settle on a single name so integrators know which field the API will honor.
+Use the same parameter names across the narrative, code, and samples—`end_frame_url` for Seedance Pro and `audio_url` for WAN 2.5—so engineers don’t have to guess which field the API expects.
 
 **Request (Pro Fast):**
 ```json
@@ -1291,7 +1320,11 @@ function calculateEstimatedCost(model: AIModel, resolution: string, duration: nu
 
 ### Step 7: Testing Checklist
 
-> **Reviewer note (Codex):** Several acceptance bullets are currently impossible: Seedance/Kling pricing checks expect duration-aware math, but Step 5’s estimator always returns the flat `model.price` for non-WAN models; the Seedance end-frame and WAN audio tests require upload flows that haven’t been defined; and seed-entry tests can’t run because no seed prop or API parameter exists yet.
+Before running through the checklist, verify the prerequisites:
+
+- The cost estimator reads from `perSecondPricing` (WAN) or computes `(duration / defaultDuration) * price` for Seedance/Kling so the dollar amounts listed below are meaningful.
+- Seedance Pro’s end-frame control performs an upload and sends `end_frame_url`, and WAN audio uploads produce a valid `audio_url`.
+- The manual seed control populates `imageSeed` and propagates all the way to the model requests.
 
 **Seedance Pro Fast I2V:**
 - [ ] Model appears in image-to-video tab UI model selector dropdown
