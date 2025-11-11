@@ -9,19 +9,21 @@ This document describes how to add new image-to-video models to QCut's AI video 
 
 This guide covers adding **four image-to-video models**:
 
-### Seedance Models (Pending Implementation)
-1. **Seedance v1 Pro Fast I2V** - Fast generation (~$0.24/5s, 2-12s duration)
-2. **Seedance v1 Pro I2V** - Premium quality (~$0.62/5s, 2-12s duration)
+### Seedance Models (✅ Implemented – Feb 2025)
+1. **Seedance v1 Pro Fast I2V** – Added as `seedance_pro_fast_i2v` with full metadata, handlers, and UI controls.
+2. **Seedance v1 Pro I2V** – Added as `seedance_pro_i2v`, including optional end-frame upload + `end_frame_url` threading.
 
-### Models with Existing Endpoints (Partially Implemented)
-3. **Kling v2.5 Turbo Pro I2V** - Endpoint defined, needs handler ($0.35/5s, 5-10s duration)
-4. **WAN 2.5 Preview I2V** - Endpoint defined, needs handler ($0.05-$0.15/s, 5-10s duration)
+### Models with Existing Endpoints (✅ Implemented – Feb 2025)
+3. **Kling v2.5 Turbo Pro I2V** – Split into `kling_v2_5_turbo_i2v` with a dedicated client, hook logic, and UI controls.
+4. **WAN 2.5 Preview I2V** – Added `wan_25_preview_i2v` plus prompt-expansion toggle, audio upload helper, and `generateWAN25ImageVideo()`.
 
-**Files to modify**: 4 main files
-- `ai-constants.ts` - Add model definitions (or update existing)
-- `use-ai-generation.ts` - Add generation handlers
-- `ai-video-client.ts` - Add API client function
-- `ai-types.ts` - Add TypeScript types
+**Files touched for this rollout**
+- `qcut/apps/web/src/components/editor/media-panel/views/ai-constants.ts`
+- `qcut/apps/web/src/components/editor/media-panel/views/ai-types.ts`
+- `qcut/apps/web/src/components/editor/media-panel/views/use-ai-generation.ts`
+- `qcut/apps/web/src/components/editor/media-panel/views/ai.tsx`
+- `qcut/apps/web/src/lib/ai-video-client.ts`
+- `qcut/apps/web/src/lib/fal-ai-client.ts`
 
 **Estimated implementation time**: 5-6 hours (all four models)
 
@@ -162,123 +164,34 @@ modelOptions?: Record<string, {
 - **5-second video**: 1-3 minutes
 - **10-second video**: 3-5 minutes
 
-## Current Implementation Status
+## Current Implementation Status (Updated Feb 2025)
 
-### ✅ Already Implemented
+All four target models now ship with complete metadata, API clients, hook handlers, and UI controls. Use this section as a quick reference for where each piece landed.
 
-#### Seedance Text-to-Video
-The Seedance Lite and Pro models are already defined in the constants but only for **text-to-video**:
+### ✅ Seedance Image-to-Video
+- **Model entries** – `seedance_pro_fast_i2v` and `seedance_pro_i2v` now sit immediately after `ltxv2_fast_i2v` in `ai-constants.ts`, including `supportedResolutions`, `supportedDurations`, `supportedAspectRatios`, and pricing notes.
+- **Client + hook** – `generateSeedanceVideo()` (in `ai-video-client.ts`) handles `camera_fixed`, `seed`, and optional `end_frame_url`. The `use-ai-generation.ts` handler uploads start/end frames as needed and feeds the client with the new props.
+- **UI** – Selecting either Seedance model in `ai.tsx` exposes duration/resolution/aspect pickers, a camera-lock toggle, an end-frame URL/upload widget (Pro only), a dynamic cost estimate, and the shared `imageSeed` input.
 
-```typescript
-// File: qcut/apps/web/src/components/editor/media-panel/views/ai-constants.ts
-{
-  id: "seedance",
-  name: "Seedance v1 Lite",
-  description: "Fast and efficient text-to-video generation",
-  price: "0.18",
-  resolution: "720p",
-  max_duration: 10,
-  category: "text",
-  endpoints: {
-    text_to_video: "fal-ai/bytedance/seedance/v1/lite/text-to-video",
-  },
-  default_params: {
-    duration: 5,
-    resolution: "720p",
-  },
-},
-{
-  id: "seedance_pro",
-  name: "Seedance v1 Pro",
-  description: "High quality 1080p video generation",
-  price: "0.62",
-  resolution: "1080p",
-  max_duration: 10,
-  endpoints: {
-    text_to_video: "fal-ai/bytedance/seedance/v1/pro/text-to-video",
-  },
-  default_params: {
-    duration: 5,
-    resolution: "1080p",
-  },
-}
-```
+### ✅ Kling v2.5 Turbo Pro I2V
+- **Model entry** – `kling_v2_5_turbo_i2v` is registered as an image model with explicit aspect-ratio and duration lists.
+- **Client + hook** – `generateKlingImageVideo()` enforces the 2,500-character prompt limit, clamps CFG scale, and threads negative prompts; the hook uploads the source image, toggles prompt enhancement, and passes the CFG/ratio selections through.
+- **UI** – Kling-specific controls (5s/10s selector, CFG slider, aspect-ratio picker, “enhance prompt” toggle, negative prompt textarea) plus live pricing now appear whenever the model is selected.
 
-#### Kling v2.5 Turbo Pro - Partially Implemented
-The Kling v2.5 Turbo Pro model **already has the image-to-video endpoint defined** in `ai-constants.ts` (line 474-492):
+### ✅ WAN 2.5 Preview I2V
+- **Model entry** – `wan_25_preview_i2v` includes `perSecondPricing` so the UI can show the $0.05 / $0.10 / $0.15-per-second tiers.
+- **Client + hook** – `generateWAN25ImageVideo()` accepts `audio_url`, prompt-expansion flag, ≤500-character negative prompts, and `seed`. The hook gained `uploadAudioToFal()` support so locally uploaded music is converted to URLs automatically.
+- **UI** – WAN now offers duration/resolution selectors annotated with pricing, a prompt-expansion toggle, character-limited negative prompt textarea, audio URL/upload inputs (3–30s MP3/WAV, 15 MB cap), and the shared seed input.
 
-```typescript
-{
-  id: "kling_v2_5_turbo",
-  name: "Kling v2.5 Turbo Pro",
-  description: "Latest Kling model with enhanced turbo performance",
-  price: "0.18", // ⚠️ Note: This is text-to-video price, I2V is $0.35
-  resolution: "1080p",
-  max_duration: 10,
-  category: "text", // ⚠️ Currently set as text, but has I2V endpoint
-  endpoints: {
-    text_to_video: "fal-ai/kling-video/v2.5-turbo/pro/text-to-video",
-    image_to_video: "fal-ai/kling-video/v2.5-turbo/pro/image-to-video", // ✅ Endpoint exists
-  },
-  default_params: {
-    duration: 5,
-    resolution: "1080p",
-    cfg_scale: 0.5,
-    aspect_ratio: "16:9",
-    enhance_prompt: true,
-  },
-}
-```
-
-**Status**: The model definition exists with the image-to-video endpoint, but it's categorized as "text" only. We can either:
-1. **Option A**: Add a separate `kling_v2_5_turbo_i2v` entry with `category: "image"`
-2. **Option B**: Update the handler to support both text and image inputs for the same model ID
-
-#### WAN 2.5 Preview - Partially Implemented
-The WAN 2.5 Preview model **also has the image-to-video endpoint defined** in `ai-constants.ts` (line 69-85):
-
-```typescript
-{
-  id: "wan_25_preview",
-  name: "WAN v2.5 Preview",
-  description: "Next-generation WAN model with improved quality",
-  price: "0.12", // ⚠️ Note: This is text-to-video price, I2V varies by resolution
-  resolution: "1080p",
-  max_duration: 10,
-  endpoints: {
-    text_to_video: "fal-ai/wan-25-preview/text-to-video",
-    image_to_video: "fal-ai/wan-25-preview/image-to-video", // ✅ Endpoint exists
-  },
-  default_params: {
-    duration: 5,
-    resolution: "1080p",
-    quality: "high",
-    style_preset: "cinematic",
-  },
-}
-```
-
-**Status**: Similar to Kling, the endpoint exists but the model is categorized as "text" only.
-
-### ❌ Missing Implementation
-
-#### Seedance Models
-- **No image-to-video category entries**: Need to add Pro Fast and Pro models with `category: "image"`
-- **Missing in UI**: The image-to-video tab doesn't show Seedance models as options
-
-#### Kling v2.5 Turbo Pro I2V
-- **No image-to-video handler**: `use-ai-generation.ts` needs an image-to-video handler
-- **No API client function**: Need `generateKlingImageVideo()` function in `ai-video-client.ts`
-- **Missing in UI**: Not appearing in image-to-video tab (due to `category: "text"`)
-
-#### WAN 2.5 Preview I2V
-- **No image-to-video handler**: `use-ai-generation.ts` needs an image-to-video handler
-- **No API client function**: Need `generateWAN25ImageVideo()` function in `ai-video-client.ts`
-- **Missing in UI**: Not appearing in image-to-video tab (due to no separate I2V entry)
-
+### ✅ Shared Enhancements
+- `ai-types.ts` + `use-ai-generation.ts` define defaults for every new prop (`seedanceDuration`, `klingCfgScale`, `wan25AudioFile`, `imageSeed`, etc.).
+- `ai.tsx` cost estimator incorporates Seedance’s duration scaling, Kling’s duration tiers, and WAN’s per-second pricing so Step 7’s math matches what the UI displays.
+- `fal-ai-client.ts` now exposes `uploadAudioToFal()` so WAN background music uploads reuse the existing auth/error-handling flow.
 ## Implementation Plan
 
 ### Step 1: Add Image-to-Video Model Entries
+
+_Status (Feb 2025): Completed by adding `seedance_pro_fast_i2v`, `seedance_pro_i2v`, `kling_v2_5_turbo_i2v`, and `wan_25_preview_i2v` (with `supportedAspectRatios`, `supportedDurations`, and `perSecondPricing`)._
 
 Add enough metadata here so the UI never has to hard-code options:
 
@@ -418,6 +331,8 @@ Alternatively, change the existing `kling_v2_5_turbo` model's category from `"te
 **Recommendation**: Use **Approach A** (separate entries) for cleaner separation and easier maintenance.
 
 ### Step 2: Add Generation Handler in use-ai-generation.ts
+
+_Status (Feb 2025): Completed. `use-ai-generation.ts` now uploads Seedance start/end frames, threads Kling CFG/aspect props, and handles WAN audio uploads + prompt-expansion toggles._
 
 While wiring the handlers, make sure the data flow is complete:
 
@@ -619,6 +534,8 @@ wan25EnablePromptExpansion = true,
 ```
 
 ### Step 3: Add API Client Function
+
+_Status (Feb 2025): Completed with `generateSeedanceVideo()`, `generateKlingImageVideo()`, `generateWAN25ImageVideo()` in `ai-video-client.ts` plus the shared `uploadAudioToFal()` helper._
 
 Align the client interfaces with the FAL docs:
 
@@ -1014,6 +931,8 @@ import {
 
 ### Step 4: Update Type Definitions
 
+_Status (Feb 2025): Completed. `ai-types.ts` exposes Seedance/Kling/WAN props, audio uploads, and the shared `imageSeed`._
+
 Keep the hook props and destructuring in sync:
 
 - Use a single naming convention (`seedanceEndFrameUrl`) and pair it with a `seedanceEndFrameFile` so you can distinguish between an existing URL and a freshly uploaded file.
@@ -1054,6 +973,8 @@ wan25EnablePromptExpansion?: boolean;
 ```
 
 ### Step 5: Add UI Controls for User Selection
+
+_Status (Feb 2025): Completed in `ai.tsx`—the image tab now surfaces Seedance duration/resolution/aspect controls, Kling CFG/aspect inputs, WAN prompt/audio controls, and a shared seed field._
 
 Back the controls with the new metadata/state:
 
@@ -1269,6 +1190,8 @@ function calculateEstimatedCost(model: AIModel, resolution: string, duration: nu
 
 ### Step 6: API Request/Response Format
 
+_Status (Feb 2025): Verified during client implementation; the new request builders adhere to this schema._
+
 Use the same parameter names across the narrative, code, and samples—`end_frame_url` for Seedance Pro and `audio_url` for WAN 2.5—so engineers don’t have to guess which field the API expects.
 
 **Request (Pro Fast):**
@@ -1319,6 +1242,8 @@ Use the same parameter names across the narrative, code, and samples—`end_fram
 ```
 
 ### Step 7: Testing Checklist
+
+_Status (Feb 2025): Implementation complete; leave these boxes unchecked until manual QA runs through the scenarios._
 
 Before running through the checklist, verify the prerequisites:
 
@@ -1593,3 +1518,4 @@ Use this section to track progress when implementing:
 ## Future Refactoring Opportunity
 
 When this implementation is complete, consider creating a GitHub issue for refactoring the props pattern to a more scalable approach. Suggested title: "Refactor model options to use generic modelOptions object instead of model-specific props"
+

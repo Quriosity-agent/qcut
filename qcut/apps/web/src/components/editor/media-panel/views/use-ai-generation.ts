@@ -312,7 +312,7 @@ export function useAIGeneration(props: UseAIGenerationProps) {
 
     try {
       const url = await falAIClient.uploadAudioToFal(file);
-      debugLog(?? Audio upload complete: );
+      debugLog("?? Audio upload complete:", url);
       return url;
     } catch (error) {
       debugError("? Failed to upload audio to FAL", error);
