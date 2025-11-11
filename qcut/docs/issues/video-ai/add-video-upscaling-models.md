@@ -773,6 +773,7 @@ else if (activeTab === "upscale") {
   }
 }
 ```
+<!-- REVIEW: The FlashVSR branch above calls `uploadVideoToFal()` directly, but only `falAIClient.uploadVideoToFal` exists in this context. Please clarify whether the helper should be imported/destructured or if this should call `falAIClient.uploadVideoToFal` to avoid a reference error. -->
 
 ### Step 6: Add UI Controls
 
@@ -1113,6 +1114,8 @@ const [bytedanceTargetFPS, setBytedanceTargetFPS] =
   )}
 </TabPanel>
 ```
+<!-- REVIEW: The snippet starts with `<TabsContent>` but closes with `</TabPanel>`. Double-check which component the real UI uses so we don't end up with mismatched tab primitives. -->
+<!-- REVIEW: The FlashVSR cost estimator references `videoWidth`, `videoHeight`, and `videoFrames`, but the doc never shows where those values are sourced. Consider adding guidance on how to derive these (e.g., metadata extraction when a clip is uploaded) so the helper can compile. -->
 
 ### Step 7: Add Cost Calculation Helpers
 
@@ -1168,6 +1171,7 @@ function calculateTopazUpscaleCost(factor: number): string {
   return `$${cost.toFixed(2)}`;
 }
 ```
+<!-- REVIEW: Earlier in the doc the FlashVSR pricing formula omits the upscale factor, but this helper multiplies the megapixels by `upscaleFactor ** 2`. Please confirm whether billing is on input pixels only or if output resolution should influence pricing so we don't misquote costs. -->
 
 ## Testing Checklist
 
