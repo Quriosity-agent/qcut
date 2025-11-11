@@ -74,7 +74,106 @@ interface ByteDanceUpscaleResponse {
 
 ---
 
-### 2. Topaz Video Upscale
+### 2. FlashVSR Video Upscaler (fal.ai)
+
+#### Model Details
+- **Model ID**: `fal-ai/flashvsr/upscale/video`
+- **Documentation**: https://fal.ai/models/fal-ai/flashvsr/upscale/video/api
+- **Description**: Fastest video upscaling with VAE decoding pipeline and customizable quality settings
+- **Category**: Video Enhancement / High-Speed Upscaling
+- **License**: Commercial use permitted
+
+#### Capabilities
+- **Input**: Video URL (standard video formats)
+- **Upscale Factor**: 1x to 4x (continuous float range)
+- **Acceleration Modes**:
+  - `regular` - Balanced speed and quality (default)
+  - `high` - Faster processing with slight quality trade-off
+  - `full` - Maximum speed, more quality reduction
+- **Quality Control**: 0-100 tile blending quality (default: 70)
+- **Color Correction**: Optional color fix toggle (enabled by default)
+- **Audio Preservation**: Optional audio track retention via FFmpeg
+- **Output Formats**:
+  - X264 (.mp4) - Default
+  - VP9 (.webm)
+  - ProRes 4444 (.mov) - Professional/lossless
+  - GIF (.gif) - Animated
+- **Output Quality Levels**: low, medium, high, maximum
+- **Write Modes**:
+  - `fast` - Faster encoding
+  - `balanced` - Default balance (default)
+  - `small` - Smaller file size
+- **Seed Support**: Reproducible results with seed parameter
+
+#### Pricing
+**Megapixel-based billing:**
+- **Formula**: $0.0005 per megapixel of video data
+- **Calculation**: width × height × frames × $0.0005 / 1,000,000
+
+**Cost Examples:**
+- 1920×1080, 121 frames = 250.88 megapixels = **$0.125**
+- 3840×2160 (4K), 121 frames = 1,003.52 megapixels = **$0.502**
+- 1280×720, 300 frames = 276.48 megapixels = **$0.138**
+- 3840×2160 (4K), 300 frames = 2,488.32 megapixels = **$1.244**
+
+**Cost Comparison by Duration (1080p → 4K upscale):**
+- 5s @ 30fps (150 frames): ~$0.622
+- 10s @ 30fps (300 frames): ~$1.244
+- 30s @ 30fps (900 frames): ~$3.732
+- 60s @ 30fps (1800 frames): ~$7.464
+
+#### API Endpoint
+**POST**: `https://fal.run/fal-ai/flashvsr/upscale/video`
+
+#### Request Parameters
+```typescript
+interface FlashVSRUpscaleRequest {
+  video_url: string;                    // Required: URL of source video
+  upscale_factor?: number;              // Default: 4, Range: 1-4
+  acceleration?: "regular" | "high" | "full";  // Default: "regular"
+  quality?: number;                     // Default: 70, Range: 0-100
+  color_fix?: boolean;                  // Default: true
+  preserve_audio?: boolean;             // Default: false
+  output_format?: "X264" | "VP9" | "PRORES4444" | "GIF";  // Default: "X264"
+  output_quality?: "low" | "medium" | "high" | "maximum";  // Default: "high"
+  output_write_mode?: "fast" | "balanced" | "small";      // Default: "balanced"
+  seed?: number;                        // Optional: for reproducibility
+  sync_mode?: boolean;                  // Default: false
+}
+```
+
+#### Response Format
+```typescript
+interface FlashVSRUpscaleResponse {
+  seed: number;           // Random seed used for processing
+  video: {
+    url: string;          // URL to upscaled video
+    content_type: string; // "video/mp4", "video/webm", etc.
+    file_name: string;
+    file_size: number;
+  };
+}
+```
+
+#### Processing Time
+- **Queue-based**: Asynchronous processing with webhooks recommended
+- **Speed**: Advertised as "fastest speeds" among upscaling models
+- **Acceleration Impact**:
+  - `regular` - Standard processing time
+  - `high` - ~30-40% faster
+  - `full` - ~50-60% faster
+
+#### Key Features
+- **Flexible Upscaling**: Continuous scale factor (1x-4x) instead of fixed presets
+- **Speed Control**: Three acceleration modes for time-critical workflows
+- **Format Flexibility**: Multiple output codecs including professional ProRes
+- **Audio Options**: Preserve or strip audio tracks
+- **File Size Control**: Write mode optimization for bandwidth/storage needs
+- **Quality Tuning**: Granular quality control (0-100 range)
+
+---
+
+### 3. Topaz Video Upscale
 
 #### Model Details
 - **Name**: Topaz Video Upscale
@@ -145,6 +244,35 @@ interface ByteDanceUpscaleResponse {
   },
 },
 
+// FlashVSR Video Upscaler
+{
+  id: "flashvsr_video_upscaler",
+  name: "FlashVSR Video Upscaler",
+  description: "Fastest video upscaling (1-4x) with customizable quality and format options",
+  price: "0.125", // Base estimate for ~121 frames @ 1080p
+  pricingModel: "megapixel", // $0.0005 per megapixel
+  resolution: "1x to 4x upscaling",
+  supportedUpscaleFactors: { min: 1, max: 4, step: 0.1 }, // Continuous range
+  supportedAcceleration: ["regular", "high", "full"],
+  supportedOutputFormats: ["X264", "VP9", "PRORES4444", "GIF"],
+  supportedOutputQuality: ["low", "medium", "high", "maximum"],
+  supportedWriteModes: ["fast", "balanced", "small"],
+  category: "upscale",
+  endpoints: {
+    upscale_video: "fal-ai/flashvsr/upscale/video",
+  },
+  default_params: {
+    upscale_factor: 4,
+    acceleration: "regular",
+    quality: 70,
+    color_fix: true,
+    preserve_audio: false,
+    output_format: "X264",
+    output_quality: "high",
+    output_write_mode: "balanced",
+  },
+},
+
 // Topaz Video Upscale
 {
   id: "topaz_video_upscale",
@@ -176,6 +304,17 @@ interface ByteDanceUpscaleResponse {
 // ByteDance Upscaler options
 bytedanceTargetResolution?: "1080p" | "2k" | "4k";
 bytedanceTargetFPS?: "30fps" | "60fps";
+
+// FlashVSR Upscaler options
+flashvsrUpscaleFactor?: number; // 1.0 to 4.0
+flashvsrAcceleration?: "regular" | "high" | "full";
+flashvsrQuality?: number; // 0 to 100
+flashvsrColorFix?: boolean;
+flashvsrPreserveAudio?: boolean;
+flashvsrOutputFormat?: "X264" | "VP9" | "PRORES4444" | "GIF";
+flashvsrOutputQuality?: "low" | "medium" | "high" | "maximum";
+flashvsrOutputWriteMode?: "fast" | "balanced" | "small";
+flashvsrSeed?: number;
 
 // Topaz Upscaler options
 topazUpscaleFactor?: number; // 2.0 to 8.0
@@ -270,6 +409,114 @@ export async function upscaleByteDanceVideo(
   } catch (error) {
     handleAIServiceError(error, "Upscale video with ByteDance", {
       operation: "upscaleByteDanceVideo",
+    });
+    throw error;
+  }
+}
+
+/**
+ * FlashVSR Video Upscaler Request Interface
+ */
+export interface FlashVSRUpscaleRequest {
+  video_url: string;
+  upscale_factor?: number; // 1.0 to 4.0
+  acceleration?: "regular" | "high" | "full";
+  quality?: number; // 0 to 100
+  color_fix?: boolean;
+  preserve_audio?: boolean;
+  output_format?: "X264" | "VP9" | "PRORES4444" | "GIF";
+  output_quality?: "low" | "medium" | "high" | "maximum";
+  output_write_mode?: "fast" | "balanced" | "small";
+  seed?: number;
+}
+
+/**
+ * Upscale video using FlashVSR Video Upscaler
+ *
+ * @param request - Video URL and upscaling parameters
+ */
+export async function upscaleFlashVSRVideo(
+  request: FlashVSRUpscaleRequest
+): Promise<VideoGenerationResponse> {
+  try {
+    const falApiKey = getFalApiKey();
+    if (!falApiKey) {
+      throw new Error("FAL API key not configured");
+    }
+
+    if (!request.video_url) {
+      throw new Error("Video URL is required for upscaling");
+    }
+
+    // Validate upscale factor
+    const upscaleFactor = request.upscale_factor ?? 4;
+    if (upscaleFactor < 1 || upscaleFactor > 4) {
+      throw new Error("Upscale factor must be between 1 and 4");
+    }
+
+    // Validate quality
+    const quality = request.quality ?? 70;
+    if (quality < 0 || quality > 100) {
+      throw new Error("Quality must be between 0 and 100");
+    }
+
+    const payload: Record<string, unknown> = {
+      video_url: request.video_url,
+      upscale_factor: upscaleFactor,
+      acceleration: request.acceleration ?? "regular",
+      quality,
+      color_fix: request.color_fix ?? true,
+      preserve_audio: request.preserve_audio ?? false,
+      output_format: request.output_format ?? "X264",
+      output_quality: request.output_quality ?? "high",
+      output_write_mode: request.output_write_mode ?? "balanced",
+    };
+
+    // Add optional seed
+    if (request.seed !== undefined) {
+      payload.seed = request.seed;
+    }
+
+    const jobId = `flashvsr-upscale-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+
+    const response = await fetch(
+      `${FAL_API_BASE}/fal-ai/flashvsr/upscale/video`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Key ${falApiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      }
+    );
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+
+      if (response.status === 401) {
+        throw new Error("Invalid FAL.ai API key. Please check your API key configuration.");
+      }
+
+      if (response.status === 429) {
+        throw new Error("Rate limit exceeded. Please wait a moment before trying again.");
+      }
+
+      throw new Error(`FAL API error: ${errorData.detail || response.statusText}`);
+    }
+
+    const result = await response.json();
+    return {
+      job_id: jobId,
+      status: "completed",
+      message: `Video upscaled with FlashVSR (${upscaleFactor}x)`,
+      estimated_time: 0,
+      video_url: result.video?.url || result.video || result.url,
+      video_data: result,
+    };
+  } catch (error) {
+    handleAIServiceError(error, "Upscale video with FlashVSR", {
+      operation: "upscaleFlashVSRVideo",
     });
     throw error;
   }
@@ -385,6 +632,50 @@ else if (activeTab === "upscale") {
     });
   }
 
+  // FlashVSR Video Upscaler
+  else if (modelId === "flashvsr_video_upscaler") {
+    if (!sourceVideoFile && !sourceVideoUrl) {
+      console.log("  ⚠️ Skipping model - Video source required");
+      continue;
+    }
+
+    const videoUrl = sourceVideoFile
+      ? await uploadVideoToFal(sourceVideoFile)
+      : sourceVideoUrl!;
+
+    const friendlyName = modelName || modelId;
+    progressCallback({
+      status: "processing",
+      progress: 10,
+      message: `Uploading video for ${friendlyName}...`,
+    });
+
+    progressCallback({
+      status: "processing",
+      progress: 30,
+      message: `Upscaling video with FlashVSR (${flashvsrUpscaleFactor}x)...`,
+    });
+
+    response = await upscaleFlashVSRVideo({
+      video_url: videoUrl,
+      upscale_factor: flashvsrUpscaleFactor,
+      acceleration: flashvsrAcceleration,
+      quality: flashvsrQuality,
+      color_fix: flashvsrColorFix,
+      preserve_audio: flashvsrPreserveAudio,
+      output_format: flashvsrOutputFormat,
+      output_quality: flashvsrOutputQuality,
+      output_write_mode: flashvsrOutputWriteMode,
+      seed: flashvsrSeed,
+    });
+
+    progressCallback({
+      status: "completed",
+      progress: 100,
+      message: `Video upscaled with ${friendlyName}`,
+    });
+  }
+
   // Topaz Video Upscaler
   else if (modelId === "topaz_video_upscale") {
     // TODO: Implement when Topaz API is available
@@ -463,6 +754,146 @@ else if (activeTab === "upscale") {
             10 // 10 seconds example
           )}
         </span>
+      </div>
+    </Card>
+  )}
+
+  {/* FlashVSR Upscaler Settings */}
+  {selectedModelId === "flashvsr_video_upscaler" && (
+    <Card className="model-settings">
+      <h4>FlashVSR Upscaler Settings</h4>
+
+      {/* Upscale Factor Slider */}
+      <div className="control-group">
+        <Label>Upscale Factor: {flashvsrUpscaleFactor}x</Label>
+        <Slider
+          min={1.0}
+          max={4.0}
+          step={0.1}
+          value={flashvsrUpscaleFactor}
+          onChange={setFlashvsrUpscaleFactor}
+        />
+        <p className="help-text">
+          Continuous scale from 1x (no upscaling) to 4x maximum
+        </p>
+      </div>
+
+      {/* Acceleration Mode */}
+      <div className="control-group">
+        <Label>Acceleration Mode</Label>
+        <Select
+          value={flashvsrAcceleration}
+          onChange={setFlashvsrAcceleration}
+        >
+          <option value="regular">Regular (Best Quality)</option>
+          <option value="high">High (30-40% faster)</option>
+          <option value="full">Full (50-60% faster)</option>
+        </Select>
+        <p className="help-text">
+          Higher acceleration = faster processing with slight quality trade-off
+        </p>
+      </div>
+
+      {/* Quality Slider */}
+      <div className="control-group">
+        <Label>Quality: {flashvsrQuality}</Label>
+        <Slider
+          min={0}
+          max={100}
+          step={5}
+          value={flashvsrQuality}
+          onChange={setFlashvsrQuality}
+        />
+        <p className="help-text">
+          Tile blending quality (0-100)
+        </p>
+      </div>
+
+      {/* Output Format */}
+      <div className="control-group">
+        <Label>Output Format</Label>
+        <Select
+          value={flashvsrOutputFormat}
+          onChange={setFlashvsrOutputFormat}
+        >
+          <option value="X264">X264 (.mp4) - Standard</option>
+          <option value="VP9">VP9 (.webm) - Modern codec</option>
+          <option value="PRORES4444">ProRes 4444 (.mov) - Professional</option>
+          <option value="GIF">GIF (.gif) - Animated</option>
+        </Select>
+      </div>
+
+      {/* Output Quality */}
+      <div className="control-group">
+        <Label>Output Quality</Label>
+        <Select
+          value={flashvsrOutputQuality}
+          onChange={setFlashvsrOutputQuality}
+        >
+          <option value="low">Low</option>
+          <option value="medium">Medium</option>
+          <option value="high">High</option>
+          <option value="maximum">Maximum</option>
+        </Select>
+      </div>
+
+      {/* Write Mode */}
+      <div className="control-group">
+        <Label>Encoding Mode</Label>
+        <Select
+          value={flashvsrOutputWriteMode}
+          onChange={setFlashvsrOutputWriteMode}
+        >
+          <option value="fast">Fast (Faster encoding)</option>
+          <option value="balanced">Balanced (Default)</option>
+          <option value="small">Small (Smaller file size)</option>
+        </Select>
+      </div>
+
+      {/* Toggles */}
+      <div className="control-group">
+        <Checkbox
+          checked={flashvsrColorFix}
+          onChange={setFlashvsrColorFix}
+        >
+          Apply Color Correction
+        </Checkbox>
+      </div>
+
+      <div className="control-group">
+        <Checkbox
+          checked={flashvsrPreserveAudio}
+          onChange={setFlashvsrPreserveAudio}
+        >
+          Preserve Audio Track
+        </Checkbox>
+      </div>
+
+      {/* Seed Input */}
+      <div className="control-group">
+        <Label>Seed (Optional)</Label>
+        <Input
+          type="number"
+          value={flashvsrSeed ?? ""}
+          onChange={(e) => setFlashvsrSeed(e.target.value ? parseInt(e.target.value) : undefined)}
+          placeholder="Random seed for reproducibility"
+        />
+      </div>
+
+      {/* Cost Estimator */}
+      <div className="cost-estimate">
+        <Label>Estimated Cost:</Label>
+        <span className="cost-value">
+          {calculateFlashVSRUpscaleCost(
+            videoWidth,
+            videoHeight,
+            videoFrames,
+            flashvsrUpscaleFactor
+          )}
+        </span>
+        <p className="help-text">
+          Based on megapixels: width × height × frames × upscale factor
+        </p>
       </div>
     </Card>
   )}
@@ -552,6 +983,24 @@ function calculateByteDanceUpscaleCost(
 
   const rate = rates[rateKey] || 0.0072;
   const totalCost = rate * durationSeconds;
+
+  return `$${totalCost.toFixed(3)}`;
+}
+
+/**
+ * Calculate FlashVSR upscale cost based on megapixels
+ */
+function calculateFlashVSRUpscaleCost(
+  width: number,
+  height: number,
+  frames: number,
+  upscaleFactor: number
+): string {
+  // Formula: width × height × frames × upscale_factor² × $0.0005 / 1,000,000
+  // Upscaling increases dimensions, so area is multiplied by factor²
+  const megapixels = (width * height * frames * (upscaleFactor ** 2)) / 1_000_000;
+  const costPerMegapixel = 0.0005;
+  const totalCost = megapixels * costPerMegapixel;
 
   return `$${totalCost.toFixed(3)}`;
 }
