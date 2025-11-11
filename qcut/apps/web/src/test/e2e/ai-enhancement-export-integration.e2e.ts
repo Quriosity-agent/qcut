@@ -6,6 +6,7 @@
  * preview functionality, and export with AI enhancements.
  */
 
+import path from "node:path";
 import {
   test,
   expect,
@@ -465,5 +466,39 @@ test.describe("AI Enhancement & Export Integration", () => {
         throw new Error("Export feedback UI did not appear.");
       }
     }
+  });
+
+  test("upscale image workflow", async ({ page }) => {
+    // Stub FAL endpoints so the test never leaves the sandboxed runner.
+    await page.route("https://fal.run/**", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          status: "COMPLETED",
+          images: [{ url: "https://example.com/stub-upscale.png" }],
+        }),
+      });
+    });
+
+    await page.click('[data-testid="ai-panel-tab"]');
+    await page.click('[data-testid="model-type-upscale"]');
+
+    const panel = page.locator('[data-testid="upscale-panel"]');
+    await expect(panel).toBeVisible();
+
+    // Switch models to ensure selector works
+    await page.click('[data-testid="upscale-model-option-seedvr-upscale"]');
+
+    const fixturePath = path.resolve(
+      process.cwd(),
+      "src/test/e2e/fixtures/media/sample-image.png"
+    );
+    await page.setInputFiles("#upscale-image-input", fixturePath);
+
+    await page.click('[data-testid="upscale-image-button"]');
+    await expect(
+      page.locator('[data-testid="upscale-result-preview"]')
+    ).toBeVisible();
   });
 });

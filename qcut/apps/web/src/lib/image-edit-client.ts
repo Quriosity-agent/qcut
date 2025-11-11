@@ -4,6 +4,7 @@
  */
 
 import { handleAIServiceError } from "./error-handler";
+import { UPSCALE_MODEL_ENDPOINTS, type UpscaleModelId } from "./upscale-models";
 
 const FAL_API_KEY = import.meta.env.VITE_FAL_API_KEY;
 const FAL_API_BASE = "https://fal.run";
@@ -32,6 +33,16 @@ export interface ImageEditRequest {
   syncMode?: boolean; // V4, Nano Banana, and Reve Edit
   enableSafetyChecker?: boolean; // V4
   outputFormat?: "JPEG" | "PNG" | "png" | "jpeg" | "webp"; // Nano Banana and Reve Edit
+}
+
+export interface ImageUpscaleRequest {
+  imageUrl: string;
+  model: UpscaleModelId;
+  scaleFactor?: number;
+  denoise?: number;
+  creativity?: number;
+  overlappingTiles?: boolean;
+  outputFormat?: "png" | "jpeg" | "webp";
 }
 
 export interface ImageEditResponse {
@@ -111,6 +122,34 @@ export const MODEL_ENDPOINTS: Record<string, ModelEndpoint> = {
       num_images: 1,
       output_format: "png",
       sync_mode: false,
+    },
+  },
+
+  // Upscale models
+  "crystal-upscaler": {
+    endpoint: UPSCALE_MODEL_ENDPOINTS["crystal-upscaler"],
+    defaultParams: {
+      scale_factor: 4,
+      denoise: 0.45,
+      output_format: "png",
+    },
+  },
+  "seedvr-upscale": {
+    endpoint: UPSCALE_MODEL_ENDPOINTS["seedvr-upscale"],
+    defaultParams: {
+      scale_factor: 6,
+      denoise: 0.35,
+      creativity: 0.4,
+      output_format: "png",
+    },
+  },
+  "topaz-upscale": {
+    endpoint: UPSCALE_MODEL_ENDPOINTS["topaz-upscale"],
+    defaultParams: {
+      scale_factor: 6,
+      denoise: 0.25,
+      overlapping_tiles: true,
+      output_format: "png",
     },
   },
 };
@@ -443,6 +482,153 @@ export async function editImage(
 }
 
 /**
+ * Upscale image using dedicated upscale models
+ */
+export async function upscaleImage(
+  request: ImageUpscaleRequest,
+  onProgress?: ImageEditProgressCallback
+): Promise<ImageEditResponse> {
+  if (!FAL_API_KEY) {
+    throw new Error("FAL API key not configured");
+  }
+
+  const modelConfig = MODEL_ENDPOINTS[request.model];
+  if (!modelConfig) {
+    throw new Error(`Unsupported upscale model: ${request.model}`);
+  }
+
+  const startTime = Date.now();
+  const jobId = generateJobId("upscale");
+
+  const payload: Record<string, any> = {
+    image_url: request.imageUrl,
+    ...modelConfig.defaultParams,
+  };
+
+  if (request.scaleFactor !== undefined) {
+    payload.scale_factor = request.scaleFactor;
+  }
+  if (request.denoise !== undefined) {
+    payload.denoise = request.denoise;
+  }
+  if (request.creativity !== undefined) {
+    payload.creativity = request.creativity;
+  }
+  if (request.overlappingTiles !== undefined) {
+    payload.overlapping_tiles = request.overlappingTiles;
+  }
+  if (request.outputFormat) {
+    payload.output_format = request.outputFormat;
+  }
+
+  if (onProgress) {
+    onProgress({
+      status: "queued",
+      progress: 0,
+      message: "Submitting upscale request to FAL.ai...",
+      elapsedTime: 0,
+    });
+  }
+
+  try {
+    const ctrl = new AbortController();
+    const timeout = setTimeout(() => ctrl.abort(), 60_000);
+
+    const response = await fetch(`${FAL_API_BASE}/${modelConfig.endpoint}`, {
+      method: "POST",
+      headers: {
+        "Authorization": `Key ${FAL_API_KEY}`,
+        "Content-Type": "application/json",
+        "X-Fal-Queue": "true",
+      },
+      body: JSON.stringify(payload),
+      signal: ctrl.signal,
+    });
+
+    clearTimeout(timeout);
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      handleAIServiceError(
+        new Error(`FAL API Error: ${response.status}`),
+        "FAL AI image upscale request",
+        {
+          status: response.status,
+          statusText: response.statusText,
+          errorData,
+          endpoint: modelConfig.endpoint,
+          model: request.model,
+          operation: "upscaleImage",
+        }
+      );
+
+      const errorMessage =
+        errorData.detail && typeof errorData.detail === "string"
+          ? errorData.detail
+          : errorData.message || response.statusText;
+      throw new Error(
+        `Upscale API error: ${response.status} - ${errorMessage}`
+      );
+    }
+
+    const result = await response.json();
+    if (result.request_id) {
+      return await pollImageEditStatus(
+        result.request_id,
+        modelConfig.endpoint,
+        startTime,
+        onProgress,
+        jobId,
+        request.model
+      );
+    }
+
+    const completedImage =
+      result.images?.[0]?.url || result.image?.url || result.result_url;
+    if (completedImage) {
+      if (onProgress) {
+        onProgress({
+          status: "completed",
+          progress: 100,
+          message: "Upscale completed",
+          elapsedTime: Math.floor((Date.now() - startTime) / 1000),
+        });
+      }
+
+      return {
+        job_id: jobId,
+        status: "completed",
+        message: "Upscale completed",
+        result_url: completedImage,
+        processing_time: Math.floor((Date.now() - startTime) / 1000),
+      };
+    }
+
+    throw new Error("Upscale response did not include an image URL");
+  } catch (error) {
+    handleAIServiceError(error, "FAL AI image upscaling", {
+      model: request.model,
+      endpoint: modelConfig.endpoint,
+      operation: "upscaleImage",
+    });
+
+    if (onProgress) {
+      onProgress({
+        status: "failed",
+        progress: 0,
+        message:
+          error instanceof Error
+            ? error.message
+            : "Upscaling failed unexpectedly",
+        elapsedTime: Math.floor((Date.now() - startTime) / 1000),
+      });
+    }
+
+    throw error;
+  }
+}
+
+/**
  * Poll for image edit status
  */
 async function pollImageEditStatus(
@@ -617,8 +803,10 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-function generateJobId(): string {
-  return "edit_" + Math.random().toString(36).substr(2, 9) + "_" + Date.now();
+function generateJobId(prefix: "edit" | "upscale" = "edit"): string {
+  return (
+    `${prefix}_` + Math.random().toString(36).substr(2, 9) + "_" + Date.now()
+  );
 }
 
 /**

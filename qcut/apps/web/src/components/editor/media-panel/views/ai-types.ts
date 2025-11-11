@@ -24,6 +24,19 @@ export interface AIModelEndpoints {
   image_to_video?: string;
 }
 
+/**
+ * API endpoints for image upscaling models
+ * Simple structure since upscale models only have one endpoint type
+ */
+export interface UpscaleModelEndpoints {
+  /** FAL.ai API endpoint path for upscaling operations */
+  upscale: string;
+}
+
+/**
+ * Parameters for AI video generation models
+ * These vary by model but share common properties like duration and resolution
+ */
 export interface AIModelParameters {
   duration?: number;
   resolution?: string;
@@ -35,6 +48,39 @@ export interface AIModelParameters {
   [key: string]: any;
 }
 
+/**
+ * Parameters for AI image upscaling operations
+ *
+ * These control the quality, scale, and processing method for upscaling images.
+ * Different models support different subsets of these parameters.
+ */
+export interface UpscaleModelParameters {
+  /** Multiplier for image dimensions (2x, 4x, 8x, etc.) */
+  scale_factor?: number;
+  /** Noise reduction amount (0-1 or 0-100 depending on model) */
+  denoise?: number;
+  /** Creative detail synthesis level (SeedVR models only, 0-1 or 0-100) */
+  creativity?: number;
+  /** Enable tile overlap processing to avoid seam artifacts (Topaz models only) */
+  overlapping_tiles?: boolean;
+  /** Output image format */
+  output_format?: "png" | "jpeg" | "webp";
+  /** Allow additional model-specific parameters */
+  [key: string]: any;
+}
+
+/**
+ * Category classification for AI models
+ *
+ * Determines which UI tab the model appears in and what inputs it requires.
+ * - text: Text-to-video generation
+ * - image: Image-to-video or image animation
+ * - video: Video-to-video transformation
+ * - avatar: Character animation from image + audio
+ * - upscale: Image quality enhancement
+ */
+export type ModelCategory = "text" | "image" | "video" | "avatar" | "upscale";
+
 // Core AI Model Interface
 export interface AIModel {
   id: string;
@@ -45,7 +91,7 @@ export interface AIModel {
   max_duration: number;
   endpoints: AIModelEndpoints;
   default_params?: AIModelParameters;
-  category?: "text" | "image" | "video" | "avatar";
+  category?: ModelCategory;
   requiredInputs?: string[];
   supportedResolutions?: string[]; // For models supporting multiple resolutions (e.g., Pro models)
   supportedDurations?: number[];

@@ -250,6 +250,11 @@ export const FloatingActionPanelCheckbox = React.forwardRef<
   HTMLButtonElement,
   FloatingActionPanelCheckboxProps
 >(({ id, checked = false, onCheckedChange, className }, ref) => {
+  const handleClick = (event: React.MouseEvent<HTMLButtonElement>) => {
+    event.stopPropagation();
+    onCheckedChange?.(!checked);
+  };
+
   return (
     <button
       ref={ref}
@@ -259,7 +264,7 @@ export const FloatingActionPanelCheckbox = React.forwardRef<
       data-state={checked ? "checked" : "unchecked"}
       value="on"
       id={id}
-      onClick={() => onCheckedChange?.(!checked)}
+      onClick={handleClick}
       className={cn(
         "peer h-4 w-4 shrink-0 rounded border border-gray-300 shadow focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#05c7c7] disabled:cursor-not-allowed disabled:opacity-50 bg-transparent data-[state=checked]:bg-[#05c7c7] data-[state=checked]:border-[#05c7c7] data-[state=checked]:text-white",
         className
@@ -319,19 +324,34 @@ export function FloatingActionPanelModelOption({
   checked = false,
   onCheckedChange,
 }: FloatingActionPanelModelOptionProps) {
+  const handleToggle = React.useCallback(() => {
+    onCheckedChange?.(!checked);
+  }, [checked, onCheckedChange]);
+
   return (
     <div
+      role="button"
+      tabIndex={0}
       className={`flex items-center gap-3 p-2 hover:bg-gray-50 dark:hover:bg-gray-800 hover:bg-opacity-50 rounded-md cursor-pointer transition-colors border ${
         checked
           ? "bg-transparent border-[#05c7c7]/50"
           : "bg-transparent border-gray-100 dark:border-gray-700"
       }`}
-      onClick={() => onCheckedChange?.(!checked)}
+      onClick={handleToggle}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          handleToggle();
+        }
+      }}
     >
       <FloatingActionPanelCheckbox
         id={id}
         checked={checked}
-        onCheckedChange={onCheckedChange}
+        onCheckedChange={(nextChecked) => {
+          if (nextChecked === checked) return;
+          onCheckedChange?.(nextChecked);
+        }}
         className="shrink-0"
       />
       <label

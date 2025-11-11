@@ -2,9 +2,111 @@ import { create } from "zustand";
 import { devtools } from "zustand/middleware";
 import { handleError, ErrorCategory, ErrorSeverity } from "@/lib/error-handler";
 import { TEXT2IMAGE_MODEL_ORDER } from "@/lib/text2image-models";
+import { UPSCALE_MODEL_ORDER, UPSCALE_MODELS } from "@/lib/upscale-models";
+import type { UpscaleModelId } from "@/lib/upscale-models";
+import { upscaleImage as runUpscaleImage } from "@/lib/image-edit-client";
+import type {
+  ImageEditProgressCallback,
+  ImageEditResponse,
+  ImageUpscaleRequest,
+} from "@/lib/image-edit-client";
 
 // Debug flag - set to false to disable console logs
 const DEBUG_TEXT2IMAGE_STORE = process.env.NODE_ENV === "development" && false;
+
+const clamp = (value: number, min: number, max: number) =>
+  Math.min(Math.max(value, min), max);
+
+const arraysEqual = (a: string[], b: string[]) =>
+  a.length === b.length && a.every((value, index) => value === b[index]);
+
+const computeUpscaleSettings = (
+  previous: UpscaleSettings,
+  settings: Partial<UpscaleSettings>
+): UpscaleSettings => {
+  const nextModelId = settings.selectedModel ?? previous.selectedModel;
+  const model = UPSCALE_MODELS[nextModelId];
+  const defaults =
+    nextModelId === previous.selectedModel
+      ? previous
+      : createDefaultUpscaleSettings(nextModelId);
+  const scaleOptions =
+    model.controls.scaleFactor.options ?? model.supportedScales;
+
+  let nextScale =
+    settings.scaleFactor ??
+    (nextModelId === previous.selectedModel
+      ? previous.scaleFactor
+      : defaults.scaleFactor);
+
+  if (scaleOptions && !scaleOptions.includes(nextScale)) {
+    nextScale = scaleOptions[0] ?? defaults.scaleFactor;
+  }
+
+  const nextDenoise =
+    settings.denoise !== undefined ? settings.denoise : defaults.denoise;
+  const nextCreativity =
+    settings.creativity !== undefined
+      ? settings.creativity
+      : defaults.creativity;
+  const nextOverlapping =
+    settings.overlappingTiles !== undefined
+      ? settings.overlappingTiles
+      : defaults.overlappingTiles;
+  const nextFormat = settings.outputFormat ?? defaults.outputFormat;
+
+  return {
+    selectedModel: nextModelId,
+    scaleFactor: nextScale,
+    denoise: clamp(nextDenoise, 0, 100),
+    creativity: model.features.creativity
+      ? clamp(nextCreativity, 0, 100)
+      : defaults.creativity,
+    overlappingTiles: model.features.overlappingTiles
+      ? nextOverlapping
+      : defaults.overlappingTiles,
+    outputFormat: nextFormat,
+  };
+};
+
+const areUpscaleSettingsEqual = (a: UpscaleSettings, b: UpscaleSettings) =>
+  a.selectedModel === b.selectedModel &&
+  a.scaleFactor === b.scaleFactor &&
+  a.denoise === b.denoise &&
+  a.creativity === b.creativity &&
+  a.overlappingTiles === b.overlappingTiles &&
+  a.outputFormat === b.outputFormat;
+
+const createDefaultUpscaleSettings = (
+  modelId: UpscaleModelId = UPSCALE_MODEL_ORDER[0]
+): UpscaleSettings => {
+  const model = UPSCALE_MODELS[modelId];
+  const scaleOptions =
+    model.controls.scaleFactor.options ?? model.supportedScales;
+  const defaultScale =
+    scaleOptions && scaleOptions.length > 0
+      ? scaleOptions[0]
+      : model.defaultParams.scale_factor || 2;
+
+  return {
+    selectedModel: modelId,
+    scaleFactor: defaultScale,
+    denoise: Math.round((model.defaultParams.denoise ?? 0.5) * 100),
+    creativity: Math.round((model.defaultParams.creativity ?? 0) * 100),
+    overlappingTiles: Boolean(model.defaultParams.overlapping_tiles),
+    outputFormat: (model.defaultParams.output_format ?? "png") as
+      | "png"
+      | "jpeg"
+      | "webp",
+  };
+};
+
+const DEFAULT_UPSCALE_SETTINGS = createDefaultUpscaleSettings();
+
+const normalizeModelSelection = (models: string[]) =>
+  TEXT2IMAGE_MODEL_ORDER.filter((modelId) => models.includes(modelId));
+
+export type Text2ImageModelType = "generation" | "upscale";
 
 export interface GenerationResult {
   status: "loading" | "success" | "error";
@@ -18,11 +120,21 @@ export interface GenerationSettings {
   seed?: number;
 }
 
+export interface UpscaleSettings {
+  selectedModel: UpscaleModelId;
+  scaleFactor: number;
+  denoise: number; // 0-100 slider value
+  creativity: number; // 0-100 slider value
+  overlappingTiles: boolean;
+  outputFormat: "png" | "jpeg" | "webp";
+}
+
 export interface SelectedResult {
   modelKey: string;
   imageUrl: string;
   prompt: string;
-  settings: GenerationSettings;
+  settings: GenerationSettings | UpscaleSettings;
+  mode: Text2ImageModelType;
 }
 
 interface Text2ImageStore {
@@ -30,10 +142,20 @@ interface Text2ImageStore {
   prompt: string;
   setPrompt: (prompt: string) => void;
 
+  // Model type
+  modelType: Text2ImageModelType;
+  setModelType: (type: Text2ImageModelType) => void;
+
   // Model selection
   selectedModels: string[];
+  setModelSelection: (modelKey: string, isSelected: boolean) => void;
   toggleModel: (modelKey: string) => void;
+  selectModels: (models: string[]) => void;
   clearModelSelection: () => void;
+
+  // Upscale settings
+  upscaleSettings: UpscaleSettings;
+  setUpscaleSettings: (settings: Partial<UpscaleSettings>) => void;
 
   // Generation mode
   generationMode: "single" | "multi";
@@ -41,6 +163,7 @@ interface Text2ImageStore {
 
   // Generation state
   isGenerating: boolean;
+  isUpscaling: boolean;
   generationResults: Record<string, GenerationResult>;
 
   // Result selection (for multi-model mode)
@@ -53,6 +176,12 @@ interface Text2ImageStore {
     prompt: string,
     settings: GenerationSettings
   ) => Promise<void>;
+  upscaleImage: (
+    imageUrl: string,
+    options?: {
+      onProgress?: ImageEditProgressCallback;
+    }
+  ) => Promise<ImageEditResponse>;
   addSelectedToMedia: (results?: SelectedResult[]) => Promise<void>;
   clearResults: () => void;
 
@@ -63,11 +192,13 @@ interface Text2ImageStore {
     models: string[];
     results: Record<string, GenerationResult>;
     createdAt: Date;
+    mode: Text2ImageModelType;
   }>;
   addToHistory: (
     prompt: string,
     models: string[],
-    results: Record<string, GenerationResult>
+    results: Record<string, GenerationResult>,
+    mode?: Text2ImageModelType
   ) => void;
 }
 
@@ -78,39 +209,89 @@ export const useText2ImageStore = create<Text2ImageStore>()(
       prompt: "",
       setPrompt: (prompt) => set({ prompt }),
 
+      // Model type state
+      modelType: "generation",
+      setModelType: (type) => {
+        if (type === get().modelType) return;
+        set({ modelType: type });
+      },
+
       // Model selection
       selectedModels: [...TEXT2IMAGE_MODEL_ORDER], // Default to all models in curated priority order
-      toggleModel: (modelKey) =>
-        set((state) => ({
-          selectedModels: state.selectedModels.includes(modelKey)
-            ? state.selectedModels.filter((m) => m !== modelKey)
-            : [...state.selectedModels, modelKey],
-        })),
-      clearModelSelection: () => set({ selectedModels: [] }),
+      setModelSelection: (modelKey, isSelected) =>
+        set((state) => {
+          const alreadySelected = state.selectedModels.includes(modelKey);
+          if (alreadySelected === isSelected) {
+            return state;
+          }
+
+          const nextSelected = isSelected
+            ? [...state.selectedModels, modelKey]
+            : state.selectedModels.filter((m) => m !== modelKey);
+          const normalized = normalizeModelSelection(nextSelected);
+
+          if (arraysEqual(state.selectedModels, normalized)) {
+            return state;
+          }
+
+          return { selectedModels: normalized };
+        }),
+      toggleModel: (modelKey) => {
+        const state = get();
+        const shouldSelect = !state.selectedModels.includes(modelKey);
+        state.setModelSelection(modelKey, shouldSelect);
+      },
+      selectModels: (models) =>
+        set((state) => {
+          const normalized = normalizeModelSelection(models);
+          return arraysEqual(state.selectedModels, normalized)
+            ? state
+            : { selectedModels: normalized };
+        }),
+      clearModelSelection: () => {
+        get().selectModels([]);
+      },
+
+      // Upscale settings
+      upscaleSettings: DEFAULT_UPSCALE_SETTINGS,
+      setUpscaleSettings: (settings) =>
+        set((state) => {
+          const nextSettings = computeUpscaleSettings(
+            state.upscaleSettings,
+            settings
+          );
+          if (areUpscaleSettingsEqual(nextSettings, state.upscaleSettings)) {
+            return state;
+          }
+          return { upscaleSettings: nextSettings };
+        }),
 
       // Generation mode
       generationMode: "multi", // Default to multi-model mode
       setGenerationMode: (mode) => {
+        if (mode === get().generationMode) {
+          return;
+        }
+
         set({ generationMode: mode });
 
-        // Auto-adjust model selection based on mode
-        const { selectedModels } = get();
-        if (mode === "single" && selectedModels.length > 1) {
-          // Keep only the first selected model for single mode
-          set({ selectedModels: selectedModels.slice(0, 1) });
+        const state = get();
+        const { selectedModels, selectModels } = state;
+
+        if (mode === "single") {
+          if (selectedModels.length === 0) {
+            selectModels([TEXT2IMAGE_MODEL_ORDER[0]]);
+          } else if (selectedModels.length > 1) {
+            selectModels([selectedModels[0]]);
+          }
         } else if (mode === "multi" && selectedModels.length === 0) {
-          // Select the first six models in curated order for multi mode
-          set({
-            selectedModels: TEXT2IMAGE_MODEL_ORDER.slice(0, 6),
-          });
-        } else if (mode === "single" && selectedModels.length === 0) {
-          // Select first model by default for single mode
-          set({ selectedModels: [TEXT2IMAGE_MODEL_ORDER[0]] });
+          selectModels(TEXT2IMAGE_MODEL_ORDER.slice(0, 6));
         }
       },
 
       // Generation state
       isGenerating: false,
+      isUpscaling: false,
       generationResults: {},
 
       // Result selection
@@ -204,6 +385,7 @@ export const useText2ImageStore = create<Text2ImageStore>()(
                 imageUrl: result.imageUrl,
                 prompt,
                 settings,
+                mode: "generation",
               });
             }
           }
@@ -243,7 +425,12 @@ export const useText2ImageStore = create<Text2ImageStore>()(
           }
 
           // Add to history
-          get().addToHistory(prompt, selectedModels, finalResults);
+          get().addToHistory(
+            prompt,
+            selectedModels,
+            finalResults,
+            "generation"
+          );
         } catch (error) {
           handleError(error, {
             operation: "Multi-Model Image Generation",
@@ -269,6 +456,75 @@ export const useText2ImageStore = create<Text2ImageStore>()(
             generationResults: errorResults,
             isGenerating: false,
           });
+        }
+      },
+
+      upscaleImage: async (imageUrl, options) => {
+        const { upscaleSettings } = get();
+        const model = UPSCALE_MODELS[upscaleSettings.selectedModel];
+
+        set({ isUpscaling: true });
+
+        try {
+          const request: ImageUpscaleRequest = {
+            imageUrl,
+            model: upscaleSettings.selectedModel,
+            scaleFactor: upscaleSettings.scaleFactor,
+            denoise: Number((upscaleSettings.denoise / 100).toFixed(2)),
+            outputFormat: upscaleSettings.outputFormat,
+          };
+
+          if (model.features.creativity) {
+            request.creativity = Number(
+              (upscaleSettings.creativity / 100).toFixed(2)
+            );
+          }
+          if (model.features.overlappingTiles) {
+            request.overlappingTiles = upscaleSettings.overlappingTiles;
+          }
+
+          const response = await runUpscaleImage(request, options?.onProgress);
+
+          if (response.status === "completed" && response.result_url) {
+            const promptLabel = `Upscale ${upscaleSettings.scaleFactor}x`;
+            const result: GenerationResult = {
+              status: "success",
+              imageUrl: response.result_url,
+              generatedAt: new Date(),
+            };
+
+            await get().addSelectedToMedia([
+              {
+                modelKey: request.model,
+                imageUrl: response.result_url,
+                prompt: promptLabel,
+                settings: { ...upscaleSettings },
+                mode: "upscale",
+              },
+            ]);
+
+            get().addToHistory(
+              promptLabel,
+              [request.model],
+              { [request.model]: result },
+              "upscale"
+            );
+          }
+
+          return response;
+        } catch (error) {
+          handleError(error, {
+            operation: "Upscale Image",
+            category: ErrorCategory.AI_SERVICE,
+            severity: ErrorSeverity.HIGH,
+            metadata: {
+              model: upscaleSettings.selectedModel,
+              scaleFactor: upscaleSettings.scaleFactor,
+            },
+          });
+          throw error;
+        } finally {
+          set({ isUpscaling: false });
         }
       },
 
@@ -330,15 +586,23 @@ export const useText2ImageStore = create<Text2ImageStore>()(
           const mediaItems = resultsToAdd.map((result) => ({
             url: result.imageUrl,
             type: "image" as const,
-            name: `Generated: ${result.prompt.slice(0, 30)}${result.prompt.length > 30 ? "..." : ""}`,
+            name: `${
+              result.mode === "upscale" ? "Upscaled" : "Generated"
+            }: ${result.prompt.slice(0, 30)}${
+              result.prompt.length > 30 ? "..." : ""
+            }`,
             size: 0, // Will be determined when loaded
             duration: 0,
             metadata: {
-              source: "text2image" as const,
+              source:
+                result.mode === "upscale"
+                  ? ("image-upscale" as const)
+                  : ("text2image" as const),
               model: result.modelKey,
               prompt: result.prompt,
               settings: result.settings,
               generatedAt: new Date(),
+              mode: result.mode,
             },
           }));
 
@@ -384,7 +648,7 @@ export const useText2ImageStore = create<Text2ImageStore>()(
 
       // History
       generationHistory: [],
-      addToHistory: (prompt, models, results) =>
+      addToHistory: (prompt, models, results, mode = "generation") =>
         set((state) => ({
           generationHistory: [
             {
@@ -393,6 +657,7 @@ export const useText2ImageStore = create<Text2ImageStore>()(
               models,
               results,
               createdAt: new Date(),
+              mode,
             },
             ...state.generationHistory.slice(0, 49), // Keep last 50 entries
           ],

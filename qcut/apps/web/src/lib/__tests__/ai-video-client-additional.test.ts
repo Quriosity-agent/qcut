@@ -61,14 +61,12 @@ describe("AI video client – additional models", () => {
     });
 
     it("sends expected payload including duration, resolution and BGM", async () => {
-      const fetchMock = vi
-        .fn()
-        .mockResolvedValue({
-          ok: true,
-          json: async () => ({
-            video: { url: "https://example.com/video.mp4" },
-          }),
-        });
+      const fetchMock = vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          video: { url: "https://example.com/video.mp4" },
+        }),
+      });
       globalThis.fetch = fetchMock as unknown as typeof globalThis.fetch;
 
       const request: ViduQ2I2VRequest = {
@@ -98,14 +96,12 @@ describe("AI video client – additional models", () => {
     });
 
     it("omits BGM flag when duration is not 4 seconds", async () => {
-      const fetchMock = vi
-        .fn()
-        .mockResolvedValue({
-          ok: true,
-          json: async () => ({
-            video: { url: "https://example.com/video.mp4" },
-          }),
-        });
+      const fetchMock = vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          video: { url: "https://example.com/video.mp4" },
+        }),
+      });
       globalThis.fetch = fetchMock as unknown as typeof globalThis.fetch;
 
       const request: ViduQ2I2VRequest = {
@@ -151,14 +147,12 @@ describe("AI video client – additional models", () => {
     });
 
     it("sends expected payload with duration, resolution and fps", async () => {
-      const fetchMock = vi
-        .fn()
-        .mockResolvedValue({
-          ok: true,
-          json: async () => ({
-            video: { url: "https://example.com/video.mp4" },
-          }),
-        });
+      const fetchMock = vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          video: { url: "https://example.com/video.mp4" },
+        }),
+      });
       globalThis.fetch = fetchMock as unknown as typeof globalThis.fetch;
 
       const request: LTXV2T2VRequest = {
@@ -210,14 +204,12 @@ describe("AI video client – additional models", () => {
     });
 
     it("sends expected payload for the fast model", async () => {
-      const fetchMock = vi
-        .fn()
-        .mockResolvedValue({
-          ok: true,
-          json: async () => ({
-            video: { url: "https://example.com/video.mp4" },
-          }),
-        });
+      const fetchMock = vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          video: { url: "https://example.com/video.mp4" },
+        }),
+      });
       globalThis.fetch = fetchMock as unknown as typeof globalThis.fetch;
 
       const request: LTXV2T2VRequest = {
@@ -282,14 +274,12 @@ describe("AI video client – additional models", () => {
     });
 
     it("sends expected payload", async () => {
-      const fetchMock = vi
-        .fn()
-        .mockResolvedValue({
-          ok: true,
-          json: async () => ({
-            video: { url: "https://example.com/video.mp4" },
-          }),
-        });
+      const fetchMock = vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          video: { url: "https://example.com/video.mp4" },
+        }),
+      });
       globalThis.fetch = fetchMock as unknown as typeof globalThis.fetch;
 
       const request: LTXV2I2VRequest = {
@@ -385,14 +375,12 @@ describe("AI video client – additional models", () => {
     });
 
     it("sends expected payload for the standard model", async () => {
-      const fetchMock = vi
-        .fn()
-        .mockResolvedValue({
-          ok: true,
-          json: async () => ({
-            video: { url: "https://example.com/video.mp4" },
-          }),
-        });
+      const fetchMock = vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          video: { url: "https://example.com/video.mp4" },
+        }),
+      });
       globalThis.fetch = fetchMock as unknown as typeof globalThis.fetch;
 
       const request: LTXV2I2VRequest = {
