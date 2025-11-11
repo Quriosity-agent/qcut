@@ -403,6 +403,40 @@ export function AiView() {
   }, [ltxv2ImageSelected]);
 
   useEffect(() => {
+    if (!seedanceSelected) {
+      setSeedanceDuration(5);
+      setSeedanceResolution("1080p");
+      setSeedanceAspectRatio("16:9");
+      setSeedanceCameraFixed(false);
+      setSeedanceEndFrameFile(null);
+      setSeedanceEndFramePreview(null);
+      setSeedanceEndFrameUrl(undefined);
+    }
+  }, [seedanceSelected]);
+
+  useEffect(() => {
+    if (!klingI2VSelected) {
+      setKlingDuration(5);
+      setKlingCfgScale(0.5);
+      setKlingAspectRatio("16:9");
+      setKlingEnhancePrompt(true);
+      setKlingNegativePrompt("");
+    }
+  }, [klingI2VSelected]);
+
+  useEffect(() => {
+    if (!wan25Selected) {
+      setWan25Duration(5);
+      setWan25Resolution("1080p");
+      setWan25AudioUrl(undefined);
+      setWan25AudioFile(null);
+      setWan25AudioPreview(null);
+      setWan25NegativePrompt("");
+      setWan25EnablePromptExpansion(true);
+    }
+  }, [wan25Selected]);
+
+  useEffect(() => {
     if (!ltxv2FastTextSelected && !ltxv2ImageSelected) {
       return;
     }
