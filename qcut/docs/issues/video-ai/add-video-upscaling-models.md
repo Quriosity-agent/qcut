@@ -647,30 +647,48 @@ export async function upscaleTopazVideo(
 
 **File**: `qcut/apps/web/src/lib/fal-ai-client.ts`
 
-**Action**: Add video upload method to `FalAIClient` class (after line 339)
+**Action**: Extend the internal upload helper to accept `"video"` and expose a typed wrapper (after line 339).
 
-**Pattern Reference**: Follow the structure of `uploadAudioToFal` (lines 337-339) and `uploadFileToFal` (lines 259-325)
+1. **Widen the `uploadFileToFal` union** so `"video"` is an allowed value:
+
+```typescript
+private async uploadFileToFal(
+  file: File,
+  fileType: "image" | "audio" | "video" | "asset" = "asset"
+): Promise<string> {
+  // existing logic…
+}
+```
+
+2. **Add the public convenience method** right after the existing audio helper:
 
 ```typescript
 /**
- * Uploads a video file (MP4/MOV/AVI) to FAL storage and returns the resulting URL.
+ * Uploads an MP4/MOV/AVI asset to FAL storage and returns the URL.
  */
 async uploadVideoToFal(file: File): Promise<string> {
   return this.uploadFileToFal(file, "video");
 }
 ```
 
-**Note**: The `uploadFileToFal` private method already handles all file types. Just add the public wrapper method.
+**File**: `qcut/apps/web/src/components/editor/media-panel/views/ai-constants.ts`
 
-**Also add to UPLOAD_CONSTANTS** in `ai-constants.ts` (if not already present, around line 813):
+**Action**: Reuse the existing “Video uploads” block instead of creating a duplicate. Keep the shared keys for WAN (100MB) and append upscale‑specific limits so both features can coexist:
+
 ```typescript
-// Video uploads (for upscaling and video-to-video models)
-ALLOWED_VIDEO_TYPES: ["video/mp4", "video/quicktime", "video/x-msvideo"],
-MAX_VIDEO_SIZE_BYTES: 500 * 1024 * 1024, // 500MB for upscaling
-MAX_VIDEO_SIZE_LABEL: "500MB",
-SUPPORTED_VIDEO_FORMATS: [".mp4", ".mov", ".avi"],
-VIDEO_FORMATS_LABEL: "MP4, MOV, AVI",
+  // Video uploads (WAN + Upscale)
+  ALLOWED_VIDEO_TYPES: ["video/mp4", "video/quicktime", "video/x-msvideo"],
+  MAX_VIDEO_SIZE_BYTES: 100 * 1024 * 1024, // WAN’s existing guardrail
+  MAX_VIDEO_SIZE_LABEL: "100MB",
+  SUPPORTED_VIDEO_FORMATS: [".mp4", ".mov", ".avi"],
+  VIDEO_FORMATS_LABEL: "MP4, MOV, AVI",
+
+  // Upscale overrides (ByteDance/Topaz allow 500MB)
+  UPSCALE_MAX_VIDEO_SIZE_BYTES: 500 * 1024 * 1024,
+  UPSCALE_MAX_VIDEO_SIZE_LABEL: "500MB",
 ```
+
+The upscale UI (Step 6) should reference the new `UPSCALE_MAX_VIDEO_SIZE_*` keys so WAN continues to enforce its tighter limit.
 
 ### Step 5: Add Generation Handler
 
@@ -730,7 +748,7 @@ else if (activeTab === "upscale") {
     }
 
     const videoUrl = sourceVideoFile
-      ? await uploadVideoToFal(sourceVideoFile)
+      ? await falAIClient.uploadVideoToFal(sourceVideoFile)
       : sourceVideoUrl!;
 
     const friendlyName = modelName || modelId;
@@ -773,7 +791,6 @@ else if (activeTab === "upscale") {
   }
 }
 ```
-<!-- REVIEW: The FlashVSR branch above calls `uploadVideoToFal()` directly, but only `falAIClient.uploadVideoToFal` exists in this context. Please clarify whether the helper should be imported/destructured or if this should call `falAIClient.uploadVideoToFal` to avoid a reference error. -->
 
 ### Step 6: Add UI Controls
 
@@ -793,18 +810,113 @@ else if (activeTab === "upscale") {
 </TabsList>
 ```
 
-#### 6b. Add state variables (around line 220)
+#### 6b. Add state + derived values (around line 220)
 ```tsx
+type VideoMetadata = {
+  width: number;
+  height: number;
+  frames?: number;
+  duration?: number;
+  fps?: number;
+};
+
 // Upscale tab state
 const [sourceVideoFile, setSourceVideoFile] = useState<File | null>(null);
-const [sourceVideoUrl, setSourceVideoUrl] = useState<string>("");
+const [sourceVideoUrl, setSourceVideoUrl] = useState("");
+const [videoMetadata, setVideoMetadata] = useState<VideoMetadata | null>(null);
+
 const [bytedanceTargetResolution, setBytedanceTargetResolution] =
   useState<"1080p" | "2k" | "4k">("1080p");
 const [bytedanceTargetFPS, setBytedanceTargetFPS] =
   useState<"30fps" | "60fps">("30fps");
+
+const [flashvsrUpscaleFactor, setFlashvsrUpscaleFactor] = useState(4);
+const [flashvsrAcceleration, setFlashvsrAcceleration] =
+  useState<"regular" | "high" | "full">("regular");
+const [flashvsrQuality, setFlashvsrQuality] = useState(70);
+const [flashvsrColorFix, setFlashvsrColorFix] = useState(true);
+const [flashvsrPreserveAudio, setFlashvsrPreserveAudio] = useState(false);
+const [flashvsrOutputFormat, setFlashvsrOutputFormat] =
+  useState<"X264" | "VP9" | "PRORES4444" | "GIF">("X264");
+const [flashvsrOutputQuality, setFlashvsrOutputQuality] =
+  useState<"low" | "medium" | "high" | "maximum">("high");
+const [flashvsrOutputWriteMode, setFlashvsrOutputWriteMode] =
+  useState<"fast" | "balanced" | "small">("balanced");
+const [flashvsrSeed, setFlashvsrSeed] = useState<number | undefined>();
+
+const [topazUpscaleFactor, setTopazUpscaleFactor] = useState(2);
+const [topazTargetFPS, setTopazTargetFPS] =
+  useState<"original" | "interpolated">("original");
+const [topazH264Output, setTopazH264Output] = useState(false);
+
+const bytedanceUpscalerSelected =
+  selectedModelId === "bytedance_video_upscaler";
+const flashvsrUpscalerSelected =
+  selectedModelId === "flashvsr_video_upscaler";
+
+const videoDurationSeconds = videoMetadata?.duration ?? 10;
+
+const bytedanceEstimatedCost = useMemo(
+  () =>
+    calculateByteDanceUpscaleCost(
+      bytedanceTargetResolution,
+      bytedanceTargetFPS,
+      videoDurationSeconds
+    ),
+  [bytedanceTargetResolution, bytedanceTargetFPS, videoDurationSeconds]
+);
+
+const flashvsrEstimatedCost = useMemo(() => {
+  if (!videoMetadata) return "$0.000";
+  const { width, height, frames, duration, fps } = videoMetadata;
+  const frameCount =
+    frames ??
+    Math.max(1, Math.round((duration ?? 0) * (fps ?? 30)));
+
+  return calculateFlashVSRUpscaleCost(
+    width,
+    height,
+    frameCount,
+    flashvsrUpscaleFactor
+  );
+}, [videoMetadata, flashvsrUpscaleFactor]);
 ```
 
-#### 6c. Add tab content (after line 2059)
+#### 6c. Extract video metadata when a source is provided
+
+```tsx
+const handleUpscaleVideoChange = async (file: File | null) => {
+  setSourceVideoFile(file);
+
+  if (!file) {
+    setVideoMetadata(null);
+    return;
+  }
+
+  setSourceVideoUrl("");
+  const metadata = await extractVideoMetadataFromFile(file);
+  setVideoMetadata(metadata);
+};
+
+const handleUpscaleVideoUrlBlur = async () => {
+  if (!sourceVideoUrl) {
+    setVideoMetadata(null);
+    return;
+  }
+
+  try {
+    const metadata = await extractVideoMetadataFromUrl(sourceVideoUrl);
+    setVideoMetadata(metadata);
+  } catch (error) {
+    console.error("Failed to read video metadata", error);
+    setVideoMetadata(null);
+  }
+};
+```
+
+> `extractVideoMetadataFromFile` / `extractVideoMetadataFromUrl` can live in a small utility (e.g., `video-metadata.ts`) that loads the asset into a hidden `<video>` element, listens for `loadedmetadata`, and then resolves `{ width, height, duration, fps, frames }`. Knowing the exact dimensions lets the cost estimators stay accurate.
+
+#### 6d. Add tab content (after line 2059)
 ```tsx
 <TabsContent value="upscale" className="space-y-4">
   {/* Video Upload Section */}
@@ -815,17 +927,16 @@ const [bytedanceTargetFPS, setBytedanceTargetFPS] =
     <FileUpload
       id="upscale-video-upload"
       label="Upload Source Video"
-      helperText="MP4, MOV, or AVI up to 500MB, max 2 minutes"
+      helperText={`MP4, MOV, or AVI up to ${UPLOAD_CONSTANTS.UPSCALE_MAX_VIDEO_SIZE_LABEL}, max 2 minutes`}
       fileType="video"
       acceptedTypes={UPLOAD_CONSTANTS.ALLOWED_VIDEO_TYPES}
-      maxSizeBytes={500 * 1024 * 1024}
-      maxSizeLabel="500MB"
+      maxSizeBytes={UPLOAD_CONSTANTS.UPSCALE_MAX_VIDEO_SIZE_BYTES}
+      maxSizeLabel={UPLOAD_CONSTANTS.UPSCALE_MAX_VIDEO_SIZE_LABEL}
       formatsLabel={UPLOAD_CONSTANTS.VIDEO_FORMATS_LABEL}
       file={sourceVideoFile}
       preview={null}
       onFileChange={(file) => {
-        setSourceVideoFile(file);
-        if (file) setSourceVideoUrl("");
+        void handleUpscaleVideoChange(file);
       }}
       onError={setError}
       isCompact={isCompact}
@@ -839,7 +950,11 @@ const [bytedanceTargetFPS, setBytedanceTargetFPS] =
       onChange={(e) => {
         setSourceVideoUrl(e.target.value);
         if (e.target.value) setSourceVideoFile(null);
+        if (!e.target.value) {
+          setVideoMetadata(null);
+        }
       }}
+      onBlur={handleUpscaleVideoUrlBlur}
       placeholder="https://example.com/video.mp4"
       className="h-8 text-xs"
     />
@@ -905,7 +1020,7 @@ const [bytedanceTargetFPS, setBytedanceTargetFPS] =
 
       {/* Cost Estimator */}
       <div className="text-xs text-muted-foreground">
-        Estimated cost (10s): ${bytedanceEstimatedCost.toFixed(3)}
+        Estimated cost (per clip): {bytedanceEstimatedCost}
       </div>
       <div className="text-xs text-muted-foreground">
         AI-powered upscaling to 1080p, 2K, or 4K with optional 60fps enhancement.
@@ -914,7 +1029,7 @@ const [bytedanceTargetFPS, setBytedanceTargetFPS] =
   )}
 
   {/* FlashVSR Upscaler Settings */}
-  {selectedModelId === "flashvsr_video_upscaler" && (
+  {flashvsrUpscalerSelected && (
     <Card className="model-settings">
       <h4>FlashVSR Upscaler Settings</h4>
 
@@ -938,11 +1053,18 @@ const [bytedanceTargetFPS, setBytedanceTargetFPS] =
         <Label>Acceleration Mode</Label>
         <Select
           value={flashvsrAcceleration}
-          onChange={setFlashvsrAcceleration}
+          onValueChange={(value) =>
+            setFlashvsrAcceleration(value as "regular" | "high" | "full")
+          }
         >
-          <option value="regular">Regular (Best Quality)</option>
-          <option value="high">High (30-40% faster)</option>
-          <option value="full">Full (50-60% faster)</option>
+          <SelectTrigger className="h-8 text-xs">
+            <SelectValue placeholder="Select acceleration" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="regular">Regular (Best Quality)</SelectItem>
+            <SelectItem value="high">High (30-40% faster)</SelectItem>
+            <SelectItem value="full">Full (50-60% faster)</SelectItem>
+          </SelectContent>
         </Select>
         <p className="help-text">
           Higher acceleration = faster processing with slight quality trade-off
@@ -969,12 +1091,23 @@ const [bytedanceTargetFPS, setBytedanceTargetFPS] =
         <Label>Output Format</Label>
         <Select
           value={flashvsrOutputFormat}
-          onChange={setFlashvsrOutputFormat}
+          onValueChange={(value) =>
+            setFlashvsrOutputFormat(
+              value as "X264" | "VP9" | "PRORES4444" | "GIF"
+            )
+          }
         >
-          <option value="X264">X264 (.mp4) - Standard</option>
-          <option value="VP9">VP9 (.webm) - Modern codec</option>
-          <option value="PRORES4444">ProRes 4444 (.mov) - Professional</option>
-          <option value="GIF">GIF (.gif) - Animated</option>
+          <SelectTrigger className="h-8 text-xs">
+            <SelectValue placeholder="Select format" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="X264">X264 (.mp4) - Standard</SelectItem>
+            <SelectItem value="VP9">VP9 (.webm) - Modern codec</SelectItem>
+            <SelectItem value="PRORES4444">
+              ProRes 4444 (.mov) - Professional
+            </SelectItem>
+            <SelectItem value="GIF">GIF (.gif) - Animated</SelectItem>
+          </SelectContent>
         </Select>
       </div>
 
@@ -983,12 +1116,21 @@ const [bytedanceTargetFPS, setBytedanceTargetFPS] =
         <Label>Output Quality</Label>
         <Select
           value={flashvsrOutputQuality}
-          onChange={setFlashvsrOutputQuality}
+          onValueChange={(value) =>
+            setFlashvsrOutputQuality(
+              value as "low" | "medium" | "high" | "maximum"
+            )
+          }
         >
-          <option value="low">Low</option>
-          <option value="medium">Medium</option>
-          <option value="high">High</option>
-          <option value="maximum">Maximum</option>
+          <SelectTrigger className="h-8 text-xs">
+            <SelectValue placeholder="Select quality" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="low">Low</SelectItem>
+            <SelectItem value="medium">Medium</SelectItem>
+            <SelectItem value="high">High</SelectItem>
+            <SelectItem value="maximum">Maximum</SelectItem>
+          </SelectContent>
         </Select>
       </div>
 
@@ -997,11 +1139,18 @@ const [bytedanceTargetFPS, setBytedanceTargetFPS] =
         <Label>Encoding Mode</Label>
         <Select
           value={flashvsrOutputWriteMode}
-          onChange={setFlashvsrOutputWriteMode}
+          onValueChange={(value) =>
+            setFlashvsrOutputWriteMode(value as "fast" | "balanced" | "small")
+          }
         >
-          <option value="fast">Fast (Faster encoding)</option>
-          <option value="balanced">Balanced (Default)</option>
-          <option value="small">Small (Smaller file size)</option>
+          <SelectTrigger className="h-8 text-xs">
+            <SelectValue placeholder="Select encoding profile" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="fast">Fast (Faster encoding)</SelectItem>
+            <SelectItem value="balanced">Balanced (Default)</SelectItem>
+            <SelectItem value="small">Small (Smaller file size)</SelectItem>
+          </SelectContent>
         </Select>
       </div>
 
@@ -1038,16 +1187,10 @@ const [bytedanceTargetFPS, setBytedanceTargetFPS] =
       {/* Cost Estimator */}
       <div className="cost-estimate">
         <Label>Estimated Cost:</Label>
-        <span className="cost-value">
-          {calculateFlashVSRUpscaleCost(
-            videoWidth,
-            videoHeight,
-            videoFrames,
-            flashvsrUpscaleFactor
-          )}
-        </span>
+        <span className="cost-value">{flashvsrEstimatedCost}</span>
         <p className="help-text">
-          Based on megapixels: width × height × frames × upscale factor
+          Based on output megapixels: (width × upscale factor) × (height ×
+          upscale factor) × frames × $0.0005 / 1,000,000.
         </p>
       </div>
     </Card>
@@ -1116,6 +1259,9 @@ const [bytedanceTargetFPS, setBytedanceTargetFPS] =
 ```
 <!-- REVIEW: The snippet starts with `<TabsContent>` but closes with `</TabPanel>`. Double-check which component the real UI uses so we don't end up with mismatched tab primitives. -->
 <!-- REVIEW: The FlashVSR cost estimator references `videoWidth`, `videoHeight`, and `videoFrames`, but the doc never shows where those values are sourced. Consider adding guidance on how to derive these (e.g., metadata extraction when a clip is uploaded) so the helper can compile. -->
+<!-- REVIEW: The UI logic depends on `bytedanceUpscalerSelected`, but the preceding state section only introduces resolution/FPS hooks; please clarify how this flag is computed (e.g., `selectedModelId === "bytedance_video_upscaler"`). -->
+<!-- REVIEW: `bytedanceEstimatedCost` is rendered in the ByteDance panel, yet there's no snippet showing how it's calculated or memoized; reference Step 7 or add the missing helper usage to keep the UI example self-contained. -->
+<!-- REVIEW: FlashVSR uses `<Select>` with `<option>` elements even though the rest of the doc relies on the Shadcn/Radix `SelectTrigger`/`SelectContent` API; pick one approach or the example won't compile. -->
 
 ### Step 7: Add Cost Calculation Helpers
 
@@ -1172,6 +1318,7 @@ function calculateTopazUpscaleCost(factor: number): string {
 }
 ```
 <!-- REVIEW: Earlier in the doc the FlashVSR pricing formula omits the upscale factor, but this helper multiplies the megapixels by `upscaleFactor ** 2`. Please confirm whether billing is on input pixels only or if output resolution should influence pricing so we don't misquote costs. -->
+<!-- REVIEW: The Topaz helper returns $1.00 for a 4x upscale, yet the pricing section above states ~$2.00 for 4x and ~$5.00 for 8x; sync the math or the table so cost expectations stay consistent. -->
 
 ## Testing Checklist
 
