@@ -395,11 +395,25 @@ export function AiView() {
     seedanceModelConfig?.supportedResolutions ?? SEEDANCE_RESOLUTIONS;
   const seedanceAspectRatioOptions =
     seedanceModelConfig?.supportedAspectRatios ?? SEEDANCE_ASPECT_RATIOS;
+  const seedanceBasePrice = seedanceModelConfig
+    ? Number.parseFloat(seedanceModelConfig.price)
+    : 0;
+  const seedanceDefaultDuration =
+    (seedanceModelConfig?.default_params?.duration as number | undefined) ?? 5;
+  const seedanceEstimatedCost =
+    seedanceBasePrice * (seedanceDuration / (seedanceDefaultDuration || 5));
   const klingModelConfig = AI_MODELS.find(
     (model) => model.id === "kling_v2_5_turbo_i2v"
   );
   const klingAspectRatios =
     klingModelConfig?.supportedAspectRatios ?? KLING_ASPECT_RATIOS;
+  const klingBasePrice = klingModelConfig
+    ? Number.parseFloat(klingModelConfig.price)
+    : 0;
+  const klingDefaultDuration =
+    (klingModelConfig?.default_params?.duration as number | undefined) ?? 5;
+  const klingEstimatedCost =
+    klingBasePrice * (klingDuration / (klingDefaultDuration || 5));
   const wan25ModelConfig = AI_MODELS.find(
     (model) => model.id === "wan_25_preview_i2v"
   );
@@ -515,6 +529,12 @@ export function AiView() {
       setWan25EnablePromptExpansion(true);
     }
   }, [wan25Selected]);
+
+  useEffect(() => {
+    if (!seedanceSelected && !wan25Selected) {
+      setImageSeed(undefined);
+    }
+  }, [seedanceSelected, wan25Selected]);
 
   useEffect(() => {
     if (!ltxv2FastTextSelected && !ltxv2ImageSelected) {
@@ -1596,6 +1616,440 @@ export function AiView() {
                   <div className="text-xs text-muted-foreground">
                     6-20 second clips with optional audio at up to 4K. Longer
                     clips automatically use 1080p at 25 FPS.
+                  </div>
+                </div>
+              )}
+              {seedanceSelected && (
+                <div className="space-y-3 text-left border-t pt-3">
+                  <Label className="text-sm font-semibold">
+                    Seedance Settings
+                  </Label>
+
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="space-y-1">
+                      <Label htmlFor="seedance-duration" className="text-xs">
+                        Duration
+                      </Label>
+                      <Select
+                        value={seedanceDuration.toString()}
+                        onValueChange={(value) =>
+                          setSeedanceDuration(Number(value) as SeedanceDuration)
+                        }
+                      >
+                        <SelectTrigger
+                          id="seedance-duration"
+                          className="h-8 text-xs"
+                        >
+                          <SelectValue placeholder="Select duration" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {seedanceDurationOptions.map((durationOption) => (
+                            <SelectItem
+                              key={durationOption}
+                              value={durationOption.toString()}
+                            >
+                              {durationOption} seconds
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor="seedance-resolution" className="text-xs">
+                        Resolution
+                      </Label>
+                      <Select
+                        value={seedanceResolution}
+                        onValueChange={(value) =>
+                          setSeedanceResolution(value as SeedanceResolution)
+                        }
+                      >
+                        <SelectTrigger
+                          id="seedance-resolution"
+                          className="h-8 text-xs"
+                        >
+                          <SelectValue placeholder="Select resolution" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {seedanceResolutionOptions.map((resolutionOption) => (
+                            <SelectItem key={resolutionOption} value={resolutionOption}>
+                              {resolutionOption.toUpperCase()}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <Label htmlFor="seedance-aspect" className="text-xs">
+                      Aspect Ratio
+                    </Label>
+                    <Select
+                      value={seedanceAspectRatio}
+                      onValueChange={(value) =>
+                        setSeedanceAspectRatio(value as SeedanceAspectRatio)
+                      }
+                    >
+                      <SelectTrigger
+                        id="seedance-aspect"
+                        className="h-8 text-xs"
+                      >
+                        <SelectValue placeholder="Select aspect ratio" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {seedanceAspectRatioOptions.map((ratio) => (
+                          <SelectItem key={ratio} value={ratio}>
+                            {ratio.toUpperCase()}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="seedance-camera-fixed"
+                      checked={seedanceCameraFixed}
+                      onCheckedChange={(checked) =>
+                        setSeedanceCameraFixed(Boolean(checked))
+                      }
+                    />
+                    <Label htmlFor="seedance-camera-fixed" className="text-xs">
+                      Lock camera position
+                    </Label>
+                  </div>
+
+                  {seedanceProSelected && (
+                    <div className="space-y-2">
+                      <Label className="text-xs font-medium">
+                        End Frame (optional)
+                      </Label>
+                      <Input
+                        id="seedance-end-frame-url"
+                        type="url"
+                        value={seedanceEndFrameUrl ?? ""}
+                        onChange={(event) =>
+                          setSeedanceEndFrameUrl(
+                            event.target.value ? event.target.value : undefined
+                          )
+                        }
+                        placeholder="https://example.com/final-frame.png"
+                        className="h-8 text-xs"
+                      />
+                      <FileUpload
+                        id="seedance-end-frame-upload"
+                        label="Upload End Frame"
+                        helperText="Optional reference for the final frame"
+                        fileType="image"
+                        acceptedTypes={UPLOAD_CONSTANTS.ALLOWED_IMAGE_TYPES}
+                        maxSizeBytes={UPLOAD_CONSTANTS.MAX_IMAGE_SIZE_BYTES}
+                        maxSizeLabel={UPLOAD_CONSTANTS.MAX_IMAGE_SIZE_LABEL}
+                        formatsLabel={UPLOAD_CONSTANTS.IMAGE_FORMATS_LABEL}
+                        file={seedanceEndFrameFile}
+                        preview={seedanceEndFramePreview}
+                        onFileChange={(file, preview) => {
+                          setSeedanceEndFrameFile(file);
+                          setSeedanceEndFramePreview(preview || null);
+                          if (file) {
+                            setSeedanceEndFrameUrl(undefined);
+                          }
+                        }}
+                        onError={setError}
+                        isCompact={isCompact}
+                      />
+                    </div>
+                  )}
+
+                  <div className="text-xs text-muted-foreground">
+                    Estimated cost: ${seedanceEstimatedCost.toFixed(2)}
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    Seedance animates 2-12 second clips with reproducible seeds
+                    and optional end frames (Pro only).
+                  </div>
+                </div>
+              )}
+              {klingI2VSelected && (
+                <div className="space-y-3 text-left border-t pt-3">
+                  <Label className="text-sm font-semibold">
+                    Kling v2.5 Turbo Settings
+                  </Label>
+
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="space-y-1">
+                      <Label htmlFor="kling-duration" className="text-xs">
+                        Duration
+                      </Label>
+                      <Select
+                        value={klingDuration.toString()}
+                        onValueChange={(value) =>
+                          setKlingDuration(Number(value) as 5 | 10)
+                        }
+                      >
+                        <SelectTrigger
+                          id="kling-duration"
+                          className="h-8 text-xs"
+                        >
+                          <SelectValue placeholder="Select duration" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="5">5 seconds ($0.35)</SelectItem>
+                          <SelectItem value="10">10 seconds ($0.70)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor="kling-aspect" className="text-xs">
+                        Aspect Ratio
+                      </Label>
+                      <Select
+                        value={klingAspectRatio}
+                        onValueChange={(value) =>
+                          setKlingAspectRatio(value as KlingAspectRatio)
+                        }
+                      >
+                        <SelectTrigger
+                          id="kling-aspect"
+                          className="h-8 text-xs"
+                        >
+                          <SelectValue placeholder="Select aspect ratio" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {klingAspectRatios.map((ratio) => (
+                            <SelectItem key={ratio} value={ratio}>
+                              {ratio.toUpperCase()}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <Label htmlFor="kling-cfg" className="text-xs">
+                      Prompt Adherence ({klingCfgScale.toFixed(1)})
+                    </Label>
+                    <input
+                      id="kling-cfg"
+                      type="range"
+                      min="0"
+                      max="1"
+                      step="0.1"
+                      value={klingCfgScale}
+                      onChange={(event) =>
+                        setKlingCfgScale(Number(event.target.value))
+                      }
+                      className="w-full cursor-pointer"
+                    />
+                    <div className="text-xs text-muted-foreground">
+                      Lower values add more freedom, higher values follow the
+                      prompt closely.
+                    </div>
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="kling-enhance-prompt"
+                      checked={klingEnhancePrompt}
+                      onCheckedChange={(checked) =>
+                        setKlingEnhancePrompt(Boolean(checked))
+                      }
+                    />
+                    <Label htmlFor="kling-enhance-prompt" className="text-xs">
+                      Enhance prompt with AI
+                    </Label>
+                  </div>
+
+                  <div className="space-y-1">
+                    <Label htmlFor="kling-negative-prompt" className="text-xs">
+                      Negative Prompt (optional)
+                    </Label>
+                    <Textarea
+                      id="kling-negative-prompt"
+                      value={klingNegativePrompt}
+                      onChange={(event) => setKlingNegativePrompt(event.target.value)}
+                      placeholder="blur, distort, low quality"
+                      className="min-h-[60px] text-xs"
+                      maxLength={2500}
+                    />
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    Estimated cost: ${klingEstimatedCost.toFixed(2)}
+                  </div>
+                </div>
+              )}
+              {wan25Selected && (
+                <div className="space-y-3 text-left border-t pt-3">
+                  <Label className="text-sm font-semibold">
+                    WAN 2.5 Preview Settings
+                  </Label>
+
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="space-y-1">
+                      <Label htmlFor="wan25-duration" className="text-xs">
+                        Duration
+                      </Label>
+                      <Select
+                        value={wan25Duration.toString()}
+                        onValueChange={(value) =>
+                          setWan25Duration(Number(value) as Wan25Duration)
+                        }
+                      >
+                        <SelectTrigger
+                          id="wan25-duration"
+                          className="h-8 text-xs"
+                        >
+                          <SelectValue placeholder="Select duration" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {wan25DurationOptions.map((durationOption) => (
+                            <SelectItem
+                              key={durationOption}
+                              value={durationOption.toString()}
+                            >
+                              {durationOption} seconds
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor="wan25-resolution" className="text-xs">
+                        Resolution
+                      </Label>
+                      <Select
+                        value={wan25Resolution}
+                        onValueChange={(value) =>
+                          setWan25Resolution(value as Wan25Resolution)
+                        }
+                      >
+                        <SelectTrigger
+                          id="wan25-resolution"
+                          className="h-8 text-xs"
+                        >
+                          <SelectValue placeholder="Select resolution" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {wan25ResolutionOptions.map((resolutionOption) => (
+                            <SelectItem key={resolutionOption} value={resolutionOption}>
+                              {resolutionOption.toUpperCase()} (
+                              ${wan25ModelConfig?.perSecondPricing?.[resolutionOption] ??
+                              0}
+                              /sec)
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="wan25-enhance-prompt"
+                      checked={wan25EnablePromptExpansion}
+                      onCheckedChange={(checked) =>
+                        setWan25EnablePromptExpansion(Boolean(checked))
+                      }
+                    />
+                    <Label htmlFor="wan25-enhance-prompt" className="text-xs">
+                      Enhance prompt with AI
+                    </Label>
+                  </div>
+
+                  <div className="space-y-1">
+                    <Label htmlFor="wan25-negative" className="text-xs">
+                      Negative Prompt (max 500 characters)
+                    </Label>
+                    <Textarea
+                      id="wan25-negative"
+                      value={wan25NegativePrompt}
+                      onChange={(event) =>
+                        setWan25NegativePrompt(event.target.value.slice(0, 500))
+                      }
+                      placeholder="Avoid blurry, shaky motion..."
+                      className="min-h-[60px] text-xs"
+                      maxLength={500}
+                    />
+                    <div className="text-xs text-muted-foreground">
+                      {wan25NegativePrompt.length}/500 characters
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-xs font-medium">
+                      Background Music (optional)
+                    </Label>
+                    <Input
+                      type="url"
+                      value={wan25AudioUrl ?? ""}
+                      onChange={(event) =>
+                        setWan25AudioUrl(
+                          event.target.value ? event.target.value : undefined
+                        )
+                      }
+                      placeholder="https://example.com/music.mp3"
+                      className="h-8 text-xs"
+                    />
+                    <FileUpload
+                      id="wan25-audio-upload"
+                      label="Upload Audio"
+                      helperText="MP3/WAV between 3-30 seconds (max 15MB)"
+                      fileType="audio"
+                      acceptedTypes={UPLOAD_CONSTANTS.ALLOWED_AUDIO_TYPES}
+                      maxSizeBytes={15 * 1024 * 1024}
+                      maxSizeLabel="15MB"
+                      formatsLabel={UPLOAD_CONSTANTS.AUDIO_FORMATS_LABEL}
+                      file={wan25AudioFile}
+                      preview={wan25AudioPreview}
+                      onFileChange={(file, preview) => {
+                        setWan25AudioFile(file);
+                        setWan25AudioPreview(preview || null);
+                        if (file) {
+                          setWan25AudioUrl(undefined);
+                        }
+                      }}
+                      onError={setError}
+                      isCompact={isCompact}
+                    />
+                  </div>
+
+                  <div className="text-xs text-muted-foreground">
+                    Estimated cost: ${wan25EstimatedCost.toFixed(2)} (
+                    ${wan25PricePerSecond.toFixed(2)}/sec)
+                  </div>
+                </div>
+              )}
+              {(seedanceSelected || wan25Selected) && (
+                <div className="space-y-2 text-left border-t pt-3">
+                  <Label className="text-sm font-semibold">
+                    Advanced Options
+                  </Label>
+                  <div className="space-y-1">
+                    <Label htmlFor="image-seed" className="text-xs">
+                      Seed (optional)
+                    </Label>
+                    <Input
+                      id="image-seed"
+                      type="number"
+                      value={imageSeed ?? ""}
+                      onChange={(event) => {
+                        const nextValue = event.target.value.trim();
+                        if (!nextValue) {
+                          setImageSeed(undefined);
+                          return;
+                        }
+                        const parsed = Number(nextValue);
+                        if (!Number.isNaN(parsed)) {
+                          setImageSeed(parsed);
+                        }
+                      }}
+                      placeholder="Enter seed for reproducible animation"
+                      className="h-8 text-xs"
+                    />
+                    <div className="text-xs text-muted-foreground">
+                      Use the same seed to reproduce motion across runs.
+                    </div>
                   </div>
                 </div>
               )}
