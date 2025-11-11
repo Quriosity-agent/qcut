@@ -64,7 +64,7 @@ const computeUpscaleSettings = (
     scaleFactor: nextScale,
     denoise: clamp(nextDenoise, 0, 100),
     creativity: model.features.creativity
-      ? clamp(nextCreativity, 0, 100)
+      ? clamp(nextCreativity ?? 0, 0, 100)
       : defaults.creativity,
     overlappingTiles: model.features.overlappingTiles
       ? nextOverlapping

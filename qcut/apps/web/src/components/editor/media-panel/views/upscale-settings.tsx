@@ -28,7 +28,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { UPSCALE_MODELS, type UpscaleModelId } from "@/lib/upscale-models";
+import { UPSCALE_MODELS, type UpscaleModelId, type UpscaleScaleFactor } from "@/lib/upscale-models";
 import {
   type UpscaleSettings,
   useText2ImageStore,
@@ -111,7 +111,7 @@ export function UpscaleSettingsPanel({ className }: UpscaleSettingsProps) {
               variant={
                 option === upscaleSettings.scaleFactor ? "default" : "outline"
               }
-              onClick={() => setUpscaleSettings({ scaleFactor: option })}
+              onClick={() => setUpscaleSettings({ scaleFactor: option as UpscaleScaleFactor })}
               className="px-3 py-1 text-xs"
             >
               {option}x
@@ -148,7 +148,7 @@ export function UpscaleSettingsPanel({ className }: UpscaleSettingsProps) {
             max={100}
             min={0}
             step={1}
-            value={[upscaleSettings.creativity]}
+            value={[upscaleSettings.creativity ?? 0]}
             onValueChange={(value) => handleSliderChange("creativity", value)}
           />
         </section>
