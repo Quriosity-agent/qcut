@@ -2037,6 +2037,396 @@ export async function generateLTXV2ImageVideo(
 }
 
 /**
+ * Seedance Image-to-Video Request Interface
+ */
+export interface SeedanceI2VRequest {
+  model: string;
+  prompt: string;
+  image_url: string;
+  duration?: 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12;
+  resolution?: "480p" | "720p" | "1080p";
+  aspect_ratio?: "21:9" | "16:9" | "4:3" | "1:1" | "3:4" | "9:16" | "auto";
+  camera_fixed?: boolean;
+  seed?: number;
+  enable_safety_checker?: boolean;
+  end_frame_url?: string;
+}
+
+/**
+ * Generate video from image using Seedance v1 Pro models.
+ */
+export async function generateSeedanceVideo(
+  request: SeedanceI2VRequest
+): Promise<VideoGenerationResponse> {
+  try {
+    const falApiKey = getFalApiKey();
+    if (!falApiKey) {
+      throw new Error("FAL API key not configured");
+    }
+
+    const trimmedPrompt = request.prompt?.trim() ?? "";
+    if (!trimmedPrompt) {
+      throw new Error("Please enter a prompt describing the desired animation");
+    }
+
+    if (!request.image_url) {
+      throw new Error(
+        "Image URL is required for Seedance image-to-video generation"
+      );
+    }
+
+    const modelConfig = getModelConfig(request.model);
+    if (!modelConfig) {
+      throw new Error(`Unknown model: ${request.model}`);
+    }
+
+    const endpoint = modelConfig.endpoints.image_to_video;
+    if (!endpoint) {
+      throw new Error(
+        `Model ${request.model} does not support image-to-video generation`
+      );
+    }
+
+    const duration =
+      request.duration ??
+      (modelConfig.default_params?.duration as number | undefined) ??
+      5;
+    const resolution =
+      request.resolution ??
+      (modelConfig.default_params?.resolution as string | undefined) ??
+      "1080p";
+    const aspectRatio =
+      request.aspect_ratio ??
+      (modelConfig.default_params?.aspect_ratio as string | undefined) ??
+      "16:9";
+    const cameraFixed =
+      request.camera_fixed ??
+      (modelConfig.default_params?.camera_fixed as boolean | undefined) ??
+      false;
+
+    const payload: Record<string, unknown> = {
+      prompt: trimmedPrompt,
+      image_url: request.image_url,
+      duration,
+      resolution,
+      aspect_ratio: aspectRatio,
+      camera_fixed: cameraFixed,
+      enable_safety_checker:
+        request.enable_safety_checker ??
+        (modelConfig.default_params?.enable_safety_checker ?? true),
+    };
+
+    if (request.seed !== undefined) {
+      payload.seed = request.seed;
+    }
+
+    if (request.end_frame_url && request.model === "seedance_pro_i2v") {
+      payload.end_frame_url = request.end_frame_url;
+    }
+
+    const jobId = generateJobId();
+    const response = await fetch(`${FAL_API_BASE}/${endpoint}`, {
+      method: "POST",
+      headers: {
+        Authorization: `Key ${falApiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+
+      if (response.status === 401) {
+        throw new Error(
+          "Invalid FAL.ai API key. Please check your API key configuration."
+        );
+      }
+
+      if (response.status === 429) {
+        throw new Error(
+          "Rate limit exceeded. Please wait a moment before trying again."
+        );
+      }
+
+      throw new Error(
+        `FAL API error: ${errorData.detail || response.statusText}`
+      );
+    }
+
+    const result = await response.json();
+    return {
+      job_id: jobId,
+      status: "completed",
+      message: `Video generated successfully with ${request.model}`,
+      estimated_time: 0,
+      video_url: result.video?.url || result.video || result.url,
+      video_data: result,
+    };
+  } catch (error) {
+    handleAIServiceError(error, "Generate Seedance video", {
+      model: request.model,
+      prompt: request.prompt?.substring(0, 100),
+      operation: "generateSeedanceVideo",
+    });
+    throw error;
+  }
+}
+
+export interface KlingI2VRequest {
+  model: string;
+  prompt: string;
+  image_url: string;
+  duration?: 5 | 10;
+  cfg_scale?: number;
+  aspect_ratio?: "16:9" | "9:16" | "1:1" | "4:3" | "3:4";
+  enhance_prompt?: boolean;
+  negative_prompt?: string;
+}
+
+/**
+ * Generate video from image using Kling v2.5 Turbo Pro model.
+ */
+export async function generateKlingImageVideo(
+  request: KlingI2VRequest
+): Promise<VideoGenerationResponse> {
+  try {
+    const falApiKey = getFalApiKey();
+    if (!falApiKey) {
+      throw new Error("FAL API key not configured");
+    }
+
+    const trimmedPrompt = request.prompt?.trim() ?? "";
+    if (!trimmedPrompt) {
+      throw new Error("Please enter a prompt describing the desired motion");
+    }
+
+    if (trimmedPrompt.length > 2500) {
+      throw new Error("Prompt exceeds maximum length of 2,500 characters");
+    }
+
+    if (!request.image_url) {
+      throw new Error("Image URL is required for Kling image-to-video");
+    }
+
+    const modelConfig = getModelConfig(request.model);
+    if (!modelConfig) {
+      throw new Error(`Unknown model: ${request.model}`);
+    }
+
+    const endpoint = modelConfig.endpoints.image_to_video;
+    if (!endpoint) {
+      throw new Error(
+        `Model ${request.model} does not support image-to-video generation`
+      );
+    }
+
+    const duration = request.duration ?? 5;
+    const aspectRatio =
+      request.aspect_ratio ??
+      (modelConfig.default_params?.aspect_ratio as string | undefined) ??
+      "16:9";
+    const cfgScale = Math.min(Math.max(request.cfg_scale ?? 0.5, 0), 1);
+    const enhancePrompt =
+      request.enhance_prompt ??
+      (modelConfig.default_params?.enhance_prompt ?? true);
+
+    const payload: Record<string, unknown> = {
+      prompt: trimmedPrompt,
+      image_url: request.image_url,
+      duration,
+      aspect_ratio: aspectRatio,
+      cfg_scale: cfgScale,
+      enhance_prompt: enhancePrompt,
+    };
+
+    if (request.negative_prompt) {
+      payload.negative_prompt = request.negative_prompt;
+    }
+
+    const jobId = generateJobId();
+    const response = await fetch(`${FAL_API_BASE}/${endpoint}`, {
+      method: "POST",
+      headers: {
+        Authorization: `Key ${falApiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+
+      if (response.status === 401) {
+        throw new Error(
+          "Invalid FAL.ai API key. Please check your API key configuration."
+        );
+      }
+
+      if (response.status === 429) {
+        throw new Error(
+          "Rate limit exceeded. Please wait a moment before trying again."
+        );
+      }
+
+      throw new Error(
+        `FAL API error: ${errorData.detail || response.statusText}`
+      );
+    }
+
+    const result = await response.json();
+    return {
+      job_id: jobId,
+      status: "completed",
+      message: `Video generated successfully with ${request.model}`,
+      estimated_time: 0,
+      video_url: result.video?.url || result.video || result.url,
+      video_data: result,
+    };
+  } catch (error) {
+    handleAIServiceError(error, "Generate Kling video", {
+      model: request.model,
+      prompt: request.prompt?.substring(0, 100),
+      operation: "generateKlingImageVideo",
+    });
+    throw error;
+  }
+}
+
+export interface WAN25I2VRequest {
+  model: string;
+  prompt: string;
+  image_url: string;
+  duration?: 5 | 10;
+  resolution?: "480p" | "720p" | "1080p";
+  audio_url?: string;
+  negative_prompt?: string;
+  enable_prompt_expansion?: boolean;
+  seed?: number;
+}
+
+/**
+ * Generate video from image using WAN v2.5 Preview model.
+ */
+export async function generateWAN25ImageVideo(
+  request: WAN25I2VRequest
+): Promise<VideoGenerationResponse> {
+  try {
+    const falApiKey = getFalApiKey();
+    if (!falApiKey) {
+      throw new Error("FAL API key not configured");
+    }
+
+    const trimmedPrompt = request.prompt?.trim() ?? "";
+    if (!trimmedPrompt) {
+      throw new Error("Please enter a prompt describing the desired motion");
+    }
+
+    if (trimmedPrompt.length > 800) {
+      throw new Error("Prompt exceeds maximum length of 800 characters");
+    }
+
+    if (!request.image_url) {
+      throw new Error("Image URL is required for WAN 2.5 image-to-video");
+    }
+
+    if (request.negative_prompt && request.negative_prompt.length > 500) {
+      throw new Error("Negative prompt exceeds maximum length of 500 characters");
+    }
+
+    const modelConfig = getModelConfig(request.model);
+    if (!modelConfig) {
+      throw new Error(`Unknown model: ${request.model}`);
+    }
+
+    const endpoint = modelConfig.endpoints.image_to_video;
+    if (!endpoint) {
+      throw new Error(
+        `Model ${request.model} does not support image-to-video generation`
+      );
+    }
+
+    const duration =
+      request.duration ??
+      (modelConfig.default_params?.duration as number | undefined) ??
+      5;
+    const resolution =
+      request.resolution ??
+      (modelConfig.default_params?.resolution as string | undefined) ??
+      "1080p";
+
+    const payload: Record<string, unknown> = {
+      prompt: trimmedPrompt,
+      image_url: request.image_url,
+      duration,
+      resolution,
+      enable_prompt_expansion:
+        request.enable_prompt_expansion ??
+        (modelConfig.default_params?.enable_prompt_expansion ?? true),
+    };
+
+    if (request.audio_url) {
+      payload.audio_url = request.audio_url;
+    }
+
+    if (request.negative_prompt) {
+      payload.negative_prompt = request.negative_prompt;
+    }
+
+    if (request.seed !== undefined) {
+      payload.seed = request.seed;
+    }
+
+    const jobId = generateJobId();
+    const response = await fetch(`${FAL_API_BASE}/${endpoint}`, {
+      method: "POST",
+      headers: {
+        Authorization: `Key ${falApiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+
+      if (response.status === 401) {
+        throw new Error(
+          "Invalid FAL.ai API key. Please check your API key configuration."
+        );
+      }
+
+      if (response.status === 429) {
+        throw new Error(
+          "Rate limit exceeded. Please wait a moment before trying again."
+        );
+      }
+
+      throw new Error(
+        `FAL API error: ${errorData.detail || response.statusText}`
+      );
+    }
+
+    const result = await response.json();
+    return {
+      job_id: jobId,
+      status: "completed",
+      message: `Video generated successfully with ${request.model}`,
+      estimated_time: 0,
+      video_url: result.video?.url || result.video || result.url,
+      video_data: result,
+    };
+  } catch (error) {
+    handleAIServiceError(error, "Generate WAN 2.5 video", {
+      model: request.model,
+      prompt: request.prompt?.substring(0, 100),
+      operation: "generateWAN25ImageVideo",
+    });
+    throw error;
+  }
+}
+
+/**
  * Generates avatar video using FAL AI's character animation models.
  *
  * WHY: Animates static character images with audio/video input for talking head and character replacement use cases.
