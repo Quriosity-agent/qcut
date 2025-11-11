@@ -71,6 +71,28 @@ type SeedanceAspectRatio =
 type KlingAspectRatio = "16:9" | "9:16" | "1:1" | "4:3" | "3:4";
 type Wan25Resolution = "480p" | "720p" | "1080p";
 type Wan25Duration = 5 | 10;
+const SEEDANCE_DURATION_OPTIONS: SeedanceDuration[] = [
+  2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12,
+];
+const SEEDANCE_RESOLUTIONS: SeedanceResolution[] = ["480p", "720p", "1080p"];
+const SEEDANCE_ASPECT_RATIOS: SeedanceAspectRatio[] = [
+  "21:9",
+  "16:9",
+  "4:3",
+  "1:1",
+  "3:4",
+  "9:16",
+  "auto",
+];
+const KLING_ASPECT_RATIOS: KlingAspectRatio[] = [
+  "16:9",
+  "9:16",
+  "1:1",
+  "4:3",
+  "3:4",
+];
+const WAN25_DURATIONS: Wan25Duration[] = [5, 10];
+const WAN25_RESOLUTIONS: Wan25Resolution[] = ["480p", "720p", "1080p"];
 
 const LTXV2_FAST_RESOLUTION_LABELS: Record<LTXV2FastResolution, string> = {
   "1080p": "1080p (Full HD)",
@@ -361,6 +383,33 @@ export function AiView() {
   const seedanceSelected = seedanceFastSelected || seedanceProSelected;
   const klingI2VSelected = selectedModels.includes("kling_v2_5_turbo_i2v");
   const wan25Selected = selectedModels.includes("wan_25_preview_i2v");
+  const seedanceModelId = seedanceProSelected
+    ? "seedance_pro_i2v"
+    : "seedance_pro_fast_i2v";
+  const seedanceModelConfig = AI_MODELS.find(
+    (model) => model.id === seedanceModelId
+  );
+  const seedanceDurationOptions =
+    seedanceModelConfig?.supportedDurations ?? SEEDANCE_DURATION_OPTIONS;
+  const seedanceResolutionOptions =
+    seedanceModelConfig?.supportedResolutions ?? SEEDANCE_RESOLUTIONS;
+  const seedanceAspectRatioOptions =
+    seedanceModelConfig?.supportedAspectRatios ?? SEEDANCE_ASPECT_RATIOS;
+  const klingModelConfig = AI_MODELS.find(
+    (model) => model.id === "kling_v2_5_turbo_i2v"
+  );
+  const klingAspectRatios =
+    klingModelConfig?.supportedAspectRatios ?? KLING_ASPECT_RATIOS;
+  const wan25ModelConfig = AI_MODELS.find(
+    (model) => model.id === "wan_25_preview_i2v"
+  );
+  const wan25DurationOptions =
+    wan25ModelConfig?.supportedDurations ?? WAN25_DURATIONS;
+  const wan25ResolutionOptions =
+    wan25ModelConfig?.supportedResolutions ?? WAN25_RESOLUTIONS;
+  const wan25PricePerSecond =
+    wan25ModelConfig?.perSecondPricing?.[wan25Resolution] ?? 0;
+  const wan25EstimatedCost = wan25PricePerSecond * wan25Duration;
 
   // Reset Reve state when model is deselected
   useEffect(() => {
