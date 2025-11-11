@@ -3,11 +3,15 @@ import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
 import {
-  UPSCALE_MODELS,
-  type UpscaleModelId,
-} from "@/lib/upscale-models";
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { cn } from "@/lib/utils";
+import { UPSCALE_MODELS, type UpscaleModelId } from "@/lib/upscale-models";
 import {
   type UpscaleSettings,
   useText2ImageStore,
@@ -17,18 +21,17 @@ interface UpscaleSettingsProps {
   className?: string;
 }
 
-export function UpscaleSettings({ className }: UpscaleSettingsProps) {
+export function UpscaleSettingsPanel({ className }: UpscaleSettingsProps) {
   const upscaleSettings = useText2ImageStore((state) => state.upscaleSettings);
-  const setUpscaleSettings = useText2ImageStore((state) => state.setUpscaleSettings);
+  const setUpscaleSettings = useText2ImageStore(
+    (state) => state.setUpscaleSettings
+  );
 
   const model = UPSCALE_MODELS[upscaleSettings.selectedModel as UpscaleModelId];
   const scaleOptions =
     model.controls.scaleFactor.options ?? model.supportedScales;
 
-  const handleSliderChange = (
-    key: keyof UpscaleSettings,
-    value: number[]
-  ) => {
+  const handleSliderChange = (key: keyof UpscaleSettings, value: number[]) => {
     setUpscaleSettings({ [key]: value[0] } as Partial<UpscaleSettings>);
   };
 
@@ -117,6 +120,31 @@ export function UpscaleSettings({ className }: UpscaleSettingsProps) {
           />
         </section>
       )}
+
+      <section className="space-y-2" data-testid="upscale-setting-format">
+        <Label className="text-xs">Output Format</Label>
+        <Select
+          value={upscaleSettings.outputFormat}
+          onValueChange={(value) =>
+            setUpscaleSettings({
+              outputFormat: value as "png" | "jpeg" | "webp",
+            })
+          }
+        >
+          <SelectTrigger className="h-9">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="png">PNG (Lossless, larger file)</SelectItem>
+            <SelectItem value="jpeg">
+              JPEG (Compressed, smaller file)
+            </SelectItem>
+            <SelectItem value="webp">
+              WebP (Modern format, best compression)
+            </SelectItem>
+          </SelectContent>
+        </Select>
+      </section>
     </div>
   );
 }

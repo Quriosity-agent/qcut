@@ -31,10 +31,7 @@ import {
   TEXT2IMAGE_MODELS,
   TEXT2IMAGE_MODEL_ORDER,
 } from "@/lib/text2image-models";
-import {
-  UPSCALE_MODEL_ORDER,
-  UPSCALE_MODELS,
-} from "@/lib/upscale-models";
+import { UPSCALE_MODEL_ORDER, UPSCALE_MODELS } from "@/lib/upscale-models";
 import {
   FloatingActionPanelRoot,
   FloatingActionPanelTrigger,
@@ -43,7 +40,7 @@ import {
 } from "@/components/ui/floating-action-panel";
 import { FileUpload } from "@/components/ui/file-upload";
 import { ModelTypeSelector } from "./model-type-selector";
-import { UpscaleSettings } from "./upscale-settings";
+import { UpscaleSettingsPanel } from "./upscale-settings";
 import { useUpscaleGeneration } from "./use-upscale-generation";
 import { UPLOAD_CONSTANTS } from "./ai-constants";
 
@@ -90,9 +87,9 @@ export function Text2ImageView() {
   const [imageSize, setImageSize] = useState("square_hd");
   const [seed, setSeed] = useState("");
   const [upscaleImageFile, setUpscaleImageFile] = useState<File | null>(null);
-  const [upscaleImagePreview, setUpscaleImagePreview] = useState<
-    string | null
-  >(null);
+  const [upscaleImagePreview, setUpscaleImagePreview] = useState<string | null>(
+    null
+  );
   const [localUpscaleError, setLocalUpscaleError] = useState<string | null>(
     null
   );
@@ -178,373 +175,402 @@ export function Text2ImageView() {
       <ModelTypeSelector selected={modelType} onChange={setModelType} />
       {modelType === "generation" && (
         <>
-      {/* Generate Button */}
-      <Button
-        onClick={handleGenerate}
-        disabled={!prompt.trim() || selectedModelCount === 0 || isGenerating}
-        className="w-full"
-        size="lg"
-      >
-        {isGenerating ? (
-          <>
-            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-            Generating...
-          </>
-        ) : (
-          <>
-            <Wand2 className="w-4 h-4 mr-2" />
-            {generationMode === "single"
-              ? "Generate Image"
-              : `Generate with ${selectedModelCount} Model${selectedModelCount !== 1 ? "s" : ""}`}
-          </>
-        )}
-      </Button>
-
-      {/* Mode Selection */}
-      <Card className="border-0 shadow-none" style={{ marginTop: "5px" }}>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm">Generation Mode</CardTitle>
-          <div style={{ height: "6px" }} />
-        </CardHeader>
-        <CardContent>
-          <RadioGroup
-            value={generationMode}
-            onValueChange={(value: "single" | "multi") =>
-              setGenerationMode(value)
+          {/* Generate Button */}
+          <Button
+            onClick={handleGenerate}
+            disabled={
+              !prompt.trim() || selectedModelCount === 0 || isGenerating
             }
-            className="flex flex-col gap-1.5"
+            className="w-full"
+            size="lg"
           >
-            <div className="flex items-center space-x-2 cursor-pointer">
-              <RadioGroupItem value="single" id="single" className="h-3 w-3" />
-              <Label htmlFor="single" className="text-xs cursor-pointer">
-                Single Model
-              </Label>
-            </div>
-            <div className="flex items-center space-x-2 cursor-pointer">
-              <RadioGroupItem value="multi" id="multi" className="h-3 w-3" />
-              <Label htmlFor="multi" className="text-xs cursor-pointer">
-                Multi-Model Compare
-              </Label>
-            </div>
-          </RadioGroup>
-        </CardContent>
-      </Card>
-
-      {/* Model Selection */}
-      <Card className="border-0 shadow-none">
-        <CardHeader className="pb-2 pt-3">
-          <CardTitle className="text-sm">
-            {generationMode === "single"
-              ? "Select Model"
-              : `Select Models (${selectedModelCount} chosen)`}
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="pt-0">
-          <FloatingActionPanelRoot defaultMode="selection">
-            {({ mode, open }) => (
-              <div>
-                <FloatingActionPanelTrigger
-                  mode="selection"
-                  title="Click to select AI models"
-                  className="w-full !bg-transparent hover:!bg-transparent border border-input h-8 text-xs"
-                >
-                  {selectedModelCount === 0
-                    ? "Click to choose"
-                    : generationMode === "single" && selectedModels[0]
-                      ? TEXT2IMAGE_MODELS[selectedModels[0]]?.name
-                      : "Click to change selection"}
-                </FloatingActionPanelTrigger>
-
-                {open && (
-                  <div className="w-full border rounded-md bg-background/90 backdrop-blur-sm max-h-[250px] overflow-y-auto shadow-md mt-1">
-                    <div className="p-2 space-y-1">
-                      {TEXT2IMAGE_MODEL_ORDER.map((modelId) => {
-                        const model = TEXT2IMAGE_MODELS[modelId];
-                        const isSelected = selectedModels.includes(modelId);
-                        return (
-                          <FloatingActionPanelModelOption
-                            key={modelId}
-                            id={modelId}
-                            name={model.name}
-                            checked={isSelected}
-                            onCheckedChange={(checked) => {
-                              if (generationMode === "single") {
-                                if (checked) {
-                                  selectModels([modelId]);
-                                } else {
-                                  selectModels([]);
-                                }
-                                return;
-                              }
-
-                              setModelSelection(modelId, checked);
-                            }}
-                          />
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-              </div>
+            {isGenerating ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Generating...
+              </>
+            ) : (
+              <>
+                <Wand2 className="w-4 h-4 mr-2" />
+                {generationMode === "single"
+                  ? "Generate Image"
+                  : `Generate with ${selectedModelCount} Model${selectedModelCount !== 1 ? "s" : ""}`}
+              </>
             )}
-          </FloatingActionPanelRoot>
-        </CardContent>
-      </Card>
+          </Button>
 
-      {/* Prompt Input */}
-      <Card className="border-0 shadow-none" style={{ marginTop: "5px" }}>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm">Prompt</CardTitle>
-          <div style={{ height: "5px" }} />
-        </CardHeader>
-        <CardContent>
-          <Textarea
-            placeholder="Describe the image you want to generate..."
-            value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
-            className="min-h-[100px] resize-none"
-          />
-        </CardContent>
-      </Card>
+          {/* Mode Selection */}
+          <Card className="border-0 shadow-none" style={{ marginTop: "5px" }}>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm">Generation Mode</CardTitle>
+              <div style={{ height: "6px" }} />
+            </CardHeader>
+            <CardContent>
+              <RadioGroup
+                value={generationMode}
+                onValueChange={(value: "single" | "multi") =>
+                  setGenerationMode(value)
+                }
+                className="flex flex-col gap-1.5"
+              >
+                <div className="flex items-center space-x-2 cursor-pointer">
+                  <RadioGroupItem
+                    value="single"
+                    id="single"
+                    className="h-3 w-3"
+                  />
+                  <Label htmlFor="single" className="text-xs cursor-pointer">
+                    Single Model
+                  </Label>
+                </div>
+                <div className="flex items-center space-x-2 cursor-pointer">
+                  <RadioGroupItem
+                    value="multi"
+                    id="multi"
+                    className="h-3 w-3"
+                  />
+                  <Label htmlFor="multi" className="text-xs cursor-pointer">
+                    Multi-Model Compare
+                  </Label>
+                </div>
+              </RadioGroup>
+            </CardContent>
+          </Card>
 
-      {/* Settings */}
-      <Card className="border-0 shadow-none" style={{ marginTop: "5px" }}>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm" style={{ marginLeft: "5px" }}>
-            Settings
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="size" className="text-xs">
-                Image Size
-              </Label>
-              <div style={{ height: "5px" }} />
-              <Select value={imageSize} onValueChange={setImageSize}>
-                <SelectTrigger
-                  id="size"
-                  className="justify-between text-foreground"
-                >
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="z-[9999] bg-background border shadow-lg">
-                  <SelectItem value="square" className="text-foreground">
-                    Square
-                  </SelectItem>
-                  <SelectItem value="square_hd" className="text-foreground">
-                    Square HD
-                  </SelectItem>
-                  <SelectItem value="landscape_4_3" className="text-foreground">
-                    Landscape (4:3)
-                  </SelectItem>
-                  <SelectItem
-                    value="landscape_16_9"
-                    className="text-foreground"
-                  >
-                    Landscape (16:9)
-                  </SelectItem>
-                  <SelectItem value="portrait_3_4" className="text-foreground">
-                    Portrait (3:4)
-                  </SelectItem>
-                  <SelectItem value="portrait_9_16" className="text-foreground">
-                    Portrait (9:16)
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label htmlFor="seed" className="text-xs">
-                Seed (Optional)
-              </Label>
-              <Input
-                id="seed"
-                placeholder="Random"
-                value={seed}
-                onChange={(e) => setSeed(e.target.value)}
-                type="number"
-              />
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Results */}
-      {hasResults && (
-        <Card>
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
+          {/* Model Selection */}
+          <Card className="border-0 shadow-none">
+            <CardHeader className="pb-2 pt-3">
               <CardTitle className="text-sm">
                 {generationMode === "single"
-                  ? "Generated Image"
-                  : "Compare Results"}
+                  ? "Select Model"
+                  : `Select Models (${selectedModelCount} chosen)`}
               </CardTitle>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={clearResults}
-                className="text-xs"
-              >
-                <RefreshCw className="w-3 h-3 mr-1" />
-                Clear
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {generationMode === "single" ? (
-              // Single result
-              <div className="space-y-4">
-                {Object.entries(generationResults).map(([modelKey, result]) => (
-                  <div key={modelKey} className="space-y-2">
-                    {result.status === "loading" && (
-                      <div className="flex items-center justify-center p-8 border-2 border-dashed rounded-lg">
-                        <div className="text-center">
-                          <Loader2 className="w-8 h-8 mx-auto mb-2 animate-spin" />
-                          <p className="text-sm text-muted-foreground">
-                            Generating with {TEXT2IMAGE_MODELS[modelKey]?.name}
-                            ...
-                          </p>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <FloatingActionPanelRoot defaultMode="selection">
+                {({ mode, open }) => (
+                  <div>
+                    <FloatingActionPanelTrigger
+                      mode="selection"
+                      title="Click to select AI models"
+                      className="w-full !bg-transparent hover:!bg-transparent border border-input h-8 text-xs"
+                    >
+                      {selectedModelCount === 0
+                        ? "Click to choose"
+                        : generationMode === "single" && selectedModels[0]
+                          ? TEXT2IMAGE_MODELS[selectedModels[0]]?.name
+                          : "Click to change selection"}
+                    </FloatingActionPanelTrigger>
+
+                    {open && (
+                      <div className="w-full border rounded-md bg-background/90 backdrop-blur-sm max-h-[250px] overflow-y-auto shadow-md mt-1">
+                        <div className="p-2 space-y-1">
+                          {TEXT2IMAGE_MODEL_ORDER.map((modelId) => {
+                            const model = TEXT2IMAGE_MODELS[modelId];
+                            const isSelected = selectedModels.includes(modelId);
+                            return (
+                              <FloatingActionPanelModelOption
+                                key={modelId}
+                                id={modelId}
+                                name={model.name}
+                                checked={isSelected}
+                                onCheckedChange={(checked) => {
+                                  if (generationMode === "single") {
+                                    if (checked) {
+                                      selectModels([modelId]);
+                                    } else {
+                                      selectModels([]);
+                                    }
+                                    return;
+                                  }
+
+                                  setModelSelection(modelId, checked);
+                                }}
+                              />
+                            );
+                          })}
                         </div>
-                      </div>
-                    )}
-                    {result.status === "success" && result.imageUrl && (
-                      <div className="space-y-2">
-                        <BlobImage
-                          src={result.imageUrl}
-                          alt="Generated artwork"
-                          className="w-full rounded-lg border"
-                          crossOrigin="anonymous"
-                        />
-                        <Button
-                          onClick={() =>
-                            addSelectedToMedia([
-                              {
-                                modelKey,
-                                imageUrl: result.imageUrl!,
-                                prompt,
-                                settings: {
-                                  imageSize,
-                                  seed: seed ? parseInt(seed) : undefined,
-                                },
-                                mode: "generation",
-                              },
-                            ])
-                          }
-                          className="w-full"
-                          variant="outline"
-                        >
-                          <Download className="w-4 h-4 mr-2" />
-                          Add to Media Panel
-                        </Button>
-                      </div>
-                    )}
-                    {result.status === "error" && (
-                      <div className="p-4 border-2 border-red-200 rounded-lg bg-red-50">
-                        <p className="text-sm text-red-800">
-                          Failed to generate with{" "}
-                          {TEXT2IMAGE_MODELS[modelKey]?.name}: {result.error}
-                        </p>
                       </div>
                     )}
                   </div>
-                ))}
-              </div>
-            ) : (
-              // Multi-model comparison
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {Object.entries(generationResults).map(
-                    ([modelKey, result]) => (
-                      <div
-                        key={modelKey}
-                        className="border rounded-lg overflow-hidden"
+                )}
+              </FloatingActionPanelRoot>
+            </CardContent>
+          </Card>
+
+          {/* Prompt Input */}
+          <Card className="border-0 shadow-none" style={{ marginTop: "5px" }}>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm">Prompt</CardTitle>
+              <div style={{ height: "5px" }} />
+            </CardHeader>
+            <CardContent>
+              <Textarea
+                placeholder="Describe the image you want to generate..."
+                value={prompt}
+                onChange={(e) => setPrompt(e.target.value)}
+                className="min-h-[100px] resize-none"
+              />
+            </CardContent>
+          </Card>
+
+          {/* Settings */}
+          <Card className="border-0 shadow-none" style={{ marginTop: "5px" }}>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm" style={{ marginLeft: "5px" }}>
+                Settings
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="size" className="text-xs">
+                    Image Size
+                  </Label>
+                  <div style={{ height: "5px" }} />
+                  <Select value={imageSize} onValueChange={setImageSize}>
+                    <SelectTrigger
+                      id="size"
+                      className="justify-between text-foreground"
+                    >
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="z-[9999] bg-background border shadow-lg">
+                      <SelectItem value="square" className="text-foreground">
+                        Square
+                      </SelectItem>
+                      <SelectItem value="square_hd" className="text-foreground">
+                        Square HD
+                      </SelectItem>
+                      <SelectItem
+                        value="landscape_4_3"
+                        className="text-foreground"
                       >
-                        <div className="p-3 bg-muted">
-                          <div className="flex items-center justify-between">
-                            <h4 className="text-sm font-medium">
-                              {TEXT2IMAGE_MODELS[modelKey]?.name}
-                            </h4>
-                            {result.status === "success" && result.imageUrl && (
-                              <Checkbox
-                                checked={selectedResults.some(
-                                  (r) => r.modelKey === modelKey
-                                )}
-                                onCheckedChange={() =>
-                                  toggleResultSelection({
-                                    modelKey,
-                                    imageUrl: result.imageUrl!,
-                                    prompt,
-                                    settings: {
-                                      imageSize,
-                                      seed: seed ? parseInt(seed) : undefined,
-                                    },
-                                    mode: "generation",
-                                  })
-                                }
-                              />
-                            )}
-                          </div>
-                        </div>
-                        <div className="aspect-square bg-muted">
+                        Landscape (4:3)
+                      </SelectItem>
+                      <SelectItem
+                        value="landscape_16_9"
+                        className="text-foreground"
+                      >
+                        Landscape (16:9)
+                      </SelectItem>
+                      <SelectItem
+                        value="portrait_3_4"
+                        className="text-foreground"
+                      >
+                        Portrait (3:4)
+                      </SelectItem>
+                      <SelectItem
+                        value="portrait_9_16"
+                        className="text-foreground"
+                      >
+                        Portrait (9:16)
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label htmlFor="seed" className="text-xs">
+                    Seed (Optional)
+                  </Label>
+                  <Input
+                    id="seed"
+                    placeholder="Random"
+                    value={seed}
+                    onChange={(e) => setSeed(e.target.value)}
+                    type="number"
+                  />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Results */}
+          {hasResults && (
+            <Card>
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-sm">
+                    {generationMode === "single"
+                      ? "Generated Image"
+                      : "Compare Results"}
+                  </CardTitle>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={clearResults}
+                    className="text-xs"
+                  >
+                    <RefreshCw className="w-3 h-3 mr-1" />
+                    Clear
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {generationMode === "single" ? (
+                  // Single result
+                  <div className="space-y-4">
+                    {Object.entries(generationResults).map(
+                      ([modelKey, result]) => (
+                        <div key={modelKey} className="space-y-2">
                           {result.status === "loading" && (
-                            <div className="flex items-center justify-center h-full">
+                            <div className="flex items-center justify-center p-8 border-2 border-dashed rounded-lg">
                               <div className="text-center">
-                                <Loader2 className="w-6 h-6 mx-auto mb-2 animate-spin" />
-                                <p className="text-xs text-muted-foreground">
-                                  Generating...
+                                <Loader2 className="w-8 h-8 mx-auto mb-2 animate-spin" />
+                                <p className="text-sm text-muted-foreground">
+                                  Generating with{" "}
+                                  {TEXT2IMAGE_MODELS[modelKey]?.name}
+                                  ...
                                 </p>
                               </div>
                             </div>
                           )}
                           {result.status === "success" && result.imageUrl && (
-                            <BlobImage
-                              src={result.imageUrl}
-                              alt={`Generated by ${TEXT2IMAGE_MODELS[modelKey]?.name}`}
-                              className="w-full h-full object-cover cursor-pointer hover:opacity-90 transition-opacity"
-                              crossOrigin="anonymous"
-                              onClick={() =>
-                                toggleResultSelection({
-                                  modelKey,
-                                  imageUrl: result.imageUrl!,
-                                  prompt,
-                                  settings: {
-                                    imageSize,
-                                    seed: seed ? parseInt(seed) : undefined,
-                                  },
-                                  mode: "generation",
-                                })
-                              }
-                            />
+                            <div className="space-y-2">
+                              <BlobImage
+                                src={result.imageUrl}
+                                alt="Generated artwork"
+                                className="w-full rounded-lg border"
+                                crossOrigin="anonymous"
+                              />
+                              <Button
+                                onClick={() =>
+                                  addSelectedToMedia([
+                                    {
+                                      modelKey,
+                                      imageUrl: result.imageUrl!,
+                                      prompt,
+                                      settings: {
+                                        imageSize,
+                                        seed: seed ? parseInt(seed) : undefined,
+                                      },
+                                      mode: "generation",
+                                    },
+                                  ])
+                                }
+                                className="w-full"
+                                variant="outline"
+                              >
+                                <Download className="w-4 h-4 mr-2" />
+                                Add to Media Panel
+                              </Button>
+                            </div>
                           )}
                           {result.status === "error" && (
-                            <div className="flex items-center justify-center h-full p-4">
-                              <p className="text-xs text-red-600 text-center">
-                                Generation failed: {result.error}
+                            <div className="p-4 border-2 border-red-200 rounded-lg bg-red-50">
+                              <p className="text-sm text-red-800">
+                                Failed to generate with{" "}
+                                {TEXT2IMAGE_MODELS[modelKey]?.name}:{" "}
+                                {result.error}
                               </p>
                             </div>
                           )}
                         </div>
-                      </div>
-                    )
-                  )}
-                </div>
+                      )
+                    )}
+                  </div>
+                ) : (
+                  // Multi-model comparison
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {Object.entries(generationResults).map(
+                        ([modelKey, result]) => (
+                          <div
+                            key={modelKey}
+                            className="border rounded-lg overflow-hidden"
+                          >
+                            <div className="p-3 bg-muted">
+                              <div className="flex items-center justify-between">
+                                <h4 className="text-sm font-medium">
+                                  {TEXT2IMAGE_MODELS[modelKey]?.name}
+                                </h4>
+                                {result.status === "success" &&
+                                  result.imageUrl && (
+                                    <Checkbox
+                                      checked={selectedResults.some(
+                                        (r) => r.modelKey === modelKey
+                                      )}
+                                      onCheckedChange={() =>
+                                        toggleResultSelection({
+                                          modelKey,
+                                          imageUrl: result.imageUrl!,
+                                          prompt,
+                                          settings: {
+                                            imageSize,
+                                            seed: seed
+                                              ? parseInt(seed)
+                                              : undefined,
+                                          },
+                                          mode: "generation",
+                                        })
+                                      }
+                                    />
+                                  )}
+                              </div>
+                            </div>
+                            <div className="aspect-square bg-muted">
+                              {result.status === "loading" && (
+                                <div className="flex items-center justify-center h-full">
+                                  <div className="text-center">
+                                    <Loader2 className="w-6 h-6 mx-auto mb-2 animate-spin" />
+                                    <p className="text-xs text-muted-foreground">
+                                      Generating...
+                                    </p>
+                                  </div>
+                                </div>
+                              )}
+                              {result.status === "success" &&
+                                result.imageUrl && (
+                                  <BlobImage
+                                    src={result.imageUrl}
+                                    alt={`Generated by ${TEXT2IMAGE_MODELS[modelKey]?.name}`}
+                                    className="w-full h-full object-cover cursor-pointer hover:opacity-90 transition-opacity"
+                                    crossOrigin="anonymous"
+                                    onClick={() =>
+                                      toggleResultSelection({
+                                        modelKey,
+                                        imageUrl: result.imageUrl!,
+                                        prompt,
+                                        settings: {
+                                          imageSize,
+                                          seed: seed
+                                            ? parseInt(seed)
+                                            : undefined,
+                                        },
+                                        mode: "generation",
+                                      })
+                                    }
+                                  />
+                                )}
+                              {result.status === "error" && (
+                                <div className="flex items-center justify-center h-full p-4">
+                                  <p className="text-xs text-red-600 text-center">
+                                    Generation failed: {result.error}
+                                  </p>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )
+                      )}
+                    </div>
 
-                {selectedResultCount > 0 && (
-                  <Button
-                    onClick={handleAddToMedia}
-                    className="w-full"
-                    size="lg"
-                  >
-                    <Download className="w-4 h-4 mr-2" />
-                    Add {selectedResultCount} Selected Image
-                    {selectedResultCount !== 1 ? "s" : ""} to Media Panel
-                  </Button>
+                    {selectedResultCount > 0 && (
+                      <Button
+                        onClick={handleAddToMedia}
+                        className="w-full"
+                        size="lg"
+                      >
+                        <Download className="w-4 h-4 mr-2" />
+                        Add {selectedResultCount} Selected Image
+                        {selectedResultCount !== 1 ? "s" : ""} to Media Panel
+                      </Button>
+                    )}
+                  </div>
                 )}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      )}
+              </CardContent>
+            </Card>
+          )}
         </>
       )}
       {modelType === "upscale" && (
@@ -561,7 +587,9 @@ export function Text2ImageView() {
                   <button
                     key={modelId}
                     type="button"
-                    onClick={() => setUpscaleSettings({ selectedModel: modelId })}
+                    onClick={() =>
+                      setUpscaleSettings({ selectedModel: modelId })
+                    }
                     className={cn(
                       "w-full rounded-lg border p-3 text-left transition-colors",
                       isSelected
@@ -583,7 +611,10 @@ export function Text2ImageView() {
                     </div>
                     <div className="mt-2 flex flex-wrap gap-2 text-[10px] text-muted-foreground">
                       {model.bestFor.slice(0, 2).map((tag) => (
-                        <span key={tag} className="rounded-full bg-muted px-2 py-0.5">
+                        <span
+                          key={tag}
+                          className="rounded-full bg-muted px-2 py-0.5"
+                        >
                           {tag}
                         </span>
                       ))}
@@ -599,7 +630,7 @@ export function Text2ImageView() {
               <CardTitle className="text-sm">Upscale Settings</CardTitle>
             </CardHeader>
             <CardContent className="pt-0">
-              <UpscaleSettings />
+              <UpscaleSettingsPanel />
             </CardContent>
           </Card>
 
@@ -625,7 +656,9 @@ export function Text2ImageView() {
               />
 
               {combinedUpscaleError && (
-                <p className="text-xs text-destructive">{combinedUpscaleError}</p>
+                <p className="text-xs text-destructive">
+                  {combinedUpscaleError}
+                </p>
               )}
 
               <Button
