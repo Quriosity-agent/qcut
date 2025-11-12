@@ -533,25 +533,17 @@ export function AiView() {
     seedanceModelConfig?.supportedResolutions ?? SEEDANCE_RESOLUTIONS;
   const seedanceAspectRatioOptions =
     seedanceModelConfig?.supportedAspectRatios ?? SEEDANCE_ASPECT_RATIOS;
-  const seedanceBasePrice = seedanceModelConfig
-    ? Number.parseFloat(seedanceModelConfig.price)
-    : 0;
-  const seedanceDefaultDuration =
-    (seedanceModelConfig?.default_params?.duration as number | undefined) ?? 5;
-  const seedanceEstimatedCost =
-    seedanceBasePrice * (seedanceDuration / (seedanceDefaultDuration || 5));
+  const seedanceEstimatedCost = calculateSeedanceCost(
+    seedanceModelId,
+    seedanceResolution,
+    seedanceDuration
+  );
   const klingModelConfig = AI_MODELS.find(
     (model) => model.id === "kling_v2_5_turbo_i2v"
   );
   const klingAspectRatios =
     klingModelConfig?.supportedAspectRatios ?? KLING_ASPECT_RATIOS;
-  const klingBasePrice = klingModelConfig
-    ? Number.parseFloat(klingModelConfig.price)
-    : 0;
-  const klingDefaultDuration =
-    (klingModelConfig?.default_params?.duration as number | undefined) ?? 5;
-  const klingEstimatedCost =
-    klingBasePrice * (klingDuration / (klingDefaultDuration || 5));
+  const klingEstimatedCost = calculateKlingCost(klingDuration);
   const wan25ModelConfig = AI_MODELS.find(
     (model) => model.id === "wan_25_preview_i2v"
   );
@@ -3419,6 +3411,60 @@ export function AiView() {
       />
     </div>
   );
+}
+
+/**
+ * Calculate Seedance video generation cost using token-based pricing
+ * Formula: tokens = (height × width × FPS × duration) / 1024
+ * @param modelId - seedance_pro_fast_i2v or seedance_pro_i2v
+ * @param resolution - 480p, 720p, or 1080p
+ * @param duration - Duration in seconds
+ * @returns Estimated cost in dollars
+ */
+function calculateSeedanceCost(
+  modelId: string,
+  resolution: string,
+  duration: number
+): number {
+  // Resolution dimensions
+  const resolutionMap: Record<string, { width: number; height: number }> = {
+    "480p": { width: 854, height: 480 },
+    "720p": { width: 1280, height: 720 },
+    "1080p": { width: 1920, height: 1080 },
+  };
+
+  const dimensions = resolutionMap[resolution] ?? resolutionMap["1080p"];
+  const fps = 30; // Standard FPS for Seedance models
+
+  // Calculate video tokens
+  const tokens =
+    (dimensions.height * dimensions.width * fps * duration) / 1024;
+
+  // Price per million tokens
+  const pricePerMillionTokens =
+    modelId === "seedance_pro_fast_i2v" ? 1.0 : 2.5;
+
+  // Calculate total cost
+  const cost = (tokens * pricePerMillionTokens) / 1_000_000;
+
+  return cost;
+}
+
+/**
+ * Calculate Kling v2.5 Turbo Pro I2V cost using fixed duration-based pricing
+ * @param duration - Duration in seconds (5 or 10)
+ * @returns Estimated cost in dollars
+ */
+function calculateKlingCost(duration: number): number {
+  // Fixed pricing tiers
+  if (duration <= 5) {
+    return 0.35;
+  }
+  if (duration <= 10) {
+    return 0.7;
+  }
+  // Fallback: $0.07 per second beyond 10s (not officially supported but reasonable)
+  return 0.7 + (duration - 10) * 0.07;
 }
 
 /**
