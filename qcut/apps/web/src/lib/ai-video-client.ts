@@ -1890,9 +1890,17 @@ export async function generateLTXV2Video(
 }
 
 /**
- * Generate video from image using LTX Video 2.0 Fast.
+ * Generate a video from a single image using LTX Video 2.0 (standard or Fast variants).
  *
- * @param request - Prompt, model ID, image URL, and optional parameters
+ * Builds and submits an image-to-video request to the configured model endpoint, applying model defaults
+ * and validating duration, resolution, and FPS constraints before calling the FAL API.
+ *
+ * @param request - LTXV2I2VRequest containing the model id, prompt, image_url, and optional overrides:
+ *                  duration, resolution, aspect_ratio, fps, and generate_audio.
+ * @returns A VideoGenerationResponse with fields including `job_id`, `status`, `message`, `estimated_time`,
+ *          `video_url` (if available), and `video_data` (raw API response).
+ * @throws Error if the FAL API key is missing, required inputs are invalid or missing, validation rules fail,
+ *         or the FAL API returns an error (e.g., unauthorized, payload too large, rate limited).
  */
 export async function generateLTXV2ImageVideo(
   request: LTXV2I2VRequest
@@ -2053,7 +2061,11 @@ export interface SeedanceI2VRequest {
 }
 
 /**
- * Generate video from image using Seedance v1 Pro models.
+ * Generate a video from a single image using a Seedance image-to-video model.
+ *
+ * @param request - SeedanceI2VRequest containing the model id, prompt, source image URL, and optional generation overrides (duration, resolution, aspect ratio, camera_fixed, seed, enable_safety_checker, end_image_url).
+ * @returns VideoGenerationResponse containing a job identifier, completion status, a message, estimated time, the generated video's URL (if available), and the raw API response in `video_data`.
+ * @throws Error when the FAL API key is not configured, the prompt or image URL is missing, the model is unknown or does not support image-to-video, or the FAL API returns an error (including invalid key or rate limits).
  */
 export async function generateSeedanceVideo(
   request: SeedanceI2VRequest
@@ -2185,7 +2197,24 @@ export interface KlingI2VRequest {
 }
 
 /**
- * Generate video from image using Kling v2.5 Turbo Pro model.
+ * Generate a video from a single image using the Kling v2.5 Turbo Pro image-to-video model.
+ *
+ * Builds and submits an image-to-video request using the configured Kling model and returns
+ * the resulting job metadata and video location when generation completes.
+ *
+ * @param request - Request parameters (must include `model` and `image_url`). Optional fields:
+ *   - `prompt`: description of desired motion (trimmed; max 2,500 characters).
+ *   - `duration`: desired video duration in seconds (defaults to 5).
+ *   - `cfg_scale`: strength of adherence to the prompt (clamped to 0–1, defaults to 0.5).
+ *   - `aspect_ratio`: target aspect ratio (falls back to model default or "16:9").
+ *   - `enhance_prompt`: whether to enable prompt enhancement (defaults to model default or true).
+ *   - `negative_prompt`: optional negative prompt to steer generation.
+ * @returns VideoGenerationResponse containing `job_id`, `status`, `message`, `estimated_time`, `video_url`, and raw `video_data`.
+ * @throws Error when the FAL API key is not configured.
+ * @throws Error when the prompt is empty or exceeds 2,500 characters.
+ * @throws Error when `image_url` is missing.
+ * @throws Error when the specified `model` is unknown or does not expose an image-to-video endpoint.
+ * @throws Error for FAL API failures (including invalid API key (401), rate limiting (429), or other API errors).
  */
 export async function generateKlingImageVideo(
   request: KlingI2VRequest
@@ -2306,7 +2335,13 @@ export interface WAN25I2VRequest {
 }
 
 /**
- * Generate video from image using WAN v2.5 Preview model.
+ * Generate a video from a single image using the WAN v2.5 Preview image-to-video model.
+ *
+ * Builds and sends a model-specific image-to-video request and returns the final generation result.
+ *
+ * @param request - Request parameters (must include `model`, `prompt`, and `image_url`; optional fields include `duration`, `resolution`, `audio_url`, `negative_prompt`, `enable_prompt_expansion`, and `seed`)
+ * @returns The generation result containing `job_id`, `status`, `message`, `estimated_time`, the generated `video_url` when available, and the raw API response in `video_data`
+ * @throws Error - If the FAL API key is missing, required inputs are invalid or missing (prompt, image_url), the model or endpoint is unsupported, or the FAL API returns an error (including authentication or rate-limit errors)
  */
 export async function generateWAN25ImageVideo(
   request: WAN25I2VRequest
@@ -2427,22 +2462,13 @@ export async function generateWAN25ImageVideo(
 }
 
 /**
- * Generates avatar video using FAL AI's character animation models.
+ * Generate an avatar video from a character image using a specified avatar model.
  *
- * WHY: Animates static character images with audio/video input for talking head and character replacement use cases.
- * Business logic: Different models require different input combinations:
- *   - WAN animate/replace: characterImage + sourceVideo (replaces character in existing video)
- *   - Kling/ByteDance: characterImage + audioFile (generates talking head from audio)
- * Performance: Audio files are converted to base64; 30s audio (~500KB MP3) becomes ~700KB payload.
+ * Builds and sends a model-specific payload (image plus audio or source video) to the configured FAL endpoint and returns the generation result.
  *
- * Edge cases:
- * - ByteDance OmniHuman has 30s audio limit; longer files will be truncated by FAL API
- * - WAN animate/replace requires source video with detectable face; fails on abstract/non-human content
- * - Model validation happens here; if required inputs missing, throws before API call
- *
- * @param request - Model ID, character image, and model-specific inputs (audio or source video)
- * @returns VideoGenerationResponse with job_id for polling
- * @throws Error if required inputs missing for selected model or FAL_API_KEY not configured
+ * @param request - Request object containing model id, character image File and model-specific inputs (audioFile for talking-head models or sourceVideo for animation/replace models)
+ * @returns VideoGenerationResponse containing job_id, status, message, and the API response including the generated video URL when available
+ * @throws Error if the FAL API key is missing, the model is unknown or not an avatar model, required inputs for the chosen model are missing, the model lacks a valid endpoint, or if the request times out (3 minutes)
  */
 export async function generateAvatarVideo(
   request: AvatarVideoRequest
@@ -2623,7 +2649,14 @@ export interface ByteDanceUpscaleRequest {
 }
 
 /**
- * Upscale video using ByteDance Video Upscaler
+ * Upscales a remote video using the ByteDance video upscaler model.
+ *
+ * @param request - Request options. `video_url` is required; `target_resolution` and `target_fps` default to `"1080p"` and `"30fps"` when omitted.
+ * @returns A VideoGenerationResponse containing the job id, completion status, a human-readable message, the resulting `video_url` (when available), and raw response data in `video_data`.
+ * @throws If the FAL API key is not configured.
+ * @throws If `request.video_url` is not provided.
+ * @throws If the ByteDance upscaler model or its endpoint is not found/configured.
+ * @throws On FAL API errors (includes specific messages for HTTP 401 — invalid API key — and 429 — rate limiting).
  */
 export async function upscaleByteDanceVideo(
   request: ByteDanceUpscaleRequest
@@ -2721,9 +2754,11 @@ export interface FlashVSRUpscaleRequest {
 }
 
 /**
- * Upscale video using FlashVSR Video Upscaler
+ * Upscales a video using the FlashVSR video upscaler model.
  *
- * @param request - Video URL and upscaling parameters
+ * @param request - Upscale request. `video_url` is required. Optional fields include `upscale_factor` (1–4), `quality` (0–100), `acceleration`, `color_fix`, `preserve_audio`, `output_format`, `output_quality`, `output_write_mode`, and `seed`.
+ * @returns A VideoGenerationResponse containing `job_id`, `status`, `message`, the resulting `video_url`, and the raw service response in `video_data`.
+ * @throws Error if the FAL API key is not configured, `video_url` is missing, the FlashVSR model or endpoint is not found, `upscale_factor` or `quality` are out of allowed ranges, or when the FAL API returns an error (including 401 or 429 responses).
  */
 export async function upscaleFlashVSRVideo(
   request: FlashVSRUpscaleRequest
@@ -2835,9 +2870,11 @@ export interface TopazUpscaleRequest {
 }
 
 /**
- * Upscale video using Topaz Video Upscaler
+ * Upscales a video using the Topaz Video Upscaler.
  *
- * @param request - Video URL and upscaling parameters
+ * @param request - Parameters including `video_url`, `upscale_factor`, and optional `target_fps` and `h264_output`
+ * @returns A VideoGenerationResponse containing the upscaled video's URL and binary data
+ * @throws Error with message "Topaz Video Upscale not yet implemented"
  */
 export async function upscaleTopazVideo(
   request: TopazUpscaleRequest
