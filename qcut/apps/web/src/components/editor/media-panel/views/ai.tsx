@@ -2286,7 +2286,9 @@ export function AiView() {
                   file={sourceVideoFile}
                   preview={null}
                   onFileChange={(file) => {
-                    void handleUpscaleVideoChange(file);
+                    handleUpscaleVideoChange(file).catch(() => {
+                      // Error already handled within the function
+                    });
                   }}
                   onError={setError}
                   isCompact={isCompact}
@@ -2314,7 +2316,9 @@ export function AiView() {
                     }
                   }}
                   onBlur={() => {
-                    void handleUpscaleVideoUrlBlur();
+                    handleUpscaleVideoUrlBlur().catch(() => {
+                      // Error already handled within the function
+                    });
                   }}
                   placeholder="https://example.com/video.mp4"
                   className="h-8 text-xs"

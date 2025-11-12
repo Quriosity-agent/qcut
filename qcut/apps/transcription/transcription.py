@@ -4,6 +4,7 @@ from pydantic import BaseModel, Field
 app = modal.App("opencut-transcription")
 
 class TranscribeRequest(BaseModel):
+    """Payload describing the media file to transcribe."""
     filename: str
     language: str = "auto"
     decryption_key: str | None = Field(default=None, alias="decryptionKey")
@@ -19,6 +20,7 @@ class TranscribeRequest(BaseModel):
 )
 @modal.fastapi_endpoint(method="POST")
 def transcribe_audio(request: TranscribeRequest):
+    """Transcribe an audio file stored in R2 and return text plus adjusted segments."""
     import whisper
     import boto3
     import tempfile
@@ -141,6 +143,7 @@ def transcribe_audio(request: TranscribeRequest):
 
 @app.local_entrypoint()
 def main():
+    """Local entry point that verifies the deployment instructions."""
     # Test function - you can call this with modal run transcription.py
     print("Transcription service is ready to deploy!")
     print("Deploy with: modal deploy transcription.py")
