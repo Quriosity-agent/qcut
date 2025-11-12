@@ -20,6 +20,8 @@ import {
   generateKlingImageVideo,
   generateWAN25ImageVideo,
   generateAvatarVideo,
+  upscaleByteDanceVideo,
+  upscaleFlashVSRVideo,
   handleApiError,
   getGenerationStatus,
   ProgressCallback,

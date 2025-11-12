@@ -22,6 +22,7 @@ import type { TProject } from "@/types/project";
 export interface AIModelEndpoints {
   text_to_video?: string;
   image_to_video?: string;
+  upscale_video?: string;
 }
 
 /**
@@ -93,10 +94,23 @@ export interface AIModel {
   default_params?: AIModelParameters;
   category?: ModelCategory;
   requiredInputs?: string[];
+  pricingModel?: string;
   supportedResolutions?: string[]; // For models supporting multiple resolutions (e.g., Pro models)
+  supportedFPS?: string[];
   supportedDurations?: number[];
   supportedAspectRatios?: string[];
   perSecondPricing?: Record<string, number>;
+  supportedUpscaleFactors?:
+    | number[]
+    | {
+        min: number;
+        max: number;
+        step?: number;
+      };
+  supportedAcceleration?: string[];
+  supportedOutputFormats?: string[];
+  supportedOutputQuality?: string[];
+  supportedWriteModes?: string[];
 }
 
 // Generated Video Interfaces
@@ -135,7 +149,7 @@ export interface UseAIGenerationProps {
   prompt: string;
   selectedModels: string[];
   selectedImage: File | null;
-  activeTab: "text" | "image" | "avatar";
+  activeTab: "text" | "image" | "avatar" | "upscale";
   activeProject: TProject | null;
   onProgress: (progress: number, message: string) => void;
   onError: (error: string) => void;
@@ -208,6 +222,28 @@ export interface UseAIGenerationProps {
   wan25NegativePrompt?: string;
   wan25EnablePromptExpansion?: boolean;
 
+  // Video upscaling options
+  // ByteDance Upscaler options
+  bytedanceTargetResolution?: "1080p" | "2k" | "4k";
+  bytedanceTargetFPS?: "30fps" | "60fps";
+  // FlashVSR Upscaler options
+  flashvsrUpscaleFactor?: number; // 1.0 to 4.0
+  flashvsrAcceleration?: "regular" | "high" | "full";
+  flashvsrQuality?: number; // 0 to 100
+  flashvsrColorFix?: boolean;
+  flashvsrPreserveAudio?: boolean;
+  flashvsrOutputFormat?: "X264" | "VP9" | "PRORES4444" | "GIF";
+  flashvsrOutputQuality?: "low" | "medium" | "high" | "maximum";
+  flashvsrOutputWriteMode?: "fast" | "balanced" | "small";
+  flashvsrSeed?: number;
+  // Topaz Upscaler options
+  topazUpscaleFactor?: number; // 2.0 to 8.0
+  topazTargetFPS?: "original" | "interpolated";
+  topazH264Output?: boolean;
+  // Shared video upscaling inputs
+  sourceVideoFile?: File | null;
+  sourceVideoUrl?: string;
+
   // First + Last Frame support for Frame-to-Video models (Veo 3.1)
   /** First frame image file for F2V models. Required when F2V model selected. */
   firstFrame?: File | null;
@@ -248,7 +284,7 @@ export interface AIHistoryState {
 }
 
 // UI State Types
-export type AIActiveTab = "text" | "image" | "avatar";
+export type AIActiveTab = "text" | "image" | "avatar" | "upscale";
 
 // Avatar-specific types
 export interface AvatarUploadState {

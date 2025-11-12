@@ -2614,6 +2614,239 @@ export async function generateAvatarVideo(
 }
 
 /**
+ * ByteDance Video Upscaler Request Interface
+ */
+export interface ByteDanceUpscaleRequest {
+  video_url: string;
+  target_resolution?: "1080p" | "2k" | "4k";
+  target_fps?: "30fps" | "60fps";
+}
+
+/**
+ * Upscale video using ByteDance Video Upscaler
+ */
+export async function upscaleByteDanceVideo(
+  request: ByteDanceUpscaleRequest
+): Promise<VideoGenerationResponse> {
+  try {
+    const falApiKey = getFalApiKey();
+    if (!falApiKey) {
+      throw new Error("FAL API key not configured");
+    }
+
+    if (!request.video_url) {
+      throw new Error("Video URL is required for upscaling");
+    }
+
+    const modelConfig = getModelConfig("bytedance_video_upscaler");
+    if (!modelConfig) {
+      throw new Error("ByteDance upscaler model not found");
+    }
+
+    const endpoint = modelConfig.endpoints.upscale_video;
+    if (!endpoint) {
+      throw new Error("ByteDance upscaler endpoint not configured");
+    }
+
+    const targetResolution = request.target_resolution ?? "1080p";
+    const targetFPS = request.target_fps ?? "30fps";
+
+    const payload: Record<string, unknown> = {
+      video_url: request.video_url,
+      target_resolution: targetResolution,
+      target_fps: targetFPS,
+    };
+
+    const jobId = generateJobId();
+    const response = await fetch(`${FAL_API_BASE}/${endpoint}`, {
+      method: "POST",
+      headers: {
+        Authorization: `Key ${falApiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+
+      if (response.status === 401) {
+        throw new Error(
+          "Invalid FAL.ai API key. Please check your API key configuration."
+        );
+      }
+
+      if (response.status === 429) {
+        throw new Error(
+          "Rate limit exceeded. Please wait a moment before trying again."
+        );
+      }
+
+      throw new Error(
+        `FAL API error: ${errorData.detail || response.statusText}`
+      );
+    }
+
+    const result = await response.json();
+    return {
+      job_id: jobId,
+      status: "completed",
+      message: `Video upscaled to ${targetResolution} @ ${targetFPS}`,
+      estimated_time: 0,
+      video_url: result.video?.url || result.video || result.url,
+      video_data: result,
+    };
+  } catch (error) {
+    handleAIServiceError(error, "Upscale video with ByteDance", {
+      operation: "upscaleByteDanceVideo",
+    });
+    throw error;
+  }
+}
+
+/**
+ * FlashVSR Video Upscaler Request Interface
+ */
+export interface FlashVSRUpscaleRequest {
+  video_url: string;
+  upscale_factor?: number; // 1.0 to 4.0
+  acceleration?: "regular" | "high" | "full";
+  quality?: number; // 0 to 100
+  color_fix?: boolean;
+  preserve_audio?: boolean;
+  output_format?: "X264" | "VP9" | "PRORES4444" | "GIF";
+  output_quality?: "low" | "medium" | "high" | "maximum";
+  output_write_mode?: "fast" | "balanced" | "small";
+  seed?: number;
+}
+
+/**
+ * Upscale video using FlashVSR Video Upscaler
+ *
+ * @param request - Video URL and upscaling parameters
+ */
+export async function upscaleFlashVSRVideo(
+  request: FlashVSRUpscaleRequest
+): Promise<VideoGenerationResponse> {
+  try {
+    const falApiKey = getFalApiKey();
+    if (!falApiKey) {
+      throw new Error("FAL API key not configured");
+    }
+
+    if (!request.video_url) {
+      throw new Error("Video URL is required for upscaling");
+    }
+
+    const modelConfig = getModelConfig("flashvsr_video_upscaler");
+    if (!modelConfig) {
+      throw new Error("FlashVSR upscaler model not found");
+    }
+
+    const endpoint = modelConfig.endpoints.upscale_video;
+    if (!endpoint) {
+      throw new Error("FlashVSR upscaler endpoint not configured");
+    }
+
+    // Validate upscale factor
+    const upscaleFactor = request.upscale_factor ?? 4;
+    if (upscaleFactor < 1 || upscaleFactor > 4) {
+      throw new Error("Upscale factor must be between 1 and 4");
+    }
+
+    // Validate quality
+    const quality = request.quality ?? 70;
+    if (quality < 0 || quality > 100) {
+      throw new Error("Quality must be between 0 and 100");
+    }
+
+    const payload: Record<string, unknown> = {
+      video_url: request.video_url,
+      upscale_factor: upscaleFactor,
+      acceleration: request.acceleration ?? "regular",
+      quality,
+      color_fix: request.color_fix ?? true,
+      preserve_audio: request.preserve_audio ?? false,
+      output_format: request.output_format ?? "X264",
+      output_quality: request.output_quality ?? "high",
+      output_write_mode: request.output_write_mode ?? "balanced",
+    };
+
+    // Add optional seed
+    if (request.seed !== undefined) {
+      payload.seed = request.seed;
+    }
+
+    const jobId = generateJobId();
+    const response = await fetch(`${FAL_API_BASE}/${endpoint}`, {
+      method: "POST",
+      headers: {
+        Authorization: `Key ${falApiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+
+      if (response.status === 401) {
+        throw new Error(
+          "Invalid FAL.ai API key. Please check your API key configuration."
+        );
+      }
+
+      if (response.status === 429) {
+        throw new Error(
+          "Rate limit exceeded. Please wait a moment before trying again."
+        );
+      }
+
+      throw new Error(
+        `FAL API error: ${errorData.detail || response.statusText}`
+      );
+    }
+
+    const result = await response.json();
+    return {
+      job_id: jobId,
+      status: "completed",
+      message: `Video upscaled with FlashVSR (${upscaleFactor}x)`,
+      estimated_time: 0,
+      video_url: result.video?.url || result.video || result.url,
+      video_data: result,
+    };
+  } catch (error) {
+    handleAIServiceError(error, "Upscale video with FlashVSR", {
+      operation: "upscaleFlashVSRVideo",
+    });
+    throw error;
+  }
+}
+
+/**
+ * Topaz Video Upscaler Request Interface
+ */
+export interface TopazUpscaleRequest {
+  video_url: string;
+  upscale_factor?: number; // 2.0 to 8.0
+  target_fps?: "original" | "interpolated";
+  h264_output?: boolean;
+}
+
+/**
+ * Upscale video using Topaz Video Upscaler
+ *
+ * @param request - Video URL and upscaling parameters
+ */
+export async function upscaleTopazVideo(
+  request: TopazUpscaleRequest
+): Promise<VideoGenerationResponse> {
+  // TODO: Implement when Topaz API endpoint is available
+  throw new Error("Topaz Video Upscale not yet implemented");
+}
+
+/**
  * Polls FAL AI job status during video generation.
  *
  * WHY: FAL AI uses async job queue; this function is called repeatedly until job completes.

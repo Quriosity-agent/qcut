@@ -604,6 +604,81 @@ export const AI_MODELS: AIModel[] = [
       enhance_prompt: true,
     },
   },
+  // Video Upscale Models
+  {
+    id: "bytedance_video_upscaler",
+    name: "ByteDance Video Upscaler",
+    description:
+      "AI-powered video upscaling to 1080p, 2K, or 4K with optional 60fps",
+    price: "0.072", // Base price per 10s @ 1080p
+    resolution: "1080p / 2K / 4K",
+    max_duration: 120, // 2 minutes max
+    category: "upscale",
+    endpoints: {
+      upscale_video: "fal-ai/bytedance-upscaler/upscale/video",
+    },
+    default_params: {
+      target_resolution: "1080p",
+      target_fps: "30fps",
+    },
+    supportedResolutions: ["1080p", "2k", "4k"],
+    supportedFPS: ["30fps", "60fps"],
+    perSecondPricing: {
+      "1080p_30fps": 0.0072,
+      "2k_30fps": 0.0144,
+      "4k_30fps": 0.0288,
+      "1080p_60fps": 0.0144,
+      "2k_60fps": 0.0288,
+      "4k_60fps": 0.0576,
+    },
+  },
+  {
+    id: "flashvsr_video_upscaler",
+    name: "FlashVSR Video Upscaler",
+    description:
+      "Fastest video upscaling (1-4x) with customizable quality and format options",
+    price: "0.125", // Base estimate for ~121 frames @ 1080p
+    pricingModel: "megapixel", // $0.0005 per megapixel
+    resolution: "1x to 4x upscaling",
+    max_duration: 120, // Estimated practical limit
+    category: "upscale",
+    endpoints: {
+      upscale_video: "fal-ai/flashvsr/upscale/video",
+    },
+    default_params: {
+      upscale_factor: 4,
+      acceleration: "regular",
+      quality: 70,
+      color_fix: true,
+      preserve_audio: false,
+      output_format: "X264",
+      output_quality: "high",
+      output_write_mode: "balanced",
+    },
+    supportedUpscaleFactors: { min: 1, max: 4, step: 0.1 },
+    supportedAcceleration: ["regular", "high", "full"],
+    supportedOutputFormats: ["X264", "VP9", "PRORES4444", "GIF"],
+    supportedOutputQuality: ["low", "medium", "high", "maximum"],
+    supportedWriteModes: ["fast", "balanced", "small"],
+  },
+  {
+    id: "topaz_video_upscale",
+    name: "Topaz Video Upscale",
+    description: "Professional upscaling up to 8x with AI enhancement",
+    price: "0.50", // Base price for 2x upscale
+    resolution: "Up to 8x upscaling",
+    max_duration: 120, // 2 minutes max
+    category: "upscale",
+    endpoints: {
+      upscale_video: "topaz/video-upscale", // Placeholder - needs actual endpoint
+    },
+    default_params: {
+      upscale_factor: 2.0,
+      target_fps: "original",
+      h264_output: false,
+    },
+    supportedUpscaleFactors: [2.0, 3.0, 4.0, 6.0, 8.0],
+  },
   {
     id: "veo3_fast",
     name: "Veo3 Fast",
@@ -809,12 +884,16 @@ export const UPLOAD_CONSTANTS = {
   SUPPORTED_AUDIO_FORMATS: [".mp3", ".wav", ".aac"],
   AUDIO_FORMATS_LABEL: "MP3, WAV, AAC",
 
-  // Video uploads (for WAN animate/replace model)
+  // Video uploads (WAN + Upscale)
   ALLOWED_VIDEO_TYPES: ["video/mp4", "video/quicktime", "video/x-msvideo"],
   MAX_VIDEO_SIZE_BYTES: 100 * 1024 * 1024, // 100MB
   MAX_VIDEO_SIZE_LABEL: "100MB",
   SUPPORTED_VIDEO_FORMATS: [".mp4", ".mov", ".avi"],
   VIDEO_FORMATS_LABEL: "MP4, MOV, AVI",
+
+  // Upscale overrides (ByteDance/Topaz allow 500MB)
+  UPSCALE_MAX_VIDEO_SIZE_BYTES: 500 * 1024 * 1024,
+  UPSCALE_MAX_VIDEO_SIZE_LABEL: "500MB",
 
   // Veo 3.1 frame uploads (for frame-to-video model)
   MAX_VEO31_FRAME_SIZE_BYTES: 8 * 1024 * 1024, // 8MB (Veo 3.1 limit)

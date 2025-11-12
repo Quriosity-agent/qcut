@@ -258,7 +258,7 @@ class FalAIClient {
 
   private async uploadFileToFal(
     file: File,
-    fileType: "image" | "audio" | "asset" = "asset"
+    fileType: "image" | "audio" | "video" | "asset" = "asset"
   ): Promise<string> {
     if (!this.apiKey) {
       throw new Error(
@@ -336,6 +336,13 @@ class FalAIClient {
    */
   async uploadAudioToFal(file: File): Promise<string> {
     return this.uploadFileToFal(file, "audio");
+  }
+
+  /**
+   * Uploads an MP4/MOV/AVI asset to FAL storage and returns the URL.
+   */
+  async uploadVideoToFal(file: File): Promise<string> {
+    return this.uploadFileToFal(file, "video");
   }
 
   private convertSettingsToParams(
