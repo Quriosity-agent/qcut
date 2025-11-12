@@ -43,27 +43,13 @@ interface UpscaleSettingsProps {
 }
 
 /**
- * Settings panel for configuring AI image upscaling parameters
+ * Renders the upscale settings panel, a model-aware UI for configuring AI image upscaling options.
  *
- * This component renders a dynamic form that adapts to the capabilities of the
- * currently selected upscale model. It includes:
- * - Model name, description, and cost badge
- * - Scale factor buttons for quick selection
- * - Denoise slider for noise reduction control
- * - Conditional creativity slider (SeedVR models only)
- * - Conditional overlapping tiles toggle (Topaz models only)
- * - Output format dropdown (PNG/JPEG/WebP)
+ * The panel reflects the currently selected upscale model's capabilities and syncs user changes
+ * with the central text-to-image store (scale factor, denoise, creativity, overlapping tiles, and output format).
  *
- * The component is connected to the text2image store and automatically syncs
- * all settings changes.
- *
- * @param props - Component props
- * @returns A settings panel with model-specific controls
- *
- * @example
- * ```tsx
- * <UpscaleSettingsPanel className="p-4" />
- * ```
+ * @param className - Optional additional CSS class names applied to the panel container
+ * @returns The rendered settings panel element
  */
 export function UpscaleSettingsPanel({ className }: UpscaleSettingsProps) {
   const upscaleSettings = useText2ImageStore((state) => state.upscaleSettings);

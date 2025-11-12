@@ -130,6 +130,16 @@ const REVE_NUM_IMAGE_OPTIONS = Array.from(
   (_, index) => REVE_TEXT_TO_IMAGE_MODEL.numImagesRange.min + index
 );
 
+/**
+ * Render the AI features panel including tabs for Text, Image, Avatar, and Upscale,
+ * model selection, per-model settings, cost estimates, media uploads, generation controls,
+ * and generated results/history integration.
+ *
+ * The component manages local UI state for prompts, media inputs, per-model options,
+ * and responsive layout, and wires user input into the AI generation workflow.
+ *
+ * @returns The JSX element for the AI features panel.
+ */
 export function AiView() {
   // UI-only state (not related to generation logic)
   const [prompt, setPrompt] = useState("");
@@ -3411,6 +3421,14 @@ export function AiView() {
   );
 }
 
+/**
+ * Estimate the dollar cost to upscale a video using ByteDance per-second rates.
+ *
+ * @param resolution - Resolution identifier (e.g., "1080p", "2k", "4k")
+ * @param fps - Frame rate identifier (e.g., "30fps", "60fps")
+ * @param durationSeconds - Duration of the video segment in seconds
+ * @returns Dollar cost as a string formatted with three decimal places (e.g., "$0.123"). Unknown resolution/fps combinations default to the 1080p_30fps rate.
+ */
 function calculateByteDanceUpscaleCost(
   resolution: string,
   fps: string,
@@ -3431,6 +3449,17 @@ function calculateByteDanceUpscaleCost(
   return `$${totalCost.toFixed(3)}`;
 }
 
+/**
+ * Estimate the cost to upscale a video using FlashVSR.
+ *
+ * Calculates cost from the output resolution (input width/height multiplied by `upscaleFactor`) across all frames and returns a dollar amount formatted with three decimal places.
+ *
+ * @param width - Input frame width in pixels
+ * @param height - Input frame height in pixels
+ * @param frames - Number of frames to process
+ * @param upscaleFactor - Multiplier applied to width and height for the output resolution
+ * @returns The estimated cost as a dollar string formatted to three decimal places (for example, "$0.123")
+ */
 function calculateFlashVSRUpscaleCost(
   width: number,
   height: number,
@@ -3448,6 +3477,12 @@ function calculateFlashVSRUpscaleCost(
   return `$${totalCost.toFixed(3)}`;
 }
 
+/**
+ * Compute the estimated Topaz upscaling cost for a requested upscale factor.
+ *
+ * @param factor - The requested upscale multiplier; if the exact factor is not supported, the nearest supported factor will be used.
+ * @returns The estimated cost formatted as a dollar string (e.g., `$1.00`).
+ */
 function calculateTopazUpscaleCost(factor: number): string {
   const TOPAZ_COST_TABLE: Record<number, number> = {
     2: 0.5,
