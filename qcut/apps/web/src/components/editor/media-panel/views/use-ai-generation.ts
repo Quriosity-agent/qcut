@@ -114,6 +114,19 @@ export function useAIGeneration(props: UseAIGenerationProps) {
     wan25AudioFile = null,
     wan25NegativePrompt,
     wan25EnablePromptExpansion = true,
+    bytedanceTargetResolution = "1080p",
+    bytedanceTargetFPS = "30fps",
+    flashvsrUpscaleFactor = 4,
+    flashvsrAcceleration = "regular",
+    flashvsrQuality = 70,
+    flashvsrColorFix = true,
+    flashvsrPreserveAudio = false,
+    flashvsrOutputFormat = "X264",
+    flashvsrOutputQuality = "high",
+    flashvsrOutputWriteMode = "balanced",
+    flashvsrSeed,
+    sourceVideoFile = null,
+    sourceVideoUrl = "",
   } = props;
 
   // Core generation state
@@ -1183,6 +1196,91 @@ export function useAIGeneration(props: UseAIGenerationProps) {
             });
           }
           console.log("  ✅ generateVideoFromImage returned:", response);
+        } else if (activeTab === "upscale") {
+          if (modelId === "bytedance_video_upscaler") {
+            if (!sourceVideoFile && !sourceVideoUrl) {
+              console.log("  ?? Skipping model - Video source required");
+              continue;
+            }
+
+            const videoUrl = sourceVideoFile
+              ? await falAIClient.uploadVideoToFal(sourceVideoFile)
+              : sourceVideoUrl;
+
+            const friendlyName = modelName || modelId;
+            progressCallback({
+              status: "processing",
+              progress: 10,
+              message: `Uploading video for ${friendlyName}...`,
+            });
+
+            progressCallback({
+              status: "processing",
+              progress: 30,
+              message: `Upscaling video to ${bytedanceTargetResolution}...`,
+            });
+
+            response = await upscaleByteDanceVideo({
+              video_url: videoUrl,
+              target_resolution: bytedanceTargetResolution,
+              target_fps: bytedanceTargetFPS,
+            });
+
+            progressCallback({
+              status: "completed",
+              progress: 100,
+              message: `Video upscaled with ${friendlyName}`,
+            });
+          }
+          // FlashVSR Video Upscaler
+          else if (modelId === "flashvsr_video_upscaler") {
+            if (!sourceVideoFile && !sourceVideoUrl) {
+              console.log("  ?? Skipping model - Video source required");
+              continue;
+            }
+
+            const videoUrl = sourceVideoFile
+              ? await falAIClient.uploadVideoToFal(sourceVideoFile)
+              : sourceVideoUrl;
+
+            const friendlyName = modelName || modelId;
+            const upscaleFactor = flashvsrUpscaleFactor ?? 4;
+
+            progressCallback({
+              status: "processing",
+              progress: 10,
+              message: `Uploading video for ${friendlyName}...`,
+            });
+
+            progressCallback({
+              status: "processing",
+              progress: 30,
+              message: `Upscaling video with FlashVSR (${upscaleFactor}x)...`,
+            });
+
+            response = await upscaleFlashVSRVideo({
+              video_url: videoUrl,
+              upscale_factor: upscaleFactor,
+              acceleration: flashvsrAcceleration,
+              quality: flashvsrQuality,
+              color_fix: flashvsrColorFix,
+              preserve_audio: flashvsrPreserveAudio,
+              output_format: flashvsrOutputFormat,
+              output_quality: flashvsrOutputQuality,
+              output_write_mode: flashvsrOutputWriteMode,
+              seed: flashvsrSeed,
+            });
+
+            progressCallback({
+              status: "completed",
+              progress: 100,
+              message: `Video upscaled with ${friendlyName}`,
+            });
+          }
+          // Topaz Video Upscaler
+          else if (modelId === "topaz_video_upscale") {
+            throw new Error("Topaz Video Upscale not yet implemented");
+          }
         } else if (activeTab === "avatar" && avatarImage) {
           console.log(`  🎭 Calling generateAvatarVideo for ${modelId}...`);
           response = await generateAvatarVideo({
