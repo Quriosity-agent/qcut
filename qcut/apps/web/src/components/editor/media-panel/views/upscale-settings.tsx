@@ -72,7 +72,7 @@ export function UpscaleSettingsPanel({ className }: UpscaleSettingsProps) {
   );
 
   const model = UPSCALE_MODELS[upscaleSettings.selectedModel as UpscaleModelId];
-  const scaleOptions =
+  const scaleOptions: UpscaleScaleFactor[] =
     model.controls.scaleFactor.options ?? model.supportedScales;
 
   /**
@@ -111,7 +111,7 @@ export function UpscaleSettingsPanel({ className }: UpscaleSettingsProps) {
               variant={
                 option === upscaleSettings.scaleFactor ? "default" : "outline"
               }
-              onClick={() => setUpscaleSettings({ scaleFactor: option as UpscaleScaleFactor })}
+              onClick={() => setUpscaleSettings({ scaleFactor: option })}
               className="px-3 py-1 text-xs"
             >
               {option}x

@@ -71,7 +71,7 @@ export interface UpscaleModelControlConfig {
   /** Tooltip or help text explaining the control */
   description?: string;
   /** Discrete options for select controls */
-  options?: number[];
+  options?: UpscaleScaleFactor[];
   /** UI control type */
   type: "slider" | "toggle" | "select";
 }
