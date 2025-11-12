@@ -2049,7 +2049,7 @@ export interface SeedanceI2VRequest {
   camera_fixed?: boolean;
   seed?: number;
   enable_safety_checker?: boolean;
-  end_frame_url?: string;
+  end_image_url?: string;
 }
 
 /**
@@ -2120,8 +2120,8 @@ export async function generateSeedanceVideo(
       payload.seed = request.seed;
     }
 
-    if (request.end_frame_url && request.model === "seedance_pro_i2v") {
-      payload.end_frame_url = request.end_frame_url;
+    if (request.end_image_url && request.model === "seedance_pro_i2v") {
+      payload.end_image_url = request.end_image_url;
     }
 
     const jobId = generateJobId();

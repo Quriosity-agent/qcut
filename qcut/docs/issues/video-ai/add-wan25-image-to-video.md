@@ -11,7 +11,7 @@ This guide covers adding **four image-to-video models**:
 
 ### Seedance Models (✅ Implemented – Feb 2025)
 1. **Seedance v1 Pro Fast I2V** – Added as `seedance_pro_fast_i2v` with full metadata, handlers, and UI controls.
-2. **Seedance v1 Pro I2V** – Added as `seedance_pro_i2v`, including optional end-frame upload + `end_frame_url` threading.
+2. **Seedance v1 Pro I2V** – Added as `seedance_pro_i2v`, including optional end-frame upload + `end_image_url` threading.
 
 ### Models with Existing Endpoints (✅ Implemented – Feb 2025)
 3. **Kling v2.5 Turbo Pro I2V** – Split into `kling_v2_5_turbo_i2v` with a dedicated client, hook logic, and UI controls.
@@ -32,7 +32,7 @@ The repository already carries the full set of Seedance, Kling, and WAN 2.5 inte
 - **Model registry** – `qcut/apps/web/src/components/editor/media-panel/views/ai-constants.ts:253-366` declares `seedance_pro_fast_i2v`, `seedance_pro_i2v`, `kling_v2_5_turbo_i2v`, and `wan_25_preview_i2v`, complete with supported durations/resolutions, aspect ratios, and `perSecondPricing` for WAN.
 - **Type surface & hook routing** – `qcut/apps/web/src/components/editor/media-panel/views/ai-types.ts:172-209` exposes the new option props, while `qcut/apps/web/src/components/editor/media-panel/views/use-ai-generation.ts:11-115` destructures them and `use-ai-generation.ts:295-321` adds the shared `uploadAudioToFal` helper. The image tab router (`use-ai-generation.ts:1033-1155`) now calls `generateSeedanceVideo`, `generateKlingImageVideo`, and `generateWAN25ImageVideo`, threading `imageSeed`, end frames, CFG scale, and WAN audio URLs as needed.
 - **UI controls & pricing** – `qcut/apps/web/src/components/editor/media-panel/views/ai.tsx:208-318` manages the new state, and the image tab renders dedicated “Seedance Settings,” “Kling v2.5 Turbo Settings,” and “WAN 2.5 Preview Settings” cards (`ai.tsx:1622-2023`) with duration/resolution selectors, camera-fixed toggles, optional end-frame/audio uploads, and live cost estimates driven by `perSecondPricing` (`ai.tsx:702-724`).
-- **Seedance start/end frame UX** – The global “Upload Image for Video Generation” dropzone feeds the required first frame (`selectedImage`), while the Seedance Pro card exposes the optional last-frame upload + URL field (`ai.tsx:1723-1755`). The hook uploads that second frame and passes `end_frame_url` to `generateSeedanceVideo()` (`use-ai-generation.ts:1050-1085`, `ai-video-client.ts:2040-2166`), so the FAL endpoint sees both `image_url` and `end_frame_url` just like the Seedance API docs require.
+- **Seedance start/end frame UX** – The global “Upload Image for Video Generation” dropzone feeds the required first frame (`selectedImage`), while the Seedance Pro card exposes the optional last-frame upload + URL field (`ai.tsx:1723-1755`). The hook uploads that second frame and passes `end_image_url` to `generateSeedanceVideo()` (`use-ai-generation.ts:1050-1085`, `ai-video-client.ts:2040-2166`), so the FAL endpoint sees both `image_url` and `end_image_url` just like the Seedance API docs require.
 - **Client helpers & uploads** – `qcut/apps/web/src/lib/ai-video-client.ts:2040-2425` implements the Seedance/Kling/WAN request builders with prompt validation, queue-safe payloads, and error handling, and `qcut/apps/web/src/lib/fal-ai-client.ts:327-338` introduces `uploadAudioToFal`, which the WAN handler uses for background music.
 
 **Estimated implementation time**: 5-6 hours (all four models)
@@ -180,7 +180,7 @@ All four target models now ship with complete metadata, API clients, hook handle
 
 ### ✅ Seedance Image-to-Video
 - **Model entries** – `seedance_pro_fast_i2v` and `seedance_pro_i2v` now sit immediately after `ltxv2_fast_i2v` in `ai-constants.ts`, including `supportedResolutions`, `supportedDurations`, `supportedAspectRatios`, and pricing notes.
-- **Client + hook** – `generateSeedanceVideo()` (in `ai-video-client.ts`) handles `camera_fixed`, `seed`, and optional `end_frame_url`. The `use-ai-generation.ts` handler uploads start/end frames as needed and feeds the client with the new props.
+- **Client + hook** – `generateSeedanceVideo()` (in `ai-video-client.ts`) handles `camera_fixed`, `seed`, and optional `end_image_url`. The `use-ai-generation.ts` handler uploads start/end frames as needed and feeds the client with the new props.
 - **UI** – Selecting either Seedance model in `ai.tsx` exposes duration/resolution/aspect pickers, a camera-lock toggle, an end-frame URL/upload widget (Pro only), a dynamic cost estimate, and the shared `imageSeed` input.
 
 ### ✅ Kling v2.5 Turbo Pro I2V
@@ -346,8 +346,8 @@ _Status (Feb 2025): Completed. `use-ai-generation.ts` now uploads Seedance start
 
 While wiring the handlers, make sure the data flow is complete:
 
-- Use a consistent local prop name (`seedanceEndFrameUrl`) and map it to the API's `end_frame_url`.
-- If the user supplies a new end frame (or WAN audio track) as a `File`, upload it via a helper (`uploadImageToFal` / new `uploadAudioToFal`) before invoking the client so `end_frame_url`/`audio_url` are real URLs.
+- Use a consistent local prop name (`seedanceEndFrameUrl`) and map it to the API's `end_image_url`.
+- If the user supplies a new end frame (or WAN audio track) as a `File`, upload it via a helper (`uploadImageToFal` / new `uploadAudioToFal`) before invoking the client so `end_image_url`/`audio_url` are real URLs.
 - Thread a `seed` prop through the hook (shared across models) and pass it to the model-specific request objects so the Seed control and reproducibility checklist work.
 
 **File**: `qcut/apps/web/src/components/editor/media-panel/views/use-ai-generation.ts`
@@ -427,7 +427,7 @@ else if (modelId === "seedance_pro_i2v") {
     resolution: seedanceResolution,
     aspect_ratio: seedanceAspectRatio,
     camera_fixed: seedanceCameraFixed,
-    end_frame_url: endFrameUrl ?? undefined, // Last frame (optional, Pro only)
+    end_image_url: endFrameUrl ?? undefined, // Last frame (optional, Pro only)
     seed: imageSeed ?? undefined,
   });
 
@@ -549,7 +549,7 @@ _Status (Feb 2025): Completed with `generateSeedanceVideo()`, `generateKlingImag
 
 Align the client interfaces with the FAL docs:
 
-- Stick to the official parameter names (`end_frame_url` for Seedance Pro, `audio_url` for WAN 2.5) and pass through `seed` when provided.
+- Stick to the official parameter names (`end_image_url` for Seedance Pro, `audio_url` for WAN 2.5) and pass through `seed` when provided.
 - If you need to upload audio blobs, add a small `uploadAudioToFal` helper next to `uploadImageToFal` so UI code can turn `File` objects into URLs before invoking these functions.
 
 **File**: `qcut/apps/web/src/lib/ai-video-client.ts`
@@ -588,7 +588,7 @@ export interface SeedanceI2VRequest {
   camera_fixed?: boolean;
   seed?: number;
   enable_safety_checker?: boolean;
-  end_frame_url?: string; // Pro model only
+  end_image_url?: string; // Pro model only
 }
 
 /**
@@ -645,8 +645,8 @@ export async function generateSeedanceVideo(
     }
 
     // Pro model only: end frame support
-    if (request.end_frame_url && request.model === "seedance_pro_i2v") {
-      payload.end_frame_url = request.end_frame_url;
+    if (request.end_image_url && request.model === "seedance_pro_i2v") {
+      payload.end_image_url = request.end_image_url;
     }
 
     const jobId = `seedance-${Date.now()}-${Math.random().toString(36).substring(7)}`;
@@ -1202,7 +1202,7 @@ function calculateEstimatedCost(model: AIModel, resolution: string, duration: nu
 
 _Status (Feb 2025): Verified during client implementation; the new request builders adhere to this schema._
 
-Use the same parameter names across the narrative, code, and samples—`end_frame_url` for Seedance Pro and `audio_url` for WAN 2.5—so engineers don’t have to guess which field the API expects.
+Use the same parameter names across the narrative, code, and samples—`end_image_url` for Seedance Pro and `audio_url` for WAN 2.5—so engineers don’t have to guess which field the API expects.
 
 **Request (Pro Fast):**
 ```json
@@ -1222,7 +1222,7 @@ Use the same parameter names across the narrative, code, and samples—`end_fram
 ```json
 {
   "image_url": "https://example.com/start.jpg",
-  "end_frame_url": "https://example.com/end.jpg", // optional, Pro only
+  "end_image_url": "https://example.com/end.jpg", // optional, Pro only
   "prompt": "The camera slowly zooms in on the subject",
   "resolution": "1080p",
   "duration": 5,
@@ -1258,7 +1258,7 @@ _Status (Feb 2025): Implementation complete; leave these boxes unchecked until m
 Before running through the checklist, verify the prerequisites:
 
 - The cost estimator reads from `perSecondPricing` (WAN) or computes `(duration / defaultDuration) * price` for Seedance/Kling so the dollar amounts listed below are meaningful.
-- Seedance Pro’s end-frame control performs an upload and sends `end_frame_url`, and WAN audio uploads produce a valid `audio_url`.
+- Seedance Pro’s end-frame control performs an upload and sends `end_image_url`, and WAN audio uploads produce a valid `audio_url`.
 - The manual seed control populates `imageSeed` and propagates all the way to the model requests.
 
 **Seedance Pro Fast I2V:**
@@ -1419,7 +1419,7 @@ const result = await fal.subscribe(
     input: {
       prompt: "Smooth transition between frames",
       image_url: "https://example.com/start.jpg",
-      end_frame_url: "https://example.com/end.jpg", // Optional
+      end_image_url: "https://example.com/end.jpg", // Optional
       resolution: "1080p",
       duration: 8,
       aspect_ratio: "16:9",
@@ -1528,4 +1528,5 @@ Use this section to track progress when implementing:
 ## Future Refactoring Opportunity
 
 When this implementation is complete, consider creating a GitHub issue for refactoring the props pattern to a more scalable approach. Suggested title: "Refactor model options to use generic modelOptions object instead of model-specific props"
+
 

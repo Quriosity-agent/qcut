@@ -103,8 +103,8 @@ interface MediaPanelStore {
   setActiveTab: (tab: Tab) => void;
 
   // AI-specific state
-  aiActiveTab: "text" | "image" | "avatar";
-  setAiActiveTab: (tab: "text" | "image" | "avatar") => void;
+  aiActiveTab: "text" | "image" | "avatar" | "upscale";
+  setAiActiveTab: (tab: "text" | "image" | "avatar" | "upscale") => void;
 }
 
 export const useMediaPanelStore = create<MediaPanelStore>((set) => ({

@@ -648,7 +648,7 @@ export const AI_MODELS: AIModel[] = [
     default_params: {
       upscale_factor: 4,
       acceleration: "regular",
-      quality: 70,
+      quality: "70",
       color_fix: true,
       preserve_audio: false,
       output_format: "X264",

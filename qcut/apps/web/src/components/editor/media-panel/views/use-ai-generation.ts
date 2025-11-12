@@ -494,9 +494,6 @@ export function useAIGeneration(props: UseAIGenerationProps) {
       if (hasFrameModel && (!firstFrame || !lastFrame)) return;
       if (hasImageModel && !selectedImage) return;
     } else if (activeTab === "upscale") {
-      if (selectedModels.length === 0) return;
-      if (!sourceVideoFile && !sourceVideoUrl) return;
-    } else if (activeTab === "upscale") {
       if (selectedModels.length === 0) {
         console.log("? Validation failed - missing models for upscale tab");
         return;
@@ -1108,7 +1105,7 @@ export function useAIGeneration(props: UseAIGenerationProps) {
               resolution: seedanceResolution,
               aspect_ratio: seedanceAspectRatio,
               camera_fixed: seedanceCameraFixed,
-              end_frame_url: endFrameUrl ?? undefined,
+              end_image_url: endFrameUrl ?? undefined,
               seed: imageSeed ?? undefined,
             });
 

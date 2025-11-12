@@ -10,7 +10,9 @@ export interface VideoMetadata {
 
 type SourceAssigner = (video: HTMLVideoElement) => void;
 
-async function readMetadata(assignSource: SourceAssigner): Promise<VideoMetadata> {
+async function readMetadata(
+  assignSource: SourceAssigner
+): Promise<VideoMetadata> {
   if (typeof document === "undefined") {
     return { width: 0, height: 0 };
   }
@@ -22,38 +24,137 @@ async function readMetadata(assignSource: SourceAssigner): Promise<VideoMetadata
     video.playsInline = true;
     video.crossOrigin = "anonymous";
 
+    let settled = false;
     const cleanup = () => {
-      video.src = "";
+      video.pause();
       video.removeAttribute("src");
       video.load();
     };
 
-    video.onloadedmetadata = () => {
-      const duration = Number.isFinite(video.duration)
-        ? video.duration
-        : undefined;
-      const fps = duration ? DEFAULT_FPS : undefined;
-      const frames =
-        duration && fps ? Math.round(duration * fps) : undefined;
+    const resolveWithMetadata = async () => {
+      if (settled) return;
+      settled = true;
 
-      cleanup();
-      resolve({
-        width: video.videoWidth || 0,
-        height: video.videoHeight || 0,
-        duration,
-        fps,
-        frames,
-      });
+      try {
+        const duration = Number.isFinite(video.duration)
+          ? video.duration
+          : undefined;
+        const fps = await estimateFrameRate(video, duration);
+        const frames =
+          duration && fps ? Math.round(duration * fps) : undefined;
+
+        resolve({
+          width: video.videoWidth || 0,
+          height: video.videoHeight || 0,
+          duration,
+          fps,
+          frames,
+        });
+      } catch (error) {
+        reject(error instanceof Error ? error : new Error(String(error)));
+      } finally {
+        cleanup();
+      }
+    };
+
+    video.onloadedmetadata = () => {
+      void resolveWithMetadata();
     };
 
     video.onerror = () => {
-      cleanup();
-      reject(new Error("Unable to load video metadata"));
+      if (!settled) {
+        settled = true;
+        cleanup();
+        reject(new Error("Unable to load video metadata"));
+      }
     };
 
     assignSource(video);
     video.load();
   });
+}
+
+async function estimateFrameRate(
+  video: HTMLVideoElement,
+  duration?: number
+): Promise<number | undefined> {
+  const captureFrameRate = await getFrameRateFromCaptureStream(video);
+  if (captureFrameRate) {
+    return captureFrameRate;
+  }
+
+  const qualityFrameRate = getFrameRateFromPlaybackQuality(video, duration);
+  if (qualityFrameRate) {
+    return qualityFrameRate;
+  }
+
+  return duration ? DEFAULT_FPS : undefined;
+}
+
+async function getFrameRateFromCaptureStream(
+  video: HTMLVideoElement
+): Promise<number | undefined> {
+  const captureStream =
+    (video as HTMLVideoElement & {
+      captureStream?: () => MediaStream;
+      mozCaptureStream?: () => MediaStream;
+    }).captureStream ||
+    (video as HTMLVideoElement & { mozCaptureStream?: () => MediaStream })
+      .mozCaptureStream;
+
+  if (typeof captureStream !== "function") {
+    return undefined;
+  }
+
+  try {
+    await video.play().catch(() => undefined);
+    const stream = captureStream.call(video);
+    const track = stream?.getVideoTracks?.()[0];
+    const settings = track?.getSettings?.();
+    const frameRate = settings?.frameRate;
+
+    track?.stop?.();
+    video.pause();
+    video.currentTime = 0;
+
+    if (frameRate && Number.isFinite(frameRate) && frameRate > 0) {
+      return frameRate;
+    }
+  } catch {
+    // Ignore capture failures and fall back to other heuristics.
+  }
+
+  return undefined;
+}
+
+function getFrameRateFromPlaybackQuality(
+  video: HTMLVideoElement,
+  duration?: number
+): number | undefined {
+  if (!duration || duration <= 0) {
+    return undefined;
+  }
+
+  const sanitize = (value?: number) =>
+    value && Number.isFinite(value) && value > 0 ? value : undefined;
+
+  try {
+    const quality = (video as HTMLVideoElement & {
+      getVideoPlaybackQuality?: () => VideoPlaybackQuality;
+    }).getVideoPlaybackQuality?.();
+
+    const totalFrames =
+      quality?.totalVideoFrames ??
+      (video as HTMLVideoElement & { webkitDecodedFrameCount?: number })
+        .webkitDecodedFrameCount ??
+      (video as HTMLVideoElement & { mozDecodedFrames?: number })
+        .mozDecodedFrames;
+
+    const fps = totalFrames ? totalFrames / duration : undefined;
+    return sanitize(fps);
+  } catch {
+    return undefined;
+  }
 }
 
 export async function extractVideoMetadataFromFile(
