@@ -493,6 +493,19 @@ export function useAIGeneration(props: UseAIGenerationProps) {
 
       if (hasFrameModel && (!firstFrame || !lastFrame)) return;
       if (hasImageModel && !selectedImage) return;
+    } else if (activeTab === "upscale") {
+      if (selectedModels.length === 0) return;
+      if (!sourceVideoFile && !sourceVideoUrl) return;
+    } else if (activeTab === "upscale") {
+      if (selectedModels.length === 0) {
+        console.log("? Validation failed - missing models for upscale tab");
+        return;
+      }
+
+      if (!sourceVideoFile && !sourceVideoUrl) {
+        console.log("? Validation failed - video source required for upscaling");
+        return;
+      }
     } else if (activeTab === "avatar") {
       if (!avatarImage || selectedModels.length === 0) return;
     }
@@ -567,6 +580,8 @@ export function useAIGeneration(props: UseAIGenerationProps) {
     onComplete,
     firstFrame,
     lastFrame,
+    sourceVideoFile,
+    sourceVideoUrl,
   ]);
 
   // Main generation function
@@ -1699,6 +1714,8 @@ export function useAIGeneration(props: UseAIGenerationProps) {
     avatarImage,
     audioFile,
     sourceVideo,
+    sourceVideoFile,
+    sourceVideoUrl,
     selectedModels,
     activeProject,
     addMediaItem,
@@ -1733,6 +1750,17 @@ export function useAIGeneration(props: UseAIGenerationProps) {
     wan25EnablePromptExpansion,
     imageSeed,
     uploadAudioToFal,
+    bytedanceTargetResolution,
+    bytedanceTargetFPS,
+    flashvsrUpscaleFactor,
+    flashvsrAcceleration,
+    flashvsrQuality,
+    flashvsrColorFix,
+    flashvsrPreserveAudio,
+    flashvsrOutputFormat,
+    flashvsrOutputQuality,
+    flashvsrOutputWriteMode,
+    flashvsrSeed,
   ]);
 
   // Reset generation state
@@ -1919,6 +1947,9 @@ export function useAIGeneration(props: UseAIGenerationProps) {
         }
 
         return true;
+      }
+      if (activeTab === "upscale") {
+        return Boolean(sourceVideoFile || sourceVideoUrl);
       }
       if (activeTab === "avatar") {
         if (!avatarImage) return false;

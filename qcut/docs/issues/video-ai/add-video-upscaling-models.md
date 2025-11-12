@@ -1569,8 +1569,8 @@ const result = await fal.subscribe(
 ## Document Status
 
 - **Created**: 2025-11-11
-- **Last Updated**: 2025-11-11
-- **Implementation Status**: Pending
+- **Last Updated**: 2025-11-12
+- **Implementation Status**: Completed – Upscale tab, handlers, and cost estimators merged
 - **Document Type**: Implementation Guide
 - **Models Covered**:
   1. ByteDance Video Upscaler (fal.ai) - Resolution-based upscaling with FPS options

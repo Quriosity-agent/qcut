@@ -14,7 +14,7 @@ import {
   Check,
   UserIcon,
 } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import {
@@ -29,6 +29,8 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FileUpload } from "@/components/ui/file-upload";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Slider } from "@/components/ui/slider";
+import { Card } from "@/components/ui/card";
 
 import { useTimelineStore } from "@/stores/timeline-store";
 import { useProjectStore } from "@/stores/project-store";
@@ -37,6 +39,11 @@ import { useMediaPanelStore } from "../store";
 import { AIHistoryPanel } from "./ai-history-panel";
 import { AIImageUploadSection } from "./ai-image-upload";
 import { debugLogger } from "@/lib/debug-logger";
+import {
+  extractVideoMetadataFromFile,
+  extractVideoMetadataFromUrl,
+  type VideoMetadata,
+} from "@/lib/video-metadata";
 
 // Import extracted hooks and types
 import { useAIGeneration } from "./use-ai-generation";
@@ -151,6 +158,42 @@ export function AiView() {
   const [sourceVideoPreview, setSourceVideoPreview] = useState<string | null>(
     null
   );
+
+  // Upscale tab state
+  const [sourceVideoFile, setSourceVideoFile] = useState<File | null>(null);
+  const [sourceVideoUrl, setSourceVideoUrl] = useState("");
+  const [videoMetadata, setVideoMetadata] = useState<VideoMetadata | null>(null);
+
+  const [bytedanceTargetResolution, setBytedanceTargetResolution] = useState<
+    "1080p" | "2k" | "4k"
+  >("1080p");
+  const [bytedanceTargetFPS, setBytedanceTargetFPS] = useState<
+    "30fps" | "60fps"
+  >("30fps");
+
+  const [flashvsrUpscaleFactor, setFlashvsrUpscaleFactor] = useState(4);
+  const [flashvsrAcceleration, setFlashvsrAcceleration] = useState<
+    "regular" | "high" | "full"
+  >("regular");
+  const [flashvsrQuality, setFlashvsrQuality] = useState(70);
+  const [flashvsrColorFix, setFlashvsrColorFix] = useState(true);
+  const [flashvsrPreserveAudio, setFlashvsrPreserveAudio] = useState(false);
+  const [flashvsrOutputFormat, setFlashvsrOutputFormat] = useState<
+    "X264" | "VP9" | "PRORES4444" | "GIF"
+  >("X264");
+  const [flashvsrOutputQuality, setFlashvsrOutputQuality] = useState<
+    "low" | "medium" | "high" | "maximum"
+  >("high");
+  const [flashvsrOutputWriteMode, setFlashvsrOutputWriteMode] = useState<
+    "fast" | "balanced" | "small"
+  >("balanced");
+  const [flashvsrSeed, setFlashvsrSeed] = useState<number | undefined>();
+
+  const [topazUpscaleFactor, setTopazUpscaleFactor] = useState(2);
+  const [topazTargetFPS, setTopazTargetFPS] = useState<
+    "original" | "interpolated"
+  >("original");
+  const [topazH264Output, setTopazH264Output] = useState(false);
 
   // Veo 3.1 frame upload state - already declared above as Frame-to-Video state variables
 
@@ -267,6 +310,39 @@ export function AiView() {
     ? wan25NegativePrompt.trim()
     : undefined;
 
+  const handleUpscaleVideoChange = async (file: File | null) => {
+    setSourceVideoFile(file);
+
+    if (!file) {
+      setVideoMetadata(null);
+      return;
+    }
+
+    setSourceVideoUrl("");
+    try {
+      const metadata = await extractVideoMetadataFromFile(file);
+      setVideoMetadata(metadata);
+    } catch (error) {
+      console.error("Failed to read video metadata", error);
+      setVideoMetadata(null);
+    }
+  };
+
+  const handleUpscaleVideoUrlBlur = async () => {
+    if (!sourceVideoUrl) {
+      setVideoMetadata(null);
+      return;
+    }
+
+    try {
+      const metadata = await extractVideoMetadataFromUrl(sourceVideoUrl);
+      setVideoMetadata(metadata);
+    } catch (error) {
+      console.error("Failed to read video metadata", error);
+      setVideoMetadata(null);
+    }
+  };
+
   // Use extracted hooks
   const generation = useAIGeneration({
     prompt,
@@ -278,6 +354,8 @@ export function AiView() {
     avatarImage,
     audioFile,
     sourceVideo,
+    sourceVideoFile,
+    sourceVideoUrl,
     hailuoT2VDuration,
     viduQ2Duration,
     viduQ2Resolution,
@@ -317,6 +395,20 @@ export function AiView() {
     wan25AudioFile,
     wan25NegativePrompt: cleanedWan25NegativePrompt,
     wan25EnablePromptExpansion,
+    bytedanceTargetResolution,
+    bytedanceTargetFPS,
+    flashvsrUpscaleFactor,
+    flashvsrAcceleration,
+    flashvsrQuality,
+    flashvsrColorFix,
+    flashvsrPreserveAudio,
+    flashvsrOutputFormat,
+    flashvsrOutputQuality,
+    flashvsrOutputWriteMode,
+    flashvsrSeed,
+    topazUpscaleFactor,
+    topazTargetFPS,
+    topazH264Output,
     onProgress: (progress, message) => {
       console.log(`[AI View] Progress: ${progress}% - ${message}`);
       // Progress is handled internally by the hook
@@ -383,6 +475,42 @@ export function AiView() {
   const seedanceSelected = seedanceFastSelected || seedanceProSelected;
   const klingI2VSelected = selectedModels.includes("kling_v2_5_turbo_i2v");
   const wan25Selected = selectedModels.includes("wan_25_preview_i2v");
+  const bytedanceUpscalerSelected = selectedModels.includes(
+    "bytedance_video_upscaler"
+  );
+  const flashvsrUpscalerSelected = selectedModels.includes(
+    "flashvsr_video_upscaler"
+  );
+  const topazUpscalerSelected = selectedModels.includes(
+    "topaz_video_upscale"
+  );
+
+  const videoDurationSeconds = videoMetadata?.duration ?? 10;
+
+  const bytedanceEstimatedCost = useMemo(
+    () =>
+      calculateByteDanceUpscaleCost(
+        bytedanceTargetResolution,
+        bytedanceTargetFPS,
+        videoDurationSeconds
+      ),
+    [bytedanceTargetResolution, bytedanceTargetFPS, videoDurationSeconds]
+  );
+
+  const flashvsrEstimatedCost = useMemo(() => {
+    if (!videoMetadata) return "$0.000";
+    const { width, height, frames, duration, fps } = videoMetadata;
+    const frameCount =
+      frames ??
+      Math.max(1, Math.round((duration ?? 0) * (fps ?? 30)));
+
+    return calculateFlashVSRUpscaleCost(
+      width,
+      height,
+      frameCount,
+      flashvsrUpscaleFactor
+    );
+  }, [videoMetadata, flashvsrUpscaleFactor]);
   const seedanceModelId = seedanceProSelected
     ? "seedance_pro_i2v"
     : "seedance_pro_fast_i2v";
@@ -813,7 +941,7 @@ export function AiView() {
               setActiveTab(value as AIActiveTab)
             }
           >
-            <TabsList className="grid w-full grid-cols-3">
+            <TabsList className="grid w-full grid-cols-4">
               <TabsTrigger value="text" className="text-xs">
                 <TypeIcon className="size-3 mr-1" />
                 {!isCompact && "Text"}
@@ -825,6 +953,10 @@ export function AiView() {
               <TabsTrigger value="avatar" className="text-xs">
                 <UserIcon className="size-3 mr-1" />
                 {!isCompact && "Avatar"}
+              </TabsTrigger>
+              <TabsTrigger value="upscale" className="text-xs">
+                <Upload className="size-3 mr-1" />
+                {!isCompact && "Upscale"}
               </TabsTrigger>
             </TabsList>
 
@@ -2135,6 +2267,415 @@ export function AiView() {
                 />
               </div>
             </TabsContent>
+            <TabsContent value="upscale" className="space-y-4">
+              <div className="space-y-3 text-left">
+                <Label className="text-sm font-semibold">
+                  Upload Video for Upscaling
+                </Label>
+                <FileUpload
+                  id="upscale-video-upload"
+                  label="Upload Source Video"
+                  helperText={`MP4, MOV, or AVI up to ${UPLOAD_CONSTANTS.UPSCALE_MAX_VIDEO_SIZE_LABEL}, max 2 minutes`}
+                  fileType="video"
+                  acceptedTypes={UPLOAD_CONSTANTS.ALLOWED_VIDEO_TYPES}
+                  maxSizeBytes={UPLOAD_CONSTANTS.UPSCALE_MAX_VIDEO_SIZE_BYTES}
+                  maxSizeLabel={UPLOAD_CONSTANTS.UPSCALE_MAX_VIDEO_SIZE_LABEL}
+                  formatsLabel={UPLOAD_CONSTANTS.VIDEO_FORMATS_LABEL}
+                  file={sourceVideoFile}
+                  preview={null}
+                  onFileChange={(file) => {
+                    void handleUpscaleVideoChange(file);
+                  }}
+                  onError={setError}
+                  isCompact={isCompact}
+                />
+                {videoMetadata && (
+                  <div className="text-xs text-muted-foreground">
+                    Detected: {videoMetadata.width}x{videoMetadata.height} ·{" "}
+                    {(videoMetadata.duration ?? 0).toFixed(1)}s ·{" "}
+                    {Math.round(videoMetadata.fps ?? 30)} FPS
+                  </div>
+                )}
+                <div className="text-xs text-muted-foreground">
+                  Or provide video URL:
+                </div>
+                <Input
+                  type="url"
+                  value={sourceVideoUrl}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setSourceVideoUrl(value);
+                    if (value) {
+                      setSourceVideoFile(null);
+                    } else {
+                      setVideoMetadata(null);
+                    }
+                  }}
+                  onBlur={() => {
+                    void handleUpscaleVideoUrlBlur();
+                  }}
+                  placeholder="https://example.com/video.mp4"
+                  className="h-8 text-xs"
+                />
+              </div>
+
+              {bytedanceUpscalerSelected && (
+                <div className="space-y-3 text-left border-t pt-3">
+                  <Label className="text-sm font-semibold">
+                    ByteDance Upscaler Settings
+                  </Label>
+
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="space-y-1">
+                      <Label htmlFor="bytedance-resolution" className="text-xs">
+                        Target Resolution
+                      </Label>
+                      <Select
+                        value={bytedanceTargetResolution}
+                        onValueChange={(value) =>
+                          setBytedanceTargetResolution(
+                            value as "1080p" | "2k" | "4k"
+                          )
+                        }
+                      >
+                        <SelectTrigger
+                          id="bytedance-resolution"
+                          className="h-8 text-xs"
+                        >
+                          <SelectValue placeholder="Select resolution" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="1080p">
+                            1080p (Full HD)
+                          </SelectItem>
+                          <SelectItem value="2k">2K (2560x1440)</SelectItem>
+                          <SelectItem value="4k">4K (3840x2160)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-1">
+                      <Label htmlFor="bytedance-fps" className="text-xs">
+                        Target Frame Rate
+                      </Label>
+                      <Select
+                        value={bytedanceTargetFPS}
+                        onValueChange={(value) =>
+                          setBytedanceTargetFPS(value as "30fps" | "60fps")
+                        }
+                      >
+                        <SelectTrigger
+                          id="bytedance-fps"
+                          className="h-8 text-xs"
+                        >
+                          <SelectValue placeholder="Select FPS" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="30fps">30 FPS</SelectItem>
+                          <SelectItem value="60fps">
+                            60 FPS (2x cost)
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <div className="text-xs text-muted-foreground">
+                    Estimated cost (per clip): {bytedanceEstimatedCost}
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    AI-powered upscaling to 1080p, 2K, or 4K with optional 60fps
+                    enhancement.
+                  </div>
+                </div>
+              )}
+
+              {flashvsrUpscalerSelected && (
+                <Card className="space-y-4 border p-4">
+                  <div>
+                    <h4 className="text-sm font-semibold">
+                      FlashVSR Upscaler Settings
+                    </h4>
+                    <p className="text-xs text-muted-foreground">
+                      Fastest video upscaling with fine-grained quality control.
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-xs">
+                      Upscale Factor: {flashvsrUpscaleFactor.toFixed(1)}x
+                    </Label>
+                    <Slider
+                      min={1}
+                      max={4}
+                      step={0.1}
+                      value={[flashvsrUpscaleFactor]}
+                      onValueChange={(value) =>
+                        setFlashvsrUpscaleFactor(
+                          Number((value[0] ?? 1).toFixed(1))
+                        )
+                      }
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Continuous scale from 1x to 4x
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-xs">Acceleration Mode</Label>
+                    <Select
+                      value={flashvsrAcceleration}
+                      onValueChange={(value) =>
+                        setFlashvsrAcceleration(
+                          value as "regular" | "high" | "full"
+                        )
+                      }
+                    >
+                      <SelectTrigger className="h-8 text-xs">
+                        <SelectValue placeholder="Select acceleration" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="regular">
+                          Regular (Best quality)
+                        </SelectItem>
+                        <SelectItem value="high">
+                          High (30-40% faster)
+                        </SelectItem>
+                        <SelectItem value="full">
+                          Full (50-60% faster)
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-xs">
+                      Quality: {flashvsrQuality}
+                    </Label>
+                    <Slider
+                      min={0}
+                      max={100}
+                      step={5}
+                      value={[flashvsrQuality]}
+                      onValueChange={(value) =>
+                        setFlashvsrQuality(Math.round(value[0] ?? 70))
+                      }
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Tile blending quality (0-100)
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-xs">Output Format</Label>
+                    <Select
+                      value={flashvsrOutputFormat}
+                      onValueChange={(value) =>
+                        setFlashvsrOutputFormat(
+                          value as "X264" | "VP9" | "PRORES4444" | "GIF"
+                        )
+                      }
+                    >
+                      <SelectTrigger className="h-8 text-xs">
+                        <SelectValue placeholder="Select format" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="X264">
+                          X264 (.mp4) - Standard
+                        </SelectItem>
+                        <SelectItem value="VP9">
+                          VP9 (.webm) - Modern codec
+                        </SelectItem>
+                        <SelectItem value="PRORES4444">
+                          ProRes 4444 (.mov) - Professional
+                        </SelectItem>
+                        <SelectItem value="GIF">GIF (.gif) - Animated</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-xs">Output Quality</Label>
+                    <Select
+                      value={flashvsrOutputQuality}
+                      onValueChange={(value) =>
+                        setFlashvsrOutputQuality(
+                          value as "low" | "medium" | "high" | "maximum"
+                        )
+                      }
+                    >
+                      <SelectTrigger className="h-8 text-xs">
+                        <SelectValue placeholder="Select quality" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="low">Low</SelectItem>
+                        <SelectItem value="medium">Medium</SelectItem>
+                        <SelectItem value="high">High</SelectItem>
+                        <SelectItem value="maximum">Maximum</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-xs">Encoding Mode</Label>
+                    <Select
+                      value={flashvsrOutputWriteMode}
+                      onValueChange={(value) =>
+                        setFlashvsrOutputWriteMode(
+                          value as "fast" | "balanced" | "small"
+                        )
+                      }
+                    >
+                      <SelectTrigger className="h-8 text-xs">
+                        <SelectValue placeholder="Select encoding profile" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="fast">
+                          Fast (Faster encoding)
+                        </SelectItem>
+                        <SelectItem value="balanced">
+                          Balanced (Default)
+                        </SelectItem>
+                        <SelectItem value="small">
+                          Small (Smaller file size)
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="flex flex-col gap-2">
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="flashvsr-color-fix"
+                        checked={flashvsrColorFix}
+                        onCheckedChange={(checked) =>
+                          setFlashvsrColorFix(Boolean(checked))
+                        }
+                      />
+                      <Label htmlFor="flashvsr-color-fix" className="text-xs">
+                        Apply color correction
+                      </Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="flashvsr-preserve-audio"
+                        checked={flashvsrPreserveAudio}
+                        onCheckedChange={(checked) =>
+                          setFlashvsrPreserveAudio(Boolean(checked))
+                        }
+                      />
+                      <Label
+                        htmlFor="flashvsr-preserve-audio"
+                        className="text-xs"
+                      >
+                        Preserve audio track
+                      </Label>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <Label className="text-xs">Seed (optional)</Label>
+                    <Input
+                      type="number"
+                      value={flashvsrSeed ?? ""}
+                      onChange={(e) =>
+                        setFlashvsrSeed(
+                          e.target.value
+                            ? Number.parseInt(e.target.value, 10)
+                            : undefined
+                        )
+                      }
+                      placeholder="Random seed for reproducibility"
+                      className="h-8 text-xs"
+                    />
+                  </div>
+
+                  <div className="space-y-1 text-xs text-muted-foreground">
+                    <div>
+                      Estimated cost:{" "}
+                      <span className="font-semibold">
+                        {flashvsrEstimatedCost}
+                      </span>
+                    </div>
+                    <p>
+                      Based on output megapixels: (width × factor) × (height ×
+                      factor) × frames × $0.0005 / 1,000,000.
+                    </p>
+                  </div>
+                </Card>
+              )}
+
+              {topazUpscalerSelected && (
+                <Card className="space-y-4 border p-4">
+                  <div>
+                    <h4 className="text-sm font-semibold">
+                      Topaz Video Upscale Settings
+                    </h4>
+                    <p className="text-xs text-muted-foreground">
+                      Professional-grade upscaling up to 8x.
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-xs">
+                      Upscale Factor: {topazUpscaleFactor}x
+                    </Label>
+                    <Slider
+                      min={2}
+                      max={8}
+                      step={1}
+                      value={[topazUpscaleFactor]}
+                      onValueChange={(value) =>
+                        setTopazUpscaleFactor(
+                          Math.max(2, Math.min(8, Math.round(value[0] ?? 2)))
+                        )
+                      }
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Higher factor = better quality but longer processing
+                    </p>
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="topaz-interpolated"
+                      checked={topazTargetFPS === "interpolated"}
+                      onCheckedChange={(checked) =>
+                        setTopazTargetFPS(
+                          checked ? "interpolated" : "original"
+                        )
+                      }
+                    />
+                    <Label htmlFor="topaz-interpolated" className="text-xs">
+                      Enable frame interpolation
+                    </Label>
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="topaz-h264"
+                      checked={topazH264Output}
+                      onCheckedChange={(checked) =>
+                        setTopazH264Output(Boolean(checked))
+                      }
+                    />
+                    <Label htmlFor="topaz-h264" className="text-xs">
+                      Export H.264 output
+                    </Label>
+                  </div>
+
+                  <div className="space-y-1 text-xs text-muted-foreground">
+                    <div>
+                      Estimated cost:{" "}
+                      <span className="font-semibold">
+                        {calculateTopazUpscaleCost(topazUpscaleFactor)}
+                      </span>
+                    </div>
+                    <div>Processing time: 30-60 seconds</div>
+                  </div>
+                </Card>
+              )}
+            </TabsContent>
           </Tabs>
 
           {/* AI Model Selection */}
@@ -2159,6 +2700,9 @@ export function AiView() {
                 if (activeTab === "image") {
                   // Show image-to-video models
                   return model.category === "image";
+                }
+                if (activeTab === "upscale") {
+                  return model.category === "upscale";
                 }
                 return false;
               }).map((model) => {
@@ -2865,4 +3409,62 @@ export function AiView() {
       />
     </div>
   );
+}
+
+function calculateByteDanceUpscaleCost(
+  resolution: string,
+  fps: string,
+  durationSeconds: number
+): string {
+  const rateKey = `${resolution}_${fps}`.toLowerCase();
+  const rates: Record<string, number> = {
+    "1080p_30fps": 0.0072,
+    "2k_30fps": 0.0144,
+    "4k_30fps": 0.0288,
+    "1080p_60fps": 0.0144,
+    "2k_60fps": 0.0288,
+    "4k_60fps": 0.0576,
+  };
+
+  const rate = rates[rateKey] ?? rates["1080p_30fps"];
+  const totalCost = rate * durationSeconds;
+  return `$${totalCost.toFixed(3)}`;
+}
+
+function calculateFlashVSRUpscaleCost(
+  width: number,
+  height: number,
+  frames: number,
+  upscaleFactor: number
+): string {
+  if (!width || !height || !frames) {
+    return "$0.000";
+  }
+
+  const outputWidth = width * upscaleFactor;
+  const outputHeight = height * upscaleFactor;
+  const megapixels = (outputWidth * outputHeight * frames) / 1_000_000;
+  const totalCost = megapixels * 0.0005;
+  return `$${totalCost.toFixed(3)}`;
+}
+
+function calculateTopazUpscaleCost(factor: number): string {
+  const TOPAZ_COST_TABLE: Record<number, number> = {
+    2: 0.5,
+    3: 1.0,
+    4: 2.0,
+    6: 3.5,
+    8: 5.0,
+  };
+
+  const supportedFactors = Object.keys(TOPAZ_COST_TABLE).map(Number);
+  const closestFactor = supportedFactors.reduce(
+    (closest, current) =>
+      Math.abs(current - factor) < Math.abs(closest - factor)
+        ? current
+        : closest,
+    supportedFactors[0]
+  );
+
+  return `$${TOPAZ_COST_TABLE[closestFactor].toFixed(2)}`;
 }
