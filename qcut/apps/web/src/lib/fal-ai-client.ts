@@ -60,6 +60,52 @@ const VALID_OUTPUT_FORMATS = ["jpeg", "png", "webp"] as const;
 type OutputFormat = (typeof VALID_OUTPUT_FORMATS)[number];
 const DEFAULT_OUTPUT_FORMAT: OutputFormat = "jpeg";
 
+const DEFAULT_ASPECT_RATIO = "1:1";
+const IMAGE_SIZE_TO_ASPECT_RATIO: Record<string, string> = {
+  square: "1:1",
+  square_hd: "1:1",
+  portrait_3_4: "3:4",
+  portrait_9_16: "9:16",
+  landscape_4_3: "4:3",
+  landscape_16_9: "16:9",
+};
+const ASPECT_RATIO_PATTERN = /^\d+:\d+$/;
+
+const normalizeAspectRatio = (value?: string | null): string | undefined => {
+  if (!value) {
+    return undefined;
+  }
+
+  const normalized = value.replace(/\s+/g, "");
+  if (ASPECT_RATIO_PATTERN.test(normalized)) {
+    return normalized;
+  }
+
+  return undefined;
+};
+
+const imageSizeToAspectRatio = (
+  imageSize: string | number | undefined
+): string => {
+  if (typeof imageSize === "string") {
+    if (IMAGE_SIZE_TO_ASPECT_RATIO[imageSize]) {
+      return IMAGE_SIZE_TO_ASPECT_RATIO[imageSize];
+    }
+
+    const ratio = normalizeAspectRatio(imageSize);
+    if (ratio) {
+      return ratio;
+    }
+
+    const converted = normalizeAspectRatio(imageSize.replace(/_/g, ":"));
+    if (converted) {
+      return converted;
+    }
+  }
+
+  return DEFAULT_ASPECT_RATIO;
+};
+
 export interface GenerationSettings {
   imageSize: string | number;
   seed?: number;
@@ -500,8 +546,10 @@ class FalAIClient {
         break;
 
       case "nano-banana":
-        // Nano Banana uses traditional image_size string values
-        params.image_size = settings.imageSize;
+        // Nano Banana expects aspect_ratio instead of image_size
+        params.aspect_ratio = imageSizeToAspectRatio(settings.imageSize);
+        delete params.image_size;
+        delete params.seed;
         break;
     }
 
