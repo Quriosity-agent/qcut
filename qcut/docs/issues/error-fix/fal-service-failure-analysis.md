@@ -25,17 +25,26 @@
 
 **The Problem**: The "Nano Banana" model is failing with HTTP 422 errors when users attempt to generate images from text prompts.
 
-**Root Cause**: **Nano Banana is an image EDITING model**, not a text-to-image generation model. It requires input images (`image_urls` parameter) to edit, but the text-to-image generation flow doesn't provide any input images, causing the FAL API to reject the request.
+**Root Cause (UPDATED)**: According to the [official FAL AI documentation](https://fal.ai/models/fal-ai/nano-banana/api), **Nano Banana DOES support both text-to-image generation AND image editing**. The actual problems are:
+
+1. **Wrong Endpoint URL**: Code uses `https://fal.run/fal-ai/nano-banana/edit` (edit-specific) instead of `https://fal.run/fal-ai/nano-banana` (supports both modes)
+2. **Wrong Parameter Name**: Code sends `image_size` but Nano Banana expects `aspect_ratio`
+3. **Missing Parameter Mapping**: The model configuration doesn't properly map settings to Nano Banana's API format
+
+**What Nano Banana Actually Supports**:
+- ✅ **Text-to-Image**: Requires only `prompt` (3-5000 chars)
+- ✅ **Image Editing**: Requires `prompt` + `image_urls` array
 
 **Impact**:
 - Users cannot generate images using the Nano Banana model
 - Misleading error messages ("Field required" without specifying which field)
 - Poor user experience with failed generations
+- A capable text-to-image model is unusable due to configuration errors
 
-**Fix Required**: Either:
-1. **Remove Nano Banana from text-to-image model list** (recommended)
-2. **Create separate UI for image editing** using Nano Banana
-3. **Add validation** to prevent selecting edit models for text-to-image generation
+**Fix Required**:
+1. **Update endpoint URL** to `https://fal.run/fal-ai/nano-banana` (main endpoint)
+2. **Fix parameter mapping** to use `aspect_ratio` instead of `image_size`
+3. **Update model configuration** with correct available parameters
 
 ---
 
@@ -91,41 +100,58 @@ Line 261: Metadata: {
 **422 Unprocessable Content** means:
 - The server understood the request syntax (not a 400 Bad Request)
 - The request payload structure is valid JSON
-- **BUT the semantic validation failed** - required fields are missing or invalid
+- **BUT the semantic validation failed** - wrong parameters or invalid values
 
-### The "Field Required" Error
+### The "Field Required" Error (UPDATED Analysis)
 
-The error message "Field required" is vague and doesn't specify which field. By analyzing the Nano Banana API specification and code:
+According to the [official FAL AI Nano Banana API documentation](https://fal.ai/models/fal-ai/nano-banana/api):
 
-**Required Field for Nano Banana Edit Endpoint:**
+**For Text-to-Image Generation (what we're trying to do):**
 ```typescript
 {
-  image_urls: string[];  // ❌ MISSING - This is the problem!
-  prompt: string;         // ✅ Provided
-  num_images?: number;    // ✅ Provided (default: 1)
-  output_format?: string; // ✅ Provided (default: "png")
-  sync_mode?: boolean;    // ✅ Provided (default: false)
+  prompt: string;            // ✅ REQUIRED (3-5000 chars)
+  num_images?: number;       // ⚠️ Optional (1-4, default: 1)
+  aspect_ratio?: string;     // ⚠️ Optional (e.g., "1:1", "16:9")
+  output_format?: string;    // ⚠️ Optional ("JPEG", "PNG", "WebP")
+  sync_mode?: boolean;       // ⚠️ Optional
 }
 ```
 
-**What the code is sending:**
+**For Image Editing (NOT what we're doing):**
 ```typescript
 {
-  prompt: "user's text prompt",
-  num_images: 1,
-  output_format: "png",
-  sync_mode: false,
-  image_size: "square_hd",  // ⚠️ Not used by edit endpoint
-  seed: 12345               // ⚠️ Optional parameter
-  // ❌ image_urls is MISSING!
+  prompt: string;            // ✅ REQUIRED
+  image_urls: string[];      // ✅ REQUIRED for editing
+  num_images?: number;       // ⚠️ Optional
+  aspect_ratio?: string;     // ⚠️ Optional
+  output_format?: string;    // ⚠️ Optional
+  sync_mode?: boolean;       // ⚠️ Optional
 }
 ```
+
+**What the code is ACTUALLY sending:**
+```typescript
+{
+  prompt: "user's text prompt",  // ✅ Correct
+  num_images: 1,                 // ✅ Correct
+  output_format: "png",          // ✅ Correct (but should be "PNG")
+  sync_mode: false,              // ✅ Correct
+  image_size: "square_hd",       // ❌ WRONG PARAMETER NAME (should be aspect_ratio)
+  seed: 12345                    // ❌ NOT SUPPORTED by Nano Banana
+}
+```
+
+**The REAL Problems:**
+1. ❌ **Wrong endpoint**: Using `/edit` endpoint when main endpoint handles both modes
+2. ❌ **Wrong parameter**: Sending `image_size` instead of `aspect_ratio`
+3. ❌ **Unsupported parameter**: Sending `seed` which Nano Banana doesn't accept
+4. ⚠️ **Case sensitivity**: May need "PNG" not "png" for output_format
 
 ---
 
 ## Root Cause Analysis
 
-### Model Categorization Error
+### Model Configuration Errors (CORRECTED)
 
 **Nano Banana Model Configuration** (`text2image-models.ts:581-640`):
 
@@ -135,7 +161,7 @@ The error message "Field required" is vague and doesn't specify which field. By 
   name: "Nano Banana",
   description: "Google/Gemini-powered smart image editing with cost-effective pricing",
   provider: "Google",
-  endpoint: "https://fal.run/fal-ai/nano-banana/edit",  // ⚠️ EDIT endpoint!
+  endpoint: "https://fal.run/fal-ai/nano-banana/edit",  // ❌ WRONG! Should be /nano-banana
 
   // ... more config
 
@@ -151,31 +177,38 @@ The error message "Field required" is vague and doesn't specify which field. By 
     {
       name: "output_format",
       type: "select",
-      options: ["jpeg", "png"],
-      default: "png",
+      options: ["jpeg", "png"],           // ❌ Should be ["JPEG", "PNG", "WebP"]
+      default: "png",                     // ❌ Should be "PNG"
       description: "Output image format",
     },
-    // ⚠️ NOTICE: No "image_urls" parameter listed, but it's required!
+    // ❌ MISSING: aspect_ratio parameter!
+    // ❌ MISSING: sync_mode parameter!
   ],
 
   bestFor: [
-    "Multi-image editing",           // ← Image EDITING
-    "Complex image transformations", // ← Image EDITING
-    "Advanced content modification", // ← Image EDITING
-    "Batch image processing",        // ← Image EDITING
+    "Multi-image editing",           // ⚠️ Misleading - also does text-to-image
+    "Complex image transformations", // ⚠️ Misleading - also does generation
+    "Advanced content modification", // ⚠️ Misleading - also does generation
+    "Batch image processing",        // ⚠️ Misleading - also does generation
   ],
 }
 ```
 
-### The Fundamental Problem
+### The Fundamental Problem (CORRECTED)
 
-**Nano Banana is listed in `TEXT2IMAGE_MODELS`** but:
-- ❌ It's NOT a text-to-image model
-- ✅ It IS an image-to-image editing model
-- ❌ The endpoint URL clearly says `/edit`
-- ❌ The `bestFor` list describes EDITING use cases
+**According to [official FAL AI docs](https://fal.ai/models/fal-ai/nano-banana/api), Nano Banana:**
+- ✅ **IS a text-to-image model** (supports generation from text alone)
+- ✅ **IS ALSO an image editing model** (supports image-to-image with `image_urls`)
+- ❌ **Wrong endpoint**: Using `/edit` restricts to image editing mode only
+- ❌ **Wrong parameters**: Using `image_size` instead of `aspect_ratio`
+- ❌ **Incomplete config**: Missing supported parameters
 
-**This is a model categorization error.**
+**Official Nano Banana Capabilities:**
+- **Text-to-Image**: "Generates images from textual descriptions"
+- **Image Editing**: "Modifies existing images based on text prompts"
+- **Dual-mode**: Single endpoint `fal-ai/nano-banana` handles both
+
+**This is a model CONFIGURATION error, not categorization error.**
 
 ---
 
@@ -528,18 +561,21 @@ const results = await generateWithMultipleModels(validModels, prompt, settings);
 
 ## How to Fix
 
-### Solution 1: Remove Nano Banana from Text2Image Models (RECOMMENDED)
+### Solution 1: Fix Nano Banana Configuration (RECOMMENDED)
 
-**Effort**: Low (10 minutes)
-**Impact**: High (fixes user-facing bug immediately)
+**Effort**: Low (15 minutes)
+**Impact**: High (fixes user-facing bug and unlocks a working model)
 
-**Step 1**: Create a new model collection for image editing
+**Based on [official FAL AI documentation](https://fal.ai/models/fal-ai/nano-banana/api)**
 
-**File**: `qcut/apps/web/src/lib/image-edit-models.ts` (NEW FILE)
+**Step 1**: Update the endpoint URL
+
+**File**: `qcut/apps/web/src/lib/text2image-models.ts` (line 587)
 
 ```typescript
-export interface ImageEditModel {
-  id: string;
+// BEFORE (WRONG):
+"nano-banana": {
+  id: "nano-banana",
   name: string;
   description: string;
   provider: string;
@@ -681,47 +717,46 @@ const availableModels = Object.entries(TEXT2IMAGE_MODELS).map(([key, model]) => 
 
 ---
 
-### Solution 2: Add Validation to Prevent Editing Models in Text2Image Flow
+### Solution 2: Add Logging to Debug Parameter Issues
 
-**Effort**: Medium (30 minutes)
-**Impact**: Medium (prevents future categorization errors)
+**Effort**: Low (10 minutes)
+**Impact**: Medium (helps identify parameter mismatches)
 
-**File**: `qcut/apps/web/src/lib/fal-ai-client.ts`
+**File**: `qcut/apps/web/src/lib/fal-ai-client.ts` (line 540)
 
-Add validation in `generateWithModel()`:
+Add detailed logging before making the request:
 
 ```typescript
-async generateWithModel(
-  modelKey: string,
-  prompt: string,
-  settings: GenerationSettings
-): Promise<GenerationResult> {
-  try {
-    const model = TEXT2IMAGE_MODELS[modelKey];
-    if (!model) {
-      throw new Error(`Unknown model: ${modelKey}`);
-    }
+const params = this.convertSettingsToParams(model, prompt, settings);
 
-    // ✅ ADD THIS VALIDATION:
-    if (model.endpoint.includes('/edit')) {
-      throw new Error(
-        `Model "${model.name}" is an image editing model, not a text-to-image model. ` +
-        `Please use the image editor to use this model.`
-      );
-    }
+// ✅ ADD DETAILED LOGGING:
+debugLogger.log(FAL_LOG_COMPONENT, "MODEL_GENERATION_START", {
+  model: model.name,
+  modelKey,
+  endpoint: model.endpoint,  // ← Log the actual endpoint being called
+  promptPreview: prompt.slice(0, 120),
+  promptLength: prompt.length,
+  params,  // ← Log exact params being sent
+  expectedParams: model.availableParams.map(p => p.name),  // ← Show what's expected
+});
 
-    const params = this.convertSettingsToParams(model, prompt, settings);
-    // ... rest of function
-  }
-}
+const response = await this.makeRequest(model.endpoint, params);
 ```
+
+This helps identify:
+- Which endpoint is actually being called
+- What parameters are being sent
+- What parameters the model expects
+- Parameter name mismatches (image_size vs aspect_ratio)
 
 ---
 
-### Solution 3: Create Dedicated Image Editing UI
+### Solution 3: Support Image Editing Mode (Optional Enhancement)
 
-**Effort**: High (4-8 hours)
-**Impact**: High (unlocks new feature - image editing)
+**Effort**: Medium-High (2-4 hours)
+**Impact**: High (unlocks dual-mode capability for Nano Banana)
+
+Since Nano Banana supports BOTH text-to-image AND image editing, we can add support for image editing mode:
 
 **Create new component**: `qcut/apps/web/src/components/editor/media-panel/views/image-edit.tsx`
 
