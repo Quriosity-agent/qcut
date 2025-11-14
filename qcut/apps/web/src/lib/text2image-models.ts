@@ -481,9 +481,9 @@ export const TEXT2IMAGE_MODELS: Record<string, Text2ImageModel> = {
     id: "seeddream-v4",
     name: "SeedDream v4",
     description:
-      "ByteDance's advanced editing model with multi-image support and unified architecture",
+      "ByteDance's flagship SeedDream v4 text-to-image model with optional multi-image editing and unified architecture",
     provider: "ByteDance",
-    endpoint: "https://fal.run/fal-ai/bytedance/seedream/v4/edit",
+    endpoint: "https://fal.run/fal-ai/bytedance/seedream/v4/text-to-image",
 
     qualityRating: 4,
     speedRating: 4,
@@ -556,13 +556,14 @@ export const TEXT2IMAGE_MODELS: Record<string, Text2ImageModel> = {
     ],
 
     bestFor: [
-      "Multi-image editing",
-      "Complex image transformations",
-      "Advanced content modification",
-      "Batch image processing",
+      "High-fidelity text-to-image generation",
+      "Cinematic concept art with long prompts",
+      "Hybrid workflows that mix generation and editing",
+      "Advanced content modification pipelines",
     ],
 
     strengths: [
+      "Native text-to-image endpoint with editing flexibility",
       "Processes multiple images simultaneously",
       "Unified generation and editing architecture",
       "Flexible output sizing",

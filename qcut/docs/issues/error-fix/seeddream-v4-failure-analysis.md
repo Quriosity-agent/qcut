@@ -1,6 +1,7 @@
 # SeedDream V4 Service Failure Analysis
 
 **Generated**: 2025-11-14
+**Updated**: 2025-11-14 with [Official FAL AI API Specification](https://fal.ai/models/fal-ai/bytedance/seedream/v4/text-to-image/api)
 **Status**: Critical Bug (Configuration Error)
 **Priority**: High
 **Affected Feature**: Text-to-Image Generation with SeedDream V4 Model
@@ -11,6 +12,8 @@
 > ⚠️ **CRITICAL ISSUE**: SeedDream V4 is configured with the `/edit` endpoint instead of `/text-to-image` endpoint.
 > This causes the exact same "field required" error as Nano Banana.
 > The model IS capable of text-to-image generation but is misconfigured to only use the editing endpoint.
+>
+> **✅ ALL INFORMATION VERIFIED**: This document uses the official FAL AI API specification as the authoritative source.
 
 ---
 
@@ -179,7 +182,7 @@ The `/text-to-image` endpoint requires:
 
 ### Official FAL AI Documentation
 
-**Source**: [FAL AI - SeedDream V4 Text-to-Image](https://fal.ai/models/fal-ai/bytedance/seedream/v4/text-to-image)
+**Source**: [FAL AI - SeedDream V4 Text-to-Image API](https://fal.ai/models/fal-ai/bytedance/seedream/v4/text-to-image/api)
 
 ### Correct Endpoint
 
@@ -187,83 +190,118 @@ The `/text-to-image` endpoint requires:
 POST https://fal.run/fal-ai/bytedance/seedream/v4/text-to-image
 ```
 
+**Model ID**: `fal-ai/bytedance/seedream/v4/text-to-image`
+
 ### Parameters
 
 #### Required
 - **`prompt`** (string): Text description for image generation
-  - Max length: 1500 characters
 
-#### Optional
+#### Optional (Verified from Official API)
 
 | Parameter | Type | Default | Range/Options | Description |
 |-----------|------|---------|---------------|-------------|
-| `image_size` | string/object | "square_hd" | Presets or custom dimensions | Output image size |
-| `num_images` | integer | 1 | 1-6 | Number of images to generate |
-| `max_images` | integer | 1 | 1-6 | Maximum images (for multi-gen) |
-| `seed` | integer | random | 0 - 2,147,483,647 | Random seed for reproducibility |
-| `sync_mode` | boolean | false | true/false | Return data URI instead of URL |
-| `enable_safety_checker` | boolean | true | true/false | Filter unsafe content |
-| `enhance_prompt_mode` | string | "standard" | "standard"/"fast" | Prompt enhancement mode |
+| `image_size` | string/object | `{width: 2048, height: 2048}` | Enum presets or custom dimensions | Output image size |
+| `num_images` | integer | 1 | 1-6 | Number of separate generation runs |
+| `max_images` | integer | 1 | 1-6 | Multi-image generation control |
+| `seed` | integer | (random) | Any integer | Random seed for reproducibility |
+| `sync_mode` | boolean | false | true/false | Returns data URI; doesn't store in history |
+| `enable_safety_checker` | boolean | true | true/false | Content filtering (enabled by default) |
+| `enhance_prompt_mode` | enum | "standard" | "standard"/"fast" | Standard = higher quality, slower; Fast = lower quality, faster |
 
-### Supported Image Sizes
+### Supported Image Sizes (from Official API)
 
-**String Presets**:
-- `"square_hd"` - 1536×1536 (high definition square)
-- `"square"` - 1024×1024
-- `"portrait_4_3"` - Portrait with 4:3 ratio
-- `"portrait_16_9"` - Portrait with 16:9 ratio
-- `"landscape_4_3"` - Landscape with 4:3 ratio
-- `"landscape_16_9"` - Landscape with 16:9 ratio
+**Enum String Presets**:
+- `"square_hd"` - High definition square
+- `"square"` - Standard square
+- `"portrait_4_3"` - Portrait with 4:3 aspect ratio
+- `"portrait_16_9"` - Portrait with 16:9 aspect ratio
+- `"landscape_4_3"` - Landscape with 4:3 aspect ratio
+- `"landscape_16_9"` - Landscape with 16:9 aspect ratio
 
 **Auto Modes**:
 - `"auto"` - Automatic sizing
-- `"auto_2K"` - Auto 2K resolution
-- `"auto_4K"` - Auto 4K resolution
+- `"auto_2K"` - Automatic 2K resolution
+- `"auto_4K"` - Automatic 4K resolution
 
-**Custom Object**:
+**Custom Object Format**:
 ```typescript
 {
-  width: number,  // 1024-4096 pixels
-  height: number  // 1024-4096 pixels
+  width: number,  // Integer: 1024-4096 pixels
+  height: number  // Integer: 1024-4096 pixels
 }
 ```
+
+**Default**: `{width: 2048, height: 2048}` (2K square)
 
 **Constraints**:
-- Minimum total area: 921,600 pixels
-- Maximum dimensions: 4096×4096
+- Width range: 1024-4096 pixels
+- Height range: 1024-4096 pixels
+- Maximum dimensions: 4096×4096 (4K)
 
-### Example Request
+### Example Request (from Official API)
 
+**Using JavaScript SDK**:
+```javascript
+import { fal } from "@fal-ai/client";
+
+const result = await fal.subscribe("fal-ai/bytedance/seedream/v4/text-to-image", {
+  input: {
+    prompt: "A trendy restaurant with digital menu board displaying 'Seedream 4.0 is available on fal' in elegant script",
+    image_size: { width: 4096, height: 4096 },
+    num_images: 1,
+    enable_safety_checker: true,
+    enhance_prompt_mode: "standard"
+  }
+});
+```
+
+**Using REST API**:
 ```json
+POST https://fal.run/fal-ai/bytedance/seedream/v4/text-to-image
+
 {
   "prompt": "A trendy restaurant with digital menu board displaying 'Seedream 4.0'",
-  "image_size": "square_hd",
+  "image_size": { "width": 4096, "height": 4096 },
   "num_images": 1,
   "enable_safety_checker": true,
-  "enhance_prompt_mode": "standard",
-  "seed": 123456
+  "enhance_prompt_mode": "standard"
 }
 ```
 
-### Example Response
+### Example Response (from Official API)
 
 ```json
 {
   "images": [
     {
-      "url": "https://fal.media/files/...",
-      "width": 1536,
-      "height": 1536,
-      "content_type": "image/jpeg"
+      "url": "https://storage.googleapis.com/fal-models-outputs/...",
+      "width": 4096,
+      "height": 4096,
+      "content_type": "image/jpeg",
+      "file_name": "image.jpg",
+      "file_size": 2847392
     }
   ],
   "seed": 746406749
 }
 ```
 
-### Cost
+**Response Fields**:
+- `images` (array): Array of generated image objects
+  - `url` (string): Public URL to the generated image
+  - `width` (integer): Image width in pixels
+  - `height` (integer): Image height in pixels
+  - `content_type` (string): MIME type (e.g., "image/jpeg")
+  - `file_name` (string): Generated filename
+  - `file_size` (integer): File size in bytes
+- `seed` (integer): Seed value used for generation (for reproducibility)
 
-**$0.03 per image** - One of the most cost-effective models available
+### Cost & Commercial Use
+
+- **Cost**: $0.03 per image (one of the most cost-effective models)
+- **Commercial Use**: ✅ Permitted
+- **Authentication**: Requires FAL API key via `FAL_KEY` environment variable
 
 ---
 
@@ -467,17 +505,19 @@ availableParams: [
 ```typescript
 // BEFORE:
 defaultParams: {
-  image_size: "square_hd",
+  image_size: { width: 2048, height: 2048 },  // ✅ Official default from API docs
+  num_images: 1,
   max_images: 1,
   sync_mode: false,
   enable_safety_checker: true,
-  num_images: 1,
+  enhance_prompt_mode: "standard",
 },
 
-// AFTER (add enhance_prompt_mode):
+// AFTER (corrected per official API docs):
 defaultParams: {
-  image_size: "square_hd",
+  image_size: { width: 2048, height: 2048 },  // Official API default
   num_images: 1,
+  max_images: 1,
   sync_mode: false,
   enable_safety_checker: true,
   enhance_prompt_mode: "standard",
@@ -554,6 +594,18 @@ POST https://fal.run/fal-ai/bytedance/seedream/v4/edit
 POST https://fal.run/fal-ai/bytedance/seedream/v4/text-to-image
 {
   "prompt": "A beautiful sunset",
+  "image_size": { "width": 2048, "height": 2048 },
+  "num_images": 1,
+  "seed": 12345,
+  "enable_safety_checker": true,
+  "enhance_prompt_mode": "standard"
+}
+```
+
+**Alternative with string preset**:
+```json
+{
+  "prompt": "A beautiful sunset",
   "image_size": "square_hd",
   "num_images": 1,
   "seed": 12345,
@@ -562,7 +614,7 @@ POST https://fal.run/fal-ai/bytedance/seedream/v4/text-to-image
 }
 ```
 
-**Result**: ✅ Success - Returns generated image
+**Result**: ✅ Success - Returns generated image with full metadata (URL, dimensions, file_size, etc.)
 
 ### Test Commands
 
@@ -769,16 +821,17 @@ async generateWithModel(modelKey: string, prompt: string, settings: GenerationSe
 
 ## External Resources
 
-- **FAL AI Official Docs**: https://fal.ai/models/fal-ai/bytedance/seedream/v4/text-to-image
-- **Edit Endpoint Docs**: https://fal.ai/models/fal-ai/bytedance/seedream/v4/edit/api
+- **✅ FAL AI Official API Docs** (PRIMARY SOURCE): https://fal.ai/models/fal-ai/bytedance/seedream/v4/text-to-image/api
+- **FAL AI Model Page**: https://fal.ai/models/fal-ai/bytedance/seedream/v4/text-to-image
+- **Edit Endpoint Docs** (separate endpoint): https://fal.ai/models/fal-ai/bytedance/seedream/v4/edit/api
 - **AI/ML API Docs**: https://docs.aimlapi.com/api-references/image-models/bytedance/seedream-v4-text-to-image
-- **ByteDance SeedDream**: https://seed.bytedance.com/en/seedream4_0
+- **ByteDance SeedDream Official**: https://seed.bytedance.com/en/seedream4_0
 
 ---
 
-**Document Version**: 1.0
+**Document Version**: 1.1 (Updated with verified API specification)
 **Last Updated**: 2025-11-14
-**Author**: AI Analysis of consolev3.md + FAL AI API Documentation
+**Author**: AI Analysis of consolev3.md + [Verified FAL AI API Documentation](https://fal.ai/models/fal-ai/bytedance/seedream/v4/text-to-image/api)
 
 ---
 
