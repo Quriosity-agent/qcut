@@ -597,7 +597,7 @@ export const TEXT2IMAGE_MODELS: Record<string, Text2ImageModel> = {
 
     defaultParams: {
       num_images: 1,
-      output_format: "PNG",
+      output_format: "png",
       sync_mode: false,
     },
 
@@ -613,8 +613,8 @@ export const TEXT2IMAGE_MODELS: Record<string, Text2ImageModel> = {
       {
         name: "output_format",
         type: "select",
-        options: ["JPEG", "PNG"],
-        default: "PNG",
+        options: ["jpeg", "png"],
+        default: "png",
         description: "Output image format",
       },
       {

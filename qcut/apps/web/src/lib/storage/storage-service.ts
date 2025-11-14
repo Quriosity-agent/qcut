@@ -14,12 +14,19 @@ import {
 } from "./types";
 import { TimelineTrack } from "@/types/timeline";
 import { createObjectURL } from "@/lib/blob-manager";
-import { debugLog, debugError } from "@/lib/debug-config";
+import { debugLog, debugError, debugWarn } from "@/lib/debug-config";
 
 class StorageService {
   private projectsAdapter!: StorageAdapter<SerializedProject>;
   private config: StorageConfig;
   private isInitialized = false;
+  private mediaAdapterCache = new Map<
+    string,
+    {
+      mediaMetadataAdapter: IndexedDBAdapter<MediaFileData>;
+      mediaFilesAdapter: OPFSAdapter;
+    }
+  >();
 
   constructor() {
     this.config = {
@@ -82,11 +89,10 @@ class StorageService {
 
   // Helper to get project-specific media adapters
   private getProjectMediaAdapters(projectId: string) {
-    // DEBUG: Track project IDs being used
-    console.log(
-      `[StorageService] getProjectMediaAdapters called with projectId: ${projectId}`
-    );
-    console.trace("[StorageService] Call stack");
+    const cachedAdapters = this.mediaAdapterCache.get(projectId);
+    if (cachedAdapters) {
+      return cachedAdapters;
+    }
 
     const mediaMetadataAdapter = new IndexedDBAdapter<MediaFileData>(
       `${this.config.mediaDb}-${projectId}`,
@@ -96,7 +102,19 @@ class StorageService {
 
     const mediaFilesAdapter = new OPFSAdapter(`media-files-${projectId}`);
 
-    return { mediaMetadataAdapter, mediaFilesAdapter };
+    const adapters = { mediaMetadataAdapter, mediaFilesAdapter };
+    this.mediaAdapterCache.set(projectId, adapters);
+    debugLog("[StorageService] Cached media adapters", { projectId });
+
+    return adapters;
+  }
+
+  private clearProjectMediaAdapters(projectId: string) {
+    if (this.mediaAdapterCache.delete(projectId)) {
+      debugLog("[StorageService] Cleared cached media adapters", {
+        projectId,
+      });
+    }
   }
 
   // Helper to get project-specific timeline adapter
@@ -197,20 +215,20 @@ class StorageService {
     const projectIds = await this.projectsAdapter.list();
 
     // DEBUG: Log how many project IDs found
-    console.error(
+    debugLog(
       `[StorageService.loadAllProjects] Found ${projectIds.length} project IDs to load`
     );
     if (projectIds.length > 0 && projectIds.length <= 10) {
-      console.error(
+      debugLog(
         "[StorageService.loadAllProjects] Project IDs:",
         projectIds
       );
     } else if (projectIds.length > 10) {
-      console.error(
+      debugLog(
         "[StorageService.loadAllProjects] First 5 project IDs:",
         projectIds.slice(0, 5)
       );
-      console.error(
+      debugLog(
         "[StorageService.loadAllProjects] Last 5 project IDs:",
         projectIds.slice(-5)
       );
@@ -234,12 +252,13 @@ class StorageService {
 
   async deleteProject(id: string): Promise<void> {
     await this.projectsAdapter.remove(id);
+    this.clearProjectMediaAdapters(id);
   }
 
   // Media operations - now project-specific
   async saveMediaItem(projectId: string, mediaItem: MediaItem): Promise<void> {
     // DEBUG: Log projectId at entry point
-    console.log(
+    debugLog(
       `[StorageService.saveMediaItem] Called with projectId: ${projectId}, mediaItem.id: ${mediaItem.id}, mediaItem.name: ${mediaItem.name}`
     );
 
@@ -322,7 +341,7 @@ class StorageService {
       // No file or empty file, but we have a URL (e.g., generated image fallback)
       // Skip invalid blob URLs from previous sessions
       if (metadata.url.startsWith("blob:")) {
-        console.warn(
+        debugWarn(
           `[StorageService] Skipping invalid blob URL for ${metadata.name}. Blob URLs don't persist across sessions.`
         );
         return null;
@@ -332,12 +351,12 @@ class StorageService {
       actualFile = new File([], metadata.name, {
         type: `${metadata.type}/jpeg`,
       });
-      console.log(
+      debugLog(
         `[StorageService] Using stored URL for ${metadata.name}: ${url}`
       );
     } else {
       // No file and no URL, cannot load
-      console.warn(
+      debugWarn(
         `[StorageService] No file or URL found for media item: ${metadata.name}`
       );
       return null;
@@ -391,6 +410,7 @@ class StorageService {
       mediaMetadataAdapter.clear(),
       mediaFilesAdapter.clear(),
     ]);
+    this.clearProjectMediaAdapters(projectId);
   }
 
   // Legacy timeline operations (kept for backward compatibility)

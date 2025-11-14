@@ -35,13 +35,25 @@ export function DefaultLayout({ resetCounter }: LayoutProps) {
   const total = toolsPanel + previewPanel + propertiesPanel;
   const normalizationFactor = total !== 0 ? 100 / total : 1;
 
-  const normalizedTools =
-    Math.round(toolsPanel * normalizationFactor * 100) / 100;
-  const normalizedPreview =
-    Math.round(previewPanel * normalizationFactor * 100) / 100;
+  const clamp = (value: number, min: number, max: number) =>
+    Math.max(min, Math.min(max, value));
+
+  const normalizedTools = clamp(
+    Math.round(toolsPanel * normalizationFactor * 100) / 100,
+    15,
+    40
+  );
+  const normalizedPreview = clamp(
+    Math.round(previewPanel * normalizationFactor * 100) / 100,
+    30,
+    100
+  );
   // Properties gets the remainder to ensure exact 100%
-  const normalizedProperties =
-    Math.round((100 - normalizedTools - normalizedPreview) * 100) / 100;
+  const normalizedProperties = clamp(
+    Math.round((100 - normalizedTools - normalizedPreview) * 100) / 100,
+    15,
+    40
+  );
 
   // Panel size calculation completed
 

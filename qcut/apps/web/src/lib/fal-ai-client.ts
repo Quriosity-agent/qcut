@@ -56,15 +56,41 @@ interface UploadError extends Error {
   errorData?: unknown;
 }
 
+const VALID_OUTPUT_FORMATS = ["jpeg", "png", "webp"] as const;
+type OutputFormat = (typeof VALID_OUTPUT_FORMATS)[number];
+const DEFAULT_OUTPUT_FORMAT: OutputFormat = "jpeg";
+
 export interface GenerationSettings {
   imageSize: string | number;
   seed?: number;
+  outputFormat?: OutputFormat;
 }
 
 const FAL_LOG_COMPONENT = "FalAIClient";
 const MIN_REVE_IMAGES = 1;
 const MAX_REVE_IMAGES = 4;
 const MAX_REVE_PROMPT_LENGTH = 2560;
+
+const normalizeOutputFormat = (
+  format?: string | null,
+  fallback: OutputFormat = DEFAULT_OUTPUT_FORMAT
+): OutputFormat => {
+  if (!format) {
+    return fallback;
+  }
+
+  const normalized = format.toString().toLowerCase() as OutputFormat;
+  if (VALID_OUTPUT_FORMATS.includes(normalized)) {
+    return normalized;
+  }
+
+  debugLogger.warn(FAL_LOG_COMPONENT, "OUTPUT_FORMAT_INVALID", {
+    requestedFormat: format,
+    fallback,
+  });
+
+  return fallback;
+};
 
 const clampReveNumImages = (value?: number): number => {
   if (value === undefined || value === null) {
@@ -476,11 +502,23 @@ class FalAIClient {
       case "nano-banana":
         // Nano Banana uses traditional image_size string values
         params.image_size = settings.imageSize;
-        // Set default output format if not specified
-        if (!params.output_format) {
-          params.output_format = "PNG";
-        }
         break;
+    }
+
+    const supportsOutputFormat = model.availableParams.some(
+      (param) => param.name === "output_format"
+    );
+    const hasExistingFormat =
+      params.output_format !== undefined ||
+      (params as Record<string, unknown>).outputFormat !== undefined;
+    if (supportsOutputFormat || hasExistingFormat || settings.outputFormat) {
+      const desiredFormat =
+        settings.outputFormat ??
+        (params.output_format as string | undefined) ??
+        ((params as Record<string, string | undefined>).outputFormat ??
+          DEFAULT_OUTPUT_FORMAT);
+      params.output_format = normalizeOutputFormat(desiredFormat);
+      delete (params as Record<string, unknown>).outputFormat;
     }
 
     return params;
@@ -1056,6 +1094,10 @@ class FalAIClient {
         prompt: truncateRevePrompt(params.prompt),
         num_images: clampReveNumImages(params.num_images),
       };
+      sanitizedParams.output_format = normalizeOutputFormat(
+        sanitizedParams.output_format ?? params.output_format,
+        "png"
+      );
 
       // Retrieve endpoint from single source of truth
       const model = TEXT2IMAGE_MODELS["reve-text-to-image"];
@@ -1122,6 +1164,10 @@ class FalAIClient {
         prompt: truncateRevePrompt(params.prompt.trim()),
         num_images: clampReveNumImages(params.num_images),
       };
+      sanitizedParams.output_format = normalizeOutputFormat(
+        sanitizedParams.output_format ?? params.output_format,
+        "png"
+      );
 
       // Validate sanitized inputs before issuing the request
       validateRevePrompt(sanitizedParams.prompt);
@@ -1328,19 +1374,11 @@ function convertNanoBananaParameters(params: any) {
     });
   }
 
-  // Normalize output format to uppercase
-  const validFormats = ["PNG", "JPEG", "WEBP"];
-  let outputFormat = String(
-    params.output_format ?? params.outputFormat ?? "PNG"
-  ).toUpperCase();
-
-  if (!validFormats.includes(outputFormat)) {
-    debugLogger.warn(FAL_LOG_COMPONENT, "FAL_NANO_OUTPUT_FORMAT_INVALID", {
-      requestedFormat: outputFormat,
-      fallback: "PNG",
-    });
-    outputFormat = "PNG";
-  }
+  const requestedFormat =
+    (params.output_format as string | undefined) ??
+    (params.outputFormat as string | undefined) ??
+    "png";
+  const outputFormat = normalizeOutputFormat(requestedFormat, "png");
 
   // Ensure sync_mode is boolean
   const syncMode = Boolean(params.sync_mode ?? params.syncMode ?? false);

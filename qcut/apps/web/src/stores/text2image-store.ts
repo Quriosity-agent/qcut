@@ -121,6 +121,7 @@ export interface GenerationResult {
 export interface GenerationSettings {
   imageSize: string;
   seed?: number;
+  outputFormat?: "png" | "jpeg" | "webp";
 }
 
 export interface UpscaleSettings {

@@ -21,15 +21,6 @@ export class IndexedDBAdapter<T> implements StorageAdapter<T> {
     this.storeName = storeName;
     this.version = version;
 
-    // DEBUG: Track database creation with stack trace
-    if (
-      dbName.startsWith("video-editor-media-") ||
-      dbName.startsWith("video-editor-timelines-")
-    ) {
-      const debugError = new Error("Stack trace for database creation");
-      console.log(`[IndexedDBAdapter] Creating database: ${dbName}`);
-      console.log("[IndexedDBAdapter] Call stack:", debugError.stack);
-    }
   }
 
   private async getDB(): Promise<IDBDatabase> {
