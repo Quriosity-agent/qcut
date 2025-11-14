@@ -1,9 +1,17 @@
 # FAL Service Failure Analysis - Nano Banana Model
 
 **Generated**: 2025-11-14
-**Status**: Critical Bug
+**Updated**: 2025-11-14 with [FAL AI Official Documentation](https://fal.ai/models/fal-ai/nano-banana/api)
+**Status**: Critical Bug (Configuration Error)
 **Priority**: High
-**Affected Feature**: Text-to-Image Generation
+**Affected Feature**: Text-to-Image Generation with Nano Banana Model
+
+---
+
+> ⚠️ **IMPORTANT CORRECTION**: Initial analysis incorrectly concluded Nano Banana was only an image editing model.
+> After reviewing the official FAL AI documentation, Nano Banana **DOES support text-to-image generation**.
+> The errors are caused by **configuration issues** (wrong endpoint, wrong parameters), NOT model categorization.
+> See "Key Takeaway" section at the bottom for corrected understanding.
 
 ---
 
@@ -576,110 +584,18 @@ const results = await generateWithMultipleModels(validModels, prompt, settings);
 // BEFORE (WRONG):
 "nano-banana": {
   id: "nano-banana",
-  name: string;
-  description: string;
-  provider: string;
-  endpoint: string;
+  name: "Nano Banana",
+  description: "Google/Gemini-powered smart image editing with cost-effective pricing",
+  provider: "Google",
+  endpoint: "https://fal.run/fal-ai/nano-banana/edit",  // ❌ WRONG
 
-  qualityRating: number;
-  speedRating: number;
-  estimatedCost: string;
-  costPerImage: number;
-
-  maxResolution: string;
-  supportedAspectRatios: string[];
-
-  defaultParams: Record<string, any>;
-  availableParams: Array<{
-    name: string;
-    type: "number" | "string" | "boolean" | "select";
-    min?: number;
-    max?: number;
-    options?: string[];
-    default: any;
-    description: string;
-  }>;
-
-  bestFor: string[];
-  strengths: string[];
-  limitations: string[];
-}
-
-export const IMAGE_EDIT_MODELS: Record<string, ImageEditModel> = {
-  "nano-banana": {
-    // Move the nano-banana config here from TEXT2IMAGE_MODELS
-    id: "nano-banana",
-    name: "Nano Banana",
-    description: "Google/Gemini-powered smart image editing with cost-effective pricing",
-    provider: "Google",
-    endpoint: "https://fal.run/fal-ai/nano-banana/edit",
-
-    qualityRating: 4,
-    speedRating: 5,
-    estimatedCost: "$0.039",
-    costPerImage: 3.9,
-    maxResolution: "2048x2048",
-    supportedAspectRatios: ["1:1", "4:3", "3:4", "16:9", "9:16"],
-
-    defaultParams: {
-      num_images: 1,
-      output_format: "png",
-      sync_mode: false,
-    },
-
-    availableParams: [
-      {
-        name: "image_urls",  // ← ADD THIS!
-        type: "array",
-        min: 1,
-        max: 10,
-        default: [],
-        description: "Input images to edit (required)",
-      },
-      {
-        name: "num_images",
-        type: "number",
-        min: 1,
-        max: 4,
-        default: 1,
-        description: "Number of output images to generate",
-      },
-      {
-        name: "output_format",
-        type: "select",
-        options: ["jpeg", "png"],
-        default: "png",
-        description: "Output image format",
-      },
-      {
-        name: "sync_mode",
-        type: "boolean",
-        default: false,
-        description: "Wait for all images to complete before returning",
-      },
-    ],
-
-    bestFor: [
-      "Multi-image editing",
-      "Complex image transformations",
-      "Advanced content modification",
-      "Batch image processing",
-    ],
-
-    strengths: [
-      "Cost-effective pricing",
-      "Fast processing",
-      "High-quality results",
-      "Batch processing support",
-    ],
-
-    limitations: [
-      "Requires input images",
-      "Not suitable for text-to-image generation",
-      "Limited to 10 input images max",
-    ],
-  },
-};
+// AFTER (CORRECT):
+"nano-banana": {
+  id: "nano-banana",
+  name: "Nano Banana",
+  description: "Google's state-of-the-art image generation and editing model",
+  provider: "Google",
+  endpoint: "https://fal.run/fal-ai/nano-banana",  // ✅ CORRECT - supports both modes
 ```
 
 **Step 2**: Remove nano-banana from TEXT2IMAGE_MODELS
@@ -1019,46 +935,63 @@ export const TEXT2IMAGE_MODELS: Record<string, Text2ImageModel> = {
 
 ---
 
-## Summary
+## Summary (UPDATED)
 
 ### Quick Reference Table
 
-| Aspect | Details |
+| Aspect | Details (CORRECTED) |
 |--------|---------|
 | **Error Code** | HTTP 422 Unprocessable Content |
-| **Error Message** | "Field required" |
-| **Missing Field** | `image_urls` (required for edit endpoint) |
-| **Root Cause** | Nano Banana is an image EDITING model in text-to-image model list |
-| **Impact** | Users cannot generate images with Nano Banana |
-| **Recommended Fix** | Remove from TEXT2IMAGE_MODELS, create IMAGE_EDIT_MODELS |
-| **Effort** | 10-30 minutes depending on solution |
-| **Priority** | High - user-facing feature broken |
+| **Error Message** | "Field required" (vague) |
+| **Actual Problems** | 1. Wrong endpoint `/edit` <br> 2. Wrong parameter `image_size` → should be `aspect_ratio` <br> 3. Unsupported `seed` parameter |
+| **Root Cause** | Model CONFIGURATION errors, not categorization - Nano Banana DOES support text-to-image |
+| **Impact** | Users cannot generate images with Nano Banana despite it being capable |
+| **Recommended Fix** | Fix endpoint URL and parameter mapping (15 min) |
+| **Effort** | 15 minutes for configuration fix |
+| **Priority** | High - capable model is broken due to config errors |
 
-### Action Items
+### Corrected Understanding
 
-**Immediate (High Priority)**:
-1. ✅ Remove nano-banana from TEXT2IMAGE_MODELS
-2. ✅ Add validation to reject editing models in text-to-image flow
-3. ✅ Improve error messages to specify missing fields
+**BEFORE Investigation** (Incorrect):
+- ❌ Thought: Nano Banana is only an image editing model
+- ❌ Solution: Remove it from TEXT2IMAGE_MODELS
+- ❌ Impact: Would lose a working model unnecessarily
 
-**Short-term (Medium Priority)**:
-4. ✅ Create IMAGE_EDIT_MODELS collection
-5. ✅ Add tests for model categorization
-6. ✅ Document model categorization rules
+**AFTER Reading [FAL AI Docs](https://fal.ai/models/fal-ai/nano-banana/api)** (Correct):
+- ✅ **Nano Banana IS a text-to-image model**
+- ✅ **Nano Banana ALSO supports image editing**
+- ✅ Solution: Fix configuration to match API spec
+- ✅ Impact: Unlocks a fast, cost-effective ($0.039/image) generation model
 
-**Long-term (Low Priority)**:
-7. ✅ Build dedicated image editing UI
-8. ✅ Implement type-safe model categories
-9. ✅ Add runtime validation system
+### Action Items (UPDATED)
+
+**Immediate (High Priority)** - Fix Configuration:
+1. ✅ Update endpoint from `/edit` to `/nano-banana` in text2image-models.ts
+2. ✅ Fix parameter mapping: use `aspect_ratio` instead of `image_size`
+3. ✅ Update availableParams with correct API spec
+4. ✅ Remove unsupported `seed` parameter from nano-banana requests
+5. ✅ Fix output_format case: use "PNG", "JPEG", "WebP" (uppercase)
+
+**Short-term (Medium Priority)** - Quality & Testing:
+6. ✅ Add detailed logging to debug parameter issues
+7. ✅ Improve error messages to show parameter mismatches
+8. ✅ Add tests for parameter conversion
+9. ✅ Test nano-banana generation after config fix
+
+**Long-term (Optional)** - Enhanced Features:
+10. ⚠️ Support image editing mode for nano-banana (requires UI changes)
+11. ⚠️ Create dual-mode UI that switches between text-to-image and image editing
+12. ⚠️ Add parameter validation before API calls
 
 ---
 
 ## Related Files
 
 **Primary Issue Files**:
-- `qcut/apps/web/src/lib/text2image-models.ts:581-640` - Nano Banana miscategorized
-- `qcut/apps/web/src/lib/fal-ai-client.ts:374-524` - convertSettingsToParams missing image_urls
+- `qcut/apps/web/src/lib/text2image-models.ts:581-640` - Nano Banana wrong endpoint & params
+- `qcut/apps/web/src/lib/fal-ai-client.ts:502-505` - Wrong parameter: image_size instead of aspect_ratio
 - `qcut/apps/web/src/lib/fal-ai-client.ts:237-274` - Generic error messages
+- `qcut/apps/web/src/lib/fal-ai-client.ts:385-386` - Sends unsupported seed parameter
 
 **Supporting Files**:
 - `qcut/apps/web/src/stores/text2image-store.ts:361` - No model validation
@@ -1070,6 +1003,18 @@ export const TEXT2IMAGE_MODELS: Record<string, Text2ImageModel> = {
 
 ---
 
-**Document Version**: 1.0
+**Document Version**: 2.0 (CORRECTED with official FAL AI documentation)
 **Last Updated**: 2025-11-14
-**Author**: AI Analysis of console2.md errors
+**Author**: AI Analysis of console2.md errors + [FAL AI API Docs](https://fal.ai/models/fal-ai/nano-banana/api)
+
+---
+
+## Key Takeaway
+
+**The original analysis was INCORRECT**. Nano Banana is NOT just an image editing model - it's a **dual-mode model** that supports both text-to-image generation AND image editing. The errors are caused by:
+
+1. Using the wrong endpoint (`/edit` restricts to editing mode only)
+2. Using wrong parameter names (`image_size` instead of `aspect_ratio`)
+3. Sending unsupported parameters (`seed` is not supported)
+
+**Fix**: Update configuration to match the official API specification. **Do NOT remove** the model from TEXT2IMAGE_MODELS - it belongs there!

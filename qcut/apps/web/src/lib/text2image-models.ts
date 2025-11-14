@@ -582,9 +582,9 @@ export const TEXT2IMAGE_MODELS: Record<string, Text2ImageModel> = {
     id: "nano-banana",
     name: "Nano Banana",
     description:
-      "Google/Gemini-powered smart image editing with cost-effective pricing",
+      "Google/Gemini-powered model for fast, cost-effective text-to-image generation with optional editing",
     provider: "Google",
-    endpoint: "https://fal.run/fal-ai/nano-banana/edit",
+    endpoint: "https://fal.run/fal-ai/nano-banana",
 
     qualityRating: 4,
     speedRating: 5,
@@ -596,12 +596,20 @@ export const TEXT2IMAGE_MODELS: Record<string, Text2ImageModel> = {
     supportedAspectRatios: ["1:1", "4:3", "3:4", "16:9", "9:16"],
 
     defaultParams: {
+      aspect_ratio: "1:1",
       num_images: 1,
       output_format: "png",
       sync_mode: false,
     },
 
     availableParams: [
+      {
+        name: "aspect_ratio",
+        type: "select",
+        options: ["1:1", "4:3", "3:4", "16:9", "9:16"],
+        default: "1:1",
+        description: "Image aspect ratio",
+      },
       {
         name: "num_images",
         type: "number",
