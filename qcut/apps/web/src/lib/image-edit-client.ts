@@ -32,7 +32,7 @@ export interface ImageEditRequest {
   maxImages?: number; // 1-10 for V4
   syncMode?: boolean; // V4, Nano Banana, and Reve Edit
   enableSafetyChecker?: boolean; // V4
-  outputFormat?: "JPEG" | "PNG" | "png" | "jpeg" | "webp"; // Nano Banana and Reve Edit
+  outputFormat?: "jpeg" | "png" | "webp"; // Nano Banana and Reve Edit (lowercase required by FAL API)
 }
 
 export interface ImageUpscaleRequest {
@@ -110,7 +110,7 @@ export const MODEL_ENDPOINTS: Record<string, ModelEndpoint> = {
     endpoint: "fal-ai/nano-banana/edit",
     defaultParams: {
       num_images: 1,
-      output_format: "PNG",
+      output_format: "png",
       sync_mode: false,
     },
   },
@@ -830,8 +830,8 @@ export function getImageEditModels() {
         numImages: { min: 1, max: 4, default: 1, step: 1 },
         outputFormat: {
           type: "select",
-          options: ["JPEG", "PNG"],
-          default: "PNG",
+          options: ["jpeg", "png"],
+          default: "png",
         },
         syncMode: { type: "boolean", default: false },
       },
