@@ -34,7 +34,6 @@ export interface NanoEditAsset {
 export interface NanoEditState {
   assets: NanoEditAsset[];
   isProcessing: boolean;
-  activeTab: "image-assets" | "enhancement";
   currentProject?: string;
 }
 
@@ -42,7 +41,6 @@ export interface NanoEditActions {
   addAsset: (asset: NanoEditAsset) => void;
   removeAsset: (id: string) => void;
   setProcessing: (processing: boolean) => void;
-  setActiveTab: (tab: NanoEditState["activeTab"]) => void;
   clearAssets: () => void;
 }
 

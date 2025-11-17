@@ -4,11 +4,10 @@ import type { NanoEditStore, NanoEditAsset } from "../types/nano-edit";
 
 export const useNanoEditStore = create<NanoEditStore>()(
   devtools(
-    (set, get) => ({
+    (set) => ({
       // State
       assets: [],
       isProcessing: false,
-      activeTab: "image-assets",
       currentProject: undefined,
 
       // Actions
@@ -33,9 +32,6 @@ export const useNanoEditStore = create<NanoEditStore>()(
       setProcessing: (processing: boolean) =>
         set({ isProcessing: processing }, false, "nano-edit/setProcessing"),
 
-      setActiveTab: (tab) =>
-        set({ activeTab: tab }, false, "nano-edit/setActiveTab"),
-
       clearAssets: () => set({ assets: [] }, false, "nano-edit/clearAssets"),
     }),
     {
@@ -54,5 +50,3 @@ export const selectAssetsByProject =
     state.assets.filter((asset) => asset.projectId === projectId);
 
 export const selectIsProcessing = (state: NanoEditStore) => state.isProcessing;
-
-export const selectActiveTab = (state: NanoEditStore) => state.activeTab;
