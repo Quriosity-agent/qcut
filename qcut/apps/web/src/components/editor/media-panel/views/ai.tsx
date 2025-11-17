@@ -2681,14 +2681,84 @@ export function AiView() {
                   </div>
                 </Card>
               )}
-            </TabsContent>
-          </Tabs>
+        </TabsContent>
+      </Tabs>
 
-          {/* AI Model Selection */}
-          <div className="space-y-2">
-            <Label className="text-xs">
-              {!isCompact && "Select "}AI Models
-              {!isCompact && " (multi-select)"}
+      {/* Primary action controls surfaced above model list for quicker access */}
+      <div className="space-y-2 pt-2">
+        <Button
+          type="button"
+          onClick={generation.handleGenerate}
+          disabled={!generation.canGenerate}
+          className="w-full"
+          size={isCompact ? "sm" : "lg"}
+        >
+          {generation.isGenerating ? (
+            <>
+              <Loader2 className="size-4 mr-2 animate-spin" />
+              {isCompact
+                ? "Generating..."
+                : activeTab === "avatar"
+                  ? "Generating Avatar..."
+                  : "Generating Video..."}
+            </>
+          ) : (
+            <>
+              <BotIcon className="size-4 mr-2" />
+              {(() => {
+                const count = selectedModels.length;
+                const countLabel =
+                  count > 0
+                    ? `Generate with ${count} ${count === 1 ? "Model" : "Models"}`
+                    : "Generate Video";
+                if (isCompact) {
+                  return count > 0 ? `Generate (${count})` : "Generate";
+                }
+                if (activeTab === "avatar") {
+                  return count > 0
+                    ? `Generate Avatar (${count})`
+                    : "Generate Avatar";
+                }
+                return countLabel;
+              })()}
+            </>
+          )}
+        </Button>
+
+        {/* Mock generation for testing */}
+        {process.env.NODE_ENV === "development" && (
+          <Button
+            type="button"
+            onClick={generation.handleMockGenerate}
+            disabled={!generation.canGenerate}
+            className="w-full"
+            size="lg"
+            variant="outline"
+          >
+            🧪 Mock Generate (Dev)
+          </Button>
+        )}
+
+        {/* Reset button */}
+        {(generation.hasResults || error) && (
+          <Button
+            type="button"
+            onClick={resetGenerationState}
+            variant="outline"
+            size="sm"
+            className="w-full"
+          >
+            <X className="size-3 mr-1" />
+            Reset
+          </Button>
+        )}
+      </div>
+
+      {/* AI Model Selection */}
+      <div className="space-y-2">
+        <Label className="text-xs">
+          {!isCompact && "Select "}AI Models
+          {!isCompact && " (multi-select)"}
             </Label>
             <div className="space-y-1">
               {AI_MODELS.filter((model) => {
@@ -3341,64 +3411,6 @@ export function AiView() {
             </div>
           )}
 
-          {/* Action buttons */}
-          <div className="space-y-2 pt-2">
-            <Button
-              type="button"
-              onClick={generation.handleGenerate}
-              disabled={!generation.canGenerate}
-              className="w-full"
-              size={isCompact ? "sm" : "lg"}
-            >
-              {generation.isGenerating ? (
-                <>
-                  <Loader2 className="size-4 mr-2 animate-spin" />
-                  {isCompact
-                    ? "Generating..."
-                    : activeTab === "avatar"
-                      ? "Generating Avatar..."
-                      : "Generating Video..."}
-                </>
-              ) : (
-                <>
-                  <BotIcon className="size-4 mr-2" />
-                  {isCompact
-                    ? "Generate"
-                    : activeTab === "avatar"
-                      ? "Generate Avatar"
-                      : "Generate Video"}
-                </>
-              )}
-            </Button>
-
-            {/* Mock generation for testing */}
-            {process.env.NODE_ENV === "development" && (
-              <Button
-                type="button"
-                onClick={generation.handleMockGenerate}
-                disabled={!generation.canGenerate}
-                className="w-full"
-                size="lg"
-                variant="outline"
-              >
-                🧪 Mock Generate (Dev)
-              </Button>
-            )}
-
-            {/* Reset button */}
-            {(generation.hasResults || error) && (
-              <Button
-                type="button"
-                onClick={resetGenerationState}
-                variant="outline"
-                size="sm"
-                className="w-full"
-              >
-                <X className="size-3 mr-1" />
-                Reset
-              </Button>
-            )}
-          </div>
         </div>
       )}
 

@@ -1381,8 +1381,8 @@ function convertV4Parameters(params: any) {
     num_images: numImages,
     sync_mode: params.sync_mode || params.syncMode || false,
     enable_safety_checker:
-      params.enable_safety_checker !== false &&
-      params.enableSafetyChecker !== false,
+      params.enable_safety_checker === true ||
+      params.enableSafetyChecker === true,
     seed: params.seed,
   };
 }

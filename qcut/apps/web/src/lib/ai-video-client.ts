@@ -2125,7 +2125,7 @@ export async function generateSeedanceVideo(
       camera_fixed: cameraFixed,
       enable_safety_checker:
         request.enable_safety_checker ??
-        (modelConfig.default_params?.enable_safety_checker ?? true),
+        (modelConfig.default_params?.enable_safety_checker ?? false),
     };
 
     if (request.seed !== undefined) {
