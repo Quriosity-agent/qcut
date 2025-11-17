@@ -13,6 +13,7 @@ import {
   X,
   Check,
   UserIcon,
+  ChevronDown,
 } from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
 import { Textarea } from "@/components/ui/textarea";
@@ -37,7 +38,6 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { Badge } from "@/components/ui/badge";
-import { ChevronDown } from "lucide-react";
 
 import { useTimelineStore } from "@/stores/timeline-store";
 import { useProjectStore } from "@/stores/project-store";
@@ -367,7 +367,7 @@ export function AiView() {
       count++;
     if (t2vPromptExpansion) count++;
     if (t2vSeed !== -1) count++;
-    if (!t2vSafetyChecker) count++;
+    if (t2vSafetyChecker) count++;
     return count;
   };
 
@@ -834,6 +834,16 @@ export function AiView() {
   const resetGenerationState = () => {
     generation.resetGenerationState();
     setError(null);
+    setT2vAspectRatio("16:9");
+    setT2vResolution("1080p");
+    setT2vDuration(5);
+    setT2vNegativePrompt(
+      "low resolution, error, worst quality, low quality, defects"
+    );
+    setT2vPromptExpansion(false);
+    setT2vSeed(-1);
+    setT2vSafetyChecker(false);
+    setT2vSettingsExpanded(false);
   };
 
   // Calculate cost helpers

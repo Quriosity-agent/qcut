@@ -42,6 +42,7 @@ import {
   ERROR_MESSAGES,
   REVE_EDIT_MODEL,
 } from "./ai-constants";
+import { T2V_MODEL_CAPABILITIES, type T2VModelId } from "./text2video-models-config";
 import type {
   GeneratedVideo,
   GeneratedVideoResult,
@@ -529,6 +530,41 @@ export function useAIGeneration(props: UseAIGenerationProps) {
       for (let i = 0; i < selectedModels.length; i++) {
         const modelId = selectedModels[i];
         const modelName = AI_MODELS.find((m) => m.id === modelId)?.name;
+        const modelCapabilities =
+          modelId in T2V_MODEL_CAPABILITIES
+            ? T2V_MODEL_CAPABILITIES[modelId as T2VModelId]
+            : undefined;
+
+        const unifiedParams: Record<string, unknown> = {};
+        if (modelCapabilities?.supportsAspectRatio && t2vAspectRatio) {
+          unifiedParams.aspect_ratio = t2vAspectRatio;
+        }
+        if (modelCapabilities?.supportsResolution && t2vResolution) {
+          unifiedParams.resolution = t2vResolution;
+        }
+        if (modelCapabilities?.supportsDuration && t2vDuration) {
+          unifiedParams.duration = t2vDuration;
+        }
+        const trimmedNegativePrompt = t2vNegativePrompt?.trim();
+        if (
+          modelCapabilities?.supportsNegativePrompt &&
+          trimmedNegativePrompt
+        ) {
+          unifiedParams.negative_prompt = trimmedNegativePrompt;
+        }
+        if (modelCapabilities?.supportsPromptExpansion && t2vPromptExpansion) {
+          unifiedParams.prompt_expansion = true;
+        }
+        if (
+          modelCapabilities?.supportsSeed &&
+          typeof t2vSeed === "number" &&
+          t2vSeed !== -1
+        ) {
+          unifiedParams.seed = t2vSeed;
+        }
+        if (modelCapabilities?.supportsSafetyChecker) {
+          unifiedParams.enable_safety_checker = t2vSafetyChecker;
+        }
 
         setStatusMessage(
           `🧪 Mock generating with ${modelName} (${i + 1}/${selectedModels.length})`
@@ -824,11 +860,26 @@ export function useAIGeneration(props: UseAIGenerationProps) {
               {
                 prompt: prompt.trim(),
                 model: modelId,
+                ...unifiedParams,
                 // Add Sora 2 specific parameters if Sora 2 model
                 ...(modelId.startsWith("sora2_") && {
-                  duration,
-                  aspect_ratio: aspectRatio,
-                  resolution,
+                  duration:
+                    (unifiedParams.duration as number | undefined) ?? duration,
+                  aspect_ratio:
+                    (unifiedParams.aspect_ratio as
+                      | "16:9"
+                      | "9:16"
+                      | "1:1"
+                      | "4:3"
+                      | "3:4"
+                      | "21:9"
+                      | undefined) ?? aspectRatio,
+                  resolution:
+                    (unifiedParams.resolution as
+                      | "720p"
+                      | "1080p"
+                      | "auto"
+                      | undefined) ?? resolution,
                 }),
               },
               progressCallback

@@ -5,7 +5,7 @@
 **Component**: AI Video Generation - Text-to-Video Tab
 **Type**: Feature Enhancement
 **Priority**: High
-**Status**: Documented - Awaiting Implementation
+**Status**: Implemented - Unified controls added (see ai.tsx & text2video-models-config.ts)
 
 ## Implementation Breakdown (Subtasks)
 
