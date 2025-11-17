@@ -45,7 +45,7 @@ export interface AdjustmentState {
     maxImages?: number; // 1-10 for V4
     syncMode?: boolean; // V4, Nano Banana, and Reve Edit
     enableSafetyChecker?: boolean; // V4
-    outputFormat?: "JPEG" | "PNG" | "png" | "jpeg" | "webp"; // Nano Banana and Reve Edit
+    outputFormat?: "jpeg" | "png" | "webp"; // Nano Banana and Reve Edit (lowercase required by FAL API)
   };
 
   // Edit history
@@ -145,7 +145,7 @@ const getDefaultParameters = (model: AdjustmentState["selectedModel"]) => {
         safetyTolerance: 2, // Not used but kept for interface consistency
         numImages: 1,
         // Nano Banana-specific parameters
-        outputFormat: "PNG" as const,
+        outputFormat: "png" as const,
         syncMode: false,
       };
     case "reve-edit":
