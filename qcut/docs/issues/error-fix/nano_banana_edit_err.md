@@ -69,3 +69,12 @@ index.html:61 [NanoEditMain] Generation failed: Error: Image editing failed: HTT
     at Object.editImages (fal-ai-service.ts:239:13)
     at async NanoEditMain.tsx:123:21
 Caused by: ApiError: HTTP 413: 
+
+### Why it fails
+- The blocking error is `HTTP 413` from `queue.fal.run/fal-ai/nano-banana/edit`, meaning the request body (image payload) is too large for the endpoint. We send base64 data URLs from `FalAiService.editImages`, so large uploads (or two images for multi-image transforms) exceed the service size limit and are rejected.
+- The preceding warning (`Function components cannot be given refs` in `Primitive.button.SlotClone`) is a non-blocking Radix slot/ref misuse and does not cause the 413 failure.
+- The credential exposure warning notes fal keys are available in the browser bundle; also not the runtime blocker but should be addressed for security.
+
+### Immediate mitigation ideas
+- Downsize/compress images before posting to `editImages` (e.g., client-side canvas resize or lower-quality JPEG) and enforce a byte-size guard with user feedback.
+- Add request-size logging around `FalAiService.editImages` to confirm payload size and fail early with “image too large” UI messaging.
