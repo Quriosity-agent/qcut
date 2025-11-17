@@ -312,6 +312,31 @@ If any effects prove essential:
    - Non-destructive application
    - Keyframe support for transitions
 
+## Planned Implementation (Code)
+
+1. **Collapse to single Nano Edit view**
+   - In `qcut/apps/web/src/components/editor/media-panel/views/nano-edit.tsx`, remove the tab buttons and `activeTab`/`setActiveTab` usage, and render `ImageAssetsTab` (or inline `NanoEditMain`) as the sole content area.
+   - Keep the existing header copy/styles; ensure padding/scroll areas remain intact after removing the tab bar wrapper.
+
+2. **Retire Enhancement-specific components**
+   - Remove `qcut/apps/web/src/components/editor/nano-edit/tabs/EnhancementTab.tsx` plus its imports.
+   - If no longer referenced, delete `components/EffectGallery.tsx` and `components/HistoryPanel.tsx` under the same folder to avoid unused component bloat (or leave stub exports only if other features still import them).
+
+3. **Prune tab state from store/types**
+   - In `qcut/apps/web/src/types/nano-edit.ts`, drop the `activeTab` field and `setActiveTab` action from `NanoEditState`/`NanoEditActions` (and the union type).
+   - In `qcut/apps/web/src/stores/nano-edit-store.ts`, remove the `activeTab` state, `setActiveTab` action, and `selectActiveTab` selector; update any consumers to use the store only for processing/asset state.
+
+4. **String/constants cleanup**
+   - Ensure any copy referencing "Enhancement" inside `nano-edit` components/constants (e.g., empty states or transformation metadata) is updated to reflect the single Image Assets experience.
+   - Confirm transformation categories still map correctly after gallery removal.
+
+5. **Testing & QA**
+   - Run the web lint/test suite for the affected scope (e.g., `pnpm lint --filter web` or equivalent project command) and fix any TypeScript errors from removed imports/state.
+   - Manual smoke: open Media Panel → Nano Edit, verify upload/generate flow works, history/errors still surface, and no UI references to the removed tab remain.
+
+6. **Docs/Release notes**
+   - Update Nano Edit user docs/changelog to explain the single-tab simplification and where effect-like workflows now live.
+
 ## Related Issues
 
 - **UI Complexity**: Reducing cognitive load in QCut interface
