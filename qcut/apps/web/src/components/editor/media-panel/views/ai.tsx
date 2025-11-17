@@ -371,6 +371,33 @@ export function AiView() {
     return count;
   };
 
+  // Clamp unified settings when selected models change
+  useEffect(() => {
+    if (
+      combinedCapabilities.supportedAspectRatios &&
+      combinedCapabilities.supportedAspectRatios.length > 0 &&
+      !combinedCapabilities.supportedAspectRatios.includes(t2vAspectRatio)
+    ) {
+      setT2vAspectRatio(combinedCapabilities.supportedAspectRatios[0]);
+    }
+
+    if (
+      combinedCapabilities.supportedResolutions &&
+      combinedCapabilities.supportedResolutions.length > 0 &&
+      !combinedCapabilities.supportedResolutions.includes(t2vResolution)
+    ) {
+      setT2vResolution(combinedCapabilities.supportedResolutions[0]);
+    }
+
+    if (
+      combinedCapabilities.supportedDurations &&
+      combinedCapabilities.supportedDurations.length > 0 &&
+      !combinedCapabilities.supportedDurations.includes(t2vDuration)
+    ) {
+      setT2vDuration(combinedCapabilities.supportedDurations[0]);
+    }
+  }, [combinedCapabilities, t2vAspectRatio, t2vResolution, t2vDuration]);
+
   const handleUpscaleVideoChange = async (file: File | null) => {
     setSourceVideoFile(file);
 
