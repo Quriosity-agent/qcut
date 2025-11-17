@@ -599,25 +599,10 @@ export function Text2ImageView() {
                     data-testid={`upscale-model-option-${modelId}`}
                   >
                     <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-medium">{model.name}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {model.bestFor[0] ?? model.description}
-                        </p>
-                      </div>
+                      <p className="text-sm font-medium">{model.name}</p>
                       <Badge variant={isSelected ? "default" : "outline"}>
                         {model.estimatedCost}
                       </Badge>
-                    </div>
-                    <div className="mt-2 flex flex-wrap gap-2 text-[10px] text-muted-foreground">
-                      {model.bestFor.slice(0, 2).map((tag) => (
-                        <span
-                          key={tag}
-                          className="rounded-full bg-muted px-2 py-0.5"
-                        >
-                          {tag}
-                        </span>
-                      ))}
                     </div>
                   </button>
                 );
