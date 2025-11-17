@@ -21,6 +21,8 @@ Each subtask is designed to be completed in **under 20 minutes**.
 
 **Lines**: Entire file (~300 lines)
 
+**Comment:** Define capabilities directly from current `AI_MODELS` ids and keep defaults centralized here to avoid drift; add unit-friendly intersection helpers for later subtasks.
+
 ---
 
 ### Subtask 2: Add State Variables (10 min)
@@ -44,6 +46,8 @@ const [t2vSafetyChecker, setT2vSafetyChecker] = useState<boolean>(true);
 const [t2vSettingsExpanded, setT2vSettingsExpanded] = useState<boolean>(false);
 ```
 
+**Comment:** Add these near other AI state with sensible defaults; wire resets/cleanup to existing `resetGenerationState` so toggles don’t persist wrongly across tabs.
+
 ---
 
 ### Subtask 3: Import Model Configuration (5 min)
@@ -60,6 +64,8 @@ import {
   type T2VModelId,
 } from "./text2video-models-config";
 ```
+
+**Comment:** Keep import grouped with other view-local helpers; ensure path stays relative to ai.tsx to avoid alias issues during build.
 
 ---
 
@@ -94,6 +100,8 @@ const getActiveSettingsCount = () => {
 };
 ```
 
+**Comment:** Memo should return sane defaults when no models selected; guard against empty intersection to keep downstream selectors from breaking.
+
 ---
 
 ### Subtask 5: Add Aspect Ratio Control (15 min)
@@ -103,6 +111,8 @@ const getActiveSettingsCount = () => {
 **Location**: Inside `<TabsContent value="text">`, after prompt section (around line 900)
 
 **Code to Add**: See [2. Aspect Ratio Selector](#2-aspect-ratio-selector) in Design Specification
+
+**Comment:** Drive options from `combinedCapabilities.supportedAspectRatios`; disable control or show a notice if the intersection is empty.
 
 ---
 
@@ -114,6 +124,8 @@ const getActiveSettingsCount = () => {
 
 **Code to Add**: See [3. Resolution Selector](#3-resolution-selector) in Design Specification
 
+**Comment:** Populate choices via `combinedCapabilities.supportedResolutions` and clamp selection when models change to prevent invalid payloads.
+
 ---
 
 ### Subtask 7: Add Duration Control (15 min)
@@ -123,6 +135,8 @@ const getActiveSettingsCount = () => {
 **Location**: After Resolution control
 
 **Code to Add**: See [4. Duration Selector](#4-duration-selector) in Design Specification
+
+**Comment:** Use intersection of supported durations and auto-reset to a valid default when the set shrinks; surface validation alongside `generation.canGenerate` messaging.
 
 ---
 
@@ -134,6 +148,8 @@ const getActiveSettingsCount = () => {
 
 **Code to Add**: See [5. Negative Prompt](#5-negative-prompt) in Design Specification
 
+**Comment:** Keep input optional/trimmed; ensure it is included in active-setting count and cleared on reset to avoid stale values.
+
 ---
 
 ### Subtask 9: Add Prompt Expansion Toggle (10 min)
@@ -143,6 +159,8 @@ const getActiveSettingsCount = () => {
 **Location**: After Negative Prompt control
 
 **Code to Add**: See [6. Enable Prompt Expansion](#6-enable-prompt-expansion) in Design Specification
+
+**Comment:** Show toggle only when supported; default off to avoid unexpected prompt rewrites and feed its state into the API payload.
 
 ---
 
@@ -154,6 +172,8 @@ const getActiveSettingsCount = () => {
 
 **Code to Add**: See [7. Seed](#7-seed) in Design Specification
 
+**Comment:** Treat `-1` as random and guard input against NaN; keep UI aligned with whichever models actually support seeds.
+
 ---
 
 ### Subtask 11: Add Safety Checker Toggle (10 min)
@@ -163,6 +183,8 @@ const getActiveSettingsCount = () => {
 **Location**: After Seed control
 
 **Code to Add**: See [8. Enable Safety Checker](#8-enable-safety-checker) in Design Specification
+
+**Comment:** Mirror product default (currently off in client) and only send when capability exists; clarify this won’t bypass upstream content policy checks.
 
 ---
 
@@ -219,6 +241,8 @@ const getActiveSettingsCount = () => {
 )}
 ```
 
+**Comment:** Persist `t2vSettingsExpanded` in state; show active-setting badge when collapsed so users see hidden customizations.
+
 ---
 
 ### Subtask 13: Update API Call to Include Settings (15 min)
@@ -268,6 +292,8 @@ const requestPayload = {
 };
 ```
 
+**Comment:** Gate each field by combined capabilities before attaching; keep naming aligned with API (`aspect_ratio`, `prompt_expansion`) to avoid payload mismatches.
+
 ---
 
 ### Subtask 14: Add Import for UI Components (5 min)
@@ -293,6 +319,8 @@ import {
 } from "@/components/ui/tooltip";
 ```
 
+**Comment:** Check for existing imports to prevent duplicates; prefer shared tooltip/badge utilities already used elsewhere in the file.
+
 ---
 
 ### Subtask 15: Test and Validate (15 min)
@@ -308,6 +336,8 @@ import {
 6. Change settings, click Generate
 7. Check browser console for API payload
 8. Verify settings are included in request
+
+**Comment:** Add coverage for multi-model selection intersections and for collapsed state restoring after navigation; verify payloads omit unsupported fields.
 
 ---
 
