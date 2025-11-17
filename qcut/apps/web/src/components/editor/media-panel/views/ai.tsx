@@ -31,6 +31,13 @@ import { FileUpload } from "@/components/ui/file-upload";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Slider } from "@/components/ui/slider";
 import { Card } from "@/components/ui/card";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import { Badge } from "@/components/ui/badge";
+import { ChevronDown } from "lucide-react";
 
 import { useTimelineStore } from "@/stores/timeline-store";
 import { useProjectStore } from "@/stores/project-store";
@@ -55,6 +62,11 @@ import {
   REVE_TEXT_TO_IMAGE_MODEL,
   UPLOAD_CONSTANTS,
 } from "./ai-constants";
+import {
+  T2V_MODEL_CAPABILITIES,
+  getCombinedCapabilities,
+  type T2VModelId,
+} from "./text2video-models-config";
 import type { AIActiveTab } from "./ai-types";
 
 type ReveAspectRatioOption =
@@ -229,6 +241,19 @@ export function AiView() {
     "auto" | "small" | "medium" | "large"
   >("auto");
   const [viduQ2EnableBGM, setViduQ2EnableBGM] = useState(false);
+
+  // Unified text-to-video advanced settings
+  const [t2vAspectRatio, setT2vAspectRatio] = useState<string>("16:9");
+  const [t2vResolution, setT2vResolution] = useState<string>("1080p");
+  const [t2vDuration, setT2vDuration] = useState<number>(5);
+  const [t2vNegativePrompt, setT2vNegativePrompt] = useState<string>(
+    "low resolution, error, worst quality, low quality, defects"
+  );
+  const [t2vPromptExpansion, setT2vPromptExpansion] = useState<boolean>(false);
+  const [t2vSeed, setT2vSeed] = useState<number>(-1); // -1 = random
+  const [t2vSafetyChecker, setT2vSafetyChecker] = useState<boolean>(false);
+  const [t2vSettingsExpanded, setT2vSettingsExpanded] =
+    useState<boolean>(false);
   const [ltxv2Duration, setLTXV2Duration] = useState<6 | 8 | 10>(6);
   const [ltxv2Resolution, setLTXV2Resolution] = useState<
     "1080p" | "1440p" | "2160p"

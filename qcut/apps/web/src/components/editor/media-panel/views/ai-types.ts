@@ -163,6 +163,14 @@ export interface UseAIGenerationProps {
   onGeneratedVideoChange?: (video: GeneratedVideo | null) => void;
   // Hailuo text-to-video options
   hailuoT2VDuration?: 6 | 10;
+  // Unified text-to-video controls
+  t2vAspectRatio?: string;
+  t2vResolution?: string;
+  t2vDuration?: number;
+  t2vNegativePrompt?: string;
+  t2vPromptExpansion?: boolean;
+  t2vSeed?: number;
+  t2vSafetyChecker?: boolean;
   // Vidu Q2 Turbo options
   viduQ2Duration?: 2 | 3 | 4 | 5 | 6 | 7 | 8;
   viduQ2Resolution?: "720p" | "1080p";
