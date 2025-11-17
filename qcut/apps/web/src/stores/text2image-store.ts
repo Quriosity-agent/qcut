@@ -141,6 +141,33 @@ export interface SelectedResult {
   mode: Text2ImageModelType;
 }
 
+const normalizeExtension = (extension?: string) => {
+  if (!extension) return undefined;
+  const normalized = extension.replace(/^\./, "").toLowerCase();
+  if (normalized === "jpg") return "jpeg";
+  return ["png", "jpeg", "webp"].includes(normalized) ? normalized : undefined;
+};
+
+const getExtensionFromUrl = (url?: string) => {
+  if (!url) return undefined;
+
+  if (url.startsWith("data:image/")) {
+    const mimeExtension = url.slice("data:image/".length).split(/[;,]/)[0];
+    return normalizeExtension(mimeExtension);
+  }
+
+  const withoutQuery = url.split(/[?#]/)[0];
+  const match = withoutQuery.match(/\.([a-zA-Z0-9]+)$/);
+  return normalizeExtension(match?.[1]);
+};
+
+const getResultExtension = (result: SelectedResult) =>
+  normalizeExtension(
+    (result.settings as GenerationSettings | UpscaleSettings)?.outputFormat
+  ) ||
+  getExtensionFromUrl(result.imageUrl) ||
+  "png";
+
 interface Text2ImageStore {
   // Core state
   prompt: string;
@@ -587,28 +614,32 @@ export const useText2ImageStore = create<Text2ImageStore>()(
 
           const { addGeneratedImages } = useMediaStore.getState();
 
-          const mediaItems = resultsToAdd.map((result) => ({
-            url: result.imageUrl,
-            type: "image" as const,
-            name: `${
+          const mediaItems = resultsToAdd.map((result) => {
+            const baseName = `${
               result.mode === "upscale" ? "Upscaled" : "Generated"
             }: ${result.prompt.slice(0, 30)}${
               result.prompt.length > 30 ? "..." : ""
-            }`,
-            size: 0, // Will be determined when loaded
-            duration: 0,
-            metadata: {
-              source:
-                result.mode === "upscale"
-                  ? ("image-upscale" as const)
-                  : ("text2image" as const),
-              model: result.modelKey,
-              prompt: result.prompt,
-              settings: result.settings,
-              generatedAt: new Date(),
-              mode: result.mode,
-            },
-          }));
+            }`;
+
+            return {
+              url: result.imageUrl,
+              type: "image" as const,
+              name: `${baseName}.${getResultExtension(result)}`,
+              size: 0, // Will be determined when loaded
+              duration: 0,
+              metadata: {
+                source:
+                  result.mode === "upscale"
+                    ? ("image-upscale" as const)
+                    : ("text2image" as const),
+                model: result.modelKey,
+                prompt: result.prompt,
+                settings: result.settings,
+                generatedAt: new Date(),
+                mode: result.mode,
+              },
+            };
+          });
 
           if (DEBUG_TEXT2IMAGE_STORE)
             console.log(

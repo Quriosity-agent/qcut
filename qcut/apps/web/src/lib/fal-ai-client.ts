@@ -556,16 +556,15 @@ class FalAIClient {
     const supportsOutputFormat = model.availableParams.some(
       (param) => param.name === "output_format"
     );
-    const hasExistingFormat =
-      params.output_format !== undefined ||
-      (params as Record<string, unknown>).outputFormat !== undefined;
-    if (supportsOutputFormat || hasExistingFormat || settings.outputFormat) {
-      const desiredFormat =
-        settings.outputFormat ??
-        (params.output_format as string | undefined) ??
-        ((params as Record<string, string | undefined>).outputFormat ??
-          DEFAULT_OUTPUT_FORMAT);
-      params.output_format = normalizeOutputFormat(desiredFormat);
+    // Consolidate potential format values from settings or params (snake_case or camelCase).
+    const potentialFormat =
+      settings.outputFormat ??
+      (params.output_format as string | undefined) ??
+      ((params as Record<string, unknown>).outputFormat as string | undefined);
+    if (supportsOutputFormat || potentialFormat) {
+      // Normalize the format and assign it, falling back to the default if none is found.
+      params.output_format = normalizeOutputFormat(potentialFormat);
+      // Ensure the camelCase version is removed to avoid sending both.
       delete (params as Record<string, unknown>).outputFormat;
     }
 
