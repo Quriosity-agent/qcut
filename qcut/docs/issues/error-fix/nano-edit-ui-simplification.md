@@ -338,9 +338,8 @@ If any effects prove essential:
    - Update Nano Edit user docs/changelog to explain the single-tab simplification and where effect-like workflows now live.
 
 ### Progress Updates
-- [x] Collapsed Nano Edit to a single Image Assets view by removing tab buttons/state and always rendering qcut/apps/web/src/components/editor/media-panel/views/nano-edit.tsx.
-- [x] Removed Enhancement tab/state: deleted 	abs/EnhancementTab.tsx, dropped ctiveTab state/actions from 
-ano-edit-store.ts and 	ypes/nano-edit.ts, and removed unused EffectGallery.tsx/HistoryPanel.tsx components.
+- [x] Collapsed Nano Edit to a single Image Assets view by removing tab buttons/state and always rendering `qcut/apps/web/src/components/editor/media-panel/views/nano-edit.tsx`.
+- [x] Removed Enhancement tab/state: deleted `qcut/apps/web/src/components/editor/nano-edit/tabs/EnhancementTab.tsx`, dropped `activeTab` state/actions from `qcut/apps/web/src/stores/nano-edit-store.ts` and `qcut/apps/web/src/types/nano-edit.ts`, and removed unused `EffectGallery.tsx`/`HistoryPanel.tsx` components.
 ## Related Issues
 
 - **UI Complexity**: Reducing cognitive load in QCut interface
@@ -425,5 +424,6 @@ The benefits significantly outweigh the costs, especially since:
 - Monitor analytics on Enhancement tab usage before removal
 - Survey active users about their usage of Enhancement features
 - Document any custom effects users have created for migration
+
 
 
