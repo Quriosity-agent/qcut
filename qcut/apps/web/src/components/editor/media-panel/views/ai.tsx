@@ -445,6 +445,13 @@ export function AiView() {
     sourceVideoFile,
     sourceVideoUrl,
     hailuoT2VDuration,
+    t2vAspectRatio,
+    t2vResolution,
+    t2vDuration,
+    t2vNegativePrompt,
+    t2vPromptExpansion,
+    t2vSeed,
+    t2vSafetyChecker,
     viduQ2Duration,
     viduQ2Resolution,
     viduQ2MovementAmplitude,
@@ -1068,6 +1075,188 @@ export function AiView() {
                     </span>
                   )}
                 </div>
+                {selectedModels.length > 0 && (
+                  <Collapsible
+                    open={t2vSettingsExpanded}
+                    onOpenChange={setT2vSettingsExpanded}
+                  >
+                    <div className="flex items-center justify-between border-t pt-3">
+                      <CollapsibleTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="flex items-center gap-2 p-0 h-auto"
+                        >
+                          <Label className="text-sm font-semibold cursor-pointer">
+                            Additional Settings
+                          </Label>
+                          <ChevronDown
+                            className={`h-4 w-4 transition-transform ${t2vSettingsExpanded ? "rotate-180" : ""}`}
+                          />
+                        </Button>
+                      </CollapsibleTrigger>
+
+                      {!t2vSettingsExpanded && (
+                        <Badge variant="secondary" className="text-xs">
+                          {getActiveSettingsCount()} active
+                        </Badge>
+                      )}
+                    </div>
+
+                    <CollapsibleContent className="space-y-4 mt-4">
+                      {combinedCapabilities.supportsAspectRatio && (
+                        <div className="space-y-2">
+                          <Label className="text-xs font-medium">
+                            Aspect Ratio
+                          </Label>
+                          <Select
+                            value={t2vAspectRatio}
+                            onValueChange={setT2vAspectRatio}
+                            disabled={
+                              !combinedCapabilities.supportedAspectRatios ||
+                              combinedCapabilities.supportedAspectRatios.length ===
+                                0
+                            }
+                          >
+                            <SelectTrigger className="h-8 text-xs">
+                              <SelectValue placeholder="Select aspect ratio" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {(combinedCapabilities.supportedAspectRatios ||
+                                ["16:9"]).map((ratio) => (
+                                <SelectItem key={ratio} value={ratio}>
+                                  {ratio}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )}
+
+                      {combinedCapabilities.supportsResolution && (
+                        <div className="space-y-2">
+                          <Label className="text-xs font-medium">
+                            Resolution
+                          </Label>
+                          <Select
+                            value={t2vResolution}
+                            onValueChange={setT2vResolution}
+                            disabled={
+                              !combinedCapabilities.supportedResolutions ||
+                              combinedCapabilities.supportedResolutions.length === 0
+                            }
+                          >
+                            <SelectTrigger className="h-8 text-xs">
+                              <SelectValue placeholder="Select resolution" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {(combinedCapabilities.supportedResolutions ||
+                                ["1080p"]).map((res) => (
+                                <SelectItem key={res} value={res}>
+                                  {res}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )}
+
+                      {combinedCapabilities.supportsDuration && (
+                        <div className="space-y-2">
+                          <Label className="text-xs font-medium">Duration</Label>
+                          <Select
+                            value={t2vDuration.toString()}
+                            onValueChange={(value) =>
+                              setT2vDuration(Number(value) || 5)
+                            }
+                            disabled={
+                              !combinedCapabilities.supportedDurations ||
+                              combinedCapabilities.supportedDurations.length === 0
+                            }
+                          >
+                            <SelectTrigger className="h-8 text-xs">
+                              <SelectValue placeholder="Select duration" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {(combinedCapabilities.supportedDurations || [5]).map(
+                                (dur) => (
+                                  <SelectItem key={dur} value={dur.toString()}>
+                                    {dur} seconds
+                                  </SelectItem>
+                                )
+                              )}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )}
+
+                      {combinedCapabilities.supportsNegativePrompt && (
+                        <div className="space-y-1">
+                          <Label className="text-xs font-medium">
+                            Negative Prompt
+                          </Label>
+                          <Textarea
+                            value={t2vNegativePrompt}
+                            onChange={(e) => setT2vNegativePrompt(e.target.value)}
+                            placeholder="low resolution, error, worst quality, low quality, defects"
+                            className="min-h-[60px] text-xs resize-none"
+                            maxLength={500}
+                          />
+                        </div>
+                      )}
+
+                      {combinedCapabilities.supportsPromptExpansion && (
+                        <div className="flex items-center space-x-2">
+                          <Checkbox
+                            id="t2v-prompt-expansion"
+                            checked={t2vPromptExpansion}
+                            onCheckedChange={(checked) =>
+                              setT2vPromptExpansion(Boolean(checked))
+                            }
+                          />
+                          <Label
+                            htmlFor="t2v-prompt-expansion"
+                            className="text-xs"
+                          >
+                            Enable prompt expansion
+                          </Label>
+                        </div>
+                      )}
+
+                      {combinedCapabilities.supportsSeed && (
+                        <div className="space-y-1">
+                          <Label className="text-xs font-medium">Seed</Label>
+                          <Input
+                            type="number"
+                            inputMode="numeric"
+                            value={Number.isNaN(t2vSeed) ? "" : t2vSeed}
+                            onChange={(e) => {
+                              const val = Number(e.target.value);
+                              setT2vSeed(Number.isNaN(val) ? -1 : val);
+                            }}
+                            placeholder="-1 for random"
+                            className="h-8 text-xs"
+                          />
+                        </div>
+                      )}
+
+                      {combinedCapabilities.supportsSafetyChecker && (
+                        <div className="flex items-center space-x-2">
+                          <Checkbox
+                            id="t2v-safety-checker"
+                            checked={t2vSafetyChecker}
+                            onCheckedChange={(checked) =>
+                              setT2vSafetyChecker(Boolean(checked))
+                            }
+                          />
+                          <Label htmlFor="t2v-safety-checker" className="text-xs">
+                            Enable safety checker
+                          </Label>
+                        </div>
+                      )}
+                    </CollapsibleContent>
+                  </Collapsible>
+                )}
                 {hailuoProSelected && (
                   <>
                     <div className="text-xs text-muted-foreground text-left">
