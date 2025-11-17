@@ -345,6 +345,32 @@ export function AiView() {
     ? wan25NegativePrompt.trim()
     : undefined;
 
+  // Calculate combined capabilities for selected text-to-video models
+  const combinedCapabilities = useMemo(() => {
+    const textVideoModelIds = selectedModels
+      .filter((modelId) => modelId in T2V_MODEL_CAPABILITIES)
+      .map((id) => id as T2VModelId);
+
+    return getCombinedCapabilities(textVideoModelIds);
+  }, [selectedModels]);
+
+  // Helper to count active settings
+  const getActiveSettingsCount = () => {
+    let count = 0;
+    if (t2vAspectRatio !== "16:9") count++;
+    if (t2vResolution !== "1080p") count++;
+    if (t2vDuration !== 5) count++;
+    if (
+      t2vNegativePrompt !==
+      "low resolution, error, worst quality, low quality, defects"
+    )
+      count++;
+    if (t2vPromptExpansion) count++;
+    if (t2vSeed !== -1) count++;
+    if (!t2vSafetyChecker) count++;
+    return count;
+  };
+
   const handleUpscaleVideoChange = async (file: File | null) => {
     setSourceVideoFile(file);
 
