@@ -7,6 +7,318 @@
 **Priority**: High
 **Status**: Documented - Awaiting Implementation
 
+## Implementation Breakdown (Subtasks)
+
+Each subtask is designed to be completed in **under 20 minutes**.
+
+### Subtask 1: Create Model Capabilities Configuration (15 min)
+
+**File**: `apps/web/src/components/editor/media-panel/views/text2video-models-config.ts` (NEW FILE)
+
+**Action**: Create new file with model capability matrix
+
+**Code to Add**: See [Phase 2: Model Capability Matrix](#phase-2-model-capability-matrix) section below
+
+**Lines**: Entire file (~300 lines)
+
+---
+
+### Subtask 2: Add State Variables (10 min)
+
+**File**: `apps/web/src/components/editor/media-panel/views/ai.tsx`
+
+**Location**: Around line 172 (after existing image-to-video state)
+
+**Code to Add**:
+```typescript
+// Text-to-Video Advanced Settings State
+const [t2vAspectRatio, setT2vAspectRatio] = useState<string>("16:9");
+const [t2vResolution, setT2vResolution] = useState<string>("1080p");
+const [t2vDuration, setT2vDuration] = useState<number>(5);
+const [t2vNegativePrompt, setT2vNegativePrompt] = useState<string>(
+  "low resolution, error, worst quality, low quality, defects"
+);
+const [t2vPromptExpansion, setT2vPromptExpansion] = useState<boolean>(false);
+const [t2vSeed, setT2vSeed] = useState<number>(-1); // -1 = random
+const [t2vSafetyChecker, setT2vSafetyChecker] = useState<boolean>(true);
+const [t2vSettingsExpanded, setT2vSettingsExpanded] = useState<boolean>(false);
+```
+
+---
+
+### Subtask 3: Import Model Configuration (5 min)
+
+**File**: `apps/web/src/components/editor/media-panel/views/ai.tsx`
+
+**Location**: Top of file (around line 1-20, with other imports)
+
+**Code to Add**:
+```typescript
+import {
+  T2V_MODEL_CAPABILITIES,
+  getCombinedCapabilities,
+  type T2VModelId,
+} from "./text2video-models-config";
+```
+
+---
+
+### Subtask 4: Calculate Combined Capabilities (10 min)
+
+**File**: `apps/web/src/components/editor/media-panel/views/ai.tsx`
+
+**Location**: After state declarations, before return statement (around line 250)
+
+**Code to Add**:
+```typescript
+// Calculate combined capabilities for selected text-to-video models
+const combinedCapabilities = useMemo(() => {
+  const textVideoModelIds = selectedModels
+    .filter(modelId => modelId in T2V_MODEL_CAPABILITIES)
+    .map(id => id as T2VModelId);
+
+  return getCombinedCapabilities(textVideoModelIds);
+}, [selectedModels]);
+
+// Helper to count active settings
+const getActiveSettingsCount = () => {
+  let count = 0;
+  if (t2vAspectRatio !== "16:9") count++;
+  if (t2vResolution !== "1080p") count++;
+  if (t2vDuration !== 5) count++;
+  if (t2vNegativePrompt !== "low resolution, error, worst quality, low quality, defects") count++;
+  if (t2vPromptExpansion) count++;
+  if (t2vSeed !== -1) count++;
+  if (!t2vSafetyChecker) count++;
+  return count;
+};
+```
+
+---
+
+### Subtask 5: Add Aspect Ratio Control (15 min)
+
+**File**: `apps/web/src/components/editor/media-panel/views/ai.tsx`
+
+**Location**: Inside `<TabsContent value="text">`, after prompt section (around line 900)
+
+**Code to Add**: See [2. Aspect Ratio Selector](#2-aspect-ratio-selector) in Design Specification
+
+---
+
+### Subtask 6: Add Resolution Control (15 min)
+
+**File**: `apps/web/src/components/editor/media-panel/views/ai.tsx`
+
+**Location**: After Aspect Ratio control
+
+**Code to Add**: See [3. Resolution Selector](#3-resolution-selector) in Design Specification
+
+---
+
+### Subtask 7: Add Duration Control (15 min)
+
+**File**: `apps/web/src/components/editor/media-panel/views/ai.tsx`
+
+**Location**: After Resolution control
+
+**Code to Add**: See [4. Duration Selector](#4-duration-selector) in Design Specification
+
+---
+
+### Subtask 8: Add Negative Prompt Control (10 min)
+
+**File**: `apps/web/src/components/editor/media-panel/views/ai.tsx`
+
+**Location**: After Duration control
+
+**Code to Add**: See [5. Negative Prompt](#5-negative-prompt) in Design Specification
+
+---
+
+### Subtask 9: Add Prompt Expansion Toggle (10 min)
+
+**File**: `apps/web/src/components/editor/media-panel/views/ai.tsx`
+
+**Location**: After Negative Prompt control
+
+**Code to Add**: See [6. Enable Prompt Expansion](#6-enable-prompt-expansion) in Design Specification
+
+---
+
+### Subtask 10: Add Seed Control (15 min)
+
+**File**: `apps/web/src/components/editor/media-panel/views/ai.tsx`
+
+**Location**: After Prompt Expansion toggle
+
+**Code to Add**: See [7. Seed](#7-seed) in Design Specification
+
+---
+
+### Subtask 11: Add Safety Checker Toggle (10 min)
+
+**File**: `apps/web/src/components/editor/media-panel/views/ai.tsx`
+
+**Location**: After Seed control
+
+**Code to Add**: See [8. Enable Safety Checker](#8-enable-safety-checker) in Design Specification
+
+---
+
+### Subtask 12: Wrap Controls in Collapsible Section (15 min)
+
+**File**: `apps/web/src/components/editor/media-panel/views/ai.tsx`
+
+**Location**: Wrap all controls from Subtasks 5-11
+
+**Code to Modify**:
+```typescript
+{/* BEFORE: Just prompt section */}
+<div className="space-y-2">
+  <Label>Prompt for Video Generation</Label>
+  <Textarea ... />
+</div>
+
+{/* AFTER: Add collapsible section below prompt */}
+<div className="space-y-2">
+  <Label>Prompt for Video Generation</Label>
+  <Textarea ... />
+</div>
+
+{/* ✅ NEW SECTION */}
+{selectedModels.length > 0 && (
+  <Collapsible
+    open={t2vSettingsExpanded}
+    onOpenChange={setT2vSettingsExpanded}
+  >
+    <div className="flex items-center justify-between border-t pt-3">
+      <CollapsibleTrigger asChild>
+        <Button variant="ghost" size="sm" className="flex items-center gap-2 p-0 h-auto">
+          <Label className="text-sm font-semibold cursor-pointer">
+            Additional Settings
+          </Label>
+          <ChevronDown className={cn(
+            "h-4 w-4 transition-transform",
+            t2vSettingsExpanded && "rotate-180"
+          )} />
+        </Button>
+      </CollapsibleTrigger>
+
+      {!t2vSettingsExpanded && (
+        <Badge variant="secondary" className="text-xs">
+          {getActiveSettingsCount()} active
+        </Badge>
+      )}
+    </div>
+
+    <CollapsibleContent className="space-y-4 mt-4">
+      {/* ALL CONTROLS FROM SUBTASKS 5-11 GO HERE */}
+    </CollapsibleContent>
+  </Collapsible>
+)}
+```
+
+---
+
+### Subtask 13: Update API Call to Include Settings (15 min)
+
+**File**: `apps/web/src/components/editor/media-panel/views/use-ai-generation.ts`
+
+**Location**: In `handleGenerate` function, when building request payload (around line 700)
+
+**Code to Modify**:
+```typescript
+// BEFORE (Current)
+const requestPayload = {
+  prompt: prompt,
+  model: modelKey,
+  // ... other params
+};
+
+// AFTER (Modified)
+const requestPayload = {
+  prompt: prompt,
+  model: modelKey,
+  // ... other params
+
+  // ✅ ADD: Text-to-Video advanced settings
+  ...(t2vAspectRatio !== "auto" && t2vAspectRatio !== "16:9" && {
+    aspect_ratio: t2vAspectRatio
+  }),
+  ...(t2vResolution !== "1080p" && {
+    resolution: t2vResolution
+  }),
+  ...(t2vDuration !== 5 && {
+    duration: t2vDuration
+  }),
+  ...(t2vNegativePrompt &&
+      t2vNegativePrompt !== "low resolution, error, worst quality, low quality, defects" && {
+    negative_prompt: t2vNegativePrompt
+  }),
+  ...(t2vPromptExpansion && {
+    prompt_expansion: true
+  }),
+  ...(t2vSeed !== -1 && {
+    seed: t2vSeed
+  }),
+  ...(t2vSafetyChecker !== undefined && {
+    safety_checker: t2vSafetyChecker
+  }),
+};
+```
+
+---
+
+### Subtask 14: Add Import for UI Components (5 min)
+
+**File**: `apps/web/src/components/editor/media-panel/views/ai.tsx`
+
+**Location**: Top of file with other UI component imports (around line 10-30)
+
+**Code to Add** (if not already imported):
+```typescript
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import { Badge } from "@/components/ui/badge";
+import { Info, RefreshCw, ChevronDown } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+```
+
+---
+
+### Subtask 15: Test and Validate (15 min)
+
+**No code changes - Testing only**
+
+**Steps**:
+1. Start dev server: `bun run dev`
+2. Navigate to AI Video Generation → Text tab
+3. Select a model (e.g., Sora 2)
+4. Verify "Additional Settings" section appears
+5. Expand settings, verify all controls render
+6. Change settings, click Generate
+7. Check browser console for API payload
+8. Verify settings are included in request
+
+---
+
+## Total Time Estimate
+
+- **Subtasks 1-14**: ~3 hours 25 minutes of coding
+- **Subtask 15**: 15 minutes of testing
+- **Total**: ~3 hours 40 minutes
+
+Each subtask can be completed independently and tested incrementally.
+
 ## Problem Description
 
 Currently, text-to-video models in the AI Video Generation panel lack **standardized advanced controls** that would allow users to fine-tune their video generation. The image-to-video tab already has model-specific controls (duration, resolution, aspect ratio), but the text-to-video tab is missing these essential features.
