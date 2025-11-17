@@ -376,6 +376,14 @@ Based on industry-standard video generation parameters, text-to-video models sho
 │ Select AI Models (multi-select) │
 │ ☐ Sora 2 Text-to-Video          │
 │ ☐ WAN v2.5 Preview              │
+
+
+### WAN 2.5 input settings rationale
+
+- **Why limited controls?** The WAN 2.5 preview API only accepts prompt, duration, and resolution—no negative prompt, prompt expansion, or safety toggles (see https://fal.ai/models/fal-ai/wan-25-preview/text-to-video/api). Unified controls therefore only surface duration/resolution when WAN 2.5 is selected.
+- **Why did controls hide?** The model id is `wan_25_preview` (with underscores). Capability detection now matches that id so resolution (480p/720p/1080p) and duration (5s/10s) are adjustable; other advanced inputs stay hidden because the API doesn’t support them.
+- **Future changes:** If the WAN endpoint adds fields, extend `text2video-models-config.ts` and the unified controls will surface them automatically.
+
 │ ☐ LTX Video 2.0                 │
 │ ...                              │
 │                                  │

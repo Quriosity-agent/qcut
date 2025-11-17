@@ -730,6 +730,42 @@ export function useAIGeneration(props: UseAIGenerationProps) {
       for (let i = 0; i < selectedModels.length; i++) {
         const modelId = selectedModels[i];
         const modelName = AI_MODELS.find((m) => m.id === modelId)?.name;
+        const modelCapabilities =
+          modelId in T2V_MODEL_CAPABILITIES
+            ? T2V_MODEL_CAPABILITIES[modelId as T2VModelId]
+            : undefined;
+
+        // Build unified params based on model capabilities
+        const unifiedParams: Record<string, unknown> = {};
+        if (modelCapabilities?.supportsAspectRatio && t2vAspectRatio) {
+          unifiedParams.aspect_ratio = t2vAspectRatio;
+        }
+        if (modelCapabilities?.supportsResolution && t2vResolution) {
+          unifiedParams.resolution = t2vResolution;
+        }
+        if (modelCapabilities?.supportsDuration && t2vDuration) {
+          unifiedParams.duration = t2vDuration;
+        }
+        const trimmedNegativePrompt = t2vNegativePrompt?.trim();
+        if (
+          modelCapabilities?.supportsNegativePrompt &&
+          trimmedNegativePrompt
+        ) {
+          unifiedParams.negative_prompt = trimmedNegativePrompt;
+        }
+        if (modelCapabilities?.supportsPromptExpansion && t2vPromptExpansion) {
+          unifiedParams.prompt_expansion = true;
+        }
+        if (
+          modelCapabilities?.supportsSeed &&
+          typeof t2vSeed === "number" &&
+          t2vSeed !== -1
+        ) {
+          unifiedParams.seed = t2vSeed;
+        }
+        if (modelCapabilities?.supportsSafetyChecker) {
+          unifiedParams.enable_safety_checker = t2vSafetyChecker;
+        }
 
         console.log(
           `\n🎬 [${i + 1}/${selectedModels.length}] Processing model: ${modelId} (${modelName})`

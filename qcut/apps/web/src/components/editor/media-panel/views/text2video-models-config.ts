@@ -6,7 +6,7 @@
 export type T2VModelId =
   | "sora2_text_to_video"
   | "sora2_text_to_video_pro"
-  | "wan25_preview"
+  | "wan_25_preview"
   | "ltxv2_pro_t2v"
   | "ltxv2_fast_t2v"
   | "veo31_fast"
@@ -65,7 +65,7 @@ export const T2V_MODEL_CAPABILITIES: Record<T2VModelId, T2VModelCapabilities> = 
     defaultDuration: 5,
   },
 
-  wan25_preview: {
+  wan_25_preview: {
     supportsAspectRatio: false,
     supportsResolution: true,
     supportedResolutions: ["480p", "720p", "1080p"],

@@ -1093,7 +1093,7 @@ export function AiView() {
                     <div className="flex items-center justify-between border-t pt-3">
                       <CollapsibleTrigger asChild>
                         <Button
-                          variant="ghost"
+                          variant="link"
                           size="sm"
                           className="flex items-center gap-2 p-0 h-auto"
                         >
