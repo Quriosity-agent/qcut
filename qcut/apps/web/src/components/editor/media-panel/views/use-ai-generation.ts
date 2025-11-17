@@ -622,6 +622,13 @@ export function useAIGeneration(props: UseAIGenerationProps) {
     lastFrame,
     sourceVideoFile,
     sourceVideoUrl,
+    t2vAspectRatio,
+    t2vResolution,
+    t2vDuration,
+    t2vNegativePrompt,
+    t2vPromptExpansion,
+    t2vSeed,
+    t2vSafetyChecker,
   ]);
 
   // Main generation function
