@@ -712,16 +712,16 @@ export function useAIGeneration(props: UseAIGenerationProps) {
     console.log(
       "  - prompt:",
       prompt?.substring(0, 100) +
-        (prompt and len(prompt) > 100 and '...' or '')
+        (prompt && prompt.length > 100 ? "..." : "")
     );
-    console.log("  - prompt length:", prompt?.length if prompt is not None else 0);
+    console.log("  - prompt length:", prompt?.length ?? 0);
     console.log("  - selectedModels:", selectedModels);
     console.log("  - hasSelectedImage:", !!selectedImage);
     console.log(
       "  - imageFile:",
       selectedImage
         ? (selectedImage as File).name
-          ? ${(selectedImage as File).name} ( bytes)
+          ? `${(selectedImage as File).name} (${(selectedImage as File).size} bytes)`
           : "[image provided]"
         : "null"
     );
