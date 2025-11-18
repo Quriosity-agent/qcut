@@ -583,6 +583,10 @@ export function useAIGeneration(props: UseAIGenerationProps) {
       const mockGenerations: GeneratedVideoResult[] = [];
 
       for (let i = 0; i < selectedModels.length; i++) {
+        console.log("------------------------------------------------------------");
+        console.log(`Model ${i + 1}/${selectedModels.length} - processing:`, selectedModels[i]);
+        console.log("------------------------------------------------------------");
+
         const modelId = selectedModels[i];
         const modelName = AI_MODELS.find((m) => m.id === modelId)?.name;
         const modelCapabilities =
@@ -733,62 +737,70 @@ export function useAIGeneration(props: UseAIGenerationProps) {
     let validationError: string | null = null;
 
     if (activeTab === "text") {
-      if (!prompt.trim() || selectedModels.length === 0) {
-        console.log("❌ Validation failed - missing prompt or models");
-        return;
+      if (!prompt.trim()) {
+        validationError = "Missing prompt for text tab";
+      } else if (selectedModels.length === 0) {
+        validationError = "No models selected for text tab";
       }
     } else if (activeTab === "image") {
       if (selectedModels.length === 0) {
-        console.log("❌ Validation failed - missing models for image tab");
-        return;
-      }
-
-      const hasFrameModel = selectedModels.some((id) =>
-        VEO31_FRAME_MODELS.has(id)
-      );
-      const hasImageModel = selectedModels.some(
-        (id) => !VEO31_FRAME_MODELS.has(id)
-      );
-
-      if (hasFrameModel && (!firstFrame || !lastFrame)) {
-        console.log(
-          "❌ Validation failed - frame-to-video models require first and last frames"
+        validationError = "Missing models for image tab";
+      } else {
+        const hasFrameModel = selectedModels.some((id) =>
+          VEO31_FRAME_MODELS.has(id)
         );
-        return;
-      }
-
-      if (hasImageModel && !selectedImage) {
-        console.log(
-          "❌ Validation failed - image-to-video models require an image"
+        const hasImageModel = selectedModels.some(
+          (id) => !VEO31_FRAME_MODELS.has(id)
         );
-        return;
+
+        if (hasFrameModel && (!firstFrame || !lastFrame)) {
+          validationError =
+            "Frame-to-video models require first and last frames";
+        }
+
+        if (!validationError && hasImageModel && !selectedImage) {
+          validationError = "Image-to-video models require an image";
+        }
       }
     } else if (activeTab === "avatar") {
-      if (!avatarImage || selectedModels.length === 0) {
-        console.log("❌ Validation failed - missing avatar image or models");
-        return;
-      }
-      // Check model-specific requirements
-      for (const modelId of selectedModels) {
-        if (modelId === "wan_animate_replace" && !sourceVideo) {
-          console.log("❌ Validation failed - WAN model requires source video");
-          return;
-        }
-        if (
-          (modelId === "kling_avatar_pro" ||
-            modelId === "kling_avatar_standard" ||
-            modelId === "bytedance_omnihuman_v1_5") &&
-          !audioFile
-        ) {
-          console.log(
-            "❌ Validation failed - Audio-based avatar model requires audio file"
-          );
-          return;
+      if (!avatarImage) {
+        validationError = "Missing avatar image";
+      } else if (selectedModels.length === 0) {
+        validationError = "Missing models for avatar tab";
+      } else {
+        // Check model-specific requirements
+        for (const modelId of selectedModels) {
+          if (modelId === "wan_animate_replace" && !sourceVideo) {
+            validationError = "WAN model requires source video";
+            break;
+          }
+          if (
+            (modelId === "kling_avatar_pro" ||
+              modelId === "kling_avatar_standard" ||
+              modelId === "bytedance_omnihuman_v1_5") &&
+            !audioFile
+          ) {
+            validationError =
+              "Audio-based avatar model requires audio file";
+            break;
+          }
         }
       }
     }
 
+    if (validationError) {
+      console.error("❌ Validation failed!");
+      console.error("  - Reason:", validationError);
+      console.error("  - Missing prompt:", !prompt);
+      console.error("  - No models selected:", selectedModels.length === 0);
+      console.error("  - No active project:", !activeProject);
+      return;
+    }
+
     console.log("✅ Validation passed, starting generation...");
+    console.log("  - Models to process:", selectedModels.length);
+    console.log("  - Active project:", !!activeProject);
+    console.log("  - Media store available:", !!addMediaItem);
     setIsGenerating(true);
     setJobId(null);
 
