@@ -9,6 +9,13 @@
 
 **Priority**: High (must-do for CSP fix, should-do for visibility, nice-to-have for fallback)
 
+### Review notes (what to keep in focus)
+- Do CSP first; it unblocks playback even when storage works. Validate in both web/Electron.
+- For storage failures, avoid silent rollback. Keep item in state, mark `unsaved/urlOnly`, and surface a toast with retry guidance; add a small feature flag to disable if needed.
+- URL-only mode should be gated on storage error detection (OPFS/IndexedDB failure); ensure it doesn’t fire on transient network errors.
+- Add a lightweight “retry save” helper to keep logic localized to `media-store.ts` rather than scattering calls.
+- Keep success path unchanged and test filters/project switching so visibility issues are not mistaken for storage problems.
+
 ---
 
 ## Subtask 1: Fix CSP (Content Security Policy) - MUST DO
