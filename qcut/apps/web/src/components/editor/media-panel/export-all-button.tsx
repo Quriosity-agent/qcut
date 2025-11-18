@@ -52,6 +52,16 @@ export function ExportAllButton({
         .length,
     });
 
+    const falVideos = mediaItems.filter(
+      (item: MediaItem) =>
+        item.type === "video" &&
+        (item.url?.includes("fal.media") || item.url?.includes("v3b.fal.media"))
+    );
+    debugLog("?? EXPORT-ALL: Note - videos from FAL are not included in image-only download flows", {
+      falVideoCount: falVideos.length,
+      ids: falVideos.map((v) => v.id),
+    });
+
     // Log generated images details
     const generatedImages = mediaItems.filter(
       (item: MediaItem) => item.metadata?.source === "text2image"
