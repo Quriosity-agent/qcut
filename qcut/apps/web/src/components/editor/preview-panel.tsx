@@ -589,7 +589,7 @@ export function PreviewPanel() {
             key={`blur-${element.id}`}
             className="absolute inset-0 flex items-center justify-center bg-black/60 text-white text-xs"
           >
-            无可用视频源
+            No available video source
           </div>
         );
       }
@@ -751,7 +751,7 @@ export function PreviewPanel() {
                 height: "100%",
               }}
             >
-              无可用视频源
+              No available video source
             </div>
           );
         }
