@@ -102,3 +102,179 @@ console.error @ index.html:61
 index.html:61 [AI View] Error occurred: Failed to fetch
 console.error @ index.html:61
 ai.tsx:508 [AI View] Progress: 0% - Failed to fetch
+
+[AI View] Progress: 0% - Submitting request to FAL.ai queue...
+blob-url-debug.ts:96  POST https://fal.run/fal-ai/sora-2/text-to-video 422 (Unprocessable Content)
+e @ blob-url-debug.ts:96
+mx @ ai-video-client.ts:577
+(anonymous) @ use-ai-generation.ts:902
+qe @ react-dom.development.js:4164
+vR @ react-dom.development.js:4213
+Iv @ react-dom.development.js:4277
+Sk @ react-dom.development.js:4291
+DE @ react-dom.development.js:9041
+pI @ react-dom.development.js:9073
+PE @ react-dom.development.js:9086
+hI @ react-dom.development.js:9097
+(anonymous) @ react-dom.development.js:9288
+Qg @ react-dom.development.js:26179
+pR @ react-dom.development.js:3991
+Fm @ react-dom.development.js:9287
+$L @ react-dom.development.js:6465
+Cm @ react-dom.development.js:6457
+UL @ react-dom.development.js:6430
+error-handler.ts:145 🚨 Error ERR-1763430874008-HG0MR5 [MEDIUM]
+error-handler.ts:146 Timestamp: 2025-11-18T01:54:34.008Z
+error-handler.ts:147 Operation: Submit FAL AI request to queue
+error-handler.ts:148 Category: ai_service
+error-handler.ts:149 Severity: medium
+index.html:61 Original Error: Error: FAL Queue Submit Error: 422 
+    at mx (ai-video-client.ts:593:9)
+    at async use-ai-generation.ts:902:24
+console.error @ index.html:61
+Fr @ error-handler.ts:152
+ae @ error-handler.ts:185
+_n @ error-handler.ts:300
+mx @ ai-video-client.ts:592
+await in mx
+(anonymous) @ use-ai-generation.ts:902
+qe @ react-dom.development.js:4164
+vR @ react-dom.development.js:4213
+Iv @ react-dom.development.js:4277
+Sk @ react-dom.development.js:4291
+DE @ react-dom.development.js:9041
+pI @ react-dom.development.js:9073
+PE @ react-dom.development.js:9086
+hI @ react-dom.development.js:9097
+(anonymous) @ react-dom.development.js:9288
+Qg @ react-dom.development.js:26179
+pR @ react-dom.development.js:3991
+Fm @ react-dom.development.js:9287
+$L @ react-dom.development.js:6465
+Cm @ react-dom.development.js:6457
+UL @ react-dom.development.js:6430
+index.html:61 Stack Trace: Error: FAL Queue Submit Error: 422 
+    at mx (app://./assets/editor._project_id.lazy-BVdnQMB0.js:105:17951)
+    at async app://./assets/editor._project_id.lazy-BVdnQMB0.js:108:1860
+console.error @ index.html:61
+Fr @ error-handler.ts:154
+ae @ error-handler.ts:185
+_n @ error-handler.ts:300
+mx @ ai-video-client.ts:592
+await in mx
+(anonymous) @ use-ai-generation.ts:902
+qe @ react-dom.development.js:4164
+vR @ react-dom.development.js:4213
+Iv @ react-dom.development.js:4277
+Sk @ react-dom.development.js:4291
+DE @ react-dom.development.js:9041
+pI @ react-dom.development.js:9073
+PE @ react-dom.development.js:9086
+hI @ react-dom.development.js:9097
+(anonymous) @ react-dom.development.js:9288
+Qg @ react-dom.development.js:26179
+pR @ react-dom.development.js:3991
+Fm @ react-dom.development.js:9287
+$L @ react-dom.development.js:6465
+Cm @ react-dom.development.js:6457
+UL @ react-dom.development.js:6430
+error-handler.ts:161 Metadata: {status: 422, statusText: '', errorData: {…}, endpoint: 'fal-ai/sora-2/text-to-video', operation: 'queueSubmit'}
+error-handler.ts:145 🚨 Error ERR-1763430874010-EXGUVV [MEDIUM]
+error-handler.ts:146 Timestamp: 2025-11-18T01:54:34.010Z
+error-handler.ts:147 Operation: AI Video Generation
+error-handler.ts:148 Category: ai_service
+error-handler.ts:149 Severity: medium
+index.html:61 Original Error: Error: Invalid request parameters: {"detail":[{"loc":["body","duration"],"msg":"unexpected value; permitted: 4, 8, 12","type":"value_error.const","ctx":{"given":6,"permitted":[4,8,12]}}]}
+    at mx (ai-video-client.ts:607:13)
+    at async use-ai-generation.ts:902:24
+console.error @ index.html:61
+Fr @ error-handler.ts:152
+ae @ error-handler.ts:185
+_n @ error-handler.ts:300
+mx @ ai-video-client.ts:780
+await in mx
+(anonymous) @ use-ai-generation.ts:902
+qe @ react-dom.development.js:4164
+vR @ react-dom.development.js:4213
+Iv @ react-dom.development.js:4277
+Sk @ react-dom.development.js:4291
+DE @ react-dom.development.js:9041
+pI @ react-dom.development.js:9073
+PE @ react-dom.development.js:9086
+hI @ react-dom.development.js:9097
+(anonymous) @ react-dom.development.js:9288
+Qg @ react-dom.development.js:26179
+pR @ react-dom.development.js:3991
+Fm @ react-dom.development.js:9287
+$L @ react-dom.development.js:6465
+Cm @ react-dom.development.js:6457
+UL @ react-dom.development.js:6430
+index.html:61 Stack Trace: Error: Invalid request parameters: {"detail":[{"loc":["body","duration"],"msg":"unexpected value; permitted: 4, 8, 12","type":"value_error.const","ctx":{"given":6,"permitted":[4,8,12]}}]}
+    at mx (app://./assets/editor._project_id.lazy-BVdnQMB0.js:105:18163)
+    at async app://./assets/editor._project_id.lazy-BVdnQMB0.js:108:1860
+console.error @ index.html:61
+Fr @ error-handler.ts:154
+ae @ error-handler.ts:185
+_n @ error-handler.ts:300
+mx @ ai-video-client.ts:780
+await in mx
+(anonymous) @ use-ai-generation.ts:902
+qe @ react-dom.development.js:4164
+vR @ react-dom.development.js:4213
+Iv @ react-dom.development.js:4277
+Sk @ react-dom.development.js:4291
+DE @ react-dom.development.js:9041
+pI @ react-dom.development.js:9073
+PE @ react-dom.development.js:9086
+hI @ react-dom.development.js:9097
+(anonymous) @ react-dom.development.js:9288
+Qg @ react-dom.development.js:26179
+pR @ react-dom.development.js:3991
+Fm @ react-dom.development.js:9287
+$L @ react-dom.development.js:6465
+Cm @ react-dom.development.js:6457
+UL @ react-dom.development.js:6430
+error-handler.ts:161 Metadata: {operation: 'generateVideo'}
+use-ai-generation.ts:783   📊 Progress for sora2_text_to_video: {status: 'failed', progress: 0, message: 'Invalid request parameters: {"detail":[{"loc":["bo….const","ctx":{"given":6,"permitted":[4,8,12]}}]}', elapsedTime: 0}
+index.html:61 ❌❌❌ GENERATION FAILED ❌❌❌ Error: Invalid request parameters: {"detail":[{"loc":["body","duration"],"msg":"unexpected value; permitted: 4, 8, 12","type":"value_error.const","ctx":{"given":6,"permitted":[4,8,12]}}]}
+    at mx (ai-video-client.ts:607:13)
+    at async use-ai-generation.ts:902:24
+console.error @ index.html:61
+(anonymous) @ use-ai-generation.ts:1797
+await in (anonymous)
+qe @ react-dom.development.js:4164
+vR @ react-dom.development.js:4213
+Iv @ react-dom.development.js:4277
+Sk @ react-dom.development.js:4291
+DE @ react-dom.development.js:9041
+pI @ react-dom.development.js:9073
+PE @ react-dom.development.js:9086
+hI @ react-dom.development.js:9097
+(anonymous) @ react-dom.development.js:9288
+Qg @ react-dom.development.js:26179
+pR @ react-dom.development.js:3991
+Fm @ react-dom.development.js:9287
+$L @ react-dom.development.js:6465
+Cm @ react-dom.development.js:6457
+UL @ react-dom.development.js:6430
+index.html:61 [AI View] Error occurred: Invalid request parameters: {"detail":[{"loc":["body","duration"],"msg":"unexpected value; permitted: 4, 8, 12","type":"value_error.const","ctx":{"given":6,"permitted":[4,8,12]}}]}
+console.error @ index.html:61
+onError @ ai.tsx:512
+(anonymous) @ use-ai-generation.ts:1799
+await in (anonymous)
+qe @ react-dom.development.js:4164
+vR @ react-dom.development.js:4213
+Iv @ react-dom.development.js:4277
+Sk @ react-dom.development.js:4291
+DE @ react-dom.development.js:9041
+pI @ react-dom.development.js:9073
+PE @ react-dom.development.js:9086
+hI @ react-dom.development.js:9097
+(anonymous) @ react-dom.development.js:9288
+Qg @ react-dom.development.js:26179
+pR @ react-dom.development.js:3991
+Fm @ react-dom.development.js:9287
+$L @ react-dom.development.js:6465
+Cm @ react-dom.development.js:6457
+UL @ react-dom.development.js:6430
+ai.tsx:508 [AI View] Progress: 0% - Invalid request parameters: {"detail":[{"loc":["body","duration"],"msg":"unexpected value; permitted: 4, 8, 12","type":"value_error.const","ctx":{"given":6,"permitted":[4,8,12]}}]}
