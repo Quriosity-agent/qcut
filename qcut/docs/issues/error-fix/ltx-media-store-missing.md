@@ -1,24 +1,23 @@
-# LTX Video generated but missing in Media Panel
+# LTX media missing after successful generation (with new console logging)
 
-## What happened (from `ltx.md` log)
-- LTX Video 2.0 Fast T2V request succeeded, returned job_id and mp4 URL.
-- Video was downloaded (HTTP 200), blob size ~2.8 MB, file created: `AI-Video-ltxv2_fast_t2v-1763436029098.mp4`.
-- `addMediaItem` ran with projectId `91792c80-b639-4b2a-bf54-6b7da08e2ff1` and completed, returning `newItemId: 23f4be8d-76d1-1928-ad33-dc7feaf7675e`.
-- `use-ai-generation` logged `SUCCESS: Video added to media store!` and called `onComplete`.
+## What the latest console shows (`ltx_console_v2.md`)
+- LTX Video 2.0 Fast T2V request succeeded with job_id and video URL.
+- Media integration block executed: download 200 OK, blob size ~7.9 MB, file created `AI-Video-ltxv2_fast_t2v-...mp4`.
+- `addMediaItem` was called and returned an item ID (not shown in this log, but earlier traces did).
+- After generation, a CSP error appears when previewing: video blocked by Content Security Policy; message says to add `https://fal.media https://v3.fal.media https://v3b.fal.media` to `media-src`.
 
-## Why it can still be invisible in the media panel
-- `addMediaItem` saves to local state first, **but removes the item if `storageService.saveMediaItem` throws**. OPFS/IndexedDB failures (common in incognito/blocked storage or file://) will silently drop the item after logging a storage error. If storage failed, the panel shows nothing despite the earlier success logs.
-- The media panel shows items for the *current* `activeProject`. If the user switched projects after generation, the newly added item (for `91792c80-b639-4b2a-bf54-6b7da08e2ff1`) is filtered out.
-- Panel filters/search can hide it (type filters, text search). Generation adds `type: "video"`; any non-video filter hides it.
+## Likely causes of “generated but not visible” given these logs
+- **CSP blocks playback, not storage**: Even if saved, the preview fails unless CSP allows FAL media hosts. The log explicitly asks to add those hosts to `media-src`.
+- **Storage rollback still possible**: If OPFS/IndexedDB writes fail, `addMediaItem` removes the in-memory item after logging a storage error. Check for new console errors emitted by `MediaStore.addMediaItem` (we now log failures with rollback details).
+- **Project mismatch / filters**: Items are stored per `activeProject`. Switching projects or having filters/search applied will hide the item.
 
 ## Quick checks
-1) Open DevTools console and look for `StorageService.saveMediaItem` errors or `handleStorageError` logs immediately after generation.
-2) Confirm `activeProject.id` matches the project in the log (`91792c80-b639-4b2a-bf54-6b7da08e2ff1`).
-3) Clear media panel filters/search; ensure the Video tab is visible.
-4) In console, inspect `useMediaStore.getState().mediaItems` after generation. If empty, persistence likely failed and the state was rolled back.
+1) DevTools console: look for `[MediaStore.addMediaItem] Storage save FAILED` logs or `handleStorageError` right after generation.
+2) Verify CSP: ensure `media-src` includes `https://fal.media https://v3.fal.media https://v3b.fal.media`; reload and retry.
+3) Confirm `activeProject.id` matches the one used during generation (`91792c80-b639-4b2a-bf54-6b7da08e2ff1` in this log) and clear filters/search.
+4) Inspect runtime state after generation: `useMediaStore.getState().mediaItems` in console; if empty, persistence likely failed/rolled back.
 
-## Suggested fixes
-- Do not remove from `mediaItems` when persistence fails; instead mark it unsaved and surface a toast so the user still sees the item and can retry.
-- Bubble up `storageService.saveMediaItem` errors to the UI (toast + badge) instead of only console logging.
-- Add a post-save assertion in `use-ai-generation` to confirm the item remains in `mediaItems`; if missing, re-add with a warning.
-- In environments where OPFS/IndexedDB is restricted, allow a “URL-only” add mode that skips file persistence but keeps the entry visible.
+## Suggested fixes (actionable)
+- Add CSP allowances: update HTML/Electron CSP to permit `media-src` for `fal.media`, `v3.fal.media`, `v3b.fal.media` so previews work.
+- Soften rollback: on storage save failure, keep the item in memory and show a toast/banner to inform the user; allow a “URL-only” save mode when OPFS/IndexedDB is blocked.
+- Logging already added: use the new `[MediaStore.addMediaItem]` logs to pinpoint save failures; add a toast in `use-ai-generation` when `addMediaItem` rejects.
