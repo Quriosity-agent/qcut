@@ -1022,3 +1022,475 @@ Search console for:
 
 **Is video in media store?**
 → Search: `VIDEO SUCCESSFULLY ADDED` → Should find confirmation
+
+---
+
+## Appendix B: Local File vs Remote URL Architecture
+
+### The Key Architectural Question
+
+When reviewing the media item structure, a critical question arises:
+
+```javascript
+📤 Adding to media store with item: {
+  name: 'AI: Motorcycle roars in with aggre...',
+  type: 'video',
+  file: File {                    // ← LOCAL file (downloaded)
+    name: 'AI-Video-ltxv2_fast_t2v-1763445184989.mp4',
+    size: 5963825,
+    type: 'video/mp4'
+  },
+  url: 'https://v3b.fal.media/files/b/kangaroo/dGqMvHdUSN9v2Ved4rt5R_X8doAaYN.mp4',  // ← REMOTE URL
+  duration: 6.12,
+  width: 1920,
+  height: 1080
+}
+```
+
+**Question**: Should this use a local file rather than a remote file?
+
+**Answer**: The media item correctly stores **BOTH**, but the video player incorrectly uses the **remote URL** for playback.
+
+---
+
+### Current Structure: BOTH Local File AND Remote URL ✅
+
+The media item stores both:
+
+**1. Local File** (`file` property):
+- ✅ Downloaded from FAL.ai (5.96 MB)
+- ✅ Stored as File object in memory
+- ✅ Persisted to OPFS/IndexedDB
+- ✅ Available for offline playback
+- ✅ No network dependency
+
+**2. Remote URL** (`url` property):
+- ✅ Original FAL.ai URL
+- ✅ Reference to source
+- ✅ Useful for re-download if needed
+- ✅ Metadata/tracking purposes
+
+**Why both?** This is actually **good design** because:
+- Local file enables offline playback
+- Remote URL provides fallback and reference
+- Flexibility for different use cases
+
+---
+
+### The Problem: Using Remote URL for Playback ❌
+
+When the video is played in the timeline/preview, the application currently uses the **remote `url`**:
+
+```javascript
+// Current behavior (from timeline-track.tsx):
+[TimelineTrack] Found media item: {
+  mediaItemUrl: 'https://v3b.fal.media/files/b/kangaroo/...',
+  isBlobUrl: false,  // ← Not using blob URL from local file
+  ...
+}
+
+// Video element receives remote URL:
+<video src="https://v3b.fal.media/files/b/kangaroo/..." />
+//         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+//         Remote URL → Blocked by CSP ❌
+```
+
+**Result**: CSP error `net::ERR_BLOCKED_BY_RESPONSE`
+
+---
+
+### The Solution: Use Local File via Blob URL ✅
+
+The video player **should** create a blob URL from the local file:
+
+```javascript
+// What SHOULD happen:
+const blobUrl = URL.createObjectURL(mediaItem.file);
+
+// Video element receives blob URL:
+<video src="blob:http://localhost:5173/abc-123-def-456" />
+//         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+//         Blob URL from local file → Always works ✅
+```
+
+**Result**: No CSP error, video plays successfully
+
+---
+
+### Why Use Local File for Playback?
+
+| Aspect | Local File (Blob URL) | Remote URL |
+|--------|----------------------|------------|
+| **CSP Issues** | ✅ None (blob: always allowed) | ❌ Requires whitelist |
+| **Network Dependency** | ✅ Works offline | ❌ Requires internet |
+| **Latency** | ✅ Instant (already local) | ❌ Network latency |
+| **Reliability** | ✅ File already downloaded | ❌ URL may expire |
+| **Performance** | ✅ Fast local access | ❌ Network bandwidth |
+| **Privacy** | ✅ No external requests | ❌ Tracks usage |
+
+**Conclusion**: Local file via blob URL is **superior for playback** in almost every way.
+
+---
+
+### Implementation: The Fix
+
+#### File: `qcut/apps/web/src/components/timeline/timeline-track.tsx`
+
+**Current Code (Problematic):**
+
+```typescript
+// Uses remote URL directly
+const videoSrc = mediaItem.url;
+
+<video src={videoSrc} />
+// Result: CSP error ❌
+```
+
+**Fixed Code (Option 1 - Simple):**
+
+```typescript
+// Create blob URL from local file
+const videoSrc = mediaItem.file
+  ? URL.createObjectURL(mediaItem.file)
+  : mediaItem.url;
+
+<video src={videoSrc} />
+// Result: Works perfectly ✅
+```
+
+**Fixed Code (Option 2 - With Cleanup):**
+
+```typescript
+import { useEffect, useState } from 'react';
+
+function VideoPlayer({ mediaItem }: { mediaItem: MediaItem }) {
+  const [videoSrc, setVideoSrc] = useState<string>('');
+
+  useEffect(() => {
+    // Create blob URL from local file
+    if (mediaItem.file) {
+      const blobUrl = URL.createObjectURL(mediaItem.file);
+      setVideoSrc(blobUrl);
+
+      // Cleanup blob URL when component unmounts or file changes
+      return () => {
+        URL.revokeObjectURL(blobUrl);
+      };
+    } else {
+      // Fallback to remote URL if no local file
+      setVideoSrc(mediaItem.url);
+    }
+  }, [mediaItem.file, mediaItem.url]);
+
+  return <video src={videoSrc} controls />;
+}
+```
+
+**Fixed Code (Option 3 - Hybrid with CSP Check):**
+
+```typescript
+function getVideoSrc(mediaItem: MediaItem): string {
+  // Priority 1: Use local file (always works)
+  if (mediaItem.file) {
+    return URL.createObjectURL(mediaItem.file);
+  }
+
+  // Priority 2: Use remote URL (if CSP allows)
+  if (mediaItem.url) {
+    console.warn('No local file available, using remote URL (may be blocked by CSP)');
+    return mediaItem.url;
+  }
+
+  throw new Error('No playable video source available');
+}
+
+// Usage:
+const videoSrc = getVideoSrc(mediaItem);
+```
+
+---
+
+### Implementation: Advanced Pattern
+
+For production, consider this robust pattern:
+
+```typescript
+import { useEffect, useState, useRef } from 'react';
+
+function useVideoSource(mediaItem: MediaItem) {
+  const [src, setSrc] = useState<string>('');
+  const [error, setError] = useState<Error | null>(null);
+  const blobUrlRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    // Cleanup previous blob URL
+    if (blobUrlRef.current) {
+      URL.revokeObjectURL(blobUrlRef.current);
+      blobUrlRef.current = null;
+    }
+
+    try {
+      // Strategy 1: Local file (preferred)
+      if (mediaItem.file) {
+        const blobUrl = URL.createObjectURL(mediaItem.file);
+        blobUrlRef.current = blobUrl;
+        setSrc(blobUrl);
+        setError(null);
+        console.log('✅ Using local file via blob URL');
+        return;
+      }
+
+      // Strategy 2: Remote URL (fallback)
+      if (mediaItem.url) {
+        setSrc(mediaItem.url);
+        setError(null);
+        console.warn('⚠️ Using remote URL (CSP may block):', mediaItem.url);
+        return;
+      }
+
+      // No source available
+      throw new Error('No video source available');
+
+    } catch (err) {
+      setError(err instanceof Error ? err : new Error('Unknown error'));
+      console.error('❌ Failed to get video source:', err);
+    }
+
+    // Cleanup on unmount
+    return () => {
+      if (blobUrlRef.current) {
+        URL.revokeObjectURL(blobUrlRef.current);
+        blobUrlRef.current = null;
+      }
+    };
+  }, [mediaItem.file, mediaItem.url]);
+
+  return { src, error };
+}
+
+// Usage in component:
+function VideoPlayer({ mediaItem }: { mediaItem: MediaItem }) {
+  const { src, error } = useVideoSource(mediaItem);
+
+  if (error) {
+    return <div className="error">Failed to load video: {error.message}</div>;
+  }
+
+  return <video src={src} controls />;
+}
+```
+
+---
+
+### Why Current Implementation Uses Remote URL
+
+**Hypothesis**: The application currently uses remote URL because:
+
+1. **Simpler implementation** - No blob URL lifecycle management
+2. **Memory efficiency** - Blob URLs keep file in memory
+3. **Assumption** - Assumed CSP would allow FAL.ai domains
+4. **Initial design** - May have been designed before local file storage
+
+**Evidence from console logs:**
+
+```javascript
+[TimelineTrack] Found media item: {
+  mediaItemUrl: 'https://v3b.fal.media/...',
+  isBlobUrl: false,  // ← Explicitly not using blob URL
+  ...
+}
+```
+
+The code explicitly tracks whether it's a blob URL, and it's set to `false`, meaning the implementation **knows about blob URLs** but **chose not to use them**.
+
+---
+
+### Two Approaches to Fix
+
+#### Approach A: Use Local File (Recommended) ✅
+
+**Change**: Video player uses blob URL from `mediaItem.file`
+
+**Pros:**
+- ✅ **Immediate fix** - No CSP changes needed
+- ✅ **Works offline** - No network dependency
+- ✅ **Better performance** - No network latency
+- ✅ **More reliable** - File already downloaded
+- ✅ **Future-proof** - Independent of CSP config
+
+**Cons:**
+- ❌ **Memory overhead** - Blob URL keeps file in memory
+- ❌ **Lifecycle management** - Need to cleanup blob URLs
+- ❌ **Code complexity** - Slightly more complex logic
+
+**Implementation time**: 1-2 hours
+
+**Files to modify:**
+- `qcut/apps/web/src/components/timeline/timeline-track.tsx`
+- `qcut/apps/web/src/components/video/video-player.tsx`
+- `qcut/apps/web/src/components/preview/preview-panel.tsx`
+
+---
+
+#### Approach B: Fix CSP + Keep Remote URL
+
+**Change**: Add FAL.ai domains to CSP `media-src` directive
+
+**Pros:**
+- ✅ **Simpler code** - No blob URL management
+- ✅ **Lower memory** - No blob URLs in memory
+- ✅ **Streaming capable** - Can stream from remote
+- ✅ **Works with current code** - Minimal changes
+
+**Cons:**
+- ❌ **CSP dependency** - Requires whitelist configuration
+- ❌ **Network required** - No offline playback
+- ❌ **External dependency** - Relies on FAL.ai availability
+- ❌ **Privacy concern** - External requests tracked
+
+**Implementation time**: 30 minutes
+
+**Files to modify:**
+- `qcut/apps/web/index.html` (CSP meta tag)
+- `qcut/apps/desktop/src/main/index.ts` (Electron CSP)
+
+---
+
+### Recommended: Hybrid Approach ✅✅
+
+**Best of both worlds**: Use local file by default, fallback to remote URL
+
+```typescript
+function getVideoSource(mediaItem: MediaItem): {
+  src: string;
+  type: 'blob' | 'remote';
+  cleanup?: () => void;
+} {
+  // Priority 1: Local file via blob URL
+  if (mediaItem.file) {
+    const blobUrl = URL.createObjectURL(mediaItem.file);
+    return {
+      src: blobUrl,
+      type: 'blob',
+      cleanup: () => URL.revokeObjectURL(blobUrl)
+    };
+  }
+
+  // Priority 2: Remote URL (requires CSP)
+  if (mediaItem.url && isCSPAllowed(mediaItem.url)) {
+    return {
+      src: mediaItem.url,
+      type: 'remote'
+    };
+  }
+
+  throw new Error('No playable video source available');
+}
+
+// Helper to check CSP
+function isCSPAllowed(url: string): boolean {
+  const allowedDomains = [
+    'fal.media',
+    'v3.fal.media',
+    'v3b.fal.media'
+  ];
+
+  try {
+    const hostname = new URL(url).hostname;
+    return allowedDomains.includes(hostname);
+  } catch {
+    return false;
+  }
+}
+```
+
+**Benefits:**
+- ✅ Uses local file when available (best performance)
+- ✅ Falls back to remote URL if needed
+- ✅ CSP-aware (checks if remote URL allowed)
+- ✅ Works in all scenarios
+- ✅ User preference possible (local vs remote)
+
+---
+
+### Action Items
+
+#### Immediate (Priority 1) - Use Local File
+
+1. **Modify video player components** to use blob URLs from local files
+2. **Add cleanup logic** for blob URLs on component unmount
+3. **Test playback** with local files
+4. **Verify CSP errors** are gone
+
+**Files:**
+- `timeline-track.tsx`
+- `video-player.tsx`
+- `preview-panel.tsx`
+
+**Time**: 2-3 hours
+
+---
+
+#### Short-term (Priority 2) - Add CSP Fallback
+
+1. **Update CSP configuration** to allow FAL.ai domains
+2. **Keep remote URL fallback** for cases where local file unavailable
+3. **Add CSP detection** to choose between blob URL and remote URL
+
+**Files:**
+- `index.html` (web)
+- `main/index.ts` (Electron)
+
+**Time**: 1 hour
+
+---
+
+#### Long-term (Priority 3) - User Preference
+
+1. **Add setting** to let users choose:
+   - "Use local files" (faster, offline-capable)
+   - "Use remote URLs" (lower memory, streaming)
+   - "Auto" (smart selection based on availability)
+
+2. **Add UI indicator** showing which source is being used
+3. **Add re-download option** for corrupted local files
+
+**Time**: 4-6 hours
+
+---
+
+### Testing Checklist
+
+After implementing the fix, verify:
+
+- [ ] Video plays without CSP errors
+- [ ] Video plays from local file (check network tab - should show blob URL)
+- [ ] No memory leaks (blob URLs cleaned up on unmount)
+- [ ] Video plays after page refresh (local file persisted)
+- [ ] Video plays offline (disconnect network)
+- [ ] Fallback to remote URL works when local file missing
+- [ ] Multiple videos can play simultaneously
+- [ ] Timeline scrubbing works smoothly
+- [ ] Export/render uses correct source
+
+---
+
+### Conclusion: Local File Should Be Used ✅
+
+**The answer to the original question**: Yes, the video **should use the local file** for playback via blob URL, not the remote URL.
+
+**Current state:**
+- ❌ Using remote URL → CSP blocks playback
+- ✅ Local file available but unused
+
+**Desired state:**
+- ✅ Using local file via blob URL → Playback works
+- ✅ Remote URL available as metadata/fallback
+
+**Impact:**
+- Fixes CSP issue without configuration changes
+- Improves performance (no network latency)
+- Enables offline playback
+- More reliable (file already downloaded)
+
+**Next step:** Modify video player to create blob URLs from `mediaItem.file` instead of using `mediaItem.url` directly.
