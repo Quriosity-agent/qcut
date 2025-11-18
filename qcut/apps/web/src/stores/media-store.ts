@@ -350,6 +350,16 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
       id,
     };
 
+    console.log("[MediaStore.addMediaItem] Saving media item", {
+      projectId,
+      id: newItem.id,
+      name: newItem.name,
+      type: newItem.type,
+      hasFile: !!newItem.file,
+      fileSize: newItem.file?.size,
+      url: newItem.url,
+    });
+
     // Debug logging for ID generation (Task 1.3)
     debugLog(`[MediaStore] Generated ID for ${newItem.name}:`, {
       id: newItem.id,
@@ -366,8 +376,24 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
     // Save to persistent storage in background
     try {
       await storageService.saveMediaItem(projectId, newItem);
+      console.log("[MediaStore.addMediaItem] Saved to storage", {
+        projectId,
+        id: newItem.id,
+        name: newItem.name,
+        type: newItem.type,
+      });
       return newItem.id;
     } catch (error) {
+      console.error(
+        "[MediaStore.addMediaItem] Storage save FAILED, rolling back local item",
+        {
+          projectId,
+          id: newItem.id,
+          name: newItem.name,
+          type: newItem.type,
+          error: error instanceof Error ? error.message : String(error),
+        }
+      );
       handleStorageError(error, "Add media item to storage", {
         projectId,
         itemId: newItem.id,

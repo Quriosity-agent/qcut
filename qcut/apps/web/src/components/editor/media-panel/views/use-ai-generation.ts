@@ -427,6 +427,12 @@ export function useAIGeneration(props: UseAIGenerationProps) {
               // Automatically add to media store
               if (activeProject) {
                 try {
+                  console.log("[AI Generation] Downloading generated video for media store...", {
+                    projectId: activeProject.id,
+                    modelId: selectedModels[0] || "unknown",
+                    videoUrl: newVideo.videoUrl,
+                  });
+
                   const response = await fetch(newVideo.videoUrl);
                   const blob = await response.blob();
                   const file = new File(
@@ -439,6 +445,15 @@ export function useAIGeneration(props: UseAIGenerationProps) {
                     throw new Error("Media store not ready");
                   }
 
+                  console.log("[AI Generation] Adding video to media store...", {
+                    projectId: activeProject.id,
+                    name: `AI: ${newVideo.prompt.substring(0, 30)}...`,
+                    duration: newVideo.duration || 5,
+                    width: 1920,
+                    height: 1080,
+                    fileSize: file.size,
+                  });
+
                   const newItemId = await addMediaItem(activeProject.id, {
                     name: `AI: ${newVideo.prompt.substring(0, 30)}...`,
                     type: "video",
@@ -447,6 +462,11 @@ export function useAIGeneration(props: UseAIGenerationProps) {
                     duration: newVideo.duration || 5,
                     width: 1920,
                     height: 1080,
+                  });
+
+                  console.log("[AI Generation] addMediaItem succeeded", {
+                    mediaItemId: newItemId,
+                    projectId: activeProject.id,
                   });
 
                   debugLogger.log(
@@ -463,6 +483,13 @@ export function useAIGeneration(props: UseAIGenerationProps) {
                     }
                   );
                 } catch (error) {
+                  console.error("[AI Generation] addMediaItem failed", {
+                    projectId: activeProject?.id,
+                    modelId: selectedModels[0] || "unknown",
+                    videoUrl: newVideo.videoUrl,
+                    error: error instanceof Error ? error.message : String(error),
+                  });
+
                   debugLogger.log(
                     "AIGeneration",
                     "VIDEO_ADD_TO_MEDIA_STORE_FAILED",
