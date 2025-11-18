@@ -245,7 +245,7 @@ export function AiView() {
   // Unified text-to-video advanced settings
   const [t2vAspectRatio, setT2vAspectRatio] = useState<string>("16:9");
   const [t2vResolution, setT2vResolution] = useState<string>("1080p");
-  const [t2vDuration, setT2vDuration] = useState<number>(5);
+  const [t2vDuration, setT2vDuration] = useState<number>(4);
   const [t2vNegativePrompt, setT2vNegativePrompt] = useState<string>(
     "low resolution, error, worst quality, low quality, defects"
   );
@@ -359,7 +359,7 @@ export function AiView() {
     let count = 0;
     if (t2vAspectRatio !== "16:9") count++;
     if (t2vResolution !== "1080p") count++;
-    if (t2vDuration !== 5) count++;
+    if (t2vDuration !== 4) count++;
     if (
       t2vNegativePrompt !==
       "low resolution, error, worst quality, low quality, defects"
@@ -836,7 +836,7 @@ export function AiView() {
     setError(null);
     setT2vAspectRatio("16:9");
     setT2vResolution("1080p");
-    setT2vDuration(5);
+    setT2vDuration(4);
     setT2vNegativePrompt(
       "low resolution, error, worst quality, low quality, defects"
     );
@@ -1177,7 +1177,7 @@ export function AiView() {
                           <Select
                             value={t2vDuration.toString()}
                             onValueChange={(value) =>
-                              setT2vDuration(Number(value) || 5)
+                              setT2vDuration(Number(value) || 4)
                             }
                             disabled={
                               !combinedCapabilities.supportedDurations ||

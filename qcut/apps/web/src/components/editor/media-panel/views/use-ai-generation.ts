@@ -42,7 +42,11 @@ import {
   ERROR_MESSAGES,
   REVE_EDIT_MODEL,
 } from "./ai-constants";
-import { T2V_MODEL_CAPABILITIES, type T2VModelId } from "./text2video-models-config";
+import {
+  T2V_MODEL_CAPABILITIES,
+  type T2VModelCapabilities,
+  type T2VModelId,
+} from "./text2video-models-config";
 import type {
   GeneratedVideo,
   GeneratedVideoResult,
@@ -55,6 +59,30 @@ const VEO31_FRAME_MODELS = new Set([
   "veo31_fast_frame_to_video",
   "veo31_frame_to_video",
 ]);
+
+function getSafeDuration(
+  requestedDuration: number,
+  capabilities?: T2VModelCapabilities
+): number | undefined {
+  if (!capabilities?.supportsDuration) return undefined;
+
+  const allowedDurations = capabilities.supportedDurations;
+  const fallbackDuration =
+    capabilities.defaultDuration ??
+    (allowedDurations && allowedDurations.length > 0
+      ? allowedDurations[0]
+      : undefined);
+
+  if (!allowedDurations || allowedDurations.length === 0) {
+    return requestedDuration;
+  }
+
+  if (allowedDurations.includes(requestedDuration)) {
+    return requestedDuration;
+  }
+
+  return fallbackDuration ?? allowedDurations[0];
+}
 
 /**
  * Custom hook for managing AI video generation
@@ -79,7 +107,7 @@ export function useAIGeneration(props: UseAIGenerationProps) {
     hailuoT2VDuration = 6,
     t2vAspectRatio = "16:9",
     t2vResolution = "1080p",
-    t2vDuration = 5,
+    t2vDuration = 4,
     t2vNegativePrompt = "low resolution, error, worst quality, low quality, defects",
     t2vPromptExpansion = false,
     t2vSeed = -1,
@@ -543,7 +571,21 @@ export function useAIGeneration(props: UseAIGenerationProps) {
           unifiedParams.resolution = t2vResolution;
         }
         if (modelCapabilities?.supportsDuration && t2vDuration) {
-          unifiedParams.duration = t2vDuration;
+          const safeDuration = getSafeDuration(t2vDuration, modelCapabilities);
+          if (safeDuration !== undefined) {
+            if (
+              safeDuration !== t2vDuration &&
+              modelCapabilities.supportedDurations?.length
+            ) {
+              debugLogger.log("AIGeneration", "T2V_DURATION_SANITIZED", {
+                modelId,
+                requestedDuration: t2vDuration,
+                appliedDuration: safeDuration,
+                allowedDurations: modelCapabilities.supportedDurations,
+              });
+            }
+            unifiedParams.duration = safeDuration;
+          }
         }
         const trimmedNegativePrompt = t2vNegativePrompt?.trim();
         if (
@@ -744,7 +786,21 @@ export function useAIGeneration(props: UseAIGenerationProps) {
           unifiedParams.resolution = t2vResolution;
         }
         if (modelCapabilities?.supportsDuration && t2vDuration) {
-          unifiedParams.duration = t2vDuration;
+          const safeDuration = getSafeDuration(t2vDuration, modelCapabilities);
+          if (safeDuration !== undefined) {
+            if (
+              safeDuration !== t2vDuration &&
+              modelCapabilities.supportedDurations?.length
+            ) {
+              debugLogger.log("AIGeneration", "T2V_DURATION_SANITIZED", {
+                modelId,
+                requestedDuration: t2vDuration,
+                appliedDuration: safeDuration,
+                allowedDurations: modelCapabilities.supportedDurations,
+              });
+            }
+            unifiedParams.duration = safeDuration;
+          }
         }
         const trimmedNegativePrompt = t2vNegativePrompt?.trim();
         if (

@@ -39,14 +39,14 @@ export const T2V_MODEL_CAPABILITIES: Record<T2VModelId, T2VModelCapabilities> = 
     supportsResolution: true,
     supportedResolutions: ["720p", "1080p"],
     supportsDuration: true,
-    supportedDurations: [2, 3, 4, 5, 6],
+    supportedDurations: [4, 8, 12],
     supportsNegativePrompt: true,
     supportsPromptExpansion: true,
     supportsSeed: true,
     supportsSafetyChecker: true,
     defaultAspectRatio: "16:9",
     defaultResolution: "720p",
-    defaultDuration: 5,
+    defaultDuration: 4,
   },
 
   sora2_text_to_video_pro: {
