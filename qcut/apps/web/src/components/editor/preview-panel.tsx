@@ -582,6 +582,18 @@ export function PreviewPanel() {
     const blurIntensity = activeProject.blurIntensity || 8;
 
     if (mediaItem.type === "video") {
+      const source = getVideoSource(mediaItem);
+      if (!source) {
+        return (
+          <div
+            key={`blur-${element.id}`}
+            className="absolute inset-0 flex items-center justify-center bg-black/60 text-white text-xs"
+          >
+            无可用视频源
+          </div>
+        );
+      }
+
       return (
         <div
           key={`blur-${element.id}`}
@@ -593,7 +605,7 @@ export function PreviewPanel() {
           }}
         >
           <VideoPlayer
-            src={mediaItem.url!}
+            src={source.src}
             poster={mediaItem.thumbnailUrl}
             clipStartTime={element.startTime}
             trimStart={element.trimStart}
@@ -728,6 +740,22 @@ export function PreviewPanel() {
 
       // Video elements
       if (mediaItem.type === "video") {
+        const source = getVideoSource(mediaItem);
+        if (!source) {
+          return (
+            <div
+              key={element.id}
+              className="absolute inset-0 flex items-center justify-center bg-black/60 text-white text-xs"
+              style={{
+                width: "100%",
+                height: "100%",
+              }}
+            >
+              无可用视频源
+            </div>
+          );
+        }
+
         return (
           <div
             key={element.id}
@@ -738,7 +766,7 @@ export function PreviewPanel() {
             }}
           >
             <VideoPlayer
-              src={mediaItem.url!}
+              src={source.src}
               poster={mediaItem.thumbnailUrl}
               clipStartTime={element.startTime}
               trimStart={element.trimStart}
