@@ -884,7 +884,172 @@ After implementation, update these documentation files:
 ## Related Issues & References
 
 - Original issue: LTX media missing after successful generation
-- Console logs: `ltx_console_v2.md`
 - CSP error documentation: [MDN CSP media-src](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Security-Policy/media-src)
 - FAL AI documentation: [https://fal.ai/docs](https://fal.ai/docs)
 - Storage API: [OPFS](https://developer.mozilla.org/en-US/docs/Web/API/File_System_Access_API) / [IndexedDB](https://developer.mozilla.org/en-US/docs/Web/API/IndexedDB_API)
+
+---
+
+# Appendix A: FAL Video Download-to-Local Flow
+
+## When to use
+- For generated videos (e.g., FAL LTX/Sora) we must download the remote URL to a local File, then add to media store to avoid CSP/load issues and to persist in storage.
+- Use this flow whenever `response.video_url` is remote (fal.media / v3*.fal.media).
+
+## Implementation Steps
+
+### 1) Download the video
+```ts
+const response = await fetch(videoUrl);
+if (!response.ok) throw new Error(`Video download failed: ${response.status}`);
+const blob = await response.blob();
+const file = new File([blob], `AI-Video-${modelId}-${Date.now()}.mp4`, { type: "video/mp4" });
+```
+
+### 2) Add to media store
+```ts
+const newItemId = await addMediaItem(activeProject.id, {
+  name: `AI: ${prompt.substring(0, 30)}...`,
+  type: "video",
+  file,
+  url: videoUrl, // keep remote URL as well
+  duration: videoMetaDuration ?? 0,
+  width: videoMetaWidth ?? 1920,
+  height: videoMetaHeight ?? 1080,
+});
+```
+
+### 3) Handle failures gracefully
+- If download fails: surface a toast with the HTTP status.
+- If `addMediaItem` fails (storage blocked): keep the item in state as URL-only (unsaved) and show a toast; allow retry.
+
+## Where to put the logic
+- Primary: `qcut/apps/web/src/components/editor/media-panel/views/use-ai-generation.ts` inside the media integration block after a successful generation response.
+- Uses: `addMediaItem` from media store and `activeProject.id` to scope the media.
+
+## Implementation Notes
+- Preserve both the local `file` (for persistence) and the remote `url` for reference/playback.
+- File naming: include modelId + timestamp for uniqueness.
+- Validate `response.ok` before reading the blob to avoid silent partials.
+- Ensure CSP allows FAL hosts (media/child/frame-src) so playback works even before download.
+
+---
+
+# Appendix B: Console Logs - Successful Generation
+
+## Example 1: LTX Video 2.0 Fast T2V - Success (No CSP Error)
+
+```
+🚀🚀🚀 handleGenerate CALLED 🚀🚀🚀
+use-ai-generation.ts:679 Input parameters:
+  - activeTab: text
+  - prompt: Elevator door opens, 5th floor hallway has dark wooden floor, walls displaying Venetian mask artwork
+  - selectedModels: Array(1)
+  - hasSelectedImage: false
+  - activeProject: 91792c80-b639-4b2a-bf54-6b7da08e2ff1
+  - addMediaItem available: true
+
+use-ai-generation.ts:743 ✅ Validation passed, starting generation...
+
+🎬 [1/1] Processing model: ltxv2_fast_t2v (LTX Video 2.0 Fast T2V)
+ai-video-client.ts:1840 🎬 Starting LTX Video 2.0 generation with FAL AI
+ai-video-client.ts:1841 📝 Prompt: Elevator door opens, 5th floor hallway...
+ai-video-client.ts:1842 📐 Resolution: 1080p
+
+use-ai-generation.ts:987 ✅ Text-to-video response: Object
+use-ai-generation.ts:1487 - response.video_url: https://v3b.fal.media/files/b/zebra/sEZrHtwps4_FkFtZ-XHr8_5QLd7HRV.mp4
+use-ai-generation.ts:1489 - Full response: {
+  "job_id": "job_8hqqqclqc_1763435992707",
+  "status": "completed",
+  "video_url": "https://v3b.fal.media/files/b/zebra/sEZrHtwps4_FkFtZ-XHr8_5QLd7HRV.mp4",
+  "video_data": {
+    "video": {
+      "width": 1920,
+      "height": 1080,
+      "fps": 25,
+      "duration": 6.12,
+      "num_frames": 153
+    }
+  }
+}
+
+use-ai-generation.ts:1569 📥 Downloading video from URL
+use-ai-generation.ts:1575 🔍 DEBUG STEP 5: Video Download Progress
+  - videoResponse.ok: true
+  - videoResponse.status: 200
+  - videoResponse.headers content-type: video/mp4
+
+use-ai-generation.ts:1590 ✅ Downloaded video blob, size: 2817575
+use-ai-generation.ts:1594 📄 Created file: AI-Video-ltxv2_fast_t2v-1763436029098.mp4
+
+media-store.ts:326 [MediaStore.addMediaItem] Called with projectId: 91792c80-b639-4b2a-bf54-6b7da08e2ff1
+use-ai-generation.ts:1631 🔍 DEBUG STEP 8: ✅ addMediaItem COMPLETED
+  - newItemId: 23f4be8d-76d1-1928-ad33-dc7feaf7675e
+  - SUCCESS: Video added to media store!
+
+✅✅✅ GENERATION LOOP COMPLETE ✅✅✅
+🎉🎉🎉 [AI View] GENERATION COMPLETE 🎉🎉🎉
+```
+
+**Analysis**: This log shows a completely successful flow with no CSP errors. Video was downloaded, saved, and added to media store successfully.
+
+---
+
+## Example 2: LTX Video 2.0 Fast T2V - CSP Error (Before Fix)
+
+```
+🎬 [1/1] Processing model: ltxv2_fast_t2v (LTX Video 2.0 Fast T2V)
+ai-video-client.ts:1840 🎬 Starting LTX Video 2.0 generation with FAL AI
+ai-video-client.ts:1841 📝 Prompt: Camera slowly descends from ceiling through crystal chandeliers...
+ai-video-client.ts:1842 📐 Resolution: 1080p
+
+use-ai-generation.ts:1014 ✅ Text-to-video response: {
+  "job_id": "job_mvpcq6pys_1763437652856",
+  "status": "completed",
+  "video_url": "https://v3b.fal.media/files/b/monkey/hxAFvLHQYdl_l6XZhA-7I_yDWCgiHw.mp4",
+  "video_data": {
+    "video": {
+      "width": 1920,
+      "height": 1080,
+      "fps": 25,
+      "duration": 6.12
+    }
+  }
+}
+
+use-ai-generation.ts:1596 📥 Downloading video from URL: https://v3b.fal.media/files/b/monkey/hxAFvLHQYdl_l6XZhA-7I_yDWCgiHw.mp4
+use-ai-generation.ts:1617 ✅ Downloaded video blob, size: 7933788
+use-ai-generation.ts:1621 📄 Created file: AI-Video-ltxv2_fast_t2v-1763437690677.mp4
+
+media-store.ts:326 [MediaStore.addMediaItem] Called with projectId: 91792c80-b639-4b2a-bf54-6b7da08e2ff1
+media-store.ts:353 [MediaStore.addMediaItem] Saving media item
+media-store.ts:379 [MediaStore.addMediaItem] Saved to storage
+
+use-ai-generation.ts:1658 ✅ addMediaItem COMPLETED
+  - newItemId: d404373d-7569-390a-bc34-eff725c74211
+  - SUCCESS: Video added to media store!
+
+✅✅✅ GENERATION LOOP COMPLETE ✅✅✅
+
+# USER TRIES TO PLAY VIDEO - CSP ERROR OCCURS:
+
+hxAFvLHQYdl_l6XZhA-7I_yDWCgiHw.mp4:1
+  GET https://v3b.fal.media/files/b/monkey/hxAFvLHQYdl_l6XZhA-7I_yDWCgiHw.mp4
+  net::ERR_BLOCKED_BY_RESPONSE.NotSameOriginAfterDefaultedToSameOriginByCoep
+
+[VideoPlayer] Video error: onError event
+  src: https://v3b.fal.media/files/b/monkey/hxAFvLHQYdl_l6XZhA-7I_yDWCgiHw.mp4
+
+🚨 CSP FIX NEEDED: FAL.ai video blocked by Content Security Policy
+  - Add https://fal.media https://v3.fal.media https://v3b.fal.media to media-src CSP directive
+```
+
+**Analysis**:
+- Video generation and storage succeeded completely
+- Video added to media store successfully
+- **BUT**: When user tries to play the video, CSP blocks it
+- Error: `ERR_BLOCKED_BY_RESPONSE.NotSameOriginAfterDefaultedToSameOriginByCoep`
+- This is why the CSP fix is marked as **MUST-DO** priority
+- Without CSP fix, videos appear saved but cannot play
+
+**Key Insight**: The media store integration works correctly. The issue is CSP blocking playback, not storage failures. This validates that the CSP fix is the critical first step.
