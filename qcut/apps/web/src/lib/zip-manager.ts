@@ -32,7 +32,7 @@ export class ZipManager {
     let completed = 0;
 
     if (DEBUG_ZIP_MANAGER)
-      console.log("📦 ZIP-MANAGER: Starting to add media items", {
+      console.log("?? ZIP-MANAGER: Starting to add media items", {
         totalItems: total,
         generatedImages: items.filter(
           (item) => item.metadata?.source === "text2image"
@@ -50,13 +50,12 @@ export class ZipManager {
           item.file &&
           !filename.includes(".")
         ) {
-          // Get extension from file type
           const mimeType = item.file.type || "image/png";
           const extension = mimeType.split("/")[1] || "png";
           filename = `${filename}.${extension}`;
           if (DEBUG_ZIP_MANAGER)
             console.log(
-              "🔧 ZIP-MANAGER: Fixed missing extension for generated image:",
+              "?? ZIP-MANAGER: Fixed missing extension for generated image:",
               "originalName:",
               item.name,
               "fixedName:",
@@ -71,7 +70,7 @@ export class ZipManager {
 
         if (DEBUG_ZIP_MANAGER)
           console.log(
-            "📄 ZIP-MANAGER: Processing item:",
+            "?? ZIP-MANAGER: Processing item:",
             "name:",
             item.name,
             "finalFilename:",
@@ -84,20 +83,59 @@ export class ZipManager {
             item.metadata?.source === "text2image"
           );
 
-        // Add file to ZIP directly
+        // Add file to ZIP directly, or fetch when only a remote URL is available
         if (item.file) {
           this.zip.file(filename, item.file);
           if (DEBUG_ZIP_MANAGER)
             console.log(
-              "✅ ZIP-MANAGER: Added to ZIP:",
+              "? ZIP-MANAGER: Added to ZIP:",
               "filename:",
               filename,
               "size:",
               item.file.size
             );
+        } else if (item.url && item.url.startsWith("http")) {
+          try {
+            const resp = await fetch(item.url);
+            if (!resp.ok) {
+              throw new Error(`HTTP ${resp.status}`);
+            }
+            const blob = await resp.blob();
+            const inferredType =
+              blob.type ||
+              (item.type === "video"
+                ? "video/mp4"
+                : item.type === "audio"
+                  ? "audio/mpeg"
+                  : "application/octet-stream");
+            const fetchedFile = new File([blob], filename, {
+              type: inferredType,
+            });
+            this.zip.file(filename, fetchedFile);
+            if (DEBUG_ZIP_MANAGER)
+              console.log("? ZIP-MANAGER: Fetched URL-only item into ZIP", {
+                filename,
+                size: fetchedFile.size,
+                type: inferredType,
+                url: item.url,
+              });
+          } catch (fetchError) {
+            if (DEBUG_ZIP_MANAGER)
+              console.warn(
+                "?? ZIP-MANAGER: Failed to fetch URL-only item; skipping",
+                {
+                  name: item.name,
+                  url: item.url,
+                  error:
+                    fetchError instanceof Error
+                      ? fetchError.message
+                      : String(fetchError),
+                }
+              );
+          }
         } else {
           if (DEBUG_ZIP_MANAGER)
-            console.warn("⚠️ ZIP-MANAGER: No file object for item", {
+            console.warn("?? ZIP-MANAGER: No file object for item", {
               name: item.name,
               hasUrl: !!item.url,
               urlType: item.url?.startsWith("data:")
@@ -112,7 +150,7 @@ export class ZipManager {
         onProgress?.(completed / total);
       } catch (error) {
         console.error(
-          `❌ ZIP-MANAGER: Failed to add ${item.name} to ZIP:`,
+          `? ZIP-MANAGER: Failed to add ${item.name} to ZIP:`,
           error
         );
         // Continue with other files

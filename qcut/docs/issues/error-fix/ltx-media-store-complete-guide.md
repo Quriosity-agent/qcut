@@ -1,4 +1,53 @@
-# LTX Media Store Missing - Implementation Plan
+# LTX Media Store Missing - Complete Analysis & Implementation Guide
+
+## Table of Contents
+- [Issue Analysis](#issue-analysis)
+- [Implementation Plan](#implementation-plan)
+- [Subtask 1: Fix CSP](#subtask-1-fix-csp-content-security-policy---must-do)
+- [Subtask 2: Keep Items Visible](#subtask-2-keep-items-visible-on-storage-failure---should-do)
+- [Subtask 3: URL-Only Fallback](#subtask-3-url-only-fallback-mode---nice-to-have)
+- [Implementation Timeline](#implementation-priority-order)
+- [Testing & Validation](#testing-scenarios)
+
+---
+
+# Issue Analysis
+
+## What the latest console shows (`ltx_console_v2.md`)
+
+- LTX Video 2.0 Fast T2V request succeeded with job_id and video URL.
+- Media integration block executed: download 200 OK, blob size ~7.9 MB, file created `AI-Video-ltxv2_fast_t2v-...mp4`.
+- `addMediaItem` was called and returned an item ID (not shown in this log, but earlier traces did).
+- After generation, a CSP error appears when previewing: video blocked by Content Security Policy; message says to add `https://fal.media https://v3.fal.media https://v3b.fal.media` to `media-src`.
+
+## Likely causes of "generated but not visible" given these logs
+
+1. **CSP blocks playback, not storage**: Even if saved, the preview fails unless CSP allows FAL media hosts. The log explicitly asks to add those hosts to `media-src`.
+2. **Storage rollback still possible**: If OPFS/IndexedDB writes fail, `addMediaItem` removes the in-memory item after logging a storage error. Check for new console errors emitted by `MediaStore.addMediaItem` (we now log failures with rollback details).
+3. **Project mismatch / filters**: Items are stored per `activeProject`. Switching projects or having filters/search applied will hide the item.
+
+## Quick checks
+
+1. **DevTools console**: look for `[MediaStore.addMediaItem] Storage save FAILED` logs or `handleStorageError` right after generation.
+2. **Verify CSP**: ensure `media-src` includes `https://fal.media https://v3.fal.media https://v3b.fal.media`; reload and retry.
+3. **Confirm `activeProject.id`**: matches the one used during generation (`91792c80-b639-4b2a-bf54-6b7da08e2ff1` in this log) and clear filters/search.
+4. **Inspect runtime state**: after generation: `useMediaStore.getState().mediaItems` in console; if empty, persistence likely failed/rolled back.
+
+## Suggested fixes (actionable)
+
+- **Add CSP allowances**: update HTML/Electron CSP to permit `media-src` for `fal.media`, `v3.fal.media`, `v3b.fal.media` so previews work.
+- **Soften rollback**: on storage save failure, keep the item in memory and show a toast/banner to inform the user; allow a "URL-only" save mode when OPFS/IndexedDB is blocked.
+- **Logging already added**: use the new `[MediaStore.addMediaItem]` logs to pinpoint save failures; add a toast in `use-ai-generation` when `addMediaItem` rejects.
+
+## Should we fix? Yes — recommended prioritization
+
+1. **Unblock playback (must-do):** Add the FAL hosts to CSP `media-src` (and `child-src`/`frame-src` if embedded). Without this, videos appear broken even if stored.
+2. **Keep items visible (should-do):** On storage failures, avoid removing the item from local state; mark as unsaved and notify via toast so the user still sees it.
+3. **Fallback mode (nice-to-have):** Provide a "URL-only save" path when OPFS/IndexedDB are blocked (incognito/file:///Electron restrictions) so media remains listed and can be re-downloaded when storage is available.
+
+---
+
+# Implementation Plan
 
 ## Issue Summary
 
@@ -10,10 +59,11 @@
 **Priority**: High (must-do for CSP fix, should-do for visibility, nice-to-have for fallback)
 
 ### Review notes (what to keep in focus)
+
 - Do CSP first; it unblocks playback even when storage works. Validate in both web/Electron.
 - For storage failures, avoid silent rollback. Keep item in state, mark `unsaved/urlOnly`, and surface a toast with retry guidance; add a small feature flag to disable if needed.
-- URL-only mode should be gated on storage error detection (OPFS/IndexedDB failure); ensure it doesn’t fire on transient network errors.
-- Add a lightweight “retry save” helper to keep logic localized to `media-store.ts` rather than scattering calls.
+- URL-only mode should be gated on storage error detection (OPFS/IndexedDB failure); ensure it doesn't fire on transient network errors.
+- Add a lightweight "retry save" helper to keep logic localized to `media-store.ts` rather than scattering calls.
 - Keep success path unchanged and test filters/project switching so visibility issues are not mistaken for storage problems.
 
 ---
@@ -671,6 +721,16 @@ export function MediaItem({ item }: { item: MediaItem }) {
 4. Video appears in media store
 5. Video plays correctly with CSP fix
 
+**Expected Console Output:**
+```
+🎬 Generating video with FAL AI: fal-ai/ltx-video-2-fast/text-to-video
+✅ Generation successful
+[MediaStore.addMediaItem] Item added to state: abc-123
+[MediaStore.addMediaItem] Successfully saved to storage: abc-123
+✅ [AI Generation] Media saved successfully
+  - Item ID: abc-123
+```
+
 ### Scenario 2: Storage Failure
 1. Generate LTX video
 2. Video downloads successfully
@@ -678,6 +738,18 @@ export function MediaItem({ item }: { item: MediaItem }) {
 4. Item stays visible with "unsaved" badge
 5. Toast notification appears
 6. User clicks "Retry" and save succeeds
+
+**Expected Console Output:**
+```
+[MediaStore.addMediaItem] Item added to state: abc-123
+[MediaStore.addMediaItem] Storage save FAILED Error: IndexedDB not available
+  - Item ID: abc-123
+  - Error type: Error
+  - Error message: IndexedDB not available
+[MediaStore.addMediaItem] Item marked as unsaved: abc-123
+⚠️ [AI Generation] Media saved locally only (storage failed)
+  - Item ID: abc-123
+```
 
 ### Scenario 3: Incognito/Blocked Storage
 1. Open app in incognito mode
@@ -687,12 +759,28 @@ export function MediaItem({ item }: { item: MediaItem }) {
 5. Video plays from remote URL
 6. User clicks "Download Locally" (should work if storage becomes available)
 
+**Expected Console Output:**
+```
+[MediaStore.addMediaItem] Storage save FAILED SecurityError: Storage disabled
+[MediaStore.addMediaItem] Storage blocked - using URL-only mode
+⚠️ Saved as URL-only
+```
+
 ### Scenario 4: CSP Blocking (Before Fix)
 1. Generate LTX video without CSP fix
 2. Video downloads and saves
 3. Playback fails with CSP error in console
 4. Apply CSP fix
 5. Video now plays correctly
+
+**Expected Console Errors (Before Fix):**
+```
+Refused to load media from 'https://v3.fal.media/files/...' because it violates the following Content Security Policy directive: "media-src 'self'"
+```
+
+**Expected Result (After Fix):**
+- No CSP errors
+- Video plays successfully
 
 ---
 
@@ -727,3 +815,76 @@ if (ENABLE_UNSAVED_ITEMS) {
   // Old behavior: rollback
 }
 ```
+
+---
+
+## Additional Console Debugging Commands
+
+For manual testing and debugging, use these commands in browser console:
+
+### Check Media Store State
+```javascript
+// Get all media items
+useMediaStore.getState().mediaItems
+
+// Get unsaved items
+useMediaStore.getState().mediaItems.filter(i => i.metadata?.unsaved)
+
+// Get URL-only items
+useMediaStore.getState().mediaItems.filter(i => i.metadata?.urlOnly)
+
+// Get current project ID
+useProjectStore.getState().activeProject?.id
+```
+
+### Test Storage Manually
+```javascript
+// Disable IndexedDB (in console before generating)
+indexedDB.open = () => { throw new Error('IndexedDB disabled for testing') }
+
+// Check if storage is available
+navigator.storage?.estimate().then(console.log)
+```
+
+### Retry Failed Items
+```javascript
+// Retry specific item
+useMediaStore.getState().retrySaveItem('item-id-here')
+
+// Download URL-only item
+useMediaStore.getState().downloadUrlOnlyItem('item-id-here')
+```
+
+---
+
+## Documentation Updates Needed
+
+After implementation, update these documentation files:
+
+1. **User Documentation**
+   - Explain "unsaved" and "URL-only" badges
+   - How to retry saving failed items
+   - Storage limitations in incognito mode
+   - CSP requirements for video playback
+
+2. **Developer Documentation**
+   - Media store architecture
+   - Error handling patterns
+   - Feature flag configuration
+   - Testing procedures for storage failures
+
+3. **Troubleshooting Guide**
+   - Common CSP errors and fixes
+   - Storage failure scenarios
+   - Project mismatch issues
+   - Filter/search affecting visibility
+
+---
+
+## Related Issues & References
+
+- Original issue: LTX media missing after successful generation
+- Console logs: `ltx_console_v2.md`
+- CSP error documentation: [MDN CSP media-src](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Security-Policy/media-src)
+- FAL AI documentation: [https://fal.ai/docs](https://fal.ai/docs)
+- Storage API: [OPFS](https://developer.mozilla.org/en-US/docs/Web/API/File_System_Access_API) / [IndexedDB](https://developer.mozilla.org/en-US/docs/Web/API/IndexedDB_API)
