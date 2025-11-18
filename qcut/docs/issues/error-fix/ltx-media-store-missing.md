@@ -27,6 +27,11 @@
 2) **Keep items visible (should-do):** On storage failures, avoid removing the item from local state; mark as unsaved and notify via toast so the user still sees it.
 3) **Fallback mode (nice-to-have):** Provide a “URL-only save” path when OPFS/IndexedDB are blocked (incognito/file:///Electron restrictions) so media remains listed and can be re-downloaded when storage is available.
 
+## Status updates
+- Web CSP updated to include FAL hosts in `media-src/child-src/frame-src`.
+- `media-store.ts` now keeps items on save failure and marks `metadata.unsaved` with error details (no silent rollback).
+- Pending: add UI toast/indicator for unsaved items and optional URL-only mode for blocked storage.
+
 ## Implementation plan
 - CSP allowlist (web/Electron): ensure `media-src` (and `child-src`/`frame-src` if embedded) includes `https://fal.media https://v3.fal.media https://v3b.fal.media`. Update the app’s CSP header/meta in the main HTML (web) and the BrowserWindow CSP (Electron).
 - Keep items visible on storage failure (`qcut/apps/web/src/stores/media-store.ts`):

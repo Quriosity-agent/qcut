@@ -385,7 +385,7 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
       return newItem.id;
     } catch (error) {
       console.error(
-        "[MediaStore.addMediaItem] Storage save FAILED, rolling back local item",
+        "[MediaStore.addMediaItem] Storage save FAILED, keeping item unsaved",
         {
           projectId,
           id: newItem.id,
@@ -402,9 +402,21 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
         operation: "saveMediaItem",
       });
 
-      // Remove from local state if save failed
+      // Keep the item visible; mark as unsaved for UI/toast handling
       set((state) => ({
-        mediaItems: state.mediaItems.filter((media) => media.id !== newItem.id),
+        mediaItems: state.mediaItems.map((media) =>
+          media.id === newItem.id
+            ? {
+                ...media,
+                metadata: {
+                  ...media.metadata,
+                  unsaved: true,
+                  storageError:
+                    error instanceof Error ? error.message : String(error),
+                },
+              }
+            : media
+        ),
       }));
       throw error;
     }
