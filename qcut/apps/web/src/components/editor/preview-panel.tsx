@@ -582,6 +582,14 @@ export function PreviewPanel() {
     const blurIntensity = activeProject.blurIntensity || 8;
 
     if (mediaItem.type === "video") {
+      console.log("[STEP-BLUR] mediaItem snapshot", {
+        id: mediaItem.id,
+        hasFile: !!mediaItem.file,
+        fileName: mediaItem.file?.name,
+        fileSize: mediaItem.file?.size,
+        hasUrl: !!mediaItem.url,
+      });
+
       const source = getVideoSource(mediaItem);
       console.log("[PreviewPanel] Blur layer video source:", source?.type || "none");
       if (!source) {
@@ -741,6 +749,14 @@ export function PreviewPanel() {
 
       // Video elements
       if (mediaItem.type === "video") {
+        console.log("[STEP-FOREGROUND] mediaItem snapshot", {
+          id: mediaItem.id,
+          hasFile: !!mediaItem.file,
+          fileName: mediaItem.file?.name,
+          fileSize: mediaItem.file?.size,
+          hasUrl: !!mediaItem.url,
+        });
+
         const source = getVideoSource(mediaItem);
         console.log("[PreviewPanel] Foreground video source:", source?.type || "none");
         if (!source) {
