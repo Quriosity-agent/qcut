@@ -583,6 +583,7 @@ export function PreviewPanel() {
 
     if (mediaItem.type === "video") {
       const source = getVideoSource(mediaItem);
+      console.log("[PreviewPanel] Blur layer video source:", source?.type || "none");
       if (!source) {
         return (
           <div
@@ -741,6 +742,7 @@ export function PreviewPanel() {
       // Video elements
       if (mediaItem.type === "video") {
         const source = getVideoSource(mediaItem);
+        console.log("[PreviewPanel] Foreground video source:", source?.type || "none");
         if (!source) {
           return (
             <div
