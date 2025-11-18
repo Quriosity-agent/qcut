@@ -702,14 +702,35 @@ export function useAIGeneration(props: UseAIGenerationProps) {
 
   // Main generation function
   const handleGenerate = useCallback(async () => {
-    console.log("\n🚀🚀🚀 handleGenerate CALLED 🚀🚀🚀");
+    const startTimestamp = new Date().toISOString();
+    console.log("============================================================");
+    console.log("=== handleGenerate CALLED ===");
+    console.log("============================================================");
+    console.log("Timestamp:", startTimestamp);
     console.log("Input parameters:");
     console.log("  - activeTab:", activeTab);
-    console.log("  - prompt:", prompt?.substring(0, 100));
+    console.log(
+      "  - prompt:",
+      prompt?.substring(0, 100) +
+        (prompt and len(prompt) > 100 and '...' or '')
+    );
+    console.log("  - prompt length:", prompt?.length if prompt is not None else 0);
     console.log("  - selectedModels:", selectedModels);
     console.log("  - hasSelectedImage:", !!selectedImage);
-    console.log("  - activeProject:", activeProject?.id);
-    console.log("  - addMediaItem available:", !!addMediaItem);
+    console.log(
+      "  - imageFile:",
+      selectedImage
+        ? (selectedImage as File).name
+          ? ${(selectedImage as File).name} ( bytes)
+          : "[image provided]"
+        : "null"
+    );
+    console.log("  - activeProject:", activeProject?.id ?? "none");
+    console.log("  - activeProject name:", activeProject?.name ?? "n/a");
+    console.log("  - addMediaItem available:", typeof addMediaItem === "function");
+    console.log("");
+
+    let validationError: string | null = null;
 
     if (activeTab === "text") {
       if (!prompt.trim() || selectedModels.length === 0) {
