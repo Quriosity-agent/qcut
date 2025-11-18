@@ -24,6 +24,7 @@ import { cn } from "@/lib/utils";
 import { formatTimeCode } from "@/lib/time";
 import { EditableTimecode } from "@/components/ui/editable-timecode";
 import { FONT_CLASS_MAP } from "@/lib/font-config";
+import { getVideoSource } from "@/lib/media-source";
 import { BackgroundSettings } from "../background-settings";
 import { useProjectStore } from "@/stores/project-store";
 import { useSceneStore } from "@/stores/scene-store";

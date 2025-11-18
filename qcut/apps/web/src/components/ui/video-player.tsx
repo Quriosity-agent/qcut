@@ -25,6 +25,7 @@ export function VideoPlayer({
   clipDuration,
 }: VideoPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const previousSrcRef = useRef<string | null>(null);
   const { isPlaying, currentTime, volume, speed, muted } = usePlaybackStore();
 
   // Calculate if we're within this clip's timeline range
@@ -125,8 +126,20 @@ export function VideoPlayer({
 
   // Video source tracking
   useEffect(() => {
-    // Source changed - video will reinitialize
-  }, []);
+    const prev = previousSrcRef.current;
+    if (prev && prev !== src && prev.startsWith("blob:")) {
+      URL.revokeObjectURL(prev);
+    }
+
+    previousSrcRef.current = src;
+
+    return () => {
+      if (previousSrcRef.current?.startsWith("blob:")) {
+        URL.revokeObjectURL(previousSrcRef.current);
+        previousSrcRef.current = null;
+      }
+    };
+  }, [src]);
 
   return (
     <video
