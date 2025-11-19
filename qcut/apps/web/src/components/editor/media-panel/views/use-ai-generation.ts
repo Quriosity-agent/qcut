@@ -1669,12 +1669,17 @@ export function useAIGeneration(props: UseAIGenerationProps) {
                 console.log("   - file.name:", file.name);
                 console.log("   - file.size:", file.size);
 
+                const localUrl = URL.createObjectURL(file);
+                newVideo.videoPath = response.video_url;
+                newVideo.videoUrl = localUrl;
+
                 // Add to media store
                 const mediaItem = {
                   name: `AI: ${newVideo.prompt.substring(0, 30)}...`,
                   type: "video" as const,
                   file,
-                  url: newVideo.videoUrl,
+                  url: localUrl,
+                  originalUrl: response.video_url,
                   duration: newVideo.duration || 5,
                   width: 1920,
                   height: 1080,
@@ -1856,12 +1861,17 @@ console.log("📤 Adding to media store with item:", mediaItem);
               console.log("   - file.name:", file.name);
               console.log("   - file.size:", file.size);
 
+              const localUrl = URL.createObjectURL(file);
+              newVideo.videoPath = response.video_url;
+              newVideo.videoUrl = localUrl;
+
               // Add to media store
               const mediaItem = {
                 name: `AI: ${newVideo.prompt.substring(0, 30)}...`,
                 type: "video" as const,
                 file,
-                url: newVideo.videoUrl,
+                url: localUrl,
+                originalUrl: response.video_url,
                 duration: newVideo.duration || 5,
                 width: 1920,
                 height: 1080,
