@@ -104,12 +104,35 @@ export class ZipManager {
 
         // PRIORITY 1: AI-generated videos with localPath - read from disk for reliability
         // This ensures AI videos use actual disk data instead of potentially invalid blob URLs
-        const isAIGenerated = item.metadata?.source === 'text2video' ||
-                             item.metadata?.source === 'ai-generated' ||
-                             item.name?.toLowerCase().includes('ai:') ||
-                             item.name?.toLowerCase().includes('ai-video');
+        // Check multiple conditions to detect AI videos
+        const nameCheck = item.name?.toLowerCase();
+        const isAIGenerated =
+          // Check metadata
+          item.metadata?.source === 'text2video' ||
+          item.metadata?.source === 'ai-generated' ||
+          // Check name patterns (case-insensitive)
+          nameCheck?.includes('ai:') ||
+          nameCheck?.includes('ai-video') ||
+          nameCheck?.startsWith('ai ') ||
+          // Check if has localPath and is video (likely AI generated)
+          (item.localPath && item.type === 'video' && nameCheck?.includes('supermodel')) ||
+          // Most reliable: has localPath and saved to ai-videos folder
+          (item.localPath && item.localPath.includes('ai-videos'));
 
-        if (isAIGenerated && item.localPath && window.electronAPI?.readFile) {
+        console.log("step 9a-ai-check: AI detection", {
+          name: item.name,
+          metadata: item.metadata,
+          nameCheck,
+          isAIGenerated,
+          hasLocalPath: !!item.localPath,
+          localPath: item.localPath
+        });
+
+        // If has BOTH file and localPath, prefer localPath for videos (likely AI generated)
+        const shouldUseLocalPath = isAIGenerated ||
+                                  (item.type === 'video' && item.file && item.localPath);
+
+        if (shouldUseLocalPath && item.localPath && window.electronAPI?.readFile) {
           console.log("step 9b-ai: AI video detected, prioritizing localPath read", {
             filename,
             localPath: item.localPath,
@@ -125,14 +148,19 @@ export class ZipManager {
             });
 
             if (fileBuffer) {
-              const uint8Array = new Uint8Array(fileBuffer);
-              const blob = new Blob([uint8Array], { type: item.type === "video" ? "video/mp4" : "application/octet-stream" });
-              const file = new File([blob], filename, { type: blob.type });
+              // JSZip v3 can handle Buffer directly
+              // Try using the buffer as-is without conversion
+              console.log("step 9b-ai-buffer: Buffer details", {
+                isBuffer: Buffer.isBuffer(fileBuffer),
+                length: fileBuffer.length,
+                firstBytes: Array.from(fileBuffer.slice(0, 20)).map(b => b.toString(16).padStart(2, '0')).join(' ')
+              });
 
-              this.zip.file(filename, file);
+              // Add buffer directly to ZIP
+              this.zip.file(filename, fileBuffer);
               console.log("step 9b-ai-success: AI video added from localPath", {
                 fileName: filename,
-                fileSize: file.size,
+                fileSize: fileBuffer.length,
                 localPath: item.localPath,
               });
             } else {
@@ -187,27 +215,15 @@ export class ZipManager {
               isBuffer: fileBuffer ? Buffer.isBuffer(fileBuffer) : false,
             });
             if (fileBuffer) {
-              // Convert Buffer to Uint8Array for Blob constructor
-              console.log("step 9f: converting Buffer to Uint8Array", {
+              // Check buffer details for debugging
+              console.log("step 9f: Buffer details", {
+                isBuffer: Buffer.isBuffer(fileBuffer),
                 bufferLength: fileBuffer.length,
+                firstBytes: Array.from(fileBuffer.slice(0, 20)).map(b => b.toString(16).padStart(2, '0')).join(' ')
               });
-              const uint8Array = new Uint8Array(fileBuffer);
-              console.log("step 9g: creating Blob", {
-                uint8ArrayLength: uint8Array.length,
-                uint8ArrayByteLength: uint8Array.byteLength,
-              });
-              const blob = new Blob([uint8Array], { type: item.type === "video" ? "video/mp4" : "application/octet-stream" });
-              console.log("step 9h: creating File from Blob", {
-                blobSize: blob.size,
-                blobType: blob.type,
-              });
-              const file = new File([blob], filename, { type: blob.type });
-              console.log("step 9i: adding File to ZIP", {
-                fileName: filename,
-                fileSize: file.size,
-                fileType: file.type,
-              });
-              this.zip.file(filename, file);
+
+              // Add buffer directly to ZIP
+              this.zip.file(filename, fileBuffer);
               console.log("step 9j: local file added successfully to ZIP");
               if (DEBUG_ZIP_MANAGER)
                 console.log(
@@ -217,7 +233,7 @@ export class ZipManager {
                   "localPath:",
                   item.localPath,
                   "size:",
-                  file.size
+                  fileBuffer.length
                 );
             } else {
               console.warn("step 9k: readFile returned null/undefined", {
