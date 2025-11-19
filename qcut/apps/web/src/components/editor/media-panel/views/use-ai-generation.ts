@@ -1594,28 +1594,25 @@ export function useAIGeneration(props: UseAIGenerationProps) {
 
             // 🔥 MOVED MEDIA INTEGRATION HERE - Steps 3-8
             console.log("step 6a: media integration condition check");
+            const hasProject = !!activeProject;
+            const hasStore = !!addMediaItem;
+            const hasVideoUrl = !!response.video_url;
+            const canIntegrate = hasProject && hasStore && hasVideoUrl;
+            console.log("   - activeProject:", hasProject, activeProject?.id);
+            console.log("   - addMediaItem:", hasStore, typeof addMediaItem);
             console.log(
-              "   - activeProject check:",
-              !!activeProject,
-              "→",
-              activeProject?.id
+              "   - response.video_url:",
+              hasVideoUrl,
+              hasVideoUrl ? "EXISTS" : "MISSING"
             );
-            console.log(
-              "   - addMediaItem check:",
-              !!addMediaItem,
-              "→",
-              typeof addMediaItem
-            );
-            console.log(
-              "   - response.video_url check:",
-              !!response.video_url,
-              "→",
-              response.video_url ? "EXISTS" : "MISSING"
-            );
-            console.log(
-              "   - WILL EXECUTE MEDIA INTEGRATION:",
-              !!(activeProject && addMediaItem && response.video_url)
-            );
+            if (!canIntegrate) {
+              console.log("   - missing for integration:", {
+                activeProject: hasProject,
+                addMediaItem: hasStore,
+                videoUrl: hasVideoUrl,
+              });
+            }
+            console.log("   - WILL EXECUTE MEDIA INTEGRATION:", canIntegrate);
 
             if (activeProject && addMediaItem) {
               console.log(
@@ -1701,7 +1698,12 @@ export function useAIGeneration(props: UseAIGenerationProps) {
                   mediaItem
                 );
 
-                console.log("step 6f: addMediaItem completed");
+                console.log("step 6f: addMediaItem completed", {
+                  newItemId,
+                  mediaUrl: mediaItem.url,
+                  fileName: mediaItem.file.name,
+                  fileSize: mediaItem.file.size,
+                });
                 console.log("   - newItemId:", newItemId);
                 console.log("   - SUCCESS: Video added to media store!");
 
@@ -1782,28 +1784,25 @@ export function useAIGeneration(props: UseAIGenerationProps) {
 
           // Automatically add to media store
           console.log("step 6a: media integration condition check");
+          const hasProject = !!activeProject;
+          const hasStore = !!addMediaItem;
+          const hasVideoUrl = !!response.video_url;
+          const canIntegrate = hasProject && hasStore && hasVideoUrl;
+          console.log("   - activeProject:", hasProject, activeProject?.id);
+          console.log("   - addMediaItem:", hasStore, typeof addMediaItem);
           console.log(
-            "   - activeProject check:",
-            !!activeProject,
-            "→",
-            activeProject?.id
+            "   - response.video_url:",
+            hasVideoUrl,
+            hasVideoUrl ? "EXISTS" : "MISSING"
           );
-          console.log(
-            "   - addMediaItem check:",
-            !!addMediaItem,
-            "→",
-            typeof addMediaItem
-          );
-          console.log(
-            "   - response.video_url check:",
-            !!response.video_url,
-            "→",
-            response.video_url ? "EXISTS" : "MISSING"
-          );
-          console.log(
-            "   - WILL EXECUTE MEDIA INTEGRATION:",
-            !!(activeProject && addMediaItem && response.video_url)
-          );
+          if (!canIntegrate) {
+            console.log("   - missing for integration:", {
+              activeProject: hasProject,
+              addMediaItem: hasStore,
+              videoUrl: hasVideoUrl,
+            });
+          }
+          console.log("   - WILL EXECUTE MEDIA INTEGRATION:", canIntegrate);
 
           if (activeProject && addMediaItem) {
             console.log(
