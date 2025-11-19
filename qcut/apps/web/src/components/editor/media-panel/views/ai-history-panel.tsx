@@ -86,7 +86,7 @@ export function AIHistoryPanel({
                   {/* Video Thumbnail/Preview */}
                   <div className="aspect-video bg-background rounded-lg mb-3 relative overflow-hidden">
                     <video
-                      src={video.videoUrl}
+                      src={video.videoUrl || video.videoPath}
                       className="w-full h-full object-cover"
                       muted
                       poster="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%23000'/%3E%3C/svg%3E"
@@ -145,9 +145,40 @@ export function AIHistoryPanel({
                       size="sm"
                       variant="outline"
                       onClick={() => {
+                        const downloadUrl = video.videoUrl || video.videoPath;
+                        if (!downloadUrl) {
+                          console.warn(
+                            "step 8: history panel download - missing downloadUrl",
+                            { jobId: video.jobId }
+                          );
+                          return;
+                        }
+                        const isBlob = downloadUrl.startsWith("blob:");
+                        let filename = `generated-video-${video.jobId.substring(
+                          0,
+                          8
+                        )}.mp4`;
+
+                        if (!isBlob) {
+                          try {
+                            const parsed = new URL(downloadUrl);
+                            const lastPart =
+                              parsed.pathname.split("/").pop() || "";
+                            filename = lastPart || filename;
+                          } catch {
+                            // keep default filename
+                          }
+                        }
+
                         const link = document.createElement("a");
-                        link.href = video.videoUrl;
-                        link.download = `generated-video-${video.jobId.substring(0, 8)}.mp4`;
+                        link.href = downloadUrl;
+                        link.download = filename;
+                        console.log("step 8: history panel download", {
+                          jobId: video.jobId,
+                          url: downloadUrl,
+                          source: isBlob ? "blob" : "remote",
+                          filename: link.download,
+                        });
                         link.click();
                         link.remove();
                       }}

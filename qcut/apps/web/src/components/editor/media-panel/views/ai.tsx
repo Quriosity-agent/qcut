@@ -3651,12 +3651,38 @@ export function AiView() {
                         size="sm"
                         variant="outline"
                         onClick={() => {
+                          const downloadUrl =
+                            result.video.videoUrl || result.video.videoPath;
+
+                          if (!downloadUrl) {
+                            console.warn(
+                              "step 8: media panel download - missing downloadUrl",
+                              { jobId: result.video.jobId }
+                            );
+                            return;
+                          }
+
+                          const isBlob = downloadUrl.startsWith("blob:");
+                          let filename = `ai-video-${result.video.jobId}.mp4`;
+
+                          if (!isBlob) {
+                            try {
+                              const parsed = new URL(downloadUrl);
+                              const lastPart =
+                                parsed.pathname.split("/").pop() || "";
+                              filename = lastPart || filename;
+                            } catch {
+                              // fall back to default filename
+                            }
+                          }
+
                           const a = document.createElement("a");
-                          a.href = result.video.videoUrl;
-                          a.download = `ai-video-${result.video.jobId}.mp4`;
+                          a.href = downloadUrl;
+                          a.download = filename;
                           console.log("step 8: media panel download", {
                             jobId: result.video.jobId,
-                            url: result.video.videoUrl,
+                            url: downloadUrl,
+                            source: isBlob ? "blob" : "remote",
                             filename: a.download,
                           });
                           a.click();

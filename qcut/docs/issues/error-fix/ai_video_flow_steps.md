@@ -53,8 +53,8 @@ Step 6 - Generation downloads the video, creates a media item, and adds it to th
   - **Step 6.4**: Construct `mediaItem` object with metadata (name, duration, dimensions).
   - **Step 6.5**: Call `addMediaItem` to add to the project.
   - **Remote vs Local note**: Videos stay remote (only `video_url` stored) when we skip download—for example, if `activeProject`/`addMediaItem` are unavailable or in polling mode pre-completion. When both project and media store are present, the flow downloads the blob and saves a local `File` before adding.
-  - **Step 6.6 (planned change)**: Generate `localUrl = URL.createObjectURL(file)` and store it as `mediaItem.url` (primary), while keeping `mediaItem.originalUrl = video_url` for fallback.
-  - **Step 6.7 (planned use)**: In media panel UI and downloads, prefer `mediaItem.url` (local) and fall back to `originalUrl` only if local is missing; log `step 8` with which URL is used.
+  - **Step 6.6 (implemented)**: Generate `localUrl = URL.createObjectURL(file)` and store it as `mediaItem.url` (primary), while keeping `mediaItem.originalUrl = video_url` and `newVideo.videoPath = video_url` for fallback.
+  - **Step 6.7 (implemented)**: Media panel consumers should prefer the blob/local URL for playback and download, and fall back to the remote/original URL only if local is missing; download logs include a `source: "blob" | "remote"` flag in `step 8`.
   - **Debug checklist (use `step` logs for consistency)**:
     - `step 6a: media integration condition check` - log `(activeProject && addMediaItem && response.video_url)` and which piece is missing when false.
     - `step 6: polling mode - deferring download` - emit when `response?.job_id && !response?.video_url` to flag remote-only phase.
@@ -76,7 +76,7 @@ All generation-flow console logs now use the unified `step X: ...` format (no re
 Step 8 - Media panel downloads (AI history/download button)
 - **Function**: AI panel download handler (history result download)
 - **File**: `qcut/apps/web/src/components/editor/media-panel/views/ai.tsx`
-- **Console**: `console.log("step 8: media panel download", { jobId, url, filename })`
+- **Console**: `console.log("step 8: media panel download", { jobId, url, source, filename })`
   - **Step 8.1**: User clicks download in the media/AI history panel.
-  - **Step 8.2**: Handler builds an anchor element with `href = result.video.videoUrl` and `download = ai-video-${jobId}.mp4`, then triggers `a.click()`; this downloads the remote URL, not the locally stored blob.
-  - **Step 8.3**: (Suggested) Log the download target URL and filename to confirm whether we are pulling from the remote CDN or a local object URL.
+  - **Step 8.2**: Handler now prefers the blob/local URL (`result.video.videoUrl`) and falls back to the remote/original URL (`result.video.videoPath`) if the blob is missing (e.g., after refresh); logs `source: "blob"` vs `source: "remote"` for clarity.
+  - **Step 8.3**: File name is inferred from the remote URL when using remote mode; otherwise uses the default `ai-video-${jobId}.mp4`. History panel download follows the same fallback behavior with its own `step 8` log.
