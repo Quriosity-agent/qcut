@@ -1676,9 +1676,9 @@ export function useAIGeneration(props: UseAIGenerationProps) {
               const error = "CRITICAL ERROR: Electron API not available - cannot save video to disk";
               console.error("🚨", error);
               setIsGenerating(false);
-              setProgress(0);
-              setProgressMessage(error);
-              toast.error("Failed to save video: " + error);
+              setGenerationProgress(0);
+              setStatusMessage(error);
+              onError("Failed to save video: " + error);
               return;
             }
 
@@ -1700,9 +1700,9 @@ export function useAIGeneration(props: UseAIGenerationProps) {
               const error = saveResult.error || "Unknown error saving video to disk";
               console.error("🚨 step 6e: CRITICAL - Save to disk FAILED:", error);
               setIsGenerating(false);
-              setProgress(0);
-              setProgressMessage("Failed to save video: " + error);
-              toast.error("Failed to save video to disk: " + error);
+              setGenerationProgress(0);
+              setStatusMessage("Failed to save video: " + error);
+              onError("Failed to save video to disk: " + error);
               return; // ABORT - Do NOT add to media store
             }
 
@@ -1915,9 +1915,9 @@ console.log("📤 Adding to media store with item:", mediaItem);
                 const error = "CRITICAL ERROR: Electron API not available - cannot save video to disk";
                 console.error("🚨", error);
                 setIsGenerating(false);
-                setProgress(0);
-                setProgressMessage(error);
-                toast.error("Failed to save video: " + error);
+                setGenerationProgress(0);
+                setStatusMessage(error);
+                onError("Failed to save video: " + error);
                 return;
               }
 
@@ -1939,9 +1939,9 @@ console.log("📤 Adding to media store with item:", mediaItem);
                 const error = saveResult.error || "Unknown error saving video to disk";
                 console.error("🚨 step 6e: CRITICAL - Save to disk FAILED:", error);
                 setIsGenerating(false);
-                setProgress(0);
-                setProgressMessage("Failed to save video: " + error);
-                toast.error("Failed to save video to disk: " + error);
+                setGenerationProgress(0);
+                setStatusMessage("Failed to save video: " + error);
+                onError("Failed to save video to disk: " + error);
                 return; // ABORT - Do NOT add to media store
               }
 

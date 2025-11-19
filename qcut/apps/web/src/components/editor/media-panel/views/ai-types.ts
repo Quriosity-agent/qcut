@@ -118,6 +118,7 @@ export interface GeneratedVideo {
   jobId: string;
   videoUrl: string;
   videoPath?: string;
+  localPath?: string; // Local file path on disk (for AI videos saved locally)
   fileSize?: number;
   duration?: number;
   prompt: string;
