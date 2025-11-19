@@ -118,6 +118,27 @@ interface ApiKeyConfig {
   geminiApiKey?: string;
 }
 
+interface SaveAIVideoOptions {
+  fileName: string;
+  fileData: ArrayBuffer | Uint8Array;
+  projectId: string;
+  modelId?: string;
+  metadata?: {
+    width?: number;
+    height?: number;
+    duration?: number;
+    fps?: number;
+  };
+}
+
+interface SaveAIVideoResult {
+  success: boolean;
+  localPath?: string;
+  fileName?: string;
+  fileSize?: number;
+  error?: string;
+}
+
 interface GitHubStarsResponse {
   stars: number;
 }
@@ -170,13 +191,20 @@ interface ElectronAPI {
     saveTemp: (audioData: Uint8Array, filename: string) => Promise<string>;
   };
 
-  // Video temp file operations
+  // Video operations
   video?: {
+    // Temp file operations
     saveTemp: (
       videoData: Uint8Array,
       filename: string,
       sessionId?: string
     ) => Promise<string>;
+
+    // AI Video save operations (MANDATORY - no fallback)
+    saveToDisk: (options: SaveAIVideoOptions) => Promise<SaveAIVideoResult>;
+    verifyFile: (filePath: string) => Promise<boolean>;
+    deleteFile: (filePath: string) => Promise<boolean>;
+    getProjectDir: (projectId: string) => Promise<string>;
   };
 
   // Transcription operations (Gemini API)
@@ -311,14 +339,25 @@ const electronAPI: ElectronAPI = {
       ipcRenderer.invoke("audio:save-temp", audioData, filename),
   },
 
-  // Video temp file operations
+  // Video operations
   video: {
+    // Temp file operations
     saveTemp: (
       videoData: Uint8Array,
       filename: string,
       sessionId?: string
     ): Promise<string> =>
       ipcRenderer.invoke("video:save-temp", videoData, filename, sessionId),
+
+    // AI Video save operations (MANDATORY - no fallback)
+    saveToDisk: (options: SaveAIVideoOptions): Promise<SaveAIVideoResult> =>
+      ipcRenderer.invoke("ai-video:save-to-disk", options),
+    verifyFile: (filePath: string): Promise<boolean> =>
+      ipcRenderer.invoke("ai-video:verify-file", filePath),
+    deleteFile: (filePath: string): Promise<boolean> =>
+      ipcRenderer.invoke("ai-video:delete-file", filePath),
+    getProjectDir: (projectId: string): Promise<string> =>
+      ipcRenderer.invoke("ai-video:get-project-dir", projectId),
   },
 
   // Transcription operations (Gemini API)

@@ -7,9 +7,10 @@ export interface MediaItem {
   name: string;
   type: MediaType;
   file: File;
-  url?: string; // Object URL for preview
-  originalUrl?: string; // Original URL before blob conversion (for audio export)
-  localPath?: string; // Local file path for Electron (for FFmpeg CLI)
+  url?: string; // Object URL for preview (blob: URL)
+  originalUrl?: string; // Original URL before blob conversion (e.g., fal.ai URL)
+  localPath?: string; // REQUIRED for AI videos: Local file path on disk (absolute path)
+  isLocalFile?: boolean; // True if file is saved to disk (MANDATORY for AI videos)
   thumbnailUrl?: string; // For video thumbnails
   duration?: number; // For video/audio duration
   width?: number; // For video/image width

@@ -1669,18 +1669,64 @@ export function useAIGeneration(props: UseAIGenerationProps) {
             console.log("   - file.name:", file.name);
             console.log("   - file.size:", file.size);
 
+            // MANDATORY: Save to local disk - NO FALLBACK
+            console.log("step 6e: MANDATORY save to local disk starting");
+
+            if (!window.electronAPI?.video?.saveToDisk) {
+              const error = "CRITICAL ERROR: Electron API not available - cannot save video to disk";
+              console.error("🚨", error);
+              setIsGenerating(false);
+              setProgress(0);
+              setProgressMessage(error);
+              toast.error("Failed to save video: " + error);
+              return;
+            }
+
+            const arrayBuffer = await blob.arrayBuffer();
+            const saveResult = await window.electronAPI.video.saveToDisk({
+              fileName: filename,
+              fileData: arrayBuffer,
+              projectId: activeProject.id,
+              modelId: modelId,
+              metadata: {
+                width: 1920,
+                height: 1080,
+                duration: newVideo.duration || 5,
+                fps: 25
+              }
+            });
+
+            if (!saveResult.success) {
+              const error = saveResult.error || "Unknown error saving video to disk";
+              console.error("🚨 step 6e: CRITICAL - Save to disk FAILED:", error);
+              setIsGenerating(false);
+              setProgress(0);
+              setProgressMessage("Failed to save video: " + error);
+              toast.error("Failed to save video to disk: " + error);
+              return; // ABORT - Do NOT add to media store
+            }
+
+            console.log("✅ step 6e: video saved to disk successfully", {
+              localPath: saveResult.localPath,
+              fileName: saveResult.fileName,
+              fileSize: saveResult.fileSize
+            });
+
             const localUrl = URL.createObjectURL(file);
             newVideo.videoPath = response.video_url;
             newVideo.videoUrl = localUrl;
             newVideo.fileSize = file.size;
+            newVideo.localPath = saveResult.localPath; // Store local path
 
-            // Add to media store
+            // Add to media store (only if save succeeded)
             const mediaItem = {
               name: `AI: ${newVideo.prompt.substring(0, 30)}...`,
               type: "video" as const,
                   file,
                   url: localUrl,
                   originalUrl: response.video_url,
+                  localPath: saveResult.localPath, // REQUIRED: local file path
+                  isLocalFile: true, // Mark as saved to disk
                   duration: newVideo.duration || 5,
                   width: 1920,
                   height: 1080,
@@ -1862,17 +1908,63 @@ console.log("📤 Adding to media store with item:", mediaItem);
               console.log("   - file.name:", file.name);
               console.log("   - file.size:", file.size);
 
+              // MANDATORY: Save to local disk - NO FALLBACK
+              console.log("step 6e: MANDATORY save to local disk starting");
+
+              if (!window.electronAPI?.video?.saveToDisk) {
+                const error = "CRITICAL ERROR: Electron API not available - cannot save video to disk";
+                console.error("🚨", error);
+                setIsGenerating(false);
+                setProgress(0);
+                setProgressMessage(error);
+                toast.error("Failed to save video: " + error);
+                return;
+              }
+
+              const arrayBuffer = await blob.arrayBuffer();
+              const saveResult = await window.electronAPI.video.saveToDisk({
+                fileName: filename,
+                fileData: arrayBuffer,
+                projectId: activeProject.id,
+                modelId: modelId,
+                metadata: {
+                  width: 1920,
+                  height: 1080,
+                  duration: newVideo.duration || 5,
+                  fps: 25
+                }
+              });
+
+              if (!saveResult.success) {
+                const error = saveResult.error || "Unknown error saving video to disk";
+                console.error("🚨 step 6e: CRITICAL - Save to disk FAILED:", error);
+                setIsGenerating(false);
+                setProgress(0);
+                setProgressMessage("Failed to save video: " + error);
+                toast.error("Failed to save video to disk: " + error);
+                return; // ABORT - Do NOT add to media store
+              }
+
+              console.log("✅ step 6e: video saved to disk successfully", {
+                localPath: saveResult.localPath,
+                fileName: saveResult.fileName,
+                fileSize: saveResult.fileSize
+              });
+
               const localUrl = URL.createObjectURL(file);
               newVideo.videoPath = response.video_url;
               newVideo.videoUrl = localUrl;
+              newVideo.localPath = saveResult.localPath; // Store local path
 
-              // Add to media store
+              // Add to media store (only if save succeeded)
               const mediaItem = {
                 name: `AI: ${newVideo.prompt.substring(0, 30)}...`,
                 type: "video" as const,
                 file,
                 url: localUrl,
                 originalUrl: response.video_url,
+                localPath: saveResult.localPath, // REQUIRED: local file path
+                isLocalFile: true, // Mark as saved to disk
                 duration: newVideo.duration || 5,
                 width: 1920,
                 height: 1080,

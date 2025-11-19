@@ -109,8 +109,8 @@ export interface ElectronAPI {
   };
 
   /**
-   * Video temp file management API
-   * Saves video files to temporary directory for FFmpeg direct copy optimization
+   * Video file management API
+   * Includes both temp file management and AI video permanent storage
    */
   video?: {
     /**
@@ -125,6 +125,52 @@ export interface ElectronAPI {
       filename: string,
       sessionId?: string
     ) => Promise<string>;
+
+    /**
+     * MANDATORY: Save AI-generated video to permanent storage
+     * This must succeed or the entire operation should fail
+     * @param options - Save options including file data and metadata
+     * @returns Result object with local path or error
+     */
+    saveToDisk: (options: {
+      fileName: string;
+      fileData: ArrayBuffer | Uint8Array;
+      projectId: string;
+      modelId?: string;
+      metadata?: {
+        width?: number;
+        height?: number;
+        duration?: number;
+        fps?: number;
+      };
+    }) => Promise<{
+      success: boolean;
+      localPath?: string;
+      fileName?: string;
+      fileSize?: number;
+      error?: string;
+    }>;
+
+    /**
+     * Verify if a saved AI video file exists and is valid
+     * @param filePath - Absolute path to the video file
+     * @returns True if file exists and is valid
+     */
+    verifyFile: (filePath: string) => Promise<boolean>;
+
+    /**
+     * Delete AI video file and its metadata
+     * @param filePath - Absolute path to the video file
+     * @returns True if deletion succeeded
+     */
+    deleteFile: (filePath: string) => Promise<boolean>;
+
+    /**
+     * Get the AI videos directory for a project
+     * @param projectId - Project identifier
+     * @returns Absolute path to the project's AI videos directory
+     */
+    getProjectDir: (projectId: string) => Promise<string>;
   };
 
   // Transcription operations (Gemini API)

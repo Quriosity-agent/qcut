@@ -53,9 +53,21 @@ export async function saveAIVideoToDisk(options: SaveAIVideoOptions): Promise<Sa
     const { fileName, fileData, projectId, modelId, metadata } = options;
 
     // Convert to Buffer
-    const buffer = Buffer.isBuffer(fileData)
-      ? fileData
-      : Buffer.from(fileData);
+    let buffer: Buffer;
+    if (Buffer.isBuffer(fileData)) {
+      buffer = fileData;
+    } else if (fileData instanceof ArrayBuffer) {
+      buffer = Buffer.from(fileData);
+    } else if (fileData instanceof Uint8Array) {
+      buffer = Buffer.from(fileData);
+    } else {
+      const error = "Invalid file data type - must be Buffer, ArrayBuffer, or Uint8Array";
+      console.error("AI Video Save Error:", error);
+      return {
+        success: false,
+        error
+      };
+    }
 
     // Validate file size
     if (buffer.length > MAX_VIDEO_SIZE) {
