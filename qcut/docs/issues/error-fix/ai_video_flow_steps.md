@@ -80,3 +80,7 @@ Step 8 - Media panel downloads (AI history/download button)
   - **Step 8.1**: User clicks download in the media/AI history panel.
   - **Step 8.2**: Handler now prefers the blob/local URL (`result.video.videoUrl`) and falls back to the remote/original URL (`result.video.videoPath`) if the blob is missing (e.g., after refresh); logs `source: "blob"` vs `source: "remote"` for clarity.
   - **Step 8.3**: File name is inferred from the remote URL when using remote mode; otherwise uses the default `ai-video-${jobId}.mp4`. History panel download follows the same fallback behavior with its own `step 8` log.
+- **Download All (ZIP)**: Export-all button for media panel
+- **File**: `qcut/apps/web/src/components/editor/media-panel/export-all-button.tsx`
+- **Console**: `console.log("step 8: export-all ...", { ... })`
+  - Logs on click (`step 8: export-all clicked`), blocked state (empty/already exporting), start zipping (counts local files vs remote URLs), completion, or failure. This covers the Download All UI in the media panel so export issues show up in the unified `step 8` format.

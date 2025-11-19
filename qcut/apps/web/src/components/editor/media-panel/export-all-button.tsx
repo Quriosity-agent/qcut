@@ -36,6 +36,11 @@ export function ExportAllButton({
   const { exportState, exportToZip, isExporting } = useZipExport();
 
   const handleExportAll = async () => {
+    console.log("step 8: export-all clicked", {
+      totalItems: mediaItems.length,
+      isExporting,
+    });
+
     debugLog("📦 EXPORT-ALL: Button clicked!");
     debugLog("📊 EXPORT-ALL: Media items analysis", {
       totalItems: mediaItems.length,
@@ -91,10 +96,20 @@ export function ExportAllButton({
           mediaItems.length === 0 ? "No media items" : "Already exporting",
         isExporting,
       });
+      console.warn("step 8: export-all blocked", {
+        reason: mediaItems.length === 0 ? "no media items" : "already exporting",
+      });
       return;
     }
 
     try {
+      console.log("step 8: export-all start zipping", {
+        totalItems: mediaItems.length,
+        hasFiles: mediaItems.filter((item) => !!item.file).length,
+        remoteUrls: mediaItems
+          .filter((item) => !item.file && item.url?.startsWith("http"))
+          .map((item) => item.id),
+      });
       debugLog("🚀 EXPORT-ALL: Starting ZIP export...");
       const timestamp = new Date()
         .toISOString()
@@ -109,6 +124,11 @@ export function ExportAllButton({
         totalFiles: exportState.totalFiles,
         completedFiles: exportState.completedFiles,
       });
+      console.log("step 8: export-all zip completed", {
+        phase: exportState.phase,
+        totalFiles: exportState.totalFiles,
+        completedFiles: exportState.completedFiles,
+      });
 
       if (exportState.phase === "complete") {
         toast.success(
@@ -117,6 +137,9 @@ export function ExportAllButton({
       }
     } catch (error) {
       debugError("❌ EXPORT-ALL: Export failed:", error);
+      console.error("step 8: export-all failed", {
+        error: error instanceof Error ? error.message : String(error),
+      });
       toast.error("Failed to export media files");
     }
   };
