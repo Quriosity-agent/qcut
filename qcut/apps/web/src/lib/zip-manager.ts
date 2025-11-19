@@ -102,12 +102,62 @@ export class ZipManager {
             item.metadata?.source === "text2image"
           );
 
-        // Add file to ZIP directly, or fetch when only a URL is available (supports http(s) and blob:)
-        if (item.file) {
+        // PRIORITY 1: AI-generated videos with localPath - read from disk for reliability
+        // This ensures AI videos use actual disk data instead of potentially invalid blob URLs
+        const isAIGenerated = item.metadata?.source === 'text2video' ||
+                             item.metadata?.source === 'ai-generated' ||
+                             item.name?.toLowerCase().includes('ai:') ||
+                             item.name?.toLowerCase().includes('ai-video');
+
+        if (isAIGenerated && item.localPath && window.electronAPI?.readFile) {
+          console.log("step 9b-ai: AI video detected, prioritizing localPath read", {
+            filename,
+            localPath: item.localPath,
+            metadataSource: item.metadata?.source,
+            name: item.name,
+          });
+
+          try {
+            const fileBuffer = await window.electronAPI.readFile(item.localPath);
+            console.log("step 9b-ai-read: readFile returned for AI video", {
+              bufferExists: !!fileBuffer,
+              bufferLength: fileBuffer ? fileBuffer.length : 0,
+            });
+
+            if (fileBuffer) {
+              const uint8Array = new Uint8Array(fileBuffer);
+              const blob = new Blob([uint8Array], { type: item.type === "video" ? "video/mp4" : "application/octet-stream" });
+              const file = new File([blob], filename, { type: blob.type });
+
+              this.zip.file(filename, file);
+              console.log("step 9b-ai-success: AI video added from localPath", {
+                fileName: filename,
+                fileSize: file.size,
+                localPath: item.localPath,
+              });
+            } else {
+              console.error("step 9b-ai-fail: Failed to read AI video from localPath", {
+                name: item.name,
+                localPath: item.localPath
+              });
+              // Fall through to try File object as backup
+            }
+          } catch (error) {
+            console.error("step 9b-ai-error: Error reading AI video from localPath", {
+              name: item.name,
+              localPath: item.localPath,
+              error: error instanceof Error ? error.message : String(error),
+            });
+            // Fall through to try File object as backup
+          }
+        }
+        // PRIORITY 2: Regular files with File object (user uploads, etc)
+        else if (item.file) {
           console.log("step 9b: adding file directly to ZIP", {
             filename,
             fileSize: item.file.size,
             fileType: item.file.type,
+            isAIGenerated: false,
           });
           this.zip.file(filename, item.file);
           console.log("step 9c: file added successfully via File object");
@@ -119,7 +169,9 @@ export class ZipManager {
               "size:",
               item.file.size
             );
-        } else if (item.localPath && window.electronAPI?.readFile) {
+        }
+        // PRIORITY 3: Non-AI files with localPath
+        else if (item.localPath && window.electronAPI?.readFile) {
           // Handle local file path for Electron (AI videos saved to disk)
           console.log("step 9d: attempting to read local file", {
             localPath: item.localPath,

@@ -1730,6 +1730,12 @@ export function useAIGeneration(props: UseAIGenerationProps) {
                   duration: newVideo.duration || 5,
                   width: 1920,
                   height: 1080,
+                  metadata: {
+                    source: 'text2video', // Mark as AI-generated for ZIP export prioritization
+                    model: modelId,
+                    prompt: newVideo.prompt,
+                    generatedAt: new Date().toISOString(),
+                  },
                 };
 
                 console.log("step 6d details:", {
