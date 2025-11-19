@@ -35,7 +35,16 @@ export function useZipExport() {
         itemsCount: items.length,
         itemsWithFile: items.filter(item => !!item.file).length,
         itemsWithLocalPath: items.filter(item => !!item.localPath).length,
+        itemsWithMetadata: items.filter(item => !!item.metadata).length,
+        itemsWithText2Video: items.filter(item => item.metadata?.source === 'text2video').length,
         options,
+        firstThreeItems: items.slice(0, 3).map(item => ({
+          name: item.name,
+          hasFile: !!item.file,
+          hasLocalPath: !!item.localPath,
+          localPath: item.localPath,
+          metadata: item.metadata,
+        })),
       });
 
       if (items.length === 0) {

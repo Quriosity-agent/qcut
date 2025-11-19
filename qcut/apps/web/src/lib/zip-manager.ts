@@ -110,14 +110,15 @@ export class ZipManager {
           // Check metadata
           item.metadata?.source === 'text2video' ||
           item.metadata?.source === 'ai-generated' ||
-          // Check name patterns (case-insensitive)
+          // Check name patterns (case-insensitive) - fixed lowercase comparisons
           nameCheck?.includes('ai:') ||
           nameCheck?.includes('ai-video') ||
           nameCheck?.startsWith('ai ') ||
+          nameCheck?.includes('supermodel') ||  // Simplified check for supermodel
           // Check if has localPath and is video (likely AI generated)
-          (item.localPath && item.type === 'video' && nameCheck?.includes('supermodel')) ||
+          (item.localPath && item.type === 'video') ||
           // Most reliable: has localPath and saved to ai-videos folder
-          (item.localPath && item.localPath.includes('ai-videos'));
+          (item.localPath && item.localPath?.toLowerCase().includes('ai-videos'));
 
         console.log("step 9a-ai-check: AI detection", {
           name: item.name,
@@ -129,8 +130,9 @@ export class ZipManager {
         });
 
         // If has BOTH file and localPath, prefer localPath for videos (likely AI generated)
+        // ALWAYS prefer localPath for videos as it's more reliable than File objects
         const shouldUseLocalPath = isAIGenerated ||
-                                  (item.type === 'video' && item.file && item.localPath);
+                                  (item.type === 'video' && item.localPath);
 
         if (shouldUseLocalPath && item.localPath && window.electronAPI?.readFile) {
           console.log("step 9b-ai: AI video detected, prioritizing localPath read", {
@@ -148,19 +150,21 @@ export class ZipManager {
             });
 
             if (fileBuffer) {
-              // JSZip v3 can handle Buffer directly
-              // Try using the buffer as-is without conversion
+              // Convert to Uint8Array for browser compatibility
+              // fileBuffer from Electron IPC is likely already an ArrayBuffer or Uint8Array
+              const uint8Array = new Uint8Array(fileBuffer);
+
               console.log("step 9b-ai-buffer: Buffer details", {
-                isBuffer: Buffer.isBuffer(fileBuffer),
-                length: fileBuffer.length,
-                firstBytes: Array.from(fileBuffer.slice(0, 20)).map(b => b.toString(16).padStart(2, '0')).join(' ')
+                dataType: Object.prototype.toString.call(fileBuffer),
+                length: uint8Array.length,
+                firstBytes: Array.from(uint8Array.slice(0, 20)).map(b => b.toString(16).padStart(2, '0')).join(' ')
               });
 
-              // Add buffer directly to ZIP
-              this.zip.file(filename, fileBuffer);
+              // Add Uint8Array directly to ZIP
+              this.zip.file(filename, uint8Array);
               console.log("step 9b-ai-success: AI video added from localPath", {
                 fileName: filename,
-                fileSize: fileBuffer.length,
+                fileSize: uint8Array.length,
                 localPath: item.localPath,
               });
             } else {
@@ -212,18 +216,20 @@ export class ZipManager {
               bufferExists: !!fileBuffer,
               bufferType: fileBuffer ? Object.prototype.toString.call(fileBuffer) : "null",
               bufferLength: fileBuffer ? fileBuffer.length : 0,
-              isBuffer: fileBuffer ? Buffer.isBuffer(fileBuffer) : false,
+              isArrayBuffer: fileBuffer ? fileBuffer instanceof ArrayBuffer : false,
             });
             if (fileBuffer) {
-              // Check buffer details for debugging
+              // Convert to Uint8Array for browser compatibility
+              const uint8Array = new Uint8Array(fileBuffer);
+
               console.log("step 9f: Buffer details", {
-                isBuffer: Buffer.isBuffer(fileBuffer),
-                bufferLength: fileBuffer.length,
-                firstBytes: Array.from(fileBuffer.slice(0, 20)).map(b => b.toString(16).padStart(2, '0')).join(' ')
+                dataType: Object.prototype.toString.call(fileBuffer),
+                bufferLength: uint8Array.length,
+                firstBytes: Array.from(uint8Array.slice(0, 20)).map(b => b.toString(16).padStart(2, '0')).join(' ')
               });
 
-              // Add buffer directly to ZIP
-              this.zip.file(filename, fileBuffer);
+              // Add Uint8Array directly to ZIP
+              this.zip.file(filename, uint8Array);
               console.log("step 9j: local file added successfully to ZIP");
               if (DEBUG_ZIP_MANAGER)
                 console.log(
