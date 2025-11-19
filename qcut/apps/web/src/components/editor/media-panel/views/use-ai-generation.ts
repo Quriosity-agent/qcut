@@ -1656,27 +1656,28 @@ export function useAIGeneration(props: UseAIGenerationProps) {
                   );
                 }
 
-                const blob = await videoResponse.blob();
-                console.log("✅ Downloaded video blob, size:", blob.size);
+            const blob = await videoResponse.blob();
+            console.log("✅ Downloaded video blob, size:", blob.size);
 
-                const filename = `AI-Video-${modelId}-${Date.now()}.mp4`;
-                const file = new File([blob], filename, { type: "video/mp4" });
-                console.log("📄 Created file:", filename);
+            const filename = `AI-Video-${modelId}-${Date.now()}.mp4`;
+            const file = new File([blob], filename, { type: "video/mp4" });
+            console.log("📄 Created file:", filename);
 
-                console.log("step 6d: file creation complete");
-                console.log("   - blob.size:", blob.size, "bytes");
-                console.log("   - blob.type:", blob.type);
-                console.log("   - file.name:", file.name);
-                console.log("   - file.size:", file.size);
+            console.log("step 6d: file creation complete");
+            console.log("   - blob.size:", blob.size, "bytes");
+            console.log("   - blob.type:", blob.type);
+            console.log("   - file.name:", file.name);
+            console.log("   - file.size:", file.size);
 
-                const localUrl = URL.createObjectURL(file);
-                newVideo.videoPath = response.video_url;
-                newVideo.videoUrl = localUrl;
+            const localUrl = URL.createObjectURL(file);
+            newVideo.videoPath = response.video_url;
+            newVideo.videoUrl = localUrl;
+            newVideo.fileSize = file.size;
 
-                // Add to media store
-                const mediaItem = {
-                  name: `AI: ${newVideo.prompt.substring(0, 30)}...`,
-                  type: "video" as const,
+            // Add to media store
+            const mediaItem = {
+              name: `AI: ${newVideo.prompt.substring(0, 30)}...`,
+              type: "video" as const,
                   file,
                   url: localUrl,
                   originalUrl: response.video_url,

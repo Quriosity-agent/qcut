@@ -53,7 +53,7 @@ Step 6 - Generation downloads the video, creates a media item, and adds it to th
   - **Step 6.4**: Construct `mediaItem` object with metadata (name, duration, dimensions).
   - **Step 6.5**: Call `addMediaItem` to add to the project.
   - **Remote vs Local note**: Videos stay remote (only `video_url` stored) when we skip download—for example, if `activeProject`/`addMediaItem` are unavailable or in polling mode pre-completion. When both project and media store are present, the flow downloads the blob and saves a local `File` before adding.
-  - **Step 6.6 (implemented)**: Generate `localUrl = URL.createObjectURL(file)` and store it as `mediaItem.url` (primary), while keeping `mediaItem.originalUrl = video_url` and `newVideo.videoPath = video_url` for fallback.
+  - **Step 6.6 (implemented)**: Generate `localUrl = URL.createObjectURL(file)` and store it as `mediaItem.url` (primary), while keeping `mediaItem.originalUrl = video_url` and `newVideo.videoPath = video_url` for fallback; capture `newVideo.fileSize = file.size` for downstream checks.
   - **Step 6.7 (implemented)**: Media panel consumers should prefer the blob/local URL for playback and download, and fall back to the remote/original URL only if local is missing; download logs include a `source: "blob" | "remote"` flag in `step 8`.
   - **Debug checklist (use `step` logs for consistency)**:
     - `step 6g: media-store addMediaItem` - at store entry, logs projectId/id, hasFile, url, originalUrl (if present), and file size to catch payload issues before persistence.
