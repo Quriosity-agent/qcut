@@ -49,6 +49,7 @@ export class ZipManager {
       });
 
     for (const item of items) {
+      let addedToZip = false;
       console.log("step 9a: processing item", {
         index: completed,
         name: item.name,
@@ -85,7 +86,13 @@ export class ZipManager {
         }
 
         // Resolve filename conflicts
-        filename = this.resolveFilename(filename);
+        const resolvedFilename = this.resolveFilename(filename);
+        console.log("step 9a-filename", {
+          originalName: item.name,
+          initialName: filename,
+          resolvedFilename,
+        });
+        filename = resolvedFilename;
 
         if (DEBUG_ZIP_MANAGER)
           console.log(
@@ -150,42 +157,22 @@ export class ZipManager {
             });
 
             if (fileBuffer) {
-              // fileBuffer from Electron IPC is serialized as an object with data array
-              // We need to convert it properly to Uint8Array
-              let uint8Array: Uint8Array;
-              const bufferAsAny = fileBuffer as any;
+              const uint8Array = this.normalizeToUint8Array(
+                fileBuffer,
+                "step 9b-ai-buffer",
+                item.name,
+                filename
+              );
 
-              if (bufferAsAny instanceof Uint8Array) {
-                // Already Uint8Array
-                uint8Array = bufferAsAny;
-              } else if (bufferAsAny instanceof ArrayBuffer) {
-                // Convert ArrayBuffer to Uint8Array
-                uint8Array = new Uint8Array(bufferAsAny);
-              } else if (bufferAsAny.data && Array.isArray(bufferAsAny.data)) {
-                // Serialized Buffer from IPC - has a data property with array of bytes
-                uint8Array = new Uint8Array(bufferAsAny.data);
-              } else if (bufferAsAny.type === 'Buffer' && bufferAsAny.data) {
-                // Another form of serialized Buffer
-                uint8Array = new Uint8Array(bufferAsAny.data);
-              } else {
-                // Fallback - try to convert directly
-                uint8Array = new Uint8Array(bufferAsAny);
+              if (uint8Array) {
+                this.zip.file(filename, uint8Array, { binary: true });
+                addedToZip = true;
+                console.log("step 9b-ai-success: AI video added from localPath", {
+                  fileName: filename,
+                  fileSize: uint8Array.length,
+                  localPath: item.localPath,
+                });
               }
-
-              console.log("step 9b-ai-buffer: Buffer details", {
-                originalType: Object.prototype.toString.call(fileBuffer),
-                hasDataProp: !!(fileBuffer as any).data,
-                convertedLength: uint8Array.length,
-                firstBytes: Array.from(uint8Array.slice(0, 20)).map(b => b.toString(16).padStart(2, '0')).join(' ')
-              });
-
-              // Add Uint8Array directly to ZIP with binary flag
-              this.zip.file(filename, uint8Array, { binary: true });
-              console.log("step 9b-ai-success: AI video added from localPath", {
-                fileName: filename,
-                fileSize: uint8Array.length,
-                localPath: item.localPath,
-              });
             } else {
               console.error("step 9b-ai-fail: Failed to read AI video from localPath", {
                 name: item.name,
@@ -203,7 +190,7 @@ export class ZipManager {
           }
         }
         // PRIORITY 2: Regular files with File object (user uploads, etc)
-        else if (item.file) {
+        if (!addedToZip && item.file) {
           console.log("step 9b: adding file directly to ZIP", {
             filename,
             fileSize: item.file.size,
@@ -212,6 +199,7 @@ export class ZipManager {
           });
           this.zip.file(filename, item.file);
           console.log("step 9c: file added successfully via File object");
+          addedToZip = true;
           if (DEBUG_ZIP_MANAGER)
             console.log(
               "? ZIP-MANAGER: Added to ZIP:",
@@ -222,7 +210,7 @@ export class ZipManager {
             );
         }
         // PRIORITY 3: Non-AI files with localPath
-        else if (item.localPath && window.electronAPI?.readFile) {
+        if (!addedToZip && item.localPath && window.electronAPI?.readFile) {
           // Handle local file path for Electron (AI videos saved to disk)
           console.log("step 9d: attempting to read local file", {
             localPath: item.localPath,
@@ -238,32 +226,18 @@ export class ZipManager {
               isArrayBuffer: fileBuffer ? fileBuffer instanceof ArrayBuffer : false,
             });
             if (fileBuffer) {
-              // Convert to Uint8Array properly handling IPC serialization
-              let uint8Array: Uint8Array;
-              const bufferAsAny = fileBuffer as any;
+              const uint8Array = this.normalizeToUint8Array(
+                fileBuffer,
+                "step 9f",
+                item.name,
+                filename
+              );
 
-              if (bufferAsAny instanceof Uint8Array) {
-                uint8Array = bufferAsAny;
-              } else if (bufferAsAny instanceof ArrayBuffer) {
-                uint8Array = new Uint8Array(bufferAsAny);
-              } else if (bufferAsAny.data && Array.isArray(bufferAsAny.data)) {
-                // Serialized Buffer from IPC
-                uint8Array = new Uint8Array(bufferAsAny.data);
-              } else if (bufferAsAny.type === 'Buffer' && bufferAsAny.data) {
-                uint8Array = new Uint8Array(bufferAsAny.data);
-              } else {
-                uint8Array = new Uint8Array(bufferAsAny);
+              if (uint8Array) {
+                this.zip.file(filename, uint8Array, { binary: true });
+                addedToZip = true;
+                console.log("step 9j: local file added successfully to ZIP");
               }
-
-              console.log("step 9f: Buffer details", {
-                dataType: Object.prototype.toString.call(fileBuffer),
-                bufferLength: uint8Array.length,
-                firstBytes: Array.from(uint8Array.slice(0, 20)).map(b => b.toString(16).padStart(2, '0')).join(' ')
-              });
-
-              // Add Uint8Array directly to ZIP with binary flag
-              this.zip.file(filename, uint8Array, { binary: true });
-              console.log("step 9j: local file added successfully to ZIP");
               if (DEBUG_ZIP_MANAGER)
                 console.log(
                   "? ZIP-MANAGER: Added local file to ZIP:",
@@ -294,7 +268,11 @@ export class ZipManager {
             (originalUrl && typeof originalUrl === "string" && originalUrl) ||
             item.url;
 
-          if (urlToFetch && (urlToFetch.startsWith("http") || urlToFetch.startsWith("blob:"))) {
+          if (
+            !addedToZip &&
+            urlToFetch &&
+            (urlToFetch.startsWith("http") || urlToFetch.startsWith("blob:"))
+          ) {
             try {
               const resp = await fetch(urlToFetch);
               if (!resp.ok) {
@@ -321,6 +299,7 @@ export class ZipManager {
                 type: inferredType,
               });
               this.zip.file(finalFilename, fetchedFile);
+              addedToZip = true;
               if (DEBUG_ZIP_MANAGER)
                 console.log("? ZIP-MANAGER: Fetched URL-only item into ZIP", {
                   filename: finalFilename,
@@ -338,7 +317,7 @@ export class ZipManager {
                     : String(fetchError),
               });
             }
-          } else {
+          } else if (!addedToZip) {
             console.warn("step 8: export-all zip skipped item (no file or fetchable url)", {
               name: item.name,
               hasFile: !!item.file,
@@ -427,17 +406,82 @@ export class ZipManager {
 
     let sanitized = filename.replace(reservedChars, "_");
 
+    // Trim trailing spaces or dots that Windows Explorer cannot create
+    sanitized = sanitized.trim().replace(/[. ]+$/, "");
+
     // Handle reserved names
     if (reservedNames.test(sanitized)) {
       sanitized = `file_${sanitized}`;
     }
 
     // Ensure Unicode characters are properly encoded
-    return sanitized.normalize("NFC");
+    sanitized = sanitized.normalize("NFC");
+
+    // Fallback if name collapses to empty
+    if (!sanitized) sanitized = "file";
+
+    return sanitized;
   }
 
   reset(): void {
     this.zip = new JSZip();
+  }
+
+  private normalizeToUint8Array(
+    fileBuffer: unknown,
+    logLabel: string,
+    itemName: string,
+    filename: string
+  ): Uint8Array | null {
+    const typeTag = Object.prototype.toString.call(fileBuffer);
+    try {
+      const bufferAsAny = fileBuffer as any;
+      let uint8Array: Uint8Array | null = null;
+
+      if (bufferAsAny instanceof Uint8Array) {
+        uint8Array = bufferAsAny;
+      } else if (bufferAsAny instanceof ArrayBuffer) {
+        uint8Array = new Uint8Array(bufferAsAny);
+      } else if (bufferAsAny?.data && Array.isArray(bufferAsAny.data)) {
+        uint8Array = new Uint8Array(bufferAsAny.data);
+      } else if (bufferAsAny?.type === "Buffer" && bufferAsAny?.data) {
+        uint8Array = new Uint8Array(bufferAsAny.data);
+      } else if (bufferAsAny != null) {
+        uint8Array = new Uint8Array(bufferAsAny as any);
+      }
+
+      console.log(`${logLabel}: normalized buffer`, {
+        itemName,
+        filename,
+        originalType: typeTag,
+        hasDataProp: !!bufferAsAny?.data,
+        length: uint8Array?.length ?? 0,
+        firstBytes: uint8Array
+          ? Array.from(uint8Array.slice(0, 20))
+              .map((b) => b.toString(16).padStart(2, "0"))
+              .join(" ")
+          : "n/a",
+      });
+
+      if (!uint8Array || uint8Array.length === 0) {
+        console.error(`${logLabel}-empty`, {
+          itemName,
+          filename,
+          originalType: typeTag,
+        });
+        return null;
+      }
+
+      return uint8Array;
+    } catch (error) {
+      console.error(`${logLabel}-error`, {
+        itemName,
+        filename,
+        originalType: typeTag,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      return null;
+    }
   }
 }
 

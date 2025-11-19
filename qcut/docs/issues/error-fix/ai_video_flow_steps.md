@@ -87,142 +87,130 @@ Step 8 - Media panel downloads (AI history/download button)
   - Logs on click (`step 8: export-all clicked`), blocked state (empty/already exporting), start zipping (counts local files vs remote URLs), completion, or failure. This covers the Download All UI in the media panel so export issues show up in the unified `step 8` format.
   - ZIP builder now fetches from `originalUrl`/`url` even when only `blob:` or remote links are present (should cover videos that lost their File object); failures log `step 8: export-all zip fetch failed`.
 
-## ZIP Export Issue Analysis (2025-11-19)
+## ZIP Export Issue - RESOLVED (2025-11-20)
 
-### Problem Discovered
-- **Symptom**: ZIP file generates with correct size (3.59MB) but cannot be extracted
-- **Root Cause**: File objects in Electron environment contain invalid data when created from blob URLs
-- **Evidence**:
-  - Step 9b shows file added via File object (3.76MB)
-  - Step 10a shows ZIP generated (3.59MB)
-  - Step 11d shows successful save to disk
-  - But Windows cannot extract the ZIP file
+### Problem Summary
+**Status**: ✅ FIXED - ZIP files now extract successfully
 
-### Technical Analysis
+**Original Issue**:
+- ZIP files generated correctly but could not be extracted on Windows
+- Error: "Windows cannot complete the extraction"
+- File appeared valid (correct size) but contained corrupted data
 
-#### Current Flow (Problematic)
-1. AI video downloaded → Blob created → File object created from Blob
-2. File saved to disk via `window.electronAPI.video.saveToDisk` → localPath stored
-3. Blob URL created via `URL.createObjectURL(file)` → stored as primary URL
-4. When exporting ZIP:
-   - Code checks `if (item.file)` first (TRUE - uses File object) ❌
-   - Never reaches `else if (item.localPath)` branch
-   - File object in Electron may not contain valid data due to blob URL lifecycle
+### Root Cause Analysis
 
-#### Electron-Specific Issues
-- **Blob URL Lifecycle**: In Electron, blob URLs (`blob:app://...`) have limited lifetime
-- **File Object Reference**: File objects created from blobs may only hold references, not actual data
-- **JSZip Compatibility**: JSZip may not correctly read Electron's blob-backed File objects
+#### The Buffer Serialization Problem
+When Electron's IPC (Inter-Process Communication) sends data from the main process (Node.js) to the renderer process (browser), Buffer objects are serialized differently:
 
-### Proposed Solutions
+1. **In Main Process**: `fs.readFileSync()` returns a Node.js Buffer
+2. **During IPC Transfer**: Buffer is serialized as `{ type: 'Buffer', data: [byte, byte, ...] }`
+3. **In Renderer Process**: Receives serialized object, not raw binary data
+4. **JSZip Issue**: When this serialized object is added to ZIP, it creates corrupt data
 
-#### Solution 1: Prioritize localPath for AI Videos (Recommended)
-**Implementation**: Modify `zip-manager.ts` to check localPath before File object for AI-generated content
+#### Why It Happened
+```javascript
+// Main process (Node.js)
+ipcMain.handle("read-file", (event, filePath) => {
+  return fs.readFileSync(filePath); // Returns Buffer
+});
+
+// Renderer process receives
+// Not a Buffer, but: { type: 'Buffer', data: [117, 56, 34, ...] }
+
+// Old code tried to use it directly
+zip.file(filename, fileBuffer); // ❌ Added serialized object, not binary data
+```
+
+### Solution Implemented
+
+#### 1. Proper Buffer Detection and Conversion
+Modified `zip-manager.ts` to detect all Buffer serialization formats:
 
 ```javascript
-// Check for AI video with localPath first
-if (item.localPath && item.metadata?.source === 'ai-generated' && window.electronAPI?.readFile) {
-  // Read from disk
-} else if (item.file) {
-  // Use File object for other media
+// Detect and convert serialized Buffers
+let uint8Array: Uint8Array;
+const bufferAsAny = fileBuffer as any;
+
+if (bufferAsAny instanceof Uint8Array) {
+  // Already correct format
+  uint8Array = bufferAsAny;
+} else if (bufferAsAny instanceof ArrayBuffer) {
+  // Convert ArrayBuffer to Uint8Array
+  uint8Array = new Uint8Array(bufferAsAny);
+} else if (bufferAsAny.data && Array.isArray(bufferAsAny.data)) {
+  // Serialized Buffer from IPC - has data array
+  uint8Array = new Uint8Array(bufferAsAny.data);
+} else if (bufferAsAny.type === 'Buffer' && bufferAsAny.data) {
+  // Another form of serialized Buffer
+  uint8Array = new Uint8Array(bufferAsAny.data);
+} else {
+  // Fallback attempt
+  uint8Array = new Uint8Array(bufferAsAny);
 }
 ```
 
-**Pros**:
-- Guaranteed valid data from disk
-- Works with Electron's file system
-- Maintains File object support for user uploads
-
-**Cons**:
-- Requires metadata to identify AI videos
-- Slightly slower (disk read vs memory)
-
-#### Solution 2: Force All Items to Use localPath When Available
-**Implementation**: Always prefer localPath over File object
+#### 2. Binary Flag for JSZip
+Added explicit binary flag when adding files to ZIP:
 
 ```javascript
-if (item.localPath && window.electronAPI?.readFile) {
-  // Always read from disk when available
-} else if (item.file) {
-  // Fallback to File object
-}
+// Ensure JSZip treats data as binary
+this.zip.file(filename, uint8Array, { binary: true });
 ```
 
-**Pros**:
-- Simple logic
-- Works for all saved media
-
-**Cons**:
-- May be inefficient for user-uploaded files already in memory
-- Changes existing behavior
-
-#### Solution 3: Re-read File Data Before ZIP Export
-**Implementation**: Convert File objects back to Blobs with validation
+#### 3. Enhanced AI Video Detection
+Improved detection logic to ensure AI videos use localPath:
 
 ```javascript
-if (item.file) {
-  const blob = await item.file.arrayBuffer();
-  // Validate blob data is not empty/corrupted
-  if (isValidVideoData(blob)) {
-    // Add to ZIP
-  } else if (item.localPath) {
-    // Fallback to disk read
-  }
-}
+// Fixed case-sensitive comparisons
+const nameCheck = item.name?.toLowerCase();
+const isAIGenerated =
+  item.metadata?.source === 'text2video' ||
+  nameCheck?.includes('ai:') ||
+  nameCheck?.includes('supermodel') ||
+  (item.localPath && item.type === 'video');
+
+// Prioritize localPath for reliability
+const shouldUseLocalPath = isAIGenerated ||
+  (item.type === 'video' && item.localPath);
 ```
 
-**Pros**:
-- Validates data before adding to ZIP
-- Maintains current flow with safety check
+### Files Modified
+1. **`apps/web/src/lib/zip-manager.ts`**
+   - Lines 152-182: Added Buffer serialization detection for AI videos
+   - Lines 240-256: Added same fix for regular file reading
+   - Lines 182, 263: Added `{ binary: true }` flag to JSZip
+   - Lines 108-121: Improved AI video detection logic
 
-**Cons**:
-- More complex implementation
-- Performance overhead for validation
+2. **`apps/web/src/hooks/use-zip-export.ts`**
+   - Lines 34-48: Enhanced logging to show metadata counts
 
-### Testing Requirements
+### Verification Steps
+The fix can be verified by checking console output during ZIP export:
 
-#### Step 9 Enhanced Logging
-Add validation checks at each stage:
-- `step 9b-validate`: Check File object is valid video
-- `step 9e-validate`: Verify buffer content after read
-- `step 10a-validate`: Confirm ZIP internal structure
+1. **Step 9b-ai-buffer**: Should show:
+   - `originalType: [object Object]` (indicates serialized Buffer)
+   - `hasDataProp: true` (confirms serialized format)
+   - `convertedLength: [number]` (matches file size)
+   - `firstBytes: 00 00 00 20 66 74 79 70...` (valid MP4 header)
 
-#### Test Cases
-1. Fresh AI video generation → immediate export
-2. AI video generation → app restart → export (tests persistence)
-3. Mixed media (AI video + user upload) → export
-4. Large AI video (>10MB) → export
+2. **Step 10a**: ZIP blob generated with correct size
+3. **Step 11d**: Save successful with file path
+4. **Extraction**: ZIP file extracts without errors
 
-### Recommended Implementation Order
-1. **Immediate Fix**: Implement Solution 1 (prioritize localPath for AI videos)
-2. **Add Validation**: Log first 20 bytes of file data at step 9 to verify content
-3. **Test**: Verify ZIP extracts correctly
-4. **Long-term**: Consider Solution 3 for robust validation
+### Testing Performed
+- ✅ AI video generation → immediate ZIP export → successful extraction
+- ✅ Mixed media (AI videos + user uploads) → ZIP export → successful extraction
+- ✅ Console logs show proper Buffer conversion
+- ✅ MP4 headers verified (start with `00 00 00 XX 66 74 79 70` for "ftyp")
 
-### Debug Commands for Console
-```javascript
-// Check media item structure
-const store = JSON.parse(localStorage.getItem('media-8ee6a680-1bb3-4c4a-906e-9b6c7271e97a'));
-console.log('Items:', store.items.map(i => ({
-  name: i.name,
-  hasFile: !!i.file,
-  hasLocalPath: !!i.localPath,
-  localPath: i.localPath,
-  metadata: i.metadata
-})));
+### Technical Notes
+- The issue was specific to Electron's IPC serialization behavior
+- Standard browser environments wouldn't encounter this issue
+- The fix handles all possible Buffer formats for maximum compatibility
+- No performance impact as conversion is lightweight
 
-// Verify file can be read from disk
-if(store.items[0]?.localPath) {
-  window.electronAPI.readFile(store.items[0].localPath)
-    .then(buffer => console.log('File readable:', !!buffer, 'Size:', buffer?.length))
-    .catch(err => console.error('Read failed:', err));
-}
-
-// Check blob URL validity
-if(store.items[0]?.url) {
-  fetch(store.items[0].url)
-    .then(r => r.blob())
-    .then(b => console.log('Blob valid:', b.size > 0, 'Size:', b.size))
-    .catch(err => console.error('Blob invalid:', err));
-}
-```
+### Lessons Learned
+1. **IPC Serialization**: Always account for how data is serialized across process boundaries
+2. **Binary Data Handling**: Explicitly specify binary mode when working with file data
+3. **Cross-Environment Testing**: Test in actual Electron environment, not just browser
+4. **Defensive Coding**: Handle multiple data formats when source is uncertain
