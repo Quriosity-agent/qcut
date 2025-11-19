@@ -3654,6 +3654,11 @@ export function AiView() {
                           const a = document.createElement("a");
                           a.href = result.video.videoUrl;
                           a.download = `ai-video-${result.video.jobId}.mp4`;
+                          console.log("step 8: media panel download", {
+                            jobId: result.video.jobId,
+                            url: result.video.videoUrl,
+                            filename: a.download,
+                          });
                           a.click();
                           a.remove();
                         }}

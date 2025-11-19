@@ -70,3 +70,11 @@ Step 7 - The media store persists the item; generation updates UI progress to 10
   - **Step 7.5**: UI updates to show the generated video in the gallery/preview.
 
 All generation-flow console logs now use the unified `step X: ...` format (no remaining `DEBUG STEP` prefixes).
+
+Step 8 - Media panel downloads (AI history/download button)
+- **Function**: AI panel download handler (history result download)
+- **File**: `qcut/apps/web/src/components/editor/media-panel/views/ai.tsx`
+- **Console**: `console.log("step 8: media panel download", { jobId, url, filename })`
+  - **Step 8.1**: User clicks download in the media/AI history panel.
+  - **Step 8.2**: Handler builds an anchor element with `href = result.video.videoUrl` and `download = ai-video-${jobId}.mp4`, then triggers `a.click()`; this downloads the remote URL, not the locally stored blob.
+  - **Step 8.3**: (Suggested) Log the download target URL and filename to confirm whether we are pulling from the remote CDN or a local object URL.

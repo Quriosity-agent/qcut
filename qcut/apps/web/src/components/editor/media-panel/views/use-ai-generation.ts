@@ -1,4 +1,4 @@
-/**
+﻿/**
  * AI Generation Management Hook
  *
  * Extracted from ai.tsx as part of safe refactoring process.
@@ -1680,7 +1680,12 @@ export function useAIGeneration(props: UseAIGenerationProps) {
                   height: 1080,
                 };
 
-                console.log("📤 Adding to media store with item:", mediaItem);
+                console.log("step 6d details:", {
+                  mediaUrl: mediaItem.url,
+                  fileName: file.name,
+                  fileSize: file.size,
+                });
+console.log("📤 Adding to media store with item:", mediaItem);
 
                 console.log("step 6e: about to call addMediaItem");
                 console.log(
@@ -1731,9 +1736,7 @@ export function useAIGeneration(props: UseAIGenerationProps) {
             }
           } else {
             // Traditional polling mode: no video_url yet
-            console.log(
-              "🔍 FIX VERIFICATION: Polling mode - no video_url, starting polling"
-            );
+            console.log("step 6: polling mode - deferring download");
 
             const newVideo: GeneratedVideo = {
               jobId: response.job_id,
@@ -1864,7 +1867,12 @@ export function useAIGeneration(props: UseAIGenerationProps) {
                 height: 1080,
               };
 
-              console.log("📤 Adding to media store with item:", mediaItem);
+              console.log("step 6d details:", {
+                mediaUrl: mediaItem.url,
+                fileName: file.name,
+                fileSize: file.size,
+              });
+console.log("📤 Adding to media store with item:", mediaItem);
 
               console.log("step 6e: about to call addMediaItem");
               console.log(
@@ -1879,7 +1887,12 @@ export function useAIGeneration(props: UseAIGenerationProps) {
 
               const newItemId = await addMediaItem(activeProject.id, mediaItem);
 
-              console.log("step 6f: addMediaItem completed");
+              console.log("step 6f: addMediaItem completed", {
+                newItemId,
+                mediaUrl: mediaItem.url,
+                fileName: mediaItem.file.name,
+                fileSize: mediaItem.file.size,
+              });
               console.log("   - newItemId:", newItemId);
               console.log("   - SUCCESS: Video added to media store!");
 
