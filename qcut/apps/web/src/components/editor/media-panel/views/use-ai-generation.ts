@@ -912,6 +912,11 @@ export function useAIGeneration(props: UseAIGenerationProps) {
           }
         };
 
+        console.log(
+          """step 5: sending generation request for  ( tab)""",
+          unifiedParams
+        );
+
         if (activeTab === "text") {
           console.log(`  📝 Processing text-to-video model ${modelId}...`);
 
