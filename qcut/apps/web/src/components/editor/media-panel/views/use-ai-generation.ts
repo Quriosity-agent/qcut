@@ -913,7 +913,7 @@ export function useAIGeneration(props: UseAIGenerationProps) {
         };
 
         console.log(
-          """step 5: sending generation request for  ( tab)""",
+          `step 5: sending generation request for ${modelId} (${activeTab} tab)`,
           unifiedParams
         );
 
@@ -1631,6 +1631,8 @@ export function useAIGeneration(props: UseAIGenerationProps) {
                 typeof addMediaItem
               );
 
+              console.log(`step 6: downloading video and adding to media store for ${modelId}`);
+
               console.log("🔄 Attempting to add to media store...");
               console.log("   - Project ID:", activeProject.id);
               console.log("   - addMediaItem available:", !!addMediaItem);
@@ -1813,6 +1815,8 @@ export function useAIGeneration(props: UseAIGenerationProps) {
               "   - addMediaItem function type:",
               typeof addMediaItem
             );
+
+            console.log(`step 6: downloading video and adding to media store for ${modelId}`);
 
             console.log("🔄 Attempting to add to media store...");
             console.log("   - Project ID:", activeProject.id);
