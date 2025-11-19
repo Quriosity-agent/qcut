@@ -83,7 +83,7 @@ export class ZipManager {
             item.metadata?.source === "text2image"
           );
 
-        // Add file to ZIP directly, or fetch when only a remote URL is available
+        // Add file to ZIP directly, or fetch when only a URL is available (supports http(s) and blob:)
         if (item.file) {
           this.zip.file(filename, item.file);
           if (DEBUG_ZIP_MANAGER)
@@ -94,56 +94,64 @@ export class ZipManager {
               "size:",
               item.file.size
             );
-        } else if (item.url && item.url.startsWith("http")) {
-          try {
-            const resp = await fetch(item.url);
-            if (!resp.ok) {
-              throw new Error(`HTTP ${resp.status}`);
-            }
-            const blob = await resp.blob();
-            const inferredType =
-              blob.type ||
-              (item.type === "video"
-                ? "video/mp4"
-                : item.type === "audio"
-                  ? "audio/mpeg"
-                  : "application/octet-stream");
-            const fetchedFile = new File([blob], filename, {
-              type: inferredType,
-            });
-            this.zip.file(filename, fetchedFile);
-            if (DEBUG_ZIP_MANAGER)
-              console.log("? ZIP-MANAGER: Fetched URL-only item into ZIP", {
-                filename,
-                size: fetchedFile.size,
-                type: inferredType,
-                url: item.url,
-              });
-          } catch (fetchError) {
-            if (DEBUG_ZIP_MANAGER)
-              console.warn(
-                "?? ZIP-MANAGER: Failed to fetch URL-only item; skipping",
-                {
-                  name: item.name,
-                  url: item.url,
-                  error:
-                    fetchError instanceof Error
-                      ? fetchError.message
-                      : String(fetchError),
-                }
-              );
-          }
         } else {
-          if (DEBUG_ZIP_MANAGER)
-            console.warn("?? ZIP-MANAGER: No file object for item", {
+          const originalUrl = (item as any).originalUrl as string | undefined;
+          const urlToFetch =
+            (originalUrl && typeof originalUrl === "string" && originalUrl) ||
+            item.url;
+
+          if (urlToFetch && (urlToFetch.startsWith("http") || urlToFetch.startsWith("blob:"))) {
+            try {
+              const resp = await fetch(urlToFetch);
+              if (!resp.ok) {
+                throw new Error(`HTTP ${resp.status}`);
+              }
+              const blob = await resp.blob();
+              const inferredType =
+                blob.type ||
+                (item.type === "video"
+                  ? "video/mp4"
+                  : item.type === "audio"
+                    ? "audio/mpeg"
+                    : "application/octet-stream");
+
+              const hasExtension = filename.includes(".");
+              let finalFilename = filename;
+              if (!hasExtension) {
+                const extensionFromType =
+                  inferredType.split("/")[1] || "bin";
+                finalFilename = `${filename}.${extensionFromType}`;
+              }
+
+              const fetchedFile = new File([blob], finalFilename, {
+                type: inferredType,
+              });
+              this.zip.file(finalFilename, fetchedFile);
+              if (DEBUG_ZIP_MANAGER)
+                console.log("? ZIP-MANAGER: Fetched URL-only item into ZIP", {
+                  filename: finalFilename,
+                  size: fetchedFile.size,
+                  type: inferredType,
+                  url: urlToFetch,
+                });
+            } catch (fetchError) {
+              console.warn("step 8: export-all zip fetch failed", {
+                name: item.name,
+                url: urlToFetch,
+                error:
+                  fetchError instanceof Error
+                    ? fetchError.message
+                    : String(fetchError),
+              });
+            }
+          } else {
+            console.warn("step 8: export-all zip skipped item (no file or fetchable url)", {
               name: item.name,
-              hasUrl: !!item.url,
-              urlType: item.url?.startsWith("data:")
-                ? "data"
-                : item.url?.startsWith("blob:")
-                  ? "blob"
-                  : "other",
+              hasFile: !!item.file,
+              url: item.url,
+              originalUrl,
             });
+          }
         }
 
         completed++;

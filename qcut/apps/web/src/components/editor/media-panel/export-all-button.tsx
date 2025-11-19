@@ -126,8 +126,8 @@ export function ExportAllButton({
       });
       console.log("step 8: export-all zip completed", {
         phase: exportState.phase,
-        totalFiles: exportState.totalFiles,
-        completedFiles: exportState.completedFiles,
+        totalFiles: mediaItems.length,
+        completedFiles: mediaItems.length,
       });
 
       if (exportState.phase === "complete") {

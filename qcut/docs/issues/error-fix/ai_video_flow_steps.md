@@ -85,3 +85,4 @@ Step 8 - Media panel downloads (AI history/download button)
 - **File**: `qcut/apps/web/src/components/editor/media-panel/export-all-button.tsx`
 - **Console**: `console.log("step 8: export-all ...", { ... })`
   - Logs on click (`step 8: export-all clicked`), blocked state (empty/already exporting), start zipping (counts local files vs remote URLs), completion, or failure. This covers the Download All UI in the media panel so export issues show up in the unified `step 8` format.
+  - ZIP builder now fetches from `originalUrl`/`url` even when only `blob:` or remote links are present (should cover videos that lost their File object); failures log `step 8: export-all zip fetch failed`.
