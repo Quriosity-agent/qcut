@@ -814,7 +814,7 @@ export function useAIGeneration(props: UseAIGenerationProps) {
     setGeneratedVideos([]);
 
     try {
-      console.log("🔍 DEBUG STEP 1: Pre-Generation State Check");
+      console.log("step 3a: pre-generation state check");
       console.log("   - activeProject:", !!activeProject, activeProject?.id);
       console.log(
         "   - addMediaItem available:",
@@ -1533,7 +1533,7 @@ export function useAIGeneration(props: UseAIGenerationProps) {
           console.log("  ✅ generateAvatarVideo returned:", response);
         }
 
-        console.log("🔍 DEBUG STEP 2: Post-API Response Analysis");
+        console.log("step 5a: post-API response analysis");
         console.log("   - response received:", !!response);
         if (response) {
           console.log(
@@ -1593,7 +1593,7 @@ export function useAIGeneration(props: UseAIGenerationProps) {
             console.log("📦 Added to generations array:", generations.length);
 
             // 🔥 MOVED MEDIA INTEGRATION HERE - Steps 3-8
-            console.log("🔍 DEBUG STEP 3: Media Integration Condition Check");
+            console.log("step 6a: media integration condition check");
             console.log(
               "   - activeProject check:",
               !!activeProject,
@@ -1619,7 +1619,7 @@ export function useAIGeneration(props: UseAIGenerationProps) {
 
             if (activeProject && addMediaItem) {
               console.log(
-                "🔍 DEBUG STEP 4: ✅ EXECUTING Media Integration Block"
+                "step 6b: executing media integration block"
               );
               console.log(
                 "   - About to download from URL:",
@@ -1645,7 +1645,7 @@ export function useAIGeneration(props: UseAIGenerationProps) {
                 );
                 const videoResponse = await fetch(response.video_url);
 
-                console.log("🔍 DEBUG STEP 5: Video Download Progress");
+                console.log("step 6c: video download progress");
                 console.log("   - videoResponse.ok:", videoResponse.ok);
                 console.log("   - videoResponse.status:", videoResponse.status);
                 console.log(
@@ -1666,7 +1666,7 @@ export function useAIGeneration(props: UseAIGenerationProps) {
                 const file = new File([blob], filename, { type: "video/mp4" });
                 console.log("📄 Created file:", filename);
 
-                console.log("🔍 DEBUG STEP 6: File Creation Complete");
+                console.log("step 6d: file creation complete");
                 console.log("   - blob.size:", blob.size, "bytes");
                 console.log("   - blob.type:", blob.type);
                 console.log("   - file.name:", file.name);
@@ -1685,7 +1685,7 @@ export function useAIGeneration(props: UseAIGenerationProps) {
 
                 console.log("📤 Adding to media store with item:", mediaItem);
 
-                console.log("🔍 DEBUG STEP 7: About to Call addMediaItem");
+                console.log("step 6e: about to call addMediaItem");
                 console.log(
                   "   - mediaItem structure:",
                   JSON.stringify(mediaItem, null, 2)
@@ -1701,7 +1701,7 @@ export function useAIGeneration(props: UseAIGenerationProps) {
                   mediaItem
                 );
 
-                console.log("🔍 DEBUG STEP 8: ✅ addMediaItem COMPLETED");
+                console.log("step 6f: addMediaItem completed");
                 console.log("   - newItemId:", newItemId);
                 console.log("   - SUCCESS: Video added to media store!");
 
@@ -1781,7 +1781,7 @@ export function useAIGeneration(props: UseAIGenerationProps) {
           console.log("📦 Added to generations array:", generations.length);
 
           // Automatically add to media store
-          console.log("🔍 DEBUG STEP 3: Media Integration Condition Check");
+          console.log("step 6a: media integration condition check");
           console.log(
             "   - activeProject check:",
             !!activeProject,
@@ -1807,7 +1807,7 @@ export function useAIGeneration(props: UseAIGenerationProps) {
 
           if (activeProject && addMediaItem) {
             console.log(
-              "🔍 DEBUG STEP 4: ✅ EXECUTING Media Integration Block"
+              "step 6b: executing media integration block"
             );
             console.log("   - About to download from URL:", response.video_url);
             console.log("   - Project ID for media:", activeProject.id);
@@ -1827,7 +1827,7 @@ export function useAIGeneration(props: UseAIGenerationProps) {
               console.log("📥 Downloading video from URL:", response.video_url);
               const videoResponse = await fetch(response.video_url);
 
-              console.log("🔍 DEBUG STEP 5: Video Download Progress");
+              console.log("step 6c: video download progress");
               console.log("   - videoResponse.ok:", videoResponse.ok);
               console.log("   - videoResponse.status:", videoResponse.status);
               console.log(
@@ -1848,7 +1848,7 @@ export function useAIGeneration(props: UseAIGenerationProps) {
               const file = new File([blob], filename, { type: "video/mp4" });
               console.log("📄 Created file:", filename);
 
-              console.log("🔍 DEBUG STEP 6: File Creation Complete");
+              console.log("step 6d: file creation complete");
               console.log("   - blob.size:", blob.size, "bytes");
               console.log("   - blob.type:", blob.type);
               console.log("   - file.name:", file.name);
@@ -1867,7 +1867,7 @@ export function useAIGeneration(props: UseAIGenerationProps) {
 
               console.log("📤 Adding to media store with item:", mediaItem);
 
-              console.log("🔍 DEBUG STEP 7: About to Call addMediaItem");
+              console.log("step 6e: about to call addMediaItem");
               console.log(
                 "   - mediaItem structure:",
                 JSON.stringify(mediaItem, null, 2)
@@ -1880,7 +1880,7 @@ export function useAIGeneration(props: UseAIGenerationProps) {
 
               const newItemId = await addMediaItem(activeProject.id, mediaItem);
 
-              console.log("🔍 DEBUG STEP 8: ✅ addMediaItem COMPLETED");
+              console.log("step 6f: addMediaItem completed");
               console.log("   - newItemId:", newItemId);
               console.log("   - SUCCESS: Video added to media store!");
 

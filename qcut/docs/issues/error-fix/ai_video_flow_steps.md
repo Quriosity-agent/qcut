@@ -63,14 +63,4 @@ Step 7 - The media store persists the item; generation updates UI progress to 10
   - **Step 7.4**: `onComplete` callback is executed.
   - **Step 7.5**: UI updates to show the generated video in the gallery/preview.
 
-Debug messages still using the `DEBUG STEP` format (to convert to `step X: ...`):
-- `qcut/apps/web/src/components/editor/media-panel/views/use-ai-generation.ts:817` — `🔍 DEBUG STEP 1: Pre-Generation State Check`
-- `qcut/apps/web/src/components/editor/media-panel/views/use-ai-generation.ts:1536` — `🔍 DEBUG STEP 2: Post-API Response Analysis`
-- `qcut/apps/web/src/components/editor/media-panel/views/use-ai-generation.ts:1596` and `:1784` — `🔍 DEBUG STEP 3: Media Integration Condition Check`
-- `qcut/apps/web/src/components/editor/media-panel/views/use-ai-generation.ts:1622` and `:1810` — `🔍 DEBUG STEP 4: ✅ EXECUTING Media Integration Block`
-- `qcut/apps/web/src/components/editor/media-panel/views/use-ai-generation.ts:1648` and `:1830` — `🔍 DEBUG STEP 5: Video Download Progress`
-- `qcut/apps/web/src/components/editor/media-panel/views/use-ai-generation.ts:1669` and `:1851` — `🔍 DEBUG STEP 6: File Creation Complete`
-- `qcut/apps/web/src/components/editor/media-panel/views/use-ai-generation.ts:1688` and `:1870` — `🔍 DEBUG STEP 7: About to Call addMediaItem`
-- `qcut/apps/web/src/components/editor/media-panel/views/use-ai-generation.ts:1704` and `:1883` — `🔍 DEBUG STEP 8: ✅ addMediaItem COMPLETED`
-
-Next action: replace the above `DEBUG STEP` logs with the unified `step X: ...` format to match the documented flow.
+All generation-flow console logs now use the unified `step X: ...` format (no remaining `DEBUG STEP` prefixes).
