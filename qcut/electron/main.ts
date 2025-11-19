@@ -600,6 +600,42 @@ app.whenReady().then(() => {
     }
   );
 
+  // Save Blob to File (for ZIP downloads)
+  ipcMain.handle(
+    "save-blob",
+    async (
+      event: IpcMainInvokeEvent,
+      data: Buffer | Uint8Array,
+      defaultFilename?: string
+    ): Promise<{ success: boolean; filePath?: string; canceled?: boolean; error?: string }> => {
+      try {
+        const result = await dialog.showSaveDialog(mainWindow!, {
+          defaultPath: defaultFilename || "download.zip",
+          filters: [
+            {
+              name: "ZIP Files",
+              extensions: ["zip"],
+            },
+            {
+              name: "All Files",
+              extensions: ["*"],
+            },
+          ],
+        });
+
+        if (!result.canceled && result.filePath) {
+          await fs.promises.writeFile(result.filePath, Buffer.from(data));
+          return { success: true, filePath: result.filePath };
+        }
+
+        return { success: false, canceled: true };
+      } catch (error: any) {
+        logger.error("Save blob error:", error);
+        return { success: false, error: error.message };
+      }
+    }
+  );
+
   ipcMain.handle(
     "file-exists",
     async (event: IpcMainInvokeEvent, filePath: string): Promise<boolean> => {

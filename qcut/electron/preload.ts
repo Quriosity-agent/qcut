@@ -159,6 +159,7 @@ interface ElectronAPI {
   ) => Promise<string | null>;
   readFile: (filePath: string) => Promise<Buffer | null>;
   writeFile: (filePath: string, data: Buffer | string) => Promise<boolean>;
+  saveBlob: (data: Buffer | Uint8Array, defaultFilename?: string) => Promise<{ success: boolean; filePath?: string; canceled?: boolean; error?: string }>;
   getFileInfo: (filePath: string) => Promise<FileInfo | null>;
 
   // Storage operations
@@ -299,6 +300,8 @@ const electronAPI: ElectronAPI = {
     ipcRenderer.invoke("read-file", filePath),
   writeFile: (filePath: string, data: Buffer | string): Promise<boolean> =>
     ipcRenderer.invoke("write-file", filePath, data),
+  saveBlob: (data: Buffer | Uint8Array, defaultFilename?: string): Promise<{ success: boolean; filePath?: string; canceled?: boolean; error?: string }> =>
+    ipcRenderer.invoke("save-blob", data, defaultFilename),
   getFileInfo: (filePath: string): Promise<FileInfo | null> =>
     ipcRenderer.invoke("get-file-info", filePath),
 

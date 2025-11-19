@@ -257,7 +257,31 @@ export async function downloadZipSafely(
   blob: Blob,
   filename: string
 ): Promise<void> {
-  // Use modern File System Access API if available
+  // Check if running in Electron
+  if (window.electronAPI?.saveBlob) {
+    try {
+      // Convert blob to array buffer for Electron
+      const arrayBuffer = await blob.arrayBuffer();
+      const uint8Array = new Uint8Array(arrayBuffer);
+      const result = await window.electronAPI.saveBlob(uint8Array, filename);
+
+      if (result.success) {
+        console.log("✅ ZIP saved successfully via Electron:", result.filePath);
+        return;
+      } else if (result.canceled) {
+        console.log("ZIP save canceled by user");
+        return;
+      } else {
+        console.error("Failed to save ZIP via Electron:", result.error);
+        // Fall through to browser methods
+      }
+    } catch (error) {
+      console.error("Electron save failed, falling back to browser method:", error);
+      // Fall through to browser methods
+    }
+  }
+
+  // Use modern File System Access API if available (browser)
   if ("showSaveFilePicker" in window) {
     try {
       const fileHandle = await (window as any).showSaveFilePicker({
@@ -279,7 +303,7 @@ export async function downloadZipSafely(
     }
   }
 
-  // Traditional download with navigation bug prevention
+  // Traditional download with navigation bug prevention (browser fallback)
   const url = URL.createObjectURL(blob);
 
   // Create download in a way that prevents navigation
