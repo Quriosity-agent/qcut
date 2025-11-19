@@ -69,6 +69,7 @@ const { setupSoundIPC } = require("./sound-handler.js");
 const { setupThemeIPC } = require("./theme-handler.js");
 const { setupApiKeyIPC } = require("./api-key-handler.js");
 const { setupGeminiHandlers } = require("./gemini-transcribe-handler.js");
+const { registerAIVideoHandlers } = require("./ai-video-save-handler.js");
 // Note: font-resolver-handler removed - not implemented
 
 let mainWindow: BrowserWindow | null = null;
@@ -364,6 +365,7 @@ app.whenReady().then(() => {
   setupThemeIPC(); // Add theme switching support
   setupApiKeyIPC(); // Add API key management support
   setupGeminiHandlers(); // Add Gemini transcription support
+  registerAIVideoHandlers(); // Add AI video save to disk support (MANDATORY)
   // Note: font-resolver removed - handler not implemented
 
   // Configure auto-updater for production builds
