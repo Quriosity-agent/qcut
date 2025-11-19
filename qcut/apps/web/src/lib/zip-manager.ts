@@ -94,6 +94,39 @@ export class ZipManager {
               "size:",
               item.file.size
             );
+        } else if (item.localPath && window.electronAPI?.readFile) {
+          // Handle local file path for Electron (AI videos saved to disk)
+          try {
+            const fileBuffer = await window.electronAPI.readFile(item.localPath);
+            if (fileBuffer) {
+              // Convert Buffer to Uint8Array for Blob constructor
+              const uint8Array = new Uint8Array(fileBuffer);
+              const blob = new Blob([uint8Array], { type: item.type === "video" ? "video/mp4" : "application/octet-stream" });
+              const file = new File([blob], filename, { type: blob.type });
+              this.zip.file(filename, file);
+              if (DEBUG_ZIP_MANAGER)
+                console.log(
+                  "? ZIP-MANAGER: Added local file to ZIP:",
+                  "filename:",
+                  filename,
+                  "localPath:",
+                  item.localPath,
+                  "size:",
+                  file.size
+                );
+            } else {
+              console.warn("step 8: export-all zip failed to read local file", {
+                name: item.name,
+                localPath: item.localPath
+              });
+            }
+          } catch (error) {
+            console.error("step 8: export-all zip error reading local file", {
+              name: item.name,
+              localPath: item.localPath,
+              error: error instanceof Error ? error.message : String(error)
+            });
+          }
         } else {
           const originalUrl = (item as any).originalUrl as string | undefined;
           const urlToFetch =
