@@ -1919,6 +1919,8 @@ export function useAIGeneration(props: UseAIGenerationProps) {
       setGeneratedVideos(generations);
       setStatusMessage(`Generated ${generations.length} videos successfully!`);
 
+      console.log("step 7: generation flow complete; updating UI and callbacks");
+
       console.log(
         `📤 Calling onComplete callback with ${generations.length} videos`
       );
