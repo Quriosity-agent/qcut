@@ -322,6 +322,15 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
   hasInitialized: false,
 
   addMediaItem: async (projectId, item) => {
+    console.log("step 6g: media-store addMediaItem", {
+      projectId,
+      id: item.id,
+      hasFile: !!item.file,
+      url: item.url,
+      originalUrl: (item as any).originalUrl,
+      size: item.file?.size,
+      type: item.type,
+    });
     // DEBUG: Log projectId parameter
     console.log(
       `[MediaStore.addMediaItem] Called with projectId: ${projectId}, item.name: ${item.name}`

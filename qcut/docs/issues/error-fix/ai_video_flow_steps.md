@@ -56,6 +56,7 @@ Step 6 - Generation downloads the video, creates a media item, and adds it to th
   - **Step 6.6 (implemented)**: Generate `localUrl = URL.createObjectURL(file)` and store it as `mediaItem.url` (primary), while keeping `mediaItem.originalUrl = video_url` and `newVideo.videoPath = video_url` for fallback.
   - **Step 6.7 (implemented)**: Media panel consumers should prefer the blob/local URL for playback and download, and fall back to the remote/original URL only if local is missing; download logs include a `source: "blob" | "remote"` flag in `step 8`.
   - **Debug checklist (use `step` logs for consistency)**:
+    - `step 6g: media-store addMediaItem` - at store entry, logs projectId/id, hasFile, url, originalUrl (if present), and file size to catch payload issues before persistence.
     - `step 6a: media integration condition check` - log `(activeProject && addMediaItem && response.video_url)` and which piece is missing when false.
     - `step 6: polling mode - deferring download` - emit when `response?.job_id && !response?.video_url` to flag remote-only phase.
     - `step 6d: file creation complete` - include `mediaItem.url` (local object URL once added), `file?.name`, `file?.size` to confirm a local blob exists before `addMediaItem`.
