@@ -150,18 +150,37 @@ export class ZipManager {
             });
 
             if (fileBuffer) {
-              // Convert to Uint8Array for browser compatibility
-              // fileBuffer from Electron IPC is likely already an ArrayBuffer or Uint8Array
-              const uint8Array = new Uint8Array(fileBuffer);
+              // fileBuffer from Electron IPC is serialized as an object with data array
+              // We need to convert it properly to Uint8Array
+              let uint8Array: Uint8Array;
+              const bufferAsAny = fileBuffer as any;
+
+              if (bufferAsAny instanceof Uint8Array) {
+                // Already Uint8Array
+                uint8Array = bufferAsAny;
+              } else if (bufferAsAny instanceof ArrayBuffer) {
+                // Convert ArrayBuffer to Uint8Array
+                uint8Array = new Uint8Array(bufferAsAny);
+              } else if (bufferAsAny.data && Array.isArray(bufferAsAny.data)) {
+                // Serialized Buffer from IPC - has a data property with array of bytes
+                uint8Array = new Uint8Array(bufferAsAny.data);
+              } else if (bufferAsAny.type === 'Buffer' && bufferAsAny.data) {
+                // Another form of serialized Buffer
+                uint8Array = new Uint8Array(bufferAsAny.data);
+              } else {
+                // Fallback - try to convert directly
+                uint8Array = new Uint8Array(bufferAsAny);
+              }
 
               console.log("step 9b-ai-buffer: Buffer details", {
-                dataType: Object.prototype.toString.call(fileBuffer),
-                length: uint8Array.length,
+                originalType: Object.prototype.toString.call(fileBuffer),
+                hasDataProp: !!(fileBuffer as any).data,
+                convertedLength: uint8Array.length,
                 firstBytes: Array.from(uint8Array.slice(0, 20)).map(b => b.toString(16).padStart(2, '0')).join(' ')
               });
 
-              // Add Uint8Array directly to ZIP
-              this.zip.file(filename, uint8Array);
+              // Add Uint8Array directly to ZIP with binary flag
+              this.zip.file(filename, uint8Array, { binary: true });
               console.log("step 9b-ai-success: AI video added from localPath", {
                 fileName: filename,
                 fileSize: uint8Array.length,
@@ -219,8 +238,22 @@ export class ZipManager {
               isArrayBuffer: fileBuffer ? fileBuffer instanceof ArrayBuffer : false,
             });
             if (fileBuffer) {
-              // Convert to Uint8Array for browser compatibility
-              const uint8Array = new Uint8Array(fileBuffer);
+              // Convert to Uint8Array properly handling IPC serialization
+              let uint8Array: Uint8Array;
+              const bufferAsAny = fileBuffer as any;
+
+              if (bufferAsAny instanceof Uint8Array) {
+                uint8Array = bufferAsAny;
+              } else if (bufferAsAny instanceof ArrayBuffer) {
+                uint8Array = new Uint8Array(bufferAsAny);
+              } else if (bufferAsAny.data && Array.isArray(bufferAsAny.data)) {
+                // Serialized Buffer from IPC
+                uint8Array = new Uint8Array(bufferAsAny.data);
+              } else if (bufferAsAny.type === 'Buffer' && bufferAsAny.data) {
+                uint8Array = new Uint8Array(bufferAsAny.data);
+              } else {
+                uint8Array = new Uint8Array(bufferAsAny);
+              }
 
               console.log("step 9f: Buffer details", {
                 dataType: Object.prototype.toString.call(fileBuffer),
@@ -228,8 +261,8 @@ export class ZipManager {
                 firstBytes: Array.from(uint8Array.slice(0, 20)).map(b => b.toString(16).padStart(2, '0')).join(' ')
               });
 
-              // Add Uint8Array directly to ZIP
-              this.zip.file(filename, uint8Array);
+              // Add Uint8Array directly to ZIP with binary flag
+              this.zip.file(filename, uint8Array, { binary: true });
               console.log("step 9j: local file added successfully to ZIP");
               if (DEBUG_ZIP_MANAGER)
                 console.log(
