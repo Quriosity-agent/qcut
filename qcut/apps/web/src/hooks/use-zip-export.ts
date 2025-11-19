@@ -31,7 +31,17 @@ export function useZipExport() {
 
   const exportToZip = useCallback(
     async (items: MediaItem[], options?: Partial<ZipExportOptions>) => {
-      if (items.length === 0) return;
+      console.log("step 8a: use-zip-export exportToZip called", {
+        itemsCount: items.length,
+        itemsWithFile: items.filter(item => !!item.file).length,
+        itemsWithLocalPath: items.filter(item => !!item.localPath).length,
+        options,
+      });
+
+      if (items.length === 0) {
+        console.log("step 8b: no items to export");
+        return;
+      }
 
       setExportState({
         phase: "adding",
@@ -41,10 +51,13 @@ export function useZipExport() {
       });
 
       try {
+        console.log("step 8c: creating ZipManager instance");
         const zipManager = new ZipManager();
 
         // Phase 1: Add files to ZIP
+        console.log("step 8d: starting addMediaItems");
         await zipManager.addMediaItems(items, (progress) => {
+          console.log("step 8e: addMediaItems progress", { progress });
           setExportState((prev) => ({
             ...prev,
             phase: "adding",
@@ -52,8 +65,10 @@ export function useZipExport() {
             completedFiles: Math.round(progress * items.length),
           }));
         });
+        console.log("step 8f: addMediaItems complete");
 
         // Phase 2: Compress ZIP
+        console.log("step 8g: starting compression");
         setExportState((prev) => ({
           ...prev,
           phase: "compressing",
@@ -61,8 +76,13 @@ export function useZipExport() {
         }));
 
         const zipBlob = await zipManager.generateZip(options);
+        console.log("step 8h: compression complete", {
+          blobSize: zipBlob.size,
+          blobType: zipBlob.type,
+        });
 
         // Phase 3: Download
+        console.log("step 8i: starting download");
         setExportState((prev) => ({
           ...prev,
           phase: "downloading",
@@ -74,9 +94,15 @@ export function useZipExport() {
           .replace(/[:.]/g, "-")
           .slice(0, -5);
         const filename = options?.filename || `media-export-${timestamp}.zip`;
+        console.log("step 8j: calling downloadZipSafely", {
+          filename,
+          blobSize: zipBlob.size,
+        });
         await downloadZipSafely(zipBlob, filename);
+        console.log("step 8k: downloadZipSafely complete");
 
         // Complete
+        console.log("step 8l: export complete, updating state");
         setExportState((prev) => ({
           ...prev,
           phase: "complete",

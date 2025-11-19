@@ -31,6 +31,15 @@ export class ZipManager {
     const total = items.length;
     let completed = 0;
 
+    console.log("step 9: zip-manager starting addMediaItems", {
+      totalItems: total,
+      itemsWithFile: items.filter(item => !!item.file).length,
+      itemsWithLocalPath: items.filter(item => !!item.localPath).length,
+      itemsWithUrl: items.filter(item => !!item.url).length,
+      electronAPIAvailable: !!window.electronAPI,
+      readFileAvailable: !!window.electronAPI?.readFile,
+    });
+
     if (DEBUG_ZIP_MANAGER)
       console.log("?? ZIP-MANAGER: Starting to add media items", {
         totalItems: total,
@@ -40,6 +49,16 @@ export class ZipManager {
       });
 
     for (const item of items) {
+      console.log("step 9a: processing item", {
+        index: completed,
+        name: item.name,
+        hasFile: !!item.file,
+        hasLocalPath: !!item.localPath,
+        localPath: item.localPath,
+        hasUrl: !!item.url,
+        url: item.url?.substring(0, 50),
+        type: item.type,
+      });
       try {
         // Get the filename
         let filename = item.name;
@@ -85,7 +104,13 @@ export class ZipManager {
 
         // Add file to ZIP directly, or fetch when only a URL is available (supports http(s) and blob:)
         if (item.file) {
+          console.log("step 9b: adding file directly to ZIP", {
+            filename,
+            fileSize: item.file.size,
+            fileType: item.file.type,
+          });
           this.zip.file(filename, item.file);
+          console.log("step 9c: file added successfully via File object");
           if (DEBUG_ZIP_MANAGER)
             console.log(
               "? ZIP-MANAGER: Added to ZIP:",
@@ -96,14 +121,42 @@ export class ZipManager {
             );
         } else if (item.localPath && window.electronAPI?.readFile) {
           // Handle local file path for Electron (AI videos saved to disk)
+          console.log("step 9d: attempting to read local file", {
+            localPath: item.localPath,
+            electronAPIAvailable: !!window.electronAPI,
+            readFileAvailable: !!window.electronAPI?.readFile,
+          });
           try {
             const fileBuffer = await window.electronAPI.readFile(item.localPath);
+            console.log("step 9e: readFile returned", {
+              bufferExists: !!fileBuffer,
+              bufferType: fileBuffer ? Object.prototype.toString.call(fileBuffer) : "null",
+              bufferLength: fileBuffer ? fileBuffer.length : 0,
+              isBuffer: fileBuffer ? Buffer.isBuffer(fileBuffer) : false,
+            });
             if (fileBuffer) {
               // Convert Buffer to Uint8Array for Blob constructor
+              console.log("step 9f: converting Buffer to Uint8Array", {
+                bufferLength: fileBuffer.length,
+              });
               const uint8Array = new Uint8Array(fileBuffer);
+              console.log("step 9g: creating Blob", {
+                uint8ArrayLength: uint8Array.length,
+                uint8ArrayByteLength: uint8Array.byteLength,
+              });
               const blob = new Blob([uint8Array], { type: item.type === "video" ? "video/mp4" : "application/octet-stream" });
+              console.log("step 9h: creating File from Blob", {
+                blobSize: blob.size,
+                blobType: blob.type,
+              });
               const file = new File([blob], filename, { type: blob.type });
+              console.log("step 9i: adding File to ZIP", {
+                fileName: filename,
+                fileSize: file.size,
+                fileType: file.type,
+              });
               this.zip.file(filename, file);
+              console.log("step 9j: local file added successfully to ZIP");
               if (DEBUG_ZIP_MANAGER)
                 console.log(
                   "? ZIP-MANAGER: Added local file to ZIP:",
@@ -115,16 +168,17 @@ export class ZipManager {
                   file.size
                 );
             } else {
-              console.warn("step 8: export-all zip failed to read local file", {
+              console.warn("step 9k: readFile returned null/undefined", {
                 name: item.name,
                 localPath: item.localPath
               });
             }
           } catch (error) {
-            console.error("step 8: export-all zip error reading local file", {
+            console.error("step 9l: error reading local file", {
               name: item.name,
               localPath: item.localPath,
-              error: error instanceof Error ? error.message : String(error)
+              error: error instanceof Error ? error.message : String(error),
+              errorStack: error instanceof Error ? error.stack : undefined
             });
           }
         } else {
@@ -189,20 +243,39 @@ export class ZipManager {
 
         completed++;
         onProgress?.(completed / total);
+        console.log("step 9m: item processing complete", {
+          itemName: item.name,
+          completed,
+          total,
+          progress: `${completed}/${total}`,
+        });
       } catch (error) {
         console.error(
-          `? ZIP-MANAGER: Failed to add ${item.name} to ZIP:`,
+          `step 9n: Failed to add ${item.name} to ZIP:`,
           error
         );
         // Continue with other files
       }
     }
+
+    console.log("step 9o: all items processed", {
+      totalProcessed: completed,
+      totalItems: total,
+      zipFiles: Object.keys(this.zip.files).length,
+      zipFileNames: Object.keys(this.zip.files),
+    });
   }
 
   async generateZip(options: Partial<ZipExportOptions> = {}): Promise<Blob> {
     const opts = { ...this.defaultOptions, ...options };
 
-    return await this.zip.generateAsync({
+    console.log("step 10: generating ZIP blob", {
+      filesInZip: Object.keys(this.zip.files).length,
+      compression: opts.compression,
+      compressionLevel: opts.compressionLevel,
+    });
+
+    const blob = await this.zip.generateAsync({
       type: "blob",
       compression: opts.compression,
       compressionOptions: {
@@ -212,6 +285,15 @@ export class ZipManager {
       platform: "UNIX", // Better Unicode support than DOS
       comment: "Created by QCut",
     });
+
+    console.log("step 10a: ZIP blob generated", {
+      blobSize: blob.size,
+      blobType: blob.type,
+      sizeKB: (blob.size / 1024).toFixed(2),
+      sizeMB: (blob.size / 1024 / 1024).toFixed(2),
+    });
+
+    return blob;
   }
 
   private resolveFilename(originalName: string): string {
@@ -257,13 +339,38 @@ export async function downloadZipSafely(
   blob: Blob,
   filename: string
 ): Promise<void> {
+  console.log("step 11: downloadZipSafely called", {
+    blobSize: blob.size,
+    blobType: blob.type,
+    filename,
+    electronAPIAvailable: !!window.electronAPI,
+    saveBlobAvailable: !!window.electronAPI?.saveBlob,
+  });
+
   // Check if running in Electron
   if (window.electronAPI?.saveBlob) {
     try {
+      console.log("step 11a: converting blob to array buffer");
       // Convert blob to array buffer for Electron
       const arrayBuffer = await blob.arrayBuffer();
+      console.log("step 11b: arrayBuffer created", {
+        byteLength: arrayBuffer.byteLength,
+      });
+
       const uint8Array = new Uint8Array(arrayBuffer);
+      console.log("step 11c: calling electronAPI.saveBlob", {
+        uint8ArrayLength: uint8Array.length,
+        uint8ArrayByteLength: uint8Array.byteLength,
+        filename,
+      });
+
       const result = await window.electronAPI.saveBlob(uint8Array, filename);
+      console.log("step 11d: saveBlob returned", {
+        success: result.success,
+        filePath: result.filePath,
+        canceled: result.canceled,
+        error: result.error,
+      });
 
       if (result.success) {
         console.log("✅ ZIP saved successfully via Electron:", result.filePath);
@@ -276,9 +383,14 @@ export async function downloadZipSafely(
         // Fall through to browser methods
       }
     } catch (error) {
-      console.error("Electron save failed, falling back to browser method:", error);
+      console.error("step 11e: Electron save failed", {
+        error: error instanceof Error ? error.message : String(error),
+        errorStack: error instanceof Error ? error.stack : undefined,
+      });
       // Fall through to browser methods
     }
+  } else {
+    console.log("step 11f: Electron API not available, using browser methods");
   }
 
   // Use modern File System Access API if available (browser)
