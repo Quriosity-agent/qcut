@@ -354,6 +354,22 @@ export function AiView() {
     return getCombinedCapabilities(textVideoModelIds);
   }, [selectedModels]);
 
+  useEffect(() => {
+    console.log(
+      `step 1: selectedModels updated -> ${
+        selectedModels.length ? selectedModels.join(", ") : "[none]"
+      }`
+    );
+  }, [selectedModels]);
+
+  useEffect(() => {
+    console.log("step 2: combinedCapabilities updated", {
+      aspectRatios: combinedCapabilities.supportedAspectRatios,
+      resolutions: combinedCapabilities.supportedResolutions,
+      durations: combinedCapabilities.supportedDurations,
+    });
+  }, [combinedCapabilities]);
+
   // Helper to count active settings
   const getActiveSettingsCount = () => {
     let count = 0;

@@ -707,6 +707,7 @@ export function useAIGeneration(props: UseAIGenerationProps) {
   // Main generation function
   const handleGenerate = useCallback(async () => {
     const startTimestamp = new Date().toISOString();
+    console.log("step 3: handleGenerate invoked (AI video flow)");
     console.log("============================================================");
     console.log("=== handleGenerate CALLED ===");
     console.log("============================================================");
@@ -882,6 +883,11 @@ export function useAIGeneration(props: UseAIGenerationProps) {
         if (modelCapabilities?.supportsSafetyChecker) {
           unifiedParams.enable_safety_checker = t2vSafetyChecker;
         }
+
+        console.log(`step 4: sanitized params for ${modelId}`, {
+          unifiedParams,
+          requestedDuration: t2vDuration,
+        });
 
         console.log(
           `\n🎬 [${i + 1}/${selectedModels.length}] Processing model: ${modelId} (${modelName})`
