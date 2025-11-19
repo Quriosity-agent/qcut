@@ -52,6 +52,12 @@ Step 6 - Generation downloads the video, creates a media item, and adds it to th
   - **Step 6.3**: Create `File` object from the downloaded Blob.
   - **Step 6.4**: Construct `mediaItem` object with metadata (name, duration, dimensions).
   - **Step 6.5**: Call `addMediaItem` to add to the project.
+  - **Remote vs Local note**: Videos stay remote (only `video_url` stored) when we skip download—for example, if `activeProject`/`addMediaItem` are unavailable or in polling mode pre-completion. When both project and media store are present, the flow downloads the blob and saves a local `File` before adding.
+  - **Debug checklist (use `step` logs for consistency)**:
+    - `step 6a: media integration condition check` — log `(activeProject && addMediaItem && response.video_url)` and which piece is missing when false.
+    - `step 6: polling mode - deferring download` — emit when `response?.job_id && !response?.video_url` to flag remote-only phase.
+    - `step 6d: file creation complete` — include `mediaItem.url`, `file?.name`, `file?.size` to confirm a local blob exists before `addMediaItem`.
+    - `step 6f: addMediaItem completed` — verify the saved media item (state/DB) retains the `File` and not just the URL.
 
 Step 7 - The media store persists the item; generation updates UI progress to 100% and fires onComplete; the UI shows the generated video to the user.
 - **Function**: `addMediaItem` (store action), `handleGenerate` (UI update)
