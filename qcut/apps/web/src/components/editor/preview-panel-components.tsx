@@ -53,6 +53,15 @@ export function FullscreenToolbar({
   const totalDuration = getTotalDuration();
   const progress = totalDuration > 0 ? (currentTime / totalDuration) * 100 : 0;
 
+  const handleToggleClick = () => {
+    console.log("[PLAYBACK] Play/Pause button clicked", {
+      isPlaying,
+      currentTime,
+      totalDuration,
+    });
+    toggle();
+  };
+
   const handleTimelineClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!hasAnyElements) return;
     const rect = e.currentTarget.getBoundingClientRect();
@@ -139,7 +148,7 @@ export function FullscreenToolbar({
         <Button
           variant="text"
           size="icon"
-          onClick={toggle}
+          onClick={handleToggleClick}
           disabled={!hasAnyElements}
           className="h-auto p-0 text-white hover:text-white/80"
           data-testid={
@@ -309,6 +318,15 @@ export function PreviewToolbar({
     canvasPresets,
   } = useAspectRatio();
 
+  const handleToggleClick = () => {
+    console.log("[PLAYBACK] Play/Pause button clicked", {
+      isPlaying,
+      currentTime,
+      totalDuration,
+    });
+    toggle();
+  };
+
   const handlePresetSelect = (preset: { width: number; height: number }) => {
     setCanvasSize({ width: preset.width, height: preset.height });
   };
@@ -389,7 +407,7 @@ export function PreviewToolbar({
         <Button
           variant="text"
           size="icon"
-          onClick={toggle}
+          onClick={handleToggleClick}
           disabled={!hasAnyElements}
           className="h-auto p-0 text-white hover:text-white/80"
           data-testid={

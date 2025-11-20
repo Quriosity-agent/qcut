@@ -30,6 +30,7 @@ export function VideoPlayer({
   const videoRef = useRef<HTMLVideoElement>(null);
   const previousSrcRef = useRef<string | null>(null);
   const { isPlaying, currentTime, volume, speed, muted } = usePlaybackStore();
+  const loggedOutOfRangeRef = useRef(false);
 
   // Calculate if we're within this clip's timeline range
   const clipEndTime = clipStartTime + (clipDuration - trimStart - trimEnd);
@@ -39,8 +40,31 @@ export function VideoPlayer({
   // Sync playback events
   useEffect(() => {
     const video = videoRef.current;
-    if (!video || !isInClipRange) return;
+    if (!video) return;
+    if (!isInClipRange) {
+      if (!loggedOutOfRangeRef.current) {
+        console.warn("[CANVAS-VIDEO] Skipping video events (out of clip range)", {
+          videoId: videoId ?? src,
+          currentTime,
+          clipStartTime,
+          clipEndTime,
+          trimStart,
+          trimEnd,
+          clipDuration,
+        });
+        loggedOutOfRangeRef.current = true;
+      }
+      return;
+    }
+    loggedOutOfRangeRef.current = false;
 
+    console.log("[CANVAS-VIDEO] Attaching playback listeners", {
+      videoId: videoId ?? src,
+      clipStartTime,
+      clipEndTime,
+      trimStart,
+      trimEnd,
+    });
     const handleSeekEvent = (e: CustomEvent) => {
       // Always update video time, even if outside clip range
       const timelineTime = e.detail.time;
@@ -116,11 +140,23 @@ export function VideoPlayer({
     if (!video) return;
 
     if (isPlaying && isInClipRange) {
+      console.log("[CANVAS-VIDEO] play()", {
+        videoId: videoId ?? src,
+        currentTime,
+      });
       video.play().catch(() => {});
     } else {
+      if (isPlaying && !isInClipRange) {
+        console.warn("[CANVAS-VIDEO] Requested play but clip not active", {
+          videoId: videoId ?? src,
+          currentTime,
+          clipStartTime,
+          clipEndTime,
+        });
+      }
       video.pause();
     }
-  }, [isPlaying, isInClipRange]);
+  }, [isPlaying, isInClipRange, clipStartTime, clipEndTime, currentTime, videoId, src]);
 
   // Sync volume and speed
   useEffect(() => {

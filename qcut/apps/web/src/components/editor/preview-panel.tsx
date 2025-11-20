@@ -469,6 +469,11 @@ export function PreviewPanel() {
     EFFECTS_ENABLED
   );
 
+  // Flat list of timeline elements for diagnostics
+  const timelineElements = useMemo(() => {
+    return tracks.flatMap((track) => track.elements || []);
+  }, [tracks]);
+
   useEffect(() => {
     const seekTime = lastSeekEventTimeRef.current;
     const didSeek =
@@ -490,8 +495,21 @@ export function PreviewPanel() {
         activeElementsCount: activeElements.length,
         hasEffects,
       });
+      if (hasAnyElements && activeElements.length === 0) {
+        console.warn("[CANVAS-VIDEO] No active elements rendered while playing", {
+          currentTime,
+          timelineElements: timelineElements.length,
+        });
+      }
     }
-  }, [currentTime, activeElements.length, hasEffects, isPlaying]);
+  }, [
+    currentTime,
+    activeElements.length,
+    hasEffects,
+    isPlaying,
+    hasAnyElements,
+    timelineElements.length,
+  ]);
 
   // Warm cache during idle time
   useEffect(() => {
@@ -622,15 +640,28 @@ export function PreviewPanel() {
   const { videoSourcesById, videoBlobUrls } = useMemo(() => {
     const sources = new Map<string, ReturnType<typeof getVideoSource>>();
     const blobUrls: string[] = [];
+    let videoCount = 0;
+    let missingSourceIds: string[] = [];
 
     mediaItems.forEach((item) => {
       if (item.type === "video") {
+        videoCount += 1;
         const source = getVideoSource(item);
         sources.set(item.id, source);
         if (source?.type === "blob") {
           blobUrls.push(source.src);
         }
+        if (!source) {
+          missingSourceIds.push(item.id);
+        }
       }
+    });
+
+    console.log("[CANVAS-VIDEO] Built video source map", {
+      videoCount,
+      sourceCount: sources.size,
+      blobCount: blobUrls.length,
+      missingSourceIds,
     });
 
     return { videoSourcesById: sources, videoBlobUrls: blobUrls };
@@ -866,6 +897,16 @@ export function PreviewPanel() {
         const source = videoSourcesById.get(mediaItem.id) ?? null;
 
         if (!source) {
+          console.error("[CANVAS-VIDEO] No available video source", {
+            mediaId: mediaItem.id,
+            mediaName: mediaItem.name,
+            hasFile: !!mediaItem.file,
+            hasUrl: !!mediaItem.url,
+            trimStart: element.trimStart,
+            trimEnd: element.trimEnd,
+            clipDuration: element.duration,
+            clipStartTime: element.startTime,
+          });
           return (
             <div
               key={element.id}
@@ -958,10 +999,6 @@ export function PreviewPanel() {
   };
 
   // Enhanced sync check: Timeline elements exist but no media items loaded
-  const timelineElements = useMemo(() => {
-    return tracks.flatMap((track) => track.elements || []);
-  }, [tracks]);
-
   // If timeline has elements but media list is still empty, prefer showing normal UI and let
   // individual elements render placeholders as needed. Avoid global warning screen.
 
