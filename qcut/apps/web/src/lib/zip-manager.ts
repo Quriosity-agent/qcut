@@ -481,7 +481,14 @@ export class ZipManager {
       } else if (bufferAsAny?.type === "Buffer" && bufferAsAny?.data) {
         uint8Array = new Uint8Array(bufferAsAny.data);
       } else if (bufferAsAny != null) {
-        uint8Array = new Uint8Array(bufferAsAny as any);
+        try {
+          uint8Array = new Uint8Array(bufferAsAny as any);
+        } catch {
+          console.warn(`${logLabel}: unable to coerce buffer to Uint8Array`, {
+            itemName,
+            originalType: typeTag,
+          });
+        }
       }
 
       console.log(`${logLabel}: normalized buffer`, {
