@@ -19,7 +19,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Play, Pause, Expand, SkipBack, SkipForward } from "lucide-react";
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
-import { debugLog } from "@/lib/debug-config";
 import { cn } from "@/lib/utils";
 import { formatTimeCode } from "@/lib/time";
 import { EditableTimecode } from "@/components/ui/editable-timecode";

@@ -2,7 +2,6 @@ import { create } from "zustand";
 import type { PlaybackState, PlaybackControls } from "@/types/playback";
 import { useTimelineStore } from "@/stores/timeline-store";
 import { useProjectStore } from "./project-store";
-import { debugLog } from "@/lib/debug-config";
 
 /**
  * Playback store interface combining state and control methods
@@ -26,7 +25,7 @@ const startTimer = (store: () => PlaybackStore) => {
   if (playbackTimer) cancelAnimationFrame(playbackTimer);
 
   const { isPlaying, currentTime, speed } = store();
-  debugLog("step 2: playback timer started", {
+  console.log("step 2: playback timer started", {
     isPlaying,
     currentTime,
     speed,
@@ -78,7 +77,7 @@ const startTimer = (store: () => PlaybackStore) => {
         window.dispatchEvent(
           new CustomEvent("playback-update", { detail: { time: newTime } })
         );
-        debugLog("step 3: playback-update event dispatched", {
+        console.log("step 3: playback-update event dispatched", {
           time: newTime,
           delta,
           speed: state.speed,
@@ -110,13 +109,13 @@ export const usePlaybackStore = create<PlaybackStore>((set, get) => ({
   speed: 1.0,
 
   play: () => {
-    debugLog("step 1: user initiated playback", { action: "play" });
+    console.log("step 1: user initiated playback", { action: "play" });
     set({ isPlaying: true });
     startTimer(get);
   },
 
   pause: () => {
-    debugLog("step 1: user initiated playback", { action: "pause" });
+    console.log("step 1: user initiated playback", { action: "pause" });
     set({ isPlaying: false });
     stopTimer();
   },
@@ -133,7 +132,7 @@ export const usePlaybackStore = create<PlaybackStore>((set, get) => ({
   seek: (time: number) => {
     const { duration, currentTime: previousTime } = get();
     const clampedTime = Math.max(0, Math.min(duration, time));
-    debugLog("step 8: playback store seek", {
+    console.log("step 8: playback store seek", {
       oldTime: previousTime,
       newTime: clampedTime,
     });
@@ -144,7 +143,7 @@ export const usePlaybackStore = create<PlaybackStore>((set, get) => ({
       detail: { time: clampedTime },
     });
     window.dispatchEvent(event);
-    debugLog("event: playback-seek dispatched", {
+    console.log("event: playback-seek dispatched", {
       time: clampedTime,
       source: "store.seek",
     });
@@ -166,7 +165,7 @@ export const usePlaybackStore = create<PlaybackStore>((set, get) => ({
       detail: { speed: newSpeed },
     });
     window.dispatchEvent(event);
-    debugLog("event: playback-speed dispatched", {
+    console.log("event: playback-speed dispatched", {
       speed: newSpeed,
       previousSpeed,
     });

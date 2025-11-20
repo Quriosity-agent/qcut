@@ -2,7 +2,6 @@
 
 import { useRef, useEffect } from "react";
 import { usePlaybackStore } from "@/stores/playback-store";
-import { debugLog } from "@/lib/debug-config";
 
 interface VideoPlayerProps {
   videoId?: string;
@@ -76,7 +75,7 @@ export function VideoPlayer({
         )
       );
       video.currentTime = videoTime;
-      debugLog("step 9: video player seeked", {
+      console.log("step 9: video player seeked", {
         videoId: videoId ?? src,
         timelineTime,
         calculatedVideoTime: videoTime,
@@ -98,7 +97,7 @@ export function VideoPlayer({
       if (Math.abs(video.currentTime - targetTime) > 0.5) {
         video.currentTime = targetTime;
       }
-      debugLog("step 4: video player synced", {
+      console.log("step 4: video player synced", {
         videoId: videoId ?? src,
         timelineTime,
         videoTime: targetTime,

@@ -2,7 +2,6 @@ import { snapTimeToFrame } from "@/constants/timeline-constants";
 import { useProjectStore } from "@/stores/project-store";
 import { usePlaybackStore } from "@/stores/playback-store";
 import { useState, useEffect, useCallback, useRef } from "react";
-import { debugLog } from "@/lib/debug-config";
 
 interface UseTimelinePlayheadProps {
   currentTime: number;
@@ -61,7 +60,7 @@ export function useTimelinePlayhead({
       const time = snapTimeToFrame(rawTime, projectFps);
 
       if (!hasLoggedSeekRef.current) {
-        debugLog("step 7: user initiated seek", {
+        console.log("step 7: user initiated seek", {
           mouseX: rawX,
           rawTime,
           snappedTime: time,
@@ -255,7 +254,7 @@ export function useTimelinePlayhead({
       playheadPx > rulerViewport.scrollLeft + viewportWidth;
 
     if (needsScroll) {
-      debugLog("step 6: timeline playhead updated", {
+      console.log("step 6: timeline playhead updated", {
         currentTime: playheadPosition,
         playheadPosition: playheadPx,
         shouldAutoScroll: true,
@@ -267,7 +266,7 @@ export function useTimelinePlayhead({
       );
       rulerViewport.scrollLeft = tracksViewport.scrollLeft = desiredScroll;
     } else {
-      debugLog("step 6: timeline playhead updated", {
+      console.log("step 6: timeline playhead updated", {
         currentTime: playheadPosition,
         playheadPosition: playheadPx,
         shouldAutoScroll: false,
