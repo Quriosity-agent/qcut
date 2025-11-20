@@ -96,22 +96,10 @@ export function DefaultLayout({ resetCounter }: LayoutProps) {
       }
     }
 
-    // Final reconcile to hit 100% within tolerance.
-    const diff = 100 - (tools + preview + properties);
-    if (Math.abs(diff) > 0.01) {
-      const previewAdjusted = clamp(preview + diff, minPreview, maxPreview);
-      preview = previewAdjusted;
-      properties = round2(100 - tools - preview);
-    }
-
-    // Guard: ensure properties within bounds after final reconcile.
+    // Final reconciliation: let properties absorb rounding differences.
+    properties = round2(100 - tools - preview);
+    // Clamp properties last; if it pushes the total off 100%, we prioritize bounds.
     properties = clamp(properties, minProps, maxProps);
-
-    // If rounding drifted, snap properties to close the gap.
-    const finalTotal = tools + preview + properties;
-    if (Math.abs(finalTotal - 100) > 0.01) {
-      properties = round2(100 - tools - preview);
-    }
 
     return {
       normalizedTools: tools,

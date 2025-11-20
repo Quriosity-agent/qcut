@@ -561,17 +561,18 @@ class FalAIClient {
       settings.outputFormat ??
       (params.output_format as string | undefined) ??
       ((params as Record<string, unknown>).outputFormat as string | undefined);
-    if (supportsOutputFormat) {
-      // Normalize the format and assign it, falling back to the default if none is found.
-      params.output_format = normalizeOutputFormat(potentialFormat);
+    if (potentialFormat) {
+      if (supportsOutputFormat) {
+        // Normalize the format and assign it, falling back to the default if none is found.
+        params.output_format = normalizeOutputFormat(potentialFormat);
+      } else {
+        // Model doesn't support output_format but user provided it; warn and drop it to avoid 422s.
+        debugLogger.warn(FAL_LOG_COMPONENT, "OUTPUT_FORMAT_NOT_SUPPORTED", {
+          modelId: model.id,
+          requestedFormat: potentialFormat,
+        });
+      }
       // Ensure the camelCase version is removed to avoid sending both.
-      delete (params as Record<string, unknown>).outputFormat;
-    } else if (potentialFormat) {
-      // Model doesn't support output_format but user provided it; warn and drop it to avoid 422s.
-      debugLogger.warn(FAL_LOG_COMPONENT, "OUTPUT_FORMAT_NOT_SUPPORTED", {
-        modelId: model.id,
-        requestedFormat: potentialFormat,
-      });
       delete (params as Record<string, unknown>).outputFormat;
     }
 
