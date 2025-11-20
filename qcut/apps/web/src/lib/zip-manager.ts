@@ -68,7 +68,7 @@ export class ZipManager {
         if (
           item.metadata?.source === "text2image" &&
           item.file &&
-          !filename.includes(".")
+          !this.hasValidExtension(filename)
         ) {
           const mimeType = item.file.type || "image/png";
           const extension = mimeType.split("/")[1] || "png";
@@ -85,9 +85,9 @@ export class ZipManager {
             );
         }
         // Fix missing extensions for videos (AI or not)
-        if (item.type === "video" && !filename.includes(".")) {
+        if (item.type === "video" && !this.hasValidExtension(filename)) {
           // Prefer extension from localPath, then MIME type, then default mp4
-          const pathExtMatch = item.localPath?.match(/\\.([a-zA-Z0-9]+)$/);
+          const pathExtMatch = item.localPath?.match(/\.([a-zA-Z0-9]+)$/);
           const mimeType = item.file?.type;
           const extFromMime = mimeType?.split("/")[1];
           const videoExtension =
@@ -98,6 +98,7 @@ export class ZipManager {
           console.log("step 9a-extension-fix", {
             originalName: item.name,
             addedExtension: videoExtension,
+            hadValidExtension: this.hasValidExtension(item.name),
             localPath: item.localPath,
             mimeType,
           });
@@ -439,6 +440,12 @@ export class ZipManager {
     if (!sanitized) sanitized = "file";
 
     return sanitized;
+  }
+
+  private hasValidExtension(name: string): boolean {
+    const trimmed = name.trim();
+    // Accept a dot followed by 2-6 alphanumeric chars at the end (e.g., .mp4, .webm)
+    return /\.[A-Za-z0-9]{2,6}$/.test(trimmed);
   }
 
   reset(): void {
