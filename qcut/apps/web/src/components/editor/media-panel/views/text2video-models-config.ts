@@ -68,19 +68,20 @@ export const T2V_MODEL_CAPABILITIES: Record<T2VModelId, T2VModelCapabilities> = 
   wan_25_preview: {
     supportsAspectRatio: false,
     supportsResolution: true,
-    supportedResolutions: ["480p", "720p", "1080p"],
+    supportedResolutions: ["480p", "720p"], // FAL Wan v2.5 caps at 720p
     supportsDuration: true,
     supportedDurations: [5, 10],
     supportsNegativePrompt: false,
     supportsPromptExpansion: false,
     supportsSeed: true,
     supportsSafetyChecker: true,
-    defaultResolution: "1080p",
+    defaultResolution: "720p",
     defaultDuration: 5,
   },
 
   ltxv2_pro_t2v: {
-    supportsAspectRatio: false,
+    supportsAspectRatio: true,
+    supportedAspectRatios: ["16:9", "9:16", "1:1"],
     supportsResolution: true,
     supportedResolutions: ["1080p", "1440p", "2160p"],
     supportsDuration: true,
@@ -89,12 +90,14 @@ export const T2V_MODEL_CAPABILITIES: Record<T2VModelId, T2VModelCapabilities> = 
     supportsPromptExpansion: false,
     supportsSeed: true,
     supportsSafetyChecker: false,
+    defaultAspectRatio: "16:9",
     defaultResolution: "1080p",
     defaultDuration: 6,
   },
 
   ltxv2_fast_t2v: {
-    supportsAspectRatio: false,
+    supportsAspectRatio: true,
+    supportedAspectRatios: ["16:9", "9:16", "1:1"],
     supportsResolution: true,
     supportedResolutions: ["1080p", "1440p", "2160p"],
     supportsDuration: true,
@@ -103,17 +106,18 @@ export const T2V_MODEL_CAPABILITIES: Record<T2VModelId, T2VModelCapabilities> = 
     supportsPromptExpansion: false,
     supportsSeed: true,
     supportsSafetyChecker: false,
+    defaultAspectRatio: "16:9",
     defaultResolution: "1080p",
     defaultDuration: 6,
   },
 
   veo31_fast: {
     supportsAspectRatio: true,
-    supportedAspectRatios: ["16:9", "9:16", "1:1"],
+    supportedAspectRatios: ["16:9", "9:16"], // FAL Veo 3.1 supports portrait/landscape only
     supportsResolution: true,
     supportedResolutions: ["720p", "1080p"],
     supportsDuration: true,
-    supportedDurations: [4, 5, 6, 8],
+    supportedDurations: [5, 6, 8], // Veo 3.1 supports 5-8s
     supportsNegativePrompt: true,
     supportsPromptExpansion: true,
     supportsSeed: true,
@@ -125,11 +129,11 @@ export const T2V_MODEL_CAPABILITIES: Record<T2VModelId, T2VModelCapabilities> = 
 
   veo31: {
     supportsAspectRatio: true,
-    supportedAspectRatios: ["16:9", "9:16", "1:1", "4:3"],
+    supportedAspectRatios: ["16:9", "9:16"], // Veo 3.1 supports portrait/landscape only
     supportsResolution: true,
     supportedResolutions: ["720p", "1080p"],
     supportsDuration: true,
-    supportedDurations: [4, 5, 6, 8],
+    supportedDurations: [5, 6, 8], // Veo 3.1 supports 5-8s
     supportsNegativePrompt: true,
     supportsPromptExpansion: true,
     supportsSeed: true,
