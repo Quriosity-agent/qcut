@@ -140,17 +140,19 @@ export function VideoPlayer({
     if (!video) return;
 
     const logState = (label: string, extra?: Record<string, unknown>) => {
-      console.log(`[CANVAS-VIDEO] ${label}`, {
-        videoId: videoId ?? src,
-        readyState: video.readyState,
-        networkState: video.networkState,
-        currentTime: video.currentTime,
-        paused: video.paused,
-        ended: video.ended,
-        muted: video.muted,
-        volume: video.volume,
-        ...extra,
-      });
+      const msgParts = [
+        `id=${videoId ?? src}`,
+        `t=${video.currentTime.toFixed(3)}`,
+        `rs=${video.readyState}`,
+        `ns=${video.networkState}`,
+        video.paused ? "paused" : "playing",
+      ];
+      if (extra) {
+        Object.entries(extra).forEach(([k, v]) =>
+          msgParts.push(`${k}=${String(v)}`)
+        );
+      }
+      console.log(`[CANVAS-VIDEO] ${label} | ${msgParts.join(" | ")}`);
     };
 
     const handleLoadedMetadata = () => logState("loadedmetadata");
@@ -193,6 +195,7 @@ export function VideoPlayer({
     video.addEventListener("seeked", handleSeeked);
     video.addEventListener("error", handleError);
     video.addEventListener("timeupdate", handleTimeUpdate);
+    logState("attach-listeners");
 
     return () => {
       video.removeEventListener("loadedmetadata", handleLoadedMetadata);
@@ -218,9 +221,20 @@ export function VideoPlayer({
     if (isPlaying && isInClipRange) {
       console.log("[CANVAS-VIDEO] play()", {
         videoId: videoId ?? src,
-        currentTime,
+        currentTime: Number(currentTime.toFixed(3)),
+        readyState: video.readyState,
+        networkState: video.networkState,
       });
-      video.play().catch(() => {});
+      video
+        .play()
+        .catch((err) =>
+          console.error("[CANVAS-VIDEO] play() failed", {
+            videoId: videoId ?? src,
+            error: err?.message || String(err),
+            readyState: video.readyState,
+            networkState: video.networkState,
+          })
+        );
     } else {
       if (isPlaying && !isInClipRange) {
         console.warn("[CANVAS-VIDEO] Requested play but clip not active", {
