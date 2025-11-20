@@ -68,20 +68,20 @@ export const T2V_MODEL_CAPABILITIES: Record<T2VModelId, T2VModelCapabilities> = 
   wan_25_preview: {
     supportsAspectRatio: false,
     supportsResolution: true,
-    supportedResolutions: ["480p", "720p"], // FAL Wan v2.5 caps at 720p
+    supportedResolutions: ["480p", "720p", "1080p"], // FAL Wan v2.5 supports 480p, 720p, 1080p
     supportsDuration: true,
     supportedDurations: [5, 10],
     supportsNegativePrompt: false,
     supportsPromptExpansion: false,
     supportsSeed: true,
     supportsSafetyChecker: true,
-    defaultResolution: "720p",
+    defaultResolution: "1080p",
     defaultDuration: 5,
   },
 
   ltxv2_pro_t2v: {
     supportsAspectRatio: true,
-    supportedAspectRatios: ["16:9", "9:16", "1:1"],
+    supportedAspectRatios: ["16:9"], // FAL LTX Video 2.0 Pro supports only 16:9
     supportsResolution: true,
     supportedResolutions: ["1080p", "1440p", "2160p"],
     supportsDuration: true,
@@ -97,7 +97,7 @@ export const T2V_MODEL_CAPABILITIES: Record<T2VModelId, T2VModelCapabilities> = 
 
   ltxv2_fast_t2v: {
     supportsAspectRatio: true,
-    supportedAspectRatios: ["16:9", "9:16", "1:1"],
+    supportedAspectRatios: ["16:9"], // FAL LTX Video 2.0 Fast supports only 16:9
     supportsResolution: true,
     supportedResolutions: ["1080p", "1440p", "2160p"],
     supportsDuration: true,
@@ -113,7 +113,7 @@ export const T2V_MODEL_CAPABILITIES: Record<T2VModelId, T2VModelCapabilities> = 
 
   veo31_fast: {
     supportsAspectRatio: true,
-    supportedAspectRatios: ["16:9", "9:16"], // FAL Veo 3.1 supports portrait/landscape only
+    supportedAspectRatios: ["16:9", "9:16", "1:1"], // FAL Veo 3.1 supports 16:9, 9:16, and 1:1 (outpainting)
     supportsResolution: true,
     supportedResolutions: ["720p", "1080p"],
     supportsDuration: true,
@@ -129,7 +129,7 @@ export const T2V_MODEL_CAPABILITIES: Record<T2VModelId, T2VModelCapabilities> = 
 
   veo31: {
     supportsAspectRatio: true,
-    supportedAspectRatios: ["16:9", "9:16"], // Veo 3.1 supports portrait/landscape only
+    supportedAspectRatios: ["16:9", "9:16", "1:1"], // FAL Veo 3.1 supports 16:9, 9:16, and 1:1 (outpainting)
     supportsResolution: true,
     supportedResolutions: ["720p", "1080p"],
     supportsDuration: true,
