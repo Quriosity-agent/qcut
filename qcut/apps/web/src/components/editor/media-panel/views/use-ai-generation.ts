@@ -838,15 +838,30 @@ export function useAIGeneration(props: UseAIGenerationProps) {
             ? T2V_MODEL_CAPABILITIES[modelId as T2VModelId]
             : undefined;
 
+        const isSora2TextModel =
+          activeTab === "text" && modelId.startsWith("sora2_");
+
         // Build unified params based on model capabilities
         const unifiedParams: Record<string, unknown> = {};
-        if (modelCapabilities?.supportsAspectRatio && t2vAspectRatio) {
+        if (
+          modelCapabilities?.supportsAspectRatio &&
+          t2vAspectRatio &&
+          !isSora2TextModel
+        ) {
           unifiedParams.aspect_ratio = t2vAspectRatio;
         }
-        if (modelCapabilities?.supportsResolution && t2vResolution) {
+        if (
+          modelCapabilities?.supportsResolution &&
+          t2vResolution &&
+          !isSora2TextModel
+        ) {
           unifiedParams.resolution = t2vResolution;
         }
-        if (modelCapabilities?.supportsDuration && t2vDuration) {
+        if (
+          modelCapabilities?.supportsDuration &&
+          t2vDuration &&
+          !isSora2TextModel
+        ) {
           const safeDuration = getSafeDuration(t2vDuration, modelCapabilities);
           if (safeDuration !== undefined) {
             if (
@@ -2077,6 +2092,13 @@ console.log("📤 Adding to media store with item:", mediaItem);
     onComplete,
     startStatusPolling,
     veo31Settings,
+    t2vAspectRatio,
+    t2vResolution,
+    t2vDuration,
+    t2vNegativePrompt,
+    t2vPromptExpansion,
+    t2vSeed,
+    t2vSafetyChecker,
     aspectRatio,
     duration,
     resolution,
