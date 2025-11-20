@@ -11,7 +11,14 @@
 5. React warns and the ref is effectively dropped.
 
 ## 3) Relevant files to inspect
-- `src/components/ui/button.tsx` (or equivalent Radix-based button wrapper).
-- Any Radix button usage with `asChild` in the editor UI, especially around panel controls (see stack trace: `Primitive.button.SlotClone`).
-- `qcut/apps/web/src/components/editor/preview-panel.tsx` (involved in stack trace).
-- `qcut/apps/web/src/components/editor/panel-layouts.tsx` (parent structure in stack trace).
+- `qcut/apps/web/src/components/ui/button.tsx` (Radix-based button wrapper).
+- Any Radix button usage with `asChild` in the editor UI, especially panel controls (stack trace: `Primitive.button.SlotClone`).
+- `qcut/apps/web/src/components/editor/preview-panel.tsx` (in trace).
+- `qcut/apps/web/src/components/editor/panel-layouts.tsx` (parents in trace).
+
+## 4) Quick remediation plan
+- Locate the component rendered as `Primitive.button.SlotClone` (likely `Button` with `asChild`).
+- Ensure that child component is wrapped in `forwardRef` and passes the ref to the underlying DOM element (e.g., `<button ref={ref} ... />`). If the ref is unused, drop it.
+- Implemented stopgap: removed ref forwarding from `Button` when `asChild` is used (`qcut/apps/web/src/components/ui/button.tsx`) to prevent refs from landing on components that cannot handle them.
+- Next step if ref is needed: add `forwardRef` to any custom child passed via `asChild`, then restore ref forwarding inside `Button`.
+- Re-test the interaction that logs the warning to confirm it disappears.
