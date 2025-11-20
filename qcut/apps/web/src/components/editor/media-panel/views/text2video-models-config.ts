@@ -16,6 +16,22 @@ export type T2VModelId =
   | "kling1_6_pro"
   | "kling1_6_standard";
 
+// Map AI model ids to canonical T2VModelIds used by capability lookups.
+// This prevents text-to-video models whose ids differ between AI_MODELS and
+// T2V_MODEL_CAPABILITIES from being dropped when computing combined settings.
+export const T2V_MODEL_ID_ALIASES: Record<string, T2VModelId> = {
+  veo31_fast_text_to_video: "veo31_fast",
+  veo31_text_to_video: "veo31",
+  hailuo23_standard_t2v: "hailuo_v2",
+  hailuo23_pro_t2v: "hailuo_v2",
+  hailuo: "hailuo_v2",
+  hailuo_pro: "hailuo_v2",
+  seedance: "seedance_t2v",
+  seedance_pro: "seedance_t2v",
+  kling_v2_5_turbo: "kling1_6_pro",
+  kling_v2: "kling1_6_pro",
+};
+
 export interface T2VModelCapabilities {
   supportsAspectRatio: boolean;
   supportedAspectRatios?: string[];
@@ -287,4 +303,17 @@ function getCommonDurations(
   return allDurations.reduce((common, durations) =>
     common.filter((d) => durations.includes(d))
   );
+}
+
+/**
+ * Normalize an AI model id to the canonical T2VModelId used by capability lookups.
+ */
+export function resolveT2VModelId(
+  modelId: string
+): T2VModelId | undefined {
+  if (modelId in T2V_MODEL_CAPABILITIES) {
+    return modelId as T2VModelId;
+  }
+
+  return T2V_MODEL_ID_ALIASES[modelId];
 }

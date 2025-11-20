@@ -63,8 +63,8 @@ import {
   UPLOAD_CONSTANTS,
 } from "./ai-constants";
 import {
-  T2V_MODEL_CAPABILITIES,
   getCombinedCapabilities,
+  resolveT2VModelId,
   type T2VModelId,
 } from "./text2video-models-config";
 import type { AIActiveTab } from "./ai-types";
@@ -358,9 +358,13 @@ export function AiView() {
 
   // Calculate combined capabilities for selected text-to-video models
   const combinedCapabilities = useMemo(() => {
-    const textVideoModelIds = selectedModels
-      .filter((modelId) => modelId in T2V_MODEL_CAPABILITIES)
-      .map((id) => id as T2VModelId);
+    const textVideoModelIds = Array.from(
+      new Set(
+        selectedModels
+          .map((modelId) => resolveT2VModelId(modelId))
+          .filter((id): id is T2VModelId => Boolean(id))
+      )
+    );
 
     return getCombinedCapabilities(textVideoModelIds);
   }, [selectedModels]);

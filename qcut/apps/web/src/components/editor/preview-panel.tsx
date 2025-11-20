@@ -563,6 +563,39 @@ export function PreviewPanel() {
     );
   }, [activeElements]);
 
+  // Memoize video sources by media id to avoid recreating blob URLs each render
+  const { videoSourcesById, videoBlobUrls } = useMemo(() => {
+    const sources = new Map<string, ReturnType<typeof getVideoSource>>();
+    const blobUrls: string[] = [];
+
+    mediaItems.forEach((item) => {
+      if (item.type === "video") {
+        const source = getVideoSource(item);
+        sources.set(item.id, source);
+        if (source?.type === "blob") {
+          blobUrls.push(source.src);
+        }
+      }
+    });
+
+    return { videoSourcesById: sources, videoBlobUrls: blobUrls };
+  }, [mediaItems]);
+
+  // Revoke memoized blob URLs when they change or on unmount
+  useEffect(() => {
+    return () => {
+      videoBlobUrls.forEach((url) => URL.revokeObjectURL(url));
+    };
+  }, [videoBlobUrls]);
+
+  // Memoize blur background source (first eligible media element)
+  const blurBackgroundSource = useMemo(() => {
+    if (blurBackgroundElements.length === 0) return null;
+    const { mediaItem } = blurBackgroundElements[0];
+    if (!mediaItem || mediaItem.type !== "video") return null;
+    return videoSourcesById.get(mediaItem.id) ?? null;
+  }, [blurBackgroundElements, videoSourcesById]);
+
   // Render blur background layer
   const renderBlurBackground = () => {
     if (
@@ -590,7 +623,7 @@ export function PreviewPanel() {
         hasUrl: !!mediaItem.url,
       });
 
-      const source = getVideoSource(mediaItem);
+      const source = blurBackgroundSource;
       console.log("[PreviewPanel] Blur layer video source:", source?.type || "none");
       if (!source) {
         return (
@@ -757,7 +790,7 @@ export function PreviewPanel() {
           hasUrl: !!mediaItem.url,
         });
 
-        const source = getVideoSource(mediaItem);
+        const source = videoSourcesById.get(mediaItem.id) ?? null;
         console.log("[PreviewPanel] Foreground video source:", source?.type || "none");
         if (!source) {
           return (
