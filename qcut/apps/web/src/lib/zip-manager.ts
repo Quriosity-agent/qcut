@@ -84,6 +84,24 @@ export class ZipManager {
               mimeType
             );
         }
+        // Fix missing extensions for videos (AI or not)
+        if (item.type === "video" && !filename.includes(".")) {
+          // Prefer extension from localPath, then MIME type, then default mp4
+          const pathExtMatch = item.localPath?.match(/\\.([a-zA-Z0-9]+)$/);
+          const mimeType = item.file?.type;
+          const extFromMime = mimeType?.split("/")[1];
+          const videoExtension =
+            pathExtMatch?.[1] ||
+            extFromMime ||
+            "mp4";
+          filename = `${filename}.${videoExtension}`;
+          console.log("step 9a-extension-fix", {
+            originalName: item.name,
+            addedExtension: videoExtension,
+            localPath: item.localPath,
+            mimeType,
+          });
+        }
 
         // Resolve filename conflicts
         const resolvedFilename = this.resolveFilename(filename);
