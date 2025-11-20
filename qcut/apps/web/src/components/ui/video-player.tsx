@@ -30,6 +30,7 @@ export function VideoPlayer({
   const previousSrcRef = useRef<string | null>(null);
   const { isPlaying, currentTime, volume, speed, muted } = usePlaybackStore();
   const loggedOutOfRangeRef = useRef(false);
+  const lastTimeUpdateLogRef = useRef<number>(-1);
 
   // Calculate if we're within this clip's timeline range
   const clipEndTime = clipStartTime + (clipDuration - trimStart - trimEnd);
@@ -132,6 +133,82 @@ export function VideoPlayer({
       );
     };
   }, [clipStartTime, trimStart, trimEnd, clipDuration, isInClipRange, videoId, src]);
+
+  // Instrument video element lifecycle for diagnostics
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    const logState = (label: string, extra?: Record<string, unknown>) => {
+      console.log(`[CANVAS-VIDEO] ${label}`, {
+        videoId: videoId ?? src,
+        readyState: video.readyState,
+        networkState: video.networkState,
+        currentTime: video.currentTime,
+        paused: video.paused,
+        ended: video.ended,
+        muted: video.muted,
+        volume: video.volume,
+        ...extra,
+      });
+    };
+
+    const handleLoadedMetadata = () => logState("loadedmetadata");
+    const handleCanPlay = () => logState("canplay");
+    const handlePlay = () => logState("play()");
+    const handlePlaying = () => logState("playing");
+    const handlePause = () => logState("pause()");
+    const handleEnded = () => logState("ended");
+    const handleStalled = () => logState("stalled");
+    const handleWaiting = () => logState("waiting");
+    const handleSeeking = () => logState("seeking");
+    const handleSeeked = () => logState("seeked");
+    const handleError = () =>
+      logState("error", {
+        error:
+          video.error &&
+          `${video.error.code}:${video.error.message ?? "no-message"}`,
+      });
+    const handleTimeUpdate = () => {
+      // Throttle noisy timeupdate logs to every ~0.25s progression
+      if (
+        lastTimeUpdateLogRef.current >= 0 &&
+        Math.abs(video.currentTime - lastTimeUpdateLogRef.current) < 0.25
+      ) {
+        return;
+      }
+      lastTimeUpdateLogRef.current = video.currentTime;
+      logState("timeupdate");
+    };
+
+    video.addEventListener("loadedmetadata", handleLoadedMetadata);
+    video.addEventListener("canplay", handleCanPlay);
+    video.addEventListener("play", handlePlay);
+    video.addEventListener("playing", handlePlaying);
+    video.addEventListener("pause", handlePause);
+    video.addEventListener("ended", handleEnded);
+    video.addEventListener("stalled", handleStalled);
+    video.addEventListener("waiting", handleWaiting);
+    video.addEventListener("seeking", handleSeeking);
+    video.addEventListener("seeked", handleSeeked);
+    video.addEventListener("error", handleError);
+    video.addEventListener("timeupdate", handleTimeUpdate);
+
+    return () => {
+      video.removeEventListener("loadedmetadata", handleLoadedMetadata);
+      video.removeEventListener("canplay", handleCanPlay);
+      video.removeEventListener("play", handlePlay);
+      video.removeEventListener("playing", handlePlaying);
+      video.removeEventListener("pause", handlePause);
+      video.removeEventListener("ended", handleEnded);
+      video.removeEventListener("stalled", handleStalled);
+      video.removeEventListener("waiting", handleWaiting);
+      video.removeEventListener("seeking", handleSeeking);
+      video.removeEventListener("seeked", handleSeeked);
+      video.removeEventListener("error", handleError);
+      video.removeEventListener("timeupdate", handleTimeUpdate);
+    };
+  }, [videoId, src]);
 
   // Sync playback state
   useEffect(() => {

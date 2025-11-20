@@ -31,6 +31,9 @@ const startTimer = (store: () => PlaybackStore) => {
     speed,
   });
 
+  let loggedNotPlaying = false;
+  let loggedDurationReached = false;
+
   // Use requestAnimationFrame for smoother updates
   const updateTime = () => {
     const state = store();
@@ -83,6 +86,23 @@ const startTimer = (store: () => PlaybackStore) => {
           speed: state.speed,
           frameNumber,
         });
+      }
+      loggedNotPlaying = false;
+      loggedDurationReached = false;
+    } else {
+      if (!state.isPlaying && !loggedNotPlaying) {
+        console.warn("[PLAYBACK-RAF] Skipping tick; not playing", {
+          currentTime: state.currentTime,
+          duration: state.duration,
+        });
+        loggedNotPlaying = true;
+      }
+      if (state.currentTime >= state.duration && !loggedDurationReached) {
+        console.warn("[PLAYBACK-RAF] Skipping tick; reached duration", {
+          currentTime: state.currentTime,
+          duration: state.duration,
+        });
+        loggedDurationReached = true;
       }
     }
     playbackTimer = requestAnimationFrame(updateTime);
@@ -171,7 +191,10 @@ export const usePlaybackStore = create<PlaybackStore>((set, get) => ({
     });
   },
 
-  setDuration: (duration: number) => set({ duration }),
+  setDuration: (duration: number) => {
+    console.log("[PLAYBACK] setDuration", { duration });
+    set({ duration });
+  },
   setCurrentTime: (time: number) => set({ currentTime: time }),
 
   mute: () => {
