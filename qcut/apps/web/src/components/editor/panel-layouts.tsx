@@ -38,22 +38,93 @@ export function DefaultLayout({ resetCounter }: LayoutProps) {
   const clamp = (value: number, min: number, max: number) =>
     Math.max(min, Math.min(max, value));
 
-  const normalizedTools = clamp(
-    Math.round(toolsPanel * normalizationFactor * 100) / 100,
-    15,
-    40
-  );
-  const normalizedPreview = clamp(
-    Math.round(previewPanel * normalizationFactor * 100) / 100,
-    30,
-    100
-  );
-  // Properties gets the remainder to ensure exact 100%
-  const normalizedProperties = clamp(
-    Math.round((100 - normalizedTools - normalizedPreview) * 100) / 100,
-    15,
-    40
-  );
+  // Normalize while respecting min/max constraints and keeping a strict 100% sum.
+  const normalizePanels = (
+    rawTools: number,
+    rawPreview: number,
+    rawProperties: number
+  ) => {
+    const round2 = (v: number) => Math.round(v * 100) / 100;
+    const minTools = 15;
+    const maxTools = 40;
+    const minPreview = 30;
+    const maxPreview = 100;
+    const minProps = 15;
+    const maxProps = 40;
+
+    const factor = rawTools + rawPreview + rawProperties !== 0
+      ? 100 / (rawTools + rawPreview + rawProperties)
+      : 1;
+
+    // Start from proportionally scaled values.
+    let tools = round2(rawTools * factor);
+    let preview = round2(rawPreview * factor);
+
+    // Apply bounds, ensuring room for properties min.
+    tools = clamp(tools, minTools, maxTools);
+    const previewMaxWithRoom = Math.min(
+      maxPreview,
+      100 - tools - minProps
+    );
+    preview = clamp(preview, minPreview, previewMaxWithRoom);
+
+    let properties = round2(100 - tools - preview);
+
+    // If properties drops below its minimum, borrow from preview then tools.
+    if (properties < minProps) {
+      const deficit = minProps - properties;
+      const previewGive = Math.min(deficit, Math.max(0, preview - minPreview));
+      preview -= previewGive;
+      const remainingDeficit = deficit - previewGive;
+      if (remainingDeficit > 0) {
+        const toolsGive = Math.min(remainingDeficit, Math.max(0, tools - minTools));
+        tools -= toolsGive;
+      }
+      properties = minProps;
+    }
+
+    // If properties exceeds max, push excess into preview then tools.
+    if (properties > maxProps) {
+      const excess = properties - maxProps;
+      properties = maxProps;
+      const previewTake = Math.min(excess, Math.max(0, maxPreview - preview));
+      preview += previewTake;
+      const remainingExcess = excess - previewTake;
+      if (remainingExcess > 0) {
+        const toolsTake = Math.min(remainingExcess, Math.max(0, maxTools - tools));
+        tools += toolsTake;
+      }
+    }
+
+    // Final reconcile to hit 100% within tolerance.
+    const diff = 100 - (tools + preview + properties);
+    if (Math.abs(diff) > 0.01) {
+      const previewAdjusted = clamp(preview + diff, minPreview, maxPreview);
+      preview = previewAdjusted;
+      properties = round2(100 - tools - preview);
+    }
+
+    // Guard: ensure properties within bounds after final reconcile.
+    properties = clamp(properties, minProps, maxProps);
+
+    // If rounding drifted, snap properties to close the gap.
+    const finalTotal = tools + preview + properties;
+    if (Math.abs(finalTotal - 100) > 0.01) {
+      properties = round2(100 - tools - preview);
+    }
+
+    return {
+      normalizedTools: tools,
+      normalizedPreview: preview,
+      normalizedProperties: properties,
+    };
+  };
+
+  const {
+    normalizedTools,
+    normalizedPreview,
+    normalizedProperties,
+  } = normalizePanels(toolsPanel, previewPanel, propertiesPanel);
 
   // Panel size calculation completed
 
