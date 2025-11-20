@@ -248,6 +248,7 @@ function getCommonAspectRatios(
     .map((c) => c.supportedAspectRatios!);
 
   if (allRatios.length === 0) return undefined;
+  if (allRatios.length === 1) return allRatios[0];
 
   return allRatios.reduce((common, ratios) =>
     common.filter((r) => ratios.includes(r))
@@ -262,6 +263,7 @@ function getCommonResolutions(
     .map((c) => c.supportedResolutions!);
 
   if (allResolutions.length === 0) return undefined;
+  if (allResolutions.length === 1) return allResolutions[0];
 
   return allResolutions.reduce((common, resolutions) =>
     common.filter((r) => resolutions.includes(r))
@@ -276,6 +278,7 @@ function getCommonDurations(
     .map((c) => c.supportedDurations!);
 
   if (allDurations.length === 0) return undefined;
+  if (allDurations.length === 1) return allDurations[0];
 
   return allDurations.reduce((common, durations) =>
     common.filter((d) => durations.includes(d))
