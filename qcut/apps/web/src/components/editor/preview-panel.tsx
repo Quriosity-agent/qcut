@@ -442,7 +442,7 @@ export function PreviewPanel() {
       });
     });
 
-    debugLog("step 11: calculating active elements", {
+    console.log("step 11: calculating active elements", {
       currentTime,
       totalTracks: tracks.length,
       totalElements,
@@ -480,7 +480,7 @@ export function PreviewPanel() {
       Math.abs(seekTime - currentTime) < 0.001;
 
     if (didSeek) {
-      debugLog("step 10: preview panel re-rendered after seek", {
+      console.log("step 10: preview panel re-rendered after seek", {
         newTime: currentTime,
         newActiveElementsCount: activeElements.length,
       });
@@ -489,7 +489,7 @@ export function PreviewPanel() {
     }
 
     if (isPlaying) {
-      debugLog("step 5: preview panel updated", {
+      console.log("step 5: preview panel updated", {
         currentTime,
         activeElementsCount: activeElements.length,
         hasEffects,
@@ -777,7 +777,7 @@ export function PreviewPanel() {
   // Render an element
   const renderElement = (elementData: ActiveElement, index: number) => {
     const { element, mediaItem } = elementData;
-    debugLog("step 12: rendering element", {
+    console.log("step 12: rendering element", {
       elementId: element.id,
       elementType: element.type,
       mediaType: mediaItem?.type,
@@ -799,7 +799,7 @@ export function PreviewPanel() {
         FONT_CLASS_MAP[element.fontFamily as keyof typeof FONT_CLASS_MAP] || "";
 
       const scaleRatio = previewDimensions.width / canvasSize.width;
-      debugLog("step 12b: rendering text element", {
+      console.log("step 12b: rendering text element", {
         elementId: element.id,
         text: element.content,
         position: { x: element.x, y: element.y },
@@ -924,7 +924,7 @@ export function PreviewPanel() {
           EFFECTS_ENABLED && element.id === currentMediaElement?.element.id
             ? filterStyle
             : "";
-        debugLog("step 12a: rendering video element", {
+        console.log("step 12a: rendering video element", {
           elementId: element.id,
           src: source.src,
           clipStartTime: element.startTime,
