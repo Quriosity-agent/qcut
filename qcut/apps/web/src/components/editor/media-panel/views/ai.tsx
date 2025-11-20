@@ -242,16 +242,27 @@ export function AiView() {
   >("auto");
   const [viduQ2EnableBGM, setViduQ2EnableBGM] = useState(false);
 
+  // Text-to-video defaults kept in one place to avoid drift in reset/count logic.
+  const T2V_DEFAULTS = {
+    aspectRatio: "16:9",
+    resolution: "1080p",
+    duration: 4,
+    negativePrompt: "low resolution, error, worst quality, low quality, defects",
+    promptExpansion: false,
+    seed: -1, // -1 = random
+    safetyChecker: false,
+  } as const;
+
   // Unified text-to-video advanced settings
-  const [t2vAspectRatio, setT2vAspectRatio] = useState<string>("16:9");
-  const [t2vResolution, setT2vResolution] = useState<string>("1080p");
-  const [t2vDuration, setT2vDuration] = useState<number>(4);
+  const [t2vAspectRatio, setT2vAspectRatio] = useState<string>(T2V_DEFAULTS.aspectRatio);
+  const [t2vResolution, setT2vResolution] = useState<string>(T2V_DEFAULTS.resolution);
+  const [t2vDuration, setT2vDuration] = useState<number>(T2V_DEFAULTS.duration);
   const [t2vNegativePrompt, setT2vNegativePrompt] = useState<string>(
-    "low resolution, error, worst quality, low quality, defects"
+    T2V_DEFAULTS.negativePrompt
   );
-  const [t2vPromptExpansion, setT2vPromptExpansion] = useState<boolean>(false);
-  const [t2vSeed, setT2vSeed] = useState<number>(-1); // -1 = random
-  const [t2vSafetyChecker, setT2vSafetyChecker] = useState<boolean>(false);
+  const [t2vPromptExpansion, setT2vPromptExpansion] = useState<boolean>(T2V_DEFAULTS.promptExpansion);
+  const [t2vSeed, setT2vSeed] = useState<number>(T2V_DEFAULTS.seed); // -1 = random
+  const [t2vSafetyChecker, setT2vSafetyChecker] = useState<boolean>(T2V_DEFAULTS.safetyChecker);
   const [t2vSettingsExpanded, setT2vSettingsExpanded] =
     useState<boolean>(false);
   const [ltxv2Duration, setLTXV2Duration] = useState<6 | 8 | 10>(6);
@@ -373,17 +384,13 @@ export function AiView() {
   // Helper to count active settings
   const getActiveSettingsCount = () => {
     let count = 0;
-    if (t2vAspectRatio !== "16:9") count++;
-    if (t2vResolution !== "1080p") count++;
-    if (t2vDuration !== 4) count++;
-    if (
-      t2vNegativePrompt !==
-      "low resolution, error, worst quality, low quality, defects"
-    )
-      count++;
-    if (t2vPromptExpansion) count++;
-    if (t2vSeed !== -1) count++;
-    if (t2vSafetyChecker) count++;
+    if (t2vAspectRatio !== T2V_DEFAULTS.aspectRatio) count++;
+    if (t2vResolution !== T2V_DEFAULTS.resolution) count++;
+    if (t2vDuration !== T2V_DEFAULTS.duration) count++;
+    if (t2vNegativePrompt !== T2V_DEFAULTS.negativePrompt) count++;
+    if (t2vPromptExpansion !== T2V_DEFAULTS.promptExpansion) count++;
+    if (t2vSeed !== T2V_DEFAULTS.seed) count++;
+    if (t2vSafetyChecker !== T2V_DEFAULTS.safetyChecker) count++;
     return count;
   };
 
