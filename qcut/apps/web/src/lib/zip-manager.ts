@@ -27,6 +27,10 @@ export class ZipManager {
     this.zip = new JSZip();
   }
 
+  /**
+   * Add media items to the ZIP, preferring more reliable sources (localPath for AI videos)
+   * and optionally reporting progress.
+   */
   async addMediaItems(
     items: MediaItem[],
     onProgress?: (progress: number) => void
@@ -366,6 +370,9 @@ export class ZipManager {
     });
   }
 
+  /**
+   * Generate a ZIP blob with the accumulated entries.
+   */
   async generateZip(options: Partial<ZipExportOptions> = {}): Promise<Blob> {
     const opts = { ...this.defaultOptions, ...options };
 
@@ -443,6 +450,7 @@ export class ZipManager {
     return /\.[A-Za-z0-9]{2,6}$/.test(trimmed);
   }
 
+  /** Reset the underlying JSZip instance for a fresh export. */
   reset(): void {
     this.zip = new JSZip();
   }
@@ -466,6 +474,9 @@ export class ZipManager {
     return false;
   }
 
+  /**
+   * Normalize various buffer-like inputs into a Uint8Array, logging details for debugging.
+   */
   private normalizeToUint8Array(
     fileBuffer: unknown,
     logLabel: string,
