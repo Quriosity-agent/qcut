@@ -2,6 +2,7 @@ import { create } from "zustand";
 import type { PlaybackState, PlaybackControls } from "@/types/playback";
 import { useTimelineStore } from "@/stores/timeline-store";
 import { useProjectStore } from "./project-store";
+import { debugLog } from "@/lib/debug-config";
 
 /**
  * Playback store interface combining state and control methods
@@ -24,6 +25,13 @@ let playbackTimer: number | null = null;
 const startTimer = (store: () => PlaybackStore) => {
   if (playbackTimer) cancelAnimationFrame(playbackTimer);
 
+  const { isPlaying, currentTime, speed } = store();
+  debugLog("step 2: playback timer started", {
+    isPlaying,
+    currentTime,
+    speed,
+  });
+
   // Use requestAnimationFrame for smoother updates
   const updateTime = () => {
     const state = store();
@@ -33,6 +41,8 @@ const startTimer = (store: () => PlaybackStore) => {
       lastUpdate = now;
 
       const newTime = state.currentTime + delta * state.speed;
+      const projectFps = useProjectStore.getState().activeProject?.fps ?? 30;
+      const frameNumber = Math.round(newTime * projectFps);
 
       // Get actual content duration from timeline store
       const actualContentDuration = useTimelineStore
@@ -68,6 +78,12 @@ const startTimer = (store: () => PlaybackStore) => {
         window.dispatchEvent(
           new CustomEvent("playback-update", { detail: { time: newTime } })
         );
+        debugLog("step 3: playback-update event dispatched", {
+          time: newTime,
+          delta,
+          speed: state.speed,
+          frameNumber,
+        });
       }
     }
     playbackTimer = requestAnimationFrame(updateTime);
@@ -94,11 +110,13 @@ export const usePlaybackStore = create<PlaybackStore>((set, get) => ({
   speed: 1.0,
 
   play: () => {
+    debugLog("step 1: user initiated playback", { action: "play" });
     set({ isPlaying: true });
     startTimer(get);
   },
 
   pause: () => {
+    debugLog("step 1: user initiated playback", { action: "pause" });
     set({ isPlaying: false });
     stopTimer();
   },
@@ -113,14 +131,23 @@ export const usePlaybackStore = create<PlaybackStore>((set, get) => ({
   },
 
   seek: (time: number) => {
-    const { duration } = get();
+    const { duration, currentTime: previousTime } = get();
     const clampedTime = Math.max(0, Math.min(duration, time));
+    debugLog("step 8: playback store seek", {
+      oldTime: previousTime,
+      newTime: clampedTime,
+    });
+
     set({ currentTime: clampedTime });
 
     const event = new CustomEvent("playback-seek", {
       detail: { time: clampedTime },
     });
     window.dispatchEvent(event);
+    debugLog("event: playback-seek dispatched", {
+      time: clampedTime,
+      source: "store.seek",
+    });
   },
 
   setVolume: (volume: number) =>
@@ -131,6 +158,7 @@ export const usePlaybackStore = create<PlaybackStore>((set, get) => ({
     })),
 
   setSpeed: (speed: number) => {
+    const { speed: previousSpeed } = get();
     const newSpeed = Math.max(0.1, Math.min(2.0, speed));
     set({ speed: newSpeed });
 
@@ -138,6 +166,10 @@ export const usePlaybackStore = create<PlaybackStore>((set, get) => ({
       detail: { speed: newSpeed },
     });
     window.dispatchEvent(event);
+    debugLog("event: playback-speed dispatched", {
+      speed: newSpeed,
+      previousSpeed,
+    });
   },
 
   setDuration: (duration: number) => set({ duration }),

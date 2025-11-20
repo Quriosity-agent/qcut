@@ -2,6 +2,7 @@ import { snapTimeToFrame } from "@/constants/timeline-constants";
 import { useProjectStore } from "@/stores/project-store";
 import { usePlaybackStore } from "@/stores/playback-store";
 import { useState, useEffect, useCallback, useRef } from "react";
+import { debugLog } from "@/lib/debug-config";
 
 interface UseTimelinePlayheadProps {
   currentTime: number;
@@ -31,6 +32,7 @@ export function useTimelinePlayhead({
   // Ruler drag detection state
   const [isDraggingRuler, setIsDraggingRuler] = useState(false);
   const [hasDraggedRuler, setHasDraggedRuler] = useState(false);
+  const hasLoggedSeekRef = useRef(false);
 
   // Auto-scroll state during dragging
   const autoScrollRef = useRef<number | null>(null);
@@ -58,6 +60,16 @@ export function useTimelinePlayhead({
       const projectFps = projectStore.activeProject?.fps || 30;
       const time = snapTimeToFrame(rawTime, projectFps);
 
+      if (!hasLoggedSeekRef.current) {
+        debugLog("step 7: user initiated seek", {
+          mouseX: rawX,
+          rawTime,
+          snappedTime: time,
+          projectFps,
+        });
+        hasLoggedSeekRef.current = true;
+      }
+
       setScrubTime(time);
       seek(time); // update video preview in real time
 
@@ -73,6 +85,7 @@ export function useTimelinePlayhead({
       e.preventDefault();
       e.stopPropagation(); // Prevent ruler drag from triggering
       setIsScrubbing(true);
+      hasLoggedSeekRef.current = false;
       handleScrub(e);
     },
     [handleScrub]
@@ -90,6 +103,7 @@ export function useTimelinePlayhead({
       e.preventDefault();
       setIsDraggingRuler(true);
       setHasDraggedRuler(false);
+      hasLoggedSeekRef.current = false;
 
       // Start scrubbing immediately
       setIsScrubbing(true);
@@ -172,6 +186,7 @@ export function useTimelinePlayhead({
       setIsScrubbing(false);
       if (scrubTime !== null) seek(scrubTime); // finalize seek
       setScrubTime(null);
+      hasLoggedSeekRef.current = false;
 
       // Stop auto-scrolling
       if (autoScrollRef.current) {
@@ -240,12 +255,23 @@ export function useTimelinePlayhead({
       playheadPx > rulerViewport.scrollLeft + viewportWidth;
 
     if (needsScroll) {
+      debugLog("step 6: timeline playhead updated", {
+        currentTime: playheadPosition,
+        playheadPosition: playheadPx,
+        shouldAutoScroll: true,
+      });
       // Center the playhead in the viewport
       const desiredScroll = Math.max(
         scrollMin,
         Math.min(scrollMax, playheadPx - viewportWidth / 2)
       );
       rulerViewport.scrollLeft = tracksViewport.scrollLeft = desiredScroll;
+    } else {
+      debugLog("step 6: timeline playhead updated", {
+        currentTime: playheadPosition,
+        playheadPosition: playheadPx,
+        shouldAutoScroll: false,
+      });
     }
   }, [
     playheadPosition,

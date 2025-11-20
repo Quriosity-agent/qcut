@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Play, Pause, Expand, SkipBack, SkipForward } from "lucide-react";
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
-import { debugLogger } from "@/lib/debug-logger";
+import { debugLog } from "@/lib/debug-config";
 import { cn } from "@/lib/utils";
 import { formatTimeCode } from "@/lib/time";
 import { EditableTimecode } from "@/components/ui/editable-timecode";
@@ -143,6 +143,7 @@ export function PreviewPanel() {
   // Canvas refs for frame caching - non-interfering
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const cacheCanvasRef = useRef<HTMLCanvasElement>(null);
+  const lastSeekEventTimeRef = useRef<number | null>(null);
   const [previewDimensions, setPreviewDimensions] = useState({
     width: 0,
     height: 0,
@@ -393,9 +394,32 @@ export function PreviewPanel() {
     }
   }, [previewDimensions, activeProject]);
 
+  useEffect(() => {
+    const handlePlaybackSeek = (event: Event) => {
+      const detail = (event as CustomEvent).detail;
+      if (detail && typeof detail.time === "number") {
+        lastSeekEventTimeRef.current = detail.time;
+      }
+    };
+
+    window.addEventListener(
+      "playback-seek",
+      handlePlaybackSeek as EventListener
+    );
+    return () =>
+      window.removeEventListener(
+        "playback-seek",
+        handlePlaybackSeek as EventListener
+      );
+  }, []);
+
   const hasAnyElements = tracks.some((track) => track.elements.length > 0);
   const getActiveElements = useCallback((): ActiveElement[] => {
     const activeElements: ActiveElement[] = [];
+    const totalElements = tracks.reduce(
+      (sum, track) => sum + (track.elements?.length || 0),
+      0
+    );
 
     tracks.forEach((track) => {
       track.elements.forEach((element) => {
@@ -419,6 +443,13 @@ export function PreviewPanel() {
       });
     });
 
+    debugLog("step 11: calculating active elements", {
+      currentTime,
+      totalTracks: tracks.length,
+      totalElements,
+      calculatedActiveCount: activeElements.length,
+    });
+
     return activeElements;
   }, [tracks, currentTime, mediaItems]);
 
@@ -437,6 +468,30 @@ export function PreviewPanel() {
     currentMediaElement?.element.id || null,
     EFFECTS_ENABLED
   );
+
+  useEffect(() => {
+    const seekTime = lastSeekEventTimeRef.current;
+    const didSeek =
+      typeof seekTime === "number" &&
+      Math.abs(seekTime - currentTime) < 0.001;
+
+    if (didSeek) {
+      debugLog("step 10: preview panel re-rendered after seek", {
+        newTime: currentTime,
+        newActiveElementsCount: activeElements.length,
+      });
+      lastSeekEventTimeRef.current = null;
+      return;
+    }
+
+    if (isPlaying) {
+      debugLog("step 5: preview panel updated", {
+        currentTime,
+        activeElementsCount: activeElements.length,
+        hasEffects,
+      });
+    }
+  }, [currentTime, activeElements.length, hasEffects, isPlaying]);
 
   // Warm cache during idle time
   useEffect(() => {
@@ -647,6 +702,7 @@ export function PreviewPanel() {
           }}
         >
           <VideoPlayer
+            videoId={`${mediaItem.id}-blur-background`}
             src={source.src}
             poster={mediaItem.thumbnailUrl}
             clipStartTime={element.startTime}
@@ -691,6 +747,21 @@ export function PreviewPanel() {
   // Render an element
   const renderElement = (elementData: ActiveElement, index: number) => {
     const { element, mediaItem } = elementData;
+    debugLog("step 12: rendering element", {
+      elementId: element.id,
+      elementType: element.type,
+      mediaType: mediaItem?.type,
+      hasEffects,
+      opacity: "opacity" in element ? (element as any).opacity : undefined,
+      transform:
+        element.type === "text"
+          ? {
+              x: element.x,
+              y: element.y,
+              rotation: element.rotation,
+            }
+          : undefined,
+    });
 
     // Text elements
     if (element.type === "text") {
@@ -698,6 +769,16 @@ export function PreviewPanel() {
         FONT_CLASS_MAP[element.fontFamily as keyof typeof FONT_CLASS_MAP] || "";
 
       const scaleRatio = previewDimensions.width / canvasSize.width;
+      debugLog("step 12b: rendering text element", {
+        elementId: element.id,
+        text: element.content,
+        position: { x: element.x, y: element.y },
+        rotation: element.rotation,
+        opacity: element.opacity,
+        fontSize: element.fontSize,
+        fontFamily: element.fontFamily,
+        color: element.color,
+      });
 
       return (
         <div
@@ -799,6 +880,22 @@ export function PreviewPanel() {
           );
         }
 
+        const filterValue =
+          EFFECTS_ENABLED && element.id === currentMediaElement?.element.id
+            ? filterStyle
+            : "";
+        debugLog("step 12a: rendering video element", {
+          elementId: element.id,
+          src: source.src,
+          clipStartTime: element.startTime,
+          trimStart: element.trimStart,
+          trimEnd: element.trimEnd,
+          clipDuration: element.duration,
+          filterStyle: filterValue,
+          opacity: "opacity" in element ? (element as any).opacity : undefined,
+          scale: (element as any).scale ?? 1,
+        });
+
         return (
           <div
             key={element.id}
@@ -816,12 +913,8 @@ export function PreviewPanel() {
               trimEnd={element.trimEnd}
               clipDuration={element.duration}
               className="object-cover"
-              style={
-                EFFECTS_ENABLED &&
-                element.id === currentMediaElement?.element.id
-                  ? { filter: filterStyle }
-                  : undefined
-              }
+              videoId={mediaItem.id}
+              style={filterValue ? { filter: filterValue } : undefined}
             />
           </div>
         );

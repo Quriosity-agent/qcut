@@ -2,8 +2,10 @@
 
 import { useRef, useEffect } from "react";
 import { usePlaybackStore } from "@/stores/playback-store";
+import { debugLog } from "@/lib/debug-config";
 
 interface VideoPlayerProps {
+  videoId?: string;
   src: string;
   poster?: string;
   className?: string;
@@ -15,6 +17,7 @@ interface VideoPlayerProps {
 }
 
 export function VideoPlayer({
+  videoId,
   src,
   poster,
   className = "",
@@ -49,6 +52,12 @@ export function VideoPlayer({
         )
       );
       video.currentTime = videoTime;
+      debugLog("step 9: video player seeked", {
+        videoId: videoId ?? src,
+        timelineTime,
+        calculatedVideoTime: videoTime,
+        wasPlaying: !video.paused,
+      });
     };
 
     const handleUpdateEvent = (e: CustomEvent) => {
@@ -65,6 +74,13 @@ export function VideoPlayer({
       if (Math.abs(video.currentTime - targetTime) > 0.5) {
         video.currentTime = targetTime;
       }
+      debugLog("step 4: video player synced", {
+        videoId: videoId ?? src,
+        timelineTime,
+        videoTime: targetTime,
+        trimStart,
+        clipStartTime,
+      });
     };
 
     const handleSpeed = (e: CustomEvent) => {
@@ -92,7 +108,7 @@ export function VideoPlayer({
         handleSpeed as EventListener
       );
     };
-  }, [clipStartTime, trimStart, trimEnd, clipDuration, isInClipRange]);
+  }, [clipStartTime, trimStart, trimEnd, clipDuration, isInClipRange, videoId, src]);
 
   // Sync playback state
   useEffect(() => {
