@@ -95,34 +95,49 @@ const updateTime = () => {
 ## 2. Playback Flow Sequence
 
 ### Step 1: User Initiates Playback
+**Console (when debugging):** `console.log("step 1: user initiated playback", { action: "play" | "pause" | "toggle" })`
 - User clicks **Play** button or presses **Spacebar**
 - `usePlaybackStore.play()` is called
+- **File:** `apps/web/src/stores/playback-store.ts` (Lines 24-78)
+- **Location:** Play button click handler or keyboard event listener
 
 ### Step 2: Playback Store Starts Timer
+**Console (when debugging):** `console.log("step 2: playback timer started", { isPlaying: true, currentTime, speed })`
 - Sets `isPlaying = true`
 - Starts `requestAnimationFrame` loop
 - Timer calculates new time each frame: `newTime = currentTime + deltaTime * speed`
+- **File:** `apps/web/src/stores/playback-store.ts` (play() method)
 
 ### Step 3: Event Dispatch
+**Console (when debugging):** `console.log("step 3: playback-update event dispatched", { time: newTime, delta, speed })`
 - Every frame, store dispatches `playback-update` event with current time
 - All video players listen to this event
+- **File:** `apps/web/src/stores/playback-store.ts` (updateTime() function inside play())
+- **Event:** `window.dispatchEvent(new CustomEvent("playback-update", { detail: { time: newTime } }))`
 
 ### Step 4: Video Players Sync
+**Console (when debugging):** `console.log("step 4: video player synced", { videoId, timelineTime, videoTime, trimStart, clipStartTime })`
 - Each VideoPlayer component receives event
 - Updates `video.currentTime` to match timeline position
 - Accounts for trim start/end offsets
 - Video plays smoothly
+- **File:** `apps/web/src/components/ui/video-player.tsx` (handleUpdateEvent function, Lines 37-95)
+- **Calculation:** `videoTime = Math.max(trimStart, Math.min(clipDuration - trimEnd, timelineTime - clipStartTime + trimStart))`
 
 ### Step 5: Preview Panel Updates
+**Console (when debugging):** `console.log("step 5: preview panel updated", { currentTime, activeElementsCount, hasEffects })`
 - Re-renders based on `currentTime` from store
 - Calculates `activeElements` (elements visible at current time)
 - Renders each active element on canvas
 - Applies effects, transforms, and opacity
+- **File:** `apps/web/src/components/editor/preview-panel.tsx` (Lines 396-423 for activeElements calculation, Lines 691-873 for rendering)
 
 ### Step 6: Timeline Playhead Updates
+**Console (when debugging):** `console.log("step 6: timeline playhead updated", { currentTime, playheadPosition, shouldAutoScroll })`
 - Visual playhead indicator moves along timeline
 - Auto-scrolls timeline to keep playhead visible
 - Shows current time in toolbar
+- **File:** `apps/web/src/components/editor/timeline/timeline-playhead.tsx` and `apps/web/src/hooks/use-timeline-playhead.ts` (Lines 218-256 for auto-scroll)
 
 ---
 
@@ -130,29 +145,43 @@ const updateTime = () => {
 
 ### User Seeks (Playhead Drag or Click)
 
-1. **Timeline Playhead Hook** (`use-timeline-playhead.ts`)
-   - Calculates time from mouse position: `time = mouseX / (50 * zoomLevel)`
-   - Snaps to project FPS for frame-accurate positioning
-   - Calls `usePlaybackStore.seek(time)`
+**Step 7: User Initiates Seek**
+**Console (when debugging):** `console.log("step 7: user initiated seek", { mouseX, rawTime, snappedTime, projectFps })`
+- User drags playhead or clicks on timeline
+- Mouse position calculated and converted to time
+- **File:** `apps/web/src/hooks/use-timeline-playhead.ts` (Lines 42-68)
+- **Calculation:** `rawTime = mouseX / (50 * zoomLevel)` then `snappedTime = snapTimeToFrame(rawTime, projectFps)`
 
-2. **Playback Store**
-   - Updates `currentTime` state
-   - Dispatches `playback-seek` event
+**Step 8: Playback Store Processes Seek**
+**Console (when debugging):** `console.log("step 8: playback store seek", { oldTime: currentTime, newTime: time })`
+- Updates `currentTime` state
+- Dispatches `playback-seek` event
+- **File:** `apps/web/src/stores/playback-store.ts` (seek() method)
+- **Event:** `window.dispatchEvent(new CustomEvent("playback-seek", { detail: { time } }))`
 
-3. **Video Players**
-   - Receive `playback-seek` event
-   - Immediately jump to new time
-   - Update video frames
+**Step 9: Video Players Jump to Position**
+**Console (when debugging):** `console.log("step 9: video player seeked", { videoId, timelineTime, calculatedVideoTime, wasPlaying })`
+- Receive `playback-seek` event
+- Immediately jump to new time
+- Update video frames
+- **File:** `apps/web/src/components/ui/video-player.tsx` (handleSeekEvent function)
+- **Action:** `videoRef.current.currentTime = calculatedVideoTime`
 
-4. **Preview Panel**
-   - Re-calculates `activeElements` at new time
-   - Re-renders canvas with updated elements
+**Step 10: Preview Panel Re-renders**
+**Console (when debugging):** `console.log("step 10: preview panel re-rendered after seek", { newTime, newActiveElementsCount })`
+- Re-calculates `activeElements` at new time
+- Re-renders canvas with updated elements
+- **File:** `apps/web/src/components/editor/preview-panel.tsx` (useEffect triggered by currentTime change)
 
 ---
 
 ## 4. Active Elements Calculation
 
+### Step 11: Calculate Active Elements at Current Time
+**Console (when debugging):** `console.log("step 11: calculating active elements", { currentTime, totalTracks, totalElements, calculatedActiveCount })`
 **Location:** `preview-panel.tsx` (Lines 396-423)
+
+This step determines which media elements should be visible/playing at the current playback time:
 
 ```typescript
 const getActiveElements = useCallback((): ActiveElement[] => {
@@ -179,15 +208,22 @@ const getActiveElements = useCallback((): ActiveElement[] => {
 }, [tracks, currentTime, mediaItems]);
 ```
 
+**Triggered by:** Changes to `currentTime`, `tracks`, or `mediaItems`
+**File:** `apps/web/src/components/editor/preview-panel.tsx`
+**Calculation:** Element is active when `currentTime >= elementStart && currentTime < elementEnd`
+
 ---
 
 ## 5. Element Rendering
 
+### Step 12: Render Each Active Element
+**Console (when debugging):** `console.log("step 12: rendering element", { elementId, elementType, mediaType, hasEffects, opacity, transform })`
 **Location:** `preview-panel.tsx` (Lines 691-873)
 
-For each active element, the appropriate renderer is invoked:
+For each active element, the appropriate renderer is invoked based on media type:
 
-### Video Elements
+#### Video Elements (Step 12a)
+**Console (when debugging):** `console.log("step 12a: rendering video element", { elementId, src, clipStartTime, trimStart, trimEnd, clipDuration, filterStyle, opacity, scale })`
 ```typescript
 if (mediaItem.type === "video") {
   return (
@@ -206,8 +242,11 @@ if (mediaItem.type === "video") {
   );
 }
 ```
+**File:** `apps/web/src/components/editor/preview-panel.tsx`
+**Applies:** CSS filters (effects), opacity, scale transformations
 
-### Text Elements
+#### Text Elements (Step 12b)
+**Console (when debugging):** `console.log("step 12b: rendering text element", { elementId, text, position: { x, y }, rotation, opacity, fontSize, fontFamily, color })`
 ```typescript
 if (element.type === "text") {
   return (
@@ -226,39 +265,52 @@ if (element.type === "text") {
   );
 }
 ```
+**File:** `apps/web/src/components/editor/preview-panel.tsx`
+**Calculation:** Position as percentage: `50 + (element.x / canvasSize.width) * 100`
 
 ---
 
 ## 6. Event System
 
-The playback system uses three custom events:
+The playback system uses three custom events for coordination:
 
-### playback-seek
+### playback-seek (Event)
+**Console (when debugging):** `console.log("event: playback-seek dispatched", { time, source: "timeline-drag" | "playhead-click" })`
 **Triggered when:** User drags playhead or clicks timeline
-**Purpose:** Immediate time jump
+**Purpose:** Immediate time jump across all video players
+**File:** `apps/web/src/stores/playback-store.ts` (seek() method)
 ```typescript
 window.dispatchEvent(new CustomEvent("playback-seek", {
   detail: { time: 5.5 }
 }));
 ```
+**Listeners:** All VideoPlayer components (handleSeekEvent in video-player.tsx)
 
-### playback-update
-**Triggered when:** Every frame during playback
-**Purpose:** Continuous time updates
+### playback-update (Event)
+**Console (when debugging):** `console.log("event: playback-update dispatched", { time, delta, speed, frameNumber })`
+**Triggered when:** Every frame during playback (requestAnimationFrame)
+**Purpose:** Continuous time updates for smooth playback
+**File:** `apps/web/src/stores/playback-store.ts` (updateTime() function inside play())
 ```typescript
 window.dispatchEvent(new CustomEvent("playback-update", {
   detail: { time: 2.3 }
 }));
 ```
+**Frequency:** ~60 times per second during playback
+**Listeners:** All VideoPlayer components (handleUpdateEvent in video-player.tsx)
 
-### playback-speed
-**Triggered when:** User changes playback speed
-**Purpose:** Update video playback rate
+### playback-speed (Event)
+**Console (when debugging):** `console.log("event: playback-speed dispatched", { speed, previousSpeed })`
+**Triggered when:** User changes playback speed slider
+**Purpose:** Update video playback rate across all players
+**File:** `apps/web/src/stores/playback-store.ts` (setSpeed() method)
 ```typescript
 window.dispatchEvent(new CustomEvent("playback-speed", {
   detail: { speed: 1.5 }
 }));
 ```
+**Valid Range:** 0.1 to 2.0
+**Listeners:** All VideoPlayer components (handleSpeed in video-player.tsx)
 
 ---
 
