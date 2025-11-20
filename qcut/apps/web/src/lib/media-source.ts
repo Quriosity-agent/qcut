@@ -8,6 +8,20 @@ export type VideoSource =
 /**
  * Picks a safe video source, preferring a local File -> blob URL, with remote
  * fallback gated by a simple CSP whitelist.
+ *
+ * IMPORTANT: This function creates a NEW blob URL on each call when a file is
+ * provided. Callers MUST memoize the result and revoke blob URLs when they are
+ * no longer needed to avoid memory leaks.
+ *
+ * @example
+ * // Correct: memoized and revoked on cleanup
+ * const source = useMemo(() => getVideoSource(mediaItem), [mediaItem]);
+ * useEffect(() => () => {
+ *   if (source?.type === "blob") URL.revokeObjectURL(source.src);
+ * }, [source]);
+ *
+ * // Wrong: new blob URL every render, no cleanup
+ * const source = getVideoSource(mediaItem);
  */
 export function getVideoSource(mediaItem: { file?: File; url?: string }): VideoSource {
   if (mediaItem.file) {
