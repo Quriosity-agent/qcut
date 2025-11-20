@@ -292,8 +292,15 @@ export class ZipManager {
             urlToFetch &&
             (urlToFetch.startsWith("http") || urlToFetch.startsWith("blob:"))
           ) {
+            const controller = new AbortController();
+            const timeoutId = window.setTimeout(
+              () => controller.abort(),
+              120000
+            );
             try {
-              const resp = await fetch(urlToFetch);
+              const resp = await fetch(urlToFetch, {
+                signal: controller.signal,
+              });
               if (!resp.ok) {
                 throw new Error(`HTTP ${resp.status}`);
               }
@@ -335,6 +342,8 @@ export class ZipManager {
                     ? fetchError.message
                     : String(fetchError),
               });
+            } finally {
+              window.clearTimeout(timeoutId);
             }
           } else if (!addedToZip) {
             console.warn("step 8: export-all zip skipped item (no file or fetchable url)", {
