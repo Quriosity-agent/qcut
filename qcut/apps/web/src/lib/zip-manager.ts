@@ -3,6 +3,9 @@ import { MediaItem } from "@/stores/media-store";
 
 // Debug flag - set to true to enable console logging
 const DEBUG_ZIP_MANAGER = process.env.NODE_ENV === "development" && false;
+const logDebug = (...args: Parameters<typeof console.log>) => {
+  if (DEBUG_ZIP_MANAGER) console.log(...args);
+};
 
 export interface ZipExportOptions {
   filename?: string;
@@ -31,7 +34,7 @@ export class ZipManager {
     const total = items.length;
     let completed = 0;
 
-    console.log("step 9: zip-manager starting addMediaItems", {
+    logDebug("step 9: zip-manager starting addMediaItems", {
       totalItems: total,
       itemsWithFile: items.filter(item => !!item.file).length,
       itemsWithLocalPath: items.filter(item => !!item.localPath).length,
@@ -40,17 +43,16 @@ export class ZipManager {
       readFileAvailable: !!window.electronAPI?.readFile,
     });
 
-    if (DEBUG_ZIP_MANAGER)
-      console.log("?? ZIP-MANAGER: Starting to add media items", {
-        totalItems: total,
-        generatedImages: items.filter(
-          (item) => item.metadata?.source === "text2image"
-        ).length,
-      });
+    logDebug("?? ZIP-MANAGER: Starting to add media items", {
+      totalItems: total,
+      generatedImages: items.filter(
+        (item) => item.metadata?.source === "text2image"
+      ).length,
+    });
 
     for (const item of items) {
       let addedToZip = false;
-      console.log("step 9a: processing item", {
+      logDebug("step 9a: processing item", {
         index: completed,
         name: item.name,
         hasFile: !!item.file,
@@ -74,7 +76,7 @@ export class ZipManager {
           const extension = mimeType.split("/")[1] || "png";
           filename = `${filename}.${extension}`;
           if (DEBUG_ZIP_MANAGER)
-            console.log(
+            logDebug(
               "?? ZIP-MANAGER: Fixed missing extension for generated image:",
               "originalName:",
               item.name,
@@ -95,7 +97,7 @@ export class ZipManager {
             extFromMime ||
             "mp4";
           filename = `${filename}.${videoExtension}`;
-          console.log("step 9a-extension-fix", {
+          logDebug("step 9a-extension-fix", {
             originalName: item.name,
             addedExtension: videoExtension,
             hadValidExtension: this.hasValidExtension(item.name),
@@ -106,7 +108,7 @@ export class ZipManager {
 
         // Resolve filename conflicts
         const resolvedFilename = this.resolveFilename(filename);
-        console.log("step 9a-filename", {
+        logDebug("step 9a-filename", {
           originalName: item.name,
           initialName: filename,
           resolvedFilename,
@@ -114,7 +116,7 @@ export class ZipManager {
         filename = resolvedFilename;
 
         if (DEBUG_ZIP_MANAGER)
-          console.log(
+          logDebug(
             "?? ZIP-MANAGER: Processing item:",
             "name:",
             item.name,
@@ -129,27 +131,11 @@ export class ZipManager {
           );
 
         // PRIORITY 1: AI-generated videos with localPath - read from disk for reliability
-        // This ensures AI videos use actual disk data instead of potentially invalid blob URLs
-        // Check multiple conditions to detect AI videos
-        const nameCheck = item.name?.toLowerCase();
-        const isAIGenerated =
-          // Check metadata
-          item.metadata?.source === 'text2video' ||
-          item.metadata?.source === 'ai-generated' ||
-          // Check name patterns (case-insensitive) - fixed lowercase comparisons
-          nameCheck?.includes('ai:') ||
-          nameCheck?.includes('ai-video') ||
-          nameCheck?.startsWith('ai ') ||
-          nameCheck?.includes('supermodel') ||  // Simplified check for supermodel
-          // Check if has localPath and is video (likely AI generated)
-          (item.localPath && item.type === 'video') ||
-          // Most reliable: has localPath and saved to ai-videos folder
-          (item.localPath && item.localPath?.toLowerCase().includes('ai-videos'));
+        const isAIGenerated = this.isAIGeneratedVideo(item);
 
-        console.log("step 9a-ai-check: AI detection", {
+        logDebug("step 9a-ai-check: AI detection", {
           name: item.name,
           metadata: item.metadata,
-          nameCheck,
           isAIGenerated,
           hasLocalPath: !!item.localPath,
           localPath: item.localPath
@@ -161,7 +147,7 @@ export class ZipManager {
                                   (item.type === 'video' && item.localPath);
 
         if (shouldUseLocalPath && item.localPath && window.electronAPI?.readFile) {
-          console.log("step 9b-ai: AI video detected, prioritizing localPath read", {
+          logDebug("step 9b-ai: AI video detected, prioritizing localPath read", {
             filename,
             localPath: item.localPath,
             metadataSource: item.metadata?.source,
@@ -170,7 +156,7 @@ export class ZipManager {
 
           try {
             const fileBuffer = await window.electronAPI.readFile(item.localPath);
-            console.log("step 9b-ai-read: readFile returned for AI video", {
+            logDebug("step 9b-ai-read: readFile returned for AI video", {
               bufferExists: !!fileBuffer,
               bufferLength: fileBuffer ? fileBuffer.length : 0,
             });
@@ -186,7 +172,7 @@ export class ZipManager {
               if (uint8Array) {
                 this.zip.file(filename, uint8Array, { binary: true });
                 addedToZip = true;
-                console.log("step 9b-ai-success: AI video added from localPath", {
+                logDebug("step 9b-ai-success: AI video added from localPath", {
                   fileName: filename,
                   fileSize: uint8Array.length,
                   localPath: item.localPath,
@@ -210,17 +196,17 @@ export class ZipManager {
         }
         // PRIORITY 2: Regular files with File object (user uploads, etc)
         if (!addedToZip && item.file) {
-          console.log("step 9b: adding file directly to ZIP", {
+          logDebug("step 9b: adding file directly to ZIP", {
             filename,
             fileSize: item.file.size,
             fileType: item.file.type,
             isAIGenerated: false,
           });
           this.zip.file(filename, item.file);
-          console.log("step 9c: file added successfully via File object");
+          logDebug("step 9c: file added successfully via File object");
           addedToZip = true;
           if (DEBUG_ZIP_MANAGER)
-            console.log(
+            logDebug(
               "? ZIP-MANAGER: Added to ZIP:",
               "filename:",
               filename,
@@ -231,14 +217,14 @@ export class ZipManager {
         // PRIORITY 3: Non-AI files with localPath
         if (!addedToZip && item.localPath && window.electronAPI?.readFile) {
           // Handle local file path for Electron (AI videos saved to disk)
-          console.log("step 9d: attempting to read local file", {
+          logDebug("step 9d: attempting to read local file", {
             localPath: item.localPath,
             electronAPIAvailable: !!window.electronAPI,
             readFileAvailable: !!window.electronAPI?.readFile,
           });
           try {
             const fileBuffer = await window.electronAPI.readFile(item.localPath);
-            console.log("step 9e: readFile returned", {
+            logDebug("step 9e: readFile returned", {
               bufferExists: !!fileBuffer,
               bufferType: fileBuffer ? Object.prototype.toString.call(fileBuffer) : "null",
               bufferLength: fileBuffer ? fileBuffer.length : 0,
@@ -255,10 +241,10 @@ export class ZipManager {
               if (uint8Array) {
                 this.zip.file(filename, uint8Array, { binary: true });
                 addedToZip = true;
-                console.log("step 9j: local file added successfully to ZIP");
+                logDebug("step 9j: local file added successfully to ZIP");
               }
               if (DEBUG_ZIP_MANAGER)
-                console.log(
+                logDebug(
                   "? ZIP-MANAGER: Added local file to ZIP:",
                   "filename:",
                   filename,
@@ -327,7 +313,7 @@ export class ZipManager {
               this.zip.file(finalFilename, fetchedFile);
               addedToZip = true;
               if (DEBUG_ZIP_MANAGER)
-                console.log("? ZIP-MANAGER: Fetched URL-only item into ZIP", {
+                logDebug("? ZIP-MANAGER: Fetched URL-only item into ZIP", {
                   filename: finalFilename,
                   size: fetchedFile.size,
                   type: inferredType,
@@ -357,7 +343,7 @@ export class ZipManager {
 
         completed++;
         onProgress?.(completed / total);
-        console.log("step 9m: item processing complete", {
+        logDebug("step 9m: item processing complete", {
           itemName: item.name,
           completed,
           total,
@@ -372,7 +358,7 @@ export class ZipManager {
       }
     }
 
-    console.log("step 9o: all items processed", {
+    logDebug("step 9o: all items processed", {
       totalProcessed: completed,
       totalItems: total,
       zipFiles: Object.keys(this.zip.files).length,
@@ -383,7 +369,7 @@ export class ZipManager {
   async generateZip(options: Partial<ZipExportOptions> = {}): Promise<Blob> {
     const opts = { ...this.defaultOptions, ...options };
 
-    console.log("step 10: generating ZIP blob", {
+    logDebug("step 10: generating ZIP blob", {
       filesInZip: Object.keys(this.zip.files).length,
       compression: opts.compression,
       compressionLevel: opts.compressionLevel,
@@ -400,7 +386,7 @@ export class ZipManager {
       comment: "Created by QCut",
     });
 
-    console.log("step 10a: ZIP blob generated", {
+    logDebug("step 10a: ZIP blob generated", {
       blobSize: blob.size,
       blobType: blob.type,
       sizeKB: (blob.size / 1024).toFixed(2),
@@ -461,6 +447,25 @@ export class ZipManager {
     this.zip = new JSZip();
   }
 
+  // Detect AI-generated videos: prefer metadata, fall back to ai-videos folder heuristic.
+  private isAIGeneratedVideo(item: MediaItem): boolean {
+    if (
+      item.metadata?.source === "text2video" ||
+      item.metadata?.source === "ai-generated"
+    ) {
+      return true;
+    }
+
+    if (
+      item.type === "video" &&
+      item.localPath?.toLowerCase().includes("ai-videos")
+    ) {
+      return true;
+    }
+
+    return false;
+  }
+
   private normalizeToUint8Array(
     fileBuffer: unknown,
     logLabel: string,
@@ -491,7 +496,7 @@ export class ZipManager {
         }
       }
 
-      console.log(`${logLabel}: normalized buffer`, {
+      logDebug(`${logLabel}: normalized buffer`, {
         itemName,
         filename,
         originalType: typeTag,
@@ -531,7 +536,7 @@ export async function downloadZipSafely(
   blob: Blob,
   filename: string
 ): Promise<void> {
-  console.log("step 11: downloadZipSafely called", {
+  logDebug("step 11: downloadZipSafely called", {
     blobSize: blob.size,
     blobType: blob.type,
     filename,
@@ -542,22 +547,22 @@ export async function downloadZipSafely(
   // Check if running in Electron
   if (window.electronAPI?.saveBlob) {
     try {
-      console.log("step 11a: converting blob to array buffer");
+      logDebug("step 11a: converting blob to array buffer");
       // Convert blob to array buffer for Electron
       const arrayBuffer = await blob.arrayBuffer();
-      console.log("step 11b: arrayBuffer created", {
+      logDebug("step 11b: arrayBuffer created", {
         byteLength: arrayBuffer.byteLength,
       });
 
       const uint8Array = new Uint8Array(arrayBuffer);
-      console.log("step 11c: calling electronAPI.saveBlob", {
+      logDebug("step 11c: calling electronAPI.saveBlob", {
         uint8ArrayLength: uint8Array.length,
         uint8ArrayByteLength: uint8Array.byteLength,
         filename,
       });
 
       const result = await window.electronAPI.saveBlob(uint8Array, filename);
-      console.log("step 11d: saveBlob returned", {
+      logDebug("step 11d: saveBlob returned", {
         success: result.success,
         filePath: result.filePath,
         canceled: result.canceled,
@@ -565,10 +570,10 @@ export async function downloadZipSafely(
       });
 
       if (result.success) {
-        console.log("✅ ZIP saved successfully via Electron:", result.filePath);
+        logDebug("✅ ZIP saved successfully via Electron:", result.filePath);
         return;
       } else if (result.canceled) {
-        console.log("ZIP save canceled by user");
+        logDebug("ZIP save canceled by user");
         return;
       } else {
         console.error("Failed to save ZIP via Electron:", result.error);
@@ -582,7 +587,7 @@ export async function downloadZipSafely(
       // Fall through to browser methods
     }
   } else {
-    console.log("step 11f: Electron API not available, using browser methods");
+    logDebug("step 11f: Electron API not available, using browser methods");
   }
 
   // Use modern File System Access API if available (browser)
