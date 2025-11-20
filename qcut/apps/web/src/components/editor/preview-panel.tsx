@@ -782,16 +782,8 @@ export function PreviewPanel() {
 
       // Video elements
       if (mediaItem.type === "video") {
-        console.log("[STEP-FOREGROUND] mediaItem snapshot", {
-          id: mediaItem.id,
-          hasFile: !!mediaItem.file,
-          fileName: mediaItem.file?.name,
-          fileSize: mediaItem.file?.size,
-          hasUrl: !!mediaItem.url,
-        });
-
         const source = videoSourcesById.get(mediaItem.id) ?? null;
-        console.log("[PreviewPanel] Foreground video source:", source?.type || "none");
+
         if (!source) {
           return (
             <div
