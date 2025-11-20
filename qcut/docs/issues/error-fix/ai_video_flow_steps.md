@@ -174,12 +174,18 @@ const shouldUseLocalPath = isAIGenerated ||
   (item.type === 'video' && item.localPath);
 ```
 
+#### 4. Windows-safe filenames and missing extensions (FINAL FIX)
+- Added `hasValidExtension` helper so video items without a real extension get one inferred (from `localPath`, then MIME type, else default `mp4`); logged via `step 9a-extension-fix`.
+- Sanitized filenames to trim trailing dots/spaces (Windows extraction blocker) and log the final ZIP entry name via `step 9a-filename`.
+- Result: ZIP entries now look like `AI_ supermodel dance.mp4` instead of `AI_ supermodel dance` (which failed to extract on Windows).
+
 ### Files Modified
 1. **`apps/web/src/lib/zip-manager.ts`**
    - Lines 152-182: Added Buffer serialization detection for AI videos
    - Lines 240-256: Added same fix for regular file reading
    - Lines 182, 263: Added `{ binary: true }` flag to JSZip
    - Lines 108-121: Improved AI video detection logic
+   - Lines 60-120: Added extension inference (`hasValidExtension`, `step 9a-extension-fix`) and Windows filename sanitization/logging (`step 9a-filename`)
 
 2. **`apps/web/src/hooks/use-zip-export.ts`**
    - Lines 34-48: Enhanced logging to show metadata counts
@@ -196,6 +202,7 @@ The fix can be verified by checking console output during ZIP export:
 2. **Step 10a**: ZIP blob generated with correct size
 3. **Step 11d**: Save successful with file path
 4. **Extraction**: ZIP file extracts without errors
+5. **Step 9a-extension-fix / step 9a-filename**: Logs confirm extension inference and the sanitized filename used in the ZIP (should end with `.mp4` on AI videos)
 
 ### Testing Performed
 - ✅ AI video generation → immediate ZIP export → successful extraction
