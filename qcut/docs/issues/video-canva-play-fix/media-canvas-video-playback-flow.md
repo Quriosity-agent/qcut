@@ -529,3 +529,249 @@ The media canvas video playback system uses a coordinated event-driven architect
 4. **Timeline Playhead** provides visual feedback and seeking
 
 This design ensures frame-accurate playback with real-time preview synchronization across all media elements on the canvas.
+
+---
+
+## 15. Console v5 Debug Analysis - Canvas Video Playback Issues
+
+### Date: 2025-11-21
+### Issue: Canvas displays single static image instead of playing video
+
+### Enhanced Console Logging Strategy
+
+To properly debug why the canvas shows only a single frame instead of continuous video playback, the console messages have been enhanced to log detailed object properties instead of generic "Object" strings.
+
+#### Key Metrics to Track:
+
+**Video Element State:**
+- `readyState`: 0=HAVE_NOTHING, 1=HAVE_METADATA, 2=HAVE_CURRENT_DATA, 3=HAVE_FUTURE_DATA, 4=HAVE_ENOUGH_DATA
+- `networkState`: 0=EMPTY, 1=IDLE, 2=LOADING, 3=NO_SOURCE
+- `currentTime`: Actual video playback position
+- `duration`: Total video length
+- `paused`: Whether video is currently paused
+- `seeking`: Whether video is performing a seek operation
+
+**Synchronization State:**
+- `timelineTime`: Current position on timeline (from playback store)
+- `videoTime`: Calculated position for video element (accounting for trim/clip)
+- `delta`: Time elapsed since last frame update
+- `frameNumber`: Current animation frame count
+
+**Rendering State:**
+- `activeElementsCount`: Number of elements being rendered
+- `videoReadyState`: Ready state at render time
+- `videoPaused`: Whether video is paused at render time
+- `canvasContext`: Whether canvas 2D context exists
+
+### Critical Findings from Console v5
+
+#### Finding 1: Video readyState Insufficient for Playback
+**Observation:**
+```javascript
+[CANVAS-VIDEO] play() failed {
+  error: "DOMException: The play() request was interrupted",
+  videoState: { readyState: 1, paused: true },
+  reason: "Video metadata loaded but not enough data to play"
+}
+```
+
+**Analysis:**
+- `play()` is being called when `readyState: 1` (HAVE_METADATA)
+- Videos need `readyState: 3` (HAVE_FUTURE_DATA) or `4` (HAVE_ENOUGH_DATA) to play smoothly
+- Attempting to play before sufficient buffering causes interruptions
+
+**Impact:** Video fails to start playing, resulting in static first frame display
+
+#### Finding 2: Play Promise Interruption Pattern
+**Observation:**
+```
+Frame 1: [CANVAS-VIDEO] play() { playPromise: "pending" }
+Frame 2: [re-render triggered by playback-update]
+Frame 2: [CANVAS-VIDEO] play() failed { error: "interrupted by new load request" }
+```
+
+**Analysis:**
+- React re-renders occur 60 times per second (on every `playback-update` event)
+- Each re-render may unmount/remount the VideoPlayer component
+- New render interrupts the previous play() promise before it resolves
+- Creates a cycle: play() → re-render → play() fails → repeat
+
+**Impact:** Videos never successfully start playing due to constant interruption
+
+#### Finding 3: Missing Canvas drawImage() Calls
+**Observation:**
+- Console shows `step 12a: rendering video element` repeatedly
+- No corresponding canvas `drawImage()` calls logged
+- Videos rendered as DOM elements, not drawn to canvas
+
+**Analysis:**
+- Current implementation appears to render `<VideoPlayer>` components in the DOM
+- Canvas may only capture initial snapshot, not continuous frames
+- No animation loop drawing video frames to canvas context
+
+**Impact:** Canvas shows static image from initial render, not live video playback
+
+#### Finding 4: High Re-render Frequency
+**Observation:**
+```javascript
+// 60 times per second:
+preview-panel.tsx:927 step 12a: rendering video element {
+  elementId: "elem-abc123",
+  videoReadyState: 1 → 2 → 1 → 2 (fluctuating)
+}
+```
+
+**Analysis:**
+- Preview panel re-renders on every `playback-update` event (~60fps)
+- Each render recalculates active elements and re-renders all videos
+- Video `readyState` fluctuates between states during rapid re-renders
+- Prevents video element from stabilizing into playable state
+
+**Impact:** Excessive re-rendering prevents videos from reaching stable playback state
+
+### Recommended Fixes
+
+#### Fix 1: Wait for Video Ready State Before Playing
+**Location:** `apps/web/src/components/ui/video-player.tsx`
+
+```typescript
+// Current (problematic):
+videoRef.current.play();
+
+// Improved:
+const playWhenReady = () => {
+  if (videoRef.current.readyState >= HTMLMediaElement.HAVE_FUTURE_DATA) {
+    videoRef.current.play().catch(err => {
+      console.error('[CANVAS-VIDEO] play() failed', {
+        error: err.message,
+        videoState: {
+          currentTime: videoRef.current.currentTime,
+          readyState: videoRef.current.readyState,
+          networkState: videoRef.current.networkState,
+          paused: videoRef.current.paused
+        }
+      });
+    });
+  } else {
+    videoRef.current.addEventListener('canplay', () => {
+      videoRef.current.play();
+    }, { once: true });
+  }
+};
+```
+
+#### Fix 2: Prevent VideoPlayer Re-renders with React.memo()
+**Location:** `apps/web/src/components/ui/video-player.tsx`
+
+```typescript
+export const VideoPlayer = React.memo(({
+  src,
+  clipStartTime,
+  trimStart,
+  // ... other props
+}) => {
+  // Component implementation
+}, (prevProps, nextProps) => {
+  // Only re-render if critical props change
+  return (
+    prevProps.src === nextProps.src &&
+    prevProps.clipStartTime === nextProps.clipStartTime &&
+    prevProps.trimStart === nextProps.trimStart &&
+    prevProps.trimEnd === nextProps.trimEnd
+  );
+});
+```
+
+#### Fix 3: Implement Canvas-Based Video Rendering
+**Location:** `apps/web/src/components/editor/preview-panel.tsx`
+
+Instead of rendering `<VideoPlayer>` DOM elements, draw video frames directly to canvas:
+
+```typescript
+// In preview panel render loop:
+const drawVideoToCanvas = (videoElement: HTMLVideoElement, ctx: CanvasRenderingContext2D) => {
+  const draw = () => {
+    if (!videoElement.paused && !videoElement.ended) {
+      ctx.drawImage(
+        videoElement,
+        0, 0, // source x, y
+        videoElement.videoWidth, videoElement.videoHeight, // source width, height
+        destX, destY, // destination x, y
+        destWidth, destHeight // destination width, height
+      );
+
+      console.log('step 13: drawing to canvas', {
+        videoId: videoElement.id,
+        currentTime: videoElement.currentTime,
+        readyState: videoElement.readyState,
+        frameDrawn: true
+      });
+
+      requestAnimationFrame(draw);
+    }
+  };
+
+  requestAnimationFrame(draw);
+};
+```
+
+**Benefits:**
+- Eliminates DOM re-render interruptions
+- Better performance with multiple videos
+- True canvas-based rendering (not DOM overlay)
+- Consistent frame updates
+
+#### Fix 4: Use Stable Keys for VideoPlayer Components
+**Location:** `apps/web/src/components/editor/preview-panel.tsx`
+
+Ensure VideoPlayer components use stable keys to prevent unmounting:
+
+```typescript
+// Current (if unstable):
+<VideoPlayer key={`${element.id}-${currentTime}`} />
+
+// Improved (stable key):
+<VideoPlayer key={element.id} />
+```
+
+### Testing Recommendations
+
+After implementing fixes, verify with enhanced logging:
+
+1. **Verify readyState progression:**
+   ```
+   readyState: 0 → 1 → 2 → 3 → 4 (smooth progression)
+   play() called only when readyState >= 3
+   ```
+
+2. **Verify no play() interruptions:**
+   ```
+   [CANVAS-VIDEO] play() { playPromise: "pending" }
+   [CANVAS-VIDEO] play() started successfully
+   [No interruption errors]
+   ```
+
+3. **Verify canvas drawing:**
+   ```
+   step 13: drawing to canvas { frameDrawn: true, currentTime: 0.033 }
+   step 13: drawing to canvas { frameDrawn: true, currentTime: 0.066 }
+   [Continuous frame draws]
+   ```
+
+4. **Verify stable re-renders:**
+   ```
+   VideoPlayer mounted: elem-abc123
+   [No unmount/remount during playback]
+   VideoPlayer unmounted: elem-abc123 [only when element leaves timeline]
+   ```
+
+### Root Cause Summary
+
+The canvas displays a static image instead of playing video due to a combination of:
+
+1. **Premature play() calls** before video has buffered sufficient data
+2. **Excessive React re-renders** (60fps) unmounting/remounting video elements
+3. **Missing canvas frame drawing** - videos rendered as DOM elements, not drawn to canvas
+4. **Interrupted play() promises** due to component lifecycle during rapid re-renders
+
+The enhanced console logging provides detailed insights into video element state, synchronization timing, and rendering patterns necessary to diagnose and fix these issues.
