@@ -219,36 +219,93 @@ export function VideoPlayer({
     };
   }, [videoId, src]);
 
-  // Sync playback state
+  // Sync playback state with readyState check
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
 
-    if (isPlaying && isInClipRange) {
-      console.log("[CANVAS-VIDEO] play()", {
-        videoId: videoId ?? src,
-        currentTime: Number(video.currentTime.toFixed(3)),
-        readyState: video.readyState,
-        paused: video.paused,
-        duration: Number(video.duration.toFixed(3)),
-        seeking: video.seeking,
-        playPromise: "pending"
+    const handlePlayError = (err: any) => {
+      console.error("[CANVAS-VIDEO] play() failed", {
+        error: err?.message || String(err),
+        videoState: {
+          currentTime: Number(video.currentTime.toFixed(3)),
+          readyState: video.readyState,
+          networkState: video.networkState,
+          paused: video.paused,
+          seeking: video.seeking
+        },
+        reason: video.readyState < 3 ? "Video not ready (buffering needed)" : "Play interrupted or other error"
       });
-      video
-        .play()
-        .catch((err) =>
-          console.error("[CANVAS-VIDEO] play() failed", {
-            error: err?.message || String(err),
-            videoState: {
-              currentTime: Number(video.currentTime.toFixed(3)),
+    };
+
+    if (isPlaying && isInClipRange) {
+      // Check if video is ready to play
+      if (video.readyState >= 3) {
+        console.log("[CANVAS-VIDEO] ✅ Video ready, playing immediately", {
+          videoId: videoId ?? src,
+          currentTime: Number(video.currentTime.toFixed(3)),
+          readyState: video.readyState,
+          readyStateText: video.readyState === 3 ? "HAVE_FUTURE_DATA" : "HAVE_ENOUGH_DATA",
+          paused: video.paused,
+          duration: Number(video.duration.toFixed(3)),
+          seeking: video.seeking
+        });
+        video.play()
+          .then(() => {
+            console.log("[CANVAS-VIDEO] ✅ play() succeeded", {
+              videoId: videoId ?? src,
               readyState: video.readyState,
-              networkState: video.networkState,
-              paused: video.paused,
-              seeking: video.seeking
-            },
-            reason: video.readyState < 3 ? "Video metadata loaded but not enough data to play" : "Unknown"
+              currentTime: Number(video.currentTime.toFixed(3))
+            });
           })
-        );
+          .catch(handlePlayError);
+      } else {
+        // Video not ready, wait for it to be ready
+        console.log("[CANVAS-VIDEO] ⏳ Video not ready, waiting for canplay event", {
+          videoId: videoId ?? src,
+          currentReadyState: video.readyState,
+          readyStateText: ["HAVE_NOTHING", "HAVE_METADATA", "HAVE_CURRENT_DATA"][video.readyState] || "UNKNOWN",
+          needsReadyState: 3,
+          currentTime: Number(video.currentTime.toFixed(3)),
+          paused: video.paused
+        });
+
+        const handleCanPlay = () => {
+          if (isPlaying && isInClipRange) {
+            console.log("[CANVAS-VIDEO] ✅ canplay event fired, attempting play", {
+              videoId: videoId ?? src,
+              readyState: video.readyState,
+              readyStateText: video.readyState === 3 ? "HAVE_FUTURE_DATA" : "HAVE_ENOUGH_DATA",
+              currentTime: Number(video.currentTime.toFixed(3))
+            });
+            video.play()
+              .then(() => {
+                console.log("[CANVAS-VIDEO] ✅ play() succeeded after canplay", {
+                  videoId: videoId ?? src,
+                  readyState: video.readyState,
+                  currentTime: Number(video.currentTime.toFixed(3))
+                });
+              })
+              .catch(handlePlayError);
+          } else {
+            console.log("[CANVAS-VIDEO] ⚠️ canplay fired but playback no longer needed", {
+              videoId: videoId ?? src,
+              isPlaying,
+              isInClipRange
+            });
+          }
+        };
+
+        video.addEventListener('canplay', handleCanPlay, { once: true });
+
+        // Clean up event listener on unmount or state change
+        return () => {
+          video.removeEventListener('canplay', handleCanPlay);
+          console.log("[CANVAS-VIDEO] 🧹 Cleaned up canplay listener", {
+            videoId: videoId ?? src
+          });
+        };
+      }
     } else {
       if (isPlaying && !isInClipRange) {
         console.warn("[CANVAS-VIDEO] Requested play but clip not active", {
