@@ -81,10 +81,11 @@ const startTimer = (store: () => PlaybackStore) => {
           new CustomEvent("playback-update", { detail: { time: newTime } })
         );
         console.log("step 3: playback-update event dispatched", {
-          time: newTime,
-          delta,
+          time: Number(newTime.toFixed(3)),
+          delta: Number(delta.toFixed(3)),
           speed: state.speed,
           frameNumber,
+          isPlaying: state.isPlaying
         });
       }
       loggedNotPlaying = false;
@@ -129,13 +130,24 @@ export const usePlaybackStore = create<PlaybackStore>((set, get) => ({
   speed: 1.0,
 
   play: () => {
-    console.log("step 1: user initiated playback", { action: "play" });
+    const { isPlaying, currentTime } = get();
+    console.log("step 1: user initiated playback", {
+      action: "play",
+      wasPlaying: isPlaying,
+      currentTime: Number(currentTime.toFixed(3))
+    });
     set({ isPlaying: true });
     startTimer(get);
   },
 
   pause: () => {
-    console.log("step 1: user initiated playback", { action: "pause" });
+    const { isPlaying, currentTime } = get();
+    console.log("step 1: user initiated playback", {
+      action: "pause",
+      wasPlaying: isPlaying,
+      currentTime: Number(currentTime.toFixed(3)),
+      rafTimerCancelled: playbackTimer !== null
+    });
     set({ isPlaying: false });
     stopTimer();
   },

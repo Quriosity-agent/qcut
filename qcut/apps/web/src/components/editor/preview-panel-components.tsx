@@ -320,9 +320,11 @@ export function PreviewToolbar({
 
   const handleToggleClick = () => {
     console.log("[PLAYBACK] Play/Pause button clicked", {
-      isPlaying,
-      currentTime,
-      totalDuration,
+      action: isPlaying ? "pause" : "play",
+      previousState: isPlaying ? "playing" : "paused",
+      currentTime: Number(currentTime.toFixed(3)),
+      willPause: isPlaying,
+      willPlay: !isPlaying
     });
     toggle();
   };

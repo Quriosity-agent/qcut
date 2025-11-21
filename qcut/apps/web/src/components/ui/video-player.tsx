@@ -104,6 +104,12 @@ export function VideoPlayer({
         videoTime: targetTime,
         trimStart,
         clipStartTime,
+        clipDuration,
+        videoElement: {
+          readyState: video.readyState,
+          currentTime: Number(video.currentTime.toFixed(3)),
+          duration: Number(video.duration.toFixed(3))
+        }
       });
     };
 
@@ -221,18 +227,26 @@ export function VideoPlayer({
     if (isPlaying && isInClipRange) {
       console.log("[CANVAS-VIDEO] play()", {
         videoId: videoId ?? src,
-        currentTime: Number(currentTime.toFixed(3)),
+        currentTime: Number(video.currentTime.toFixed(3)),
         readyState: video.readyState,
-        networkState: video.networkState,
+        paused: video.paused,
+        duration: Number(video.duration.toFixed(3)),
+        seeking: video.seeking,
+        playPromise: "pending"
       });
       video
         .play()
         .catch((err) =>
           console.error("[CANVAS-VIDEO] play() failed", {
-            videoId: videoId ?? src,
             error: err?.message || String(err),
-            readyState: video.readyState,
-            networkState: video.networkState,
+            videoState: {
+              currentTime: Number(video.currentTime.toFixed(3)),
+              readyState: video.readyState,
+              networkState: video.networkState,
+              paused: video.paused,
+              seeking: video.seeking
+            },
+            reason: video.readyState < 3 ? "Video metadata loaded but not enough data to play" : "Unknown"
           })
         );
     } else {

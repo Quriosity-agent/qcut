@@ -255,9 +255,11 @@ export function useTimelinePlayhead({
 
     if (needsScroll) {
       console.log("step 6: timeline playhead updated", {
-        currentTime: playheadPosition,
-        playheadPosition: playheadPx,
+        currentTime: Number(currentTime.toFixed(3)),
+        playheadPosition: Number(playheadPx.toFixed(2)),
         shouldAutoScroll: true,
+        zoomLevel: Number(zoomLevel.toFixed(1)),
+        timelineScrollLeft: rulerViewport.scrollLeft
       });
       // Center the playhead in the viewport
       const desiredScroll = Math.max(
@@ -267,9 +269,11 @@ export function useTimelinePlayhead({
       rulerViewport.scrollLeft = tracksViewport.scrollLeft = desiredScroll;
     } else {
       console.log("step 6: timeline playhead updated", {
-        currentTime: playheadPosition,
-        playheadPosition: playheadPx,
+        currentTime: Number(currentTime.toFixed(3)),
+        playheadPosition: Number(playheadPx.toFixed(2)),
         shouldAutoScroll: false,
+        zoomLevel: Number(zoomLevel.toFixed(1)),
+        timelineScrollLeft: rulerViewport.scrollLeft
       });
     }
   }, [

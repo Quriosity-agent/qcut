@@ -443,10 +443,11 @@ export function PreviewPanel() {
     });
 
     console.log("step 11: calculating active elements", {
-      currentTime,
+      currentTime: Number(currentTime.toFixed(3)),
       totalTracks: tracks.length,
       totalElements,
       calculatedActiveCount: activeElements.length,
+      activeElementIds: activeElements.map(ae => ae.element.id)
     });
 
     return activeElements;
@@ -490,9 +491,12 @@ export function PreviewPanel() {
 
     if (isPlaying) {
       console.log("step 5: preview panel updated", {
-        currentTime,
+        currentTime: Number(currentTime.toFixed(3)),
         activeElementsCount: activeElements.length,
         hasEffects,
+        canvasWidth: canvasSize.width,
+        canvasHeight: canvasSize.height,
+        aspectRatio: `${canvasSize.width}:${canvasSize.height}`
       });
       if (hasAnyElements && activeElements.length === 0) {
         console.warn("[CANVAS-VIDEO] No active elements rendered while playing", {
@@ -777,20 +781,19 @@ export function PreviewPanel() {
   // Render an element
   const renderElement = (elementData: ActiveElement, index: number) => {
     const { element, mediaItem } = elementData;
+    const elementEndTime = element.startTime + (element.duration - element.trimStart - element.trimEnd);
     console.log("step 12: rendering element", {
       elementId: element.id,
       elementType: element.type,
       mediaType: mediaItem?.type,
+      startTime: Number(element.startTime.toFixed(3)),
+      endTime: Number(elementEndTime.toFixed(3)),
       hasEffects,
-      opacity: "opacity" in element ? (element as any).opacity : undefined,
-      transform:
-        element.type === "text"
-          ? {
-              x: element.x,
-              y: element.y,
-              rotation: element.rotation,
-            }
-          : undefined,
+      opacity: "opacity" in element ? (element as any).opacity : 1,
+      transform: element.type === "text"
+        ? `scale(${(element as any).scale ?? 1}) rotate(${element.rotation ?? 0}deg)`
+        : `scale(${(element as any).scale ?? 1}) rotate(0deg)`,
+      isVisible: true
     });
 
     // Text elements
@@ -926,14 +929,17 @@ export function PreviewPanel() {
             : "";
         console.log("step 12a: rendering video element", {
           elementId: element.id,
-          src: source.src,
-          clipStartTime: element.startTime,
-          trimStart: element.trimStart,
-          trimEnd: element.trimEnd,
-          clipDuration: element.duration,
-          filterStyle: filterValue,
-          opacity: "opacity" in element ? (element as any).opacity : undefined,
+          src: source.src.substring(0, 50) + "...",
+          clipStartTime: Number(element.startTime.toFixed(3)),
+          trimStart: Number(element.trimStart.toFixed(3)),
+          trimEnd: Number(element.trimEnd.toFixed(3)),
+          clipDuration: Number(element.duration.toFixed(3)),
+          filterStyle: filterValue || "none",
+          opacity: "opacity" in element ? (element as any).opacity : 1,
           scale: (element as any).scale ?? 1,
+          videoReadyState: "unknown - check VideoPlayer logs",
+          videoCurrentTime: Number(currentTime.toFixed(3)),
+          videoPaused: !isPlaying
         });
 
         return (
