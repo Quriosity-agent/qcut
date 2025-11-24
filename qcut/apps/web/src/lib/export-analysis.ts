@@ -2,6 +2,7 @@
 
 import type { TimelineTrack, MediaElement } from "@/types/timeline";
 import type { MediaItem } from "@/stores/media-store-types";
+import { ExportUnsupportedError } from "./export-errors";
 
 /**
  * Analysis result determining export optimization strategy.
@@ -28,9 +29,8 @@ export interface ExportAnalysis {
   hasOverlappingVideos: boolean;
   /** Can use FFmpeg direct copy/concat (fast path) */
   canUseDirectCopy: boolean;
-  /** Which export pipeline to use */
+  /** Which export pipeline to use (Mode 3/image-pipeline removed - now throws error) */
   optimizationStrategy:
-    | "image-pipeline"
     | "direct-copy"
     | "direct-video-with-filters"
     | "video-normalization";
@@ -685,4 +685,65 @@ function checkForOverlappingRanges(
   }
 
   return false;
+}
+
+/**
+ * Validates timeline configuration for export.
+ * Throws ExportUnsupportedError if the timeline contains unsupported elements.
+ *
+ * Unsupported cases (Mode 3 removed):
+ * - Image elements (require canvas compositing)
+ * - Overlapping videos (require canvas compositing)
+ * - Blob URLs without local paths (FFmpeg cannot access)
+ * - No video elements (nothing to export)
+ *
+ * @param params - Validation parameters extracted from timeline analysis
+ * @throws ExportUnsupportedError if timeline configuration is unsupported
+ */
+export function validateTimelineForExport(params: {
+  hasImageElements: boolean;
+  hasOverlappingVideos: boolean;
+  videoElementCount: number;
+  allVideosHaveLocalPath: boolean;
+}): void {
+  const {
+    hasImageElements,
+    hasOverlappingVideos,
+    videoElementCount,
+    allVideosHaveLocalPath,
+  } = params;
+
+  // Check for no video elements
+  if (videoElementCount === 0) {
+    console.error(
+      "❌ [EXPORT VALIDATION] No video elements found in timeline"
+    );
+    throw new ExportUnsupportedError("no-video-elements");
+  }
+
+  // Check for image elements (unsupported - would require Mode 3)
+  if (hasImageElements) {
+    console.error(
+      "❌ [EXPORT VALIDATION] Image elements are not supported in export"
+    );
+    throw new ExportUnsupportedError("image-elements");
+  }
+
+  // Check for overlapping videos (unsupported - would require Mode 3)
+  if (hasOverlappingVideos) {
+    console.error(
+      "❌ [EXPORT VALIDATION] Overlapping videos are not supported in export"
+    );
+    throw new ExportUnsupportedError("overlapping-videos");
+  }
+
+  // Check for blob URLs without local paths
+  if (!allVideosHaveLocalPath) {
+    console.error(
+      "❌ [EXPORT VALIDATION] Some videos have blob URLs without local paths"
+    );
+    throw new ExportUnsupportedError("blob-urls");
+  }
+
+  console.log("✅ [EXPORT VALIDATION] Timeline configuration is valid");
 }

@@ -405,9 +405,427 @@ Mode 3 (Image Pipeline) Dependencies:
 
 ### Recommended Migration Path:
 
-**Option 1: Error on Unsupported Cases**
+**Option 1: Error on Unsupported Cases** ✅ **SELECTED**
 - Throw descriptive errors when Mode 3 would have been used
 - Guide users to simplify their timelines (remove images, fix overlaps, etc.)
+
+---
+
+## Option 1 Implementation Plan
+
+### Overview
+
+Remove Mode 3 (Image Pipeline) entirely and throw descriptive errors when unsupported timeline configurations are detected. This is the simplest approach that eliminates the slow export path while clearly communicating limitations to users.
+
+### Architecture Changes
+
+```
+Current Flow:
+┌─────────────┐     ┌─────────────┐     ┌─────────────┐
+│ Timeline    │ ──▶ │ Analysis    │ ──▶ │ Mode 1/2/3  │
+│ Elements    │     │ Determines  │     │ Export      │
+└─────────────┘     │ Mode        │     └─────────────┘
+                    └─────────────┘
+
+New Flow:
+┌─────────────┐     ┌─────────────┐     ┌─────────────┐
+│ Timeline    │ ──▶ │ Validation  │ ──▶ │ Mode 1/1.5/2│
+│ Elements    │     │ + Analysis  │     │ Export      │
+└─────────────┘     └─────────────┘     └─────────────┘
+                           │
+                    ┌──────▼──────┐
+                    │ Error if    │
+                    │ Unsupported │
+                    └─────────────┘
+```
+
+### Task 1: Define Unsupported Case Errors
+
+**Purpose:** Create clear, actionable error messages for each unsupported case.
+
+**Error Types:**
+
+```typescript
+// apps/web/src/lib/export-errors.ts
+
+export class ExportUnsupportedError extends Error {
+  constructor(
+    public readonly reason: UnsupportedReason,
+    public readonly userMessage: string,
+    public readonly suggestion: string
+  ) {
+    super(userMessage);
+    this.name = 'ExportUnsupportedError';
+  }
+}
+
+export type UnsupportedReason =
+  | 'image-elements'
+  | 'overlapping-videos'
+  | 'blob-urls'
+  | 'complex-effects'
+  | 'no-video-elements';
+
+export const UNSUPPORTED_ERRORS: Record<UnsupportedReason, { message: string; suggestion: string }> = {
+  'image-elements': {
+    message: 'Image elements are not currently supported in export.',
+    suggestion: 'Remove image elements from your timeline, or convert them to video clips using an external tool.',
+  },
+  'overlapping-videos': {
+    message: 'Overlapping videos are not currently supported in export.',
+    suggestion: 'Arrange your videos sequentially without overlaps, or trim clips so they don\'t overlap in time.',
+  },
+  'blob-urls': {
+    message: 'Some media files could not be accessed for export.',
+    suggestion: 'Re-import the media files from your local disk. Temporary or generated files may need to be saved first.',
+  },
+  'complex-effects': {
+    message: 'Some effects are not supported in the current export mode.',
+    suggestion: 'Remove or simplify effects on your clips. Basic color adjustments and text overlays are supported.',
+  },
+  'no-video-elements': {
+    message: 'No video elements found in timeline.',
+    suggestion: 'Add at least one video clip to your timeline before exporting.',
+  },
+};
+```
+
+### Task 2: Update Export Analysis
+
+**Purpose:** Remove Mode 3 strategy and add validation that throws errors.
+
+**File:** `apps/web/src/lib/export-analysis.ts`
+
+**Changes:**
+
+```typescript
+// Remove "image-pipeline" from OptimizationStrategy type
+export type OptimizationStrategy =
+  | "direct-copy"           // Mode 1: Simple concat
+  | "video-normalization"   // Mode 1.5: Normalize + concat
+  | "direct-video-with-filters"; // Mode 2: FFmpeg filters
+
+// Add validation function
+export function validateTimelineForExport(elements: TimelineElement[]): void {
+  const issues: UnsupportedReason[] = [];
+
+  // Check for image elements
+  const hasImageElements = elements.some(el => el.type === 'image');
+  if (hasImageElements) {
+    issues.push('image-elements');
+  }
+
+  // Check for overlapping videos
+  const videoElements = elements.filter(el => el.type === 'video');
+  if (hasOverlappingElements(videoElements)) {
+    issues.push('overlapping-videos');
+  }
+
+  // Check for blob URLs without local paths
+  const hasBlobUrls = elements.some(el => {
+    if (el.type === 'video' || el.type === 'image') {
+      const media = el as MediaElement;
+      return media.src?.startsWith('blob:') && !media.localPath;
+    }
+    return false;
+  });
+  if (hasBlobUrls) {
+    issues.push('blob-urls');
+  }
+
+  // Check for no video elements
+  if (videoElements.length === 0) {
+    issues.push('no-video-elements');
+  }
+
+  // Throw error if any issues found
+  if (issues.length > 0) {
+    const primaryIssue = issues[0];
+    const errorInfo = UNSUPPORTED_ERRORS[primaryIssue];
+    throw new ExportUnsupportedError(
+      primaryIssue,
+      errorInfo.message,
+      errorInfo.suggestion
+    );
+  }
+}
+
+// Update analyzeTimeline to call validation
+export function analyzeTimeline(elements: TimelineElement[]): ExportAnalysis {
+  // Validate first - throws if unsupported
+  validateTimelineForExport(elements);
+
+  // Continue with normal analysis for Mode 1/1.5/2
+  // ... existing analysis code ...
+}
+```
+
+### Task 3: Update Export Engine
+
+**Purpose:** Remove Mode 3 handling from CLIExportEngine.
+
+**File:** `apps/web/src/lib/export-engine-cli.ts`
+
+**Sections to Remove:**
+
+1. **Lines 1462-1467** - Mode 3 detection:
+```typescript
+// REMOVE THIS BLOCK
+if (this.exportAnalysis?.optimizationStrategy === "image-pipeline") {
+  debugLog("[CLIExportEngine] 🎨 MODE 3: Frame rendering required");
+  debugLog(`[CLIExportEngine] Reason: ${this.exportAnalysis.reason}`);
+  progressCallback?.(15, "Rendering frames...");
+  await this.renderFramesToDisk(progressCallback);
+}
+```
+
+2. **Lines 1486-1491** - Mode 3 fallback:
+```typescript
+// REMOVE THIS BLOCK
+} else {
+  debugLog("[CLIExportEngine] ⚠️ Falling back to frame rendering");
+  progressCallback?.(15, "Rendering frames...");
+  await this.renderFramesToDisk(progressCallback);
+}
+```
+
+3. **Lines 1493-1524** - Mode 3 error fallback:
+```typescript
+// REMOVE ENTIRE CATCH BLOCK that falls back to image-pipeline
+```
+
+4. **Lines 1613-1764** - Frame rendering methods:
+```typescript
+// REMOVE ENTIRE METHODS
+private async renderFramesToDisk(...) { ... }
+private async saveFrameToDisk(...) { ... }
+```
+
+5. **Lines 92-247** - Canvas rendering methods:
+```typescript
+// REMOVE ENTIRE METHODS
+async renderFrame(...) { ... }
+private async renderElementCLI(...) { ... }
+private async renderMediaElementCLI(...) { ... }
+private async renderVideoCLI(...) { ... }
+private renderImageCLI(...) { ... }
+private renderTextElementCLI(...) { ... }
+private async renderStickerElementCLI(...) { ... }
+```
+
+6. **Lines 436-444** - Video cache:
+```typescript
+// REMOVE
+const cliVideoCache: Map<string, HTMLVideoElement> = new Map();
+```
+
+### Task 4: Update FFmpeg Handler
+
+**Purpose:** Remove frame-based FFmpeg logic.
+
+**File:** `electron/ffmpeg-handler.ts`
+
+**Sections to Remove:**
+
+1. **Lines 129-133** - Remove `"image-pipeline"` from type:
+```typescript
+// Change from:
+optimizationStrategy?: "image-pipeline" | "direct-copy" | "direct-video-with-filters" | "video-normalization";
+
+// To:
+optimizationStrategy?: "direct-copy" | "direct-video-with-filters" | "video-normalization";
+```
+
+2. **Lines 870-897** - Mode 3 frame validation:
+```typescript
+// REMOVE ENTIRE BLOCK
+} else {
+  // MODE 3: Frame-based mode - verify frames exist
+  console.log("🎨 [MODE 3 VALIDATION] Validating frame files...");
+  // ...
+}
+```
+
+3. **Lines 2139-2299** - Frame-based FFmpeg args builder:
+```typescript
+// REMOVE ENTIRE SECTION
+// Frame-based processing (normal path)
+const inputPattern: string = path.join(inputDir, "frame-%04d.png");
+// ...
+```
+
+### Task 5: Update UI Error Handling
+
+**Purpose:** Display user-friendly errors in the export dialog.
+
+**File:** `apps/web/src/components/export-dialog.tsx` (or similar)
+
+**Implementation:**
+
+```typescript
+import { ExportUnsupportedError } from '@/lib/export-errors';
+
+// In export handler
+try {
+  await exportEngine.export(progressCallback);
+} catch (error) {
+  if (error instanceof ExportUnsupportedError) {
+    // Show user-friendly error dialog
+    showExportErrorDialog({
+      title: 'Export Not Supported',
+      message: error.userMessage,
+      suggestion: error.suggestion,
+      reason: error.reason,
+    });
+  } else {
+    // Handle other errors
+    showGenericErrorDialog(error);
+  }
+}
+```
+
+**Error Dialog Component:**
+
+```typescript
+interface ExportErrorDialogProps {
+  title: string;
+  message: string;
+  suggestion: string;
+  reason: UnsupportedReason;
+}
+
+function ExportErrorDialog({ title, message, suggestion, reason }: ExportErrorDialogProps) {
+  return (
+    <Dialog>
+      <DialogHeader>
+        <DialogTitle className="text-destructive">{title}</DialogTitle>
+      </DialogHeader>
+      <DialogContent>
+        <p className="text-sm text-muted-foreground mb-4">{message}</p>
+        <div className="bg-muted p-3 rounded-md">
+          <p className="text-sm font-medium">💡 Suggestion:</p>
+          <p className="text-sm text-muted-foreground">{suggestion}</p>
+        </div>
+      </DialogContent>
+      <DialogFooter>
+        <Button variant="outline" onClick={onClose}>Close</Button>
+      </DialogFooter>
+    </Dialog>
+  );
+}
+```
+
+### Task 6: Remove Dead Code
+
+**Purpose:** Clean up orphaned code after Mode 3 removal.
+
+**Files to Evaluate:**
+
+| File | Action |
+|------|--------|
+| `export-engine.ts` | Remove if only used for Mode 3 base class |
+| `sticker-export-helper.ts` | Keep if used by Mode 2, remove `renderStickersToCanvas` |
+| `effects-utils.ts` | Keep `applyEffectsToCanvas` only if used elsewhere |
+| `effects-canvas-advanced.ts` | Remove if Canvas-only |
+
+### Task 7: Update Tests
+
+**File:** `apps/web/src/lib/__tests__/export-analysis.test.ts`
+
+**Changes:**
+
+```typescript
+describe('Export Analysis', () => {
+  describe('Validation', () => {
+    it('should throw error for timelines with images', () => {
+      const timeline = createTimelineWithImages();
+
+      expect(() => analyzeTimeline(timeline)).toThrow(ExportUnsupportedError);
+      expect(() => analyzeTimeline(timeline)).toThrow(/Image elements are not currently supported/);
+    });
+
+    it('should throw error for overlapping videos', () => {
+      const timeline = createTimelineWithOverlaps();
+
+      expect(() => analyzeTimeline(timeline)).toThrow(ExportUnsupportedError);
+      expect(() => analyzeTimeline(timeline)).toThrow(/Overlapping videos are not currently supported/);
+    });
+
+    it('should throw error for blob URLs without local paths', () => {
+      const timeline = createTimelineWithBlobUrls();
+
+      expect(() => analyzeTimeline(timeline)).toThrow(ExportUnsupportedError);
+      expect(() => analyzeTimeline(timeline)).toThrow(/could not be accessed/);
+    });
+
+    it('should throw error for empty timeline', () => {
+      const timeline: TimelineElement[] = [];
+
+      expect(() => analyzeTimeline(timeline)).toThrow(ExportUnsupportedError);
+      expect(() => analyzeTimeline(timeline)).toThrow(/No video elements found/);
+    });
+  });
+
+  describe('Mode Selection (supported cases)', () => {
+    it('should select Mode 1 for simple sequential videos', () => {
+      const timeline = createSimpleSequentialTimeline();
+      const result = analyzeTimeline(timeline);
+
+      expect(result.optimizationStrategy).toBe('direct-copy');
+    });
+
+    it('should select Mode 2 for videos with text overlays', () => {
+      const timeline = createTimelineWithText();
+      const result = analyzeTimeline(timeline);
+
+      expect(result.optimizationStrategy).toBe('direct-video-with-filters');
+    });
+  });
+});
+```
+
+---
+
+### Implementation Order
+
+| Phase | Task | Priority | Complexity |
+|-------|------|----------|------------|
+| 1 | Create export-errors.ts | High | Low |
+| 1 | Update export-analysis.ts (validation) | High | Low |
+| 2 | Update export-engine-cli.ts (remove Mode 3) | High | Medium |
+| 2 | Update ffmpeg-handler.ts (remove frame logic) | High | Medium |
+| 3 | Update UI error handling | Medium | Low |
+| 4 | Remove dead code | Low | Low |
+| 4 | Update tests | Low | Medium |
+
+---
+
+### Success Criteria
+
+- [ ] `"image-pipeline"` strategy completely removed from codebase
+- [ ] Clear error messages shown for unsupported timeline configurations
+- [ ] All Mode 1, 1.5, 2 exports continue to work
+- [ ] No Canvas rendering code remains in export path
+- [ ] All tests pass with updated expectations
+- [ ] Export dialog shows actionable suggestions for unsupported cases
+
+---
+
+### User Impact
+
+**What Users Can Still Do:**
+- Export sequential video clips (Mode 1)
+- Export videos with different properties (Mode 1.5)
+- Export videos with text overlays (Mode 2)
+- Export videos with stickers (Mode 2)
+- Export videos with basic effects (Mode 2)
+
+**What Users Cannot Do (with clear errors):**
+- Export timelines with image elements
+- Export timelines with overlapping videos
+- Export AI-generated/blob media without saving first
+
+---
 
 **Option 2: Extend Mode 2 Capabilities**
 - Add image support to Mode 2 via FFmpeg overlay filters
