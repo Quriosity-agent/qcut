@@ -71,13 +71,6 @@ export function VideoPlayer({
     }
     loggedOutOfRangeRef.current = false;
 
-    console.log("[CANVAS-VIDEO] Attaching playback listeners", {
-      videoId: videoId ?? src,
-      clipStartTime,
-      clipEndTime,
-      trimStart,
-      trimEnd,
-    });
     const handleSeekEvent = (e: CustomEvent) => {
       // Always update video time, even if outside clip range
       const timelineTime = e.detail.time;
@@ -89,12 +82,6 @@ export function VideoPlayer({
         )
       );
       video.currentTime = videoTime;
-      console.log("step 9: video player seeked", {
-        videoId: videoId ?? src,
-        timelineTime,
-        calculatedVideoTime: videoTime,
-        wasPlaying: !video.paused,
-      });
     };
 
     const handleUpdateEvent = (e: CustomEvent) => {
@@ -111,19 +98,6 @@ export function VideoPlayer({
       if (Math.abs(video.currentTime - targetTime) > 0.5) {
         video.currentTime = targetTime;
       }
-      console.log("step 4: video player synced", {
-        videoId: videoId ?? src,
-        timelineTime,
-        videoTime: targetTime,
-        trimStart,
-        clipStartTime,
-        clipDuration,
-        videoElement: {
-          readyState: video.readyState,
-          currentTime: Number(video.currentTime.toFixed(3)),
-          duration: Number(video.duration.toFixed(3)),
-        },
-      });
     };
 
     const handleSpeed = (e: CustomEvent) => {
