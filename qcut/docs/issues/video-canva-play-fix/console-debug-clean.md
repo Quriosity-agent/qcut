@@ -44,6 +44,72 @@ Video plays successfully
 [BlobManager] 🔴 Revoked: blob (only after playback stops)
 ```
 
+## Relevant File Paths and Code Lines Causing Issues
+
+### 1. **preview-panel.tsx** (Lines 625-633) - PRIMARY SUSPECT
+```typescript
+// File: apps/web/src/components/editor/preview-panel.tsx
+// Lines: 625-633
+const activeBlobUrl =
+  activeVideoSource?.type === "blob" ? activeVideoSource.src : null;
+
+useEffect(() => {
+  const urlsToRevoke = videoBlobUrls.filter((url) => url !== activeBlobUrl);
+  return () => {
+    urlsToRevoke.forEach((url) => revokeManagedObjectURL(url));  // LINE 631 - PREMATURE REVOCATION
+  };
+}, [videoBlobUrls, activeBlobUrl]);  // LINE 633 - TRIGGERS ON EVERY CHANGE
+```
+**Problem**: This effect runs whenever `videoBlobUrls` or `activeBlobUrl` changes, potentially revoking URLs that are still needed.
+
+### 2. **video-player.tsx** (Lines 181-202) - AGGRESSIVE CLEANUP
+```typescript
+// File: apps/web/src/components/ui/video-player.tsx
+// Lines: 181-202
+useEffect(() => {
+  const prev = previousSrcRef.current;
+  if (prev && prev !== src && prev.startsWith("blob:")) {
+    unmarkBlobInUse(prev);
+    revokeManagedObjectURL(prev);  // LINE 185 - REVOKES PREVIOUS BLOB
+  }
+
+  return () => {
+    if (previousSrcRef.current?.startsWith("blob:")) {
+      revokeManagedObjectURL(url);  // LINE 198 - CLEANUP ON UNMOUNT
+    }
+  };
+}, [src]);
+```
+**Problem**: Revokes blob URLs when src changes or component unmounts, even if video is still buffering.
+
+### 3. **media-store.ts** - MULTIPLE REVOCATION POINTS
+```typescript
+// File: apps/web/src/stores/media-store.ts
+// Critical lines with revokeObjectURL calls:
+- Line 78:  revokeObjectURL(blobUrl);  // In processVideoFile
+- Line 188: revokeObjectURL(blobUrl);  // In getMediaDuration
+- Line 270: revokeObjectURL(blobUrl!); // In addMediaItem
+- Line 547: revokeObjectURL(item.url); // In removeMediaItem
+- Line 684: revokeObjectURL(item.url); // In clearProjectMedia
+- Line 738: revokeObjectURL(item.url); // In reset
+```
+**Problem**: Multiple places where blob URLs are revoked, possibly while still in use.
+
+### 4. **blob-manager.ts** (Lines 64-95) - CENTRAL REVOCATION
+```typescript
+// File: apps/web/src/lib/blob-manager.ts
+// Lines: 64-95
+revokeObjectURL(url: string): void {
+  if (!this.blobRegistry.has(url)) {
+    URL.revokeObjectURL(url);  // LINE 95 - UNTRACKED REVOCATION
+    return;
+  }
+  // ... tracking logic ...
+  URL.revokeObjectURL(url);    // LINE 91 - TRACKED REVOCATION
+}
+```
+**Problem**: Even with tracking, blobs are still revoked too aggressively.
+
 ## Key Findings
 - **Blob tracking works**: Both BlobManager and BlobUrlDebug are monitoring correctly
 - **Lifespan too short**: Blobs revoked after 130ms-2.2s (far too short for video buffering)
@@ -67,6 +133,12 @@ Video plays successfully
 - ✅ Fixed: 60fps listener recreation
 - ✅ Fixed: Console logging removed for cleaner output
 - ✅ Working: Blob creation and tracking
-- ❌ Critical Issue: Blobs revoked while still needed
+- ❌ Critical Issue: Blobs revoked while still needed (preview-panel.tsx:631)
 - ❌ Blocked: Video cannot buffer without valid blob
 - ❌ Blocked: Canvas cannot render without playing video
+
+## Recommended Fix Strategy
+1. **Modify preview-panel.tsx (Line 631)**: Don't revoke blobs that are actively playing
+2. **Update video-player.tsx**: Keep blob alive until video element is destroyed AND playback is stopped
+3. **Enhance blob-manager.ts**: Add reference counting to prevent premature revocation
+4. **Fix media-store.ts**: Only revoke blobs when truly no longer needed
