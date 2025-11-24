@@ -15,15 +15,9 @@ import {
 
 type EffectsStore = ReturnType<typeof useEffectsStore.getState>;
 
-// Module-level cached dynamic imports to avoid per-frame overhead
-let stickersModulePromise: Promise<
-  typeof import("@/stores/stickers-overlay-store")
-> | null = null;
-let mediaModulePromise: Promise<typeof import("@/stores/media-store")> | null =
-  null;
-let stickerHelperModulePromise: Promise<
-  typeof import("@/lib/stickers/sticker-export-helper")
-> | null = null;
+// Note: Module-level cached dynamic imports (stickersModulePromise, mediaModulePromise,
+// stickerHelperModulePromise) have been removed as part of Mode 3 removal.
+// They were only used by the removed Canvas rendering methods for sticker compositing.
 
 export type ProgressCallback = (progress: number, message: string) => void;
 
@@ -66,7 +60,6 @@ export class CLIExportEngine extends ExportEngine {
   private frameDir: string | null = null;
   private effectsStore?: EffectsStore;
   private exportAnalysis: ExportAnalysis | null = null;
-  private disableCanvasTextRendering = true;
 
   constructor(
     canvas: HTMLCanvasElement,
@@ -89,359 +82,9 @@ export class CLIExportEngine extends ExportEngine {
     }
   }
 
-  // Override parent's renderFrame to skip video validation issues
-  async renderFrame(currentTime: number): Promise<void> {
-    debugLog(
-      `[CLI_FRAME_DEBUG] Rendering frame at time ${currentTime.toFixed(3)}s`
-    );
-
-    // Clear canvas
-    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-
-    // Fill with background color (black for now)
-    this.ctx.fillStyle = "#000000";
-    this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-
-    const activeElements = this.getActiveElementsCLI(currentTime);
-
-    // Only log every 30 frames (1 second) to reduce spam
-    if (Math.round(currentTime * 30) % 30 === 0) {
-      const elementTypes = activeElements.map((el) => el.element.type);
-      debugLog(
-        `📊 Frame ${currentTime.toFixed(1)}s: ${activeElements.length} elements: ${elementTypes.join(", ")}`
-      );
-    }
-
-    // Sort elements by track type (render bottom to top)
-    const sortedElements = activeElements.sort((a, b) => {
-      // Text tracks on top
-      if (a.track.type === "text" && b.track.type !== "text") return 1;
-      if (b.track.type === "text" && a.track.type !== "text") return -1;
-      // Audio tracks at bottom
-      if (a.track.type === "audio" && b.track.type !== "audio") return -1;
-      if (b.track.type === "audio" && a.track.type !== "audio") return 1;
-      return 0;
-    });
-
-    // Render each active element WITHOUT validation
-    for (const { element, mediaItem } of sortedElements) {
-      await this.renderElementCLI(element, mediaItem, currentTime);
-    }
-
-    // CRITICAL: Render overlay stickers (separate from timeline elements)
-    // Use the parent class's renderOverlayStickers method
-    debugLog(
-      `[CLI_OVERLAY_STICKERS] Calling parent renderOverlayStickers at time ${currentTime}`
-    );
-    await this.renderOverlayStickers(currentTime);
-  }
-
-  // CLI-specific element rendering without black frame validation
-  private async renderElementCLI(
-    element: any,
-    mediaItem: any,
-    currentTime: number
-  ): Promise<void> {
-    const elementTimeOffset = currentTime - element.startTime;
-
-    if (element.type === "media" && mediaItem) {
-      await this.renderMediaElementCLI(element, mediaItem, elementTimeOffset);
-    } else if (element.type === "text") {
-      if (!this.disableCanvasTextRendering) {
-        this.renderTextElementCLI(element);
-      }
-    } else if (element.type === "sticker") {
-      debugLog(
-        `[CLI_STICKER_DEBUG] Found sticker element: ${element.id} at time ${currentTime}`
-      );
-      await this.renderStickerElementCLI(element, mediaItem, currentTime);
-    }
-  }
-
-  // CLI media rendering with more lenient validation
-  private async renderMediaElementCLI(
-    element: any,
-    mediaItem: any,
-    timeOffset: number
-  ): Promise<void> {
-    if (!mediaItem.url) {
-      debugWarn(`[CLIExportEngine] No URL for media item ${mediaItem.id}`);
-      return;
-    }
-
-    try {
-      if (mediaItem.type === "image") {
-        await this.renderImageCLI(element, mediaItem);
-      } else if (mediaItem.type === "video") {
-        await this.renderVideoCLI(element, mediaItem, timeOffset);
-      }
-    } catch (error) {
-      debugWarn(
-        `[CLIExportEngine] Failed to render ${element.id}, using fallback:`,
-        error
-      );
-      // Fallback: render a colored rectangle instead of failing
-      this.ctx.fillStyle = "#333333";
-      const bounds = this.calculateElementBounds(element, 640, 480);
-      this.ctx.fillRect(bounds.x, bounds.y, bounds.width, bounds.height);
-    }
-  }
-
-  // Simplified video rendering for CLI without strict validation
-  private async renderVideoCLI(
-    element: any,
-    mediaItem: any,
-    timeOffset: number
-  ): Promise<void> {
-    try {
-      let video = this.getVideoFromCache(mediaItem.url);
-      if (!video) {
-        video = document.createElement("video");
-        video.src = mediaItem.url;
-        video.crossOrigin = "anonymous";
-
-        await new Promise<void>((resolve, reject) => {
-          video!.onloadeddata = () => resolve();
-          video!.onerror = () => reject(new Error("Failed to load video"));
-          setTimeout(() => reject(new Error("Video load timeout")), 5000);
-        });
-
-        this.cacheVideo(mediaItem.url, video);
-      }
-
-      // Seek to the correct time
-      const seekTime = timeOffset + element.trimStart;
-      video.currentTime = seekTime;
-
-      // Wait for seek with generous timeout
-      await new Promise<void>((resolve) => {
-        const timeout = setTimeout(() => {
-          resolve(); // Don't reject, just use whatever frame we have
-        }, 3000);
-
-        video.onseeked = () => {
-          clearTimeout(timeout);
-          setTimeout(() => resolve(), 200); // Longer stabilization
-        };
-      });
-
-      // Calculate bounds and draw
-      const { x, y, width, height } = this.calculateElementBounds(
-        element,
-        video.videoWidth || 640,
-        video.videoHeight || 480
-      );
-
-      // Draw video WITHOUT canvas effects (FFmpeg will handle effects)
-      this.ctx.drawImage(video, x, y, width, height);
-    } catch (error) {
-      debugWarn(
-        "[CLIExportEngine] Video render failed, using placeholder:",
-        error
-      );
-      // Render placeholder instead of failing
-      this.ctx.fillStyle = "#444444";
-      const bounds = this.calculateElementBounds(element, 640, 480);
-      this.ctx.fillRect(bounds.x, bounds.y, bounds.width, bounds.height);
-    }
-  }
-
-  // Enhanced image rendering for CLI with better blob URL handling
-  private renderImageCLI(element: any, mediaItem: any): Promise<void> {
-    return new Promise((resolve) => {
-      try {
-        // For generated images with blob URLs, try to get the actual file data first
-        if (
-          mediaItem.url?.startsWith("blob:") &&
-          mediaItem.file &&
-          mediaItem.file.size > 0
-        ) {
-          // Create a new blob URL from the file data to ensure it's accessible
-          const newBlobUrl = URL.createObjectURL(mediaItem.file);
-
-          const img = new Image();
-          img.crossOrigin = "anonymous";
-
-          const timeout = setTimeout(() => {
-            URL.revokeObjectURL(newBlobUrl);
-            resolve();
-          }, 8000); // Increased timeout for generated images
-
-          img.onload = () => {
-            try {
-              clearTimeout(timeout);
-
-              const { x, y, width, height } = this.calculateElementBounds(
-                element,
-                img.width,
-                img.height
-              );
-
-              this.ctx.drawImage(img, x, y, width, height);
-
-              URL.revokeObjectURL(newBlobUrl);
-              resolve();
-            } catch (error) {
-              URL.revokeObjectURL(newBlobUrl);
-              resolve();
-            }
-          };
-
-          img.onerror = () => {
-            clearTimeout(timeout);
-            URL.revokeObjectURL(newBlobUrl);
-            resolve();
-          };
-
-          img.src = newBlobUrl;
-          return;
-        }
-
-        // Fallback to original URL loading for regular images
-        const img = new Image();
-        img.crossOrigin = "anonymous";
-
-        const timeout = setTimeout(() => {
-          resolve();
-        }, 5000); // Standard timeout for regular images
-
-        img.onload = () => {
-          try {
-            clearTimeout(timeout);
-
-            const { x, y, width, height } = this.calculateElementBounds(
-              element,
-              img.width,
-              img.height
-            );
-
-            this.ctx.drawImage(img, x, y, width, height);
-
-            resolve();
-          } catch (error) {
-            resolve();
-          }
-        };
-
-        img.onerror = () => {
-          clearTimeout(timeout);
-          resolve();
-        };
-
-        img.src = mediaItem.url!;
-      } catch (error) {
-        resolve();
-      }
-    });
-  }
-
-  // Simple text rendering for CLI
-  private renderTextElementCLI(element: any): void {
-    if (this.disableCanvasTextRendering) {
-      console.log(
-        `⏭️  [TEXT RENDERING] Skipping canvas text render for "${element.content?.substring(0, 30)}..." - will be rendered by FFmpeg`
-      );
-      return;
-    }
-
-    if (element.type !== "text" || !element.content?.trim()) return;
-
-    console.log(
-      `⚠️  [TEXT RENDERING] WARNING: Rendering text on canvas (slow): "${element.content?.substring(0, 30)}..."`
-    );
-
-    this.ctx.fillStyle = element.color || "#ffffff";
-    this.ctx.font = `${element.fontSize || 24}px ${element.fontFamily || "Arial"}`;
-    this.ctx.textAlign = "left";
-    this.ctx.textBaseline = "top";
-
-    const x = element.x || 50;
-    const y = element.y || 50;
-
-    this.ctx.fillText(element.content, x, y);
-  }
-
-  // CLI sticker rendering using overlay sticker system
-  private async renderStickerElementCLI(
-    element: TimelineElement,
-    mediaItem: MediaItem | null,
-    currentTime: number
-  ): Promise<void> {
-    debugLog(
-      `[CLI_STICKER_DEBUG] Starting sticker render for element ${element.id}`
-    );
-
-    try {
-      // Import stickers overlay store dynamically (cached)
-      if (!stickersModulePromise) {
-        stickersModulePromise = import("@/stores/stickers-overlay-store");
-      }
-      const { useStickersOverlayStore } = await stickersModulePromise;
-
-      if (!mediaModulePromise) {
-        mediaModulePromise = import("@/stores/media-store");
-      }
-      const { useMediaStore } = await mediaModulePromise;
-
-      // Get visible stickers at current time
-      const stickersStore = useStickersOverlayStore.getState();
-      const visibleStickers =
-        stickersStore.getVisibleStickersAtTime(currentTime);
-
-      debugLog(
-        `[CLI_STICKER_DEBUG] Found ${visibleStickers.length} overlay stickers at time ${currentTime}`
-      );
-
-      if (visibleStickers.length === 0) {
-        debugLog("[CLI_STICKER_DEBUG] No overlay stickers to render");
-        return;
-      }
-
-      // Get media items map
-      const mediaStore = useMediaStore.getState();
-      const mediaItemsMap = new Map(
-        mediaStore.mediaItems.map((item) => [item.id, item])
-      );
-
-      // Use the existing sticker export helper (cached)
-      if (!stickerHelperModulePromise) {
-        stickerHelperModulePromise = import(
-          "@/lib/stickers/sticker-export-helper"
-        );
-      }
-      const { getStickerExportHelper } = await stickerHelperModulePromise;
-      const stickerHelper = getStickerExportHelper();
-
-      debugLog("[CLI_STICKER_DEBUG] Rendering stickers to canvas...");
-      await stickerHelper.renderStickersToCanvas(
-        this.ctx,
-        visibleStickers,
-        mediaItemsMap,
-        {
-          canvasWidth: this.canvas.width,
-          canvasHeight: this.canvas.height,
-          currentTime,
-        }
-      );
-
-      debugLog(
-        `[CLI_STICKER_DEBUG] ✅ Successfully rendered ${visibleStickers.length} stickers`
-      );
-    } catch (error) {
-      debugError("[CLI_STICKER_DEBUG] Failed to render stickers:", error);
-    }
-  }
-
-  // Helper methods for video caching (CLI-specific cache)
-  private cliVideoCache = new Map<string, HTMLVideoElement>();
-
-  private getVideoFromCache(url: string): HTMLVideoElement | undefined {
-    return this.cliVideoCache.get(url);
-  }
-
-  private cacheVideo(url: string, video: HTMLVideoElement): void {
-    this.cliVideoCache.set(url, video);
-  }
+  // Note: Canvas rendering methods (renderFrame, renderElementCLI, renderMediaElementCLI,
+  // renderVideoCLI, renderImageCLI, renderTextElementCLI, renderStickerElementCLI)
+  // have been removed as part of Mode 3 removal. All exports now use FFmpeg directly.
 
   /**
    * Escape special characters for FFmpeg drawtext filter
@@ -838,36 +481,8 @@ export class CLIExportEngine extends ExportEngine {
     return filters.join(",");
   }
 
-  // Helper to get active elements (CLI-specific version)
-  private getActiveElementsCLI(
-    currentTime: number
-  ): Array<{ element: any; track: any; mediaItem: any }> {
-    const activeElements: Array<{ element: any; track: any; mediaItem: any }> =
-      [];
-
-    this.tracks.forEach((track) => {
-      track.elements.forEach((element) => {
-        if (element.hidden) return;
-
-        const elementStart = element.startTime;
-        const elementEnd =
-          element.startTime +
-          (element.duration - element.trimStart - element.trimEnd);
-
-        if (currentTime >= elementStart && currentTime < elementEnd) {
-          let mediaItem = null;
-          if (element.type === "media" && element.mediaId !== "test") {
-            mediaItem =
-              this.mediaItems.find((item) => item.id === element.mediaId) ||
-              null;
-          }
-          activeElements.push({ element, track, mediaItem });
-        }
-      });
-    });
-
-    return activeElements;
-  }
+  // Note: getActiveElementsCLI method has been removed as part of Mode 3 removal.
+  // It was only used by the removed Canvas rendering methods.
 
   /**
    * Extract video source paths from timeline for direct copy optimization
@@ -1402,11 +1017,9 @@ export class CLIExportEngine extends ExportEngine {
     this.sessionId = session.sessionId;
     this.frameDir = session.frameDir;
 
-    // Check feature flag to disable optimization if needed
-    const skipOptimization =
-      localStorage.getItem("qcut_skip_export_optimization") === "true";
-
     // Analyze timeline to determine optimization strategy
+    // Note: This will throw ExportUnsupportedError for unsupported configurations
+    // (images, overlapping videos, blob URLs without local paths)
     debugLog(
       "[CLIExportEngine] 🔍 Analyzing timeline for export optimization..."
     );
@@ -1415,35 +1028,6 @@ export class CLIExportEngine extends ExportEngine {
       this.mediaItems
     );
 
-    // Direct copy optimization now fully implemented
-    const forceImagePipeline = false;
-
-    // Override analysis if feature flag is set OR if forcing image pipeline
-    if (skipOptimization || forceImagePipeline) {
-      if (forceImagePipeline) {
-        console.log(
-          "🔧 [EXPORT OPTIMIZATION] Direct copy not yet implemented - forcing image pipeline"
-        );
-        debugLog(
-          "[CLIExportEngine] 🔧 Direct copy feature incomplete, using image pipeline"
-        );
-      } else {
-        console.log(
-          "🔧 [EXPORT OPTIMIZATION] Feature flag enabled - forcing image pipeline"
-        );
-        debugLog("[CLIExportEngine] 🔧 Optimization disabled via feature flag");
-      }
-      this.exportAnalysis = {
-        ...this.exportAnalysis,
-        needsImageProcessing: true,
-        canUseDirectCopy: false,
-        optimizationStrategy: "image-pipeline",
-        reason: forceImagePipeline
-          ? "Direct copy not yet implemented"
-          : "Optimization disabled by feature flag",
-      };
-    }
-
     debugLog("[CLIExportEngine] 📊 Export Analysis:", this.exportAnalysis);
 
     try {
@@ -1451,77 +1035,37 @@ export class CLIExportEngine extends ExportEngine {
       progressCallback?.(10, "Pre-loading videos...");
       await this.preloadAllVideos();
 
-      // Determine if we can use Mode 2 (direct video input with filters)
+      // Determine export mode based on analysis
+      // Note: Mode 3 (image-pipeline) has been removed - unsupported cases now throw errors
       const canUseMode2 =
         this.exportAnalysis?.optimizationStrategy ===
         "direct-video-with-filters";
       const videoInput = canUseMode2 ? this.extractVideoInputPath() : null;
 
-      // Render frames to disk UNLESS we can use direct copy or Mode 2
-      try {
-        if (this.exportAnalysis?.optimizationStrategy === "image-pipeline") {
-          // Mode 3: Frame rendering required
-          debugLog("[CLIExportEngine] 🎨 MODE 3: Frame rendering required");
-          debugLog(`[CLIExportEngine] Reason: ${this.exportAnalysis.reason}`);
-          progressCallback?.(15, "Rendering frames...");
-          await this.renderFramesToDisk(progressCallback);
-        } else if (videoInput) {
-          // Mode 2: Direct video input with filters
-          debugLog(
-            "[CLIExportEngine] ⚡ MODE 2: Using direct video input with filters"
-          );
-          debugLog(`[CLIExportEngine] Video path: ${videoInput.path}`);
-          debugLog(
-            `[CLIExportEngine] Trim: ${videoInput.trimStart}s - ${videoInput.trimEnd}s`
-          );
-          progressCallback?.(15, "Preparing video with filters...");
-          // Skip frame rendering entirely!
-        } else if (this.exportAnalysis?.canUseDirectCopy) {
-          // Mode 1: Direct copy
-          debugLog("[CLIExportEngine] ⚡ MODE 1: Using direct video copy");
-          debugLog(
-            `[CLIExportEngine] Optimization: ${this.exportAnalysis?.optimizationStrategy}`
-          );
-          progressCallback?.(15, "Preparing direct video copy...");
-        } else {
-          // Fallback to frame rendering
-          debugLog("[CLIExportEngine] ⚠️ Falling back to frame rendering");
-          progressCallback?.(15, "Rendering frames...");
-          await this.renderFramesToDisk(progressCallback);
-        }
-      } catch (error) {
-        // Fallback: Force image pipeline if optimization fails
-        debugWarn(
-          "[CLIExportEngine] ⚠️ Direct processing preparation failed, falling back to image pipeline:",
-          error
+      // All supported modes skip frame rendering (Mode 1, 1.5, 2)
+      if (videoInput) {
+        // Mode 2: Direct video input with filters
+        debugLog(
+          "[CLIExportEngine] ⚡ MODE 2: Using direct video input with filters"
         );
-
-        // Safe default for exportAnalysis if it's null
-        const analysisBase: ExportAnalysis = this.exportAnalysis || {
-          needsImageProcessing: false,
-          hasImageElements: false,
-          hasTextElements: false,
-          hasStickers: false,
-          hasEffects: false,
-          hasMultipleVideoSources: false,
-          hasOverlappingVideos: false,
-          canUseDirectCopy: false,
-          optimizationStrategy: "image-pipeline",
-          reason: "Initial analysis failed",
-        };
-
-        // Force image processing
-        this.exportAnalysis = {
-          ...analysisBase,
-          needsImageProcessing: true,
-          canUseDirectCopy: false,
-          optimizationStrategy: "image-pipeline",
-          reason: "Fallback due to optimization error",
-        };
-
-        // Render frames as fallback
-        progressCallback?.(15, "Rendering frames (fallback)...");
-        await this.renderFramesToDisk(progressCallback);
+        debugLog(`[CLIExportEngine] Video path: ${videoInput.path}`);
+        debugLog(
+          `[CLIExportEngine] Trim: ${videoInput.trimStart}s - ${videoInput.trimEnd}s`
+        );
+        progressCallback?.(15, "Preparing video with filters...");
+      } else if (this.exportAnalysis?.canUseDirectCopy) {
+        // Mode 1: Direct copy
+        debugLog("[CLIExportEngine] ⚡ MODE 1: Using direct video copy");
+        debugLog(
+          `[CLIExportEngine] Optimization: ${this.exportAnalysis?.optimizationStrategy}`
+        );
+        progressCallback?.(15, "Preparing direct video copy...");
+      } else if (
+        this.exportAnalysis?.optimizationStrategy === "video-normalization"
+      ) {
+        // Mode 1.5: Video normalization
+        debugLog("[CLIExportEngine] ⚡ MODE 1.5: Using video normalization");
+        progressCallback?.(15, "Preparing video normalization...");
       }
 
       // Export with FFmpeg CLI
@@ -1610,158 +1154,9 @@ export class CLIExportEngine extends ExportEngine {
     return session;
   }
 
-  private async renderFramesToDisk(
-    progressCallback?: ProgressCallback
-  ): Promise<void> {
-    const totalFrames = this.calculateTotalFrames();
-    const frameTime = 1 / 30; // fps
-
-    console.log(
-      "🎨 [FRAME RENDERING DEBUG] ============================================"
-    );
-    console.log(
-      `🎨 [FRAME RENDERING DEBUG] Starting frame rendering: ${totalFrames} frames`
-    );
-    console.log(
-      `🎨 [FRAME RENDERING DEBUG] Canvas text rendering: ${this.disableCanvasTextRendering ? "DISABLED (using FFmpeg)" : "ENABLED"}`
-    );
-    console.log(
-      "🎨 [FRAME RENDERING DEBUG] ============================================"
-    );
-
-    debugLog(`[CLI] Rendering ${totalFrames} frames to disk...`);
-
-    for (let frame = 0; frame < totalFrames; frame++) {
-      if (this.abortController?.signal.aborted) {
-        throw new Error("Export cancelled");
-      }
-
-      const currentTime = frame * frameTime;
-      const frameName = `frame-${frame.toString().padStart(4, "0")}.png`;
-
-      // Render frame with all elements including stickers
-      await this.renderFrame(currentTime);
-
-      // Save frame for video compilation
-      await this.saveFrameToDisk(frameName, currentTime);
-
-      // Progress update (15% to 80% for frame rendering)
-      const progress = 15 + (frame / totalFrames) * 65;
-      progressCallback?.(
-        progress,
-        `Rendering frame ${frame + 1}/${totalFrames}`
-      );
-    }
-
-    debugLog(`[CLI] Rendered ${totalFrames} frames to ${this.frameDir}`);
-  }
-
-  private async saveFrameToDisk(
-    frameName: string,
-    currentTime: number
-  ): Promise<void> {
-    if (!window.electronAPI) {
-      throw new Error("CLI export only available in Electron");
-    }
-
-    try {
-      // Convert canvas to base64
-      const dataUrl = this.canvas.toDataURL("image/png", 1.0);
-      const base64Data = dataUrl.replace(/^data:image\/png;base64,/, "");
-
-      // Validate base64 data
-      if (!base64Data || base64Data.length < 100) {
-        throw new Error(`Invalid PNG data: ${base64Data.length} chars`);
-      }
-
-      // 🐛 DEBUG: Save debug frame to temp folder for inspection
-      const debugFrameName = `debug_${frameName}`;
-      const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-      const timestampedDebugFrame = `debug_${timestamp}_${frameName}`;
-
-      try {
-        // Save regular debug frame
-        await window.electronAPI.ffmpeg.saveFrame({
-          sessionId: this.sessionId || "debug",
-          frameName: debugFrameName,
-          data: base64Data,
-        });
-
-        // Save timestamped debug frame for easier identification
-        await window.electronAPI.ffmpeg.saveFrame({
-          sessionId: this.sessionId || "debug",
-          frameName: timestampedDebugFrame,
-          data: base64Data,
-        });
-
-        // 🗂️ DEBUG: Explorer opening moved to renderFramesToDisk to avoid opening 30+ windows
-      } catch (debugError) {
-        console.warn("⚠️ DEBUG: Failed to save debug frame:", debugError);
-      }
-
-      // Save via IPC
-      if (!this.sessionId) {
-        throw new Error("No active session ID");
-      }
-
-      // First save the raw frame
-      const rawFrameName = `raw_${frameName}`;
-      await window.electronAPI.ffmpeg.saveFrame({
-        sessionId: this.sessionId,
-        frameName: rawFrameName,
-        data: base64Data,
-      });
-
-      // Get filter chain for active elements
-      let filterChain: string | undefined;
-      const activeElements = this.getActiveElementsCLI(currentTime);
-
-      for (const { element } of activeElements) {
-        if (element.type === "media" && this.effectsStore) {
-          const elementFilter = this.effectsStore.getFFmpegFilterChain(
-            element.id
-          );
-          if (elementFilter) {
-            filterChain = elementFilter;
-            break; // Use first element with filters
-          }
-        }
-      }
-
-      // If we have a filter chain, process the frame through FFmpeg
-      if (filterChain && window.electronAPI.ffmpeg.processFrame) {
-        try {
-          await window.electronAPI.ffmpeg.processFrame({
-            sessionId: this.sessionId,
-            inputFrameName: rawFrameName,
-            outputFrameName: frameName,
-            filterChain,
-          });
-        } catch (filterError) {
-          console.warn(
-            `⚠️ Failed to apply FFmpeg filter to ${frameName}, using raw frame:`,
-            filterError
-          );
-          // Fallback: copy raw frame as final frame
-          await window.electronAPI.ffmpeg.saveFrame({
-            sessionId: this.sessionId,
-            frameName,
-            data: base64Data,
-          });
-        }
-      } else {
-        // No filter chain, just save the raw frame as the final frame
-        await window.electronAPI.ffmpeg.saveFrame({
-          sessionId: this.sessionId,
-          frameName,
-          data: base64Data,
-        });
-      }
-    } catch (error) {
-      debugError(`[CLIExportEngine] Failed to save frame ${frameName}:`, error);
-      throw error;
-    }
-  }
+  // Note: renderFramesToDisk and saveFrameToDisk methods have been removed
+  // as part of Mode 3 removal. All exports now use FFmpeg directly without
+  // frame-by-frame Canvas rendering.
 
   private async exportWithCLI(
     progressCallback?: ProgressCallback

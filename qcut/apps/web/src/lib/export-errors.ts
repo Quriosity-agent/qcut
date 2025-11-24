@@ -43,9 +43,9 @@ export const UNSUPPORTED_ERRORS: Record<
  * Provides user-friendly messages and actionable suggestions.
  */
 export class ExportUnsupportedError extends Error {
-  public readonly reason: UnsupportedReason;
-  public readonly userMessage: string;
-  public readonly suggestion: string;
+  readonly reason: UnsupportedReason;
+  readonly userMessage: string;
+  readonly suggestion: string;
 
   constructor(reason: UnsupportedReason) {
     const errorInfo = UNSUPPORTED_ERRORS[reason];

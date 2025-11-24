@@ -125,9 +125,8 @@ interface ExportOptions {
   trimStart?: number;
   /** Video trim end time in seconds */
   trimEnd?: number;
-  /** Optimization strategy for export mode selection (Mode 1, 1.5, 2, or 3) */
+  /** Optimization strategy for export mode selection (Mode 1, 1.5, or 2) */
   optimizationStrategy?:
-    | "image-pipeline"
     | "direct-copy"
     | "direct-video-with-filters"
     | "video-normalization";
@@ -867,34 +866,9 @@ export function setupFFmpegIPC(): void {
             console.log(
               "⚡ [MODE 2 VALIDATION] Frame rendering: SKIPPED (using direct video input)"
             );
-          } else {
-            // MODE 3: Frame-based mode - verify frames exist
-            console.log("🎨 [MODE 3 VALIDATION] Validating frame files...");
-
-            if (!fs.existsSync(frameDir)) {
-              const error: string = `Frame directory does not exist: ${frameDir}`;
-              console.error(`❌ [MODE 3 VALIDATION] ${error}`);
-              reject(new Error(error));
-              return;
-            }
-
-            const frameFiles: string[] = fs
-              .readdirSync(frameDir)
-              .filter(
-                (f: string) => f.startsWith("frame-") && f.endsWith(".png")
-              );
-
-            if (frameFiles.length === 0) {
-              const error: string = `No frame files found in: ${frameDir}`;
-              console.error(`❌ [MODE 3 VALIDATION] ${error}`);
-              reject(new Error(error));
-              return;
-            }
-
-            console.log(
-              `🎨 [MODE 3 VALIDATION] ✅ Found ${frameFiles.length} frame files`
-            );
           }
+          // Note: Mode 3 (frame-based) validation has been removed.
+          // All exports now use Mode 1, 1.5, or 2 which don't require frame files.
 
           // Ensure output directory exists
           const outputDirPath: string = path.dirname(outputFile);
@@ -1780,11 +1754,15 @@ export function getFFmpegPath(): string {
 /**
  * Constructs FFmpeg command-line arguments for video export.
  *
- * Supports two modes: direct copy (fast, lossless concat) and image pipeline
- * (slow, frame-by-frame encoding). Direct copy requires sequential videos
- * with no overlays/effects; falls back to image pipeline otherwise.
+ * Supports three modes:
+ * - Mode 1: Direct copy (fast, lossless concat) for sequential videos
+ * - Mode 1.5: Video normalization (handled by separate function)
+ * - Mode 2: Direct video with FFmpeg filters for text/stickers/effects
  *
- * @param inputDir - Directory containing frame images or concat file
+ * Note: Mode 3 (image pipeline / frame-by-frame) has been removed.
+ * Unsupported configurations now throw errors during timeline analysis.
+ *
+ * @param inputDir - Directory containing concat file (frames no longer used)
  * @param outputFile - Path where output video will be saved
  * @param width - Output video width in pixels
  * @param height - Output video height in pixels
@@ -2128,174 +2106,14 @@ function buildFFmpegArgs(
     return args;
   }
 
-  // If we reach here with useDirectCopy=true, something is wrong
-  if (useDirectCopy) {
-    throw new Error(
-      "Direct copy requested but no video sources available. " +
-        "This indicates a configuration error - frames were not rendered and video sources are unavailable."
-    );
-  }
-
-  // Frame-based processing (normal path)
-  const inputPattern: string = path.join(inputDir, "frame-%04d.png");
-
-  const args: string[] = [
-    "-y", // Overwrite output
-    "-framerate",
-    String(fps),
-    "-i",
-    inputPattern,
-  ];
-
-  // Add sticker image inputs
-  const stickerCount = stickerSources?.length || 0;
-  if (stickerSources && stickerSources.length > 0) {
-    // Validate each sticker file exists
-    for (const sticker of stickerSources) {
-      if (!fs.existsSync(sticker.path)) {
-        console.warn(`[FFmpeg] Sticker file not found: ${sticker.path}`);
-        continue;
-      }
-      // Add as input (will be indexed as [1], [2], etc. after base video [0])
-      args.push("-loop", "1"); // Loop single image
-      args.push("-i", sticker.path);
-    }
-  }
-
-  // Combine filter chains if provided (video effects, stickers, then text)
-  const combinedFilters: string[] = [];
-
-  // Step 1: Video effects (brightness, contrast, etc.)
-  if (filterChain && filterChain.trim()) {
-    combinedFilters.push(filterChain);
-  }
-
-  // Step 2: Sticker overlays (before text for proper layering)
-  if (stickerFilterChain && stickerFilterChain.trim()) {
-    combinedFilters.push(stickerFilterChain);
-  }
-
-  // Step 3: Text overlays (on top of everything)
-  if (textFilterChain && textFilterChain.trim()) {
-    combinedFilters.push(textFilterChain);
-  }
-
-  // Apply combined filters if any exist
-  if (combinedFilters.length > 0) {
-    // For complex filters with multiple inputs, use filter_complex
-    if (stickerSources && stickerSources.length > 0) {
-      args.push("-filter_complex", combinedFilters.join(";"));
-    } else {
-      // Simple filters can use -vf
-      args.push("-vf", combinedFilters.join(","));
-    }
-  }
-
-  // Add audio inputs if provided
-  if (audioFiles && audioFiles.length > 0) {
-    // Add each audio file as input
-    audioFiles.forEach((audioFile: AudioFile, index: number) => {
-      // CRITICAL: Check if audio file actually exists
-      if (!fs.existsSync(audioFile.path)) {
-        throw new Error(`Audio file not found: ${audioFile.path}`);
-      }
-
-      args.push("-i", audioFile.path);
-    });
-
-    // Build complex filter for audio mixing with timing
-    if (audioFiles.length === 1) {
-      // Single audio file - apply delay if needed
-      const audioFile: AudioFile = audioFiles[0];
-      const audioInputIndex = 1 + stickerCount; // Account for stickers
-      if (audioFile.startTime > 0) {
-        args.push(
-          "-filter_complex",
-          `[${audioInputIndex}:a]adelay=${Math.round(audioFile.startTime * 1000)}|${Math.round(audioFile.startTime * 1000)}[audio]`,
-          "-map",
-          "0:v",
-          "-map",
-          "[audio]"
-        );
-      } else {
-        // No delay needed
-        args.push("-map", "0:v", "-map", `${audioInputIndex}:a`);
-      }
-    } else {
-      // Multiple audio files - mix them together
-      const filterParts: string[] = [];
-      const inputMaps: string[] = [];
-
-      audioFiles.forEach((audioFile: AudioFile, index: number) => {
-        // Adjust index to account for stickers: video [0] + stickers + audio
-        const inputIndex: number = index + 1 + stickerCount;
-        let audioFilter = `[${inputIndex}:a]`;
-
-        // Apply volume if specified
-        if (audioFile.volume !== undefined && audioFile.volume !== 1.0) {
-          audioFilter += `volume=${audioFile.volume}[a${index}]`;
-          inputMaps.push(`[a${index}]`);
-        } else {
-          inputMaps.push(audioFilter);
-        }
-
-        // Apply delay if needed
-        if (audioFile.startTime > 0) {
-          const delayMs: number = Math.round(audioFile.startTime * 1000);
-          if (audioFile.volume !== undefined && audioFile.volume !== 1.0) {
-            audioFilter += `; [a${index}]adelay=${delayMs}|${delayMs}[ad${index}]`;
-            inputMaps[inputMaps.length - 1] = `[ad${index}]`;
-          } else {
-            audioFilter += `adelay=${delayMs}|${delayMs}[ad${index}]`;
-            inputMaps[inputMaps.length - 1] = `[ad${index}]`;
-          }
-        }
-
-        if (audioFilter !== `[${inputIndex}:a]`) {
-          filterParts.push(audioFilter);
-        }
-      });
-
-      // Mix all audio inputs
-      const mixFilter: string = `${inputMaps.join("")}amix=inputs=${audioFiles.length}:duration=longest[audio]`;
-
-      const fullFilter: string =
-        filterParts.length > 0
-          ? `${filterParts.join("; ")}; ${mixFilter}`
-          : mixFilter;
-
-      args.push(
-        "-filter_complex",
-        fullFilter,
-        "-map",
-        "0:v",
-        "-map",
-        "[audio]"
-      );
-    }
-
-    // Audio codec settings
-    args.push("-c:a", "aac", "-b:a", "128k");
-  }
-
-  // Video codec settings
-  args.push(
-    "-c:v",
-    "libx264",
-    "-preset",
-    preset,
-    "-crf",
-    crf,
-    "-t",
-    duration.toString(), // Duration already validated at entry point
-    "-pix_fmt",
-    "yuv420p",
-    "-movflags",
-    "+faststart",
-    outputFile
+  // If we reach here, something is wrong - all valid export paths should have returned above
+  // Mode 3 (frame-based processing) has been removed - throw an error
+  throw new Error(
+    "Invalid export configuration. " +
+      "Expected Mode 1 (direct copy), Mode 1.5 (normalization), or Mode 2 (video with filters), " +
+      "but no valid export mode was selected. " +
+      "This may indicate an unsupported timeline configuration."
   );
-
-  return args;
 }
 
 /**

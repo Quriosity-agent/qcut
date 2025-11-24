@@ -417,9 +417,17 @@ export function analyzeTimelineForExport(
     !hasEffects &&
     allVideosHaveLocalPath;
 
+  // Validate timeline before proceeding - throws if unsupported
+  // This replaces Mode 3 fallback - now we error instead of slow export
+  validateTimelineForExport({
+    hasImageElements,
+    hasOverlappingVideos,
+    videoElementCount,
+    allVideosHaveLocalPath,
+  });
+
   // Determine optimization strategy
   let optimizationStrategy:
-    | "image-pipeline"
     | "direct-copy"
     | "direct-video-with-filters"
     | "video-normalization";
@@ -427,8 +435,8 @@ export function analyzeTimelineForExport(
   // Mode decision tree (priority order):
   // 1. Can we use direct copy? (Mode 1 - fastest)
   // 2. Single video with filters? (Mode 2 - fast)
-  // 3. Multiple videos that need normalization? (Mode 1.5 - NEW!, medium-fast)
-  // 4. Default to frame rendering (Mode 3 - slow but most flexible)
+  // 3. Multiple videos that need normalization? (Mode 1.5 - medium-fast)
+  // Note: Mode 3 (frame rendering) removed - unsupported cases now throw errors
 
   if (canUseDirectCopy) {
     console.log(
@@ -491,36 +499,23 @@ export function analyzeTimelineForExport(
         "✅ [MODE DETECTION] Single video - using Mode 1: Direct copy (15-48x speedup)"
       );
     }
-  } else if (
-    !needsFrameRendering &&
-    needsFilterEncoding &&
-    videoElementCount === 1
-  ) {
-    // Mode 2: Single video with FFmpeg filters (text/stickers)
+  } else {
+    // Mode 2: Direct video with FFmpeg filters (text/stickers/effects)
+    // This is now the fallback for any timeline that passes validation
+    // (validation already rejected unsupported cases like images/overlaps)
     optimizationStrategy = "direct-video-with-filters";
     console.log(
       "⚡ [MODE DETECTION] Selected Mode 2: Direct video with filters (3-5x speedup)"
     );
-  } else {
-    // Mode 3: Frame rendering - slowest but most flexible
-    optimizationStrategy = "image-pipeline";
-    console.log(
-      "🎨 [MODE DETECTION] Selected Mode 3: Frame rendering (baseline speed)"
-    );
 
-    // Log why Mode 3 was selected
-    const reasons: string[] = [];
-    if (hasImageElements) reasons.push("has image elements");
-    if (hasTextElements && needsFrameRendering)
-      reasons.push("text needs frame rendering");
-    if (hasStickers && needsFrameRendering)
-      reasons.push("stickers need frame rendering");
-    if (hasEffects) reasons.push("has effects");
-    if (hasOverlappingVideos) reasons.push("videos overlap");
-    if (!allVideosHaveLocalPath) reasons.push("videos lack local paths");
-    if (videoElementCount === 0) reasons.push("no video elements");
-
-    console.log(`   Reasons: ${reasons.join(", ")}`);
+    // Log what filters will be applied
+    const filterReasons: string[] = [];
+    if (hasTextElements) filterReasons.push("text overlays");
+    if (hasStickers) filterReasons.push("stickers");
+    if (hasEffects) filterReasons.push("effects");
+    if (filterReasons.length > 0) {
+      console.log(`   Filters: ${filterReasons.join(", ")}`);
+    }
   }
 
   // Generate reason for strategy choice
@@ -534,20 +529,17 @@ export function analyzeTimelineForExport(
         "Sequential videos without overlaps - using FFmpeg concat demuxer";
     }
   } else if (optimizationStrategy === "direct-video-with-filters") {
-    reason = "Single video with text/sticker overlays - using FFmpeg filters";
+    const filterTypes: string[] = [];
+    if (hasTextElements) filterTypes.push("text");
+    if (hasStickers) filterTypes.push("stickers");
+    if (hasEffects) filterTypes.push("effects");
+    reason =
+      filterTypes.length > 0
+        ? `Video with ${filterTypes.join("/")} overlays - using FFmpeg filters`
+        : "Video processing - using FFmpeg filters";
   } else if (optimizationStrategy === "video-normalization") {
     reason =
       "Multiple videos with different properties - using FFmpeg normalization";
-  } else {
-    const reasons: string[] = [];
-    if (hasImageElements) reasons.push("image elements");
-    if (hasTextElements) reasons.push("text overlays");
-    if (hasStickers) reasons.push("stickers");
-    if (hasEffects) reasons.push("effects");
-    if (hasOverlappingVideos) reasons.push("overlapping videos");
-    if (!allVideosHaveLocalPath)
-      reasons.push("videos without filesystem paths");
-    reason = `Image processing required due to: ${reasons.join(", ")}`;
   }
 
   // Log localPath validation for debugging
@@ -634,10 +626,6 @@ export function analyzeTimelineForExport(
     console.log(
       "⚡ [EXPORT ANALYSIS] MODE 1.5: Using VIDEO NORMALIZATION - Fast export with padding! ⚡"
     );
-  } else {
-    console.log(
-      "🎨 [EXPORT ANALYSIS] MODE 3: Using IMAGE PIPELINE - Slow export (frame-by-frame)"
-    );
   }
 
   return {
@@ -715,9 +703,7 @@ export function validateTimelineForExport(params: {
 
   // Check for no video elements
   if (videoElementCount === 0) {
-    console.error(
-      "❌ [EXPORT VALIDATION] No video elements found in timeline"
-    );
+    console.error("❌ [EXPORT VALIDATION] No video elements found in timeline");
     throw new ExportUnsupportedError("no-video-elements");
   }
 
