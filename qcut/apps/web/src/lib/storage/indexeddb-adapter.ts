@@ -20,7 +20,6 @@ export class IndexedDBAdapter<T> implements StorageAdapter<T> {
     this.dbName = dbName;
     this.storeName = storeName;
     this.version = version;
-
   }
 
   private async getDB(): Promise<IDBDatabase> {

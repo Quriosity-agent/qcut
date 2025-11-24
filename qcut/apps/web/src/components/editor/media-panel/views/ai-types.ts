@@ -215,12 +215,7 @@ export interface UseAIGenerationProps {
   // Kling v2.5 Turbo Pro I2V options
   klingDuration?: 5 | 10;
   klingCfgScale?: number;
-  klingAspectRatio?:
-    | "16:9"
-    | "9:16"
-    | "1:1"
-    | "4:3"
-    | "3:4";
+  klingAspectRatio?: "16:9" | "9:16" | "1:1" | "4:3" | "3:4";
   klingEnhancePrompt?: boolean;
   klingNegativePrompt?: string;
   // WAN 2.5 Preview I2V options

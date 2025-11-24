@@ -261,8 +261,7 @@ export const AI_MODELS: AIModel[] = [
     max_duration: 12,
     category: "image",
     endpoints: {
-      image_to_video:
-        "fal-ai/bytedance/seedance/v1/pro/fast/image-to-video",
+      image_to_video: "fal-ai/bytedance/seedance/v1/pro/fast/image-to-video",
     },
     default_params: {
       duration: 5,
@@ -324,8 +323,7 @@ export const AI_MODELS: AIModel[] = [
     max_duration: 10,
     category: "image",
     endpoints: {
-      image_to_video:
-        "fal-ai/kling-video/v2.5-turbo/pro/image-to-video",
+      image_to_video: "fal-ai/kling-video/v2.5-turbo/pro/image-to-video",
     },
     default_params: {
       duration: 5,

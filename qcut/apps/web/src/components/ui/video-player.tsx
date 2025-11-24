@@ -104,17 +104,7 @@ export function VideoPlayer({
         handleSpeed as EventListener
       );
     };
-  }, [
-    clipStartTime,
-    clipEndTime,
-    trimStart,
-    trimEnd,
-    clipDuration,
-    isInClipRange,
-    videoId,
-    src,
-  ]);
-
+  }, [clipStartTime, trimStart, trimEnd, clipDuration, isInClipRange]);
 
   // Sync playback state with readyState check
   useEffect(() => {
@@ -147,14 +137,7 @@ export function VideoPlayer({
     } else {
       video.pause();
     }
-  }, [
-    isPlaying,
-    isInClipRange,
-    clipStartTime,
-    clipEndTime,
-    videoId,
-    videoSource,
-  ]);
+  }, [isPlaying, isInClipRange]);
 
   // Sync volume and speed
   useEffect(() => {
@@ -198,7 +181,8 @@ export function VideoPlayer({
           blobUrlRef.current = null;
         }
       };
-    } else if (videoSource.type === "remote") {
+    }
+    if (videoSource.type === "remote") {
       video.src = videoSource.src;
     }
 

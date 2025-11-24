@@ -62,10 +62,13 @@ export function ExportAllButton({
         item.type === "video" &&
         (item.url?.includes("fal.media") || item.url?.includes("v3b.fal.media"))
     );
-    debugLog("?? EXPORT-ALL: Note - videos from FAL are not included in image-only download flows", {
-      falVideoCount: falVideos.length,
-      ids: falVideos.map((v) => v.id),
-    });
+    debugLog(
+      "?? EXPORT-ALL: Note - videos from FAL are not included in image-only download flows",
+      {
+        falVideoCount: falVideos.length,
+        ids: falVideos.map((v) => v.id),
+      }
+    );
 
     // Log generated images details
     const generatedImages = mediaItems.filter(
@@ -97,7 +100,8 @@ export function ExportAllButton({
         isExporting,
       });
       console.warn("step 8: export-all blocked", {
-        reason: mediaItems.length === 0 ? "no media items" : "already exporting",
+        reason:
+          mediaItems.length === 0 ? "no media items" : "already exporting",
       });
       return;
     }

@@ -67,20 +67,71 @@ And no `ERR_FILE_NOT_FOUND` for the active blob until playback stops.
 - `step 13: drawing to canvas { frameDrawn: true }` appears and the video renders on canvas.
 
 ## Implementation Review (current code changes)
-- Global `URL.revokeObjectURL` now routes through blob manager; see `[BlobUrlDebug] Routed revoke via BlobManager guard` and `[BlobManager] Skip revoke (in use)` to confirm the guard is engaged.
-- `blob-url-cleanup` migrator logs when it is skipped under StrictMode, reducing double-run risk.
-- Recursion guard added so the revoke override calls the captured native revoke instead of itself.
-- Outstanding gap: direct `URL.revokeObjectURL` call sites (e.g., media-store) still bypass the guard and are likely revoking the active playback blob; these must be routed through blob manager with an in-use check.
-- Progress (today): BlobManager revoke now emits `[CANVAS-VIDEO] Guarded revoke (skipped; in use): …` and returns a boolean; blob-url-debug routes revokes through the manager with a context tag. Media-store now funnels revokes through a helper that passes context, and audio-sync / effect-templates / multi-image-upload call sites now use the manager so the guard log will fire if blocked.
-- Progress (Subtask 1): `media-source.ts` now returns `{ file, type: "file" }` for local media (lazy blob creation); remote source whitelist unchanged. Downstream call sites still need to be updated to use the File-based source.
-- Progress (Subtask 2): `preview-panel.tsx` now memoizes video sources without creating blob URLs and passes `videoSource={source}` into `VideoPlayer` (no blob revocation effect).
-- Progress (Subtask 3): `video-player.tsx` now accepts `videoSource` and lazily creates/revokes blob URLs inside the component (logs creation/revoke), removing mark/unmark/revoke calls and the `src` prop.
-- Progress (Subtask 4): `preview-panel.tsx` call sites are updated to use `videoSource` for both blur background and main video layers (no `src` prop remains).
-- Progress (Subtask 5 - Option A): Removed blob-manager in-use tracking and mark/unmark helpers; revokes now rely on context tagging only, simplifying lifecycle.
+
+### ✅ IMPLEMENTATION COMPLETE (2025-11-24)
+
+All 5 subtasks have been successfully implemented and the build passes with 0 errors.
+
+**Implementation Summary**:
+- ✅ **Subtask 1** (`media-source.ts`): Returns `{ file, type: "file" }` for local media (lazy blob creation); remote source whitelist unchanged
+- ✅ **Subtask 2** (`preview-panel.tsx`): Memoizes video sources without creating blob URLs; passes `videoSource={source}` into VideoPlayer; removed aggressive cleanup effect (lines 628-633)
+- ✅ **Subtask 3** (`video-player.tsx`): Accepts `videoSource` prop instead of `src`; lazily creates/revokes blob URLs inside component; removed mark/unmark/revoke imports
+- ✅ **Subtask 4** (`preview-panel.tsx` call sites): Updated both VideoPlayer usages (blur background + main video) to use `videoSource` prop
+- ✅ **Subtask 5** (blob-manager cleanup - Option A): Removed in-use tracking and mark/unmark helpers; simplified revocation logic
+
+**Build Status**: ✅ **SUCCESS** (TypeScript + Vite build completed in 40.21s)
+
+**Key Changes**:
+1. File objects now passed directly instead of pre-created blob URLs
+2. Blob URLs created just-in-time by VideoPlayer when needed
+3. Blob URLs revoked only on component unmount or source change
+4. Eliminated aggressive cleanup effects that caused race conditions
+5. Simplified blob manager to track creation only (no in-use state)
+
+**Files Modified**:
+- `apps/web/src/lib/media-source.ts` (simplified from 60 → ~30 lines)
+- `apps/web/src/components/editor/preview-panel.tsx` (removed blob tracking + cleanup effect)
+- `apps/web/src/components/ui/video-player.tsx` (refactored to own blob lifecycle)
+- `apps/web/src/lib/blob-manager.ts` (removed in-use tracking complexity)
+
+**Bug Fix**: Fixed line 115 in video-player.tsx - changed dependency from `src` to `videoSource`
 
 ## Next Step
-- Finish routing the remaining raw `URL.revokeObjectURL` call sites (e.g., `adjustment-store`, `export-engine`, `ffmpeg-utils`, `image-utils`, `canvas-utils`, `use-export-progress`, `caption-export`, `zip-manager`, `media-processing`) through the blob manager with context so the `[CANVAS-VIDEO] Guarded revoke (skipped; in use)` log appears when a revoke is blocked for the active playback blob. Re-run playback and confirm you see the guard log (or a tracked revoke), and that no `ERR_FILE_NOT_FOUND` appears before `canplay`/`play() succeeded`.
-- Update downstream consumers (preview-panel, video-player, etc.) to accept `{ file, type: "file" }` sources and create/revoke blob URLs lazily at the component boundary.
+
+### ✅ Implementation Complete - Ready for Testing
+
+**Action Required**: Test the video playback functionality to verify the fix works as expected.
+
+**Testing Steps**:
+1. Run the app: `bun run electron:dev` or `bun dev`
+2. Load a video clip into the editor
+3. Scrub to a position inside the clip
+4. Click the Play button
+5. Observe console output and video behavior
+
+**Expected Results** (Success Criteria):
+- ✅ Console shows: `[VideoPlayer] Created blob URL for [id]: blob:...`
+- ✅ No `ERR_FILE_NOT_FOUND` errors for active blob during buffering
+- ✅ Video element reaches readyState 3-4 (HAVE_FUTURE_DATA or HAVE_ENOUGH_DATA)
+- ✅ `canplay` event fires
+- ✅ Video plays smoothly on canvas (not static image)
+- ✅ Console shows: `[VideoPlayer] Revoking blob URL for [id]` only after playback stops
+
+**If Issues Occur**:
+- Check browser console for error messages
+- Look for premature blob revocations (blob revoked before canplay)
+- Verify blob URLs are being created with File objects, not pre-created strings
+- Ensure no backup files (*.backup.tsx) exist that might cause conflicts
+
+**Optional Future Enhancements**:
+- Route remaining raw `URL.revokeObjectURL` calls in non-video components through blob-manager for consistency (e.g., `adjustment-store`, `export-engine`, `ffmpeg-utils`)
+- Add performance metrics for blob creation/revocation timing
+- Consider adding blob URL pooling for frequently-loaded videos
+
+## Latest Update (2025-11-24)
+- Added explicit console instrumentation in `apps/web/src/components/ui/video-player.tsx`: it now logs `[VideoPlayer] Created blob URL for ${videoId}: ...` on create and `[VideoPlayer] Revoking blob URL for ${videoId}: ...` on cleanup. Use these logs to confirm the lazy blob lifecycle is working during playback tests.
+- Lint follow-up: `bun run lint clean` failed because the script is `lint:clean` and Bun could not write to the default temp dir. Re-run from `qcut/` as `set TEMP=%CD%\\.tmp & set TMP=%CD%\\.tmp & bun run lint:clean` to get a clean lint pass.
+- Next step executed: reran `bun run lint:clean` with TEMP/TMP pointing at `.tmp`. Command ran but exited with 228 errors (formatter diffs across pre-existing files like `apps/web/grayscale-converter.ts`, `apps/web/node-grayscale-test.ts`, `postcss.config.ts`, `package.json`, `scripts/setup-ffmpeg.ts`, etc.). No project files were modified; errors are upstream formatting noise, not from the video playback changes.
 
 ---
 

@@ -451,21 +451,13 @@ export function PreviewPanel() {
   useEffect(() => {
     const seekTime = lastSeekEventTimeRef.current;
     const didSeek =
-      typeof seekTime === "number" &&
-      Math.abs(seekTime - currentTime) < 0.001;
+      typeof seekTime === "number" && Math.abs(seekTime - currentTime) < 0.001;
 
     if (didSeek) {
       lastSeekEventTimeRef.current = null;
       return;
     }
-  }, [
-    currentTime,
-    activeElements.length,
-    hasEffects,
-    isPlaying,
-    hasAnyElements,
-    timelineElements.length,
-  ]);
+  }, [currentTime]);
 
   // Warm cache during idle time
   useEffect(() => {
@@ -596,7 +588,7 @@ export function PreviewPanel() {
   const videoSourcesById = useMemo(() => {
     const sources = new Map<string, ReturnType<typeof getVideoSource>>();
     let videoCount = 0;
-    let missingSourceIds: string[] = [];
+    const missingSourceIds: string[] = [];
 
     mediaItems.forEach((item) => {
       if (item.type === "video") {
@@ -615,7 +607,7 @@ export function PreviewPanel() {
   // Revoke memoized blob URLs when they change or on unmount
   const activeVideoSource =
     currentMediaElement && currentMediaElement.mediaItem?.id
-      ? videoSourcesById.get(currentMediaElement.mediaItem.id) ?? null
+      ? (videoSourcesById.get(currentMediaElement.mediaItem.id) ?? null)
       : null;
 
   // Memoize blur background source (first eligible media element)
@@ -661,20 +653,20 @@ export function PreviewPanel() {
         <div
           key={`blur-${element.id}-${backgroundElement.track.id}`}
           className="absolute inset-0 overflow-hidden"
-            style={{
-              filter: `blur(${blurIntensity}px)`,
-              transform: "scale(1.1)", // Slightly zoom to avoid blur edge artifacts
-              transformOrigin: "center",
-            }}
-          >
-            <VideoPlayer
-              videoId={`${mediaItem.id}-blur-background`}
-              videoSource={source}
-              poster={mediaItem.thumbnailUrl}
-              clipStartTime={element.startTime}
-              trimStart={element.trimStart}
-              trimEnd={element.trimEnd}
-              clipDuration={element.duration}
+          style={{
+            filter: `blur(${blurIntensity}px)`,
+            transform: "scale(1.1)", // Slightly zoom to avoid blur edge artifacts
+            transformOrigin: "center",
+          }}
+        >
+          <VideoPlayer
+            videoId={`${mediaItem.id}-blur-background`}
+            videoSource={source}
+            poster={mediaItem.thumbnailUrl}
+            clipStartTime={element.startTime}
+            trimStart={element.trimStart}
+            trimEnd={element.trimEnd}
+            clipDuration={element.duration}
             className="object-cover"
             style={
               EFFECTS_ENABLED && element.id === currentMediaElement?.element.id
@@ -713,7 +705,9 @@ export function PreviewPanel() {
   // Render an element
   const renderElement = (elementData: ActiveElement, index: number) => {
     const { element, mediaItem } = elementData;
-    const elementEndTime = element.startTime + (element.duration - element.trimStart - element.trimEnd);
+    const elementEndTime =
+      element.startTime +
+      (element.duration - element.trimStart - element.trimEnd);
     const elementKey = `${element.id}-${elementData.track.id}`;
 
     // Text elements

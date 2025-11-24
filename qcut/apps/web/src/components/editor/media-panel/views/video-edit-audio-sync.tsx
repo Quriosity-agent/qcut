@@ -83,7 +83,10 @@ export function AudioSyncTab() {
         const video = document.createElement("video");
         video.preload = "metadata";
         video.onloadedmetadata = () => {
-          revokeManagedObjectURL(video.src, "video-edit-audio-sync:onloadedmetadata");
+          revokeManagedObjectURL(
+            video.src,
+            "video-edit-audio-sync:onloadedmetadata"
+          );
           resolve(video.duration);
         };
         video.onerror = () => {

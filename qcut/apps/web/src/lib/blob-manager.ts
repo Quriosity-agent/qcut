@@ -89,11 +89,10 @@ class BlobManager {
       nativeRevokeObjectURL(url);
       this.blobs.delete(url);
       return true;
-    } else {
-      // Even if we didn't create it, respect the in-use guard before revoking
-      nativeRevokeObjectURL(url);
-      return true;
     }
+    // Even if we didn't create it, respect the in-use guard before revoking
+    nativeRevokeObjectURL(url);
+    return true;
   }
 
   /**
@@ -181,5 +180,3 @@ if (import.meta.env.DEV) {
     console.log("[BlobManager] Active blobs:", blobManager.getActiveBlobs());
   };
 }
-
-

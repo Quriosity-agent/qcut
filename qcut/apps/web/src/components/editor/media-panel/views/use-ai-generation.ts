@@ -64,7 +64,7 @@ function getSafeDuration(
   requestedDuration: number,
   capabilities?: T2VModelCapabilities
 ): number | undefined {
-  if (!capabilities?.supportsDuration) return undefined;
+  if (!capabilities?.supportsDuration) return;
 
   const allowedDurations = capabilities.supportedDurations;
   const fallbackDuration =
@@ -369,7 +369,7 @@ export function useAIGeneration(props: UseAIGenerationProps) {
       debugError("? Failed to upload audio to FAL", error);
       throw error instanceof Error ? error : new Error(String(error));
     }
-  }, []);  // Status polling function
+  }, []); // Status polling function
   const startStatusPolling = useCallback(
     (jobId: string): Promise<void> => {
       let hasResolved = false;
@@ -427,11 +427,14 @@ export function useAIGeneration(props: UseAIGenerationProps) {
               // Automatically add to media store
               if (activeProject) {
                 try {
-                  console.log("[AI Generation] Downloading generated video for media store...", {
-                    projectId: activeProject.id,
-                    modelId: selectedModels[0] || "unknown",
-                    videoUrl: newVideo.videoUrl,
-                  });
+                  console.log(
+                    "[AI Generation] Downloading generated video for media store...",
+                    {
+                      projectId: activeProject.id,
+                      modelId: selectedModels[0] || "unknown",
+                      videoUrl: newVideo.videoUrl,
+                    }
+                  );
 
                   const response = await fetch(newVideo.videoUrl);
                   const blob = await response.blob();
@@ -445,14 +448,17 @@ export function useAIGeneration(props: UseAIGenerationProps) {
                     throw new Error("Media store not ready");
                   }
 
-                  console.log("[AI Generation] Adding video to media store...", {
-                    projectId: activeProject.id,
-                    name: `AI: ${newVideo.prompt.substring(0, 30)}...`,
-                    duration: newVideo.duration || 5,
-                    width: 1920,
-                    height: 1080,
-                    fileSize: file.size,
-                  });
+                  console.log(
+                    "[AI Generation] Adding video to media store...",
+                    {
+                      projectId: activeProject.id,
+                      name: `AI: ${newVideo.prompt.substring(0, 30)}...`,
+                      duration: newVideo.duration || 5,
+                      width: 1920,
+                      height: 1080,
+                      fileSize: file.size,
+                    }
+                  );
 
                   const newItemId = await addMediaItem(activeProject.id, {
                     name: `AI: ${newVideo.prompt.substring(0, 30)}...`,
@@ -487,7 +493,8 @@ export function useAIGeneration(props: UseAIGenerationProps) {
                     projectId: activeProject?.id,
                     modelId: selectedModels[0] || "unknown",
                     videoUrl: newVideo.videoUrl,
-                    error: error instanceof Error ? error.message : String(error),
+                    error:
+                      error instanceof Error ? error.message : String(error),
                   });
 
                   debugLogger.log(
@@ -563,7 +570,9 @@ export function useAIGeneration(props: UseAIGenerationProps) {
       }
 
       if (!sourceVideoFile && !sourceVideoUrl) {
-        console.log("? Validation failed - video source required for upscaling");
+        console.log(
+          "? Validation failed - video source required for upscaling"
+        );
         return;
       }
     } else if (activeTab === "avatar") {
@@ -583,9 +592,16 @@ export function useAIGeneration(props: UseAIGenerationProps) {
       const mockGenerations: GeneratedVideoResult[] = [];
 
       for (let i = 0; i < selectedModels.length; i++) {
-        console.log("------------------------------------------------------------");
-        console.log(`Model ${i + 1}/${selectedModels.length} - processing:`, selectedModels[i]);
-        console.log("------------------------------------------------------------");
+        console.log(
+          "------------------------------------------------------------"
+        );
+        console.log(
+          `Model ${i + 1}/${selectedModels.length} - processing:`,
+          selectedModels[i]
+        );
+        console.log(
+          "------------------------------------------------------------"
+        );
 
         const modelId = selectedModels[i];
         const modelName = AI_MODELS.find((m) => m.id === modelId)?.name;
@@ -716,8 +732,7 @@ export function useAIGeneration(props: UseAIGenerationProps) {
     console.log("  - activeTab:", activeTab);
     console.log(
       "  - prompt:",
-      prompt?.substring(0, 100) +
-        (prompt && prompt.length > 100 ? "..." : "")
+      prompt?.substring(0, 100) + (prompt && prompt.length > 100 ? "..." : "")
     );
     console.log("  - prompt length:", prompt?.length ?? 0);
     console.log("  - selectedModels:", selectedModels);
@@ -732,7 +747,10 @@ export function useAIGeneration(props: UseAIGenerationProps) {
     );
     console.log("  - activeProject:", activeProject?.id ?? "none");
     console.log("  - activeProject name:", activeProject?.name ?? "n/a");
-    console.log("  - addMediaItem available:", typeof addMediaItem === "function");
+    console.log(
+      "  - addMediaItem available:",
+      typeof addMediaItem === "function"
+    );
     console.log("");
 
     let validationError: string | null = null;
@@ -781,8 +799,7 @@ export function useAIGeneration(props: UseAIGenerationProps) {
               modelId === "bytedance_omnihuman_v1_5") &&
             !audioFile
           ) {
-            validationError =
-              "Audio-based avatar model requires audio file";
+            validationError = "Audio-based avatar model requires audio file";
             break;
           }
         }
@@ -1429,7 +1446,7 @@ export function useAIGeneration(props: UseAIGenerationProps) {
               progress: 100,
               message: `Video generated with ${friendlyName}`,
             });
-          }          // Regular image-to-video generation
+          } // Regular image-to-video generation
           else {
             if (!selectedImage) {
               console.log(
@@ -1630,9 +1647,7 @@ export function useAIGeneration(props: UseAIGenerationProps) {
             console.log("   - WILL EXECUTE MEDIA INTEGRATION:", canIntegrate);
 
             if (activeProject && addMediaItem) {
-              console.log(
-                "step 6b: executing media integration block"
-              );
+              console.log("step 6b: executing media integration block");
               console.log(
                 "   - About to download from URL:",
                 response.video_url
@@ -1643,7 +1658,9 @@ export function useAIGeneration(props: UseAIGenerationProps) {
                 typeof addMediaItem
               );
 
-              console.log(`step 6: downloading video and adding to media store for ${modelId}`);
+              console.log(
+                `step 6: downloading video and adding to media store for ${modelId}`
+              );
 
               console.log("🔄 Attempting to add to media store...");
               console.log("   - Project ID:", activeProject.id);
@@ -1671,72 +1688,77 @@ export function useAIGeneration(props: UseAIGenerationProps) {
                   );
                 }
 
-            const blob = await videoResponse.blob();
-            console.log("✅ Downloaded video blob, size:", blob.size);
+                const blob = await videoResponse.blob();
+                console.log("✅ Downloaded video blob, size:", blob.size);
 
-            const filename = `AI-Video-${modelId}-${Date.now()}.mp4`;
-            const file = new File([blob], filename, { type: "video/mp4" });
-            console.log("📄 Created file:", filename);
+                const filename = `AI-Video-${modelId}-${Date.now()}.mp4`;
+                const file = new File([blob], filename, { type: "video/mp4" });
+                console.log("📄 Created file:", filename);
 
-            console.log("step 6d: file creation complete");
-            console.log("   - blob.size:", blob.size, "bytes");
-            console.log("   - blob.type:", blob.type);
-            console.log("   - file.name:", file.name);
-            console.log("   - file.size:", file.size);
+                console.log("step 6d: file creation complete");
+                console.log("   - blob.size:", blob.size, "bytes");
+                console.log("   - blob.type:", blob.type);
+                console.log("   - file.name:", file.name);
+                console.log("   - file.size:", file.size);
 
-            // MANDATORY: Save to local disk - NO FALLBACK
-            console.log("step 6e: MANDATORY save to local disk starting");
+                // MANDATORY: Save to local disk - NO FALLBACK
+                console.log("step 6e: MANDATORY save to local disk starting");
 
-            if (!window.electronAPI?.video?.saveToDisk) {
-              const error = "CRITICAL ERROR: Electron API not available - cannot save video to disk";
-              console.error("🚨", error);
-              setIsGenerating(false);
-              setGenerationProgress(0);
-              setStatusMessage(error);
-              onError("Failed to save video: " + error);
-              return;
-            }
+                if (!window.electronAPI?.video?.saveToDisk) {
+                  const error =
+                    "CRITICAL ERROR: Electron API not available - cannot save video to disk";
+                  console.error("🚨", error);
+                  setIsGenerating(false);
+                  setGenerationProgress(0);
+                  setStatusMessage(error);
+                  onError("Failed to save video: " + error);
+                  return;
+                }
 
-            const arrayBuffer = await blob.arrayBuffer();
-            const saveResult = await window.electronAPI.video.saveToDisk({
-              fileName: filename,
-              fileData: arrayBuffer,
-              projectId: activeProject.id,
-              modelId: modelId,
-              metadata: {
-                width: 1920,
-                height: 1080,
-                duration: newVideo.duration || 5,
-                fps: 25
-              }
-            });
+                const arrayBuffer = await blob.arrayBuffer();
+                const saveResult = await window.electronAPI.video.saveToDisk({
+                  fileName: filename,
+                  fileData: arrayBuffer,
+                  projectId: activeProject.id,
+                  modelId,
+                  metadata: {
+                    width: 1920,
+                    height: 1080,
+                    duration: newVideo.duration || 5,
+                    fps: 25,
+                  },
+                });
 
-            if (!saveResult.success) {
-              const error = saveResult.error || "Unknown error saving video to disk";
-              console.error("🚨 step 6e: CRITICAL - Save to disk FAILED:", error);
-              setIsGenerating(false);
-              setGenerationProgress(0);
-              setStatusMessage("Failed to save video: " + error);
-              onError("Failed to save video to disk: " + error);
-              return; // ABORT - Do NOT add to media store
-            }
+                if (!saveResult.success) {
+                  const error =
+                    saveResult.error || "Unknown error saving video to disk";
+                  console.error(
+                    "🚨 step 6e: CRITICAL - Save to disk FAILED:",
+                    error
+                  );
+                  setIsGenerating(false);
+                  setGenerationProgress(0);
+                  setStatusMessage("Failed to save video: " + error);
+                  onError("Failed to save video to disk: " + error);
+                  return; // ABORT - Do NOT add to media store
+                }
 
-            console.log("✅ step 6e: video saved to disk successfully", {
-              localPath: saveResult.localPath,
-              fileName: saveResult.fileName,
-              fileSize: saveResult.fileSize
-            });
+                console.log("✅ step 6e: video saved to disk successfully", {
+                  localPath: saveResult.localPath,
+                  fileName: saveResult.fileName,
+                  fileSize: saveResult.fileSize,
+                });
 
-            const localUrl = URL.createObjectURL(file);
-            newVideo.videoPath = response.video_url;
-            newVideo.videoUrl = localUrl;
-            newVideo.fileSize = file.size;
-            newVideo.localPath = saveResult.localPath; // Store local path
+                const localUrl = URL.createObjectURL(file);
+                newVideo.videoPath = response.video_url;
+                newVideo.videoUrl = localUrl;
+                newVideo.fileSize = file.size;
+                newVideo.localPath = saveResult.localPath; // Store local path
 
-            // Add to media store (only if save succeeded)
-            const mediaItem = {
-              name: `AI: ${newVideo.prompt.substring(0, 30)}...`,
-              type: "video" as const,
+                // Add to media store (only if save succeeded)
+                const mediaItem = {
+                  name: `AI: ${newVideo.prompt.substring(0, 30)}...`,
+                  type: "video" as const,
                   file,
                   url: localUrl,
                   originalUrl: response.video_url,
@@ -1746,7 +1768,7 @@ export function useAIGeneration(props: UseAIGenerationProps) {
                   width: 1920,
                   height: 1080,
                   metadata: {
-                    source: 'text2video', // Mark as AI-generated for ZIP export prioritization
+                    source: "text2video", // Mark as AI-generated for ZIP export prioritization
                     model: modelId,
                     prompt: newVideo.prompt,
                     generatedAt: new Date().toISOString(),
@@ -1758,7 +1780,7 @@ export function useAIGeneration(props: UseAIGenerationProps) {
                   fileName: file.name,
                   fileSize: file.size,
                 });
-console.log("📤 Adding to media store with item:", mediaItem);
+                console.log("📤 Adding to media store with item:", mediaItem);
 
                 console.log("step 6e: about to call addMediaItem");
                 console.log(
@@ -1881,9 +1903,7 @@ console.log("📤 Adding to media store with item:", mediaItem);
           console.log("   - WILL EXECUTE MEDIA INTEGRATION:", canIntegrate);
 
           if (activeProject && addMediaItem) {
-            console.log(
-              "step 6b: executing media integration block"
-            );
+            console.log("step 6b: executing media integration block");
             console.log("   - About to download from URL:", response.video_url);
             console.log("   - Project ID for media:", activeProject.id);
             console.log(
@@ -1891,7 +1911,9 @@ console.log("📤 Adding to media store with item:", mediaItem);
               typeof addMediaItem
             );
 
-            console.log(`step 6: downloading video and adding to media store for ${modelId}`);
+            console.log(
+              `step 6: downloading video and adding to media store for ${modelId}`
+            );
 
             console.log("🔄 Attempting to add to media store...");
             console.log("   - Project ID:", activeProject.id);
@@ -1933,7 +1955,8 @@ console.log("📤 Adding to media store with item:", mediaItem);
               console.log("step 6e: MANDATORY save to local disk starting");
 
               if (!window.electronAPI?.video?.saveToDisk) {
-                const error = "CRITICAL ERROR: Electron API not available - cannot save video to disk";
+                const error =
+                  "CRITICAL ERROR: Electron API not available - cannot save video to disk";
                 console.error("🚨", error);
                 setIsGenerating(false);
                 setGenerationProgress(0);
@@ -1947,18 +1970,22 @@ console.log("📤 Adding to media store with item:", mediaItem);
                 fileName: filename,
                 fileData: arrayBuffer,
                 projectId: activeProject.id,
-                modelId: modelId,
+                modelId,
                 metadata: {
                   width: 1920,
                   height: 1080,
                   duration: newVideo.duration || 5,
-                  fps: 25
-                }
+                  fps: 25,
+                },
               });
 
               if (!saveResult.success) {
-                const error = saveResult.error || "Unknown error saving video to disk";
-                console.error("🚨 step 6e: CRITICAL - Save to disk FAILED:", error);
+                const error =
+                  saveResult.error || "Unknown error saving video to disk";
+                console.error(
+                  "🚨 step 6e: CRITICAL - Save to disk FAILED:",
+                  error
+                );
                 setIsGenerating(false);
                 setGenerationProgress(0);
                 setStatusMessage("Failed to save video: " + error);
@@ -1969,7 +1996,7 @@ console.log("📤 Adding to media store with item:", mediaItem);
               console.log("✅ step 6e: video saved to disk successfully", {
                 localPath: saveResult.localPath,
                 fileName: saveResult.fileName,
-                fileSize: saveResult.fileSize
+                fileSize: saveResult.fileSize,
               });
 
               const localUrl = URL.createObjectURL(file);
@@ -1996,7 +2023,7 @@ console.log("📤 Adding to media store with item:", mediaItem);
                 fileName: file.name,
                 fileSize: file.size,
               });
-console.log("📤 Adding to media store with item:", mediaItem);
+              console.log("📤 Adding to media store with item:", mediaItem);
 
               console.log("step 6e: about to call addMediaItem");
               console.log(
@@ -2055,7 +2082,9 @@ console.log("📤 Adding to media store with item:", mediaItem);
       setGeneratedVideos(generations);
       setStatusMessage(`Generated ${generations.length} videos successfully!`);
 
-      console.log("step 7: generation flow complete; updating UI and callbacks");
+      console.log(
+        "step 7: generation flow complete; updating UI and callbacks"
+      );
 
       console.log(
         `📤 Calling onComplete callback with ${generations.length} videos`
@@ -2135,6 +2164,27 @@ console.log("📤 Adding to media store with item:", mediaItem);
     flashvsrOutputQuality,
     flashvsrOutputWriteMode,
     flashvsrSeed,
+    hailuoT2VDuration,
+    ltxv2Duration,
+    ltxv2FPS,
+    ltxv2FastDuration,
+    ltxv2FastFPS,
+    ltxv2FastGenerateAudio,
+    ltxv2FastResolution,
+    ltxv2GenerateAudio,
+    ltxv2I2VDuration,
+    ltxv2I2VFPS,
+    ltxv2I2VGenerateAudio,
+    ltxv2I2VResolution,
+    ltxv2ImageDuration,
+    ltxv2ImageFPS,
+    ltxv2ImageGenerateAudio,
+    ltxv2ImageResolution,
+    ltxv2Resolution,
+    viduQ2Duration,
+    viduQ2EnableBGM,
+    viduQ2MovementAmplitude,
+    viduQ2Resolution,
   ]);
 
   // Reset generation state

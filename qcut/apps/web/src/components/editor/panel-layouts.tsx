@@ -52,9 +52,10 @@ export function DefaultLayout({ resetCounter }: LayoutProps) {
     const minProps = 15;
     const maxProps = 40;
 
-    const factor = rawTools + rawPreview + rawProperties !== 0
-      ? 100 / (rawTools + rawPreview + rawProperties)
-      : 1;
+    const factor =
+      rawTools + rawPreview + rawProperties !== 0
+        ? 100 / (rawTools + rawPreview + rawProperties)
+        : 1;
 
     // Start from proportionally scaled values.
     let tools = round2(rawTools * factor);
@@ -62,10 +63,7 @@ export function DefaultLayout({ resetCounter }: LayoutProps) {
 
     // Apply bounds, ensuring room for properties min.
     tools = clamp(tools, minTools, maxTools);
-    const previewMaxWithRoom = Math.min(
-      maxPreview,
-      100 - tools - minProps
-    );
+    const previewMaxWithRoom = Math.min(maxPreview, 100 - tools - minProps);
     preview = clamp(preview, minPreview, previewMaxWithRoom);
 
     let properties = round2(100 - tools - preview);
@@ -77,7 +75,10 @@ export function DefaultLayout({ resetCounter }: LayoutProps) {
       preview -= previewGive;
       const remainingDeficit = deficit - previewGive;
       if (remainingDeficit > 0) {
-        const toolsGive = Math.min(remainingDeficit, Math.max(0, tools - minTools));
+        const toolsGive = Math.min(
+          remainingDeficit,
+          Math.max(0, tools - minTools)
+        );
         tools -= toolsGive;
       }
       properties = minProps;
@@ -91,7 +92,10 @@ export function DefaultLayout({ resetCounter }: LayoutProps) {
       preview += previewTake;
       const remainingExcess = excess - previewTake;
       if (remainingExcess > 0) {
-        const toolsTake = Math.min(remainingExcess, Math.max(0, maxTools - tools));
+        const toolsTake = Math.min(
+          remainingExcess,
+          Math.max(0, maxTools - tools)
+        );
         tools += toolsTake;
       }
     }
@@ -108,11 +112,8 @@ export function DefaultLayout({ resetCounter }: LayoutProps) {
     };
   };
 
-  const {
-    normalizedTools,
-    normalizedPreview,
-    normalizedProperties,
-  } = normalizePanels(toolsPanel, previewPanel, propertiesPanel);
+  const { normalizedTools, normalizedPreview, normalizedProperties } =
+    normalizePanels(toolsPanel, previewPanel, propertiesPanel);
 
   // Panel size calculation completed
 

@@ -3,10 +3,7 @@ import { devtools } from "zustand/middleware";
 import { handleError, ErrorCategory, ErrorSeverity } from "@/lib/error-handler";
 import { TEXT2IMAGE_MODEL_ORDER } from "@/lib/text2image-models";
 import { UPSCALE_MODEL_ORDER, UPSCALE_MODELS } from "@/lib/upscale-models";
-import type {
-  UpscaleModelId,
-  UpscaleScaleFactor,
-} from "@/lib/upscale-models";
+import type { UpscaleModelId, UpscaleScaleFactor } from "@/lib/upscale-models";
 import { upscaleImage as runUpscaleImage } from "@/lib/image-edit-client";
 import type {
   ImageEditProgressCallback,
@@ -33,9 +30,8 @@ const computeUpscaleSettings = (
     nextModelId === previous.selectedModel
       ? previous
       : createDefaultUpscaleSettings(nextModelId);
-  const scaleOptions = (
-    model.controls.scaleFactor.options ?? model.supportedScales
-  ) as UpscaleScaleFactor[];
+  const scaleOptions = (model.controls.scaleFactor.options ??
+    model.supportedScales) as UpscaleScaleFactor[];
 
   let nextScale: UpscaleScaleFactor =
     settings.scaleFactor ??
@@ -85,11 +81,12 @@ const createDefaultUpscaleSettings = (
   modelId: UpscaleModelId = UPSCALE_MODEL_ORDER[0]
 ): UpscaleSettings => {
   const model = UPSCALE_MODELS[modelId];
-  const scaleOptions = (
-    model.controls.scaleFactor.options ?? model.supportedScales
-  ) as UpscaleScaleFactor[];
+  const scaleOptions = (model.controls.scaleFactor.options ??
+    model.supportedScales) as UpscaleScaleFactor[];
   const defaultScale =
-    scaleOptions.length > 0 ? scaleOptions[0] : model.defaultParams.scale_factor;
+    scaleOptions.length > 0
+      ? scaleOptions[0]
+      : model.defaultParams.scale_factor;
 
   return {
     selectedModel: modelId,
@@ -142,14 +139,14 @@ export interface SelectedResult {
 }
 
 const normalizeExtension = (extension?: string) => {
-  if (!extension) return undefined;
+  if (!extension) return;
   const normalized = extension.replace(/^\./, "").toLowerCase();
   if (normalized === "jpg") return "jpeg";
   return ["png", "jpeg", "webp"].includes(normalized) ? normalized : undefined;
 };
 
 const getExtensionFromUrl = (url?: string) => {
-  if (!url) return undefined;
+  if (!url) return;
 
   if (url.startsWith("data:image/")) {
     const mimeExtension = url.slice("data:image/".length).split(/[;,]/)[0];
@@ -511,7 +508,9 @@ export const useText2ImageStore = create<Text2ImageStore>()(
             );
           }
           if (model.features.overlappingTiles) {
-            request.overlappingTiles = Boolean(upscaleSettings.overlappingTiles);
+            request.overlappingTiles = Boolean(
+              upscaleSettings.overlappingTiles
+            );
           }
 
           const response = await runUpscaleImage(request, options?.onProgress);

@@ -259,7 +259,7 @@ export function useTimelinePlayhead({
         playheadPosition: Number(playheadPx.toFixed(2)),
         shouldAutoScroll: true,
         zoomLevel: Number(zoomLevel.toFixed(1)),
-        timelineScrollLeft: rulerViewport.scrollLeft
+        timelineScrollLeft: rulerViewport.scrollLeft,
       });
       // Center the playhead in the viewport
       const desiredScroll = Math.max(
@@ -273,7 +273,7 @@ export function useTimelinePlayhead({
         playheadPosition: Number(playheadPx.toFixed(2)),
         shouldAutoScroll: false,
         zoomLevel: Number(zoomLevel.toFixed(1)),
-        timelineScrollLeft: rulerViewport.scrollLeft
+        timelineScrollLeft: rulerViewport.scrollLeft,
       });
     }
   }, [
@@ -282,6 +282,7 @@ export function useTimelinePlayhead({
     rulerScrollRef,
     tracksScrollRef,
     isScrubbing,
+    currentTime.toFixed,
   ]);
 
   return {

@@ -48,8 +48,7 @@ async function readMetadata(
           ? video.duration
           : undefined;
         const fps = await estimateFrameRate(video, duration);
-        const frames =
-          duration && fps ? Math.round(duration * fps) : undefined;
+        const frames = duration && fps ? Math.round(duration * fps) : undefined;
 
         resolve({
           width: video.videoWidth || 0,
@@ -116,19 +115,21 @@ async function getFrameRateFromCaptureStream(
   video: HTMLVideoElement
 ): Promise<number | undefined> {
   const captureStream =
-    (video as HTMLVideoElement & {
-      captureStream?: () => MediaStream;
-      mozCaptureStream?: () => MediaStream;
-    }).captureStream ||
+    (
+      video as HTMLVideoElement & {
+        captureStream?: () => MediaStream;
+        mozCaptureStream?: () => MediaStream;
+      }
+    ).captureStream ||
     (video as HTMLVideoElement & { mozCaptureStream?: () => MediaStream })
       .mozCaptureStream;
 
   if (typeof captureStream !== "function") {
-    return undefined;
+    return;
   }
 
   try {
-    await video.play().catch(() => undefined);
+    await video.play().catch(() => {});
     const stream = captureStream.call(video);
     const track = stream?.getVideoTracks?.()[0];
     const settings = track?.getSettings?.();
@@ -145,7 +146,7 @@ async function getFrameRateFromCaptureStream(
     // Ignore capture failures and fall back to other heuristics.
   }
 
-  return undefined;
+  return;
 }
 
 /**
@@ -164,16 +165,18 @@ function getFrameRateFromPlaybackQuality(
   duration?: number
 ): number | undefined {
   if (!duration || duration <= 0) {
-    return undefined;
+    return;
   }
 
   const sanitize = (value?: number) =>
     value && Number.isFinite(value) && value > 0 ? value : undefined;
 
   try {
-    const quality = (video as HTMLVideoElement & {
-      getVideoPlaybackQuality?: () => VideoPlaybackQuality;
-    }).getVideoPlaybackQuality?.();
+    const quality = (
+      video as HTMLVideoElement & {
+        getVideoPlaybackQuality?: () => VideoPlaybackQuality;
+      }
+    ).getVideoPlaybackQuality?.();
 
     const totalFrames =
       quality?.totalVideoFrames ??
@@ -185,7 +188,7 @@ function getFrameRateFromPlaybackQuality(
     const fps = totalFrames ? totalFrames / duration : undefined;
     return sanitize(fps);
   } catch {
-    return undefined;
+    return;
   }
 }
 

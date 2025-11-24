@@ -48,7 +48,9 @@ interface SaveAIVideoResult {
  * @returns Result object with local path or error
  * @throws Error if save fails - NO FALLBACKS ALLOWED
  */
-export async function saveAIVideoToDisk(options: SaveAIVideoOptions): Promise<SaveAIVideoResult> {
+export async function saveAIVideoToDisk(
+  options: SaveAIVideoOptions
+): Promise<SaveAIVideoResult> {
   try {
     const { fileName, fileData, projectId, modelId, metadata } = options;
 
@@ -61,11 +63,12 @@ export async function saveAIVideoToDisk(options: SaveAIVideoOptions): Promise<Sa
     } else if (fileData instanceof Uint8Array) {
       buffer = Buffer.from(fileData);
     } else {
-      const error = "Invalid file data type - must be Buffer, ArrayBuffer, or Uint8Array";
+      const error =
+        "Invalid file data type - must be Buffer, ArrayBuffer, or Uint8Array";
       console.error("AI Video Save Error:", error);
       return {
         success: false,
-        error
+        error,
       };
     }
 
@@ -76,7 +79,7 @@ export async function saveAIVideoToDisk(options: SaveAIVideoOptions): Promise<Sa
       console.error("AI Video Save Error:", error);
       return {
         success: false,
-        error
+        error,
       };
     }
 
@@ -86,7 +89,7 @@ export async function saveAIVideoToDisk(options: SaveAIVideoOptions): Promise<Sa
       console.error("AI Video Save Error:", error);
       return {
         success: false,
-        error
+        error,
       };
     }
 
@@ -106,7 +109,7 @@ export async function saveAIVideoToDisk(options: SaveAIVideoOptions): Promise<Sa
       console.error("AI Video Save Error:", error);
       return {
         success: false,
-        error
+        error,
       };
     }
 
@@ -137,7 +140,7 @@ export async function saveAIVideoToDisk(options: SaveAIVideoOptions): Promise<Sa
         console.error("AI Video Save Error:", error);
         return {
           success: false,
-          error
+          error,
         };
       }
     } catch (statfsError) {
@@ -153,7 +156,7 @@ export async function saveAIVideoToDisk(options: SaveAIVideoOptions): Promise<Sa
       console.error("AI Video Save Error:", error);
       return {
         success: false,
-        error
+        error,
       };
     }
 
@@ -167,7 +170,7 @@ export async function saveAIVideoToDisk(options: SaveAIVideoOptions): Promise<Sa
         console.error("AI Video Save Error:", error);
         return {
           success: false,
-          error
+          error,
         };
       }
     } catch (verifyError: any) {
@@ -175,7 +178,7 @@ export async function saveAIVideoToDisk(options: SaveAIVideoOptions): Promise<Sa
       console.error("AI Video Save Error:", error);
       return {
         success: false,
-        error
+        error,
       };
     }
 
@@ -188,7 +191,7 @@ export async function saveAIVideoToDisk(options: SaveAIVideoOptions): Promise<Sa
         modelId,
         projectId,
         savedAt: new Date().toISOString(),
-        fileSize: buffer.length
+        fileSize: buffer.length,
       };
 
       try {
@@ -202,21 +205,22 @@ export async function saveAIVideoToDisk(options: SaveAIVideoOptions): Promise<Sa
       }
     }
 
-    console.log(`✅ AI Video saved successfully to disk: ${filePath} (${(buffer.length / 1024 / 1024).toFixed(2)}MB)`);
+    console.log(
+      `✅ AI Video saved successfully to disk: ${filePath} (${(buffer.length / 1024 / 1024).toFixed(2)}MB)`
+    );
 
     return {
       success: true,
       localPath: filePath,
       fileName: finalFileName,
-      fileSize: buffer.length
+      fileSize: buffer.length,
     };
-
   } catch (unexpectedError: any) {
     const error = `Unexpected error saving AI video: ${unexpectedError.message}`;
     console.error("AI Video Save CRITICAL ERROR:", error);
     return {
       success: false,
-      error
+      error,
     };
   }
 }
@@ -257,42 +261,60 @@ export async function deleteAIVideoFile(filePath: string): Promise<boolean> {
  */
 export function registerAIVideoHandlers(): void {
   // Main save handler - MANDATORY SUCCESS REQUIRED
-  ipcMain.handle("ai-video:save-to-disk", async (event, options: SaveAIVideoOptions): Promise<SaveAIVideoResult> => {
-    console.log("IPC: ai-video:save-to-disk called", {
-      fileName: options.fileName,
-      projectId: options.projectId,
-      dataSize: options.fileData ? (options.fileData as any).byteLength || (options.fileData as Buffer).length : 0
-    });
+  ipcMain.handle(
+    "ai-video:save-to-disk",
+    async (event, options: SaveAIVideoOptions): Promise<SaveAIVideoResult> => {
+      console.log("IPC: ai-video:save-to-disk called", {
+        fileName: options.fileName,
+        projectId: options.projectId,
+        dataSize: options.fileData
+          ? (options.fileData as any).byteLength ||
+            (options.fileData as Buffer).length
+          : 0,
+      });
 
-    const result = await saveAIVideoToDisk(options);
+      const result = await saveAIVideoToDisk(options);
 
-    // If save failed, this is CRITICAL - the operation must not continue
-    if (!result.success) {
-      console.error("🚨 CRITICAL: AI Video save to disk FAILED - Operation must be aborted", result.error);
+      // If save failed, this is CRITICAL - the operation must not continue
+      if (!result.success) {
+        console.error(
+          "🚨 CRITICAL: AI Video save to disk FAILED - Operation must be aborted",
+          result.error
+        );
+      }
+
+      return result;
     }
-
-    return result;
-  });
+  );
 
   // Verify file exists
-  ipcMain.handle("ai-video:verify-file", async (event, filePath: string): Promise<boolean> => {
-    return await verifyAIVideoFile(filePath);
-  });
+  ipcMain.handle(
+    "ai-video:verify-file",
+    async (event, filePath: string): Promise<boolean> => {
+      return await verifyAIVideoFile(filePath);
+    }
+  );
 
   // Delete file (for cleanup or user request)
-  ipcMain.handle("ai-video:delete-file", async (event, filePath: string): Promise<boolean> => {
-    return await deleteAIVideoFile(filePath);
-  });
+  ipcMain.handle(
+    "ai-video:delete-file",
+    async (event, filePath: string): Promise<boolean> => {
+      return await deleteAIVideoFile(filePath);
+    }
+  );
 
   // Get project videos directory
-  ipcMain.handle("ai-video:get-project-dir", async (event, projectId: string): Promise<string> => {
-    return path.join(
-      app.getPath("userData"),
-      "projects",
-      sanitizeFilename(projectId),
-      "ai-videos"
-    );
-  });
+  ipcMain.handle(
+    "ai-video:get-project-dir",
+    async (event, projectId: string): Promise<string> => {
+      return path.join(
+        app.getPath("userData"),
+        "projects",
+        sanitizeFilename(projectId),
+        "ai-videos"
+      );
+    }
+  );
 
   console.log("✅ AI Video save handlers registered");
 }

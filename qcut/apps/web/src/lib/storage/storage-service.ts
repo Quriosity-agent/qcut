@@ -219,10 +219,7 @@ class StorageService {
       `[StorageService.loadAllProjects] Found ${projectIds.length} project IDs to load`
     );
     if (projectIds.length > 0 && projectIds.length <= 10) {
-      debugLog(
-        "[StorageService.loadAllProjects] Project IDs:",
-        projectIds
-      );
+      debugLog("[StorageService.loadAllProjects] Project IDs:", projectIds);
     } else if (projectIds.length > 10) {
       debugLog(
         "[StorageService.loadAllProjects] First 5 project IDs:",

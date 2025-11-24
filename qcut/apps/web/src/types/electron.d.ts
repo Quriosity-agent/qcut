@@ -36,7 +36,12 @@ export interface ElectronAPI {
   saveBlob: (
     data: Buffer | Uint8Array,
     defaultFilename?: string
-  ) => Promise<{ success: boolean; filePath?: string; canceled?: boolean; error?: string }>;
+  ) => Promise<{
+    success: boolean;
+    filePath?: string;
+    canceled?: boolean;
+    error?: string;
+  }>;
   getFileInfo: (filePath: string) => Promise<{
     size: number;
     created: Date;

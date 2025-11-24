@@ -324,7 +324,7 @@ export function PreviewToolbar({
       previousState: isPlaying ? "playing" : "paused",
       currentTime: Number(currentTime.toFixed(3)),
       willPause: isPlaying,
-      willPlay: !isPlaying
+      willPlay: !isPlaying,
     });
     toggle();
   };

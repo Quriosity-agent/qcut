@@ -40,9 +40,9 @@ export class ZipManager {
 
     logDebug("step 9: zip-manager starting addMediaItems", {
       totalItems: total,
-      itemsWithFile: items.filter(item => !!item.file).length,
-      itemsWithLocalPath: items.filter(item => !!item.localPath).length,
-      itemsWithUrl: items.filter(item => !!item.url).length,
+      itemsWithFile: items.filter((item) => !!item.file).length,
+      itemsWithLocalPath: items.filter((item) => !!item.localPath).length,
+      itemsWithUrl: items.filter((item) => !!item.url).length,
       electronAPIAvailable: !!window.electronAPI,
       readFileAvailable: !!window.electronAPI?.readFile,
     });
@@ -96,10 +96,7 @@ export class ZipManager {
           const pathExtMatch = item.localPath?.match(/\.([a-zA-Z0-9]+)$/);
           const mimeType = item.file?.type;
           const extFromMime = mimeType?.split("/")[1];
-          const videoExtension =
-            pathExtMatch?.[1] ||
-            extFromMime ||
-            "mp4";
+          const videoExtension = pathExtMatch?.[1] || extFromMime || "mp4";
           filename = `${filename}.${videoExtension}`;
           logDebug("step 9a-extension-fix", {
             originalName: item.name,
@@ -142,24 +139,33 @@ export class ZipManager {
           metadata: item.metadata,
           isAIGenerated,
           hasLocalPath: !!item.localPath,
-          localPath: item.localPath
+          localPath: item.localPath,
         });
 
         // If has BOTH file and localPath, prefer localPath for videos (likely AI generated)
         // ALWAYS prefer localPath for videos as it's more reliable than File objects
-        const shouldUseLocalPath = isAIGenerated ||
-                                  (item.type === 'video' && item.localPath);
+        const shouldUseLocalPath =
+          isAIGenerated || (item.type === "video" && item.localPath);
 
-        if (shouldUseLocalPath && item.localPath && window.electronAPI?.readFile) {
-          logDebug("step 9b-ai: AI video detected, prioritizing localPath read", {
-            filename,
-            localPath: item.localPath,
-            metadataSource: item.metadata?.source,
-            name: item.name,
-          });
+        if (
+          shouldUseLocalPath &&
+          item.localPath &&
+          window.electronAPI?.readFile
+        ) {
+          logDebug(
+            "step 9b-ai: AI video detected, prioritizing localPath read",
+            {
+              filename,
+              localPath: item.localPath,
+              metadataSource: item.metadata?.source,
+              name: item.name,
+            }
+          );
 
           try {
-            const fileBuffer = await window.electronAPI.readFile(item.localPath);
+            const fileBuffer = await window.electronAPI.readFile(
+              item.localPath
+            );
             logDebug("step 9b-ai-read: readFile returned for AI video", {
               bufferExists: !!fileBuffer,
               bufferLength: fileBuffer ? fileBuffer.length : 0,
@@ -183,18 +189,24 @@ export class ZipManager {
                 });
               }
             } else {
-              console.error("step 9b-ai-fail: Failed to read AI video from localPath", {
-                name: item.name,
-                localPath: item.localPath
-              });
+              console.error(
+                "step 9b-ai-fail: Failed to read AI video from localPath",
+                {
+                  name: item.name,
+                  localPath: item.localPath,
+                }
+              );
               // Fall through to try File object as backup
             }
           } catch (error) {
-            console.error("step 9b-ai-error: Error reading AI video from localPath", {
-              name: item.name,
-              localPath: item.localPath,
-              error: error instanceof Error ? error.message : String(error),
-            });
+            console.error(
+              "step 9b-ai-error: Error reading AI video from localPath",
+              {
+                name: item.name,
+                localPath: item.localPath,
+                error: error instanceof Error ? error.message : String(error),
+              }
+            );
             // Fall through to try File object as backup
           }
         }
@@ -227,12 +239,18 @@ export class ZipManager {
             readFileAvailable: !!window.electronAPI?.readFile,
           });
           try {
-            const fileBuffer = await window.electronAPI.readFile(item.localPath);
+            const fileBuffer = await window.electronAPI.readFile(
+              item.localPath
+            );
             logDebug("step 9e: readFile returned", {
               bufferExists: !!fileBuffer,
-              bufferType: fileBuffer ? Object.prototype.toString.call(fileBuffer) : "null",
+              bufferType: fileBuffer
+                ? Object.prototype.toString.call(fileBuffer)
+                : "null",
               bufferLength: fileBuffer ? fileBuffer.length : 0,
-              isArrayBuffer: fileBuffer ? fileBuffer instanceof ArrayBuffer : false,
+              isArrayBuffer: fileBuffer
+                ? fileBuffer instanceof ArrayBuffer
+                : false,
             });
             if (fileBuffer) {
               const uint8Array = this.normalizeToUint8Array(
@@ -260,7 +278,7 @@ export class ZipManager {
             } else {
               console.warn("step 9k: readFile returned null/undefined", {
                 name: item.name,
-                localPath: item.localPath
+                localPath: item.localPath,
               });
             }
           } catch (error) {
@@ -268,7 +286,7 @@ export class ZipManager {
               name: item.name,
               localPath: item.localPath,
               error: error instanceof Error ? error.message : String(error),
-              errorStack: error instanceof Error ? error.stack : undefined
+              errorStack: error instanceof Error ? error.stack : undefined,
             });
           }
         } else {
@@ -285,7 +303,7 @@ export class ZipManager {
             const controller = new AbortController();
             const timeoutId = window.setTimeout(
               () => controller.abort(),
-              120000
+              120_000
             );
             try {
               const resp = await fetch(urlToFetch, {
@@ -306,8 +324,7 @@ export class ZipManager {
               const hasExtension = filename.includes(".");
               let finalFilename = filename;
               if (!hasExtension) {
-                const extensionFromType =
-                  inferredType.split("/")[1] || "bin";
+                const extensionFromType = inferredType.split("/")[1] || "bin";
                 finalFilename = `${filename}.${extensionFromType}`;
               }
 
@@ -336,12 +353,15 @@ export class ZipManager {
               window.clearTimeout(timeoutId);
             }
           } else if (!addedToZip) {
-            console.warn("step 8: export-all zip skipped item (no file or fetchable url)", {
-              name: item.name,
-              hasFile: !!item.file,
-              url: item.url,
-              originalUrl,
-            });
+            console.warn(
+              "step 8: export-all zip skipped item (no file or fetchable url)",
+              {
+                name: item.name,
+                hasFile: !!item.file,
+                url: item.url,
+                originalUrl,
+              }
+            );
           }
         }
 
@@ -354,10 +374,7 @@ export class ZipManager {
           progress: `${completed}/${total}`,
         });
       } catch (error) {
-        console.error(
-          `step 9n: Failed to add ${item.name} to ZIP:`,
-          error
-        );
+        console.error(`step 9n: Failed to add ${item.name} to ZIP:`, error);
         // Continue with other files
       }
     }
@@ -583,13 +600,12 @@ export async function downloadZipSafely(
       if (result.success) {
         logDebug("✅ ZIP saved successfully via Electron:", result.filePath);
         return;
-      } else if (result.canceled) {
+      }
+      if (result.canceled) {
         logDebug("ZIP save canceled by user");
         return;
-      } else {
-        console.error("Failed to save ZIP via Electron:", result.error);
-        // Fall through to browser methods
       }
+      console.error("Failed to save ZIP via Electron:", result.error);
     } catch (error) {
       console.error("step 11e: Electron save failed", {
         error: error instanceof Error ? error.message : String(error),

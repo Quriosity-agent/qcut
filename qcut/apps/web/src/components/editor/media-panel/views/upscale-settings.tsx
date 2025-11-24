@@ -28,7 +28,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { UPSCALE_MODELS, type UpscaleModelId, type UpscaleScaleFactor } from "@/lib/upscale-models";
+import {
+  UPSCALE_MODELS,
+  type UpscaleModelId,
+  type UpscaleScaleFactor,
+} from "@/lib/upscale-models";
 import {
   type UpscaleSettings,
   useText2ImageStore,

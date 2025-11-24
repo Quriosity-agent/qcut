@@ -43,7 +43,7 @@ export function enableBlobUrlDebugging() {
   };
 
   // Override revokeObjectURL to track cleanup
-  URL.revokeObjectURL = function (url: string) {
+  URL.revokeObjectURL = (url: string) => {
     const tracked = blobUrlTracker.get(url);
     if (tracked) {
       blobUrlTracker.delete(url);

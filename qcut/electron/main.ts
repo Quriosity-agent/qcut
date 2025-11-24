@@ -607,7 +607,12 @@ app.whenReady().then(() => {
       event: IpcMainInvokeEvent,
       data: Buffer | Uint8Array,
       defaultFilename?: string
-    ): Promise<{ success: boolean; filePath?: string; canceled?: boolean; error?: string }> => {
+    ): Promise<{
+      success: boolean;
+      filePath?: string;
+      canceled?: boolean;
+      error?: string;
+    }> => {
       try {
         const result = await dialog.showSaveDialog(mainWindow!, {
           defaultPath: defaultFilename || "download.zip",

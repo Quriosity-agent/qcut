@@ -184,7 +184,9 @@ export function AiView() {
   // Upscale tab state
   const [sourceVideoFile, setSourceVideoFile] = useState<File | null>(null);
   const [sourceVideoUrl, setSourceVideoUrl] = useState("");
-  const [videoMetadata, setVideoMetadata] = useState<VideoMetadata | null>(null);
+  const [videoMetadata, setVideoMetadata] = useState<VideoMetadata | null>(
+    null
+  );
 
   const [bytedanceTargetResolution, setBytedanceTargetResolution] = useState<
     "1080p" | "2k" | "4k"
@@ -247,22 +249,31 @@ export function AiView() {
     aspectRatio: "16:9",
     resolution: "1080p",
     duration: 4,
-    negativePrompt: "low resolution, error, worst quality, low quality, defects",
+    negativePrompt:
+      "low resolution, error, worst quality, low quality, defects",
     promptExpansion: false,
     seed: -1, // -1 = random
     safetyChecker: false,
   } as const;
 
   // Unified text-to-video advanced settings
-  const [t2vAspectRatio, setT2vAspectRatio] = useState<string>(T2V_DEFAULTS.aspectRatio);
-  const [t2vResolution, setT2vResolution] = useState<string>(T2V_DEFAULTS.resolution);
+  const [t2vAspectRatio, setT2vAspectRatio] = useState<string>(
+    T2V_DEFAULTS.aspectRatio
+  );
+  const [t2vResolution, setT2vResolution] = useState<string>(
+    T2V_DEFAULTS.resolution
+  );
   const [t2vDuration, setT2vDuration] = useState<number>(T2V_DEFAULTS.duration);
   const [t2vNegativePrompt, setT2vNegativePrompt] = useState<string>(
     T2V_DEFAULTS.negativePrompt
   );
-  const [t2vPromptExpansion, setT2vPromptExpansion] = useState<boolean>(T2V_DEFAULTS.promptExpansion);
+  const [t2vPromptExpansion, setT2vPromptExpansion] = useState<boolean>(
+    T2V_DEFAULTS.promptExpansion
+  );
   const [t2vSeed, setT2vSeed] = useState<number>(T2V_DEFAULTS.seed); // -1 = random
-  const [t2vSafetyChecker, setT2vSafetyChecker] = useState<boolean>(T2V_DEFAULTS.safetyChecker);
+  const [t2vSafetyChecker, setT2vSafetyChecker] = useState<boolean>(
+    T2V_DEFAULTS.safetyChecker
+  );
   const [t2vSettingsExpanded, setT2vSettingsExpanded] =
     useState<boolean>(false);
   const [ltxv2Duration, setLTXV2Duration] = useState<6 | 8 | 10>(6);
@@ -294,8 +305,7 @@ export function AiView() {
     LTXV2_FAST_CONFIG.FPS_OPTIONS.STANDARD[0]
   );
   const [ltxv2ImageGenerateAudio, setLTXV2ImageGenerateAudio] = useState(true);
-  const [seedanceDuration, setSeedanceDuration] =
-    useState<SeedanceDuration>(5);
+  const [seedanceDuration, setSeedanceDuration] = useState<SeedanceDuration>(5);
   const [seedanceResolution, setSeedanceResolution] =
     useState<SeedanceResolution>("1080p");
   const [seedanceAspectRatio, setSeedanceAspectRatio] =
@@ -590,9 +600,7 @@ export function AiView() {
     ltxv2ImageDuration > LTXV2_FAST_CONFIG.EXTENDED_DURATION_THRESHOLD;
   const isExtendedLTXV2FastTextDuration =
     ltxv2FastDuration > LTXV2_FAST_CONFIG.EXTENDED_DURATION_THRESHOLD;
-  const seedanceFastSelected = selectedModels.includes(
-    "seedance_pro_fast_i2v"
-  );
+  const seedanceFastSelected = selectedModels.includes("seedance_pro_fast_i2v");
   const seedanceProSelected = selectedModels.includes("seedance_pro_i2v");
   const seedanceSelected = seedanceFastSelected || seedanceProSelected;
   const klingI2VSelected = selectedModels.includes("kling_v2_5_turbo_i2v");
@@ -603,9 +611,7 @@ export function AiView() {
   const flashvsrUpscalerSelected = selectedModels.includes(
     "flashvsr_video_upscaler"
   );
-  const topazUpscalerSelected = selectedModels.includes(
-    "topaz_video_upscale"
-  );
+  const topazUpscalerSelected = selectedModels.includes("topaz_video_upscale");
 
   const videoDurationSeconds = videoMetadata?.duration ?? 10;
 
@@ -623,8 +629,7 @@ export function AiView() {
     if (!videoMetadata) return "$0.000";
     const { width, height, frames, duration, fps } = videoMetadata;
     const frameCount =
-      frames ??
-      Math.max(1, Math.round((duration ?? 0) * (fps ?? 30)));
+      frames ?? Math.max(1, Math.round((duration ?? 0) * (fps ?? 30)));
 
     return calculateFlashVSRUpscaleCost(
       width,
@@ -1151,16 +1156,19 @@ export function AiView() {
                             onValueChange={setT2vAspectRatio}
                             disabled={
                               !combinedCapabilities.supportedAspectRatios ||
-                              combinedCapabilities.supportedAspectRatios.length ===
-                                0
+                              combinedCapabilities.supportedAspectRatios
+                                .length === 0
                             }
                           >
                             <SelectTrigger className="h-8 text-xs">
                               <SelectValue placeholder="Select aspect ratio" />
                             </SelectTrigger>
                             <SelectContent>
-                              {(combinedCapabilities.supportedAspectRatios ||
-                                ["16:9"]).map((ratio) => (
+                              {(
+                                combinedCapabilities.supportedAspectRatios || [
+                                  "16:9",
+                                ]
+                              ).map((ratio) => (
                                 <SelectItem key={ratio} value={ratio}>
                                   {ratio}
                                 </SelectItem>
@@ -1180,15 +1188,19 @@ export function AiView() {
                             onValueChange={setT2vResolution}
                             disabled={
                               !combinedCapabilities.supportedResolutions ||
-                              combinedCapabilities.supportedResolutions.length === 0
+                              combinedCapabilities.supportedResolutions
+                                .length === 0
                             }
                           >
                             <SelectTrigger className="h-8 text-xs">
                               <SelectValue placeholder="Select resolution" />
                             </SelectTrigger>
                             <SelectContent>
-                              {(combinedCapabilities.supportedResolutions ||
-                                ["1080p"]).map((res) => (
+                              {(
+                                combinedCapabilities.supportedResolutions || [
+                                  "1080p",
+                                ]
+                              ).map((res) => (
                                 <SelectItem key={res} value={res}>
                                   {res}
                                 </SelectItem>
@@ -1200,7 +1212,9 @@ export function AiView() {
 
                       {combinedCapabilities.supportsDuration && (
                         <div className="space-y-2">
-                          <Label className="text-xs font-medium">Duration</Label>
+                          <Label className="text-xs font-medium">
+                            Duration
+                          </Label>
                           <Select
                             value={t2vDuration.toString()}
                             onValueChange={(value) =>
@@ -1208,20 +1222,21 @@ export function AiView() {
                             }
                             disabled={
                               !combinedCapabilities.supportedDurations ||
-                              combinedCapabilities.supportedDurations.length === 0
+                              combinedCapabilities.supportedDurations.length ===
+                                0
                             }
                           >
                             <SelectTrigger className="h-8 text-xs">
                               <SelectValue placeholder="Select duration" />
                             </SelectTrigger>
                             <SelectContent>
-                              {(combinedCapabilities.supportedDurations || [5]).map(
-                                (dur) => (
-                                  <SelectItem key={dur} value={dur.toString()}>
-                                    {dur} seconds
-                                  </SelectItem>
-                                )
-                              )}
+                              {(
+                                combinedCapabilities.supportedDurations || [5]
+                              ).map((dur) => (
+                                <SelectItem key={dur} value={dur.toString()}>
+                                  {dur} seconds
+                                </SelectItem>
+                              ))}
                             </SelectContent>
                           </Select>
                         </div>
@@ -1234,7 +1249,9 @@ export function AiView() {
                           </Label>
                           <Textarea
                             value={t2vNegativePrompt}
-                            onChange={(e) => setT2vNegativePrompt(e.target.value)}
+                            onChange={(e) =>
+                              setT2vNegativePrompt(e.target.value)
+                            }
                             placeholder="low resolution, error, worst quality, low quality, defects"
                             className="min-h-[60px] text-xs resize-none"
                             maxLength={500}
@@ -1286,7 +1303,10 @@ export function AiView() {
                               setT2vSafetyChecker(Boolean(checked))
                             }
                           />
-                          <Label htmlFor="t2v-safety-checker" className="text-xs">
+                          <Label
+                            htmlFor="t2v-safety-checker"
+                            className="text-xs"
+                          >
                             Enable safety checker
                           </Label>
                         </div>
@@ -2110,7 +2130,10 @@ export function AiView() {
                         </SelectTrigger>
                         <SelectContent>
                           {seedanceResolutionOptions.map((resolutionOption) => (
-                            <SelectItem key={resolutionOption} value={resolutionOption}>
+                            <SelectItem
+                              key={resolutionOption}
+                              value={resolutionOption}
+                            >
                               {resolutionOption.toUpperCase()}
                             </SelectItem>
                           ))}
@@ -2306,7 +2329,9 @@ export function AiView() {
                     <Textarea
                       id="kling-negative-prompt"
                       value={klingNegativePrompt}
-                      onChange={(event) => setKlingNegativePrompt(event.target.value)}
+                      onChange={(event) =>
+                        setKlingNegativePrompt(event.target.value)
+                      }
                       placeholder="blur, distort, low quality"
                       className="min-h-[60px] text-xs"
                       maxLength={2500}
@@ -2370,10 +2395,14 @@ export function AiView() {
                         </SelectTrigger>
                         <SelectContent>
                           {wan25ResolutionOptions.map((resolutionOption) => (
-                            <SelectItem key={resolutionOption} value={resolutionOption}>
-                              {resolutionOption.toUpperCase()} (
-                              ${wan25ModelConfig?.perSecondPricing?.[resolutionOption] ??
-                              0}
+                            <SelectItem
+                              key={resolutionOption}
+                              value={resolutionOption}
+                            >
+                              {resolutionOption.toUpperCase()} ( $
+                              {wan25ModelConfig?.perSecondPricing?.[
+                                resolutionOption
+                              ] ?? 0}
                               /sec)
                             </SelectItem>
                           ))}
@@ -2453,8 +2482,8 @@ export function AiView() {
                   </div>
 
                   <div className="text-xs text-muted-foreground">
-                    Estimated cost: ${wan25EstimatedCost.toFixed(2)} (
-                    ${wan25PricePerSecond.toFixed(2)}/sec)
+                    Estimated cost: ${wan25EstimatedCost.toFixed(2)} ( $
+                    {wan25PricePerSecond.toFixed(2)}/sec)
                   </div>
                 </div>
               )}
@@ -2655,9 +2684,7 @@ export function AiView() {
                           <SelectValue placeholder="Select resolution" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="1080p">
-                            1080p (Full HD)
-                          </SelectItem>
+                          <SelectItem value="1080p">1080p (Full HD)</SelectItem>
                           <SelectItem value="2k">2K (2560x1440)</SelectItem>
                           <SelectItem value="4k">4K (3840x2160)</SelectItem>
                         </SelectContent>
@@ -2799,7 +2826,9 @@ export function AiView() {
                         <SelectItem value="PRORES4444">
                           ProRes 4444 (.mov) - Professional
                         </SelectItem>
-                        <SelectItem value="GIF">GIF (.gif) - Animated</SelectItem>
+                        <SelectItem value="GIF">
+                          GIF (.gif) - Animated
+                        </SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -2951,9 +2980,7 @@ export function AiView() {
                       id="topaz-interpolated"
                       checked={topazTargetFPS === "interpolated"}
                       onCheckedChange={(checked) =>
-                        setTopazTargetFPS(
-                          checked ? "interpolated" : "original"
-                        )
+                        setTopazTargetFPS(checked ? "interpolated" : "original")
                       }
                     />
                     <Label htmlFor="topaz-interpolated" className="text-xs">
@@ -2985,84 +3012,84 @@ export function AiView() {
                   </div>
                 </Card>
               )}
-        </TabsContent>
-      </Tabs>
+            </TabsContent>
+          </Tabs>
 
-      {/* Primary action controls surfaced above model list for quicker access */}
-      <div className="space-y-2 pt-2">
-        <Button
-          type="button"
-          onClick={generation.handleGenerate}
-          disabled={!generation.canGenerate}
-          className="w-full"
-          size={isCompact ? "sm" : "lg"}
-        >
-          {generation.isGenerating ? (
-            <>
-              <Loader2 className="size-4 mr-2 animate-spin" />
-              {isCompact
-                ? "Generating..."
-                : activeTab === "avatar"
-                  ? "Generating Avatar..."
-                  : "Generating Video..."}
-            </>
-          ) : (
-            <>
-              <BotIcon className="size-4 mr-2" />
-              {(() => {
-                const count = selectedModels.length;
-                const countLabel =
-                  count > 0
-                    ? `Generate with ${count} ${count === 1 ? "Model" : "Models"}`
-                    : "Generate Video";
-                if (isCompact) {
-                  return count > 0 ? `Generate (${count})` : "Generate";
-                }
-                if (activeTab === "avatar") {
-                  return count > 0
-                    ? `Generate Avatar (${count})`
-                    : "Generate Avatar";
-                }
-                return countLabel;
-              })()}
-            </>
-          )}
-        </Button>
+          {/* Primary action controls surfaced above model list for quicker access */}
+          <div className="space-y-2 pt-2">
+            <Button
+              type="button"
+              onClick={generation.handleGenerate}
+              disabled={!generation.canGenerate}
+              className="w-full"
+              size={isCompact ? "sm" : "lg"}
+            >
+              {generation.isGenerating ? (
+                <>
+                  <Loader2 className="size-4 mr-2 animate-spin" />
+                  {isCompact
+                    ? "Generating..."
+                    : activeTab === "avatar"
+                      ? "Generating Avatar..."
+                      : "Generating Video..."}
+                </>
+              ) : (
+                <>
+                  <BotIcon className="size-4 mr-2" />
+                  {(() => {
+                    const count = selectedModels.length;
+                    const countLabel =
+                      count > 0
+                        ? `Generate with ${count} ${count === 1 ? "Model" : "Models"}`
+                        : "Generate Video";
+                    if (isCompact) {
+                      return count > 0 ? `Generate (${count})` : "Generate";
+                    }
+                    if (activeTab === "avatar") {
+                      return count > 0
+                        ? `Generate Avatar (${count})`
+                        : "Generate Avatar";
+                    }
+                    return countLabel;
+                  })()}
+                </>
+              )}
+            </Button>
 
-        {/* Mock generation for testing */}
-        {process.env.NODE_ENV === "development" && (
-          <Button
-            type="button"
-            onClick={generation.handleMockGenerate}
-            disabled={!generation.canGenerate}
-            className="w-full"
-            size="lg"
-            variant="outline"
-          >
-            🧪 Mock Generate (Dev)
-          </Button>
-        )}
+            {/* Mock generation for testing */}
+            {process.env.NODE_ENV === "development" && (
+              <Button
+                type="button"
+                onClick={generation.handleMockGenerate}
+                disabled={!generation.canGenerate}
+                className="w-full"
+                size="lg"
+                variant="outline"
+              >
+                🧪 Mock Generate (Dev)
+              </Button>
+            )}
 
-        {/* Reset button */}
-        {(generation.hasResults || error) && (
-          <Button
-            type="button"
-            onClick={resetGenerationState}
-            variant="outline"
-            size="sm"
-            className="w-full"
-          >
-            <X className="size-3 mr-1" />
-            Reset
-          </Button>
-        )}
-      </div>
+            {/* Reset button */}
+            {(generation.hasResults || error) && (
+              <Button
+                type="button"
+                onClick={resetGenerationState}
+                variant="outline"
+                size="sm"
+                className="w-full"
+              >
+                <X className="size-3 mr-1" />
+                Reset
+              </Button>
+            )}
+          </div>
 
-      {/* AI Model Selection */}
-      <div className="space-y-2">
-        <Label className="text-xs">
-          {!isCompact && "Select "}AI Models
-          {!isCompact && " (multi-select)"}
+          {/* AI Model Selection */}
+          <div className="space-y-2">
+            <Label className="text-xs">
+              {!isCompact && "Select "}AI Models
+              {!isCompact && " (multi-select)"}
             </Label>
             <div className="space-y-1">
               {AI_MODELS.filter((model) => {
@@ -3745,7 +3772,6 @@ export function AiView() {
               </div>
             </div>
           )}
-
         </div>
       )}
 
@@ -3788,12 +3814,10 @@ function calculateSeedanceCost(
   const fps = 30; // Standard FPS for Seedance models
 
   // Calculate video tokens
-  const tokens =
-    (dimensions.height * dimensions.width * fps * duration) / 1024;
+  const tokens = (dimensions.height * dimensions.width * fps * duration) / 1024;
 
   // Price per million tokens
-  const pricePerMillionTokens =
-    modelId === "seedance_pro_fast_i2v" ? 1.0 : 2.5;
+  const pricePerMillionTokens = modelId === "seedance_pro_fast_i2v" ? 1.0 : 2.5;
 
   // Calculate total cost
   const cost = (tokens * pricePerMillionTokens) / 1_000_000;

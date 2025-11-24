@@ -48,181 +48,182 @@ export interface T2VModelCapabilities {
   defaultDuration?: number;
 }
 
-export const T2V_MODEL_CAPABILITIES: Record<T2VModelId, T2VModelCapabilities> = {
-  sora2_text_to_video: {
-    supportsAspectRatio: true,
-    supportedAspectRatios: ["16:9", "9:16", "1:1", "4:3", "3:4"],
-    supportsResolution: true,
-    supportedResolutions: ["720p", "1080p"],
-    supportsDuration: true,
-    supportedDurations: [4, 8, 12],
-    supportsNegativePrompt: true,
-    supportsPromptExpansion: true,
-    supportsSeed: true,
-    supportsSafetyChecker: true,
-    defaultAspectRatio: "16:9",
-    defaultResolution: "720p",
-    defaultDuration: 4,
-  },
+export const T2V_MODEL_CAPABILITIES: Record<T2VModelId, T2VModelCapabilities> =
+  {
+    sora2_text_to_video: {
+      supportsAspectRatio: true,
+      supportedAspectRatios: ["16:9", "9:16", "1:1", "4:3", "3:4"],
+      supportsResolution: true,
+      supportedResolutions: ["720p", "1080p"],
+      supportsDuration: true,
+      supportedDurations: [4, 8, 12],
+      supportsNegativePrompt: true,
+      supportsPromptExpansion: true,
+      supportsSeed: true,
+      supportsSafetyChecker: true,
+      defaultAspectRatio: "16:9",
+      defaultResolution: "720p",
+      defaultDuration: 4,
+    },
 
-  sora2_text_to_video_pro: {
-    supportsAspectRatio: true,
-    supportedAspectRatios: ["16:9", "9:16", "1:1", "4:3", "3:4", "21:9"],
-    supportsResolution: true,
-    supportedResolutions: ["720p", "1080p"],
-    supportsDuration: true,
-    supportedDurations: [2, 3, 4, 5, 6, 8, 10],
-    supportsNegativePrompt: true,
-    supportsPromptExpansion: true,
-    supportsSeed: true,
-    supportsSafetyChecker: true,
-    defaultAspectRatio: "16:9",
-    defaultResolution: "1080p",
-    defaultDuration: 5,
-  },
+    sora2_text_to_video_pro: {
+      supportsAspectRatio: true,
+      supportedAspectRatios: ["16:9", "9:16", "1:1", "4:3", "3:4", "21:9"],
+      supportsResolution: true,
+      supportedResolutions: ["720p", "1080p"],
+      supportsDuration: true,
+      supportedDurations: [2, 3, 4, 5, 6, 8, 10],
+      supportsNegativePrompt: true,
+      supportsPromptExpansion: true,
+      supportsSeed: true,
+      supportsSafetyChecker: true,
+      defaultAspectRatio: "16:9",
+      defaultResolution: "1080p",
+      defaultDuration: 5,
+    },
 
-  wan_25_preview: {
-    supportsAspectRatio: false,
-    supportsResolution: true,
-    supportedResolutions: ["480p", "720p", "1080p"], // FAL Wan v2.5 supports 480p, 720p, 1080p
-    supportsDuration: true,
-    supportedDurations: [5, 10],
-    supportsNegativePrompt: false,
-    supportsPromptExpansion: false,
-    supportsSeed: true,
-    supportsSafetyChecker: true,
-    defaultResolution: "1080p",
-    defaultDuration: 5,
-  },
+    wan_25_preview: {
+      supportsAspectRatio: false,
+      supportsResolution: true,
+      supportedResolutions: ["480p", "720p", "1080p"], // FAL Wan v2.5 supports 480p, 720p, 1080p
+      supportsDuration: true,
+      supportedDurations: [5, 10],
+      supportsNegativePrompt: false,
+      supportsPromptExpansion: false,
+      supportsSeed: true,
+      supportsSafetyChecker: true,
+      defaultResolution: "1080p",
+      defaultDuration: 5,
+    },
 
-  ltxv2_pro_t2v: {
-    supportsAspectRatio: true,
-    supportedAspectRatios: ["16:9"], // FAL LTX Video 2.0 Pro supports only 16:9
-    supportsResolution: true,
-    supportedResolutions: ["1080p", "1440p", "2160p"],
-    supportsDuration: true,
-    supportedDurations: [2, 3, 4, 5, 6, 8, 10],
-    supportsNegativePrompt: true,
-    supportsPromptExpansion: false,
-    supportsSeed: true,
-    supportsSafetyChecker: false,
-    defaultAspectRatio: "16:9",
-    defaultResolution: "1080p",
-    defaultDuration: 6,
-  },
+    ltxv2_pro_t2v: {
+      supportsAspectRatio: true,
+      supportedAspectRatios: ["16:9"], // FAL LTX Video 2.0 Pro supports only 16:9
+      supportsResolution: true,
+      supportedResolutions: ["1080p", "1440p", "2160p"],
+      supportsDuration: true,
+      supportedDurations: [2, 3, 4, 5, 6, 8, 10],
+      supportsNegativePrompt: true,
+      supportsPromptExpansion: false,
+      supportsSeed: true,
+      supportsSafetyChecker: false,
+      defaultAspectRatio: "16:9",
+      defaultResolution: "1080p",
+      defaultDuration: 6,
+    },
 
-  ltxv2_fast_t2v: {
-    supportsAspectRatio: true,
-    supportedAspectRatios: ["16:9"], // FAL LTX Video 2.0 Fast supports only 16:9
-    supportsResolution: true,
-    supportedResolutions: ["1080p", "1440p", "2160p"],
-    supportsDuration: true,
-    supportedDurations: [2, 3, 4, 5, 6, 8, 10],
-    supportsNegativePrompt: false,
-    supportsPromptExpansion: false,
-    supportsSeed: true,
-    supportsSafetyChecker: false,
-    defaultAspectRatio: "16:9",
-    defaultResolution: "1080p",
-    defaultDuration: 6,
-  },
+    ltxv2_fast_t2v: {
+      supportsAspectRatio: true,
+      supportedAspectRatios: ["16:9"], // FAL LTX Video 2.0 Fast supports only 16:9
+      supportsResolution: true,
+      supportedResolutions: ["1080p", "1440p", "2160p"],
+      supportsDuration: true,
+      supportedDurations: [2, 3, 4, 5, 6, 8, 10],
+      supportsNegativePrompt: false,
+      supportsPromptExpansion: false,
+      supportsSeed: true,
+      supportsSafetyChecker: false,
+      defaultAspectRatio: "16:9",
+      defaultResolution: "1080p",
+      defaultDuration: 6,
+    },
 
-  veo31_fast: {
-    supportsAspectRatio: true,
-    supportedAspectRatios: ["16:9", "9:16", "1:1"], // FAL Veo 3.1 supports 16:9, 9:16, and 1:1 (outpainting)
-    supportsResolution: true,
-    supportedResolutions: ["720p", "1080p"],
-    supportsDuration: true,
-    supportedDurations: [5, 6, 8], // Veo 3.1 supports 5-8s
-    supportsNegativePrompt: true,
-    supportsPromptExpansion: true,
-    supportsSeed: true,
-    supportsSafetyChecker: true,
-    defaultAspectRatio: "16:9",
-    defaultResolution: "720p",
-    defaultDuration: 8,
-  },
+    veo31_fast: {
+      supportsAspectRatio: true,
+      supportedAspectRatios: ["16:9", "9:16", "1:1"], // FAL Veo 3.1 supports 16:9, 9:16, and 1:1 (outpainting)
+      supportsResolution: true,
+      supportedResolutions: ["720p", "1080p"],
+      supportsDuration: true,
+      supportedDurations: [5, 6, 8], // Veo 3.1 supports 5-8s
+      supportsNegativePrompt: true,
+      supportsPromptExpansion: true,
+      supportsSeed: true,
+      supportsSafetyChecker: true,
+      defaultAspectRatio: "16:9",
+      defaultResolution: "720p",
+      defaultDuration: 8,
+    },
 
-  veo31: {
-    supportsAspectRatio: true,
-    supportedAspectRatios: ["16:9", "9:16", "1:1"], // FAL Veo 3.1 supports 16:9, 9:16, and 1:1 (outpainting)
-    supportsResolution: true,
-    supportedResolutions: ["720p", "1080p"],
-    supportsDuration: true,
-    supportedDurations: [5, 6, 8], // Veo 3.1 supports 5-8s
-    supportsNegativePrompt: true,
-    supportsPromptExpansion: true,
-    supportsSeed: true,
-    supportsSafetyChecker: true,
-    defaultAspectRatio: "16:9",
-    defaultResolution: "1080p",
-    defaultDuration: 8,
-  },
+    veo31: {
+      supportsAspectRatio: true,
+      supportedAspectRatios: ["16:9", "9:16", "1:1"], // FAL Veo 3.1 supports 16:9, 9:16, and 1:1 (outpainting)
+      supportsResolution: true,
+      supportedResolutions: ["720p", "1080p"],
+      supportsDuration: true,
+      supportedDurations: [5, 6, 8], // Veo 3.1 supports 5-8s
+      supportsNegativePrompt: true,
+      supportsPromptExpansion: true,
+      supportsSeed: true,
+      supportsSafetyChecker: true,
+      defaultAspectRatio: "16:9",
+      defaultResolution: "1080p",
+      defaultDuration: 8,
+    },
 
-  hailuo_v2: {
-    supportsAspectRatio: true,
-    supportedAspectRatios: ["16:9", "9:16", "1:1", "4:3", "3:4"],
-    supportsResolution: true,
-    supportedResolutions: ["720p", "1080p"],
-    supportsDuration: true,
-    supportedDurations: [2, 3, 4, 5],
-    supportsNegativePrompt: false,
-    supportsPromptExpansion: false,
-    supportsSeed: true,
-    supportsSafetyChecker: false,
-    defaultAspectRatio: "16:9",
-    defaultResolution: "720p",
-    defaultDuration: 5,
-  },
+    hailuo_v2: {
+      supportsAspectRatio: true,
+      supportedAspectRatios: ["16:9", "9:16", "1:1", "4:3", "3:4"],
+      supportsResolution: true,
+      supportedResolutions: ["720p", "1080p"],
+      supportsDuration: true,
+      supportedDurations: [2, 3, 4, 5],
+      supportsNegativePrompt: false,
+      supportsPromptExpansion: false,
+      supportsSeed: true,
+      supportsSafetyChecker: false,
+      defaultAspectRatio: "16:9",
+      defaultResolution: "720p",
+      defaultDuration: 5,
+    },
 
-  seedance_t2v: {
-    supportsAspectRatio: true,
-    supportedAspectRatios: ["16:9", "9:16", "1:1", "4:3", "3:4", "21:9"],
-    supportsResolution: true,
-    supportedResolutions: ["480p", "720p", "1080p"],
-    supportsDuration: true,
-    supportedDurations: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
-    supportsNegativePrompt: false,
-    supportsPromptExpansion: false,
-    supportsSeed: true,
-    supportsSafetyChecker: false,
-    defaultAspectRatio: "16:9",
-    defaultResolution: "720p",
-    defaultDuration: 5,
-  },
+    seedance_t2v: {
+      supportsAspectRatio: true,
+      supportedAspectRatios: ["16:9", "9:16", "1:1", "4:3", "3:4", "21:9"],
+      supportsResolution: true,
+      supportedResolutions: ["480p", "720p", "1080p"],
+      supportsDuration: true,
+      supportedDurations: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+      supportsNegativePrompt: false,
+      supportsPromptExpansion: false,
+      supportsSeed: true,
+      supportsSafetyChecker: false,
+      defaultAspectRatio: "16:9",
+      defaultResolution: "720p",
+      defaultDuration: 5,
+    },
 
-  kling1_6_pro: {
-    supportsAspectRatio: true,
-    supportedAspectRatios: ["16:9", "9:16", "1:1", "4:3", "3:4"],
-    supportsResolution: true,
-    supportedResolutions: ["720p", "1080p"],
-    supportsDuration: true,
-    supportedDurations: [5, 10],
-    supportsNegativePrompt: true,
-    supportsPromptExpansion: false,
-    supportsSeed: true,
-    supportsSafetyChecker: false,
-    defaultAspectRatio: "16:9",
-    defaultResolution: "1080p",
-    defaultDuration: 5,
-  },
+    kling1_6_pro: {
+      supportsAspectRatio: true,
+      supportedAspectRatios: ["16:9", "9:16", "1:1", "4:3", "3:4"],
+      supportsResolution: true,
+      supportedResolutions: ["720p", "1080p"],
+      supportsDuration: true,
+      supportedDurations: [5, 10],
+      supportsNegativePrompt: true,
+      supportsPromptExpansion: false,
+      supportsSeed: true,
+      supportsSafetyChecker: false,
+      defaultAspectRatio: "16:9",
+      defaultResolution: "1080p",
+      defaultDuration: 5,
+    },
 
-  kling1_6_standard: {
-    supportsAspectRatio: true,
-    supportedAspectRatios: ["16:9", "9:16", "1:1", "4:3", "3:4"],
-    supportsResolution: true,
-    supportedResolutions: ["720p", "1080p"],
-    supportsDuration: true,
-    supportedDurations: [5, 10],
-    supportsNegativePrompt: false,
-    supportsPromptExpansion: false,
-    supportsSeed: true,
-    supportsSafetyChecker: false,
-    defaultAspectRatio: "16:9",
-    defaultResolution: "720p",
-    defaultDuration: 5,
-  },
-};
+    kling1_6_standard: {
+      supportsAspectRatio: true,
+      supportedAspectRatios: ["16:9", "9:16", "1:1", "4:3", "3:4"],
+      supportsResolution: true,
+      supportedResolutions: ["720p", "1080p"],
+      supportsDuration: true,
+      supportedDurations: [5, 10],
+      supportsNegativePrompt: false,
+      supportsPromptExpansion: false,
+      supportsSeed: true,
+      supportsSafetyChecker: false,
+      defaultAspectRatio: "16:9",
+      defaultResolution: "720p",
+      defaultDuration: 5,
+    },
+  };
 
 /**
  * Get combined (intersected) capabilities for selected models.
@@ -242,9 +243,7 @@ export function getCombinedCapabilities(
     };
   }
 
-  const capabilities = selectedModelIds.map(
-    (id) => T2V_MODEL_CAPABILITIES[id]
-  );
+  const capabilities = selectedModelIds.map((id) => T2V_MODEL_CAPABILITIES[id]);
 
   return {
     supportsAspectRatio: capabilities.every((c) => c.supportsAspectRatio),
@@ -254,7 +253,9 @@ export function getCombinedCapabilities(
     supportsDuration: capabilities.every((c) => c.supportsDuration),
     supportedDurations: getCommonDurations(capabilities),
     supportsNegativePrompt: capabilities.every((c) => c.supportsNegativePrompt),
-    supportsPromptExpansion: capabilities.every((c) => c.supportsPromptExpansion),
+    supportsPromptExpansion: capabilities.every(
+      (c) => c.supportsPromptExpansion
+    ),
     supportsSeed: capabilities.every((c) => c.supportsSeed),
     supportsSafetyChecker: capabilities.every((c) => c.supportsSafetyChecker),
   };
@@ -267,7 +268,7 @@ function getCommonAspectRatios(
     .filter((c) => c.supportsAspectRatio && c.supportedAspectRatios)
     .map((c) => c.supportedAspectRatios!);
 
-  if (allRatios.length === 0) return undefined;
+  if (allRatios.length === 0) return;
   if (allRatios.length === 1) return allRatios[0];
 
   return allRatios.reduce((common, ratios) =>
@@ -282,7 +283,7 @@ function getCommonResolutions(
     .filter((c) => c.supportsResolution && c.supportedResolutions)
     .map((c) => c.supportedResolutions!);
 
-  if (allResolutions.length === 0) return undefined;
+  if (allResolutions.length === 0) return;
   if (allResolutions.length === 1) return allResolutions[0];
 
   return allResolutions.reduce((common, resolutions) =>
@@ -297,7 +298,7 @@ function getCommonDurations(
     .filter((c) => c.supportsDuration && c.supportedDurations)
     .map((c) => c.supportedDurations!);
 
-  if (allDurations.length === 0) return undefined;
+  if (allDurations.length === 0) return;
   if (allDurations.length === 1) return allDurations[0];
 
   return allDurations.reduce((common, durations) =>
@@ -308,9 +309,7 @@ function getCommonDurations(
 /**
  * Normalize an AI model id to the canonical T2VModelId used by capability lookups.
  */
-export function resolveT2VModelId(
-  modelId: string
-): T2VModelId | undefined {
+export function resolveT2VModelId(modelId: string): T2VModelId | undefined {
   if (modelId in T2V_MODEL_CAPABILITIES) {
     return modelId as T2VModelId;
   }

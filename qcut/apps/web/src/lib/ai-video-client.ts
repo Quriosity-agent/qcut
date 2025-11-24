@@ -2125,7 +2125,8 @@ export async function generateSeedanceVideo(
       camera_fixed: cameraFixed,
       enable_safety_checker:
         request.enable_safety_checker ??
-        (modelConfig.default_params?.enable_safety_checker ?? false),
+        modelConfig.default_params?.enable_safety_checker ??
+        false,
     };
 
     if (request.seed !== undefined) {
@@ -2258,7 +2259,8 @@ export async function generateKlingImageVideo(
     const cfgScale = Math.min(Math.max(request.cfg_scale ?? 0.5, 0), 1);
     const enhancePrompt =
       request.enhance_prompt ??
-      (modelConfig.default_params?.enhance_prompt ?? true);
+      modelConfig.default_params?.enhance_prompt ??
+      true;
 
     const payload: Record<string, unknown> = {
       prompt: trimmedPrompt,
@@ -2366,7 +2368,9 @@ export async function generateWAN25ImageVideo(
     }
 
     if (request.negative_prompt && request.negative_prompt.length > 500) {
-      throw new Error("Negative prompt exceeds maximum length of 500 characters");
+      throw new Error(
+        "Negative prompt exceeds maximum length of 500 characters"
+      );
     }
 
     const modelConfig = getModelConfig(request.model);
@@ -2397,7 +2401,8 @@ export async function generateWAN25ImageVideo(
       resolution,
       enable_prompt_expansion:
         request.enable_prompt_expansion ??
-        (modelConfig.default_params?.enable_prompt_expansion ?? true),
+        modelConfig.default_params?.enable_prompt_expansion ??
+        true,
     };
 
     if (request.audio_url) {

@@ -73,7 +73,7 @@ const ASPECT_RATIO_PATTERN = /^\d+:\d+$/;
 
 const normalizeAspectRatio = (value?: string | null): string | undefined => {
   if (!value) {
-    return undefined;
+    return;
   }
 
   const normalized = value.replace(/\s+/g, "");
@@ -81,7 +81,7 @@ const normalizeAspectRatio = (value?: string | null): string | undefined => {
     return normalized;
   }
 
-  return undefined;
+  return;
 };
 
 const imageSizeToAspectRatio = (
@@ -387,11 +387,7 @@ class FalAIClient {
       if (uploadError.statusText) metadata.statusText = uploadError.statusText;
       if (uploadError.errorData) metadata.errorData = uploadError.errorData;
 
-      handleAIServiceError(
-        normalizedError,
-        `FAL ${fileType} upload`,
-        metadata
-      );
+      handleAIServiceError(normalizedError, `FAL ${fileType} upload`, metadata);
       throw normalizedError;
     }
   }
@@ -548,8 +544,8 @@ class FalAIClient {
       case "nano-banana":
         // Nano Banana expects aspect_ratio instead of image_size
         params.aspect_ratio = imageSizeToAspectRatio(settings.imageSize);
-        delete params.image_size;
-        delete params.seed;
+        params.image_size = undefined;
+        params.seed = undefined;
         break;
     }
 
@@ -573,7 +569,7 @@ class FalAIClient {
         });
       }
       // Ensure the camelCase version is removed to avoid sending both.
-      delete (params as Record<string, unknown>).outputFormat;
+      (params as Record<string, unknown>).outputFormat = undefined;
     }
 
     return params;
