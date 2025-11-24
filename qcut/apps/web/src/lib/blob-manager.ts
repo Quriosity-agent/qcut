@@ -15,8 +15,6 @@ const nativeRevokeObjectURL = URL.revokeObjectURL;
 class BlobManager {
   private blobs = new Map<string, BlobEntry>();
   private cleanupInterval: number | null = null;
-  // Track blob URLs that are actively in use (e.g., currently playing video) to avoid revoking them mid-use.
-  private inUseUrls = new Set<string>();
 
   constructor() {
     // Auto-cleanup orphaned blobs every 5 minutes
@@ -66,16 +64,6 @@ class BlobManager {
   revokeObjectURL(url: string, context?: string): boolean {
     const contextTag = context ? ` [from: ${context}]` : "";
 
-    if (this.inUseUrls.has(url)) {
-      if (import.meta.env.DEV) {
-        console.log(
-          `[CANVAS-VIDEO] Guarded revoke (skipped; in use): ${url}${contextTag}`
-        );
-        console.log(`[BlobManager] ⏭️ Skip revoke (in use): ${url}`);
-      }
-      return false;
-    }
-
     if (this.blobs.has(url)) {
       const entry = this.blobs.get(url);
 
@@ -93,6 +81,9 @@ class BlobManager {
         console.log(
           `  🕒 Lifespan: ${entry ? Date.now() - entry.createdAt : "unknown"}ms`
         );
+        if (contextTag) {
+          console.log(`  🏷️ Context:${contextTag}`);
+        }
       }
 
       nativeRevokeObjectURL(url);
@@ -103,22 +94,6 @@ class BlobManager {
       nativeRevokeObjectURL(url);
       return true;
     }
-  }
-
-  /**
-   * Mark a blob URL as in-use to prevent cleanup while it's active.
-   */
-  markInUse(url: string): void {
-    if (!url.startsWith("blob:")) return;
-    this.inUseUrls.add(url);
-  }
-
-  /**
-   * Remove the in-use mark so the URL can be revoked.
-   */
-  unmarkInUse(url: string): void {
-    if (!url.startsWith("blob:")) return;
-    this.inUseUrls.delete(url);
   }
 
   /**
@@ -196,14 +171,6 @@ export const createObjectURL = (file: File | Blob, source?: string): string => {
 
 export const revokeObjectURL = (url: string, context?: string): boolean => {
   return blobManager.revokeObjectURL(url, context);
-};
-
-export const markBlobInUse = (url: string): void => {
-  blobManager.markInUse(url);
-};
-
-export const unmarkBlobInUse = (url: string): void => {
-  blobManager.unmarkInUse(url);
 };
 
 // Development helper to monitor blob usage
