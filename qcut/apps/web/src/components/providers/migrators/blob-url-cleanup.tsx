@@ -11,8 +11,11 @@ import { storageService } from "@/lib/storage/storage-service";
 export function BlobUrlCleanup({ children }: { children: React.ReactNode }) {
   const [isCleaningUp, setIsCleaningUp] = useState(false);
   const [hasCleanedUp, setHasCleanedUp] = useState(false);
+  const runOnceRef = useRef(false);
 
   useEffect(() => {
+    if (runOnceRef.current) return;
+    runOnceRef.current = true;
     const cleanupBlobUrls = async () => {
       // Check if cleanup has already been done in this session
       const cleanupKey = "blob-url-cleanup-v1";

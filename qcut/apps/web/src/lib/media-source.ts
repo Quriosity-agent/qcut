@@ -1,4 +1,7 @@
+import { createObjectURL } from "@/lib/blob-manager";
+
 const CSP_ALLOWED = new Set(["fal.media", "v3.fal.media", "v3b.fal.media"]);
+const fileBlobCache = new WeakMap<File, string>();
 
 export type VideoSource =
   | { src: string; type: "blob" }
@@ -25,12 +28,13 @@ export type VideoSource =
  */
 export function getVideoSource(mediaItem: { file?: File; url?: string }): VideoSource {
   if (mediaItem.file) {
-    console.log("[media-source] Using blob source from file", {
-      name: mediaItem.file.name,
-      size: mediaItem.file.size,
-      type: mediaItem.file.type,
-    });
-    return { src: URL.createObjectURL(mediaItem.file), type: "blob" };
+    const cached = fileBlobCache.get(mediaItem.file);
+    if (cached) {
+      return { src: cached, type: "blob" };
+    }
+    const url = createObjectURL(mediaItem.file, "media-source:getVideoSource");
+    fileBlobCache.set(mediaItem.file, url);
+    return { src: url, type: "blob" };
   }
 
   if (mediaItem.url) {

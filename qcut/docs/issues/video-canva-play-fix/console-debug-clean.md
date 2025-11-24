@@ -107,6 +107,8 @@ Recommended order:
 - Added a `timelineTimeRef` to keep logs accurate without re-triggering the effect.
 - Playback window listeners now stay attached instead of being torn down every tick.
 - Guarded blob URLs in `blob-manager`/`video-player` so active playback blobs are marked in-use and cannot be revoked mid-buffer; preview cleanup now skips the active blob URL instead of revoking everything on each rebuild.
+- `getVideoSource` now memoizes blob URLs per File and creates them via the blob manager (no more new blob per render).
+- Blob cleanup migration now runs once per session (avoids double logs).
 - Removed the noisy `step 11: calculating active elements` spam to keep video lifecycle logs readable.
 
 ---
