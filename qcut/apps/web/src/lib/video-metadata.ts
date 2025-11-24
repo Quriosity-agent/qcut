@@ -65,7 +65,7 @@ async function readMetadata(
     };
 
     video.onloadedmetadata = () => {
-      void resolveWithMetadata();
+      resolveWithMetadata();
     };
 
     video.onerror = () => {
