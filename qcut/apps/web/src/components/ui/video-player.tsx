@@ -31,6 +31,11 @@ export function VideoPlayer({
   const { isPlaying, currentTime, volume, speed, muted } = usePlaybackStore();
   const loggedOutOfRangeRef = useRef(false);
   const lastTimeUpdateLogRef = useRef<number>(-1);
+  const timelineTimeRef = useRef(currentTime);
+
+  useEffect(() => {
+    timelineTimeRef.current = currentTime;
+  }, [currentTime]);
 
   // Calculate if we're within this clip's timeline range
   const clipEndTime = clipStartTime + (clipDuration - trimStart - trimEnd);
@@ -47,7 +52,7 @@ export function VideoPlayer({
           "[CANVAS-VIDEO] Skipping video events (out of clip range)",
           {
             videoId: videoId ?? src,
-            currentTime,
+            currentTime: timelineTimeRef.current,
             clipStartTime,
             clipEndTime,
             trimStart,
@@ -144,7 +149,6 @@ export function VideoPlayer({
   }, [
     clipStartTime,
     clipEndTime,
-    currentTime,
     trimStart,
     trimEnd,
     clipDuration,
@@ -347,7 +351,7 @@ export function VideoPlayer({
       if (isPlaying && !isInClipRange) {
         console.warn("[CANVAS-VIDEO] Requested play but clip not active", {
           videoId: videoId ?? src,
-          currentTime,
+          currentTime: timelineTimeRef.current,
           clipStartTime,
           clipEndTime,
         });
@@ -359,7 +363,6 @@ export function VideoPlayer({
     isInClipRange,
     clipStartTime,
     clipEndTime,
-    currentTime,
     videoId,
     src,
   ]);

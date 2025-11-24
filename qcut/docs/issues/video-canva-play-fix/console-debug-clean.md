@@ -102,6 +102,13 @@ Recommended order:
 
 ---
 
+## ?? Implementation (current)
+- Updated `apps/web/src/components/ui/video-player.tsx` so the play/useEffect no longer depends on `currentTime` (stopping the 60fps cleanup of the `canplay` listener).
+- Added a `timelineTimeRef` to keep logs accurate without re-triggering the effect.
+- Playback window listeners now stay attached instead of being torn down every tick.
+
+---
+
 ## ?? Success Criteria
 
 When fixed, console should show:
