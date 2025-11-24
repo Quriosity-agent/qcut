@@ -1,3 +1,5 @@
+import { revokeObjectURL as revokeManagedObjectURL } from "@/lib/blob-manager";
+
 /**
  * Debug utility to track blob URL creation and catch sources of blob URL errors
  * This helps identify where blob URLs are still being created after our fixes
@@ -64,7 +66,9 @@ export function enableBlobUrlDebugging() {
       console.log(`[BlobUrlDebug] Revoked untracked: ${url}`);
     }
 
-    return originalRevokeObjectURL.call(this, url);
+    const result = revokeManagedObjectURL(url);
+    console.log("[BlobUrlDebug] Routed revoke via BlobManager guard");
+    return result;
   };
 
   // Also intercept fetch to catch usage of revoked blob URLs

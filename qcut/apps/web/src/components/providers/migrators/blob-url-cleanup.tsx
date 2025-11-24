@@ -22,6 +22,7 @@ export function BlobUrlCleanup({ children }: { children: React.ReactNode }) {
       const hasCleanedSession = sessionStorage.getItem(cleanupKey);
 
       if (hasCleanedSession) {
+        console.log("[BlobUrlCleanup] Skipping cleanup (already done this session)");
         setHasCleanedUp(true);
         return;
       }

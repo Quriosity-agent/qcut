@@ -10,6 +10,8 @@ interface BlobEntry {
   source?: string;
 }
 
+const nativeRevokeObjectURL = URL.revokeObjectURL;
+
 class BlobManager {
   private blobs = new Map<string, BlobEntry>();
   private cleanupInterval: number | null = null;
@@ -88,11 +90,11 @@ class BlobManager {
         );
       }
 
-      URL.revokeObjectURL(url);
+      nativeRevokeObjectURL(url);
       this.blobs.delete(url);
     } else {
       // Even if we didn't create it, respect the in-use guard before revoking
-      URL.revokeObjectURL(url);
+      nativeRevokeObjectURL(url);
     }
   }
 
