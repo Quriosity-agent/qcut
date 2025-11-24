@@ -1,144 +1,66 @@
 # Canvas Video Playback Debug - Clean Console Analysis
 
-## Core Problem
-**Canvas displays static image instead of playing video because blob URLs are revoked prematurely before videos can play.**
+## Purpose
+Track why the canvas preview still shows a static frame instead of playing video.
 
-## Latest Evidence (consolev11)
+## Current Status
+**The canplay listener churn is fixed, but the active playback blob URL is still revoked before the video reaches readyState 3, so `canplay` never fires and the video never plays.**
 
-### Blob Lifecycle Pattern
-1. **Creation**: Blobs created successfully with proper tracking
-   - `blob:app://./7de6d66a-9f2c-44b6-92e9-3cfce7085413` created for video playback
-   - Source: `media-source:getVideoSource`
-   - Size: 1804357 bytes (1.8MB video file)
+## Evidence (consolev10)
+- Play click logs once: `[CANVAS-VIDEO] Video not ready, waiting for canplay event (rs=0)`.
+- Active playback blob `blob:...7b6954b7...` revoked after ~12.3s (shows both tracked and `Revoked untracked`), followed by repeated `ERR_FILE_NOT_FOUND` while buffering.
+- `canplay` / `play() succeeded` never appear; listener is cleaned up only when playback is paused at ~0.516s.
+- Earlier blob `blob:...61f43f64...` revoked in ~188ms and also 404s.
 
-2. **Premature Revocation**: Blob revoked after only 2.19 seconds
-   - Revoked by: `at zn → at app://./assets/editor._project_id.lazy-DVbcJekg.js:300:16659`
-   - Result: `Failed to load resource: net::ERR_FILE_NOT_FOUND`
-   - Video element cannot play without valid source
-
-3. **Cleanup Migration Issue**: Blob cleanup runs on startup
-   - Clears blob URLs from storage (line 11: "Cleared blob URL for media item: kling.mp4")
-   - Creates new blobs but they're still revoked too quickly
-
-## Critical Console Pattern
-
-### What Happens:
 ```
-[BlobManager] 🟢 Created: blob:app://./7de6d66a...
-  📍 Source: media-source:getVideoSource
-  ⏱️ Lifespan: 2191ms
-
-[PLAYBACK] Play clicked
-// Timeline updates occur (step 6: timeline playhead updated)
-
-[BlobManager] 🔴 Revoked: blob:app://./7de6d66a...
-[BlobUrlDebug] Revoked untracked: blob:app://./7de6d66a...
-blob:app://./7de6d66a... Failed to load resource: net::ERR_FILE_NOT_FOUND
+[PLAYBACK] Play/Pause button clicked (action: play)
+[CANVAS-VIDEO] Video not ready, waiting for canplay event (rs=0)
+[BlobUrlDebug] Revoked: blob:...7b6954b7... (lifespan ~12330ms)
+[BlobUrlDebug] Revoked untracked: blob:...7b6954b7...
+GET blob:...7b6954b7... net::ERR_FILE_NOT_FOUND
+[CANVAS-VIDEO] Cleaned up canplay listener (on pause)
 ```
 
-### What Should Happen:
-```
-[BlobManager] 🟢 Created: blob for video
-[PLAYBACK] Play clicked
-Video plays successfully
-[BlobManager] 🔴 Revoked: blob (only after playback stops)
-```
+## Relevant Code Snapshot (current main)
+- `apps/web/src/components/ui/video-player.tsx`: play effect depends on `isPlaying` + clip range (no `currentTime`), so `{ once: true }` `canplay` listener survives; active blob marked in-use via blob manager; revoked on src change/unmount.
+- `apps/web/src/components/editor/preview-panel.tsx`: memoizes video sources via `getVideoSource`; revokes only non-active blob URLs on cleanup through blob manager.
+- `apps/web/src/lib/blob-manager.ts`: tracks blobs and skips revocation when marked in-use; `blob-url-debug.ts` logs untracked native revokes as "Revoked untracked".
+- `apps/web/src/components/providers/migrators/blob-url-cleanup.tsx`: uses `runOnceRef` + sessionStorage guard but **missing `useRef` import**; logs "Starting blob URL cleanup migration..." twice under StrictMode, so cleanup may still run twice.
+- Repo-wide direct `URL.revokeObjectURL` calls remain (e.g., `multi-image-upload.tsx`, `effect-templates-panel.tsx`, `ffmpeg-utils.ts`, `export-engine.ts`, `adjustment-store.ts`, `media-panel/video-edit-audio-sync.tsx`, etc.), matching the "Revoked untracked" noise seen in `consolev10`.
 
-## Relevant File Paths and Code Lines Causing Issues
+## Root Cause
+Active playback blob URLs are still being revoked (often via untracked native revokes) while the video is buffering, keeping readyState at 0 and preventing `canplay` from ever firing.
 
-### 1. **preview-panel.tsx** (Lines 625-633) - PRIMARY SUSPECT
-```typescript
-// File: apps/web/src/components/editor/preview-panel.tsx
-// Lines: 625-633
-const activeBlobUrl =
-  activeVideoSource?.type === "blob" ? activeVideoSource.src : null;
-
-useEffect(() => {
-  const urlsToRevoke = videoBlobUrls.filter((url) => url !== activeBlobUrl);
-  return () => {
-    urlsToRevoke.forEach((url) => revokeManagedObjectURL(url));  // LINE 631 - PREMATURE REVOCATION
-  };
-}, [videoBlobUrls, activeBlobUrl]);  // LINE 633 - TRIGGERS ON EVERY CHANGE
-```
-**Problem**: This effect runs whenever `videoBlobUrls` or `activeBlobUrl` changes, potentially revoking URLs that are still needed.
-
-### 2. **video-player.tsx** (Lines 181-202) - AGGRESSIVE CLEANUP
-```typescript
-// File: apps/web/src/components/ui/video-player.tsx
-// Lines: 181-202
-useEffect(() => {
-  const prev = previousSrcRef.current;
-  if (prev && prev !== src && prev.startsWith("blob:")) {
-    unmarkBlobInUse(prev);
-    revokeManagedObjectURL(prev);  // LINE 185 - REVOKES PREVIOUS BLOB
-  }
-
-  return () => {
-    if (previousSrcRef.current?.startsWith("blob:")) {
-      revokeManagedObjectURL(url);  // LINE 198 - CLEANUP ON UNMOUNT
-    }
-  };
-}, [src]);
-```
-**Problem**: Revokes blob URLs when src changes or component unmounts, even if video is still buffering.
-
-### 3. **media-store.ts** - MULTIPLE REVOCATION POINTS
-```typescript
-// File: apps/web/src/stores/media-store.ts
-// Critical lines with revokeObjectURL calls:
-- Line 78:  revokeObjectURL(blobUrl);  // In processVideoFile
-- Line 188: revokeObjectURL(blobUrl);  // In getMediaDuration
-- Line 270: revokeObjectURL(blobUrl!); // In addMediaItem
-- Line 547: revokeObjectURL(item.url); // In removeMediaItem
-- Line 684: revokeObjectURL(item.url); // In clearProjectMedia
-- Line 738: revokeObjectURL(item.url); // In reset
-```
-**Problem**: Multiple places where blob URLs are revoked, possibly while still in use.
-
-### 4. **blob-manager.ts** (Lines 64-95) - CENTRAL REVOCATION
-```typescript
-// File: apps/web/src/lib/blob-manager.ts
-// Lines: 64-95
-revokeObjectURL(url: string): void {
-  if (!this.blobRegistry.has(url)) {
-    URL.revokeObjectURL(url);  // LINE 95 - UNTRACKED REVOCATION
-    return;
-  }
-  // ... tracking logic ...
-  URL.revokeObjectURL(url);    // LINE 91 - TRACKED REVOCATION
-}
-```
-**Problem**: Even with tracking, blobs are still revoked too aggressively.
-
-## Key Findings
-- **Blob tracking works**: Both BlobManager and BlobUrlDebug are monitoring correctly
-- **Lifespan too short**: Blobs revoked after 130ms-2.2s (far too short for video buffering)
-- **Untracked revocations**: Some revokes bypass the blob manager ("Revoked untracked")
-- **Playback attempts work**: Timeline updates show playback is running
-- **But video can't load**: Blob URL gone before video element can buffer
-
-## Required Fix
-1. **Prevent premature revocation**: Keep blobs alive during active playback
-2. **Track active video sources**: Mark blobs as "in-use" when video is playing
-3. **Fix cleanup timing**: Only revoke when video element is destroyed or playback stops
-4. **Handle untracked revocations**: Route all revokes through blob manager
+## Required Fixes
+1) Route all blob revocations through the blob manager (or wrap global `URL.revokeObjectURL`) so the in-use guard can block active playback blobs; eliminate "Revoked untracked" during playback.  
+2) Ensure cleanup paths (preview cleanup, migrations, storage cleanup) always skip the active playback blob.  
+3) Fix blob cleanup migrator to actually run once: import `useRef`, keep the run-once + session guard StrictMode-safe, and avoid touching any active blob.  
+4) Re-test playback; expect `canplay` → `play() succeeded` without any `ERR_FILE_NOT_FOUND` for the active blob.
 
 ## Success Criteria
-- Blob URLs remain valid throughout playback session
-- No `ERR_FILE_NOT_FOUND` errors during active playback
-- Video element successfully buffers and plays
-- Canvas renders video frames (not static image)
+```
+[CANVAS-VIDEO] Video not ready, waiting for canplay event
+// ... 100–500ms ...
+[CANVAS-VIDEO] canplay event fired, attempting play
+[CANVAS-VIDEO] play() succeeded
+step 13: drawing to canvas { frameDrawn: true }
+```
+And no `ERR_FILE_NOT_FOUND` for the active blob until playback stops.
 
-## Debug Status
-- ✅ Fixed: 60fps listener recreation
-- ✅ Fixed: Console logging removed for cleaner output
-- ✅ Working: Blob creation and tracking
-- ❌ Critical Issue: Blobs revoked while still needed (preview-panel.tsx:631)
-- ❌ Blocked: Video cannot buffer without valid blob
-- ❌ Blocked: Canvas cannot render without playing video
+## Debug Checklist
+- [x] Play effect no longer tied to `currentTime` (listener survives)
+- [ ] Active playback blob never revoked mid-buffer (no `ERR_FILE_NOT_FOUND`)
+- [ ] `canplay` event fires
+- [ ] `play()` succeeds
+- [ ] Canvas draws frames
+- [ ] Video actually plays
 
-## Recommended Fix Strategy
-1. **Modify preview-panel.tsx (Line 631)**: Don't revoke blobs that are actively playing
-2. **Update video-player.tsx**: Keep blob alive until video element is destroyed AND playback is stopped
-3. **Enhance blob-manager.ts**: Add reference counting to prevent premature revocation
-4. **Fix media-store.ts**: Only revoke blobs when truly no longer needed
+## How to Repro
+1) Run the app (e.g., `bun dev`) and open the editor preview.  
+2) Load a video clip, scrub inside the clip, and click Play.  
+3) Observe console: single "Video not ready" log, then blob `ERR_FILE_NOT_FOUND` spam for the active src; readyState stays 0; `canplay` never appears.
+
+## How to Verify the Fix
+- Play in-clip and see `Video not ready` followed by `canplay event fired` and `play() succeeded` within ~0.5s.  
+- No `ERR_FILE_NOT_FOUND` for the active blob during buffering/playing.  
+- `step 13: drawing to canvas { frameDrawn: true }` appears and the video renders on canvas.
