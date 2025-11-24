@@ -75,6 +75,7 @@ And no `ERR_FILE_NOT_FOUND` for the active blob until playback stops.
 - Progress (Subtask 1): `media-source.ts` now returns `{ file, type: "file" }` for local media (lazy blob creation); remote source whitelist unchanged. Downstream call sites still need to be updated to use the File-based source.
 - Progress (Subtask 2): `preview-panel.tsx` now memoizes video sources without creating blob URLs and passes `videoSource={source}` into `VideoPlayer` (no blob revocation effect).
 - Progress (Subtask 3): `video-player.tsx` now accepts `videoSource` and lazily creates/revokes blob URLs inside the component (logs creation/revoke), removing mark/unmark/revoke calls and the `src` prop.
+- Progress (Subtask 4): `preview-panel.tsx` call sites are updated to use `videoSource` for both blur background and main video layers (no `src` prop remains).
 
 ## Next Step
 - Finish routing the remaining raw `URL.revokeObjectURL` call sites (e.g., `adjustment-store`, `export-engine`, `ffmpeg-utils`, `image-utils`, `canvas-utils`, `use-export-progress`, `caption-export`, `zip-manager`, `media-processing`) through the blob manager with context so the `[CANVAS-VIDEO] Guarded revoke (skipped; in use)` log appears when a revoke is blocked for the active playback blob. Re-run playback and confirm you see the guard log (or a tracked revoke), and that no `ERR_FILE_NOT_FOUND` appears before `canplay`/`play() succeeded`.
