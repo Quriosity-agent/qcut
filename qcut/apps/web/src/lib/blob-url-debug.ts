@@ -66,7 +66,7 @@ export function enableBlobUrlDebugging() {
       console.log(`[BlobUrlDebug] Revoked untracked: ${url}`);
     }
 
-    const result = revokeManagedObjectURL(url);
+    const result = revokeManagedObjectURL(url, "blob-url-debug override");
     console.log("[BlobUrlDebug] Routed revoke via BlobManager guard");
     return result;
   };

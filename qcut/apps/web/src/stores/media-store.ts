@@ -64,6 +64,11 @@ export const getFileType = (file: File): MediaType | null => {
   return null;
 };
 
+const revokeMediaBlob = (url: string, context: string): boolean => {
+  if (!url) return false;
+  return revokeObjectURL(url, `media-store:${context}`);
+};
+
 // Helper function to get image dimensions
 export const getImageDimensions = (
   file: File
@@ -75,7 +80,7 @@ export const getImageDimensions = (
     const cleanup = () => {
       img.remove();
       if (blobUrl) {
-        revokeObjectURL(blobUrl);
+        revokeMediaBlob(blobUrl, "getImageDimensions");
       }
     };
 
@@ -185,7 +190,7 @@ export const generateVideoThumbnailBrowser = (
       video.remove();
       canvas.remove();
       if (blobUrl) {
-        revokeObjectURL(blobUrl);
+        revokeMediaBlob(blobUrl, "generateVideoThumbnailBrowser");
       }
     };
 
@@ -267,7 +272,7 @@ export const getMediaDuration = (file: File): Promise<number> => {
       if (blobUrl) {
         // Delay cleanup to prevent timing conflicts
         setTimeout(() => {
-          revokeObjectURL(blobUrl!);
+          revokeMediaBlob(blobUrl!, "getMediaDuration");
         }, 100);
       }
     };
@@ -544,10 +549,10 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
       item.url.startsWith("blob:") &&
       !item.metadata?.originalUrl
     ) {
-      revokeObjectURL(item.url);
+      revokeMediaBlob(item.url, "removeMediaItem:url");
     }
     if (item?.thumbnailUrl && item.thumbnailUrl.startsWith("blob:")) {
-      revokeObjectURL(item.thumbnailUrl);
+      revokeMediaBlob(item.thumbnailUrl, "removeMediaItem:thumbnail");
     }
 
     // 1) Remove from local state immediately
@@ -681,14 +686,14 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
     // Enhanced cleanup with better URL tracking and logging
     state.mediaItems.forEach((item) => {
       if (item.url && item.url.startsWith("blob:")) {
-        revokeObjectURL(item.url);
+        revokeMediaBlob(item.url, "clearProjectMedia:url");
         debugLog(
           `[Cleanup] Revoked blob URL for ${item.name} (project: ${projectId}): ${item.url}`
         );
         revokedCount++;
       }
       if (item.thumbnailUrl && item.thumbnailUrl.startsWith("blob:")) {
-        revokeObjectURL(item.thumbnailUrl);
+        revokeMediaBlob(item.thumbnailUrl, "clearProjectMedia:thumbnail");
 
         revokedCount++;
       }
@@ -735,12 +740,12 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
     // Enhanced cleanup with better URL tracking and logging
     state.mediaItems.forEach((item) => {
       if (item.url && item.url.startsWith("blob:")) {
-        revokeObjectURL(item.url);
+        revokeMediaBlob(item.url, "clearAllMedia:url");
         debugLog(`[Cleanup] Revoked blob URL for ${item.name}: ${item.url}`);
         revokedCount++;
       }
       if (item.thumbnailUrl && item.thumbnailUrl.startsWith("blob:")) {
-        revokeObjectURL(item.thumbnailUrl);
+        revokeMediaBlob(item.thumbnailUrl, "clearAllMedia:thumbnail");
         debugLog(
           `[Cleanup] Revoked thumbnail blob URL for ${item.name}: ${item.thumbnailUrl}`
         );

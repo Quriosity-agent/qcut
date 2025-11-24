@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { X, Upload, Image as ImageIcon, Plus } from "lucide-react";
+import { revokeObjectURL as revokeManagedObjectURL } from "@/lib/blob-manager";
 
 interface MultiImageUploadProps {
   images: string[];
@@ -47,7 +48,10 @@ export function MultiImageUpload({
     (index: number) => {
       const imageToRemove = images[index];
       if (imageToRemove.startsWith("blob:")) {
-        URL.revokeObjectURL(imageToRemove);
+        revokeManagedObjectURL(
+          imageToRemove,
+          "multi-image-upload:remove-image"
+        );
       }
       onChange(images.filter((_, i) => i !== index));
     },

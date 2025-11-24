@@ -71,9 +71,12 @@ And no `ERR_FILE_NOT_FOUND` for the active blob until playback stops.
 - `blob-url-cleanup` migrator logs when it is skipped under StrictMode, reducing double-run risk.
 - Recursion guard added so the revoke override calls the captured native revoke instead of itself.
 - Outstanding gap: direct `URL.revokeObjectURL` call sites (e.g., media-store) still bypass the guard and are likely revoking the active playback blob; these must be routed through blob manager with an in-use check.
+- Progress (today): BlobManager revoke now emits `[CANVAS-VIDEO] Guarded revoke (skipped; in use): …` and returns a boolean; blob-url-debug routes revokes through the manager with a context tag. Media-store now funnels revokes through a helper that passes context, and audio-sync / effect-templates / multi-image-upload call sites now use the manager so the guard log will fire if blocked.
+- Progress (Subtask 1): `media-source.ts` now returns `{ file, type: "file" }` for local media (lazy blob creation); remote source whitelist unchanged. Downstream call sites still need to be updated to use the File-based source.
 
 ## Next Step
-- Trace and guard remaining revokes: instrument `media-store` and other direct `URL.revokeObjectURL` call sites to route through the blob manager and log `[CANVAS-VIDEO] Guarded revoke (skipped; in use)` when a revoke is blocked for the active playback blob. Re-run playback and confirm you see this guard log (or a tracked revoke), and that no `ERR_FILE_NOT_FOUND` appears before `canplay`/`play() succeeded`.
+- Finish routing the remaining raw `URL.revokeObjectURL` call sites (e.g., `adjustment-store`, `export-engine`, `ffmpeg-utils`, `image-utils`, `canvas-utils`, `use-export-progress`, `caption-export`, `zip-manager`, `media-processing`) through the blob manager with context so the `[CANVAS-VIDEO] Guarded revoke (skipped; in use)` log appears when a revoke is blocked for the active playback blob. Re-run playback and confirm you see the guard log (or a tracked revoke), and that no `ERR_FILE_NOT_FOUND` appears before `canplay`/`play() succeeded`.
+- Update downstream consumers (preview-panel, video-player, etc.) to accept `{ file, type: "file" }` sources and create/revoke blob URLs lazily at the component boundary.
 
 ---
 

@@ -26,6 +26,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { toast } from "sonner";
+import { revokeObjectURL as revokeManagedObjectURL } from "@/lib/blob-manager";
 
 interface EffectTemplatesPanelProps {
   elementId: string;
@@ -123,7 +124,7 @@ export function EffectTemplatesPanel({
     a.href = url;
     a.download = `${template.name.replace(/\s+/g, "-").toLowerCase()}.json`;
     a.click();
-    URL.revokeObjectURL(url);
+    revokeManagedObjectURL(url, "effect-templates:export");
     toast.success("Template exported");
   };
 

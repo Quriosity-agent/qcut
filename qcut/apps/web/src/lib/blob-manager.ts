@@ -63,12 +63,17 @@ class BlobManager {
   /**
    * Manually revoke a blob URL
    */
-  revokeObjectURL(url: string): void {
+  revokeObjectURL(url: string, context?: string): boolean {
+    const contextTag = context ? ` [from: ${context}]` : "";
+
     if (this.inUseUrls.has(url)) {
       if (import.meta.env.DEV) {
-        console.log(`[BlobManager] ⏸ Skip revoke (in use): ${url}`);
+        console.log(
+          `[CANVAS-VIDEO] Guarded revoke (skipped; in use): ${url}${contextTag}`
+        );
+        console.log(`[BlobManager] ⏭️ Skip revoke (in use): ${url}`);
       }
-      return;
+      return false;
     }
 
     if (this.blobs.has(url)) {
@@ -80,21 +85,23 @@ class BlobManager {
         ).stack
           ?.split("\n")
           .slice(2, 4)
-          .join(" → ")
+          .join("  ޚ  ")
           .trim();
         console.log(`[BlobManager] 🔴 Revoked: ${url}`);
         console.log(`  📍 Created by: ${entry?.source || "unknown"}`);
         console.log(`  🗑️ Revoked by: ${revokeStack}`);
         console.log(
-          `  ⏱️ Lifespan: ${entry ? Date.now() - entry.createdAt : "unknown"}ms`
+          `  🕒 Lifespan: ${entry ? Date.now() - entry.createdAt : "unknown"}ms`
         );
       }
 
       nativeRevokeObjectURL(url);
       this.blobs.delete(url);
+      return true;
     } else {
       // Even if we didn't create it, respect the in-use guard before revoking
       nativeRevokeObjectURL(url);
+      return true;
     }
   }
 
@@ -187,8 +194,8 @@ export const createObjectURL = (file: File | Blob, source?: string): string => {
   return blobManager.createObjectURL(file, source);
 };
 
-export const revokeObjectURL = (url: string): void => {
-  blobManager.revokeObjectURL(url);
+export const revokeObjectURL = (url: string, context?: string): boolean => {
+  return blobManager.revokeObjectURL(url, context);
 };
 
 export const markBlobInUse = (url: string): void => {
@@ -207,3 +214,5 @@ if (import.meta.env.DEV) {
     console.log("[BlobManager] Active blobs:", blobManager.getActiveBlobs());
   };
 }
+
+

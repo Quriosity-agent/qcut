@@ -31,6 +31,7 @@ import {
 } from "./video-edit-constants";
 import type { MMAudioV2Params } from "./video-edit-types";
 import { openInNewTab } from "@/lib/utils";
+import { revokeObjectURL as revokeManagedObjectURL } from "@/lib/blob-manager";
 
 const DEFAULT_ESTIMATED_DURATION_SECONDS = 10;
 
@@ -82,11 +83,11 @@ export function AudioSyncTab() {
         const video = document.createElement("video");
         video.preload = "metadata";
         video.onloadedmetadata = () => {
-          window.URL.revokeObjectURL(video.src);
+          revokeManagedObjectURL(video.src, "video-edit-audio-sync:onloadedmetadata");
           resolve(video.duration);
         };
         video.onerror = () => {
-          window.URL.revokeObjectURL(video.src);
+          revokeManagedObjectURL(video.src, "video-edit-audio-sync:onerror");
           reject(new Error("Failed to load video metadata"));
         };
         video.src = window.URL.createObjectURL(file);
