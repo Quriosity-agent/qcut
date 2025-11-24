@@ -47,6 +47,7 @@ import {
   parametersToCSSFilters,
   mergeEffectParameters,
 } from "@/lib/effects-utils";
+import { revokeObjectURL as revokeManagedObjectURL } from "@/lib/blob-manager";
 // Import interactive element overlay
 import {
   InteractiveElementOverlay,
@@ -442,14 +443,6 @@ export function PreviewPanel() {
       });
     });
 
-    console.log("step 11: calculating active elements", {
-      currentTime: Number(currentTime.toFixed(3)),
-      totalTracks: tracks.length,
-      totalElements,
-      calculatedActiveCount: activeElements.length,
-      activeElementIds: activeElements.map(ae => ae.element.id)
-    });
-
     return activeElements;
   }, [tracks, currentTime, mediaItems]);
 
@@ -671,11 +664,19 @@ export function PreviewPanel() {
   }, [mediaItems]);
 
   // Revoke memoized blob URLs when they change or on unmount
+  const activeVideoSource =
+    currentMediaElement && currentMediaElement.mediaItem?.id
+      ? videoSourcesById.get(currentMediaElement.mediaItem.id) ?? null
+      : null;
+  const activeBlobUrl =
+    activeVideoSource?.type === "blob" ? activeVideoSource.src : null;
+
   useEffect(() => {
+    const urlsToRevoke = videoBlobUrls.filter((url) => url !== activeBlobUrl);
     return () => {
-      videoBlobUrls.forEach((url) => URL.revokeObjectURL(url));
+      urlsToRevoke.forEach((url) => revokeManagedObjectURL(url));
     };
-  }, [videoBlobUrls]);
+  }, [videoBlobUrls, activeBlobUrl]);
 
   // Memoize blur background source (first eligible media element)
   const blurBackgroundSource = useMemo(() => {

@@ -1,6 +1,11 @@
 "use client";
 
 import { useRef, useEffect } from "react";
+import {
+  markBlobInUse,
+  revokeObjectURL as revokeManagedObjectURL,
+  unmarkBlobInUse,
+} from "@/lib/blob-manager";
 import { usePlaybackStore } from "@/stores/playback-store";
 
 interface VideoPlayerProps {
@@ -389,14 +394,21 @@ export function VideoPlayer({
   useEffect(() => {
     const prev = previousSrcRef.current;
     if (prev && prev !== src && prev.startsWith("blob:")) {
-      URL.revokeObjectURL(prev);
+      unmarkBlobInUse(prev);
+      revokeManagedObjectURL(prev);
     }
 
     previousSrcRef.current = src;
 
+    if (src.startsWith("blob:")) {
+      markBlobInUse(src);
+    }
+
     return () => {
       if (previousSrcRef.current?.startsWith("blob:")) {
-        URL.revokeObjectURL(previousSrcRef.current);
+        const url = previousSrcRef.current;
+        unmarkBlobInUse(url);
+        revokeManagedObjectURL(url);
         previousSrcRef.current = null;
       }
     };

@@ -106,6 +106,8 @@ Recommended order:
 - Updated `apps/web/src/components/ui/video-player.tsx` so the play/useEffect no longer depends on `currentTime` (stopping the 60fps cleanup of the `canplay` listener).
 - Added a `timelineTimeRef` to keep logs accurate without re-triggering the effect.
 - Playback window listeners now stay attached instead of being torn down every tick.
+- Guarded blob URLs in `blob-manager`/`video-player` so active playback blobs are marked in-use and cannot be revoked mid-buffer; preview cleanup now skips the active blob URL instead of revoking everything on each rebuild.
+- Removed the noisy `step 11: calculating active elements` spam to keep video lifecycle logs readable.
 
 ---
 
@@ -149,8 +151,9 @@ NOT:
 - See `step 13: drawing to canvas { frameDrawn: true }` logs and observe the video rendering on canvas.
 
 ## ?? New Evidence (consolev9) and Next Move
-- Consolev9 shows blob URLs for the active media being created and revoked within ~300ms, then `ERR_FILE_NOT_FOUND` for that blob, and `?? Cleaned up canplay listener` reappears. This suggests the blob cleanup/migration code is revoking the video URL before it can buffer to readyState 3.
-- Next step: guard blob cleanup/manager so it does not revoke the blob URL that matches the active mediaId/src during playback (or defer cleanup until playback ends), and keep a stable blob per media item instead of regenerating/revoking on every render. Then re-test to confirm `canplay` fires.
+- Consolev9 showed blob URLs for the active media being created and revoked within ~300ms, then `ERR_FILE_NOT_FOUND` for that blob, and `?? Cleaned up canplay listener` reappearing.
+- Mitigation applied: active playback blobs are now marked in-use, the preview cleanup skips the active blob URL, and revocation is guarded in `blob-manager`.
+- Follow-up: re-run playback to confirm the active blob survives long enough for `canplay`/`play() succeeded` to fire and that `ERR_FILE_NOT_FOUND` disappears.
 
 ## ?? Console Noise to Trim
 - `preview-panel.tsx:445 step 11: calculating active elements` spams every tick and obscures the video lifecycle logs; suppress or throttle this during playback-focused debugging.

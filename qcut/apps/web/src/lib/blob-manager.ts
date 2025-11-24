@@ -13,6 +13,8 @@ interface BlobEntry {
 class BlobManager {
   private blobs = new Map<string, BlobEntry>();
   private cleanupInterval: number | null = null;
+  // Track blob URLs that are actively in use (e.g., currently playing video) to avoid revoking them mid-use.
+  private inUseUrls = new Set<string>();
 
   constructor() {
     // Auto-cleanup orphaned blobs every 5 minutes
@@ -60,6 +62,13 @@ class BlobManager {
    * Manually revoke a blob URL
    */
   revokeObjectURL(url: string): void {
+    if (this.inUseUrls.has(url)) {
+      if (import.meta.env.DEV) {
+        console.log(`[BlobManager] ⏸ Skip revoke (in use): ${url}`);
+      }
+      return;
+    }
+
     if (this.blobs.has(url)) {
       const entry = this.blobs.get(url);
 
@@ -81,7 +90,26 @@ class BlobManager {
 
       URL.revokeObjectURL(url);
       this.blobs.delete(url);
+    } else {
+      // Even if we didn't create it, respect the in-use guard before revoking
+      URL.revokeObjectURL(url);
     }
+  }
+
+  /**
+   * Mark a blob URL as in-use to prevent cleanup while it's active.
+   */
+  markInUse(url: string): void {
+    if (!url.startsWith("blob:")) return;
+    this.inUseUrls.add(url);
+  }
+
+  /**
+   * Remove the in-use mark so the URL can be revoked.
+   */
+  unmarkInUse(url: string): void {
+    if (!url.startsWith("blob:")) return;
+    this.inUseUrls.delete(url);
   }
 
   /**
@@ -159,6 +187,14 @@ export const createObjectURL = (file: File | Blob, source?: string): string => {
 
 export const revokeObjectURL = (url: string): void => {
   blobManager.revokeObjectURL(url);
+};
+
+export const markBlobInUse = (url: string): void => {
+  blobManager.markInUse(url);
+};
+
+export const unmarkBlobInUse = (url: string): void => {
+  blobManager.unmarkInUse(url);
 };
 
 // Development helper to monitor blob usage
