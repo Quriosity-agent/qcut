@@ -1,19 +1,16 @@
 "use client";
 
 import { useRef, useEffect } from "react";
-import {
-  markBlobInUse,
-  revokeObjectURL as revokeManagedObjectURL,
-  unmarkBlobInUse,
-} from "@/lib/blob-manager";
+import type { CSSProperties } from "react";
 import { usePlaybackStore } from "@/stores/playback-store";
+import type { VideoSource } from "@/lib/media-source";
 
 interface VideoPlayerProps {
   videoId?: string;
-  src: string;
+  videoSource: VideoSource | null;
   poster?: string;
   className?: string;
-  style?: React.CSSProperties;
+  style?: CSSProperties;
   clipStartTime: number;
   trimStart: number;
   trimEnd: number;
@@ -22,7 +19,7 @@ interface VideoPlayerProps {
 
 export function VideoPlayer({
   videoId,
-  src,
+  videoSource,
   poster,
   className = "",
   style,
@@ -32,7 +29,7 @@ export function VideoPlayer({
   clipDuration,
 }: VideoPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const previousSrcRef = useRef<string | null>(null);
+  const blobUrlRef = useRef<string | null>(null);
   const { isPlaying, currentTime, volume, speed, muted } = usePlaybackStore();
   const timelineTimeRef = useRef(currentTime);
 
@@ -156,7 +153,7 @@ export function VideoPlayer({
     clipStartTime,
     clipEndTime,
     videoId,
-    src,
+    videoSource,
   ]);
 
   // Sync volume and speed
@@ -179,32 +176,42 @@ export function VideoPlayer({
 
   // Video source tracking
   useEffect(() => {
-    const prev = previousSrcRef.current;
-    if (prev && prev !== src && prev.startsWith("blob:")) {
-      unmarkBlobInUse(prev);
-      revokeManagedObjectURL(prev);
-    }
+    const video = videoRef.current;
+    if (!video || !videoSource) return;
 
-    previousSrcRef.current = src;
+    if (videoSource.type === "file") {
+      const blobUrl = URL.createObjectURL(videoSource.file);
+      blobUrlRef.current = blobUrl;
+      video.src = blobUrl;
+      console.log(
+        `[VideoPlayer] Created blob URL for ${videoId ?? "video"}: ${blobUrl}`
+      );
 
-    if (src.startsWith("blob:")) {
-      markBlobInUse(src);
+      return () => {
+        if (blobUrlRef.current) {
+          console.log(
+            `[VideoPlayer] Revoking blob URL for ${videoId ?? "video"}: ${
+              blobUrlRef.current
+            }`
+          );
+          URL.revokeObjectURL(blobUrlRef.current);
+          blobUrlRef.current = null;
+        }
+      };
+    } else if (videoSource.type === "remote") {
+      video.src = videoSource.src;
     }
 
     return () => {
-      if (previousSrcRef.current?.startsWith("blob:")) {
-        const url = previousSrcRef.current;
-        unmarkBlobInUse(url);
-        revokeManagedObjectURL(url);
-        previousSrcRef.current = null;
+      if (video) {
+        video.src = "";
       }
     };
-  }, [src]);
+  }, [videoSource, videoId]);
 
   return (
     <video
       ref={videoRef}
-      src={src}
       poster={poster}
       className={`object-contain ${className}`}
       playsInline

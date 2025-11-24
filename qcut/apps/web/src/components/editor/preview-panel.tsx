@@ -47,7 +47,6 @@ import {
   parametersToCSSFilters,
   mergeEffectParameters,
 } from "@/lib/effects-utils";
-import { revokeObjectURL as revokeManagedObjectURL } from "@/lib/blob-manager";
 // Import interactive element overlay
 import {
   InteractiveElementOverlay,
@@ -594,9 +593,8 @@ export function PreviewPanel() {
   }, [activeElements]);
 
   // Memoize video sources by media id to avoid recreating blob URLs each render
-  const { videoSourcesById, videoBlobUrls } = useMemo(() => {
+  const videoSourcesById = useMemo(() => {
     const sources = new Map<string, ReturnType<typeof getVideoSource>>();
-    const blobUrls: string[] = [];
     let videoCount = 0;
     let missingSourceIds: string[] = [];
 
@@ -605,16 +603,13 @@ export function PreviewPanel() {
         videoCount += 1;
         const source = getVideoSource(item);
         sources.set(item.id, source);
-        if (source?.type === "blob") {
-          blobUrls.push(source.src);
-        }
         if (!source) {
           missingSourceIds.push(item.id);
         }
       }
     });
 
-    return { videoSourcesById: sources, videoBlobUrls: blobUrls };
+    return sources;
   }, [mediaItems]);
 
   // Revoke memoized blob URLs when they change or on unmount
@@ -622,15 +617,6 @@ export function PreviewPanel() {
     currentMediaElement && currentMediaElement.mediaItem?.id
       ? videoSourcesById.get(currentMediaElement.mediaItem.id) ?? null
       : null;
-  const activeBlobUrl =
-    activeVideoSource?.type === "blob" ? activeVideoSource.src : null;
-
-  useEffect(() => {
-    const urlsToRevoke = videoBlobUrls.filter((url) => url !== activeBlobUrl);
-    return () => {
-      urlsToRevoke.forEach((url) => revokeManagedObjectURL(url));
-    };
-  }, [videoBlobUrls, activeBlobUrl]);
 
   // Memoize blur background source (first eligible media element)
   const blurBackgroundSource = useMemo(() => {
@@ -675,20 +661,20 @@ export function PreviewPanel() {
         <div
           key={`blur-${element.id}-${backgroundElement.track.id}`}
           className="absolute inset-0 overflow-hidden"
-          style={{
-            filter: `blur(${blurIntensity}px)`,
-            transform: "scale(1.1)", // Slightly zoom to avoid blur edge artifacts
-            transformOrigin: "center",
-          }}
-        >
-          <VideoPlayer
-            videoId={`${mediaItem.id}-blur-background`}
-            src={source.src}
-            poster={mediaItem.thumbnailUrl}
-            clipStartTime={element.startTime}
-            trimStart={element.trimStart}
-            trimEnd={element.trimEnd}
-            clipDuration={element.duration}
+            style={{
+              filter: `blur(${blurIntensity}px)`,
+              transform: "scale(1.1)", // Slightly zoom to avoid blur edge artifacts
+              transformOrigin: "center",
+            }}
+          >
+            <VideoPlayer
+              videoId={`${mediaItem.id}-blur-background`}
+              videoSource={source}
+              poster={mediaItem.thumbnailUrl}
+              clipStartTime={element.startTime}
+              trimStart={element.trimStart}
+              trimEnd={element.trimEnd}
+              clipDuration={element.duration}
             className="object-cover"
             style={
               EFFECTS_ENABLED && element.id === currentMediaElement?.element.id
@@ -851,7 +837,7 @@ export function PreviewPanel() {
             }}
           >
             <VideoPlayer
-              src={source.src}
+              videoSource={source}
               poster={mediaItem.thumbnailUrl}
               clipStartTime={element.startTime}
               trimStart={element.trimStart}
