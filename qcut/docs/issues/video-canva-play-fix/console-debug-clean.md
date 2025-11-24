@@ -147,3 +147,10 @@ NOT:
 - Start playback in-clip and confirm `? Video not ready` is followed (after ~100–500ms) by `? canplay event fired` and `? play() succeeded`.
 - Confirm `?? Cleaned up canplay listener` no longer appears every frame (should only fire on teardown).
 - See `step 13: drawing to canvas { frameDrawn: true }` logs and observe the video rendering on canvas.
+
+## ?? New Evidence (consolev9) and Next Move
+- Consolev9 shows blob URLs for the active media being created and revoked within ~300ms, then `ERR_FILE_NOT_FOUND` for that blob, and `?? Cleaned up canplay listener` reappears. This suggests the blob cleanup/migration code is revoking the video URL before it can buffer to readyState 3.
+- Next step: guard blob cleanup/manager so it does not revoke the blob URL that matches the active mediaId/src during playback (or defer cleanup until playback ends), and keep a stable blob per media item instead of regenerating/revoking on every render. Then re-test to confirm `canplay` fires.
+
+## ?? Console Noise to Trim
+- `preview-panel.tsx:445 step 11: calculating active elements` spams every tick and obscures the video lifecycle logs; suppress or throttle this during playback-focused debugging.
