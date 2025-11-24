@@ -156,14 +156,9 @@ export const usePlaybackStore = create<PlaybackStore>((set, get) => ({
       detail: { speed: newSpeed },
     });
     window.dispatchEvent(event);
-    console.log("event: playback-speed dispatched", {
-      speed: newSpeed,
-      previousSpeed,
-    });
   },
 
   setDuration: (duration: number) => {
-    console.log("[PLAYBACK] setDuration", { duration });
     set({ duration });
   },
   setCurrentTime: (time: number) => set({ currentTime: time }),
