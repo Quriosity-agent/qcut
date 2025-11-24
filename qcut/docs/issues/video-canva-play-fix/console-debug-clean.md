@@ -278,3 +278,85 @@ Canvas Shows Static Image
 3. **MEDIUM PRIORITY**: Improve video-player.tsx cleanup timing
 4. **MEDIUM PRIORITY**: Route all direct revokes through blob-manager
 5. **LOW PRIORITY**: Add additional safety checks in blob-manager.ts
+
+---
+
+## Alternative Solution: Using File Objects Directly (User's Suggestion)
+
+### Question
+"If the video is uploaded to media it should have local path can we use that?"
+
+### Answer
+✅ **Yes - we already have access to the File object, but not traditional local filesystem paths.**
+
+### Current Architecture
+- **MediaItem** contains `file: File` property (actual file data stored in OPFS)
+- **Storage**: Files stored in Origin Private File System (OPFS) via `storage-service.ts`
+- **Access**: File objects available but no direct filesystem paths (browser security restriction)
+
+### Why Traditional Local Paths Won't Work
+1. **Web Security**: Browsers don't expose real filesystem paths from user uploads
+2. **OPFS**: Virtual filesystem, not actual OS filesystem
+3. **File API**: `File` objects don't expose `file://` URLs in browser environment
+
+### Proposed Solution: Lazy Blob URL Creation
+Instead of creating blob URLs early and managing complex lifecycle:
+
+**Strategy: Create blob URLs just-in-time and keep them alive during playback**
+
+```typescript
+// Current (problematic):
+// 1. Create blob URL early in getVideoSource()
+// 2. Pass blob URL to video-player
+// 3. Blob gets revoked while video still buffering
+// 4. ERR_FILE_NOT_FOUND
+
+// Proposed (stable):
+// 1. Pass File object to video-player (not blob URL)
+// 2. Create blob URL when video.src is set
+// 3. Keep blob URL alive until canplay/playing event
+// 4. Only revoke after playback stops
+```
+
+### Implementation Points
+1. **media-source.ts**: Return File object instead of blob URL
+2. **video-player.tsx**: Create blob URL from File when needed, revoke after successful play
+3. **preview-panel.tsx**: Remove aggressive cleanup effect (lines 628-633)
+4. **Blob lifecycle**: Tied to video element state, not component re-renders
+
+### Benefits
+- Eliminates premature revocation (root cause of ERR_FILE_NOT_FOUND)
+- Blob URLs only exist during active playback
+- File objects are stable and don't expire
+- Simpler mental model: File → blob URL → play → revoke
+
+### File Access Pattern
+```typescript
+// MediaItem structure
+interface MediaItem {
+  id: string;
+  file: File;           // ✅ We have this!
+  url?: string;         // Blob URL (temporary)
+  // ...
+}
+
+// Proposed flow
+function VideoPlayer({ file }: { file: File }) {
+  const blobUrlRef = useRef<string | null>(null);
+
+  // Create blob URL only when needed
+  useEffect(() => {
+    if (!file) return;
+
+    blobUrlRef.current = URL.createObjectURL(file);
+    videoRef.current.src = blobUrlRef.current;
+
+    // Revoke only after successful playback or component unmount
+    return () => {
+      if (blobUrlRef.current) {
+        URL.revokeObjectURL(blobUrlRef.current);
+      }
+    };
+  }, [file]);
+}
+```
