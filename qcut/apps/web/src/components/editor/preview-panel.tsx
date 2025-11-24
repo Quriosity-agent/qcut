@@ -717,7 +717,7 @@ export function PreviewPanel() {
       if (!source) {
         return (
           <div
-            key={`blur-${element.id}`}
+            key={`blur-${element.id}-${elementData.track.id}`}
             className="absolute inset-0 flex items-center justify-center bg-black/60 text-white text-xs"
           >
             No available video source
@@ -727,7 +727,7 @@ export function PreviewPanel() {
 
       return (
         <div
-          key={`blur-${element.id}`}
+          key={`blur-${element.id}-${elementData.track.id}`}
           className="absolute inset-0 overflow-hidden"
           style={{
             filter: `blur(${blurIntensity}px)`,
@@ -757,7 +757,7 @@ export function PreviewPanel() {
     if (mediaItem.type === "image") {
       return (
         <div
-          key={`blur-${element.id}`}
+          key={`blur-${element.id}-${elementData.track.id}`}
           className="absolute inset-0 overflow-hidden"
           style={{
             filter: `blur(${blurIntensity}px)`,
@@ -782,6 +782,7 @@ export function PreviewPanel() {
   const renderElement = (elementData: ActiveElement, index: number) => {
     const { element, mediaItem } = elementData;
     const elementEndTime = element.startTime + (element.duration - element.trimStart - element.trimEnd);
+    const elementKey = `${element.id}-${elementData.track.id}`;
     console.log("step 12: rendering element", {
       elementId: element.id,
       elementType: element.type,
@@ -815,7 +816,7 @@ export function PreviewPanel() {
 
       return (
         <div
-          key={element.id}
+          key={elementKey}
           className="absolute flex items-center justify-center cursor-grab"
           onClick={() => setSelectedElementId(element.id)}
           onKeyDown={(e) => {
@@ -883,7 +884,7 @@ export function PreviewPanel() {
       if (!mediaItem || element.mediaId === "test") {
         return (
           <div
-            key={element.id}
+            key={elementKey}
             className="absolute inset-0 bg-linear-to-br from-blue-500/20 to-purple-500/20 flex items-center justify-center"
           >
             <div className="text-center">
@@ -911,7 +912,7 @@ export function PreviewPanel() {
           });
           return (
             <div
-              key={element.id}
+              key={elementKey}
               className="absolute inset-0 flex items-center justify-center bg-black/60 text-white text-xs"
               style={{
                 width: "100%",
@@ -944,7 +945,7 @@ export function PreviewPanel() {
 
         return (
           <div
-            key={element.id}
+            key={elementKey}
             className="absolute inset-0 flex items-center justify-center"
             style={{
               width: "100%",
@@ -970,7 +971,7 @@ export function PreviewPanel() {
       if (mediaItem.type === "image") {
         return (
           <div
-            key={element.id}
+            key={elementKey}
             className="absolute inset-0 flex items-center justify-center"
           >
             <img
@@ -986,7 +987,7 @@ export function PreviewPanel() {
       // Audio elements (no visual representation)
       if (mediaItem.type === "audio") {
         return (
-          <div key={element.id} className="absolute inset-0">
+          <div key={elementKey} className="absolute inset-0">
             <AudioPlayer
               src={mediaItem.url!}
               clipStartTime={element.startTime}
@@ -1102,7 +1103,7 @@ export function PreviewPanel() {
               {EFFECTS_ENABLED &&
                 activeElements.map((elementData) => (
                   <InteractiveElementOverlay
-                    key={elementData.element.id}
+                    key={`${elementData.element.id}-${elementData.track.id}`}
                     element={elementData.element}
                     isSelected={selectedElementId === elementData.element.id}
                     canvasSize={canvasSize}
