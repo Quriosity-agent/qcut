@@ -67,38 +67,23 @@ function useEffectsRendering(elementId: string | null, enabled = false) {
 
   const effects = useMemo(() => {
     if (!enabled || !elementId) {
-      console.log(
-        `🎬 PREVIEW PANEL: No effects (enabled: ${enabled}, elementId: ${elementId})`
-      );
       return [];
     }
     const elementEffects = getElementEffects(elementId);
-    console.log(
-      `🎬 PREVIEW PANEL: Retrieved ${elementEffects.length} effects for element ${elementId}`
-    );
     return elementEffects;
   }, [enabled, elementId, getElementEffects]);
 
   const filterStyle = useMemo(() => {
     if (!enabled || !effects || effects.length === 0) {
-      console.log(
-        `🎨 PREVIEW PANEL: No filter style (enabled: ${enabled}, effects: ${effects?.length || 0})`
-      );
       return "";
     }
 
     try {
       // Filter for enabled effects first
       const enabledEffects = effects.filter((e) => e.enabled);
-      console.log(
-        `🎨 PREVIEW PANEL: ${enabledEffects.length} enabled effects out of ${effects.length} total`
-      );
 
       // Guard against zero enabled effects
       if (enabledEffects.length === 0) {
-        console.log(
-          "🚫 PREVIEW PANEL: No enabled effects, returning empty filter"
-        );
         return "";
       }
 
@@ -108,10 +93,8 @@ function useEffectsRendering(elementId: string | null, enabled = false) {
       );
 
       const cssFilter = parametersToCSSFilters(mergedParams);
-      console.log(`✨ PREVIEW PANEL: Generated CSS filter: "${cssFilter}"`);
       return cssFilter;
     } catch (error) {
-      console.error("❌ PREVIEW PANEL: Error generating filter style:", error);
       return "";
     }
   }, [enabled, effects]);
@@ -389,7 +372,6 @@ export function PreviewPanel() {
 
       return imageData;
     } catch (error) {
-      console.error("Failed to capture preview frame:", error);
       return null;
     }
   }, [previewDimensions, activeProject]);
@@ -474,29 +456,8 @@ export function PreviewPanel() {
       Math.abs(seekTime - currentTime) < 0.001;
 
     if (didSeek) {
-      console.log("step 10: preview panel re-rendered after seek", {
-        newTime: currentTime,
-        newActiveElementsCount: activeElements.length,
-      });
       lastSeekEventTimeRef.current = null;
       return;
-    }
-
-    if (isPlaying) {
-      console.log("step 5: preview panel updated", {
-        currentTime: Number(currentTime.toFixed(3)),
-        activeElementsCount: activeElements.length,
-        hasEffects,
-        canvasWidth: canvasSize.width,
-        canvasHeight: canvasSize.height,
-        aspectRatio: `${canvasSize.width}:${canvasSize.height}`
-      });
-      if (hasAnyElements && activeElements.length === 0) {
-        console.warn("[CANVAS-VIDEO] No active elements rendered while playing", {
-          currentTime,
-          timelineElements: timelineElements.length,
-        });
-      }
     }
   }, [
     currentTime,
@@ -653,13 +614,6 @@ export function PreviewPanel() {
       }
     });
 
-    console.log("[CANVAS-VIDEO] Built video source map", {
-      videoCount,
-      sourceCount: sources.size,
-      blobCount: blobUrls.length,
-      missingSourceIds,
-    });
-
     return { videoSourcesById: sources, videoBlobUrls: blobUrls };
   }, [mediaItems]);
 
@@ -705,16 +659,7 @@ export function PreviewPanel() {
     const blurIntensity = activeProject.blurIntensity || 8;
 
     if (mediaItem.type === "video") {
-      console.log("[STEP-BLUR] mediaItem snapshot", {
-        id: mediaItem.id,
-        hasFile: !!mediaItem.file,
-        fileName: mediaItem.file?.name,
-        fileSize: mediaItem.file?.size,
-        hasUrl: !!mediaItem.url,
-      });
-
       const source = blurBackgroundSource;
-      console.log("[PreviewPanel] Blur layer video source:", source?.type || "none");
       if (!source) {
         return (
           <div
@@ -784,19 +729,6 @@ export function PreviewPanel() {
     const { element, mediaItem } = elementData;
     const elementEndTime = element.startTime + (element.duration - element.trimStart - element.trimEnd);
     const elementKey = `${element.id}-${elementData.track.id}`;
-    console.log("step 12: rendering element", {
-      elementId: element.id,
-      elementType: element.type,
-      mediaType: mediaItem?.type,
-      startTime: Number(element.startTime.toFixed(3)),
-      endTime: Number(elementEndTime.toFixed(3)),
-      hasEffects,
-      opacity: "opacity" in element ? (element as any).opacity : 1,
-      transform: element.type === "text"
-        ? `scale(${(element as any).scale ?? 1}) rotate(${element.rotation ?? 0}deg)`
-        : `scale(${(element as any).scale ?? 1}) rotate(0deg)`,
-      isVisible: true
-    });
 
     // Text elements
     if (element.type === "text") {
@@ -804,16 +736,6 @@ export function PreviewPanel() {
         FONT_CLASS_MAP[element.fontFamily as keyof typeof FONT_CLASS_MAP] || "";
 
       const scaleRatio = previewDimensions.width / canvasSize.width;
-      console.log("step 12b: rendering text element", {
-        elementId: element.id,
-        text: element.content,
-        position: { x: element.x, y: element.y },
-        rotation: element.rotation,
-        opacity: element.opacity,
-        fontSize: element.fontSize,
-        fontFamily: element.fontFamily,
-        color: element.color,
-      });
 
       return (
         <div
@@ -901,16 +823,6 @@ export function PreviewPanel() {
         const source = videoSourcesById.get(mediaItem.id) ?? null;
 
         if (!source) {
-          console.error("[CANVAS-VIDEO] No available video source", {
-            mediaId: mediaItem.id,
-            mediaName: mediaItem.name,
-            hasFile: !!mediaItem.file,
-            hasUrl: !!mediaItem.url,
-            trimStart: element.trimStart,
-            trimEnd: element.trimEnd,
-            clipDuration: element.duration,
-            clipStartTime: element.startTime,
-          });
           return (
             <div
               key={elementKey}
@@ -929,21 +841,6 @@ export function PreviewPanel() {
           EFFECTS_ENABLED && element.id === currentMediaElement?.element.id
             ? filterStyle
             : "";
-        console.log("step 12a: rendering video element", {
-          elementId: element.id,
-          src: source.src.substring(0, 50) + "...",
-          clipStartTime: Number(element.startTime.toFixed(3)),
-          trimStart: Number(element.trimStart.toFixed(3)),
-          trimEnd: Number(element.trimEnd.toFixed(3)),
-          clipDuration: Number(element.duration.toFixed(3)),
-          filterStyle: filterValue || "none",
-          opacity: "opacity" in element ? (element as any).opacity : 1,
-          scale: (element as any).scale ?? 1,
-          videoReadyState: "unknown - check VideoPlayer logs",
-          videoCurrentTime: Number(currentTime.toFixed(3)),
-          videoPaused: !isPlaying
-        });
-
         return (
           <div
             key={elementKey}

@@ -25,11 +25,6 @@ const startTimer = (store: () => PlaybackStore) => {
   if (playbackTimer) cancelAnimationFrame(playbackTimer);
 
   const { isPlaying, currentTime, speed } = store();
-  console.log("step 2: playback timer started", {
-    isPlaying,
-    currentTime,
-    speed,
-  });
 
   let loggedNotPlaying = false;
   let loggedDurationReached = false;
@@ -80,29 +75,14 @@ const startTimer = (store: () => PlaybackStore) => {
         window.dispatchEvent(
           new CustomEvent("playback-update", { detail: { time: newTime } })
         );
-        console.log("step 3: playback-update event dispatched", {
-          time: Number(newTime.toFixed(3)),
-          delta: Number(delta.toFixed(3)),
-          speed: state.speed,
-          frameNumber,
-          isPlaying: state.isPlaying
-        });
       }
       loggedNotPlaying = false;
       loggedDurationReached = false;
     } else {
       if (!state.isPlaying && !loggedNotPlaying) {
-        console.warn("[PLAYBACK-RAF] Skipping tick; not playing", {
-          currentTime: state.currentTime,
-          duration: state.duration,
-        });
         loggedNotPlaying = true;
       }
       if (state.currentTime >= state.duration && !loggedDurationReached) {
-        console.warn("[PLAYBACK-RAF] Skipping tick; reached duration", {
-          currentTime: state.currentTime,
-          duration: state.duration,
-        });
         loggedDurationReached = true;
       }
     }
@@ -130,24 +110,11 @@ export const usePlaybackStore = create<PlaybackStore>((set, get) => ({
   speed: 1.0,
 
   play: () => {
-    const { isPlaying, currentTime } = get();
-    console.log("step 1: user initiated playback", {
-      action: "play",
-      wasPlaying: isPlaying,
-      currentTime: Number(currentTime.toFixed(3))
-    });
     set({ isPlaying: true });
     startTimer(get);
   },
 
   pause: () => {
-    const { isPlaying, currentTime } = get();
-    console.log("step 1: user initiated playback", {
-      action: "pause",
-      wasPlaying: isPlaying,
-      currentTime: Number(currentTime.toFixed(3)),
-      rafTimerCancelled: playbackTimer !== null
-    });
     set({ isPlaying: false });
     stopTimer();
   },
@@ -164,10 +131,6 @@ export const usePlaybackStore = create<PlaybackStore>((set, get) => ({
   seek: (time: number) => {
     const { duration, currentTime: previousTime } = get();
     const clampedTime = Math.max(0, Math.min(duration, time));
-    console.log("step 8: playback store seek", {
-      oldTime: previousTime,
-      newTime: clampedTime,
-    });
 
     set({ currentTime: clampedTime });
 
@@ -175,10 +138,6 @@ export const usePlaybackStore = create<PlaybackStore>((set, get) => ({
       detail: { time: clampedTime },
     });
     window.dispatchEvent(event);
-    console.log("event: playback-seek dispatched", {
-      time: clampedTime,
-      source: "store.seek",
-    });
   },
 
   setVolume: (volume: number) =>
