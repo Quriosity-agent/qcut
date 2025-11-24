@@ -43,15 +43,18 @@ export function VideoPlayer({
     if (!video) return;
     if (!isInClipRange) {
       if (!loggedOutOfRangeRef.current) {
-        console.warn("[CANVAS-VIDEO] Skipping video events (out of clip range)", {
-          videoId: videoId ?? src,
-          currentTime,
-          clipStartTime,
-          clipEndTime,
-          trimStart,
-          trimEnd,
-          clipDuration,
-        });
+        console.warn(
+          "[CANVAS-VIDEO] Skipping video events (out of clip range)",
+          {
+            videoId: videoId ?? src,
+            currentTime,
+            clipStartTime,
+            clipEndTime,
+            trimStart,
+            trimEnd,
+            clipDuration,
+          }
+        );
         loggedOutOfRangeRef.current = true;
       }
       return;
@@ -108,8 +111,8 @@ export function VideoPlayer({
         videoElement: {
           readyState: video.readyState,
           currentTime: Number(video.currentTime.toFixed(3)),
-          duration: Number(video.duration.toFixed(3))
-        }
+          duration: Number(video.duration.toFixed(3)),
+        },
       });
     };
 
@@ -138,7 +141,17 @@ export function VideoPlayer({
         handleSpeed as EventListener
       );
     };
-  }, [clipStartTime, trimStart, trimEnd, clipDuration, isInClipRange, videoId, src]);
+  }, [
+    clipStartTime,
+    clipEndTime,
+    currentTime,
+    trimStart,
+    trimEnd,
+    clipDuration,
+    isInClipRange,
+    videoId,
+    src,
+  ]);
 
   // Instrument video element lifecycle for diagnostics
   useEffect(() => {
@@ -232,9 +245,12 @@ export function VideoPlayer({
           readyState: video.readyState,
           networkState: video.networkState,
           paused: video.paused,
-          seeking: video.seeking
+          seeking: video.seeking,
         },
-        reason: video.readyState < 3 ? "Video not ready (buffering needed)" : "Play interrupted or other error"
+        reason:
+          video.readyState < 3
+            ? "Video not ready (buffering needed)"
+            : "Play interrupted or other error",
       });
     };
 
@@ -245,64 +261,85 @@ export function VideoPlayer({
           videoId: videoId ?? src,
           currentTime: Number(video.currentTime.toFixed(3)),
           readyState: video.readyState,
-          readyStateText: video.readyState === 3 ? "HAVE_FUTURE_DATA" : "HAVE_ENOUGH_DATA",
+          readyStateText:
+            video.readyState === 3 ? "HAVE_FUTURE_DATA" : "HAVE_ENOUGH_DATA",
           paused: video.paused,
           duration: Number(video.duration.toFixed(3)),
-          seeking: video.seeking
+          seeking: video.seeking,
         });
-        video.play()
+        video
+          .play()
           .then(() => {
             console.log("[CANVAS-VIDEO] ✅ play() succeeded", {
               videoId: videoId ?? src,
               readyState: video.readyState,
-              currentTime: Number(video.currentTime.toFixed(3))
+              currentTime: Number(video.currentTime.toFixed(3)),
             });
           })
           .catch(handlePlayError);
       } else {
         // Video not ready, wait for it to be ready
-        console.log("[CANVAS-VIDEO] ⏳ Video not ready, waiting for canplay event", {
-          videoId: videoId ?? src,
-          currentReadyState: video.readyState,
-          readyStateText: ["HAVE_NOTHING", "HAVE_METADATA", "HAVE_CURRENT_DATA"][video.readyState] || "UNKNOWN",
-          needsReadyState: 3,
-          currentTime: Number(video.currentTime.toFixed(3)),
-          paused: video.paused
-        });
+        console.log(
+          "[CANVAS-VIDEO] ⏳ Video not ready, waiting for canplay event",
+          {
+            videoId: videoId ?? src,
+            currentReadyState: video.readyState,
+            readyStateText:
+              ["HAVE_NOTHING", "HAVE_METADATA", "HAVE_CURRENT_DATA"][
+                video.readyState
+              ] || "UNKNOWN",
+            needsReadyState: 3,
+            currentTime: Number(video.currentTime.toFixed(3)),
+            paused: video.paused,
+          }
+        );
 
         const handleCanPlay = () => {
           if (isPlaying && isInClipRange) {
-            console.log("[CANVAS-VIDEO] ✅ canplay event fired, attempting play", {
-              videoId: videoId ?? src,
-              readyState: video.readyState,
-              readyStateText: video.readyState === 3 ? "HAVE_FUTURE_DATA" : "HAVE_ENOUGH_DATA",
-              currentTime: Number(video.currentTime.toFixed(3))
-            });
-            video.play()
+            console.log(
+              "[CANVAS-VIDEO] ✅ canplay event fired, attempting play",
+              {
+                videoId: videoId ?? src,
+                readyState: video.readyState,
+                readyStateText:
+                  video.readyState === 3
+                    ? "HAVE_FUTURE_DATA"
+                    : "HAVE_ENOUGH_DATA",
+                currentTime: Number(video.currentTime.toFixed(3)),
+              }
+            );
+            video
+              .play()
               .then(() => {
-                console.log("[CANVAS-VIDEO] ✅ play() succeeded after canplay", {
-                  videoId: videoId ?? src,
-                  readyState: video.readyState,
-                  currentTime: Number(video.currentTime.toFixed(3))
-                });
+                console.log(
+                  "[CANVAS-VIDEO] ✅ play() succeeded after canplay",
+                  {
+                    videoId: videoId ?? src,
+                    readyState: video.readyState,
+                    currentTime: Number(video.currentTime.toFixed(3)),
+                  }
+                );
               })
               .catch(handlePlayError);
           } else {
-            console.log("[CANVAS-VIDEO] ⚠️ canplay fired but playback no longer needed", {
-              videoId: videoId ?? src,
-              isPlaying,
-              isInClipRange
-            });
+            console.log(
+              "[CANVAS-VIDEO] ⚠️ canplay fired but playback no longer needed",
+              {
+                videoId: videoId ?? src,
+                isPlaying,
+                isInClipRange,
+              }
+            );
           }
         };
 
-        video.addEventListener('canplay', handleCanPlay, { once: true });
+        video.addEventListener("canplay", handleCanPlay, { once: true });
 
         // Clean up event listener on unmount or state change
         return () => {
-          video.removeEventListener('canplay', handleCanPlay);
+          video.removeEventListener("canplay", handleCanPlay);
           console.log("[CANVAS-VIDEO] 🧹 Cleaned up canplay listener", {
-            videoId: videoId ?? src
+            videoId: videoId ?? src,
           });
         };
       }
@@ -317,7 +354,15 @@ export function VideoPlayer({
       }
       video.pause();
     }
-  }, [isPlaying, isInClipRange, clipStartTime, clipEndTime, currentTime, videoId, src]);
+  }, [
+    isPlaying,
+    isInClipRange,
+    clipStartTime,
+    clipEndTime,
+    currentTime,
+    videoId,
+    src,
+  ]);
 
   // Sync volume and speed
   useEffect(() => {
