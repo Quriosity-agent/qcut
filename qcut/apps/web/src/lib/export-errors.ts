@@ -42,12 +42,27 @@ export const UNSUPPORTED_ERRORS: Record<
 /**
  * Custom error class for unsupported export configurations.
  * Provides user-friendly messages and actionable suggestions.
+ *
+ * @example
+ * ```typescript
+ * throw new ExportUnsupportedError("image-elements");
+ * // Error: Image elements are not currently supported in export.
+ * ```
  */
 export class ExportUnsupportedError extends Error {
+  /** The specific reason why the export is unsupported. */
   readonly reason: UnsupportedReason;
+
+  /** A user-friendly message describing the unsupported configuration. */
   readonly userMessage: string;
+
+  /** An actionable suggestion for how to resolve the issue. */
   readonly suggestion: string;
 
+  /**
+   * Creates a new ExportUnsupportedError.
+   * @param reason - The reason why the export cannot be completed.
+   */
   constructor(reason: UnsupportedReason) {
     const errorInfo = UNSUPPORTED_ERRORS[reason];
     super(errorInfo.message);

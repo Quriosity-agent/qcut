@@ -185,7 +185,8 @@ export function useTimelinePlayhead({
       setIsScrubbing(false);
       if (scrubTime !== null) seek(scrubTime); // finalize seek
       setScrubTime(null);
-      hasLoggedSeekRef.current = false;
+      // Note: Don't reset hasLoggedSeekRef here - it's reset on mousedown
+      // Resetting here would cause double-logging for click-only ruler seeks
 
       // Stop auto-scrolling
       if (autoScrollRef.current) {
@@ -274,7 +275,7 @@ export function useTimelinePlayhead({
     rulerScrollRef,
     tracksScrollRef,
     isScrubbing,
-    currentTime.toFixed,
+    currentTime,
   ]);
 
   return {

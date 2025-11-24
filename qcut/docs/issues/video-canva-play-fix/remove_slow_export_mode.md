@@ -889,54 +889,64 @@ describe('Export Analysis', () => {
 
 ## Final Recommendations
 
-### 🎯 Recommended Approach: **Option 2 Extended** (Most User-Friendly)
+### ✅ Implemented Approach: **Option 1 - Error on Unsupported Cases**
 
-Instead of completely removing Mode 3, **extend Mode 2 capabilities** to handle the cases currently requiring Mode 3:
+Mode 3 (image-pipeline/Canvas frame rendering) has been **removed**. Unsupported timeline configurations now throw descriptive `ExportUnsupportedError` errors with actionable suggestions.
 
-#### Phase 1: Immediate (Low-hanging fruit)
-1. **Add FFmpeg overlay support for images**
-   - Download image blobs to temp files
-   - Use FFmpeg `-i image.png` + overlay filter
-   - Works for static images on timeline
+#### What Was Implemented
 
-2. **Improve error messages**
-   - Detect unsupported cases before export starts
-   - Show clear error: "Overlapping videos not yet supported"
-   - Provide actionable guidance
+1. **Created `export-errors.ts`**
+   - `ExportUnsupportedError` class with `reason`, `userMessage`, and `suggestion` properties
+   - Clear error types: `image-elements`, `overlapping-videos`, `blob-urls`, `no-video-elements`
 
-#### Phase 2: Medium-term (More complex)
-3. **Add FFmpeg complex filter graphs for overlapping videos**
-   - Research FFmpeg xstack filter for multi-video compositing
-   - Implement for 2-3 video overlap scenarios
-   - More complex than Mode 3 but still faster
+2. **Updated `export-analysis.ts`**
+   - Removed `"image-pipeline"` from `OptimizationStrategy` type
+   - Added `validateTimelineForExport()` function that throws errors for unsupported cases
+   - Validation runs before mode selection
 
-4. **Migrate Canvas effects to FFmpeg filters**
-   - Audit all effects in effects-store
-   - Map Canvas filters to FFmpeg equivalents
-   - Document effects that cannot be migrated
+3. **Updated `export-engine-cli.ts`**
+   - Removed all Canvas rendering methods
+   - Removed frame-based export logic
+   - Only supports Mode 1, 1.5, and 2
 
-#### Phase 3: Long-term (Optional)
-5. **Remove Mode 3 infrastructure**
-   - Only after Phases 1-2 prove stable
-   - Keep as deprecated fallback for 1-2 releases
-   - Clean up dead code
+4. **Updated `ffmpeg-handler.ts`**
+   - Removed `"image-pipeline"` from strategy type
+   - Removed Mode 3 frame validation
 
-### ⚠️ What NOT to Do
+#### Supported Export Modes
 
-1. **Don't remove Mode 3 immediately** - Too many breaking changes
-2. **Don't keep silent fallbacks** - Users need to know when/why Mode 3 is used
-3. **Don't ignore the base class** - `ExportEngine` may be used elsewhere
+| Mode | Name | Use Case | Speed |
+|------|------|----------|-------|
+| **Mode 1** | Direct Copy | Single video, no overlays | 15-48x |
+| **Mode 1.5** | Video Normalization | Multiple sequential videos | 5-7x |
+| **Mode 2** | Direct Video with Filters | Text, stickers, effects | 3-5x |
 
-### 📋 Checklist Before Removal
+#### Unsupported Cases (Throw Errors)
 
-- [ ] All image overlay cases work with FFmpeg filters
-- [ ] All overlapping video cases work with complex filters
-- [ ] All effects have FFmpeg equivalents OR clear error messages
-- [ ] Blob URLs are downloaded to temp files automatically
-- [ ] Tests cover all edge cases
-- [ ] User documentation is updated
-- [ ] Export UI shows clear errors for unsupported cases
-- [ ] Migration guide exists for users with Mode 3 timelines
+| Case | Error Message | Suggestion |
+|------|---------------|------------|
+| Image elements | "Image elements are not currently supported" | Remove images or convert to video |
+| Overlapping videos | "Overlapping videos are not currently supported" | Arrange sequentially |
+| Blob URLs | "Media files could not be accessed" | Re-import from local disk |
+| No video elements | "No video elements found" | Add at least one video |
+
+### 📋 Implementation Checklist
+
+- [x] Remove `"image-pipeline"` from OptimizationStrategy type
+- [x] Add validation that throws `ExportUnsupportedError` for unsupported cases
+- [x] Remove Canvas rendering methods from `ExportEngineCLI`
+- [x] Remove frame-based logic from `ffmpeg-handler.ts`
+- [x] Update tests for new error behavior
+- [x] All tests passing (11/11)
+- [x] Lint and type checks passing
+
+### 🔮 Future Enhancements (Option 2 Path)
+
+If user demand requires supporting currently unsupported cases:
+
+1. **FFmpeg overlay for images** - Use FFmpeg `-i image.png` + overlay filter
+2. **FFmpeg complex filters for overlapping videos** - Use xstack filter
+3. **Map Canvas effects to FFmpeg filters** - Audit and migrate effects
 
 ---
 
@@ -946,6 +956,7 @@ Instead of completely removing Mode 3, **extend Mode 2 capabilities** to handle 
 |------|---------|---------|
 | 2025-01-XX | 1.0 | Initial documentation - identified all Mode 3 code sections |
 | 2025-01-XX | 1.1 | Added code review findings, verified line numbers, identified base class dependencies |
+| 2025-11-25 | 2.0 | **Implementation complete** - Option 1 implemented, Mode 3 removed, documentation updated |
 
 ---
 

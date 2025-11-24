@@ -4,6 +4,8 @@
 
 QCut includes comprehensive AI-powered video generation capabilities, allowing users to create custom videos from text prompts and images directly within the video editor. This system integrates with multiple leading AI video models and seamlessly adds generated content to the timeline.
 
+> **⚠️ Desktop App Only**: AI video generation features require the Electron desktop application. These features are not available in web-only mode because they rely on Electron IPC for secure API key storage and management.
+
 ## Available AI Video Models
 
 ### 1. **Kling v2.1**
@@ -246,7 +248,17 @@ console.log(`Added AI video with ID: ${newMediaItemId}`);
 
 ## Configuration
 
-### Environment Variables
+### API Key Setup (Desktop App Only)
+
+AI video generation requires a FAL AI API key, which is securely stored via Electron IPC:
+
+1. **Open Settings**: Navigate to Settings in the QCut desktop app
+2. **Enter API Key**: Add your FAL AI API key in the API Keys section
+3. **Secure Storage**: Keys are stored in the user data directory (`api-keys.json`)
+
+> **Note**: API keys are stored locally on your machine and never transmitted except to the FAL AI service for generation requests.
+
+### Environment Variables (Development)
 ```bash
 VITE_FAL_API_KEY=your_fal_api_key_here
 ```

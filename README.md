@@ -23,8 +23,8 @@
 - **Multi-track support** - Audio and video tracks with drag-and-drop
 - **Real-time preview** - Instant feedback while editing
 - **FFmpeg Integration** - Professional-grade video processing via WebAssembly
-- **AI-Powered Features** - Text-to-image generation, background removal, and more
-- **Sound Library** - Integrated library with search and commercial-use filtering
+- **AI-Powered Features** - Text-to-video, image-to-video, text-to-image generation *(desktop app only)*
+- **Sound Library** - Integrated library with search and commercial-use filtering *(desktop app only)*
 - **Stickers & Graphics** - Rich icon library with Iconify integration
 - **Text Overlays** - Customizable text elements with positioning and animations
 - **Local File System** - Native file dialogs and direct file access
@@ -250,8 +250,18 @@ We welcome contributions! The project has been successfully migrated to a deskto
 ### Known Limitations
 
 - API routes from Next.js structure are non-functional (use Electron IPC instead)
-- Some advanced features still in development (transcription, AI features)
 - FFmpeg WebAssembly files need special handling in linting
+
+### Desktop-Only Features
+
+The following features require the Electron desktop app and are not available in web-only mode:
+
+- **AI Generation** (text-to-video, image-to-video, text-to-image) - Requires secure API key storage via Electron IPC
+- **Sound Library Search** - Freesound API integration requires secure API key management
+- **AI Transcription** - Gemini-based transcription requires secure API key storage
+- **Native File Access** - Direct file system operations for video export and media import
+
+These features rely on Electron's secure IPC communication for API key management and native file system access, which cannot be replicated in a browser-only environment.
 
 ## Troubleshooting
 
