@@ -717,7 +717,7 @@ export function PreviewPanel() {
       if (!source) {
         return (
           <div
-            key={`blur-${element.id}-${elementData.track.id}`}
+            key={`blur-${element.id}-${backgroundElement.track.id}`}
             className="absolute inset-0 flex items-center justify-center bg-black/60 text-white text-xs"
           >
             No available video source
@@ -727,7 +727,7 @@ export function PreviewPanel() {
 
       return (
         <div
-          key={`blur-${element.id}-${elementData.track.id}`}
+          key={`blur-${element.id}-${backgroundElement.track.id}`}
           className="absolute inset-0 overflow-hidden"
           style={{
             filter: `blur(${blurIntensity}px)`,
@@ -757,7 +757,7 @@ export function PreviewPanel() {
     if (mediaItem.type === "image") {
       return (
         <div
-          key={`blur-${element.id}-${elementData.track.id}`}
+          key={`blur-${element.id}-${backgroundElement.track.id}`}
           className="absolute inset-0 overflow-hidden"
           style={{
             filter: `blur(${blurIntensity}px)`,
