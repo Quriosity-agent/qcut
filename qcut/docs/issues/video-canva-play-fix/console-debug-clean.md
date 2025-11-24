@@ -4,32 +4,34 @@
 Identify why canvas is displaying a static image instead of playing video.
 
 ## Key Finding
-**The video is stuck in an infinite loop of trying to play but never succeeding.**
+**Active video blob URLs are still being revoked before the element reaches readyState 3, so `canplay` never fires (the 60fps canplay-listener churn is fixed).**
 
 ## Evidence (code + console)
-- `apps/web/src/components/ui/video-player.tsx`: the play/useEffect depends on `currentTime`, so it reruns on every `playback-update` tick (~60fps). Each rerun cleans up the `{ once: true } canplay` listener before the video buffers.
-- `consolev8.md`: `video-player.tsx:264 ⏳ Video not ready…` is followed ~16ms later by `video-player.tsx:304 🧹 Cleaned up canplay listener`, repeating every frame while readyState stays 0/1.
-- No `canplay`/`play() succeeded` messages show up in the same capture, proving the listener never survives long enough to fire.
+- `apps/web/src/components/ui/video-player.tsx`: play effect now depends on `isPlaying` + clip range (no `currentTime`), so the `{ once: true }` `canplay` listener stays attached until teardown.
+- `consolev10.md`: after Play, only one `Video not ready (rs=0)` log appears; there is never a `canplay`/`play() succeeded`; `Cleaned up canplay listener` fires once when pause happens at ~0.516s.
+- `consolev10.md`: active playback blob `blob:...7b6954b7...` is revoked (tracked + "Revoked untracked") after ~12.3s and then spammed with `ERR_FILE_NOT_FOUND` while the video is buffering; earlier blob `blob:...61f43f64...` is revoked in ~188ms and also 404s.
+- `apps/web/src/components/providers/migrators/blob-url-cleanup.tsx`: logs "Starting blob URL cleanup migration..." twice per load (StrictMode double-run), so cleanup may still execute more than once.
 
 ---
 
-## ?? Critical Pattern Detected (Repeats 60x/second)
+## Current Console Pattern (consolev10)
 
 ```
-[CANVAS-VIDEO] ? Video not ready, waiting for canplay event
-[CANVAS-VIDEO] ?? Cleaned up canplay listener
+[PLAYBACK] Play/Pause button clicked (action: play)
+[CANVAS-VIDEO] Video not ready, waiting for canplay event (rs=0)
+BlobUrlDebug: Revoked blob:...7b6954b7... (lifespan ~12.3s) + Revoked untracked
+GET blob:...7b6954b7... net::ERR_FILE_NOT_FOUND (suppressed)
+[CANVAS-VIDEO] Cleaned up canplay listener (on pause at ~0.516s)
 ```
 
-This pattern shows:
-1. Video detects it's not ready (readyState < 3)
-2. Sets up canplay event listener
-3. Component immediately re-renders
-4. Listener is cleaned up before video can load
-5. Repeats endlessly
+Shows:
+1) Listener now survives (no 60fps re-render churn)
+2) Blob is missing/404ing before readyState can reach 3
+3) `canplay` never fires, so play() is never attempted successfully
 
 ---
 
-## ?? Essential Console Messages Only
+## Essential Console Messages Only
 
 ### User Action
 ```
@@ -40,38 +42,34 @@ playback-store.ts:28 step 2: playback timer started
 
 ### Video Playback Attempt (First Frame)
 ```
-video-player.tsx:264 [CANVAS-VIDEO] ? Video not ready, waiting for canplay event
-  currentReadyState: 0 or 1 (HAVE_NOTHING or HAVE_METADATA)
+video-player.tsx:291 [CANVAS-VIDEO] Video not ready, waiting for canplay event
+  currentReadyState: 0 (HAVE_NOTHING)
   needsReadyState: 3 (HAVE_FUTURE_DATA)
 ```
 
-### Immediate Cleanup (16ms later)
+### Blob Revocation While Buffering
 ```
-video-player.tsx:304 [CANVAS-VIDEO] ?? Cleaned up canplay listener
+blob-url-debug.ts:59 [BlobUrlDebug] Revoked: blob:...7b6954b7... (lifespan ~12330ms)
+blob-url-debug.ts:64 [BlobUrlDebug] Revoked untracked: blob:...7b6954b7...
+blob:...7b6954b7... net::ERR_FILE_NOT_FOUND (multiple times)
 ```
 
-### Continuous Loop (Every ~16ms)
+### Cleanup (on pause)
 ```
-Frame 1:  ? Video not ready, waiting for canplay event
-Frame 1:  ?? Cleaned up canplay listener
-Frame 2:  ? Video not ready, waiting for canplay event
-Frame 2:  ?? Cleaned up canplay listener
-Frame 3:  ? Video not ready, waiting for canplay event
-Frame 3:  ?? Cleaned up canplay listener
-... (repeats 60 times per second)
+video-player.tsx:350 [CANVAS-VIDEO] Cleaned up canplay listener
 ```
 
 ---
 
-## ? What's Missing (Never Appears)
+## What's Missing (Never Appears)
 
-These messages SHOULD appear but never do:
+These SHOULD appear but never do:
 
 ```
 // Never seen:
-[CANVAS-VIDEO] ? canplay event fired, attempting play
-[CANVAS-VIDEO] ? play() succeeded
-[CANVAS-VIDEO] ? Video ready, playing immediately
+[CANVAS-VIDEO] canplay event fired, attempting play
+[CANVAS-VIDEO] play() succeeded
+[CANVAS-VIDEO] Video ready, playing immediately
 
 // Never reaches:
 step 13: drawing to canvas
@@ -79,83 +77,78 @@ step 13: drawing to canvas
 
 ---
 
-## ?? Root Cause
+## Root Cause
 
-**Component re-renders are destroying the `canplay` listener before videos can load.**
+**Blob URLs for the active video are still being revoked or missing before buffering completes, so readyState stays 0 and `canplay` never fires.**
 
-### Why It Happens:
-1. **Effect tied to `currentTime`**: The play/useEffect depends on `currentTime`, so it reruns on every `playback-update` tick (~16ms).
-2. **Cleanup on each rerun**: Each rerun calls the effect cleanup, removing the `{ once: true } canplay` listener immediately after it is attached.
-3. **Buffer never finishes**: The video needs 100–500ms to buffer to readyState 3/4, but the listener is removed after ~16ms, so it never fires.
-4. **Stuck forever**: Ready state remains 0/1, so play() is never attempted successfully.
+- Listener churn is fixed (effect no longer reruns every frame), but the video element never becomes ready because its blob 404s mid-load.
+- Blob cleanup/migration still runs twice per mount, and untracked `URL.revokeObjectURL` calls are revoking the active blob even after adding in-use guards.
+- With the source revoked, the player eventually pauses and cleans up the listener without ever seeing `canplay`.
 
 ---
 
-## ??? Required Fix
+## Required Fix
 
-**Stop the play/useEffect from rerunning every frame so the `canplay` listener survives long enough to fire.**
+**Keep the active playback blob alive until `canplay`/`play()` succeed.**
 
 Recommended order:
-1) **Stabilize effect deps** — remove `currentTime` (and other 60fps signals) from the play/useEffect deps so it only reruns on `isPlaying`, `isInClipRange`, or source changes.
-2) **Keep listener persistent** — if additional protection is needed, store the `canplay` handler in a ref and only attach once per source/play request.
-3) **Optional isolation** — memoize or split out the video element if parent rerenders still leak through.
+1) Route all blob revocations through the blob manager (or wrap native `URL.revokeObjectURL`) so the in-use guard can block active blobs; stop any untracked revokes (`Revoked untracked` in consolev10).
+2) Ensure preview cleanup and blob migration skip the active blob URL and truly run once per session (avoid StrictMode double-run clearing blobs twice).
+3) Re-test playback; expect `canplay` -> `play() succeeded` with no `ERR_FILE_NOT_FOUND` before readyState >= 3.
 
 ---
 
-## ?? Implementation (current)
-- Updated `apps/web/src/components/ui/video-player.tsx` so the play/useEffect no longer depends on `currentTime` (stopping the 60fps cleanup of the `canplay` listener).
-- Added a `timelineTimeRef` to keep logs accurate without re-triggering the effect.
-- Playback window listeners now stay attached instead of being torn down every tick.
-- Guarded blob URLs in `blob-manager`/`video-player` so active playback blobs are marked in-use and cannot be revoked mid-buffer; preview cleanup now skips the active blob URL instead of revoking everything on each rebuild.
-- `getVideoSource` now memoizes blob URLs per File and creates them via the blob manager (no more new blob per render).
-- Blob cleanup migration now runs once per session (avoids double logs).
-- Removed the noisy `step 11: calculating active elements` spam to keep video lifecycle logs readable.
+## Implementation (current)
+- Play/useEffect no longer depends on `currentTime` (listener survives instead of being torn down at 60fps).
+- Added `timelineTimeRef` to keep logs accurate without retriggering the play effect.
+- Playback window listeners stay attached instead of being recreated every tick.
+- Mark/unmark active playback blobs in `blob-manager` + preview cleanup skips the active blob when known.
+- `getVideoSource` memoizes blob URLs per `File` and creates them via the blob manager.
+- Blob cleanup migration is guarded to run once per session (still logging twice under StrictMode).
 
 ---
 
-## ?? Success Criteria
+## Success Criteria
 
 When fixed, console should show:
 
 ```
-[CANVAS-VIDEO] ? Video not ready, waiting for canplay event
+[CANVAS-VIDEO] Video not ready, waiting for canplay event
 // ... time passes (100-500ms) ...
-[CANVAS-VIDEO] ? canplay event fired, attempting play
-[CANVAS-VIDEO] ? play() succeeded
+[CANVAS-VIDEO] canplay event fired, attempting play
+[CANVAS-VIDEO] play() succeeded
 step 13: drawing to canvas { frameDrawn: true }
 ```
 
-NOT:
-```
-? waiting -> ?? cleaned up -> ? waiting -> ?? cleaned up (infinite loop)
-```
+And **no** `ERR_FILE_NOT_FOUND` for the active blob until playback stops.
 
 ---
 
-## ?? Debug Checklist
+## Debug Checklist
 
-- [x] Problem #1 fix working (no play() failed errors)
-- [ ] canplay event fires (never happens)
-- [ ] play() succeeds (never happens)
-- [ ] Canvas draws frames (never happens)
-- [ ] Video actually plays (blocked by re-renders)
+- [x] Play effect not tied to `currentTime` (canplay listener no longer destroyed every frame)
+- [ ] Active playback blob never revoked mid-buffer (no `ERR_FILE_NOT_FOUND`)
+- [ ] canplay event fires
+- [ ] play() succeeds
+- [ ] Canvas draws frames
+- [ ] Video actually plays
 
 ---
 
-## ?? How to Repro
+## How to Repro
 1) Run the web app (e.g., `bun dev` at repo root) and open the editor preview.
 2) Load a clip with a video element, scrub to a point inside the clip, and click Play.
-3) Watch console: `? Video not ready` followed ~16ms later by `?? Cleaned up canplay listener` repeating every frame; readyState stays at 0/1.
+3) Watch console: `Video not ready` appears once, then blob `ERR_FILE_NOT_FOUND` spam for the active src; readyState stays at 0; `canplay` never appears.
 
-## ?? How to Verify the Fix
-- Start playback in-clip and confirm `? Video not ready` is followed (after ~100–500ms) by `? canplay event fired` and `? play() succeeded`.
-- Confirm `?? Cleaned up canplay listener` no longer appears every frame (should only fire on teardown).
+## How to Verify the Fix
+- Start playback in-clip and confirm `Video not ready` is followed (after ~100-500ms) by `canplay event fired` and `play() succeeded`.
+- Confirm there are **no** `ERR_FILE_NOT_FOUND` logs for the active blob while buffering/playing.
 - See `step 13: drawing to canvas { frameDrawn: true }` logs and observe the video rendering on canvas.
 
-## ?? New Evidence (consolev9) and Next Move
-- Consolev9 showed blob URLs for the active media being created and revoked within ~300ms, then `ERR_FILE_NOT_FOUND` for that blob, and `?? Cleaned up canplay listener` reappearing.
-- Mitigation applied: active playback blobs are now marked in-use, the preview cleanup skips the active blob URL, and revocation is guarded in `blob-manager`.
-- Follow-up: re-run playback to confirm the active blob survives long enough for `canplay`/`play() succeeded` to fire and that `ERR_FILE_NOT_FOUND` disappears.
+## New Evidence (consolev10) and Next Move
+- After adding blob in-use guards and caching blob URLs per File, the active playback blob (`blob:...7b6954b7...`) was still revoked after ~12.3s and immediately 404ed; `canplay` never fired and readyState stayed 0.
+- Blob cleanup migration still logs twice per load; need to ensure it only runs once and cannot clear the active blob.
+- Next move: trace remaining `URL.revokeObjectURL` call sites (especially untracked revokes), ensure preview cleanup cannot reach the active blob, and retest until `canplay`/`play() succeeded` appear without blob 404s.
 
-## ?? Console Noise to Trim
-- `preview-panel.tsx:445 step 11: calculating active elements` spams every tick and obscures the video lifecycle logs; suppress or throttle this during playback-focused debugging.
+## Console Noise to Trim
+- `preview-panel.tsx:445 step 11: calculating active elements` spam is already suppressed; keep logs focused on video lifecycle and blob tracking.
