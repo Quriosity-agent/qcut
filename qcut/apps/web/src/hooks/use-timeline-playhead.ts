@@ -267,14 +267,6 @@ export function useTimelinePlayhead({
         Math.min(scrollMax, playheadPx - viewportWidth / 2)
       );
       rulerViewport.scrollLeft = tracksViewport.scrollLeft = desiredScroll;
-    } else {
-      console.log("step 6: timeline playhead updated", {
-        currentTime: Number(currentTime.toFixed(3)),
-        playheadPosition: Number(playheadPx.toFixed(2)),
-        shouldAutoScroll: false,
-        zoomLevel: Number(zoomLevel.toFixed(1)),
-        timelineScrollLeft: rulerViewport.scrollLeft,
-      });
     }
   }, [
     playheadPosition,
