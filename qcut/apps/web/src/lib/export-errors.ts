@@ -34,7 +34,8 @@ export const UNSUPPORTED_ERRORS: Record<
   },
   "no-video-elements": {
     message: "No video elements found in timeline.",
-    suggestion: "Add at least one video clip to your timeline before exporting.",
+    suggestion:
+      "Add at least one video clip to your timeline before exporting.",
   },
 };
 
