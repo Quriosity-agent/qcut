@@ -728,6 +728,111 @@ export const TEXT2IMAGE_MODELS: Record<string, Text2ImageModel> = {
       "No seed control for reproducibility",
     ],
   },
+
+  "gemini-3-pro": {
+    id: "gemini-3-pro",
+    name: "Gemini 3 Pro",
+    description:
+      "Google's state-of-the-art image generation with exceptional photorealism and long prompt support",
+    provider: "Google",
+    endpoint: "https://fal.run/fal-ai/gemini-3-pro-image-preview",
+
+    qualityRating: 5,
+    speedRating: 3,
+
+    estimatedCost: "$0.15-0.30",
+    costPerImage: 15, // cents (4K costs 2x)
+
+    maxResolution: "4096x4096",
+    supportedAspectRatios: [
+      "1:1",
+      "4:3",
+      "3:4",
+      "16:9",
+      "9:16",
+      "21:9",
+      "9:21",
+      "3:2",
+      "2:3",
+      "5:4",
+      "4:5",
+    ],
+
+    defaultParams: {
+      aspect_ratio: "1:1",
+      num_images: 1,
+      resolution: "1K",
+      output_format: "png",
+    },
+
+    availableParams: [
+      {
+        name: "aspect_ratio",
+        type: "select",
+        options: [
+          "auto",
+          "1:1",
+          "4:3",
+          "3:4",
+          "16:9",
+          "9:16",
+          "21:9",
+          "9:21",
+          "3:2",
+          "2:3",
+          "5:4",
+          "4:5",
+        ],
+        default: "1:1",
+        description: "Image aspect ratio (auto matches input for editing)",
+      },
+      {
+        name: "resolution",
+        type: "select",
+        options: ["1K", "2K", "4K"],
+        default: "1K",
+        description: "Output resolution (4K costs 2x)",
+      },
+      {
+        name: "num_images",
+        type: "number",
+        min: 1,
+        max: 4,
+        default: 1,
+        description: "Number of images to generate",
+      },
+      {
+        name: "output_format",
+        type: "select",
+        options: ["jpeg", "png", "webp"],
+        default: "png",
+        description: "Output image format",
+      },
+    ],
+
+    bestFor: [
+      "Photorealistic images",
+      "Long detailed prompts (up to 50K chars)",
+      "High-resolution outputs",
+      "Commercial photography",
+      "Product visualization",
+    ],
+
+    strengths: [
+      "Exceptional photorealism (Google's latest)",
+      "Supports extremely long prompts (50,000 chars)",
+      "Multiple resolution options (1K/2K/4K)",
+      "Wide aspect ratio support (11 options)",
+      "Consistent quality across styles",
+    ],
+
+    limitations: [
+      "Higher cost than budget models ($0.15/image)",
+      "4K outputs double the cost",
+      "Slower generation (quality focus)",
+      "No seed control for reproducibility",
+    ],
+  },
 };
 
 // ============================================
@@ -739,6 +844,7 @@ export const TEXT2IMAGE_MODEL_ORDER = [
   "reve-text-to-image",
   "wan-v2-2",
   "imagen4-ultra",
+  "gemini-3-pro",
   "qwen-image",
   "flux-pro-v11-ultra",
   "seeddream-v3",
@@ -811,7 +917,7 @@ export function recommendModelsForPrompt(prompt: string): string[] {
 }
 
 export const MODEL_CATEGORIES = {
-  PHOTOREALISTIC: ["imagen4-ultra", "wan-v2-2"],
+  PHOTOREALISTIC: ["imagen4-ultra", "wan-v2-2", "gemini-3-pro"],
   ARTISTIC: ["seeddream-v3", "seeddream-v4", "qwen-image"], // Add V4 to artistic
   VERSATILE: [
     "qwen-image",
@@ -825,7 +931,8 @@ export const MODEL_CATEGORIES = {
     "wan-v2-2",
     "flux-pro-v11-ultra",
     "seeddream-v4",
-  ], // Add V4
+    "gemini-3-pro",
+  ],
   COST_EFFECTIVE: [
     "seeddream-v3",
     "nano-banana",

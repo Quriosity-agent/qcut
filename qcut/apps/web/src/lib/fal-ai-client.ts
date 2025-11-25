@@ -547,6 +547,14 @@ class FalAIClient {
         params.image_size = undefined;
         params.seed = undefined;
         break;
+
+      case "gemini-3-pro":
+        // Gemini 3 Pro uses aspect_ratio (like Imagen4) + resolution
+        params.aspect_ratio = imageSizeToAspectRatio(settings.imageSize);
+        // Remove image_size if set (Gemini uses aspect_ratio)
+        params.image_size = undefined;
+        // Note: resolution param is passed through defaultParams
+        break;
     }
 
     const supportsOutputFormat = model.availableParams.some(

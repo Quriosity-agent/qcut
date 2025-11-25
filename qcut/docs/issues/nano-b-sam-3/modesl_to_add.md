@@ -985,21 +985,21 @@ export type {
 
 ## Implementation Order
 
-### Phase 1: Gemini 3 Pro Text-to-Image (Subtasks 1.1-1.4)
+### Phase 1: Gemini 3 Pro Text-to-Image (Subtasks 1.1-1.4) ✅ COMPLETED
 **Estimated complexity**: Low (follows existing pattern exactly)
-1. Add model config to `TEXT2IMAGE_MODELS`
-2. Update `TEXT2IMAGE_MODEL_ORDER` array
-3. Update `MODEL_CATEGORIES` object
-4. Add parameter conversion case
+1. ✅ Add model config to `TEXT2IMAGE_MODELS` - Line 732-835
+2. ✅ Update `TEXT2IMAGE_MODEL_ORDER` array - Line 847
+3. ✅ Update `MODEL_CATEGORIES` object - Lines 920, 934
+4. ✅ Add parameter conversion case - Lines 551-557
 
-### Phase 2: Gemini 3 Pro Edit (Subtasks 2.1-2.6)
+### Phase 2: Gemini 3 Pro Edit (Subtasks 2.1-2.6) ✅ COMPLETED
 **Estimated complexity**: Low-Medium (minor type additions)
-1. Add model to `ImageEditRequest` type union
-2. Add `resolution` and `aspectRatio` parameters
-3. Add endpoint config to `MODEL_ENDPOINTS`
-4. Update `image_urls` handling condition
-5. Add payload parameter handling
-6. Add to `getImageEditModels()` list
+1. ✅ Add model to `ImageEditRequest` type union - Line 24
+2. ✅ Add `resolution` and `aspectRatio` parameters - Lines 38-40
+3. ✅ Add endpoint config to `MODEL_ENDPOINTS` - Lines 133-143
+4. ✅ Update `image_urls` handling condition - Line 251
+5. ✅ Add payload parameter handling - Lines 295-301
+6. ✅ Add to `getImageEditModels()` list - Lines 864-908
 
 ### Phase 3: SAM-3 Segmentation (Subtasks 3.1-3.4)
 **Estimated complexity**: Medium (new domain, but follows patterns)
