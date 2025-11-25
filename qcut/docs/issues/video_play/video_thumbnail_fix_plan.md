@@ -935,7 +935,15 @@ If issues arise:
 - [ ] No thumbnail regeneration on project load
 - [ ] Loading state shown while thumbnail generates
 - [ ] Error state shown when generation fails
-- [ ] Console shows storage read (not regeneration) on reload
+- [ ] Console shows `[MediaStore] Using stored thumbnail` on reload
+
+**Verification Steps:**
+1. Run `bun run dev` to start the development server
+2. Import a video file and observe the loading spinner
+3. Wait for thumbnail generation (~500ms)
+4. Add video to timeline and verify thumbnail tiles appear
+5. Reload the page - thumbnail should appear immediately from storage
+6. Check console for `[MediaStore] Using stored thumbnail for <filename>` log
 
 ---
 
