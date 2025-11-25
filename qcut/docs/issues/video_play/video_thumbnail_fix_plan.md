@@ -10,7 +10,41 @@ Video thumbnails are not displaying in:
 
 1. **Immediate Return** - `processVideoFile()` returns `thumbnailUrl: undefined` immediately
 2. **Background Update Disconnected** - Thumbnail generates in background but UI doesn't re-render
-3. **No Persistence** - Thumbnails are not saved to storage, requiring regeneration on every load
+3. **ID Mismatch** - Background uses `generateFileBasedId(file)` which may not match stored item ID
+4. **No Persistence** - Thumbnails are not saved to storage, requiring regeneration on every load
+
+---
+
+## Relevant File Paths
+
+| File | Purpose |
+|------|---------|
+| `apps/web/src/stores/media-store.ts` | processVideoFile, generateVideoThumbnailBrowser, updateMediaMetadata |
+| `apps/web/src/stores/media-store-types.ts` | MediaItem interface definition |
+| `apps/web/src/lib/media-processing.ts` | processMediaFiles - initial file processing |
+| `apps/web/src/lib/storage/storage-service.ts` | Persistence layer for media items |
+| `apps/web/src/components/editor/media-panel/views/media.tsx` | Media panel thumbnail display |
+| `apps/web/src/components/editor/timeline/timeline-element.tsx` | Timeline thumbnail display |
+
+---
+
+## Console Log Evidence (consolev3.md)
+
+```
+[BlobManager] 🟢 Created (unique): blob:app://./1d10c62d-...
+  📍 Source: processVideoFile
+
+[BlobManager] 🔴 Force revoked: blob:app://./1d10c62d-...
+  📍 Created by: processVideoFile
+  🕒 Lifespan: 518ms
+  🏷️ Context: media-store:generateVideoThumbnailBrowser
+```
+
+This shows:
+1. Blob URL is created for thumbnail generation
+2. Thumbnail is generated (canvas.toDataURL creates data URL)
+3. Blob URL is revoked after 518ms
+4. **BUT**: The data URL thumbnail is generated but UI doesn't update
 
 ---
 
@@ -328,3 +362,109 @@ If issues arise:
 - [ ] Loading state shown while thumbnail generates
 - [ ] Error state shown when generation fails
 - [ ] Console shows storage read (not regeneration) on reload
+
+---
+
+## Appendix: Current Code Analysis
+
+### processVideoFile Returns Immediately (media-store.ts:107-124)
+
+```typescript
+export const processVideoFile = async (file: File) => {
+  const defaultResult = {
+    thumbnailUrl: undefined,  // ❌ Always undefined initially
+    width: 1920,
+    height: 1080,
+    duration: 0,
+    fps: 30,
+    processingMethod: "immediate" as const,
+  };
+
+  extractVideoMetadataBackground(file);  // Fire and forget
+  return defaultResult;  // Returns before thumbnail generated
+};
+```
+
+### Background Processing (media-store.ts:126-170)
+
+```typescript
+const extractVideoMetadataBackground = async (file: File) => {
+  try {
+    const [thumbnailData, duration] = await Promise.all([
+      generateVideoThumbnailBrowser(file),
+      getMediaDuration(file),
+    ]);
+
+    updateMediaMetadata(file, {
+      thumbnailUrl: thumbnailData.thumbnailUrl,
+      width: thumbnailData.width,
+      height: thumbnailData.height,
+      duration,
+    });
+  } catch (browserError) {
+    // Silent fail - users get defaults
+  }
+};
+
+const updateMediaMetadata = async (file: File, metadata: any) => {
+  const mediaStore = useMediaStore.getState();
+  const fileId = await generateFileBasedId(file);  // ⚠️ May not match
+
+  const updatedItems = mediaStore.mediaItems.map((item) => {
+    if (item.id === fileId) {  // ⚠️ ID comparison may fail
+      return { ...item, ...metadata };
+    }
+    return item;
+  });
+
+  useMediaStore.setState({ mediaItems: updatedItems });
+  // ⚠️ Missing: persist to storage
+};
+```
+
+### Media Panel Rendering (media.tsx:241-272)
+
+```typescript
+if (item.type === "video") {
+  if (item.thumbnailUrl) {  // Fails when undefined
+    return (
+      <img src={item.thumbnailUrl} alt={item.name} />
+    );
+  }
+  return (
+    <div>
+      <Video className="h-6 w-6" />
+      <span>Video</span>  // Shows this instead
+    </div>
+  );
+}
+```
+
+### Timeline Rendering (timeline-element.tsx:381-420)
+
+```typescript
+if (mediaItem.type === "video" && mediaItem.thumbnailUrl) {  // Fails
+  return (
+    <div style={{
+      backgroundImage: `url(${mediaItem.thumbnailUrl})`,
+    }} />
+  );
+}
+
+return (
+  <span>{element.name}</span>  // Shows this instead
+);
+```
+
+### loadProjectMedia (media-store.ts:648-664)
+
+```typescript
+if (item.type === "video" && item.file) {
+  const processResult = await processVideoFile(item.file);
+  return {
+    ...item,
+    thumbnailUrl: processResult.thumbnailUrl || item.thumbnailUrl,
+    // processResult.thumbnailUrl is undefined!
+  };
+}
+```
