@@ -4,7 +4,11 @@ import { storageService } from "@/lib/storage/storage-service";
 import { useTimelineStore } from "./timeline-store";
 import { generateUUID, generateFileBasedId } from "@/lib/utils";
 import { getVideoInfo, generateThumbnail } from "@/lib/ffmpeg-utils";
-import { createObjectURL, revokeObjectURL } from "@/lib/blob-manager";
+import {
+  createObjectURL,
+  revokeObjectURL,
+  getOrCreateObjectURL,
+} from "@/lib/blob-manager";
 import {
   handleError,
   ErrorCategory,
@@ -469,6 +473,7 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
         }
 
         // Create URL for immediate display - use data URL for SVGs to avoid blob URL issues in Electron
+        // Use cached blob URLs for display to avoid creating duplicates for the same file
         let displayUrl = processedUrl;
         if (file.size > 0) {
           // Special handling for SVG files - use data URL instead of blob URL
@@ -480,10 +485,10 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
               const text = await file.text();
               displayUrl = `data:image/svg+xml;base64,${btoa(text)}`;
             } catch (error) {
-              displayUrl = createObjectURL(file, "addMediaItem-svg-fallback");
+              displayUrl = getOrCreateObjectURL(file, "addMediaItem-svg-fallback");
             }
           } else {
-            displayUrl = createObjectURL(file, "addMediaItem-display");
+            displayUrl = getOrCreateObjectURL(file, "addMediaItem-display");
           }
         }
 

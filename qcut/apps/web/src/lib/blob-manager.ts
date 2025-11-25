@@ -349,6 +349,19 @@ export const revokeObjectURL = (url: string, context?: string): boolean => {
   return blobManager.revokeObjectURL(url, context);
 };
 
+// NEW: For long-lived URLs (display, playback) - returns cached URL if available
+export const getOrCreateObjectURL = (
+  file: File | Blob,
+  source?: string
+): string => {
+  return blobManager.getOrCreateObjectURL(file, source);
+};
+
+// NEW: For releasing refs (instead of immediate revoke) - only revokes when refCount reaches 0
+export const releaseObjectURL = (url: string, context?: string): boolean => {
+  return blobManager.releaseObjectURL(url, context);
+};
+
 // Development helper to monitor blob usage
 if (import.meta.env.DEV) {
   (window as any).debugBlobs = () => {

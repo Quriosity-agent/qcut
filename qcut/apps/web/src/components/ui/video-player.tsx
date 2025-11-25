@@ -4,7 +4,11 @@ import { useRef, useEffect } from "react";
 import type { CSSProperties } from "react";
 import { usePlaybackStore } from "@/stores/playback-store";
 import type { VideoSource } from "@/lib/media-source";
-import { createObjectURL, revokeObjectURL } from "@/lib/blob-manager";
+import {
+  getOrCreateObjectURL,
+  releaseObjectURL,
+  revokeObjectURL,
+} from "@/lib/blob-manager";
 
 interface VideoPlayerProps {
   videoId?: string;
@@ -160,7 +164,7 @@ export function VideoPlayer({
     // Dimensions will be checked by video element itself
   }, []);
 
-  // Video source tracking with delayed cleanup to prevent race conditions
+  // Video source tracking with cached blob URLs and ref-counted cleanup
   useEffect(() => {
     const video = videoRef.current;
     if (!video || !videoSource) return;
@@ -169,30 +173,31 @@ export function VideoPlayer({
     videoLoadedRef.current = false;
 
     if (videoSource.type === "file") {
-      // Clean up any pending blob URL from previous source AFTER new one is set
+      // Release reference to previous blob URL (if any)
       const previousBlobUrl = pendingCleanupRef.current;
 
-      const blobUrl = createObjectURL(videoSource.file, "VideoPlayer");
+      // Use cached blob URL - may reuse existing URL for same file
+      const blobUrl = getOrCreateObjectURL(videoSource.file, "VideoPlayer");
       blobUrlRef.current = blobUrl;
       video.src = blobUrl;
 
       console.log(
-        `[VideoPlayer] Created blob URL for ${videoId ?? "video"}: ${blobUrl}`
+        `[VideoPlayer] Using blob URL for ${videoId ?? "video"}: ${blobUrl}`
       );
 
-      // Now safe to revoke previous URL since new one is active
+      // Release previous URL reference (only revokes if refCount reaches 0)
       if (previousBlobUrl && previousBlobUrl !== blobUrl) {
         console.log(
-          `[VideoPlayer] Revoking previous blob URL: ${previousBlobUrl}`
+          `[VideoPlayer] Releasing previous blob URL: ${previousBlobUrl}`
         );
-        revokeObjectURL(previousBlobUrl, "VideoPlayer-previous");
+        releaseObjectURL(previousBlobUrl, "VideoPlayer-previous");
       }
 
       // Mark current URL for potential cleanup on unmount
       pendingCleanupRef.current = blobUrl;
 
       return () => {
-        // DON'T revoke here - let the next effect iteration handle it
+        // DON'T release here - let the next effect iteration handle it
         // or component unmount cleanup
         console.log(
           `[VideoPlayer] Effect cleanup - blob URL marked for later: ${blobUrl}`
@@ -202,9 +207,9 @@ export function VideoPlayer({
 
     if (videoSource.type === "remote") {
       video.src = videoSource.src;
-      // Clean up any pending blob URL when switching to remote
+      // Release any pending blob URL when switching to remote
       if (pendingCleanupRef.current) {
-        revokeObjectURL(pendingCleanupRef.current, "VideoPlayer-remote-switch");
+        releaseObjectURL(pendingCleanupRef.current, "VideoPlayer-remote-switch");
         pendingCleanupRef.current = null;
       }
     }
@@ -219,12 +224,12 @@ export function VideoPlayer({
   // Separate cleanup effect for component unmount only
   useEffect(() => {
     return () => {
-      // Only revoke on actual component unmount
+      // Release reference on actual component unmount (only revokes if refCount reaches 0)
       if (pendingCleanupRef.current) {
         console.log(
-          `[VideoPlayer] Component unmount - revoking: ${pendingCleanupRef.current}`
+          `[VideoPlayer] Component unmount - releasing: ${pendingCleanupRef.current}`
         );
-        revokeObjectURL(pendingCleanupRef.current, "VideoPlayer-unmount");
+        releaseObjectURL(pendingCleanupRef.current, "VideoPlayer-unmount");
         pendingCleanupRef.current = null;
       }
     };

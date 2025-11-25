@@ -13,7 +13,7 @@ import {
   StorageAdapter,
 } from "./types";
 import { TimelineTrack } from "@/types/timeline";
-import { createObjectURL } from "@/lib/blob-manager";
+import { getOrCreateObjectURL } from "@/lib/blob-manager";
 import { debugLog, debugError, debugWarn } from "@/lib/debug-config";
 
 class StorageService {
@@ -329,9 +329,9 @@ class StorageService {
           `[StorageService] Created data URL for ${metadata.name} in Electron`
         );
       } else {
-        // Use blob URL for web environment or non-image files
-        // NOTE: Caller is responsible for revoking blob URLs via revokeObjectURL()
-        url = createObjectURL(file, "storage-service");
+        // Use cached blob URL for web environment or non-image files
+        // Uses ref-counting - call releaseObjectURL() when done instead of revokeObjectURL()
+        url = getOrCreateObjectURL(file, "storage-service");
         debugLog(
           `[StorageService] Created object URL for ${metadata.name}: ${url}`
         );
