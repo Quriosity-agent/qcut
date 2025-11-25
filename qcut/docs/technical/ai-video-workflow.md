@@ -389,20 +389,18 @@ const IMAGE_TO_VIDEO_ENDPOINTS = {
 
 ### Generation Parameters
 ```typescript
+// Text-to-Video request (ai-video-client.ts)
 interface VideoGenerationRequest {
   prompt: string;
   model: string;
   resolution?: string;    // "480p", "720p", "1080p", "1440p", "2160p"
   duration?: number;      // Varies by model
   aspect_ratio?: string;  // "16:9", "9:16", "1:1", "4:3", "3:4", "21:9"
-  generate_audio?: boolean;
-  enhance_prompt?: boolean;
-  negative_prompt?: string;
-  seed?: number;
 }
 
+// Image-to-Video request (ai-video-client.ts)
 interface ImageToVideoRequest {
-  image: File | string;   // File or URL
+  image: File;            // File object (not URL)
   model: string;
   prompt?: string;
   resolution?: string;
@@ -410,15 +408,22 @@ interface ImageToVideoRequest {
   aspect_ratio?: string;
 }
 
-interface FrameToVideoRequest {
-  first_frame: File | string;
-  last_frame: File | string;
-  model: string;
-  prompt?: string;
-  duration?: number;
-  generate_audio?: boolean;
+// Veo 3.1 Frame-to-Video request (ai-generation.ts)
+// Used for first-last-frame-to-video generation
+interface Veo31FrameToVideoInput {
+  prompt: string;              // Required: Animation description
+  first_frame_url: string;     // Required: Opening frame URL
+  last_frame_url: string;      // Required: Closing frame URL
+  aspect_ratio?: "9:16" | "16:9";  // Default: "16:9"
+  duration?: "8s";             // Currently only "8s" supported
+  resolution?: "720p" | "1080p";   // Default: "720p"
 }
 ```
+
+> **Note**: Model-specific requests may have additional optional fields. Check the
+> individual model functions in `ai-video-client.ts` and `fal-ai-client.ts` for
+> complete parameter lists (e.g., `generate_audio`, `enhance_prompt`, `negative_prompt`,
+> `seed` are available on specific model endpoints).
 
 ### Video Processing Pipeline
 
@@ -472,7 +477,12 @@ VITE_FAL_API_KEY=your_fal_api_key_here
 ### Model Defaults
 - **Default Duration**: Varies by model (typically 5-8 seconds)
 - **Default Resolution**: 720p-1080p depending on model
-- **Max Prompt Length**: 500 characters (up to 3000 for some models)
+- **Max Prompt Length**: Model-specific limits:
+  - Hailuo 2.3 Standard: 1500 characters
+  - Hailuo 2.3 Pro: 2000 characters
+  - Reve: 2560 characters
+  - Vidu Q2: 3000 characters
+  - SeedDream V4 / FAL AI: 5000 characters
 - **Max Image Size**: 10MB (8MB for Veo 3.1)
 - **Max Audio Size**: 50MB (for avatar models)
 - **Max Video Size**: 100MB (500MB for upscale)

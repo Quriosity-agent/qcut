@@ -105,10 +105,7 @@ export const getImageDimensions = (
 };
 
 // Helper to update a single field on a media item (in-memory only)
-const updateMediaItemField = (
-  itemId: string,
-  updates: Partial<MediaItem>
-) => {
+const updateMediaItemField = (itemId: string, updates: Partial<MediaItem>) => {
   const mediaStore = useMediaStore.getState();
   const updatedItems = mediaStore.mediaItems.map((item) => {
     if (item.id === itemId) {

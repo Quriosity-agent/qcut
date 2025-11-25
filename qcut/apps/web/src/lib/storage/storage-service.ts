@@ -304,7 +304,7 @@ class StorageService {
 
     if (!metadata) return null;
 
-    let url: string;
+    let url: string | undefined;
     let actualFile: File;
 
     if (file && file.size > 0) {
@@ -333,7 +333,7 @@ class StorageService {
         // DON'T create blob URL here - let consumers create lazily
         // This prevents wasteful URL creation during cleanup migrations
         // MediaStore.loadProjectMedia() will create URLs when needed
-        url = undefined as unknown as string;
+        url = undefined;
         debugLog(
           `[StorageService] Loaded ${metadata.name} without blob URL (lazy creation)`
         );
