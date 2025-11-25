@@ -11,7 +11,8 @@ export interface MediaItem {
   originalUrl?: string; // Original URL before blob conversion (e.g., fal.ai URL)
   localPath?: string; // REQUIRED for AI videos: Local file path on disk (absolute path)
   isLocalFile?: boolean; // True if file is saved to disk (MANDATORY for AI videos)
-  thumbnailUrl?: string; // For video thumbnails
+  thumbnailUrl?: string; // For video thumbnails (data URL, persisted to storage)
+  thumbnailStatus?: "pending" | "loading" | "ready" | "failed"; // Thumbnail generation state
   duration?: number; // For video/audio duration
   width?: number; // For video/image width
   height?: number; // For video/image height

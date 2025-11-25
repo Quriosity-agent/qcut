@@ -239,6 +239,25 @@ export function MediaView() {
     }
 
     if (item.type === "video") {
+      // Show loading spinner while thumbnail is being generated
+      if (
+        item.thumbnailStatus === "loading" ||
+        item.thumbnailStatus === "pending"
+      ) {
+        return (
+          <div className="w-full h-full bg-muted/30 flex flex-col items-center justify-center text-muted-foreground rounded">
+            <Loader2 className="h-6 w-6 mb-1 animate-spin" />
+            <span className="text-xs">Loading...</span>
+            {item.duration && (
+              <span className="text-xs opacity-70">
+                {formatDuration(item.duration)}
+              </span>
+            )}
+          </div>
+        );
+      }
+
+      // Show thumbnail if available
       if (item.thumbnailUrl) {
         return (
           <div className="relative w-full h-full">
@@ -259,6 +278,8 @@ export function MediaView() {
           </div>
         );
       }
+
+      // Fallback: no thumbnail available
       return (
         <div className="w-full h-full bg-muted/30 flex flex-col items-center justify-center text-muted-foreground rounded">
           <Video className="h-6 w-6 mb-1" />

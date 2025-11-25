@@ -8,6 +8,7 @@ import {
   getOrCreateObjectURL,
   releaseObjectURL,
   revokeObjectURL,
+  createObjectURL,
 } from "@/lib/blob-manager";
 
 interface VideoPlayerProps {
@@ -37,6 +38,8 @@ export function VideoPlayer({
   const blobUrlRef = useRef<string | null>(null);
   const pendingCleanupRef = useRef<string | null>(null);
   const videoLoadedRef = useRef(false);
+  const recoveryAttemptRef = useRef(0);
+  const MAX_RECOVERY_ATTEMPTS = 2;
   const { isPlaying, currentTime, volume, speed, muted } = usePlaybackStore();
   const timelineTimeRef = useRef(currentTime);
 
@@ -257,12 +260,14 @@ export function VideoPlayer({
       onContextMenu={(e) => e.preventDefault()}
       onLoadedMetadata={() => {
         videoLoadedRef.current = true;
+        recoveryAttemptRef.current = 0; // Reset recovery counter on successful load
         console.log(`[VideoPlayer] ✅ Video loaded: ${videoId ?? "video"}`);
       }}
       onError={(e) => {
         const video = e.currentTarget;
         const errorCode = video.error?.code;
         const errorMessage = video.error?.message || "Unknown error";
+
         console.error(
           `[VideoPlayer] ❌ Video error for ${videoId ?? "video"}:`,
           {
@@ -273,6 +278,50 @@ export function VideoPlayer({
             readyState: video.readyState,
           }
         );
+
+        // Handle ERR_UPLOAD_FILE_CHANGED by creating fresh blob URL
+        // This error occurs when the File backing a blob URL is invalidated
+        // Error code 4 = MEDIA_ERR_SRC_NOT_SUPPORTED (often wraps network errors in Electron)
+        const isFileChangedError =
+          errorMessage.includes("UPLOAD_FILE_CHANGED") ||
+          errorMessage.includes("ERR_FILE_NOT_FOUND") ||
+          (errorCode === 4 && videoSource?.type === "file");
+
+        if (isFileChangedError && videoSource?.type === "file") {
+          if (recoveryAttemptRef.current >= MAX_RECOVERY_ATTEMPTS) {
+            console.error(
+              `[VideoPlayer] ❌ Recovery failed after ${MAX_RECOVERY_ATTEMPTS} attempts for ${videoId ?? "video"}`
+            );
+            videoLoadedRef.current = false;
+            return;
+          }
+          recoveryAttemptRef.current++;
+          console.log(
+            `[VideoPlayer] 🔄 Attempting recovery (${recoveryAttemptRef.current}/${MAX_RECOVERY_ATTEMPTS}) with fresh blob URL for ${videoId ?? "video"}`
+          );
+
+          // Release old URL reference
+          if (pendingCleanupRef.current) {
+            releaseObjectURL(
+              pendingCleanupRef.current,
+              "VideoPlayer-error-recovery"
+            );
+          }
+
+          // Create fresh URL (bypasses cache, creates new blob from File)
+          const freshUrl = createObjectURL(
+            videoSource.file,
+            "VideoPlayer-recovery"
+          );
+          blobUrlRef.current = freshUrl;
+          pendingCleanupRef.current = freshUrl;
+          video.src = freshUrl;
+          video.load();
+
+          console.log(`[VideoPlayer] 🔄 Recovery URL created: ${freshUrl}`);
+          return;
+        }
+
         videoLoadedRef.current = false;
       }}
       onCanPlay={() => {

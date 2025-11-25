@@ -378,43 +378,67 @@ function TimelineElementComponent({
     const VIDEO_TILE_PADDING = 16;
     const OVERLAY_SPACE_MULTIPLIER = 1.5;
 
-    if (mediaItem.type === "video" && mediaItem.thumbnailUrl) {
+    if (mediaItem.type === "video") {
       const trackHeight = getTrackHeight(track.type);
       const tileHeight = trackHeight - 8; // Match image padding
       const tileWidth = tileHeight * TILE_ASPECT_RATIO;
 
-      return (
-        <div className="w-full h-full flex items-center justify-center">
-          <div className="bg-[#004D52] py-3 w-full h-full relative">
-            {/* Background with tiled thumbnails */}
-            <div
-              className="absolute top-3 bottom-3 left-0 right-0"
-              style={{
-                backgroundImage: mediaItem.thumbnailUrl
-                  ? `url(${mediaItem.thumbnailUrl})`
-                  : "none",
-                backgroundRepeat: "repeat-x",
-                backgroundSize: `${tileWidth}px ${tileHeight}px`,
-                backgroundPosition: "left center",
-                pointerEvents: "none",
-              }}
-              aria-label={`Tiled thumbnail of ${mediaItem.name}`}
-            />
-            {/* Overlay with vertical borders */}
-            <div
-              className="absolute top-3 bottom-3 left-0 right-0 pointer-events-none"
-              style={{
-                backgroundImage: `repeating-linear-gradient(
-                  to right,
-                  transparent 0px,
-                  transparent ${tileWidth - 1}px,
-                  rgba(255, 255, 255, 0.6) ${tileWidth - 1}px,
-                  rgba(255, 255, 255, 0.6) ${tileWidth}px
-                )`,
-                backgroundPosition: "left center",
-              }}
-            />
+      // Show loading indicator while thumbnail generates
+      if (
+        mediaItem.thumbnailStatus === "loading" ||
+        mediaItem.thumbnailStatus === "pending"
+      ) {
+        return (
+          <div className="w-full h-full flex items-center justify-center bg-[#004D52]">
+            <span className="text-xs text-foreground/60 truncate px-2">
+              {element.name} (loading...)
+            </span>
           </div>
+        );
+      }
+
+      // Show tiled thumbnails if available
+      if (mediaItem.thumbnailUrl) {
+        return (
+          <div className="w-full h-full flex items-center justify-center">
+            <div className="bg-[#004D52] py-3 w-full h-full relative">
+              {/* Background with tiled thumbnails */}
+              <div
+                className="absolute top-3 bottom-3 left-0 right-0"
+                style={{
+                  backgroundImage: `url(${mediaItem.thumbnailUrl})`,
+                  backgroundRepeat: "repeat-x",
+                  backgroundSize: `${tileWidth}px ${tileHeight}px`,
+                  backgroundPosition: "left center",
+                  pointerEvents: "none",
+                }}
+                aria-label={`Tiled thumbnail of ${mediaItem.name}`}
+              />
+              {/* Overlay with vertical borders */}
+              <div
+                className="absolute top-3 bottom-3 left-0 right-0 pointer-events-none"
+                style={{
+                  backgroundImage: `repeating-linear-gradient(
+                    to right,
+                    transparent 0px,
+                    transparent ${tileWidth - 1}px,
+                    rgba(255, 255, 255, 0.6) ${tileWidth - 1}px,
+                    rgba(255, 255, 255, 0.6) ${tileWidth}px
+                  )`,
+                  backgroundPosition: "left center",
+                }}
+              />
+            </div>
+          </div>
+        );
+      }
+
+      // Fallback: no thumbnail
+      return (
+        <div className="w-full h-full flex items-center justify-center bg-[#004D52]">
+          <span className="text-xs text-foreground/80 truncate px-2">
+            {element.name}
+          </span>
         </div>
       );
     }

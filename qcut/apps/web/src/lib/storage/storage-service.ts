@@ -13,7 +13,6 @@ import {
   StorageAdapter,
 } from "./types";
 import { TimelineTrack } from "@/types/timeline";
-import { getOrCreateObjectURL } from "@/lib/blob-manager";
 import { debugLog, debugError, debugWarn } from "@/lib/debug-config";
 
 class StorageService {
@@ -281,6 +280,8 @@ class StorageService {
       // Only store non-blob URLs (e.g., data URLs, http URLs)
       // Blob URLs are temporary and don't persist across sessions
       url: mediaItem.url?.startsWith("blob:") ? undefined : mediaItem.url,
+      // Persist thumbnail data URL for videos (survives reload)
+      thumbnailUrl: mediaItem.thumbnailUrl,
       metadata: mediaItem.metadata,
       // Persist localPath for FFmpeg CLI export (videos only)
       localPath: mediaItem.localPath,
@@ -303,7 +304,7 @@ class StorageService {
 
     if (!metadata) return null;
 
-    let url: string;
+    let url: string | undefined;
     let actualFile: File;
 
     if (file && file.size > 0) {
@@ -329,11 +330,12 @@ class StorageService {
           `[StorageService] Created data URL for ${metadata.name} in Electron`
         );
       } else {
-        // Use cached blob URL for web environment or non-image files
-        // Uses ref-counting - call releaseObjectURL() when done instead of revokeObjectURL()
-        url = getOrCreateObjectURL(file, "storage-service");
+        // DON'T create blob URL here - let consumers create lazily
+        // This prevents wasteful URL creation during cleanup migrations
+        // MediaStore.loadProjectMedia() will create URLs when needed
+        url = undefined;
         debugLog(
-          `[StorageService] Created object URL for ${metadata.name}: ${url}`
+          `[StorageService] Loaded ${metadata.name} without blob URL (lazy creation)`
         );
       }
     } else if (metadata.url) {
@@ -407,13 +409,14 @@ class StorageService {
       type: metadata.type,
       file: actualFile,
       url,
+      // Load persisted thumbnail data URL (survives reload)
+      thumbnailUrl: metadata.thumbnailUrl,
       width: metadata.width,
       height: metadata.height,
       duration: metadata.duration,
       metadata: metadata.metadata,
       // Restore localPath for FFmpeg CLI export
       localPath,
-      // thumbnailUrl would need to be regenerated or cached separately
     };
   }
 

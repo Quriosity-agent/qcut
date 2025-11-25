@@ -104,74 +104,106 @@ export const getImageDimensions = (
   });
 };
 
-// Instant video processing with defaults first, background metadata extraction
-export const processVideoFile = async (file: File) => {
-  // Return immediate defaults for instant UI response
-  const defaultResult = {
-    thumbnailUrl: undefined,
-    width: 1920,
-    height: 1080,
-    duration: 0,
-    fps: 30,
-    processingMethod: "immediate" as const,
-    error: undefined,
-  };
+// Helper to update a single field on a media item (in-memory only)
+const updateMediaItemField = (itemId: string, updates: Partial<MediaItem>) => {
+  const mediaStore = useMediaStore.getState();
+  const updatedItems = mediaStore.mediaItems.map((item) => {
+    if (item.id === itemId) {
+      return { ...item, ...updates };
+    }
+    return item;
+  });
+  useMediaStore.setState({ mediaItems: updatedItems });
+};
 
-  // Start background metadata extraction (don't await)
-  extractVideoMetadataBackground(file);
+// Helper to update media item metadata and persist to storage
+const updateMediaMetadataAndPersist = async (
+  itemId: string,
+  projectId: string,
+  metadata: Partial<MediaItem>
+) => {
+  const mediaStore = useMediaStore.getState();
+  const item = mediaStore.mediaItems.find((i) => i.id === itemId);
 
-  return defaultResult;
+  if (!item) {
+    debugError(`[MediaStore] Cannot update item ${itemId} - not found`);
+    return;
+  }
+
+  // Update in-memory state
+  const updatedItem = { ...item, ...metadata };
+  const updatedItems = mediaStore.mediaItems.map((i) =>
+    i.id === itemId ? updatedItem : i
+  );
+  useMediaStore.setState({ mediaItems: updatedItems });
+
+  // Persist to storage
+  try {
+    await storageService.saveMediaItem(projectId, updatedItem);
+    debugLog(`[MediaStore] Persisted thumbnail for ${item.name}`);
+  } catch (error) {
+    debugError(
+      `[MediaStore] Failed to persist thumbnail for ${item.name}:`,
+      error
+    );
+  }
+};
+
+/**
+ * Clone a File to create an isolated instance for temporary operations.
+ * This prevents ERR_UPLOAD_FILE_CHANGED when blob URLs are revoked.
+ *
+ * When multiple blob URLs are created from the same File instance and some
+ * are revoked, Chromium may invalidate the File's snapshot, causing other
+ * blob URLs from the same File to fail with ERR_UPLOAD_FILE_CHANGED.
+ *
+ * By cloning the File, temporary operations (thumbnail/duration extraction)
+ * use a separate File instance, isolating the display URL from side effects.
+ */
+const cloneFileForTemporaryUse = (file: File): File => {
+  return new File([file], file.name, {
+    type: file.type,
+    lastModified: file.lastModified,
+  });
 };
 
 // Background metadata extraction without blocking UI
-const extractVideoMetadataBackground = async (file: File) => {
+const extractVideoMetadataBackground = async (
+  file: File,
+  itemId: string,
+  projectId: string
+) => {
   try {
+    // Set status to loading
+    updateMediaItemField(itemId, { thumbnailStatus: "loading" });
+
+    // Clone file to isolate temporary operations from display URL
+    // This prevents ERR_UPLOAD_FILE_CHANGED when temporary URLs are revoked
+    const fileClone = cloneFileForTemporaryUse(file);
+
     // Try browser processing first - it's fast and reliable
     const [thumbnailData, duration] = await Promise.all([
-      generateVideoThumbnailBrowser(file),
-      getMediaDuration(file),
+      generateVideoThumbnailBrowser(fileClone),
+      getMediaDuration(fileClone),
     ]);
 
     const result = {
       thumbnailUrl: thumbnailData.thumbnailUrl,
+      thumbnailStatus: "ready" as const,
       width: thumbnailData.width,
       height: thumbnailData.height,
       duration,
       fps: 30,
-      processingMethod: "browser" as const,
     };
 
-    // Update the media item with real metadata
-    updateMediaMetadata(file, result);
+    // Update the media item with real metadata and persist to storage
+    await updateMediaMetadataAndPersist(itemId, projectId, result);
     return result;
   } catch (browserError) {
-    // Skip FFmpeg entirely to avoid the 60s timeout
-    // Users get instant response with defaults, which is better UX
+    // Set status to failed
+    updateMediaItemField(itemId, { thumbnailStatus: "failed" });
+    debugError("[MediaStore] Thumbnail generation failed:", browserError);
   }
-};
-
-// Helper to update media item metadata after background processing
-const updateMediaMetadata = async (file: File, metadata: any) => {
-  const mediaStore = useMediaStore.getState();
-  const fileId = await generateFileBasedId(file);
-
-  // Find and update the media item
-  const updatedItems = mediaStore.mediaItems.map((item) => {
-    if (item.id === fileId) {
-      return {
-        ...item,
-        width: metadata.width,
-        height: metadata.height,
-        duration: metadata.duration,
-        fps: metadata.fps,
-        thumbnailUrl: metadata.thumbnailUrl,
-      };
-    }
-    return item;
-  });
-
-  // Update the store
-  useMediaStore.setState({ mediaItems: updatedItems });
 };
 
 // Helper function to generate video thumbnail using browser APIs (primary method)
@@ -189,12 +221,26 @@ export const generateVideoThumbnailBrowser = (
     }
 
     let blobUrl: string;
+    let cleanupScheduled = false;
 
     const cleanup = () => {
+      if (cleanupScheduled) return; // Prevent double cleanup
+      cleanupScheduled = true;
+
+      // Explicitly release the video source to prevent race conditions
+      // This tells the browser to release its reference to the blob URL
+      video.src = "";
+      video.load();
+
+      // Remove elements immediately
       video.remove();
       canvas.remove();
+
+      // Delay blob URL revocation to allow browser to process the release
       if (blobUrl) {
-        revokeMediaBlob(blobUrl, "generateVideoThumbnailBrowser");
+        setTimeout(() => {
+          revokeMediaBlob(blobUrl, "generateVideoThumbnailBrowser");
+        }, 50); // Shorter delay sufficient after explicit source release
       }
     };
 
@@ -627,46 +673,43 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
       // Process media items with enhanced error handling
       const updatedMediaItems = await Promise.all(
         mediaItems.map(async (item) => {
+          // LAZY URL CREATION: Create display URL if missing (StorageService no longer creates them)
+          let displayUrl = item.url;
+          if (!displayUrl && item.file && item.file.size > 0) {
+            displayUrl = getOrCreateObjectURL(item.file, "media-store-display");
+            debugLog(
+              `[MediaStore] Created lazy URL for ${item.name}: ${displayUrl}`
+            );
+          }
+
           if (item.type === "video" && item.file) {
-            try {
-              const processResult = await processVideoFile(item.file);
-
+            // Check if thumbnail already exists in storage
+            if (item.thumbnailUrl) {
+              debugLog(`[MediaStore] Using stored thumbnail for ${item.name}`);
               return {
                 ...item,
-                thumbnailUrl: processResult.thumbnailUrl || item.thumbnailUrl,
-                width: processResult.width || item.width,
-                height: processResult.height || item.height,
-                duration: processResult.duration || item.duration,
-                fps: processResult.fps || item.fps,
-                metadata: {
-                  ...item.metadata,
-                  processingMethod: processResult.processingMethod,
-                },
-              };
-            } catch (error) {
-              handleMediaProcessingError(
-                error,
-                "Process video during project load",
-                {
-                  videoName: item.name,
-                  itemId: item.id,
-                  operation: "processVideoOnLoad",
-                  showToast: false, // Don't spam during batch loading
-                }
-              );
-
-              // Return item with error metadata to prevent complete failure
-              return {
-                ...item,
-                metadata: {
-                  ...item.metadata,
-                  processingError: `Video processing failed: ${error instanceof Error ? error.message : String(error)}`,
-                  processingMethod: "failed",
-                },
+                url: displayUrl,
+                thumbnailStatus: "ready" as const,
               };
             }
+
+            // No stored thumbnail - need to generate
+            debugLog(`[MediaStore] Generating thumbnail for ${item.name}`);
+
+            // Start background generation (will update store and persist when done)
+            extractVideoMetadataBackground(item.file, item.id, projectId);
+
+            // Return item with pending status for now
+            return {
+              ...item,
+              url: displayUrl,
+              thumbnailStatus: "pending" as const,
+            };
           }
-          return item;
+          return {
+            ...item,
+            url: displayUrl, // Include for non-video items too
+          };
         })
       );
 

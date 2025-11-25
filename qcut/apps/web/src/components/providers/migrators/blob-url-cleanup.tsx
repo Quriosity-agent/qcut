@@ -17,13 +17,14 @@ export function BlobUrlCleanup({ children }: { children: React.ReactNode }) {
     if (runOnceRef.current) return;
     runOnceRef.current = true;
     const cleanupBlobUrls = async () => {
-      // Check if cleanup has already been done in this session
-      const cleanupKey = "blob-url-cleanup-v1";
-      const hasCleanedSession = sessionStorage.getItem(cleanupKey);
+      // Check if cleanup migration has already been completed (persists across sessions)
+      // Use localStorage instead of sessionStorage so we only run this ONCE ever
+      const cleanupKey = "blob-url-cleanup-v2";
+      const hasCleanedPermanent = localStorage.getItem(cleanupKey);
 
-      if (hasCleanedSession) {
+      if (hasCleanedPermanent) {
         console.log(
-          "[BlobUrlCleanup] Skipping cleanup (already done this session)"
+          "[BlobUrlCleanup] Skipping cleanup (migration already complete)"
         );
         setHasCleanedUp(true);
         return;
@@ -111,8 +112,8 @@ export function BlobUrlCleanup({ children }: { children: React.ReactNode }) {
           `[BlobUrlCleanup] Cleanup complete. Projects: ${projectsUpdated}, Media items cleaned: ${mediaItemsCleaned}, Media items removed: ${mediaItemsRemoved}`
         );
 
-        // Mark cleanup as done for this session
-        sessionStorage.setItem(cleanupKey, "true");
+        // Mark cleanup as done PERMANENTLY (migration complete)
+        localStorage.setItem(cleanupKey, "true");
         setHasCleanedUp(true);
       } catch (error) {
         console.error("[BlobUrlCleanup] Cleanup failed:", error);
