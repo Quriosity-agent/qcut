@@ -569,31 +569,393 @@ Multiple blob URLs are created for the same video file during different operatio
 ```
 Same 22945987 byte file has 4+ different blob URLs created.
 
-### Root Cause
-Different services create their own blob URLs without checking if one already exists:
-- `storage-service` creates blob URLs when loading media
-- `processVideoFile` creates blob URLs for thumbnail generation
-- `getMediaDuration` creates blob URLs for duration extraction
-- `video-player.tsx` creates blob URLs for playback
+### Root Cause Analysis
+
+The current `BlobManager` (`blob-manager.ts`) tracks blob URLs but **does not deduplicate** them. Each call to `createObjectURL()` creates a new blob URL, even for the same file.
+
+**Current Flow for a Single Video File:**
+```
+┌───────────────────────────────────────────────────────────────────────┐
+│                    SINGLE VIDEO FILE LOADING                           │
+│                    (22.9 MB video file)                                │
+└───────────────────────────────────────────────────────────────────────┘
+                                │
+        ┌───────────────────────┼───────────────────────┐
+        ▼                       ▼                       ▼
+┌─────────────────┐   ┌─────────────────┐   ┌─────────────────┐
+│ storage-service │   │ processVideoFile│   │ getMediaDuration│
+│ loadMediaItem() │   │ (thumbnail gen) │   │ (duration calc) │
+└────────┬────────┘   └────────┬────────┘   └────────┬────────┘
+         │                     │                     │
+         ▼                     ▼                     ▼
+   createObjectURL()    createObjectURL()    createObjectURL()
+   blob:./978a1bdd      blob:./de66f6c3      blob:./b96c5b17
+                                │
+                                ▼
+                    ┌─────────────────┐
+                    │  VideoPlayer    │
+                    │  (for playback) │
+                    └────────┬────────┘
+                             │
+                             ▼
+                       createObjectURL()
+                       blob:./0c6e6adb
+
+        RESULT: 4 blob URLs for same 22.9MB file = ~92MB memory overhead
+```
+
+### All Blob URL Creation Points in Codebase
+
+| File | Line | Function | Purpose | Revokes? |
+|------|------|----------|---------|----------|
+| `storage-service.ts` | 334 | `loadMediaItem()` | Load media from storage | No |
+| `media-store.ts` | 78 | `getImageDimensions()` | Get image size | Yes ✓ |
+| `media-store.ts` | 242 | `generateVideoThumbnailBrowser()` | Thumbnail generation | Yes ✓ |
+| `media-store.ts` | 310 | `getMediaDuration()` | Duration extraction | Yes (delayed) |
+| `media-store.ts` | 483, 486 | `addMediaItem()` | Display URL | No |
+| `video-player.tsx` | 175 | useEffect | Video playback | Yes (on unmount) |
+| `ffmpeg-utils.ts` | 376-377 | `loadFFmpeg()` | FFmpeg WASM loading | No |
+| `ffmpeg-utils.ts` | 557 | `generateThumbnail()` | FFmpeg thumbnail | No |
+| `media-processing.ts` | 107, 280 | `processMediaFiles()` | Initial processing | No |
+| `use-ai-generation.ts` | 1752, 2002, 2280 | AI video handling | AI video URLs | No |
+| `timeline-store.ts` | 1509 | `addMedia()` | Timeline add | No |
+| Many more... | | | | |
+
+**Key Observation**: Files that create URLs for **temporary operations** (getImageDimensions, generateVideoThumbnailBrowser, getMediaDuration) do revoke properly. The problem is **permanent display URLs** created by multiple services.
+
+### Current BlobManager Code (blob-manager.ts)
+
+```typescript
+class BlobManager {
+  private blobs = new Map<string, BlobEntry>();  // Tracks by URL, not by file
+
+  createObjectURL(file: File | Blob, source?: string): string {
+    // ❌ ALWAYS creates new URL - no deduplication
+    const url = URL.createObjectURL(file);
+    this.blobs.set(url, { url, file, createdAt: Date.now(), source });
+    return url;
+  }
+}
+```
 
 ### Affected Files
-- `apps/web/src/lib/storage/storage-service.ts`
-- `apps/web/src/stores/media-store.ts:242` (processVideoFile)
-- `apps/web/src/stores/media-store.ts:174` (generateVideoThumbnailBrowser)
-- `apps/web/src/components/ui/video-player.tsx:166`
+
+| File | Line(s) | Role |
+|------|---------|------|
+| `apps/web/src/lib/blob-manager.ts` | 35-59 | Creates URLs without deduplication |
+| `apps/web/src/lib/storage/storage-service.ts` | 334 | Creates URL on every load |
+| `apps/web/src/stores/media-store.ts` | 78, 242, 310, 483, 486 | Multiple creation points |
+| `apps/web/src/components/ui/video-player.tsx` | 175 | Creates for playback |
+| `apps/web/src/lib/media-processing.ts` | 107, 280, 374 | Creates during processing |
 
 ### Subtasks
-1. [ ] **Create centralized blob URL cache in BlobManager**
-   - File: `apps/web/src/lib/blob-manager.ts`
-   - Add method `getOrCreateObjectURL(file, source)` that returns existing URL if file already has one
 
-2. [ ] **Add file identity check (by size + name hash)**
-   - File: `apps/web/src/lib/blob-manager.ts`
-   - Create unique key from file properties to detect same file
+---
 
-3. [ ] **Update all services to use cached blob URLs**
-   - Files: `storage-service.ts`, `media-store.ts`, `video-player.tsx`
-   - Replace direct `createObjectURL` calls with cached version
+#### Subtask 4.1: Add File Identity Cache to BlobManager
+**Priority: HIGH**
+**File: `apps/web/src/lib/blob-manager.ts`**
+
+Add a cache that maps file identity to existing blob URLs.
+
+**Proposed Implementation:**
+```typescript
+interface BlobEntry {
+  url: string;
+  file: File | Blob;
+  createdAt: number;
+  source?: string;
+  refCount: number;  // NEW: Track how many consumers are using this URL
+}
+
+class BlobManager {
+  private blobs = new Map<string, BlobEntry>();
+  private fileUrlCache = new Map<string, string>();  // NEW: file key -> URL
+
+  /**
+   * Generate unique key for a file based on its properties
+   */
+  private getFileKey(file: File | Blob): string {
+    const name = (file as File).name || 'blob';
+    const lastModified = (file as File).lastModified || 0;
+    // Use size + name + lastModified as unique identifier
+    return `${file.size}-${name}-${lastModified}`;
+  }
+
+  /**
+   * Get existing URL for file if available, or create new one
+   */
+  getOrCreateObjectURL(file: File | Blob, source?: string): string {
+    const fileKey = this.getFileKey(file);
+
+    // Check if we already have a URL for this file
+    const existingUrl = this.fileUrlCache.get(fileKey);
+    if (existingUrl && this.blobs.has(existingUrl)) {
+      const entry = this.blobs.get(existingUrl)!;
+      entry.refCount++;
+
+      if (import.meta.env.DEV) {
+        console.log(`[BlobManager] ♻️ Reusing URL for ${(file as File).name || 'blob'}`);
+        console.log(`  📍 Original source: ${entry.source}`);
+        console.log(`  🔄 Requested by: ${source}`);
+        console.log(`  📊 Ref count: ${entry.refCount}`);
+      }
+
+      return existingUrl;
+    }
+
+    // Create new URL
+    const url = URL.createObjectURL(file);
+    this.blobs.set(url, {
+      url,
+      file,
+      createdAt: Date.now(),
+      source,
+      refCount: 1,
+    });
+    this.fileUrlCache.set(fileKey, url);
+
+    if (import.meta.env.DEV) {
+      console.log(`[BlobManager] 🟢 Created: ${url}`);
+      console.log(`  📍 Source: ${source}`);
+      console.log(`  📦 File key: ${fileKey}`);
+    }
+
+    return url;
+  }
+
+  /**
+   * Original createObjectURL - still creates unique URL each time
+   * Use getOrCreateObjectURL for deduplication
+   */
+  createObjectURL(file: File | Blob, source?: string): string {
+    // Keep original behavior for backwards compatibility
+    const url = URL.createObjectURL(file);
+    this.blobs.set(url, {
+      url,
+      file,
+      createdAt: Date.now(),
+      source,
+      refCount: 1,
+    });
+    return url;
+  }
+
+  /**
+   * Release a reference to a blob URL
+   * Only actually revokes when refCount reaches 0
+   */
+  releaseObjectURL(url: string, context?: string): boolean {
+    const entry = this.blobs.get(url);
+    if (!entry) {
+      return false;
+    }
+
+    entry.refCount--;
+
+    if (import.meta.env.DEV) {
+      console.log(`[BlobManager] 📉 Released: ${url}`);
+      console.log(`  📊 Remaining refs: ${entry.refCount}`);
+    }
+
+    if (entry.refCount <= 0) {
+      // Actually revoke
+      URL.revokeObjectURL(url);
+      this.blobs.delete(url);
+
+      // Remove from file cache
+      const fileKey = this.getFileKey(entry.file);
+      if (this.fileUrlCache.get(fileKey) === url) {
+        this.fileUrlCache.delete(fileKey);
+      }
+
+      if (import.meta.env.DEV) {
+        console.log(`[BlobManager] 🔴 Revoked (no refs): ${url}`);
+      }
+    }
+
+    return true;
+  }
+}
+```
+
+---
+
+#### Subtask 4.2: Export Cached URL Helper Function
+**Priority: HIGH**
+**File: `apps/web/src/lib/blob-manager.ts`**
+
+Add convenience export for the cached version.
+
+**Proposed Implementation:**
+```typescript
+// Convenience exports
+export const createObjectURL = (file: File | Blob, source?: string): string => {
+  return blobManager.createObjectURL(file, source);
+};
+
+// NEW: For long-lived URLs (display, playback)
+export const getOrCreateObjectURL = (file: File | Blob, source?: string): string => {
+  return blobManager.getOrCreateObjectURL(file, source);
+};
+
+// NEW: For releasing refs (instead of immediate revoke)
+export const releaseObjectURL = (url: string, context?: string): boolean => {
+  return blobManager.releaseObjectURL(url, context);
+};
+
+// Keep original for compatibility
+export const revokeObjectURL = (url: string, context?: string): boolean => {
+  return blobManager.revokeObjectURL(url, context);
+};
+```
+
+---
+
+#### Subtask 4.3: Update StorageService to Use Cached URLs
+**Priority: HIGH**
+**File: `apps/web/src/lib/storage/storage-service.ts:331-337`**
+
+Replace `createObjectURL` with `getOrCreateObjectURL` for display URLs.
+
+**Current Code:**
+```typescript
+} else {
+  // Use blob URL for web environment or non-image files
+  url = createObjectURL(file, "storage-service");
+}
+```
+
+**Proposed Change:**
+```typescript
+import { getOrCreateObjectURL } from "@/lib/blob-manager";
+
+} else {
+  // Use cached blob URL to prevent duplicates
+  url = getOrCreateObjectURL(file, "storage-service");
+}
+```
+
+---
+
+#### Subtask 4.4: Update VideoPlayer to Use Cached URLs
+**Priority: HIGH**
+**File: `apps/web/src/components/ui/video-player.tsx:175`**
+
+Replace `createObjectURL` with `getOrCreateObjectURL` for playback.
+
+**Current Code:**
+```typescript
+const blobUrl = createObjectURL(videoSource.file, "VideoPlayer");
+```
+
+**Proposed Change:**
+```typescript
+import { getOrCreateObjectURL, releaseObjectURL } from "@/lib/blob-manager";
+
+const blobUrl = getOrCreateObjectURL(videoSource.file, "VideoPlayer");
+
+// In cleanup:
+releaseObjectURL(blobUrl, "VideoPlayer-cleanup");  // Decrements ref, only revokes if 0
+```
+
+---
+
+#### Subtask 4.5: Update MediaStore Display URL Creation
+**Priority: MEDIUM**
+**File: `apps/web/src/stores/media-store.ts:483-486`**
+
+Use cached URLs for display purposes in `addMediaItem`.
+
+**Current Code:**
+```typescript
+} else {
+  displayUrl = createObjectURL(file, "addMediaItem-display");
+}
+```
+
+**Proposed Change:**
+```typescript
+} else {
+  displayUrl = getOrCreateObjectURL(file, "addMediaItem-display");
+}
+```
+
+---
+
+#### Subtask 4.6: Keep Unique URLs for Temporary Operations
+**Priority: LOW**
+
+These functions should KEEP using `createObjectURL` (not cached) because they:
+- Create temporary URLs
+- Revoke them immediately after use
+- Don't need deduplication
+
+**Functions that should NOT change:**
+- `getImageDimensions()` (line 78) - Creates and revokes immediately
+- `generateVideoThumbnailBrowser()` (line 242) - Creates and revokes
+- `getMediaDuration()` (line 310) - Creates and revokes with delay
+
+---
+
+### Decision Matrix: When to Use Each Method
+
+| Use Case | Method | Why |
+|----------|--------|-----|
+| Display URL (long-lived) | `getOrCreateObjectURL()` | Deduplicate across services |
+| Video playback | `getOrCreateObjectURL()` | May be same file as display |
+| Temporary processing | `createObjectURL()` | Will be revoked immediately |
+| Thumbnail generation | `createObjectURL()` | Temporary, revoked after |
+| Duration extraction | `createObjectURL()` | Temporary, revoked after |
+| Export/download | `createObjectURL()` | One-time use |
+
+---
+
+### Alternative: Simpler WeakMap-Based Cache
+
+If File objects are the same instance (not copies), use WeakMap for automatic cleanup:
+
+**File: `apps/web/src/lib/blob-manager.ts`**
+```typescript
+class BlobManager {
+  private fileToUrl = new WeakMap<File | Blob, string>();
+
+  getOrCreateObjectURL(file: File | Blob, source?: string): string {
+    const existing = this.fileToUrl.get(file);
+    if (existing && this.blobs.has(existing)) {
+      return existing;
+    }
+
+    const url = URL.createObjectURL(file);
+    this.fileToUrl.set(file, url);
+    this.blobs.set(url, { url, file, createdAt: Date.now(), source, refCount: 1 });
+    return url;
+  }
+}
+```
+
+**Pros:** Automatic cleanup when File is garbage collected
+**Cons:** Only works if same File instance is passed (not copies)
+
+---
+
+### Verification Steps
+
+1. **Import a video file** → Check console for blob URL creation
+2. **Expected**: Only 1 blob URL for display (not 4)
+3. **Run `window.debugBlobs()`**:
+   - Before fix: 4+ URLs for same file
+   - After fix: 1 URL with refCount > 1
+4. **Memory check**: File size × URL count should decrease
+
+### Impact Assessment
+
+| Metric | Before Fix | After Fix |
+|--------|------------|-----------|
+| Blob URLs per video | 4+ | 1 |
+| Memory overhead | ~4× file size | ~1× file size |
+| Potential memory leak | High | Low |
+| URL revocation complexity | Per-service | Centralized |
 
 ---
 
