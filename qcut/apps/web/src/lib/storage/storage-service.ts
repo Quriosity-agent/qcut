@@ -280,6 +280,8 @@ class StorageService {
       // Only store non-blob URLs (e.g., data URLs, http URLs)
       // Blob URLs are temporary and don't persist across sessions
       url: mediaItem.url?.startsWith("blob:") ? undefined : mediaItem.url,
+      // Persist thumbnail data URL for videos (survives reload)
+      thumbnailUrl: mediaItem.thumbnailUrl,
       metadata: mediaItem.metadata,
       // Persist localPath for FFmpeg CLI export (videos only)
       localPath: mediaItem.localPath,
@@ -407,13 +409,14 @@ class StorageService {
       type: metadata.type,
       file: actualFile,
       url,
+      // Load persisted thumbnail data URL (survives reload)
+      thumbnailUrl: metadata.thumbnailUrl,
       width: metadata.width,
       height: metadata.height,
       duration: metadata.duration,
       metadata: metadata.metadata,
       // Restore localPath for FFmpeg CLI export
       localPath,
-      // thumbnailUrl would need to be regenerated or cached separately
     };
   }
 
