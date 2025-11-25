@@ -152,6 +152,24 @@ const updateMediaMetadataAndPersist = async (
   }
 };
 
+/**
+ * Clone a File to create an isolated instance for temporary operations.
+ * This prevents ERR_UPLOAD_FILE_CHANGED when blob URLs are revoked.
+ *
+ * When multiple blob URLs are created from the same File instance and some
+ * are revoked, Chromium may invalidate the File's snapshot, causing other
+ * blob URLs from the same File to fail with ERR_UPLOAD_FILE_CHANGED.
+ *
+ * By cloning the File, temporary operations (thumbnail/duration extraction)
+ * use a separate File instance, isolating the display URL from side effects.
+ */
+const cloneFileForTemporaryUse = (file: File): File => {
+  return new File([file], file.name, {
+    type: file.type,
+    lastModified: file.lastModified,
+  });
+};
+
 // Background metadata extraction without blocking UI
 const extractVideoMetadataBackground = async (
   file: File,
@@ -162,10 +180,14 @@ const extractVideoMetadataBackground = async (
     // Set status to loading
     updateMediaItemField(itemId, { thumbnailStatus: "loading" });
 
+    // Clone file to isolate temporary operations from display URL
+    // This prevents ERR_UPLOAD_FILE_CHANGED when temporary URLs are revoked
+    const fileClone = cloneFileForTemporaryUse(file);
+
     // Try browser processing first - it's fast and reliable
     const [thumbnailData, duration] = await Promise.all([
-      generateVideoThumbnailBrowser(file),
-      getMediaDuration(file),
+      generateVideoThumbnailBrowser(fileClone),
+      getMediaDuration(fileClone),
     ]);
 
     const result = {
