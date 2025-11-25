@@ -1,6 +1,10 @@
 /**
  * Centralized BlobURL manager to prevent memory leaks
  * Automatically tracks and cleans up blob URLs
+ *
+ * Supports two modes:
+ * - createObjectURL: Creates unique URL each time (for temporary operations)
+ * - getOrCreateObjectURL: Returns cached URL if file already has one (for display/playback)
  */
 
 interface BlobEntry {
@@ -8,6 +12,7 @@ interface BlobEntry {
   file: File | Blob;
   createdAt: number;
   source?: string;
+  refCount: number; // Track how many consumers are using this URL
 }
 
 const nativeRevokeObjectURL = URL.revokeObjectURL;
@@ -15,6 +20,14 @@ const nativeRevokeObjectURL = URL.revokeObjectURL;
 class BlobManager {
   private blobs = new Map<string, BlobEntry>();
   private cleanupInterval: number | null = null;
+
+  // WeakMap for File instance-based caching (avoids hash collisions)
+  // Only works when same File object is passed (not copies)
+  private fileToUrl = new WeakMap<File | Blob, string>();
+
+  // Fallback cache using file properties for when File instances differ
+  // Key format: "size-name-lastModified"
+  private fileKeyToUrl = new Map<string, string>();
 
   constructor() {
     // Auto-cleanup orphaned blobs every 5 minutes
@@ -30,7 +43,101 @@ class BlobManager {
   }
 
   /**
-   * Create a tracked blob URL that will be automatically cleaned up
+   * Generate a key for file-based caching (fallback when WeakMap misses)
+   */
+  private getFileKey(file: File | Blob): string {
+    const name = (file as File).name || "blob";
+    const lastModified = (file as File).lastModified || 0;
+    return `${file.size}-${name}-${lastModified}`;
+  }
+
+  /**
+   * Get existing URL for file if available, or create new one.
+   * Use this for long-lived URLs (display, playback) to avoid duplicates.
+   *
+   * @param file - The file to create/get URL for
+   * @param source - Identifier for debugging (e.g., "storage-service")
+   * @returns Blob URL (may be reused from cache)
+   */
+  getOrCreateObjectURL(file: File | Blob, source?: string): string {
+    // First, try WeakMap (exact instance match)
+    const existingFromWeakMap = this.fileToUrl.get(file);
+    if (existingFromWeakMap && this.blobs.has(existingFromWeakMap)) {
+      const entry = this.blobs.get(existingFromWeakMap)!;
+      entry.refCount++;
+
+      if (import.meta.env.DEV) {
+        console.log(
+          `[BlobManager] ♻️ Reusing URL (instance match): ${(file as File).name || "blob"}`
+        );
+        console.log(`  📍 Original source: ${entry.source}`);
+        console.log(`  🔄 Requested by: ${source}`);
+        console.log(`  📊 Ref count: ${entry.refCount}`);
+      }
+
+      return existingFromWeakMap;
+    }
+
+    // Second, try file key cache (property-based match)
+    const fileKey = this.getFileKey(file);
+    const existingFromKeyCache = this.fileKeyToUrl.get(fileKey);
+    if (existingFromKeyCache && this.blobs.has(existingFromKeyCache)) {
+      const entry = this.blobs.get(existingFromKeyCache)!;
+      entry.refCount++;
+
+      // Also add to WeakMap for faster future lookups with this instance
+      this.fileToUrl.set(file, existingFromKeyCache);
+
+      if (import.meta.env.DEV) {
+        console.log(
+          `[BlobManager] ♻️ Reusing URL (key match): ${(file as File).name || "blob"}`
+        );
+        console.log(`  📍 Original source: ${entry.source}`);
+        console.log(`  🔄 Requested by: ${source}`);
+        console.log(`  📊 Ref count: ${entry.refCount}`);
+        console.log(`  🔑 File key: ${fileKey}`);
+      }
+
+      return existingFromKeyCache;
+    }
+
+    // No existing URL found, create new one
+    const url = URL.createObjectURL(file);
+    const callerStack =
+      source ||
+      new Error("Stack trace for blob URL creation").stack
+        ?.split("\n")[2]
+        ?.trim();
+
+    this.blobs.set(url, {
+      url,
+      file,
+      createdAt: Date.now(),
+      source: callerStack,
+      refCount: 1,
+    });
+
+    // Add to both caches
+    this.fileToUrl.set(file, url);
+    this.fileKeyToUrl.set(fileKey, url);
+
+    if (import.meta.env.DEV) {
+      console.log(`[BlobManager] 🟢 Created (cached): ${url}`);
+      console.log(`  📍 Source: ${callerStack}`);
+      console.log(
+        `  📦 Type: ${file.constructor.name}, Size: ${file.size} bytes`
+      );
+      console.log(`  🔑 File key: ${fileKey}`);
+    }
+
+    return url;
+  }
+
+  /**
+   * Create a tracked blob URL that will be automatically cleaned up.
+   * Always creates a NEW URL - use for temporary operations that revoke immediately.
+   *
+   * For long-lived URLs, use getOrCreateObjectURL() instead.
    */
   createObjectURL(file: File | Blob, source?: string): string {
     const url = URL.createObjectURL(file);
@@ -45,10 +152,11 @@ class BlobManager {
       file,
       createdAt: Date.now(),
       source: callerStack,
+      refCount: 1,
     });
 
     if (import.meta.env.DEV) {
-      console.log(`[BlobManager] 🟢 Created: ${url}`);
+      console.log(`[BlobManager] 🟢 Created (unique): ${url}`);
       console.log(`  📍 Source: ${callerStack}`);
       console.log(
         `  📦 Type: ${file.constructor.name}, Size: ${file.size} bytes`
@@ -59,13 +167,82 @@ class BlobManager {
   }
 
   /**
-   * Manually revoke a blob URL
+   * Release a reference to a cached blob URL.
+   * Only actually revokes when refCount reaches 0.
+   * Use this for URLs obtained via getOrCreateObjectURL().
+   *
+   * @param url - The blob URL to release
+   * @param context - Identifier for debugging
+   * @returns true if released successfully
+   */
+  releaseObjectURL(url: string, context?: string): boolean {
+    const entry = this.blobs.get(url);
+    if (!entry) {
+      if (import.meta.env.DEV) {
+        console.warn(
+          `[BlobManager] ⚠️ Attempted to release unknown URL: ${url}`
+        );
+      }
+      return false;
+    }
+
+    entry.refCount--;
+
+    if (import.meta.env.DEV) {
+      console.log(`[BlobManager] 📉 Released: ${url}`);
+      console.log(`  📍 Created by: ${entry.source}`);
+      console.log(`  🔄 Released by: ${context || "unknown"}`);
+      console.log(`  📊 Remaining refs: ${entry.refCount}`);
+    }
+
+    if (entry.refCount <= 0) {
+      // Actually revoke - no more references
+      this.forceRevokeInternal(url, entry, context);
+    }
+
+    return true;
+  }
+
+  /**
+   * Internal method to force revoke and clean up caches
+   */
+  private forceRevokeInternal(
+    url: string,
+    entry: BlobEntry,
+    context?: string
+  ): void {
+    nativeRevokeObjectURL(url);
+    this.blobs.delete(url);
+
+    // Remove from file key cache
+    const fileKey = this.getFileKey(entry.file);
+    if (this.fileKeyToUrl.get(fileKey) === url) {
+      this.fileKeyToUrl.delete(fileKey);
+    }
+
+    // Note: WeakMap entry will be GC'd automatically when File is GC'd
+
+    if (import.meta.env.DEV) {
+      console.log(`[BlobManager] 🔴 Revoked (no refs): ${url}`);
+      console.log(
+        `  🕒 Lifespan: ${Date.now() - entry.createdAt}ms`
+      );
+      if (context) {
+        console.log(`  🏷️ Context: ${context}`);
+      }
+    }
+  }
+
+  /**
+   * Manually revoke a blob URL immediately (ignores refCount).
+   * Use for temporary URLs created with createObjectURL().
+   * For cached URLs, prefer releaseObjectURL() instead.
    */
   revokeObjectURL(url: string, context?: string): boolean {
     const contextTag = context ? ` [from: ${context}]` : "";
 
     if (this.blobs.has(url)) {
-      const entry = this.blobs.get(url);
+      const entry = this.blobs.get(url)!;
 
       if (import.meta.env.DEV) {
         const revokeStack = new Error(
@@ -75,19 +252,19 @@ class BlobManager {
           .slice(2, 4)
           .join("  ޚ  ")
           .trim();
-        console.log(`[BlobManager] 🔴 Revoked: ${url}`);
-        console.log(`  📍 Created by: ${entry?.source || "unknown"}`);
+        console.log(`[BlobManager] 🔴 Force revoked: ${url}`);
+        console.log(`  📍 Created by: ${entry.source || "unknown"}`);
         console.log(`  🗑️ Revoked by: ${revokeStack}`);
         console.log(
-          `  🕒 Lifespan: ${entry ? Date.now() - entry.createdAt : "unknown"}ms`
+          `  🕒 Lifespan: ${Date.now() - entry.createdAt}ms`
         );
+        console.log(`  📊 Had refs: ${entry.refCount}`);
         if (contextTag) {
           console.log(`  🏷️ Context:${contextTag}`);
         }
       }
 
-      nativeRevokeObjectURL(url);
-      this.blobs.delete(url);
+      this.forceRevokeInternal(url, entry, context);
       return true;
     }
     // Even if we didn't create it, respect the in-use guard before revoking

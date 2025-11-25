@@ -898,6 +898,14 @@ These functions should KEEP using `createObjectURL` (not cached) because they:
 
 ---
 
+### Reviewer Notes
+- Impact is medium/high: the same file is loaded through multiple services, so deduplication is worth doing to avoid 4x memory and URL churn.
+- Key choice matters: size+name+lastModified can collide for regenerated files; prefer a WeakMap keyed by File instance or include a stable hash when available.
+- Ref-count discipline: once caching lands, every consumer that gets a cached URL must release (not revoke) it, or the cache will leak; temporary helpers must keep using unique URLs.
+- Regression risk: callers that expect immediate revoke semantics will break if pointed to the cached helper; keep a clear split between long-lived display/playback and short-lived processing.
+
+---
+
 ### Decision Matrix: When to Use Each Method
 
 | Use Case | Method | Why |
@@ -1253,6 +1261,14 @@ if (file && file.size > 0) {
   }
 }
 ```
+
+---
+
+### Reviewer Notes
+- Root cause call-out is right: cleanup invokes load/save paths that immediately recreate blob URLs, so the cycle never actually removes them.
+- Lazy URL creation helps, but every consumer that currently assumes `mediaItem.url` is set must be updated to create or request one on demand to avoid breaking previews.
+- The “skip while cleanup runs” flag could couple React provider state into storage; consider a storage-level option/argument instead of a global cross-module flag to avoid circular deps.
+- Minimize writes during cleanup: only persist items that actually had blob URLs cleared, and ensure thumbnailUrl and other metadata aren’t unintentionally dropped when rewriting.
 
 ---
 
