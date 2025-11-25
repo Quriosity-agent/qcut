@@ -43,12 +43,19 @@ class BlobManager {
   }
 
   /**
-   * Generate a key for file-based caching (fallback when WeakMap misses)
-   * NOTE: Don't use lastModified - it changes when OPFS reads the file
+   * Generate a key for file-based caching (fallback when WeakMap misses).
+   *
+   * NOTE: We intentionally exclude lastModified because it changes when OPFS
+   * reads the file, causing cache misses for the same logical file.
+   *
+   * Collision risk: Different files with identical name+size could collide.
+   * This is mitigated by:
+   * 1. WeakMap (fileToUrl) is checked first for exact instance matches
+   * 2. In video editor workflows, same-name+same-size different-content files are rare
+   * 3. Content hashing would be too expensive for large video files
    */
   private getFileKey(file: File | Blob): string {
     const name = (file as File).name || "blob";
-    // Only use size + name for stable identification across OPFS reads
     return `${file.size}-${name}`;
   }
 

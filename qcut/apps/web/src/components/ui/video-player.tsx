@@ -38,6 +38,8 @@ export function VideoPlayer({
   const blobUrlRef = useRef<string | null>(null);
   const pendingCleanupRef = useRef<string | null>(null);
   const videoLoadedRef = useRef(false);
+  const recoveryAttemptRef = useRef(0);
+  const MAX_RECOVERY_ATTEMPTS = 2;
   const { isPlaying, currentTime, volume, speed, muted } = usePlaybackStore();
   const timelineTimeRef = useRef(currentTime);
 
@@ -258,6 +260,7 @@ export function VideoPlayer({
       onContextMenu={(e) => e.preventDefault()}
       onLoadedMetadata={() => {
         videoLoadedRef.current = true;
+        recoveryAttemptRef.current = 0; // Reset recovery counter on successful load
         console.log(`[VideoPlayer] ✅ Video loaded: ${videoId ?? "video"}`);
       }}
       onError={(e) => {
@@ -285,8 +288,16 @@ export function VideoPlayer({
           (errorCode === 4 && videoSource?.type === "file");
 
         if (isFileChangedError && videoSource?.type === "file") {
+          if (recoveryAttemptRef.current >= MAX_RECOVERY_ATTEMPTS) {
+            console.error(
+              `[VideoPlayer] ❌ Recovery failed after ${MAX_RECOVERY_ATTEMPTS} attempts for ${videoId ?? "video"}`
+            );
+            videoLoadedRef.current = false;
+            return;
+          }
+          recoveryAttemptRef.current++;
           console.log(
-            `[VideoPlayer] 🔄 Attempting recovery with fresh blob URL for ${videoId ?? "video"}`
+            `[VideoPlayer] 🔄 Attempting recovery (${recoveryAttemptRef.current}/${MAX_RECOVERY_ATTEMPTS}) with fresh blob URL for ${videoId ?? "video"}`
           );
 
           // Release old URL reference

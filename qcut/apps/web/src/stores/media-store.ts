@@ -230,15 +230,20 @@ export const generateVideoThumbnailBrowser = (
       if (cleanupScheduled) return; // Prevent double cleanup
       cleanupScheduled = true;
 
+      // Explicitly release the video source to prevent race conditions
+      // This tells the browser to release its reference to the blob URL
+      video.src = "";
+      video.load();
+
       // Remove elements immediately
       video.remove();
       canvas.remove();
 
-      // Delay blob URL revocation to allow any pending loads to complete
+      // Delay blob URL revocation to allow browser to process the release
       if (blobUrl) {
         setTimeout(() => {
           revokeMediaBlob(blobUrl, "generateVideoThumbnailBrowser");
-        }, 150); // 150ms delay for safety
+        }, 50); // Shorter delay sufficient after explicit source release
       }
     };
 
