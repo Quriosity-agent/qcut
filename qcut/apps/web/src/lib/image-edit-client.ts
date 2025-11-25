@@ -1,6 +1,7 @@
 /**
  * Image Editing API Client for FAL.ai Models
- * Supports SeedEdit v3, FLUX Pro Kontext, and FLUX Pro Kontext Max
+ * Supports SeedEdit v3, FLUX Pro Kontext, FLUX Pro Kontext Max, FLUX 2 Flex Edit,
+ * SeedDream v4, Nano Banana, Reve Edit, and Gemini 3 Pro Edit
  */
 
 import { handleAIServiceError } from "./error-handler";

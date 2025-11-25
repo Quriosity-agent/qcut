@@ -1,3 +1,7 @@
+/**
+ * Configuration interface for text-to-image AI models.
+ * Defines model metadata, capabilities, parameters, and quality characteristics.
+ */
 export interface Text2ImageModel {
   id: string;
   name: string;
@@ -325,7 +329,6 @@ export const TEXT2IMAGE_MODELS: Record<string, Text2ImageModel> = {
         type: "number",
         min: 1.5,
         max: 10,
-        step: 0.1,
         default: 3.5,
         description: "Controls adherence to prompt",
       },
@@ -334,7 +337,6 @@ export const TEXT2IMAGE_MODELS: Record<string, Text2ImageModel> = {
         type: "number",
         min: 2,
         max: 50,
-        step: 1,
         default: 28,
         description: "Number of denoising steps",
       },

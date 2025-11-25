@@ -1,3 +1,6 @@
+/**
+ * Defines the capabilities and constraints for an AI image generation model.
+ */
 export interface ModelCapability {
   multiImage: boolean;
   flexibleSizing: boolean;
@@ -8,6 +11,11 @@ export interface ModelCapability {
   pricing?: { perImage: number; currency: string };
 }
 
+/**
+ * Returns the capabilities for a given AI model.
+ * @param modelId - The unique identifier of the AI model
+ * @returns ModelCapability object describing the model's features and constraints
+ */
 export function getModelCapabilities(modelId: string): ModelCapability {
   switch (modelId) {
     case "seededit":
@@ -113,6 +121,13 @@ export function getModelCapabilities(modelId: string): ModelCapability {
   }
 }
 
+/**
+ * Determines if switching between two AI models is allowed.
+ * @param fromModel - The current model identifier
+ * @param toModel - The target model identifier
+ * @param currentParams - Current generation parameters
+ * @returns true if model switching is allowed
+ */
 export function canSwitchModels(
   fromModel: string,
   toModel: string,
@@ -141,6 +156,14 @@ type CommonParams = Partial<{
   maxImages: number;
 }>;
 
+/**
+ * Converts generation parameters when switching between AI models.
+ * Handles parameter name differences and validates values against target model constraints.
+ * @param params - Current generation parameters
+ * @param fromModel - Source model identifier
+ * @param toModel - Target model identifier
+ * @returns Converted parameters compatible with the target model
+ */
 export function convertParametersBetweenModels(
   params: CommonParams,
   fromModel: string,
@@ -203,7 +226,9 @@ export function convertParametersBetweenModels(
   };
 }
 
-// Add model categorization
+/**
+ * Categorization of AI models by their primary use cases and characteristics.
+ */
 export const modelCategories = {
   stable: ["seededit", "seeddream-v3", "flux-kontext", "flux-2-flex-edit"],
   advanced: ["seeddream-v4", "flux-kontext-max"],
@@ -212,7 +237,11 @@ export const modelCategories = {
   high_quality: ["seeddream-v4", "flux-kontext-max"],
 };
 
-// Add model recommendations
+/**
+ * Returns the recommended AI model for a specific use case.
+ * @param useCase - The primary goal: "speed", "quality", "features", or "cost"
+ * @returns The model identifier best suited for the use case
+ */
 export function getRecommendedModel(
   useCase: "speed" | "quality" | "features" | "cost"
 ) {
@@ -230,6 +259,11 @@ export function getRecommendedModel(
   }
 }
 
+/**
+ * Returns human-readable display information for a model.
+ * @param modelId - The AI model identifier
+ * @returns Object containing name, description, badge, technology, and feature list
+ */
 export function getModelDisplayInfo(modelId: string) {
   const capabilities = getModelCapabilities(modelId);
 
@@ -394,6 +428,12 @@ export function validateModelParameters(
   return errors;
 }
 
+/**
+ * Suggests an alternative model based on prompt content analysis.
+ * @param prompt - The user's generation prompt
+ * @param currentModel - The currently selected model
+ * @returns A suggested model identifier, or null if current model is optimal
+ */
 export function getModelSuggestion(
   prompt: string,
   currentModel: string
