@@ -4,6 +4,8 @@ Based on console log analysis from `consolev2.md` (after Issue 4 fix was applied
 
 **Update (consolev3.md verification):** All v2 issues have been verified as FIXED.
 
+**Update (consolev4.md verification):** New issue discovered - `ERR_UPLOAD_FILE_CHANGED` when playing video in timeline. See Issue 9 below.
+
 ---
 
 ## Summary
@@ -1036,3 +1038,192 @@ Check the render method of `Primitive.button.SlotClone`.
 | Issue 3: forwardRef Warning | ⚠️ Open | Low priority, warning only |
 
 **All critical blob URL issues from v2 have been resolved.**
+
+---
+
+## Issue 9: ERR_UPLOAD_FILE_CHANGED When Playing Video in Timeline (NEW - consolev4.md)
+
+### Problem
+When a video is added to the timeline and playback is attempted, the blob URL fails with `ERR_UPLOAD_FILE_CHANGED`. This happens even though the blob URL was created correctly and is being reused.
+
+### Evidence from Console Log (consolev4.md)
+```
+// Blob URL created and cached correctly
+[BlobManager] 🟢 Created (cached): blob:app://./2e67ac73-c2ca-42be-9f8d-a52f8a91de8e
+  📍 Source: media-store-display
+  📦 Type: File, Size: 22946198 bytes
+  🔑 File key: 22946198-ecbb2587-d623-2eb2-109f-e8306a658615
+
+// Video dropped to timeline, blob URL reused correctly
+timeline-track.tsx:696 {"message":"Drop event started..."}
+[BlobManager] ♻️ Reusing URL (instance match): ecbb2587-d623-2eb2-109f-e8306a658615
+  📍 Original source: media-store-display
+  🔄 Requested by: VideoPlayer
+  📊 Ref count: 2
+
+video-player.tsx:184 [VideoPlayer] Using blob URL for ecbb2587-d623-2eb2-109f-e8306a658615: blob:app://./2e67ac73-c2ca-42be-9f8d-a52f8a91de8e
+
+// VideoPlayer unmount/remount cycle
+video-player.tsx:202 [VideoPlayer] Effect cleanup - blob URL marked for later
+video-player.tsx:232 [VideoPlayer] Component unmount - releasing
+[BlobManager] 📉 Released: blob:app://./2e67ac73-c2ca-42be-9f8d-a52f8a91de8e
+  📊 Remaining refs: 1
+
+// Remounted, reusing URL again
+[BlobManager] ♻️ Reusing URL (instance match): ecbb2587-d623-2eb2-109f-e8306a658615
+  📊 Ref count: 2
+
+video-player.tsx:184 [VideoPlayer] Using blob URL for ecbb2587-d623-2eb2-109f-e8306a658615: blob:app://./2e67ac73-c2ca-42be-9f8d-a52f8a91de8e
+
+// ❌ ERROR: File changed!
+blob:app://./2e67ac73-c2ca-42be-9f8d-a52f8a91de8e:1 Failed to load resource: net::ERR_UPLOAD_FILE_CHANGED
+index.html:68 🔧 Suppressed blob network error for: VIDEO
+```
+
+### Analysis
+
+The error `ERR_UPLOAD_FILE_CHANGED` indicates that the underlying file data has changed since the blob URL was created. This typically happens when:
+
+1. **OPFS file handle changes** - The file stored in OPFS was modified or re-read with a different handle
+2. **File instance mismatch** - The blob URL was created from a different File instance than what's being used
+3. **Browser security** - Chromium/Electron detects the file backing the blob has been modified
+
+### Timeline of Events
+```
+┌──────────────────────────────────────────────────────────────────────────┐
+│                         VIDEO PLAYBACK FAILURE                            │
+└──────────────────────────────────────────────────────────────────────────┘
+
+T+0ms     Import video → stored in OPFS
+          │
+T+10ms    loadProjectMedia() loads File from OPFS
+          └─► Creates blob URL from File instance A
+              blob:app://./2e67ac73-...
+
+T+100ms   Video dropped to timeline
+          └─► VideoPlayer requests URL
+              ♻️ Reuses blob URL (ref count: 2)
+
+T+200ms   VideoPlayer unmounts (React re-render?)
+          └─► Releases URL (ref count: 1)
+
+T+300ms   VideoPlayer remounts
+          └─► Requests URL again
+              ♻️ Reuses same blob URL (ref count: 2)
+
+T+400ms   Video element tries to load blob URL
+          └─► ❌ ERR_UPLOAD_FILE_CHANGED
+              Browser detects File backing has changed!
+```
+
+### Root Cause Hypothesis
+
+The File object stored in the MediaItem may have been replaced with a new instance (e.g., from OPFS re-read), but the blob URL was created from the original File instance. When the video element tries to load the blob URL, the browser detects the mismatch.
+
+**Key Evidence:**
+- Two videos imported with similar sizes (22945987 and 22946198 bytes)
+- Multiple blob URLs created for `processVideoFile` and `getMediaDuration` (temporary)
+- The cached display URL is reused correctly
+- But the underlying File object may have changed between reads
+
+### Affected Files
+| File | Line(s) | Issue |
+|------|---------|-------|
+| `apps/web/src/stores/media-store.ts` | loadProjectMedia | May be re-reading File from OPFS |
+| `apps/web/src/lib/blob-manager.ts` | getOrCreateObjectURL | Caches URL but File instance may change |
+| `apps/web/src/components/video-player.tsx` | 184 | Uses blob URL that references stale File |
+
+### Potential Causes
+
+1. **File re-read from OPFS**: When `loadProjectMedia` runs, it may read a new File instance from OPFS, but the blob URL was created from an earlier instance.
+
+2. **WeakMap garbage collection**: The original File instance was garbage collected, invalidating the blob URL, but the URL string is still cached.
+
+3. **Timeline re-render**: The timeline re-render causes VideoPlayer to unmount/remount, and during this cycle something invalidates the file backing.
+
+### Subtasks
+
+#### Subtask 9.1: Investigate File Instance Lifecycle
+**Priority: HIGH**
+**Action: INVESTIGATE**
+
+Add logging to track File instance identity:
+```typescript
+// In loadProjectMedia
+debugLog(`[MediaStore] File instance for ${item.name}:`, {
+  size: item.file?.size,
+  lastModified: item.file?.lastModified,
+  name: item.file?.name,
+});
+```
+
+#### Subtask 9.2: Re-create Blob URL When File Instance Changes
+**Priority: HIGH**
+**File: `apps/web/src/lib/blob-manager.ts`**
+
+Modify `getOrCreateObjectURL` to verify the File instance is still valid:
+```typescript
+getOrCreateObjectURL(file: File | Blob, source?: string): string {
+  // First, try WeakMap (exact instance match)
+  const existingFromWeakMap = this.fileToUrl.get(file);
+  if (existingFromWeakMap && this.blobs.has(existingFromWeakMap)) {
+    const entry = this.blobs.get(existingFromWeakMap)!;
+
+    // Verify the File instance is the same
+    if (entry.file === file) {
+      entry.refCount++;
+      return existingFromWeakMap;
+    } else {
+      // File instance changed - need new URL
+      debugLog(`[BlobManager] File instance changed, creating new URL`);
+    }
+  }
+  // ... rest of logic
+}
+```
+
+#### Subtask 9.3: Ensure File Instance Stability in MediaStore
+**Priority: HIGH**
+**File: `apps/web/src/stores/media-store.ts`**
+
+Ensure the same File instance is used throughout the media item lifecycle:
+- Don't re-read from OPFS if File is already in memory
+- Store File instance in MediaItem and reuse it
+
+#### Subtask 9.4: Handle ERR_UPLOAD_FILE_CHANGED in VideoPlayer
+**Priority: MEDIUM**
+**File: `apps/web/src/components/video-player.tsx`**
+
+Add error handling to recreate blob URL on failure:
+```typescript
+const handleError = (e: Event) => {
+  const videoEl = e.target as HTMLVideoElement;
+  if (videoEl.error?.message?.includes('ERR_UPLOAD_FILE_CHANGED')) {
+    // File changed - request new blob URL
+    debugLog('[VideoPlayer] File changed, recreating blob URL');
+    // Force new URL creation
+    const newUrl = createObjectURL(mediaItem.file, 'VideoPlayer-recovery');
+    setVideoUrl(newUrl);
+  }
+};
+```
+
+---
+
+## Summary of All Issues
+
+| Issue | Priority | Status | Impact |
+|-------|----------|--------|--------|
+| Issue 6: File Key Inconsistency | HIGH | ✅ FIXED | Cache misses, duplicate URLs |
+| Issue 7: Cleanup Recreation Cycle | HIGH | ✅ FIXED | 2x URLs per file on startup |
+| Issue 8: Thumbnail ERR_FILE_NOT_FOUND | MEDIUM | ✅ FIXED | Console errors |
+| Issue 3: forwardRef Warning | LOW | ⚠️ Open | Warning only |
+| **Issue 9: ERR_UPLOAD_FILE_CHANGED** | **HIGH** | **🔴 NEW** | **Video playback fails in timeline** |
+
+---
+
+## Next Steps
+
+1. **Investigate Issue 9** - Add logging to understand File instance lifecycle
+2. **Fix Issue 9** - Either ensure File instance stability or handle the error gracefully
+3. **Test thumbnail persistence** - Verify the thumbnail fix from `video_thumbnail_fix_plan.md` works correctly
