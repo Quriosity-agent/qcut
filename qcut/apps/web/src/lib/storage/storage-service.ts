@@ -282,6 +282,8 @@ class StorageService {
       // Blob URLs are temporary and don't persist across sessions
       url: mediaItem.url?.startsWith("blob:") ? undefined : mediaItem.url,
       metadata: mediaItem.metadata,
+      // Persist localPath for FFmpeg CLI export (videos only)
+      localPath: mediaItem.localPath,
     };
 
     await mediaMetadataAdapter.set(mediaItem.id, metadata);
@@ -359,6 +361,46 @@ class StorageService {
       return null;
     }
 
+    // Regenerate localPath for videos that don't have it (legacy data migration)
+    let localPath = metadata.localPath;
+    if (
+      metadata.type === "video" &&
+      !localPath &&
+      actualFile &&
+      actualFile.size > 0
+    ) {
+      if (
+        this.isElectronEnvironment() &&
+        (window as any).electronAPI?.video?.saveTemp
+      ) {
+        try {
+          debugLog(
+            `[StorageService] Regenerating localPath for video: ${metadata.name}`
+          );
+          const arrayBuffer = await actualFile.arrayBuffer();
+          const uint8Array = new Uint8Array(arrayBuffer);
+          localPath = await (window as any).electronAPI.video.saveTemp(
+            uint8Array,
+            metadata.name
+          );
+
+          // Update metadata with new localPath for future loads
+          if (localPath) {
+            metadata.localPath = localPath;
+            await mediaMetadataAdapter.set(id, metadata);
+            debugLog(
+              `[StorageService] Regenerated and saved localPath: ${localPath}`
+            );
+          }
+        } catch (error) {
+          debugWarn(
+            `[StorageService] Failed to regenerate localPath for ${metadata.name}:`,
+            error
+          );
+        }
+      }
+    }
+
     return {
       id: metadata.id,
       name: metadata.name,
@@ -369,6 +411,8 @@ class StorageService {
       height: metadata.height,
       duration: metadata.duration,
       metadata: metadata.metadata,
+      // Restore localPath for FFmpeg CLI export
+      localPath,
       // thumbnailUrl would need to be regenerated or cached separately
     };
   }

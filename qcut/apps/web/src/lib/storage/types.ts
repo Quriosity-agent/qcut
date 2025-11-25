@@ -20,6 +20,7 @@ export interface MediaFileData {
   duration?: number;
   url?: string; // For generated images with blob URLs
   metadata?: Record<string, unknown>; // Additional metadata
+  localPath?: string; // Filesystem path for FFmpeg CLI export (videos only)
   // File will be stored separately in OPFS
 }
 
