@@ -782,11 +782,12 @@ class BlobManager {
 
 ---
 
-#### Subtask 4.2: Export Cached URL Helper Function
+#### Subtask 4.2: Export Cached URL Helper Functions ✅ IMPLEMENTED
 **Priority: HIGH**
 **File: `apps/web/src/lib/blob-manager.ts`**
+**Status: COMPLETED**
 
-Add convenience export for the cached version.
+Added convenience exports for cached URL creation and ref-counted release.
 
 **Proposed Implementation:**
 ```typescript
@@ -813,11 +814,12 @@ export const revokeObjectURL = (url: string, context?: string): boolean => {
 
 ---
 
-#### Subtask 4.3: Update StorageService to Use Cached URLs
+#### Subtask 4.3: Update StorageService to Use Cached URLs ✅ IMPLEMENTED
 **Priority: HIGH**
 **File: `apps/web/src/lib/storage/storage-service.ts:331-337`**
+**Status: COMPLETED**
 
-Replace `createObjectURL` with `getOrCreateObjectURL` for display URLs.
+Replaced `createObjectURL` with `getOrCreateObjectURL` for display URLs.
 
 **Current Code:**
 ```typescript
@@ -839,11 +841,12 @@ import { getOrCreateObjectURL } from "@/lib/blob-manager";
 
 ---
 
-#### Subtask 4.4: Update VideoPlayer to Use Cached URLs
+#### Subtask 4.4: Update VideoPlayer to Use Cached URLs ✅ IMPLEMENTED
 **Priority: HIGH**
 **File: `apps/web/src/components/ui/video-player.tsx:175`**
+**Status: COMPLETED**
 
-Replace `createObjectURL` with `getOrCreateObjectURL` for playback.
+Replaced `createObjectURL` with `getOrCreateObjectURL` and `releaseObjectURL` for ref-counted cleanup.
 
 **Current Code:**
 ```typescript
@@ -862,11 +865,12 @@ releaseObjectURL(blobUrl, "VideoPlayer-cleanup");  // Decrements ref, only revok
 
 ---
 
-#### Subtask 4.5: Update MediaStore Display URL Creation
+#### Subtask 4.5: Update MediaStore Display URL Creation ✅ IMPLEMENTED
 **Priority: MEDIUM**
 **File: `apps/web/src/stores/media-store.ts:483-486`**
+**Status: COMPLETED**
 
-Use cached URLs for display purposes in `addMediaItem`.
+Used cached URLs for display purposes in `addGeneratedImages`.
 
 **Current Code:**
 ```typescript
@@ -1328,9 +1332,9 @@ function withLazyUrl(item: MediaItem): MediaItem {
 
 ## Priority Order for Fixes
 
-1. **HIGH** - Issue 2 (localPath) - Blocks export functionality completely
-2. **HIGH** - Issue 1 (Race condition) - Causes video playback failures
-3. **MEDIUM** - Issue 4 (Duplicate URLs) - Memory waste, potential issues
+1. ✅ **HIGH** - Issue 2 (localPath) - Blocks export functionality completely - **FIXED**
+2. ✅ **HIGH** - Issue 1 (Race condition) - Causes video playback failures - **FIXED**
+3. ✅ **MEDIUM** - Issue 4 (Duplicate URLs) - Memory waste, potential issues - **FIXED**
 4. **MEDIUM** - Issue 5 (Cleanup timing) - Performance/efficiency issue
 5. **LOW** - Issue 3 (forwardRef) - Warning only, doesn't break functionality
 
@@ -1339,8 +1343,9 @@ function withLazyUrl(item: MediaItem): MediaItem {
 ## Testing Checklist
 
 After fixes, verify:
-- [ ] Videos play in preview panel without `ERR_FILE_NOT_FOUND`
-- [ ] Export completes successfully with FFmpeg CLI
-- [ ] No React ref warnings in console
-- [ ] Blob URL count stays stable (check with `window.debugBlobs()`)
-- [ ] Page reload preserves video playback ability
+- [x] Videos play in preview panel without `ERR_FILE_NOT_FOUND` (Issue 1 fixed)
+- [x] Export completes successfully with FFmpeg CLI (Issue 2 fixed)
+- [ ] No React ref warnings in console (Issue 3 pending)
+- [x] Blob URL count stays stable (check with `window.debugBlobs()`) (Issue 4 fixed)
+- [x] Page reload preserves video playback ability (Issue 2 fixed)
+- [ ] App startup doesn't create unnecessary blob URLs (Issue 5 pending)
