@@ -844,28 +844,6 @@ function generateJobId(prefix: "edit" | "upscale" = "edit"): string {
 export function getImageEditModels() {
   return [
     {
-      id: "nano-banana",
-      name: "Nano Banana",
-      description: "Smart AI-powered editing with Google/Gemini technology",
-      provider: "Google",
-      estimatedCost: "$0.039",
-      features: [
-        "Smart understanding",
-        "Cost effective",
-        "Multiple formats",
-        "Edit descriptions",
-      ],
-      parameters: {
-        numImages: { min: 1, max: 4, default: 1, step: 1 },
-        outputFormat: {
-          type: "select",
-          options: ["jpeg", "png"],
-          default: "png",
-        },
-        syncMode: { type: "boolean", default: false },
-      },
-    },
-    {
       id: "gemini-3-pro-edit",
       name: "Gemini 3 Pro Edit",
       description:
@@ -905,6 +883,28 @@ export function getImageEditModels() {
         outputFormat: {
           type: "select",
           options: ["jpeg", "png", "webp"],
+          default: "png",
+        },
+        syncMode: { type: "boolean", default: false },
+      },
+    },
+    {
+      id: "nano-banana",
+      name: "Nano Banana",
+      description: "Smart AI-powered editing with Google/Gemini technology",
+      provider: "Google",
+      estimatedCost: "$0.039",
+      features: [
+        "Smart understanding",
+        "Cost effective",
+        "Multiple formats",
+        "Edit descriptions",
+      ],
+      parameters: {
+        numImages: { min: 1, max: 4, default: 1, step: 1 },
+        outputFormat: {
+          type: "select",
+          options: ["jpeg", "png"],
           default: "png",
         },
         syncMode: { type: "boolean", default: false },
