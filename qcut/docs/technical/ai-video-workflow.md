@@ -612,6 +612,194 @@ Enable detailed logging in browser console:
 
 ---
 
+## Appendix: Detailed Flow Diagrams
+
+### Sequence Diagram
+
+```mermaid
+sequenceDiagram
+    actor User
+    participant UI as AI Panel UI
+    participant Model as Model Selection
+    participant Capabilities as Capability System
+    participant Generation as useAIGeneration
+    participant API as FAL API
+    participant MediaStore as Media Store
+
+    User->>UI: Select T2V models
+    UI->>Model: Update selectedModels
+    Model->>Capabilities: getCombinedCapabilities(selectedModels)
+    Capabilities-->>UI: Return intersected capabilities
+    UI->>UI: Render clamped T2V settings<br/>(aspect_ratio, duration, resolution)
+
+    User->>UI: Enter prompt + adjust settings
+    User->>UI: Click Generate
+    UI->>Generation: Call generateVideo with t2v*Props
+
+    Generation->>Generation: Validate duration vs. capabilities<br/>(getSafeDuration clamping)
+    Generation->>Generation: Build unifiedParams<br/>(sanitize to capability ranges)
+    Generation->>API: Send request with unifiedParams
+    API-->>Generation: Return video_url + metadata
+
+    Generation->>MediaStore: Download + create media item
+    Generation->>MediaStore: addMediaItem with unified metadata
+    MediaStore-->>Generation: Persist to storage
+    Generation->>UI: Update progress to 100% + onComplete
+    UI-->>User: Display generated video
+```
+
+### Step-by-Step Flow
+
+#### Step 1 - Model Selection
+User selects T2V models in the AI Panel UI; the UI updates the selected models and queries the capability system.
+- **Function**: `AiView` (React Component)
+- **File**: `qcut/apps/web/src/components/editor/media-panel/views/ai.tsx`
+- **Console**: `console.log("step 1: selectedModels updated -> ...")`
+  - **Step 1.1**: User interacts with model selection UI.
+  - **Step 1.2**: `selectedModels` state is updated.
+  - **Step 1.3**: `useMemo` hook triggers `getCombinedCapabilities`.
+
+#### Step 2 - Capability Resolution
+The capability system returns intersected capabilities and the UI renders clamped T2V settings (aspect_ratio, duration, resolution) based on them.
+- **Function**: `getCombinedCapabilities`
+- **File**: `qcut/apps/web/src/components/editor/media-panel/views/text2video-models-config.ts`
+- **Console**: `console.log("step 2: combinedCapabilities updated", { ...caps })`
+  - **Step 2.1**: `getCombinedCapabilities` computes intersection of supported features.
+  - **Step 2.2**: `AiView` receives updated `combinedCapabilities`.
+  - **Step 2.3**: UI re-renders settings inputs (e.g., Duration slider) clamped to new limits.
+
+#### Step 3 - Generation Initiation
+The user enters a prompt, adjusts settings, and clicks Generate; the UI invokes generateVideo with the T2V properties.
+- **Function**: `handleGenerate`
+- **File**: `qcut/apps/web/src/components/editor/media-panel/views/use-ai-generation.ts`
+- **Console**: `console.log("step 3: handleGenerate invoked (AI video flow)")`
+  - **Step 3.1**: User inputs prompt and adjusts generation settings.
+  - **Step 3.2**: User clicks "Generate" button.
+  - **Step 3.3**: `handleGenerate` function is called.
+  - **Step 3.4**: Initial validation checks (prompt existence, model selection, active project).
+
+#### Step 4 - Parameter Sanitization
+Generation validates the requested duration against capabilities (getSafeDuration clamping) and builds unifiedParams sanitized to capability ranges.
+- **Function**: `handleGenerate` (calls `getSafeDuration`)
+- **File**: `qcut/apps/web/src/components/editor/media-panel/views/use-ai-generation.ts`
+- **Console**: `console.log("step 4: sanitized params for ${modelId}", unifiedParams)`
+  - **Step 4.1**: Iterate through `selectedModels`.
+  - **Step 4.2**: Retrieve capabilities for the current model.
+  - **Step 4.3**: Call `getSafeDuration` to clamp requested duration to supported values.
+  - **Step 4.4**: Construct `unifiedParams` object with sanitized parameters.
+
+#### Step 5 - API Request
+Generation sends the request to the FAL API with unifiedParams and receives a video_url plus metadata.
+- **Function**: Request dispatch in `handleGenerate` (model-specific helpers like `generateLTXV2Video`)
+- **File**: `qcut/apps/web/src/components/editor/media-panel/views/use-ai-generation.ts`
+- **Console**: `console.log("step 5: sending generation request for ${modelId} (${activeTab} tab)", unifiedParams)`
+  - **Step 5.1**: Identify specific API function based on model ID.
+  - **Step 5.2**: API client prepares payload and headers.
+  - **Step 5.3**: Send POST request to FAL.ai endpoint.
+  - **Step 5.4**: Receive response containing `video_url` (Direct) or `job_id` (Polling).
+
+#### Step 6 - Media Integration
+Generation downloads the video, creates a media item, and adds it to the media store with unified metadata.
+- **Function**: `handleGenerate` (inside success block)
+- **File**: `qcut/apps/web/src/components/editor/media-panel/views/use-ai-generation.ts`
+- **Console**: `console.log("step 6: downloading video and adding to media store for ${modelId}")`
+  - **Step 6.1**: Check if response contains `video_url` (Direct mode) or wait for polling to complete.
+  - **Step 6.2**: Fetch video content from `video_url`.
+  - **Step 6.3**: Create `File` object from the downloaded Blob.
+  - **Step 6.4**: Construct `mediaItem` object with metadata (name, duration, dimensions).
+  - **Step 6.5**: Call `addMediaItem` to add to the project.
+  - **Step 6.6**: Generate `localUrl = URL.createObjectURL(file)` and store as `mediaItem.url`.
+  - **Step 6.7**: Media panel consumers prefer blob/local URL for playback, fall back to remote URL if missing.
+
+#### Step 7 - UI Completion
+The media store persists the item; generation updates UI progress to 100% and fires onComplete.
+- **Function**: `addMediaItem` (store action), `handleGenerate` (UI update)
+- **File**: `qcut/apps/web/src/stores/media-store.ts`, `use-ai-generation.ts`
+- **Console**: `console.log("step 7: generation flow complete; updating UI and callbacks")`
+  - **Step 7.1**: `MediaStore` generates a unique ID and updates local state.
+  - **Step 7.2**: `MediaStore` persists the new item to storage (IndexedDB/Cloud).
+  - **Step 7.3**: `handleGenerate` updates `generatedVideos` state with the new video.
+  - **Step 7.4**: `onComplete` callback is executed.
+  - **Step 7.5**: UI updates to show the generated video in the gallery/preview.
+
+#### Step 8 - Download Handling
+Media panel downloads (AI history/download button).
+- **Function**: AI panel download handler
+- **File**: `qcut/apps/web/src/components/editor/media-panel/views/ai.tsx`
+- **Console**: `console.log("step 8: media panel download", { jobId, url, source, filename })`
+  - **Step 8.1**: User clicks download in the media/AI history panel.
+  - **Step 8.2**: Handler prefers blob/local URL, falls back to remote/original URL.
+  - **Step 8.3**: File name is inferred from the remote URL when using remote mode.
+  - **Download All (ZIP)**: Uses `export-all-button.tsx` with unified `step 8` logging.
+
+---
+
+## Appendix: ZIP Export Technical Details
+
+### ZIP Export Issue - RESOLVED (2025-11-20)
+
+#### Problem Summary
+**Status**: ✅ FIXED - ZIP files now extract successfully
+
+**Original Issue**:
+- ZIP files generated correctly but could not be extracted on Windows
+- Error: "Windows cannot complete the extraction"
+- File appeared valid (correct size) but contained corrupted data
+
+#### Root Cause: Buffer Serialization
+When Electron's IPC sends data from main process to renderer, Buffer objects are serialized:
+
+```javascript
+// Main process (Node.js)
+ipcMain.handle("read-file", (event, filePath) => {
+  return fs.readFileSync(filePath); // Returns Buffer
+});
+
+// Renderer process receives serialized object:
+// { type: 'Buffer', data: [117, 56, 34, ...] }
+
+// Old code added serialized object instead of binary data
+zip.file(filename, fileBuffer); // ❌ Corrupt ZIP
+```
+
+#### Solution Implemented
+
+**1. Buffer Detection and Conversion** (`zip-manager.ts`):
+```javascript
+let uint8Array: Uint8Array;
+const bufferAsAny = fileBuffer as any;
+
+if (bufferAsAny instanceof Uint8Array) {
+  uint8Array = bufferAsAny;
+} else if (bufferAsAny instanceof ArrayBuffer) {
+  uint8Array = new Uint8Array(bufferAsAny);
+} else if (bufferAsAny.data && Array.isArray(bufferAsAny.data)) {
+  uint8Array = new Uint8Array(bufferAsAny.data);
+} else if (bufferAsAny.type === 'Buffer' && bufferAsAny.data) {
+  uint8Array = new Uint8Array(bufferAsAny.data);
+} else {
+  uint8Array = new Uint8Array(bufferAsAny);
+}
+```
+
+**2. Binary Flag for JSZip**:
+```javascript
+this.zip.file(filename, uint8Array, { binary: true });
+```
+
+**3. Windows-safe Filenames**:
+- Added extension inference for videos without valid extensions
+- Sanitized filenames to trim trailing dots/spaces (Windows extraction blocker)
+
+#### Verification Console Output
+- `step 9b-ai-buffer`: Shows Buffer conversion details
+- `step 10a`: ZIP blob generated with correct size
+- `step 11d`: Save successful with file path
+- `step 9a-extension-fix`: Extension inference logging
+- `step 9a-filename`: Sanitized filename used in ZIP
+
+---
+
 *Last Updated: November 2025*
 *QCut AI Video Models: 40+ models via FAL.ai*
 *Price Range: $0.04 - $3.20+ per video*
