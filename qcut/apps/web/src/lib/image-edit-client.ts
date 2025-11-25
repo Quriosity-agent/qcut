@@ -248,7 +248,11 @@ export async function editImage(
   };
 
   // Handle image URL(s) based on model
-  if (request.model === "seeddream-v4" || request.model === "nano-banana" || request.model === "gemini-3-pro-edit") {
+  if (
+    request.model === "seeddream-v4" ||
+    request.model === "nano-banana" ||
+    request.model === "gemini-3-pro-edit"
+  ) {
     // V4 and Nano Banana use image_urls array
     payload.image_urls = [request.imageUrl];
   } else {
