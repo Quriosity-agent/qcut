@@ -316,8 +316,8 @@ export const TEXT2IMAGE_MODELS: Record<string, Text2ImageModel> = {
         options: [
           "square_hd",
           "square",
-          "portrait_4_3",
-          "portrait_16_9",
+          "portrait_3_4",
+          "portrait_9_16",
           "landscape_4_3",
           "landscape_16_9",
         ],

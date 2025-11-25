@@ -453,21 +453,32 @@ export const modelCategories = {
 
 ## Implementation Status
 
-- [ ] Subtask 1: FLUX 2 Flex Text-to-Image
-  - [ ] 1.1 Add model configuration to TEXT2IMAGE_MODELS
-  - [ ] 1.2 Update TEXT2IMAGE_MODEL_ORDER
-  - [ ] 1.3 Update MODEL_CATEGORIES
-  - [ ] 1.4 Add parameter conversion case in fal-ai-client.ts
-- [ ] Subtask 2: FLUX 2 Flex Edit
-  - [ ] 2.1 Add to ImageEditRequest type union
-  - [ ] 2.2 Add endpoint configuration
-  - [ ] 2.3 Update image_urls handling condition
-  - [ ] 2.4 Add model info to getImageEditModels()
-  - [ ] 2.5 Add capability definition in model-utils.ts
-  - [ ] 2.6 Add to modelCategories
-  - [ ] 2.7 Add display information
-  - [ ] 2.8 Add parameter conversion support
-  - [ ] 2.9 Add parameter validation
+- [x] Subtask 1: FLUX 2 Flex Text-to-Image ✅
+  - [x] 1.1 Add model configuration to TEXT2IMAGE_MODELS
+  - [x] 1.2 Update TEXT2IMAGE_MODEL_ORDER
+  - [x] 1.3 Update MODEL_CATEGORIES
+  - [x] 1.4 Add parameter conversion case in fal-ai-client.ts
+- [x] Subtask 2: FLUX 2 Flex Edit ✅
+  - [x] 2.1 Add to ImageEditRequest type union
+  - [x] 2.2 Add endpoint configuration
+  - [x] 2.3 Update image_urls handling condition
+  - [x] 2.4 Add model info to getImageEditModels()
+  - [x] 2.5 Add capability definition in model-utils.ts
+  - [x] 2.6 Add to modelCategories
+  - [x] 2.7 Add display information
+  - [x] 2.8 Add parameter conversion support
+  - [x] 2.9 Add parameter validation
+
+---
+
+## Files Modified
+
+| File | Changes |
+|------|---------|
+| `text2image-models.ts` | Added `flux-2-flex` model config (lines 279-372), updated MODEL_ORDER and MODEL_CATEGORIES |
+| `fal-ai-client.ts` | Added `flux-2-flex` case in `convertSettingsToParams` (lines 467-470) |
+| `image-edit-client.ts` | Added `flux-2-flex-edit` to type union, endpoint config, image_urls handling, model info |
+| `model-utils.ts` | Added capability, categories, display info, parameter conversion, validation for `flux-2-flex-edit` |
 
 ---
 
