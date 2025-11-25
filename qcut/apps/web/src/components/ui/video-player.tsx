@@ -209,7 +209,10 @@ export function VideoPlayer({
       video.src = videoSource.src;
       // Release any pending blob URL when switching to remote
       if (pendingCleanupRef.current) {
-        releaseObjectURL(pendingCleanupRef.current, "VideoPlayer-remote-switch");
+        releaseObjectURL(
+          pendingCleanupRef.current,
+          "VideoPlayer-remote-switch"
+        );
         pendingCleanupRef.current = null;
       }
     }
@@ -260,17 +263,22 @@ export function VideoPlayer({
         const video = e.currentTarget;
         const errorCode = video.error?.code;
         const errorMessage = video.error?.message || "Unknown error";
-        console.error(`[VideoPlayer] ❌ Video error for ${videoId ?? "video"}:`, {
-          code: errorCode,
-          message: errorMessage,
-          src: video.src?.substring(0, 50) + "...",
-          networkState: video.networkState,
-          readyState: video.readyState,
-        });
+        console.error(
+          `[VideoPlayer] ❌ Video error for ${videoId ?? "video"}:`,
+          {
+            code: errorCode,
+            message: errorMessage,
+            src: video.src?.substring(0, 50) + "...",
+            networkState: video.networkState,
+            readyState: video.readyState,
+          }
+        );
         videoLoadedRef.current = false;
       }}
       onCanPlay={() => {
-        console.log(`[VideoPlayer] ▶️ Video ready to play: ${videoId ?? "video"}`);
+        console.log(
+          `[VideoPlayer] ▶️ Video ready to play: ${videoId ?? "video"}`
+        );
       }}
     />
   );

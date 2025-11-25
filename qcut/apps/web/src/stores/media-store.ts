@@ -485,7 +485,10 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
               const text = await file.text();
               displayUrl = `data:image/svg+xml;base64,${btoa(text)}`;
             } catch (error) {
-              displayUrl = getOrCreateObjectURL(file, "addMediaItem-svg-fallback");
+              displayUrl = getOrCreateObjectURL(
+                file,
+                "addMediaItem-svg-fallback"
+              );
             }
           } else {
             displayUrl = getOrCreateObjectURL(file, "addMediaItem-display");

@@ -1105,7 +1105,11 @@ export class CLIExportEngine extends ExportEngine {
       const canUseMode2 =
         this.exportAnalysis?.optimizationStrategy ===
         "direct-video-with-filters";
-      const videoInput: { path: string; trimStart: number; trimEnd: number } | null = canUseMode2 ? await this.extractVideoInputPath() : null;
+      const videoInput: {
+        path: string;
+        trimStart: number;
+        trimEnd: number;
+      } | null = canUseMode2 ? await this.extractVideoInputPath() : null;
 
       // All supported modes skip frame rendering (Mode 1, 1.5, 2)
       if (videoInput) {
@@ -1449,7 +1453,11 @@ export class CLIExportEngine extends ExportEngine {
     // Determine which mode to use and extract appropriate video info
     const canUseMode2 =
       this.exportAnalysis?.optimizationStrategy === "direct-video-with-filters";
-    const videoInput: { path: string; trimStart: number; trimEnd: number } | null = canUseMode2 ? await this.extractVideoInputPath() : null;
+    const videoInput: {
+      path: string;
+      trimStart: number;
+      trimEnd: number;
+    } | null = canUseMode2 ? await this.extractVideoInputPath() : null;
 
     // Log Mode 2 detection result
     if (canUseMode2 && videoInput) {

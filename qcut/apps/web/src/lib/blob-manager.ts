@@ -224,9 +224,7 @@ class BlobManager {
 
     if (import.meta.env.DEV) {
       console.log(`[BlobManager] 🔴 Revoked (no refs): ${url}`);
-      console.log(
-        `  🕒 Lifespan: ${Date.now() - entry.createdAt}ms`
-      );
+      console.log(`  🕒 Lifespan: ${Date.now() - entry.createdAt}ms`);
       if (context) {
         console.log(`  🏷️ Context: ${context}`);
       }
@@ -255,9 +253,7 @@ class BlobManager {
         console.log(`[BlobManager] 🔴 Force revoked: ${url}`);
         console.log(`  📍 Created by: ${entry.source || "unknown"}`);
         console.log(`  🗑️ Revoked by: ${revokeStack}`);
-        console.log(
-          `  🕒 Lifespan: ${Date.now() - entry.createdAt}ms`
-        );
+        console.log(`  🕒 Lifespan: ${Date.now() - entry.createdAt}ms`);
         console.log(`  📊 Had refs: ${entry.refCount}`);
         if (contextTag) {
           console.log(`  🏷️ Context:${contextTag}`);
