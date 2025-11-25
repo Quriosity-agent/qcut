@@ -276,6 +276,101 @@ export const TEXT2IMAGE_MODELS: Record<string, Text2ImageModel> = {
     ],
   },
 
+  "flux-2-flex": {
+    id: "flux-2-flex",
+    name: "FLUX 2 Flex",
+    description:
+      "Text-to-image with adjustable inference steps, guidance scale, and enhanced typography",
+    provider: "Black Forest Labs",
+    endpoint: "https://fal.run/fal-ai/flux-2-flex",
+
+    qualityRating: 4,
+    speedRating: 4,
+
+    estimatedCost: "$0.06/MP",
+    costPerImage: 6, // cents per megapixel
+
+    maxResolution: "2048x2048",
+    supportedAspectRatios: ["1:1", "4:3", "3:4", "16:9", "9:16"],
+
+    defaultParams: {
+      image_size: "landscape_4_3",
+      num_images: 1,
+      guidance_scale: 3.5,
+      num_inference_steps: 28,
+      enable_prompt_expansion: true,
+      safety_tolerance: "2",
+      enable_safety_checker: true,
+      output_format: "jpeg",
+      sync_mode: false,
+    },
+
+    availableParams: [
+      {
+        name: "image_size",
+        type: "select",
+        options: [
+          "square_hd",
+          "square",
+          "portrait_4_3",
+          "portrait_16_9",
+          "landscape_4_3",
+          "landscape_16_9",
+        ],
+        default: "landscape_4_3",
+        description: "Output image size preset",
+      },
+      {
+        name: "guidance_scale",
+        type: "number",
+        min: 1.5,
+        max: 10,
+        step: 0.1,
+        default: 3.5,
+        description: "Controls adherence to prompt",
+      },
+      {
+        name: "num_inference_steps",
+        type: "number",
+        min: 2,
+        max: 50,
+        step: 1,
+        default: 28,
+        description: "Number of denoising steps",
+      },
+      {
+        name: "enable_prompt_expansion",
+        type: "boolean",
+        default: true,
+        description: "Auto-expand prompt using model knowledge",
+      },
+      {
+        name: "output_format",
+        type: "select",
+        options: ["jpeg", "png"],
+        default: "jpeg",
+        description: "Output image format",
+      },
+    ],
+
+    bestFor: [
+      "Fine-tuned control over generation",
+      "Typography and text rendering",
+      "Professional content creation",
+    ],
+
+    strengths: [
+      "Adjustable inference steps for quality/speed tradeoff",
+      "Enhanced typography capabilities",
+      "Cost-effective per megapixel pricing",
+    ],
+
+    limitations: [
+      "Pricing scales with resolution",
+      "Limited aspect ratio options vs FLUX Pro Ultra",
+    ],
+  },
+
   "wan-v2-2": {
     id: "wan-v2-2",
     name: "WAN v2.2",
@@ -841,6 +936,7 @@ export const TEXT2IMAGE_MODELS: Record<string, Text2ImageModel> = {
 export const TEXT2IMAGE_MODEL_ORDER = [
   "gemini-3-pro",
   "nano-banana",
+  "flux-2-flex",
   "seeddream-v4",
   "reve-text-to-image",
   "wan-v2-2",
@@ -918,18 +1014,26 @@ export function recommendModelsForPrompt(prompt: string): string[] {
 
 export const MODEL_CATEGORIES = {
   PHOTOREALISTIC: ["imagen4-ultra", "wan-v2-2", "gemini-3-pro"],
-  ARTISTIC: ["seeddream-v3", "seeddream-v4", "qwen-image"], // Add V4 to artistic
+  ARTISTIC: ["seeddream-v3", "seeddream-v4", "qwen-image"],
   VERSATILE: [
     "qwen-image",
     "flux-pro-v11-ultra",
+    "flux-2-flex",
     "nano-banana",
     "reve-text-to-image",
-  ], // Add nano-banana, reve-text-to-image
-  FAST: ["seeddream-v3", "nano-banana", "qwen-image", "reve-text-to-image"], // Add nano-banana, reve-text-to-image to fast
+  ],
+  FAST: [
+    "seeddream-v3",
+    "nano-banana",
+    "qwen-image",
+    "reve-text-to-image",
+    "flux-2-flex",
+  ],
   HIGH_QUALITY: [
     "imagen4-ultra",
     "wan-v2-2",
     "flux-pro-v11-ultra",
+    "flux-2-flex",
     "seeddream-v4",
     "gemini-3-pro",
   ],
@@ -938,5 +1042,6 @@ export const MODEL_CATEGORIES = {
     "nano-banana",
     "qwen-image",
     "reve-text-to-image",
-  ], // Add nano-banana, reve-text-to-image
+    "flux-2-flex",
+  ],
 } as const;

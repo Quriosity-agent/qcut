@@ -18,6 +18,7 @@ export interface ImageEditRequest {
     | "seededit"
     | "flux-kontext"
     | "flux-kontext-max"
+    | "flux-2-flex-edit"
     | "seeddream-v4"
     | "nano-banana"
     | "reve-edit"
@@ -142,6 +143,20 @@ export const MODEL_ENDPOINTS: Record<string, ModelEndpoint> = {
     },
   },
 
+  // Add FLUX 2 Flex Edit endpoint
+  "flux-2-flex-edit": {
+    endpoint: "fal-ai/flux-2-flex/edit",
+    defaultParams: {
+      guidance_scale: 3.5,
+      num_inference_steps: 28,
+      safety_tolerance: 2,
+      enable_prompt_expansion: true,
+      num_images: 1,
+      output_format: "jpeg",
+      sync_mode: false,
+    },
+  },
+
   // Upscale models
   "crystal-upscaler": {
     endpoint: UPSCALE_MODEL_ENDPOINTS["crystal-upscaler"],
@@ -251,9 +266,10 @@ export async function editImage(
   if (
     request.model === "seeddream-v4" ||
     request.model === "nano-banana" ||
-    request.model === "gemini-3-pro-edit"
+    request.model === "gemini-3-pro-edit" ||
+    request.model === "flux-2-flex-edit"
   ) {
-    // V4 and Nano Banana use image_urls array
+    // V4, Nano Banana, Gemini 3 Pro Edit, and FLUX 2 Flex Edit use image_urls array
     payload.image_urls = [request.imageUrl];
   } else {
     // V3 and FLUX use image_url string
@@ -1003,6 +1019,32 @@ export function getImageEditModels() {
         steps: { min: 1, max: 50, default: 28, step: 1 },
         safetyTolerance: { min: 1, max: 6, default: 2, step: 1 },
         numImages: { min: 1, max: 4, default: 1, step: 1 },
+      },
+    },
+    {
+      id: "flux-2-flex-edit",
+      name: "FLUX 2 Flex Edit",
+      description:
+        "Flexible image editing with adjustable parameters and enhanced control",
+      provider: "Black Forest Labs",
+      estimatedCost: "$0.06/MP",
+      features: [
+        "Auto image size detection",
+        "Adjustable inference steps",
+        "Prompt expansion",
+        "Fine-tuned guidance control",
+      ],
+      parameters: {
+        guidanceScale: { min: 1.5, max: 10, default: 3.5, step: 0.1 },
+        steps: { min: 2, max: 50, default: 28, step: 1 },
+        safetyTolerance: { min: 1, max: 5, default: 2, step: 1 },
+        numImages: { min: 1, max: 4, default: 1, step: 1 },
+        outputFormat: {
+          type: "select",
+          options: ["jpeg", "png"],
+          default: "jpeg",
+        },
+        enablePromptExpansion: { type: "boolean", default: true },
       },
     },
   ];

@@ -77,6 +77,23 @@ export function getModelCapabilities(modelId: string): ModelCapability {
           "landscape_16_9",
         ],
       };
+    case "flux-2-flex-edit":
+      return {
+        multiImage: false,
+        flexibleSizing: true,
+        enhancedPrompts: true,
+        outputFormats: ["JPEG", "PNG"],
+        maxImages: 1,
+        sizeOptions: [
+          "auto",
+          "square_hd",
+          "square",
+          "portrait_4_3",
+          "portrait_16_9",
+          "landscape_4_3",
+          "landscape_16_9",
+        ],
+      };
     default:
       return {
         multiImage: false,
@@ -161,6 +178,20 @@ export function convertParametersBetweenModels(
     };
   }
 
+  if (toModel === "flux-2-flex-edit") {
+    return {
+      ...baseParams,
+      outputFormat:
+        params.outputFormat === "JPEG" || params.outputFormat === "PNG"
+          ? params.outputFormat
+          : "JPEG",
+      syncMode: false,
+      image_urls: params.image_urls || [],
+      guidanceScale: params.guidanceScale || params.guidance_scale || 3.5,
+      steps: params.steps || params.num_inference_steps || 28,
+    };
+  }
+
   // Converting to V3 or other models - keep only compatible parameters
   return {
     prompt: params.prompt || "",
@@ -174,10 +205,10 @@ export function convertParametersBetweenModels(
 
 // Add model categorization
 export const modelCategories = {
-  stable: ["seededit", "seeddream-v3", "flux-kontext"],
+  stable: ["seededit", "seeddream-v3", "flux-kontext", "flux-2-flex-edit"],
   advanced: ["seeddream-v4", "flux-kontext-max"],
   smart: ["nano-banana"],
-  cost_effective: ["nano-banana", "seeddream-v3"],
+  cost_effective: ["nano-banana", "seeddream-v3", "flux-2-flex-edit"],
   high_quality: ["seeddream-v4", "flux-kontext-max"],
 };
 
@@ -267,6 +298,14 @@ export function getModelDisplayInfo(modelId: string) {
         technology: "FLUX",
         features: ["Complex edits", "Typography", "Maximum quality"],
       };
+    case "flux-2-flex-edit":
+      return {
+        name: "FLUX 2 Flex Edit",
+        description: "Flexible editing with fine control",
+        badge: "Versatile",
+        technology: "FLUX 2",
+        features: ["Auto sizing", "Prompt expansion", "Adjustable steps"],
+      };
     default:
       return {
         name: modelId,
@@ -340,6 +379,15 @@ export function validateModelParameters(
     }
     if (params.numImages && (params.numImages < 1 || params.numImages > 4)) {
       errors.push("Number of images must be between 1-4 for Nano Banana");
+    }
+  }
+
+  if (modelId === "flux-2-flex-edit") {
+    if (params.outputFormat && !["JPEG", "PNG"].includes(params.outputFormat)) {
+      errors.push("Output format must be JPEG or PNG for FLUX 2 Flex Edit");
+    }
+    if (params.numImages && (params.numImages < 1 || params.numImages > 4)) {
+      errors.push("Number of images must be between 1-4 for FLUX 2 Flex Edit");
     }
   }
 
