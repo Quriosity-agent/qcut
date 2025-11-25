@@ -125,21 +125,250 @@ RESULT: Thumbnails display reliably, persist across sessions
 
 ---
 
-## Implementation Plan
+## Implementation Plan - Detailed Subtasks
+
+---
 
 ### Phase 1: Add Thumbnail Status Field
 
 **Goal:** Track thumbnail generation state for better UX
 
-**Changes:**
-- Add `thumbnailStatus: 'pending' | 'loading' | 'ready' | 'failed'` to MediaItem type
-- Update components to show appropriate UI based on status
-- Show spinner while generating, placeholder if pending, error if failed
+---
 
-**Files:**
-- `stores/media-store-types.ts` - Add thumbnailStatus to MediaItem interface
-- `components/editor/media-panel/views/media.tsx` - Render based on status
-- `components/editor/timeline/timeline-element.tsx` - Render based on status
+#### Subtask 1.1: Add thumbnailStatus to MediaItem Interface
+**File:** `apps/web/src/stores/media-store-types.ts`
+**Action:** MODIFY
+**Lines:** 14-15
+
+**Current Code:**
+```typescript
+  thumbnailUrl?: string; // For video thumbnails
+  duration?: number; // For video/audio duration
+```
+
+**New Code:**
+```typescript
+  thumbnailUrl?: string; // For video thumbnails (data URL, persisted to storage)
+  thumbnailStatus?: 'pending' | 'loading' | 'ready' | 'failed'; // Thumbnail generation state
+  duration?: number; // For video/audio duration
+```
+
+---
+
+#### Subtask 1.2: Add Loading State to Media Panel Video Preview
+**File:** `apps/web/src/components/editor/media-panel/views/media.tsx`
+**Action:** MODIFY
+**Lines:** 241-272
+
+**Current Code:**
+```typescript
+    if (item.type === "video") {
+      if (item.thumbnailUrl) {
+        return (
+          <div className="relative w-full h-full">
+            <img
+              src={item.thumbnailUrl}
+              alt={item.name}
+              className="w-full h-full object-cover rounded"
+              loading="lazy"
+            />
+            <div className="absolute inset-0 flex items-center justify-center bg-background/20 rounded">
+              <Video className="h-6 w-6 text-foreground drop-shadow-md" />
+            </div>
+            {item.duration && (
+              <div className="absolute bottom-1 right-1 bg-background/70 text-foreground text-xs px-1 rounded">
+                {formatDuration(item.duration)}
+              </div>
+            )}
+          </div>
+        );
+      }
+      return (
+        <div className="w-full h-full bg-muted/30 flex flex-col items-center justify-center text-muted-foreground rounded">
+          <Video className="h-6 w-6 mb-1" />
+          <span className="text-xs">Video</span>
+          {item.duration && (
+            <span className="text-xs opacity-70">
+              {formatDuration(item.duration)}
+            </span>
+          )}
+        </div>
+      );
+    }
+```
+
+**New Code:**
+```typescript
+    if (item.type === "video") {
+      // Show loading spinner while thumbnail is being generated
+      if (item.thumbnailStatus === 'loading' || item.thumbnailStatus === 'pending') {
+        return (
+          <div className="w-full h-full bg-muted/30 flex flex-col items-center justify-center text-muted-foreground rounded">
+            <Loader2 className="h-6 w-6 mb-1 animate-spin" />
+            <span className="text-xs">Loading...</span>
+            {item.duration && (
+              <span className="text-xs opacity-70">
+                {formatDuration(item.duration)}
+              </span>
+            )}
+          </div>
+        );
+      }
+
+      // Show thumbnail if available
+      if (item.thumbnailUrl) {
+        return (
+          <div className="relative w-full h-full">
+            <img
+              src={item.thumbnailUrl}
+              alt={item.name}
+              className="w-full h-full object-cover rounded"
+              loading="lazy"
+            />
+            <div className="absolute inset-0 flex items-center justify-center bg-background/20 rounded">
+              <Video className="h-6 w-6 text-foreground drop-shadow-md" />
+            </div>
+            {item.duration && (
+              <div className="absolute bottom-1 right-1 bg-background/70 text-foreground text-xs px-1 rounded">
+                {formatDuration(item.duration)}
+              </div>
+            )}
+          </div>
+        );
+      }
+
+      // Fallback: no thumbnail available
+      return (
+        <div className="w-full h-full bg-muted/30 flex flex-col items-center justify-center text-muted-foreground rounded">
+          <Video className="h-6 w-6 mb-1" />
+          <span className="text-xs">Video</span>
+          {item.duration && (
+            <span className="text-xs opacity-70">
+              {formatDuration(item.duration)}
+            </span>
+          )}
+        </div>
+      );
+    }
+```
+
+**Note:** `Loader2` is already imported from lucide-react (line 7).
+
+---
+
+#### Subtask 1.3: Add Loading State to Timeline Video Rendering
+**File:** `apps/web/src/components/editor/timeline/timeline-element.tsx`
+**Action:** MODIFY
+**Lines:** 381-441
+
+**Current Code:**
+```typescript
+    if (mediaItem.type === "video" && mediaItem.thumbnailUrl) {
+      const trackHeight = getTrackHeight(track.type);
+      const tileHeight = trackHeight - 8;
+      const tileWidth = tileHeight * TILE_ASPECT_RATIO;
+
+      return (
+        <div className="w-full h-full flex items-center justify-center">
+          <div className="bg-[#004D52] py-3 w-full h-full relative">
+            {/* Background with tiled thumbnails */}
+            <div
+              className="absolute top-3 bottom-3 left-0 right-0"
+              style={{
+                backgroundImage: mediaItem.thumbnailUrl
+                  ? `url(${mediaItem.thumbnailUrl})`
+                  : "none",
+                backgroundRepeat: "repeat-x",
+                backgroundSize: `${tileWidth}px ${tileHeight}px`,
+                backgroundPosition: "left center",
+                pointerEvents: "none",
+              }}
+              aria-label={`Tiled thumbnail of ${mediaItem.name}`}
+            />
+            {/* Overlay with vertical borders */}
+            <div
+              className="absolute top-3 bottom-3 left-0 right-0 pointer-events-none"
+              style={{
+                backgroundImage: `repeating-linear-gradient(
+                  to right,
+                  transparent 0px,
+                  transparent ${tileWidth - 1}px,
+                  rgba(255, 255, 255, 0.6) ${tileWidth - 1}px,
+                  rgba(255, 255, 255, 0.6) ${tileWidth}px
+                )`,
+                backgroundPosition: "left center",
+              }}
+            />
+          </div>
+        </div>
+      );
+    }
+```
+
+**New Code:**
+```typescript
+    if (mediaItem.type === "video") {
+      const trackHeight = getTrackHeight(track.type);
+      const tileHeight = trackHeight - 8;
+      const tileWidth = tileHeight * TILE_ASPECT_RATIO;
+
+      // Show loading indicator while thumbnail generates
+      if (mediaItem.thumbnailStatus === 'loading' || mediaItem.thumbnailStatus === 'pending') {
+        return (
+          <div className="w-full h-full flex items-center justify-center bg-[#004D52]">
+            <span className="text-xs text-foreground/60 truncate px-2">
+              {element.name} (loading...)
+            </span>
+          </div>
+        );
+      }
+
+      // Show tiled thumbnails if available
+      if (mediaItem.thumbnailUrl) {
+        return (
+          <div className="w-full h-full flex items-center justify-center">
+            <div className="bg-[#004D52] py-3 w-full h-full relative">
+              {/* Background with tiled thumbnails */}
+              <div
+                className="absolute top-3 bottom-3 left-0 right-0"
+                style={{
+                  backgroundImage: `url(${mediaItem.thumbnailUrl})`,
+                  backgroundRepeat: "repeat-x",
+                  backgroundSize: `${tileWidth}px ${tileHeight}px`,
+                  backgroundPosition: "left center",
+                  pointerEvents: "none",
+                }}
+                aria-label={`Tiled thumbnail of ${mediaItem.name}`}
+              />
+              {/* Overlay with vertical borders */}
+              <div
+                className="absolute top-3 bottom-3 left-0 right-0 pointer-events-none"
+                style={{
+                  backgroundImage: `repeating-linear-gradient(
+                    to right,
+                    transparent 0px,
+                    transparent ${tileWidth - 1}px,
+                    rgba(255, 255, 255, 0.6) ${tileWidth - 1}px,
+                    rgba(255, 255, 255, 0.6) ${tileWidth}px
+                  )`,
+                  backgroundPosition: "left center",
+                }}
+              />
+            </div>
+          </div>
+        );
+      }
+
+      // Fallback: no thumbnail
+      return (
+        <div className="w-full h-full flex items-center justify-center bg-[#004D52]">
+          <span className="text-xs text-foreground/80 truncate px-2">
+            {element.name}
+          </span>
+        </div>
+      );
+    }
+```
 
 ---
 
@@ -147,41 +376,395 @@ RESULT: Thumbnails display reliably, persist across sessions
 
 **Goal:** Save generated thumbnails so they survive reload
 
-**Changes:**
-- When thumbnail is generated, save to storage alongside MediaItem
-- On load, retrieve thumbnail from storage
-- No regeneration needed
+---
 
-**Storage Options:**
+#### Subtask 2.1: Add thumbnailUrl to Storage Schema
+**File:** `apps/web/src/lib/storage/storage-service.ts`
+**Action:** MODIFY
+**Lines:** 271-286 (inside saveMediaItem)
 
-| Option | Pros | Cons |
-|--------|------|------|
-| **A: Inline in MediaItem** | Simple, single read | Larger metadata object |
-| **B: Separate thumbnail store** | Clean separation | Extra read per item |
-| **C: As separate file in OPFS** | Works with large thumbnails | More complex |
+**Current Code:**
+```typescript
+    // Save metadata to project-specific IndexedDB
+    const metadata: MediaFileData = {
+      id: mediaItem.id,
+      name: mediaItem.name,
+      type: mediaItem.type,
+      size: mediaItem.file.size,
+      lastModified: mediaItem.file.lastModified,
+      width: mediaItem.width,
+      height: mediaItem.height,
+      duration: mediaItem.duration,
+      // Only store non-blob URLs (e.g., data URLs, http URLs)
+      // Blob URLs are temporary and don't persist across sessions
+      url: mediaItem.url?.startsWith("blob:") ? undefined : mediaItem.url,
+      metadata: mediaItem.metadata,
+      // Persist localPath for FFmpeg CLI export (videos only)
+      localPath: mediaItem.localPath,
+    };
+```
 
-**Recommended: Option A** - Store thumbnail data URL directly in MediaItem metadata. Thumbnails are small (5-20KB base64), so inline storage is acceptable.
+**New Code:**
+```typescript
+    // Save metadata to project-specific IndexedDB
+    const metadata: MediaFileData = {
+      id: mediaItem.id,
+      name: mediaItem.name,
+      type: mediaItem.type,
+      size: mediaItem.file.size,
+      lastModified: mediaItem.file.lastModified,
+      width: mediaItem.width,
+      height: mediaItem.height,
+      duration: mediaItem.duration,
+      // Only store non-blob URLs (e.g., data URLs, http URLs)
+      // Blob URLs are temporary and don't persist across sessions
+      url: mediaItem.url?.startsWith("blob:") ? undefined : mediaItem.url,
+      // Persist thumbnail data URL for videos (survives reload)
+      thumbnailUrl: mediaItem.thumbnailUrl,
+      metadata: mediaItem.metadata,
+      // Persist localPath for FFmpeg CLI export (videos only)
+      localPath: mediaItem.localPath,
+    };
+```
 
-**Files:**
-- `stores/media-store.ts` - Save thumbnailUrl to storage after generation
-- `lib/storage/storage-service.ts` - Ensure thumbnailUrl persists with MediaItem
+---
+
+#### Subtask 2.2: Add thumbnailUrl to MediaFileData Interface
+**File:** `apps/web/src/lib/storage/storage-service.ts`
+**Action:** MODIFY
+**Lines:** Find MediaFileData interface definition and add thumbnailUrl
+
+**Find the interface and ADD:**
+```typescript
+  thumbnailUrl?: string; // Video thumbnail as data URL
+```
+
+---
+
+#### Subtask 2.3: Load thumbnailUrl from Storage
+**File:** `apps/web/src/lib/storage/storage-service.ts`
+**Action:** MODIFY
+**Lines:** Inside loadMediaItem, where MediaItem is returned
+
+**Find where MediaItem is constructed and ensure thumbnailUrl is included:**
+```typescript
+    return {
+      id: metadata.id,
+      name: metadata.name,
+      type: metadata.type,
+      file: actualFile,
+      url,
+      thumbnailUrl: metadata.thumbnailUrl,  // ADD THIS LINE
+      duration: metadata.duration,
+      width: metadata.width,
+      height: metadata.height,
+      localPath,
+      metadata: metadata.metadata,
+    };
+```
 
 ---
 
 ### Phase 3: Fix Background Update Flow
 
-**Goal:** Ensure thumbnail updates trigger UI re-render
+**Goal:** Ensure thumbnail updates trigger UI re-render and persist to storage
 
-**Changes:**
-- Pass item ID to background processor (not just file)
-- Update by ID directly (no re-generation of ID)
-- Use granular Zustand selectors in components
+---
 
-**Files:**
-- `stores/media-store.ts` - Refactor extractVideoMetadataBackground
-- `stores/media-store.ts` - Refactor updateMediaMetadata to use ID
-- `components/editor/media-panel/views/media.tsx` - Use granular selector
-- `components/editor/timeline/timeline-element.tsx` - Use granular selector
+#### Subtask 3.1: Modify extractVideoMetadataBackground to Accept Item ID and ProjectId
+**File:** `apps/web/src/stores/media-store.ts`
+**Action:** MODIFY
+**Lines:** 121, 127-151
+
+**Current Code:**
+```typescript
+  // Start background metadata extraction (don't await)
+  extractVideoMetadataBackground(file);
+
+// Background metadata extraction without blocking UI
+const extractVideoMetadataBackground = async (file: File) => {
+  try {
+    // Try browser processing first - it's fast and reliable
+    const [thumbnailData, duration] = await Promise.all([
+      generateVideoThumbnailBrowser(file),
+      getMediaDuration(file),
+    ]);
+
+    const result = {
+      thumbnailUrl: thumbnailData.thumbnailUrl,
+      width: thumbnailData.width,
+      height: thumbnailData.height,
+      duration,
+      fps: 30,
+      processingMethod: "browser" as const,
+    };
+
+    // Update the media item with real metadata
+    updateMediaMetadata(file, result);
+    return result;
+  } catch (browserError) {
+    // Skip FFmpeg entirely to avoid the 60s timeout
+    // Users get instant response with defaults, which is better UX
+  }
+};
+```
+
+**New Code:**
+```typescript
+  // Start background metadata extraction (don't await)
+  // Note: itemId and projectId must be passed from caller
+  // This is called from loadProjectMedia where we have both
+
+// Background metadata extraction without blocking UI
+const extractVideoMetadataBackground = async (
+  file: File,
+  itemId: string,
+  projectId: string
+) => {
+  try {
+    // Set status to loading
+    updateMediaItemField(itemId, { thumbnailStatus: 'loading' });
+
+    // Try browser processing first - it's fast and reliable
+    const [thumbnailData, duration] = await Promise.all([
+      generateVideoThumbnailBrowser(file),
+      getMediaDuration(file),
+    ]);
+
+    const result = {
+      thumbnailUrl: thumbnailData.thumbnailUrl,
+      thumbnailStatus: 'ready' as const,
+      width: thumbnailData.width,
+      height: thumbnailData.height,
+      duration,
+      fps: 30,
+      processingMethod: "browser" as const,
+    };
+
+    // Update the media item with real metadata and persist to storage
+    await updateMediaMetadataAndPersist(itemId, projectId, result);
+    return result;
+  } catch (browserError) {
+    // Set status to failed
+    updateMediaItemField(itemId, { thumbnailStatus: 'failed' });
+    debugError('[MediaStore] Thumbnail generation failed:', browserError);
+  }
+};
+```
+
+---
+
+#### Subtask 3.2: Add Helper Functions for Updating Media Items
+**File:** `apps/web/src/stores/media-store.ts`
+**Action:** ADD
+**Location:** After line 175 (after current updateMediaMetadata)
+
+**New Code to ADD:**
+```typescript
+// Helper to update a single field on a media item (in-memory only)
+const updateMediaItemField = (itemId: string, updates: Partial<MediaItem>) => {
+  const mediaStore = useMediaStore.getState();
+  const updatedItems = mediaStore.mediaItems.map((item) => {
+    if (item.id === itemId) {
+      return { ...item, ...updates };
+    }
+    return item;
+  });
+  useMediaStore.setState({ mediaItems: updatedItems });
+};
+
+// Helper to update media item metadata and persist to storage
+const updateMediaMetadataAndPersist = async (
+  itemId: string,
+  projectId: string,
+  metadata: Partial<MediaItem>
+) => {
+  const mediaStore = useMediaStore.getState();
+  const item = mediaStore.mediaItems.find((i) => i.id === itemId);
+
+  if (!item) {
+    debugError(`[MediaStore] Cannot update item ${itemId} - not found`);
+    return;
+  }
+
+  // Update in-memory state
+  const updatedItem = { ...item, ...metadata };
+  const updatedItems = mediaStore.mediaItems.map((i) =>
+    i.id === itemId ? updatedItem : i
+  );
+  useMediaStore.setState({ mediaItems: updatedItems });
+
+  // Persist to storage
+  try {
+    await storageService.saveMediaItem(projectId, updatedItem);
+    debugLog(`[MediaStore] Persisted thumbnail for ${item.name}`);
+  } catch (error) {
+    debugError(`[MediaStore] Failed to persist thumbnail for ${item.name}:`, error);
+  }
+};
+```
+
+---
+
+#### Subtask 3.3: Delete Old updateMediaMetadata Function
+**File:** `apps/web/src/stores/media-store.ts`
+**Action:** DELETE
+**Lines:** 153-175
+
+**Delete this code:**
+```typescript
+// Helper to update media item metadata after background processing
+const updateMediaMetadata = async (file: File, metadata: any) => {
+  const mediaStore = useMediaStore.getState();
+  const fileId = await generateFileBasedId(file);
+
+  // Find and update the media item
+  const updatedItems = mediaStore.mediaItems.map((item) => {
+    if (item.id === fileId) {
+      return {
+        ...item,
+        width: metadata.width,
+        height: metadata.height,
+        duration: metadata.duration,
+        fps: metadata.fps,
+        thumbnailUrl: metadata.thumbnailUrl,
+      };
+    }
+    return item;
+  });
+
+  // Update the store
+  useMediaStore.setState({ mediaItems: updatedItems });
+};
+```
+
+---
+
+#### Subtask 3.4: Modify loadProjectMedia to Use Stored Thumbnail or Generate New
+**File:** `apps/web/src/stores/media-store.ts`
+**Action:** MODIFY
+**Lines:** 648-664
+
+**Current Code:**
+```typescript
+          if (item.type === "video" && item.file) {
+            try {
+              const processResult = await processVideoFile(item.file);
+
+              return {
+                ...item,
+                url: displayUrl, // Use lazy-created URL
+                thumbnailUrl: processResult.thumbnailUrl || item.thumbnailUrl,
+                width: processResult.width || item.width,
+                height: processResult.height || item.height,
+                duration: processResult.duration || item.duration,
+                fps: processResult.fps || item.fps,
+                metadata: {
+                  ...item.metadata,
+                  processingMethod: processResult.processingMethod,
+                },
+              };
+```
+
+**New Code:**
+```typescript
+          if (item.type === "video" && item.file) {
+            // Check if thumbnail already exists in storage
+            if (item.thumbnailUrl) {
+              debugLog(`[MediaStore] Using stored thumbnail for ${item.name}`);
+              return {
+                ...item,
+                url: displayUrl,
+                thumbnailStatus: 'ready' as const,
+              };
+            }
+
+            // No stored thumbnail - need to generate
+            debugLog(`[MediaStore] Generating thumbnail for ${item.name}`);
+
+            // Start background generation (will update store and persist when done)
+            extractVideoMetadataBackground(item.file, item.id, projectId);
+
+            // Return item with pending status for now
+            return {
+              ...item,
+              url: displayUrl,
+              thumbnailStatus: 'pending' as const,
+            };
+```
+
+---
+
+#### Subtask 3.5: Remove processVideoFile Call from loadProjectMedia
+**File:** `apps/web/src/stores/media-store.ts`
+**Action:** MODIFY
+**Lines:** 665-687 (the catch block and closing braces)
+
+**Current Code:**
+```typescript
+            } catch (error) {
+              handleMediaProcessingError(
+                error,
+                "Process video during project load",
+                {
+                  videoName: item.name,
+                  itemId: item.id,
+                  operation: "processVideoOnLoad",
+                  showToast: false, // Don't spam during batch loading
+                }
+              );
+
+              // Return item with error metadata to prevent complete failure
+              return {
+                ...item,
+                url: displayUrl, // Still include URL even if processing failed
+                metadata: {
+                  ...item.metadata,
+                  processingError: `Video processing failed: ${error instanceof Error ? error.message : String(error)}`,
+                  processingMethod: "failed",
+                },
+              };
+            }
+          }
+```
+
+**New Code:**
+```typescript
+          }
+```
+
+(Delete the entire try-catch block since we're using background processing now)
+
+---
+
+#### Subtask 3.6: Remove Unused processVideoFile Function (Optional)
+**File:** `apps/web/src/stores/media-store.ts`
+**Action:** DELETE (Optional - keep if used elsewhere)
+**Lines:** 107-124
+
+If `processVideoFile` is only used in loadProjectMedia, delete it:
+```typescript
+// Instant video processing with defaults first, background metadata extraction
+export const processVideoFile = async (file: File) => {
+  // Return immediate defaults for instant UI response
+  const defaultResult = {
+    thumbnailUrl: undefined,
+    width: 1920,
+    height: 1080,
+    duration: 0,
+    fps: 30,
+    processingMethod: "immediate" as const,
+    error: undefined,
+  };
+
+  // Start background metadata extraction (don't await)
+  extractVideoMetadataBackground(file);
+
+  return defaultResult;
+};
+```
+
+**Note:** Check if `processVideoFile` is used in `media-processing.ts` before deleting. If used there, keep it but remove the background call.
 
 ---
 
@@ -189,70 +772,62 @@ RESULT: Thumbnails display reliably, persist across sessions
 
 **Goal:** Robust handling of failures and edge cases
 
-**Scenarios:**
-- Thumbnail generation fails → Set status to 'failed', show retry option
-- File too large → Skip thumbnail, use placeholder
-- Storage full → Log warning, continue without persistence
-- Corrupted thumbnail in storage → Regenerate once
+---
 
-**Files:**
-- `stores/media-store.ts` - Add error handling and retry logic
+#### Subtask 4.1: Add Error Status Handling in Background Processor
+**File:** `apps/web/src/stores/media-store.ts`
+**Action:** Already included in Subtask 3.1
+
+The `catch` block already sets `thumbnailStatus: 'failed'`.
 
 ---
 
-## Detailed Changes by File
+#### Subtask 4.2: Add Retry Logic for Failed Thumbnails (Optional)
+**File:** `apps/web/src/components/editor/media-panel/views/media.tsx`
+**Action:** ADD (Optional enhancement)
 
-### 1. `stores/media-store-types.ts`
+Add click handler to retry thumbnail generation for failed items:
+```typescript
+if (item.thumbnailStatus === 'failed') {
+  return (
+    <div
+      className="w-full h-full bg-red-500/10 flex flex-col items-center justify-center text-muted-foreground rounded cursor-pointer"
+      onClick={() => {/* TODO: Implement retry */}}
+      title="Click to retry thumbnail generation"
+    >
+      <Video className="h-6 w-6 mb-1 text-red-500" />
+      <span className="text-xs text-red-500">Failed</span>
+    </div>
+  );
+}
+```
 
-Add to MediaItem interface:
-- `thumbnailStatus?: 'pending' | 'loading' | 'ready' | 'failed'`
-- Ensure `thumbnailUrl` can be data URL string
+---
 
-### 2. `stores/media-store.ts`
+## Summary of Changes
 
-**processVideoFile:**
-- Return `thumbnailStatus: 'pending'` initially
-- Pass item ID to background processor
+### Files to MODIFY:
 
-**extractVideoMetadataBackground:**
-- Accept item ID as parameter
-- Set `thumbnailStatus: 'loading'` when starting
-- On success: Set `thumbnailStatus: 'ready'`, save to storage
-- On failure: Set `thumbnailStatus: 'failed'`
+| File | Subtasks |
+|------|----------|
+| `stores/media-store-types.ts` | 1.1 |
+| `stores/media-store.ts` | 3.1, 3.2, 3.3, 3.4, 3.5, (3.6) |
+| `lib/storage/storage-service.ts` | 2.1, 2.2, 2.3 |
+| `components/editor/media-panel/views/media.tsx` | 1.2, (4.2) |
+| `components/editor/timeline/timeline-element.tsx` | 1.3 |
 
-**updateMediaMetadata:**
-- Find item by ID (not by file hash)
-- Update store AND persist to storage
-- Call `storageService.saveMediaItem()` with updated thumbnailUrl
+### Code to ADD:
+- `thumbnailStatus` field to MediaItem interface (1.1)
+- `thumbnailUrl` field to MediaFileData interface (2.2)
+- Loading state UI in media panel (1.2)
+- Loading state UI in timeline (1.3)
+- `updateMediaItemField` helper function (3.2)
+- `updateMediaMetadataAndPersist` helper function (3.2)
 
-**loadProjectMedia:**
-- Check if item already has thumbnailUrl from storage
-- If yes: Use it directly, set `thumbnailStatus: 'ready'`
-- If no: Generate thumbnail, persist result
-
-### 3. `lib/storage/storage-service.ts`
-
-**saveMediaItem:**
-- Ensure thumbnailUrl is included in persisted data
-- Data URLs are strings, should serialize fine
-
-**loadMediaItem:**
-- Return thumbnailUrl from stored metadata
-
-### 4. `components/editor/media-panel/views/media.tsx`
-
-**renderPreview for video:**
-- If `thumbnailStatus === 'loading'`: Show spinner
-- If `thumbnailStatus === 'ready'` && `thumbnailUrl`: Show thumbnail
-- If `thumbnailStatus === 'failed'`: Show error icon with retry
-- Otherwise: Show placeholder
-
-### 5. `components/editor/timeline/timeline-element.tsx`
-
-**renderElementContent for video:**
-- Same status-based rendering as media panel
-- Show loading indicator while thumbnail generates
-- Gracefully handle missing thumbnail
+### Code to DELETE:
+- Old `updateMediaMetadata` function (3.3)
+- Try-catch block in loadProjectMedia (3.5)
+- `processVideoFile` function if unused elsewhere (3.6 - optional)
 
 ---
 
