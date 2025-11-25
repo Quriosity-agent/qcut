@@ -57,11 +57,12 @@ When OPFS reads a file, it may create a new `File` object with current timestamp
 
 ### Subtasks
 
-#### Subtask 6.1: Remove lastModified from File Key
+#### Subtask 6.1: Remove lastModified from File Key ✅ IMPLEMENTED
 **Priority: HIGH**
 **File: `apps/web/src/lib/blob-manager.ts:48-52`**
+**Status: COMPLETED**
 
-Change file key to use only stable properties.
+Changed file key to use only stable properties (size + name).
 
 **Current Code (blob-manager.ts:48-52):**
 ```typescript
@@ -614,11 +615,12 @@ The `cleanup()` function revokes the URL, but the video element might still have
 
 ### Subtasks
 
-#### Subtask 8.1: Delay URL Revocation After Thumbnail Generation
+#### Subtask 8.1: Delay URL Revocation After Thumbnail Generation ✅ IMPLEMENTED
 **Priority: MEDIUM**
 **File: `apps/web/src/stores/media-store.ts:177-258`**
+**Status: COMPLETED**
 
-Add a delay before revoking to ensure video element is done.
+Added 150ms delay before revoking and `cleanupScheduled` flag to prevent double cleanup.
 
 **Current Code (media-store.ts:177-258):**
 ```typescript

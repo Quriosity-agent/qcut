@@ -44,11 +44,12 @@ class BlobManager {
 
   /**
    * Generate a key for file-based caching (fallback when WeakMap misses)
+   * NOTE: Don't use lastModified - it changes when OPFS reads the file
    */
   private getFileKey(file: File | Blob): string {
     const name = (file as File).name || "blob";
-    const lastModified = (file as File).lastModified || 0;
-    return `${file.size}-${name}-${lastModified}`;
+    // Only use size + name for stable identification across OPFS reads
+    return `${file.size}-${name}`;
   }
 
   /**

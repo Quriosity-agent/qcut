@@ -189,12 +189,21 @@ export const generateVideoThumbnailBrowser = (
     }
 
     let blobUrl: string;
+    let cleanupScheduled = false;
 
     const cleanup = () => {
+      if (cleanupScheduled) return; // Prevent double cleanup
+      cleanupScheduled = true;
+
+      // Remove elements immediately
       video.remove();
       canvas.remove();
+
+      // Delay blob URL revocation to allow any pending loads to complete
       if (blobUrl) {
-        revokeMediaBlob(blobUrl, "generateVideoThumbnailBrowser");
+        setTimeout(() => {
+          revokeMediaBlob(blobUrl, "generateVideoThumbnailBrowser");
+        }, 150); // 150ms delay for safety
       }
     };
 
