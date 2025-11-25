@@ -487,39 +487,68 @@ export class CLIExportEngine extends ExportEngine {
   /**
    * Extract video source paths from timeline for direct copy optimization
    */
-  private extractVideoSources(): VideoSourceInput[] {
+  private async extractVideoSources(): Promise<VideoSourceInput[]> {
     const videoSources: VideoSourceInput[] = [];
 
     // Iterate through all tracks to find video elements
-    this.tracks.forEach((track) => {
-      if (track.type !== "media") return;
+    for (const track of this.tracks) {
+      if (track.type !== "media") continue;
 
-      track.elements.forEach((element) => {
-        if (element.hidden) return;
-        if (element.type !== "media") return;
+      for (const element of track.elements) {
+        if (element.hidden) continue;
+        if (element.type !== "media") continue;
 
         const mediaItem = this.mediaItems.find(
           (item) => item.id === (element as any).mediaId
         );
-        if (!mediaItem || mediaItem.type !== "video") return;
+        if (!mediaItem || mediaItem.type !== "video") continue;
+
+        let localPath = mediaItem.localPath;
+
+        // If no localPath, try to create temp file from File blob (export-time fallback)
+        if (!localPath && mediaItem.file && mediaItem.file.size > 0) {
+          if ((window as any).electronAPI?.video?.saveTemp) {
+            try {
+              debugLog(
+                `[CLIExportEngine] Creating temp file for video: ${mediaItem.name}`
+              );
+              const arrayBuffer = await mediaItem.file.arrayBuffer();
+              const uint8Array = new Uint8Array(arrayBuffer);
+              localPath = await (window as any).electronAPI.video.saveTemp(
+                uint8Array,
+                mediaItem.name,
+                this.sessionId || undefined
+              );
+              debugLog(
+                `[CLIExportEngine] Created temp file at export time: ${localPath}`
+              );
+            } catch (error) {
+              debugWarn(
+                `[CLIExportEngine] Failed to create temp file for ${mediaItem.name}:`,
+                error
+              );
+              continue; // Skip this video
+            }
+          }
+        }
 
         // Check if we have a local path (required for direct copy)
-        if (!mediaItem.localPath) {
+        if (!localPath) {
           debugWarn(
             `[CLIExportEngine] Video ${mediaItem.id} has no localPath, cannot use direct copy`
           );
-          return;
+          continue;
         }
 
         videoSources.push({
-          path: mediaItem.localPath,
+          path: localPath,
           startTime: element.startTime,
           duration: element.duration,
           trimStart: element.trimStart,
           trimEnd: element.trimEnd,
         });
-      });
-    });
+      }
+    }
 
     // Sort by start time
     videoSources.sort((a, b) => a.startTime - b.startTime);
@@ -549,15 +578,16 @@ export class CLIExportEngine extends ExportEngine {
    *
    * @returns Video path and trim info if exactly one video exists, null otherwise
    */
-  private extractVideoInputPath(): {
+  private async extractVideoInputPath(): Promise<{
     path: string;
     trimStart: number;
     trimEnd: number;
-  } | null {
+  } | null> {
     debugLog("[CLIExportEngine] Extracting video input path for Mode 2...");
 
     let videoElement: TimelineElement | null = null;
     let mediaItem: MediaItem | null = null;
+    let videoCount = 0;
 
     // Iterate through all tracks to find video elements
     for (const track of this.tracks) {
@@ -570,8 +600,9 @@ export class CLIExportEngine extends ExportEngine {
         const item = this.mediaItems.find(
           (m) => m.id === (element as any).mediaId
         );
-        if (item && item.type === "video" && item.localPath) {
-          if (videoElement) {
+        if (item && item.type === "video") {
+          videoCount++;
+          if (videoCount > 1) {
             // Multiple videos found, can't use single video input
             debugLog(
               "[CLIExportEngine] Multiple videos found, Mode 2 not applicable"
@@ -584,13 +615,47 @@ export class CLIExportEngine extends ExportEngine {
       }
     }
 
-    if (!videoElement || !mediaItem?.localPath) {
+    if (!videoElement || !mediaItem) {
+      debugLog("[CLIExportEngine] No video found");
+      return null;
+    }
+
+    // Try to get or create localPath
+    let localPath = mediaItem.localPath;
+
+    // If no localPath, try to create temp file from File blob (export-time fallback)
+    if (!localPath && mediaItem.file && mediaItem.file.size > 0) {
+      if ((window as any).electronAPI?.video?.saveTemp) {
+        try {
+          debugLog(
+            `[CLIExportEngine] Creating temp file for Mode 2 video: ${mediaItem.name}`
+          );
+          const arrayBuffer = await mediaItem.file.arrayBuffer();
+          const uint8Array = new Uint8Array(arrayBuffer);
+          localPath = await (window as any).electronAPI.video.saveTemp(
+            uint8Array,
+            mediaItem.name,
+            this.sessionId || undefined
+          );
+          debugLog(
+            `[CLIExportEngine] Created temp file for Mode 2: ${localPath}`
+          );
+        } catch (error) {
+          debugWarn(
+            `[CLIExportEngine] Failed to create temp file for Mode 2: ${mediaItem.name}`,
+            error
+          );
+        }
+      }
+    }
+
+    if (!localPath) {
       debugLog("[CLIExportEngine] No video with localPath found");
       return null;
     }
 
     const result = {
-      path: mediaItem.localPath,
+      path: localPath,
       trimStart: videoElement.trimStart || 0,
       trimEnd: videoElement.trimEnd || 0,
     };
@@ -1040,7 +1105,7 @@ export class CLIExportEngine extends ExportEngine {
       const canUseMode2 =
         this.exportAnalysis?.optimizationStrategy ===
         "direct-video-with-filters";
-      const videoInput = canUseMode2 ? this.extractVideoInputPath() : null;
+      const videoInput: { path: string; trimStart: number; trimEnd: number } | null = canUseMode2 ? await this.extractVideoInputPath() : null;
 
       // All supported modes skip frame rendering (Mode 1, 1.5, 2)
       if (videoInput) {
@@ -1384,7 +1449,7 @@ export class CLIExportEngine extends ExportEngine {
     // Determine which mode to use and extract appropriate video info
     const canUseMode2 =
       this.exportAnalysis?.optimizationStrategy === "direct-video-with-filters";
-    const videoInput = canUseMode2 ? this.extractVideoInputPath() : null;
+    const videoInput: { path: string; trimStart: number; trimEnd: number } | null = canUseMode2 ? await this.extractVideoInputPath() : null;
 
     // Log Mode 2 detection result
     if (canUseMode2 && videoInput) {
@@ -1417,11 +1482,11 @@ export class CLIExportEngine extends ExportEngine {
       console.log("⚠️ [MODE 2 EXPORT] Falling back to standard export");
     }
 
-    const videoSources =
+    const videoSources: VideoSourceInput[] =
       this.exportAnalysis?.canUseDirectCopy &&
       !hasTextFilters &&
       !hasStickerFilters
-        ? this.extractVideoSources()
+        ? await this.extractVideoSources()
         : [];
 
     // Build options AFTER validation so the filtered list is sent

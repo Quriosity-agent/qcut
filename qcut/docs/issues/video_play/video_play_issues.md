@@ -151,146 +151,146 @@ if (!allVideosHaveLocalPath) {
 
 ### Subtasks
 
-#### Subtask 2.1: Persist localPath in Storage Metadata
+#### Subtask 2.1: Persist localPath in Storage Metadata ✅ IMPLEMENTED
 **Priority: CRITICAL**
-**File: `apps/web/src/lib/storage/storage-service.ts:272-285`**
+**File: `apps/web/src/lib/storage/storage-service.ts:285-286`**
+**Status: COMPLETED**
 
-Add `localPath` to the saved metadata:
+Added `localPath` to the saved metadata in `saveMediaItem()`:
 ```typescript
 const metadata: MediaFileData = {
   // ... existing fields ...
-  localPath: mediaItem.localPath, // ADD THIS
+  // Persist localPath for FFmpeg CLI export (videos only)
+  localPath: mediaItem.localPath,
 };
 ```
 
-Also update `apps/web/src/lib/storage/types.ts` to include `localPath` in `MediaFileData` interface.
-
 ---
 
-#### Subtask 2.2: Restore localPath When Loading from Storage
+#### Subtask 2.2: Restore localPath When Loading from Storage ✅ IMPLEMENTED
 **Priority: CRITICAL**
-**File: `apps/web/src/lib/storage/storage-service.ts:362-373`**
+**File: `apps/web/src/lib/storage/storage-service.ts:414-415`**
+**Status: COMPLETED**
 
-When returning MediaItem from `loadMediaItem()`, include `localPath`:
+Added `localPath` to the returned MediaItem in `loadMediaItem()`:
 ```typescript
 return {
-  id: metadata.id,
-  name: metadata.name,
   // ... existing fields ...
-  localPath: metadata.localPath, // ADD THIS
+  // Restore localPath for FFmpeg CLI export
+  localPath,
 };
 ```
 
 ---
 
-#### Subtask 2.3: Regenerate localPath for Legacy Data
+#### Subtask 2.3: Regenerate localPath for Legacy Data ✅ IMPLEMENTED
 **Priority: HIGH**
-**File: `apps/web/src/lib/storage/storage-service.ts:290-374`**
+**File: `apps/web/src/lib/storage/storage-service.ts:364-402`**
+**Status: COMPLETED**
 
-For media items loaded from storage that have no `localPath` but DO have a valid `File`, regenerate the temp file:
-
+Added automatic regeneration of `localPath` for videos that don't have it (legacy data migration):
 ```typescript
-async loadMediaItem(projectId: string, id: string): Promise<MediaItem | null> {
-  // ... existing loading code ...
+// Regenerate localPath for videos that don't have it (legacy data migration)
+let localPath = metadata.localPath;
+if (
+  metadata.type === "video" &&
+  !localPath &&
+  actualFile &&
+  actualFile.size > 0
+) {
+  if (
+    this.isElectronEnvironment() &&
+    (window as any).electronAPI?.video?.saveTemp
+  ) {
+    try {
+      debugLog(
+        `[StorageService] Regenerating localPath for video: ${metadata.name}`
+      );
+      const arrayBuffer = await actualFile.arrayBuffer();
+      const uint8Array = new Uint8Array(arrayBuffer);
+      localPath = await (window as any).electronAPI.video.saveTemp(
+        uint8Array,
+        metadata.name
+      );
 
-  // If video has no localPath but has valid file, regenerate temp file
-  if (metadata.type === 'video' && !metadata.localPath && file && file.size > 0) {
-    if (window.electronAPI?.video?.saveTemp) {
-      try {
-        const arrayBuffer = await file.arrayBuffer();
-        const uint8Array = new Uint8Array(arrayBuffer);
-        const localPath = await window.electronAPI.video.saveTemp(uint8Array, metadata.name);
-
-        // Update metadata with new localPath
+      // Update metadata with new localPath for future loads
+      if (localPath) {
         metadata.localPath = localPath;
         await mediaMetadataAdapter.set(id, metadata);
-
-        debugLog(`[StorageService] Regenerated localPath: ${localPath}`);
-      } catch (error) {
-        debugWarn(`[StorageService] Failed to regenerate localPath:`, error);
+        debugLog(
+          `[StorageService] Regenerated and saved localPath: ${localPath}`
+        );
       }
+    } catch (error) {
+      debugWarn(
+        `[StorageService] Failed to regenerate localPath for ${metadata.name}:`,
+        error
+      );
     }
   }
-
-  return { /* ... include localPath ... */ };
 }
 ```
 
 ---
 
-#### Subtask 2.4: Create Export-Time Fallback in CLIExportEngine
+#### Subtask 2.4: Create Export-Time Fallback in CLIExportEngine ✅ IMPLEMENTED
 **Priority: MEDIUM**
-**File: `apps/web/src/lib/export-engine-cli.ts:490-531`**
+**Files:**
+- `apps/web/src/lib/export-engine-cli.ts:490-560` (`extractVideoSources()`)
+- `apps/web/src/lib/export-engine-cli.ts:581-665` (`extractVideoInputPath()`)
+**Status: COMPLETED**
 
-Modify `extractVideoSources()` to create temp file if `localPath` is missing:
+Both methods now create temp files on-demand if `localPath` is missing:
 
+**extractVideoSources()** - Changed to async and added fallback:
 ```typescript
 private async extractVideoSources(): Promise<VideoSourceInput[]> {
-  const videoSources: VideoSourceInput[] = [];
-
-  for (const track of this.tracks) {
-    if (track.type !== "media") continue;
-
-    for (const element of track.elements) {
-      // ... existing checks ...
-
-      let localPath = mediaItem.localPath;
-
-      // If no localPath, try to create temp file from File blob
-      if (!localPath && mediaItem.file && mediaItem.file.size > 0) {
-        if (window.electronAPI?.video?.saveTemp) {
-          try {
-            const arrayBuffer = await mediaItem.file.arrayBuffer();
-            const uint8Array = new Uint8Array(arrayBuffer);
-            localPath = await window.electronAPI.video.saveTemp(
-              uint8Array,
-              mediaItem.name,
-              this.sessionId || undefined
-            );
-            debugLog(`[CLIExportEngine] Created temp file: ${localPath}`);
-          } catch (error) {
-            debugWarn(`[CLIExportEngine] Failed to create temp file:`, error);
-            continue; // Skip this video
-          }
-        }
-      }
-
-      if (!localPath) {
-        debugWarn(`[CLIExportEngine] Video ${mediaItem.id} has no localPath`);
+  // ...
+  // If no localPath, try to create temp file from File blob (export-time fallback)
+  if (!localPath && mediaItem.file && mediaItem.file.size > 0) {
+    if ((window as any).electronAPI?.video?.saveTemp) {
+      try {
+        const arrayBuffer = await mediaItem.file.arrayBuffer();
+        const uint8Array = new Uint8Array(arrayBuffer);
+        localPath = await (window as any).electronAPI.video.saveTemp(
+          uint8Array,
+          mediaItem.name,
+          this.sessionId || undefined
+        );
+        debugLog(`[CLIExportEngine] Created temp file at export time: ${localPath}`);
+      } catch (error) {
+        debugWarn(`[CLIExportEngine] Failed to create temp file...`);
         continue;
       }
-
-      videoSources.push({
-        path: localPath,
-        // ... rest of video source config ...
-      });
     }
   }
-
-  return videoSources;
+  // ...
 }
 ```
 
+**extractVideoInputPath()** - Changed to async with same fallback pattern for Mode 2 exports.
+
 ---
 
-#### Subtask 2.5: Update MediaFileData Type Definition
+#### Subtask 2.5: Update MediaFileData Type Definition ✅ IMPLEMENTED
 **Priority: CRITICAL**
-**File: `apps/web/src/lib/storage/types.ts`**
+**File: `apps/web/src/lib/storage/types.ts:23`**
+**Status: COMPLETED**
 
-Add `localPath` to the `MediaFileData` interface:
+Added `localPath` to the `MediaFileData` interface:
 ```typescript
 export interface MediaFileData {
   id: string;
   name: string;
-  type: MediaType;
+  type: "image" | "video" | "audio";
   size: number;
   lastModified: number;
   width?: number;
   height?: number;
   duration?: number;
   url?: string;
-  metadata?: Record<string, any>;
-  localPath?: string; // ADD THIS - filesystem path for FFmpeg
+  metadata?: Record<string, unknown>;
+  localPath?: string; // Filesystem path for FFmpeg CLI export (videos only)
 }
 ```
 
