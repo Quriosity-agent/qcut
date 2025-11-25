@@ -839,12 +839,12 @@ export const TEXT2IMAGE_MODELS: Record<string, Text2ImageModel> = {
 // Shared priority order (cheapest ➜ premium)
 // ============================================
 export const TEXT2IMAGE_MODEL_ORDER = [
+  "gemini-3-pro",
   "nano-banana",
   "seeddream-v4",
   "reve-text-to-image",
   "wan-v2-2",
   "imagen4-ultra",
-  "gemini-3-pro",
   "qwen-image",
   "flux-pro-v11-ultra",
   "seeddream-v3",
