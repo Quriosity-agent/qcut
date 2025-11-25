@@ -636,12 +636,22 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
       // Process media items with enhanced error handling
       const updatedMediaItems = await Promise.all(
         mediaItems.map(async (item) => {
+          // LAZY URL CREATION: Create display URL if missing (StorageService no longer creates them)
+          let displayUrl = item.url;
+          if (!displayUrl && item.file && item.file.size > 0) {
+            displayUrl = getOrCreateObjectURL(item.file, "media-store-display");
+            debugLog(
+              `[MediaStore] Created lazy URL for ${item.name}: ${displayUrl}`
+            );
+          }
+
           if (item.type === "video" && item.file) {
             try {
               const processResult = await processVideoFile(item.file);
 
               return {
                 ...item,
+                url: displayUrl, // Use lazy-created URL
                 thumbnailUrl: processResult.thumbnailUrl || item.thumbnailUrl,
                 width: processResult.width || item.width,
                 height: processResult.height || item.height,
@@ -667,6 +677,7 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
               // Return item with error metadata to prevent complete failure
               return {
                 ...item,
+                url: displayUrl, // Still include URL even if processing failed
                 metadata: {
                   ...item.metadata,
                   processingError: `Video processing failed: ${error instanceof Error ? error.message : String(error)}`,
@@ -675,7 +686,10 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
               };
             }
           }
-          return item;
+          return {
+            ...item,
+            url: displayUrl, // Include for non-video items too
+          };
         })
       );
 

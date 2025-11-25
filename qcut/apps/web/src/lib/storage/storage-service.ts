@@ -13,7 +13,6 @@ import {
   StorageAdapter,
 } from "./types";
 import { TimelineTrack } from "@/types/timeline";
-import { getOrCreateObjectURL } from "@/lib/blob-manager";
 import { debugLog, debugError, debugWarn } from "@/lib/debug-config";
 
 class StorageService {
@@ -329,11 +328,12 @@ class StorageService {
           `[StorageService] Created data URL for ${metadata.name} in Electron`
         );
       } else {
-        // Use cached blob URL for web environment or non-image files
-        // Uses ref-counting - call releaseObjectURL() when done instead of revokeObjectURL()
-        url = getOrCreateObjectURL(file, "storage-service");
+        // DON'T create blob URL here - let consumers create lazily
+        // This prevents wasteful URL creation during cleanup migrations
+        // MediaStore.loadProjectMedia() will create URLs when needed
+        url = undefined as unknown as string;
         debugLog(
-          `[StorageService] Created object URL for ${metadata.name}: ${url}`
+          `[StorageService] Loaded ${metadata.name} without blob URL (lazy creation)`
         );
       }
     } else if (metadata.url) {

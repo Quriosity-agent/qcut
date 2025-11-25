@@ -22,7 +22,7 @@ The console log shows that **Issue 4 (Excessive Blob URL Creation) fix is partia
 
 ---
 
-## Issue 6: File Key Inconsistency Causing Cache Misses
+## Issue 6: File Key Inconsistency Causing Cache Misses ✅ FIXED
 
 ### Problem
 The same video file generates different file keys across loads because `lastModified` timestamp changes when the file is read from OPFS.
@@ -212,7 +212,7 @@ private forceRevokeInternal(
 
 ---
 
-## Issue 7: BlobUrlCleanup Still Causing Wasteful Recreation Cycle
+## Issue 7: BlobUrlCleanup Still Causing Wasteful Recreation Cycle ✅ FIXED
 
 ### Problem
 `BlobUrlCleanup` triggers storage loads which create blob URLs, then immediately clears them, then media store loads them AGAIN creating new blob URLs.
@@ -285,11 +285,12 @@ RESULT: 2 "permanent" blob URLs created for each file instead of 1
 
 ### Subtasks
 
-#### Subtask 7.1: Lazy Blob URL Creation in StorageService
+#### Subtask 7.1: Lazy Blob URL Creation in StorageService ✅ IMPLEMENTED
 **Priority: HIGH**
 **File: `apps/web/src/lib/storage/storage-service.ts:331-337`**
+**Status: COMPLETED**
 
-Don't create blob URL in `loadMediaItem()`. Let consumers create when needed.
+Removed blob URL creation from `loadMediaItem()`. Consumers now create URLs when needed.
 
 **Current Code (storage-service.ts:331-337):**
 ```typescript
@@ -327,11 +328,12 @@ Don't create blob URL in `loadMediaItem()`. Let consumers create when needed.
 
 ---
 
-#### Subtask 7.2: Update MediaStore to Create URL on Demand
+#### Subtask 7.2: Update MediaStore to Create URL on Demand ✅ IMPLEMENTED
 **Priority: HIGH**
 **File: `apps/web/src/stores/media-store.ts:617-688`**
+**Status: COMPLETED**
 
-After loading media, create blob URLs only for display.
+Added lazy URL creation in `loadProjectMedia()` for all media items.
 
 **Current Code (media-store.ts:617-671):**
 ```typescript
@@ -443,11 +445,12 @@ import { getOrCreateObjectURL } from "@/lib/blob-manager";
 
 ---
 
-#### Subtask 7.3: Disable BlobUrlCleanup for Non-Legacy Sessions
+#### Subtask 7.3: Disable BlobUrlCleanup for Non-Legacy Sessions ✅ IMPLEMENTED
 **Priority: MEDIUM**
 **File: `apps/web/src/components/providers/migrators/blob-url-cleanup.tsx`**
+**Status: COMPLETED**
 
-The cleanup provider serves a valid purpose (clearing invalid blob URLs from storage), but it triggers unnecessary loads. Optimize it to avoid loading media during cleanup.
+Changed from `sessionStorage` to `localStorage` with new key `blob-url-cleanup-v2`. Cleanup now only runs ONCE ever, not on every new browser session.
 
 **Current Code (blob-url-cleanup.tsx:59-104):**
 ```typescript
@@ -571,7 +574,7 @@ async updateMediaMetadata(
 
 ---
 
-## Issue 8: ERR_FILE_NOT_FOUND During Thumbnail Generation
+## Issue 8: ERR_FILE_NOT_FOUND During Thumbnail Generation ✅ FIXED
 
 ### Problem
 Blob URL is revoked while video element is still trying to load it for thumbnail generation.
@@ -866,23 +869,23 @@ Not yet fixed. See original `video_play_issues.md` for details.
 
 | Issue | Priority | Status | Impact | Subtasks |
 |-------|----------|--------|--------|----------|
-| Issue 6: File Key Inconsistency | HIGH | NEW | Cache misses, duplicate URLs | 6.1, 6.2, 6.3 |
-| Issue 7: Cleanup Recreation Cycle | HIGH | NEW | 2x URLs per file on startup | 7.1, 7.2, 7.3, 7.4 |
-| Issue 8: Thumbnail ERR_FILE_NOT_FOUND | MEDIUM | NEW | Console errors, potential UI issues | 8.1, 8.2, 8.3 |
+| Issue 6: File Key Inconsistency | HIGH | ✅ FIXED | Cache misses, duplicate URLs | 6.1 ✅ |
+| Issue 7: Cleanup Recreation Cycle | HIGH | ✅ FIXED | 2x URLs per file on startup | 7.1 ✅, 7.2 ✅, 7.3 ✅ |
+| Issue 8: Thumbnail ERR_FILE_NOT_FOUND | MEDIUM | ✅ FIXED | Console errors, potential UI issues | 8.1 ✅ |
 | Issue 3: forwardRef Warning | LOW | Existing | Warning only | See v1 doc |
 
 ---
 
 ## Implementation Priority
 
-### Phase 1: Quick Wins (Immediate Impact)
-1. **Subtask 6.1** - Remove `lastModified` from file key (1 line change)
-2. **Subtask 8.1** - Add 150ms delay to thumbnail cleanup (simple change)
+### Phase 1: Quick Wins (Immediate Impact) ✅ COMPLETED
+1. **Subtask 6.1** - Remove `lastModified` from file key ✅
+2. **Subtask 8.1** - Add 150ms delay to thumbnail cleanup ✅
 
-### Phase 2: Core Fixes (Prevents Startup Waste)
-3. **Subtask 7.1** - Lazy blob URL creation in StorageService
-4. **Subtask 7.2** - Update MediaStore to create URLs on demand
-5. **Subtask 7.3** - Optimize BlobUrlCleanup to use localStorage
+### Phase 2: Core Fixes (Prevents Startup Waste) ✅ COMPLETED
+3. **Subtask 7.1** - Lazy blob URL creation in StorageService ✅
+4. **Subtask 7.2** - Update MediaStore to create URLs on demand ✅
+5. **Subtask 7.3** - Optimize BlobUrlCleanup to use localStorage ✅
 
 ### Phase 3: Polish (Optional Enhancements)
 6. **Subtask 6.2** - Content hash for file key (optional, for collision prevention)
