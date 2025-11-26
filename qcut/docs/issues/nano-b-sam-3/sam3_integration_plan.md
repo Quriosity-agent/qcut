@@ -26,9 +26,17 @@ SAM 3 is a unified foundation model for promptable segmentation in images and vi
 - **Output**: Segmented video file
 - **Pricing**: $0.005 per 16 frames
 
+### 4. SAM 3 Video RLE (Run-Length Encoding)
+- **Endpoint**: `fal-ai/sam-3/video-rle`
+- **Type**: Video-to-RLE segmentation
+- **Output**: Per-frame RLE-encoded mask data
+- **Pricing**: $0.005 per 16 frames
+
 ---
 
-## Image vs Image-RLE: When to Use Which?
+## Output Format Comparison
+
+### Image Endpoints
 
 | Aspect | `image` | `image-rle` |
 |--------|---------|-------------|
@@ -38,9 +46,19 @@ SAM 3 is a unified foundation model for promptable segmentation in images and vi
 | Processing | Ready to display | Requires decoding |
 | Best for | UI preview, export | Compositing, programmatic use |
 
-**Recommendation**:
-- Use `image` for user-facing mask previews
-- Use `image-rle` for backend processing, compositing pipelines, or when bandwidth is a concern
+### Video Endpoints
+
+| Aspect | `video` | `video-rle` |
+|--------|---------|-------------|
+| Output format | Segmented video file | Per-frame RLE strings |
+| Payload size | Larger (video file) | Smaller (compressed data) |
+| Use case | Direct playback/export | Frame-by-frame processing |
+| Processing | Ready to play | Requires per-frame decoding |
+| Best for | Preview, final export | Compositing pipelines, rotoscoping |
+
+**Recommendations**:
+- Use `image` / `video` for user-facing previews and exports
+- Use `image-rle` / `video-rle` for backend processing, compositing pipelines, or when bandwidth is a concern
 
 ---
 
@@ -92,6 +110,20 @@ SAM 3 is a unified foundation model for promptable segmentation in images and vi
 | `frame_index` | integer | 0 | Initial frame for mask application |
 | `mask_url` | string | optional | Initial mask URL |
 
+### Video RLE Segmentation (`fal-ai/sam-3/video-rle`)
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `video_url` | string | required | Video URL for segmentation |
+| `text_prompt` | string | "" | Text-based segmentation prompt (e.g., "person", "red car") |
+| `prompts` | PointPrompt[] | [] | Point prompts with frame indices |
+| `box_prompts` | BoxPrompt[] | [] | Box prompts with frame indices |
+| `apply_mask` | boolean | false | Apply mask overlay (default false for RLE) |
+| `detection_threshold` | float | 0.5 | Confidence threshold (0.01-1.0); try 0.2-0.3 if text prompts fail |
+| `boundingbox_zip` | boolean | false | Return per-frame bounding box overlays as ZIP |
+| `frame_index` | integer | 0 | Initial frame for mask/prompt application |
+| `mask_url` | string | optional | Initial mask URL to apply |
+
 ### Prompt Structures
 
 **PointPrompt**:
@@ -100,8 +132,8 @@ SAM 3 is a unified foundation model for promptable segmentation in images and vi
   x: number;           // X coordinate
   y: number;           // Y coordinate
   label: 0 | 1;        // 0=background, 1=foreground
-  object_id?: number;  // Shared ID for same object
-  frame_index?: number; // Frame to interact with (video)
+  object_id?: number;  // Shared ID for same object (prompts sharing IDs refine same object)
+  frame_index?: number; // Frame to interact with (video only)
 }
 ```
 
@@ -112,8 +144,8 @@ SAM 3 is a unified foundation model for promptable segmentation in images and vi
   y_min: number;
   x_max: number;
   y_max: number;
-  object_id?: number;
-  frame_index?: number; // For video
+  object_id?: number;  // Shared ID for same object
+  frame_index?: number; // Frame to interact with (video only)
 }
 ```
 
@@ -151,6 +183,17 @@ SAM 3 is a unified foundation model for promptable segmentation in images and vi
 }
 ```
 
+### Video RLE Output (`fal-ai/sam-3/video-rle`)
+```typescript
+{
+  rle: string | string[];         // Per-frame Run-Length Encoded masks
+  metadata?: MaskMetadata[];      // Per-mask metadata
+  scores?: number[];              // Confidence scores
+  boxes?: number[][];             // Bounding boxes [cx, cy, w, h]
+  boundingbox_frames_zip?: File;  // Optional zip with per-frame box overlays
+}
+```
+
 ### Shared Types
 ```typescript
 interface Image {
@@ -160,6 +203,13 @@ interface Image {
   file_size: number;    // Size in bytes
   width: number;        // Width in pixels
   height: number;       // Height in pixels
+}
+
+interface File {
+  url: string;          // Download URL
+  content_type: string; // MIME type
+  file_name: string;    // Generated filename
+  file_size: number;    // Size in bytes
 }
 
 interface MaskMetadata {
@@ -199,11 +249,20 @@ function decodeRLE(rle: string, width: number, height: number): Uint8Array {
 }
 ```
 
+### Video RLE: Per-Frame Masks
+For video-rle, the `rle` output contains masks for each frame. This enables:
+- Frame-by-frame mask manipulation
+- Efficient storage of video masks
+- Custom compositing workflows
+- Rotoscoping with per-frame control
+
 ### When to Use RLE
 - Backend compositing pipelines
 - Storing masks in database (smaller storage)
 - Programmatic mask manipulation
 - When you need to combine/modify masks before display
+- Video rotoscoping workflows
+- Frame-by-frame mask editing
 
 ---
 
@@ -213,12 +272,12 @@ function decodeRLE(rle: string, width: number, height: number): Uint8Array {
 
 **Option A: Separate Client Files**
 - `sam3-image-client.ts` - Image segmentation (both image and RLE)
-- `sam3-video-client.ts` - Video segmentation
+- `sam3-video-client.ts` - Video segmentation (both video and RLE)
 - Pros: Clear separation, easier maintenance
 - Cons: Some code duplication
 
 **Option B: Combined Client** (Recommended)
-- `sam3-client.ts` - All three endpoints
+- `sam3-client.ts` - All four endpoints
 - Pros: Shared types, single import, unified API
 - Cons: Larger file
 
@@ -236,7 +295,7 @@ Potential use cases in QCut:
 2. **Object selection** - Click/box to select objects for editing
 3. **Masking for compositing** - Generate masks for video compositing
 4. **Object tracking** - Track objects across video frames
-5. **Rotoscoping** - Semi-automated mask generation for video
+5. **Rotoscoping** - Semi-automated mask generation for video (video-rle ideal)
 
 ### 3. UI Integration Points
 
@@ -251,6 +310,7 @@ Potential use cases in QCut:
 - Generate masks for specific timeline clips
 - Export masks for external compositing
 - Rotoscoping workflow integration
+- Use video-rle for frame-by-frame mask editing
 
 ### 4. Existing Patterns to Follow
 
@@ -266,7 +326,7 @@ Based on codebase analysis:
 | File | Purpose |
 |------|---------|
 | `src/types/sam3.ts` | TypeScript interfaces for all SAM 3 endpoints |
-| `src/lib/sam3-client.ts` | API client service (image, image-rle, video) |
+| `src/lib/sam3-client.ts` | API client service (image, image-rle, video, video-rle) |
 | `src/lib/sam3-models.ts` | Model catalog/info |
 | `src/lib/sam3-utils.ts` | RLE decode/encode utilities |
 
@@ -284,7 +344,8 @@ Based on codebase analysis:
 | Interaction | None | Points, boxes, text |
 | Use case | Generation | Segmentation/Selection |
 | UI needs | Simple form | Canvas interaction |
-| Output variants | Single | Image, RLE, Video |
+| Output variants | Single | Image, Image-RLE, Video, Video-RLE |
+| Endpoints | 2 | 4 |
 
 ### 7. Questions to Resolve Before Implementation
 
@@ -302,14 +363,18 @@ Based on codebase analysis:
 4. **Mask output usage?**
    - Display only? Export? Use for compositing?
 
-5. **RLE vs Image endpoint?**
+5. **RLE vs standard endpoint?**
    - Which to use by default?
    - Expose both to users or abstract away?
+
+6. **Video vs Video-RLE?**
+   - Video for preview, Video-RLE for processing?
+   - Support rotoscoping workflow?
 
 ### 8. Implementation Phases
 
 **Phase 1: Core Infrastructure** (~30 min)
-- Create TypeScript types for all three endpoints
+- Create TypeScript types for all four endpoints
 - Create basic API client with shared utilities
 - Create model catalog
 - Create RLE utility functions
@@ -327,9 +392,10 @@ Based on codebase analysis:
 - Display segmented results
 - RLE-to-canvas rendering
 
-**Phase 4: Video Segmentation** (~45 min)
+**Phase 4: Video Segmentation** (~60 min)
 - Implement `segmentVideo()` function
-- Handle video output
+- Implement `segmentVideoRLE()` function
+- Handle video and RLE output
 - Frame-specific prompts
 - Progress tracking for longer videos
 
@@ -344,6 +410,110 @@ Based on codebase analysis:
 | Large mask outputs | Low | Low | Use RLE for internal processing |
 | Unclear user workflow | Medium | High | Define clear use cases first |
 | RLE decoding performance | Low | Low | Use typed arrays, optimize loops |
+| Video-RLE frame sync | Medium | Medium | Careful frame indexing, validation |
+
+---
+
+## UI Reference Design
+
+Based on the SAM 3 demo interface, the UI should include:
+
+### Image Segmentation UI (Review Objects Mode)
+
+**Panel Layout:**
+- **Left sidebar**: "Review objects" panel
+  - Search box for text-based object detection (e.g., "Zebra")
+  - "Add object" button to add new detection targets
+  - Scrollable object list with:
+    - Thumbnail preview of each detected object
+    - Object name (e.g., "Object 1", "Object 2", etc.)
+    - Color-coded indicator dot matching mask overlay color
+    - Delete (trash) icon per object
+  - "Continue to effects" button at bottom
+
+- **Main canvas**: Image with mask overlays
+  - Each detected object highlighted with unique color
+  - Colors include: cyan, pink/magenta, purple, orange, yellow, green, blue
+  - Semi-transparent colored overlay on detected objects
+  - Colored outline/border around each object
+
+- **Top bar**:
+  - Home button (left)
+  - "Change objects" button (right) for re-detection
+  - Additional action icons
+
+### Video Segmentation UI (Search & Track Mode)
+
+**Panel Layout:**
+- **Left sidebar**: "Search for objects" panel
+  - Header: "Search for objects"
+  - Subtext: "Type to search what you're looking for."
+  - Search box with text input (e.g., "Dog")
+  - Clear (X) button in search box
+  - "Search entire video" button at bottom with arrow icon
+
+- **Main canvas**: Video frame with mask overlays
+  - Each detected object highlighted with unique color
+  - Colors: cyan/teal, orange, pink/magenta, blue
+  - Semi-transparent colored fill on detected objects
+  - Colored outline/border around each object
+
+- **Video controls**:
+  - Timeline scrubber at bottom
+  - Current time / Total time display (e.g., "00:00 / 10:07")
+  - Play/pause button
+  - Frame thumbnail strip showing video preview
+  - "Show tracks" button (top right of timeline area)
+
+### Color Palette for Object Masks
+The demo uses vibrant, distinguishable colors:
+| Object | Color | Hex (approx) |
+|--------|-------|--------------|
+| Object 1 | Cyan/Teal | #00CED1 |
+| Object 2 | Pink/Magenta | #FF69B4 |
+| Object 3 | Blue | #4169E1 |
+| Object 4 | Orange | #FFA500 |
+| Object 5 | Green | #32CD32 |
+| Object 6 | Purple | #9370DB |
+| Object 7 | Yellow | #FFD700 |
+| Object 8 | Lime | #7FFF00 |
+| Object 9 | Red | #FF6347 |
+
+### Interaction Flow (Image)
+1. User enters text prompt in search box (e.g., "Zebra")
+2. System detects all matching objects and assigns unique colors
+3. Objects appear in left panel list with thumbnails
+4. User can adjust results with clicks or boxes on canvas
+5. User can delete unwanted objects from list
+6. "Add object" allows detecting additional object types
+7. "Continue to effects" proceeds to next step (editing/export)
+
+### Interaction Flow (Video)
+1. User enters text prompt in search box (e.g., "Dog")
+2. User clicks "Search entire video" to initiate detection
+3. System processes video and detects matching objects across all frames
+4. Each detected object gets unique color overlay
+5. User can scrub through timeline to see tracking across frames
+6. "Show tracks" displays object tracking paths over time
+7. Frame thumbnail strip shows quick video preview
+
+### Key UI Features to Implement
+
+**For Image Segmentation:**
+- **Text-based detection**: Search box triggers `text_prompt` API parameter
+- **Multi-object support**: Handle `return_multiple_masks: true` and display all masks
+- **Color-coded overlays**: Assign unique colors to each detected object
+- **Object list management**: Add, remove, rename detected objects
+- **Canvas interaction**: Click/box prompts for refinement (adjust results)
+- **Object thumbnails**: Cropped preview of each detected region
+
+**For Video Segmentation:**
+- **Video search**: "Search entire video" triggers video endpoint
+- **Timeline integration**: Scrubber to navigate segmented video
+- **Frame preview strip**: Thumbnail timeline for quick navigation
+- **Track visualization**: "Show tracks" to display object paths
+- **Persistent tracking**: Objects tracked across frames with same color
+- **Progress indication**: Show processing status for long videos
 
 ---
 
@@ -353,8 +523,9 @@ Based on codebase analysis:
 2. What's the primary use case: background removal, object selection, or video tracking?
 3. Is canvas-based point/box interaction needed for MVP, or can text prompts suffice?
 4. How should mask outputs be presented to the user?
-5. Should we use `image` or `image-rle` endpoint by default? Or expose both?
+5. Should we use standard or RLE endpoints by default? Or expose both?
 6. Do we need to decode RLE masks client-side, or use them server-side only?
+7. Is rotoscoping (video-rle + frame editing) a target use case?
 
 ---
 
@@ -364,7 +535,8 @@ Based on codebase analysis:
 |----------|-------|--------|----------|
 | `fal-ai/sam-3/image` | Image URL + prompts | Mask images | UI display, export |
 | `fal-ai/sam-3/image-rle` | Image URL + prompts | RLE strings | Compositing, storage |
-| `fal-ai/sam-3/video` | Video URL + prompts | Segmented video | Object tracking |
+| `fal-ai/sam-3/video` | Video URL + prompts | Segmented video | Preview, final export |
+| `fal-ai/sam-3/video-rle` | Video URL + prompts | Per-frame RLE | Rotoscoping, frame-by-frame processing |
 
 ---
 
@@ -372,6 +544,7 @@ Based on codebase analysis:
 
 1. **Decide on UI placement and primary use case**
 2. **Determine if canvas interaction is required for MVP**
-3. **Decide on image vs image-rle default**
-4. **Create implementation plan with specific file changes**
-5. **Implement in phases, starting with image segmentation**
+3. **Decide on standard vs RLE endpoint defaults**
+4. **Determine if video-rle rotoscoping is in scope**
+5. **Create implementation plan with specific file changes**
+6. **Implement in phases, starting with image segmentation**
