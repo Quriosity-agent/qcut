@@ -202,12 +202,14 @@ export function convertParametersBetweenModels(
   }
 
   if (toModel === "flux-2-flex-edit") {
+    // FAL API requires lowercase output format values
+    const format = params.outputFormat?.toLowerCase() as
+      | "jpeg"
+      | "png"
+      | undefined;
     return {
       ...baseParams,
-      outputFormat:
-        params.outputFormat === "JPEG" || params.outputFormat === "PNG"
-          ? params.outputFormat
-          : "JPEG",
+      outputFormat: format === "jpeg" || format === "png" ? format : "jpeg",
       syncMode: false,
       image_urls: params.image_urls || [],
       guidanceScale: params.guidanceScale || params.guidance_scale || 3.5,

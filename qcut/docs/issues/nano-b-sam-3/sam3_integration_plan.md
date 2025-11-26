@@ -14,73 +14,17 @@ SAM 3 is a unified foundation model for promptable segmentation in images and vi
 - **Output**: Mask images (PNG/JPEG/WebP)
 - **Pricing**: $0.005 per request
 
-### 2. SAM 3 Image RLE (Run-Length Encoding)
-- **Endpoint**: `fal-ai/sam-3/image-rle`
-- **Type**: Image-to-RLE segmentation
-- **Output**: RLE-encoded mask data (compressed)
-- **Pricing**: $0.005 per request
-
-### 3. SAM 3 Video Segmentation
+### 2. SAM 3 Video Segmentation
 - **Endpoint**: `fal-ai/sam-3/video`
 - **Type**: Video-to-Video segmentation
 - **Output**: Segmented video file
 - **Pricing**: $0.005 per 16 frames
-
-### 4. SAM 3 Video RLE (Run-Length Encoding)
-- **Endpoint**: `fal-ai/sam-3/video-rle`
-- **Type**: Video-to-RLE segmentation
-- **Output**: Per-frame RLE-encoded mask data
-- **Pricing**: $0.005 per 16 frames
-
----
-
-## Output Format Comparison
-
-### Image Endpoints
-
-| Aspect | `image` | `image-rle` |
-|--------|---------|-------------|
-| Output format | Actual mask images (PNG/JPEG) | Run-Length Encoded strings |
-| Payload size | Larger (image files) | Smaller (compressed data) |
-| Use case | Display masks directly | Programmatic mask manipulation |
-| Processing | Ready to display | Requires decoding |
-| Best for | UI preview, export | Compositing, programmatic use |
-
-### Video Endpoints
-
-| Aspect | `video` | `video-rle` |
-|--------|---------|-------------|
-| Output format | Segmented video file | Per-frame RLE strings |
-| Payload size | Larger (video file) | Smaller (compressed data) |
-| Use case | Direct playback/export | Frame-by-frame processing |
-| Processing | Ready to play | Requires per-frame decoding |
-| Best for | Preview, final export | Compositing pipelines, rotoscoping |
-
-**Recommendations**:
-- Use `image` / `video` for user-facing previews and exports
-- Use `image-rle` / `video-rle` for backend processing, compositing pipelines, or when bandwidth is a concern
 
 ---
 
 ## API Parameters
 
 ### Image Segmentation (`fal-ai/sam-3/image`)
-
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `image_url` | string | required | URL of image to segment |
-| `text_prompt` | string | "" | Text-based segmentation prompt |
-| `prompts` | PointPrompt[] | [] | Point-based prompts with coordinates |
-| `box_prompts` | BoxPrompt[] | [] | Box-based prompts |
-| `apply_mask` | boolean | true | Apply mask overlay on image |
-| `output_format` | enum | "png" | jpeg, png, webp |
-| `return_multiple_masks` | boolean | false | Return multiple mask variations |
-| `max_masks` | integer | 3 | Maximum masks (1-32) |
-| `include_scores` | boolean | false | Include confidence scores |
-| `include_boxes` | boolean | false | Include bounding boxes |
-| `sync_mode` | boolean | false | Return as data URI |
-
-### Image RLE Segmentation (`fal-ai/sam-3/image-rle`)
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
@@ -109,20 +53,6 @@ SAM 3 is a unified foundation model for promptable segmentation in images and vi
 | `boundingbox_zip` | boolean | false | Return per-frame bounding box overlays |
 | `frame_index` | integer | 0 | Initial frame for mask application |
 | `mask_url` | string | optional | Initial mask URL |
-
-### Video RLE Segmentation (`fal-ai/sam-3/video-rle`)
-
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `video_url` | string | required | Video URL for segmentation |
-| `text_prompt` | string | "" | Text-based segmentation prompt (e.g., "person", "red car") |
-| `prompts` | PointPrompt[] | [] | Point prompts with frame indices |
-| `box_prompts` | BoxPrompt[] | [] | Box prompts with frame indices |
-| `apply_mask` | boolean | false | Apply mask overlay (default false for RLE) |
-| `detection_threshold` | float | 0.5 | Confidence threshold (0.01-1.0); try 0.2-0.3 if text prompts fail |
-| `boundingbox_zip` | boolean | false | Return per-frame bounding box overlays as ZIP |
-| `frame_index` | integer | 0 | Initial frame for mask/prompt application |
-| `mask_url` | string | optional | Initial mask URL to apply |
 
 ### Prompt Structures
 
@@ -154,6 +84,7 @@ SAM 3 is a unified foundation model for promptable segmentation in images and vi
 ## Output Schemas
 
 ### Image Output (`fal-ai/sam-3/image`)
+
 ```typescript
 {
   masks: Image[];           // Segmented mask images
@@ -164,33 +95,12 @@ SAM 3 is a unified foundation model for promptable segmentation in images and vi
 }
 ```
 
-### Image RLE Output (`fal-ai/sam-3/image-rle`)
-```typescript
-{
-  rle: string | string[];   // Run-Length Encoded mask(s) - compressed format
-  metadata: MaskMetadata[]; // Per-mask metadata
-  scores?: number[];        // Confidence scores
-  boxes?: number[][];       // Bounding boxes [cx, cy, w, h]
-  boundingbox_frames_zip?: File; // Optional zip with box overlays
-}
-```
-
 ### Video Output (`fal-ai/sam-3/video`)
+
 ```typescript
 {
   video: File;                    // Segmented output video
   boundingbox_frames_zip?: File;  // Optional zip with per-frame overlays
-}
-```
-
-### Video RLE Output (`fal-ai/sam-3/video-rle`)
-```typescript
-{
-  rle: string | string[];         // Per-frame Run-Length Encoded masks
-  metadata?: MaskMetadata[];      // Per-mask metadata
-  scores?: number[];              // Confidence scores
-  boxes?: number[][];             // Bounding boxes [cx, cy, w, h]
-  boundingbox_frames_zip?: File;  // Optional zip with per-frame box overlays
 }
 ```
 
@@ -221,69 +131,94 @@ interface MaskMetadata {
 
 ---
 
-## RLE (Run-Length Encoding) Format
-
-### What is RLE?
-Run-Length Encoding is a compression algorithm that represents sequences of identical values as a single value and count. For masks, it efficiently encodes binary (0/1) pixel data.
-
-### Example
-Instead of: `0,0,0,0,1,1,1,0,0,0,0,0,1,1`
-RLE encodes: `4,3,5,2` (4 zeros, 3 ones, 5 zeros, 2 ones)
-
-### Decoding RLE in JavaScript
-```typescript
-function decodeRLE(rle: string, width: number, height: number): Uint8Array {
-  const counts = rle.split(',').map(Number);
-  const mask = new Uint8Array(width * height);
-  let idx = 0;
-  let value = 0; // Start with 0 (background)
-
-  for (const count of counts) {
-    for (let i = 0; i < count; i++) {
-      mask[idx++] = value;
-    }
-    value = 1 - value; // Toggle between 0 and 1
-  }
-
-  return mask;
-}
-```
-
-### Video RLE: Per-Frame Masks
-For video-rle, the `rle` output contains masks for each frame. This enables:
-- Frame-by-frame mask manipulation
-- Efficient storage of video masks
-- Custom compositing workflows
-- Rotoscoping with per-frame control
-
-### When to Use RLE
-- Backend compositing pipelines
-- Storing masks in database (smaller storage)
-- Programmatic mask manipulation
-- When you need to combine/modify masks before display
-- Video rotoscoping workflows
-- Frame-by-frame mask editing
-
----
-
 ## Integration Considerations
 
-### 1. Architecture Decision: Separate vs Combined
+### 1. Architecture Decision: Separate vs Combined Client
 
 **Option A: Separate Client Files**
-- `sam3-image-client.ts` - Image segmentation (both image and RLE)
-- `sam3-video-client.ts` - Video segmentation (both video and RLE)
+- `sam3-image-client.ts` - Image segmentation
+- `sam3-video-client.ts` - Video segmentation
 - Pros: Clear separation, easier maintenance
 - Cons: Some code duplication
 
 **Option B: Combined Client** (Recommended)
-- `sam3-client.ts` - All four endpoints
+- `sam3-client.ts` - Both endpoints
 - Pros: Shared types, single import, unified API
 - Cons: Larger file
 
 **Recommendation**: Combined client with clear internal separation, since they share prompt types and similar patterns. Export separate functions for each endpoint.
 
-### 2. Where Does SAM 3 Fit in QCut?
+### 2. Architecture Decision: New Panel vs Existing Feature Integration
+
+**✅ DECISION: Use a New Dedicated Panel**
+
+After careful analysis, SAM 3 should be implemented as a **new dedicated "Segmentation" panel** rather than integrating into existing image edit or text2image features.
+
+#### Rationale
+
+**1. Fundamentally Different Paradigm**
+| Existing Features | SAM 3 |
+|-------------------|-------|
+| Prompt → Generate workflow | Click → Segment → Refine workflow |
+| Text-based input | Canvas interaction (clicks, boxes) + optional text |
+| Single output | Multi-object with color-coded masks |
+| No state between operations | Persistent object list with IDs |
+
+**2. Complex State Management Requirements**
+SAM 3 requires tracking state that doesn't fit existing patterns:
+- Multiple segmented objects with unique IDs and colors
+- Point prompts (positive/negative clicks on canvas)
+- Box prompts (drag selection regions)
+- Text prompts per object
+- Video timeline state and frame navigation
+
+**3. Canvas Interaction Requirements**
+The UI Reference Design shows extensive canvas interaction:
+- Click-to-segment on canvas coordinates
+- Multi-object selection with color coding
+- Visual mask overlays with opacity controls
+- Video scrubbing and frame selection
+
+Existing panels don't have canvas click handlers or mask overlay rendering.
+
+**4. Risk Mitigation**
+Integrating SAM 3 into existing features risks:
+- Breaking the working edit flow
+- Confusing users with mixed paradigms
+- Complex conditional rendering logic
+- Harder to maintain and debug
+
+**5. Better User Experience**
+A dedicated "Segmentation" or "Object Selection" panel provides:
+- Clear mental model for users
+- Specialized toolbar (point/box/text mode toggles)
+- Dedicated object list sidebar
+- Video-specific controls when needed
+- Room for future expansion
+
+#### Recommended File Structure
+
+```
+src/
+├── lib/
+│   └── sam3-client.ts          # SAM 3 API client (image + video)
+├── types/
+│   └── sam3.ts                 # TypeScript interfaces
+├── stores/
+│   └── segmentation-store.ts   # Segmentation state (Zustand)
+├── components/
+│   └── segmentation/           # Dedicated feature folder
+│       ├── SegmentationPanel.tsx      # Main panel container
+│       ├── SegmentationCanvas.tsx     # Canvas with click/drag handlers
+│       ├── ObjectList.tsx             # Sidebar object list
+│       ├── PromptToolbar.tsx          # Point/Box/Text mode toggles
+│       ├── MaskOverlay.tsx            # Color-coded mask rendering
+│       └── VideoTimeline.tsx          # Video-specific controls
+└── hooks/
+    └── useSegmentation.ts      # Segmentation logic hook
+```
+
+### 3. Where Does SAM 3 Fit in QCut?
 
 SAM 3 is fundamentally different from existing models:
 - **Not text-to-image** (like FLUX 2 Flex)
@@ -295,24 +230,30 @@ Potential use cases in QCut:
 2. **Object selection** - Click/box to select objects for editing
 3. **Masking for compositing** - Generate masks for video compositing
 4. **Object tracking** - Track objects across video frames
-5. **Rotoscoping** - Semi-automated mask generation for video (video-rle ideal)
 
-### 3. UI Integration Points
+### 4. UI Integration Points
 
-**Image Segmentation**:
-- Could integrate with "AI Image Editing" panel
-- Add "Segment" or "Select Object" tool
-- Allow point/box prompts via canvas interaction
-- Text prompt for automatic segmentation
+**New Segmentation Panel** (Primary):
+- Accessible from main navigation alongside existing AI tools
+- Full canvas interaction for point/box prompts
+- Object list management in sidebar
+- Mode switcher for Image vs Video
 
-**Video Segmentation**:
-- Could integrate with timeline for object tracking
-- Generate masks for specific timeline clips
-- Export masks for external compositing
-- Rotoscoping workflow integration
-- Use video-rle for frame-by-frame mask editing
+**Image Segmentation Mode**:
+- Upload or select image from project
+- Text prompt for automatic detection
+- Click/drag on canvas for refinement
+- Multi-object with color-coded overlays
+- Export masks or continue to editing
 
-### 4. Existing Patterns to Follow
+**Video Segmentation Mode**:
+- Upload or select video from project/timeline
+- Text prompt for object detection across frames
+- Timeline scrubber for frame navigation
+- Object tracking visualization
+- Export segmented video or per-frame masks
+
+### 5. Existing Patterns to Follow
 
 Based on codebase analysis:
 - Follow `image-edit-client.ts` pattern for API calls
@@ -320,84 +261,98 @@ Based on codebase analysis:
 - Create types in `types/` folder
 - Add model info to a catalog file
 
-### 5. Files to Create/Modify
+### 6. Files to Create/Modify
 
 **New Files**:
+
 | File | Purpose |
 |------|---------|
-| `src/types/sam3.ts` | TypeScript interfaces for all SAM 3 endpoints |
-| `src/lib/sam3-client.ts` | API client service (image, image-rle, video, video-rle) |
+| `src/types/sam3.ts` | TypeScript interfaces for image and video endpoints |
+| `src/lib/sam3-client.ts` | API client service (image + video) |
 | `src/lib/sam3-models.ts` | Model catalog/info |
-| `src/lib/sam3-utils.ts` | RLE decode/encode utilities |
+| `src/stores/segmentation-store.ts` | Zustand store for segmentation state |
+| `src/components/segmentation/SegmentationPanel.tsx` | Main panel container |
+| `src/components/segmentation/SegmentationCanvas.tsx` | Canvas with click/drag handlers |
+| `src/components/segmentation/ObjectList.tsx` | Sidebar object list |
+| `src/components/segmentation/PromptToolbar.tsx` | Point/Box/Text mode toggles |
+| `src/components/segmentation/MaskOverlay.tsx` | Color-coded mask rendering |
+| `src/components/segmentation/VideoTimeline.tsx` | Video-specific controls |
+| `src/hooks/useSegmentation.ts` | Segmentation logic hook |
 
 **Files to Modify**:
+
 | File | Changes |
 |------|---------|
 | `src/types/ai-generation.ts` | Re-export SAM 3 types |
+| Navigation/routing files | Add Segmentation panel route |
 
-### 6. Key Differences from Previous Integrations
+### 7. Key Differences from Previous Integrations
 
 | Aspect | FLUX 2 Flex | SAM 3 |
 |--------|-------------|-------|
 | Input | Text prompt | Image/Video + prompts |
-| Output | Generated image | Masks (image/RLE) + metadata |
+| Output | Generated image | Masks + metadata |
 | Interaction | None | Points, boxes, text |
 | Use case | Generation | Segmentation/Selection |
 | UI needs | Simple form | Canvas interaction |
-| Output variants | Single | Image, Image-RLE, Video, Video-RLE |
-| Endpoints | 2 | 4 |
+| Endpoints | 2 | 2 |
 
-### 7. Questions to Resolve Before Implementation
+### 8. Resolved Decisions
 
-1. **Where in the UI?**
-   - New panel? Within image edit? Separate tool?
+| Question | Decision |
+|----------|----------|
+| **Where in the UI?** | ✅ New dedicated "Segmentation" panel |
+| **Canvas interaction needed?** | ✅ Yes - required for point/box prompts |
+| **Video integration scope?** | Start with image, then add video |
+| **Mask output usage?** | Display, export, and use for compositing |
 
-2. **Canvas interaction needed?**
-   - Point prompts require click coordinates
-   - Box prompts require drag selection
+### 9. Remaining Questions
 
-3. **Video integration scope?**
-   - Start with image only?
-   - Video requires timeline integration
+1. **Integration with existing editor workflow?**
+   - How does segmented mask flow into image editing?
+   - Can users send masks to other AI tools?
 
-4. **Mask output usage?**
-   - Display only? Export? Use for compositing?
+2. **Mask export formats?**
+   - PNG with transparency?
+   - Direct integration with timeline?
 
-5. **RLE vs standard endpoint?**
-   - Which to use by default?
-   - Expose both to users or abstract away?
+### 10. Implementation Phases
 
-6. **Video vs Video-RLE?**
-   - Video for preview, Video-RLE for processing?
-   - Support rotoscoping workflow?
+**Phase 1: Core Infrastructure**
+- Create TypeScript types (`src/types/sam3.ts`)
+- Create basic API client (`src/lib/sam3-client.ts`)
+- Create model catalog (`src/lib/sam3-models.ts`)
 
-### 8. Implementation Phases
-
-**Phase 1: Core Infrastructure** (~30 min)
-- Create TypeScript types for all four endpoints
-- Create basic API client with shared utilities
-- Create model catalog
-- Create RLE utility functions
-
-**Phase 2: Image Segmentation** (~45 min)
+**Phase 2: Image Segmentation API**
 - Implement `segmentImage()` function
-- Implement `segmentImageRLE()` function
 - Add text prompt support
 - Add point/box prompt support
-- Handle mask output (both image and RLE)
+- Handle mask output
 
-**Phase 3: UI Integration** (~TBD)
-- Depends on UI decisions
-- Canvas interaction for prompts
-- Display segmented results
-- RLE-to-canvas rendering
+**Phase 3: Segmentation Panel UI - Image Mode**
+- Create Zustand store for segmentation state (`src/stores/segmentation-store.ts`)
+- Create main panel container (`SegmentationPanel.tsx`)
+- Create canvas with click handlers (`SegmentationCanvas.tsx`)
+- Create object list sidebar (`ObjectList.tsx`)
+- Create prompt toolbar (`PromptToolbar.tsx`)
+- Create mask overlay rendering (`MaskOverlay.tsx`)
+- Wire up to navigation/routing
+- Implement text-based detection flow
+- Implement point/box prompt refinement
+- Add object management (add, remove, rename)
 
-**Phase 4: Video Segmentation** (~60 min)
+**Phase 4: Video Segmentation API**
 - Implement `segmentVideo()` function
-- Implement `segmentVideoRLE()` function
-- Handle video and RLE output
+- Handle video output
 - Frame-specific prompts
 - Progress tracking for longer videos
+
+**Phase 5: Segmentation Panel UI - Video Mode**
+- Add video timeline component (`VideoTimeline.tsx`)
+- Add frame scrubber and preview
+- Add "Search entire video" functionality
+- Add track visualization
+- Handle async video processing with progress
 
 ---
 
@@ -407,10 +362,8 @@ Based on codebase analysis:
 |------|------------|--------|------------|
 | UI complexity for canvas interaction | High | Medium | Start with text prompts only |
 | Video processing time | Medium | Low | Show progress, use queue polling |
-| Large mask outputs | Low | Low | Use RLE for internal processing |
+| Large mask outputs | Low | Low | Compress images, optimize transfer |
 | Unclear user workflow | Medium | High | Define clear use cases first |
-| RLE decoding performance | Low | Low | Use typed arrays, optimize loops |
-| Video-RLE frame sync | Medium | Medium | Careful frame indexing, validation |
 
 ---
 
@@ -523,9 +476,6 @@ The demo uses vibrant, distinguishable colors:
 2. What's the primary use case: background removal, object selection, or video tracking?
 3. Is canvas-based point/box interaction needed for MVP, or can text prompts suffice?
 4. How should mask outputs be presented to the user?
-5. Should we use standard or RLE endpoints by default? Or expose both?
-6. Do we need to decode RLE masks client-side, or use them server-side only?
-7. Is rotoscoping (video-rle + frame editing) a target use case?
 
 ---
 
@@ -534,17 +484,27 @@ The demo uses vibrant, distinguishable colors:
 | Endpoint | Input | Output | Best For |
 |----------|-------|--------|----------|
 | `fal-ai/sam-3/image` | Image URL + prompts | Mask images | UI display, export |
-| `fal-ai/sam-3/image-rle` | Image URL + prompts | RLE strings | Compositing, storage |
 | `fal-ai/sam-3/video` | Video URL + prompts | Segmented video | Preview, final export |
-| `fal-ai/sam-3/video-rle` | Video URL + prompts | Per-frame RLE | Rotoscoping, frame-by-frame processing |
 
 ---
 
 ## Next Steps
 
-1. **Decide on UI placement and primary use case**
-2. **Determine if canvas interaction is required for MVP**
-3. **Decide on standard vs RLE endpoint defaults**
-4. **Determine if video-rle rotoscoping is in scope**
-5. **Create implementation plan with specific file changes**
-6. **Implement in phases, starting with image segmentation**
+### ✅ Completed Decisions
+1. ~~Decide on UI placement~~ → **New dedicated Segmentation panel**
+2. ~~Determine if canvas interaction is required~~ → **Yes, required for point/box prompts**
+
+### 🔜 Ready to Implement
+1. **Phase 1**: Create core infrastructure (types, client, utils)
+2. **Phase 2**: Implement image segmentation API
+3. **Phase 3**: Build Segmentation Panel UI for image mode
+
+### 📋 Pending Decisions
+1. Define mask export formats and integration with existing editor
+2. Determine video timeline integration depth
+
+### 💡 Recommendation
+Start with **Phase 1-3** (Image Segmentation) as MVP:
+- Simpler scope, faster to validate UX
+- Video support (Phase 4-5) can follow as enhancement
+- Allows user feedback before committing to video complexity

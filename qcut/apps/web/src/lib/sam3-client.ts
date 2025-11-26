@@ -33,9 +33,9 @@ const SAM3_LOG_COMPONENT = "Sam3Client";
 class Sam3Client {
   private apiKey: string | null = null;
 
-  constructor() {
-    this.initializeApiKey();
-  }
+  // Note: API key initialization is deferred to ensureApiKey() for proper async handling.
+  // Constructors cannot await async methods, so we rely on ensureApiKey() being called
+  // at the start of each public method.
 
   /**
    * Initialize API key from environment or Electron storage
@@ -66,7 +66,8 @@ class Sam3Client {
   }
 
   /**
-   * Ensure API key is available
+   * Ensure API key is available before making API calls
+   * @throws Error if API key is not configured after initialization attempt
    */
   private async ensureApiKey(): Promise<void> {
     if (!this.apiKey) {
@@ -163,7 +164,12 @@ class Sam3Client {
   }
 
   /**
-   * Poll for queued job result
+   * Poll for queued job result from FAL API
+   * @param requestId - The FAL queue request ID to poll
+   * @param startTime - Timestamp when the request started (for elapsed time calculation)
+   * @param onProgress - Optional callback for progress updates
+   * @returns The segmentation output when completed
+   * @throws Error if polling times out or the job fails
    */
   private async pollForResult(
     requestId: string,
@@ -247,7 +253,11 @@ class Sam3Client {
   }
 
   /**
-   * Convenience: Segment with text prompt
+   * Convenience method to segment an image using a text prompt
+   * @param imageUrl - URL of the image to segment
+   * @param textPrompt - Text description of the object to segment (e.g., "person", "car")
+   * @param options - Optional additional SAM-3 parameters
+   * @returns Segmentation output with masks
    */
   async segmentWithText(
     imageUrl: string,
@@ -262,7 +272,11 @@ class Sam3Client {
   }
 
   /**
-   * Convenience: Segment with point prompts
+   * Convenience method to segment an image using point prompts
+   * @param imageUrl - URL of the image to segment
+   * @param points - Array of point prompts with x, y coordinates and label (0=background, 1=foreground)
+   * @param options - Optional additional SAM-3 parameters
+   * @returns Segmentation output with masks
    */
   async segmentWithPoints(
     imageUrl: string,
@@ -277,7 +291,11 @@ class Sam3Client {
   }
 
   /**
-   * Convenience: Segment with box prompt
+   * Convenience method to segment an image using a bounding box prompt
+   * @param imageUrl - URL of the image to segment
+   * @param box - Box prompt with x_min, y_min, x_max, y_max coordinates
+   * @param options - Optional additional SAM-3 parameters
+   * @returns Segmentation output with masks
    */
   async segmentWithBox(
     imageUrl: string,
@@ -292,22 +310,33 @@ class Sam3Client {
   }
 
   /**
-   * Check if client is configured
+   * Check if the SAM-3 client is properly configured with an API key
+   * @returns True if API key is available, false otherwise
    */
   async isAvailable(): Promise<boolean> {
     await this.initializeApiKey();
     return !!this.apiKey;
   }
 
+  /**
+   * Sleep for a specified duration
+   * @param ms - Duration to sleep in milliseconds
+   * @returns Promise that resolves after the specified duration
+   */
   private sleep(ms: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms));
   }
 }
 
-// Export singleton instance
+/** Singleton instance of the SAM-3 client */
 export const sam3Client = new Sam3Client();
 
-// Export convenience functions
+/**
+ * Segment an image using SAM-3 with full parameter control
+ * @param input - SAM-3 input parameters including image URL and prompts
+ * @param onProgress - Optional callback for progress updates during processing
+ * @returns Segmentation output with masks and metadata
+ */
 export async function segmentImage(
   input: Sam3Input,
   onProgress?: Sam3ProgressCallback
@@ -315,6 +344,13 @@ export async function segmentImage(
   return sam3Client.segmentImage(input, onProgress);
 }
 
+/**
+ * Segment an image using a text prompt
+ * @param imageUrl - URL of the image to segment
+ * @param textPrompt - Text description of the object to segment (e.g., "person", "car")
+ * @param options - Optional additional SAM-3 parameters
+ * @returns Segmentation output with masks
+ */
 export async function segmentWithText(
   imageUrl: string,
   textPrompt: string,
@@ -323,6 +359,13 @@ export async function segmentWithText(
   return sam3Client.segmentWithText(imageUrl, textPrompt, options);
 }
 
+/**
+ * Segment an image using point prompts (click-to-segment)
+ * @param imageUrl - URL of the image to segment
+ * @param points - Array of point prompts with x, y coordinates and label (0=background, 1=foreground)
+ * @param options - Optional additional SAM-3 parameters
+ * @returns Segmentation output with masks
+ */
 export async function segmentWithPoints(
   imageUrl: string,
   points: Sam3PointPrompt[],
@@ -331,6 +374,13 @@ export async function segmentWithPoints(
   return sam3Client.segmentWithPoints(imageUrl, points, options);
 }
 
+/**
+ * Segment an image using a bounding box prompt
+ * @param imageUrl - URL of the image to segment
+ * @param box - Box prompt with x_min, y_min, x_max, y_max coordinates
+ * @param options - Optional additional SAM-3 parameters
+ * @returns Segmentation output with masks
+ */
 export async function segmentWithBox(
   imageUrl: string,
   box: Sam3BoxPrompt,
