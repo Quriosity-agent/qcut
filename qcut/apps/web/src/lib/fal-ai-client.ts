@@ -464,6 +464,11 @@ class FalAIClient {
         params.image_size = settings.imageSize;
         break;
 
+      case "flux-2-flex":
+        // FLUX 2 Flex uses image_size enum directly (like WAN v2.2)
+        params.image_size = settings.imageSize;
+        break;
+
       case "qwen-image":
         // Qwen Image uses image_size parameter
         params.image_size = settings.imageSize;
@@ -546,6 +551,14 @@ class FalAIClient {
         params.aspect_ratio = imageSizeToAspectRatio(settings.imageSize);
         params.image_size = undefined;
         params.seed = undefined;
+        break;
+
+      case "gemini-3-pro":
+        // Gemini 3 Pro uses aspect_ratio (like Imagen4) + resolution
+        params.aspect_ratio = imageSizeToAspectRatio(settings.imageSize);
+        // Remove image_size if set (Gemini uses aspect_ratio)
+        params.image_size = undefined;
+        // Note: resolution param is passed through defaultParams
         break;
     }
 

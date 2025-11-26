@@ -1,3 +1,7 @@
+/**
+ * Configuration interface for text-to-image AI models.
+ * Defines model metadata, capabilities, parameters, and quality characteristics.
+ */
 export interface Text2ImageModel {
   id: string;
   name: string;
@@ -273,6 +277,99 @@ export const TEXT2IMAGE_MODELS: Record<string, Text2ImageModel> = {
       "Not as photorealistic as Imagen4",
       "Mid-range pricing",
       "May require prompt engineering",
+    ],
+  },
+
+  "flux-2-flex": {
+    id: "flux-2-flex",
+    name: "FLUX 2 Flex",
+    description:
+      "Text-to-image with adjustable inference steps, guidance scale, and enhanced typography",
+    provider: "Black Forest Labs",
+    endpoint: "https://fal.run/fal-ai/flux-2-flex",
+
+    qualityRating: 4,
+    speedRating: 4,
+
+    estimatedCost: "$0.06/MP",
+    costPerImage: 6, // cents per megapixel
+
+    maxResolution: "2048x2048",
+    supportedAspectRatios: ["1:1", "4:3", "3:4", "16:9", "9:16"],
+
+    defaultParams: {
+      image_size: "landscape_4_3",
+      num_images: 1,
+      guidance_scale: 3.5,
+      num_inference_steps: 28,
+      enable_prompt_expansion: true,
+      safety_tolerance: "2",
+      enable_safety_checker: true,
+      output_format: "jpeg",
+      sync_mode: false,
+    },
+
+    availableParams: [
+      {
+        name: "image_size",
+        type: "select",
+        options: [
+          "square_hd",
+          "square",
+          "portrait_3_4",
+          "portrait_9_16",
+          "landscape_4_3",
+          "landscape_16_9",
+        ],
+        default: "landscape_4_3",
+        description: "Output image size preset",
+      },
+      {
+        name: "guidance_scale",
+        type: "number",
+        min: 1.5,
+        max: 10,
+        default: 3.5,
+        description: "Controls adherence to prompt",
+      },
+      {
+        name: "num_inference_steps",
+        type: "number",
+        min: 2,
+        max: 50,
+        default: 28,
+        description: "Number of denoising steps",
+      },
+      {
+        name: "enable_prompt_expansion",
+        type: "boolean",
+        default: true,
+        description: "Auto-expand prompt using model knowledge",
+      },
+      {
+        name: "output_format",
+        type: "select",
+        options: ["jpeg", "png"],
+        default: "jpeg",
+        description: "Output image format",
+      },
+    ],
+
+    bestFor: [
+      "Fine-tuned control over generation",
+      "Typography and text rendering",
+      "Professional content creation",
+    ],
+
+    strengths: [
+      "Adjustable inference steps for quality/speed tradeoff",
+      "Enhanced typography capabilities",
+      "Cost-effective per megapixel pricing",
+    ],
+
+    limitations: [
+      "Pricing scales with resolution",
+      "Limited aspect ratio options vs FLUX Pro Ultra",
     ],
   },
 
@@ -728,13 +825,120 @@ export const TEXT2IMAGE_MODELS: Record<string, Text2ImageModel> = {
       "No seed control for reproducibility",
     ],
   },
+
+  "gemini-3-pro": {
+    id: "gemini-3-pro",
+    name: "Gemini 3 Pro",
+    description:
+      "Google's state-of-the-art image generation with exceptional photorealism and long prompt support",
+    provider: "Google",
+    endpoint: "https://fal.run/fal-ai/gemini-3-pro-image-preview",
+
+    qualityRating: 5,
+    speedRating: 3,
+
+    estimatedCost: "$0.15-0.30",
+    costPerImage: 15, // cents (4K costs 2x)
+
+    maxResolution: "4096x4096",
+    supportedAspectRatios: [
+      "1:1",
+      "4:3",
+      "3:4",
+      "16:9",
+      "9:16",
+      "21:9",
+      "9:21",
+      "3:2",
+      "2:3",
+      "5:4",
+      "4:5",
+    ],
+
+    defaultParams: {
+      aspect_ratio: "1:1",
+      num_images: 1,
+      resolution: "1K",
+      output_format: "png",
+    },
+
+    availableParams: [
+      {
+        name: "aspect_ratio",
+        type: "select",
+        options: [
+          "auto",
+          "1:1",
+          "4:3",
+          "3:4",
+          "16:9",
+          "9:16",
+          "21:9",
+          "9:21",
+          "3:2",
+          "2:3",
+          "5:4",
+          "4:5",
+        ],
+        default: "1:1",
+        description: "Image aspect ratio (auto matches input for editing)",
+      },
+      {
+        name: "resolution",
+        type: "select",
+        options: ["1K", "2K", "4K"],
+        default: "1K",
+        description: "Output resolution (4K costs 2x)",
+      },
+      {
+        name: "num_images",
+        type: "number",
+        min: 1,
+        max: 4,
+        default: 1,
+        description: "Number of images to generate",
+      },
+      {
+        name: "output_format",
+        type: "select",
+        options: ["jpeg", "png", "webp"],
+        default: "png",
+        description: "Output image format",
+      },
+    ],
+
+    bestFor: [
+      "Photorealistic images",
+      "Long detailed prompts (up to 50K chars)",
+      "High-resolution outputs",
+      "Commercial photography",
+      "Product visualization",
+    ],
+
+    strengths: [
+      "Exceptional photorealism (Google's latest)",
+      "Supports extremely long prompts (50,000 chars)",
+      "Multiple resolution options (1K/2K/4K)",
+      "Wide aspect ratio support (11 options)",
+      "Consistent quality across styles",
+    ],
+
+    limitations: [
+      "Higher cost than budget models ($0.15/image)",
+      "4K outputs double the cost",
+      "Slower generation (quality focus)",
+      "No seed control for reproducibility",
+    ],
+  },
 };
 
 // ============================================
 // Shared priority order (cheapest ➜ premium)
 // ============================================
 export const TEXT2IMAGE_MODEL_ORDER = [
+  "gemini-3-pro",
   "nano-banana",
+  "flux-2-flex",
   "seeddream-v4",
   "reve-text-to-image",
   "wan-v2-2",
@@ -811,25 +1015,35 @@ export function recommendModelsForPrompt(prompt: string): string[] {
 }
 
 export const MODEL_CATEGORIES = {
-  PHOTOREALISTIC: ["imagen4-ultra", "wan-v2-2"],
-  ARTISTIC: ["seeddream-v3", "seeddream-v4", "qwen-image"], // Add V4 to artistic
+  PHOTOREALISTIC: ["imagen4-ultra", "wan-v2-2", "gemini-3-pro"],
+  ARTISTIC: ["seeddream-v3", "seeddream-v4", "qwen-image"],
   VERSATILE: [
     "qwen-image",
     "flux-pro-v11-ultra",
+    "flux-2-flex",
     "nano-banana",
     "reve-text-to-image",
-  ], // Add nano-banana, reve-text-to-image
-  FAST: ["seeddream-v3", "nano-banana", "qwen-image", "reve-text-to-image"], // Add nano-banana, reve-text-to-image to fast
+  ],
+  FAST: [
+    "seeddream-v3",
+    "nano-banana",
+    "qwen-image",
+    "reve-text-to-image",
+    "flux-2-flex",
+  ],
   HIGH_QUALITY: [
     "imagen4-ultra",
     "wan-v2-2",
     "flux-pro-v11-ultra",
+    "flux-2-flex",
     "seeddream-v4",
-  ], // Add V4
+    "gemini-3-pro",
+  ],
   COST_EFFECTIVE: [
     "seeddream-v3",
     "nano-banana",
     "qwen-image",
     "reve-text-to-image",
-  ], // Add nano-banana, reve-text-to-image
+    "flux-2-flex",
+  ],
 } as const;

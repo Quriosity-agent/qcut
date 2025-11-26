@@ -149,3 +149,18 @@ export interface UpscaleResult {
   scale: number;
   dimensions: { width: number; height: number };
 }
+
+// ============================================
+// SAM-3 Segmentation Types (re-export)
+// ============================================
+export type {
+  Sam3Input,
+  Sam3Output,
+  Sam3PointPrompt,
+  Sam3BoxPrompt,
+  Sam3ImageOutput,
+  Sam3MaskMetadata,
+  Sam3SegmentationMode,
+  Sam3SegmentationResult,
+  Sam3ProgressCallback,
+} from "./sam3";

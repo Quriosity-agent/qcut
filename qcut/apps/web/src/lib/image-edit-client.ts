@@ -1,6 +1,7 @@
 /**
  * Image Editing API Client for FAL.ai Models
- * Supports SeedEdit v3, FLUX Pro Kontext, and FLUX Pro Kontext Max
+ * Supports SeedEdit v3, FLUX Pro Kontext, FLUX Pro Kontext Max, FLUX 2 Flex Edit,
+ * SeedDream v4, Nano Banana, Reve Edit, and Gemini 3 Pro Edit
  */
 
 import { handleAIServiceError } from "./error-handler";
@@ -18,9 +19,11 @@ export interface ImageEditRequest {
     | "seededit"
     | "flux-kontext"
     | "flux-kontext-max"
+    | "flux-2-flex-edit"
     | "seeddream-v4"
     | "nano-banana"
-    | "reve-edit";
+    | "reve-edit"
+    | "gemini-3-pro-edit";
   guidanceScale?: number;
   steps?: number;
   seed?: number;
@@ -30,9 +33,13 @@ export interface ImageEditRequest {
   // New V4-specific parameters
   imageSize?: string | number; // String presets ("square_hd", "square", etc.) or custom pixel values for V4
   maxImages?: number; // 1-10 for V4
-  syncMode?: boolean; // V4, Nano Banana, and Reve Edit
+  syncMode?: boolean; // V4, Nano Banana, Reve Edit, and Gemini 3 Pro Edit
   enableSafetyChecker?: boolean; // V4
-  outputFormat?: "jpeg" | "png" | "webp"; // Nano Banana and Reve Edit (lowercase required by FAL API)
+  outputFormat?: "jpeg" | "png" | "webp"; // Nano Banana, Reve Edit, and Gemini 3 Pro Edit (lowercase required by FAL API)
+
+  // Gemini 3 Pro Edit specific parameters
+  resolution?: "1K" | "2K" | "4K";
+  aspectRatio?: string; // auto, 21:9, 16:9, 3:2, 4:3, 5:4, 1:1, 4:5, 3:4, 2:3, 9:16
 }
 
 export interface ImageUpscaleRequest {
@@ -121,6 +128,32 @@ export const MODEL_ENDPOINTS: Record<string, ModelEndpoint> = {
     defaultParams: {
       num_images: 1,
       output_format: "png",
+      sync_mode: false,
+    },
+  },
+
+  // Add Gemini 3 Pro Edit endpoint
+  "gemini-3-pro-edit": {
+    endpoint: "fal-ai/gemini-3-pro-image-preview/edit",
+    defaultParams: {
+      num_images: 1,
+      output_format: "png",
+      resolution: "1K",
+      aspect_ratio: "auto",
+      sync_mode: false,
+    },
+  },
+
+  // Add FLUX 2 Flex Edit endpoint
+  "flux-2-flex-edit": {
+    endpoint: "fal-ai/flux-2-flex/edit",
+    defaultParams: {
+      guidance_scale: 3.5,
+      num_inference_steps: 28,
+      safety_tolerance: 2,
+      enable_prompt_expansion: true,
+      num_images: 1,
+      output_format: "jpeg",
       sync_mode: false,
     },
   },
@@ -231,8 +264,13 @@ export async function editImage(
   };
 
   // Handle image URL(s) based on model
-  if (request.model === "seeddream-v4" || request.model === "nano-banana") {
-    // V4 and Nano Banana use image_urls array
+  if (
+    request.model === "seeddream-v4" ||
+    request.model === "nano-banana" ||
+    request.model === "gemini-3-pro-edit" ||
+    request.model === "flux-2-flex-edit"
+  ) {
+    // V4, Nano Banana, Gemini 3 Pro Edit, and FLUX 2 Flex Edit use image_urls array
     payload.image_urls = [request.imageUrl];
   } else {
     // V3 and FLUX use image_url string
@@ -273,6 +311,14 @@ export async function editImage(
   // Add Nano Banana-specific parameters
   if (request.outputFormat !== undefined) {
     payload.output_format = request.outputFormat;
+  }
+
+  // Gemini 3 Pro Edit specific parameters
+  if (request.resolution !== undefined) {
+    payload.resolution = request.resolution;
+  }
+  if (request.aspectRatio !== undefined) {
+    payload.aspect_ratio = request.aspectRatio;
   }
 
   console.log(`🎨 Editing image with ${request.model}:`, {
@@ -815,6 +861,51 @@ function generateJobId(prefix: "edit" | "upscale" = "edit"): string {
 export function getImageEditModels() {
   return [
     {
+      id: "gemini-3-pro-edit",
+      name: "Gemini 3 Pro Edit",
+      description:
+        "Google's advanced image editing with exceptional context understanding",
+      provider: "Google",
+      estimatedCost: "$0.15",
+      features: [
+        "Long prompt support (50K chars)",
+        "Resolution options (1K/2K/4K)",
+        "Smart context understanding",
+        "Multiple aspect ratios",
+      ],
+      parameters: {
+        numImages: { min: 1, max: 4, default: 1, step: 1 },
+        resolution: {
+          type: "select",
+          options: ["1K", "2K", "4K"],
+          default: "1K",
+        },
+        aspectRatio: {
+          type: "select",
+          options: [
+            "auto",
+            "1:1",
+            "4:3",
+            "3:4",
+            "16:9",
+            "9:16",
+            "21:9",
+            "3:2",
+            "2:3",
+            "5:4",
+            "4:5",
+          ],
+          default: "auto",
+        },
+        outputFormat: {
+          type: "select",
+          options: ["jpeg", "png", "webp"],
+          default: "png",
+        },
+        syncMode: { type: "boolean", default: false },
+      },
+    },
+    {
       id: "nano-banana",
       name: "Nano Banana",
       description: "Smart AI-powered editing with Google/Gemini technology",
@@ -929,6 +1020,32 @@ export function getImageEditModels() {
         steps: { min: 1, max: 50, default: 28, step: 1 },
         safetyTolerance: { min: 1, max: 6, default: 2, step: 1 },
         numImages: { min: 1, max: 4, default: 1, step: 1 },
+      },
+    },
+    {
+      id: "flux-2-flex-edit",
+      name: "FLUX 2 Flex Edit",
+      description:
+        "Flexible image editing with adjustable parameters and enhanced control",
+      provider: "Black Forest Labs",
+      estimatedCost: "$0.06/MP",
+      features: [
+        "Auto image size detection",
+        "Adjustable inference steps",
+        "Prompt expansion",
+        "Fine-tuned guidance control",
+      ],
+      parameters: {
+        guidanceScale: { min: 1.5, max: 10, default: 3.5, step: 0.1 },
+        steps: { min: 2, max: 50, default: 28, step: 1 },
+        safetyTolerance: { min: 1, max: 5, default: 2, step: 1 },
+        numImages: { min: 1, max: 1, default: 1, step: 1 },
+        outputFormat: {
+          type: "select",
+          options: ["jpeg", "png"],
+          default: "jpeg",
+        },
+        enablePromptExpansion: { type: "boolean", default: true },
       },
     },
   ];
