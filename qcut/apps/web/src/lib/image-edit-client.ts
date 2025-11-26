@@ -1039,7 +1039,7 @@ export function getImageEditModels() {
         guidanceScale: { min: 1.5, max: 10, default: 3.5, step: 0.1 },
         steps: { min: 2, max: 50, default: 28, step: 1 },
         safetyTolerance: { min: 1, max: 5, default: 2, step: 1 },
-        numImages: { min: 1, max: 4, default: 1, step: 1 },
+        numImages: { min: 1, max: 1, default: 1, step: 1 },
         outputFormat: {
           type: "select",
           options: ["jpeg", "png"],

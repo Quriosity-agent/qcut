@@ -417,11 +417,14 @@ export function validateModelParameters(
   }
 
   if (modelId === "flux-2-flex-edit") {
-    if (params.outputFormat && !["JPEG", "PNG"].includes(params.outputFormat)) {
+    if (
+      params.outputFormat &&
+      !["jpeg", "png"].includes(params.outputFormat.toLowerCase())
+    ) {
       errors.push("Output format must be JPEG or PNG for FLUX 2 Flex Edit");
     }
-    if (params.numImages && (params.numImages < 1 || params.numImages > 4)) {
-      errors.push("Number of images must be between 1-4 for FLUX 2 Flex Edit");
+    if (params.numImages && params.numImages !== 1) {
+      errors.push("Number of images must be 1 for FLUX 2 Flex Edit");
     }
   }
 
