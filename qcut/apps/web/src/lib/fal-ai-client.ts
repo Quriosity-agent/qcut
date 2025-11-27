@@ -560,6 +560,22 @@ class FalAIClient {
         params.image_size = undefined;
         // Note: resolution param is passed through defaultParams
         break;
+
+      case "z-image-turbo":
+        // Z-Image Turbo uses image_size presets directly (like SeedDream)
+        // Note: Z-Image uses portrait_4_3/portrait_16_9 (not portrait_3_4/portrait_9_16)
+        if (typeof settings.imageSize === "string") {
+          // Map app's standard size tokens to Z-Image's format
+          const sizeMapping: Record<string, string> = {
+            portrait_3_4: "portrait_4_3",
+            portrait_9_16: "portrait_16_9",
+          };
+          params.image_size =
+            sizeMapping[settings.imageSize] || settings.imageSize;
+        } else {
+          params.image_size = "landscape_4_3";
+        }
+        break;
     }
 
     const supportsOutputFormat = model.availableParams.some(

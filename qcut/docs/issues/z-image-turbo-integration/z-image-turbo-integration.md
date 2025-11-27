@@ -1,10 +1,9 @@
 # Z-Image Turbo Model Integration
 
-## Status: PENDING
+## Status: IMPLEMENTED
 
 **Created:** 2025-11-27
-**Estimated Total Time:** 25-35 minutes
-**Complexity:** Medium
+**Implemented:** 2025-11-27
 
 ## Summary
 
@@ -78,162 +77,113 @@ interface ZImageTurboOutput {
 }
 ```
 
+## Review Notes (2025-11-27)
+
+The following review concerns were addressed during implementation:
+
+| Concern | Resolution |
+|---------|------------|
+| `output_format` not in `availableParams` | Added `output_format` to `availableParams` with options: jpeg, png, webp |
+| Size preset mismatch (`portrait_4_3` vs `portrait_3_4`) | Added size mapping in `fal-ai-client.ts` to convert app tokens to Z-Image format |
+| `acceleration` not in GenerationSettings | Deferred - not exposed in UI (uses default `none`) |
+| `maxResolution: "14142x14142"` unrealistic | Changed to `"2048x2048"` to match typical model limits |
+
 ---
 
-## Implementation Subtasks
+## Implementation Details
 
-### Subtask 1: Add Model Definition (5-8 minutes)
-**File:** `apps/web/src/lib/text2image-models.ts`
+### Files Modified
 
-**Status:** [ ] Not Started
+1. **`apps/web/src/lib/text2image-models.ts`**
+   - Added `z-image-turbo` model definition (lines 829-927)
+   - Added to `TEXT2IMAGE_MODEL_ORDER` array (line 1041)
+   - Added to `MODEL_CATEGORIES.VERSATILE`, `FAST`, and `COST_EFFECTIVE`
 
-Add the Z-Image Turbo model to the `TEXT2IMAGE_MODELS` object:
+2. **`apps/web/src/lib/fal-ai-client.ts`**
+   - Added parameter conversion case for `z-image-turbo` (lines 564-578)
+   - Includes size mapping from app tokens (`portrait_3_4` → `portrait_4_3`)
+
+### Model Definition (as implemented)
 
 ```typescript
 "z-image-turbo": {
   id: "z-image-turbo",
   name: "Z-Image Turbo",
-  description: "Super fast 6B parameter text-to-image model by Tongyi-MAI. Optimized for speed with acceleration options.",
+  description: "Super fast 6B parameter text-to-image model by Tongyi-MAI, optimized for speed",
   provider: "Tongyi-MAI",
   endpoint: "https://fal.run/fal-ai/z-image/turbo",
   qualityRating: 4,
   speedRating: 5,
   estimatedCost: "$0.03-0.05",
   costPerImage: 4,
-  maxResolution: "14142x14142",
+  maxResolution: "2048x2048",
   supportedAspectRatios: ["1:1", "4:3", "3:4", "16:9", "9:16"],
   defaultParams: {
     image_size: "landscape_4_3",
     num_inference_steps: 8,
     num_images: 1,
     enable_safety_checker: true,
-    output_format: "png"
   },
   availableParams: [
-    {
-      name: "image_size",
-      type: "select",
-      options: ["square_hd", "square", "portrait_4_3", "portrait_16_9", "landscape_4_3", "landscape_16_9"],
-      default: "landscape_4_3",
-      description: "Image size preset"
-    },
-    {
-      name: "num_inference_steps",
-      type: "number",
-      min: 1,
-      max: 30,
-      default: 8,
-      description: "Number of inference steps (higher = better quality, slower)"
-    },
-    {
-      name: "acceleration",
-      type: "select",
-      options: ["none", "regular", "high"],
-      default: "none",
-      description: "Processing acceleration level"
-    }
+    { name: "image_size", type: "select", options: [...], default: "landscape_4_3" },
+    { name: "num_inference_steps", type: "number", min: 1, max: 30, default: 8 },
+    { name: "num_images", type: "number", min: 1, max: 4, default: 1 },
+    { name: "output_format", type: "select", options: ["jpeg", "png", "webp"], default: "png" },
+    { name: "enable_safety_checker", type: "boolean", default: true },
+    { name: "seed", type: "number", min: 0, max: 2_147_483_647, default: null },
   ],
-  bestFor: ["Fast generation", "Quick iterations", "Prototyping"],
-  strengths: ["Very fast generation", "H100 GPU acceleration", "Multiple acceleration modes", "Large max resolution"],
-  limitations: ["Newer model with less community testing"]
+  bestFor: ["Fast generation", "Quick iterations", "Prototyping", "Cost-effective generation"],
+  strengths: ["Very fast generation speed", "6B parameter model", "H100 GPU acceleration", "Cost-effective", "Good for rapid prototyping"],
+  limitations: ["Newer model with less community testing", "May not match photorealistic models", "Limited advanced customization"],
 }
 ```
 
-**Changes:**
-1. Add model object to `TEXT2IMAGE_MODELS` (~line 900)
-2. Add `"z-image-turbo"` to `TEXT2IMAGE_MODEL_ORDER` array (~line 938)
-3. Add to appropriate `MODEL_CATEGORIES` (~line 1017):
-   - `FAST`: Add `"z-image-turbo"`
-   - `COST_EFFECTIVE`: Add `"z-image-turbo"`
-
----
-
-### Subtask 2: Add Parameter Conversion Logic (5-7 minutes)
-**File:** `apps/web/src/lib/fal-ai-client.ts`
-
-**Status:** [ ] Not Started
-
-Add case in `convertSettingsToParams()` method (~line 416-589):
+### Parameter Conversion Logic (as implemented)
 
 ```typescript
 case "z-image-turbo":
-  // Z-Image Turbo uses image_size presets directly
-  params.image_size = settings.imageSize || "landscape_4_3";
-  params.num_inference_steps = 8;
-  params.enable_safety_checker = true;
-  if (settings.outputFormat) {
-    params.output_format = settings.outputFormat;
+  // Z-Image Turbo uses image_size presets directly (like SeedDream)
+  // Note: Z-Image uses portrait_4_3/portrait_16_9 (not portrait_3_4/portrait_9_16)
+  if (typeof settings.imageSize === "string") {
+    // Map app's standard size tokens to Z-Image's format
+    const sizeMapping: Record<string, string> = {
+      portrait_3_4: "portrait_4_3",
+      portrait_9_16: "portrait_16_9",
+    };
+    params.image_size = sizeMapping[settings.imageSize] || settings.imageSize;
+  } else {
+    params.image_size = "landscape_4_3";
   }
   break;
 ```
 
-**Note:** Z-Image Turbo uses standard `image_size` parameter with preset strings (similar to SeedDream v3), and returns standard `images` array format, so minimal custom handling needed.
+---
+
+## Progress Tracking
+
+| Subtask | Status | Notes |
+|---------|--------|-------|
+| 1. Model Definition | Completed | Added to TEXT2IMAGE_MODELS |
+| 2. MODEL_ORDER Update | Completed | Added after nano-banana |
+| 3. MODEL_CATEGORIES Update | Completed | Added to VERSATILE, FAST, COST_EFFECTIVE |
+| 4. Parameter Conversion | Completed | Added size mapping for portrait presets |
+| 5. Testing | Pending | Manual testing required |
+
+**Total Progress:** 4/5 subtasks completed
 
 ---
 
-### Subtask 3: Verify Response Handling (3-5 minutes)
-**File:** `apps/web/src/lib/fal-ai-client.ts`
+## Testing Checklist
 
-**Status:** [ ] Not Started
-
-Check `generateWithModel()` method (~line 614-630) to confirm Z-Image Turbo response format is handled:
-
-**Z-Image Turbo Response Format:**
-```json
-{
-  "images": [{"url": "...", "width": 1024, "height": 768}],
-  "seed": 12345,
-  "timings": {...}
-}
-```
-
-This matches the standard format used by most models, so **no additional response handling should be needed**. The existing code should work:
-
-```typescript
-if (response.images && response.images.length > 0) {
-  image = response.images[0];
-}
-```
-
-**Verification:** Confirm the above logic handles Z-Image Turbo responses correctly.
-
----
-
-### Subtask 4: Add Type Definitions (Optional) (2-3 minutes)
-**File:** `apps/web/src/lib/text2image-models.ts`
-
-**Status:** [ ] Not Started
-
-If strict typing is needed, add Z-Image specific types:
-
-```typescript
-type ZImageAcceleration = "none" | "regular" | "high";
-
-type ZImageSizePreset =
-  | "square_hd"
-  | "square"
-  | "portrait_4_3"
-  | "portrait_16_9"
-  | "landscape_4_3"
-  | "landscape_16_9";
-```
-
----
-
-### Subtask 5: Test Integration (10-12 minutes)
-**Status:** [ ] Not Started
-
-**Manual Testing Checklist:**
-
-1. [ ] Model appears in model selection dropdown
-2. [ ] Model can be selected in single-model mode
-3. [ ] Model can be selected in multi-model comparison mode
-4. [ ] Generation request succeeds with default parameters
-5. [ ] Generated image displays correctly
-6. [ ] Image can be downloaded
-7. [ ] Image can be added to media library
-8. [ ] Seed reproducibility works (same seed = same image)
-9. [ ] Different image_size presets work correctly
+- [ ] Model appears in model selection dropdown
+- [ ] Model can be selected in single-model mode
+- [ ] Model can be selected in multi-model comparison mode
+- [ ] Generation request succeeds with default parameters
+- [ ] Generated image displays correctly
+- [ ] Image can be downloaded
+- [ ] Image can be added to media library
+- [ ] Seed reproducibility works (same seed = same image)
+- [ ] Different image_size presets work correctly
 
 **Test Commands:**
 ```bash
@@ -247,52 +197,11 @@ cd apps/web && bun dev
 
 ---
 
-## Files to Modify Summary
+## Future Enhancements
 
-| File | Changes | Priority |
-|------|---------|----------|
-| `apps/web/src/lib/text2image-models.ts` | Add model definition, update MODEL_ORDER, update CATEGORIES | High |
-| `apps/web/src/lib/fal-ai-client.ts` | Add parameter conversion case | High |
-
-## Implementation Notes
-
-### Why This Model Fits Well
-
-1. **Speed Focus:** Complements slower, higher-quality models
-2. **Standard Response:** Uses `images` array format (no custom parsing)
-3. **Standard Parameters:** Uses `image_size` presets (similar to SeedDream)
-4. **Acceleration Options:** Unique feature for speed/quality tradeoff
-
-### Acceleration Mode Consideration
-
-The `acceleration` parameter is unique to Z-Image Turbo:
-- `none` - Full quality (default)
-- `regular` - Faster with minor quality reduction
-- `high` - Fastest, some quality loss
-
-**Future Enhancement:** Consider adding a UI toggle for acceleration mode in the generation settings panel.
-
-### Parameter Mapping
-
-| Generic Setting | Z-Image Parameter |
-|-----------------|-------------------|
-| `imageSize` | `image_size` (preset string) |
-| `seed` | `seed` |
-| `outputFormat` | `output_format` |
-
----
-
-## Progress Tracking
-
-| Subtask | Status | Time Spent | Notes |
-|---------|--------|------------|-------|
-| 1. Model Definition | Not Started | - | - |
-| 2. Parameter Conversion | Not Started | - | - |
-| 3. Response Handling | Not Started | - | - |
-| 4. Type Definitions | Not Started | - | Optional |
-| 5. Testing | Not Started | - | - |
-
-**Total Progress:** 0/5 subtasks completed
+1. **Acceleration Mode UI** - Add toggle for `acceleration` parameter (none/regular/high)
+2. **Inference Steps Slider** - Expose `num_inference_steps` in advanced settings
+3. **Custom Resolution** - Support custom width/height for advanced users
 
 ---
 

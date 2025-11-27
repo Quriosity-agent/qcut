@@ -826,6 +826,106 @@ export const TEXT2IMAGE_MODELS: Record<string, Text2ImageModel> = {
     ],
   },
 
+  "z-image-turbo": {
+    id: "z-image-turbo",
+    name: "Z-Image Turbo",
+    description:
+      "Super fast 6B parameter text-to-image model by Tongyi-MAI, optimized for speed",
+    provider: "Tongyi-MAI",
+    endpoint: "https://fal.run/fal-ai/z-image/turbo",
+
+    qualityRating: 4,
+    speedRating: 5,
+
+    estimatedCost: "$0.03-0.05",
+    costPerImage: 4, // cents
+
+    maxResolution: "2048x2048",
+    supportedAspectRatios: ["1:1", "4:3", "3:4", "16:9", "9:16"],
+
+    defaultParams: {
+      image_size: "landscape_4_3",
+      num_inference_steps: 8,
+      num_images: 1,
+      enable_safety_checker: true,
+    },
+
+    availableParams: [
+      {
+        name: "image_size",
+        type: "select",
+        options: [
+          "square_hd",
+          "square",
+          "portrait_4_3",
+          "portrait_16_9",
+          "landscape_4_3",
+          "landscape_16_9",
+        ],
+        default: "landscape_4_3",
+        description: "Output image size preset",
+      },
+      {
+        name: "num_inference_steps",
+        type: "number",
+        min: 1,
+        max: 30,
+        default: 8,
+        description: "Number of inference steps (higher = better quality)",
+      },
+      {
+        name: "num_images",
+        type: "number",
+        min: 1,
+        max: 4,
+        default: 1,
+        description: "Number of images to generate",
+      },
+      {
+        name: "output_format",
+        type: "select",
+        options: ["jpeg", "png", "webp"],
+        default: "png",
+        description: "Output image format",
+      },
+      {
+        name: "enable_safety_checker",
+        type: "boolean",
+        default: true,
+        description: "Enable content safety filtering",
+      },
+      {
+        name: "seed",
+        type: "number",
+        min: 0,
+        max: 2_147_483_647,
+        default: null,
+        description: "Random seed for reproducible results",
+      },
+    ],
+
+    bestFor: [
+      "Fast generation",
+      "Quick iterations",
+      "Prototyping",
+      "Cost-effective generation",
+    ],
+
+    strengths: [
+      "Very fast generation speed",
+      "6B parameter model",
+      "H100 GPU acceleration",
+      "Cost-effective",
+      "Good for rapid prototyping",
+    ],
+
+    limitations: [
+      "Newer model with less community testing",
+      "May not match photorealistic models",
+      "Limited advanced customization",
+    ],
+  },
+
   "gemini-3-pro": {
     id: "gemini-3-pro",
     name: "Gemini 3 Pro",
@@ -938,6 +1038,7 @@ export const TEXT2IMAGE_MODELS: Record<string, Text2ImageModel> = {
 export const TEXT2IMAGE_MODEL_ORDER = [
   "gemini-3-pro",
   "nano-banana",
+  "z-image-turbo",
   "flux-2-flex",
   "seeddream-v4",
   "reve-text-to-image",
@@ -1023,10 +1124,12 @@ export const MODEL_CATEGORIES = {
     "flux-2-flex",
     "nano-banana",
     "reve-text-to-image",
+    "z-image-turbo",
   ],
   FAST: [
     "seeddream-v3",
     "nano-banana",
+    "z-image-turbo",
     "qwen-image",
     "reve-text-to-image",
     "flux-2-flex",
@@ -1042,6 +1145,7 @@ export const MODEL_CATEGORIES = {
   COST_EFFECTIVE: [
     "seeddream-v3",
     "nano-banana",
+    "z-image-turbo",
     "qwen-image",
     "reve-text-to-image",
     "flux-2-flex",
