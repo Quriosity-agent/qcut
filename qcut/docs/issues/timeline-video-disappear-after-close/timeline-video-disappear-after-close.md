@@ -1,46 +1,211 @@
 # Issue: Videos Disappear from Timeline After Closing Software
 
+> **Status**: Open
+> **Priority**: High
+> **Category**: Data Persistence
+> **Created**: 2025-11-27
+> **Last Updated**: 2025-11-27
+
+---
+
+## Table of Contents
+
+- [Problem Description](#problem-description)
+- [Root Cause Analysis](#root-cause-analysis)
+- [Data Flow Architecture](#data-flow-architecture)
+- [Relevant Files](#relevant-files)
+- [Relevant Code](#relevant-code)
+- [Reproduction Steps](#reproduction-steps)
+- [Suggested Fixes](#suggested-fixes)
+- [Implementation Plan](#implementation-plan)
+- [Testing Checklist](#testing-checklist)
+- [Review Findings](#review-findings)
+
+---
+
 ## Problem Description
 
 When users add videos to the timeline, close the application, and reopen it, the videos in the timeline disappear. The timeline state is not properly persisted across sessions.
 
-## Root Cause
+### User Impact
+
+- Loss of work when closing the application unexpectedly
+- Users must re-add all media to timeline after each session
+- Project data may become corrupted if errors occur during load
+
+---
+
+## Root Cause Analysis
 
 ### Primary Issue: Destructive State Clear on Project Load
 
-The `loadProject` function in `project-store.ts` clears all timeline, media, and sticker data **before** attempting to load saved data from storage. If loading fails for any reason, the data is already gone with no way to recover.
+**Location**: `apps/web/src/stores/project-store.ts` (lines 229-242)
 
-### Secondary Issue: Auto-Save Timing
+The `loadProject` function clears all timeline, media, and sticker data **before** attempting to load saved data from storage. This is a "destructive clear" pattern where:
 
-The auto-save mechanism has a 100ms delay. If the user closes the application within this window, changes may not be saved.
+1. In-memory state is cleared immediately
+2. Then async loading from storage is attempted
+3. If loading fails for any reason, the data is already gone with no way to recover
+
+The comment in the code even acknowledges this is intentional:
+
+```typescript
+// Clear media, timeline, and stickers immediately to prevent flickering when switching projects
+```
+
+However, this creates a critical data loss scenario when:
+
+- Storage is inaccessible (IndexedDB corruption, quota exceeded)
+- Network issues in Electron IPC
+- Application crashes during the async loading phase
+- User closes browser/app before load completes
+
+### Secondary Issue: Auto-Save Timing Delay
+
+**Location**: `apps/web/src/stores/timeline-store.ts` (lines 427-436)
+
+The auto-save mechanism has a 100ms delay before triggering:
+
+```typescript
+setTimeout(autoSaveTimeline, 100);
+```
+
+If the user closes the application within this 100ms window after making changes, those changes are lost.
+
+### Tertiary Issue: No beforeunload Handler
+
+The application does not implement a `beforeunload` event handler to ensure pending saves complete before the application closes.
+
+---
+
+## Data Flow Architecture
+
+### State Management Overview
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                     Zustand State Stores                        │
+├─────────────────────────────────────────────────────────────────┤
+│  project-store.ts    │  timeline-store.ts   │  media-store.ts   │
+│  - activeProject     │  - _tracks           │  - mediaItems     │
+│  - savedProjects     │  - history           │  - persistedIds   │
+│  - isLoading         │  - autoSaveStatus    │                   │
+└──────────┬───────────┴──────────┬───────────┴─────────┬─────────┘
+           │                      │                     │
+           ▼                      ▼                     ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                    Storage Service Layer                        │
+│                 (storage-service.ts)                            │
+├─────────────────────────────────────────────────────────────────┤
+│  saveProject()      │  saveProjectTimeline()  │  saveMediaItem()│
+│  loadProject()      │  loadProjectTimeline()  │  loadMediaItem()│
+└──────────┬───────────┴──────────┬───────────┴─────────┬─────────┘
+           │                      │                     │
+           ▼                      ▼                     ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                     Storage Adapters                            │
+├─────────────────────────────────────────────────────────────────┤
+│ ElectronStorageAdapter │ IndexedDBAdapter │ LocalStorageAdapter │
+│ (Electron IPC)         │ (Browser DB)     │ (Fallback)          │
+├────────────────────────┴─────────────────┴──────────────────────┤
+│                       OPFSAdapter                               │
+│               (Origin Private File System - Media Files)        │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Timeline Save Flow
+
+```
+User Action (add/move/delete element)
+         │
+         ▼
+updateTracksAndSave() [timeline-store.ts:428]
+         │
+         ├──► updateTracks() - Updates in-memory state immediately
+         │
+         └──► setTimeout(autoSaveTimeline, 100) - Schedules async save
+                    │
+                    ▼ (after 100ms)
+              autoSaveTimeline() [timeline-store.ts:363]
+                    │
+                    ▼
+              storageService.saveProjectTimeline()
+                    │
+                    ▼
+              IndexedDBAdapter.set() or ElectronStorageAdapter.set()
+```
+
+### Project Load Flow (Current - Problematic)
+
+```
+EditorPage mounts [editor.$project_id.lazy.tsx]
+         │
+         ▼
+loadProject(id) [project-store.ts:224]
+         │
+         ├──► mediaStore.clearAllMedia()      ← DESTRUCTIVE: Data cleared
+         ├──► timelineStore.clearTimeline()   ← DESTRUCTIVE: Data cleared
+         ├──► stickersStore.clearAllStickers()← DESTRUCTIVE: Data cleared
+         ├──► sceneStore.clearScenes()        ← DESTRUCTIVE: Data cleared
+         │
+         ▼
+    try {
+         │
+         ├──► storageService.loadProject({ id })
+         ├──► mediaStore.loadProjectMedia(id)
+         ├──► sceneStore.initializeProjectScenes(project)
+         ├──► timelineStore.loadProjectTimeline({ projectId: id })
+         └──► stickersStore.loadFromProject(id)
+         │
+    } catch (error) {
+         │
+         └──► Data is ALREADY GONE - no recovery possible!
+    }
+```
+
+---
 
 ## Relevant Files
 
-| File | Description |
-|------|-------------|
-| `apps/web/src/stores/project-store.ts` | Project lifecycle management, contains destructive clear pattern |
-| `apps/web/src/stores/timeline-store.ts` | Timeline state management, auto-save logic |
-| `apps/web/src/stores/media-store.ts` | Media item persistence |
-| `apps/web/src/lib/storage/storage-service.ts` | Save/load operations for timeline |
-| `apps/web/src/routes/editor.$project_id.lazy.tsx` | Editor initialization, calls loadProject |
+| File Path | Lines | Description |
+|-----------|-------|-------------|
+| `apps/web/src/stores/project-store.ts` | 593 | Project lifecycle management. **Critical**: destructive clear pattern at lines 239-242 in `loadProject()` |
+| `apps/web/src/stores/timeline-store.ts` | 2109 | Timeline state management. **Key functions**: `autoSaveTimeline()` (363-425), `updateTracksAndSave()` (427-436), `clearTimeline()` (1790-1794) |
+| `apps/web/src/stores/media-store.ts` | ~814 | Media item persistence. `clearAllMedia()` clears in-memory media items |
+| `apps/web/src/lib/storage/storage-service.ts` | 625 | Storage abstraction layer. `saveProjectTimeline()` (461-471), `loadProjectTimeline()` (473-481) |
+| `apps/web/src/routes/editor.$project_id.lazy.tsx` | 210 | Editor page initialization. Calls `loadProject()` in useEffect (lines 41-181) |
+| `apps/web/src/lib/storage/indexeddb-adapter.ts` | - | IndexedDB storage adapter for project/timeline metadata |
+| `apps/web/src/lib/storage/opfs-adapter.ts` | - | Origin Private File System adapter for large media files |
+| `apps/web/src/lib/storage/electron-adapter.ts` | - | Electron IPC storage adapter for desktop app |
+
+---
 
 ## Relevant Code
 
-### 1. Destructive Clear Pattern (project-store.ts:239-242)
+### 1. Destructive Clear Pattern (Primary Bug)
+
+**File**: `apps/web/src/stores/project-store.ts`
+**Lines**: 224-278
 
 ```typescript
 loadProject: async (id: string) => {
-  // ... initialization code ...
+  if (!get().isInitialized) {
+    set({ isLoading: true });
+  }
 
+  // Clear media, timeline, and stickers immediately to prevent flickering when switching projects
   const mediaStore = (await getMediaStore()).useMediaStore.getState();
   const { useTimelineStore } = await import("./timeline-store");
   const timelineStore = useTimelineStore.getState();
-  const { useStickersOverlayStore } = await import("./stickers-overlay-store");
+  const { useStickersOverlayStore } = await import(
+    "./stickers-overlay-store"
+  );
   const { useSceneStore } = await import("./scene-store");
   const stickersStore = useStickersOverlayStore.getState();
   const sceneStore = useSceneStore.getState();
 
-  // CRITICAL BUG: Clear data BEFORE loading from storage
+  // ⚠️ CRITICAL BUG: These lines clear data BEFORE loading from storage
+  // If the try block below fails, all data is already lost!
   mediaStore.clearAllMedia();           // Line 239
   timelineStore.clearTimeline();        // Line 240
   stickersStore.clearAllStickers();     // Line 241
@@ -48,34 +213,68 @@ loadProject: async (id: string) => {
 
   try {
     const project = await storageService.loadProject({ id });
-    // ... rest of loading ...
-    await Promise.all([
-      timelineStore.loadProjectTimeline({ projectId: id }),
-      stickersStore.loadFromProject(id),
-    ]);
+    if (project) {
+      set({ activeProject: project });
+
+      // Load media first, then other data to ensure stickers have access to media items
+      debugLog(`[ProjectStore] Loading media for project: ${id}`);
+      await mediaStore.loadProjectMedia(id);
+      debugLog(
+        "[ProjectStore] Media loading complete, now loading timeline and stickers"
+      );
+
+      // Initialize scenes for the project
+      debugLog(`[ProjectStore] Initializing scenes for project: ${id}`);
+      await sceneStore.initializeProjectScenes(project);
+
+      // Load timeline and stickers in parallel (both may depend on media being loaded)
+      await Promise.all([
+        timelineStore.loadProjectTimeline({ projectId: id }),
+        stickersStore.loadFromProject(id),
+      ]);
+      debugLog(`[ProjectStore] Project loading complete: ${id}`);
+    } else {
+      throw new NotFoundError(`Project ${id} not found`);
+    }
   } catch (error) {
-    // If loading fails, the data is already gone!
-    throw error;
+    // ⚠️ At this point, data is ALREADY CLEARED with no way to recover
+    handleStorageError(error, "Load project", {
+      projectId: id,
+      operation: "loadProject",
+    });
+    throw error; // Re-throw so the editor page can handle it
+  } finally {
+    set({ isLoading: false });
   }
-}
+},
 ```
 
-### 2. Auto-Save Timer (timeline-store.ts:427-436)
+### 2. Auto-Save with 100ms Delay
+
+**File**: `apps/web/src/stores/timeline-store.ts`
+**Lines**: 427-436
 
 ```typescript
+// Helper to update tracks and auto-save
 const updateTracksAndSave = (newTracks: TimelineTrack[]) => {
   updateTracks(newTracks);
+  // Auto-save in background
   set({
     isAutoSaving: true,
     autoSaveStatus: "Auto-saving...",
   });
-  setTimeout(autoSaveTimeline, 100);  // 100ms delay - may not complete before close
+  // ⚠️ 100ms delay - if user closes app before this fires, data is lost
+  setTimeout(autoSaveTimeline, 100);
 };
 ```
 
-### 3. Auto-Save Function (timeline-store.ts:363-425)
+### 3. Auto-Save Implementation
+
+**File**: `apps/web/src/stores/timeline-store.ts`
+**Lines**: 363-425
 
 ```typescript
+// Helper to auto-save timeline changes
 const autoSaveTimeline = async () => {
   set({
     isAutoSaving: true,
@@ -85,326 +284,435 @@ const autoSaveTimeline = async () => {
     const { useProjectStore } = await import("./project-store");
     const activeProject = useProjectStore.getState().activeProject;
     if (activeProject) {
-      await storageService.saveProjectTimeline({
-        projectId: activeProject.id,
-        tracks: get()._tracks,
-        sceneId,
+      try {
+        // Include current scene ID to avoid desync
+        const { useSceneStore } = await import("./scene-store");
+        const sceneId =
+          useSceneStore.getState().currentScene?.id ??
+          activeProject.currentSceneId;
+        await storageService.saveProjectTimeline({
+          projectId: activeProject.id,
+          tracks: get()._tracks,
+          sceneId,
+        });
+        set({
+          isAutoSaving: false,
+          autoSaveStatus: "Auto-saved",
+          lastAutoSaveAt: Date.now(),
+        });
+      } catch (error) {
+        set({
+          isAutoSaving: false,
+          autoSaveStatus: "Auto-save failed",
+        });
+        handleError(error, {
+          operation: "Auto-save Timeline",
+          category: ErrorCategory.STORAGE,
+          severity: ErrorSeverity.LOW,
+          showToast: false,
+          metadata: {
+            projectId: activeProject.id,
+            trackCount: get()._tracks.length,
+          },
+        });
+      }
+    } else {
+      set({
+        isAutoSaving: false,
+        autoSaveStatus: "Auto-save idle",
       });
     }
   } catch (error) {
-    // Error handling
+    set({
+      isAutoSaving: false,
+      autoSaveStatus: "Auto-save failed",
+    });
+    handleError(error, {
+      operation: "Access Project Store",
+      category: ErrorCategory.STORAGE,
+      severity: ErrorSeverity.LOW,
+      showToast: false,
+      metadata: {
+        operation: "timeline-autosave",
+      },
+    });
   }
 };
+```
+
+### 4. Timeline Clear Function
+
+**File**: `apps/web/src/stores/timeline-store.ts`
+**Lines**: 1790-1794
+
+```typescript
+clearTimeline: () => {
+  const defaultTracks = ensureMainTrack([]);
+  updateTracks(defaultTracks);
+  set({ history: [], redoStack: [], selectedElements: [] });
+},
+```
+
+### 5. Storage Service - Save Timeline
+
+**File**: `apps/web/src/lib/storage/storage-service.ts`
+**Lines**: 493-511
+
+```typescript
+// Scene-aware timeline operations
+async saveTimeline({
+  projectId,
+  tracks,
+  sceneId,
+}: {
+  projectId: string;
+  tracks: TimelineTrack[];
+  sceneId?: string;
+}): Promise<void> {
+  const timelineAdapter = this.getProjectTimelineAdapter({
+    projectId,
+    sceneId,
+  });
+  const timelineData: TimelineData = {
+    tracks,
+    lastModified: new Date().toISOString(),
+  };
+  await timelineAdapter.set("timeline", timelineData);
+}
+```
+
+### 6. Storage Service - Load Timeline
+
+**File**: `apps/web/src/lib/storage/storage-service.ts`
+**Lines**: 513-526
+
+```typescript
+async loadTimeline({
+  projectId,
+  sceneId,
+}: {
+  projectId: string;
+  sceneId?: string;
+}): Promise<TimelineTrack[] | null> {
+  const timelineAdapter = this.getProjectTimelineAdapter({
+    projectId,
+    sceneId,
+  });
+  const timelineData = await timelineAdapter.get("timeline");
+  return timelineData ? timelineData.tracks : null;
+}
+```
+
+### 7. Editor Page Load Flow
+
+**File**: `apps/web/src/routes/editor.$project_id.lazy.tsx`
+**Lines**: 41-181
+
+```typescript
+useEffect(() => {
+  const abortController = new AbortController();
+
+  const init = async () => {
+    debugLog(`[Editor] init called for project: ${project_id}`);
+
+    if (!project_id || abortController.signal.aborted) {
+      debugLog("[Editor] Early return - no project_id or aborted");
+      return;
+    }
+
+    if (activeProject?.id === project_id) {
+      debugLog(
+        `[Editor] Early return - project already loaded: ${activeProject.id}`
+      );
+      return;
+    }
+
+    // ... duplicate load prevention logic ...
+
+    debugLog(`[Editor] Starting project load: ${project_id}`);
+
+    inFlightProjectIdRef.current = project_id;
+    const loadPromise = (async () => {
+      try {
+        await loadProject(project_id);  // ← This triggers the destructive clear
+        debugLog(`[Editor] Project load complete: ${project_id}`);
+        // ...
+      } catch (error) {
+        // Handle NotFoundError by creating new project
+        // ...
+      }
+    })();
+
+    currentLoadPromiseRef.current = loadPromise;
+    // ...
+  };
+
+  init();
+
+  return () => {
+    debugLog(`[Editor] Cleanup - aborting loads for project: ${project_id}`);
+    abortController.abort();
+  };
+}, [/* dependencies */]);
+```
+
+---
+
+## Reproduction Steps
+
+### Standard Reproduction
+
+1. Open QCut application
+2. Create a new project or open an existing one
+3. Add one or more videos to the timeline
+4. Wait for "Auto-saved" status indicator
+5. Close the application
+6. Reopen the application and load the same project
+7. **Expected**: Videos should appear in timeline
+8. **Actual**: Timeline is empty
+
+### Quick Close Reproduction (100ms Window)
+
+1. Add a video to the timeline
+2. Close the application **immediately** (within 100ms)
+3. Reopen and load the project
+4. **Result**: Video is missing (auto-save never completed)
+
+### Load Failure Reproduction
+
+1. Add videos to timeline
+2. Wait for auto-save to complete
+3. Open DevTools > Application > IndexedDB
+4. Delete or corrupt the timeline database
+5. Refresh the page
+6. **Result**: All timeline data lost (cleared before failed load)
+
+---
+
+## Suggested Fixes
+
+### Fix 1: Load Before Clear (Required - Highest Priority)
+
+Change the load order to load data from storage first, validate it, then clear and apply:
+
+```typescript
+loadProject: async (id: string) => {
+  if (!get().isInitialized) {
+    set({ isLoading: true });
+  }
+
+  // Get store references (no clearing yet)
+  const mediaStore = (await getMediaStore()).useMediaStore.getState();
+  const { useTimelineStore } = await import("./timeline-store");
+  const timelineStore = useTimelineStore.getState();
+  const { useStickersOverlayStore } = await import("./stickers-overlay-store");
+  const { useSceneStore } = await import("./scene-store");
+  const stickersStore = useStickersOverlayStore.getState();
+  const sceneStore = useSceneStore.getState();
+
+  try {
+    // 1. LOAD FROM STORAGE FIRST - verify it's accessible
+    const project = await storageService.loadProject({ id });
+    if (!project) {
+      throw new NotFoundError(`Project ${id} not found`);
+    }
+
+    // 2. ONLY NOW clear and apply new state (after successful load verification)
+    mediaStore.clearAllMedia();
+    timelineStore.clearTimeline();
+    stickersStore.clearAllStickers();
+    sceneStore.clearScenes();
+
+    set({ activeProject: project });
+
+    // 3. Load remaining data
+    await mediaStore.loadProjectMedia(id);
+    await sceneStore.initializeProjectScenes(project);
+    await Promise.all([
+      timelineStore.loadProjectTimeline({ projectId: id }),
+      stickersStore.loadFromProject(id),
+    ]);
+  } catch (error) {
+    // Data is NOT cleared if we reach here
+    handleStorageError(error, "Load project", { projectId: id });
+    throw error;
+  } finally {
+    set({ isLoading: false });
+  }
+}
+```
+
+### Fix 2: Implement Backup/Rollback (Required)
+
+Even with load-before-clear, downstream failures can still cause issues. Keep backup until fully loaded:
+
+```typescript
+loadProject: async (id: string) => {
+  // Backup current state
+  const backup = {
+    media: mediaStore.mediaItems,
+    timeline: timelineStore._tracks,
+    stickers: stickersStore.stickers,
+    scenes: sceneStore.scenes,
+  };
+
+  try {
+    // Load and apply new data...
+  } catch (error) {
+    // Rollback on ANY failure
+    if (backup.timeline.length > 0) {
+      mediaStore.setMediaItems(backup.media);
+      timelineStore.setTracks(backup.timeline);
+      stickersStore.setStickers(backup.stickers);
+      sceneStore.setScenes(backup.scenes);
+    }
+    throw error;
+  }
+}
+```
+
+### Fix 3: Add visibilitychange Handler (Required)
+
+Use `visibilitychange` instead of `beforeunload` for reliable saves:
+
+```typescript
+// In EditorProvider or new hook
+useEffect(() => {
+  const handleVisibilityChange = async () => {
+    if (document.visibilityState === "hidden") {
+      const { _tracks } = useTimelineStore.getState();
+      const { activeProject } = useProjectStore.getState();
+
+      if (activeProject && _tracks.length > 0) {
+        await storageService.saveProjectTimeline({
+          projectId: activeProject.id,
+          tracks: _tracks,
+        });
+      }
+    }
+  };
+
+  document.addEventListener("visibilitychange", handleVisibilityChange);
+  return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
+}, []);
+```
+
+### Fix 4: Debounce Auto-Save Timer
+
+Prevent overlapping saves by canceling previous timer:
+
+```typescript
+let autoSaveTimer: ReturnType<typeof setTimeout> | null = null;
+
+const updateTracksAndSave = (newTracks: TimelineTrack[]) => {
+  updateTracks(newTracks);
+  set({
+    isAutoSaving: true,
+    autoSaveStatus: "Auto-saving...",
+  });
+
+  // Cancel previous timer to prevent race conditions
+  if (autoSaveTimer) {
+    clearTimeout(autoSaveTimer);
+  }
+  autoSaveTimer = setTimeout(autoSaveTimeline, 50); // Reduced from 100ms
+};
+```
+
+### Fix 5: Add Immediate Save Method
+
+For critical operations, bypass debounce entirely:
+
+```typescript
+// Add to timeline-store.ts interface and implementation
+saveImmediate: async () => {
+  const { useProjectStore } = await import("./project-store");
+  const activeProject = useProjectStore.getState().activeProject;
+  if (activeProject) {
+    await storageService.saveProjectTimeline({
+      projectId: activeProject.id,
+      tracks: get()._tracks,
+    });
+    set({
+      isAutoSaving: false,
+      autoSaveStatus: "Saved",
+      lastAutoSaveAt: Date.now(),
+    });
+  }
+},
 ```
 
 ---
 
 ## Implementation Plan
 
-### Overview
+### Priority Order (All Required Unless Noted)
 
-**Total Estimated Time**: ~45-60 minutes
-**Risk Level**: Medium (core state management changes)
-**Testing Required**: Yes (regression testing for project load/save)
+| Priority | Fix | Time Est. | Risk | Notes |
+|----------|-----|-----------|------|-------|
+| 1 | Load Before Clear | 15 min | Medium | Core fix for 90% of issues |
+| 2 | Backup/Rollback | 20 min | Medium | Prevents downstream failures |
+| 3 | visibilitychange Handler | 15 min | Low | Reliable page-hide saves |
+| 4 | Debounce Timer | 10 min | Low | Prevents race conditions |
+| 5 | Immediate Save | 10 min | Low | Optional, useful for explicit saves |
 
----
-
-## Subtask 1: Fix Destructive Clear Pattern in `loadProject` (~15 min)
-
-**File**: `apps/web/src/stores/project-store.ts`
-**Lines**: 224-278
-
-### Problem
-Data is cleared at lines 239-242 BEFORE loading from storage. If storage load fails, data is lost.
-
-### Solution
-Load data from storage FIRST, then clear and apply new state only after successful load.
-
-### Implementation Steps
-
-1. **Move storage load BEFORE clears** (lines 244-265 → before line 239)
-   ```typescript
-   loadProject: async (id: string) => {
-     if (!get().isInitialized) {
-       set({ isLoading: true });
-     }
-
-     // Get store references (no clearing yet)
-     const mediaStore = (await getMediaStore()).useMediaStore.getState();
-     const { useTimelineStore } = await import("./timeline-store");
-     const timelineStore = useTimelineStore.getState();
-     const { useStickersOverlayStore } = await import("./stickers-overlay-store");
-     const { useSceneStore } = await import("./scene-store");
-     const stickersStore = useStickersOverlayStore.getState();
-     const sceneStore = useSceneStore.getState();
-
-     try {
-       // LOAD DATA FIRST - verify storage is accessible
-       const project = await storageService.loadProject({ id });
-       if (!project) {
-         throw new NotFoundError(`Project ${id} not found`);
-       }
-
-       // ONLY NOW clear and apply new state (after successful load)
-       mediaStore.clearAllMedia();
-       timelineStore.clearTimeline();
-       stickersStore.clearAllStickers();
-       sceneStore.clearScenes();
-
-       set({ activeProject: project });
-
-       // Load media first, then other data
-       await mediaStore.loadProjectMedia(id);
-       await sceneStore.initializeProjectScenes(project);
-       await Promise.all([
-         timelineStore.loadProjectTimeline({ projectId: id }),
-         stickersStore.loadFromProject(id),
-       ]);
-     } catch (error) {
-       handleStorageError(error, "Load project", { projectId: id });
-       throw error;
-     } finally {
-       set({ isLoading: false });
-     }
-   }
-   ```
-
-2. **Test**: Open project, verify data loads → close → reopen → verify data persists
-
-### Acceptance Criteria
-- [ ] Storage load happens before any `clear*()` calls
-- [ ] If storage load fails, in-memory state is NOT cleared
-- [ ] Existing projects load successfully after change
+### Total Estimated Time: ~70 minutes
 
 ---
 
-## Subtask 2: Add `beforeunload` Event Handler for Pending Saves (~15 min)
+## Testing Checklist
 
-**File**: `apps/web/src/stores/timeline-store.ts` or new hook
-**New Code Location**: Consider `apps/web/src/hooks/use-save-on-close.ts`
+After implementing fixes, verify:
 
-### Problem
-100ms debounced auto-save may not complete if user closes browser/app immediately.
-
-### Solution
-Add `beforeunload` event listener to ensure saves complete before close.
-
-### Implementation Steps
-
-1. **Create new hook** `apps/web/src/hooks/use-save-on-close.ts`:
-   ```typescript
-   import { useEffect } from "react";
-   import { useTimelineStore } from "@/stores/timeline-store";
-
-   export function useSaveOnClose() {
-     useEffect(() => {
-       const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-         const { isAutoSaving } = useTimelineStore.getState();
-
-         if (isAutoSaving) {
-           // Trigger synchronous save attempt
-           e.preventDefault();
-           e.returnValue = ""; // Required for Chrome
-
-           // Force immediate save (synchronous storage if possible)
-           // Note: async operations may not complete in beforeunload
-         }
-       };
-
-       window.addEventListener("beforeunload", handleBeforeUnload);
-       return () => window.removeEventListener("beforeunload", handleBeforeUnload);
-     }, []);
-   }
-   ```
-
-2. **Alternative: Use `visibilitychange` for more reliable save**:
-   ```typescript
-   useEffect(() => {
-     const handleVisibilityChange = async () => {
-       if (document.visibilityState === "hidden") {
-         // Page is being hidden - save immediately
-         const { isAutoSaving, _tracks } = useTimelineStore.getState();
-         const { activeProject } = useProjectStore.getState();
-
-         if (activeProject && _tracks.length > 0) {
-           await storageService.saveProjectTimeline({
-             projectId: activeProject.id,
-             tracks: _tracks,
-           });
-         }
-       }
-     };
-
-     document.addEventListener("visibilitychange", handleVisibilityChange);
-     return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
-   }, []);
-   ```
-
-3. **Add hook to editor** in `apps/web/src/routes/editor.$project_id.lazy.tsx`
-
-### Acceptance Criteria
-- [ ] Save triggers when tab/window loses focus
-- [ ] Save triggers before browser close (best effort)
-- [ ] No data loss when closing browser during auto-save
+- [ ] Timeline data persists after normal app close
+- [ ] Timeline data persists after browser refresh
+- [ ] Timeline data persists after quick close (within 100ms)
+- [ ] Timeline data recovers from IndexedDB errors
+- [ ] Switching between projects preserves each project's data
+- [ ] Multiple scenes within a project persist correctly
+- [ ] Media items associated with timeline elements persist
+- [ ] Undo/redo history is preserved within session
+- [ ] Error messages display when save fails
+- [ ] Auto-save indicator shows correct status
+- [ ] No performance regression from changes
+- [ ] Rollback works when load fails midway
 
 ---
 
-## Subtask 3: Reduce Auto-Save Debounce & Add Immediate Save Option (~10 min)
+## Review Findings
 
-**File**: `apps/web/src/stores/timeline-store.ts`
-**Lines**: 428-436
+### High Priority
 
-### Problem
-100ms debounce delay can cause data loss on rapid close.
+1. **Load flow still wipes state on downstream failures** (`apps/web/src/stores/project-store.ts`): After moving `storageService.loadProject` earlier, the current implementation still clears all stores before `loadProjectTimeline`/`loadProjectMedia`/`loadFromProject` run. Any failure in those calls leaves the timeline/media empty, recreating the original data-loss symptom. The backup/rollback approach (Fix 2) should be **required**, not optional.
 
-### Solution
-1. Reduce debounce to 50ms (or use `requestIdleCallback`)
-2. Add `saveImmediate()` method for critical operations
+### Medium Priority
 
-### Implementation Steps
+2. **beforeunload hook is non-blocking** (`apps/web/src/hooks/use-save-on-close.ts` proposal): The outlined handler triggers async saves but browsers often abort async work during `beforeunload`; `returnValue` alone does not guarantee the promise completes. Use `visibilitychange` with synchronous persistence, or `navigator.sendBeacon` for reliable saves.
 
-1. **Reduce debounce timer** (line 435):
-   ```typescript
-   setTimeout(autoSaveTimeline, 50); // Reduced from 100ms
-   ```
+3. **Overlapping auto-save timers** (`apps/web/src/stores/timeline-store.ts`): `setTimeout(autoSaveTimeline, 100)` is additive; rapid edits schedule multiple saves that may race and persist stale tracks. Debounce or cancel the prior timer, and gate concurrent saves to ensure last-write wins.
 
-2. **Add immediate save method**:
-   ```typescript
-   saveImmediate: async () => {
-     const { useProjectStore } = await import("./project-store");
-     const activeProject = useProjectStore.getState().activeProject;
-     if (activeProject) {
-       await storageService.saveProjectTimeline({
-         projectId: activeProject.id,
-         tracks: get()._tracks,
-       });
-     }
-   },
-   ```
+### Low Priority
 
-3. **Export for use in `beforeunload` handler**
+4. **Missing error and loading guards** (`apps/web/src/stores/project-store.ts`): The snippet uses `NotFoundError` without confirming it exists/imports, and `isLoading` cleanup in `finally` is implied but not shown. Clarify imports and loading flag handling to avoid runtime errors or stuck spinners.
 
-### Acceptance Criteria
-- [ ] Auto-save delay reduced to 50ms
-- [ ] `saveImmediate()` available for forced saves
-- [ ] No performance regression from reduced debounce
+### Open Questions
 
----
-
-## Subtask 4: Add Storage Verification Before Clear (~10 min)
-
-**File**: `apps/web/src/stores/project-store.ts`
-
-### Problem
-If storage is inaccessible (quota exceeded, corruption), clearing state causes data loss.
-
-### Solution
-Verify storage is accessible before clearing in-memory state.
-
-### Implementation Steps
-
-1. **Add storage health check**:
-   ```typescript
-   const isStorageAccessible = async (projectId: string): Promise<boolean> => {
-     try {
-       await storageService.loadProject({ id: projectId });
-       return true;
-     } catch {
-       return false;
-     }
-   };
-   ```
-
-2. **Use in `loadProject`** before clearing:
-   ```typescript
-   if (!await isStorageAccessible(id)) {
-     toast.error("Storage is not accessible. Cannot safely switch projects.");
-     return;
-   }
-   ```
-
-### Acceptance Criteria
-- [ ] Storage accessibility verified before state clear
-- [ ] User-friendly error message if storage unavailable
-- [ ] Existing data preserved on storage errors
-
----
-
-## Subtask 5: Add Backup/Rollback Capability (~15 min) [OPTIONAL - Future Enhancement]
-
-**File**: `apps/web/src/stores/project-store.ts`
-
-### Problem
-Even with load-before-clear, concurrent operations could cause issues.
-
-### Solution
-Keep shallow copy of previous state until new state is fully applied.
-
-### Implementation Steps
-
-1. **Create backup before clear**:
-   ```typescript
-   const backup = {
-     media: mediaStore.getState().items,
-     tracks: timelineStore.getState()._tracks,
-     stickers: stickersStore.getState().stickers,
-   };
-   ```
-
-2. **Restore on failure**:
-   ```typescript
-   catch (error) {
-     // Restore from backup
-     mediaStore.setState({ items: backup.media });
-     timelineStore.setState({ _tracks: backup.tracks });
-     // ...
-   }
-   ```
-
-### Acceptance Criteria
-- [ ] Backup created before state modification
-- [ ] Rollback triggered on load failure
-- [ ] Memory cleaned up after successful load
-
----
-
-## Testing Plan
-
-### Manual Tests
-1. Add video to timeline → close browser → reopen → verify video present
-2. Add video → close within 100ms → reopen → verify video present
-3. Add video → switch to different project → switch back → verify video present
-4. Simulate storage error → verify data not cleared
-
-### Automated Tests
-- Unit test: `loadProject` loads data before clearing
-- Unit test: `saveImmediate` saves synchronously
-- Integration test: Full project save/load cycle
-
----
-
-## Rollback Plan
-
-If issues arise:
-1. Revert changes to `project-store.ts`
-2. Remove `use-save-on-close.ts` hook
-3. Restore original 100ms debounce
-
----
-
-## Notes
-
-- **Priority Order**: Subtask 1 > Subtask 2 > Subtask 3 > Subtask 4 > Subtask 5
-- Subtask 1 alone should fix 90% of the data loss issues
-- Subtask 5 is optional for extra safety but adds complexity
-
-## Review (findings first)
-
-1. **High – load flow still wipes state on downstream failures** (`apps/web/src/stores/project-store.ts`): After moving `storageService.loadProject` earlier, the sample still clears all stores before `loadProjectTimeline`/`loadProjectMedia`/`loadFromProject` run. Any failure in those calls leaves the timeline/media empty, recreating the original data-loss symptom. Make the two-phase approach mandatory: stage new data, or capture a backup and restore on any failure (Subtask 5 should be promoted to required).
-2. **Medium – beforeunload hook is non-blocking** (`apps/web/src/hooks/use-save-on-close.ts` proposal): The outlined handler triggers async saves but browsers often abort async work during `beforeunload`; `returnValue` alone does not guarantee the promise completes. Consider `navigator.sendBeacon`, `pagehide/visibilitychange` with synchronous persistence, or a queued save that finishes before resolving the unload.
-3. **Medium – overlapping auto-save timers** (`apps/web/src/stores/timeline-store.ts`): `setTimeout(autoSaveTimeline, 100)` is additive; rapid edits schedule multiple saves that may race and persist stale tracks. Debounce or cancel the prior timer, and gate concurrent saves to ensure last-write wins.
-4. **Low – missing error and loading guards** (`apps/web/src/stores/project-store.ts`): The snippet uses `NotFoundError` without confirming it exists/imports, and `isLoading` cleanup in `finally` is implied but not shown. Clarify imports and loading flag handling to avoid runtime errors or stuck spinners.
-
-Open questions
 - Do downstream loaders (media/timeline/stickers) assume prior clears? If so, a staged/rollback approach needs explicit reset hooks to avoid ID collisions.
 - Should auto-save be paused during `loadProject` to prevent writes of the previous project while the new one loads?
+
+---
+
+## Related Issues
+
+- Media files not loading after restart
+- Stickers disappearing from overlay
+- Project thumbnail not generating
+
+---
+
+## References
+
+- [Zustand Documentation](https://docs.pmnd.rs/zustand/getting-started/introduction)
+- [IndexedDB API - MDN](https://developer.mozilla.org/en-US/docs/Web/API/IndexedDB_API)
+- [Origin Private File System - MDN](https://developer.mozilla.org/en-US/docs/Web/API/File_System_API/Origin_private_file_system)
+- [Page Visibility API - MDN](https://developer.mozilla.org/en-US/docs/Web/API/Page_Visibility_API)
