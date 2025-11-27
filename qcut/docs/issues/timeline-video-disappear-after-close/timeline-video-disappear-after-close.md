@@ -397,3 +397,14 @@ If issues arise:
 - **Priority Order**: Subtask 1 > Subtask 2 > Subtask 3 > Subtask 4 > Subtask 5
 - Subtask 1 alone should fix 90% of the data loss issues
 - Subtask 5 is optional for extra safety but adds complexity
+
+## Review (findings first)
+
+1. **High – load flow still wipes state on downstream failures** (`apps/web/src/stores/project-store.ts`): After moving `storageService.loadProject` earlier, the sample still clears all stores before `loadProjectTimeline`/`loadProjectMedia`/`loadFromProject` run. Any failure in those calls leaves the timeline/media empty, recreating the original data-loss symptom. Make the two-phase approach mandatory: stage new data, or capture a backup and restore on any failure (Subtask 5 should be promoted to required).
+2. **Medium – beforeunload hook is non-blocking** (`apps/web/src/hooks/use-save-on-close.ts` proposal): The outlined handler triggers async saves but browsers often abort async work during `beforeunload`; `returnValue` alone does not guarantee the promise completes. Consider `navigator.sendBeacon`, `pagehide/visibilitychange` with synchronous persistence, or a queued save that finishes before resolving the unload.
+3. **Medium – overlapping auto-save timers** (`apps/web/src/stores/timeline-store.ts`): `setTimeout(autoSaveTimeline, 100)` is additive; rapid edits schedule multiple saves that may race and persist stale tracks. Debounce or cancel the prior timer, and gate concurrent saves to ensure last-write wins.
+4. **Low – missing error and loading guards** (`apps/web/src/stores/project-store.ts`): The snippet uses `NotFoundError` without confirming it exists/imports, and `isLoading` cleanup in `finally` is implied but not shown. Clarify imports and loading flag handling to avoid runtime errors or stuck spinners.
+
+Open questions
+- Do downstream loaders (media/timeline/stickers) assume prior clears? If so, a staged/rollback approach needs explicit reset hooks to avoid ID collisions.
+- Should auto-save be paused during `loadProject` to prevent writes of the previous project while the new one loads?
