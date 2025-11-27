@@ -91,15 +91,15 @@ export function ModelTypeSelector({
           aria-pressed={selected === option.id}
           onClick={() => onChange(option.id)}
           className={cn(
-            "flex-1 flex-col items-start gap-0.5",
+            "flex-1 flex-col items-start gap-1 px-4 py-3 h-auto",
             selected === option.id
               ? "shadow-sm"
               : "border border-transparent hover:border-border"
           )}
           data-testid={`model-type-${option.id}`}
         >
-          <span className="text-xs font-medium">{option.label}</span>
-          <span className="text-[10px] text-muted-foreground">
+          <span className="text-sm font-medium">{option.label}</span>
+          <span className="text-xs text-muted-foreground">
             {option.description}
           </span>
         </Button>
