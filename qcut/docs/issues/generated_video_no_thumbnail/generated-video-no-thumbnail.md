@@ -165,6 +165,12 @@ try {
 
 ---
 
+## Review
+
+- **High** – Race with storage persistence if thumbnail generation is started before the initial save: `extractVideoMetadataBackground` persists the updated item via `updateMediaMetadataAndPersist` (`qcut/apps/web/src/stores/media-store.ts:171`) while `addMediaItem` later awaits `storageService.saveMediaItem` (`qcut/apps/web/src/stores/media-store.ts:440`). If the background write finishes first, the subsequent save of the unmodified item can overwrite the generated thumbnail in storage, so it will be missing after reload. Kick off thumbnail generation only after the initial save resolves or ensure the post-generation persist happens after that write.
+- **Medium** – Background job still runs when the initial save fails: if `saveMediaItem` rejects in `addMediaItem` (`qcut/apps/web/src/stores/media-store.ts:440-485`), the currently proposed placement would already have queued thumbnail generation, which would then persist metadata even though the add operation surfaced as failed. Gate the thumbnail job on a successful storage write or cancel it when the save fails to avoid inconsistent saved state vs. UI error handling.
+- **Testing gap** – Add a regression that verifies thumbnails generated during `addMediaItem` survive a subsequent `loadProjectMedia` reload (`qcut/apps/web/src/stores/media-store.ts:663-731`), catching the persistence race described above.
+
 ## Testing Checklist
 
 - [ ] Generate AI video with Veo 3.1 or other model
