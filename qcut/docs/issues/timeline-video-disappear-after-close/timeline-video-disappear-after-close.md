@@ -172,10 +172,10 @@ loadProject(id) [project-store.ts:224]
 | File Path | Lines | Description | Verified |
 |-----------|-------|-------------|----------|
 | `apps/web/src/stores/project-store.ts` | 593 | Project lifecycle management. **Critical**: destructive clear pattern at lines 239-242 in `loadProject()` | 2025-11-28 ✓ |
-| `apps/web/src/stores/timeline-store.ts` | 2109 | Timeline state management. **Key functions**: `autoSaveTimeline()` (363-425), `updateTracksAndSave()` (427-436) | 2025-11-28 ✓ |
+| `apps/web/src/stores/timeline-store.ts` | 2109 | Timeline state management. **Key functions**: `autoSaveTimeline()` (365-428), `updateTracksAndSave()` (430-444), `clearTimeline()` (1841-1845) | 2025-11-28 ✓ |
 | `apps/web/src/stores/media-store.ts` | ~814 | Media item persistence. `clearAllMedia()` clears in-memory media items | - |
 | `apps/web/src/lib/storage/storage-service.ts` | 625 | Storage abstraction layer. `saveProjectTimeline()`, `loadProjectTimeline()` | - |
-| `apps/web/src/routes/editor.$project_id.lazy.tsx` | 210 | Editor page initialization. Calls `loadProject()` in useEffect | - |
+| `apps/web/src/routes/editor.$project_id.lazy.tsx` | 210 | Editor page initialization. Calls `loadProject()` in useEffect (lines 45-185) | 2025-11-28 ✓ |
 | `apps/web/src/lib/storage/indexeddb-adapter.ts` | - | IndexedDB storage adapter for project/timeline metadata | - |
 | `apps/web/src/lib/storage/opfs-adapter.ts` | - | Origin Private File System adapter for large media files | - |
 | `apps/web/src/lib/storage/electron-adapter.ts` | - | Electron IPC storage adapter for desktop app | - |
@@ -755,11 +755,16 @@ Changed `loadProject()` to:
 4. This prevents data loss if storage is inaccessible
 
 ### Fix 2: Backup/Rollback ✅
-**File**: `apps/web/src/stores/project-store.ts` (lines 240-245, 284-294)
+**Files**:
+- `apps/web/src/stores/project-store.ts` (lines 240-245, 284-300)
+- `apps/web/src/stores/media-store.ts` (lines 52, 829-832)
+- `apps/web/src/stores/timeline-store.ts` (lines 259-260, 1849-1854)
 
 Added:
 - Backup of current state before loading (media, timeline, activeProject)
-- Rollback of `activeProject` on failure
+- Full rollback on failure: `activeProject`, timeline tracks, media items
+- New `restoreMediaItems()` method in media-store
+- New `restoreTracks()` method in timeline-store
 - Logging for debugging rollback operations
 
 ### Fix 3: visibilitychange Handler ✅
@@ -773,12 +778,15 @@ Created new hook `useSaveOnVisibilityChange()` that:
 - More reliable than `beforeunload` for async saves
 - Used in EditorPage component
 
-### Fix 4: Debounced Auto-Save Timer ✅
-**File**: `apps/web/src/stores/timeline-store.ts` (lines 351-352, 439-443)
+### Fix 4: Debounced Auto-Save Timer with Cross-Project Guard ✅
+**File**: `apps/web/src/stores/timeline-store.ts` (lines 351-352, 369-376, 437-474)
 
 Changed:
 - Added module-level `autoSaveTimer` variable
 - `updateTracksAndSave()` now cancels previous timer before scheduling new one
+- **Captures `projectId` at schedule time** to prevent cross-project bleed
+- Added `autoSaveTimelineGuarded(scheduledProjectId)` that validates project hasn't changed
+- Skips save if user switched projects while timer was pending
 - Prevents race conditions and stale saves
 - Reduced delay from 100ms to 50ms for faster saves
 
@@ -797,7 +805,8 @@ Added new `saveImmediate()` method that:
 
 | File | Changes |
 |------|---------|
-| `apps/web/src/stores/project-store.ts` | Load-before-clear pattern, backup/rollback |
-| `apps/web/src/stores/timeline-store.ts` | Debounced timer, `saveImmediate()` method |
+| `apps/web/src/stores/project-store.ts` | Load-before-clear pattern, full backup/rollback |
+| `apps/web/src/stores/timeline-store.ts` | Debounced timer, `saveImmediate()`, `restoreTracks()` methods |
+| `apps/web/src/stores/media-store.ts` | `restoreMediaItems()` method for rollback |
 | `apps/web/src/hooks/use-save-on-visibility-change.ts` | NEW - visibility change handler |
 | `apps/web/src/routes/editor.$project_id.lazy.tsx` | Import and use visibility change hook |

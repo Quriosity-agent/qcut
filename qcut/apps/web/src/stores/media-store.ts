@@ -49,6 +49,7 @@ interface MediaStore {
   loadProjectMedia: (projectId: string) => Promise<void>;
   clearProjectMedia: (projectId: string) => Promise<void>;
   clearAllMedia: () => void; // Clear local state only
+  restoreMediaItems: (items: MediaItem[]) => void; // Restore media items (for rollback)
 }
 
 // Helper function to determine file type
@@ -823,5 +824,10 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
 
     // Clear local state
     set({ mediaItems: [] });
+  },
+
+  restoreMediaItems: (items: MediaItem[]) => {
+    debugLog(`[MediaStore] Restoring ${items.length} media items (rollback)`);
+    set({ mediaItems: items });
   },
 }));

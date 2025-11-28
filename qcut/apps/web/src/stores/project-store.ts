@@ -289,8 +289,14 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
         if (backup.activeProject) {
           set({ activeProject: backup.activeProject });
         }
-        // Note: Full rollback of media/timeline requires setters that may not exist
-        // The key fix is the load-before-clear pattern which prevents most data loss
+        // Restore timeline tracks
+        if (backup.timeline.length > 0) {
+          timelineStore.restoreTracks(backup.timeline);
+        }
+        // Restore media items
+        if (backup.media.length > 0) {
+          mediaStore.restoreMediaItems(backup.media);
+        }
       }
       handleStorageError(error, "Load project", {
         projectId: id,
