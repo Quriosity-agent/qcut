@@ -4,7 +4,7 @@
 > **Priority**: High
 > **Category**: Data Persistence
 > **Created**: 2025-11-27
-> **Last Updated**: 2025-11-27
+> **Last Updated**: 2025-11-28
 
 ---
 
@@ -40,6 +40,7 @@ When users add videos to the timeline, close the application, and reopen it, the
 ### Primary Issue: Destructive State Clear on Project Load
 
 **Location**: `apps/web/src/stores/project-store.ts` (lines 229-242)
+**Verified**: 2025-11-28 - Code unchanged, bug still present
 
 The `loadProject` function clears all timeline, media, and sticker data **before** attempting to load saved data from storage. This is a "destructive clear" pattern where:
 
@@ -63,6 +64,7 @@ However, this creates a critical data loss scenario when:
 ### Secondary Issue: Auto-Save Timing Delay
 
 **Location**: `apps/web/src/stores/timeline-store.ts` (lines 427-436)
+**Verified**: 2025-11-28 - Code unchanged at lines 427-436
 
 The auto-save mechanism has a 100ms delay before triggering:
 
@@ -167,16 +169,16 @@ loadProject(id) [project-store.ts:224]
 
 ## Relevant Files
 
-| File Path | Lines | Description |
-|-----------|-------|-------------|
-| `apps/web/src/stores/project-store.ts` | 593 | Project lifecycle management. **Critical**: destructive clear pattern at lines 239-242 in `loadProject()` |
-| `apps/web/src/stores/timeline-store.ts` | 2109 | Timeline state management. **Key functions**: `autoSaveTimeline()` (363-425), `updateTracksAndSave()` (427-436), `clearTimeline()` (1790-1794) |
-| `apps/web/src/stores/media-store.ts` | ~814 | Media item persistence. `clearAllMedia()` clears in-memory media items |
-| `apps/web/src/lib/storage/storage-service.ts` | 625 | Storage abstraction layer. `saveProjectTimeline()` (461-471), `loadProjectTimeline()` (473-481) |
-| `apps/web/src/routes/editor.$project_id.lazy.tsx` | 210 | Editor page initialization. Calls `loadProject()` in useEffect (lines 41-181) |
-| `apps/web/src/lib/storage/indexeddb-adapter.ts` | - | IndexedDB storage adapter for project/timeline metadata |
-| `apps/web/src/lib/storage/opfs-adapter.ts` | - | Origin Private File System adapter for large media files |
-| `apps/web/src/lib/storage/electron-adapter.ts` | - | Electron IPC storage adapter for desktop app |
+| File Path | Lines | Description | Verified |
+|-----------|-------|-------------|----------|
+| `apps/web/src/stores/project-store.ts` | 593 | Project lifecycle management. **Critical**: destructive clear pattern at lines 239-242 in `loadProject()` | 2025-11-28 ✓ |
+| `apps/web/src/stores/timeline-store.ts` | 2109 | Timeline state management. **Key functions**: `autoSaveTimeline()` (363-425), `updateTracksAndSave()` (427-436) | 2025-11-28 ✓ |
+| `apps/web/src/stores/media-store.ts` | ~814 | Media item persistence. `clearAllMedia()` clears in-memory media items | - |
+| `apps/web/src/lib/storage/storage-service.ts` | 625 | Storage abstraction layer. `saveProjectTimeline()`, `loadProjectTimeline()` | - |
+| `apps/web/src/routes/editor.$project_id.lazy.tsx` | 210 | Editor page initialization. Calls `loadProject()` in useEffect | - |
+| `apps/web/src/lib/storage/indexeddb-adapter.ts` | - | IndexedDB storage adapter for project/timeline metadata | - |
+| `apps/web/src/lib/storage/opfs-adapter.ts` | - | Origin Private File System adapter for large media files | - |
+| `apps/web/src/lib/storage/electron-adapter.ts` | - | Electron IPC storage adapter for desktop app | - |
 
 ---
 
@@ -186,6 +188,7 @@ loadProject(id) [project-store.ts:224]
 
 **File**: `apps/web/src/stores/project-store.ts`
 **Lines**: 224-278
+**Last Verified**: 2025-11-28 ✓ Code unchanged
 
 ```typescript
 loadProject: async (id: string) => {
@@ -253,6 +256,7 @@ loadProject: async (id: string) => {
 
 **File**: `apps/web/src/stores/timeline-store.ts`
 **Lines**: 427-436
+**Last Verified**: 2025-11-28 ✓ Code unchanged
 
 ```typescript
 // Helper to update tracks and auto-save
@@ -272,6 +276,7 @@ const updateTracksAndSave = (newTracks: TimelineTrack[]) => {
 
 **File**: `apps/web/src/stores/timeline-store.ts`
 **Lines**: 363-425
+**Last Verified**: 2025-11-28 ✓ Code unchanged
 
 ```typescript
 // Helper to auto-save timeline changes
@@ -702,6 +707,14 @@ After implementing fixes, verify:
 
 ---
 
+## Additional Review (Maintainability)
+
+- **High** – Cross-project autosave bleed risk (`qcut/apps/web/src/stores/timeline-store.ts:427-436`): the scheduled `autoSaveTimeline` reads the *current* `activeProject` at fire time, not at schedule time. If a user switches projects while a save timer is pending, the stale tracks from the previous project can be written into the newly opened project's storage, corrupting both timelines. Capture the projectId when scheduling and no-op if it differs at execution, or cancel timers during `loadProject`.
+- **Medium** – No schema/versioning on timeline payloads (`qcut/apps/web/src/lib/storage/storage-service.ts:493-526`): timeline data is persisted without a version marker, so future shape changes or scene-aware tweaks cannot be migrated, leading to silent load failures or dropped fields. Add a `schemaVersion` + migration path and reject/upgrade unknown versions to keep long-term compatibility.
+- **Testing gap** – Missing multi-project race regression: add an integration that edits project A, triggers an autosave timer, then switches to project B before the timer fires and asserts B's timeline is untouched and A still persists. This catches the cross-project bleed and enforces timer cancellation/guarding behavior.
+
+---
+
 ## Related Issues
 
 - Media files not loading after restart
@@ -716,3 +729,11 @@ After implementing fixes, verify:
 - [IndexedDB API - MDN](https://developer.mozilla.org/en-US/docs/Web/API/IndexedDB_API)
 - [Origin Private File System - MDN](https://developer.mozilla.org/en-US/docs/Web/API/File_System_API/Origin_private_file_system)
 - [Page Visibility API - MDN](https://developer.mozilla.org/en-US/docs/Web/API/Page_Visibility_API)
+
+---
+
+## Verification Log
+
+| Date | Verified By | Finding |
+|------|-------------|---------|
+| 2025-11-28 | Code Review | All bug patterns confirmed unchanged. `project-store.ts:239-242` still clears before load. `timeline-store.ts:427-436` still uses 100ms setTimeout without debounce. No `visibilitychange` handler exists. **Issue remains unfixed.** |
