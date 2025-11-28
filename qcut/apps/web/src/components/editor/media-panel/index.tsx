@@ -14,6 +14,7 @@ import { SoundsView } from "./views/sounds";
 import NanoEditView from "./views/nano-edit";
 import DrawView from "./views/draw";
 import VideoEditView from "./views/video-edit";
+import { SegmentationPanel } from "@/components/editor/segmentation";
 import React from "react";
 import { EFFECTS_ENABLED } from "@/config/features";
 
@@ -61,6 +62,7 @@ export function MediaPanel() {
     ai: <AiView />,
     sounds: <SoundsView />,
     draw: <DrawView />,
+    segmentation: <SegmentationPanel />,
   };
 
   return (

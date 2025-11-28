@@ -105,7 +105,7 @@ function ObjectListItem({ object }: { object: SegmentedObject }) {
 
       {/* Delete button */}
       <Button
-        variant="ghost"
+        variant="text"
         size="icon"
         className="h-6 w-6 flex-shrink-0 opacity-0 group-hover:opacity-100"
         onClick={(e) => {
@@ -145,7 +145,7 @@ export function ObjectList() {
       <div className="flex items-center justify-between mb-2">
         <h3 className="text-sm font-medium">Objects ({objects.length})</h3>
         <Button
-          variant="ghost"
+          variant="text"
           size="sm"
           onClick={clearObjects}
           className="h-6 text-xs"

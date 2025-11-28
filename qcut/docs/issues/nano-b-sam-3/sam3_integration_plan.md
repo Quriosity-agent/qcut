@@ -1,19 +1,57 @@
 # SAM 3 (Segment Anything Model 3) Integration Plan
 
 > **Priority**: Long-term maintainability > scalability > performance > short-term gains
-> **Status**: Phase 1 Complete (Core Infrastructure) | Phase 2-5 Pending
+> **Status**: ✅ Phase 1-4 Complete | Phase 5-6 Pending (Integration & Video UI)
 
 ---
 
-## Completed Work (Phase 1)
+## Completed Work
 
-The following files already exist and are ready for use:
-
+### Phase 1: Core Infrastructure (Complete)
 | File | Status | Description |
 |------|--------|-------------|
-| `src/types/sam3.ts` | ✅ Complete | TypeScript interfaces for SAM-3 image API |
-| `src/lib/sam3-client.ts` | ✅ Complete | API client with queue polling |
+| `src/types/sam3.ts` | ✅ Complete | TypeScript interfaces for SAM-3 image + video API |
+| `src/lib/sam3-client.ts` | ✅ Complete | API client with queue polling (image + video) |
 | `src/lib/sam3-models.ts` | ✅ Complete | Model catalog/info |
+
+### Phase 2: Video API Extension (Complete)
+| File | Status | Description |
+|------|--------|-------------|
+| `src/types/sam3.ts` | ✅ Complete | Added video types (Sam3VideoInput, Sam3VideoOutput, etc.) |
+| `src/lib/sam3-client.ts` | ✅ Complete | Added segmentVideo, segmentVideoWithText methods |
+| `src/types/ai-generation.ts` | ✅ Complete | Re-exported video types |
+
+### Phase 3: Segmentation Store (Complete)
+| File | Status | Description |
+|------|--------|-------------|
+| `src/stores/segmentation-store.ts` | ✅ Complete | Zustand store with full state management |
+
+### Phase 4: UI Components (Complete)
+| File | Status | Description |
+|------|--------|-------------|
+| `src/components/editor/segmentation/index.tsx` | ✅ Complete | Main SegmentationPanel container |
+| `src/components/editor/segmentation/PromptToolbar.tsx` | ✅ Complete | Mode selection + prompt input |
+| `src/components/editor/segmentation/ObjectList.tsx` | ✅ Complete | Sidebar object list with colors |
+| `src/components/editor/segmentation/SegmentationCanvas.tsx` | ✅ Complete | Interactive canvas with click/drag |
+| `src/components/editor/segmentation/ImageUploader.tsx` | ✅ Complete | Drag-drop image upload |
+| `src/components/editor/segmentation/MaskOverlay.tsx` | ✅ Complete | Opacity + bounding box controls |
+| `src/components/editor/segmentation/SegmentationControls.tsx` | ✅ Complete | Action buttons (download, reset) |
+
+---
+
+## Remaining Work
+
+### Phase 5: Integration & Navigation (Pending)
+- Add SegmentationPanel to editor navigation/routing
+- Export from components index
+
+### Phase 6: Video Segmentation UI (Future Enhancement)
+- VideoTimeline component
+- VideoPreview component
+
+---
+
+## Implementation Details (Reference)
 
 ---
 
