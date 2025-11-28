@@ -159,3 +159,85 @@ export type Sam3ProgressCallback = (status: {
   message?: string;
   elapsedTime?: number;
 }) => void;
+
+// ============================================
+// Video Segmentation Types
+// ============================================
+
+/**
+ * Point prompt for video segmentation
+ * Includes frame_index for specifying which frame the prompt applies to
+ */
+export interface Sam3VideoPointPrompt extends Sam3PointPrompt {
+  /** Frame index to interact with (0-based) */
+  frame_index?: number;
+}
+
+/**
+ * Box prompt for video segmentation
+ * Includes frame_index for specifying which frame the prompt applies to
+ */
+export interface Sam3VideoBoxPrompt extends Sam3BoxPrompt {
+  /** Frame index to interact with (0-based) */
+  frame_index?: number;
+}
+
+/**
+ * SAM-3 Video API input parameters
+ */
+export interface Sam3VideoInput {
+  /** URL of video to segment (required) */
+  video_url: string;
+  /** Text description of object to segment */
+  text_prompt?: string;
+  /** Point prompts for click-based segmentation with frame indices */
+  prompts?: Sam3VideoPointPrompt[];
+  /** Box prompts for region-based segmentation with frame indices */
+  box_prompts?: Sam3VideoBoxPrompt[];
+  /** Apply mask overlay to output video (default: true) */
+  apply_mask?: boolean;
+  /** Confidence threshold for detection (0.01-1.0, default: 0.5) */
+  detection_threshold?: number;
+  /** Return per-frame bounding box overlays as zip (default: false) */
+  boundingbox_zip?: boolean;
+  /** Initial frame index for mask application (default: 0) */
+  frame_index?: number;
+  /** Initial mask URL for tracking */
+  mask_url?: string;
+}
+
+/**
+ * File output from SAM-3 video
+ */
+export interface Sam3FileOutput {
+  /** URL to download the file */
+  url: string;
+  /** MIME type (e.g., "video/mp4") */
+  content_type?: string;
+  /** Generated filename */
+  file_name?: string;
+  /** File size in bytes */
+  file_size?: number;
+}
+
+/**
+ * SAM-3 Video API response
+ */
+export interface Sam3VideoOutput {
+  /** Segmented output video */
+  video: Sam3FileOutput;
+  /** Optional zip with per-frame bounding box overlays */
+  boundingbox_frames_zip?: Sam3FileOutput;
+}
+
+/**
+ * Progress callback for video segmentation operations
+ */
+export type Sam3VideoProgressCallback = (status: {
+  status: "queued" | "processing" | "completed" | "failed";
+  progress?: number;
+  message?: string;
+  elapsedTime?: number;
+  framesProcessed?: number;
+  totalFrames?: number;
+}) => void;

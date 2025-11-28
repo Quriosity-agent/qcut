@@ -19,11 +19,15 @@ import type {
   Sam3PointPrompt,
   Sam3BoxPrompt,
   Sam3ProgressCallback,
+  Sam3VideoInput,
+  Sam3VideoOutput,
+  Sam3VideoProgressCallback,
 } from "@/types/sam3";
 
 const FAL_API_KEY = import.meta.env.VITE_FAL_API_KEY;
 const FAL_API_BASE = "https://fal.run";
 const SAM3_ENDPOINT = "fal-ai/sam-3/image";
+const SAM3_VIDEO_ENDPOINT = "fal-ai/sam-3/video";
 const SAM3_LOG_COMPONENT = "Sam3Client";
 
 /**
@@ -310,6 +314,189 @@ class Sam3Client {
   }
 
   /**
+   * Segment video with SAM-3
+   *
+   * @param input - SAM-3 video input parameters
+   * @param onProgress - Optional progress callback
+   * @returns Video segmentation output
+   */
+  async segmentVideo(
+    input: Sam3VideoInput,
+    onProgress?: Sam3VideoProgressCallback
+  ): Promise<Sam3VideoOutput> {
+    await this.ensureApiKey();
+
+    const startTime = Date.now();
+
+    debugLogger.log(SAM3_LOG_COMPONENT, "VIDEO_SEGMENT_START", {
+      hasTextPrompt: !!input.text_prompt,
+      pointCount: input.prompts?.length || 0,
+      boxCount: input.box_prompts?.length || 0,
+      detectionThreshold: input.detection_threshold,
+    });
+
+    if (onProgress) {
+      onProgress({
+        status: "queued",
+        progress: 0,
+        message: "Submitting video to SAM-3...",
+        elapsedTime: 0,
+      });
+    }
+
+    try {
+      const response = await fetch(`${FAL_API_BASE}/${SAM3_VIDEO_ENDPOINT}`, {
+        method: "POST",
+        headers: {
+          Authorization: `Key ${this.apiKey}`,
+          "Content-Type": "application/json",
+          "X-Fal-Queue": "true",
+        },
+        body: JSON.stringify(input),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        handleAIServiceError(
+          new Error(`SAM-3 Video API Error: ${response.status}`),
+          "SAM-3 video segmentation request",
+          { status: response.status, errorData }
+        );
+        throw new Error(
+          `API error: ${response.status} - ${errorData.detail || response.statusText}`
+        );
+      }
+
+      const result = await response.json();
+
+      // Handle queue mode (video always uses queue)
+      if (result.request_id) {
+        return await this.pollForVideoResult(
+          result.request_id,
+          startTime,
+          onProgress
+        );
+      }
+
+      // Direct result (unlikely for video)
+      if (onProgress) {
+        onProgress({
+          status: "completed",
+          progress: 100,
+          message: "Video segmentation complete",
+          elapsedTime: Math.floor((Date.now() - startTime) / 1000),
+        });
+      }
+
+      return result as Sam3VideoOutput;
+    } catch (error) {
+      handleAIServiceError(error, "SAM-3 video segmentation", {
+        operation: "segmentVideo",
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Poll for queued video job result
+   */
+  private async pollForVideoResult(
+    requestId: string,
+    startTime: number,
+    onProgress?: Sam3VideoProgressCallback
+  ): Promise<Sam3VideoOutput> {
+    const maxAttempts = 120; // 10 minutes max for video
+    let attempts = 0;
+
+    while (attempts < maxAttempts) {
+      attempts++;
+      const elapsedTime = Math.floor((Date.now() - startTime) / 1000);
+
+      try {
+        const statusResponse = await fetch(
+          `${FAL_API_BASE}/queue/requests/${requestId}/status`,
+          {
+            headers: { Authorization: `Key ${this.apiKey}` },
+          }
+        );
+
+        if (!statusResponse.ok) {
+          await this.sleep(5000);
+          continue;
+        }
+
+        const status = await statusResponse.json();
+
+        if (onProgress) {
+          onProgress({
+            status: status.status === "IN_PROGRESS" ? "processing" : "queued",
+            progress: Math.min(90, 10 + attempts * 1.5),
+            message:
+              status.status === "IN_PROGRESS"
+                ? "Processing video frames..."
+                : `Queued (position: ${status.queue_position || "unknown"})`,
+            elapsedTime,
+          });
+        }
+
+        if (status.status === "COMPLETED") {
+          const resultResponse = await fetch(
+            `${FAL_API_BASE}/queue/requests/${requestId}`,
+            {
+              headers: { Authorization: `Key ${this.apiKey}` },
+            }
+          );
+
+          if (resultResponse.ok) {
+            const result = await resultResponse.json();
+
+            if (onProgress) {
+              onProgress({
+                status: "completed",
+                progress: 100,
+                message: "Video segmentation complete",
+                elapsedTime,
+              });
+            }
+
+            return result as Sam3VideoOutput;
+          }
+        }
+
+        if (status.status === "FAILED") {
+          throw new Error(status.error || "Video segmentation failed");
+        }
+
+        await this.sleep(5000);
+      } catch (error) {
+        if (attempts >= maxAttempts) {
+          throw new Error(
+            "Video segmentation timeout - maximum polling attempts reached"
+          );
+        }
+        await this.sleep(5000);
+      }
+    }
+
+    throw new Error("Maximum polling attempts reached");
+  }
+
+  /**
+   * Convenience: Segment video with text prompt
+   */
+  async segmentVideoWithText(
+    videoUrl: string,
+    textPrompt: string,
+    options?: Partial<Omit<Sam3VideoInput, "video_url" | "text_prompt">>
+  ): Promise<Sam3VideoOutput> {
+    return this.segmentVideo({
+      video_url: videoUrl,
+      text_prompt: textPrompt,
+      ...options,
+    });
+  }
+
+  /**
    * Check if the SAM-3 client is properly configured with an API key
    * @returns True if API key is available, false otherwise
    */
@@ -387,4 +574,32 @@ export async function segmentWithBox(
   options?: Partial<Omit<Sam3Input, "image_url" | "box_prompts">>
 ): Promise<Sam3Output> {
   return sam3Client.segmentWithBox(imageUrl, box, options);
+}
+
+/**
+ * Segment a video using SAM-3 with full parameter control
+ * @param input - SAM-3 video input parameters
+ * @param onProgress - Optional callback for progress updates during processing
+ * @returns Video segmentation output with segmented video URL
+ */
+export async function segmentVideo(
+  input: Sam3VideoInput,
+  onProgress?: Sam3VideoProgressCallback
+): Promise<Sam3VideoOutput> {
+  return sam3Client.segmentVideo(input, onProgress);
+}
+
+/**
+ * Segment a video using a text prompt
+ * @param videoUrl - URL of the video to segment
+ * @param textPrompt - Text description of the object to segment
+ * @param options - Optional additional SAM-3 video parameters
+ * @returns Video segmentation output with segmented video URL
+ */
+export async function segmentVideoWithText(
+  videoUrl: string,
+  textPrompt: string,
+  options?: Partial<Omit<Sam3VideoInput, "video_url" | "text_prompt">>
+): Promise<Sam3VideoOutput> {
+  return sam3Client.segmentVideoWithText(videoUrl, textPrompt, options);
 }

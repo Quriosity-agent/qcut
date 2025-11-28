@@ -163,4 +163,11 @@ export type {
   Sam3SegmentationMode,
   Sam3SegmentationResult,
   Sam3ProgressCallback,
+  // Video types
+  Sam3VideoInput,
+  Sam3VideoOutput,
+  Sam3VideoPointPrompt,
+  Sam3VideoBoxPrompt,
+  Sam3FileOutput,
+  Sam3VideoProgressCallback,
 } from "./sam3";
