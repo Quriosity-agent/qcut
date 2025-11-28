@@ -253,6 +253,8 @@ interface TimelineStore {
     projectId: string;
     sceneId?: string;
   }) => Promise<void>;
+  /** Save timeline immediately without debounce - for critical operations */
+  saveImmediate: () => Promise<void>;
   clearTimeline: () => void;
   updateTextElement: (
     trackId: string,
@@ -348,6 +350,9 @@ interface TimelineStore {
   clearElementEffects: (elementId: string) => void;
 }
 
+// Module-level timer for debounced auto-save
+let autoSaveTimer: ReturnType<typeof setTimeout> | null = null;
+
 export const useTimelineStore = create<TimelineStore>((set, get) => {
   // Helper to update tracks and maintain ordering
   const updateTracks = (newTracks: TimelineTrack[]) => {
@@ -424,15 +429,20 @@ export const useTimelineStore = create<TimelineStore>((set, get) => {
     }
   };
 
-  // Helper to update tracks and auto-save
+  // Helper to update tracks and auto-save with debouncing
   const updateTracksAndSave = (newTracks: TimelineTrack[]) => {
     updateTracks(newTracks);
-    // Auto-save in background
+    // Auto-save in background with debouncing
     set({
       isAutoSaving: true,
       autoSaveStatus: "Auto-saving...",
     });
-    setTimeout(autoSaveTimeline, 100);
+
+    // Cancel previous timer to prevent race conditions and stale saves
+    if (autoSaveTimer) {
+      clearTimeout(autoSaveTimer);
+    }
+    autoSaveTimer = setTimeout(autoSaveTimeline, 50); // Reduced from 100ms for faster saves
   };
 
   // Initialize with proper track ordering
@@ -1781,6 +1791,47 @@ export const useTimelineStore = create<TimelineStore>((set, get) => {
           metadata: {
             projectId,
             sceneId,
+            trackCount: get()._tracks.length,
+          },
+        });
+      }
+    },
+
+    // Save immediately without debounce - for critical operations like app close
+    saveImmediate: async () => {
+      // Cancel any pending debounced save
+      if (autoSaveTimer) {
+        clearTimeout(autoSaveTimer);
+        autoSaveTimer = null;
+      }
+
+      try {
+        const { useProjectStore } = await import("./project-store");
+        const activeProject = useProjectStore.getState().activeProject;
+        if (activeProject) {
+          const { useSceneStore } = await import("./scene-store");
+          const sceneId =
+            useSceneStore.getState().currentScene?.id ??
+            activeProject.currentSceneId;
+
+          await storageService.saveProjectTimeline({
+            projectId: activeProject.id,
+            tracks: get()._tracks,
+            sceneId,
+          });
+
+          set({
+            isAutoSaving: false,
+            autoSaveStatus: "Saved",
+            lastAutoSaveAt: Date.now(),
+          });
+        }
+      } catch (error) {
+        handleError(error, {
+          operation: "Immediate Save Timeline",
+          category: ErrorCategory.STORAGE,
+          severity: ErrorSeverity.HIGH,
+          metadata: {
             trackCount: get()._tracks.length,
           },
         });

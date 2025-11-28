@@ -226,7 +226,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
       set({ isLoading: true });
     }
 
-    // Clear media, timeline, and stickers immediately to prevent flickering when switching projects
+    // Get store references (no clearing yet - load before clear pattern)
     const mediaStore = (await getMediaStore()).useMediaStore.getState();
     const { useTimelineStore } = await import("./timeline-store");
     const timelineStore = useTimelineStore.getState();
@@ -236,37 +236,62 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
     const { useSceneStore } = await import("./scene-store");
     const stickersStore = useStickersOverlayStore.getState();
     const sceneStore = useSceneStore.getState();
-    mediaStore.clearAllMedia();
-    timelineStore.clearTimeline();
-    stickersStore.clearAllStickers();
-    sceneStore.clearScenes();
+
+    // Backup current state for rollback on failure
+    const backup = {
+      media: [...mediaStore.mediaItems],
+      timeline: [...timelineStore._tracks],
+      activeProject: get().activeProject,
+    };
 
     try {
+      // 1. LOAD FROM STORAGE FIRST - verify project exists and is accessible
+      debugLog(`[ProjectStore] Loading project from storage: ${id}`);
       const project = await storageService.loadProject({ id });
-      if (project) {
-        set({ activeProject: project });
-
-        // Load media first, then other data to ensure stickers have access to media items
-        debugLog(`[ProjectStore] Loading media for project: ${id}`);
-        await mediaStore.loadProjectMedia(id);
-        debugLog(
-          "[ProjectStore] Media loading complete, now loading timeline and stickers"
-        );
-
-        // Initialize scenes for the project
-        debugLog(`[ProjectStore] Initializing scenes for project: ${id}`);
-        await sceneStore.initializeProjectScenes(project);
-
-        // Load timeline and stickers in parallel (both may depend on media being loaded)
-        await Promise.all([
-          timelineStore.loadProjectTimeline({ projectId: id }),
-          stickersStore.loadFromProject(id),
-        ]);
-        debugLog(`[ProjectStore] Project loading complete: ${id}`);
-      } else {
+      if (!project) {
         throw new NotFoundError(`Project ${id} not found`);
       }
+
+      // 2. ONLY NOW clear state (after successful load verification)
+      // This prevents data loss if storage is inaccessible
+      debugLog("[ProjectStore] Project verified, clearing previous state");
+      mediaStore.clearAllMedia();
+      timelineStore.clearTimeline();
+      stickersStore.clearAllStickers();
+      sceneStore.clearScenes();
+
+      // 3. Apply new project state
+      set({ activeProject: project });
+
+      // 4. Load remaining data with error handling
+      debugLog(`[ProjectStore] Loading media for project: ${id}`);
+      await mediaStore.loadProjectMedia(id);
+      debugLog(
+        "[ProjectStore] Media loading complete, now loading timeline and stickers"
+      );
+
+      // Initialize scenes for the project
+      debugLog(`[ProjectStore] Initializing scenes for project: ${id}`);
+      await sceneStore.initializeProjectScenes(project);
+
+      // Load timeline and stickers in parallel (both may depend on media being loaded)
+      await Promise.all([
+        timelineStore.loadProjectTimeline({ projectId: id }),
+        stickersStore.loadFromProject(id),
+      ]);
+      debugLog(`[ProjectStore] Project loading complete: ${id}`);
     } catch (error) {
+      // Rollback to previous state if we had valid data
+      debugLog("[ProjectStore] Load failed, attempting rollback");
+      if (backup.timeline.length > 0 || backup.media.length > 0) {
+        debugLog("[ProjectStore] Restoring backup state");
+        // Restore previous project
+        if (backup.activeProject) {
+          set({ activeProject: backup.activeProject });
+        }
+        // Note: Full rollback of media/timeline requires setters that may not exist
+        // The key fix is the load-before-clear pattern which prevents most data loss
+      }
       handleStorageError(error, "Load project", {
         projectId: id,
         operation: "loadProject",

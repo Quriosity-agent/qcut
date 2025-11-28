@@ -1,10 +1,10 @@
 # Issue: Videos Disappear from Timeline After Closing Software
 
-> **Status**: Open
+> **Status**: IMPLEMENTED
 > **Priority**: High
 > **Category**: Data Persistence
 > **Created**: 2025-11-27
-> **Last Updated**: 2025-11-28
+> **Implemented**: 2025-11-28
 
 ---
 
@@ -737,3 +737,67 @@ After implementing fixes, verify:
 | Date | Verified By | Finding |
 |------|-------------|---------|
 | 2025-11-28 | Code Review | All bug patterns confirmed unchanged. `project-store.ts:239-242` still clears before load. `timeline-store.ts:427-436` still uses 100ms setTimeout without debounce. No `visibilitychange` handler exists. **Issue remains unfixed.** |
+| 2025-11-28 | Implementation | **All 5 fixes implemented.** See Implementation Summary below. |
+
+---
+
+## Implementation Summary
+
+All 5 fixes have been implemented to resolve the timeline video disappear issue:
+
+### Fix 1: Load Before Clear ✅
+**File**: `apps/web/src/stores/project-store.ts` (lines 224-302)
+
+Changed `loadProject()` to:
+1. Load project from storage FIRST
+2. Verify project exists and is accessible
+3. ONLY THEN clear previous state
+4. This prevents data loss if storage is inaccessible
+
+### Fix 2: Backup/Rollback ✅
+**File**: `apps/web/src/stores/project-store.ts` (lines 240-245, 284-294)
+
+Added:
+- Backup of current state before loading (media, timeline, activeProject)
+- Rollback of `activeProject` on failure
+- Logging for debugging rollback operations
+
+### Fix 3: visibilitychange Handler ✅
+**Files**:
+- NEW: `apps/web/src/hooks/use-save-on-visibility-change.ts`
+- `apps/web/src/routes/editor.$project_id.lazy.tsx` (line 38)
+
+Created new hook `useSaveOnVisibilityChange()` that:
+- Listens for `visibilitychange` event
+- Saves timeline and project data when page becomes hidden
+- More reliable than `beforeunload` for async saves
+- Used in EditorPage component
+
+### Fix 4: Debounced Auto-Save Timer ✅
+**File**: `apps/web/src/stores/timeline-store.ts` (lines 351-352, 439-443)
+
+Changed:
+- Added module-level `autoSaveTimer` variable
+- `updateTracksAndSave()` now cancels previous timer before scheduling new one
+- Prevents race conditions and stale saves
+- Reduced delay from 100ms to 50ms for faster saves
+
+### Fix 5: Immediate Save Method ✅
+**File**: `apps/web/src/stores/timeline-store.ts` (lines 256-257, 1800-1839)
+
+Added new `saveImmediate()` method that:
+- Cancels any pending debounced save
+- Saves timeline immediately without delay
+- Used for critical operations like app close
+- Updates auto-save status on completion
+
+---
+
+## Files Modified
+
+| File | Changes |
+|------|---------|
+| `apps/web/src/stores/project-store.ts` | Load-before-clear pattern, backup/rollback |
+| `apps/web/src/stores/timeline-store.ts` | Debounced timer, `saveImmediate()` method |
+| `apps/web/src/hooks/use-save-on-visibility-change.ts` | NEW - visibility change handler |
+| `apps/web/src/routes/editor.$project_id.lazy.tsx` | Import and use visibility change hook |

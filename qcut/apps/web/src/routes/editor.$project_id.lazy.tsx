@@ -5,6 +5,7 @@ import { usePanelStore } from "@/stores/panel-store";
 import { EditorProvider } from "@/components/editor-provider";
 import { useProjectStore, NotFoundError } from "@/stores/project-store";
 import { usePlaybackControls } from "@/hooks/use-playback-controls";
+import { useSaveOnVisibilityChange } from "@/hooks/use-save-on-visibility-change";
 import { Onboarding } from "@/components/onboarding";
 import { debugError, debugLog } from "@/lib/debug-config";
 import "@/lib/debug-sticker-overlay"; // Load debug utilities
@@ -32,6 +33,9 @@ function EditorPage() {
     isInvalidProjectId,
     markProjectIdAsInvalid,
   } = useProjectStore();
+
+  // Save timeline when page becomes hidden (tab switch, close, etc.)
+  useSaveOnVisibilityChange();
 
   // Track current load promise to handle concurrent loads properly
   const currentLoadPromiseRef = useRef<Promise<void> | null>(null);
