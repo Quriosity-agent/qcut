@@ -42,7 +42,7 @@ The following changes were applied to improve button spacing:
 <Button
   size="sm"
   className={cn(
-    "flex-1 flex-col items-start gap-1 px-4 py-3 h-auto",
+    "flex-1 flex-col items-start gap-0.5 px-3 py-2 h-auto",
     selected === option.id
       ? "shadow-sm"
       : "border border-transparent hover:border-border"
@@ -56,8 +56,8 @@ The following changes were applied to improve button spacing:
 ```
 
 ### Changes Applied
-1. `gap-0.5` → `gap-1` - More space between label and description
-2. Added `px-4 py-3` - Explicit horizontal and vertical padding
+1. Added `gap-0.5` - Small space between label and description
+2. Added `px-3 py-2` - Moderate horizontal and vertical padding
 3. Added `h-auto` - Allow button to expand to fit content
 4. `text-xs` → `text-sm` for label - Slightly larger main text
 5. `text-[10px]` → `text-xs` for description - Standard small size
@@ -66,9 +66,9 @@ The following changes were applied to improve button spacing:
 
 | Aspect | Before | After |
 |--------|--------|-------|
-| Horizontal padding | ~8px | ~16px |
-| Vertical padding | ~6px | ~12px |
-| Gap between lines | 2px | 4px |
+| Horizontal padding | ~8px | ~12px |
+| Vertical padding | ~6px | ~8px |
+| Gap between lines | 2px | 2px |
 | Label size | 12px | 14px |
 | Description size | 10px | 12px |
 

@@ -91,7 +91,7 @@ export function ModelTypeSelector({
           aria-pressed={selected === option.id}
           onClick={() => onChange(option.id)}
           className={cn(
-            "flex-1 flex-col items-start gap-1 px-4 py-3 h-auto",
+            "flex-1 flex-col items-start gap-0.5 px-3 py-1 h-auto",
             selected === option.id
               ? "shadow-sm"
               : "border border-transparent hover:border-border"
