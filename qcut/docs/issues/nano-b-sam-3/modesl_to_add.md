@@ -355,13 +355,19 @@ if (request.aspectRatio !== undefined) {
 - **Cost**: $0.005 per request
 - **Provider**: fal.ai (Meta SAM)
 
+### API UI Screenshot Analysis
+
+![SAM-3 API UI](./chrome_TMq41sVa7Z.png)
+
+**UI Assessment:** The fal.ai API UI is poorly designed (cluttered, many fields), but the **input schema is well-structured** with clear field types:
+
 ### Input Parameters
 | Parameter | Type | Required | Default | Description |
 |-----------|------|----------|---------|-------------|
-| `image_url` | string | Yes | - | URL of image to segment |
+| `image_url` | string | Yes | - | URL of image to segment (supports drag-drop, clipboard, URL) |
 | `text_prompt` | string | No | "" | Text cue for segmentation |
-| `prompts` | array | No | - | Point prompts [{x, y, label, object_id}] |
-| `box_prompts` | array | No | - | Box prompts [{x_min, y_min, x_max, y_max}] |
+| `prompts` | array | No | - | Point prompts (see structure below) |
+| `box_prompts` | array | No | - | Box prompts (see structure below) |
 | `apply_mask` | boolean | No | true | Apply mask to output image |
 | `sync_mode` | boolean | No | false | Return as data URI |
 | `output_format` | enum | No | "png" | jpeg, png, webp |
@@ -369,6 +375,34 @@ if (request.aspectRatio !== undefined) {
 | `max_masks` | integer | No | 3 | Max masks to return |
 | `include_scores` | boolean | No | false | Include confidence scores |
 | `include_boxes` | boolean | No | false | Include bounding boxes |
+
+### Point Prompts Structure (from UI)
+Each point prompt has:
+| Field | Type | Description |
+|-------|------|-------------|
+| `x` | number | X coordinate (e.g., 500) |
+| `y` | number | Y coordinate (e.g., 375) |
+| `label` | number | 0=background, 1=foreground |
+| `object_id` | string? | Optional object identifier |
+| `frame_index` | number? | Optional frame index (for video) |
+
+### Box Prompts Structure (from UI)
+Each box prompt has:
+| Field | Type | Description |
+|-------|------|-------------|
+| `x_min` | number | Left edge X (e.g., 425) |
+| `y_min` | number | Top edge Y (e.g., 600) |
+| `x_max` | number | Right edge X (e.g., 700) |
+| `y_max` | number | Bottom edge Y (e.g., 875) |
+| `object_id` | string? | Optional object identifier |
+| `frame_index` | number? | Optional frame index (for video) |
+
+### UI Improvements for QCut Implementation
+The fal.ai UI is cluttered - our implementation should:
+1. **Simplify** - Hide advanced fields (frame_index, object_id) by default
+2. **Visual feedback** - Show click points/boxes on image preview
+3. **Mode tabs** - Separate text/point/box modes for clarity
+4. **Preset coordinates** - Auto-populate from click interactions on canvas
 
 ### Output Format
 ```json
@@ -409,14 +443,16 @@ if (request.aspectRatio !== undefined) {
  * Represents a click point on the image with a label
  */
 export interface Sam3PointPrompt {
-  /** X coordinate (0-1 normalized or pixel value) */
+  /** X coordinate (pixel value, e.g., 500) */
   x: number;
-  /** Y coordinate (0-1 normalized or pixel value) */
+  /** Y coordinate (pixel value, e.g., 375) */
   y: number;
   /** 0 = background (exclude), 1 = foreground (include) */
   label: 0 | 1;
   /** Optional object ID for multi-object segmentation */
-  object_id?: number;
+  object_id?: string;
+  /** Optional frame index for video segmentation */
+  frame_index?: number;
 }
 
 /**
@@ -424,16 +460,18 @@ export interface Sam3PointPrompt {
  * Represents a bounding box region
  */
 export interface Sam3BoxPrompt {
-  /** Left edge X coordinate */
+  /** Left edge X coordinate (pixel value, e.g., 425) */
   x_min: number;
-  /** Top edge Y coordinate */
+  /** Top edge Y coordinate (pixel value, e.g., 600) */
   y_min: number;
-  /** Right edge X coordinate */
+  /** Right edge X coordinate (pixel value, e.g., 700) */
   x_max: number;
-  /** Bottom edge Y coordinate */
+  /** Bottom edge Y coordinate (pixel value, e.g., 875) */
   y_max: number;
   /** Optional object ID for multi-object segmentation */
-  object_id?: number;
+  object_id?: string;
+  /** Optional frame index for video segmentation */
+  frame_index?: number;
 }
 
 /**

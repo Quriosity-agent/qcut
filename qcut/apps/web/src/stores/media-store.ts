@@ -433,8 +433,14 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
     });
 
     // Add to local state immediately for UI responsiveness
+    // For videos without thumbnails, set pending status for UI feedback
+    const itemWithStatus: MediaItem =
+      newItem.type === "video" && newItem.file && !newItem.thumbnailUrl
+        ? { ...newItem, thumbnailStatus: "pending" as const }
+        : newItem;
+
     set((state) => ({
-      mediaItems: [...state.mediaItems, newItem],
+      mediaItems: [...state.mediaItems, itemWithStatus],
     }));
 
     // Save to persistent storage in background
@@ -446,6 +452,13 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
         name: newItem.name,
         type: newItem.type,
       });
+
+      // Trigger thumbnail generation for videos AFTER storage save succeeds
+      // This avoids race condition where thumbnail persist could be overwritten
+      if (newItem.type === "video" && newItem.file && !newItem.thumbnailUrl) {
+        extractVideoMetadataBackground(newItem.file, newItem.id, projectId);
+      }
+
       return newItem.id;
     } catch (error) {
       console.error(

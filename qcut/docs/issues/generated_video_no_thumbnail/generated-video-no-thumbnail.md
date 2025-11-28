@@ -1,8 +1,9 @@
 # AI Generated Video Missing Thumbnail
 
-## Status: OPEN
+## Status: IMPLEMENTED
 
 **Created:** 2025-11-28
+**Implemented:** 2025-11-28
 
 ## Summary
 
@@ -98,45 +99,40 @@ This fix ensures all videos get thumbnails regardless of how they're added (AI g
 
 ### Implementation Details
 
-**Location:** Inside `addMediaItem()` function, after adding to local state (after line 438) and before storage save.
+**Location:** Inside `addMediaItem()` function in `media-store.ts` (lines 435-462)
 
-**Current code (lines 435-442):**
+**Key change:** Trigger thumbnail generation **AFTER** storage save succeeds to avoid race conditions.
+
+**Implemented code:**
 ```typescript
 // Add to local state immediately for UI responsiveness
+// For videos without thumbnails, set pending status for UI feedback
+const itemWithStatus: MediaItem =
+  newItem.type === "video" && newItem.file && !newItem.thumbnailUrl
+    ? { ...newItem, thumbnailStatus: "pending" as const }
+    : newItem;
+
 set((state) => ({
-  mediaItems: [...state.mediaItems, newItem],
+  mediaItems: [...state.mediaItems, itemWithStatus],
 }));
 
 // Save to persistent storage in background
 try {
   await storageService.saveMediaItem(projectId, newItem);
-```
+  console.log("[MediaStore.addMediaItem] Saved to storage", {
+    projectId,
+    id: newItem.id,
+    name: newItem.name,
+    type: newItem.type,
+  });
 
-**Updated code:**
-```typescript
-// Add to local state immediately for UI responsiveness
-set((state) => ({
-  mediaItems: [...state.mediaItems, newItem],
-}));
+  // Trigger thumbnail generation for videos AFTER storage save succeeds
+  // This avoids race condition where thumbnail persist could be overwritten
+  if (newItem.type === "video" && newItem.file && !newItem.thumbnailUrl) {
+    extractVideoMetadataBackground(newItem.file, newItem.id, projectId);
+  }
 
-// Trigger thumbnail generation for newly added videos
-if (newItem.type === "video" && newItem.file && !newItem.thumbnailUrl) {
-  // Set pending status immediately for UI feedback
-  set((state) => ({
-    mediaItems: state.mediaItems.map((media) =>
-      media.id === newItem.id
-        ? { ...media, thumbnailStatus: "pending" as const }
-        : media
-    ),
-  }));
-
-  // Start background thumbnail generation (async, doesn't block)
-  extractVideoMetadataBackground(newItem.file, newItem.id, projectId);
-}
-
-// Save to persistent storage in background
-try {
-  await storageService.saveMediaItem(projectId, newItem);
+  return newItem.id;
 ```
 
 ### Why This Works
@@ -165,11 +161,15 @@ try {
 
 ---
 
-## Review
+## Review Issues (Resolved)
 
-- **High** – Race with storage persistence if thumbnail generation is started before the initial save: `extractVideoMetadataBackground` persists the updated item via `updateMediaMetadataAndPersist` (`qcut/apps/web/src/stores/media-store.ts:171`) while `addMediaItem` later awaits `storageService.saveMediaItem` (`qcut/apps/web/src/stores/media-store.ts:440`). If the background write finishes first, the subsequent save of the unmodified item can overwrite the generated thumbnail in storage, so it will be missing after reload. Kick off thumbnail generation only after the initial save resolves or ensure the post-generation persist happens after that write.
-- **Medium** – Background job still runs when the initial save fails: if `saveMediaItem` rejects in `addMediaItem` (`qcut/apps/web/src/stores/media-store.ts:440-485`), the currently proposed placement would already have queued thumbnail generation, which would then persist metadata even though the add operation surfaced as failed. Gate the thumbnail job on a successful storage write or cancel it when the save fails to avoid inconsistent saved state vs. UI error handling.
-- **Testing gap** – Add a regression that verifies thumbnails generated during `addMediaItem` survive a subsequent `loadProjectMedia` reload (`qcut/apps/web/src/stores/media-store.ts:663-731`), catching the persistence race described above.
+| Issue | Severity | Resolution |
+|-------|----------|------------|
+| Race with storage persistence | High | ✅ Thumbnail generation now triggered **after** `saveMediaItem` succeeds |
+| Background job runs on save failure | Medium | ✅ Thumbnail generation only called inside the `try` block after successful save |
+| Testing gap | Low | Added to testing checklist below |
+
+---
 
 ## Testing Checklist
 
