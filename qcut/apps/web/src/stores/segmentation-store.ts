@@ -193,7 +193,7 @@ const initialState: SegmentationState = {
   elapsedTime: 0,
 
   showObjectList: true,
-  maskOpacity: 0.5,
+  maskOpacity: 1.0, // Full visibility of segmentation mask by default
   showBoundingBoxes: false,
 
   currentFrame: 0,

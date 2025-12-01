@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Trash2, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useBlobImage } from "@/hooks/use-blob-image";
 
 /**
  * ObjectListItem
@@ -26,6 +27,10 @@ function ObjectListItem({ object }: { object: SegmentedObject }) {
 
   const [isEditing, setIsEditing] = React.useState(false);
   const [editName, setEditName] = React.useState(object.name);
+
+  // Convert FAL mask URLs to blob URLs to bypass COEP restrictions
+  const { blobUrl: maskBlobUrl } = useBlobImage(object.maskUrl);
+  const { blobUrl: thumbnailBlobUrl } = useBlobImage(object.thumbnailUrl);
 
   const handleNameSubmit = () => {
     if (editName.trim()) {
@@ -50,17 +55,17 @@ function ObjectListItem({ object }: { object: SegmentedObject }) {
         style={{ backgroundColor: color.hex }}
       />
 
-      {/* Thumbnail or placeholder */}
+      {/* Thumbnail or placeholder (use blob URLs to bypass COEP) */}
       <div className="w-10 h-10 rounded bg-muted flex-shrink-0 overflow-hidden">
-        {object.thumbnailUrl ? (
+        {thumbnailBlobUrl ? (
           <img
-            src={object.thumbnailUrl}
+            src={thumbnailBlobUrl}
             alt={object.name}
             className="w-full h-full object-cover"
           />
-        ) : object.maskUrl ? (
+        ) : maskBlobUrl ? (
           <img
-            src={object.maskUrl}
+            src={maskBlobUrl}
             alt={object.name}
             className="w-full h-full object-cover"
           />

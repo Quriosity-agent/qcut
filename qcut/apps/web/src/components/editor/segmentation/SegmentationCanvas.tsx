@@ -6,6 +6,7 @@ import {
   OBJECT_COLORS,
 } from "@/stores/segmentation-store";
 import type { Sam3PointPrompt, Sam3BoxPrompt } from "@/types/sam3";
+import { useBlobImage } from "@/hooks/use-blob-image";
 
 /**
  * SegmentationCanvas
@@ -38,6 +39,9 @@ export function SegmentationCanvas() {
     imageHeight,
   } = useSegmentationStore();
 
+  // Convert FAL URLs to blob URLs to bypass COEP restrictions
+  const { blobUrl: compositeBlobUrl } = useBlobImage(compositeImageUrl ?? undefined);
+
   // Load and display image
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -66,17 +70,31 @@ export function SegmentationCanvas() {
 
       setImageDimensions(img.width, img.height);
 
-      // Draw image
-      ctx.drawImage(img, 0, 0, displayWidth, displayHeight);
+      // If we have a composite image from SAM-3, show it based on maskOpacity
+      // compositeBlobUrl contains the full segmentation visualization from SAM-3 API
+      // (original image with colored mask overlays already applied)
+      if (compositeBlobUrl) {
+        const compositeImg = new Image();
+        compositeImg.onload = () => {
+          // SAM-3 returns a composite image with masks already overlaid
+          // maskOpacity controls how much of the composite vs original we show:
+          // - At opacity 1.0: Show full composite (colored masks visible)
+          // - At opacity 0.0: Show original only
+          // - In between: Blend the two images
 
-      // Draw mask overlay if available
-      if (compositeImageUrl) {
-        const maskImg = new Image();
-        maskImg.crossOrigin = "anonymous";
-        maskImg.onload = () => {
-          ctx.globalAlpha = maskOpacity;
-          ctx.drawImage(maskImg, 0, 0, displayWidth, displayHeight);
-          ctx.globalAlpha = 1.0;
+          if (maskOpacity >= 1.0) {
+            // Full composite
+            ctx.drawImage(compositeImg, 0, 0, displayWidth, displayHeight);
+          } else if (maskOpacity <= 0.0) {
+            // Original only
+            ctx.drawImage(img, 0, 0, displayWidth, displayHeight);
+          } else {
+            // Blend: draw composite first, then original on top with inverse opacity
+            ctx.drawImage(compositeImg, 0, 0, displayWidth, displayHeight);
+            ctx.globalAlpha = 1 - maskOpacity;
+            ctx.drawImage(img, 0, 0, displayWidth, displayHeight);
+            ctx.globalAlpha = 1.0;
+          }
 
           // Draw point prompts
           drawPointPrompts(ctx, currentPointPrompts, scale);
@@ -89,9 +107,10 @@ export function SegmentationCanvas() {
             drawBoundingBoxes(ctx, objects, displayWidth, displayHeight);
           }
         };
-        maskImg.src = compositeImageUrl;
+        compositeImg.src = compositeBlobUrl;
       } else {
-        // Just draw prompts on original image
+        // No composite yet - just draw original image with prompts
+        ctx.drawImage(img, 0, 0, displayWidth, displayHeight);
         drawPointPrompts(ctx, currentPointPrompts, scale);
         drawBoxPrompts(ctx, currentBoxPrompts, scale);
       }
@@ -100,7 +119,7 @@ export function SegmentationCanvas() {
     img.src = sourceImageUrl;
   }, [
     sourceImageUrl,
-    compositeImageUrl,
+    compositeBlobUrl,
     currentPointPrompts,
     currentBoxPrompts,
     objects,

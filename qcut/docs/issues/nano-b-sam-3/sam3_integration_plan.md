@@ -1,7 +1,7 @@
 # SAM 3 (Segment Anything Model 3) Integration Plan
 
 > **Priority**: Long-term maintainability > scalability > performance > short-term gains
-> **Status**: ✅ Phase 1-4 Complete | Phase 5-6 Pending (Integration & Video UI)
+> **Status**: ✅ Phase 1-5 Complete | Phase 6 Pending (Video UI)
 
 ---
 
@@ -37,13 +37,15 @@
 | `src/components/editor/segmentation/MaskOverlay.tsx` | ✅ Complete | Opacity + bounding box controls |
 | `src/components/editor/segmentation/SegmentationControls.tsx` | ✅ Complete | Action buttons (download, reset) |
 
+### Phase 5: Integration & Navigation (Complete)
+| File | Status | Description |
+|------|--------|-------------|
+| `src/components/editor/media-panel/store.ts` | ✅ Complete | Added "segmentation" to Tab type, ScissorsIcon, and tab config |
+| `src/components/editor/media-panel/index.tsx` | ✅ Complete | Added SegmentationPanel import and viewMap entry |
+
 ---
 
 ## Remaining Work
-
-### Phase 5: Integration & Navigation (Pending)
-- Add SegmentationPanel to editor navigation/routing
-- Export from components index
 
 ### Phase 6: Video Segmentation UI (Future Enhancement)
 - VideoTimeline component
