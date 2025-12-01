@@ -8,11 +8,20 @@ import {
 import type { Sam3PointPrompt, Sam3BoxPrompt } from "@/types/sam3";
 import { useBlobImage } from "@/hooks/use-blob-image";
 
+const loadImage = (src: string) =>
+  new Promise<HTMLImageElement>((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = src;
+  });
+
 /**
  * SegmentationCanvas
  *
  * Interactive canvas for displaying image and handling click/drag interactions.
- * Renders mask overlays and point/box prompts.
+ * Renders client-side mask overlays and prompts.
  */
 export function SegmentationCanvas() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -22,6 +31,7 @@ export function SegmentationCanvas() {
     null
   );
   const [currentBox, setCurrentBox] = useState<Sam3BoxPrompt | null>(null);
+  const [maskBlobs, setMaskBlobs] = useState<Record<string, string>>({});
 
   const {
     sourceImageUrl,
@@ -37,12 +47,75 @@ export function SegmentationCanvas() {
     setImageDimensions,
     imageWidth,
     imageHeight,
+    updateObject,
   } = useSegmentationStore();
 
-  // Convert FAL URLs to blob URLs to bypass COEP restrictions
-  const { blobUrl: compositeBlobUrl } = useBlobImage(compositeImageUrl ?? undefined);
+  // Convert FAL URLs to blob URLs to bypass COEP restrictions (composite fallback)
+  const { blobUrl: compositeBlobUrl } = useBlobImage(
+    compositeImageUrl ?? undefined
+  );
 
-  // Load and display image
+  // Fetch and cache mask blobs for COEP-safe drawing
+  useEffect(() => {
+    const missing = objects.filter(
+      (obj) => obj.maskUrl && !maskBlobs[obj.maskUrl]
+    );
+    if (missing.length === 0) return;
+
+    let cancelled = false;
+
+    const fetchMasks = async () => {
+      const newEntries: Record<string, string> = {};
+      for (const obj of missing) {
+        const url = obj.maskUrl!;
+        try {
+          const resp = await fetch(url);
+          const blob = await resp.blob();
+          if (cancelled) return;
+          newEntries[url] = URL.createObjectURL(blob);
+        } catch (error) {
+          console.error("Failed to fetch mask blob", error);
+        }
+      }
+      if (cancelled || Object.keys(newEntries).length === 0) return;
+      setMaskBlobs((prev) => ({ ...prev, ...newEntries }));
+      // Push blob URLs into store so other consumers can reuse
+      missing.forEach((obj) => {
+        const blobUrl = newEntries[obj.maskUrl ?? ""];
+        if (blobUrl) {
+          updateObject(obj.id, { maskBlobUrl: blobUrl });
+        }
+      });
+    };
+
+    fetchMasks();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [objects, maskBlobs, updateObject]);
+
+  // Cleanup blob URLs when objects are removed
+  useEffect(() => {
+    const maskUrls = new Set(
+      objects.map((o) => o.maskUrl).filter(Boolean) as string[]
+    );
+
+    const toRemove = Object.entries(maskBlobs).filter(
+      ([url]) => !maskUrls.has(url)
+    );
+
+    if (toRemove.length === 0) return;
+
+    const next = { ...maskBlobs };
+    toRemove.forEach(([url, blobUrl]) => {
+      URL.revokeObjectURL(blobUrl);
+      delete next[url];
+    });
+    setMaskBlobs(next);
+  }, [objects, maskBlobs]);
+
+  // Load and display image with client-side mask compositing
   useEffect(() => {
     const canvas = canvasRef.current;
     const container = containerRef.current;
@@ -51,72 +124,89 @@ export function SegmentationCanvas() {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    const img = new Image();
-    img.crossOrigin = "anonymous";
+    let cancelled = false;
 
-    img.onload = () => {
-      // Calculate fit dimensions
-      const containerRect = container.getBoundingClientRect();
-      const scale = Math.min(
-        containerRect.width / img.width,
-        containerRect.height / img.height
-      );
+    const draw = async () => {
+      try {
+        const baseImg = await loadImage(sourceImageUrl);
+        if (cancelled) return;
 
-      const displayWidth = img.width * scale;
-      const displayHeight = img.height * scale;
+        // Calculate fit dimensions
+        const containerRect = container.getBoundingClientRect();
+        const scale = Math.min(
+          containerRect.width / baseImg.width,
+          containerRect.height / baseImg.height
+        );
 
-      canvas.width = displayWidth;
-      canvas.height = displayHeight;
+        const displayWidth = baseImg.width * scale;
+        const displayHeight = baseImg.height * scale;
 
-      setImageDimensions(img.width, img.height);
+        canvas.width = displayWidth;
+        canvas.height = displayHeight;
 
-      // If we have a composite image from SAM-3, show it based on maskOpacity
-      // compositeBlobUrl contains the full segmentation visualization from SAM-3 API
-      // (original image with colored mask overlays already applied)
-      if (compositeBlobUrl) {
-        const compositeImg = new Image();
-        compositeImg.onload = () => {
-          // SAM-3 returns a composite image with masks already overlaid
-          // maskOpacity controls how much of the composite vs original we show:
-          // - At opacity 1.0: Show full composite (colored masks visible)
-          // - At opacity 0.0: Show original only
-          // - In between: Blend the two images
+        setImageDimensions(baseImg.width, baseImg.height);
 
+        ctx.clearRect(0, 0, displayWidth, displayHeight);
+        ctx.drawImage(baseImg, 0, 0, displayWidth, displayHeight);
+
+        const visibleObjects = objects.filter(
+          (obj) => obj.visible !== false && (obj.maskBlobUrl || obj.maskUrl)
+        );
+
+        // If no visible objects but composite exists, fall back to composite preview
+        if (visibleObjects.length === 0 && compositeBlobUrl) {
+          const compositeImg = await loadImage(compositeBlobUrl);
+          if (cancelled) return;
           if (maskOpacity >= 1.0) {
-            // Full composite
             ctx.drawImage(compositeImg, 0, 0, displayWidth, displayHeight);
           } else if (maskOpacity <= 0.0) {
-            // Original only
-            ctx.drawImage(img, 0, 0, displayWidth, displayHeight);
+            // already drew base image
           } else {
-            // Blend: draw composite first, then original on top with inverse opacity
             ctx.drawImage(compositeImg, 0, 0, displayWidth, displayHeight);
             ctx.globalAlpha = 1 - maskOpacity;
-            ctx.drawImage(img, 0, 0, displayWidth, displayHeight);
+            ctx.drawImage(baseImg, 0, 0, displayWidth, displayHeight);
             ctx.globalAlpha = 1.0;
           }
+        } else {
+          // Draw tinted masks for each visible object
+          for (const obj of visibleObjects) {
+            const maskSource =
+              (obj.maskUrl && maskBlobs[obj.maskUrl]) ||
+              obj.maskBlobUrl ||
+              obj.maskUrl;
+            if (!maskSource) continue;
 
-          // Draw point prompts
-          drawPointPrompts(ctx, currentPointPrompts, scale);
-
-          // Draw box prompts
-          drawBoxPrompts(ctx, currentBoxPrompts, scale);
-
-          // Draw bounding boxes if enabled
-          if (showBoundingBoxes) {
-            drawBoundingBoxes(ctx, objects, displayWidth, displayHeight);
+            try {
+              const maskImg = await loadImage(maskSource);
+              if (cancelled) return;
+              const tinted = tintMask(maskImg, OBJECT_COLORS[obj.colorIndex].hex);
+              ctx.save();
+              ctx.globalAlpha = maskOpacity;
+              ctx.drawImage(tinted, 0, 0, displayWidth, displayHeight);
+              ctx.restore();
+            } catch (error) {
+              console.error("Failed to draw mask", error);
+            }
           }
-        };
-        compositeImg.src = compositeBlobUrl;
-      } else {
-        // No composite yet - just draw original image with prompts
-        ctx.drawImage(img, 0, 0, displayWidth, displayHeight);
+        }
+
+        // Draw prompts and boxes on top
         drawPointPrompts(ctx, currentPointPrompts, scale);
         drawBoxPrompts(ctx, currentBoxPrompts, scale);
+
+        if (showBoundingBoxes) {
+          drawBoundingBoxes(ctx, objects, displayWidth, displayHeight);
+        }
+      } catch (error) {
+        console.error("Failed to render segmentation canvas", error);
       }
     };
 
-    img.src = sourceImageUrl;
+    draw();
+
+    return () => {
+      cancelled = true;
+    };
   }, [
     sourceImageUrl,
     compositeBlobUrl,
@@ -126,6 +216,7 @@ export function SegmentationCanvas() {
     maskOpacity,
     showBoundingBoxes,
     setImageDimensions,
+    maskBlobs,
   ]);
 
   const drawPointPrompts = (
@@ -311,3 +402,17 @@ export function SegmentationCanvas() {
     </div>
   );
 }
+
+const tintMask = (maskImg: HTMLImageElement, color: string) => {
+  const offscreen = document.createElement("canvas");
+  offscreen.width = maskImg.width;
+  offscreen.height = maskImg.height;
+  const ctx = offscreen.getContext("2d");
+  if (!ctx) return offscreen;
+  ctx.drawImage(maskImg, 0, 0);
+  ctx.globalCompositeOperation = "source-in";
+  ctx.fillStyle = color;
+  ctx.fillRect(0, 0, offscreen.width, offscreen.height);
+  ctx.globalCompositeOperation = "source-over";
+  return offscreen;
+};

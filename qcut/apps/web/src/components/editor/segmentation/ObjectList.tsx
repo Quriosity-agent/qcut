@@ -9,7 +9,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Trash2, Plus } from "lucide-react";
+import { Trash2, Plus, Eye, EyeOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useBlobImage } from "@/hooks/use-blob-image";
 
@@ -19,8 +19,13 @@ import { useBlobImage } from "@/hooks/use-blob-image";
  * Individual object item in the list.
  */
 function ObjectListItem({ object }: { object: SegmentedObject }) {
-  const { selectedObjectId, selectObject, removeObject, renameObject } =
-    useSegmentationStore();
+  const {
+    selectedObjectId,
+    selectObject,
+    removeObject,
+    renameObject,
+    toggleObjectVisibility,
+  } = useSegmentationStore();
 
   const isSelected = selectedObjectId === object.id;
   const color = OBJECT_COLORS[object.colorIndex];
@@ -29,7 +34,9 @@ function ObjectListItem({ object }: { object: SegmentedObject }) {
   const [editName, setEditName] = React.useState(object.name);
 
   // Convert FAL mask URLs to blob URLs to bypass COEP restrictions
-  const { blobUrl: maskBlobUrl } = useBlobImage(object.maskUrl);
+  const { blobUrl: maskBlobUrl } = useBlobImage(
+    object.maskBlobUrl ?? object.maskUrl
+  );
   const { blobUrl: thumbnailBlobUrl } = useBlobImage(object.thumbnailUrl);
 
   const handleNameSubmit = () => {
@@ -41,14 +48,15 @@ function ObjectListItem({ object }: { object: SegmentedObject }) {
 
   return (
     <div
-      className={cn(
-        "group flex items-center gap-2 p-2 rounded-md cursor-pointer transition-colors",
-        isSelected
-          ? "bg-accent border border-accent-foreground/20"
-          : "hover:bg-accent/50"
-      )}
-      onClick={() => selectObject(object.id)}
-    >
+        className={cn(
+          "group flex items-center gap-2 p-2 rounded-md cursor-pointer transition-colors",
+          isSelected
+            ? "bg-accent border border-accent-foreground/20"
+            : "hover:bg-accent/50",
+          object.visible === false ? "opacity-60" : ""
+        )}
+        onClick={() => selectObject(object.id)}
+      >
       {/* Color indicator */}
       <div
         className="w-3 h-3 rounded-full flex-shrink-0"
@@ -108,18 +116,37 @@ function ObjectListItem({ object }: { object: SegmentedObject }) {
         )}
       </div>
 
-      {/* Delete button */}
-      <Button
-        variant="text"
-        size="icon"
-        className="h-6 w-6 flex-shrink-0 opacity-0 group-hover:opacity-100"
-        onClick={(e) => {
-          e.stopPropagation();
-          removeObject(object.id);
-        }}
-      >
-        <Trash2 className="w-3 h-3" />
-      </Button>
+      <div className="flex items-center gap-1">
+        {/* Visibility toggle */}
+        <Button
+          variant="text"
+          size="icon"
+          className="h-6 w-6 flex-shrink-0 opacity-0 group-hover:opacity-100"
+          onClick={(e) => {
+            e.stopPropagation();
+            toggleObjectVisibility(object.id);
+          }}
+        >
+          {object.visible === false ? (
+            <EyeOff className="w-3 h-3" />
+          ) : (
+            <Eye className="w-3 h-3" />
+          )}
+        </Button>
+
+        {/* Delete button */}
+        <Button
+          variant="text"
+          size="icon"
+          className="h-6 w-6 flex-shrink-0 opacity-0 group-hover:opacity-100"
+          onClick={(e) => {
+            e.stopPropagation();
+            removeObject(object.id);
+          }}
+        >
+          <Trash2 className="w-3 h-3" />
+        </Button>
+      </div>
     </div>
   );
 }

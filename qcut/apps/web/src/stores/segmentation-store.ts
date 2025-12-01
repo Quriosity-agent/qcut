@@ -45,6 +45,10 @@ export interface SegmentedObject {
   colorIndex: number;
   /** Mask image URL */
   maskUrl?: string;
+  /** Local blob URL for mask drawing (COEP-safe) */
+  maskBlobUrl?: string;
+  /** Visibility flag for mask rendering */
+  visible?: boolean;
   /** Thumbnail crop URL */
   thumbnailUrl?: string;
   /** Confidence score (0-1) */
@@ -119,6 +123,7 @@ export interface SegmentationActions {
   // Object management
   addObject: (object: Omit<SegmentedObject, "id" | "colorIndex">) => string;
   updateObject: (id: string, updates: Partial<SegmentedObject>) => void;
+  toggleObjectVisibility: (id: string) => void;
   removeObject: (id: string) => void;
   selectObject: (id: string | null) => void;
   renameObject: (id: string, name: string) => void;
@@ -278,6 +283,7 @@ export const useSegmentationStore = create<SegmentationStore>()(
           name: objectData.name || `Object ${state.nextObjectId}`,
           pointPrompts: objectData.pointPrompts || [],
           boxPrompts: objectData.boxPrompts || [],
+          visible: objectData.visible ?? true,
         };
 
         set(
@@ -302,6 +308,17 @@ export const useSegmentationStore = create<SegmentationStore>()(
           }),
           false,
           "segmentation/updateObject"
+        ),
+
+      toggleObjectVisibility: (id) =>
+        set(
+          (state) => ({
+            objects: state.objects.map((obj) =>
+              obj.id === id ? { ...obj, visible: !obj.visible } : obj
+            ),
+          }),
+          false,
+          "segmentation/toggleObjectVisibility"
         ),
 
       removeObject: (id) =>
@@ -331,7 +348,7 @@ export const useSegmentationStore = create<SegmentationStore>()(
 
       clearObjects: () =>
         set(
-          { objects: [], selectedObjectId: null, nextObjectId: 1 },
+          { objects: [], selectedObjectId: null, nextObjectId: 1, masks: [] },
           false,
           "segmentation/clearObjects"
         ),
@@ -403,7 +420,12 @@ export const useSegmentationStore = create<SegmentationStore>()(
           "segmentation/setCompositeImage"
         ),
 
-      setMasks: (masks) => set({ masks }, false, "segmentation/setMasks"),
+      setMasks: (masks) =>
+        set(
+          (state) => ({ masks: [...state.masks, ...masks] }),
+          false,
+          "segmentation/setMasks"
+        ),
 
       setSegmentedVideo: (url) =>
         set(

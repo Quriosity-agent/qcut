@@ -113,11 +113,12 @@ export function SegmentationPanel() {
         setCompositeImage(result.image.url);
       }
 
-      if (result.masks) {
-        setMasks(result.masks);
+      const newMasks = result.masks ?? [];
+      if (newMasks.length > 0) {
+        setMasks(newMasks);
 
         // Create objects for each mask
-        result.masks.forEach((mask, index) => {
+        newMasks.forEach((mask, index) => {
           addObject({
             name: `${currentTextPrompt} ${index + 1}`,
             maskUrl: mask.url,
@@ -126,6 +127,7 @@ export function SegmentationPanel() {
             pointPrompts: [],
             boxPrompts: [],
             textPrompt: currentTextPrompt,
+            visible: true,
           });
         });
       }
