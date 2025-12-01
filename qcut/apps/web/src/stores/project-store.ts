@@ -281,14 +281,12 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
       ]);
       debugLog(`[ProjectStore] Project loading complete: ${id}`);
     } catch (error) {
-      // Rollback to previous state if we had valid data
+      // Rollback to previous state if we had a project open
       debugLog("[ProjectStore] Load failed, attempting rollback");
-      if (backup.timeline.length > 0 || backup.media.length > 0) {
+      if (backup.activeProject) {
         debugLog("[ProjectStore] Restoring backup state");
         // Restore previous project
-        if (backup.activeProject) {
-          set({ activeProject: backup.activeProject });
-        }
+        set({ activeProject: backup.activeProject });
         // Restore timeline tracks
         if (backup.timeline.length > 0) {
           timelineStore.restoreTracks(backup.timeline);

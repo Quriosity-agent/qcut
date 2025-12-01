@@ -57,7 +57,11 @@ function ObjectListItem({ object }: { object: SegmentedObject }) {
       )}
       onClick={() => selectObject(object.id)}
       onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
+        // Only handle keys when the row itself has focus, not child elements
+        if (
+          e.currentTarget === e.target &&
+          (e.key === "Enter" || e.key === " ")
+        ) {
           e.preventDefault();
           selectObject(object.id);
         }

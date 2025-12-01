@@ -28,6 +28,9 @@ export function SegmentationControls() {
 
       try {
         const response = await fetch(mask.url);
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
         const blob = await response.blob();
         const url = URL.createObjectURL(blob);
 
