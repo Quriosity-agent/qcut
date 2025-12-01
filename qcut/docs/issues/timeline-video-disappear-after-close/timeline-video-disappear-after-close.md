@@ -157,7 +157,7 @@ updateTracksAndSave() [timeline-store.ts]
 | File Path | Lines | Description | Verified |
 |-----------|-------|-------------|----------|
 | `apps/web/src/stores/project-store.ts` | ~224-320 | `loadProject` now loads-before-clear with backup/rollback | 2025-11-28 ✓ updated |
-| `apps/web/src/stores/timeline-store.ts` | ~240-520, ~1800-1880 | Debounced 50ms auto-save with project guard; `saveImmediate`; `restoreTracks` | 2025-11-28 ✓ updated |
+| `apps/web/src/stores/timeline-store.ts` | ~356-470, ~1829-1875 | Debounced 50ms auto-save with project guard; `saveImmediate`; `restoreTracks` | 2025-11-28 ✓ updated |
 | `apps/web/src/stores/media-store.ts` | ~50, ~820-840 | `restoreMediaItems()` supports rollback on load failure | 2025-11-28 ✓ updated |
 | `apps/web/src/hooks/use-save-on-visibility-change.ts` | - | Visibility-change save hook for timeline/project | 2025-11-28 ✓ added |
 | `apps/web/src/routes/editor.$project_id.lazy.tsx` | ~40-60 | Imports visibility-change save hook for editor page | 2025-11-28 ✓ updated |
@@ -211,10 +211,9 @@ loadProject: async (id: string) => {
     ]);
     debugLog(`[ProjectStore] Project loading complete: ${id}`);
   } catch (error) {
-    if (backup.timeline.length || backup.media.length) {
-      if (backup.activeProject) {
-        set({ activeProject: backup.activeProject });
-      }
+    // Rollback to previous state if we had a project open
+    if (backup.activeProject) {
+      set({ activeProject: backup.activeProject });
       if (backup.timeline.length) {
         timelineStore.restoreTracks(backup.timeline);
       }
