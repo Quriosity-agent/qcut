@@ -750,3 +750,69 @@ When export runs, you should see:
 blob:app://./xxx:1  Failed to load resource: net::ERR_FILE_NOT_FOUND  (during export)
 [BlobManager] ⏰ Auto-revoking old blob URL: ...  (during export)
 ```
+
+---
+
+## 10. Verification Results (2025-12-01)
+
+### ✅ Blob URL Fix Verified Working
+
+Console logs from `consolev2.md` confirm the fix is working:
+
+**1. Export lock acquired/released correctly:**
+```
+blob-manager.ts:365 [BlobManager] 🔒 Export lock acquired (count: 1)
+... export process ...
+blob-manager.ts:378 [BlobManager] 🔓 Export lock released (count: 0)
+```
+
+**2. Blob URL reuse working with proper ref counting:**
+```
+blob-manager.ts:79 [BlobManager] ♻️ Reusing URL (instance match): 17ccfd03-593e-226d-fa85-2a1057ef963d
+blob-manager.ts:82   📍 Original source: media-store-display
+blob-manager.ts:83   🔄 Requested by: VideoPlayer
+blob-manager.ts:84   📊 Ref count: 2
+```
+
+**3. VideoPlayer release no longer causes immediate revocation:**
+```
+blob-manager.ts:201 [BlobManager] 📉 Released: blob:app://./6b957040-2533-42fa-b723-70bb87d303ce
+blob-manager.ts:204   📊 Remaining refs: 1   <-- URL stays valid because media-store still holds ref
+```
+
+**4. Single video export completed successfully:**
+```
+export-engine-cli.ts:1584 ✅ [FFMPEG EXPORT DEBUG] FFmpeg export completed in 0.68s
+export-engine-cli.ts:1587 ✅ [EXPORT OPTIMIZATION] FFmpeg export completed successfully!
+```
+
+**5. No ERR_FILE_NOT_FOUND errors during export** ✅
+
+### ⚠️ New Issue Discovered: Concat Demuxer Trim Limitation
+
+The blob URL fix revealed a separate issue in the CLI export engine:
+
+**Error:**
+```
+❌ [EXPORT OPTIMIZATION] FFmpeg export FAILED! Error: Error invoking remote method 'export-video-cli':
+Error: Video 'video-1764207082446-e6765505bf251b04-jimeng-2025-09-08-5042.mp4' has trim values
+(trimStart=0s, trimEnd=25.316667000000002s). The concat demuxer doesn't support per-video trimming
+in multi-video mode. Please disable direct copy mode or pre-trim videos before export.
+```
+
+**Context:**
+- Export with **single video** works ✅ (Mode 1: Direct copy)
+- Export with **multiple trimmed videos** fails ❌ (Mode 1.5: Video normalization)
+- The concat demuxer used in direct copy mode doesn't support per-video trimming
+
+**This is a separate issue** - the blob URL fix is working correctly. The new error is in `export-engine-cli.ts` and needs to be tracked separately.
+
+### Summary
+
+| Issue | Status |
+|-------|--------|
+| Blob URLs revoked during export | ✅ **FIXED** |
+| Export lock mechanism | ✅ **Working** |
+| RefCount respected in cleanup | ✅ **Working** |
+| Single video export | ✅ **Working** |
+| Multi-video trimmed export | ⚠️ **New issue** (unrelated to blob URLs)
