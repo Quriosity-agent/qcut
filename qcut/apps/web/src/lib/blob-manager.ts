@@ -20,6 +20,7 @@ const nativeRevokeObjectURL = URL.revokeObjectURL;
 class BlobManager {
   private blobs = new Map<string, BlobEntry>();
   private cleanupInterval: number | null = null;
+  private exportLockCount = 0;
 
   // WeakMap for File instance-based caching (avoids hash collisions)
   // Only works when same File object is passed (not copies)
@@ -278,12 +279,25 @@ class BlobManager {
 
   /**
    * Clean up blobs older than maxAge (default: 10 minutes)
+   * Skips cleanup if export is in progress to prevent ERR_FILE_NOT_FOUND errors.
+   * Also respects refCount to never revoke URLs that are actively in use.
    */
   private cleanupOldBlobs(maxAge = 10 * 60 * 1000): void {
+    // Skip cleanup entirely if export is in progress
+    if (this.exportLockCount > 0) {
+      if (import.meta.env.DEV) {
+        console.log(
+          "[BlobManager] ⏸️ Skipping auto-cleanup - export in progress"
+        );
+      }
+      return;
+    }
+
     const now = Date.now();
 
     for (const [url, entry] of this.blobs.entries()) {
-      if (now - entry.createdAt > maxAge) {
+      // Only cleanup if old AND no active references (safety check)
+      if (now - entry.createdAt > maxAge && entry.refCount <= 0) {
         if (import.meta.env.DEV) {
           console.warn(`[BlobManager] ⏰ Auto-revoking old blob URL: ${url}`);
           console.warn(`  📍 Created by: ${entry.source}`);
@@ -339,6 +353,40 @@ class BlobManager {
         active.length > 0 ? Math.min(...active.map((e) => e.createdAt)) : null,
     };
   }
+
+  /**
+   * Lock blob URLs from auto-cleanup during export.
+   * Call this before starting an export operation.
+   * Uses a counter to support nested/concurrent exports.
+   */
+  lockForExport(): void {
+    this.exportLockCount++;
+    if (import.meta.env.DEV) {
+      console.log(
+        `[BlobManager] 🔒 Export lock acquired (count: ${this.exportLockCount})`
+      );
+    }
+  }
+
+  /**
+   * Release export lock. Call after export completes or fails.
+   * Uses try/finally in caller to ensure this is always called.
+   */
+  unlockFromExport(): void {
+    this.exportLockCount = Math.max(0, this.exportLockCount - 1);
+    if (import.meta.env.DEV) {
+      console.log(
+        `[BlobManager] 🔓 Export lock released (count: ${this.exportLockCount})`
+      );
+    }
+  }
+
+  /**
+   * Check if export is in progress (blob URLs should not be auto-cleaned)
+   */
+  isExportLocked(): boolean {
+    return this.exportLockCount > 0;
+  }
 }
 
 // Global singleton instance
@@ -364,6 +412,19 @@ export const getOrCreateObjectURL = (
 // NEW: For releasing refs (instead of immediate revoke) - only revokes when refCount reaches 0
 export const releaseObjectURL = (url: string, context?: string): boolean => {
   return blobManager.releaseObjectURL(url, context);
+};
+
+// Export lock functions - prevent auto-cleanup during export operations
+export const lockForExport = (): void => {
+  blobManager.lockForExport();
+};
+
+export const unlockFromExport = (): void => {
+  blobManager.unlockFromExport();
+};
+
+export const isExportLocked = (): boolean => {
+  return blobManager.isExportLocked();
 };
 
 // Development helper to monitor blob usage

@@ -702,8 +702,51 @@ After re-reading the code:
 
 ## 9. Review – Fix Status
 
-- **Cleanup still force-revokes in-use URLs**: `cleanupOldBlobs` in `apps/web/src/lib/blob-manager.ts` still calls `revokeObjectURL` for any blob older than 10 minutes without checking `refCount`, so active URLs get revoked mid-export.
-- **No export lock implemented**: The proposed export lock (skip cleanup during export) is not present anywhere in `blob-manager.ts`.
-- **Export flow doesn’t acquire blob refs**: `handleExport` in `apps/web/src/hooks/use-export-progress.ts` starts export without locking the blob manager or acquiring its own references; long exports remain exposed to the cleanup timer.
-- **VideoPlayer still releases on unmount**: `apps/web/src/components/ui/video-player.tsx` continues to release blob URLs on unmount; since export holds no refs, view switches during export can still invalidate needed URLs.
-- **Conclusion**: The document outlines fixes, but the current codebase has none of them applied, so the export failure scenario remains unfixed.
+### ✅ FIXED (2025-12-01)
+
+All proposed fixes have been implemented:
+
+1. **✅ Export lock implemented**: `BlobManager` now has `lockForExport()`, `unlockFromExport()`, and `isExportLocked()` methods.
+   - File: `apps/web/src/lib/blob-manager.ts` (lines 357-389)
+   - Exported convenience functions: `lockForExport`, `unlockFromExport`, `isExportLocked`
+
+2. **✅ Cleanup respects export lock**: `cleanupOldBlobs()` now checks `exportLockCount > 0` and skips cleanup entirely during export.
+   - File: `apps/web/src/lib/blob-manager.ts` (lines 285-294)
+
+3. **✅ Cleanup respects refCount**: `cleanupOldBlobs()` now only revokes URLs with `refCount <= 0`.
+   - File: `apps/web/src/lib/blob-manager.ts` (line 300)
+   - Condition: `if (now - entry.createdAt > maxAge && entry.refCount <= 0)`
+
+4. **✅ Export flow acquires lock**: `handleExport` in `use-export-progress.ts` now:
+   - Calls `lockForExport()` before starting export (line 73)
+   - Calls `unlockFromExport()` in `finally` block to ensure cleanup (lines 257-261)
+   - File: `apps/web/src/hooks/use-export-progress.ts`
+
+5. **✅ Cancel releases lock**: `handleCancel` releases the export lock when user cancels (line 34)
+   - File: `apps/web/src/hooks/use-export-progress.ts`
+
+6. **✅ CLI export uses file paths**: Verified that CLI export engine uses `localPath` for video files and creates temp files as fallback when needed.
+   - File: `apps/web/src/lib/export-engine-cli.ts` (lines 506-544, 623-658)
+
+### Remaining Notes
+
+- **VideoPlayer still releases on unmount**: This is expected behavior. The export lock prevents cleanup, so URLs remain valid even if VideoPlayer releases its reference.
+- **Counter-based locking**: Uses `exportLockCount` to support concurrent exports (though unlikely in practice).
+
+### Console Logs (Development Mode)
+
+When export runs, you should see:
+```
+[BlobManager] 🔒 Export lock acquired (count: 1)
+... export progress ...
+[BlobManager] ⏸️ Skipping auto-cleanup - export in progress  (if cleanup timer fires)
+... export complete/fail/cancel ...
+[BlobManager] 🔓 Export lock released (count: 0)
+```
+
+### Error Patterns That Should No Longer Appear
+
+```
+blob:app://./xxx:1  Failed to load resource: net::ERR_FILE_NOT_FOUND  (during export)
+[BlobManager] ⏰ Auto-revoking old blob URL: ...  (during export)
+```

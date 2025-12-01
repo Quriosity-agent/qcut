@@ -12,6 +12,7 @@ import type {
 import { toast } from "sonner";
 import { useElectron } from "@/hooks/useElectron";
 import { debugLog, debugError, debugWarn } from "@/lib/debug-config";
+import { lockForExport, unlockFromExport } from "@/lib/blob-manager";
 
 export function useExportProgress() {
   const { progress, updateProgress, setError, resetExport, addToHistory } =
@@ -28,6 +29,9 @@ export function useExportProgress() {
     if (currentEngineRef.current && progress.isExporting) {
       currentEngineRef.current.cancel();
       currentEngineRef.current = null;
+
+      // Release export lock on cancel
+      unlockFromExport();
 
       updateProgress({
         progress: 0,
@@ -63,6 +67,10 @@ export function useExportProgress() {
     // Record export start time
     const startTime = new Date();
     setExportStartTime(startTime);
+
+    // Lock blob URLs from auto-cleanup during export
+    // This prevents ERR_FILE_NOT_FOUND errors when export takes longer than 10 minutes
+    lockForExport();
 
     try {
       if (totalDuration === 0) {
@@ -246,6 +254,10 @@ export function useExportProgress() {
       toast.error("Export failed", {
         description: message,
       });
+    } finally {
+      // ALWAYS release the export lock, even on error
+      // This ensures blob URLs can be cleaned up after export completes/fails
+      unlockFromExport();
     }
   };
 
