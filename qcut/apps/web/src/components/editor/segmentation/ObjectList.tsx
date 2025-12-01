@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import { useState } from "react";
 import {
   useSegmentationStore,
   OBJECT_COLORS,
@@ -30,8 +30,8 @@ function ObjectListItem({ object }: { object: SegmentedObject }) {
   const isSelected = selectedObjectId === object.id;
   const color = OBJECT_COLORS[object.colorIndex];
 
-  const [isEditing, setIsEditing] = React.useState(false);
-  const [editName, setEditName] = React.useState(object.name);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editName, setEditName] = useState(object.name);
 
   // Convert FAL mask URLs to blob URLs to bypass COEP restrictions
   const { blobUrl: maskBlobUrl } = useBlobImage(
@@ -48,15 +48,23 @@ function ObjectListItem({ object }: { object: SegmentedObject }) {
 
   return (
     <div
-        className={cn(
-          "group flex items-center gap-2 p-2 rounded-md cursor-pointer transition-colors",
-          isSelected
-            ? "bg-accent border border-accent-foreground/20"
-            : "hover:bg-accent/50",
-          object.visible === false ? "opacity-60" : ""
-        )}
-        onClick={() => selectObject(object.id)}
-      >
+      className={cn(
+        "group flex items-center gap-2 p-2 rounded-md cursor-pointer transition-colors",
+        isSelected
+          ? "bg-accent border border-accent-foreground/20"
+          : "hover:bg-accent/50",
+        object.visible === false ? "opacity-60" : ""
+      )}
+      onClick={() => selectObject(object.id)}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          selectObject(object.id);
+        }
+      }}
+      role="button"
+      tabIndex={0}
+    >
       {/* Color indicator */}
       <div
         className="w-3 h-3 rounded-full flex-shrink-0"
@@ -157,7 +165,16 @@ function ObjectListItem({ object }: { object: SegmentedObject }) {
  * Sidebar showing all segmented objects with color coding.
  */
 export function ObjectList() {
-  const { objects, clearObjects } = useSegmentationStore();
+  const { objects, clearObjects, addObject } = useSegmentationStore();
+
+  const handleAddObject = () => {
+    addObject({
+      name: "",
+      pointPrompts: [],
+      boxPrompts: [],
+      visible: true,
+    });
+  };
 
   if (objects.length === 0) {
     return (
@@ -196,7 +213,13 @@ export function ObjectList() {
 
       {/* Action buttons */}
       <div className="mt-3 pt-3 border-t">
-        <Button variant="outline" size="sm" className="w-full">
+        <Button
+          variant="outline"
+          size="sm"
+          className="w-full"
+          type="button"
+          onClick={handleAddObject}
+        >
           <Plus className="w-4 h-4 mr-2" />
           Add Object
         </Button>

@@ -1,6 +1,4 @@
 "use client";
-
-import React from "react";
 import { useSegmentationStore } from "@/stores/segmentation-store";
 import { useAsyncMediaStoreActions } from "@/hooks/use-async-media-store";
 import { useParams } from "@tanstack/react-router";
