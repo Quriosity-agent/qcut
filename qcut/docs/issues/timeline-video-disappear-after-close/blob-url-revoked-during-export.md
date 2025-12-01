@@ -361,35 +361,266 @@ if (videoElement.localPath) {
 
 ---
 
-## 5. Subtasks (if longer than 20 minutes)
+## 5. Subtasks (Detailed Implementation)
 
 This fix is estimated at **30-45 minutes** total. Breaking into subtasks:
 
 ### Subtask 1: Add Export Lock to BlobManager (10 min)
-- [ ] Add `exportLockCount` property to `BlobManager` class
-- [ ] Add `lockForExport()` and `unlockFromExport()` methods
-- [ ] Modify `cleanupOldBlobs()` to skip when locked
-- [ ] Export lock/unlock functions from module
+
+**File**: `apps/web/src/lib/blob-manager.ts`
+
+**Changes to make**:
+
+1. Add property at line ~22 (after `private cleanupInterval`):
+```typescript
+private exportLockCount = 0;
+```
+
+2. Add methods after `getStats()` method (~line 341):
+```typescript
+/**
+ * Lock blob URLs from auto-cleanup during export.
+ * Call this before starting an export operation.
+ */
+lockForExport(): void {
+  this.exportLockCount++;
+  if (import.meta.env.DEV) {
+    console.log(`[BlobManager] 🔒 Export lock acquired (count: ${this.exportLockCount})`);
+  }
+}
+
+/**
+ * Release export lock. Call after export completes or fails.
+ * Uses try/finally in caller to ensure this is always called.
+ */
+unlockFromExport(): void {
+  this.exportLockCount = Math.max(0, this.exportLockCount - 1);
+  if (import.meta.env.DEV) {
+    console.log(`[BlobManager] 🔓 Export lock released (count: ${this.exportLockCount})`);
+  }
+}
+
+/**
+ * Check if export is in progress (blob URLs should not be auto-cleaned)
+ */
+isExportLocked(): boolean {
+  return this.exportLockCount > 0;
+}
+```
+
+3. Modify `cleanupOldBlobs` method at line ~282:
+```typescript
+private cleanupOldBlobs(maxAge = 10 * 60 * 1000): void {
+  // Skip cleanup entirely if export is in progress
+  if (this.exportLockCount > 0) {
+    if (import.meta.env.DEV) {
+      console.log('[BlobManager] ⏸️ Skipping auto-cleanup - export in progress');
+    }
+    return;
+  }
+
+  const now = Date.now();
+
+  for (const [url, entry] of this.blobs.entries()) {
+    // Only cleanup if old AND no active references (safety check)
+    if (now - entry.createdAt > maxAge && entry.refCount <= 0) {
+      if (import.meta.env.DEV) {
+        console.warn(`[BlobManager] ⏰ Auto-revoking old blob URL: ${url}`);
+        console.warn(`  📍 Created by: ${entry.source}`);
+        console.warn(`  🕒 Age: ${(now - entry.createdAt) / 1000}s`);
+      }
+      this.revokeObjectURL(url);
+    }
+  }
+}
+```
+
+4. Export new functions at bottom of file (~line 367):
+```typescript
+// Export lock for preventing cleanup during export
+export const lockForExport = (): void => {
+  blobManager.lockForExport();
+};
+
+export const unlockFromExport = (): void => {
+  blobManager.unlockFromExport();
+};
+
+export const isExportLocked = (): boolean => {
+  return blobManager.isExportLocked();
+};
+```
+
+---
 
 ### Subtask 2: Integrate Lock with Export Process (10 min)
-- [ ] Call `blobManager.lockForExport()` when export starts in `use-export-progress.ts`
-- [ ] Call `blobManager.unlockFromExport()` when export completes/fails
-- [ ] Add try/finally to ensure unlock on error
+
+**File**: `apps/web/src/hooks/use-export-progress.ts`
+
+**Changes to make**:
+
+1. Add import at top of file (~line 14):
+```typescript
+import { lockForExport, unlockFromExport } from "@/lib/blob-manager";
+```
+
+2. Modify `handleExport` function to wrap export in lock (~line 67):
+```typescript
+const handleExport = async (
+  canvas: HTMLCanvasElement,
+  totalDuration: number,
+  exportSettings: { /* ... */ }
+) => {
+  // Reset any previous errors
+  setError(null);
+  resetExport();
+
+  // Record export start time
+  const startTime = new Date();
+  setExportStartTime(startTime);
+
+  // Lock blob URLs from auto-cleanup during export
+  lockForExport();
+
+  try {
+    // ... existing export code (lines 68-207) ...
+
+  } catch (error: unknown) {
+    // ... existing error handling (lines 208-248) ...
+
+  } finally {
+    // ALWAYS release the export lock, even on error/cancel
+    unlockFromExport();
+  }
+};
+```
+
+3. Also update `handleCancel` function to release lock (~line 27):
+```typescript
+const handleCancel = () => {
+  if (currentEngineRef.current && progress.isExporting) {
+    currentEngineRef.current.cancel();
+    currentEngineRef.current = null;
+
+    // Release export lock on cancel
+    unlockFromExport();
+
+    updateProgress({
+      progress: 0,
+      status: "Export cancelled",
+      isExporting: false,
+    });
+
+    toast.info("Export cancelled by user");
+
+    setTimeout(() => {
+      resetExport();
+    }, 1000);
+  }
+};
+```
+
+---
 
 ### Subtask 3: Fix refCount Check in Cleanup (5 min)
-- [ ] Modify `cleanupOldBlobs()` to only revoke URLs with `refCount <= 0`
-- [ ] This is a safety net in addition to the export lock
+
+**File**: `apps/web/src/lib/blob-manager.ts`
+
+**Already included in Subtask 1** - the `cleanupOldBlobs` modification adds:
+```typescript
+if (now - entry.createdAt > maxAge && entry.refCount <= 0) {
+```
+
+This ensures URLs with active references are NEVER auto-cleaned, even without export lock.
+
+**Additional safety**: Add refCount warning in `revokeObjectURL` (line ~247):
+```typescript
+revokeObjectURL(url: string, context?: string): boolean {
+  const contextTag = context ? ` [from: ${context}]` : "";
+
+  if (this.blobs.has(url)) {
+    const entry = this.blobs.get(url)!;
+
+    // Warn if force-revoking a URL with active references
+    if (entry.refCount > 0 && import.meta.env.DEV) {
+      console.warn(`[BlobManager] ⚠️ Force-revoking URL with ${entry.refCount} active refs: ${url}`);
+      console.warn(`  📍 Created by: ${entry.source}`);
+      console.warn(`  🗑️ Revoked by: ${context || "unknown"}`);
+    }
+
+    // ... rest of existing code ...
+  }
+  // ...
+}
+```
+
+---
 
 ### Subtask 4: Verify CLI Export Uses File Paths (10 min)
-- [ ] Audit `export-analysis.ts` to ensure `localPath` is preferred for CLI exports
-- [ ] Verify blob URLs are only used when `localPath` is unavailable
-- [ ] Add warning log when falling back to blob URL in CLI mode
+
+**Files to audit**:
+- `apps/web/src/lib/export-analysis.ts` (lines 546, 726-732)
+- `apps/web/src/lib/export-engine-cli.ts` (lines 572, 668-706)
+
+**Verification checklist**:
+- [ ] Check that `localPath` is validated in `export-analysis.ts:726-732`
+- [ ] Confirm CLI engine uses `localPath` not blob URLs for video inputs
+- [ ] Verify `ExportUnsupportedError("blob-urls")` is thrown when localPath missing
+- [ ] Check if Standard export engine fallback creates blob URL issues
+
+**Potential issue found**: The logs show `export-engine.ts` (Standard engine) is also instantiated:
+```
+export-engine.ts:97 🎬 STANDARD EXPORT ENGINE: Constructor called
+export-engine.ts:98 🎬 STANDARD EXPORT ENGINE: Will use MediaRecorder for export
+```
+
+This suggests CLI engine might be creating a Standard engine as fallback that uses blob URLs. Investigate `export-engine-factory.ts:280-297`.
+
+---
 
 ### Subtask 5: Test and Verify (10 min)
-- [ ] Test export with multiple videos in timeline
-- [ ] Test export while navigating between views
-- [ ] Verify no `ERR_FILE_NOT_FOUND` errors in console
-- [ ] Verify blob URLs survive for duration of export
+
+**Test scenarios**:
+
+1. **Time-based test**:
+   - [ ] Open project with multiple media items
+   - [ ] Wait 12+ minutes (past 10-minute cleanup threshold)
+   - [ ] Export video
+   - [ ] Verify: No `ERR_FILE_NOT_FOUND` errors
+   - [ ] Verify: Console shows `[BlobManager] ⏸️ Skipping auto-cleanup - export in progress`
+
+2. **Rapid editing test**:
+   - [ ] Add/remove videos from timeline rapidly
+   - [ ] Immediately export
+   - [ ] Verify: Export completes successfully
+   - [ ] Verify: No blob URLs revoked with 1ms lifespan during export
+
+3. **Long export test**:
+   - [ ] Export a long video (10+ minutes export time)
+   - [ ] Verify: Auto-cleanup doesn't run mid-export
+   - [ ] Verify: Lock is released after export completes
+
+4. **Cancel test**:
+   - [ ] Start export
+   - [ ] Cancel mid-export
+   - [ ] Verify: Lock is released (check console for `🔓 Export lock released`)
+   - [ ] Start new export
+   - [ ] Verify: Works correctly
+
+**Console logs to verify**:
+```
+[BlobManager] 🔒 Export lock acquired (count: 1)
+... export progress logs ...
+[BlobManager] ⏸️ Skipping auto-cleanup - export in progress  (if cleanup timer fires)
+... export complete ...
+[BlobManager] 🔓 Export lock released (count: 0)
+```
+
+**Error patterns that should NOT appear**:
+```
+blob:app://./xxx:1  Failed to load resource: net::ERR_FILE_NOT_FOUND
+[BlobManager] ⏰ Auto-revoking old blob URL: ...  (during export)
+```
 
 ---
 
@@ -466,3 +697,13 @@ After re-reading the code:
 2. `ExportEngine` - No blob URL acquisition
 3. `VideoPlayer` - Aggressive URL release on unmount
 4. `media-store` - URLs created for display revoked before export
+
+---
+
+## 9. Review – Fix Status
+
+- **Cleanup still force-revokes in-use URLs**: `cleanupOldBlobs` in `apps/web/src/lib/blob-manager.ts` still calls `revokeObjectURL` for any blob older than 10 minutes without checking `refCount`, so active URLs get revoked mid-export.
+- **No export lock implemented**: The proposed export lock (skip cleanup during export) is not present anywhere in `blob-manager.ts`.
+- **Export flow doesn’t acquire blob refs**: `handleExport` in `apps/web/src/hooks/use-export-progress.ts` starts export without locking the blob manager or acquiring its own references; long exports remain exposed to the cleanup timer.
+- **VideoPlayer still releases on unmount**: `apps/web/src/components/ui/video-player.tsx` continues to release blob URLs on unmount; since export holds no refs, view switches during export can still invalidate needed URLs.
+- **Conclusion**: The document outlines fixes, but the current codebase has none of them applied, so the export failure scenario remains unfixed.
