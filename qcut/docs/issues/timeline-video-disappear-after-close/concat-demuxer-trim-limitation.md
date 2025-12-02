@@ -10,7 +10,7 @@
 
 **Error Message**:
 ```
-❌ [EXPORT OPTIMIZATION] FFmpeg export FAILED! Error: Error invoking remote method 'export-video-cli':
+? [EXPORT OPTIMIZATION] FFmpeg export FAILED! Error: Error invoking remote method 'export-video-cli':
 Error: Video 'video-xxx.mp4' has trim values (trimStart=0s, trimEnd=25.316667s).
 The concat demuxer doesn't support per-video trimming in multi-video mode.
 Please disable direct copy mode or pre-trim videos before export.
@@ -50,10 +50,10 @@ const videosMatch = checkVideoPropertiesMatch(
 
 if (videosMatch) {
   // Mode 1: All videos match, can use direct copy
-  optimizationStrategy = "direct-copy";  // ⚠️ BUG: Doesn't check for trim values!
+  optimizationStrategy = "direct-copy";  // ?? BUG: Doesn't check for trim values!
 } else {
   // Mode 1.5: Videos need normalization
-  optimizationStrategy = "video-normalization";  // ✅ This handles trim correctly
+  optimizationStrategy = "video-normalization";  // ? This handles trim correctly
 }
 ```
 
@@ -68,8 +68,8 @@ videoSources.push({
   path: localPath,
   startTime: element.startTime,
   duration: element.duration,
-  trimStart: element.trimStart,  // ← Trim values are extracted
-  trimEnd: element.trimEnd,      // ← but mode detection ignores them
+  trimStart: element.trimStart,  // ? Trim values are extracted
+  trimEnd: element.trimEnd,      // ? but mode detection ignores them
 });
 ```
 
@@ -86,8 +86,8 @@ await normalizeVideo(
   height,
   fps,
   source.duration,
-  source.trimStart || 0,  // ← Trim is handled here
-  source.trimEnd || 0      // ← Trim is handled here
+  source.trimStart || 0,  // ? Trim is handled here
+  source.trimEnd || 0      // ? Trim is handled here
 );
 ```
 
@@ -140,19 +140,19 @@ if (videosMatch && !hasTrimmedVideos) {
   // Mode 1: All videos match AND no trimming needed - use direct copy
   optimizationStrategy = "direct-copy";
   console.log(
-    "✅ [MODE DETECTION] All videos match export settings - using Mode 1: Direct copy (15-48x speedup)"
+    "? [MODE DETECTION] All videos match export settings - using Mode 1: Direct copy (15-48x speedup)"
   );
 } else if (videosMatch && hasTrimmedVideos) {
   // Videos match but have trim - force Mode 1.5 to handle trimming
   optimizationStrategy = "video-normalization";
   console.log(
-    "⚡ [MODE DETECTION] Videos match but have trim values - using Mode 1.5 for trim support"
+    "? [MODE DETECTION] Videos match but have trim values - using Mode 1.5 for trim support"
   );
 } else {
   // Mode 1.5: Videos need normalization (different properties)
   optimizationStrategy = "video-normalization";
   console.log(
-    "⚡ [MODE DETECTION] Videos have different properties - using Mode 1.5: Video normalization (5-7x speedup)"
+    "? [MODE DETECTION] Videos have different properties - using Mode 1.5: Video normalization (5-7x speedup)"
   );
 }
 ```
@@ -194,7 +194,7 @@ const hasTrimmedVideos = videoElements.some((v) => {
 
 if (hasTrimmedVideos) {
   console.log(
-    `🔍 [MODE DETECTION] Found ${videoElements.filter(v => (v.trimStart || 0) > 0 || (v.trimEnd || 0) > 0).length} trimmed video(s)`
+    `?? [MODE DETECTION] Found ${videoElements.filter(v => (v.trimStart || 0) > 0 || (v.trimEnd || 0) > 0).length} trimmed video(s)`
   );
 }
 ```
@@ -206,18 +206,18 @@ if (videosMatch && !hasTrimmedVideos) {
   // Mode 1: Direct copy - only when videos match AND no trimming
   optimizationStrategy = "direct-copy";
   console.log(
-    "✅ [MODE DETECTION] All videos match, no trim - using Mode 1: Direct copy (15-48x speedup)"
+    "? [MODE DETECTION] All videos match, no trim - using Mode 1: Direct copy (15-48x speedup)"
   );
 } else {
   // Mode 1.5: Normalization - handles different properties AND trimming
   optimizationStrategy = "video-normalization";
   if (hasTrimmedVideos) {
     console.log(
-      "⚡ [MODE DETECTION] Videos have trim values - using Mode 1.5 for trim support"
+      "? [MODE DETECTION] Videos have trim values - using Mode 1.5 for trim support"
     );
   } else {
     console.log(
-      "⚡ [MODE DETECTION] Videos have different properties - using Mode 1.5: Video normalization"
+      "? [MODE DETECTION] Videos have different properties - using Mode 1.5: Video normalization"
     );
   }
 }
@@ -230,34 +230,34 @@ if (videosMatch && !hasTrimmedVideos) {
 1. **Multiple videos, no trim, matching properties** (Mode 1):
    - [ ] Add 2-3 videos with same resolution/fps to timeline
    - [ ] Don't trim any of them
-   - [ ] Export → Should use Mode 1 (concat demuxer direct copy)
+   - [ ] Export ? Should use Mode 1 (concat demuxer direct copy)
    - [ ] Verify: Console shows "All videos match, no trim - using Mode 1"
 
 2. **Multiple videos, WITH trim, matching properties** (Mode 1.5):
    - [ ] Add 2-3 videos with same resolution/fps to timeline
    - [ ] Trim at least one video
-   - [ ] Export → Should use Mode 1.5 (normalization)
+   - [ ] Export ? Should use Mode 1.5 (normalization)
    - [ ] Verify: Console shows "Videos have trim values - using Mode 1.5"
    - [ ] Verify: Export succeeds (no more error!)
 
 3. **Multiple videos, different properties** (Mode 1.5):
    - [ ] Add videos with different resolutions
-   - [ ] Export → Should use Mode 1.5
+   - [ ] Export ? Should use Mode 1.5
    - [ ] Verify: Works as before
 
 4. **Single video with trim** (Mode 1):
    - [ ] Add one video, trim it
-   - [ ] Export → Should use Mode 1 (single video direct copy)
+   - [ ] Export ? Should use Mode 1 (single video direct copy)
    - [ ] Verify: Trim is applied correctly
 
 **Console logs to verify success**:
 ```
-🔍 [MODE DETECTION] Found 1 trimmed video(s)
-⚡ [MODE DETECTION] Videos have trim values - using Mode 1.5 for trim support
-⚡ [MODE 1.5 EXPORT] Mode 1.5: Video Normalization with Padding
-⚡ [MODE 1.5 NORMALIZE] Trim start: 0s
-⚡ [MODE 1.5 NORMALIZE] Trim end: 25.316667s
-✅ [FFMPEG EXPORT DEBUG] FFmpeg export completed
+?? [MODE DETECTION] Found 1 trimmed video(s)
+? [MODE DETECTION] Videos have trim values - using Mode 1.5 for trim support
+? [MODE 1.5 EXPORT] Mode 1.5: Video Normalization with Padding
+? [MODE 1.5 NORMALIZE] Trim start: 0s
+? [MODE 1.5 NORMALIZE] Trim end: 25.316667s
+? [FFMPEG EXPORT DEBUG] FFmpeg export completed
 ```
 
 ---
@@ -267,10 +267,10 @@ if (videosMatch && !hasTrimmedVideos) {
 ### The Bug in Action
 
 ```
-export-analysis.ts:442 🎯 [MODE DETECTION] Direct copy eligible - 3 video(s), checking requirements...
-export-analysis.ts:448 🔍 [MODE DETECTION] Multiple sequential videos detected - checking properties...
-export-analysis.ts:466 🔍 [MODE DETECTION] Using target: 1248x704 @ 30fps (source: media-fallback)
-export-analysis.ts:488 ⚡ [MODE DETECTION] Videos have different properties - using Mode 1.5  ← Actually triggered Mode 1.5
+export-analysis.ts:442 ?? [MODE DETECTION] Direct copy eligible - 3 video(s), checking requirements...
+export-analysis.ts:448 ?? [MODE DETECTION] Multiple sequential videos detected - checking properties...
+export-analysis.ts:466 ?? [MODE DETECTION] Using target: 1248x704 @ 30fps (source: media-fallback)
+export-analysis.ts:488 ? [MODE DETECTION] Videos have different properties - using Mode 1.5  ? Actually triggered Mode 1.5
 ```
 
 Wait - the logs show Mode 1.5 was selected, but the error still occurred. Let me re-check...
@@ -311,7 +311,7 @@ const effectiveUseDirectCopy =
   options.videoSources &&
   options.videoSources.length > 0 &&
   !options.filterChain &&
-  !hasTrimmedVideos;  // ← NEW: Disable direct copy for trimmed videos
+  !hasTrimmedVideos;  // ? NEW: Disable direct copy for trimmed videos
 ```
 
 OR skip `buildFFmpegArgs` entirely when Mode 1.5 is used (it builds its own args).
@@ -321,40 +321,40 @@ OR skip `buildFFmpegArgs` entirely when Mode 1.5 is used (it builds its own args
 ## 7. Architecture Flow Diagram
 
 ```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                        EXPORT FLOW                                          │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                             │
-│  1. export-analysis.ts                                                      │
-│     └── analyzeTimelineForExport()                                          │
-│         ├── Checks video properties (resolution, fps)                       │
-│         ├── Sets optimizationStrategy: "direct-copy" | "video-normalization"│
-│         └── ⚠️ Does NOT check trim values for multi-video                   │
-│                                                                             │
-│  2. export-engine-cli.ts                                                    │
-│     └── extractVideoSources()                                               │
-│         └── Returns VideoSourceInput[] with trimStart/trimEnd               │
-│                                                                             │
-│  3. export-engine-cli.ts                                                    │
-│     └── export() → calls electronAPI.ffmpeg.exportVideoCLI(options)         │
-│         ├── options.useDirectCopy = true (from analysis)                    │
-│         ├── options.videoSources = [{...trimStart, trimEnd}]                │
-│         └── options.optimizationStrategy = "video-normalization" or         │
-│                                            "direct-copy"                    │
-│                                                                             │
-│  4. electron/ffmpeg-handler.ts                                              │
-│     └── exportVideoCLI handler                                              │
-│         │                                                                   │
-│         ├── Calculates effectiveUseDirectCopy (line 374-380)                │
-│         │   └── true if useDirectCopy && videoSources.length > 0            │
-│         │                                                                   │
-│         ├── Calls buildFFmpegArgs() (line 403)                              │
-│         │   └── ❌ THROWS ERROR if multi-video + trim (line 2047-2057)      │
-│         │                                                                   │
-│         └── Mode 1.5 block (line 429) - NEVER REACHED if error thrown       │
-│             └── ✅ Would handle trim correctly via normalizeVideo()         │
-│                                                                             │
-└─────────────────────────────────────────────────────────────────────────────┘
+???????????????????????????????????????????????????????????????????????????????
+?                        EXPORT FLOW                                          ?
+???????????????????????????????????????????????????????????????????????????????
+?                                                                             ?
+?  1. export-analysis.ts                                                      ?
+?     ??? analyzeTimelineForExport()                                          ?
+?         ??? Checks video properties (resolution, fps)                       ?
+?         ??? Sets optimizationStrategy: "direct-copy" | "video-normalization"?
+?         ??? ?? Does NOT check trim values for multi-video                   ?
+?                                                                             ?
+?  2. export-engine-cli.ts                                                    ?
+?     ??? extractVideoSources()                                               ?
+?         ??? Returns VideoSourceInput[] with trimStart/trimEnd               ?
+?                                                                             ?
+?  3. export-engine-cli.ts                                                    ?
+?     ??? export() ? calls electronAPI.ffmpeg.exportVideoCLI(options)         ?
+?         ??? options.useDirectCopy = true (from analysis)                    ?
+?         ??? options.videoSources = [{...trimStart, trimEnd}]                ?
+?         ??? options.optimizationStrategy = "video-normalization" or         ?
+?                                            "direct-copy"                    ?
+?                                                                             ?
+?  4. electron/ffmpeg-handler.ts                                              ?
+?     ??? exportVideoCLI handler                                              ?
+?         ?                                                                   ?
+?         ??? Calculates effectiveUseDirectCopy (line 374-380)                ?
+?         ?   ??? true if useDirectCopy && videoSources.length > 0            ?
+?         ?                                                                   ?
+?         ??? Calls buildFFmpegArgs() (line 403)                              ?
+?         ?   ??? ? THROWS ERROR if multi-video + trim (line 2047-2057)      ?
+?         ?                                                                   ?
+?         ??? Mode 1.5 block (line 429) - NEVER REACHED if error thrown       ?
+?             ??? ? Would handle trim correctly via normalizeVideo()         ?
+?                                                                             ?
+???????????????????????????????????????????????????????????????????????????????
 ```
 
 ---
@@ -393,28 +393,6 @@ if (options.optimizationStrategy !== "video-normalization") {
 }
 ```
 
-### Alternative Fix: Check Trim in buildFFmpegArgs
-
-**File**: `electron/ffmpeg-handler.ts:2047-2057`
-
-Instead of throwing error, force Mode 1.5 path:
-```typescript
-// Check for trimmed videos in multi-video mode
-const hasTrimmedVideos = videoSources.some(
-  (v) => (v.trimStart && v.trimStart > 0) || (v.trimEnd && v.trimEnd > 0)
-);
-
-if (hasTrimmedVideos) {
-  // Return empty args to signal Mode 1.5 should handle this
-  console.log(
-    "⚠️ [DIRECT COPY] Trimmed videos detected - delegating to Mode 1.5"
-  );
-  return []; // Empty args signals to use Mode 1.5 instead
-}
-```
-
----
-
 ## 9. Impact Assessment
 
 ### User Impact
@@ -425,12 +403,12 @@ if (hasTrimmedVideos) {
 ### Affected Scenarios
 | Scenario | Mode | Result |
 |----------|------|--------|
-| Single video, no trim | Mode 1 | ✅ Works |
-| Single video, with trim | Mode 1 | ✅ Works |
-| Multiple videos, no trim, same props | Mode 1 | ✅ Works |
-| Multiple videos, no trim, diff props | Mode 1.5 | ✅ Works |
-| **Multiple videos, with trim, same props** | Mode 1 → Error | ❌ **BUG** |
-| Multiple videos, with trim, diff props | Mode 1.5 | ✅ Works |
+| Single video, no trim | Mode 1 | Works |
+| Single video, with trim | Mode 1 | Works |
+| Multiple videos, no trim, same props | Mode 1 | Works |
+| Multiple videos, no trim, diff props | Mode 1.5 | Works |
+| **Multiple videos, with trim, same props** | Mode 1.5 | FIXED |
+| Multiple videos, with trim, diff props | Mode 1.5 | Works |
 
 ### After Fix
 All scenarios should work correctly by routing trimmed multi-video exports to Mode 1.5.
@@ -439,7 +417,7 @@ All scenarios should work correctly by routing trimmed multi-video exports to Mo
 
 ## 10. Related Issues
 
-- **Blob URL Revoked During Export**: ✅ FIXED (see `blob-url-revoked-during-export.md`)
+- **Blob URL Revoked During Export**: ? FIXED (see `blob-url-revoked-during-export.md`)
 - This issue was discovered after fixing the blob URL issue
 
 ---
@@ -452,96 +430,30 @@ All scenarios should work correctly by routing trimmed multi-video exports to Mo
 
 ## 12. Fix Implementation Status
 
-### ✅ FIXED (2025-12-02)
+### FIXED (2025-12-02)
 
-**Fix Applied**: Option A - Force Mode 1.5 When Videos Have Trim
+Fix Applied: Force Mode 1.5 when trim is present and unblock Mode 1.5 pipeline.
 
-**Two files modified** (both required for complete fix):
+Files modified (all required):
 
----
+- apps/web/src/lib/export-engine-cli.ts
+- electron/ffmpeg-handler.ts
 
-#### Fix 1: `apps/web/src/lib/export-engine-cli.ts` (Line 1516-1521)
-
-**Problem**: `useDirectCopy` was set to `true` even when `optimizationStrategy` was `"video-normalization"`.
-
-**Change**:
-```typescript
-useDirectCopy: !!(
-  this.exportAnalysis?.canUseDirectCopy &&
-  this.exportAnalysis?.optimizationStrategy !== "video-normalization" &&  // ← NEW
-  !hasTextFilters &&
-  !hasStickerFilters
-), // Disable direct copy when text, stickers, or video-normalization mode
-```
-
----
-
-#### Fix 2: `electron/ffmpeg-handler.ts` (Lines 375-397)
-
-**Problem**: Even if Mode 1.5 was selected, `buildFFmpegArgs` was called with trimmed videos.
-
-**Change**:
-```typescript
-// Check if any video has trim values (concat demuxer can't handle per-video trimming)
-const hasTrimmedVideos =
-  options.videoSources &&
-  options.videoSources.length > 1 &&
-  options.videoSources.some(
-    (v) =>
-      (v.trimStart && v.trimStart > 0) || (v.trimEnd && v.trimEnd > 0)
-  );
-
-if (hasTrimmedVideos) {
-  debugLog(
-    "[FFmpeg] Trimmed videos detected in multi-video mode - will use Mode 1.5 normalization"
-  );
-}
-
-// Disable direct copy when stickers, text, or trimmed multi-videos are present
-const effectiveUseDirectCopy =
-  useDirectCopy &&
-  !textFilterChain &&
-  !stickerFilterChain &&
-  !options.filterChain &&
-  !hasTrimmedVideos;  // ← NEW: Disables direct copy for trimmed multi-videos
-```
-
----
-
-**How It Works**:
-1. `export-engine-cli.ts` checks if `optimizationStrategy === "video-normalization"` and sets `useDirectCopy = false`
-2. `ffmpeg-handler.ts` (backup check) also detects trimmed videos and disables direct copy
-3. With `useDirectCopy = false`, `buildFFmpegArgs` skips the concat demuxer path
-4. The export continues to the Mode 1.5 async block which handles trimming correctly via `normalizeVideo()`
-
-**Expected Console Output After Fix**:
-```
-   - Direct copy mode: DISABLED   ← Previously showed ENABLED
-⚡ [MODE 1.5 EXPORT] Mode 1.5: Video Normalization with Padding
-⚡ [MODE 1.5 NORMALIZE] Trim start: 0s
-⚡ [MODE 1.5 NORMALIZE] Trim end: 25.316667s
-✅ [FFMPEG EXPORT DEBUG] FFmpeg export completed
-```
-
-#### Fix 3: Mode 1.5 unblock + source provisioning (2025-12-02)
-
-**Problems**:
-- `buildFFmpegArgs` still executed before the Mode 1.5 block, throwing "Invalid export configuration" and skipping normalization.
-- Renderer did not send `videoSources` when `optimizationStrategy === "video-normalization"`, so Mode 1.5 would reject even if reached.
-
-**Changes**:
-- `electron/ffmpeg-handler.ts`: defer `buildFFmpegArgs` when `optimizationStrategy` is `"video-normalization"` and build it only if Mode 1.5 falls through; this removes the early throw and lets the Mode 1.5 path run.
-- `apps/web/src/lib/export-engine-cli.ts`: always extract and pass `videoSources` when `optimizationStrategy` is `"video-normalization"`, even when direct copy is disabled.
-
-**Result**: Mode 1.5 now receives video sources and executes instead of failing early with "Invalid export configuration."
+How It Works:
+1. Renderer sets useDirectCopy = false when optimizationStrategy is "video-normalization".
+2. Renderer always supplies videoSources for Mode 1.5.
+3. Electron disables direct copy when trimmed multi-videos are present and defers buildFFmpegArgs for Mode 1.5, preventing the early throw.
+4. Mode 1.5 runs, normalizes, and concatenates while respecting trims.
 
 ### Updated Scenario Results
 
 | Scenario | Mode | Result |
 |----------|------|--------|
-| Single video, no trim | Mode 1 | ✅ Works |
-| Single video, with trim | Mode 1 | ✅ Works |
-| Multiple videos, no trim, same props | Mode 1 | ✅ Works |
-| Multiple videos, no trim, diff props | Mode 1.5 | ✅ Works |
-| **Multiple videos, with trim, same props** | **Mode 1.5** | ✅ **FIXED** |
-| Multiple videos, with trim, diff props | Mode 1.5 | ✅ Works |
+| Single video, no trim | Mode 1 | Works |
+| Single video, with trim | Mode 1 | Works |
+| Multiple videos, no trim, same props | Mode 1 | Works |
+| Multiple videos, no trim, diff props | Mode 1.5 | Works |
+| **Multiple videos, with trim, same props** | **Mode 1.5** | FIXED |
+| Multiple videos, with trim, diff props | Mode 1.5 | Works |
+
+

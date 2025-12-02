@@ -447,6 +447,20 @@ export function setupFFmpegIPC(): void {
 
         // Use async IIFE to handle validation properly
         (async () => {
+          // Debug: Log the optimization strategy received
+          console.log(
+            `🔍 [FFMPEG HANDLER] Received optimizationStrategy: "${options.optimizationStrategy}"`
+          );
+          console.log(
+            `🔍 [FFMPEG HANDLER] effectiveUseDirectCopy: ${effectiveUseDirectCopy}`
+          );
+          console.log(
+            `🔍 [FFMPEG HANDLER] videoSources count: ${options.videoSources?.length || 0}`
+          );
+          console.log(
+            `🔍 [FFMPEG HANDLER] useVideoInput: ${options.useVideoInput}`
+          );
+
           // =============================================================================
           // MODE 1.5: Video Normalization with FFmpeg Padding
           // =============================================================================
@@ -896,6 +910,12 @@ export function setupFFmpegIPC(): void {
 
           // Build args now if we deferred for Mode 1.5 or haven't built yet
           if (!args) {
+            console.log(
+              "⚠️ [FFMPEG HANDLER] args is null - calling buildArgs() now"
+            );
+            console.log(
+              `⚠️ [FFMPEG HANDLER] This should NOT happen if Mode 1.5 succeeded`
+            );
             args = buildArgs();
           }
 
