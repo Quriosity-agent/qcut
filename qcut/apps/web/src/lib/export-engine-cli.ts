@@ -1490,12 +1490,15 @@ export class CLIExportEngine extends ExportEngine {
       console.log("⚠️ [MODE 2 EXPORT] Falling back to standard export");
     }
 
-    const videoSources: VideoSourceInput[] =
-      this.exportAnalysis?.canUseDirectCopy &&
-      !hasTextFilters &&
-      !hasStickerFilters
-        ? await this.extractVideoSources()
-        : [];
+    const shouldExtractVideoSources =
+      this.exportAnalysis?.optimizationStrategy === "video-normalization" ||
+      (this.exportAnalysis?.canUseDirectCopy &&
+        !hasTextFilters &&
+        !hasStickerFilters);
+
+    const videoSources: VideoSourceInput[] = shouldExtractVideoSources
+      ? await this.extractVideoSources()
+      : [];
 
     // Build options AFTER validation so the filtered list is sent
     if (!this.sessionId) {

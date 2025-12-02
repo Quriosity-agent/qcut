@@ -523,6 +523,18 @@ const effectiveUseDirectCopy =
 ✅ [FFMPEG EXPORT DEBUG] FFmpeg export completed
 ```
 
+#### Fix 3: Mode 1.5 unblock + source provisioning (2025-12-02)
+
+**Problems**:
+- `buildFFmpegArgs` still executed before the Mode 1.5 block, throwing "Invalid export configuration" and skipping normalization.
+- Renderer did not send `videoSources` when `optimizationStrategy === "video-normalization"`, so Mode 1.5 would reject even if reached.
+
+**Changes**:
+- `electron/ffmpeg-handler.ts`: defer `buildFFmpegArgs` when `optimizationStrategy` is `"video-normalization"` and build it only if Mode 1.5 falls through; this removes the early throw and lets the Mode 1.5 path run.
+- `apps/web/src/lib/export-engine-cli.ts`: always extract and pass `videoSources` when `optimizationStrategy` is `"video-normalization"`, even when direct copy is disabled.
+
+**Result**: Mode 1.5 now receives video sources and executes instead of failing early with "Invalid export configuration."
+
 ### Updated Scenario Results
 
 | Scenario | Mode | Result |

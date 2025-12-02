@@ -417,26 +417,33 @@ export function setupFFmpegIPC(): void {
           return;
         }
 
-        const args: string[] = buildFFmpegArgs(
-          frameDir,
-          outputFile,
-          width,
-          height,
-          fps,
-          quality,
-          validatedDuration,
-          audioFiles,
-          options.filterChain,
-          textFilterChain,
-          effectiveUseDirectCopy,
-          options.videoSources,
-          stickerFilterChain,
-          stickerSources,
-          options.useVideoInput || false,
-          options.videoInputPath,
-          options.trimStart,
-          options.trimEnd
-        );
+        const buildArgs = () =>
+          buildFFmpegArgs(
+            frameDir,
+            outputFile,
+            width,
+            height,
+            fps,
+            quality,
+            validatedDuration,
+            audioFiles,
+            options.filterChain,
+            textFilterChain,
+            effectiveUseDirectCopy,
+            options.videoSources,
+            stickerFilterChain,
+            stickerSources,
+            options.useVideoInput || false,
+            options.videoInputPath,
+            options.trimStart,
+            options.trimEnd
+          );
+
+        // Mode 1.5 builds its own args; defer until after Mode 1.5 branch when needed
+        let args: string[] | null =
+          options.optimizationStrategy === "video-normalization"
+            ? null
+            : buildArgs();
 
         // Use async IIFE to handle validation properly
         (async () => {
@@ -886,6 +893,11 @@ export function setupFFmpegIPC(): void {
           }
           // Note: Mode 3 (frame-based) validation has been removed.
           // All exports now use Mode 1, 1.5, or 2 which don't require frame files.
+
+          // Build args now if we deferred for Mode 1.5 or haven't built yet
+          if (!args) {
+            args = buildArgs();
+          }
 
           // Ensure output directory exists
           const outputDirPath: string = path.dirname(outputFile);
