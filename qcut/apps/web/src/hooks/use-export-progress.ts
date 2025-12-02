@@ -30,8 +30,10 @@ export function useExportProgress() {
       currentEngineRef.current.cancel();
       currentEngineRef.current = null;
 
-      // Release export lock on cancel
-      unlockFromExport();
+      // NOTE: Do NOT call unlockFromExport() here.
+      // The finally block in handleExport() will handle the unlock.
+      // Calling it here would cause a double-unlock race condition when
+      // overlapping exports occur (user cancels #1 and starts #2).
 
       updateProgress({
         progress: 0,
