@@ -773,6 +773,84 @@ export const AI_MODELS: AIModel[] = [
       resolution: "720p",
     },
   },
+  // Kling O1 Models - Advanced video generation with cinematic understanding
+  {
+    id: "kling_o1_v2v_reference",
+    name: "Kling O1 Video Reference",
+    description:
+      "Generate new shots guided by input reference video, preserving motion and camera style",
+    price: "0.112", // Per second pricing
+    resolution: "1080p",
+    max_duration: 10,
+    category: "image",
+    requiredInputs: ["sourceVideo"],
+    endpoints: {
+      image_to_video: "fal-ai/kling-video/o1/video-to-video/reference",
+    },
+    default_params: {
+      duration: 5,
+      aspect_ratio: "auto",
+    },
+    supportedDurations: [5, 10],
+    supportedAspectRatios: ["auto", "16:9", "9:16", "1:1"],
+  },
+  {
+    id: "kling_o1_v2v_edit",
+    name: "Kling O1 Video Edit",
+    description:
+      "Edit videos through natural language instructions while preserving motion structure",
+    price: "0.168", // Per second pricing
+    resolution: "1080p",
+    max_duration: 10,
+    category: "image",
+    requiredInputs: ["sourceVideo"],
+    endpoints: {
+      image_to_video: "fal-ai/kling-video/o1/video-to-video/edit",
+    },
+    default_params: {
+      duration: 5,
+    },
+    supportedDurations: [5, 10],
+  },
+  {
+    id: "kling_o1_ref2video",
+    name: "Kling O1 Reference-to-Video",
+    description:
+      "Transform reference images and elements into consistent video scenes",
+    price: "0.112", // Per second pricing
+    resolution: "1080p",
+    max_duration: 10,
+    category: "image",
+    endpoints: {
+      image_to_video: "fal-ai/kling-video/o1/reference-to-video",
+    },
+    default_params: {
+      duration: 5,
+      aspect_ratio: "16:9",
+      cfg_scale: 0.5,
+      negative_prompt: "blur, distort, low quality",
+    },
+    supportedDurations: [5, 10],
+    supportedAspectRatios: ["16:9", "9:16", "1:1"],
+  },
+  {
+    id: "kling_o1_i2v",
+    name: "Kling O1 Image-to-Video",
+    description:
+      "Animate transitions between start and end frames with cinematic motion",
+    price: "0.112", // Per second pricing
+    resolution: "1080p",
+    max_duration: 10,
+    category: "image",
+    requiredInputs: ["firstFrame"],
+    endpoints: {
+      image_to_video: "fal-ai/kling-video/o1/image-to-video",
+    },
+    default_params: {
+      duration: 5,
+    },
+    supportedDurations: [5, 10],
+  },
   {
     id: "bytedance_omnihuman_v1_5",
     name: "ByteDance OmniHuman v1.5",
@@ -1090,6 +1168,17 @@ export const MODEL_HELPERS = {
   requiresFrameToFrame: (modelId: string): boolean => {
     const model = AI_MODELS.find((m) => m.id === modelId);
     return model?.requiredInputs?.includes("firstFrame") ?? false;
+  },
+
+  /**
+   * Check if model requires source video input
+   * Used to determine if V2V (video-to-video) upload UI should be shown
+   * @param modelId - Model ID to check
+   * @returns true if model requires source video for transformation
+   */
+  requiresSourceVideo: (modelId: string): boolean => {
+    const model = AI_MODELS.find((m) => m.id === modelId);
+    return model?.requiredInputs?.includes("sourceVideo") ?? false;
   },
 
   /**

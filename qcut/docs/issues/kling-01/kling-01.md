@@ -10,7 +10,7 @@ This document covers the integration of Kling Video endpoints from fal.ai, as im
 
 The AI Video Generation dialog (`ai.tsx`) contains four tabs:
 - **Text** - Text-to-video generation
-- **Image** - Image-to-video generation
+- **Image** - Image-to-video generation (includes V2V models)
 - **Avatar** - Audio-driven avatar video generation
 - **Upscale** - Video upscaling and enhancement
 
@@ -24,10 +24,207 @@ From `ai-constants.ts`, the following Kling models are configured:
 
 **Image Tab:**
 - `kling_v2_5_turbo_i2v` - Kling v2.5 Turbo Pro I2V
+- `kling_o1_v2v_reference` - Kling O1 Video Reference (V2V)
+- `kling_o1_v2v_edit` - Kling O1 Video Edit (V2V)
+- `kling_o1_ref2video` - Kling O1 Reference-to-Video
+- `kling_o1_i2v` - Kling O1 Image-to-Video
 
 **Avatar Tab:**
 - `kling_avatar_pro` - Kling Avatar Pro
 - `kling_avatar_standard` - Kling Avatar Standard
+
+---
+
+## Kling O1 Models
+
+### Video-to-Video Reference
+```typescript
+// From ai-constants.ts
+{
+  id: "kling_o1_v2v_reference",
+  name: "Kling O1 Video Reference",
+  description: "Generate new shots guided by input reference video, preserving motion and camera style",
+  price: "0.112",
+  resolution: "1080p",
+  max_duration: 10,
+  category: "image",
+  requiredInputs: ["sourceVideo"],
+  endpoints: {
+    image_to_video: "fal-ai/kling-video/o1/video-to-video/reference",
+  },
+  default_params: {
+    duration: 5,
+    aspect_ratio: "auto",
+  },
+  supportedDurations: [5, 10],
+  supportedAspectRatios: ["auto", "16:9", "9:16", "1:1"],
+}
+```
+
+### Video-to-Video Edit
+```typescript
+{
+  id: "kling_o1_v2v_edit",
+  name: "Kling O1 Video Edit",
+  description: "Edit videos through natural language instructions while preserving motion structure",
+  price: "0.168",
+  resolution: "1080p",
+  max_duration: 10,
+  category: "image",
+  requiredInputs: ["sourceVideo"],
+  endpoints: {
+    image_to_video: "fal-ai/kling-video/o1/video-to-video/edit",
+  },
+  default_params: {
+    duration: 5,
+  },
+  supportedDurations: [5, 10],
+}
+```
+
+### Reference-to-Video
+```typescript
+{
+  id: "kling_o1_ref2video",
+  name: "Kling O1 Reference-to-Video",
+  description: "Transform reference images and elements into consistent video scenes",
+  price: "0.112",
+  resolution: "1080p",
+  max_duration: 10,
+  category: "image",
+  endpoints: {
+    image_to_video: "fal-ai/kling-video/o1/reference-to-video",
+  },
+  default_params: {
+    duration: 5,
+    aspect_ratio: "16:9",
+    cfg_scale: 0.5,
+    negative_prompt: "blur, distort, low quality",
+  },
+  supportedDurations: [5, 10],
+  supportedAspectRatios: ["16:9", "9:16", "1:1"],
+}
+```
+
+### Image-to-Video (First/Last Frame)
+```typescript
+{
+  id: "kling_o1_i2v",
+  name: "Kling O1 Image-to-Video",
+  description: "Animate transitions between start and end frames with cinematic motion",
+  price: "0.112",
+  resolution: "1080p",
+  max_duration: 10,
+  category: "image",
+  requiredInputs: ["firstFrame"],
+  endpoints: {
+    image_to_video: "fal-ai/kling-video/o1/image-to-video",
+  },
+  default_params: {
+    duration: 5,
+  },
+  supportedDurations: [5, 10],
+}
+```
+
+---
+
+## Kling O1 API Client Functions
+
+### generateKlingO1Video
+For video-to-video transformations (Reference and Edit models).
+
+```typescript
+export interface KlingO1V2VRequest {
+  model: string;
+  prompt: string;
+  sourceVideo: File;
+  duration?: 5 | 10;
+  aspect_ratio?: "auto" | "16:9" | "9:16" | "1:1";
+  keep_audio?: boolean;
+}
+
+export async function generateKlingO1Video(
+  request: KlingO1V2VRequest
+): Promise<VideoGenerationResponse>
+```
+
+**Flow:**
+1. Validates FAL API key is configured
+2. Validates prompt (max 2500 chars)
+3. Converts source video to base64 data URL
+4. Builds payload with `video_url`, `prompt`, `duration`, `aspect_ratio`
+5. Sends request to FAL API with 3-minute timeout
+6. Returns `VideoGenerationResponse` with job_id and video URL
+
+### generateKlingO1RefVideo
+For reference-to-video generation.
+
+```typescript
+export interface KlingO1Ref2VideoRequest {
+  model: string;
+  prompt: string;
+  image_url: string;
+  duration?: 5 | 10;
+  aspect_ratio?: "16:9" | "9:16" | "1:1";
+  cfg_scale?: number;
+  negative_prompt?: string;
+}
+
+export async function generateKlingO1RefVideo(
+  request: KlingO1Ref2VideoRequest
+): Promise<VideoGenerationResponse>
+```
+
+**Payload:**
+```typescript
+{
+  prompt: trimmedPrompt,
+  image_urls: [request.image_url], // API expects array
+  duration,
+  aspect_ratio,
+  cfg_scale,
+  negative_prompt,
+}
+```
+
+---
+
+## UI Components
+
+### Video-to-Video Mode in Image Tab
+
+The `AIImageUploadSection` component (`ai-image-upload.tsx`) now supports three modes:
+
+1. **I2V Mode** - Single image upload for image-to-video models
+2. **F2V Mode** - Dual frame upload for frame-to-video models
+3. **V2V Mode** - Source video upload for video-to-video models
+
+Mode detection uses `MODEL_HELPERS`:
+```typescript
+// Check if V2V mode
+const requiresSourceVideo = selectedModels.some((id) =>
+  MODEL_HELPERS.requiresSourceVideo(id)
+);
+
+// Check if F2V mode
+const requiresFrameToFrame = selectedModels.some((id) =>
+  MODEL_HELPERS.requiresFrameToFrame(id)
+);
+```
+
+### V2V Upload UI
+```typescript
+<FileUpload
+  id="ai-source-video-input"
+  label="Upload Source Video"
+  helperText="Required for video-to-video transformation"
+  fileType="video"
+  acceptedTypes={UPLOAD_CONSTANTS.ALLOWED_VIDEO_TYPES}
+  maxSizeBytes={UPLOAD_CONSTANTS.MAX_VIDEO_SIZE_BYTES}
+  // ...
+/>
+```
 
 ---
 
@@ -81,45 +278,11 @@ From `ai-constants.ts`, the following Kling models are configured:
 
 ---
 
-## Image-to-Video Models
-
-### Kling v2.5 Turbo Pro I2V
-
-```typescript
-// From ai-constants.ts
-{
-  id: "kling_v2_5_turbo_i2v",
-  name: "Kling v2.5 Turbo Pro I2V",
-  description: "Top-tier Kling model with cinematic motion and multi-ratio output",
-  price: "0.35",
-  resolution: "1080p",
-  max_duration: 10,
-  category: "image",
-  endpoints: {
-    image_to_video: "fal-ai/kling-video/v2.5-turbo/pro/image-to-video",
-  },
-  default_params: {
-    duration: 5,
-    resolution: "1080p",
-    aspect_ratio: "16:9",
-    cfg_scale: 0.5,
-    enhance_prompt: true,
-    negative_prompt: "blur, distort, low quality",
-  },
-  supportedResolutions: ["1080p"],
-  supportedDurations: [5, 10],
-  supportedAspectRatios: ["16:9", "9:16", "1:1", "4:3", "3:4"],
-}
-```
-
----
-
 ## Avatar Models
 
 ### Kling Avatar Pro
 
 ```typescript
-// From ai-constants.ts
 {
   id: "kling_avatar_pro",
   name: "Kling Avatar Pro",
@@ -131,9 +294,6 @@ From `ai-constants.ts`, the following Kling models are configured:
   requiredInputs: ["characterImage", "audioFile"],
   endpoints: {
     text_to_video: "fal-ai/kling-video/v1/pro/ai-avatar",
-  },
-  default_params: {
-    resolution: "1080p",
   },
 }
 ```
@@ -153,199 +313,29 @@ From `ai-constants.ts`, the following Kling models are configured:
   endpoints: {
     text_to_video: "fal-ai/kling-video/v1/standard/ai-avatar",
   },
-  default_params: {
-    resolution: "720p",
-  },
 }
-```
-
----
-
-## Avatar Tab UI Components
-
-From `ai.tsx` (lines 2525-2604), the Avatar tab includes:
-
-### Character Image Upload (Required)
-```typescript
-<FileUpload
-  id="avatar-image-input"
-  label="Character Image"
-  helperText="Required"
-  fileType="image"
-  acceptedTypes={UPLOAD_CONSTANTS.ALLOWED_AVATAR_IMAGE_TYPES}
-  maxSizeBytes={UPLOAD_CONSTANTS.MAX_IMAGE_SIZE_BYTES}
-  // ...
-/>
-```
-
-### Audio File Upload (For Kling Avatar models)
-```typescript
-<FileUpload
-  id="avatar-audio-input"
-  label="Audio File"
-  helperText="For Kling Avatar models"
-  fileType="audio"
-  acceptedTypes={UPLOAD_CONSTANTS.ALLOWED_AUDIO_TYPES}
-  maxSizeBytes={UPLOAD_CONSTANTS.MAX_AUDIO_SIZE_BYTES}
-  // ...
-/>
-```
-
-### Source Video Upload (For WAN Animate/Replace)
-```typescript
-<FileUpload
-  id="avatar-video-input"
-  label="Source Video"
-  helperText="For WAN Animate/Replace"
-  fileType="video"
-  acceptedTypes={UPLOAD_CONSTANTS.ALLOWED_VIDEO_TYPES}
-  maxSizeBytes={UPLOAD_CONSTANTS.MAX_VIDEO_SIZE_BYTES}
-  // ...
-/>
-```
-
-### Additional Prompt (Optional)
-```typescript
-<Textarea
-  id="avatar-prompt"
-  placeholder="Describe the desired avatar style or motion..."
-  // ...
-/>
 ```
 
 ---
 
 ## Upload Constants
 
-From `ai-constants.ts`:
-
 ```typescript
 export const UPLOAD_CONSTANTS = {
-  // Avatar-specific image uploads (character images only, no GIF)
-  ALLOWED_AVATAR_IMAGE_TYPES: ["image/jpeg", "image/png", "image/webp"],
-  AVATAR_IMAGE_FORMATS_LABEL: "JPG, PNG, WebP",
-
   // Image uploads
   MAX_IMAGE_SIZE_BYTES: 10 * 1024 * 1024, // 10MB
   MAX_IMAGE_SIZE_LABEL: "10MB",
 
-  // Audio uploads (for Kling and ByteDance avatar models)
+  // Audio uploads
   ALLOWED_AUDIO_TYPES: ["audio/mpeg", "audio/wav", "audio/aac"],
   MAX_AUDIO_SIZE_BYTES: 50 * 1024 * 1024, // 50MB
-  MAX_AUDIO_SIZE_LABEL: "50MB",
-  SUPPORTED_AUDIO_FORMATS: [".mp3", ".wav", ".aac"],
   AUDIO_FORMATS_LABEL: "MP3, WAV, AAC",
 
-  // Video uploads (WAN + Upscale)
+  // Video uploads
   ALLOWED_VIDEO_TYPES: ["video/mp4", "video/quicktime", "video/x-msvideo"],
   MAX_VIDEO_SIZE_BYTES: 100 * 1024 * 1024, // 100MB
-  MAX_VIDEO_SIZE_LABEL: "100MB",
-  SUPPORTED_VIDEO_FORMATS: [".mp4", ".mov", ".avi"],
   VIDEO_FORMATS_LABEL: "MP4, MOV, AVI",
 } as const;
-```
-
----
-
-## Avatar Video Generation API
-
-From `ai-video-client.ts`:
-
-### AvatarVideoRequest Interface
-
-```typescript
-export interface AvatarVideoRequest {
-  model: string;
-  characterImage: File;
-  audioFile?: File; // For Kling models
-  sourceVideo?: File; // For WAN animate/replace
-  prompt?: string;
-  resolution?: string;
-}
-```
-
-### generateAvatarVideo Function
-
-The `generateAvatarVideo` function in `ai-video-client.ts` handles avatar video generation:
-
-1. Validates FAL API key is configured
-2. Gets model configuration from `AI_MODELS` registry
-3. Verifies model category is "avatar"
-4. Converts character image to base64 data URL
-5. For Kling Avatar models (`kling_avatar_pro`, `kling_avatar_standard`):
-   - Requires `audioFile`
-   - Converts audio to data URL
-   - Builds payload with `image_url` and `audio_url`
-6. Submits request to FAL API endpoint
-7. Returns `VideoGenerationResponse` with job_id, status, and video URL
-
-### Kling Avatar Payload Structure
-
-```typescript
-// For kling_avatar_pro or kling_avatar_standard
-{
-  image_url: characterImageUrl,  // base64 data URL
-  audio_url: audioUrl,           // base64 data URL
-  resolution: request.resolution // optional override
-}
-```
-
----
-
-## FAL API Configuration
-
-From `ai-constants.ts`:
-
-```typescript
-export const FAL_API_KEY = import.meta.env.VITE_FAL_API_KEY;
-export const FAL_API_BASE = "https://fal.run";
-
-export const API_CONFIG: APIConfiguration = {
-  falApiKey: FAL_API_KEY,
-  falApiBase: FAL_API_BASE,
-  maxRetries: 3,
-  timeoutMs: 30_000, // 30 seconds
-};
-```
-
----
-
-## Other Avatar Models in QCut
-
-The Avatar tab also supports non-Kling models:
-
-### WAN Animate/Replace
-```typescript
-{
-  id: "wan_animate_replace",
-  name: "WAN Animate/Replace",
-  description: "Replace characters in existing videos",
-  price: "0.075",
-  resolution: "480p-720p",
-  max_duration: 30,
-  category: "avatar",
-  requiredInputs: ["characterImage", "sourceVideo"],
-  endpoints: {
-    text_to_video: "fal-ai/wan/v2.2-14b/animate/replace",
-  },
-}
-```
-
-### ByteDance OmniHuman v1.5
-```typescript
-{
-  id: "bytedance_omnihuman_v1_5",
-  name: "ByteDance OmniHuman v1.5",
-  description: "Realistic human avatar with emotion-synced audio",
-  price: "0.20",
-  resolution: "1080p",
-  max_duration: 30,
-  category: "avatar",
-  requiredInputs: ["characterImage", "audioFile"],
-  endpoints: {
-    text_to_video: "fal-ai/bytedance/omnihuman/v1.5",
-  },
-}
 ```
 
 ---
@@ -361,138 +351,18 @@ The Avatar tab also supports non-Kling models:
 - [x] Support for Kling Avatar Standard and Pro
 - [x] Support for WAN Animate/Replace
 - [x] Support for ByteDance OmniHuman
+- [x] `kling_o1_v2v_reference` model config
+- [x] `kling_o1_v2v_edit` model config
+- [x] `kling_o1_ref2video` model config
+- [x] `kling_o1_i2v` model config
+- [x] `generateKlingO1Video()` function
+- [x] `generateKlingO1RefVideo()` function
+- [x] `MODEL_HELPERS.requiresSourceVideo()` helper
+- [x] V2V mode in `AIImageUploadSection`
+- [x] Source video state in Image tab
 
 ### File References
 - UI Component: `qcut/apps/web/src/components/editor/media-panel/views/ai.tsx`
+- Image Upload: `qcut/apps/web/src/components/editor/media-panel/views/ai-image-upload.tsx`
 - Constants: `qcut/apps/web/src/components/editor/media-panel/views/ai-constants.ts`
 - API Client: `qcut/apps/web/src/lib/ai-video-client.ts`
-- Types: `qcut/apps/web/src/components/editor/media-panel/views/ai-types.ts`
-
----
-
-## Future Work: Kling O1 APIs (Not Yet Implemented)
-
-The following Kling O1 endpoints from fal.ai are available but not yet integrated into QCut. Each subtask is estimated at under 20 minutes.
-
-### Subtask 1: Add Kling O1 Video-to-Video Reference Model Config
-- **Endpoint**: `fal-ai/kling-video/o1/video-to-video/reference`
-- **Description**: Generate new shots guided by input reference video
-- **Tasks**:
-  - [ ] Add model entry to `AI_MODELS` array in `ai-constants.ts`
-  - [ ] Set category to appropriate tab (likely "image" or new "video" tab)
-  - [ ] Define `requiredInputs: ["sourceVideo"]`
-
-### Subtask 2: Add Kling O1 Video-to-Video Edit Model Config
-- **Endpoint**: `fal-ai/kling-video/o1/video-to-video/edit`
-- **Description**: Edit videos through natural language instructions
-- **Pricing**: $0.168 per second
-- **Tasks**:
-  - [ ] Add model entry to `AI_MODELS` array
-  - [ ] Define parameters: `prompt`, `video_url`, `image_urls`, `elements`
-
-### Subtask 3: Add Kling O1 Reference-to-Video Model Config
-- **Endpoint**: `fal-ai/kling-video/o1/reference-to-video`
-- **Description**: Transform images and elements into video scenes
-- **Pricing**: $0.112 per second
-- **Tasks**:
-  - [ ] Add model entry to `AI_MODELS` array
-  - [ ] Define parameters: `prompt`, `image_urls`, `duration`, `aspect_ratio`
-
-### Subtask 4: Add Kling O1 Image-to-Video Model Config
-- **Endpoint**: `fal-ai/kling-video/o1/image-to-video`
-- **Description**: Animate transitions between start and end frames
-- **Tasks**:
-  - [ ] Add model entry to `AI_MODELS` array
-  - [ ] Define `requiredInputs: ["firstFrame"]` with optional `lastFrame`
-  - [ ] Reuse existing F2V (frame-to-video) UI pattern from Veo 3.1
-
-### Subtask 5: Implement O1 API Client Functions
-- **File**: `ai-video-client.ts`
-- **Tasks**:
-  - [ ] Add `generateKlingO1Video()` function
-  - [ ] Handle video-to-video payload construction
-  - [ ] Handle reference-to-video payload with `image_urls` and `elements`
-  - [ ] Support `@Image1`, `@Element1` prompt references
-
-### Subtask 6: Update UI for O1 Video Inputs
-- **File**: `ai.tsx`
-- **Tasks**:
-  - [ ] Add source video upload for video-to-video models
-  - [ ] Add reference image multi-upload for reference-to-video
-  - [ ] Add element configuration UI (frontal + reference images)
-
----
-
-## Kling O1 API Reference (For Future Implementation)
-
-### Video-to-Video Reference
-```typescript
-// Proposed model config
-{
-  id: "kling_o1_v2v_reference",
-  name: "Kling O1 Video Reference",
-  description: "Generate new shots guided by input reference video",
-  category: "image", // or new "video" category
-  requiredInputs: ["sourceVideo"],
-  endpoints: {
-    image_to_video: "fal-ai/kling-video/o1/video-to-video/reference",
-  },
-  default_params: {
-    duration: 5,
-    aspect_ratio: "auto",
-  },
-}
-```
-
-### Video-to-Video Edit
-```typescript
-{
-  id: "kling_o1_v2v_edit",
-  name: "Kling O1 Video Edit",
-  description: "Edit videos through natural language instructions",
-  price: "0.168/s",
-  category: "image",
-  requiredInputs: ["sourceVideo"],
-  endpoints: {
-    image_to_video: "fal-ai/kling-video/o1/video-to-video/edit",
-  },
-}
-```
-
-### Reference-to-Video
-```typescript
-{
-  id: "kling_o1_ref2video",
-  name: "Kling O1 Reference-to-Video",
-  description: "Transform images and elements into video scenes",
-  price: "0.112/s",
-  category: "image",
-  requiredInputs: ["referenceImages"],
-  endpoints: {
-    image_to_video: "fal-ai/kling-video/o1/reference-to-video",
-  },
-  default_params: {
-    duration: 5,
-    aspect_ratio: "16:9",
-    cfg_scale: 0.5,
-    negative_prompt: "blur, distort, and low quality",
-  },
-}
-```
-
-### Image-to-Video (First/Last Frame)
-```typescript
-{
-  id: "kling_o1_i2v",
-  name: "Kling O1 Image-to-Video",
-  description: "Animate transitions between start and end frames",
-  category: "image",
-  requiredInputs: ["firstFrame"],
-  endpoints: {
-    image_to_video: "fal-ai/kling-video/o1/image-to-video",
-  },
-  default_params: {
-    duration: 5,
-  },
-  supportedDurations: [5, 10],
-}

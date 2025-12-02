@@ -2324,6 +2324,308 @@ export async function generateKlingImageVideo(
   }
 }
 
+/**
+ * Kling O1 Video-to-Video Request Interface
+ * For models that transform source videos with cinematic understanding
+ */
+export interface KlingO1V2VRequest {
+  model: string;
+  prompt: string;
+  sourceVideo: File;
+  duration?: 5 | 10;
+  aspect_ratio?: "auto" | "16:9" | "9:16" | "1:1";
+  keep_audio?: boolean;
+}
+
+/**
+ * Kling O1 Reference-to-Video Request Interface
+ * For generating videos from reference images
+ */
+export interface KlingO1Ref2VideoRequest {
+  model: string;
+  prompt: string;
+  image_url: string;
+  duration?: 5 | 10;
+  aspect_ratio?: "16:9" | "9:16" | "1:1";
+  cfg_scale?: number;
+  negative_prompt?: string;
+}
+
+/**
+ * Generate a video from a source video using Kling O1 video-to-video models.
+ *
+ * Supports both Video Reference (preserves motion/camera style) and Video Edit (transforms via prompt).
+ *
+ * @param request - Request parameters including model, prompt, source video, and optional settings
+ * @returns VideoGenerationResponse with job_id, status, message, and video URL
+ * @throws Error if FAL API key missing, model unsupported, or API returns error
+ */
+export async function generateKlingO1Video(
+  request: KlingO1V2VRequest
+): Promise<VideoGenerationResponse> {
+  try {
+    const falApiKey = getFalApiKey();
+    if (!falApiKey) {
+      throw new Error("FAL API key not configured");
+    }
+
+    const trimmedPrompt = request.prompt?.trim() ?? "";
+    if (!trimmedPrompt) {
+      throw new Error("Please enter a prompt describing the desired output");
+    }
+
+    if (trimmedPrompt.length > 2500) {
+      throw new Error("Prompt exceeds maximum length of 2500 characters");
+    }
+
+    if (!request.sourceVideo) {
+      throw new Error("Source video is required for Kling O1 video-to-video");
+    }
+
+    const modelConfig = getModelConfig(request.model);
+    if (!modelConfig) {
+      throw new Error(`Unknown model: ${request.model}`);
+    }
+
+    const endpoint = modelConfig.endpoints.image_to_video;
+    if (!endpoint) {
+      throw new Error(
+        `Model ${request.model} does not support video-to-video generation`
+      );
+    }
+
+    console.log("🎬 Starting Kling O1 video-to-video generation");
+    console.log("📝 Model:", request.model);
+    console.log("📝 Prompt:", trimmedPrompt.substring(0, 100) + "...");
+
+    // Convert source video to base64 data URL
+    console.log("📤 Converting source video to base64...");
+    const videoUrl = await fileToDataURL(request.sourceVideo);
+    console.log("✅ Video converted to data URL");
+
+    const duration =
+      request.duration ??
+      (modelConfig.default_params?.duration as number | undefined) ??
+      5;
+    const aspectRatio =
+      request.aspect_ratio ??
+      (modelConfig.default_params?.aspect_ratio as string | undefined) ??
+      "auto";
+
+    const payload: Record<string, unknown> = {
+      prompt: trimmedPrompt,
+      video_url: videoUrl,
+      duration,
+      aspect_ratio: aspectRatio,
+    };
+
+    if (request.keep_audio !== undefined) {
+      payload.keep_audio = request.keep_audio;
+    }
+
+    const jobId = generateJobId();
+    console.log(`🎬 Generating video with: ${endpoint}`);
+    console.log("📝 Payload:", {
+      ...payload,
+      video_url: `[base64 data: ${videoUrl.length} chars]`,
+    });
+
+    // Add timeout for large video payloads (3 minutes)
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 180_000);
+
+    try {
+      const response = await fetch(`${FAL_API_BASE}/${endpoint}`, {
+        method: "POST",
+        headers: {
+          Authorization: `Key ${falApiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+
+        if (response.status === 401) {
+          throw new Error(
+            "Invalid FAL.ai API key. Please check your API key configuration."
+          );
+        }
+
+        if (response.status === 429) {
+          throw new Error(
+            "Rate limit exceeded. Please wait a moment before trying again."
+          );
+        }
+
+        throw new Error(
+          `FAL API error: ${errorData.detail || response.statusText}`
+        );
+      }
+
+      const result = await response.json();
+      console.log("✅ Kling O1 video generated:", result);
+
+      return {
+        job_id: jobId,
+        status: "completed",
+        message: `Video generated successfully with ${request.model}`,
+        estimated_time: 0,
+        video_url: result.video?.url || result.video,
+        video_data: result,
+      };
+    } catch (error) {
+      clearTimeout(timeoutId);
+      if (error instanceof Error && error.name === "AbortError") {
+        throw new Error(
+          "Video generation timed out after 3 minutes. The source video may be too large."
+        );
+      }
+      throw error;
+    }
+  } catch (error) {
+    handleAIServiceError(error, "Generate Kling O1 video", {
+      model: request.model,
+      prompt: request.prompt?.substring(0, 100),
+      operation: "generateKlingO1Video",
+    });
+    throw error;
+  }
+}
+
+/**
+ * Generate a video from reference images using Kling O1 Reference-to-Video model.
+ *
+ * Transforms images and elements into consistent video scenes with cinematic motion.
+ *
+ * @param request - Request parameters including model, prompt, image URL, and optional settings
+ * @returns VideoGenerationResponse with job_id, status, message, and video URL
+ * @throws Error if FAL API key missing, model unsupported, or API returns error
+ */
+export async function generateKlingO1RefVideo(
+  request: KlingO1Ref2VideoRequest
+): Promise<VideoGenerationResponse> {
+  try {
+    const falApiKey = getFalApiKey();
+    if (!falApiKey) {
+      throw new Error("FAL API key not configured");
+    }
+
+    const trimmedPrompt = request.prompt?.trim() ?? "";
+    if (!trimmedPrompt) {
+      throw new Error(
+        "Please enter a prompt describing the desired video scene"
+      );
+    }
+
+    if (trimmedPrompt.length > 2500) {
+      throw new Error("Prompt exceeds maximum length of 2500 characters");
+    }
+
+    if (!request.image_url) {
+      throw new Error(
+        "Image URL is required for Kling O1 reference-to-video generation"
+      );
+    }
+
+    const modelConfig = getModelConfig(request.model);
+    if (!modelConfig) {
+      throw new Error(`Unknown model: ${request.model}`);
+    }
+
+    const endpoint = modelConfig.endpoints.image_to_video;
+    if (!endpoint) {
+      throw new Error(
+        `Model ${request.model} does not support reference-to-video generation`
+      );
+    }
+
+    console.log("🎬 Starting Kling O1 reference-to-video generation");
+    console.log("📝 Model:", request.model);
+
+    const duration =
+      request.duration ??
+      (modelConfig.default_params?.duration as number | undefined) ??
+      5;
+    const aspectRatio =
+      request.aspect_ratio ??
+      (modelConfig.default_params?.aspect_ratio as string | undefined) ??
+      "16:9";
+    const cfgScale =
+      request.cfg_scale ??
+      (modelConfig.default_params?.cfg_scale as number | undefined) ??
+      0.5;
+    const negativePrompt =
+      request.negative_prompt ??
+      (modelConfig.default_params?.negative_prompt as string | undefined) ??
+      "blur, distort, low quality";
+
+    const payload: Record<string, unknown> = {
+      prompt: trimmedPrompt,
+      image_urls: [request.image_url], // API expects array of image URLs
+      duration,
+      aspect_ratio: aspectRatio,
+      cfg_scale: cfgScale,
+      negative_prompt: negativePrompt,
+    };
+
+    const jobId = generateJobId();
+    console.log(`🎬 Generating video with: ${endpoint}`);
+
+    const response = await fetch(`${FAL_API_BASE}/${endpoint}`, {
+      method: "POST",
+      headers: {
+        Authorization: `Key ${falApiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+
+      if (response.status === 401) {
+        throw new Error(
+          "Invalid FAL.ai API key. Please check your API key configuration."
+        );
+      }
+
+      if (response.status === 429) {
+        throw new Error(
+          "Rate limit exceeded. Please wait a moment before trying again."
+        );
+      }
+
+      throw new Error(
+        `FAL API error: ${errorData.detail || response.statusText}`
+      );
+    }
+
+    const result = await response.json();
+    console.log("✅ Kling O1 reference video generated:", result);
+
+    return {
+      job_id: jobId,
+      status: "completed",
+      message: `Video generated successfully with ${request.model}`,
+      estimated_time: 0,
+      video_url: result.video?.url || result.video,
+      video_data: result,
+    };
+  } catch (error) {
+    handleAIServiceError(error, "Generate Kling O1 reference video", {
+      model: request.model,
+      prompt: request.prompt?.substring(0, 100),
+      operation: "generateKlingO1RefVideo",
+    });
+    throw error;
+  }
+}
+
 export interface WAN25I2VRequest {
   model: string;
   prompt: string;

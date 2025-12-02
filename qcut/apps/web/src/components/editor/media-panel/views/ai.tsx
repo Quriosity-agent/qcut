@@ -167,6 +167,11 @@ export function AiView() {
   const [lastFrame, setLastFrame] = useState<File | null>(null);
   const [lastFramePreview, setLastFramePreview] = useState<string | null>(null);
 
+  // Video-to-Video state (for Kling O1 models in Image tab)
+  const [imageTabSourceVideo, setImageTabSourceVideo] = useState<File | null>(
+    null
+  );
+
   const [error, setError] = useState<string | null>(null);
 
   // Avatar-specific state variables
@@ -1511,6 +1516,7 @@ export function AiView() {
                 firstFramePreview={firstFramePreview}
                 lastFrame={lastFrame}
                 lastFramePreview={lastFramePreview}
+                sourceVideo={imageTabSourceVideo}
                 onFirstFrameChange={(file, preview) => {
                   setFirstFrame(file);
                   setFirstFramePreview(preview || null);
@@ -1524,6 +1530,10 @@ export function AiView() {
                   if (generation.setLastFrame) {
                     generation.setLastFrame(file);
                   }
+                }}
+                onSourceVideoChange={(file) => {
+                  setImageTabSourceVideo(file);
+                  if (file) setError(null);
                 }}
                 onError={setError}
                 isCompact={isCompact}

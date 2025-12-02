@@ -1,6 +1,6 @@
 /**
  * AI Image Upload Section Component
- * Handles both single-image (I2V) and dual-frame (F2V) upload modes
+ * Handles single-image (I2V), dual-frame (F2V), and video-to-video (V2V) upload modes
  */
 
 import { FileUpload } from "@/components/ui/file-upload";
@@ -17,10 +17,14 @@ export interface AIImageUploadSectionProps {
   lastFrame: File | null;
   /** Last frame preview URL */
   lastFramePreview?: string | null;
+  /** Source video file (for V2V models like Kling O1) */
+  sourceVideo?: File | null;
   /** Callback when first frame changes */
   onFirstFrameChange: (file: File | null, preview?: string | null) => void;
   /** Callback when last frame changes */
   onLastFrameChange: (file: File | null, preview?: string | null) => void;
+  /** Callback when source video changes */
+  onSourceVideoChange?: (file: File | null) => void;
   /** Callback when validation error occurs */
   onError: (error: string) => void;
   /** Whether to show in compact mode */
@@ -33,8 +37,10 @@ export function AIImageUploadSection({
   firstFramePreview,
   lastFrame,
   lastFramePreview,
+  sourceVideo,
   onFirstFrameChange,
   onLastFrameChange,
+  onSourceVideoChange,
   onError,
   isCompact = false,
 }: AIImageUploadSectionProps) {
@@ -42,6 +48,38 @@ export function AIImageUploadSection({
   const requiresFrameToFrame = selectedModels.some((id) =>
     MODEL_HELPERS.requiresFrameToFrame(id)
   );
+
+  // Check if any selected model requires V2V mode (source video input)
+  const requiresSourceVideo = selectedModels.some((id) =>
+    MODEL_HELPERS.requiresSourceVideo(id)
+  );
+
+  if (requiresSourceVideo && onSourceVideoChange) {
+    // Video-to-video upload mode for V2V models (e.g., Kling O1)
+    return (
+      <div className="space-y-4">
+        <FileUpload
+          id="ai-source-video-input"
+          label={isCompact ? "Source Video" : "Upload Source Video"}
+          helperText="Required for video-to-video transformation"
+          fileType="video"
+          acceptedTypes={UPLOAD_CONSTANTS.ALLOWED_VIDEO_TYPES}
+          maxSizeBytes={UPLOAD_CONSTANTS.MAX_VIDEO_SIZE_BYTES}
+          maxSizeLabel={UPLOAD_CONSTANTS.MAX_VIDEO_SIZE_LABEL}
+          formatsLabel={UPLOAD_CONSTANTS.VIDEO_FORMATS_LABEL}
+          file={sourceVideo ?? null}
+          preview={null}
+          onFileChange={(file) => onSourceVideoChange(file)}
+          onError={onError}
+          isCompact={isCompact}
+        />
+        <p className="text-xs text-muted-foreground">
+          The source video will be transformed using your prompt while
+          preserving motion and camera style
+        </p>
+      </div>
+    );
+  }
 
   if (requiresFrameToFrame) {
     // Dual-frame upload mode for F2V models
