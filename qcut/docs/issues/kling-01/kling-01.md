@@ -1,14 +1,30 @@
 # Kling-01
 
-Integration of Kling Video O1 APIs from fal.ai into QCut.
+Integration of Kling Video APIs from fal.ai into QCut.
 
 ## Overview
 
-This document covers the integration of four Kling Video O1 endpoints:
+This document covers the integration of Kling Video endpoints from fal.ai, organized by the UI tabs in QCut's AI Video Generation dialog.
+
+### UI Structure
+
+The AI Video Generation dialog contains four tabs:
+- **Text** - Text-to-video generation
+- **Image** - Image-to-video generation and video editing
+- **Avatar** - Audio-driven avatar video generation (Kling Avatar)
+- **Upscale** - Video upscaling and enhancement
+
+### Supported Endpoints
+
+**Image Tab:**
 1. **Video-to-Video Reference** - Generate new shots guided by input reference video
 2. **Video-to-Video Edit** - Edit videos through natural language instructions
 3. **Reference-to-Video** - Transform images and elements into video scenes
 4. **Image-to-Video** - Animate transitions between start and end frames
+
+**Avatar Tab:**
+5. **AI Avatar Standard** - Create avatar videos with audio synchronization
+6. **AI Avatar Pro** - Premium avatar video generation with enhanced quality
 
 ---
 
@@ -304,6 +320,148 @@ const result = await fal.subscribe(
 
 ---
 
+## 5. AI Avatar Standard API
+
+### Overview
+Creates avatar videos featuring realistic humans, animals, cartoons, or stylized characters with synchronized audio-driven animation.
+
+### Endpoint Details
+- **Model ID**: `fal-ai/kling-video/v1/standard/ai-avatar`
+- **Base URL**: `https://fal.run/fal-ai/kling-video/v1/standard/ai-avatar`
+- **Type**: Image-to-Video (Avatar Generation)
+- **Commercial Use**: Supported
+
+### Request Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `image_url` | string | Yes | The URL of the image to use as your avatar |
+| `audio_url` | string | Yes | The URL of the audio file |
+| `prompt` | string | No | Custom prompt for video generation (default: ".") |
+
+### Supported File Formats
+
+**Image (Character)**:
+- Formats: JPG, JPEG, PNG, WebP, GIF, AVIF
+- Max size: 10MB
+
+**Audio**:
+- Formats: MP3, OGG, WAV, M4A, AAC
+- Max size: 50MB
+
+### Response Format
+
+```json
+{
+  "video": {
+    "url": "https://v3.fal.media/files/.../output.mp4"
+  },
+  "duration": 5.0
+}
+```
+
+### Basic Usage
+
+```javascript
+import { fal } from "@fal-ai/client";
+
+const result = await fal.subscribe(
+  "fal-ai/kling-video/v1/standard/ai-avatar",
+  {
+    input: {
+      image_url: "https://example.com/avatar.jpg",
+      audio_url: "https://example.com/speech.mp3",
+      prompt: "Natural speaking motion"
+    }
+  }
+);
+```
+
+### Queue Operations
+
+```javascript
+// Submit request
+const { request_id } = await fal.queue.submit(
+  "fal-ai/kling-video/v1/standard/ai-avatar",
+  { input: { image_url: "...", audio_url: "..." } }
+);
+
+// Check status
+const status = await fal.queue.status(
+  "fal-ai/kling-video/v1/standard/ai-avatar",
+  { requestId: request_id }
+);
+
+// Get result
+const result = await fal.queue.result(
+  "fal-ai/kling-video/v1/standard/ai-avatar",
+  { requestId: request_id }
+);
+```
+
+---
+
+## 6. AI Avatar Pro API
+
+### Overview
+Premium endpoint for creating high-quality avatar videos with enhanced realism and better audio synchronization.
+
+### Endpoint Details
+- **Model ID**: `fal-ai/kling-video/v1/pro/ai-avatar`
+- **Base URL**: `https://fal.run/fal-ai/kling-video/v1/pro/ai-avatar`
+- **Type**: Image-to-Video (Avatar Generation)
+- **Commercial Use**: Supported
+- **Pricing**: $0.115 per second of video generated
+
+### Request Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `image_url` | string | Yes | The URL of the image to use as your avatar |
+| `audio_url` | string | Yes | The URL of the audio file |
+| `prompt` | string | No | Custom prompt for video generation (default: ".") |
+
+### Supported File Formats
+
+Same as Standard:
+- **Image**: JPG, JPEG, PNG, WebP, GIF, AVIF (max 10MB)
+- **Audio**: MP3, OGG, WAV, M4A, AAC (max 50MB)
+
+### Response Format
+
+```json
+{
+  "video": {
+    "url": "https://v3.fal.media/files/.../output.mp4"
+  },
+  "duration": 5.0
+}
+```
+
+### Basic Usage
+
+```javascript
+import { fal } from "@fal-ai/client";
+
+const result = await fal.subscribe(
+  "fal-ai/kling-video/v1/pro/ai-avatar",
+  {
+    input: {
+      image_url: "https://example.com/avatar.jpg",
+      audio_url: "https://example.com/speech.mp3"
+    }
+  }
+);
+```
+
+### Key Differences from Standard
+- Higher quality output with enhanced realism
+- Better lip-sync accuracy
+- More natural facial expressions and movements
+- Premium pricing ($0.115/second)
+
+---
+
 ## Common Patterns
 
 ### SDK Installation
@@ -344,10 +502,27 @@ const { request_id } = await fal.queue.submit(modelId, {
 
 ## Integration TODO
 
+### Core Setup
 - [ ] Add fal.ai client dependency
 - [ ] Set up FAL_KEY in environment/Electron secure storage
-- [ ] Create UI components for each endpoint type
+
+### UI Implementation
+- [ ] Create AI Video Generation dialog with tab structure
+- [ ] Implement Text tab (text-to-video)
+- [ ] Implement Image tab (video-to-video, reference-to-video, image-to-video)
+- [ ] Implement Avatar tab (ai-avatar standard/pro)
+- [ ] Implement Upscale tab (video enhancement)
+
+### Avatar Tab Components
+- [ ] Character Image upload (Required) - JPG, PNG, WebP (max 10MB)
+- [ ] Audio File upload (For Kling Avatar models) - MP3, WAV, AAC (max 50MB)
+- [ ] Source Video upload (For WAN Animate/Replace) - MP4, MOV, AVI (max 100MB)
+- [ ] Additional Prompt input (optional)
+- [ ] Standard/Pro quality selector
+
+### Backend Integration
 - [ ] Implement queue-based progress tracking
-- [ ] Handle video upload via fal.storage
+- [ ] Handle file upload via fal.storage
 - [ ] Add result video to timeline
+- [ ] Error handling and retry logic
 
