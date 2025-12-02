@@ -799,12 +799,13 @@ export function setupFFmpegIPC(): void {
 
               return; // Exit early - don't continue to other mode validations
             } catch (error: any) {
-              // Mode 1.5 failed - fall back to Mode 3 (frame rendering)
+              // Mode 1.5 failed - reject with the error
+              // There is no Mode 3 fallback anymore (frame-based rendering was removed)
               console.error(
                 "❌ [MODE 1.5 EXPORT] ============================================"
               );
               console.error(
-                "❌ [MODE 1.5 EXPORT] Normalization failed, falling back to Mode 3"
+                "❌ [MODE 1.5 EXPORT] Normalization failed - no fallback available"
               );
               console.error(
                 "❌ [MODE 1.5 EXPORT] Error:",
@@ -814,12 +815,13 @@ export function setupFFmpegIPC(): void {
                 "❌ [MODE 1.5 EXPORT] ============================================"
               );
 
-              // Don't reject - fall through to Mode 3 validation below
-              // This ensures exports don't fail if normalization has issues
+              // Reject with the error - Mode 1.5 is required for trimmed multi-videos
+              reject(error);
+              return;
             }
           }
 
-          // Continue with existing mode validations (Mode 1, 2, 3) below...
+          // Continue with existing mode validations (Mode 1, 2) below...
           // Verify input based on processing mode
           if (effectiveUseDirectCopy) {
             // MODE 1: Direct copy - validate video sources
@@ -908,13 +910,12 @@ export function setupFFmpegIPC(): void {
           // Note: Mode 3 (frame-based) validation has been removed.
           // All exports now use Mode 1, 1.5, or 2 which don't require frame files.
 
-          // Build args now if we deferred for Mode 1.5 or haven't built yet
+          // Build args if we haven't built yet (Mode 1 or Mode 2)
+          // Note: Mode 1.5 returns early on success and rejects on failure,
+          // so this should only be reached for non-Mode-1.5 exports
           if (!args) {
             console.log(
-              "⚠️ [FFMPEG HANDLER] args is null - calling buildArgs() now"
-            );
-            console.log(
-              `⚠️ [FFMPEG HANDLER] This should NOT happen if Mode 1.5 succeeded`
+              "⚠️ [FFMPEG HANDLER] args is null - calling buildArgs() for Mode 1/2"
             );
             args = buildArgs();
           }

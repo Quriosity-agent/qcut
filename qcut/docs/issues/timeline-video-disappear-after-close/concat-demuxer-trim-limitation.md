@@ -432,18 +432,34 @@ All scenarios should work correctly by routing trimmed multi-video exports to Mo
 
 ### FIXED (2025-12-02)
 
-Fix Applied: Force Mode 1.5 when trim is present and unblock Mode 1.5 pipeline.
+**Fix Applied**: Force Mode 1.5 when trim is present, unblock Mode 1.5 pipeline, and fix error handling.
 
-Files modified (all required):
+**Files modified**:
 
-- apps/web/src/lib/export-engine-cli.ts
-- electron/ffmpeg-handler.ts
+1. `apps/web/src/lib/export-engine-cli.ts`
+   - Added check: `useDirectCopy = false` when `optimizationStrategy === "video-normalization"`
+   - Always supplies `videoSources` for Mode 1.5
 
-How It Works:
-1. Renderer sets useDirectCopy = false when optimizationStrategy is "video-normalization".
-2. Renderer always supplies videoSources for Mode 1.5.
-3. Electron disables direct copy when trimmed multi-videos are present and defers buildFFmpegArgs for Mode 1.5, preventing the early throw.
-4. Mode 1.5 runs, normalizes, and concatenates while respecting trims.
+2. `electron/ffmpeg-handler.ts`
+   - Added `hasTrimmedVideos` detection (lines 375-397)
+   - Added `!hasTrimmedVideos` to `effectiveUseDirectCopy` calculation (line 397)
+   - Deferred `buildFFmpegArgs` for Mode 1.5 (lines 443-446)
+   - **Fixed Mode 1.5 error handling** (lines 801-821): Now rejects properly instead of falling through to `buildArgs()` which would throw "Invalid export configuration"
+
+**How It Works**:
+1. Renderer sets `useDirectCopy = false` when `optimizationStrategy` is "video-normalization"
+2. Renderer always supplies `videoSources` for Mode 1.5
+3. Electron disables direct copy when trimmed multi-videos are present
+4. Electron defers `buildFFmpegArgs` for Mode 1.5, preventing the early throw
+5. Mode 1.5 runs, normalizes, and concatenates while respecting trims
+6. If Mode 1.5 fails, it properly rejects with an error instead of falling through to invalid fallback path
+
+**Issue from consolev5.md (Fixed)**:
+The error "Invalid export configuration. Expected Mode 1 (direct copy), Mode 1.5 (normalization), or Mode 2 (video with filters), but no valid export mode was selected" occurred because:
+- Mode 1.5 was selected correctly
+- But if Mode 1.5's try block threw an error, it caught it and fell through silently
+- The fallback code then called `buildArgs()` with `effectiveUseDirectCopy=false` and no `useVideoInput`, which matched no valid mode path
+- Fix: Mode 1.5 catch block now calls `reject(error)` instead of falling through
 
 ### Updated Scenario Results
 
