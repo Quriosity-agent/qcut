@@ -372,12 +372,29 @@ export function setupFFmpegIPC(): void {
         );
       }
 
-      // Disable direct copy when stickers are present
+      // Check if any video has trim values (concat demuxer can't handle per-video trimming)
+      const hasTrimmedVideos =
+        options.videoSources &&
+        options.videoSources.length > 1 &&
+        options.videoSources.some(
+          (v) =>
+            (v.trimStart && v.trimStart > 0) || (v.trimEnd && v.trimEnd > 0)
+        );
+
+      if (hasTrimmedVideos) {
+        debugLog(
+          "[FFmpeg] Trimmed videos detected in multi-video mode - will use Mode 1.5 normalization"
+        );
+      }
+
+      // Disable direct copy when stickers, text, or trimmed multi-videos are present
+      // Trimmed multi-videos must go through Mode 1.5 (video-normalization) which handles trim correctly
       const effectiveUseDirectCopy =
         useDirectCopy &&
         !textFilterChain &&
         !stickerFilterChain &&
-        !options.filterChain;
+        !options.filterChain &&
+        !hasTrimmedVideos;
 
       // Validate duration to prevent crashes or excessive resource usage
       const validatedDuration = Math.min(
