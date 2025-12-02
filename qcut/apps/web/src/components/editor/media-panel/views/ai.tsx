@@ -179,6 +179,22 @@ export function AiView() {
   const [avatarImagePreview, setAvatarImagePreview] = useState<string | null>(
     null
   );
+  const [avatarLastFrame, setAvatarLastFrame] = useState<File | null>(null);
+  const [avatarLastFramePreview, setAvatarLastFramePreview] = useState<
+    string | null
+  >(null);
+  // Reference images state (6 slots)
+  const [referenceImages, setReferenceImages] = useState<(File | null)[]>([
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+  ]);
+  const [referenceImagePreviews, setReferenceImagePreviews] = useState<
+    (string | null)[]
+  >([null, null, null, null, null, null]);
   const [audioFile, setAudioFile] = useState<File | null>(null);
   const [audioPreview, setAudioPreview] = useState<string | null>(null);
   const [sourceVideo, setSourceVideo] = useState<File | null>(null);
@@ -2533,32 +2549,86 @@ export function AiView() {
             </TabsContent>
 
             <TabsContent value="avatar" className="space-y-4">
-              {/* Avatar Image Upload */}
-              <FileUpload
-                id="avatar-image-input"
-                label="Input Image (First Frame)"
-                helperText=""
-                fileType="image"
-                acceptedTypes={UPLOAD_CONSTANTS.ALLOWED_AVATAR_IMAGE_TYPES}
-                maxSizeBytes={UPLOAD_CONSTANTS.MAX_IMAGE_SIZE_BYTES}
-                maxSizeLabel={UPLOAD_CONSTANTS.MAX_IMAGE_SIZE_LABEL}
-                formatsLabel={UPLOAD_CONSTANTS.AVATAR_IMAGE_FORMATS_LABEL}
-                file={avatarImage}
-                preview={avatarImagePreview}
-                onFileChange={(file, preview) => {
-                  setAvatarImage(file);
-                  setAvatarImagePreview(preview || null);
-                  if (file) setError(null);
-                }}
-                onError={setError}
-                isCompact={isCompact}
-              />
+              {/* First Frame / Last Frame - Side by side */}
+              <div className="grid grid-cols-2 gap-2">
+                <FileUpload
+                  id="avatar-first-frame-input"
+                  label="First Frame"
+                  helperText=""
+                  fileType="image"
+                  acceptedTypes={UPLOAD_CONSTANTS.ALLOWED_AVATAR_IMAGE_TYPES}
+                  maxSizeBytes={UPLOAD_CONSTANTS.MAX_IMAGE_SIZE_BYTES}
+                  maxSizeLabel={UPLOAD_CONSTANTS.MAX_IMAGE_SIZE_LABEL}
+                  formatsLabel={UPLOAD_CONSTANTS.AVATAR_IMAGE_FORMATS_LABEL}
+                  file={avatarImage}
+                  preview={avatarImagePreview}
+                  onFileChange={(file, preview) => {
+                    setAvatarImage(file);
+                    setAvatarImagePreview(preview || null);
+                    if (file) setError(null);
+                  }}
+                  onError={setError}
+                  isCompact={true}
+                />
+                <FileUpload
+                  id="avatar-last-frame-input"
+                  label="Last Frame"
+                  helperText=""
+                  fileType="image"
+                  acceptedTypes={UPLOAD_CONSTANTS.ALLOWED_AVATAR_IMAGE_TYPES}
+                  maxSizeBytes={UPLOAD_CONSTANTS.MAX_IMAGE_SIZE_BYTES}
+                  maxSizeLabel={UPLOAD_CONSTANTS.MAX_IMAGE_SIZE_LABEL}
+                  formatsLabel={UPLOAD_CONSTANTS.AVATAR_IMAGE_FORMATS_LABEL}
+                  file={avatarLastFrame}
+                  preview={avatarLastFramePreview}
+                  onFileChange={(file, preview) => {
+                    setAvatarLastFrame(file);
+                    setAvatarLastFramePreview(preview || null);
+                    if (file) setError(null);
+                  }}
+                  onError={setError}
+                  isCompact={true}
+                />
+              </div>
 
-              {/* Audio File Upload (for Kling models) */}
+              {/* Reference Images - 6 slots in 3x2 grid */}
+              <div className="space-y-2">
+                <Label className="text-xs">Reference Images</Label>
+                <div className="grid grid-cols-3 gap-2">
+                  {[0, 1, 2, 3, 4, 5].map((index) => (
+                    <FileUpload
+                      key={`reference-${index}`}
+                      id={`avatar-reference-${index}-input`}
+                      label={`Ref ${index + 1}`}
+                      helperText=""
+                      fileType="image"
+                      acceptedTypes={UPLOAD_CONSTANTS.ALLOWED_AVATAR_IMAGE_TYPES}
+                      maxSizeBytes={UPLOAD_CONSTANTS.MAX_IMAGE_SIZE_BYTES}
+                      maxSizeLabel={UPLOAD_CONSTANTS.MAX_IMAGE_SIZE_LABEL}
+                      formatsLabel={UPLOAD_CONSTANTS.AVATAR_IMAGE_FORMATS_LABEL}
+                      file={referenceImages[index]}
+                      preview={referenceImagePreviews[index]}
+                      onFileChange={(file, preview) => {
+                        const newImages = [...referenceImages];
+                        newImages[index] = file;
+                        setReferenceImages(newImages);
+                        const newPreviews = [...referenceImagePreviews];
+                        newPreviews[index] = preview || null;
+                        setReferenceImagePreviews(newPreviews);
+                        if (file) setError(null);
+                      }}
+                      onError={setError}
+                      isCompact={true}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              {/* Audio Input */}
               <FileUpload
                 id="avatar-audio-input"
-                label="Audio File"
-                helperText="For Kling Avatar models"
+                label="Audio Input"
+                helperText=""
                 fileType="audio"
                 acceptedTypes={UPLOAD_CONSTANTS.ALLOWED_AUDIO_TYPES}
                 maxSizeBytes={UPLOAD_CONSTANTS.MAX_AUDIO_SIZE_BYTES}
@@ -2573,11 +2643,11 @@ export function AiView() {
                 isCompact={isCompact}
               />
 
-              {/* Source Video Upload (for WAN animate/replace) */}
+              {/* Source Video Upload */}
               <FileUpload
                 id="avatar-video-input"
                 label="Source Video"
-                helperText="For WAN Animate/Replace"
+                helperText=""
                 fileType="video"
                 acceptedTypes={UPLOAD_CONSTANTS.ALLOWED_VIDEO_TYPES}
                 maxSizeBytes={UPLOAD_CONSTANTS.MAX_VIDEO_SIZE_BYTES}

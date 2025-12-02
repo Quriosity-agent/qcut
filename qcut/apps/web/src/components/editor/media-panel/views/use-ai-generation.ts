@@ -782,17 +782,22 @@ export function useAIGeneration(props: UseAIGenerationProps) {
         }
       }
     } else if (activeTab === "avatar") {
-      if (!avatarImage) {
-        validationError = "Missing avatar image";
-      } else if (selectedModels.length === 0) {
+      if (selectedModels.length === 0) {
         validationError = "Missing models for avatar tab";
       } else {
         // Check model-specific requirements
         for (const modelId of selectedModels) {
-          if (modelId === "wan_animate_replace" && !sourceVideo) {
-            validationError = "WAN model requires source video";
+          // V2V models require source video only
+          if (
+            (modelId === "wan_animate_replace" ||
+              modelId === "kling_o1_v2v_reference" ||
+              modelId === "kling_o1_v2v_edit") &&
+            !sourceVideo
+          ) {
+            validationError = "Video-to-video model requires source video";
             break;
           }
+          // Audio-based avatar models require avatar image + audio
           if (
             (modelId === "kling_avatar_pro" ||
               modelId === "kling_avatar_standard" ||
@@ -800,6 +805,25 @@ export function useAIGeneration(props: UseAIGenerationProps) {
             !audioFile
           ) {
             validationError = "Audio-based avatar model requires audio file";
+            break;
+          }
+          if (
+            (modelId === "kling_avatar_pro" ||
+              modelId === "kling_avatar_standard" ||
+              modelId === "bytedance_omnihuman_v1_5") &&
+            !avatarImage
+          ) {
+            validationError = "Audio-based avatar model requires avatar image";
+            break;
+          }
+          // Reference-to-video model requires reference images (validated separately)
+          if (modelId === "kling_o1_ref2video") {
+            // Reference images are optional enhancement, no validation needed
+            continue;
+          }
+          // WAN Animate/Replace requires avatar image
+          if (modelId === "wan_animate_replace" && !avatarImage) {
+            validationError = "WAN model requires character image";
             break;
           }
         }
@@ -2376,16 +2400,39 @@ export function useAIGeneration(props: UseAIGenerationProps) {
         return Boolean(sourceVideoFile || sourceVideoUrl);
       }
       if (activeTab === "avatar") {
-        if (!avatarImage) return false;
-
         // Check model-specific requirements
         for (const modelId of selectedModels) {
-          if (modelId === "wan_animate_replace" && !sourceVideo) return false;
+          // Models requiring source video (V2V models)
+          if (
+            (modelId === "wan_animate_replace" ||
+              modelId === "kling_o1_v2v_reference" ||
+              modelId === "kling_o1_v2v_edit") &&
+            !sourceVideo
+          )
+            return false;
+
+          // Models requiring audio file
           if (
             (modelId === "kling_avatar_pro" ||
               modelId === "kling_avatar_standard" ||
               modelId === "bytedance_omnihuman_v1_5") &&
             !audioFile
+          )
+            return false;
+
+          // Models requiring reference images (check if at least one reference image exists)
+          if (modelId === "kling_o1_ref2video") {
+            // Reference images are handled separately - just need prompt
+            // No specific input required beyond the prompt
+            continue;
+          }
+
+          // For other avatar models, require avatarImage
+          if (
+            modelId !== "kling_o1_v2v_reference" &&
+            modelId !== "kling_o1_v2v_edit" &&
+            modelId !== "kling_o1_ref2video" &&
+            !avatarImage
           )
             return false;
         }

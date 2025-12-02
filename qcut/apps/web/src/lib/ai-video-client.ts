@@ -2344,7 +2344,7 @@ export interface KlingO1V2VRequest {
 export interface KlingO1Ref2VideoRequest {
   model: string;
   prompt: string;
-  image_url: string;
+  image_urls: string[]; // Array of reference image URLs (max 7)
   duration?: 5 | 10;
   aspect_ratio?: "16:9" | "9:16" | "1:1";
   cfg_scale?: number;
@@ -2501,8 +2501,9 @@ export async function generateKlingO1Video(
  * Generate a video from reference images using Kling O1 Reference-to-Video model.
  *
  * Transforms images and elements into consistent video scenes with cinematic motion.
+ * Use @Image1, @Image2, etc. in the prompt to reference the images.
  *
- * @param request - Request parameters including model, prompt, image URL, and optional settings
+ * @param request - Request parameters including model, prompt, image URLs array, and optional settings
  * @returns VideoGenerationResponse with job_id, status, message, and video URL
  * @throws Error if FAL API key missing, model unsupported, or API returns error
  */
@@ -2526,9 +2527,20 @@ export async function generateKlingO1RefVideo(
       throw new Error("Prompt exceeds maximum length of 2500 characters");
     }
 
-    if (!request.image_url) {
+    // Filter out empty/null image URLs
+    const validImageUrls = request.image_urls.filter(
+      (url) => url && url.trim() !== ""
+    );
+
+    if (validImageUrls.length === 0) {
       throw new Error(
-        "Image URL is required for Kling O1 reference-to-video generation"
+        "At least one reference image is required for Kling O1 reference-to-video generation"
+      );
+    }
+
+    if (validImageUrls.length > 7) {
+      throw new Error(
+        "Maximum 7 reference images allowed for Kling O1 reference-to-video"
       );
     }
 
@@ -2546,6 +2558,7 @@ export async function generateKlingO1RefVideo(
 
     console.log("🎬 Starting Kling O1 reference-to-video generation");
     console.log("📝 Model:", request.model);
+    console.log("🖼️ Reference images:", validImageUrls.length);
 
     const duration =
       request.duration ??
@@ -2566,7 +2579,7 @@ export async function generateKlingO1RefVideo(
 
     const payload: Record<string, unknown> = {
       prompt: trimmedPrompt,
-      image_urls: [request.image_url], // API expects array of image URLs
+      image_urls: validImageUrls,
       duration,
       aspect_ratio: aspectRatio,
       cfg_scale: cfgScale,

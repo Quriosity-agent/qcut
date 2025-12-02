@@ -820,7 +820,8 @@ export const AI_MODELS: AIModel[] = [
     price: "0.112", // Per second pricing
     resolution: "1080p",
     max_duration: 10,
-    category: "image", // Keep in Image tab - uses reference images
+    category: "avatar", // Avatar tab - uses reference images
+    requiredInputs: ["referenceImages"],
     endpoints: {
       image_to_video: "fal-ai/kling-video/o1/reference-to-video",
     },
