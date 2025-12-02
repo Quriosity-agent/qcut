@@ -456,12 +456,31 @@ All scenarios should work correctly by routing trimmed multi-video exports to Mo
 
 **Fix Applied**: Option A - Force Mode 1.5 When Videos Have Trim
 
-**File Modified**: `electron/ffmpeg-handler.ts`
+**Two files modified** (both required for complete fix):
 
-**Location**: Lines 375-397
+---
 
-**Changes Made**:
+#### Fix 1: `apps/web/src/lib/export-engine-cli.ts` (Line 1516-1521)
 
+**Problem**: `useDirectCopy` was set to `true` even when `optimizationStrategy` was `"video-normalization"`.
+
+**Change**:
+```typescript
+useDirectCopy: !!(
+  this.exportAnalysis?.canUseDirectCopy &&
+  this.exportAnalysis?.optimizationStrategy !== "video-normalization" &&  // ← NEW
+  !hasTextFilters &&
+  !hasStickerFilters
+), // Disable direct copy when text, stickers, or video-normalization mode
+```
+
+---
+
+#### Fix 2: `electron/ffmpeg-handler.ts` (Lines 375-397)
+
+**Problem**: Even if Mode 1.5 was selected, `buildFFmpegArgs` was called with trimmed videos.
+
+**Change**:
 ```typescript
 // Check if any video has trim values (concat demuxer can't handle per-video trimming)
 const hasTrimmedVideos =
@@ -479,7 +498,6 @@ if (hasTrimmedVideos) {
 }
 
 // Disable direct copy when stickers, text, or trimmed multi-videos are present
-// Trimmed multi-videos must go through Mode 1.5 (video-normalization) which handles trim correctly
 const effectiveUseDirectCopy =
   useDirectCopy &&
   !textFilterChain &&
@@ -488,15 +506,17 @@ const effectiveUseDirectCopy =
   !hasTrimmedVideos;  // ← NEW: Disables direct copy for trimmed multi-videos
 ```
 
+---
+
 **How It Works**:
-1. Detects if there are multiple videos with trim values
-2. If so, sets `effectiveUseDirectCopy = false`
-3. This causes `buildFFmpegArgs` to skip the concat demuxer path that throws the error
+1. `export-engine-cli.ts` checks if `optimizationStrategy === "video-normalization"` and sets `useDirectCopy = false`
+2. `ffmpeg-handler.ts` (backup check) also detects trimmed videos and disables direct copy
+3. With `useDirectCopy = false`, `buildFFmpegArgs` skips the concat demuxer path
 4. The export continues to the Mode 1.5 async block which handles trimming correctly via `normalizeVideo()`
 
 **Expected Console Output After Fix**:
 ```
-[FFmpeg] Trimmed videos detected in multi-video mode - will use Mode 1.5 normalization
+   - Direct copy mode: DISABLED   ← Previously showed ENABLED
 ⚡ [MODE 1.5 EXPORT] Mode 1.5: Video Normalization with Padding
 ⚡ [MODE 1.5 NORMALIZE] Trim start: 0s
 ⚡ [MODE 1.5 NORMALIZE] Trim end: 25.316667s

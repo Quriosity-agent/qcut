@@ -1515,9 +1515,10 @@ export class CLIExportEngine extends ExportEngine {
       stickerSources, // ADD THIS
       useDirectCopy: !!(
         this.exportAnalysis?.canUseDirectCopy &&
+        this.exportAnalysis?.optimizationStrategy !== "video-normalization" &&
         !hasTextFilters &&
         !hasStickerFilters
-      ), // Disable direct copy when text or stickers present
+      ), // Disable direct copy when text, stickers, or video-normalization mode
       videoSources: videoSources.length > 0 ? videoSources : undefined,
       // Mode 2: Direct video input with filters
       useVideoInput: !!videoInput,
