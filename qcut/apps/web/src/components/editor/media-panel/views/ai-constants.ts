@@ -782,7 +782,7 @@ export const AI_MODELS: AIModel[] = [
     price: "0.112", // Per second pricing
     resolution: "1080p",
     max_duration: 10,
-    category: "image",
+    category: "avatar", // Avatar tab for video-to-video models
     requiredInputs: ["sourceVideo"],
     endpoints: {
       image_to_video: "fal-ai/kling-video/o1/video-to-video/reference",
@@ -802,7 +802,7 @@ export const AI_MODELS: AIModel[] = [
     price: "0.168", // Per second pricing
     resolution: "1080p",
     max_duration: 10,
-    category: "image",
+    category: "avatar", // Avatar tab for video-to-video models
     requiredInputs: ["sourceVideo"],
     endpoints: {
       image_to_video: "fal-ai/kling-video/o1/video-to-video/edit",
@@ -820,7 +820,7 @@ export const AI_MODELS: AIModel[] = [
     price: "0.112", // Per second pricing
     resolution: "1080p",
     max_duration: 10,
-    category: "image",
+    category: "image", // Keep in Image tab - uses reference images
     endpoints: {
       image_to_video: "fal-ai/kling-video/o1/reference-to-video",
     },
@@ -841,7 +841,7 @@ export const AI_MODELS: AIModel[] = [
     price: "0.112", // Per second pricing
     resolution: "1080p",
     max_duration: 10,
-    category: "image",
+    category: "image", // Keep in Image tab - uses images
     requiredInputs: ["firstFrame"],
     endpoints: {
       image_to_video: "fal-ai/kling-video/o1/image-to-video",
