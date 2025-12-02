@@ -2536,8 +2536,8 @@ export function AiView() {
               {/* Avatar Image Upload */}
               <FileUpload
                 id="avatar-image-input"
-                label="Character Image"
-                helperText="Required"
+                label="Input Image (First Frame)"
+                helperText=""
                 fileType="image"
                 acceptedTypes={UPLOAD_CONSTANTS.ALLOWED_AVATAR_IMAGE_TYPES}
                 maxSizeBytes={UPLOAD_CONSTANTS.MAX_IMAGE_SIZE_BYTES}
