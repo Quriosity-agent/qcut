@@ -161,6 +161,7 @@ export interface UseAIGenerationProps {
   avatarImage?: File | null;
   audioFile?: File | null;
   sourceVideo?: File | null;
+  referenceImages?: (File | null)[];
   onGeneratedVideoChange?: (video: GeneratedVideo | null) => void;
   // Hailuo text-to-video options
   hailuoT2VDuration?: 6 | 10;

@@ -502,6 +502,7 @@ export function AiView() {
     sourceVideo,
     sourceVideoFile,
     sourceVideoUrl,
+    referenceImages,
     hailuoT2VDuration,
     t2vAspectRatio,
     t2vResolution,

@@ -104,6 +104,7 @@ export function useAIGeneration(props: UseAIGenerationProps) {
     avatarImage,
     audioFile,
     sourceVideo,
+    referenceImages,
     hailuoT2VDuration = 6,
     t2vAspectRatio = "16:9",
     t2vResolution = "1080p",
@@ -816,11 +817,14 @@ export function useAIGeneration(props: UseAIGenerationProps) {
             validationError = "Audio-based avatar model requires avatar image";
             break;
           }
-          // Reference-to-video model requires avatar/reference image
-          if (modelId === "kling_o1_ref2video" && !avatarImage) {
-            validationError =
-              "Kling O1 Reference-to-Video requires a reference image";
-            break;
+          // Reference-to-video model requires at least one reference image
+          if (modelId === "kling_o1_ref2video") {
+            const hasReferenceImage = referenceImages?.some((img) => img !== null);
+            if (!hasReferenceImage) {
+              validationError =
+                "Kling O1 Reference-to-Video requires at least one reference image";
+              break;
+            }
           }
           // WAN Animate/Replace requires avatar image
           if (modelId === "wan_animate_replace" && !avatarImage) {
@@ -1578,16 +1582,30 @@ export function useAIGeneration(props: UseAIGenerationProps) {
           else if (modelId === "topaz_video_upscale") {
             throw new Error("Topaz Video Upscale not yet implemented");
           }
-        } else if (activeTab === "avatar" && avatarImage) {
-          console.log(`  🎭 Calling generateAvatarVideo for ${modelId}...`);
-          response = await generateAvatarVideo({
-            model: modelId,
-            characterImage: avatarImage,
-            audioFile: audioFile || undefined,
-            sourceVideo: sourceVideo || undefined,
-            prompt: prompt.trim() || undefined,
-          });
-          console.log("  ✅ generateAvatarVideo returned:", response);
+        } else if (activeTab === "avatar") {
+          // Special handling for kling_o1_ref2video which uses referenceImages
+          if (modelId === "kling_o1_ref2video") {
+            const firstRefImage = referenceImages?.find((img) => img !== null);
+            if (firstRefImage) {
+              console.log(`  🎭 Calling generateAvatarVideo for ${modelId} with reference image...`);
+              response = await generateAvatarVideo({
+                model: modelId,
+                characterImage: firstRefImage,
+                prompt: prompt.trim() || undefined,
+              });
+              console.log("  ✅ generateAvatarVideo returned:", response);
+            }
+          } else if (avatarImage) {
+            console.log(`  🎭 Calling generateAvatarVideo for ${modelId}...`);
+            response = await generateAvatarVideo({
+              model: modelId,
+              characterImage: avatarImage,
+              audioFile: audioFile || undefined,
+              sourceVideo: sourceVideo || undefined,
+              prompt: prompt.trim() || undefined,
+            });
+            console.log("  ✅ generateAvatarVideo returned:", response);
+          }
         }
 
         console.log("step 5a: post-API response analysis");
@@ -2137,6 +2155,7 @@ export function useAIGeneration(props: UseAIGenerationProps) {
     sourceVideo,
     sourceVideoFile,
     sourceVideoUrl,
+    referenceImages,
     selectedModels,
     activeProject,
     addMediaItem,

@@ -447,6 +447,111 @@ if (modelId === "kling_o1_ref2video" && !avatarImage) {
 - [x] Documentation updated to reflect correct model placement
 - [x] **Validation logic fixed** to require `avatarImage` for `kling_o1_ref2video`
 
+### 修复验证 (Fix Verified) - 第一阶段
+
+验证日志显示验证逻辑生效：
+```
+❌ Validation failed!
+  - Reason: Kling O1 Reference-to-Video requires a reference image
+```
+
+但发现新问题：用户上传到 "Reference Images" (Ref 1, Ref 2...) 区域，但代码检查的是 `avatarImage`（不同的状态变量）。
+
+---
+
+## Bug Fix: 第二阶段 - referenceImages 状态未传递 (2025-12-03) ✅ RESOLVED
+
+### 问题发现
+用户截图显示已上传 Reference Images (Ref 1, Ref 2)，但验证仍然失败。
+
+原因分析：
+- UI 有两个独立的图片上传区域：
+  1. `avatarImage` - 单个角色图片
+  2. `referenceImages` - 6个参考图片槽位 (Ref 1-6)
+- `kling_o1_ref2video` 配置为 `requiredInputs: ["referenceImages"]`
+- 但 `referenceImages` 状态**没有传递**到 `useAIGeneration` hook
+
+### 修复内容
+
+**修复 1: 添加 referenceImages 到 props 接口** (`ai-types.ts`)
+```typescript
+// Avatar-specific props
+avatarImage?: File | null;
+audioFile?: File | null;
+sourceVideo?: File | null;
+referenceImages?: (File | null)[];  // 新增
+```
+
+**修复 2: 传递 referenceImages 到 hook** (`ai.tsx`)
+```typescript
+const generation = useAIGeneration({
+  // ...
+  referenceImages,  // 新增
+  // ...
+});
+```
+
+**修复 3: 接收 referenceImages** (`use-ai-generation.ts`)
+```typescript
+// Avatar-specific props
+avatarImage,
+audioFile,
+sourceVideo,
+referenceImages,  // 新增
+```
+
+**修复 4: 更新验证逻辑** (`use-ai-generation.ts`)
+```typescript
+// Reference-to-video model requires at least one reference image
+if (modelId === "kling_o1_ref2video") {
+  const hasReferenceImage = referenceImages?.some((img) => img !== null);
+  if (!hasReferenceImage) {
+    validationError =
+      "Kling O1 Reference-to-Video requires at least one reference image";
+    break;
+  }
+}
+```
+
+**修复 5: 更新 API 调用逻辑** (`use-ai-generation.ts`)
+```typescript
+} else if (activeTab === "avatar") {
+  // Special handling for kling_o1_ref2video which uses referenceImages
+  if (modelId === "kling_o1_ref2video") {
+    const firstRefImage = referenceImages?.find((img) => img !== null);
+    if (firstRefImage) {
+      response = await generateAvatarVideo({
+        model: modelId,
+        characterImage: firstRefImage,
+        prompt: prompt.trim() || undefined,
+      });
+    }
+  } else if (avatarImage) {
+    // Other avatar models use avatarImage
+    response = await generateAvatarVideo({...});
+  }
+}
+```
+
+### 文件修改 (Files Modified)
+- `qcut/apps/web/src/components/editor/media-panel/views/ai-types.ts`
+  - 添加 `referenceImages` 到 `UseAIGenerationProps` 接口
+- `qcut/apps/web/src/components/editor/media-panel/views/ai.tsx`
+  - 传递 `referenceImages` 到 `useAIGeneration` hook
+- `qcut/apps/web/src/components/editor/media-panel/views/use-ai-generation.ts`
+  - 接收 `referenceImages` prop
+  - 更新验证逻辑检查 `referenceImages`
+  - 更新 API 调用使用 `referenceImages[0]` 作为 characterImage
+  - 添加 `referenceImages` 到依赖数组
+
+### 用户操作指南 (User Guide)
+使用 Kling O1 Reference-to-Video 模型的步骤：
+1. 进入 Avatar 标签页
+2. **上传至少一张参考图片到 "Reference Images" 区域** (Ref 1, Ref 2, ... Ref 6)
+3. 输入 prompt（可选，建议使用 `@Image1`, `@Image2` 语法引用图片）
+4. 选择 `kling_o1_ref2video` 模型
+5. 点击生成
+
 ---
 
 ## Implementation Status
@@ -470,7 +575,9 @@ if (modelId === "kling_o1_ref2video" && !avatarImage) {
 - [x] V2V mode in `AIImageUploadSection`
 - [x] Source video state in Image tab
 - [x] **BUG FIX (2025-12-03)**: `kling_o1_ref2video` handler in `generateAvatarVideo` function
-- [x] **BUG FIX (2025-12-03)**: Validation logic to require `avatarImage` for `kling_o1_ref2video`
+- [x] **BUG FIX (2025-12-03)**: Validation logic to require image for `kling_o1_ref2video`
+- [x] **BUG FIX (2025-12-03)**: Pass `referenceImages` to `useAIGeneration` hook
+- [x] **BUG FIX (2025-12-03)**: Use `referenceImages` for `kling_o1_ref2video` API calls
 
 ### File References
 - UI Component: `qcut/apps/web/src/components/editor/media-panel/views/ai.tsx`
