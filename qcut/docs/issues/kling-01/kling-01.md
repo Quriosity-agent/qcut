@@ -165,7 +165,7 @@ For reference-to-video generation.
 export interface KlingO1Ref2VideoRequest {
   model: string;
   prompt: string;
-  image_url: string;
+  image_urls: string[]; // Array of reference image URLs (1-7 images)
   duration?: 5 | 10;
   aspect_ratio?: "16:9" | "9:16" | "1:1";
   cfg_scale?: number;
@@ -181,7 +181,7 @@ export async function generateKlingO1RefVideo(
 ```typescript
 {
   prompt: trimmedPrompt,
-  image_urls: [request.image_url], // API expects array
+  image_urls: validImageUrls, // Filtered array (1-7 valid URLs)
   duration,
   aspect_ratio,
   cfg_scale,
