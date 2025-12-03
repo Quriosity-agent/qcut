@@ -4,7 +4,6 @@
  */
 
 import { handleAIServiceError, handleNetworkError } from "./error-handler";
-import { falAIClient } from "./fal-ai-client";
 import {
   AI_MODELS,
   ERROR_MESSAGES,
@@ -2888,10 +2887,11 @@ export async function generateAvatarVideo(
         );
       }
 
-      // Upload character image to get a URL (FAL expects URLs, not base64 for this endpoint)
-      console.log("📤 Uploading reference image to FAL...");
-      const imageUrl = await falAIClient.uploadImageToFal(request.characterImage);
-      console.log("✅ Reference image uploaded:", imageUrl);
+      // Convert reference image to base64 data URL (avoids CORS issues in Electron app)
+      // FAL API accepts both base64 data URLs and HTTPS URLs
+      console.log("📤 Converting reference image to base64...");
+      const imageUrl = await fileToDataURL(request.characterImage);
+      console.log("✅ Reference image converted to data URL");
 
       // Build prompt with @Image1 reference if prompt doesn't already contain it
       let enhancedPrompt = request.prompt || "";

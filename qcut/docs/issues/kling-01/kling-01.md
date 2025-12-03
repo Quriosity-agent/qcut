@@ -554,6 +554,87 @@ if (modelId === "kling_o1_ref2video") {
 
 ---
 
+## Bug Fix: 第三阶段 - CORS 错误 (2025-12-03) ✅ RESOLVED
+
+### 问题描述 (Issue Description)
+用户上传 Reference Images 后点击生成，出现 CORS 错误：
+```
+Access to fetch at 'https://fal.run/upload' from origin 'app://.' has been blocked by CORS policy
+```
+
+### 错误日志分析 (Error Log Analysis)
+```
+📤 Uploading reference image to FAL...
+Access to fetch at 'https://fal.run/upload' from origin 'app://.' has been blocked by CORS policy:
+Response to preflight request doesn't pass access control check:
+No 'Access-Control-Allow-Origin' header is present on the requested resource.
+```
+
+关键信息：
+- 应用从 Electron (`app://.` origin) 运行
+- FAL 上传端点 `https://fal.run/upload` 不允许跨域请求
+- 浏览器 `fetch()` 调用被 CORS 策略阻止
+
+### 根本原因 (Root Cause)
+原代码使用 `falAIClient.uploadImageToFal()` 将图片上传到 FAL 存储服务获取 URL。这会触发从 Electron 渲染进程到 `https://fal.run/upload` 的 fetch 请求，被 CORS 策略阻止。
+
+```typescript
+// 原代码 (错误 - 触发 CORS)
+const imageUrl = await falAIClient.uploadImageToFal(request.characterImage);
+```
+
+### 解决方案 (Solution)
+FAL API 接受两种图片格式：
+1. HTTPS URL（需要上传到 FAL 存储）
+2. **Base64 Data URL**（直接嵌入请求中）
+
+使用 `fileToDataURL()` 将图片转换为 base64 Data URL，避免 CORS 问题：
+
+```typescript
+// 修复后的代码 (正确 - 无 CORS 问题)
+const imageUrl = await fileToDataURL(request.characterImage);
+```
+
+### 代码修改 (Code Changes)
+
+**文件**: `qcut/apps/web/src/lib/ai-video-client.ts`
+
+```typescript
+// 修复前 (第 2891-2894 行)
+// Upload character image to get a URL (FAL expects URLs, not base64 for this endpoint)
+console.log("📤 Uploading reference image to FAL...");
+const imageUrl = await falAIClient.uploadImageToFal(request.characterImage);
+console.log("✅ Reference image uploaded:", imageUrl);
+
+// 修复后
+// Convert reference image to base64 data URL (avoids CORS issues in Electron app)
+// FAL API accepts both base64 data URLs and HTTPS URLs
+console.log("📤 Converting reference image to base64...");
+const imageUrl = await fileToDataURL(request.characterImage);
+console.log("✅ Reference image converted to data URL");
+```
+
+同时移除了不再需要的 `falAIClient` import：
+```typescript
+// 移除
+import { falAIClient } from "./fal-ai-client";
+```
+
+### 技术细节 (Technical Details)
+- FAL API `reference-to-video` 端点支持 `image_urls` 参数接收 base64 Data URL
+- 这与其他 avatar 模型 (Kling Avatar, ByteDance OmniHuman) 使用相同的方式
+- Base64 编码会增加请求大小约 33%，但避免了 CORS 问题
+- FAL 文档说明：对于大文件，建议使用 HTTPS URL 以获得更好性能；对于小/中等文件，base64 完全可行
+
+### 验证清单 (Verification Checklist)
+- [x] 移除 `falAIClient.uploadImageToFal()` 调用
+- [x] 使用 `fileToDataURL()` 转换图片
+- [x] 移除未使用的 `falAIClient` import
+- [x] Build 成功通过
+- [x] 文档更新完成
+
+---
+
 ## Implementation Status
 
 ### Completed
@@ -578,6 +659,7 @@ if (modelId === "kling_o1_ref2video") {
 - [x] **BUG FIX (2025-12-03)**: Validation logic to require image for `kling_o1_ref2video`
 - [x] **BUG FIX (2025-12-03)**: Pass `referenceImages` to `useAIGeneration` hook
 - [x] **BUG FIX (2025-12-03)**: Use `referenceImages` for `kling_o1_ref2video` API calls
+- [x] **BUG FIX (2025-12-03)**: Fix CORS error by using base64 Data URL instead of FAL storage upload
 
 ### File References
 - UI Component: `qcut/apps/web/src/components/editor/media-panel/views/ai.tsx`
