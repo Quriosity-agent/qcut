@@ -20,6 +20,7 @@ import {
   generateKlingImageVideo,
   generateWAN25ImageVideo,
   generateAvatarVideo,
+  generateKlingO1Video,
   upscaleByteDanceVideo,
   upscaleFlashVSRVideo,
   handleApiError,
@@ -1594,6 +1595,21 @@ export function useAIGeneration(props: UseAIGenerationProps) {
                 prompt: prompt.trim() || undefined,
               });
               console.log("  ✅ generateAvatarVideo returned:", response);
+            }
+          } else if (
+            modelId === "kling_o1_v2v_reference" ||
+            modelId === "kling_o1_v2v_edit"
+          ) {
+            // V2V models require sourceVideo, not avatarImage
+            if (sourceVideo) {
+              console.log(`  🎬 Calling generateKlingO1Video for ${modelId} with source video...`);
+              response = await generateKlingO1Video({
+                model: modelId,
+                prompt: prompt.trim(),
+                sourceVideo: sourceVideo,
+                duration: 5, // Default duration
+              });
+              console.log("  ✅ generateKlingO1Video returned:", response);
             }
           } else if (avatarImage) {
             console.log(`  🎭 Calling generateAvatarVideo for ${modelId}...`);
