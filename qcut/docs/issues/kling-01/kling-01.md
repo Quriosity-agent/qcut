@@ -26,12 +26,12 @@ From `ai-constants.ts`, the following Kling models are configured:
 - `kling_v2_5_turbo_i2v` - Kling v2.5 Turbo Pro I2V
 - `kling_o1_v2v_reference` - Kling O1 Video Reference (V2V)
 - `kling_o1_v2v_edit` - Kling O1 Video Edit (V2V)
-- `kling_o1_ref2video` - Kling O1 Reference-to-Video
 - `kling_o1_i2v` - Kling O1 Image-to-Video
 
 **Avatar Tab:**
 - `kling_avatar_pro` - Kling Avatar Pro
 - `kling_avatar_standard` - Kling Avatar Standard
+- `kling_o1_ref2video` - Kling O1 Reference-to-Video (uses reference images)
 
 ---
 
@@ -91,7 +91,8 @@ From `ai-constants.ts`, the following Kling models are configured:
   price: "0.112",
   resolution: "1080p",
   max_duration: 10,
-  category: "image",
+  category: "avatar", // Avatar tab - uses reference images
+  requiredInputs: ["referenceImages"],
   endpoints: {
     image_to_video: "fal-ai/kling-video/o1/reference-to-video",
   },
@@ -340,7 +341,7 @@ export const UPLOAD_CONSTANTS = {
 
 ---
 
-## Bug Fix: kling_o1_ref2video Generation Failed (2025-12-03)
+## Bug Fix: kling_o1_ref2video Generation Failed (2025-12-03) ✅ RESOLVED
 
 ### 问题描述 (Issue Description)
 用户在 Avatar 标签页选择 `kling_o1_ref2video` 模型后点击生成，返回 `undefined` 响应，生成失败。
@@ -354,9 +355,15 @@ step 5a: post-API response analysis
 ⚠️ Response has neither job_id nor video_url: undefined
 ```
 
-### 根本原因 (Root Cause)
-**`generateAvatarVideo` 函数缺少 `kling_o1_ref2video` 模型的处理逻辑**
+关键线索：
+```
+hasSelectedImage: false
+imageFile: null
+```
 
+### 根本原因 (Root Cause) - 两个问题
+
+**问题 1: `generateAvatarVideo` 函数缺少处理逻辑**
 1. 模型 `kling_o1_ref2video` 在 `ai-constants.ts` 中配置为 `category: "avatar"`
 2. 用户从 Avatar 标签页选择该模型时，调用 `generateAvatarVideo` 函数
 3. 但该函数只处理以下模型：
@@ -364,18 +371,32 @@ step 5a: post-API response analysis
    - `kling_avatar_pro` / `kling_avatar_standard`
    - `bytedance_omnihuman_v1_5`
 4. `kling_o1_ref2video` 没有对应处理逻辑，进入 `else` 分支抛出 `Error: Unsupported avatar model`
-5. 错误被外层 `catch` 捕获后静默返回 `undefined`
 
-### 修复方案 (Fix Applied)
-在 `ai-video-client.ts` 的 `generateAvatarVideo` 函数中添加 `kling_o1_ref2video` 处理：
+**问题 2: 验证逻辑跳过了图片检查** ⚠️
+```typescript
+// 原代码 (错误)
+if (modelId === "kling_o1_ref2video") {
+  // Reference images are optional enhancement, no validation needed
+  continue;  // 这里跳过了验证！
+}
+```
+验证代码错误地认为 "reference images are optional"，导致没有检查 `avatarImage`。
 
+由于 `avatarImage` 为 `null`，API 调用条件 `activeTab === "avatar" && avatarImage` 为 `false`，导致 `generateAvatarVideo` 从未被调用，`response` 保持 `undefined`。
+
+### 修复方案 (Fixes Applied) ✅
+
+**修复 1: 添加 API 处理逻辑** (`ai-video-client.ts`)
 ```typescript
 } else if (request.model === "kling_o1_ref2video") {
   // Kling O1 Reference-to-Video: transforms reference images into video scenes
+  // Uses the image_to_video endpoint with image_urls array and prompt
   endpoint = modelConfig.endpoints.image_to_video || "";
 
   // Upload character image to get URL (FAL expects URLs for this endpoint)
+  console.log("📤 Uploading reference image to FAL...");
   const imageUrl = await falAIClient.uploadImageToFal(request.characterImage);
+  console.log("✅ Reference image uploaded:", imageUrl);
 
   // Build prompt with @Image1 reference syntax
   let enhancedPrompt = request.prompt || "";
@@ -388,19 +409,43 @@ step 5a: post-API response analysis
     image_urls: [imageUrl],
     duration: String(request.duration || modelConfig.default_params?.duration || 5),
     aspect_ratio: modelConfig.default_params?.aspect_ratio || "16:9",
+    ...(modelConfig.default_params?.cfg_scale && { cfg_scale: modelConfig.default_params.cfg_scale }),
+    ...(modelConfig.default_params?.negative_prompt && { negative_prompt: modelConfig.default_params.negative_prompt }),
   };
+}
+```
+
+**修复 2: 添加验证逻辑** (`use-ai-generation.ts`)
+```typescript
+// 修复后的代码
+// Reference-to-video model requires avatar/reference image
+if (modelId === "kling_o1_ref2video" && !avatarImage) {
+  validationError =
+    "Kling O1 Reference-to-Video requires a reference image";
+  break;
 }
 ```
 
 ### 文件修改 (Files Modified)
 - `qcut/apps/web/src/lib/ai-video-client.ts`
-  - 添加 `import { falAIClient } from "./fal-ai-client";`
-  - 添加 `kling_o1_ref2video` 处理分支
+  - 添加 `import { falAIClient } from "./fal-ai-client";` (line 7)
+  - 添加 `kling_o1_ref2video` 处理分支 (lines 2881-2909)
+- `qcut/apps/web/src/components/editor/media-panel/views/use-ai-generation.ts`
+  - 修复验证逻辑，要求 `avatarImage` (lines 819-824)
 
-### 备注 (Notes)
+### 技术细节 (Technical Details)
 - FAL API `reference-to-video` 端点期望 `image_urls` 为 URL 数组，不是 base64
+- 使用 `falAIClient.uploadImageToFal()` 上传图片获取 URL
 - 需要使用 `@Image1` 语法在 prompt 中引用上传的图片
-- 文档中原本标注 `category: "image"`，但实际代码配置为 `category: "avatar"`
+- 自动添加 `cfg_scale` 和 `negative_prompt` 从 default_params
+- 用户必须先上传参考图片才能使用此模型
+
+### 验证清单 (Verification Checklist)
+- [x] Import `falAIClient` added to ai-video-client.ts
+- [x] Handler for `kling_o1_ref2video` added in `generateAvatarVideo`
+- [x] Model category correctly set to `"avatar"` in ai-constants.ts
+- [x] Documentation updated to reflect correct model placement
+- [x] **Validation logic fixed** to require `avatarImage` for `kling_o1_ref2video`
 
 ---
 
@@ -424,6 +469,8 @@ step 5a: post-API response analysis
 - [x] `MODEL_HELPERS.requiresSourceVideo()` helper
 - [x] V2V mode in `AIImageUploadSection`
 - [x] Source video state in Image tab
+- [x] **BUG FIX (2025-12-03)**: `kling_o1_ref2video` handler in `generateAvatarVideo` function
+- [x] **BUG FIX (2025-12-03)**: Validation logic to require `avatarImage` for `kling_o1_ref2video`
 
 ### File References
 - UI Component: `qcut/apps/web/src/components/editor/media-panel/views/ai.tsx`

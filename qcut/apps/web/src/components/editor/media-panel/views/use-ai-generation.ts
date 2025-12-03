@@ -816,10 +816,11 @@ export function useAIGeneration(props: UseAIGenerationProps) {
             validationError = "Audio-based avatar model requires avatar image";
             break;
           }
-          // Reference-to-video model requires reference images (validated separately)
-          if (modelId === "kling_o1_ref2video") {
-            // Reference images are optional enhancement, no validation needed
-            continue;
+          // Reference-to-video model requires avatar/reference image
+          if (modelId === "kling_o1_ref2video" && !avatarImage) {
+            validationError =
+              "Kling O1 Reference-to-Video requires a reference image";
+            break;
           }
           // WAN Animate/Replace requires avatar image
           if (modelId === "wan_animate_replace" && !avatarImage) {
