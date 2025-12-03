@@ -660,6 +660,7 @@ import { falAIClient } from "./fal-ai-client";
 - [x] **BUG FIX (2025-12-03)**: Pass `referenceImages` to `useAIGeneration` hook
 - [x] **BUG FIX (2025-12-03)**: Use `referenceImages` for `kling_o1_ref2video` API calls
 - [x] **BUG FIX (2025-12-03)**: Fix CORS error by using base64 Data URL instead of FAL storage upload
+- [x] **BUG FIX (2025-12-03)**: Fix `canGenerate` validation to check `referenceImages` for `kling_o1_ref2video`
 
 ### File References
 - UI Component: `qcut/apps/web/src/components/editor/media-panel/views/ai.tsx`

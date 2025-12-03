@@ -2442,8 +2442,10 @@ export function useAIGeneration(props: UseAIGenerationProps) {
 
           // Models requiring reference images (check if at least one reference image exists)
           if (modelId === "kling_o1_ref2video") {
-            // Reference images are handled separately - just need prompt
-            // No specific input required beyond the prompt
+            const hasReferenceImage = referenceImages?.some(
+              (img) => img !== null
+            );
+            if (!hasReferenceImage) return false;
             continue;
           }
 
