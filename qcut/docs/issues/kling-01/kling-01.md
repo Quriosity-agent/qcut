@@ -340,6 +340,70 @@ export const UPLOAD_CONSTANTS = {
 
 ---
 
+## Bug Fix: kling_o1_ref2video Generation Failed (2025-12-03)
+
+### 问题描述 (Issue Description)
+用户在 Avatar 标签页选择 `kling_o1_ref2video` 模型后点击生成，返回 `undefined` 响应，生成失败。
+
+### 错误日志分析 (Error Log Analysis)
+```
+step 5: sending generation request for kling_o1_ref2video (avatar tab)
+step 5a: post-API response analysis
+   - response received: false
+   - response is undefined/null
+⚠️ Response has neither job_id nor video_url: undefined
+```
+
+### 根本原因 (Root Cause)
+**`generateAvatarVideo` 函数缺少 `kling_o1_ref2video` 模型的处理逻辑**
+
+1. 模型 `kling_o1_ref2video` 在 `ai-constants.ts` 中配置为 `category: "avatar"`
+2. 用户从 Avatar 标签页选择该模型时，调用 `generateAvatarVideo` 函数
+3. 但该函数只处理以下模型：
+   - `wan_animate_replace`
+   - `kling_avatar_pro` / `kling_avatar_standard`
+   - `bytedance_omnihuman_v1_5`
+4. `kling_o1_ref2video` 没有对应处理逻辑，进入 `else` 分支抛出 `Error: Unsupported avatar model`
+5. 错误被外层 `catch` 捕获后静默返回 `undefined`
+
+### 修复方案 (Fix Applied)
+在 `ai-video-client.ts` 的 `generateAvatarVideo` 函数中添加 `kling_o1_ref2video` 处理：
+
+```typescript
+} else if (request.model === "kling_o1_ref2video") {
+  // Kling O1 Reference-to-Video: transforms reference images into video scenes
+  endpoint = modelConfig.endpoints.image_to_video || "";
+
+  // Upload character image to get URL (FAL expects URLs for this endpoint)
+  const imageUrl = await falAIClient.uploadImageToFal(request.characterImage);
+
+  // Build prompt with @Image1 reference syntax
+  let enhancedPrompt = request.prompt || "";
+  if (!enhancedPrompt.includes("@Image")) {
+    enhancedPrompt = `Use @Image1 as the reference. ${enhancedPrompt}`.trim();
+  }
+
+  payload = {
+    prompt: enhancedPrompt,
+    image_urls: [imageUrl],
+    duration: String(request.duration || modelConfig.default_params?.duration || 5),
+    aspect_ratio: modelConfig.default_params?.aspect_ratio || "16:9",
+  };
+}
+```
+
+### 文件修改 (Files Modified)
+- `qcut/apps/web/src/lib/ai-video-client.ts`
+  - 添加 `import { falAIClient } from "./fal-ai-client";`
+  - 添加 `kling_o1_ref2video` 处理分支
+
+### 备注 (Notes)
+- FAL API `reference-to-video` 端点期望 `image_urls` 为 URL 数组，不是 base64
+- 需要使用 `@Image1` 语法在 prompt 中引用上传的图片
+- 文档中原本标注 `category: "image"`，但实际代码配置为 `category: "avatar"`
+
+---
+
 ## Implementation Status
 
 ### Completed

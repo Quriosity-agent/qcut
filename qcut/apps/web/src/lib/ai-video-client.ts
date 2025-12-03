@@ -4,6 +4,7 @@
  */
 
 import { handleAIServiceError, handleNetworkError } from "./error-handler";
+import { falAIClient } from "./fal-ai-client";
 import {
   AI_MODELS,
   ERROR_MESSAGES,
@@ -2876,6 +2877,35 @@ export async function generateAvatarVideo(
         image_url: characterImageUrl,
         audio_url: audioUrl,
         ...(request.resolution && { resolution: request.resolution }), // Override default if provided
+      };
+    } else if (request.model === "kling_o1_ref2video") {
+      // Kling O1 Reference-to-Video: transforms reference images into video scenes
+      // Uses the image_to_video endpoint with image_urls array and prompt
+      endpoint = modelConfig.endpoints.image_to_video || "";
+      if (!endpoint) {
+        throw new Error(
+          `Model ${request.model} does not have a valid endpoint`
+        );
+      }
+
+      // Upload character image to get a URL (FAL expects URLs, not base64 for this endpoint)
+      console.log("📤 Uploading reference image to FAL...");
+      const imageUrl = await falAIClient.uploadImageToFal(request.characterImage);
+      console.log("✅ Reference image uploaded:", imageUrl);
+
+      // Build prompt with @Image1 reference if prompt doesn't already contain it
+      let enhancedPrompt = request.prompt || "";
+      if (!enhancedPrompt.includes("@Image")) {
+        enhancedPrompt = `Use @Image1 as the reference. ${enhancedPrompt}`.trim();
+      }
+
+      payload = {
+        prompt: enhancedPrompt,
+        image_urls: [imageUrl],
+        duration: String(request.duration || modelConfig.default_params?.duration || 5),
+        aspect_ratio: modelConfig.default_params?.aspect_ratio || "16:9",
+        ...(modelConfig.default_params?.cfg_scale && { cfg_scale: modelConfig.default_params.cfg_scale }),
+        ...(modelConfig.default_params?.negative_prompt && { negative_prompt: modelConfig.default_params.negative_prompt }),
       };
     } else {
       throw new Error(`Unsupported avatar model: ${request.model}`);
