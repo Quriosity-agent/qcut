@@ -473,6 +473,98 @@ app.whenReady().then(() => {
     }
   });
 
+  // FAL AI video upload handler (bypasses CORS in Electron)
+  // This allows uploading videos to FAL storage from the renderer process
+  // without CORS restrictions that would block direct browser fetch calls
+  // Uses FAL's two-step upload process: initiate -> upload to signed URL
+  ipcMain.handle(
+    "fal:upload-video",
+    async (
+      _event: IpcMainInvokeEvent,
+      videoData: Uint8Array,
+      filename: string,
+      apiKey: string
+    ): Promise<{ success: boolean; url?: string; error?: string }> => {
+      try {
+        logger.info(`[FAL Upload] Starting video upload: ${filename}`);
+        logger.info(`[FAL Upload] File size: ${videoData.length} bytes`);
+
+        // Step 1: Initiate upload to get signed URL
+        // FAL uses a two-step process: first get a signed upload URL, then PUT the file
+        const initiateUrl =
+          "https://rest.alpha.fal.ai/storage/upload/initiate?storage_type=fal-cdn-v3";
+
+        logger.info(`[FAL Upload] Step 1: Initiating upload...`);
+        const initResponse = await fetch(initiateUrl, {
+          method: "POST",
+          headers: {
+            Authorization: `Key ${apiKey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            file_name: filename,
+            content_type: "video/mp4",
+          }),
+        });
+
+        if (!initResponse.ok) {
+          const errorText = await initResponse.text();
+          logger.error(
+            `[FAL Upload] Initiate failed: ${initResponse.status} - ${errorText}`
+          );
+          return {
+            success: false,
+            error: `Upload initiate failed: ${initResponse.status} - ${errorText}`,
+          };
+        }
+
+        const initData = (await initResponse.json()) as {
+          upload_url?: string;
+          file_url?: string;
+        };
+        const { upload_url, file_url } = initData;
+
+        if (!upload_url || !file_url) {
+          logger.error(
+            `[FAL Upload] Missing URLs in response: ${JSON.stringify(initData)}`
+          );
+          return {
+            success: false,
+            error: "FAL API did not return upload URLs",
+          };
+        }
+
+        logger.info(`[FAL Upload] Step 2: Uploading to signed URL...`);
+
+        // Step 2: Upload file to the signed URL
+        const uploadResponse = await fetch(upload_url, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "video/mp4",
+          },
+          body: Buffer.from(videoData),
+        });
+
+        if (!uploadResponse.ok) {
+          const errorText = await uploadResponse.text();
+          logger.error(
+            `[FAL Upload] Upload failed: ${uploadResponse.status} - ${errorText}`
+          );
+          return {
+            success: false,
+            error: `Upload failed: ${uploadResponse.status} - ${errorText}`,
+          };
+        }
+
+        logger.info(`[FAL Upload] Success! File URL: ${file_url}`);
+        return { success: true, url: file_url };
+      } catch (error: any) {
+        logger.error(`[FAL Upload] Error: ${error.message}`);
+        return { success: false, error: error.message };
+      }
+    }
+  );
+
   // File operation IPC handlers
   ipcMain.handle(
     "open-file-dialog",

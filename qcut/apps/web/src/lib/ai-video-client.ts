@@ -2398,10 +2398,66 @@ export async function generateKlingO1Video(
     console.log("📝 Model:", request.model);
     console.log("📝 Prompt:", trimmedPrompt.substring(0, 100) + "...");
 
-    // Convert source video to base64 data URL
-    console.log("📤 Converting source video to base64...");
-    const videoUrl = await fileToDataURL(request.sourceVideo);
-    console.log("✅ Video converted to data URL");
+    // FAL API video-to-video endpoints require HTTPS URLs (not base64 data URLs)
+    // Use Electron IPC to upload video to FAL storage to bypass CORS restrictions
+    let videoUrl: string;
+
+    // Debug: Check Electron IPC availability
+    console.log("🔍 [V2V Debug] Checking Electron IPC availability:");
+    console.log("  - window.electronAPI exists:", !!window.electronAPI);
+    console.log("  - window.electronAPI?.fal exists:", !!window.electronAPI?.fal);
+    console.log(
+      "  - window.electronAPI?.fal?.uploadVideo exists:",
+      !!window.electronAPI?.fal?.uploadVideo
+    );
+    console.log("  - window.electronAPI?.isElectron:", window.electronAPI?.isElectron);
+
+    if (window.electronAPI?.fal?.uploadVideo) {
+      // Electron environment: Use IPC to upload video (bypasses CORS)
+      console.log("✅ [V2V] Using Electron IPC for video upload (bypasses CORS)");
+      console.log("📤 Uploading source video to FAL via Electron IPC...");
+      console.log("  - File name:", request.sourceVideo.name);
+      console.log("  - File size:", request.sourceVideo.size, "bytes");
+      console.log("  - File type:", request.sourceVideo.type);
+
+      const videoBuffer = await request.sourceVideo.arrayBuffer();
+      console.log("  - ArrayBuffer size:", videoBuffer.byteLength, "bytes");
+
+      const uploadResult = await window.electronAPI.fal.uploadVideo(
+        new Uint8Array(videoBuffer),
+        request.sourceVideo.name,
+        falApiKey
+      );
+
+      console.log("📥 [V2V] Upload result:", {
+        success: uploadResult.success,
+        hasUrl: !!uploadResult.url,
+        error: uploadResult.error,
+      });
+
+      if (!uploadResult.success || !uploadResult.url) {
+        throw new Error(
+          `Failed to upload video to FAL: ${uploadResult.error || "Unknown error"}`
+        );
+      }
+
+      videoUrl = uploadResult.url;
+      console.log("✅ Video uploaded to FAL:", videoUrl);
+    } else {
+      // Browser environment fallback: Try base64 (may fail with 422 error)
+      console.warn(
+        "⚠️ [V2V] Electron IPC not available! Falling back to base64."
+      );
+      console.warn(
+        "   This will likely fail with HTTP 422 because FAL API requires HTTPS URLs for video-to-video."
+      );
+      console.warn(
+        "   To fix: Rebuild the Electron app to include the fal:upload-video IPC handler."
+      );
+      console.log("📤 Converting source video to base64...");
+      videoUrl = await fileToDataURL(request.sourceVideo);
+      console.log("✅ Video converted to data URL (length:", videoUrl.length, "chars)");
+    }
 
     const duration =
       request.duration ??
@@ -2427,7 +2483,9 @@ export async function generateKlingO1Video(
     console.log(`🎬 Generating video with: ${endpoint}`);
     console.log("📝 Payload:", {
       ...payload,
-      video_url: `[base64 data: ${videoUrl.length} chars]`,
+      video_url: videoUrl.startsWith("data:")
+        ? `[base64 data: ${videoUrl.length} chars]`
+        : videoUrl,
     });
 
     // Add timeout for large video payloads (3 minutes)
@@ -2462,9 +2520,12 @@ export async function generateKlingO1Video(
           );
         }
 
-        throw new Error(
-          `FAL API error: ${errorData.detail || response.statusText}`
-        );
+        // Properly format error message (avoid [object Object])
+        const errorDetail =
+          typeof errorData.detail === "object"
+            ? JSON.stringify(errorData.detail)
+            : errorData.detail || errorData.message || response.statusText;
+        throw new Error(`FAL API error: ${errorDetail}`);
       }
 
       const result = await response.json();

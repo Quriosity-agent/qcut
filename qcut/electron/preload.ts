@@ -143,6 +143,12 @@ interface GitHubStarsResponse {
   stars: number;
 }
 
+interface FalUploadResult {
+  success: boolean;
+  url?: string;
+  error?: string;
+}
+
 type ThemeSource = "system" | "light" | "dark";
 
 // Main electronAPI interface
@@ -283,6 +289,15 @@ interface ElectronAPI {
   // GitHub operations
   github: {
     fetchStars: () => Promise<GitHubStarsResponse>;
+  };
+
+  // FAL AI operations (bypasses CORS in Electron)
+  fal: {
+    uploadVideo: (
+      videoData: Uint8Array,
+      filename: string,
+      apiKey: string
+    ) => Promise<FalUploadResult>;
   };
 
   // Utility functions
@@ -474,6 +489,16 @@ const electronAPI: ElectronAPI = {
       ipcRenderer.invoke("fetch-github-stars"),
   },
 
+  // FAL AI operations (bypasses CORS in Electron)
+  fal: {
+    uploadVideo: (
+      videoData: Uint8Array,
+      filename: string,
+      apiKey: string
+    ): Promise<FalUploadResult> =>
+      ipcRenderer.invoke("fal:upload-video", videoData, filename, apiKey),
+  },
+
   // Utility functions
   isElectron: true,
 };
@@ -498,6 +523,7 @@ export type {
   AudioFile,
   ApiKeyConfig,
   GitHubStarsResponse,
+  FalUploadResult,
   ThemeSource,
 };
 

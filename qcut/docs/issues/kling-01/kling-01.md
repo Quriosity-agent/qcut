@@ -635,6 +635,295 @@ import { falAIClient } from "./fal-ai-client";
 
 ---
 
+## Bug Fix: 第四阶段 - V2V模型422错误 (2025-12-04) ✅ RESOLVED
+
+### 问题描述 (Issue Description)
+用户上传视频并选择 `kling_o1_v2v_edit` 模型生成时，FAL API 返回 HTTP 422 错误：
+```
+Failed to load resource: the server responded with a status of 422 ()
+FAL API error: [object Object]
+```
+
+### 错误日志分析 (Error Log Analysis)
+```
+🎬 Starting Kling O1 video-to-video generation
+📝 Model: kling_o1_v2v_edit
+📝 Prompt: change raining into summer...
+📤 Converting source video to base64...
+✅ Video converted to data URL
+🎬 Generating video with: fal-ai/kling-video/o1/video-to-video/edit
+📝 Payload: Object
+Failed to load resource: the server responded with a status of 422 ()
+FAL API error: [object Object]
+```
+
+关键信息：
+- HTTP 422 状态码 = "Unprocessable Entity"
+- 视频被转换为 base64 data URL
+- FAL API 拒绝了请求
+
+### 根本原因 (Root Cause)
+
+**FAL API `video-to-video` 端点不支持 base64 Data URL 作为视频输入**
+
+根据 FAL API 文档：
+> `video_url` (string): "Reference video URL. Only .mp4/.mov formats supported, 3-10 seconds duration, 720-2160px resolution, max 200MB."
+
+该端点要求 **HTTPS URL**，而非 base64 编码的 Data URL。
+
+当前代码实现：
+```typescript
+// ai-video-client.ts:2402-2404 (错误)
+console.log("📤 Converting source video to base64...");
+const videoUrl = await fileToDataURL(request.sourceVideo);
+console.log("✅ Video converted to data URL");
+```
+
+### 为什么不能简单使用 `uploadVideoToFal()`
+
+之前对于 `kling_o1_ref2video` 图片上传遇到了 CORS 问题，解决方案是使用 base64 Data URL。
+但视频不同于图片：
+1. **图片端点** (`reference-to-video`): 支持 base64 Data URL
+2. **视频端点** (`video-to-video`): 只支持 HTTPS URL
+
+直接调用 `fal.run/upload` 会触发 CORS 错误（Electron `app://.` origin）：
+```
+Access to fetch at 'https://fal.run/upload' from origin 'app://.' has been blocked by CORS policy
+```
+
+### 解决方案 (Solution)
+
+**使用 Electron IPC 通道绕过 CORS 限制**
+
+类似于 `fetch-github-stars` 的模式，在 Electron 主进程中处理视频上传：
+
+1. **添加 IPC Handler** (`electron/main.ts`)
+   - 从渲染进程接收视频数据
+   - 在主进程中调用 `fal.run/upload`（无 CORS 限制）
+   - 返回上传后的 HTTPS URL
+
+2. **添加 IPC Invoker** (`preload.ts`)
+   - 暴露 `uploadVideoToFal` 方法给渲染进程
+
+3. **更新 API 客户端** (`ai-video-client.ts`)
+   - 检测 Electron 环境
+   - 使用 IPC 通道上传视频
+   - 将返回的 URL 传递给 FAL API
+
+### 实现计划 (Implementation Plan)
+
+**步骤 1: 添加 IPC Handler**
+```typescript
+// electron/main.ts
+ipcMain.handle(
+  "fal:upload-video",
+  async (event, videoData: Uint8Array, filename: string, apiKey: string) => {
+    const https = require("https");
+    const FormData = require("form-data");
+
+    // 构建 multipart form data
+    const form = new FormData();
+    form.append("file", Buffer.from(videoData), { filename });
+
+    // 上传到 FAL
+    const response = await fetch("https://fal.run/upload", {
+      method: "POST",
+      headers: {
+        Authorization: `Key ${apiKey}`,
+      },
+      body: form,
+    });
+
+    const data = await response.json();
+    return data.url;
+  }
+);
+```
+
+**步骤 2: 更新 Preload**
+```typescript
+// electron/preload.ts
+contextBridge.exposeInMainWorld("electronAPI", {
+  // ...existing methods
+  uploadVideoToFal: (videoData: Uint8Array, filename: string, apiKey: string) =>
+    ipcRenderer.invoke("fal:upload-video", videoData, filename, apiKey),
+});
+```
+
+**步骤 3: 更新 API 客户端**
+```typescript
+// ai-video-client.ts - generateKlingO1Video
+// 检测 Electron 环境并使用 IPC 上传
+let videoUrl: string;
+if (window.electronAPI?.uploadVideoToFal) {
+  const videoBuffer = await request.sourceVideo.arrayBuffer();
+  videoUrl = await window.electronAPI.uploadVideoToFal(
+    new Uint8Array(videoBuffer),
+    request.sourceVideo.name,
+    falApiKey
+  );
+} else {
+  // 浏览器环境 fallback（可能遇到 CORS）
+  videoUrl = await fileToDataURL(request.sourceVideo);
+}
+```
+
+### 附加修复：错误消息格式化
+
+当前错误显示 `[object Object]` 而非实际错误详情：
+```typescript
+// ai-video-client.ts:2465
+throw new Error(
+  `FAL API error: ${errorData.detail || response.statusText}`
+);
+```
+
+需要修复为正确序列化错误对象：
+```typescript
+throw new Error(
+  `FAL API error: ${typeof errorData.detail === 'object' ? JSON.stringify(errorData.detail) : (errorData.detail || errorData.message || response.statusText)}`
+);
+```
+
+### 文件修改清单 (Files to Modify)
+- `qcut/electron/main.ts` - 添加 `fal:upload-video` IPC handler
+- `qcut/electron/preload.ts` - 暴露 `uploadVideoToFal` 方法
+- `qcut/apps/web/src/lib/ai-video-client.ts` - 使用 IPC 上传视频
+- `qcut/apps/web/src/types/electron.d.ts` - 添加 TypeScript 类型声明
+
+### 测试日志分析 (error5.md - 2025-12-04)
+
+用户测试后发现 IPC 通道未被检测到：
+```
+ai-video-client.ts:2425 ⚠️ Electron IPC not available, falling back to base64 (may fail)
+```
+
+**错误消息格式化已修复** - 现在显示实际错误：
+```
+FAL API error: [{"loc":["body"],"msg":"Video URL is invalid","type":"input_value_error",...
+```
+
+**问题根因**: 用户运行的是旧版本 Electron 应用，未包含新的 IPC handler。
+
+**解决方案**: 需要完整重建 Electron 应用：
+```bash
+cd qcut
+bun run build           # 重建 web 应用
+# 然后重建 Electron 打包
+```
+
+### 添加的调试日志
+
+为帮助诊断 IPC 问题，添加了详细的调试日志：
+```typescript
+console.log("🔍 [V2V Debug] Checking Electron IPC availability:");
+console.log("  - window.electronAPI exists:", !!window.electronAPI);
+console.log("  - window.electronAPI?.fal exists:", !!window.electronAPI?.fal);
+console.log("  - window.electronAPI?.fal?.uploadVideo exists:", !!window.electronAPI?.fal?.uploadVideo);
+console.log("  - window.electronAPI?.isElectron:", window.electronAPI?.isElectron);
+```
+
+### 验证清单 (Verification Checklist)
+- [x] IPC handler 已添加到 main.ts
+- [x] Preload 已暴露新方法
+- [x] ai-video-client.ts 已更新使用 IPC
+- [x] TypeScript 类型已声明
+- [x] 错误消息格式化已修复 ✅ (error5.md 确认)
+- [x] Build 成功通过
+- [x] 添加详细调试日志
+- [ ] V2V 模型生成测试通过 (需要重建 Electron 应用后测试)
+
+---
+
+## Bug Fix: 第五阶段 - FAL Upload 404错误 (2025-12-04) 🔄 IN PROGRESS
+
+### 问题描述 (Issue Description)
+Electron 重建后 IPC 通道正常工作，但 FAL 上传返回 **404 Not Found**：
+```
+📥 [V2V] Upload result: {success: false, hasUrl: false, error: 'Upload failed: 404 - 404: Not Found'}
+```
+
+### 错误日志分析 (Error Log Analysis) - error7.md
+```
+🔍 [V2V Debug] Checking Electron IPC availability:
+  - window.electronAPI exists: true
+  - window.electronAPI?.fal exists: true           ← ✅ IPC 现在工作了!
+  - window.electronAPI?.fal?.uploadVideo exists: true
+  - window.electronAPI?.isElectron: true
+✅ [V2V] Using Electron IPC for video upload (bypasses CORS)
+📤 Uploading source video to FAL via Electron IPC...
+  - File name: b9243b0e-af6b-4935-acc1-b661c45a62c6.mp4
+  - File size: 8883644 bytes
+  - ArrayBuffer size: 8883644 bytes
+📥 [V2V] Upload result: {success: false, hasUrl: false, error: 'Upload failed: 404 - 404: Not Found'}
+```
+
+**好消息**: IPC 通道现在正常工作！Electron 重建成功。
+**新问题**: FAL 上传端点返回 404。
+
+### 根本原因 (Root Cause)
+
+**使用了错误的 FAL 上传端点 URL**
+
+当前代码使用:
+```typescript
+const uploadUrl = "https://fal.run/upload";  // ❌ 404 Not Found
+```
+
+根据 FAL JavaScript 客户端源码 ([fal-js/storage.ts](https://github.com/fal-ai/fal-js))，正确的上传流程是**两步走**：
+
+1. **Step 1: 初始化上传** - 获取签名上传 URL
+   ```
+   POST https://rest.alpha.fal.ai/storage/upload/initiate?storage_type=fal-cdn-v3
+   ```
+   返回: `{ upload_url: "https://...", file_url: "https://..." }`
+
+2. **Step 2: 上传文件** - 使用返回的签名 URL
+   ```
+   PUT {upload_url}
+   Content-Type: video/mp4
+   Body: <raw video bytes>
+   ```
+
+3. **Step 3: 使用 file_url** - 传递给 FAL API
+
+### 解决方案 (Solution)
+
+更新 `electron/main.ts` 中的 IPC handler 使用两步上传流程:
+
+```typescript
+// Step 1: Initiate upload
+const initiateUrl = "https://rest.alpha.fal.ai/storage/upload/initiate?storage_type=fal-cdn-v3";
+const initResponse = await fetch(initiateUrl, {
+  method: "POST",
+  headers: {
+    "Authorization": `Key ${apiKey}`,
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({
+    file_name: filename,
+    content_type: "video/mp4",
+  }),
+});
+const { upload_url, file_url } = await initResponse.json();
+
+// Step 2: Upload file to signed URL
+await fetch(upload_url, {
+  method: "PUT",
+  headers: { "Content-Type": "video/mp4" },
+  body: Buffer.from(videoData),
+});
+
+// Return the final URL
+return { success: true, url: file_url };
+```
+
+### 参考资料 (References)
+- FAL JS Client Storage: https://github.com/fal-ai/fal-js/blob/main/libs/client/src/storage.ts
+- FAL REST API Base: `https://rest.alpha.fal.ai`
+
+---
+
 ## Implementation Status
 
 ### Completed
@@ -662,6 +951,10 @@ import { falAIClient } from "./fal-ai-client";
 - [x] **BUG FIX (2025-12-03)**: Fix CORS error by using base64 Data URL instead of FAL storage upload
 - [x] **BUG FIX (2025-12-03)**: Fix `canGenerate` validation to check `referenceImages` for `kling_o1_ref2video`
 - [x] **BUG FIX (2025-12-03)**: Add V2V model support (`kling_o1_v2v_reference`, `kling_o1_v2v_edit`) in generation logic
+- [x] **BUG FIX (2025-12-04)**: Fix V2V 422 error - FAL API requires HTTPS URLs for video input (not base64)
+- [x] **BUG FIX (2025-12-04)**: Add Electron IPC handler (`fal:upload-video`) to bypass CORS restrictions
+- [x] **BUG FIX (2025-12-04)**: Fix error message formatting (avoid `[object Object]`)
+- [x] **DEBUG (2025-12-04)**: Add detailed IPC availability logging for V2V troubleshooting
 
 ### File References
 - UI Component: `qcut/apps/web/src/components/editor/media-panel/views/ai.tsx`
