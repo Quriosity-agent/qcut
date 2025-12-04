@@ -2488,9 +2488,9 @@ export async function generateKlingO1Video(
         : videoUrl,
     });
 
-    // Add timeout for large video payloads (3 minutes)
+    // Add timeout for large video payloads (6 minutes)
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 180_000);
+    const timeoutId = setTimeout(() => controller.abort(), 360_000);
 
     try {
       const response = await fetch(`${FAL_API_BASE}/${endpoint}`, {
@@ -2543,7 +2543,7 @@ export async function generateKlingO1Video(
       clearTimeout(timeoutId);
       if (error instanceof Error && error.name === "AbortError") {
         throw new Error(
-          "Video generation timed out after 3 minutes. The source video may be too large."
+          "Video generation timed out after 6 minutes. The source video may be too large."
         );
       }
       throw error;
@@ -2563,10 +2563,43 @@ export async function generateKlingO1Video(
  *
  * Transforms images and elements into consistent video scenes with cinematic motion.
  * Use @Image1, @Image2, etc. in the prompt to reference the images.
+ * Use @Element1, @Element2, etc. to reference elements with frontal and reference images.
  *
  * @param request - Request parameters including model, prompt, image URLs array, and optional settings
  * @returns VideoGenerationResponse with job_id, status, message, and video URL
  * @throws Error if FAL API key missing, model unsupported, or API returns error
+ *
+ * @example
+ * // FAL API Request Example (reference-to-video):
+ * // {
+ * //   "prompt": "Take @Image1 as the start frame. Start with a high-angle satellite view of the ancient greenhouse ruin surrounded by nature. The camera swoops down and flies inside the building, revealing the character from @Element1 standing in the sun-drenched center. The camera then seamlessly transitions into a smooth 180-degree orbit around the character, moving to the back view. As the open backpack comes into focus, the camera continues to push forward, zooming deep inside the bag to reveal the glowing stone from @Element2 nestled inside. Cinematic lighting, hopeful atmosphere, 35mm lens. Make sure to keep it as the style of @Image2.",
+ * //   "image_urls": [
+ * //     "https://v3b.fal.media/files/b/koala/v9COzzH23FGBYdGLgbK3u.png",
+ * //     "https://v3b.fal.media/files/b/elephant/5Is2huKQFSE7A7c5uUeUF.png"
+ * //   ],
+ * //   "elements": [
+ * //     {
+ * //       "reference_image_urls": [
+ * //         "https://v3b.fal.media/files/b/kangaroo/YMpmQkYt9xugpOTQyZW0O.png",
+ * //         "https://v3b.fal.media/files/b/zebra/d6ywajNyJ6bnpa_xBue-K.png"
+ * //       ],
+ * //       "frontal_image_url": "https://v3b.fal.media/files/b/panda/MQp-ghIqshvMZROKh9lW3.png"
+ * //     },
+ * //     {
+ * //       "reference_image_urls": [
+ * //         "https://v3b.fal.media/files/b/kangaroo/EBF4nWihspyv4pp6hgj7D.png"
+ * //       ],
+ * //       "frontal_image_url": "https://v3b.fal.media/files/b/koala/gSnsA7HJlgcaTyR5Ujj2H.png"
+ * //     }
+ * //   ],
+ * //   "duration": "5",
+ * //   "aspect_ratio": "16:9"
+ * // }
+ * //
+ * // Prompt Syntax:
+ * // - @Image1, @Image2, etc. - Reference images from image_urls array (1-indexed)
+ * // - @Element1, @Element2, etc. - Reference elements from elements array (1-indexed)
+ * // - Each element can have multiple reference_image_urls and one frontal_image_url
  */
 export async function generateKlingO1RefVideo(
   request: KlingO1Ref2VideoRequest

@@ -107,6 +107,39 @@ From `ai-constants.ts`, the following Kling models are configured:
 }
 ```
 
+#### FAL API Request Example (reference-to-video)
+```json
+{
+  "prompt": "Take @Image1 as the start frame. Start with a high-angle satellite view of the ancient greenhouse ruin surrounded by nature. The camera swoops down and flies inside the building, revealing the character from @Element1 standing in the sun-drenched center. The camera then seamlessly transitions into a smooth 180-degree orbit around the character, moving to the back view. As the open backpack comes into focus, the camera continues to push forward, zooming deep inside the bag to reveal the glowing stone from @Element2 nestled inside. Cinematic lighting, hopeful atmosphere, 35mm lens. Make sure to keep it as the style of @Image2.",
+  "image_urls": [
+    "https://v3b.fal.media/files/b/koala/v9COzzH23FGBYdGLgbK3u.png",
+    "https://v3b.fal.media/files/b/elephant/5Is2huKQFSE7A7c5uUeUF.png"
+  ],
+  "elements": [
+    {
+      "reference_image_urls": [
+        "https://v3b.fal.media/files/b/kangaroo/YMpmQkYt9xugpOTQyZW0O.png",
+        "https://v3b.fal.media/files/b/zebra/d6ywajNyJ6bnpa_xBue-K.png"
+      ],
+      "frontal_image_url": "https://v3b.fal.media/files/b/panda/MQp-ghIqshvMZROKh9lW3.png"
+    },
+    {
+      "reference_image_urls": [
+        "https://v3b.fal.media/files/b/kangaroo/EBF4nWihspyv4pp6hgj7D.png"
+      ],
+      "frontal_image_url": "https://v3b.fal.media/files/b/koala/gSnsA7HJlgcaTyR5Ujj2H.png"
+    }
+  ],
+  "duration": "5",
+  "aspect_ratio": "16:9"
+}
+```
+
+**Prompt Syntax:**
+- `@Image1`, `@Image2`, etc. - Reference images from `image_urls` array (1-indexed)
+- `@Element1`, `@Element2`, etc. - Reference elements from `elements` array (1-indexed)
+- Each element can have multiple `reference_image_urls` and one `frontal_image_url`
+
 ### Image-to-Video (First/Last Frame)
 ```typescript
 {
@@ -835,7 +868,7 @@ console.log("  - window.electronAPI?.isElectron:", window.electronAPI?.isElectro
 
 ---
 
-## Bug Fix: 第五阶段 - FAL Upload 404错误 (2025-12-04) 🔄 IN PROGRESS
+## Bug Fix: 第五阶段 - FAL Upload 404错误 (2025-12-04) ✅ RESOLVED
 
 ### 问题描述 (Issue Description)
 Electron 重建后 IPC 通道正常工作，但 FAL 上传返回 **404 Not Found**：
@@ -918,6 +951,25 @@ await fetch(upload_url, {
 return { success: true, url: file_url };
 ```
 
+### 代码修改 (Code Changes)
+
+**文件**: `electron/main.ts`
+- 更新 `fal:upload-video` IPC handler 使用两步上传流程
+- Step 1: POST to `https://rest.alpha.fal.ai/storage/upload/initiate?storage_type=fal-cdn-v3`
+- Step 2: PUT file to returned `upload_url`
+- Return `file_url` for use in FAL API calls
+
+**文件**: `apps/web/src/lib/ai-video-client.ts`
+- 增加超时时间从 3 分钟到 6 分钟 (180000ms → 360000ms)
+- 更新错误消息
+
+### 验证清单 (Verification Checklist)
+- [x] IPC handler 更新使用两步上传流程
+- [x] 超时时间增加到 6 分钟
+- [x] Electron build 成功
+- [x] Web build 成功
+- [ ] V2V 模型生成测试通过
+
 ### 参考资料 (References)
 - FAL JS Client Storage: https://github.com/fal-ai/fal-js/blob/main/libs/client/src/storage.ts
 - FAL REST API Base: `https://rest.alpha.fal.ai`
@@ -955,6 +1007,8 @@ return { success: true, url: file_url };
 - [x] **BUG FIX (2025-12-04)**: Add Electron IPC handler (`fal:upload-video`) to bypass CORS restrictions
 - [x] **BUG FIX (2025-12-04)**: Fix error message formatting (avoid `[object Object]`)
 - [x] **DEBUG (2025-12-04)**: Add detailed IPC availability logging for V2V troubleshooting
+- [x] **BUG FIX (2025-12-04)**: Fix FAL upload 404 error - use two-step upload process (initiate + PUT)
+- [x] **ENHANCEMENT (2025-12-04)**: Increase V2V generation timeout from 3 to 6 minutes
 
 ### File References
 - UI Component: `qcut/apps/web/src/components/editor/media-panel/views/ai.tsx`
