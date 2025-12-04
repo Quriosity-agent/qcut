@@ -118,6 +118,12 @@ Both models support native audio generation (Chinese/English).
 }
 ```
 
+**Review Checklist:**
+- Confirm both `kling_v26_pro_t2v` and `kling_v26_pro_i2v` entries match the ID/endpoint casing and pricing assumptions (5s baseline at $0.07/s without audio).
+- Verify defaults mirror API expectations: duration 5, aspect ratio 16:9, cfg_scale 0.5, generate_audio true, and negative prompt preset.
+- Ensure supported durations/ratios arrays include only 5/10 seconds and 16:9/9:16/1:1; no extra ratios or resolution controls.
+- Check description/category align with existing Kling models to keep UI grouping consistent.
+
 ---
 
 ### Task 2: Add Type Definitions for Kling 2.6 Options
@@ -140,6 +146,11 @@ klingDuration?: 5 | 10;
 klingCfgScale?: number;
 klingAspectRatio?: "16:9" | "9:16" | "1:1" | "4:3" | "3:4";
 ```
+
+**Review Checklist:**
+- Ensure new Kling 2.6 props are optional, typed narrowly (5|10, 16:9|9:16|1:1), and named consistently with UI bindings.
+- Verify no overlap/conflict with Kling v2.5 props (distinct keys) and that cfg_scale uses the same numeric expectations (0-1).
+- Check negative prompt and generate_audio defaults are handled upstream so undefined values fall back correctly.
 
 ---
 
@@ -170,6 +181,11 @@ kling_v26_pro_t2v: {
 
 3. Add alias mapping if needed in `T2V_MODEL_ID_ALIASES`
 
+**Review Checklist:**
+- Confirm `T2VModelId` union includes `kling_v26_pro_t2v` and aliases map to it if UI uses shorthand.
+- Verify capability flags reflect model limits: aspect ratio on, resolution off, duration on (5/10), seed/safety off.
+- Double-check defaults (aspect ratio 16:9, duration 5) match the constants and UI defaults to avoid mismatch warnings.
+
 ---
 
 ### Task 4: Implement API Client Handler for Kling 2.6
@@ -186,6 +202,12 @@ kling_v26_pro_t2v: {
 - Check for model ID prefix `kling_v26_`
 - Map UI parameters to FAL API expected format
 - Handle `generate_audio` boolean for pricing display
+
+**Review Checklist:**
+- Ensure `isKling26Model` catches both T2V and I2V IDs and routes through the new parameter conversion.
+- Validate request payloads send duration as number/string as required by FAL, include aspect_ratio, cfg_scale, negative_prompt, and generate_audio when set.
+- Confirm response handling covers video payload shape and audio flag for pricing UI without breaking other model flows.
+- Check no regression for other Kling versions; guard the new logic with prefix checks only.
 
 ---
 
@@ -205,6 +227,12 @@ kling_v26_pro_t2v: {
 - Existing Kling v2.5 UI controls
 - Seedance duration/aspect ratio selectors
 
+**Review Checklist:**
+- Confirm controls render only when a Kling 2.6 model is selected and default values mirror constants (5s, 16:9, audio on, cfg_scale 0.5).
+- Validate duration options restricted to 5/10, aspect ratios to 16:9/9:16/1:1, and cfg_scale slider bounded 0-1.
+- Ensure negative prompt input and audio toggle wire into state props added in Task 2 and propagate to submission payloads.
+- Check layout parity with Kling v2.5 controls to avoid UX drift (labels/help text, disabled states during run).
+
 ---
 
 ### Task 6: Add Error Messages for Kling 2.6
@@ -222,6 +250,11 @@ KLING26_INVALID_ASPECT_RATIO: "Aspect ratio must be 16:9, 9:16, or 1:1 for Kling
 KLING26_I2V_MISSING_IMAGE: "Image is required for Kling 2.6 image-to-video generation",
 ```
 
+**Review Checklist:**
+- Verify keys match those referenced in UI/hook validation for Kling 2.6 and do not collide with v2.5 keys.
+- Ensure messages enforce 5/10 duration and 16:9/9:16/1:1 ratios, and cover I2V missing image specifically.
+- Confirm new errors surface in the correct panel(s) and fallback behaviors remain unchanged for other models.
+
 ---
 
 ### Task 7: Add Tests for Kling 2.6 Integration
@@ -236,6 +269,12 @@ KLING26_I2V_MISSING_IMAGE: "Image is required for Kling 2.6 image-to-video gener
 3. Error handling for invalid inputs
 4. T2V capability resolution
 5. Pricing calculation with audio on/off
+
+**Review Checklist:**
+- Cover both T2V and I2V: model config assertions, capability resolution, and parameter conversion including generate_audio flag.
+- Add validation tests for invalid duration/aspect ratios and missing image for I2V to exercise new error messages.
+- Mock network calls to keep tests deterministic and ensure Kling 2.6 handling does not regress v2.5 test cases.
+- Verify pricing/audio toggle scenarios reflect $0.07 vs $0.14 per second assumptions in expectations.
 
 ---
 
