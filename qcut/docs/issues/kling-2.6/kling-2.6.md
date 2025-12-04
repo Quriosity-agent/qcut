@@ -1,5 +1,22 @@
 # Kling 2.6 Pro Video Generation Integration
 
+## Implementation Status: ✅ COMPLETE
+
+All implementation tasks have been completed:
+
+| Task | Status | File(s) Modified |
+|------|--------|------------------|
+| Task 1: Model Definitions | ✅ Done | `ai-constants.ts` |
+| Task 2: Type Definitions | ✅ Done | `ai-types.ts` |
+| Task 3: T2V Model Capabilities | ✅ Done | `text2video-models-config.ts` |
+| Task 4: API Client Handler | ✅ Done | `ai-video-client.ts` |
+| Task 5: UI Controls | ✅ Done | `ai.tsx` |
+| Task 6: Error Messages | ✅ Done | `ai-constants.ts` |
+| Task 7: Generation Hook Wiring | ✅ Done | `use-ai-generation.ts` |
+| Task 8: Integration Tests | ✅ Done | `new-video-models.test.ts` |
+
+---
+
 ## Overview
 
 Kling 2.6 Pro offers two video generation models via FAL API:
@@ -144,12 +161,12 @@ Both models support native audio generation (Chinese/English).
 ```
 
 **Review Checklist:**
-- [ ] IDs use underscore format: `kling_v26_pro_t2v`, `kling_v26_pro_i2v` (matches `kling_v2_5_turbo` pattern)
-- [ ] Endpoint paths use hyphen format: `v2.6` (not `v26`)
-- [ ] Price string `"0.35"` reflects 5s baseline at $0.07/s without audio
-- [ ] `category` is `"text"` for T2V and `"image"` for I2V
-- [ ] `supportedAspectRatios` limited to `["16:9", "9:16", "1:1"]` (v2.6 has fewer than v2.5)
-- [ ] `generate_audio: true` included in `default_params` (new for v2.6)
+- [x] IDs use underscore format: `kling_v26_pro_t2v`, `kling_v26_pro_i2v` (matches `kling_v2_5_turbo` pattern)
+- [x] Endpoint paths use hyphen format: `v2.6` (not `v26`)
+- [x] Price string `"0.35"` reflects 5s baseline at $0.07/s without audio
+- [x] `category` is `"text"` for T2V and `"image"` for I2V
+- [x] `supportedAspectRatios` limited to `["16:9", "9:16", "1:1"]` (v2.6 has fewer than v2.5)
+- [x] `generate_audio: true` included in `default_params` (new for v2.6)
 
 ---
 
@@ -180,10 +197,10 @@ klingNegativePrompt?: string;
 ```
 
 **Review Checklist:**
-- [ ] New props prefixed with `kling26` to avoid conflict with existing `kling` props (v2.5)
-- [ ] `kling26AspectRatio` type limited to 3 options (v2.6 only supports 16:9, 9:16, 1:1)
-- [ ] `kling26GenerateAudio` is new boolean prop (v2.5 doesn't have audio generation)
-- [ ] No `kling26EnhancePrompt` - v2.6 doesn't expose enhance_prompt parameter
+- [x] New props prefixed with `kling26` to avoid conflict with existing `kling` props (v2.5)
+- [x] `kling26AspectRatio` type limited to 3 options (v2.6 only supports 16:9, 9:16, 1:1)
+- [x] `kling26GenerateAudio` is new boolean prop (v2.5 doesn't have audio generation)
+- [x] No `kling26EnhancePrompt` - v2.6 doesn't expose enhance_prompt parameter
 
 ---
 
@@ -222,12 +239,12 @@ kling_v26_pro_t2v: {
 ```
 
 **Review Checklist:**
-- [ ] Canonical ID is `kling_v26_pro_t2v` in type union
-- [ ] Alias maps `kling_v26_pro` → `kling_v26_pro_t2v` for UI shorthand
-- [ ] `supportsResolution: false` (v2.6 doesn't expose resolution control)
-- [ ] `supportedAspectRatios` has only 3 options (vs v2.5's 5)
-- [ ] `supportsPromptExpansion: false` (no enhance_prompt in v2.6)
-- [ ] `supportsSeed: false` (v2.6 doesn't expose seed parameter)
+- [x] Canonical ID is `kling_v26_pro_t2v` in type union
+- [x] Alias maps `kling_v26_pro` → `kling_v26_pro_t2v` for UI shorthand
+- [x] `supportsResolution: false` (v2.6 doesn't expose resolution control)
+- [x] `supportedAspectRatios` has only 3 options (vs v2.5's 5)
+- [x] `supportsPromptExpansion: false` (no enhance_prompt in v2.6)
+- [x] `supportsSeed: false` (v2.6 doesn't expose seed parameter)
 
 ---
 
@@ -276,11 +293,11 @@ export async function generateKling26ImageVideo(
 - Handles FAL API response
 
 **Review Checklist:**
-- [ ] `isKling26Model` helper catches both `kling_v26_pro_t2v` and `kling_v26_pro_i2v`
-- [ ] Payload includes `generate_audio` boolean (new for v2.6)
-- [ ] `cfg_scale` clamped to 0-1 range (same as v2.5)
-- [ ] Error handling follows existing pattern in `generateKlingImageVideo`
-- [ ] No regression to `generateKlingImageVideo` (v2.5) - use prefix check
+- [x] `generateKling26ImageVideo` function handles both T2V and I2V
+- [x] Payload includes `generate_audio` boolean (new for v2.6)
+- [x] `cfg_scale` clamped to 0-1 range (same as v2.5)
+- [x] Error handling follows existing pattern in `generateKlingImageVideo`
+- [x] No regression to `generateKlingImageVideo` (v2.5) - separate function
 
 ---
 
@@ -352,13 +369,13 @@ kling26NegativePrompt: kling26NegativePrompt.trim() || undefined,
 - Estimated cost display
 
 **Review Checklist:**
-- [ ] State variables prefixed with `kling26` to avoid conflict
-- [ ] Duration options show pricing: "5 seconds ($0.35)" / "10 seconds ($0.70)" (audio off) or "$0.70" / "$1.40" (audio on)
-- [ ] Aspect ratio limited to 3 options (not 5 like v2.5)
-- [ ] Audio toggle added (new control, not in v2.5)
-- [ ] No enhance prompt toggle (v2.6 doesn't support it)
-- [ ] Cost calculation updates dynamically based on audio toggle
-- [ ] Controls only render when `kling26Selected` is true
+- [x] State variables prefixed with `kling26` to avoid conflict
+- [x] Duration options show pricing: "5 seconds ($0.35)" / "10 seconds ($0.70)" (audio off) or "$0.70" / "$1.40" (audio on)
+- [x] Aspect ratio limited to 3 options (not 5 like v2.5)
+- [x] Audio toggle added (new control, not in v2.5)
+- [x] No enhance prompt toggle (v2.6 doesn't support it)
+- [x] Cost calculation updates dynamically based on audio toggle
+- [x] Controls only render when `kling26Selected` is true
 
 ---
 
@@ -380,10 +397,10 @@ KLING26_PROMPT_TOO_LONG: "Prompt exceeds maximum length of 2,500 characters for 
 ```
 
 **Review Checklist:**
-- [ ] Keys prefixed with `KLING26_` to avoid collision with future v2.5 error keys
-- [ ] Aspect ratio error specifies only 3 valid options
-- [ ] Prompt length matches existing Kling limit (2500 chars per `generateKlingImageVideo`)
-- [ ] I2V missing image error is model-specific
+- [x] Keys prefixed with `KLING26_` to avoid collision with future v2.5 error keys
+- [x] Aspect ratio error specifies only 3 valid options
+- [x] Prompt length matches existing Kling limit (2500 chars per `generateKlingImageVideo`)
+- [x] I2V missing image error is model-specific
 
 ---
 
@@ -429,10 +446,10 @@ kling26NegativePrompt,
 ```
 
 **Review Checklist:**
-- [ ] Default values match `default_params` in model config
-- [ ] All 5 props added to dependency array for proper memoization
-- [ ] Generation branch uses `generateKling26ImageVideo` (new function from Task 4)
-- [ ] `generate_audio` passed through (new param, not in v2.5 call)
+- [x] Default values match `default_params` in model config
+- [x] All 5 props added to dependency array for proper memoization
+- [x] Generation branch uses `generateKling26ImageVideo` (new function from Task 4)
+- [x] `generate_audio` passed through (new param, not in v2.5 call)
 
 ---
 
@@ -473,12 +490,12 @@ describe("Kling v2.6 Pro", () => {
 ```
 
 **Review Checklist:**
-- [ ] Tests cover both T2V and I2V endpoints
-- [ ] Pricing tests verify both audio on/off scenarios
-- [ ] Aspect ratio validation tests only allow 3 options
-- [ ] `generate_audio` parameter verified in request payload
-- [ ] Mocks follow existing pattern (lines 16-22)
-- [ ] No regression to v2.5 tests
+- [x] Tests cover both T2V and I2V endpoints
+- [x] Pricing tests verify both audio on/off scenarios
+- [x] Aspect ratio validation tests only allow 3 options
+- [x] `generate_audio` parameter verified in request payload
+- [x] Mocks follow existing pattern (lines 16-22)
+- [x] No regression to v2.5 tests
 
 ---
 

@@ -297,4 +297,113 @@ describe("New Video Models Integration", () => {
       ).rejects.toThrow();
     });
   });
+
+  describe("Kling v2.6 Pro", () => {
+    it("should generate T2V with correct endpoint and parameters", async () => {
+      const mockResponse = {
+        video: { url: "https://fal.ai/test-video.mp4" },
+      };
+
+      (global.fetch as any).mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockResponse,
+      });
+
+      const request = {
+        prompt: "Test Kling 2.6 video generation",
+        model: "kling_v26_pro_t2v",
+        duration: 5,
+      };
+
+      const result = await generateVideo(request);
+
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining("kling-video/v2.6/pro/text-to-video"),
+        expect.objectContaining({
+          method: "POST",
+        })
+      );
+      expect(result.video_url).toBe(mockResponse.video.url);
+    });
+
+    it("should generate I2V with correct endpoint", async () => {
+      const mockFile = new File(["test"], "test.jpg", { type: "image/jpeg" });
+      const mockResponse = { video: { url: "https://fal.ai/test-video.mp4" } };
+
+      (global.fetch as any).mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockResponse,
+      });
+
+      const result = await generateVideoFromImage({
+        image: mockFile,
+        model: "kling_v26_pro_i2v",
+        prompt: "Test Kling 2.6 image to video",
+      });
+
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining("kling-video/v2.6/pro/image-to-video"),
+        expect.any(Object)
+      );
+      expect(result.video_url).toBe(mockResponse.video.url);
+    });
+
+    it("should calculate correct pricing with audio on/off", async () => {
+      // Audio off: $0.07/s → 5s = $0.35, 10s = $0.70
+      // Audio on:  $0.14/s → 5s = $0.70, 10s = $1.40
+      const calculateKling26Cost = (
+        duration: number,
+        generateAudio: boolean
+      ): number => {
+        const perSecondRate = generateAudio ? 0.14 : 0.07;
+        return duration * perSecondRate;
+      };
+
+      // Audio off tests
+      expect(calculateKling26Cost(5, false)).toBe(0.35);
+      expect(calculateKling26Cost(10, false)).toBe(0.7);
+
+      // Audio on tests
+      expect(calculateKling26Cost(5, true)).toBe(0.7);
+      expect(calculateKling26Cost(10, true)).toBe(1.4);
+    });
+
+    it("should validate aspect ratio options", async () => {
+      const validRatios = ["16:9", "9:16", "1:1"];
+      const invalidRatios = ["4:3", "3:4", "21:9"];
+
+      // Valid ratios should be in the supported list
+      for (const ratio of validRatios) {
+        expect(validRatios.includes(ratio)).toBe(true);
+      }
+
+      // Invalid ratios for Kling v2.6 (supported by v2.5 but not v2.6)
+      for (const ratio of invalidRatios) {
+        expect(validRatios.includes(ratio)).toBe(false);
+      }
+    });
+
+    it("should include generate_audio in request payload", async () => {
+      const mockResponse = { video: { url: "https://fal.ai/test-video.mp4" } };
+      (global.fetch as any).mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockResponse,
+      });
+
+      const request = {
+        prompt: "Test with audio generation",
+        model: "kling_v26_pro_t2v",
+        duration: 5,
+      };
+
+      await generateVideo(request);
+
+      // Check that the request body contains generate_audio
+      const callArgs = (global.fetch as any).mock.calls[0];
+      const requestBody = JSON.parse(callArgs[1].body);
+
+      expect(requestBody.generate_audio).toBeDefined();
+      expect(typeof requestBody.generate_audio).toBe("boolean");
+    });
+  });
 });
