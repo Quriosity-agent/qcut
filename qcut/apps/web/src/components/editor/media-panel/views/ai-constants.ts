@@ -338,6 +338,28 @@ export const AI_MODELS: AIModel[] = [
     supportedAspectRatios: ["16:9", "9:16", "1:1", "4:3", "3:4"],
   },
   {
+    id: "kling_v26_pro_i2v",
+    name: "Kling v2.6 Pro I2V",
+    description:
+      "Top-tier image-to-video with cinematic visuals and native audio generation",
+    price: "0.35", // 5s @ $0.07/s without audio
+    resolution: "1080p",
+    max_duration: 10,
+    category: "image",
+    endpoints: {
+      image_to_video: "fal-ai/kling-video/v2.6/pro/image-to-video",
+    },
+    default_params: {
+      duration: 5,
+      aspect_ratio: "16:9",
+      cfg_scale: 0.5,
+      generate_audio: true,
+      negative_prompt: "blur, distort, and low quality",
+    },
+    supportedDurations: [5, 10],
+    supportedAspectRatios: ["16:9", "9:16", "1:1"],
+  },
+  {
     id: "wan_25_preview_i2v",
     name: "WAN v2.5 Preview I2V",
     description:
@@ -601,6 +623,28 @@ export const AI_MODELS: AIModel[] = [
       aspect_ratio: "16:9",
       enhance_prompt: true,
     },
+  },
+  {
+    id: "kling_v26_pro_t2v",
+    name: "Kling v2.6 Pro T2V",
+    description:
+      "Top-tier text-to-video with cinematic visuals and native audio generation",
+    price: "0.35", // 5s @ $0.07/s without audio
+    resolution: "1080p",
+    max_duration: 10,
+    category: "text",
+    endpoints: {
+      text_to_video: "fal-ai/kling-video/v2.6/pro/text-to-video",
+    },
+    default_params: {
+      duration: 5,
+      aspect_ratio: "16:9",
+      cfg_scale: 0.5,
+      generate_audio: true,
+      negative_prompt: "blur, distort, and low quality",
+    },
+    supportedDurations: [5, 10],
+    supportedAspectRatios: ["16:9", "9:16", "1:1"],
   },
   // Video Upscale Models
   {
@@ -1078,6 +1122,16 @@ export const ERROR_MESSAGES = {
     "Maximum 10 images allowed for Seeddream 4.5 edit",
   SEEDDREAM45_UPLOAD_FAILED: "Failed to upload image for editing",
   SEEDDREAM45_GENERATION_FAILED: "Seeddream 4.5 image generation failed",
+
+  // Kling 2.6 specific errors
+  KLING26_EMPTY_PROMPT: "Please enter a prompt for Kling 2.6 video generation",
+  KLING26_INVALID_DURATION: "Duration must be 5 or 10 seconds for Kling 2.6",
+  KLING26_INVALID_ASPECT_RATIO:
+    "Aspect ratio must be 16:9, 9:16, or 1:1 for Kling 2.6",
+  KLING26_I2V_MISSING_IMAGE:
+    "Image is required for Kling 2.6 image-to-video generation",
+  KLING26_PROMPT_TOO_LONG:
+    "Prompt exceeds maximum length of 2,500 characters for Kling 2.6",
 } as const;
 
 // LTX Video 2.0 Fast Configuration

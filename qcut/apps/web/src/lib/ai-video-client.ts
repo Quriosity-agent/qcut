@@ -2325,6 +2325,150 @@ export async function generateKlingImageVideo(
 }
 
 /**
+ * Request interface for Kling v2.6 Pro image-to-video generation
+ */
+export interface Kling26I2VRequest {
+  model: string;
+  prompt: string;
+  image_url: string;
+  duration?: 5 | 10;
+  cfg_scale?: number;
+  aspect_ratio?: "16:9" | "9:16" | "1:1";
+  generate_audio?: boolean;
+  negative_prompt?: string;
+}
+
+/**
+ * Generate a video from a single image using the Kling v2.6 Pro image-to-video model.
+ *
+ * This model supports native audio generation (Chinese/English) and offers
+ * cinematic visual quality with fewer aspect ratio options than v2.5.
+ *
+ * @param request - Request parameters (must include `model` and `image_url`). Optional fields:
+ *   - `prompt`: description of desired motion (trimmed; max 2,500 characters).
+ *   - `duration`: desired video duration in seconds (5 or 10, defaults to 5).
+ *   - `cfg_scale`: strength of adherence to the prompt (clamped to 0–1, defaults to 0.5).
+ *   - `aspect_ratio`: target aspect ratio (16:9, 9:16, or 1:1, defaults to 16:9).
+ *   - `generate_audio`: whether to generate native audio (defaults to true).
+ *   - `negative_prompt`: optional negative prompt to steer generation.
+ * @returns VideoGenerationResponse containing `job_id`, `status`, `message`, `estimated_time`, `video_url`, and raw `video_data`.
+ * @throws Error when the FAL API key is not configured.
+ * @throws Error when the prompt is empty or exceeds 2,500 characters.
+ * @throws Error when `image_url` is missing.
+ * @throws Error when the specified `model` is unknown or does not expose an image-to-video endpoint.
+ * @throws Error for FAL API failures (including invalid API key (401), rate limiting (429), or other API errors).
+ */
+export async function generateKling26ImageVideo(
+  request: Kling26I2VRequest
+): Promise<VideoGenerationResponse> {
+  try {
+    const falApiKey = getFalApiKey();
+    if (!falApiKey) {
+      throw new Error("FAL API key not configured");
+    }
+
+    const trimmedPrompt = request.prompt?.trim() ?? "";
+    if (!trimmedPrompt) {
+      throw new Error(
+        "Please enter a prompt for Kling 2.6 video generation"
+      );
+    }
+
+    if (trimmedPrompt.length > 2500) {
+      throw new Error(
+        "Prompt exceeds maximum length of 2,500 characters for Kling 2.6"
+      );
+    }
+
+    if (!request.image_url) {
+      throw new Error(
+        "Image is required for Kling 2.6 image-to-video generation"
+      );
+    }
+
+    const modelConfig = getModelConfig(request.model);
+    if (!modelConfig) {
+      throw new Error(`Unknown model: ${request.model}`);
+    }
+
+    const endpoint = modelConfig.endpoints.image_to_video;
+    if (!endpoint) {
+      throw new Error(
+        `Model ${request.model} does not support image-to-video generation`
+      );
+    }
+
+    const duration = request.duration ?? 5;
+    const aspectRatio =
+      request.aspect_ratio ??
+      (modelConfig.default_params?.aspect_ratio as string | undefined) ??
+      "16:9";
+    const cfgScale = Math.min(Math.max(request.cfg_scale ?? 0.5, 0), 1);
+    const generateAudio = request.generate_audio ?? true;
+
+    const payload: Record<string, unknown> = {
+      prompt: trimmedPrompt,
+      image_url: request.image_url,
+      duration: String(duration), // v2.6 expects duration as string "5" or "10"
+      aspect_ratio: aspectRatio,
+      cfg_scale: cfgScale,
+      generate_audio: generateAudio,
+    };
+
+    if (request.negative_prompt) {
+      payload.negative_prompt = request.negative_prompt;
+    }
+
+    const jobId = generateJobId();
+    const response = await fetch(`${FAL_API_BASE}/${endpoint}`, {
+      method: "POST",
+      headers: {
+        Authorization: `Key ${falApiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+
+      if (response.status === 401) {
+        throw new Error(
+          "Invalid FAL.ai API key. Please check your API key configuration."
+        );
+      }
+
+      if (response.status === 429) {
+        throw new Error(
+          "Rate limit exceeded. Please wait a moment before trying again."
+        );
+      }
+
+      throw new Error(
+        `FAL API error: ${errorData.detail || response.statusText}`
+      );
+    }
+
+    const result = await response.json();
+    return {
+      job_id: jobId,
+      status: "completed",
+      message: `Video generated successfully with ${request.model}`,
+      estimated_time: 0,
+      video_url: result.video?.url || result.video || result.url,
+      video_data: result,
+    };
+  } catch (error) {
+    handleAIServiceError(error, "Generate Kling 2.6 video", {
+      model: request.model,
+      prompt: request.prompt?.substring(0, 100),
+      operation: "generateKling26ImageVideo",
+    });
+    throw error;
+  }
+}
+
+/**
  * Kling O1 Video-to-Video Request Interface
  * For models that transform source videos with cinematic understanding
  */

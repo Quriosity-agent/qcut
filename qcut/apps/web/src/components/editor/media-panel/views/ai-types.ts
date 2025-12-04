@@ -219,6 +219,12 @@ export interface UseAIGenerationProps {
   klingAspectRatio?: "16:9" | "9:16" | "1:1" | "4:3" | "3:4";
   klingEnhancePrompt?: boolean;
   klingNegativePrompt?: string;
+  // Kling v2.6 Pro options
+  kling26Duration?: 5 | 10;
+  kling26AspectRatio?: "16:9" | "9:16" | "1:1";
+  kling26CfgScale?: number;
+  kling26GenerateAudio?: boolean;
+  kling26NegativePrompt?: string;
   // WAN 2.5 Preview I2V options
   wan25Duration?: 5 | 10;
   wan25Resolution?: "480p" | "720p" | "1080p";
