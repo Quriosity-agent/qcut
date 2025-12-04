@@ -546,6 +546,61 @@ class FalAIClient {
         }
         break;
 
+      case "seeddream-v4-5":
+        // SeedDream V4.5 uses string image_size values including auto_2K/auto_4K
+        if (typeof settings.imageSize === "string") {
+          const validV45Sizes = [
+            "square",
+            "square_hd",
+            "portrait_4_3",
+            "portrait_16_9",
+            "landscape_4_3",
+            "landscape_16_9",
+            "auto_2K",
+            "auto_4K",
+          ];
+          if (validV45Sizes.includes(settings.imageSize)) {
+            params.image_size = settings.imageSize;
+          } else {
+            debugLogger.warn(
+              FAL_LOG_COMPONENT,
+              "SEEDDREAM_V45_INVALID_IMAGE_SIZE",
+              {
+                requestedSize: settings.imageSize,
+                fallback: "auto_2K",
+              }
+            );
+            params.image_size = "auto_2K";
+          }
+        } else {
+          params.image_size = "auto_2K";
+        }
+        break;
+
+      case "seeddream-v4-5-edit":
+        // SeedDream V4.5 Edit - same image_size handling as v4.5
+        // Note: image_urls are handled separately by the edit function
+        if (typeof settings.imageSize === "string") {
+          const validV45Sizes = [
+            "square",
+            "square_hd",
+            "portrait_4_3",
+            "portrait_16_9",
+            "landscape_4_3",
+            "landscape_16_9",
+            "auto_2K",
+            "auto_4K",
+          ];
+          if (validV45Sizes.includes(settings.imageSize)) {
+            params.image_size = settings.imageSize;
+          } else {
+            params.image_size = "auto_2K";
+          }
+        } else {
+          params.image_size = "auto_2K";
+        }
+        break;
+
       case "nano-banana":
         // Nano Banana expects aspect_ratio instead of image_size
         params.aspect_ratio = imageSizeToAspectRatio(settings.imageSize);

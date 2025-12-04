@@ -314,6 +314,24 @@ export interface ElectronAPI {
       url?: string;
       error?: string;
     }>;
+
+    /**
+     * Upload image to FAL storage via Electron IPC
+     * Used for Seeddream 4.5 edit and other image-based models
+     * @param imageData - Image file data as Uint8Array
+     * @param filename - Original filename
+     * @param apiKey - FAL API key for authentication
+     * @returns Upload result with URL or error
+     */
+    uploadImage: (
+      imageData: Uint8Array,
+      filename: string,
+      apiKey: string
+    ) => Promise<{
+      success: boolean;
+      url?: string;
+      error?: string;
+    }>;
   };
 }
 

@@ -565,6 +565,102 @@ app.whenReady().then(() => {
     }
   );
 
+  // FAL AI image upload handler (for Seeddream 4.5 edit and other image-based models)
+  // Uses same two-step process as video upload but with image content types
+  ipcMain.handle(
+    "fal:upload-image",
+    async (
+      _event: IpcMainInvokeEvent,
+      imageData: Uint8Array,
+      filename: string,
+      apiKey: string
+    ): Promise<{ success: boolean; url?: string; error?: string }> => {
+      try {
+        logger.info(`[FAL Image Upload] Starting image upload: ${filename}`);
+        logger.info(`[FAL Image Upload] File size: ${imageData.length} bytes`);
+
+        // Determine content type from filename
+        const ext = filename.toLowerCase().split(".").pop();
+        const contentTypeMap: Record<string, string> = {
+          jpg: "image/jpeg",
+          jpeg: "image/jpeg",
+          png: "image/png",
+          webp: "image/webp",
+          gif: "image/gif",
+        };
+        const contentType = contentTypeMap[ext ?? ""] ?? "image/png";
+
+        // Step 1: Initiate upload to get signed URL
+        const initiateUrl =
+          "https://rest.alpha.fal.ai/storage/upload/initiate?storage_type=fal-cdn-v3";
+
+        logger.info(`[FAL Image Upload] Step 1: Initiating upload...`);
+        const initResponse = await fetch(initiateUrl, {
+          method: "POST",
+          headers: {
+            Authorization: `Key ${apiKey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            file_name: filename,
+            content_type: contentType,
+          }),
+        });
+
+        if (!initResponse.ok) {
+          const errorText = await initResponse.text();
+          logger.error(
+            `[FAL Image Upload] Initiate failed: ${initResponse.status}`
+          );
+          return {
+            success: false,
+            error: `Upload initiate failed: ${initResponse.status} - ${errorText}`,
+          };
+        }
+
+        const initData = (await initResponse.json()) as {
+          upload_url?: string;
+          file_url?: string;
+        };
+        const { upload_url, file_url } = initData;
+
+        if (!upload_url || !file_url) {
+          logger.error("[FAL Image Upload] No upload URLs in response");
+          return {
+            success: false,
+            error: "FAL API did not return upload URLs",
+          };
+        }
+
+        logger.info(`[FAL Image Upload] Step 2: Uploading to signed URL...`);
+
+        // Step 2: Upload image to the signed URL
+        const uploadResponse = await fetch(upload_url, {
+          method: "PUT",
+          headers: { "Content-Type": contentType },
+          body: Buffer.from(imageData),
+        });
+
+        if (!uploadResponse.ok) {
+          const errorText = await uploadResponse.text();
+          logger.error(
+            `[FAL Image Upload] Upload failed: ${uploadResponse.status}`
+          );
+          return {
+            success: false,
+            error: `Upload failed: ${uploadResponse.status} - ${errorText}`,
+          };
+        }
+
+        logger.info(`[FAL Image Upload] Success! File URL: ${file_url}`);
+        return { success: true, url: file_url };
+      } catch (error: any) {
+        logger.error(`[FAL Image Upload] Error: ${error.message}`);
+        return { success: false, error: error.message };
+      }
+    }
+  );
+
   // File operation IPC handlers
   ipcMain.handle(
     "open-file-dialog",

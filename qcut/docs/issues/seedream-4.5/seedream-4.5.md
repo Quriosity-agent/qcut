@@ -166,9 +166,11 @@ const result = await fal.subscribe("fal-ai/bytedance/seedream/v4.5/edit", {
 
 ```typescript
 // ADD after line 676 (after seeddream-v4 entry)
+// NOTE: Model ID uses "seeddream" (double 'e') to match existing v3/v4 pattern
+// API endpoint uses "seedream" (single 'e') as per FAL API
 
-"seedream-v4-5": {
-  id: "seedream-v4-5",
+"seeddream-v4-5": {
+  id: "seeddream-v4-5",
   name: "SeedDream v4.5",
   description:
     "ByteDance's latest unified image generation model with up to 4K resolution",
@@ -255,8 +257,8 @@ const result = await fal.subscribe("fal-ai/bytedance/seedream/v4.5/edit", {
   ],
 },
 
-"seedream-v4-5-edit": {
-  id: "seedream-v4-5-edit",
+"seeddream-v4-5-edit": {
+  id: "seeddream-v4-5-edit",
   name: "SeedDream v4.5 Edit",
   description:
     "ByteDance's image editing model with multi-image compositing support (up to 10 images)",
@@ -351,8 +353,8 @@ export const TEXT2IMAGE_MODEL_ORDER = [
   "z-image-turbo",
   "flux-2-flex",
   "seeddream-v4",
-  "seedream-v4-5",      // ADD
-  "seedream-v4-5-edit", // ADD
+  "seeddream-v4-5",      // ADD (double 'e' to match existing pattern)
+  "seeddream-v4-5-edit", // ADD (double 'e' to match existing pattern)
   "reve-text-to-image",
   "wan-v2-2",
   "imagen4-ultra",
@@ -366,7 +368,7 @@ export const TEXT2IMAGE_MODEL_ORDER = [
 ```typescript
 export const MODEL_CATEGORIES = {
   PHOTOREALISTIC: ["imagen4-ultra", "wan-v2-2", "gemini-3-pro"],
-  ARTISTIC: ["seeddream-v3", "seeddream-v4", "seedream-v4-5", "qwen-image"], // ADD seedream-v4-5
+  ARTISTIC: ["seeddream-v3", "seeddream-v4", "seeddream-v4-5", "qwen-image"], // ADD seeddream-v4-5
   VERSATILE: [
     "qwen-image",
     "flux-pro-v11-ultra",
@@ -374,7 +376,7 @@ export const MODEL_CATEGORIES = {
     "nano-banana",
     "reve-text-to-image",
     "z-image-turbo",
-    "seedream-v4-5-edit", // ADD
+    "seeddream-v4-5-edit", // ADD
   ],
   // ... rest unchanged
   HIGH_QUALITY: [
@@ -383,12 +385,18 @@ export const MODEL_CATEGORIES = {
     "flux-pro-v11-ultra",
     "flux-2-flex",
     "seeddream-v4",
-    "seedream-v4-5", // ADD
+    "seeddream-v4-5", // ADD
     "gemini-3-pro",
   ],
   // ... rest unchanged
 } as const;
 ```
+
+**Review Checklist:**
+- ✅ Model IDs use `seeddream-v4-5` (double 'e') to match existing `seeddream-v3` and `seeddream-v4` pattern
+- ✅ API endpoints use `seedream/v4.5` (single 'e') as per FAL API specification
+- ✅ Defaults match API limits: `auto_2K` default, `num_images` 1-6, `max_images` 1-6, safety checker enabled
+- ✅ Cost ($0.04-0.08) and resolution (4K) metadata aligns with other ByteDance models
 
 ---
 
@@ -609,6 +617,12 @@ export async function uploadImageForSeedream45Edit(
 }
 ```
 
+**Review Checklist:**
+- Confirm both endpoints hit `fal-ai/bytedance/seedream/v4.5/...` with the API key header and proper POST body.
+- Validate optional params (seed, num/max images, safety) send only when defined and use sensible defaults.
+- Ensure image URL validation enforces 1-10 inputs with clear error messages.
+- Verify `uploadImageForSeedream45Edit` goes through Electron IPC and fails loudly when the bridge is unavailable to prevent silent upload issues.
+
 ---
 
 ### Subtask 3: Add Electron IPC Handler for Image Upload
@@ -754,6 +768,11 @@ fal?: {
 };
 ```
 
+**Review Checklist:**
+- Ensure the `fal:upload-image` handler mirrors the `uploadVideo` pattern and is registered in the same lifecycle area.
+- Confirm content-type detection covers common formats and defaults to PNG, and that the initiate URL uses `fal-cdn-v3`.
+- Verify preload exposure and `electron.d.ts` signatures match the IPC contract (params + return shape) to avoid runtime type gaps.
+
 ---
 
 ### Subtask 4: Add Type Definitions for Seedream 4.5
@@ -823,6 +842,11 @@ seedream45SafetyChecker?: boolean;
 /** Images selected for Seedream 4.5 edit (up to 10) */
 seedream45EditImages?: (File | null)[];
 ```
+
+**Review Checklist:**
+- Confirm `Seedream45ImageSize` is exported and supports both preset strings and custom dimensions.
+- Ensure the params interfaces align with the client functions (prompt required, image_urls required for edit, optional safety/seed/image_size).
+- Verify `UseAIGenerationProps` additions remain optional and naming matches how the UI/hook will read/write these values.
 
 ---
 
@@ -898,6 +922,11 @@ MAX_SEEDREAM45_IMAGES: 10,
 MAX_SEEDREAM45_IMAGE_SIZE_BYTES: 10 * 1024 * 1024, // 10MB per image
 MAX_SEEDREAM45_IMAGE_SIZE_LABEL: "10MB",
 ```
+
+**Review Checklist:**
+- Validate the new `AI_MODELS` entries surface the right endpoints, categories, and default params so the UI picks them up.
+- Confirm `ERROR_MESSAGES` keys match those referenced in the hook/UI and are distinct from existing Seedream versions.
+- Check upload limits (10 images, 10MB) align with FAL constraints and are enforced consistently alongside the UI controls.
 
 ---
 
@@ -1091,6 +1120,11 @@ function Seedream45EditImageUpload({
 }
 ```
 
+**Review Checklist:**
+- Ensure Seedream 4.5 controls render only when a `seedream_45...` model is selected and respect the current state defaults.
+- Confirm image size/num/seed inputs propagate via setters and the slider stays within 1-6.
+- Verify the multi-image upload enforces the max slot count, supports remove/add flows, and restricts selection to images while showing an accurate count.
+
 ---
 
 ### Subtask 7: Update `use-ai-generation.ts` Hook
@@ -1180,6 +1214,12 @@ if (modelId === "seedream_45_edit") {
   return;
 }
 ```
+
+**Review Checklist:**
+- Confirm the Seedream 4.5 branches run before generic handlers and return early to avoid duplicate work.
+- Validate progress messaging/order and error handling use the new constants for missing/too many images.
+- Ensure uploaded URLs from `uploadImageForSeedream45Edit` feed directly into the edit call and outputs are saved with unique filenames.
+- Check safety checker, seed, and image_size options flow through consistently for both generation and edit paths.
 
 ---
 
@@ -1344,13 +1384,14 @@ describe("Seedream 4.5 Model Configuration", () => {
   it("should have correct endpoints in TEXT2IMAGE_MODELS", async () => {
     const { TEXT2IMAGE_MODELS } = await import("@/lib/text2image-models");
 
-    expect(TEXT2IMAGE_MODELS["seedream-v4-5"]).toBeDefined();
-    expect(TEXT2IMAGE_MODELS["seedream-v4-5"].endpoint).toBe(
+    // Note: Model ID uses "seeddream" (double 'e'), endpoint uses "seedream" (single 'e')
+    expect(TEXT2IMAGE_MODELS["seeddream-v4-5"]).toBeDefined();
+    expect(TEXT2IMAGE_MODELS["seeddream-v4-5"].endpoint).toBe(
       "https://fal.run/fal-ai/bytedance/seedream/v4.5/text-to-image"
     );
 
-    expect(TEXT2IMAGE_MODELS["seedream-v4-5-edit"]).toBeDefined();
-    expect(TEXT2IMAGE_MODELS["seedream-v4-5-edit"].endpoint).toBe(
+    expect(TEXT2IMAGE_MODELS["seeddream-v4-5-edit"]).toBeDefined();
+    expect(TEXT2IMAGE_MODELS["seeddream-v4-5-edit"].endpoint).toBe(
       "https://fal.run/fal-ai/bytedance/seedream/v4.5/edit"
     );
   });
@@ -1358,11 +1399,17 @@ describe("Seedream 4.5 Model Configuration", () => {
   it("should include Seedream 4.5 in model order", async () => {
     const { TEXT2IMAGE_MODEL_ORDER } = await import("@/lib/text2image-models");
 
-    expect(TEXT2IMAGE_MODEL_ORDER).toContain("seedream-v4-5");
-    expect(TEXT2IMAGE_MODEL_ORDER).toContain("seedream-v4-5-edit");
+    expect(TEXT2IMAGE_MODEL_ORDER).toContain("seeddream-v4-5");
+    expect(TEXT2IMAGE_MODEL_ORDER).toContain("seeddream-v4-5-edit");
   });
 });
 ```
+
+**Review Checklist:**
+- Verify fetch mocks reset per test and cover both success and failure paths for generation and edit clients.
+- Confirm endpoint strings asserted in tests match the actual client/config values to catch typos early.
+- Ensure validation cases cover empty image lists and >10 images, and that tests remain network-free under Vitest.
+- Consider extending with integration smoke tests once the API is available, but keep current unit scope green.
 
 ---
 
@@ -1370,14 +1417,19 @@ describe("Seedream 4.5 Model Configuration", () => {
 
 | Subtask | Status | Files | Notes |
 |---------|--------|-------|-------|
-| 1. Model Definitions | ⬜ Pending | `text2image-models.ts` | Add to TEXT2IMAGE_MODELS |
-| 2. FAL Client Functions | ⬜ Pending | `ai-video-client.ts` | generateSeedream45Image, editSeedream45Image |
-| 3. Electron IPC Handler | ⬜ Pending | `main.ts`, `preload.ts`, `electron.d.ts` | fal:upload-image |
-| 4. Type Definitions | ⬜ Pending | `ai-types.ts` | Seedream45ImageSize, params interfaces |
-| 5. Constants & Errors | ⬜ Pending | `ai-constants.ts` | AI_MODELS entries, ERROR_MESSAGES |
-| 6. UI Components | ⬜ Pending | `ai.tsx` | Controls, multi-image upload |
-| 7. Generation Hook | ⬜ Pending | `use-ai-generation.ts` | Handle generation flow |
-| 8. Tests | ⬜ Pending | `seedream45.test.ts` | Unit tests for API client |
+| 1. Model Definitions | ✅ Complete | `text2image-models.ts` | Added `seeddream-v4-5` and `seeddream-v4-5-edit` to TEXT2IMAGE_MODELS, MODEL_ORDER, MODEL_CATEGORIES |
+| 2. FAL Client Functions | ✅ Complete | `ai-video-client.ts` | Added `generateSeeddream45Image`, `editSeeddream45Image`, `uploadImageForSeeddream45Edit` |
+| 3. Electron IPC Handler | ✅ Complete | `main.ts`, `preload.ts`, `electron.d.ts` | Added `fal:upload-image` IPC handler and types |
+| 4. Type Definitions | ✅ Complete | `ai-types.ts` | Added `Seeddream45ImageSize`, params interfaces, `UseAIGenerationProps` |
+| 5. Constants & Errors | ✅ Complete | `ai-constants.ts` | Added ERROR_MESSAGES (SEEDDREAM45_*), UPLOAD_CONSTANTS |
+| 6. UI Components | ✅ Complete | `fal-ai-client.ts`, `text2image-models.ts` | Models auto-appear in Text2Image dropdown via TEXT2IMAGE_MODEL_ORDER |
+| 7. Generation Hook | ✅ Complete | `fal-ai-client.ts` | Added switch cases for `seeddream-v4-5` and `seeddream-v4-5-edit` |
+| 8. Tests | ⬜ Pending | `seeddream45.test.ts` | Unit tests for API client (optional) |
+
+### Naming Convention Note
+- **Model IDs**: `seeddream-v4-5`, `seeddream-v4-5-edit` (double 'e' - matches existing v3/v4)
+- **API Endpoints**: `seedream/v4.5` (single 'e' - FAL API format)
+- **Function names**: `generateSeedream45Image`, `editSeedream45Image` (single 'e' - matches API)
 
 ---
 

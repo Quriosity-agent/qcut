@@ -675,6 +675,179 @@ export const TEXT2IMAGE_MODELS: Record<string, Text2ImageModel> = {
     ],
   },
 
+  // Seeddream v4.5 Text-to-Image
+  // NOTE: Model ID uses "seeddream" (double 'e') to match existing v3/v4 pattern
+  // API endpoint uses "seedream" (single 'e') as per FAL API
+  "seeddream-v4-5": {
+    id: "seeddream-v4-5",
+    name: "SeedDream v4.5",
+    description:
+      "ByteDance's latest unified image generation model with up to 4K resolution",
+    provider: "ByteDance",
+    endpoint: "https://fal.run/fal-ai/bytedance/seedream/v4.5/text-to-image",
+
+    qualityRating: 5,
+    speedRating: 4,
+
+    estimatedCost: "$0.04-0.08",
+    costPerImage: 5, // cents
+
+    maxResolution: "4096x4096",
+    supportedAspectRatios: ["1:1", "4:3", "3:4", "16:9", "9:16"],
+
+    defaultParams: {
+      image_size: "auto_2K",
+      max_images: 1,
+      num_images: 1,
+      sync_mode: false,
+      enable_safety_checker: true,
+    },
+
+    availableParams: [
+      {
+        name: "image_size",
+        type: "select",
+        options: [
+          "square_hd",
+          "square",
+          "portrait_4_3",
+          "portrait_16_9",
+          "landscape_4_3",
+          "landscape_16_9",
+          "auto_2K",
+          "auto_4K",
+        ],
+        default: "auto_2K",
+        description: "Output image resolution and aspect ratio",
+      },
+      {
+        name: "num_images",
+        type: "number",
+        min: 1,
+        max: 6,
+        default: 1,
+        description: "Number of images to generate",
+      },
+      {
+        name: "seed",
+        type: "number",
+        min: 0,
+        max: 2_147_483_647,
+        default: null,
+        description: "Random seed for reproducible results",
+      },
+      {
+        name: "enable_safety_checker",
+        type: "boolean",
+        default: true,
+        description: "Enable content safety filtering",
+      },
+    ],
+
+    bestFor: [
+      "High-resolution image generation",
+      "Commercial content creation",
+      "Product photography",
+      "Artistic illustrations",
+      "Up to 4K output",
+    ],
+
+    strengths: [
+      "Up to 4K resolution output",
+      "Unified generation architecture",
+      "Commercial license",
+      "No cold starts",
+      "Fast generation speed",
+    ],
+
+    limitations: [
+      "Higher cost for 4K output",
+      "May require specific prompt formatting",
+    ],
+  },
+
+  // Seeddream v4.5 Image Edit
+  "seeddream-v4-5-edit": {
+    id: "seeddream-v4-5-edit",
+    name: "SeedDream v4.5 Edit",
+    description:
+      "ByteDance's image editing model with multi-image compositing support (up to 10 images)",
+    provider: "ByteDance",
+    endpoint: "https://fal.run/fal-ai/bytedance/seedream/v4.5/edit",
+
+    qualityRating: 5,
+    speedRating: 4,
+
+    estimatedCost: "$0.04-0.08",
+    costPerImage: 5, // cents
+
+    maxResolution: "4096x4096",
+    supportedAspectRatios: ["1:1", "4:3", "3:4", "16:9", "9:16"],
+
+    defaultParams: {
+      image_size: "auto_2K",
+      num_images: 1,
+      sync_mode: false,
+      enable_safety_checker: true,
+    },
+
+    availableParams: [
+      {
+        name: "image_size",
+        type: "select",
+        options: [
+          "square_hd",
+          "square",
+          "portrait_4_3",
+          "portrait_16_9",
+          "landscape_4_3",
+          "landscape_16_9",
+          "auto_2K",
+          "auto_4K",
+        ],
+        default: "auto_2K",
+        description: "Output image resolution",
+      },
+      {
+        name: "num_images",
+        type: "number",
+        min: 1,
+        max: 6,
+        default: 1,
+        description: "Number of output images",
+      },
+      {
+        name: "seed",
+        type: "number",
+        min: 0,
+        max: 2_147_483_647,
+        default: null,
+        description: "Random seed for reproducible results",
+      },
+    ],
+
+    bestFor: [
+      "Image editing and adjustment",
+      "Multi-image compositing",
+      "Background replacement",
+      "Object manipulation",
+      "Style transfer",
+    ],
+
+    strengths: [
+      "Supports up to 10 input images",
+      "Multi-image compositing",
+      "Up to 4K output",
+      "Unified architecture with generation",
+      "Commercial license",
+    ],
+
+    limitations: [
+      "Requires image upload to FAL",
+      "Higher latency for multiple images",
+    ],
+  },
+
   // Add Nano Banana model
   "nano-banana": {
     id: "nano-banana",
@@ -1041,6 +1214,8 @@ export const TEXT2IMAGE_MODEL_ORDER = [
   "z-image-turbo",
   "flux-2-flex",
   "seeddream-v4",
+  "seeddream-v4-5",
+  "seeddream-v4-5-edit",
   "reve-text-to-image",
   "wan-v2-2",
   "imagen4-ultra",
@@ -1117,7 +1292,7 @@ export function recommendModelsForPrompt(prompt: string): string[] {
 
 export const MODEL_CATEGORIES = {
   PHOTOREALISTIC: ["imagen4-ultra", "wan-v2-2", "gemini-3-pro"],
-  ARTISTIC: ["seeddream-v3", "seeddream-v4", "qwen-image"],
+  ARTISTIC: ["seeddream-v3", "seeddream-v4", "seeddream-v4-5", "qwen-image"],
   VERSATILE: [
     "qwen-image",
     "flux-pro-v11-ultra",
@@ -1125,6 +1300,7 @@ export const MODEL_CATEGORIES = {
     "nano-banana",
     "reve-text-to-image",
     "z-image-turbo",
+    "seeddream-v4-5-edit",
   ],
   FAST: [
     "seeddream-v3",
@@ -1140,6 +1316,7 @@ export const MODEL_CATEGORIES = {
     "flux-pro-v11-ultra",
     "flux-2-flex",
     "seeddream-v4",
+    "seeddream-v4-5",
     "gemini-3-pro",
   ],
   COST_EFFECTIVE: [

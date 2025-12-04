@@ -298,6 +298,11 @@ interface ElectronAPI {
       filename: string,
       apiKey: string
     ) => Promise<FalUploadResult>;
+    uploadImage: (
+      imageData: Uint8Array,
+      filename: string,
+      apiKey: string
+    ) => Promise<FalUploadResult>;
   };
 
   // Utility functions
@@ -497,6 +502,12 @@ const electronAPI: ElectronAPI = {
       apiKey: string
     ): Promise<FalUploadResult> =>
       ipcRenderer.invoke("fal:upload-video", videoData, filename, apiKey),
+    uploadImage: (
+      imageData: Uint8Array,
+      filename: string,
+      apiKey: string
+    ): Promise<FalUploadResult> =>
+      ipcRenderer.invoke("fal:upload-image", imageData, filename, apiKey),
   },
 
   // Utility functions

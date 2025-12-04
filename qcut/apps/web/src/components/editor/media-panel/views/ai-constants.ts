@@ -976,6 +976,11 @@ export const UPLOAD_CONSTANTS = {
   MAX_VEO31_FRAME_SIZE_BYTES: 8 * 1024 * 1024, // 8MB (Veo 3.1 limit)
   MAX_VEO31_FRAME_SIZE_LABEL: "8MB",
   ALLOWED_VEO31_ASPECT_RATIOS: ["16:9", "9:16"],
+
+  // Seeddream 4.5 edit image uploads
+  MAX_SEEDDREAM45_IMAGES: 10,
+  MAX_SEEDDREAM45_IMAGE_SIZE_BYTES: 10 * 1024 * 1024, // 10MB per image
+  MAX_SEEDDREAM45_IMAGE_SIZE_LABEL: "10MB",
 } as const;
 
 // Progress Constants
@@ -1065,6 +1070,14 @@ export const ERROR_MESSAGES = {
     "Videos longer than 10 seconds require 1080p resolution and 25 FPS for LTX Video 2.0 Fast",
   LTXV2_I2V_MISSING_IMAGE:
     "Image is required for LTX Video 2.0 Fast image-to-video generation",
+
+  // Seeddream 4.5 errors
+  SEEDDREAM45_EMPTY_PROMPT: "Please enter a prompt for image generation",
+  SEEDDREAM45_EDIT_NO_IMAGES: "Please select at least one image to edit",
+  SEEDDREAM45_EDIT_TOO_MANY_IMAGES:
+    "Maximum 10 images allowed for Seeddream 4.5 edit",
+  SEEDDREAM45_UPLOAD_FAILED: "Failed to upload image for editing",
+  SEEDDREAM45_GENERATION_FAILED: "Seeddream 4.5 image generation failed",
 } as const;
 
 // LTX Video 2.0 Fast Configuration
