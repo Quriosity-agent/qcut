@@ -46,6 +46,10 @@ Both models support native audio generation (Chinese/English).
 | `cfg_scale` | float | `0.5` | No | Guidance strength (0-1 range) |
 | `generate_audio` | boolean | `true` | No | Whether to generate native audio for the video |
 
+> **Wire Format Note**: The FAL API expects `duration` as a **string** (`"5"` or `"10"`), while internal TypeScript types use numeric values (`5 | 10`). The client implementation converts numeric durations to strings at the payload level before sending to the API.
+
+> **Pricing Note**: The `price` field in model config (e.g., `"0.35"`) is derived from per-second rates: `0.35 = 5s × $0.07/s` (without audio). See [Pricing](#pricing) section for full rate breakdown.
+
 #### Output Schema
 
 ```json
@@ -74,6 +78,8 @@ Both models support native audio generation (Chinese/English).
 | `duration` | enum | `"5"` | No | Video length: `"5"` or `"10"` seconds |
 | `negative_prompt` | string | `"blur, distort, and low quality"` | No | Quality exclusions |
 | `generate_audio` | boolean | `true` | No | Native audio generation (Chinese/English) |
+
+> **Wire Format Note**: Same as T2V—`duration` must be sent as a string (`"5"` or `"10"`). The `generateKling26ImageVideo` function handles this conversion at line 2412 in `ai-video-client.ts`.
 
 #### Output Schema
 

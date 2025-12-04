@@ -547,12 +547,17 @@ export async function generateVideo(
         }
       }
 
-      // Validate duration doesn't exceed model's max
+      // Validate duration doesn't exceed model's max (do this before string conversion)
       if (payload.duration && payload.duration > modelConfig.max_duration) {
         console.warn(
           `${modelConfig.name}: Duration capped at ${modelConfig.max_duration} seconds`
         );
         payload.duration = modelConfig.max_duration;
+      }
+
+      // Kling v2.6 expects duration as string "5" or "10" - convert after validation
+      if (request.model === "kling_v26_pro_t2v" && payload.duration) {
+        payload.duration = String(payload.duration);
       }
     }
 
