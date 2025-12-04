@@ -90,15 +90,15 @@ Both models support native audio generation (Chinese/English).
 - `qcut/apps/web/src/components/editor/media-panel/views/ai-constants.ts`
 
 **Changes:**
-1. Add `kling_v26_pro_t2v` model entry to `AI_MODELS` array (text-to-video)
-2. Add `kling_v26_pro_i2v` model entry to `AI_MODELS` array (image-to-video)
+1. Add `kling_v26_pro_t2v` entry to `AI_MODELS` array after existing Kling models (~line 604)
+2. Add `kling_v26_pro_i2v` entry to `AI_MODELS` array in the image category section (~line 339)
 
-**Model configuration pattern (follow existing Kling models):**
+**Text-to-Video model entry:**
 ```typescript
 {
   id: "kling_v26_pro_t2v",
   name: "Kling v2.6 Pro T2V",
-  description: "Top-tier text-to-video with cinematic visuals and native audio",
+  description: "Top-tier text-to-video with cinematic visuals and native audio generation",
   price: "0.35", // 5s @ $0.07/s without audio
   resolution: "1080p",
   max_duration: 10,
@@ -115,14 +115,41 @@ Both models support native audio generation (Chinese/English).
   },
   supportedDurations: [5, 10],
   supportedAspectRatios: ["16:9", "9:16", "1:1"],
-}
+},
+```
+
+**Image-to-Video model entry:**
+```typescript
+{
+  id: "kling_v26_pro_i2v",
+  name: "Kling v2.6 Pro I2V",
+  description: "Top-tier image-to-video with cinematic visuals and native audio generation",
+  price: "0.35", // 5s @ $0.07/s without audio
+  resolution: "1080p",
+  max_duration: 10,
+  category: "image",
+  endpoints: {
+    image_to_video: "fal-ai/kling-video/v2.6/pro/image-to-video",
+  },
+  default_params: {
+    duration: 5,
+    aspect_ratio: "16:9",
+    cfg_scale: 0.5,
+    generate_audio: true,
+    negative_prompt: "blur, distort, and low quality",
+  },
+  supportedDurations: [5, 10],
+  supportedAspectRatios: ["16:9", "9:16", "1:1"],
+},
 ```
 
 **Review Checklist:**
-- Confirm both `kling_v26_pro_t2v` and `kling_v26_pro_i2v` entries match the ID/endpoint casing and pricing assumptions (5s baseline at $0.07/s without audio).
-- Verify defaults mirror API expectations: duration 5, aspect ratio 16:9, cfg_scale 0.5, generate_audio true, and negative prompt preset.
-- Ensure supported durations/ratios arrays include only 5/10 seconds and 16:9/9:16/1:1; no extra ratios or resolution controls.
-- Check description/category align with existing Kling models to keep UI grouping consistent.
+- [ ] IDs use underscore format: `kling_v26_pro_t2v`, `kling_v26_pro_i2v` (matches `kling_v2_5_turbo` pattern)
+- [ ] Endpoint paths use hyphen format: `v2.6` (not `v26`)
+- [ ] Price string `"0.35"` reflects 5s baseline at $0.07/s without audio
+- [ ] `category` is `"text"` for T2V and `"image"` for I2V
+- [ ] `supportedAspectRatios` limited to `["16:9", "9:16", "1:1"]` (v2.6 has fewer than v2.5)
+- [ ] `generate_audio: true` included in `default_params` (new for v2.6)
 
 ---
 
@@ -132,25 +159,31 @@ Both models support native audio generation (Chinese/English).
 - `qcut/apps/web/src/components/editor/media-panel/views/ai-types.ts`
 
 **Changes:**
-1. Add Kling 2.6 specific props to `UseAIGenerationProps` interface:
-   - `kling26Duration?: 5 | 10`
-   - `kling26AspectRatio?: "16:9" | "9:16" | "1:1"`
-   - `kling26CfgScale?: number`
-   - `kling26GenerateAudio?: boolean`
-   - `kling26NegativePrompt?: string`
+Add to `UseAIGenerationProps` interface (~line 216, after existing Kling v2.5 props):
 
-**Pattern to follow (existing Kling v2.5):**
 ```typescript
-// Kling v2.5 Turbo Pro I2V options
+// Kling v2.6 Pro options
+kling26Duration?: 5 | 10;
+kling26AspectRatio?: "16:9" | "9:16" | "1:1";
+kling26CfgScale?: number;
+kling26GenerateAudio?: boolean;
+kling26NegativePrompt?: string;
+```
+
+**Existing Kling v2.5 props for reference (lines 216-221):**
+```typescript
 klingDuration?: 5 | 10;
 klingCfgScale?: number;
 klingAspectRatio?: "16:9" | "9:16" | "1:1" | "4:3" | "3:4";
+klingEnhancePrompt?: boolean;
+klingNegativePrompt?: string;
 ```
 
 **Review Checklist:**
-- Ensure new Kling 2.6 props are optional, typed narrowly (5|10, 16:9|9:16|1:1), and named consistently with UI bindings.
-- Verify no overlap/conflict with Kling v2.5 props (distinct keys) and that cfg_scale uses the same numeric expectations (0-1).
-- Check negative prompt and generate_audio defaults are handled upstream so undefined values fall back correctly.
+- [ ] New props prefixed with `kling26` to avoid conflict with existing `kling` props (v2.5)
+- [ ] `kling26AspectRatio` type limited to 3 options (v2.6 only supports 16:9, 9:16, 1:1)
+- [ ] `kling26GenerateAudio` is new boolean prop (v2.5 doesn't have audio generation)
+- [ ] No `kling26EnhancePrompt` - v2.6 doesn't expose enhance_prompt parameter
 
 ---
 
@@ -160,14 +193,23 @@ klingAspectRatio?: "16:9" | "9:16" | "1:1" | "4:3" | "3:4";
 - `qcut/apps/web/src/components/editor/media-panel/views/text2video-models-config.ts`
 
 **Changes:**
-1. Add `"kling_v26_pro_t2v"` to `T2VModelId` type union
-2. Add capability entry to `T2V_MODEL_CAPABILITIES` record:
 
+1. Add to `T2VModelId` type union (~line 17):
+```typescript
+| "kling_v26_pro_t2v"
+```
+
+2. Add alias in `T2V_MODEL_ID_ALIASES` (~line 32):
+```typescript
+kling_v26_pro: "kling_v26_pro_t2v",
+```
+
+3. Add capability entry in `T2V_MODEL_CAPABILITIES` (~line 225):
 ```typescript
 kling_v26_pro_t2v: {
   supportsAspectRatio: true,
   supportedAspectRatios: ["16:9", "9:16", "1:1"],
-  supportsResolution: false, // Kling 2.6 doesn't expose resolution control
+  supportsResolution: false,
   supportsDuration: true,
   supportedDurations: [5, 10],
   supportsNegativePrompt: true,
@@ -176,15 +218,16 @@ kling_v26_pro_t2v: {
   supportsSafetyChecker: false,
   defaultAspectRatio: "16:9",
   defaultDuration: 5,
-}
+},
 ```
 
-3. Add alias mapping if needed in `T2V_MODEL_ID_ALIASES`
-
 **Review Checklist:**
-- Confirm `T2VModelId` union includes `kling_v26_pro_t2v` and aliases map to it if UI uses shorthand.
-- Verify capability flags reflect model limits: aspect ratio on, resolution off, duration on (5/10), seed/safety off.
-- Double-check defaults (aspect ratio 16:9, duration 5) match the constants and UI defaults to avoid mismatch warnings.
+- [ ] Canonical ID is `kling_v26_pro_t2v` in type union
+- [ ] Alias maps `kling_v26_pro` → `kling_v26_pro_t2v` for UI shorthand
+- [ ] `supportsResolution: false` (v2.6 doesn't expose resolution control)
+- [ ] `supportedAspectRatios` has only 3 options (vs v2.5's 5)
+- [ ] `supportsPromptExpansion: false` (no enhance_prompt in v2.6)
+- [ ] `supportsSeed: false` (v2.6 doesn't expose seed parameter)
 
 ---
 
@@ -194,44 +237,128 @@ kling_v26_pro_t2v: {
 - `qcut/apps/web/src/lib/ai-video-client.ts`
 
 **Changes:**
-1. Add model detection function `isKling26Model(modelId: string)`
-2. Add parameter conversion function `convertKling26Parameters()`
-3. Handle Kling 2.6 specific response format in existing API call flow
 
-**Pattern to follow (existing Kling v2.5 handling in ai-video-client.ts):**
-- Check for model ID prefix `kling_v26_`
-- Map UI parameters to FAL API expected format
-- Handle `generate_audio` boolean for pricing display
+1. Add request interface (~line 2188, after `KlingI2VRequest`):
+```typescript
+interface Kling26I2VRequest {
+  model: string;
+  prompt: string;
+  image_url: string;
+  duration?: 5 | 10;
+  cfg_scale?: number;
+  aspect_ratio?: "16:9" | "9:16" | "1:1";
+  generate_audio?: boolean;
+  negative_prompt?: string;
+}
+```
+
+2. Add generation function (~line 2325, after `generateKlingImageVideo`):
+```typescript
+export async function generateKling26ImageVideo(
+  request: Kling26I2VRequest
+): Promise<VideoGenerationResponse> {
+  // Implementation following generateKlingImageVideo pattern
+  // Key difference: include generate_audio in payload
+}
+```
+
+3. For T2V, extend `generateVideo` function to handle `kling_v26_pro_t2v` model:
+   - Detect model with `modelId.startsWith("kling_v26_")`
+   - Build payload with `generate_audio` parameter
+   - Route to correct endpoint
+
+**Existing pattern reference (`generateKlingImageVideo` at line 2220):**
+- Validates FAL API key
+- Validates prompt (max 2500 chars)
+- Validates image_url presence
+- Gets model config and endpoint
+- Builds payload with cfg_scale clamped to 0-1
+- Handles FAL API response
 
 **Review Checklist:**
-- Ensure `isKling26Model` catches both T2V and I2V IDs and routes through the new parameter conversion.
-- Validate request payloads send duration as number/string as required by FAL, include aspect_ratio, cfg_scale, negative_prompt, and generate_audio when set.
-- Confirm response handling covers video payload shape and audio flag for pricing UI without breaking other model flows.
-- Check no regression for other Kling versions; guard the new logic with prefix checks only.
+- [ ] `isKling26Model` helper catches both `kling_v26_pro_t2v` and `kling_v26_pro_i2v`
+- [ ] Payload includes `generate_audio` boolean (new for v2.6)
+- [ ] `cfg_scale` clamped to 0-1 range (same as v2.5)
+- [ ] Error handling follows existing pattern in `generateKlingImageVideo`
+- [ ] No regression to `generateKlingImageVideo` (v2.5) - use prefix check
 
 ---
 
 ### Task 5: Add UI Controls for Kling 2.6 Models
 
 **Files to modify:**
-- `qcut/apps/web/src/components/editor/media-panel/views/ai.tsx` (or relevant UI component)
+- `qcut/apps/web/src/components/editor/media-panel/views/ai.tsx`
 
 **Changes:**
-1. Add duration selector (5s / 10s) when Kling 2.6 model selected
-2. Add aspect ratio selector (16:9, 9:16, 1:1)
-3. Add audio generation toggle
-4. Add negative prompt input field
-5. Add cfg_scale slider (0-1 range)
 
-**Pattern to follow:**
-- Existing Kling v2.5 UI controls
-- Seedance duration/aspect ratio selectors
+1. Add type alias (~line 90, after `KlingAspectRatio`):
+```typescript
+type Kling26AspectRatio = "16:9" | "9:16" | "1:1";
+```
+
+2. Add state variables (~line 349, after existing Kling state):
+```typescript
+const [kling26Duration, setKling26Duration] = useState<5 | 10>(5);
+const [kling26CfgScale, setKling26CfgScale] = useState(0.5);
+const [kling26AspectRatio, setKling26AspectRatio] = useState<Kling26AspectRatio>("16:9");
+const [kling26GenerateAudio, setKling26GenerateAudio] = useState(true);
+const [kling26NegativePrompt, setKling26NegativePrompt] = useState("");
+```
+
+3. Add selection check (~line 628, after `klingI2VSelected`):
+```typescript
+const kling26T2VSelected = selectedModels.includes("kling_v26_pro_t2v");
+const kling26I2VSelected = selectedModels.includes("kling_v26_pro_i2v");
+const kling26Selected = kling26T2VSelected || kling26I2VSelected;
+```
+
+4. Add cost calculation helper:
+```typescript
+const calculateKling26Cost = (duration: number, generateAudio: boolean): number => {
+  const perSecondRate = generateAudio ? 0.14 : 0.07;
+  return duration * perSecondRate;
+};
+const kling26EstimatedCost = calculateKling26Cost(kling26Duration, kling26GenerateAudio);
+```
+
+5. Add props to `useAIGeneration` hook call (~line 541):
+```typescript
+kling26Duration,
+kling26CfgScale,
+kling26AspectRatio,
+kling26GenerateAudio,
+kling26NegativePrompt: kling26NegativePrompt.trim() || undefined,
+```
+
+6. Add UI controls section (~line 2360, after Kling v2.5 controls):
+```tsx
+{kling26Selected && (
+  <div className="space-y-3 text-left border-t pt-3">
+    <Label className="text-sm font-semibold">
+      Kling v2.6 Pro Settings
+    </Label>
+    {/* Duration, Aspect Ratio, CFG Scale, Audio Toggle, Negative Prompt */}
+    {/* Follow klingI2VSelected block pattern (lines 2261-2370) */}
+  </div>
+)}
+```
+
+**Existing Kling v2.5 UI reference (lines 2261-2370):**
+- Duration selector with price labels
+- Aspect ratio dropdown
+- CFG scale slider (0-1)
+- Enhance prompt toggle
+- Negative prompt input
+- Estimated cost display
 
 **Review Checklist:**
-- Confirm controls render only when a Kling 2.6 model is selected and default values mirror constants (5s, 16:9, audio on, cfg_scale 0.5).
-- Validate duration options restricted to 5/10, aspect ratios to 16:9/9:16/1:1, and cfg_scale slider bounded 0-1.
-- Ensure negative prompt input and audio toggle wire into state props added in Task 2 and propagate to submission payloads.
-- Check layout parity with Kling v2.5 controls to avoid UX drift (labels/help text, disabled states during run).
+- [ ] State variables prefixed with `kling26` to avoid conflict
+- [ ] Duration options show pricing: "5 seconds ($0.35)" / "10 seconds ($0.70)" (audio off) or "$0.70" / "$1.40" (audio on)
+- [ ] Aspect ratio limited to 3 options (not 5 like v2.5)
+- [ ] Audio toggle added (new control, not in v2.5)
+- [ ] No enhance prompt toggle (v2.6 doesn't support it)
+- [ ] Cost calculation updates dynamically based on audio toggle
+- [ ] Controls only render when `kling26Selected` is true
 
 ---
 
@@ -241,40 +368,117 @@ kling_v26_pro_t2v: {
 - `qcut/apps/web/src/components/editor/media-panel/views/ai-constants.ts`
 
 **Changes:**
-Add to `ERROR_MESSAGES` constant:
+Add to `ERROR_MESSAGES` constant (~line 1037):
+
 ```typescript
 // Kling 2.6 specific errors
-KLING26_EMPTY_PROMPT: "Please enter a text prompt for Kling 2.6 video generation",
+KLING26_EMPTY_PROMPT: "Please enter a prompt for Kling 2.6 video generation",
 KLING26_INVALID_DURATION: "Duration must be 5 or 10 seconds for Kling 2.6",
 KLING26_INVALID_ASPECT_RATIO: "Aspect ratio must be 16:9, 9:16, or 1:1 for Kling 2.6",
 KLING26_I2V_MISSING_IMAGE: "Image is required for Kling 2.6 image-to-video generation",
+KLING26_PROMPT_TOO_LONG: "Prompt exceeds maximum length of 2,500 characters for Kling 2.6",
 ```
 
 **Review Checklist:**
-- Verify keys match those referenced in UI/hook validation for Kling 2.6 and do not collide with v2.5 keys.
-- Ensure messages enforce 5/10 duration and 16:9/9:16/1:1 ratios, and cover I2V missing image specifically.
-- Confirm new errors surface in the correct panel(s) and fallback behaviors remain unchanged for other models.
+- [ ] Keys prefixed with `KLING26_` to avoid collision with future v2.5 error keys
+- [ ] Aspect ratio error specifies only 3 valid options
+- [ ] Prompt length matches existing Kling limit (2500 chars per `generateKlingImageVideo`)
+- [ ] I2V missing image error is model-specific
 
 ---
 
-### Task 7: Add Tests for Kling 2.6 Integration
+### Task 7: Wire Kling 2.6 Props in Generation Hook
 
-**Files to create/modify:**
-- `qcut/apps/web/src/components/editor/media-panel/views/__tests__/kling-26.test.ts` (new)
-- `qcut/apps/web/src/lib/__tests__/ai-video-client.test.ts` (if exists, add Kling 2.6 cases)
+**Files to modify:**
+- `qcut/apps/web/src/components/editor/media-panel/views/use-ai-generation.ts`
 
-**Test coverage:**
-1. Model definition validation (ID, endpoints, defaults)
-2. Parameter conversion correctness
-3. Error handling for invalid inputs
-4. T2V capability resolution
-5. Pricing calculation with audio on/off
+**Changes:**
+
+1. Destructure new props (~line 144, after existing Kling props):
+```typescript
+kling26Duration = 5,
+kling26CfgScale = 0.5,
+kling26AspectRatio = "16:9",
+kling26GenerateAudio = true,
+kling26NegativePrompt,
+```
+
+2. Add to dependency array (~line 2207):
+```typescript
+kling26Duration,
+kling26CfgScale,
+kling26AspectRatio,
+kling26GenerateAudio,
+kling26NegativePrompt,
+```
+
+3. Add generation branch for Kling 2.6 I2V (~line 1424, follow Kling v2.5 pattern):
+```typescript
+} else if (modelId === "kling_v26_pro_i2v") {
+  response = await generateKling26ImageVideo({
+    model: modelId,
+    prompt: prompt.trim(),
+    image_url: imageUrl,
+    duration: kling26Duration,
+    cfg_scale: kling26CfgScale,
+    aspect_ratio: kling26AspectRatio,
+    generate_audio: kling26GenerateAudio,
+    negative_prompt: kling26NegativePrompt,
+  });
+}
+```
 
 **Review Checklist:**
-- Cover both T2V and I2V: model config assertions, capability resolution, and parameter conversion including generate_audio flag.
-- Add validation tests for invalid duration/aspect ratios and missing image for I2V to exercise new error messages.
-- Mock network calls to keep tests deterministic and ensure Kling 2.6 handling does not regress v2.5 test cases.
-- Verify pricing/audio toggle scenarios reflect $0.07 vs $0.14 per second assumptions in expectations.
+- [ ] Default values match `default_params` in model config
+- [ ] All 5 props added to dependency array for proper memoization
+- [ ] Generation branch uses `generateKling26ImageVideo` (new function from Task 4)
+- [ ] `generate_audio` passed through (new param, not in v2.5 call)
+
+---
+
+### Task 8: Add Tests for Kling 2.6 Integration
+
+**Files to create/modify:**
+- `qcut/apps/web/src/test/integration/new-video-models.test.ts` (add new describe block)
+
+**Changes:**
+Add test suite following existing Kling v2.5 pattern (lines 24-100):
+
+```typescript
+describe("Kling v2.6 Pro", () => {
+  it("should generate T2V with correct endpoint and parameters", async () => {
+    // Test endpoint: kling-video/v2.6/pro/text-to-video
+    // Verify: prompt, duration, aspect_ratio, cfg_scale, generate_audio, negative_prompt
+  });
+
+  it("should generate I2V with correct endpoint", async () => {
+    // Test endpoint: kling-video/v2.6/pro/image-to-video
+    // Verify: image_url, prompt, duration, generate_audio
+  });
+
+  it("should calculate correct pricing with audio on/off", async () => {
+    // Audio off: $0.07/s → 5s = $0.35, 10s = $0.70
+    // Audio on:  $0.14/s → 5s = $0.70, 10s = $1.40
+  });
+
+  it("should validate aspect ratio options", async () => {
+    // Valid: 16:9, 9:16, 1:1
+    // Invalid: 4:3, 3:4, 21:9
+  });
+
+  it("should include generate_audio in request payload", async () => {
+    // Verify payload contains generate_audio boolean
+  });
+});
+```
+
+**Review Checklist:**
+- [ ] Tests cover both T2V and I2V endpoints
+- [ ] Pricing tests verify both audio on/off scenarios
+- [ ] Aspect ratio validation tests only allow 3 options
+- [ ] `generate_audio` parameter verified in request payload
+- [ ] Mocks follow existing pattern (lines 16-22)
+- [ ] No regression to v2.5 tests
 
 ---
 
@@ -293,7 +497,9 @@ const t2vResult = await fal.subscribe(
       prompt: "A majestic eagle soaring over mountain peaks at sunset",
       duration: "5",
       aspect_ratio: "16:9",
-      generate_audio: true
+      generate_audio: true,
+      cfg_scale: 0.5,
+      negative_prompt: "blur, distort, low quality"
     }
   }
 );
@@ -331,3 +537,16 @@ In QCut, use `VITE_FAL_API_KEY` environment variable.
 - Accepts public URLs or Base64 data URIs
 - Supports client-side file auto-upload via `@fal-ai/client`
 - Image uploads go through existing FAL upload flow in QCut
+
+---
+
+## Key Differences from Kling v2.5
+
+| Feature | Kling v2.5 | Kling v2.6 |
+|---------|------------|------------|
+| Audio Generation | Not supported | Supported (`generate_audio`) |
+| Aspect Ratios | 5 options (16:9, 9:16, 1:1, 4:3, 3:4) | 3 options (16:9, 9:16, 1:1) |
+| Enhance Prompt | Supported | Not supported |
+| Pricing (no audio) | $0.07/s | $0.07/s |
+| Pricing (with audio) | N/A | $0.14/s |
+| Endpoint path | `/v2.5-turbo/pro/` | `/v2.6/pro/` |
