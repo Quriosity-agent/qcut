@@ -88,6 +88,7 @@ type SeedanceAspectRatio =
   | "9:16"
   | "auto";
 type KlingAspectRatio = "16:9" | "9:16" | "1:1" | "4:3" | "3:4";
+type Kling26AspectRatio = "16:9" | "9:16" | "1:1";
 type Wan25Resolution = "480p" | "720p" | "1080p";
 type Wan25Duration = 5 | 10;
 const SEEDANCE_DURATION_OPTIONS: SeedanceDuration[] = [
@@ -110,6 +111,7 @@ const KLING_ASPECT_RATIOS: KlingAspectRatio[] = [
   "4:3",
   "3:4",
 ];
+const KLING26_ASPECT_RATIOS: Kling26AspectRatio[] = ["16:9", "9:16", "1:1"];
 const WAN25_DURATIONS: Wan25Duration[] = [5, 10];
 const WAN25_RESOLUTIONS: Wan25Resolution[] = ["480p", "720p", "1080p"];
 
@@ -347,6 +349,13 @@ export function AiView() {
     useState<KlingAspectRatio>("16:9");
   const [klingEnhancePrompt, setKlingEnhancePrompt] = useState(true);
   const [klingNegativePrompt, setKlingNegativePrompt] = useState("");
+  // Kling v2.6 Pro state
+  const [kling26Duration, setKling26Duration] = useState<5 | 10>(5);
+  const [kling26CfgScale, setKling26CfgScale] = useState(0.5);
+  const [kling26AspectRatio, setKling26AspectRatio] =
+    useState<Kling26AspectRatio>("16:9");
+  const [kling26GenerateAudio, setKling26GenerateAudio] = useState(true);
+  const [kling26NegativePrompt, setKling26NegativePrompt] = useState("");
   const [wan25Duration, setWan25Duration] = useState<Wan25Duration>(5);
   const [wan25Resolution, setWan25Resolution] =
     useState<Wan25Resolution>("1080p");
@@ -543,6 +552,11 @@ export function AiView() {
     klingAspectRatio,
     klingEnhancePrompt,
     klingNegativePrompt: cleanedKlingNegativePrompt,
+    kling26Duration,
+    kling26CfgScale,
+    kling26AspectRatio,
+    kling26GenerateAudio,
+    kling26NegativePrompt: kling26NegativePrompt.trim() || undefined,
     wan25Duration,
     wan25Resolution,
     wan25AudioUrl: cleanedWan25AudioUrl,
@@ -626,6 +640,9 @@ export function AiView() {
   const seedanceProSelected = selectedModels.includes("seedance_pro_i2v");
   const seedanceSelected = seedanceFastSelected || seedanceProSelected;
   const klingI2VSelected = selectedModels.includes("kling_v2_5_turbo_i2v");
+  const kling26T2VSelected = selectedModels.includes("kling_v26_pro_t2v");
+  const kling26I2VSelected = selectedModels.includes("kling_v26_pro_i2v");
+  const kling26Selected = kling26T2VSelected || kling26I2VSelected;
   const wan25Selected = selectedModels.includes("wan_25_preview_i2v");
   const bytedanceUpscalerSelected = selectedModels.includes(
     "bytedance_video_upscaler"
@@ -683,6 +700,18 @@ export function AiView() {
   const klingAspectRatios =
     klingModelConfig?.supportedAspectRatios ?? KLING_ASPECT_RATIOS;
   const klingEstimatedCost = calculateKlingCost(klingDuration);
+  // Kling v2.6 cost calculation: $0.07/s without audio, $0.14/s with audio
+  const calculateKling26Cost = (
+    duration: number,
+    generateAudio: boolean
+  ): number => {
+    const perSecondRate = generateAudio ? 0.14 : 0.07;
+    return duration * perSecondRate;
+  };
+  const kling26EstimatedCost = calculateKling26Cost(
+    kling26Duration,
+    kling26GenerateAudio
+  );
   const wan25ModelConfig = AI_MODELS.find(
     (model) => model.id === "wan_25_preview_i2v"
   );
@@ -2366,6 +2395,128 @@ export function AiView() {
                   </div>
                   <div className="text-xs text-muted-foreground">
                     Estimated cost: ${klingEstimatedCost.toFixed(2)}
+                  </div>
+                </div>
+              )}
+              {kling26Selected && (
+                <div className="space-y-3 text-left border-t pt-3">
+                  <Label className="text-sm font-semibold">
+                    Kling v2.6 Pro Settings
+                  </Label>
+
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="space-y-1">
+                      <Label htmlFor="kling26-duration" className="text-xs">
+                        Duration
+                      </Label>
+                      <Select
+                        value={kling26Duration.toString()}
+                        onValueChange={(value) =>
+                          setKling26Duration(Number(value) as 5 | 10)
+                        }
+                      >
+                        <SelectTrigger
+                          id="kling26-duration"
+                          className="h-8 text-xs"
+                        >
+                          <SelectValue placeholder="Select duration" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="5">
+                            5 seconds ($
+                            {kling26GenerateAudio ? "0.70" : "0.35"})
+                          </SelectItem>
+                          <SelectItem value="10">
+                            10 seconds ($
+                            {kling26GenerateAudio ? "1.40" : "0.70"})
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor="kling26-aspect" className="text-xs">
+                        Aspect Ratio
+                      </Label>
+                      <Select
+                        value={kling26AspectRatio}
+                        onValueChange={(value) =>
+                          setKling26AspectRatio(value as Kling26AspectRatio)
+                        }
+                      >
+                        <SelectTrigger
+                          id="kling26-aspect"
+                          className="h-8 text-xs"
+                        >
+                          <SelectValue placeholder="Select aspect ratio" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {KLING26_ASPECT_RATIOS.map((ratio) => (
+                            <SelectItem key={ratio} value={ratio}>
+                              {ratio.toUpperCase()}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <Label htmlFor="kling26-cfg" className="text-xs">
+                      Prompt Adherence ({kling26CfgScale.toFixed(1)})
+                    </Label>
+                    <input
+                      id="kling26-cfg"
+                      type="range"
+                      min="0"
+                      max="1"
+                      step="0.1"
+                      value={kling26CfgScale}
+                      onChange={(event) =>
+                        setKling26CfgScale(Number(event.target.value))
+                      }
+                      className="w-full cursor-pointer"
+                    />
+                    <div className="text-xs text-muted-foreground">
+                      Lower values add more freedom, higher values follow the
+                      prompt closely.
+                    </div>
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="kling26-generate-audio"
+                      checked={kling26GenerateAudio}
+                      onCheckedChange={(checked) =>
+                        setKling26GenerateAudio(Boolean(checked))
+                      }
+                    />
+                    <Label htmlFor="kling26-generate-audio" className="text-xs">
+                      Generate native audio (Chinese/English)
+                    </Label>
+                  </div>
+
+                  <div className="space-y-1">
+                    <Label htmlFor="kling26-negative-prompt" className="text-xs">
+                      Negative Prompt (optional)
+                    </Label>
+                    <Textarea
+                      id="kling26-negative-prompt"
+                      value={kling26NegativePrompt}
+                      onChange={(event) =>
+                        setKling26NegativePrompt(event.target.value)
+                      }
+                      placeholder="blur, distort, and low quality"
+                      className="min-h-[60px] text-xs"
+                      maxLength={2500}
+                    />
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    Estimated cost: ${kling26EstimatedCost.toFixed(2)}
+                    {kling26GenerateAudio ? " (with audio)" : " (no audio)"}
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    Kling v2.6 Pro supports native audio generation and offers
+                    cinematic visual quality.
                   </div>
                 </div>
               )}

@@ -18,6 +18,7 @@ import {
   generateLTXV2ImageVideo,
   generateSeedanceVideo,
   generateKlingImageVideo,
+  generateKling26ImageVideo,
   generateWAN25ImageVideo,
   generateAvatarVideo,
   generateKlingO1Video,
@@ -146,6 +147,11 @@ export function useAIGeneration(props: UseAIGenerationProps) {
     klingAspectRatio = "16:9",
     klingEnhancePrompt = true,
     klingNegativePrompt,
+    kling26Duration = 5,
+    kling26CfgScale = 0.5,
+    kling26AspectRatio = "16:9",
+    kling26GenerateAudio = true,
+    kling26NegativePrompt,
     wan25Duration = 5,
     wan25Resolution = "1080p",
     wan25AudioUrl,
@@ -1439,6 +1445,40 @@ export function useAIGeneration(props: UseAIGenerationProps) {
               message: `Video generated with ${friendlyName}`,
             });
           }
+          // Kling v2.6 Pro image-to-video
+          else if (modelId === "kling_v26_pro_i2v") {
+            if (!selectedImage) {
+              console.log(
+                "  ⚠️ Skipping model - Kling v2.6 requires a selected image"
+              );
+              continue;
+            }
+
+            const imageUrl = await uploadImageToFal(selectedImage);
+            const friendlyName = modelName || modelId;
+            progressCallback({
+              status: "processing",
+              progress: 10,
+              message: `Submitting ${friendlyName} request...`,
+            });
+
+            response = await generateKling26ImageVideo({
+              model: modelId,
+              prompt: prompt.trim(),
+              image_url: imageUrl,
+              duration: kling26Duration,
+              cfg_scale: kling26CfgScale,
+              aspect_ratio: kling26AspectRatio,
+              generate_audio: kling26GenerateAudio,
+              negative_prompt: kling26NegativePrompt,
+            });
+
+            progressCallback({
+              status: "completed",
+              progress: 100,
+              message: `Video generated with ${friendlyName}`,
+            });
+          }
           // WAN 2.5 Preview image-to-video
           else if (modelId === "wan_25_preview_i2v") {
             if (!selectedImage) {
@@ -2205,6 +2245,11 @@ export function useAIGeneration(props: UseAIGenerationProps) {
     klingAspectRatio,
     klingEnhancePrompt,
     klingNegativePrompt,
+    kling26Duration,
+    kling26CfgScale,
+    kling26AspectRatio,
+    kling26GenerateAudio,
+    kling26NegativePrompt,
     wan25Duration,
     wan25Resolution,
     wan25AudioUrl,
