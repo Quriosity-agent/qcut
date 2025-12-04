@@ -66,6 +66,28 @@ export const AI_MODELS: AIModel[] = [
     },
   },
   {
+    id: "kling_v26_pro_t2v",
+    name: "Kling v2.6 Pro T2V",
+    description:
+      "Top-tier text-to-video with cinematic visuals and native audio generation",
+    price: "0.35", // 5s @ $0.07/s without audio
+    resolution: "1080p",
+    max_duration: 10,
+    category: "text",
+    endpoints: {
+      text_to_video: "fal-ai/kling-video/v2.6/pro/text-to-video",
+    },
+    default_params: {
+      duration: 5,
+      aspect_ratio: "16:9",
+      cfg_scale: 0.5,
+      generate_audio: true,
+      negative_prompt: "blur, distort, and low quality",
+    },
+    supportedDurations: [5, 10],
+    supportedAspectRatios: ["16:9", "9:16", "1:1"],
+  },
+  {
     id: "wan_25_preview",
     name: "WAN v2.5 Preview",
     description: "Next-generation WAN model with improved quality",
@@ -207,6 +229,28 @@ export const AI_MODELS: AIModel[] = [
       aspect_ratio: "auto",
     },
   },
+  {
+    id: "kling_v26_pro_i2v",
+    name: "Kling v2.6 Pro I2V",
+    description:
+      "Top-tier image-to-video with cinematic visuals and native audio generation",
+    price: "0.35", // 5s @ $0.07/s without audio
+    resolution: "1080p",
+    max_duration: 10,
+    category: "image",
+    endpoints: {
+      image_to_video: "fal-ai/kling-video/v2.6/pro/image-to-video",
+    },
+    default_params: {
+      duration: 5,
+      aspect_ratio: "16:9",
+      cfg_scale: 0.5,
+      generate_audio: true,
+      negative_prompt: "blur, distort, and low quality",
+    },
+    supportedDurations: [5, 10],
+    supportedAspectRatios: ["16:9", "9:16", "1:1"],
+  },
   // LTX Video 2.0 Image-to-Video Models
   {
     id: "ltxv2_i2v",
@@ -336,28 +380,6 @@ export const AI_MODELS: AIModel[] = [
     supportedResolutions: ["1080p"],
     supportedDurations: [5, 10],
     supportedAspectRatios: ["16:9", "9:16", "1:1", "4:3", "3:4"],
-  },
-  {
-    id: "kling_v26_pro_i2v",
-    name: "Kling v2.6 Pro I2V",
-    description:
-      "Top-tier image-to-video with cinematic visuals and native audio generation",
-    price: "0.35", // 5s @ $0.07/s without audio
-    resolution: "1080p",
-    max_duration: 10,
-    category: "image",
-    endpoints: {
-      image_to_video: "fal-ai/kling-video/v2.6/pro/image-to-video",
-    },
-    default_params: {
-      duration: 5,
-      aspect_ratio: "16:9",
-      cfg_scale: 0.5,
-      generate_audio: true,
-      negative_prompt: "blur, distort, and low quality",
-    },
-    supportedDurations: [5, 10],
-    supportedAspectRatios: ["16:9", "9:16", "1:1"],
   },
   {
     id: "wan_25_preview_i2v",
@@ -623,28 +645,6 @@ export const AI_MODELS: AIModel[] = [
       aspect_ratio: "16:9",
       enhance_prompt: true,
     },
-  },
-  {
-    id: "kling_v26_pro_t2v",
-    name: "Kling v2.6 Pro T2V",
-    description:
-      "Top-tier text-to-video with cinematic visuals and native audio generation",
-    price: "0.35", // 5s @ $0.07/s without audio
-    resolution: "1080p",
-    max_duration: 10,
-    category: "text",
-    endpoints: {
-      text_to_video: "fal-ai/kling-video/v2.6/pro/text-to-video",
-    },
-    default_params: {
-      duration: 5,
-      aspect_ratio: "16:9",
-      cfg_scale: 0.5,
-      generate_audio: true,
-      negative_prompt: "blur, distort, and low quality",
-    },
-    supportedDurations: [5, 10],
-    supportedAspectRatios: ["16:9", "9:16", "1:1"],
   },
   // Video Upscale Models
   {

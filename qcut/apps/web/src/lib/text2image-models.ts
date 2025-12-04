@@ -1211,11 +1211,10 @@ export const TEXT2IMAGE_MODELS: Record<string, Text2ImageModel> = {
 export const TEXT2IMAGE_MODEL_ORDER = [
   "gemini-3-pro",
   "nano-banana",
+  "seeddream-v4-5",
   "z-image-turbo",
   "flux-2-flex",
   "seeddream-v4",
-  "seeddream-v4-5",
-  "seeddream-v4-5-edit",
   "reve-text-to-image",
   "wan-v2-2",
   "imagen4-ultra",

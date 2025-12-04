@@ -1425,6 +1425,7 @@ describe("Seedream 4.5 Model Configuration", () => {
 | 6. UI Components | ✅ Complete | `fal-ai-client.ts`, `text2image-models.ts` | Models auto-appear in Text2Image dropdown via TEXT2IMAGE_MODEL_ORDER |
 | 7. Generation Hook | ✅ Complete | `fal-ai-client.ts` | Added switch cases for `seeddream-v4-5` and `seeddream-v4-5-edit` |
 | 8. Tests | ✅ Complete | `seeddream45.test.ts` | 23 unit tests passing - covers text-to-image, edit, upload functions |
+| 9. Image Edit Panel | ✅ Complete | `image-edit-client.ts` | Added `seeddream-v4-5-edit` to MODEL_ENDPOINTS, getImageEditModels(), and ImageEditRequest type |
 
 ### Naming Convention Note
 - **Model IDs**: `seeddream-v4-5`, `seeddream-v4-5-edit` (double 'e' - matches existing v3/v4)
