@@ -66,6 +66,28 @@ export const AI_MODELS: AIModel[] = [
     },
   },
   {
+    id: "kling_v26_pro_t2v",
+    name: "Kling v2.6 Pro T2V",
+    description:
+      "Top-tier text-to-video with cinematic visuals and native audio generation",
+    price: "0.70", // 5s @ $0.14/s with audio (default); $0.35 without audio
+    resolution: "1080p",
+    max_duration: 10,
+    category: "text",
+    endpoints: {
+      text_to_video: "fal-ai/kling-video/v2.6/pro/text-to-video",
+    },
+    default_params: {
+      duration: 5,
+      aspect_ratio: "16:9",
+      cfg_scale: 0.5,
+      generate_audio: true,
+      negative_prompt: "blur, distort, and low quality",
+    },
+    supportedDurations: [5, 10],
+    supportedAspectRatios: ["16:9", "9:16", "1:1"],
+  },
+  {
     id: "wan_25_preview",
     name: "WAN v2.5 Preview",
     description: "Next-generation WAN model with improved quality",
@@ -206,6 +228,28 @@ export const AI_MODELS: AIModel[] = [
       resolution: "auto",
       aspect_ratio: "auto",
     },
+  },
+  {
+    id: "kling_v26_pro_i2v",
+    name: "Kling v2.6 Pro I2V",
+    description:
+      "Top-tier image-to-video with cinematic visuals and native audio generation",
+    price: "0.70", // 5s @ $0.14/s with audio (default); $0.35 without audio
+    resolution: "1080p",
+    max_duration: 10,
+    category: "image",
+    endpoints: {
+      image_to_video: "fal-ai/kling-video/v2.6/pro/image-to-video",
+    },
+    default_params: {
+      duration: 5,
+      aspect_ratio: "16:9",
+      cfg_scale: 0.5,
+      generate_audio: true,
+      negative_prompt: "blur, distort, and low quality",
+    },
+    supportedDurations: [5, 10],
+    supportedAspectRatios: ["16:9", "9:16", "1:1"],
   },
   // LTX Video 2.0 Image-to-Video Models
   {
@@ -741,6 +785,155 @@ export const AI_MODELS: AIModel[] = [
       video_quality: "high",
     },
   },
+  // Kling Avatar v2 Models - Enhanced lip-sync and animation quality
+  {
+    id: "kling_avatar_v2_standard",
+    name: "Kling Avatar v2 Standard",
+    description:
+      "Create talking avatar videos with realistic humans, animals, cartoons, or stylized characters. Audio-synchronized lip-sync.",
+    price: "0.0562", // Per second pricing
+    resolution: "1080p",
+    max_duration: 60,
+    category: "avatar",
+    requiredInputs: ["characterImage", "audioFile"],
+    endpoints: {
+      text_to_video: "fal-ai/kling-video/ai-avatar/v2/standard",
+    },
+    default_params: {
+      prompt: "",
+      resolution: "1080p",
+    },
+    perSecondPricing: {
+      "1080p": 0.0562,
+    },
+    audioConstraints: {
+      minDurationSec: 2,
+      maxDurationSec: 60,
+      maxFileSizeBytes: 5 * 1024 * 1024, // 5MB
+    },
+  },
+  {
+    id: "kling_avatar_v2_pro",
+    name: "Kling Avatar v2 Pro",
+    description:
+      "Premium avatar video generation with enhanced quality and realism. Ideal for professional productions.",
+    price: "0.115", // Per second pricing
+    resolution: "1080p",
+    max_duration: 60,
+    category: "avatar",
+    requiredInputs: ["characterImage", "audioFile"],
+    endpoints: {
+      text_to_video: "fal-ai/kling-video/ai-avatar/v2/pro",
+    },
+    default_params: {
+      prompt: "",
+      resolution: "1080p",
+    },
+    perSecondPricing: {
+      "1080p": 0.115,
+    },
+    audioConstraints: {
+      minDurationSec: 2,
+      maxDurationSec: 60,
+      maxFileSizeBytes: 5 * 1024 * 1024, // 5MB
+    },
+  },
+  // Kling O1 Models - Advanced video generation with cinematic understanding
+  {
+    id: "kling_o1_v2v_reference",
+    name: "Kling O1 Video Reference",
+    description:
+      "Generate new shots guided by input reference video, preserving motion and camera style",
+    price: "0.112", // Per second pricing
+    resolution: "1080p",
+    max_duration: 10,
+    category: "avatar", // Avatar tab for video-to-video models
+    requiredInputs: ["sourceVideo"],
+    endpoints: {
+      image_to_video: "fal-ai/kling-video/o1/video-to-video/reference",
+    },
+    default_params: {
+      duration: 5,
+      aspect_ratio: "auto",
+    },
+    supportedDurations: [5, 10],
+    supportedAspectRatios: ["auto", "16:9", "9:16", "1:1"],
+  },
+  {
+    id: "kling_o1_v2v_edit",
+    name: "Kling O1 Video Edit",
+    description:
+      "Edit videos through natural language instructions while preserving motion structure",
+    price: "0.168", // Per second pricing
+    resolution: "1080p",
+    max_duration: 10,
+    category: "avatar", // Avatar tab for video-to-video models
+    requiredInputs: ["sourceVideo"],
+    endpoints: {
+      image_to_video: "fal-ai/kling-video/o1/video-to-video/edit",
+    },
+    default_params: {
+      duration: 5,
+    },
+    supportedDurations: [5, 10],
+  },
+  {
+    id: "kling_o1_ref2video",
+    name: "Kling O1 Reference-to-Video",
+    description:
+      "Transform reference images and elements into consistent video scenes",
+    price: "0.112", // Per second pricing
+    resolution: "1080p",
+    max_duration: 10,
+    category: "avatar", // Avatar tab - uses reference images
+    requiredInputs: ["referenceImages"],
+    endpoints: {
+      image_to_video: "fal-ai/kling-video/o1/reference-to-video",
+    },
+    default_params: {
+      duration: 5,
+      aspect_ratio: "16:9",
+      cfg_scale: 0.5,
+      negative_prompt: "blur, distort, low quality",
+    },
+    supportedDurations: [5, 10],
+    supportedAspectRatios: ["16:9", "9:16", "1:1"],
+  },
+  {
+    id: "kling_o1_i2v",
+    name: "Kling O1 Image-to-Video",
+    description:
+      "Animate transitions between start and end frames with cinematic motion",
+    price: "0.112", // Per second pricing
+    resolution: "1080p",
+    max_duration: 10,
+    category: "image", // Keep in Image tab - uses images
+    requiredInputs: ["firstFrame"],
+    endpoints: {
+      image_to_video: "fal-ai/kling-video/o1/image-to-video",
+    },
+    default_params: {
+      duration: 5,
+    },
+    supportedDurations: [5, 10],
+  },
+  {
+    id: "bytedance_omnihuman_v1_5",
+    name: "ByteDance OmniHuman v1.5",
+    description: "Realistic human avatar with emotion-synced audio",
+    price: "0.20", // Estimated pricing
+    resolution: "1080p",
+    max_duration: 30, // 30 second audio limit
+    category: "avatar",
+    requiredInputs: ["characterImage", "audioFile"],
+    endpoints: {
+      text_to_video: "fal-ai/bytedance/omnihuman/v1.5",
+    },
+    default_params: {
+      resolution: "1080p",
+    },
+  },
+  // Kling Avatar v1 Models (Legacy)
   {
     id: "kling_avatar_pro",
     name: "Kling Avatar Pro",
@@ -771,22 +964,6 @@ export const AI_MODELS: AIModel[] = [
     },
     default_params: {
       resolution: "720p",
-    },
-  },
-  {
-    id: "bytedance_omnihuman_v1_5",
-    name: "ByteDance OmniHuman v1.5",
-    description: "Realistic human avatar with emotion-synced audio",
-    price: "0.20", // Estimated pricing
-    resolution: "1080p",
-    max_duration: 30, // 30 second audio limit
-    category: "avatar",
-    requiredInputs: ["characterImage", "audioFile"],
-    endpoints: {
-      text_to_video: "fal-ai/bytedance/omnihuman/v1.5",
-    },
-    default_params: {
-      resolution: "1080p",
     },
   },
   {
@@ -897,6 +1074,11 @@ export const UPLOAD_CONSTANTS = {
   MAX_VEO31_FRAME_SIZE_BYTES: 8 * 1024 * 1024, // 8MB (Veo 3.1 limit)
   MAX_VEO31_FRAME_SIZE_LABEL: "8MB",
   ALLOWED_VEO31_ASPECT_RATIOS: ["16:9", "9:16"],
+
+  // Seeddream 4.5 edit image uploads
+  MAX_SEEDDREAM45_IMAGES: 10,
+  MAX_SEEDDREAM45_IMAGE_SIZE_BYTES: 10 * 1024 * 1024, // 10MB per image
+  MAX_SEEDDREAM45_IMAGE_SIZE_LABEL: "10MB",
 } as const;
 
 // Progress Constants
@@ -986,6 +1168,35 @@ export const ERROR_MESSAGES = {
     "Videos longer than 10 seconds require 1080p resolution and 25 FPS for LTX Video 2.0 Fast",
   LTXV2_I2V_MISSING_IMAGE:
     "Image is required for LTX Video 2.0 Fast image-to-video generation",
+
+  // Seeddream 4.5 errors
+  SEEDDREAM45_EMPTY_PROMPT: "Please enter a prompt for image generation",
+  SEEDDREAM45_EDIT_NO_IMAGES: "Please select at least one image to edit",
+  SEEDDREAM45_EDIT_TOO_MANY_IMAGES:
+    "Maximum 10 images allowed for Seeddream 4.5 edit",
+  SEEDDREAM45_UPLOAD_FAILED: "Failed to upload image for editing",
+  SEEDDREAM45_GENERATION_FAILED: "Seeddream 4.5 image generation failed",
+
+  // Kling 2.6 specific errors
+  KLING26_EMPTY_PROMPT: "Please enter a prompt for Kling 2.6 video generation",
+  KLING26_INVALID_DURATION: "Duration must be 5 or 10 seconds for Kling 2.6",
+  KLING26_INVALID_ASPECT_RATIO:
+    "Aspect ratio must be 16:9, 9:16, or 1:1 for Kling 2.6",
+  KLING26_I2V_MISSING_IMAGE:
+    "Image is required for Kling 2.6 image-to-video generation",
+  KLING26_PROMPT_TOO_LONG:
+    "Prompt exceeds maximum length of 2,500 characters for Kling 2.6",
+
+  // Kling Avatar v2 specific errors
+  KLING_AVATAR_V2_MISSING_IMAGE:
+    "Character image is required for Kling Avatar v2",
+  KLING_AVATAR_V2_MISSING_AUDIO: "Audio file is required for Kling Avatar v2",
+  KLING_AVATAR_V2_AUDIO_TOO_SHORT:
+    "Audio must be at least 2 seconds for Kling Avatar v2",
+  KLING_AVATAR_V2_AUDIO_TOO_LONG:
+    "Audio must be under 60 seconds for Kling Avatar v2",
+  KLING_AVATAR_V2_AUDIO_TOO_LARGE:
+    "Audio file must be under 5MB for Kling Avatar v2",
 } as const;
 
 // LTX Video 2.0 Fast Configuration
@@ -1090,6 +1301,17 @@ export const MODEL_HELPERS = {
   requiresFrameToFrame: (modelId: string): boolean => {
     const model = AI_MODELS.find((m) => m.id === modelId);
     return model?.requiredInputs?.includes("firstFrame") ?? false;
+  },
+
+  /**
+   * Check if model requires source video input
+   * Used to determine if V2V (video-to-video) upload UI should be shown
+   * @param modelId - Model ID to check
+   * @returns true if model requires source video for transformation
+   */
+  requiresSourceVideo: (modelId: string): boolean => {
+    const model = AI_MODELS.find((m) => m.id === modelId);
+    return model?.requiredInputs?.includes("sourceVideo") ?? false;
   },
 
   /**

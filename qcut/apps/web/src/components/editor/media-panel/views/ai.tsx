@@ -88,6 +88,7 @@ type SeedanceAspectRatio =
   | "9:16"
   | "auto";
 type KlingAspectRatio = "16:9" | "9:16" | "1:1" | "4:3" | "3:4";
+type Kling26AspectRatio = "16:9" | "9:16" | "1:1";
 type Wan25Resolution = "480p" | "720p" | "1080p";
 type Wan25Duration = 5 | 10;
 const SEEDANCE_DURATION_OPTIONS: SeedanceDuration[] = [
@@ -110,6 +111,7 @@ const KLING_ASPECT_RATIOS: KlingAspectRatio[] = [
   "4:3",
   "3:4",
 ];
+const KLING26_ASPECT_RATIOS: Kling26AspectRatio[] = ["16:9", "9:16", "1:1"];
 const WAN25_DURATIONS: Wan25Duration[] = [5, 10];
 const WAN25_RESOLUTIONS: Wan25Resolution[] = ["480p", "720p", "1080p"];
 
@@ -167,6 +169,11 @@ export function AiView() {
   const [lastFrame, setLastFrame] = useState<File | null>(null);
   const [lastFramePreview, setLastFramePreview] = useState<string | null>(null);
 
+  // Video-to-Video state (for Kling O1 models in Image tab)
+  const [imageTabSourceVideo, setImageTabSourceVideo] = useState<File | null>(
+    null
+  );
+
   const [error, setError] = useState<string | null>(null);
 
   // Avatar-specific state variables
@@ -174,6 +181,22 @@ export function AiView() {
   const [avatarImagePreview, setAvatarImagePreview] = useState<string | null>(
     null
   );
+  const [avatarLastFrame, setAvatarLastFrame] = useState<File | null>(null);
+  const [avatarLastFramePreview, setAvatarLastFramePreview] = useState<
+    string | null
+  >(null);
+  // Reference images state (6 slots)
+  const [referenceImages, setReferenceImages] = useState<(File | null)[]>([
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+  ]);
+  const [referenceImagePreviews, setReferenceImagePreviews] = useState<
+    (string | null)[]
+  >([null, null, null, null, null, null]);
   const [audioFile, setAudioFile] = useState<File | null>(null);
   const [audioPreview, setAudioPreview] = useState<string | null>(null);
   const [sourceVideo, setSourceVideo] = useState<File | null>(null);
@@ -326,6 +349,13 @@ export function AiView() {
     useState<KlingAspectRatio>("16:9");
   const [klingEnhancePrompt, setKlingEnhancePrompt] = useState(true);
   const [klingNegativePrompt, setKlingNegativePrompt] = useState("");
+  // Kling v2.6 Pro state
+  const [kling26Duration, setKling26Duration] = useState<5 | 10>(5);
+  const [kling26CfgScale, setKling26CfgScale] = useState(0.5);
+  const [kling26AspectRatio, setKling26AspectRatio] =
+    useState<Kling26AspectRatio>("16:9");
+  const [kling26GenerateAudio, setKling26GenerateAudio] = useState(true);
+  const [kling26NegativePrompt, setKling26NegativePrompt] = useState("");
   const [wan25Duration, setWan25Duration] = useState<Wan25Duration>(5);
   const [wan25Resolution, setWan25Resolution] =
     useState<Wan25Resolution>("1080p");
@@ -340,6 +370,10 @@ export function AiView() {
   const [wan25EnablePromptExpansion, setWan25EnablePromptExpansion] =
     useState(true);
   const [imageSeed, setImageSeed] = useState<number | undefined>(undefined);
+
+  // Kling Avatar v2 state
+  const [klingAvatarV2Prompt, setKlingAvatarV2Prompt] = useState("");
+  const [audioDuration, setAudioDuration] = useState<number | null>(null);
 
   // Use global AI tab state (CRITICAL: preserve global state integration)
   const { aiActiveTab: activeTab, setAiActiveTab: setActiveTab } =
@@ -481,6 +515,7 @@ export function AiView() {
     sourceVideo,
     sourceVideoFile,
     sourceVideoUrl,
+    referenceImages,
     hailuoT2VDuration,
     t2vAspectRatio,
     t2vResolution,
@@ -521,12 +556,20 @@ export function AiView() {
     klingAspectRatio,
     klingEnhancePrompt,
     klingNegativePrompt: cleanedKlingNegativePrompt,
+    kling26Duration,
+    kling26CfgScale,
+    kling26AspectRatio,
+    kling26GenerateAudio,
+    kling26NegativePrompt: kling26NegativePrompt.trim() || undefined,
     wan25Duration,
     wan25Resolution,
     wan25AudioUrl: cleanedWan25AudioUrl,
     wan25AudioFile,
     wan25NegativePrompt: cleanedWan25NegativePrompt,
     wan25EnablePromptExpansion,
+    // Kling Avatar v2 props
+    klingAvatarV2Prompt,
+    audioDuration,
     bytedanceTargetResolution,
     bytedanceTargetFPS,
     flashvsrUpscaleFactor,
@@ -604,6 +647,12 @@ export function AiView() {
   const seedanceProSelected = selectedModels.includes("seedance_pro_i2v");
   const seedanceSelected = seedanceFastSelected || seedanceProSelected;
   const klingI2VSelected = selectedModels.includes("kling_v2_5_turbo_i2v");
+  const kling26T2VSelected = selectedModels.includes("kling_v26_pro_t2v");
+  const kling26I2VSelected = selectedModels.includes("kling_v26_pro_i2v");
+  const kling26Selected = kling26T2VSelected || kling26I2VSelected;
+  const klingAvatarV2Selected =
+    selectedModels.includes("kling_avatar_v2_standard") ||
+    selectedModels.includes("kling_avatar_v2_pro");
   const wan25Selected = selectedModels.includes("wan_25_preview_i2v");
   const bytedanceUpscalerSelected = selectedModels.includes(
     "bytedance_video_upscaler"
@@ -661,6 +710,18 @@ export function AiView() {
   const klingAspectRatios =
     klingModelConfig?.supportedAspectRatios ?? KLING_ASPECT_RATIOS;
   const klingEstimatedCost = calculateKlingCost(klingDuration);
+  // Kling v2.6 cost calculation: $0.07/s without audio, $0.14/s with audio
+  const calculateKling26Cost = (
+    duration: number,
+    generateAudio: boolean
+  ): number => {
+    const perSecondRate = generateAudio ? 0.14 : 0.07;
+    return duration * perSecondRate;
+  };
+  const kling26EstimatedCost = calculateKling26Cost(
+    kling26Duration,
+    kling26GenerateAudio
+  );
   const wan25ModelConfig = AI_MODELS.find(
     (model) => model.id === "wan_25_preview_i2v"
   );
@@ -782,6 +843,31 @@ export function AiView() {
       setImageSeed(undefined);
     }
   }, [seedanceSelected, wan25Selected]);
+
+  // Reset Kling Avatar v2 state when deselected
+  useEffect(() => {
+    if (!klingAvatarV2Selected) {
+      setKlingAvatarV2Prompt("");
+    }
+  }, [klingAvatarV2Selected]);
+
+  // Extract audio duration when audioFile changes (for Kling Avatar v2 cost calculation)
+  useEffect(() => {
+    if (audioFile) {
+      const audio = new Audio();
+      audio.src = URL.createObjectURL(audioFile);
+      audio.onloadedmetadata = () => {
+        setAudioDuration(audio.duration);
+        URL.revokeObjectURL(audio.src);
+      };
+      audio.onerror = () => {
+        setAudioDuration(null);
+        URL.revokeObjectURL(audio.src);
+      };
+    } else {
+      setAudioDuration(null);
+    }
+  }, [audioFile]);
 
   useEffect(() => {
     if (!ltxv2FastTextSelected && !ltxv2ImageSelected) {
@@ -979,6 +1065,14 @@ export function AiView() {
         model?.perSecondPricing?.[wan25Resolution] ??
         Number.parseFloat(model?.price ?? "0");
       modelCost = perSecond * wan25Duration;
+    }
+    // Kling v2.6 Pro pricing: $0.07/s (no audio) or $0.14/s (with audio)
+    else if (
+      modelId === "kling_v26_pro_t2v" ||
+      modelId === "kling_v26_pro_i2v"
+    ) {
+      const perSecondRate = kling26GenerateAudio ? 0.14 : 0.07;
+      modelCost = kling26Duration * perSecondRate;
     }
 
     return total + modelCost;
@@ -1511,6 +1605,7 @@ export function AiView() {
                 firstFramePreview={firstFramePreview}
                 lastFrame={lastFrame}
                 lastFramePreview={lastFramePreview}
+                sourceVideo={imageTabSourceVideo}
                 onFirstFrameChange={(file, preview) => {
                   setFirstFrame(file);
                   setFirstFramePreview(preview || null);
@@ -1524,6 +1619,10 @@ export function AiView() {
                   if (generation.setLastFrame) {
                     generation.setLastFrame(file);
                   }
+                }}
+                onSourceVideoChange={(file) => {
+                  setImageTabSourceVideo(file);
+                  if (file) setError(null);
                 }}
                 onError={setError}
                 isCompact={isCompact}
@@ -2342,6 +2441,128 @@ export function AiView() {
                   </div>
                 </div>
               )}
+              {kling26Selected && (
+                <div className="space-y-3 text-left border-t pt-3">
+                  <Label className="text-sm font-semibold">
+                    Kling v2.6 Pro Settings
+                  </Label>
+
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="space-y-1">
+                      <Label htmlFor="kling26-duration" className="text-xs">
+                        Duration
+                      </Label>
+                      <Select
+                        value={kling26Duration.toString()}
+                        onValueChange={(value) =>
+                          setKling26Duration(Number(value) as 5 | 10)
+                        }
+                      >
+                        <SelectTrigger
+                          id="kling26-duration"
+                          className="h-8 text-xs"
+                        >
+                          <SelectValue placeholder="Select duration" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="5">
+                            5 seconds ($
+                            {kling26GenerateAudio ? "0.70" : "0.35"})
+                          </SelectItem>
+                          <SelectItem value="10">
+                            10 seconds ($
+                            {kling26GenerateAudio ? "1.40" : "0.70"})
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor="kling26-aspect" className="text-xs">
+                        Aspect Ratio
+                      </Label>
+                      <Select
+                        value={kling26AspectRatio}
+                        onValueChange={(value) =>
+                          setKling26AspectRatio(value as Kling26AspectRatio)
+                        }
+                      >
+                        <SelectTrigger
+                          id="kling26-aspect"
+                          className="h-8 text-xs"
+                        >
+                          <SelectValue placeholder="Select aspect ratio" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {KLING26_ASPECT_RATIOS.map((ratio) => (
+                            <SelectItem key={ratio} value={ratio}>
+                              {ratio.toUpperCase()}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <Label htmlFor="kling26-cfg" className="text-xs">
+                      Prompt Adherence ({kling26CfgScale.toFixed(1)})
+                    </Label>
+                    <input
+                      id="kling26-cfg"
+                      type="range"
+                      min="0"
+                      max="1"
+                      step="0.1"
+                      value={kling26CfgScale}
+                      onChange={(event) =>
+                        setKling26CfgScale(Number(event.target.value))
+                      }
+                      className="w-full cursor-pointer"
+                    />
+                    <div className="text-xs text-muted-foreground">
+                      Lower values add more freedom, higher values follow the
+                      prompt closely.
+                    </div>
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="kling26-generate-audio"
+                      checked={kling26GenerateAudio}
+                      onCheckedChange={(checked) =>
+                        setKling26GenerateAudio(Boolean(checked))
+                      }
+                    />
+                    <Label htmlFor="kling26-generate-audio" className="text-xs">
+                      Generate native audio (Chinese/English)
+                    </Label>
+                  </div>
+
+                  <div className="space-y-1">
+                    <Label htmlFor="kling26-negative-prompt" className="text-xs">
+                      Negative Prompt (optional)
+                    </Label>
+                    <Textarea
+                      id="kling26-negative-prompt"
+                      value={kling26NegativePrompt}
+                      onChange={(event) =>
+                        setKling26NegativePrompt(event.target.value)
+                      }
+                      placeholder="blur, distort, and low quality"
+                      className="min-h-[60px] text-xs"
+                      maxLength={2500}
+                    />
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    Estimated cost: ${kling26EstimatedCost.toFixed(2)}
+                    {kling26GenerateAudio ? " (with audio)" : " (no audio)"}
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    Kling v2.6 Pro supports native audio generation and offers
+                    cinematic visual quality.
+                  </div>
+                </div>
+              )}
               {wan25Selected && (
                 <div className="space-y-3 text-left border-t pt-3">
                   <Label className="text-sm font-semibold">
@@ -2523,32 +2744,86 @@ export function AiView() {
             </TabsContent>
 
             <TabsContent value="avatar" className="space-y-4">
-              {/* Avatar Image Upload */}
-              <FileUpload
-                id="avatar-image-input"
-                label="Character Image"
-                helperText="Required"
-                fileType="image"
-                acceptedTypes={UPLOAD_CONSTANTS.ALLOWED_AVATAR_IMAGE_TYPES}
-                maxSizeBytes={UPLOAD_CONSTANTS.MAX_IMAGE_SIZE_BYTES}
-                maxSizeLabel={UPLOAD_CONSTANTS.MAX_IMAGE_SIZE_LABEL}
-                formatsLabel={UPLOAD_CONSTANTS.AVATAR_IMAGE_FORMATS_LABEL}
-                file={avatarImage}
-                preview={avatarImagePreview}
-                onFileChange={(file, preview) => {
-                  setAvatarImage(file);
-                  setAvatarImagePreview(preview || null);
-                  if (file) setError(null);
-                }}
-                onError={setError}
-                isCompact={isCompact}
-              />
+              {/* First Frame / Last Frame - Side by side */}
+              <div className="grid grid-cols-2 gap-2">
+                <FileUpload
+                  id="avatar-first-frame-input"
+                  label="First Frame"
+                  helperText=""
+                  fileType="image"
+                  acceptedTypes={UPLOAD_CONSTANTS.ALLOWED_AVATAR_IMAGE_TYPES}
+                  maxSizeBytes={UPLOAD_CONSTANTS.MAX_IMAGE_SIZE_BYTES}
+                  maxSizeLabel={UPLOAD_CONSTANTS.MAX_IMAGE_SIZE_LABEL}
+                  formatsLabel={UPLOAD_CONSTANTS.AVATAR_IMAGE_FORMATS_LABEL}
+                  file={avatarImage}
+                  preview={avatarImagePreview}
+                  onFileChange={(file, preview) => {
+                    setAvatarImage(file);
+                    setAvatarImagePreview(preview || null);
+                    if (file) setError(null);
+                  }}
+                  onError={setError}
+                  isCompact={true}
+                />
+                <FileUpload
+                  id="avatar-last-frame-input"
+                  label="Last Frame"
+                  helperText=""
+                  fileType="image"
+                  acceptedTypes={UPLOAD_CONSTANTS.ALLOWED_AVATAR_IMAGE_TYPES}
+                  maxSizeBytes={UPLOAD_CONSTANTS.MAX_IMAGE_SIZE_BYTES}
+                  maxSizeLabel={UPLOAD_CONSTANTS.MAX_IMAGE_SIZE_LABEL}
+                  formatsLabel={UPLOAD_CONSTANTS.AVATAR_IMAGE_FORMATS_LABEL}
+                  file={avatarLastFrame}
+                  preview={avatarLastFramePreview}
+                  onFileChange={(file, preview) => {
+                    setAvatarLastFrame(file);
+                    setAvatarLastFramePreview(preview || null);
+                    if (file) setError(null);
+                  }}
+                  onError={setError}
+                  isCompact={true}
+                />
+              </div>
 
-              {/* Audio File Upload (for Kling models) */}
+              {/* Reference Images - 6 slots in 3x2 grid */}
+              <div className="space-y-2">
+                <Label className="text-xs">Reference Images</Label>
+                <div className="grid grid-cols-3 gap-2">
+                  {[0, 1, 2, 3, 4, 5].map((index) => (
+                    <FileUpload
+                      key={`reference-${index}`}
+                      id={`avatar-reference-${index}-input`}
+                      label={`Ref ${index + 1}`}
+                      helperText=""
+                      fileType="image"
+                      acceptedTypes={UPLOAD_CONSTANTS.ALLOWED_AVATAR_IMAGE_TYPES}
+                      maxSizeBytes={UPLOAD_CONSTANTS.MAX_IMAGE_SIZE_BYTES}
+                      maxSizeLabel={UPLOAD_CONSTANTS.MAX_IMAGE_SIZE_LABEL}
+                      formatsLabel={UPLOAD_CONSTANTS.AVATAR_IMAGE_FORMATS_LABEL}
+                      file={referenceImages[index]}
+                      preview={referenceImagePreviews[index]}
+                      onFileChange={(file, preview) => {
+                        const newImages = [...referenceImages];
+                        newImages[index] = file;
+                        setReferenceImages(newImages);
+                        const newPreviews = [...referenceImagePreviews];
+                        newPreviews[index] = preview || null;
+                        setReferenceImagePreviews(newPreviews);
+                        if (file) setError(null);
+                      }}
+                      onError={setError}
+                      isCompact={true}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              {/* Audio Input */}
               <FileUpload
                 id="avatar-audio-input"
-                label="Audio File"
-                helperText="For Kling Avatar models"
+                label="Audio Input"
+                helperText=""
                 fileType="audio"
                 acceptedTypes={UPLOAD_CONSTANTS.ALLOWED_AUDIO_TYPES}
                 maxSizeBytes={UPLOAD_CONSTANTS.MAX_AUDIO_SIZE_BYTES}
@@ -2563,11 +2838,11 @@ export function AiView() {
                 isCompact={isCompact}
               />
 
-              {/* Source Video Upload (for WAN animate/replace) */}
+              {/* Source Video Upload */}
               <FileUpload
                 id="avatar-video-input"
                 label="Source Video"
-                helperText="For WAN Animate/Replace"
+                helperText=""
                 fileType="video"
                 acceptedTypes={UPLOAD_CONSTANTS.ALLOWED_VIDEO_TYPES}
                 maxSizeBytes={UPLOAD_CONSTANTS.MAX_VIDEO_SIZE_BYTES}
@@ -2601,6 +2876,51 @@ export function AiView() {
                   maxLength={maxChars}
                 />
               </div>
+
+              {/* Kling Avatar v2 Options */}
+              {klingAvatarV2Selected && (
+                <div className="space-y-3 text-left border-t pt-3">
+                  <Label className="text-sm font-semibold">
+                    Kling Avatar v2 Options
+                  </Label>
+                  <div className="space-y-2">
+                    <Label
+                      htmlFor="kling-avatar-v2-prompt"
+                      className="text-xs text-muted-foreground"
+                    >
+                      Animation Prompt (Optional)
+                    </Label>
+                    <Textarea
+                      id="kling-avatar-v2-prompt"
+                      placeholder="Describe animation style, expressions, or movements..."
+                      value={klingAvatarV2Prompt}
+                      onChange={(e) => setKlingAvatarV2Prompt(e.target.value)}
+                      className="min-h-[60px] text-xs resize-none"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Optional guidance for facial expressions and animation
+                      style
+                    </p>
+                  </div>
+                  {audioDuration !== null && (
+                    <div className="text-xs text-muted-foreground">
+                      Audio duration: {audioDuration.toFixed(1)}s · Estimated
+                      cost: $
+                      {(
+                        audioDuration *
+                        (selectedModels.includes("kling_avatar_v2_pro")
+                          ? 0.115
+                          : 0.0562)
+                      ).toFixed(2)}
+                    </div>
+                  )}
+                  {audioDuration === null && audioFile && (
+                    <div className="text-xs text-muted-foreground">
+                      Cost varies by audio length
+                    </div>
+                  )}
+                </div>
+              )}
             </TabsContent>
             <TabsContent value="upscale" className="space-y-4">
               <div className="space-y-3 text-left">

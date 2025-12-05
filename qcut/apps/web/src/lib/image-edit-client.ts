@@ -21,6 +21,7 @@ export interface ImageEditRequest {
     | "flux-kontext-max"
     | "flux-2-flex-edit"
     | "seeddream-v4"
+    | "seeddream-v4-5-edit"
     | "nano-banana"
     | "reve-edit"
     | "gemini-3-pro-edit";
@@ -105,6 +106,18 @@ export const MODEL_ENDPOINTS: Record<string, ModelEndpoint> = {
     endpoint: "fal-ai/bytedance/seedream/v4/edit",
     defaultParams: {
       image_size: "square_hd",
+      max_images: 1,
+      sync_mode: false,
+      enable_safety_checker: true,
+      num_images: 1,
+    },
+  },
+
+  // Add SeedDream V4.5 Edit endpoint
+  "seeddream-v4-5-edit": {
+    endpoint: "fal-ai/bytedance/seedream/v4.5/edit",
+    defaultParams: {
+      image_size: "auto_2K",
       max_images: 1,
       sync_mode: false,
       enable_safety_checker: true,
@@ -266,11 +279,12 @@ export async function editImage(
   // Handle image URL(s) based on model
   if (
     request.model === "seeddream-v4" ||
+    request.model === "seeddream-v4-5-edit" ||
     request.model === "nano-banana" ||
     request.model === "gemini-3-pro-edit" ||
     request.model === "flux-2-flex-edit"
   ) {
-    // V4, Nano Banana, Gemini 3 Pro Edit, and FLUX 2 Flex Edit use image_urls array
+    // V4, V4.5, Nano Banana, Gemini 3 Pro Edit, and FLUX 2 Flex Edit use image_urls array
     payload.image_urls = [request.imageUrl];
   } else {
     // V3 and FLUX use image_url string
@@ -925,6 +939,41 @@ export function getImageEditModels() {
           default: "png",
         },
         syncMode: { type: "boolean", default: false },
+      },
+    },
+    {
+      id: "seeddream-v4-5-edit",
+      name: "SeedDream v4.5 Edit",
+      description:
+        "ByteDance's latest image editing with up to 4K resolution and multi-image compositing",
+      provider: "ByteDance",
+      estimatedCost: "$0.04-0.08",
+      features: [
+        "Up to 4K resolution",
+        "Multi-image compositing (up to 10)",
+        "Auto 2K/4K presets",
+        "Commercial license",
+      ],
+      parameters: {
+        imageSize: {
+          type: "select",
+          options: [
+            "square_hd",
+            "square",
+            "portrait_4_3",
+            "portrait_16_9",
+            "landscape_4_3",
+            "landscape_16_9",
+            "auto_2K",
+            "auto_4K",
+          ],
+          default: "auto_2K",
+        },
+        maxImages: { min: 1, max: 10, default: 1, step: 1 },
+        numImages: { min: 1, max: 6, default: 1, step: 1 },
+        syncMode: { type: "boolean", default: false },
+        enableSafetyChecker: { type: "boolean", default: true },
+        seed: { optional: true },
       },
     },
     {

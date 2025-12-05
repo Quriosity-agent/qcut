@@ -18,8 +18,10 @@ import {
   generateLTXV2ImageVideo,
   generateSeedanceVideo,
   generateKlingImageVideo,
+  generateKling26ImageVideo,
   generateWAN25ImageVideo,
   generateAvatarVideo,
+  generateKlingO1Video,
   upscaleByteDanceVideo,
   upscaleFlashVSRVideo,
   handleApiError,
@@ -104,6 +106,7 @@ export function useAIGeneration(props: UseAIGenerationProps) {
     avatarImage,
     audioFile,
     sourceVideo,
+    referenceImages,
     hailuoT2VDuration = 6,
     t2vAspectRatio = "16:9",
     t2vResolution = "1080p",
@@ -144,12 +147,20 @@ export function useAIGeneration(props: UseAIGenerationProps) {
     klingAspectRatio = "16:9",
     klingEnhancePrompt = true,
     klingNegativePrompt,
+    kling26Duration = 5,
+    kling26CfgScale = 0.5,
+    kling26AspectRatio = "16:9",
+    kling26GenerateAudio = true,
+    kling26NegativePrompt,
     wan25Duration = 5,
     wan25Resolution = "1080p",
     wan25AudioUrl,
     wan25AudioFile = null,
     wan25NegativePrompt,
     wan25EnablePromptExpansion = true,
+    // Kling Avatar v2 props
+    klingAvatarV2Prompt = "",
+    audioDuration = null,
     bytedanceTargetResolution = "1080p",
     bytedanceTargetFPS = "30fps",
     flashvsrUpscaleFactor = 4,
@@ -782,17 +793,22 @@ export function useAIGeneration(props: UseAIGenerationProps) {
         }
       }
     } else if (activeTab === "avatar") {
-      if (!avatarImage) {
-        validationError = "Missing avatar image";
-      } else if (selectedModels.length === 0) {
+      if (selectedModels.length === 0) {
         validationError = "Missing models for avatar tab";
       } else {
         // Check model-specific requirements
         for (const modelId of selectedModels) {
-          if (modelId === "wan_animate_replace" && !sourceVideo) {
-            validationError = "WAN model requires source video";
+          // V2V models require source video only
+          if (
+            (modelId === "wan_animate_replace" ||
+              modelId === "kling_o1_v2v_reference" ||
+              modelId === "kling_o1_v2v_edit") &&
+            !sourceVideo
+          ) {
+            validationError = "Video-to-video model requires source video";
             break;
           }
+          // Audio-based avatar models require avatar image + audio
           if (
             (modelId === "kling_avatar_pro" ||
               modelId === "kling_avatar_standard" ||
@@ -800,6 +816,29 @@ export function useAIGeneration(props: UseAIGenerationProps) {
             !audioFile
           ) {
             validationError = "Audio-based avatar model requires audio file";
+            break;
+          }
+          if (
+            (modelId === "kling_avatar_pro" ||
+              modelId === "kling_avatar_standard" ||
+              modelId === "bytedance_omnihuman_v1_5") &&
+            !avatarImage
+          ) {
+            validationError = "Audio-based avatar model requires avatar image";
+            break;
+          }
+          // Reference-to-video model requires at least one reference image
+          if (modelId === "kling_o1_ref2video") {
+            const hasReferenceImage = referenceImages?.some((img) => img !== null);
+            if (!hasReferenceImage) {
+              validationError =
+                "Kling O1 Reference-to-Video requires at least one reference image";
+              break;
+            }
+          }
+          // WAN Animate/Replace requires avatar image
+          if (modelId === "wan_animate_replace" && !avatarImage) {
+            validationError = "WAN model requires character image";
             break;
           }
         }
@@ -1409,6 +1448,39 @@ export function useAIGeneration(props: UseAIGenerationProps) {
               message: `Video generated with ${friendlyName}`,
             });
           }
+          // Kling v2.6 Pro image-to-video
+          else if (modelId === "kling_v26_pro_i2v") {
+            if (!selectedImage) {
+              console.log(
+                "  ⚠️ Skipping model - Kling v2.6 requires a selected image"
+              );
+              continue;
+            }
+
+            const imageUrl = await uploadImageToFal(selectedImage);
+            const friendlyName = modelName || modelId;
+            progressCallback({
+              status: "processing",
+              progress: 10,
+              message: `Submitting ${friendlyName} request...`,
+            });
+
+            // Note: v2.6 I2V does NOT support aspect_ratio or cfg_scale per FAL.ai schema
+            response = await generateKling26ImageVideo({
+              model: modelId,
+              prompt: prompt.trim(),
+              image_url: imageUrl,
+              duration: kling26Duration,
+              generate_audio: kling26GenerateAudio,
+              negative_prompt: kling26NegativePrompt,
+            });
+
+            progressCallback({
+              status: "completed",
+              progress: 100,
+              message: `Video generated with ${friendlyName}`,
+            });
+          }
           // WAN 2.5 Preview image-to-video
           else if (modelId === "wan_25_preview_i2v") {
             if (!selectedImage) {
@@ -1553,16 +1625,88 @@ export function useAIGeneration(props: UseAIGenerationProps) {
           else if (modelId === "topaz_video_upscale") {
             throw new Error("Topaz Video Upscale not yet implemented");
           }
-        } else if (activeTab === "avatar" && avatarImage) {
-          console.log(`  🎭 Calling generateAvatarVideo for ${modelId}...`);
-          response = await generateAvatarVideo({
-            model: modelId,
-            characterImage: avatarImage,
-            audioFile: audioFile || undefined,
-            sourceVideo: sourceVideo || undefined,
-            prompt: prompt.trim() || undefined,
-          });
-          console.log("  ✅ generateAvatarVideo returned:", response);
+        } else if (activeTab === "avatar") {
+          // Special handling for kling_o1_ref2video which uses referenceImages
+          if (modelId === "kling_o1_ref2video") {
+            const firstRefImage = referenceImages?.find((img) => img !== null);
+            if (firstRefImage) {
+              console.log(`  🎭 Calling generateAvatarVideo for ${modelId} with reference image...`);
+              response = await generateAvatarVideo({
+                model: modelId,
+                characterImage: firstRefImage,
+                prompt: prompt.trim() || undefined,
+              });
+              console.log("  ✅ generateAvatarVideo returned:", response);
+            }
+          } else if (
+            modelId === "kling_o1_v2v_reference" ||
+            modelId === "kling_o1_v2v_edit"
+          ) {
+            // V2V models require sourceVideo, not avatarImage
+            if (sourceVideo) {
+              console.log(`  🎬 Calling generateKlingO1Video for ${modelId} with source video...`);
+              response = await generateKlingO1Video({
+                model: modelId,
+                prompt: prompt.trim(),
+                sourceVideo: sourceVideo,
+                duration: 5, // Default duration
+              });
+              console.log("  ✅ generateKlingO1Video returned:", response);
+            }
+          } else if (avatarImage) {
+            console.log(`  🎭 Calling generateAvatarVideo for ${modelId}...`);
+            // For Kling Avatar v2 models, use the v2-specific prompt
+            const avatarPrompt =
+              modelId === "kling_avatar_v2_standard" ||
+              modelId === "kling_avatar_v2_pro"
+                ? klingAvatarV2Prompt.trim() || undefined
+                : prompt.trim() || undefined;
+
+            // Kling Avatar v2 requires FAL storage URLs (not base64 data URLs)
+            if (
+              modelId === "kling_avatar_v2_standard" ||
+              modelId === "kling_avatar_v2_pro"
+            ) {
+              console.log(
+                "  📤 Uploading files to FAL storage for Kling Avatar v2..."
+              );
+
+              // Upload image and audio to FAL storage
+              const [characterImageUrl, audioUrl] = await Promise.all([
+                uploadImageToFal(avatarImage),
+                audioFile ? uploadAudioToFal(audioFile) : Promise.resolve(""),
+              ]);
+
+              if (!audioUrl) {
+                throw new Error("Audio file is required for Kling Avatar v2");
+              }
+
+              console.log("  ✅ Files uploaded to FAL storage");
+              console.log("    - Image URL:", characterImageUrl.substring(0, 50) + "...");
+              console.log("    - Audio URL:", audioUrl.substring(0, 50) + "...");
+
+              response = await generateAvatarVideo({
+                model: modelId,
+                characterImage: avatarImage,
+                audioFile: audioFile || undefined,
+                prompt: avatarPrompt,
+                audioDuration: audioDuration ?? undefined,
+                characterImageUrl,
+                audioUrl,
+              });
+            } else {
+              // Other avatar models use data URLs (base64)
+              response = await generateAvatarVideo({
+                model: modelId,
+                characterImage: avatarImage,
+                audioFile: audioFile || undefined,
+                sourceVideo: sourceVideo || undefined,
+                prompt: avatarPrompt,
+                audioDuration: audioDuration ?? undefined,
+              });
+            }
+            console.log("  ✅ generateAvatarVideo returned:", response);
+          }
         }
 
         console.log("step 5a: post-API response analysis");
@@ -2112,6 +2256,7 @@ export function useAIGeneration(props: UseAIGenerationProps) {
     sourceVideo,
     sourceVideoFile,
     sourceVideoUrl,
+    referenceImages,
     selectedModels,
     activeProject,
     addMediaItem,
@@ -2145,6 +2290,11 @@ export function useAIGeneration(props: UseAIGenerationProps) {
     klingAspectRatio,
     klingEnhancePrompt,
     klingNegativePrompt,
+    kling26Duration,
+    kling26CfgScale,
+    kling26AspectRatio,
+    kling26GenerateAudio,
+    kling26NegativePrompt,
     wan25Duration,
     wan25Resolution,
     wan25AudioUrl,
@@ -2153,6 +2303,8 @@ export function useAIGeneration(props: UseAIGenerationProps) {
     wan25EnablePromptExpansion,
     imageSeed,
     uploadAudioToFal,
+    klingAvatarV2Prompt,
+    audioDuration,
     bytedanceTargetResolution,
     bytedanceTargetFPS,
     flashvsrUpscaleFactor,
@@ -2376,16 +2528,41 @@ export function useAIGeneration(props: UseAIGenerationProps) {
         return Boolean(sourceVideoFile || sourceVideoUrl);
       }
       if (activeTab === "avatar") {
-        if (!avatarImage) return false;
-
         // Check model-specific requirements
         for (const modelId of selectedModels) {
-          if (modelId === "wan_animate_replace" && !sourceVideo) return false;
+          // Models requiring source video (V2V models)
+          if (
+            (modelId === "wan_animate_replace" ||
+              modelId === "kling_o1_v2v_reference" ||
+              modelId === "kling_o1_v2v_edit") &&
+            !sourceVideo
+          )
+            return false;
+
+          // Models requiring audio file
           if (
             (modelId === "kling_avatar_pro" ||
               modelId === "kling_avatar_standard" ||
               modelId === "bytedance_omnihuman_v1_5") &&
             !audioFile
+          )
+            return false;
+
+          // Models requiring reference images (check if at least one reference image exists)
+          if (modelId === "kling_o1_ref2video") {
+            const hasReferenceImage = referenceImages?.some(
+              (img) => img !== null
+            );
+            if (!hasReferenceImage) return false;
+            continue;
+          }
+
+          // For other avatar models, require avatarImage
+          if (
+            modelId !== "kling_o1_v2v_reference" &&
+            modelId !== "kling_o1_v2v_edit" &&
+            modelId !== "kling_o1_ref2video" &&
+            !avatarImage
           )
             return false;
         }

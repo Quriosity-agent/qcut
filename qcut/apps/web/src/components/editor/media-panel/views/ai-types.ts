@@ -111,6 +111,12 @@ export interface AIModel {
   supportedOutputFormats?: string[];
   supportedOutputQuality?: string[];
   supportedWriteModes?: string[];
+  /** Audio constraints for avatar models (Kling Avatar v2) */
+  audioConstraints?: {
+    minDurationSec: number;
+    maxDurationSec: number;
+    maxFileSizeBytes: number;
+  };
 }
 
 // Generated Video Interfaces
@@ -161,6 +167,7 @@ export interface UseAIGenerationProps {
   avatarImage?: File | null;
   audioFile?: File | null;
   sourceVideo?: File | null;
+  referenceImages?: (File | null)[];
   onGeneratedVideoChange?: (video: GeneratedVideo | null) => void;
   // Hailuo text-to-video options
   hailuoT2VDuration?: 6 | 10;
@@ -218,6 +225,12 @@ export interface UseAIGenerationProps {
   klingAspectRatio?: "16:9" | "9:16" | "1:1" | "4:3" | "3:4";
   klingEnhancePrompt?: boolean;
   klingNegativePrompt?: string;
+  // Kling v2.6 Pro options
+  kling26Duration?: 5 | 10;
+  kling26AspectRatio?: "16:9" | "9:16" | "1:1";
+  kling26CfgScale?: number;
+  kling26GenerateAudio?: boolean;
+  kling26NegativePrompt?: string;
   // WAN 2.5 Preview I2V options
   wan25Duration?: 5 | 10;
   wan25Resolution?: "480p" | "720p" | "1080p";
@@ -225,6 +238,12 @@ export interface UseAIGenerationProps {
   wan25AudioFile?: File | null;
   wan25NegativePrompt?: string;
   wan25EnablePromptExpansion?: boolean;
+
+  // Kling Avatar v2 options
+  /** Optional prompt for animation guidance (Kling Avatar v2) */
+  klingAvatarV2Prompt?: string;
+  /** Audio duration in seconds for cost calculation */
+  audioDuration?: number | null;
 
   // Video upscaling options
   // ByteDance Upscaler options
@@ -257,6 +276,18 @@ export interface UseAIGenerationProps {
   onFirstFrameChange?: (file: File | null, preview?: string | null) => void;
   /** Callback when last frame changes. */
   onLastFrameChange?: (file: File | null, preview?: string | null) => void;
+
+  // Seeddream 4.5 options (text-to-image and image edit)
+  /** Image size for Seeddream 4.5 models */
+  seeddream45ImageSize?: Seeddream45ImageSize;
+  /** Number of images to generate (1-6) */
+  seeddream45NumImages?: number;
+  /** Seed for reproducible results */
+  seeddream45Seed?: number;
+  /** Enable safety checker */
+  seeddream45SafetyChecker?: boolean;
+  /** Images selected for Seeddream 4.5 edit (up to 10) */
+  seeddream45EditImages?: (File | null)[];
 }
 
 // ⚠️ ENHANCED: Complete generation state interface
@@ -330,6 +361,52 @@ export interface APIConfiguration {
 
 // Error types
 export type AIError = string | null;
+
+// ============================================
+// Seedream 4.5 Types
+// ============================================
+
+/**
+ * Seedream 4.5 image size options
+ * Supports both preset strings and custom dimensions
+ */
+export type Seeddream45ImageSize =
+  | "square_hd"
+  | "square"
+  | "portrait_4_3"
+  | "portrait_16_9"
+  | "landscape_4_3"
+  | "landscape_16_9"
+  | "auto_2K"
+  | "auto_4K"
+  | { width: number; height: number };
+
+/**
+ * Parameters for Seedream 4.5 text-to-image generation
+ */
+export interface Seeddream45TextToImageParams {
+  prompt: string;
+  image_size?: Seeddream45ImageSize;
+  num_images?: number;
+  max_images?: number;
+  seed?: number;
+  sync_mode?: boolean;
+  enable_safety_checker?: boolean;
+}
+
+/**
+ * Parameters for Seedream 4.5 image editing
+ */
+export interface Seeddream45EditParams {
+  prompt: string;
+  image_urls: string[];
+  image_size?: Seeddream45ImageSize;
+  num_images?: number;
+  max_images?: number;
+  seed?: number;
+  sync_mode?: boolean;
+  enable_safety_checker?: boolean;
+}
 
 // Export all as named exports for easy importing
 export type {

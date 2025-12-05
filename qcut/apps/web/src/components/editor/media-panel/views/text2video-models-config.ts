@@ -14,7 +14,8 @@ export type T2VModelId =
   | "hailuo_v2"
   | "seedance_t2v"
   | "kling1_6_pro"
-  | "kling1_6_standard";
+  | "kling1_6_standard"
+  | "kling_v26_pro_t2v";
 
 // Map AI model ids to canonical T2VModelIds used by capability lookups.
 // This prevents text-to-video models whose ids differ between AI_MODELS and
@@ -30,6 +31,7 @@ export const T2V_MODEL_ID_ALIASES: Record<string, T2VModelId> = {
   seedance_pro: "seedance_t2v",
   kling_v2_5_turbo: "kling1_6_pro",
   kling_v2: "kling1_6_pro",
+  kling_v26_pro: "kling_v26_pro_t2v",
 };
 
 export interface T2VModelCapabilities {
@@ -221,6 +223,20 @@ export const T2V_MODEL_CAPABILITIES: Record<T2VModelId, T2VModelCapabilities> =
       supportsSafetyChecker: false,
       defaultAspectRatio: "16:9",
       defaultResolution: "720p",
+      defaultDuration: 5,
+    },
+
+    kling_v26_pro_t2v: {
+      supportsAspectRatio: true,
+      supportedAspectRatios: ["16:9", "9:16", "1:1"],
+      supportsResolution: false,
+      supportsDuration: true,
+      supportedDurations: [5, 10],
+      supportsNegativePrompt: true,
+      supportsPromptExpansion: false,
+      supportsSeed: false,
+      supportsSafetyChecker: false,
+      defaultAspectRatio: "16:9",
       defaultDuration: 5,
     },
   };

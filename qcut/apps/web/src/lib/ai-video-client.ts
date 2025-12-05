@@ -9,7 +9,10 @@ import {
   ERROR_MESSAGES,
   LTXV2_FAST_CONFIG,
 } from "@/components/editor/media-panel/views/ai-constants";
-import type { AIModel } from "@/components/editor/media-panel/views/ai-types";
+import type {
+  AIModel,
+  Seeddream45ImageSize,
+} from "@/components/editor/media-panel/views/ai-types";
 import type {
   Sora2TextToVideoInput,
   Sora2TextToVideoProInput,
@@ -359,6 +362,10 @@ export interface AvatarVideoRequest {
   prompt?: string;
   resolution?: string;
   duration?: number;
+  audioDuration?: number; // Audio duration in seconds for validation (Kling Avatar v2)
+  // Pre-uploaded URLs for Kling Avatar v2 (FAL storage URLs, not data URLs)
+  characterImageUrl?: string;
+  audioUrl?: string;
 }
 
 export interface VideoGenerationResponse {
@@ -547,12 +554,17 @@ export async function generateVideo(
         }
       }
 
-      // Validate duration doesn't exceed model's max
+      // Validate duration doesn't exceed model's max (do this before string conversion)
       if (payload.duration && payload.duration > modelConfig.max_duration) {
         console.warn(
           `${modelConfig.name}: Duration capped at ${modelConfig.max_duration} seconds`
         );
         payload.duration = modelConfig.max_duration;
+      }
+
+      // Kling v2.6 expects duration as string "5" or "10" - convert after validation
+      if (request.model === "kling_v26_pro_t2v" && payload.duration) {
+        payload.duration = String(payload.duration);
       }
     }
 
@@ -2324,6 +2336,555 @@ export async function generateKlingImageVideo(
   }
 }
 
+/**
+ * Request interface for Kling v2.6 Pro image-to-video generation
+ *
+ * Note: Unlike v2.5, the v2.6 I2V endpoint does NOT support aspect_ratio or cfg_scale.
+ * Supported parameters per FAL.ai schema: prompt, image_url, duration, negative_prompt, generate_audio
+ */
+export interface Kling26I2VRequest {
+  model: string;
+  prompt: string;
+  image_url: string;
+  duration?: 5 | 10;
+  generate_audio?: boolean;
+  negative_prompt?: string;
+}
+
+/**
+ * Generate a video from a single image using the Kling v2.6 Pro image-to-video model.
+ *
+ * This model supports native audio generation (Chinese/English) and offers
+ * cinematic visual quality. Note: Unlike v2.5, this endpoint does not support
+ * aspect_ratio or cfg_scale parameters.
+ *
+ * @param request - Request parameters (must include `model` and `image_url`). Optional fields:
+ *   - `prompt`: description of desired motion (trimmed; max 2,500 characters).
+ *   - `duration`: desired video duration in seconds (5 or 10, defaults to 5).
+ *   - `generate_audio`: whether to generate native audio (defaults to true).
+ *   - `negative_prompt`: optional negative prompt to steer generation.
+ * @returns VideoGenerationResponse containing `job_id`, `status`, `message`, `estimated_time`, `video_url`, and raw `video_data`.
+ * @throws Error when the FAL API key is not configured.
+ * @throws Error when the prompt is empty or exceeds 2,500 characters.
+ * @throws Error when `image_url` is missing.
+ * @throws Error when the specified `model` is unknown or does not expose an image-to-video endpoint.
+ * @throws Error for FAL API failures (including invalid API key (401), rate limiting (429), or other API errors).
+ */
+export async function generateKling26ImageVideo(
+  request: Kling26I2VRequest
+): Promise<VideoGenerationResponse> {
+  try {
+    const falApiKey = getFalApiKey();
+    if (!falApiKey) {
+      throw new Error("FAL API key not configured");
+    }
+
+    const trimmedPrompt = request.prompt?.trim() ?? "";
+    if (!trimmedPrompt) {
+      throw new Error(
+        "Please enter a prompt for Kling 2.6 video generation"
+      );
+    }
+
+    if (trimmedPrompt.length > 2500) {
+      throw new Error(
+        "Prompt exceeds maximum length of 2,500 characters for Kling 2.6"
+      );
+    }
+
+    if (!request.image_url) {
+      throw new Error(
+        "Image is required for Kling 2.6 image-to-video generation"
+      );
+    }
+
+    const modelConfig = getModelConfig(request.model);
+    if (!modelConfig) {
+      throw new Error(`Unknown model: ${request.model}`);
+    }
+
+    const endpoint = modelConfig.endpoints.image_to_video;
+    if (!endpoint) {
+      throw new Error(
+        `Model ${request.model} does not support image-to-video generation`
+      );
+    }
+
+    const duration = request.duration ?? 5;
+    const generateAudio = request.generate_audio ?? true;
+
+    // Note: v2.6 I2V does NOT support aspect_ratio or cfg_scale per FAL.ai schema
+    const payload: Record<string, unknown> = {
+      prompt: trimmedPrompt,
+      image_url: request.image_url,
+      duration: String(duration), // v2.6 expects duration as string "5" or "10"
+      generate_audio: generateAudio,
+      negative_prompt:
+        request.negative_prompt ?? "blur, distort, and low quality",
+    };
+
+    const jobId = generateJobId();
+    const response = await fetch(`${FAL_API_BASE}/${endpoint}`, {
+      method: "POST",
+      headers: {
+        Authorization: `Key ${falApiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+
+      if (response.status === 401) {
+        throw new Error(
+          "Invalid FAL.ai API key. Please check your API key configuration."
+        );
+      }
+
+      if (response.status === 429) {
+        throw new Error(
+          "Rate limit exceeded. Please wait a moment before trying again."
+        );
+      }
+
+      throw new Error(
+        `FAL API error: ${errorData.detail || response.statusText}`
+      );
+    }
+
+    const result = await response.json();
+    return {
+      job_id: jobId,
+      status: "completed",
+      message: `Video generated successfully with ${request.model}`,
+      estimated_time: 0,
+      video_url: result.video?.url || result.video || result.url,
+      video_data: result,
+    };
+  } catch (error) {
+    handleAIServiceError(error, "Generate Kling 2.6 video", {
+      model: request.model,
+      prompt: request.prompt?.substring(0, 100),
+      operation: "generateKling26ImageVideo",
+    });
+    throw error;
+  }
+}
+
+/**
+ * Kling O1 Video-to-Video Request Interface
+ * For models that transform source videos with cinematic understanding
+ */
+export interface KlingO1V2VRequest {
+  model: string;
+  prompt: string;
+  sourceVideo: File;
+  duration?: 5 | 10;
+  aspect_ratio?: "auto" | "16:9" | "9:16" | "1:1";
+  keep_audio?: boolean;
+}
+
+/**
+ * Kling O1 Reference-to-Video Request Interface
+ * For generating videos from reference images
+ */
+export interface KlingO1Ref2VideoRequest {
+  model: string;
+  prompt: string;
+  image_urls: string[]; // Array of reference image URLs (max 7)
+  duration?: 5 | 10;
+  aspect_ratio?: "16:9" | "9:16" | "1:1";
+  cfg_scale?: number;
+  negative_prompt?: string;
+}
+
+/**
+ * Generate a video from a source video using Kling O1 video-to-video models.
+ *
+ * Supports both Video Reference (preserves motion/camera style) and Video Edit (transforms via prompt).
+ *
+ * @param request - Request parameters including model, prompt, source video, and optional settings
+ * @returns VideoGenerationResponse with job_id, status, message, and video URL
+ * @throws Error if FAL API key missing, model unsupported, or API returns error
+ */
+export async function generateKlingO1Video(
+  request: KlingO1V2VRequest
+): Promise<VideoGenerationResponse> {
+  try {
+    const falApiKey = getFalApiKey();
+    if (!falApiKey) {
+      throw new Error("FAL API key not configured");
+    }
+
+    const trimmedPrompt = request.prompt?.trim() ?? "";
+    if (!trimmedPrompt) {
+      throw new Error("Please enter a prompt describing the desired output");
+    }
+
+    if (trimmedPrompt.length > 2500) {
+      throw new Error("Prompt exceeds maximum length of 2500 characters");
+    }
+
+    if (!request.sourceVideo) {
+      throw new Error("Source video is required for Kling O1 video-to-video");
+    }
+
+    const modelConfig = getModelConfig(request.model);
+    if (!modelConfig) {
+      throw new Error(`Unknown model: ${request.model}`);
+    }
+
+    const endpoint = modelConfig.endpoints.image_to_video;
+    if (!endpoint) {
+      throw new Error(
+        `Model ${request.model} does not support video-to-video generation`
+      );
+    }
+
+    console.log("🎬 Starting Kling O1 video-to-video generation");
+    console.log("📝 Model:", request.model);
+    console.log("📝 Prompt:", trimmedPrompt.substring(0, 100) + "...");
+
+    // FAL API video-to-video endpoints require HTTPS URLs (not base64 data URLs)
+    // Use Electron IPC to upload video to FAL storage to bypass CORS restrictions
+    let videoUrl: string;
+
+    // Debug: Check Electron IPC availability
+    console.log("🔍 [V2V Debug] Checking Electron IPC availability:");
+    console.log("  - window.electronAPI exists:", !!window.electronAPI);
+    console.log("  - window.electronAPI?.fal exists:", !!window.electronAPI?.fal);
+    console.log(
+      "  - window.electronAPI?.fal?.uploadVideo exists:",
+      !!window.electronAPI?.fal?.uploadVideo
+    );
+    console.log("  - window.electronAPI?.isElectron:", window.electronAPI?.isElectron);
+
+    if (window.electronAPI?.fal?.uploadVideo) {
+      // Electron environment: Use IPC to upload video (bypasses CORS)
+      console.log("✅ [V2V] Using Electron IPC for video upload (bypasses CORS)");
+      console.log("📤 Uploading source video to FAL via Electron IPC...");
+      console.log("  - File name:", request.sourceVideo.name);
+      console.log("  - File size:", request.sourceVideo.size, "bytes");
+      console.log("  - File type:", request.sourceVideo.type);
+
+      const videoBuffer = await request.sourceVideo.arrayBuffer();
+      console.log("  - ArrayBuffer size:", videoBuffer.byteLength, "bytes");
+
+      const uploadResult = await window.electronAPI.fal.uploadVideo(
+        new Uint8Array(videoBuffer),
+        request.sourceVideo.name,
+        falApiKey
+      );
+
+      console.log("📥 [V2V] Upload result:", {
+        success: uploadResult.success,
+        hasUrl: !!uploadResult.url,
+        error: uploadResult.error,
+      });
+
+      if (!uploadResult.success || !uploadResult.url) {
+        throw new Error(
+          `Failed to upload video to FAL: ${uploadResult.error || "Unknown error"}`
+        );
+      }
+
+      videoUrl = uploadResult.url;
+      console.log("✅ Video uploaded to FAL:", videoUrl);
+    } else {
+      // Browser environment fallback: Try base64 (may fail with 422 error)
+      console.warn(
+        "⚠️ [V2V] Electron IPC not available! Falling back to base64."
+      );
+      console.warn(
+        "   This will likely fail with HTTP 422 because FAL API requires HTTPS URLs for video-to-video."
+      );
+      console.warn(
+        "   To fix: Rebuild the Electron app to include the fal:upload-video IPC handler."
+      );
+      console.log("📤 Converting source video to base64...");
+      videoUrl = await fileToDataURL(request.sourceVideo);
+      console.log("✅ Video converted to data URL (length:", videoUrl.length, "chars)");
+    }
+
+    const durationNum =
+      request.duration ??
+      (modelConfig.default_params?.duration as number | undefined) ??
+      5;
+    // FAL API expects duration as string enum ("5" or "10")
+    const duration = String(durationNum);
+    const aspectRatio =
+      request.aspect_ratio ??
+      (modelConfig.default_params?.aspect_ratio as string | undefined) ??
+      "auto";
+
+    const payload: Record<string, unknown> = {
+      prompt: trimmedPrompt,
+      video_url: videoUrl,
+      duration,
+      aspect_ratio: aspectRatio,
+    };
+
+    if (request.keep_audio !== undefined) {
+      payload.keep_audio = request.keep_audio;
+    }
+
+    const jobId = generateJobId();
+    console.log(`🎬 Generating video with: ${endpoint}`);
+    console.log("📝 Payload:", {
+      ...payload,
+      video_url: videoUrl.startsWith("data:")
+        ? `[base64 data: ${videoUrl.length} chars]`
+        : videoUrl,
+    });
+
+    // Add timeout for large video payloads (6 minutes)
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 360_000);
+
+    try {
+      const response = await fetch(`${FAL_API_BASE}/${endpoint}`, {
+        method: "POST",
+        headers: {
+          Authorization: `Key ${falApiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+
+        if (response.status === 401) {
+          throw new Error(
+            "Invalid FAL.ai API key. Please check your API key configuration."
+          );
+        }
+
+        if (response.status === 429) {
+          throw new Error(
+            "Rate limit exceeded. Please wait a moment before trying again."
+          );
+        }
+
+        // Properly format error message (avoid [object Object])
+        const errorDetail =
+          typeof errorData.detail === "object"
+            ? JSON.stringify(errorData.detail)
+            : errorData.detail || errorData.message || response.statusText;
+        throw new Error(`FAL API error: ${errorDetail}`);
+      }
+
+      const result = await response.json();
+      console.log("✅ Kling O1 video generated:", result);
+
+      return {
+        job_id: jobId,
+        status: "completed",
+        message: `Video generated successfully with ${request.model}`,
+        estimated_time: 0,
+        video_url: result.video?.url || result.video,
+        video_data: result,
+      };
+    } catch (error) {
+      clearTimeout(timeoutId);
+      if (error instanceof Error && error.name === "AbortError") {
+        throw new Error(
+          "Video generation timed out after 6 minutes. The source video may be too large."
+        );
+      }
+      throw error;
+    }
+  } catch (error) {
+    handleAIServiceError(error, "Generate Kling O1 video", {
+      model: request.model,
+      prompt: request.prompt?.substring(0, 100),
+      operation: "generateKlingO1Video",
+    });
+    throw error;
+  }
+}
+
+/**
+ * Generate a video from reference images using Kling O1 Reference-to-Video model.
+ *
+ * Transforms images and elements into consistent video scenes with cinematic motion.
+ * Use @Image1, @Image2, etc. in the prompt to reference the images.
+ * Use @Element1, @Element2, etc. to reference elements with frontal and reference images.
+ *
+ * @param request - Request parameters including model, prompt, image URLs array, and optional settings
+ * @returns VideoGenerationResponse with job_id, status, message, and video URL
+ * @throws Error if FAL API key missing, model unsupported, or API returns error
+ *
+ * @example
+ * // FAL API Request Example (reference-to-video):
+ * // {
+ * //   "prompt": "Take @Image1 as the start frame. Start with a high-angle satellite view of the ancient greenhouse ruin surrounded by nature. The camera swoops down and flies inside the building, revealing the character from @Element1 standing in the sun-drenched center. The camera then seamlessly transitions into a smooth 180-degree orbit around the character, moving to the back view. As the open backpack comes into focus, the camera continues to push forward, zooming deep inside the bag to reveal the glowing stone from @Element2 nestled inside. Cinematic lighting, hopeful atmosphere, 35mm lens. Make sure to keep it as the style of @Image2.",
+ * //   "image_urls": [
+ * //     "https://v3b.fal.media/files/b/koala/v9COzzH23FGBYdGLgbK3u.png",
+ * //     "https://v3b.fal.media/files/b/elephant/5Is2huKQFSE7A7c5uUeUF.png"
+ * //   ],
+ * //   "elements": [
+ * //     {
+ * //       "reference_image_urls": [
+ * //         "https://v3b.fal.media/files/b/kangaroo/YMpmQkYt9xugpOTQyZW0O.png",
+ * //         "https://v3b.fal.media/files/b/zebra/d6ywajNyJ6bnpa_xBue-K.png"
+ * //       ],
+ * //       "frontal_image_url": "https://v3b.fal.media/files/b/panda/MQp-ghIqshvMZROKh9lW3.png"
+ * //     },
+ * //     {
+ * //       "reference_image_urls": [
+ * //         "https://v3b.fal.media/files/b/kangaroo/EBF4nWihspyv4pp6hgj7D.png"
+ * //       ],
+ * //       "frontal_image_url": "https://v3b.fal.media/files/b/koala/gSnsA7HJlgcaTyR5Ujj2H.png"
+ * //     }
+ * //   ],
+ * //   "duration": "5",
+ * //   "aspect_ratio": "16:9"
+ * // }
+ * //
+ * // Prompt Syntax:
+ * // - @Image1, @Image2, etc. - Reference images from image_urls array (1-indexed)
+ * // - @Element1, @Element2, etc. - Reference elements from elements array (1-indexed)
+ * // - Each element can have multiple reference_image_urls and one frontal_image_url
+ */
+export async function generateKlingO1RefVideo(
+  request: KlingO1Ref2VideoRequest
+): Promise<VideoGenerationResponse> {
+  try {
+    const falApiKey = getFalApiKey();
+    if (!falApiKey) {
+      throw new Error("FAL API key not configured");
+    }
+
+    const trimmedPrompt = request.prompt?.trim() ?? "";
+    if (!trimmedPrompt) {
+      throw new Error(
+        "Please enter a prompt describing the desired video scene"
+      );
+    }
+
+    if (trimmedPrompt.length > 2500) {
+      throw new Error("Prompt exceeds maximum length of 2500 characters");
+    }
+
+    // Filter out empty/null image URLs
+    const validImageUrls = request.image_urls.filter(
+      (url) => url && url.trim() !== ""
+    );
+
+    if (validImageUrls.length === 0) {
+      throw new Error(
+        "At least one reference image is required for Kling O1 reference-to-video generation"
+      );
+    }
+
+    if (validImageUrls.length > 7) {
+      throw new Error(
+        "Maximum 7 reference images allowed for Kling O1 reference-to-video"
+      );
+    }
+
+    const modelConfig = getModelConfig(request.model);
+    if (!modelConfig) {
+      throw new Error(`Unknown model: ${request.model}`);
+    }
+
+    const endpoint = modelConfig.endpoints.image_to_video;
+    if (!endpoint) {
+      throw new Error(
+        `Model ${request.model} does not support reference-to-video generation`
+      );
+    }
+
+    console.log("🎬 Starting Kling O1 reference-to-video generation");
+    console.log("📝 Model:", request.model);
+    console.log("🖼️ Reference images:", validImageUrls.length);
+
+    const durationNum =
+      request.duration ??
+      (modelConfig.default_params?.duration as number | undefined) ??
+      5;
+    // FAL API expects duration as string enum ("5" or "10")
+    const duration = String(durationNum);
+    const aspectRatio =
+      request.aspect_ratio ??
+      (modelConfig.default_params?.aspect_ratio as string | undefined) ??
+      "16:9";
+    const cfgScale =
+      request.cfg_scale ??
+      (modelConfig.default_params?.cfg_scale as number | undefined) ??
+      0.5;
+    const negativePrompt =
+      request.negative_prompt ??
+      (modelConfig.default_params?.negative_prompt as string | undefined) ??
+      "blur, distort, low quality";
+
+    const payload: Record<string, unknown> = {
+      prompt: trimmedPrompt,
+      image_urls: validImageUrls,
+      duration,
+      aspect_ratio: aspectRatio,
+      cfg_scale: cfgScale,
+      negative_prompt: negativePrompt,
+    };
+
+    const jobId = generateJobId();
+    console.log(`🎬 Generating video with: ${endpoint}`);
+
+    const response = await fetch(`${FAL_API_BASE}/${endpoint}`, {
+      method: "POST",
+      headers: {
+        Authorization: `Key ${falApiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+
+      if (response.status === 401) {
+        throw new Error(
+          "Invalid FAL.ai API key. Please check your API key configuration."
+        );
+      }
+
+      if (response.status === 429) {
+        throw new Error(
+          "Rate limit exceeded. Please wait a moment before trying again."
+        );
+      }
+
+      throw new Error(
+        `FAL API error: ${errorData.detail || response.statusText}`
+      );
+    }
+
+    const result = await response.json();
+    console.log("✅ Kling O1 reference video generated:", result);
+
+    return {
+      job_id: jobId,
+      status: "completed",
+      message: `Video generated successfully with ${request.model}`,
+      estimated_time: 0,
+      video_url: result.video?.url || result.video,
+      video_data: result,
+    };
+  } catch (error) {
+    handleAIServiceError(error, "Generate Kling O1 reference video", {
+      model: request.model,
+      prompt: request.prompt?.substring(0, 100),
+      operation: "generateKlingO1RefVideo",
+    });
+    throw error;
+  }
+}
+
 export interface WAN25I2VRequest {
   model: string;
   prompt: string;
@@ -2467,13 +3028,44 @@ export async function generateWAN25ImageVideo(
 }
 
 /**
+ * Validates audio file against Kling Avatar v2 constraints.
+ *
+ * @param audioFile - Audio file to validate
+ * @param audioDuration - Duration in seconds (from audio element or metadata)
+ * @returns Error message if validation fails, null if valid
+ */
+function validateKlingAvatarV2Audio(
+  audioFile: File,
+  audioDuration?: number
+): string | null {
+  const MAX_SIZE_BYTES = 5 * 1024 * 1024; // 5MB
+  const MIN_DURATION_SEC = 2;
+  const MAX_DURATION_SEC = 60;
+
+  if (audioFile.size > MAX_SIZE_BYTES) {
+    return ERROR_MESSAGES.KLING_AVATAR_V2_AUDIO_TOO_LARGE;
+  }
+
+  if (audioDuration !== undefined) {
+    if (audioDuration < MIN_DURATION_SEC) {
+      return ERROR_MESSAGES.KLING_AVATAR_V2_AUDIO_TOO_SHORT;
+    }
+    if (audioDuration > MAX_DURATION_SEC) {
+      return ERROR_MESSAGES.KLING_AVATAR_V2_AUDIO_TOO_LONG;
+    }
+  }
+
+  return null;
+}
+
+/**
  * Generate an avatar video from a character image using a specified avatar model.
  *
  * Builds and sends a model-specific payload (image plus audio or source video) to the configured FAL endpoint and returns the generation result.
  *
  * @param request - Request object containing model id, character image File and model-specific inputs (audioFile for talking-head models or sourceVideo for animation/replace models)
  * @returns VideoGenerationResponse containing job_id, status, message, and the API response including the generated video URL when available
- * @throws Error if the FAL API key is missing, the model is unknown or not an avatar model, required inputs for the chosen model are missing, the model lacks a valid endpoint, or if the request times out (3 minutes)
+ * @throws Error if the FAL API key is missing, the model is unknown or not an avatar model, required inputs for the chosen model are missing, the model lacks a valid endpoint, or if the request times out (6 minutes)
  */
 export async function generateAvatarVideo(
   request: AvatarVideoRequest
@@ -2544,6 +3136,51 @@ export async function generateAvatarVideo(
         ...(request.prompt && { prompt: request.prompt }), // Override default if provided
         ...(request.resolution && { resolution: request.resolution }), // Override default if provided
       };
+    } else if (
+      request.model === "kling_avatar_v2_standard" ||
+      request.model === "kling_avatar_v2_pro"
+    ) {
+      // Kling Avatar v2 models with enhanced lip-sync and animation
+      // V2 API requires proper FAL storage URLs, not data URLs
+      if (!request.audioFile && !request.audioUrl) {
+        throw new Error(ERROR_MESSAGES.KLING_AVATAR_V2_MISSING_AUDIO);
+      }
+
+      // Validate audio constraints if file is provided
+      if (request.audioFile) {
+        const audioValidationError = validateKlingAvatarV2Audio(
+          request.audioFile,
+          request.audioDuration
+        );
+        if (audioValidationError) {
+          throw new Error(audioValidationError);
+        }
+      }
+
+      // Use pre-uploaded URLs (required for v2 - FAL rejects base64 data URLs)
+      if (!request.characterImageUrl) {
+        throw new Error(
+          "Kling Avatar v2 requires pre-uploaded image URL (use FAL storage)"
+        );
+      }
+      if (!request.audioUrl) {
+        throw new Error(
+          "Kling Avatar v2 requires pre-uploaded audio URL (use FAL storage)"
+        );
+      }
+
+      endpoint = modelConfig.endpoints.text_to_video || "";
+      if (!endpoint) {
+        throw new Error(
+          `Model ${request.model} does not have a valid endpoint`
+        );
+      }
+      payload = {
+        ...(modelConfig.default_params || {}), // Defaults first
+        image_url: request.characterImageUrl,
+        audio_url: request.audioUrl,
+        ...(request.prompt && { prompt: request.prompt }), // Optional animation guidance prompt
+      };
     } else if (request.model === "bytedance_omnihuman_v1_5") {
       if (!request.audioFile) {
         throw new Error("ByteDance OmniHuman v1.5 requires an audio file");
@@ -2561,6 +3198,36 @@ export async function generateAvatarVideo(
         image_url: characterImageUrl,
         audio_url: audioUrl,
         ...(request.resolution && { resolution: request.resolution }), // Override default if provided
+      };
+    } else if (request.model === "kling_o1_ref2video") {
+      // Kling O1 Reference-to-Video: transforms reference images into video scenes
+      // Uses the image_to_video endpoint with image_urls array and prompt
+      endpoint = modelConfig.endpoints.image_to_video || "";
+      if (!endpoint) {
+        throw new Error(
+          `Model ${request.model} does not have a valid endpoint`
+        );
+      }
+
+      // Convert reference image to base64 data URL (avoids CORS issues in Electron app)
+      // FAL API accepts both base64 data URLs and HTTPS URLs
+      console.log("📤 Converting reference image to base64...");
+      const imageUrl = await fileToDataURL(request.characterImage);
+      console.log("✅ Reference image converted to data URL");
+
+      // Build prompt with @Image1 reference if prompt doesn't already contain it
+      let enhancedPrompt = request.prompt || "";
+      if (!enhancedPrompt.includes("@Image")) {
+        enhancedPrompt = `Use @Image1 as the reference. ${enhancedPrompt}`.trim();
+      }
+
+      payload = {
+        prompt: enhancedPrompt,
+        image_urls: [imageUrl],
+        duration: String(request.duration || modelConfig.default_params?.duration || 5),
+        aspect_ratio: modelConfig.default_params?.aspect_ratio || "16:9",
+        ...(modelConfig.default_params?.cfg_scale && { cfg_scale: modelConfig.default_params.cfg_scale }),
+        ...(modelConfig.default_params?.negative_prompt && { negative_prompt: modelConfig.default_params.negative_prompt }),
       };
     } else {
       throw new Error(`Unsupported avatar model: ${request.model}`);
@@ -2583,9 +3250,9 @@ export async function generateAvatarVideo(
 
     console.log("📊 Payload size:", JSON.stringify(payload).length, "bytes");
 
-    // Add timeout to prevent hanging (3 minutes for large payloads)
+    // Add timeout to prevent hanging (6 minutes for avatar video generation)
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 180_000); // 3 minutes
+    const timeoutId = setTimeout(() => controller.abort(), 360_000); // 6 minutes
 
     try {
       console.log("🚀 Sending request to FAL AI...");
@@ -2609,9 +3276,23 @@ export async function generateAvatarVideo(
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         console.error("❌ FAL AI API error:", errorData);
-        throw new Error(
-          `Avatar generation failed: ${errorData.detail || response.statusText}`
-        );
+        // Handle FAL API error format - detail can be string or array of validation errors
+        let errorMessage = response.statusText;
+        if (errorData.detail) {
+          if (typeof errorData.detail === "string") {
+            errorMessage = errorData.detail;
+          } else if (Array.isArray(errorData.detail)) {
+            // FAL validation errors come as array of {loc, msg, type} objects
+            errorMessage = errorData.detail
+              .map((e: { msg?: string; loc?: string[] }) =>
+                e.msg || JSON.stringify(e)
+              )
+              .join("; ");
+          } else {
+            errorMessage = JSON.stringify(errorData.detail);
+          }
+        }
+        throw new Error(`Avatar generation failed: ${errorMessage}`);
       }
 
       const result = await response.json();
@@ -2628,9 +3309,9 @@ export async function generateAvatarVideo(
     } catch (error) {
       clearTimeout(timeoutId);
       if (error instanceof Error && error.name === "AbortError") {
-        console.error("❌ Request timeout after 3 minutes");
+        console.error("❌ Request timeout after 6 minutes");
         throw new Error(
-          "Avatar generation timed out after 3 minutes. The video/image files may be too large."
+          "Avatar generation timed out after 6 minutes. The video/image files may be too large."
         );
       }
       throw error;
@@ -3083,5 +3764,245 @@ async function streamVideoDownload(
     return totalData;
   } finally {
     reader.releaseLock();
+  }
+}
+
+// ============================================
+// Seeddream 4.5 Text-to-Image
+// ============================================
+
+/**
+ * Generate images using Seeddream 4.5 text-to-image model
+ *
+ * @example
+ * ```typescript
+ * const result = await generateSeeddream45Image({
+ *   prompt: "A serene mountain landscape at sunset",
+ *   image_size: "auto_2K",
+ *   num_images: 1,
+ * });
+ * ```
+ */
+export async function generateSeeddream45Image(params: {
+  prompt: string;
+  image_size?: Seeddream45ImageSize;
+  num_images?: number;
+  max_images?: number;
+  seed?: number;
+  sync_mode?: boolean;
+  enable_safety_checker?: boolean;
+}): Promise<{
+  images: Array<{
+    url: string;
+    content_type: string;
+    file_name: string;
+    file_size: number;
+    width: number;
+    height: number;
+  }>;
+  seed: number;
+}> {
+  try {
+    const apiKey = getFalApiKey();
+    if (!apiKey) {
+      throw new Error("FAL API key not configured");
+    }
+
+    const endpoint = "fal-ai/bytedance/seedream/v4.5/text-to-image";
+
+    const input = {
+      prompt: params.prompt,
+      image_size: params.image_size ?? "auto_2K",
+      num_images: params.num_images ?? 1,
+      max_images: params.max_images ?? 1,
+      sync_mode: params.sync_mode ?? false,
+      enable_safety_checker: params.enable_safety_checker ?? true,
+      ...(params.seed !== undefined && { seed: params.seed }),
+    };
+
+    console.log(`🎨 [Seeddream 4.5] Starting text-to-image generation...`);
+    console.log(`📝 Prompt: ${params.prompt.slice(0, 50)}...`);
+
+    const response = await fetch(`${FAL_API_BASE}/${endpoint}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Key ${apiKey}`,
+      },
+      body: JSON.stringify(input),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(
+        `${ERROR_MESSAGES.SEEDDREAM45_GENERATION_FAILED}: ${response.status} - ${errorText}`
+      );
+    }
+
+    const result = await response.json();
+    console.log(`✅ [Seeddream 4.5] Generation complete: ${result.images?.length || 0} images`);
+
+    return result;
+  } catch (error) {
+    handleAIServiceError(error, "Generate Seeddream 4.5 image", {
+      operation: "generateSeeddream45Image",
+      prompt: params.prompt.slice(0, 100),
+    });
+    throw error;
+  }
+}
+
+// ============================================
+// Seeddream 4.5 Image Edit
+// ============================================
+
+/**
+ * Edit images using Seeddream 4.5 edit model
+ * Supports up to 10 input images for multi-image compositing
+ *
+ * @example
+ * ```typescript
+ * // Single image edit
+ * const result = await editSeeddream45Image({
+ *   prompt: "Replace the background with a beach sunset",
+ *   image_urls: ["https://fal.ai/storage/uploaded-image.png"],
+ * });
+ *
+ * // Multi-image compositing
+ * const result = await editSeeddream45Image({
+ *   prompt: "Replace the product in Figure 1 with the product from Figure 2",
+ *   image_urls: [
+ *     "https://fal.ai/storage/scene.png",
+ *     "https://fal.ai/storage/product.png"
+ *   ],
+ * });
+ * ```
+ */
+export async function editSeeddream45Image(params: {
+  prompt: string;
+  image_urls: string[];
+  image_size?: Seeddream45ImageSize;
+  num_images?: number;
+  max_images?: number;
+  seed?: number;
+  sync_mode?: boolean;
+  enable_safety_checker?: boolean;
+}): Promise<{
+  images: Array<{
+    url: string;
+    content_type: string;
+    file_name: string;
+    file_size: number;
+    width: number;
+    height: number;
+  }>;
+}> {
+  try {
+    const apiKey = getFalApiKey();
+    if (!apiKey) {
+      throw new Error("FAL API key not configured");
+    }
+
+    // Validate image_urls
+    if (!params.image_urls || params.image_urls.length === 0) {
+      throw new Error(ERROR_MESSAGES.SEEDDREAM45_EDIT_NO_IMAGES);
+    }
+    if (params.image_urls.length > 10) {
+      throw new Error(ERROR_MESSAGES.SEEDDREAM45_EDIT_TOO_MANY_IMAGES);
+    }
+
+    const endpoint = "fal-ai/bytedance/seedream/v4.5/edit";
+
+    const input = {
+      prompt: params.prompt,
+      image_urls: params.image_urls,
+      image_size: params.image_size ?? "auto_2K",
+      num_images: params.num_images ?? 1,
+      max_images: params.max_images ?? 1,
+      sync_mode: params.sync_mode ?? false,
+      enable_safety_checker: params.enable_safety_checker ?? true,
+      ...(params.seed !== undefined && { seed: params.seed }),
+    };
+
+    console.log(`🎨 [Seeddream 4.5 Edit] Starting image edit...`);
+    console.log(`📝 Prompt: ${params.prompt.slice(0, 50)}...`);
+    console.log(`🖼️ Input images: ${params.image_urls.length}`);
+
+    const response = await fetch(`${FAL_API_BASE}/${endpoint}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Key ${apiKey}`,
+      },
+      body: JSON.stringify(input),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(
+        `${ERROR_MESSAGES.SEEDDREAM45_GENERATION_FAILED}: ${response.status} - ${errorText}`
+      );
+    }
+
+    const result = await response.json();
+    console.log(`✅ [Seeddream 4.5 Edit] Edit complete: ${result.images?.length || 0} images`);
+
+    return result;
+  } catch (error) {
+    handleAIServiceError(error, "Edit Seeddream 4.5 image", {
+      operation: "editSeeddream45Image",
+      prompt: params.prompt.slice(0, 100),
+      imageCount: params.image_urls?.length ?? 0,
+    });
+    throw error;
+  }
+}
+
+/**
+ * Upload image to FAL storage for use with Seeddream 4.5 edit
+ * Uses Electron IPC to bypass CORS restrictions
+ *
+ * @param imageFile - Image file to upload
+ * @returns FAL storage URL for use in image_urls
+ */
+export async function uploadImageForSeeddream45Edit(
+  imageFile: File
+): Promise<string> {
+  try {
+    const apiKey = getFalApiKey();
+    if (!apiKey) {
+      throw new Error("FAL API key not configured");
+    }
+
+    // Use Electron IPC upload if available (bypasses CORS)
+    if (window.electronAPI?.fal?.uploadImage) {
+      console.log(`📤 [Seeddream 4.5] Uploading image via Electron IPC: ${imageFile.name}`);
+
+      const arrayBuffer = await imageFile.arrayBuffer();
+      const result = await window.electronAPI.fal.uploadImage(
+        new Uint8Array(arrayBuffer),
+        imageFile.name,
+        apiKey
+      );
+
+      if (!result.success || !result.url) {
+        throw new Error(result.error ?? ERROR_MESSAGES.SEEDDREAM45_UPLOAD_FAILED);
+      }
+
+      console.log(`✅ [Seeddream 4.5] Image uploaded: ${result.url}`);
+      return result.url;
+    }
+
+    // Fallback: Direct upload (may hit CORS in browser)
+    throw new Error(
+      "Image upload requires Electron. Please run in the desktop app."
+    );
+  } catch (error) {
+    handleAIServiceError(error, "Upload image for Seeddream 4.5 edit", {
+      operation: "uploadImageForSeeddream45Edit",
+      fileName: imageFile.name,
+      fileSize: imageFile.size,
+    });
+    throw error;
   }
 }

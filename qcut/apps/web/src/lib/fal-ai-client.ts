@@ -338,6 +338,93 @@ class FalAIClient {
       );
     }
 
+    // Use Electron IPC if available (bypasses CORS restrictions)
+    // This is required for Electron apps where direct fetch to fal.run/upload fails due to CORS
+    if (typeof window !== "undefined" && window.electronAPI?.fal) {
+      const falApi = window.electronAPI.fal;
+      const hasUploadImage = typeof falApi.uploadImage === "function";
+      const hasUploadAudio = typeof falApi.uploadAudio === "function";
+      const hasUploadVideo = typeof falApi.uploadVideo === "function";
+
+      // Only attempt IPC when a compatible handler exists to avoid calling undefined functions
+      const canHandleViaIPC =
+        (fileType === "image" && hasUploadImage) ||
+        (fileType === "audio" && hasUploadAudio) ||
+        (fileType === "video" && hasUploadVideo) ||
+        (fileType === "asset" && hasUploadImage);
+
+      if (canHandleViaIPC) {
+        console.log(
+          `[FAL Upload] ?? Using Electron IPC for ${fileType} upload (bypasses CORS)`
+        );
+        console.log(
+          `[FAL Upload] ?? File: ${file.name}, Size: ${file.size} bytes`
+        );
+
+        try {
+          // Convert File to Uint8Array for IPC transfer
+          const arrayBuffer = await file.arrayBuffer();
+          const uint8Array = new Uint8Array(arrayBuffer);
+
+          let result: { success: boolean; url?: string; error?: string };
+
+          if (fileType === "image" && hasUploadImage) {
+            console.log(
+              `[FAL Upload] ??? Routing to Electron image upload IPC...`
+            );
+            result = await falApi.uploadImage(uint8Array, file.name, this.apiKey);
+          } else if (fileType === "audio" && hasUploadAudio) {
+            console.log(`[FAL Upload] ?? Routing to Electron audio upload IPC...`);
+            result = await falApi.uploadAudio(uint8Array, file.name, this.apiKey);
+          } else if (fileType === "video" && hasUploadVideo) {
+            console.log(`[FAL Upload] ?? Routing to Electron video upload IPC...`);
+            result = await falApi.uploadVideo(uint8Array, file.name, this.apiKey);
+          } else if (hasUploadImage) {
+            // Generic asset fallback to image uploader
+            console.log(
+              `[FAL Upload] ?? Using image upload IPC for ${fileType}...`
+            );
+            result = await falApi.uploadImage(uint8Array, file.name, this.apiKey);
+          } else {
+            throw new Error("No compatible IPC uploader found");
+          }
+
+          if (!result.success || !result.url) {
+            throw new Error(
+              result.error || `FAL ${fileType} upload failed via IPC`
+            );
+          }
+
+          console.log(`[FAL Upload] ? IPC upload successful: ${result.url}`);
+          return result.url;
+        } catch (error) {
+          const normalizedError =
+            error instanceof Error ? error : new Error(String(error));
+          console.error(`[FAL Upload] ? IPC upload failed:`, normalizedError);
+          handleAIServiceError(
+            normalizedError,
+            `FAL ${fileType} upload (IPC)`,
+            {
+              filename: file.name,
+              fileSize: file.size,
+              fileType: file.type,
+              uploadType: fileType,
+            }
+          );
+          throw normalizedError;
+        }
+      } else {
+        console.log(
+          `[FAL Upload] ?? IPC fal namespace detected, but no handler for ${fileType}; falling back to fetch`
+        );
+      }
+    }
+
+    // Fallback: Direct fetch for browser environment (may fail due to CORS in some contexts)
+    console.log(
+      `[FAL Upload] ?? Using direct fetch for ${fileType} upload (browser mode)`
+    );
+
     const formData = new FormData();
     formData.append("file", file);
 
@@ -543,6 +630,61 @@ class FalAIClient {
         } else {
           // Default fallback
           params.image_size = "square_hd";
+        }
+        break;
+
+      case "seeddream-v4-5":
+        // SeedDream V4.5 uses string image_size values including auto_2K/auto_4K
+        if (typeof settings.imageSize === "string") {
+          const validV45Sizes = [
+            "square",
+            "square_hd",
+            "portrait_4_3",
+            "portrait_16_9",
+            "landscape_4_3",
+            "landscape_16_9",
+            "auto_2K",
+            "auto_4K",
+          ];
+          if (validV45Sizes.includes(settings.imageSize)) {
+            params.image_size = settings.imageSize;
+          } else {
+            debugLogger.warn(
+              FAL_LOG_COMPONENT,
+              "SEEDDREAM_V45_INVALID_IMAGE_SIZE",
+              {
+                requestedSize: settings.imageSize,
+                fallback: "auto_2K",
+              }
+            );
+            params.image_size = "auto_2K";
+          }
+        } else {
+          params.image_size = "auto_2K";
+        }
+        break;
+
+      case "seeddream-v4-5-edit":
+        // SeedDream V4.5 Edit - same image_size handling as v4.5
+        // Note: image_urls are handled separately by the edit function
+        if (typeof settings.imageSize === "string") {
+          const validV45Sizes = [
+            "square",
+            "square_hd",
+            "portrait_4_3",
+            "portrait_16_9",
+            "landscape_4_3",
+            "landscape_16_9",
+            "auto_2K",
+            "auto_4K",
+          ];
+          if (validV45Sizes.includes(settings.imageSize)) {
+            params.image_size = settings.imageSize;
+          } else {
+            params.image_size = "auto_2K";
+          }
+        } else {
+          params.image_size = "auto_2K";
         }
         break;
 
@@ -1641,3 +1783,4 @@ export async function batchGenerate(
 
   return results;
 }
+
