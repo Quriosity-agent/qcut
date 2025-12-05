@@ -359,13 +359,13 @@ describe("New Video Models Integration", () => {
         return duration * perSecondRate;
       };
 
-      // Audio off tests
-      expect(calculateKling26Cost(5, false)).toBe(0.35);
-      expect(calculateKling26Cost(10, false)).toBe(0.7);
+      // Audio off tests - use toBeCloseTo for floating point comparison
+      expect(calculateKling26Cost(5, false)).toBeCloseTo(0.35, 2);
+      expect(calculateKling26Cost(10, false)).toBeCloseTo(0.7, 2);
 
       // Audio on tests
-      expect(calculateKling26Cost(5, true)).toBe(0.7);
-      expect(calculateKling26Cost(10, true)).toBe(1.4);
+      expect(calculateKling26Cost(5, true)).toBeCloseTo(0.7, 2);
+      expect(calculateKling26Cost(10, true)).toBeCloseTo(1.4, 2);
     });
 
     it("should validate aspect ratio options", async () => {
