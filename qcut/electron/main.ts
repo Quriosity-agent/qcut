@@ -489,12 +489,24 @@ app.whenReady().then(() => {
         logger.info(`[FAL Upload] Starting video upload: ${filename}`);
         logger.info(`[FAL Upload] File size: ${videoData.length} bytes`);
 
+        // Determine content type from filename extension
+        const ext = filename.toLowerCase().split(".").pop();
+        const contentTypeMap: Record<string, string> = {
+          mp4: "video/mp4",
+          webm: "video/webm",
+          mov: "video/quicktime",
+          avi: "video/x-msvideo",
+          mkv: "video/x-matroska",
+          m4v: "video/x-m4v",
+        };
+        const contentType = contentTypeMap[ext ?? ""] ?? "video/mp4";
+
         // Step 1: Initiate upload to get signed URL
         // FAL uses a two-step process: first get a signed upload URL, then PUT the file
         const initiateUrl =
           "https://rest.alpha.fal.ai/storage/upload/initiate?storage_type=fal-cdn-v3";
 
-        logger.info(`[FAL Upload] Step 1: Initiating upload...`);
+        logger.info(`[FAL Upload] Step 1: Initiating upload (${contentType})...`);
         const initResponse = await fetch(initiateUrl, {
           method: "POST",
           headers: {
@@ -503,7 +515,7 @@ app.whenReady().then(() => {
           },
           body: JSON.stringify({
             file_name: filename,
-            content_type: "video/mp4",
+            content_type: contentType,
           }),
         });
 
@@ -539,9 +551,7 @@ app.whenReady().then(() => {
         // Step 2: Upload file to the signed URL
         const uploadResponse = await fetch(upload_url, {
           method: "PUT",
-          headers: {
-            "Content-Type": "video/mp4",
-          },
+          headers: { "Content-Type": contentType },
           body: Buffer.from(videoData),
         });
 

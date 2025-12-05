@@ -1066,6 +1066,14 @@ export function AiView() {
         Number.parseFloat(model?.price ?? "0");
       modelCost = perSecond * wan25Duration;
     }
+    // Kling v2.6 Pro pricing: $0.07/s (no audio) or $0.14/s (with audio)
+    else if (
+      modelId === "kling_v26_pro_t2v" ||
+      modelId === "kling_v26_pro_i2v"
+    ) {
+      const perSecondRate = kling26GenerateAudio ? 0.14 : 0.07;
+      modelCost = kling26Duration * perSecondRate;
+    }
 
     return total + modelCost;
   }, 0);

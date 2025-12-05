@@ -11,6 +11,7 @@ import {
   estimateCost,
   getAvailableModels,
 } from "../../lib/ai-video-client";
+import { AI_MODELS } from "../../components/editor/media-panel/views/ai-constants";
 
 describe("New Video Models Integration", () => {
   beforeEach(() => {
@@ -368,18 +369,23 @@ describe("New Video Models Integration", () => {
       expect(calculateKling26Cost(10, true)).toBeCloseTo(1.4, 2);
     });
 
-    it("should validate aspect ratio options", async () => {
-      const validRatios = ["16:9", "9:16", "1:1"];
-      const invalidRatios = ["4:3", "3:4", "21:9"];
+    it("should validate aspect ratio options against model config", async () => {
+      // Get the actual model config from AI_MODELS (source of truth)
+      const klingV26Model = AI_MODELS.find((m) => m.id === "kling_v26_pro_t2v");
+      expect(klingV26Model).toBeDefined();
 
-      // Valid ratios should be in the supported list
-      for (const ratio of validRatios) {
-        expect(validRatios.includes(ratio)).toBe(true);
-      }
+      const supportedRatios = klingV26Model?.supportedAspectRatios ?? [];
 
-      // Invalid ratios for Kling v2.6 (supported by v2.5 but not v2.6)
-      for (const ratio of invalidRatios) {
-        expect(validRatios.includes(ratio)).toBe(false);
+      // Kling v2.6 should support exactly these aspect ratios
+      expect(supportedRatios).toContain("16:9");
+      expect(supportedRatios).toContain("9:16");
+      expect(supportedRatios).toContain("1:1");
+      expect(supportedRatios).toHaveLength(3);
+
+      // These ratios should NOT be supported (they are v2.5 specific)
+      const unsupportedRatios = ["4:3", "3:4", "21:9"];
+      for (const ratio of unsupportedRatios) {
+        expect(supportedRatios).not.toContain(ratio);
       }
     });
 
