@@ -24,13 +24,25 @@ This document outlines the integration plan for Kling AI Avatar v2 (Standard and
 
 ---
 
+## Architecture Overview
+
+This integration follows the established patterns in the codebase:
+
+1. **Centralized Model Configuration** (`ai-constants.ts`) - Single source of truth for model definitions
+2. **Type Safety** (`ai-types.ts`) - TypeScript interfaces for all props and state
+3. **API Client** (`ai-video-client.ts`) - FAL AI integration with error handling
+4. **Generation Hook** (`use-ai-generation.ts`) - React hook orchestrating generation flow
+5. **UI Component** (`ai.tsx`) - User-facing controls and state management
+
+---
+
 ## Implementation Plan
 
-### Phase 1: Constants & Type Definitions
+### Phase 1: Model Constants Definition
 
 #### File: `qcut/apps/web/src/components/editor/media-panel/views/ai-constants.ts`
 
-**Add to `AI_MODELS` array (after existing Kling avatar models ~line 400):**
+**Location**: Add to `AI_MODELS` array after existing Kling avatar models (around line 820, after `kling_avatar_standard`)
 
 ```typescript
 // Kling Avatar v2 Standard
@@ -76,9 +88,10 @@ This document outlines the integration plan for Kling AI Avatar v2 (Standard and
 },
 ```
 
-**Add to `AI_ERROR_MESSAGES` object:**
+**Location**: Add to `ERROR_MESSAGES` object (around line 1046)
 
 ```typescript
+// Kling Avatar v2 specific errors
 KLING_AVATAR_V2_MISSING_IMAGE: "Character image is required for Kling Avatar v2",
 KLING_AVATAR_V2_MISSING_AUDIO: "Audio file is required for Kling Avatar v2",
 KLING_AVATAR_V2_AUDIO_TOO_LONG: "Audio must be between 2-60 seconds for Kling Avatar v2",
@@ -87,165 +100,93 @@ KLING_AVATAR_V2_AUDIO_TOO_LARGE: "Audio file must be under 5MB for Kling Avatar 
 
 ---
 
+### Phase 2: Type Definitions
+
 #### File: `qcut/apps/web/src/components/editor/media-panel/views/ai-types.ts`
 
-**Add to `UseAIGenerationProps` interface:**
+**Location**: Add to `UseAIGenerationProps` interface (around line 279, after other model-specific props)
 
 ```typescript
 // Kling Avatar v2 specific props
 klingAvatarV2Prompt?: string;
 ```
 
-> Note: The existing `AvatarUploadState` interface already supports `characterImage` and `audioFile` which are sufficient for this model.
+> **Note**: The existing `AvatarUploadState` interface (line 313-320) already supports `characterImage`, `characterImagePreview`, `audioFile`, and `audioPreview` which are sufficient for this model. No changes needed there.
 
 ---
 
-### Phase 2: API Client Implementation
+### Phase 3: API Client Implementation
 
 #### File: `qcut/apps/web/src/lib/ai-video-client.ts`
 
-**Add request interface (after existing Kling interfaces ~line 50):**
+**Location**: Add to `generateAvatarVideo` function (around line 3083, within the model routing `if-else` chain)
+
+The existing `generateAvatarVideo` function handles avatar models via a routing pattern. Add new branch after the existing `kling_avatar_standard` handling:
 
 ```typescript
-interface KlingAvatarV2Request {
-  model: "kling_avatar_v2_standard" | "kling_avatar_v2_pro";
-  image_url: string;
-  audio_url: string;
-  prompt?: string;
-}
-```
-
-**Add generation function:**
-
-```typescript
-export async function generateKlingAvatarV2Video(
-  request: KlingAvatarV2Request
-): Promise<VideoGenerationResponse> {
-  const { model, image_url, audio_url, prompt } = request;
-
-  // Validate required inputs
-  if (!image_url) {
-    return {
-      job_id: "",
-      status: "failed",
-      message: AI_ERROR_MESSAGES.KLING_AVATAR_V2_MISSING_IMAGE,
-      video_url: "",
-    };
+} else if (
+  request.model === "kling_avatar_v2_standard" ||
+  request.model === "kling_avatar_v2_pro"
+) {
+  // Kling Avatar v2 models
+  if (!request.audioFile) {
+    throw new Error(`${request.model} requires an audio file`);
   }
-
-  if (!audio_url) {
-    return {
-      job_id: "",
-      status: "failed",
-      message: AI_ERROR_MESSAGES.KLING_AVATAR_V2_MISSING_AUDIO,
-      video_url: "",
-    };
+  // Convert audio to data URL
+  const audioUrl = await fileToDataURL(request.audioFile);
+  endpoint = modelConfig.endpoints.text_to_video || "";
+  if (!endpoint) {
+    throw new Error(
+      `Model ${request.model} does not have a valid endpoint`
+    );
   }
-
-  // Determine endpoint based on model
-  const endpoint = model === "kling_avatar_v2_pro"
-    ? "fal-ai/kling-video/ai-avatar/v2/pro"
-    : "fal-ai/kling-video/ai-avatar/v2/standard";
-
-  const payload: Record<string, unknown> = {
-    image_url,
-    audio_url,
-  };
-
-  // Add optional prompt if provided
-  if (prompt && prompt.trim()) {
-    payload.prompt = prompt.trim();
-  }
-
-  try {
-    const result = await fal.subscribe(endpoint, {
-      input: payload,
-      logs: true,
-    });
-
-    return {
-      job_id: result.request_id || "",
-      status: "completed",
-      message: "Avatar video generated successfully",
-      video_url: result.video?.url || "",
-      video_data: result,
-    };
-  } catch (error) {
-    return {
-      job_id: "",
-      status: "failed",
-      message: error instanceof Error ? error.message : "Unknown error occurred",
-      video_url: "",
-    };
-  }
-}
-```
-
-**Modify `generateAvatarVideo` function to include v2 routing:**
-
-```typescript
-// Add to the model routing logic in generateAvatarVideo function
-if (modelId === "kling_avatar_v2_standard" || modelId === "kling_avatar_v2_pro") {
-  return generateKlingAvatarV2Video({
-    model: modelId,
-    image_url: imageUrl,
+  payload = {
+    ...(modelConfig.default_params || {}), // Defaults first
+    image_url: characterImageUrl,
     audio_url: audioUrl,
-    prompt: prompt,
-  });
-}
+    ...(request.prompt && { prompt: request.prompt }), // Optional prompt for animation guidance
+  };
 ```
+
+**Pattern Reference**: This follows the exact same pattern as the existing `kling_avatar_pro` / `kling_avatar_standard` handling (lines 3083-3104), ensuring consistency with the established codebase conventions.
 
 ---
 
-### Phase 3: Generation Hook Integration
+### Phase 4: Generation Hook Integration
 
 #### File: `qcut/apps/web/src/components/editor/media-panel/views/use-ai-generation.ts`
 
-**Add to destructured props:**
+**Location 1**: Add to destructured props (around line 174, after existing model-specific props)
 
 ```typescript
+// Kling Avatar v2 props
 klingAvatarV2Prompt = "",
 ```
 
-**Add to dependency array in useCallback:**
+**Location 2**: The avatar generation is already handled by calling `generateAvatarVideo` which routes based on model ID. Since we're extending the existing `generateAvatarVideo` function (Phase 3), no additional routing logic is needed in the hook.
 
-```typescript
-klingAvatarV2Prompt,
-```
-
-**Add generation branch in handleGenerate function (within avatar category handling):**
-
-```typescript
-if (modelId === "kling_avatar_v2_standard" || modelId === "kling_avatar_v2_pro") {
-  response = await generateKlingAvatarV2Video({
-    model: modelId,
-    image_url: characterImageUrl,
-    audio_url: audioUrl,
-    prompt: klingAvatarV2Prompt,
-  });
-}
-```
+The hook already passes `avatarImage`, `audioFile`, and `prompt` to `generateAvatarVideo` for avatar models - the routing happens inside the API client based on model ID.
 
 ---
 
-### Phase 4: UI Component Updates
+### Phase 5: UI Component Updates
 
 #### File: `qcut/apps/web/src/components/editor/media-panel/views/ai.tsx`
 
-**Add state variable:**
+**Location 1**: Add state variable (near other model-specific state, search for existing pattern like `klingNegativePrompt`)
 
 ```typescript
 const [klingAvatarV2Prompt, setKlingAvatarV2Prompt] = useState("");
 ```
 
-**Add model selection check:**
+**Location 2**: Add model selection check (near other selection checks)
 
 ```typescript
 const klingAvatarV2Selected = selectedModels.includes("kling_avatar_v2_standard") ||
                                selectedModels.includes("kling_avatar_v2_pro");
 ```
 
-**Add UI controls in avatar tab section (after existing avatar controls):**
+**Location 3**: Add UI controls in avatar tab section (after existing avatar controls, look for the avatar tab content area)
 
 ```typescript
 {klingAvatarV2Selected && (
@@ -256,7 +197,7 @@ const klingAvatarV2Selected = selectedModels.includes("kling_avatar_v2_standard"
       </Label>
       <Textarea
         id="kling-avatar-v2-prompt"
-        placeholder="Describe animation style or expressions..."
+        placeholder="Describe animation style, expressions, or movements..."
         value={klingAvatarV2Prompt}
         onChange={(e) => setKlingAvatarV2Prompt(e.target.value)}
         className="min-h-[60px] resize-none"
@@ -269,7 +210,7 @@ const klingAvatarV2Selected = selectedModels.includes("kling_avatar_v2_standard"
 )}
 ```
 
-**Pass props to useAIGeneration hook:**
+**Location 4**: Pass props to useAIGeneration hook call
 
 ```typescript
 klingAvatarV2Prompt,
@@ -277,17 +218,17 @@ klingAvatarV2Prompt,
 
 ---
 
-### Phase 5: Cost Calculation Updates
+### Phase 6: Cost Calculation Updates
 
 #### File: `qcut/apps/web/src/components/editor/media-panel/views/ai.tsx`
 
-**Update cost calculation function to handle per-second avatar pricing:**
+**Location**: Update cost calculation function (search for `calculateEstimatedCost` or similar cost logic)
 
 ```typescript
-// In calculateEstimatedCost function, add handling for v2 avatar models
+// Add handling for v2 avatar models with per-second pricing
 if (modelId === "kling_avatar_v2_standard" || modelId === "kling_avatar_v2_pro") {
-  // Cost is based on audio duration, estimate if not available
-  const audioDuration = audioFileDuration || 10; // Default estimate
+  // Cost is based on audio duration
+  const audioDuration = audioFileDuration || 10; // Default estimate if not available
   const perSecondRate = modelId === "kling_avatar_v2_pro" ? 0.115 : 0.0562;
   return audioDuration * perSecondRate;
 }
@@ -295,21 +236,49 @@ if (modelId === "kling_avatar_v2_standard" || modelId === "kling_avatar_v2_pro")
 
 ---
 
-## Migration from v1 to v2
+## Long-Term Maintenance Considerations
+
+### Backward Compatibility
+
+The existing Kling Avatar v1 models must remain active:
+- `kling_avatar_standard` (endpoint: `fal-ai/kling-video/v1/standard/ai-avatar`)
+- `kling_avatar_pro` (endpoint: `fal-ai/kling-video/v1/pro/ai-avatar`)
+
+v2 models are additive - users can choose between v1 and v2 based on their needs.
+
+### Model Configuration Centralization
+
+All model-specific parameters are defined in `AI_MODELS` array in `ai-constants.ts`. This ensures:
+- Single source of truth for pricing, endpoints, and capabilities
+- Easy updates when FAL API changes
+- Consistent behavior across generation, UI, and cost calculation
+
+### Error Handling Pattern
+
+Follow the existing `handleAIServiceError` pattern from `ai-video-client.ts` for consistent error reporting:
+
+```typescript
+handleAIServiceError(error, "Generate Kling Avatar v2 video", {
+  model: request.model,
+  operation: "generateAvatarVideo",
+});
+```
+
+### Future API Changes
+
+Monitor FAL AI for:
+1. **New Parameters**: v2 may introduce expression controls, head movement options
+2. **Pricing Updates**: `perSecondPricing` in model config makes updates easy
+3. **Audio Constraints**: Track changes to duration/size limits
+4. **Output Formats**: May expand beyond MP4
 
 ### Deprecation Strategy
 
-The existing Kling Avatar v1 models should be maintained for backward compatibility:
-- `kling_avatar_standard` → Keep active
-- `kling_avatar_pro` → Keep active
-
-New v2 models will be added alongside v1, allowing users to choose based on their needs.
-
-### Future Considerations
-
-1. **v1 Sunset Timeline**: Consider deprecating v1 models after 6 months if v2 proves stable
-2. **Feature Parity**: Monitor if v2 introduces new parameters (expressions, head movement controls)
-3. **Pricing Changes**: Watch for FAL pricing updates and adjust constants accordingly
+When deprecating v1 models in the future:
+1. Add `deprecated: true` flag to model config
+2. Show UI warning for deprecated model selection
+3. After 6 months, remove from `AI_MODELS` array
+4. Keep endpoint routing for 3 additional months for in-flight jobs
 
 ---
 
@@ -317,83 +286,76 @@ New v2 models will be added alongside v1, allowing users to choose based on thei
 
 ### Unit Tests
 
-Add to existing test suite:
+#### File: `qcut/apps/web/src/lib/__tests__/ai-video-client.test.ts`
 
 ```typescript
-// File: qcut/apps/web/src/lib/__tests__/ai-video-client.test.ts
-
-describe("generateKlingAvatarV2Video", () => {
-  it("should fail without image_url", async () => {
-    const result = await generateKlingAvatarV2Video({
-      model: "kling_avatar_v2_standard",
-      image_url: "",
-      audio_url: "https://example.com/audio.mp3",
-    });
-    expect(result.status).toBe("failed");
-    expect(result.message).toContain("image");
+describe("generateAvatarVideo - Kling Avatar v2", () => {
+  it("should route kling_avatar_v2_standard to correct endpoint", async () => {
+    // Mock fetch and verify endpoint is "fal-ai/kling-video/ai-avatar/v2/standard"
   });
 
-  it("should fail without audio_url", async () => {
-    const result = await generateKlingAvatarV2Video({
-      model: "kling_avatar_v2_standard",
-      image_url: "https://example.com/image.jpg",
-      audio_url: "",
-    });
-    expect(result.status).toBe("failed");
-    expect(result.message).toContain("audio");
+  it("should route kling_avatar_v2_pro to correct endpoint", async () => {
+    // Mock fetch and verify endpoint is "fal-ai/kling-video/ai-avatar/v2/pro"
   });
 
-  it("should use correct endpoint for standard model", async () => {
-    // Mock fal.subscribe and verify endpoint
-  });
-
-  it("should use correct endpoint for pro model", async () => {
-    // Mock fal.subscribe and verify endpoint
+  it("should fail without audioFile", async () => {
+    // Verify error message matches KLING_AVATAR_V2_MISSING_AUDIO
   });
 
   it("should include optional prompt when provided", async () => {
-    // Mock and verify prompt is passed
+    // Mock fetch and verify prompt is in payload
+  });
+
+  it("should convert image and audio to base64 data URLs", async () => {
+    // Verify fileToDataURL is called for both files
   });
 });
 ```
 
 ### Integration Tests
 
-```typescript
-// File: qcut/apps/web/src/lib/__tests__/ai-video-client.integration.test.ts
+#### File: `qcut/apps/web/src/lib/__tests__/ai-video-client.integration.test.ts`
 
+```typescript
 describe("Kling Avatar v2 Integration", () => {
-  it("should generate avatar video with standard model", async () => {
-    // Test with real API (gated by environment variable)
+  // Gate with VITE_FAL_API_KEY presence
+  const shouldRun = !!import.meta.env.VITE_FAL_API_KEY;
+
+  it.skipIf(!shouldRun)("should generate avatar video with standard model", async () => {
+    // Real API test with test image and audio
   });
 
-  it("should generate avatar video with pro model", async () => {
-    // Test with real API (gated by environment variable)
+  it.skipIf(!shouldRun)("should generate avatar video with pro model", async () => {
+    // Real API test with test image and audio
   });
 });
 ```
 
-### Manual Testing
+### Manual Testing Procedure
 
-1. Upload character image (JPG, PNG, WebP)
-2. Upload audio file (MP3, WAV)
-3. Optionally enter animation prompt
-4. Select Kling Avatar v2 Standard
-5. Verify video generation and playback
-6. Repeat with Pro model
-7. Verify cost calculation displays correctly
+1. Navigate to AI Generation panel
+2. Select "Avatar" tab
+3. Upload character image (JPG, PNG, or WebP)
+4. Upload audio file (MP3 or WAV, 5-30 seconds)
+5. Select "Kling Avatar v2 Standard"
+6. Optionally enter animation prompt
+7. Verify cost estimate displays correctly
+8. Click Generate
+9. Verify video generation completes
+10. Verify video plays with synced lip movements
+11. Repeat steps 5-10 with "Kling Avatar v2 Pro"
 
 ---
 
 ## Files Summary
 
-| File Path | Action | Description |
-|-----------|--------|-------------|
-| `qcut/apps/web/src/components/editor/media-panel/views/ai-constants.ts` | Modify | Add model definitions and error messages |
-| `qcut/apps/web/src/components/editor/media-panel/views/ai-types.ts` | Modify | Add optional prompt prop |
-| `qcut/apps/web/src/lib/ai-video-client.ts` | Modify | Add request interface and generation function |
-| `qcut/apps/web/src/components/editor/media-panel/views/use-ai-generation.ts` | Modify | Add prop destructuring and generation routing |
-| `qcut/apps/web/src/components/editor/media-panel/views/ai.tsx` | Modify | Add state, UI controls, and hook props |
+| File Path | Action | Lines to Modify |
+|-----------|--------|-----------------|
+| `qcut/apps/web/src/components/editor/media-panel/views/ai-constants.ts` | Modify | ~820 (AI_MODELS), ~1046 (ERROR_MESSAGES) |
+| `qcut/apps/web/src/components/editor/media-panel/views/ai-types.ts` | Modify | ~279 (UseAIGenerationProps) |
+| `qcut/apps/web/src/lib/ai-video-client.ts` | Modify | ~3083 (generateAvatarVideo routing) |
+| `qcut/apps/web/src/components/editor/media-panel/views/use-ai-generation.ts` | Modify | ~174 (prop destructuring) |
+| `qcut/apps/web/src/components/editor/media-panel/views/ai.tsx` | Modify | State, selection check, UI controls, hook props |
 | `qcut/apps/web/src/lib/__tests__/ai-video-client.test.ts` | Modify | Add unit tests |
 | `qcut/apps/web/src/lib/__tests__/ai-video-client.integration.test.ts` | Modify | Add integration tests |
 
@@ -401,11 +363,19 @@ describe("Kling Avatar v2 Integration", () => {
 
 ## Rollback Plan
 
-If issues arise after deployment:
+### Immediate (UI Hide)
+Remove model entries from `AI_MODELS` array to hide from UI. No code removal needed - just comment out or delete the two model objects.
 
-1. **Immediate**: Remove model entries from `AI_MODELS` array to hide from UI
-2. **Short-term**: Revert commits related to v2 integration
-3. **Long-term**: Investigate issues and re-deploy with fixes
+### Short-term (Code Revert)
+```bash
+git revert <commit-hash>
+```
+
+### Long-term (Investigation)
+1. Check FAL AI status page for API issues
+2. Review error logs for specific failure patterns
+3. Test with different image/audio formats
+4. Verify API key permissions
 
 ---
 
@@ -414,3 +384,4 @@ If issues arise after deployment:
 - [Kling Avatar v2 Standard API](https://fal.ai/models/fal-ai/kling-video/ai-avatar/v2/standard)
 - [Kling Avatar v2 Pro API](https://fal.ai/models/fal-ai/kling-video/ai-avatar/v2/pro/api)
 - [FAL AI Client Documentation](https://fal.ai/docs)
+- [Existing Kling Avatar v1 Integration](../../../apps/web/src/lib/ai-video-client.ts) - lines 3083-3104
