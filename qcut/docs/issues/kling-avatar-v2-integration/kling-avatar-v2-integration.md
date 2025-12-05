@@ -303,85 +303,91 @@ The Issue 2 fix correctly identified that v2 requires FAL storage URLs, but the 
 
 **Solution**: Route FAL uploads through Electron's main process via IPC
 
-The Electron main process (Node.js) is not subject to browser CORS restrictions. We need to:
+The Electron main process (Node.js) is not subject to browser CORS restrictions. The implementation uses three separate IPC handlers with FAL's two-step signed URL upload process:
 
-1. **Add IPC handler in `electron/main.ts`**:
+1. **IPC handlers in `electron/main.ts`** (three separate handlers for video/image/audio):
 ```typescript
-// FAL Storage Upload Handler - bypasses CORS restrictions
-ipcMain.handle("fal:upload-file", async (_event, fileData: {
-  buffer: ArrayBuffer;
-  filename: string;
-  contentType: string;
-}): Promise<string> => {
-  const FAL_KEY = process.env.FAL_KEY || "";
+// FAL Audio Upload Handler - uses two-step signed URL process
+ipcMain.handle(
+  "fal:upload-audio",
+  async (_event, audioData: Uint8Array, filename: string, apiKey: string)
+  : Promise<{ success: boolean; url?: string; error?: string }> => {
+    // Step 1: Initiate upload to get signed URL
+    const initResponse = await fetch(
+      "https://rest.alpha.fal.ai/storage/upload/initiate?storage_type=fal-cdn-v3",
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Key ${apiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ file_name: filename, content_type: contentType }),
+      }
+    );
+    const { upload_url, file_url } = await initResponse.json();
 
-  const formData = new FormData();
-  const blob = new Blob([fileData.buffer], { type: fileData.contentType });
-  formData.append("file", blob, fileData.filename);
+    // Step 2: Upload to signed URL
+    await fetch(upload_url, {
+      method: "PUT",
+      headers: { "Content-Type": contentType },
+      body: Buffer.from(audioData),
+    });
 
-  const response = await fetch("https://fal.run/upload", {
-    method: "POST",
-    headers: {
-      "Authorization": `Key ${FAL_KEY}`,
-    },
-    body: formData,
-  });
-
-  if (!response.ok) {
-    const error = await response.text();
-    throw new Error(`FAL upload failed: ${error}`);
+    return { success: true, url: file_url };
   }
-
-  const result = await response.json();
-  return result.url; // Returns the FAL storage URL
-});
+);
+// Similar handlers exist for fal:upload-video and fal:upload-image
 ```
 
-2. **Add to preload script (`electron/preload.ts`)**:
+2. **Preload script (`electron/preload.ts`)** - exposes typed methods:
 ```typescript
 fal: {
-  uploadFile: (fileData: { buffer: ArrayBuffer; filename: string; contentType: string }) =>
-    ipcRenderer.invoke("fal:upload-file", fileData),
+  uploadVideo: (videoData: Uint8Array, filename: string, apiKey: string)
+    : Promise<FalUploadResult> =>
+    ipcRenderer.invoke("fal:upload-video", videoData, filename, apiKey),
+  uploadImage: (imageData: Uint8Array, filename: string, apiKey: string)
+    : Promise<FalUploadResult> =>
+    ipcRenderer.invoke("fal:upload-image", imageData, filename, apiKey),
+  uploadAudio: (audioData: Uint8Array, filename: string, apiKey: string)
+    : Promise<FalUploadResult> =>
+    ipcRenderer.invoke("fal:upload-audio", audioData, filename, apiKey),
 },
 ```
 
-3. **Update type definitions (`src/types/electron.d.ts`)**:
+3. **Type definitions (`src/types/electron.d.ts`)**:
 ```typescript
 fal: {
-  uploadFile: (fileData: {
-    buffer: ArrayBuffer;
-    filename: string;
-    contentType: string;
-  }) => Promise<string>;
+  uploadVideo: (videoData: Uint8Array, filename: string, apiKey: string)
+    => Promise<{ success: boolean; url?: string; error?: string }>;
+  uploadImage: (imageData: Uint8Array, filename: string, apiKey: string)
+    => Promise<{ success: boolean; url?: string; error?: string }>;
+  uploadAudio: (audioData: Uint8Array, filename: string, apiKey: string)
+    => Promise<{ success: boolean; url?: string; error?: string }>;
 };
 ```
 
-4. **Update `fal-ai-client.ts` upload functions**:
+4. **Updated `fal-ai-client.ts` `uploadFileToFal` method** - routes to appropriate IPC handler:
 ```typescript
-export async function uploadImageToFal(imageFile: File): Promise<string> {
+private async uploadFileToFal(file: File, fileType: "image" | "audio" | "video"): Promise<string> {
   // Use Electron IPC if available (bypasses CORS)
-  if (window.electronAPI?.fal?.uploadFile) {
-    const buffer = await imageFile.arrayBuffer();
-    return window.electronAPI.fal.uploadFile({
-      buffer,
-      filename: imageFile.name,
-      contentType: imageFile.type,
-    });
-  }
+  if (window.electronAPI?.fal) {
+    const arrayBuffer = await file.arrayBuffer();
+    const uint8Array = new Uint8Array(arrayBuffer);
+    let result: { success: boolean; url?: string; error?: string };
 
-  // Fallback to direct fetch for browser environment
-  // ... existing implementation
-}
+    // Route to appropriate handler based on file type
+    if (fileType === "image") {
+      result = await window.electronAPI.fal.uploadImage(uint8Array, file.name, this.apiKey);
+    } else if (fileType === "audio") {
+      result = await window.electronAPI.fal.uploadAudio(uint8Array, file.name, this.apiKey);
+    } else if (fileType === "video") {
+      result = await window.electronAPI.fal.uploadVideo(uint8Array, file.name, this.apiKey);
+    }
 
-export async function uploadAudioToFal(audioFile: File): Promise<string> {
-  // Use Electron IPC if available (bypasses CORS)
-  if (window.electronAPI?.fal?.uploadFile) {
-    const buffer = await audioFile.arrayBuffer();
-    return window.electronAPI.fal.uploadFile({
-      buffer,
-      filename: audioFile.name,
-      contentType: audioFile.type,
-    });
+    if (!result.success || !result.url) {
+      throw new Error(result.error || `FAL ${fileType} upload failed via IPC`);
+    }
+    return result.url;
   }
 
   // Fallback to direct fetch for browser environment
@@ -402,10 +408,10 @@ export async function uploadAudioToFal(audioFile: File): Promise<string> {
 
 | File | Changes |
 |------|---------|
-| `electron/main.ts` | Add `fal:upload-file` IPC handler |
-| `electron/preload.ts` | Expose `fal.uploadFile` method |
-| `apps/web/src/types/electron.d.ts` | Add TypeScript types for new IPC method |
-| `apps/web/src/lib/fal-ai-client.ts` | Update `uploadImageToFal` and `uploadAudioToFal` to use IPC |
+| `electron/main.ts` | Add `fal:upload-video`, `fal:upload-image`, `fal:upload-audio` IPC handlers |
+| `electron/preload.ts` | Expose `fal.uploadVideo`, `fal.uploadImage`, `fal.uploadAudio` methods |
+| `apps/web/src/types/electron.d.ts` | Add TypeScript types for IPC methods |
+| `apps/web/src/lib/fal-ai-client.ts` | Update `uploadFileToFal` to route to appropriate IPC handler |
 
 **Implementation Priority**: HIGH - This blocks all Kling Avatar v2 functionality in the Electron app.
 
@@ -437,7 +443,7 @@ export async function uploadAudioToFal(audioFile: File): Promise<string> {
    - Routes to appropriate IPC handler based on file type (image/audio/video)
    - Falls back to direct fetch for browser environment
    - Includes detailed console logging:
-     ```
+     ```text
      [FAL Upload] 🔌 Using Electron IPC for audio upload (bypasses CORS)
      [FAL Upload] 📁 File: audio.mp3, Size: 185516 bytes
      [FAL Upload] 🎵 Routing to Electron audio upload IPC...
