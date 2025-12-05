@@ -50,7 +50,7 @@ This integration follows the established patterns in the codebase:
   id: "kling_avatar_v2_standard",
   name: "Kling Avatar v2 Standard",
   description: "Create talking avatar videos with realistic humans, animals, cartoons, or stylized characters. Audio-synchronized lip-sync.",
-  price: "0.056",
+  price: "0.0562",
   resolution: "1080p",
   max_duration: 60,
   category: "avatar",
@@ -60,9 +60,16 @@ This integration follows the established patterns in the codebase:
   },
   default_params: {
     prompt: "",
+    resolution: "1080p",
   },
   perSecondPricing: {
     "1080p": 0.0562,
+  },
+  // Audio constraints for validation
+  audioConstraints: {
+    minDurationSec: 2,
+    maxDurationSec: 60,
+    maxFileSizeBytes: 5 * 1024 * 1024, // 5MB
   },
 },
 
@@ -81,9 +88,16 @@ This integration follows the established patterns in the codebase:
   },
   default_params: {
     prompt: "",
+    resolution: "1080p",
   },
   perSecondPricing: {
     "1080p": 0.115,
+  },
+  // Audio constraints for validation
+  audioConstraints: {
+    minDurationSec: 2,
+    maxDurationSec: 60,
+    maxFileSizeBytes: 5 * 1024 * 1024, // 5MB
   },
 },
 ```
@@ -94,8 +108,20 @@ This integration follows the established patterns in the codebase:
 // Kling Avatar v2 specific errors
 KLING_AVATAR_V2_MISSING_IMAGE: "Character image is required for Kling Avatar v2",
 KLING_AVATAR_V2_MISSING_AUDIO: "Audio file is required for Kling Avatar v2",
-KLING_AVATAR_V2_AUDIO_TOO_LONG: "Audio must be between 2-60 seconds for Kling Avatar v2",
+KLING_AVATAR_V2_AUDIO_TOO_SHORT: "Audio must be at least 2 seconds for Kling Avatar v2",
+KLING_AVATAR_V2_AUDIO_TOO_LONG: "Audio must be under 60 seconds for Kling Avatar v2",
 KLING_AVATAR_V2_AUDIO_TOO_LARGE: "Audio file must be under 5MB for Kling Avatar v2",
+```
+
+**Location**: Add to `AIModel` interface in `ai-types.ts` (to support audioConstraints)
+
+```typescript
+// Add to AIModel interface
+audioConstraints?: {
+  minDurationSec: number;
+  maxDurationSec: number;
+  maxFileSizeBytes: number;
+};
 ```
 
 ---
@@ -111,7 +137,14 @@ KLING_AVATAR_V2_AUDIO_TOO_LARGE: "Audio file must be under 5MB for Kling Avatar 
 klingAvatarV2Prompt?: string;
 ```
 
-> **Note**: The existing `AvatarUploadState` interface (line 313-320) already supports `characterImage`, `characterImagePreview`, `audioFile`, and `audioPreview` which are sufficient for this model. No changes needed there.
+**Location**: Add to `AvatarUploadState` interface (around line 313) to track audio duration
+
+```typescript
+// Add to AvatarUploadState interface
+audioDuration: number | null;
+```
+
+> **Note**: The existing `AvatarUploadState` interface already supports `characterImage`, `characterImagePreview`, `audioFile`, and `audioPreview`. Adding `audioDuration` enables accurate cost calculation.
 
 ---
 
@@ -119,9 +152,42 @@ klingAvatarV2Prompt?: string;
 
 #### File: `qcut/apps/web/src/lib/ai-video-client.ts`
 
-**Location**: Add to `generateAvatarVideo` function (around line 3083, within the model routing `if-else` chain)
+**Location**: Add validation helper function (before `generateAvatarVideo`, around line 3030)
 
-The existing `generateAvatarVideo` function handles avatar models via a routing pattern. Add new branch after the existing `kling_avatar_standard` handling:
+```typescript
+/**
+ * Validates audio file against Kling Avatar v2 constraints
+ *
+ * @param audioFile - Audio file to validate
+ * @param audioDuration - Duration in seconds (from audio element or metadata)
+ * @returns Error message if validation fails, null if valid
+ */
+function validateKlingAvatarV2Audio(
+  audioFile: File,
+  audioDuration?: number
+): string | null {
+  const MAX_SIZE_BYTES = 5 * 1024 * 1024; // 5MB
+  const MIN_DURATION_SEC = 2;
+  const MAX_DURATION_SEC = 60;
+
+  if (audioFile.size > MAX_SIZE_BYTES) {
+    return ERROR_MESSAGES.KLING_AVATAR_V2_AUDIO_TOO_LARGE;
+  }
+
+  if (audioDuration !== undefined) {
+    if (audioDuration < MIN_DURATION_SEC) {
+      return ERROR_MESSAGES.KLING_AVATAR_V2_AUDIO_TOO_SHORT;
+    }
+    if (audioDuration > MAX_DURATION_SEC) {
+      return ERROR_MESSAGES.KLING_AVATAR_V2_AUDIO_TOO_LONG;
+    }
+  }
+
+  return null;
+}
+```
+
+**Location**: Add to `generateAvatarVideo` function (around line 3083, within the model routing `if-else` chain)
 
 ```typescript
 } else if (
@@ -130,8 +196,18 @@ The existing `generateAvatarVideo` function handles avatar models via a routing 
 ) {
   // Kling Avatar v2 models
   if (!request.audioFile) {
-    throw new Error(`${request.model} requires an audio file`);
+    throw new Error(ERROR_MESSAGES.KLING_AVATAR_V2_MISSING_AUDIO);
   }
+
+  // Validate audio constraints
+  const audioValidationError = validateKlingAvatarV2Audio(
+    request.audioFile,
+    request.audioDuration
+  );
+  if (audioValidationError) {
+    throw new Error(audioValidationError);
+  }
+
   // Convert audio to data URL
   const audioUrl = await fileToDataURL(request.audioFile);
   endpoint = modelConfig.endpoints.text_to_video || "";
@@ -141,14 +217,27 @@ The existing `generateAvatarVideo` function handles avatar models via a routing 
     );
   }
   payload = {
-    ...(modelConfig.default_params || {}), // Defaults first
+    ...(modelConfig.default_params || {}),
     image_url: characterImageUrl,
     audio_url: audioUrl,
-    ...(request.prompt && { prompt: request.prompt }), // Optional prompt for animation guidance
+    ...(request.prompt && { prompt: request.prompt }),
   };
 ```
 
-**Pattern Reference**: This follows the exact same pattern as the existing `kling_avatar_pro` / `kling_avatar_standard` handling (lines 3083-3104), ensuring consistency with the established codebase conventions.
+**Location**: Update `AvatarVideoRequest` interface (around line 354)
+
+```typescript
+export interface AvatarVideoRequest {
+  model: string;
+  characterImage: File;
+  audioFile?: File;
+  sourceVideo?: File;
+  prompt?: string;
+  resolution?: string;
+  duration?: number;
+  audioDuration?: number; // Add: duration of audio file in seconds
+}
+```
 
 ---
 
@@ -161,11 +250,38 @@ The existing `generateAvatarVideo` function handles avatar models via a routing 
 ```typescript
 // Kling Avatar v2 props
 klingAvatarV2Prompt = "",
+// Audio duration for cost calculation and validation
+audioDuration = null,
 ```
 
-**Location 2**: The avatar generation is already handled by calling `generateAvatarVideo` which routes based on model ID. Since we're extending the existing `generateAvatarVideo` function (Phase 3), no additional routing logic is needed in the hook.
+**Location 2**: Update the avatar generation call to pass the v2 prompt
 
-The hook already passes `avatarImage`, `audioFile`, and `prompt` to `generateAvatarVideo` for avatar models - the routing happens inside the API client based on model ID.
+Find where `generateAvatarVideo` is called for avatar models and update to conditionally use the v2 prompt:
+
+```typescript
+// When calling generateAvatarVideo for avatar models, determine which prompt to use
+const avatarPrompt =
+  (modelId === "kling_avatar_v2_standard" || modelId === "kling_avatar_v2_pro")
+    ? klingAvatarV2Prompt
+    : prompt; // Use global prompt for other avatar models
+
+response = await generateAvatarVideo({
+  model: modelId,
+  characterImage: avatarImage!,
+  audioFile: audioFile || undefined,
+  sourceVideo: sourceVideo || undefined,
+  prompt: avatarPrompt,
+  resolution: modelConfig?.default_params?.resolution as string,
+  audioDuration: audioDuration || undefined,
+});
+```
+
+**Location 3**: Add to dependency array in useCallback
+
+```typescript
+klingAvatarV2Prompt,
+audioDuration,
+```
 
 ---
 
@@ -173,10 +289,11 @@ The hook already passes `avatarImage`, `audioFile`, and `prompt` to `generateAva
 
 #### File: `qcut/apps/web/src/components/editor/media-panel/views/ai.tsx`
 
-**Location 1**: Add state variable (near other model-specific state, search for existing pattern like `klingNegativePrompt`)
+**Location 1**: Add state variables (near other model-specific state)
 
 ```typescript
 const [klingAvatarV2Prompt, setKlingAvatarV2Prompt] = useState("");
+const [audioDuration, setAudioDuration] = useState<number | null>(null);
 ```
 
 **Location 2**: Add model selection check (near other selection checks)
@@ -186,7 +303,45 @@ const klingAvatarV2Selected = selectedModels.includes("kling_avatar_v2_standard"
                                selectedModels.includes("kling_avatar_v2_pro");
 ```
 
-**Location 3**: Add UI controls in avatar tab section (after existing avatar controls, look for the avatar tab content area)
+**Location 3**: Add audio duration extraction when file is selected
+
+Find where `audioFile` is set in the file upload handler and add:
+
+```typescript
+// After setting audioFile, extract duration
+const handleAudioFileChange = async (file: File | null) => {
+  setAudioFile(file);
+
+  if (file) {
+    // Create audio element to get duration
+    const audio = new Audio();
+    audio.src = URL.createObjectURL(file);
+    audio.onloadedmetadata = () => {
+      setAudioDuration(audio.duration);
+      URL.revokeObjectURL(audio.src);
+    };
+    audio.onerror = () => {
+      setAudioDuration(null);
+      URL.revokeObjectURL(audio.src);
+    };
+  } else {
+    setAudioDuration(null);
+  }
+};
+```
+
+**Location 4**: Reset prompt when v2 models are deselected
+
+```typescript
+// Add effect to clear v2 prompt when models are deselected
+useEffect(() => {
+  if (!klingAvatarV2Selected) {
+    setKlingAvatarV2Prompt("");
+  }
+}, [klingAvatarV2Selected]);
+```
+
+**Location 5**: Add UI controls in avatar tab section
 
 ```typescript
 {klingAvatarV2Selected && (
@@ -210,10 +365,11 @@ const klingAvatarV2Selected = selectedModels.includes("kling_avatar_v2_standard"
 )}
 ```
 
-**Location 4**: Pass props to useAIGeneration hook call
+**Location 6**: Pass props to useAIGeneration hook call
 
 ```typescript
 klingAvatarV2Prompt,
+audioDuration,
 ```
 
 ---
@@ -222,16 +378,35 @@ klingAvatarV2Prompt,
 
 #### File: `qcut/apps/web/src/components/editor/media-panel/views/ai.tsx`
 
-**Location**: Update cost calculation function (search for `calculateEstimatedCost` or similar cost logic)
+**Location**: Update cost calculation function
 
 ```typescript
 // Add handling for v2 avatar models with per-second pricing
 if (modelId === "kling_avatar_v2_standard" || modelId === "kling_avatar_v2_pro") {
-  // Cost is based on audio duration
-  const audioDuration = audioFileDuration || 10; // Default estimate if not available
   const perSecondRate = modelId === "kling_avatar_v2_pro" ? 0.115 : 0.0562;
-  return audioDuration * perSecondRate;
+
+  // Use actual audio duration if available, otherwise show "varies"
+  if (audioDuration !== null && audioDuration > 0) {
+    return audioDuration * perSecondRate;
+  }
+
+  // Return null to indicate cost varies by audio length
+  // UI should display "Cost varies by audio length" instead of a fixed number
+  return null;
 }
+```
+
+**Location**: Update cost display component to handle null (varies) case
+
+```typescript
+// In cost display JSX
+{estimatedCost === null ? (
+  <span className="text-muted-foreground text-sm">
+    Cost varies by audio length
+  </span>
+) : (
+  <span>${estimatedCost.toFixed(2)}</span>
+)}
 ```
 
 ---
@@ -252,6 +427,7 @@ All model-specific parameters are defined in `AI_MODELS` array in `ai-constants.
 - Single source of truth for pricing, endpoints, and capabilities
 - Easy updates when FAL API changes
 - Consistent behavior across generation, UI, and cost calculation
+- Audio constraints encoded in config for validation
 
 ### Error Handling Pattern
 
@@ -298,8 +474,40 @@ describe("generateAvatarVideo - Kling Avatar v2", () => {
     // Mock fetch and verify endpoint is "fal-ai/kling-video/ai-avatar/v2/pro"
   });
 
-  it("should fail without audioFile", async () => {
-    // Verify error message matches KLING_AVATAR_V2_MISSING_AUDIO
+  it("should fail without audioFile with KLING_AVATAR_V2_MISSING_AUDIO", async () => {
+    const result = await generateAvatarVideo({
+      model: "kling_avatar_v2_standard",
+      characterImage: mockImageFile,
+      // audioFile omitted
+    });
+    expect(result).rejects.toThrow(ERROR_MESSAGES.KLING_AVATAR_V2_MISSING_AUDIO);
+  });
+
+  it("should fail when audio exceeds 5MB", async () => {
+    const largeAudioFile = new File([new ArrayBuffer(6 * 1024 * 1024)], "large.mp3");
+    await expect(generateAvatarVideo({
+      model: "kling_avatar_v2_standard",
+      characterImage: mockImageFile,
+      audioFile: largeAudioFile,
+    })).rejects.toThrow(ERROR_MESSAGES.KLING_AVATAR_V2_AUDIO_TOO_LARGE);
+  });
+
+  it("should fail when audio duration < 2 seconds", async () => {
+    await expect(generateAvatarVideo({
+      model: "kling_avatar_v2_standard",
+      characterImage: mockImageFile,
+      audioFile: mockAudioFile,
+      audioDuration: 1.5,
+    })).rejects.toThrow(ERROR_MESSAGES.KLING_AVATAR_V2_AUDIO_TOO_SHORT);
+  });
+
+  it("should fail when audio duration > 60 seconds", async () => {
+    await expect(generateAvatarVideo({
+      model: "kling_avatar_v2_standard",
+      characterImage: mockImageFile,
+      audioFile: mockAudioFile,
+      audioDuration: 65,
+    })).rejects.toThrow(ERROR_MESSAGES.KLING_AVATAR_V2_AUDIO_TOO_LONG);
   });
 
   it("should include optional prompt when provided", async () => {
@@ -308,6 +516,19 @@ describe("generateAvatarVideo - Kling Avatar v2", () => {
 
   it("should convert image and audio to base64 data URLs", async () => {
     // Verify fileToDataURL is called for both files
+  });
+});
+
+describe("validateKlingAvatarV2Audio", () => {
+  it("should return null for valid audio", () => {
+    const result = validateKlingAvatarV2Audio(mockAudioFile, 30);
+    expect(result).toBeNull();
+  });
+
+  it("should return error for oversized file", () => {
+    const largeFile = new File([new ArrayBuffer(6 * 1024 * 1024)], "large.mp3");
+    const result = validateKlingAvatarV2Audio(largeFile, 30);
+    expect(result).toBe(ERROR_MESSAGES.KLING_AVATAR_V2_AUDIO_TOO_LARGE);
   });
 });
 ```
@@ -337,27 +558,29 @@ describe("Kling Avatar v2 Integration", () => {
 2. Select "Avatar" tab
 3. Upload character image (JPG, PNG, or WebP)
 4. Upload audio file (MP3 or WAV, 5-30 seconds)
-5. Select "Kling Avatar v2 Standard"
-6. Optionally enter animation prompt
-7. Verify cost estimate displays correctly
-8. Click Generate
-9. Verify video generation completes
-10. Verify video plays with synced lip movements
-11. Repeat steps 5-10 with "Kling Avatar v2 Pro"
+5. Verify audio duration is displayed
+6. Select "Kling Avatar v2 Standard"
+7. Optionally enter animation prompt
+8. Verify cost estimate displays correctly (based on audio duration)
+9. Click Generate
+10. Verify video generation completes
+11. Verify video plays with synced lip movements
+12. Repeat steps 5-11 with "Kling Avatar v2 Pro"
+13. Test error cases: audio too short (<2s), too long (>60s), too large (>5MB)
 
 ---
 
 ## Files Summary
 
-| File Path | Action | Lines to Modify |
-|-----------|--------|-----------------|
-| `qcut/apps/web/src/components/editor/media-panel/views/ai-constants.ts` | Modify | ~820 (AI_MODELS), ~1046 (ERROR_MESSAGES) |
-| `qcut/apps/web/src/components/editor/media-panel/views/ai-types.ts` | Modify | ~279 (UseAIGenerationProps) |
-| `qcut/apps/web/src/lib/ai-video-client.ts` | Modify | ~3083 (generateAvatarVideo routing) |
-| `qcut/apps/web/src/components/editor/media-panel/views/use-ai-generation.ts` | Modify | ~174 (prop destructuring) |
-| `qcut/apps/web/src/components/editor/media-panel/views/ai.tsx` | Modify | State, selection check, UI controls, hook props |
-| `qcut/apps/web/src/lib/__tests__/ai-video-client.test.ts` | Modify | Add unit tests |
-| `qcut/apps/web/src/lib/__tests__/ai-video-client.integration.test.ts` | Modify | Add integration tests |
+| File Path | Action | Changes |
+|-----------|--------|---------|
+| `qcut/apps/web/src/components/editor/media-panel/views/ai-constants.ts` | Modify | Add 2 model definitions to AI_MODELS (~line 820), add 5 error messages (~line 1046) |
+| `qcut/apps/web/src/components/editor/media-panel/views/ai-types.ts` | Modify | Add `klingAvatarV2Prompt` to UseAIGenerationProps (~line 279), add `audioDuration` to AvatarUploadState (~line 313), add `audioConstraints` to AIModel interface |
+| `qcut/apps/web/src/lib/ai-video-client.ts` | Modify | Add `validateKlingAvatarV2Audio` function (~line 3030), add v2 routing branch in generateAvatarVideo (~line 3083), add `audioDuration` to AvatarVideoRequest interface (~line 354) |
+| `qcut/apps/web/src/components/editor/media-panel/views/use-ai-generation.ts` | Modify | Destructure `klingAvatarV2Prompt` and `audioDuration` (~line 174), pass to generateAvatarVideo, add to dependency array |
+| `qcut/apps/web/src/components/editor/media-panel/views/ai.tsx` | Modify | Add state variables, selection check, audio duration extraction, reset effect, UI controls, cost calculation with null handling |
+| `qcut/apps/web/src/lib/__tests__/ai-video-client.test.ts` | Modify | Add unit tests for v2 routing, validation, error messages |
+| `qcut/apps/web/src/lib/__tests__/ai-video-client.integration.test.ts` | Modify | Add integration tests for v2 models |
 
 ---
 
