@@ -1,8 +1,10 @@
 # Kling AI Avatar v2 Integration
 
-## Status: IMPLEMENTED
+## Status: IN PROGRESS - CORS Issue Pending
 
-This document describes the integration of Kling AI Avatar v2 (Standard and Pro) models into the OpenCut codebase. The implementation is complete.
+This document describes the integration of Kling AI Avatar v2 (Standard and Pro) models into the OpenCut codebase.
+
+**Current Blocker**: CORS policy blocks FAL storage upload from Electron's `app://` origin. See [Issue 3](#issue-3-cors-policy-blocks-fal-upload-in-electron) for details and solution.
 
 ### Model Specifications
 
@@ -271,6 +273,143 @@ if (modelId === "kling_avatar_v2_standard" || modelId === "kling_avatar_v2_pro")
 ```
 
 **Result**: Files are now uploaded to FAL storage first, and proper HTTPS URLs are sent to the Kling Avatar v2 API.
+
+---
+
+### Issue 3: CORS Policy Blocks FAL Upload in Electron
+
+**Problem**: When running in Electron, the FAL storage upload fails with a CORS error because the `app://` origin is not allowed by FAL's CORS policy.
+
+**Error Log**:
+```
+Access to fetch at 'https://fal.run/upload' from origin 'app://.' has been blocked by CORS policy:
+Response to preflight request doesn't pass access control check:
+No 'Access-Control-Allow-Origin' header is present on the requested resource.
+
+fal.run/upload:1 Failed to load resource: net::ERR_FAILED
+
+🚨 Error ERR-1764909938483-ZMZZUS [MEDIUM]
+Operation: FAL image upload
+Category: ai_service
+Original Error: TypeError: Failed to fetch
+```
+
+**Root Cause**:
+- Electron uses `app://` as its origin protocol (not `http://localhost:*` or a regular domain)
+- FAL's upload endpoint (`https://fal.run/upload`) doesn't include `app://` in its CORS allowed origins
+- The browser's CORS policy blocks the preflight OPTIONS request before it reaches FAL servers
+- This is an Electron-specific issue - the same code works in regular browsers
+
+**Why Previous Solution Failed**:
+The Issue 2 fix correctly identified that v2 requires FAL storage URLs, but the `uploadImageToFal()` and `uploadAudioToFal()` functions in `fal-ai-client.ts` make direct fetch requests to `https://fal.run/upload`, which triggers CORS in Electron.
+
+**Solution**: Route FAL uploads through Electron's main process via IPC
+
+The Electron main process (Node.js) is not subject to browser CORS restrictions. We need to:
+
+1. **Add IPC handler in `electron/main.ts`**:
+```typescript
+// FAL Storage Upload Handler - bypasses CORS restrictions
+ipcMain.handle("fal:upload-file", async (_event, fileData: {
+  buffer: ArrayBuffer;
+  filename: string;
+  contentType: string;
+}): Promise<string> => {
+  const FAL_KEY = process.env.FAL_KEY || "";
+
+  const formData = new FormData();
+  const blob = new Blob([fileData.buffer], { type: fileData.contentType });
+  formData.append("file", blob, fileData.filename);
+
+  const response = await fetch("https://fal.run/upload", {
+    method: "POST",
+    headers: {
+      "Authorization": `Key ${FAL_KEY}`,
+    },
+    body: formData,
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(`FAL upload failed: ${error}`);
+  }
+
+  const result = await response.json();
+  return result.url; // Returns the FAL storage URL
+});
+```
+
+2. **Add to preload script (`electron/preload.ts`)**:
+```typescript
+fal: {
+  uploadFile: (fileData: { buffer: ArrayBuffer; filename: string; contentType: string }) =>
+    ipcRenderer.invoke("fal:upload-file", fileData),
+},
+```
+
+3. **Update type definitions (`src/types/electron.d.ts`)**:
+```typescript
+fal: {
+  uploadFile: (fileData: {
+    buffer: ArrayBuffer;
+    filename: string;
+    contentType: string;
+  }) => Promise<string>;
+};
+```
+
+4. **Update `fal-ai-client.ts` upload functions**:
+```typescript
+export async function uploadImageToFal(imageFile: File): Promise<string> {
+  // Use Electron IPC if available (bypasses CORS)
+  if (window.electronAPI?.fal?.uploadFile) {
+    const buffer = await imageFile.arrayBuffer();
+    return window.electronAPI.fal.uploadFile({
+      buffer,
+      filename: imageFile.name,
+      contentType: imageFile.type,
+    });
+  }
+
+  // Fallback to direct fetch for browser environment
+  // ... existing implementation
+}
+
+export async function uploadAudioToFal(audioFile: File): Promise<string> {
+  // Use Electron IPC if available (bypasses CORS)
+  if (window.electronAPI?.fal?.uploadFile) {
+    const buffer = await audioFile.arrayBuffer();
+    return window.electronAPI.fal.uploadFile({
+      buffer,
+      filename: audioFile.name,
+      contentType: audioFile.type,
+    });
+  }
+
+  // Fallback to direct fetch for browser environment
+  // ... existing implementation
+}
+```
+
+**Alternative Solutions Considered**:
+
+| Solution | Pros | Cons |
+|----------|------|------|
+| **IPC through main process** (Recommended) | No CORS issues, secure, follows existing patterns | Requires IPC handler setup |
+| Disable web security in Electron | Quick fix | Major security vulnerability, not recommended |
+| Use a proxy server | Works for all environments | Adds infrastructure complexity, latency |
+| Request FAL to add `app://` to CORS | Proper fix on their end | Depends on third party, unknown timeline |
+
+**Files to Modify**:
+
+| File | Changes |
+|------|---------|
+| `electron/main.ts` | Add `fal:upload-file` IPC handler |
+| `electron/preload.ts` | Expose `fal.uploadFile` method |
+| `apps/web/src/types/electron.d.ts` | Add TypeScript types for new IPC method |
+| `apps/web/src/lib/fal-ai-client.ts` | Update `uploadImageToFal` and `uploadAudioToFal` to use IPC |
+
+**Implementation Priority**: HIGH - This blocks all Kling Avatar v2 functionality in the Electron app.
 
 ---
 
