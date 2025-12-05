@@ -160,7 +160,7 @@ if (modelId === "kling_avatar_v2_standard" || modelId === "kling_avatar_v2_pro")
 **Root Cause**: FAL API returns validation errors as an array of objects in `errorData.detail`, but the code was treating it as a string.
 
 **Error Log**:
-```
+```text
 standard:1 Failed to load resource: the server responded with a status of 422 ()
 ❌ FAL AI API error: {detail: Array(1)}
 Original Error: Error: Avatar generation failed: [object Object]
@@ -199,7 +199,7 @@ if (!response.ok) {
 **Problem**: FAL API returned a 422 error with message "File is not in a valid base64 format" when sending image/audio as base64 data URLs.
 
 **Error Log**:
-```
+```text
 standard:1 Failed to load resource: the server responded with a status of 422 ()
 ❌ FAL AI API error: {detail: Array(1)}
 Original Error: Error: Avatar generation failed: File is not in a valid base64 format
@@ -279,7 +279,7 @@ if (modelId === "kling_avatar_v2_standard" || modelId === "kling_avatar_v2_pro")
 **Problem**: When running in Electron, the FAL storage upload fails with a CORS error because the `app://` origin is not allowed by FAL's CORS policy.
 
 **Error Log**:
-```
+```text
 Access to fetch at 'https://fal.run/upload' from origin 'app://.' has been blocked by CORS policy:
 Response to preflight request doesn't pass access control check:
 No 'Access-Control-Allow-Origin' header is present on the requested resource.

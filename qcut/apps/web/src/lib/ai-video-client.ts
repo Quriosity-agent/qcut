@@ -3066,7 +3066,7 @@ function validateKlingAvatarV2Audio(
  *
  * @param request - Request object containing model id, character image File and model-specific inputs (audioFile for talking-head models or sourceVideo for animation/replace models)
  * @returns VideoGenerationResponse containing job_id, status, message, and the API response including the generated video URL when available
- * @throws Error if the FAL API key is missing, the model is unknown or not an avatar model, required inputs for the chosen model are missing, the model lacks a valid endpoint, or if the request times out (3 minutes)
+ * @throws Error if the FAL API key is missing, the model is unknown or not an avatar model, required inputs for the chosen model are missing, the model lacks a valid endpoint, or if the request times out (6 minutes)
  */
 export async function generateAvatarVideo(
   request: AvatarVideoRequest
@@ -3251,9 +3251,9 @@ export async function generateAvatarVideo(
 
     console.log("📊 Payload size:", JSON.stringify(payload).length, "bytes");
 
-    // Add timeout to prevent hanging (3 minutes for large payloads)
+    // Add timeout to prevent hanging (6 minutes for avatar video generation)
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 180_000); // 3 minutes
+    const timeoutId = setTimeout(() => controller.abort(), 360_000); // 6 minutes
 
     try {
       console.log("🚀 Sending request to FAL AI...");
@@ -3310,9 +3310,9 @@ export async function generateAvatarVideo(
     } catch (error) {
       clearTimeout(timeoutId);
       if (error instanceof Error && error.name === "AbortError") {
-        console.error("❌ Request timeout after 3 minutes");
+        console.error("❌ Request timeout after 6 minutes");
         throw new Error(
-          "Avatar generation timed out after 3 minutes. The video/image files may be too large."
+          "Avatar generation timed out after 6 minutes. The video/image files may be too large."
         );
       }
       throw error;
