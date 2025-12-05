@@ -1,10 +1,8 @@
 # Kling AI Avatar v2 Integration
 
-## Status: IN PROGRESS - CORS Issue Pending
+## Status: IMPLEMENTED
 
-This document describes the integration of Kling AI Avatar v2 (Standard and Pro) models into the OpenCut codebase.
-
-**Current Blocker**: CORS policy blocks FAL storage upload from Electron's `app://` origin. See [Issue 3](#issue-3-cors-policy-blocks-fal-upload-in-electron) for details and solution.
+This document describes the integration of Kling AI Avatar v2 (Standard and Pro) models into the OpenCut codebase. The implementation is complete, including the CORS fix for Electron.
 
 ### Model Specifications
 
@@ -410,6 +408,41 @@ export async function uploadAudioToFal(audioFile: File): Promise<string> {
 | `apps/web/src/lib/fal-ai-client.ts` | Update `uploadImageToFal` and `uploadAudioToFal` to use IPC |
 
 **Implementation Priority**: HIGH - This blocks all Kling Avatar v2 functionality in the Electron app.
+
+**Status**: ✅ FIXED
+
+**Actual Implementation** (completed):
+
+1. **Added `fal:upload-audio` IPC handler** (`electron/main.ts` lines 664-760):
+   - Uses FAL's two-step upload process (initiate → signed URL upload)
+   - Supports MP3, WAV, AAC, OGG, FLAC, M4A formats
+   - Includes detailed console logging for debugging
+
+2. **Exposed `fal.uploadAudio` in preload** (`electron/preload.ts` lines 516-521):
+   ```typescript
+   uploadAudio: (
+     audioData: Uint8Array,
+     filename: string,
+     apiKey: string
+   ): Promise<FalUploadResult> =>
+     ipcRenderer.invoke("fal:upload-audio", audioData, filename, apiKey),
+   ```
+
+3. **Updated TypeScript types** (`apps/web/src/types/electron.d.ts` lines 336-352):
+   - Added `uploadAudio` method signature to `fal` interface
+
+4. **Updated `uploadFileToFal` to use IPC** (`apps/web/src/lib/fal-ai-client.ts` lines 341-410):
+   - Detects Electron environment via `window.electronAPI?.fal`
+   - Converts `File` to `Uint8Array` for IPC transfer
+   - Routes to appropriate IPC handler based on file type (image/audio/video)
+   - Falls back to direct fetch for browser environment
+   - Includes detailed console logging:
+     ```
+     [FAL Upload] 🔌 Using Electron IPC for audio upload (bypasses CORS)
+     [FAL Upload] 📁 File: audio.mp3, Size: 185516 bytes
+     [FAL Upload] 🎵 Routing to Electron audio upload IPC...
+     [FAL Upload] ✅ IPC upload successful: https://v3.fal.media/files/...
+     ```
 
 ---
 

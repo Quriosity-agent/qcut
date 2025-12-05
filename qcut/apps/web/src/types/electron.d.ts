@@ -332,6 +332,24 @@ export interface ElectronAPI {
       url?: string;
       error?: string;
     }>;
+
+    /**
+     * Upload audio to FAL storage via Electron IPC
+     * Used for Kling Avatar v2 and other audio-based models
+     * @param audioData - Audio file data as Uint8Array
+     * @param filename - Original filename
+     * @param apiKey - FAL API key for authentication
+     * @returns Upload result with URL or error
+     */
+    uploadAudio: (
+      audioData: Uint8Array,
+      filename: string,
+      apiKey: string
+    ) => Promise<{
+      success: boolean;
+      url?: string;
+      error?: string;
+    }>;
   };
 }
 
