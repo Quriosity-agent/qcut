@@ -661,6 +661,104 @@ app.whenReady().then(() => {
     }
   );
 
+  // FAL AI audio upload handler (for Kling Avatar v2 and other audio-based models)
+  // Uses same two-step process as video/image upload but with audio content types
+  ipcMain.handle(
+    "fal:upload-audio",
+    async (
+      _event: IpcMainInvokeEvent,
+      audioData: Uint8Array,
+      filename: string,
+      apiKey: string
+    ): Promise<{ success: boolean; url?: string; error?: string }> => {
+      try {
+        logger.info(`[FAL Audio Upload] 🎵 Starting audio upload: ${filename}`);
+        logger.info(`[FAL Audio Upload] File size: ${audioData.length} bytes`);
+
+        // Determine content type from filename
+        const ext = filename.toLowerCase().split(".").pop();
+        const contentTypeMap: Record<string, string> = {
+          mp3: "audio/mpeg",
+          wav: "audio/wav",
+          aac: "audio/aac",
+          ogg: "audio/ogg",
+          flac: "audio/flac",
+          m4a: "audio/mp4",
+        };
+        const contentType = contentTypeMap[ext ?? ""] ?? "audio/mpeg";
+        logger.info(`[FAL Audio Upload] Content type: ${contentType}`);
+
+        // Step 1: Initiate upload to get signed URL
+        const initiateUrl =
+          "https://rest.alpha.fal.ai/storage/upload/initiate?storage_type=fal-cdn-v3";
+
+        logger.info(`[FAL Audio Upload] Step 1: Initiating upload...`);
+        const initResponse = await fetch(initiateUrl, {
+          method: "POST",
+          headers: {
+            Authorization: `Key ${apiKey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            file_name: filename,
+            content_type: contentType,
+          }),
+        });
+
+        if (!initResponse.ok) {
+          const errorText = await initResponse.text();
+          logger.error(
+            `[FAL Audio Upload] Initiate failed: ${initResponse.status}`
+          );
+          return {
+            success: false,
+            error: `Upload initiate failed: ${initResponse.status} - ${errorText}`,
+          };
+        }
+
+        const initData = (await initResponse.json()) as {
+          upload_url?: string;
+          file_url?: string;
+        };
+        const { upload_url, file_url } = initData;
+
+        if (!upload_url || !file_url) {
+          logger.error("[FAL Audio Upload] No upload URLs in response");
+          return {
+            success: false,
+            error: "FAL API did not return upload URLs",
+          };
+        }
+
+        logger.info(`[FAL Audio Upload] Step 2: Uploading to signed URL...`);
+
+        // Step 2: Upload audio to the signed URL
+        const uploadResponse = await fetch(upload_url, {
+          method: "PUT",
+          headers: { "Content-Type": contentType },
+          body: Buffer.from(audioData),
+        });
+
+        if (!uploadResponse.ok) {
+          const errorText = await uploadResponse.text();
+          logger.error(
+            `[FAL Audio Upload] Upload failed: ${uploadResponse.status}`
+          );
+          return {
+            success: false,
+            error: `Upload failed: ${uploadResponse.status} - ${errorText}`,
+          };
+        }
+
+        logger.info(`[FAL Audio Upload] ✅ Success! File URL: ${file_url}`);
+        return { success: true, url: file_url };
+      } catch (error: any) {
+        logger.error(`[FAL Audio Upload] ❌ Error: ${error.message}`);
+        return { success: false, error: error.message };
+      }
+    }
+  );
+
   // File operation IPC handlers
   ipcMain.handle(
     "open-file-dialog",
