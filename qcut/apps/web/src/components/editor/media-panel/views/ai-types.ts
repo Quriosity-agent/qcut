@@ -111,6 +111,12 @@ export interface AIModel {
   supportedOutputFormats?: string[];
   supportedOutputQuality?: string[];
   supportedWriteModes?: string[];
+  /** Audio constraints for avatar models (Kling Avatar v2) */
+  audioConstraints?: {
+    minDurationSec: number;
+    maxDurationSec: number;
+    maxFileSizeBytes: number;
+  };
 }
 
 // Generated Video Interfaces
@@ -232,6 +238,12 @@ export interface UseAIGenerationProps {
   wan25AudioFile?: File | null;
   wan25NegativePrompt?: string;
   wan25EnablePromptExpansion?: boolean;
+
+  // Kling Avatar v2 options
+  /** Optional prompt for animation guidance (Kling Avatar v2) */
+  klingAvatarV2Prompt?: string;
+  /** Audio duration in seconds for cost calculation */
+  audioDuration?: number | null;
 
   // Video upscaling options
   // ByteDance Upscaler options

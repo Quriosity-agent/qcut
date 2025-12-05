@@ -817,6 +817,59 @@ export const AI_MODELS: AIModel[] = [
       resolution: "720p",
     },
   },
+  // Kling Avatar v2 Models - Enhanced lip-sync and animation quality
+  {
+    id: "kling_avatar_v2_standard",
+    name: "Kling Avatar v2 Standard",
+    description:
+      "Create talking avatar videos with realistic humans, animals, cartoons, or stylized characters. Audio-synchronized lip-sync.",
+    price: "0.0562", // Per second pricing
+    resolution: "1080p",
+    max_duration: 60,
+    category: "avatar",
+    requiredInputs: ["characterImage", "audioFile"],
+    endpoints: {
+      text_to_video: "fal-ai/kling-video/ai-avatar/v2/standard",
+    },
+    default_params: {
+      prompt: "",
+      resolution: "1080p",
+    },
+    perSecondPricing: {
+      "1080p": 0.0562,
+    },
+    audioConstraints: {
+      minDurationSec: 2,
+      maxDurationSec: 60,
+      maxFileSizeBytes: 5 * 1024 * 1024, // 5MB
+    },
+  },
+  {
+    id: "kling_avatar_v2_pro",
+    name: "Kling Avatar v2 Pro",
+    description:
+      "Premium avatar video generation with enhanced quality and realism. Ideal for professional productions.",
+    price: "0.115", // Per second pricing
+    resolution: "1080p",
+    max_duration: 60,
+    category: "avatar",
+    requiredInputs: ["characterImage", "audioFile"],
+    endpoints: {
+      text_to_video: "fal-ai/kling-video/ai-avatar/v2/pro",
+    },
+    default_params: {
+      prompt: "",
+      resolution: "1080p",
+    },
+    perSecondPricing: {
+      "1080p": 0.115,
+    },
+    audioConstraints: {
+      minDurationSec: 2,
+      maxDurationSec: 60,
+      maxFileSizeBytes: 5 * 1024 * 1024, // 5MB
+    },
+  },
   // Kling O1 Models - Advanced video generation with cinematic understanding
   {
     id: "kling_o1_v2v_reference",
@@ -1132,6 +1185,17 @@ export const ERROR_MESSAGES = {
     "Image is required for Kling 2.6 image-to-video generation",
   KLING26_PROMPT_TOO_LONG:
     "Prompt exceeds maximum length of 2,500 characters for Kling 2.6",
+
+  // Kling Avatar v2 specific errors
+  KLING_AVATAR_V2_MISSING_IMAGE:
+    "Character image is required for Kling Avatar v2",
+  KLING_AVATAR_V2_MISSING_AUDIO: "Audio file is required for Kling Avatar v2",
+  KLING_AVATAR_V2_AUDIO_TOO_SHORT:
+    "Audio must be at least 2 seconds for Kling Avatar v2",
+  KLING_AVATAR_V2_AUDIO_TOO_LONG:
+    "Audio must be under 60 seconds for Kling Avatar v2",
+  KLING_AVATAR_V2_AUDIO_TOO_LARGE:
+    "Audio file must be under 5MB for Kling Avatar v2",
 } as const;
 
 // LTX Video 2.0 Fast Configuration

@@ -359,6 +359,7 @@ export interface AvatarVideoRequest {
   prompt?: string;
   resolution?: string;
   duration?: number;
+  audioDuration?: number; // Audio duration in seconds for validation (Kling Avatar v2)
 }
 
 export interface VideoGenerationResponse {
