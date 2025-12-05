@@ -70,7 +70,7 @@ export const AI_MODELS: AIModel[] = [
     name: "Kling v2.6 Pro T2V",
     description:
       "Top-tier text-to-video with cinematic visuals and native audio generation",
-    price: "0.35", // 5s @ $0.07/s without audio
+    price: "0.70", // 5s @ $0.14/s with audio (default); $0.35 without audio
     resolution: "1080p",
     max_duration: 10,
     category: "text",
@@ -234,7 +234,7 @@ export const AI_MODELS: AIModel[] = [
     name: "Kling v2.6 Pro I2V",
     description:
       "Top-tier image-to-video with cinematic visuals and native audio generation",
-    price: "0.35", // 5s @ $0.07/s without audio
+    price: "0.70", // 5s @ $0.14/s with audio (default); $0.35 without audio
     resolution: "1080p",
     max_duration: 10,
     category: "image",

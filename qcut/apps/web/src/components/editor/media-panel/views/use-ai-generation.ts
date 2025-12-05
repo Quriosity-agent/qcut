@@ -1465,13 +1465,12 @@ export function useAIGeneration(props: UseAIGenerationProps) {
               message: `Submitting ${friendlyName} request...`,
             });
 
+            // Note: v2.6 I2V does NOT support aspect_ratio or cfg_scale per FAL.ai schema
             response = await generateKling26ImageVideo({
               model: modelId,
               prompt: prompt.trim(),
               image_url: imageUrl,
               duration: kling26Duration,
-              cfg_scale: kling26CfgScale,
-              aspect_ratio: kling26AspectRatio,
               generate_audio: kling26GenerateAudio,
               negative_prompt: kling26NegativePrompt,
             });

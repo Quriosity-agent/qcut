@@ -9,7 +9,10 @@ import {
   ERROR_MESSAGES,
   LTXV2_FAST_CONFIG,
 } from "@/components/editor/media-panel/views/ai-constants";
-import type { AIModel } from "@/components/editor/media-panel/views/ai-types";
+import type {
+  AIModel,
+  Seeddream45ImageSize,
+} from "@/components/editor/media-panel/views/ai-types";
 import type {
   Sora2TextToVideoInput,
   Sora2TextToVideoProInput,
@@ -2335,14 +2338,15 @@ export async function generateKlingImageVideo(
 
 /**
  * Request interface for Kling v2.6 Pro image-to-video generation
+ *
+ * Note: Unlike v2.5, the v2.6 I2V endpoint does NOT support aspect_ratio or cfg_scale.
+ * Supported parameters per FAL.ai schema: prompt, image_url, duration, negative_prompt, generate_audio
  */
 export interface Kling26I2VRequest {
   model: string;
   prompt: string;
   image_url: string;
   duration?: 5 | 10;
-  cfg_scale?: number;
-  aspect_ratio?: "16:9" | "9:16" | "1:1";
   generate_audio?: boolean;
   negative_prompt?: string;
 }
@@ -2351,13 +2355,12 @@ export interface Kling26I2VRequest {
  * Generate a video from a single image using the Kling v2.6 Pro image-to-video model.
  *
  * This model supports native audio generation (Chinese/English) and offers
- * cinematic visual quality with fewer aspect ratio options than v2.5.
+ * cinematic visual quality. Note: Unlike v2.5, this endpoint does not support
+ * aspect_ratio or cfg_scale parameters.
  *
  * @param request - Request parameters (must include `model` and `image_url`). Optional fields:
  *   - `prompt`: description of desired motion (trimmed; max 2,500 characters).
  *   - `duration`: desired video duration in seconds (5 or 10, defaults to 5).
- *   - `cfg_scale`: strength of adherence to the prompt (clamped to 0–1, defaults to 0.5).
- *   - `aspect_ratio`: target aspect ratio (16:9, 9:16, or 1:1, defaults to 16:9).
  *   - `generate_audio`: whether to generate native audio (defaults to true).
  *   - `negative_prompt`: optional negative prompt to steer generation.
  * @returns VideoGenerationResponse containing `job_id`, `status`, `message`, `estimated_time`, `video_url`, and raw `video_data`.
@@ -2408,25 +2411,17 @@ export async function generateKling26ImageVideo(
     }
 
     const duration = request.duration ?? 5;
-    const aspectRatio =
-      request.aspect_ratio ??
-      (modelConfig.default_params?.aspect_ratio as string | undefined) ??
-      "16:9";
-    const cfgScale = Math.min(Math.max(request.cfg_scale ?? 0.5, 0), 1);
     const generateAudio = request.generate_audio ?? true;
 
+    // Note: v2.6 I2V does NOT support aspect_ratio or cfg_scale per FAL.ai schema
     const payload: Record<string, unknown> = {
       prompt: trimmedPrompt,
       image_url: request.image_url,
       duration: String(duration), // v2.6 expects duration as string "5" or "10"
-      aspect_ratio: aspectRatio,
-      cfg_scale: cfgScale,
       generate_audio: generateAudio,
+      negative_prompt:
+        request.negative_prompt ?? "blur, distort, and low quality",
     };
-
-    if (request.negative_prompt) {
-      payload.negative_prompt = request.negative_prompt;
-    }
 
     const jobId = generateJobId();
     const response = await fetch(`${FAL_API_BASE}/${endpoint}`, {
@@ -2612,10 +2607,12 @@ export async function generateKlingO1Video(
       console.log("✅ Video converted to data URL (length:", videoUrl.length, "chars)");
     }
 
-    const duration =
+    const durationNum =
       request.duration ??
       (modelConfig.default_params?.duration as number | undefined) ??
       5;
+    // FAL API expects duration as string enum ("5" or "10")
+    const duration = String(durationNum);
     const aspectRatio =
       request.aspect_ratio ??
       (modelConfig.default_params?.aspect_ratio as string | undefined) ??
@@ -2807,10 +2804,12 @@ export async function generateKlingO1RefVideo(
     console.log("📝 Model:", request.model);
     console.log("🖼️ Reference images:", validImageUrls.length);
 
-    const duration =
+    const durationNum =
       request.duration ??
       (modelConfig.default_params?.duration as number | undefined) ??
       5;
+    // FAL API expects duration as string enum ("5" or "10")
+    const duration = String(durationNum);
     const aspectRatio =
       request.aspect_ratio ??
       (modelConfig.default_params?.aspect_ratio as string | undefined) ??
@@ -3773,20 +3772,6 @@ async function streamVideoDownload(
 // ============================================
 
 /**
- * Seeddream 4.5 image size options
- */
-type Seeddream45ImageSize =
-  | "square_hd"
-  | "square"
-  | "portrait_4_3"
-  | "portrait_16_9"
-  | "landscape_4_3"
-  | "landscape_16_9"
-  | "auto_2K"
-  | "auto_4K"
-  | { width: number; height: number };
-
-/**
  * Generate images using Seeddream 4.5 text-to-image model
  *
  * @example
@@ -3817,46 +3802,54 @@ export async function generateSeeddream45Image(params: {
   }>;
   seed: number;
 }> {
-  const apiKey = getFalApiKey();
-  if (!apiKey) {
-    throw new Error("FAL API key not configured");
+  try {
+    const apiKey = getFalApiKey();
+    if (!apiKey) {
+      throw new Error("FAL API key not configured");
+    }
+
+    const endpoint = "fal-ai/bytedance/seedream/v4.5/text-to-image";
+
+    const input = {
+      prompt: params.prompt,
+      image_size: params.image_size ?? "auto_2K",
+      num_images: params.num_images ?? 1,
+      max_images: params.max_images ?? 1,
+      sync_mode: params.sync_mode ?? false,
+      enable_safety_checker: params.enable_safety_checker ?? true,
+      ...(params.seed !== undefined && { seed: params.seed }),
+    };
+
+    console.log(`🎨 [Seeddream 4.5] Starting text-to-image generation...`);
+    console.log(`📝 Prompt: ${params.prompt.slice(0, 50)}...`);
+
+    const response = await fetch(`${FAL_API_BASE}/${endpoint}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Key ${apiKey}`,
+      },
+      body: JSON.stringify(input),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(
+        `${ERROR_MESSAGES.SEEDDREAM45_GENERATION_FAILED}: ${response.status} - ${errorText}`
+      );
+    }
+
+    const result = await response.json();
+    console.log(`✅ [Seeddream 4.5] Generation complete: ${result.images?.length || 0} images`);
+
+    return result;
+  } catch (error) {
+    handleAIServiceError(error, "Generate Seeddream 4.5 image", {
+      operation: "generateSeeddream45Image",
+      prompt: params.prompt.slice(0, 100),
+    });
+    throw error;
   }
-
-  const endpoint = "fal-ai/bytedance/seedream/v4.5/text-to-image";
-
-  const input = {
-    prompt: params.prompt,
-    image_size: params.image_size ?? "auto_2K",
-    num_images: params.num_images ?? 1,
-    max_images: params.max_images ?? 1,
-    sync_mode: params.sync_mode ?? false,
-    enable_safety_checker: params.enable_safety_checker ?? true,
-    ...(params.seed !== undefined && { seed: params.seed }),
-  };
-
-  console.log(`🎨 [Seeddream 4.5] Starting text-to-image generation...`);
-  console.log(`📝 Prompt: ${params.prompt.slice(0, 50)}...`);
-
-  const response = await fetch(`${FAL_API_BASE}/${endpoint}`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Key ${apiKey}`,
-    },
-    body: JSON.stringify(input),
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(
-      `Seeddream 4.5 generation failed: ${response.status} - ${errorText}`
-    );
-  }
-
-  const result = await response.json();
-  console.log(`✅ [Seeddream 4.5] Generation complete: ${result.images?.length || 0} images`);
-
-  return result;
 }
 
 // ============================================
@@ -3904,56 +3897,65 @@ export async function editSeeddream45Image(params: {
     height: number;
   }>;
 }> {
-  const apiKey = getFalApiKey();
-  if (!apiKey) {
-    throw new Error("FAL API key not configured");
+  try {
+    const apiKey = getFalApiKey();
+    if (!apiKey) {
+      throw new Error("FAL API key not configured");
+    }
+
+    // Validate image_urls
+    if (!params.image_urls || params.image_urls.length === 0) {
+      throw new Error(ERROR_MESSAGES.SEEDDREAM45_EDIT_NO_IMAGES);
+    }
+    if (params.image_urls.length > 10) {
+      throw new Error(ERROR_MESSAGES.SEEDDREAM45_EDIT_TOO_MANY_IMAGES);
+    }
+
+    const endpoint = "fal-ai/bytedance/seedream/v4.5/edit";
+
+    const input = {
+      prompt: params.prompt,
+      image_urls: params.image_urls,
+      image_size: params.image_size ?? "auto_2K",
+      num_images: params.num_images ?? 1,
+      max_images: params.max_images ?? 1,
+      sync_mode: params.sync_mode ?? false,
+      enable_safety_checker: params.enable_safety_checker ?? true,
+      ...(params.seed !== undefined && { seed: params.seed }),
+    };
+
+    console.log(`🎨 [Seeddream 4.5 Edit] Starting image edit...`);
+    console.log(`📝 Prompt: ${params.prompt.slice(0, 50)}...`);
+    console.log(`🖼️ Input images: ${params.image_urls.length}`);
+
+    const response = await fetch(`${FAL_API_BASE}/${endpoint}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Key ${apiKey}`,
+      },
+      body: JSON.stringify(input),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(
+        `${ERROR_MESSAGES.SEEDDREAM45_GENERATION_FAILED}: ${response.status} - ${errorText}`
+      );
+    }
+
+    const result = await response.json();
+    console.log(`✅ [Seeddream 4.5 Edit] Edit complete: ${result.images?.length || 0} images`);
+
+    return result;
+  } catch (error) {
+    handleAIServiceError(error, "Edit Seeddream 4.5 image", {
+      operation: "editSeeddream45Image",
+      prompt: params.prompt.slice(0, 100),
+      imageCount: params.image_urls?.length ?? 0,
+    });
+    throw error;
   }
-
-  // Validate image_urls
-  if (!params.image_urls || params.image_urls.length === 0) {
-    throw new Error("At least one image URL is required for editing");
-  }
-  if (params.image_urls.length > 10) {
-    throw new Error("Maximum 10 images allowed for Seeddream 4.5 edit");
-  }
-
-  const endpoint = "fal-ai/bytedance/seedream/v4.5/edit";
-
-  const input = {
-    prompt: params.prompt,
-    image_urls: params.image_urls,
-    image_size: params.image_size ?? "auto_2K",
-    num_images: params.num_images ?? 1,
-    max_images: params.max_images ?? 1,
-    sync_mode: params.sync_mode ?? false,
-    enable_safety_checker: params.enable_safety_checker ?? true,
-    ...(params.seed !== undefined && { seed: params.seed }),
-  };
-
-  console.log(`🎨 [Seeddream 4.5 Edit] Starting image edit...`);
-  console.log(`📝 Prompt: ${params.prompt.slice(0, 50)}...`);
-  console.log(`🖼️ Input images: ${params.image_urls.length}`);
-
-  const response = await fetch(`${FAL_API_BASE}/${endpoint}`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Key ${apiKey}`,
-    },
-    body: JSON.stringify(input),
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(
-      `Seeddream 4.5 edit failed: ${response.status} - ${errorText}`
-    );
-  }
-
-  const result = await response.json();
-  console.log(`✅ [Seeddream 4.5 Edit] Edit complete: ${result.images?.length || 0} images`);
-
-  return result;
 }
 
 /**
@@ -3966,32 +3968,41 @@ export async function editSeeddream45Image(params: {
 export async function uploadImageForSeeddream45Edit(
   imageFile: File
 ): Promise<string> {
-  const apiKey = getFalApiKey();
-  if (!apiKey) {
-    throw new Error("FAL API key not configured");
-  }
-
-  // Use Electron IPC upload if available (bypasses CORS)
-  if (window.electronAPI?.fal?.uploadImage) {
-    console.log(`📤 [Seeddream 4.5] Uploading image via Electron IPC: ${imageFile.name}`);
-
-    const arrayBuffer = await imageFile.arrayBuffer();
-    const result = await window.electronAPI.fal.uploadImage(
-      new Uint8Array(arrayBuffer),
-      imageFile.name,
-      apiKey
-    );
-
-    if (!result.success || !result.url) {
-      throw new Error(result.error ?? "Failed to upload image to FAL");
+  try {
+    const apiKey = getFalApiKey();
+    if (!apiKey) {
+      throw new Error("FAL API key not configured");
     }
 
-    console.log(`✅ [Seeddream 4.5] Image uploaded: ${result.url}`);
-    return result.url;
-  }
+    // Use Electron IPC upload if available (bypasses CORS)
+    if (window.electronAPI?.fal?.uploadImage) {
+      console.log(`📤 [Seeddream 4.5] Uploading image via Electron IPC: ${imageFile.name}`);
 
-  // Fallback: Direct upload (may hit CORS in browser)
-  throw new Error(
-    "Image upload requires Electron. Please run in the desktop app."
-  );
+      const arrayBuffer = await imageFile.arrayBuffer();
+      const result = await window.electronAPI.fal.uploadImage(
+        new Uint8Array(arrayBuffer),
+        imageFile.name,
+        apiKey
+      );
+
+      if (!result.success || !result.url) {
+        throw new Error(result.error ?? ERROR_MESSAGES.SEEDDREAM45_UPLOAD_FAILED);
+      }
+
+      console.log(`✅ [Seeddream 4.5] Image uploaded: ${result.url}`);
+      return result.url;
+    }
+
+    // Fallback: Direct upload (may hit CORS in browser)
+    throw new Error(
+      "Image upload requires Electron. Please run in the desktop app."
+    );
+  } catch (error) {
+    handleAIServiceError(error, "Upload image for Seeddream 4.5 edit", {
+      operation: "uploadImageForSeeddream45Edit",
+      fileName: imageFile.name,
+      fileSize: imageFile.size,
+    });
+    throw error;
+  }
 }
