@@ -32,8 +32,8 @@ This document describes the integration of Kling AI Avatar v2 (Standard and Pro)
 |-----------|---------|
 | `qcut/apps/web/src/components/editor/media-panel/views/ai-constants.ts` | Added 2 model definitions (lines 788-840), moved v1 models to end (lines 936-968), added 5 error messages |
 | `qcut/apps/web/src/components/editor/media-panel/views/ai-types.ts` | Added `audioConstraints` to AIModel interface (lines 114-119), added `klingAvatarV2Prompt` and `audioDuration` to UseAIGenerationProps (lines 242-246) |
-| `qcut/apps/web/src/lib/ai-video-client.ts` | Added `audioDuration` to AvatarVideoRequest (line 362), added `validateKlingAvatarV2Audio` function (lines 3035-3057), added v2 routing branch in generateAvatarVideo (lines 3137-3168), improved error message parsing (lines 3261-3281) |
-| `qcut/apps/web/src/components/editor/media-panel/views/use-ai-generation.ts` | Added `klingAvatarV2Prompt` and `audioDuration` props (lines 161-163), updated generateAvatarVideo call to pass v2 prompt (lines 1659-1672), added to dependency array (lines 2271-2272) |
+| `qcut/apps/web/src/lib/ai-video-client.ts` | Added `characterImageUrl` and `audioUrl` to AvatarVideoRequest (lines 363-365), added `validateKlingAvatarV2Audio` function (lines 3035-3057), added v2 routing using FAL storage URLs (lines 3140-3184), improved error message parsing (lines 3275-3295) |
+| `qcut/apps/web/src/components/editor/media-panel/views/use-ai-generation.ts` | Added `klingAvatarV2Prompt` and `audioDuration` props, added FAL storage upload for v2 models (lines 1666-1708), added to dependency array |
 | `qcut/apps/web/src/components/editor/media-panel/views/ai.tsx` | Added state variables (lines 374-376), added model selection check (lines 650-652), added reset effect (lines 847-852), added audio duration extraction effect (lines 854-870), added props to hook (lines 570-572), added UI controls (lines 2872-2915) |
 
 ---
@@ -84,32 +84,64 @@ function validateKlingAvatarV2Audio(audioFile: File, audioDuration?: number): st
 }
 ```
 
-### 3. Model Routing (`ai-video-client.ts`)
+### 3. FAL Storage Upload (`use-ai-generation.ts`)
+
+Kling Avatar v2 requires FAL storage URLs, not base64 data URLs. Files are uploaded to FAL storage before the API call:
 
 ```typescript
-// In generateAvatarVideo - line 3137
+// In use-ai-generation.ts - lines 1666-1708
+if (modelId === "kling_avatar_v2_standard" || modelId === "kling_avatar_v2_pro") {
+  console.log("  📤 Uploading files to FAL storage for Kling Avatar v2...");
+
+  // Upload image and audio to FAL storage in parallel
+  const [characterImageUrl, audioUrl] = await Promise.all([
+    uploadImageToFal(avatarImage),
+    audioFile ? uploadAudioToFal(audioFile) : Promise.resolve(""),
+  ]);
+
+  if (!audioUrl) {
+    throw new Error("Audio file is required for Kling Avatar v2");
+  }
+
+  response = await generateAvatarVideo({
+    model: modelId,
+    characterImage: avatarImage,
+    audioFile: audioFile || undefined,
+    prompt: avatarPrompt,
+    audioDuration: audioDuration ?? undefined,
+    characterImageUrl, // FAL storage URL
+    audioUrl,          // FAL storage URL
+  });
+}
+```
+
+### 4. Model Routing (`ai-video-client.ts`)
+
+```typescript
+// In generateAvatarVideo - lines 3140-3184
 } else if (
   request.model === "kling_avatar_v2_standard" ||
   request.model === "kling_avatar_v2_pro"
 ) {
-  if (!request.audioFile) {
-    throw new Error(ERROR_MESSAGES.KLING_AVATAR_V2_MISSING_AUDIO);
+  // V2 API requires proper FAL storage URLs, not data URLs
+  if (!request.characterImageUrl) {
+    throw new Error("Kling Avatar v2 requires pre-uploaded image URL");
   }
-  const audioValidationError = validateKlingAvatarV2Audio(request.audioFile, request.audioDuration);
-  if (audioValidationError) throw new Error(audioValidationError);
+  if (!request.audioUrl) {
+    throw new Error("Kling Avatar v2 requires pre-uploaded audio URL");
+  }
 
-  const audioUrl = await fileToDataURL(request.audioFile);
   endpoint = modelConfig.endpoints.text_to_video || "";
   payload = {
     ...(modelConfig.default_params || {}),
-    image_url: characterImageUrl,
-    audio_url: audioUrl,
+    image_url: request.characterImageUrl,
+    audio_url: request.audioUrl,
     ...(request.prompt && { prompt: request.prompt }),
   };
 }
 ```
 
-### 4. UI Components (`ai.tsx`)
+### 5. UI Components (`ai.tsx`)
 
 - **State variables**: `klingAvatarV2Prompt`, `audioDuration`
 - **Model selection check**: `klingAvatarV2Selected`
@@ -134,11 +166,10 @@ standard:1 Failed to load resource: the server responded with a status of 422 ()
 Original Error: Error: Avatar generation failed: [object Object]
 ```
 
-**Solution** (`ai-video-client.ts` lines 3261-3281):
+**Solution** (`ai-video-client.ts` lines 3275-3295):
 ```typescript
 if (!response.ok) {
   const errorData = await response.json().catch(() => ({}));
-  console.error("❌ FAL AI API error:", errorData);
   // Handle FAL API error format - detail can be string or array of validation errors
   let errorMessage = response.statusText;
   if (errorData.detail) {
@@ -163,6 +194,86 @@ if (!response.ok) {
 
 ---
 
+### Issue 2: FAL API Rejects Base64 Data URLs (`File is not in a valid base64 format`)
+
+**Problem**: FAL API returned a 422 error with message "File is not in a valid base64 format" when sending image/audio as base64 data URLs.
+
+**Error Log**:
+```
+standard:1 Failed to load resource: the server responded with a status of 422 ()
+❌ FAL AI API error: {detail: Array(1)}
+Original Error: Error: Avatar generation failed: File is not in a valid base64 format
+```
+
+**Root Cause**: Kling Avatar v2 API requires proper FAL storage URLs (HTTPS URLs), not inline base64 data URLs. The v1 API accepted data URLs, but v2 has stricter requirements.
+
+**Solution**:
+
+1. **Added URL parameters to `AvatarVideoRequest`** (`ai-video-client.ts` lines 363-365):
+```typescript
+export interface AvatarVideoRequest {
+  // ... existing fields
+  // Pre-uploaded URLs for Kling Avatar v2 (FAL storage URLs, not data URLs)
+  characterImageUrl?: string;
+  audioUrl?: string;
+}
+```
+
+2. **Upload files to FAL storage before API call** (`use-ai-generation.ts` lines 1666-1708):
+```typescript
+// Kling Avatar v2 requires FAL storage URLs (not base64 data URLs)
+if (modelId === "kling_avatar_v2_standard" || modelId === "kling_avatar_v2_pro") {
+  console.log("  📤 Uploading files to FAL storage for Kling Avatar v2...");
+
+  // Upload image and audio to FAL storage in parallel
+  const [characterImageUrl, audioUrl] = await Promise.all([
+    uploadImageToFal(avatarImage),
+    audioFile ? uploadAudioToFal(audioFile) : Promise.resolve(""),
+  ]);
+
+  if (!audioUrl) {
+    throw new Error("Audio file is required for Kling Avatar v2");
+  }
+
+  response = await generateAvatarVideo({
+    model: modelId,
+    characterImage: avatarImage,
+    audioFile: audioFile || undefined,
+    prompt: avatarPrompt,
+    audioDuration: audioDuration ?? undefined,
+    characterImageUrl,
+    audioUrl,
+  });
+}
+```
+
+3. **Updated routing to use FAL storage URLs** (`ai-video-client.ts` lines 3140-3184):
+```typescript
+} else if (
+  request.model === "kling_avatar_v2_standard" ||
+  request.model === "kling_avatar_v2_pro"
+) {
+  // Use pre-uploaded URLs (required for v2 - FAL rejects base64 data URLs)
+  if (!request.characterImageUrl) {
+    throw new Error("Kling Avatar v2 requires pre-uploaded image URL");
+  }
+  if (!request.audioUrl) {
+    throw new Error("Kling Avatar v2 requires pre-uploaded audio URL");
+  }
+
+  payload = {
+    ...(modelConfig.default_params || {}),
+    image_url: request.characterImageUrl,
+    audio_url: request.audioUrl,
+    ...(request.prompt && { prompt: request.prompt }),
+  };
+}
+```
+
+**Result**: Files are now uploaded to FAL storage first, and proper HTTPS URLs are sent to the Kling Avatar v2 API.
+
+---
+
 ## Testing Checklist
 
 ### Unit Tests Required
@@ -175,8 +286,11 @@ describe("generateAvatarVideo - Kling Avatar v2", () => {
   it("should fail when audio exceeds 5MB");
   it("should fail when audio duration < 2 seconds");
   it("should fail when audio duration > 60 seconds");
+  it("should fail without characterImageUrl for v2 models");
+  it("should fail without audioUrl for v2 models");
   it("should include optional prompt when provided");
   it("should properly parse FAL API validation errors");
+  it("should use FAL storage URLs instead of data URLs");
 });
 ```
 
@@ -191,10 +305,11 @@ describe("generateAvatarVideo - Kling Avatar v2", () => {
 7. Optionally enter animation prompt
 8. Verify cost estimate displays correctly (based on audio duration)
 9. Click Generate
-10. Verify video generation completes
-11. Verify video plays with synced lip movements
-12. Repeat steps 5-11 with "Kling Avatar v2 Pro"
-13. Test error cases: audio too short (<2s), too long (>60s), too large (>5MB)
+10. Verify console shows "📤 Uploading files to FAL storage..."
+11. Verify video generation completes
+12. Verify video plays with synced lip movements
+13. Repeat steps 5-12 with "Kling Avatar v2 Pro"
+14. Test error cases: audio too short (<2s), too long (>60s), too large (>5MB)
 
 ---
 
@@ -223,6 +338,8 @@ The existing Kling Avatar v1 models remain active:
 
 v2 models are additive - users can choose between v1 and v2 based on their needs.
 
+**Key Difference**: v1 models use base64 data URLs (inline), v2 models require FAL storage URLs (pre-upload required).
+
 ---
 
 ## Rollback Plan
@@ -242,3 +359,4 @@ git revert <commit-hash>
 - [Kling Avatar v2 Standard API](https://fal.ai/models/fal-ai/kling-video/ai-avatar/v2/standard)
 - [Kling Avatar v2 Pro API](https://fal.ai/models/fal-ai/kling-video/ai-avatar/v2/pro/api)
 - [FAL AI Client Documentation](https://fal.ai/docs)
+- [FAL Storage Upload](https://fal.ai/docs/model-endpoints/uploading-files)

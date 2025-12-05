@@ -360,6 +360,9 @@ export interface AvatarVideoRequest {
   resolution?: string;
   duration?: number;
   audioDuration?: number; // Audio duration in seconds for validation (Kling Avatar v2)
+  // Pre-uploaded URLs for Kling Avatar v2 (FAL storage URLs, not data URLs)
+  characterImageUrl?: string;
+  audioUrl?: string;
 }
 
 export interface VideoGenerationResponse {
@@ -3139,21 +3142,34 @@ export async function generateAvatarVideo(
       request.model === "kling_avatar_v2_pro"
     ) {
       // Kling Avatar v2 models with enhanced lip-sync and animation
-      if (!request.audioFile) {
+      // V2 API requires proper FAL storage URLs, not data URLs
+      if (!request.audioFile && !request.audioUrl) {
         throw new Error(ERROR_MESSAGES.KLING_AVATAR_V2_MISSING_AUDIO);
       }
 
-      // Validate audio constraints
-      const audioValidationError = validateKlingAvatarV2Audio(
-        request.audioFile,
-        request.audioDuration
-      );
-      if (audioValidationError) {
-        throw new Error(audioValidationError);
+      // Validate audio constraints if file is provided
+      if (request.audioFile) {
+        const audioValidationError = validateKlingAvatarV2Audio(
+          request.audioFile,
+          request.audioDuration
+        );
+        if (audioValidationError) {
+          throw new Error(audioValidationError);
+        }
       }
 
-      // Convert audio to data URL
-      const audioUrl = await fileToDataURL(request.audioFile);
+      // Use pre-uploaded URLs (required for v2 - FAL rejects base64 data URLs)
+      if (!request.characterImageUrl) {
+        throw new Error(
+          "Kling Avatar v2 requires pre-uploaded image URL (use FAL storage)"
+        );
+      }
+      if (!request.audioUrl) {
+        throw new Error(
+          "Kling Avatar v2 requires pre-uploaded audio URL (use FAL storage)"
+        );
+      }
+
       endpoint = modelConfig.endpoints.text_to_video || "";
       if (!endpoint) {
         throw new Error(
@@ -3162,8 +3178,8 @@ export async function generateAvatarVideo(
       }
       payload = {
         ...(modelConfig.default_params || {}), // Defaults first
-        image_url: characterImageUrl,
-        audio_url: audioUrl,
+        image_url: request.characterImageUrl,
+        audio_url: request.audioUrl,
         ...(request.prompt && { prompt: request.prompt }), // Optional animation guidance prompt
       };
     } else if (request.model === "bytedance_omnihuman_v1_5") {

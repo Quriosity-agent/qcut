@@ -1662,14 +1662,50 @@ export function useAIGeneration(props: UseAIGenerationProps) {
               modelId === "kling_avatar_v2_pro"
                 ? klingAvatarV2Prompt.trim() || undefined
                 : prompt.trim() || undefined;
-            response = await generateAvatarVideo({
-              model: modelId,
-              characterImage: avatarImage,
-              audioFile: audioFile || undefined,
-              sourceVideo: sourceVideo || undefined,
-              prompt: avatarPrompt,
-              audioDuration: audioDuration ?? undefined,
-            });
+
+            // Kling Avatar v2 requires FAL storage URLs (not base64 data URLs)
+            if (
+              modelId === "kling_avatar_v2_standard" ||
+              modelId === "kling_avatar_v2_pro"
+            ) {
+              console.log(
+                "  📤 Uploading files to FAL storage for Kling Avatar v2..."
+              );
+
+              // Upload image and audio to FAL storage
+              const [characterImageUrl, audioUrl] = await Promise.all([
+                uploadImageToFal(avatarImage),
+                audioFile ? uploadAudioToFal(audioFile) : Promise.resolve(""),
+              ]);
+
+              if (!audioUrl) {
+                throw new Error("Audio file is required for Kling Avatar v2");
+              }
+
+              console.log("  ✅ Files uploaded to FAL storage");
+              console.log("    - Image URL:", characterImageUrl.substring(0, 50) + "...");
+              console.log("    - Audio URL:", audioUrl.substring(0, 50) + "...");
+
+              response = await generateAvatarVideo({
+                model: modelId,
+                characterImage: avatarImage,
+                audioFile: audioFile || undefined,
+                prompt: avatarPrompt,
+                audioDuration: audioDuration ?? undefined,
+                characterImageUrl,
+                audioUrl,
+              });
+            } else {
+              // Other avatar models use data URLs (base64)
+              response = await generateAvatarVideo({
+                model: modelId,
+                characterImage: avatarImage,
+                audioFile: audioFile || undefined,
+                sourceVideo: sourceVideo || undefined,
+                prompt: avatarPrompt,
+                audioDuration: audioDuration ?? undefined,
+              });
+            }
             console.log("  ✅ generateAvatarVideo returned:", response);
           }
         }
