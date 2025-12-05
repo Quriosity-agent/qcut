@@ -3026,6 +3026,37 @@ export async function generateWAN25ImageVideo(
 }
 
 /**
+ * Validates audio file against Kling Avatar v2 constraints.
+ *
+ * @param audioFile - Audio file to validate
+ * @param audioDuration - Duration in seconds (from audio element or metadata)
+ * @returns Error message if validation fails, null if valid
+ */
+function validateKlingAvatarV2Audio(
+  audioFile: File,
+  audioDuration?: number
+): string | null {
+  const MAX_SIZE_BYTES = 5 * 1024 * 1024; // 5MB
+  const MIN_DURATION_SEC = 2;
+  const MAX_DURATION_SEC = 60;
+
+  if (audioFile.size > MAX_SIZE_BYTES) {
+    return ERROR_MESSAGES.KLING_AVATAR_V2_AUDIO_TOO_LARGE;
+  }
+
+  if (audioDuration !== undefined) {
+    if (audioDuration < MIN_DURATION_SEC) {
+      return ERROR_MESSAGES.KLING_AVATAR_V2_AUDIO_TOO_SHORT;
+    }
+    if (audioDuration > MAX_DURATION_SEC) {
+      return ERROR_MESSAGES.KLING_AVATAR_V2_AUDIO_TOO_LONG;
+    }
+  }
+
+  return null;
+}
+
+/**
  * Generate an avatar video from a character image using a specified avatar model.
  *
  * Builds and sends a model-specific payload (image plus audio or source video) to the configured FAL endpoint and returns the generation result.
@@ -3102,6 +3133,38 @@ export async function generateAvatarVideo(
         audio_url: audioUrl,
         ...(request.prompt && { prompt: request.prompt }), // Override default if provided
         ...(request.resolution && { resolution: request.resolution }), // Override default if provided
+      };
+    } else if (
+      request.model === "kling_avatar_v2_standard" ||
+      request.model === "kling_avatar_v2_pro"
+    ) {
+      // Kling Avatar v2 models with enhanced lip-sync and animation
+      if (!request.audioFile) {
+        throw new Error(ERROR_MESSAGES.KLING_AVATAR_V2_MISSING_AUDIO);
+      }
+
+      // Validate audio constraints
+      const audioValidationError = validateKlingAvatarV2Audio(
+        request.audioFile,
+        request.audioDuration
+      );
+      if (audioValidationError) {
+        throw new Error(audioValidationError);
+      }
+
+      // Convert audio to data URL
+      const audioUrl = await fileToDataURL(request.audioFile);
+      endpoint = modelConfig.endpoints.text_to_video || "";
+      if (!endpoint) {
+        throw new Error(
+          `Model ${request.model} does not have a valid endpoint`
+        );
+      }
+      payload = {
+        ...(modelConfig.default_params || {}), // Defaults first
+        image_url: characterImageUrl,
+        audio_url: audioUrl,
+        ...(request.prompt && { prompt: request.prompt }), // Optional animation guidance prompt
       };
     } else if (request.model === "bytedance_omnihuman_v1_5") {
       if (!request.audioFile) {
@@ -3198,9 +3261,23 @@ export async function generateAvatarVideo(
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         console.error("❌ FAL AI API error:", errorData);
-        throw new Error(
-          `Avatar generation failed: ${errorData.detail || response.statusText}`
-        );
+        // Handle FAL API error format - detail can be string or array of validation errors
+        let errorMessage = response.statusText;
+        if (errorData.detail) {
+          if (typeof errorData.detail === "string") {
+            errorMessage = errorData.detail;
+          } else if (Array.isArray(errorData.detail)) {
+            // FAL validation errors come as array of {loc, msg, type} objects
+            errorMessage = errorData.detail
+              .map((e: { msg?: string; loc?: string[] }) =>
+                e.msg || JSON.stringify(e)
+              )
+              .join("; ");
+          } else {
+            errorMessage = JSON.stringify(errorData.detail);
+          }
+        }
+        throw new Error(`Avatar generation failed: ${errorMessage}`);
       }
 
       const result = await response.json();

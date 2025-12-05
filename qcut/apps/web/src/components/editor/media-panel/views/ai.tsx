@@ -371,6 +371,10 @@ export function AiView() {
     useState(true);
   const [imageSeed, setImageSeed] = useState<number | undefined>(undefined);
 
+  // Kling Avatar v2 state
+  const [klingAvatarV2Prompt, setKlingAvatarV2Prompt] = useState("");
+  const [audioDuration, setAudioDuration] = useState<number | null>(null);
+
   // Use global AI tab state (CRITICAL: preserve global state integration)
   const { aiActiveTab: activeTab, setAiActiveTab: setActiveTab } =
     useMediaPanelStore();
@@ -563,6 +567,9 @@ export function AiView() {
     wan25AudioFile,
     wan25NegativePrompt: cleanedWan25NegativePrompt,
     wan25EnablePromptExpansion,
+    // Kling Avatar v2 props
+    klingAvatarV2Prompt,
+    audioDuration,
     bytedanceTargetResolution,
     bytedanceTargetFPS,
     flashvsrUpscaleFactor,
@@ -643,6 +650,9 @@ export function AiView() {
   const kling26T2VSelected = selectedModels.includes("kling_v26_pro_t2v");
   const kling26I2VSelected = selectedModels.includes("kling_v26_pro_i2v");
   const kling26Selected = kling26T2VSelected || kling26I2VSelected;
+  const klingAvatarV2Selected =
+    selectedModels.includes("kling_avatar_v2_standard") ||
+    selectedModels.includes("kling_avatar_v2_pro");
   const wan25Selected = selectedModels.includes("wan_25_preview_i2v");
   const bytedanceUpscalerSelected = selectedModels.includes(
     "bytedance_video_upscaler"
@@ -833,6 +843,31 @@ export function AiView() {
       setImageSeed(undefined);
     }
   }, [seedanceSelected, wan25Selected]);
+
+  // Reset Kling Avatar v2 state when deselected
+  useEffect(() => {
+    if (!klingAvatarV2Selected) {
+      setKlingAvatarV2Prompt("");
+    }
+  }, [klingAvatarV2Selected]);
+
+  // Extract audio duration when audioFile changes (for Kling Avatar v2 cost calculation)
+  useEffect(() => {
+    if (audioFile) {
+      const audio = new Audio();
+      audio.src = URL.createObjectURL(audioFile);
+      audio.onloadedmetadata = () => {
+        setAudioDuration(audio.duration);
+        URL.revokeObjectURL(audio.src);
+      };
+      audio.onerror = () => {
+        setAudioDuration(null);
+        URL.revokeObjectURL(audio.src);
+      };
+    } else {
+      setAudioDuration(null);
+    }
+  }, [audioFile]);
 
   useEffect(() => {
     if (!ltxv2FastTextSelected && !ltxv2ImageSelected) {
@@ -2833,6 +2868,51 @@ export function AiView() {
                   maxLength={maxChars}
                 />
               </div>
+
+              {/* Kling Avatar v2 Options */}
+              {klingAvatarV2Selected && (
+                <div className="space-y-3 text-left border-t pt-3">
+                  <Label className="text-sm font-semibold">
+                    Kling Avatar v2 Options
+                  </Label>
+                  <div className="space-y-2">
+                    <Label
+                      htmlFor="kling-avatar-v2-prompt"
+                      className="text-xs text-muted-foreground"
+                    >
+                      Animation Prompt (Optional)
+                    </Label>
+                    <Textarea
+                      id="kling-avatar-v2-prompt"
+                      placeholder="Describe animation style, expressions, or movements..."
+                      value={klingAvatarV2Prompt}
+                      onChange={(e) => setKlingAvatarV2Prompt(e.target.value)}
+                      className="min-h-[60px] text-xs resize-none"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Optional guidance for facial expressions and animation
+                      style
+                    </p>
+                  </div>
+                  {audioDuration !== null && (
+                    <div className="text-xs text-muted-foreground">
+                      Audio duration: {audioDuration.toFixed(1)}s · Estimated
+                      cost: $
+                      {(
+                        audioDuration *
+                        (selectedModels.includes("kling_avatar_v2_pro")
+                          ? 0.115
+                          : 0.0562)
+                      ).toFixed(2)}
+                    </div>
+                  )}
+                  {audioDuration === null && audioFile && (
+                    <div className="text-xs text-muted-foreground">
+                      Cost varies by audio length
+                    </div>
+                  )}
+                </div>
+              )}
             </TabsContent>
             <TabsContent value="upscale" className="space-y-4">
               <div className="space-y-3 text-left">

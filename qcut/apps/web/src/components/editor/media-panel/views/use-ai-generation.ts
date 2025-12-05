@@ -158,6 +158,9 @@ export function useAIGeneration(props: UseAIGenerationProps) {
     wan25AudioFile = null,
     wan25NegativePrompt,
     wan25EnablePromptExpansion = true,
+    // Kling Avatar v2 props
+    klingAvatarV2Prompt = "",
+    audioDuration = null,
     bytedanceTargetResolution = "1080p",
     bytedanceTargetFPS = "30fps",
     flashvsrUpscaleFactor = 4,
@@ -1653,12 +1656,19 @@ export function useAIGeneration(props: UseAIGenerationProps) {
             }
           } else if (avatarImage) {
             console.log(`  🎭 Calling generateAvatarVideo for ${modelId}...`);
+            // For Kling Avatar v2 models, use the v2-specific prompt
+            const avatarPrompt =
+              modelId === "kling_avatar_v2_standard" ||
+              modelId === "kling_avatar_v2_pro"
+                ? klingAvatarV2Prompt.trim() || undefined
+                : prompt.trim() || undefined;
             response = await generateAvatarVideo({
               model: modelId,
               characterImage: avatarImage,
               audioFile: audioFile || undefined,
               sourceVideo: sourceVideo || undefined,
-              prompt: prompt.trim() || undefined,
+              prompt: avatarPrompt,
+              audioDuration: audioDuration ?? undefined,
             });
             console.log("  ✅ generateAvatarVideo returned:", response);
           }
@@ -2258,6 +2268,8 @@ export function useAIGeneration(props: UseAIGenerationProps) {
     wan25EnablePromptExpansion,
     imageSeed,
     uploadAudioToFal,
+    klingAvatarV2Prompt,
+    audioDuration,
     bytedanceTargetResolution,
     bytedanceTargetFPS,
     flashvsrUpscaleFactor,

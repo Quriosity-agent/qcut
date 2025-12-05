@@ -785,38 +785,6 @@ export const AI_MODELS: AIModel[] = [
       video_quality: "high",
     },
   },
-  {
-    id: "kling_avatar_pro",
-    name: "Kling Avatar Pro",
-    description: "Premium avatar video generation from image + audio",
-    price: "0.25", // Estimated pricing
-    resolution: "1080p",
-    max_duration: 10,
-    category: "avatar",
-    requiredInputs: ["characterImage", "audioFile"],
-    endpoints: {
-      text_to_video: "fal-ai/kling-video/v1/pro/ai-avatar",
-    },
-    default_params: {
-      resolution: "1080p",
-    },
-  },
-  {
-    id: "kling_avatar_standard",
-    name: "Kling Avatar Standard",
-    description: "Standard avatar video generation from image + audio",
-    price: "0.15", // Estimated pricing
-    resolution: "720p",
-    max_duration: 10,
-    category: "avatar",
-    requiredInputs: ["characterImage", "audioFile"],
-    endpoints: {
-      text_to_video: "fal-ai/kling-video/v1/standard/ai-avatar",
-    },
-    default_params: {
-      resolution: "720p",
-    },
-  },
   // Kling Avatar v2 Models - Enhanced lip-sync and animation quality
   {
     id: "kling_avatar_v2_standard",
@@ -963,6 +931,39 @@ export const AI_MODELS: AIModel[] = [
     },
     default_params: {
       resolution: "1080p",
+    },
+  },
+  // Kling Avatar v1 Models (Legacy)
+  {
+    id: "kling_avatar_pro",
+    name: "Kling Avatar Pro",
+    description: "Premium avatar video generation from image + audio",
+    price: "0.25", // Estimated pricing
+    resolution: "1080p",
+    max_duration: 10,
+    category: "avatar",
+    requiredInputs: ["characterImage", "audioFile"],
+    endpoints: {
+      text_to_video: "fal-ai/kling-video/v1/pro/ai-avatar",
+    },
+    default_params: {
+      resolution: "1080p",
+    },
+  },
+  {
+    id: "kling_avatar_standard",
+    name: "Kling Avatar Standard",
+    description: "Standard avatar video generation from image + audio",
+    price: "0.15", // Estimated pricing
+    resolution: "720p",
+    max_duration: 10,
+    category: "avatar",
+    requiredInputs: ["characterImage", "audioFile"],
+    endpoints: {
+      text_to_video: "fal-ai/kling-video/v1/standard/ai-avatar",
+    },
+    default_params: {
+      resolution: "720p",
     },
   },
   {
