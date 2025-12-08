@@ -245,23 +245,60 @@ Implemented features:
 
 ---
 
-## Phase 4: Extract Model-Specific Settings Panels
+## Phase 4: Extract Model-Specific Settings Panels (✅ COMPLETE)
 
-### Subtask 4.1: Extract Sora 2 Settings
-**File**: `ai-sora-settings.tsx` (~100 lines)
-**Depends on**: Subtask 3.1, 3.2
+### ✅ Subtask 4.1: Extract Sora 2 Settings - COMPLETE
+**File**: `ai-sora-settings.tsx` (~160 lines)
+**Status**: ✅ Complete
+
+Implemented features:
+- [x] Duration selector (4, 8, 12 seconds) with dynamic pricing
+- [x] Aspect ratio selector (16:9 Landscape, 9:16 Portrait)
+- [x] Resolution selector (Pro only: auto, 720p, 1080p)
+- [x] Helper function for price calculation based on model/resolution
+
+**Exported types:**
+- `Sora2Duration` - 4 | 8 | 12
+- `Sora2AspectRatio` - "16:9" | "9:16"
+- `Sora2Resolution` - "auto" | "720p" | "1080p"
 
 ---
 
-### Subtask 4.2: Extract Veo 3.1 Settings
-**File**: `ai-veo-settings.tsx` (~150 lines)
-**Depends on**: Subtask 3.1, 3.2
+### ✅ Subtask 4.2: Extract Veo 3.1 Settings - COMPLETE
+**File**: `ai-veo-settings.tsx` (~220 lines)
+**Status**: ✅ Complete
+
+Implemented features:
+- [x] Resolution selector (720p, 1080p)
+- [x] Duration selector (4s, 6s, 8s) with dynamic pricing based on audio toggle
+- [x] Aspect ratio selector (16:9, 9:16, 1:1, auto)
+- [x] Generate audio toggle (affects pricing display)
+- [x] Enhance prompt toggle
+- [x] Auto-fix toggle (policy compliance)
+
+**Exported types:**
+- `Veo31Resolution` - "720p" | "1080p"
+- `Veo31Duration` - "4s" | "6s" | "8s"
+- `Veo31AspectRatio` - "9:16" | "16:9" | "1:1" | "auto"
+- `Veo31Settings` - Full settings interface
 
 ---
 
-### Subtask 4.3: Extract Reve Settings (T2I + Edit)
-**File**: `ai-reve-settings.tsx` (~200 lines)
-**Depends on**: Subtask 3.1, 3.2
+### ✅ Subtask 4.3: Extract Reve Settings (T2I + Edit) - COMPLETE
+**File**: `ai-reve-settings.tsx` (~280 lines)
+**Status**: ✅ Complete
+
+Implemented components:
+- [x] `AIReveTextToImageSettings` - Aspect ratio, num images, output format
+- [x] `AIReveEditSettings` - Image upload with edit instructions
+
+**Features:**
+- Aspect ratio selector with all Reve-supported ratios
+- Number of images selector with dynamic pricing
+- Output format selector (PNG, JPEG, WebP)
+- Image upload with drag-and-drop style UI
+- Edit instructions textarea (2560 char limit)
+- Image preview with remove button
 
 ---
 
@@ -270,6 +307,7 @@ Implemented features:
 ### Subtask 5.1: Refactor Main ai.tsx
 **Target**: ~400-500 lines (down from 4072)
 **Depends on**: All Phase 2, 3, 4 subtasks
+**Status**: PENDING (all dependencies now complete)
 
 The refactored component will:
 1. Import all extracted hooks and components
@@ -651,10 +689,10 @@ media-panel/views/
 ├── ai-avatar-tab.tsx             # ✅ COMPLETE: Avatar tab UI (~240 lines)
 ├── ai-upscale-tab.tsx            # ✅ COMPLETE: Upscale tab UI (~400 lines)
 │
-│── ## Phase 4: Model Settings Panels
-├── ai-sora-settings.tsx          # PENDING: Sora 2 settings (~100 lines)
-├── ai-veo-settings.tsx           # PENDING: Veo 3.1 settings (~150 lines)
-├── ai-reve-settings.tsx          # PENDING: Reve settings (~200 lines)
+│── ## Phase 4: Model Settings Panels (✅ COMPLETE)
+├── ai-sora-settings.tsx          # ✅ COMPLETE: Sora 2 settings (~160 lines)
+├── ai-veo-settings.tsx           # ✅ COMPLETE: Veo 3.1 settings (~220 lines)
+├── ai-reve-settings.tsx          # ✅ COMPLETE: Reve T2I + Edit settings (~280 lines)
 │
 │── ## Existing Components (stable)
 ├── ai-image-upload.tsx           # Image upload (existing)
