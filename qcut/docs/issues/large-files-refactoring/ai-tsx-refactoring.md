@@ -24,54 +24,49 @@
 
 ---
 
+### ✅ Priority 1 Foundation Complete: Base Hooks & Reusable Components
+
+| File | Purpose | Lines | Status |
+|------|---------|-------|--------|
+| `use-ai-tab-state-base.ts` | Base state hooks (useFileWithPreview, useMultipleFilesWithPreview, useAudioFileWithDuration, useVideoWithMetadata) | ~342 | **✅ Complete** |
+| `ai-settings-panel.tsx` | Reusable collapsible settings panel (AISettingsPanel, AISettingsPanelSimple, ModelSettingsCard) | ~304 | **✅ Complete** |
+| `ai-select-fields.tsx` | Reusable select components (DurationSelect, ResolutionSelect, AspectRatioSelect, FPSSelect, GenericSelect, UpscaleFactorSelect, MovementAmplitudeSelect) | ~530 | **✅ Complete** |
+
+**Hooks provided in `use-ai-tab-state-base.ts`:**
+- `useFileWithPreview()` - Single file with URL preview and cleanup
+- `useMultipleFilesWithPreview(count)` - Array of files with previews (for reference images)
+- `useAudioFileWithDuration()` - Audio file with automatic duration extraction
+- `useVideoWithMetadata()` - Video file/URL with metadata extraction
+
+**Components provided in `ai-settings-panel.tsx`:**
+- `AISettingsPanel` - Collapsible settings container with active count badge
+- `AISettingsPanelSimple` - Simpler version without render props
+- `ModelSettingsCard` - Card for model-specific settings with cost display
+
+**Select components in `ai-select-fields.tsx`:**
+- `DurationSelect` - Duration selector (reused by 8+ models)
+- `ResolutionSelect` - Resolution selector with labels and price suffix
+- `AspectRatioSelect` - Aspect ratio selector
+- `FPSSelect` - Frame rate selector
+- `GenericSelect` - Generic select for custom options
+- `UpscaleFactorSelect` - Upscale factor selector (2x, 4x, etc.)
+- `MovementAmplitudeSelect` - Vidu Q2 movement amplitude selector
+
+---
+
 ## Phase 2: Extract State Management Hooks (In Progress)
 
-### Subtask 2.1: Create Base State Hook Pattern
-**File**: `use-ai-tab-state-base.ts` (~50 lines)
-**Priority**: High (enables code reuse across all tab state hooks)
+### ✅ Subtask 2.1: Create Base State Hook Pattern - COMPLETE
+**File**: `use-ai-tab-state-base.ts` (~342 lines)
+**Status**: ✅ Complete
 
-Create a reusable base pattern for tab state management:
+Implemented hooks:
+- `useFileWithPreview()` - Handles file + preview URL with proper cleanup
+- `useMultipleFilesWithPreview(count)` - For arrays like 6 reference images
+- `useAudioFileWithDuration()` - Audio with automatic duration extraction
+- `useVideoWithMetadata()` - Video with metadata extraction from file/URL
 
-```typescript
-// Shared utilities for all tab state hooks
-export interface TabStateConfig<T> {
-  initialState: T;
-  resetDependencies?: unknown[];
-}
-
-export function createTabStateReset<T>(
-  setState: React.Dispatch<React.SetStateAction<T>>,
-  initialState: T
-): () => void {
-  return () => setState(initialState);
-}
-
-// Shared file upload handling pattern
-export function useFileWithPreview(initialFile: File | null = null) {
-  const [file, setFile] = useState<File | null>(initialFile);
-  const [preview, setPreview] = useState<string | null>(null);
-
-  const handleFileChange = useCallback((newFile: File | null) => {
-    setFile(newFile);
-    if (preview) URL.revokeObjectURL(preview);
-    setPreview(newFile ? URL.createObjectURL(newFile) : null);
-  }, [preview]);
-
-  const reset = useCallback(() => {
-    if (preview) URL.revokeObjectURL(preview);
-    setFile(null);
-    setPreview(null);
-  }, [preview]);
-
-  useEffect(() => {
-    return () => { if (preview) URL.revokeObjectURL(preview); };
-  }, [preview]);
-
-  return { file, preview, setFile: handleFileChange, reset };
-}
-```
-
-**Reuse opportunity**: This pattern is duplicated 10+ times in ai.tsx for firstFrame, lastFrame, avatarImage, etc.
+**Reuse opportunity**: These hooks replace 10+ duplicated file/preview state patterns in ai.tsx.
 
 ---
 
@@ -174,48 +169,29 @@ export function useFileWithPreview(initialFile: File | null = null) {
 
 ## Phase 3: Extract UI Components
 
-### Subtask 3.1: Create Reusable Settings Panel Component
-**File**: `ai-settings-panel.tsx` (~80 lines)
-**Priority**: High (reused by all model-specific settings)
+### ✅ Subtask 3.1: Create Reusable Settings Panel Component - COMPLETE
+**File**: `ai-settings-panel.tsx` (~304 lines)
+**Status**: ✅ Complete
 
-```typescript
-interface AISettingsPanelProps {
-  title: string;
-  description?: string;
-  children: React.ReactNode;
-  isCollapsible?: boolean;
-  defaultExpanded?: boolean;
-}
-
-// Reuse: Sora2, Veo3.1, Reve, and all model-specific settings panels
-```
+Implemented components:
+- `AISettingsPanel` - Collapsible settings container with active count badge (render props version)
+- `AISettingsPanelSimple` - Simpler version without render props
+- `ModelSettingsCard` - Card for model-specific settings with cost display
 
 ---
 
-### Subtask 3.2: Create Reusable Select Component Wrappers
-**File**: `ai-select-fields.tsx` (~150 lines)
+### ✅ Subtask 3.2: Create Reusable Select Component Wrappers - COMPLETE
+**File**: `ai-select-fields.tsx` (~530 lines)
+**Status**: ✅ Complete
 
-```typescript
-// Duration selector (reused by 8+ models)
-export function DurationSelect({
-  options, value, onChange, pricePerSecond?
-}: DurationSelectProps)
-
-// Resolution selector (reused by 6+ models)
-export function ResolutionSelect({
-  options, value, onChange, priceMapping?
-}: ResolutionSelectProps)
-
-// Aspect ratio selector (reused by 5+ models)
-export function AspectRatioSelect({
-  options, value, onChange
-}: AspectRatioSelectProps)
-
-// FPS selector (reused by 3+ models)
-export function FPSSelect({
-  options, value, onChange
-}: FPSSelectProps)
-```
+Implemented components:
+- `DurationSelect` - Duration selector (reused by 8+ models)
+- `ResolutionSelect` - Resolution selector with labels and price suffix
+- `AspectRatioSelect` - Aspect ratio selector
+- `FPSSelect` - Frame rate selector
+- `GenericSelect` - Generic select for custom options
+- `UpscaleFactorSelect` - Upscale factor selector (2x, 4x, etc.)
+- `MovementAmplitudeSelect` - Vidu Q2 movement amplitude selector
 
 ---
 
@@ -665,15 +641,15 @@ media-panel/views/
 │── ## Phase 2: State Management Hooks
 ├── use-ai-generation.ts          # Generation hook (existing)
 ├── use-ai-history.ts             # History hook (existing)
-├── use-ai-tab-state-base.ts      # PENDING: Shared hooks (useFileWithPreview) (~50 lines)
+├── use-ai-tab-state-base.ts      # ✅ COMPLETE: Shared hooks (useFileWithPreview, useMultipleFilesWithPreview, useAudioFileWithDuration, useVideoWithMetadata) (~342 lines)
 ├── use-ai-text-tab-state.ts      # PENDING: Text tab state (~120 lines)
 ├── use-ai-image-tab-state.ts     # PENDING: Image tab state (~200 lines)
 ├── use-ai-avatar-tab-state.ts    # PENDING: Avatar tab state (~80 lines)
 ├── use-ai-upscale-tab-state.ts   # PENDING: Upscale tab state (~100 lines)
 │
-│── ## Phase 3: Reusable UI Components
-├── ai-settings-panel.tsx         # PENDING: Reusable settings container (~80 lines)
-├── ai-select-fields.tsx          # PENDING: Duration/Resolution/AspectRatio selects (~150 lines)
+│── ## Phase 2.5: Reusable UI Components (✅ COMPLETE)
+├── ai-settings-panel.tsx         # ✅ COMPLETE: Reusable settings container (AISettingsPanel, AISettingsPanelSimple, ModelSettingsCard) (~304 lines)
+├── ai-select-fields.tsx          # ✅ COMPLETE: Duration/Resolution/AspectRatio/FPS/Upscale selects (~530 lines)
 │
 │── ## Phase 3: Tab UI Components
 ├── ai-text-tab.tsx               # PENDING: Text tab UI (~500 lines)
