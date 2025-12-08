@@ -154,7 +154,7 @@ Implemented state groups:
 
 ---
 
-## Phase 3: Extract UI Components
+## Phase 3: Extract UI Components (✅ COMPLETE)
 
 ### ✅ Subtask 3.1: Create Reusable Settings Panel Component - COMPLETE
 **File**: `ai-settings-panel.tsx` (~304 lines)
@@ -182,59 +182,66 @@ Implemented components:
 
 ---
 
-### Subtask 3.3: Extract Text Tab UI Component
-**File**: `ai-text-tab.tsx` (~500 lines)
-**Depends on**: Subtask 2.3, 3.1, 3.2
+### ✅ Subtask 3.3: Extract Text Tab UI Component - COMPLETE
+**File**: `ai-text-tab.tsx` (~570 lines)
+**Status**: ✅ Complete
 
-**Subtasks:**
-- [ ] 3.3.1: Extract prompt textarea with character count
-- [ ] 3.3.2: Extract collapsible additional settings section
-- [ ] 3.3.3: Extract model-specific settings (Hailuo, LTX Pro, LTX Fast)
-- [ ] 3.3.4: Create unified `AITextTab` component
+Implemented features:
+- [x] 3.3.1: Prompt textarea with character count and remaining chars display
+- [x] 3.3.2: Collapsible additional settings section with active count badge
+- [x] 3.3.3: Model-specific settings (Hailuo Standard/Pro, LTX Pro, LTX Fast)
+- [x] 3.3.4: Unified `AITextTab` component with full props interface
 
----
-
-### Subtask 3.4: Extract Image Tab UI Component
-**File**: `ai-image-tab.tsx` (~900 lines)
-**Depends on**: Subtask 2.2, 3.1, 3.2
-
-**Subtasks:**
-- [ ] 3.4.1: Extract frame upload grid section
-- [ ] 3.4.2: Extract motion prompt section
-- [ ] 3.4.3: Extract Vidu Q2 settings panel
-- [ ] 3.4.4: Extract LTX I2V settings panel
-- [ ] 3.4.5: Extract Seedance settings panel
-- [ ] 3.4.6: Extract Kling v2.5 settings panel
-- [ ] 3.4.7: Extract Kling v2.6 settings panel
-- [ ] 3.4.8: Extract WAN 2.5 settings panel
-- [ ] 3.4.9: Create unified `AIImageTab` component
+**Component props include:**
+- Prompt and character limit
+- Unified T2V settings (aspect ratio, resolution, duration, negative prompt, etc.)
+- Hailuo T2V duration settings
+- LTX Video Pro settings (duration, resolution, FPS, audio)
+- LTX Video Fast settings with extended duration constraints
 
 ---
 
-### Subtask 3.5: Extract Avatar Tab UI Component
-**File**: `ai-avatar-tab.tsx` (~400 lines)
-**Depends on**: Subtask 2.4, 3.1
+### ✅ Subtask 3.4: Extract Image Tab UI Component - COMPLETE
+**File**: `ai-image-tab.tsx` (~950 lines)
+**Status**: ✅ Complete
 
-**Subtasks:**
-- [ ] 3.5.1: Extract avatar image upload grid
-- [ ] 3.5.2: Extract reference images grid (6 slots)
-- [ ] 3.5.3: Extract audio input section
-- [ ] 3.5.4: Extract source video section
-- [ ] 3.5.5: Create unified `AIAvatarTab` component
+Implemented features:
+- [x] 3.4.1: Frame upload grid section (via AIImageUploadSection)
+- [x] 3.4.2: Motion prompt section
+- [x] 3.4.3: Vidu Q2 settings panel (duration, resolution, movement, BGM)
+- [x] 3.4.4: LTX I2V settings panel (duration, resolution, FPS, audio)
+- [x] 3.4.5: Seedance settings panel (duration, resolution, aspect ratio, camera fixed, end frame)
+- [x] 3.4.6: Kling v2.5 settings panel (duration, aspect ratio, cfg scale, enhance prompt, negative prompt)
+- [x] 3.4.7: Kling v2.6 settings panel (duration, aspect ratio, cfg scale, audio, negative prompt)
+- [x] 3.4.8: WAN 2.5 settings panel (duration, resolution, prompt expansion, negative prompt, audio)
+- [x] 3.4.9: Unified `AIImageTab` component with advanced seed options
 
 ---
 
-### Subtask 3.6: Extract Upscale Tab UI Component
-**File**: `ai-upscale-tab.tsx` (~450 lines)
-**Depends on**: Subtask 2.5, 3.1, 3.2
+### ✅ Subtask 3.5: Extract Avatar Tab UI Component - COMPLETE
+**File**: `ai-avatar-tab.tsx` (~240 lines)
+**Status**: ✅ Complete
 
-**Subtasks:**
-- [ ] 3.6.1: Extract video source input (file upload + URL)
-- [ ] 3.6.2: Extract video metadata display
-- [ ] 3.6.3: Extract ByteDance upscaler card
-- [ ] 3.6.4: Extract FlashVSR upscaler card
-- [ ] 3.6.5: Extract Topaz upscaler card
-- [ ] 3.6.6: Create unified `AIUpscaleTab` component
+Implemented features:
+- [x] 3.5.1: First/Last frame upload grid (side by side)
+- [x] 3.5.2: Reference images grid (6 slots in 3x2 layout)
+- [x] 3.5.3: Audio input section
+- [x] 3.5.4: Source video section
+- [x] 3.5.5: Unified `AIAvatarTab` component with Kling Avatar v2 options
+
+---
+
+### ✅ Subtask 3.6: Extract Upscale Tab UI Component - COMPLETE
+**File**: `ai-upscale-tab.tsx` (~400 lines)
+**Status**: ✅ Complete
+
+Implemented features:
+- [x] 3.6.1: Video source input (file upload + URL with auto metadata extraction)
+- [x] 3.6.2: Video metadata display (resolution, duration, FPS)
+- [x] 3.6.3: ByteDance upscaler card (target resolution, target FPS, cost estimate)
+- [x] 3.6.4: FlashVSR upscaler card (upscale factor, acceleration, quality, format, seed)
+- [x] 3.6.5: Topaz upscaler card (upscale factor, frame interpolation, H.264 output)
+- [x] 3.6.6: Unified `AIUpscaleTab` component with all upscaler settings
 
 ---
 
@@ -638,11 +645,11 @@ media-panel/views/
 ├── ai-settings-panel.tsx         # ✅ COMPLETE: Reusable settings container (AISettingsPanel, AISettingsPanelSimple, ModelSettingsCard) (~304 lines)
 ├── ai-select-fields.tsx          # ✅ COMPLETE: Duration/Resolution/AspectRatio/FPS/Upscale selects (~530 lines)
 │
-│── ## Phase 3: Tab UI Components
-├── ai-text-tab.tsx               # PENDING: Text tab UI (~500 lines)
-├── ai-image-tab.tsx              # PENDING: Image tab UI (~900 lines)
-├── ai-avatar-tab.tsx             # PENDING: Avatar tab UI (~400 lines)
-├── ai-upscale-tab.tsx            # PENDING: Upscale tab UI (~450 lines)
+│── ## Phase 3: Tab UI Components (✅ COMPLETE)
+├── ai-text-tab.tsx               # ✅ COMPLETE: Text tab UI (~570 lines)
+├── ai-image-tab.tsx              # ✅ COMPLETE: Image tab UI (~950 lines)
+├── ai-avatar-tab.tsx             # ✅ COMPLETE: Avatar tab UI (~240 lines)
+├── ai-upscale-tab.tsx            # ✅ COMPLETE: Upscale tab UI (~400 lines)
 │
 │── ## Phase 4: Model Settings Panels
 ├── ai-sora-settings.tsx          # PENDING: Sora 2 settings (~100 lines)
