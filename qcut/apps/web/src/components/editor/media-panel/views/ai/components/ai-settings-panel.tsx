@@ -7,6 +7,7 @@
  * @see ai-tsx-refactoring.md - Subtask 3.1
  */
 
+import { useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -87,8 +88,13 @@ export function AISettingsPanel({
   className = "",
   showBorderTop = true,
 }: AISettingsPanelProps) {
-  // Use controlled state if provided, otherwise uncontrolled
+  // Use controlled state if provided, otherwise use internal state
   const isControlled = expanded !== undefined && onExpandedChange !== undefined;
+  const [internalOpen, setInternalOpen] = useState(defaultExpanded);
+
+  // Determine the actual open state
+  const isOpen = isControlled ? expanded : internalOpen;
+  const handleOpenChange = isControlled ? onExpandedChange : setInternalOpen;
 
   if (!isCollapsible) {
     // Non-collapsible: just render as a simple container
@@ -107,50 +113,44 @@ export function AISettingsPanel({
     );
   }
 
-  // Collapsible panel
-  const collapsibleProps = isControlled
-    ? { open: expanded, onOpenChange: onExpandedChange }
-    : { defaultOpen: defaultExpanded };
-
   return (
-    <Collapsible {...collapsibleProps}>
-      {({ open }: { open: boolean }) => (
-        <div className={`${showBorderTop ? "border-t pt-3" : ""} ${className}`}>
-          <div className="flex items-center justify-between">
-            <CollapsibleTrigger asChild>
-              <Button
-                variant="link"
-                size="sm"
-                className="flex items-center gap-2 p-0 h-auto"
-              >
-                <Label className="text-sm font-semibold cursor-pointer">
-                  {title}
-                </Label>
-                <ChevronDown
-                  className={`h-4 w-4 transition-transform ${open ? "rotate-180" : ""}`}
-                />
-              </Button>
-            </CollapsibleTrigger>
+    <Collapsible open={isOpen} onOpenChange={handleOpenChange}>
+      <div className={`${showBorderTop ? "border-t pt-3" : ""} ${className}`}>
+        <div className="flex items-center justify-between">
+          <CollapsibleTrigger asChild>
+            <Button
+              type="button"
+              variant="link"
+              size="sm"
+              className="flex items-center gap-2 p-0 h-auto"
+            >
+              <Label className="text-sm font-semibold cursor-pointer">
+                {title}
+              </Label>
+              <ChevronDown
+                className={`h-4 w-4 transition-transform ${isOpen ? "rotate-180" : ""}`}
+              />
+            </Button>
+          </CollapsibleTrigger>
 
-            {!open && activeSettingsCount !== undefined && (
-              <Badge variant="secondary" className="text-xs">
-                {activeSettingsCount} active
-              </Badge>
-            )}
-          </div>
-
-          {description && !open && (
-            <p className="text-xs text-muted-foreground mt-1">{description}</p>
+          {!isOpen && activeSettingsCount !== undefined && (
+            <Badge variant="secondary" className="text-xs">
+              {activeSettingsCount} active
+            </Badge>
           )}
-
-          <CollapsibleContent className="space-y-4 mt-4">
-            {description && (
-              <p className="text-xs text-muted-foreground">{description}</p>
-            )}
-            {children}
-          </CollapsibleContent>
         </div>
-      )}
+
+        {description && !isOpen && (
+          <p className="text-xs text-muted-foreground mt-1">{description}</p>
+        )}
+
+        <CollapsibleContent className="space-y-4 mt-4">
+          {description && (
+            <p className="text-xs text-muted-foreground">{description}</p>
+          )}
+          {children}
+        </CollapsibleContent>
+      </div>
     </Collapsible>
   );
 }

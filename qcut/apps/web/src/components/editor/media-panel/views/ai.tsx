@@ -6,18 +6,13 @@ import {
   Play,
   Download,
   History,
-  Trash2,
-  ImageIcon,
   TypeIcon,
+  ImageIcon,
   Upload,
   X,
-  Check,
   UserIcon,
-  ChevronDown,
 } from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
-import { Textarea } from "@/components/ui/textarea";
-import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -28,39 +23,36 @@ import {
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FileUpload } from "@/components/ui/file-upload";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Slider } from "@/components/ui/slider";
-import { Card } from "@/components/ui/card";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
-import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
 
-import { useTimelineStore } from "@/stores/timeline-store";
 import { useProjectStore } from "@/stores/project-store";
 import { usePanelStore } from "@/stores/panel-store";
 import { useMediaPanelStore } from "../store";
 import { AIHistoryPanel } from "./ai-history-panel";
-import { AIImageUploadSection } from "./ai-image-upload";
 import { debugLogger } from "@/lib/debug-logger";
-import {
-  extractVideoMetadataFromFile,
-  extractVideoMetadataFromUrl,
-  type VideoMetadata,
-} from "@/lib/video-metadata";
 
-// Import extracted hooks and types
+// Import extracted hooks
 import { useAIGeneration } from "./use-ai-generation";
 import { useAIHistory } from "./use-ai-history";
+import { useTextTabState, T2V_DEFAULTS } from "./use-ai-text-tab-state";
+import { useImageTabState } from "./use-ai-image-tab-state";
+import { useAvatarTabState } from "./use-ai-avatar-tab-state";
+import { useUpscaleTabState } from "./use-ai-upscale-tab-state";
+
+// Import extracted UI components
+import { AITextTab } from "./ai-text-tab";
+import { AIImageTab } from "./ai-image-tab";
+import { AIAvatarTab } from "./ai-avatar-tab";
+import { AIUpscaleTab } from "./ai-upscale-tab";
+import { AISora2Settings } from "./ai-sora-settings";
+import { AIVeo31Settings } from "./ai-veo-settings";
+import { AIReveTextToImageSettings, AIReveEditSettings } from "./ai-reve-settings";
+
+// Import constants and types
 import {
   AI_MODELS,
-  ERROR_MESSAGES,
   LTXV2_FAST_CONFIG,
   REVE_TEXT_TO_IMAGE_MODEL,
-  UPLOAD_CONSTANTS,
 } from "./ai-constants";
 import {
   getCombinedCapabilities,
@@ -69,40 +61,17 @@ import {
 } from "./text2video-models-config";
 import type { AIActiveTab } from "./ai-types";
 
-// Import extracted model options and types
+// Import model options
 import {
   type ReveAspectRatioOption,
   type ReveOutputFormatOption,
-  type LTXV2FastDuration,
-  type LTXV2FastResolution,
-  type LTXV2FastFps,
-  type SeedanceDuration,
-  type SeedanceResolution,
-  type SeedanceAspectRatio,
-  type KlingAspectRatio,
-  type Kling26AspectRatio,
-  type Wan25Resolution,
-  type Wan25Duration,
-  SEEDANCE_DURATION_OPTIONS,
-  SEEDANCE_RESOLUTIONS,
-  SEEDANCE_ASPECT_RATIOS,
-  KLING_ASPECT_RATIOS,
-  KLING26_ASPECT_RATIOS,
-  WAN25_DURATIONS,
-  WAN25_RESOLUTIONS,
-  LTXV2_FAST_RESOLUTION_LABELS,
-  LTXV2_FAST_RESOLUTION_PRICE_SUFFIX,
-  LTXV2_FAST_FPS_LABELS,
   REVE_NUM_IMAGE_OPTIONS,
 } from "./ai-model-options";
 
-// Import extracted cost calculators
+// Import cost calculators
 import {
-  calculateSeedanceCost,
-  calculateKlingCost,
   calculateByteDanceUpscaleCost,
   calculateFlashVSRUpscaleCost,
-  calculateTopazUpscaleCost,
 } from "./ai-cost-calculators";
 
 /**
@@ -110,102 +79,21 @@ import {
  * model selection, per-model settings, cost estimates, media uploads, generation controls,
  * and generated results/history integration.
  *
- * The component manages local UI state for prompts, media inputs, per-model options,
- * and responsive layout, and wires user input into the AI generation workflow.
+ * Refactored to use extracted state hooks and UI components (Phase 5).
  *
  * @returns The JSX element for the AI features panel.
  */
 export function AiView() {
-  // UI-only state (not related to generation logic)
+  // ============================================
+  // Shared State
+  // ============================================
   const [prompt, setPrompt] = useState("");
   const [selectedModels, setSelectedModels] = useState<string[]>([]);
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
-
-  // Frame-to-Video state variables
-  const [firstFrame, setFirstFrame] = useState<File | null>(null);
-  const [firstFramePreview, setFirstFramePreview] = useState<string | null>(
-    null
-  );
-  const [lastFrame, setLastFrame] = useState<File | null>(null);
-  const [lastFramePreview, setLastFramePreview] = useState<string | null>(null);
-
-  // Video-to-Video state (for Kling O1 models in Image tab)
-  const [imageTabSourceVideo, setImageTabSourceVideo] = useState<File | null>(
-    null
-  );
-
   const [error, setError] = useState<string | null>(null);
 
-  // Avatar-specific state variables
-  const [avatarImage, setAvatarImage] = useState<File | null>(null);
-  const [avatarImagePreview, setAvatarImagePreview] = useState<string | null>(
-    null
-  );
-  const [avatarLastFrame, setAvatarLastFrame] = useState<File | null>(null);
-  const [avatarLastFramePreview, setAvatarLastFramePreview] = useState<
-    string | null
-  >(null);
-  // Reference images state (6 slots)
-  const [referenceImages, setReferenceImages] = useState<(File | null)[]>([
-    null,
-    null,
-    null,
-    null,
-    null,
-    null,
-  ]);
-  const [referenceImagePreviews, setReferenceImagePreviews] = useState<
-    (string | null)[]
-  >([null, null, null, null, null, null]);
-  const [audioFile, setAudioFile] = useState<File | null>(null);
-  const [audioPreview, setAudioPreview] = useState<string | null>(null);
-  const [sourceVideo, setSourceVideo] = useState<File | null>(null);
-  const [sourceVideoPreview, setSourceVideoPreview] = useState<string | null>(
-    null
-  );
-
-  // Upscale tab state
-  const [sourceVideoFile, setSourceVideoFile] = useState<File | null>(null);
-  const [sourceVideoUrl, setSourceVideoUrl] = useState("");
-  const [videoMetadata, setVideoMetadata] = useState<VideoMetadata | null>(
-    null
-  );
-
-  const [bytedanceTargetResolution, setBytedanceTargetResolution] = useState<
-    "1080p" | "2k" | "4k"
-  >("1080p");
-  const [bytedanceTargetFPS, setBytedanceTargetFPS] = useState<
-    "30fps" | "60fps"
-  >("30fps");
-
-  const [flashvsrUpscaleFactor, setFlashvsrUpscaleFactor] = useState(4);
-  const [flashvsrAcceleration, setFlashvsrAcceleration] = useState<
-    "regular" | "high" | "full"
-  >("regular");
-  const [flashvsrQuality, setFlashvsrQuality] = useState(70);
-  const [flashvsrColorFix, setFlashvsrColorFix] = useState(true);
-  const [flashvsrPreserveAudio, setFlashvsrPreserveAudio] = useState(false);
-  const [flashvsrOutputFormat, setFlashvsrOutputFormat] = useState<
-    "X264" | "VP9" | "PRORES4444" | "GIF"
-  >("X264");
-  const [flashvsrOutputQuality, setFlashvsrOutputQuality] = useState<
-    "low" | "medium" | "high" | "maximum"
-  >("high");
-  const [flashvsrOutputWriteMode, setFlashvsrOutputWriteMode] = useState<
-    "fast" | "balanced" | "small"
-  >("balanced");
-  const [flashvsrSeed, setFlashvsrSeed] = useState<number | undefined>();
-
-  const [topazUpscaleFactor, setTopazUpscaleFactor] = useState(2);
-  const [topazTargetFPS, setTopazTargetFPS] = useState<
-    "original" | "interpolated"
-  >("original");
-  const [topazH264Output, setTopazH264Output] = useState(false);
-
-  // Veo 3.1 frame upload state - already declared above as Frame-to-Video state variables
-
-  // Reve Text-to-Image state
+  // Reve Text-to-Image state (kept in main component for cross-tab usage)
   const [reveAspectRatio, setReveAspectRatio] = useState<ReveAspectRatioOption>(
     REVE_TEXT_TO_IMAGE_MODEL.defaultAspectRatio
   );
@@ -216,152 +104,54 @@ export function AiView() {
     useState<ReveOutputFormatOption>(
       REVE_TEXT_TO_IMAGE_MODEL.defaultOutputFormat
     );
-  const [hailuoT2VDuration, setHailuoT2VDuration] = useState<6 | 10>(6);
-  const [viduQ2Duration, setViduQ2Duration] = useState<
-    2 | 3 | 4 | 5 | 6 | 7 | 8
-  >(4);
-  const [viduQ2Resolution, setViduQ2Resolution] = useState<"720p" | "1080p">(
-    "720p"
-  );
-  const [viduQ2MovementAmplitude, setViduQ2MovementAmplitude] = useState<
-    "auto" | "small" | "medium" | "large"
-  >("auto");
-  const [viduQ2EnableBGM, setViduQ2EnableBGM] = useState(false);
 
-  // Text-to-video defaults kept in one place to avoid drift in reset/count logic.
-  const T2V_DEFAULTS = {
-    aspectRatio: "16:9",
-    resolution: "1080p",
-    duration: 4,
-    negativePrompt:
-      "low resolution, error, worst quality, low quality, defects",
-    promptExpansion: false,
-    seed: -1, // -1 = random
-    safetyChecker: false,
-  } as const;
-
-  // Unified text-to-video advanced settings
-  const [t2vAspectRatio, setT2vAspectRatio] = useState<string>(
-    T2V_DEFAULTS.aspectRatio
-  );
-  const [t2vResolution, setT2vResolution] = useState<string>(
-    T2V_DEFAULTS.resolution
-  );
-  const [t2vDuration, setT2vDuration] = useState<number>(T2V_DEFAULTS.duration);
-  const [t2vNegativePrompt, setT2vNegativePrompt] = useState<string>(
-    T2V_DEFAULTS.negativePrompt
-  );
-  const [t2vPromptExpansion, setT2vPromptExpansion] = useState<boolean>(
-    T2V_DEFAULTS.promptExpansion
-  );
-  const [t2vSeed, setT2vSeed] = useState<number>(T2V_DEFAULTS.seed); // -1 = random
-  const [t2vSafetyChecker, setT2vSafetyChecker] = useState<boolean>(
-    T2V_DEFAULTS.safetyChecker
-  );
-  const [t2vSettingsExpanded, setT2vSettingsExpanded] =
-    useState<boolean>(false);
-  const [ltxv2Duration, setLTXV2Duration] = useState<6 | 8 | 10>(6);
-  const [ltxv2Resolution, setLTXV2Resolution] = useState<
-    "1080p" | "1440p" | "2160p"
-  >("1080p");
-  const [ltxv2FPS, setLTXV2FPS] = useState<25 | 50>(25);
-  const [ltxv2GenerateAudio, setLTXV2GenerateAudio] = useState(true);
-  const [ltxv2FastDuration, setLTXV2FastDuration] = useState<LTXV2FastDuration>(
-    LTXV2_FAST_CONFIG.DURATIONS[0]
-  );
-  const [ltxv2FastResolution, setLTXV2FastResolution] =
-    useState<LTXV2FastResolution>(LTXV2_FAST_CONFIG.RESOLUTIONS.STANDARD[0]);
-  const [ltxv2FastFPS, setLTXV2FastFPS] = useState<LTXV2FastFps>(
-    LTXV2_FAST_CONFIG.FPS_OPTIONS.STANDARD[0]
-  );
-  const [ltxv2FastGenerateAudio, setLTXV2FastGenerateAudio] = useState(true);
-  const [ltxv2I2VDuration, setLTXV2I2VDuration] = useState<6 | 8 | 10>(6);
-  const [ltxv2I2VResolution, setLTXV2I2VResolution] = useState<
-    "1080p" | "1440p" | "2160p"
-  >("1080p");
-  const [ltxv2I2VFPS, setLTXV2I2VFPS] = useState<25 | 50>(25);
-  const [ltxv2I2VGenerateAudio, setLTXV2I2VGenerateAudio] = useState(true);
-  const [ltxv2ImageDuration, setLTXV2ImageDuration] =
-    useState<LTXV2FastDuration>(LTXV2_FAST_CONFIG.DURATIONS[0]);
-  const [ltxv2ImageResolution, setLTXV2ImageResolution] =
-    useState<LTXV2FastResolution>(LTXV2_FAST_CONFIG.RESOLUTIONS.STANDARD[0]);
-  const [ltxv2ImageFPS, setLTXV2ImageFPS] = useState<LTXV2FastFps>(
-    LTXV2_FAST_CONFIG.FPS_OPTIONS.STANDARD[0]
-  );
-  const [ltxv2ImageGenerateAudio, setLTXV2ImageGenerateAudio] = useState(true);
-  const [seedanceDuration, setSeedanceDuration] = useState<SeedanceDuration>(5);
-  const [seedanceResolution, setSeedanceResolution] =
-    useState<SeedanceResolution>("1080p");
-  const [seedanceAspectRatio, setSeedanceAspectRatio] =
-    useState<SeedanceAspectRatio>("16:9");
-  const [seedanceCameraFixed, setSeedanceCameraFixed] = useState(false);
-  const [seedanceEndFrameUrl, setSeedanceEndFrameUrl] = useState<
-    string | undefined
-  >(undefined);
-  const [seedanceEndFrameFile, setSeedanceEndFrameFile] = useState<File | null>(
-    null
-  );
-  const [seedanceEndFramePreview, setSeedanceEndFramePreview] = useState<
-    string | null
-  >(null);
-  const [klingDuration, setKlingDuration] = useState<5 | 10>(5);
-  const [klingCfgScale, setKlingCfgScale] = useState(0.5);
-  const [klingAspectRatio, setKlingAspectRatio] =
-    useState<KlingAspectRatio>("16:9");
-  const [klingEnhancePrompt, setKlingEnhancePrompt] = useState(true);
-  const [klingNegativePrompt, setKlingNegativePrompt] = useState("");
-  // Kling v2.6 Pro state
-  const [kling26Duration, setKling26Duration] = useState<5 | 10>(5);
-  const [kling26CfgScale, setKling26CfgScale] = useState(0.5);
-  const [kling26AspectRatio, setKling26AspectRatio] =
-    useState<Kling26AspectRatio>("16:9");
-  const [kling26GenerateAudio, setKling26GenerateAudio] = useState(true);
-  const [kling26NegativePrompt, setKling26NegativePrompt] = useState("");
-  const [wan25Duration, setWan25Duration] = useState<Wan25Duration>(5);
-  const [wan25Resolution, setWan25Resolution] =
-    useState<Wan25Resolution>("1080p");
-  const [wan25AudioUrl, setWan25AudioUrl] = useState<string | undefined>(
-    undefined
-  );
-  const [wan25AudioFile, setWan25AudioFile] = useState<File | null>(null);
-  const [wan25AudioPreview, setWan25AudioPreview] = useState<string | null>(
-    null
-  );
-  const [wan25NegativePrompt, setWan25NegativePrompt] = useState("");
-  const [wan25EnablePromptExpansion, setWan25EnablePromptExpansion] =
-    useState(true);
-  const [imageSeed, setImageSeed] = useState<number | undefined>(undefined);
-
-  // Kling Avatar v2 state
-  const [klingAvatarV2Prompt, setKlingAvatarV2Prompt] = useState("");
-  const [audioDuration, setAudioDuration] = useState<number | null>(null);
-
-  // Use global AI tab state (CRITICAL: preserve global state integration)
+  // Use global AI tab state
   const { aiActiveTab: activeTab, setAiActiveTab: setActiveTab } =
     useMediaPanelStore();
 
   // Get project store
   const { activeProject } = useProjectStore();
 
-  // Check if current project is a fallback project
-  const isFallbackProject =
-    activeProject?.id?.startsWith("project-") &&
-    /^project-\d{13}$/.test(activeProject?.id || "");
+  // ============================================
+  // Tab State Hooks
+  // ============================================
+  const textTabState = useTextTabState({ selectedModels });
+  const imageTabState = useImageTabState({ selectedModels });
+  const avatarTabState = useAvatarTabState();
+  const upscaleTabState = useUpscaleTabState();
 
-  const cleanedSeedanceEndFrameUrl = seedanceEndFrameUrl?.trim()
-    ? seedanceEndFrameUrl.trim()
-    : undefined;
-  const cleanedKlingNegativePrompt = klingNegativePrompt.trim()
-    ? klingNegativePrompt.trim()
-    : undefined;
-  const cleanedWan25AudioUrl = wan25AudioUrl?.trim()
-    ? wan25AudioUrl.trim()
-    : undefined;
-  const cleanedWan25NegativePrompt = wan25NegativePrompt.trim()
-    ? wan25NegativePrompt.trim()
-    : undefined;
+  // Destructure text tab state for easier access
+  const {
+    state: textState,
+    setters: textSetters,
+    helpers: textHelpers,
+  } = textTabState;
 
-  // Calculate combined capabilities for selected text-to-video models
+  // Destructure image tab state
+  const {
+    state: imageState,
+    setters: imageSetters,
+    helpers: imageHelpers,
+  } = imageTabState;
+
+  // Destructure avatar tab state
+  const {
+    state: avatarState,
+    setters: avatarSetters,
+    helpers: avatarHelpers,
+  } = avatarTabState;
+
+  // Destructure upscale tab state
+  const {
+    state: upscaleState,
+    setters: upscaleSetters,
+    handlers: upscaleHandlers,
+    costs: upscaleCosts,
+  } = upscaleTabState;
+
+  // ============================================
+  // Computed Values
+  // ============================================
   const combinedCapabilities = useMemo(() => {
     const textVideoModelIds = Array.from(
       new Set(
@@ -370,329 +160,35 @@ export function AiView() {
           .filter((id): id is T2VModelId => Boolean(id))
       )
     );
-
     return getCombinedCapabilities(textVideoModelIds);
   }, [selectedModels]);
-
-  useEffect(() => {
-    console.log(
-      `step 1: selectedModels updated -> ${
-        selectedModels.length ? selectedModels.join(", ") : "[none]"
-      }`
-    );
-  }, [selectedModels]);
-
-  useEffect(() => {
-    console.log("step 2: combinedCapabilities updated", {
-      aspectRatios: combinedCapabilities.supportedAspectRatios,
-      resolutions: combinedCapabilities.supportedResolutions,
-      durations: combinedCapabilities.supportedDurations,
-    });
-  }, [combinedCapabilities]);
-
-  // Helper to count active settings
-  const getActiveSettingsCount = () => {
-    let count = 0;
-    if (t2vAspectRatio !== T2V_DEFAULTS.aspectRatio) count++;
-    if (t2vResolution !== T2V_DEFAULTS.resolution) count++;
-    if (t2vDuration !== T2V_DEFAULTS.duration) count++;
-    if (t2vNegativePrompt !== T2V_DEFAULTS.negativePrompt) count++;
-    if (t2vPromptExpansion !== T2V_DEFAULTS.promptExpansion) count++;
-    if (t2vSeed !== T2V_DEFAULTS.seed) count++;
-    if (t2vSafetyChecker !== T2V_DEFAULTS.safetyChecker) count++;
-    return count;
-  };
 
   // Clamp unified settings when selected models change
   useEffect(() => {
     if (
       combinedCapabilities.supportedAspectRatios &&
       combinedCapabilities.supportedAspectRatios.length > 0 &&
-      !combinedCapabilities.supportedAspectRatios.includes(t2vAspectRatio)
+      !combinedCapabilities.supportedAspectRatios.includes(textState.t2vAspectRatio)
     ) {
-      setT2vAspectRatio(combinedCapabilities.supportedAspectRatios[0]);
+      textSetters.setT2vAspectRatio(combinedCapabilities.supportedAspectRatios[0]);
     }
 
     if (
       combinedCapabilities.supportedResolutions &&
       combinedCapabilities.supportedResolutions.length > 0 &&
-      !combinedCapabilities.supportedResolutions.includes(t2vResolution)
+      !combinedCapabilities.supportedResolutions.includes(textState.t2vResolution)
     ) {
-      setT2vResolution(combinedCapabilities.supportedResolutions[0]);
+      textSetters.setT2vResolution(combinedCapabilities.supportedResolutions[0]);
     }
 
     if (
       combinedCapabilities.supportedDurations &&
       combinedCapabilities.supportedDurations.length > 0 &&
-      !combinedCapabilities.supportedDurations.includes(t2vDuration)
+      !combinedCapabilities.supportedDurations.includes(textState.t2vDuration)
     ) {
-      setT2vDuration(combinedCapabilities.supportedDurations[0]);
+      textSetters.setT2vDuration(combinedCapabilities.supportedDurations[0]);
     }
-  }, [combinedCapabilities, t2vAspectRatio, t2vResolution, t2vDuration]);
-
-  const handleUpscaleVideoChange = async (file: File | null) => {
-    setSourceVideoFile(file);
-
-    if (!file) {
-      setVideoMetadata(null);
-      return;
-    }
-
-    setSourceVideoUrl("");
-    try {
-      const metadata = await extractVideoMetadataFromFile(file);
-      setVideoMetadata(metadata);
-    } catch (error) {
-      console.error("Failed to read video metadata", error);
-      setVideoMetadata(null);
-    }
-  };
-
-  const handleUpscaleVideoUrlBlur = async () => {
-    if (!sourceVideoUrl) {
-      setVideoMetadata(null);
-      return;
-    }
-
-    try {
-      const metadata = await extractVideoMetadataFromUrl(sourceVideoUrl);
-      setVideoMetadata(metadata);
-    } catch (error) {
-      console.error("Failed to read video metadata", error);
-      setVideoMetadata(null);
-    }
-  };
-
-  // Use extracted hooks
-  const generation = useAIGeneration({
-    prompt,
-    selectedModels,
-    selectedImage,
-    activeTab,
-    activeProject,
-    // Avatar-specific props
-    avatarImage,
-    audioFile,
-    sourceVideo,
-    sourceVideoFile,
-    sourceVideoUrl,
-    referenceImages,
-    hailuoT2VDuration,
-    t2vAspectRatio,
-    t2vResolution,
-    t2vDuration,
-    t2vNegativePrompt,
-    t2vPromptExpansion,
-    t2vSeed,
-    t2vSafetyChecker,
-    viduQ2Duration,
-    viduQ2Resolution,
-    viduQ2MovementAmplitude,
-    viduQ2EnableBGM,
-    ltxv2Duration,
-    ltxv2Resolution,
-    ltxv2FPS,
-    ltxv2GenerateAudio,
-    ltxv2FastDuration,
-    ltxv2FastResolution,
-    ltxv2FastFPS,
-    ltxv2FastGenerateAudio,
-    ltxv2I2VDuration,
-    ltxv2I2VResolution,
-    ltxv2I2VFPS,
-    ltxv2I2VGenerateAudio,
-    ltxv2ImageDuration,
-    ltxv2ImageResolution,
-    ltxv2ImageFPS,
-    ltxv2ImageGenerateAudio,
-    seedanceDuration,
-    seedanceResolution,
-    seedanceAspectRatio,
-    seedanceCameraFixed,
-    seedanceEndFrameUrl: cleanedSeedanceEndFrameUrl,
-    seedanceEndFrameFile,
-    imageSeed,
-    klingDuration,
-    klingCfgScale,
-    klingAspectRatio,
-    klingEnhancePrompt,
-    klingNegativePrompt: cleanedKlingNegativePrompt,
-    kling26Duration,
-    kling26CfgScale,
-    kling26AspectRatio,
-    kling26GenerateAudio,
-    kling26NegativePrompt: kling26NegativePrompt.trim() || undefined,
-    wan25Duration,
-    wan25Resolution,
-    wan25AudioUrl: cleanedWan25AudioUrl,
-    wan25AudioFile,
-    wan25NegativePrompt: cleanedWan25NegativePrompt,
-    wan25EnablePromptExpansion,
-    // Kling Avatar v2 props
-    klingAvatarV2Prompt,
-    audioDuration,
-    bytedanceTargetResolution,
-    bytedanceTargetFPS,
-    flashvsrUpscaleFactor,
-    flashvsrAcceleration,
-    flashvsrQuality,
-    flashvsrColorFix,
-    flashvsrPreserveAudio,
-    flashvsrOutputFormat,
-    flashvsrOutputQuality,
-    flashvsrOutputWriteMode,
-    flashvsrSeed,
-    topazUpscaleFactor,
-    topazTargetFPS,
-    topazH264Output,
-    onProgress: (progress, message) => {
-      console.log(`[AI View] Progress: ${progress}% - ${message}`);
-      // Progress is handled internally by the hook
-    },
-    onError: (error) => {
-      console.error("[AI View] Error occurred:", error);
-      setError(error);
-    },
-    onComplete: (videos) => {
-      console.log("\n🎉🎉🎉 [AI View] GENERATION COMPLETE 🎉🎉🎉");
-      console.log(`[AI View] Received ${videos.length} videos:`, videos);
-      debugLogger.log("AiView", "GENERATION_COMPLETE", {
-        videoCount: videos.length,
-        models: selectedModels,
-      });
-      console.log("[AI View] onComplete callback finished");
-    },
-  });
-
-  const history = useAIHistory();
-
-  // Store hooks - use selector-based subscriptions to minimize re-renders
-  const aiPanelWidth = usePanelStore((s) => s.aiPanelWidth);
-  const aiPanelMinWidth = usePanelStore((s) => s.aiPanelMinWidth);
-
-  // Responsive layout calculations with safe defaults
-  const safeAiPanelWidth = typeof aiPanelWidth === "number" ? aiPanelWidth : 22;
-  const safeAiPanelMinWidth =
-    typeof aiPanelMinWidth === "number" ? aiPanelMinWidth : 4;
-  const isCollapsed = safeAiPanelWidth <= safeAiPanelMinWidth + 2;
-  const isCompact = safeAiPanelWidth < 18;
-  const isExpanded = safeAiPanelWidth > 25;
-
-  // Helper functions for multi-model selection
-  const toggleModel = (modelId: string) => {
-    setSelectedModels((prev) =>
-      prev.includes(modelId)
-        ? prev.filter((id) => id !== modelId)
-        : [...prev, modelId]
-    );
-  };
-
-  const isModelSelected = (modelId: string) => selectedModels.includes(modelId);
-  const hailuoStandardSelected = selectedModels.includes(
-    "hailuo23_standard_t2v"
-  );
-  const hailuoProSelected = selectedModels.includes("hailuo23_pro_t2v");
-  const viduQ2Selected = selectedModels.includes("vidu_q2_turbo_i2v");
-  const ltxv2ProTextSelected = selectedModels.includes("ltxv2_pro_t2v");
-  const ltxv2FastTextSelected = selectedModels.includes("ltxv2_fast_t2v");
-  const ltxv2TextSelected = ltxv2ProTextSelected || ltxv2FastTextSelected;
-  const ltxv2I2VSelected = selectedModels.includes("ltxv2_i2v");
-  const ltxv2ImageSelected = selectedModels.includes("ltxv2_fast_i2v");
-  const ltxv2FastExtendedResolutions = LTXV2_FAST_CONFIG.RESOLUTIONS.EXTENDED;
-  const ltxv2FastExtendedFps = LTXV2_FAST_CONFIG.FPS_OPTIONS.EXTENDED;
-  const isExtendedLTXV2FastImageDuration =
-    ltxv2ImageDuration > LTXV2_FAST_CONFIG.EXTENDED_DURATION_THRESHOLD;
-  const isExtendedLTXV2FastTextDuration =
-    ltxv2FastDuration > LTXV2_FAST_CONFIG.EXTENDED_DURATION_THRESHOLD;
-  const seedanceFastSelected = selectedModels.includes("seedance_pro_fast_i2v");
-  const seedanceProSelected = selectedModels.includes("seedance_pro_i2v");
-  const seedanceSelected = seedanceFastSelected || seedanceProSelected;
-  const klingI2VSelected = selectedModels.includes("kling_v2_5_turbo_i2v");
-  const kling26T2VSelected = selectedModels.includes("kling_v26_pro_t2v");
-  const kling26I2VSelected = selectedModels.includes("kling_v26_pro_i2v");
-  const kling26Selected = kling26T2VSelected || kling26I2VSelected;
-  const klingAvatarV2Selected =
-    selectedModels.includes("kling_avatar_v2_standard") ||
-    selectedModels.includes("kling_avatar_v2_pro");
-  const wan25Selected = selectedModels.includes("wan_25_preview_i2v");
-  const bytedanceUpscalerSelected = selectedModels.includes(
-    "bytedance_video_upscaler"
-  );
-  const flashvsrUpscalerSelected = selectedModels.includes(
-    "flashvsr_video_upscaler"
-  );
-  const topazUpscalerSelected = selectedModels.includes("topaz_video_upscale");
-
-  const videoDurationSeconds = videoMetadata?.duration ?? 10;
-
-  const bytedanceEstimatedCost = useMemo(
-    () =>
-      calculateByteDanceUpscaleCost(
-        bytedanceTargetResolution,
-        bytedanceTargetFPS,
-        videoDurationSeconds
-      ),
-    [bytedanceTargetResolution, bytedanceTargetFPS, videoDurationSeconds]
-  );
-
-  const flashvsrEstimatedCost = useMemo(() => {
-    if (!videoMetadata) return "$0.000";
-    const { width, height, frames, duration, fps } = videoMetadata;
-    const frameCount =
-      frames ?? Math.max(1, Math.round((duration ?? 0) * (fps ?? 30)));
-
-    return calculateFlashVSRUpscaleCost(
-      width,
-      height,
-      frameCount,
-      flashvsrUpscaleFactor
-    );
-  }, [videoMetadata, flashvsrUpscaleFactor]);
-  const seedanceModelId = seedanceProSelected
-    ? "seedance_pro_i2v"
-    : "seedance_pro_fast_i2v";
-  const seedanceModelConfig = AI_MODELS.find(
-    (model) => model.id === seedanceModelId
-  );
-  const seedanceDurationOptions =
-    seedanceModelConfig?.supportedDurations ?? SEEDANCE_DURATION_OPTIONS;
-  const seedanceResolutionOptions =
-    seedanceModelConfig?.supportedResolutions ?? SEEDANCE_RESOLUTIONS;
-  const seedanceAspectRatioOptions =
-    seedanceModelConfig?.supportedAspectRatios ?? SEEDANCE_ASPECT_RATIOS;
-  const seedanceEstimatedCost = calculateSeedanceCost(
-    seedanceModelId,
-    seedanceResolution,
-    seedanceDuration
-  );
-  const klingModelConfig = AI_MODELS.find(
-    (model) => model.id === "kling_v2_5_turbo_i2v"
-  );
-  const klingAspectRatios =
-    klingModelConfig?.supportedAspectRatios ?? KLING_ASPECT_RATIOS;
-  const klingEstimatedCost = calculateKlingCost(klingDuration);
-  // Kling v2.6 cost calculation: $0.07/s without audio, $0.14/s with audio
-  const calculateKling26Cost = (
-    duration: number,
-    generateAudio: boolean
-  ): number => {
-    const perSecondRate = generateAudio ? 0.14 : 0.07;
-    return duration * perSecondRate;
-  };
-  const kling26EstimatedCost = calculateKling26Cost(
-    kling26Duration,
-    kling26GenerateAudio
-  );
-  const wan25ModelConfig = AI_MODELS.find(
-    (model) => model.id === "wan_25_preview_i2v"
-  );
-  const wan25DurationOptions =
-    wan25ModelConfig?.supportedDurations ?? WAN25_DURATIONS;
-  const wan25ResolutionOptions =
-    wan25ModelConfig?.supportedResolutions ?? WAN25_RESOLUTIONS;
-  const wan25PricePerSecond =
-    wan25ModelConfig?.perSecondPricing?.[wan25Resolution] ?? 0;
-  const wan25EstimatedCost = wan25PricePerSecond * wan25Duration;
+  }, [combinedCapabilities, textState.t2vAspectRatio, textState.t2vResolution, textState.t2vDuration, textSetters]);
 
   // Reset Reve state when model is deselected
   useEffect(() => {
@@ -703,231 +199,189 @@ export function AiView() {
     }
   }, [selectedModels]);
 
-  useEffect(() => {
-    // Only reset duration if NEITHER Standard nor Pro is selected
-    const hasHailuoT2VModel =
-      selectedModels.includes("hailuo23_standard_t2v") ||
-      selectedModels.includes("hailuo23_pro_t2v");
-
-    if (!hasHailuoT2VModel && hailuoT2VDuration !== 6) {
-      setHailuoT2VDuration(6);
-    }
-  }, [selectedModels, hailuoT2VDuration]);
-
-  useEffect(() => {
-    if (!viduQ2Selected) {
-      setViduQ2Duration(4);
-      setViduQ2Resolution("720p");
-      setViduQ2MovementAmplitude("auto");
-      setViduQ2EnableBGM(false);
-    }
-  }, [viduQ2Selected]);
-
-  useEffect(() => {
-    if (viduQ2Duration !== 4 && viduQ2EnableBGM) {
-      setViduQ2EnableBGM(false);
-    }
-  }, [viduQ2Duration, viduQ2EnableBGM]);
-
-  useEffect(() => {
-    if (!ltxv2ProTextSelected) {
-      setLTXV2Duration(6);
-      setLTXV2Resolution("1080p");
-      setLTXV2FPS(25);
-      setLTXV2GenerateAudio(true);
-    }
-  }, [ltxv2ProTextSelected]);
-
-  useEffect(() => {
-    if (!ltxv2FastTextSelected) {
-      setLTXV2FastDuration(LTXV2_FAST_CONFIG.DURATIONS[0]);
-      setLTXV2FastResolution(LTXV2_FAST_CONFIG.RESOLUTIONS.STANDARD[0]);
-      setLTXV2FastFPS(LTXV2_FAST_CONFIG.FPS_OPTIONS.STANDARD[0]);
-      setLTXV2FastGenerateAudio(true);
-    }
-  }, [ltxv2FastTextSelected]);
-
-  useEffect(() => {
-    if (!ltxv2I2VSelected) {
-      setLTXV2I2VDuration(6);
-      setLTXV2I2VResolution("1080p");
-      setLTXV2I2VFPS(25);
-      setLTXV2I2VGenerateAudio(true);
-    }
-  }, [ltxv2I2VSelected]);
-
-  useEffect(() => {
-    if (!ltxv2ImageSelected) {
-      setLTXV2ImageDuration(LTXV2_FAST_CONFIG.DURATIONS[0]);
-      setLTXV2ImageResolution(LTXV2_FAST_CONFIG.RESOLUTIONS.STANDARD[0]);
-      setLTXV2ImageFPS(LTXV2_FAST_CONFIG.FPS_OPTIONS.STANDARD[0]);
-      setLTXV2ImageGenerateAudio(true);
-    }
-  }, [ltxv2ImageSelected]);
-
-  useEffect(() => {
-    if (!seedanceSelected) {
-      setSeedanceDuration(5);
-      setSeedanceResolution("1080p");
-      setSeedanceAspectRatio("16:9");
-      setSeedanceCameraFixed(false);
-      setSeedanceEndFrameFile(null);
-      setSeedanceEndFramePreview(null);
-      setSeedanceEndFrameUrl(undefined);
-    }
-  }, [seedanceSelected]);
-
-  useEffect(() => {
-    if (!klingI2VSelected) {
-      setKlingDuration(5);
-      setKlingCfgScale(0.5);
-      setKlingAspectRatio("16:9");
-      setKlingEnhancePrompt(true);
-      setKlingNegativePrompt("");
-    }
-  }, [klingI2VSelected]);
-
-  useEffect(() => {
-    if (!wan25Selected) {
-      setWan25Duration(5);
-      setWan25Resolution("1080p");
-      setWan25AudioUrl(undefined);
-      setWan25AudioFile(null);
-      setWan25AudioPreview(null);
-      setWan25NegativePrompt("");
-      setWan25EnablePromptExpansion(true);
-    }
-  }, [wan25Selected]);
-
-  useEffect(() => {
-    if (!seedanceSelected && !wan25Selected) {
-      setImageSeed(undefined);
-    }
-  }, [seedanceSelected, wan25Selected]);
-
-  // Reset Kling Avatar v2 state when deselected
-  useEffect(() => {
-    if (!klingAvatarV2Selected) {
-      setKlingAvatarV2Prompt("");
-    }
-  }, [klingAvatarV2Selected]);
-
-  // Extract audio duration when audioFile changes (for Kling Avatar v2 cost calculation)
-  useEffect(() => {
-    if (audioFile) {
-      const audio = new Audio();
-      audio.src = URL.createObjectURL(audioFile);
-      audio.onloadedmetadata = () => {
-        setAudioDuration(audio.duration);
-        URL.revokeObjectURL(audio.src);
-      };
-      audio.onerror = () => {
-        setAudioDuration(null);
-        URL.revokeObjectURL(audio.src);
-      };
-    } else {
-      setAudioDuration(null);
-    }
-  }, [audioFile]);
-
-  useEffect(() => {
-    if (!ltxv2FastTextSelected && !ltxv2ImageSelected) {
-      return;
-    }
-
-    const enforceFastConstraints = (
-      duration: number,
-      currentResolution: LTXV2FastResolution,
-      setResolution: (value: LTXV2FastResolution) => void,
-      currentFps: LTXV2FastFps,
-      setFps: (value: LTXV2FastFps) => void
-    ) => {
-      if (duration <= LTXV2_FAST_CONFIG.EXTENDED_DURATION_THRESHOLD) {
-        return;
-      }
-
-      const enforcedResolution =
-        LTXV2_FAST_CONFIG.RESOLUTIONS.EXTENDED[0] ??
-        LTXV2_FAST_CONFIG.RESOLUTIONS.STANDARD[0];
-      const enforcedFps =
-        LTXV2_FAST_CONFIG.FPS_OPTIONS.EXTENDED[0] ??
-        LTXV2_FAST_CONFIG.FPS_OPTIONS.STANDARD[0];
-
-      if (currentResolution !== enforcedResolution) {
-        setResolution(enforcedResolution);
-      }
-
-      if (currentFps !== enforcedFps) {
-        setFps(enforcedFps);
-      }
-    };
-
-    if (ltxv2FastTextSelected) {
-      enforceFastConstraints(
-        ltxv2FastDuration,
-        ltxv2FastResolution,
-        setLTXV2FastResolution,
-        ltxv2FastFPS,
-        setLTXV2FastFPS
-      );
-    }
-
-    if (ltxv2ImageSelected) {
-      enforceFastConstraints(
-        ltxv2ImageDuration,
-        ltxv2ImageResolution,
-        setLTXV2ImageResolution,
-        ltxv2ImageFPS,
-        setLTXV2ImageFPS
-      );
-    }
-  }, [
-    ltxv2FastTextSelected,
-    ltxv2FastDuration,
-    ltxv2FastResolution,
-    ltxv2FastFPS,
-    ltxv2ImageSelected,
-    ltxv2ImageDuration,
-    ltxv2ImageResolution,
-    ltxv2ImageFPS,
-  ]);
-
   // Sync firstFrame with selectedImage for backward compatibility
   useEffect(() => {
-    if (firstFrame && !lastFrame) {
-      // Single image mode - maintain backward compatibility with I2V code
-      setSelectedImage(firstFrame);
-      setImagePreview(firstFramePreview);
-    } else if (firstFrame && lastFrame) {
-      // F2V mode - clear selectedImage to avoid confusion
+    if (imageState.firstFrame && !imageState.lastFrame) {
+      setSelectedImage(imageState.firstFrame);
+      setImagePreview(imageState.firstFramePreview);
+    } else if (imageState.firstFrame && imageState.lastFrame) {
       setSelectedImage(null);
       setImagePreview(null);
     } else {
-      // Frames cleared - ensure legacy state is also cleared
       setSelectedImage(null);
       setImagePreview(null);
     }
-  }, [firstFrame, lastFrame, firstFramePreview]);
+  }, [imageState.firstFrame, imageState.lastFrame, imageState.firstFramePreview]);
 
-  // Reset generation state
-  const resetGenerationState = () => {
-    generation.resetGenerationState();
-    setError(null);
-    setT2vAspectRatio("16:9");
-    setT2vResolution("1080p");
-    setT2vDuration(4);
-    setT2vNegativePrompt(
-      "low resolution, error, worst quality, low quality, defects"
+  // ============================================
+  // Generation Hook
+  // ============================================
+  const generation = useAIGeneration({
+    prompt,
+    selectedModels,
+    selectedImage,
+    activeTab,
+    activeProject,
+    // Avatar-specific props
+    avatarImage: avatarState.avatarImage,
+    audioFile: avatarState.audioFile,
+    sourceVideo: avatarState.sourceVideo,
+    sourceVideoFile: upscaleState.sourceVideoFile,
+    sourceVideoUrl: upscaleState.sourceVideoUrl,
+    referenceImages: avatarState.referenceImages,
+    // Text tab settings
+    hailuoT2VDuration: textState.hailuoT2VDuration,
+    t2vAspectRatio: textState.t2vAspectRatio,
+    t2vResolution: textState.t2vResolution,
+    t2vDuration: textState.t2vDuration,
+    t2vNegativePrompt: textState.t2vNegativePrompt,
+    t2vPromptExpansion: textState.t2vPromptExpansion,
+    t2vSeed: textState.t2vSeed,
+    t2vSafetyChecker: textState.t2vSafetyChecker,
+    // Image tab settings - Vidu Q2
+    viduQ2Duration: imageState.viduQ2.duration,
+    viduQ2Resolution: imageState.viduQ2.resolution,
+    viduQ2MovementAmplitude: imageState.viduQ2.movementAmplitude,
+    viduQ2EnableBGM: imageState.viduQ2.enableBGM,
+    // LTX Pro Text
+    ltxv2Duration: textState.ltxv2Duration,
+    ltxv2Resolution: textState.ltxv2Resolution,
+    ltxv2FPS: textState.ltxv2FPS,
+    ltxv2GenerateAudio: textState.ltxv2GenerateAudio,
+    // LTX Fast Text
+    ltxv2FastDuration: textState.ltxv2FastDuration,
+    ltxv2FastResolution: textState.ltxv2FastResolution,
+    ltxv2FastFPS: textState.ltxv2FastFPS,
+    ltxv2FastGenerateAudio: textState.ltxv2FastGenerateAudio,
+    // LTX I2V
+    ltxv2I2VDuration: imageState.ltxv2I2V.duration,
+    ltxv2I2VResolution: imageState.ltxv2I2V.resolution,
+    ltxv2I2VFPS: imageState.ltxv2I2V.fps,
+    ltxv2I2VGenerateAudio: imageState.ltxv2I2V.generateAudio,
+    // LTX Fast I2V
+    ltxv2ImageDuration: imageState.ltxv2Image.duration,
+    ltxv2ImageResolution: imageState.ltxv2Image.resolution,
+    ltxv2ImageFPS: imageState.ltxv2Image.fps,
+    ltxv2ImageGenerateAudio: imageState.ltxv2Image.generateAudio,
+    // Seedance
+    seedanceDuration: imageState.seedance.duration,
+    seedanceResolution: imageState.seedance.resolution,
+    seedanceAspectRatio: imageState.seedance.aspectRatio,
+    seedanceCameraFixed: imageState.seedance.cameraFixed,
+    seedanceEndFrameUrl: imageHelpers.cleanedSeedanceEndFrameUrl,
+    seedanceEndFrameFile: imageState.seedance.endFrameFile,
+    imageSeed: imageState.imageSeed,
+    // Kling v2.5
+    klingDuration: imageState.kling.duration,
+    klingCfgScale: imageState.kling.cfgScale,
+    klingAspectRatio: imageState.kling.aspectRatio,
+    klingEnhancePrompt: imageState.kling.enhancePrompt,
+    klingNegativePrompt: imageHelpers.cleanedKlingNegativePrompt,
+    // Kling v2.6
+    kling26Duration: imageState.kling26.duration,
+    kling26CfgScale: imageState.kling26.cfgScale,
+    kling26AspectRatio: imageState.kling26.aspectRatio,
+    kling26GenerateAudio: imageState.kling26.generateAudio,
+    kling26NegativePrompt: imageState.kling26.negativePrompt.trim() || undefined,
+    // WAN 2.5
+    wan25Duration: imageState.wan25.duration,
+    wan25Resolution: imageState.wan25.resolution,
+    wan25AudioUrl: imageHelpers.cleanedWan25AudioUrl,
+    wan25AudioFile: imageState.wan25.audioFile,
+    wan25NegativePrompt: imageHelpers.cleanedWan25NegativePrompt,
+    wan25EnablePromptExpansion: imageState.wan25.enablePromptExpansion,
+    // Avatar - Kling Avatar v2
+    klingAvatarV2Prompt: avatarState.klingAvatarV2Prompt,
+    audioDuration: avatarState.audioDuration,
+    // Upscale - ByteDance
+    bytedanceTargetResolution: upscaleState.bytedance.targetResolution,
+    bytedanceTargetFPS: upscaleState.bytedance.targetFPS,
+    // Upscale - FlashVSR
+    flashvsrUpscaleFactor: upscaleState.flashvsr.upscaleFactor,
+    flashvsrAcceleration: upscaleState.flashvsr.acceleration,
+    flashvsrQuality: upscaleState.flashvsr.quality,
+    flashvsrColorFix: upscaleState.flashvsr.colorFix,
+    flashvsrPreserveAudio: upscaleState.flashvsr.preserveAudio,
+    flashvsrOutputFormat: upscaleState.flashvsr.outputFormat,
+    flashvsrOutputQuality: upscaleState.flashvsr.outputQuality,
+    flashvsrOutputWriteMode: upscaleState.flashvsr.outputWriteMode,
+    flashvsrSeed: upscaleState.flashvsr.seed,
+    // Upscale - Topaz
+    topazUpscaleFactor: upscaleState.topaz.upscaleFactor,
+    topazTargetFPS: upscaleState.topaz.targetFPS,
+    topazH264Output: upscaleState.topaz.h264Output,
+    onProgress: (progress, message) => {
+      console.log(`[AI View] Progress: ${progress}% - ${message}`);
+    },
+    onError: (err) => {
+      console.error("[AI View] Error occurred:", err);
+      setError(err);
+    },
+    onComplete: (videos) => {
+      console.log("\n[AI View] GENERATION COMPLETE");
+      console.log(`[AI View] Received ${videos.length} videos:`, videos);
+      debugLogger.log("AiView", "GENERATION_COMPLETE", {
+        videoCount: videos.length,
+        models: selectedModels,
+      });
+    },
+  });
+
+  const history = useAIHistory();
+
+  // ============================================
+  // UI State
+  // ============================================
+  const aiPanelWidth = usePanelStore((s) => s.aiPanelWidth);
+  const aiPanelMinWidth = usePanelStore((s) => s.aiPanelMinWidth);
+
+  const safeAiPanelWidth = typeof aiPanelWidth === "number" ? aiPanelWidth : 22;
+  const safeAiPanelMinWidth =
+    typeof aiPanelMinWidth === "number" ? aiPanelMinWidth : 4;
+  const isCollapsed = safeAiPanelWidth <= safeAiPanelMinWidth + 2;
+  const isCompact = safeAiPanelWidth < 18;
+
+  // ============================================
+  // Model Selection Helpers
+  // ============================================
+  const toggleModel = (modelId: string) => {
+    setSelectedModels((prev) =>
+      prev.includes(modelId)
+        ? prev.filter((id) => id !== modelId)
+        : [...prev, modelId]
     );
-    setT2vPromptExpansion(false);
-    setT2vSeed(-1);
-    setT2vSafetyChecker(false);
-    setT2vSettingsExpanded(false);
   };
 
-  // Calculate cost helpers
-  const maxChars = generation.isSora2Selected ? 5000 : 500;
-  const remainingChars = maxChars - prompt.length;
+  const isModelSelected = (modelId: string) => selectedModels.includes(modelId);
+
+  // ============================================
+  // Cost Calculation
+  // ============================================
+  const videoDurationSeconds = upscaleState.videoMetadata?.duration ?? 10;
+
+  const bytedanceEstimatedCost = useMemo(
+    () =>
+      calculateByteDanceUpscaleCost(
+        upscaleState.bytedance.targetResolution,
+        upscaleState.bytedance.targetFPS,
+        videoDurationSeconds
+      ),
+    [upscaleState.bytedance.targetResolution, upscaleState.bytedance.targetFPS, videoDurationSeconds]
+  );
+
+  const flashvsrEstimatedCost = useMemo(() => {
+    if (!upscaleState.videoMetadata) return "$0.000";
+    const { width, height, frames, duration, fps } = upscaleState.videoMetadata;
+    const frameCount =
+      frames ?? Math.max(1, Math.round((duration ?? 0) * (fps ?? 30)));
+
+    return calculateFlashVSRUpscaleCost(
+      width,
+      height,
+      frameCount,
+      upscaleState.flashvsr.upscaleFactor
+    );
+  }, [upscaleState.videoMetadata, upscaleState.flashvsr.upscaleFactor]);
 
   const totalCost = selectedModels.reduce((total, modelId) => {
     const model = AI_MODELS.find((m) => m.id === modelId);
@@ -935,44 +389,28 @@ export function AiView() {
 
     // Adjust for Sora 2 duration and resolution
     if (modelId.startsWith("sora2_")) {
-      // CRITICAL: Remix inherits duration from source video, not UI duration control
-      // Cannot calculate accurate price without knowing source video duration
       if (modelId === "sora2_video_to_video_remix") {
-        // Remix pricing: $0.10/s * (source video duration)
-        // Since we don't track source video duration yet, return 0 and show "varies" message
-        // TODO: Track source video duration from previously generated videos for accurate pricing
-        modelCost = 0; // Will display "Price varies" in UI
-      }
-      // Pro models have resolution-based pricing
-      else if (
+        modelCost = 0;
+      } else if (
         modelId === "sora2_text_to_video_pro" ||
         modelId === "sora2_image_to_video_pro"
       ) {
         if (generation.resolution === "1080p") {
-          modelCost = generation.duration * 0.5; // $0.50/s for 1080p
+          modelCost = generation.duration * 0.5;
         } else if (generation.resolution === "720p") {
-          modelCost = generation.duration * 0.3; // $0.30/s for 720p
+          modelCost = generation.duration * 0.3;
         } else {
-          // auto resolution - use 720p pricing as default
           modelCost = generation.duration * 0.3;
         }
       } else {
-        // Standard models: $0.10/s * (user-selected duration)
         modelCost = generation.duration * 0.1;
       }
-    }
-    // Veo 3.1 pricing calculation
-    else if (modelId.startsWith("veo31_")) {
+    } else if (modelId.startsWith("veo31_")) {
       const durationSeconds = Number.parseInt(
         generation.veo31Settings.duration,
         10
-      ); // "4s" -> 4
-
-      // Determine if this is a fast or standard model
+      );
       const isFastModel = modelId.includes("_fast_");
-
-      // Fast models: $0.10/s (no audio) or $0.15/s (with audio)
-      // Standard models: $0.20/s (no audio) or $0.40/s (with audio)
       const pricePerSecond = isFastModel
         ? generation.veo31Settings.generateAudio
           ? 0.15
@@ -980,69 +418,32 @@ export function AiView() {
         : generation.veo31Settings.generateAudio
           ? 0.4
           : 0.2;
-
       modelCost = durationSeconds * pricePerSecond;
-    }
-    // Reve Text-to-Image pricing calculation
-    else if (modelId === "reve-text-to-image") {
-      modelCost = REVE_TEXT_TO_IMAGE_MODEL.pricing.perImage * reveNumImages; // Use configured per-image pricing
-    }
-    // Hailuo 2.3 Standard T2V dynamic pricing based on duration
-    else if (modelId === "hailuo23_standard_t2v") {
-      modelCost = hailuoT2VDuration === 10 ? 0.56 : 0.28;
-    }
-    // LTX Video 2.0 Fast I2V resolution-based pricing
-    else if (modelId === "ltxv2_fast_i2v") {
+    } else if (modelId === "reve-text-to-image") {
+      modelCost = REVE_TEXT_TO_IMAGE_MODEL.pricing.perImage * reveNumImages;
+    } else if (modelId === "hailuo23_standard_t2v") {
+      modelCost = textState.hailuoT2VDuration === 10 ? 0.56 : 0.28;
+    } else if (modelId === "ltxv2_fast_i2v") {
       const pricePerSecond =
-        LTXV2_FAST_CONFIG.PRICING[ltxv2ImageResolution] ?? 0;
-      modelCost = ltxv2ImageDuration * pricePerSecond;
-    }
-    // LTX Video 2.0 Fast T2V resolution-based pricing
-    else if (modelId === "ltxv2_fast_t2v") {
+        LTXV2_FAST_CONFIG.PRICING[imageState.ltxv2Image.resolution] ?? 0;
+      modelCost = imageState.ltxv2Image.duration * pricePerSecond;
+    } else if (modelId === "ltxv2_fast_t2v") {
       const pricePerSecond =
-        LTXV2_FAST_CONFIG.PRICING[ltxv2FastResolution] ?? 0;
-      modelCost = ltxv2FastDuration * pricePerSecond;
-    }
-    // Seedance image-to-video pricing (scale relative to default duration)
-    else if (
-      modelId === "seedance_pro_fast_i2v" ||
-      modelId === "seedance_pro_i2v"
-    ) {
-      const basePrice = model ? Number.parseFloat(model.price) : 0;
-      const defaultDuration =
-        (model?.default_params?.duration as number | undefined) ?? 5;
-      modelCost = basePrice * (seedanceDuration / (defaultDuration || 5));
-    }
-    // Kling v2.5 Turbo Pro image-to-video pricing
-    else if (modelId === "kling_v2_5_turbo_i2v") {
-      const basePrice = model ? Number.parseFloat(model.price) : 0;
-      const defaultDuration =
-        (model?.default_params?.duration as number | undefined) ?? 5;
-      modelCost = basePrice * (klingDuration / (defaultDuration || 5));
-    }
-    // WAN 2.5 Preview image-to-video pricing (per-second by resolution)
-    else if (modelId === "wan_25_preview_i2v") {
-      const perSecond =
-        model?.perSecondPricing?.[wan25Resolution] ??
-        Number.parseFloat(model?.price ?? "0");
-      modelCost = perSecond * wan25Duration;
-    }
-    // Kling v2.6 Pro pricing: $0.07/s (no audio) or $0.14/s (with audio)
-    else if (
-      modelId === "kling_v26_pro_t2v" ||
-      modelId === "kling_v26_pro_i2v"
-    ) {
-      const perSecondRate = kling26GenerateAudio ? 0.14 : 0.07;
-      modelCost = kling26Duration * perSecondRate;
+        LTXV2_FAST_CONFIG.PRICING[textState.ltxv2FastResolution] ?? 0;
+      modelCost = textState.ltxv2FastDuration * pricePerSecond;
     }
 
     return total + modelCost;
   }, 0);
 
-  // Check if remix model is selected to show special pricing note
   const hasRemixSelected = selectedModels.includes(
     "sora2_video_to_video_remix"
   );
+
+  // ============================================
+  // Render Helpers
+  // ============================================
+  const maxChars = generation.isSora2Selected ? 5000 : 500;
 
   // Handle media store loading/error states
   if (generation.mediaStoreError) {
@@ -1074,6 +475,7 @@ export function AiView() {
       className={`h-full flex flex-col transition-all duration-200 ${isCollapsed ? "p-2" : isCompact ? "p-3" : "p-4"}`}
       data-testid="ai-features-panel"
     >
+      {/* Header */}
       <div
         className={`flex items-center mb-4 ${isCollapsed ? "justify-center" : isCompact ? "flex-col gap-1" : "justify-between"}`}
       >
@@ -1105,7 +507,7 @@ export function AiView() {
         )}
       </div>
 
-      {/* Show collapsed state with just icon */}
+      {/* Collapsed State */}
       {isCollapsed ? (
         <div className="flex-1 flex flex-col items-center justify-center gap-2">
           <BotIcon className="size-8 text-muted-foreground" />
@@ -1118,7 +520,7 @@ export function AiView() {
           className="flex-1 overflow-y-auto space-y-4"
           data-testid="ai-enhancement-panel"
         >
-          {/* Tab selector */}
+          {/* Tab Selector */}
           <Tabs
             value={activeTab}
             onValueChange={(value: string) =>
@@ -1144,2240 +546,269 @@ export function AiView() {
               </TabsTrigger>
             </TabsList>
 
+            {/* Text Tab */}
             <TabsContent value="text" className="space-y-4">
-              {/* Prompt input */}
-              <div className="space-y-2">
-                <Label htmlFor="prompt" className="text-xs">
-                  Prompt {!isCompact && "for Video Generation"}
-                </Label>
-                <Textarea
-                  id="prompt"
-                  placeholder={
-                    isCompact
-                      ? "Describe the video..."
-                      : "Describe the video you want to generate..."
-                  }
-                  value={prompt}
-                  onChange={(e) => setPrompt(e.target.value)}
-                  className="min-h-[60px] text-xs resize-none"
-                  maxLength={maxChars}
-                />
-                <div
-                  className={`text-xs ${remainingChars < 50 ? "text-orange-500" : remainingChars < 20 ? "text-red-500" : "text-muted-foreground"} text-right`}
-                >
-                  {remainingChars} characters remaining
-                  {generation.isSora2Selected && (
-                    <span className="ml-2 text-primary">
-                      (Sora 2: 5000 max)
-                    </span>
-                  )}
-                </div>
-                {selectedModels.length > 0 && (
-                  <Collapsible
-                    open={t2vSettingsExpanded}
-                    onOpenChange={setT2vSettingsExpanded}
-                  >
-                    <div className="flex items-center justify-between border-t pt-3">
-                      <CollapsibleTrigger asChild>
-                        <Button
-                          variant="link"
-                          size="sm"
-                          className="flex items-center gap-2 p-0 h-auto"
-                        >
-                          <Label className="text-sm font-semibold cursor-pointer">
-                            Additional Settings
-                          </Label>
-                          <ChevronDown
-                            className={`h-4 w-4 transition-transform ${t2vSettingsExpanded ? "rotate-180" : ""}`}
-                          />
-                        </Button>
-                      </CollapsibleTrigger>
-
-                      {!t2vSettingsExpanded && (
-                        <Badge variant="secondary" className="text-xs">
-                          {getActiveSettingsCount()} active
-                        </Badge>
-                      )}
-                    </div>
-
-                    <CollapsibleContent className="space-y-4 mt-4">
-                      {combinedCapabilities.supportsAspectRatio && (
-                        <div className="space-y-2">
-                          <Label className="text-xs font-medium">
-                            Aspect Ratio
-                          </Label>
-                          <Select
-                            value={t2vAspectRatio}
-                            onValueChange={setT2vAspectRatio}
-                            disabled={
-                              !combinedCapabilities.supportedAspectRatios ||
-                              combinedCapabilities.supportedAspectRatios
-                                .length === 0
-                            }
-                          >
-                            <SelectTrigger className="h-8 text-xs">
-                              <SelectValue placeholder="Select aspect ratio" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {(
-                                combinedCapabilities.supportedAspectRatios || [
-                                  "16:9",
-                                ]
-                              ).map((ratio) => (
-                                <SelectItem key={ratio} value={ratio}>
-                                  {ratio}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      )}
-
-                      {combinedCapabilities.supportsResolution && (
-                        <div className="space-y-2">
-                          <Label className="text-xs font-medium">
-                            Resolution
-                          </Label>
-                          <Select
-                            value={t2vResolution}
-                            onValueChange={setT2vResolution}
-                            disabled={
-                              !combinedCapabilities.supportedResolutions ||
-                              combinedCapabilities.supportedResolutions
-                                .length === 0
-                            }
-                          >
-                            <SelectTrigger className="h-8 text-xs">
-                              <SelectValue placeholder="Select resolution" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {(
-                                combinedCapabilities.supportedResolutions || [
-                                  "1080p",
-                                ]
-                              ).map((res) => (
-                                <SelectItem key={res} value={res}>
-                                  {res}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      )}
-
-                      {combinedCapabilities.supportsDuration && (
-                        <div className="space-y-2">
-                          <Label className="text-xs font-medium">
-                            Duration
-                          </Label>
-                          <Select
-                            value={t2vDuration.toString()}
-                            onValueChange={(value) =>
-                              setT2vDuration(Number(value) || 4)
-                            }
-                            disabled={
-                              !combinedCapabilities.supportedDurations ||
-                              combinedCapabilities.supportedDurations.length ===
-                                0
-                            }
-                          >
-                            <SelectTrigger className="h-8 text-xs">
-                              <SelectValue placeholder="Select duration" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {(
-                                combinedCapabilities.supportedDurations || [5]
-                              ).map((dur) => (
-                                <SelectItem key={dur} value={dur.toString()}>
-                                  {dur} seconds
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      )}
-
-                      {combinedCapabilities.supportsNegativePrompt && (
-                        <div className="space-y-1">
-                          <Label className="text-xs font-medium">
-                            Negative Prompt
-                          </Label>
-                          <Textarea
-                            value={t2vNegativePrompt}
-                            onChange={(e) =>
-                              setT2vNegativePrompt(e.target.value)
-                            }
-                            placeholder="low resolution, error, worst quality, low quality, defects"
-                            className="min-h-[60px] text-xs resize-none"
-                            maxLength={500}
-                          />
-                        </div>
-                      )}
-
-                      {combinedCapabilities.supportsPromptExpansion && (
-                        <div className="flex items-center space-x-2">
-                          <Checkbox
-                            id="t2v-prompt-expansion"
-                            checked={t2vPromptExpansion}
-                            onCheckedChange={(checked) =>
-                              setT2vPromptExpansion(Boolean(checked))
-                            }
-                          />
-                          <Label
-                            htmlFor="t2v-prompt-expansion"
-                            className="text-xs"
-                          >
-                            Enable prompt expansion
-                          </Label>
-                        </div>
-                      )}
-
-                      {combinedCapabilities.supportsSeed && (
-                        <div className="space-y-1">
-                          <Label className="text-xs font-medium">Seed</Label>
-                          <Input
-                            type="number"
-                            inputMode="numeric"
-                            value={Number.isNaN(t2vSeed) ? "" : t2vSeed}
-                            onChange={(e) => {
-                              const val = Number(e.target.value);
-                              setT2vSeed(Number.isNaN(val) ? -1 : val);
-                            }}
-                            placeholder="-1 for random"
-                            className="h-8 text-xs"
-                          />
-                        </div>
-                      )}
-
-                      {combinedCapabilities.supportsSafetyChecker && (
-                        <div className="flex items-center space-x-2">
-                          <Checkbox
-                            id="t2v-safety-checker"
-                            checked={t2vSafetyChecker}
-                            onCheckedChange={(checked) =>
-                              setT2vSafetyChecker(Boolean(checked))
-                            }
-                          />
-                          <Label
-                            htmlFor="t2v-safety-checker"
-                            className="text-xs"
-                          >
-                            Enable safety checker
-                          </Label>
-                        </div>
-                      )}
-                    </CollapsibleContent>
-                  </Collapsible>
-                )}
-                {hailuoProSelected && (
-                  <>
-                    <div className="text-xs text-muted-foreground text-left">
-                      Tip: Add camera cues like [Pan left], [Zoom in], or [Track
-                      forward] to guide Pro shots.
-                    </div>
-                    {/* Show duration selector for Pro if Standard is not selected */}
-                    {!hailuoStandardSelected && (
-                      <div className="space-y-1 text-left mt-2">
-                        <Label
-                          htmlFor="hailuo-pro-duration"
-                          className="text-xs font-medium"
-                        >
-                          Hailuo 2.3 Pro Duration
-                        </Label>
-                        <Select
-                          value={hailuoT2VDuration.toString()}
-                          onValueChange={(value) =>
-                            setHailuoT2VDuration(value === "10" ? 10 : 6)
-                          }
-                        >
-                          <SelectTrigger
-                            id="hailuo-pro-duration"
-                            className="h-8 text-xs"
-                          >
-                            <SelectValue placeholder="Select duration" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="6">6 seconds ($0.49)</SelectItem>
-                            <SelectItem value="10">
-                              10 seconds ($0.49)
-                            </SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <div className="text-xs text-muted-foreground">
-                          Pro: Fixed price $0.49 for 6s or 10s
-                        </div>
-                      </div>
-                    )}
-                  </>
-                )}
-                {hailuoStandardSelected && (
-                  <div className="space-y-1 text-left">
-                    <Label
-                      htmlFor="hailuo-standard-duration"
-                      className="text-xs font-medium"
-                    >
-                      Hailuo 2.3 {hailuoProSelected ? "Shared" : "Standard"}{" "}
-                      Duration
-                    </Label>
-                    <Select
-                      value={hailuoT2VDuration.toString()}
-                      onValueChange={(value) =>
-                        setHailuoT2VDuration(value === "10" ? 10 : 6)
-                      }
-                    >
-                      <SelectTrigger
-                        id="hailuo-standard-duration"
-                        className="h-8 text-xs"
-                      >
-                        <SelectValue placeholder="Select duration" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="6">
-                          6 seconds (
-                          {hailuoProSelected
-                            ? "Standard: $0.28, Pro: $0.49"
-                            : "$0.28"}
-                          )
-                        </SelectItem>
-                        <SelectItem value="10">
-                          10 seconds (
-                          {hailuoProSelected
-                            ? "Standard: $0.56, Pro: $0.49"
-                            : "$0.56"}
-                          )
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <div className="text-xs text-muted-foreground">
-                      {hailuoProSelected
-                        ? "Duration applies to both Standard and Pro models"
-                        : "Standard: 6s: $0.28 | 10s: $0.56"}
-                    </div>
-                  </div>
-                )}
-                {ltxv2ProTextSelected && (
-                  <div className="space-y-2 text-left border-t pt-3">
-                    <Label className="text-xs font-medium">
-                      LTX Video 2.0 Pro Settings
-                    </Label>
-                    <div className="space-y-1">
-                      <Label htmlFor="ltxv2-duration" className="text-xs">
-                        Duration
-                      </Label>
-                      <Select
-                        value={ltxv2Duration.toString()}
-                        onValueChange={(value) =>
-                          setLTXV2Duration(Number(value) as 6 | 8 | 10)
-                        }
-                      >
-                        <SelectTrigger
-                          id="ltxv2-duration"
-                          className="h-8 text-xs"
-                        >
-                          <SelectValue placeholder="Select duration" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="6">6 seconds</SelectItem>
-                          <SelectItem value="8">8 seconds</SelectItem>
-                          <SelectItem value="10">10 seconds</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="space-y-1">
-                      <Label htmlFor="ltxv2-resolution" className="text-xs">
-                        Resolution
-                      </Label>
-                      <Select
-                        value={ltxv2Resolution}
-                        onValueChange={(value) =>
-                          setLTXV2Resolution(
-                            value as "1080p" | "1440p" | "2160p"
-                          )
-                        }
-                      >
-                        <SelectTrigger
-                          id="ltxv2-resolution"
-                          className="h-8 text-xs"
-                        >
-                          <SelectValue placeholder="Select resolution" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="1080p">1080p</SelectItem>
-                          <SelectItem value="1440p">1440p</SelectItem>
-                          <SelectItem value="2160p">2160p (4K)</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <div className="text-xs text-muted-foreground">
-                        Cost: $
-                        {(
-                          ltxv2Duration *
-                          (ltxv2Resolution === "1080p"
-                            ? 0.06
-                            : ltxv2Resolution === "1440p"
-                              ? 0.12
-                              : 0.24)
-                        ).toFixed(2)}
-                      </div>
-                    </div>
-
-                    <div className="space-y-1">
-                      <Label htmlFor="ltxv2-fps" className="text-xs">
-                        Frame Rate
-                      </Label>
-                      <Select
-                        value={ltxv2FPS.toString()}
-                        onValueChange={(value) =>
-                          setLTXV2FPS(Number(value) as 25 | 50)
-                        }
-                      >
-                        <SelectTrigger id="ltxv2-fps" className="h-8 text-xs">
-                          <SelectValue placeholder="Select frame rate" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="25">25 FPS</SelectItem>
-                          <SelectItem value="50">50 FPS</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="flex items-center space-x-2">
-                      <Checkbox
-                        id="ltxv2-audio"
-                        checked={ltxv2GenerateAudio}
-                        onCheckedChange={(checked) =>
-                          setLTXV2GenerateAudio(Boolean(checked))
-                        }
-                      />
-                      <Label htmlFor="ltxv2-audio" className="text-xs">
-                        Generate audio
-                      </Label>
-                    </div>
-                  </div>
-                )}
-              </div>
+              <AITextTab
+                prompt={prompt}
+                onPromptChange={setPrompt}
+                maxChars={maxChars}
+                selectedModels={selectedModels}
+                isCompact={isCompact}
+                combinedCapabilities={combinedCapabilities}
+                isSora2Selected={generation.isSora2Selected}
+                t2vSettingsExpanded={textState.t2vSettingsExpanded}
+                onT2vSettingsExpandedChange={textSetters.setT2vSettingsExpanded}
+                t2vAspectRatio={textState.t2vAspectRatio}
+                onT2vAspectRatioChange={textSetters.setT2vAspectRatio}
+                t2vResolution={textState.t2vResolution}
+                onT2vResolutionChange={textSetters.setT2vResolution}
+                t2vDuration={textState.t2vDuration}
+                onT2vDurationChange={textSetters.setT2vDuration}
+                t2vNegativePrompt={textState.t2vNegativePrompt}
+                onT2vNegativePromptChange={textSetters.setT2vNegativePrompt}
+                t2vPromptExpansion={textState.t2vPromptExpansion}
+                onT2vPromptExpansionChange={textSetters.setT2vPromptExpansion}
+                t2vSeed={textState.t2vSeed}
+                onT2vSeedChange={textSetters.setT2vSeed}
+                t2vSafetyChecker={textState.t2vSafetyChecker}
+                onT2vSafetyCheckerChange={textSetters.setT2vSafetyChecker}
+                activeSettingsCount={textHelpers.activeSettingsCount}
+                hailuoT2VDuration={textState.hailuoT2VDuration}
+                onHailuoT2VDurationChange={textSetters.setHailuoT2VDuration}
+                ltxv2Duration={textState.ltxv2Duration}
+                onLTXV2DurationChange={textSetters.setLTXV2Duration}
+                ltxv2Resolution={textState.ltxv2Resolution}
+                onLTXV2ResolutionChange={textSetters.setLTXV2Resolution}
+                ltxv2FPS={textState.ltxv2FPS}
+                onLTXV2FPSChange={textSetters.setLTXV2FPS}
+                ltxv2GenerateAudio={textState.ltxv2GenerateAudio}
+                onLTXV2GenerateAudioChange={textSetters.setLTXV2GenerateAudio}
+                ltxv2FastDuration={textState.ltxv2FastDuration}
+                onLTXV2FastDurationChange={textSetters.setLTXV2FastDuration}
+                ltxv2FastResolution={textState.ltxv2FastResolution}
+                onLTXV2FastResolutionChange={textSetters.setLTXV2FastResolution}
+                ltxv2FastFPS={textState.ltxv2FastFPS}
+                onLTXV2FastFPSChange={textSetters.setLTXV2FastFPS}
+                ltxv2FastGenerateAudio={textState.ltxv2FastGenerateAudio}
+                onLTXV2FastGenerateAudioChange={textSetters.setLTXV2FastGenerateAudio}
+              />
             </TabsContent>
 
+            {/* Image Tab */}
             <TabsContent value="image" className="space-y-4">
-              {/* Image upload - supports both I2V and F2V modes */}
-              <AIImageUploadSection
+              <AIImageTab
+                prompt={prompt}
+                onPromptChange={setPrompt}
+                maxChars={maxChars}
                 selectedModels={selectedModels}
-                firstFrame={firstFrame}
-                firstFramePreview={firstFramePreview}
-                lastFrame={lastFrame}
-                lastFramePreview={lastFramePreview}
-                sourceVideo={imageTabSourceVideo}
+                isCompact={isCompact}
+                onError={setError}
+                firstFrame={imageState.firstFrame}
+                firstFramePreview={imageState.firstFramePreview}
+                lastFrame={imageState.lastFrame}
+                lastFramePreview={imageState.lastFramePreview}
+                imageTabSourceVideo={imageState.imageTabSourceVideo}
                 onFirstFrameChange={(file, preview) => {
-                  setFirstFrame(file);
-                  setFirstFramePreview(preview || null);
+                  imageSetters.setFirstFrame(file);
                   if (generation.setFirstFrame) {
                     generation.setFirstFrame(file);
                   }
                 }}
                 onLastFrameChange={(file, preview) => {
-                  setLastFrame(file);
-                  setLastFramePreview(preview || null);
+                  imageSetters.setLastFrame(file);
                   if (generation.setLastFrame) {
                     generation.setLastFrame(file);
                   }
                 }}
                 onSourceVideoChange={(file) => {
-                  setImageTabSourceVideo(file);
+                  imageSetters.setImageTabSourceVideo(file);
                   if (file) setError(null);
                 }}
-                onError={setError}
-                isCompact={isCompact}
-              />
-
-              {/* Prompt for image-to-video */}
-              <div className="space-y-2">
-                <Label htmlFor="image-prompt" className="text-xs">
-                  {!isCompact && "Additional "}Prompt
-                  {!isCompact && " (optional)"}
-                </Label>
-                <Textarea
-                  id="image-prompt"
-                  placeholder={
-                    isCompact
-                      ? "Describe motion..."
-                      : "Describe how the image should move..."
+                viduQ2Duration={imageState.viduQ2.duration}
+                onViduQ2DurationChange={imageSetters.setViduQ2Duration}
+                viduQ2Resolution={imageState.viduQ2.resolution}
+                onViduQ2ResolutionChange={imageSetters.setViduQ2Resolution}
+                viduQ2MovementAmplitude={imageState.viduQ2.movementAmplitude}
+                onViduQ2MovementAmplitudeChange={imageSetters.setViduQ2MovementAmplitude}
+                viduQ2EnableBGM={imageState.viduQ2.enableBGM}
+                onViduQ2EnableBGMChange={imageSetters.setViduQ2EnableBGM}
+                ltxv2I2VDuration={imageState.ltxv2I2V.duration}
+                onLTXV2I2VDurationChange={imageSetters.setLTXV2I2VDuration}
+                ltxv2I2VResolution={imageState.ltxv2I2V.resolution}
+                onLTXV2I2VResolutionChange={imageSetters.setLTXV2I2VResolution}
+                ltxv2I2VFPS={imageState.ltxv2I2V.fps}
+                onLTXV2I2VFPSChange={imageSetters.setLTXV2I2VFPS}
+                ltxv2I2VGenerateAudio={imageState.ltxv2I2V.generateAudio}
+                onLTXV2I2VGenerateAudioChange={imageSetters.setLTXV2I2VGenerateAudio}
+                ltxv2ImageDuration={imageState.ltxv2Image.duration}
+                onLTXV2ImageDurationChange={imageSetters.setLTXV2ImageDuration}
+                ltxv2ImageResolution={imageState.ltxv2Image.resolution}
+                onLTXV2ImageResolutionChange={imageSetters.setLTXV2ImageResolution}
+                ltxv2ImageFPS={imageState.ltxv2Image.fps}
+                onLTXV2ImageFPSChange={imageSetters.setLTXV2ImageFPS}
+                ltxv2ImageGenerateAudio={imageState.ltxv2Image.generateAudio}
+                onLTXV2ImageGenerateAudioChange={imageSetters.setLTXV2ImageGenerateAudio}
+                seedanceDuration={imageState.seedance.duration}
+                onSeedanceDurationChange={imageSetters.setSeedanceDuration}
+                seedanceResolution={imageState.seedance.resolution}
+                onSeedanceResolutionChange={imageSetters.setSeedanceResolution}
+                seedanceAspectRatio={imageState.seedance.aspectRatio}
+                onSeedanceAspectRatioChange={imageSetters.setSeedanceAspectRatio}
+                seedanceCameraFixed={imageState.seedance.cameraFixed}
+                onSeedanceCameraFixedChange={imageSetters.setSeedanceCameraFixed}
+                seedanceEndFrameUrl={imageState.seedance.endFrameUrl}
+                onSeedanceEndFrameUrlChange={imageSetters.setSeedanceEndFrameUrl}
+                seedanceEndFrameFile={imageState.seedance.endFrameFile}
+                seedanceEndFramePreview={imageState.seedance.endFramePreview}
+                onSeedanceEndFrameFileChange={(file, preview) => {
+                  imageSetters.setSeedanceEndFrameFile(file);
+                  if (file) {
+                    imageSetters.setSeedanceEndFrameUrl(undefined);
                   }
-                  value={prompt}
-                  onChange={(e) => setPrompt(e.target.value)}
-                  className="min-h-[40px] text-xs resize-none"
-                  maxLength={maxChars}
-                />
-              </div>
-              {viduQ2Selected && (
-                <div className="space-y-3 text-left border-t pt-3">
-                  <Label className="text-sm font-semibold">
-                    Vidu Q2 Turbo Settings
-                  </Label>
-
-                  <div className="space-y-1">
-                    <Label htmlFor="vidu-duration" className="text-xs">
-                      Duration
-                    </Label>
-                    <Select
-                      value={viduQ2Duration.toString()}
-                      onValueChange={(value) =>
-                        setViduQ2Duration(
-                          Number(value) as 2 | 3 | 4 | 5 | 6 | 7 | 8
-                        )
-                      }
-                    >
-                      <SelectTrigger id="vidu-duration" className="h-8 text-xs">
-                        <SelectValue placeholder="Select duration" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="2">2 seconds</SelectItem>
-                        <SelectItem value="3">3 seconds</SelectItem>
-                        <SelectItem value="4">4 seconds</SelectItem>
-                        <SelectItem value="5">5 seconds</SelectItem>
-                        <SelectItem value="6">6 seconds</SelectItem>
-                        <SelectItem value="7">7 seconds</SelectItem>
-                        <SelectItem value="8">8 seconds</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-1">
-                    <Label htmlFor="vidu-resolution" className="text-xs">
-                      Resolution
-                    </Label>
-                    <Select
-                      value={viduQ2Resolution}
-                      onValueChange={(value) =>
-                        setViduQ2Resolution(value as "720p" | "1080p")
-                      }
-                    >
-                      <SelectTrigger
-                        id="vidu-resolution"
-                        className="h-8 text-xs"
-                      >
-                        <SelectValue placeholder="Select resolution" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="720p">720p ($0.05/sec)</SelectItem>
-                        <SelectItem value="1080p">
-                          1080p ($0.20 base + $0.05/sec)
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-1">
-                    <Label htmlFor="vidu-movement" className="text-xs">
-                      Movement Amplitude
-                    </Label>
-                    <Select
-                      value={viduQ2MovementAmplitude}
-                      onValueChange={(value) =>
-                        setViduQ2MovementAmplitude(
-                          value as "auto" | "small" | "medium" | "large"
-                        )
-                      }
-                    >
-                      <SelectTrigger id="vidu-movement" className="h-8 text-xs">
-                        <SelectValue placeholder="Select motion" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="auto">Auto</SelectItem>
-                        <SelectItem value="small">Small</SelectItem>
-                        <SelectItem value="medium">Medium</SelectItem>
-                        <SelectItem value="large">Large</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  {viduQ2Duration === 4 && (
-                    <div className="flex items-center space-x-2">
-                      <Checkbox
-                        id="vidu-bgm"
-                        checked={viduQ2EnableBGM}
-                        onCheckedChange={(checked) =>
-                          setViduQ2EnableBGM(Boolean(checked))
-                        }
-                      />
-                      <Label htmlFor="vidu-bgm" className="text-xs">
-                        Add background music (4-second videos only)
-                      </Label>
-                    </div>
-                  )}
-
-                  <div className="text-xs text-muted-foreground">
-                    Pricing: 720p @ $0.05/sec • 1080p adds $0.20 base fee
-                  </div>
-                </div>
-              )}
-              {ltxv2I2VSelected && (
-                <div className="space-y-3 text-left border-t pt-3">
-                  <Label className="text-sm font-semibold">
-                    LTX Video 2.0 Settings
-                  </Label>
-
-                  <div className="space-y-1">
-                    <Label
-                      htmlFor="ltxv2-i2v-duration"
-                      className="text-xs font-medium"
-                    >
-                      Duration
-                    </Label>
-                    <Select
-                      value={ltxv2I2VDuration.toString()}
-                      onValueChange={(value) =>
-                        setLTXV2I2VDuration(Number(value) as 6 | 8 | 10)
-                      }
-                    >
-                      <SelectTrigger
-                        id="ltxv2-i2v-duration"
-                        className="h-8 text-xs"
-                      >
-                        <SelectValue placeholder="Select duration" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="6">6 seconds</SelectItem>
-                        <SelectItem value="8">8 seconds</SelectItem>
-                        <SelectItem value="10">10 seconds</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-1">
-                    <Label
-                      htmlFor="ltxv2-i2v-resolution"
-                      className="text-xs font-medium"
-                    >
-                      Resolution
-                    </Label>
-                    <Select
-                      value={ltxv2I2VResolution}
-                      onValueChange={(value) =>
-                        setLTXV2I2VResolution(
-                          value as "1080p" | "1440p" | "2160p"
-                        )
-                      }
-                    >
-                      <SelectTrigger
-                        id="ltxv2-i2v-resolution"
-                        className="h-8 text-xs"
-                      >
-                        <SelectValue placeholder="Select resolution" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="1080p">1080p ($0.06/sec)</SelectItem>
-                        <SelectItem value="1440p">1440p ($0.12/sec)</SelectItem>
-                        <SelectItem value="2160p">4K ($0.24/sec)</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <div className="text-xs text-muted-foreground">
-                      Estimated cost: $
-                      {(
-                        ltxv2I2VDuration *
-                        (ltxv2I2VResolution === "1080p"
-                          ? 0.06
-                          : ltxv2I2VResolution === "1440p"
-                            ? 0.12
-                            : 0.24)
-                      ).toFixed(2)}
-                    </div>
-                  </div>
-
-                  <div className="space-y-1">
-                    <Label
-                      htmlFor="ltxv2-i2v-fps"
-                      className="text-xs font-medium"
-                    >
-                      Frame Rate
-                    </Label>
-                    <Select
-                      value={ltxv2I2VFPS.toString()}
-                      onValueChange={(value) =>
-                        setLTXV2I2VFPS(Number(value) as 25 | 50)
-                      }
-                    >
-                      <SelectTrigger id="ltxv2-i2v-fps" className="h-8 text-xs">
-                        <SelectValue placeholder="Select frame rate" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="25">25 FPS (Standard)</SelectItem>
-                        <SelectItem value="50">50 FPS (High)</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="flex items-center space-x-2">
-                    <Checkbox
-                      id="ltxv2-i2v-audio"
-                      checked={ltxv2I2VGenerateAudio}
-                      onCheckedChange={(checked) =>
-                        setLTXV2I2VGenerateAudio(Boolean(checked))
-                      }
-                    />
-                    <Label htmlFor="ltxv2-i2v-audio" className="text-xs">
-                      Generate synchronized audio
-                    </Label>
-                  </div>
-
-                  <div className="text-xs text-muted-foreground">
-                    Transforms your image into a high-quality video with
-                    matching audio.
-                  </div>
-                </div>
-              )}
-              {ltxv2ImageSelected && (
-                <div className="space-y-3 text-left border-t pt-3">
-                  <Label className="text-sm font-semibold">
-                    LTX Video 2.0 Fast Settings
-                  </Label>
-
-                  <div className="space-y-1">
-                    <Label
-                      htmlFor="ltxv2-image-duration"
-                      className="text-xs font-medium"
-                    >
-                      Duration
-                    </Label>
-                    <Select
-                      value={ltxv2ImageDuration.toString()}
-                      onValueChange={(value) =>
-                        setLTXV2ImageDuration(
-                          Number(value) as LTXV2FastDuration
-                        )
-                      }
-                    >
-                      <SelectTrigger
-                        id="ltxv2-image-duration"
-                        className="h-8 text-xs"
-                      >
-                        <SelectValue placeholder="Select duration" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {LTXV2_FAST_CONFIG.DURATIONS.map((durationOption) => (
-                          <SelectItem
-                            key={durationOption}
-                            value={durationOption.toString()}
-                          >
-                            {durationOption} seconds
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-1">
-                    <Label
-                      htmlFor="ltxv2-image-resolution"
-                      className="text-xs font-medium"
-                    >
-                      Resolution
-                    </Label>
-                    <Select
-                      value={ltxv2ImageResolution}
-                      onValueChange={(value) =>
-                        setLTXV2ImageResolution(value as LTXV2FastResolution)
-                      }
-                    >
-                      <SelectTrigger
-                        id="ltxv2-image-resolution"
-                        className="h-8 text-xs"
-                      >
-                        <SelectValue placeholder="Select resolution" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {LTXV2_FAST_CONFIG.RESOLUTIONS.STANDARD.map(
-                          (resolutionOption) => {
-                            const disabled =
-                              isExtendedLTXV2FastImageDuration &&
-                              !ltxv2FastExtendedResolutions.includes(
-                                resolutionOption as (typeof ltxv2FastExtendedResolutions)[number]
-                              );
-
-                            return (
-                              <SelectItem
-                                key={resolutionOption}
-                                value={resolutionOption}
-                                disabled={disabled}
-                              >
-                                {LTXV2_FAST_RESOLUTION_LABELS[resolutionOption]}
-                                {LTXV2_FAST_RESOLUTION_PRICE_SUFFIX[
-                                  resolutionOption
-                                ] ?? ""}
-                              </SelectItem>
-                            );
-                          }
-                        )}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-1">
-                    <Label htmlFor="ltxv2-image-fps" className="text-xs">
-                      Frame Rate
-                    </Label>
-                    <Select
-                      value={ltxv2ImageFPS.toString()}
-                      onValueChange={(value) =>
-                        setLTXV2ImageFPS(Number(value) as LTXV2FastFps)
-                      }
-                    >
-                      <SelectTrigger
-                        id="ltxv2-image-fps"
-                        className="h-8 text-xs"
-                      >
-                        <SelectValue placeholder="Select frame rate" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {LTXV2_FAST_CONFIG.FPS_OPTIONS.STANDARD.map(
-                          (fpsOption) => {
-                            const disabled =
-                              isExtendedLTXV2FastImageDuration &&
-                              !ltxv2FastExtendedFps.includes(
-                                fpsOption as (typeof ltxv2FastExtendedFps)[number]
-                              );
-
-                            return (
-                              <SelectItem
-                                key={fpsOption}
-                                value={fpsOption.toString()}
-                                disabled={disabled}
-                              >
-                                {LTXV2_FAST_FPS_LABELS[fpsOption]}
-                              </SelectItem>
-                            );
-                          }
-                        )}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="flex items-center space-x-2">
-                    <Checkbox
-                      id="ltxv2-image-audio"
-                      checked={ltxv2ImageGenerateAudio}
-                      onCheckedChange={(checked) =>
-                        setLTXV2ImageGenerateAudio(Boolean(checked))
-                      }
-                    />
-                    <Label htmlFor="ltxv2-image-audio" className="text-xs">
-                      Generate audio
-                    </Label>
-                  </div>
-
-                  {isExtendedLTXV2FastImageDuration && (
-                    <div className="text-xs text-muted-foreground">
-                      {ERROR_MESSAGES.LTXV2_I2V_EXTENDED_DURATION_CONSTRAINT}
-                    </div>
-                  )}
-
-                  <div className="text-xs text-muted-foreground">
-                    6-20 second clips with optional audio at up to 4K. Longer
-                    clips automatically use 1080p at 25 FPS.
-                  </div>
-                </div>
-              )}
-              {ltxv2FastTextSelected && (
-                <div className="space-y-3 text-left border-t pt-3">
-                  <Label className="text-sm font-semibold">
-                    LTX Video 2.0 Fast Settings
-                  </Label>
-
-                  <div className="space-y-1">
-                    <Label
-                      htmlFor="ltxv2-fast-duration"
-                      className="text-xs font-medium"
-                    >
-                      Duration
-                    </Label>
-                    <Select
-                      value={ltxv2FastDuration.toString()}
-                      onValueChange={(value) =>
-                        setLTXV2FastDuration(Number(value) as LTXV2FastDuration)
-                      }
-                    >
-                      <SelectTrigger
-                        id="ltxv2-fast-duration"
-                        className="h-8 text-xs"
-                      >
-                        <SelectValue placeholder="Select duration" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {LTXV2_FAST_CONFIG.DURATIONS.map((durationOption) => (
-                          <SelectItem
-                            key={durationOption}
-                            value={durationOption.toString()}
-                          >
-                            {durationOption} seconds
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-1">
-                    <Label
-                      htmlFor="ltxv2-fast-resolution"
-                      className="text-xs font-medium"
-                    >
-                      Resolution
-                    </Label>
-                    <Select
-                      value={ltxv2FastResolution}
-                      onValueChange={(value) =>
-                        setLTXV2FastResolution(value as LTXV2FastResolution)
-                      }
-                    >
-                      <SelectTrigger
-                        id="ltxv2-fast-resolution"
-                        className="h-8 text-xs"
-                      >
-                        <SelectValue placeholder="Select resolution" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {LTXV2_FAST_CONFIG.RESOLUTIONS.STANDARD.map(
-                          (resolutionOption) => {
-                            const disabled =
-                              isExtendedLTXV2FastTextDuration &&
-                              !ltxv2FastExtendedResolutions.includes(
-                                resolutionOption as (typeof ltxv2FastExtendedResolutions)[number]
-                              );
-
-                            return (
-                              <SelectItem
-                                key={resolutionOption}
-                                value={resolutionOption}
-                                disabled={disabled}
-                              >
-                                {LTXV2_FAST_RESOLUTION_LABELS[resolutionOption]}
-                                {LTXV2_FAST_RESOLUTION_PRICE_SUFFIX[
-                                  resolutionOption
-                                ] ?? ""}
-                              </SelectItem>
-                            );
-                          }
-                        )}
-                      </SelectContent>
-                    </Select>
-                    <div className="text-xs text-muted-foreground">
-                      Estimated cost: $
-                      {(
-                        ltxv2FastDuration *
-                        (LTXV2_FAST_CONFIG.PRICING[ltxv2FastResolution] ?? 0)
-                      ).toFixed(2)}
-                    </div>
-                  </div>
-
-                  <div className="space-y-1">
-                    <Label
-                      htmlFor="ltxv2-fast-fps"
-                      className="text-xs font-medium"
-                    >
-                      Frame Rate
-                    </Label>
-                    <Select
-                      value={ltxv2FastFPS.toString()}
-                      onValueChange={(value) =>
-                        setLTXV2FastFPS(Number(value) as LTXV2FastFps)
-                      }
-                    >
-                      <SelectTrigger
-                        id="ltxv2-fast-fps"
-                        className="h-8 text-xs"
-                      >
-                        <SelectValue placeholder="Select frame rate" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {LTXV2_FAST_CONFIG.FPS_OPTIONS.STANDARD.map(
-                          (fpsOption) => {
-                            const disabled =
-                              isExtendedLTXV2FastTextDuration &&
-                              !ltxv2FastExtendedFps.includes(
-                                fpsOption as (typeof ltxv2FastExtendedFps)[number]
-                              );
-
-                            return (
-                              <SelectItem
-                                key={fpsOption}
-                                value={fpsOption.toString()}
-                                disabled={disabled}
-                              >
-                                {LTXV2_FAST_FPS_LABELS[fpsOption]}
-                              </SelectItem>
-                            );
-                          }
-                        )}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="flex items-center space-x-2">
-                    <Checkbox
-                      id="ltxv2-fast-audio"
-                      checked={ltxv2FastGenerateAudio}
-                      onCheckedChange={(checked) =>
-                        setLTXV2FastGenerateAudio(Boolean(checked))
-                      }
-                    />
-                    <Label htmlFor="ltxv2-fast-audio" className="text-xs">
-                      Generate audio
-                    </Label>
-                  </div>
-
-                  {isExtendedLTXV2FastTextDuration && (
-                    <div className="text-xs text-muted-foreground">
-                      {
-                        ERROR_MESSAGES.LTXV2_FAST_T2V_EXTENDED_DURATION_CONSTRAINT
-                      }
-                    </div>
-                  )}
-
-                  <div className="text-xs text-muted-foreground">
-                    6-20 second clips with optional audio at up to 4K. Longer
-                    clips automatically use 1080p at 25 FPS.
-                  </div>
-                </div>
-              )}
-              {seedanceSelected && (
-                <div className="space-y-3 text-left border-t pt-3">
-                  <Label className="text-sm font-semibold">
-                    Seedance Settings
-                  </Label>
-
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <div className="space-y-1">
-                      <Label htmlFor="seedance-duration" className="text-xs">
-                        Duration
-                      </Label>
-                      <Select
-                        value={seedanceDuration.toString()}
-                        onValueChange={(value) =>
-                          setSeedanceDuration(Number(value) as SeedanceDuration)
-                        }
-                      >
-                        <SelectTrigger
-                          id="seedance-duration"
-                          className="h-8 text-xs"
-                        >
-                          <SelectValue placeholder="Select duration" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {seedanceDurationOptions.map((durationOption) => (
-                            <SelectItem
-                              key={durationOption}
-                              value={durationOption.toString()}
-                            >
-                              {durationOption} seconds
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-1">
-                      <Label htmlFor="seedance-resolution" className="text-xs">
-                        Resolution
-                      </Label>
-                      <Select
-                        value={seedanceResolution}
-                        onValueChange={(value) =>
-                          setSeedanceResolution(value as SeedanceResolution)
-                        }
-                      >
-                        <SelectTrigger
-                          id="seedance-resolution"
-                          className="h-8 text-xs"
-                        >
-                          <SelectValue placeholder="Select resolution" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {seedanceResolutionOptions.map((resolutionOption) => (
-                            <SelectItem
-                              key={resolutionOption}
-                              value={resolutionOption}
-                            >
-                              {resolutionOption.toUpperCase()}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-
-                  <div className="space-y-1">
-                    <Label htmlFor="seedance-aspect" className="text-xs">
-                      Aspect Ratio
-                    </Label>
-                    <Select
-                      value={seedanceAspectRatio}
-                      onValueChange={(value) =>
-                        setSeedanceAspectRatio(value as SeedanceAspectRatio)
-                      }
-                    >
-                      <SelectTrigger
-                        id="seedance-aspect"
-                        className="h-8 text-xs"
-                      >
-                        <SelectValue placeholder="Select aspect ratio" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {seedanceAspectRatioOptions.map((ratio) => (
-                          <SelectItem key={ratio} value={ratio}>
-                            {ratio.toUpperCase()}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="flex items-center space-x-2">
-                    <Checkbox
-                      id="seedance-camera-fixed"
-                      checked={seedanceCameraFixed}
-                      onCheckedChange={(checked) =>
-                        setSeedanceCameraFixed(Boolean(checked))
-                      }
-                    />
-                    <Label htmlFor="seedance-camera-fixed" className="text-xs">
-                      Lock camera position
-                    </Label>
-                  </div>
-
-                  {seedanceProSelected && (
-                    <div className="space-y-2">
-                      <Label className="text-xs font-medium">
-                        End Frame (optional)
-                      </Label>
-                      <Input
-                        id="seedance-end-frame-url"
-                        type="url"
-                        value={seedanceEndFrameUrl ?? ""}
-                        onChange={(event) =>
-                          setSeedanceEndFrameUrl(
-                            event.target.value ? event.target.value : undefined
-                          )
-                        }
-                        placeholder="https://example.com/final-frame.png"
-                        className="h-8 text-xs"
-                      />
-                      <FileUpload
-                        id="seedance-end-frame-upload"
-                        label="Upload End Frame"
-                        helperText="Optional reference for the final frame"
-                        fileType="image"
-                        acceptedTypes={UPLOAD_CONSTANTS.ALLOWED_IMAGE_TYPES}
-                        maxSizeBytes={UPLOAD_CONSTANTS.MAX_IMAGE_SIZE_BYTES}
-                        maxSizeLabel={UPLOAD_CONSTANTS.MAX_IMAGE_SIZE_LABEL}
-                        formatsLabel={UPLOAD_CONSTANTS.IMAGE_FORMATS_LABEL}
-                        file={seedanceEndFrameFile}
-                        preview={seedanceEndFramePreview}
-                        onFileChange={(file, preview) => {
-                          setSeedanceEndFrameFile(file);
-                          setSeedanceEndFramePreview(preview || null);
-                          if (file) {
-                            setSeedanceEndFrameUrl(undefined);
-                          }
-                        }}
-                        onError={setError}
-                        isCompact={isCompact}
-                      />
-                    </div>
-                  )}
-
-                  <div className="text-xs text-muted-foreground">
-                    Estimated cost: ${seedanceEstimatedCost.toFixed(2)}
-                  </div>
-                  <div className="text-xs text-muted-foreground">
-                    Seedance animates 2-12 second clips with reproducible seeds
-                    and optional end frames (Pro only).
-                  </div>
-                </div>
-              )}
-              {klingI2VSelected && (
-                <div className="space-y-3 text-left border-t pt-3">
-                  <Label className="text-sm font-semibold">
-                    Kling v2.5 Turbo Settings
-                  </Label>
-
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <div className="space-y-1">
-                      <Label htmlFor="kling-duration" className="text-xs">
-                        Duration
-                      </Label>
-                      <Select
-                        value={klingDuration.toString()}
-                        onValueChange={(value) =>
-                          setKlingDuration(Number(value) as 5 | 10)
-                        }
-                      >
-                        <SelectTrigger
-                          id="kling-duration"
-                          className="h-8 text-xs"
-                        >
-                          <SelectValue placeholder="Select duration" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="5">5 seconds ($0.35)</SelectItem>
-                          <SelectItem value="10">10 seconds ($0.70)</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-1">
-                      <Label htmlFor="kling-aspect" className="text-xs">
-                        Aspect Ratio
-                      </Label>
-                      <Select
-                        value={klingAspectRatio}
-                        onValueChange={(value) =>
-                          setKlingAspectRatio(value as KlingAspectRatio)
-                        }
-                      >
-                        <SelectTrigger
-                          id="kling-aspect"
-                          className="h-8 text-xs"
-                        >
-                          <SelectValue placeholder="Select aspect ratio" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {klingAspectRatios.map((ratio) => (
-                            <SelectItem key={ratio} value={ratio}>
-                              {ratio.toUpperCase()}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-
-                  <div className="space-y-1">
-                    <Label htmlFor="kling-cfg" className="text-xs">
-                      Prompt Adherence ({klingCfgScale.toFixed(1)})
-                    </Label>
-                    <input
-                      id="kling-cfg"
-                      type="range"
-                      min="0"
-                      max="1"
-                      step="0.1"
-                      value={klingCfgScale}
-                      onChange={(event) =>
-                        setKlingCfgScale(Number(event.target.value))
-                      }
-                      className="w-full cursor-pointer"
-                    />
-                    <div className="text-xs text-muted-foreground">
-                      Lower values add more freedom, higher values follow the
-                      prompt closely.
-                    </div>
-                  </div>
-
-                  <div className="flex items-center space-x-2">
-                    <Checkbox
-                      id="kling-enhance-prompt"
-                      checked={klingEnhancePrompt}
-                      onCheckedChange={(checked) =>
-                        setKlingEnhancePrompt(Boolean(checked))
-                      }
-                    />
-                    <Label htmlFor="kling-enhance-prompt" className="text-xs">
-                      Enhance prompt with AI
-                    </Label>
-                  </div>
-
-                  <div className="space-y-1">
-                    <Label htmlFor="kling-negative-prompt" className="text-xs">
-                      Negative Prompt (optional)
-                    </Label>
-                    <Textarea
-                      id="kling-negative-prompt"
-                      value={klingNegativePrompt}
-                      onChange={(event) =>
-                        setKlingNegativePrompt(event.target.value)
-                      }
-                      placeholder="blur, distort, low quality"
-                      className="min-h-[60px] text-xs"
-                      maxLength={2500}
-                    />
-                  </div>
-                  <div className="text-xs text-muted-foreground">
-                    Estimated cost: ${klingEstimatedCost.toFixed(2)}
-                  </div>
-                </div>
-              )}
-              {kling26Selected && (
-                <div className="space-y-3 text-left border-t pt-3">
-                  <Label className="text-sm font-semibold">
-                    Kling v2.6 Pro Settings
-                  </Label>
-
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <div className="space-y-1">
-                      <Label htmlFor="kling26-duration" className="text-xs">
-                        Duration
-                      </Label>
-                      <Select
-                        value={kling26Duration.toString()}
-                        onValueChange={(value) =>
-                          setKling26Duration(Number(value) as 5 | 10)
-                        }
-                      >
-                        <SelectTrigger
-                          id="kling26-duration"
-                          className="h-8 text-xs"
-                        >
-                          <SelectValue placeholder="Select duration" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="5">
-                            5 seconds ($
-                            {kling26GenerateAudio ? "0.70" : "0.35"})
-                          </SelectItem>
-                          <SelectItem value="10">
-                            10 seconds ($
-                            {kling26GenerateAudio ? "1.40" : "0.70"})
-                          </SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-1">
-                      <Label htmlFor="kling26-aspect" className="text-xs">
-                        Aspect Ratio
-                      </Label>
-                      <Select
-                        value={kling26AspectRatio}
-                        onValueChange={(value) =>
-                          setKling26AspectRatio(value as Kling26AspectRatio)
-                        }
-                      >
-                        <SelectTrigger
-                          id="kling26-aspect"
-                          className="h-8 text-xs"
-                        >
-                          <SelectValue placeholder="Select aspect ratio" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {KLING26_ASPECT_RATIOS.map((ratio) => (
-                            <SelectItem key={ratio} value={ratio}>
-                              {ratio.toUpperCase()}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-
-                  <div className="space-y-1">
-                    <Label htmlFor="kling26-cfg" className="text-xs">
-                      Prompt Adherence ({kling26CfgScale.toFixed(1)})
-                    </Label>
-                    <input
-                      id="kling26-cfg"
-                      type="range"
-                      min="0"
-                      max="1"
-                      step="0.1"
-                      value={kling26CfgScale}
-                      onChange={(event) =>
-                        setKling26CfgScale(Number(event.target.value))
-                      }
-                      className="w-full cursor-pointer"
-                    />
-                    <div className="text-xs text-muted-foreground">
-                      Lower values add more freedom, higher values follow the
-                      prompt closely.
-                    </div>
-                  </div>
-
-                  <div className="flex items-center space-x-2">
-                    <Checkbox
-                      id="kling26-generate-audio"
-                      checked={kling26GenerateAudio}
-                      onCheckedChange={(checked) =>
-                        setKling26GenerateAudio(Boolean(checked))
-                      }
-                    />
-                    <Label htmlFor="kling26-generate-audio" className="text-xs">
-                      Generate native audio (Chinese/English)
-                    </Label>
-                  </div>
-
-                  <div className="space-y-1">
-                    <Label
-                      htmlFor="kling26-negative-prompt"
-                      className="text-xs"
-                    >
-                      Negative Prompt (optional)
-                    </Label>
-                    <Textarea
-                      id="kling26-negative-prompt"
-                      value={kling26NegativePrompt}
-                      onChange={(event) =>
-                        setKling26NegativePrompt(event.target.value)
-                      }
-                      placeholder="blur, distort, and low quality"
-                      className="min-h-[60px] text-xs"
-                      maxLength={2500}
-                    />
-                  </div>
-                  <div className="text-xs text-muted-foreground">
-                    Estimated cost: ${kling26EstimatedCost.toFixed(2)}
-                    {kling26GenerateAudio ? " (with audio)" : " (no audio)"}
-                  </div>
-                  <div className="text-xs text-muted-foreground">
-                    Kling v2.6 Pro supports native audio generation and offers
-                    cinematic visual quality.
-                  </div>
-                </div>
-              )}
-              {wan25Selected && (
-                <div className="space-y-3 text-left border-t pt-3">
-                  <Label className="text-sm font-semibold">
-                    WAN 2.5 Preview Settings
-                  </Label>
-
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <div className="space-y-1">
-                      <Label htmlFor="wan25-duration" className="text-xs">
-                        Duration
-                      </Label>
-                      <Select
-                        value={wan25Duration.toString()}
-                        onValueChange={(value) =>
-                          setWan25Duration(Number(value) as Wan25Duration)
-                        }
-                      >
-                        <SelectTrigger
-                          id="wan25-duration"
-                          className="h-8 text-xs"
-                        >
-                          <SelectValue placeholder="Select duration" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {wan25DurationOptions.map((durationOption) => (
-                            <SelectItem
-                              key={durationOption}
-                              value={durationOption.toString()}
-                            >
-                              {durationOption} seconds
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-1">
-                      <Label htmlFor="wan25-resolution" className="text-xs">
-                        Resolution
-                      </Label>
-                      <Select
-                        value={wan25Resolution}
-                        onValueChange={(value) =>
-                          setWan25Resolution(value as Wan25Resolution)
-                        }
-                      >
-                        <SelectTrigger
-                          id="wan25-resolution"
-                          className="h-8 text-xs"
-                        >
-                          <SelectValue placeholder="Select resolution" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {wan25ResolutionOptions.map((resolutionOption) => (
-                            <SelectItem
-                              key={resolutionOption}
-                              value={resolutionOption}
-                            >
-                              {resolutionOption.toUpperCase()} ( $
-                              {wan25ModelConfig?.perSecondPricing?.[
-                                resolutionOption
-                              ] ?? 0}
-                              /sec)
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center space-x-2">
-                    <Checkbox
-                      id="wan25-enhance-prompt"
-                      checked={wan25EnablePromptExpansion}
-                      onCheckedChange={(checked) =>
-                        setWan25EnablePromptExpansion(Boolean(checked))
-                      }
-                    />
-                    <Label htmlFor="wan25-enhance-prompt" className="text-xs">
-                      Enhance prompt with AI
-                    </Label>
-                  </div>
-
-                  <div className="space-y-1">
-                    <Label htmlFor="wan25-negative" className="text-xs">
-                      Negative Prompt (max 500 characters)
-                    </Label>
-                    <Textarea
-                      id="wan25-negative"
-                      value={wan25NegativePrompt}
-                      onChange={(event) =>
-                        setWan25NegativePrompt(event.target.value.slice(0, 500))
-                      }
-                      placeholder="Avoid blurry, shaky motion..."
-                      className="min-h-[60px] text-xs"
-                      maxLength={500}
-                    />
-                    <div className="text-xs text-muted-foreground">
-                      {wan25NegativePrompt.length}/500 characters
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label className="text-xs font-medium">
-                      Background Music (optional)
-                    </Label>
-                    <Input
-                      type="url"
-                      value={wan25AudioUrl ?? ""}
-                      onChange={(event) =>
-                        setWan25AudioUrl(
-                          event.target.value ? event.target.value : undefined
-                        )
-                      }
-                      placeholder="https://example.com/music.mp3"
-                      className="h-8 text-xs"
-                    />
-                    <FileUpload
-                      id="wan25-audio-upload"
-                      label="Upload Audio"
-                      helperText="MP3/WAV between 3-30 seconds (max 15MB)"
-                      fileType="audio"
-                      acceptedTypes={UPLOAD_CONSTANTS.ALLOWED_AUDIO_TYPES}
-                      maxSizeBytes={15 * 1024 * 1024}
-                      maxSizeLabel="15MB"
-                      formatsLabel={UPLOAD_CONSTANTS.AUDIO_FORMATS_LABEL}
-                      file={wan25AudioFile}
-                      preview={wan25AudioPreview}
-                      onFileChange={(file, preview) => {
-                        setWan25AudioFile(file);
-                        setWan25AudioPreview(preview || null);
-                        if (file) {
-                          setWan25AudioUrl(undefined);
-                        }
-                      }}
-                      onError={setError}
-                      isCompact={isCompact}
-                    />
-                  </div>
-
-                  <div className="text-xs text-muted-foreground">
-                    Estimated cost: ${wan25EstimatedCost.toFixed(2)} ( $
-                    {wan25PricePerSecond.toFixed(2)}/sec)
-                  </div>
-                </div>
-              )}
-              {(seedanceSelected || wan25Selected) && (
-                <div className="space-y-2 text-left border-t pt-3">
-                  <Label className="text-sm font-semibold">
-                    Advanced Options
-                  </Label>
-                  <div className="space-y-1">
-                    <Label htmlFor="image-seed" className="text-xs">
-                      Seed (optional)
-                    </Label>
-                    <Input
-                      id="image-seed"
-                      type="number"
-                      value={imageSeed ?? ""}
-                      onChange={(event) => {
-                        const nextValue = event.target.value.trim();
-                        if (!nextValue) {
-                          setImageSeed(undefined);
-                          return;
-                        }
-                        const parsed = Number(nextValue);
-                        if (!Number.isNaN(parsed)) {
-                          setImageSeed(parsed);
-                        }
-                      }}
-                      placeholder="Enter seed for reproducible animation"
-                      className="h-8 text-xs"
-                    />
-                    <div className="text-xs text-muted-foreground">
-                      Use the same seed to reproduce motion across runs.
-                    </div>
-                  </div>
-                </div>
-              )}
+                }}
+                klingDuration={imageState.kling.duration}
+                onKlingDurationChange={imageSetters.setKlingDuration}
+                klingCfgScale={imageState.kling.cfgScale}
+                onKlingCfgScaleChange={imageSetters.setKlingCfgScale}
+                klingAspectRatio={imageState.kling.aspectRatio}
+                onKlingAspectRatioChange={imageSetters.setKlingAspectRatio}
+                klingEnhancePrompt={imageState.kling.enhancePrompt}
+                onKlingEnhancePromptChange={imageSetters.setKlingEnhancePrompt}
+                klingNegativePrompt={imageState.kling.negativePrompt}
+                onKlingNegativePromptChange={imageSetters.setKlingNegativePrompt}
+                kling26Duration={imageState.kling26.duration}
+                onKling26DurationChange={imageSetters.setKling26Duration}
+                kling26CfgScale={imageState.kling26.cfgScale}
+                onKling26CfgScaleChange={imageSetters.setKling26CfgScale}
+                kling26AspectRatio={imageState.kling26.aspectRatio}
+                onKling26AspectRatioChange={imageSetters.setKling26AspectRatio}
+                kling26GenerateAudio={imageState.kling26.generateAudio}
+                onKling26GenerateAudioChange={imageSetters.setKling26GenerateAudio}
+                kling26NegativePrompt={imageState.kling26.negativePrompt}
+                onKling26NegativePromptChange={imageSetters.setKling26NegativePrompt}
+                wan25Duration={imageState.wan25.duration}
+                onWan25DurationChange={imageSetters.setWan25Duration}
+                wan25Resolution={imageState.wan25.resolution}
+                onWan25ResolutionChange={imageSetters.setWan25Resolution}
+                wan25EnablePromptExpansion={imageState.wan25.enablePromptExpansion}
+                onWan25EnablePromptExpansionChange={imageSetters.setWan25EnablePromptExpansion}
+                wan25NegativePrompt={imageState.wan25.negativePrompt}
+                onWan25NegativePromptChange={imageSetters.setWan25NegativePrompt}
+                wan25AudioUrl={imageState.wan25.audioUrl}
+                onWan25AudioUrlChange={imageSetters.setWan25AudioUrl}
+                wan25AudioFile={imageState.wan25.audioFile}
+                wan25AudioPreview={imageState.wan25.audioPreview}
+                onWan25AudioFileChange={(file, preview) => {
+                  imageSetters.setWan25AudioFile(file);
+                  if (file) {
+                    imageSetters.setWan25AudioUrl(undefined);
+                  }
+                }}
+                imageSeed={imageState.imageSeed}
+                onImageSeedChange={imageSetters.setImageSeed}
+                generation={{
+                  setFirstFrame: generation.setFirstFrame,
+                  setLastFrame: generation.setLastFrame,
+                }}
+              />
             </TabsContent>
 
+            {/* Avatar Tab */}
             <TabsContent value="avatar" className="space-y-4">
-              {/* First Frame / Last Frame - Side by side */}
-              <div className="grid grid-cols-2 gap-2">
-                <FileUpload
-                  id="avatar-first-frame-input"
-                  label="First Frame"
-                  helperText=""
-                  fileType="image"
-                  acceptedTypes={UPLOAD_CONSTANTS.ALLOWED_AVATAR_IMAGE_TYPES}
-                  maxSizeBytes={UPLOAD_CONSTANTS.MAX_IMAGE_SIZE_BYTES}
-                  maxSizeLabel={UPLOAD_CONSTANTS.MAX_IMAGE_SIZE_LABEL}
-                  formatsLabel={UPLOAD_CONSTANTS.AVATAR_IMAGE_FORMATS_LABEL}
-                  file={avatarImage}
-                  preview={avatarImagePreview}
-                  onFileChange={(file, preview) => {
-                    setAvatarImage(file);
-                    setAvatarImagePreview(preview || null);
-                    if (file) setError(null);
-                  }}
-                  onError={setError}
-                  isCompact={true}
-                />
-                <FileUpload
-                  id="avatar-last-frame-input"
-                  label="Last Frame"
-                  helperText=""
-                  fileType="image"
-                  acceptedTypes={UPLOAD_CONSTANTS.ALLOWED_AVATAR_IMAGE_TYPES}
-                  maxSizeBytes={UPLOAD_CONSTANTS.MAX_IMAGE_SIZE_BYTES}
-                  maxSizeLabel={UPLOAD_CONSTANTS.MAX_IMAGE_SIZE_LABEL}
-                  formatsLabel={UPLOAD_CONSTANTS.AVATAR_IMAGE_FORMATS_LABEL}
-                  file={avatarLastFrame}
-                  preview={avatarLastFramePreview}
-                  onFileChange={(file, preview) => {
-                    setAvatarLastFrame(file);
-                    setAvatarLastFramePreview(preview || null);
-                    if (file) setError(null);
-                  }}
-                  onError={setError}
-                  isCompact={true}
-                />
-              </div>
-
-              {/* Reference Images - 6 slots in 3x2 grid */}
-              <div className="space-y-2">
-                <Label className="text-xs">Reference Images</Label>
-                <div className="grid grid-cols-3 gap-2">
-                  {[0, 1, 2, 3, 4, 5].map((index) => (
-                    <FileUpload
-                      key={`reference-${index}`}
-                      id={`avatar-reference-${index}-input`}
-                      label={`Ref ${index + 1}`}
-                      helperText=""
-                      fileType="image"
-                      acceptedTypes={
-                        UPLOAD_CONSTANTS.ALLOWED_AVATAR_IMAGE_TYPES
-                      }
-                      maxSizeBytes={UPLOAD_CONSTANTS.MAX_IMAGE_SIZE_BYTES}
-                      maxSizeLabel={UPLOAD_CONSTANTS.MAX_IMAGE_SIZE_LABEL}
-                      formatsLabel={UPLOAD_CONSTANTS.AVATAR_IMAGE_FORMATS_LABEL}
-                      file={referenceImages[index]}
-                      preview={referenceImagePreviews[index]}
-                      onFileChange={(file, preview) => {
-                        const newImages = [...referenceImages];
-                        newImages[index] = file;
-                        setReferenceImages(newImages);
-                        const newPreviews = [...referenceImagePreviews];
-                        newPreviews[index] = preview || null;
-                        setReferenceImagePreviews(newPreviews);
-                        if (file) setError(null);
-                      }}
-                      onError={setError}
-                      isCompact={true}
-                    />
-                  ))}
-                </div>
-              </div>
-
-              {/* Audio Input */}
-              <FileUpload
-                id="avatar-audio-input"
-                label="Audio Input"
-                helperText=""
-                fileType="audio"
-                acceptedTypes={UPLOAD_CONSTANTS.ALLOWED_AUDIO_TYPES}
-                maxSizeBytes={UPLOAD_CONSTANTS.MAX_AUDIO_SIZE_BYTES}
-                maxSizeLabel={UPLOAD_CONSTANTS.MAX_AUDIO_SIZE_LABEL}
-                formatsLabel={UPLOAD_CONSTANTS.AUDIO_FORMATS_LABEL}
-                file={audioFile}
-                onFileChange={(file) => {
-                  setAudioFile(file);
+              <AIAvatarTab
+                prompt={prompt}
+                onPromptChange={setPrompt}
+                maxChars={maxChars}
+                selectedModels={selectedModels}
+                isCompact={isCompact}
+                onError={setError}
+                avatarImage={avatarState.avatarImage}
+                avatarImagePreview={avatarState.avatarImagePreview}
+                onAvatarImageChange={(file, preview) => {
+                  avatarSetters.setAvatarImage(file);
                   if (file) setError(null);
                 }}
-                onError={setError}
-                isCompact={isCompact}
-              />
-
-              {/* Source Video Upload */}
-              <FileUpload
-                id="avatar-video-input"
-                label="Source Video"
-                helperText=""
-                fileType="video"
-                acceptedTypes={UPLOAD_CONSTANTS.ALLOWED_VIDEO_TYPES}
-                maxSizeBytes={UPLOAD_CONSTANTS.MAX_VIDEO_SIZE_BYTES}
-                maxSizeLabel={UPLOAD_CONSTANTS.MAX_VIDEO_SIZE_LABEL}
-                formatsLabel={UPLOAD_CONSTANTS.VIDEO_FORMATS_LABEL}
-                file={sourceVideo}
-                onFileChange={(file) => {
-                  setSourceVideo(file);
+                avatarLastFrame={avatarState.avatarLastFrame}
+                avatarLastFramePreview={avatarState.avatarLastFramePreview}
+                onAvatarLastFrameChange={(file, preview) => {
+                  avatarSetters.setAvatarLastFrame(file);
                   if (file) setError(null);
                 }}
-                onError={setError}
-                isCompact={isCompact}
+                referenceImages={avatarState.referenceImages}
+                referenceImagePreviews={avatarState.referenceImagePreviews}
+                onReferenceImageChange={(index, file, preview) => {
+                  avatarSetters.setReferenceImage(index, file);
+                  if (file) setError(null);
+                }}
+                audioFile={avatarState.audioFile}
+                onAudioFileChange={(file) => {
+                  avatarSetters.setAudioFile(file);
+                  if (file) setError(null);
+                }}
+                sourceVideo={avatarState.sourceVideo}
+                onSourceVideoChange={(file) => {
+                  avatarSetters.setSourceVideo(file);
+                  if (file) setError(null);
+                }}
+                klingAvatarV2Prompt={avatarState.klingAvatarV2Prompt}
+                onKlingAvatarV2PromptChange={avatarSetters.setKlingAvatarV2Prompt}
+                audioDuration={avatarState.audioDuration}
               />
-
-              {/* Optional Prompt for Avatar */}
-              <div className="space-y-2">
-                <Label htmlFor="avatar-prompt" className="text-xs">
-                  {!isCompact && "Additional "}Prompt{" "}
-                  {!isCompact && "(optional)"}
-                </Label>
-                <Textarea
-                  id="avatar-prompt"
-                  placeholder={
-                    isCompact
-                      ? "Describe the avatar style..."
-                      : "Describe the desired avatar style or motion..."
-                  }
-                  value={prompt}
-                  onChange={(e) => setPrompt(e.target.value)}
-                  className="min-h-[40px] text-xs resize-none"
-                  maxLength={maxChars}
-                />
-              </div>
-
-              {/* Kling Avatar v2 Options */}
-              {klingAvatarV2Selected && (
-                <div className="space-y-3 text-left border-t pt-3">
-                  <Label className="text-sm font-semibold">
-                    Kling Avatar v2 Options
-                  </Label>
-                  <div className="space-y-2">
-                    <Label
-                      htmlFor="kling-avatar-v2-prompt"
-                      className="text-xs text-muted-foreground"
-                    >
-                      Animation Prompt (Optional)
-                    </Label>
-                    <Textarea
-                      id="kling-avatar-v2-prompt"
-                      placeholder="Describe animation style, expressions, or movements..."
-                      value={klingAvatarV2Prompt}
-                      onChange={(e) => setKlingAvatarV2Prompt(e.target.value)}
-                      className="min-h-[60px] text-xs resize-none"
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Optional guidance for facial expressions and animation
-                      style
-                    </p>
-                  </div>
-                  {audioDuration !== null && (
-                    <div className="text-xs text-muted-foreground">
-                      Audio duration: {audioDuration.toFixed(1)}s · Estimated
-                      cost: $
-                      {(
-                        audioDuration *
-                        (selectedModels.includes("kling_avatar_v2_pro")
-                          ? 0.115
-                          : 0.0562)
-                      ).toFixed(2)}
-                    </div>
-                  )}
-                  {audioDuration === null && audioFile && (
-                    <div className="text-xs text-muted-foreground">
-                      Cost varies by audio length
-                    </div>
-                  )}
-                </div>
-              )}
             </TabsContent>
+
+            {/* Upscale Tab */}
             <TabsContent value="upscale" className="space-y-4">
-              <div className="space-y-3 text-left">
-                <Label className="text-sm font-semibold">
-                  Upload Video for Upscaling
-                </Label>
-                <FileUpload
-                  id="upscale-video-upload"
-                  label="Upload Source Video"
-                  helperText={`MP4, MOV, or AVI up to ${UPLOAD_CONSTANTS.UPSCALE_MAX_VIDEO_SIZE_LABEL}, max 2 minutes`}
-                  fileType="video"
-                  acceptedTypes={UPLOAD_CONSTANTS.ALLOWED_VIDEO_TYPES}
-                  maxSizeBytes={UPLOAD_CONSTANTS.UPSCALE_MAX_VIDEO_SIZE_BYTES}
-                  maxSizeLabel={UPLOAD_CONSTANTS.UPSCALE_MAX_VIDEO_SIZE_LABEL}
-                  formatsLabel={UPLOAD_CONSTANTS.VIDEO_FORMATS_LABEL}
-                  file={sourceVideoFile}
-                  preview={null}
-                  onFileChange={(file) => {
-                    handleUpscaleVideoChange(file).catch(() => {
-                      // Error already handled within the function
-                    });
-                  }}
-                  onError={setError}
-                  isCompact={isCompact}
-                />
-                {videoMetadata && (
-                  <div className="text-xs text-muted-foreground">
-                    Detected: {videoMetadata.width}x{videoMetadata.height} ·{" "}
-                    {(videoMetadata.duration ?? 0).toFixed(1)}s ·{" "}
-                    {Math.round(videoMetadata.fps ?? 30)} FPS
-                  </div>
-                )}
-                <div className="text-xs text-muted-foreground">
-                  Or provide video URL:
-                </div>
-                <Input
-                  type="url"
-                  value={sourceVideoUrl}
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    setSourceVideoUrl(value);
-                    if (value) {
-                      setSourceVideoFile(null);
-                    } else {
-                      setVideoMetadata(null);
-                    }
-                  }}
-                  onBlur={() => {
-                    handleUpscaleVideoUrlBlur().catch(() => {
-                      // Error already handled within the function
-                    });
-                  }}
-                  placeholder="https://example.com/video.mp4"
-                  className="h-8 text-xs"
-                />
-              </div>
-
-              {bytedanceUpscalerSelected && (
-                <div className="space-y-3 text-left border-t pt-3">
-                  <Label className="text-sm font-semibold">
-                    ByteDance Upscaler Settings
-                  </Label>
-
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <div className="space-y-1">
-                      <Label htmlFor="bytedance-resolution" className="text-xs">
-                        Target Resolution
-                      </Label>
-                      <Select
-                        value={bytedanceTargetResolution}
-                        onValueChange={(value) =>
-                          setBytedanceTargetResolution(
-                            value as "1080p" | "2k" | "4k"
-                          )
-                        }
-                      >
-                        <SelectTrigger
-                          id="bytedance-resolution"
-                          className="h-8 text-xs"
-                        >
-                          <SelectValue placeholder="Select resolution" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="1080p">1080p (Full HD)</SelectItem>
-                          <SelectItem value="2k">2K (2560x1440)</SelectItem>
-                          <SelectItem value="4k">4K (3840x2160)</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="space-y-1">
-                      <Label htmlFor="bytedance-fps" className="text-xs">
-                        Target Frame Rate
-                      </Label>
-                      <Select
-                        value={bytedanceTargetFPS}
-                        onValueChange={(value) =>
-                          setBytedanceTargetFPS(value as "30fps" | "60fps")
-                        }
-                      >
-                        <SelectTrigger
-                          id="bytedance-fps"
-                          className="h-8 text-xs"
-                        >
-                          <SelectValue placeholder="Select FPS" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="30fps">30 FPS</SelectItem>
-                          <SelectItem value="60fps">
-                            60 FPS (2x cost)
-                          </SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-
-                  <div className="text-xs text-muted-foreground">
-                    Estimated cost (per clip): {bytedanceEstimatedCost}
-                  </div>
-                  <div className="text-xs text-muted-foreground">
-                    AI-powered upscaling to 1080p, 2K, or 4K with optional 60fps
-                    enhancement.
-                  </div>
-                </div>
-              )}
-
-              {flashvsrUpscalerSelected && (
-                <Card className="space-y-4 border p-4">
-                  <div>
-                    <h4 className="text-sm font-semibold">
-                      FlashVSR Upscaler Settings
-                    </h4>
-                    <p className="text-xs text-muted-foreground">
-                      Fastest video upscaling with fine-grained quality control.
-                    </p>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label className="text-xs">
-                      Upscale Factor: {flashvsrUpscaleFactor.toFixed(1)}x
-                    </Label>
-                    <Slider
-                      min={1}
-                      max={4}
-                      step={0.1}
-                      value={[flashvsrUpscaleFactor]}
-                      onValueChange={(value) =>
-                        setFlashvsrUpscaleFactor(
-                          Number((value[0] ?? 1).toFixed(1))
-                        )
-                      }
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Continuous scale from 1x to 4x
-                    </p>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label className="text-xs">Acceleration Mode</Label>
-                    <Select
-                      value={flashvsrAcceleration}
-                      onValueChange={(value) =>
-                        setFlashvsrAcceleration(
-                          value as "regular" | "high" | "full"
-                        )
-                      }
-                    >
-                      <SelectTrigger className="h-8 text-xs">
-                        <SelectValue placeholder="Select acceleration" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="regular">
-                          Regular (Best quality)
-                        </SelectItem>
-                        <SelectItem value="high">
-                          High (30-40% faster)
-                        </SelectItem>
-                        <SelectItem value="full">
-                          Full (50-60% faster)
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label className="text-xs">
-                      Quality: {flashvsrQuality}
-                    </Label>
-                    <Slider
-                      min={0}
-                      max={100}
-                      step={5}
-                      value={[flashvsrQuality]}
-                      onValueChange={(value) =>
-                        setFlashvsrQuality(Math.round(value[0] ?? 70))
-                      }
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Tile blending quality (0-100)
-                    </p>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label className="text-xs">Output Format</Label>
-                    <Select
-                      value={flashvsrOutputFormat}
-                      onValueChange={(value) =>
-                        setFlashvsrOutputFormat(
-                          value as "X264" | "VP9" | "PRORES4444" | "GIF"
-                        )
-                      }
-                    >
-                      <SelectTrigger className="h-8 text-xs">
-                        <SelectValue placeholder="Select format" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="X264">
-                          X264 (.mp4) - Standard
-                        </SelectItem>
-                        <SelectItem value="VP9">
-                          VP9 (.webm) - Modern codec
-                        </SelectItem>
-                        <SelectItem value="PRORES4444">
-                          ProRes 4444 (.mov) - Professional
-                        </SelectItem>
-                        <SelectItem value="GIF">
-                          GIF (.gif) - Animated
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label className="text-xs">Output Quality</Label>
-                    <Select
-                      value={flashvsrOutputQuality}
-                      onValueChange={(value) =>
-                        setFlashvsrOutputQuality(
-                          value as "low" | "medium" | "high" | "maximum"
-                        )
-                      }
-                    >
-                      <SelectTrigger className="h-8 text-xs">
-                        <SelectValue placeholder="Select quality" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="low">Low</SelectItem>
-                        <SelectItem value="medium">Medium</SelectItem>
-                        <SelectItem value="high">High</SelectItem>
-                        <SelectItem value="maximum">Maximum</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label className="text-xs">Encoding Mode</Label>
-                    <Select
-                      value={flashvsrOutputWriteMode}
-                      onValueChange={(value) =>
-                        setFlashvsrOutputWriteMode(
-                          value as "fast" | "balanced" | "small"
-                        )
-                      }
-                    >
-                      <SelectTrigger className="h-8 text-xs">
-                        <SelectValue placeholder="Select encoding profile" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="fast">
-                          Fast (Faster encoding)
-                        </SelectItem>
-                        <SelectItem value="balanced">
-                          Balanced (Default)
-                        </SelectItem>
-                        <SelectItem value="small">
-                          Small (Smaller file size)
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="flex flex-col gap-2">
-                    <div className="flex items-center space-x-2">
-                      <Checkbox
-                        id="flashvsr-color-fix"
-                        checked={flashvsrColorFix}
-                        onCheckedChange={(checked) =>
-                          setFlashvsrColorFix(Boolean(checked))
-                        }
-                      />
-                      <Label htmlFor="flashvsr-color-fix" className="text-xs">
-                        Apply color correction
-                      </Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <Checkbox
-                        id="flashvsr-preserve-audio"
-                        checked={flashvsrPreserveAudio}
-                        onCheckedChange={(checked) =>
-                          setFlashvsrPreserveAudio(Boolean(checked))
-                        }
-                      />
-                      <Label
-                        htmlFor="flashvsr-preserve-audio"
-                        className="text-xs"
-                      >
-                        Preserve audio track
-                      </Label>
-                    </div>
-                  </div>
-
-                  <div className="space-y-1">
-                    <Label className="text-xs">Seed (optional)</Label>
-                    <Input
-                      type="number"
-                      value={flashvsrSeed ?? ""}
-                      onChange={(e) =>
-                        setFlashvsrSeed(
-                          e.target.value
-                            ? Number.parseInt(e.target.value, 10)
-                            : undefined
-                        )
-                      }
-                      placeholder="Random seed for reproducibility"
-                      className="h-8 text-xs"
-                    />
-                  </div>
-
-                  <div className="space-y-1 text-xs text-muted-foreground">
-                    <div>
-                      Estimated cost:{" "}
-                      <span className="font-semibold">
-                        {flashvsrEstimatedCost}
-                      </span>
-                    </div>
-                    <p>
-                      Based on output megapixels: (width × factor) × (height ×
-                      factor) × frames × $0.0005 / 1,000,000.
-                    </p>
-                  </div>
-                </Card>
-              )}
-
-              {topazUpscalerSelected && (
-                <Card className="space-y-4 border p-4">
-                  <div>
-                    <h4 className="text-sm font-semibold">
-                      Topaz Video Upscale Settings
-                    </h4>
-                    <p className="text-xs text-muted-foreground">
-                      Professional-grade upscaling up to 8x.
-                    </p>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label className="text-xs">
-                      Upscale Factor: {topazUpscaleFactor}x
-                    </Label>
-                    <Slider
-                      min={2}
-                      max={8}
-                      step={1}
-                      value={[topazUpscaleFactor]}
-                      onValueChange={(value) =>
-                        setTopazUpscaleFactor(
-                          Math.max(2, Math.min(8, Math.round(value[0] ?? 2)))
-                        )
-                      }
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Higher factor = better quality but longer processing
-                    </p>
-                  </div>
-
-                  <div className="flex items-center space-x-2">
-                    <Checkbox
-                      id="topaz-interpolated"
-                      checked={topazTargetFPS === "interpolated"}
-                      onCheckedChange={(checked) =>
-                        setTopazTargetFPS(checked ? "interpolated" : "original")
-                      }
-                    />
-                    <Label htmlFor="topaz-interpolated" className="text-xs">
-                      Enable frame interpolation
-                    </Label>
-                  </div>
-
-                  <div className="flex items-center space-x-2">
-                    <Checkbox
-                      id="topaz-h264"
-                      checked={topazH264Output}
-                      onCheckedChange={(checked) =>
-                        setTopazH264Output(Boolean(checked))
-                      }
-                    />
-                    <Label htmlFor="topaz-h264" className="text-xs">
-                      Export H.264 output
-                    </Label>
-                  </div>
-
-                  <div className="space-y-1 text-xs text-muted-foreground">
-                    <div>
-                      Estimated cost:{" "}
-                      <span className="font-semibold">
-                        {calculateTopazUpscaleCost(topazUpscaleFactor)}
-                      </span>
-                    </div>
-                    <div>Processing time: 30-60 seconds</div>
-                  </div>
-                </Card>
-              )}
+              <AIUpscaleTab
+                selectedModels={selectedModels}
+                isCompact={isCompact}
+                onError={setError}
+                sourceVideoFile={upscaleState.sourceVideoFile}
+                sourceVideoUrl={upscaleState.sourceVideoUrl}
+                videoMetadata={upscaleState.videoMetadata}
+                onSourceVideoFileChange={upscaleHandlers.handleUpscaleVideoChange}
+                onSourceVideoUrlChange={upscaleSetters.setSourceVideoUrl}
+                onVideoUrlBlur={upscaleHandlers.handleUpscaleVideoUrlBlur}
+                setVideoMetadata={(metadata) => {
+                  // Video metadata is set via handlers
+                }}
+                bytedanceTargetResolution={upscaleState.bytedance.targetResolution}
+                onBytedanceTargetResolutionChange={upscaleSetters.setBytedanceTargetResolution}
+                bytedanceTargetFPS={upscaleState.bytedance.targetFPS}
+                onBytedanceTargetFPSChange={upscaleSetters.setBytedanceTargetFPS}
+                bytedanceEstimatedCost={bytedanceEstimatedCost}
+                flashvsrUpscaleFactor={upscaleState.flashvsr.upscaleFactor}
+                onFlashvsrUpscaleFactorChange={upscaleSetters.setFlashvsrUpscaleFactor}
+                flashvsrAcceleration={upscaleState.flashvsr.acceleration}
+                onFlashvsrAccelerationChange={upscaleSetters.setFlashvsrAcceleration}
+                flashvsrQuality={upscaleState.flashvsr.quality}
+                onFlashvsrQualityChange={upscaleSetters.setFlashvsrQuality}
+                flashvsrColorFix={upscaleState.flashvsr.colorFix}
+                onFlashvsrColorFixChange={upscaleSetters.setFlashvsrColorFix}
+                flashvsrPreserveAudio={upscaleState.flashvsr.preserveAudio}
+                onFlashvsrPreserveAudioChange={upscaleSetters.setFlashvsrPreserveAudio}
+                flashvsrOutputFormat={upscaleState.flashvsr.outputFormat}
+                onFlashvsrOutputFormatChange={upscaleSetters.setFlashvsrOutputFormat}
+                flashvsrOutputQuality={upscaleState.flashvsr.outputQuality}
+                onFlashvsrOutputQualityChange={upscaleSetters.setFlashvsrOutputQuality}
+                flashvsrOutputWriteMode={upscaleState.flashvsr.outputWriteMode}
+                onFlashvsrOutputWriteModeChange={upscaleSetters.setFlashvsrOutputWriteMode}
+                flashvsrSeed={upscaleState.flashvsr.seed}
+                onFlashvsrSeedChange={upscaleSetters.setFlashvsrSeed}
+                flashvsrEstimatedCost={flashvsrEstimatedCost}
+                topazUpscaleFactor={upscaleState.topaz.upscaleFactor}
+                onTopazUpscaleFactorChange={upscaleSetters.setTopazUpscaleFactor}
+                topazTargetFPS={upscaleState.topaz.targetFPS}
+                onTopazTargetFPSChange={upscaleSetters.setTopazTargetFPS}
+                topazH264Output={upscaleState.topaz.h264Output}
+                onTopazH264OutputChange={upscaleSetters.setTopazH264Output}
+              />
             </TabsContent>
           </Tabs>
 
-          {/* Primary action controls surfaced above model list for quicker access */}
-          <div className="space-y-2 pt-2">
-            <Button
-              type="button"
-              onClick={generation.handleGenerate}
-              disabled={!generation.canGenerate}
-              className="w-full"
-              size={isCompact ? "sm" : "lg"}
-            >
-              {generation.isGenerating ? (
-                <>
-                  <Loader2 className="size-4 mr-2 animate-spin" />
-                  {isCompact
-                    ? "Generating..."
-                    : activeTab === "avatar"
-                      ? "Generating Avatar..."
-                      : "Generating Video..."}
-                </>
-              ) : (
-                <>
-                  <BotIcon className="size-4 mr-2" />
-                  {(() => {
-                    const count = selectedModels.length;
-                    const countLabel =
-                      count > 0
-                        ? `Generate with ${count} ${count === 1 ? "Model" : "Models"}`
-                        : "Generate Video";
-                    if (isCompact) {
-                      return count > 0 ? `Generate (${count})` : "Generate";
-                    }
-                    if (activeTab === "avatar") {
-                      return count > 0
-                        ? `Generate Avatar (${count})`
-                        : "Generate Avatar";
-                    }
-                    return countLabel;
-                  })()}
-                </>
-              )}
-            </Button>
-
-            {/* Mock generation for testing */}
-            {process.env.NODE_ENV === "development" && (
-              <Button
-                type="button"
-                onClick={generation.handleMockGenerate}
-                disabled={!generation.canGenerate}
-                className="w-full"
-                size="lg"
-                variant="outline"
-              >
-                🧪 Mock Generate (Dev)
-              </Button>
-            )}
-
-            {/* Reset button */}
-            {(generation.hasResults || error) && (
-              <Button
-                type="button"
-                onClick={resetGenerationState}
-                variant="outline"
-                size="sm"
-                className="w-full"
-              >
-                <X className="size-3 mr-1" />
-                Reset
-              </Button>
-            )}
-          </div>
-
-          {/* AI Model Selection */}
+          {/* Model Selection Grid */}
           <div className="space-y-2">
-            <Label className="text-xs">
-              {!isCompact && "Select "}AI Models
-              {!isCompact && " (multi-select)"}
-            </Label>
-            <div className="space-y-1">
+            <Label className="text-xs font-medium">Select AI Models</Label>
+            <div className="grid grid-cols-2 gap-2">
               {AI_MODELS.filter((model) => {
                 // Filter models based on active tab
                 if (activeTab === "avatar") {
@@ -3398,529 +829,99 @@ export function AiView() {
                   return model.category === "upscale";
                 }
                 return false;
-              }).map((model) => {
-                const inputId = `ai-model-${model.id}`;
-                const selected = isModelSelected(model.id);
-                return (
-                  <label
-                    key={model.id}
-                    htmlFor={inputId}
-                    className={`w-full flex items-center justify-between p-2 rounded-md border transition-colors cursor-pointer focus-within:outline-none focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2 ${
-                      selected
-                        ? "border-primary bg-primary/5"
-                        : "border-border hover:border-muted-foreground/50"
-                    }`}
-                  >
-                    <input
-                      id={inputId}
-                      type="checkbox"
-                      className="sr-only"
-                      checked={selected}
-                      onChange={() => toggleModel(model.id)}
-                      aria-label={`Select ${model.name}`}
-                    />
-                    <div className="flex items-center space-x-2">
-                      <div
-                        className={`w-4 h-4 rounded border-2 flex items-center justify-center ${
-                          selected
-                            ? "border-primary bg-primary"
-                            : "border-muted-foreground/30"
-                        }`}
-                      >
-                        {selected && (
-                          <Check className="w-2.5 h-2.5 text-primary-foreground" />
-                        )}
-                      </div>
-                      <div>
-                        <div className="text-xs font-medium">{model.name}</div>
-                        {!isCompact && (
-                          <div className="text-xs text-muted-foreground">
-                            {model.description}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                    <div className="text-xs text-right">
-                      <div>${model.price}</div>
-                      {!isCompact && (
-                        <div className="text-muted-foreground">
-                          {model.resolution}
-                        </div>
-                      )}
-                    </div>
-                  </label>
-                );
-              })}
+              }).map((model) => (
+                <Button
+                  key={model.id}
+                  type="button"
+                  size="sm"
+                  variant={isModelSelected(model.id) ? "default" : "outline"}
+                  onClick={() => toggleModel(model.id)}
+                  className={`h-auto py-2 px-2 text-xs justify-start ${isCompact ? "flex-col items-start" : ""}`}
+                >
+                  <span className="truncate">{model.name}</span>
+                  {!isCompact && (
+                    <span className="ml-auto text-muted-foreground">
+                      ${model.price}
+                    </span>
+                  )}
+                </Button>
+              ))}
             </div>
-
-            {/* Cost display */}
-            {selectedModels.length > 0 && (
-              <div className="space-y-1">
-                <div className="text-xs text-muted-foreground text-right">
-                  Total estimated cost:{" "}
-                  <span className="font-medium">${totalCost.toFixed(2)}</span>
-                </div>
-                {hasRemixSelected && (
-                  <div className="text-xs text-orange-500 text-right">
-                    Note: Remix pricing varies by source video duration
-                  </div>
-                )}
-                {selectedModels.some((id) => id === "reve-text-to-image") && (
-                  <div className="text-xs text-muted-foreground text-right">
-                    <span className="font-medium">Reve Cost:</span> $
-                    {(
-                      REVE_TEXT_TO_IMAGE_MODEL.pricing.perImage * reveNumImages
-                    ).toFixed(2)}
-                    {reveNumImages > 1 && (
-                      <span className="ml-1 opacity-75">
-                        ({REVE_TEXT_TO_IMAGE_MODEL.pricing.perImage.toFixed(2)}{" "}
-                        × {reveNumImages} images)
-                      </span>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
           </div>
 
-          {/* Sora 2 Settings Panel - Only shows when Sora 2 models selected */}
-          {generation.isSora2Selected && (
-            <div className="space-y-3 p-3 bg-muted/30 rounded-md border border-muted">
-              <Label className="text-xs font-medium">Sora 2 Settings</Label>
-
-              {/* Duration selector */}
-              <div className="space-y-1">
-                <Label htmlFor="sora2-duration" className="text-xs">
-                  Duration
-                </Label>
-                <Select
-                  value={generation.duration.toString()}
-                  onValueChange={(v) =>
-                    generation.setDuration(Number(v) as 4 | 8 | 12)
-                  }
-                >
-                  <SelectTrigger id="sora2-duration" className="h-8 text-xs">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="4">
-                      4 seconds{" "}
-                      {generation.hasSora2Pro
-                        ? generation.resolution === "1080p"
-                          ? "($0.50/s)"
-                          : "($0.30/s)"
-                        : "($0.10/s)"}
-                    </SelectItem>
-                    <SelectItem value="8">
-                      8 seconds{" "}
-                      {generation.hasSora2Pro
-                        ? generation.resolution === "1080p"
-                          ? "($0.50/s)"
-                          : "($0.30/s)"
-                        : "($0.10/s)"}
-                    </SelectItem>
-                    <SelectItem value="12">
-                      12 seconds{" "}
-                      {generation.hasSora2Pro
-                        ? generation.resolution === "1080p"
-                          ? "($0.50/s)"
-                          : "($0.30/s)"
-                        : "($0.10/s)"}
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
+          {/* Cost Summary */}
+          {selectedModels.length > 0 && (
+            <div className="p-3 bg-muted/30 rounded-md">
+              <div className="flex justify-between items-center">
+                <span className="text-xs font-medium">Estimated Cost:</span>
+                <span className="text-xs font-semibold">
+                  ${totalCost.toFixed(2)}
+                  {hasRemixSelected && " + remix varies"}
+                </span>
               </div>
-
-              {/* Aspect ratio selector */}
-              <div className="space-y-1">
-                <Label htmlFor="sora2-aspect" className="text-xs">
-                  Aspect Ratio
-                </Label>
-                <Select
-                  value={generation.aspectRatio}
-                  onValueChange={(v) =>
-                    generation.setAspectRatio(v as "16:9" | "9:16")
-                  }
-                >
-                  <SelectTrigger id="sora2-aspect" className="h-8 text-xs">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="16:9">16:9 (Landscape)</SelectItem>
-                    <SelectItem value="9:16">9:16 (Portrait)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Resolution selector - only for Pro models */}
-              {generation.hasSora2Pro && (
-                <div className="space-y-1">
-                  <Label htmlFor="sora2-resolution" className="text-xs">
-                    Resolution (Pro)
-                  </Label>
-                  <Select
-                    value={generation.resolution}
-                    onValueChange={(v) => generation.setResolution(v as any)}
-                  >
-                    <SelectTrigger
-                      id="sora2-resolution"
-                      className="h-8 text-xs"
-                    >
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="auto">Auto</SelectItem>
-                      <SelectItem value="720p">720p ($0.30/s)</SelectItem>
-                      <SelectItem value="1080p">1080p ($0.50/s)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
             </div>
           )}
 
-          {/* Veo 3.1 Settings Panel - Only shows when Veo 3.1 models selected */}
+          {/* Sora 2 Settings */}
+          {generation.isSora2Selected && (
+            <AISora2Settings
+              duration={generation.duration as 4 | 8 | 12}
+              onDurationChange={(v) => generation.setDuration(v)}
+              aspectRatio={generation.aspectRatio as "16:9" | "9:16"}
+              onAspectRatioChange={(v) => generation.setAspectRatio(v)}
+              resolution={generation.resolution as "auto" | "720p" | "1080p"}
+              onResolutionChange={(v) => generation.setResolution(v)}
+              hasSora2Pro={generation.hasSora2Pro}
+            />
+          )}
+
+          {/* Veo 3.1 Settings */}
           {generation.isVeo31Selected && (
-            <div className="space-y-3 p-3 bg-muted/30 rounded-md border border-muted">
-              <Label className="text-xs font-medium">Veo 3.1 Settings</Label>
-
-              {/* Resolution selector */}
-              <div className="space-y-1">
-                <Label htmlFor="veo31-resolution" className="text-xs">
-                  Resolution
-                </Label>
-                <Select
-                  value={generation.veo31Settings.resolution}
-                  onValueChange={(v) =>
-                    generation.setVeo31Resolution(v as "720p" | "1080p")
-                  }
-                >
-                  <SelectTrigger id="veo31-resolution" className="h-8 text-xs">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="720p">720p</SelectItem>
-                    <SelectItem value="1080p">1080p</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Duration selector */}
-              <div className="space-y-1">
-                <Label htmlFor="veo31-duration" className="text-xs">
-                  Duration
-                </Label>
-                <Select
-                  value={generation.veo31Settings.duration}
-                  onValueChange={(v) =>
-                    generation.setVeo31Duration(v as "4s" | "6s" | "8s")
-                  }
-                >
-                  <SelectTrigger id="veo31-duration" className="h-8 text-xs">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="4s">
-                      4 seconds (
-                      {generation.veo31Settings.generateAudio
-                        ? "$0.60 Fast / $1.60 Std"
-                        : "$0.40 Fast / $0.80 Std"}
-                      )
-                    </SelectItem>
-                    <SelectItem value="6s">
-                      6 seconds (
-                      {generation.veo31Settings.generateAudio
-                        ? "$0.90 Fast / $2.40 Std"
-                        : "$0.60 Fast / $1.20 Std"}
-                      )
-                    </SelectItem>
-                    <SelectItem value="8s">
-                      8 seconds (
-                      {generation.veo31Settings.generateAudio
-                        ? "$1.20 Fast / $3.20 Std"
-                        : "$0.80 Fast / $1.60 Std"}
-                      )
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Aspect ratio selector */}
-              <div className="space-y-1">
-                <Label htmlFor="veo31-aspect" className="text-xs">
-                  Aspect Ratio
-                </Label>
-                <Select
-                  value={generation.veo31Settings.aspectRatio}
-                  onValueChange={(v) =>
-                    generation.setVeo31AspectRatio(
-                      v as "9:16" | "16:9" | "1:1" | "auto"
-                    )
-                  }
-                >
-                  <SelectTrigger id="veo31-aspect" className="h-8 text-xs">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="16:9">16:9 (Landscape)</SelectItem>
-                    <SelectItem value="9:16">9:16 (Portrait)</SelectItem>
-                    <SelectItem value="1:1">1:1 (Square)</SelectItem>
-                    <SelectItem value="auto">Auto</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Audio toggle */}
-              <div className="flex items-center justify-between">
-                <Label htmlFor="veo31-audio" className="text-xs">
-                  Generate Audio
-                </Label>
-                <input
-                  id="veo31-audio"
-                  type="checkbox"
-                  checked={generation.veo31Settings.generateAudio}
-                  onChange={(e) =>
-                    generation.setVeo31GenerateAudio(e.target.checked)
-                  }
-                  className="h-4 w-4"
-                />
-              </div>
-
-              {/* Enhance prompt toggle */}
-              <div className="flex items-center justify-between">
-                <Label htmlFor="veo31-enhance" className="text-xs">
-                  Enhance Prompt
-                </Label>
-                <input
-                  id="veo31-enhance"
-                  type="checkbox"
-                  checked={generation.veo31Settings.enhancePrompt}
-                  onChange={(e) =>
-                    generation.setVeo31EnhancePrompt(e.target.checked)
-                  }
-                  className="h-4 w-4"
-                />
-              </div>
-
-              {/* Auto-fix toggle */}
-              <div className="flex items-center justify-between">
-                <Label htmlFor="veo31-autofix" className="text-xs">
-                  Auto Fix (Policy Compliance)
-                </Label>
-                <input
-                  id="veo31-autofix"
-                  type="checkbox"
-                  checked={generation.veo31Settings.autoFix}
-                  onChange={(e) => generation.setVeo31AutoFix(e.target.checked)}
-                  className="h-4 w-4"
-                />
-              </div>
-            </div>
+            <AIVeo31Settings
+              settings={generation.veo31Settings}
+              onResolutionChange={(v) => generation.setVeo31Resolution(v)}
+              onDurationChange={(v) => generation.setVeo31Duration(v)}
+              onAspectRatioChange={(v) => generation.setVeo31AspectRatio(v)}
+              onGenerateAudioChange={(v) => generation.setVeo31GenerateAudio(v)}
+              onEnhancePromptChange={(v) => generation.setVeo31EnhancePrompt(v)}
+              onAutoFixChange={(v) => generation.setVeo31AutoFix(v)}
+            />
           )}
 
           {/* Reve Text-to-Image Settings */}
           {selectedModels.some((id) => id === "reve-text-to-image") && (
-            <div className="space-y-3 p-3 bg-muted/30 rounded-md border border-muted">
-              <Label className="text-xs font-medium">
-                Reve Text-to-Image Settings
-              </Label>
-
-              {/* Aspect Ratio Selector */}
-              <div className="space-y-1">
-                <Label htmlFor="reve-aspect" className="text-xs">
-                  Aspect Ratio
-                </Label>
-                <Select
-                  value={reveAspectRatio}
-                  onValueChange={(value) =>
-                    setReveAspectRatio(value as ReveAspectRatioOption)
-                  }
-                >
-                  <SelectTrigger id="reve-aspect" className="h-8 text-xs">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {REVE_TEXT_TO_IMAGE_MODEL.aspectRatios.map(
-                      ({ value, label }) => (
-                        <SelectItem key={value} value={value}>
-                          {label}
-                        </SelectItem>
-                      )
-                    )}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Number of Images */}
-              <div className="space-y-1">
-                <Label htmlFor="reve-num-images" className="text-xs">
-                  Number of Images
-                </Label>
-                <Select
-                  value={String(reveNumImages)}
-                  onValueChange={(v) => setReveNumImages(Number(v))}
-                >
-                  <SelectTrigger id="reve-num-images" className="h-8 text-xs">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {REVE_NUM_IMAGE_OPTIONS.map((count) => {
-                      const totalPrice =
-                        REVE_TEXT_TO_IMAGE_MODEL.pricing.perImage * count;
-                      return (
-                        <SelectItem key={count} value={String(count)}>
-                          {count} image{count > 1 ? "s" : ""} ($
-                          {totalPrice.toFixed(2)})
-                        </SelectItem>
-                      );
-                    })}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Output Format */}
-              <div className="space-y-1">
-                <Label htmlFor="reve-format" className="text-xs">
-                  Output Format
-                </Label>
-                <Select
-                  value={reveOutputFormat}
-                  onValueChange={(value) =>
-                    setReveOutputFormat(value as ReveOutputFormatOption)
-                  }
-                >
-                  <SelectTrigger id="reve-format" className="h-8 text-xs">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {REVE_TEXT_TO_IMAGE_MODEL.outputFormats.map((format) => (
-                      <SelectItem key={format} value={format}>
-                        {format.toUpperCase()}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
+            <AIReveTextToImageSettings
+              aspectRatio={reveAspectRatio}
+              onAspectRatioChange={setReveAspectRatio}
+              numImages={reveNumImages}
+              onNumImagesChange={setReveNumImages}
+              outputFormat={reveOutputFormat}
+              onOutputFormatChange={setReveOutputFormat}
+            />
           )}
 
-          {/* Reve Edit Image Upload - Shows when Reve Edit functionality is needed */}
+          {/* Reve Edit (Image Tab only) */}
           {activeTab === "image" &&
             selectedModels.some((id) => id === "reve-text-to-image") && (
-              <div className="space-y-3 p-3 bg-muted/30 rounded-md border border-muted">
-                <Label className="text-xs font-medium">
-                  Reve Edit (Optional)
-                </Label>
-                <p className="text-xs text-muted-foreground">
-                  Upload an image to edit it with Reve AI, or leave empty for
-                  text-to-image generation.
-                </p>
-
-                {/* Image Upload */}
-                <div className="space-y-2">
-                  <Label className="text-xs">Source Image (Optional)</Label>
-                  <label
-                    htmlFor="reve-edit-image-input"
-                    className={`block border-2 border-dashed rounded-lg cursor-pointer transition-colors min-h-[100px] focus-within:outline-none focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2 ${
-                      generation.uploadedImageForEdit
-                        ? "border-primary/50 bg-primary/5 p-2"
-                        : "border-muted-foreground/25 hover:border-muted-foreground/50 p-3"
-                    }`}
-                    aria-label={
-                      generation.uploadedImageForEdit
-                        ? "Change image"
-                        : "Upload image to edit"
-                    }
-                  >
-                    {generation.uploadedImageForEdit &&
-                    generation.uploadedImagePreview ? (
-                      <div className="relative flex flex-col items-center justify-center h-full">
-                        <img
-                          src={generation.uploadedImagePreview}
-                          alt={generation.uploadedImageForEdit.name}
-                          className="max-w-full max-h-20 mx-auto rounded object-contain"
-                        />
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="destructive"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            generation.clearUploadedImageForEdit();
-                          }}
-                          className="absolute top-1 right-1 h-6 w-6 p-0 flex items-center justify-center bg-red-500 hover:bg-red-600 text-white rounded-full shadow-sm"
-                          aria-label="Remove uploaded image"
-                        >
-                          <X className="h-3 w-3" />
-                        </Button>
-                        <div className="mt-1 text-xs text-muted-foreground text-center">
-                          {generation.uploadedImageForEdit.name}
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="flex flex-col items-center justify-center h-full space-y-1 text-center">
-                        <Upload className="size-6 text-muted-foreground" />
-                        <div className="text-xs text-muted-foreground">
-                          Upload image to edit
-                        </div>
-                        <div className="text-xs text-muted-foreground/70">
-                          PNG, JPEG, WebP, AVIF, HEIF (max 10MB)
-                        </div>
-                        <div className="text-xs text-muted-foreground/70">
-                          128×128 to 4096×4096 pixels
-                        </div>
-                      </div>
-                    )}
-                    <input
-                      id="reve-edit-image-input"
-                      type="file"
-                      accept="image/png,image/jpeg,image/webp,image/avif,image/heif"
-                      onChange={async (e) => {
-                        const file = e.target.files?.[0];
-                        if (!file) return;
-
-                        try {
-                          await generation.handleImageUploadForEdit(file);
-                          setError(null);
-                        } catch (err) {
-                          setError(
-                            err instanceof Error
-                              ? err.message
-                              : "Failed to upload image"
-                          );
-                        }
-                      }}
-                      className="sr-only"
-                    />
-                  </label>
-                </div>
-
-                {generation.uploadedImageForEdit && (
-                  <div className="space-y-2">
-                    <Label className="text-xs">Edit Instructions</Label>
-                    <Textarea
-                      value={prompt}
-                      onChange={(e) => setPrompt(e.target.value)}
-                      placeholder="Describe the edits you want to make (e.g., 'Make the sky sunset orange', 'Add snow to the ground')"
-                      className="min-h-[80px] text-xs resize-none"
-                      maxLength={2560}
-                    />
-                    <div className="text-xs text-muted-foreground text-right">
-                      {prompt.length} / 2560 characters
-                    </div>
-                  </div>
-                )}
-              </div>
+              <AIReveEditSettings
+                uploadedImage={generation.uploadedImageForEdit}
+                uploadedImagePreview={generation.uploadedImagePreview}
+                onImageUpload={generation.handleImageUploadForEdit}
+                onClearImage={generation.clearUploadedImageForEdit}
+                editPrompt={prompt}
+                onEditPromptChange={setPrompt}
+                onError={setError}
+              />
             )}
 
-          {/* Error display */}
+          {/* Error Display */}
           {error && (
             <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-md">
               <div className="text-xs text-destructive">{error}</div>
             </div>
           )}
 
-          {/* Progress display */}
+          {/* Progress Display */}
           {generation.isGenerating && (
             <div className="space-y-3 p-3 bg-muted/50 rounded-md">
               <div className="flex items-center justify-between">
@@ -3947,7 +948,7 @@ export function AiView() {
             </div>
           )}
 
-          {/* Generated videos results */}
+          {/* Generated Videos Results */}
           {generation.hasResults && (
             <div className="space-y-2">
               <Label className="text-xs">Generated Videos</Label>
@@ -3979,10 +980,9 @@ export function AiView() {
                             result.video.videoUrl || result.video.videoPath;
 
                           if (!downloadUrl) {
-                            console.warn(
-                              "step 8: media panel download - missing downloadUrl",
-                              { jobId: result.video.jobId }
-                            );
+                            console.warn("Missing downloadUrl", {
+                              jobId: result.video.jobId,
+                            });
                             return;
                           }
 
@@ -4003,12 +1003,6 @@ export function AiView() {
                           const a = document.createElement("a");
                           a.href = downloadUrl;
                           a.download = filename;
-                          console.log("step 8: media panel download", {
-                            jobId: result.video.jobId,
-                            url: downloadUrl,
-                            source: isBlob ? "blob" : "remote",
-                            filename: a.download,
-                          });
                           a.click();
                           a.remove();
                         }}
@@ -4024,43 +1018,59 @@ export function AiView() {
             </div>
           )}
 
-          {/* Validation messages - show when generation is blocked */}
+          {/* Validation Messages */}
           {!generation.canGenerate && selectedModels.length > 0 && (
             <div className="p-3 bg-orange-500/10 border border-orange-500/20 rounded-md">
               <div className="text-xs text-orange-600 dark:text-orange-400 space-y-1">
                 {activeTab === "text" && !prompt.trim() && (
-                  <div>⚠️ Please enter a prompt to generate video</div>
+                  <div>Please enter a prompt to generate video</div>
                 )}
                 {activeTab === "image" &&
                   !selectedImage &&
                   !generation.hasVeo31FrameToVideo && (
-                    <div>⚠️ Please upload an image for video generation</div>
+                    <div>Please upload an image for video generation</div>
                   )}
                 {activeTab === "image" &&
                   generation.hasVeo31FrameToVideo &&
-                  !firstFrame && (
+                  !imageState.firstFrame && (
                     <div>
-                      ⚠️ Please upload the first frame (required for
-                      frame-to-video)
+                      Please upload the first frame (required for frame-to-video)
                     </div>
                   )}
                 {activeTab === "image" &&
                   generation.hasVeo31FrameToVideo &&
-                  !lastFrame && (
+                  !imageState.lastFrame && (
                     <div>
-                      ⚠️ Please upload the last frame (required for
-                      frame-to-video)
+                      Please upload the last frame (required for frame-to-video)
                     </div>
                   )}
-                {activeTab === "avatar" && !avatarImage && (
-                  <div>⚠️ Please upload a character image</div>
+                {activeTab === "avatar" && !avatarState.avatarImage && (
+                  <div>Please upload a character image</div>
                 )}
               </div>
             </div>
           )}
+
+          {/* Generate Button */}
+          <Button
+            type="button"
+            className="w-full"
+            disabled={!generation.canGenerate || generation.isGenerating}
+            onClick={generation.handleGenerate}
+          >
+            {generation.isGenerating ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Generating...
+              </>
+            ) : (
+              <>Generate ({selectedModels.length} models)</>
+            )}
+          </Button>
         </div>
       )}
 
+      {/* History Panel */}
       <AIHistoryPanel
         isOpen={history.isHistoryPanelOpen}
         onClose={history.closeHistoryPanel}
