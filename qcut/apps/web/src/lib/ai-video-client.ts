@@ -2381,9 +2381,7 @@ export async function generateKling26ImageVideo(
 
     const trimmedPrompt = request.prompt?.trim() ?? "";
     if (!trimmedPrompt) {
-      throw new Error(
-        "Please enter a prompt for Kling 2.6 video generation"
-      );
+      throw new Error("Please enter a prompt for Kling 2.6 video generation");
     }
 
     if (trimmedPrompt.length > 2500) {
@@ -2553,16 +2551,24 @@ export async function generateKlingO1Video(
     // Debug: Check Electron IPC availability
     console.log("🔍 [V2V Debug] Checking Electron IPC availability:");
     console.log("  - window.electronAPI exists:", !!window.electronAPI);
-    console.log("  - window.electronAPI?.fal exists:", !!window.electronAPI?.fal);
+    console.log(
+      "  - window.electronAPI?.fal exists:",
+      !!window.electronAPI?.fal
+    );
     console.log(
       "  - window.electronAPI?.fal?.uploadVideo exists:",
       !!window.electronAPI?.fal?.uploadVideo
     );
-    console.log("  - window.electronAPI?.isElectron:", window.electronAPI?.isElectron);
+    console.log(
+      "  - window.electronAPI?.isElectron:",
+      window.electronAPI?.isElectron
+    );
 
     if (window.electronAPI?.fal?.uploadVideo) {
       // Electron environment: Use IPC to upload video (bypasses CORS)
-      console.log("✅ [V2V] Using Electron IPC for video upload (bypasses CORS)");
+      console.log(
+        "✅ [V2V] Using Electron IPC for video upload (bypasses CORS)"
+      );
       console.log("📤 Uploading source video to FAL via Electron IPC...");
       console.log("  - File name:", request.sourceVideo.name);
       console.log("  - File size:", request.sourceVideo.size, "bytes");
@@ -2604,7 +2610,11 @@ export async function generateKlingO1Video(
       );
       console.log("📤 Converting source video to base64...");
       videoUrl = await fileToDataURL(request.sourceVideo);
-      console.log("✅ Video converted to data URL (length:", videoUrl.length, "chars)");
+      console.log(
+        "✅ Video converted to data URL (length:",
+        videoUrl.length,
+        "chars)"
+      );
     }
 
     const durationNum =
@@ -3218,16 +3228,23 @@ export async function generateAvatarVideo(
       // Build prompt with @Image1 reference if prompt doesn't already contain it
       let enhancedPrompt = request.prompt || "";
       if (!enhancedPrompt.includes("@Image")) {
-        enhancedPrompt = `Use @Image1 as the reference. ${enhancedPrompt}`.trim();
+        enhancedPrompt =
+          `Use @Image1 as the reference. ${enhancedPrompt}`.trim();
       }
 
       payload = {
         prompt: enhancedPrompt,
         image_urls: [imageUrl],
-        duration: String(request.duration || modelConfig.default_params?.duration || 5),
+        duration: String(
+          request.duration || modelConfig.default_params?.duration || 5
+        ),
         aspect_ratio: modelConfig.default_params?.aspect_ratio || "16:9",
-        ...(modelConfig.default_params?.cfg_scale && { cfg_scale: modelConfig.default_params.cfg_scale }),
-        ...(modelConfig.default_params?.negative_prompt && { negative_prompt: modelConfig.default_params.negative_prompt }),
+        ...(modelConfig.default_params?.cfg_scale && {
+          cfg_scale: modelConfig.default_params.cfg_scale,
+        }),
+        ...(modelConfig.default_params?.negative_prompt && {
+          negative_prompt: modelConfig.default_params.negative_prompt,
+        }),
       };
     } else {
       throw new Error(`Unsupported avatar model: ${request.model}`);
@@ -3284,8 +3301,9 @@ export async function generateAvatarVideo(
           } else if (Array.isArray(errorData.detail)) {
             // FAL validation errors come as array of {loc, msg, type} objects
             errorMessage = errorData.detail
-              .map((e: { msg?: string; loc?: string[] }) =>
-                e.msg || JSON.stringify(e)
+              .map(
+                (e: { msg?: string; loc?: string[] }) =>
+                  e.msg || JSON.stringify(e)
               )
               .join("; ");
           } else {
@@ -3820,7 +3838,7 @@ export async function generateSeeddream45Image(params: {
       ...(params.seed !== undefined && { seed: params.seed }),
     };
 
-    console.log(`🎨 [Seeddream 4.5] Starting text-to-image generation...`);
+    console.log("🎨 [Seeddream 4.5] Starting text-to-image generation...");
     console.log(`📝 Prompt: ${params.prompt.slice(0, 50)}...`);
 
     const response = await fetch(`${FAL_API_BASE}/${endpoint}`, {
@@ -3840,7 +3858,9 @@ export async function generateSeeddream45Image(params: {
     }
 
     const result = await response.json();
-    console.log(`✅ [Seeddream 4.5] Generation complete: ${result.images?.length || 0} images`);
+    console.log(
+      `✅ [Seeddream 4.5] Generation complete: ${result.images?.length || 0} images`
+    );
 
     return result;
   } catch (error) {
@@ -3924,7 +3944,7 @@ export async function editSeeddream45Image(params: {
       ...(params.seed !== undefined && { seed: params.seed }),
     };
 
-    console.log(`🎨 [Seeddream 4.5 Edit] Starting image edit...`);
+    console.log("🎨 [Seeddream 4.5 Edit] Starting image edit...");
     console.log(`📝 Prompt: ${params.prompt.slice(0, 50)}...`);
     console.log(`🖼️ Input images: ${params.image_urls.length}`);
 
@@ -3945,7 +3965,9 @@ export async function editSeeddream45Image(params: {
     }
 
     const result = await response.json();
-    console.log(`✅ [Seeddream 4.5 Edit] Edit complete: ${result.images?.length || 0} images`);
+    console.log(
+      `✅ [Seeddream 4.5 Edit] Edit complete: ${result.images?.length || 0} images`
+    );
 
     return result;
   } catch (error) {
@@ -3976,7 +3998,9 @@ export async function uploadImageForSeeddream45Edit(
 
     // Use Electron IPC upload if available (bypasses CORS)
     if (window.electronAPI?.fal?.uploadImage) {
-      console.log(`📤 [Seeddream 4.5] Uploading image via Electron IPC: ${imageFile.name}`);
+      console.log(
+        `📤 [Seeddream 4.5] Uploading image via Electron IPC: ${imageFile.name}`
+      );
 
       const arrayBuffer = await imageFile.arrayBuffer();
       const result = await window.electronAPI.fal.uploadImage(
@@ -3986,7 +4010,9 @@ export async function uploadImageForSeeddream45Edit(
       );
 
       if (!result.success || !result.url) {
-        throw new Error(result.error ?? ERROR_MESSAGES.SEEDDREAM45_UPLOAD_FAILED);
+        throw new Error(
+          result.error ?? ERROR_MESSAGES.SEEDDREAM45_UPLOAD_FAILED
+        );
       }
 
       console.log(`✅ [Seeddream 4.5] Image uploaded: ${result.url}`);

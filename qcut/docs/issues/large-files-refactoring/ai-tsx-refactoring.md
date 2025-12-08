@@ -54,7 +54,7 @@
 
 ---
 
-## Phase 2: Extract State Management Hooks (In Progress)
+## Phase 2: Extract State Management Hooks (✅ COMPLETE)
 
 ### ✅ Subtask 2.1: Create Base State Hook Pattern - COMPLETE
 **File**: `use-ai-tab-state-base.ts` (~342 lines)
@@ -70,63 +70,60 @@ Implemented hooks:
 
 ---
 
-### Subtask 2.2: Extract Image Tab State Hook
-**File**: `use-ai-image-tab-state.ts` (~200 lines)
-**Depends on**: Subtask 2.1
+### ✅ Subtask 2.2: Extract Image Tab State Hook - COMPLETE
+**File**: `use-ai-image-tab-state.ts` (~450 lines)
+**Status**: ✅ Complete
 
-| State Variable | Current Location | Reuse Pattern |
-|---------------|------------------|---------------|
-| `firstFrame`, `firstFramePreview` | Lines 126-131 | `useFileWithPreview()` |
-| `lastFrame`, `lastFramePreview` | Lines 130-131 | `useFileWithPreview()` |
-| `imageTabSourceVideo` | Line 134-136 | Single file state |
-| `viduQ2*` settings | Lines 240-255 | Grouped model settings |
-| `ltxv2I2V*` settings | Lines 260-280 | Grouped model settings |
-| `seedance*` settings | Lines 285-320 | Grouped model settings |
-| `kling*` settings | Lines 325-360 | Grouped model settings |
-| `kling26*` settings | Lines 365-400 | Grouped model settings |
-| `wan25*` settings | Lines 405-440 | Grouped model settings |
-| `imageSeed` | Line ~450 | Simple state |
+Implemented state groups:
+- `ViduQ2Settings` - Duration, resolution, movement amplitude, BGM
+- `LTXV2I2VSettings` - Duration, resolution, FPS, generate audio
+- `LTXV2ImageSettings` - LTX Fast I2V settings
+- `SeedanceSettings` - Duration, resolution, aspect ratio, camera fixed, end frame
+- `KlingSettings` - Kling v2.5 duration, cfg scale, aspect ratio, prompts
+- `Kling26Settings` - Kling v2.6 duration, cfg scale, aspect ratio, audio, prompts
+- `Wan25Settings` - Duration, resolution, audio URL/file, prompts
 
-**Subtasks:**
-- [ ] 2.2.1: Extract file upload state (firstFrame, lastFrame, endFrame) using `useFileWithPreview`
-- [ ] 2.2.2: Extract Vidu Q2 settings into grouped state object
-- [ ] 2.2.3: Extract LTX Video I2V settings into grouped state object
-- [ ] 2.2.4: Extract Seedance settings into grouped state object
-- [ ] 2.2.5: Extract Kling v2.5 settings into grouped state object
-- [ ] 2.2.6: Extract Kling v2.6 settings into grouped state object
-- [ ] 2.2.7: Extract WAN 2.5 settings into grouped state object
-- [ ] 2.2.8: Create unified `useImageTabState` hook that composes all above
+**Features:**
+- Uses `useFileWithPreview` for first/last frame uploads
+- Auto-reset effects when models are deselected
+- Cleaned/trimmed helper values for API calls
 
 ---
 
-### Subtask 2.3: Extract Text Tab State Hook
-**File**: `use-ai-text-tab-state.ts` (~120 lines)
-**Depends on**: Subtask 2.1
+### ✅ Subtask 2.3: Extract Text Tab State Hook - COMPLETE
+**File**: `use-ai-text-tab-state.ts` (~260 lines)
+**Status**: ✅ Complete
 
-| State Variable | Current Location | Reuse Pattern |
-|---------------|------------------|---------------|
-| `t2vAspectRatio` | Line ~210 | Simple state |
-| `t2vResolution` | Line ~212 | Simple state |
-| `t2vDuration` | Line ~214 | Simple state |
-| `t2vNegativePrompt` | Line ~216 | Simple state |
-| `t2vPromptExpansion` | Line ~218 | Simple state |
-| `t2vSeed` | Line ~220 | Simple state |
-| `t2vSafetyChecker` | Line ~222 | Simple state |
-| `t2vSettingsExpanded` | Line ~224 | Simple state |
-| `hailuoT2VDuration` | Line ~226 | Simple state |
-| `ltxv2*` settings | Lines ~228-238 | Grouped model settings |
+Implemented state:
+- Unified T2V settings (aspect ratio, resolution, duration, negative prompt, etc.)
+- Hailuo T2V duration
+- LTX Video Pro settings (duration, resolution, FPS, audio)
+- LTX Video Fast settings
 
-**Subtasks:**
-- [ ] 2.3.1: Extract common T2V settings into grouped state object
-- [ ] 2.3.2: Extract Hailuo-specific settings
-- [ ] 2.3.3: Extract LTX Video Pro/Fast settings (T2V variant)
-- [ ] 2.3.4: Create unified `useTextTabState` hook
+**Features:**
+- `T2V_DEFAULTS` constant for easy reset
+- `activeSettingsCount` helper for badge display
+- Auto-reset effects when models are deselected
 
 ---
 
-### Subtask 2.4: Extract Avatar Tab State Hook
-**File**: `use-ai-avatar-tab-state.ts` (~80 lines)
-**Depends on**: Subtask 2.1
+### ✅ Subtask 2.4: Extract Avatar Tab State Hook - COMPLETE
+**File**: `use-ai-avatar-tab-state.ts` (~180 lines)
+**Status**: ✅ Complete
+
+Implemented state:
+- Avatar image with preview
+- Last frame (end pose) with preview
+- Reference images (6 slots) with previews
+- Audio file with automatic duration extraction
+- Source video with preview
+- Kling Avatar v2 prompt
+
+**Features:**
+- Uses `useFileWithPreview` for single uploads
+- Uses `useMultipleFilesWithPreview` for 6 reference images
+- Uses `useAudioFileWithDuration` for audio with duration
+- Reset helpers for each section
 
 | State Variable | Reuse Pattern |
 |---------------|---------------|
@@ -138,32 +135,22 @@ Implemented hooks:
 | `klingAvatarV2Prompt` | Simple state |
 | `audioDuration` | Derived from audioFile |
 
-**Subtasks:**
-- [ ] 2.4.1: Extract avatar image uploads using `useFileWithPreview`
-- [ ] 2.4.2: Create `useReferenceImages(count: number)` hook for reference image array
-- [ ] 2.4.3: Extract audio handling with duration extraction
-- [ ] 2.4.4: Create unified `useAvatarTabState` hook
-
 ---
 
-### Subtask 2.5: Extract Upscale Tab State Hook
-**File**: `use-ai-upscale-tab-state.ts` (~100 lines)
-**Depends on**: Subtask 2.1
+### ✅ Subtask 2.5: Extract Upscale Tab State Hook - COMPLETE
+**File**: `use-ai-upscale-tab-state.ts` (~380 lines)
+**Status**: ✅ Complete
 
-| State Variable | Current Location |
-|---------------|------------------|
-| `sourceVideoFile`, `sourceVideoUrl` | Lines 169-170 |
-| `videoMetadata` | Line 171-173 |
-| `bytedance*` settings | Lines 175-180 |
-| `flashvsr*` settings | Lines 182-198 |
-| `topaz*` settings | Lines 200-203 |
+Implemented state groups:
+- `ByteDanceSettings` - Target resolution, target FPS
+- `FlashVSRSettings` - Upscale factor, acceleration, quality, color fix, audio, format, write mode, seed
+- `TopazSettings` - Upscale factor, target FPS, H.264 output
 
-**Subtasks:**
-- [ ] 2.5.1: Extract video source handling (file + URL + metadata extraction)
-- [ ] 2.5.2: Extract ByteDance upscaler settings
-- [ ] 2.5.3: Extract FlashVSR upscaler settings
-- [ ] 2.5.4: Extract Topaz upscaler settings
-- [ ] 2.5.5: Create unified `useUpscaleTabState` hook with cost calculation integration
+**Features:**
+- Video source handling (file + URL with auto metadata extraction)
+- Automatic cost calculation (ByteDance, FlashVSR, Topaz)
+- `UPSCALE_DEFAULTS` constant for easy reset
+- `handleUpscaleVideoChange` and `handleUpscaleVideoUrlBlur` handlers
 
 ---
 
@@ -638,14 +625,14 @@ media-panel/views/
 ├── ai-cost-calculators.ts        # ✅ COMPLETE: Pricing functions (~180 lines)
 ├── ai-model-options.ts           # ✅ COMPLETE: Option arrays (~100 lines)
 │
-│── ## Phase 2: State Management Hooks
+│── ## Phase 2: State Management Hooks (✅ COMPLETE)
 ├── use-ai-generation.ts          # Generation hook (existing)
 ├── use-ai-history.ts             # History hook (existing)
 ├── use-ai-tab-state-base.ts      # ✅ COMPLETE: Shared hooks (useFileWithPreview, useMultipleFilesWithPreview, useAudioFileWithDuration, useVideoWithMetadata) (~342 lines)
-├── use-ai-text-tab-state.ts      # PENDING: Text tab state (~120 lines)
-├── use-ai-image-tab-state.ts     # PENDING: Image tab state (~200 lines)
-├── use-ai-avatar-tab-state.ts    # PENDING: Avatar tab state (~80 lines)
-├── use-ai-upscale-tab-state.ts   # PENDING: Upscale tab state (~100 lines)
+├── use-ai-text-tab-state.ts      # ✅ COMPLETE: Text tab state (~260 lines)
+├── use-ai-image-tab-state.ts     # ✅ COMPLETE: Image tab state (~450 lines)
+├── use-ai-avatar-tab-state.ts    # ✅ COMPLETE: Avatar tab state (~180 lines)
+├── use-ai-upscale-tab-state.ts   # ✅ COMPLETE: Upscale tab state (~380 lines)
 │
 │── ## Phase 2.5: Reusable UI Components (✅ COMPLETE)
 ├── ai-settings-panel.tsx         # ✅ COMPLETE: Reusable settings container (AISettingsPanel, AISettingsPanelSimple, ModelSettingsCard) (~304 lines)

@@ -395,11 +395,7 @@ export const useSegmentationStore = create<SegmentationStore>()(
         ),
 
       setTextPrompt: (prompt) =>
-        set(
-          { currentTextPrompt: prompt },
-          false,
-          "segmentation/setTextPrompt"
-        ),
+        set({ currentTextPrompt: prompt }, false, "segmentation/setTextPrompt"),
 
       clearCurrentPrompts: () =>
         set(

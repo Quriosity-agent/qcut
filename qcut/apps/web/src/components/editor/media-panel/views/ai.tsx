@@ -2500,7 +2500,10 @@ export function AiView() {
                   </div>
 
                   <div className="space-y-1">
-                    <Label htmlFor="kling26-negative-prompt" className="text-xs">
+                    <Label
+                      htmlFor="kling26-negative-prompt"
+                      className="text-xs"
+                    >
                       Negative Prompt (optional)
                     </Label>
                     <Textarea
@@ -2758,7 +2761,9 @@ export function AiView() {
                       label={`Ref ${index + 1}`}
                       helperText=""
                       fileType="image"
-                      acceptedTypes={UPLOAD_CONSTANTS.ALLOWED_AVATAR_IMAGE_TYPES}
+                      acceptedTypes={
+                        UPLOAD_CONSTANTS.ALLOWED_AVATAR_IMAGE_TYPES
+                      }
                       maxSizeBytes={UPLOAD_CONSTANTS.MAX_IMAGE_SIZE_BYTES}
                       maxSizeLabel={UPLOAD_CONSTANTS.MAX_IMAGE_SIZE_LABEL}
                       formatsLabel={UPLOAD_CONSTANTS.AVATAR_IMAGE_FORMATS_LABEL}

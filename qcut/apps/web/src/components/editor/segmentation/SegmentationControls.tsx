@@ -10,13 +10,8 @@ import { Download, RefreshCw, Trash2 } from "lucide-react";
  * Action buttons for segmentation operations.
  */
 export function SegmentationControls() {
-  const {
-    objects,
-    masks,
-    clearObjects,
-    clearSource,
-    clearCurrentPrompts,
-  } = useSegmentationStore();
+  const { objects, masks, clearObjects, clearSource, clearCurrentPrompts } =
+    useSegmentationStore();
 
   const handleDownloadMasks = async () => {
     if (masks.length === 0) return;

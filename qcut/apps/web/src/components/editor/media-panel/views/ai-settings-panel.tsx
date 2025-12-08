@@ -115,9 +115,7 @@ export function AISettingsPanel({
   return (
     <Collapsible {...collapsibleProps}>
       {({ open }: { open: boolean }) => (
-        <div
-          className={`${showBorderTop ? "border-t pt-3" : ""} ${className}`}
-        >
+        <div className={`${showBorderTop ? "border-t pt-3" : ""} ${className}`}>
           <div className="flex items-center justify-between">
             <CollapsibleTrigger asChild>
               <Button
@@ -283,9 +281,7 @@ export function ModelSettingsCard({
   if (!show) return null;
 
   return (
-    <div
-      className={`space-y-3 border-t pt-3 text-left ${className}`}
-    >
+    <div className={`space-y-3 border-t pt-3 text-left ${className}`}>
       <div className="flex items-center justify-between">
         <Label className="text-xs font-semibold">{modelName} Settings</Label>
         {estimatedCost && (
@@ -294,9 +290,7 @@ export function ModelSettingsCard({
           </Badge>
         )}
       </div>
-      {tip && (
-        <p className="text-xs text-muted-foreground">{tip}</p>
-      )}
+      {tip && <p className="text-xs text-muted-foreground">{tip}</p>}
       <div className="space-y-3">{children}</div>
     </div>
   );

@@ -21,7 +21,8 @@ export type ReveOutputFormatOption =
 export type LTXV2FastDuration = (typeof LTXV2_FAST_CONFIG.DURATIONS)[number];
 export type LTXV2FastResolution =
   (typeof LTXV2_FAST_CONFIG.RESOLUTIONS.STANDARD)[number];
-export type LTXV2FastFps = (typeof LTXV2_FAST_CONFIG.FPS_OPTIONS.STANDARD)[number];
+export type LTXV2FastFps =
+  (typeof LTXV2_FAST_CONFIG.FPS_OPTIONS.STANDARD)[number];
 
 export type SeedanceDuration = 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12;
 export type SeedanceResolution = "480p" | "720p" | "1080p";
@@ -48,7 +49,11 @@ export const SEEDANCE_DURATION_OPTIONS: SeedanceDuration[] = [
   2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12,
 ];
 
-export const SEEDANCE_RESOLUTIONS: SeedanceResolution[] = ["480p", "720p", "1080p"];
+export const SEEDANCE_RESOLUTIONS: SeedanceResolution[] = [
+  "480p",
+  "720p",
+  "1080p",
+];
 
 export const SEEDANCE_ASPECT_RATIOS: SeedanceAspectRatio[] = [
   "21:9",
@@ -68,7 +73,11 @@ export const KLING_ASPECT_RATIOS: KlingAspectRatio[] = [
   "3:4",
 ];
 
-export const KLING26_ASPECT_RATIOS: Kling26AspectRatio[] = ["16:9", "9:16", "1:1"];
+export const KLING26_ASPECT_RATIOS: Kling26AspectRatio[] = [
+  "16:9",
+  "9:16",
+  "1:1",
+];
 
 export const WAN25_DURATIONS: Wan25Duration[] = [5, 10];
 
@@ -78,11 +87,12 @@ export const WAN25_RESOLUTIONS: Wan25Resolution[] = ["480p", "720p", "1080p"];
 // Label Mappings
 // ============================================
 
-export const LTXV2_FAST_RESOLUTION_LABELS: Record<LTXV2FastResolution, string> = {
-  "1080p": "1080p (Full HD)",
-  "1440p": "1440p (QHD)",
-  "2160p": "2160p (4K)",
-};
+export const LTXV2_FAST_RESOLUTION_LABELS: Record<LTXV2FastResolution, string> =
+  {
+    "1080p": "1080p (Full HD)",
+    "1440p": "1440p (QHD)",
+    "2160p": "2160p (4K)",
+  };
 
 export const LTXV2_FAST_RESOLUTION_PRICE_SUFFIX: Partial<
   Record<LTXV2FastResolution, string>

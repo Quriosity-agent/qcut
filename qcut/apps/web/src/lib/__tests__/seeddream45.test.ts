@@ -35,9 +35,7 @@ describe("Seeddream 4.5 Text-to-Image", () => {
       globalThis.fetch = fetchMock as unknown as typeof globalThis.fetch;
 
       // The function doesn't validate empty prompts before sending, API will reject
-      await expect(
-        generateSeeddream45Image({ prompt: "" })
-      ).rejects.toThrow();
+      await expect(generateSeeddream45Image({ prompt: "" })).rejects.toThrow();
     });
 
     it("should accept valid prompts", async () => {
@@ -49,12 +47,12 @@ describe("Seeddream 4.5 Text-to-Image", () => {
               url: "https://fal.ai/result.png",
               content_type: "image/png",
               file_name: "result.png",
-              file_size: 1024000,
+              file_size: 1_024_000,
               width: 2048,
               height: 2048,
             },
           ],
-          seed: 12345,
+          seed: 12_345,
         }),
       });
       globalThis.fetch = fetchMock as unknown as typeof globalThis.fetch;
@@ -65,7 +63,7 @@ describe("Seeddream 4.5 Text-to-Image", () => {
 
       expect(result.images).toHaveLength(1);
       expect(result.images[0].url).toBe("https://fal.ai/result.png");
-      expect(result.seed).toBe(12345);
+      expect(result.seed).toBe(12_345);
     });
   });
 
@@ -74,8 +72,10 @@ describe("Seeddream 4.5 Text-to-Image", () => {
       const fetchMock = vi.fn().mockResolvedValue({
         ok: true,
         json: async () => ({
-          images: [{ url: "https://fal.ai/result.png", width: 2048, height: 2048 }],
-          seed: 12345,
+          images: [
+            { url: "https://fal.ai/result.png", width: 2048, height: 2048 },
+          ],
+          seed: 12_345,
         }),
       });
       globalThis.fetch = fetchMock as unknown as typeof globalThis.fetch;
@@ -95,8 +95,10 @@ describe("Seeddream 4.5 Text-to-Image", () => {
       const fetchMock = vi.fn().mockResolvedValue({
         ok: true,
         json: async () => ({
-          images: [{ url: "https://fal.ai/result.png", width: 4096, height: 4096 }],
-          seed: 12345,
+          images: [
+            { url: "https://fal.ai/result.png", width: 4096, height: 4096 },
+          ],
+          seed: 12_345,
         }),
       });
       globalThis.fetch = fetchMock as unknown as typeof globalThis.fetch;
@@ -117,8 +119,10 @@ describe("Seeddream 4.5 Text-to-Image", () => {
       const fetchMock = vi.fn().mockResolvedValue({
         ok: true,
         json: async () => ({
-          images: [{ url: "https://fal.ai/result.png", width: 1920, height: 1080 }],
-          seed: 12345,
+          images: [
+            { url: "https://fal.ai/result.png", width: 1920, height: 1080 },
+          ],
+          seed: 12_345,
         }),
       });
       globalThis.fetch = fetchMock as unknown as typeof globalThis.fetch;
@@ -139,8 +143,10 @@ describe("Seeddream 4.5 Text-to-Image", () => {
       const fetchMock = vi.fn().mockResolvedValue({
         ok: true,
         json: async () => ({
-          images: [{ url: "https://fal.ai/result.png", width: 1920, height: 1080 }],
-          seed: 12345,
+          images: [
+            { url: "https://fal.ai/result.png", width: 1920, height: 1080 },
+          ],
+          seed: 12_345,
         }),
       });
       globalThis.fetch = fetchMock as unknown as typeof globalThis.fetch;
@@ -164,7 +170,7 @@ describe("Seeddream 4.5 Text-to-Image", () => {
         ok: true,
         json: async () => ({
           images: [{ url: "https://fal.ai/result.png" }],
-          seed: 12345,
+          seed: 12_345,
         }),
       });
       globalThis.fetch = fetchMock as unknown as typeof globalThis.fetch;
@@ -207,7 +213,7 @@ describe("Seeddream 4.5 Text-to-Image", () => {
             { url: "https://fal.ai/result1.png" },
             { url: "https://fal.ai/result2.png" },
           ],
-          seed: 12345,
+          seed: 12_345,
         }),
       });
       globalThis.fetch = fetchMock as unknown as typeof globalThis.fetch;
@@ -229,7 +235,7 @@ describe("Seeddream 4.5 Text-to-Image", () => {
         ok: true,
         json: async () => ({
           images: [{ url: "https://fal.ai/result.png" }],
-          seed: 12345,
+          seed: 12_345,
         }),
       });
       globalThis.fetch = fetchMock as unknown as typeof globalThis.fetch;
@@ -336,7 +342,7 @@ describe("Seeddream 4.5 Image Edit", () => {
               url: "https://fal.ai/edited.png",
               content_type: "image/png",
               file_name: "edited.png",
-              file_size: 2048000,
+              file_size: 2_048_000,
               width: 2048,
               height: 2048,
             },
@@ -364,7 +370,8 @@ describe("Seeddream 4.5 Image Edit", () => {
       globalThis.fetch = fetchMock as unknown as typeof globalThis.fetch;
 
       await editSeeddream45Image({
-        prompt: "Replace the product in Figure 1 with the product from Figure 2",
+        prompt:
+          "Replace the product in Figure 1 with the product from Figure 2",
         image_urls: [
           "https://fal.ai/storage/scene.png",
           "https://fal.ai/storage/product.png",
@@ -416,7 +423,9 @@ describe("Seeddream 4.5 Image Edit", () => {
       const callPayload = JSON.parse(
         (options as Record<string, unknown>).body as string
       );
-      expect(callPayload.image_urls).toEqual(["https://fal.ai/storage/input.png"]);
+      expect(callPayload.image_urls).toEqual([
+        "https://fal.ai/storage/input.png",
+      ]);
     });
   });
 

@@ -164,11 +164,7 @@ export function ResolutionSelect({
           {label}
         </Label>
       )}
-      <Select
-        value={value}
-        onValueChange={onChange}
-        disabled={disabled}
-      >
+      <Select value={value} onValueChange={onChange} disabled={disabled}>
         <SelectTrigger id={id} className="h-8 text-xs">
           <SelectValue placeholder="Select resolution" />
         </SelectTrigger>
@@ -231,11 +227,7 @@ export function AspectRatioSelect({
           {label}
         </Label>
       )}
-      <Select
-        value={value}
-        onValueChange={onChange}
-        disabled={disabled}
-      >
+      <Select value={value} onValueChange={onChange} disabled={disabled}>
         <SelectTrigger id={id} className="h-8 text-xs">
           <SelectValue placeholder="Select aspect ratio" />
         </SelectTrigger>
@@ -328,7 +320,8 @@ export function FPSSelect({
 // Generic Select with Custom Options
 // ============================================
 
-export interface GenericSelectProps<T extends string> extends BaseSelectProps<T> {
+export interface GenericSelectProps<T extends string>
+  extends BaseSelectProps<T> {
   /** Available options with labels */
   options: SelectOption<T>[];
   /** Label text */
@@ -475,7 +468,8 @@ export function UpscaleFactorSelect({
 
 export type MovementAmplitude = "auto" | "small" | "medium" | "large";
 
-export interface MovementAmplitudeSelectProps extends BaseSelectProps<MovementAmplitude> {
+export interface MovementAmplitudeSelectProps
+  extends BaseSelectProps<MovementAmplitude> {
   /** Label text (default: "Movement Amplitude") */
   label?: string;
   /** Whether to show the label */

@@ -506,7 +506,9 @@ app.whenReady().then(() => {
         const initiateUrl =
           "https://rest.alpha.fal.ai/storage/upload/initiate?storage_type=fal-cdn-v3";
 
-        logger.info(`[FAL Upload] Step 1: Initiating upload (${contentType})...`);
+        logger.info(
+          `[FAL Upload] Step 1: Initiating upload (${contentType})...`
+        );
         const initResponse = await fetch(initiateUrl, {
           method: "POST",
           headers: {
@@ -546,7 +548,7 @@ app.whenReady().then(() => {
           };
         }
 
-        logger.info(`[FAL Upload] Step 2: Uploading to signed URL...`);
+        logger.info("[FAL Upload] Step 2: Uploading to signed URL...");
 
         // Step 2: Upload file to the signed URL
         const uploadResponse = await fetch(upload_url, {
@@ -604,7 +606,7 @@ app.whenReady().then(() => {
         const initiateUrl =
           "https://rest.alpha.fal.ai/storage/upload/initiate?storage_type=fal-cdn-v3";
 
-        logger.info(`[FAL Image Upload] Step 1: Initiating upload...`);
+        logger.info("[FAL Image Upload] Step 1: Initiating upload...");
         const initResponse = await fetch(initiateUrl, {
           method: "POST",
           headers: {
@@ -642,7 +644,7 @@ app.whenReady().then(() => {
           };
         }
 
-        logger.info(`[FAL Image Upload] Step 2: Uploading to signed URL...`);
+        logger.info("[FAL Image Upload] Step 2: Uploading to signed URL...");
 
         // Step 2: Upload image to the signed URL
         const uploadResponse = await fetch(upload_url, {
@@ -702,7 +704,7 @@ app.whenReady().then(() => {
         const initiateUrl =
           "https://rest.alpha.fal.ai/storage/upload/initiate?storage_type=fal-cdn-v3";
 
-        logger.info(`[FAL Audio Upload] Step 1: Initiating upload...`);
+        logger.info("[FAL Audio Upload] Step 1: Initiating upload...");
         const initResponse = await fetch(initiateUrl, {
           method: "POST",
           headers: {
@@ -740,7 +742,7 @@ app.whenReady().then(() => {
           };
         }
 
-        logger.info(`[FAL Audio Upload] Step 2: Uploading to signed URL...`);
+        logger.info("[FAL Audio Upload] Step 2: Uploading to signed URL...");
 
         // Step 2: Upload audio to the signed URL
         const uploadResponse = await fetch(upload_url, {
