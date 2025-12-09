@@ -648,10 +648,7 @@ export function AITextTab({
               </Select>
               <div className="text-xs text-muted-foreground">
                 Estimated cost: $
-                {(
-                  ltxv2FastDuration *
-                  (LTXV2_FAST_CONFIG.PRICING[ltxv2FastResolution] ?? 0)
-                ).toFixed(2)}
+                {calculateLTXV2Cost(ltxv2FastResolution, ltxv2FastDuration, "fast").toFixed(2)}
               </div>
             </div>
 

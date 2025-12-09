@@ -295,8 +295,13 @@ export function useVideoWithMetadata<TMetadata>(
   const [url, setUrl] = useState<string>("");
   const [metadata, setMetadata] = useState<TMetadata | null>(null);
 
+  // Refs to track current file/url for race condition prevention
+  const currentFileRef = useRef<File | null>(null);
+  const currentUrlRef = useRef<string>("");
+
   const setFile = useCallback(
     async (newFile: File | null) => {
+      currentFileRef.current = newFile;
       setFileInternal(newFile);
 
       if (!newFile) {
@@ -306,34 +311,50 @@ export function useVideoWithMetadata<TMetadata>(
 
       // Clear URL when file is set
       setUrl("");
+      currentUrlRef.current = "";
 
       try {
         const meta = await extractMetadataFromFile(newFile);
-        setMetadata(meta);
+        // Only update if this is still the current file
+        if (currentFileRef.current === newFile) {
+          setMetadata(meta);
+        }
       } catch (error) {
         console.error("Failed to read video metadata", error);
-        setMetadata(null);
+        if (currentFileRef.current === newFile) {
+          setMetadata(null);
+        }
       }
     },
     [extractMetadataFromFile]
   );
 
   const handleUrlBlur = useCallback(async () => {
-    if (!url) {
+    const currentUrl = url;
+    currentUrlRef.current = currentUrl;
+
+    if (!currentUrl) {
       setMetadata(null);
       return;
     }
 
     try {
-      const meta = await extractMetadataFromUrl(url);
-      setMetadata(meta);
+      const meta = await extractMetadataFromUrl(currentUrl);
+      // Only update if this is still the current URL
+      if (currentUrlRef.current === currentUrl) {
+        setMetadata(meta);
+      }
     } catch (error) {
       console.error("Failed to read video metadata", error);
-      setMetadata(null);
+      if (currentUrlRef.current === currentUrl) {
+        setMetadata(null);
+      }
     }
   }, [url, extractMetadataFromUrl]);
 
   const reset = useCallback(() => {
+    currentFileRef.current = null;
+    currentUrlRef.current = "";
     setFileInternal(null);
     setUrl("");
     setMetadata(null);
