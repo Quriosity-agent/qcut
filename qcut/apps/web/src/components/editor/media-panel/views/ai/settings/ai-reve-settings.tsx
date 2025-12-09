@@ -20,9 +20,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 
-import {
-  REVE_TEXT_TO_IMAGE_MODEL,
-} from "../constants/ai-constants";
+import { REVE_TEXT_TO_IMAGE_MODEL } from "../constants/ai-constants";
 import {
   type ReveAspectRatioOption,
   type ReveOutputFormatOption,
@@ -214,8 +212,8 @@ export function AIReveEditSettings({
     <div className="space-y-3 p-3 bg-muted/30 rounded-md border border-muted">
       <Label className="text-xs font-medium">Reve Edit (Optional)</Label>
       <p className="text-xs text-muted-foreground">
-        Upload an image to edit it with Reve AI, or leave empty for text-to-image
-        generation.
+        Upload an image to edit it with Reve AI, or leave empty for
+        text-to-image generation.
       </p>
 
       {/* Image Upload */}

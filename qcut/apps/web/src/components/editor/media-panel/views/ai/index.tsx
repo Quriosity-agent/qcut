@@ -46,7 +46,10 @@ import { AIAvatarTab } from "./tabs/ai-avatar-tab";
 import { AIUpscaleTab } from "./tabs/ai-upscale-tab";
 import { AISora2Settings } from "./settings/ai-sora-settings";
 import { AIVeo31Settings } from "./settings/ai-veo-settings";
-import { AIReveTextToImageSettings, AIReveEditSettings } from "./settings/ai-reve-settings";
+import {
+  AIReveTextToImageSettings,
+  AIReveEditSettings,
+} from "./settings/ai-reve-settings";
 
 // Import constants and types
 import {
@@ -168,17 +171,25 @@ export function AiView() {
     if (
       combinedCapabilities.supportedAspectRatios &&
       combinedCapabilities.supportedAspectRatios.length > 0 &&
-      !combinedCapabilities.supportedAspectRatios.includes(textState.t2vAspectRatio)
+      !combinedCapabilities.supportedAspectRatios.includes(
+        textState.t2vAspectRatio
+      )
     ) {
-      textSetters.setT2vAspectRatio(combinedCapabilities.supportedAspectRatios[0]);
+      textSetters.setT2vAspectRatio(
+        combinedCapabilities.supportedAspectRatios[0]
+      );
     }
 
     if (
       combinedCapabilities.supportedResolutions &&
       combinedCapabilities.supportedResolutions.length > 0 &&
-      !combinedCapabilities.supportedResolutions.includes(textState.t2vResolution)
+      !combinedCapabilities.supportedResolutions.includes(
+        textState.t2vResolution
+      )
     ) {
-      textSetters.setT2vResolution(combinedCapabilities.supportedResolutions[0]);
+      textSetters.setT2vResolution(
+        combinedCapabilities.supportedResolutions[0]
+      );
     }
 
     if (
@@ -188,7 +199,13 @@ export function AiView() {
     ) {
       textSetters.setT2vDuration(combinedCapabilities.supportedDurations[0]);
     }
-  }, [combinedCapabilities, textState.t2vAspectRatio, textState.t2vResolution, textState.t2vDuration, textSetters]);
+  }, [
+    combinedCapabilities,
+    textState.t2vAspectRatio,
+    textState.t2vResolution,
+    textState.t2vDuration,
+    textSetters,
+  ]);
 
   // Reset Reve state when model is deselected
   useEffect(() => {
@@ -211,7 +228,11 @@ export function AiView() {
       setSelectedImage(null);
       setImagePreview(null);
     }
-  }, [imageState.firstFrame, imageState.lastFrame, imageState.firstFramePreview]);
+  }, [
+    imageState.firstFrame,
+    imageState.lastFrame,
+    imageState.firstFramePreview,
+  ]);
 
   // ============================================
   // Generation Hook
@@ -282,7 +303,8 @@ export function AiView() {
     kling26CfgScale: imageState.kling26.cfgScale,
     kling26AspectRatio: imageState.kling26.aspectRatio,
     kling26GenerateAudio: imageState.kling26.generateAudio,
-    kling26NegativePrompt: imageState.kling26.negativePrompt.trim() || undefined,
+    kling26NegativePrompt:
+      imageState.kling26.negativePrompt.trim() || undefined,
     // WAN 2.5
     wan25Duration: imageState.wan25.duration,
     wan25Resolution: imageState.wan25.resolution,
@@ -311,7 +333,9 @@ export function AiView() {
     topazTargetFPS: upscaleState.topaz.targetFPS,
     topazH264Output: upscaleState.topaz.h264Output,
     onProgress: (status) => {
-      console.log(`[AI View] Progress: ${status.progress ?? 0}% - ${status.message ?? status.status}`);
+      console.log(
+        `[AI View] Progress: ${status.progress ?? 0}% - ${status.message ?? status.status}`
+      );
     },
     onError: (err) => {
       console.error("[AI View] Error occurred:", err);
@@ -366,7 +390,11 @@ export function AiView() {
         upscaleState.bytedance.targetFPS,
         videoDurationSeconds
       ),
-    [upscaleState.bytedance.targetResolution, upscaleState.bytedance.targetFPS, videoDurationSeconds]
+    [
+      upscaleState.bytedance.targetResolution,
+      upscaleState.bytedance.targetFPS,
+      videoDurationSeconds,
+    ]
   );
 
   const flashvsrEstimatedCost = useMemo(() => {
@@ -590,7 +618,9 @@ export function AiView() {
                 ltxv2FastFPS={textState.ltxv2FastFPS}
                 onLTXV2FastFPSChange={textSetters.setLTXV2FastFPS}
                 ltxv2FastGenerateAudio={textState.ltxv2FastGenerateAudio}
-                onLTXV2FastGenerateAudioChange={textSetters.setLTXV2FastGenerateAudio}
+                onLTXV2FastGenerateAudioChange={
+                  textSetters.setLTXV2FastGenerateAudio
+                }
               />
             </TabsContent>
 
@@ -629,7 +659,9 @@ export function AiView() {
                 viduQ2Resolution={imageState.viduQ2.resolution}
                 onViduQ2ResolutionChange={imageSetters.setViduQ2Resolution}
                 viduQ2MovementAmplitude={imageState.viduQ2.movementAmplitude}
-                onViduQ2MovementAmplitudeChange={imageSetters.setViduQ2MovementAmplitude}
+                onViduQ2MovementAmplitudeChange={
+                  imageSetters.setViduQ2MovementAmplitude
+                }
                 viduQ2EnableBGM={imageState.viduQ2.enableBGM}
                 onViduQ2EnableBGMChange={imageSetters.setViduQ2EnableBGM}
                 ltxv2I2VDuration={imageState.ltxv2I2V.duration}
@@ -639,25 +671,37 @@ export function AiView() {
                 ltxv2I2VFPS={imageState.ltxv2I2V.fps}
                 onLTXV2I2VFPSChange={imageSetters.setLTXV2I2VFPS}
                 ltxv2I2VGenerateAudio={imageState.ltxv2I2V.generateAudio}
-                onLTXV2I2VGenerateAudioChange={imageSetters.setLTXV2I2VGenerateAudio}
+                onLTXV2I2VGenerateAudioChange={
+                  imageSetters.setLTXV2I2VGenerateAudio
+                }
                 ltxv2ImageDuration={imageState.ltxv2Image.duration}
                 onLTXV2ImageDurationChange={imageSetters.setLTXV2ImageDuration}
                 ltxv2ImageResolution={imageState.ltxv2Image.resolution}
-                onLTXV2ImageResolutionChange={imageSetters.setLTXV2ImageResolution}
+                onLTXV2ImageResolutionChange={
+                  imageSetters.setLTXV2ImageResolution
+                }
                 ltxv2ImageFPS={imageState.ltxv2Image.fps}
                 onLTXV2ImageFPSChange={imageSetters.setLTXV2ImageFPS}
                 ltxv2ImageGenerateAudio={imageState.ltxv2Image.generateAudio}
-                onLTXV2ImageGenerateAudioChange={imageSetters.setLTXV2ImageGenerateAudio}
+                onLTXV2ImageGenerateAudioChange={
+                  imageSetters.setLTXV2ImageGenerateAudio
+                }
                 seedanceDuration={imageState.seedance.duration}
                 onSeedanceDurationChange={imageSetters.setSeedanceDuration}
                 seedanceResolution={imageState.seedance.resolution}
                 onSeedanceResolutionChange={imageSetters.setSeedanceResolution}
                 seedanceAspectRatio={imageState.seedance.aspectRatio}
-                onSeedanceAspectRatioChange={imageSetters.setSeedanceAspectRatio}
+                onSeedanceAspectRatioChange={
+                  imageSetters.setSeedanceAspectRatio
+                }
                 seedanceCameraFixed={imageState.seedance.cameraFixed}
-                onSeedanceCameraFixedChange={imageSetters.setSeedanceCameraFixed}
+                onSeedanceCameraFixedChange={
+                  imageSetters.setSeedanceCameraFixed
+                }
                 seedanceEndFrameUrl={imageState.seedance.endFrameUrl}
-                onSeedanceEndFrameUrlChange={imageSetters.setSeedanceEndFrameUrl}
+                onSeedanceEndFrameUrlChange={
+                  imageSetters.setSeedanceEndFrameUrl
+                }
                 seedanceEndFrameFile={imageState.seedance.endFrameFile}
                 seedanceEndFramePreview={imageState.seedance.endFramePreview}
                 onSeedanceEndFrameFileChange={(file, preview) => {
@@ -675,7 +719,9 @@ export function AiView() {
                 klingEnhancePrompt={imageState.kling.enhancePrompt}
                 onKlingEnhancePromptChange={imageSetters.setKlingEnhancePrompt}
                 klingNegativePrompt={imageState.kling.negativePrompt}
-                onKlingNegativePromptChange={imageSetters.setKlingNegativePrompt}
+                onKlingNegativePromptChange={
+                  imageSetters.setKlingNegativePrompt
+                }
                 kling26Duration={imageState.kling26.duration}
                 onKling26DurationChange={imageSetters.setKling26Duration}
                 kling26CfgScale={imageState.kling26.cfgScale}
@@ -683,17 +729,27 @@ export function AiView() {
                 kling26AspectRatio={imageState.kling26.aspectRatio}
                 onKling26AspectRatioChange={imageSetters.setKling26AspectRatio}
                 kling26GenerateAudio={imageState.kling26.generateAudio}
-                onKling26GenerateAudioChange={imageSetters.setKling26GenerateAudio}
+                onKling26GenerateAudioChange={
+                  imageSetters.setKling26GenerateAudio
+                }
                 kling26NegativePrompt={imageState.kling26.negativePrompt}
-                onKling26NegativePromptChange={imageSetters.setKling26NegativePrompt}
+                onKling26NegativePromptChange={
+                  imageSetters.setKling26NegativePrompt
+                }
                 wan25Duration={imageState.wan25.duration}
                 onWan25DurationChange={imageSetters.setWan25Duration}
                 wan25Resolution={imageState.wan25.resolution}
                 onWan25ResolutionChange={imageSetters.setWan25Resolution}
-                wan25EnablePromptExpansion={imageState.wan25.enablePromptExpansion}
-                onWan25EnablePromptExpansionChange={imageSetters.setWan25EnablePromptExpansion}
+                wan25EnablePromptExpansion={
+                  imageState.wan25.enablePromptExpansion
+                }
+                onWan25EnablePromptExpansionChange={
+                  imageSetters.setWan25EnablePromptExpansion
+                }
                 wan25NegativePrompt={imageState.wan25.negativePrompt}
-                onWan25NegativePromptChange={imageSetters.setWan25NegativePrompt}
+                onWan25NegativePromptChange={
+                  imageSetters.setWan25NegativePrompt
+                }
                 wan25AudioUrl={imageState.wan25.audioUrl}
                 onWan25AudioUrlChange={imageSetters.setWan25AudioUrl}
                 wan25AudioFile={imageState.wan25.audioFile}
@@ -751,7 +807,9 @@ export function AiView() {
                   if (file) setError(null);
                 }}
                 klingAvatarV2Prompt={avatarState.klingAvatarV2Prompt}
-                onKlingAvatarV2PromptChange={avatarSetters.setKlingAvatarV2Prompt}
+                onKlingAvatarV2PromptChange={
+                  avatarSetters.setKlingAvatarV2Prompt
+                }
                 audioDuration={avatarState.audioDuration}
               />
             </TabsContent>
@@ -765,38 +823,60 @@ export function AiView() {
                 sourceVideoFile={upscaleState.sourceVideoFile}
                 sourceVideoUrl={upscaleState.sourceVideoUrl}
                 videoMetadata={upscaleState.videoMetadata}
-                onSourceVideoFileChange={upscaleHandlers.handleUpscaleVideoChange}
+                onSourceVideoFileChange={
+                  upscaleHandlers.handleUpscaleVideoChange
+                }
                 onSourceVideoUrlChange={upscaleSetters.setSourceVideoUrl}
                 onVideoUrlBlur={upscaleHandlers.handleUpscaleVideoUrlBlur}
                 setVideoMetadata={(metadata) => {
                   // Video metadata is set via handlers
                 }}
-                bytedanceTargetResolution={upscaleState.bytedance.targetResolution}
-                onBytedanceTargetResolutionChange={upscaleSetters.setBytedanceTargetResolution}
+                bytedanceTargetResolution={
+                  upscaleState.bytedance.targetResolution
+                }
+                onBytedanceTargetResolutionChange={
+                  upscaleSetters.setBytedanceTargetResolution
+                }
                 bytedanceTargetFPS={upscaleState.bytedance.targetFPS}
-                onBytedanceTargetFPSChange={upscaleSetters.setBytedanceTargetFPS}
+                onBytedanceTargetFPSChange={
+                  upscaleSetters.setBytedanceTargetFPS
+                }
                 bytedanceEstimatedCost={bytedanceEstimatedCost}
                 flashvsrUpscaleFactor={upscaleState.flashvsr.upscaleFactor}
-                onFlashvsrUpscaleFactorChange={upscaleSetters.setFlashvsrUpscaleFactor}
+                onFlashvsrUpscaleFactorChange={
+                  upscaleSetters.setFlashvsrUpscaleFactor
+                }
                 flashvsrAcceleration={upscaleState.flashvsr.acceleration}
-                onFlashvsrAccelerationChange={upscaleSetters.setFlashvsrAcceleration}
+                onFlashvsrAccelerationChange={
+                  upscaleSetters.setFlashvsrAcceleration
+                }
                 flashvsrQuality={upscaleState.flashvsr.quality}
                 onFlashvsrQualityChange={upscaleSetters.setFlashvsrQuality}
                 flashvsrColorFix={upscaleState.flashvsr.colorFix}
                 onFlashvsrColorFixChange={upscaleSetters.setFlashvsrColorFix}
                 flashvsrPreserveAudio={upscaleState.flashvsr.preserveAudio}
-                onFlashvsrPreserveAudioChange={upscaleSetters.setFlashvsrPreserveAudio}
+                onFlashvsrPreserveAudioChange={
+                  upscaleSetters.setFlashvsrPreserveAudio
+                }
                 flashvsrOutputFormat={upscaleState.flashvsr.outputFormat}
-                onFlashvsrOutputFormatChange={upscaleSetters.setFlashvsrOutputFormat}
+                onFlashvsrOutputFormatChange={
+                  upscaleSetters.setFlashvsrOutputFormat
+                }
                 flashvsrOutputQuality={upscaleState.flashvsr.outputQuality}
-                onFlashvsrOutputQualityChange={upscaleSetters.setFlashvsrOutputQuality}
+                onFlashvsrOutputQualityChange={
+                  upscaleSetters.setFlashvsrOutputQuality
+                }
                 flashvsrOutputWriteMode={upscaleState.flashvsr.outputWriteMode}
-                onFlashvsrOutputWriteModeChange={upscaleSetters.setFlashvsrOutputWriteMode}
+                onFlashvsrOutputWriteModeChange={
+                  upscaleSetters.setFlashvsrOutputWriteMode
+                }
                 flashvsrSeed={upscaleState.flashvsr.seed}
                 onFlashvsrSeedChange={upscaleSetters.setFlashvsrSeed}
                 flashvsrEstimatedCost={flashvsrEstimatedCost}
                 topazUpscaleFactor={upscaleState.topaz.upscaleFactor}
-                onTopazUpscaleFactorChange={upscaleSetters.setTopazUpscaleFactor}
+                onTopazUpscaleFactorChange={
+                  upscaleSetters.setTopazUpscaleFactor
+                }
                 topazTargetFPS={upscaleState.topaz.targetFPS}
                 onTopazTargetFPSChange={upscaleSetters.setTopazTargetFPS}
                 topazH264Output={upscaleState.topaz.h264Output}
@@ -1034,7 +1114,8 @@ export function AiView() {
                   generation.hasVeo31FrameToVideo &&
                   !imageState.firstFrame && (
                     <div>
-                      Please upload the first frame (required for frame-to-video)
+                      Please upload the first frame (required for
+                      frame-to-video)
                     </div>
                   )}
                 {activeTab === "image" &&

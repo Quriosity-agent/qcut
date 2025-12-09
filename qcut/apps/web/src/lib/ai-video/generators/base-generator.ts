@@ -73,7 +73,10 @@ export function buildVideoResponse(
     status: "completed",
     message: `Video generated successfully with ${modelId}`,
     estimated_time: elapsedTime ?? 0,
-    video_url: video?.url as string ?? result.video_url as string ?? result.url as string,
+    video_url:
+      (video?.url as string) ??
+      (result.video_url as string) ??
+      (result.url as string),
     video_data: result,
   };
 }
@@ -118,7 +121,10 @@ export function createSimpleResponse(
     status: "completed",
     message: `Video generated successfully with ${modelId}`,
     estimated_time: 0,
-    video_url: video?.url as string ?? result.video_url as string ?? result.url as string,
+    video_url:
+      (video?.url as string) ??
+      (result.video_url as string) ??
+      (result.url as string),
     video_data: result,
   };
 }

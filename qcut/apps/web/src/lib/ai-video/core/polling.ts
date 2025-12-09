@@ -4,7 +4,12 @@
  * Handles long-running FAL AI job status polling with progress updates.
  */
 
-import { getFalApiKey, FAL_API_BASE, sleep, generateJobId } from "./fal-request";
+import {
+  getFalApiKey,
+  FAL_API_BASE,
+  sleep,
+  generateJobId,
+} from "./fal-request";
 import type {
   VideoGenerationResponse,
   ProgressCallback,
@@ -196,7 +201,7 @@ export async function pollQueueStatus(
       });
 
       if (attempts >= maxAttempts) {
-        const errorMessage = `Timeout: Video generation took longer than expected (${Math.floor((maxAttempts * pollIntervalMs) / 60000)} minutes)`;
+        const errorMessage = `Timeout: Video generation took longer than expected (${Math.floor((maxAttempts * pollIntervalMs) / 60_000)} minutes)`;
         if (onProgress) {
           onProgress({
             status: "failed",

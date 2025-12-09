@@ -8,8 +8,6 @@
  * Options for streaming video downloads
  */
 export interface StreamOptions {
-  /** Whether to download video to memory */
-  downloadToMemory?: boolean;
   /** Callback for each chunk of data received */
   onDataReceived?: (data: Uint8Array) => void;
   /** Callback when download is complete */
@@ -73,6 +71,12 @@ export async function streamVideoDownload(
     }
 
     console.log(`Download complete: ${totalData.length} bytes total`);
+
+    // Notify completion if callback provided
+    if (options.onComplete) {
+      options.onComplete(totalData);
+    }
+
     return totalData;
   } finally {
     reader.releaseLock();

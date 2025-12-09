@@ -9,9 +9,7 @@ import type {
   AvatarVideoRequest,
   VideoGenerationResponse,
 } from "@/components/editor/media-panel/views/ai/types/ai-types";
-import {
-  ERROR_MESSAGES,
-} from "@/components/editor/media-panel/views/ai/constants/ai-constants";
+import { ERROR_MESSAGES } from "@/components/editor/media-panel/views/ai/constants/ai-constants";
 import {
   getFalApiKey,
   generateJobId,
@@ -72,7 +70,9 @@ export async function generateAvatarVideo(
         const sourceVideoUrl = await fileToDataURL(request.sourceVideo);
         endpoint = modelConfig.endpoints.text_to_video || "";
         if (!endpoint) {
-          throw new Error(`Model ${request.model} does not have a valid endpoint`);
+          throw new Error(
+            `Model ${request.model} does not have a valid endpoint`
+          );
         }
         payload = {
           ...(modelConfig.default_params || {}),
@@ -90,7 +90,9 @@ export async function generateAvatarVideo(
         const audioUrl = await fileToDataURL(request.audioFile);
         endpoint = modelConfig.endpoints.text_to_video || "";
         if (!endpoint) {
-          throw new Error(`Model ${request.model} does not have a valid endpoint`);
+          throw new Error(
+            `Model ${request.model} does not have a valid endpoint`
+          );
         }
         payload = {
           ...(modelConfig.default_params || {}),
@@ -108,13 +110,7 @@ export async function generateAvatarVideo(
         }
 
         if (request.audioFile) {
-          const audioValidationError = validateKlingAvatarV2Audio(
-            request.audioFile,
-            request.audioDuration
-          );
-          if (audioValidationError) {
-            throw new Error(audioValidationError);
-          }
+          validateKlingAvatarV2Audio(request.audioFile, request.audioDuration);
         }
 
         if (!request.characterImageUrl) {
@@ -130,7 +126,9 @@ export async function generateAvatarVideo(
 
         endpoint = modelConfig.endpoints.text_to_video || "";
         if (!endpoint) {
-          throw new Error(`Model ${request.model} does not have a valid endpoint`);
+          throw new Error(
+            `Model ${request.model} does not have a valid endpoint`
+          );
         }
         payload = {
           ...(modelConfig.default_params || {}),
@@ -145,7 +143,9 @@ export async function generateAvatarVideo(
         const audioUrl = await fileToDataURL(request.audioFile);
         endpoint = modelConfig.endpoints.text_to_video || "";
         if (!endpoint) {
-          throw new Error(`Model ${request.model} does not have a valid endpoint`);
+          throw new Error(
+            `Model ${request.model} does not have a valid endpoint`
+          );
         }
         payload = {
           ...(modelConfig.default_params || {}),
@@ -156,14 +156,17 @@ export async function generateAvatarVideo(
       } else if (request.model === "kling_o1_ref2video") {
         endpoint = modelConfig.endpoints.image_to_video || "";
         if (!endpoint) {
-          throw new Error(`Model ${request.model} does not have a valid endpoint`);
+          throw new Error(
+            `Model ${request.model} does not have a valid endpoint`
+          );
         }
 
         const imageUrl = await fileToDataURL(request.characterImage);
 
         let enhancedPrompt = request.prompt || "";
         if (!enhancedPrompt.includes("@Image")) {
-          enhancedPrompt = `Use @Image1 as the reference. ${enhancedPrompt}`.trim();
+          enhancedPrompt =
+            `Use @Image1 as the reference. ${enhancedPrompt}`.trim();
         }
 
         payload = {

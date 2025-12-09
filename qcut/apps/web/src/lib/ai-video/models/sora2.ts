@@ -212,7 +212,7 @@ export function parseSora2Response(
       videoUrl: video.url as string,
       videoId: data.video_id as string,
       // Use API-provided duration if available, otherwise fall back to requested
-      duration: ((video.duration as Sora2Duration) || requestedDuration),
+      duration: (video.duration as Sora2Duration) || requestedDuration,
       resolution,
       aspectRatio: requestedAspectRatio,
     };

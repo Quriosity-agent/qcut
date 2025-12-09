@@ -456,17 +456,11 @@ export function AITextTab({
               <SelectContent>
                 <SelectItem value="6">
                   6 seconds (
-                  {hailuoProSelected
-                    ? "Standard: $0.28, Pro: $0.49"
-                    : "$0.28"}
-                  )
+                  {hailuoProSelected ? "Standard: $0.28, Pro: $0.49" : "$0.28"})
                 </SelectItem>
                 <SelectItem value="10">
                   10 seconds (
-                  {hailuoProSelected
-                    ? "Standard: $0.56, Pro: $0.49"
-                    : "$0.56"}
-                  )
+                  {hailuoProSelected ? "Standard: $0.56, Pro: $0.49" : "$0.56"})
                 </SelectItem>
               </SelectContent>
             </Select>
@@ -512,9 +506,7 @@ export function AITextTab({
               <Select
                 value={ltxv2Resolution}
                 onValueChange={(value) =>
-                  onLTXV2ResolutionChange(
-                    value as "1080p" | "1440p" | "2160p"
-                  )
+                  onLTXV2ResolutionChange(value as "1080p" | "1440p" | "2160p")
                 }
               >
                 <SelectTrigger id="ltxv2-resolution" className="h-8 text-xs">
@@ -528,7 +520,11 @@ export function AITextTab({
               </Select>
               <div className="text-xs text-muted-foreground">
                 Cost: $
-                {calculateLTXV2Cost(ltxv2Resolution, ltxv2Duration, "pro").toFixed(2)}
+                {calculateLTXV2Cost(
+                  ltxv2Resolution,
+                  ltxv2Duration,
+                  "pro"
+                ).toFixed(2)}
               </div>
             </div>
 
@@ -638,8 +634,9 @@ export function AITextTab({
                           disabled={disabled}
                         >
                           {LTXV2_FAST_RESOLUTION_LABELS[resolutionOption]}
-                          {LTXV2_FAST_RESOLUTION_PRICE_SUFFIX[resolutionOption] ??
-                            ""}
+                          {LTXV2_FAST_RESOLUTION_PRICE_SUFFIX[
+                            resolutionOption
+                          ] ?? ""}
                         </SelectItem>
                       );
                     }
@@ -648,7 +645,11 @@ export function AITextTab({
               </Select>
               <div className="text-xs text-muted-foreground">
                 Estimated cost: $
-                {calculateLTXV2Cost(ltxv2FastResolution, ltxv2FastDuration, "fast").toFixed(2)}
+                {calculateLTXV2Cost(
+                  ltxv2FastResolution,
+                  ltxv2FastDuration,
+                  "fast"
+                ).toFixed(2)}
               </div>
             </div>
 

@@ -304,14 +304,16 @@ export function useAIGeneration(props: UseAIGenerationProps) {
   useEffect(() => {
     if (onProgress) {
       // Derive status from generation state
-      let status: "queued" | "processing" | "completed" | "failed" = "processing";
+      let status: "queued" | "processing" | "completed" | "failed" =
+        "processing";
       if (generationProgress === 100) {
         status = "completed";
       } else if (generationProgress === 0 && !isGenerating) {
-        status = statusMessage.toLowerCase().includes("error") ||
-                 statusMessage.toLowerCase().includes("failed")
-          ? "failed"
-          : "queued";
+        status =
+          statusMessage.toLowerCase().includes("error") ||
+          statusMessage.toLowerCase().includes("failed")
+            ? "failed"
+            : "queued";
       }
 
       onProgress({
@@ -321,7 +323,13 @@ export function useAIGeneration(props: UseAIGenerationProps) {
         elapsedTime,
       });
     }
-  }, [generationProgress, statusMessage, elapsedTime, isGenerating, onProgress]);
+  }, [
+    generationProgress,
+    statusMessage,
+    elapsedTime,
+    isGenerating,
+    onProgress,
+  ]);
 
   // Helper function to download video to memory
   const downloadVideoToMemory = useCallback(
@@ -1782,7 +1790,9 @@ export function useAIGeneration(props: UseAIGenerationProps) {
               videoUrl: response.video_url,
             });
 
-            const videoData = response.video_data as { video?: { duration?: number } } | undefined;
+            const videoData = response.video_data as
+              | { video?: { duration?: number } }
+              | undefined;
             const newVideo: GeneratedVideo = {
               jobId: response.job_id,
               videoUrl: response.video_url,

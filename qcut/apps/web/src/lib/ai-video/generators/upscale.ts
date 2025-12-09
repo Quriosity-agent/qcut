@@ -78,7 +78,9 @@ export async function upscaleByteDanceVideo(
         status: "completed",
         message: `Video upscaled to ${targetResolution} @ ${targetFPS}`,
         estimated_time: 0,
-        video_url: result.video?.url || result.video || result.url,
+        video_url:
+          result.video?.url ||
+          (typeof result.video === "string" ? result.video : result.url),
         video_data: result,
       };
     }
@@ -160,7 +162,9 @@ export async function upscaleFlashVSRVideo(
         status: "completed",
         message: `Video upscaled with FlashVSR (${upscaleFactor}x)`,
         estimated_time: 0,
-        video_url: result.video?.url || result.video || result.url,
+        video_url:
+          result.video?.url ||
+          (typeof result.video === "string" ? result.video : result.url),
         video_data: result,
       };
     }

@@ -248,7 +248,8 @@ export async function generateViduQ2Video(
       }
 
       const shouldIncludeBgm =
-        request.bgm !== undefined && (request.duration ?? defaultDuration) === 4;
+        request.bgm !== undefined &&
+        (request.duration ?? defaultDuration) === 4;
       if (shouldIncludeBgm) {
         payload.bgm = request.bgm;
       }

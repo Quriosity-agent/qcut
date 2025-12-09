@@ -17,9 +17,14 @@ import {
 export const LTXV2_STANDARD_T2V_DURATIONS = [6, 8, 10] as const;
 export const LTXV2_FAST_T2V_DURATIONS = LTXV2_FAST_CONFIG.DURATIONS;
 export const LTXV2_STANDARD_I2V_DURATIONS = [6, 8, 10] as const;
-export const LTXV2_STANDARD_I2V_RESOLUTIONS = ["1080p", "1440p", "2160p"] as const;
+export const LTXV2_STANDARD_I2V_RESOLUTIONS = [
+  "1080p",
+  "1440p",
+  "2160p",
+] as const;
 export const LTXV2_FAST_I2V_DURATIONS = LTXV2_FAST_CONFIG.DURATIONS;
-export const LTXV2_FAST_I2V_RESOLUTIONS = LTXV2_FAST_CONFIG.RESOLUTIONS.STANDARD;
+export const LTXV2_FAST_I2V_RESOLUTIONS =
+  LTXV2_FAST_CONFIG.RESOLUTIONS.STANDARD;
 export const LTXV2_FAST_EXTENDED_THRESHOLD =
   LTXV2_FAST_CONFIG.EXTENDED_DURATION_THRESHOLD;
 export const LTXV2_FAST_EXTENDED_RESOLUTIONS =
@@ -275,30 +280,28 @@ export function validateLTXV2FastExtendedConstraints(
  *
  * @param audioFile - Audio file to validate
  * @param audioDuration - Duration in seconds (from audio element or metadata)
- * @returns Error message if validation fails, null if valid
+ * @throws Error if audio file exceeds 5MB or duration is outside 2-60 seconds
  */
 export function validateKlingAvatarV2Audio(
   audioFile: File,
   audioDuration?: number
-): string | null {
+): void {
   const MAX_SIZE_BYTES = 5 * 1024 * 1024; // 5MB
   const MIN_DURATION_SEC = 2;
   const MAX_DURATION_SEC = 60;
 
   if (audioFile.size > MAX_SIZE_BYTES) {
-    return ERROR_MESSAGES.KLING_AVATAR_V2_AUDIO_TOO_LARGE;
+    throw new Error(ERROR_MESSAGES.KLING_AVATAR_V2_AUDIO_TOO_LARGE);
   }
 
   if (audioDuration !== undefined) {
     if (audioDuration < MIN_DURATION_SEC) {
-      return ERROR_MESSAGES.KLING_AVATAR_V2_AUDIO_TOO_SHORT;
+      throw new Error(ERROR_MESSAGES.KLING_AVATAR_V2_AUDIO_TOO_SHORT);
     }
     if (audioDuration > MAX_DURATION_SEC) {
-      return ERROR_MESSAGES.KLING_AVATAR_V2_AUDIO_TOO_LONG;
+      throw new Error(ERROR_MESSAGES.KLING_AVATAR_V2_AUDIO_TOO_LONG);
     }
   }
-
-  return null;
 }
 
 // ============================================

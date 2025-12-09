@@ -66,24 +66,23 @@ function getDurationPrice(
   duration: Veo31Duration,
   generateAudio: boolean
 ): string {
-  const prices: Record<Veo31Duration, { withAudio: string; noAudio: string }> = {
-    "4s": {
-      withAudio: "$0.60 Fast / $1.60 Std",
-      noAudio: "$0.40 Fast / $0.80 Std",
-    },
-    "6s": {
-      withAudio: "$0.90 Fast / $2.40 Std",
-      noAudio: "$0.60 Fast / $1.20 Std",
-    },
-    "8s": {
-      withAudio: "$1.20 Fast / $3.20 Std",
-      noAudio: "$0.80 Fast / $1.60 Std",
-    },
-  };
+  const prices: Record<Veo31Duration, { withAudio: string; noAudio: string }> =
+    {
+      "4s": {
+        withAudio: "$0.60 Fast / $1.60 Std",
+        noAudio: "$0.40 Fast / $0.80 Std",
+      },
+      "6s": {
+        withAudio: "$0.90 Fast / $2.40 Std",
+        noAudio: "$0.60 Fast / $1.20 Std",
+      },
+      "8s": {
+        withAudio: "$1.20 Fast / $3.20 Std",
+        noAudio: "$0.80 Fast / $1.60 Std",
+      },
+    };
 
-  return generateAudio
-    ? prices[duration].withAudio
-    : prices[duration].noAudio;
+  return generateAudio ? prices[duration].withAudio : prices[duration].noAudio;
 }
 
 // ============================================
