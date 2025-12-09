@@ -54,6 +54,7 @@ import {
 import {
   calculateSeedanceCost,
   calculateKlingCost,
+  calculateKling26Cost,
 } from "../utils/ai-cost-calculators";
 
 // ============================================
@@ -325,8 +326,10 @@ export function AIImageTab({
   const klingEstimatedCost = calculateKlingCost(klingDuration);
 
   // Kling v2.6 cost calculation
-  const kling26EstimatedCost =
-    kling26Duration * (kling26GenerateAudio ? 0.14 : 0.07);
+  const kling26EstimatedCost = calculateKling26Cost(
+    kling26Duration,
+    kling26GenerateAudio
+  );
 
   // WAN 2.5 config
   const wan25ModelConfig = AI_MODELS.find(
