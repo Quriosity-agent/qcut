@@ -263,8 +263,8 @@ Create talking head videos from images and audio.
 ```
 AI Video Generation Flow:
 ┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
-│   User Input    │───▶│  AI Video Client │───▶│   FAL AI APIs   │
-│ (Text/Image)    │    │  (Multi-model)   │    │   (40+ models)  │
+│   User Input    │───▶│  AI Video Module │───▶│   FAL AI APIs   │
+│ (Text/Image)    │    │  (Modular)       │    │   (40+ models)  │
 └─────────────────┘    └──────────────────┘    └─────────────────┘
                                 │
                                 ▼
@@ -282,17 +282,40 @@ AI Video Generation Flow:
 
 ### Key Components
 
-#### 1. **AI Constants** (`components/editor/media-panel/views/ai-constants.ts`)
+#### 1. **AI Constants** (`components/editor/media-panel/views/ai/constants/ai-constants.ts`)
 - Centralized model configuration with endpoints, pricing, capabilities
 - 40+ AI models with full parameter specifications
 - Model helper functions for filtering and selection
 
-#### 2. **AI Video Client** (`lib/ai-video-client.ts`)
+#### 2. **AI Video Module** (`lib/ai-video/`)
+Modular architecture for AI video generation, refactored from monolithic `ai-video-client.ts`:
+
+```
+lib/ai-video/
+├── index.ts                    # Barrel file - backward compatible exports
+├── core/
+│   ├── fal-request.ts          # FAL API request utilities
+│   ├── polling.ts              # Queue polling with progress updates
+│   └── streaming.ts            # Video streaming download
+├── generators/
+│   ├── base-generator.ts       # Common utilities (fileToDataURL, response building)
+│   ├── text-to-video.ts        # T2V generators (Sora 2, Veo, Kling, etc.)
+│   ├── image-to-video.ts       # I2V generators
+│   ├── avatar.ts               # Avatar/talking head generation
+│   ├── upscale.ts              # Video upscaling (ByteDance, FlashVSR, Topaz)
+│   └── image.ts                # Seeddream image generation
+├── models/
+│   └── sora2.ts                # Sora 2 specific parameter conversion
+├── validation/
+│   └── validators.ts           # Input validation (duration, resolution, audio)
+└── api.ts                      # High-level API (getAvailableModels, estimateCost)
+```
+
 - Direct integration with FAL AI APIs
 - Handles text-to-video, image-to-video, and avatar generation
 - Multi-model support with sequential processing
 - Progress tracking and status polling
-- Error handling and retry logic
+- Centralized error handling and validation
 
 #### 3. **FAL AI Client** (`lib/fal-ai-client.ts`)
 - Low-level FAL API integration
@@ -306,7 +329,7 @@ AI Video Generation Flow:
 - Progress visualization and status updates
 - Integration with media panel and timeline
 
-#### 5. **Text-to-Video Models Config** (`components/editor/media-panel/views/text2video-models-config.ts`)
+#### 5. **Text-to-Video Models Config** (`components/editor/media-panel/views/ai/config/text2video-models-config.ts`)
 - Model capability definitions (aspect ratios, resolutions, durations)
 - Combined capability computation for multi-model selection
 - Model ID aliasing for compatibility
@@ -389,7 +412,7 @@ const IMAGE_TO_VIDEO_ENDPOINTS = {
 
 ### Generation Parameters
 ```typescript
-// Text-to-Video request (ai-video-client.ts)
+// Text-to-Video request (lib/ai-video/generators/text-to-video.ts)
 interface VideoGenerationRequest {
   prompt: string;
   model: string;
@@ -398,7 +421,7 @@ interface VideoGenerationRequest {
   aspect_ratio?: string;  // "16:9", "9:16", "1:1", "4:3", "3:4", "21:9"
 }
 
-// Image-to-Video request (ai-video-client.ts)
+// Image-to-Video request (lib/ai-video/generators/image-to-video.ts)
 interface ImageToVideoRequest {
   image: File;            // File object (not URL)
   model: string;
@@ -421,7 +444,7 @@ interface Veo31FrameToVideoInput {
 ```
 
 > **Note**: Model-specific requests may have additional optional fields. Check the
-> individual model functions in `ai-video-client.ts` and `fal-ai-client.ts` for
+> individual generator files in `lib/ai-video/generators/` and `fal-ai-client.ts` for
 > complete parameter lists (e.g., `generate_audio`, `enhance_prompt`, `negative_prompt`,
 > `seed` are available on specific model endpoints).
 
@@ -654,7 +677,7 @@ Enable detailed logging in browser console:
 
 ---
 
-*Last Updated: November 2025*
+*Last Updated: December 2025*
 *QCut AI Video Models: 40+ models via FAL.ai*
 *Price Range: $0.04 - $3.20+ per video*
 

@@ -689,7 +689,12 @@ export async function generateKlingO1Video(
         }
         videoUrl = uploadResult.url;
       } else {
-        // Fallback to data URL
+        // Fallback to data URL - validate size to avoid memory issues
+        // 50MB limit accounts for ~33% base64 overhead (50MB -> ~67MB in memory)
+        const MAX_VIDEO_SIZE_BYTES = 50 * 1024 * 1024;
+        if (request.sourceVideo.size > MAX_VIDEO_SIZE_BYTES) {
+          throw new Error(ERROR_MESSAGES.VIDEO_FILE_TOO_LARGE_FOR_FALLBACK);
+        }
         videoUrl = await fileToDataURL(request.sourceVideo);
       }
 

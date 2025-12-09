@@ -193,30 +193,39 @@ export function parseSora2Response(
 
   // Sora 2 always returns video as object with url property
   const video = data.video as Record<string, unknown> | undefined;
-  if (video?.url) {
-    // Extract resolution from API response if available, otherwise use requested value
-    let resolution = requestedResolution;
-    if (video.width && video.height) {
-      // Convert dimensions to resolution string (e.g., "1920x1080" -> "1080p")
-      const height = video.height as number;
-      if (height >= 1080) {
-        resolution = "1080p";
-      } else if (height >= 720) {
-        resolution = "720p";
-      } else {
-        resolution = `${height}p`;
-      }
-    }
-
-    return {
-      videoUrl: video.url as string,
-      videoId: data.video_id as string,
-      // Use API-provided duration if available, otherwise fall back to requested
-      duration: (video.duration as Sora2Duration) || requestedDuration,
-      resolution,
-      aspectRatio: requestedAspectRatio,
-    };
+  if (!video?.url) {
+    throw new Error(
+      "Invalid Sora 2 response format: missing video.url property"
+    );
   }
 
-  throw new Error("Invalid Sora 2 response format: missing video.url property");
+  // video_id is a required field in Sora 2 API responses
+  if (!data.video_id) {
+    throw new Error(
+      "Invalid Sora 2 response format: missing video_id property"
+    );
+  }
+
+  // Extract resolution from API response if available, otherwise use requested value
+  let resolution = requestedResolution;
+  if (video.width && video.height) {
+    // Convert dimensions to resolution string (e.g., "1920x1080" -> "1080p")
+    const height = video.height as number;
+    if (height >= 1080) {
+      resolution = "1080p";
+    } else if (height >= 720) {
+      resolution = "720p";
+    } else {
+      resolution = `${height}p`;
+    }
+  }
+
+  return {
+    videoUrl: video.url as string,
+    videoId: data.video_id as string,
+    // Use API-provided duration if available, otherwise fall back to requested
+    duration: (video.duration as Sora2Duration) || requestedDuration,
+    resolution,
+    aspectRatio: requestedAspectRatio,
+  };
 }

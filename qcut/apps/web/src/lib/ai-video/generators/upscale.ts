@@ -5,7 +5,6 @@
  * Includes ByteDance, FlashVSR, and Topaz upscalers.
  */
 
-import { handleAIServiceError } from "@/lib/error-handler";
 import type {
   VideoGenerationResponse,
   ByteDanceUpscaleRequest,

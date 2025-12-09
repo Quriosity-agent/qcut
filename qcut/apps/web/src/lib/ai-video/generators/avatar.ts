@@ -105,10 +105,8 @@ export async function generateAvatarVideo(
         request.model === "kling_avatar_v2_standard" ||
         request.model === "kling_avatar_v2_pro"
       ) {
-        if (!request.audioFile && !request.audioUrl) {
-          throw new Error(ERROR_MESSAGES.KLING_AVATAR_V2_MISSING_AUDIO);
-        }
-
+        // Kling Avatar V2 requires pre-uploaded URLs (FAL storage), not local files
+        // audioFile is only used for client-side validation before upload
         if (request.audioFile) {
           validateKlingAvatarV2Audio(request.audioFile, request.audioDuration);
         }
@@ -161,8 +159,6 @@ export async function generateAvatarVideo(
           );
         }
 
-        const imageUrl = await fileToDataURL(request.characterImage);
-
         let enhancedPrompt = request.prompt || "";
         if (!enhancedPrompt.includes("@Image")) {
           enhancedPrompt =
@@ -171,7 +167,7 @@ export async function generateAvatarVideo(
 
         payload = {
           prompt: enhancedPrompt,
-          image_urls: [imageUrl],
+          image_urls: [characterImageUrl],
           duration: String(
             request.duration || modelConfig.default_params?.duration || 5
           ),

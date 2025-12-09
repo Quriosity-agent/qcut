@@ -1197,6 +1197,10 @@ export const ERROR_MESSAGES = {
     "Audio must be under 60 seconds for Kling Avatar v2",
   KLING_AVATAR_V2_AUDIO_TOO_LARGE:
     "Audio file must be under 5MB for Kling Avatar v2",
+
+  // Video file fallback errors
+  VIDEO_FILE_TOO_LARGE_FOR_FALLBACK:
+    "Video file too large for browser fallback (max 50MB). Please use the desktop app for larger files.",
 } as const;
 
 // LTX Video 2.0 Fast Configuration
