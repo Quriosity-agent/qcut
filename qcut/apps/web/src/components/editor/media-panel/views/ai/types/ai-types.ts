@@ -365,6 +365,8 @@ export interface GenerationStatus {
   completed?: boolean;
   error?: string;
   videoUrl?: string;
+  /** @deprecated Use videoUrl instead. Kept for backward compatibility. */
+  video_url?: string;
 }
 
 // API Configuration types
