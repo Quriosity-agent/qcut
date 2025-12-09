@@ -17,6 +17,7 @@ import { Label } from "@/components/ui/label";
 import { FileUpload } from "@/components/ui/file-upload";
 
 import { UPLOAD_CONSTANTS } from "../constants/ai-constants";
+import { calculateKlingAvatarV2Cost } from "../utils/ai-cost-calculators";
 
 // ============================================
 // Types
@@ -275,9 +276,9 @@ export function AIAvatarTab({
           {audioDuration !== null && (
             <div className="text-xs text-muted-foreground">
               Audio duration: {audioDuration.toFixed(1)}s · Estimated cost: $
-              {(
-                audioDuration *
-                (selectedModels.includes("kling_avatar_v2_pro") ? 0.115 : 0.0562)
+              {calculateKlingAvatarV2Cost(
+                audioDuration,
+                selectedModels.includes("kling_avatar_v2_pro") ? "pro" : "standard"
               ).toFixed(2)}
             </div>
           )}

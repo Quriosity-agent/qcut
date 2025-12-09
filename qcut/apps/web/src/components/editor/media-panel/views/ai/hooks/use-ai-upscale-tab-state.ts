@@ -328,8 +328,8 @@ export function useUpscaleTabState(): UseUpscaleTabStateResult {
   }, [videoMetadata, flashvsrUpscaleFactor]);
 
   const topazEstimatedCost = useMemo(
-    () => calculateTopazUpscaleCost(videoDurationSeconds),
-    [videoDurationSeconds]
+    () => calculateTopazUpscaleCost(topazUpscaleFactor),
+    [topazUpscaleFactor]
   );
 
   return {

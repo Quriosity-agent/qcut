@@ -112,11 +112,17 @@ export function calculateLTXV2Cost(
     "2160p": 0.16,
   };
 
-  // Pro variant uses flat $0.06/s for all resolutions
-  const proPricing = 0.06;
+  // Pro variant per-second pricing by resolution (matches fal.ai pricing)
+  const proPricing: Record<string, number> = {
+    "1080p": 0.06,
+    "1440p": 0.12,
+    "2160p": 0.24,
+  };
 
   const perSecondRate =
-    variant === "fast" ? (fastPricing[resolution] ?? 0.04) : proPricing;
+    variant === "fast"
+      ? (fastPricing[resolution] ?? 0.04)
+      : (proPricing[resolution] ?? 0.06);
 
   return duration * perSecondRate;
 }
@@ -206,6 +212,21 @@ export function calculateTopazUpscaleCost(factor: number): string {
   );
 
   return `$${TOPAZ_COST_TABLE[closestFactor].toFixed(2)}`;
+}
+
+/**
+ * Calculate Kling Avatar v2 cost based on audio duration and model variant
+ * @param audioDuration - Audio duration in seconds
+ * @param variant - 'pro' or 'standard'
+ * @returns Estimated cost in dollars
+ */
+export function calculateKlingAvatarV2Cost(
+  audioDuration: number,
+  variant: "pro" | "standard"
+): number {
+  // Per-second pricing: $0.115/s for Pro, $0.0562/s for Standard
+  const perSecondRate = variant === "pro" ? 0.115 : 0.0562;
+  return audioDuration * perSecondRate;
 }
 
 /**
