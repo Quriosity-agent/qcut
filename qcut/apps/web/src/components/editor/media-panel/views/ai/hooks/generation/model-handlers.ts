@@ -26,6 +26,32 @@ import {
 } from "@/lib/ai-video";
 import type { ProgressCallback } from "@/lib/ai-video-client";
 
+// ============================================================================
+// TYPE COERCION HELPERS
+// These ensure runtime values are cast to the strict literal types expected by generators
+// ============================================================================
+
+type LTXV2Duration = 6 | 8 | 10 | 12 | 14 | 16 | 18 | 20;
+type LTXV2Resolution = "1080p" | "1440p" | "2160p";
+type LTXV2FPS = 25 | 50;
+type HailuoDuration = 6 | 10;
+type ViduQ2Duration = 2 | 3 | 4 | 5 | 6 | 7 | 8;
+type ViduQ2Resolution = "720p" | "1080p";
+type ViduQ2MovementAmplitude = "auto" | "small" | "medium" | "large";
+type SeedanceDuration = 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12;
+type SeedanceResolution = "480p" | "720p" | "1080p";
+type SeedanceAspectRatio = "16:9" | "9:16" | "1:1" | "4:3" | "3:4" | "21:9" | "auto";
+type KlingDuration = 5 | 10;
+type KlingAspectRatio = "16:9" | "9:16" | "1:1" | "4:3" | "3:4";
+type WAN25Duration = 5 | 10;
+type WAN25Resolution = "480p" | "720p" | "1080p";
+type ByteDanceResolution = "1080p" | "2k" | "4k";
+type ByteDanceFPS = "30fps" | "60fps";
+type FlashVSRAcceleration = "regular" | "high" | "full";
+type FlashVSROutputFormat = "X264" | "VP9" | "PRORES4444" | "GIF";
+type FlashVSROutputQuality = "low" | "medium" | "high" | "maximum";
+type FlashVSRWriteMode = "fast" | "balanced" | "small";
+
 /**
  * Common context passed to all model handlers
  */
@@ -38,7 +64,6 @@ export interface ModelHandlerContext {
 
 /**
  * Text-to-Video specific settings
- * Note: Uses loose types that match the hook state; validation happens in generator functions
  */
 export interface TextToVideoSettings {
   veo31Settings: {
@@ -81,7 +106,7 @@ export interface ImageToVideoSettings {
   };
   viduQ2Duration: number;
   viduQ2Resolution: string;
-  viduQ2MovementAmplitude: number;
+  viduQ2MovementAmplitude: number | string;
   viduQ2EnableBGM: boolean;
   ltxv2I2VDuration: number;
   ltxv2I2VResolution: string;
@@ -139,16 +164,16 @@ export interface AvatarSettings {
 export interface UpscaleSettings {
   sourceVideoFile: File | null;
   sourceVideoUrl: string | null;
-  bytedanceTargetResolution: "1080p" | "2k" | "4k";
-  bytedanceTargetFPS: "30fps" | "60fps";
+  bytedanceTargetResolution: string;
+  bytedanceTargetFPS: number | string;
   flashvsrUpscaleFactor: number | null;
-  flashvsrAcceleration: "regular" | "high" | "full";
+  flashvsrAcceleration: string;
   flashvsrQuality: number;
   flashvsrColorFix: boolean;
   flashvsrPreserveAudio: boolean;
-  flashvsrOutputFormat: "X264" | "VP9" | "PRORES4444" | "GIF";
-  flashvsrOutputQuality: "low" | "medium" | "high" | "maximum";
-  flashvsrOutputWriteMode: "fast" | "balanced" | "small";
+  flashvsrOutputFormat: string;
+  flashvsrOutputQuality: string;
+  flashvsrOutputWriteMode: string;
   flashvsrSeed: number | null;
 }
 
@@ -235,7 +260,7 @@ export async function handleHailuo23T2V(
   const response = await generateVideoFromText({
     model: ctx.modelId,
     prompt: ctx.prompt,
-    duration: settings.hailuoT2VDuration as 6 | 10,
+    duration: settings.hailuoT2VDuration as HailuoDuration,
   });
 
   ctx.progressCallback({
@@ -263,9 +288,9 @@ export async function handleLTXV2ProT2V(
   const response = await generateLTXV2Video({
     model: ctx.modelId,
     prompt: ctx.prompt,
-    duration: settings.ltxv2Duration,
-    resolution: settings.ltxv2Resolution,
-    fps: settings.ltxv2FPS,
+    duration: settings.ltxv2Duration as LTXV2Duration,
+    resolution: settings.ltxv2Resolution as LTXV2Resolution,
+    fps: settings.ltxv2FPS as LTXV2FPS,
     generate_audio: settings.ltxv2GenerateAudio,
   });
 
@@ -294,9 +319,9 @@ export async function handleLTXV2FastT2V(
   const response = await generateLTXV2Video({
     model: ctx.modelId,
     prompt: ctx.prompt,
-    duration: settings.ltxv2FastDuration,
-    resolution: settings.ltxv2FastResolution,
-    fps: settings.ltxv2FastFPS,
+    duration: settings.ltxv2FastDuration as LTXV2Duration,
+    resolution: settings.ltxv2FastResolution as LTXV2Resolution,
+    fps: settings.ltxv2FastFPS as LTXV2FPS,
     generate_audio: settings.ltxv2FastGenerateAudio,
   });
 
@@ -321,7 +346,6 @@ export async function handleGenericT2V(
       prompt: ctx.prompt,
       model: ctx.modelId,
       ...settings.unifiedParams,
-      // Add Sora 2 specific parameters if Sora 2 model
       ...(ctx.modelId.startsWith("sora2_") && {
         duration:
           (settings.unifiedParams.duration as number | undefined) ??
@@ -515,9 +539,9 @@ export async function handleViduQ2I2V(
     model: ctx.modelId,
     prompt: ctx.prompt,
     image_url: imageUrl,
-    duration: settings.viduQ2Duration,
-    resolution: settings.viduQ2Resolution,
-    movement_amplitude: settings.viduQ2MovementAmplitude,
+    duration: settings.viduQ2Duration as ViduQ2Duration,
+    resolution: settings.viduQ2Resolution as ViduQ2Resolution,
+    movement_amplitude: settings.viduQ2MovementAmplitude as ViduQ2MovementAmplitude,
     bgm: settings.viduQ2EnableBGM,
   });
 
@@ -557,9 +581,9 @@ export async function handleLTXV2I2V(
     model: ctx.modelId,
     prompt: ctx.prompt,
     image_url: imageUrl,
-    duration: settings.ltxv2I2VDuration,
-    resolution: settings.ltxv2I2VResolution,
-    fps: settings.ltxv2I2VFPS,
+    duration: settings.ltxv2I2VDuration as LTXV2Duration,
+    resolution: settings.ltxv2I2VResolution as LTXV2Resolution,
+    fps: settings.ltxv2I2VFPS as LTXV2FPS,
     generate_audio: settings.ltxv2I2VGenerateAudio,
   });
 
@@ -599,9 +623,9 @@ export async function handleLTXV2FastI2V(
     model: ctx.modelId,
     prompt: ctx.prompt,
     image_url: imageUrl,
-    duration: settings.ltxv2ImageDuration,
-    resolution: settings.ltxv2ImageResolution,
-    fps: settings.ltxv2ImageFPS,
+    duration: settings.ltxv2ImageDuration as LTXV2Duration,
+    resolution: settings.ltxv2ImageResolution as LTXV2Resolution,
+    fps: settings.ltxv2ImageFPS as LTXV2FPS,
     generate_audio: settings.ltxv2ImageGenerateAudio,
   });
 
@@ -641,9 +665,9 @@ export async function handleSeedanceProFastI2V(
     model: ctx.modelId,
     prompt: ctx.prompt,
     image_url: imageUrl,
-    duration: settings.seedanceDuration,
-    resolution: settings.seedanceResolution,
-    aspect_ratio: settings.seedanceAspectRatio,
+    duration: settings.seedanceDuration as SeedanceDuration,
+    resolution: settings.seedanceResolution as SeedanceResolution,
+    aspect_ratio: settings.seedanceAspectRatio as SeedanceAspectRatio,
     camera_fixed: settings.seedanceCameraFixed,
     seed: settings.imageSeed ?? undefined,
   });
@@ -687,9 +711,9 @@ export async function handleSeedanceProI2V(
     model: ctx.modelId,
     prompt: ctx.prompt,
     image_url: imageUrl,
-    duration: settings.seedanceDuration,
-    resolution: settings.seedanceResolution,
-    aspect_ratio: settings.seedanceAspectRatio,
+    duration: settings.seedanceDuration as SeedanceDuration,
+    resolution: settings.seedanceResolution as SeedanceResolution,
+    aspect_ratio: settings.seedanceAspectRatio as SeedanceAspectRatio,
     camera_fixed: settings.seedanceCameraFixed,
     end_image_url: endFrameUrl ?? undefined,
     seed: settings.imageSeed ?? undefined,
@@ -731,9 +755,9 @@ export async function handleKlingV25I2V(
     model: ctx.modelId,
     prompt: ctx.prompt,
     image_url: imageUrl,
-    duration: settings.klingDuration,
+    duration: settings.klingDuration as KlingDuration,
     cfg_scale: settings.klingCfgScale,
-    aspect_ratio: settings.klingAspectRatio,
+    aspect_ratio: settings.klingAspectRatio as KlingAspectRatio,
     enhance_prompt: settings.klingEnhancePrompt,
     negative_prompt: settings.klingNegativePrompt,
   });
@@ -770,12 +794,11 @@ export async function handleKlingV26I2V(
     message: `Submitting ${ctx.modelName} request...`,
   });
 
-  // Note: v2.6 I2V does NOT support aspect_ratio or cfg_scale per FAL.ai schema
   const response = await generateKling26ImageVideo({
     model: ctx.modelId,
     prompt: ctx.prompt,
     image_url: imageUrl,
-    duration: settings.kling26Duration,
+    duration: settings.kling26Duration as KlingDuration,
     generate_audio: settings.kling26GenerateAudio,
     negative_prompt: settings.kling26NegativePrompt,
   });
@@ -819,8 +842,8 @@ export async function handleWAN25I2V(
     model: ctx.modelId,
     prompt: ctx.prompt,
     image_url: imageUrl,
-    duration: settings.wan25Duration,
-    resolution: settings.wan25Resolution,
+    duration: settings.wan25Duration as WAN25Duration,
+    resolution: settings.wan25Resolution as WAN25Resolution,
     audio_url: audioUrl ?? undefined,
     negative_prompt: settings.wan25NegativePrompt,
     enable_prompt_expansion: settings.wan25EnablePromptExpansion,
@@ -855,7 +878,6 @@ export async function handleGenericI2V(
     image: settings.selectedImage,
     prompt: ctx.prompt,
     model: ctx.modelId,
-    // Add Sora 2 specific parameters if Sora 2 model
     ...(ctx.modelId.startsWith("sora2_") && {
       duration: settings.duration,
       aspect_ratio: settings.aspectRatio,
@@ -902,8 +924,8 @@ export async function handleByteDanceUpscale(
 
   const response = await upscaleByteDanceVideo({
     video_url: videoUrl!,
-    target_resolution: settings.bytedanceTargetResolution,
-    target_fps: settings.bytedanceTargetFPS,
+    target_resolution: settings.bytedanceTargetResolution as ByteDanceResolution,
+    target_fps: settings.bytedanceTargetFPS as ByteDanceFPS,
   });
 
   ctx.progressCallback({
@@ -951,13 +973,13 @@ export async function handleFlashVSRUpscale(
   const response = await upscaleFlashVSRVideo({
     video_url: videoUrl!,
     upscale_factor: upscaleFactor,
-    acceleration: settings.flashvsrAcceleration,
+    acceleration: settings.flashvsrAcceleration as FlashVSRAcceleration,
     quality: settings.flashvsrQuality,
     color_fix: settings.flashvsrColorFix,
     preserve_audio: settings.flashvsrPreserveAudio,
-    output_format: settings.flashvsrOutputFormat,
-    output_quality: settings.flashvsrOutputQuality,
-    output_write_mode: settings.flashvsrOutputWriteMode,
+    output_format: settings.flashvsrOutputFormat as FlashVSROutputFormat,
+    output_quality: settings.flashvsrOutputQuality as FlashVSROutputQuality,
+    output_write_mode: settings.flashvsrOutputWriteMode as FlashVSRWriteMode,
     seed: settings.flashvsrSeed ?? undefined,
   });
 
@@ -1025,7 +1047,7 @@ export async function handleKlingO1V2V(
     model: ctx.modelId,
     prompt: ctx.prompt,
     sourceVideo: settings.sourceVideo,
-    duration: 5, // Default duration
+    duration: 5,
   });
   console.log("  ✅ generateKlingO1Video returned:", response);
 
@@ -1048,8 +1070,6 @@ export async function handleKlingAvatarV2(
   }
 
   console.log(`  🎭 Calling generateAvatarVideo for ${ctx.modelId}...`);
-
-  // Kling Avatar v2 requires FAL storage URLs (not base64 data URLs)
   console.log("  📤 Uploading files to FAL storage for Kling Avatar v2...");
 
   const [characterImageUrl, audioUrl] = await Promise.all([
@@ -1178,7 +1198,6 @@ export async function routeImageToVideoHandler(
     case "wan_25_preview_i2v":
       return handleWAN25I2V(ctx, settings);
     default:
-      // Skip frame-to-video models that don't have frames
       if (
         VEO31_FRAME_MODELS.has(ctx.modelId) &&
         (!settings.firstFrame || !settings.lastFrame)

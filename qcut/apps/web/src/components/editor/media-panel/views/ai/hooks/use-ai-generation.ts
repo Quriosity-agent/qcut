@@ -40,6 +40,16 @@ import {
   integrateVideoToMediaStore,
   updateVideoWithLocalPaths,
   canIntegrateMedia,
+  routeTextToVideoHandler,
+  routeImageToVideoHandler,
+  routeUpscaleHandler,
+  routeAvatarHandler,
+  VEO31_FRAME_MODELS as FRAME_MODELS,
+  type TextToVideoSettings,
+  type ImageToVideoSettings,
+  type AvatarSettings,
+  type UpscaleSettings,
+  type ModelHandlerContext,
 } from "./generation";
 import {
   AI_MODELS,
@@ -62,10 +72,8 @@ import type {
   ProgressCallback as AIProgressCallback,
 } from "../types/ai-types";
 
-const VEO31_FRAME_MODELS = new Set([
-  "veo31_fast_frame_to_video",
-  "veo31_frame_to_video",
-]);
+// Re-export frame models constant for local use
+const VEO31_FRAME_MODELS = FRAME_MODELS;
 
 function getSafeDuration(
   requestedDuration: number,
@@ -1022,735 +1030,142 @@ export function useAIGeneration(props: UseAIGenerationProps) {
           unifiedParams
         );
 
+        // Build handler context
+        const handlerCtx: ModelHandlerContext = {
+          prompt: prompt.trim(),
+          modelId,
+          modelName: modelName || modelId,
+          progressCallback,
+        };
+
+        // Route to appropriate handler based on tab
+        let handlerResult;
+
         if (activeTab === "text") {
           console.log(`  📝 Processing text-to-video model ${modelId}...`);
 
-          // Veo 3.1 Fast text-to-video
-          if (modelId === "veo31_fast_text_to_video") {
-            response = await falAIClient.generateVeo31FastTextToVideo({
-              prompt: prompt.trim(),
-              aspect_ratio: (() => {
-                const ar = veo31Settings.aspectRatio;
-                return ar === "auto" ? undefined : ar; // "16:9" | "9:16" | "1:1" | undefined
-              })(),
-              duration: veo31Settings.duration,
-              resolution: veo31Settings.resolution,
-              generate_audio: veo31Settings.generateAudio,
-              enhance_prompt: veo31Settings.enhancePrompt,
-              auto_fix: veo31Settings.autoFix,
-            });
-          }
-          // Veo 3.1 Standard text-to-video
-          else if (modelId === "veo31_text_to_video") {
-            response = await falAIClient.generateVeo31TextToVideo({
-              prompt: prompt.trim(),
-              aspect_ratio: (() => {
-                const ar = veo31Settings.aspectRatio;
-                return ar === "auto" ? undefined : ar; // "16:9" | "9:16" | "1:1" | undefined
-              })(),
-              duration: veo31Settings.duration,
-              resolution: veo31Settings.resolution,
-              generate_audio: veo31Settings.generateAudio,
-              enhance_prompt: veo31Settings.enhancePrompt,
-              auto_fix: veo31Settings.autoFix,
-            });
-          }
-          // Hailuo 2.3 text-to-video models
-          else if (
-            modelId === "hailuo23_standard_t2v" ||
-            modelId === "hailuo23_pro_t2v"
-          ) {
-            const friendlyName = modelName || modelId;
-            progressCallback({
-              status: "processing",
-              progress: 10,
-              message: `Submitting ${friendlyName} request...`,
-            });
+          const t2vSettings: TextToVideoSettings = {
+            veo31Settings,
+            hailuoT2VDuration,
+            ltxv2Duration,
+            ltxv2Resolution,
+            ltxv2FPS,
+            ltxv2GenerateAudio,
+            ltxv2FastDuration,
+            ltxv2FastResolution,
+            ltxv2FastFPS,
+            ltxv2FastGenerateAudio,
+            unifiedParams,
+            duration,
+            aspectRatio,
+            resolution,
+          };
 
-            const textRequest = {
-              model: modelId,
-              prompt: prompt.trim(),
-              duration: hailuoT2VDuration,
-            };
-
-            response = await generateVideoFromText(textRequest);
-
-            progressCallback({
-              status: "completed",
-              progress: 100,
-              message: `Video generated with ${friendlyName}`,
-            });
-          }
-          // LTX Video 2.0 text-to-video
-          else if (modelId === "ltxv2_pro_t2v") {
-            const friendlyName = modelName || modelId;
-            progressCallback({
-              status: "processing",
-              progress: 10,
-              message: `Submitting ${friendlyName} request...`,
-            });
-
-            response = await generateLTXV2Video({
-              model: modelId,
-              prompt: prompt.trim(),
-              duration: ltxv2Duration,
-              resolution: ltxv2Resolution,
-              fps: ltxv2FPS,
-              generate_audio: ltxv2GenerateAudio,
-            });
-
-            progressCallback({
-              status: "completed",
-              progress: 100,
-              message: `Video with audio generated using ${friendlyName}`,
-            });
-          }
-          // LTX Video 2.0 fast text-to-video
-          else if (modelId === "ltxv2_fast_t2v") {
-            const friendlyName = modelName || modelId;
-            progressCallback({
-              status: "processing",
-              progress: 10,
-              message: `Submitting ${friendlyName} request...`,
-            });
-
-            response = await generateLTXV2Video({
-              model: modelId,
-              prompt: prompt.trim(),
-              duration: ltxv2FastDuration,
-              resolution: ltxv2FastResolution,
-              fps: ltxv2FastFPS,
-              generate_audio: ltxv2FastGenerateAudio,
-            });
-
-            progressCallback({
-              status: "completed",
-              progress: 100,
-              message: `Video with audio generated using ${friendlyName}`,
-            });
-          }
-          // Regular text-to-video generation
-          else {
-            response = await generateVideo(
-              {
-                prompt: prompt.trim(),
-                model: modelId,
-                ...unifiedParams,
-                // Add Sora 2 specific parameters if Sora 2 model
-                ...(modelId.startsWith("sora2_") && {
-                  duration:
-                    (unifiedParams.duration as number | undefined) ?? duration,
-                  aspect_ratio:
-                    (unifiedParams.aspect_ratio as
-                      | "16:9"
-                      | "9:16"
-                      | "1:1"
-                      | "4:3"
-                      | "3:4"
-                      | "21:9"
-                      | undefined) ?? aspectRatio,
-                  resolution:
-                    (unifiedParams.resolution as
-                      | "720p"
-                      | "1080p"
-                      | "auto"
-                      | undefined) ?? resolution,
-                }),
-              },
-              progressCallback
-            );
-          }
+          handlerResult = await routeTextToVideoHandler(handlerCtx, t2vSettings);
+          response = handlerResult.response;
           console.log("  ✅ Text-to-video response:", response);
         } else if (activeTab === "image") {
           console.log(`  🖼️ Calling generateVideoFromImage for ${modelId}...`);
 
-          // Veo 3.1 Fast image-to-video
-          if (modelId === "veo31_fast_image_to_video") {
-            if (!selectedImage) {
-              console.log(
-                "  ⚠️ Skipping model - image-to-video requires a selected image"
-              );
-              continue;
-            }
+          const i2vSettings: ImageToVideoSettings = {
+            selectedImage,
+            firstFrame,
+            lastFrame,
+            veo31Settings,
+            viduQ2Duration,
+            viduQ2Resolution,
+            viduQ2MovementAmplitude,
+            viduQ2EnableBGM,
+            ltxv2I2VDuration,
+            ltxv2I2VResolution,
+            ltxv2I2VFPS,
+            ltxv2I2VGenerateAudio,
+            ltxv2ImageDuration,
+            ltxv2ImageResolution,
+            ltxv2ImageFPS,
+            ltxv2ImageGenerateAudio,
+            seedanceDuration,
+            seedanceResolution,
+            seedanceAspectRatio,
+            seedanceCameraFixed,
+            seedanceEndFrameUrl: seedanceEndFrameUrl ?? null,
+            seedanceEndFrameFile,
+            klingDuration,
+            klingCfgScale,
+            klingAspectRatio,
+            klingEnhancePrompt,
+            klingNegativePrompt: klingNegativePrompt ?? "",
+            kling26Duration,
+            kling26GenerateAudio,
+            kling26NegativePrompt: kling26NegativePrompt ?? "",
+            wan25Duration,
+            wan25Resolution,
+            wan25AudioUrl: wan25AudioUrl ?? null,
+            wan25AudioFile,
+            wan25NegativePrompt: wan25NegativePrompt ?? "",
+            wan25EnablePromptExpansion,
+            imageSeed: imageSeed ?? null,
+            duration,
+            aspectRatio,
+            resolution,
+            uploadImageToFal,
+            uploadAudioToFal,
+          };
 
-            // Upload image to get URL first
-            const imageFile = selectedImage;
-            const imageUrl = await uploadImageToFal(imageFile);
-            const imageAspectRatio =
-              veo31Settings.aspectRatio === "16:9" ||
-              veo31Settings.aspectRatio === "9:16"
-                ? veo31Settings.aspectRatio
-                : "16:9";
+          handlerResult = await routeImageToVideoHandler(handlerCtx, i2vSettings);
 
-            response = await falAIClient.generateVeo31FastImageToVideo({
-              prompt: prompt.trim(),
-              image_url: imageUrl,
-              aspect_ratio: imageAspectRatio,
-              duration: "8s",
-              resolution: veo31Settings.resolution,
-              generate_audio: veo31Settings.generateAudio,
-            });
-          }
-          // Veo 3.1 Standard image-to-video
-          else if (modelId === "veo31_image_to_video") {
-            if (!selectedImage) {
-              console.log(
-                "  ⚠️ Skipping model - image-to-video requires a selected image"
-              );
-              continue;
-            }
-
-            // Upload image to get URL first
-            const imageFile = selectedImage;
-            const imageUrl = await uploadImageToFal(imageFile);
-            const imageAspectRatio =
-              veo31Settings.aspectRatio === "16:9" ||
-              veo31Settings.aspectRatio === "9:16"
-                ? veo31Settings.aspectRatio
-                : "16:9";
-
-            response = await falAIClient.generateVeo31ImageToVideo({
-              prompt: prompt.trim(),
-              image_url: imageUrl,
-              aspect_ratio: imageAspectRatio,
-              duration: "8s",
-              resolution: veo31Settings.resolution,
-              generate_audio: veo31Settings.generateAudio,
-            });
-          }
-          // Veo 3.1 Fast frame-to-video
-          else if (
-            modelId === "veo31_fast_frame_to_video" &&
-            firstFrame &&
-            lastFrame
-          ) {
-            // Upload both frames to get URLs
-            const frameStart = firstFrame;
-            const frameEnd = lastFrame;
-            const firstFrameUrl = await uploadImageToFal(frameStart);
-            const lastFrameUrl = await uploadImageToFal(frameEnd);
-            const frameAspectRatio =
-              veo31Settings.aspectRatio === "16:9" ||
-              veo31Settings.aspectRatio === "9:16"
-                ? veo31Settings.aspectRatio
-                : "16:9";
-
-            response = await falAIClient.generateVeo31FastFrameToVideo({
-              prompt: prompt.trim(),
-              first_frame_url: firstFrameUrl,
-              last_frame_url: lastFrameUrl,
-              aspect_ratio: frameAspectRatio,
-              duration: "8s",
-              resolution: veo31Settings.resolution,
-              generate_audio: veo31Settings.generateAudio,
-            });
-          }
-          // Veo 3.1 Standard frame-to-video
-          else if (
-            modelId === "veo31_frame_to_video" &&
-            firstFrame &&
-            lastFrame
-          ) {
-            // Upload both frames to get URLs
-            const frameStart = firstFrame;
-            const frameEnd = lastFrame;
-            const firstFrameUrl = await uploadImageToFal(frameStart);
-            const lastFrameUrl = await uploadImageToFal(frameEnd);
-            const frameAspectRatio =
-              veo31Settings.aspectRatio === "16:9" ||
-              veo31Settings.aspectRatio === "9:16"
-                ? veo31Settings.aspectRatio
-                : "16:9";
-
-            response = await falAIClient.generateVeo31FrameToVideo({
-              prompt: prompt.trim(),
-              first_frame_url: firstFrameUrl,
-              last_frame_url: lastFrameUrl,
-              aspect_ratio: frameAspectRatio,
-              duration: "8s",
-              resolution: veo31Settings.resolution,
-              generate_audio: veo31Settings.generateAudio,
-            });
-          } else if (VEO31_FRAME_MODELS.has(modelId)) {
-            console.log(
-              "  ⚠️ Skipping model - frame-to-video requires selected first and last frames"
-            );
+          if (handlerResult.shouldSkip) {
+            console.log(`  ⚠️ Skipping model - ${handlerResult.skipReason}`);
             continue;
           }
-          // Vidu Q2 Turbo image-to-video
-          else if (modelId === "vidu_q2_turbo_i2v") {
-            if (!selectedImage) {
-              console.log(
-                "  ⚠️ Skipping model - Vidu Q2 requires a selected image"
-              );
-              continue;
-            }
 
-            const imageUrl = await uploadImageToFal(selectedImage);
-            const friendlyName = modelName || modelId;
-            progressCallback({
-              status: "processing",
-              progress: 10,
-              message: `Submitting ${friendlyName} request...`,
-            });
-
-            response = await generateViduQ2Video({
-              model: modelId,
-              prompt: prompt.trim(),
-              image_url: imageUrl,
-              duration: viduQ2Duration,
-              resolution: viduQ2Resolution,
-              movement_amplitude: viduQ2MovementAmplitude,
-              bgm: viduQ2EnableBGM,
-            });
-
-            progressCallback({
-              status: "completed",
-              progress: 100,
-              message: `Video generated with ${friendlyName}`,
-            });
-          }
-          // LTX Video 2.0 standard image-to-video
-          else if (modelId === "ltxv2_i2v") {
-            if (!selectedImage) {
-              console.log(
-                "  ⚠️ Skipping model - LTX V2 standard requires a selected image"
-              );
-              continue;
-            }
-
-            const imageUrl = await uploadImageToFal(selectedImage);
-            const friendlyName = modelName || modelId;
-            progressCallback({
-              status: "processing",
-              progress: 10,
-              message: `Submitting ${friendlyName} request...`,
-            });
-
-            response = await generateLTXV2ImageVideo({
-              model: modelId,
-              prompt: prompt.trim(),
-              image_url: imageUrl,
-              duration: ltxv2I2VDuration,
-              resolution: ltxv2I2VResolution,
-              fps: ltxv2I2VFPS,
-              generate_audio: ltxv2I2VGenerateAudio,
-            });
-
-            progressCallback({
-              status: "completed",
-              progress: 100,
-              message: `Video with audio generated using ${friendlyName}`,
-            });
-          }
-          // LTX Video 2.0 Fast image-to-video
-          else if (modelId === "ltxv2_fast_i2v") {
-            if (!selectedImage) {
-              console.log(
-                "  ⚠️ Skipping model - LTX V2 Fast requires a selected image"
-              );
-              continue;
-            }
-
-            const imageUrl = await uploadImageToFal(selectedImage);
-            const friendlyName = modelName || modelId;
-            progressCallback({
-              status: "processing",
-              progress: 10,
-              message: `Submitting ${friendlyName} request...`,
-            });
-
-            response = await generateLTXV2ImageVideo({
-              model: modelId,
-              prompt: prompt.trim(),
-              image_url: imageUrl,
-              duration: ltxv2ImageDuration,
-              resolution: ltxv2ImageResolution,
-              fps: ltxv2ImageFPS,
-              generate_audio: ltxv2ImageGenerateAudio,
-            });
-
-            progressCallback({
-              status: "completed",
-              progress: 100,
-              message: `Video with audio generated using ${friendlyName}`,
-            });
-          }
-          // Seedance v1 Pro Fast image-to-video
-          else if (modelId === "seedance_pro_fast_i2v") {
-            if (!selectedImage) {
-              console.log(
-                "  ?? Skipping model - Seedance Pro Fast requires a selected image"
-              );
-              continue;
-            }
-
-            const imageUrl = await uploadImageToFal(selectedImage);
-            const friendlyName = modelName || modelId;
-            progressCallback({
-              status: "processing",
-              progress: 10,
-              message: `Submitting ${friendlyName} request...`,
-            });
-
-            response = await generateSeedanceVideo({
-              model: modelId,
-              prompt: prompt.trim(),
-              image_url: imageUrl,
-              duration: seedanceDuration,
-              resolution: seedanceResolution,
-              aspect_ratio: seedanceAspectRatio,
-              camera_fixed: seedanceCameraFixed,
-              seed: imageSeed ?? undefined,
-            });
-
-            progressCallback({
-              status: "completed",
-              progress: 100,
-              message: `Video generated with ${friendlyName}`,
-            });
-          }
-          // Seedance v1 Pro image-to-video (end frame optional)
-          else if (modelId === "seedance_pro_i2v") {
-            if (!selectedImage) {
-              console.log(
-                "  ?? Skipping model - Seedance Pro requires a selected image"
-              );
-              continue;
-            }
-
-            const imageUrl = await uploadImageToFal(selectedImage);
-            const friendlyName = modelName || modelId;
-            const endFrameUrl = seedanceEndFrameFile
-              ? await uploadImageToFal(seedanceEndFrameFile)
-              : seedanceEndFrameUrl;
-            progressCallback({
-              status: "processing",
-              progress: 10,
-              message: `Submitting ${friendlyName} request...`,
-            });
-
-            response = await generateSeedanceVideo({
-              model: modelId,
-              prompt: prompt.trim(),
-              image_url: imageUrl,
-              duration: seedanceDuration,
-              resolution: seedanceResolution,
-              aspect_ratio: seedanceAspectRatio,
-              camera_fixed: seedanceCameraFixed,
-              end_image_url: endFrameUrl ?? undefined,
-              seed: imageSeed ?? undefined,
-            });
-
-            progressCallback({
-              status: "completed",
-              progress: 100,
-              message: `Video generated with ${friendlyName}`,
-            });
-          }
-          // Kling v2.5 Turbo Pro image-to-video
-          else if (modelId === "kling_v2_5_turbo_i2v") {
-            if (!selectedImage) {
-              console.log(
-                "  ?? Skipping model - Kling v2.5 requires a selected image"
-              );
-              continue;
-            }
-
-            const imageUrl = await uploadImageToFal(selectedImage);
-            const friendlyName = modelName || modelId;
-            progressCallback({
-              status: "processing",
-              progress: 10,
-              message: `Submitting ${friendlyName} request...`,
-            });
-
-            response = await generateKlingImageVideo({
-              model: modelId,
-              prompt: prompt.trim(),
-              image_url: imageUrl,
-              duration: klingDuration,
-              cfg_scale: klingCfgScale,
-              aspect_ratio: klingAspectRatio,
-              enhance_prompt: klingEnhancePrompt,
-              negative_prompt: klingNegativePrompt,
-            });
-
-            progressCallback({
-              status: "completed",
-              progress: 100,
-              message: `Video generated with ${friendlyName}`,
-            });
-          }
-          // Kling v2.6 Pro image-to-video
-          else if (modelId === "kling_v26_pro_i2v") {
-            if (!selectedImage) {
-              console.log(
-                "  ⚠️ Skipping model - Kling v2.6 requires a selected image"
-              );
-              continue;
-            }
-
-            const imageUrl = await uploadImageToFal(selectedImage);
-            const friendlyName = modelName || modelId;
-            progressCallback({
-              status: "processing",
-              progress: 10,
-              message: `Submitting ${friendlyName} request...`,
-            });
-
-            // Note: v2.6 I2V does NOT support aspect_ratio or cfg_scale per FAL.ai schema
-            response = await generateKling26ImageVideo({
-              model: modelId,
-              prompt: prompt.trim(),
-              image_url: imageUrl,
-              duration: kling26Duration,
-              generate_audio: kling26GenerateAudio,
-              negative_prompt: kling26NegativePrompt,
-            });
-
-            progressCallback({
-              status: "completed",
-              progress: 100,
-              message: `Video generated with ${friendlyName}`,
-            });
-          }
-          // WAN 2.5 Preview image-to-video
-          else if (modelId === "wan_25_preview_i2v") {
-            if (!selectedImage) {
-              console.log(
-                "  ?? Skipping model - WAN 2.5 requires a selected image"
-              );
-              continue;
-            }
-
-            const imageUrl = await uploadImageToFal(selectedImage);
-            const friendlyName = modelName || modelId;
-            const audioUrl = wan25AudioFile
-              ? await uploadAudioToFal(wan25AudioFile)
-              : wan25AudioUrl;
-            progressCallback({
-              status: "processing",
-              progress: 10,
-              message: `Submitting ${friendlyName} request...`,
-            });
-
-            response = await generateWAN25ImageVideo({
-              model: modelId,
-              prompt: prompt.trim(),
-              image_url: imageUrl,
-              duration: wan25Duration,
-              resolution: wan25Resolution,
-              audio_url: audioUrl ?? undefined,
-              negative_prompt: wan25NegativePrompt,
-              enable_prompt_expansion: wan25EnablePromptExpansion,
-              seed: imageSeed ?? undefined,
-            });
-
-            progressCallback({
-              status: "completed",
-              progress: 100,
-              message: `Video generated with ${friendlyName}`,
-            });
-          } // Regular image-to-video generation
-          else {
-            if (!selectedImage) {
-              console.log(
-                "  ⚠️ Skipping model - image-to-video requires a selected image"
-              );
-              continue;
-            }
-
-            response = await generateVideoFromImage({
-              image: selectedImage,
-              prompt: prompt.trim(),
-              model: modelId,
-              // Add Sora 2 specific parameters if Sora 2 model
-              ...(modelId.startsWith("sora2_") && {
-                duration,
-                aspect_ratio: aspectRatio,
-                resolution,
-              }),
-            });
-          }
+          response = handlerResult.response;
           console.log("  ✅ generateVideoFromImage returned:", response);
         } else if (activeTab === "upscale") {
-          if (modelId === "bytedance_video_upscaler") {
-            if (!sourceVideoFile && !sourceVideoUrl) {
-              console.log("  ?? Skipping model - Video source required");
-              continue;
-            }
+          const upscaleSettings: UpscaleSettings = {
+            sourceVideoFile,
+            sourceVideoUrl: sourceVideoUrl || null,
+            bytedanceTargetResolution,
+            bytedanceTargetFPS,
+            flashvsrUpscaleFactor: flashvsrUpscaleFactor ?? null,
+            flashvsrAcceleration,
+            flashvsrQuality,
+            flashvsrColorFix,
+            flashvsrPreserveAudio,
+            flashvsrOutputFormat,
+            flashvsrOutputQuality,
+            flashvsrOutputWriteMode,
+            flashvsrSeed: flashvsrSeed ?? null,
+          };
 
-            const videoUrl = sourceVideoFile
-              ? await falAIClient.uploadVideoToFal(sourceVideoFile)
-              : sourceVideoUrl;
+          handlerResult = await routeUpscaleHandler(handlerCtx, upscaleSettings);
 
-            const friendlyName = modelName || modelId;
-            progressCallback({
-              status: "processing",
-              progress: 10,
-              message: `Uploading video for ${friendlyName}...`,
-            });
-
-            progressCallback({
-              status: "processing",
-              progress: 30,
-              message: `Upscaling video to ${bytedanceTargetResolution}...`,
-            });
-
-            response = await upscaleByteDanceVideo({
-              video_url: videoUrl,
-              target_resolution: bytedanceTargetResolution,
-              target_fps: bytedanceTargetFPS,
-            });
-
-            progressCallback({
-              status: "completed",
-              progress: 100,
-              message: `Video upscaled with ${friendlyName}`,
-            });
+          if (handlerResult.shouldSkip) {
+            console.log(`  ⚠️ Skipping model - ${handlerResult.skipReason}`);
+            continue;
           }
-          // FlashVSR Video Upscaler
-          else if (modelId === "flashvsr_video_upscaler") {
-            if (!sourceVideoFile && !sourceVideoUrl) {
-              console.log("  ?? Skipping model - Video source required");
-              continue;
-            }
 
-            const videoUrl = sourceVideoFile
-              ? await falAIClient.uploadVideoToFal(sourceVideoFile)
-              : sourceVideoUrl;
-
-            const friendlyName = modelName || modelId;
-            const upscaleFactor = flashvsrUpscaleFactor ?? 4;
-
-            progressCallback({
-              status: "processing",
-              progress: 10,
-              message: `Uploading video for ${friendlyName}...`,
-            });
-
-            progressCallback({
-              status: "processing",
-              progress: 30,
-              message: `Upscaling video with FlashVSR (${upscaleFactor}x)...`,
-            });
-
-            response = await upscaleFlashVSRVideo({
-              video_url: videoUrl,
-              upscale_factor: upscaleFactor,
-              acceleration: flashvsrAcceleration,
-              quality: flashvsrQuality,
-              color_fix: flashvsrColorFix,
-              preserve_audio: flashvsrPreserveAudio,
-              output_format: flashvsrOutputFormat,
-              output_quality: flashvsrOutputQuality,
-              output_write_mode: flashvsrOutputWriteMode,
-              seed: flashvsrSeed,
-            });
-
-            progressCallback({
-              status: "completed",
-              progress: 100,
-              message: `Video upscaled with ${friendlyName}`,
-            });
-          }
-          // Topaz Video Upscaler
-          else if (modelId === "topaz_video_upscale") {
-            throw new Error("Topaz Video Upscale not yet implemented");
-          }
+          response = handlerResult.response;
         } else if (activeTab === "avatar") {
-          // Special handling for kling_o1_ref2video which uses referenceImages
-          if (modelId === "kling_o1_ref2video") {
-            const firstRefImage = referenceImages?.find((img) => img !== null);
-            if (firstRefImage) {
-              console.log(
-                `  🎭 Calling generateAvatarVideo for ${modelId} with reference image...`
-              );
-              response = await generateAvatarVideo({
-                model: modelId,
-                characterImage: firstRefImage,
-                prompt: prompt.trim() || undefined,
-              });
-              console.log("  ✅ generateAvatarVideo returned:", response);
-            }
-          } else if (
-            modelId === "kling_o1_v2v_reference" ||
-            modelId === "kling_o1_v2v_edit"
-          ) {
-            // V2V models require sourceVideo, not avatarImage
-            if (sourceVideo) {
-              console.log(
-                `  🎬 Calling generateKlingO1Video for ${modelId} with source video...`
-              );
-              response = await generateKlingO1Video({
-                model: modelId,
-                prompt: prompt.trim(),
-                sourceVideo,
-                duration: 5, // Default duration
-              });
-              console.log("  ✅ generateKlingO1Video returned:", response);
-            }
-          } else if (avatarImage) {
-            console.log(`  🎭 Calling generateAvatarVideo for ${modelId}...`);
-            // For Kling Avatar v2 models, use the v2-specific prompt
-            const avatarPrompt =
-              modelId === "kling_avatar_v2_standard" ||
-              modelId === "kling_avatar_v2_pro"
-                ? klingAvatarV2Prompt.trim() || undefined
-                : prompt.trim() || undefined;
+          const avatarSettings: AvatarSettings = {
+            avatarImage: avatarImage ?? null,
+            audioFile: audioFile ?? null,
+            sourceVideo: sourceVideo ?? null,
+            referenceImages: referenceImages ?? [],
+            klingAvatarV2Prompt,
+            audioDuration,
+            uploadImageToFal,
+            uploadAudioToFal,
+          };
 
-            // Kling Avatar v2 requires FAL storage URLs (not base64 data URLs)
-            if (
-              modelId === "kling_avatar_v2_standard" ||
-              modelId === "kling_avatar_v2_pro"
-            ) {
-              console.log(
-                "  📤 Uploading files to FAL storage for Kling Avatar v2..."
-              );
+          handlerResult = await routeAvatarHandler(handlerCtx, avatarSettings);
 
-              // Upload image and audio to FAL storage
-              const [characterImageUrl, audioUrl] = await Promise.all([
-                uploadImageToFal(avatarImage),
-                audioFile ? uploadAudioToFal(audioFile) : Promise.resolve(""),
-              ]);
-
-              if (!audioUrl) {
-                throw new Error("Audio file is required for Kling Avatar v2");
-              }
-
-              console.log("  ✅ Files uploaded to FAL storage");
-              console.log(
-                "    - Image URL:",
-                characterImageUrl.substring(0, 50) + "..."
-              );
-              console.log(
-                "    - Audio URL:",
-                audioUrl.substring(0, 50) + "..."
-              );
-
-              response = await generateAvatarVideo({
-                model: modelId,
-                characterImage: avatarImage,
-                audioFile: audioFile || undefined,
-                prompt: avatarPrompt,
-                audioDuration: audioDuration ?? undefined,
-                characterImageUrl,
-                audioUrl,
-              });
-            } else {
-              // Other avatar models use data URLs (base64)
-              response = await generateAvatarVideo({
-                model: modelId,
-                characterImage: avatarImage,
-                audioFile: audioFile || undefined,
-                sourceVideo: sourceVideo || undefined,
-                prompt: avatarPrompt,
-                audioDuration: audioDuration ?? undefined,
-              });
-            }
-            console.log("  ✅ generateAvatarVideo returned:", response);
+          if (handlerResult.shouldSkip) {
+            console.log(`  ⚠️ Skipping model - ${handlerResult.skipReason}`);
+            continue;
           }
+
+          response = handlerResult.response;
         }
 
         console.log("step 5a: post-API response analysis");

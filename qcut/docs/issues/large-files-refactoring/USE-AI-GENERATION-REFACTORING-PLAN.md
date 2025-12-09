@@ -272,26 +272,29 @@ export async function integrateVideoToMediaStore(
 
 ---
 
-### Phase 2: Extract Handler Functions ⏳ PARTIALLY COMPLETE (Dec 2025)
+### Phase 2: Extract Handler Functions ✅ COMPLETED (Dec 2025)
 
-**Status**: Draft created, requires type refinement before integration
+**Reduction**: New file created with ~1000 lines of extracted handler logic
 
 **What Was Done**:
-- Created `hooks/generation/model-handlers.ts.draft` (1000+ lines)
-- Contains handler functions for all models: T2V, I2V, Avatar, Upscale
+- Created `hooks/generation/model-handlers.ts` (1000+ lines)
+- Contains handler functions for all 40+ models: T2V, I2V, Avatar, Upscale
 - Router functions for each tab: `routeTextToVideoHandler()`, etc.
 - Comprehensive type interfaces for settings
+- Added type aliases and type assertions to handle loose-to-strict type coercion
 
-**Blocking Issue**:
-- The hook stores settings as loose types (e.g., `duration: number`)
-- The generator functions expect strict literal types (e.g., `duration: 6 | 10`)
-- Requires either:
-  1. Adding type assertions throughout handlers (tedious, ~50+ locations)
-  2. Updating hook state to use strict types (breaking change risk)
-  3. Creating adapter layer for type coercion
+**Type Solution Used**: Option A - Type Assertions
+- Created type aliases for all literal types (e.g., `type HailuoDuration = 6 | 10`)
+- Added `as` assertions at call sites (e.g., `duration: settings.hailuoT2VDuration as HailuoDuration`)
+- Maintains backward compatibility with hook state
 
 **Files Created**:
-- `model-handlers.ts.draft` - Not integrated due to TypeScript errors
+- `model-handlers.ts` - Fully typed and exported
+- Updated `index.ts` barrel file with exports
+
+**Verification**:
+- ✅ TypeScript compilation passes
+- ✅ All 34 AI video tests pass
 
 #### Task 2.1: Create `generation/handlers.ts`
 **Reduction**: ~800 lines from handleGenerate (PENDING)
@@ -500,21 +503,22 @@ const handleGenerate = useCallback(async () => {
 | Task | Description | Lines Saved | Priority | Status |
 |------|-------------|-------------|----------|--------|
 | 1.1 | Extract `media-integration.ts` | 303 | HIGH | ✅ DONE |
-| 2.1 | Extract `generation/handlers.ts` | ~800 | HIGH | ⏳ DRAFT CREATED |
-| 3.1 | Simplify handleGenerate | ~300 | MEDIUM | PENDING |
+| 2.1 | Extract `generation/model-handlers.ts` | ~1000 (new file) | HIGH | ✅ DONE |
+| 3.1 | Simplify handleGenerate (use routers) | ~700 | MEDIUM | PENDING |
 | 4.1 | Update tests | - | HIGH | ✅ DONE |
 | 5.1 | Remove backup | - | FINAL | PENDING |
 
 ---
 
-## Current Line Counts (After Phase 1)
+## Current Line Counts (After Phase 2)
 
 | File | Lines | Purpose |
 |------|-------|---------|
 | `use-ai-generation.ts` | 2355 | Main hook (reduced from 2659) |
 | `generation/media-integration.ts` | 316 | Download + save + media store |
-| `generation/index.ts` | 12 | Barrel file |
-| **Reduction So Far** | **303 lines** | |
+| `generation/model-handlers.ts` | ~1000 | Model-specific handlers + routers |
+| `generation/index.ts` | 30 | Barrel file |
+| **Main Hook Reduction** | **303 lines** | (still pending Phase 3 for ~700 more) |
 
 ## Estimated Final Line Counts (After All Phases)
 
@@ -573,40 +577,59 @@ rm -rf qcut/apps/web/src/components/editor/media-panel/views/ai/hooks/generation
 
 ---
 
-## Next Steps for Phase 2 Completion
+## Next Steps: Phase 3 - Simplify handleGenerate
 
-To complete Phase 2, choose one of these approaches:
+To complete Phase 3, replace the ~700 lines of model branching in `handleGenerate` with router calls:
 
-### Option A: Type Assertions (Quick Fix)
-Add `as` assertions at each call site in model-handlers.ts:
+### Current Pattern (to be replaced):
 ```typescript
-// Before (TS error)
-duration: settings.hailuoT2VDuration,
-
-// After (compiles)
-duration: settings.hailuoT2VDuration as 6 | 10,
-```
-Pros: Quick, no breaking changes
-Cons: Tedious (~50 locations), runtime risk if values are wrong
-
-### Option B: Strict Types in Settings (Clean Fix)
-Update `TextToVideoSettings`, `ImageToVideoSettings`, etc. to use strict literal types.
-Then update all useState calls in tab hooks to use same types.
-Pros: Full type safety
-Cons: Breaking change risk, more work
-
-### Option C: Adapter Functions (Balanced)
-Create adapter functions that validate and coerce types:
-```typescript
-function coerceHailuoDuration(d: number): 6 | 10 {
-  return d === 10 ? 10 : 6;
+if (activeTab === "text") {
+  if (modelId === "veo31_fast_text_to_video") {
+    response = await falAIClient.generateVeo31FastTextToVideo({...});
+  } else if (modelId === "hailuo23_standard_t2v") {
+    // ... 30+ lines
+  }
+  // ... 500+ more lines of if-else
 }
 ```
-Pros: Runtime validation, cleaner than assertions
-Cons: Additional code
+
+### Target Pattern:
+```typescript
+const ctx: ModelHandlerContext = {
+  prompt: prompt.trim(),
+  modelId,
+  modelName: modelName || modelId,
+  progressCallback,
+};
+
+let result: ModelHandlerResult;
+
+if (activeTab === "text") {
+  const settings: TextToVideoSettings = { /* build from hook state */ };
+  result = await routeTextToVideoHandler(ctx, settings);
+} else if (activeTab === "image") {
+  const settings: ImageToVideoSettings = { /* build from hook state */ };
+  result = await routeImageToVideoHandler(ctx, settings);
+} else if (activeTab === "upscale") {
+  const settings: UpscaleSettings = { /* build from hook state */ };
+  result = await routeUpscaleHandler(ctx, settings);
+} else if (activeTab === "avatar") {
+  const settings: AvatarSettings = { /* build from hook state */ };
+  result = await routeAvatarHandler(ctx, settings);
+}
+
+if (result.shouldSkip) {
+  console.log(`⚠️ Skipping model - ${result.skipReason}`);
+  continue;
+}
+
+response = result.response;
+```
+
+**Estimated Savings**: ~700 lines from main hook
 
 ---
 
 *Created: December 2025*
-*Status: Phase 1 Complete, Phase 2 Draft Created*
+*Status: Phase 1 ✅ Complete, Phase 2 ✅ Complete, Phase 3 Pending*
 *Leverages: lib/ai-video/ (recently refactored), existing tab state hooks*
