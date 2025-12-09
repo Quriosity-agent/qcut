@@ -55,6 +55,7 @@ import {
   calculateSeedanceCost,
   calculateKlingCost,
   calculateKling26Cost,
+  calculateLTXV2Cost,
 } from "../utils/ai-cost-calculators";
 
 // ============================================
@@ -546,14 +547,7 @@ export function AIImageTab({
             </Select>
             <div className="text-xs text-muted-foreground">
               Estimated cost: $
-              {(
-                ltxv2I2VDuration *
-                (ltxv2I2VResolution === "1080p"
-                  ? 0.06
-                  : ltxv2I2VResolution === "1440p"
-                    ? 0.12
-                    : 0.24)
-              ).toFixed(2)}
+              {calculateLTXV2Cost(ltxv2I2VResolution, ltxv2I2VDuration, "pro").toFixed(2)}
             </div>
           </div>
 

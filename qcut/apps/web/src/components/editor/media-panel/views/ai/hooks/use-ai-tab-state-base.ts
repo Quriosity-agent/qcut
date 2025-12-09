@@ -156,12 +156,6 @@ export function useMultipleFilesWithPreview(
     (index: number, newFile: File | null) => {
       if (index < 0 || index >= count) return;
 
-      // Revoke previous preview URL at this index
-      const oldPreview = previews[index];
-      if (oldPreview) {
-        URL.revokeObjectURL(oldPreview);
-      }
-
       // Update files array
       setFiles((prev) => {
         const updated = [...prev];
@@ -169,24 +163,24 @@ export function useMultipleFilesWithPreview(
         return updated;
       });
 
-      // Update previews array
+      // Update previews array (revoke old URL inside functional update to avoid stale closure)
       setPreviews((prev) => {
         const updated = [...prev];
+        // Revoke previous preview URL at this index
+        const oldPreview = prev[index];
+        if (oldPreview) {
+          URL.revokeObjectURL(oldPreview);
+        }
         updated[index] = newFile ? URL.createObjectURL(newFile) : null;
         return updated;
       });
     },
-    [count, previews]
+    [count]
   );
 
   const resetAt = useCallback(
     (index: number) => {
       if (index < 0 || index >= count) return;
-
-      const oldPreview = previews[index];
-      if (oldPreview) {
-        URL.revokeObjectURL(oldPreview);
-      }
 
       setFiles((prev) => {
         const updated = [...prev];
@@ -194,23 +188,30 @@ export function useMultipleFilesWithPreview(
         return updated;
       });
 
+      // Revoke old URL inside functional update to avoid stale closure
       setPreviews((prev) => {
         const updated = [...prev];
+        const oldPreview = prev[index];
+        if (oldPreview) {
+          URL.revokeObjectURL(oldPreview);
+        }
         updated[index] = null;
         return updated;
       });
     },
-    [count, previews]
+    [count]
   );
 
   const reset = useCallback(() => {
-    // Revoke all preview URLs
-    for (const p of previews) {
-      if (p) URL.revokeObjectURL(p);
-    }
     setFiles(Array(count).fill(null));
-    setPreviews(Array(count).fill(null));
-  }, [count, previews]);
+    // Revoke all preview URLs inside functional update to avoid stale closure
+    setPreviews((prev) => {
+      for (const p of prev) {
+        if (p) URL.revokeObjectURL(p);
+      }
+      return Array(count).fill(null);
+    });
+  }, [count]);
 
   // Cleanup on unmount only
   useEffect(() => {
