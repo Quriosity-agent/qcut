@@ -6,7 +6,11 @@
  */
 
 import { handleAIServiceError } from "@/lib/error-handler";
-import type { Seeddream45ImageSize } from "@/components/editor/media-panel/views/ai/types/ai-types";
+import type {
+  Seeddream45ImageSize,
+  Seeddream45TextToImageParams,
+  Seeddream45EditParams,
+} from "@/components/editor/media-panel/views/ai/types/ai-types";
 import { ERROR_MESSAGES } from "@/components/editor/media-panel/views/ai/constants/ai-constants";
 import { getFalApiKey, FAL_API_BASE } from "../core/fal-request";
 
@@ -25,32 +29,11 @@ export interface Seeddream45ImageResult {
   seed: number;
 }
 
-/**
- * Seeddream 4.5 text-to-image request parameters
- */
-export interface Seeddream45GenerateParams {
-  prompt: string;
-  image_size?: Seeddream45ImageSize;
-  num_images?: number;
-  max_images?: number;
-  seed?: number;
-  sync_mode?: boolean;
-  enable_safety_checker?: boolean;
-}
+// Re-export for convenience (types imported from ai-types.ts)
+export type { Seeddream45TextToImageParams, Seeddream45EditParams };
 
-/**
- * Seeddream 4.5 edit request parameters
- */
-export interface Seeddream45EditParams {
-  prompt: string;
-  image_urls: string[];
-  image_size?: Seeddream45ImageSize;
-  num_images?: number;
-  max_images?: number;
-  seed?: number;
-  sync_mode?: boolean;
-  enable_safety_checker?: boolean;
-}
+/** @deprecated Use Seeddream45TextToImageParams instead */
+export type Seeddream45GenerateParams = Seeddream45TextToImageParams;
 
 /**
  * Generate images using Seeddream 4.5 text-to-image model

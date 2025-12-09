@@ -303,9 +303,25 @@ export function useAIGeneration(props: UseAIGenerationProps) {
 
   useEffect(() => {
     if (onProgress) {
-      onProgress(generationProgress, statusMessage);
+      // Derive status from generation state
+      let status: "queued" | "processing" | "completed" | "failed" = "processing";
+      if (generationProgress === 100) {
+        status = "completed";
+      } else if (generationProgress === 0 && !isGenerating) {
+        status = statusMessage.toLowerCase().includes("error") ||
+                 statusMessage.toLowerCase().includes("failed")
+          ? "failed"
+          : "queued";
+      }
+
+      onProgress({
+        status,
+        progress: generationProgress,
+        message: statusMessage,
+        elapsedTime,
+      });
     }
-  }, [generationProgress, statusMessage, onProgress]);
+  }, [generationProgress, statusMessage, elapsedTime, isGenerating, onProgress]);
 
   // Helper function to download video to memory
   const downloadVideoToMemory = useCallback(

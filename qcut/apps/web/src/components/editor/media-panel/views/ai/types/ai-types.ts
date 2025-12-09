@@ -158,7 +158,7 @@ export interface UseAIGenerationProps {
   selectedImage: File | null;
   activeTab: "text" | "image" | "avatar" | "upscale";
   activeProject: TProject | null;
-  onProgress: (progress: number, message: string) => void;
+  onProgress: (status: ProgressUpdate) => void;
   onError: (error: string) => void;
   onComplete: (videos: GeneratedVideoResult[]) => void;
   // ⚠️ CRITICAL ADDITIONS: Include missing dependencies from validation

@@ -310,8 +310,8 @@ export function AiView() {
     topazUpscaleFactor: upscaleState.topaz.upscaleFactor,
     topazTargetFPS: upscaleState.topaz.targetFPS,
     topazH264Output: upscaleState.topaz.h264Output,
-    onProgress: (progress, message) => {
-      console.log(`[AI View] Progress: ${progress}% - ${message}`);
+    onProgress: (status) => {
+      console.log(`[AI View] Progress: ${status.progress ?? 0}% - ${status.message ?? status.status}`);
     },
     onError: (err) => {
       console.error("[AI View] Error occurred:", err);
