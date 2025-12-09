@@ -148,13 +148,7 @@ export async function pollQueueStatus(
         // Handle streaming download if requested
         if (downloadOptions?.downloadToMemory && result.video?.url) {
           console.log("Starting streaming download of queued video...");
-          const videoData = await streamVideoDownload(
-            result.video.url,
-            downloadOptions
-          );
-          if (downloadOptions.onComplete) {
-            downloadOptions.onComplete(videoData);
-          }
+          await streamVideoDownload(result.video.url, downloadOptions);
         }
 
         if (onProgress) {

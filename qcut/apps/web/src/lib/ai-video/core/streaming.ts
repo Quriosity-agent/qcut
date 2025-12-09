@@ -8,6 +8,8 @@
  * Options for streaming video downloads
  */
 export interface StreamOptions {
+  /** Whether to download video to memory (used by callers to decide whether to stream) */
+  downloadToMemory?: boolean;
   /** Callback for each chunk of data received */
   onDataReceived?: (data: Uint8Array) => void;
   /** Callback when download is complete */

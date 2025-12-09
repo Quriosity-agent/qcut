@@ -437,7 +437,10 @@ export function useAIGeneration(props: UseAIGenerationProps) {
               setStatusMessage(
                 `${STATUS_MESSAGES.PROCESSING} ${status.progress || 0}%`
               );
-            } else if (status.status === "completed" && status.video_url) {
+            } else if (
+              status.status === "completed" &&
+              (status.videoUrl ?? status.video_url)
+            ) {
               // Clear polling (avoid stale closure)
               setPollingInterval((current) => {
                 if (current) clearInterval(current);
@@ -449,7 +452,7 @@ export function useAIGeneration(props: UseAIGenerationProps) {
 
               const newVideo: GeneratedVideo = {
                 jobId,
-                videoUrl: status.video_url,
+                videoUrl: status.videoUrl ?? status.video_url ?? "",
                 videoPath: undefined,
                 fileSize: undefined,
                 duration: undefined,

@@ -184,13 +184,7 @@ export async function generateVideo(
 
         // Handle streaming download if requested
         if (downloadOptions?.downloadToMemory) {
-          const videoData = await streamVideoDownload(
-            videoUrl,
-            downloadOptions
-          );
-          if (downloadOptions.onComplete) {
-            downloadOptions.onComplete(videoData);
-          }
+          await streamVideoDownload(videoUrl, downloadOptions);
         }
 
         if (onProgress) {
@@ -245,13 +239,7 @@ export async function generateVideo(
         }
 
         if (downloadOptions?.downloadToMemory) {
-          const videoData = await streamVideoDownload(
-            videoUrl,
-            downloadOptions
-          );
-          if (downloadOptions.onComplete) {
-            downloadOptions.onComplete(videoData);
-          }
+          await streamVideoDownload(videoUrl, downloadOptions);
         }
 
         if (onProgress) {
