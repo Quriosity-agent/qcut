@@ -358,7 +358,7 @@ export function useImageTabState({
       seedanceEndFrameState.reset();
       setSeedanceEndFrameUrl(undefined);
     }
-  }, [seedanceSelected, seedanceEndFrameState]);
+  }, [seedanceSelected, seedanceEndFrameState.reset]);
 
   // Reset Kling settings when model is deselected
   useEffect(() => {

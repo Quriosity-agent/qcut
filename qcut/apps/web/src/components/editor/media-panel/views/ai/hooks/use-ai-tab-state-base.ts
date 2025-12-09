@@ -87,28 +87,28 @@ export function useFileWithPreview(
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const setFile = useCallback(
-    (newFile: File | null) => {
-      setFileInternal(newFile);
+  const setFile = useCallback((newFile: File | null) => {
+    setFileInternal(newFile);
 
-      // Revoke previous preview URL to prevent memory leaks
-      if (preview) {
-        URL.revokeObjectURL(preview);
+    // Revoke previous preview URL inside functional update to avoid stale closure
+    setPreview((prev) => {
+      if (prev) {
+        URL.revokeObjectURL(prev);
       }
-
-      // Create new preview URL if file is provided
-      setPreview(newFile ? URL.createObjectURL(newFile) : null);
-    },
-    [preview]
-  );
+      return newFile ? URL.createObjectURL(newFile) : null;
+    });
+  }, []);
 
   const reset = useCallback(() => {
-    if (preview) {
-      URL.revokeObjectURL(preview);
-    }
     setFileInternal(null);
-    setPreview(null);
-  }, [preview]);
+    // Revoke preview URL inside functional update to avoid stale closure
+    setPreview((prev) => {
+      if (prev) {
+        URL.revokeObjectURL(prev);
+      }
+      return null;
+    });
+  }, []);
 
   // Cleanup on unmount only
   useEffect(() => {
