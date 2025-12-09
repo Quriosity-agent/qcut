@@ -2,513 +2,1159 @@
 
 **File**: `qcut/apps/web/src/lib/ai-video-client.ts`
 **Current Size**: 4035 lines
-**Target**: Split into 6 focused modules with maximum code reuse
+**Goal**: Long-term maintainability over short-term gains
 
 ---
 
-## Overview
+## Pre-Implementation Checklist
 
-The current `ai-video-client.ts` is a monolithic file containing all AI video generation logic. This refactoring will:
-1. Improve maintainability by separating concerns
-2. Enable better tree-shaking for smaller bundle sizes
-3. Make testing individual components easier
-4. Facilitate parallel development on different features
+### Step 0: Create Backup Before Starting
+```bash
+# Create backup of the original file
+cp qcut/apps/web/src/lib/ai-video-client.ts qcut/apps/web/src/lib/ai-video-client.ts.backup
+
+# Also backup the test files
+cp qcut/apps/web/src/lib/__tests__/ai-video-client.test.ts qcut/apps/web/src/lib/__tests__/ai-video-client.test.ts.backup
+cp qcut/apps/web/src/lib/__tests__/ai-video-client-additional.test.ts qcut/apps/web/src/lib/__tests__/ai-video-client-additional.test.ts.backup
+```
+
+---
+
+## Architecture Analysis
+
+### Current Dependencies (Files Importing from ai-video-client.ts)
+1. `use-ai-generation.ts` - Main consumer, imports 15+ functions
+2. `fal-ai-client.ts` - Imports `VideoGenerationResponse` type only
+3. `ai-video-client.test.ts` - Test file
+4. `ai-video-client-additional.test.ts` - Additional test file
+
+### Existing Patterns to Follow
+
+The codebase already has well-established patterns for AI functionality:
+
+1. **Types are centralized in `ai/types/ai-types.ts`** (~420 lines)
+   - Already contains `AIModel`, `GeneratedVideo`, `ProgressCallback`, etc.
+   - We should ADD new types here, not create a separate types file
+
+2. **Constants are centralized in `ai/constants/ai-constants.ts`** (~1000+ lines)
+   - Contains `AI_MODELS`, `FAL_API_BASE`, `ERROR_MESSAGES`
+   - Already re-exports from other constant files
+
+3. **`fal-ai-client.ts` exists** (~1800 lines)
+   - Has established patterns for FAL API calls
+   - Contains `FalAIClient` class with `makeRequest`, `uploadFileToFal`
+   - We should consider merging common logic here
+
+4. **Hooks are in `ai/hooks/`**
+   - `use-ai-generation.ts` is the main consumer
+   - Already handles progress, polling, and state management
+
+---
+
+## Long-Term Maintainability Principles
+
+### Principle 1: Align with Existing Architecture
+- DO NOT create new type files; extend `ai/types/ai-types.ts`
+- DO NOT duplicate FAL API patterns; reuse from `fal-ai-client.ts`
+- DO NOT create parallel constant files; extend `ai/constants/ai-constants.ts`
+
+### Principle 2: Single Responsibility
+Each module should have ONE reason to change:
+- Model-specific logic changes only when that model's API changes
+- Validation logic changes only when constraints change
+- HTTP layer changes only when FAL API patterns change
+
+### Principle 3: Dependency Inversion
+- High-level modules (generators) should not depend on low-level modules (HTTP)
+- Both should depend on abstractions (interfaces/types)
+
+### Principle 4: Open/Closed Principle
+- Easy to ADD new models without modifying existing code
+- Model registration should be declarative, not imperative
 
 ---
 
 ## Proposed File Structure
 
 ```
-qcut/apps/web/src/lib/ai-video/
-├── index.ts                    # Re-exports all public APIs (barrel file)
-├── types.ts                    # All TypeScript interfaces and types (~150 lines)
-├── constants.ts                # FAL_API_BASE, validation constants (~50 lines)
-├── utils.ts                    # Shared utility functions (~200 lines)
-├── sora2.ts                    # Sora 2 model-specific logic (~200 lines)
-├── generators/
-│   ├── index.ts                # Re-exports all generators
-│   ├── text-to-video.ts        # generateVideo, generateVideoFromText, generateLTXV2Video (~500 lines)
-│   ├── image-to-video.ts       # generateVideoFromImage, generateViduQ2Video, generateSeedanceVideo, etc. (~600 lines)
-│   ├── avatar.ts               # generateAvatarVideo and related functions (~400 lines)
-│   └── upscale.ts              # All upscaler functions (~250 lines)
-├── polling.ts                  # Queue polling and status management (~200 lines)
-└── api.ts                      # High-level API functions (getAvailableModels, estimateCost, etc.) (~100 lines)
+qcut/apps/web/src/lib/
+├── ai-video-client.ts.backup           # Original file backup (keep until migration complete)
+├── ai-video/
+│   ├── index.ts                        # Barrel file - maintains backward compatibility
+│   ├── core/
+│   │   ├── fal-request.ts              # FAL API request helpers (extracted from fal-ai-client.ts patterns)
+│   │   ├── polling.ts                  # Queue polling logic (~200 lines)
+│   │   └── streaming.ts                # Video streaming download (~100 lines)
+│   ├── generators/
+│   │   ├── base-generator.ts           # Abstract base class with common patterns (~150 lines)
+│   │   ├── text-to-video.ts            # Text-to-video generators (~400 lines)
+│   │   ├── image-to-video.ts           # Image-to-video generators (~500 lines)
+│   │   ├── avatar.ts                   # Avatar generation (~350 lines)
+│   │   ├── upscale.ts                  # Video upscaling (~200 lines)
+│   │   └── image.ts                    # Seeddream image generation (~150 lines)
+│   ├── models/
+│   │   └── sora2.ts                    # Sora 2 specific logic (~200 lines)
+│   ├── validation/
+│   │   └── validators.ts               # All validation functions (~250 lines)
+│   └── api.ts                          # High-level API (getAvailableModels, estimateCost) (~100 lines)
 ```
+
+**Estimated Total**: ~2,400 lines (40% reduction through consolidation and reuse)
 
 ---
 
 ## Subtasks
 
-### Task 1: Create `types.ts` - Type Definitions (~150 lines)
-**Priority**: HIGH (must be done first - all other files depend on this)
+### Phase 1: Foundation (Must be done first)
 
-Move all TypeScript interfaces and types:
-- `VideoGenerationRequest`
-- `ImageToVideoRequest`
-- `TextToVideoRequest`
-- `ViduQ2I2VRequest`
-- `LTXV2T2VRequest`
-- `LTXV2I2VRequest`
-- `AvatarVideoRequest`
-- `VideoGenerationResponse`
-- `GenerationStatus`
-- `ModelsResponse`
-- `CostEstimate`
-- `ProgressCallback`
-- `SeedanceI2VRequest`
-- `KlingI2VRequest`
-- `Kling26I2VRequest`
-- `KlingO1V2VRequest`
-- `KlingO1Ref2VideoRequest`
-- `WAN25I2VRequest`
-- `ByteDanceUpscaleRequest`
-- `FlashVSRUpscaleRequest`
-- `TopazUpscaleRequest`
-- `Sora2BasePayload`
-- `Sora2Payload`
+#### Task 1.1: Create Backup Files
+**Priority**: CRITICAL
+**Effort**: 5 minutes
 
-**Reuse Strategy**: Import from centralized location in all other files.
+```bash
+# Run these commands before making ANY changes
+cp qcut/apps/web/src/lib/ai-video-client.ts qcut/apps/web/src/lib/ai-video-client.ts.backup
+cp qcut/apps/web/src/lib/__tests__/ai-video-client.test.ts qcut/apps/web/src/lib/__tests__/ai-video-client.test.ts.backup
+```
 
 ---
 
-### Task 2: Create `constants.ts` - Configuration Constants (~50 lines)
+#### Task 1.2: Extend Existing Types in `ai-types.ts`
 **Priority**: HIGH
+**Effort**: 30 minutes
+**File**: `components/editor/media-panel/views/ai/types/ai-types.ts`
 
-Move configuration constants:
-- `FAL_API_BASE`
-- `LTXV2_STANDARD_T2V_DURATIONS`
-- `LTXV2_FAST_T2V_DURATIONS`
-- `LTXV2_STANDARD_I2V_DURATIONS`
-- `LTXV2_STANDARD_I2V_RESOLUTIONS`
-- `LTXV2_FAST_I2V_DURATIONS`
-- `LTXV2_FAST_I2V_RESOLUTIONS`
-- `LTXV2_FAST_EXTENDED_THRESHOLD`
-- `LTXV2_FAST_EXTENDED_RESOLUTIONS`
-- `LTXV2_FAST_EXTENDED_FPS`
-- `LTXV2_FAST_I2V_FPS`
+Add types that are currently only in `ai-video-client.ts`:
 
-**Reuse Strategy**: All validation functions import from this file.
-
----
-
-### Task 3: Create `utils.ts` - Shared Utilities (~200 lines)
-**Priority**: HIGH
-
-Move utility functions that are reused across generators:
-- `getFalApiKey()` - API key retrieval
-- `getModelConfig()` - Model configuration lookup
-- `generateJobId()` - Unique ID generation
-- `sleep()` - Polling sleep utility
-- `fileToDataURL()` - File to base64 conversion
-- `handleQueueError()` - Error message formatting
-- `handleApiError()` - API error conversion
-- `streamVideoDownload()` - Video streaming download
-
-**Validation Helpers** (reused by multiple generators):
-- `validateHailuo23Prompt()`
-- `isHailuo23TextToVideo()`
-- `validateViduQ2Prompt()`
-- `validateViduQ2Duration()`
-- `validateLTXV2Resolution()`
-- `validateLTXV2T2VDuration()`
-- `validateLTXV2I2VDuration()`
-- `validateLTXV2I2VResolution()`
-- `validateLTXV2FastExtendedConstraints()`
-- `isFastLTXV2TextModel()`
-- `isStandardLTXV2ImageModel()`
-- `validateKlingAvatarV2Audio()`
-
-**Reuse Strategy**: All generators import shared utilities from here.
-
----
-
-### Task 4: Create `sora2.ts` - Sora 2 Model Logic (~200 lines)
-**Priority**: MEDIUM
-
-Move all Sora 2-specific logic:
-- `isSora2Model()` - Model detection
-- `getSora2ModelType()` - Get specific model type
-- `convertSora2Parameters()` - Parameter conversion with exhaustiveness check
-- `parseSora2Response()` - Response parsing with metadata extraction
-
-**Reuse Strategy**: Text-to-video and image-to-video generators import Sora 2 helpers when needed.
-
----
-
-### Task 5: Create `polling.ts` - Queue Polling Logic (~200 lines)
-**Priority**: MEDIUM
-
-Move polling-related functions:
-- `pollQueueStatus()` - Main polling loop
-- `mapQueueStatusToProgress()` - Status mapping
-
-**Reuse Strategy**: Text-to-video generator imports polling for queue mode.
-
----
-
-### Task 6: Create `generators/text-to-video.ts` (~500 lines)
-**Priority**: HIGH
-
-Move text-to-video generation functions:
-- `generateVideo()` - Main text-to-video with queue support
-- `generateVideoFromText()` - Hailuo 2.3 text-to-video
-- `generateLTXV2Video()` - LTX Video 2.0 text-to-video
-
-**Dependencies**:
-- `types.ts`
-- `constants.ts`
-- `utils.ts`
-- `sora2.ts`
-- `polling.ts`
-
-**Reuse Strategy**:
-- All three functions share `getFalApiKey()`, `getModelConfig()`, `generateJobId()`, and error handling
-- `generateVideo()` and `generateLTXV2Video()` share Sora 2 handling code
-
----
-
-### Task 7: Create `generators/image-to-video.ts` (~600 lines)
-**Priority**: HIGH
-
-Move image-to-video generation functions:
-- `generateVideoFromImage()` - Generic image-to-video
-- `generateViduQ2Video()` - Vidu Q2 Turbo I2V
-- `generateLTXV2ImageVideo()` - LTX Video 2.0 I2V
-- `generateSeedanceVideo()` - Seedance I2V
-- `generateKlingImageVideo()` - Kling v2.5 Turbo Pro I2V
-- `generateKling26ImageVideo()` - Kling v2.6 Pro I2V
-- `generateKlingO1Video()` - Kling O1 video-to-video
-- `generateKlingO1RefVideo()` - Kling O1 reference-to-video
-- `generateWAN25ImageVideo()` - WAN 2.5 Preview I2V
-
-**Dependencies**:
-- `types.ts`
-- `constants.ts`
-- `utils.ts`
-- `sora2.ts`
-
-**Reuse Strategy**:
-- All functions share: `getFalApiKey()`, `getModelConfig()`, `generateJobId()`, `fileToDataURL()`
-- Common error handling pattern with `handleAIServiceError()`
-- Similar payload building pattern (spread default_params, then override)
-
-**Extraction of Common Patterns**:
 ```typescript
-// New helper in utils.ts
-async function makeGenerationRequest<T extends VideoGenerationResponse>(
-  endpoint: string,
-  payload: Record<string, unknown>,
-  modelId: string,
-  operationName: string
-): Promise<T> {
-  const falApiKey = getFalApiKey();
-  if (!falApiKey) throw new Error("FAL API key not configured");
+// Add to ai-types.ts (they don't exist there yet)
 
-  const jobId = generateJobId();
-  const response = await fetch(`${FAL_API_BASE}/${endpoint}`, {
-    method: "POST",
-    headers: {
-      Authorization: `Key ${falApiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(payload),
-  });
+// Sora 2 Types
+export type Sora2ModelType =
+  | "text-to-video"
+  | "text-to-video-pro"
+  | "image-to-video"
+  | "image-to-video-pro"
+  | "video-to-video-remix";
 
-  if (!response.ok) {
-    return handleFalApiError(response, operationName);
-  }
+export type Sora2BasePayload = {
+  prompt: string;
+  duration: number;
+  aspect_ratio: string;
+};
 
-  const result = await response.json();
-  return {
-    job_id: jobId,
-    status: "completed",
-    message: `Video generated successfully with ${modelId}`,
-    estimated_time: 0,
-    video_url: result.video?.url || result.video || result.url,
-    video_data: result,
-  } as T;
+export type Sora2Payload =
+  | { type: "text-to-video"; /* ... */ }
+  | { type: "text-to-video-pro"; /* ... */ }
+  // ... rest of discriminated union
+
+// Request Types (move from ai-video-client.ts)
+export interface VideoGenerationRequest {
+  prompt: string;
+  model: string;
+  resolution?: string;
+  duration?: number;
+  aspect_ratio?: string;
 }
+
+export interface ImageToVideoRequest {
+  image: File;
+  model: string;
+  prompt?: string;
+  resolution?: string;
+  duration?: number;
+  aspect_ratio?: string;
+}
+
+// ... all other request interfaces
+```
+
+**Why this approach**:
+- Single source of truth for types
+- Existing imports in `use-ai-generation.ts` already reference this file
+- Reduces circular dependency risk
+
+---
+
+#### Task 1.3: Add Validation Constants to `ai-constants.ts`
+**Priority**: HIGH
+**Effort**: 20 minutes
+**File**: `components/editor/media-panel/views/ai/constants/ai-constants.ts`
+
+Move validation constants:
+
+```typescript
+// Add to ai-constants.ts
+
+// LTX Video 2.0 Constraints
+export const LTXV2_FAST_CONFIG = {
+  DURATIONS: [6, 8, 10, 12, 14, 16, 18, 20] as const,
+  RESOLUTIONS: {
+    STANDARD: ["1080p", "1440p", "2160p"] as const,
+    EXTENDED: ["1080p"] as const, // For >10s videos
+  },
+  FPS_OPTIONS: {
+    STANDARD: [25, 50] as const,
+    EXTENDED: [25] as const, // For >10s videos
+  },
+  EXTENDED_DURATION_THRESHOLD: 10,
+} as const;
+
+// (Already exists but verify these are present)
+export const LTXV2_STANDARD_T2V_DURATIONS = [6, 8, 10] as const;
+export const LTXV2_STANDARD_I2V_DURATIONS = [6, 8, 10] as const;
+export const LTXV2_STANDARD_I2V_RESOLUTIONS = ["1080p", "1440p", "2160p"] as const;
 ```
 
 ---
 
-### Task 8: Create `generators/avatar.ts` (~400 lines)
-**Priority**: MEDIUM
+### Phase 2: Core Infrastructure
 
-Move avatar generation functions:
-- `generateAvatarVideo()` - Main avatar video generation
+#### Task 2.1: Create `ai-video/core/fal-request.ts`
+**Priority**: HIGH
+**Effort**: 1 hour
+**Lines**: ~150
 
-This function handles multiple models:
-- Kling Avatar Pro/Standard
-- Kling Avatar v2 Standard/Pro
-- ByteDance OmniHuman v1.5
-- WAN Animate/Replace
-- Kling O1 Reference-to-Video
-
-**Dependencies**:
-- `types.ts`
-- `utils.ts`
-
-**Reuse Strategy**:
-- All model-specific branches share common setup (API key check, model config lookup)
-- Shares `fileToDataURL()` for image/audio conversion
-
----
-
-### Task 9: Create `generators/upscale.ts` (~250 lines)
-**Priority**: LOW
-
-Move upscaling functions:
-- `upscaleByteDanceVideo()` - ByteDance video upscaler
-- `upscaleFlashVSRVideo()` - FlashVSR video upscaler
-- `upscaleTopazVideo()` - Topaz video upscaler (not implemented)
-
-**Dependencies**:
-- `types.ts`
-- `utils.ts`
-
-**Reuse Strategy**:
-- All upscalers share identical API call pattern
-- Extract common `makeUpscaleRequest()` helper
-
----
-
-### Task 10: Create `api.ts` - High-Level API Functions (~100 lines)
-**Priority**: LOW
-
-Move API utility functions:
-- `isApiAvailable()` - Check if API key is configured
-- `getAvailableModels()` - Get all available models
-- `estimateCost()` - Estimate generation cost
-- `getGenerationStatus()` - Get job status (mock for compatibility)
-
-**Dependencies**:
-- `types.ts`
-- `utils.ts`
-
----
-
-### Task 11: Create `generators/image.ts` - Image Generation (~150 lines)
-**Priority**: LOW
-
-Move image generation functions (Seeddream 4.5):
-- `generateSeeddream45Image()` - Text-to-image
-- `editSeeddream45Image()` - Image editing
-- `uploadImageForSeeddream45Edit()` - Image upload for editing
-
-**Dependencies**:
-- `types.ts`
-- `utils.ts`
-
----
-
-### Task 12: Create `index.ts` - Barrel File
-**Priority**: FINAL (after all other tasks)
-
-Create barrel file that re-exports all public APIs for backward compatibility:
+Extract and unify FAL API request patterns from both `ai-video-client.ts` and `fal-ai-client.ts`:
 
 ```typescript
-// Types
-export type {
-  VideoGenerationRequest,
-  ImageToVideoRequest,
-  TextToVideoRequest,
-  // ... all other types
-} from './types';
+/**
+ * Core FAL API Request Utilities
+ *
+ * Provides a consistent interface for making FAL AI API requests.
+ * Consolidates patterns from ai-video-client.ts and fal-ai-client.ts.
+ */
 
-// Generators - Text to Video
-export { generateVideo } from './generators/text-to-video';
-export { generateVideoFromText } from './generators/text-to-video';
-export { generateLTXV2Video } from './generators/text-to-video';
+import { handleAIServiceError } from "@/lib/error-handler";
 
-// Generators - Image to Video
-export { generateVideoFromImage } from './generators/image-to-video';
-export { generateViduQ2Video } from './generators/image-to-video';
-// ... all other exports
+const FAL_API_BASE = "https://fal.run";
 
-// API
-export { isApiAvailable, getAvailableModels, estimateCost, getGenerationStatus } from './api';
+/**
+ * Retrieves FAL API key from environment.
+ * Reads lazily to support test stubs.
+ */
+export function getFalApiKey(): string | undefined {
+  return import.meta.env.VITE_FAL_API_KEY;
+}
 
-// Utils (if needed externally)
-export { handleApiError } from './utils';
-```
-
----
-
-### Task 13: Update Imports in Consuming Files
-**Priority**: FINAL
-
-Update all files that import from `ai-video-client.ts`:
-1. Search for `from "@/lib/ai-video-client"` or `from "./ai-video-client"`
-2. Update to `from "@/lib/ai-video"` (will use barrel file)
-3. No functional changes needed - barrel file maintains API compatibility
-
----
-
-## Code Reuse Patterns
-
-### Pattern 1: Common Request Handler
-Extract the repeated FAL API request pattern:
-
-```typescript
-// utils.ts
-export async function executeFalRequest(
+/**
+ * Makes an authenticated request to FAL AI API.
+ *
+ * @param endpoint - FAL endpoint path (e.g., "fal-ai/kling-video/v2.6/pro/text-to-video")
+ * @param payload - Request payload
+ * @param options - Optional request configuration
+ * @returns Parsed JSON response
+ * @throws Error with user-friendly message on failure
+ */
+export async function makeFalRequest<T = unknown>(
   endpoint: string,
   payload: Record<string, unknown>,
   options?: {
     timeout?: number;
     signal?: AbortSignal;
+    queueMode?: boolean;
   }
-): Promise<Response> {
-  const falApiKey = getFalApiKey();
-  if (!falApiKey) throw new Error("FAL API key not configured");
+): Promise<T> {
+  const apiKey = getFalApiKey();
+  if (!apiKey) {
+    throw new Error(
+      "FAL API key not configured. Please set VITE_FAL_API_KEY in your environment variables."
+    );
+  }
 
-  return fetch(`${FAL_API_BASE}/${endpoint}`, {
+  const headers: Record<string, string> = {
+    "Authorization": `Key ${apiKey}`,
+    "Content-Type": "application/json",
+  };
+
+  // Add queue headers if queue mode requested
+  if (options?.queueMode) {
+    headers["X-Fal-Queue"] = "true";
+  }
+
+  const url = endpoint.startsWith("https://")
+    ? endpoint
+    : `${FAL_API_BASE}/${endpoint}`;
+
+  const response = await fetch(url, {
     method: "POST",
-    headers: {
-      Authorization: `Key ${falApiKey}`,
-      "Content-Type": "application/json",
-    },
+    headers,
     body: JSON.stringify(payload),
     signal: options?.signal,
   });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw createFalError(response, errorData, endpoint);
+  }
+
+  return response.json();
 }
-```
 
-### Pattern 2: Common Error Handler
-Extract the repeated error handling pattern:
-
-```typescript
-// utils.ts
-export async function handleFalResponse(
+/**
+ * Creates a user-friendly error from FAL API response.
+ */
+function createFalError(
   response: Response,
-  operationName: string
-): Promise<void> {
-  if (response.ok) return;
+  errorData: unknown,
+  endpoint: string
+): Error {
+  // ... error formatting logic from handleQueueError
+}
 
-  const errorData = await response.json().catch(() => ({}));
-
-  if (response.status === 401) {
-    throw new Error("Invalid FAL.ai API key. Please check your API key configuration.");
-  }
-
-  if (response.status === 429) {
-    throw new Error("Rate limit exceeded. Please wait a moment before trying again.");
-  }
-
-  throw new Error(`FAL API error: ${errorData.detail || response.statusText}`);
+/**
+ * Generates a unique job ID for tracking.
+ */
+export function generateJobId(): string {
+  return `job_${Math.random().toString(36).substring(2, 11)}_${Date.now()}`;
 }
 ```
 
-### Pattern 3: Common Response Builder
-Extract the repeated response building pattern:
+**Why this approach**:
+- Eliminates duplicated fetch logic across generators
+- Centralizes error handling
+- Makes it easy to add features like retry, caching, or logging
+
+---
+
+#### Task 2.2: Create `ai-video/core/polling.ts`
+**Priority**: HIGH
+**Effort**: 45 minutes
+**Lines**: ~200
+
+Extract polling logic:
 
 ```typescript
-// utils.ts
+/**
+ * FAL Queue Polling Utilities
+ *
+ * Handles long-running FAL AI job status polling with progress updates.
+ */
+
+import { makeFalRequest, getFalApiKey, generateJobId } from "./fal-request";
+import type { VideoGenerationResponse, ProgressCallback } from "@/components/editor/media-panel/views/ai/types/ai-types";
+
+const FAL_API_BASE = "https://fal.run";
+
+interface QueueStatus {
+  status: "IN_QUEUE" | "IN_PROGRESS" | "COMPLETED" | "FAILED";
+  queue_position?: number;
+  estimated_time?: number;
+  error?: string;
+  logs?: string[];
+}
+
+/**
+ * Polls FAL queue until job completes or fails.
+ *
+ * @param requestId - FAL request ID from queue submission
+ * @param options - Polling configuration
+ * @returns Final generation result
+ */
+export async function pollQueueStatus(
+  requestId: string,
+  options: {
+    endpoint: string;
+    startTime: number;
+    onProgress?: ProgressCallback;
+    jobId?: string;
+    modelName?: string;
+    maxAttempts?: number;
+    pollIntervalMs?: number;
+  }
+): Promise<VideoGenerationResponse> {
+  const {
+    endpoint,
+    startTime,
+    onProgress,
+    jobId = generateJobId(),
+    modelName = "AI Model",
+    maxAttempts = 60,
+    pollIntervalMs = 5000,
+  } = options;
+
+  // ... polling implementation
+}
+
+/**
+ * Maps FAL queue status to user-friendly progress format.
+ */
+export function mapQueueStatusToProgress(
+  status: QueueStatus,
+  elapsedTime: number
+): {
+  status: "queued" | "processing" | "completed" | "failed";
+  progress?: number;
+  message?: string;
+  elapsedTime?: number;
+  estimatedTime?: number;
+  logs?: string[];
+} {
+  // ... existing implementation
+}
+```
+
+---
+
+#### Task 2.3: Create `ai-video/core/streaming.ts`
+**Priority**: MEDIUM
+**Effort**: 30 minutes
+**Lines**: ~100
+
+Extract video streaming:
+
+```typescript
+/**
+ * Video Streaming Download Utilities
+ *
+ * Handles large video downloads without memory spikes.
+ */
+
+export interface StreamOptions {
+  downloadToMemory?: boolean;
+  onDataReceived?: (data: Uint8Array) => void;
+  onComplete?: (totalData: Uint8Array) => void;
+}
+
+/**
+ * Downloads video using streaming API.
+ *
+ * @param videoUrl - URL to download from
+ * @param options - Download callbacks
+ * @returns Complete video as Uint8Array
+ */
+export async function streamVideoDownload(
+  videoUrl: string,
+  options: StreamOptions
+): Promise<Uint8Array> {
+  // ... existing implementation
+}
+```
+
+---
+
+### Phase 3: Validation Layer
+
+#### Task 3.1: Create `ai-video/validation/validators.ts`
+**Priority**: HIGH
+**Effort**: 1 hour
+**Lines**: ~250
+
+Consolidate all validation functions:
+
+```typescript
+/**
+ * AI Video Generation Validators
+ *
+ * Centralized validation for all AI video parameters.
+ * Each validator throws descriptive errors on failure.
+ */
+
+import {
+  ERROR_MESSAGES,
+  LTXV2_FAST_CONFIG,
+  LTXV2_STANDARD_T2V_DURATIONS,
+} from "@/components/editor/media-panel/views/ai/constants/ai-constants";
+
+// ================================
+// Hailuo 2.3 Validators
+// ================================
+
+export function validateHailuo23Prompt(prompt: string, modelId: string): void {
+  const maxLengths: Record<string, number> = {
+    hailuo23_standard_t2v: 1500,
+    hailuo23_pro_t2v: 2000,
+  };
+
+  const maxLength = maxLengths[modelId];
+  if (maxLength && prompt.length > maxLength) {
+    throw new Error(
+      `Prompt too long for ${modelId}. Maximum ${maxLength} characters allowed (current: ${prompt.length})`
+    );
+  }
+}
+
+export function isHailuo23TextToVideo(modelId: string): boolean {
+  return modelId === "hailuo23_standard_t2v" || modelId === "hailuo23_pro_t2v";
+}
+
+// ================================
+// Vidu Q2 Validators
+// ================================
+
+export function validateViduQ2Prompt(prompt: string): void {
+  if (prompt.length > 3000) {
+    throw new Error(
+      `Prompt too long for Vidu Q2. Maximum 3000 characters allowed (current: ${prompt.length})`
+    );
+  }
+}
+
+export function validateViduQ2Duration(duration: number): void {
+  if (duration < 2 || duration > 8) {
+    throw new Error(ERROR_MESSAGES.VIDU_Q2_INVALID_DURATION);
+  }
+}
+
+// ================================
+// LTX Video 2.0 Validators
+// ================================
+
+export function validateLTXV2Resolution(resolution: string): void {
+  if (!["1080p", "1440p", "2160p"].includes(resolution)) {
+    throw new Error(ERROR_MESSAGES.LTXV2_INVALID_RESOLUTION);
+  }
+}
+
+// ... rest of validators
+
+// ================================
+// Kling Avatar v2 Validators
+// ================================
+
+export function validateKlingAvatarV2Audio(
+  audioFile: File,
+  audioDuration?: number
+): string | null {
+  const MAX_SIZE_BYTES = 5 * 1024 * 1024; // 5MB
+  const MIN_DURATION_SEC = 2;
+  const MAX_DURATION_SEC = 60;
+
+  if (audioFile.size > MAX_SIZE_BYTES) {
+    return ERROR_MESSAGES.KLING_AVATAR_V2_AUDIO_TOO_LARGE;
+  }
+
+  if (audioDuration !== undefined) {
+    if (audioDuration < MIN_DURATION_SEC) {
+      return ERROR_MESSAGES.KLING_AVATAR_V2_AUDIO_TOO_SHORT;
+    }
+    if (audioDuration > MAX_DURATION_SEC) {
+      return ERROR_MESSAGES.KLING_AVATAR_V2_AUDIO_TOO_LONG;
+    }
+  }
+
+  return null;
+}
+```
+
+**Why separate validation**:
+- Easy to unit test validation rules independently
+- Validators can be reused in UI for client-side validation
+- Single place to update when API constraints change
+
+---
+
+### Phase 4: Model-Specific Logic
+
+#### Task 4.1: Create `ai-video/models/sora2.ts`
+**Priority**: MEDIUM
+**Effort**: 45 minutes
+**Lines**: ~200
+
+Extract Sora 2 specific logic:
+
+```typescript
+/**
+ * Sora 2 Model Utilities
+ *
+ * Handles Sora 2 specific parameter conversion and response parsing.
+ */
+
+import type { Sora2ModelType, Sora2Payload, Sora2Duration } from "@/components/editor/media-panel/views/ai/types/ai-types";
+
+/**
+ * Checks if a model ID is a Sora 2 model.
+ */
+export function isSora2Model(modelId: string): boolean {
+  return modelId.startsWith("sora2_");
+}
+
+/**
+ * Gets the specific Sora 2 model type from model ID.
+ */
+export function getSora2ModelType(modelId: string): Sora2ModelType | null {
+  const typeMap: Record<string, Sora2ModelType> = {
+    sora2_text_to_video: "text-to-video",
+    sora2_text_to_video_pro: "text-to-video-pro",
+    sora2_image_to_video: "image-to-video",
+    sora2_image_to_video_pro: "image-to-video-pro",
+    sora2_video_to_video_remix: "video-to-video-remix",
+  };
+  return typeMap[modelId] ?? null;
+}
+
+/**
+ * Converts parameters for Sora 2 models.
+ * Uses exhaustive type checking to ensure all model types are handled.
+ */
+export function convertSora2Parameters(
+  params: Sora2InputParams,
+  modelType: Sora2ModelType
+): Sora2Payload {
+  // ... existing implementation with exhaustiveness check
+}
+
+/**
+ * Parses Sora 2 API response format.
+ */
+export function parseSora2Response(
+  response: unknown,
+  requestedDuration: Sora2Duration,
+  requestedResolution?: string,
+  requestedAspectRatio?: string
+): {
+  videoUrl: string;
+  videoId: string;
+  duration: Sora2Duration;
+  resolution: string;
+  aspectRatio: string;
+} {
+  // ... existing implementation
+}
+```
+
+---
+
+### Phase 5: Generator Modules
+
+#### Task 5.1: Create `ai-video/generators/base-generator.ts`
+**Priority**: HIGH
+**Effort**: 1 hour
+**Lines**: ~150
+
+Create abstract base with common patterns:
+
+```typescript
+/**
+ * Base Video Generator
+ *
+ * Provides common functionality for all video generators.
+ * Extend this class to create new generator types.
+ */
+
+import { makeFalRequest, generateJobId, getFalApiKey } from "../core/fal-request";
+import { handleAIServiceError } from "@/lib/error-handler";
+import { AI_MODELS } from "@/components/editor/media-panel/views/ai/constants/ai-constants";
+import type { AIModel, VideoGenerationResponse } from "@/components/editor/media-panel/views/ai/types/ai-types";
+
+/**
+ * Gets model configuration from centralized registry.
+ */
+export function getModelConfig(modelId: string): AIModel | undefined {
+  return AI_MODELS.find((m) => m.id === modelId);
+}
+
+/**
+ * Converts a File to base64 data URL.
+ */
+export async function fileToDataURL(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+/**
+ * Builds a standard video generation response.
+ */
 export function buildVideoResponse(
   jobId: string,
   modelId: string,
-  result: any
+  result: { video?: { url?: string }; video_url?: string; url?: string },
+  elapsedTime?: number
 ): VideoGenerationResponse {
   return {
     job_id: jobId,
     status: "completed",
     message: `Video generated successfully with ${modelId}`,
-    estimated_time: 0,
-    video_url: result.video?.url || result.video || result.url,
+    estimated_time: elapsedTime ?? 0,
+    video_url: result.video?.url ?? result.video_url ?? result.url,
     video_data: result,
   };
+}
+
+/**
+ * Wraps generator execution with error handling.
+ */
+export async function withErrorHandling<T>(
+  operation: string,
+  metadata: Record<string, unknown>,
+  fn: () => Promise<T>
+): Promise<T> {
+  try {
+    return await fn();
+  } catch (error) {
+    handleAIServiceError(error, operation, metadata);
+    throw error;
+  }
 }
 ```
 
 ---
 
-## Testing Strategy
+#### Task 5.2: Create `ai-video/generators/text-to-video.ts`
+**Priority**: HIGH
+**Effort**: 2 hours
+**Lines**: ~400
 
-1. **Unit Tests**: Each new file gets its own test file in `__tests__/`
-2. **Integration Tests**: Test the barrel file exports work correctly
-3. **Regression Tests**: Ensure all existing functionality works after refactoring
+```typescript
+/**
+ * Text-to-Video Generators
+ *
+ * Functions for generating videos from text prompts.
+ */
 
----
+import { makeFalRequest, generateJobId } from "../core/fal-request";
+import { pollQueueStatus } from "../core/polling";
+import { streamVideoDownload, type StreamOptions } from "../core/streaming";
+import { getModelConfig, fileToDataURL, buildVideoResponse, withErrorHandling } from "./base-generator";
+import { isSora2Model, getSora2ModelType, convertSora2Parameters, parseSora2Response } from "../models/sora2";
+import { validateHailuo23Prompt, isHailuo23TextToVideo, validateLTXV2T2VDuration } from "../validation/validators";
+import type {
+  VideoGenerationRequest,
+  VideoGenerationResponse,
+  ProgressCallback,
+  LTXV2T2VRequest,
+  TextToVideoRequest,
+} from "@/components/editor/media-panel/views/ai/types/ai-types";
 
-## Migration Path
+/**
+ * Generates AI video from text prompt.
+ *
+ * Supports queue mode for long-running jobs with progress callbacks.
+ * Handles model-specific parameter conversion automatically.
+ */
+export async function generateVideo(
+  request: VideoGenerationRequest,
+  onProgress?: ProgressCallback,
+  downloadOptions?: StreamOptions
+): Promise<VideoGenerationResponse> {
+  return withErrorHandling(
+    "AI Video Generation",
+    { operation: "generateVideo", model: request.model },
+    async () => {
+      const modelConfig = getModelConfig(request.model);
+      if (!modelConfig) {
+        throw new Error(`Unknown model: ${request.model}`);
+      }
 
-1. **Phase 1**: Create new files with extracted code (Tasks 1-11)
-2. **Phase 2**: Create barrel file (Task 12)
-3. **Phase 3**: Update imports in consuming files (Task 13)
-4. **Phase 4**: Delete original `ai-video-client.ts`
-5. **Phase 5**: Run full test suite to verify no regressions
+      const endpoint = modelConfig.endpoints.text_to_video;
+      if (!endpoint) {
+        throw new Error(`Model ${request.model} does not support text-to-video generation`);
+      }
 
----
+      // Build payload with model-specific handling
+      const payload = buildTextToVideoPayload(request, modelConfig);
 
-## Estimated Line Counts
+      // ... rest of implementation (queue submission, polling, etc.)
+    }
+  );
+}
 
-| File | Lines | Description |
-|------|-------|-------------|
-| `types.ts` | ~150 | All TypeScript interfaces |
-| `constants.ts` | ~50 | Configuration constants |
-| `utils.ts` | ~200 | Shared utilities |
-| `sora2.ts` | ~200 | Sora 2 specific logic |
-| `polling.ts` | ~200 | Queue polling logic |
-| `generators/text-to-video.ts` | ~500 | Text-to-video generators |
-| `generators/image-to-video.ts` | ~600 | Image-to-video generators |
-| `generators/avatar.ts` | ~400 | Avatar generation |
-| `generators/upscale.ts` | ~250 | Video upscaling |
-| `generators/image.ts` | ~150 | Image generation (Seeddream) |
-| `api.ts` | ~100 | High-level API functions |
-| `index.ts` | ~50 | Barrel file |
-| **Total** | **~2,850** | ~30% reduction from original |
+/**
+ * Generates video using Hailuo 2.3 text-to-video models.
+ */
+export async function generateVideoFromText(
+  request: TextToVideoRequest
+): Promise<VideoGenerationResponse> {
+  return withErrorHandling(
+    "Generate video from text",
+    { operation: "generateVideoFromText", model: request.model },
+    async () => {
+      // ... implementation
+    }
+  );
+}
 
-The ~30% reduction comes from:
-- Eliminating duplicated error handling code
-- Extracting common request/response patterns
-- Removing redundant comments (consolidated in one place)
-- More efficient organization
+/**
+ * Generates video with LTX Video 2.0.
+ */
+export async function generateLTXV2Video(
+  request: LTXV2T2VRequest
+): Promise<VideoGenerationResponse> {
+  return withErrorHandling(
+    "Generate LTX Video 2.0 video",
+    { operation: "generateLTXV2Video", model: request.model },
+    async () => {
+      // ... implementation
+    }
+  );
+}
 
----
+// Private helpers
 
-## Dependencies
+function buildTextToVideoPayload(
+  request: VideoGenerationRequest,
+  modelConfig: AIModel
+): Record<string, unknown> {
+  // Handle Sora 2 models
+  if (isSora2Model(request.model)) {
+    const modelType = getSora2ModelType(request.model);
+    if (modelType) {
+      const sora2Payload = convertSora2Parameters(/* ... */);
+      const { type, ...apiPayload } = sora2Payload;
+      return apiPayload;
+    }
+  }
 
-```mermaid
-graph TD
-    A[index.ts] --> B[types.ts]
-    A --> C[api.ts]
-    A --> D[generators/*]
+  // Standard payload building
+  const payload: Record<string, unknown> = {
+    prompt: request.prompt,
+    ...modelConfig.default_params,
+    ...(request.duration && { duration: request.duration }),
+    ...(request.resolution && { resolution: request.resolution }),
+  };
 
-    D --> B
-    D --> E[utils.ts]
-    D --> F[constants.ts]
-    D --> G[sora2.ts]
-    D --> H[polling.ts]
+  // Model-specific adjustments
+  applyModelSpecificAdjustments(payload, request.model, modelConfig);
 
-    C --> B
-    C --> E
+  return payload;
+}
 
-    E --> B
-    E --> F
+function applyModelSpecificAdjustments(
+  payload: Record<string, unknown>,
+  modelId: string,
+  modelConfig: AIModel
+): void {
+  // Hailuo duration format
+  if (modelId === "hailuo" || modelId === "hailuo_pro") {
+    const duration = (payload.duration as number) || 6;
+    payload.duration = duration >= 10 ? "10" : "6";
+    payload.resolution = undefined;
+  }
 
-    G --> B
+  // WAN resolution validation
+  if (modelId === "wan_turbo") {
+    const validResolutions = ["480p", "580p", "720p"];
+    if (!validResolutions.includes(payload.resolution as string)) {
+      payload.resolution = "720p";
+    }
+  }
 
-    H --> B
-    H --> E
+  // ... other model-specific logic
+}
 ```
 
 ---
 
-## Risk Mitigation
+#### Task 5.3-5.6: Create Remaining Generator Files
+**Priority**: MEDIUM
+**Effort**: 4 hours total
 
-1. **Circular Dependencies**: Carefully order imports to avoid circular deps
-2. **Tree-Shaking Issues**: Use named exports, not default exports
-3. **Type Inference**: Ensure TypeScript can still infer types correctly
-4. **Bundle Size**: Monitor bundle size before/after to ensure improvement
+Following the same pattern as text-to-video:
+
+- `image-to-video.ts` (~500 lines) - All I2V generators
+- `avatar.ts` (~350 lines) - Avatar generation
+- `upscale.ts` (~200 lines) - Video upscaling
+- `image.ts` (~150 lines) - Seeddream image generation
+
+---
+
+### Phase 6: API Layer
+
+#### Task 6.1: Create `ai-video/api.ts`
+**Priority**: LOW
+**Effort**: 30 minutes
+**Lines**: ~100
+
+```typescript
+/**
+ * High-Level AI Video API
+ *
+ * Provides utility functions for model discovery and cost estimation.
+ */
+
+import { AI_MODELS } from "@/components/editor/media-panel/views/ai/constants/ai-constants";
+import { getFalApiKey } from "./core/fal-request";
+import { getModelConfig } from "./generators/base-generator";
+import type {
+  ModelsResponse,
+  CostEstimate,
+  VideoGenerationRequest,
+  GenerationStatus,
+} from "@/components/editor/media-panel/views/ai/types/ai-types";
+
+/**
+ * Checks if FAL API key is configured.
+ */
+export async function isApiAvailable(): Promise<boolean> {
+  return !!getFalApiKey();
+}
+
+/**
+ * Returns all available AI models with formatted pricing.
+ */
+export async function getAvailableModels(): Promise<ModelsResponse> {
+  return {
+    models: AI_MODELS.map((model) => ({
+      ...model,
+      price: `$${model.price}`,
+    })),
+  };
+}
+
+/**
+ * Estimates cost for video generation.
+ */
+export async function estimateCost(
+  request: VideoGenerationRequest
+): Promise<CostEstimate> {
+  const modelConfig = getModelConfig(request.model);
+  const modelInfo = modelConfig
+    ? { base_cost: parseFloat(modelConfig.price), max_duration: modelConfig.max_duration }
+    : { base_cost: 1.0, max_duration: 30 };
+
+  const actualDuration = Math.min(request.duration || 5, modelInfo.max_duration);
+  const durationMultiplier = Math.max(1, actualDuration / 5);
+
+  return {
+    model: request.model,
+    duration: actualDuration,
+    base_cost: modelInfo.base_cost,
+    estimated_cost: modelInfo.base_cost * durationMultiplier,
+    currency: "USD",
+  };
+}
+
+/**
+ * Gets generation status (mock for backward compatibility).
+ * @deprecated Use FAL SDK's built-in polling instead
+ */
+export async function getGenerationStatus(jobId: string): Promise<GenerationStatus> {
+  return {
+    job_id: jobId,
+    status: "completed",
+    progress: 100,
+    video_url: undefined,
+    error: undefined,
+  };
+}
+
+/**
+ * Converts API errors to user-friendly messages.
+ */
+export function handleApiError(error: unknown): string {
+  if (error instanceof Error) {
+    return error.message;
+  }
+  return "An unknown error occurred";
+}
+```
+
+---
+
+### Phase 7: Barrel File
+
+#### Task 7.1: Create `ai-video/index.ts`
+**Priority**: CRITICAL (for backward compatibility)
+**Effort**: 30 minutes
+**Lines**: ~50
+
+```typescript
+/**
+ * AI Video Client
+ *
+ * Barrel file maintaining backward compatibility with original ai-video-client.ts.
+ * All imports from "@/lib/ai-video-client" should continue to work.
+ */
+
+// Re-export types (now from centralized location)
+export type {
+  VideoGenerationRequest,
+  ImageToVideoRequest,
+  TextToVideoRequest,
+  ViduQ2I2VRequest,
+  LTXV2T2VRequest,
+  LTXV2I2VRequest,
+  AvatarVideoRequest,
+  VideoGenerationResponse,
+  GenerationStatus,
+  ModelsResponse,
+  CostEstimate,
+  ProgressCallback,
+  SeedanceI2VRequest,
+  KlingI2VRequest,
+  Kling26I2VRequest,
+  KlingO1V2VRequest,
+  KlingO1Ref2VideoRequest,
+  WAN25I2VRequest,
+  ByteDanceUpscaleRequest,
+  FlashVSRUpscaleRequest,
+  TopazUpscaleRequest,
+} from "@/components/editor/media-panel/views/ai/types/ai-types";
+
+// Text-to-Video Generators
+export {
+  generateVideo,
+  generateVideoFromText,
+  generateLTXV2Video,
+} from "./generators/text-to-video";
+
+// Image-to-Video Generators
+export {
+  generateVideoFromImage,
+  generateViduQ2Video,
+  generateLTXV2ImageVideo,
+  generateSeedanceVideo,
+  generateKlingImageVideo,
+  generateKling26ImageVideo,
+  generateKlingO1Video,
+  generateKlingO1RefVideo,
+  generateWAN25ImageVideo,
+} from "./generators/image-to-video";
+
+// Avatar Generators
+export { generateAvatarVideo } from "./generators/avatar";
+
+// Upscalers
+export {
+  upscaleByteDanceVideo,
+  upscaleFlashVSRVideo,
+  upscaleTopazVideo,
+} from "./generators/upscale";
+
+// Image Generators (Seeddream)
+export {
+  generateSeeddream45Image,
+  editSeeddream45Image,
+  uploadImageForSeeddream45Edit,
+} from "./generators/image";
+
+// API Utilities
+export {
+  isApiAvailable,
+  getAvailableModels,
+  estimateCost,
+  getGenerationStatus,
+  handleApiError,
+} from "./api";
+```
+
+---
+
+### Phase 8: Migration
+
+#### Task 8.1: Update Import Paths
+**Priority**: HIGH
+**Effort**: 30 minutes
+
+Update consuming files to use new barrel file:
+
+```typescript
+// Before (in use-ai-generation.ts)
+import { generateVideo, ... } from "@/lib/ai-video-client";
+
+// After (same import path if we create alias, OR)
+import { generateVideo, ... } from "@/lib/ai-video";
+```
+
+**Option A**: Create `ai-video-client.ts` as a re-export
+```typescript
+// ai-video-client.ts (new content)
+export * from "./ai-video";
+```
+
+**Option B**: Update all imports (4 files to update)
+
+---
+
+#### Task 8.2: Update Tests
+**Priority**: HIGH
+**Effort**: 1 hour
+
+Update test imports and add new tests for extracted modules.
+
+---
+
+#### Task 8.3: Verify and Delete Backup
+**Priority**: FINAL
+**Effort**: 30 minutes
+
+```bash
+# After full verification
+bun run test
+bun run lint:clean
+bun run check-types
+
+# If all pass, remove backups
+rm qcut/apps/web/src/lib/ai-video-client.ts.backup
+rm qcut/apps/web/src/lib/__tests__/ai-video-client.test.ts.backup
+```
+
+---
+
+## Code Reuse Summary
+
+### Pattern 1: Unified FAL Request Handler
+**Before**: Each generator had its own fetch logic (~50 lines × 15 generators = 750 lines)
+**After**: Single `makeFalRequest()` function (~50 lines, reused everywhere)
+**Savings**: ~700 lines
+
+### Pattern 2: Common Error Handling
+**Before**: Error handling duplicated in each generator (~20 lines × 15 = 300 lines)
+**After**: `withErrorHandling()` wrapper (~15 lines, reused everywhere)
+**Savings**: ~285 lines
+
+### Pattern 3: Validation Functions
+**Before**: Inline validation scattered across generators
+**After**: Centralized validators that can be reused in UI and API layers
+
+### Pattern 4: Response Building
+**Before**: Response object built manually in each function
+**After**: `buildVideoResponse()` helper
+**Savings**: ~100 lines
+
+---
+
+## Estimated Final Line Counts
+
+| File | Lines | Purpose |
+|------|-------|---------|
+| `core/fal-request.ts` | ~150 | FAL API utilities |
+| `core/polling.ts` | ~200 | Queue polling |
+| `core/streaming.ts` | ~100 | Video streaming |
+| `generators/base-generator.ts` | ~150 | Common patterns |
+| `generators/text-to-video.ts` | ~400 | T2V generators |
+| `generators/image-to-video.ts` | ~500 | I2V generators |
+| `generators/avatar.ts` | ~350 | Avatar generation |
+| `generators/upscale.ts` | ~200 | Video upscaling |
+| `generators/image.ts` | ~150 | Image generation |
+| `models/sora2.ts` | ~200 | Sora 2 logic |
+| `validation/validators.ts` | ~250 | Validation functions |
+| `api.ts` | ~100 | High-level API |
+| `index.ts` | ~50 | Barrel file |
+| **Total** | **~2,800** | **30% reduction** |
+
+Plus updates to existing files:
+- `ai-types.ts`: +100 lines (new types)
+- `ai-constants.ts`: +50 lines (new constants)
 
 ---
 
 ## Success Criteria
 
-- [ ] All existing tests pass
+- [ ] All 200+ existing tests pass
 - [ ] No new TypeScript errors
-- [ ] Bundle size reduced or unchanged
-- [ ] All consuming files updated without breaking changes
-- [ ] Each file under 600 lines
-- [ ] Clear separation of concerns
+- [ ] `use-ai-generation.ts` works without changes (uses barrel file)
+- [ ] `fal-ai-client.ts` can import types from centralized location
+- [ ] Each new file under 500 lines
+- [ ] Bundle size unchanged or reduced
+- [ ] No circular dependencies
+- [ ] Backup files removed after verification
+
+---
+
+## Rollback Plan
+
+If issues are discovered after deployment:
+
+```bash
+# Restore from backup
+cp qcut/apps/web/src/lib/ai-video-client.ts.backup qcut/apps/web/src/lib/ai-video-client.ts
+rm -rf qcut/apps/web/src/lib/ai-video/
+
+# Revert import changes in consuming files (if changed)
+git checkout -- qcut/apps/web/src/components/editor/media-panel/views/ai/hooks/use-ai-generation.ts
+```
