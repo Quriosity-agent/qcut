@@ -272,10 +272,29 @@ export async function integrateVideoToMediaStore(
 
 ---
 
-### Phase 2: Extract Handler Functions
+### Phase 2: Extract Handler Functions ⏳ PARTIALLY COMPLETE (Dec 2025)
+
+**Status**: Draft created, requires type refinement before integration
+
+**What Was Done**:
+- Created `hooks/generation/model-handlers.ts.draft` (1000+ lines)
+- Contains handler functions for all models: T2V, I2V, Avatar, Upscale
+- Router functions for each tab: `routeTextToVideoHandler()`, etc.
+- Comprehensive type interfaces for settings
+
+**Blocking Issue**:
+- The hook stores settings as loose types (e.g., `duration: number`)
+- The generator functions expect strict literal types (e.g., `duration: 6 | 10`)
+- Requires either:
+  1. Adding type assertions throughout handlers (tedious, ~50+ locations)
+  2. Updating hook state to use strict types (breaking change risk)
+  3. Creating adapter layer for type coercion
+
+**Files Created**:
+- `model-handlers.ts.draft` - Not integrated due to TypeScript errors
 
 #### Task 2.1: Create `generation/handlers.ts`
-**Reduction**: ~800 lines from handleGenerate
+**Reduction**: ~800 lines from handleGenerate (PENDING)
 
 Create unified handler that routes to `lib/ai-video/generators/`:
 
@@ -478,24 +497,33 @@ const handleGenerate = useCallback(async () => {
 
 ## Subtask Summary
 
-| Task | Description | Lines Saved | Priority |
-|------|-------------|-------------|----------|
-| 1.1 | Extract `media-integration.ts` | ~400 | HIGH |
-| 2.1 | Extract `generation/handlers.ts` | ~800 | HIGH |
-| 3.1 | Simplify handleGenerate | ~300 | MEDIUM |
-| 4.1 | Update tests | - | HIGH |
-| 5.1 | Remove backup | - | FINAL |
+| Task | Description | Lines Saved | Priority | Status |
+|------|-------------|-------------|----------|--------|
+| 1.1 | Extract `media-integration.ts` | 303 | HIGH | ✅ DONE |
+| 2.1 | Extract `generation/handlers.ts` | ~800 | HIGH | ⏳ DRAFT CREATED |
+| 3.1 | Simplify handleGenerate | ~300 | MEDIUM | PENDING |
+| 4.1 | Update tests | - | HIGH | ✅ DONE |
+| 5.1 | Remove backup | - | FINAL | PENDING |
 
 ---
 
-## Estimated Final Line Counts
+## Current Line Counts (After Phase 1)
+
+| File | Lines | Purpose |
+|------|-------|---------|
+| `use-ai-generation.ts` | 2355 | Main hook (reduced from 2659) |
+| `generation/media-integration.ts` | 316 | Download + save + media store |
+| `generation/index.ts` | 12 | Barrel file |
+| **Reduction So Far** | **303 lines** | |
+
+## Estimated Final Line Counts (After All Phases)
 
 | File | Lines | Purpose |
 |------|-------|---------|
 | `use-ai-generation.ts` | ~600 | Main hook (orchestration + state) |
-| `generation/media-integration.ts` | ~150 | Download + save + media store |
+| `generation/media-integration.ts` | 316 | Download + save + media store |
 | `generation/handlers.ts` | ~400 | Route to lib/ai-video generators |
-| **Total New Files** | **~550** | |
+| **Total New Files** | **~700** | |
 | **Main Hook Reduction** | **~2000** | (from 2659 to ~600) |
 
 ---
@@ -508,8 +536,12 @@ const handleGenerate = useCallback(async () => {
 - `lib/ai-video/core/*` - FAL request, polling, streaming
 - `use-ai-*-tab-state.ts` - Tab-specific state hooks
 
-### New Extractions
-- `integrateVideoToMediaStore()` - Removes 3x duplication
+### Extractions Completed
+- ✅ `integrateVideoToMediaStore()` - Removes 2x duplication
+- ✅ `updateVideoWithLocalPaths()` - Helper for path updates
+- ✅ `canIntegrateMedia()` - Validation helper
+
+### Pending Extractions
 - `executeGeneration()` - Unified routing to generators
 
 ### Pattern Consistency
@@ -519,10 +551,10 @@ The new `generation/` folder mirrors the existing `lib/ai-video/generators/` pat
 
 ## Success Criteria
 
-- [ ] All existing tests pass
-- [ ] No new TypeScript errors
-- [ ] Main hook under 700 lines
-- [ ] No duplicated media integration code
+- [x] All existing tests pass (34/34 AI video tests)
+- [x] No new TypeScript errors
+- [ ] Main hook under 700 lines (currently 2355)
+- [x] No duplicated media integration code
 - [ ] Handlers properly route to lib/ai-video generators
 - [ ] Backup removed after verification
 
@@ -541,6 +573,40 @@ rm -rf qcut/apps/web/src/components/editor/media-panel/views/ai/hooks/generation
 
 ---
 
+## Next Steps for Phase 2 Completion
+
+To complete Phase 2, choose one of these approaches:
+
+### Option A: Type Assertions (Quick Fix)
+Add `as` assertions at each call site in model-handlers.ts:
+```typescript
+// Before (TS error)
+duration: settings.hailuoT2VDuration,
+
+// After (compiles)
+duration: settings.hailuoT2VDuration as 6 | 10,
+```
+Pros: Quick, no breaking changes
+Cons: Tedious (~50 locations), runtime risk if values are wrong
+
+### Option B: Strict Types in Settings (Clean Fix)
+Update `TextToVideoSettings`, `ImageToVideoSettings`, etc. to use strict literal types.
+Then update all useState calls in tab hooks to use same types.
+Pros: Full type safety
+Cons: Breaking change risk, more work
+
+### Option C: Adapter Functions (Balanced)
+Create adapter functions that validate and coerce types:
+```typescript
+function coerceHailuoDuration(d: number): 6 | 10 {
+  return d === 10 ? 10 : 6;
+}
+```
+Pros: Runtime validation, cleaner than assertions
+Cons: Additional code
+
+---
+
 *Created: December 2025*
-*Status: Planning*
+*Status: Phase 1 Complete, Phase 2 Draft Created*
 *Leverages: lib/ai-video/ (recently refactored), existing tab state hooks*

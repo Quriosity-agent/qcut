@@ -1,0 +1,1238 @@
+/**
+ * Model-specific Generation Handlers
+ *
+ * Extracted from use-ai-generation.ts handleGenerate function.
+ * Each handler processes a specific AI model and returns a standardized response.
+ *
+ * This consolidates ~700 lines of model-specific branching into reusable handlers.
+ */
+
+import { falAIClient } from "@/lib/fal-ai-client";
+import {
+  generateVideo,
+  generateVideoFromImage,
+  generateVideoFromText,
+  generateAvatarVideo,
+  generateLTXV2Video,
+  generateLTXV2ImageVideo,
+  generateViduQ2Video,
+  generateSeedanceVideo,
+  generateKlingImageVideo,
+  generateKling26ImageVideo,
+  generateWAN25ImageVideo,
+  generateKlingO1Video,
+  upscaleByteDanceVideo,
+  upscaleFlashVSRVideo,
+} from "@/lib/ai-video";
+import type { ProgressCallback } from "@/lib/ai-video-client";
+
+/**
+ * Common context passed to all model handlers
+ */
+export interface ModelHandlerContext {
+  prompt: string;
+  modelId: string;
+  modelName: string;
+  progressCallback: ProgressCallback;
+}
+
+/**
+ * Text-to-Video specific settings
+ * Note: Uses loose types that match the hook state; validation happens in generator functions
+ */
+export interface TextToVideoSettings {
+  veo31Settings: {
+    aspectRatio: "9:16" | "16:9" | "1:1" | "auto";
+    duration: "4s" | "6s" | "8s";
+    resolution: "720p" | "1080p";
+    generateAudio: boolean;
+    enhancePrompt: boolean;
+    autoFix: boolean;
+  };
+  hailuoT2VDuration: number;
+  ltxv2Duration: number;
+  ltxv2Resolution: string;
+  ltxv2FPS: number;
+  ltxv2GenerateAudio: boolean;
+  ltxv2FastDuration: number;
+  ltxv2FastResolution: string;
+  ltxv2FastFPS: number;
+  ltxv2FastGenerateAudio: boolean;
+  unifiedParams: Record<string, unknown>;
+  duration?: number;
+  aspectRatio?: "16:9" | "9:16" | "1:1" | "4:3" | "3:4" | "21:9";
+  resolution?: "720p" | "1080p" | "auto";
+}
+
+/**
+ * Image-to-Video specific settings
+ */
+export interface ImageToVideoSettings {
+  selectedImage: File | null;
+  firstFrame: File | null;
+  lastFrame: File | null;
+  veo31Settings: {
+    aspectRatio: "9:16" | "16:9" | "1:1" | "auto";
+    duration: "4s" | "6s" | "8s";
+    resolution: "720p" | "1080p";
+    generateAudio: boolean;
+    enhancePrompt: boolean;
+    autoFix: boolean;
+  };
+  viduQ2Duration: number;
+  viduQ2Resolution: string;
+  viduQ2MovementAmplitude: number;
+  viduQ2EnableBGM: boolean;
+  ltxv2I2VDuration: number;
+  ltxv2I2VResolution: string;
+  ltxv2I2VFPS: number;
+  ltxv2I2VGenerateAudio: boolean;
+  ltxv2ImageDuration: number;
+  ltxv2ImageResolution: string;
+  ltxv2ImageFPS: number;
+  ltxv2ImageGenerateAudio: boolean;
+  seedanceDuration: number;
+  seedanceResolution: string;
+  seedanceAspectRatio: string;
+  seedanceCameraFixed: boolean;
+  seedanceEndFrameUrl: string | null;
+  seedanceEndFrameFile: File | null;
+  klingDuration: number;
+  klingCfgScale: number;
+  klingAspectRatio: string;
+  klingEnhancePrompt: boolean;
+  klingNegativePrompt: string;
+  kling26Duration: number;
+  kling26GenerateAudio: boolean;
+  kling26NegativePrompt: string;
+  wan25Duration: number;
+  wan25Resolution: string;
+  wan25AudioUrl: string | null;
+  wan25AudioFile: File | null;
+  wan25NegativePrompt: string;
+  wan25EnablePromptExpansion: boolean;
+  imageSeed: number | null;
+  duration?: number;
+  aspectRatio?: "16:9" | "9:16" | "1:1" | "4:3" | "3:4" | "21:9";
+  resolution?: "720p" | "1080p" | "auto";
+  uploadImageToFal: (file: File) => Promise<string>;
+  uploadAudioToFal: (file: File) => Promise<string>;
+}
+
+/**
+ * Avatar generation specific settings
+ */
+export interface AvatarSettings {
+  avatarImage: File | null;
+  audioFile: File | null;
+  sourceVideo: File | null;
+  referenceImages: (File | null)[];
+  klingAvatarV2Prompt: string;
+  audioDuration: number | null;
+  uploadImageToFal: (file: File) => Promise<string>;
+  uploadAudioToFal: (file: File) => Promise<string>;
+}
+
+/**
+ * Upscale specific settings
+ */
+export interface UpscaleSettings {
+  sourceVideoFile: File | null;
+  sourceVideoUrl: string | null;
+  bytedanceTargetResolution: "1080p" | "2k" | "4k";
+  bytedanceTargetFPS: "30fps" | "60fps";
+  flashvsrUpscaleFactor: number | null;
+  flashvsrAcceleration: "regular" | "high" | "full";
+  flashvsrQuality: number;
+  flashvsrColorFix: boolean;
+  flashvsrPreserveAudio: boolean;
+  flashvsrOutputFormat: "X264" | "VP9" | "PRORES4444" | "GIF";
+  flashvsrOutputQuality: "low" | "medium" | "high" | "maximum";
+  flashvsrOutputWriteMode: "fast" | "balanced" | "small";
+  flashvsrSeed: number | null;
+}
+
+/**
+ * Video generation response from AI services
+ */
+interface VideoResponse {
+  video_url?: string;
+  job_id?: string;
+  status?: string;
+  video_data?: unknown;
+}
+
+/**
+ * Handler result type
+ */
+export interface ModelHandlerResult {
+  response: VideoResponse | undefined;
+  shouldSkip?: boolean;
+  skipReason?: string;
+}
+
+// ============================================================================
+// TEXT-TO-VIDEO HANDLERS
+// ============================================================================
+
+/**
+ * Handle Veo 3.1 Fast text-to-video generation
+ */
+export async function handleVeo31FastT2V(
+  ctx: ModelHandlerContext,
+  settings: TextToVideoSettings
+): Promise<ModelHandlerResult> {
+  const response = await falAIClient.generateVeo31FastTextToVideo({
+    prompt: ctx.prompt,
+    aspect_ratio: (() => {
+      const ar = settings.veo31Settings.aspectRatio;
+      return ar === "auto" ? undefined : ar;
+    })(),
+    duration: settings.veo31Settings.duration,
+    resolution: settings.veo31Settings.resolution,
+    generate_audio: settings.veo31Settings.generateAudio,
+    enhance_prompt: settings.veo31Settings.enhancePrompt,
+    auto_fix: settings.veo31Settings.autoFix,
+  });
+  return { response };
+}
+
+/**
+ * Handle Veo 3.1 Standard text-to-video generation
+ */
+export async function handleVeo31T2V(
+  ctx: ModelHandlerContext,
+  settings: TextToVideoSettings
+): Promise<ModelHandlerResult> {
+  const response = await falAIClient.generateVeo31TextToVideo({
+    prompt: ctx.prompt,
+    aspect_ratio: (() => {
+      const ar = settings.veo31Settings.aspectRatio;
+      return ar === "auto" ? undefined : ar;
+    })(),
+    duration: settings.veo31Settings.duration,
+    resolution: settings.veo31Settings.resolution,
+    generate_audio: settings.veo31Settings.generateAudio,
+    enhance_prompt: settings.veo31Settings.enhancePrompt,
+    auto_fix: settings.veo31Settings.autoFix,
+  });
+  return { response };
+}
+
+/**
+ * Handle Hailuo 2.3 text-to-video generation
+ */
+export async function handleHailuo23T2V(
+  ctx: ModelHandlerContext,
+  settings: TextToVideoSettings
+): Promise<ModelHandlerResult> {
+  ctx.progressCallback({
+    status: "processing",
+    progress: 10,
+    message: `Submitting ${ctx.modelName} request...`,
+  });
+
+  const response = await generateVideoFromText({
+    model: ctx.modelId,
+    prompt: ctx.prompt,
+    duration: settings.hailuoT2VDuration as 6 | 10,
+  });
+
+  ctx.progressCallback({
+    status: "completed",
+    progress: 100,
+    message: `Video generated with ${ctx.modelName}`,
+  });
+
+  return { response };
+}
+
+/**
+ * Handle LTX Video 2.0 Pro text-to-video generation
+ */
+export async function handleLTXV2ProT2V(
+  ctx: ModelHandlerContext,
+  settings: TextToVideoSettings
+): Promise<ModelHandlerResult> {
+  ctx.progressCallback({
+    status: "processing",
+    progress: 10,
+    message: `Submitting ${ctx.modelName} request...`,
+  });
+
+  const response = await generateLTXV2Video({
+    model: ctx.modelId,
+    prompt: ctx.prompt,
+    duration: settings.ltxv2Duration,
+    resolution: settings.ltxv2Resolution,
+    fps: settings.ltxv2FPS,
+    generate_audio: settings.ltxv2GenerateAudio,
+  });
+
+  ctx.progressCallback({
+    status: "completed",
+    progress: 100,
+    message: `Video with audio generated using ${ctx.modelName}`,
+  });
+
+  return { response };
+}
+
+/**
+ * Handle LTX Video 2.0 Fast text-to-video generation
+ */
+export async function handleLTXV2FastT2V(
+  ctx: ModelHandlerContext,
+  settings: TextToVideoSettings
+): Promise<ModelHandlerResult> {
+  ctx.progressCallback({
+    status: "processing",
+    progress: 10,
+    message: `Submitting ${ctx.modelName} request...`,
+  });
+
+  const response = await generateLTXV2Video({
+    model: ctx.modelId,
+    prompt: ctx.prompt,
+    duration: settings.ltxv2FastDuration,
+    resolution: settings.ltxv2FastResolution,
+    fps: settings.ltxv2FastFPS,
+    generate_audio: settings.ltxv2FastGenerateAudio,
+  });
+
+  ctx.progressCallback({
+    status: "completed",
+    progress: 100,
+    message: `Video with audio generated using ${ctx.modelName}`,
+  });
+
+  return { response };
+}
+
+/**
+ * Handle generic text-to-video generation (fallback)
+ */
+export async function handleGenericT2V(
+  ctx: ModelHandlerContext,
+  settings: TextToVideoSettings
+): Promise<ModelHandlerResult> {
+  const response = await generateVideo(
+    {
+      prompt: ctx.prompt,
+      model: ctx.modelId,
+      ...settings.unifiedParams,
+      // Add Sora 2 specific parameters if Sora 2 model
+      ...(ctx.modelId.startsWith("sora2_") && {
+        duration:
+          (settings.unifiedParams.duration as number | undefined) ??
+          settings.duration,
+        aspect_ratio:
+          (settings.unifiedParams.aspect_ratio as
+            | "16:9"
+            | "9:16"
+            | "1:1"
+            | "4:3"
+            | "3:4"
+            | "21:9"
+            | undefined) ?? settings.aspectRatio,
+        resolution:
+          (settings.unifiedParams.resolution as
+            | "720p"
+            | "1080p"
+            | "auto"
+            | undefined) ?? settings.resolution,
+      }),
+    },
+    ctx.progressCallback
+  );
+  return { response };
+}
+
+// ============================================================================
+// IMAGE-TO-VIDEO HANDLERS
+// ============================================================================
+
+/**
+ * Handle Veo 3.1 Fast image-to-video generation
+ */
+export async function handleVeo31FastI2V(
+  ctx: ModelHandlerContext,
+  settings: ImageToVideoSettings
+): Promise<ModelHandlerResult> {
+  if (!settings.selectedImage) {
+    return {
+      response: undefined,
+      shouldSkip: true,
+      skipReason: "image-to-video requires a selected image",
+    };
+  }
+
+  const imageUrl = await settings.uploadImageToFal(settings.selectedImage);
+  const imageAspectRatio =
+    settings.veo31Settings.aspectRatio === "16:9" ||
+    settings.veo31Settings.aspectRatio === "9:16"
+      ? settings.veo31Settings.aspectRatio
+      : "16:9";
+
+  const response = await falAIClient.generateVeo31FastImageToVideo({
+    prompt: ctx.prompt,
+    image_url: imageUrl,
+    aspect_ratio: imageAspectRatio,
+    duration: "8s",
+    resolution: settings.veo31Settings.resolution,
+    generate_audio: settings.veo31Settings.generateAudio,
+  });
+  return { response };
+}
+
+/**
+ * Handle Veo 3.1 Standard image-to-video generation
+ */
+export async function handleVeo31I2V(
+  ctx: ModelHandlerContext,
+  settings: ImageToVideoSettings
+): Promise<ModelHandlerResult> {
+  if (!settings.selectedImage) {
+    return {
+      response: undefined,
+      shouldSkip: true,
+      skipReason: "image-to-video requires a selected image",
+    };
+  }
+
+  const imageUrl = await settings.uploadImageToFal(settings.selectedImage);
+  const imageAspectRatio =
+    settings.veo31Settings.aspectRatio === "16:9" ||
+    settings.veo31Settings.aspectRatio === "9:16"
+      ? settings.veo31Settings.aspectRatio
+      : "16:9";
+
+  const response = await falAIClient.generateVeo31ImageToVideo({
+    prompt: ctx.prompt,
+    image_url: imageUrl,
+    aspect_ratio: imageAspectRatio,
+    duration: "8s",
+    resolution: settings.veo31Settings.resolution,
+    generate_audio: settings.veo31Settings.generateAudio,
+  });
+  return { response };
+}
+
+/**
+ * Handle Veo 3.1 Fast frame-to-video generation
+ */
+export async function handleVeo31FastF2V(
+  ctx: ModelHandlerContext,
+  settings: ImageToVideoSettings
+): Promise<ModelHandlerResult> {
+  if (!settings.firstFrame || !settings.lastFrame) {
+    return {
+      response: undefined,
+      shouldSkip: true,
+      skipReason: "frame-to-video requires selected first and last frames",
+    };
+  }
+
+  const firstFrameUrl = await settings.uploadImageToFal(settings.firstFrame);
+  const lastFrameUrl = await settings.uploadImageToFal(settings.lastFrame);
+  const frameAspectRatio =
+    settings.veo31Settings.aspectRatio === "16:9" ||
+    settings.veo31Settings.aspectRatio === "9:16"
+      ? settings.veo31Settings.aspectRatio
+      : "16:9";
+
+  const response = await falAIClient.generateVeo31FastFrameToVideo({
+    prompt: ctx.prompt,
+    first_frame_url: firstFrameUrl,
+    last_frame_url: lastFrameUrl,
+    aspect_ratio: frameAspectRatio,
+    duration: "8s",
+    resolution: settings.veo31Settings.resolution,
+    generate_audio: settings.veo31Settings.generateAudio,
+  });
+  return { response };
+}
+
+/**
+ * Handle Veo 3.1 Standard frame-to-video generation
+ */
+export async function handleVeo31F2V(
+  ctx: ModelHandlerContext,
+  settings: ImageToVideoSettings
+): Promise<ModelHandlerResult> {
+  if (!settings.firstFrame || !settings.lastFrame) {
+    return {
+      response: undefined,
+      shouldSkip: true,
+      skipReason: "frame-to-video requires selected first and last frames",
+    };
+  }
+
+  const firstFrameUrl = await settings.uploadImageToFal(settings.firstFrame);
+  const lastFrameUrl = await settings.uploadImageToFal(settings.lastFrame);
+  const frameAspectRatio =
+    settings.veo31Settings.aspectRatio === "16:9" ||
+    settings.veo31Settings.aspectRatio === "9:16"
+      ? settings.veo31Settings.aspectRatio
+      : "16:9";
+
+  const response = await falAIClient.generateVeo31FrameToVideo({
+    prompt: ctx.prompt,
+    first_frame_url: firstFrameUrl,
+    last_frame_url: lastFrameUrl,
+    aspect_ratio: frameAspectRatio,
+    duration: "8s",
+    resolution: settings.veo31Settings.resolution,
+    generate_audio: settings.veo31Settings.generateAudio,
+  });
+  return { response };
+}
+
+/**
+ * Handle Vidu Q2 Turbo image-to-video generation
+ */
+export async function handleViduQ2I2V(
+  ctx: ModelHandlerContext,
+  settings: ImageToVideoSettings
+): Promise<ModelHandlerResult> {
+  if (!settings.selectedImage) {
+    return {
+      response: undefined,
+      shouldSkip: true,
+      skipReason: "Vidu Q2 requires a selected image",
+    };
+  }
+
+  const imageUrl = await settings.uploadImageToFal(settings.selectedImage);
+
+  ctx.progressCallback({
+    status: "processing",
+    progress: 10,
+    message: `Submitting ${ctx.modelName} request...`,
+  });
+
+  const response = await generateViduQ2Video({
+    model: ctx.modelId,
+    prompt: ctx.prompt,
+    image_url: imageUrl,
+    duration: settings.viduQ2Duration,
+    resolution: settings.viduQ2Resolution,
+    movement_amplitude: settings.viduQ2MovementAmplitude,
+    bgm: settings.viduQ2EnableBGM,
+  });
+
+  ctx.progressCallback({
+    status: "completed",
+    progress: 100,
+    message: `Video generated with ${ctx.modelName}`,
+  });
+
+  return { response };
+}
+
+/**
+ * Handle LTX V2 Standard image-to-video generation
+ */
+export async function handleLTXV2I2V(
+  ctx: ModelHandlerContext,
+  settings: ImageToVideoSettings
+): Promise<ModelHandlerResult> {
+  if (!settings.selectedImage) {
+    return {
+      response: undefined,
+      shouldSkip: true,
+      skipReason: "LTX V2 standard requires a selected image",
+    };
+  }
+
+  const imageUrl = await settings.uploadImageToFal(settings.selectedImage);
+
+  ctx.progressCallback({
+    status: "processing",
+    progress: 10,
+    message: `Submitting ${ctx.modelName} request...`,
+  });
+
+  const response = await generateLTXV2ImageVideo({
+    model: ctx.modelId,
+    prompt: ctx.prompt,
+    image_url: imageUrl,
+    duration: settings.ltxv2I2VDuration,
+    resolution: settings.ltxv2I2VResolution,
+    fps: settings.ltxv2I2VFPS,
+    generate_audio: settings.ltxv2I2VGenerateAudio,
+  });
+
+  ctx.progressCallback({
+    status: "completed",
+    progress: 100,
+    message: `Video with audio generated using ${ctx.modelName}`,
+  });
+
+  return { response };
+}
+
+/**
+ * Handle LTX V2 Fast image-to-video generation
+ */
+export async function handleLTXV2FastI2V(
+  ctx: ModelHandlerContext,
+  settings: ImageToVideoSettings
+): Promise<ModelHandlerResult> {
+  if (!settings.selectedImage) {
+    return {
+      response: undefined,
+      shouldSkip: true,
+      skipReason: "LTX V2 Fast requires a selected image",
+    };
+  }
+
+  const imageUrl = await settings.uploadImageToFal(settings.selectedImage);
+
+  ctx.progressCallback({
+    status: "processing",
+    progress: 10,
+    message: `Submitting ${ctx.modelName} request...`,
+  });
+
+  const response = await generateLTXV2ImageVideo({
+    model: ctx.modelId,
+    prompt: ctx.prompt,
+    image_url: imageUrl,
+    duration: settings.ltxv2ImageDuration,
+    resolution: settings.ltxv2ImageResolution,
+    fps: settings.ltxv2ImageFPS,
+    generate_audio: settings.ltxv2ImageGenerateAudio,
+  });
+
+  ctx.progressCallback({
+    status: "completed",
+    progress: 100,
+    message: `Video with audio generated using ${ctx.modelName}`,
+  });
+
+  return { response };
+}
+
+/**
+ * Handle Seedance Pro Fast image-to-video generation
+ */
+export async function handleSeedanceProFastI2V(
+  ctx: ModelHandlerContext,
+  settings: ImageToVideoSettings
+): Promise<ModelHandlerResult> {
+  if (!settings.selectedImage) {
+    return {
+      response: undefined,
+      shouldSkip: true,
+      skipReason: "Seedance Pro Fast requires a selected image",
+    };
+  }
+
+  const imageUrl = await settings.uploadImageToFal(settings.selectedImage);
+
+  ctx.progressCallback({
+    status: "processing",
+    progress: 10,
+    message: `Submitting ${ctx.modelName} request...`,
+  });
+
+  const response = await generateSeedanceVideo({
+    model: ctx.modelId,
+    prompt: ctx.prompt,
+    image_url: imageUrl,
+    duration: settings.seedanceDuration,
+    resolution: settings.seedanceResolution,
+    aspect_ratio: settings.seedanceAspectRatio,
+    camera_fixed: settings.seedanceCameraFixed,
+    seed: settings.imageSeed ?? undefined,
+  });
+
+  ctx.progressCallback({
+    status: "completed",
+    progress: 100,
+    message: `Video generated with ${ctx.modelName}`,
+  });
+
+  return { response };
+}
+
+/**
+ * Handle Seedance Pro image-to-video generation (with optional end frame)
+ */
+export async function handleSeedanceProI2V(
+  ctx: ModelHandlerContext,
+  settings: ImageToVideoSettings
+): Promise<ModelHandlerResult> {
+  if (!settings.selectedImage) {
+    return {
+      response: undefined,
+      shouldSkip: true,
+      skipReason: "Seedance Pro requires a selected image",
+    };
+  }
+
+  const imageUrl = await settings.uploadImageToFal(settings.selectedImage);
+  const endFrameUrl = settings.seedanceEndFrameFile
+    ? await settings.uploadImageToFal(settings.seedanceEndFrameFile)
+    : settings.seedanceEndFrameUrl;
+
+  ctx.progressCallback({
+    status: "processing",
+    progress: 10,
+    message: `Submitting ${ctx.modelName} request...`,
+  });
+
+  const response = await generateSeedanceVideo({
+    model: ctx.modelId,
+    prompt: ctx.prompt,
+    image_url: imageUrl,
+    duration: settings.seedanceDuration,
+    resolution: settings.seedanceResolution,
+    aspect_ratio: settings.seedanceAspectRatio,
+    camera_fixed: settings.seedanceCameraFixed,
+    end_image_url: endFrameUrl ?? undefined,
+    seed: settings.imageSeed ?? undefined,
+  });
+
+  ctx.progressCallback({
+    status: "completed",
+    progress: 100,
+    message: `Video generated with ${ctx.modelName}`,
+  });
+
+  return { response };
+}
+
+/**
+ * Handle Kling v2.5 Turbo image-to-video generation
+ */
+export async function handleKlingV25I2V(
+  ctx: ModelHandlerContext,
+  settings: ImageToVideoSettings
+): Promise<ModelHandlerResult> {
+  if (!settings.selectedImage) {
+    return {
+      response: undefined,
+      shouldSkip: true,
+      skipReason: "Kling v2.5 requires a selected image",
+    };
+  }
+
+  const imageUrl = await settings.uploadImageToFal(settings.selectedImage);
+
+  ctx.progressCallback({
+    status: "processing",
+    progress: 10,
+    message: `Submitting ${ctx.modelName} request...`,
+  });
+
+  const response = await generateKlingImageVideo({
+    model: ctx.modelId,
+    prompt: ctx.prompt,
+    image_url: imageUrl,
+    duration: settings.klingDuration,
+    cfg_scale: settings.klingCfgScale,
+    aspect_ratio: settings.klingAspectRatio,
+    enhance_prompt: settings.klingEnhancePrompt,
+    negative_prompt: settings.klingNegativePrompt,
+  });
+
+  ctx.progressCallback({
+    status: "completed",
+    progress: 100,
+    message: `Video generated with ${ctx.modelName}`,
+  });
+
+  return { response };
+}
+
+/**
+ * Handle Kling v2.6 Pro image-to-video generation
+ */
+export async function handleKlingV26I2V(
+  ctx: ModelHandlerContext,
+  settings: ImageToVideoSettings
+): Promise<ModelHandlerResult> {
+  if (!settings.selectedImage) {
+    return {
+      response: undefined,
+      shouldSkip: true,
+      skipReason: "Kling v2.6 requires a selected image",
+    };
+  }
+
+  const imageUrl = await settings.uploadImageToFal(settings.selectedImage);
+
+  ctx.progressCallback({
+    status: "processing",
+    progress: 10,
+    message: `Submitting ${ctx.modelName} request...`,
+  });
+
+  // Note: v2.6 I2V does NOT support aspect_ratio or cfg_scale per FAL.ai schema
+  const response = await generateKling26ImageVideo({
+    model: ctx.modelId,
+    prompt: ctx.prompt,
+    image_url: imageUrl,
+    duration: settings.kling26Duration,
+    generate_audio: settings.kling26GenerateAudio,
+    negative_prompt: settings.kling26NegativePrompt,
+  });
+
+  ctx.progressCallback({
+    status: "completed",
+    progress: 100,
+    message: `Video generated with ${ctx.modelName}`,
+  });
+
+  return { response };
+}
+
+/**
+ * Handle WAN 2.5 Preview image-to-video generation
+ */
+export async function handleWAN25I2V(
+  ctx: ModelHandlerContext,
+  settings: ImageToVideoSettings
+): Promise<ModelHandlerResult> {
+  if (!settings.selectedImage) {
+    return {
+      response: undefined,
+      shouldSkip: true,
+      skipReason: "WAN 2.5 requires a selected image",
+    };
+  }
+
+  const imageUrl = await settings.uploadImageToFal(settings.selectedImage);
+  const audioUrl = settings.wan25AudioFile
+    ? await settings.uploadAudioToFal(settings.wan25AudioFile)
+    : settings.wan25AudioUrl;
+
+  ctx.progressCallback({
+    status: "processing",
+    progress: 10,
+    message: `Submitting ${ctx.modelName} request...`,
+  });
+
+  const response = await generateWAN25ImageVideo({
+    model: ctx.modelId,
+    prompt: ctx.prompt,
+    image_url: imageUrl,
+    duration: settings.wan25Duration,
+    resolution: settings.wan25Resolution,
+    audio_url: audioUrl ?? undefined,
+    negative_prompt: settings.wan25NegativePrompt,
+    enable_prompt_expansion: settings.wan25EnablePromptExpansion,
+    seed: settings.imageSeed ?? undefined,
+  });
+
+  ctx.progressCallback({
+    status: "completed",
+    progress: 100,
+    message: `Video generated with ${ctx.modelName}`,
+  });
+
+  return { response };
+}
+
+/**
+ * Handle generic image-to-video generation (fallback)
+ */
+export async function handleGenericI2V(
+  ctx: ModelHandlerContext,
+  settings: ImageToVideoSettings
+): Promise<ModelHandlerResult> {
+  if (!settings.selectedImage) {
+    return {
+      response: undefined,
+      shouldSkip: true,
+      skipReason: "image-to-video requires a selected image",
+    };
+  }
+
+  const response = await generateVideoFromImage({
+    image: settings.selectedImage,
+    prompt: ctx.prompt,
+    model: ctx.modelId,
+    // Add Sora 2 specific parameters if Sora 2 model
+    ...(ctx.modelId.startsWith("sora2_") && {
+      duration: settings.duration,
+      aspect_ratio: settings.aspectRatio,
+      resolution: settings.resolution,
+    }),
+  });
+  return { response };
+}
+
+// ============================================================================
+// UPSCALE HANDLERS
+// ============================================================================
+
+/**
+ * Handle ByteDance video upscaler
+ */
+export async function handleByteDanceUpscale(
+  ctx: ModelHandlerContext,
+  settings: UpscaleSettings
+): Promise<ModelHandlerResult> {
+  if (!settings.sourceVideoFile && !settings.sourceVideoUrl) {
+    return {
+      response: undefined,
+      shouldSkip: true,
+      skipReason: "Video source required",
+    };
+  }
+
+  const videoUrl = settings.sourceVideoFile
+    ? await falAIClient.uploadVideoToFal(settings.sourceVideoFile)
+    : settings.sourceVideoUrl;
+
+  ctx.progressCallback({
+    status: "processing",
+    progress: 10,
+    message: `Uploading video for ${ctx.modelName}...`,
+  });
+
+  ctx.progressCallback({
+    status: "processing",
+    progress: 30,
+    message: `Upscaling video to ${settings.bytedanceTargetResolution}...`,
+  });
+
+  const response = await upscaleByteDanceVideo({
+    video_url: videoUrl!,
+    target_resolution: settings.bytedanceTargetResolution,
+    target_fps: settings.bytedanceTargetFPS,
+  });
+
+  ctx.progressCallback({
+    status: "completed",
+    progress: 100,
+    message: `Video upscaled with ${ctx.modelName}`,
+  });
+
+  return { response };
+}
+
+/**
+ * Handle FlashVSR video upscaler
+ */
+export async function handleFlashVSRUpscale(
+  ctx: ModelHandlerContext,
+  settings: UpscaleSettings
+): Promise<ModelHandlerResult> {
+  if (!settings.sourceVideoFile && !settings.sourceVideoUrl) {
+    return {
+      response: undefined,
+      shouldSkip: true,
+      skipReason: "Video source required",
+    };
+  }
+
+  const videoUrl = settings.sourceVideoFile
+    ? await falAIClient.uploadVideoToFal(settings.sourceVideoFile)
+    : settings.sourceVideoUrl;
+
+  const upscaleFactor = settings.flashvsrUpscaleFactor ?? 4;
+
+  ctx.progressCallback({
+    status: "processing",
+    progress: 10,
+    message: `Uploading video for ${ctx.modelName}...`,
+  });
+
+  ctx.progressCallback({
+    status: "processing",
+    progress: 30,
+    message: `Upscaling video with FlashVSR (${upscaleFactor}x)...`,
+  });
+
+  const response = await upscaleFlashVSRVideo({
+    video_url: videoUrl!,
+    upscale_factor: upscaleFactor,
+    acceleration: settings.flashvsrAcceleration,
+    quality: settings.flashvsrQuality,
+    color_fix: settings.flashvsrColorFix,
+    preserve_audio: settings.flashvsrPreserveAudio,
+    output_format: settings.flashvsrOutputFormat,
+    output_quality: settings.flashvsrOutputQuality,
+    output_write_mode: settings.flashvsrOutputWriteMode,
+    seed: settings.flashvsrSeed ?? undefined,
+  });
+
+  ctx.progressCallback({
+    status: "completed",
+    progress: 100,
+    message: `Video upscaled with ${ctx.modelName}`,
+  });
+
+  return { response };
+}
+
+// ============================================================================
+// AVATAR HANDLERS
+// ============================================================================
+
+/**
+ * Handle Kling O1 Reference-to-Video generation
+ */
+export async function handleKlingO1Ref2Video(
+  ctx: ModelHandlerContext,
+  settings: AvatarSettings
+): Promise<ModelHandlerResult> {
+  const firstRefImage = settings.referenceImages?.find((img) => img !== null);
+  if (!firstRefImage) {
+    return {
+      response: undefined,
+      shouldSkip: true,
+      skipReason: "Reference-to-video requires at least one reference image",
+    };
+  }
+
+  console.log(
+    `  🎭 Calling generateAvatarVideo for ${ctx.modelId} with reference image...`
+  );
+  const response = await generateAvatarVideo({
+    model: ctx.modelId,
+    characterImage: firstRefImage,
+    prompt: ctx.prompt || undefined,
+  });
+  console.log("  ✅ generateAvatarVideo returned:", response);
+
+  return { response };
+}
+
+/**
+ * Handle Kling O1 V2V (Video-to-Video) generation
+ */
+export async function handleKlingO1V2V(
+  ctx: ModelHandlerContext,
+  settings: AvatarSettings
+): Promise<ModelHandlerResult> {
+  if (!settings.sourceVideo) {
+    return {
+      response: undefined,
+      shouldSkip: true,
+      skipReason: "V2V model requires source video",
+    };
+  }
+
+  console.log(
+    `  🎬 Calling generateKlingO1Video for ${ctx.modelId} with source video...`
+  );
+  const response = await generateKlingO1Video({
+    model: ctx.modelId,
+    prompt: ctx.prompt,
+    sourceVideo: settings.sourceVideo,
+    duration: 5, // Default duration
+  });
+  console.log("  ✅ generateKlingO1Video returned:", response);
+
+  return { response };
+}
+
+/**
+ * Handle Kling Avatar v2 generation
+ */
+export async function handleKlingAvatarV2(
+  ctx: ModelHandlerContext,
+  settings: AvatarSettings
+): Promise<ModelHandlerResult> {
+  if (!settings.avatarImage) {
+    return {
+      response: undefined,
+      shouldSkip: true,
+      skipReason: "Avatar model requires avatar image",
+    };
+  }
+
+  console.log(`  🎭 Calling generateAvatarVideo for ${ctx.modelId}...`);
+
+  // Kling Avatar v2 requires FAL storage URLs (not base64 data URLs)
+  console.log("  📤 Uploading files to FAL storage for Kling Avatar v2...");
+
+  const [characterImageUrl, audioUrl] = await Promise.all([
+    settings.uploadImageToFal(settings.avatarImage),
+    settings.audioFile
+      ? settings.uploadAudioToFal(settings.audioFile)
+      : Promise.resolve(""),
+  ]);
+
+  if (!audioUrl) {
+    throw new Error("Audio file is required for Kling Avatar v2");
+  }
+
+  console.log("  ✅ Files uploaded to FAL storage");
+  console.log("    - Image URL:", characterImageUrl.substring(0, 50) + "...");
+  console.log("    - Audio URL:", audioUrl.substring(0, 50) + "...");
+
+  const response = await generateAvatarVideo({
+    model: ctx.modelId,
+    characterImage: settings.avatarImage,
+    audioFile: settings.audioFile || undefined,
+    prompt: settings.klingAvatarV2Prompt.trim() || undefined,
+    audioDuration: settings.audioDuration ?? undefined,
+    characterImageUrl,
+    audioUrl,
+  });
+
+  console.log("  ✅ generateAvatarVideo returned:", response);
+  return { response };
+}
+
+/**
+ * Handle generic avatar generation (fallback for other avatar models)
+ */
+export async function handleGenericAvatar(
+  ctx: ModelHandlerContext,
+  settings: AvatarSettings
+): Promise<ModelHandlerResult> {
+  if (!settings.avatarImage) {
+    return {
+      response: undefined,
+      shouldSkip: true,
+      skipReason: "Avatar model requires avatar image",
+    };
+  }
+
+  console.log(`  🎭 Calling generateAvatarVideo for ${ctx.modelId}...`);
+
+  const response = await generateAvatarVideo({
+    model: ctx.modelId,
+    characterImage: settings.avatarImage,
+    audioFile: settings.audioFile || undefined,
+    sourceVideo: settings.sourceVideo || undefined,
+    prompt: ctx.prompt || undefined,
+    audioDuration: settings.audioDuration ?? undefined,
+  });
+
+  console.log("  ✅ generateAvatarVideo returned:", response);
+  return { response };
+}
+
+// ============================================================================
+// MODEL ROUTING
+// ============================================================================
+
+/** Frame-to-video model IDs */
+export const VEO31_FRAME_MODELS = new Set([
+  "veo31_fast_frame_to_video",
+  "veo31_frame_to_video",
+]);
+
+/**
+ * Routes text-to-video generation to the appropriate handler
+ */
+export async function routeTextToVideoHandler(
+  ctx: ModelHandlerContext,
+  settings: TextToVideoSettings
+): Promise<ModelHandlerResult> {
+  switch (ctx.modelId) {
+    case "veo31_fast_text_to_video":
+      return handleVeo31FastT2V(ctx, settings);
+    case "veo31_text_to_video":
+      return handleVeo31T2V(ctx, settings);
+    case "hailuo23_standard_t2v":
+    case "hailuo23_pro_t2v":
+      return handleHailuo23T2V(ctx, settings);
+    case "ltxv2_pro_t2v":
+      return handleLTXV2ProT2V(ctx, settings);
+    case "ltxv2_fast_t2v":
+      return handleLTXV2FastT2V(ctx, settings);
+    default:
+      return handleGenericT2V(ctx, settings);
+  }
+}
+
+/**
+ * Routes image-to-video generation to the appropriate handler
+ */
+export async function routeImageToVideoHandler(
+  ctx: ModelHandlerContext,
+  settings: ImageToVideoSettings
+): Promise<ModelHandlerResult> {
+  switch (ctx.modelId) {
+    case "veo31_fast_image_to_video":
+      return handleVeo31FastI2V(ctx, settings);
+    case "veo31_image_to_video":
+      return handleVeo31I2V(ctx, settings);
+    case "veo31_fast_frame_to_video":
+      return handleVeo31FastF2V(ctx, settings);
+    case "veo31_frame_to_video":
+      return handleVeo31F2V(ctx, settings);
+    case "vidu_q2_turbo_i2v":
+      return handleViduQ2I2V(ctx, settings);
+    case "ltxv2_i2v":
+      return handleLTXV2I2V(ctx, settings);
+    case "ltxv2_fast_i2v":
+      return handleLTXV2FastI2V(ctx, settings);
+    case "seedance_pro_fast_i2v":
+      return handleSeedanceProFastI2V(ctx, settings);
+    case "seedance_pro_i2v":
+      return handleSeedanceProI2V(ctx, settings);
+    case "kling_v2_5_turbo_i2v":
+      return handleKlingV25I2V(ctx, settings);
+    case "kling_v26_pro_i2v":
+      return handleKlingV26I2V(ctx, settings);
+    case "wan_25_preview_i2v":
+      return handleWAN25I2V(ctx, settings);
+    default:
+      // Skip frame-to-video models that don't have frames
+      if (
+        VEO31_FRAME_MODELS.has(ctx.modelId) &&
+        (!settings.firstFrame || !settings.lastFrame)
+      ) {
+        return {
+          response: undefined,
+          shouldSkip: true,
+          skipReason: "frame-to-video requires selected first and last frames",
+        };
+      }
+      return handleGenericI2V(ctx, settings);
+  }
+}
+
+/**
+ * Routes upscale generation to the appropriate handler
+ */
+export async function routeUpscaleHandler(
+  ctx: ModelHandlerContext,
+  settings: UpscaleSettings
+): Promise<ModelHandlerResult> {
+  switch (ctx.modelId) {
+    case "bytedance_video_upscaler":
+      return handleByteDanceUpscale(ctx, settings);
+    case "flashvsr_video_upscaler":
+      return handleFlashVSRUpscale(ctx, settings);
+    case "topaz_video_upscale":
+      throw new Error("Topaz Video Upscale not yet implemented");
+    default:
+      return {
+        response: undefined,
+        shouldSkip: true,
+        skipReason: `Unknown upscale model: ${ctx.modelId}`,
+      };
+  }
+}
+
+/**
+ * Routes avatar generation to the appropriate handler
+ */
+export async function routeAvatarHandler(
+  ctx: ModelHandlerContext,
+  settings: AvatarSettings
+): Promise<ModelHandlerResult> {
+  switch (ctx.modelId) {
+    case "kling_o1_ref2video":
+      return handleKlingO1Ref2Video(ctx, settings);
+    case "kling_o1_v2v_reference":
+    case "kling_o1_v2v_edit":
+      return handleKlingO1V2V(ctx, settings);
+    case "kling_avatar_v2_standard":
+    case "kling_avatar_v2_pro":
+      return handleKlingAvatarV2(ctx, settings);
+    default:
+      return handleGenericAvatar(ctx, settings);
+  }
+}
