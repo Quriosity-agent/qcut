@@ -175,8 +175,13 @@ export function AISettingsPanelSimple({
   className = "",
   showBorderTop = true,
 }: AISettingsPanelProps) {
-  // Determine current open state for chevron rotation
-  const isOpen = expanded ?? defaultExpanded;
+  // Use controlled state if provided, otherwise use internal state
+  const isControlled = expanded !== undefined && onExpandedChange !== undefined;
+  const [internalOpen, setInternalOpen] = useState(defaultExpanded);
+
+  // Determine the actual open state
+  const isOpen = isControlled ? expanded : internalOpen;
+  const handleOpenChange = isControlled ? onExpandedChange : setInternalOpen;
 
   if (!isCollapsible) {
     return (
@@ -194,13 +199,8 @@ export function AISettingsPanelSimple({
     );
   }
 
-  const collapsibleProps =
-    expanded !== undefined && onExpandedChange
-      ? { open: expanded, onOpenChange: onExpandedChange }
-      : { defaultOpen: defaultExpanded };
-
   return (
-    <Collapsible {...collapsibleProps}>
+    <Collapsible open={isOpen} onOpenChange={handleOpenChange}>
       <div className={`${showBorderTop ? "border-t pt-3" : ""} ${className}`}>
         <div className="flex items-center justify-between">
           <CollapsibleTrigger asChild>

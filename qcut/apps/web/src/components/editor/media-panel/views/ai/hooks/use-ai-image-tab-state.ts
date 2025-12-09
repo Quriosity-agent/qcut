@@ -309,6 +309,7 @@ export function useImageTabState({
   const seedanceProSelected = selectedModels.includes("seedance_pro_i2v");
   const seedanceSelected = seedanceFastSelected || seedanceProSelected;
   const klingI2VSelected = selectedModels.includes("kling_v2_5_turbo_i2v");
+  const kling26I2VSelected = selectedModels.includes("kling_v26_pro_i2v");
   const wan25Selected = selectedModels.includes("wan_25_preview_i2v");
 
   // Reset Vidu Q2 settings when model is deselected
@@ -387,7 +388,7 @@ export function useImageTabState({
     }
   }, [seedanceSelected, seedanceEndFrameState.reset]);
 
-  // Reset Kling settings when model is deselected
+  // Reset Kling v2.5 settings when model is deselected
   useEffect(() => {
     if (!klingI2VSelected) {
       setKlingDuration(5);
@@ -397,6 +398,17 @@ export function useImageTabState({
       setKlingNegativePrompt("");
     }
   }, [klingI2VSelected]);
+
+  // Reset Kling v2.6 settings when model is deselected
+  useEffect(() => {
+    if (!kling26I2VSelected) {
+      setKling26Duration(5);
+      setKling26CfgScale(0.5);
+      setKling26AspectRatio("16:9");
+      setKling26GenerateAudio(true);
+      setKling26NegativePrompt("");
+    }
+  }, [kling26I2VSelected]);
 
   // Reset WAN 2.5 settings when model is deselected
   useEffect(() => {

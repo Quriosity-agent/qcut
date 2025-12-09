@@ -206,7 +206,7 @@ export function AITextTab({
           maxLength={maxChars}
         />
         <div
-          className={`text-xs ${remainingChars < 50 ? "text-orange-500" : remainingChars < 20 ? "text-red-500" : "text-muted-foreground"} text-right`}
+          className={`text-xs ${remainingChars < 20 ? "text-red-500" : remainingChars < 50 ? "text-orange-500" : "text-muted-foreground"} text-right`}
         >
           {remainingChars} characters remaining
           {isSora2Selected && (
