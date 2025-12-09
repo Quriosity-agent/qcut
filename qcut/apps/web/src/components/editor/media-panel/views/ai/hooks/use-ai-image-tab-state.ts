@@ -348,6 +348,33 @@ export function useImageTabState({
     }
   }, [ltxv2ImageSelected]);
 
+  // Auto-correct resolution/FPS when LTX Fast duration crosses extended threshold
+  // Videos > 10s only support 1080p resolution and 25 FPS
+  useEffect(() => {
+    const isExtended =
+      ltxv2ImageDuration > LTXV2_FAST_CONFIG.EXTENDED_DURATION_THRESHOLD;
+    if (isExtended) {
+      // Coerce resolution to 1080p if currently set to a higher resolution
+      const validExtendedResolutions = LTXV2_FAST_CONFIG.RESOLUTIONS.EXTENDED;
+      if (
+        !validExtendedResolutions.includes(
+          ltxv2ImageResolution as (typeof validExtendedResolutions)[number]
+        )
+      ) {
+        setLTXV2ImageResolution(validExtendedResolutions[0]);
+      }
+      // Coerce FPS to 25 if currently set to 50
+      const validExtendedFps = LTXV2_FAST_CONFIG.FPS_OPTIONS.EXTENDED;
+      if (
+        !validExtendedFps.includes(
+          ltxv2ImageFPS as (typeof validExtendedFps)[number]
+        )
+      ) {
+        setLTXV2ImageFPS(validExtendedFps[0]);
+      }
+    }
+  }, [ltxv2ImageDuration, ltxv2ImageResolution, ltxv2ImageFPS]);
+
   // Reset Seedance settings when model is deselected
   useEffect(() => {
     if (!seedanceSelected) {
