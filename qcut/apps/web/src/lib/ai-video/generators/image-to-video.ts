@@ -292,6 +292,13 @@ export async function generateViduQ2Video(
 /**
  * Generate video from image using LTX Video 2.0.
  */
+/**
+ * Checks if model is the standard LTX Video 2.0 I2V model (not fast variant)
+ */
+function isStandardLTXV2ImageModel(modelId: string): boolean {
+  return modelId === "ltxv2_i2v";
+}
+
 export async function generateLTXV2ImageVideo(
   request: LTXV2I2VRequest
 ): Promise<VideoGenerationResponse> {
@@ -304,13 +311,22 @@ export async function generateLTXV2ImageVideo(
         throw new Error("FAL API key not configured");
       }
 
+      const isStandardModel = isStandardLTXV2ImageModel(request.model);
       const trimmedPrompt = request.prompt?.trim() ?? "";
       if (!trimmedPrompt) {
-        throw new Error("Prompt is required for LTX Video 2.0 I2V");
+        throw new Error(
+          isStandardModel
+            ? "Please enter a prompt describing the desired video motion"
+            : "Please enter a text prompt for LTX Video 2.0 Fast image-to-video"
+        );
       }
 
       if (!request.image_url) {
-        throw new Error("Image is required for LTX Video 2.0 I2V");
+        throw new Error(
+          isStandardModel
+            ? "Image URL is required for LTX Video 2.0 image-to-video generation"
+            : "Image is required for LTX Video 2.0 Fast image-to-video generation"
+        );
       }
 
       const modelConfig = getModelConfig(request.model);

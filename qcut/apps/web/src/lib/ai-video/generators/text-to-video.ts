@@ -412,7 +412,7 @@ export async function generateLTXV2Video(
       const trimmedPrompt = request.prompt?.trim() ?? "";
       if (!trimmedPrompt) {
         throw new Error(
-          "Text prompt is required for LTX Video 2.0 generation"
+          "Please enter a text prompt for LTX Video 2.0 text-to-video generation"
         );
       }
 

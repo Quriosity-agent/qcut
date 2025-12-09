@@ -119,6 +119,12 @@ export async function handleFalResponse(
     );
   }
 
+  if (response.status === 413) {
+    throw new Error(
+      "Image file too large. Maximum size is 7MB for this model."
+    );
+  }
+
   throw new Error(
     `FAL API error: ${(errorData as Record<string, unknown>).detail || response.statusText}`
   );
