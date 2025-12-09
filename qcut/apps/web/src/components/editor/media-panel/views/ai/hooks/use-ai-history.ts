@@ -10,12 +10,12 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { debugLogger } from "@/lib/debug-logger";
-import { STORAGE_KEYS, ERROR_MESSAGES } from "./ai-constants";
+import { STORAGE_KEYS, ERROR_MESSAGES } from "../constants/ai-constants";
 import type {
   GeneratedVideo,
   AIHistoryState,
   UseAIHistoryProps,
-} from "./ai-types";
+} from "../types/ai-types";
 
 /**
  * Custom hook for managing AI generation history

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { MODEL_HELPERS } from "../ai-constants";
+import { MODEL_HELPERS } from "../constants/ai-constants";
 
 describe("MODEL_HELPERS", () => {
   describe("requiresFrameToFrame", () => {

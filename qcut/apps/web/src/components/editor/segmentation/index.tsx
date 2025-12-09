@@ -50,10 +50,8 @@ export function SegmentationPanel() {
     showObjectList,
   } = useSegmentationStore();
 
-  const {
-    loading: mediaStoreLoading,
-    error: mediaStoreError,
-  } = useAsyncMediaStoreActions();
+  const { loading: mediaStoreLoading, error: mediaStoreError } =
+    useAsyncMediaStoreActions();
 
   const handleImageSelect = (file: File) => {
     const url = createObjectURL(file, "segmentation-image-select");
@@ -191,10 +189,7 @@ export function SegmentationPanel() {
   return (
     <div className="h-full flex flex-col gap-4 p-4">
       {/* Mode Tabs */}
-      <Tabs
-        value={mode}
-        onValueChange={(v) => setMode(v as "image" | "video")}
-      >
+      <Tabs value={mode} onValueChange={(v) => setMode(v as "image" | "video")}>
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="image" className="flex items-center gap-2">
             <ImagePlus className="w-4 h-4" />

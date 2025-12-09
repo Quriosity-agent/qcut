@@ -5,7 +5,7 @@
  * This file contains all constants and configuration used by the AI video generation feature.
  */
 
-import type { AIModel, APIConfiguration } from "./ai-types";
+import type { AIModel, APIConfiguration } from "../types/ai-types";
 import { UPSCALE_MODEL_ENDPOINTS as UPSCALE_MODEL_ENDPOINT_MAP } from "@/lib/upscale-models";
 
 // FAL API Configuration

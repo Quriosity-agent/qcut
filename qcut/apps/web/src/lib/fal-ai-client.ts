@@ -370,21 +370,41 @@ class FalAIClient {
 
           if (fileType === "image" && hasUploadImage) {
             console.log(
-              `[FAL Upload] ??? Routing to Electron image upload IPC...`
+              "[FAL Upload] ??? Routing to Electron image upload IPC..."
             );
-            result = await falApi.uploadImage(uint8Array, file.name, this.apiKey);
+            result = await falApi.uploadImage(
+              uint8Array,
+              file.name,
+              this.apiKey
+            );
           } else if (fileType === "audio" && hasUploadAudio) {
-            console.log(`[FAL Upload] ?? Routing to Electron audio upload IPC...`);
-            result = await falApi.uploadAudio(uint8Array, file.name, this.apiKey);
+            console.log(
+              "[FAL Upload] ?? Routing to Electron audio upload IPC..."
+            );
+            result = await falApi.uploadAudio(
+              uint8Array,
+              file.name,
+              this.apiKey
+            );
           } else if (fileType === "video" && hasUploadVideo) {
-            console.log(`[FAL Upload] ?? Routing to Electron video upload IPC...`);
-            result = await falApi.uploadVideo(uint8Array, file.name, this.apiKey);
+            console.log(
+              "[FAL Upload] ?? Routing to Electron video upload IPC..."
+            );
+            result = await falApi.uploadVideo(
+              uint8Array,
+              file.name,
+              this.apiKey
+            );
           } else if (hasUploadImage) {
             // Generic asset fallback to image uploader
             console.log(
               `[FAL Upload] ?? Using image upload IPC for ${fileType}...`
             );
-            result = await falApi.uploadImage(uint8Array, file.name, this.apiKey);
+            result = await falApi.uploadImage(
+              uint8Array,
+              file.name,
+              this.apiKey
+            );
           } else {
             throw new Error("No compatible IPC uploader found");
           }
@@ -400,7 +420,7 @@ class FalAIClient {
         } catch (error) {
           const normalizedError =
             error instanceof Error ? error : new Error(String(error));
-          console.error(`[FAL Upload] ? IPC upload failed:`, normalizedError);
+          console.error("[FAL Upload] ? IPC upload failed:", normalizedError);
           handleAIServiceError(
             normalizedError,
             `FAL ${fileType} upload (IPC)`,
@@ -1783,4 +1803,3 @@ export async function batchGenerate(
 
   return results;
 }
-

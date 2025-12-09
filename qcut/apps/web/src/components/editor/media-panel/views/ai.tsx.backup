@@ -69,80 +69,41 @@ import {
 } from "./text2video-models-config";
 import type { AIActiveTab } from "./ai-types";
 
-type ReveAspectRatioOption =
-  (typeof REVE_TEXT_TO_IMAGE_MODEL.aspectRatios)[number]["value"];
-type ReveOutputFormatOption =
-  (typeof REVE_TEXT_TO_IMAGE_MODEL.outputFormats)[number];
-type LTXV2FastDuration = (typeof LTXV2_FAST_CONFIG.DURATIONS)[number];
-type LTXV2FastResolution =
-  (typeof LTXV2_FAST_CONFIG.RESOLUTIONS.STANDARD)[number];
-type LTXV2FastFps = (typeof LTXV2_FAST_CONFIG.FPS_OPTIONS.STANDARD)[number];
-type SeedanceDuration = 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12;
-type SeedanceResolution = "480p" | "720p" | "1080p";
-type SeedanceAspectRatio =
-  | "21:9"
-  | "16:9"
-  | "4:3"
-  | "1:1"
-  | "3:4"
-  | "9:16"
-  | "auto";
-type KlingAspectRatio = "16:9" | "9:16" | "1:1" | "4:3" | "3:4";
-type Kling26AspectRatio = "16:9" | "9:16" | "1:1";
-type Wan25Resolution = "480p" | "720p" | "1080p";
-type Wan25Duration = 5 | 10;
-const SEEDANCE_DURATION_OPTIONS: SeedanceDuration[] = [
-  2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12,
-];
-const SEEDANCE_RESOLUTIONS: SeedanceResolution[] = ["480p", "720p", "1080p"];
-const SEEDANCE_ASPECT_RATIOS: SeedanceAspectRatio[] = [
-  "21:9",
-  "16:9",
-  "4:3",
-  "1:1",
-  "3:4",
-  "9:16",
-  "auto",
-];
-const KLING_ASPECT_RATIOS: KlingAspectRatio[] = [
-  "16:9",
-  "9:16",
-  "1:1",
-  "4:3",
-  "3:4",
-];
-const KLING26_ASPECT_RATIOS: Kling26AspectRatio[] = ["16:9", "9:16", "1:1"];
-const WAN25_DURATIONS: Wan25Duration[] = [5, 10];
-const WAN25_RESOLUTIONS: Wan25Resolution[] = ["480p", "720p", "1080p"];
+// Import extracted model options and types
+import {
+  type ReveAspectRatioOption,
+  type ReveOutputFormatOption,
+  type LTXV2FastDuration,
+  type LTXV2FastResolution,
+  type LTXV2FastFps,
+  type SeedanceDuration,
+  type SeedanceResolution,
+  type SeedanceAspectRatio,
+  type KlingAspectRatio,
+  type Kling26AspectRatio,
+  type Wan25Resolution,
+  type Wan25Duration,
+  SEEDANCE_DURATION_OPTIONS,
+  SEEDANCE_RESOLUTIONS,
+  SEEDANCE_ASPECT_RATIOS,
+  KLING_ASPECT_RATIOS,
+  KLING26_ASPECT_RATIOS,
+  WAN25_DURATIONS,
+  WAN25_RESOLUTIONS,
+  LTXV2_FAST_RESOLUTION_LABELS,
+  LTXV2_FAST_RESOLUTION_PRICE_SUFFIX,
+  LTXV2_FAST_FPS_LABELS,
+  REVE_NUM_IMAGE_OPTIONS,
+} from "./ai-model-options";
 
-const LTXV2_FAST_RESOLUTION_LABELS: Record<LTXV2FastResolution, string> = {
-  "1080p": "1080p (Full HD)",
-  "1440p": "1440p (QHD)",
-  "2160p": "2160p (4K)",
-};
-
-const LTXV2_FAST_RESOLUTION_PRICE_SUFFIX: Partial<
-  Record<LTXV2FastResolution, string>
-> = {
-  "1080p": " ($0.04/sec)",
-  "1440p": " ($0.08/sec)",
-  "2160p": " ($0.16/sec)",
-};
-
-const LTXV2_FAST_FPS_LABELS: Record<LTXV2FastFps, string> = {
-  25: "25 FPS (Standard)",
-  50: "50 FPS (High)",
-};
-
-const REVE_NUM_IMAGE_OPTIONS = Array.from(
-  {
-    length:
-      REVE_TEXT_TO_IMAGE_MODEL.numImagesRange.max -
-      REVE_TEXT_TO_IMAGE_MODEL.numImagesRange.min +
-      1,
-  },
-  (_, index) => REVE_TEXT_TO_IMAGE_MODEL.numImagesRange.min + index
-);
+// Import extracted cost calculators
+import {
+  calculateSeedanceCost,
+  calculateKlingCost,
+  calculateByteDanceUpscaleCost,
+  calculateFlashVSRUpscaleCost,
+  calculateTopazUpscaleCost,
+} from "./ai-cost-calculators";
 
 /**
  * Render the AI features panel including tabs for Text, Image, Avatar, and Upscale,
@@ -2539,7 +2500,10 @@ export function AiView() {
                   </div>
 
                   <div className="space-y-1">
-                    <Label htmlFor="kling26-negative-prompt" className="text-xs">
+                    <Label
+                      htmlFor="kling26-negative-prompt"
+                      className="text-xs"
+                    >
                       Negative Prompt (optional)
                     </Label>
                     <Textarea
@@ -2797,7 +2761,9 @@ export function AiView() {
                       label={`Ref ${index + 1}`}
                       helperText=""
                       fileType="image"
-                      acceptedTypes={UPLOAD_CONSTANTS.ALLOWED_AVATAR_IMAGE_TYPES}
+                      acceptedTypes={
+                        UPLOAD_CONSTANTS.ALLOWED_AVATAR_IMAGE_TYPES
+                      }
                       maxSizeBytes={UPLOAD_CONSTANTS.MAX_IMAGE_SIZE_BYTES}
                       maxSizeLabel={UPLOAD_CONSTANTS.MAX_IMAGE_SIZE_LABEL}
                       formatsLabel={UPLOAD_CONSTANTS.AVATAR_IMAGE_FORMATS_LABEL}
@@ -4108,139 +4074,4 @@ export function AiView() {
       />
     </div>
   );
-}
-
-/**
- * Calculate Seedance video generation cost using token-based pricing
- * Formula: tokens = (height × width × FPS × duration) / 1024
- * @param modelId - seedance_pro_fast_i2v or seedance_pro_i2v
- * @param resolution - 480p, 720p, or 1080p
- * @param duration - Duration in seconds
- * @returns Estimated cost in dollars
- */
-function calculateSeedanceCost(
-  modelId: string,
-  resolution: string,
-  duration: number
-): number {
-  // Resolution dimensions
-  const resolutionMap: Record<string, { width: number; height: number }> = {
-    "480p": { width: 854, height: 480 },
-    "720p": { width: 1280, height: 720 },
-    "1080p": { width: 1920, height: 1080 },
-  };
-
-  const dimensions = resolutionMap[resolution] ?? resolutionMap["1080p"];
-  const fps = 30; // Standard FPS for Seedance models
-
-  // Calculate video tokens
-  const tokens = (dimensions.height * dimensions.width * fps * duration) / 1024;
-
-  // Price per million tokens
-  const pricePerMillionTokens = modelId === "seedance_pro_fast_i2v" ? 1.0 : 2.5;
-
-  // Calculate total cost
-  const cost = (tokens * pricePerMillionTokens) / 1_000_000;
-
-  return cost;
-}
-
-/**
- * Calculate Kling v2.5 Turbo Pro I2V cost using fixed duration-based pricing
- * @param duration - Duration in seconds (5 or 10)
- * @returns Estimated cost in dollars
- */
-function calculateKlingCost(duration: number): number {
-  // Fixed pricing tiers
-  if (duration <= 5) {
-    return 0.35;
-  }
-  if (duration <= 10) {
-    return 0.7;
-  }
-  // Fallback: $0.07 per second beyond 10s (not officially supported but reasonable)
-  return 0.7 + (duration - 10) * 0.07;
-}
-
-/**
- * Estimate the dollar cost to upscale a video using ByteDance per-second rates.
- *
- * @param resolution - Resolution identifier (e.g., "1080p", "2k", "4k")
- * @param fps - Frame rate identifier (e.g., "30fps", "60fps")
- * @param durationSeconds - Duration of the video segment in seconds
- * @returns Dollar cost as a string formatted with three decimal places (e.g., "$0.123"). Unknown resolution/fps combinations default to the 1080p_30fps rate.
- */
-function calculateByteDanceUpscaleCost(
-  resolution: string,
-  fps: string,
-  durationSeconds: number
-): string {
-  const rateKey = `${resolution}_${fps}`.toLowerCase();
-  const rates: Record<string, number> = {
-    "1080p_30fps": 0.0072,
-    "2k_30fps": 0.0144,
-    "4k_30fps": 0.0288,
-    "1080p_60fps": 0.0144,
-    "2k_60fps": 0.0288,
-    "4k_60fps": 0.0576,
-  };
-
-  const rate = rates[rateKey] ?? rates["1080p_30fps"];
-  const totalCost = rate * durationSeconds;
-  return `$${totalCost.toFixed(3)}`;
-}
-
-/**
- * Estimate the cost to upscale a video using FlashVSR.
- *
- * Calculates cost from the output resolution (input width/height multiplied by `upscaleFactor`) across all frames and returns a dollar amount formatted with three decimal places.
- *
- * @param width - Input frame width in pixels
- * @param height - Input frame height in pixels
- * @param frames - Number of frames to process
- * @param upscaleFactor - Multiplier applied to width and height for the output resolution
- * @returns The estimated cost as a dollar string formatted to three decimal places (for example, "$0.123")
- */
-function calculateFlashVSRUpscaleCost(
-  width: number,
-  height: number,
-  frames: number,
-  upscaleFactor: number
-): string {
-  if (!width || !height || !frames) {
-    return "$0.000";
-  }
-
-  const outputWidth = width * upscaleFactor;
-  const outputHeight = height * upscaleFactor;
-  const megapixels = (outputWidth * outputHeight * frames) / 1_000_000;
-  const totalCost = megapixels * 0.0005;
-  return `$${totalCost.toFixed(3)}`;
-}
-
-/**
- * Compute the estimated Topaz upscaling cost for a requested upscale factor.
- *
- * @param factor - The requested upscale multiplier; if the exact factor is not supported, the nearest supported factor will be used.
- * @returns The estimated cost formatted as a dollar string (e.g., `$1.00`).
- */
-function calculateTopazUpscaleCost(factor: number): string {
-  const TOPAZ_COST_TABLE: Record<number, number> = {
-    2: 0.5,
-    3: 1.0,
-    4: 2.0,
-    6: 3.5,
-    8: 5.0,
-  };
-
-  const supportedFactors = Object.keys(TOPAZ_COST_TABLE).map(Number);
-  const closestFactor = supportedFactors.reduce(
-    (closest, current) =>
-      Math.abs(current - factor) < Math.abs(closest - factor)
-        ? current
-        : closest,
-    supportedFactors[0]
-  );
-
-  return `$${TOPAZ_COST_TABLE[closestFactor].toFixed(2)}`;
 }

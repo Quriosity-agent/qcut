@@ -42,7 +42,7 @@ import { FileUpload } from "@/components/ui/file-upload";
 import { ModelTypeSelector } from "./model-type-selector";
 import { UpscaleSettingsPanel } from "./upscale-settings";
 import { useUpscaleGeneration } from "./use-upscale-generation";
-import { UPLOAD_CONSTANTS } from "./ai-constants";
+import { UPLOAD_CONSTANTS } from "./ai/constants/ai-constants";
 
 // Debug flag - set to false to disable console logs
 const DEBUG_TEXT2IMAGE = process.env.NODE_ENV === "development" && false;

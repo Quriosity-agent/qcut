@@ -179,7 +179,10 @@ export function SegmentationCanvas() {
             try {
               const maskImg = await loadImage(maskSource);
               if (cancelled) return;
-              const tinted = tintMask(maskImg, OBJECT_COLORS[obj.colorIndex].hex);
+              const tinted = tintMask(
+                maskImg,
+                OBJECT_COLORS[obj.colorIndex].hex
+              );
               ctx.save();
               ctx.globalAlpha = maskOpacity;
               ctx.drawImage(tinted, 0, 0, displayWidth, displayHeight);

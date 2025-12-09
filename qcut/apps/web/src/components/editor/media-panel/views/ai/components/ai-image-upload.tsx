@@ -4,7 +4,7 @@
  */
 
 import { FileUpload } from "@/components/ui/file-upload";
-import { MODEL_HELPERS, UPLOAD_CONSTANTS } from "./ai-constants";
+import { MODEL_HELPERS, UPLOAD_CONSTANTS } from "../constants/ai-constants";
 
 export interface AIImageUploadSectionProps {
   /** Array of selected model IDs to determine upload mode */

@@ -43,19 +43,19 @@ import {
   STATUS_MESSAGES,
   ERROR_MESSAGES,
   REVE_EDIT_MODEL,
-} from "./ai-constants";
+} from "../constants/ai-constants";
 import {
   T2V_MODEL_CAPABILITIES,
   type T2VModelCapabilities,
   type T2VModelId,
-} from "./text2video-models-config";
+} from "../constants/text2video-models-config";
 import type {
   GeneratedVideo,
   GeneratedVideoResult,
   AIGenerationState,
   UseAIGenerationProps,
   ProgressCallback as AIProgressCallback,
-} from "./ai-types";
+} from "../types/ai-types";
 
 const VEO31_FRAME_MODELS = new Set([
   "veo31_fast_frame_to_video",
@@ -829,7 +829,9 @@ export function useAIGeneration(props: UseAIGenerationProps) {
           }
           // Reference-to-video model requires at least one reference image
           if (modelId === "kling_o1_ref2video") {
-            const hasReferenceImage = referenceImages?.some((img) => img !== null);
+            const hasReferenceImage = referenceImages?.some(
+              (img) => img !== null
+            );
             if (!hasReferenceImage) {
               validationError =
                 "Kling O1 Reference-to-Video requires at least one reference image";
@@ -1630,7 +1632,9 @@ export function useAIGeneration(props: UseAIGenerationProps) {
           if (modelId === "kling_o1_ref2video") {
             const firstRefImage = referenceImages?.find((img) => img !== null);
             if (firstRefImage) {
-              console.log(`  🎭 Calling generateAvatarVideo for ${modelId} with reference image...`);
+              console.log(
+                `  🎭 Calling generateAvatarVideo for ${modelId} with reference image...`
+              );
               response = await generateAvatarVideo({
                 model: modelId,
                 characterImage: firstRefImage,
@@ -1644,11 +1648,13 @@ export function useAIGeneration(props: UseAIGenerationProps) {
           ) {
             // V2V models require sourceVideo, not avatarImage
             if (sourceVideo) {
-              console.log(`  🎬 Calling generateKlingO1Video for ${modelId} with source video...`);
+              console.log(
+                `  🎬 Calling generateKlingO1Video for ${modelId} with source video...`
+              );
               response = await generateKlingO1Video({
                 model: modelId,
                 prompt: prompt.trim(),
-                sourceVideo: sourceVideo,
+                sourceVideo,
                 duration: 5, // Default duration
               });
               console.log("  ✅ generateKlingO1Video returned:", response);
@@ -1682,8 +1688,14 @@ export function useAIGeneration(props: UseAIGenerationProps) {
               }
 
               console.log("  ✅ Files uploaded to FAL storage");
-              console.log("    - Image URL:", characterImageUrl.substring(0, 50) + "...");
-              console.log("    - Audio URL:", audioUrl.substring(0, 50) + "...");
+              console.log(
+                "    - Image URL:",
+                characterImageUrl.substring(0, 50) + "..."
+              );
+              console.log(
+                "    - Audio URL:",
+                audioUrl.substring(0, 50) + "..."
+              );
 
               response = await generateAvatarVideo({
                 model: modelId,
