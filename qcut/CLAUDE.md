@@ -183,6 +183,7 @@ DATABASE_URL            # PostgreSQL connection
 BETTER_AUTH_SECRET      # Authentication
 UPSTASH_REDIS_REST_URL  # Redis for rate limiting
 MARBLE_WORKSPACE_KEY    # Blog CMS
+VITE_FAL_API_KEY        # FAL.ai API key for AI video generation
 ```
 
 ## Code Style
@@ -232,6 +233,19 @@ bun run test:watch
 - `apps/web/src/stores/timeline-store.ts` - Timeline state logic
 - `apps/web/src/lib/ffmpeg-utils.ts` - Video processing
 - `apps/web/src/components/editor/timeline/` - Timeline UI components
+
+### AI Video Generation (`apps/web/src/lib/ai-video/`)
+Modular architecture for AI video generation via FAL.ai (40+ models):
+- `index.ts` - Barrel file with backward-compatible exports
+- `core/fal-request.ts` - FAL API request utilities
+- `core/polling.ts` - Queue polling with progress updates
+- `core/streaming.ts` - Video streaming download
+- `generators/text-to-video.ts` - T2V generators (Sora 2, Veo, Kling, etc.)
+- `generators/image-to-video.ts` - I2V generators
+- `generators/avatar.ts` - Avatar/talking head generation
+- `generators/upscale.ts` - Video upscaling
+- `validation/validators.ts` - Input validation
+- `models/sora2.ts` - Sora 2 specific parameter conversion
 
 ### Electron Backend (100% TypeScript)
 - `electron/main.ts` - Main Electron process with all IPC handlers

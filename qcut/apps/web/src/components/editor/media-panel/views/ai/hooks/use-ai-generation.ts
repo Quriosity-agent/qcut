@@ -1801,7 +1801,7 @@ export function useAIGeneration(props: UseAIGenerationProps) {
               videoUrl: response.video_url,
               videoPath: undefined,
               fileSize: undefined,
-              duration: videoData?.video?.duration || undefined,
+              duration: videoData?.video?.duration,
               prompt: prompt.trim(),
               model: modelId,
             };

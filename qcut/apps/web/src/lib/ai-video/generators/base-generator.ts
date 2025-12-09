@@ -53,6 +53,26 @@ export async function fileToDataURL(file: File): Promise<string> {
 }
 
 /**
+ * Extracts video URL from various FAL API response formats.
+ *
+ * FAL API returns video URLs in different locations depending on the model:
+ * - result.video.url (most common)
+ * - result.video_url (some older models)
+ * - result.url (fallback)
+ *
+ * @param result - Raw API response object
+ * @returns Video URL if found, undefined otherwise
+ */
+function extractVideoUrl(result: Record<string, unknown>): string | undefined {
+  const video = result.video as Record<string, unknown> | undefined;
+  return (
+    (video?.url as string | undefined) ??
+    (result.video_url as string | undefined) ??
+    (result.url as string | undefined)
+  );
+}
+
+/**
  * Builds a standard video generation response.
  *
  * @param jobId - Unique job identifier
@@ -67,17 +87,12 @@ export function buildVideoResponse(
   result: Record<string, unknown>,
   elapsedTime?: number
 ): VideoGenerationResponse {
-  const video = result.video as Record<string, unknown> | undefined;
-  const videoUrl =
-    (video?.url as string | undefined) ??
-    (result.video_url as string | undefined) ??
-    (result.url as string | undefined);
   return {
     job_id: jobId,
     status: "completed",
     message: `Video generated successfully with ${modelId}`,
     estimated_time: elapsedTime ?? 0,
-    video_url: videoUrl,
+    video_url: extractVideoUrl(result),
     video_data: result,
   };
 }
@@ -115,18 +130,12 @@ export function createSimpleResponse(
   modelId: string,
   result: Record<string, unknown>
 ): VideoGenerationResponse {
-  const jobId = generateJobId();
-  const video = result.video as Record<string, unknown> | undefined;
-  const videoUrl =
-    (video?.url as string | undefined) ??
-    (result.video_url as string | undefined) ??
-    (result.url as string | undefined);
   return {
-    job_id: jobId,
+    job_id: generateJobId(),
     status: "completed",
     message: `Video generated successfully with ${modelId}`,
     estimated_time: 0,
-    video_url: videoUrl,
+    video_url: extractVideoUrl(result),
     video_data: result,
   };
 }

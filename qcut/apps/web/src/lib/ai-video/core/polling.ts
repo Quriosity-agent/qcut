@@ -55,6 +55,18 @@ export interface PollOptions {
 }
 
 /**
+ * Custom error class for terminal polling failures that should not be retried.
+ * Used to distinguish between transient errors (network issues) and terminal failures
+ * (job failed, result fetch failed after completion).
+ */
+class TerminalPollingError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "TerminalPollingError";
+  }
+}
+
+/**
  * Polls FAL queue until job completes or fails.
  *
  * @param requestId - FAL request ID from queue submission
@@ -139,7 +151,16 @@ export async function pollQueueStatus(
               elapsedTime,
             });
           }
-          throw new Error(errorMessage);
+          // Terminal failure: job completed but we can't fetch the result
+          // Don't retry - the job state won't change
+          const error = new TerminalPollingError(errorMessage);
+          handleAIServiceError(error, "Poll FAL AI queue status", {
+            attempts,
+            requestId,
+            elapsedTime,
+            operation: "resultFetch",
+          });
+          throw error;
         }
 
         const result = await resultResponse.json();
@@ -170,7 +191,7 @@ export async function pollQueueStatus(
         };
       }
 
-      // Check if failed
+      // Check if failed - this is a terminal condition, no retry needed
       if (status.status === "FAILED") {
         const errorMessage = status.error || "Video generation failed";
         if (onProgress) {
@@ -181,12 +202,26 @@ export async function pollQueueStatus(
             elapsedTime,
           });
         }
-        throw new Error(errorMessage);
+        // Terminal failure: FAL AI job itself failed, retrying won't help
+        const error = new TerminalPollingError(errorMessage);
+        handleAIServiceError(error, "Poll FAL AI queue status", {
+          attempts,
+          requestId,
+          elapsedTime,
+          operation: "jobFailed",
+        });
+        throw error;
       }
 
       // Continue polling for IN_PROGRESS or IN_QUEUE
       await sleep(pollIntervalMs);
     } catch (error) {
+      // Terminal errors should not be retried - re-throw immediately
+      if (error instanceof TerminalPollingError) {
+        throw error;
+      }
+
+      const elapsedTime = Math.floor((Date.now() - startTime) / 1000);
       handleAIServiceError(error, "Poll FAL AI queue status", {
         attempts,
         requestId,
@@ -207,7 +242,7 @@ export async function pollQueueStatus(
         throw new Error(errorMessage);
       }
 
-      // Wait before retry
+      // Wait before retry (only for transient errors like network issues)
       await sleep(pollIntervalMs);
     }
   }
