@@ -243,7 +243,10 @@ export function AIUpscaleTab({
                   )
                 }
               >
-                <SelectTrigger id="bytedance-resolution" className="h-8 text-xs">
+                <SelectTrigger
+                  id="bytedance-resolution"
+                  className="h-8 text-xs"
+                >
                   <SelectValue placeholder="Select resolution" />
                 </SelectTrigger>
                 <SelectContent>
@@ -289,7 +292,9 @@ export function AIUpscaleTab({
       {flashvsrUpscalerSelected && (
         <Card className="space-y-4 border p-4">
           <div>
-            <h4 className="text-sm font-semibold">FlashVSR Upscaler Settings</h4>
+            <h4 className="text-sm font-semibold">
+              FlashVSR Upscaler Settings
+            </h4>
             <p className="text-xs text-muted-foreground">
               Fastest video upscaling with fine-grained quality control.
             </p>
@@ -472,7 +477,9 @@ export function AIUpscaleTab({
       {topazUpscalerSelected && (
         <Card className="space-y-4 border p-4">
           <div>
-            <h4 className="text-sm font-semibold">Topaz Video Upscale Settings</h4>
+            <h4 className="text-sm font-semibold">
+              Topaz Video Upscale Settings
+            </h4>
             <p className="text-xs text-muted-foreground">
               Professional-grade upscaling up to 8x.
             </p>

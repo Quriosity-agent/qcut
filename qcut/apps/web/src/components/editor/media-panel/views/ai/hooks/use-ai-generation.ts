@@ -303,9 +303,33 @@ export function useAIGeneration(props: UseAIGenerationProps) {
 
   useEffect(() => {
     if (onProgress) {
-      onProgress(generationProgress, statusMessage);
+      // Derive status from generation state
+      let status: "queued" | "processing" | "completed" | "failed" =
+        "processing";
+      if (generationProgress === 100) {
+        status = "completed";
+      } else if (generationProgress === 0 && !isGenerating) {
+        status =
+          statusMessage.toLowerCase().includes("error") ||
+          statusMessage.toLowerCase().includes("failed")
+            ? "failed"
+            : "queued";
+      }
+
+      onProgress({
+        status,
+        progress: generationProgress,
+        message: statusMessage,
+        elapsedTime,
+      });
     }
-  }, [generationProgress, statusMessage, onProgress]);
+  }, [
+    generationProgress,
+    statusMessage,
+    elapsedTime,
+    isGenerating,
+    onProgress,
+  ]);
 
   // Helper function to download video to memory
   const downloadVideoToMemory = useCallback(
@@ -413,7 +437,10 @@ export function useAIGeneration(props: UseAIGenerationProps) {
               setStatusMessage(
                 `${STATUS_MESSAGES.PROCESSING} ${status.progress || 0}%`
               );
-            } else if (status.status === "completed" && status.video_url) {
+            } else if (
+              status.status === "completed" &&
+              (status.videoUrl ?? status.video_url)
+            ) {
               // Clear polling (avoid stale closure)
               setPollingInterval((current) => {
                 if (current) clearInterval(current);
@@ -425,7 +452,7 @@ export function useAIGeneration(props: UseAIGenerationProps) {
 
               const newVideo: GeneratedVideo = {
                 jobId,
-                videoUrl: status.video_url,
+                videoUrl: status.videoUrl ?? status.video_url ?? "",
                 videoPath: undefined,
                 fileSize: undefined,
                 duration: undefined,
@@ -1766,12 +1793,15 @@ export function useAIGeneration(props: UseAIGenerationProps) {
               videoUrl: response.video_url,
             });
 
+            const videoData = response.video_data as
+              | { video?: { duration?: number } }
+              | undefined;
             const newVideo: GeneratedVideo = {
               jobId: response.job_id,
               videoUrl: response.video_url,
               videoPath: undefined,
               fileSize: undefined,
-              duration: response.video_data?.video?.duration || undefined,
+              duration: videoData?.video?.duration || undefined,
               prompt: prompt.trim(),
               model: modelId,
             };

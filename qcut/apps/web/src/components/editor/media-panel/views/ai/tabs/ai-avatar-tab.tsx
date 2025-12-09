@@ -278,7 +278,9 @@ export function AIAvatarTab({
               Audio duration: {audioDuration.toFixed(1)}s · Estimated cost: $
               {calculateKlingAvatarV2Cost(
                 audioDuration,
-                selectedModels.includes("kling_avatar_v2_pro") ? "pro" : "standard"
+                selectedModels.includes("kling_avatar_v2_pro")
+                  ? "pro"
+                  : "standard"
               ).toFixed(2)}
             </div>
           )}

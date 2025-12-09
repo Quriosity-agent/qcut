@@ -531,9 +531,7 @@ export function AIImageTab({
             <Select
               value={ltxv2I2VResolution}
               onValueChange={(value) =>
-                onLTXV2I2VResolutionChange(
-                  value as "1080p" | "1440p" | "2160p"
-                )
+                onLTXV2I2VResolutionChange(value as "1080p" | "1440p" | "2160p")
               }
             >
               <SelectTrigger id="ltxv2-i2v-resolution" className="h-8 text-xs">
@@ -547,7 +545,11 @@ export function AIImageTab({
             </Select>
             <div className="text-xs text-muted-foreground">
               Estimated cost: $
-              {calculateLTXV2Cost(ltxv2I2VResolution, ltxv2I2VDuration, "pro").toFixed(2)}
+              {calculateLTXV2Cost(
+                ltxv2I2VResolution,
+                ltxv2I2VDuration,
+                "pro"
+              ).toFixed(2)}
             </div>
           </div>
 

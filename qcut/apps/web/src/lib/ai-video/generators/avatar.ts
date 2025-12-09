@@ -1,0 +1,228 @@
+/**
+ * Avatar Video Generators
+ *
+ * Functions for generating avatar/talking-head videos.
+ */
+
+import { handleAIServiceError } from "@/lib/error-handler";
+import type {
+  AvatarVideoRequest,
+  VideoGenerationResponse,
+} from "@/components/editor/media-panel/views/ai/types/ai-types";
+import { ERROR_MESSAGES } from "@/components/editor/media-panel/views/ai/constants/ai-constants";
+import {
+  getFalApiKey,
+  generateJobId,
+  makeFalRequest,
+  handleFalResponse,
+} from "../core/fal-request";
+import {
+  getModelConfig,
+  fileToDataURL,
+  withErrorHandling,
+} from "./base-generator";
+import { validateKlingAvatarV2Audio } from "../validation/validators";
+
+/**
+ * Generate an avatar video from a character image using a specified avatar model.
+ *
+ * Builds and sends a model-specific payload (image plus audio or source video) to the configured FAL endpoint.
+ *
+ * @param request - Request object containing model id, character image File and model-specific inputs
+ * @returns VideoGenerationResponse containing job_id, status, message, and the generated video URL
+ * @throws Error if FAL API key missing, model unknown, or required inputs missing
+ */
+export async function generateAvatarVideo(
+  request: AvatarVideoRequest
+): Promise<VideoGenerationResponse> {
+  return withErrorHandling(
+    "Generate avatar video",
+    { operation: "generateAvatarVideo", model: request.model },
+    async () => {
+      const falApiKey = getFalApiKey();
+      if (!falApiKey) {
+        throw new Error("FAL API key not configured");
+      }
+
+      console.log("Starting avatar video generation with FAL AI");
+      console.log("Model:", request.model);
+
+      const modelConfig = getModelConfig(request.model);
+      if (!modelConfig) {
+        throw new Error(`Unknown avatar model: ${request.model}`);
+      }
+
+      if (modelConfig.category !== "avatar") {
+        throw new Error(`Model ${request.model} is not an avatar model`);
+      }
+
+      // Convert character image to base64
+      const characterImageUrl = await fileToDataURL(request.characterImage);
+
+      // Determine endpoint and payload based on model
+      let endpoint: string;
+      let payload: Record<string, unknown>;
+
+      if (request.model === "wan_animate_replace") {
+        if (!request.sourceVideo) {
+          throw new Error("WAN Animate/Replace requires a source video");
+        }
+        const sourceVideoUrl = await fileToDataURL(request.sourceVideo);
+        endpoint = modelConfig.endpoints.text_to_video || "";
+        if (!endpoint) {
+          throw new Error(
+            `Model ${request.model} does not have a valid endpoint`
+          );
+        }
+        payload = {
+          ...(modelConfig.default_params || {}),
+          video_url: sourceVideoUrl,
+          image_url: characterImageUrl,
+          ...(request.resolution && { resolution: request.resolution }),
+        };
+      } else if (
+        request.model === "kling_avatar_pro" ||
+        request.model === "kling_avatar_standard"
+      ) {
+        if (!request.audioFile) {
+          throw new Error(`${request.model} requires an audio file`);
+        }
+        const audioUrl = await fileToDataURL(request.audioFile);
+        endpoint = modelConfig.endpoints.text_to_video || "";
+        if (!endpoint) {
+          throw new Error(
+            `Model ${request.model} does not have a valid endpoint`
+          );
+        }
+        payload = {
+          ...(modelConfig.default_params || {}),
+          image_url: characterImageUrl,
+          audio_url: audioUrl,
+          ...(request.prompt && { prompt: request.prompt }),
+          ...(request.resolution && { resolution: request.resolution }),
+        };
+      } else if (
+        request.model === "kling_avatar_v2_standard" ||
+        request.model === "kling_avatar_v2_pro"
+      ) {
+        if (!request.audioFile && !request.audioUrl) {
+          throw new Error(ERROR_MESSAGES.KLING_AVATAR_V2_MISSING_AUDIO);
+        }
+
+        if (request.audioFile) {
+          validateKlingAvatarV2Audio(request.audioFile, request.audioDuration);
+        }
+
+        if (!request.characterImageUrl) {
+          throw new Error(
+            "Kling Avatar v2 requires pre-uploaded image URL (use FAL storage)"
+          );
+        }
+        if (!request.audioUrl) {
+          throw new Error(
+            "Kling Avatar v2 requires pre-uploaded audio URL (use FAL storage)"
+          );
+        }
+
+        endpoint = modelConfig.endpoints.text_to_video || "";
+        if (!endpoint) {
+          throw new Error(
+            `Model ${request.model} does not have a valid endpoint`
+          );
+        }
+        payload = {
+          ...(modelConfig.default_params || {}),
+          image_url: request.characterImageUrl,
+          audio_url: request.audioUrl,
+          ...(request.prompt && { prompt: request.prompt }),
+        };
+      } else if (request.model === "bytedance_omnihuman_v1_5") {
+        if (!request.audioFile) {
+          throw new Error("ByteDance OmniHuman v1.5 requires an audio file");
+        }
+        const audioUrl = await fileToDataURL(request.audioFile);
+        endpoint = modelConfig.endpoints.text_to_video || "";
+        if (!endpoint) {
+          throw new Error(
+            `Model ${request.model} does not have a valid endpoint`
+          );
+        }
+        payload = {
+          ...(modelConfig.default_params || {}),
+          image_url: characterImageUrl,
+          audio_url: audioUrl,
+          ...(request.resolution && { resolution: request.resolution }),
+        };
+      } else if (request.model === "kling_o1_ref2video") {
+        endpoint = modelConfig.endpoints.image_to_video || "";
+        if (!endpoint) {
+          throw new Error(
+            `Model ${request.model} does not have a valid endpoint`
+          );
+        }
+
+        const imageUrl = await fileToDataURL(request.characterImage);
+
+        let enhancedPrompt = request.prompt || "";
+        if (!enhancedPrompt.includes("@Image")) {
+          enhancedPrompt =
+            `Use @Image1 as the reference. ${enhancedPrompt}`.trim();
+        }
+
+        payload = {
+          prompt: enhancedPrompt,
+          image_urls: [imageUrl],
+          duration: String(
+            request.duration || modelConfig.default_params?.duration || 5
+          ),
+          aspect_ratio: modelConfig.default_params?.aspect_ratio || "16:9",
+          ...(modelConfig.default_params?.cfg_scale && {
+            cfg_scale: modelConfig.default_params.cfg_scale,
+          }),
+          ...(modelConfig.default_params?.negative_prompt && {
+            negative_prompt: modelConfig.default_params.negative_prompt,
+          }),
+        };
+      } else {
+        throw new Error(`Unsupported avatar model: ${request.model}`);
+      }
+
+      const jobId = generateJobId();
+
+      // Add timeout (6 minutes for avatar video generation)
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 360_000);
+
+      try {
+        const response = await makeFalRequest(endpoint, payload, {
+          signal: controller.signal,
+        });
+
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+          await handleFalResponse(response, "Generate avatar video");
+        }
+
+        const result = await response.json();
+
+        return {
+          job_id: jobId,
+          status: "completed",
+          message: `Avatar video generated successfully with ${request.model}`,
+          estimated_time: 0,
+          video_url: result.video?.url || result.video || result.url,
+          video_data: result,
+        };
+      } catch (error) {
+        clearTimeout(timeoutId);
+        if (error instanceof Error && error.name === "AbortError") {
+          throw new Error(
+            "Avatar video generation timed out (6 minutes). Please try again."
+          );
+        }
+        throw error;
+      }
+    }
+  );
+}

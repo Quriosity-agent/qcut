@@ -158,7 +158,7 @@ export interface UseAIGenerationProps {
   selectedImage: File | null;
   activeTab: "text" | "image" | "avatar" | "upscale";
   activeProject: TProject | null;
-  onProgress: (progress: number, message: string) => void;
+  onProgress: (status: ProgressUpdate) => void;
   onError: (error: string) => void;
   onComplete: (videos: GeneratedVideoResult[]) => void;
   // ⚠️ CRITICAL ADDITIONS: Include missing dependencies from validation
@@ -331,8 +331,24 @@ export interface AvatarUploadState {
   sourceVideoPreview: string | null;
 }
 
-// Progress callback type from original source
-export type ProgressCallback = (progress: number, message: string) => void;
+/**
+ * Progress update passed to ProgressCallback during video generation.
+ * Contains status, progress percentage, message, and timing information.
+ */
+export interface ProgressUpdate {
+  status: "queued" | "processing" | "completed" | "failed";
+  progress?: number;
+  message?: string;
+  elapsedTime?: number;
+  estimatedTime?: number;
+  logs?: string[];
+}
+
+/**
+ * Callback for receiving progress updates during video generation.
+ * Called periodically (every ~2s) during polling with the current status.
+ */
+export type ProgressCallback = (status: ProgressUpdate) => void;
 
 // Image handling types
 export interface ImageUploadState {
@@ -349,6 +365,8 @@ export interface GenerationStatus {
   completed?: boolean;
   error?: string;
   videoUrl?: string;
+  /** @deprecated Use videoUrl instead. Kept for backward compatibility. */
+  video_url?: string;
 }
 
 // API Configuration types
@@ -407,6 +425,297 @@ export interface Seeddream45EditParams {
   sync_mode?: boolean;
   enable_safety_checker?: boolean;
 }
+
+// ============================================
+// Video Generation Request/Response Types
+// (Moved from ai-video-client.ts for centralization)
+// ============================================
+
+/**
+ * Request parameters for text-to-video generation
+ */
+export interface VideoGenerationRequest {
+  prompt: string;
+  model: string;
+  resolution?: string;
+  duration?: number;
+  aspect_ratio?: string;
+}
+
+/**
+ * Request parameters for image-to-video generation
+ */
+export interface ImageToVideoRequest {
+  image: File;
+  model: string;
+  prompt?: string;
+  resolution?: string;
+  duration?: number;
+  aspect_ratio?: string;
+}
+
+/**
+ * Request parameters for Hailuo text-to-video models
+ */
+export interface TextToVideoRequest {
+  model: string;
+  prompt: string;
+  duration?: 6 | 10;
+  prompt_optimizer?: boolean;
+  resolution?: string;
+}
+
+/**
+ * Request parameters for Vidu Q2 Turbo image-to-video
+ */
+export interface ViduQ2I2VRequest {
+  model: string;
+  prompt: string;
+  image_url: string;
+  duration?: 2 | 3 | 4 | 5 | 6 | 7 | 8;
+  resolution?: "720p" | "1080p";
+  movement_amplitude?: "auto" | "small" | "medium" | "large";
+  bgm?: boolean;
+  seed?: number;
+}
+
+/**
+ * Request parameters for LTX Video 2.0 text-to-video
+ */
+export interface LTXV2T2VRequest {
+  model: string;
+  prompt: string;
+  duration?: 6 | 8 | 10 | 12 | 14 | 16 | 18 | 20;
+  resolution?: "1080p" | "1440p" | "2160p";
+  aspect_ratio?: "16:9";
+  fps?: 25 | 50;
+  generate_audio?: boolean;
+}
+
+/**
+ * Request parameters for LTX Video 2.0 image-to-video
+ */
+export interface LTXV2I2VRequest {
+  model: string;
+  prompt: string;
+  image_url: string;
+  duration?: 2 | 3 | 4 | 5 | 6 | 8 | 10 | 12 | 14 | 16 | 18 | 20;
+  resolution?: "1080p" | "1440p" | "2160p";
+  aspect_ratio?: "16:9";
+  fps?: 25 | 50;
+  generate_audio?: boolean;
+}
+
+/**
+ * Request parameters for avatar video generation
+ */
+export interface AvatarVideoRequest {
+  model: string;
+  characterImage: File;
+  audioFile?: File;
+  sourceVideo?: File;
+  prompt?: string;
+  resolution?: string;
+  duration?: number;
+  audioDuration?: number;
+  characterImageUrl?: string;
+  audioUrl?: string;
+}
+
+/**
+ * Response from video generation APIs
+ */
+export interface VideoGenerationResponse {
+  job_id: string;
+  status: string;
+  message: string;
+  estimated_time?: number;
+  video_url?: string;
+  video_data?: unknown;
+}
+
+/**
+ * Response for model listing
+ */
+export interface ModelsResponse {
+  models: AIModel[];
+}
+
+/**
+ * Cost estimation response
+ */
+export interface CostEstimate {
+  model: string;
+  duration: number;
+  base_cost: number;
+  estimated_cost: number;
+  currency: string;
+}
+
+/**
+ * Seedance image-to-video request parameters
+ */
+export interface SeedanceI2VRequest {
+  model: string;
+  prompt: string;
+  image_url: string;
+  duration?: 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12;
+  resolution?: "480p" | "720p" | "1080p";
+  aspect_ratio?: "21:9" | "16:9" | "4:3" | "1:1" | "3:4" | "9:16" | "auto";
+  camera_fixed?: boolean;
+  seed?: number;
+  enable_safety_checker?: boolean;
+  end_image_url?: string;
+}
+
+/**
+ * Kling v2.5 Turbo Pro image-to-video request parameters
+ */
+export interface KlingI2VRequest {
+  model: string;
+  prompt: string;
+  image_url: string;
+  duration?: 5 | 10;
+  cfg_scale?: number;
+  aspect_ratio?: "16:9" | "9:16" | "1:1" | "4:3" | "3:4";
+  enhance_prompt?: boolean;
+  negative_prompt?: string;
+}
+
+/**
+ * Kling v2.6 Pro image-to-video request parameters
+ */
+export interface Kling26I2VRequest {
+  model: string;
+  prompt: string;
+  image_url: string;
+  duration?: 5 | 10;
+  generate_audio?: boolean;
+  negative_prompt?: string;
+}
+
+/**
+ * Kling O1 video-to-video request parameters
+ */
+export interface KlingO1V2VRequest {
+  model: string;
+  prompt: string;
+  sourceVideo: File;
+  duration?: 5 | 10;
+  aspect_ratio?: "auto" | "16:9" | "9:16" | "1:1";
+  keep_audio?: boolean;
+}
+
+/**
+ * Kling O1 reference-to-video request parameters
+ */
+export interface KlingO1Ref2VideoRequest {
+  model: string;
+  prompt: string;
+  image_urls: string[];
+  duration?: 5 | 10;
+  aspect_ratio?: "16:9" | "9:16" | "1:1";
+  cfg_scale?: number;
+  negative_prompt?: string;
+}
+
+/**
+ * WAN 2.5 Preview image-to-video request parameters
+ */
+export interface WAN25I2VRequest {
+  model: string;
+  prompt: string;
+  image_url: string;
+  duration?: 5 | 10;
+  resolution?: "480p" | "720p" | "1080p";
+  audio_url?: string;
+  negative_prompt?: string;
+  enable_prompt_expansion?: boolean;
+  seed?: number;
+}
+
+/**
+ * ByteDance video upscaler request parameters
+ */
+export interface ByteDanceUpscaleRequest {
+  video_url: string;
+  target_resolution?: "1080p" | "2k" | "4k";
+  target_fps?: "30fps" | "60fps";
+}
+
+/**
+ * FlashVSR video upscaler request parameters
+ */
+export interface FlashVSRUpscaleRequest {
+  video_url: string;
+  upscale_factor?: number;
+  acceleration?: "regular" | "high" | "full";
+  quality?: number;
+  color_fix?: boolean;
+  preserve_audio?: boolean;
+  output_format?: "X264" | "VP9" | "PRORES4444" | "GIF";
+  output_quality?: "low" | "medium" | "high" | "maximum";
+  output_write_mode?: "fast" | "balanced" | "small";
+  seed?: number;
+}
+
+/**
+ * Topaz video upscaler request parameters
+ */
+export interface TopazUpscaleRequest {
+  video_url: string;
+  upscale_factor?: number;
+  target_fps?: "original" | "interpolated";
+  h264_output?: boolean;
+}
+
+// ============================================
+// Sora 2 Types
+// ============================================
+
+/**
+ * Sora 2 model type variants
+ */
+export type Sora2ModelType =
+  | "text-to-video"
+  | "text-to-video-pro"
+  | "image-to-video"
+  | "image-to-video-pro"
+  | "video-to-video-remix";
+
+/**
+ * Base payload type for all Sora 2 models
+ */
+export type Sora2BasePayload = {
+  prompt: string;
+  duration: number;
+  aspect_ratio: string;
+};
+
+/**
+ * Discriminated union for Sora 2 payloads
+ * Uses intersection with Sora2BasePayload to reduce duplication
+ */
+export type Sora2Payload =
+  | (Sora2BasePayload & {
+      type: "text-to-video";
+      resolution: "720p";
+    })
+  | (Sora2BasePayload & {
+      type: "text-to-video-pro";
+      resolution: string;
+    })
+  | (Sora2BasePayload & {
+      type: "image-to-video";
+      resolution: string;
+      image_url: string;
+    })
+  | (Sora2BasePayload & {
+      type: "image-to-video-pro";
+      resolution: string;
+      image_url: string;
+    })
+  | { type: "video-to-video-remix"; prompt: string; video_id: string };
 
 // Export all as named exports for easy importing
 export type {
