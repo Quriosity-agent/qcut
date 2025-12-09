@@ -68,15 +68,16 @@ export function buildVideoResponse(
   elapsedTime?: number
 ): VideoGenerationResponse {
   const video = result.video as Record<string, unknown> | undefined;
+  const videoUrl =
+    (video?.url as string | undefined) ??
+    (result.video_url as string | undefined) ??
+    (result.url as string | undefined);
   return {
     job_id: jobId,
     status: "completed",
     message: `Video generated successfully with ${modelId}`,
     estimated_time: elapsedTime ?? 0,
-    video_url:
-      (video?.url as string) ??
-      (result.video_url as string) ??
-      (result.url as string),
+    video_url: videoUrl,
     video_data: result,
   };
 }
@@ -116,15 +117,16 @@ export function createSimpleResponse(
 ): VideoGenerationResponse {
   const jobId = generateJobId();
   const video = result.video as Record<string, unknown> | undefined;
+  const videoUrl =
+    (video?.url as string | undefined) ??
+    (result.video_url as string | undefined) ??
+    (result.url as string | undefined);
   return {
     job_id: jobId,
     status: "completed",
     message: `Video generated successfully with ${modelId}`,
     estimated_time: 0,
-    video_url:
-      (video?.url as string) ??
-      (result.video_url as string) ??
-      (result.url as string),
+    video_url: videoUrl,
     video_data: result,
   };
 }
