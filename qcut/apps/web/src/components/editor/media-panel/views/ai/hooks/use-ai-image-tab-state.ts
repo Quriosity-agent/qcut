@@ -381,7 +381,7 @@ export function useImageTabState({
       setWan25NegativePrompt("");
       setWan25EnablePromptExpansion(true);
     }
-  }, [wan25Selected, wan25AudioState]);
+  }, [wan25Selected, wan25AudioState.reset]);
 
   // Reset all frames
   const resetAllFrames = useCallback(() => {

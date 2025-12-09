@@ -240,6 +240,7 @@ export function useMultipleFilesWithPreview(
 export function useAudioFileWithDuration() {
   const fileState = useFileWithPreview();
   const [duration, setDuration] = useState<number | null>(null);
+  const { reset: fileReset } = fileState;
 
   useEffect(() => {
     if (fileState.file) {
@@ -265,9 +266,9 @@ export function useAudioFileWithDuration() {
   }, [fileState.file]);
 
   const reset = useCallback(() => {
-    fileState.reset();
+    fileReset();
     setDuration(null);
-  }, [fileState]);
+  }, [fileReset]);
 
   return {
     file: fileState.file,
