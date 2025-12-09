@@ -22,12 +22,12 @@ import { Button } from "@/components/ui/button";
 
 import {
   REVE_TEXT_TO_IMAGE_MODEL,
-} from "./ai-constants";
+} from "../constants/ai-constants";
 import {
   type ReveAspectRatioOption,
   type ReveOutputFormatOption,
   REVE_NUM_IMAGE_OPTIONS,
-} from "./ai-model-options";
+} from "../constants/ai-model-options";
 
 // ============================================
 // Types

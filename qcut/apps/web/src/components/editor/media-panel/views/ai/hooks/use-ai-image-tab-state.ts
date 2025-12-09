@@ -14,7 +14,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useFileWithPreview } from "./use-ai-tab-state-base";
-import { LTXV2_FAST_CONFIG } from "./ai-constants";
+import { LTXV2_FAST_CONFIG } from "../constants/ai-constants";
 import type {
   LTXV2FastDuration,
   LTXV2FastResolution,
@@ -26,7 +26,7 @@ import type {
   Kling26AspectRatio,
   Wan25Resolution,
   Wan25Duration,
-} from "./ai-model-options";
+} from "../constants/ai-model-options";
 
 // ============================================
 // Types

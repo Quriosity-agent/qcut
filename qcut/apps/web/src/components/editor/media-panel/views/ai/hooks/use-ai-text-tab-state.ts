@@ -10,12 +10,12 @@
  */
 
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { LTXV2_FAST_CONFIG } from "./ai-constants";
+import { LTXV2_FAST_CONFIG } from "../constants/ai-constants";
 import type {
   LTXV2FastDuration,
   LTXV2FastResolution,
   LTXV2FastFps,
-} from "./ai-model-options";
+} from "../constants/ai-model-options";
 
 // ============================================
 // Types

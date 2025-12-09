@@ -29,7 +29,7 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 
-import { LTXV2_FAST_CONFIG } from "./ai-constants";
+import { LTXV2_FAST_CONFIG } from "../constants/ai-constants";
 import {
   LTXV2_FAST_RESOLUTION_LABELS,
   LTXV2_FAST_RESOLUTION_PRICE_SUFFIX,
@@ -37,8 +37,8 @@ import {
   type LTXV2FastDuration,
   type LTXV2FastResolution,
   type LTXV2FastFps,
-} from "./ai-model-options";
-import type { T2VModelCapabilities } from "./text2video-models-config";
+} from "../constants/ai-model-options";
+import type { T2VModelCapabilities } from "../constants/text2video-models-config";
 
 // ============================================
 // Types

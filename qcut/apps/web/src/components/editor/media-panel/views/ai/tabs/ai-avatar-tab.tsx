@@ -16,7 +16,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { FileUpload } from "@/components/ui/file-upload";
 
-import { UPLOAD_CONSTANTS } from "./ai-constants";
+import { UPLOAD_CONSTANTS } from "../constants/ai-constants";
 
 // ============================================
 // Types

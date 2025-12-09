@@ -27,52 +27,52 @@ import { Textarea } from "@/components/ui/textarea";
 
 import { useProjectStore } from "@/stores/project-store";
 import { usePanelStore } from "@/stores/panel-store";
-import { useMediaPanelStore } from "../store";
-import { AIHistoryPanel } from "./ai-history-panel";
+import { useMediaPanelStore } from "../../store";
+import { AIHistoryPanel } from "./components/ai-history-panel";
 import { debugLogger } from "@/lib/debug-logger";
 
 // Import extracted hooks
-import { useAIGeneration } from "./use-ai-generation";
-import { useAIHistory } from "./use-ai-history";
-import { useTextTabState, T2V_DEFAULTS } from "./use-ai-text-tab-state";
-import { useImageTabState } from "./use-ai-image-tab-state";
-import { useAvatarTabState } from "./use-ai-avatar-tab-state";
-import { useUpscaleTabState } from "./use-ai-upscale-tab-state";
+import { useAIGeneration } from "./hooks/use-ai-generation";
+import { useAIHistory } from "./hooks/use-ai-history";
+import { useTextTabState, T2V_DEFAULTS } from "./hooks/use-ai-text-tab-state";
+import { useImageTabState } from "./hooks/use-ai-image-tab-state";
+import { useAvatarTabState } from "./hooks/use-ai-avatar-tab-state";
+import { useUpscaleTabState } from "./hooks/use-ai-upscale-tab-state";
 
 // Import extracted UI components
-import { AITextTab } from "./ai-text-tab";
-import { AIImageTab } from "./ai-image-tab";
-import { AIAvatarTab } from "./ai-avatar-tab";
-import { AIUpscaleTab } from "./ai-upscale-tab";
-import { AISora2Settings } from "./ai-sora-settings";
-import { AIVeo31Settings } from "./ai-veo-settings";
-import { AIReveTextToImageSettings, AIReveEditSettings } from "./ai-reve-settings";
+import { AITextTab } from "./tabs/ai-text-tab";
+import { AIImageTab } from "./tabs/ai-image-tab";
+import { AIAvatarTab } from "./tabs/ai-avatar-tab";
+import { AIUpscaleTab } from "./tabs/ai-upscale-tab";
+import { AISora2Settings } from "./settings/ai-sora-settings";
+import { AIVeo31Settings } from "./settings/ai-veo-settings";
+import { AIReveTextToImageSettings, AIReveEditSettings } from "./settings/ai-reve-settings";
 
 // Import constants and types
 import {
   AI_MODELS,
   LTXV2_FAST_CONFIG,
   REVE_TEXT_TO_IMAGE_MODEL,
-} from "./ai-constants";
+} from "./constants/ai-constants";
 import {
   getCombinedCapabilities,
   resolveT2VModelId,
   type T2VModelId,
-} from "./text2video-models-config";
-import type { AIActiveTab } from "./ai-types";
+} from "./constants/text2video-models-config";
+import type { AIActiveTab } from "./types/ai-types";
 
 // Import model options
 import {
   type ReveAspectRatioOption,
   type ReveOutputFormatOption,
   REVE_NUM_IMAGE_OPTIONS,
-} from "./ai-model-options";
+} from "./constants/ai-model-options";
 
 // Import cost calculators
 import {
   calculateByteDanceUpscaleCost,
   calculateFlashVSRUpscaleCost,
-} from "./ai-cost-calculators";
+} from "./utils/ai-cost-calculators";
 
 /**
  * Render the AI features panel including tabs for Text, Image, Avatar, and Upscale,

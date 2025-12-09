@@ -20,7 +20,7 @@ import {
   calculateByteDanceUpscaleCost,
   calculateFlashVSRUpscaleCost,
   calculateTopazUpscaleCost,
-} from "./ai-cost-calculators";
+} from "../utils/ai-cost-calculators";
 
 // ============================================
 // Types

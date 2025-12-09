@@ -43,19 +43,19 @@ import {
   STATUS_MESSAGES,
   ERROR_MESSAGES,
   REVE_EDIT_MODEL,
-} from "./ai-constants";
+} from "../constants/ai-constants";
 import {
   T2V_MODEL_CAPABILITIES,
   type T2VModelCapabilities,
   type T2VModelId,
-} from "./text2video-models-config";
+} from "../constants/text2video-models-config";
 import type {
   GeneratedVideo,
   GeneratedVideoResult,
   AIGenerationState,
   UseAIGenerationProps,
   ProgressCallback as AIProgressCallback,
-} from "./ai-types";
+} from "../types/ai-types";
 
 const VEO31_FRAME_MODELS = new Set([
   "veo31_fast_frame_to_video",

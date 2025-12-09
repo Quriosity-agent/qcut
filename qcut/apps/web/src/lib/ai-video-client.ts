@@ -8,11 +8,11 @@ import {
   AI_MODELS,
   ERROR_MESSAGES,
   LTXV2_FAST_CONFIG,
-} from "@/components/editor/media-panel/views/ai-constants";
+} from "@/components/editor/media-panel/views/ai/constants/ai-constants";
 import type {
   AIModel,
   Seeddream45ImageSize,
-} from "@/components/editor/media-panel/views/ai-types";
+} from "@/components/editor/media-panel/views/ai/types/ai-types";
 import type {
   Sora2TextToVideoInput,
   Sora2TextToVideoProInput,

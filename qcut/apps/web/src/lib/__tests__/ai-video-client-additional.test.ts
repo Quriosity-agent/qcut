@@ -4,7 +4,7 @@ import type {
   LTXV2T2VRequest,
   LTXV2I2VRequest,
 } from "@/lib/ai-video-client";
-import { ERROR_MESSAGES } from "@/components/editor/media-panel/views/ai-constants";
+import { ERROR_MESSAGES } from "@/components/editor/media-panel/views/ai/constants/ai-constants";
 
 const originalFetch = globalThis.fetch;
 

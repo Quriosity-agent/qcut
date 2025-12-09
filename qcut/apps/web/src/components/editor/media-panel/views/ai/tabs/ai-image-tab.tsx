@@ -22,13 +22,13 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { FileUpload } from "@/components/ui/file-upload";
 
-import { AIImageUploadSection } from "./ai-image-upload";
+import { AIImageUploadSection } from "../components/ai-image-upload";
 import {
   AI_MODELS,
   LTXV2_FAST_CONFIG,
   UPLOAD_CONSTANTS,
   ERROR_MESSAGES,
-} from "./ai-constants";
+} from "../constants/ai-constants";
 import {
   LTXV2_FAST_RESOLUTION_LABELS,
   LTXV2_FAST_RESOLUTION_PRICE_SUFFIX,
@@ -50,11 +50,11 @@ import {
   type Kling26AspectRatio,
   type Wan25Duration,
   type Wan25Resolution,
-} from "./ai-model-options";
+} from "../constants/ai-model-options";
 import {
   calculateSeedanceCost,
   calculateKlingCost,
-} from "./ai-cost-calculators";
+} from "../utils/ai-cost-calculators";
 
 // ============================================
 // Types
