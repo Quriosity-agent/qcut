@@ -8,22 +8,8 @@
  * @see ai-refactoring-subtasks.md for implementation tracking
  */
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
-  generateVideo,
-  generateVideoFromImage,
-  generateVideoFromText,
-  generateViduQ2Video,
-  generateLTXV2Video,
-  generateLTXV2ImageVideo,
-  generateSeedanceVideo,
-  generateKlingImageVideo,
-  generateKling26ImageVideo,
-  generateWAN25ImageVideo,
-  generateAvatarVideo,
-  generateKlingO1Video,
-  upscaleByteDanceVideo,
-  upscaleFlashVSRVideo,
   handleApiError,
   getGenerationStatus,
   ProgressCallback,
