@@ -3,7 +3,7 @@
 import { useCallback, useState, useRef } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Upload, Image as ImageIcon, Loader2, FileImage } from "lucide-react";
+import { Upload, Image as ImageIcon, FileImage } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface ImageUploaderProps {

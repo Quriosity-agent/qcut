@@ -7,7 +7,7 @@
  * @see ai-tsx-refactoring.md - Subtask 2.1
  */
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 
 // ============================================
 // Types
@@ -75,6 +75,10 @@ export function useFileWithPreview(
   const [file, setFileInternal] = useState<File | null>(initialFile);
   const [preview, setPreview] = useState<string | null>(null);
 
+  // Ref to track the latest preview for unmount cleanup
+  const previewRef = useRef<string | null>(null);
+  previewRef.current = preview;
+
   // Initialize preview if initial file is provided
   useEffect(() => {
     if (initialFile && !preview) {
@@ -106,14 +110,14 @@ export function useFileWithPreview(
     setPreview(null);
   }, [preview]);
 
-  // Cleanup on unmount
+  // Cleanup on unmount only
   useEffect(() => {
     return () => {
-      if (preview) {
-        URL.revokeObjectURL(preview);
+      if (previewRef.current) {
+        URL.revokeObjectURL(previewRef.current);
       }
     };
-  }, [preview]);
+  }, []);
 
   return { file, preview, setFile, reset };
 }
@@ -143,6 +147,10 @@ export function useMultipleFilesWithPreview(
   const [previews, setPreviews] = useState<(string | null)[]>(() =>
     Array(count).fill(null)
   );
+
+  // Ref to track the latest previews for unmount cleanup
+  const previewsRef = useRef<(string | null)[]>([]);
+  previewsRef.current = previews;
 
   const setFile = useCallback(
     (index: number, newFile: File | null) => {
@@ -204,14 +212,14 @@ export function useMultipleFilesWithPreview(
     setPreviews(Array(count).fill(null));
   }, [count, previews]);
 
-  // Cleanup on unmount
+  // Cleanup on unmount only
   useEffect(() => {
     return () => {
-      for (const p of previews) {
+      for (const p of previewsRef.current) {
         if (p) URL.revokeObjectURL(p);
       }
     };
-  }, [previews]);
+  }, []);
 
   return { files, previews, setFile, reset, resetAt };
 }
