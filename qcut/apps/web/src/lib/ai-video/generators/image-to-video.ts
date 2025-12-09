@@ -20,8 +20,8 @@ import type {
 import type { Sora2Duration } from "@/types/sora2";
 import {
   getFalApiKey,
-  FAL_API_BASE,
   generateJobId,
+  makeFalRequest,
   handleFalResponse,
 } from "../core/fal-request";
 import {
@@ -140,14 +140,7 @@ export async function generateVideoFromImage(
 
       const jobId = generateJobId();
 
-      const response = await fetch(`${FAL_API_BASE}/${endpoint}`, {
-        method: "POST",
-        headers: {
-          Authorization: `Key ${falApiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
-      });
+      const response = await makeFalRequest(endpoint, payload);
 
       if (!response.ok) {
         await handleFalResponse(response, "Generate video from image");
@@ -262,14 +255,7 @@ export async function generateViduQ2Video(
 
       const jobId = generateJobId();
 
-      const response = await fetch(`${FAL_API_BASE}/${endpoint}`, {
-        method: "POST",
-        headers: {
-          Authorization: `Key ${falApiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
-      });
+      const response = await makeFalRequest(endpoint, payload);
 
       if (!response.ok) {
         await handleFalResponse(response, "Generate Vidu Q2 video");
@@ -292,13 +278,6 @@ export async function generateViduQ2Video(
 /**
  * Generate video from image using LTX Video 2.0.
  */
-/**
- * Checks if model is the standard LTX Video 2.0 I2V model (not fast variant)
- */
-function isStandardLTXV2ImageModel(modelId: string): boolean {
-  return modelId === "ltxv2_i2v";
-}
-
 export async function generateLTXV2ImageVideo(
   request: LTXV2I2VRequest
 ): Promise<VideoGenerationResponse> {
@@ -378,14 +357,7 @@ export async function generateLTXV2ImageVideo(
 
       const jobId = generateJobId();
 
-      const response = await fetch(`${FAL_API_BASE}/${endpoint}`, {
-        method: "POST",
-        headers: {
-          Authorization: `Key ${falApiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
-      });
+      const response = await makeFalRequest(endpoint, payload);
 
       if (!response.ok) {
         await handleFalResponse(response, "Generate LTX Video 2.0 I2V");
@@ -485,14 +457,7 @@ export async function generateSeedanceVideo(
 
       const jobId = generateJobId();
 
-      const response = await fetch(`${FAL_API_BASE}/${endpoint}`, {
-        method: "POST",
-        headers: {
-          Authorization: `Key ${falApiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
-      });
+      const response = await makeFalRequest(endpoint, payload);
 
       if (!response.ok) {
         await handleFalResponse(response, "Generate Seedance video");
@@ -575,14 +540,7 @@ export async function generateKlingImageVideo(
 
       const jobId = generateJobId();
 
-      const response = await fetch(`${FAL_API_BASE}/${endpoint}`, {
-        method: "POST",
-        headers: {
-          Authorization: `Key ${falApiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
-      });
+      const response = await makeFalRequest(endpoint, payload);
 
       if (!response.ok) {
         await handleFalResponse(response, "Generate Kling video");
@@ -655,14 +613,7 @@ export async function generateKling26ImageVideo(
 
       const jobId = generateJobId();
 
-      const response = await fetch(`${FAL_API_BASE}/${endpoint}`, {
-        method: "POST",
-        headers: {
-          Authorization: `Key ${falApiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
-      });
+      const response = await makeFalRequest(endpoint, payload);
 
       if (!response.ok) {
         await handleFalResponse(response, "Generate Kling 2.6 video");
@@ -751,14 +702,7 @@ export async function generateKlingO1Video(
 
       const jobId = generateJobId();
 
-      const response = await fetch(`${FAL_API_BASE}/${endpoint}`, {
-        method: "POST",
-        headers: {
-          Authorization: `Key ${falApiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
-      });
+      const response = await makeFalRequest(endpoint, payload);
 
       if (!response.ok) {
         await handleFalResponse(response, "Generate Kling O1 video");
@@ -833,14 +777,7 @@ export async function generateKlingO1RefVideo(
 
       const jobId = generateJobId();
 
-      const response = await fetch(`${FAL_API_BASE}/${endpoint}`, {
-        method: "POST",
-        headers: {
-          Authorization: `Key ${falApiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
-      });
+      const response = await makeFalRequest(endpoint, payload);
 
       if (!response.ok) {
         await handleFalResponse(response, "Generate Kling O1 Ref video");
@@ -935,14 +872,7 @@ export async function generateWAN25ImageVideo(
 
       const jobId = generateJobId();
 
-      const response = await fetch(`${FAL_API_BASE}/${endpoint}`, {
-        method: "POST",
-        headers: {
-          Authorization: `Key ${falApiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
-      });
+      const response = await makeFalRequest(endpoint, payload);
 
       if (!response.ok) {
         await handleFalResponse(response, "Generate WAN 2.5 video");

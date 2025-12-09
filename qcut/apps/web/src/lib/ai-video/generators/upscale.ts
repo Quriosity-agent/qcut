@@ -14,8 +14,8 @@ import type {
 } from "@/components/editor/media-panel/views/ai/types/ai-types";
 import {
   getFalApiKey,
-  FAL_API_BASE,
   generateJobId,
+  makeFalRequest,
   handleFalResponse,
 } from "../core/fal-request";
 import { getModelConfig, withErrorHandling } from "./base-generator";
@@ -66,14 +66,7 @@ export async function upscaleByteDanceVideo(
       };
 
       const jobId = generateJobId();
-      const response = await fetch(`${FAL_API_BASE}/${endpoint}`, {
-        method: "POST",
-        headers: {
-          Authorization: `Key ${falApiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
-      });
+      const response = await makeFalRequest(endpoint, payload);
 
       if (!response.ok) {
         await handleFalResponse(response, "Upscale video with ByteDance");
@@ -155,14 +148,7 @@ export async function upscaleFlashVSRVideo(
       }
 
       const jobId = generateJobId();
-      const response = await fetch(`${FAL_API_BASE}/${endpoint}`, {
-        method: "POST",
-        headers: {
-          Authorization: `Key ${falApiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
-      });
+      const response = await makeFalRequest(endpoint, payload);
 
       if (!response.ok) {
         await handleFalResponse(response, "Upscale video with FlashVSR");

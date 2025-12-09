@@ -16,7 +16,6 @@ import type {
 import type { Sora2Duration } from "@/types/sora2";
 import {
   getFalApiKey,
-  FAL_API_BASE,
   generateJobId,
   makeFalRequest,
   handleFalResponse,
@@ -114,17 +113,9 @@ export async function generateVideo(
         });
       }
 
-      // Try queue mode first
-      const queueResponse = await fetch(`${FAL_API_BASE}/${endpoint}`, {
-        method: "POST",
-        headers: {
-          Authorization: `Key ${falApiKey}`,
-          "Content-Type": "application/json",
-          "X-Fal-Queue": "true",
-          "X-Queue": "true",
-          Queue: "true",
-        },
-        body: JSON.stringify(payload),
+      // Try queue mode first using centralized request helper
+      const queueResponse = await makeFalRequest(endpoint, payload, {
+        queueMode: true,
       });
 
       if (!queueResponse.ok) {
@@ -220,14 +211,7 @@ export async function generateVideo(
       // Fallback: Try direct API call without queue headers
       console.warn("Queue mode failed, trying direct API call...");
 
-      const directResponse = await fetch(`${FAL_API_BASE}/${endpoint}`, {
-        method: "POST",
-        headers: {
-          Authorization: `Key ${falApiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
-      });
+      const directResponse = await makeFalRequest(endpoint, payload);
 
       if (!directResponse.ok) {
         const errorData = await directResponse.json().catch(() => ({}));
@@ -364,17 +348,9 @@ export async function generateVideoFromText(
 
       const jobId = generateJobId();
 
-      const response = await fetch(`${FAL_API_BASE}/${endpoint}`, {
-        method: "POST",
-        headers: {
-          Authorization: `Key ${falApiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
-      });
+      const response = await makeFalRequest(endpoint, payload);
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
         await handleFalResponse(response, "Generate video from text");
       }
 
@@ -465,14 +441,7 @@ export async function generateLTXV2Video(
 
       const jobId = generateJobId();
 
-      const response = await fetch(`${FAL_API_BASE}/${endpoint}`, {
-        method: "POST",
-        headers: {
-          Authorization: `Key ${falApiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
-      });
+      const response = await makeFalRequest(endpoint, payload);
 
       if (!response.ok) {
         await handleFalResponse(response, "Generate LTX Video 2.0 video");

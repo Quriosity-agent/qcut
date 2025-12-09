@@ -14,8 +14,8 @@ import {
 } from "@/components/editor/media-panel/views/ai/constants/ai-constants";
 import {
   getFalApiKey,
-  FAL_API_BASE,
   generateJobId,
+  makeFalRequest,
   handleFalResponse,
 } from "../core/fal-request";
 import {
@@ -191,13 +191,7 @@ export async function generateAvatarVideo(
       const timeoutId = setTimeout(() => controller.abort(), 360_000);
 
       try {
-        const response = await fetch(`${FAL_API_BASE}/${endpoint}`, {
-          method: "POST",
-          headers: {
-            Authorization: `Key ${falApiKey}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(payload),
+        const response = await makeFalRequest(endpoint, payload, {
           signal: controller.signal,
         });
 

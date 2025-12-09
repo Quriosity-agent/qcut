@@ -1766,12 +1766,13 @@ export function useAIGeneration(props: UseAIGenerationProps) {
               videoUrl: response.video_url,
             });
 
+            const videoData = response.video_data as { video?: { duration?: number } } | undefined;
             const newVideo: GeneratedVideo = {
               jobId: response.job_id,
               videoUrl: response.video_url,
               videoPath: undefined,
               fileSize: undefined,
-              duration: response.video_data?.video?.duration || undefined,
+              duration: videoData?.video?.duration || undefined,
               prompt: prompt.trim(),
               model: modelId,
             };
