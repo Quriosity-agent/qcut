@@ -953,11 +953,11 @@ export function AiView() {
             <div className="space-y-2">
               <Label className="text-xs">Generated Videos</Label>
               <div className="space-y-2">
-                {generation.generatedVideos.map((result, index) => {
+                {generation.generatedVideos.map((result) => {
                   const model = AI_MODELS.find((m) => m.id === result.modelId);
                   return (
                     <div
-                      key={index}
+                      key={result.video.jobId}
                       className="flex items-center justify-between p-2 bg-muted/30 rounded-md"
                     >
                       <div className="flex items-center space-x-2">
