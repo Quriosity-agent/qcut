@@ -73,11 +73,11 @@ export async function makeFalRequest(
     "Content-Type": "application/json",
   };
 
-  // Add queue headers if queue mode requested
+  // Add queue header if queue mode requested
+  // Note: Queue mode is primarily determined by the endpoint URL (queue.fal.run vs fal.run)
+  // This header is added for API compatibility and request tracking
   if (options?.queueMode) {
     headers["X-Fal-Queue"] = "true";
-    headers["X-Queue"] = "true";
-    headers["Queue"] = "true";
   }
 
   const url = endpoint.startsWith("https://")

@@ -30,6 +30,7 @@ import {
   parseSora2Response,
 } from "../models/sora2";
 import {
+  validateHailuo23Duration,
   validateHailuo23Prompt,
   isHailuo23TextToVideo,
   validateLTXV2Resolution,
@@ -312,15 +313,8 @@ export async function generateVideoFromText(
 
       if (isHailuo23TextToVideo(request.model)) {
         validateHailuo23Prompt(trimmedPrompt, request.model);
-
-        if (
-          request.duration !== undefined &&
-          request.duration !== 6 &&
-          request.duration !== 10
-        ) {
-          throw new Error(
-            "Duration must be either 6 or 10 seconds for Hailuo 2.3 models"
-          );
+        if (request.duration !== undefined) {
+          validateHailuo23Duration(request.duration);
         }
       }
 

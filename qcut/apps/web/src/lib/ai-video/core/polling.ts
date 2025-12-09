@@ -123,40 +123,52 @@ export async function pollQueueStatus(
           }
         );
 
-        if (resultResponse.ok) {
-          const result = await resultResponse.json();
-          console.log("FAL Queue completed:", result);
-
-          // Handle streaming download if requested
-          if (downloadOptions?.downloadToMemory && result.video?.url) {
-            console.log("Starting streaming download of queued video...");
-            const videoData = await streamVideoDownload(
-              result.video.url,
-              downloadOptions
-            );
-            if (downloadOptions.onComplete) {
-              downloadOptions.onComplete(videoData);
-            }
-          }
-
+        if (!resultResponse.ok) {
+          const errorMessage = `Failed to fetch completed result: ${resultResponse.status} ${resultResponse.statusText}`;
+          console.error(errorMessage);
           if (onProgress) {
             onProgress({
-              status: "completed",
-              progress: 100,
-              message: `Video generated successfully with ${modelName}`,
+              status: "failed",
+              progress: 0,
+              message: errorMessage,
               elapsedTime,
             });
           }
-
-          return {
-            job_id: jobId,
-            status: "completed",
-            message: `Video generated successfully with ${modelName}`,
-            estimated_time: elapsedTime,
-            video_url: result.video?.url || result.video,
-            video_data: result,
-          };
+          throw new Error(errorMessage);
         }
+
+        const result = await resultResponse.json();
+        console.log("FAL Queue completed:", result);
+
+        // Handle streaming download if requested
+        if (downloadOptions?.downloadToMemory && result.video?.url) {
+          console.log("Starting streaming download of queued video...");
+          const videoData = await streamVideoDownload(
+            result.video.url,
+            downloadOptions
+          );
+          if (downloadOptions.onComplete) {
+            downloadOptions.onComplete(videoData);
+          }
+        }
+
+        if (onProgress) {
+          onProgress({
+            status: "completed",
+            progress: 100,
+            message: `Video generated successfully with ${modelName}`,
+            elapsedTime,
+          });
+        }
+
+        return {
+          job_id: jobId,
+          status: "completed",
+          message: `Video generated successfully with ${modelName}`,
+          estimated_time: elapsedTime,
+          video_url: result.video?.url || result.video,
+          video_data: result,
+        };
       }
 
       // Check if failed
