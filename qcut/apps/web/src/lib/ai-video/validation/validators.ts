@@ -32,6 +32,20 @@ export const LTXV2_FAST_I2V_FPS = LTXV2_FAST_CONFIG.FPS_OPTIONS.STANDARD;
 // ============================================
 
 /**
+ * Validates duration for Hailuo 2.3 models
+ *
+ * @param duration - Duration in seconds
+ * @throws Error if duration is not 6 or 10 seconds
+ */
+export function validateHailuo23Duration(duration: number): void {
+  if (duration !== 6 && duration !== 10) {
+    throw new Error(
+      "Duration must be either 6 or 10 seconds for Hailuo 2.3 models"
+    );
+  }
+}
+
+/**
  * Validates prompt length for Hailuo 2.3 models
  *
  * @param prompt - Text prompt to validate

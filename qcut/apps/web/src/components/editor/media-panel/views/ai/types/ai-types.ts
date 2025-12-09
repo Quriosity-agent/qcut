@@ -694,38 +694,27 @@ export type Sora2BasePayload = {
 
 /**
  * Discriminated union for Sora 2 payloads
+ * Uses intersection with Sora2BasePayload to reduce duplication
  */
 export type Sora2Payload =
-  | {
+  | (Sora2BasePayload & {
       type: "text-to-video";
-      prompt: string;
-      duration: number;
-      aspect_ratio: string;
       resolution: "720p";
-    }
-  | {
+    })
+  | (Sora2BasePayload & {
       type: "text-to-video-pro";
-      prompt: string;
-      duration: number;
-      aspect_ratio: string;
       resolution: string;
-    }
-  | {
+    })
+  | (Sora2BasePayload & {
       type: "image-to-video";
-      prompt: string;
-      duration: number;
-      aspect_ratio: string;
       resolution: string;
       image_url: string;
-    }
-  | {
+    })
+  | (Sora2BasePayload & {
       type: "image-to-video-pro";
-      prompt: string;
-      duration: number;
-      aspect_ratio: string;
       resolution: string;
       image_url: string;
-    }
+    })
   | { type: "video-to-video-remix"; prompt: string; video_id: string };
 
 // Export all as named exports for easy importing
