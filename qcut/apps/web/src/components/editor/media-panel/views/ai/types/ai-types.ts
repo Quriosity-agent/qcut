@@ -331,8 +331,24 @@ export interface AvatarUploadState {
   sourceVideoPreview: string | null;
 }
 
-// Progress callback type from original source
-export type ProgressCallback = (progress: number, message: string) => void;
+/**
+ * Progress update passed to ProgressCallback during video generation.
+ * Contains status, progress percentage, message, and timing information.
+ */
+export interface ProgressUpdate {
+  status: "queued" | "processing" | "completed" | "failed";
+  progress?: number;
+  message?: string;
+  elapsedTime?: number;
+  estimatedTime?: number;
+  logs?: string[];
+}
+
+/**
+ * Callback for receiving progress updates during video generation.
+ * Called periodically (every ~2s) during polling with the current status.
+ */
+export type ProgressCallback = (status: ProgressUpdate) => void;
 
 // Image handling types
 export interface ImageUploadState {

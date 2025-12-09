@@ -8,6 +8,7 @@ import { getFalApiKey, FAL_API_BASE, sleep, generateJobId } from "./fal-request"
 import type {
   VideoGenerationResponse,
   ProgressCallback,
+  ProgressUpdate,
 } from "@/components/editor/media-panel/views/ai/types/ai-types";
 import { handleAIServiceError } from "@/lib/error-handler";
 import { streamVideoDownload, type StreamOptions } from "./streaming";
@@ -23,17 +24,8 @@ interface QueueStatus {
   logs?: string[];
 }
 
-/**
- * Progress update structure
- */
-export interface ProgressUpdate {
-  status: "queued" | "processing" | "completed" | "failed";
-  progress?: number;
-  message?: string;
-  elapsedTime?: number;
-  estimatedTime?: number;
-  logs?: string[];
-}
+// Re-export ProgressUpdate from ai-types for convenience
+export type { ProgressUpdate };
 
 /**
  * Options for queue polling
