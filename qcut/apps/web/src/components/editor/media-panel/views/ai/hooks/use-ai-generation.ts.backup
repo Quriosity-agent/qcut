@@ -37,11 +37,6 @@ import { falAIClient } from "@/lib/fal-ai-client";
 import { validateReveEditImage } from "@/lib/image-validation";
 
 import {
-  integrateVideoToMediaStore,
-  updateVideoWithLocalPaths,
-  canIntegrateMedia,
-} from "./generation";
-import {
   AI_MODELS,
   UI_CONSTANTS,
   PROGRESS_CONSTANTS,
@@ -1815,47 +1810,210 @@ export function useAIGeneration(props: UseAIGenerationProps) {
             generations.push({ modelId, video: newVideo });
             console.log("📦 Added to generations array:", generations.length);
 
-            // Media integration using extracted function
-            const { canIntegrate: canDoIntegration, missing } = canIntegrateMedia(
-              activeProject?.id,
-              addMediaItem,
-              response.video_url
+            // 🔥 MOVED MEDIA INTEGRATION HERE - Steps 3-8
+            console.log("step 6a: media integration condition check");
+            const hasProject = !!activeProject;
+            const hasStore = !!addMediaItem;
+            const hasVideoUrl = !!response.video_url;
+            const canIntegrate = hasProject && hasStore && hasVideoUrl;
+            console.log("   - activeProject:", hasProject, activeProject?.id);
+            console.log("   - addMediaItem:", hasStore, typeof addMediaItem);
+            console.log(
+              "   - response.video_url:",
+              hasVideoUrl,
+              hasVideoUrl ? "EXISTS" : "MISSING"
             );
-            console.log("   - WILL EXECUTE MEDIA INTEGRATION:", canDoIntegration);
-            if (!canDoIntegration) {
-              console.log("   - missing for integration:", missing);
+            if (!canIntegrate) {
+              console.log("   - missing for integration:", {
+                activeProject: hasProject,
+                addMediaItem: hasStore,
+                videoUrl: hasVideoUrl,
+              });
             }
+            console.log("   - WILL EXECUTE MEDIA INTEGRATION:", canIntegrate);
 
-            if (activeProject && addMediaItem && response.video_url) {
-              const integrationResult = await integrateVideoToMediaStore({
-                videoUrl: response.video_url,
-                modelId,
-                prompt: newVideo.prompt,
-                projectId: activeProject.id,
-                addMediaItem,
-                duration: newVideo.duration || 5,
-                sourceType: activeTab === "text" ? "text2video" : activeTab === "image" ? "image2video" : activeTab,
-                onError: (error) => {
+            if (activeProject && addMediaItem) {
+              console.log("step 6b: executing media integration block");
+              console.log(
+                "   - About to download from URL:",
+                response.video_url
+              );
+              console.log("   - Project ID for media:", activeProject.id);
+              console.log(
+                "   - addMediaItem function type:",
+                typeof addMediaItem
+              );
+
+              console.log(
+                `step 6: downloading video and adding to media store for ${modelId}`
+              );
+
+              console.log("🔄 Attempting to add to media store...");
+              console.log("   - Project ID:", activeProject.id);
+              console.log("   - addMediaItem available:", !!addMediaItem);
+
+              try {
+                // Download video and create file
+                console.log(
+                  "📥 Downloading video from URL:",
+                  response.video_url
+                );
+                const videoResponse = await fetch(response.video_url);
+
+                console.log("step 6c: video download progress");
+                console.log("   - videoResponse.ok:", videoResponse.ok);
+                console.log("   - videoResponse.status:", videoResponse.status);
+                console.log(
+                  "   - videoResponse.headers content-type:",
+                  videoResponse.headers.get("content-type")
+                );
+
+                if (!videoResponse.ok) {
+                  throw new Error(
+                    `Failed to download video: ${videoResponse.status} ${videoResponse.statusText}`
+                  );
+                }
+
+                const blob = await videoResponse.blob();
+                console.log("✅ Downloaded video blob, size:", blob.size);
+
+                const filename = `AI-Video-${modelId}-${Date.now()}.mp4`;
+                const file = new File([blob], filename, { type: "video/mp4" });
+                console.log("📄 Created file:", filename);
+
+                console.log("step 6d: file creation complete");
+                console.log("   - blob.size:", blob.size, "bytes");
+                console.log("   - blob.type:", blob.type);
+                console.log("   - file.name:", file.name);
+                console.log("   - file.size:", file.size);
+
+                // MANDATORY: Save to local disk - NO FALLBACK
+                console.log("step 6e: MANDATORY save to local disk starting");
+
+                if (!window.electronAPI?.video?.saveToDisk) {
+                  const error =
+                    "CRITICAL ERROR: Electron API not available - cannot save video to disk";
+                  console.error("🚨", error);
                   setIsGenerating(false);
                   setGenerationProgress(0);
                   setStatusMessage(error);
-                  onError(error);
-                },
-              });
+                  onError("Failed to save video: " + error);
+                  return;
+                }
 
-              if (integrationResult.success) {
-                // Update video with local paths
-                Object.assign(newVideo, updateVideoWithLocalPaths(
-                  newVideo,
-                  integrationResult,
-                  response.video_url
-                ));
-              } else if (integrationResult.error) {
-                // Critical error - abort generation
-                return;
+                const arrayBuffer = await blob.arrayBuffer();
+                const saveResult = await window.electronAPI.video.saveToDisk({
+                  fileName: filename,
+                  fileData: arrayBuffer,
+                  projectId: activeProject.id,
+                  modelId,
+                  metadata: {
+                    width: 1920,
+                    height: 1080,
+                    duration: newVideo.duration || 5,
+                    fps: 25,
+                  },
+                });
+
+                if (!saveResult.success) {
+                  const error =
+                    saveResult.error || "Unknown error saving video to disk";
+                  console.error(
+                    "🚨 step 6e: CRITICAL - Save to disk FAILED:",
+                    error
+                  );
+                  setIsGenerating(false);
+                  setGenerationProgress(0);
+                  setStatusMessage("Failed to save video: " + error);
+                  onError("Failed to save video to disk: " + error);
+                  return; // ABORT - Do NOT add to media store
+                }
+
+                console.log("✅ step 6e: video saved to disk successfully", {
+                  localPath: saveResult.localPath,
+                  fileName: saveResult.fileName,
+                  fileSize: saveResult.fileSize,
+                });
+
+                const localUrl = URL.createObjectURL(file);
+                newVideo.videoPath = response.video_url;
+                newVideo.videoUrl = localUrl;
+                newVideo.fileSize = file.size;
+                newVideo.localPath = saveResult.localPath; // Store local path
+
+                // Add to media store (only if save succeeded)
+                const mediaItem = {
+                  name: `AI: ${newVideo.prompt.substring(0, 30)}...`,
+                  type: "video" as const,
+                  file,
+                  url: localUrl,
+                  originalUrl: response.video_url,
+                  localPath: saveResult.localPath, // REQUIRED: local file path
+                  isLocalFile: true, // Mark as saved to disk
+                  duration: newVideo.duration || 5,
+                  width: 1920,
+                  height: 1080,
+                  metadata: {
+                    source: "text2video", // Mark as AI-generated for ZIP export prioritization
+                    model: modelId,
+                    prompt: newVideo.prompt,
+                    generatedAt: new Date().toISOString(),
+                  },
+                };
+
+                console.log("step 6d details:", {
+                  mediaUrl: mediaItem.url,
+                  fileName: file.name,
+                  fileSize: file.size,
+                });
+                console.log("📤 Adding to media store with item:", mediaItem);
+
+                console.log("step 6e: about to call addMediaItem");
+                console.log(
+                  "   - mediaItem structure:",
+                  JSON.stringify(mediaItem, null, 2)
+                );
+                console.log("   - projectId:", activeProject.id);
+                console.log(
+                  "   - addMediaItem is function:",
+                  typeof addMediaItem === "function"
+                );
+
+                const newItemId = await addMediaItem(
+                  activeProject.id,
+                  mediaItem
+                );
+
+                console.log("step 6f: addMediaItem completed", {
+                  newItemId,
+                  mediaUrl: mediaItem.url,
+                  fileName: mediaItem.file.name,
+                  fileSize: mediaItem.file.size,
+                });
+                console.log("   - newItemId:", newItemId);
+                console.log("   - SUCCESS: Video added to media store!");
+
+                console.log("✅ VIDEO SUCCESSFULLY ADDED TO MEDIA STORE!");
+                console.log("   - Item ID:", newItemId);
+
+                debugLogger.log("AIGeneration", "VIDEO_ADDED_TO_MEDIA", {
+                  itemId: newItemId,
+                  model: modelId,
+                  videoUrl: response.video_url,
+                  projectId: activeProject.id,
+                });
+              } catch (error) {
+                console.error("❌ Media integration failed:", error);
+                debugLogger.log("AIGeneration", "MEDIA_INTEGRATION_FAILED", {
+                  error: error instanceof Error ? error.message : String(error),
+                  model: modelId,
+                  videoUrl: response.video_url,
+                });
               }
             } else {
-              console.warn("⚠️ Cannot add to media store:", missing);
+              console.warn("⚠️ Cannot add to media store:");
+              console.warn("   - activeProject:", !!activeProject);
+              console.warn("   - addMediaItem:", !!addMediaItem);
             }
           } else {
             // Traditional polling mode: no video_url yet
@@ -1908,47 +2066,192 @@ export function useAIGeneration(props: UseAIGenerationProps) {
           generations.push({ modelId, video: newVideo });
           console.log("📦 Added to generations array:", generations.length);
 
-          // Media integration using extracted function
-          const { canIntegrate: canDoIntegration, missing } = canIntegrateMedia(
-            activeProject?.id,
-            addMediaItem,
-            response.video_url
+          // Automatically add to media store
+          console.log("step 6a: media integration condition check");
+          const hasProject = !!activeProject;
+          const hasStore = !!addMediaItem;
+          const hasVideoUrl = !!response.video_url;
+          const canIntegrate = hasProject && hasStore && hasVideoUrl;
+          console.log("   - activeProject:", hasProject, activeProject?.id);
+          console.log("   - addMediaItem:", hasStore, typeof addMediaItem);
+          console.log(
+            "   - response.video_url:",
+            hasVideoUrl,
+            hasVideoUrl ? "EXISTS" : "MISSING"
           );
-          console.log("   - WILL EXECUTE MEDIA INTEGRATION:", canDoIntegration);
-          if (!canDoIntegration) {
-            console.log("   - missing for integration:", missing);
+          if (!canIntegrate) {
+            console.log("   - missing for integration:", {
+              activeProject: hasProject,
+              addMediaItem: hasStore,
+              videoUrl: hasVideoUrl,
+            });
           }
+          console.log("   - WILL EXECUTE MEDIA INTEGRATION:", canIntegrate);
 
-          if (activeProject && addMediaItem && response.video_url) {
-            const integrationResult = await integrateVideoToMediaStore({
-              videoUrl: response.video_url,
-              modelId,
-              prompt: newVideo.prompt,
-              projectId: activeProject.id,
-              addMediaItem,
-              duration: newVideo.duration || 5,
-              sourceType: activeTab === "text" ? "text2video" : activeTab === "image" ? "image2video" : activeTab,
-              onError: (error) => {
+          if (activeProject && addMediaItem) {
+            console.log("step 6b: executing media integration block");
+            console.log("   - About to download from URL:", response.video_url);
+            console.log("   - Project ID for media:", activeProject.id);
+            console.log(
+              "   - addMediaItem function type:",
+              typeof addMediaItem
+            );
+
+            console.log(
+              `step 6: downloading video and adding to media store for ${modelId}`
+            );
+
+            console.log("🔄 Attempting to add to media store...");
+            console.log("   - Project ID:", activeProject.id);
+            console.log("   - addMediaItem available:", !!addMediaItem);
+
+            try {
+              // Download video and create file
+              console.log("📥 Downloading video from URL:", response.video_url);
+              const videoResponse = await fetch(response.video_url);
+
+              console.log("step 6c: video download progress");
+              console.log("   - videoResponse.ok:", videoResponse.ok);
+              console.log("   - videoResponse.status:", videoResponse.status);
+              console.log(
+                "   - videoResponse.headers content-type:",
+                videoResponse.headers.get("content-type")
+              );
+
+              if (!videoResponse.ok) {
+                throw new Error(
+                  `Failed to download video: ${videoResponse.status} ${videoResponse.statusText}`
+                );
+              }
+
+              const blob = await videoResponse.blob();
+              console.log("✅ Downloaded video blob, size:", blob.size);
+
+              const filename = `AI-Video-${modelId}-${Date.now()}.mp4`;
+              const file = new File([blob], filename, { type: "video/mp4" });
+              console.log("📄 Created file:", filename);
+
+              console.log("step 6d: file creation complete");
+              console.log("   - blob.size:", blob.size, "bytes");
+              console.log("   - blob.type:", blob.type);
+              console.log("   - file.name:", file.name);
+              console.log("   - file.size:", file.size);
+
+              // MANDATORY: Save to local disk - NO FALLBACK
+              console.log("step 6e: MANDATORY save to local disk starting");
+
+              if (!window.electronAPI?.video?.saveToDisk) {
+                const error =
+                  "CRITICAL ERROR: Electron API not available - cannot save video to disk";
+                console.error("🚨", error);
                 setIsGenerating(false);
                 setGenerationProgress(0);
                 setStatusMessage(error);
-                onError(error);
-              },
-            });
+                onError("Failed to save video: " + error);
+                return;
+              }
 
-            if (integrationResult.success) {
-              // Update video with local paths
-              Object.assign(newVideo, updateVideoWithLocalPaths(
-                newVideo,
-                integrationResult,
-                response.video_url
-              ));
-            } else if (integrationResult.error) {
-              // Critical error - abort generation
-              return;
+              const arrayBuffer = await blob.arrayBuffer();
+              const saveResult = await window.electronAPI.video.saveToDisk({
+                fileName: filename,
+                fileData: arrayBuffer,
+                projectId: activeProject.id,
+                modelId,
+                metadata: {
+                  width: 1920,
+                  height: 1080,
+                  duration: newVideo.duration || 5,
+                  fps: 25,
+                },
+              });
+
+              if (!saveResult.success) {
+                const error =
+                  saveResult.error || "Unknown error saving video to disk";
+                console.error(
+                  "🚨 step 6e: CRITICAL - Save to disk FAILED:",
+                  error
+                );
+                setIsGenerating(false);
+                setGenerationProgress(0);
+                setStatusMessage("Failed to save video: " + error);
+                onError("Failed to save video to disk: " + error);
+                return; // ABORT - Do NOT add to media store
+              }
+
+              console.log("✅ step 6e: video saved to disk successfully", {
+                localPath: saveResult.localPath,
+                fileName: saveResult.fileName,
+                fileSize: saveResult.fileSize,
+              });
+
+              const localUrl = URL.createObjectURL(file);
+              newVideo.videoPath = response.video_url;
+              newVideo.videoUrl = localUrl;
+              newVideo.localPath = saveResult.localPath; // Store local path
+
+              // Add to media store (only if save succeeded)
+              const mediaItem = {
+                name: `AI: ${newVideo.prompt.substring(0, 30)}...`,
+                type: "video" as const,
+                file,
+                url: localUrl,
+                originalUrl: response.video_url,
+                localPath: saveResult.localPath, // REQUIRED: local file path
+                isLocalFile: true, // Mark as saved to disk
+                duration: newVideo.duration || 5,
+                width: 1920,
+                height: 1080,
+              };
+
+              console.log("step 6d details:", {
+                mediaUrl: mediaItem.url,
+                fileName: file.name,
+                fileSize: file.size,
+              });
+              console.log("📤 Adding to media store with item:", mediaItem);
+
+              console.log("step 6e: about to call addMediaItem");
+              console.log(
+                "   - mediaItem structure:",
+                JSON.stringify(mediaItem, null, 2)
+              );
+              console.log("   - projectId:", activeProject.id);
+              console.log(
+                "   - addMediaItem is function:",
+                typeof addMediaItem === "function"
+              );
+
+              const newItemId = await addMediaItem(activeProject.id, mediaItem);
+
+              console.log("step 6f: addMediaItem completed", {
+                newItemId,
+                mediaUrl: mediaItem.url,
+                fileName: mediaItem.file.name,
+                fileSize: mediaItem.file.size,
+              });
+              console.log("   - newItemId:", newItemId);
+              console.log("   - SUCCESS: Video added to media store!");
+
+              console.log("✅ VIDEO SUCCESSFULLY ADDED TO MEDIA STORE!");
+              console.log("   - Item ID:", newItemId);
+
+              debugLogger.log("AIGeneration", "VIDEO_ADDED_TO_MEDIA", {
+                itemId: newItemId,
+                model: modelId,
+                prompt: newVideo.prompt.substring(0, 50),
+              });
+            } catch (error) {
+              console.error("❌ FAILED TO ADD VIDEO TO MEDIA STORE:", error);
+              debugLogger.log("AIGeneration", "MEDIA_ADD_FAILED", {
+                error: error instanceof Error ? error.message : "Unknown error",
+                model: modelId,
+              });
             }
           } else {
-            console.warn("⚠️ Cannot add to media store:", missing);
+            console.warn("⚠️ Cannot add to media store:");
+            console.warn("   - activeProject:", !!activeProject);
+            console.warn("   - addMediaItem:", !!addMediaItem);
           }
         } else {
           console.warn(

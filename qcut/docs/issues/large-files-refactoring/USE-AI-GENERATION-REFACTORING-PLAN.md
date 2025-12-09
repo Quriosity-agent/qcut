@@ -1,19 +1,83 @@
 # use-ai-generation.ts Refactoring Plan
 
 **File**: `qcut/apps/web/src/components/editor/media-panel/views/ai/hooks/use-ai-generation.ts`
-**Current Size**: 2659 lines
+**Original Size**: 2659 lines
+**Current Size**: 2355 lines (after Phase 1)
 **Goal**: Long-term maintainability over short-term gains
+
+---
+
+## Implementation Progress
+
+### Phase 1: Extract Media Integration ✅ COMPLETED (Dec 2025)
+
+**Reduction**: 303 lines removed from main file
+
+**Changes Made**:
+- Created `hooks/generation/media-integration.ts` (316 lines)
+- Created `hooks/generation/index.ts` (barrel file)
+- Replaced 2 duplicated media integration blocks (~150 lines each) with calls to `integrateVideoToMediaStore()`
+- Added helper functions: `updateVideoWithLocalPaths()`, `canIntegrateMedia()`
+
+**Verification**:
+- ✅ TypeScript compilation passes
+- ✅ All 34 AI video tests pass
+- ✅ Backup file preserved
 
 ---
 
 ## Pre-Implementation Checklist
 
-### Step 0: Create Backup Before Starting
+### Step 0: Create Backup Before Starting ✅ DONE
 ```bash
 # Create backup of the original file
 cp qcut/apps/web/src/components/editor/media-panel/views/ai/hooks/use-ai-generation.ts \
    qcut/apps/web/src/components/editor/media-panel/views/ai/hooks/use-ai-generation.ts.backup
 ```
+
+---
+
+## Existing Code to Reuse
+
+### Already Refactored Modules
+
+The codebase has already been modularized in these areas:
+
+#### 1. `lib/ai-video/` - Generator Module (Recently Refactored)
+```
+lib/ai-video/
+├── index.ts                    # Barrel file with all exports
+├── core/
+│   ├── fal-request.ts          # makeFalRequest, handleFalResponse
+│   ├── polling.ts              # pollQueueStatus, mapQueueStatusToProgress
+│   └── streaming.ts            # streamVideoDownload
+├── generators/
+│   ├── base-generator.ts       # fileToDataURL, buildVideoResponse, getModelConfig
+│   ├── text-to-video.ts        # generateVideo, generateVideoFromText, generateLTXV2Video
+│   ├── image-to-video.ts       # generateVideoFromImage, generateViduQ2Video, etc.
+│   ├── avatar.ts               # generateAvatarVideo
+│   ├── upscale.ts              # upscaleByteDanceVideo, upscaleFlashVSRVideo, etc.
+│   └── image.ts                # generateSeeddream45Image
+├── models/
+│   └── sora2.ts                # Sora 2 parameter conversion
+├── validation/
+│   └── validators.ts           # All validation functions
+└── api.ts                      # getAvailableModels, estimateCost, handleApiError
+```
+
+#### 2. Tab State Hooks (Already Exist)
+```
+hooks/
+├── use-ai-tab-state-base.ts    # useFileWithPreview, useAudioFileWithDuration, etc.
+├── use-ai-text-tab-state.ts    # T2V settings, Hailuo, LTX settings
+├── use-ai-image-tab-state.ts   # I2V settings, frame uploads
+├── use-ai-avatar-tab-state.ts  # Avatar-specific settings
+├── use-ai-upscale-tab-state.ts # Upscale-specific settings
+└── use-ai-history.ts           # Generation history
+```
+
+#### 3. Types (Centralized)
+- `ai-types.ts` - All interfaces: `UseAIGenerationProps`, `GeneratedVideo`, `VideoGenerationResponse`, etc.
 
 ---
 
@@ -23,7 +87,7 @@ cp qcut/apps/web/src/components/editor/media-panel/views/ai/hooks/use-ai-generat
 
 | Section | Lines | Description |
 |---------|-------|-------------|
-| Imports | 1-58 | Module imports |
+| Imports | 1-58 | Module imports including `lib/ai-video` |
 | Constants | 60-87 | VEO31_FRAME_MODELS, getSafeDuration helper |
 | Hook Props Destructuring | 93-177 | ~85 props destructured |
 | Core State | 179-264 | 20+ useState calls |
@@ -31,135 +95,49 @@ cp qcut/apps/web/src/components/editor/media-panel/views/ai/hooks/use-ai-generat
 | Helper Functions | 334-407 | downloadVideoToMemory, uploadImageToFal, uploadAudioToFal |
 | Status Polling | 408-586 | startStatusPolling with media integration |
 | Mock Generation | 588-759 | handleMockGenerate for testing |
-| Main Generation | 761-2382 | handleGenerate - THE MONSTER FUNCTION |
-| Reset & Setters | 2384-2494 | resetGenerationState, Veo31 setters, Reve Edit handlers |
+| **handleGenerate** | **761-2382** | **THE MONSTER FUNCTION (1600+ lines)** |
+| Reset & Setters | 2384-2494 | resetGenerationState, Veo31 setters |
 | Return Object | 2497-2658 | Export all state and actions |
 
 ### Critical Issues
 
-1. **handleGenerate is 1600+ lines** - Single function handling all generation logic
-2. **Massive code duplication** - Media integration code duplicated 3x (lines 1814-2017, 2044-2255)
-3. **85+ props** - Props object is unwieldy
-4. **Model-specific branching** - Long if-else chains for each model
-5. **Mixed concerns** - Generation, download, media store, disk save all interleaved
+1. **handleGenerate is 1600+ lines** - Single function with all generation logic
+2. **Media integration duplicated 3x** - Lines ~1814-2017 and ~2044-2255 have same code
+3. **Model-specific branching** - Long if-else chains for 40+ models
+4. **Doesn't fully leverage lib/ai-video** - Still has inline API calls
+5. **Mixed concerns** - FAL upload, generation, download, media store all interleaved
 
-### Existing Patterns to Leverage
+### What's NOT Duplicated (Already Reused)
 
-The codebase already has:
-1. **`lib/ai-video/`** - Modular generators we just refactored
-2. **`lib/ai-video/core/streaming.ts`** - Video download utilities
-3. **Type definitions in `ai-types.ts`** - Centralized types
-
----
-
-## Recommended Architecture
-
-### File Structure
-
-```
-hooks/
-├── use-ai-generation.ts              # Main hook (orchestration only, ~400 lines)
-├── use-ai-generation-state.ts        # State management (~200 lines)
-├── generation/
-│   ├── types.ts                      # Generation-specific types (~50 lines)
-│   ├── text-to-video-handler.ts      # T2V generation logic (~300 lines)
-│   ├── image-to-video-handler.ts     # I2V generation logic (~400 lines)
-│   ├── avatar-handler.ts             # Avatar generation logic (~200 lines)
-│   ├── upscale-handler.ts            # Upscale generation logic (~150 lines)
-│   └── media-integration.ts          # Download + save + media store (~200 lines)
-```
-
-### Key Principles
-
-#### Principle 1: Extract Media Integration (DRY)
-The media integration code is duplicated 3 times. Extract to single function:
-
-```typescript
-// generation/media-integration.ts
-export async function integrateVideoToMediaStore(
-  videoUrl: string,
-  options: {
-    modelId: string;
-    prompt: string;
-    projectId: string;
-    addMediaItem: AddMediaItemFn;
-    duration?: number;
-  }
-): Promise<{ success: boolean; localPath?: string; error?: string }>;
-```
-
-#### Principle 2: Handler Functions per Tab
-Each tab gets its own handler that returns a standardized response:
-
-```typescript
-// generation/text-to-video-handler.ts
-export async function handleTextToVideoGeneration(
-  modelId: string,
-  params: T2VGenerationParams,
-  onProgress: ProgressCallback
-): Promise<GenerationResult>;
-```
-
-#### Principle 3: Unified Params Builder
-Extract the repeated params building logic:
-
-```typescript
-// generation/params-builder.ts
-export function buildUnifiedParams(
-  modelId: string,
-  settings: T2VSettings,
-  capabilities: T2VModelCapabilities
-): Record<string, unknown>;
-```
-
-#### Principle 4: State as Separate Hook
-Extract state management to keep main hook lean:
-
-```typescript
-// use-ai-generation-state.ts
-export function useAIGenerationState() {
-  // All useState calls
-  // All derived state
-  // Returns state + setters
-}
-```
+- `fileToDataURL` - Uses `lib/ai-video/generators/base-generator.ts`
+- `generateVideo`, `generateVideoFromText`, etc. - Uses `lib/ai-video/generators/`
+- Validation functions - Uses `lib/ai-video/validation/validators.ts`
+- Tab-specific state - Uses separate `use-ai-*-tab-state.ts` hooks
 
 ---
 
-## Subtasks
+## Recommended Refactoring
 
-### Phase 1: Foundation (No Breaking Changes)
+### Phase 1: Extract Media Integration (Highest ROI)
 
-#### Task 1.1: Create Backup
-**Priority**: CRITICAL
-**Effort**: 5 minutes
+The media integration code is duplicated 3 times. Extract to single function.
 
-```bash
-cp qcut/apps/web/src/components/editor/media-panel/views/ai/hooks/use-ai-generation.ts \
-   qcut/apps/web/src/components/editor/media-panel/views/ai/hooks/use-ai-generation.ts.backup
-```
-
----
-
-#### Task 1.2: Extract Media Integration Function
-**Priority**: HIGH
-**Effort**: 1 hour
+#### Task 1.1: Create `generation/media-integration.ts`
 **Reduction**: ~400 lines (duplicated code removed)
-
-Create `generation/media-integration.ts`:
 
 ```typescript
 /**
  * Media Integration Utilities
  *
- * Handles the complete flow of:
+ * Unified flow for:
  * 1. Downloading video from URL
  * 2. Saving to local disk via Electron
  * 3. Adding to media store
+ *
+ * This was previously duplicated 3x in handleGenerate.
  */
 
 import { debugLogger } from "@/lib/debug-logger";
-import type { GeneratedVideo } from "../../types/ai-types";
 
 export interface MediaIntegrationResult {
   success: boolean;
@@ -176,33 +154,33 @@ export interface MediaIntegrationOptions {
   projectId: string;
   addMediaItem: (projectId: string, item: MediaItem) => Promise<string>;
   duration?: number;
+  width?: number;
+  height?: number;
   onError?: (error: string) => void;
 }
 
 /**
  * Downloads video, saves to disk, and adds to media store.
- *
- * This is the unified implementation of the media integration flow
- * that was previously duplicated 3x in handleGenerate.
  */
 export async function integrateVideoToMediaStore(
   options: MediaIntegrationOptions
 ): Promise<MediaIntegrationResult> {
-  const { videoUrl, modelId, prompt, projectId, addMediaItem, duration, onError } = options;
-
-  console.log("step 6a: media integration condition check");
-  console.log("   - videoUrl:", !!videoUrl);
-  console.log("   - projectId:", projectId);
+  const {
+    videoUrl,
+    modelId,
+    prompt,
+    projectId,
+    addMediaItem,
+    duration = 5,
+    width = 1920,
+    height = 1080,
+    onError,
+  } = options;
 
   try {
     // Step 1: Download video
-    console.log("step 6b: executing media integration block");
     console.log("📥 Downloading video from URL:", videoUrl);
-
     const videoResponse = await fetch(videoUrl);
-    console.log("step 6c: video download progress");
-    console.log("   - videoResponse.ok:", videoResponse.ok);
-    console.log("   - videoResponse.status:", videoResponse.status);
 
     if (!videoResponse.ok) {
       throw new Error(
@@ -216,15 +194,9 @@ export async function integrateVideoToMediaStore(
     const filename = `AI-Video-${modelId}-${Date.now()}.mp4`;
     const file = new File([blob], filename, { type: "video/mp4" });
 
-    console.log("step 6d: file creation complete");
-    console.log("   - blob.size:", blob.size, "bytes");
-    console.log("   - file.name:", file.name);
-
     // Step 2: Save to local disk (MANDATORY)
-    console.log("step 6e: MANDATORY save to local disk starting");
-
     if (!window.electronAPI?.video?.saveToDisk) {
-      const error = "CRITICAL ERROR: Electron API not available - cannot save video to disk";
+      const error = "Electron API not available - cannot save video to disk";
       console.error("🚨", error);
       onError?.("Failed to save video: " + error);
       return { success: false, error };
@@ -236,30 +208,20 @@ export async function integrateVideoToMediaStore(
       fileData: arrayBuffer,
       projectId,
       modelId,
-      metadata: {
-        width: 1920,
-        height: 1080,
-        duration: duration || 5,
-        fps: 25,
-      },
+      metadata: { width, height, duration, fps: 25 },
     });
 
     if (!saveResult.success) {
       const error = saveResult.error || "Unknown error saving video to disk";
-      console.error("🚨 step 6e: CRITICAL - Save to disk FAILED:", error);
+      console.error("🚨 Save to disk FAILED:", error);
       onError?.("Failed to save video to disk: " + error);
       return { success: false, error };
     }
 
-    console.log("✅ step 6e: video saved to disk successfully", {
-      localPath: saveResult.localPath,
-      fileName: saveResult.fileName,
-      fileSize: saveResult.fileSize,
-    });
+    console.log("✅ Video saved to disk:", saveResult.localPath);
 
     // Step 3: Add to media store
     const localUrl = URL.createObjectURL(file);
-
     const mediaItem = {
       name: `AI: ${prompt.substring(0, 30)}...`,
       type: "video" as const,
@@ -268,9 +230,9 @@ export async function integrateVideoToMediaStore(
       originalUrl: videoUrl,
       localPath: saveResult.localPath,
       isLocalFile: true,
-      duration: duration || 5,
-      width: 1920,
-      height: 1080,
+      duration,
+      width,
+      height,
       metadata: {
         source: "ai-generation",
         model: modelId,
@@ -279,11 +241,8 @@ export async function integrateVideoToMediaStore(
       },
     };
 
-    console.log("step 6e: about to call addMediaItem");
     const newItemId = await addMediaItem(projectId, mediaItem);
-
-    console.log("step 6f: addMediaItem completed", { newItemId });
-    console.log("✅ VIDEO SUCCESSFULLY ADDED TO MEDIA STORE!");
+    console.log("✅ Video added to media store:", newItemId);
 
     debugLogger.log("AIGeneration", "VIDEO_ADDED_TO_MEDIA", {
       itemId: newItemId,
@@ -313,409 +272,219 @@ export async function integrateVideoToMediaStore(
 
 ---
 
-#### Task 1.3: Extract Generation Types
-**Priority**: HIGH
-**Effort**: 30 minutes
+### Phase 2: Extract Handler Functions
 
-Create `generation/types.ts`:
+#### Task 2.1: Create `generation/handlers.ts`
+**Reduction**: ~800 lines from handleGenerate
 
-```typescript
-/**
- * Generation-specific types
- */
-
-import type { GeneratedVideo, GeneratedVideoResult } from "../../types/ai-types";
-
-export interface GenerationResult {
-  success: boolean;
-  video?: GeneratedVideo;
-  error?: string;
-  needsPolling?: boolean;
-  jobId?: string;
-}
-
-export interface T2VGenerationParams {
-  prompt: string;
-  modelId: string;
-  aspectRatio?: string;
-  resolution?: string;
-  duration?: number;
-  negativePrompt?: string;
-  promptExpansion?: boolean;
-  seed?: number;
-  safetyChecker?: boolean;
-  // Model-specific params
-  veo31Settings?: Veo31Settings;
-  hailuoT2VDuration?: number;
-  ltxv2Duration?: number;
-  ltxv2Resolution?: string;
-  ltxv2FPS?: number;
-  ltxv2GenerateAudio?: boolean;
-}
-
-export interface I2VGenerationParams {
-  prompt: string;
-  modelId: string;
-  image?: File;
-  firstFrame?: File;
-  lastFrame?: File;
-  // Model-specific params...
-}
-
-export interface AvatarGenerationParams {
-  modelId: string;
-  prompt?: string;
-  avatarImage?: File;
-  audioFile?: File;
-  sourceVideo?: File;
-  referenceImages?: (File | null)[];
-  // Model-specific params...
-}
-
-export interface UpscaleGenerationParams {
-  modelId: string;
-  sourceVideoFile?: File;
-  sourceVideoUrl?: string;
-  // Model-specific params...
-}
-
-export interface Veo31Settings {
-  resolution: "720p" | "1080p";
-  duration: "4s" | "6s" | "8s";
-  aspectRatio: "9:16" | "16:9" | "1:1" | "auto";
-  generateAudio: boolean;
-  enhancePrompt: boolean;
-  autoFix: boolean;
-}
-```
-
----
-
-### Phase 2: Handler Extraction
-
-#### Task 2.1: Extract Text-to-Video Handler
-**Priority**: HIGH
-**Effort**: 2 hours
-**Reduction**: ~400 lines from main function
-
-Create `generation/text-to-video-handler.ts`:
+Create unified handler that routes to `lib/ai-video/generators/`:
 
 ```typescript
 /**
- * Text-to-Video Generation Handler
+ * Generation Handlers
  *
- * Handles all T2V model generations with model-specific logic.
+ * Routes to appropriate lib/ai-video generators based on model and tab.
+ * Reduces branching in main hook.
  */
 
 import {
   generateVideo,
   generateVideoFromText,
   generateLTXV2Video,
-} from "@/lib/ai-video-client";
-import { falAIClient } from "@/lib/fal-ai-client";
-import type { T2VGenerationParams, GenerationResult } from "./types";
-import type { ProgressCallback } from "@/lib/ai-video-client";
+  generateVideoFromImage,
+  generateViduQ2Video,
+  generateLTXV2ImageVideo,
+  generateSeedanceVideo,
+  generateKlingImageVideo,
+  generateKling26ImageVideo,
+  generateKlingO1Video,
+  generateKlingO1RefVideo,
+  generateWAN25ImageVideo,
+  generateAvatarVideo,
+  upscaleByteDanceVideo,
+  upscaleFlashVSRVideo,
+  upscaleTopazVideo,
+} from "@/lib/ai-video";
+import type { ProgressCallback, VideoGenerationResponse } from "@/lib/ai-video";
+
+export type GenerationTab = "text" | "image" | "avatar" | "upscale";
+
+export interface GenerationParams {
+  modelId: string;
+  prompt: string;
+  tab: GenerationTab;
+  // Common params
+  duration?: number;
+  resolution?: string;
+  aspectRatio?: string;
+  // Image tab params
+  imageFile?: File;
+  imageUrl?: string;
+  firstFrame?: File;
+  lastFrame?: File;
+  // Avatar tab params
+  avatarImage?: File;
+  audioFile?: File;
+  sourceVideo?: File;
+  // Upscale tab params
+  sourceVideoFile?: File;
+  sourceVideoUrl?: string;
+  // Model-specific params (passed through)
+  modelParams?: Record<string, unknown>;
+}
 
 /**
- * Routes to appropriate T2V generator based on model ID.
+ * Routes generation to appropriate handler based on tab and model.
  */
-export async function handleTextToVideoGeneration(
-  params: T2VGenerationParams,
-  onProgress: ProgressCallback
-): Promise<GenerationResult> {
-  const { modelId, prompt } = params;
+export async function executeGeneration(
+  params: GenerationParams,
+  onProgress?: ProgressCallback
+): Promise<VideoGenerationResponse> {
+  const { tab, modelId, prompt } = params;
 
-  console.log(`📝 Processing text-to-video model ${modelId}...`);
-
-  // Veo 3.1 Fast text-to-video
-  if (modelId === "veo31_fast_text_to_video") {
-    return handleVeo31FastT2V(params, onProgress);
+  switch (tab) {
+    case "text":
+      return executeTextGeneration(params, onProgress);
+    case "image":
+      return executeImageGeneration(params, onProgress);
+    case "avatar":
+      return executeAvatarGeneration(params);
+    case "upscale":
+      return executeUpscaleGeneration(params);
+    default:
+      throw new Error(`Unknown tab: ${tab}`);
   }
+}
 
-  // Veo 3.1 Standard text-to-video
-  if (modelId === "veo31_text_to_video") {
-    return handleVeo31T2V(params, onProgress);
-  }
+async function executeTextGeneration(
+  params: GenerationParams,
+  onProgress?: ProgressCallback
+): Promise<VideoGenerationResponse> {
+  const { modelId, prompt, duration, resolution, aspectRatio, modelParams } = params;
 
-  // Hailuo 2.3 text-to-video models
+  // Hailuo 2.3 models
   if (modelId === "hailuo23_standard_t2v" || modelId === "hailuo23_pro_t2v") {
-    return handleHailuo23T2V(params, onProgress);
+    return generateVideoFromText({
+      model: modelId,
+      prompt,
+      duration: modelParams?.hailuoT2VDuration as 6 | 10,
+    });
   }
 
-  // LTX Video 2.0 text-to-video
+  // LTX Video 2.0 models
   if (modelId === "ltxv2_pro_t2v" || modelId === "ltxv2_fast_t2v") {
-    return handleLTXV2T2V(params, onProgress);
+    return generateLTXV2Video({
+      model: modelId,
+      prompt,
+      duration: modelParams?.ltxv2Duration as number,
+      resolution: modelParams?.ltxv2Resolution as string,
+      fps: modelParams?.ltxv2FPS as number,
+      generate_audio: modelParams?.ltxv2GenerateAudio as boolean,
+    });
   }
 
-  // Default: use generateVideo
-  return handleDefaultT2V(params, onProgress);
+  // Default: use generateVideo with progress callback
+  return generateVideo(
+    { prompt, model: modelId, duration, resolution, aspect_ratio: aspectRatio },
+    onProgress
+  );
 }
 
-// Private handler implementations...
-async function handleVeo31FastT2V(
-  params: T2VGenerationParams,
-  onProgress: ProgressCallback
-): Promise<GenerationResult> {
-  // ... implementation
+async function executeImageGeneration(
+  params: GenerationParams,
+  onProgress?: ProgressCallback
+): Promise<VideoGenerationResponse> {
+  // ... route to appropriate I2V generator
 }
 
-// ... other private handlers
-```
-
----
-
-#### Task 2.2: Extract Image-to-Video Handler
-**Priority**: HIGH
-**Effort**: 2 hours
-**Reduction**: ~500 lines from main function
-
-Create `generation/image-to-video-handler.ts` with similar structure.
-
----
-
-#### Task 2.3: Extract Avatar Handler
-**Priority**: MEDIUM
-**Effort**: 1 hour
-**Reduction**: ~150 lines from main function
-
-Create `generation/avatar-handler.ts`.
-
----
-
-#### Task 2.4: Extract Upscale Handler
-**Priority**: MEDIUM
-**Effort**: 45 minutes
-**Reduction**: ~100 lines from main function
-
-Create `generation/upscale-handler.ts`.
-
----
-
-### Phase 3: State Extraction
-
-#### Task 3.1: Extract State Management Hook
-**Priority**: HIGH
-**Effort**: 1 hour
-**Reduction**: ~300 lines from main hook
-
-Create `use-ai-generation-state.ts`:
-
-```typescript
-/**
- * AI Generation State Management
- *
- * Extracts all state management from useAIGeneration.
- */
-
-import { useState, useEffect, useCallback } from "react";
-import type { GeneratedVideo, GeneratedVideoResult } from "../types/ai-types";
-import type { Veo31Settings } from "./generation/types";
-
-export interface AIGenerationStateReturn {
-  // Core state
-  isGenerating: boolean;
-  setIsGenerating: (v: boolean) => void;
-  generationProgress: number;
-  setGenerationProgress: (v: number) => void;
-  statusMessage: string;
-  setStatusMessage: (v: string) => void;
-  elapsedTime: number;
-  setElapsedTime: (v: number) => void;
-  estimatedTime: number | undefined;
-  setEstimatedTime: (v: number | undefined) => void;
-  currentModelIndex: number;
-  setCurrentModelIndex: (v: number) => void;
-  progressLogs: string[];
-  setProgressLogs: React.Dispatch<React.SetStateAction<string[]>>;
-  generationStartTime: number | null;
-  setGenerationStartTime: (v: number | null) => void;
-
-  // Job state
-  jobId: string | null;
-  setJobId: (v: string | null) => void;
-  generatedVideo: GeneratedVideo | null;
-  setGeneratedVideo: (v: GeneratedVideo | null) => void;
-  generatedVideos: GeneratedVideoResult[];
-  setGeneratedVideos: React.Dispatch<React.SetStateAction<GeneratedVideoResult[]>>;
-
-  // Polling
-  pollingInterval: NodeJS.Timeout | null;
-  setPollingInterval: React.Dispatch<React.SetStateAction<NodeJS.Timeout | null>>;
-
-  // Sora 2 state
-  duration: 4 | 8 | 12;
-  setDuration: (v: 4 | 8 | 12) => void;
-  aspectRatio: "16:9" | "9:16";
-  setAspectRatio: (v: "16:9" | "9:16") => void;
-  resolution: "auto" | "720p" | "1080p";
-  setResolution: (v: "auto" | "720p" | "1080p") => void;
-
-  // Veo 3.1 state
-  veo31Settings: Veo31Settings;
-  setVeo31Settings: React.Dispatch<React.SetStateAction<Veo31Settings>>;
-  firstFrame: File | null;
-  setFirstFrame: (v: File | null) => void;
-  lastFrame: File | null;
-  setLastFrame: (v: File | null) => void;
-
-  // Reve Edit state
-  uploadedImageForEdit: File | null;
-  setUploadedImageForEdit: (v: File | null) => void;
-  uploadedImagePreview: string | null;
-  setUploadedImagePreview: (v: string | null) => void;
-  uploadedImageUrl: string | null;
-  setUploadedImageUrl: (v: string | null) => void;
-
-  // Actions
-  resetGenerationState: () => void;
+async function executeAvatarGeneration(
+  params: GenerationParams
+): Promise<VideoGenerationResponse> {
+  // ... route to generateAvatarVideo
 }
 
-export function useAIGenerationState(): AIGenerationStateReturn {
-  // All useState calls here...
-
-  // Reset function
-  const resetGenerationState = useCallback(() => {
-    // Reset all state...
-  }, []);
-
-  return {
-    // All state and setters...
-  };
+async function executeUpscaleGeneration(
+  params: GenerationParams
+): Promise<VideoGenerationResponse> {
+  // ... route to appropriate upscale function
 }
 ```
 
 ---
 
-### Phase 4: Main Hook Simplification
+### Phase 3: Simplify Main Hook
 
-#### Task 4.1: Refactor Main Hook to Orchestration
-**Priority**: HIGH
-**Effort**: 2 hours
-**Target Size**: ~400 lines
-
-The main hook becomes an orchestrator:
+#### Task 3.1: Refactor handleGenerate
+**Target**: ~300 lines (down from 1600+)
 
 ```typescript
-/**
- * AI Generation Hook
- *
- * Orchestrates AI video generation across all tabs.
- * Delegates to specialized handlers for each generation type.
- */
+const handleGenerate = useCallback(async () => {
+  // Validation (keep existing)
+  if (!validateGenerationRequest()) return;
 
-export function useAIGeneration(props: UseAIGenerationProps) {
-  // Use extracted state hook
-  const state = useAIGenerationState();
+  setIsGenerating(true);
+  setGenerationStartTime(Date.now());
 
-  // Use media store hook
-  const { addMediaItem, loading, error } = useAsyncMediaStoreActions();
+  try {
+    const generations: GeneratedVideoResult[] = [];
 
-  // Computed values
-  const canGenerate = computeCanGenerate(props, state);
+    for (let i = 0; i < selectedModels.length; i++) {
+      const modelId = selectedModels[i];
+      setCurrentModelIndex(i);
 
-  // Main generation handler - now just routes to appropriate handler
-  const handleGenerate = useCallback(async () => {
-    const { activeTab, selectedModels, prompt } = props;
+      // Build params from props and tab state
+      const params = buildGenerationParams(modelId, activeTab, props);
 
-    // Validation
-    const validationError = validateGenerationRequest(props, state);
-    if (validationError) {
-      console.error("❌ Validation failed:", validationError);
-      return;
-    }
+      // Execute generation using unified handler
+      const result = await executeGeneration(params, handleProgressUpdate);
 
-    // Start generation
-    state.setIsGenerating(true);
-    state.setGenerationStartTime(Date.now());
+      if (result.video_url) {
+        const video: GeneratedVideo = {
+          jobId: result.job_id,
+          videoUrl: result.video_url,
+          prompt: prompt.trim(),
+          model: modelId,
+          duration: result.estimated_time,
+        };
 
-    try {
-      const generations: GeneratedVideoResult[] = [];
+        generations.push({ modelId, video });
 
-      for (let i = 0; i < selectedModels.length; i++) {
-        const modelId = selectedModels[i];
-        let result: GenerationResult;
-
-        // Route to appropriate handler
-        switch (activeTab) {
-          case "text":
-            result = await handleTextToVideoGeneration(
-              buildT2VParams(modelId, props, state),
-              createProgressCallback(modelId, state)
-            );
-            break;
-          case "image":
-            result = await handleImageToVideoGeneration(/* ... */);
-            break;
-          case "avatar":
-            result = await handleAvatarGeneration(/* ... */);
-            break;
-          case "upscale":
-            result = await handleUpscaleGeneration(/* ... */);
-            break;
-        }
-
-        // Handle result
-        if (result.success && result.video) {
-          generations.push({ modelId, video: result.video });
-
-          // Integrate with media store if we have a video URL
-          if (result.video.videoUrl && activeProject && addMediaItem) {
-            await integrateVideoToMediaStore({
-              videoUrl: result.video.videoUrl,
-              modelId,
-              prompt: prompt.trim(),
-              projectId: activeProject.id,
-              addMediaItem,
-              duration: result.video.duration,
-            });
-          }
+        // Media integration using extracted function
+        if (activeProject && addMediaItem) {
+          await integrateVideoToMediaStore({
+            videoUrl: result.video_url,
+            modelId,
+            prompt: prompt.trim(),
+            projectId: activeProject.id,
+            addMediaItem,
+            duration: video.duration,
+          });
         }
       }
-
-      state.setGeneratedVideos(generations);
-      props.onComplete?.(generations);
-
-    } catch (error) {
-      const errorMessage = handleApiError(error);
-      props.onError?.(errorMessage);
-    } finally {
-      state.setIsGenerating(false);
     }
-  }, [props, state, addMediaItem]);
 
-  return {
-    ...state,
-    handleGenerate,
-    canGenerate,
-    // ... other returns
-  };
-}
+    setGeneratedVideos(generations);
+    onComplete?.(generations);
+  } catch (error) {
+    const errorMessage = handleApiError(error);
+    onError?.(errorMessage);
+  } finally {
+    setIsGenerating(false);
+  }
+}, [/* deps */]);
 ```
 
 ---
 
-### Phase 5: Testing & Cleanup
+## Subtask Summary
 
-#### Task 5.1: Update Tests
-**Priority**: HIGH
-**Effort**: 2 hours
-
-Update existing tests to work with refactored structure.
-
----
-
-#### Task 5.2: Remove Backup
-**Priority**: FINAL
-**Effort**: 10 minutes
-
-```bash
-# After full verification
-bun run test
-bun run lint:clean
-
-# If all pass, remove backup
-rm qcut/apps/web/src/components/editor/media-panel/views/ai/hooks/use-ai-generation.ts.backup
-```
+| Task | Description | Lines Saved | Priority |
+|------|-------------|-------------|----------|
+| 1.1 | Extract `media-integration.ts` | ~400 | HIGH |
+| 2.1 | Extract `generation/handlers.ts` | ~800 | HIGH |
+| 3.1 | Simplify handleGenerate | ~300 | MEDIUM |
+| 4.1 | Update tests | - | HIGH |
+| 5.1 | Remove backup | - | FINAL |
 
 ---
 
@@ -723,39 +492,28 @@ rm qcut/apps/web/src/components/editor/media-panel/views/ai/hooks/use-ai-generat
 
 | File | Lines | Purpose |
 |------|-------|---------|
-| `use-ai-generation.ts` | ~400 | Main orchestration hook |
-| `use-ai-generation-state.ts` | ~200 | State management |
-| `generation/types.ts` | ~80 | Type definitions |
-| `generation/media-integration.ts` | ~200 | Download + save + media store |
-| `generation/text-to-video-handler.ts` | ~350 | T2V generation |
-| `generation/image-to-video-handler.ts` | ~400 | I2V generation |
-| `generation/avatar-handler.ts` | ~200 | Avatar generation |
-| `generation/upscale-handler.ts` | ~150 | Upscale generation |
-| **Total** | **~1,980** | **~25% reduction** |
+| `use-ai-generation.ts` | ~600 | Main hook (orchestration + state) |
+| `generation/media-integration.ts` | ~150 | Download + save + media store |
+| `generation/handlers.ts` | ~400 | Route to lib/ai-video generators |
+| **Total New Files** | **~550** | |
+| **Main Hook Reduction** | **~2000** | (from 2659 to ~600) |
 
 ---
 
 ## Code Reuse Summary
 
-### Pattern 1: Unified Media Integration
-**Before**: Same 100+ line block duplicated 3x
-**After**: Single `integrateVideoToMediaStore()` function
-**Savings**: ~200 lines
+### Already Reused (No Changes Needed)
+- `lib/ai-video/generators/*` - All generation functions
+- `lib/ai-video/validation/validators.ts` - All validation
+- `lib/ai-video/core/*` - FAL request, polling, streaming
+- `use-ai-*-tab-state.ts` - Tab-specific state hooks
 
-### Pattern 2: Handler Functions
-**Before**: 1600+ line handleGenerate with if-else chains
-**After**: Small handlers per model category
-**Benefit**: Each handler testable in isolation
+### New Extractions
+- `integrateVideoToMediaStore()` - Removes 3x duplication
+- `executeGeneration()` - Unified routing to generators
 
-### Pattern 3: State Extraction
-**Before**: 20+ useState calls cluttering main hook
-**After**: Separate state hook
-**Benefit**: Cleaner separation of concerns
-
-### Pattern 4: Type-Safe Params
-**Before**: `Record<string, unknown>` params built inline
-**After**: Typed interfaces for each generation type
-**Benefit**: Better IntelliSense, catch errors at compile time
+### Pattern Consistency
+The new `generation/` folder mirrors the existing `lib/ai-video/generators/` pattern, maintaining consistency across the codebase.
 
 ---
 
@@ -763,16 +521,14 @@ rm qcut/apps/web/src/components/editor/media-panel/views/ai/hooks/use-ai-generat
 
 - [ ] All existing tests pass
 - [ ] No new TypeScript errors
-- [ ] Main hook under 500 lines
+- [ ] Main hook under 700 lines
 - [ ] No duplicated media integration code
-- [ ] Each handler file under 400 lines
+- [ ] Handlers properly route to lib/ai-video generators
 - [ ] Backup removed after verification
 
 ---
 
 ## Rollback Plan
-
-If issues are discovered after deployment:
 
 ```bash
 # Restore from backup
@@ -781,10 +537,10 @@ cp qcut/apps/web/src/components/editor/media-panel/views/ai/hooks/use-ai-generat
 
 # Remove new files
 rm -rf qcut/apps/web/src/components/editor/media-panel/views/ai/hooks/generation/
-rm qcut/apps/web/src/components/editor/media-panel/views/ai/hooks/use-ai-generation-state.ts
 ```
 
 ---
 
 *Created: December 2025*
 *Status: Planning*
+*Leverages: lib/ai-video/ (recently refactored), existing tab state hooks*
