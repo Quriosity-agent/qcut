@@ -11,7 +11,7 @@ This document identifies the top 10 source code files exceeding 800 lines and pr
 | 1 | `apps/web/src/components/editor/media-panel/views/ai/index.tsx` | ~~4246~~ 1168 | ~~Split into 4-5 files~~ | ✅ **REFACTORED** |
 | 2 | `apps/web/src/lib/ai-video-client.ts` | ~~4008~~ 48 | ~~Split into 3-4 files~~ | ✅ **REFACTORED** |
 | 3 | `apps/web/src/components/editor/media-panel/views/ai/hooks/use-ai-generation.ts` | ~~2616~~ 1756 | ~~Split into 3 files~~ | ✅ **REFACTORED** |
-| 4 | `electron/ffmpeg-handler.ts` | 2210 | Split into 3 files | Pending |
+| 4 | `electron/ffmpeg-handler.ts` | ~~2210~~ 1194 | ~~Split into 3 files~~ | ✅ **REFACTORED** |
 | 5 | `apps/web/src/stores/timeline-store.ts` | 2194 | Split into 3 files | Pending |
 | 6 | `apps/web/src/lib/fal-ai-client.ts` | 1786 | Split into 3 files | Pending |
 | 7 | `apps/web/src/lib/export-engine-cli.ts` | 1689 | Split into 3 files | Pending |
@@ -169,62 +169,55 @@ See `docs/issues/large-files-refactoring/USE-AI-GENERATION-REFACTORING-PLAN.md` 
 
 ---
 
-## 4. ffmpeg-handler.ts (2210 lines)
+## 4. ffmpeg-handler.ts ✅ REFACTORED (Dec 2025)
 
 **Path**: `qcut/electron/ffmpeg-handler.ts`
 
-### Main Functions/Sections
+### Refactoring Complete
 
-1. **FFmpeg Setup & Configuration** (Lines 1-200)
-   - FFmpeg binary path resolution
-   - Configuration constants
-   - Platform-specific setup (Windows/macOS/Linux)
+**Original Size**: 2,210 lines → **Current Size**: 1,194 lines (~46% reduction)
 
-2. **Video Export Operations** (Lines 200-800)
-   - Main export function with filter chain building
-   - Frame extraction and encoding
-   - Audio stream handling
-   - Video concatenation
+### New File Structure
 
-3. **Transcoding & Conversion** (Lines 800-1200)
-   - Format conversion (MP4, WebM, etc.)
-   - Codec selection and configuration
-   - Bitrate and quality settings
+| File | Lines | Purpose |
+|------|-------|---------|
+| `ffmpeg-handler.ts` | 1,194 | Main IPC handler (registration + argument building) |
+| `ffmpeg/types.ts` | 256 | All TypeScript interfaces |
+| `ffmpeg/utils.ts` | 571 | Reusable utilities (path resolution, probing, normalization) |
+| `ffmpeg/index.ts` | 46 | Barrel exports |
 
-4. **Utility Operations** (Lines 1200-1700)
-   - Video metadata extraction
-   - Thumbnail generation
-   - Duration detection
-   - Codec compatibility checks
+### What Was Extracted
 
-5. **IPC Handler Registration** (Lines 1700-2210)
-   - All IPC handler registrations
-   - Error handling wrappers
-   - Progress reporting to renderer
-   - Session management
+1. **Type Definitions** (`ffmpeg/types.ts`)
+   - 15+ interfaces: `AudioFile`, `VideoSource`, `StickerSource`, `ExportOptions`, etc.
+   - Quality settings and progress types
+   - IPC handler type map
 
-### Recommended Split
+2. **Utility Functions** (`ffmpeg/utils.ts`)
+   - `getFFmpegPath()`, `getFFprobePath()` - path resolution
+   - `probeVideoFile()` - video codec validation
+   - `normalizeVideo()` - Mode 1.5 normalization (~320 lines)
+   - `parseProgress()` - progress parsing
+   - Debug logging utilities
+   - Quality and duration constants
 
-#### File 1: `ffmpeg-config.ts` (~200 lines)
-- FFmpeg path resolution
-- Configuration constants
-- Platform-specific setup
+### What Stayed in Handler
 
-#### File 2: `ffmpeg-export.ts` (~600 lines)
-- Video export operations
-- Filter chain building
-- Frame extraction and encoding
+- `setupFFmpegIPC()` - 10 IPC handler registrations
+- `buildFFmpegArgs()` - FFmpeg argument construction (~260 lines)
+- Mode 1.5 execution logic - tightly coupled to IPC events
 
-#### File 3: `ffmpeg-utils.ts` (~500 lines)
-- Metadata extraction
-- Thumbnail generation
-- Format detection
-- Codec utilities
+### Benefits Achieved
 
-#### File 4: `ffmpeg-handler.ts` (~900 lines) - Main handler
-- IPC handler registration
-- Transcoding operations
-- Import and compose other modules
+- ✅ Main handler reduced by 46% (2,210 → 1,194 lines)
+- ✅ Types extracted for reuse across modules
+- ✅ Utilities extracted for independent testing
+- ✅ New `getFFprobePath()` helper for cleaner code
+- ✅ Backward compatibility preserved (`main.ts` still works)
+
+### Documentation
+
+See `docs/issues/large-files-refactoring/FFMPEG-HANDLER-REFACTORING-PLAN.md` for detailed implementation notes.
 
 ---
 
@@ -674,7 +667,7 @@ See `docs/issues/large-files-refactoring/USE-AI-GENERATION-REFACTORING-PLAN.md` 
 | ~~High~~ | ~~`ai-video-client.ts`~~ | ~~Second largest (4008 lines), API complexity~~ | ✅ **DONE** |
 | High | `timeline-store.ts` | Core functionality, high change frequency | Pending |
 | ~~Medium~~ | ~~`use-ai-generation.ts`~~ | ~~Complex hook, testability benefits~~ | ✅ **DONE** |
-| Medium | `ffmpeg-handler.ts` | Electron-specific, export functionality | Pending |
+| ~~Medium~~ | ~~`ffmpeg-handler.ts`~~ | ~~Electron-specific, export functionality~~ | ✅ **DONE** |
 | Medium | `fal-ai-client.ts` | API client, clear module boundaries | Pending |
 | Medium | `export-engine-cli.ts` | Export logic, FFmpeg integration | Pending |
 | Low | `timeline/index.tsx` | UI component, moderate complexity | Pending |
@@ -684,5 +677,5 @@ See `docs/issues/large-files-refactoring/USE-AI-GENERATION-REFACTORING-PLAN.md` 
 ---
 
 *Document generated: 2025-12-08*
-*Last updated: 2025-12-10 (ai.tsx, ai-video-client.ts, use-ai-generation.ts refactoring completed)*
+*Last updated: 2025-12-10 (ai.tsx, ai-video-client.ts, use-ai-generation.ts, ffmpeg-handler.ts refactoring completed)*
 *Analysis based on QCut codebase structure*
