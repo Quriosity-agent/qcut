@@ -1047,7 +1047,10 @@ export function useAIGeneration(props: UseAIGenerationProps) {
             resolution,
           };
 
-          handlerResult = await routeTextToVideoHandler(handlerCtx, t2vSettings);
+          handlerResult = await routeTextToVideoHandler(
+            handlerCtx,
+            t2vSettings
+          );
           response = handlerResult.response;
           console.log("  ✅ Text-to-video response:", response);
         } else if (activeTab === "image") {
@@ -1098,7 +1101,10 @@ export function useAIGeneration(props: UseAIGenerationProps) {
             uploadAudioToFal,
           };
 
-          handlerResult = await routeImageToVideoHandler(handlerCtx, i2vSettings);
+          handlerResult = await routeImageToVideoHandler(
+            handlerCtx,
+            i2vSettings
+          );
 
           if (handlerResult.shouldSkip) {
             console.log(`  ⚠️ Skipping model - ${handlerResult.skipReason}`);
@@ -1124,7 +1130,10 @@ export function useAIGeneration(props: UseAIGenerationProps) {
             flashvsrSeed: flashvsrSeed ?? null,
           };
 
-          handlerResult = await routeUpscaleHandler(handlerCtx, upscaleSettings);
+          handlerResult = await routeUpscaleHandler(
+            handlerCtx,
+            upscaleSettings
+          );
 
           if (handlerResult.shouldSkip) {
             console.log(`  ⚠️ Skipping model - ${handlerResult.skipReason}`);
@@ -1217,12 +1226,16 @@ export function useAIGeneration(props: UseAIGenerationProps) {
             console.log("📦 Added to generations array:", generations.length);
 
             // Media integration using extracted function
-            const { canIntegrate: canDoIntegration, missing } = canIntegrateMedia(
-              activeProject?.id,
-              addMediaItem,
-              response.video_url
+            const { canIntegrate: canDoIntegration, missing } =
+              canIntegrateMedia(
+                activeProject?.id,
+                addMediaItem,
+                response.video_url
+              );
+            console.log(
+              "   - WILL EXECUTE MEDIA INTEGRATION:",
+              canDoIntegration
             );
-            console.log("   - WILL EXECUTE MEDIA INTEGRATION:", canDoIntegration);
             if (!canDoIntegration) {
               console.log("   - missing for integration:", missing);
             }
@@ -1235,7 +1248,12 @@ export function useAIGeneration(props: UseAIGenerationProps) {
                 projectId: activeProject.id,
                 addMediaItem,
                 duration: newVideo.duration || 5,
-                sourceType: activeTab === "text" ? "text2video" : activeTab === "image" ? "image2video" : activeTab,
+                sourceType:
+                  activeTab === "text"
+                    ? "text2video"
+                    : activeTab === "image"
+                      ? "image2video"
+                      : activeTab,
                 onError: (error) => {
                   setIsGenerating(false);
                   setGenerationProgress(0);
@@ -1246,11 +1264,14 @@ export function useAIGeneration(props: UseAIGenerationProps) {
 
               if (integrationResult.success) {
                 // Update video with local paths
-                Object.assign(newVideo, updateVideoWithLocalPaths(
+                Object.assign(
                   newVideo,
-                  integrationResult,
-                  response.video_url
-                ));
+                  updateVideoWithLocalPaths(
+                    newVideo,
+                    integrationResult,
+                    response.video_url
+                  )
+                );
               } else if (integrationResult.error) {
                 // Critical error - abort generation
                 return;
@@ -1328,7 +1349,12 @@ export function useAIGeneration(props: UseAIGenerationProps) {
               projectId: activeProject.id,
               addMediaItem,
               duration: newVideo.duration || 5,
-              sourceType: activeTab === "text" ? "text2video" : activeTab === "image" ? "image2video" : activeTab,
+              sourceType:
+                activeTab === "text"
+                  ? "text2video"
+                  : activeTab === "image"
+                    ? "image2video"
+                    : activeTab,
               onError: (error) => {
                 setIsGenerating(false);
                 setGenerationProgress(0);
@@ -1339,11 +1365,14 @@ export function useAIGeneration(props: UseAIGenerationProps) {
 
             if (integrationResult.success) {
               // Update video with local paths
-              Object.assign(newVideo, updateVideoWithLocalPaths(
+              Object.assign(
                 newVideo,
-                integrationResult,
-                response.video_url
-              ));
+                updateVideoWithLocalPaths(
+                  newVideo,
+                  integrationResult,
+                  response.video_url
+                )
+              );
             } else if (integrationResult.error) {
               // Critical error - abort generation
               return;

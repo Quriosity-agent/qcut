@@ -9,7 +9,11 @@ import { spawn } from "child_process";
 import { app } from "electron";
 import path from "path";
 import fs from "fs";
-import type { VideoProbeResult, FFmpegProgress, QualitySettings } from "./types";
+import type {
+  VideoProbeResult,
+  FFmpegProgress,
+  QualitySettings,
+} from "./types";
 
 // ============================================================================
 // Constants
@@ -76,10 +80,7 @@ export function getFFmpegPath(): string {
   if (app.isPackaged) {
     // Production: FFmpeg is in the app's resources folder
     // extraResources config copies electron/resources/*.exe to resources/
-    const resourcePath: string = path.join(
-      process.resourcesPath,
-      "ffmpeg.exe"
-    );
+    const resourcePath: string = path.join(process.resourcesPath, "ffmpeg.exe");
 
     if (fs.existsSync(resourcePath)) {
       ffmpegPath = resourcePath;
@@ -88,7 +89,12 @@ export function getFFmpegPath(): string {
     }
   } else {
     // Development: try bundled FFmpeg first, then system PATH
-    const devPath: string = path.join(__dirname, "..", "resources", "ffmpeg.exe");
+    const devPath: string = path.join(
+      __dirname,
+      "..",
+      "resources",
+      "ffmpeg.exe"
+    );
     if (fs.existsSync(devPath)) {
       ffmpegPath = devPath;
     } else {
@@ -162,7 +168,9 @@ export function parseProgress(output: string): FFmpegProgress | null {
  * @returns Promise resolving to video stream properties
  * @throws Error if ffprobe fails or video stream not found
  */
-export async function probeVideoFile(videoPath: string): Promise<VideoProbeResult> {
+export async function probeVideoFile(
+  videoPath: string
+): Promise<VideoProbeResult> {
   const ffprobePath = getFFprobePath();
 
   return new Promise<VideoProbeResult>((resolve, reject) => {
@@ -378,16 +386,7 @@ export async function normalizeVideo(
     console.log(
       "🎧 [MODE 1.5 NORMALIZE] Transcoding audio to AAC 48kHz stereo for compatibility..."
     );
-    args.push(
-      "-c:a",
-      "aac",
-      "-b:a",
-      "192k",
-      "-ar",
-      "48000",
-      "-ac",
-      "2"
-    );
+    args.push("-c:a", "aac", "-b:a", "192k", "-ar", "48000", "-ac", "2");
 
     // Audio sync (critical for fps conversion)
     args.push("-af", "aresample=async=1");

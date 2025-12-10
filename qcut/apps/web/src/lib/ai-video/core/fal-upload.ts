@@ -39,7 +39,9 @@ interface ElectronUploadResult {
  * @param fileType - Type of file to check upload availability for
  * @returns true if Electron IPC can handle this file type
  */
-export function isElectronUploadAvailable(fileType: FalUploadFileType): boolean {
+export function isElectronUploadAvailable(
+  fileType: FalUploadFileType
+): boolean {
   if (typeof window === "undefined" || !window.electronAPI?.fal) {
     return false;
   }

@@ -13,7 +13,7 @@ This document identifies the top 10 source code files exceeding 800 lines and pr
 | 3 | `apps/web/src/components/editor/media-panel/views/ai/hooks/use-ai-generation.ts` | ~~2616~~ 1756 | ~~Split into 3 files~~ | ✅ **REFACTORED** |
 | 4 | `electron/ffmpeg-handler.ts` | ~~2210~~ 1194 | ~~Split into 3 files~~ | ✅ **REFACTORED** |
 | 5 | `apps/web/src/stores/timeline-store.ts` | 2194 | Split into 3 files | Pending |
-| 6 | `apps/web/src/lib/fal-ai-client.ts` | 1786 | Split into 3 files | Pending |
+| 6 | `apps/web/src/lib/fal-ai-client.ts` | ~~1806~~ 1304 | ~~Split into 3 files~~ | ✅ **REFACTORED** |
 | 7 | `apps/web/src/lib/export-engine-cli.ts` | 1689 | Split into 3 files | Pending |
 | 8 | `apps/web/src/components/editor/timeline/index.tsx` | 1538 | Split into 3-4 files | Pending |
 | 9 | `apps/web/src/components/editor/media-panel/views/ai-constants.ts` | 1410 | Split into 2-3 files | Pending |
@@ -286,62 +286,70 @@ See `docs/issues/large-files-refactoring/FFMPEG-HANDLER-REFACTORING-PLAN.md` for
 
 ---
 
-## 6. fal-ai-client.ts (1786 lines)
+## 6. fal-ai-client.ts ✅ REFACTORED (Dec 2025)
 
 **Path**: `qcut/apps/web/src/lib/fal-ai-client.ts`
 
-### Main Functions/Sections
+### Refactoring Complete
 
-1. **Type Definitions & Constants** (Lines 1-120)
-   - `FalImageResponse`, `GenerationResult` interfaces
-   - Upload error types
-   - Output format constants (VALID_OUTPUT_FORMATS)
-   - Aspect ratio mappings
+**Original Size**: 1,806 lines → **Current Size**: 1,304 lines (~28% reduction)
 
-2. **Validation Helpers** (Lines 120-220)
-   - `normalizeAspectRatio()` - aspect ratio normalization
-   - `imageSizeToAspectRatio()` - size conversion
-   - `normalizeOutputFormat()` - format validation
-   - Reve-specific validators (prompt, numImages)
+### New File Structure
 
-3. **FalAIClient Class** (Lines 224-500)
-   - Constructor with API key initialization
-   - `makeRequest<T>()` - generic HTTP request handler
-   - Error response parsing
+| File | Lines | Purpose |
+|------|-------|---------|
+| `fal-ai-client.ts` | 1,304 | Main client (FalAIClient class + generation methods) |
+| `ai-video/core/fal-request.ts` | 237 | FAL API request utilities + error parsing |
+| `ai-video/core/fal-upload.ts` | 283 | File upload with Electron IPC fallback |
+| `ai-video/validation/validators.ts` | 607 | All validators (video + image) |
+| `fal-ai/model-handlers/index.ts` | 78 | Barrel + model detection |
+| `fal-ai/model-handlers/v3-params.ts` | 26 | V3/SeedEdit parameter conversion |
+| `fal-ai/model-handlers/v4-params.ts` | 112 | V4/SeedDream parameter conversion |
+| `fal-ai/model-handlers/nano-banana-params.ts` | 74 | Nano Banana parameter conversion |
+| `fal-ai/model-handlers/flux-params.ts` | 81 | FLUX model parameter conversion |
 
-4. **File Upload Methods** (Lines 331-500)
-   - `uploadFileToFal()` - generic file upload with IPC fallback
-   - `uploadImageToFal()`, `uploadAudioToFal()`, `uploadVideoToFal()`
-   - Electron IPC integration for CORS bypass
+### What Was Extracted
 
-5. **Model-Specific Parameter Conversion** (Lines 503-900)
-   - `convertSettingsToParams()` - settings to API params
-   - Model-specific handling (Imagen4, SeedDream, WAN, FLUX, Qwen)
-   - Image size and aspect ratio mapping
+1. **Core FAL Utilities** (`ai-video/core/`)
+   - `parseFalErrorResponse()` - error response parsing
+   - `FAL_UPLOAD_URL` constant
+   - File upload with Electron IPC fallback
+   - Upload type definitions (`FalUploadError`, `FalUploadFileType`)
 
-6. **Generation Methods** (Lines 900-1786)
-   - `generateImage()` - single model image generation
-   - `generateMultipleImages()` - multi-model parallel generation
-   - Reve text-to-image and edit methods
-   - Veo 3.1 video generation methods
+2. **Validators** (`ai-video/validation/validators.ts`)
+   - `normalizeAspectRatio()`, `imageSizeToAspectRatio()` - aspect ratio handling
+   - `normalizeOutputFormat()` - output format validation
+   - Reve validators: `clampReveNumImages()`, `truncateRevePrompt()`, `validateRevePrompt()`, `validateReveNumImages()`
+   - Constants: `VALID_OUTPUT_FORMATS`, `DEFAULT_ASPECT_RATIO`, `IMAGE_SIZE_TO_ASPECT_RATIO`
 
-### Recommended Split
+3. **Model Parameter Handlers** (`fal-ai/model-handlers/`)
+   - `convertV3Parameters()` - V3/SeedEdit models
+   - `convertV4Parameters()` - V4/SeedDream models
+   - `convertNanoBananaParameters()` - Nano Banana model
+   - `convertFluxParameters()` - FLUX Kontext models
+   - `detectModelVersion()` - model version routing
 
-#### File 1: `fal-ai-types.ts` (~150 lines)
-- All type definitions
-- Response interfaces
-- Validation constants
+### Code Reuse Benefits
 
-#### File 2: `fal-ai-upload.ts` (~350 lines)
-- File upload methods
-- Electron IPC integration
-- Upload error handling
+| Shared Module | Reused By |
+|---------------|-----------|
+| `ai-video/core/fal-request.ts` | fal-ai-client, ai-video-client, image-edit-client |
+| `ai-video/core/fal-upload.ts` | fal-ai-client, future clients |
+| `ai-video/validation/validators.ts` | All FAL clients (video + image) |
+| `fal-ai/model-handlers/` | fal-ai-client, image-edit-client |
 
-#### File 3: `fal-ai-client.ts` (~1300 lines) - Main client
-- FalAIClient class
-- Generation methods
-- Parameter conversion
-- Import upload methods
+### Benefits Achieved
+
+- ✅ Main client reduced by 28% (1,806 → 1,304 lines)
+- ✅ Upload logic extracted for reuse across all FAL clients
+- ✅ Validators consolidated into single source of truth
+- ✅ Model handlers isolated for easy updates when FAL changes API
+- ✅ Backward compatible (`detectModelVersion` re-exported)
+- ✅ All tests pass (11/11 ai-video-client tests)
+
+### Documentation
+
+See `docs/issues/large-files-refactoring/FAL-AI-CLIENT-REFACTORING-PLAN.md` for detailed implementation notes.
 
 ---
 
