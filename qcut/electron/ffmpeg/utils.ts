@@ -143,7 +143,7 @@ export function parseProgress(output: string): FFmpegProgress | null {
 
   if (frameMatch || timeMatch) {
     return {
-      frame: frameMatch ? parseInt(frameMatch[1]) : null,
+      frame: frameMatch ? Number.parseInt(frameMatch[1], 10) : null,
       time: timeMatch ? timeMatch[1] : null,
     };
   }
@@ -180,6 +180,12 @@ export async function probeVideoFile(videoPath: string): Promise<VideoProbeResul
       stdio: ["ignore", "pipe", "pipe"],
     });
 
+    // Set up timeout - must be cleared on close/error to prevent race condition
+    const timeoutId = setTimeout(() => {
+      ffprobe.kill();
+      reject(new Error(`ffprobe timeout for: ${videoPath}`));
+    }, 10_000);
+
     let stdout = "";
     let stderr = "";
 
@@ -192,6 +198,8 @@ export async function probeVideoFile(videoPath: string): Promise<VideoProbeResul
     });
 
     ffprobe.on("close", (code) => {
+      clearTimeout(timeoutId);
+
       if (code !== 0) {
         reject(new Error(`ffprobe failed with code ${code}: ${stderr}`));
         return;
@@ -224,14 +232,9 @@ export async function probeVideoFile(videoPath: string): Promise<VideoProbeResul
     });
 
     ffprobe.on("error", (err) => {
+      clearTimeout(timeoutId);
       reject(new Error(`Failed to spawn ffprobe: ${err.message}`));
     });
-
-    // Timeout after 10 seconds
-    setTimeout(() => {
-      ffprobe.kill();
-      reject(new Error(`ffprobe timeout for: ${videoPath}`));
-    }, 10_000);
   });
 }
 
