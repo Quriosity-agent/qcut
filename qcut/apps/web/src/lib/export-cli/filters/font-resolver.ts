@@ -49,6 +49,12 @@ const FONTCONFIG_MAP: Record<string, { mac: string; linux: string }> = {
 };
 
 /**
+ * Windows font base path.
+ * Exported for testing and custom font directory support.
+ */
+export const WINDOWS_FONT_BASE_PATH = "C:/Windows/Fonts/";
+
+/**
  * Resolve font family to FFmpeg-compatible font configuration.
  *
  * Platform-specific approach:
@@ -113,11 +119,5 @@ export function resolveFontPath(
     fontFile = fontConfig.italic;
   }
 
-  return { useFontconfig: false, fontPath: `C:/Windows/Fonts/${fontFile}` };
+  return { useFontconfig: false, fontPath: `${WINDOWS_FONT_BASE_PATH}${fontFile}` };
 }
-
-/**
- * Get the Windows font base path.
- * Exported for testing and custom font directory support.
- */
-export const WINDOWS_FONT_BASE_PATH = "C:/Windows/Fonts/";

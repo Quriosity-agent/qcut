@@ -783,7 +783,7 @@ async function createTempFileFromBlob(
 }
 ```
 
-**Why extract**: Video source extraction is a distinct concern from filter building. Can be tested with mock media items.
+**Why extract**: Video source extraction is a distinct concern from filter building, and can be tested with mock media items independently.
 
 ---
 
