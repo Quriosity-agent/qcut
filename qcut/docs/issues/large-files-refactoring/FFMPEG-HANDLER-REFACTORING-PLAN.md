@@ -2,230 +2,104 @@
 
 **File**: `qcut/electron/ffmpeg-handler.ts`
 **Current Size**: 2,210 lines
-**Target Size**: ~900 lines (main handler) + modular utilities
-**Priority**: Medium (Electron-specific, affects all video export functionality)
+**Target Size**: ~1,200 lines (main handler) + reusable utilities
+**Priority**: Medium
+
+---
+
+## Pre-Refactoring: Create Backup
+
+Before starting, create a backup of the original file:
+
+```bash
+cp qcut/electron/ffmpeg-handler.ts qcut/electron/ffmpeg-handler.ts.backup
+```
+
+**Backup file**: `qcut/electron/ffmpeg-handler.ts.backup`
 
 ---
 
 ## Overview
 
-The `ffmpeg-handler.ts` file is the core video processing module for QCut's Electron backend. It handles all FFmpeg-related IPC operations including video export, audio extraction, frame processing, and video normalization.
+The `ffmpeg-handler.ts` file handles all FFmpeg-related IPC operations. This plan follows existing patterns from `api-key-handler.ts` (240 lines), `sound-handler.ts` (700 lines), and `temp-manager.ts` (148 lines).
 
-### Current Structure Analysis
+---
 
-| Section | Lines | Description |
-|---------|-------|-------------|
-| Imports & Debug Logging | 1-28 | Dependencies and debug utilities |
-| Type Definitions | 30-259 | 15+ interfaces for FFmpeg operations |
-| IPC Handler Registration | 269-1330 | Main `setupFFmpegIPC()` function with all handlers |
-| Video Probing | 1332-1427 | `probeVideoFile()` for codec validation |
-| Video Normalization | 1429-1747 | `normalizeVideo()` for Mode 1.5 |
-| FFmpeg Path Resolution | 1749-1802 | `getFFmpegPath()` for binary location |
-| Argument Building | 1804-2167 | `buildFFmpegArgs()` for export modes |
-| Progress Parsing | 2169-2192 | `parseProgress()` for UI updates |
+## Current Structure (2,210 lines)
+
+| Section | Lines | Content |
+|---------|-------|---------|
+| Imports & Debug | 1-28 | Dependencies, debug utilities |
+| Type Definitions | 30-259 | 15+ interfaces |
+| IPC Handlers | 269-1330 | `setupFFmpegIPC()` with 10 handlers |
+| `probeVideoFile()` | 1332-1427 | Video codec validation |
+| `normalizeVideo()` | 1429-1747 | Mode 1.5 normalization (~320 lines) |
+| `getFFmpegPath()` | 1749-1802 | Binary path resolution |
+| `buildFFmpegArgs()` | 1804-2167 | Argument construction (~360 lines) |
+| `parseProgress()` | 2169-2192 | Progress parsing |
 | Exports | 2194-2210 | Module exports |
 
 ---
 
-## Proposed File Structure
+## Proposed Structure (3 files)
 
-```
-electron/
-├── ffmpeg-handler.ts          (~900 lines) - Main IPC handler registration
-├── ffmpeg/
-│   ├── index.ts               (~30 lines)  - Barrel exports
-│   ├── types.ts               (~250 lines) - All type definitions
-│   ├── config.ts              (~100 lines) - Path resolution & constants
-│   ├── args-builder.ts        (~400 lines) - FFmpeg argument construction
-│   ├── normalization.ts       (~350 lines) - Mode 1.5 video normalization
-│   ├── probe.ts               (~120 lines) - Video file probing
-│   └── progress.ts            (~50 lines)  - Progress parsing utilities
-```
+### File 1: `ffmpeg/types.ts` (~200 lines)
+All TypeScript interfaces extracted for reuse.
 
----
-
-## Detailed Extraction Plan
-
-### File 1: `ffmpeg/types.ts` (~250 lines)
-
-Extract all TypeScript interfaces and types.
-
-**Contents:**
 ```typescript
 // Audio/Video source types
-export interface AudioFile { ... }
-export interface VideoSource { ... }
-export interface StickerSource { ... }
+export interface AudioFile { path: string; startTime: number; volume?: number; }
+export interface VideoSource { path: string; startTime: number; duration: number; ... }
+export interface StickerSource { id: string; path: string; x: number; y: number; ... }
 
 // Export configuration
-export interface ExportOptions { ... }
-export interface FrameData { ... }
-export interface FrameProcessOptions { ... }
-export interface ExportResult { ... }
+export interface ExportOptions { sessionId: string; width: number; height: number; ... }
+export interface ExportResult { success: boolean; outputFile: string; method: string; }
 
-// Quality settings
-export interface QualitySettings { ... }
-export interface QualityMap { ... }
-
-// Progress & errors
-export interface FFmpegProgress { ... }
-export interface FFmpegError extends Error { ... }
+// Quality & Progress
+export interface QualitySettings { crf: string; preset: string; }
+export interface FFmpegProgress { frame?: number; time?: string; }
 
 // Probe results
-export interface VideoProbeResult { ... }
-
-// Handler results
-export interface OpenFolderResult { ... }
-export interface ExtractAudioOptions { ... }
-export interface ExtractAudioResult { ... }
-
-// IPC handler type map
-export interface FFmpegHandlers { ... }
+export interface VideoProbeResult { path: string; codec: string; width: number; ... }
 ```
 
-**Benefits:**
-- Single source of truth for all FFmpeg types
-- Can be imported by renderer process for type safety
-- Cleaner main handler file
+**Why extract**: Types are referenced by renderer process typings (`electron.d.ts`), enables better IntelliSense.
 
 ---
 
-### File 2: `ffmpeg/config.ts` (~100 lines)
+### File 2: `ffmpeg/utils.ts` (~400 lines)
+Reusable FFmpeg utilities that don't depend on IPC.
 
-Extract FFmpeg binary path resolution and configuration constants.
-
-**Contents:**
 ```typescript
+import { spawn } from "child_process";
 import { app } from "electron";
 import path from "path";
 import fs from "fs";
+import type { VideoProbeResult, FFmpegProgress, QualitySettings } from "./types";
 
-// Configuration constants
+// Constants
 export const MAX_EXPORT_DURATION = 600;
-
-// Quality presets
-export const QUALITY_SETTINGS: QualityMap = {
+export const QUALITY_SETTINGS: Record<string, QualitySettings> = {
   high: { crf: "18", preset: "slow" },
   medium: { crf: "23", preset: "fast" },
   low: { crf: "28", preset: "veryfast" },
 };
 
-// Debug logging utilities
+// Debug logging (reuse pattern from sound-handler.ts)
 export const debugLog = (...args: any[]) => { ... };
-export const debugWarn = (...args: any[]) => { ... };
-export const debugError = (...args: any[]) => { ... };
 
-/**
- * Resolves FFmpeg binary path for current environment (dev/packaged).
- */
+// Path resolution
 export function getFFmpegPath(): string { ... }
-
-/**
- * Resolves FFprobe binary path (same directory as FFmpeg).
- */
 export function getFFprobePath(): string { ... }
-```
 
-**Benefits:**
-- Centralized configuration
-- Easy to modify paths for different environments
-- Reusable across multiple modules
+// Video probing
+export async function probeVideoFile(videoPath: string): Promise<VideoProbeResult> { ... }
 
----
+// Progress parsing
+export function parseProgress(output: string): FFmpegProgress | null { ... }
 
-### File 3: `ffmpeg/args-builder.ts` (~400 lines)
-
-Extract the complex `buildFFmpegArgs()` function and related helpers.
-
-**Contents:**
-```typescript
-import type {
-  AudioFile, VideoSource, StickerSource,
-  ExportOptions, QualitySettings
-} from "./types";
-import { QUALITY_SETTINGS, debugLog } from "./config";
-
-/**
- * Build FFmpeg arguments for Mode 2: Direct video with filters
- */
-function buildMode2Args(
-  options: ExportOptions,
-  quality: QualitySettings,
-  ...
-): string[] { ... }
-
-/**
- * Build FFmpeg arguments for Mode 1: Direct copy (single video)
- */
-function buildDirectCopySingleArgs(
-  video: VideoSource,
-  audioFiles: AudioFile[],
-  outputFile: string
-): string[] { ... }
-
-/**
- * Build FFmpeg arguments for Mode 1: Direct copy (multi-video concat)
- */
-function buildDirectConcatArgs(
-  videoSources: VideoSource[],
-  audioFiles: AudioFile[],
-  inputDir: string,
-  outputFile: string
-): string[] { ... }
-
-/**
- * Main argument builder - routes to appropriate mode
- */
-export function buildFFmpegArgs(
-  inputDir: string,
-  outputFile: string,
-  width: number,
-  height: number,
-  fps: number,
-  quality: "high" | "medium" | "low",
-  duration: number,
-  audioFiles?: AudioFile[],
-  filterChain?: string,
-  textFilterChain?: string,
-  useDirectCopy?: boolean,
-  videoSources?: VideoSource[],
-  stickerFilterChain?: string,
-  stickerSources?: StickerSource[],
-  useVideoInput?: boolean,
-  videoInputPath?: string,
-  trimStart?: number,
-  trimEnd?: number
-): string[] { ... }
-```
-
-**Benefits:**
-- Isolated argument construction logic
-- Easier to add new export modes
-- Better testability of each mode
-
----
-
-### File 4: `ffmpeg/normalization.ts` (~350 lines)
-
-Extract Mode 1.5 video normalization logic.
-
-**Contents:**
-```typescript
-import { spawn } from "child_process";
-import path from "path";
-import fs from "fs";
-import { getFFmpegPath, getFFprobePath, debugLog } from "./config";
-
-/**
- * Normalize a single video to target resolution and fps using FFmpeg padding.
- *
- * Used by Mode 1.5 for multi-video exports with different properties.
- * Enables fast concat by ensuring all videos have identical:
- * - Resolution (with letterboxing/pillarboxing)
- * - Frame rate
- * - Codec (H.264)
- * - Audio format (AAC 48kHz stereo)
- */
+// Video normalization (Mode 1.5)
 export async function normalizeVideo(
   inputPath: string,
   outputPath: string,
@@ -236,291 +110,192 @@ export async function normalizeVideo(
   trimStart?: number,
   trimEnd?: number
 ): Promise<void> { ... }
-
-/**
- * Verify output video duration matches expected duration.
- */
-export async function verifyVideoDuration(
-  videoPath: string,
-  expectedDuration: number
-): Promise<{ actual: number; difference: number }> { ... }
 ```
 
-**Benefits:**
-- Isolated normalization logic
-- Can be reused for other preprocessing tasks
-- Clear documentation of Mode 1.5 strategy
+**Why extract**: These functions are pure utilities that can be tested independently and reused (e.g., `getFFmpegPath()` is already used in `main.ts:961`).
 
 ---
 
-### File 5: `ffmpeg/probe.ts` (~120 lines)
+### File 3: `ffmpeg-handler.ts` (~1,200 lines)
+Main handler focused on IPC registration and argument building.
 
-Extract video probing functionality.
-
-**Contents:**
-```typescript
-import { spawn } from "child_process";
-import { getFFprobePath } from "./config";
-import type { VideoProbeResult } from "./types";
-
-/**
- * Probes a video file to extract codec information using ffprobe.
- * Used for validating codec compatibility in direct-copy mode.
- */
-export async function probeVideoFile(videoPath: string): Promise<VideoProbeResult> { ... }
-
-/**
- * Validate that multiple videos have compatible codecs for concat.
- */
-export async function validateConcatCompatibility(
-  videoSources: VideoSource[]
-): Promise<{ compatible: boolean; error?: string }> { ... }
-
-/**
- * Get video duration using ffprobe.
- */
-export async function getVideoDuration(videoPath: string): Promise<number> { ... }
-```
-
-**Benefits:**
-- Reusable video analysis utilities
-- Clean separation from export logic
-- Easy to extend with more probe features
-
----
-
-### File 6: `ffmpeg/progress.ts` (~50 lines)
-
-Extract progress parsing utilities.
-
-**Contents:**
-```typescript
-import type { FFmpegProgress } from "./types";
-
-/**
- * Extracts progress information from FFmpeg stderr output.
- * FFmpeg writes progress to stderr; this parser extracts
- * frame numbers and timestamps for UI progress updates.
- */
-export function parseProgress(output: string): FFmpegProgress | null { ... }
-
-/**
- * Calculate export percentage from frame progress.
- */
-export function calculateProgressPercentage(
-  currentFrame: number,
-  totalFrames: number
-): number { ... }
-
-/**
- * Parse FFmpeg time string to seconds.
- * @param time - Time in "HH:MM:SS.ss" format
- */
-export function parseTimeToSeconds(time: string): number { ... }
-```
-
-**Benefits:**
-- Isolated progress logic
-- Easy to add more progress parsing features
-- Testable without spawning FFmpeg
-
----
-
-### File 7: `ffmpeg/index.ts` (~30 lines)
-
-Barrel file for clean imports.
-
-**Contents:**
-```typescript
-// Types
-export * from "./types";
-
-// Configuration
-export { getFFmpegPath, getFFprobePath, QUALITY_SETTINGS } from "./config";
-
-// Core functions
-export { buildFFmpegArgs } from "./args-builder";
-export { normalizeVideo, verifyVideoDuration } from "./normalization";
-export { probeVideoFile, validateConcatCompatibility, getVideoDuration } from "./probe";
-export { parseProgress, calculateProgressPercentage, parseTimeToSeconds } from "./progress";
-```
-
----
-
-### Updated: `ffmpeg-handler.ts` (~900 lines)
-
-The main handler file becomes focused on IPC registration.
-
-**Contents:**
 ```typescript
 import { ipcMain, app, shell, IpcMainInvokeEvent } from "electron";
 import { spawn, ChildProcess } from "child_process";
 import path from "path";
 import fs from "fs";
-
 import { TempManager, ExportSession } from "./temp-manager.js";
 import {
   getFFmpegPath,
-  buildFFmpegArgs,
-  normalizeVideo,
   probeVideoFile,
+  normalizeVideo,
   parseProgress,
-  type ExportOptions,
-  type ExportResult,
-  type FrameData,
-  type FFmpegProgress,
-  // ... other types
-} from "./ffmpeg";
+  QUALITY_SETTINGS,
+  MAX_EXPORT_DURATION,
+} from "./ffmpeg/utils";
+import type { ExportOptions, ExportResult, ... } from "./ffmpeg/types";
 
 const tempManager = new TempManager();
 
-/**
- * Registers all FFmpeg-related IPC handlers for video export operations.
- */
+// buildFFmpegArgs stays here (tightly coupled to export logic)
+function buildFFmpegArgs(...): string[] { ... }
+
 export function setupFFmpegIPC(): void {
-  // ffmpeg-path handler
-  ipcMain.handle("ffmpeg-path", async (): Promise<string> => { ... });
-
-  // create-export-session handler
-  ipcMain.handle("create-export-session", async (): Promise<ExportSession> => { ... });
-
-  // save-frame handler
-  ipcMain.handle("save-frame", async (event, data: FrameData): Promise<string> => { ... });
-
-  // read-output-file handler
-  ipcMain.handle("read-output-file", async (event, outputPath): Promise<Buffer> => { ... });
-
-  // cleanup-export-session handler
-  ipcMain.handle("cleanup-export-session", async (event, sessionId): Promise<void> => { ... });
-
-  // open-frames-folder handler
-  ipcMain.handle("open-frames-folder", async (event, sessionId): Promise<OpenFolderResult> => { ... });
-
-  // export-video-cli handler (main export logic)
-  ipcMain.handle("export-video-cli", async (event, options: ExportOptions): Promise<ExportResult> => {
-    // Mode routing logic (1, 1.5, 2)
-    // Calls buildFFmpegArgs, normalizeVideo, etc.
-  });
-
-  // validate-filter-chain handler
-  ipcMain.handle("validate-filter-chain", async (event, filterChain): Promise<boolean> => { ... });
-
-  // processFrame handler
-  ipcMain.handle("processFrame", async (event, options): Promise<void> => { ... });
-
-  // extract-audio handler
-  ipcMain.handle("extract-audio", async (event, options): Promise<ExtractAudioResult> => { ... });
-
-  // save-sticker-for-export handler
-  ipcMain.handle("save-sticker-for-export", async (event, options): Promise<...> => { ... });
+  // 10 IPC handlers (unchanged)
 }
-
-// Exports
-export { getFFmpegPath };
-export default { setupFFmpegIPC, getFFmpegPath };
 ```
 
 ---
 
-## Implementation Steps
+## Implementation (2 Subtasks)
 
-### Phase 1: Type Extraction (Low Risk)
-1. Create `electron/ffmpeg/types.ts` with all interfaces
-2. Update imports in `ffmpeg-handler.ts` to use new types file
-3. Verify TypeScript compilation passes
-4. Test: Run build and verify no type errors
+### Subtask 1: Extract Types (~15 min)
 
-### Phase 2: Config Extraction (Low Risk)
-1. Create `electron/ffmpeg/config.ts` with path resolution and constants
-2. Move `getFFmpegPath()`, debug utilities, and quality settings
+1. Create `electron/ffmpeg/types.ts`
+2. Move all interfaces from lines 30-259
 3. Update imports in `ffmpeg-handler.ts`
-4. Test: Run `bun run electron:dev` and verify FFmpeg detection works
+4. Verify: `bun x tsc` passes
 
-### Phase 3: Utility Extraction (Medium Risk)
-1. Create `electron/ffmpeg/progress.ts` with progress parsing
-2. Create `electron/ffmpeg/probe.ts` with video probing
-3. Update imports and verify functionality
-4. Test: Export a video and verify progress updates work
+**Files changed**: 2
+**Risk**: Low (no logic changes)
 
-### Phase 4: Core Logic Extraction (Higher Risk)
-1. Create `electron/ffmpeg/args-builder.ts` with argument construction
-2. Create `electron/ffmpeg/normalization.ts` with Mode 1.5 logic
-3. Create `electron/ffmpeg/index.ts` barrel file
-4. Update `ffmpeg-handler.ts` to use extracted modules
-5. Test: Verify all export modes (1, 1.5, 2) work correctly
+---
 
-### Phase 5: Cleanup & Verification
-1. Remove duplicate code from `ffmpeg-handler.ts`
-2. Verify all exports are properly re-exported
-3. Run full test suite
-4. Test in packaged Electron app
+### Subtask 2: Extract Utils (~25 min)
+
+1. Create `electron/ffmpeg/utils.ts`
+2. Move functions:
+   - `getFFmpegPath()` (lines 1758-1802)
+   - `getFFprobePath()` (new helper, extracted from probe logic)
+   - `probeVideoFile()` (lines 1352-1427)
+   - `normalizeVideo()` (lines 1468-1747)
+   - `parseProgress()` (lines 2178-2192)
+   - Debug utilities (lines 12-28)
+   - Constants (QUALITY_SETTINGS, MAX_EXPORT_DURATION)
+3. Update imports in `ffmpeg-handler.ts` and `main.ts`
+4. Create `electron/ffmpeg/index.ts` barrel file
+5. Verify: `bun run electron:dev` works
+
+**Files changed**: 4
+**Risk**: Medium (function extraction)
+
+---
+
+## Reuse Opportunities
+
+### Already Used Elsewhere
+- `getFFmpegPath()` is called in `main.ts:961-967` for `validate-audio-file` handler
+- After extraction, `main.ts` can import from `./ffmpeg/utils` instead of `./ffmpeg-handler`
+
+### Pattern Alignment
+- Types file pattern: matches `temp-manager.ts` exports
+- Logger pattern: matches `sound-handler.ts` noop logger
+- Export pattern: matches all handlers (CommonJS + ES6 dual exports)
 
 ---
 
 ## Testing Checklist
 
-### Export Mode Tests
-- [ ] Mode 1: Single video direct copy
-- [ ] Mode 1: Multi-video concat (identical codecs)
-- [ ] Mode 1.5: Multi-video normalization (different resolutions)
-- [ ] Mode 1.5: Videos with trim values
-- [ ] Mode 2: Direct video with text overlays
-- [ ] Mode 2: Direct video with sticker overlays
-- [ ] Mode 2: Direct video with both text and stickers
+### After Subtask 1 (Types)
+- [ ] `bun x tsc` compiles without errors
+- [ ] No runtime errors on app start
 
-### Feature Tests
-- [ ] FFmpeg path detection (dev mode)
-- [ ] FFmpeg path detection (packaged app)
-- [ ] Audio extraction
-- [ ] Frame processing with filters
-- [ ] Progress reporting to UI
-- [ ] Export session cleanup
-
-### Edge Cases
-- [ ] Missing FFmpeg binary
-- [ ] Invalid video file
-- [ ] Codec mismatch detection
-- [ ] Duration validation (MAX_EXPORT_DURATION)
-- [ ] Windows path escaping in concat files
+### After Subtask 2 (Utils)
+- [ ] Export Mode 1: Single video direct copy
+- [ ] Export Mode 1.5: Multi-video normalization
+- [ ] Export Mode 2: Video with filters (text/stickers)
+- [ ] Audio extraction works
+- [ ] Progress updates in UI
 
 ---
 
-## Dependencies
+## File Size Summary
 
-This refactoring does NOT affect:
-- `electron/main.ts` - Only imports `setupFFmpegIPC`
-- `electron/temp-manager.ts` - Independent module
-- Frontend code - Uses IPC, not direct imports
+| File | Before | After |
+|------|--------|-------|
+| `ffmpeg-handler.ts` | 2,210 | ~1,200 |
+| `ffmpeg/types.ts` | - | ~200 |
+| `ffmpeg/utils.ts` | - | ~400 |
+| `ffmpeg/index.ts` | - | ~20 |
+| **Total** | 2,210 | ~1,820 |
 
-This refactoring DOES require:
-- TypeScript recompilation after each phase
-- Testing on Windows (FFmpeg path resolution is platform-specific)
-
----
-
-## Benefits Summary
-
-| Benefit | Description |
-|---------|-------------|
-| **Maintainability** | Smaller, focused files are easier to understand |
-| **Testability** | Extracted functions can be unit tested in isolation |
-| **Reusability** | Probe and progress utilities can be used elsewhere |
-| **Developer Experience** | Clear module boundaries and imports |
-| **Performance** | No runtime impact (same code, better organization) |
+**Net reduction**: ~400 lines (18%) via removing duplication and cleaner structure.
 
 ---
 
-## Risk Assessment
+## Not Extracting
 
-| Risk | Mitigation |
-|------|------------|
-| Import path issues | Use barrel file for clean imports |
-| Circular dependencies | Types file has no imports from other modules |
-| Windows path issues | Keep path resolution logic together in config.ts |
-| Build failures | Incremental extraction with testing after each phase |
+### `buildFFmpegArgs()` (~360 lines)
+Stays in `ffmpeg-handler.ts` because:
+- Tightly coupled to export options logic
+- Only called from one place (`export-video-cli` handler)
+- Complex mode routing (1, 1.5, 2) that's hard to separate
+
+### Mode 1.5 Execution Logic (~300 lines in handler)
+Stays in handler because:
+- Deeply integrated with IPC event (progress reporting)
+- Uses `tempManager` instance
+- Complex error handling with fallbacks
+
+---
+
+## Post-Refactoring: Verification & Cleanup
+
+### Verification Checklist
+
+Compare refactored code against backup to ensure completeness:
+
+```bash
+# Check all exported functions are preserved
+grep -E "^export (function|const|type|interface)" qcut/electron/ffmpeg-handler.ts.backup
+grep -E "^export" qcut/electron/ffmpeg/types.ts qcut/electron/ffmpeg/utils.ts qcut/electron/ffmpeg-handler.ts
+
+# Check all IPC handlers are registered
+grep -c "ipcMain.handle" qcut/electron/ffmpeg-handler.ts.backup
+grep -c "ipcMain.handle" qcut/electron/ffmpeg-handler.ts
+# Both should return: 10
+
+# Verify TypeScript compilation
+cd qcut && bun x tsc --noEmit
+
+# Test runtime
+bun run electron:dev
+```
+
+### Functional Tests (with backup reference)
+
+| Test | Command/Action | Expected | Verified |
+|------|----------------|----------|----------|
+| App starts | `bun run electron:dev` | No console errors | [ ] |
+| FFmpeg detected | Check console for FFmpeg path | Path logged | [ ] |
+| Export Mode 1 | Export single video | Video exports | [ ] |
+| Export Mode 1.5 | Export 2+ videos (different sizes) | Normalized + concatenated | [ ] |
+| Export Mode 2 | Export with text overlay | Text visible in output | [ ] |
+| Audio extraction | Right-click video → Extract audio | WAV file created | [ ] |
+| Progress updates | Export any video | Progress bar updates | [ ] |
+
+### Cleanup
+
+After all tests pass, remove the backup:
+
+```bash
+rm qcut/electron/ffmpeg-handler.ts.backup
+```
+
+### Rollback (if needed)
+
+If refactoring causes issues, restore from backup:
+
+```bash
+# Remove new files
+rm -rf qcut/electron/ffmpeg/
+
+# Restore original
+mv qcut/electron/ffmpeg-handler.ts.backup qcut/electron/ffmpeg-handler.ts
+```
 
 ---
 
 *Document created: 2025-12-10*
-*Target completion: After current sprint*
+*Estimated time: ~40 minutes total*
 *Author: Claude Code*
