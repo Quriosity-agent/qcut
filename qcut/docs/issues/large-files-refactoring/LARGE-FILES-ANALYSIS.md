@@ -8,8 +8,8 @@ This document identifies the top 10 source code files exceeding 800 lines and pr
 
 | # | File | Lines | Recommendation | Status |
 |---|------|-------|----------------|--------|
-| 1 | `apps/web/src/components/editor/media-panel/views/ai.tsx` | 4246 | Split into 4-5 files | Pending |
-| 2 | `apps/web/src/lib/ai-video-client.ts` | 4008 | Split into 3-4 files | Pending |
+| 1 | `apps/web/src/components/editor/media-panel/views/ai/index.tsx` | ~~4246~~ 1168 | ~~Split into 4-5 files~~ | ✅ **REFACTORED** |
+| 2 | `apps/web/src/lib/ai-video-client.ts` | ~~4008~~ 48 | ~~Split into 3-4 files~~ | ✅ **REFACTORED** |
 | 3 | `apps/web/src/components/editor/media-panel/views/ai/hooks/use-ai-generation.ts` | ~~2616~~ 1756 | ~~Split into 3 files~~ | ✅ **REFACTORED** |
 | 4 | `electron/ffmpeg-handler.ts` | 2210 | Split into 3 files | Pending |
 | 5 | `apps/web/src/stores/timeline-store.ts` | 2194 | Split into 3 files | Pending |
@@ -21,136 +21,106 @@ This document identifies the top 10 source code files exceeding 800 lines and pr
 
 ---
 
-## 1. ai.tsx (4246 lines)
+## 1. ai/index.tsx ✅ REFACTORED (Dec 2025)
 
-**Path**: `qcut/apps/web/src/components/editor/media-panel/views/ai.tsx`
+**Path**: `qcut/apps/web/src/components/editor/media-panel/views/ai/index.tsx`
 
-### Main Functions/Sections
+### Refactoring Complete
 
-1. **Imports & Type Definitions** (Lines 1-150)
-   - 40+ import statements
-   - Type aliases for model configurations (ReveAspectRatioOption, LTXV2FastDuration, etc.)
-   - Duration/resolution option arrays (SEEDANCE_DURATION_OPTIONS, KLING_ASPECT_RATIOS, etc.)
+**Original Size**: 4,246 lines → **Current Size**: 1,168 lines (~72% reduction)
 
-2. **State Management - Model Options** (Lines 157-400)
-   - 60+ `useState` hooks for various model options
-   - Frame-to-Video state (firstFrame, lastFrame)
-   - Video-to-Video state for Kling models
-   - Avatar-specific state (avatarImage, audioFile, referenceImages)
-   - Upscale tab state (sourceVideoFile, bytedanceTargetResolution, flashvsrSettings)
+### New File Structure
 
-3. **Text-to-Video Settings** (Lines 271-380)
-   - Unified T2V settings (t2vAspectRatio, t2vResolution, t2vDuration)
-   - Model-specific settings (LTXV2, Seedance, Kling, Wan25)
-   - Settings expansion state
+| File | Lines | Purpose |
+|------|-------|---------|
+| `ai/index.tsx` | 1,168 | Main component (orchestration + tabs) |
+| `ai/components/ai-history-panel.tsx` | - | History panel component |
+| `ai/components/ai-image-upload.tsx` | - | Image upload component |
+| `ai/components/ai-select-fields.tsx` | - | Select field components |
+| `ai/components/ai-settings-panel.tsx` | - | Settings panel component |
+| `ai/tabs/ai-text-tab.tsx` | - | Text-to-video tab |
+| `ai/tabs/ai-image-tab.tsx` | - | Image-to-video tab |
+| `ai/tabs/ai-avatar-tab.tsx` | - | Avatar generation tab |
+| `ai/tabs/ai-upscale-tab.tsx` | - | Video upscale tab |
+| `ai/settings/ai-sora-settings.tsx` | - | Sora model settings |
+| `ai/settings/ai-reve-settings.tsx` | - | Reve model settings |
+| `ai/settings/ai-veo-settings.tsx` | - | Veo model settings |
 
-4. **Computed Values & Effects** (Lines 400-500)
-   - `combinedCapabilities` - memoized capabilities calculation
-   - Settings clamping effects when models change
-   - `getActiveSettingsCount()` helper
+### What Was Extracted
 
-5. **Event Handlers** (Lines 472-800)
-   - `handleUpscaleVideoChange` - file metadata extraction
-   - `handleUpscaleVideoUrlBlur` - URL validation
-   - Upload handlers for various media types
+1. **Tab Components** (`ai/tabs/`)
+   - Separate components for Text, Image, Avatar, and Upscale tabs
+   - Each tab handles its own UI and model-specific settings
 
-6. **UI Components - Main Render** (Lines 800-4246)
-   - Tab navigation (Text, Image, Avatar, Upscale)
-   - Model selection dropdowns
-   - Per-model settings panels
-   - Generation controls and results display
-   - History panel integration
+2. **Settings Components** (`ai/settings/`)
+   - Model-specific settings panels extracted to dedicated components
+   - Clean separation of configuration UI
 
-### Recommended Split
+3. **Shared Components** (`ai/components/`)
+   - Reusable components: history panel, image upload, select fields, settings panel
+   - Reduces duplication across tabs
 
-#### File 1: `ai-state.ts` (~400 lines)
-- Custom hook `useAIViewState()` with all state management
-- All model-specific state variables
-- State initialization and reset functions
+### Benefits Achieved
 
-#### File 2: `ai-handlers.ts` (~300 lines)
-- All event handlers
-- Video/image upload handlers
-- Form submission logic
-- Validation functions
-
-#### File 3: `ai-text-tab.tsx` (~800 lines)
-- Text-to-Video tab UI
-- Model selection for T2V
-- T2V settings panel
-
-#### File 4: `ai-image-tab.tsx` (~800 lines)
-- Image-to-Video tab UI
-- Frame upload sections
-- I2V model settings
-
-#### File 5: `ai.tsx` (~1900 lines) - Main component
-- Tab router structure
-- Avatar tab (smaller)
-- Upscale tab (smaller)
-- Compose all tabs together
+- ✅ Reduced main component by ~3,000 lines
+- ✅ Clean tab-based architecture
+- ✅ Reusable settings components
+- ✅ Better separation of concerns
 
 ---
 
-## 2. ai-video-client.ts (4008 lines)
+## 2. ai-video-client.ts ✅ REFACTORED (Dec 2025)
 
 **Path**: `qcut/apps/web/src/lib/ai-video-client.ts`
 
-### Main Functions/Sections
+### Refactoring Complete
 
-1. **Type Definitions & Imports** (Lines 1-140)
-   - Sora2 payload types (discriminated union)
-   - Request/Response interfaces
-   - Helper type definitions
+**Original Size**: 4,008 lines → **Current Size**: 48 lines (~99% reduction)
 
-2. **Sora2 Model Handling** (Lines 59-298)
-   - `isSora2Model()`, `getSora2ModelType()` - model detection
-   - `convertSora2Parameters()` - parameter conversion with exhaustiveness check
-   - `parseSora2Response()` - response parsing with metadata extraction
+### New File Structure
 
-3. **Core Generation Functions** (Lines 442-1500)
-   - `generateVideo()` - main text-to-video function with progress callbacks
-   - Model-specific payload builders for each AI model
-   - Polling and status handling
+| File | Lines | Purpose |
+|------|-------|---------|
+| `ai-video-client.ts` | 48 | Barrel file (re-exports) |
+| `ai-video/index.ts` | - | Main barrel file |
+| `ai-video/core/fal-request.ts` | - | FAL API request utilities |
+| `ai-video/core/polling.ts` | - | Queue polling with progress |
+| `ai-video/core/streaming.ts` | - | Video streaming download |
+| `ai-video/generators/text-to-video.ts` | - | T2V generators |
+| `ai-video/generators/image-to-video.ts` | - | I2V generators |
+| `ai-video/generators/avatar.ts` | - | Avatar/talking head generation |
+| `ai-video/generators/upscale.ts` | - | Video upscaling |
+| `ai-video/validation/validators.ts` | - | Input validation |
+| `ai-video/models/sora2.ts` | - | Sora 2 parameter conversion |
 
-4. **Image-to-Video Generation** (Lines 1500-2500)
-   - `generateImageToVideo()` - image animation
-   - Frame-to-video handling (Veo 3.1)
-   - Seedance, Kling, LTXV2 I2V handlers
+### What Was Extracted
 
-5. **Avatar Generation** (Lines 2500-3200)
-   - `generateAvatarVideo()` - avatar video creation
-   - Kling Avatar v2 handling
-   - OmniHuman model support
+1. **Core Utilities** (`ai-video/core/`)
+   - FAL API request handling
+   - Queue polling with progress updates
+   - Video streaming download
 
-6. **Utility Functions** (Lines 3200-4008)
-   - `uploadFileToFal()` - file upload to FAL storage
-   - `generateJobId()` - unique ID generation
-   - Progress callback handling
-   - Error handling and retry logic
+2. **Generators** (`ai-video/generators/`)
+   - Text-to-video: Sora 2, Veo, Kling, LTX, Seedance, etc.
+   - Image-to-video: Frame animation, I2V models
+   - Avatar: Talking head generation
+   - Upscale: Video enhancement
 
-### Recommended Split
+3. **Model-Specific Logic** (`ai-video/models/`)
+   - Sora 2 parameter conversion and response parsing
+   - Model detection utilities
 
-#### File 1: `ai-video-types.ts` (~200 lines)
-- All type definitions
-- Request/Response interfaces
-- Sora2 payload types
+4. **Validation** (`ai-video/validation/`)
+   - Input validation for all generators
+   - Type guards and checks
 
-#### File 2: `ai-video-sora2.ts` (~300 lines)
-- All Sora2-specific functions
-- Model detection and parameter conversion
-- Response parsing
+### Benefits Achieved
 
-#### File 3: `ai-video-generators.ts` (~1500 lines)
-- `generateVideo()` - text-to-video
-- `generateImageToVideo()` - image animation
-- `generateAvatarVideo()` - avatar generation
-
-#### File 4: `ai-video-client.ts` (~2000 lines) - Main client
-- Model-specific payload builders
-- Utility functions
-- File upload helpers
-- Import and re-export from other modules
+- ✅ Reduced main file by ~4,000 lines
+- ✅ Modular architecture for 40+ AI models
+- ✅ Clear separation by generator type
+- ✅ Reusable core utilities
+- ✅ Backward-compatible exports via barrel file
 
 ---
 
@@ -700,8 +670,8 @@ See `docs/issues/large-files-refactoring/USE-AI-GENERATION-REFACTORING-PLAN.md` 
 
 | Priority | File | Reason | Status |
 |----------|------|--------|--------|
-| High | `ai.tsx` | Largest file (4246 lines), multiple UI concerns | Pending |
-| High | `ai-video-client.ts` | Second largest (4008 lines), API complexity | Pending |
+| ~~High~~ | ~~`ai.tsx`~~ | ~~Largest file (4246 lines), multiple UI concerns~~ | ✅ **DONE** |
+| ~~High~~ | ~~`ai-video-client.ts`~~ | ~~Second largest (4008 lines), API complexity~~ | ✅ **DONE** |
 | High | `timeline-store.ts` | Core functionality, high change frequency | Pending |
 | ~~Medium~~ | ~~`use-ai-generation.ts`~~ | ~~Complex hook, testability benefits~~ | ✅ **DONE** |
 | Medium | `ffmpeg-handler.ts` | Electron-specific, export functionality | Pending |
@@ -714,5 +684,5 @@ See `docs/issues/large-files-refactoring/USE-AI-GENERATION-REFACTORING-PLAN.md` 
 ---
 
 *Document generated: 2025-12-08*
-*Last updated: 2025-12-09 (use-ai-generation.ts refactoring completed)*
+*Last updated: 2025-12-10 (ai.tsx, ai-video-client.ts, use-ai-generation.ts refactoring completed)*
 *Analysis based on QCut codebase structure*
