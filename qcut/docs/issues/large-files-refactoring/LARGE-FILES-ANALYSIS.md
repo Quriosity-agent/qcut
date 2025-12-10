@@ -302,7 +302,7 @@ See `docs/issues/large-files-refactoring/FFMPEG-HANDLER-REFACTORING-PLAN.md` for
 | `ai-video/core/fal-request.ts` | 237 | FAL API request utilities + error parsing |
 | `ai-video/core/fal-upload.ts` | 283 | File upload with Electron IPC fallback |
 | `ai-video/validation/validators.ts` | 607 | All validators (video + image) |
-| `fal-ai/model-handlers/index.ts` | 78 | Barrel + model detection |
+| `fal-ai/model-handlers/index.ts` | 76 | Barrel + model detection |
 | `fal-ai/model-handlers/v3-params.ts` | 26 | V3/SeedEdit parameter conversion |
 | `fal-ai/model-handlers/v4-params.ts` | 112 | V4/SeedDream parameter conversion |
 | `fal-ai/model-handlers/nano-banana-params.ts` | 74 | Nano Banana parameter conversion |

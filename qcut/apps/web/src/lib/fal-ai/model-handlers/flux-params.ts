@@ -39,7 +39,8 @@ export function convertFluxParameters(
   }
 
   // Clamp num_images to valid range (1-4) - consistent with other models
-  const requestedNumImages = Number(params.num_images ?? params.numImages ?? 1);
+  const rawNumImages = Number(params.num_images ?? params.numImages ?? 1);
+  const requestedNumImages = Number.isNaN(rawNumImages) ? 1 : rawNumImages;
   const numImages = Math.max(1, Math.min(4, requestedNumImages));
 
   if (numImages !== requestedNumImages) {
@@ -52,22 +53,16 @@ export function convertFluxParameters(
   }
 
   // Clamp guidance_scale to reasonable range
-  const guidanceScale = Math.max(
-    1,
-    Math.min(20, Number(params.guidance_scale ?? params.guidanceScale ?? 3.5))
-  );
+  const rawGuidance = Number(params.guidance_scale ?? params.guidanceScale ?? 3.5);
+  const guidanceScale = Math.max(1, Math.min(20, Number.isNaN(rawGuidance) ? 3.5 : rawGuidance));
 
   // Clamp inference steps to reasonable range
-  const inferenceSteps = Math.max(
-    1,
-    Math.min(100, Number(params.num_inference_steps ?? params.steps ?? 28))
-  );
+  const rawSteps = Number(params.num_inference_steps ?? params.steps ?? 28);
+  const inferenceSteps = Math.max(1, Math.min(100, Number.isNaN(rawSteps) ? 28 : rawSteps));
 
   // Clamp safety tolerance to valid range
-  const safetyTolerance = Math.max(
-    1,
-    Math.min(6, Number(params.safety_tolerance ?? params.safetyTolerance ?? 2))
-  );
+  const rawSafety = Number(params.safety_tolerance ?? params.safetyTolerance ?? 2);
+  const safetyTolerance = Math.max(1, Math.min(6, Number.isNaN(rawSafety) ? 2 : rawSafety));
 
   return {
     prompt: (params.prompt || "") as string,

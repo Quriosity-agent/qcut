@@ -40,7 +40,8 @@ export function convertNanoBananaParameters(
   }
 
   // Clamp num_images to valid range (1-4)
-  const requestedNumImages = Number(params.num_images ?? params.numImages ?? 1);
+  const rawNumImages = Number(params.num_images ?? params.numImages ?? 1);
+  const requestedNumImages = Number.isNaN(rawNumImages) ? 1 : rawNumImages;
   const numImages = Math.max(1, Math.min(4, requestedNumImages));
 
   if (numImages !== requestedNumImages) {
