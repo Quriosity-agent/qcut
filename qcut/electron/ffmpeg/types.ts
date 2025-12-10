@@ -1,0 +1,256 @@
+/**
+ * FFmpeg Handler Type Definitions
+ *
+ * All TypeScript interfaces for FFmpeg operations.
+ * Extracted for reuse across modules and renderer process typings.
+ */
+
+/**
+ * Audio file configuration for FFmpeg video export
+ * Defines audio track placement and mixing parameters
+ */
+export interface AudioFile {
+  /** File system path to the audio file */
+  path: string;
+  /** Start time in seconds for audio placement in video */
+  startTime: number;
+  /** Audio volume level (0.0-1.0, optional) */
+  volume?: number;
+}
+
+/**
+ * Video source configuration for direct copy optimization
+ * Contains file path and timing information for video elements
+ */
+export interface VideoSource {
+  /** File system path to the video file */
+  path: string;
+  /** Start time in the final timeline (seconds) */
+  startTime: number;
+  /** Duration to use from this video (seconds) */
+  duration: number;
+  /** Trim start time within the source video (seconds) */
+  trimStart?: number;
+  /** Trim end time within the source video (seconds) */
+  trimEnd?: number;
+}
+
+/**
+ * Sticker source configuration for FFmpeg overlay
+ * Contains file path and positioning information for stickers
+ */
+export interface StickerSource {
+  /** Unique identifier for the sticker */
+  id: string;
+  /** File system path to the sticker image */
+  path: string;
+  /** X position in pixels (top-left corner) */
+  x: number;
+  /** Y position in pixels (top-left corner) */
+  y: number;
+  /** Width in pixels */
+  width: number;
+  /** Height in pixels */
+  height: number;
+  /** Start time in seconds for sticker appearance */
+  startTime: number;
+  /** End time in seconds for sticker disappearance */
+  endTime: number;
+  /** Layer order (higher = on top) */
+  zIndex: number;
+  /** Opacity (0-1, optional) */
+  opacity?: number;
+  /** Rotation in degrees (optional) */
+  rotation?: number;
+}
+
+/**
+ * Configuration options for video export operations
+ * Contains all parameters needed for FFmpeg video generation
+ */
+export interface ExportOptions {
+  /** Unique identifier for the export session */
+  sessionId: string;
+  /** Output video width in pixels */
+  width: number;
+  /** Output video height in pixels */
+  height: number;
+  /** Target frames per second */
+  fps: number;
+  /** Quality preset affecting encoding parameters */
+  quality: "high" | "medium" | "low";
+  /** Duration of the video in seconds (replaces hardcoded 10s limit) */
+  duration: number;
+  /** Optional array of audio files to mix into the video */
+  audioFiles?: AudioFile[];
+  /** Optional FFmpeg filter chain string for video effects */
+  filterChain?: string;
+  /** Optional FFmpeg drawtext filter chain for text overlays */
+  textFilterChain?: string;
+  /** Optional FFmpeg overlay filter chain for stickers */
+  stickerFilterChain?: string;
+  /** Sticker image sources for overlay (when stickerFilterChain is provided) */
+  stickerSources?: StickerSource[];
+  /** Enable direct video copy/concat optimization (skips frame rendering) */
+  useDirectCopy?: boolean;
+  /** Video sources for direct copy optimization (when useDirectCopy=true) */
+  videoSources?: VideoSource[];
+  /** Use video file instead of frames (Mode 2 optimization) */
+  useVideoInput?: boolean;
+  /** Direct video file path for Mode 2 */
+  videoInputPath?: string;
+  /** Video trim start time in seconds */
+  trimStart?: number;
+  /** Video trim end time in seconds */
+  trimEnd?: number;
+  /** Optimization strategy for export mode selection (Mode 1, 1.5, or 2) */
+  optimizationStrategy?:
+    | "direct-copy"
+    | "direct-video-with-filters"
+    | "video-normalization";
+}
+
+/**
+ * Options for processing a single frame through FFmpeg filters
+ */
+export interface FrameProcessOptions {
+  /** Export session identifier */
+  sessionId: string;
+  /** Input frame filename (e.g., "raw_frame-0001.png") */
+  inputFrameName: string;
+  /** Output frame filename (e.g., "frame-0001.png") */
+  outputFrameName: string;
+  /** FFmpeg filter chain to apply */
+  filterChain: string;
+}
+
+/**
+ * Individual frame data for video export
+ * Contains base64 encoded frame image data
+ */
+export interface FrameData {
+  /** Export session identifier */
+  sessionId: string;
+  /** Unique name/identifier for this frame */
+  frameName: string;
+  /** Base64 encoded image data for the frame */
+  data: string;
+}
+
+/**
+ * Result of a video export operation
+ * Contains success status and output file information
+ */
+export interface ExportResult {
+  /** Whether the export operation succeeded */
+  success: boolean;
+  /** Path to the generated output video file */
+  outputFile: string;
+  /** Export method used (spawn process vs manual) */
+  method: "spawn" | "manual";
+  /** Optional message with additional details */
+  message?: string;
+}
+
+/**
+ * FFmpeg encoding quality configuration.
+ * CRF controls quality (lower=better); preset controls speed.
+ */
+export interface QualitySettings {
+  /** Constant Rate Factor: 18 (high), 23 (medium), 28 (low) */
+  crf: string;
+  /** Encoding speed: slow (best quality), fast, veryfast */
+  preset: string;
+}
+
+/**
+ * Maps quality levels to FFmpeg encoding parameters.
+ */
+export interface QualityMap {
+  [key: string]: QualitySettings;
+  high: QualitySettings;
+  medium: QualitySettings;
+  low: QualitySettings;
+}
+
+/**
+ * FFmpeg export progress data parsed from stderr output.
+ * Used for UI progress bar updates during video encoding.
+ */
+export interface FFmpegProgress {
+  /** Current frame number being encoded */
+  frame?: number | null;
+  /** Elapsed time in HH:MM:SS.ss format */
+  time?: string | null;
+}
+
+/**
+ * Enhanced error type for FFmpeg process failures.
+ * Includes exit code, signal, and captured stdio for debugging.
+ */
+export interface FFmpegError extends Error {
+  /** Process exit code if exited normally */
+  code?: number;
+  /** Signal name if process was killed (e.g., "SIGTERM") */
+  signal?: string;
+  /** FFmpeg stderr output containing error details */
+  stderr?: string;
+  /** FFmpeg stdout output (usually empty) */
+  stdout?: string;
+}
+
+/**
+ * Result from opening frames folder in system file explorer.
+ */
+export interface OpenFolderResult {
+  success: boolean;
+  path: string;
+}
+
+/**
+ * Options for extracting audio from video.
+ */
+export interface ExtractAudioOptions {
+  /** Path to the video file */
+  videoPath: string;
+  /** Output audio format (wav, mp3, etc.) */
+  format?: string;
+}
+
+/**
+ * Result of audio extraction operation.
+ */
+export interface ExtractAudioResult {
+  /** Path to the extracted audio file in temp directory */
+  audioPath: string;
+  /** Size of the extracted audio file in bytes */
+  fileSize: number;
+}
+
+/**
+ * Video stream properties extracted from ffprobe
+ */
+export interface VideoProbeResult {
+  path: string;
+  codec: string;
+  width: number;
+  height: number;
+  pix_fmt: string;
+  fps: string;
+}
+
+/**
+ * IPC handler type map for FFmpeg operations.
+ */
+export interface FFmpegHandlers {
+  "ffmpeg-path": () => Promise<string>;
+  "create-export-session": () => Promise<{ sessionId: string; frameDir: string; outputDir: string }>;
+  "save-frame": (data: FrameData) => Promise<string>;
+  "read-output-file": (outputPath: string) => Promise<Buffer>;
+  "cleanup-export-session": (sessionId: string) => Promise<void>;
+  "open-frames-folder": (sessionId: string) => Promise<OpenFolderResult>;
+  "export-video-cli": (options: ExportOptions) => Promise<ExportResult>;
+  "validate-filter-chain": (filterChain: string) => Promise<boolean>;
+  "processFrame": (options: FrameProcessOptions) => Promise<void>;
+  "extract-audio": (options: ExtractAudioOptions) => Promise<ExtractAudioResult>;
+}
