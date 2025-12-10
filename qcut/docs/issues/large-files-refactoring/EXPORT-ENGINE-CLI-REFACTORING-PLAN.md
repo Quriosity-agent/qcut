@@ -1,10 +1,54 @@
 # Export Engine CLI Refactoring Plan
 
 **File**: `qcut/apps/web/src/lib/export-engine-cli.ts`
-**Current Size**: 1,690 lines
-**Target Size**: ~700 lines (main engine) + modular utilities
+**Original Size**: 1,690 lines
+**Final Size**: 883 lines (main engine) + 1,051 lines (modular utilities)
+**Status**: ✅ **IMPLEMENTED** (2025-12-10)
 **Priority**: Medium
 **Philosophy**: Long-term maintainability > scalability > performance > short-term gains
+
+---
+
+## Implementation Summary (2025-12-10)
+
+### What Was Done
+
+1. **Created `export-cli/` module structure** with types, filters, and sources submodules
+2. **Extracted pure functions** to testable modules:
+   - `text-escape.ts`: `escapeTextForFFmpeg()`, `escapePathForFFmpeg()`, `colorToFFmpeg()`
+   - `font-resolver.ts`: `resolveFontPath()` with platform detection (injectable)
+   - `text-overlay.ts`: `convertTextElementToDrawtext()`, `buildTextOverlayFilters()`
+   - `sticker-overlay.ts`: `buildStickerOverlayFilters()` with logger injection
+3. **Extracted source extraction** with dependency injection:
+   - `video-sources.ts`: `extractVideoSources()`, `extractVideoInputPath()`
+   - `sticker-sources.ts`: `extractStickerSources()` with store/API injection
+4. **Created wrapper methods** in main class to maintain backward compatibility
+5. **Added barrel exports** for convenient imports
+
+### Key Design Decisions
+
+- **Wrapper pattern**: Main class keeps thin wrappers that pass instance properties (tracks, mediaItems, sessionId) to extracted functions
+- **Dependency injection**: All extracted functions accept optional logger and API parameters for testing
+- **Type reuse**: Import `TimelineTrack` directly from `@/types/timeline` instead of creating new interfaces
+- **Backward compatibility**: Re-export types from main file for existing consumers
+
+### Files Created
+
+```
+apps/web/src/lib/export-cli/
+├── index.ts              (48 lines)  - Barrel exports
+├── types.ts              (72 lines)  - Type definitions
+├── filters/
+│   ├── index.ts          (24 lines)  - Filter barrel
+│   ├── text-escape.ts    (75 lines)  - FFmpeg text/path escaping
+│   ├── font-resolver.ts  (123 lines) - Cross-platform font paths
+│   ├── text-overlay.ts   (170 lines) - Drawtext filter building
+│   └── sticker-overlay.ts(99 lines)  - Sticker overlay filters
+└── sources/
+    ├── index.ts          (11 lines)  - Sources barrel
+    ├── video-sources.ts  (199 lines) - Video path extraction
+    └── sticker-sources.ts(230 lines) - Sticker path/download extraction
+```
 
 ---
 
@@ -1112,19 +1156,23 @@ export class CLIExportEngine extends ExportEngine {
 
 | File | Before | After |
 |------|--------|-------|
-| `export-engine-cli.ts` | 1,690 | ~700 |
-| `export-cli/types.ts` | - | ~80 |
-| `export-cli/filters/text-escape.ts` | - | ~70 |
-| `export-cli/filters/font-resolver.ts` | - | ~150 |
-| `export-cli/filters/text-overlay.ts` | - | ~180 |
-| `export-cli/filters/sticker-overlay.ts` | - | ~120 |
-| `export-cli/sources/video-sources.ts` | - | ~200 |
-| `export-cli/sources/sticker-sources.ts` | - | ~150 |
-| `export-cli/index.ts` + barrels | - | ~70 |
-| **Total** | 1,690 | ~1,720 |
+| `export-engine-cli.ts` | 1,690 | **883** |
+| `export-cli/types.ts` | - | 72 |
+| `export-cli/filters/text-escape.ts` | - | 75 |
+| `export-cli/filters/font-resolver.ts` | - | 123 |
+| `export-cli/filters/text-overlay.ts` | - | 170 |
+| `export-cli/filters/sticker-overlay.ts` | - | 99 |
+| `export-cli/sources/video-sources.ts` | - | 199 |
+| `export-cli/sources/sticker-sources.ts` | - | 230 |
+| `export-cli/index.ts` | - | 48 |
+| `export-cli/filters/index.ts` | - | 24 |
+| `export-cli/sources/index.ts` | - | 11 |
+| **Total** | 1,690 | **1,934** |
 
-**Net change**: +30 lines (better organization, JSDoc additions)
-**Main file reduction**: ~990 lines (59%)
+**Net change**: +244 lines (JSDoc additions, wrapper methods, barrel files)
+**Main file reduction**: 807 lines (48%)
+**Type checks**: ✅ Pass
+**Lint**: ✅ Pass (no new errors)
 
 ---
 
@@ -1201,8 +1249,8 @@ mv qcut/apps/web/src/lib/export-engine-cli.ts.backup qcut/apps/web/src/lib/expor
 ---
 
 *Document created: 2025-12-10*
-*Last updated: 2025-12-10*
-*Estimated time: ~95 minutes total (7 subtasks)*
-*Source file lines: 1,690*
-*Target main file lines: ~700*
+*Implementation completed: 2025-12-10*
+*Original file: 1,690 lines*
+*Final main file: 883 lines (48% reduction)*
+*Extracted modules: 1,051 lines (10 files)*
 *Author: Claude Code*
