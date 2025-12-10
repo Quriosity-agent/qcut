@@ -5,10 +5,18 @@
  * Each handler sanitizes and validates parameters for its respective model family.
  */
 
-export { convertV3Parameters } from "./v3-params";
-export { convertV4Parameters, V4_VALID_IMAGE_PRESETS } from "./v4-params";
-export { convertNanoBananaParameters } from "./nano-banana-params";
-export { convertFluxParameters } from "./flux-params";
+import { convertV3Parameters } from "./v3-params";
+import { convertV4Parameters, V4_VALID_IMAGE_PRESETS } from "./v4-params";
+import { convertNanoBananaParameters } from "./nano-banana-params";
+import { convertFluxParameters } from "./flux-params";
+
+export {
+  convertV3Parameters,
+  convertV4Parameters,
+  V4_VALID_IMAGE_PRESETS,
+  convertNanoBananaParameters,
+  convertFluxParameters,
+};
 
 /**
  * Model version types for routing.
@@ -54,25 +62,15 @@ export function convertParametersForModel(
 ): Record<string, unknown> {
   const version = detectModelVersion(modelId);
 
-  // Import and call the appropriate converter
-  // Using dynamic requires would be cleaner but we keep it explicit for tree-shaking
   switch (version) {
-    case "v4": {
-      const { convertV4Parameters } = require("./v4-params");
+    case "v4":
       return convertV4Parameters(params);
-    }
-    case "nano-banana": {
-      const { convertNanoBananaParameters } = require("./nano-banana-params");
+    case "nano-banana":
       return convertNanoBananaParameters(params);
-    }
-    case "flux": {
-      const { convertFluxParameters } = require("./flux-params");
+    case "flux":
       return convertFluxParameters(params);
-    }
     case "v3":
-    default: {
-      const { convertV3Parameters } = require("./v3-params");
+    default:
       return convertV3Parameters(params);
-    }
   }
 }

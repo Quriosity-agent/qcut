@@ -676,7 +676,7 @@ See `docs/issues/large-files-refactoring/FAL-AI-CLIENT-REFACTORING-PLAN.md` for 
 | High | `timeline-store.ts` | Core functionality, high change frequency | Pending |
 | ~~Medium~~ | ~~`use-ai-generation.ts`~~ | ~~Complex hook, testability benefits~~ | ✅ **DONE** |
 | ~~Medium~~ | ~~`ffmpeg-handler.ts`~~ | ~~Electron-specific, export functionality~~ | ✅ **DONE** |
-| Medium | `fal-ai-client.ts` | API client, clear module boundaries | Pending |
+| ~~Medium~~ | ~~`fal-ai-client.ts`~~ | ~~API client, clear module boundaries~~ | ✅ **DONE** |
 | Medium | `export-engine-cli.ts` | Export logic, FFmpeg integration | Pending |
 | Low | `timeline/index.tsx` | UI component, moderate complexity | Pending |
 | Low | `ai-constants.ts` | Configuration only, less urgent | Pending |

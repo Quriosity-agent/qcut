@@ -15,12 +15,12 @@ export function convertV3Parameters(
   params: Record<string, unknown>
 ): Record<string, unknown> {
   return {
-    prompt: params.prompt || "",
-    image_url: params.image_url || params.imageUrl,
-    guidance_scale: params.guidance_scale || params.guidanceScale || 1.0,
-    num_inference_steps: params.num_inference_steps || params.steps || 20,
+    prompt: (params.prompt as string | undefined) ?? "",
+    image_url: params.image_url ?? params.imageUrl,
+    guidance_scale: params.guidance_scale ?? params.guidanceScale ?? 1.0,
+    num_inference_steps: params.num_inference_steps ?? params.steps ?? 20,
     seed: params.seed,
-    safety_tolerance: params.safety_tolerance || params.safetyTolerance || 2,
-    num_images: params.num_images || params.numImages || 1,
+    safety_tolerance: params.safety_tolerance ?? params.safetyTolerance ?? 2,
+    num_images: params.num_images ?? params.numImages ?? 1,
   };
 }
