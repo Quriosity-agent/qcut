@@ -6,18 +6,18 @@ This document identifies the top 10 source code files exceeding 800 lines and pr
 
 ## Summary Table
 
-| # | File | Lines | Recommendation |
-|---|------|-------|----------------|
-| 1 | `apps/web/src/components/editor/media-panel/views/ai.tsx` | 4246 | Split into 4-5 files |
-| 2 | `apps/web/src/lib/ai-video-client.ts` | 4008 | Split into 3-4 files |
-| 3 | `apps/web/src/components/editor/media-panel/views/use-ai-generation.ts` | 2616 | Split into 3 files |
-| 4 | `electron/ffmpeg-handler.ts` | 2210 | Split into 3 files |
-| 5 | `apps/web/src/stores/timeline-store.ts` | 2194 | Split into 3 files |
-| 6 | `apps/web/src/lib/fal-ai-client.ts` | 1786 | Split into 3 files |
-| 7 | `apps/web/src/lib/export-engine-cli.ts` | 1689 | Split into 3 files |
-| 8 | `apps/web/src/components/editor/timeline/index.tsx` | 1538 | Split into 3-4 files |
-| 9 | `apps/web/src/components/editor/media-panel/views/ai-constants.ts` | 1410 | Split into 2-3 files |
-| 10 | `apps/web/src/lib/export-engine.ts` | 1365 | Split into 2-3 files |
+| # | File | Lines | Recommendation | Status |
+|---|------|-------|----------------|--------|
+| 1 | `apps/web/src/components/editor/media-panel/views/ai.tsx` | 4246 | Split into 4-5 files | Pending |
+| 2 | `apps/web/src/lib/ai-video-client.ts` | 4008 | Split into 3-4 files | Pending |
+| 3 | `apps/web/src/components/editor/media-panel/views/ai/hooks/use-ai-generation.ts` | ~~2616~~ 1756 | ~~Split into 3 files~~ | ✅ **REFACTORED** |
+| 4 | `electron/ffmpeg-handler.ts` | 2210 | Split into 3 files | Pending |
+| 5 | `apps/web/src/stores/timeline-store.ts` | 2194 | Split into 3 files | Pending |
+| 6 | `apps/web/src/lib/fal-ai-client.ts` | 1786 | Split into 3 files | Pending |
+| 7 | `apps/web/src/lib/export-engine-cli.ts` | 1689 | Split into 3 files | Pending |
+| 8 | `apps/web/src/components/editor/timeline/index.tsx` | 1538 | Split into 3-4 files | Pending |
+| 9 | `apps/web/src/components/editor/media-panel/views/ai-constants.ts` | 1410 | Split into 2-3 files | Pending |
+| 10 | `apps/web/src/lib/export-engine.ts` | 1365 | Split into 2-3 files | Pending |
 
 ---
 
@@ -154,67 +154,48 @@ This document identifies the top 10 source code files exceeding 800 lines and pr
 
 ---
 
-## 3. use-ai-generation.ts (2616 lines)
+## 3. use-ai-generation.ts ✅ REFACTORED (Dec 2025)
 
-**Path**: `qcut/apps/web/src/components/editor/media-panel/views/use-ai-generation.ts`
+**Path**: `qcut/apps/web/src/components/editor/media-panel/views/ai/hooks/use-ai-generation.ts`
 
-### Main Functions/Sections
+### Refactoring Complete
 
-1. **Type Definitions** (Lines 1-150)
-   - Generation state interface
-   - Model configuration types
-   - Progress callback types
-   - Result types
+**Original Size**: 2,659 lines → **Current Size**: 1,756 lines (~34% reduction)
 
-2. **State Management** (Lines 150-400)
-   - Generation status tracking
-   - Progress state with multiple concurrent generations
-   - Error handling state
-   - Queue management
+### New File Structure
 
-3. **Text-to-Video Generation** (Lines 400-900)
-   - `generateTextToVideo()` handler
-   - Model-specific parameter building
-   - Progress tracking and updates
+| File | Lines | Purpose |
+|------|-------|---------|
+| `use-ai-generation.ts` | 1,756 | Main hook (orchestration + state) |
+| `generation/media-integration.ts` | 316 | Download + save + media store integration |
+| `generation/model-handlers.ts` | 1,257 | Model-specific handlers + router functions |
+| `generation/index.ts` | 30 | Barrel file |
 
-4. **Image-to-Video Generation** (Lines 900-1400)
-   - `generateImageToVideo()` handler
-   - Frame upload handling
-   - Multi-model support
+### What Was Extracted
 
-5. **Avatar & Upscale Generation** (Lines 1400-1900)
-   - Avatar video generation
-   - Video upscaling logic
-   - Model-specific handlers
+1. **Media Integration** (`generation/media-integration.ts`)
+   - `integrateVideoToMediaStore()` - adds generated video to media store
+   - `updateVideoWithLocalPaths()` - updates video with local file paths
+   - `canIntegrateMedia()` - checks if media can be integrated
+   - Download and streaming utilities
 
-6. **Utility & Integration** (Lines 1900-2616)
-   - Progress update handlers
-   - Result processing and timeline integration
-   - History management
-   - Cleanup functions
+2. **Model Handlers** (`generation/model-handlers.ts`)
+   - Type-safe handler functions for all 40+ AI models
+   - Router functions: `routeTextToVideoHandler()`, `routeImageToVideoHandler()`, `routeUpscaleHandler()`, `routeAvatarHandler()`
+   - Type aliases for strict literal types (duration, resolution, FPS)
+   - Settings interfaces: `TextToVideoSettings`, `ImageToVideoSettings`, `AvatarSettings`, `UpscaleSettings`
 
-### Recommended Split
+### Benefits Achieved
 
-#### File 1: `use-ai-generation-types.ts` (~150 lines)
-- All type definitions
-- State interfaces
-- Callback types
+- ✅ Reduced main hook by ~900 lines
+- ✅ Model-specific logic isolated in dedicated handlers
+- ✅ Type-safe router pattern for generation dispatch
+- ✅ All 34 AI video tests pass
+- ✅ Clean separation of concerns
 
-#### File 2: `use-ai-generation-t2v.ts` (~600 lines)
-- Text-to-video generation logic
-- T2V progress handling
-- T2V model-specific code
+### Documentation
 
-#### File 3: `use-ai-generation-i2v.ts` (~600 lines)
-- Image-to-video generation logic
-- Frame handling
-- I2V model-specific code
-
-#### File 4: `use-ai-generation.ts` (~1200 lines) - Main hook
-- Core hook structure
-- State management
-- Avatar/Upscale generation
-- Compose T2V and I2V handlers
+See `docs/issues/large-files-refactoring/USE-AI-GENERATION-REFACTORING-PLAN.md` for detailed implementation notes.
 
 ---
 
@@ -339,261 +320,6 @@ This document identifies the top 10 source code files exceeding 800 lines and pr
 - Effects management
 - Auto-save logic
 - Import and compose operations from other files
-
----
-
-## 2. ai.tsx (~2000+ lines)
-
-**Path**: `qcut/apps/web/src/components/editor/media-panel/views/ai.tsx`
-
-### Main Functions/Sections
-
-1. **Type Definitions & Constants** (Lines 1-150)
-   - Import statements (40+ imports)
-   - Type aliases for model configurations
-   - Duration/resolution option arrays
-
-2. **State Management** (Lines 157-400)
-   - 60+ `useState` hooks for various model options
-   - Model-specific state (LTXV2, Seedance, Kling, Wan25, etc.)
-   - Unified T2V (text-to-video) settings
-
-3. **Effect Hooks & Helpers** (Lines 400-500)
-   - `combinedCapabilities` memoization
-   - Settings validation effects
-   - Active settings counter
-
-4. **Event Handlers** (Lines 472-800)
-   - Video upload handlers
-   - URL blur handlers
-   - Model selection handlers
-   - Form submission handlers
-
-5. **UI Components - Tabs** (Lines 800-2000+)
-   - Text-to-Video tab
-   - Image-to-Video tab
-   - Avatar tab
-   - Upscale tab
-   - History panel integration
-
-### Recommended Split
-
-#### File 1: `ai-state.ts` (~300 lines)
-- Custom hook `useAIState()` with all state management
-- All model-specific state variables
-- State initialization and reset functions
-
-#### File 2: `ai-handlers.ts` (~400 lines)
-- All event handlers
-- Video/image upload handlers
-- Form submission logic
-- Validation functions
-
-#### File 3: `ai.tsx` (~1300 lines) - Main component
-- Import state and handlers from other files
-- Tab navigation structure
-- UI rendering for each tab
-- Compose everything together
-
-**Alternative Split by Tab**:
-- `ai-text-tab.tsx` - Text-to-Video tab
-- `ai-image-tab.tsx` - Image-to-Video tab
-- `ai-avatar-tab.tsx` - Avatar tab
-- `ai-upscale-tab.tsx` - Upscale tab
-- `ai.tsx` - Main component with tab router
-
----
-
-## 3. ai-video-client.ts (~1500+ lines)
-
-**Path**: `qcut/apps/web/src/lib/ai-video-client.ts`
-
-### Main Functions/Sections
-
-1. **Type Definitions** (Lines 1-140)
-   - Sora2 payload types (discriminated union)
-   - Request/Response interfaces
-   - Helper type definitions
-
-2. **Sora2 Specific Logic** (Lines 59-298)
-   - `isSora2Model`, `getSora2ModelType`
-   - `convertSora2Parameters` - parameter conversion
-   - `parseSora2Response` - response parsing
-
-3. **Core Generation Functions** (Lines 442-800)
-   - `generateVideo` - main text-to-video function
-   - `generateImageToVideo` - image-to-video
-   - `generateAvatarVideo` - avatar generation
-
-4. **Model-Specific Handlers** (Lines 800-1200)
-   - Kling model handlers
-   - LTXV2 handlers
-   - Seedance handlers
-   - Vidu Q2 handlers
-
-5. **Utility Functions** (Lines 1200-1500)
-   - `uploadFileToFal` - file upload to FAL storage
-   - `generateJobId` - unique ID generation
-   - Progress callback handling
-   - Error handling utilities
-
-### Recommended Split
-
-#### File 1: `ai-video-types.ts` (~150 lines)
-- All type definitions
-- Request/Response interfaces
-- Sora2 payload types
-
-#### File 2: `ai-video-sora2.ts` (~250 lines)
-- All Sora2-specific functions
-- `isSora2Model`, `getSora2ModelType`
-- `convertSora2Parameters`, `parseSora2Response`
-
-#### File 3: `ai-video-client.ts` (~1100 lines) - Main client
-- Core generation functions
-- Model-specific handlers
-- Utility functions
-- Import types and Sora2 helpers
-
----
-
-## 4. use-ai-generation.ts (~1200+ lines)
-
-**Path**: `qcut/apps/web/src/components/editor/media-panel/views/use-ai-generation.ts`
-
-### Main Functions/Sections
-
-1. **Type Definitions** (Lines 1-100)
-   - Generation state interface
-   - Model configuration types
-   - Progress callback types
-
-2. **State Management** (Lines 100-300)
-   - Generation status tracking
-   - Progress state
-   - Error handling state
-
-3. **Model-Specific Generation Logic** (Lines 300-800)
-   - Text-to-video generation
-   - Image-to-video generation
-   - Avatar video generation
-   - Upscale generation
-
-4. **Utility Functions** (Lines 800-1200)
-   - Progress update handlers
-   - Result processing
-   - Timeline integration
-   - History management
-
-### Recommended Split
-
-#### File 1: `use-ai-generation-types.ts` (~100 lines)
-- All type definitions
-- State interfaces
-- Callback types
-
-#### File 2: `use-ai-generation-handlers.ts` (~500 lines)
-- Model-specific generation handlers
-- Progress update logic
-- Result processing
-
-#### File 3: `use-ai-generation.ts` (~600 lines) - Main hook
-- Core hook logic
-- State management
-- Compose handlers
-
----
-
-## 5. ffmpeg-handler.ts (~1000+ lines)
-
-**Path**: `qcut/electron/ffmpeg-handler.ts`
-
-### Main Functions/Sections
-
-1. **FFmpeg Setup & Configuration** (Lines 1-150)
-   - FFmpeg binary path resolution
-   - Configuration constants
-   - Platform-specific setup
-
-2. **Video Export Operations** (Lines 150-500)
-   - Main export function
-   - Frame extraction
-   - Audio processing
-   - Video encoding
-
-3. **Utility Operations** (Lines 500-800)
-   - Video metadata extraction
-   - Thumbnail generation
-   - Format conversion
-   - Codec detection
-
-4. **IPC Handler Registration** (Lines 800-1000)
-   - Handler registration for all FFmpeg operations
-   - Error handling wrappers
-   - Progress reporting
-
-### Recommended Split
-
-#### File 1: `ffmpeg-config.ts` (~150 lines)
-- FFmpeg path resolution
-- Configuration constants
-- Platform-specific setup
-
-#### File 2: `ffmpeg-operations.ts` (~500 lines)
-- Video export operations
-- Frame extraction
-- Audio processing
-- Video encoding
-
-#### File 3: `ffmpeg-handler.ts` (~350 lines) - Main handler
-- IPC handler registration
-- Utility operations (metadata, thumbnails)
-- Error handling wrappers
-- Import and use operations
-
----
-
-## General Refactoring Guidelines
-
-### Benefits of Splitting
-
-1. **Improved Maintainability**: Smaller files are easier to understand and modify
-2. **Better Testing**: Isolated modules can be unit tested independently
-3. **Reduced Merge Conflicts**: Multiple developers can work on different aspects
-4. **Faster IDE Performance**: Smaller files load and parse faster
-5. **Clearer Dependencies**: Module boundaries make dependencies explicit
-
-### Implementation Strategy
-
-1. **Phase 1**: Extract type definitions first (lowest risk)
-2. **Phase 2**: Extract pure utility functions (no side effects)
-3. **Phase 3**: Extract handlers/operations with clear interfaces
-4. **Phase 4**: Update imports in dependent files
-5. **Phase 5**: Add barrel exports if needed for backward compatibility
-
-### Testing Considerations
-
-- Run existing tests after each extraction
-- Add unit tests for newly extracted modules
-- Ensure no circular dependencies are introduced
-- Verify all exports are properly re-exported if needed
-
----
-
-## Priority Recommendation
-
-| Priority | File | Reason |
-|----------|------|--------|
-| High | `ai.tsx` | Largest file (4246 lines), multiple UI concerns |
-| High | `ai-video-client.ts` | Second largest (4008 lines), API complexity |
-| High | `timeline-store.ts` | Core functionality, high change frequency |
-| Medium | `use-ai-generation.ts` | Complex hook, testability benefits |
-| Medium | `ffmpeg-handler.ts` | Electron-specific, export functionality |
-| Medium | `fal-ai-client.ts` | API client, clear module boundaries |
-| Medium | `export-engine-cli.ts` | Export logic, FFmpeg integration |
-| Low | `timeline/index.tsx` | UI component, moderate complexity |
-| Low | `ai-constants.ts` | Configuration only, less urgent |
-| Low | `export-engine.ts` | Base export class, stable |
 
 ---
 
@@ -972,20 +698,21 @@ This document identifies the top 10 source code files exceeding 800 lines and pr
 
 ## Priority Recommendation
 
-| Priority | File | Reason |
-|----------|------|--------|
-| High | `ai.tsx` | Largest file (4246 lines), multiple UI concerns |
-| High | `ai-video-client.ts` | Second largest (4008 lines), API complexity |
-| High | `timeline-store.ts` | Core functionality, high change frequency |
-| Medium | `use-ai-generation.ts` | Complex hook, testability benefits |
-| Medium | `ffmpeg-handler.ts` | Electron-specific, export functionality |
-| Medium | `fal-ai-client.ts` | API client, clear module boundaries |
-| Medium | `export-engine-cli.ts` | Export logic, FFmpeg integration |
-| Low | `timeline/index.tsx` | UI component, moderate complexity |
-| Low | `ai-constants.ts` | Configuration only, less urgent |
-| Low | `export-engine.ts` | Base export class, stable |
+| Priority | File | Reason | Status |
+|----------|------|--------|--------|
+| High | `ai.tsx` | Largest file (4246 lines), multiple UI concerns | Pending |
+| High | `ai-video-client.ts` | Second largest (4008 lines), API complexity | Pending |
+| High | `timeline-store.ts` | Core functionality, high change frequency | Pending |
+| ~~Medium~~ | ~~`use-ai-generation.ts`~~ | ~~Complex hook, testability benefits~~ | ✅ **DONE** |
+| Medium | `ffmpeg-handler.ts` | Electron-specific, export functionality | Pending |
+| Medium | `fal-ai-client.ts` | API client, clear module boundaries | Pending |
+| Medium | `export-engine-cli.ts` | Export logic, FFmpeg integration | Pending |
+| Low | `timeline/index.tsx` | UI component, moderate complexity | Pending |
+| Low | `ai-constants.ts` | Configuration only, less urgent | Pending |
+| Low | `export-engine.ts` | Base export class, stable | Pending |
 
 ---
 
 *Document generated: 2025-12-08*
+*Last updated: 2025-12-09 (use-ai-generation.ts refactoring completed)*
 *Analysis based on QCut codebase structure*

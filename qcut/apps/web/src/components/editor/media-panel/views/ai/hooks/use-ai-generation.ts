@@ -8,22 +8,8 @@
  * @see ai-refactoring-subtasks.md for implementation tracking
  */
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
-  generateVideo,
-  generateVideoFromImage,
-  generateVideoFromText,
-  generateViduQ2Video,
-  generateLTXV2Video,
-  generateLTXV2ImageVideo,
-  generateSeedanceVideo,
-  generateKlingImageVideo,
-  generateKling26ImageVideo,
-  generateWAN25ImageVideo,
-  generateAvatarVideo,
-  generateKlingO1Video,
-  upscaleByteDanceVideo,
-  upscaleFlashVSRVideo,
   handleApiError,
   getGenerationStatus,
   ProgressCallback,
@@ -36,6 +22,21 @@ import { useAsyncMediaStoreActions } from "@/hooks/use-async-media-store";
 import { falAIClient } from "@/lib/fal-ai-client";
 import { validateReveEditImage } from "@/lib/image-validation";
 
+import {
+  integrateVideoToMediaStore,
+  updateVideoWithLocalPaths,
+  canIntegrateMedia,
+  routeTextToVideoHandler,
+  routeImageToVideoHandler,
+  routeUpscaleHandler,
+  routeAvatarHandler,
+  VEO31_FRAME_MODELS as FRAME_MODELS,
+  type TextToVideoSettings,
+  type ImageToVideoSettings,
+  type AvatarSettings,
+  type UpscaleSettings,
+  type ModelHandlerContext,
+} from "./generation";
 import {
   AI_MODELS,
   UI_CONSTANTS,
@@ -57,10 +58,8 @@ import type {
   ProgressCallback as AIProgressCallback,
 } from "../types/ai-types";
 
-const VEO31_FRAME_MODELS = new Set([
-  "veo31_fast_frame_to_video",
-  "veo31_frame_to_video",
-]);
+// Re-export frame models constant for local use
+const VEO31_FRAME_MODELS = FRAME_MODELS;
 
 function getSafeDuration(
   requestedDuration: number,
@@ -1017,735 +1016,142 @@ export function useAIGeneration(props: UseAIGenerationProps) {
           unifiedParams
         );
 
+        // Build handler context
+        const handlerCtx: ModelHandlerContext = {
+          prompt: prompt.trim(),
+          modelId,
+          modelName: modelName || modelId,
+          progressCallback,
+        };
+
+        // Route to appropriate handler based on tab
+        let handlerResult;
+
         if (activeTab === "text") {
           console.log(`  📝 Processing text-to-video model ${modelId}...`);
 
-          // Veo 3.1 Fast text-to-video
-          if (modelId === "veo31_fast_text_to_video") {
-            response = await falAIClient.generateVeo31FastTextToVideo({
-              prompt: prompt.trim(),
-              aspect_ratio: (() => {
-                const ar = veo31Settings.aspectRatio;
-                return ar === "auto" ? undefined : ar; // "16:9" | "9:16" | "1:1" | undefined
-              })(),
-              duration: veo31Settings.duration,
-              resolution: veo31Settings.resolution,
-              generate_audio: veo31Settings.generateAudio,
-              enhance_prompt: veo31Settings.enhancePrompt,
-              auto_fix: veo31Settings.autoFix,
-            });
-          }
-          // Veo 3.1 Standard text-to-video
-          else if (modelId === "veo31_text_to_video") {
-            response = await falAIClient.generateVeo31TextToVideo({
-              prompt: prompt.trim(),
-              aspect_ratio: (() => {
-                const ar = veo31Settings.aspectRatio;
-                return ar === "auto" ? undefined : ar; // "16:9" | "9:16" | "1:1" | undefined
-              })(),
-              duration: veo31Settings.duration,
-              resolution: veo31Settings.resolution,
-              generate_audio: veo31Settings.generateAudio,
-              enhance_prompt: veo31Settings.enhancePrompt,
-              auto_fix: veo31Settings.autoFix,
-            });
-          }
-          // Hailuo 2.3 text-to-video models
-          else if (
-            modelId === "hailuo23_standard_t2v" ||
-            modelId === "hailuo23_pro_t2v"
-          ) {
-            const friendlyName = modelName || modelId;
-            progressCallback({
-              status: "processing",
-              progress: 10,
-              message: `Submitting ${friendlyName} request...`,
-            });
+          const t2vSettings: TextToVideoSettings = {
+            veo31Settings,
+            hailuoT2VDuration,
+            ltxv2Duration,
+            ltxv2Resolution,
+            ltxv2FPS,
+            ltxv2GenerateAudio,
+            ltxv2FastDuration,
+            ltxv2FastResolution,
+            ltxv2FastFPS,
+            ltxv2FastGenerateAudio,
+            unifiedParams,
+            duration,
+            aspectRatio,
+            resolution,
+          };
 
-            const textRequest = {
-              model: modelId,
-              prompt: prompt.trim(),
-              duration: hailuoT2VDuration,
-            };
-
-            response = await generateVideoFromText(textRequest);
-
-            progressCallback({
-              status: "completed",
-              progress: 100,
-              message: `Video generated with ${friendlyName}`,
-            });
-          }
-          // LTX Video 2.0 text-to-video
-          else if (modelId === "ltxv2_pro_t2v") {
-            const friendlyName = modelName || modelId;
-            progressCallback({
-              status: "processing",
-              progress: 10,
-              message: `Submitting ${friendlyName} request...`,
-            });
-
-            response = await generateLTXV2Video({
-              model: modelId,
-              prompt: prompt.trim(),
-              duration: ltxv2Duration,
-              resolution: ltxv2Resolution,
-              fps: ltxv2FPS,
-              generate_audio: ltxv2GenerateAudio,
-            });
-
-            progressCallback({
-              status: "completed",
-              progress: 100,
-              message: `Video with audio generated using ${friendlyName}`,
-            });
-          }
-          // LTX Video 2.0 fast text-to-video
-          else if (modelId === "ltxv2_fast_t2v") {
-            const friendlyName = modelName || modelId;
-            progressCallback({
-              status: "processing",
-              progress: 10,
-              message: `Submitting ${friendlyName} request...`,
-            });
-
-            response = await generateLTXV2Video({
-              model: modelId,
-              prompt: prompt.trim(),
-              duration: ltxv2FastDuration,
-              resolution: ltxv2FastResolution,
-              fps: ltxv2FastFPS,
-              generate_audio: ltxv2FastGenerateAudio,
-            });
-
-            progressCallback({
-              status: "completed",
-              progress: 100,
-              message: `Video with audio generated using ${friendlyName}`,
-            });
-          }
-          // Regular text-to-video generation
-          else {
-            response = await generateVideo(
-              {
-                prompt: prompt.trim(),
-                model: modelId,
-                ...unifiedParams,
-                // Add Sora 2 specific parameters if Sora 2 model
-                ...(modelId.startsWith("sora2_") && {
-                  duration:
-                    (unifiedParams.duration as number | undefined) ?? duration,
-                  aspect_ratio:
-                    (unifiedParams.aspect_ratio as
-                      | "16:9"
-                      | "9:16"
-                      | "1:1"
-                      | "4:3"
-                      | "3:4"
-                      | "21:9"
-                      | undefined) ?? aspectRatio,
-                  resolution:
-                    (unifiedParams.resolution as
-                      | "720p"
-                      | "1080p"
-                      | "auto"
-                      | undefined) ?? resolution,
-                }),
-              },
-              progressCallback
-            );
-          }
+          handlerResult = await routeTextToVideoHandler(handlerCtx, t2vSettings);
+          response = handlerResult.response;
           console.log("  ✅ Text-to-video response:", response);
         } else if (activeTab === "image") {
           console.log(`  🖼️ Calling generateVideoFromImage for ${modelId}...`);
 
-          // Veo 3.1 Fast image-to-video
-          if (modelId === "veo31_fast_image_to_video") {
-            if (!selectedImage) {
-              console.log(
-                "  ⚠️ Skipping model - image-to-video requires a selected image"
-              );
-              continue;
-            }
+          const i2vSettings: ImageToVideoSettings = {
+            selectedImage,
+            firstFrame,
+            lastFrame,
+            veo31Settings,
+            viduQ2Duration,
+            viduQ2Resolution,
+            viduQ2MovementAmplitude,
+            viduQ2EnableBGM,
+            ltxv2I2VDuration,
+            ltxv2I2VResolution,
+            ltxv2I2VFPS,
+            ltxv2I2VGenerateAudio,
+            ltxv2ImageDuration,
+            ltxv2ImageResolution,
+            ltxv2ImageFPS,
+            ltxv2ImageGenerateAudio,
+            seedanceDuration,
+            seedanceResolution,
+            seedanceAspectRatio,
+            seedanceCameraFixed,
+            seedanceEndFrameUrl: seedanceEndFrameUrl ?? null,
+            seedanceEndFrameFile,
+            klingDuration,
+            klingCfgScale,
+            klingAspectRatio,
+            klingEnhancePrompt,
+            klingNegativePrompt: klingNegativePrompt ?? "",
+            kling26Duration,
+            kling26GenerateAudio,
+            kling26NegativePrompt: kling26NegativePrompt ?? "",
+            wan25Duration,
+            wan25Resolution,
+            wan25AudioUrl: wan25AudioUrl ?? null,
+            wan25AudioFile,
+            wan25NegativePrompt: wan25NegativePrompt ?? "",
+            wan25EnablePromptExpansion,
+            imageSeed: imageSeed ?? null,
+            duration,
+            aspectRatio,
+            resolution,
+            uploadImageToFal,
+            uploadAudioToFal,
+          };
 
-            // Upload image to get URL first
-            const imageFile = selectedImage;
-            const imageUrl = await uploadImageToFal(imageFile);
-            const imageAspectRatio =
-              veo31Settings.aspectRatio === "16:9" ||
-              veo31Settings.aspectRatio === "9:16"
-                ? veo31Settings.aspectRatio
-                : "16:9";
+          handlerResult = await routeImageToVideoHandler(handlerCtx, i2vSettings);
 
-            response = await falAIClient.generateVeo31FastImageToVideo({
-              prompt: prompt.trim(),
-              image_url: imageUrl,
-              aspect_ratio: imageAspectRatio,
-              duration: "8s",
-              resolution: veo31Settings.resolution,
-              generate_audio: veo31Settings.generateAudio,
-            });
-          }
-          // Veo 3.1 Standard image-to-video
-          else if (modelId === "veo31_image_to_video") {
-            if (!selectedImage) {
-              console.log(
-                "  ⚠️ Skipping model - image-to-video requires a selected image"
-              );
-              continue;
-            }
-
-            // Upload image to get URL first
-            const imageFile = selectedImage;
-            const imageUrl = await uploadImageToFal(imageFile);
-            const imageAspectRatio =
-              veo31Settings.aspectRatio === "16:9" ||
-              veo31Settings.aspectRatio === "9:16"
-                ? veo31Settings.aspectRatio
-                : "16:9";
-
-            response = await falAIClient.generateVeo31ImageToVideo({
-              prompt: prompt.trim(),
-              image_url: imageUrl,
-              aspect_ratio: imageAspectRatio,
-              duration: "8s",
-              resolution: veo31Settings.resolution,
-              generate_audio: veo31Settings.generateAudio,
-            });
-          }
-          // Veo 3.1 Fast frame-to-video
-          else if (
-            modelId === "veo31_fast_frame_to_video" &&
-            firstFrame &&
-            lastFrame
-          ) {
-            // Upload both frames to get URLs
-            const frameStart = firstFrame;
-            const frameEnd = lastFrame;
-            const firstFrameUrl = await uploadImageToFal(frameStart);
-            const lastFrameUrl = await uploadImageToFal(frameEnd);
-            const frameAspectRatio =
-              veo31Settings.aspectRatio === "16:9" ||
-              veo31Settings.aspectRatio === "9:16"
-                ? veo31Settings.aspectRatio
-                : "16:9";
-
-            response = await falAIClient.generateVeo31FastFrameToVideo({
-              prompt: prompt.trim(),
-              first_frame_url: firstFrameUrl,
-              last_frame_url: lastFrameUrl,
-              aspect_ratio: frameAspectRatio,
-              duration: "8s",
-              resolution: veo31Settings.resolution,
-              generate_audio: veo31Settings.generateAudio,
-            });
-          }
-          // Veo 3.1 Standard frame-to-video
-          else if (
-            modelId === "veo31_frame_to_video" &&
-            firstFrame &&
-            lastFrame
-          ) {
-            // Upload both frames to get URLs
-            const frameStart = firstFrame;
-            const frameEnd = lastFrame;
-            const firstFrameUrl = await uploadImageToFal(frameStart);
-            const lastFrameUrl = await uploadImageToFal(frameEnd);
-            const frameAspectRatio =
-              veo31Settings.aspectRatio === "16:9" ||
-              veo31Settings.aspectRatio === "9:16"
-                ? veo31Settings.aspectRatio
-                : "16:9";
-
-            response = await falAIClient.generateVeo31FrameToVideo({
-              prompt: prompt.trim(),
-              first_frame_url: firstFrameUrl,
-              last_frame_url: lastFrameUrl,
-              aspect_ratio: frameAspectRatio,
-              duration: "8s",
-              resolution: veo31Settings.resolution,
-              generate_audio: veo31Settings.generateAudio,
-            });
-          } else if (VEO31_FRAME_MODELS.has(modelId)) {
-            console.log(
-              "  ⚠️ Skipping model - frame-to-video requires selected first and last frames"
-            );
+          if (handlerResult.shouldSkip) {
+            console.log(`  ⚠️ Skipping model - ${handlerResult.skipReason}`);
             continue;
           }
-          // Vidu Q2 Turbo image-to-video
-          else if (modelId === "vidu_q2_turbo_i2v") {
-            if (!selectedImage) {
-              console.log(
-                "  ⚠️ Skipping model - Vidu Q2 requires a selected image"
-              );
-              continue;
-            }
 
-            const imageUrl = await uploadImageToFal(selectedImage);
-            const friendlyName = modelName || modelId;
-            progressCallback({
-              status: "processing",
-              progress: 10,
-              message: `Submitting ${friendlyName} request...`,
-            });
-
-            response = await generateViduQ2Video({
-              model: modelId,
-              prompt: prompt.trim(),
-              image_url: imageUrl,
-              duration: viduQ2Duration,
-              resolution: viduQ2Resolution,
-              movement_amplitude: viduQ2MovementAmplitude,
-              bgm: viduQ2EnableBGM,
-            });
-
-            progressCallback({
-              status: "completed",
-              progress: 100,
-              message: `Video generated with ${friendlyName}`,
-            });
-          }
-          // LTX Video 2.0 standard image-to-video
-          else if (modelId === "ltxv2_i2v") {
-            if (!selectedImage) {
-              console.log(
-                "  ⚠️ Skipping model - LTX V2 standard requires a selected image"
-              );
-              continue;
-            }
-
-            const imageUrl = await uploadImageToFal(selectedImage);
-            const friendlyName = modelName || modelId;
-            progressCallback({
-              status: "processing",
-              progress: 10,
-              message: `Submitting ${friendlyName} request...`,
-            });
-
-            response = await generateLTXV2ImageVideo({
-              model: modelId,
-              prompt: prompt.trim(),
-              image_url: imageUrl,
-              duration: ltxv2I2VDuration,
-              resolution: ltxv2I2VResolution,
-              fps: ltxv2I2VFPS,
-              generate_audio: ltxv2I2VGenerateAudio,
-            });
-
-            progressCallback({
-              status: "completed",
-              progress: 100,
-              message: `Video with audio generated using ${friendlyName}`,
-            });
-          }
-          // LTX Video 2.0 Fast image-to-video
-          else if (modelId === "ltxv2_fast_i2v") {
-            if (!selectedImage) {
-              console.log(
-                "  ⚠️ Skipping model - LTX V2 Fast requires a selected image"
-              );
-              continue;
-            }
-
-            const imageUrl = await uploadImageToFal(selectedImage);
-            const friendlyName = modelName || modelId;
-            progressCallback({
-              status: "processing",
-              progress: 10,
-              message: `Submitting ${friendlyName} request...`,
-            });
-
-            response = await generateLTXV2ImageVideo({
-              model: modelId,
-              prompt: prompt.trim(),
-              image_url: imageUrl,
-              duration: ltxv2ImageDuration,
-              resolution: ltxv2ImageResolution,
-              fps: ltxv2ImageFPS,
-              generate_audio: ltxv2ImageGenerateAudio,
-            });
-
-            progressCallback({
-              status: "completed",
-              progress: 100,
-              message: `Video with audio generated using ${friendlyName}`,
-            });
-          }
-          // Seedance v1 Pro Fast image-to-video
-          else if (modelId === "seedance_pro_fast_i2v") {
-            if (!selectedImage) {
-              console.log(
-                "  ?? Skipping model - Seedance Pro Fast requires a selected image"
-              );
-              continue;
-            }
-
-            const imageUrl = await uploadImageToFal(selectedImage);
-            const friendlyName = modelName || modelId;
-            progressCallback({
-              status: "processing",
-              progress: 10,
-              message: `Submitting ${friendlyName} request...`,
-            });
-
-            response = await generateSeedanceVideo({
-              model: modelId,
-              prompt: prompt.trim(),
-              image_url: imageUrl,
-              duration: seedanceDuration,
-              resolution: seedanceResolution,
-              aspect_ratio: seedanceAspectRatio,
-              camera_fixed: seedanceCameraFixed,
-              seed: imageSeed ?? undefined,
-            });
-
-            progressCallback({
-              status: "completed",
-              progress: 100,
-              message: `Video generated with ${friendlyName}`,
-            });
-          }
-          // Seedance v1 Pro image-to-video (end frame optional)
-          else if (modelId === "seedance_pro_i2v") {
-            if (!selectedImage) {
-              console.log(
-                "  ?? Skipping model - Seedance Pro requires a selected image"
-              );
-              continue;
-            }
-
-            const imageUrl = await uploadImageToFal(selectedImage);
-            const friendlyName = modelName || modelId;
-            const endFrameUrl = seedanceEndFrameFile
-              ? await uploadImageToFal(seedanceEndFrameFile)
-              : seedanceEndFrameUrl;
-            progressCallback({
-              status: "processing",
-              progress: 10,
-              message: `Submitting ${friendlyName} request...`,
-            });
-
-            response = await generateSeedanceVideo({
-              model: modelId,
-              prompt: prompt.trim(),
-              image_url: imageUrl,
-              duration: seedanceDuration,
-              resolution: seedanceResolution,
-              aspect_ratio: seedanceAspectRatio,
-              camera_fixed: seedanceCameraFixed,
-              end_image_url: endFrameUrl ?? undefined,
-              seed: imageSeed ?? undefined,
-            });
-
-            progressCallback({
-              status: "completed",
-              progress: 100,
-              message: `Video generated with ${friendlyName}`,
-            });
-          }
-          // Kling v2.5 Turbo Pro image-to-video
-          else if (modelId === "kling_v2_5_turbo_i2v") {
-            if (!selectedImage) {
-              console.log(
-                "  ?? Skipping model - Kling v2.5 requires a selected image"
-              );
-              continue;
-            }
-
-            const imageUrl = await uploadImageToFal(selectedImage);
-            const friendlyName = modelName || modelId;
-            progressCallback({
-              status: "processing",
-              progress: 10,
-              message: `Submitting ${friendlyName} request...`,
-            });
-
-            response = await generateKlingImageVideo({
-              model: modelId,
-              prompt: prompt.trim(),
-              image_url: imageUrl,
-              duration: klingDuration,
-              cfg_scale: klingCfgScale,
-              aspect_ratio: klingAspectRatio,
-              enhance_prompt: klingEnhancePrompt,
-              negative_prompt: klingNegativePrompt,
-            });
-
-            progressCallback({
-              status: "completed",
-              progress: 100,
-              message: `Video generated with ${friendlyName}`,
-            });
-          }
-          // Kling v2.6 Pro image-to-video
-          else if (modelId === "kling_v26_pro_i2v") {
-            if (!selectedImage) {
-              console.log(
-                "  ⚠️ Skipping model - Kling v2.6 requires a selected image"
-              );
-              continue;
-            }
-
-            const imageUrl = await uploadImageToFal(selectedImage);
-            const friendlyName = modelName || modelId;
-            progressCallback({
-              status: "processing",
-              progress: 10,
-              message: `Submitting ${friendlyName} request...`,
-            });
-
-            // Note: v2.6 I2V does NOT support aspect_ratio or cfg_scale per FAL.ai schema
-            response = await generateKling26ImageVideo({
-              model: modelId,
-              prompt: prompt.trim(),
-              image_url: imageUrl,
-              duration: kling26Duration,
-              generate_audio: kling26GenerateAudio,
-              negative_prompt: kling26NegativePrompt,
-            });
-
-            progressCallback({
-              status: "completed",
-              progress: 100,
-              message: `Video generated with ${friendlyName}`,
-            });
-          }
-          // WAN 2.5 Preview image-to-video
-          else if (modelId === "wan_25_preview_i2v") {
-            if (!selectedImage) {
-              console.log(
-                "  ?? Skipping model - WAN 2.5 requires a selected image"
-              );
-              continue;
-            }
-
-            const imageUrl = await uploadImageToFal(selectedImage);
-            const friendlyName = modelName || modelId;
-            const audioUrl = wan25AudioFile
-              ? await uploadAudioToFal(wan25AudioFile)
-              : wan25AudioUrl;
-            progressCallback({
-              status: "processing",
-              progress: 10,
-              message: `Submitting ${friendlyName} request...`,
-            });
-
-            response = await generateWAN25ImageVideo({
-              model: modelId,
-              prompt: prompt.trim(),
-              image_url: imageUrl,
-              duration: wan25Duration,
-              resolution: wan25Resolution,
-              audio_url: audioUrl ?? undefined,
-              negative_prompt: wan25NegativePrompt,
-              enable_prompt_expansion: wan25EnablePromptExpansion,
-              seed: imageSeed ?? undefined,
-            });
-
-            progressCallback({
-              status: "completed",
-              progress: 100,
-              message: `Video generated with ${friendlyName}`,
-            });
-          } // Regular image-to-video generation
-          else {
-            if (!selectedImage) {
-              console.log(
-                "  ⚠️ Skipping model - image-to-video requires a selected image"
-              );
-              continue;
-            }
-
-            response = await generateVideoFromImage({
-              image: selectedImage,
-              prompt: prompt.trim(),
-              model: modelId,
-              // Add Sora 2 specific parameters if Sora 2 model
-              ...(modelId.startsWith("sora2_") && {
-                duration,
-                aspect_ratio: aspectRatio,
-                resolution,
-              }),
-            });
-          }
+          response = handlerResult.response;
           console.log("  ✅ generateVideoFromImage returned:", response);
         } else if (activeTab === "upscale") {
-          if (modelId === "bytedance_video_upscaler") {
-            if (!sourceVideoFile && !sourceVideoUrl) {
-              console.log("  ?? Skipping model - Video source required");
-              continue;
-            }
+          const upscaleSettings: UpscaleSettings = {
+            sourceVideoFile,
+            sourceVideoUrl: sourceVideoUrl || null,
+            bytedanceTargetResolution,
+            bytedanceTargetFPS,
+            flashvsrUpscaleFactor: flashvsrUpscaleFactor ?? null,
+            flashvsrAcceleration,
+            flashvsrQuality,
+            flashvsrColorFix,
+            flashvsrPreserveAudio,
+            flashvsrOutputFormat,
+            flashvsrOutputQuality,
+            flashvsrOutputWriteMode,
+            flashvsrSeed: flashvsrSeed ?? null,
+          };
 
-            const videoUrl = sourceVideoFile
-              ? await falAIClient.uploadVideoToFal(sourceVideoFile)
-              : sourceVideoUrl;
+          handlerResult = await routeUpscaleHandler(handlerCtx, upscaleSettings);
 
-            const friendlyName = modelName || modelId;
-            progressCallback({
-              status: "processing",
-              progress: 10,
-              message: `Uploading video for ${friendlyName}...`,
-            });
-
-            progressCallback({
-              status: "processing",
-              progress: 30,
-              message: `Upscaling video to ${bytedanceTargetResolution}...`,
-            });
-
-            response = await upscaleByteDanceVideo({
-              video_url: videoUrl,
-              target_resolution: bytedanceTargetResolution,
-              target_fps: bytedanceTargetFPS,
-            });
-
-            progressCallback({
-              status: "completed",
-              progress: 100,
-              message: `Video upscaled with ${friendlyName}`,
-            });
+          if (handlerResult.shouldSkip) {
+            console.log(`  ⚠️ Skipping model - ${handlerResult.skipReason}`);
+            continue;
           }
-          // FlashVSR Video Upscaler
-          else if (modelId === "flashvsr_video_upscaler") {
-            if (!sourceVideoFile && !sourceVideoUrl) {
-              console.log("  ?? Skipping model - Video source required");
-              continue;
-            }
 
-            const videoUrl = sourceVideoFile
-              ? await falAIClient.uploadVideoToFal(sourceVideoFile)
-              : sourceVideoUrl;
-
-            const friendlyName = modelName || modelId;
-            const upscaleFactor = flashvsrUpscaleFactor ?? 4;
-
-            progressCallback({
-              status: "processing",
-              progress: 10,
-              message: `Uploading video for ${friendlyName}...`,
-            });
-
-            progressCallback({
-              status: "processing",
-              progress: 30,
-              message: `Upscaling video with FlashVSR (${upscaleFactor}x)...`,
-            });
-
-            response = await upscaleFlashVSRVideo({
-              video_url: videoUrl,
-              upscale_factor: upscaleFactor,
-              acceleration: flashvsrAcceleration,
-              quality: flashvsrQuality,
-              color_fix: flashvsrColorFix,
-              preserve_audio: flashvsrPreserveAudio,
-              output_format: flashvsrOutputFormat,
-              output_quality: flashvsrOutputQuality,
-              output_write_mode: flashvsrOutputWriteMode,
-              seed: flashvsrSeed,
-            });
-
-            progressCallback({
-              status: "completed",
-              progress: 100,
-              message: `Video upscaled with ${friendlyName}`,
-            });
-          }
-          // Topaz Video Upscaler
-          else if (modelId === "topaz_video_upscale") {
-            throw new Error("Topaz Video Upscale not yet implemented");
-          }
+          response = handlerResult.response;
         } else if (activeTab === "avatar") {
-          // Special handling for kling_o1_ref2video which uses referenceImages
-          if (modelId === "kling_o1_ref2video") {
-            const firstRefImage = referenceImages?.find((img) => img !== null);
-            if (firstRefImage) {
-              console.log(
-                `  🎭 Calling generateAvatarVideo for ${modelId} with reference image...`
-              );
-              response = await generateAvatarVideo({
-                model: modelId,
-                characterImage: firstRefImage,
-                prompt: prompt.trim() || undefined,
-              });
-              console.log("  ✅ generateAvatarVideo returned:", response);
-            }
-          } else if (
-            modelId === "kling_o1_v2v_reference" ||
-            modelId === "kling_o1_v2v_edit"
-          ) {
-            // V2V models require sourceVideo, not avatarImage
-            if (sourceVideo) {
-              console.log(
-                `  🎬 Calling generateKlingO1Video for ${modelId} with source video...`
-              );
-              response = await generateKlingO1Video({
-                model: modelId,
-                prompt: prompt.trim(),
-                sourceVideo,
-                duration: 5, // Default duration
-              });
-              console.log("  ✅ generateKlingO1Video returned:", response);
-            }
-          } else if (avatarImage) {
-            console.log(`  🎭 Calling generateAvatarVideo for ${modelId}...`);
-            // For Kling Avatar v2 models, use the v2-specific prompt
-            const avatarPrompt =
-              modelId === "kling_avatar_v2_standard" ||
-              modelId === "kling_avatar_v2_pro"
-                ? klingAvatarV2Prompt.trim() || undefined
-                : prompt.trim() || undefined;
+          const avatarSettings: AvatarSettings = {
+            avatarImage: avatarImage ?? null,
+            audioFile: audioFile ?? null,
+            sourceVideo: sourceVideo ?? null,
+            referenceImages: referenceImages ?? [],
+            klingAvatarV2Prompt,
+            audioDuration,
+            uploadImageToFal,
+            uploadAudioToFal,
+          };
 
-            // Kling Avatar v2 requires FAL storage URLs (not base64 data URLs)
-            if (
-              modelId === "kling_avatar_v2_standard" ||
-              modelId === "kling_avatar_v2_pro"
-            ) {
-              console.log(
-                "  📤 Uploading files to FAL storage for Kling Avatar v2..."
-              );
+          handlerResult = await routeAvatarHandler(handlerCtx, avatarSettings);
 
-              // Upload image and audio to FAL storage
-              const [characterImageUrl, audioUrl] = await Promise.all([
-                uploadImageToFal(avatarImage),
-                audioFile ? uploadAudioToFal(audioFile) : Promise.resolve(""),
-              ]);
-
-              if (!audioUrl) {
-                throw new Error("Audio file is required for Kling Avatar v2");
-              }
-
-              console.log("  ✅ Files uploaded to FAL storage");
-              console.log(
-                "    - Image URL:",
-                characterImageUrl.substring(0, 50) + "..."
-              );
-              console.log(
-                "    - Audio URL:",
-                audioUrl.substring(0, 50) + "..."
-              );
-
-              response = await generateAvatarVideo({
-                model: modelId,
-                characterImage: avatarImage,
-                audioFile: audioFile || undefined,
-                prompt: avatarPrompt,
-                audioDuration: audioDuration ?? undefined,
-                characterImageUrl,
-                audioUrl,
-              });
-            } else {
-              // Other avatar models use data URLs (base64)
-              response = await generateAvatarVideo({
-                model: modelId,
-                characterImage: avatarImage,
-                audioFile: audioFile || undefined,
-                sourceVideo: sourceVideo || undefined,
-                prompt: avatarPrompt,
-                audioDuration: audioDuration ?? undefined,
-              });
-            }
-            console.log("  ✅ generateAvatarVideo returned:", response);
+          if (handlerResult.shouldSkip) {
+            console.log(`  ⚠️ Skipping model - ${handlerResult.skipReason}`);
+            continue;
           }
+
+          response = handlerResult.response;
         }
 
         console.log("step 5a: post-API response analysis");
@@ -1810,210 +1216,47 @@ export function useAIGeneration(props: UseAIGenerationProps) {
             generations.push({ modelId, video: newVideo });
             console.log("📦 Added to generations array:", generations.length);
 
-            // 🔥 MOVED MEDIA INTEGRATION HERE - Steps 3-8
-            console.log("step 6a: media integration condition check");
-            const hasProject = !!activeProject;
-            const hasStore = !!addMediaItem;
-            const hasVideoUrl = !!response.video_url;
-            const canIntegrate = hasProject && hasStore && hasVideoUrl;
-            console.log("   - activeProject:", hasProject, activeProject?.id);
-            console.log("   - addMediaItem:", hasStore, typeof addMediaItem);
-            console.log(
-              "   - response.video_url:",
-              hasVideoUrl,
-              hasVideoUrl ? "EXISTS" : "MISSING"
+            // Media integration using extracted function
+            const { canIntegrate: canDoIntegration, missing } = canIntegrateMedia(
+              activeProject?.id,
+              addMediaItem,
+              response.video_url
             );
-            if (!canIntegrate) {
-              console.log("   - missing for integration:", {
-                activeProject: hasProject,
-                addMediaItem: hasStore,
-                videoUrl: hasVideoUrl,
-              });
+            console.log("   - WILL EXECUTE MEDIA INTEGRATION:", canDoIntegration);
+            if (!canDoIntegration) {
+              console.log("   - missing for integration:", missing);
             }
-            console.log("   - WILL EXECUTE MEDIA INTEGRATION:", canIntegrate);
 
-            if (activeProject && addMediaItem) {
-              console.log("step 6b: executing media integration block");
-              console.log(
-                "   - About to download from URL:",
-                response.video_url
-              );
-              console.log("   - Project ID for media:", activeProject.id);
-              console.log(
-                "   - addMediaItem function type:",
-                typeof addMediaItem
-              );
-
-              console.log(
-                `step 6: downloading video and adding to media store for ${modelId}`
-              );
-
-              console.log("🔄 Attempting to add to media store...");
-              console.log("   - Project ID:", activeProject.id);
-              console.log("   - addMediaItem available:", !!addMediaItem);
-
-              try {
-                // Download video and create file
-                console.log(
-                  "📥 Downloading video from URL:",
-                  response.video_url
-                );
-                const videoResponse = await fetch(response.video_url);
-
-                console.log("step 6c: video download progress");
-                console.log("   - videoResponse.ok:", videoResponse.ok);
-                console.log("   - videoResponse.status:", videoResponse.status);
-                console.log(
-                  "   - videoResponse.headers content-type:",
-                  videoResponse.headers.get("content-type")
-                );
-
-                if (!videoResponse.ok) {
-                  throw new Error(
-                    `Failed to download video: ${videoResponse.status} ${videoResponse.statusText}`
-                  );
-                }
-
-                const blob = await videoResponse.blob();
-                console.log("✅ Downloaded video blob, size:", blob.size);
-
-                const filename = `AI-Video-${modelId}-${Date.now()}.mp4`;
-                const file = new File([blob], filename, { type: "video/mp4" });
-                console.log("📄 Created file:", filename);
-
-                console.log("step 6d: file creation complete");
-                console.log("   - blob.size:", blob.size, "bytes");
-                console.log("   - blob.type:", blob.type);
-                console.log("   - file.name:", file.name);
-                console.log("   - file.size:", file.size);
-
-                // MANDATORY: Save to local disk - NO FALLBACK
-                console.log("step 6e: MANDATORY save to local disk starting");
-
-                if (!window.electronAPI?.video?.saveToDisk) {
-                  const error =
-                    "CRITICAL ERROR: Electron API not available - cannot save video to disk";
-                  console.error("🚨", error);
+            if (activeProject && addMediaItem && response.video_url) {
+              const integrationResult = await integrateVideoToMediaStore({
+                videoUrl: response.video_url,
+                modelId,
+                prompt: newVideo.prompt,
+                projectId: activeProject.id,
+                addMediaItem,
+                duration: newVideo.duration || 5,
+                sourceType: activeTab === "text" ? "text2video" : activeTab === "image" ? "image2video" : activeTab,
+                onError: (error) => {
                   setIsGenerating(false);
                   setGenerationProgress(0);
                   setStatusMessage(error);
-                  onError("Failed to save video: " + error);
-                  return;
-                }
+                  onError(error);
+                },
+              });
 
-                const arrayBuffer = await blob.arrayBuffer();
-                const saveResult = await window.electronAPI.video.saveToDisk({
-                  fileName: filename,
-                  fileData: arrayBuffer,
-                  projectId: activeProject.id,
-                  modelId,
-                  metadata: {
-                    width: 1920,
-                    height: 1080,
-                    duration: newVideo.duration || 5,
-                    fps: 25,
-                  },
-                });
-
-                if (!saveResult.success) {
-                  const error =
-                    saveResult.error || "Unknown error saving video to disk";
-                  console.error(
-                    "🚨 step 6e: CRITICAL - Save to disk FAILED:",
-                    error
-                  );
-                  setIsGenerating(false);
-                  setGenerationProgress(0);
-                  setStatusMessage("Failed to save video: " + error);
-                  onError("Failed to save video to disk: " + error);
-                  return; // ABORT - Do NOT add to media store
-                }
-
-                console.log("✅ step 6e: video saved to disk successfully", {
-                  localPath: saveResult.localPath,
-                  fileName: saveResult.fileName,
-                  fileSize: saveResult.fileSize,
-                });
-
-                const localUrl = URL.createObjectURL(file);
-                newVideo.videoPath = response.video_url;
-                newVideo.videoUrl = localUrl;
-                newVideo.fileSize = file.size;
-                newVideo.localPath = saveResult.localPath; // Store local path
-
-                // Add to media store (only if save succeeded)
-                const mediaItem = {
-                  name: `AI: ${newVideo.prompt.substring(0, 30)}...`,
-                  type: "video" as const,
-                  file,
-                  url: localUrl,
-                  originalUrl: response.video_url,
-                  localPath: saveResult.localPath, // REQUIRED: local file path
-                  isLocalFile: true, // Mark as saved to disk
-                  duration: newVideo.duration || 5,
-                  width: 1920,
-                  height: 1080,
-                  metadata: {
-                    source: "text2video", // Mark as AI-generated for ZIP export prioritization
-                    model: modelId,
-                    prompt: newVideo.prompt,
-                    generatedAt: new Date().toISOString(),
-                  },
-                };
-
-                console.log("step 6d details:", {
-                  mediaUrl: mediaItem.url,
-                  fileName: file.name,
-                  fileSize: file.size,
-                });
-                console.log("📤 Adding to media store with item:", mediaItem);
-
-                console.log("step 6e: about to call addMediaItem");
-                console.log(
-                  "   - mediaItem structure:",
-                  JSON.stringify(mediaItem, null, 2)
-                );
-                console.log("   - projectId:", activeProject.id);
-                console.log(
-                  "   - addMediaItem is function:",
-                  typeof addMediaItem === "function"
-                );
-
-                const newItemId = await addMediaItem(
-                  activeProject.id,
-                  mediaItem
-                );
-
-                console.log("step 6f: addMediaItem completed", {
-                  newItemId,
-                  mediaUrl: mediaItem.url,
-                  fileName: mediaItem.file.name,
-                  fileSize: mediaItem.file.size,
-                });
-                console.log("   - newItemId:", newItemId);
-                console.log("   - SUCCESS: Video added to media store!");
-
-                console.log("✅ VIDEO SUCCESSFULLY ADDED TO MEDIA STORE!");
-                console.log("   - Item ID:", newItemId);
-
-                debugLogger.log("AIGeneration", "VIDEO_ADDED_TO_MEDIA", {
-                  itemId: newItemId,
-                  model: modelId,
-                  videoUrl: response.video_url,
-                  projectId: activeProject.id,
-                });
-              } catch (error) {
-                console.error("❌ Media integration failed:", error);
-                debugLogger.log("AIGeneration", "MEDIA_INTEGRATION_FAILED", {
-                  error: error instanceof Error ? error.message : String(error),
-                  model: modelId,
-                  videoUrl: response.video_url,
-                });
+              if (integrationResult.success) {
+                // Update video with local paths
+                Object.assign(newVideo, updateVideoWithLocalPaths(
+                  newVideo,
+                  integrationResult,
+                  response.video_url
+                ));
+              } else if (integrationResult.error) {
+                // Critical error - abort generation
+                return;
               }
             } else {
-              console.warn("⚠️ Cannot add to media store:");
-              console.warn("   - activeProject:", !!activeProject);
-              console.warn("   - addMediaItem:", !!addMediaItem);
+              console.warn("⚠️ Cannot add to media store:", missing);
             }
           } else {
             // Traditional polling mode: no video_url yet
@@ -2066,192 +1309,47 @@ export function useAIGeneration(props: UseAIGenerationProps) {
           generations.push({ modelId, video: newVideo });
           console.log("📦 Added to generations array:", generations.length);
 
-          // Automatically add to media store
-          console.log("step 6a: media integration condition check");
-          const hasProject = !!activeProject;
-          const hasStore = !!addMediaItem;
-          const hasVideoUrl = !!response.video_url;
-          const canIntegrate = hasProject && hasStore && hasVideoUrl;
-          console.log("   - activeProject:", hasProject, activeProject?.id);
-          console.log("   - addMediaItem:", hasStore, typeof addMediaItem);
-          console.log(
-            "   - response.video_url:",
-            hasVideoUrl,
-            hasVideoUrl ? "EXISTS" : "MISSING"
+          // Media integration using extracted function
+          const { canIntegrate: canDoIntegration, missing } = canIntegrateMedia(
+            activeProject?.id,
+            addMediaItem,
+            response.video_url
           );
-          if (!canIntegrate) {
-            console.log("   - missing for integration:", {
-              activeProject: hasProject,
-              addMediaItem: hasStore,
-              videoUrl: hasVideoUrl,
-            });
+          console.log("   - WILL EXECUTE MEDIA INTEGRATION:", canDoIntegration);
+          if (!canDoIntegration) {
+            console.log("   - missing for integration:", missing);
           }
-          console.log("   - WILL EXECUTE MEDIA INTEGRATION:", canIntegrate);
 
-          if (activeProject && addMediaItem) {
-            console.log("step 6b: executing media integration block");
-            console.log("   - About to download from URL:", response.video_url);
-            console.log("   - Project ID for media:", activeProject.id);
-            console.log(
-              "   - addMediaItem function type:",
-              typeof addMediaItem
-            );
-
-            console.log(
-              `step 6: downloading video and adding to media store for ${modelId}`
-            );
-
-            console.log("🔄 Attempting to add to media store...");
-            console.log("   - Project ID:", activeProject.id);
-            console.log("   - addMediaItem available:", !!addMediaItem);
-
-            try {
-              // Download video and create file
-              console.log("📥 Downloading video from URL:", response.video_url);
-              const videoResponse = await fetch(response.video_url);
-
-              console.log("step 6c: video download progress");
-              console.log("   - videoResponse.ok:", videoResponse.ok);
-              console.log("   - videoResponse.status:", videoResponse.status);
-              console.log(
-                "   - videoResponse.headers content-type:",
-                videoResponse.headers.get("content-type")
-              );
-
-              if (!videoResponse.ok) {
-                throw new Error(
-                  `Failed to download video: ${videoResponse.status} ${videoResponse.statusText}`
-                );
-              }
-
-              const blob = await videoResponse.blob();
-              console.log("✅ Downloaded video blob, size:", blob.size);
-
-              const filename = `AI-Video-${modelId}-${Date.now()}.mp4`;
-              const file = new File([blob], filename, { type: "video/mp4" });
-              console.log("📄 Created file:", filename);
-
-              console.log("step 6d: file creation complete");
-              console.log("   - blob.size:", blob.size, "bytes");
-              console.log("   - blob.type:", blob.type);
-              console.log("   - file.name:", file.name);
-              console.log("   - file.size:", file.size);
-
-              // MANDATORY: Save to local disk - NO FALLBACK
-              console.log("step 6e: MANDATORY save to local disk starting");
-
-              if (!window.electronAPI?.video?.saveToDisk) {
-                const error =
-                  "CRITICAL ERROR: Electron API not available - cannot save video to disk";
-                console.error("🚨", error);
+          if (activeProject && addMediaItem && response.video_url) {
+            const integrationResult = await integrateVideoToMediaStore({
+              videoUrl: response.video_url,
+              modelId,
+              prompt: newVideo.prompt,
+              projectId: activeProject.id,
+              addMediaItem,
+              duration: newVideo.duration || 5,
+              sourceType: activeTab === "text" ? "text2video" : activeTab === "image" ? "image2video" : activeTab,
+              onError: (error) => {
                 setIsGenerating(false);
                 setGenerationProgress(0);
                 setStatusMessage(error);
-                onError("Failed to save video: " + error);
-                return;
-              }
+                onError(error);
+              },
+            });
 
-              const arrayBuffer = await blob.arrayBuffer();
-              const saveResult = await window.electronAPI.video.saveToDisk({
-                fileName: filename,
-                fileData: arrayBuffer,
-                projectId: activeProject.id,
-                modelId,
-                metadata: {
-                  width: 1920,
-                  height: 1080,
-                  duration: newVideo.duration || 5,
-                  fps: 25,
-                },
-              });
-
-              if (!saveResult.success) {
-                const error =
-                  saveResult.error || "Unknown error saving video to disk";
-                console.error(
-                  "🚨 step 6e: CRITICAL - Save to disk FAILED:",
-                  error
-                );
-                setIsGenerating(false);
-                setGenerationProgress(0);
-                setStatusMessage("Failed to save video: " + error);
-                onError("Failed to save video to disk: " + error);
-                return; // ABORT - Do NOT add to media store
-              }
-
-              console.log("✅ step 6e: video saved to disk successfully", {
-                localPath: saveResult.localPath,
-                fileName: saveResult.fileName,
-                fileSize: saveResult.fileSize,
-              });
-
-              const localUrl = URL.createObjectURL(file);
-              newVideo.videoPath = response.video_url;
-              newVideo.videoUrl = localUrl;
-              newVideo.localPath = saveResult.localPath; // Store local path
-
-              // Add to media store (only if save succeeded)
-              const mediaItem = {
-                name: `AI: ${newVideo.prompt.substring(0, 30)}...`,
-                type: "video" as const,
-                file,
-                url: localUrl,
-                originalUrl: response.video_url,
-                localPath: saveResult.localPath, // REQUIRED: local file path
-                isLocalFile: true, // Mark as saved to disk
-                duration: newVideo.duration || 5,
-                width: 1920,
-                height: 1080,
-              };
-
-              console.log("step 6d details:", {
-                mediaUrl: mediaItem.url,
-                fileName: file.name,
-                fileSize: file.size,
-              });
-              console.log("📤 Adding to media store with item:", mediaItem);
-
-              console.log("step 6e: about to call addMediaItem");
-              console.log(
-                "   - mediaItem structure:",
-                JSON.stringify(mediaItem, null, 2)
-              );
-              console.log("   - projectId:", activeProject.id);
-              console.log(
-                "   - addMediaItem is function:",
-                typeof addMediaItem === "function"
-              );
-
-              const newItemId = await addMediaItem(activeProject.id, mediaItem);
-
-              console.log("step 6f: addMediaItem completed", {
-                newItemId,
-                mediaUrl: mediaItem.url,
-                fileName: mediaItem.file.name,
-                fileSize: mediaItem.file.size,
-              });
-              console.log("   - newItemId:", newItemId);
-              console.log("   - SUCCESS: Video added to media store!");
-
-              console.log("✅ VIDEO SUCCESSFULLY ADDED TO MEDIA STORE!");
-              console.log("   - Item ID:", newItemId);
-
-              debugLogger.log("AIGeneration", "VIDEO_ADDED_TO_MEDIA", {
-                itemId: newItemId,
-                model: modelId,
-                prompt: newVideo.prompt.substring(0, 50),
-              });
-            } catch (error) {
-              console.error("❌ FAILED TO ADD VIDEO TO MEDIA STORE:", error);
-              debugLogger.log("AIGeneration", "MEDIA_ADD_FAILED", {
-                error: error instanceof Error ? error.message : "Unknown error",
-                model: modelId,
-              });
+            if (integrationResult.success) {
+              // Update video with local paths
+              Object.assign(newVideo, updateVideoWithLocalPaths(
+                newVideo,
+                integrationResult,
+                response.video_url
+              ));
+            } else if (integrationResult.error) {
+              // Critical error - abort generation
+              return;
             }
           } else {
-            console.warn("⚠️ Cannot add to media store:");
-            console.warn("   - activeProject:", !!activeProject);
-            console.warn("   - addMediaItem:", !!addMediaItem);
+            console.warn("⚠️ Cannot add to media store:", missing);
           }
         } else {
           console.warn(
