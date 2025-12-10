@@ -1,14 +1,19 @@
 /**
- * AI Video Generation Validators
+ * AI Video/Image Generation Validators
  *
- * Centralized validation for all AI video parameters.
+ * Centralized validation for all AI generation parameters.
  * Each validator throws descriptive errors on failure.
+ *
+ * Includes validators for:
+ * - Video generation (Hailuo, Vidu, LTX, Kling, WAN)
+ * - Image generation (Reve, output format, aspect ratio)
  */
 
 import {
   ERROR_MESSAGES,
   LTXV2_FAST_CONFIG,
 } from "@/components/editor/media-panel/views/ai/constants/ai-constants";
+import { debugLogger } from "@/lib/debug-logger";
 
 // ============================================
 // Duration/Resolution Constants
@@ -341,5 +346,262 @@ export function validateWAN25Prompt(prompt: string): void {
 export function validateWAN25NegativePrompt(negativePrompt: string): void {
   if (negativePrompt.length > 500) {
     throw new Error("Negative prompt exceeds maximum length of 500 characters");
+  }
+}
+
+// ============================================
+// Image Generation Constants
+// ============================================
+
+const VALIDATOR_LOG_COMPONENT = "Validators";
+
+/**
+ * Valid output formats for FAL.ai image generation.
+ */
+export const VALID_OUTPUT_FORMATS = ["jpeg", "png", "webp"] as const;
+export type OutputFormat = (typeof VALID_OUTPUT_FORMATS)[number];
+export const DEFAULT_OUTPUT_FORMAT: OutputFormat = "jpeg";
+
+/**
+ * Default aspect ratio for image generation.
+ */
+export const DEFAULT_ASPECT_RATIO = "1:1";
+
+/**
+ * Mapping from image size presets to aspect ratios.
+ */
+export const IMAGE_SIZE_TO_ASPECT_RATIO: Record<string, string> = {
+  square: "1:1",
+  square_hd: "1:1",
+  portrait_3_4: "3:4",
+  portrait_9_16: "9:16",
+  landscape_4_3: "4:3",
+  landscape_16_9: "16:9",
+};
+
+/**
+ * Pattern for validating aspect ratio strings (e.g., "16:9").
+ */
+const ASPECT_RATIO_PATTERN = /^\d+:\d+$/;
+
+/**
+ * Reve model constraints.
+ */
+export const MIN_REVE_IMAGES = 1;
+export const MAX_REVE_IMAGES = 4;
+export const MAX_REVE_PROMPT_LENGTH = 2560;
+
+// ============================================
+// Aspect Ratio Validators
+// ============================================
+
+/**
+ * Normalizes an aspect ratio string by removing whitespace.
+ * Returns undefined if the input is not a valid aspect ratio format.
+ *
+ * @param value - Aspect ratio string to normalize (e.g., "16:9", "16 : 9")
+ * @returns Normalized aspect ratio string or undefined
+ *
+ * @example
+ * normalizeAspectRatio("16:9")    // "16:9"
+ * normalizeAspectRatio("16 : 9")  // "16:9"
+ * normalizeAspectRatio("square")  // undefined
+ */
+export function normalizeAspectRatio(
+  value?: string | null
+): string | undefined {
+  if (!value) {
+    return;
+  }
+
+  const normalized = value.replace(/\s+/g, "");
+  if (ASPECT_RATIO_PATTERN.test(normalized)) {
+    return normalized;
+  }
+
+  return;
+}
+
+/**
+ * Converts an image size preset or string to an aspect ratio.
+ *
+ * @param imageSize - Image size preset (e.g., "square_hd") or aspect ratio string
+ * @returns Aspect ratio string (e.g., "1:1", "16:9")
+ *
+ * @example
+ * imageSizeToAspectRatio("square_hd")      // "1:1"
+ * imageSizeToAspectRatio("landscape_16_9") // "16:9"
+ * imageSizeToAspectRatio("16:9")           // "16:9"
+ * imageSizeToAspectRatio(1024)             // "1:1" (default)
+ */
+export function imageSizeToAspectRatio(
+  imageSize: string | number | undefined
+): string {
+  if (typeof imageSize === "string") {
+    // Check preset mapping first
+    if (IMAGE_SIZE_TO_ASPECT_RATIO[imageSize]) {
+      return IMAGE_SIZE_TO_ASPECT_RATIO[imageSize];
+    }
+
+    // Try to normalize as aspect ratio
+    const ratio = normalizeAspectRatio(imageSize);
+    if (ratio) {
+      return ratio;
+    }
+
+    // Try converting underscore format (e.g., "16_9" -> "16:9")
+    const converted = normalizeAspectRatio(imageSize.replace(/_/g, ":"));
+    if (converted) {
+      return converted;
+    }
+  }
+
+  return DEFAULT_ASPECT_RATIO;
+}
+
+// ============================================
+// Output Format Validators
+// ============================================
+
+/**
+ * Normalizes an output format string with fallback.
+ *
+ * @param format - Format string to normalize
+ * @param fallback - Fallback format if invalid (default: "jpeg")
+ * @returns Normalized output format
+ *
+ * @example
+ * normalizeOutputFormat("PNG")     // "png"
+ * normalizeOutputFormat("invalid") // "jpeg" (fallback)
+ * normalizeOutputFormat(null)      // "jpeg" (fallback)
+ */
+export function normalizeOutputFormat(
+  format?: string | null,
+  fallback: OutputFormat = DEFAULT_OUTPUT_FORMAT
+): OutputFormat {
+  if (!format) {
+    return fallback;
+  }
+
+  const normalized = format.toString().toLowerCase() as OutputFormat;
+  if (VALID_OUTPUT_FORMATS.includes(normalized)) {
+    return normalized;
+  }
+
+  debugLogger.warn(VALIDATOR_LOG_COMPONENT, "OUTPUT_FORMAT_INVALID", {
+    requestedFormat: format,
+    fallback,
+  });
+
+  return fallback;
+}
+
+// ============================================
+// Reve Model Validators
+// ============================================
+
+/**
+ * Clamps number of images to valid Reve range (1-4).
+ * Returns 1 for invalid inputs.
+ *
+ * @param value - Number of images requested
+ * @returns Clamped number of images (1-4)
+ */
+export function clampReveNumImages(value?: number): number {
+  if (value === undefined || value === null) {
+    return MIN_REVE_IMAGES;
+  }
+
+  if (typeof value !== "number" || Number.isNaN(value)) {
+    debugLogger.warn(VALIDATOR_LOG_COMPONENT, "REVE_NUM_IMAGES_INVALID", {
+      input: value,
+      defaultValue: MIN_REVE_IMAGES,
+    });
+    return MIN_REVE_IMAGES;
+  }
+
+  const rounded = Math.floor(value);
+  const clamped = Math.min(Math.max(rounded, MIN_REVE_IMAGES), MAX_REVE_IMAGES);
+
+  if (rounded !== value || clamped !== rounded) {
+    debugLogger.warn(VALIDATOR_LOG_COMPONENT, "REVE_NUM_IMAGES_ADJUSTED", {
+      originalValue: value,
+      roundedValue: rounded,
+      clampedValue: clamped,
+      min: MIN_REVE_IMAGES,
+      max: MAX_REVE_IMAGES,
+    });
+  }
+
+  return clamped;
+}
+
+/**
+ * Truncates a prompt to the Reve maximum length (2560 chars).
+ * Logs a warning if truncation occurs.
+ *
+ * @param prompt - Prompt text to truncate
+ * @returns Truncated prompt (max 2560 chars)
+ */
+export function truncateRevePrompt(prompt: string): string {
+  if (prompt.length > MAX_REVE_PROMPT_LENGTH) {
+    debugLogger.warn(VALIDATOR_LOG_COMPONENT, "REVE_PROMPT_TRUNCATED", {
+      originalLength: prompt.length,
+      maxLength: MAX_REVE_PROMPT_LENGTH,
+    });
+  }
+
+  return prompt.length > MAX_REVE_PROMPT_LENGTH
+    ? prompt.slice(0, MAX_REVE_PROMPT_LENGTH)
+    : prompt;
+}
+
+/**
+ * Validates a Reve prompt (throws on invalid).
+ *
+ * @param prompt - Prompt to validate
+ * @throws Error if prompt is empty or exceeds max length
+ */
+export function validateRevePrompt(prompt: string): void {
+  if (typeof prompt !== "string") {
+    throw new Error("Prompt must be provided as a string.");
+  }
+
+  const trimmedPrompt = prompt.trim();
+
+  if (!trimmedPrompt) {
+    throw new Error("Prompt cannot be empty.");
+  }
+
+  if (trimmedPrompt.length > MAX_REVE_PROMPT_LENGTH) {
+    throw new Error(
+      `Prompt must be ${MAX_REVE_PROMPT_LENGTH} characters or fewer.`
+    );
+  }
+}
+
+/**
+ * Validates number of images for Reve (throws on invalid).
+ *
+ * @param value - Number of images to validate
+ * @throws Error if value is not a valid integer between 1-4
+ */
+export function validateReveNumImages(value?: number): void {
+  if (value === undefined || value === null) {
+    return;
+  }
+
+  if (!Number.isFinite(value)) {
+    throw new Error("Number of images must be a finite value.");
+  }
+
+  if (!Number.isInteger(value)) {
+    throw new Error("Number of images must be a whole number.");
+  }
+
+  if (value < MIN_REVE_IMAGES || value > MAX_REVE_IMAGES) {
+    throw new Error(
+      `Reve supports between ${MIN_REVE_IMAGES} and ${MAX_REVE_IMAGES} images per request. You requested ${value}.`
+    );
   }
 }

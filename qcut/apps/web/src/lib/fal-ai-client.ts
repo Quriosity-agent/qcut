@@ -17,6 +17,33 @@ import type {
   ReveEditOutput,
 } from "@/types/ai-generation";
 import type { VideoGenerationResponse } from "./ai-video-client";
+import {
+  uploadFileToFal as uploadFileToFalCore,
+  type FalUploadFileType,
+} from "./ai-video/core/fal-upload";
+import {
+  normalizeAspectRatio,
+  imageSizeToAspectRatio,
+  normalizeOutputFormat,
+  clampReveNumImages,
+  truncateRevePrompt,
+  validateRevePrompt,
+  validateReveNumImages,
+  VALID_OUTPUT_FORMATS,
+  DEFAULT_ASPECT_RATIO,
+  IMAGE_SIZE_TO_ASPECT_RATIO,
+  MIN_REVE_IMAGES,
+  MAX_REVE_IMAGES,
+  MAX_REVE_PROMPT_LENGTH,
+  type OutputFormat,
+} from "./ai-video/validation/validators";
+import {
+  convertV3Parameters,
+  convertV4Parameters,
+  convertNanoBananaParameters,
+  convertFluxParameters,
+  detectModelVersion,
+} from "./fal-ai/model-handlers";
 
 // Types for API responses
 interface FalImageResponse {
@@ -50,62 +77,6 @@ interface GenerationResult {
   };
 }
 
-interface UploadError extends Error {
-  status?: number;
-  statusText?: string;
-  errorData?: unknown;
-}
-
-const VALID_OUTPUT_FORMATS = ["jpeg", "png", "webp"] as const;
-type OutputFormat = (typeof VALID_OUTPUT_FORMATS)[number];
-const DEFAULT_OUTPUT_FORMAT: OutputFormat = "jpeg";
-
-const DEFAULT_ASPECT_RATIO = "1:1";
-const IMAGE_SIZE_TO_ASPECT_RATIO: Record<string, string> = {
-  square: "1:1",
-  square_hd: "1:1",
-  portrait_3_4: "3:4",
-  portrait_9_16: "9:16",
-  landscape_4_3: "4:3",
-  landscape_16_9: "16:9",
-};
-const ASPECT_RATIO_PATTERN = /^\d+:\d+$/;
-
-const normalizeAspectRatio = (value?: string | null): string | undefined => {
-  if (!value) {
-    return;
-  }
-
-  const normalized = value.replace(/\s+/g, "");
-  if (ASPECT_RATIO_PATTERN.test(normalized)) {
-    return normalized;
-  }
-
-  return;
-};
-
-const imageSizeToAspectRatio = (
-  imageSize: string | number | undefined
-): string => {
-  if (typeof imageSize === "string") {
-    if (IMAGE_SIZE_TO_ASPECT_RATIO[imageSize]) {
-      return IMAGE_SIZE_TO_ASPECT_RATIO[imageSize];
-    }
-
-    const ratio = normalizeAspectRatio(imageSize);
-    if (ratio) {
-      return ratio;
-    }
-
-    const converted = normalizeAspectRatio(imageSize.replace(/_/g, ":"));
-    if (converted) {
-      return converted;
-    }
-  }
-
-  return DEFAULT_ASPECT_RATIO;
-};
-
 export interface GenerationSettings {
   imageSize: string | number;
   seed?: number;
@@ -113,110 +84,6 @@ export interface GenerationSettings {
 }
 
 const FAL_LOG_COMPONENT = "FalAIClient";
-const MIN_REVE_IMAGES = 1;
-const MAX_REVE_IMAGES = 4;
-const MAX_REVE_PROMPT_LENGTH = 2560;
-
-const normalizeOutputFormat = (
-  format?: string | null,
-  fallback: OutputFormat = DEFAULT_OUTPUT_FORMAT
-): OutputFormat => {
-  if (!format) {
-    return fallback;
-  }
-
-  const normalized = format.toString().toLowerCase() as OutputFormat;
-  if (VALID_OUTPUT_FORMATS.includes(normalized)) {
-    return normalized;
-  }
-
-  debugLogger.warn(FAL_LOG_COMPONENT, "OUTPUT_FORMAT_INVALID", {
-    requestedFormat: format,
-    fallback,
-  });
-
-  return fallback;
-};
-
-const clampReveNumImages = (value?: number): number => {
-  if (value === undefined || value === null) {
-    return MIN_REVE_IMAGES;
-  }
-
-  if (typeof value !== "number" || Number.isNaN(value)) {
-    debugLogger.warn(FAL_LOG_COMPONENT, "REVE_NUM_IMAGES_INVALID", {
-      input: value,
-      defaultValue: MIN_REVE_IMAGES,
-    });
-    return MIN_REVE_IMAGES;
-  }
-
-  const rounded = Math.floor(value);
-  const clamped = Math.min(Math.max(rounded, MIN_REVE_IMAGES), MAX_REVE_IMAGES);
-
-  if (rounded !== value || clamped !== rounded) {
-    debugLogger.warn(FAL_LOG_COMPONENT, "REVE_NUM_IMAGES_ADJUSTED", {
-      originalValue: value,
-      roundedValue: rounded,
-      clampedValue: clamped,
-      min: MIN_REVE_IMAGES,
-      max: MAX_REVE_IMAGES,
-    });
-  }
-
-  return clamped;
-};
-
-const truncateRevePrompt = (prompt: string): string => {
-  if (prompt.length > MAX_REVE_PROMPT_LENGTH) {
-    debugLogger.warn(FAL_LOG_COMPONENT, "REVE_PROMPT_TRUNCATED", {
-      originalLength: prompt.length,
-      maxLength: MAX_REVE_PROMPT_LENGTH,
-    });
-  }
-
-  return prompt.length > MAX_REVE_PROMPT_LENGTH
-    ? prompt.slice(0, MAX_REVE_PROMPT_LENGTH)
-    : prompt;
-};
-
-const validateRevePrompt = (prompt: string): void => {
-  if (typeof prompt !== "string") {
-    throw new Error("Prompt must be provided as a string.");
-  }
-
-  const trimmedPrompt = prompt.trim();
-
-  if (!trimmedPrompt) {
-    throw new Error("Prompt cannot be empty.");
-  }
-
-  if (trimmedPrompt.length > MAX_REVE_PROMPT_LENGTH) {
-    throw new Error(
-      `Prompt must be ${MAX_REVE_PROMPT_LENGTH} characters or fewer.`
-    );
-  }
-};
-
-const validateReveNumImages = (value?: number): void => {
-  if (value === undefined || value === null) {
-    return;
-  }
-
-  if (!Number.isFinite(value)) {
-    throw new Error("Number of images must be a finite value.");
-  }
-
-  if (!Number.isInteger(value)) {
-    throw new Error("Number of images must be a whole number.");
-  }
-
-  if (value < MIN_REVE_IMAGES || value > MAX_REVE_IMAGES) {
-    throw new Error(
-      `Reve supports between ${MIN_REVE_IMAGES} and ${MAX_REVE_IMAGES} images per request. You requested ${value}.`
-    );
-  }
-};
 
 // Multi-model generation result
 export type MultiModelGenerationResult = Record<string, GenerationResult>;
@@ -328,175 +195,20 @@ class FalAIClient {
     return result;
   }
 
+  /**
+   * Upload a file to FAL.ai storage.
+   * Delegates to shared upload module which handles Electron IPC fallback.
+   */
   private async uploadFileToFal(
     file: File,
-    fileType: "image" | "audio" | "video" | "asset" = "asset"
+    fileType: FalUploadFileType = "asset"
   ): Promise<string> {
     if (!this.apiKey) {
       throw new Error(
         "FAL API key is required for asset upload. Please set the VITE_FAL_API_KEY environment variable."
       );
     }
-
-    // Use Electron IPC if available (bypasses CORS restrictions)
-    // This is required for Electron apps where direct fetch to fal.run/upload fails due to CORS
-    if (typeof window !== "undefined" && window.electronAPI?.fal) {
-      const falApi = window.electronAPI.fal;
-      const hasUploadImage = typeof falApi.uploadImage === "function";
-      const hasUploadAudio = typeof falApi.uploadAudio === "function";
-      const hasUploadVideo = typeof falApi.uploadVideo === "function";
-
-      // Only attempt IPC when a compatible handler exists to avoid calling undefined functions
-      const canHandleViaIPC =
-        (fileType === "image" && hasUploadImage) ||
-        (fileType === "audio" && hasUploadAudio) ||
-        (fileType === "video" && hasUploadVideo) ||
-        (fileType === "asset" && hasUploadImage);
-
-      if (canHandleViaIPC) {
-        console.log(
-          `[FAL Upload] ?? Using Electron IPC for ${fileType} upload (bypasses CORS)`
-        );
-        console.log(
-          `[FAL Upload] ?? File: ${file.name}, Size: ${file.size} bytes`
-        );
-
-        try {
-          // Convert File to Uint8Array for IPC transfer
-          const arrayBuffer = await file.arrayBuffer();
-          const uint8Array = new Uint8Array(arrayBuffer);
-
-          let result: { success: boolean; url?: string; error?: string };
-
-          if (fileType === "image" && hasUploadImage) {
-            console.log(
-              "[FAL Upload] ??? Routing to Electron image upload IPC..."
-            );
-            result = await falApi.uploadImage(
-              uint8Array,
-              file.name,
-              this.apiKey
-            );
-          } else if (fileType === "audio" && hasUploadAudio) {
-            console.log(
-              "[FAL Upload] ?? Routing to Electron audio upload IPC..."
-            );
-            result = await falApi.uploadAudio(
-              uint8Array,
-              file.name,
-              this.apiKey
-            );
-          } else if (fileType === "video" && hasUploadVideo) {
-            console.log(
-              "[FAL Upload] ?? Routing to Electron video upload IPC..."
-            );
-            result = await falApi.uploadVideo(
-              uint8Array,
-              file.name,
-              this.apiKey
-            );
-          } else if (hasUploadImage) {
-            // Generic asset fallback to image uploader
-            console.log(
-              `[FAL Upload] ?? Using image upload IPC for ${fileType}...`
-            );
-            result = await falApi.uploadImage(
-              uint8Array,
-              file.name,
-              this.apiKey
-            );
-          } else {
-            throw new Error("No compatible IPC uploader found");
-          }
-
-          if (!result.success || !result.url) {
-            throw new Error(
-              result.error || `FAL ${fileType} upload failed via IPC`
-            );
-          }
-
-          console.log(`[FAL Upload] ? IPC upload successful: ${result.url}`);
-          return result.url;
-        } catch (error) {
-          const normalizedError =
-            error instanceof Error ? error : new Error(String(error));
-          console.error("[FAL Upload] ? IPC upload failed:", normalizedError);
-          handleAIServiceError(
-            normalizedError,
-            `FAL ${fileType} upload (IPC)`,
-            {
-              filename: file.name,
-              fileSize: file.size,
-              fileType: file.type,
-              uploadType: fileType,
-            }
-          );
-          throw normalizedError;
-        }
-      } else {
-        console.log(
-          `[FAL Upload] ?? IPC fal namespace detected, but no handler for ${fileType}; falling back to fetch`
-        );
-      }
-    }
-
-    // Fallback: Direct fetch for browser environment (may fail due to CORS in some contexts)
-    console.log(
-      `[FAL Upload] ?? Using direct fetch for ${fileType} upload (browser mode)`
-    );
-
-    const formData = new FormData();
-    formData.append("file", file);
-
-    try {
-      const response = await fetch("https://fal.run/upload", {
-        method: "POST",
-        headers: {
-          Authorization: `Key ${this.apiKey}`,
-        },
-        body: formData,
-      });
-
-      const data = (await response.json().catch(() => null)) as {
-        url?: string;
-      } | null;
-
-      if (!response.ok) {
-        const errorMessage = `FAL ${fileType} upload failed: ${response.status} ${response.statusText}`;
-        const error = new Error(errorMessage) as UploadError;
-        error.status = response.status;
-        error.statusText = response.statusText;
-        error.errorData = data;
-        throw error;
-      }
-
-      if (!data || typeof data.url !== "string") {
-        const error = new Error(
-          `FAL ${fileType} upload response is missing a url field.`
-        ) as UploadError;
-        error.errorData = data;
-        throw error;
-      }
-
-      return data.url;
-    } catch (error) {
-      const normalizedError =
-        error instanceof Error ? error : new Error(String(error));
-      const metadata: Record<string, unknown> = {
-        filename: file.name,
-        fileSize: file.size,
-        fileType: file.type,
-        uploadType: fileType,
-      };
-
-      const uploadError = normalizedError as UploadError;
-      if (uploadError.status) metadata.status = uploadError.status;
-      if (uploadError.statusText) metadata.statusText = uploadError.statusText;
-      if (uploadError.errorData) metadata.errorData = uploadError.errorData;
-
-      handleAIServiceError(normalizedError, `FAL ${fileType} upload`, metadata);
-      throw normalizedError;
-    }
+    return uploadFileToFalCore(file, fileType, this.apiKey);
   }
 
   /**
@@ -1493,222 +1205,6 @@ export function convertParametersForModel(modelId: string, params: any) {
   }
 }
 
-function convertV3Parameters(params: any) {
-  // Keep existing V3 parameter structure
-  return {
-    prompt: params.prompt || "",
-    image_url: params.image_url || params.imageUrl,
-    guidance_scale: params.guidance_scale || params.guidanceScale || 1.0,
-    num_inference_steps: params.num_inference_steps || params.steps || 20,
-    seed: params.seed,
-    safety_tolerance: params.safety_tolerance || params.safetyTolerance || 2,
-    num_images: params.num_images || params.numImages || 1,
-  };
-}
-
-/**
- * Converts and sanitizes V4 API parameters with proper validation
- * Enforces documented limits to prevent invalid requests
- * @param params - Raw parameters from the user
- * @returns Sanitized parameters for V4 API
- */
-function convertV4Parameters(params: any) {
-  // Helper function to clamp numeric values
-  const clamp = (value: number, min: number, max: number): number => {
-    return Math.min(Math.max(value, min), max);
-  };
-
-  // Sanitize image URLs - limit to max 10 URLs
-  let imageUrls =
-    params.image_urls || (params.imageUrl ? [params.imageUrl] : []);
-  if (Array.isArray(imageUrls) && imageUrls.length > 10) {
-    debugLogger.warn(FAL_LOG_COMPONENT, "FAL_V4_IMAGE_URLS_TRUNCATED", {
-      originalCount: imageUrls.length,
-      maxAllowed: 10,
-    });
-    imageUrls = imageUrls.slice(0, 10);
-  }
-
-  // Sanitize prompt - truncate to 5000 characters max
-  let prompt = params.prompt || "";
-  if (prompt.length > 5000) {
-    debugLogger.warn(FAL_LOG_COMPONENT, "FAL_V4_PROMPT_TRUNCATED", {
-      originalLength: prompt.length,
-      maxLength: 5000,
-    });
-    prompt = prompt.substring(0, 5000);
-  }
-
-  // Validate image_size - must be valid preset or numeric value between 256-4096
-  let imageSize = params.image_size || params.imageSize || "square_hd";
-  const validPresets = [
-    "square_hd",
-    "square",
-    "portrait_3_4",
-    "portrait_9_16",
-    "landscape_4_3",
-    "landscape_16_9",
-  ];
-  if (typeof imageSize === "number") {
-    imageSize = clamp(imageSize, 256, 4096);
-  } else if (
-    typeof imageSize === "string" &&
-    !validPresets.includes(imageSize)
-  ) {
-    debugLogger.warn(FAL_LOG_COMPONENT, "FAL_V4_IMAGE_SIZE_INVALID", {
-      requestedSize: imageSize,
-      fallback: "square_hd",
-    });
-    imageSize = "square_hd";
-  }
-
-  // Clamp num_images to valid range (1-4)
-  const numImages = clamp(params.num_images || params.numImages || 1, 1, 4);
-
-  // Clamp max_images to valid range (1-4)
-  const maxImages = clamp(params.max_images || params.maxImages || 1, 1, 4);
-
-  return {
-    image_urls: imageUrls,
-    prompt,
-    image_size: imageSize,
-    max_images: maxImages,
-    num_images: numImages,
-    sync_mode: params.sync_mode || params.syncMode || false,
-    enable_safety_checker:
-      params.enable_safety_checker === true ||
-      params.enableSafetyChecker === true,
-    seed: params.seed,
-  };
-}
-
-/**
- * Converts and sanitizes Nano Banana API parameters with proper validation
- * Enforces count limits and normalizes format specifications
- * @param params - Raw parameters from the user
- * @returns Sanitized parameters for Nano Banana API
- */
-function convertNanoBananaParameters(params: any) {
-  // Sanitize and validate image URLs - limit to max 10 URLs
-  const urls = (params.image_urls ??
-    (params.imageUrl ? [params.imageUrl] : [])) as string[];
-  const imageUrls = Array.isArray(urls) ? urls.slice(0, 10) : [];
-
-  if (Array.isArray(urls) && urls.length > 10) {
-    debugLogger.warn(FAL_LOG_COMPONENT, "FAL_NANO_IMAGE_URLS_TRUNCATED", {
-      originalCount: urls.length,
-      maxAllowed: 10,
-    });
-  }
-
-  // Clamp num_images to valid range (1-4)
-  const numImages = Math.max(
-    1,
-    Math.min(4, Number(params.num_images ?? params.numImages ?? 1))
-  );
-
-  if (numImages !== (params.num_images ?? params.numImages ?? 1)) {
-    debugLogger.warn(FAL_LOG_COMPONENT, "FAL_NANO_NUM_IMAGES_CLAMPED", {
-      requested: params.num_images ?? params.numImages ?? 1,
-      clamped: numImages,
-      min: 1,
-      max: 4,
-    });
-  }
-
-  const requestedFormat =
-    (params.output_format as string | undefined) ??
-    (params.outputFormat as string | undefined) ??
-    "png";
-  const outputFormat = normalizeOutputFormat(requestedFormat, "png");
-
-  // Ensure sync_mode is boolean
-  const syncMode = Boolean(params.sync_mode ?? params.syncMode ?? false);
-
-  // Sanitize prompt
-  const prompt = params.prompt || "";
-
-  return {
-    image_urls: imageUrls,
-    prompt,
-    num_images: numImages,
-    output_format: outputFormat,
-    sync_mode: syncMode,
-  };
-}
-
-/**
- * Converts and sanitizes FLUX API parameters with proper validation
- * Ensures consistency with other model parameter converters
- * @param params - Raw parameters from the user
- * @returns Sanitized parameters for FLUX API
- */
-function convertFluxParameters(params: any) {
-  // Sanitize and validate image URLs - consistent with V4 and Nano Banana
-  const urls = params.image_urls ?? (params.imageUrl ? [params.imageUrl] : []);
-  const imageUrls = Array.isArray(urls) ? urls.slice(0, 10) : [];
-
-  if (Array.isArray(urls) && urls.length > 10) {
-    debugLogger.warn(FAL_LOG_COMPONENT, "FAL_FLUX_IMAGE_URLS_TRUNCATED", {
-      originalCount: urls.length,
-      maxAllowed: 10,
-    });
-  }
-
-  // Clamp num_images to valid range (1-4) - consistent with other models
-  const numImages = Math.max(
-    1,
-    Math.min(4, Number(params.num_images ?? params.numImages ?? 1))
-  );
-
-  if (numImages !== (params.num_images ?? params.numImages ?? 1)) {
-    debugLogger.warn(FAL_LOG_COMPONENT, "FAL_FLUX_NUM_IMAGES_CLAMPED", {
-      requested: params.num_images ?? params.numImages ?? 1,
-      clamped: numImages,
-      min: 1,
-      max: 4,
-    });
-  }
-
-  // Clamp guidance_scale to reasonable range
-  const guidanceScale = Math.max(
-    1,
-    Math.min(20, Number(params.guidance_scale ?? params.guidanceScale ?? 3.5))
-  );
-
-  // Clamp inference steps to reasonable range
-  const inferenceSteps = Math.max(
-    1,
-    Math.min(100, Number(params.num_inference_steps ?? params.steps ?? 28))
-  );
-
-  // Clamp safety tolerance to valid range
-  const safetyTolerance = Math.max(
-    1,
-    Math.min(6, Number(params.safety_tolerance ?? params.safetyTolerance ?? 2))
-  );
-
-  return {
-    prompt: params.prompt || "",
-    image_urls: imageUrls, // Use array format for consistency
-    guidance_scale: guidanceScale,
-    num_inference_steps: inferenceSteps,
-    seed: params.seed,
-    safety_tolerance: safetyTolerance,
-    num_images: numImages,
-  };
-}
-
-// Model detection and routing
-export function detectModelVersion(
-  modelId: string
-): "v3" | "v4" | "nano-banana" | "flux" {
-  if (modelId === "seeddream-v4") return "v4";
-  if (modelId === "nano-banana") return "nano-banana";
-  if (modelId.includes("flux")) return "flux";
-  return "v3"; // default to V3 for backward compatibility
-}
-
 // Export singleton instance
 export const falAIClient = new FalAIClient();
 
@@ -1803,3 +1299,6 @@ export async function batchGenerate(
 
   return results;
 }
+
+// Re-export detectModelVersion for backward compatibility
+export { detectModelVersion } from "./fal-ai/model-handlers";

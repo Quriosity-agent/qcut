@@ -244,7 +244,11 @@ export interface VideoProbeResult {
  */
 export interface FFmpegHandlers {
   "ffmpeg-path": () => Promise<string>;
-  "create-export-session": () => Promise<{ sessionId: string; frameDir: string; outputDir: string }>;
+  "create-export-session": () => Promise<{
+    sessionId: string;
+    frameDir: string;
+    outputDir: string;
+  }>;
   "save-frame": (data: FrameData) => Promise<string>;
   "read-output-file": (outputPath: string) => Promise<Buffer>;
   "cleanup-export-session": (sessionId: string) => Promise<void>;
@@ -252,5 +256,7 @@ export interface FFmpegHandlers {
   "export-video-cli": (options: ExportOptions) => Promise<ExportResult>;
   "validate-filter-chain": (filterChain: string) => Promise<boolean>;
   "processFrame": (options: FrameProcessOptions) => Promise<void>;
-  "extract-audio": (options: ExtractAudioOptions) => Promise<ExtractAudioResult>;
+  "extract-audio": (
+    options: ExtractAudioOptions
+  ) => Promise<ExtractAudioResult>;
 }

@@ -37,10 +37,7 @@ export interface MediaIntegrationOptions {
   /** Project ID to add media to */
   projectId: string;
   /** Function to add media item to store */
-  addMediaItem: (
-    projectId: string,
-    item: MediaItemInput
-  ) => Promise<string>;
+  addMediaItem: (projectId: string, item: MediaItemInput) => Promise<string>;
   /** Video duration in seconds */
   duration?: number;
   /** Video width in pixels */
