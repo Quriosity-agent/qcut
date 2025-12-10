@@ -389,7 +389,7 @@ export function resolveFontPath(
 }
 ```
 
-**Why extract**: Complex platform-specific logic that benefits from isolation and testing. Can be extended to support custom font directories.
+**Why extract**: Complex platform-specific logic that benefits from isolation and testing. It can be extended to support custom font directories.
 
 ---
 
