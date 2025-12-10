@@ -622,7 +622,7 @@ export function buildStickerOverlayFilters(
 }
 ```
 
-**Why extract**: Sticker filter logic is self-contained and complex enough to warrant isolation. Can be unit tested without Electron dependencies.
+**Why extract**: Sticker filter logic is self-contained and complex enough to warrant isolation, and can be unit tested without Electron dependencies.
 
 ---
 
