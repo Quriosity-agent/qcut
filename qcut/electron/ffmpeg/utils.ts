@@ -75,27 +75,16 @@ export function getFFmpegPath(): string {
 
   if (app.isPackaged) {
     // Production: FFmpeg is in the app's resources folder
-    // Path structure: resources/app/electron/resources/ffmpeg.exe
-    const appResourcePath: string = path.join(
+    // extraResources config copies electron/resources/*.exe to resources/
+    const resourcePath: string = path.join(
       process.resourcesPath,
-      "app",
-      "electron",
-      "resources",
       "ffmpeg.exe"
     );
 
-    if (fs.existsSync(appResourcePath)) {
-      ffmpegPath = appResourcePath;
+    if (fs.existsSync(resourcePath)) {
+      ffmpegPath = resourcePath;
     } else {
-      // Fallback: try old location for backwards compatibility
-      const oldPath: string = path.join(process.resourcesPath, "ffmpeg.exe");
-      if (fs.existsSync(oldPath)) {
-        ffmpegPath = oldPath;
-      } else {
-        throw new Error(
-          `FFmpeg not found. Searched:\n1. ${appResourcePath}\n2. ${oldPath}`
-        );
-      }
+      throw new Error(`FFmpeg not found at: ${resourcePath}`);
     }
   } else {
     // Development: try bundled FFmpeg first, then system PATH
@@ -286,6 +275,7 @@ export async function probeVideoFile(videoPath: string): Promise<VideoProbeResul
  * @param duration - Duration to use from this video (seconds)
  * @param trimStart - Trim start time within the source video (seconds, 0 = no trim)
  * @param trimEnd - Trim amount from the end of the video (seconds, 0 = no trim)
+ * @param onProgress - Optional callback for reporting encoding progress
  * @returns Promise that resolves when normalization completes
  * @throws Error if FFmpeg process fails or file not found
  */
@@ -297,7 +287,8 @@ export async function normalizeVideo(
   targetFps: number,
   duration: number,
   trimStart = 0,
-  trimEnd = 0
+  trimEnd = 0,
+  onProgress?: (progress: FFmpegProgress) => void
 ): Promise<void> {
   return new Promise<void>((resolve, reject) => {
     console.log(
@@ -428,17 +419,17 @@ export async function normalizeVideo(
       const text = chunk.toString();
       stderrOutput += text;
 
-      // Log progress
-      if (text.includes("frame=")) {
-        const frameMatch = text.match(/frame=\s*(\d+)/);
-        const timeMatch = text.match(/time=(\d+:\d+:\d+\.\d+)/);
-        if (frameMatch || timeMatch) {
-          const frame = frameMatch ? frameMatch[1] : "?";
-          const time = timeMatch ? timeMatch[1] : "?";
-          process.stdout.write(
-            `⚡ [MODE 1.5 NORMALIZE] Progress: frame=${frame} time=${time}\r`
-          );
-        }
+      // Parse and report progress
+      const progress = parseProgress(text);
+      if (progress) {
+        onProgress?.(progress);
+
+        // Also log to console for debugging
+        const frame = progress.frame ?? "?";
+        const time = progress.time ?? "?";
+        process.stdout.write(
+          `⚡ [MODE 1.5 NORMALIZE] Progress: frame=${frame} time=${time}\r`
+        );
       }
     });
 
