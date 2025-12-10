@@ -153,6 +153,81 @@ export function formatQueueError(errorData: unknown): string {
 }
 
 /**
+ * Upload URL for FAL.ai storage.
+ */
+export const FAL_UPLOAD_URL = "https://fal.run/upload";
+
+/**
+ * Parses FAL API error responses into user-friendly messages.
+ *
+ * Handles multiple FAL error response formats:
+ * - `{ error: string }` - Simple error message
+ * - `{ error: object }` - Structured error object
+ * - `{ detail: string }` - FastAPI-style string detail
+ * - `{ detail: Array<{ msg: string }> }` - FastAPI validation errors
+ * - `{ message: string }` - Generic message format
+ *
+ * @param errorData - Raw error data from FAL API response
+ * @param fallbackStatus - Optional HTTP status code to include in fallback message
+ * @returns User-friendly error message string
+ *
+ * @example
+ * const errorData = await response.json().catch(() => ({}));
+ * const message = parseFalErrorResponse(errorData, response.status);
+ */
+export function parseFalErrorResponse(
+  errorData: unknown,
+  fallbackStatus?: number
+): string {
+  if (typeof errorData !== "object" || errorData === null) {
+    return fallbackStatus
+      ? `API request failed: ${fallbackStatus}`
+      : "An unknown error occurred";
+  }
+
+  const data = errorData as Record<string, unknown>;
+
+  // Handle { error: string | object }
+  if (data.error !== undefined) {
+    if (typeof data.error === "string") {
+      return data.error;
+    }
+    if (typeof data.error === "object" && data.error !== null) {
+      return JSON.stringify(data.error, null, 2);
+    }
+  }
+
+  // Handle { detail: string | Array<{ msg: string }> }
+  if (data.detail !== undefined) {
+    if (typeof data.detail === "string") {
+      return data.detail;
+    }
+    if (Array.isArray(data.detail)) {
+      return data.detail
+        .map((d: unknown) => {
+          if (typeof d === "object" && d !== null && "msg" in d) {
+            return (d as { msg: string }).msg;
+          }
+          return JSON.stringify(d);
+        })
+        .join(", ");
+    }
+    if (typeof data.detail === "object") {
+      return JSON.stringify(data.detail, null, 2);
+    }
+  }
+
+  // Handle { message: string }
+  if (typeof data.message === "string") {
+    return data.message;
+  }
+
+  return fallbackStatus
+    ? `API request failed: ${fallbackStatus}`
+    : "An unknown error occurred";
+}
+
+/**
  * Sleep utility for polling intervals.
  *
  * @param ms - Milliseconds to sleep

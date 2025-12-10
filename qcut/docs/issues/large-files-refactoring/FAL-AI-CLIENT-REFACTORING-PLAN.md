@@ -312,25 +312,31 @@ export { generateWithModel, generateWithMultipleModels, ... };
 
 ## Implementation Subtasks
 
-### Subtask 1: Extend Core FAL Request Module (20 min)
+### Subtask 1: Extend Core FAL Request Module ✅ COMPLETED
 
-1. Add `parseFalErrorResponse()` to `ai-video/core/fal-request.ts`
-2. Update `ai-video/core/index.ts` exports
-3. Verify: TypeScript compiles
+1. ✅ Added `parseFalErrorResponse()` to `ai-video/core/fal-request.ts`
+2. ✅ Added `FAL_UPLOAD_URL` constant
+3. ✅ Updated `ai-video/index.ts` exports
+4. ✅ TypeScript compiles successfully
 
 **Risk**: Low (additive change)
+**Status**: Completed 2025-12-10
 
 ---
 
-### Subtask 2: Create FAL Upload Module (30 min)
+### Subtask 2: Create FAL Upload Module ✅ COMPLETED
 
-1. Create `ai-video/core/fal-upload.ts`
-2. Move upload logic from `fal-ai-client.ts` lines 331-520
-3. Update `ai-video/core/index.ts` exports
-4. Update `fal-ai-client.ts` to import from new module
-5. Test: File upload in AI panel
+1. ✅ Created `ai-video/core/fal-upload.ts` (~250 lines)
+2. ✅ Moved upload logic from `fal-ai-client.ts`
+3. ✅ Updated `ai-video/index.ts` exports
+4. ✅ Updated `fal-ai-client.ts` to delegate to shared module
+5. ✅ Removed duplicate `UploadError` interface
+6. ✅ TypeScript compiles successfully
 
 **Risk**: Medium (Electron IPC integration)
+**Status**: Completed 2025-12-10
+
+**Lines removed from fal-ai-client.ts**: ~170 lines
 
 ---
 
@@ -343,6 +349,9 @@ export { generateWithModel, generateWithMultipleModels, ... };
 5. Verify: TypeScript compiles
 
 **Risk**: Low (pure functions)
+**Review**:
+- Validate no behavior regressions: preserve defaults/fallbacks and error messages when moving.
+- Add quick unit tests for aspect ratio normalization and Reve bounds to catch edge cases (empty strings, null).
 
 ---
 
@@ -355,6 +364,10 @@ export { generateWithModel, generateWithMultipleModels, ... };
 5. Verify: TypeScript compiles
 
 **Risk**: Low (move only, no logic change)
+**Review**:
+- Moving logic invites silent drift; keep converters 1:1 and add docstrings per model to preserve assumptions.
+- Add guard tests per handler to confirm parameter shapes; ensures future edits don’t break `convertParametersForModel`.
+- Confirm barrel file tree-shaking does not bloat bundles when only one model is used.
 
 ---
 
@@ -366,6 +379,10 @@ export { generateWithModel, generateWithMultipleModels, ... };
 4. Remove backup file
 
 **Risk**: Low (imports only)
+**Review**:
+- Watch for stale relative import paths after moves; run a full type check plus minimal runtime smoke (image gen happy path).
+- Keep backup removal until after tests; otherwise rollback plan is harder.
+- Re-read public API surface to ensure exports remain backward compatible (not just the import paths).
 
 ---
 

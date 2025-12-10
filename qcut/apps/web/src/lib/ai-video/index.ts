@@ -18,9 +18,11 @@
 export {
   getFalApiKey,
   FAL_API_BASE,
+  FAL_UPLOAD_URL,
   generateJobId,
   makeFalRequest,
   handleFalResponse,
+  parseFalErrorResponse,
   type FalRequestOptions,
 } from "./core/fal-request";
 
@@ -35,6 +37,16 @@ export {
   streamVideoDownload,
   type StreamOptions,
 } from "./core/streaming";
+
+export {
+  uploadFileToFal,
+  uploadImageToFal,
+  uploadAudioToFal,
+  uploadVideoToFal,
+  isElectronUploadAvailable,
+  type FalUploadFileType,
+  type FalUploadError,
+} from "./core/fal-upload";
 
 // ============================================
 // Validation Functions

@@ -17,6 +17,10 @@ import type {
   ReveEditOutput,
 } from "@/types/ai-generation";
 import type { VideoGenerationResponse } from "./ai-video-client";
+import {
+  uploadFileToFal as uploadFileToFalCore,
+  type FalUploadFileType,
+} from "./ai-video/core/fal-upload";
 
 // Types for API responses
 interface FalImageResponse {
@@ -48,12 +52,6 @@ interface GenerationResult {
     timings?: Record<string, number>;
     dimensions?: { width: number; height: number };
   };
-}
-
-interface UploadError extends Error {
-  status?: number;
-  statusText?: string;
-  errorData?: unknown;
 }
 
 const VALID_OUTPUT_FORMATS = ["jpeg", "png", "webp"] as const;
@@ -328,175 +326,20 @@ class FalAIClient {
     return result;
   }
 
+  /**
+   * Upload a file to FAL.ai storage.
+   * Delegates to shared upload module which handles Electron IPC fallback.
+   */
   private async uploadFileToFal(
     file: File,
-    fileType: "image" | "audio" | "video" | "asset" = "asset"
+    fileType: FalUploadFileType = "asset"
   ): Promise<string> {
     if (!this.apiKey) {
       throw new Error(
         "FAL API key is required for asset upload. Please set the VITE_FAL_API_KEY environment variable."
       );
     }
-
-    // Use Electron IPC if available (bypasses CORS restrictions)
-    // This is required for Electron apps where direct fetch to fal.run/upload fails due to CORS
-    if (typeof window !== "undefined" && window.electronAPI?.fal) {
-      const falApi = window.electronAPI.fal;
-      const hasUploadImage = typeof falApi.uploadImage === "function";
-      const hasUploadAudio = typeof falApi.uploadAudio === "function";
-      const hasUploadVideo = typeof falApi.uploadVideo === "function";
-
-      // Only attempt IPC when a compatible handler exists to avoid calling undefined functions
-      const canHandleViaIPC =
-        (fileType === "image" && hasUploadImage) ||
-        (fileType === "audio" && hasUploadAudio) ||
-        (fileType === "video" && hasUploadVideo) ||
-        (fileType === "asset" && hasUploadImage);
-
-      if (canHandleViaIPC) {
-        console.log(
-          `[FAL Upload] ?? Using Electron IPC for ${fileType} upload (bypasses CORS)`
-        );
-        console.log(
-          `[FAL Upload] ?? File: ${file.name}, Size: ${file.size} bytes`
-        );
-
-        try {
-          // Convert File to Uint8Array for IPC transfer
-          const arrayBuffer = await file.arrayBuffer();
-          const uint8Array = new Uint8Array(arrayBuffer);
-
-          let result: { success: boolean; url?: string; error?: string };
-
-          if (fileType === "image" && hasUploadImage) {
-            console.log(
-              "[FAL Upload] ??? Routing to Electron image upload IPC..."
-            );
-            result = await falApi.uploadImage(
-              uint8Array,
-              file.name,
-              this.apiKey
-            );
-          } else if (fileType === "audio" && hasUploadAudio) {
-            console.log(
-              "[FAL Upload] ?? Routing to Electron audio upload IPC..."
-            );
-            result = await falApi.uploadAudio(
-              uint8Array,
-              file.name,
-              this.apiKey
-            );
-          } else if (fileType === "video" && hasUploadVideo) {
-            console.log(
-              "[FAL Upload] ?? Routing to Electron video upload IPC..."
-            );
-            result = await falApi.uploadVideo(
-              uint8Array,
-              file.name,
-              this.apiKey
-            );
-          } else if (hasUploadImage) {
-            // Generic asset fallback to image uploader
-            console.log(
-              `[FAL Upload] ?? Using image upload IPC for ${fileType}...`
-            );
-            result = await falApi.uploadImage(
-              uint8Array,
-              file.name,
-              this.apiKey
-            );
-          } else {
-            throw new Error("No compatible IPC uploader found");
-          }
-
-          if (!result.success || !result.url) {
-            throw new Error(
-              result.error || `FAL ${fileType} upload failed via IPC`
-            );
-          }
-
-          console.log(`[FAL Upload] ? IPC upload successful: ${result.url}`);
-          return result.url;
-        } catch (error) {
-          const normalizedError =
-            error instanceof Error ? error : new Error(String(error));
-          console.error("[FAL Upload] ? IPC upload failed:", normalizedError);
-          handleAIServiceError(
-            normalizedError,
-            `FAL ${fileType} upload (IPC)`,
-            {
-              filename: file.name,
-              fileSize: file.size,
-              fileType: file.type,
-              uploadType: fileType,
-            }
-          );
-          throw normalizedError;
-        }
-      } else {
-        console.log(
-          `[FAL Upload] ?? IPC fal namespace detected, but no handler for ${fileType}; falling back to fetch`
-        );
-      }
-    }
-
-    // Fallback: Direct fetch for browser environment (may fail due to CORS in some contexts)
-    console.log(
-      `[FAL Upload] ?? Using direct fetch for ${fileType} upload (browser mode)`
-    );
-
-    const formData = new FormData();
-    formData.append("file", file);
-
-    try {
-      const response = await fetch("https://fal.run/upload", {
-        method: "POST",
-        headers: {
-          Authorization: `Key ${this.apiKey}`,
-        },
-        body: formData,
-      });
-
-      const data = (await response.json().catch(() => null)) as {
-        url?: string;
-      } | null;
-
-      if (!response.ok) {
-        const errorMessage = `FAL ${fileType} upload failed: ${response.status} ${response.statusText}`;
-        const error = new Error(errorMessage) as UploadError;
-        error.status = response.status;
-        error.statusText = response.statusText;
-        error.errorData = data;
-        throw error;
-      }
-
-      if (!data || typeof data.url !== "string") {
-        const error = new Error(
-          `FAL ${fileType} upload response is missing a url field.`
-        ) as UploadError;
-        error.errorData = data;
-        throw error;
-      }
-
-      return data.url;
-    } catch (error) {
-      const normalizedError =
-        error instanceof Error ? error : new Error(String(error));
-      const metadata: Record<string, unknown> = {
-        filename: file.name,
-        fileSize: file.size,
-        fileType: file.type,
-        uploadType: fileType,
-      };
-
-      const uploadError = normalizedError as UploadError;
-      if (uploadError.status) metadata.status = uploadError.status;
-      if (uploadError.statusText) metadata.statusText = uploadError.statusText;
-      if (uploadError.errorData) metadata.errorData = uploadError.errorData;
-
-      handleAIServiceError(normalizedError, `FAL ${fileType} upload`, metadata);
-      throw normalizedError;
-    }
+    return uploadFileToFalCore(file, fileType, this.apiKey);
   }
 
   /**
