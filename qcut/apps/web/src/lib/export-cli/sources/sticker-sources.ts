@@ -99,8 +99,12 @@ async function downloadStickerToTemp(
     throw new Error(result.error || "Failed to save sticker");
   }
 
+  if (!result.path) {
+    throw new Error("Sticker saved but no path returned");
+  }
+
   logger(`[StickerSources] Downloaded sticker to: ${result.path}`);
-  return result.path!;
+  return result.path;
 }
 
 /**

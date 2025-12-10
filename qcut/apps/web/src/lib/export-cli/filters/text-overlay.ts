@@ -85,10 +85,9 @@ export function convertTextElementToDrawtext(
   // Add border for readability
   filterParams.push("borderw=2", "bordercolor=black");
 
-  // Handle opacity
+  // Handle opacity (FFmpeg alpha accepts 0.0-1.0 directly)
   if (element.opacity !== undefined && element.opacity < 1) {
-    const alpha = Math.round(element.opacity * 255);
-    filterParams.push(`alpha=${alpha}/255`);
+    filterParams.push(`alpha=${element.opacity}`);
   }
 
   // Handle rotation
