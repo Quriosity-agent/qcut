@@ -23,8 +23,15 @@ import {
   generateKlingO1Video,
   upscaleByteDanceVideo,
   upscaleFlashVSRVideo,
+  uploadVideoToFal,
+  uploadAudioToFal,
 } from "@/lib/ai-video";
 import type { ProgressCallback } from "@/lib/ai-video-client";
+import type {
+  SyncLipsyncEmotion,
+  SyncLipsyncModelMode,
+  SyncLipsyncSyncMode,
+} from "../../types/ai-types";
 
 // ============================================================================
 // TYPE COERCION HELPERS
@@ -163,6 +170,12 @@ export interface AvatarSettings {
   audioDuration: number | null;
   uploadImageToFal: (file: File) => Promise<string>;
   uploadAudioToFal: (file: File) => Promise<string>;
+  // Sync Lipsync React-1 specific settings
+  syncLipsyncEmotion?: SyncLipsyncEmotion;
+  syncLipsyncModelMode?: SyncLipsyncModelMode;
+  syncLipsyncLipsyncMode?: SyncLipsyncSyncMode;
+  syncLipsyncTemperature?: number;
+  videoDuration?: number | null;
 }
 
 /**
@@ -1140,6 +1153,78 @@ export async function handleGenericAvatar(
   return { response };
 }
 
+/**
+ * Handle Sync Lipsync React-1 generation
+ * Emotion-aware lip-sync with video and audio inputs
+ */
+export async function handleSyncLipsyncReact1(
+  ctx: ModelHandlerContext,
+  settings: AvatarSettings
+): Promise<ModelHandlerResult> {
+  if (!settings.sourceVideo) {
+    return {
+      response: undefined,
+      shouldSkip: true,
+      skipReason: "Sync Lipsync React-1 requires a source video",
+    };
+  }
+
+  if (!settings.audioFile) {
+    return {
+      response: undefined,
+      shouldSkip: true,
+      skipReason: "Sync Lipsync React-1 requires an audio file",
+    };
+  }
+
+  console.log(`  🎤 Calling generateAvatarVideo for ${ctx.modelId}...`);
+  console.log("  📤 Uploading files to FAL storage for Sync Lipsync React-1...");
+
+  ctx.progressCallback({
+    status: "processing",
+    progress: 10,
+    message: "Uploading video and audio files...",
+  });
+
+  // Upload video and audio to FAL storage
+  const falApiKey = import.meta.env.VITE_FAL_API_KEY;
+  const [videoUrl, audioUrl] = await Promise.all([
+    uploadVideoToFal(settings.sourceVideo, falApiKey),
+    uploadAudioToFal(settings.audioFile, falApiKey),
+  ]);
+
+  console.log("  ✅ Files uploaded to FAL storage");
+  console.log("    - Video URL:", videoUrl.substring(0, 50) + "...");
+  console.log("    - Audio URL:", audioUrl.substring(0, 50) + "...");
+
+  ctx.progressCallback({
+    status: "processing",
+    progress: 30,
+    message: "Generating lip-synced video...",
+  });
+
+  const response = await generateAvatarVideo({
+    model: ctx.modelId,
+    videoUrl,
+    audioUrl,
+    videoDuration: settings.videoDuration ?? undefined,
+    audioDuration: settings.audioDuration ?? undefined,
+    emotion: settings.syncLipsyncEmotion,
+    modelMode: settings.syncLipsyncModelMode,
+    lipsyncMode: settings.syncLipsyncLipsyncMode,
+    temperature: settings.syncLipsyncTemperature,
+  });
+
+  ctx.progressCallback({
+    status: "completed",
+    progress: 100,
+    message: `Lip-synced video generated with ${ctx.modelName}`,
+  });
+
+  console.log("  ✅ generateAvatarVideo returned:", response);
+  return { response };
+}
+
 // ============================================================================
 // MODEL ROUTING
 // ============================================================================
@@ -1260,6 +1345,8 @@ export async function routeAvatarHandler(
     case "kling_avatar_v2_standard":
     case "kling_avatar_v2_pro":
       return handleKlingAvatarV2(ctx, settings);
+    case "sync_lipsync_react1":
+      return handleSyncLipsyncReact1(ctx, settings);
     default:
       return handleGenericAvatar(ctx, settings);
   }
