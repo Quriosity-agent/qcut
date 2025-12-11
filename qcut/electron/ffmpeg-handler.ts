@@ -1183,16 +1183,3 @@ module.exports = { setupFFmpegIPC, getFFmpegPath };
 
 // ES6 export for TypeScript files
 export default { setupFFmpegIPC, getFFmpegPath };
-
-// Re-export types for external use
-export type {
-  AudioFile,
-  ExportOptions,
-  FrameData,
-  ExportResult,
-  FFmpegProgress,
-  OpenFolderResult,
-  ExtractAudioOptions,
-  ExtractAudioResult,
-  StickerSource,
-};
