@@ -1229,6 +1229,20 @@ export const ERROR_MESSAGES = {
   KLING_AVATAR_V2_AUDIO_TOO_LARGE:
     "Audio file must be under 5MB for Kling Avatar v2",
 
+  // Sync Lipsync React-1 specific errors
+  SYNC_LIPSYNC_REACT1_MISSING_VIDEO:
+    "Video is required for Sync Lipsync React-1",
+  SYNC_LIPSYNC_REACT1_MISSING_AUDIO:
+    "Audio is required for Sync Lipsync React-1",
+  SYNC_LIPSYNC_REACT1_VIDEO_TOO_LONG:
+    "Video must be 15 seconds or shorter for Sync Lipsync React-1",
+  SYNC_LIPSYNC_REACT1_AUDIO_TOO_LONG:
+    "Audio must be 15 seconds or shorter for Sync Lipsync React-1",
+  SYNC_LIPSYNC_REACT1_MISSING_EMOTION:
+    "Emotion is required for Sync Lipsync React-1",
+  SYNC_LIPSYNC_REACT1_INVALID_TEMPERATURE:
+    "Temperature must be between 0 and 1 for Sync Lipsync React-1",
+
   // Video file fallback errors
   VIDEO_FILE_TOO_LARGE_FOR_FALLBACK:
     "Video file too large for browser fallback (max 50MB). Please use the desktop app for larger files.",

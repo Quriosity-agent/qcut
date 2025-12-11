@@ -63,6 +63,16 @@ export {
   validateKlingAvatarV2Audio,
   isFastLTXV2TextModel,
   isHailuo23TextToVideo,
+  // Sync Lipsync React-1 validators
+  validateSyncLipsyncReact1Inputs,
+  validateSyncLipsyncReact1VideoDuration,
+  validateSyncLipsyncReact1AudioDuration,
+  validateSyncLipsyncReact1Emotion,
+  validateSyncLipsyncReact1Temperature,
+  SYNC_LIPSYNC_REACT1_MAX_DURATION,
+  SYNC_LIPSYNC_REACT1_EMOTIONS,
+  SYNC_LIPSYNC_REACT1_MODEL_MODES,
+  SYNC_LIPSYNC_REACT1_SYNC_MODES,
   // Image validators
   VALID_OUTPUT_FORMATS,
   DEFAULT_OUTPUT_FORMAT,

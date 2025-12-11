@@ -21,7 +21,10 @@ import {
   fileToDataURL,
   withErrorHandling,
 } from "./base-generator";
-import { validateKlingAvatarV2Audio } from "../validation/validators";
+import {
+  validateKlingAvatarV2Audio,
+  validateSyncLipsyncReact1Inputs,
+} from "../validation/validators";
 
 /**
  * Generate an avatar video from a character image using a specified avatar model.
@@ -178,6 +181,42 @@ export async function generateAvatarVideo(
           ...(modelConfig.default_params?.negative_prompt && {
             negative_prompt: modelConfig.default_params.negative_prompt,
           }),
+        };
+      } else if (request.model === "sync_lipsync_react1") {
+        // Sync Lipsync React-1 requires pre-uploaded URLs (like Kling Avatar V2)
+        // Validate inputs
+        validateSyncLipsyncReact1Inputs({
+          videoUrl: request.videoUrl,
+          audioUrl: request.audioUrl,
+          videoDuration: request.videoDuration,
+          audioDuration: request.audioDuration,
+          emotion: request.emotion,
+          temperature: request.temperature,
+        });
+
+        endpoint = modelConfig.endpoints.text_to_video || "";
+        if (!endpoint) {
+          throw new Error(
+            `Model ${request.model} does not have a valid endpoint`
+          );
+        }
+
+        payload = {
+          video_url: request.videoUrl,
+          audio_url: request.audioUrl,
+          emotion: request.emotion,
+          model_mode:
+            request.modelMode ??
+            modelConfig.default_params?.model_mode ??
+            "face",
+          lipsync_mode:
+            request.lipsyncMode ??
+            modelConfig.default_params?.lipsync_mode ??
+            "bounce",
+          temperature:
+            request.temperature ??
+            modelConfig.default_params?.temperature ??
+            0.5,
         };
       } else {
         throw new Error(`Unsupported avatar model: ${request.model}`);
