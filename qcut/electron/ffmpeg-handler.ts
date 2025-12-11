@@ -171,7 +171,7 @@ export function setupFFmpegIPC(): void {
         options.videoSources &&
         options.videoSources.length > 1 &&
         options.videoSources.some(
-          (v) =>
+          (v: VideoSource) =>
             (v.trimStart && v.trimStart > 0) || (v.trimEnd && v.trimEnd > 0)
         );
 
@@ -528,7 +528,7 @@ export function setupFFmpegIPC(): void {
             if (options.videoSources.length > 1) {
               try {
                 const probeResults = await Promise.all(
-                  options.videoSources.map((video) =>
+                  options.videoSources.map((video: VideoSource) =>
                     probeVideoFile(video.path)
                   )
                 );

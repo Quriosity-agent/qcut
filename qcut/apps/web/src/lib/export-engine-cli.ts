@@ -569,7 +569,7 @@ export class CLIExportEngine extends ExportEngine {
 
     // Filter out null values (files with no audio streams)
     audioFiles = validationResults.filter(
-      (file): file is (typeof audioFiles)[0] => file !== null
+      (file): file is AudioFileInput => file !== null
     );
 
     debugLog(
