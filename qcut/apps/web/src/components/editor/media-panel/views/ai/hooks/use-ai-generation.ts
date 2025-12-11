@@ -160,6 +160,12 @@ export function useAIGeneration(props: UseAIGenerationProps) {
     // Kling Avatar v2 props
     klingAvatarV2Prompt = "",
     audioDuration = null,
+    // Sync Lipsync React-1 props
+    syncLipsyncEmotion = "neutral",
+    syncLipsyncModelMode = "face",
+    syncLipsyncSyncMode = "bounce",
+    syncLipsyncTemperature = 0.5,
+    videoDuration = null,
     bytedanceTargetResolution = "1080p",
     bytedanceTargetFPS = "30fps",
     flashvsrUpscaleFactor = 4,
@@ -1151,6 +1157,12 @@ export function useAIGeneration(props: UseAIGenerationProps) {
             audioDuration,
             uploadImageToFal,
             uploadAudioToFal,
+            // Sync Lipsync React-1 settings
+            syncLipsyncEmotion,
+            syncLipsyncModelMode,
+            syncLipsyncLipsyncMode: syncLipsyncSyncMode,
+            syncLipsyncTemperature,
+            videoDuration,
           };
 
           handlerResult = await routeAvatarHandler(handlerCtx, avatarSettings);

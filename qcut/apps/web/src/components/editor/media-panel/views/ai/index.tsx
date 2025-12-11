@@ -315,6 +315,12 @@ export function AiView() {
     // Avatar - Kling Avatar v2
     klingAvatarV2Prompt: avatarState.klingAvatarV2Prompt,
     audioDuration: avatarState.audioDuration,
+    // Avatar - Sync Lipsync React-1
+    syncLipsyncEmotion: avatarState.syncLipsyncEmotion,
+    syncLipsyncModelMode: avatarState.syncLipsyncModelMode,
+    syncLipsyncSyncMode: avatarState.syncLipsyncLipsyncMode,
+    syncLipsyncTemperature: avatarState.syncLipsyncTemperature,
+    videoDuration: avatarState.syncLipsyncVideoDuration,
     // Upscale - ByteDance
     bytedanceTargetResolution: upscaleState.bytedance.targetResolution,
     bytedanceTargetFPS: upscaleState.bytedance.targetFPS,
@@ -811,6 +817,22 @@ export function AiView() {
                   avatarSetters.setKlingAvatarV2Prompt
                 }
                 audioDuration={avatarState.audioDuration}
+                // Sync Lipsync React-1 props
+                syncLipsyncSourceVideo={avatarState.syncLipsyncSourceVideo}
+                syncLipsyncSourceVideoPreview={avatarState.syncLipsyncSourceVideoPreview}
+                syncLipsyncVideoDuration={avatarState.syncLipsyncVideoDuration}
+                syncLipsyncEmotion={avatarState.syncLipsyncEmotion}
+                syncLipsyncModelMode={avatarState.syncLipsyncModelMode}
+                syncLipsyncLipsyncMode={avatarState.syncLipsyncLipsyncMode}
+                syncLipsyncTemperature={avatarState.syncLipsyncTemperature}
+                onSyncLipsyncSourceVideoChange={(file) => {
+                  avatarSetters.setSyncLipsyncSourceVideo(file);
+                  if (file) setError(null);
+                }}
+                onSyncLipsyncEmotionChange={avatarSetters.setSyncLipsyncEmotion}
+                onSyncLipsyncModelModeChange={avatarSetters.setSyncLipsyncModelMode}
+                onSyncLipsyncLipsyncModeChange={avatarSetters.setSyncLipsyncLipsyncMode}
+                onSyncLipsyncTemperatureChange={avatarSetters.setSyncLipsyncTemperature}
               />
             </TabsContent>
 
