@@ -11,23 +11,27 @@ import path from "path";
 import fs from "fs";
 import { TempManager, ExportSession } from "./temp-manager.js";
 
-// Import types from ffmpeg module
+// Import types from ffmpeg module (only those used internally, not re-exported)
 import type {
-  AudioFile,
   VideoSource,
-  StickerSource,
-  ExportOptions,
   FrameProcessOptions,
-  FrameData,
-  ExportResult,
   QualitySettings,
   QualityMap,
-  FFmpegProgress,
   FFmpegError,
+  VideoProbeResult,
+} from "./ffmpeg/types";
+
+// Re-export types for external use (using export from)
+export type {
+  AudioFile,
+  StickerSource,
+  ExportOptions,
+  FrameData,
+  ExportResult,
+  FFmpegProgress,
   OpenFolderResult,
   ExtractAudioOptions,
   ExtractAudioResult,
-  VideoProbeResult,
 } from "./ffmpeg/types";
 
 // Import utilities from ffmpeg module
