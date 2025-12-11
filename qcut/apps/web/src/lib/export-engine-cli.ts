@@ -1,10 +1,6 @@
 import { ExportEngine } from "./export-engine";
 import { ExportSettings } from "@/types/export";
-import {
-  TimelineTrack,
-  TimelineElement,
-  type TextElement,
-} from "@/types/timeline";
+import { TimelineTrack, TimelineElement } from "@/types/timeline";
 import { MediaItem } from "@/stores/media-store";
 import { debugLog, debugError, debugWarn } from "@/lib/debug-config";
 import { useEffectsStore } from "@/stores/effects-store";
@@ -13,47 +9,26 @@ import {
   type ExportAnalysis,
 } from "./export-analysis";
 
+// Import extracted modules
+import type { StickerSourceForFilter } from "./export-cli/types";
+import {
+  buildTextOverlayFilters,
+  buildStickerOverlayFilters,
+} from "./export-cli/filters";
+import {
+  extractVideoSources,
+  extractVideoInputPath,
+  extractStickerSources,
+} from "./export-cli/sources";
+
+// Re-export types for backward compatibility (using export from)
+export type {
+  ProgressCallback,
+  VideoSourceInput,
+  AudioFileInput,
+} from "./export-cli/types";
+
 type EffectsStore = ReturnType<typeof useEffectsStore.getState>;
-
-// Note: Module-level cached dynamic imports (stickersModulePromise, mediaModulePromise,
-// stickerHelperModulePromise) have been removed as part of Mode 3 removal.
-// They were only used by the removed Canvas rendering methods for sticker compositing.
-
-export type ProgressCallback = (progress: number, message: string) => void;
-
-/**
- * Video source input for FFmpeg direct copy optimization
- */
-export interface VideoSourceInput {
-  path: string;
-  startTime: number;
-  duration: number;
-  trimStart: number;
-  trimEnd: number;
-}
-
-/**
- * Audio file input for FFmpeg export
- */
-export interface AudioFileInput {
-  path: string;
-  startTime: number;
-  volume: number;
-}
-
-interface StickerSourceForFilter {
-  id: string;
-  path: string;
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-  startTime: number;
-  endTime: number;
-  zIndex: number;
-  opacity?: number;
-  rotation?: number;
-}
 
 export class CLIExportEngine extends ExportEngine {
   private sessionId: string | null = null;
@@ -82,877 +57,101 @@ export class CLIExportEngine extends ExportEngine {
     }
   }
 
-  // Note: Canvas rendering methods (renderFrame, renderElementCLI, renderMediaElementCLI,
-  // renderVideoCLI, renderImageCLI, renderTextElementCLI, renderStickerElementCLI)
-  // have been removed as part of Mode 3 removal. All exports now use FFmpeg directly.
+  // Note: Filter building and source extraction methods have been moved to export-cli/ module.
+  // - Text/path escaping: export-cli/filters/text-escape.ts
+  // - Font resolution: export-cli/filters/font-resolver.ts
+  // - Text overlay filters: export-cli/filters/text-overlay.ts
+  // - Sticker overlay filters: export-cli/filters/sticker-overlay.ts
+  // - Video source extraction: export-cli/sources/video-sources.ts
+  // - Sticker source extraction: export-cli/sources/sticker-sources.ts
 
   /**
-   * Escape special characters for FFmpeg drawtext filter
-   * FFmpeg drawtext uses ':' as delimiter and requires escaping for special chars
+   * Build text overlay filters using extracted module.
+   * Wrapper that passes tracks to the extracted function.
    */
-  private escapeTextForFFmpeg(text: string): string {
-    // FFmpeg drawtext filter requires escaping these characters:
-    // '\' -> '\\'
-    // ':' -> '\:'
-    // '[' -> '\['
-    // ']' -> '\]'
-    // ',' -> '\,'
-    // ';' -> '\;'
-    // "'" -> "\\'" (escaped apostrophe)
-    // '%' -> '\\%' (prevent expansion tokens)
-    // Newlines -> literal '\n' string
-
-    return text
-      .replace(/\\/g, "\\\\") // Escape backslashes first
-      .replace(/:/g, "\\:") // Escape colons (filter delimiter)
-      .replace(/\[/g, "\\[") // Escape opening brackets
-      .replace(/\]/g, "\\]") // Escape closing brackets
-      .replace(/,/g, "\\,") // Escape commas (filter separator)
-      .replace(/;/g, "\\;") // Escape semicolons
-      .replace(/'/g, "\\'") // Escape single quotes
-      .replace(/%/g, "\\%") // Escape percent signs (expansion tokens)
-      .replace(/\n/g, "\\n") // Convert newlines to literal \n
-      .replace(/\r/g, "") // Remove carriage returns
-      .replace(/=/g, "\\="); // Escape equals signs
+  private buildTextOverlayFiltersWrapper(): string {
+    return buildTextOverlayFilters(this.tracks);
   }
 
   /**
-   * Escape file system paths for FFmpeg filter arguments.
-   * Ensures separators, spaces, and delimiters are escaped.
+   * Build sticker overlay filters using extracted module.
+   * Wrapper that passes totalDuration to the extracted function.
    */
-  private escapePathForFFmpeg(path: string): string {
-    return path
-      .replace(/\\/g, "\\\\") // Windows backslashes
-      .replace(/:/g, "\\:") // Drive letter separator
-      .replace(/ /g, "\\ ") // Spaces in path segments
-      .replace(/,/g, "\\,") // Filter delimiters
-      .replace(/;/g, "\\;")
-      .replace(/\[/g, "\\[")
-      .replace(/\]/g, "\\]")
-      .replace(/\(/g, "\\(")
-      .replace(/\)/g, "\\)")
-      .replace(/'/g, "\\'")
-      .replace(/%/g, "\\%")
-      .replace(/=/g, "\\=");
-  }
-
-  /**
-   * Resolve font family name for FFmpeg drawtext filter across platforms.
-   *
-   * WHY platform-specific approach is required:
-   * - **Linux/macOS**: Have fontconfig system for font resolution
-   *   - Use font='Arial:style=Bold' format
-   *   - Fontconfig handles font finding and loading
-   *   - More robust across different installations
-   *
-   * - **Windows**: No fontconfig support
-   *   - Must use fontfile='C:/Windows/Fonts/arial.ttf' format
-   *   - Requires hardcoded paths to font files
-   *   - Each font variant (bold, italic) is a separate file
-   *
-   * Edge cases handled:
-   * - Unknown font family: Falls back to Arial
-   * - Bold+Italic: Uses combined font file (e.g., arialbi.ttf)
-   * - Platform detection failure: Throws error to prevent silent failures
-   *
-   * Performance note:
-   * - Called once per text element during filter chain building
-   * - No runtime overhead during export
-   *
-   * @param fontFamily - CSS font family name (e.g., 'Arial', 'Times New Roman')
-   * @param fontWeight - CSS font weight (e.g., 'bold')
-   * @param fontStyle - CSS font style (e.g., 'italic')
-   * @returns Font configuration for fontconfig (Linux/macOS) or file path (Windows)
-   * @throws Error if platform detection fails
-   */
-  private resolveFontPath(
-    fontFamily: string,
-    fontWeight?: string,
-    fontStyle?: string
-  ):
-    | { useFontconfig: true; fontName: string }
-    | { useFontconfig: false; fontPath: string } {
-    // Normalize font family name for comparison
-    const normalizedFamily = fontFamily.toLowerCase().replace(/['"]/g, "");
-    const isBold = fontWeight === "bold";
-    const isItalic = fontStyle === "italic";
-
-    // Detect platform using Electron API (reliable)
-    const platform = window.electronAPI?.platform;
-    if (!platform) {
-      throw new Error(
-        "Platform information not available. Ensure Electron API is initialized."
-      );
-    }
-    const isWindows = platform === "win32";
-    const isMac = platform === "darwin";
-    const isLinux = platform === "linux";
-
-    // For Linux and macOS, use fontconfig (font= parameter)
-    // This lets the system resolve fonts - much more robust!
-    if (isLinux || isMac) {
-      // Map common fonts to system equivalents
-      const fontNameMap: Record<string, string> = {
-        "arial": isMac ? "Helvetica" : "Liberation Sans",
-        "times new roman": isMac ? "Times" : "Liberation Serif",
-        "courier new": isMac ? "Courier" : "Liberation Mono",
-      };
-
-      const fontName = fontNameMap[normalizedFamily] || normalizedFamily;
-
-      // Build fontconfig style string
-      const styles: string[] = [];
-      if (isBold) styles.push("Bold");
-      if (isItalic) styles.push("Italic");
-
-      const styleString = styles.length > 0 ? `:style=${styles.join(" ")}` : "";
-
-      return {
-        useFontconfig: true,
-        fontName: `${fontName}${styleString}`,
-      };
-    }
-
-    // For Windows, use explicit font file paths
-    // Windows doesn't have fontconfig, so we need absolute paths
-    const fontBasePath = "C:/Windows/Fonts/";
-
-    // Font file mapping for Windows
-    const fontMap: Record<
-      string,
-      { regular: string; bold?: string; italic?: string; boldItalic?: string }
-    > = {
-      "arial": {
-        regular: "arial.ttf",
-        bold: "arialbd.ttf",
-        italic: "ariali.ttf",
-        boldItalic: "arialbi.ttf",
-      },
-      "times new roman": {
-        regular: "times.ttf",
-        bold: "timesbd.ttf",
-        italic: "timesi.ttf",
-        boldItalic: "timesbi.ttf",
-      },
-      "courier new": {
-        regular: "cour.ttf",
-        bold: "courbd.ttf",
-        italic: "couri.ttf",
-        boldItalic: "courbi.ttf",
-      },
-    };
-
-    // Find matching font or default to Arial
-    const fontConfig = fontMap[normalizedFamily] || fontMap.arial;
-
-    // Select appropriate font variant
-    let fontFile = fontConfig.regular;
-    if (isBold && isItalic && fontConfig.boldItalic) {
-      fontFile = fontConfig.boldItalic;
-    } else if (isBold && fontConfig.bold) {
-      fontFile = fontConfig.bold;
-    } else if (isItalic && fontConfig.italic) {
-      fontFile = fontConfig.italic;
-    }
-
-    // Return full path for Windows
-    return {
-      useFontconfig: false,
-      fontPath: `${fontBasePath}${fontFile}`,
-    };
-  }
-
-  /**
-   * Convert a TextElement to FFmpeg drawtext filter string
-   * Includes all positioning, styling, and timing parameters
-   */
-  private convertTextElementToDrawtext(element: TextElement): string {
-    // Skip empty text elements
-    if (!element.content || !element.content.trim()) {
-      return "";
-    }
-
-    // Skip hidden elements
-    if (element.hidden) {
-      return "";
-    }
-
-    // Escape the text content for FFmpeg
-    const escapedText = this.escapeTextForFFmpeg(element.content);
-
-    // Get font configuration based on platform
-    const fontConfig = this.resolveFontPath(
-      element.fontFamily || "Arial",
-      element.fontWeight,
-      element.fontStyle
+  private buildStickerOverlayFiltersWrapper(
+    stickerSources: StickerSourceForFilter[]
+  ): string {
+    return buildStickerOverlayFilters(
+      stickerSources,
+      this.totalDuration,
+      debugLog
     );
-
-    // Convert CSS color to FFmpeg format (remove # if present)
-    let fontColor = element.color || "#ffffff";
-    if (fontColor.startsWith("#")) {
-      // Convert #RRGGBB to 0xRRGGBB format for FFmpeg
-      fontColor = "0x" + fontColor.substring(1);
-    }
-
-    // Calculate actual display timing (accounting for trim)
-    const trimStart = element.trimStart ?? 0;
-    const trimEnd = element.trimEnd ?? 0;
-    const duration = element.duration ?? 0;
-    const startTime = element.startTime + trimStart;
-    const endTime = element.startTime + duration - trimEnd;
-
-    // Build base filter parameters
-    const filterParams: string[] = [
-      `text='${escapedText}'`,
-      `fontsize=${element.fontSize || 24}`,
-      `fontcolor=${fontColor}`,
-    ];
-
-    // Add font parameter (fontconfig on Linux/macOS, fontfile on Windows)
-    if (fontConfig.useFontconfig) {
-      // Linux/macOS: Use font= with fontconfig name
-      // No escaping needed for font names
-      filterParams.push(`font='${fontConfig.fontName}'`);
-    } else {
-      // Windows: Use fontfile= with escaped path
-      const escapedFontPath = this.escapePathForFFmpeg(fontConfig.fontPath);
-      filterParams.push(`fontfile=${escapedFontPath}`);
-    }
-
-    // Helper to format numeric offsets with explicit sign when positive
-    const formatOffset = (value: number): string => {
-      if (value === 0) return "";
-      return value > 0 ? `+${value}` : `${value}`;
-    };
-
-    // Element x/y are relative to canvas center; convert to FFmpeg coordinates
-    const xOffset = Math.round(element.x ?? 0);
-    const yOffset = Math.round(element.y ?? 0);
-
-    // Default to centered placement with offset
-    const anchorXExpr = `w/2${formatOffset(xOffset)}`;
-    let xExpr = `${anchorXExpr}-(text_w/2)`;
-    const yExpr = `(h-text_h)/2${formatOffset(yOffset)}`;
-
-    // Apply text alignment while preserving offsets
-    if (element.textAlign === "left") {
-      // Left-align: anchor left edge at canvas center + offset
-      xExpr = `${anchorXExpr}`;
-    } else if (element.textAlign === "center") {
-      // Center-align: already centered; keep offset
-      xExpr = `${anchorXExpr}-(text_w/2)`;
-    } else if (element.textAlign === "right") {
-      // Right-align: place right edge at canvas center + offset
-      xExpr = `${anchorXExpr}-text_w`;
-    }
-
-    filterParams.push(`x=${xExpr}`);
-    filterParams.push(`y=${yExpr}`);
-
-    // Add text border for better readability
-    filterParams.push("borderw=2");
-    filterParams.push("bordercolor=black");
-
-    // Handle opacity if not fully opaque
-    if (element.opacity !== undefined && element.opacity < 1) {
-      // FFmpeg uses alpha channel in range 0-255
-      const alpha = Math.round(element.opacity * 255);
-      filterParams.push(`alpha=${alpha}/255`);
-    }
-
-    // Handle rotation if present
-    if (element.rotation && element.rotation !== 0) {
-      // Convert degrees to radians for FFmpeg
-      const radians = (element.rotation * Math.PI) / 180;
-      filterParams.push(`angle=${radians}`);
-    }
-
-    // Background color if not transparent
-    if (element.backgroundColor && element.backgroundColor !== "transparent") {
-      let bgColor = element.backgroundColor;
-      if (bgColor.startsWith("#")) {
-        bgColor = "0x" + bgColor.substring(1);
-      }
-      filterParams.push("box=1");
-      filterParams.push(`boxcolor=${bgColor}@0.5`);
-      filterParams.push("boxborderw=5");
-    }
-
-    // Add timing - text only appears during its timeline duration
-    filterParams.push(`enable='between(t,${startTime},${endTime})'`);
-
-    // Combine all parameters into drawtext filter
-    return `drawtext=${filterParams.join(":")}`;
   }
 
   /**
-   * Build complete FFmpeg filter chain for all text overlays using drawtext filters.
-   *
-   * WHY FFmpeg drawtext is used instead of canvas rendering:
-   * - Mode 2 optimization avoids frame-by-frame rendering
-   * - Drawtext applies text directly during video encoding
-   * - 3-5x faster than canvas text rendering
-   *
-   * Filter layering logic:
-   * - Lower track index = rendered first (background)
-   * - Higher track index = rendered last (foreground)
-   * - Elements within track maintain timeline order
-   * - Later filters in chain draw on top of earlier filters
-   *
-   * WHY sorting matters:
-   * - FFmpeg processes filters sequentially
-   * - Last filter appears on top visually
-   * - Must match timeline track ordering for correct layering
-   *
-   * Edge cases handled:
-   * - Hidden elements: Skipped entirely
-   * - Empty text content: Filtered out
-   * - No text elements: Returns empty string
-   * - Special characters: Escaped in convertTextElementToDrawtext
-   *
-   * Performance implications:
-   * - Each text element adds one drawtext filter
-   * - 10 text elements = ~0.1s additional encoding time (negligible)
-   * - Still much faster than frame rendering
-   *
-   * @returns Comma-separated FFmpeg drawtext filter chain
+   * Extract video sources using extracted module.
+   * Wrapper that passes instance properties.
    */
-  private buildTextOverlayFilters(): string {
-    const textElementsWithOrder: Array<{
-      element: TextElement;
-      trackIndex: number;
-      elementIndex: number;
-    }> = [];
+  private async extractVideoSourcesWrapper(): Promise<VideoSourceInput[]> {
+    return extractVideoSources(
+      this.tracks,
+      this.mediaItems,
+      this.sessionId,
+      undefined, // Use default API
+      debugLog
+    );
+  }
 
-    // Iterate through all tracks to find text elements
-    for (let trackIndex = 0; trackIndex < this.tracks.length; trackIndex++) {
-      const track = this.tracks[trackIndex];
+  /**
+   * Extract single video input path using extracted module.
+   * Wrapper that passes instance properties.
+   */
+  private async extractVideoInputPathWrapper(): Promise<{
+    path: string;
+    trimStart: number;
+    trimEnd: number;
+  } | null> {
+    return extractVideoInputPath(
+      this.tracks,
+      this.mediaItems,
+      this.sessionId,
+      undefined, // Use default API
+      debugLog
+    );
+  }
 
-      // Only process text tracks
-      if (track.type !== "text") {
-        continue;
-      }
-
-      // Process each element in the track
-      for (
-        let elementIndex = 0;
-        elementIndex < track.elements.length;
-        elementIndex++
-      ) {
-        const element = track.elements[elementIndex];
-
-        // Skip non-text elements (shouldn't happen on text track, but be safe)
-        if (element.type !== "text") {
-          continue;
-        }
-
-        // Skip hidden elements
-        if (element.hidden) {
-          continue;
-        }
-
-        // Collect text element with its order information
-        textElementsWithOrder.push({
-          element: element as TextElement,
-          trackIndex,
-          elementIndex,
-        });
-      }
-    }
-
-    // Sort by track order, then by element order within track for proper layering
-    // WHY: In FFmpeg, later filters draw on top. Lower track index = background, higher = foreground.
-    // Elements within the same track maintain their timeline order.
-    textElementsWithOrder.sort((a, b) => {
-      // First sort by track index (track rendering order)
-      if (a.trackIndex !== b.trackIndex) {
-        return a.trackIndex - b.trackIndex;
-      }
-      // If same track, sort by element index (order in track)
-      return a.elementIndex - b.elementIndex;
-    });
-
-    // Convert each to drawtext filter
-    const filters = textElementsWithOrder
-      .map((item) => this.convertTextElementToDrawtext(item.element))
-      .filter((f) => f !== "");
-
-    // Join all filters with comma separator
-    return filters.join(",");
+  /**
+   * Extract sticker sources using extracted module.
+   * Wrapper that passes instance properties.
+   */
+  private async extractStickerSourcesWrapper(): Promise<
+    StickerSourceForFilter[]
+  > {
+    return extractStickerSources(
+      this.mediaItems,
+      this.sessionId,
+      this.canvas.width,
+      this.canvas.height,
+      this.totalDuration,
+      undefined, // Use default store getter
+      undefined, // Use default API
+      debugLog
+    );
   }
 
   // Note: getActiveElementsCLI method has been removed as part of Mode 3 removal.
   // It was only used by the removed Canvas rendering methods.
 
-  /**
-   * Extract video source paths from timeline for direct copy optimization
-   */
-  private async extractVideoSources(): Promise<VideoSourceInput[]> {
-    const videoSources: VideoSourceInput[] = [];
-
-    // Iterate through all tracks to find video elements
-    for (const track of this.tracks) {
-      if (track.type !== "media") continue;
-
-      for (const element of track.elements) {
-        if (element.hidden) continue;
-        if (element.type !== "media") continue;
-
-        const mediaItem = this.mediaItems.find(
-          (item) => item.id === (element as any).mediaId
-        );
-        if (!mediaItem || mediaItem.type !== "video") continue;
-
-        let localPath = mediaItem.localPath;
-
-        // If no localPath, try to create temp file from File blob (export-time fallback)
-        if (!localPath && mediaItem.file && mediaItem.file.size > 0) {
-          if ((window as any).electronAPI?.video?.saveTemp) {
-            try {
-              debugLog(
-                `[CLIExportEngine] Creating temp file for video: ${mediaItem.name}`
-              );
-              const arrayBuffer = await mediaItem.file.arrayBuffer();
-              const uint8Array = new Uint8Array(arrayBuffer);
-              localPath = await (window as any).electronAPI.video.saveTemp(
-                uint8Array,
-                mediaItem.name,
-                this.sessionId || undefined
-              );
-              debugLog(
-                `[CLIExportEngine] Created temp file at export time: ${localPath}`
-              );
-            } catch (error) {
-              debugWarn(
-                `[CLIExportEngine] Failed to create temp file for ${mediaItem.name}:`,
-                error
-              );
-              continue; // Skip this video
-            }
-          }
-        }
-
-        // Check if we have a local path (required for direct copy)
-        if (!localPath) {
-          debugWarn(
-            `[CLIExportEngine] Video ${mediaItem.id} has no localPath, cannot use direct copy`
-          );
-          continue;
-        }
-
-        videoSources.push({
-          path: localPath,
-          startTime: element.startTime,
-          duration: element.duration,
-          trimStart: element.trimStart,
-          trimEnd: element.trimEnd,
-        });
-      }
-    }
-
-    // Sort by start time
-    videoSources.sort((a, b) => a.startTime - b.startTime);
-
-    debugLog(
-      `[CLIExportEngine] Extracted ${videoSources.length} video sources for direct copy`
-    );
-    return videoSources;
-  }
-
-  /**
-   * Extract single video input path for Mode 2 optimization.
-   *
-   * WHY Mode 2 exists:
-   * - Avoids frame-by-frame rendering when only text/stickers are added
-   * - FFmpeg can apply filters (drawtext, overlay) directly to video stream
-   * - Results in 3-5x faster exports compared to frame rendering
-   *
-   * WHY this returns null:
-   * - Multiple videos: Cannot use single video input (falls back to Mode 3)
-   * - No localPath: Blob URLs cannot be read by FFmpeg CLI
-   * - No videos: Nothing to optimize
-   *
-   * Performance impact:
-   * - Success: Enables Mode 2 (~1-2s export time)
-   * - Failure: Falls back to Mode 3 (~5-10s export time)
-   *
-   * @returns Video path and trim info if exactly one video exists, null otherwise
-   */
-  private async extractVideoInputPath(): Promise<{
-    path: string;
-    trimStart: number;
-    trimEnd: number;
-  } | null> {
-    debugLog("[CLIExportEngine] Extracting video input path for Mode 2...");
-
-    let videoElement: TimelineElement | null = null;
-    let mediaItem: MediaItem | null = null;
-    let videoCount = 0;
-
-    // Iterate through all tracks to find video elements
-    for (const track of this.tracks) {
-      if (track.type !== "media") continue;
-
-      for (const element of track.elements) {
-        if (element.hidden) continue;
-        if (element.type !== "media") continue;
-
-        const item = this.mediaItems.find(
-          (m) => m.id === (element as any).mediaId
-        );
-        if (item && item.type === "video") {
-          videoCount++;
-          if (videoCount > 1) {
-            // Multiple videos found, can't use single video input
-            debugLog(
-              "[CLIExportEngine] Multiple videos found, Mode 2 not applicable"
-            );
-            return null;
-          }
-          videoElement = element;
-          mediaItem = item;
-        }
-      }
-    }
-
-    if (!videoElement || !mediaItem) {
-      debugLog("[CLIExportEngine] No video found");
-      return null;
-    }
-
-    // Try to get or create localPath
-    let localPath = mediaItem.localPath;
-
-    // If no localPath, try to create temp file from File blob (export-time fallback)
-    if (!localPath && mediaItem.file && mediaItem.file.size > 0) {
-      if ((window as any).electronAPI?.video?.saveTemp) {
-        try {
-          debugLog(
-            `[CLIExportEngine] Creating temp file for Mode 2 video: ${mediaItem.name}`
-          );
-          const arrayBuffer = await mediaItem.file.arrayBuffer();
-          const uint8Array = new Uint8Array(arrayBuffer);
-          localPath = await (window as any).electronAPI.video.saveTemp(
-            uint8Array,
-            mediaItem.name,
-            this.sessionId || undefined
-          );
-          debugLog(
-            `[CLIExportEngine] Created temp file for Mode 2: ${localPath}`
-          );
-        } catch (error) {
-          debugWarn(
-            `[CLIExportEngine] Failed to create temp file for Mode 2: ${mediaItem.name}`,
-            error
-          );
-        }
-      }
-    }
-
-    if (!localPath) {
-      debugLog("[CLIExportEngine] No video with localPath found");
-      return null;
-    }
-
-    const result = {
-      path: localPath,
-      trimStart: videoElement.trimStart || 0,
-      trimEnd: videoElement.trimEnd || 0,
-    };
-
-    debugLog(`[CLIExportEngine] Video input extracted: ${result.path}`);
-    return result;
-  }
-
-  /**
-   * Download sticker blob/data URL to temp directory for FFmpeg CLI access.
-   *
-   * WHY this is necessary:
-   * - FFmpeg CLI cannot read blob: or data: URLs
-   * - Stickers are often stored as blob URLs in browser memory
-   * - Must convert to filesystem paths before FFmpeg can process them
-   *
-   * Edge cases handled:
-   * - Already has localPath: Skip download, use existing file
-   * - Blob fetch fails: Throw error to prevent corrupt exports
-   * - Invalid format: Default to PNG format
-   *
-   * Performance note:
-   * - Runs once per sticker during export preparation
-   * - Uses temp directory that's cleaned up after export
-   *
-   * @param sticker - Sticker element from timeline
-   * @param mediaItem - Associated media item with blob URL
-   * @returns Filesystem path to downloaded sticker image
-   * @throws Error if download fails or Electron API unavailable
-   */
-  private async downloadStickerToTemp(
-    sticker: { id: string; [key: string]: unknown },
-    mediaItem: MediaItem
-  ): Promise<string> {
-    debugLog(
-      `[CLIExportEngine] Downloading sticker ${sticker.id} to temp directory`
-    );
-
-    try {
-      // Check if already has local path
-      if (mediaItem.localPath) {
-        debugLog(
-          `[CLIExportEngine] Using provided local path: ${mediaItem.localPath}`
-        );
-        return mediaItem.localPath;
-      }
-
-      // Fetch blob/data URL
-      if (!mediaItem.url) {
-        throw new Error(`No URL for sticker media item ${mediaItem.id}`);
-      }
-
-      const response = await fetch(mediaItem.url);
-      if (!response.ok) {
-        throw new Error(
-          `Failed to fetch sticker: ${response.status} ${response.statusText}`
-        );
-      }
-
-      const blob = await response.blob();
-      const arrayBuffer = await blob.arrayBuffer();
-      const imageBytes = new Uint8Array(arrayBuffer);
-
-      // Determine format from blob type or default to png
-      const format = blob.type?.split("/")[1] || "png";
-
-      // Save via Electron IPC
-      if (!window.electronAPI?.ffmpeg?.saveStickerForExport) {
-        throw new Error("Electron API not available for sticker export");
-      }
-
-      if (!this.sessionId) {
-        throw new Error("No active export session");
-      }
-
-      const result = await window.electronAPI.ffmpeg.saveStickerForExport({
-        sessionId: this.sessionId,
-        stickerId: sticker.id,
-        imageData: imageBytes,
-        format,
-      });
-
-      if (!result.success) {
-        throw new Error(result.error || "Failed to save sticker");
-      }
-
-      debugLog(`[CLIExportEngine] Downloaded sticker to: ${result.path}`);
-      return result.path!;
-    } catch (error) {
-      debugError(
-        `[CLIExportEngine] Failed to download sticker ${sticker.id}:`,
-        error
-      );
-      throw error;
-    }
-  }
-
-  /**
-   * Extract sticker sources from overlay store for FFmpeg processing
-   * Returns array of sticker data with local file paths
-   */
-  private async extractStickerSources(): Promise<StickerSourceForFilter[]> {
-    debugLog("[CLIExportEngine] Extracting sticker sources for FFmpeg overlay");
-
-    try {
-      // Import stickers store dynamically
-      const { useStickersOverlayStore } = await import(
-        "@/stores/stickers-overlay-store"
-      );
-      const stickersStore = useStickersOverlayStore.getState();
-
-      // Get all stickers for export
-      const allStickers = stickersStore.getStickersForExport();
-
-      if (allStickers.length === 0) {
-        debugLog("[CLIExportEngine] No stickers to export");
-        return [];
-      }
-
-      debugLog(
-        `[CLIExportEngine] Processing ${allStickers.length} stickers for export`
-      );
-
-      const stickerSources: StickerSourceForFilter[] = [];
-
-      // Process each sticker
-      for (const sticker of allStickers) {
-        try {
-          // Find media item for this sticker
-          const mediaItem = this.mediaItems.find(
-            (m) => m.id === sticker.mediaItemId
-          );
-
-          if (!mediaItem) {
-            debugWarn(
-              `[CLIExportEngine] Media item not found for sticker ${sticker.id}`
-            );
-            continue;
-          }
-
-          // Download sticker to temp directory if needed
-          const localPath = await this.downloadStickerToTemp(
-            sticker,
-            mediaItem
-          );
-
-          // Convert percentage positions to pixel coordinates
-          // Note: FFmpeg overlay uses top-left corner, not center
-          const pixelX = (sticker.position.x / 100) * this.canvas.width;
-          const pixelY = (sticker.position.y / 100) * this.canvas.height;
-
-          // Convert percentage size to pixels (using smaller dimension as base)
-          const baseSize = Math.min(this.canvas.width, this.canvas.height);
-          const pixelWidth = (sticker.size.width / 100) * baseSize;
-          const pixelHeight = (sticker.size.height / 100) * baseSize;
-
-          // Adjust for center-based positioning (sticker position is center, not top-left)
-          const topLeftX = pixelX - pixelWidth / 2;
-          const topLeftY = pixelY - pixelHeight / 2;
-
-          stickerSources.push({
-            id: sticker.id,
-            path: localPath,
-            x: Math.round(topLeftX),
-            y: Math.round(topLeftY),
-            width: Math.round(pixelWidth),
-            height: Math.round(pixelHeight),
-            startTime: sticker.timing?.startTime ?? 0,
-            endTime: sticker.timing?.endTime ?? this.totalDuration,
-            zIndex: sticker.zIndex,
-            opacity: sticker.opacity,
-            rotation: sticker.rotation,
-          });
-
-          debugLog(
-            `[CLIExportEngine] Processed sticker ${sticker.id}: ${pixelWidth}x${pixelHeight} at (${topLeftX}, ${topLeftY})`
-          );
-        } catch (error) {
-          debugError(
-            `[CLIExportEngine] Failed to process sticker ${sticker.id}:`,
-            error
-          );
-        }
-      }
-
-      // Sort by zIndex for proper layering order
-      stickerSources.sort((a, b) => a.zIndex - b.zIndex);
-
-      debugLog(
-        `[CLIExportEngine] Extracted ${stickerSources.length} valid sticker sources`
-      );
-      return stickerSources;
-    } catch (error) {
-      debugError("[CLIExportEngine] Failed to extract sticker sources:", error);
-      return [];
-    }
-  }
-
-  /**
-   * Build FFmpeg overlay filter chain for stickers using complex filter graphs.
-   *
-   * WHY complex filters are needed:
-   * - Each sticker is a separate input stream to FFmpeg
-   * - Must scale, rotate, and overlay each sticker in sequence
-   * - Timing constraints (enable) ensure stickers appear/disappear correctly
-   *
-   * Filter chain structure:
-   * 1. Scale sticker to desired dimensions
-   * 2. Apply rotation if needed (prevents edge clipping)
-   * 3. Apply opacity using format+geq (alpha blending)
-   * 4. Overlay on previous layer at specific position with timing
-   *
-   * Performance implications:
-   * - More stickers = longer filter chain = slightly slower encoding
-   * - Still much faster than frame-by-frame rendering (~1-2s total)
-   *
-   * Edge cases:
-   * - Empty array: Returns empty string (no-op)
-   * - Single sticker: Simple overlay without intermediate labels
-   * - Opacity < 1: Requires format+geq filter for alpha channel
-   *
-   * @param stickerSources - Array of sticker data with position, size, timing
-   * @returns FFmpeg complex filter chain string
-   */
-  private buildStickerOverlayFilters(
-    stickerSources: StickerSourceForFilter[]
-  ): string {
-    if (!stickerSources || stickerSources.length === 0) {
-      return "";
-    }
-
-    debugLog(
-      `[CLIExportEngine] Building overlay filters for ${stickerSources.length} stickers`
-    );
-
-    // Build complex filter for multiple overlays
-    // Input streams: [0] = base video, [1] = first sticker, [2] = second sticker, etc.
-
-    const filters: string[] = [];
-    let lastOutput = "0:v"; // Start with base video stream
-
-    stickerSources.forEach((sticker, index) => {
-      const inputIndex = index + 1; // Sticker inputs start at 1 (0 is base video)
-      const outputLabel =
-        index === stickerSources.length - 1 ? "" : `[v${index + 1}]`;
-
-      // Scale sticker to desired size
-      let currentInput = `[${inputIndex}:v]`;
-      const scaleFilter = `${currentInput}scale=${sticker.width}:${sticker.height}[scaled${index}]`;
-      filters.push(scaleFilter);
-      currentInput = `[scaled${index}]`;
-
-      // Apply rotation if needed (before opacity)
-      if (sticker.rotation !== undefined && sticker.rotation !== 0) {
-        const rotateFilter = `${currentInput}rotate=${sticker.rotation}*PI/180:c=none[rotated${index}]`;
-        filters.push(rotateFilter);
-        currentInput = `[rotated${index}]`;
-      }
-
-      // Build overlay filter with timing
-      const overlayParams = [`x=${sticker.x}`, `y=${sticker.y}`];
-
-      // Add timing constraint
-      if (sticker.startTime !== 0 || sticker.endTime !== this.totalDuration) {
-        overlayParams.push(
-          `enable='between(t,${sticker.startTime},${sticker.endTime})'`
-        );
-      }
-
-      // Add opacity if not fully opaque
-      if (sticker.opacity !== undefined && sticker.opacity < 1) {
-        // Apply opacity using format and geq filters before overlay
-        const opacityFilter = `${currentInput}format=rgba,geq=r='r(X,Y)':g='g(X,Y)':b='b(X,Y)':a='${sticker.opacity}*alpha(X,Y)'[alpha${index}]`;
-        filters.push(opacityFilter);
-
-        // Update overlay to use opacity-adjusted input
-        const overlayFilter = `[${lastOutput}][alpha${index}]overlay=${overlayParams.join(":")}${outputLabel}`;
-        filters.push(overlayFilter);
-      } else {
-        // Direct overlay without opacity adjustment
-        const overlayFilter = `[${lastOutput}]${currentInput}overlay=${overlayParams.join(":")}${outputLabel}`;
-        filters.push(overlayFilter);
-      }
-
-      // Update last output for chaining
-      if (outputLabel) {
-        lastOutput = outputLabel.replace("[", "").replace("]", "");
-      }
-    });
-
-    const filterChain = filters.join(";");
-    debugLog(
-      `[CLIExportEngine] Generated sticker filter chain: ${filterChain}`
-    );
-
-    return filterChain;
-  }
+  // Note: The following methods were extracted to export-cli/ module:
+  // - escapeTextForFFmpeg -> export-cli/filters/text-escape.ts
+  // - escapePathForFFmpeg -> export-cli/filters/text-escape.ts
+  // - resolveFontPath -> export-cli/filters/font-resolver.ts
+  // - convertTextElementToDrawtext -> export-cli/filters/text-overlay.ts
+  // - buildTextOverlayFilters -> export-cli/filters/text-overlay.ts (now uses wrapper)
+  // - extractVideoSources -> export-cli/sources/video-sources.ts (now uses wrapper)
+  // - extractVideoInputPath -> export-cli/sources/video-sources.ts (now uses wrapper)
+  // - downloadStickerToTemp -> export-cli/sources/sticker-sources.ts
+  // - extractStickerSources -> export-cli/sources/sticker-sources.ts (now uses wrapper)
+  // - buildStickerOverlayFilters -> export-cli/filters/sticker-overlay.ts (now uses wrapper)
 
   private async prepareAudioFiles(): Promise<AudioFileInput[]> {
     const results: AudioFileInput[] = [];
@@ -1109,7 +308,7 @@ export class CLIExportEngine extends ExportEngine {
         path: string;
         trimStart: number;
         trimEnd: number;
-      } | null = canUseMode2 ? await this.extractVideoInputPath() : null;
+      } | null = canUseMode2 ? await this.extractVideoInputPathWrapper() : null;
 
       // All supported modes skip frame rendering (Mode 1, 1.5, 2)
       if (videoInput) {
@@ -1397,7 +596,7 @@ export class CLIExportEngine extends ExportEngine {
     console.log(
       "🔍 [TEXT EXPORT DEBUG] Starting text filter chain generation..."
     );
-    const textFilterChain = this.buildTextOverlayFilters();
+    const textFilterChain = this.buildTextOverlayFiltersWrapper();
     if (textFilterChain) {
       console.log(
         "✅ [TEXT EXPORT DEBUG] Text filter chain generated successfully"
@@ -1426,11 +625,12 @@ export class CLIExportEngine extends ExportEngine {
 
     try {
       // Extract sticker sources with local file paths (always check for stickers)
-      stickerSources = await this.extractStickerSources();
+      stickerSources = await this.extractStickerSourcesWrapper();
 
       if (stickerSources.length > 0) {
         // Build FFmpeg overlay filter chain
-        stickerFilterChain = this.buildStickerOverlayFilters(stickerSources);
+        stickerFilterChain =
+          this.buildStickerOverlayFiltersWrapper(stickerSources);
 
         debugLog(`[CLI Export] Sticker sources: ${stickerSources.length}`);
         debugLog(`[CLI Export] Sticker filter chain: ${stickerFilterChain}`);
@@ -1457,7 +657,7 @@ export class CLIExportEngine extends ExportEngine {
       path: string;
       trimStart: number;
       trimEnd: number;
-    } | null = canUseMode2 ? await this.extractVideoInputPath() : null;
+    } | null = canUseMode2 ? await this.extractVideoInputPathWrapper() : null;
 
     // Log Mode 2 detection result
     if (canUseMode2 && videoInput) {
@@ -1497,7 +697,7 @@ export class CLIExportEngine extends ExportEngine {
         !hasStickerFilters);
 
     const videoSources: VideoSourceInput[] = shouldExtractVideoSources
-      ? await this.extractVideoSources()
+      ? await this.extractVideoSourcesWrapper()
       : [];
 
     // Build options AFTER validation so the filtered list is sent

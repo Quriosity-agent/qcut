@@ -11,23 +11,27 @@ import path from "path";
 import fs from "fs";
 import { TempManager, ExportSession } from "./temp-manager.js";
 
-// Import types from ffmpeg module
+// Import types from ffmpeg module (only those used internally, not re-exported)
 import type {
-  AudioFile,
   VideoSource,
-  StickerSource,
-  ExportOptions,
   FrameProcessOptions,
-  FrameData,
-  ExportResult,
   QualitySettings,
   QualityMap,
-  FFmpegProgress,
   FFmpegError,
+  VideoProbeResult,
+} from "./ffmpeg/types";
+
+// Re-export types for external use (using export from)
+export type {
+  AudioFile,
+  StickerSource,
+  ExportOptions,
+  FrameData,
+  ExportResult,
+  FFmpegProgress,
   OpenFolderResult,
   ExtractAudioOptions,
   ExtractAudioResult,
-  VideoProbeResult,
 } from "./ffmpeg/types";
 
 // Import utilities from ffmpeg module
@@ -1171,24 +1175,11 @@ function buildFFmpegArgs(
   );
 }
 
-// Re-export getFFmpegPath for backward compatibility (used by main.ts)
-export { getFFmpegPath };
+// Re-export getFFmpegPath for backward compatibility (used by main.ts, using export from)
+export { getFFmpegPath } from "./ffmpeg/utils";
 
 // CommonJS export for backward compatibility with main.js
 module.exports = { setupFFmpegIPC, getFFmpegPath };
 
 // ES6 export for TypeScript files
 export default { setupFFmpegIPC, getFFmpegPath };
-
-// Re-export types for external use
-export type {
-  AudioFile,
-  ExportOptions,
-  FrameData,
-  ExportResult,
-  FFmpegProgress,
-  OpenFolderResult,
-  ExtractAudioOptions,
-  ExtractAudioResult,
-  StickerSource,
-};

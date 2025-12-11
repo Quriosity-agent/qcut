@@ -14,7 +14,7 @@ This document identifies the top 10 source code files exceeding 800 lines and pr
 | 4 | `electron/ffmpeg-handler.ts` | ~~2210~~ 1194 | ~~Split into 3 files~~ | ✅ **REFACTORED** |
 | 5 | `apps/web/src/stores/timeline-store.ts` | 2194 | Split into 3 files | Pending |
 | 6 | `apps/web/src/lib/fal-ai-client.ts` | ~~1806~~ 1304 | ~~Split into 3 files~~ | ✅ **REFACTORED** |
-| 7 | `apps/web/src/lib/export-engine-cli.ts` | 1689 | Split into 3 files | Pending |
+| 7 | `apps/web/src/lib/export-engine-cli.ts` | ~~1689~~ 883 | ~~Split into 3 files~~ | ✅ **REFACTORED** |
 | 8 | `apps/web/src/components/editor/timeline/index.tsx` | 1538 | Split into 3-4 files | Pending |
 | 9 | `apps/web/src/components/editor/media-panel/views/ai-constants.ts` | 1410 | Split into 2-3 files | Pending |
 | 10 | `apps/web/src/lib/export-engine.ts` | 1365 | Split into 2-3 files | Pending |
@@ -353,74 +353,65 @@ See `docs/issues/large-files-refactoring/FAL-AI-CLIENT-REFACTORING-PLAN.md` for 
 
 ---
 
-## 7. export-engine-cli.ts (1689 lines)
+## 7. export-engine-cli.ts ✅ REFACTORED (Dec 2025)
 
 **Path**: `qcut/apps/web/src/lib/export-engine-cli.ts`
 
-### Main Functions/Sections
+### Refactoring Complete
 
-1. **Types & Imports** (Lines 1-60)
-   - `VideoSourceInput`, `AudioFileInput` interfaces
-   - `StickerSourceForFilter` interface
-   - Progress callback type
+**Original Size**: 1,690 lines → **Current Size**: 883 lines (~48% reduction)
 
-2. **CLIExportEngine Class Setup** (Lines 58-140)
-   - Constructor with Electron environment check
-   - Session and frame directory management
-   - Effects store integration
+### New File Structure
 
-3. **FFmpeg Text Escaping** (Lines 93-140)
-   - `escapeTextForFFmpeg()` - special character escaping
-   - `escapePathForFFmpeg()` - path escaping for filters
+| File | Lines | Purpose |
+|------|-------|---------|
+| `export-engine-cli.ts` | 883 | Main engine (orchestration + wrapper methods) |
+| `export-cli/types.ts` | 72 | Type definitions |
+| `export-cli/filters/text-escape.ts` | 75 | FFmpeg text/path escaping |
+| `export-cli/filters/font-resolver.ts` | 123 | Cross-platform font resolution |
+| `export-cli/filters/text-overlay.ts` | 170 | Drawtext filter building |
+| `export-cli/filters/sticker-overlay.ts` | 99 | Sticker overlay filters |
+| `export-cli/sources/video-sources.ts` | 199 | Video path extraction |
+| `export-cli/sources/sticker-sources.ts` | 230 | Sticker source extraction |
+| `export-cli/index.ts` | 48 | Main barrel |
+| `export-cli/filters/index.ts` | 24 | Filter barrel |
+| `export-cli/sources/index.ts` | 11 | Sources barrel |
 
-4. **Font Resolution** (Lines 140-270)
-   - `resolveFontPath()` - cross-platform font handling
-   - Windows font file mapping
-   - Linux/macOS fontconfig support
+### What Was Extracted
 
-5. **Text Overlay Filters** (Lines 270-490)
-   - `convertTextElementToDrawtext()` - text to FFmpeg filter
-   - `buildTextOverlayFilters()` - filter chain building
-   - Color conversion, timing, positioning
+1. **Type Definitions** (`export-cli/types.ts`)
+   - `VideoSourceInput`, `AudioFileInput`, `StickerSourceForFilter` interfaces
+   - `ProgressCallback`, `FontConfig`, `Platform` types
 
-6. **Video Source Extraction** (Lines 490-700)
-   - `extractVideoSources()` - video path extraction
-   - `extractVideoInputPath()` - Mode 2 optimization
-   - Temp file creation for blob sources
+2. **Filter Utilities** (`export-cli/filters/`)
+   - `escapeTextForFFmpeg()`, `escapePathForFFmpeg()`, `colorToFFmpeg()` - text escaping
+   - `resolveFontPath()` - cross-platform font resolution with dependency injection
+   - `convertTextElementToDrawtext()`, `buildTextOverlayFilters()` - text overlays
+   - `buildStickerOverlayFilters()` - sticker overlays with logger injection
 
-7. **Sticker Overlay System** (Lines 700-1000)
-   - `extractStickerSources()` - sticker path extraction
-   - `buildStickerOverlayFilters()` - overlay filter building
-   - SVG to PNG conversion handling
+3. **Source Extraction** (`export-cli/sources/`)
+   - `extractVideoSources()`, `extractVideoInputPath()` - video path extraction
+   - `extractStickerSources()` - sticker source extraction with store/API injection
 
-8. **Main Export Methods** (Lines 1000-1689)
-   - `exportVideo()` - main export orchestration
-   - Mode selection (Mode 2 vs fallback)
-   - Progress reporting and cleanup
+### Key Design Decisions
 
-### Recommended Split
+- **Wrapper pattern**: Main class keeps thin wrappers that pass instance properties to extracted functions
+- **Dependency injection**: All extracted functions accept optional logger and API parameters for testing
+- **Type reuse**: Import `TimelineTrack` directly from `@/types/timeline`
+- **Backward compatibility**: Re-export types from main file for existing consumers
 
-#### File 1: `export-cli-types.ts` (~100 lines)
-- All type definitions
-- Input interfaces
-- Progress callback types
+### Benefits Achieved
 
-#### File 2: `export-cli-filters.ts` (~500 lines)
-- Text escaping utilities
-- Font resolution
-- Text overlay filter building
-- Sticker overlay filter building
+- ✅ Main engine reduced by 48% (1,690 → 883 lines)
+- ✅ Pure functions extracted for unit testing
+- ✅ Dependency injection enables testing without Electron
+- ✅ All type checks pass
+- ✅ Production build succeeds
+- ✅ Backward-compatible exports
 
-#### File 3: `export-cli-sources.ts` (~400 lines)
-- Video source extraction
-- Sticker source extraction
-- Temp file management
+### Documentation
 
-#### File 4: `export-engine-cli.ts` (~700 lines) - Main engine
-- CLIExportEngine class
-- Main export methods
-- Mode selection logic
-- Import and compose other modules
+See `docs/issues/large-files-refactoring/EXPORT-ENGINE-CLI-REFACTORING-PLAN.md` for detailed implementation notes.
 
 ---
 
@@ -677,7 +668,7 @@ See `docs/issues/large-files-refactoring/FAL-AI-CLIENT-REFACTORING-PLAN.md` for 
 | ~~Medium~~ | ~~`use-ai-generation.ts`~~ | ~~Complex hook, testability benefits~~ | ✅ **DONE** |
 | ~~Medium~~ | ~~`ffmpeg-handler.ts`~~ | ~~Electron-specific, export functionality~~ | ✅ **DONE** |
 | ~~Medium~~ | ~~`fal-ai-client.ts`~~ | ~~API client, clear module boundaries~~ | ✅ **DONE** |
-| Medium | `export-engine-cli.ts` | Export logic, FFmpeg integration | Pending |
+| ~~Medium~~ | ~~`export-engine-cli.ts`~~ | ~~Export logic, FFmpeg integration~~ | ✅ **DONE** |
 | Low | `timeline/index.tsx` | UI component, moderate complexity | Pending |
 | Low | `ai-constants.ts` | Configuration only, less urgent | Pending |
 | Low | `export-engine.ts` | Base export class, stable | Pending |
@@ -685,5 +676,5 @@ See `docs/issues/large-files-refactoring/FAL-AI-CLIENT-REFACTORING-PLAN.md` for 
 ---
 
 *Document generated: 2025-12-08*
-*Last updated: 2025-12-10 (ai.tsx, ai-video-client.ts, use-ai-generation.ts, ffmpeg-handler.ts refactoring completed)*
+*Last updated: 2025-12-10 (export-engine-cli.ts refactoring completed - 7/10 files refactored)*
 *Analysis based on QCut codebase structure*

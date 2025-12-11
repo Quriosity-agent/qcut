@@ -191,6 +191,7 @@ export async function cleanupDatabase(page: Page) {
 }
 
 export const test = base.extend<ElectronFixtures>({
+  // biome-ignore lint/correctness/noEmptyPattern: Playwright fixtures require empty destructuring
   electronApp: async ({}, use) => {
     // Launch Electron app
     const electronApp = await electron.launch({

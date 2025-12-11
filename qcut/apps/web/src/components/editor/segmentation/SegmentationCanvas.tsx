@@ -126,6 +126,76 @@ export function SegmentationCanvas() {
 
     let cancelled = false;
 
+    // Helper functions moved inside useEffect to avoid dependency issues
+    const drawPointPrompts = (
+      drawCtx: CanvasRenderingContext2D,
+      points: Sam3PointPrompt[],
+      scale: number
+    ) => {
+      for (const point of points) {
+        const x = point.x * scale;
+        const y = point.y * scale;
+        const color = point.label === 1 ? "#00FF00" : "#FF0000";
+
+        drawCtx.beginPath();
+        drawCtx.arc(x, y, 8, 0, Math.PI * 2);
+        drawCtx.fillStyle = color;
+        drawCtx.fill();
+        drawCtx.strokeStyle = "#FFFFFF";
+        drawCtx.lineWidth = 2;
+        drawCtx.stroke();
+
+        // Draw + or - symbol
+        drawCtx.fillStyle = "#FFFFFF";
+        drawCtx.font = "bold 12px sans-serif";
+        drawCtx.textAlign = "center";
+        drawCtx.textBaseline = "middle";
+        drawCtx.fillText(point.label === 1 ? "+" : "-", x, y);
+      }
+    };
+
+    const drawBoxPrompts = (
+      drawCtx: CanvasRenderingContext2D,
+      boxes: Sam3BoxPrompt[],
+      scale: number
+    ) => {
+      for (const box of boxes) {
+        const x = box.x_min * scale;
+        const y = box.y_min * scale;
+        const width = (box.x_max - box.x_min) * scale;
+        const height = (box.y_max - box.y_min) * scale;
+
+        drawCtx.strokeStyle = "#00CED1";
+        drawCtx.lineWidth = 2;
+        drawCtx.setLineDash([5, 5]);
+        drawCtx.strokeRect(x, y, width, height);
+        drawCtx.setLineDash([]);
+      }
+    };
+
+    const drawBoundingBoxes = (
+      drawCtx: CanvasRenderingContext2D,
+      objs: typeof objects,
+      width: number,
+      height: number
+    ) => {
+      for (const obj of objs) {
+        if (!obj.boundingBox) continue;
+
+        const [cx, cy, w, h] = obj.boundingBox;
+        const color = OBJECT_COLORS[obj.colorIndex];
+
+        const x = (cx - w / 2) * width;
+        const y = (cy - h / 2) * height;
+        const boxWidth = w * width;
+        const boxHeight = h * height;
+
+        drawCtx.strokeStyle = color.hex;
+        drawCtx.lineWidth = 2;
+        drawCtx.strokeRect(x, y, boxWidth, boxHeight);
+      }
+    };
+
     const draw = async () => {
       try {
         const baseImg = await loadImage(sourceImageUrl);
@@ -221,75 +291,6 @@ export function SegmentationCanvas() {
     setImageDimensions,
     maskBlobs,
   ]);
-
-  const drawPointPrompts = (
-    ctx: CanvasRenderingContext2D,
-    points: Sam3PointPrompt[],
-    scale: number
-  ) => {
-    points.forEach((point) => {
-      const x = point.x * scale;
-      const y = point.y * scale;
-      const color = point.label === 1 ? "#00FF00" : "#FF0000";
-
-      ctx.beginPath();
-      ctx.arc(x, y, 8, 0, Math.PI * 2);
-      ctx.fillStyle = color;
-      ctx.fill();
-      ctx.strokeStyle = "#FFFFFF";
-      ctx.lineWidth = 2;
-      ctx.stroke();
-
-      // Draw + or - symbol
-      ctx.fillStyle = "#FFFFFF";
-      ctx.font = "bold 12px sans-serif";
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      ctx.fillText(point.label === 1 ? "+" : "-", x, y);
-    });
-  };
-
-  const drawBoxPrompts = (
-    ctx: CanvasRenderingContext2D,
-    boxes: Sam3BoxPrompt[],
-    scale: number
-  ) => {
-    boxes.forEach((box) => {
-      const x = box.x_min * scale;
-      const y = box.y_min * scale;
-      const width = (box.x_max - box.x_min) * scale;
-      const height = (box.y_max - box.y_min) * scale;
-
-      ctx.strokeStyle = "#00CED1";
-      ctx.lineWidth = 2;
-      ctx.setLineDash([5, 5]);
-      ctx.strokeRect(x, y, width, height);
-      ctx.setLineDash([]);
-    });
-  };
-
-  const drawBoundingBoxes = (
-    ctx: CanvasRenderingContext2D,
-    objs: typeof objects,
-    width: number,
-    height: number
-  ) => {
-    objs.forEach((obj) => {
-      if (!obj.boundingBox) return;
-
-      const [cx, cy, w, h] = obj.boundingBox;
-      const color = OBJECT_COLORS[obj.colorIndex];
-
-      const x = (cx - w / 2) * width;
-      const y = (cy - h / 2) * height;
-      const boxWidth = w * width;
-      const boxHeight = h * height;
-
-      ctx.strokeStyle = color.hex;
-      ctx.lineWidth = 2;
-      ctx.strokeRect(x, y, boxWidth, boxHeight);
-    });
-  };
 
   const getCanvasCoordinates = useCallback(
     (e: React.MouseEvent<HTMLCanvasElement>) => {

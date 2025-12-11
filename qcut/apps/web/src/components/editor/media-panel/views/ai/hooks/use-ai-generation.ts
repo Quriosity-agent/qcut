@@ -1460,8 +1460,6 @@ export function useAIGeneration(props: UseAIGenerationProps) {
     klingEnhancePrompt,
     klingNegativePrompt,
     kling26Duration,
-    kling26CfgScale,
-    kling26AspectRatio,
     kling26GenerateAudio,
     kling26NegativePrompt,
     wan25Duration,

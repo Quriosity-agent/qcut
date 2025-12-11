@@ -5,18 +5,17 @@
  * Each handler sanitizes and validates parameters for its respective model family.
  */
 
+// Direct exports from sub-modules (using export from pattern)
+export { convertV3Parameters } from "./v3-params";
+export { convertV4Parameters, V4_VALID_IMAGE_PRESETS } from "./v4-params";
+export { convertNanoBananaParameters } from "./nano-banana-params";
+export { convertFluxParameters } from "./flux-params";
+
+// Import for local use in convertParametersForModel
 import { convertV3Parameters } from "./v3-params";
-import { convertV4Parameters, V4_VALID_IMAGE_PRESETS } from "./v4-params";
+import { convertV4Parameters } from "./v4-params";
 import { convertNanoBananaParameters } from "./nano-banana-params";
 import { convertFluxParameters } from "./flux-params";
-
-export {
-  convertV3Parameters,
-  convertV4Parameters,
-  V4_VALID_IMAGE_PRESETS,
-  convertNanoBananaParameters,
-  convertFluxParameters,
-};
 
 /**
  * Model version types for routing.
@@ -69,8 +68,8 @@ export function convertParametersForModel(
       return convertNanoBananaParameters(params);
     case "flux":
       return convertFluxParameters(params);
-    case "v3":
     default:
+      // v3 is the default for backward compatibility
       return convertV3Parameters(params);
   }
 }
