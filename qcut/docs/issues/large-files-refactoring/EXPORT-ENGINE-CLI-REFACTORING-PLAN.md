@@ -519,6 +519,9 @@ export function buildTextOverlayFilters(
   }
 
   // Sort by track order, then element order (for proper layering)
+  // NOTE: Text elements use track/element index for ordering (not zIndex).
+  // This matches the original implementation in export-engine-cli.ts.
+  // Lower track index = rendered first (background layer).
   textElementsWithOrder.sort((a, b) => {
     if (a.trackIndex !== b.trackIndex) return a.trackIndex - b.trackIndex;
     return a.elementIndex - b.elementIndex;
