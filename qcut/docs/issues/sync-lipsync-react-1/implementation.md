@@ -4,7 +4,7 @@
 
 Integrate FAL.ai's Sync Lipsync React-1 API for emotion-aware lip-syncing with video and audio inputs.
 
-**API Endpoint:** `https://fal.run/fal-ai/sync-lipsync/react-1`
+**API Endpoint:** `fal-ai/sync-lipsync/react-1`
 
 ## API Specification
 
@@ -44,7 +44,9 @@ interface React1Output {
 ### Constraints
 - Video and audio inputs must be **15 seconds or shorter**
 - Requires pre-uploaded URLs (FAL storage or public URLs)
-- 5 credits per request
+- 5 credits per request (~$0.10)
+
+---
 
 ## Implementation Plan
 
@@ -52,9 +54,16 @@ interface React1Output {
 
 **File:** `apps/web/src/components/editor/media-panel/views/ai/types/ai-types.ts`
 
+Following the existing pattern used for `Sora2ModelType`, `SyncLipsyncMode`, etc.:
+
 ```typescript
+// ============================================
+// Sync Lipsync React-1 Types
+// ============================================
+
 /**
  * Emotion options for Sync Lipsync React-1
+ * Controls the emotional expression applied during lip-sync
  */
 export type SyncLipsyncEmotion =
   | "happy"
@@ -66,21 +75,15 @@ export type SyncLipsyncEmotion =
 
 /**
  * Model mode for Sync Lipsync React-1
- * - lips: Only modify lip region
- * - face: Modify full face (default)
- * - head: Include head movement
+ * Controls which region is modified during generation
  */
 export type SyncLipsyncModelMode = "lips" | "face" | "head";
 
 /**
- * Sync mode for audio-video duration handling
- * - cut_off: Cut when shorter ends
- * - loop: Loop shorter to match longer
- * - bounce: Bounce shorter back and forth
- * - silence: Pad with silence
- * - remap: Retime to match
+ * Sync mode for audio-video duration mismatch handling
+ * Reuses same concept as base sync-lipsync API
  */
-export type SyncLipsyncMode =
+export type SyncLipsyncSyncMode =
   | "cut_off"
   | "loop"
   | "bounce"
@@ -88,33 +91,82 @@ export type SyncLipsyncMode =
   | "remap";
 
 /**
- * Request parameters for Sync Lipsync React-1
+ * Request parameters for Sync Lipsync React-1 generation
  */
 export interface SyncLipsyncReact1Request {
   model: string;
-  video_url: string;
-  audio_url: string;
+  /** Pre-uploaded video URL (FAL storage) */
+  videoUrl: string;
+  /** Pre-uploaded audio URL (FAL storage) */
+  audioUrl: string;
+  /** Required emotion for expression control */
   emotion: SyncLipsyncEmotion;
-  model_mode?: SyncLipsyncModelMode;
-  lipsync_mode?: SyncLipsyncMode;
+  /** Optional model mode (default: face) */
+  modelMode?: SyncLipsyncModelMode;
+  /** Optional sync mode (default: bounce) */
+  lipsyncMode?: SyncLipsyncSyncMode;
+  /** Optional temperature 0-1 (default: 0.5) */
   temperature?: number;
 }
 ```
+
+**Extend `AvatarVideoRequest`** (existing interface):
+
+```typescript
+export interface AvatarVideoRequest {
+  // ... existing fields ...
+
+  // Sync Lipsync React-1 specific fields
+  /** Pre-uploaded video URL for lipsync models */
+  videoUrl?: string;
+  /** Emotion for Sync Lipsync React-1 */
+  emotion?: SyncLipsyncEmotion;
+  /** Model mode for Sync Lipsync React-1 */
+  modelMode?: SyncLipsyncModelMode;
+  /** Lipsync mode for Sync Lipsync React-1 */
+  lipsyncMode?: SyncLipsyncSyncMode;
+  /** Temperature for Sync Lipsync React-1 (0-1) */
+  temperature?: number;
+}
+```
+
+**Extend `UseAIGenerationProps`** (existing interface):
+
+```typescript
+export interface UseAIGenerationProps {
+  // ... existing fields ...
+
+  // Sync Lipsync React-1 options
+  /** Emotion for Sync Lipsync React-1 */
+  syncLipsyncEmotion?: SyncLipsyncEmotion;
+  /** Model mode: lips, face, or head */
+  syncLipsyncModelMode?: SyncLipsyncModelMode;
+  /** Sync mode: cut_off, loop, bounce, silence, remap */
+  syncLipsyncLipsyncMode?: SyncLipsyncSyncMode;
+  /** Temperature 0-1 for expressiveness */
+  syncLipsyncTemperature?: number;
+  /** Video duration for validation */
+  videoDuration?: number | null;
+}
+```
+
+---
 
 ### 2. Add Model Configuration
 
 **File:** `apps/web/src/components/editor/media-panel/views/ai/constants/ai-constants.ts`
 
-Add to `AI_MODELS` array:
+Add to `AI_MODELS` array following the Kling Avatar v2 pattern (which also requires pre-uploaded URLs):
 
 ```typescript
+// Sync Lipsync React-1 - Emotion-aware lip-sync
 {
   id: "sync_lipsync_react1",
   name: "Sync Lipsync React-1",
   description: "Emotion-aware lip-sync: sync video to audio with expressions (happy, sad, angry, etc.)",
   price: "0.10", // 5 credits per request
   resolution: "Preserves source",
-  max_duration: 15, // 15 second limit
+  max_duration: 15, // 15 second limit for both inputs
   category: "avatar",
   requiredInputs: ["sourceVideo", "audioFile"],
   endpoints: {
@@ -126,206 +178,178 @@ Add to `AI_MODELS` array:
     lipsync_mode: "bounce",
     temperature: 0.5,
   },
+  // Model-specific supported values
   supportedEmotions: ["happy", "angry", "sad", "neutral", "disgusted", "surprised"],
   supportedModelModes: ["lips", "face", "head"],
   supportedLipsyncModes: ["cut_off", "loop", "bounce", "silence", "remap"],
 },
 ```
 
+**Note:** Using `category: "avatar"` and `requiredInputs: ["sourceVideo", "audioFile"]` to reuse existing avatar tab UI patterns.
+
+---
+
 ### 3. Add Error Messages
 
 **File:** `apps/web/src/components/editor/media-panel/views/ai/constants/ai-constants.ts`
 
-Add to `ERROR_MESSAGES`:
+Add to `ERROR_MESSAGES` following existing naming conventions:
 
 ```typescript
 // Sync Lipsync React-1 errors
-SYNC_LIPSYNC_MISSING_VIDEO: "Video is required for Sync Lipsync",
-SYNC_LIPSYNC_MISSING_AUDIO: "Audio is required for Sync Lipsync",
-SYNC_LIPSYNC_VIDEO_TOO_LONG: "Video must be 15 seconds or shorter for Sync Lipsync",
-SYNC_LIPSYNC_AUDIO_TOO_LONG: "Audio must be 15 seconds or shorter for Sync Lipsync",
-SYNC_LIPSYNC_MISSING_EMOTION: "Emotion is required for Sync Lipsync React-1",
-SYNC_LIPSYNC_INVALID_TEMPERATURE: "Temperature must be between 0 and 1",
+SYNC_LIPSYNC_REACT1_MISSING_VIDEO: "Video is required for Sync Lipsync React-1",
+SYNC_LIPSYNC_REACT1_MISSING_AUDIO: "Audio is required for Sync Lipsync React-1",
+SYNC_LIPSYNC_REACT1_VIDEO_TOO_LONG: "Video must be 15 seconds or shorter for Sync Lipsync React-1",
+SYNC_LIPSYNC_REACT1_AUDIO_TOO_LONG: "Audio must be 15 seconds or shorter for Sync Lipsync React-1",
+SYNC_LIPSYNC_REACT1_MISSING_EMOTION: "Emotion is required for Sync Lipsync React-1",
+SYNC_LIPSYNC_REACT1_INVALID_TEMPERATURE: "Temperature must be between 0 and 1 for Sync Lipsync React-1",
 ```
 
-### 4. Add Generator Function
+---
 
-**File:** `apps/web/src/lib/ai-video/generators/avatar.ts`
-
-Add new generator for Sync Lipsync React-1:
-
-```typescript
-/**
- * Generate lip-synced video using Sync Lipsync React-1
- *
- * Syncs video to audio with emotion-aware facial expressions.
- * Both inputs must be 15 seconds or shorter.
- *
- * @param request - Request with video URL, audio URL, and emotion
- * @returns VideoGenerationResponse with synced video
- */
-export async function generateSyncLipsyncReact1(
-  request: {
-    videoUrl: string;
-    audioUrl: string;
-    emotion: SyncLipsyncEmotion;
-    modelMode?: SyncLipsyncModelMode;
-    lipsyncMode?: SyncLipsyncMode;
-    temperature?: number;
-  }
-): Promise<VideoGenerationResponse> {
-  return withErrorHandling(
-    "Generate sync lipsync react-1",
-    { operation: "generateSyncLipsyncReact1" },
-    async () => {
-      const falApiKey = getFalApiKey();
-      if (!falApiKey) {
-        throw new Error("FAL API key not configured");
-      }
-
-      const endpoint = "fal-ai/sync-lipsync/react-1";
-      const payload = {
-        video_url: request.videoUrl,
-        audio_url: request.audioUrl,
-        emotion: request.emotion,
-        model_mode: request.modelMode ?? "face",
-        lipsync_mode: request.lipsyncMode ?? "bounce",
-        temperature: request.temperature ?? 0.5,
-      };
-
-      const jobId = generateJobId();
-
-      // 6 minute timeout for lipsync generation
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 360_000);
-
-      try {
-        const response = await makeFalRequest(endpoint, payload, {
-          signal: controller.signal,
-        });
-
-        clearTimeout(timeoutId);
-
-        if (!response.ok) {
-          await handleFalResponse(response, "Generate sync lipsync react-1");
-        }
-
-        const result = await response.json();
-
-        return {
-          job_id: jobId,
-          status: "completed",
-          message: "Sync lipsync video generated successfully",
-          estimated_time: 0,
-          video_url: result.video?.url,
-          video_data: result,
-        };
-      } catch (error) {
-        clearTimeout(timeoutId);
-        if (error instanceof Error && error.name === "AbortError") {
-          throw new Error(
-            "Sync lipsync generation timed out (6 minutes). Please try again."
-          );
-        }
-        throw error;
-      }
-    }
-  );
-}
-```
-
-### 5. Update AvatarVideoRequest Type
-
-**File:** `apps/web/src/components/editor/media-panel/views/ai/types/ai-types.ts`
-
-Extend `AvatarVideoRequest`:
-
-```typescript
-export interface AvatarVideoRequest {
-  model: string;
-  characterImage: File;
-  audioFile?: File;
-  sourceVideo?: File;
-  prompt?: string;
-  resolution?: string;
-  duration?: number;
-  audioDuration?: number;
-  characterImageUrl?: string;
-  audioUrl?: string;
-  // Sync Lipsync React-1 specific
-  videoUrl?: string;
-  emotion?: SyncLipsyncEmotion;
-  modelMode?: SyncLipsyncModelMode;
-  lipsyncMode?: SyncLipsyncMode;
-  temperature?: number;
-}
-```
-
-### 6. Update UseAIGenerationProps
-
-**File:** `apps/web/src/components/editor/media-panel/views/ai/types/ai-types.ts`
-
-Add to `UseAIGenerationProps`:
-
-```typescript
-// Sync Lipsync React-1 options
-syncLipsyncEmotion?: SyncLipsyncEmotion;
-syncLipsyncModelMode?: SyncLipsyncModelMode;
-syncLipsyncLipsyncMode?: SyncLipsyncMode;
-syncLipsyncTemperature?: number;
-```
-
-### 7. Add Validation
+### 4. Add Validation Functions
 
 **File:** `apps/web/src/lib/ai-video/validation/validators.ts`
 
+Following the pattern of `validateKlingAvatarV2Audio`:
+
 ```typescript
+// ============================================
+// Sync Lipsync React-1 Validators
+// ============================================
+
+/** Max duration in seconds for Sync Lipsync React-1 inputs */
+export const SYNC_LIPSYNC_REACT1_MAX_DURATION = 15;
+
+/** Valid emotions for Sync Lipsync React-1 */
+export const SYNC_LIPSYNC_REACT1_EMOTIONS = [
+  "happy",
+  "angry",
+  "sad",
+  "neutral",
+  "disgusted",
+  "surprised",
+] as const;
+
+/** Valid model modes for Sync Lipsync React-1 */
+export const SYNC_LIPSYNC_REACT1_MODEL_MODES = ["lips", "face", "head"] as const;
+
+/** Valid lipsync modes for Sync Lipsync React-1 */
+export const SYNC_LIPSYNC_REACT1_SYNC_MODES = [
+  "cut_off",
+  "loop",
+  "bounce",
+  "silence",
+  "remap",
+] as const;
+
 /**
- * Validate Sync Lipsync React-1 inputs
+ * Validates video duration for Sync Lipsync React-1
+ *
+ * @param duration - Video duration in seconds
+ * @throws Error if duration exceeds 15 seconds
  */
-export function validateSyncLipsyncReact1(
-  videoFile: File | null,
-  audioFile: File | null,
-  videoDuration: number | null,
-  audioDuration: number | null,
-  emotion: SyncLipsyncEmotion | null
+export function validateSyncLipsyncReact1VideoDuration(
+  duration: number | null | undefined
 ): void {
-  if (!videoFile) {
-    throw new Error(ERROR_MESSAGES.SYNC_LIPSYNC_MISSING_VIDEO);
+  if (duration !== null && duration !== undefined && duration > SYNC_LIPSYNC_REACT1_MAX_DURATION) {
+    throw new Error(ERROR_MESSAGES.SYNC_LIPSYNC_REACT1_VIDEO_TOO_LONG);
   }
-  if (!audioFile) {
-    throw new Error(ERROR_MESSAGES.SYNC_LIPSYNC_MISSING_AUDIO);
+}
+
+/**
+ * Validates audio duration for Sync Lipsync React-1
+ *
+ * @param duration - Audio duration in seconds
+ * @throws Error if duration exceeds 15 seconds
+ */
+export function validateSyncLipsyncReact1AudioDuration(
+  duration: number | null | undefined
+): void {
+  if (duration !== null && duration !== undefined && duration > SYNC_LIPSYNC_REACT1_MAX_DURATION) {
+    throw new Error(ERROR_MESSAGES.SYNC_LIPSYNC_REACT1_AUDIO_TOO_LONG);
   }
-  if (videoDuration && videoDuration > 15) {
-    throw new Error(ERROR_MESSAGES.SYNC_LIPSYNC_VIDEO_TOO_LONG);
-  }
-  if (audioDuration && audioDuration > 15) {
-    throw new Error(ERROR_MESSAGES.SYNC_LIPSYNC_AUDIO_TOO_LONG);
-  }
+}
+
+/**
+ * Validates emotion parameter for Sync Lipsync React-1
+ *
+ * @param emotion - Emotion string to validate
+ * @throws Error if emotion is missing or invalid
+ */
+export function validateSyncLipsyncReact1Emotion(
+  emotion: string | null | undefined
+): void {
   if (!emotion) {
-    throw new Error(ERROR_MESSAGES.SYNC_LIPSYNC_MISSING_EMOTION);
+    throw new Error(ERROR_MESSAGES.SYNC_LIPSYNC_REACT1_MISSING_EMOTION);
   }
+  if (!SYNC_LIPSYNC_REACT1_EMOTIONS.includes(emotion as typeof SYNC_LIPSYNC_REACT1_EMOTIONS[number])) {
+    throw new Error(`Invalid emotion: ${emotion}. Must be one of: ${SYNC_LIPSYNC_REACT1_EMOTIONS.join(", ")}`);
+  }
+}
+
+/**
+ * Validates temperature parameter for Sync Lipsync React-1
+ *
+ * @param temperature - Temperature value (0-1)
+ * @throws Error if temperature is outside valid range
+ */
+export function validateSyncLipsyncReact1Temperature(
+  temperature: number | undefined
+): void {
+  if (temperature !== undefined && (temperature < 0 || temperature > 1)) {
+    throw new Error(ERROR_MESSAGES.SYNC_LIPSYNC_REACT1_INVALID_TEMPERATURE);
+  }
+}
+
+/**
+ * Validates all Sync Lipsync React-1 inputs
+ *
+ * @param params - Validation parameters
+ * @throws Error if any validation fails
+ */
+export function validateSyncLipsyncReact1Inputs(params: {
+  videoUrl?: string;
+  audioUrl?: string;
+  videoDuration?: number | null;
+  audioDuration?: number | null;
+  emotion?: string | null;
+  temperature?: number;
+}): void {
+  if (!params.videoUrl) {
+    throw new Error(ERROR_MESSAGES.SYNC_LIPSYNC_REACT1_MISSING_VIDEO);
+  }
+  if (!params.audioUrl) {
+    throw new Error(ERROR_MESSAGES.SYNC_LIPSYNC_REACT1_MISSING_AUDIO);
+  }
+
+  validateSyncLipsyncReact1VideoDuration(params.videoDuration);
+  validateSyncLipsyncReact1AudioDuration(params.audioDuration);
+  validateSyncLipsyncReact1Emotion(params.emotion);
+  validateSyncLipsyncReact1Temperature(params.temperature);
 }
 ```
 
-### 8. Update Avatar Generator Handler
+---
+
+### 5. Add Generator Case to Avatar Generator
 
 **File:** `apps/web/src/lib/ai-video/generators/avatar.ts`
 
-Add case in `generateAvatarVideo`:
+Add case in `generateAvatarVideo` following the Kling Avatar V2 pattern (both require pre-uploaded URLs):
 
 ```typescript
 } else if (request.model === "sync_lipsync_react1") {
-  // Sync Lipsync React-1 requires pre-uploaded URLs
-  if (!request.videoUrl) {
-    throw new Error("Sync Lipsync React-1 requires pre-uploaded video URL");
-  }
-  if (!request.audioUrl) {
-    throw new Error("Sync Lipsync React-1 requires pre-uploaded audio URL");
-  }
-  if (!request.emotion) {
-    throw new Error("Sync Lipsync React-1 requires emotion parameter");
-  }
+  // Sync Lipsync React-1 requires pre-uploaded URLs (like Kling Avatar V2)
+  // Validate inputs
+  validateSyncLipsyncReact1Inputs({
+    videoUrl: request.videoUrl,
+    audioUrl: request.audioUrl,
+    videoDuration: request.videoDuration,
+    audioDuration: request.audioDuration,
+    emotion: request.emotion,
+    temperature: request.temperature,
+  });
 
   endpoint = modelConfig.endpoints.text_to_video || "";
   if (!endpoint) {
@@ -336,90 +360,144 @@ Add case in `generateAvatarVideo`:
     video_url: request.videoUrl,
     audio_url: request.audioUrl,
     emotion: request.emotion,
-    model_mode: request.modelMode ?? "face",
-    lipsync_mode: request.lipsyncMode ?? "bounce",
-    temperature: request.temperature ?? 0.5,
+    model_mode: request.modelMode ?? modelConfig.default_params?.model_mode ?? "face",
+    lipsync_mode: request.lipsyncMode ?? modelConfig.default_params?.lipsync_mode ?? "bounce",
+    temperature: request.temperature ?? modelConfig.default_params?.temperature ?? 0.5,
   };
 ```
+
+**Required imports** (add to top of file):
+
+```typescript
+import { validateSyncLipsyncReact1Inputs } from "../validation/validators";
+```
+
+---
+
+### 6. Export New Validators
+
+**File:** `apps/web/src/lib/ai-video/index.ts`
+
+Add to validation exports:
+
+```typescript
+export {
+  // ... existing exports ...
+
+  // Sync Lipsync React-1 validators
+  validateSyncLipsyncReact1Inputs,
+  validateSyncLipsyncReact1VideoDuration,
+  validateSyncLipsyncReact1AudioDuration,
+  validateSyncLipsyncReact1Emotion,
+  validateSyncLipsyncReact1Temperature,
+  SYNC_LIPSYNC_REACT1_MAX_DURATION,
+  SYNC_LIPSYNC_REACT1_EMOTIONS,
+  SYNC_LIPSYNC_REACT1_MODEL_MODES,
+  SYNC_LIPSYNC_REACT1_SYNC_MODES,
+} from "./validation/validators";
+```
+
+---
+
+### 7. Extend AIModel Interface (if needed)
+
+**File:** `apps/web/src/components/editor/media-panel/views/ai/types/ai-types.ts`
+
+If supporting model-specific dropdowns, extend `AIModel`:
+
+```typescript
+export interface AIModel {
+  // ... existing fields ...
+
+  /** Supported emotions for lipsync models */
+  supportedEmotions?: string[];
+  /** Supported model modes for lipsync models */
+  supportedModelModes?: string[];
+  /** Supported lipsync modes for lipsync models */
+  supportedLipsyncModes?: string[];
+}
+```
+
+---
+
+## Code Reuse Summary
+
+| Component | Reused Pattern | Source |
+|-----------|----------------|--------|
+| Type definitions | Discriminated unions | `Sora2ModelType`, `SyncLipsyncMode` |
+| Model config | `AI_MODELS` array structure | `kling_avatar_v2_standard` |
+| Error messages | `ERROR_MESSAGES` constants | Existing error naming |
+| Validators | Function signature pattern | `validateKlingAvatarV2Audio` |
+| Generator case | Pre-uploaded URL pattern | Kling Avatar V2 case |
+| File upload | `uploadVideoToFal`, `uploadAudioToFal` | `core/fal-upload.ts` |
+| Request handling | `makeFalRequest`, `handleFalResponse` | `core/fal-request.ts` |
+| Error handling | `withErrorHandling` wrapper | `base-generator.ts` |
+
+---
 
 ## UI Components Needed
 
 ### Emotion Selector
 
-Add a dropdown/radio group for emotion selection:
-- happy
-- angry
-- sad
-- neutral (default)
-- disgusted
-- surprised
+Dropdown with 6 emotion options:
+- `neutral` (default)
+- `happy`
+- `sad`
+- `angry`
+- `disgusted`
+- `surprised`
 
-### Model Mode Selector
+### Model Mode Selector (optional advanced setting)
 
-Add a dropdown for model mode:
-- lips - Only lip region
-- face - Full face (default)
-- head - Include head movement
+- `face` (default) - Full face modification
+- `lips` - Only lip region
+- `head` - Include head movement
 
-### Lipsync Mode Selector
+### Lipsync Mode Selector (optional advanced setting)
 
-Add a dropdown for sync mode:
-- bounce (default)
-- cut_off
-- loop
-- silence
-- remap
+- `bounce` (default) - Bounce shorter track
+- `cut_off` - Cut when shorter ends
+- `loop` - Loop shorter track
+- `silence` - Pad with silence
+- `remap` - Retime to match
 
-### Temperature Slider
+### Temperature Slider (optional advanced setting)
 
-Add a slider for temperature (0-1):
+- Range: 0 to 1
 - Default: 0.5
-- Lower = more conservative
-- Higher = more expressive
+- Step: 0.1
+
+---
 
 ## Testing Checklist
 
-- [ ] Model appears in Avatar tab
-- [ ] Video upload works (max 15s validation)
-- [ ] Audio upload works (max 15s validation)
+- [ ] Model appears in Avatar tab with correct metadata
+- [ ] Video upload works and validates 15s limit
+- [ ] Audio upload works and validates 15s limit
+- [ ] Files upload to FAL storage via `uploadVideoToFal`/`uploadAudioToFal`
 - [ ] Emotion selector displays all 6 options
-- [ ] Model mode selector works
-- [ ] Lipsync mode selector works
-- [ ] Temperature slider works (0-1 range)
-- [ ] API call succeeds with valid inputs
-- [ ] Error messages display for invalid inputs
-- [ ] Generated video plays correctly
+- [ ] Generation succeeds with required inputs only
+- [ ] Optional parameters (model_mode, lipsync_mode, temperature) work
+- [ ] Error messages display for validation failures
+- [ ] Generated video URL extracts correctly from response
+- [ ] Video plays in preview panel
 - [ ] Video can be added to timeline
 
-## Code Example
+---
 
-```javascript
-import { fal } from "@fal-ai/client";
+## Files to Modify
 
-const result = await fal.subscribe("fal-ai/sync-lipsync/react-1", {
-  input: {
-    video_url: "https://storage.googleapis.com/falserverless/example_inputs/react_1/input.mp4",
-    audio_url: "https://storage.googleapis.com/falserverless/example_inputs/react_1/input.mp3",
-    emotion: "neutral",
-    model_mode: "face",
-    lipsync_mode: "bounce",
-    temperature: 0.5
-  }
-});
+| File | Changes |
+|------|---------|
+| `types/ai-types.ts` | Add types, extend `AvatarVideoRequest`, extend `UseAIGenerationProps` |
+| `constants/ai-constants.ts` | Add model config, add error messages |
+| `validation/validators.ts` | Add validation functions and constants |
+| `generators/avatar.ts` | Add model case, import validators |
+| `index.ts` | Export new validators |
 
-console.log(result.data);
-// Output: { video: { url: "...", width: 1920, height: 1080, ... } }
-```
+---
 
 ## Pricing
 
 - 5 credits per request (~$0.10)
 - Input constraints: 15 seconds max for both video and audio
-
-## Related Files
-
-- `apps/web/src/lib/ai-video/generators/avatar.ts` - Avatar generator
-- `apps/web/src/lib/ai-video/core/fal-request.ts` - FAL API utilities
-- `apps/web/src/lib/ai-video/core/fal-upload.ts` - File upload utilities
-- `apps/web/src/components/editor/media-panel/views/ai/types/ai-types.ts` - Type definitions
-- `apps/web/src/components/editor/media-panel/views/ai/constants/ai-constants.ts` - Model configs
