@@ -584,32 +584,332 @@ Added exports to `apps/web/src/lib/ai-video/index.ts` at lines 66-75:
 
 ### Remaining Work (UI Layer)
 
-The backend/generator layer is complete. The following UI work remains:
+The backend/generator layer is complete. The following UI work remains based on existing codebase patterns.
 
-#### 1. Model Handler (`model-handlers.ts`)
+---
 
-Add routing for `sync_lipsync_react1` to:
-- Upload video via `uploadVideoToFal`
-- Upload audio via `uploadAudioToFal`
-- Call `generateAvatarVideo` with the uploaded URLs and UI parameters
+#### 1. Model Handler (`hooks/generation/model-handlers.ts`)
 
-#### 2. Avatar Tab UI Controls
+**Pattern Reference:** `routeAvatarHandler` function with model-specific switch cases.
 
-When `sync_lipsync_react1` model is selected, display these controls:
+**Add new case in `routeAvatarHandler`:**
+
+```typescript
+case "sync_lipsync_react1": {
+  if (!settings.sourceVideo) {
+    throw new Error("Source video is required");
+  }
+  if (!settings.audioFile) {
+    throw new Error("Audio file is required");
+  }
+
+  // Upload video and audio to FAL storage
+  const videoUrl = await uploadVideoToFal(settings.sourceVideo, falApiKey);
+  const audioUrl = await uploadAudioToFal(settings.audioFile, falApiKey);
+
+  return generateAvatarVideo({
+    model: selectedModel,
+    videoUrl,
+    audioUrl,
+    videoDuration: settings.videoDuration,
+    audioDuration: settings.audioDuration,
+    emotion: settings.syncLipsyncEmotion,
+    modelMode: settings.syncLipsyncModelMode,
+    lipsyncMode: settings.syncLipsyncLipsyncMode,
+    temperature: settings.syncLipsyncTemperature,
+  });
+}
+```
+
+**Extend `AvatarSettings` interface:**
+
+```typescript
+interface AvatarSettings {
+  // ... existing fields ...
+
+  // Sync Lipsync React-1 specific
+  syncLipsyncEmotion?: SyncLipsyncEmotion;
+  syncLipsyncModelMode?: SyncLipsyncModelMode;
+  syncLipsyncLipsyncMode?: SyncLipsyncSyncMode;
+  syncLipsyncTemperature?: number;
+  videoDuration?: number | null;
+}
+```
+
+---
+
+#### 2. Avatar Tab State Hook (`hooks/use-ai-avatar-tab-state.ts`)
+
+**Pattern Reference:** Hook returns `{ state, setters, helpers }` structure with `useFileWithPreview` and `useAudioFileWithDuration` hooks.
+
+**Add Sync Lipsync React-1 state:**
+
+```typescript
+// Inside useAIAvatarTabState hook
+
+// Sync Lipsync React-1 state
+const [syncLipsyncEmotion, setSyncLipsyncEmotion] =
+  useState<SyncLipsyncEmotion>("neutral");
+const [syncLipsyncModelMode, setSyncLipsyncModelMode] =
+  useState<SyncLipsyncModelMode>("face");
+const [syncLipsyncLipsyncMode, setSyncLipsyncLipsyncMode] =
+  useState<SyncLipsyncSyncMode>("bounce");
+const [syncLipsyncTemperature, setSyncLipsyncTemperature] =
+  useState<number>(0.5);
+
+// Use existing hook for video file with duration
+const {
+  file: sourceVideoFile,
+  setFile: setSourceVideoFile,
+  duration: videoDuration,
+  setDuration: setVideoDuration,
+  handleFileChange: handleSourceVideoChange,
+} = useVideoFileWithDuration(); // or similar existing pattern
+
+return {
+  state: {
+    // ... existing state ...
+    syncLipsyncEmotion,
+    syncLipsyncModelMode,
+    syncLipsyncLipsyncMode,
+    syncLipsyncTemperature,
+    sourceVideoFile,
+    videoDuration,
+  },
+  setters: {
+    // ... existing setters ...
+    setSyncLipsyncEmotion,
+    setSyncLipsyncModelMode,
+    setSyncLipsyncLipsyncMode,
+    setSyncLipsyncTemperature,
+    setSourceVideoFile,
+    setVideoDuration,
+  },
+  helpers: {
+    // ... existing helpers ...
+    handleSourceVideoChange,
+  },
+};
+```
+
+**Type definitions for state/setters:**
+
+```typescript
+interface AvatarTabState {
+  // ... existing ...
+  syncLipsyncEmotion: SyncLipsyncEmotion;
+  syncLipsyncModelMode: SyncLipsyncModelMode;
+  syncLipsyncLipsyncMode: SyncLipsyncSyncMode;
+  syncLipsyncTemperature: number;
+  sourceVideoFile: File | null;
+  videoDuration: number | null;
+}
+
+interface AvatarTabSetters {
+  // ... existing ...
+  setSyncLipsyncEmotion: (value: SyncLipsyncEmotion) => void;
+  setSyncLipsyncModelMode: (value: SyncLipsyncModelMode) => void;
+  setSyncLipsyncLipsyncMode: (value: SyncLipsyncSyncMode) => void;
+  setSyncLipsyncTemperature: (value: number) => void;
+  setSourceVideoFile: (file: File | null) => void;
+  setVideoDuration: (duration: number | null) => void;
+}
+```
+
+---
+
+#### 3. Avatar Tab UI (`tabs/ai-avatar-tab.tsx`)
+
+**Pattern Reference:** Conditional rendering based on `selectedModel` with collapsible "Additional Settings" section.
+
+**Add model-specific UI section:**
+
+```tsx
+{/* Sync Lipsync React-1 Options */}
+{selectedModel === "sync_lipsync_react1" && (
+  <>
+    {/* Video Upload (required) */}
+    <FileUpload
+      label="Source Video"
+      accept="video/*"
+      file={state.sourceVideoFile}
+      onFileChange={helpers.handleSourceVideoChange}
+      maxDuration={15}
+      required
+    />
+
+    {/* Audio Upload (required) - uses existing audioFile pattern */}
+    <FileUpload
+      label="Audio File"
+      accept="audio/*"
+      file={state.audioFile}
+      onFileChange={helpers.handleAudioFileChange}
+      maxDuration={15}
+      required
+    />
+
+    {/* Emotion (required) */}
+    <div className="space-y-2">
+      <Label>
+        Emotion<span className="text-red-500">*</span>
+        <Tooltip>
+          <TooltipTrigger>
+            <InfoIcon className="h-4 w-4 ml-1" />
+          </TooltipTrigger>
+          <TooltipContent>
+            Controls the emotional expression applied during lip-sync
+          </TooltipContent>
+        </Tooltip>
+      </Label>
+      <Select
+        value={state.syncLipsyncEmotion}
+        onValueChange={setters.setSyncLipsyncEmotion}
+      >
+        <SelectTrigger>
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="neutral">neutral</SelectItem>
+          <SelectItem value="happy">happy</SelectItem>
+          <SelectItem value="sad">sad</SelectItem>
+          <SelectItem value="angry">angry</SelectItem>
+          <SelectItem value="disgusted">disgusted</SelectItem>
+          <SelectItem value="surprised">surprised</SelectItem>
+        </SelectContent>
+      </Select>
+    </div>
+
+    {/* Additional Settings (collapsible) */}
+    <Collapsible>
+      <CollapsibleTrigger className="flex items-center justify-between w-full">
+        <span>Additional Settings</span>
+        <span className="text-muted-foreground text-sm">
+          {isAdditionalSettingsOpen ? "Less" : "More"}
+        </span>
+      </CollapsibleTrigger>
+      <CollapsibleContent className="space-y-4 pt-4">
+        {/* Model Mode */}
+        <div className="space-y-2">
+          <Label>
+            Model Mode
+            <Tooltip>
+              <TooltipTrigger>
+                <InfoIcon className="h-4 w-4 ml-1" />
+              </TooltipTrigger>
+              <TooltipContent>
+                Controls which region is modified during generation
+              </TooltipContent>
+            </Tooltip>
+          </Label>
+          <Select
+            value={state.syncLipsyncModelMode}
+            onValueChange={setters.setSyncLipsyncModelMode}
+          >
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="face">face</SelectItem>
+              <SelectItem value="lips">lips</SelectItem>
+              <SelectItem value="head">head</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Lipsync Mode */}
+        <div className="space-y-2">
+          <Label>
+            Lipsync Mode
+            <Tooltip>
+              <TooltipTrigger>
+                <InfoIcon className="h-4 w-4 ml-1" />
+              </TooltipTrigger>
+              <TooltipContent>
+                How to handle audio/video duration mismatch
+              </TooltipContent>
+            </Tooltip>
+          </Label>
+          <Select
+            value={state.syncLipsyncLipsyncMode}
+            onValueChange={setters.setSyncLipsyncLipsyncMode}
+          >
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="bounce">bounce</SelectItem>
+              <SelectItem value="cut_off">cut_off</SelectItem>
+              <SelectItem value="loop">loop</SelectItem>
+              <SelectItem value="silence">silence</SelectItem>
+              <SelectItem value="remap">remap</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Temperature */}
+        <div className="space-y-2">
+          <Label>
+            Temperature
+            <Tooltip>
+              <TooltipTrigger>
+                <InfoIcon className="h-4 w-4 ml-1" />
+              </TooltipTrigger>
+              <TooltipContent>
+                Controls expressiveness (0 = minimal, 1 = maximum)
+              </TooltipContent>
+            </Tooltip>
+          </Label>
+          <div className="flex items-center gap-4">
+            <Slider
+              value={[state.syncLipsyncTemperature]}
+              onValueChange={([value]) =>
+                setters.setSyncLipsyncTemperature(value)
+              }
+              min={0}
+              max={1}
+              step={0.1}
+              className="flex-1"
+            />
+            <Input
+              type="number"
+              value={state.syncLipsyncTemperature}
+              onChange={(e) =>
+                setters.setSyncLipsyncTemperature(
+                  Number(e.target.value)
+                )
+              }
+              min={0}
+              max={1}
+              step={0.1}
+              className="w-16"
+            />
+          </div>
+        </div>
+      </CollapsibleContent>
+    </Collapsible>
+  </>
+)}
+```
+
+---
+
+#### 4. UI Control Specifications
 
 **Required Controls:**
 
 | Control | Type | Options | Default | Description |
 |---------|------|---------|---------|-------------|
-| Emotion* | Dropdown | neutral, happy, sad, angry, disgusted, surprised | neutral | Required emotion for expression |
+| Source Video | FileUpload | video/* | - | Required video file (max 15s) |
+| Audio File | FileUpload | audio/* | - | Required audio file (max 15s) |
+| Emotion* | Select | neutral, happy, sad, angry, disgusted, surprised | neutral | Required emotion for expression |
 
-**Additional Settings (collapsible):**
+**Additional Settings (in collapsible section):**
 
 | Control | Type | Options | Default | Description |
 |---------|------|---------|---------|-------------|
-| Model Mode | Dropdown | face, lips, head | face | Controls edit region |
-| Lipsync Mode | Dropdown | bounce, cut_off, loop, silence, remap | bounce | Handles duration mismatch |
-| Temperature | Slider | 0.0 - 1.0 (step 0.1) | 0.5 | Controls expressiveness |
+| Model Mode | Select | face, lips, head | face | Controls edit region |
+| Lipsync Mode | Select | bounce, cut_off, loop, silence, remap | bounce | Handles duration mismatch |
+| Temperature | Slider + Input | 0.0 - 1.0 (step 0.1) | 0.5 | Controls expressiveness |
 
 **Model Mode descriptions:**
 - `lips` - Minimal facial changes (lipsync only)
@@ -623,47 +923,61 @@ When `sync_lipsync_react1` model is selected, display these controls:
 - `silence` - Pad with silence
 - `remap` - Retime to match durations
 
-#### 3. File Upload Integration
-
-Wire up file uploads in the handler:
-```typescript
-// Upload video and audio to FAL storage
-const videoUrl = await uploadVideoToFal(sourceVideoFile, falApiKey);
-const audioUrl = await uploadAudioToFal(audioFile, falApiKey);
-
-// Call generator with uploaded URLs
-await generateAvatarVideo({
-  model: "sync_lipsync_react1",
-  videoUrl,
-  audioUrl,
-  videoDuration,
-  audioDuration,
-  emotion: syncLipsyncEmotion,
-  modelMode: syncLipsyncModelMode,
-  lipsyncMode: syncLipsyncSyncMode,
-  temperature: syncLipsyncTemperature,
-});
-```
-
-#### 4. UI State Management
-
-Add to `useAIGeneration` hook or relevant state:
-```typescript
-// Sync Lipsync React-1 state
-const [syncLipsyncEmotion, setSyncLipsyncEmotion] = useState<SyncLipsyncEmotion>("neutral");
-const [syncLipsyncModelMode, setSyncLipsyncModelMode] = useState<SyncLipsyncModelMode>("face");
-const [syncLipsyncSyncMode, setSyncLipsyncSyncMode] = useState<SyncLipsyncSyncMode>("bounce");
-const [syncLipsyncTemperature, setSyncLipsyncTemperature] = useState<number>(0.5);
-```
+---
 
 #### 5. Files to Modify for UI
 
 | File | Changes |
 |------|---------|
-| `hooks/generation/model-handlers.ts` | Add `sync_lipsync_react1` case with file upload |
-| `hooks/use-ai-generation.ts` | Add state for emotion, modelMode, lipsyncMode, temperature |
-| `tabs/avatar-tab.tsx` or equivalent | Add UI controls when model selected |
-| `components/` | May need new dropdown/slider components |
+| `hooks/generation/model-handlers.ts` | Add `sync_lipsync_react1` case in `routeAvatarHandler`, extend `AvatarSettings` interface |
+| `hooks/use-ai-avatar-tab-state.ts` | Add state for emotion, modelMode, lipsyncMode, temperature, sourceVideo |
+| `tabs/ai-avatar-tab.tsx` | Add conditional UI when `sync_lipsync_react1` selected |
+| N/A | Uses existing Radix UI components (Select, Slider, Collapsible, Tooltip) |
+
+---
+
+#### 6. Import Requirements
+
+**model-handlers.ts:**
+```typescript
+import type {
+  SyncLipsyncEmotion,
+  SyncLipsyncModelMode,
+  SyncLipsyncSyncMode
+} from "../types/ai-types";
+import { uploadVideoToFal, uploadAudioToFal } from "@/lib/ai-video";
+```
+
+**use-ai-avatar-tab-state.ts:**
+```typescript
+import type {
+  SyncLipsyncEmotion,
+  SyncLipsyncModelMode,
+  SyncLipsyncSyncMode
+} from "../types/ai-types";
+```
+
+**ai-avatar-tab.tsx:**
+```typescript
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem
+} from "@/components/ui/select";
+import { Slider } from "@/components/ui/slider";
+import {
+  Collapsible,
+  CollapsibleTrigger,
+  CollapsibleContent
+} from "@/components/ui/collapsible";
+import {
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent
+} from "@/components/ui/tooltip";
+```
 
 ---
 
