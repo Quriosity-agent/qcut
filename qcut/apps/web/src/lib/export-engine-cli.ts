@@ -10,7 +10,12 @@ import {
 } from "./export-analysis";
 
 // Import extracted modules
-import type { StickerSourceForFilter } from "./export-cli/types";
+import type {
+  StickerSourceForFilter,
+  ProgressCallback,
+  VideoSourceInput,
+  AudioFileInput,
+} from "./export-cli/types";
 import {
   buildTextOverlayFilters,
   buildStickerOverlayFilters,
