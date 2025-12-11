@@ -10,12 +10,7 @@ import {
 } from "./export-analysis";
 
 // Import extracted modules
-import type {
-  VideoSourceInput,
-  AudioFileInput,
-  StickerSourceForFilter,
-  ProgressCallback,
-} from "./export-cli/types";
+import type { StickerSourceForFilter } from "./export-cli/types";
 import {
   buildTextOverlayFilters,
   buildStickerOverlayFilters,
@@ -26,8 +21,12 @@ import {
   extractStickerSources,
 } from "./export-cli/sources";
 
-// Re-export types for backward compatibility
-export type { ProgressCallback, VideoSourceInput, AudioFileInput };
+// Re-export types for backward compatibility (using export from)
+export type {
+  ProgressCallback,
+  VideoSourceInput,
+  AudioFileInput,
+} from "./export-cli/types";
 
 type EffectsStore = ReturnType<typeof useEffectsStore.getState>;
 

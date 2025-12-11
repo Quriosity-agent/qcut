@@ -66,6 +66,6 @@ export type FontConfig =
 export type Platform = "win32" | "darwin" | "linux";
 
 /**
- * Re-export TextElement for use in filter modules.
+ * Re-export TextElement for use in filter modules (using export from).
  */
-export type { TextElement };
+export type { TextElement } from "@/types/timeline";
