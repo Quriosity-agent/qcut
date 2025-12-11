@@ -1162,3 +1162,79 @@ All UI layer implementation steps are complete:
 | `hooks/use-ai-generation.ts` | Added props destructuring and avatarSettings fields |
 
 **Total Build Status:** ✅ All Passed
+
+---
+
+### Bug Fix: Validation and UI Message for Sync Lipsync React-1
+**Status:** ✅ Completed
+
+**Issue:** When Sync Lipsync React-1 was selected, the UI incorrectly displayed "Please upload a character image" even though this model does NOT require a character image (it uses source video + audio instead).
+
+**Root Cause:** Two locations needed updates:
+1. `use-ai-generation.ts` - The `canGenerate` validation required `avatarImage` for all avatar models except video-to-video models
+2. `index.tsx` - The validation message always showed "Please upload a character image" for avatar tab
+
+**Fix 1: `use-ai-generation.ts` (lines 1745-1753)**
+
+Updated the `canGenerate` validation to exclude `sync_lipsync_react1` from the avatarImage requirement:
+
+```typescript
+// For other avatar models, require avatarImage
+// (except video-to-video models and sync_lipsync_react1 which uses sourceVideo instead)
+if (
+  modelId !== "kling_o1_v2v_reference" &&
+  modelId !== "kling_o1_v2v_edit" &&
+  modelId !== "kling_o1_ref2video" &&
+  modelId !== "sync_lipsync_react1" &&  // Added this line
+  !avatarImage
+)
+  return false;
+```
+
+Also added audio and source video requirements for `sync_lipsync_react1` (lines 1721-1733):
+
+```typescript
+// Models requiring audio file
+if (
+  (modelId === "kling_avatar_pro" ||
+    modelId === "kling_avatar_standard" ||
+    modelId === "bytedance_omnihuman_v1_5" ||
+    modelId === "sync_lipsync_react1") &&  // Added this
+  !audioFile
+)
+  return false;
+
+// Sync Lipsync React-1 requires source video (but NOT character image)
+if (modelId === "sync_lipsync_react1" && !sourceVideo)
+  return false;
+```
+
+**Fix 2: `index.tsx` (lines 1150-1168)**
+
+Updated the validation message section to:
+1. Not show "Please upload a character image" when `sync_lipsync_react1` is selected
+2. Show appropriate messages for source video and audio requirements
+
+```tsx
+{activeTab === "avatar" &&
+  !avatarState.avatarImage &&
+  !selectedModels.includes("sync_lipsync_react1") &&
+  !selectedModels.some(
+    (id) =>
+      id === "kling_o1_v2v_reference" ||
+      id === "kling_o1_v2v_edit" ||
+      id === "kling_o1_ref2video"
+  ) && <div>Please upload a character image</div>}
+{activeTab === "avatar" &&
+  selectedModels.includes("sync_lipsync_react1") &&
+  !avatarState.syncLipsyncSourceVideo && (
+    <div>Please upload a source video</div>
+  )}
+{activeTab === "avatar" &&
+  selectedModels.includes("sync_lipsync_react1") &&
+  !avatarState.audioFile && (
+    <div>Please upload an audio file</div>
+  )}
+```
+
+**Build:** ✅ Passed
