@@ -284,8 +284,8 @@ export function validateSyncLipsyncReact1Emotion(
   if (!emotion) {
     throw new Error(ERROR_MESSAGES.SYNC_LIPSYNC_REACT1_MISSING_EMOTION);
   }
-  if (!SYNC_LIPSYNC_REACT1_EMOTIONS.includes(emotion as typeof SYNC_LIPSYNC_REACT1_EMOTIONS[number])) {
-    throw new Error(`Invalid emotion: ${emotion}. Must be one of: ${SYNC_LIPSYNC_REACT1_EMOTIONS.join(", ")}`);
+  if (!SYNC_LIPSYNC_REACT1_EMOTIONS.includes(emotion as (typeof SYNC_LIPSYNC_REACT1_EMOTIONS)[number])) {
+    throw new Error(ERROR_MESSAGES.SYNC_LIPSYNC_REACT1_INVALID_EMOTION);
   }
 }
 
@@ -596,20 +596,40 @@ The backend/generator layer is complete. The following UI work remains based on 
 **Add new case in `routeAvatarHandler`:**
 
 ```typescript
-case "sync_lipsync_react1": {
+case "sync_lipsync_react1":
+  return handleSyncLipsyncReact1(ctx, settings);
+```
+
+**`handleSyncLipsyncReact1` function** (actual implementation):
+
+```typescript
+export async function handleSyncLipsyncReact1(
+  ctx: ModelHandlerContext,
+  settings: AvatarSettings
+): Promise<ModelHandlerResult> {
   if (!settings.sourceVideo) {
-    throw new Error("Source video is required");
+    return {
+      response: undefined,
+      shouldSkip: true,
+      skipReason: "Sync Lipsync React-1 requires a source video",
+    };
   }
   if (!settings.audioFile) {
-    throw new Error("Audio file is required");
+    return {
+      response: undefined,
+      shouldSkip: true,
+      skipReason: "Sync Lipsync React-1 requires an audio file",
+    };
   }
 
-  // Upload video and audio to FAL storage
-  const videoUrl = await uploadVideoToFal(settings.sourceVideo, falApiKey);
-  const audioUrl = await uploadAudioToFal(settings.audioFile, falApiKey);
+  // Upload video and audio to FAL storage using falAIClient
+  const [videoUrl, audioUrl] = await Promise.all([
+    falAIClient.uploadVideoToFal(settings.sourceVideo),
+    falAIClient.uploadAudioToFal(settings.audioFile),
+  ]);
 
-  return generateAvatarVideo({
-    model: selectedModel,
+  const response = await generateAvatarVideo({
+    model: ctx.modelId,
     videoUrl,
     audioUrl,
     videoDuration: settings.videoDuration,
