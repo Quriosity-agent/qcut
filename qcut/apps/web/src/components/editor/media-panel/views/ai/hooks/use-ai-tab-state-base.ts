@@ -79,13 +79,14 @@ export function useFileWithPreview(
   const previewRef = useRef<string | null>(null);
   previewRef.current = preview;
 
-  // Initialize preview if initial file is provided
+  // Initialize preview if initial file is provided (run once on mount)
+  const initializedRef = useRef(false);
   useEffect(() => {
-    if (initialFile && !preview) {
+    if (initialFile && !preview && !initializedRef.current) {
+      initializedRef.current = true;
       setPreview(URL.createObjectURL(initialFile));
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [initialFile, preview]);
 
   const setFile = useCallback((newFile: File | null) => {
     setFileInternal(newFile);
