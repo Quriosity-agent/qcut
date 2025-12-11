@@ -12,12 +12,38 @@
  * @see ai-tsx-refactoring.md - Subtask 3.5
  */
 
+import { useState } from "react";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { FileUpload } from "@/components/ui/file-upload";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Slider } from "@/components/ui/slider";
+import { Input } from "@/components/ui/input";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { Info, ChevronDown, ChevronUp } from "lucide-react";
 
 import { UPLOAD_CONSTANTS } from "../constants/ai-constants";
 import { calculateKlingAvatarV2Cost } from "../utils/ai-cost-calculators";
+import type {
+  SyncLipsyncEmotion,
+  SyncLipsyncModelMode,
+  SyncLipsyncSyncMode,
+} from "../types/ai-types";
 
 // ============================================
 // Types
@@ -68,6 +94,20 @@ export interface AIAvatarTabProps {
   klingAvatarV2Prompt: string;
   onKlingAvatarV2PromptChange: (value: string) => void;
   audioDuration: number | null;
+
+  // Sync Lipsync React-1
+  syncLipsyncSourceVideo: File | null;
+  syncLipsyncSourceVideoPreview: string | null;
+  syncLipsyncVideoDuration: number | null;
+  syncLipsyncEmotion: SyncLipsyncEmotion;
+  syncLipsyncModelMode: SyncLipsyncModelMode;
+  syncLipsyncLipsyncMode: SyncLipsyncSyncMode;
+  syncLipsyncTemperature: number;
+  onSyncLipsyncSourceVideoChange: (file: File | null) => void;
+  onSyncLipsyncEmotionChange: (emotion: SyncLipsyncEmotion) => void;
+  onSyncLipsyncModelModeChange: (mode: SyncLipsyncModelMode) => void;
+  onSyncLipsyncLipsyncModeChange: (mode: SyncLipsyncSyncMode) => void;
+  onSyncLipsyncTemperatureChange: (temp: number) => void;
 }
 
 // ============================================
@@ -116,11 +156,30 @@ export function AIAvatarTab({
   klingAvatarV2Prompt,
   onKlingAvatarV2PromptChange,
   audioDuration,
+  // Sync Lipsync React-1 props
+  syncLipsyncSourceVideo,
+  syncLipsyncSourceVideoPreview,
+  syncLipsyncVideoDuration,
+  syncLipsyncEmotion,
+  syncLipsyncModelMode,
+  syncLipsyncLipsyncMode,
+  syncLipsyncTemperature,
+  onSyncLipsyncSourceVideoChange,
+  onSyncLipsyncEmotionChange,
+  onSyncLipsyncModelModeChange,
+  onSyncLipsyncLipsyncModeChange,
+  onSyncLipsyncTemperatureChange,
 }: AIAvatarTabProps) {
+  // Collapsible state for additional settings
+  const [isAdditionalSettingsOpen, setIsAdditionalSettingsOpen] = useState(false);
+
   // Model selection helpers
   const klingAvatarV2Selected =
     selectedModels.includes("kling_avatar_v2_standard") ||
     selectedModels.includes("kling_avatar_v2_pro");
+
+  const syncLipsyncReact1Selected =
+    selectedModels.includes("sync_lipsync_react1");
 
   return (
     <div className="space-y-4">
@@ -287,6 +346,208 @@ export function AIAvatarTab({
           {audioDuration === null && audioFile && (
             <div className="text-xs text-muted-foreground">
               Cost varies by audio length
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Sync Lipsync React-1 Options */}
+      {syncLipsyncReact1Selected && (
+        <div className="space-y-3 text-left border-t pt-3">
+          <Label className="text-sm font-semibold">
+            Sync Lipsync React-1 Options
+          </Label>
+
+          {/* Source Video Upload */}
+          <FileUpload
+            id="sync-lipsync-video-input"
+            label="Source Video"
+            helperText="Max 15 seconds"
+            fileType="video"
+            acceptedTypes={UPLOAD_CONSTANTS.ALLOWED_VIDEO_TYPES}
+            maxSizeBytes={UPLOAD_CONSTANTS.MAX_VIDEO_SIZE_BYTES}
+            maxSizeLabel={UPLOAD_CONSTANTS.MAX_VIDEO_SIZE_LABEL}
+            formatsLabel={UPLOAD_CONSTANTS.VIDEO_FORMATS_LABEL}
+            file={syncLipsyncSourceVideo}
+            preview={syncLipsyncSourceVideoPreview}
+            onFileChange={(file) => {
+              onSyncLipsyncSourceVideoChange(file);
+              if (file) onError(null);
+            }}
+            onError={onError}
+            isCompact={isCompact}
+          />
+
+          {/* Duration warning */}
+          {syncLipsyncVideoDuration !== null && syncLipsyncVideoDuration > 15 && (
+            <div className="text-xs text-destructive">
+              Video is {syncLipsyncVideoDuration.toFixed(1)}s - must be 15s or shorter
+            </div>
+          )}
+
+          {/* Emotion (required) */}
+          <div className="space-y-2">
+            <div className="flex items-center gap-1">
+              <Label htmlFor="sync-lipsync-emotion" className="text-xs">
+                Emotion<span className="text-destructive">*</span>
+              </Label>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Info className="h-3 w-3 text-muted-foreground cursor-help" />
+                </TooltipTrigger>
+                <TooltipContent side="right" className="max-w-[200px]">
+                  Controls the emotional expression applied during lip-sync
+                </TooltipContent>
+              </Tooltip>
+            </div>
+            <Select
+              value={syncLipsyncEmotion}
+              onValueChange={(value) =>
+                onSyncLipsyncEmotionChange(value as SyncLipsyncEmotion)
+              }
+            >
+              <SelectTrigger id="sync-lipsync-emotion" className="h-8 text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="neutral">neutral</SelectItem>
+                <SelectItem value="happy">happy</SelectItem>
+                <SelectItem value="sad">sad</SelectItem>
+                <SelectItem value="angry">angry</SelectItem>
+                <SelectItem value="disgusted">disgusted</SelectItem>
+                <SelectItem value="surprised">surprised</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Additional Settings (collapsible) */}
+          <Collapsible
+            open={isAdditionalSettingsOpen}
+            onOpenChange={setIsAdditionalSettingsOpen}
+          >
+            <CollapsibleTrigger className="flex items-center justify-between w-full text-xs text-muted-foreground hover:text-foreground transition-colors py-1">
+              <span>Additional Settings</span>
+              {isAdditionalSettingsOpen ? (
+                <ChevronUp className="h-4 w-4" />
+              ) : (
+                <ChevronDown className="h-4 w-4" />
+              )}
+            </CollapsibleTrigger>
+            <CollapsibleContent className="space-y-3 pt-2">
+              {/* Model Mode */}
+              <div className="space-y-2">
+                <div className="flex items-center gap-1">
+                  <Label htmlFor="sync-lipsync-model-mode" className="text-xs">
+                    Model Mode
+                  </Label>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Info className="h-3 w-3 text-muted-foreground cursor-help" />
+                    </TooltipTrigger>
+                    <TooltipContent side="right" className="max-w-[200px]">
+                      Controls which region is modified during generation
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
+                <Select
+                  value={syncLipsyncModelMode}
+                  onValueChange={(value) =>
+                    onSyncLipsyncModelModeChange(value as SyncLipsyncModelMode)
+                  }
+                >
+                  <SelectTrigger id="sync-lipsync-model-mode" className="h-8 text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="face">face - Full face modification</SelectItem>
+                    <SelectItem value="lips">lips - Lip region only</SelectItem>
+                    <SelectItem value="head">head - Include head movement</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Lipsync Mode */}
+              <div className="space-y-2">
+                <div className="flex items-center gap-1">
+                  <Label htmlFor="sync-lipsync-lipsync-mode" className="text-xs">
+                    Lipsync Mode
+                  </Label>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Info className="h-3 w-3 text-muted-foreground cursor-help" />
+                    </TooltipTrigger>
+                    <TooltipContent side="right" className="max-w-[200px]">
+                      How to handle audio/video duration mismatch
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
+                <Select
+                  value={syncLipsyncLipsyncMode}
+                  onValueChange={(value) =>
+                    onSyncLipsyncLipsyncModeChange(value as SyncLipsyncSyncMode)
+                  }
+                >
+                  <SelectTrigger id="sync-lipsync-lipsync-mode" className="h-8 text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="bounce">bounce - Bounce shorter track</SelectItem>
+                    <SelectItem value="cut_off">cut_off - Cut when shorter ends</SelectItem>
+                    <SelectItem value="loop">loop - Loop shorter track</SelectItem>
+                    <SelectItem value="silence">silence - Pad with silence</SelectItem>
+                    <SelectItem value="remap">remap - Retime to match</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Temperature */}
+              <div className="space-y-2">
+                <div className="flex items-center gap-1">
+                  <Label htmlFor="sync-lipsync-temperature" className="text-xs">
+                    Temperature
+                  </Label>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Info className="h-3 w-3 text-muted-foreground cursor-help" />
+                    </TooltipTrigger>
+                    <TooltipContent side="right" className="max-w-[200px]">
+                      Controls expressiveness (0 = minimal, 1 = maximum)
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Slider
+                    id="sync-lipsync-temperature"
+                    value={[syncLipsyncTemperature]}
+                    onValueChange={([value]) => onSyncLipsyncTemperatureChange(value)}
+                    min={0}
+                    max={1}
+                    step={0.1}
+                    className="flex-1"
+                  />
+                  <Input
+                    type="number"
+                    value={syncLipsyncTemperature}
+                    onChange={(e) => {
+                      const val = Number.parseFloat(e.target.value);
+                      if (!Number.isNaN(val) && val >= 0 && val <= 1) {
+                        onSyncLipsyncTemperatureChange(val);
+                      }
+                    }}
+                    min={0}
+                    max={1}
+                    step={0.1}
+                    className="w-16 h-8 text-xs"
+                  />
+                </div>
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
+
+          {/* Duration info */}
+          {syncLipsyncVideoDuration !== null && audioDuration !== null && (
+            <div className="text-xs text-muted-foreground">
+              Video: {syncLipsyncVideoDuration.toFixed(1)}s · Audio: {audioDuration.toFixed(1)}s
             </div>
           )}
         </div>

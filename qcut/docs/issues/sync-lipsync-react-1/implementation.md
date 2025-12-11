@@ -1040,3 +1040,41 @@ Added to `apps/web/src/components/editor/media-panel/views/ai/hooks/generation/m
    - Routes `sync_lipsync_react1` to `handleSyncLipsyncReact1`
 
 **Build:** ✅ Passed
+
+---
+
+### Step 2: State Management (`use-ai-avatar-tab-state.ts`)
+**Status:** ✅ Completed
+
+**Added `useVideoFileWithDuration` hook** to `use-ai-tab-state-base.ts`:
+- Similar to `useAudioFileWithDuration`
+- Extracts video duration using HTML5 video element
+- Returns `file`, `preview`, `setFile`, `reset`, and `duration`
+
+**Extended interfaces** in `use-ai-avatar-tab-state.ts`:
+
+1. **`AvatarTabState`** - Added:
+   - `syncLipsyncSourceVideo: File | null`
+   - `syncLipsyncSourceVideoPreview: string | null`
+   - `syncLipsyncVideoDuration: number | null`
+   - `syncLipsyncEmotion: SyncLipsyncEmotion`
+   - `syncLipsyncModelMode: SyncLipsyncModelMode`
+   - `syncLipsyncLipsyncMode: SyncLipsyncSyncMode`
+   - `syncLipsyncTemperature: number`
+
+2. **`AvatarTabSetters`** - Added:
+   - `setSyncLipsyncSourceVideo`
+   - `setSyncLipsyncEmotion`
+   - `setSyncLipsyncModelMode`
+   - `setSyncLipsyncLipsyncMode`
+   - `setSyncLipsyncTemperature`
+
+3. **`AvatarTabHelpers`** - Added:
+   - `resetSyncLipsyncSourceVideo`
+
+4. **Updated `useAvatarTabState` hook**:
+   - Added `syncLipsyncVideoState` using `useVideoFileWithDuration`
+   - Added state variables with defaults (emotion: "neutral", modelMode: "face", lipsyncMode: "bounce", temperature: 0.5)
+   - Updated `resetAll` to reset all Sync Lipsync state
+
+**Build:** ✅ Passed
