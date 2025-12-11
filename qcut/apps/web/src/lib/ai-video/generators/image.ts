@@ -9,10 +9,15 @@ import { handleAIServiceError } from "@/lib/error-handler";
 import type {
   Seeddream45ImageSize,
   Seeddream45TextToImageParams,
-  Seeddream45EditParams,
 } from "@/components/editor/media-panel/views/ai/types/ai-types";
 import { ERROR_MESSAGES } from "@/components/editor/media-panel/views/ai/constants/ai-constants";
 import { getFalApiKey, FAL_API_BASE } from "../core/fal-request";
+
+// Re-export for convenience (using export from pattern)
+export type {
+  Seeddream45TextToImageParams,
+  Seeddream45EditParams,
+} from "@/components/editor/media-panel/views/ai/types/ai-types";
 
 /**
  * Seeddream 4.5 image generation result
@@ -28,9 +33,6 @@ export interface Seeddream45ImageResult {
   }>;
   seed: number;
 }
-
-// Re-export for convenience (types imported from ai-types.ts)
-export type { Seeddream45TextToImageParams, Seeddream45EditParams };
 
 /** @deprecated Use Seeddream45TextToImageParams instead */
 export type Seeddream45GenerateParams = Seeddream45TextToImageParams;
