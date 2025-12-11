@@ -1175,8 +1175,8 @@ function buildFFmpegArgs(
   );
 }
 
-// Re-export getFFmpegPath for backward compatibility (used by main.ts)
-export { getFFmpegPath };
+// Re-export getFFmpegPath for backward compatibility (used by main.ts, using export from)
+export { getFFmpegPath } from "./ffmpeg/utils";
 
 // CommonJS export for backward compatibility with main.js
 module.exports = { setupFFmpegIPC, getFFmpegPath };
