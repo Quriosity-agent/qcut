@@ -67,7 +67,7 @@ stores/
 
 ## Dependency Graph
 
-```
+```plaintext
                     ┌─────────────┐
                     │   types.ts  │
                     └──────┬──────┘
