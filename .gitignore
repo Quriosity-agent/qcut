@@ -36,6 +36,7 @@ qcut/electron/resources/test*
 
 # Temporary files
 nul
+*.backup
 
 # Third-party library files that shouldn't be linted
 **/public/ffmpeg/ffmpeg-core.js
