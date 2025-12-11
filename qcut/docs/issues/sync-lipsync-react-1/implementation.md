@@ -142,7 +142,7 @@ export interface UseAIGenerationProps {
   /** Model mode: lips, face, or head */
   syncLipsyncModelMode?: SyncLipsyncModelMode;
   /** Sync mode: cut_off, loop, bounce, silence, remap */
-  syncLipsyncLipsyncMode?: SyncLipsyncSyncMode;
+  syncLipsyncSyncMode?: SyncLipsyncSyncMode;  // Note: named syncLipsyncSyncMode in actual implementation
   /** Temperature 0-1 for expressiveness */
   syncLipsyncTemperature?: number;
   /** Video duration for validation */
@@ -202,6 +202,7 @@ SYNC_LIPSYNC_REACT1_MISSING_AUDIO: "Audio is required for Sync Lipsync React-1",
 SYNC_LIPSYNC_REACT1_VIDEO_TOO_LONG: "Video must be 15 seconds or shorter for Sync Lipsync React-1",
 SYNC_LIPSYNC_REACT1_AUDIO_TOO_LONG: "Audio must be 15 seconds or shorter for Sync Lipsync React-1",
 SYNC_LIPSYNC_REACT1_MISSING_EMOTION: "Emotion is required for Sync Lipsync React-1",
+SYNC_LIPSYNC_REACT1_INVALID_EMOTION: "Invalid emotion for Sync Lipsync React-1. Must be one of: happy, angry, sad, neutral, disgusted, surprised",
 SYNC_LIPSYNC_REACT1_INVALID_TEMPERATURE: "Temperature must be between 0 and 1 for Sync Lipsync React-1",
 ```
 
