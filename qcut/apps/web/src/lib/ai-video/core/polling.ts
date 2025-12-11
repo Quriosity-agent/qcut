@@ -13,12 +13,13 @@ import {
 import type {
   VideoGenerationResponse,
   ProgressCallback,
+  ProgressUpdate,
 } from "@/components/editor/media-panel/views/ai/types/ai-types";
 import { handleAIServiceError } from "@/lib/error-handler";
 import { streamVideoDownload, type StreamOptions } from "./streaming";
 
-// Re-export ProgressUpdate from ai-types for convenience
-export type { ProgressUpdate } from "@/components/editor/media-panel/views/ai/types/ai-types";
+// Re-export ProgressUpdate for convenience
+export type { ProgressUpdate };
 
 /**
  * FAL queue status response structure
