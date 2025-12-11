@@ -143,9 +143,13 @@ export async function generateAvatarVideo(
           ...(request.prompt && { prompt: request.prompt }),
         };
       } else if (request.model === "bytedance_omnihuman_v1_5") {
+        if (!request.characterImage) {
+          throw new Error("ByteDance OmniHuman v1.5 requires a character image");
+        }
         if (!request.audioFile) {
           throw new Error("ByteDance OmniHuman v1.5 requires an audio file");
         }
+        const characterImageUrl = await fileToDataURL(request.characterImage);
         const audioUrl = await fileToDataURL(request.audioFile);
         endpoint = modelConfig.endpoints.text_to_video || "";
         if (!endpoint) {
@@ -160,6 +164,10 @@ export async function generateAvatarVideo(
           ...(request.resolution && { resolution: request.resolution }),
         };
       } else if (request.model === "kling_o1_ref2video") {
+        if (!request.characterImage) {
+          throw new Error("Kling O1 Ref2Video requires a character image");
+        }
+        const characterImageUrl = await fileToDataURL(request.characterImage);
         endpoint = modelConfig.endpoints.image_to_video || "";
         if (!endpoint) {
           throw new Error(

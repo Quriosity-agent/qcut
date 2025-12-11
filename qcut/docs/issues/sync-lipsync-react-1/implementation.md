@@ -613,3 +613,14 @@ The backend/generator layer is complete. The following UI work remains:
 Fixed pre-existing TypeScript errors in:
 - `export-engine-cli.ts`: Added missing type imports (ProgressCallback, VideoSourceInput, AudioFileInput)
 - `ffmpeg-handler.ts`: Added missing type imports (AudioFile, StickerSource, ExportOptions, etc.) and typed function parameters
+
+---
+
+### API Clarification
+
+**Sync Lipsync React-1 does NOT require an image.** The required inputs are:
+- `video_url` (required) - Input video, max 15 seconds
+- `audio_url` (required) - Input audio, max 15 seconds
+- `emotion` (required) - One of: happy, angry, sad, neutral, disgusted, surprised
+
+Fixed `AvatarVideoRequest.characterImage` to be optional (`File | undefined`) since lipsync models don't use it. Moved image conversion inside model-specific branches that need it.
