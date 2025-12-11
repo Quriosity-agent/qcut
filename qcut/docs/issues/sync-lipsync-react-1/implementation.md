@@ -586,11 +586,84 @@ Added exports to `apps/web/src/lib/ai-video/index.ts` at lines 66-75:
 
 The backend/generator layer is complete. The following UI work remains:
 
-1. **Model Handler** (`model-handlers.ts`): Add routing for `sync_lipsync_react1` to upload video/audio to FAL storage and call `generateAvatarVideo`
+#### 1. Model Handler (`model-handlers.ts`)
 
-2. **Avatar Tab UI**: Surface emotion selector, model mode selector, lipsync mode selector, and temperature slider for this model
+Add routing for `sync_lipsync_react1` to:
+- Upload video via `uploadVideoToFal`
+- Upload audio via `uploadAudioToFal`
+- Call `generateAvatarVideo` with the uploaded URLs and UI parameters
 
-3. **File Upload Integration**: Wire up `uploadVideoToFal` and `uploadAudioToFal` before calling the generator
+#### 2. Avatar Tab UI Controls
+
+When `sync_lipsync_react1` model is selected, display these controls:
+
+**Required Controls:**
+
+| Control | Type | Options | Default | Description |
+|---------|------|---------|---------|-------------|
+| Emotion* | Dropdown | neutral, happy, sad, angry, disgusted, surprised | neutral | Required emotion for expression |
+
+**Additional Settings (collapsible):**
+
+| Control | Type | Options | Default | Description |
+|---------|------|---------|---------|-------------|
+| Model Mode | Dropdown | face, lips, head | face | Controls edit region |
+| Lipsync Mode | Dropdown | bounce, cut_off, loop, silence, remap | bounce | Handles duration mismatch |
+| Temperature | Slider | 0.0 - 1.0 (step 0.1) | 0.5 | Controls expressiveness |
+
+**Model Mode descriptions:**
+- `lips` - Minimal facial changes (lipsync only)
+- `face` - Lipsync + expressions without head movement
+- `head` - Full lipsync + expressions + natural talking movements
+
+**Lipsync Mode descriptions:**
+- `bounce` - Bounce shorter track back and forth
+- `cut_off` - Cut when shorter track ends
+- `loop` - Loop shorter track to match longer
+- `silence` - Pad with silence
+- `remap` - Retime to match durations
+
+#### 3. File Upload Integration
+
+Wire up file uploads in the handler:
+```typescript
+// Upload video and audio to FAL storage
+const videoUrl = await uploadVideoToFal(sourceVideoFile, falApiKey);
+const audioUrl = await uploadAudioToFal(audioFile, falApiKey);
+
+// Call generator with uploaded URLs
+await generateAvatarVideo({
+  model: "sync_lipsync_react1",
+  videoUrl,
+  audioUrl,
+  videoDuration,
+  audioDuration,
+  emotion: syncLipsyncEmotion,
+  modelMode: syncLipsyncModelMode,
+  lipsyncMode: syncLipsyncSyncMode,
+  temperature: syncLipsyncTemperature,
+});
+```
+
+#### 4. UI State Management
+
+Add to `useAIGeneration` hook or relevant state:
+```typescript
+// Sync Lipsync React-1 state
+const [syncLipsyncEmotion, setSyncLipsyncEmotion] = useState<SyncLipsyncEmotion>("neutral");
+const [syncLipsyncModelMode, setSyncLipsyncModelMode] = useState<SyncLipsyncModelMode>("face");
+const [syncLipsyncSyncMode, setSyncLipsyncSyncMode] = useState<SyncLipsyncSyncMode>("bounce");
+const [syncLipsyncTemperature, setSyncLipsyncTemperature] = useState<number>(0.5);
+```
+
+#### 5. Files to Modify for UI
+
+| File | Changes |
+|------|---------|
+| `hooks/generation/model-handlers.ts` | Add `sync_lipsync_react1` case with file upload |
+| `hooks/use-ai-generation.ts` | Add state for emotion, modelMode, lipsyncMode, temperature |
+| `tabs/avatar-tab.tsx` or equivalent | Add UI controls when model selected |
+| `components/` | May need new dropdown/slider components |
 
 ---
 
