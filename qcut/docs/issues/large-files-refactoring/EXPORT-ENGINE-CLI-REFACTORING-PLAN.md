@@ -52,6 +52,10 @@ apps/web/src/lib/export-cli/
 
 ---
 
+> **Note**: The sections below ("Pre-Refactoring", "Overview", "Current Structure", etc.) document the **original planning phase** and are preserved for historical reference. The implementation has been completed as described in the "Implementation Summary" above.
+
+---
+
 ## Pre-Refactoring: Create Backup
 
 ```bash
