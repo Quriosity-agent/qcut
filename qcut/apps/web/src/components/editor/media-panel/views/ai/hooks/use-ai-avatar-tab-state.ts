@@ -17,7 +17,13 @@ import {
   useFileWithPreview,
   useMultipleFilesWithPreview,
   useAudioFileWithDuration,
+  useVideoFileWithDuration,
 } from "./use-ai-tab-state-base";
+import type {
+  SyncLipsyncEmotion,
+  SyncLipsyncModelMode,
+  SyncLipsyncSyncMode,
+} from "../types/ai-types";
 
 // ============================================
 // Types
@@ -47,6 +53,15 @@ export interface AvatarTabState {
 
   // Kling Avatar v2
   klingAvatarV2Prompt: string;
+
+  // Sync Lipsync React-1
+  syncLipsyncSourceVideo: File | null;
+  syncLipsyncSourceVideoPreview: string | null;
+  syncLipsyncVideoDuration: number | null;
+  syncLipsyncEmotion: SyncLipsyncEmotion;
+  syncLipsyncModelMode: SyncLipsyncModelMode;
+  syncLipsyncLipsyncMode: SyncLipsyncSyncMode;
+  syncLipsyncTemperature: number;
 }
 
 export interface AvatarTabSetters {
