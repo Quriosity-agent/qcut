@@ -81,7 +81,11 @@ export class CLIExportEngine extends ExportEngine {
   private buildStickerOverlayFiltersWrapper(
     stickerSources: StickerSourceForFilter[]
   ): string {
-    return buildStickerOverlayFilters(stickerSources, this.totalDuration, debugLog);
+    return buildStickerOverlayFilters(
+      stickerSources,
+      this.totalDuration,
+      debugLog
+    );
   }
 
   /**
@@ -120,7 +124,9 @@ export class CLIExportEngine extends ExportEngine {
    * Extract sticker sources using extracted module.
    * Wrapper that passes instance properties.
    */
-  private async extractStickerSourcesWrapper(): Promise<StickerSourceForFilter[]> {
+  private async extractStickerSourcesWrapper(): Promise<
+    StickerSourceForFilter[]
+  > {
     return extractStickerSources(
       this.mediaItems,
       this.sessionId,
@@ -624,7 +630,8 @@ export class CLIExportEngine extends ExportEngine {
 
       if (stickerSources.length > 0) {
         // Build FFmpeg overlay filter chain
-        stickerFilterChain = this.buildStickerOverlayFiltersWrapper(stickerSources);
+        stickerFilterChain =
+          this.buildStickerOverlayFiltersWrapper(stickerSources);
 
         debugLog(`[CLI Export] Sticker sources: ${stickerSources.length}`);
         debugLog(`[CLI Export] Sticker filter chain: ${stickerFilterChain}`);

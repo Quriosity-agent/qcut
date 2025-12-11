@@ -42,8 +42,8 @@ async function createTempFileFromBlob(
   videoAPI: VideoSaveTempAPI | undefined,
   logger: LogFn
 ): Promise<string | undefined> {
-  if (!videoAPI?.saveTemp) return undefined;
-  if (!mediaItem.file || mediaItem.file.size === 0) return undefined;
+  if (!videoAPI?.saveTemp) return;
+  if (!mediaItem.file || mediaItem.file.size === 0) return;
 
   try {
     logger(`[VideoSources] Creating temp file for: ${mediaItem.name}`);
@@ -57,8 +57,8 @@ async function createTempFileFromBlob(
     logger(`[VideoSources] Created temp file: ${path}`);
     return path;
   } catch (error) {
-    logger(`[VideoSources] Failed to create temp file:`, error);
-    return undefined;
+    logger("[VideoSources] Failed to create temp file:", error);
+    return;
   }
 }
 
@@ -90,7 +90,8 @@ export async function extractVideoSources(
       if (element.hidden || element.type !== "media") continue;
 
       const mediaItem = mediaItems.find(
-        (item) => item.id === (element as TimelineElement & { mediaId: string }).mediaId
+        (item) =>
+          item.id === (element as TimelineElement & { mediaId: string }).mediaId
       );
       if (!mediaItem || mediaItem.type !== "video") continue;
 
@@ -158,14 +159,13 @@ export async function extractVideoInputPath(
       if (element.hidden || element.type !== "media") continue;
 
       const item = mediaItems.find(
-        (m) => m.id === (element as TimelineElement & { mediaId: string }).mediaId
+        (m) =>
+          m.id === (element as TimelineElement & { mediaId: string }).mediaId
       );
       if (item?.type === "video") {
         videoCount++;
         if (videoCount > 1) {
-          logger(
-            "[VideoSources] Multiple videos found, Mode 2 not applicable"
-          );
+          logger("[VideoSources] Multiple videos found, Mode 2 not applicable");
           return null;
         }
         videoElement = element;

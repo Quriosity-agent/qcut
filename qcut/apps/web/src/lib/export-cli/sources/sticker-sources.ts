@@ -161,8 +161,7 @@ export async function extractStickerSources(
 
     // Get API - use provided or default
     const api =
-      stickerAPI ??
-      (window.electronAPI?.ffmpeg as unknown as StickerExportAPI);
+      stickerAPI ?? (window.electronAPI?.ffmpeg as unknown as StickerExportAPI);
     if (!api?.saveStickerForExport) {
       logger("[StickerSources] Sticker export API not available");
       return [];
@@ -218,7 +217,10 @@ export async function extractStickerSources(
           `[StickerSources] Processed sticker ${sticker.id}: ${Math.round(pixelWidth)}x${Math.round(pixelHeight)} at (${Math.round(topLeftX)}, ${Math.round(topLeftY)})`
         );
       } catch (error) {
-        logger(`[StickerSources] Failed to process sticker ${sticker.id}:`, error);
+        logger(
+          `[StickerSources] Failed to process sticker ${sticker.id}:`,
+          error
+        );
       }
     }
 

@@ -119,5 +119,8 @@ export function resolveFontPath(
     fontFile = fontConfig.italic;
   }
 
-  return { useFontconfig: false, fontPath: `${WINDOWS_FONT_BASE_PATH}${fontFile}` };
+  return {
+    useFontconfig: false,
+    fontPath: `${WINDOWS_FONT_BASE_PATH}${fontFile}`,
+  };
 }

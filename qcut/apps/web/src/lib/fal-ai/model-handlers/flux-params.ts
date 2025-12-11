@@ -53,16 +53,29 @@ export function convertFluxParameters(
   }
 
   // Clamp guidance_scale to reasonable range
-  const rawGuidance = Number(params.guidance_scale ?? params.guidanceScale ?? 3.5);
-  const guidanceScale = Math.max(1, Math.min(20, Number.isNaN(rawGuidance) ? 3.5 : rawGuidance));
+  const rawGuidance = Number(
+    params.guidance_scale ?? params.guidanceScale ?? 3.5
+  );
+  const guidanceScale = Math.max(
+    1,
+    Math.min(20, Number.isNaN(rawGuidance) ? 3.5 : rawGuidance)
+  );
 
   // Clamp inference steps to reasonable range
   const rawSteps = Number(params.num_inference_steps ?? params.steps ?? 28);
-  const inferenceSteps = Math.max(1, Math.min(100, Number.isNaN(rawSteps) ? 28 : rawSteps));
+  const inferenceSteps = Math.max(
+    1,
+    Math.min(100, Number.isNaN(rawSteps) ? 28 : rawSteps)
+  );
 
   // Clamp safety tolerance to valid range
-  const rawSafety = Number(params.safety_tolerance ?? params.safetyTolerance ?? 2);
-  const safetyTolerance = Math.max(1, Math.min(6, Number.isNaN(rawSafety) ? 2 : rawSafety));
+  const rawSafety = Number(
+    params.safety_tolerance ?? params.safetyTolerance ?? 2
+  );
+  const safetyTolerance = Math.max(
+    1,
+    Math.min(6, Number.isNaN(rawSafety) ? 2 : rawSafety)
+  );
 
   return {
     prompt: (params.prompt || "") as string,
