@@ -11,7 +11,7 @@ import path from "path";
 import fs from "fs";
 import { TempManager, ExportSession } from "./temp-manager.js";
 
-// Import types from ffmpeg module (only those used internally, not re-exported)
+// Import types from ffmpeg module (both internal use and re-exported)
 import type {
   VideoSource,
   FrameProcessOptions,
@@ -19,6 +19,15 @@ import type {
   QualityMap,
   FFmpegError,
   VideoProbeResult,
+  AudioFile,
+  StickerSource,
+  ExportOptions,
+  FrameData,
+  ExportResult,
+  FFmpegProgress,
+  OpenFolderResult,
+  ExtractAudioOptions,
+  ExtractAudioResult,
 } from "./ffmpeg/types";
 
 // Re-export types for external use (using export from)
@@ -162,7 +171,7 @@ export function setupFFmpegIPC(): void {
         options.videoSources &&
         options.videoSources.length > 1 &&
         options.videoSources.some(
-          (v) =>
+          (v: VideoSource) =>
             (v.trimStart && v.trimStart > 0) || (v.trimEnd && v.trimEnd > 0)
         );
 
@@ -519,7 +528,7 @@ export function setupFFmpegIPC(): void {
             if (options.videoSources.length > 1) {
               try {
                 const probeResults = await Promise.all(
-                  options.videoSources.map((video) =>
+                  options.videoSources.map((video: VideoSource) =>
                     probeVideoFile(video.path)
                   )
                 );

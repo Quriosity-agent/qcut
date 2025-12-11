@@ -838,6 +838,37 @@ export const AI_MODELS: AIModel[] = [
       maxFileSizeBytes: 5 * 1024 * 1024, // 5MB
     },
   },
+  // Sync Lipsync React-1 - Emotion-aware lip-sync
+  {
+    id: "sync_lipsync_react1",
+    name: "Sync Lipsync React-1",
+    description:
+      "Emotion-aware lip-sync: sync video to audio with expressions (happy, sad, angry, etc.)",
+    price: "0.10", // 5 credits per request
+    resolution: "Preserves source",
+    max_duration: 15, // 15 second limit for both inputs
+    category: "avatar",
+    requiredInputs: ["sourceVideo", "audioFile"],
+    endpoints: {
+      text_to_video: "fal-ai/sync-lipsync/react-1",
+    },
+    default_params: {
+      emotion: "neutral",
+      model_mode: "face",
+      lipsync_mode: "bounce",
+      temperature: 0.5,
+    },
+    supportedEmotions: [
+      "happy",
+      "angry",
+      "sad",
+      "neutral",
+      "disgusted",
+      "surprised",
+    ],
+    supportedModelModes: ["lips", "face", "head"],
+    supportedLipsyncModes: ["cut_off", "loop", "bounce", "silence", "remap"],
+  },
   // Kling O1 Models - Advanced video generation with cinematic understanding
   {
     id: "kling_o1_v2v_reference",
@@ -1197,6 +1228,22 @@ export const ERROR_MESSAGES = {
     "Audio must be under 60 seconds for Kling Avatar v2",
   KLING_AVATAR_V2_AUDIO_TOO_LARGE:
     "Audio file must be under 5MB for Kling Avatar v2",
+
+  // Sync Lipsync React-1 specific errors
+  SYNC_LIPSYNC_REACT1_MISSING_VIDEO:
+    "Video is required for Sync Lipsync React-1",
+  SYNC_LIPSYNC_REACT1_MISSING_AUDIO:
+    "Audio is required for Sync Lipsync React-1",
+  SYNC_LIPSYNC_REACT1_VIDEO_TOO_LONG:
+    "Video must be 15 seconds or shorter for Sync Lipsync React-1",
+  SYNC_LIPSYNC_REACT1_AUDIO_TOO_LONG:
+    "Audio must be 15 seconds or shorter for Sync Lipsync React-1",
+  SYNC_LIPSYNC_REACT1_MISSING_EMOTION:
+    "Emotion is required for Sync Lipsync React-1",
+  SYNC_LIPSYNC_REACT1_INVALID_EMOTION:
+    "Invalid emotion for Sync Lipsync React-1. Must be one of: happy, angry, sad, neutral, disgusted, surprised",
+  SYNC_LIPSYNC_REACT1_INVALID_TEMPERATURE:
+    "Temperature must be between 0 and 1 for Sync Lipsync React-1",
 
   // Video file fallback errors
   VIDEO_FILE_TOO_LARGE_FOR_FALLBACK:

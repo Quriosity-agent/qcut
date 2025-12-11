@@ -160,6 +160,12 @@ export function useAIGeneration(props: UseAIGenerationProps) {
     // Kling Avatar v2 props
     klingAvatarV2Prompt = "",
     audioDuration = null,
+    // Sync Lipsync React-1 props
+    syncLipsyncEmotion = "neutral",
+    syncLipsyncModelMode = "face",
+    syncLipsyncSyncMode = "bounce",
+    syncLipsyncTemperature = 0.5,
+    videoDuration = null,
     bytedanceTargetResolution = "1080p",
     bytedanceTargetFPS = "30fps",
     flashvsrUpscaleFactor = 4,
@@ -1151,6 +1157,12 @@ export function useAIGeneration(props: UseAIGenerationProps) {
             audioDuration,
             uploadImageToFal,
             uploadAudioToFal,
+            // Sync Lipsync React-1 settings
+            syncLipsyncEmotion,
+            syncLipsyncModelMode,
+            syncLipsyncLipsyncMode: syncLipsyncSyncMode,
+            syncLipsyncTemperature,
+            videoDuration,
           };
 
           handlerResult = await routeAvatarHandler(handlerCtx, avatarSettings);
@@ -1472,6 +1484,11 @@ export function useAIGeneration(props: UseAIGenerationProps) {
     uploadAudioToFal,
     klingAvatarV2Prompt,
     audioDuration,
+    syncLipsyncEmotion,
+    syncLipsyncModelMode,
+    syncLipsyncSyncMode,
+    syncLipsyncTemperature,
+    videoDuration,
     bytedanceTargetResolution,
     bytedanceTargetFPS,
     flashvsrUpscaleFactor,
@@ -1710,10 +1727,14 @@ export function useAIGeneration(props: UseAIGenerationProps) {
           if (
             (modelId === "kling_avatar_pro" ||
               modelId === "kling_avatar_standard" ||
-              modelId === "bytedance_omnihuman_v1_5") &&
+              modelId === "bytedance_omnihuman_v1_5" ||
+              modelId === "sync_lipsync_react1") &&
             !audioFile
           )
             return false;
+
+          // Sync Lipsync React-1 requires source video (but NOT character image)
+          if (modelId === "sync_lipsync_react1" && !sourceVideo) return false;
 
           // Models requiring reference images (check if at least one reference image exists)
           if (modelId === "kling_o1_ref2video") {
@@ -1725,10 +1746,12 @@ export function useAIGeneration(props: UseAIGenerationProps) {
           }
 
           // For other avatar models, require avatarImage
+          // (except video-to-video models and sync_lipsync_react1 which uses sourceVideo instead)
           if (
             modelId !== "kling_o1_v2v_reference" &&
             modelId !== "kling_o1_v2v_edit" &&
             modelId !== "kling_o1_ref2video" &&
+            modelId !== "sync_lipsync_react1" &&
             !avatarImage
           )
             return false;

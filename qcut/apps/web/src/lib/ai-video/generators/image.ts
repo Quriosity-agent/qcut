@@ -9,6 +9,7 @@ import { handleAIServiceError } from "@/lib/error-handler";
 import type {
   Seeddream45ImageSize,
   Seeddream45TextToImageParams,
+  Seeddream45EditParams,
 } from "@/components/editor/media-panel/views/ai/types/ai-types";
 import { ERROR_MESSAGES } from "@/components/editor/media-panel/views/ai/constants/ai-constants";
 import { getFalApiKey, FAL_API_BASE } from "../core/fal-request";

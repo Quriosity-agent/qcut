@@ -315,6 +315,12 @@ export function AiView() {
     // Avatar - Kling Avatar v2
     klingAvatarV2Prompt: avatarState.klingAvatarV2Prompt,
     audioDuration: avatarState.audioDuration,
+    // Avatar - Sync Lipsync React-1
+    syncLipsyncEmotion: avatarState.syncLipsyncEmotion,
+    syncLipsyncModelMode: avatarState.syncLipsyncModelMode,
+    syncLipsyncSyncMode: avatarState.syncLipsyncLipsyncMode,
+    syncLipsyncTemperature: avatarState.syncLipsyncTemperature,
+    videoDuration: avatarState.syncLipsyncVideoDuration,
     // Upscale - ByteDance
     bytedanceTargetResolution: upscaleState.bytedance.targetResolution,
     bytedanceTargetFPS: upscaleState.bytedance.targetFPS,
@@ -811,6 +817,30 @@ export function AiView() {
                   avatarSetters.setKlingAvatarV2Prompt
                 }
                 audioDuration={avatarState.audioDuration}
+                // Sync Lipsync React-1 props
+                syncLipsyncSourceVideo={avatarState.syncLipsyncSourceVideo}
+                syncLipsyncSourceVideoPreview={
+                  avatarState.syncLipsyncSourceVideoPreview
+                }
+                syncLipsyncVideoDuration={avatarState.syncLipsyncVideoDuration}
+                syncLipsyncEmotion={avatarState.syncLipsyncEmotion}
+                syncLipsyncModelMode={avatarState.syncLipsyncModelMode}
+                syncLipsyncLipsyncMode={avatarState.syncLipsyncLipsyncMode}
+                syncLipsyncTemperature={avatarState.syncLipsyncTemperature}
+                onSyncLipsyncSourceVideoChange={(file) => {
+                  avatarSetters.setSyncLipsyncSourceVideo(file);
+                  if (file) setError(null);
+                }}
+                onSyncLipsyncEmotionChange={avatarSetters.setSyncLipsyncEmotion}
+                onSyncLipsyncModelModeChange={
+                  avatarSetters.setSyncLipsyncModelMode
+                }
+                onSyncLipsyncLipsyncModeChange={
+                  avatarSetters.setSyncLipsyncLipsyncMode
+                }
+                onSyncLipsyncTemperatureChange={
+                  avatarSetters.setSyncLipsyncTemperature
+                }
               />
             </TabsContent>
 
@@ -1125,9 +1155,25 @@ export function AiView() {
                       Please upload the last frame (required for frame-to-video)
                     </div>
                   )}
-                {activeTab === "avatar" && !avatarState.avatarImage && (
-                  <div>Please upload a character image</div>
-                )}
+                {activeTab === "avatar" &&
+                  !avatarState.avatarImage &&
+                  !selectedModels.includes("sync_lipsync_react1") &&
+                  !selectedModels.some(
+                    (id) =>
+                      id === "kling_o1_v2v_reference" ||
+                      id === "kling_o1_v2v_edit" ||
+                      id === "kling_o1_ref2video"
+                  ) && <div>Please upload a character image</div>}
+                {activeTab === "avatar" &&
+                  selectedModels.includes("sync_lipsync_react1") &&
+                  !avatarState.syncLipsyncSourceVideo && (
+                    <div>Please upload a source video</div>
+                  )}
+                {activeTab === "avatar" &&
+                  selectedModels.includes("sync_lipsync_react1") &&
+                  !avatarState.audioFile && (
+                    <div>Please upload an audio file</div>
+                  )}
               </div>
             </div>
           )}

@@ -10,7 +10,12 @@ import {
 } from "./export-analysis";
 
 // Import extracted modules
-import type { StickerSourceForFilter } from "./export-cli/types";
+import type {
+  StickerSourceForFilter,
+  ProgressCallback,
+  VideoSourceInput,
+  AudioFileInput,
+} from "./export-cli/types";
 import {
   buildTextOverlayFilters,
   buildStickerOverlayFilters,
@@ -564,7 +569,7 @@ export class CLIExportEngine extends ExportEngine {
 
     // Filter out null values (files with no audio streams)
     audioFiles = validationResults.filter(
-      (file): file is (typeof audioFiles)[0] => file !== null
+      (file): file is AudioFileInput => file !== null
     );
 
     debugLog(

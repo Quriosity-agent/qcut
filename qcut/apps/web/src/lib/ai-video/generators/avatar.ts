@@ -21,7 +21,10 @@ import {
   fileToDataURL,
   withErrorHandling,
 } from "./base-generator";
-import { validateKlingAvatarV2Audio } from "../validation/validators";
+import {
+  validateKlingAvatarV2Audio,
+  validateSyncLipsyncReact1Inputs,
+} from "../validation/validators";
 
 /**
  * Generate an avatar video from a character image using a specified avatar model.
@@ -56,17 +59,18 @@ export async function generateAvatarVideo(
         throw new Error(`Model ${request.model} is not an avatar model`);
       }
 
-      // Convert character image to base64
-      const characterImageUrl = await fileToDataURL(request.characterImage);
-
       // Determine endpoint and payload based on model
       let endpoint: string;
       let payload: Record<string, unknown>;
 
       if (request.model === "wan_animate_replace") {
+        if (!request.characterImage) {
+          throw new Error("WAN Animate/Replace requires a character image");
+        }
         if (!request.sourceVideo) {
           throw new Error("WAN Animate/Replace requires a source video");
         }
+        const characterImageUrl = await fileToDataURL(request.characterImage);
         const sourceVideoUrl = await fileToDataURL(request.sourceVideo);
         endpoint = modelConfig.endpoints.text_to_video || "";
         if (!endpoint) {
@@ -84,9 +88,13 @@ export async function generateAvatarVideo(
         request.model === "kling_avatar_pro" ||
         request.model === "kling_avatar_standard"
       ) {
+        if (!request.characterImage) {
+          throw new Error(`${request.model} requires a character image`);
+        }
         if (!request.audioFile) {
           throw new Error(`${request.model} requires an audio file`);
         }
+        const characterImageUrl = await fileToDataURL(request.characterImage);
         const audioUrl = await fileToDataURL(request.audioFile);
         endpoint = modelConfig.endpoints.text_to_video || "";
         if (!endpoint) {
@@ -135,9 +143,15 @@ export async function generateAvatarVideo(
           ...(request.prompt && { prompt: request.prompt }),
         };
       } else if (request.model === "bytedance_omnihuman_v1_5") {
+        if (!request.characterImage) {
+          throw new Error(
+            "ByteDance OmniHuman v1.5 requires a character image"
+          );
+        }
         if (!request.audioFile) {
           throw new Error("ByteDance OmniHuman v1.5 requires an audio file");
         }
+        const characterImageUrl = await fileToDataURL(request.characterImage);
         const audioUrl = await fileToDataURL(request.audioFile);
         endpoint = modelConfig.endpoints.text_to_video || "";
         if (!endpoint) {
@@ -152,6 +166,10 @@ export async function generateAvatarVideo(
           ...(request.resolution && { resolution: request.resolution }),
         };
       } else if (request.model === "kling_o1_ref2video") {
+        if (!request.characterImage) {
+          throw new Error("Kling O1 Ref2Video requires a character image");
+        }
+        const characterImageUrl = await fileToDataURL(request.characterImage);
         endpoint = modelConfig.endpoints.image_to_video || "";
         if (!endpoint) {
           throw new Error(
@@ -178,6 +196,42 @@ export async function generateAvatarVideo(
           ...(modelConfig.default_params?.negative_prompt && {
             negative_prompt: modelConfig.default_params.negative_prompt,
           }),
+        };
+      } else if (request.model === "sync_lipsync_react1") {
+        // Sync Lipsync React-1 requires pre-uploaded URLs (like Kling Avatar V2)
+        // Validate inputs
+        validateSyncLipsyncReact1Inputs({
+          videoUrl: request.videoUrl,
+          audioUrl: request.audioUrl,
+          videoDuration: request.videoDuration,
+          audioDuration: request.audioDuration,
+          emotion: request.emotion,
+          temperature: request.temperature,
+        });
+
+        endpoint = modelConfig.endpoints.text_to_video || "";
+        if (!endpoint) {
+          throw new Error(
+            `Model ${request.model} does not have a valid endpoint`
+          );
+        }
+
+        payload = {
+          video_url: request.videoUrl,
+          audio_url: request.audioUrl,
+          emotion: request.emotion,
+          model_mode:
+            request.modelMode ??
+            modelConfig.default_params?.model_mode ??
+            "face",
+          lipsync_mode:
+            request.lipsyncMode ??
+            modelConfig.default_params?.lipsync_mode ??
+            "bounce",
+          temperature:
+            request.temperature ??
+            modelConfig.default_params?.temperature ??
+            0.5,
         };
       } else {
         throw new Error(`Unsupported avatar model: ${request.model}`);

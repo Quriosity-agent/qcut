@@ -117,6 +117,12 @@ export interface AIModel {
     maxDurationSec: number;
     maxFileSizeBytes: number;
   };
+  /** Supported emotions for lipsync models (Sync Lipsync React-1) */
+  supportedEmotions?: string[];
+  /** Supported model modes for lipsync models */
+  supportedModelModes?: string[];
+  /** Supported lipsync modes for lipsync models */
+  supportedLipsyncModes?: string[];
 }
 
 // Generated Video Interfaces
@@ -244,6 +250,18 @@ export interface UseAIGenerationProps {
   klingAvatarV2Prompt?: string;
   /** Audio duration in seconds for cost calculation */
   audioDuration?: number | null;
+
+  // Sync Lipsync React-1 options
+  /** Emotion for Sync Lipsync React-1 */
+  syncLipsyncEmotion?: SyncLipsyncEmotion;
+  /** Model mode: lips, face, or head */
+  syncLipsyncModelMode?: SyncLipsyncModelMode;
+  /** Sync mode: cut_off, loop, bounce, silence, remap */
+  syncLipsyncSyncMode?: SyncLipsyncSyncMode;
+  /** Temperature 0-1 for expressiveness */
+  syncLipsyncTemperature?: number;
+  /** Video duration for validation */
+  videoDuration?: number | null;
 
   // Video upscaling options
   // ByteDance Upscaler options
@@ -511,7 +529,8 @@ export interface LTXV2I2VRequest {
  */
 export interface AvatarVideoRequest {
   model: string;
-  characterImage: File;
+  /** Character image for avatar models (not required for lipsync models) */
+  characterImage?: File;
   audioFile?: File;
   sourceVideo?: File;
   prompt?: string;
@@ -520,6 +539,19 @@ export interface AvatarVideoRequest {
   audioDuration?: number;
   characterImageUrl?: string;
   audioUrl?: string;
+  // Sync Lipsync React-1 specific fields
+  /** Pre-uploaded video URL for lipsync models */
+  videoUrl?: string;
+  /** Video duration in seconds for validation */
+  videoDuration?: number;
+  /** Emotion for Sync Lipsync React-1 */
+  emotion?: SyncLipsyncEmotion;
+  /** Model mode for Sync Lipsync React-1 */
+  modelMode?: SyncLipsyncModelMode;
+  /** Lipsync mode for Sync Lipsync React-1 */
+  lipsyncMode?: SyncLipsyncSyncMode;
+  /** Temperature for Sync Lipsync React-1 (0-1) */
+  temperature?: number;
 }
 
 /**
@@ -667,6 +699,57 @@ export interface TopazUpscaleRequest {
   upscale_factor?: number;
   target_fps?: "original" | "interpolated";
   h264_output?: boolean;
+}
+
+// ============================================
+// Sync Lipsync React-1 Types
+// ============================================
+
+/**
+ * Emotion options for Sync Lipsync React-1
+ * Controls the emotional expression applied during lip-sync
+ */
+export type SyncLipsyncEmotion =
+  | "happy"
+  | "angry"
+  | "sad"
+  | "neutral"
+  | "disgusted"
+  | "surprised";
+
+/**
+ * Model mode for Sync Lipsync React-1
+ * Controls which region is modified during generation
+ */
+export type SyncLipsyncModelMode = "lips" | "face" | "head";
+
+/**
+ * Sync mode for audio-video duration mismatch handling
+ */
+export type SyncLipsyncSyncMode =
+  | "cut_off"
+  | "loop"
+  | "bounce"
+  | "silence"
+  | "remap";
+
+/**
+ * Request parameters for Sync Lipsync React-1 generation
+ */
+export interface SyncLipsyncReact1Request {
+  model: string;
+  /** Pre-uploaded video URL (FAL storage) */
+  videoUrl: string;
+  /** Pre-uploaded audio URL (FAL storage) */
+  audioUrl: string;
+  /** Required emotion for expression control */
+  emotion: SyncLipsyncEmotion;
+  /** Optional model mode (default: face) */
+  modelMode?: SyncLipsyncModelMode;
+  /** Optional sync mode (default: bounce) */
+  lipsyncMode?: SyncLipsyncSyncMode;
+  /** Optional temperature 0-1 (default: 0.5) */
+  temperature?: number;
 }
 
 // ============================================
