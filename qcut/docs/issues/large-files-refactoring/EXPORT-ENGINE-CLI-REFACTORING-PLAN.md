@@ -34,7 +34,7 @@
 
 ### Files Created
 
-```
+```plaintext
 apps/web/src/lib/export-cli/
 ├── index.ts              (48 lines)  - Barrel exports
 ├── types.ts              (72 lines)  - Type definitions
