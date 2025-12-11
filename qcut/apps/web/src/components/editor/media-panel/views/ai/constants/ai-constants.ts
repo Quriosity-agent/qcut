@@ -1240,6 +1240,8 @@ export const ERROR_MESSAGES = {
     "Audio must be 15 seconds or shorter for Sync Lipsync React-1",
   SYNC_LIPSYNC_REACT1_MISSING_EMOTION:
     "Emotion is required for Sync Lipsync React-1",
+  SYNC_LIPSYNC_REACT1_INVALID_EMOTION:
+    "Invalid emotion for Sync Lipsync React-1. Must be one of: happy, angry, sad, neutral, disgusted, surprised",
   SYNC_LIPSYNC_REACT1_INVALID_TEMPERATURE:
     "Temperature must be between 0 and 1 for Sync Lipsync React-1",
 

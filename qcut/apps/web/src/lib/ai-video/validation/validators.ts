@@ -692,9 +692,7 @@ export function validateSyncLipsyncReact1Emotion(
       emotion as (typeof SYNC_LIPSYNC_REACT1_EMOTIONS)[number]
     )
   ) {
-    throw new Error(
-      `Invalid emotion: ${emotion}. Must be one of: ${SYNC_LIPSYNC_REACT1_EMOTIONS.join(", ")}`
-    );
+    throw new Error(ERROR_MESSAGES.SYNC_LIPSYNC_REACT1_INVALID_EMOTION);
   }
 }
 

@@ -534,12 +534,13 @@ Added `sync_lipsync_react1` model to `AI_MODELS` array at line 841-870:
 #### Step 3: Error Messages (ai-constants.ts)
 **Status:** ✅ Completed
 
-Added to `ERROR_MESSAGES` at lines 1232-1244:
+Added to `ERROR_MESSAGES` at lines 1232-1246:
 - SYNC_LIPSYNC_REACT1_MISSING_VIDEO
 - SYNC_LIPSYNC_REACT1_MISSING_AUDIO
 - SYNC_LIPSYNC_REACT1_VIDEO_TOO_LONG
 - SYNC_LIPSYNC_REACT1_AUDIO_TOO_LONG
 - SYNC_LIPSYNC_REACT1_MISSING_EMOTION
+- SYNC_LIPSYNC_REACT1_INVALID_EMOTION
 - SYNC_LIPSYNC_REACT1_INVALID_TEMPERATURE
 
 #### Step 4: Validation Functions (validators.ts)
