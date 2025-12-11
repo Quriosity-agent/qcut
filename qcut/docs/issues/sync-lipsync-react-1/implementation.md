@@ -1078,3 +1078,66 @@ Added to `apps/web/src/components/editor/media-panel/views/ai/hooks/generation/m
    - Updated `resetAll` to reset all Sync Lipsync state
 
 **Build:** ✅ Passed
+
+---
+
+### Step 3: Avatar Tab UI (`ai-avatar-tab.tsx`)
+**Status:** ✅ Completed
+
+**Added imports:**
+- React `useState` for collapsible state
+- Radix UI components: `Select`, `Slider`, `Input`, `Collapsible`, `Tooltip`
+- Lucide icons: `Info`, `ChevronDown`, `ChevronUp`
+- Type imports for `SyncLipsyncEmotion`, `SyncLipsyncModelMode`, `SyncLipsyncSyncMode`
+
+**Extended `AIAvatarTabProps` interface:**
+- `syncLipsyncSourceVideo`, `syncLipsyncSourceVideoPreview`, `syncLipsyncVideoDuration`
+- `syncLipsyncEmotion`, `syncLipsyncModelMode`, `syncLipsyncLipsyncMode`, `syncLipsyncTemperature`
+- Setter callbacks for all sync lipsync options
+
+**Added UI section** (conditional on `sync_lipsync_react1` model selected):
+- Source Video FileUpload with 15-second helper text
+- Duration validation warning (shows error if > 15s)
+- Emotion dropdown (required, with tooltip)
+- Collapsible "Additional Settings" section containing:
+  - Model Mode dropdown (face/lips/head with descriptions)
+  - Lipsync Mode dropdown (bounce/cut_off/loop/silence/remap with descriptions)
+  - Temperature slider + input (0.0 - 1.0, step 0.1)
+- Duration info display
+
+**Wired up in `index.tsx`:**
+- Added all Sync Lipsync props to `<AIAvatarTab>` component usage
+- Connected state from `avatarState` and setters from `avatarSetters`
+
+**Wired up in `use-ai-generation.ts`:**
+- Added props destructuring for all sync lipsync options
+- Added to `avatarSettings` object passed to `routeAvatarHandler`
+
+**Passed to `useAIGeneration` hook in `index.tsx`:**
+- `syncLipsyncEmotion`, `syncLipsyncModelMode`, `syncLipsyncSyncMode`
+- `syncLipsyncTemperature`, `videoDuration`
+
+**Build:** ✅ Passed
+
+---
+
+## Implementation Complete
+
+All UI layer implementation steps are complete:
+
+1. ✅ Model Handler (`model-handlers.ts`) - Handler function and routing
+2. ✅ State Management (`use-ai-avatar-tab-state.ts`) - Hooks and state interfaces
+3. ✅ Avatar Tab UI (`ai-avatar-tab.tsx`) - UI controls and wiring
+
+**Files Modified (UI Layer):**
+
+| File | Changes |
+|------|---------|
+| `hooks/generation/model-handlers.ts` | Extended `AvatarSettings`, added `handleSyncLipsyncReact1`, added routing case |
+| `hooks/use-ai-tab-state-base.ts` | Added `useVideoFileWithDuration` hook |
+| `hooks/use-ai-avatar-tab-state.ts` | Extended interfaces, added Sync Lipsync state |
+| `tabs/ai-avatar-tab.tsx` | Added imports, extended props, added UI section |
+| `index.tsx` | Wired up props to `<AIAvatarTab>` and `useAIGeneration` |
+| `hooks/use-ai-generation.ts` | Added props destructuring and avatarSettings fields |
+
+**Total Build Status:** ✅ All Passed
