@@ -624,7 +624,11 @@ export const SYNC_LIPSYNC_REACT1_EMOTIONS = [
 ] as const;
 
 /** Valid model modes for Sync Lipsync React-1 */
-export const SYNC_LIPSYNC_REACT1_MODEL_MODES = ["lips", "face", "head"] as const;
+export const SYNC_LIPSYNC_REACT1_MODEL_MODES = [
+  "lips",
+  "face",
+  "head",
+] as const;
 
 /** Valid lipsync modes for Sync Lipsync React-1 */
 export const SYNC_LIPSYNC_REACT1_SYNC_MODES = [
