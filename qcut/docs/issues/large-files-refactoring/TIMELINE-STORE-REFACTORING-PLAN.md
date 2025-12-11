@@ -38,7 +38,7 @@ A 6-module architecture provides:
 
 ## Target Architecture
 
-```
+```plaintext
 stores/
 ├── timeline-store.ts           # Main store orchestration (~600 lines)
 └── timeline/
