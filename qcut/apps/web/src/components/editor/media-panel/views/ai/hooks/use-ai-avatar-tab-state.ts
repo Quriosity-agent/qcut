@@ -82,6 +82,13 @@ export interface AvatarTabSetters {
 
   // Kling Avatar v2
   setKlingAvatarV2Prompt: (value: string) => void;
+
+  // Sync Lipsync React-1
+  setSyncLipsyncSourceVideo: (file: File | null) => void;
+  setSyncLipsyncEmotion: (emotion: SyncLipsyncEmotion) => void;
+  setSyncLipsyncModelMode: (mode: SyncLipsyncModelMode) => void;
+  setSyncLipsyncLipsyncMode: (mode: SyncLipsyncSyncMode) => void;
+  setSyncLipsyncTemperature: (temp: number) => void;
 }
 
 export interface AvatarTabHelpers {
@@ -97,6 +104,8 @@ export interface AvatarTabHelpers {
   resetAudio: () => void;
   /** Reset source video */
   resetSourceVideo: () => void;
+  /** Reset Sync Lipsync source video */
+  resetSyncLipsyncSourceVideo: () => void;
   /** Reset all avatar state */
   resetAll: () => void;
 }
@@ -162,6 +171,17 @@ export function useAvatarTabState(): UseAvatarTabStateResult {
   // Kling Avatar v2 prompt
   const [klingAvatarV2Prompt, setKlingAvatarV2Prompt] = useState("");
 
+  // Sync Lipsync React-1 state
+  const syncLipsyncVideoState = useVideoFileWithDuration();
+  const [syncLipsyncEmotion, setSyncLipsyncEmotion] =
+    useState<SyncLipsyncEmotion>("neutral");
+  const [syncLipsyncModelMode, setSyncLipsyncModelMode] =
+    useState<SyncLipsyncModelMode>("face");
+  const [syncLipsyncLipsyncMode, setSyncLipsyncLipsyncMode] =
+    useState<SyncLipsyncSyncMode>("bounce");
+  const [syncLipsyncTemperature, setSyncLipsyncTemperature] =
+    useState<number>(0.5);
+
   // Reset all state
   const resetAll = useCallback(() => {
     avatarImageState.reset();
@@ -170,12 +190,19 @@ export function useAvatarTabState(): UseAvatarTabStateResult {
     audioState.reset();
     sourceVideoState.reset();
     setKlingAvatarV2Prompt("");
+    // Reset Sync Lipsync React-1 state
+    syncLipsyncVideoState.reset();
+    setSyncLipsyncEmotion("neutral");
+    setSyncLipsyncModelMode("face");
+    setSyncLipsyncLipsyncMode("bounce");
+    setSyncLipsyncTemperature(0.5);
   }, [
     avatarImageState,
     avatarLastFrameState,
     referenceImagesState,
     audioState,
     sourceVideoState,
+    syncLipsyncVideoState,
   ]);
 
   return {
@@ -192,6 +219,14 @@ export function useAvatarTabState(): UseAvatarTabStateResult {
       sourceVideo: sourceVideoState.file,
       sourceVideoPreview: sourceVideoState.preview,
       klingAvatarV2Prompt,
+      // Sync Lipsync React-1 state
+      syncLipsyncSourceVideo: syncLipsyncVideoState.file,
+      syncLipsyncSourceVideoPreview: syncLipsyncVideoState.preview,
+      syncLipsyncVideoDuration: syncLipsyncVideoState.duration,
+      syncLipsyncEmotion,
+      syncLipsyncModelMode,
+      syncLipsyncLipsyncMode,
+      syncLipsyncTemperature,
     },
     setters: {
       setAvatarImage: avatarImageState.setFile,
@@ -200,6 +235,12 @@ export function useAvatarTabState(): UseAvatarTabStateResult {
       setAudioFile: audioState.setFile,
       setSourceVideo: sourceVideoState.setFile,
       setKlingAvatarV2Prompt,
+      // Sync Lipsync React-1 setters
+      setSyncLipsyncSourceVideo: syncLipsyncVideoState.setFile,
+      setSyncLipsyncEmotion,
+      setSyncLipsyncModelMode,
+      setSyncLipsyncLipsyncMode,
+      setSyncLipsyncTemperature,
     },
     helpers: {
       resetAvatarImage: avatarImageState.reset,
@@ -208,6 +249,7 @@ export function useAvatarTabState(): UseAvatarTabStateResult {
       resetAllReferenceImages: referenceImagesState.reset,
       resetAudio: audioState.reset,
       resetSourceVideo: sourceVideoState.reset,
+      resetSyncLipsyncSourceVideo: syncLipsyncVideoState.reset,
       resetAll,
     },
   };
