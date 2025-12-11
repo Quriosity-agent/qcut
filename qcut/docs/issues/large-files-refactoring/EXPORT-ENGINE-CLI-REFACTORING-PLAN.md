@@ -110,7 +110,7 @@ Quick checks against the current `export-engine-cli.ts` (1,689 lines) to align t
 
 ### Directory Structure
 
-```
+```plaintext
 apps/web/src/lib/export-cli/
 ├── index.ts              (~30 lines)  - Barrel exports
 ├── types.ts              (~80 lines)  - All type definitions
