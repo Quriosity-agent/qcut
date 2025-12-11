@@ -529,7 +529,8 @@ export interface LTXV2I2VRequest {
  */
 export interface AvatarVideoRequest {
   model: string;
-  characterImage: File;
+  /** Character image for avatar models (not required for lipsync models) */
+  characterImage?: File;
   audioFile?: File;
   sourceVideo?: File;
   prompt?: string;

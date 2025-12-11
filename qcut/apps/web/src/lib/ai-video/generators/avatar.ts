@@ -59,17 +59,18 @@ export async function generateAvatarVideo(
         throw new Error(`Model ${request.model} is not an avatar model`);
       }
 
-      // Convert character image to base64
-      const characterImageUrl = await fileToDataURL(request.characterImage);
-
       // Determine endpoint and payload based on model
       let endpoint: string;
       let payload: Record<string, unknown>;
 
       if (request.model === "wan_animate_replace") {
+        if (!request.characterImage) {
+          throw new Error("WAN Animate/Replace requires a character image");
+        }
         if (!request.sourceVideo) {
           throw new Error("WAN Animate/Replace requires a source video");
         }
+        const characterImageUrl = await fileToDataURL(request.characterImage);
         const sourceVideoUrl = await fileToDataURL(request.sourceVideo);
         endpoint = modelConfig.endpoints.text_to_video || "";
         if (!endpoint) {
@@ -87,9 +88,13 @@ export async function generateAvatarVideo(
         request.model === "kling_avatar_pro" ||
         request.model === "kling_avatar_standard"
       ) {
+        if (!request.characterImage) {
+          throw new Error(`${request.model} requires a character image`);
+        }
         if (!request.audioFile) {
           throw new Error(`${request.model} requires an audio file`);
         }
+        const characterImageUrl = await fileToDataURL(request.characterImage);
         const audioUrl = await fileToDataURL(request.audioFile);
         endpoint = modelConfig.endpoints.text_to_video || "";
         if (!endpoint) {
