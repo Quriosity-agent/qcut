@@ -119,6 +119,8 @@ export interface AvatarVideoRequest {
   // Sync Lipsync React-1 specific fields
   /** Pre-uploaded video URL for lipsync models */
   videoUrl?: string;
+  /** Video duration in seconds for validation */
+  videoDuration?: number;
   /** Emotion for Sync Lipsync React-1 */
   emotion?: SyncLipsyncEmotion;
   /** Model mode for Sync Lipsync React-1 */
