@@ -5,7 +5,6 @@
  * Extracted from export-engine-cli.ts for reuse across filter and source modules.
  */
 
-import type { TextElement } from "@/types/timeline";
 
 /**
  * Video source input for FFmpeg direct copy optimization.
