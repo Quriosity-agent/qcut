@@ -501,3 +501,18 @@ Dropdown with 6 emotion options:
 
 - 5 credits per request (~$0.10)
 - Input constraints: 15 seconds max for both video and audio
+
+---
+
+## Review (code vs plan)
+
+- No `sync_lipsync` strings exist in `apps/web/src`, and `AI_MODELS` has no React-1 entry, so selecting this model would fail at config lookup (`getModelConfig` in `qcut/apps/web/src/lib/ai-video/generators/base-generator.ts` throws for unknown models). Add the model block to `ai-constants.ts` to make it discoverable.
+- The avatar request shape still expects a character image and optional audio/video files (`qcut/apps/web/src/components/editor/media-panel/views/ai/types/ai-types.ts:512-520`), and `generateAvatarVideo` only builds payloads for Kling/WAN/OmniHuman branches (`qcut/apps/web/src/lib/ai-video/generators/avatar.ts:70-144`). There is no branch that uploads video/audio to FAL or posts `emotion/model_mode/lipsync_mode/temperature`, so the React-1 payload described above cannot be produced.
+- UI/handler layer does not surface lipsync options: `UseAIGenerationProps` has no emotion/model-mode/temperature fields, and the avatar router only handles Kling/O1 variants (`qcut/apps/web/src/components/editor/media-panel/views/ai/hooks/generation/model-handlers.ts:261-335`). Even with a model config, the controls and dispatch path for React-1 are missing.
+- Validators and error messages for 15s limits/emotion/temperature are absent (`qcut/apps/web/src/lib/ai-video/validation/validators.ts` has no Sync Lipsync section; `ERROR_MESSAGES` in `qcut/apps/web/src/components/editor/media-panel/views/ai/constants/ai-constants.ts:1070-1210` has no related strings), so the constraints listed in this doc are not enforced or shown.
+
+### Suggested next steps
+
+1) Add the Sync Lipsync React-1 model to `AI_MODELS` (with `requiredInputs: ["sourceVideo", "audioFile"]`) and wire a dedicated branch in `generateAvatarVideo`/`routeAvatarHandler` that uploads video/audio via `uploadVideoToFal`/`uploadAudioToFal` and posts the documented payload.  
+2) Extend `AvatarVideoRequest` and `UseAIGenerationProps` with lipsync fields, and surface selectors/slider in the avatar tab so the values reach the generator.  
+3) Add SYNC_LIPSYNC_REACT1 error messages and validators (15s duration checks, emotion/mode/temperature validation) and export them from `ai-video/index.ts` to align runtime behavior with this spec.
