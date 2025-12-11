@@ -5,7 +5,6 @@
  * Extracted from export-engine-cli.ts for reuse across filter and source modules.
  */
 
-
 /**
  * Video source input for FFmpeg direct copy optimization.
  * Matches IPC handler expectations for video segment data.
