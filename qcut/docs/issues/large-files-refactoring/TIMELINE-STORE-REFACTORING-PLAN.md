@@ -1,732 +1,541 @@
-
 # Timeline Store Refactoring Plan
 
 ## Overview
 
 **File**: `qcut/apps/web/src/stores/timeline-store.ts`
 **Current Size**: 2,194 lines
-**Target**: Split into 3 files
-**Status**: Pending
+**Target**: Split into 6 focused modules
+**Status**: Planning
 **Priority**: High (core functionality, high change frequency)
 
 ---
 
-## Current Structure Analysis
+## Guiding Principles
 
-### Imports & Dependencies (Lines 1-28)
+### Long-Term Maintainability First
 
-```typescript
-// External
-import { create } from "zustand";
-import { toast } from "sonner";
+1. **Single Responsibility**: Each module should have one clear purpose
+2. **Dependency Direction**: Dependencies flow inward (utilities → operations → store)
+3. **Testability**: Pure functions extracted for easy unit testing
+4. **Discoverability**: Clear naming and organization for new developers
+5. **Minimal Coupling**: Modules should be independently modifiable
+6. **Future-Proofing**: Structure accommodates anticipated features (multi-track ripple, collaborative editing)
 
-// Types
-import { TrackType, TimelineElement, CreateTimelineElement, TimelineTrack, TextElement, MediaElement, DragData, sortTracksByOrder, ensureMainTrack, validateElementTrackCompatibility } from "@/types/timeline";
+### Why Not Just 3 Files?
 
-// Stores (potential circular deps)
-import { useEditorStore } from "./editor-store";
-import { useMediaStore, getMediaAspectRatio, type MediaItem } from "./media-store";
-// Dynamic import: useProjectStore, useSceneStore
+The original plan proposed 3 files, but this creates:
+- 700+ line "operations" file (still too large)
+- Mixed concerns (track ops + element ops + split ops)
+- Difficult to locate specific functionality
 
-// Utilities
-import { storageService } from "@/lib/storage/storage-service";
-import { createObjectURL } from "@/lib/blob-manager";
-import { generateUUID } from "@/lib/utils";
-import { TIMELINE_CONSTANTS } from "@/constants/timeline-constants";
-import { checkElementOverlaps, resolveElementOverlaps } from "@/lib/timeline";
-import { handleError, ErrorCategory, ErrorSeverity } from "@/lib/error-handler";
-```
-
-### Helper Function (Lines 30-49)
-
-```typescript
-const getElementNameWithSuffix = (originalName: string, suffix: string): string
-```
-- Removes existing suffixes: `(left)`, `(right)`, `(audio)`, `(split N)`
-- Adds new suffix
-
-### TimelineStore Interface (Lines 51-353) - ~300 lines
-
-**State Properties:**
-- `_tracks: TimelineTrack[]` - Private track storage
-- `tracks: TimelineTrack[]` - Sorted/computed tracks
-- `history: TimelineTrack[][]` - Undo stack
-- `redoStack: TimelineTrack[][]` - Redo stack
-- `autoSaveStatus: string`, `isAutoSaving: boolean`, `lastAutoSaveAt: number | null`
-- `snappingEnabled: boolean`
-- `rippleEditingEnabled: boolean`
-- `showEffectsTrack: boolean`
-- `selectedElements: { trackId: string; elementId: string }[]`
-- `dragState: { isDragging, elementId, trackId, startMouseX, startElementTime, clickOffsetTime, currentTime }`
-
-**Methods (60+ total):**
-- Track ops: `addTrack`, `insertTrackAt`, `removeTrack`, `removeTrackWithRipple`
-- Element ops: `addElementToTrack`, `removeElementFromTrack`, `moveElementToTrack`
-- Update ops: `updateElementTrim`, `updateElementDuration`, `updateElementStartTime`
-- Ripple ops: `updateElementStartTimeWithRipple`, `removeElementFromTrackWithRipple`
-- Split ops: `splitElement`, `splitAndKeepLeft`, `splitAndKeepRight`, `separateAudio`
-- Transform ops: `updateElementTransform`, `updateElementPosition`, `updateElementSize`, `updateElementRotation`
-- Text/Media ops: `updateTextElement`, `updateMediaElement`, `replaceElementMedia`
-- Selection ops: `selectElement`, `deselectElement`, `clearSelectedElements`, `setSelectedElements`
-- Drag ops: `setDragState`, `startDrag`, `updateDragTime`, `endDrag`
-- Toggle ops: `toggleSnapping`, `toggleRippleEditing`, `toggleEffectsTrack`, `autoShowEffectsTrack`, `toggleTrackMute`, `toggleElementHidden`
-- History ops: `undo`, `redo`, `pushHistory`
-- Persistence ops: `loadProjectTimeline`, `saveProjectTimeline`, `saveImmediate`, `clearTimeline`, `restoreTracks`
-- Query ops: `getSortedTracks`, `getTotalDuration`, `getProjectThumbnail`, `getAudioElements`, `checkElementOverlap`, `findOrCreateTrack`
-- Add convenience: `addMediaAtTime`, `addTextAtTime`, `addMediaToNewTrack`, `addTextToNewTrack`
-- Effects ops: `addEffectToElement`, `removeEffectFromElement`, `getElementEffectIds`, `clearElementEffects`
-
-### Module-Level State (Line 355-356)
-
-```typescript
-let autoSaveTimer: ReturnType<typeof setTimeout> | null = null;
-```
-
-### Store Implementation (Lines 358-2194) - ~1836 lines
-
-#### Internal Helpers (Lines 358-478)
-
-| Helper | Lines | Purpose |
-|--------|-------|---------|
-| `updateTracks()` | 360-367 | Ensures main track, sorts, sets state |
-| `autoSaveTimeline()` | 369-376 | Captures projectId, calls guarded version |
-| `autoSaveTimelineGuarded()` | 378-444 | Project guard, scene ID, actual save |
-| `updateTracksAndSave()` | 446-474 | Updates + debounced auto-save |
-
-#### Initial State (Lines 476-498)
-
-```typescript
-const initialTracks = ensureMainTrack([]);
-const sortedInitialTracks = sortTracksByOrder(initialTracks);
-```
-
-#### Methods by Category
-
-| Category | Lines | Count | Key Methods |
-|----------|-------|-------|-------------|
-| History & Selection | 500-560 | 6 | `pushHistory`, `selectElement`, `deselectElement`, etc. |
-| Track Operations | 562-720 | 4 | `addTrack`, `insertTrackAt`, `removeTrack`, `removeTrackWithRipple` |
-| Element Operations | 722-1009 | 4 | `addElementToTrack`, `removeElementFromTrack`, `moveElementToTrack`, `removeElementFromTrackWithRipple` |
-| Update Operations | 1011-1166 | 4 | `updateElementTrim`, `updateElementDuration`, `updateElementStartTime`, `updateElementStartTimeWithRipple` |
-| Toggle Operations | 1168-1193 | 2 | `toggleTrackMute`, `toggleElementHidden` |
-| Text/Transform Ops | 1195-1277 | 6 | `updateTextElement`, `updateElementTransform`, etc. |
-| Split Operations | 1279-1411 | 4 | `splitElement`, `splitAndKeepLeft`, `splitAndKeepRight` |
-| Audio Operations | 1413-1491 | 2 | `getAudioElements`, `separateAudio` |
-| Replace Media | 1493-1643 | 1 | `replaceElementMedia` (~150 lines, async) |
-| Computed/Query | 1645-1706 | 2 | `getTotalDuration`, `getProjectThumbnail` |
-| Undo/Redo | 1708-1714 | 1 | `redo` |
-| Drag State | 1716-1772 | 5 | `dragState`, `setDragState`, `startDrag`, `updateDragTime`, `endDrag` |
-| Persistence | 1774-1880 | 5 | `loadProjectTimeline`, `saveProjectTimeline`, `saveImmediate`, `clearTimeline`, `restoreTracks` |
-| Settings Toggles | 1882-1916 | 4 | `toggleSnapping`, `toggleRippleEditing`, `toggleEffectsTrack`, `autoShowEffectsTrack` |
-| Overlap/Track Utils | 1918-1956 | 2 | `checkElementOverlap`, `findOrCreateTrack` |
-| Add Convenience | 1958-2061 | 4 | `addMediaAtTime`, `addTextAtTime`, `addMediaToNewTrack`, `addTextToNewTrack` |
-| Effects Management | 2063-2192 | 4 | `addEffectToElement`, `removeEffectFromElement`, `getElementEffectIds`, `clearElementEffects` |
+A 6-module architecture provides:
+- ~200-400 lines per module (easy to navigate)
+- Clear ownership of each concern
+- Easier code reviews and merge conflict resolution
+- Better test organization
 
 ---
 
-## Proposed File Structure
+## Target Architecture
 
-### File 1: `stores/timeline/types.ts` (~350 lines)
+```
+stores/
+├── timeline-store.ts           # Main store orchestration (~600 lines)
+└── timeline/
+    ├── index.ts                # Barrel exports
+    ├── types.ts                # Interfaces, types, constants (~150 lines)
+    ├── track-operations.ts     # Track CRUD + ripple (~300 lines)
+    ├── element-operations.ts   # Element CRUD + move (~350 lines)
+    ├── split-operations.ts     # Split, trim, audio separation (~250 lines)
+    ├── persistence.ts          # Load, save, auto-save (~200 lines)
+    └── utils.ts                # Pure helper functions (~100 lines)
+```
 
-**Purpose**: All type definitions and pure helper functions
+### Module Responsibilities
 
-**Contents**:
-```typescript
-// Re-export timeline types for convenience
-export type { TrackType, TimelineElement, CreateTimelineElement, TimelineTrack, TextElement, MediaElement, DragData } from "@/types/timeline";
+| Module | Responsibility | Key Functions |
+|--------|----------------|---------------|
+| `types.ts` | All TypeScript interfaces and constants | `TimelineStore`, `DragState`, `INITIAL_*` |
+| `utils.ts` | Pure helper functions (no side effects) | `getElementNameWithSuffix`, `createTrack` |
+| `track-operations.ts` | Track lifecycle management | `addTrack`, `removeTrack`, `removeTrackWithRipple` |
+| `element-operations.ts` | Element lifecycle management | `addElement`, `removeElement`, `moveElement`, ripple |
+| `split-operations.ts` | Time-based modifications | `split`, `splitAndKeep*`, `separateAudio`, `updateTrim` |
+| `persistence.ts` | Storage and auto-save | `load`, `save`, `saveImmediate`, auto-save timer |
+| `timeline-store.ts` | Orchestration and state | Zustand store, selection, drag, toggles, computed |
 
-// Store state interface (subset for operations)
-export interface TimelineStoreState {
-  _tracks: TimelineTrack[];
-  tracks: TimelineTrack[];
-  history: TimelineTrack[][];
-  redoStack: TimelineTrack[][];
-  rippleEditingEnabled: boolean;
-  selectedElements: { trackId: string; elementId: string }[];
-}
+---
 
-// Full TimelineStore interface (~300 lines)
-export interface TimelineStore extends TimelineStoreState {
-  // ... all 60+ methods
-}
+## Dependency Graph
 
-// Pure helper function
-export const getElementNameWithSuffix = (
-  originalName: string,
-  suffix: string
-): string => {
-  const baseName = originalName
-    .replace(/ \(left\)$/, "")
-    .replace(/ \(right\)$/, "")
-    .replace(/ \(audio\)$/, "")
-    .replace(/ \(split \d+\)$/, "");
-  return `${baseName} (${suffix})`;
-};
-
-// Drag state type
-export interface DragState {
-  isDragging: boolean;
-  elementId: string | null;
-  trackId: string | null;
-  startMouseX: number;
-  startElementTime: number;
-  clickOffsetTime: number;
-  currentTime: number;
-}
-
-// Initial drag state
-export const INITIAL_DRAG_STATE: DragState = {
-  isDragging: false,
-  elementId: null,
-  trackId: null,
-  startMouseX: 0,
-  startElementTime: 0,
-  clickOffsetTime: 0,
-  currentTime: 0,
-};
+```
+                    ┌─────────────┐
+                    │   types.ts  │
+                    └──────┬──────┘
+                           │
+                    ┌──────▼──────┐
+                    │   utils.ts  │
+                    └──────┬──────┘
+                           │
+        ┌──────────────────┼──────────────────┐
+        │                  │                  │
+┌───────▼───────┐  ┌───────▼───────┐  ┌───────▼───────┐
+│track-operations│  │element-ops    │  │split-operations│
+└───────┬───────┘  └───────┬───────┘  └───────┬───────┘
+        │                  │                  │
+        └──────────────────┼──────────────────┘
+                           │
+                    ┌──────▼──────┐
+                    │ persistence │
+                    └──────┬──────┘
+                           │
+                    ┌──────▼──────┐
+                    │timeline-store│
+                    └─────────────┘
 ```
 
 ---
 
-### File 2: `stores/timeline/operations.ts` (~700 lines)
+## Operation Context Pattern
 
-**Purpose**: Pure operation functions that can be unit tested
-
-**Design Pattern**: Functions that receive state getter and updater
+All operation modules receive a consistent context object:
 
 ```typescript
-import type { TimelineTrack, TimelineElement, CreateTimelineElement, TrackType } from "@/types/timeline";
-import { sortTracksByOrder, ensureMainTrack, validateElementTrackCompatibility } from "@/types/timeline";
-import { checkElementOverlaps, resolveElementOverlaps } from "@/lib/timeline";
-import { generateUUID } from "@/lib/utils";
-import { handleError, ErrorCategory, ErrorSeverity } from "@/lib/error-handler";
-import { getElementNameWithSuffix } from "./types";
-
-// Types for operation context
+// timeline/types.ts
 export interface OperationContext {
+  // State access
   getTracks: () => TimelineTrack[];
-  pushHistory: () => void;
-  updateTracksAndSave: (tracks: TimelineTrack[]) => void;
+  getSelectedElements: () => SelectedElement[];
   isRippleEnabled: () => boolean;
+
+  // State mutation
+  updateTracksAndSave: (tracks: TimelineTrack[]) => void;
+  pushHistory: () => void;
+
+  // Cross-cutting concerns
+  selectElement: (trackId: string, elementId: string) => void;
+  deselectElement: (trackId: string, elementId: string) => void;
 }
-
-// ============== TRACK OPERATIONS ==============
-
-export function createTrack(type: TrackType): TimelineTrack {
-  const trackName = type === "media" ? "Media Track"
-    : type === "text" ? "Text Track"
-    : type === "audio" ? "Audio Track"
-    : type === "sticker" ? "Sticker Track"
-    : "Track";
-
-  return {
-    id: generateUUID(),
-    name: trackName,
-    type,
-    elements: [],
-    muted: false,
-  };
-}
-
-export function addTrackOperation(
-  ctx: OperationContext,
-  type: TrackType
-): string {
-  ctx.pushHistory();
-  const newTrack = createTrack(type);
-  ctx.updateTracksAndSave([...ctx.getTracks(), newTrack]);
-  return newTrack.id;
-}
-
-export function insertTrackAtOperation(
-  ctx: OperationContext,
-  type: TrackType,
-  index: number
-): string {
-  ctx.pushHistory();
-  const newTrack = createTrack(type);
-  const newTracks = [...ctx.getTracks()];
-  newTracks.splice(index, 0, newTrack);
-  ctx.updateTracksAndSave(newTracks);
-  return newTrack.id;
-}
-
-export function removeTrackOperation(
-  ctx: OperationContext,
-  trackId: string
-): void {
-  if (ctx.isRippleEnabled()) {
-    removeTrackWithRippleOperation(ctx, trackId);
-  } else {
-    ctx.pushHistory();
-    ctx.updateTracksAndSave(
-      ctx.getTracks().filter((track) => track.id !== trackId)
-    );
-  }
-}
-
-export function removeTrackWithRippleOperation(
-  ctx: OperationContext,
-  trackId: string
-): void {
-  // ... ~90 lines of ripple logic
-}
-
-// ============== ELEMENT OPERATIONS ==============
-
-export function addElementToTrackOperation(
-  ctx: OperationContext,
-  trackId: string,
-  elementData: CreateTimelineElement,
-  callbacks: {
-    selectElement: (trackId: string, elementId: string) => void;
-    onFirstMediaElement?: (element: TimelineElement) => void;
-  }
-): void {
-  // ... validation and element creation
-}
-
-export function removeElementFromTrackOperation(
-  ctx: OperationContext,
-  trackId: string,
-  elementId: string,
-  pushHistory: boolean
-): void {
-  // ... removal logic
-}
-
-export function moveElementToTrackOperation(
-  ctx: OperationContext,
-  fromTrackId: string,
-  toTrackId: string,
-  elementId: string
-): void {
-  // ... move logic with validation
-}
-
-// ============== SPLIT OPERATIONS ==============
-
-export function splitElementOperation(
-  ctx: OperationContext,
-  trackId: string,
-  elementId: string,
-  splitTime: number
-): string | null {
-  // ... split logic (~50 lines)
-}
-
-export function splitAndKeepLeftOperation(
-  ctx: OperationContext,
-  trackId: string,
-  elementId: string,
-  splitTime: number
-): void {
-  // ... keep left logic
-}
-
-export function splitAndKeepRightOperation(
-  ctx: OperationContext,
-  trackId: string,
-  elementId: string,
-  splitTime: number
-): void {
-  // ... keep right logic
-}
-
-export function separateAudioOperation(
-  ctx: OperationContext,
-  trackId: string,
-  elementId: string
-): string | null {
-  // ... audio separation logic (~50 lines)
-}
-
-// ============== RIPPLE OPERATIONS ==============
-
-export function updateElementStartTimeWithRippleOperation(
-  ctx: OperationContext,
-  trackId: string,
-  elementId: string,
-  newStartTime: number,
-  updateElementStartTime: (trackId: string, elementId: string, time: number) => void
-): void {
-  // ... ~90 lines of ripple logic
-}
-
-export function removeElementFromTrackWithRippleOperation(
-  ctx: OperationContext,
-  trackId: string,
-  elementId: string,
-  pushHistory: boolean
-): void {
-  // ... ~75 lines of ripple removal
-}
-
-// ============== UPDATE OPERATIONS ==============
-
-export function updateElementTrimOperation(
-  ctx: OperationContext,
-  trackId: string,
-  elementId: string,
-  trimStart: number,
-  trimEnd: number,
-  pushHistory: boolean
-): void {
-  if (pushHistory) ctx.pushHistory();
-  ctx.updateTracksAndSave(
-    ctx.getTracks().map((track) =>
-      track.id === trackId
-        ? {
-            ...track,
-            elements: track.elements.map((element) =>
-              element.id === elementId
-                ? { ...element, trimStart, trimEnd }
-                : element
-            ),
-          }
-        : track
-    )
-  );
-}
-
-// ... similar for updateElementDuration, updateElementStartTime
 ```
+
+This pattern:
+- Decouples operations from Zustand's `get()`/`set()`
+- Enables unit testing with mock context
+- Makes dependencies explicit
+- Allows future migration to different state management
 
 ---
 
-### File 3: `stores/timeline-store.ts` (~1150 lines) - Main Store
+## Implementation Phases
 
-**Purpose**: Zustand store creation, orchestration, persistence, effects
+Each subtask is designed to be completable in **under 20 minutes**.
+
+### Phase 1: Foundation (Types & Utils)
+
+#### Task 1.1: Create types.ts (~15 min)
+**Create** `stores/timeline/types.ts`
+
+Extract from `timeline-store.ts`:
+- [ ] `TimelineStore` interface (lines 55-353)
+- [ ] `DragState` type (from lines 108-123)
+- [ ] `INITIAL_DRAG_STATE` constant
+- [ ] `OperationContext` interface (new)
+- [ ] `SelectedElement` type alias
+- [ ] Re-export timeline types from `@/types/timeline`
+
+**Verification**: `bun run check-types` passes
+
+---
+
+#### Task 1.2: Create utils.ts (~10 min)
+**Create** `stores/timeline/utils.ts`
+
+Extract from `timeline-store.ts`:
+- [ ] `getElementNameWithSuffix` function (lines 37-49)
+- [ ] `createTrack` helper (extract from addTrack logic, lines 564-583)
+
+**Verification**: `bun run check-types` passes
+
+---
+
+#### Task 1.3: Create index.ts barrel (~5 min)
+**Create** `stores/timeline/index.ts`
 
 ```typescript
-import { create } from "zustand";
-import { toast } from "sonner";
-
-// Types
-import type { TimelineStore, DragState } from "./timeline/types";
-import { INITIAL_DRAG_STATE, getElementNameWithSuffix } from "./timeline/types";
-import type { TimelineTrack, TextElement } from "@/types/timeline";
-import { sortTracksByOrder, ensureMainTrack } from "@/types/timeline";
-
-// Operations
-import {
-  addTrackOperation,
-  insertTrackAtOperation,
-  removeTrackOperation,
-  addElementToTrackOperation,
-  // ... etc
-} from "./timeline/operations";
-
-// External deps
-import { useEditorStore } from "./editor-store";
-import { useMediaStore, getMediaAspectRatio, type MediaItem } from "./media-store";
-import { storageService } from "@/lib/storage/storage-service";
-import { createObjectURL } from "@/lib/blob-manager";
-import { TIMELINE_CONSTANTS } from "@/constants/timeline-constants";
-import { handleError, ErrorCategory, ErrorSeverity } from "@/lib/error-handler";
-
-// Module-level timer for debounced auto-save
-let autoSaveTimer: ReturnType<typeof setTimeout> | null = null;
-
-export const useTimelineStore = create<TimelineStore>((set, get) => {
-  // ============== INTERNAL HELPERS ==============
-
-  const updateTracks = (newTracks: TimelineTrack[]) => {
-    const tracksWithMain = ensureMainTrack(newTracks);
-    const sortedTracks = sortTracksByOrder(tracksWithMain);
-    set({ _tracks: tracksWithMain, tracks: sortedTracks });
-  };
-
-  const autoSaveTimeline = async () => { /* ... */ };
-  const autoSaveTimelineGuarded = async (scheduledProjectId: string) => { /* ... */ };
-  const updateTracksAndSave = async (newTracks: TimelineTrack[]) => { /* ... */ };
-
-  // Operation context for extracted functions
-  const getOperationContext = () => ({
-    getTracks: () => get()._tracks,
-    pushHistory: () => get().pushHistory(),
-    updateTracksAndSave,
-    isRippleEnabled: () => get().rippleEditingEnabled,
-  });
-
-  // Initialize
-  const initialTracks = ensureMainTrack([]);
-  const sortedInitialTracks = sortTracksByOrder(initialTracks);
-
-  return {
-    // ============== STATE ==============
-    _tracks: initialTracks,
-    tracks: sortedInitialTracks,
-    history: [],
-    redoStack: [],
-    autoSaveStatus: "Auto-save idle",
-    isAutoSaving: false,
-    lastAutoSaveAt: null,
-    selectedElements: [],
-    rippleEditingEnabled: false,
-    snappingEnabled: true,
-    showEffectsTrack: typeof window !== "undefined"
-      ? localStorage.getItem("timeline-showEffectsTrack") === "true"
-      : false,
-    dragState: INITIAL_DRAG_STATE,
-
-    // ============== HISTORY ==============
-    pushHistory: () => { /* ... */ },
-    undo: () => { /* ... */ },
-    redo: () => { /* ... */ },
-
-    // ============== TRACK OPERATIONS (delegated) ==============
-    addTrack: (type) => addTrackOperation(getOperationContext(), type),
-    insertTrackAt: (type, index) => insertTrackAtOperation(getOperationContext(), type, index),
-    removeTrack: (trackId) => removeTrackOperation(getOperationContext(), trackId),
-    removeTrackWithRipple: (trackId) => removeTrackWithRippleOperation(getOperationContext(), trackId),
-
-    // ============== ELEMENT OPERATIONS (delegated) ==============
-    addElementToTrack: (trackId, elementData) => {
-      addElementToTrackOperation(getOperationContext(), trackId, elementData, {
-        selectElement: get().selectElement,
-        onFirstMediaElement: (element) => { /* canvas size logic */ },
-      });
-    },
-    // ... etc
-
-    // ============== SELECTION (inline - simple) ==============
-    selectElement: (trackId, elementId, multi = false) => { /* ... */ },
-    deselectElement: (trackId, elementId) => { /* ... */ },
-    clearSelectedElements: () => set({ selectedElements: [] }),
-    setSelectedElements: (elements) => set({ selectedElements: elements }),
-
-    // ============== DRAG STATE (inline - simple) ==============
-    setDragState: (dragState) => set((state) => ({ dragState: { ...state.dragState, ...dragState } })),
-    startDrag: (elementId, trackId, startMouseX, startElementTime, clickOffsetTime) => { /* ... */ },
-    updateDragTime: (currentTime) => { /* ... */ },
-    endDrag: () => set({ dragState: INITIAL_DRAG_STATE }),
-
-    // ============== PERSISTENCE (keep in main - async + auto-save coupling) ==============
-    loadProjectTimeline: async ({ projectId, sceneId }) => { /* ... */ },
-    saveProjectTimeline: async ({ projectId, sceneId }) => { /* ... */ },
-    saveImmediate: async () => { /* ... */ },
-    clearTimeline: () => { /* ... */ },
-    restoreTracks: (tracks) => { /* ... */ },
-
-    // ============== TOGGLES (inline - simple) ==============
-    toggleSnapping: () => set((state) => ({ snappingEnabled: !state.snappingEnabled })),
-    toggleRippleEditing: () => set((state) => ({ rippleEditingEnabled: !state.rippleEditingEnabled })),
-    toggleEffectsTrack: () => { /* ... with localStorage */ },
-    autoShowEffectsTrack: () => { /* ... */ },
-    toggleTrackMute: (trackId) => { /* ... */ },
-    toggleElementHidden: (trackId, elementId) => { /* ... */ },
-
-    // ============== EFFECTS MANAGEMENT (keep in main - auto-save coupling) ==============
-    addEffectToElement: (elementId, effectId) => { /* ... */ },
-    removeEffectFromElement: (elementId, effectId) => { /* ... */ },
-    getElementEffectIds: (elementId) => { /* ... */ },
-    clearElementEffects: (elementId) => { /* ... */ },
-
-    // ============== QUERY/COMPUTED (inline - simple) ==============
-    getSortedTracks: () => { /* ... */ },
-    getTotalDuration: () => { /* ... */ },
-    getProjectThumbnail: async (projectId) => { /* ... */ },
-    getAudioElements: () => { /* ... */ },
-    checkElementOverlap: (trackId, startTime, duration, excludeElementId) => { /* ... */ },
-    findOrCreateTrack: (trackType) => { /* ... */ },
-
-    // ============== ADD CONVENIENCE (inline - delegates to other methods) ==============
-    addMediaAtTime: (item, currentTime = 0) => { /* ... */ },
-    addTextAtTime: (item, currentTime = 0) => { /* ... */ },
-    addMediaToNewTrack: (item) => { /* ... */ },
-    addTextToNewTrack: (item) => { /* ... */ },
-
-    // ============== COMPLEX ASYNC (keep in main) ==============
-    replaceElementMedia: async (trackId, elementId, newFile) => { /* ~150 lines */ },
-  };
-});
-
-// Re-export types for consumers
-export type { TimelineStore } from "./timeline/types";
+export * from "./types";
+export * from "./utils";
+// More exports added as modules are created
 ```
+
+**Verification**: Import works from main store
 
 ---
 
-## Implementation Challenges & Solutions
+#### Task 1.4: Update main store imports (~10 min)
+**Modify** `stores/timeline-store.ts`
 
-### 1. Zustand `get()` / `set()` Coupling
+- [ ] Import types from `./timeline/types`
+- [ ] Import utils from `./timeline/utils`
+- [ ] Remove extracted code from main file
+- [ ] Verify no regressions
 
-**Problem**: Operations need access to store's `get()` and `set()` functions.
+**Verification**: `bun run check-types` + manual test (add track)
 
-**Solution**: Create an `OperationContext` object that wraps these:
+---
+
+### Phase 2: Track Operations
+
+#### Task 2.1: Create track-operations.ts skeleton (~10 min)
+**Create** `stores/timeline/track-operations.ts`
+
+- [ ] Set up imports and `OperationContext` parameter pattern
+- [ ] Export `addTrackOperation` (simple case)
+- [ ] Export `insertTrackAtOperation`
+
+**Verification**: `bun run check-types` passes
+
+---
+
+#### Task 2.2: Extract removeTrack (~15 min)
+**Modify** `stores/timeline/track-operations.ts`
+
+- [ ] Extract `removeTrackOperation` (simple case, lines 618-629)
+- [ ] Update main store to call extracted function
+
+**Verification**: `bun run check-types` + manual test (delete empty track)
+
+---
+
+#### Task 2.3: Extract removeTrackWithRipple (~20 min)
+**Modify** `stores/timeline/track-operations.ts`
+
+- [ ] Extract `removeTrackWithRippleOperation` (lines 631-720)
+- [ ] Import `checkElementOverlaps`, `resolveElementOverlaps` from `@/lib/timeline`
+- [ ] Update main store to call extracted function
+
+**Verification**: `bun run check-types` + manual test (delete track with ripple enabled)
+
+---
+
+#### Task 2.4: Wire up track operations in main store (~10 min)
+**Modify** `stores/timeline-store.ts`
+
+- [ ] Create `getOperationContext()` helper inside store
+- [ ] Replace inline track operations with calls to extracted functions
+- [ ] Remove old inline code
+
+**Verification**: All track operations work (add, insert, remove, remove with ripple)
+
+---
+
+### Phase 3: Element Operations
+
+#### Task 3.1: Create element-operations.ts skeleton (~10 min)
+**Create** `stores/timeline/element-operations.ts`
+
+- [ ] Set up imports and context pattern
+- [ ] Define callback interfaces for side effects
 
 ```typescript
-const getOperationContext = () => ({
-  getTracks: () => get()._tracks,
-  pushHistory: () => get().pushHistory(),
-  updateTracksAndSave,
-  isRippleEnabled: () => get().rippleEditingEnabled,
-});
+interface AddElementCallbacks {
+  selectElement: (trackId: string, elementId: string) => void;
+  onFirstMediaElement?: (element: TimelineElement, mediaItem: MediaItem) => void;
+}
 ```
 
-### 2. Module-Level `autoSaveTimer`
+**Verification**: `bun run check-types` passes
 
-**Problem**: Timer is module-level, used by `updateTracksAndSave`.
+---
 
-**Solution**: Keep `updateTracksAndSave` in main file since it's tightly coupled to:
-- `autoSaveTimer` (module-level)
-- `set()` for updating `isAutoSaving`, `autoSaveStatus`
-- Dynamic imports (`useProjectStore`, `useSceneStore`)
+#### Task 3.2: Extract addElementToTrack (~20 min)
+**Modify** `stores/timeline/element-operations.ts`
 
-### 3. Circular Dependencies
+- [ ] Extract `addElementToTrackOperation` (lines 722-854)
+- [ ] Handle validation logic
+- [ ] Handle first-element canvas size via callback
+- [ ] Update main store
 
-**Current**: `timeline-store` → `project-store` (dynamic import)
+**Verification**: `bun run check-types` + manual test (drag media to timeline)
 
-**Solution**: Dynamic imports are already used, keep them in persistence methods.
+---
 
-### 4. First Element Canvas Size Logic
+#### Task 3.3: Extract removeElementFromTrack (~15 min)
+**Modify** `stores/timeline/element-operations.ts`
 
-**Problem**: `addElementToTrack` has complex side effect for first media element.
+- [ ] Extract `removeElementFromTrackOperation` (lines 856-878)
+- [ ] Update main store
 
-**Solution**: Pass callback to extracted function:
+**Verification**: `bun run check-types` + manual test (delete element)
+
+---
+
+#### Task 3.4: Extract removeElementFromTrackWithRipple (~20 min)
+**Modify** `stores/timeline/element-operations.ts`
+
+- [ ] Extract `removeElementFromTrackWithRippleOperation` (lines 880-954)
+- [ ] Update main store
+
+**Verification**: `bun run check-types` + manual test (delete with ripple)
+
+---
+
+#### Task 3.5: Extract moveElementToTrack (~15 min)
+**Modify** `stores/timeline/element-operations.ts`
+
+- [ ] Extract `moveElementToTrackOperation` (lines 956-1009)
+- [ ] Update main store
+
+**Verification**: `bun run check-types` + manual test (drag element between tracks)
+
+---
+
+#### Task 3.6: Extract update operations (~15 min)
+**Modify** `stores/timeline/element-operations.ts`
+
+- [ ] Extract `updateElementTrimOperation` (lines 1011-1033)
+- [ ] Extract `updateElementDurationOperation` (lines 1035-1054)
+- [ ] Extract `updateElementStartTimeOperation` (lines 1056-1078)
+- [ ] Update main store
+
+**Verification**: `bun run check-types` + manual test (trim element)
+
+---
+
+#### Task 3.7: Extract updateElementStartTimeWithRipple (~20 min)
+**Modify** `stores/timeline/element-operations.ts`
+
+- [ ] Extract `updateElementStartTimeWithRippleOperation` (lines 1080-1166)
+- [ ] Update main store
+
+**Verification**: `bun run check-types` + manual test (move element with ripple)
+
+---
+
+### Phase 4: Split Operations
+
+#### Task 4.1: Create split-operations.ts (~10 min)
+**Create** `stores/timeline/split-operations.ts`
+
+- [ ] Set up imports and context pattern
+- [ ] Import `getElementNameWithSuffix` from utils
+
+**Verification**: `bun run check-types` passes
+
+---
+
+#### Task 4.2: Extract splitElement (~15 min)
+**Modify** `stores/timeline/split-operations.ts`
+
+- [ ] Extract `splitElementOperation` (lines 1279-1330)
+- [ ] Update main store
+
+**Verification**: `bun run check-types` + manual test (split at playhead)
+
+---
+
+#### Task 4.3: Extract splitAndKeepLeft/Right (~15 min)
+**Modify** `stores/timeline/split-operations.ts`
+
+- [ ] Extract `splitAndKeepLeftOperation` (lines 1333-1371)
+- [ ] Extract `splitAndKeepRightOperation` (lines 1374-1411)
+- [ ] Update main store
+
+**Verification**: `bun run check-types` + manual test
+
+---
+
+#### Task 4.4: Extract separateAudio (~15 min)
+**Modify** `stores/timeline/split-operations.ts`
+
+- [ ] Extract `separateAudioOperation` (lines 1439-1491)
+- [ ] Update main store
+
+**Verification**: `bun run check-types` + manual test (separate audio from video)
+
+---
+
+### Phase 5: Persistence
+
+#### Task 5.1: Create persistence.ts (~15 min)
+**Create** `stores/timeline/persistence.ts`
+
+- [ ] Move `autoSaveTimer` module variable
+- [ ] Set up async context with dynamic imports pattern
+- [ ] Define `PersistenceContext` interface
+
 ```typescript
-addElementToTrackOperation(ctx, trackId, elementData, {
-  onFirstMediaElement: (element) => {
-    // Handle canvas size in main store
-  },
-});
+interface PersistenceContext {
+  getTracks: () => TimelineTrack[];
+  updateTracks: (tracks: TimelineTrack[]) => void;
+  setAutoSaveStatus: (status: string, isAutoSaving: boolean, lastAt?: number) => void;
+}
 ```
 
-### 5. Effects Methods Use `updateTracks` + `autoSaveTimeline`
-
-**Problem**: Effects methods call internal helpers directly.
-
-**Solution**: Keep effects methods in main file since they need:
-- `updateTracks` (internal)
-- `autoSaveTimeline` (internal)
-- `pushHistory` (from `get()`)
+**Verification**: `bun run check-types` passes
 
 ---
 
-## Extraction Order (Step by Step)
+#### Task 5.2: Extract autoSaveTimelineGuarded (~20 min)
+**Modify** `stores/timeline/persistence.ts`
 
-### Phase 1: Types (~30 min)
-1. Create `stores/timeline/types.ts`
-2. Move `TimelineStore` interface
-3. Move `getElementNameWithSuffix` helper
-4. Add `DragState` type and `INITIAL_DRAG_STATE`
-5. Run type check: `bun run check-types`
+- [ ] Extract `autoSaveTimelineGuarded` (lines 380-444)
+- [ ] Keep dynamic imports for `useProjectStore`, `useSceneStore`
+- [ ] Update main store
 
-### Phase 2: Simple Operations (~1 hour)
-1. Create `stores/timeline/operations.ts`
-2. Extract `createTrack` helper
-3. Extract `addTrackOperation`, `insertTrackAtOperation`
-4. Extract `removeTrackOperation` (simple version)
-5. Update main store to use extracted functions
-6. Run type check
-
-### Phase 3: Complex Operations (~1.5 hours)
-1. Extract `removeTrackWithRippleOperation` (~90 lines)
-2. Extract `addElementToTrackOperation` with callbacks
-3. Extract `removeElementFromTrackOperation`
-4. Extract `moveElementToTrackOperation`
-5. Run type check + manual test
-
-### Phase 4: Split & Ripple Operations (~1 hour)
-1. Extract split operations (3 functions)
-2. Extract `separateAudioOperation`
-3. Extract ripple operations (2 functions)
-4. Run type check + manual test
-
-### Phase 5: Update Operations (~30 min)
-1. Extract `updateElementTrimOperation`
-2. Extract `updateElementDurationOperation`
-3. Extract `updateElementStartTimeOperation`
-4. Run type check
-
-### Phase 6: Cleanup & Testing (~1 hour)
-1. Add barrel export `stores/timeline/index.ts`
-2. Update any external imports
-3. Run full test suite
-4. Manual testing in Electron app
+**Verification**: `bun run check-types` + verify auto-save indicator works
 
 ---
 
-## Testing Strategy
+#### Task 5.3: Extract updateTracksAndSave (~15 min)
+**Modify** `stores/timeline/persistence.ts`
 
-### Automated Tests
-```bash
-# Type checking
-bun run check-types
+- [ ] Extract `createUpdateTracksAndSave` factory function
+- [ ] Handles debounce timer logic
+- [ ] Update main store
 
-# Run all tests
-cd qcut/apps/web && bun run test
-
-# Run timeline-specific tests (if any)
-bun run test -- timeline
-```
-
-### Manual Testing Checklist
-
-| Feature | Test Steps |
-|---------|------------|
-| Add track | Click "Add Track" in timeline |
-| Remove track | Right-click track → Delete |
-| Add element | Drag media to timeline |
-| Remove element | Select element → Delete key |
-| Split element | Position playhead → "S" key |
-| Undo/Redo | Ctrl+Z / Ctrl+Shift+Z |
-| Ripple edit | Enable ripple → delete element |
-| Auto-save | Make changes → check status indicator |
-| Load project | Open existing project |
+**Verification**: `bun run check-types` + verify changes trigger auto-save
 
 ---
 
-## Expected Results
+#### Task 5.4: Extract load/save operations (~15 min)
+**Modify** `stores/timeline/persistence.ts`
 
-| File | Lines | Purpose |
-|------|-------|---------|
-| `stores/timeline/types.ts` | ~350 | Types, interfaces, constants |
-| `stores/timeline/operations.ts` | ~700 | Pure operation functions |
-| `stores/timeline-store.ts` | ~1150 | Main store, persistence, effects |
-| **Total** | ~2200 | Similar total, better organization |
+- [ ] Extract `loadProjectTimelineOperation` (lines 1775-1805)
+- [ ] Extract `saveProjectTimelineOperation` (lines 1807-1826)
+- [ ] Extract `saveImmediateOperation` (lines 1829-1867)
+- [ ] Update main store
 
-### Size Reduction for Main File
-- **Before**: 2,194 lines
-- **After**: ~1,150 lines
-- **Reduction**: ~48%
+**Verification**: `bun run check-types` + manual test (open project, save)
 
 ---
 
-## Benefits
+### Phase 6: Cleanup & Verification
 
-1. **Testability**: Operation functions can be unit tested with mock context
-2. **Maintainability**: Clear separation between types, operations, and orchestration
-3. **Code Navigation**: Find track operations in `operations.ts`, types in `types.ts`
-4. **Merge Conflicts**: Reduced when multiple developers work on different areas
-5. **Reusability**: Operations could be reused in other contexts (e.g., testing)
+#### Task 6.1: Update barrel exports (~5 min)
+**Modify** `stores/timeline/index.ts`
 
----
+- [ ] Export all public functions and types
+- [ ] Ensure clean public API
 
-## Rollback Plan
-
-1. All changes in single branch: `refactor/timeline-store-split`
-2. Each phase committed separately for easy partial rollback
-3. Keep original file backed up until fully tested
-4. If critical issues found: `git revert` the merge commit
+**Verification**: External imports work
 
 ---
 
-## Files to Update After Refactoring
+#### Task 6.2: Clean up main store (~15 min)
+**Modify** `stores/timeline-store.ts`
 
-These files import from `timeline-store.ts`:
+- [ ] Remove any remaining dead code
+- [ ] Organize remaining methods into clear sections
+- [ ] Add section comments for remaining inline code
+
+**Verification**: `bun run check-types` passes
+
+---
+
+#### Task 6.3: Update external imports (~10 min)
+**Search and update** any files importing types from timeline-store
 
 ```bash
-# Find all imports
 grep -r "from.*timeline-store" --include="*.ts" --include="*.tsx"
 ```
 
-Most imports use `useTimelineStore` which will still be exported from main file.
-Type imports may need updating to `from "./timeline/types"`.
+- [ ] Update type imports to use `./timeline/types` if needed
+- [ ] Ensure `useTimelineStore` remains the main export
+
+**Verification**: `bun run check-types` passes
+
+---
+
+#### Task 6.4: Run full test suite (~10 min)
+- [ ] `bun run test` - all tests pass
+- [ ] `bun run check-types` - no type errors
+- [ ] `bun run lint:clean` - no lint errors
+
+---
+
+#### Task 6.5: Manual integration testing (~20 min)
+Test in Electron app:
+
+| Feature | Steps | Expected |
+|---------|-------|----------|
+| Add track | Click "Add Track" | New track appears |
+| Remove track | Right-click → Delete | Track removed |
+| Add element | Drag media to timeline | Element appears |
+| Remove element | Select → Delete key | Element removed |
+| Split element | Position playhead → "S" | Element splits |
+| Move element | Drag to different track | Element moves |
+| Ripple edit | Enable ripple → delete | Subsequent elements shift |
+| Undo/Redo | Ctrl+Z / Ctrl+Shift+Z | State restored |
+| Auto-save | Make changes | Status indicator updates |
+| Load project | Open existing project | Timeline loads |
+
+---
+
+## Risk Mitigation
+
+### Rollback Strategy
+
+1. **Branch**: `refactor/timeline-store-split`
+2. **Commits**: One commit per task for granular rollback
+3. **Backup**: Keep original file as `.backup` until fully tested
+4. **Feature Flag**: Not needed (no user-facing changes)
+
+### Common Pitfalls
+
+| Risk | Mitigation |
+|------|------------|
+| Circular imports | Follow dependency graph strictly |
+| `this` binding lost | Use arrow functions or explicit binding |
+| Auto-save timer race | Keep timer management in persistence module |
+| Dynamic import timing | Test with actual project load/save |
+| History stack corruption | Test undo/redo after each operation extraction |
+
+---
+
+## Success Criteria
+
+### Quantitative
+- [ ] Main store file < 700 lines
+- [ ] No module > 400 lines
+- [ ] Zero increase in bundle size
+- [ ] All 200+ existing tests pass
+- [ ] Type coverage maintained at 100%
+
+### Qualitative
+- [ ] New developer can find "split element" code in < 30 seconds
+- [ ] Adding a new operation type requires editing only 1-2 files
+- [ ] Code review diffs are scoped to relevant module
+- [ ] Unit tests can mock operation context easily
+
+---
+
+## Post-Refactoring Opportunities
+
+After this refactoring, these improvements become easier:
+
+1. **Unit Testing Operations**: Write pure function tests for each operation
+2. **Operation Composition**: Chain operations for complex workflows
+3. **Optimistic Updates**: Separate UI updates from persistence
+4. **Collaborative Editing**: Operation-based sync becomes possible
+5. **Plugin System**: Operations become hookable extension points
+
+---
+
+## Task Summary
+
+| Phase | Tasks | Total Time |
+|-------|-------|------------|
+| Phase 1: Foundation | 4 tasks | ~40 min |
+| Phase 2: Track Ops | 4 tasks | ~55 min |
+| Phase 3: Element Ops | 7 tasks | ~115 min |
+| Phase 4: Split Ops | 4 tasks | ~55 min |
+| Phase 5: Persistence | 4 tasks | ~65 min |
+| Phase 6: Cleanup | 5 tasks | ~60 min |
+| **Total** | **28 tasks** | **~390 min (~6.5 hours)** |
+
+Each task is independently committable and testable.
 
 ---
 
 *Document created: 2025-12-11*
 *Last updated: 2025-12-11*
-*Status: Planning phase - Ready for implementation*
+*Status: Ready for implementation*
