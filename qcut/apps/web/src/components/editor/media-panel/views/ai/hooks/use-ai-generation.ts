@@ -1722,9 +1722,14 @@ export function useAIGeneration(props: UseAIGenerationProps) {
           if (
             (modelId === "kling_avatar_pro" ||
               modelId === "kling_avatar_standard" ||
-              modelId === "bytedance_omnihuman_v1_5") &&
+              modelId === "bytedance_omnihuman_v1_5" ||
+              modelId === "sync_lipsync_react1") &&
             !audioFile
           )
+            return false;
+
+          // Sync Lipsync React-1 requires source video (but NOT character image)
+          if (modelId === "sync_lipsync_react1" && !sourceVideo)
             return false;
 
           // Models requiring reference images (check if at least one reference image exists)
@@ -1737,10 +1742,12 @@ export function useAIGeneration(props: UseAIGenerationProps) {
           }
 
           // For other avatar models, require avatarImage
+          // (except video-to-video models and sync_lipsync_react1 which uses sourceVideo instead)
           if (
             modelId !== "kling_o1_v2v_reference" &&
             modelId !== "kling_o1_v2v_edit" &&
             modelId !== "kling_o1_ref2video" &&
+            modelId !== "sync_lipsync_react1" &&
             !avatarImage
           )
             return false;

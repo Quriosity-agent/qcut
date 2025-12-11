@@ -1147,9 +1147,25 @@ export function AiView() {
                       Please upload the last frame (required for frame-to-video)
                     </div>
                   )}
-                {activeTab === "avatar" && !avatarState.avatarImage && (
-                  <div>Please upload a character image</div>
-                )}
+                {activeTab === "avatar" &&
+                  !avatarState.avatarImage &&
+                  !selectedModels.includes("sync_lipsync_react1") &&
+                  !selectedModels.some(
+                    (id) =>
+                      id === "kling_o1_v2v_reference" ||
+                      id === "kling_o1_v2v_edit" ||
+                      id === "kling_o1_ref2video"
+                  ) && <div>Please upload a character image</div>}
+                {activeTab === "avatar" &&
+                  selectedModels.includes("sync_lipsync_react1") &&
+                  !avatarState.syncLipsyncSourceVideo && (
+                    <div>Please upload a source video</div>
+                  )}
+                {activeTab === "avatar" &&
+                  selectedModels.includes("sync_lipsync_react1") &&
+                  !avatarState.audioFile && (
+                    <div>Please upload an audio file</div>
+                  )}
               </div>
             </div>
           )}
