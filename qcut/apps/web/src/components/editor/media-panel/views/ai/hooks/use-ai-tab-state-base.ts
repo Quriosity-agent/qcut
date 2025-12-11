@@ -281,6 +281,61 @@ export function useAudioFileWithDuration() {
 }
 
 /**
+ * Hook for managing video file with duration extraction.
+ * Automatically extracts duration when video file is set.
+ *
+ * @returns Video file state with duration
+ *
+ * @example
+ * ```tsx
+ * const video = useVideoFileWithDuration();
+ * // Use video.file, video.preview, video.duration
+ * ```
+ */
+export function useVideoFileWithDuration() {
+  const fileState = useFileWithPreview();
+  const [duration, setDuration] = useState<number | null>(null);
+  const { reset: fileReset } = fileState;
+
+  useEffect(() => {
+    if (fileState.file) {
+      const video = document.createElement("video");
+      const objectUrl = URL.createObjectURL(fileState.file);
+      video.src = objectUrl;
+      video.preload = "metadata";
+
+      video.onloadedmetadata = () => {
+        setDuration(video.duration);
+        URL.revokeObjectURL(objectUrl);
+      };
+
+      video.onerror = () => {
+        setDuration(null);
+        URL.revokeObjectURL(objectUrl);
+      };
+
+      return () => {
+        URL.revokeObjectURL(objectUrl);
+      };
+    }
+    setDuration(null);
+  }, [fileState.file]);
+
+  const reset = useCallback(() => {
+    fileReset();
+    setDuration(null);
+  }, [fileReset]);
+
+  return {
+    file: fileState.file,
+    preview: fileState.preview,
+    setFile: fileState.setFile,
+    reset,
+    duration,
+  };
+}
+
+/**
  * Hook for managing video file with metadata extraction.
  * Can handle both file uploads and URL inputs.
  *

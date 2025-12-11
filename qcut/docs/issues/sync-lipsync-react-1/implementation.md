@@ -981,7 +981,7 @@ import {
 
 ---
 
-### Files Modified
+### Files Modified (Backend Layer)
 
 | File | Line Numbers | Changes |
 |------|--------------|---------|
@@ -1011,3 +1011,32 @@ Fixed pre-existing TypeScript errors in:
 - `emotion` (required) - One of: happy, angry, sad, neutral, disgusted, surprised
 
 Fixed `AvatarVideoRequest.characterImage` to be optional (`File | undefined`) since lipsync models don't use it. Moved image conversion inside model-specific branches that need it.
+
+---
+
+## UI Layer Implementation Status
+
+### Step 1: Model Handler (`model-handlers.ts`)
+**Status:** ✅ Completed
+
+Added to `apps/web/src/components/editor/media-panel/views/ai/hooks/generation/model-handlers.ts`:
+
+1. **Imports** - Added type imports for `SyncLipsyncEmotion`, `SyncLipsyncModelMode`, `SyncLipsyncSyncMode`
+
+2. **Extended `AvatarSettings` interface** with Sync Lipsync React-1 fields:
+   - `syncLipsyncEmotion?: SyncLipsyncEmotion`
+   - `syncLipsyncModelMode?: SyncLipsyncModelMode`
+   - `syncLipsyncLipsyncMode?: SyncLipsyncSyncMode`
+   - `syncLipsyncTemperature?: number`
+   - `videoDuration?: number | null`
+
+3. **Added `handleSyncLipsyncReact1` handler function**:
+   - Validates sourceVideo and audioFile are present
+   - Uploads files to FAL storage via `falAIClient.uploadVideoToFal` and `falAIClient.uploadAudioToFal`
+   - Calls `generateAvatarVideo` with uploaded URLs and UI parameters
+   - Provides progress callbacks during upload and generation
+
+4. **Added case in `routeAvatarHandler`**:
+   - Routes `sync_lipsync_react1` to `handleSyncLipsyncReact1`
+
+**Build:** ✅ Passed

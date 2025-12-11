@@ -23,8 +23,6 @@ import {
   generateKlingO1Video,
   upscaleByteDanceVideo,
   upscaleFlashVSRVideo,
-  uploadVideoToFal,
-  uploadAudioToFal,
 } from "@/lib/ai-video";
 import type { ProgressCallback } from "@/lib/ai-video-client";
 import type {
@@ -1186,11 +1184,10 @@ export async function handleSyncLipsyncReact1(
     message: "Uploading video and audio files...",
   });
 
-  // Upload video and audio to FAL storage
-  const falApiKey = import.meta.env.VITE_FAL_API_KEY;
+  // Upload video and audio to FAL storage using falAIClient
   const [videoUrl, audioUrl] = await Promise.all([
-    uploadVideoToFal(settings.sourceVideo, falApiKey),
-    uploadAudioToFal(settings.audioFile, falApiKey),
+    falAIClient.uploadVideoToFal(settings.sourceVideo),
+    falAIClient.uploadAudioToFal(settings.audioFile),
   ]);
 
   console.log("  ✅ Files uploaded to FAL storage");
