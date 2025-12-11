@@ -504,15 +504,101 @@ Dropdown with 6 emotion options:
 
 ---
 
-## Review (code vs plan)
+## Implementation Status
 
-- No `sync_lipsync` strings exist in `apps/web/src`, and `AI_MODELS` has no React-1 entry, so selecting this model would fail at config lookup (`getModelConfig` in `qcut/apps/web/src/lib/ai-video/generators/base-generator.ts` throws for unknown models). Add the model block to `ai-constants.ts` to make it discoverable.
-- The avatar request shape still expects a character image and optional audio/video files (`qcut/apps/web/src/components/editor/media-panel/views/ai/types/ai-types.ts:512-520`), and `generateAvatarVideo` only builds payloads for Kling/WAN/OmniHuman branches (`qcut/apps/web/src/lib/ai-video/generators/avatar.ts:70-144`). There is no branch that uploads video/audio to FAL or posts `emotion/model_mode/lipsync_mode/temperature`, so the React-1 payload described above cannot be produced.
-- UI/handler layer does not surface lipsync options: `UseAIGenerationProps` has no emotion/model-mode/temperature fields, and the avatar router only handles Kling/O1 variants (`qcut/apps/web/src/components/editor/media-panel/views/ai/hooks/generation/model-handlers.ts:261-335`). Even with a model config, the controls and dispatch path for React-1 are missing.
-- Validators and error messages for 15s limits/emotion/temperature are absent (`qcut/apps/web/src/lib/ai-video/validation/validators.ts` has no Sync Lipsync section; `ERROR_MESSAGES` in `qcut/apps/web/src/components/editor/media-panel/views/ai/constants/ai-constants.ts:1070-1210` has no related strings), so the constraints listed in this doc are not enforced or shown.
+### Completed Steps
 
-### Suggested next steps
+#### Step 1: Type Definitions (ai-types.ts)
+**Status:** ✅ Completed
 
-1) Add the Sync Lipsync React-1 model to `AI_MODELS` (with `requiredInputs: ["sourceVideo", "audioFile"]`) and wire a dedicated branch in `generateAvatarVideo`/`routeAvatarHandler` that uploads video/audio via `uploadVideoToFal`/`uploadAudioToFal` and posts the documented payload.  
-2) Extend `AvatarVideoRequest` and `UseAIGenerationProps` with lipsync fields, and surface selectors/slider in the avatar tab so the values reach the generator.  
-3) Add SYNC_LIPSYNC_REACT1 error messages and validators (15s duration checks, emotion/mode/temperature validation) and export them from `ai-video/index.ts` to align runtime behavior with this spec.
+Added to `apps/web/src/components/editor/media-panel/views/ai/types/ai-types.ts`:
+- `SyncLipsyncEmotion` type (happy, angry, sad, neutral, disgusted, surprised)
+- `SyncLipsyncModelMode` type (lips, face, head)
+- `SyncLipsyncSyncMode` type (cut_off, loop, bounce, silence, remap)
+- `SyncLipsyncReact1Request` interface
+- Extended `AvatarVideoRequest` with lipsync fields (videoUrl, videoDuration, emotion, modelMode, lipsyncMode, temperature)
+- Extended `AIModel` interface with supportedEmotions, supportedModelModes, supportedLipsyncModes
+- Extended `UseAIGenerationProps` with sync lipsync options
+
+#### Step 2: Model Configuration (ai-constants.ts)
+**Status:** ✅ Completed
+
+Added `sync_lipsync_react1` model to `AI_MODELS` array at line 841-870:
+- id: "sync_lipsync_react1"
+- category: "avatar"
+- requiredInputs: ["sourceVideo", "audioFile"]
+- endpoint: "fal-ai/sync-lipsync/react-1"
+- default_params: emotion="neutral", model_mode="face", lipsync_mode="bounce", temperature=0.5
+- All supported options arrays
+
+#### Step 3: Error Messages (ai-constants.ts)
+**Status:** ✅ Completed
+
+Added to `ERROR_MESSAGES` at lines 1232-1244:
+- SYNC_LIPSYNC_REACT1_MISSING_VIDEO
+- SYNC_LIPSYNC_REACT1_MISSING_AUDIO
+- SYNC_LIPSYNC_REACT1_VIDEO_TOO_LONG
+- SYNC_LIPSYNC_REACT1_AUDIO_TOO_LONG
+- SYNC_LIPSYNC_REACT1_MISSING_EMOTION
+- SYNC_LIPSYNC_REACT1_INVALID_TEMPERATURE
+
+#### Step 4: Validation Functions (validators.ts)
+**Status:** ✅ Completed
+
+Added to `apps/web/src/lib/ai-video/validation/validators.ts` at lines 609-739:
+- `SYNC_LIPSYNC_REACT1_MAX_DURATION` constant (15)
+- `SYNC_LIPSYNC_REACT1_EMOTIONS` array constant
+- `SYNC_LIPSYNC_REACT1_MODEL_MODES` array constant
+- `SYNC_LIPSYNC_REACT1_SYNC_MODES` array constant
+- `validateSyncLipsyncReact1VideoDuration()` function
+- `validateSyncLipsyncReact1AudioDuration()` function
+- `validateSyncLipsyncReact1Emotion()` function
+- `validateSyncLipsyncReact1Temperature()` function
+- `validateSyncLipsyncReact1Inputs()` composite validator
+
+#### Step 5: Generator Case (avatar.ts)
+**Status:** ✅ Completed
+
+Added to `apps/web/src/lib/ai-video/generators/avatar.ts` at lines 185-220:
+- Import for `validateSyncLipsyncReact1Inputs`
+- New case for `sync_lipsync_react1` model
+- Validates inputs using composite validator
+- Builds payload with video_url, audio_url, emotion, model_mode, lipsync_mode, temperature
+
+#### Step 6: Export Validators (index.ts)
+**Status:** ✅ Completed
+
+Added exports to `apps/web/src/lib/ai-video/index.ts` at lines 66-75:
+- validateSyncLipsyncReact1Inputs
+- validateSyncLipsyncReact1VideoDuration
+- validateSyncLipsyncReact1AudioDuration
+- validateSyncLipsyncReact1Emotion
+- validateSyncLipsyncReact1Temperature
+- SYNC_LIPSYNC_REACT1_MAX_DURATION
+- SYNC_LIPSYNC_REACT1_EMOTIONS
+- SYNC_LIPSYNC_REACT1_MODEL_MODES
+- SYNC_LIPSYNC_REACT1_SYNC_MODES
+
+---
+
+### Remaining Work (UI Layer)
+
+The backend/generator layer is complete. The following UI work remains:
+
+1. **Model Handler** (`model-handlers.ts`): Add routing for `sync_lipsync_react1` to upload video/audio to FAL storage and call `generateAvatarVideo`
+
+2. **Avatar Tab UI**: Surface emotion selector, model mode selector, lipsync mode selector, and temperature slider for this model
+
+3. **File Upload Integration**: Wire up `uploadVideoToFal` and `uploadAudioToFal` before calling the generator
+
+---
+
+### Files Modified
+
+| File | Line Numbers | Changes |
+|------|--------------|---------|
+| `types/ai-types.ts` | 120-125, 254-264, 512-536, 680-721 | Types, interfaces |
+| `constants/ai-constants.ts` | 841-870, 1232-1244 | Model config, errors |
+| `validation/validators.ts` | 609-739 | Validators, constants |
+| `generators/avatar.ts` | 24-27, 185-220 | Import, case |
+| `index.ts` | 66-75 | Exports |
