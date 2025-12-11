@@ -819,7 +819,9 @@ export function AiView() {
                 audioDuration={avatarState.audioDuration}
                 // Sync Lipsync React-1 props
                 syncLipsyncSourceVideo={avatarState.syncLipsyncSourceVideo}
-                syncLipsyncSourceVideoPreview={avatarState.syncLipsyncSourceVideoPreview}
+                syncLipsyncSourceVideoPreview={
+                  avatarState.syncLipsyncSourceVideoPreview
+                }
                 syncLipsyncVideoDuration={avatarState.syncLipsyncVideoDuration}
                 syncLipsyncEmotion={avatarState.syncLipsyncEmotion}
                 syncLipsyncModelMode={avatarState.syncLipsyncModelMode}
@@ -830,9 +832,15 @@ export function AiView() {
                   if (file) setError(null);
                 }}
                 onSyncLipsyncEmotionChange={avatarSetters.setSyncLipsyncEmotion}
-                onSyncLipsyncModelModeChange={avatarSetters.setSyncLipsyncModelMode}
-                onSyncLipsyncLipsyncModeChange={avatarSetters.setSyncLipsyncLipsyncMode}
-                onSyncLipsyncTemperatureChange={avatarSetters.setSyncLipsyncTemperature}
+                onSyncLipsyncModelModeChange={
+                  avatarSetters.setSyncLipsyncModelMode
+                }
+                onSyncLipsyncLipsyncModeChange={
+                  avatarSetters.setSyncLipsyncLipsyncMode
+                }
+                onSyncLipsyncTemperatureChange={
+                  avatarSetters.setSyncLipsyncTemperature
+                }
               />
             </TabsContent>
 

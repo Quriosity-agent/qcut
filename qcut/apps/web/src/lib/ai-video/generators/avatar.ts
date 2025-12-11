@@ -144,7 +144,9 @@ export async function generateAvatarVideo(
         };
       } else if (request.model === "bytedance_omnihuman_v1_5") {
         if (!request.characterImage) {
-          throw new Error("ByteDance OmniHuman v1.5 requires a character image");
+          throw new Error(
+            "ByteDance OmniHuman v1.5 requires a character image"
+          );
         }
         if (!request.audioFile) {
           throw new Error("ByteDance OmniHuman v1.5 requires an audio file");

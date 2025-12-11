@@ -1176,7 +1176,9 @@ export async function handleSyncLipsyncReact1(
   }
 
   console.log(`  🎤 Calling generateAvatarVideo for ${ctx.modelId}...`);
-  console.log("  📤 Uploading files to FAL storage for Sync Lipsync React-1...");
+  console.log(
+    "  📤 Uploading files to FAL storage for Sync Lipsync React-1..."
+  );
 
   ctx.progressCallback({
     status: "processing",

@@ -171,15 +171,17 @@ export function AIAvatarTab({
   onSyncLipsyncTemperatureChange,
 }: AIAvatarTabProps) {
   // Collapsible state for additional settings
-  const [isAdditionalSettingsOpen, setIsAdditionalSettingsOpen] = useState(false);
+  const [isAdditionalSettingsOpen, setIsAdditionalSettingsOpen] =
+    useState(false);
 
   // Model selection helpers
   const klingAvatarV2Selected =
     selectedModels.includes("kling_avatar_v2_standard") ||
     selectedModels.includes("kling_avatar_v2_pro");
 
-  const syncLipsyncReact1Selected =
-    selectedModels.includes("sync_lipsync_react1");
+  const syncLipsyncReact1Selected = selectedModels.includes(
+    "sync_lipsync_react1"
+  );
 
   return (
     <div className="space-y-4">
@@ -379,11 +381,13 @@ export function AIAvatarTab({
           />
 
           {/* Duration warning */}
-          {syncLipsyncVideoDuration !== null && syncLipsyncVideoDuration > 15 && (
-            <div className="text-xs text-destructive">
-              Video is {syncLipsyncVideoDuration.toFixed(1)}s - must be 15s or shorter
-            </div>
-          )}
+          {syncLipsyncVideoDuration !== null &&
+            syncLipsyncVideoDuration > 15 && (
+              <div className="text-xs text-destructive">
+                Video is {syncLipsyncVideoDuration.toFixed(1)}s - must be 15s or
+                shorter
+              </div>
+            )}
 
           {/* Emotion (required) */}
           <div className="space-y-2">
@@ -455,13 +459,20 @@ export function AIAvatarTab({
                     onSyncLipsyncModelModeChange(value as SyncLipsyncModelMode)
                   }
                 >
-                  <SelectTrigger id="sync-lipsync-model-mode" className="h-8 text-xs">
+                  <SelectTrigger
+                    id="sync-lipsync-model-mode"
+                    className="h-8 text-xs"
+                  >
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="face">face - Full face modification</SelectItem>
+                    <SelectItem value="face">
+                      face - Full face modification
+                    </SelectItem>
                     <SelectItem value="lips">lips - Lip region only</SelectItem>
-                    <SelectItem value="head">head - Include head movement</SelectItem>
+                    <SelectItem value="head">
+                      head - Include head movement
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -469,7 +480,10 @@ export function AIAvatarTab({
               {/* Lipsync Mode */}
               <div className="space-y-2">
                 <div className="flex items-center gap-1">
-                  <Label htmlFor="sync-lipsync-lipsync-mode" className="text-xs">
+                  <Label
+                    htmlFor="sync-lipsync-lipsync-mode"
+                    className="text-xs"
+                  >
                     Lipsync Mode
                   </Label>
                   <Tooltip>
@@ -487,15 +501,28 @@ export function AIAvatarTab({
                     onSyncLipsyncLipsyncModeChange(value as SyncLipsyncSyncMode)
                   }
                 >
-                  <SelectTrigger id="sync-lipsync-lipsync-mode" className="h-8 text-xs">
+                  <SelectTrigger
+                    id="sync-lipsync-lipsync-mode"
+                    className="h-8 text-xs"
+                  >
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="bounce">bounce - Bounce shorter track</SelectItem>
-                    <SelectItem value="cut_off">cut_off - Cut when shorter ends</SelectItem>
-                    <SelectItem value="loop">loop - Loop shorter track</SelectItem>
-                    <SelectItem value="silence">silence - Pad with silence</SelectItem>
-                    <SelectItem value="remap">remap - Retime to match</SelectItem>
+                    <SelectItem value="bounce">
+                      bounce - Bounce shorter track
+                    </SelectItem>
+                    <SelectItem value="cut_off">
+                      cut_off - Cut when shorter ends
+                    </SelectItem>
+                    <SelectItem value="loop">
+                      loop - Loop shorter track
+                    </SelectItem>
+                    <SelectItem value="silence">
+                      silence - Pad with silence
+                    </SelectItem>
+                    <SelectItem value="remap">
+                      remap - Retime to match
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -519,7 +546,9 @@ export function AIAvatarTab({
                   <Slider
                     id="sync-lipsync-temperature"
                     value={[syncLipsyncTemperature]}
-                    onValueChange={([value]) => onSyncLipsyncTemperatureChange(value)}
+                    onValueChange={([value]) =>
+                      onSyncLipsyncTemperatureChange(value)
+                    }
                     min={0}
                     max={1}
                     step={0.1}
@@ -547,7 +576,8 @@ export function AIAvatarTab({
           {/* Duration info */}
           {syncLipsyncVideoDuration !== null && audioDuration !== null && (
             <div className="text-xs text-muted-foreground">
-              Video: {syncLipsyncVideoDuration.toFixed(1)}s · Audio: {audioDuration.toFixed(1)}s
+              Video: {syncLipsyncVideoDuration.toFixed(1)}s · Audio:{" "}
+              {audioDuration.toFixed(1)}s
             </div>
           )}
         </div>

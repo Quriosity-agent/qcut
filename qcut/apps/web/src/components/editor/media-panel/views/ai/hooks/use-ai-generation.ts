@@ -1734,8 +1734,7 @@ export function useAIGeneration(props: UseAIGenerationProps) {
             return false;
 
           // Sync Lipsync React-1 requires source video (but NOT character image)
-          if (modelId === "sync_lipsync_react1" && !sourceVideo)
-            return false;
+          if (modelId === "sync_lipsync_react1" && !sourceVideo) return false;
 
           // Models requiring reference images (check if at least one reference image exists)
           if (modelId === "kling_o1_ref2video") {
