@@ -5,10 +5,19 @@
 **File**: `qcut/apps/web/src/stores/timeline-store.ts`
 **Current Size**: 2,194 lines
 **Target**: Split into 6 focused modules
-**Status**: Planning
+**Status**: In Progress
 **Priority**: High (core functionality, high change frequency)
 
 ---
+
+## Review Notes (assistant)
+
+- Avoid duplicating shared timeline types/helpers. `TimelineTrack`, `TimelineElement`, `sortTracksByOrder`, `ensureMainTrack`, and `validateElementTrackCompatibility` already live in `@/types/timeline`; consider keeping them there and letting `stores/timeline/types.ts` focus on store‑specific types (`TimelineStore`, `OperationContext`, drag/selection shapes) or just re‑export shared types.
+- Phase 3 extracts only a subset of element operations. To actually hit the `<700 lines` main‑store target, add explicit tasks for the remaining element‑adjacent methods: `toggleTrackMute`, `toggleElementHidden`, `updateTextElement`, `updateMediaElement`, transform ops (`updateElementTransform` + delegates), export helpers (`getAudioElements`), media replacement (`replaceElementMedia`), and effects ops (`addEffectToElement`, `removeEffectFromElement`, `getElementEffectIds`, `clearElementEffects`).
+- Effects ops currently use `updateTracks` + `autoSaveTimeline` (not `updateTracksAndSave`) and only push history/save when a real change occurs. When extracting, either pass these helpers via context or keep effects ops in the main store to avoid semantic drift.
+- Ripple removal/move code already reuses `checkElementOverlaps`/`resolveElementOverlaps` from `@/lib/timeline`. Keep that dependency; don’t re‑implement overlap logic inside `stores/timeline/utils.ts`.
+- Line numbers are useful now but will drift as soon as the refactor starts. Consider treating ranges as approximate and naming the function in each task title for durability.
+- Small reuse win: `separateAudio` duplicates “find or create audio track” logic; after context extraction, it could call a shared `findOrCreateTrackOperation(\"audio\")` to keep track‑creation rules in one place.
 
 ## Guiding Principles
 
@@ -131,33 +140,36 @@ Each subtask is designed to be completable in **under 20 minutes**.
 
 ### Phase 1: Foundation (Types & Utils)
 
-#### Task 1.1: Create types.ts (~15 min)
+#### Task 1.1: Create types.ts (~15 min) ✅ COMPLETED
 **Create** `stores/timeline/types.ts`
 
 Extract from `timeline-store.ts`:
-- [ ] `TimelineStore` interface (lines 55-353)
-- [ ] `DragState` type (from lines 108-123)
-- [ ] `INITIAL_DRAG_STATE` constant
-- [ ] `OperationContext` interface (new)
-- [ ] `SelectedElement` type alias
-- [ ] Re-export timeline types from `@/types/timeline`
+- [x] `TimelineStore` interface (lines 55-353)
+- [x] `DragState` type (from lines 108-123)
+- [x] `INITIAL_DRAG_STATE` constant
+- [x] `OperationContext` interface (new)
+- [x] `SelectedElement` type alias
+- [x] Re-export timeline types from `@/types/timeline`
 
-**Verification**: `bun run check-types` passes
+**Verification**: `bun run check-types` passes ✅
 
 ---
 
-#### Task 1.2: Create utils.ts (~10 min)
+#### Task 1.2: Create utils.ts (~10 min) ✅ COMPLETED
 **Create** `stores/timeline/utils.ts`
 
 Extract from `timeline-store.ts`:
-- [ ] `getElementNameWithSuffix` function (lines 37-49)
-- [ ] `createTrack` helper (extract from addTrack logic, lines 564-583)
+- [x] `getElementNameWithSuffix` function (lines 37-49)
+- [x] `createTrack` helper (extract from addTrack logic, lines 564-583)
+- [x] `getTrackName` helper function
+- [x] `getEffectiveDuration` helper function
+- [x] `getElementEndTime` helper function
 
-**Verification**: `bun run check-types` passes
+**Verification**: `bun run check-types` passes ✅
 
 ---
 
-#### Task 1.3: Create index.ts barrel (~5 min)
+#### Task 1.3: Create index.ts barrel (~5 min) ✅ COMPLETED
 **Create** `stores/timeline/index.ts`
 
 ```typescript
@@ -166,19 +178,19 @@ export * from "./utils";
 // More exports added as modules are created
 ```
 
-**Verification**: Import works from main store
+**Verification**: Import works from main store ✅
 
 ---
 
-#### Task 1.4: Update main store imports (~10 min)
+#### Task 1.4: Update main store imports (~10 min) ✅ COMPLETED
 **Modify** `stores/timeline-store.ts`
 
-- [ ] Import types from `./timeline/types`
-- [ ] Import utils from `./timeline/utils`
-- [ ] Remove extracted code from main file
-- [ ] Verify no regressions
+- [x] Import types from `./timeline/types`
+- [x] Import utils from `./timeline/utils`
+- [x] Remove extracted code from main file
+- [x] Verify no regressions
 
-**Verification**: `bun run check-types` + manual test (add track)
+**Verification**: `bun run check-types` + manual test (add track) ✅
 
 ---
 
@@ -537,5 +549,5 @@ Each task is independently committable and testable.
 ---
 
 *Document created: 2025-12-11*
-*Last updated: 2025-12-11*
-*Status: Ready for implementation*
+*Last updated: 2025-12-12*
+*Status: Phase 1 Complete, Phase 2 In Progress*
