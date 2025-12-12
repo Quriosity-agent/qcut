@@ -179,20 +179,16 @@ export function removeTrackWithRippleOperation(
  * Note: Text tracks always create a new track at index 0
  * @param ctx - Operation context
  * @param trackType - Type of track to find or create
- * @param insertTrackAt - Function to insert a new track at a specific index
- * @param addTrack - Function to add a new track
  * @returns The ID of the found or newly created track
  */
 export function findOrCreateTrackOperation(
   ctx: OperationContext,
-  trackType: TrackType,
-  insertTrackAt: (type: TrackType, index: number) => string,
-  addTrack: (type: TrackType) => string
+  trackType: TrackType
 ): string {
   // Always create new text track to allow multiple text elements
   // Insert text tracks at the top
   if (trackType === "text") {
-    return insertTrackAt(trackType, 0);
+    return ctx.insertTrackAt(trackType, 0);
   }
 
   const existingTrack = ctx.getTracks().find((t) => t.type === trackType);
@@ -200,5 +196,5 @@ export function findOrCreateTrackOperation(
     return existingTrack.id;
   }
 
-  return addTrack(trackType);
+  return ctx.addTrack(trackType);
 }

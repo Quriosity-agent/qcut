@@ -743,10 +743,11 @@ export const useTimelineStore = create<TimelineStore>((set, get) => {
 
     updateElementStartTimeWithRipple: (trackId, elementId, newStartTime) => {
       const { _tracks, rippleEditingEnabled } = get();
+      const clampedNewStartTime = Math.max(0, newStartTime);
 
       if (!rippleEditingEnabled) {
         // If ripple editing is disabled, use regular update
-        get().updateElementStartTime(trackId, elementId, newStartTime);
+        get().updateElementStartTime(trackId, elementId, clampedNewStartTime);
         return;
       }
 
@@ -762,8 +763,9 @@ export const useTimelineStore = create<TimelineStore>((set, get) => {
         element.startTime +
         (element.duration - element.trimStart - element.trimEnd);
       const newEndTime =
-        newStartTime + (element.duration - element.trimStart - element.trimEnd);
-      const timeDelta = newStartTime - oldStartTime;
+        clampedNewStartTime +
+        (element.duration - element.trimStart - element.trimEnd);
+      const timeDelta = clampedNewStartTime - oldStartTime;
 
       // Update tracks based on multi-track ripple setting
       const updatedTracks = _tracks.map((currentTrack) => {
@@ -772,7 +774,7 @@ export const useTimelineStore = create<TimelineStore>((set, get) => {
 
         const updatedElements = currentTrack.elements.map((currentElement) => {
           if (currentElement.id === elementId && currentTrack.id === trackId) {
-            return { ...currentElement, startTime: Math.max(0, newStartTime) };
+            return { ...currentElement, startTime: clampedNewStartTime };
           }
 
           // Only apply ripple effects if we should process this track

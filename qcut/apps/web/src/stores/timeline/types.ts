@@ -90,6 +90,10 @@ export interface OperationContext {
   updateTracksAndSave: (tracks: TimelineTrack[]) => void;
   pushHistory: () => void;
 
+  // Track operations
+  addTrack: (type: TrackType) => string;
+  insertTrackAt: (type: TrackType, index: number) => string;
+
   // Cross-cutting concerns
   selectElement: (trackId: string, elementId: string) => void;
   deselectElement: (trackId: string, elementId: string) => void;
