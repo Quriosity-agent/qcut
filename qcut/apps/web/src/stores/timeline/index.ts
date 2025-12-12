@@ -11,8 +11,14 @@ export * from "./types";
 // Utilities
 export * from "./utils";
 
-// Operations will be added as they are created:
-// export * from "./track-operations";
-// export * from "./element-operations";
-// export * from "./split-operations";
-// export * from "./persistence";
+// Track Operations
+export * from "./track-operations";
+
+// Element Operations
+export * from "./element-operations";
+
+// Split Operations
+export * from "./split-operations";
+
+// Persistence Operations
+export * from "./persistence";
