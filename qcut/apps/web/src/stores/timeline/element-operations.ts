@@ -42,6 +42,10 @@ export function removeElementSimpleOperation(
   pushHistory = true
 ): void {
   if (pushHistory) ctx.pushHistory();
+
+  // Clear selection to avoid dangling references
+  ctx.deselectElement(trackId, elementId);
+
   ctx.updateTracksAndSave(
     ctx
       .getTracks()
@@ -80,6 +84,9 @@ export function removeElementWithRippleOperation(
 
   if (pushHistory) ctx.pushHistory();
 
+  // Clear selection to avoid dangling references
+  ctx.deselectElement(trackId, elementId);
+
   const elementStartTime = element.startTime;
   const elementDuration = getEffectiveDuration(element);
   const elementEndTime = elementStartTime + elementDuration;
@@ -93,10 +100,7 @@ export function removeElementWithRippleOperation(
       const updatedElements = currentTrack.elements
         .filter((currentElement) => {
           // Remove the target element
-          if (
-            currentElement.id === elementId &&
-            currentTrack.id === trackId
-          ) {
+          if (currentElement.id === elementId && currentTrack.id === trackId) {
             return false;
           }
           return true;
@@ -111,7 +115,10 @@ export function removeElementWithRippleOperation(
           if (currentElement.startTime >= elementEndTime) {
             return {
               ...currentElement,
-              startTime: Math.max(0, currentElement.startTime - elementDuration),
+              startTime: Math.max(
+                0,
+                currentElement.startTime - elementDuration
+              ),
             };
           }
           return currentElement;
@@ -145,6 +152,9 @@ export function moveElementToTrackOperation(
   toTrackId: string,
   elementId: string
 ): void {
+  // No-op if moving to the same track
+  if (fromTrackId === toTrackId) return;
+
   ctx.pushHistory();
 
   const tracks = ctx.getTracks();
@@ -179,7 +189,9 @@ export function moveElementToTrackOperation(
       if (track.id === fromTrackId) {
         return {
           ...track,
-          elements: track.elements.filter((element) => element.id !== elementId),
+          elements: track.elements.filter(
+            (element) => element.id !== elementId
+          ),
         };
       }
       if (track.id === toTrackId) {

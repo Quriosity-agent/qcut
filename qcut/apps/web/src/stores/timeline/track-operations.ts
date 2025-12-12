@@ -56,6 +56,11 @@ export function removeTrackSimpleOperation(
   ctx: OperationContext,
   trackId: string
 ): void {
+  const trackToRemove = ctx.getTracks().find((t) => t.id === trackId);
+
+  // Cannot remove the main track - it must always exist
+  if (!trackToRemove || trackToRemove.isMain) return;
+
   ctx.pushHistory();
 
   // Clear selection for elements on the removed track to avoid dangling references
@@ -82,7 +87,8 @@ export function removeTrackWithRippleOperation(
   const tracks = ctx.getTracks();
   const trackToRemove = tracks.find((t) => t.id === trackId);
 
-  if (!trackToRemove) return;
+  // Cannot remove the main track - it must always exist
+  if (!trackToRemove || trackToRemove.isMain) return;
 
   ctx.pushHistory();
 
