@@ -184,10 +184,9 @@ export async function loadProjectTimelineOperation(
         sceneId,
       },
     });
-    // Initialize with default on error
-    const defaultTracks = ensureMainTrack([]);
-    ctx.updateTracks(defaultTracks);
-    ctx.clearHistory();
+    // Re-throw so caller knows load failed - do NOT silently initialize
+    // with defaults as this could lead to data loss on next save
+    throw error;
   }
 }
 
