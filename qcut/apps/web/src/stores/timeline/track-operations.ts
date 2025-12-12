@@ -41,7 +41,8 @@ export function insertTrackAtOperation(
   ctx.pushHistory();
   const newTrack = createTrack(type);
   const newTracks = [...ctx.getTracks()];
-  newTracks.splice(index, 0, newTrack);
+  const clampedIndex = Math.min(Math.max(0, index), newTracks.length);
+  newTracks.splice(clampedIndex, 0, newTrack);
   ctx.updateTracksAndSave(newTracks);
   return newTrack.id;
 }
@@ -56,6 +57,14 @@ export function removeTrackSimpleOperation(
   trackId: string
 ): void {
   ctx.pushHistory();
+
+  // Clear selection for elements on the removed track to avoid dangling references
+  for (const sel of ctx.getSelectedElements()) {
+    if (sel.trackId === trackId) {
+      ctx.deselectElement(sel.trackId, sel.elementId);
+    }
+  }
+
   ctx.updateTracksAndSave(
     ctx.getTracks().filter((track) => track.id !== trackId)
   );
@@ -76,6 +85,13 @@ export function removeTrackWithRippleOperation(
   if (!trackToRemove) return;
 
   ctx.pushHistory();
+
+  // Clear selection for elements on the removed track to avoid dangling references
+  for (const sel of ctx.getSelectedElements()) {
+    if (sel.trackId === trackId) {
+      ctx.deselectElement(sel.trackId, sel.elementId);
+    }
+  }
 
   // If track has no elements, just remove it normally
   if (trackToRemove.elements.length === 0) {

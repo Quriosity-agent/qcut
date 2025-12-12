@@ -305,6 +305,7 @@ export function updateElementStartTimeWithRippleOperation(
   elementId: string,
   newStartTime: number
 ): void {
+  const clampedNewStartTime = Math.max(0, newStartTime);
   const tracks = ctx.getTracks();
   const track = tracks.find((t) => t.id === trackId);
   const element = track?.elements.find((e) => e.id === elementId);
@@ -316,8 +317,8 @@ export function updateElementStartTimeWithRippleOperation(
   const oldStartTime = element.startTime;
   const effectiveDuration = getEffectiveDuration(element);
   const oldEndTime = oldStartTime + effectiveDuration;
-  const newEndTime = newStartTime + effectiveDuration;
-  const timeDelta = newStartTime - oldStartTime;
+  const newEndTime = clampedNewStartTime + effectiveDuration;
+  const timeDelta = clampedNewStartTime - oldStartTime;
 
   // Update tracks based on multi-track ripple setting
   const updatedTracks = tracks.map((currentTrack) => {
@@ -326,7 +327,7 @@ export function updateElementStartTimeWithRippleOperation(
 
     const updatedElements = currentTrack.elements.map((currentElement) => {
       if (currentElement.id === elementId && currentTrack.id === trackId) {
-        return { ...currentElement, startTime: Math.max(0, newStartTime) };
+        return { ...currentElement, startTime: clampedNewStartTime };
       }
 
       // Only apply ripple effects if we should process this track

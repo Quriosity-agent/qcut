@@ -258,18 +258,27 @@ export const useTimelineStore = create<TimelineStore>((set, get) => {
       get().pushHistory();
       const newTrack = createTrack(type);
       const newTracks = [...get()._tracks];
-      newTracks.splice(index, 0, newTrack);
+      const clampedIndex = Math.min(Math.max(0, index), newTracks.length);
+      newTracks.splice(clampedIndex, 0, newTrack);
       updateTracksAndSave(newTracks);
       return newTrack.id;
     },
 
     removeTrack: (trackId) => {
-      const { rippleEditingEnabled } = get();
+      const { rippleEditingEnabled, selectedElements } = get();
 
       if (rippleEditingEnabled) {
         get().removeTrackWithRipple(trackId);
       } else {
         get().pushHistory();
+
+        // Clear selection for elements on the removed track to avoid dangling references
+        for (const sel of selectedElements) {
+          if (sel.trackId === trackId) {
+            get().deselectElement(sel.trackId, sel.elementId);
+          }
+        }
+
         updateTracksAndSave(
           get()._tracks.filter((track) => track.id !== trackId)
         );
@@ -277,12 +286,19 @@ export const useTimelineStore = create<TimelineStore>((set, get) => {
     },
 
     removeTrackWithRipple: (trackId) => {
-      const { _tracks } = get();
+      const { _tracks, selectedElements } = get();
       const trackToRemove = _tracks.find((t) => t.id === trackId);
 
       if (!trackToRemove) return;
 
       get().pushHistory();
+
+      // Clear selection for elements on the removed track to avoid dangling references
+      for (const sel of selectedElements) {
+        if (sel.trackId === trackId) {
+          get().deselectElement(sel.trackId, sel.elementId);
+        }
+      }
 
       // If track has no elements, just remove it normally
       if (trackToRemove.elements.length === 0) {
