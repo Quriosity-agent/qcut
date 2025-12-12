@@ -255,9 +255,7 @@ export function separateAudioOperation(
  * @param tracks - Timeline tracks to search
  * @returns Array of audio elements with their track and position info
  */
-export function getAudioElementsOperation(
-  tracks: TimelineTrack[]
-): Array<{
+export function getAudioElementsOperation(tracks: TimelineTrack[]): Array<{
   element: TimelineElement;
   trackId: string;
   absoluteStart: number;
