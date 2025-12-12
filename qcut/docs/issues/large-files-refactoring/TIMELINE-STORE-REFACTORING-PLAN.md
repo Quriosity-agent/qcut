@@ -313,6 +313,26 @@ Test in Electron app:
 
 ---
 
+## Code Review Fixes Applied
+
+### Fix 1: Main Track Preservation (Gemini)
+**Issue**: Filter `track.elements.length > 0` could accidentally remove main track.
+**Fix**: Added `|| track.isMain` to all filter operations in element-operations.ts and timeline-store.ts.
+
+### Fix 2: Clear Selection on Track Removal (CodeRabbit)
+**Issue**: Removing a track left dangling selectedElements references.
+**Fix**: Added loop to deselect all elements on track before removal in track-operations.ts.
+
+### Fix 3: OperationContext Pattern Consistency (Gemini)
+**Issue**: `findOrCreateTrackOperation` received raw function parameters instead of using context.
+**Fix**: Added `addTrack` and `insertTrackAt` methods to OperationContext interface.
+
+### Fix 4: Error Handling in Load Operation (CodeRabbit)
+**Issue**: `loadProjectTimelineOperation` silently initialized with defaults on error, risking data loss.
+**Fix**: Re-throw error after logging so caller can handle failure appropriately.
+
+---
+
 ## Risk Mitigation
 
 ### Rollback Strategy
