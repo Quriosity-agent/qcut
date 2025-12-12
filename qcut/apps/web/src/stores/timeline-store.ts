@@ -520,7 +520,7 @@ export const useTimelineStore = create<TimelineStore>((set, get) => {
                   }
                 : track
             )
-            .filter((track) => track.elements.length > 0)
+            .filter((track) => track.elements.length > 0 || track.isMain)
         );
       }
     },
@@ -651,7 +651,7 @@ export const useTimelineStore = create<TimelineStore>((set, get) => {
           }
           return track;
         })
-        .filter((track) => track.elements.length > 0);
+        .filter((track) => track.elements.length > 0 || track.isMain);
 
       updateTracksAndSave(newTracks);
     },

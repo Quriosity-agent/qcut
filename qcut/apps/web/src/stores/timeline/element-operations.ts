@@ -55,7 +55,7 @@ export function removeElementSimpleOperation(
             }
           : track
       )
-      .filter((track) => track.elements.length > 0)
+      .filter((track) => track.elements.length > 0 || track.isMain)
   );
 }
 
@@ -190,7 +190,7 @@ export function moveElementToTrackOperation(
       }
       return track;
     })
-    .filter((track) => track.elements.length > 0);
+    .filter((track) => track.elements.length > 0 || track.isMain);
 
   ctx.updateTracksAndSave(newTracks);
 }
