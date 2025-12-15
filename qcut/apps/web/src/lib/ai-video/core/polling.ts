@@ -13,8 +13,8 @@ import {
 import type {
   VideoGenerationResponse,
   ProgressCallback,
+  ProgressUpdate,
 } from "@/components/editor/media-panel/views/ai/types/ai-types";
-export type { ProgressUpdate } from "@/components/editor/media-panel/views/ai/types/ai-types";
 import { handleAIServiceError } from "@/lib/error-handler";
 import { streamVideoDownload, type StreamOptions } from "./streaming";
 

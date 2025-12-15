@@ -1,5 +1,10 @@
 import { create } from "zustand";
 import {
+  sortTracksByOrder,
+  ensureMainTrack,
+  validateElementTrackCompatibility,
+} from "@/types/timeline";
+import type {
   TrackType,
   TimelineElement,
   CreateTimelineElement,
@@ -7,9 +12,6 @@ import {
   TextElement,
   MediaElement,
   DragData,
-  sortTracksByOrder,
-  ensureMainTrack,
-  validateElementTrackCompatibility,
 } from "@/types/timeline";
 import { useEditorStore } from "./editor-store";
 import {
@@ -27,330 +29,16 @@ import { toast } from "sonner";
 import { checkElementOverlaps, resolveElementOverlaps } from "@/lib/timeline";
 import { handleError, ErrorCategory, ErrorSeverity } from "@/lib/error-handler";
 
-/**
- * Helper function to manage element naming with suffixes
- * Prevents suffix accumulation by removing existing suffixes before adding new ones
- * @param originalName - The original name of the element
- * @param suffix - The suffix to add (e.g., 'left', 'right', 'audio')
- * @returns The element name with the specified suffix
- */
-const getElementNameWithSuffix = (
-  originalName: string,
-  suffix: string
-): string => {
-  // Remove existing suffixes to prevent accumulation
-  const baseName = originalName
-    .replace(/ \(left\)$/, "")
-    .replace(/ \(right\)$/, "")
-    .replace(/ \(audio\)$/, "")
-    .replace(/ \(split \d+\)$/, "");
+// Import from timeline module
+import {
+  type TimelineStore,
+  type DragState,
+  INITIAL_DRAG_STATE,
+  getElementNameWithSuffix,
+  createTrack,
+} from "./timeline";
 
-  return `${baseName} (${suffix})`;
-};
-
-/**
- * Timeline store interface that manages video editor timeline state
- * Handles tracks, elements, history, and all timeline operations
- */
-interface TimelineStore {
-  /** Private track storage - do not access directly, use tracks property instead */
-  _tracks: TimelineTrack[];
-  /** Undo history stack storing previous timeline states */
-  history: TimelineTrack[][];
-  /** Redo stack for restoring undone states */
-  redoStack: TimelineTrack[][];
-
-  /** Auto-save status message for UI feedback */
-  autoSaveStatus: string;
-  /** Whether an auto-save operation is currently running */
-  isAutoSaving: boolean;
-  /** Timestamp (ms) of the last successful auto-save */
-  lastAutoSaveAt: number | null;
-
-  /** Always returns properly ordered tracks with main track ensured */
-  tracks: TimelineTrack[];
-
-  /** Manual method to force recomputation of track ordering */
-  getSortedTracks: () => TimelineTrack[];
-
-  /** Whether snapping to grid and elements is enabled */
-  snappingEnabled: boolean;
-
-  /** Toggle snapping on/off */
-  toggleSnapping: () => void;
-
-  /** Whether ripple editing mode is enabled (moving elements affects subsequent elements) */
-  rippleEditingEnabled: boolean;
-  /** Toggle ripple editing mode on/off */
-  toggleRippleEditing: () => void;
-
-  /** Whether the effects track is visible in the timeline */
-  showEffectsTrack: boolean;
-  /** Toggle effects track visibility */
-  toggleEffectsTrack: () => void;
-  /** Automatically show effects track (called when effects are applied) */
-  autoShowEffectsTrack: () => void;
-
-  /** Array of currently selected timeline elements */
-  selectedElements: { trackId: string; elementId: string }[];
-  /** Select an element, optionally as part of multi-selection */
-  selectElement: (trackId: string, elementId: string, multi?: boolean) => void;
-  /** Deselect a specific element */
-  deselectElement: (trackId: string, elementId: string) => void;
-  /** Clear all selected elements */
-  clearSelectedElements: () => void;
-  /** Set the entire selection to the provided elements array */
-  setSelectedElements: (
-    elements: { trackId: string; elementId: string }[]
-  ) => void;
-
-  /** Current drag operation state for timeline elements */
-  dragState: {
-    /** Whether a drag operation is currently active */
-    isDragging: boolean;
-    /** ID of the element being dragged */
-    elementId: string | null;
-    /** ID of the track containing the dragged element */
-    trackId: string | null;
-    /** Initial mouse X position when drag started */
-    startMouseX: number;
-    /** Initial element start time when drag started */
-    startElementTime: number;
-    /** Time offset from element start where click occurred */
-    clickOffsetTime: number;
-    /** Current time position during drag */
-    currentTime: number;
-  };
-  /** Update drag state with partial values */
-  setDragState: (dragState: Partial<TimelineStore["dragState"]>) => void;
-  /** Start a drag operation with initial parameters */
-  startDrag: (
-    elementId: string,
-    trackId: string,
-    startMouseX: number,
-    startElementTime: number,
-    clickOffsetTime: number
-  ) => void;
-  /** Update the current time during drag operation */
-  updateDragTime: (currentTime: number) => void;
-  /** End the current drag operation */
-  endDrag: () => void;
-
-  /** Add a new track of the specified type to the timeline */
-  addTrack: (type: TrackType) => string;
-  /** Insert a new track at the specified index position */
-  insertTrackAt: (type: TrackType, index: number) => string;
-  /** Remove a track from the timeline */
-  removeTrack: (trackId: string) => void;
-  /** Remove a track with ripple editing (affects subsequent elements) */
-  removeTrackWithRipple: (trackId: string) => void;
-  /** Add an element to the specified track */
-  addElementToTrack: (trackId: string, element: CreateTimelineElement) => void;
-  /** Remove an element from a track, optionally pushing to history */
-  removeElementFromTrack: (
-    trackId: string,
-    elementId: string,
-    pushHistory?: boolean
-  ) => void;
-  /** Move an element from one track to another */
-  moveElementToTrack: (
-    fromTrackId: string,
-    toTrackId: string,
-    elementId: string
-  ) => void;
-  /** Update the trim start and end values for an element */
-  updateElementTrim: (
-    trackId: string,
-    elementId: string,
-    trimStart: number,
-    trimEnd: number,
-    pushHistory?: boolean
-  ) => void;
-  /** Update the duration of an element */
-  updateElementDuration: (
-    trackId: string,
-    elementId: string,
-    duration: number,
-    pushHistory?: boolean
-  ) => void;
-  /** Update the start time of an element */
-  updateElementStartTime: (
-    trackId: string,
-    elementId: string,
-    startTime: number,
-    pushHistory?: boolean
-  ) => void;
-  /** Toggle mute state for a track */
-  toggleTrackMute: (trackId: string) => void;
-  /** Toggle hidden/visible state for an element */
-  toggleElementHidden: (trackId: string, elementId: string) => void;
-
-  // Split operations for elements
-  splitElement: (
-    trackId: string,
-    elementId: string,
-    splitTime: number
-  ) => string | null;
-  splitAndKeepLeft: (
-    trackId: string,
-    elementId: string,
-    splitTime: number
-  ) => void;
-  splitAndKeepRight: (
-    trackId: string,
-    elementId: string,
-    splitTime: number
-  ) => void;
-  separateAudio: (trackId: string, elementId: string) => string | null;
-
-  // Get all audio elements for export
-  getAudioElements: () => Array<{
-    element: TimelineElement;
-    trackId: string;
-    absoluteStart: number;
-  }>;
-
-  // Replace media for an element
-  replaceElementMedia: (
-    trackId: string,
-    elementId: string,
-    newFile: File
-  ) => Promise<{ success: boolean; error?: string }>;
-
-  // Ripple editing functions
-  updateElementStartTimeWithRipple: (
-    trackId: string,
-    elementId: string,
-    newStartTime: number
-  ) => void;
-  removeElementFromTrackWithRipple: (
-    trackId: string,
-    elementId: string,
-    pushHistory?: boolean
-  ) => void;
-
-  // Computed values
-  getTotalDuration: () => number;
-  getProjectThumbnail: (projectId: string) => Promise<string | null>;
-
-  // History actions
-  undo: () => void;
-  redo: () => void;
-  pushHistory: () => void;
-
-  // Persistence actions
-  loadProjectTimeline: ({
-    projectId,
-    sceneId,
-  }: {
-    projectId: string;
-    sceneId?: string;
-  }) => Promise<void>;
-  saveProjectTimeline: ({
-    projectId,
-    sceneId,
-  }: {
-    projectId: string;
-    sceneId?: string;
-  }) => Promise<void>;
-  /** Save timeline immediately without debounce - for critical operations */
-  saveImmediate: () => Promise<void>;
-  clearTimeline: () => void;
-  /** Restore timeline tracks (for rollback on load failure) */
-  restoreTracks: (tracks: TimelineTrack[]) => void;
-  updateTextElement: (
-    trackId: string,
-    elementId: string,
-    updates: Partial<
-      Pick<
-        TextElement,
-        | "content"
-        | "fontSize"
-        | "fontFamily"
-        | "color"
-        | "backgroundColor"
-        | "textAlign"
-        | "fontWeight"
-        | "fontStyle"
-        | "textDecoration"
-        | "x"
-        | "y"
-        | "rotation"
-        | "opacity"
-      >
-    >
-  ) => void;
-
-  // Interactive element manipulation (for effects)
-  // Batched transform updater - use this to update multiple properties atomically and avoid history spam
-  updateElementTransform: (
-    elementId: string,
-    updates: {
-      position?: { x: number; y: number };
-      size?: { width: number; height: number; x?: number; y?: number };
-      rotation?: number;
-    },
-    options?: { pushHistory?: boolean }
-  ) => void;
-  // Individual transform updaters - these delegate to updateElementTransform internally
-  updateElementPosition: (
-    elementId: string,
-    position: { x: number; y: number }
-  ) => void;
-  updateElementSize: (
-    elementId: string,
-    size: { width: number; height: number; x?: number; y?: number }
-  ) => void;
-  updateElementRotation: (elementId: string, rotation: number) => void;
-  updateMediaElement: (
-    trackId: string,
-    elementId: string,
-    updates: Partial<Pick<MediaElement, "volume">>,
-    pushHistory?: boolean
-  ) => void;
-  checkElementOverlap: (
-    trackId: string,
-    startTime: number,
-    duration: number,
-    excludeElementId?: string
-  ) => boolean;
-  findOrCreateTrack: (trackType: TrackType) => string;
-  addMediaAtTime: (item: MediaItem, currentTime?: number) => boolean;
-  addTextAtTime: (item: TextElement, currentTime?: number) => boolean;
-  addMediaToNewTrack: (item: MediaItem) => boolean;
-  addTextToNewTrack: (item: TextElement | DragData) => boolean;
-
-  // Effects-related methods
-  /**
-   * Add an effect to a timeline element
-   * @param elementId - ID of the element to add effect to
-   * @param effectId - ID of the effect to add
-   * @side-effects Pushes to history for undo/redo, updates tracks, triggers auto-save
-   */
-  addEffectToElement: (elementId: string, effectId: string) => void;
-
-  /**
-   * Remove an effect from a timeline element
-   * @param elementId - ID of the element to remove effect from
-   * @param effectId - ID of the effect to remove
-   * @side-effects Pushes to history for undo/redo, updates tracks, triggers auto-save
-   */
-  removeEffectFromElement: (elementId: string, effectId: string) => void;
-
-  /**
-   * Get all effect IDs for a timeline element
-   * @param elementId - ID of the element to get effects for
-   * @returns Array of effect IDs, empty array if element has no effects or doesn't exist
-   */
-  getElementEffectIds: (elementId: string) => string[];
-
-  /**
-   * Clear all effects from a timeline element
-   * @param elementId - ID of the element to clear effects from
-   * @side-effects Pushes to history for undo/redo, updates tracks, triggers auto-save
-   */
-  clearElementEffects: (elementId: string) => void;
-}
+// TimelineStore interface is now imported from ./timeline/types
 
 // Module-level timer for debounced auto-save
 let autoSaveTimer: ReturnType<typeof setTimeout> | null = null;
@@ -561,67 +249,36 @@ export const useTimelineStore = create<TimelineStore>((set, get) => {
 
     addTrack: (type) => {
       get().pushHistory();
-
-      // Generate proper track name based on type
-      const trackName =
-        type === "media"
-          ? "Media Track"
-          : type === "text"
-            ? "Text Track"
-            : type === "audio"
-              ? "Audio Track"
-              : type === "sticker"
-                ? "Sticker Track"
-                : "Track";
-
-      const newTrack: TimelineTrack = {
-        id: generateUUID(),
-        name: trackName,
-        type,
-        elements: [],
-        muted: false,
-      };
-
+      const newTrack = createTrack(type);
       updateTracksAndSave([...get()._tracks, newTrack]);
       return newTrack.id;
     },
 
     insertTrackAt: (type, index) => {
       get().pushHistory();
-
-      // Generate proper track name based on type
-      const trackName =
-        type === "media"
-          ? "Media Track"
-          : type === "text"
-            ? "Text Track"
-            : type === "audio"
-              ? "Audio Track"
-              : type === "sticker"
-                ? "Sticker Track"
-                : "Track";
-
-      const newTrack: TimelineTrack = {
-        id: generateUUID(),
-        name: trackName,
-        type,
-        elements: [],
-        muted: false,
-      };
-
+      const newTrack = createTrack(type);
       const newTracks = [...get()._tracks];
-      newTracks.splice(index, 0, newTrack);
+      const clampedIndex = Math.min(Math.max(0, index), newTracks.length);
+      newTracks.splice(clampedIndex, 0, newTrack);
       updateTracksAndSave(newTracks);
       return newTrack.id;
     },
 
     removeTrack: (trackId) => {
-      const { rippleEditingEnabled } = get();
+      const { rippleEditingEnabled, selectedElements } = get();
 
       if (rippleEditingEnabled) {
         get().removeTrackWithRipple(trackId);
       } else {
         get().pushHistory();
+
+        // Clear selection for elements on the removed track to avoid dangling references
+        for (const sel of selectedElements) {
+          if (sel.trackId === trackId) {
+            get().deselectElement(sel.trackId, sel.elementId);
+          }
+        }
+
         updateTracksAndSave(
           get()._tracks.filter((track) => track.id !== trackId)
         );
@@ -629,12 +286,19 @@ export const useTimelineStore = create<TimelineStore>((set, get) => {
     },
 
     removeTrackWithRipple: (trackId) => {
-      const { _tracks } = get();
+      const { _tracks, selectedElements } = get();
       const trackToRemove = _tracks.find((t) => t.id === trackId);
 
       if (!trackToRemove) return;
 
       get().pushHistory();
+
+      // Clear selection for elements on the removed track to avoid dangling references
+      for (const sel of selectedElements) {
+        if (sel.trackId === trackId) {
+          get().deselectElement(sel.trackId, sel.elementId);
+        }
+      }
 
       // If track has no elements, just remove it normally
       if (trackToRemove.elements.length === 0) {
@@ -872,7 +536,7 @@ export const useTimelineStore = create<TimelineStore>((set, get) => {
                   }
                 : track
             )
-            .filter((track) => track.elements.length > 0)
+            .filter((track) => track.elements.length > 0 || track.isMain)
         );
       }
     },
@@ -1003,7 +667,7 @@ export const useTimelineStore = create<TimelineStore>((set, get) => {
           }
           return track;
         })
-        .filter((track) => track.elements.length > 0);
+        .filter((track) => track.elements.length > 0 || track.isMain);
 
       updateTracksAndSave(newTracks);
     },
@@ -1079,10 +743,11 @@ export const useTimelineStore = create<TimelineStore>((set, get) => {
 
     updateElementStartTimeWithRipple: (trackId, elementId, newStartTime) => {
       const { _tracks, rippleEditingEnabled } = get();
+      const clampedNewStartTime = Math.max(0, newStartTime);
 
       if (!rippleEditingEnabled) {
         // If ripple editing is disabled, use regular update
-        get().updateElementStartTime(trackId, elementId, newStartTime);
+        get().updateElementStartTime(trackId, elementId, clampedNewStartTime);
         return;
       }
 
@@ -1098,8 +763,9 @@ export const useTimelineStore = create<TimelineStore>((set, get) => {
         element.startTime +
         (element.duration - element.trimStart - element.trimEnd);
       const newEndTime =
-        newStartTime + (element.duration - element.trimStart - element.trimEnd);
-      const timeDelta = newStartTime - oldStartTime;
+        clampedNewStartTime +
+        (element.duration - element.trimStart - element.trimEnd);
+      const timeDelta = clampedNewStartTime - oldStartTime;
 
       // Update tracks based on multi-track ripple setting
       const updatedTracks = _tracks.map((currentTrack) => {
@@ -1108,7 +774,7 @@ export const useTimelineStore = create<TimelineStore>((set, get) => {
 
         const updatedElements = currentTrack.elements.map((currentElement) => {
           if (currentElement.id === elementId && currentTrack.id === trackId) {
-            return { ...currentElement, startTime: Math.max(0, newStartTime) };
+            return { ...currentElement, startTime: clampedNewStartTime };
           }
 
           // Only apply ripple effects if we should process this track
@@ -1713,15 +1379,7 @@ export const useTimelineStore = create<TimelineStore>((set, get) => {
       set({ redoStack: redoStack.slice(0, -1) });
     },
 
-    dragState: {
-      isDragging: false,
-      elementId: null,
-      trackId: null,
-      startMouseX: 0,
-      startElementTime: 0,
-      clickOffsetTime: 0,
-      currentTime: 0,
-    },
+    dragState: INITIAL_DRAG_STATE,
 
     setDragState: (dragState) =>
       set((state) => ({
@@ -1758,17 +1416,7 @@ export const useTimelineStore = create<TimelineStore>((set, get) => {
     },
 
     endDrag: () => {
-      set({
-        dragState: {
-          isDragging: false,
-          elementId: null,
-          trackId: null,
-          startMouseX: 0,
-          startElementTime: 0,
-          clickOffsetTime: 0,
-          currentTime: 0,
-        },
-      });
+      set({ dragState: INITIAL_DRAG_STATE });
     },
 
     // Persistence methods
