@@ -562,19 +562,19 @@ export function AiView() {
             }
           >
             <TabsList className="grid w-full grid-cols-4">
-              <TabsTrigger value="text" className="text-xs">
+              <TabsTrigger value="text" className="text-xs" data-testid="ai-tab-text">
                 <TypeIcon className="size-3 mr-1" />
                 {!isCompact && "Text"}
               </TabsTrigger>
-              <TabsTrigger value="image" className="text-xs">
+              <TabsTrigger value="image" className="text-xs" data-testid="ai-tab-image">
                 <ImageIcon className="size-3 mr-1" />
                 {!isCompact && "Image"}
               </TabsTrigger>
-              <TabsTrigger value="avatar" className="text-xs">
+              <TabsTrigger value="avatar" className="text-xs" data-testid="ai-tab-avatar">
                 <UserIcon className="size-3 mr-1" />
                 {!isCompact && "Avatar"}
               </TabsTrigger>
-              <TabsTrigger value="upscale" className="text-xs">
+              <TabsTrigger value="upscale" className="text-xs" data-testid="ai-tab-upscale">
                 <Upload className="size-3 mr-1" />
                 {!isCompact && "Upscale"}
               </TabsTrigger>
