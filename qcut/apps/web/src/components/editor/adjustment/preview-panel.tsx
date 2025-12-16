@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAdjustmentStore } from "@/stores/adjustment-store";
+import { getModelCapabilities } from "@/lib/image-edit-capabilities";
 import {
   ImageIcon,
   SplitSquareVertical,
@@ -23,12 +24,27 @@ export function PreviewPanel() {
     setPreviewMode,
     editHistory,
     currentHistoryIndex,
+    multipleImages,
+    selectedModel,
   } = useAdjustmentStore();
 
   const [fullscreen, setFullscreen] = useState(false);
 
   const hasEdit = currentEditedUrl;
   const currentEdit = editHistory[currentHistoryIndex];
+
+  // Check model capabilities for multi-image support
+  const capabilities = getModelCapabilities(selectedModel);
+
+  // Check if we have images to preview
+  const hasImages = capabilities.supportsMultiple
+    ? multipleImages.length > 0
+    : !!originalImageUrl;
+
+  // Determine preview image based on model type (only used when hasImages is true)
+  const previewImageUrl: string = capabilities.supportsMultiple
+    ? multipleImages[0] || "" // Use first image from multi-image array
+    : originalImageUrl || "";
 
   // Close fullscreen on Escape key
   useEffect(() => {
@@ -46,7 +62,7 @@ export function PreviewPanel() {
     }
   }, [fullscreen]);
 
-  if (!originalImageUrl) {
+  if (!hasImages) {
     return (
       <Card className="h-full flex items-center justify-center">
         <CardContent>
@@ -95,7 +111,7 @@ export function PreviewPanel() {
           <TabsContent value="original" className="flex-1 mt-0">
             <div className="h-full bg-muted/20 rounded-lg border-2 border-dashed border-muted-foreground/20 flex items-center justify-center overflow-hidden">
               <img
-                src={originalImageUrl}
+                src={previewImageUrl}
                 alt="Original"
                 className="max-w-full max-h-full object-contain"
               />
@@ -162,7 +178,7 @@ export function PreviewPanel() {
           {/* Image container */}
           <div className="max-w-full max-h-full">
             <img
-              src={hasEdit ? currentEditedUrl : originalImageUrl}
+              src={hasEdit ? currentEditedUrl : previewImageUrl}
               alt="Fullscreen preview"
               className="max-w-full max-h-full object-contain shadow-2xl"
               onClick={(e) => e.stopPropagation()}

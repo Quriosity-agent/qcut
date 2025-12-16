@@ -41,11 +41,15 @@ export interface AdjustmentState {
     numImages: number;
 
     // Add new V4-specific parameters (optional for backward compatibility)
-    imageSize?: string; // "square_hd", "square", etc. for V4
+    imageSize?: string; // "square_hd", "square", etc. for V4/V4.5
     maxImages?: number; // 1-10 for V4
-    syncMode?: boolean; // V4, Nano Banana, and Reve Edit
+    syncMode?: boolean; // V4, Nano Banana, Reve Edit, and Gemini 3 Pro Edit
     enableSafetyChecker?: boolean; // V4
-    outputFormat?: "jpeg" | "png" | "webp"; // Nano Banana and Reve Edit (lowercase required by FAL API)
+    outputFormat?: "jpeg" | "png" | "webp"; // Nano Banana, Reve Edit, and Gemini 3 Pro Edit (lowercase required by FAL API)
+
+    // Gemini 3 Pro Edit specific parameters
+    resolution?: "1K" | "2K" | "4K";
+    aspectRatio?: string; // auto, 1:1, 4:3, 3:4, 16:9, 9:16, 21:9, 3:2, 2:3, 5:4, 4:5
   };
 
   // Edit history

@@ -144,6 +144,8 @@ export function AdjustmentPanel() {
         syncMode: parameters.syncMode,
         enableSafetyChecker: parameters.enableSafetyChecker,
         outputFormat: parameters.outputFormat,
+        resolution: parameters.resolution,
+        aspectRatio: parameters.aspectRatio,
       };
 
       debugLog("🎨 Generating edit with:", editRequest);
