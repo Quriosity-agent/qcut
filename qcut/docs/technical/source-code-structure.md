@@ -4,19 +4,21 @@
 
 This document provides a comprehensive overview of the QCut source code structure, including folder organization and line counts for all TypeScript/JavaScript source files.
 
-**Generated:** 2025-08-20  
-**Total Source Files:** 280+ files (270+ in src/ + 6 in electron/)  
+**Generated:** 2025-12-16
+**Total Source Files:** 568+ files in src/ + 11 in electron/
 **Main Source Directory:** `apps/web/src/`
 
 ## Project Architecture
 
 QCut is a desktop video editor built with:
-- **Frontend Framework:** Vite 7.0.6 + TanStack Router + React 18.3.1
-- **Desktop Runtime:** Electron 37.2.5
+- **Frontend Framework:** Vite + TanStack Router + React 18.3.1
+- **Desktop Runtime:** Electron (100% TypeScript)
 - **Language:** TypeScript
 - **State Management:** Zustand
 - **Video Processing:** FFmpeg WebAssembly
+- **AI Integration:** FAL.ai (40+ models)
 - **Styling:** Tailwind CSS
+- **Testing:** Vitest 3.2.4 with 200+ tests
 
 ## Source Code Structure
 
@@ -24,8 +26,9 @@ QCut is a desktop video editor built with:
 ```
 apps/web/
 ├── vite.config.ts                    # Vite configuration
-├── tsconfig.json                     # TypeScript configuration  
+├── tsconfig.json                     # TypeScript configuration
 ├── tailwind.config.ts                # Tailwind CSS configuration
+├── vitest.config.ts                  # Vitest test configuration
 ├── components.json                   # UI components configuration
 └── package.json                      # Dependencies and scripts
 ```
@@ -35,7 +38,7 @@ apps/web/
 #### 📁 **Routes** (`src/routes/`) - 15 files
 Main application routing using TanStack Router:
 - `__root.tsx` - Root layout component
-- `index.tsx` - Home page route  
+- `index.tsx` - Home page route
 - `editor.$project_id.tsx` - Main editor route
 - `editor.$project_id.lazy.tsx` - Lazy-loaded editor components
 - `projects.tsx` - Projects list route
@@ -49,7 +52,7 @@ Main application routing using TanStack Router:
 
 #### 📁 **Components** (`src/components/`)
 
-##### UI Components (`src/components/ui/`) - 65+ files
+##### UI Components (`src/components/ui/`) - 73 files
 Base UI components built on Radix UI primitives:
 
 **Core Components:**
@@ -82,59 +85,120 @@ Base UI components built on Radix UI primitives:
 ##### Editor Components (`src/components/editor/`)
 Core video editor interface:
 
-**Timeline System:**
-- `timeline/index.tsx` - Main timeline container  
-- `timeline/timeline-track.tsx` - Individual timeline tracks
-- `timeline/timeline-element.tsx` - Media elements on timeline
-- `timeline/timeline-playhead.tsx` - Current position indicator
+**Timeline System (`timeline/`) - 8 files:**
+- `index.tsx` - Main timeline container
+- `timeline-track.tsx` - Individual timeline tracks
+- `timeline-element.tsx` - Media elements on timeline
+- `timeline-element-drop-zone.tsx` - Drop zones for elements
+- `timeline-playhead.tsx` - Current position indicator
+- `timeline-cache-indicator.tsx` - Cache status display
+- `effects-timeline.tsx` - Effects timeline view
+- `keyframe-timeline.tsx` - Keyframe animation timeline
 
-**Properties Panel:**
-- `properties-panel/index.tsx` - Properties container
-- `properties-panel/media-properties.tsx` - Media element properties
-- `properties-panel/text-properties.tsx` - Text element properties
-- `properties-panel/audio-properties.tsx` - Audio element properties
+**Properties Panel (`properties-panel/`) - 12 files:**
+- `index.tsx` - Properties container
+- `media-properties.tsx` - Media element properties
+- `text-properties.tsx` - Text element properties
+- `audio-properties.tsx` - Audio element properties
+- `effects-properties.tsx` - Effects configuration
+- `transform-properties.tsx` - Transform controls
+- `volume-control.tsx` - Volume adjustment
+- `effect-management.tsx` - Effect management UI
+- `export-panel-content.tsx` - Export settings
+- `settings-view.tsx` - Settings panel
+- `panel-tabs.tsx` - Tab navigation
+- `property-item.tsx` - Reusable property item
 
-**Media Panel:**
-- `media-panel/index.tsx` - Media library container
-- `media-panel/views/media.tsx` - Media file browser
-- `media-panel/views/text.tsx` - Text creation tools
-- `media-panel/views/ai.tsx` - AI generation tools
-- `media-panel/views/audio.tsx` - Audio library and tools
-- `media-panel/views/sounds.tsx` - Sound effects library
-- `media-panel/views/captions.tsx` - Caption generation and editing
-- `media-panel/views/stickers.tsx` - Sticker library with search
-- `media-panel/views/text2image.tsx` - Text to image generation
+**Media Panel (`media-panel/`) - Main container + views:**
+- `index.tsx` - Media library container
 
-**Adjustment Panel (1,104 lines):**
-- `adjustment/index.tsx` - Image adjustment interface (338 lines)
-- `adjustment/edit-history.tsx` - Edit history management (211 lines)
-- `adjustment/parameter-controls.tsx` - Adjustment controls (182 lines)
-- `adjustment/preview-panel.tsx` - Adjustment preview (175 lines)
-- `adjustment/image-uploader.tsx` - Image upload interface (135 lines)
-- `adjustment/model-selector.tsx` - AI model selection (63 lines)
+**Media Panel Views (`media-panel/views/`) - 25+ files:**
 
-**Other Editor Components:**
+*Core Views:*
+- `media.tsx` - Media file browser
+- `text.tsx` - Text creation tools
+- `audio.tsx` - Audio library and tools
+- `sounds.tsx` - Sound effects library
+- `captions.tsx` - Caption generation and editing
+- `stickers.tsx` - Sticker library with search
+- `draw.tsx` - Drawing tools
+- `effects.tsx` - Effects browser
+- `effects-gallery.tsx` - Effects gallery view
+- `effects-search.tsx` - Effects search interface
+- `nano-edit.tsx` - Nano edit interface
+
+*AI Generation Views (`ai/` subdirectory):*
+- Modular AI generation interface with components, hooks, settings, tabs
+
+*Text-to-Image & Video:*
+- `text2image.tsx` - Text to image generation
+- `model-type-selector.tsx` - AI model selection
+
+*Video Editing:*
+- `video-edit.tsx` - Video editing tools
+- `video-edit-audio-gen.tsx` - Audio generation
+- `video-edit-audio-sync.tsx` - Audio synchronization
+- `video-edit-upscale.tsx` - Video upscaling
+- `video-edit-constants.ts` - Video edit constants
+- `video-edit-types.ts` - Type definitions
+- `video-edit-exports.ts` - Export utilities
+- `use-video-edit-processing.ts` - Processing hook
+
+*Upscale:*
+- `upscale-settings.tsx` - Upscale configuration
+- `use-upscale-generation.ts` - Upscale generation hook
+
+**Adjustment Panel (`adjustment/`):**
+- `index.tsx` - Image adjustment interface
+- `edit-history.tsx` - Edit history management
+- `parameter-controls.tsx` - Adjustment controls
+- `preview-panel.tsx` - Adjustment preview
+- `image-uploader.tsx` - Image upload interface
+- `model-selector.tsx` - AI model selection
+
+**Preview Panel:**
 - `preview-panel.tsx` - Video preview window
 - `preview-panel-components.tsx` - Preview sub-components
+- `preview-panel/` - Additional preview components subdirectory
+
+**Effects System:**
+- `effect-chain-manager.tsx` - Effect chain management
+- `effect-templates-panel.tsx` - Effect templates UI
+- `interactive-element-overlay.tsx` - Interactive overlays
+
+**Segmentation (`segmentation/`):**
+- AI-powered video segmentation tools (SAM3 integration)
+
+**Drawing Tools (`draw/`):**
+- Drawing and annotation tools
+
+**Nano Edit (`nano-edit/`):**
+- Quick edit functionality
+
+**Scenes (`scenes-view.tsx`):**
+- Scene management interface
+
+**Stickers Overlay System (`stickers-overlay/`):**
+- `index.ts` - Sticker overlay management
+- `StickerCanvas.tsx` - Canvas for sticker rendering
+- `StickerElement.tsx` - Individual sticker elements
+- `StickerControls.tsx` - Sticker manipulation controls
+- `ResizeHandles.tsx` - Resize handles for stickers
+- `AutoSave.tsx` - Auto-save functionality
+- `hooks/useStickerDrag.ts` - Drag handling hook
+
+**Captions Components (`captions/`):**
+- `captions-display.tsx` - Caption display interface
+- `language-select.tsx` - Language selection
+- `upload-progress.tsx` - Upload progress indicator
+
+**Other Editor Components:**
 - `audio-waveform.tsx` - Audio visualization
 - `snap-indicator.tsx` - Snapping visual feedback
 - `selection-box.tsx` - Multi-selection tool
 - `speed-control.tsx` - Playback speed controls
 - `panel-layouts.tsx` - Panel layout management
-
-**Stickers Overlay System:**
-- `stickers-overlay/index.ts` - Sticker overlay management
-- `stickers-overlay/StickerCanvas.tsx` - Canvas for sticker rendering
-- `stickers-overlay/StickerElement.tsx` - Individual sticker elements
-- `stickers-overlay/StickerControls.tsx` - Sticker manipulation controls
-- `stickers-overlay/ResizeHandles.tsx` - Resize handles for stickers
-- `stickers-overlay/AutoSave.tsx` - Auto-save functionality
-- `stickers-overlay/hooks/useStickerDrag.ts` - Drag handling hook
-
-**Captions Components:**
-- `captions/captions-display.tsx` - Caption display interface
-- `captions/language-select.tsx` - Language selection
-- `captions/upload-progress.tsx` - Upload progress indicator
+- `auto-save-indicator.tsx` - Auto-save status
 
 ##### Application Components (`src/components/`) - 20+ files
 - `header-base.tsx`, `header.tsx` - Application headers
@@ -153,15 +217,24 @@ Core video editor interface:
 - `landing/hero.tsx`, `landing/handlebars.tsx` - Landing page components
 - `test-sounds-store.tsx` - Testing component for sounds store
 
-#### 📁 **Stores** (`src/stores/`) - 16 files
+#### 📁 **Stores** (`src/stores/`) - 31 files
 Zustand state management:
 
 **Core Stores:**
-- `timeline-store.ts` - Timeline operations and state management
+- `timeline-store.ts` - Timeline operations and state management (59KB - largest store)
 - `project-store.ts` - Project persistence and management
 - `media-store.ts` - Media file handling and organization
 - `editor-store.ts` - Main editor state and settings
 - `playback-store.ts` - Video playback controls and state
+
+**Timeline Store Modules (`timeline/`) - 7 files:**
+- `index.ts` - Timeline store barrel export
+- `types.ts` - Timeline type definitions
+- `utils.ts` - Timeline utilities
+- `element-operations.ts` - Element manipulation
+- `track-operations.ts` - Track management
+- `split-operations.ts` - Split functionality
+- `persistence.ts` - Timeline persistence
 
 **Feature-Specific Stores:**
 - `export-store.ts` - Video export functionality
@@ -173,53 +246,112 @@ Zustand state management:
 - `sounds-store.ts` - Sound effects library state
 - `stickers-store.ts` - Sticker library and state
 - `stickers-overlay-store.ts` - Sticker overlay management
+- `effects-store.ts` - Effects system state (23KB)
+- `scene-store.ts` - Scene management
+- `segmentation-store.ts` - AI segmentation state
+- `nano-edit-store.ts` - Nano edit state
+- `white-draw-store.ts` - Drawing tool state
 
 **Supporting Files:**
 - `media-store-types.ts` - Media type definitions
 - `media-store-loader.ts` - Media loading utilities
 
-#### 📁 **Library** (`src/lib/`) - 30+ files
+#### 📁 **Library** (`src/lib/`) - 65+ root files + subdirectories
 Core functionality and utilities:
 
-**Export Engines:**
-- `export-engine.ts` - Main export engine
+**AI Video System (`ai-video/`) - Modular Architecture:**
+
+*Core (`ai-video/core/`):**
+- `fal-request.ts` - FAL API request utilities
+- `fal-upload.ts` - File upload handling
+- `polling.ts` - Queue polling with progress updates
+- `streaming.ts` - Video streaming download
+
+*Generators (`ai-video/generators/`):**
+- `base-generator.ts` - Base generator class
+- `text-to-video.ts` - T2V generators (Sora 2, Veo, Kling, etc.)
+- `image-to-video.ts` - I2V generators
+- `avatar.ts` - Avatar/talking head generation
+- `image.ts` - Image generation
+- `upscale.ts` - Video upscaling
+
+*Models (`ai-video/models/`):**
+- Model-specific parameter conversion
+
+*Validation (`ai-video/validation/`):**
+- Input validation utilities
+
+**FAL AI Integration (`fal-ai/`):**
+- Extended FAL.ai client utilities
+
+**Export System:**
+- `export-engine.ts` - Main export engine (46KB)
 - `export-engine-optimized.ts` - Performance-optimized export
 - `export-engine-factory.ts` - Export strategy factory
 - `export-engine-cli.ts` - Command-line export interface
-- `export-engine-ffmpeg.ts` - FFmpeg-based export
+- `export-cli/` - CLI export utilities
 - `webcodecs-export-engine.ts` - Modern WebCodecs export
+- `export-analysis.ts` - Export analysis utilities
+- `export-errors.ts` - Export error handling
 
 **Video Processing:**
-- `ffmpeg-utils.ts` - FFmpeg WebAssembly integration
+- `ffmpeg-utils.ts` - FFmpeg WebAssembly integration (27KB)
 - `ffmpeg-utils-encode.ts` - Video encoding utilities
 - `ffmpeg-utils-loader.ts` - Dynamic FFmpeg loading
 - `ffmpeg-loader.ts` - FFmpeg initialization
-- `ffmpeg-service.ts` - FFmpeg service wrapper
 - `ffmpeg-video-recorder.ts` - Screen recording functionality
+- `ffmpeg-filter-chain.ts` - FFmpeg filter chain building
 - `media-processing.ts` - General media processing
 - `webcodecs-detector.ts` - WebCodecs capability detection
 
 **AI Integration:**
 - `ai-video-client.ts` - AI video processing client
-- `fal-ai-client.ts` - FAL AI service integration
-- `image-edit-client.ts` - AI image editing
-- `text2image-models.ts` - Text-to-image AI models
+- `fal-ai-client.ts` - FAL AI service integration (39KB)
+- `image-edit-client.ts` - AI image editing (31KB)
+- `text2image-models.ts` - Text-to-image AI models (32KB)
 - `ai-video-output.ts` - AI processing output handling
+- `sam3-client.ts` - SAM3 segmentation client
+- `sam3-models.ts` - SAM3 model definitions
+- `video-edit-client.ts` - Video editing AI client
+- `upscale-models.ts` - Upscale model definitions
+- `model-utils.ts` - Model utility functions
 
-**Storage System:**
-- `storage/storage-service.ts` - Storage abstraction layer
-- `storage/indexeddb-adapter.ts` - IndexedDB implementation
-- `storage/localstorage-adapter.ts` - LocalStorage fallback
-- `storage/opfs-adapter.ts` - Origin Private File System
-- `storage/electron-adapter.ts` - Electron file system
-- `storage/types.ts` - Storage interface definitions
+**Effects System:**
+- `effects-utils.ts` - Effects utilities
+- `effects-canvas-advanced.ts` - Advanced canvas effects
+- `effects-chaining.ts` - Effect chaining logic
+- `effects-keyframes.ts` - Keyframe animation
+- `effects-templates.ts` - Effect templates
+
+**Storage System (`storage/`) - 7 files:**
+- `storage-service.ts` - Storage abstraction layer
+- `indexeddb-adapter.ts` - IndexedDB implementation
+- `localstorage-adapter.ts` - LocalStorage fallback
+- `opfs-adapter.ts` - Origin Private File System
+- `electron-adapter.ts` - Electron file system
+- `r2-client.ts` - R2 cloud storage client
+- `types.ts` - Storage interface definitions
+
+**Error Handling:**
+- `error-handler.ts` - Global error handling
+- `error-context.ts` - Error context utilities
+
+**Media & Image:**
+- `image-utils.ts` - Image processing helpers
+- `image-validation.ts` - Image validation
+- `blob-manager.ts` - Blob URL management
+- `blob-url-debug.ts` - Blob debugging utilities
+- `media-source.ts` - Media source utilities
+- `video-metadata.ts` - Video metadata extraction
+- `canvas-utils.ts` - Canvas utilities
+- `audio-mixer.ts` - Audio mixing
+- `audio-export-config.ts` - Audio export configuration
 
 **Utilities & Services:**
 - `time.ts` - Time formatting and parsing
 - `timeline.ts` - Timeline calculation utilities
 - `utils.ts` - General utility functions
 - `asset-path.ts` - Asset path resolution helper
-- `image-utils.ts` - Image processing helpers
 - `memory-utils.ts` - Memory management utilities
 - `zip-manager.ts` - ZIP file handling
 - `font-config.ts` - Font configuration
@@ -231,18 +363,23 @@ Core functionality and utilities:
 - `fetch-github-stars.ts` - GitHub integration
 - `iconify-api.ts` - Iconify icon service
 - `sticker-downloader.ts` - Sticker download utility
+- `feature-flags.ts` - Feature flag management
+- `api-adapter.ts` - API adapter utilities
+- `dev-memory-profiler.ts` - Development memory profiling
 
-**Caption Processing:**
-- `captions/caption-export.ts` - Caption export functionality
+**Gemini Integration (`gemini/`):**
+- Gemini AI integration utilities
 
-**Transcription System:**
-- `transcription/transcription-utils.ts` - Transcription utilities
-- `transcription/zk-encryption.ts` - Zero-knowledge encryption
+**Caption Processing (`captions/`):**
+- `caption-export.ts` - Caption export functionality
 
-**Stickers Support:**
-- `stickers/sticker-export-helper.ts` - Sticker export utilities
+**Stickers Support (`stickers/`):**
+- `sticker-export-helper.ts` - Sticker export utilities
 
-#### 📁 **Hooks** (`src/hooks/`) - 30+ files
+**Other Utilities (`utils/`):**
+- Additional utility functions
+
+#### 📁 **Hooks** (`src/hooks/`) - 41 files
 Custom React hooks:
 
 **Timeline & Editor Hooks:**
@@ -253,6 +390,7 @@ Custom React hooks:
 - `use-selection-box.ts` - Multi-selection functionality
 - `use-editor-actions.ts` - Core editor operations
 - `use-drag-drop.ts` - Drag and drop interactions
+- `use-effect-keyboard-shortcuts.ts` - Effect keyboard shortcuts
 
 **Playback & Media Hooks:**
 - `use-playback-controls.ts` - Video playback controls
@@ -263,6 +401,7 @@ Custom React hooks:
 - `use-aspect-ratio.ts` - Aspect ratio calculations
 - `use-sound-search.ts` - Sound search functionality
 - `use-infinite-scroll.ts` - Infinite scrolling support
+- `use-frame-cache.ts` - Frame caching
 
 **UI & Interaction Hooks:**
 - `use-keybindings.ts` - Keyboard shortcut handling
@@ -279,14 +418,21 @@ Custom React hooks:
 - `use-export-validation.ts` - Export validation logic
 - `use-zip-export.ts` - Project export to ZIP
 
+**Error & Monitoring Hooks:**
+- `use-error-reporter.ts` - Error reporting
+- `use-memory-monitor.ts` - Memory monitoring
+
+**Persistence Hooks:**
+- `use-save-on-visibility-change.ts` - Auto-save on visibility change
+
 **Utility Hooks:**
 - `useElectron.ts` - Electron integration
 
-**Authentication Hooks:**
-- `auth/useLogin.ts` - User login functionality
-- `auth/useSignUp.ts` - User registration
+**Authentication Hooks (`auth/`):**
+- `useLogin.ts` - User login functionality
+- `useSignUp.ts` - User registration
 
-#### 📁 **Types** (`src/types/`) - 11 files
+#### 📁 **Types** (`src/types/`) - 19 files
 TypeScript type definitions:
 - `timeline.ts` - Timeline data structures and interfaces
 - `editor.ts` - Editor state and component interfaces
@@ -300,87 +446,107 @@ TypeScript type definitions:
 - `sticker-overlay.ts` - Sticker overlay types
 - `panel.ts` - Panel layout type definitions
 - `electron.d.ts` - Electron API type extensions
+- `ai-generation.ts` - AI generation types
+- `effects.ts` - Effects type definitions
+- `nano-edit.ts` - Nano edit types
+- `sam3.ts` - SAM3 segmentation types
+- `sora2.ts` - Sora 2 AI types
+- `white-draw.ts` - Drawing tool types
 
-#### 📁 **Constants** (`src/constants/`) - 4 files
+#### 📁 **Constants** (`src/constants/`) - 5 files
 Application constants:
 - `timeline-constants.ts` - Timeline configuration and defaults
 - `font-constants.ts` - Available font definitions
 - `actions.ts` - Editor action types and definitions
 - `site.ts` - Site metadata and configuration
+- `effect-parameter-ranges.ts` - Effect parameter ranges
 
-#### 📁 **Data** (`src/data/`) - 1 file, 244 lines
+#### 📁 **Config** (`src/config/`) - 1 file
+Configuration:
+- `features.ts` - Feature flags configuration
+
+#### 📁 **Services** (`src/services/`)
+Service layer:
+- `ai/` - AI service integrations
+
+#### 📁 **Data** (`src/data/`) - 1 file
 Static data:
-- `colors.ts` - Application color palette definitions (244 lines)
+- `colors.ts` - Application color palette definitions
 
 #### 📁 **Utilities** (`src/utils/`) - 1 file
 - `lazy-stores.ts` - Lazy loading for stores
+
+#### 📁 **Test** (`src/test/`)
+Test utilities and setup files for Vitest
 
 #### 📁 **Main Source Files** - 6 files
 Core application bootstrap files:
 - `routeTree.gen.ts` - Generated TanStack Router tree
 - `App.tsx` - Main application component
-- `middleware.ts` - Application middleware
+- `globals.css` - Global CSS styles
 - `env.ts` - Environment configuration
 - `env.client.ts` - Client-side environment
 - `main.tsx` - Application entry point
 
 ### Electron Integration
 
-#### Main Process (`electron/`) - 6 files
-- `main.js` - Electron main process and window management
-- `preload.js` - Preload script for secure IPC communication
-- `ffmpeg-handler.js` - FFmpeg CLI integration and processing
-- `temp-manager.js` - Temporary file management
-- `sound-handler.js` - Sound effects handling
-- `theme-handler.js` - Theme management
+#### Main Process (`electron/`) - 11 TypeScript files
+All Electron code is 100% TypeScript:
+- `main.ts` - Electron main process and window management
+- `preload.ts` - Preload script for secure IPC communication
+- `ffmpeg-handler.ts` - FFmpeg CLI integration and processing (37KB)
+- `temp-manager.ts` - Temporary file management
+- `sound-handler.ts` - Sound effects handling
+- `theme-handler.ts` - Theme management
+- `api-key-handler.ts` - Secure API key management
+- `ai-video-save-handler.ts` - AI video save functionality
+- `gemini-transcribe-handler.ts` - Gemini transcription
+- `audio-temp-handler.ts` - Audio temporary files
+- `video-temp-handler.ts` - Video temporary files
+
+#### Subdirectories:
+- `config/` - Electron configuration
+- `ffmpeg/` - FFmpeg utilities
 
 #### Resources (`electron/resources/`)
 - `ffmpeg.exe`, `ffplay.exe`, `ffprobe.exe` - FFmpeg binaries
 - `avcodec-62.dll`, `avdevice-62.dll`, etc. - FFmpeg dependencies
-- `ffmpeg/` - FFmpeg WebAssembly files
 
-## Architecture Updates (2025-08-20)
+## Architecture Updates (2025-12-16)
 
-### New Features Added Since Last Documentation:
-1. **Stickers System** - Complete sticker library with search, overlay management, and export
-2. **Captions Support** - Caption generation, editing, and export functionality
-3. **Sounds Library** - Sound effects integration with search and preview
-4. **Enhanced Export** - Export presets, progress tracking, and validation
-5. **Panel Layouts** - Flexible panel management with preset configurations
-6. **Asset Path Helper** - Improved asset resolution for Electron compatibility
-7. **Transcription System** - Audio transcription with encryption support
+### New Features Added Since Last Documentation (August 2025):
+
+1. **Effects System** - Complete effects pipeline with chaining, keyframes, templates, and canvas rendering
+2. **Scene Management** - Scene-based project organization
+3. **AI Segmentation** - SAM3 integration for intelligent video segmentation
+4. **Nano Edit** - Quick editing interface
+5. **Drawing Tools** - Whiteboard and annotation capabilities
+6. **Video Editing AI** - Video edit, upscale, audio generation, and audio sync
+7. **Enhanced AI Video** - Modular architecture supporting 40+ AI models via FAL.ai
+8. **Timeline Modularization** - Timeline store split into focused modules
+9. **Gemini Integration** - Google Gemini AI for transcription
+10. **Frame Caching** - Improved playback performance with frame caching
+11. **Memory Monitoring** - Development memory profiling tools
+12. **Error Reporting** - Comprehensive error handling system
 
 ### Key Implementation Files:
 The codebase contains several substantial files that form the core of the application:
 
-- **Timeline Store** - Comprehensive timeline state management
-- **Export Engines** - Multiple export strategies and optimizations
-- **AI Integration** - Video and image AI processing clients
-- **Media Processing** - FFmpeg integration and utilities
-- **Storage System** - Multi-adapter storage abstraction
-- **Electron Main Process** - Desktop application lifecycle
-- **Stickers Overlay** - Advanced sticker manipulation system
-- **Captions Processing** - Multi-language caption support
+- **Timeline Store** (59KB) - Comprehensive timeline state management
+- **Export Engine** (46KB) - Main export implementation
+- **FAL AI Client** (39KB) - AI service integration
+- **FFmpeg Handler** (37KB) - Video processing backend
+- **Text2Image Models** (32KB) - AI model definitions
+- **Image Edit Client** (31KB) - AI image editing
+- **FFmpeg Utils** (27KB) - FFmpeg WebAssembly utilities
 
 **Architecture Highlights:**
-- Modular export system with multiple engine implementations
-- Comprehensive AI integration for video and image processing
+- Modular AI video system with generators, core utilities, and validation
+- Comprehensive effects system with keyframes and chaining
 - Robust storage abstraction supporting multiple backends
-- Extensive timeline management with complex state handling
-- New media panel views for stickers, sounds, and captions
-- Enhanced Electron integration with dedicated handlers
-
-### Medium Files (100-299 lines)
-- Timeline components and hooks
-- UI components with complex logic
-- Type definitions
-- Storage adapters
-
-### Small Files (<100 lines)
-- Simple UI components
-- Utility functions
-- Constants and configuration
-- Type-only files
+- Extensive timeline management with modular operations
+- Enhanced media panel with video editing capabilities
+- 100% TypeScript Electron integration with 38 IPC handlers
 
 ## Code Organization Principles
 
@@ -397,7 +563,7 @@ The codebase contains several substantial files that form the core of the applic
 
 ### 3. **Type Safety**
 - Comprehensive TypeScript coverage
-- Dedicated types directory
+- Dedicated types directory (19 files)
 - Interface-driven development
 
 ### 4. **Scalable Architecture**
@@ -436,17 +602,40 @@ The codebase contains several substantial files that form the core of the applic
 
 ### Memory Management
 - Proper cleanup of media resources
-- Blob URL management
+- Blob URL management via BlobManager
 - Event listener cleanup
 - WebAssembly memory handling
+- Frame caching for playback
 
 ## Testing Strategy
 
-⚠️ **Note**: No testing framework currently configured - this is a known gap that should be addressed.
+**Framework**: Vitest 3.2.4 with JSDOM environment
+**Status**: All 200+ tests passing successfully
+
+### Running Tests
+```bash
+# Run all tests
+cd qcut/apps/web && bun run test
+
+# Run tests with UI
+bun run test:ui
+
+# Run tests with coverage
+bun run test:coverage
+
+# Watch mode during development
+bun run test:watch
+```
+
+### Test Categories
+- **UI Components**: Button, Checkbox, Dialog, Toast, Tabs, Slider, etc.
+- **Hooks**: Custom React hooks with comprehensive test coverage
+- **Integration**: Store initialization, project creation workflows
+- **Utilities**: Helper functions and utility modules
 
 ## Future Improvements
 
-1. **Add comprehensive test suite**
+1. **Add more integration tests**
 2. **Implement performance monitoring**
 3. **Enhanced error boundaries**
 4. **Better code documentation**
@@ -454,4 +643,4 @@ The codebase contains several substantial files that form the core of the applic
 
 ---
 
-*This documentation is automatically maintained and should be updated when significant structural changes are made to the codebase.*
+*This documentation should be updated when significant structural changes are made to the codebase.*
