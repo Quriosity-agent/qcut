@@ -1,5 +1,9 @@
 import { create } from "zustand";
 import { subscribeWithSelector } from "zustand/middleware";
+import {
+  getModelCapabilities,
+  type ImageEditModelId,
+} from "@/lib/image-edit-capabilities";
 
 export interface EditHistoryItem {
   id: string;
@@ -18,17 +22,13 @@ export interface AdjustmentState {
   originalImageUrl: string | null;
   currentEditedUrl: string | null;
 
-  // Multiple images for V4 and Nano Banana models
+  // Multiple images for multi-image models
   multipleImages: string[];
+  // Multiple image files (File objects for upload)
+  multipleImageFiles: File[];
 
-  // Model selection
-  selectedModel:
-    | "seededit"
-    | "flux-kontext"
-    | "flux-kontext-max"
-    | "seeddream-v4"
-    | "nano-banana"
-    | "reve-edit";
+  // Model selection - uses shared type from capabilities
+  selectedModel: ImageEditModelId;
 
   // Parameters
   prompt: string;
@@ -69,10 +69,16 @@ export interface AdjustmentActions {
   // Image management
   setOriginalImage: (file: File, url: string) => void;
   clearImage: () => void;
-  setMultipleImages: (imageUrls: string[]) => void;
+
+  // Multiple image management
+  setMultipleImages: (imageUrls: string[], files?: File[]) => void;
+  addMultipleImage: (file: File, url: string) => void;
+  removeMultipleImage: (index: number) => void;
+  clearMultipleImages: () => void;
+  reorderMultipleImages: (fromIndex: number, toIndex: number) => void;
 
   // Model and parameters
-  setSelectedModel: (model: AdjustmentState["selectedModel"]) => void;
+  setSelectedModel: (model: ImageEditModelId) => void;
   setPrompt: (prompt: string) => void;
   updateParameter: (key: string, value: any) => void;
   resetParameters: () => void;
