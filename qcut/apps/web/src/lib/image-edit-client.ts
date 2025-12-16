@@ -424,7 +424,7 @@ export async function editImage(
   try {
     // Try queue mode first
     const ctrl = new AbortController();
-    const timeout = setTimeout(() => ctrl.abort(), 60_000); // 60 second timeout
+    const timeout = setTimeout(() => ctrl.abort(), 180_000); // 3 minute timeout
 
     const response = await fetch(`${FAL_API_BASE}/${modelConfig.endpoint}`, {
       method: "POST",

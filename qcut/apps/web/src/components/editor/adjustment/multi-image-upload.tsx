@@ -188,7 +188,9 @@ export function MultiImageUpload({
         {/* Initial Upload Area (when no images) */}
         {images.length === 0 && (
           <div
-            className={`border-2 border-dashed rounded-lg p-4 text-center cursor-pointer transition-colors ${
+            role="button"
+            tabIndex={0}
+            className={`border-2 border-dashed rounded-lg p-4 text-center cursor-pointer transition-colors focus:outline-none focus:ring-2 focus:ring-primary ${
               dragOver
                 ? "border-primary bg-primary/5"
                 : "border-muted-foreground/25 hover:border-primary/50"
@@ -197,6 +199,13 @@ export function MultiImageUpload({
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
             onClick={openFileDialog}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                openFileDialog();
+              }
+            }}
+            aria-label={`Upload up to ${maxImages} images`}
           >
             <ImageIcon className="mx-auto h-6 w-6 text-muted-foreground mb-1" />
             <p className="text-xs font-medium text-muted-foreground">
