@@ -981,3 +981,78 @@ The `imageUrls` array in `ImageEditRequest` is backward compatible and doesn't n
 - **Use `hasImages` consistently in the panel:** `index.tsx` currently gates most of the UI and `handleGenerateEdit` on `originalImageUrl` / `originalImage`. Subtask 8 updates `canGenerateEdit` and empty state, but should also update the “Only show other components if image is loaded” conditional and the early `handleGenerateEdit` validation; otherwise multi-image models stay blocked by single-image checks.
 - **Avoid duplicating capabilities in Subtask 11:** The proposed `getModelCapabilitiesSync` hardcodes the mapping again. If circular deps are a concern, extract capabilities to a small module that both the store and client can import without cycles.
 - **Tests should cover the new behavior:** Subtask 12 validates the capabilities table, but the highest-risk logic is the normalization in Subtask 3 (`image_url` vs `image_urls`, trimming to max). Consider extracting a pure helper (e.g. payload builder) and unit-testing that directly.
+
+---
+
+## Implementation Status (2025-12-16)
+
+### Completed
+
+All subtasks have been implemented with improvements based on the review recommendations:
+
+| Subtask | Status | Notes |
+|---------|--------|-------|
+| 1. Model Capability Constants | ✅ DONE | Created `image-edit-capabilities.ts` as single source of truth |
+| 2. Update ImageEditRequest Interface | ✅ DONE | Added `imageUrls?: string[]` array |
+| 3. Update editImage Function | ✅ DONE | Uses `getModelCapabilities()` for normalization |
+| 4. Add Batch Upload Function | ✅ DONE | `uploadImagesToFAL()` with progress callback |
+| 5. Update Store Types | ✅ DONE | Added `multipleImageFiles: File[]` and new actions |
+| 6. Update Model Selector | ✅ DONE | Shows multi-image badge with count |
+| 7. Update MultiImageUpload | ✅ DONE | Now passes `File[]` objects via `onImagesChange` |
+| 8. Create ConditionalImageUploader | ✅ DONE | Switches UI based on model capabilities |
+| 9. Update getImageEditModels | ⏭️ SKIPPED | Not needed - using `getModelCapabilities()` instead |
+| 10. Add Export | ✅ DONE | `ConditionalImageUploader` exported |
+| 11. Handle Model Switch | ✅ DONE | Uses imported `getModelCapabilities()` (no duplication) |
+| 12. Add Unit Tests | ✅ DONE | 14 tests passing |
+
+### Review Recommendations Addressed
+
+1. **Single source of truth**: ✅ Created `image-edit-capabilities.ts` with all model capabilities. Both client and store import from this module.
+
+2. **Type alignment**: ✅ Added shared `ImageEditModelId` type derived from constant array. Store now uses this type instead of inline union.
+
+3. **Separation of concerns**: ✅ Capabilities extracted to dedicated module `image-edit-capabilities.ts`.
+
+4. **Multi-image upload File[] fix**: ✅ Updated `MultiImageUpload` component to use `onImagesChange(urls, files)` callback that passes both URLs and File objects.
+
+5. **hasImages consistency**: ✅ `index.tsx` now uses `hasImages` variable consistently for all conditionals.
+
+6. **Avoid duplicating capabilities**: ✅ Store imports `getModelCapabilities` from capabilities module - no duplication.
+
+### Files Created
+
+| File | Description |
+|------|-------------|
+| `apps/web/src/lib/image-edit-capabilities.ts` | Single source of truth for model capabilities |
+| `apps/web/src/components/editor/adjustment/conditional-image-uploader.tsx` | Smart uploader that switches based on model |
+| `apps/web/src/lib/__tests__/image-edit-multi-image.test.ts` | Unit tests (14 tests passing) |
+
+### Files Modified
+
+| File | Changes |
+|------|---------|
+| `apps/web/src/lib/image-edit-client.ts` | Imports from capabilities, updated interface/editImage |
+| `apps/web/src/stores/adjustment-store.ts` | Uses `ImageEditModelId`, added multi-image actions |
+| `apps/web/src/components/editor/adjustment/model-selector.tsx` | Multi-image badge |
+| `apps/web/src/components/editor/adjustment/multi-image-upload.tsx` | Passes File objects |
+| `apps/web/src/components/editor/adjustment/index.tsx` | Uses ConditionalImageUploader, multi-image generation |
+
+### Test Results
+
+```
+✓ src/lib/__tests__/image-edit-multi-image.test.ts (14 tests) 11ms
+  ✓ getModelCapabilities - returns correct capabilities for multi-image models
+  ✓ getModelCapabilities - returns correct capabilities for single-image models
+  ✓ getModelCapabilities - returns default for unknown models
+  ✓ MODEL_CAPABILITIES - has entries for all known models
+  ✓ MODEL_CAPABILITIES - multi-image models have maxImages > 1
+  ✓ MODEL_CAPABILITIES - single-image models have maxImages === 1
+  ✓ IMAGE_EDIT_MODEL_IDS - contains all 9 models
+  ✓ IMAGE_EDIT_MODEL_IDS - includes all expected model IDs
+  ✓ isValidImageEditModelId - returns true for valid model IDs
+  ✓ isValidImageEditModelId - returns false for invalid model IDs
+  ✓ getMultiImageModelIds - returns only multi-image capable models
+  ✓ getMultiImageModelIds - returns 5 multi-image models
+  ✓ getSingleImageModelIds - returns only single-image models
+  ✓ getSingleImageModelIds - returns 4 single-image models
+```

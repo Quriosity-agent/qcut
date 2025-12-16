@@ -196,7 +196,7 @@ export function ParameterControls() {
             <MultiImageUpload
               images={multipleImages}
               maxImages={6}
-              onChange={setMultipleImages}
+              onImagesChange={setMultipleImages}
               label="Input Images (SeedDream V4)"
             />
 
@@ -284,7 +284,7 @@ export function ParameterControls() {
             <MultiImageUpload
               images={multipleImages}
               maxImages={10}
-              onChange={setMultipleImages}
+              onImagesChange={setMultipleImages}
               label="Input Images (Nano Banana)"
             />
 
