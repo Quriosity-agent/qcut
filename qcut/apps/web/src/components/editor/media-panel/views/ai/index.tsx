@@ -321,6 +321,9 @@ export function AiView() {
     syncLipsyncSyncMode: avatarState.syncLipsyncLipsyncMode,
     syncLipsyncTemperature: avatarState.syncLipsyncTemperature,
     videoDuration: avatarState.syncLipsyncVideoDuration,
+    // Avatar - Veo 3.1 Extend-Video
+    extendVideoAspectRatio: avatarState.extendVideoAspectRatio,
+    extendVideoGenerateAudio: avatarState.extendVideoGenerateAudio,
     // Upscale - ByteDance
     bytedanceTargetResolution: upscaleState.bytedance.targetResolution,
     bytedanceTargetFPS: upscaleState.bytedance.targetFPS,
@@ -856,6 +859,15 @@ export function AiView() {
                 }
                 onSyncLipsyncTemperatureChange={
                   avatarSetters.setSyncLipsyncTemperature
+                }
+                // Veo 3.1 Extend-Video props
+                extendVideoAspectRatio={avatarState.extendVideoAspectRatio}
+                onExtendVideoAspectRatioChange={
+                  avatarSetters.setExtendVideoAspectRatio
+                }
+                extendVideoGenerateAudio={avatarState.extendVideoGenerateAudio}
+                onExtendVideoGenerateAudioChange={
+                  avatarSetters.setExtendVideoGenerateAudio
                 }
               />
             </TabsContent>

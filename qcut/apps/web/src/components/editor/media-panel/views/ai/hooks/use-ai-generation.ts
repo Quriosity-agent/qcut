@@ -166,6 +166,9 @@ export function useAIGeneration(props: UseAIGenerationProps) {
     syncLipsyncSyncMode = "bounce",
     syncLipsyncTemperature = 0.5,
     videoDuration = null,
+    // Veo 3.1 Extend-Video props
+    extendVideoAspectRatio = "auto",
+    extendVideoGenerateAudio = true,
     bytedanceTargetResolution = "1080p",
     bytedanceTargetFPS = "30fps",
     flashvsrUpscaleFactor = 4,
@@ -1163,6 +1166,9 @@ export function useAIGeneration(props: UseAIGenerationProps) {
             syncLipsyncLipsyncMode: syncLipsyncSyncMode,
             syncLipsyncTemperature,
             videoDuration,
+            // Veo 3.1 Extend-Video settings
+            extendVideoAspectRatio,
+            extendVideoGenerateAudio,
           };
 
           handlerResult = await routeAvatarHandler(handlerCtx, avatarSettings);

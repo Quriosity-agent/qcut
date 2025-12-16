@@ -263,6 +263,12 @@ export interface UseAIGenerationProps {
   /** Video duration for validation */
   videoDuration?: number | null;
 
+  // Veo 3.1 Extend-Video options
+  /** Aspect ratio for extend-video: auto, 16:9, or 9:16 */
+  extendVideoAspectRatio?: "auto" | "16:9" | "9:16";
+  /** Whether to generate audio for extended video */
+  extendVideoGenerateAudio?: boolean;
+
   // Video upscaling options
   // ByteDance Upscaler options
   bytedanceTargetResolution?: "1080p" | "2k" | "4k";

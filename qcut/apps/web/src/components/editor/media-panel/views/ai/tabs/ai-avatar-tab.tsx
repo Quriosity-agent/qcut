@@ -598,6 +598,72 @@ export function AIAvatarTab({
           )}
         </div>
       )}
+
+      {/* Veo 3.1 Extend-Video Options */}
+      {extendVideoSelected && (
+        <div className="space-y-3 text-left border-t pt-3">
+          <Label className="text-sm font-semibold">
+            Veo 3.1 Extend-Video Options
+          </Label>
+          <p className="text-xs text-muted-foreground">
+            Upload a video (up to 8s, 720p/1080p, 16:9 or 9:16) to extend by 7
+            seconds
+          </p>
+
+          <div className="grid grid-cols-2 gap-3">
+            {/* Aspect Ratio */}
+            <div className="space-y-2">
+              <Label htmlFor="extend-video-aspect-ratio" className="text-xs">
+                Aspect Ratio
+              </Label>
+              <Select
+                value={extendVideoAspectRatio}
+                onValueChange={onExtendVideoAspectRatioChange}
+              >
+                <SelectTrigger
+                  id="extend-video-aspect-ratio"
+                  className="h-8 text-xs"
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="auto">Auto (detect)</SelectItem>
+                  <SelectItem value="16:9">16:9 Landscape</SelectItem>
+                  <SelectItem value="9:16">9:16 Portrait</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Generate Audio */}
+            <div className="space-y-2">
+              <Label className="text-xs">Generate Audio</Label>
+              <div className="flex items-center gap-2 h-8">
+                <Checkbox
+                  id="extend-video-audio"
+                  checked={extendVideoGenerateAudio}
+                  onCheckedChange={(checked) =>
+                    onExtendVideoGenerateAudioChange(checked === true)
+                  }
+                />
+                <label
+                  htmlFor="extend-video-audio"
+                  className="text-xs text-muted-foreground cursor-pointer"
+                >
+                  {extendVideoGenerateAudio
+                    ? "On ($0.15-0.40/s)"
+                    : "Off ($0.10-0.20/s)"}
+                </label>
+              </div>
+            </div>
+          </div>
+
+          {/* Cost estimate */}
+          <div className="text-xs text-muted-foreground">
+            Extends video by 7 seconds · Est. cost:{" "}
+            {extendVideoGenerateAudio ? "$1.05-2.80" : "$0.70-1.40"}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
