@@ -1024,6 +1024,104 @@ class FalAIClient {
     }
   }
 
+  // ============================================
+  // Veo 3.1 Extend-Video Methods
+  // ============================================
+
+  /**
+   * Extend a video using Veo 3.1 Fast
+   * @param params Veo 3.1 extend-video parameters
+   * @returns Video generation response with extended video URL
+   */
+  async generateVeo31FastExtendVideo(
+    params: Veo31ExtendVideoInput
+  ): Promise<VideoGenerationResponse> {
+    try {
+      const endpoint = "https://fal.run/fal-ai/veo3.1/fast/extend-video";
+
+      debugLogger.log(FAL_LOG_COMPONENT, "VEO31_FAST_EXTEND_VIDEO_REQUEST", {
+        params,
+      });
+
+      const response = await this.makeRequest<Veo31Response>(
+        endpoint,
+        params as unknown as Record<string, unknown>
+      );
+
+      if (!response.video?.url) {
+        throw new Error("No video URL in Veo 3.1 Fast extend response");
+      }
+
+      return {
+        job_id: `veo31_fast_extend_${Date.now()}`,
+        status: "completed",
+        message: "Video extended successfully",
+        video_url: response.video.url,
+      };
+    } catch (error) {
+      handleAIServiceError(error, "Veo 3.1 Fast extend-video generation", {
+        operation: "generateVeo31FastExtendVideo",
+      });
+
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : "Veo 3.1 Fast extend failed";
+      return {
+        job_id: `veo31_fast_extend_error_${Date.now()}`,
+        status: "failed",
+        message: errorMessage,
+      };
+    }
+  }
+
+  /**
+   * Extend a video using Veo 3.1 Standard
+   * @param params Veo 3.1 extend-video parameters
+   * @returns Video generation response with extended video URL
+   */
+  async generateVeo31ExtendVideo(
+    params: Veo31ExtendVideoInput
+  ): Promise<VideoGenerationResponse> {
+    try {
+      const endpoint = "https://fal.run/fal-ai/veo3.1/extend-video";
+
+      debugLogger.log(FAL_LOG_COMPONENT, "VEO31_STANDARD_EXTEND_VIDEO_REQUEST", {
+        params,
+      });
+
+      const response = await this.makeRequest<Veo31Response>(
+        endpoint,
+        params as unknown as Record<string, unknown>
+      );
+
+      if (!response.video?.url) {
+        throw new Error("No video URL in Veo 3.1 Standard extend response");
+      }
+
+      return {
+        job_id: `veo31_std_extend_${Date.now()}`,
+        status: "completed",
+        message: "Video extended successfully",
+        video_url: response.video.url,
+      };
+    } catch (error) {
+      handleAIServiceError(error, "Veo 3.1 Standard extend-video generation", {
+        operation: "generateVeo31ExtendVideo",
+      });
+
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : "Veo 3.1 Standard extend failed";
+      return {
+        job_id: `veo31_std_extend_error_${Date.now()}`,
+        status: "failed",
+        message: errorMessage,
+      };
+    }
+  }
+
   /**
    * Generate images with Reve Text-to-Image model
    *

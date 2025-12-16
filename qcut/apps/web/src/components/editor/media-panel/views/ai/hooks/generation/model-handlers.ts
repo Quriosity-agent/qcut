@@ -174,6 +174,9 @@ export interface AvatarSettings {
   syncLipsyncLipsyncMode?: SyncLipsyncSyncMode;
   syncLipsyncTemperature?: number;
   videoDuration?: number | null;
+  // Veo 3.1 Extend-Video specific settings
+  extendVideoAspectRatio?: "auto" | "16:9" | "9:16";
+  extendVideoGenerateAudio?: boolean;
 }
 
 /**
@@ -1224,6 +1227,118 @@ export async function handleSyncLipsyncReact1(
   return { response };
 }
 
+/**
+ * Handle Veo 3.1 Fast Extend-Video generation
+ * Extends an existing video by 7 seconds
+ */
+export async function handleVeo31FastExtendVideo(
+  ctx: ModelHandlerContext,
+  settings: AvatarSettings
+): Promise<ModelHandlerResult> {
+  if (!settings.sourceVideo) {
+    return {
+      response: undefined,
+      shouldSkip: true,
+      skipReason: "Veo 3.1 Fast Extend requires a source video",
+    };
+  }
+
+  console.log(`  🎬 Calling Veo 3.1 Fast Extend-Video for ${ctx.modelId}...`);
+  console.log("  📤 Uploading video to FAL storage...");
+
+  ctx.progressCallback({
+    status: "processing",
+    progress: 10,
+    message: "Uploading source video...",
+  });
+
+  const videoUrl = await falAIClient.uploadVideoToFal(settings.sourceVideo);
+
+  console.log("  ✅ Video uploaded to FAL storage");
+  console.log("    - Video URL:", videoUrl.substring(0, 50) + "...");
+
+  ctx.progressCallback({
+    status: "processing",
+    progress: 30,
+    message: "Extending video with Veo 3.1 Fast...",
+  });
+
+  const response = await falAIClient.generateVeo31FastExtendVideo({
+    prompt: ctx.prompt,
+    video_url: videoUrl,
+    aspect_ratio: settings.extendVideoAspectRatio ?? "auto",
+    duration: "7s",
+    resolution: "720p",
+    generate_audio: settings.extendVideoGenerateAudio ?? true,
+    auto_fix: false,
+  });
+
+  ctx.progressCallback({
+    status: "completed",
+    progress: 100,
+    message: `Video extended with ${ctx.modelName}`,
+  });
+
+  console.log("  ✅ Veo 3.1 Fast Extend-Video returned:", response);
+  return { response };
+}
+
+/**
+ * Handle Veo 3.1 Standard Extend-Video generation
+ * Extends an existing video by 7 seconds with premium quality
+ */
+export async function handleVeo31ExtendVideo(
+  ctx: ModelHandlerContext,
+  settings: AvatarSettings
+): Promise<ModelHandlerResult> {
+  if (!settings.sourceVideo) {
+    return {
+      response: undefined,
+      shouldSkip: true,
+      skipReason: "Veo 3.1 Extend requires a source video",
+    };
+  }
+
+  console.log(`  🎬 Calling Veo 3.1 Standard Extend-Video for ${ctx.modelId}...`);
+  console.log("  📤 Uploading video to FAL storage...");
+
+  ctx.progressCallback({
+    status: "processing",
+    progress: 10,
+    message: "Uploading source video...",
+  });
+
+  const videoUrl = await falAIClient.uploadVideoToFal(settings.sourceVideo);
+
+  console.log("  ✅ Video uploaded to FAL storage");
+  console.log("    - Video URL:", videoUrl.substring(0, 50) + "...");
+
+  ctx.progressCallback({
+    status: "processing",
+    progress: 30,
+    message: "Extending video with Veo 3.1...",
+  });
+
+  const response = await falAIClient.generateVeo31ExtendVideo({
+    prompt: ctx.prompt,
+    video_url: videoUrl,
+    aspect_ratio: settings.extendVideoAspectRatio ?? "auto",
+    duration: "7s",
+    resolution: "720p",
+    generate_audio: settings.extendVideoGenerateAudio ?? true,
+    auto_fix: false,
+  });
+
+  ctx.progressCallback({
+    status: "completed",
+    progress: 100,
+    message: `Video extended with ${ctx.modelName}`,
+  });
+
+  console.log("  ✅ Veo 3.1 Standard Extend-Video returned:", response);
+  return { response };
+}
+
 // ============================================================================
 // MODEL ROUTING
 // ============================================================================
@@ -1346,6 +1461,10 @@ export async function routeAvatarHandler(
       return handleKlingAvatarV2(ctx, settings);
     case "sync_lipsync_react1":
       return handleSyncLipsyncReact1(ctx, settings);
+    case "veo31_fast_extend_video":
+      return handleVeo31FastExtendVideo(ctx, settings);
+    case "veo31_extend_video":
+      return handleVeo31ExtendVideo(ctx, settings);
     default:
       return handleGenericAvatar(ctx, settings);
   }
