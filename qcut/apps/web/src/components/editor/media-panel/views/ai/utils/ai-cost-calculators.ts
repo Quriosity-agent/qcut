@@ -248,3 +248,29 @@ export function calculateWan25Cost(
   const perSecondRate = perSecondPricing[resolution] ?? 0.15;
   return duration * perSecondRate;
 }
+
+/**
+ * Calculate Veo 3.1 extend-video cost
+ * @param variant - "fast" or "standard"
+ * @param generateAudio - Whether audio is generated
+ * @returns Cost for 7-second extension as a string (e.g., "$1.05")
+ */
+export function calculateVeo31ExtendCost(
+  variant: "fast" | "standard",
+  generateAudio = true
+): string {
+  const duration = 7; // Always 7 seconds for extend-video
+
+  // Price per second based on variant and audio setting
+  const pricePerSecond =
+    variant === "fast"
+      ? generateAudio
+        ? 0.15
+        : 0.1
+      : generateAudio
+        ? 0.4
+        : 0.2;
+
+  const cost = duration * pricePerSecond;
+  return `$${cost.toFixed(2)}`;
+}

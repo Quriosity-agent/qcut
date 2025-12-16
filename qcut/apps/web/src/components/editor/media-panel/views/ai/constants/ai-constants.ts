@@ -979,7 +979,7 @@ export const AI_MODELS: AIModel[] = [
       image_to_video: "fal-ai/veo3.1/fast/extend-video",
     },
     default_params: {
-      duration: "7s",
+      duration: 7, // 7 seconds (API accepts "7s" but type requires number)
       resolution: "720p",
       aspect_ratio: "auto",
       generate_audio: true,
@@ -1001,7 +1001,7 @@ export const AI_MODELS: AIModel[] = [
       image_to_video: "fal-ai/veo3.1/extend-video",
     },
     default_params: {
-      duration: "7s",
+      duration: 7, // 7 seconds (API accepts "7s" but type requires number)
       resolution: "720p",
       aspect_ratio: "auto",
       generate_audio: true,
@@ -1155,6 +1155,13 @@ export const UPLOAD_CONSTANTS = {
   MAX_SEEDDREAM45_IMAGES: 10,
   MAX_SEEDDREAM45_IMAGE_SIZE_BYTES: 10 * 1024 * 1024, // 10MB per image
   MAX_SEEDDREAM45_IMAGE_SIZE_LABEL: "10MB",
+
+  // Veo 3.1 extend-video constraints
+  MAX_EXTEND_VIDEO_DURATION_SECONDS: 8,
+  EXTEND_VIDEO_SUPPORTED_FORMATS: ["mp4", "mov", "webm", "m4v", "gif"],
+  EXTEND_VIDEO_SUPPORTED_RESOLUTIONS: ["720p", "1080p"],
+  EXTEND_VIDEO_SUPPORTED_ASPECT_RATIOS: ["16:9", "9:16"],
+  EXTEND_VIDEO_OUTPUT_DURATION_SECONDS: 7,
 } as const;
 
 // Progress Constants
@@ -1293,6 +1300,18 @@ export const ERROR_MESSAGES = {
   // Video file fallback errors
   VIDEO_FILE_TOO_LARGE_FOR_FALLBACK:
     "Video file too large for browser fallback (max 50MB). Please use the desktop app for larger files.",
+
+  // Veo 3.1 Extend-Video specific errors
+  EXTEND_VIDEO_TOO_LONG:
+    "Input video must be 8 seconds or less for Veo 3.1 extend-video",
+  EXTEND_VIDEO_INVALID_RESOLUTION:
+    "Video must be 720p or 1080p for Veo 3.1 extend-video",
+  EXTEND_VIDEO_INVALID_ASPECT_RATIO:
+    "Video must be 16:9 or 9:16 for Veo 3.1 extend-video",
+  EXTEND_VIDEO_MISSING:
+    "Please upload a source video to extend",
+  EXTEND_VIDEO_INVALID_FORMAT:
+    "Video format must be MP4, MOV, WebM, M4V, or GIF for Veo 3.1 extend-video",
 } as const;
 
 // LTX Video 2.0 Fast Configuration
