@@ -2,250 +2,15 @@
 
 ## Executive Summary
 
-This document identifies the **15 most critical issues** preventing QCut from achieving long-term maintainability and support. These issues are ranked by their impact on system stability, scalability, and developer productivity. Each issue includes severity level, impact assessment, and remediation recommendations.
+This document identifies the **15 most critical issues** preventing QCut from achieving long-term maintainability and support. Issues are **ranked by severity** (highest priority first). Each issue includes severity level, impact assessment, and remediation recommendations.
 
-**Overall Health Score: 72/100** - Significant improvement (improved from 52/100, +5 from error handling infrastructure)
-
-## Critical Issue #1: ~~Complete Absence of~~ Testing Infrastructure **[PARTIALLY RESOLVED]**
-
-### Severity: 🟡 MEDIUM (5/10) - Previously CRITICAL
-### Impact: System reliability improving but needs expansion
-
-**Current State (Updated 2025-08-27):**
-- **38 test files** implemented (up from ZERO)
-- **219 passing tests** (92% pass rate)
-- **Vitest framework** successfully configured
-- **59% statement coverage** achieved
-- **37% branch/function coverage** - needs improvement
-- CI/CD test pipeline still pending
-
-**Testing Progress:**
-- ✅ Unit tests for UI components (9 components fully tested)
-- ✅ Integration tests for stores (7 test files)
-- ✅ Test utilities and helpers created
-- ✅ Mock infrastructure established
-- ⚠️ Store implementations need coverage (0% currently)
-- ❌ E2E tests not yet implemented
-
-**Remaining Consequences:**
-- **Store logic**: Critical business logic untested
-- **E2E gaps**: User workflows not validated
-- **Branch coverage**: Complex logic paths uncovered (37%)
-- **CI/CD**: No automated test runs on commits
-
-**Required Actions:**
-1. ~~Implement Vitest for unit testing~~ ✅ COMPLETED
-2. Add Playwright for E2E testing of Electron app
-3. ~~Achieve minimum 60% code coverage~~ ✅ 59% ACHIEVED (close to target)
-4. Increase branch/function coverage to 60%+
-5. Test all store implementations
-6. Create test-driven development (TDD) guidelines
+**Overall Health Score: 78/100** - Major improvement (improved from 52/100, +6 from E2E testing infrastructure)
 
 ---
 
-## Critical Issue #2: ~~Hybrid Architecture Confusion~~ **[SIGNIFICANTLY IMPROVED]**
+## Critical Issue #1: Storage System Instability
 
-### Severity: 🟡 MEDIUM (4/10) - Previously CRITICAL (9/10)
-### Impact: Minor remaining Next.js dependencies
-
-**Current State (Updated 2025-08-28):**
-- ✅ Pure TanStack Router implementation (no dual routing)
-- ✅ Next.js app directory structure removed (`src/app` deleted)
-- ✅ No non-functional API routes remain
-- ❌ Next.js still listed as dependency (only for `next-themes` and `Image`)
-- ❌ Some Next.js imports remain in components
-
-**Remaining Next.js Usage:**
-```typescript
-// Limited Next.js usage found:
-apps/web/src/components/background-settings.tsx:     import Image from "next/image";
-apps/web/src/components/ui/theme-toggle.tsx:         import { useTheme } from "next-themes";
-apps/web/src/routes/__root.tsx:                      import { ThemeProvider } from "next-themes";
-```
-
-**Improvements Made:**
-- ✅ **Routing system**: Pure TanStack Router (no confusion)
-- ✅ **API routes**: All removed/converted to Electron IPC
-- ✅ **Build pipeline**: Single Vite configuration
-- ✅ **Development velocity**: No longer impacted by dual systems
-
-**Remaining Minor Issues:**
-- Next.js dependency could be replaced with `react-image` + standalone theme library
-- Bundle includes unused Next.js code (~500KB)
-- Developer confusion minimal but still present
-
-**Required Actions (Updated):**
-1. ~~Complete migration to pure Vite + TanStack Router~~ ✅ **COMPLETED**
-2. ~~Remove all Next.js artifacts and directories~~ ✅ **COMPLETED**  
-3. ~~Convert API routes to Electron IPC handlers~~ ✅ **COMPLETED**
-4. Replace `next-themes` with standalone theme library (optional)
-5. Replace `next/image` with standard `img` or `react-image` (optional)
-
----
-
-## Critical Issue #3: ~~Memory Leak Patterns Throughout Codebase~~ **[RESOLVED]**
-
-### Severity: 🟢 RESOLVED (0/10) - Previously CRITICAL (9/10)
-### Impact: Application stability dramatically improved
-
-**Current State (Updated 2025-08-29):**
-- ✅ **Event listener cleanup**: All 261 patterns audited and verified proper cleanup
-- ✅ **Blob URL management**: Centralized BlobManager with automatic revocation implemented
-- ✅ **FFmpeg WebAssembly disposal**: Lifecycle management with auto-termination after 5min inactivity
-- ✅ **DOM node cleanup**: Fixed orphaned input elements and download links
-- ✅ **Memory profiling**: Development workflow with monitoring hooks added
-
-**Memory Leak Fixes Implemented:**
-```typescript
-// ✅ FIXED: media-store.ts now uses centralized blob manager
-import { createObjectURL, revokeObjectURL } from '@/lib/blob-manager';
-
-// ✅ FIXED: FFmpeg automatic cleanup
-export const terminateFFmpeg = async (): Promise<void> => {
-  if (!ffmpeg || !isFFmpegLoaded) return;
-  await ffmpeg.terminate(); // Proper WebAssembly disposal
-  ffmpeg = null;
-  isFFmpegLoaded = false;
-};
-
-// ✅ FIXED: DOM node cleanup in timeline-element.tsx
-const cleanup = () => input.remove();
-input.onchange = async (e) => { /* ... */ cleanup(); };
-```
-
-**Improvements Achieved:**
-- ✅ **Session stability**: No more 2-3 hour crash limit
-- ✅ **Export reliability**: Memory-related failures eliminated  
-- ✅ **Data preservation**: Memory exhaustion crashes prevented
-- ✅ **Performance**: Sustained performance over extended sessions
-
-**Memory Management Infrastructure Added:**
-1. ✅ **BlobManager** (`src/lib/blob-manager.ts`): Centralized blob URL lifecycle with auto-revocation
-2. ✅ **FFmpeg lifecycle**: Activity tracking and automatic WebAssembly disposal
-3. ✅ **DOM cleanup**: File inputs and download links properly removed
-4. ✅ **Development profiling**: Memory monitoring hooks and profiler for ongoing health
-5. ✅ **Source tracking**: Blob creation tracking for debugging
-
-**Required Actions:**
-1. ~~Implement systematic cleanup in all useEffect hooks~~ ✅ **COMPLETED**
-2. ~~Create BlobURL manager with automatic revocation~~ ✅ **COMPLETED**  
-3. ~~Add memory profiling to development workflow~~ ✅ **COMPLETED**
-4. ~~Implement deterministic disposal patterns (teardowns, URL revokes, FFmpeg termination, WeakRef where safe)~~ ✅ **COMPLETED**
-
----
-
-## Critical Issue #4: ~~Dependency Version Chaos~~ **[SIGNIFICANTLY IMPROVED]**
-
-### Severity: 🟡 MEDIUM (4/10) - Previously HIGH (8/10)
-### Impact: Security vulnerabilities and compatibility issues largely resolved
-
-**Current State (Updated 2025-08-28):**
-- Electron v37.4.0 (updated from v37.2.5)
-- ✅ React version documentation mismatch fixed (18.3.1 consistent across docs)
-- Vite 7.1.3 (updated from 7.0.6 - still experimental but more stable)
-- ✅ Package manager consistency achieved (all npm scripts converted to bun)
-- ✅ Security vulnerabilities reduced from ~46 to only 2 remaining
-
-**Security Improvements Made:**
-```json
-{
-  "resolutions": {
-    "minimist": "^1.2.8",      // ✅ Fixed prototype pollution
-    "tough-cookie": "^4.1.4",  // ✅ Fixed vulnerability  
-    "form-data": "^4.0.1",     // ✅ Updated to secure version
-    "jpeg-js": "^0.4.4",       // ✅ Fixed memory issues
-    "tmp": "^0.2.4",           // ✅ Fixed symlink vulnerability
-    "esbuild": "^0.25.8"       // ✅ Fixed dev server vulnerability
-  }
-}
-```
-
-**Remaining Issues:**
-- Electron v37.4.0 (still experimental - should use v32.x stable)
-- Vite 7.1.3 (still experimental - production uses v5.x)
-- 2 unfixable vulnerabilities (`request` and `url-regex` - abandoned packages)
-
-**Required Actions (Updated):**
-1. ~~Align React versions across workspace~~ ✅ COMPLETED
-2. ~~Implement dependency security scanning~~ ✅ COMPLETED  
-3. ~~Convert npm scripts to bun~~ ✅ COMPLETED
-4. Consider downgrading to stable Electron v32.x (optional)
-5. Monitor the 2 remaining vulnerabilities for replacements
-
----
-
-## Critical Issue #5: ~~Error Handling Crisis~~ **[SIGNIFICANTLY IMPROVED]**
-
-### Severity: 🟡 MEDIUM (4/10) - Previously HIGH (8/10)
-### Impact: Developer experience dramatically improved, implementation phase in progress
-
-**Current State (Updated 2025-09-01):**
-- ✅ **Phase 4 Developer Experience COMPLETED**: Comprehensive error handling infrastructure implemented
-- ✅ **Error Handler System**: Centralized error management with user-friendly notifications (`lib/error-handler.ts`)
-- ✅ **Error Context Capture**: Comprehensive context collection for debugging (`lib/error-context.ts`) 
-- ✅ **Error Reporting Hooks**: React hooks for component-level error handling (`hooks/use-error-reporter.ts`)
-- ✅ **Async Operation Wrappers**: 5 comprehensive async wrapper functions with retry logic
-- ⚠️ **Phase 1-3 Implementation Pending**: 816 try-catch blocks still need migration
-- ❌ **Global Error Boundary**: React error boundaries not yet implemented
-
-**Infrastructure Completed:**
-```typescript
-// ✅ IMPLEMENTED: Centralized error handling with user notifications
-import { handleError, ErrorCategory, ErrorSeverity } from '@/lib/error-handler';
-handleError(error, {
-  operation: "Save project",
-  category: ErrorCategory.STORAGE,
-  severity: ErrorSeverity.HIGH,
-  metadata: { projectId, userId }
-});
-
-// ✅ IMPLEMENTED: Component error reporting hooks  
-const reportError = useErrorReporter('ProjectEditor');
-reportError(error, 'project save', { 
-  category: ErrorCategory.STORAGE,
-  includeContext: true 
-});
-
-// ✅ IMPLEMENTED: Safe async operations with automatic error handling
-const result = await safeAsync(
-  () => saveProjectToStorage(project),
-  { operation: 'Save project', category: ErrorCategory.STORAGE }
-);
-```
-
-**Developer Experience Improvements:**
-- ✅ **Error ID Generation**: Unique IDs for all errors with copy-to-clipboard functionality
-- ✅ **Toast Notifications**: User-friendly error messages with appropriate severity styling
-- ✅ **Context Capture**: Session, browser, project, and store context automatically collected
-- ✅ **Performance Variants**: Lightweight and detailed error reporting options
-- ✅ **Async Safety**: Multiple wrapper functions with retry, fallback, and batch processing
-
-**Implementation Progress:**
-- ✅ **Phase 4 Complete**: Developer infrastructure (3 tasks, 100% done)
-- ⏳ **Phase 1-3 Pending**: File-by-file migration of existing error patterns
-- ❌ **Global Error Boundaries**: React error boundaries for unhandled errors
-- ❌ **Error Tracking Service**: Sentry integration for production monitoring
-
-**Long-term Consequences (Reduced):**
-- **Developer productivity**: ✅ **IMPROVED** - Consistent error handling patterns available
-- **Debugging efficiency**: ✅ **IMPROVED** - Rich context and unique error IDs
-- **User experience**: ⏳ **PENDING** - Awaits Phase 1-3 implementation
-- **Support burden**: ⏳ **PENDING** - Will improve as console.error patterns are migrated
-
-**Required Actions (Updated):**
-1. ~~Create comprehensive error handling infrastructure~~ ✅ **COMPLETED**
-2. ~~Implement error context capture system~~ ✅ **COMPLETED**  
-3. ~~Add React hooks for component error reporting~~ ✅ **COMPLETED**
-4. ~~Create async operation wrappers~~ ✅ **COMPLETED**
-5. **Next**: Implement React Error Boundaries globally
-6. **Next**: Begin Phase 1-3 file migration (816 try-catch blocks)
-7. **Next**: Add Sentry or similar error tracking for production
-
----
-
-## Critical Issue #6: Storage System Instability
-
-### Severity: 🟠 HIGH (8/10)
+### Severity: 🔴 HIGH (8/10)
 ### Impact: Data persistence failures
 
 **Current State:**
@@ -275,9 +40,9 @@ const result = await safeAsync(
 
 ---
 
-## Critical Issue #7: FFmpeg Integration Fragility
+## Critical Issue #2: FFmpeg Integration Fragility
 
-### Severity: 🟠 HIGH (7/10)
+### Severity: 🔴 HIGH (7/10)
 ### Impact: Export and processing failures
 
 **Current State:**
@@ -308,9 +73,9 @@ const result = await safeAsync(
 
 ---
 
-## Critical Issue #8: Timeline Rendering Performance
+## Critical Issue #3: Timeline Rendering Performance
 
-### Severity: 🟠 HIGH (7/10)
+### Severity: 🔴 HIGH (7/10)
 ### Impact: Unusable with 20+ elements
 
 **Current State:**
@@ -340,9 +105,9 @@ const result = await safeAsync(
 
 ---
 
-## Critical Issue #9: Sticker System Data Flow Issues
+## Critical Issue #4: Sticker System Data Flow Issues
 
-### Severity: 🟡 MEDIUM (6/10)
+### Severity: 🟠 MEDIUM-HIGH (6/10)
 ### Impact: Features broken, user frustration
 
 **Current State:**
@@ -372,9 +137,9 @@ const result = await safeAsync(
 
 ---
 
-## Critical Issue #10: Build System Complexity
+## Critical Issue #5: Build System Complexity
 
-### Severity: 🟡 MEDIUM (6/10)
+### Severity: 🟠 MEDIUM-HIGH (6/10)
 ### Impact: Deployment failures and long build times
 
 **Current State:**
@@ -404,9 +169,9 @@ const result = await safeAsync(
 
 ---
 
-## Critical Issue #11: Security Vulnerabilities
+## Critical Issue #6: Security Vulnerabilities
 
-### Severity: 🟡 MEDIUM (6/10)
+### Severity: 🟠 MEDIUM-HIGH (6/10)
 ### Impact: Potential data breaches and exploits
 
 **Current State:**
@@ -437,7 +202,7 @@ const result = await safeAsync(
 
 ---
 
-## Critical Issue #12: Code Organization Chaos
+## Critical Issue #7: Code Organization Chaos
 
 ### Severity: 🟡 MEDIUM (5/10)
 ### Impact: Maintainability crisis
@@ -473,7 +238,7 @@ src/
 
 ---
 
-## Critical Issue #13: Performance Monitoring Absence
+## Critical Issue #8: Performance Monitoring Absence
 
 ### Severity: 🟡 MEDIUM (5/10)
 ### Impact: Invisible performance degradation
@@ -509,7 +274,116 @@ src/
 
 ---
 
-## Critical Issue #14: Documentation Debt
+## Critical Issue #9: Hybrid Architecture Confusion **[SIGNIFICANTLY IMPROVED]**
+
+### Severity: 🟡 MEDIUM (4/10) - Previously CRITICAL (9/10)
+### Impact: Minor remaining Next.js dependencies
+
+**Current State (Updated 2025-08-28):**
+- ✅ Pure TanStack Router implementation (no dual routing)
+- ✅ Next.js app directory structure removed (`src/app` deleted)
+- ✅ No non-functional API routes remain
+- ❌ Next.js still listed as dependency (only for `next-themes` and `Image`)
+- ❌ Some Next.js imports remain in components
+
+**Remaining Next.js Usage:**
+```typescript
+// Limited Next.js usage found:
+apps/web/src/components/background-settings.tsx:     import Image from "next/image";
+apps/web/src/components/ui/theme-toggle.tsx:         import { useTheme } from "next-themes";
+apps/web/src/routes/__root.tsx:                      import { ThemeProvider } from "next-themes";
+```
+
+**Improvements Made:**
+- ✅ **Routing system**: Pure TanStack Router (no confusion)
+- ✅ **API routes**: All removed/converted to Electron IPC
+- ✅ **Build pipeline**: Single Vite configuration
+- ✅ **Development velocity**: No longer impacted by dual systems
+
+**Remaining Minor Issues:**
+- Next.js dependency could be replaced with `react-image` + standalone theme library
+- Bundle includes unused Next.js code (~500KB)
+- Developer confusion minimal but still present
+
+**Required Actions (Updated):**
+1. ~~Complete migration to pure Vite + TanStack Router~~ ✅ **COMPLETED**
+2. ~~Remove all Next.js artifacts and directories~~ ✅ **COMPLETED**
+3. ~~Convert API routes to Electron IPC handlers~~ ✅ **COMPLETED**
+4. Replace `next-themes` with standalone theme library (optional)
+5. Replace `next/image` with standard `img` or `react-image` (optional)
+
+---
+
+## Critical Issue #10: Error Handling Crisis **[SIGNIFICANTLY IMPROVED]**
+
+### Severity: 🟡 MEDIUM (4/10) - Previously HIGH (8/10)
+### Impact: Developer experience dramatically improved, implementation phase in progress
+
+**Current State (Updated 2025-09-01):**
+- ✅ **Phase 4 Developer Experience COMPLETED**: Comprehensive error handling infrastructure implemented
+- ✅ **Error Handler System**: Centralized error management with user-friendly notifications (`lib/error-handler.ts`)
+- ✅ **Error Context Capture**: Comprehensive context collection for debugging (`lib/error-context.ts`)
+- ✅ **Error Reporting Hooks**: React hooks for component-level error handling (`hooks/use-error-reporter.ts`)
+- ✅ **Async Operation Wrappers**: 5 comprehensive async wrapper functions with retry logic
+- ⚠️ **Phase 1-3 Implementation Pending**: 816 try-catch blocks still need migration
+- ❌ **Global Error Boundary**: React error boundaries not yet implemented
+
+**Infrastructure Completed:**
+```typescript
+// ✅ IMPLEMENTED: Centralized error handling with user notifications
+import { handleError, ErrorCategory, ErrorSeverity } from '@/lib/error-handler';
+handleError(error, {
+  operation: "Save project",
+  category: ErrorCategory.STORAGE,
+  severity: ErrorSeverity.HIGH,
+  metadata: { projectId, userId }
+});
+
+// ✅ IMPLEMENTED: Component error reporting hooks
+const reportError = useErrorReporter('ProjectEditor');
+reportError(error, 'project save', {
+  category: ErrorCategory.STORAGE,
+  includeContext: true
+});
+
+// ✅ IMPLEMENTED: Safe async operations with automatic error handling
+const result = await safeAsync(
+  () => saveProjectToStorage(project),
+  { operation: 'Save project', category: ErrorCategory.STORAGE }
+);
+```
+
+**Developer Experience Improvements:**
+- ✅ **Error ID Generation**: Unique IDs for all errors with copy-to-clipboard functionality
+- ✅ **Toast Notifications**: User-friendly error messages with appropriate severity styling
+- ✅ **Context Capture**: Session, browser, project, and store context automatically collected
+- ✅ **Performance Variants**: Lightweight and detailed error reporting options
+- ✅ **Async Safety**: Multiple wrapper functions with retry, fallback, and batch processing
+
+**Implementation Progress:**
+- ✅ **Phase 4 Complete**: Developer infrastructure (3 tasks, 100% done)
+- ⏳ **Phase 1-3 Pending**: File-by-file migration of existing error patterns
+- ❌ **Global Error Boundaries**: React error boundaries for unhandled errors
+- ❌ **Error Tracking Service**: Sentry integration for production monitoring
+
+**Long-term Consequences (Reduced):**
+- **Developer productivity**: ✅ **IMPROVED** - Consistent error handling patterns available
+- **Debugging efficiency**: ✅ **IMPROVED** - Rich context and unique error IDs
+- **User experience**: ⏳ **PENDING** - Awaits Phase 1-3 implementation
+- **Support burden**: ⏳ **PENDING** - Will improve as console.error patterns are migrated
+
+**Required Actions (Updated):**
+1. ~~Create comprehensive error handling infrastructure~~ ✅ **COMPLETED**
+2. ~~Implement error context capture system~~ ✅ **COMPLETED**
+3. ~~Add React hooks for component error reporting~~ ✅ **COMPLETED**
+4. ~~Create async operation wrappers~~ ✅ **COMPLETED**
+5. **Next**: Implement React Error Boundaries globally
+6. **Next**: Begin Phase 1-3 file migration (816 try-catch blocks)
+7. **Next**: Add Sentry or similar error tracking for production
+
+---
+
+## Critical Issue #11: Documentation Debt
 
 ### Severity: 🟡 MEDIUM (4/10)
 ### Impact: Knowledge loss and onboarding difficulty
@@ -544,7 +418,7 @@ src/
 
 ---
 
-## Critical Issue #15: Scalability Limitations
+## Critical Issue #12: Scalability Limitations
 
 ### Severity: 🟡 MEDIUM (4/10)
 ### Impact: Cannot grow beyond hobby project
@@ -580,11 +454,145 @@ src/
 
 ---
 
+## Critical Issue #13: Testing Infrastructure **[LARGELY RESOLVED]**
+
+### Severity: 🟢 LOW (3/10) - Previously CRITICAL
+### Impact: System reliability greatly improved with comprehensive test coverage
+
+**Current State (Updated 2025-12-15):**
+- **200+ unit tests** with Vitest framework
+- **68 E2E tests** with Playwright (94% pass rate)
+- **59% statement coverage** achieved
+- **37% branch/function coverage** - improving
+- E2E tests cover critical user workflows
+
+**Testing Progress:**
+- ✅ Unit tests for UI components (9+ components fully tested)
+- ✅ Integration tests for stores (7+ test files)
+- ✅ Test utilities and helpers created
+- ✅ Mock infrastructure established
+- ✅ **E2E tests implemented** - 68 tests covering:
+  - Project workflows
+  - Editor navigation
+  - Media management
+  - Timeline operations
+  - Sticker/text overlays
+  - AI features (with graceful skip for external services)
+  - Export functionality
+- ⚠️ Store implementations need more coverage
+- ⚠️ CI/CD test pipeline still pending
+
+**Remaining Improvements:**
+- **Branch coverage**: Complex logic paths need more tests (37%)
+- **CI/CD**: Automated test runs on commits
+
+**Required Actions:**
+1. ~~Implement Vitest for unit testing~~ ✅ COMPLETED
+2. ~~Add Playwright for E2E testing of Electron app~~ ✅ COMPLETED (68 tests)
+3. ~~Achieve minimum 60% code coverage~~ ✅ 59% ACHIEVED (close to target)
+4. Increase branch/function coverage to 60%+
+5. Test all store implementations
+6. Set up CI/CD pipeline for automated testing
+
+---
+
+## Critical Issue #14: Dependency Version Chaos **[SIGNIFICANTLY IMPROVED]**
+
+### Severity: 🟢 LOW (3/10) - Previously HIGH (8/10)
+### Impact: Security vulnerabilities and compatibility issues largely resolved
+
+**Current State (Updated 2025-12-15):**
+- Electron v37.4.0 (updated from v37.2.5)
+- ✅ React version documentation mismatch fixed (18.3.1 consistent across docs)
+- Vite 7.1.3 (updated from 7.0.6 - still experimental but more stable)
+- ✅ **Turbo v2.6.3** (updated from v2.5.6 - security fix for command injection)
+- ✅ Package manager consistency achieved (all npm scripts converted to bun)
+- ✅ Security vulnerabilities reduced from ~46 to only 2 remaining
+
+**Security Improvements Made:**
+```json
+{
+  "resolutions": {
+    "minimist": "^1.2.8",      // ✅ Fixed prototype pollution
+    "tough-cookie": "^4.1.4",  // ✅ Fixed vulnerability
+    "form-data": "^4.0.1",     // ✅ Updated to secure version
+    "jpeg-js": "^0.4.4",       // ✅ Fixed memory issues
+    "tmp": "^0.2.4",           // ✅ Fixed symlink vulnerability
+    "esbuild": "^0.25.8"       // ✅ Fixed dev server vulnerability
+  }
+}
+```
+
+**Remaining Issues:**
+- Electron v37.4.0 (still experimental - should use v32.x stable)
+- Vite 7.1.3 (still experimental - production uses v5.x)
+- 2 unfixable vulnerabilities (`request` and `url-regex` - abandoned packages)
+
+**Required Actions (Updated):**
+1. ~~Align React versions across workspace~~ ✅ COMPLETED
+2. ~~Implement dependency security scanning~~ ✅ COMPLETED
+3. ~~Convert npm scripts to bun~~ ✅ COMPLETED
+4. Consider downgrading to stable Electron v32.x (optional)
+5. Monitor the 2 remaining vulnerabilities for replacements
+
+---
+
+## Critical Issue #15: Memory Leak Patterns **[RESOLVED]**
+
+### Severity: 🟢 RESOLVED (0/10) - Previously CRITICAL (9/10)
+### Impact: Application stability dramatically improved
+
+**Current State (Updated 2025-08-29):**
+- ✅ **Event listener cleanup**: All 261 patterns audited and verified proper cleanup
+- ✅ **Blob URL management**: Centralized BlobManager with automatic revocation implemented
+- ✅ **FFmpeg WebAssembly disposal**: Lifecycle management with auto-termination after 5 min inactivity
+- ✅ **DOM node cleanup**: Fixed orphaned input elements and download links
+- ✅ **Memory profiling**: Development workflow with monitoring hooks added
+
+**Memory Leak Fixes Implemented:**
+```typescript
+// ✅ FIXED: media-store.ts now uses centralized blob manager
+import { createObjectURL, revokeObjectURL } from '@/lib/blob-manager';
+
+// ✅ FIXED: FFmpeg automatic cleanup
+export const terminateFFmpeg = async (): Promise<void> => {
+  if (!ffmpeg || !isFFmpegLoaded) return;
+  await ffmpeg.terminate(); // Proper WebAssembly disposal
+  ffmpeg = null;
+  isFFmpegLoaded = false;
+};
+
+// ✅ FIXED: DOM node cleanup in timeline-element.tsx
+const cleanup = () => input.remove();
+input.onchange = async (e) => { /* ... */ cleanup(); };
+```
+
+**Improvements Achieved:**
+- ✅ **Session stability**: No more 2-3 hour crash limit
+- ✅ **Export reliability**: Memory-related failures eliminated
+- ✅ **Data preservation**: Memory exhaustion crashes prevented
+- ✅ **Performance**: Sustained performance over extended sessions
+
+**Memory Management Infrastructure Added:**
+1. ✅ **BlobManager** (`src/lib/blob-manager.ts`): Centralized blob URL lifecycle with auto-revocation
+2. ✅ **FFmpeg lifecycle**: Activity tracking and automatic WebAssembly disposal
+3. ✅ **DOM cleanup**: File inputs and download links properly removed
+4. ✅ **Development profiling**: Memory monitoring hooks and profiler for ongoing health
+5. ✅ **Source tracking**: Blob creation tracking for debugging
+
+**Required Actions:**
+1. ~~Implement systematic cleanup in all useEffect hooks~~ ✅ **COMPLETED**
+2. ~~Create BlobURL manager with automatic revocation~~ ✅ **COMPLETED**
+3. ~~Add memory profiling to development workflow~~ ✅ **COMPLETED**
+4. ~~Implement deterministic disposal patterns (teardowns, URL revokes, FFmpeg termination, WeakRef where safe)~~ ✅ **COMPLETED**
+
+---
+
 ## Implementation Roadmap
 
-### Phase 1: Critical Stabilization (Months 1-2)
-1. **Week 1-2**: ~~Implement testing framework~~ ✅ **COMPLETED** - Vitest configured, 38 test files, 219 tests
-2. **Week 3-4**: ~~Fix dependency security issues~~ ✅ **COMPLETED** - 46 → 2 vulnerabilities  
+### Phase 1: Critical Stabilization (Months 1-2) ✅ **LARGELY COMPLETE**
+1. **Week 1-2**: ~~Implement testing framework~~ ✅ **COMPLETED** - Vitest + Playwright, 200+ unit tests, 68 E2E tests
+2. **Week 3-4**: ~~Fix dependency security issues~~ ✅ **COMPLETED** - 46 → 2 vulnerabilities, Turbo v2.6.3 security fix
 3. **Week 5-6**: ~~Fix memory leaks~~ ✅ **COMPLETED** - Comprehensive memory leak resolution
 4. **Week 7-8**: ~~Resolve architecture confusion~~ ✅ **LARGELY COMPLETED** - Pure Vite/TanStack Router
 5. **Week 9-10**: Stabilize FFmpeg integration
@@ -600,6 +608,26 @@ src/
 2. **Week 21-22**: Add monitoring and analytics
 3. **Week 23-24**: Create documentation
 4. **Week 25-26**: Build scalability foundation
+
+## Priority Summary
+
+| Priority | Issue | Severity | Status |
+|----------|-------|----------|--------|
+| 1 | Storage System Instability | 8/10 | Active |
+| 2 | FFmpeg Integration Fragility | 7/10 | Active |
+| 3 | Timeline Rendering Performance | 7/10 | Active |
+| 4 | Sticker System Data Flow | 6/10 | Active |
+| 5 | Build System Complexity | 6/10 | Active |
+| 6 | Security Vulnerabilities | 6/10 | Active |
+| 7 | Code Organization Chaos | 5/10 | Active |
+| 8 | Performance Monitoring Absence | 5/10 | Active |
+| 9 | Hybrid Architecture Confusion | 4/10 | Improved |
+| 10 | Error Handling Crisis | 4/10 | Improved |
+| 11 | Documentation Debt | 4/10 | Active |
+| 12 | Scalability Limitations | 4/10 | Active |
+| 13 | Testing Infrastructure | 3/10 | Resolved |
+| 14 | Dependency Version Chaos | 3/10 | Resolved |
+| 15 | Memory Leak Patterns | 0/10 | Resolved |
 
 ## Cost of Inaction
 
@@ -619,24 +647,28 @@ If these issues are not addressed within 6 months:
 3. ~~Standardize package manager usage~~ ✅ **DONE** - All scripts use bun now
 4. ~~Fix React version documentation mismatch~~ ✅ **DONE** - Consistent 18.3.1
 
-### This Month
-1. ~~Fix the most critical memory leaks~~ ✅ **COMPLETED** - Comprehensive memory leak resolution  
+### This Month ✅ **LARGELY COMPLETE**
+1. ~~Fix the most critical memory leaks~~ ✅ **COMPLETED** - Comprehensive memory leak resolution
 2. ~~Create error handling infrastructure~~ ✅ **COMPLETED** - Phase 4 Developer Experience done
 3. ~~Complete migration from Next.js to pure Vite~~ ✅ **LARGELY COMPLETED** - Only minor dependencies remain
-4. Implement global error boundary (next step in error handling)
-5. Stabilize FFmpeg integration
-6. ~~Achieve 25% test coverage~~ ✅ **EXCEEDED** - 59% coverage achieved
+4. ~~Implement E2E testing~~ ✅ **COMPLETED** - 68 Playwright E2E tests
+5. Implement global error boundary (next step in error handling)
+6. Stabilize FFmpeg integration
+7. ~~Achieve 25% test coverage~~ ✅ **EXCEEDED** - 59% coverage achieved
 
 ### Next Quarter
-1. Reach 60% test coverage
-2. Complete performance optimization
-3. Implement monitoring system
-4. Create comprehensive documentation
+1. Fix storage system instability (Priority #1)
+2. Stabilize FFmpeg integration (Priority #2)
+3. Optimize timeline performance (Priority #3)
+4. Reach 60% test coverage
+5. Implement monitoring system
+6. Create comprehensive documentation
 
 ## Success Metrics
 
 Track these KPIs monthly:
-- **Test Coverage**: ~~Target 60% in 3 months~~ ✅ **59% achieved in first month** (statement coverage)
+- **Unit Test Coverage**: ~~Target 60% in 3 months~~ ✅ **59% achieved** (statement coverage)
+- **E2E Test Coverage**: ✅ **68 tests implemented** (94% pass rate)
 - **Branch Coverage**: Current 37%, target 60%
 - **Crash Rate**: Reduce by 80%
 - **Export Success**: Increase to 95%
@@ -645,7 +677,7 @@ Track these KPIs monthly:
 - **Bundle Size**: Reduce by 40%
 - **Memory Leaks**: ✅ **ACHIEVED** - Zero tolerance policy implemented
 - **Error Reports**: <10 per week
-- **Test Pass Rate**: Maintain >95% (currently 92%)
+- **Test Pass Rate**: Maintain >95% (Unit: 92%, E2E: 94%)
 
 ## Conclusion
 
@@ -660,6 +692,6 @@ The estimated effort to address all critical issues is **960-1200 developer hour
 ---
 
 *Document created: 2025-08-26*
-*Last updated: 2025-09-01 - **Critical Issue #5 (Error Handling) SIGNIFICANTLY IMPROVED** - Phase 4 Developer Experience infrastructure completed*  
-*Next review date: 2025-09-26*
+*Last updated: 2025-12-15 - Reordered issues by priority (severity), updated priority summary table*
+*Next review date: 2026-01-15*
 *Severity scoring: 1-10 scale (10 = most severe)*

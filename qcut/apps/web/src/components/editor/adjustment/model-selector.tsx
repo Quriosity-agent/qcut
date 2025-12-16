@@ -3,9 +3,13 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useAdjustmentStore } from "@/stores/adjustment-store";
-import { getImageEditModels } from "@/lib/image-edit-client";
+import {
+  getImageEditModels,
+  getModelCapabilities,
+  type ImageEditModelId,
+} from "@/lib/image-edit-client";
 import { cn } from "@/lib/utils";
-import { Check } from "lucide-react";
+import { Check, Images } from "lucide-react";
 
 export function ModelSelector() {
   const { selectedModel, setSelectedModel } = useAdjustmentStore();
@@ -37,13 +41,28 @@ export function ModelSelector() {
                     ? "bg-transparent text-[#05c7c7] border-[#05c7c7] shadow-sm"
                     : "bg-card hover:bg-muted/50 border-muted-foreground/20 hover:border-muted-foreground/40"
                 )}
-                onClick={() => setSelectedModel(model.id as any)}
+                onClick={() => setSelectedModel(model.id as ImageEditModelId)}
               >
                 <div className="flex items-center gap-1.5 min-w-0">
                   {isSelected && <Check className="w-3 h-3 flex-shrink-0" />}
                   <span className="text-xs font-medium truncate">
                     {model.name}
                   </span>
+                  {(() => {
+                    const caps = getModelCapabilities(model.id);
+                    if (caps.supportsMultiple) {
+                      return (
+                        <span
+                          className="flex items-center gap-0.5 text-[9px] px-1 py-0.5 rounded bg-muted text-muted-foreground"
+                          title={`Supports up to ${caps.maxImages} images`}
+                        >
+                          <Images className="w-2.5 h-2.5" />
+                          {caps.maxImages}
+                        </span>
+                      );
+                    }
+                    return null;
+                  })()}
                 </div>
                 <span
                   className={cn(

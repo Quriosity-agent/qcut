@@ -1,5 +1,9 @@
 import { create } from "zustand";
 import { subscribeWithSelector } from "zustand/middleware";
+import {
+  getModelCapabilities,
+  type ImageEditModelId,
+} from "@/lib/image-edit-capabilities";
 
 export interface EditHistoryItem {
   id: string;
@@ -18,17 +22,13 @@ export interface AdjustmentState {
   originalImageUrl: string | null;
   currentEditedUrl: string | null;
 
-  // Multiple images for V4 and Nano Banana models
+  // Multiple images for multi-image models
   multipleImages: string[];
+  // Multiple image files (File objects for upload)
+  multipleImageFiles: File[];
 
-  // Model selection
-  selectedModel:
-    | "seededit"
-    | "flux-kontext"
-    | "flux-kontext-max"
-    | "seeddream-v4"
-    | "nano-banana"
-    | "reve-edit";
+  // Model selection - uses shared type from capabilities
+  selectedModel: ImageEditModelId;
 
   // Parameters
   prompt: string;
@@ -41,11 +41,15 @@ export interface AdjustmentState {
     numImages: number;
 
     // Add new V4-specific parameters (optional for backward compatibility)
-    imageSize?: string; // "square_hd", "square", etc. for V4
+    imageSize?: string; // "square_hd", "square", etc. for V4/V4.5
     maxImages?: number; // 1-10 for V4
-    syncMode?: boolean; // V4, Nano Banana, and Reve Edit
+    syncMode?: boolean; // V4, Nano Banana, Reve Edit, and Gemini 3 Pro Edit
     enableSafetyChecker?: boolean; // V4
-    outputFormat?: "jpeg" | "png" | "webp"; // Nano Banana and Reve Edit (lowercase required by FAL API)
+    outputFormat?: "jpeg" | "png" | "webp"; // Nano Banana, Reve Edit, and Gemini 3 Pro Edit (lowercase required by FAL API)
+
+    // Gemini 3 Pro Edit specific parameters
+    resolution?: "1K" | "2K" | "4K";
+    aspectRatio?: string; // auto, 1:1, 4:3, 3:4, 16:9, 9:16, 21:9, 3:2, 2:3, 5:4, 4:5
   };
 
   // Edit history
@@ -69,10 +73,16 @@ export interface AdjustmentActions {
   // Image management
   setOriginalImage: (file: File, url: string) => void;
   clearImage: () => void;
-  setMultipleImages: (imageUrls: string[]) => void;
+
+  // Multiple image management
+  setMultipleImages: (imageUrls: string[], files?: File[]) => void;
+  addMultipleImage: (file: File, url: string) => void;
+  removeMultipleImage: (index: number) => void;
+  clearMultipleImages: () => void;
+  reorderMultipleImages: (fromIndex: number, toIndex: number) => void;
 
   // Model and parameters
-  setSelectedModel: (model: AdjustmentState["selectedModel"]) => void;
+  setSelectedModel: (model: ImageEditModelId) => void;
   setPrompt: (prompt: string) => void;
   updateParameter: (key: string, value: any) => void;
   resetParameters: () => void;
@@ -103,7 +113,7 @@ export interface AdjustmentActions {
 
 type AdjustmentStore = AdjustmentState & AdjustmentActions;
 
-const getDefaultParameters = (model: AdjustmentState["selectedModel"]) => {
+const getDefaultParameters = (model: ImageEditModelId) => {
   switch (model) {
     case "seededit":
       return {
@@ -123,42 +133,79 @@ const getDefaultParameters = (model: AdjustmentState["selectedModel"]) => {
         numImages: 1,
       };
     case "seeddream-v4":
-      // Add new V4 parameters
       return {
-        guidanceScale: 2.5, // Reasonable default similar to V3
+        guidanceScale: 2.5,
         steps: 20,
         seed: undefined,
         safetyTolerance: 2,
         numImages: 1,
-        // V4-specific parameters
         imageSize: "square_hd",
         maxImages: 1,
         syncMode: false,
         enableSafetyChecker: true,
       };
-    case "nano-banana":
-      // Add Nano Banana parameters
+    case "seeddream-v4-5-edit":
       return {
-        guidanceScale: 2.5, // Not used but kept for interface consistency
-        steps: 20, // Not used but kept for interface consistency
+        guidanceScale: 2.5,
+        steps: 20,
         seed: undefined,
-        safetyTolerance: 2, // Not used but kept for interface consistency
+        safetyTolerance: 2,
         numImages: 1,
-        // Nano Banana-specific parameters
+        imageSize: "auto_2K",
+        maxImages: 1,
+        syncMode: false,
+        enableSafetyChecker: true,
+      };
+    case "nano-banana":
+      return {
+        guidanceScale: 2.5,
+        steps: 20,
+        seed: undefined,
+        safetyTolerance: 2,
+        numImages: 1,
         outputFormat: "png" as const,
         syncMode: false,
       };
     case "reve-edit":
-      // Add Reve Edit parameters
       return {
-        guidanceScale: 2.5, // Not used but kept for interface consistency
-        steps: 20, // Not used but kept for interface consistency
+        guidanceScale: 2.5,
+        steps: 20,
         seed: undefined,
-        safetyTolerance: 2, // Not used but kept for interface consistency
+        safetyTolerance: 2,
         numImages: 1,
-        // Reve Edit-specific parameters
         outputFormat: "png" as const,
         syncMode: false,
+      };
+    case "gemini-3-pro-edit":
+      return {
+        guidanceScale: 2.5,
+        steps: 20,
+        seed: undefined,
+        safetyTolerance: 2,
+        numImages: 1,
+        outputFormat: "png" as const,
+        resolution: "1K" as const,
+        aspectRatio: "auto",
+        syncMode: false,
+      };
+    case "flux-2-flex-edit":
+      return {
+        guidanceScale: 3.5,
+        steps: 28,
+        seed: undefined,
+        safetyTolerance: 2,
+        numImages: 1,
+        outputFormat: "jpeg" as const,
+        syncMode: false,
+      };
+    default:
+      // Fallback for any new models
+      return {
+        guidanceScale: 2.5,
+        steps: 20,
+        seed: undefined,
+        safetyTolerance: 2,
+        numImages: 1,
       };
   }
 };
@@ -170,7 +217,8 @@ export const useAdjustmentStore = create<AdjustmentStore>()(
     originalImageUrl: null,
     currentEditedUrl: null,
     multipleImages: [],
-    selectedModel: "seededit",
+    multipleImageFiles: [],
+    selectedModel: "seededit" as ImageEditModelId,
     prompt: "",
     parameters: getDefaultParameters("seededit"),
     editHistory: [],
@@ -219,20 +267,122 @@ export const useAdjustmentStore = create<AdjustmentStore>()(
       });
     },
 
-    setMultipleImages: (imageUrls) => {
+    setMultipleImages: (imageUrls, files = []) => {
       // Clean up old URLs that are blob URLs
       const { multipleImages } = get();
-      multipleImages.forEach((url) => {
+      for (const url of multipleImages) {
         if (url.startsWith("blob:")) {
           URL.revokeObjectURL(url);
         }
-      });
+      }
       set({
         multipleImages: imageUrls,
+        multipleImageFiles: files,
+      });
+    },
+
+    addMultipleImage: (file, url) => {
+      set((state) => ({
+        multipleImages: [...state.multipleImages, url],
+        multipleImageFiles: [...state.multipleImageFiles, file],
+      }));
+    },
+
+    removeMultipleImage: (index) => {
+      const { multipleImages, multipleImageFiles } = get();
+      const urlToRemove = multipleImages[index];
+
+      // Clean up blob URL
+      if (urlToRemove?.startsWith("blob:")) {
+        URL.revokeObjectURL(urlToRemove);
+      }
+
+      set({
+        multipleImages: multipleImages.filter((_, i) => i !== index),
+        multipleImageFiles: multipleImageFiles.filter((_, i) => i !== index),
+      });
+    },
+
+    clearMultipleImages: () => {
+      const { multipleImages } = get();
+      // Clean up all blob URLs
+      for (const url of multipleImages) {
+        if (url.startsWith("blob:")) {
+          URL.revokeObjectURL(url);
+        }
+      }
+      set({
+        multipleImages: [],
+        multipleImageFiles: [],
+      });
+    },
+
+    reorderMultipleImages: (fromIndex, toIndex) => {
+      const { multipleImages, multipleImageFiles } = get();
+
+      const newUrls = [...multipleImages];
+      const newFiles = [...multipleImageFiles];
+
+      // Remove from old position
+      const [movedUrl] = newUrls.splice(fromIndex, 1);
+      const [movedFile] = newFiles.splice(fromIndex, 1);
+
+      // Insert at new position
+      newUrls.splice(toIndex, 0, movedUrl);
+      newFiles.splice(toIndex, 0, movedFile);
+
+      set({
+        multipleImages: newUrls,
+        multipleImageFiles: newFiles,
       });
     },
 
     setSelectedModel: (model) => {
+      const { multipleImages, multipleImageFiles } = get();
+      const capabilities = getModelCapabilities(model);
+
+      // If switching to single-image model with multiple images, keep only first
+      if (!capabilities.supportsMultiple && multipleImages.length > 1) {
+        // Clean up extra blob URLs
+        for (let i = 1; i < multipleImages.length; i++) {
+          const url = multipleImages[i];
+          if (url.startsWith("blob:")) {
+            URL.revokeObjectURL(url);
+          }
+        }
+
+        set({
+          selectedModel: model,
+          parameters: getDefaultParameters(model),
+          multipleImages: multipleImages.slice(0, 1),
+          multipleImageFiles: multipleImageFiles.slice(0, 1),
+        });
+        return;
+      }
+
+      // If exceeding new model's max, trim to max
+      if (multipleImages.length > capabilities.maxImages) {
+        // Clean up extra blob URLs
+        for (let i = capabilities.maxImages; i < multipleImages.length; i++) {
+          const url = multipleImages[i];
+          if (url.startsWith("blob:")) {
+            URL.revokeObjectURL(url);
+          }
+        }
+
+        set({
+          selectedModel: model,
+          parameters: getDefaultParameters(model),
+          multipleImages: multipleImages.slice(0, capabilities.maxImages),
+          multipleImageFiles: multipleImageFiles.slice(
+            0,
+            capabilities.maxImages
+          ),
+        });
+        return;
+      }
+
+      // Normal case - just switch model
       set({
         selectedModel: model,
         parameters: getDefaultParameters(model),
@@ -286,13 +436,13 @@ export const useAdjustmentStore = create<AdjustmentStore>()(
       if (index >= 0 && index < editHistory.length) {
         const item = editHistory[index];
         const currentParams = getDefaultParameters(
-          item.model as AdjustmentState["selectedModel"]
+          item.model as ImageEditModelId
         );
         set({
           currentHistoryIndex: index,
           currentEditedUrl: item.editedUrl,
           prompt: item.prompt,
-          selectedModel: item.model as AdjustmentState["selectedModel"],
+          selectedModel: item.model as ImageEditModelId,
           parameters: { ...currentParams, ...item.parameters },
         });
       }

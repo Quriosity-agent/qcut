@@ -196,7 +196,7 @@ export function ParameterControls() {
             <MultiImageUpload
               images={multipleImages}
               maxImages={6}
-              onChange={setMultipleImages}
+              onImagesChange={setMultipleImages}
               label="Input Images (SeedDream V4)"
             />
 
@@ -284,7 +284,7 @@ export function ParameterControls() {
             <MultiImageUpload
               images={multipleImages}
               maxImages={10}
-              onChange={setMultipleImages}
+              onImagesChange={setMultipleImages}
               label="Input Images (Nano Banana)"
             />
 
@@ -292,7 +292,7 @@ export function ParameterControls() {
             <div className="space-y-2">
               <Label className="text-xs">Output Format</Label>
               <Select
-                value={parameters.outputFormat || "PNG"}
+                value={parameters.outputFormat || "png"}
                 onValueChange={(format) =>
                   updateParameter("outputFormat", format)
                 }
@@ -301,8 +301,8 @@ export function ParameterControls() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="PNG">PNG (Higher Quality)</SelectItem>
-                  <SelectItem value="JPEG">JPEG (Smaller Size)</SelectItem>
+                  <SelectItem value="png">PNG (Higher Quality)</SelectItem>
+                  <SelectItem value="jpeg">JPEG (Smaller Size)</SelectItem>
                 </SelectContent>
               </Select>
               <p className="text-xs text-muted-foreground">
@@ -331,6 +331,214 @@ export function ParameterControls() {
               </div>
               <div className="text-xs text-muted-foreground">
                 Total: ${(0.039 * (parameters.numImages || 1)).toFixed(3)}
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* Gemini 3 Pro Edit Specific Controls */}
+        {selectedModel === "gemini-3-pro-edit" && (
+          <>
+            {/* Multi-Image Upload */}
+            <MultiImageUpload
+              images={multipleImages}
+              maxImages={4}
+              onImagesChange={setMultipleImages}
+              label="Input Images (Gemini 3 Pro)"
+            />
+
+            {/* Resolution Selector */}
+            <div className="space-y-2">
+              <Label className="text-xs">Resolution</Label>
+              <Select
+                value={parameters.resolution || "1K"}
+                onValueChange={(resolution) =>
+                  updateParameter("resolution", resolution)
+                }
+              >
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="1K">1K (1024px)</SelectItem>
+                  <SelectItem value="2K">2K (2048px)</SelectItem>
+                  <SelectItem value="4K">4K (4096px)</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Output image resolution
+              </p>
+            </div>
+
+            {/* Aspect Ratio Selector */}
+            <div className="space-y-2">
+              <Label className="text-xs">Aspect Ratio</Label>
+              <Select
+                value={parameters.aspectRatio || "auto"}
+                onValueChange={(ratio) => updateParameter("aspectRatio", ratio)}
+              >
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="auto">Auto (Match Input)</SelectItem>
+                  <SelectItem value="1:1">1:1 (Square)</SelectItem>
+                  <SelectItem value="4:3">4:3 (Standard)</SelectItem>
+                  <SelectItem value="3:4">3:4 (Portrait)</SelectItem>
+                  <SelectItem value="16:9">16:9 (Widescreen)</SelectItem>
+                  <SelectItem value="9:16">9:16 (Vertical)</SelectItem>
+                  <SelectItem value="21:9">21:9 (Ultrawide)</SelectItem>
+                  <SelectItem value="3:2">3:2 (Classic Photo)</SelectItem>
+                  <SelectItem value="2:3">2:3 (Portrait Photo)</SelectItem>
+                  <SelectItem value="5:4">5:4</SelectItem>
+                  <SelectItem value="4:5">4:5</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Output aspect ratio
+              </p>
+            </div>
+
+            {/* Output Format Selector */}
+            <div className="space-y-2">
+              <Label className="text-xs">Output Format</Label>
+              <Select
+                value={parameters.outputFormat || "png"}
+                onValueChange={(format) =>
+                  updateParameter("outputFormat", format)
+                }
+              >
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="png">PNG (Higher Quality)</SelectItem>
+                  <SelectItem value="jpeg">JPEG (Smaller Size)</SelectItem>
+                  <SelectItem value="webp">WebP (Best Compression)</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Choose output image format
+              </p>
+            </div>
+
+            {/* Sync Mode Switch */}
+            <div className="flex items-center justify-between">
+              <Label className="text-xs">Sync Mode</Label>
+              <Switch
+                checked={parameters.syncMode || false}
+                onCheckedChange={(checked) =>
+                  updateParameter("syncMode", checked)
+                }
+              />
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Use synchronous processing mode
+            </p>
+
+            {/* Pricing Display */}
+            <div className="space-y-1">
+              <div className="text-xs text-muted-foreground">
+                Cost: ~$0.15 per image
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* SeedDream V4.5 Specific Controls */}
+        {selectedModel === "seeddream-v4-5-edit" && (
+          <>
+            {/* Multi-Image Upload */}
+            <MultiImageUpload
+              images={multipleImages}
+              maxImages={10}
+              onImagesChange={setMultipleImages}
+              label="Input Images (SeedDream V4.5)"
+            />
+
+            {/* Image Size Selector */}
+            <div className="space-y-2">
+              <Label className="text-xs">Image Size</Label>
+              <Select
+                value={parameters.imageSize || "auto_2K"}
+                onValueChange={(size) => updateParameter("imageSize", size)}
+              >
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="auto_2K">Auto 2K (Recommended)</SelectItem>
+                  <SelectItem value="auto_4K">
+                    Auto 4K (High Quality)
+                  </SelectItem>
+                  <SelectItem value="square_hd">
+                    Square HD (1536×1536)
+                  </SelectItem>
+                  <SelectItem value="square">Square (1024×1024)</SelectItem>
+                  <SelectItem value="portrait_4_3">Portrait 4:3</SelectItem>
+                  <SelectItem value="portrait_16_9">Portrait 16:9</SelectItem>
+                  <SelectItem value="landscape_4_3">Landscape 4:3</SelectItem>
+                  <SelectItem value="landscape_16_9">Landscape 16:9</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Output image resolution and aspect ratio
+              </p>
+            </div>
+
+            {/* Max Images */}
+            <div className="space-y-2">
+              <div className="flex justify-between">
+                <Label className="text-xs">Max Input Images</Label>
+                <span className="text-xs text-muted-foreground">
+                  {parameters.maxImages || 1}
+                </span>
+              </div>
+              <Slider
+                value={[parameters.maxImages || 1]}
+                onValueChange={([value]) => updateParameter("maxImages", value)}
+                min={1}
+                max={10}
+                step={1}
+                className="w-full"
+              />
+              <p className="text-xs text-muted-foreground">
+                Maximum number of input images to process (1-10)
+              </p>
+            </div>
+
+            {/* Safety Checker Switch */}
+            <div className="flex items-center justify-between">
+              <Label className="text-xs">Safety Checker</Label>
+              <Switch
+                checked={parameters.enableSafetyChecker !== false}
+                onCheckedChange={(checked) =>
+                  updateParameter("enableSafetyChecker", checked)
+                }
+              />
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Enable content safety filtering
+            </p>
+
+            {/* Sync Mode Switch */}
+            <div className="flex items-center justify-between">
+              <Label className="text-xs">Sync Mode</Label>
+              <Switch
+                checked={parameters.syncMode || false}
+                onCheckedChange={(checked) =>
+                  updateParameter("syncMode", checked)
+                }
+              />
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Use synchronous processing mode
+            </p>
+
+            {/* Pricing Display */}
+            <div className="space-y-1">
+              <div className="text-xs text-muted-foreground">
+                Cost: $0.04-0.08 per image
               </div>
             </div>
           </>

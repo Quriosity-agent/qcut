@@ -6,6 +6,22 @@
 
 import { handleAIServiceError } from "./error-handler";
 import { UPSCALE_MODEL_ENDPOINTS, type UpscaleModelId } from "./upscale-models";
+import {
+  getModelCapabilities,
+  type ImageEditModelId,
+  type ModelCapability,
+  MODEL_CAPABILITIES,
+  IMAGE_EDIT_MODEL_IDS,
+} from "./image-edit-capabilities";
+
+// Re-export capabilities for convenience
+export {
+  getModelCapabilities,
+  type ImageEditModelId,
+  type ModelCapability,
+  MODEL_CAPABILITIES,
+  IMAGE_EDIT_MODEL_IDS,
+} from "./image-edit-capabilities";
 
 const FAL_API_KEY = import.meta.env.VITE_FAL_API_KEY;
 const FAL_API_BASE = "https://fal.run";
@@ -13,18 +29,12 @@ const FAL_API_BASE = "https://fal.run";
 // Environment check removed for production
 
 export interface ImageEditRequest {
-  imageUrl: string;
+  /** @deprecated Use imageUrls instead for multi-image support */
+  imageUrl?: string;
+  /** Array of image URLs - supports multi-image models */
+  imageUrls?: string[];
   prompt: string;
-  model:
-    | "seededit"
-    | "flux-kontext"
-    | "flux-kontext-max"
-    | "flux-2-flex-edit"
-    | "seeddream-v4"
-    | "seeddream-v4-5-edit"
-    | "nano-banana"
-    | "reve-edit"
-    | "gemini-3-pro-edit";
+  model: ImageEditModelId;
   guidanceScale?: number;
   steps?: number;
   seed?: number;
@@ -252,6 +262,37 @@ export async function uploadImageToFAL(imageFile: File): Promise<string> {
 }
 
 /**
+ * Upload multiple images to FAL.ai in parallel
+ * @param imageFiles - Array of File objects to upload
+ * @param onProgress - Optional callback for upload progress
+ * @returns Promise resolving to array of uploaded image URLs
+ */
+export async function uploadImagesToFAL(
+  imageFiles: File[],
+  onProgress?: (completed: number, total: number) => void
+): Promise<string[]> {
+  if (imageFiles.length === 0) {
+    return [];
+  }
+
+  const total = imageFiles.length;
+  let completed = 0;
+
+  const uploadPromises = imageFiles.map(async (file) => {
+    const url = await uploadImageToFAL(file);
+    completed++;
+    onProgress?.(completed, total);
+    return url;
+  });
+
+  // Upload in parallel for better performance
+  const results = await Promise.all(uploadPromises);
+
+  console.log(`✅ UPLOAD: Successfully uploaded ${results.length} images`);
+  return results;
+}
+
+/**
  * Edit image using specified model
  */
 export async function editImage(
@@ -276,19 +317,35 @@ export async function editImage(
     ...modelConfig.defaultParams,
   };
 
-  // Handle image URL(s) based on model
-  if (
-    request.model === "seeddream-v4" ||
-    request.model === "seeddream-v4-5-edit" ||
-    request.model === "nano-banana" ||
-    request.model === "gemini-3-pro-edit" ||
-    request.model === "flux-2-flex-edit"
-  ) {
-    // V4, V4.5, Nano Banana, Gemini 3 Pro Edit, and FLUX 2 Flex Edit use image_urls array
-    payload.image_urls = [request.imageUrl];
+  // Handle image URL(s) based on model capabilities
+  const capabilities = getModelCapabilities(request.model);
+
+  // Normalize to array format (support both imageUrl and imageUrls)
+  const imageUrlsArray: string[] = request.imageUrls
+    ? request.imageUrls
+    : request.imageUrl
+      ? [request.imageUrl]
+      : [];
+
+  // Validate image count
+  if (imageUrlsArray.length === 0) {
+    throw new Error("At least one image URL is required");
+  }
+
+  if (imageUrlsArray.length > capabilities.maxImages) {
+    console.warn(
+      `Model ${request.model} supports max ${capabilities.maxImages} images, ` +
+        `but ${imageUrlsArray.length} provided. Using first ${capabilities.maxImages}.`
+    );
+  }
+
+  // Apply model-appropriate payload format
+  if (capabilities.supportsMultiple) {
+    // Multi-image models use image_urls array
+    payload.image_urls = imageUrlsArray.slice(0, capabilities.maxImages);
   } else {
-    // V3 and FLUX use image_url string
-    payload.image_url = request.imageUrl;
+    // Single-image models use image_url string
+    payload.image_url = imageUrlsArray[0];
   }
 
   // Override with user-specified parameters
@@ -367,7 +424,7 @@ export async function editImage(
   try {
     // Try queue mode first
     const ctrl = new AbortController();
-    const timeout = setTimeout(() => ctrl.abort(), 60_000); // 60 second timeout
+    const timeout = setTimeout(() => ctrl.abort(), 180_000); // 3 minute timeout
 
     const response = await fetch(`${FAL_API_BASE}/${modelConfig.endpoint}`, {
       method: "POST",

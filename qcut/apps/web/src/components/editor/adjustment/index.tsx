@@ -9,9 +9,10 @@ import { Wand2, Loader2 } from "lucide-react";
 import {
   editImage,
   uploadImageToFAL,
+  uploadImagesToFAL,
+  getModelCapabilities,
   type ImageEditRequest,
 } from "@/lib/image-edit-client";
-// Image utilities will be imported dynamically when needed
 import { debugLog } from "@/lib/debug-config";
 import { createObjectURL } from "@/lib/blob-manager";
 
@@ -21,13 +22,14 @@ export { ImageUploader } from "./image-uploader";
 export { ModelSelector } from "./model-selector";
 export { ParameterControls } from "./parameter-controls";
 export { PreviewPanel } from "./preview-panel";
+export { ConditionalImageUploader } from "./conditional-image-uploader";
 
 // Import components for main panel
 import { EditHistory } from "./edit-history";
-import { ImageUploader } from "./image-uploader";
 import { ModelSelector } from "./model-selector";
 import { ParameterControls } from "./parameter-controls";
 import { PreviewPanel } from "./preview-panel";
+import { ConditionalImageUploader } from "./conditional-image-uploader";
 
 // Main adjustment panel component
 export function AdjustmentPanel() {
@@ -38,6 +40,8 @@ export function AdjustmentPanel() {
     setOriginalImage,
     originalImageUrl,
     originalImage,
+    multipleImages,
+    multipleImageFiles,
     showHistory,
     prompt,
     selectedModel,
@@ -53,10 +57,13 @@ export function AdjustmentPanel() {
     error: mediaStoreError,
   } = useAsyncMediaStoreActions();
 
-  const handleImageSelect = (file: File) => {
-    const url = createObjectURL(file, "adjustment-image-select");
-    setOriginalImage(file, url);
-  };
+  // Get model capabilities to determine if multi-image
+  const capabilities = getModelCapabilities(selectedModel);
+
+  // Check if we have images based on model type
+  const hasImages = capabilities.supportsMultiple
+    ? multipleImages.length > 0
+    : !!originalImageUrl;
 
   const handleGenerateEdit = async () => {
     if (!prompt.trim()) {
@@ -64,9 +71,17 @@ export function AdjustmentPanel() {
       return;
     }
 
-    if (!originalImage || !originalImageUrl) {
-      alert("Please upload an image first.");
-      return;
+    // Validate images based on model capabilities
+    if (capabilities.supportsMultiple) {
+      if (multipleImageFiles.length === 0) {
+        alert("Please upload at least one image.");
+        return;
+      }
+    } else {
+      if (!originalImage || !originalImageUrl) {
+        alert("Please upload an image first.");
+        return;
+      }
     }
 
     try {
@@ -76,13 +91,36 @@ export function AdjustmentPanel() {
       setProcessingState({
         isProcessing: true,
         progress: 0,
-        statusMessage: "Uploading image...",
+        statusMessage: "Uploading image(s)...",
         elapsedTime: 0,
       });
 
-      // Upload image to FAL
-      debugLog("🔄 Uploading image to FAL...");
-      const uploadedImageUrl = await uploadImageToFAL(originalImage);
+      let uploadedImageUrls: string[] = [];
+
+      // Upload images based on model capabilities
+      if (capabilities.supportsMultiple && multipleImageFiles.length > 0) {
+        // Upload multiple images
+        debugLog(`🔄 Uploading ${multipleImageFiles.length} images to FAL...`);
+        uploadedImageUrls = await uploadImagesToFAL(
+          multipleImageFiles,
+          (completed, total) => {
+            const uploadProgress = Math.round((completed / total) * 20);
+            setProcessingState({
+              isProcessing: true,
+              progress: uploadProgress,
+              statusMessage: `Uploading image ${completed}/${total}...`,
+              elapsedTime: (Date.now() - startTime) / 1000,
+            });
+          }
+        );
+      } else if (originalImage) {
+        // Upload single image
+        debugLog("🔄 Uploading image to FAL...");
+        const uploadedUrl = await uploadImageToFAL(originalImage);
+        uploadedImageUrls = [uploadedUrl];
+      } else {
+        throw new Error("No images to upload");
+      }
 
       setProcessingState({
         isProcessing: true,
@@ -91,9 +129,9 @@ export function AdjustmentPanel() {
         elapsedTime: (Date.now() - startTime) / 1000,
       });
 
-      // Build edit request
+      // Build edit request with imageUrls array
       const editRequest: ImageEditRequest = {
-        imageUrl: uploadedImageUrl,
+        imageUrls: uploadedImageUrls,
         prompt: prompt.trim(),
         model: selectedModel,
         guidanceScale: parameters.guidanceScale,
@@ -101,12 +139,13 @@ export function AdjustmentPanel() {
         seed: parameters.seed,
         safetyTolerance: parameters.safetyTolerance,
         numImages: parameters.numImages,
-        // Add new V4/Nano Banana parameters
         imageSize: parameters.imageSize,
         maxImages: parameters.maxImages,
         syncMode: parameters.syncMode,
         enableSafetyChecker: parameters.enableSafetyChecker,
         outputFormat: parameters.outputFormat,
+        resolution: parameters.resolution,
+        aspectRatio: parameters.aspectRatio,
       };
 
       debugLog("🎨 Generating edit with:", editRequest);
@@ -171,7 +210,10 @@ export function AdjustmentPanel() {
               source: "image_edit",
               model: selectedModel,
               prompt: prompt.trim(),
-              originalImageUrl,
+              originalImageUrl: capabilities.supportsMultiple
+                ? multipleImages[0]
+                : originalImageUrl,
+              imageCount: uploadedImageUrls.length,
               processingTime: totalTime,
               seedUsed: result.seed_used,
             },
@@ -197,8 +239,10 @@ export function AdjustmentPanel() {
 
         // Add to edit history with blob URL (avoids CORS/COEP display issues)
         addToHistory({
-          originalUrl: originalImageUrl,
-          editedUrl: blobUrl || result.result_url, // Use blob URL if available, fallback to FAL URL
+          originalUrl: capabilities.supportsMultiple
+            ? multipleImages[0] || ""
+            : originalImageUrl || "",
+          editedUrl: blobUrl || result.result_url,
           prompt: prompt.trim(),
           model: selectedModel,
           parameters: { ...parameters },
@@ -232,7 +276,7 @@ export function AdjustmentPanel() {
     }
   };
 
-  const canGenerateEdit = originalImageUrl && prompt.trim() && !isProcessing;
+  const canGenerateEdit = hasImages && prompt.trim() && !isProcessing;
 
   // Handle media store loading/error states
   if (mediaStoreError) {
@@ -292,13 +336,13 @@ export function AdjustmentPanel() {
         <ModelSelector />
       </div>
 
-      {/* Image Upload Section - Third */}
+      {/* Image Upload Section - Conditional based on model */}
       <div className="flex-shrink-0">
-        <ImageUploader onImageSelect={handleImageSelect} uploading={false} />
+        <ConditionalImageUploader />
       </div>
 
-      {/* Only show other components if image is loaded */}
-      {originalImageUrl && (
+      {/* Only show other components if image(s) are loaded */}
+      {hasImages && (
         <>
           {/* Parameter Controls */}
           <div className="flex-shrink-0">
@@ -320,7 +364,7 @@ export function AdjustmentPanel() {
       )}
 
       {/* Empty state when no image */}
-      {!originalImageUrl && (
+      {!hasImages && (
         <div className="flex-1 flex items-center justify-center text-center text-muted-foreground">
           <div>
             <div className="text-6xl mb-4">🎨</div>

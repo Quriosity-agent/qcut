@@ -48,6 +48,20 @@ export interface Veo31FrameToVideoInput {
 }
 
 /**
+ * Veo 3.1 Extend-Video Input Parameters
+ * Extends an existing video by 7 seconds based on a text prompt
+ */
+export interface Veo31ExtendVideoInput {
+  prompt: string; // Required: How the video should continue
+  video_url: string; // Required: Video to extend (720p+, 16:9 or 9:16, up to 8s)
+  aspect_ratio?: "auto" | "16:9" | "9:16"; // Default: "auto"
+  duration?: "7s"; // Currently only "7s" supported
+  resolution?: "720p"; // Currently only "720p" supported
+  generate_audio?: boolean; // Default: true
+  auto_fix?: boolean; // Default: false
+}
+
+/**
  * Veo 3.1 API Response
  */
 export interface Veo31Response {

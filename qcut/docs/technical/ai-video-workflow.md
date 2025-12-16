@@ -293,8 +293,10 @@ Modular architecture for AI video generation, refactored from monolithic `ai-vid
 ```
 lib/ai-video/
 ├── index.ts                    # Barrel file - backward compatible exports
+├── api.ts                      # High-level API (getAvailableModels, estimateCost)
 ├── core/
 │   ├── fal-request.ts          # FAL API request utilities
+│   ├── fal-upload.ts           # FAL file upload utilities
 │   ├── polling.ts              # Queue polling with progress updates
 │   └── streaming.ts            # Video streaming download
 ├── generators/
@@ -306,9 +308,8 @@ lib/ai-video/
 │   └── image.ts                # Seeddream image generation
 ├── models/
 │   └── sora2.ts                # Sora 2 specific parameter conversion
-├── validation/
-│   └── validators.ts           # Input validation (duration, resolution, audio)
-└── api.ts                      # High-level API (getAvailableModels, estimateCost)
+└── validation/
+    └── validators.ts           # Input validation (duration, resolution, audio)
 ```
 
 - Direct integration with FAL AI APIs
@@ -322,14 +323,56 @@ lib/ai-video/
 - Veo 3.1 specific implementations
 - Request/response handling
 
-#### 4. **AI View Component** (`components/editor/media-panel/views/ai.tsx`)
-- Main UI for AI video generation
+#### 4. **AI View Component** (`components/editor/media-panel/views/ai/`)
+Modular UI architecture for AI video generation:
+
+```
+views/ai/
+├── index.tsx                   # Main AI panel component
+├── __tests__/                  # Unit tests
+│   └── ai-constants.test.ts
+├── components/                 # Reusable UI components
+│   ├── ai-history-panel.tsx    # Generation history panel
+│   ├── ai-image-upload.tsx     # Image upload component
+│   ├── ai-select-fields.tsx    # Dropdown select fields
+│   └── ai-settings-panel.tsx   # Settings panel wrapper
+├── constants/                  # Configuration constants
+│   ├── ai-constants.ts         # 40+ model definitions, endpoints, pricing
+│   ├── ai-model-options.ts     # Model option enums and defaults
+│   └── text2video-models-config.ts  # T2V capability definitions
+├── hooks/                      # React hooks
+│   ├── generation/             # Generation-specific hooks
+│   │   ├── index.ts            # Barrel exports
+│   │   ├── media-integration.ts    # Media store integration
+│   │   └── model-handlers.ts   # Model-specific generation handlers
+│   ├── use-ai-avatar-tab-state.ts  # Avatar tab state management
+│   ├── use-ai-generation.ts    # Main generation hook (57KB)
+│   ├── use-ai-history.ts       # History management
+│   ├── use-ai-image-tab-state.ts   # Image tab state management
+│   ├── use-ai-tab-state-base.ts    # Shared tab state logic
+│   ├── use-ai-text-tab-state.ts    # Text tab state management
+│   └── use-ai-upscale-tab-state.ts # Upscale tab state management
+├── settings/                   # Model-specific settings components
+│   ├── ai-reve-settings.tsx    # Reve text-to-image settings
+│   ├── ai-sora-settings.tsx    # Sora 2 settings
+│   └── ai-veo-settings.tsx     # Veo 3.1 settings
+├── tabs/                       # Tab content components
+│   ├── ai-avatar-tab.tsx       # Avatar generation tab
+│   ├── ai-image-tab.tsx        # Image-to-video tab
+│   ├── ai-text-tab.tsx         # Text-to-video tab
+│   └── ai-upscale-tab.tsx      # Video upscale tab
+├── types/                      # TypeScript type definitions
+│   └── ai-types.ts             # AI-related interfaces and types
+└── utils/                      # Utility functions
+    └── ai-cost-calculators.ts  # Cost calculation utilities
+```
+
 - Responsive layout for different panel widths
-- Model selection and cost calculation
+- Model selection and real-time cost calculation
 - Progress visualization and status updates
 - Integration with media panel and timeline
 
-#### 5. **Text-to-Video Models Config** (`components/editor/media-panel/views/ai/config/text2video-models-config.ts`)
+#### 5. **Text-to-Video Models Config** (`components/editor/media-panel/views/ai/constants/text2video-models-config.ts`)
 - Model capability definitions (aspect ratios, resolutions, durations)
 - Combined capability computation for multi-model selection
 - Model ID aliasing for compatibility
@@ -677,7 +720,7 @@ Enable detailed logging in browser console:
 
 ---
 
-*Last Updated: December 2025*
+*Last Updated: 2025-12-16*
 *QCut AI Video Models: 40+ models via FAL.ai*
 *Price Range: $0.04 - $3.20+ per video*
 
@@ -691,7 +734,7 @@ This document describes the step-by-step flow of AI video generation in QCut, wi
 ### Step 1 - Model Selection
 User selects T2V models in the AI Panel UI; the UI updates the selected models and queries the capability system.
 - **Function**: `AiView` (React Component)
-- **File**: `qcut/apps/web/src/components/editor/media-panel/views/ai.tsx`
+- **File**: `qcut/apps/web/src/components/editor/media-panel/views/ai/index.tsx`
 - **Console**: `step 1: selectedModels updated -> ...`
   - **Step 1.1**: User interacts with model selection UI.
   - **Step 1.2**: `selectedModels` state is updated.
@@ -700,7 +743,7 @@ User selects T2V models in the AI Panel UI; the UI updates the selected models a
 ### Step 2 - Capability Computation
 The capability system returns intersected capabilities and the UI renders clamped T2V settings (aspect_ratio, duration, resolution) based on them.
 - **Function**: `getCombinedCapabilities`
-- **File**: `qcut/apps/web/src/components/editor/media-panel/views/text2video-models-config.ts`
+- **File**: `qcut/apps/web/src/components/editor/media-panel/views/ai/constants/text2video-models-config.ts`
 - **Console**: `step 2: combinedCapabilities updated`
   - **Step 2.1**: `getCombinedCapabilities` computes intersection of supported features.
   - **Step 2.2**: `AiView` receives updated `combinedCapabilities`.
@@ -709,7 +752,7 @@ The capability system returns intersected capabilities and the UI renders clampe
 ### Step 3 - Generation Invoked
 The user enters a prompt, adjusts settings, and clicks Generate; the UI invokes generateVideo with the T2V properties.
 - **Function**: `handleGenerate`
-- **File**: `qcut/apps/web/src/components/editor/media-panel/views/use-ai-generation.ts`
+- **File**: `qcut/apps/web/src/components/editor/media-panel/views/ai/hooks/use-ai-generation.ts`
 - **Console Logs**:
   - `step 3: handleGenerate invoked (AI video flow)`
   - `step 3a: pre-generation state check`
@@ -722,7 +765,7 @@ The user enters a prompt, adjusts settings, and clicks Generate; the UI invokes 
 ### Step 4 - Parameter Sanitization
 Generation validates the requested duration against capabilities (getSafeDuration clamping) and builds unifiedParams sanitized to capability ranges.
 - **Function**: `handleGenerate` (calls `getSafeDuration`)
-- **File**: `qcut/apps/web/src/components/editor/media-panel/views/use-ai-generation.ts`
+- **File**: `qcut/apps/web/src/components/editor/media-panel/views/ai/hooks/use-ai-generation.ts`
 - **Console**: `step 4: sanitized params for ${modelId}`
 - **Sub-steps**:
   - **Step 4.1**: Iterate through `selectedModels`.
@@ -733,7 +776,7 @@ Generation validates the requested duration against capabilities (getSafeDuratio
 ### Step 5 - API Request
 Generation sends the request to the FAL API with unifiedParams and receives a video_url plus metadata.
 - **Function**: Request dispatch in `handleGenerate` (model-specific helpers like `generateLTXV2Video`)
-- **File**: `qcut/apps/web/src/components/editor/media-panel/views/use-ai-generation.ts`
+- **File**: `qcut/apps/web/src/components/editor/media-panel/views/ai/hooks/use-ai-generation.ts`
 - **Console**: `step 5a: post-API response analysis`
 - **Sub-steps**:
   - **Step 5.1**: Identify specific API function based on model ID.
@@ -745,7 +788,7 @@ Generation sends the request to the FAL API with unifiedParams and receives a vi
 Generation downloads the video, creates a media item, and adds it to the media store with unified metadata.
 - **Function**: `handleGenerate` (inside success block), `addMediaItem` (store action)
 - **Files**:
-  - `qcut/apps/web/src/components/editor/media-panel/views/use-ai-generation.ts`
+  - `qcut/apps/web/src/components/editor/media-panel/views/ai/hooks/use-ai-generation.ts`
   - `qcut/apps/web/src/stores/media-store.ts`
 - **Console Logs** (in order):
   - `step 6a: media integration condition check`
@@ -773,7 +816,7 @@ The media store persists the item; generation updates UI progress to 100% and fi
 - **Function**: `addMediaItem` (store action), `handleGenerate` (UI update)
 - **Files**:
   - `qcut/apps/web/src/stores/media-store.ts`
-  - `qcut/apps/web/src/components/editor/media-panel/views/use-ai-generation.ts`
+  - `qcut/apps/web/src/components/editor/media-panel/views/ai/hooks/use-ai-generation.ts`
 - **Console**: `step 7: generation flow complete; updating UI and callbacks`
 - **Sub-steps**:
   - **Step 7.1**: `MediaStore` generates a unique ID and updates local state.
@@ -789,8 +832,8 @@ The media store persists the item; generation updates UI progress to 100% and fi
 ### Step 8 - Media Panel Downloads
 Individual download and export-all ZIP functionality from the media panel.
 - **Files**:
-  - `qcut/apps/web/src/components/editor/media-panel/views/ai.tsx`
-  - `qcut/apps/web/src/components/editor/media-panel/views/ai-history-panel.tsx`
+  - `qcut/apps/web/src/components/editor/media-panel/views/ai/index.tsx`
+  - `qcut/apps/web/src/components/editor/media-panel/views/ai/components/ai-history-panel.tsx`
   - `qcut/apps/web/src/components/editor/media-panel/export-all-button.tsx`
   - `qcut/apps/web/src/hooks/use-zip-export.ts`
 

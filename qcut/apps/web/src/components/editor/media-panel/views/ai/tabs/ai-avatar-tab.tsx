@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Collapsible,
   CollapsibleContent,
@@ -108,6 +109,12 @@ export interface AIAvatarTabProps {
   onSyncLipsyncModelModeChange: (mode: SyncLipsyncModelMode) => void;
   onSyncLipsyncLipsyncModeChange: (mode: SyncLipsyncSyncMode) => void;
   onSyncLipsyncTemperatureChange: (temp: number) => void;
+
+  // Veo 3.1 Extend-Video
+  extendVideoAspectRatio: "auto" | "16:9" | "9:16";
+  onExtendVideoAspectRatioChange: (value: "auto" | "16:9" | "9:16") => void;
+  extendVideoGenerateAudio: boolean;
+  onExtendVideoGenerateAudioChange: (value: boolean) => void;
 }
 
 // ============================================
@@ -169,6 +176,11 @@ export function AIAvatarTab({
   onSyncLipsyncModelModeChange,
   onSyncLipsyncLipsyncModeChange,
   onSyncLipsyncTemperatureChange,
+  // Veo 3.1 Extend-Video props
+  extendVideoAspectRatio,
+  onExtendVideoAspectRatioChange,
+  extendVideoGenerateAudio,
+  onExtendVideoGenerateAudioChange,
 }: AIAvatarTabProps) {
   // Collapsible state for additional settings
   const [isAdditionalSettingsOpen, setIsAdditionalSettingsOpen] =
@@ -181,6 +193,10 @@ export function AIAvatarTab({
 
   const syncLipsyncReact1Selected = selectedModels.includes(
     "sync_lipsync_react1"
+  );
+
+  const extendVideoSelected = selectedModels.some((m) =>
+    m.includes("extend_video")
   );
 
   return (
@@ -580,6 +596,72 @@ export function AIAvatarTab({
               {audioDuration.toFixed(1)}s
             </div>
           )}
+        </div>
+      )}
+
+      {/* Veo 3.1 Extend-Video Options */}
+      {extendVideoSelected && (
+        <div className="space-y-3 text-left border-t pt-3">
+          <Label className="text-sm font-semibold">
+            Veo 3.1 Extend-Video Options
+          </Label>
+          <p className="text-xs text-muted-foreground">
+            Upload a video (up to 8s, 720p/1080p, 16:9 or 9:16) to extend by 7
+            seconds
+          </p>
+
+          <div className="grid grid-cols-2 gap-3">
+            {/* Aspect Ratio */}
+            <div className="space-y-2">
+              <Label htmlFor="extend-video-aspect-ratio" className="text-xs">
+                Aspect Ratio
+              </Label>
+              <Select
+                value={extendVideoAspectRatio}
+                onValueChange={onExtendVideoAspectRatioChange}
+              >
+                <SelectTrigger
+                  id="extend-video-aspect-ratio"
+                  className="h-8 text-xs"
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="auto">Auto (detect)</SelectItem>
+                  <SelectItem value="16:9">16:9 Landscape</SelectItem>
+                  <SelectItem value="9:16">9:16 Portrait</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Generate Audio */}
+            <div className="space-y-2">
+              <Label className="text-xs">Generate Audio</Label>
+              <div className="flex items-center gap-2 h-8">
+                <Checkbox
+                  id="extend-video-audio"
+                  checked={extendVideoGenerateAudio}
+                  onCheckedChange={(checked) =>
+                    onExtendVideoGenerateAudioChange(checked === true)
+                  }
+                />
+                <label
+                  htmlFor="extend-video-audio"
+                  className="text-xs text-muted-foreground cursor-pointer"
+                >
+                  {extendVideoGenerateAudio
+                    ? "On ($0.15-0.40/s)"
+                    : "Off ($0.10-0.20/s)"}
+                </label>
+              </div>
+            </div>
+          </div>
+
+          {/* Cost estimate */}
+          <div className="text-xs text-muted-foreground">
+            Extends video by 7 seconds · Est. cost:{" "}
+            {extendVideoGenerateAudio ? "$1.05-2.80" : "$0.70-1.40"}
+          </div>
         </div>
       )}
     </div>

@@ -62,6 +62,10 @@ export interface AvatarTabState {
   syncLipsyncModelMode: SyncLipsyncModelMode;
   syncLipsyncLipsyncMode: SyncLipsyncSyncMode;
   syncLipsyncTemperature: number;
+
+  // Veo 3.1 Extend-Video
+  extendVideoAspectRatio: "auto" | "16:9" | "9:16";
+  extendVideoGenerateAudio: boolean;
 }
 
 export interface AvatarTabSetters {
@@ -89,6 +93,10 @@ export interface AvatarTabSetters {
   setSyncLipsyncModelMode: (mode: SyncLipsyncModelMode) => void;
   setSyncLipsyncLipsyncMode: (mode: SyncLipsyncSyncMode) => void;
   setSyncLipsyncTemperature: (temp: number) => void;
+
+  // Veo 3.1 Extend-Video
+  setExtendVideoAspectRatio: (value: "auto" | "16:9" | "9:16") => void;
+  setExtendVideoGenerateAudio: (value: boolean) => void;
 }
 
 export interface AvatarTabHelpers {
@@ -182,6 +190,13 @@ export function useAvatarTabState(): UseAvatarTabStateResult {
   const [syncLipsyncTemperature, setSyncLipsyncTemperature] =
     useState<number>(0.5);
 
+  // Veo 3.1 Extend-Video state
+  const [extendVideoAspectRatio, setExtendVideoAspectRatio] = useState<
+    "auto" | "16:9" | "9:16"
+  >("auto");
+  const [extendVideoGenerateAudio, setExtendVideoGenerateAudio] =
+    useState<boolean>(true);
+
   // Reset all state
   const resetAll = useCallback(() => {
     avatarImageState.reset();
@@ -196,6 +211,9 @@ export function useAvatarTabState(): UseAvatarTabStateResult {
     setSyncLipsyncModelMode("face");
     setSyncLipsyncLipsyncMode("bounce");
     setSyncLipsyncTemperature(0.5);
+    // Reset Veo 3.1 Extend-Video state
+    setExtendVideoAspectRatio("auto");
+    setExtendVideoGenerateAudio(true);
   }, [
     avatarImageState,
     avatarLastFrameState,
@@ -227,6 +245,9 @@ export function useAvatarTabState(): UseAvatarTabStateResult {
       syncLipsyncModelMode,
       syncLipsyncLipsyncMode,
       syncLipsyncTemperature,
+      // Veo 3.1 Extend-Video state
+      extendVideoAspectRatio,
+      extendVideoGenerateAudio,
     },
     setters: {
       setAvatarImage: avatarImageState.setFile,
@@ -241,6 +262,9 @@ export function useAvatarTabState(): UseAvatarTabStateResult {
       setSyncLipsyncModelMode,
       setSyncLipsyncLipsyncMode,
       setSyncLipsyncTemperature,
+      // Veo 3.1 Extend-Video setters
+      setExtendVideoAspectRatio,
+      setExtendVideoGenerateAudio,
     },
     helpers: {
       resetAvatarImage: avatarImageState.reset,

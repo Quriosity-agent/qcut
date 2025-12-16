@@ -1,61 +1,80 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { X, Upload, Image as ImageIcon, Plus } from "lucide-react";
-import { revokeObjectURL as revokeManagedObjectURL } from "@/lib/blob-manager";
+import { createObjectURL, revokeObjectURL } from "@/lib/blob-manager";
 
 interface MultiImageUploadProps {
   images: string[];
   maxImages: number;
-  onChange: (images: string[]) => void;
+  /** Called with both URLs and Files for proper upload handling */
+  onImagesChange: (images: string[], files: File[]) => void;
+  /** Called when an image is removed */
+  onRemoveImage?: (index: number) => void;
   label?: string;
 }
 
 export function MultiImageUpload({
   images = [],
   maxImages,
-  onChange,
+  onImagesChange,
+  onRemoveImage,
   label = "Input Images",
 }: MultiImageUploadProps) {
   const [dragOver, setDragOver] = useState(false);
+  // Track files internally to pass with URLs
+  const filesRef = useRef<File[]>([]);
 
   const handleFileUpload = useCallback(
-    (files: FileList) => {
+    (fileList: FileList) => {
       const remainingSlots = maxImages - images.length;
-      const filesToProcess = Math.min(files.length, remainingSlots);
+      const filesToProcess = Math.min(fileList.length, remainingSlots);
 
       const newImageUrls: string[] = [];
+      const newFiles: File[] = [];
 
       for (let i = 0; i < filesToProcess; i++) {
-        const file = files[i];
+        const file = fileList[i];
         if (file.type.startsWith("image/")) {
-          const url = URL.createObjectURL(file);
+          const url = createObjectURL(file, "multi-image-upload");
           newImageUrls.push(url);
+          newFiles.push(file);
         }
       }
 
       if (newImageUrls.length > 0) {
-        onChange([...images, ...newImageUrls]);
+        const updatedUrls = [...images, ...newImageUrls];
+        const updatedFiles = [...filesRef.current, ...newFiles];
+        filesRef.current = updatedFiles;
+        onImagesChange(updatedUrls, updatedFiles);
       }
     },
-    [images, maxImages, onChange]
+    [images, maxImages, onImagesChange]
   );
 
   const removeImage = useCallback(
     (index: number) => {
       const imageToRemove = images[index];
       if (imageToRemove.startsWith("blob:")) {
-        revokeManagedObjectURL(
-          imageToRemove,
-          "multi-image-upload:remove-image"
-        );
+        revokeObjectURL(imageToRemove, "multi-image-upload:remove");
       }
-      onChange(images.filter((_, i) => i !== index));
+
+      // Update files ref
+      const updatedFiles = filesRef.current.filter((_, i) => i !== index);
+      filesRef.current = updatedFiles;
+
+      // Notify parent
+      if (onRemoveImage) {
+        onRemoveImage(index);
+      } else {
+        const updatedUrls = images.filter((_, i) => i !== index);
+        onImagesChange(updatedUrls, updatedFiles);
+      }
     },
-    [images, onChange]
+    [images, onImagesChange, onRemoveImage]
   );
 
   const openFileDialog = useCallback(() => {
@@ -96,121 +115,108 @@ export function MultiImageUpload({
   const remainingSlots = maxImages - images.length;
 
   return (
-    <div className="multi-image-upload space-y-3">
-      <div className="flex items-center justify-between">
-        <Label className="text-xs font-medium">{label}</Label>
-        <span className="text-xs text-muted-foreground">
-          {images.length}/{maxImages}
-        </span>
-      </div>
+    <Card>
+      <CardContent className="p-3 space-y-3">
+        <div className="flex items-center justify-between">
+          <Label className="text-xs font-medium">{label}</Label>
+          <span className="text-xs text-muted-foreground">
+            {images.length}/{maxImages}
+          </span>
+        </div>
 
-      {/* Image Preview Grid */}
-      {images.length > 0 && (
-        <div className="grid grid-cols-2 gap-2">
-          {images.map((image, index) => (
-            <Card key={index} className="relative group">
-              <CardContent className="p-2">
-                <div className="relative aspect-square">
+        {/* Image Preview Grid */}
+        {images.length > 0 && (
+          <div className="grid grid-cols-3 gap-2">
+            {images.map((image, index) => (
+              <div key={`img-${index}`} className="relative group">
+                <div className="relative aspect-square rounded border overflow-hidden">
                   <img
                     src={image}
                     alt={`Upload ${index + 1}`}
-                    className="w-full h-full object-cover rounded border"
+                    className="w-full h-full object-cover"
                     onError={() => {
                       console.warn(`Failed to load image: ${image}`);
                     }}
                   />
                   <Button
+                    type="button"
                     size="sm"
                     variant="destructive"
-                    className="absolute -top-1 -right-1 w-5 h-5 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                    className="absolute top-0.5 right-0.5 w-4 h-4 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
                     onClick={() => removeImage(index)}
                   >
-                    <X className="w-3 h-3" />
+                    <X className="w-2.5 h-2.5" />
                   </Button>
-                  <div className="absolute bottom-1 left-1 bg-black/50 text-white text-xs px-1 rounded">
+                  <div className="absolute bottom-0.5 left-0.5 bg-black/60 text-white text-[10px] px-1 rounded">
                     {index + 1}
                   </div>
                 </div>
-              </CardContent>
-            </Card>
-          ))}
+              </div>
+            ))}
 
-          {/* Add More Button */}
-          {canAddMore && (
-            <Card
-              className={`cursor-pointer border-2 border-dashed transition-colors ${
-                dragOver
-                  ? "border-primary bg-primary/5"
-                  : "border-muted-foreground/25 hover:border-primary/50"
-              }`}
-              onClick={openFileDialog}
-              onDragOver={handleDragOver}
-              onDragLeave={handleDragLeave}
-              onDrop={handleDrop}
-            >
-              <CardContent className="p-2">
-                <div className="aspect-square flex flex-col items-center justify-center text-center">
-                  <Plus className="w-6 h-6 text-muted-foreground mb-1" />
-                  <span className="text-xs text-muted-foreground">
-                    Add More
-                  </span>
-                  <span className="text-xs text-muted-foreground/75">
-                    {remainingSlots} left
-                  </span>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-        </div>
-      )}
+            {/* Add More Button in Grid */}
+            {canAddMore && (
+              <div
+                role="button"
+                tabIndex={0}
+                className={`aspect-square rounded border-2 border-dashed cursor-pointer transition-colors flex flex-col items-center justify-center focus:outline-none focus:ring-2 focus:ring-primary ${
+                  dragOver
+                    ? "border-primary bg-primary/5"
+                    : "border-muted-foreground/25 hover:border-primary/50"
+                }`}
+                onClick={openFileDialog}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    openFileDialog();
+                  }
+                }}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+                aria-label={`Add up to ${remainingSlots} more images`}
+              >
+                <Plus className="w-5 h-5 text-muted-foreground" />
+                <span className="text-[10px] text-muted-foreground mt-0.5">
+                  +{remainingSlots}
+                </span>
+              </div>
+            )}
+          </div>
+        )}
 
-      {/* Initial Upload Area (when no images) */}
-      {images.length === 0 && (
-        <div
-          className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors ${
-            dragOver
-              ? "border-primary bg-primary/5"
-              : "border-muted-foreground/25 hover:border-primary/50"
-          }`}
-          onDragOver={handleDragOver}
-          onDragLeave={handleDragLeave}
-          onDrop={handleDrop}
-          onClick={openFileDialog}
-        >
-          <ImageIcon className="mx-auto h-8 w-8 text-muted-foreground mb-2" />
-          <p className="text-sm font-medium text-muted-foreground mb-1">
-            Upload Images
-          </p>
-          <p className="text-xs text-muted-foreground">
-            Drag & drop images here or click to browse
-          </p>
-          <p className="text-xs text-muted-foreground/75 mt-1">
-            Up to {maxImages} images supported
-          </p>
-        </div>
-      )}
-
-      {/* Bulk Upload Button (when some images exist) */}
-      {images.length > 0 && canAddMore && (
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={openFileDialog}
-          className="w-full h-8 text-xs"
-        >
-          <Upload className="w-3 h-3 mr-1" />
-          Add More Images ({remainingSlots} slots available)
-        </Button>
-      )}
-
-      {/* Helper Text */}
-      <p className="text-xs text-muted-foreground">
-        {images.length === 0
-          ? "Select multiple images to edit simultaneously"
-          : canAddMore
-            ? "You can add more images or proceed with current selection"
-            : "Maximum images reached. Remove some to add different ones."}
-      </p>
-    </div>
+        {/* Initial Upload Area (when no images) */}
+        {images.length === 0 && (
+          <div
+            role="button"
+            tabIndex={0}
+            className={`border-2 border-dashed rounded-lg p-4 text-center cursor-pointer transition-colors focus:outline-none focus:ring-2 focus:ring-primary ${
+              dragOver
+                ? "border-primary bg-primary/5"
+                : "border-muted-foreground/25 hover:border-primary/50"
+            }`}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+            onClick={openFileDialog}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                openFileDialog();
+              }
+            }}
+            aria-label={`Upload up to ${maxImages} images`}
+          >
+            <ImageIcon className="mx-auto h-6 w-6 text-muted-foreground mb-1" />
+            <p className="text-xs font-medium text-muted-foreground">
+              Upload Images
+            </p>
+            <p className="text-[10px] text-muted-foreground">
+              Drag & drop or click - Up to {maxImages}
+            </p>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }

@@ -1,5 +1,7 @@
 # E2E Testing Infrastructure - QCut Video Editor
 
+**Last Updated:** 2025-12-16
+
 ## How to Run E2E Tests
 
 ### Prerequisites
@@ -16,31 +18,36 @@
 
 ### Running Tests
 
-#### Run All E2E Tests
+#### Using npm Scripts (Recommended)
 ```bash
 cd qcut
+
+# Run all E2E tests
+bun run test:e2e
+
+# Run with interactive UI
+bun run test:e2e:ui
+
+# Run in headed browser mode (visible)
+bun run test:e2e:headed
+
+# Run project workflow tests only
+bun run test:e2e:workflow
+```
+
+#### Using Playwright Directly
+```bash
+# Run all tests
 bun x playwright test --project=electron
-```
 
-#### Run Specific Test Files
-```bash
-# Basic navigation tests
+# Run specific test file
 bun x playwright test simple-navigation.e2e.ts --project=electron
-
-# Project workflow tests
-bun x playwright test project-workflow-part1.e2e.ts --project=electron
-
-# Editor navigation tests
-bun x playwright test editor-navigation.e2e.ts --project=electron
-```
-
-#### Run Single Test
-```bash
-# Run specific test by line number
-bun x playwright test project-workflow-part1.e2e.ts:19 --project=electron
 
 # Run by test name pattern
 bun x playwright test --project=electron --grep "should create project"
+
+# Run specific test by line number
+bun x playwright test project-workflow-part1.e2e.ts:19 --project=electron
 ```
 
 #### Debug Mode
@@ -50,58 +57,57 @@ bun x playwright test --project=electron --headed
 
 # Run with debug mode (step through)
 bun x playwright test --project=electron --debug
+
+# Run with UI mode (interactive)
+bun x playwright test --project=electron --ui
 ```
 
 #### Test Reports
 ```bash
-# Generate and open HTML report (saved in docs/completed/test-results/)
+# Generate and open HTML report
 bun x playwright show-report
 
-# Run with specific reporter (results saved in docs/completed/)
-bun x playwright test --project=electron --reporter=html
+# Results are saved in docs/completed/test-results/
 ```
 
-### Configuration Options
-
-#### Playwright Configuration (`playwright.config.ts`)
+### Configuration (`playwright.config.ts`)
 ```typescript
 export default defineConfig({
   testDir: './apps/web/src/test/e2e',
-  fullyParallel: false,        // Sequential execution for Electron
-  workers: 1,                  // Single worker to avoid port conflicts
+  fullyParallel: false,           // Sequential execution for Electron
+  workers: 1,                     // Single worker to avoid port conflicts
   retries: process.env.CI ? 2 : 0,
-  timeout: 30000,              // 30-second test timeout
-
+  timeout: 60_000,                // 1-minute test timeout
+  expect: {
+    timeout: 10_000,              // 10-second assertion timeout
+  },
+  use: {
+    trace: 'on-first-retry',      // Capture trace on retry
+    screenshot: 'only-on-failure', // Screenshot on failure
+    video: 'retain-on-failure',   // Video on failure
+  },
   projects: [{
     name: 'electron',
     testMatch: '**/*.e2e.ts'
-  }]
+  }],
+  testIgnore: [
+    '**/node_modules/**',
+    '**/*.test.ts',
+    '**/*.test.tsx',
+    '**/*.spec.ts',
+    '**/*.spec.tsx',
+  ],
 });
 ```
-
-## 📊 **Current Status Summary**
-
-**✅ WORKING: 15 tests passing** - Core video editing workflow fully functional
-**❌ FAILING: 51+ tests failing** - Advanced features need helper function updates
-**🎯 PRIORITY: Fix multi-media management tests** - Extends core functionality
-
-### **Priority E2E Test Roadmap**
-1. 🎬 **Complete Video Project Workflow** - ✅ WORKING (project-workflow-part1/2/3.e2e.ts)
-2. 📁 **Multi-Media Import and Timeline Management** - 🔄 NEEDS HELPER UPDATES
-3. 🎨 **Sticker and Text Overlay System** - 🔄 NEEDS HELPER UPDATES
-4. 🤖 **AI Features Integration** - 🔄 NEEDS HELPER UPDATES
-5. 🔄 **Cross-Platform File Handling** - 🔄 NEEDS HELPER UPDATES
 
 ## Overview
 
 QCut's End-to-End (E2E) testing infrastructure provides comprehensive testing for the Electron-based video editor application. The test suite uses Playwright to automate real user interactions across the entire application stack, from project creation to media import and timeline editing.
 
-**The core video editing workflow is fully tested and working reliably.** Advanced features have failing tests that need systematic updates to use established helper patterns.
-
 ## Architecture
 
 ### Tech Stack
-- **Framework**: Playwright with TypeScript
+- **Framework**: Playwright 1.40.0 with TypeScript
 - **Target**: Electron application (Chromium-based)
 - **Test Runner**: Playwright Test Runner
 - **Configuration**: Single-worker sequential execution to avoid port conflicts
@@ -116,42 +122,68 @@ QCut's End-to-End (E2E) testing infrastructure provides comprehensive testing fo
 
 ```
 qcut/
-├── playwright.config.ts                 # Playwright configuration
+├── playwright.config.ts                    # Playwright configuration
 ├── apps/web/src/test/e2e/
 │   ├── helpers/
-│   │   └── electron-helpers.ts          # Core helper functions and fixtures
-│   ├── fixtures/media/                  # Test media files
-│   │   ├── sample-video.mp4            # 5-second 720p test video
-│   │   ├── sample-audio.mp3            # 5-second sine wave audio
-│   │   └── sample-image.png            # 1280x720 blue test image
-│   └── test files/
-│       ├── simple-navigation.e2e.ts    # Basic navigation tests
-│       ├── editor-navigation.e2e.ts    # Editor-specific navigation
-│       ├── project-workflow-part1.e2e.ts  # Project creation & media import
-│       ├── project-workflow-part2.e2e.ts  # Timeline operations
-│       ├── project-workflow-part3.e2e.ts  # Export & persistence
-│       ├── ai-enhancement-*.e2e.ts     # AI feature tests
-│       ├── sticker-text-overlay-*.e2e.ts  # Overlay feature tests
-│       ├── auto-save-*.e2e.ts          # Auto-save feature tests
-│       └── cross-platform-*.e2e.ts    # Cross-platform tests
-└── docs/completed/                     # Test results and completed artifacts
-    ├── test-results/                   # HTML test reports (gitignored)
-    └── test-results-raw/               # Raw test artifacts (gitignored)
+│   │   └── electron-helpers.ts             # Core helper functions (19KB)
+│   ├── fixtures/
+│   │   └── media/                          # Test media files
+│   │       ├── README.md                   # Media fixtures documentation
+│   │       ├── sample-video.mp4            # 5-second 720p test video (81KB)
+│   │       ├── sample-audio.mp3            # Test audio file
+│   │       └── sample-image.png            # 1280x720 test image (4KB)
+│   │
+│   └── [Test Files]
+│       ├── simple-navigation.e2e.ts        # Basic navigation tests
+│       ├── editor-navigation.e2e.ts        # Editor-specific navigation
+│       ├── project-workflow-part1.e2e.ts   # Project creation & media import
+│       ├── project-workflow-part2.e2e.ts   # Timeline operations
+│       ├── project-workflow-part3.e2e.ts   # Export & persistence
+│       ├── multi-media-management-part1.e2e.ts  # Multi-media import
+│       ├── multi-media-management-part2.e2e.ts  # Multi-media timeline
+│       ├── ai-enhancement-export-integration.e2e.ts  # AI export features
+│       ├── ai-transcription-caption-generation.e2e.ts # AI captions
+│       ├── sticker-overlay-testing.e2e.ts  # Sticker overlay tests
+│       ├── text-overlay-testing.e2e.ts     # Text overlay tests
+│       ├── auto-save-export-file-management.e2e.ts  # Auto-save tests
+│       ├── file-operations-storage-management.e2e.ts # File operations
+│       └── debug-projectid.e2e.ts          # Debug/utility tests
+│
+└── docs/completed/                         # Test results (gitignored)
+    ├── test-results/                       # HTML test reports
+    └── test-results-raw/                   # Raw test artifacts
 ```
 
-## Core Functions and Architecture
+## Test Files Summary
 
-### Electron Helpers (`electron-helpers.ts`)
+| Test File | Description | Tests |
+|-----------|-------------|-------|
+| `simple-navigation.e2e.ts` | Basic app navigation, button detection | Navigation |
+| `editor-navigation.e2e.ts` | Editor-specific navigation | Editor UI |
+| `project-workflow-part1.e2e.ts` | Project creation, media import | Core workflow |
+| `project-workflow-part2.e2e.ts` | Timeline operations | Timeline |
+| `project-workflow-part3.e2e.ts` | Export, persistence | Export |
+| `multi-media-management-part1.e2e.ts` | Multiple media import | Media |
+| `multi-media-management-part2.e2e.ts` | Multi-media timeline | Timeline |
+| `ai-enhancement-export-integration.e2e.ts` | AI video enhancement export | AI |
+| `ai-transcription-caption-generation.e2e.ts` | AI transcription/captions | AI |
+| `sticker-overlay-testing.e2e.ts` | Sticker overlay features | Overlays |
+| `text-overlay-testing.e2e.ts` | Text overlay features | Overlays |
+| `auto-save-export-file-management.e2e.ts` | Auto-save functionality | Persistence |
+| `file-operations-storage-management.e2e.ts` | File operations | Storage |
+| `debug-projectid.e2e.ts` | Debug utilities | Debug |
 
-#### 1. Test Fixtures
+## Core Helper Functions (`electron-helpers.ts`)
+
+### Test Fixtures
 ```typescript
 export interface ElectronFixtures {
   electronApp: ElectronApplication;  // Electron app instance
-  page: Page;                       // Main window page
+  page: Page;                        // Main window page
 }
 ```
 
-#### 2. Core Navigation Functions
+### Navigation Functions
 ```typescript
 // Navigates from home page to projects page
 export async function navigateToProjects(page: Page)
@@ -163,7 +195,7 @@ export async function createTestProject(page: Page, projectName?: string)
 export async function waitForProjectLoad(page: Page)
 ```
 
-#### 3. Media Import Functions
+### Media Import Functions
 ```typescript
 // Uploads any test media file
 export async function uploadTestMedia(page: Page, filePath: string)
@@ -174,7 +206,7 @@ export async function importTestAudio(page: Page)
 export async function importTestImage(page: Page)
 ```
 
-#### 4. Utility Functions
+### Utility Functions
 ```typescript
 // Starts Electron app with test configuration
 export async function startElectronApp()
@@ -188,69 +220,59 @@ export async function waitForAppReady(page: Page)
 
 ## Test Architecture Diagram
 
-```mermaid
-graph TD
-    A[Playwright Test Runner] --> B[Electron App Launch]
-    B --> C[Main Window Ready]
-    C --> D[Navigate to Projects]
-    D --> E{Test Type}
-
-    E -->|Navigation| F[Simple Navigation Tests]
-    E -->|Workflow| G[Project Workflow Tests]
-    E -->|Features| H[Feature-Specific Tests]
-
-    F --> I[Verify UI Elements]
-    G --> J[Create Project] --> K[Import Media] --> L[Timeline Operations]
-    H --> M[AI Enhancement]
-    H --> N[Sticker/Text Overlay]
-    H --> O[Auto-save]
-
-    J --> P[Media Fixtures]
-    K --> P
-    L --> Q[Timeline Validation]
-
-    I --> R[Test Results]
-    Q --> R
-    M --> R
-    N --> R
-    O --> R
 ```
-
-
-## Test Categories
-
-### 1. Navigation Tests (`simple-navigation.e2e.ts`)
-- Basic app navigation
-- Project page loading
-- Button detection and interaction
-- No actual project creation (safe for repeated runs)
-
-### 2. Project Workflow Tests
-#### Part 1 (`project-workflow-part1.e2e.ts`)
-- Project creation
-- Media import (video, audio, image)
-- Basic file upload processes
-
-#### Part 2 (`project-workflow-part2.e2e.ts`)
-- Timeline operations
-- Media element manipulation
-- Drag-and-drop functionality
-
-#### Part 3 (`project-workflow-part3.e2e.ts`)
-- Project persistence
-- Export functionality
-- Session state management
-
-### 3. Feature-Specific Tests
-- **AI Enhancement**: AI-powered video enhancement features
-- **Sticker/Text Overlay**: Adding stickers and text to timeline
-- **Auto-save**: Automatic project saving functionality
-- **Cross-platform**: File handling across different environments
+┌─────────────────────────────────────────────────────────────────┐
+│                    Playwright Test Runner                        │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                    Electron App Launch                           │
+│                  (dist/electron/main.js)                         │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                    Main Window Ready                             │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+              ┌───────────────┼───────────────┐
+              ▼               ▼               ▼
+      ┌──────────────┐ ┌──────────────┐ ┌──────────────┐
+      │  Navigation  │ │   Workflow   │ │   Feature    │
+      │    Tests     │ │    Tests     │ │    Tests     │
+      └──────────────┘ └──────────────┘ └──────────────┘
+              │               │               │
+              │               │               │
+              ▼               ▼               ▼
+      ┌──────────────┐ ┌──────────────┐ ┌──────────────┐
+      │  Verify UI   │ │ Create/Edit  │ │ AI/Overlay/  │
+      │  Elements    │ │   Project    │ │  Auto-save   │
+      └──────────────┘ └──────────────┘ └──────────────┘
+                              │
+                              ▼
+                    ┌──────────────┐
+                    │ Media Import │
+                    │  (Fixtures)  │
+                    └──────────────┘
+                              │
+                              ▼
+                    ┌──────────────┐
+                    │   Timeline   │
+                    │  Operations  │
+                    └──────────────┘
+                              │
+                              ▼
+                    ┌──────────────┐
+                    │ Test Results │
+                    │   (HTML)     │
+                    └──────────────┘
+```
 
 ## Best Practices
 
 ### 1. Test Data Management
-- Use pre-created test media files
+- Use pre-created test media files in `fixtures/media/`
 - Clean up test projects after runs (when needed)
 - Use descriptive project names with timestamps
 
@@ -258,6 +280,9 @@ graph TD
 ```typescript
 // ✅ Good: State-based waiting
 await page.waitForSelector('[data-testid="timeline-track"]');
+
+// ✅ Good: Wait for specific condition
+await expect(page.getByTestId('project-title')).toBeVisible();
 
 // ❌ Bad: Fixed timeouts
 await page.waitForTimeout(5000);
@@ -269,7 +294,7 @@ await page.waitForTimeout(5000);
 await page.getByTestId('new-project-button').click();
 
 // ✅ Good: Use semantic selectors as fallback
-await page.locator('text=New Project').click();
+await page.getByRole('button', { name: 'New Project' }).click();
 
 // ❌ Bad: Use fragile CSS selectors
 await page.locator('.btn-primary.header-button').click();
@@ -319,6 +344,13 @@ await Promise.race([
 - Verify no conflicting processes on required ports
 - Review console errors in test output
 
+#### 5. Timeout Errors
+**Symptom**: Test exceeds 60-second timeout
+**Solutions**:
+- Check if external services are available
+- Tests that depend on external APIs may need graceful skips
+- Increase timeout for specific slow tests if needed
+
 ### Debug Commands
 
 ```bash
@@ -333,6 +365,9 @@ bun x playwright test simple-navigation.e2e.ts --project=electron --reporter=lis
 
 # Debug test with browser visible
 bun x playwright test --project=electron --headed --debug
+
+# Run with trace enabled
+bun x playwright test --project=electron --trace on
 ```
 
 ## Development Guidelines
@@ -364,9 +399,27 @@ bun x playwright test --project=electron --headed --debug
 3. **Follow existing patterns** for error handling and waiting
 4. **Document complex functions** with JSDoc comments
 
-### CI/CD Integration
+### Handling External Services
 
-#### GitHub Actions Example
+For tests that depend on external APIs (AI services, etc.):
+
+```typescript
+test('should handle AI generation', async ({ page }) => {
+  // Check if service is available
+  const isAvailable = await checkServiceAvailability();
+
+  if (!isAvailable) {
+    test.skip('External service not available');
+    return;
+  }
+
+  // Proceed with test
+});
+```
+
+## CI/CD Integration
+
+### GitHub Actions Example
 ```yaml
 # .github/workflows/e2e-tests.yml
 name: E2E Tests
@@ -402,7 +455,7 @@ jobs:
       - name: Run E2E tests
         run: |
           cd qcut
-          bun x playwright test --project=electron --reporter=html
+          bun run test:e2e
 
       - name: Upload test results
         uses: actions/upload-artifact@v4
@@ -412,41 +465,33 @@ jobs:
           path: qcut/docs/completed/test-results/
 ```
 
-#### Advanced CI/CD Patterns
-```yaml
-# Conditional E2E testing based on changed files
-- name: Check for relevant changes
-  id: changes
-  uses: dorny/paths-filter@v2
-  with:
-    filters: |
-      e2e-relevant:
-        - 'qcut/apps/web/src/**'
-        - 'qcut/electron/**'
-        - 'qcut/apps/web/src/test/e2e/**'
-
-- name: Run E2E tests
-  if: steps.changes.outputs.e2e-relevant == 'true'
-  run: |
-    cd qcut
-    bun x playwright test --project=electron
-```
-
 ## Performance Considerations
 
 - **Sequential Execution**: Tests run one at a time to avoid resource conflicts
 - **Shared Test Media**: Reuse pre-created media files instead of generating new ones
 - **State Cleanup**: Tests handle existing projects gracefully without requiring cleanup
-- **Timeout Management**: Appropriate timeouts for different operations (navigation: 10s, media import: 15s)
+- **Timeout Management**:
+  - Test timeout: 60 seconds
+  - Assertion timeout: 10 seconds
+  - Navigation timeout: 10 seconds
+  - Media import timeout: 15 seconds
 
-## Future Enhancements
+## Test Artifacts
 
-- **Parallel Test Execution**: Investigate running tests in parallel with isolated Electron instances
-- **Visual Regression Testing**: Add screenshot comparison tests for UI consistency
-- **Performance Testing**: Measure and assert on video processing performance
-- **Cross-Platform Testing**: Test on Windows, macOS, and Linux
-- **Mobile Testing**: Test responsive design on different screen sizes
+On test failure, Playwright automatically captures:
+- **Screenshots**: Saved to `test-results-raw/`
+- **Videos**: Retained on failure
+- **Traces**: Captured on first retry (viewable via `bun x playwright show-trace`)
+
+## npm Script Reference
+
+| Script | Description |
+|--------|-------------|
+| `bun run test:e2e` | Run all E2E tests |
+| `bun run test:e2e:ui` | Run with Playwright UI |
+| `bun run test:e2e:headed` | Run with visible browser |
+| `bun run test:e2e:workflow` | Run project workflow tests only |
 
 ---
 
-This E2E testing infrastructure provides **reliable coverage of core video editing functionality**. For current test status and detailed information about passing/failing tests, see the [test status documentation](../issues/e2e_test/test-status.md).
+*For additional test status information, check the test output or run `bun x playwright show-report` after test execution.*
