@@ -566,12 +566,12 @@ No new upload components needed - just add the model-specific settings panel.
 
 ## Review Status (2025-12-16)
 
-- **Subtask 1 — Types:** Not started. `apps/web/src/types/ai-generation.ts` does not define `Veo31ExtendVideoInput` and no new import targets exist for extend-video params.
-- **Subtask 2 — AI constants:** Not started. `AI_MODELS` in `apps/web/src/components/editor/media-panel/views/ai/constants/ai-constants.ts` has no `veo31_fast_extend_video` or `veo31_extend_video` entries in the avatar section; no extend-video defaults, required inputs, or supported aspect ratios are present.
-- **Subtask 3 — FAL client:** Not started. `apps/web/src/lib/fal-ai-client.ts` only imports Veo text/image/frame types and exposes generation methods for those; there are no extend-video endpoints or methods.
-- **Subtask 4 — Model handlers:** Not started. `apps/web/src/components/editor/media-panel/views/ai/hooks/generation/model-handlers.ts` lacks a switch case for extend-video, and `use-ai-generation.ts` has no extend-video flow wired to sourceVideo.
-- **Subtask 5 — Avatar tab state:** Not started. `apps/web/src/components/editor/media-panel/views/ai/hooks/use-ai-avatar-tab-state.ts` contains no `extendVideoAspectRatio` / `extendVideoGenerateAudio` state or setters, and reset logic does not cover them.
-- **Subtask 6 — Avatar tab UI:** Not started. `apps/web/src/components/editor/media-panel/views/ai/tabs/ai-avatar-tab.tsx` props omit extend-video fields and the UI has no extend-video options section (aspect ratio/audio toggle).
+- **Subtask 1 — Types:** ✅ COMPLETED. Added `Veo31ExtendVideoInput` interface to `apps/web/src/types/ai-generation.ts` (~line 54-62).
+- **Subtask 2 — AI constants:** ✅ COMPLETED. Added `veo31_fast_extend_video` and `veo31_extend_video` model entries to `apps/web/src/components/editor/media-panel/views/ai/constants/ai-constants.ts` in avatar section (~line 967-1001).
+- **Subtask 3 — FAL client:** ✅ COMPLETED. Added import for `Veo31ExtendVideoInput` and two methods (`generateVeo31FastExtendVideo`, `generateVeo31ExtendVideo`) to `apps/web/src/lib/fal-ai-client.ts` (~line 1027-1100).
+- **Subtask 4 — Model handlers:** ✅ COMPLETED. Added `AvatarSettings` interface fields, two handler functions (`handleVeo31FastExtendVideo`, `handleVeo31ExtendVideo`), and switch cases in `routeAvatarHandler()` in `apps/web/src/components/editor/media-panel/views/ai/hooks/generation/model-handlers.ts`.
+- **Subtask 5 — Avatar tab state:** ✅ COMPLETED. Added `extendVideoAspectRatio` / `extendVideoGenerateAudio` state, setters, and resetAll logic to `apps/web/src/components/editor/media-panel/views/ai/hooks/use-ai-avatar-tab-state.ts` (interface ~line 66-68, setters ~line 97-99, state hooks ~line 193-198, return values ~line 245-247 & 263-264, reset ~line 214-216).
+- **Subtask 6 — Avatar tab UI:** IN PROGRESS. `apps/web/src/components/editor/media-panel/views/ai/tabs/ai-avatar-tab.tsx` needs extend-video props and options section.
 - **Subtask 7 — Cost calculator:** Not started. `apps/web/src/components/editor/media-panel/views/ai/utils/ai-cost-calculators.ts` has no helper for Veo 3.1 extend-video pricing.
 - **Subtask 8 — Validation constants:** Not started. `UPLOAD_CONSTANTS` / `ERROR_MESSAGES` in `ai-constants.ts` lack extend-video duration/format/aspect-ratio rules and related error strings.
 - **Subtask 9 — Tests:** Not started. No `extend-video.test.ts` exists under `apps/web/src/components/editor/media-panel/views/ai/__tests__`; only `ai-constants.test.ts` is present.

@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Collapsible,
   CollapsibleContent,
@@ -108,6 +109,12 @@ export interface AIAvatarTabProps {
   onSyncLipsyncModelModeChange: (mode: SyncLipsyncModelMode) => void;
   onSyncLipsyncLipsyncModeChange: (mode: SyncLipsyncSyncMode) => void;
   onSyncLipsyncTemperatureChange: (temp: number) => void;
+
+  // Veo 3.1 Extend-Video
+  extendVideoAspectRatio: "auto" | "16:9" | "9:16";
+  onExtendVideoAspectRatioChange: (value: "auto" | "16:9" | "9:16") => void;
+  extendVideoGenerateAudio: boolean;
+  onExtendVideoGenerateAudioChange: (value: boolean) => void;
 }
 
 // ============================================
@@ -169,6 +176,11 @@ export function AIAvatarTab({
   onSyncLipsyncModelModeChange,
   onSyncLipsyncLipsyncModeChange,
   onSyncLipsyncTemperatureChange,
+  // Veo 3.1 Extend-Video props
+  extendVideoAspectRatio,
+  onExtendVideoAspectRatioChange,
+  extendVideoGenerateAudio,
+  onExtendVideoGenerateAudioChange,
 }: AIAvatarTabProps) {
   // Collapsible state for additional settings
   const [isAdditionalSettingsOpen, setIsAdditionalSettingsOpen] =
@@ -181,6 +193,10 @@ export function AIAvatarTab({
 
   const syncLipsyncReact1Selected = selectedModels.includes(
     "sync_lipsync_react1"
+  );
+
+  const extendVideoSelected = selectedModels.some(
+    (m) => m.includes("extend_video")
   );
 
   return (

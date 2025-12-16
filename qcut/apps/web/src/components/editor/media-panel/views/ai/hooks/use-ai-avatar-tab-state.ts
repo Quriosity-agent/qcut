@@ -211,6 +211,9 @@ export function useAvatarTabState(): UseAvatarTabStateResult {
     setSyncLipsyncModelMode("face");
     setSyncLipsyncLipsyncMode("bounce");
     setSyncLipsyncTemperature(0.5);
+    // Reset Veo 3.1 Extend-Video state
+    setExtendVideoAspectRatio("auto");
+    setExtendVideoGenerateAudio(true);
   }, [
     avatarImageState,
     avatarLastFrameState,
