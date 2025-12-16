@@ -958,3 +958,26 @@ If issues arise, revert in this order:
 4. Remove `MODEL_CAPABILITIES` constant
 
 The `imageUrls` array in `ImageEditRequest` is backward compatible and doesn't need rollback.
+
+---
+
+## Review (2025-12-16)
+
+### Long-term Maintainability
+
+- **Single source of truth:** As written, multi-image capability would live in 3 places (`MODEL_CAPABILITIES`, `getImageEditModels` metadata via Subtask 9, and a second hardcoded map in `getModelCapabilitiesSync` in Subtask 11). For long-term maintainability, make *one* source (preferably `MODEL_CAPABILITIES as const`) and derive everything else from it; avoid re-declaring the same table in multiple files.
+- **Type alignment:** `apps/web/src/stores/adjustment-store.ts`’s `selectedModel` union is currently missing models that already exist in `apps/web/src/lib/image-edit-client.ts` and `getImageEditModels()` (e.g. `gemini-3-pro-edit`, `seeddream-v4-5-edit`, `flux-2-flex-edit`). This is why `model-selector.tsx` uses `as any`. Add a shared `ImageEditModelId` type (derived from capabilities or endpoints) and use it across the client, store, and UI to prevent drift.
+- **Separation of concerns:** `apps/web/src/lib/image-edit-client.ts` already contains endpoints, upload, polling, and UI-facing model metadata. Adding capabilities + multi-image metadata increases coupling. Consider splitting into a small shared module (e.g. `image-edit-models.ts` / `image-edit-capabilities.ts`) that both the client and store import, keeping the fetch client focused on network and payload building.
+
+### Reuse Opportunities
+
+- **Reuse existing multi-image UI:** `apps/web/src/components/editor/adjustment/multi-image-upload.tsx` already exists. The proposed `ConditionalImageUploader` wrapper can be useful, but avoid creating overlapping “multi-image uploader” implementations in parallel.
+- **Reuse existing multi-file state patterns:** The AI panel already has a generalized multi-file pattern (`useMultipleFilesWithPreview` in `apps/web/src/components/editor/media-panel/views/ai/hooks/use-ai-tab-state-base.ts`). Prefer extracting/repurposing that approach over re-implementing similar file+preview lifecycle in the store.
+- **Reuse blob URL utilities consistently:** Single-image selection in `apps/web/src/components/editor/adjustment/index.tsx` uses `createObjectURL` from `@/lib/blob-manager`, while the plan/store and `MultiImageUpload` currently use raw `URL.createObjectURL` / `URL.revokeObjectURL` in multiple places. Standardize on one utility layer (ideally `blob-manager`) and keep URL creation/revocation in one place (store/hook), not duplicated across store + component.
+
+### Gaps / Changes Recommended Before Implementation
+
+- **Multi-image upload needs `File[]` to work end-to-end:** The plan introduces `multipleImageFiles: File[]`, but the proposed `ConditionalImageUploader` only receives `string[]` from `MultiImageUpload`, so `multipleImageFiles` never gets populated and `uploadImagesToFAL(multipleImageFiles)` won’t actually run. Fix by making the multi-image uploader/store contract pass `File` objects (preferred), or have the store create preview URLs from files so files+urls can’t drift.
+- **Use `hasImages` consistently in the panel:** `index.tsx` currently gates most of the UI and `handleGenerateEdit` on `originalImageUrl` / `originalImage`. Subtask 8 updates `canGenerateEdit` and empty state, but should also update the “Only show other components if image is loaded” conditional and the early `handleGenerateEdit` validation; otherwise multi-image models stay blocked by single-image checks.
+- **Avoid duplicating capabilities in Subtask 11:** The proposed `getModelCapabilitiesSync` hardcodes the mapping again. If circular deps are a concern, extract capabilities to a small module that both the store and client can import without cycles.
+- **Tests should cover the new behavior:** Subtask 12 validates the capabilities table, but the highest-risk logic is the normalization in Subtask 3 (`image_url` vs `image_urls`, trimming to max). Consider extracting a pure helper (e.g. payload builder) and unit-testing that directly.

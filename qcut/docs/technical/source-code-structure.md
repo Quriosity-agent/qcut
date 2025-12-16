@@ -23,7 +23,7 @@ QCut is a desktop video editor built with:
 ## Source Code Structure
 
 ### Root Configuration Files
-```
+```text
 apps/web/
 ├── vite.config.ts                    # Vite configuration
 ├── tsconfig.json                     # TypeScript configuration
