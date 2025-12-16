@@ -499,6 +499,7 @@ EXTEND_VIDEO_MISSING: "Please upload a source video to extend",
 ## File Summary
 
 ### Files to Modify
+
 | File | Changes |
 |------|---------|
 | `apps/web/src/types/ai-generation.ts` | Add `Veo31ExtendVideoInput` interface |
@@ -511,6 +512,7 @@ EXTEND_VIDEO_MISSING: "Please upload a source video to extend",
 | `apps/web/src/components/editor/media-panel/views/ai/utils/ai-cost-calculators.ts` | Add cost calculator function |
 
 ### Files to Create
+
 | File | Description |
 |------|-------------|
 | `apps/web/src/components/editor/media-panel/views/ai/__tests__/extend-video.test.ts` | Unit tests |
