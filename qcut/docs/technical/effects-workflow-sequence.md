@@ -1,7 +1,32 @@
 # Effects Workflow Sequence Diagram
 
+**Last Updated:** 2025-12-16
+
 ## Overview
 This diagram illustrates the complete workflow for effects processing in the QCut editor, from user interaction through to final export.
+
+## Architecture
+
+### File Structure
+```
+apps/web/src/
+├── stores/
+│   └── effects-store.ts         # Main effects state management (23KB)
+├── types/
+│   └── effects.ts               # Effect type definitions (4KB)
+├── lib/
+│   ├── effects-chaining.ts      # Chain processing & animations (9KB)
+│   ├── effects-utils.ts         # Utility functions (10KB)
+│   ├── effects-keyframes.ts     # Keyframe interpolation (7KB)
+│   ├── effects-templates.ts     # Custom templates (20KB)
+│   ├── effects-canvas-advanced.ts # Canvas rendering (11KB)
+│   └── ffmpeg-filter-chain.ts   # FFmpeg filter generation
+├── components/editor/
+│   ├── effect-chain-manager.tsx # Chain management UI (10KB)
+│   └── effect-templates-panel.tsx # Templates panel (12KB)
+└── config/
+    └── features.ts              # EFFECTS_ENABLED flag
+```
 
 ## Sequence Flow
 
@@ -11,69 +36,264 @@ sequenceDiagram
   participant U as User
   participant UI as Editor UI
   participant ES as useEffectsStore
+  participant EC as EffectChaining
   participant TS as TimelineStore
   participant PV as PreviewPanel
+  participant FF as FFmpegFilterChain
   participant EX as ExportEngine
 
-  U->>UI: apply preset / drag-drop / edit params / save template
-  UI->>ES: applyEffect / createChain / updateEffectParameters / saveCustomTemplate
-  ES-->>UI: updated activeEffects / chains
-  UI->>PV: request render / select element / start transform
-  PV->>TS: updateElementPosition/Size/Rotation
-  TS-->>PV: state updated
+  %% Effect Application
+  U->>UI: Select effect preset / drag-drop
+  UI->>ES: applyEffect(elementId, preset)
+  ES->>ES: Create EffectInstance with UUID
+  ES-->>UI: Updated activeEffects Map
+  UI->>PV: Request preview render
+
+  %% Effect Parameter Updates
+  U->>UI: Adjust parameters (slider/input)
+  UI->>ES: updateEffectParameters(elementId, effectId, params)
+  ES-->>UI: Updated parameters
+
+  %% Effect Chaining
+  U->>UI: Create effect chain
+  UI->>ES: createChain(elementId, name, effectIds)
+  ES->>EC: createEffectChain()
+  EC-->>ES: New EffectChain
+  ES-->>UI: Updated effectChains Map
+
+  %% Preview Rendering
   PV->>ES: getProcessedEffects(elementId, currentTime)
-  ES-->>PV: merged EffectParameters
-  PV->>PV: apply CSS filters or canvas effects (preview)
-  U->>UI: export
+  ES->>EC: processEffectChain() or layerEffectChains()
+  EC->>EC: Apply animations at currentTime
+  EC-->>ES: Merged EffectParameters
+  ES-->>PV: Final processed parameters
+  PV->>PV: Apply CSS filters / canvas effects
+
+  %% Export Flow
+  U->>UI: Export video
   UI->>EX: export()
-  EX->>ES: query element effects & merged parameters
-  EX->>EX: applyEffectsToCanvas / applyAdvancedCanvasEffects
-  EX-->>U: produced video Blob
+  EX->>ES: getFFmpegFilterChain(elementId)
+  ES->>FF: FFmpegFilterChain.fromEffectParameters()
+  FF-->>ES: Filter string (e.g., "eq=brightness=0.2:contrast=1.3")
+  ES-->>EX: FFmpeg filter chain
+  EX->>EX: Apply filters during encoding
+  EX-->>U: Produced video Blob
 ```
 
 ## Key Components
 
-### User (U)
-- Initiates all actions in the workflow
-- Applies presets, edits parameters, saves templates
-- Triggers export process
-
-### Editor UI
-- Main interface component
-- Handles user interactions
-- Coordinates between stores and preview
-
 ### useEffectsStore (ES)
-- Manages effect state and parameters
-- Handles effect chains and templates
-- Provides processed effects for elements
+Main Zustand store for effect state management.
 
-### TimelineStore (TS)
-- Manages element positioning and transformations
-- Updates element properties (position, size, rotation)
+**State:**
+```typescript
+interface EffectsStore {
+  presets: EffectPreset[];                    // 34 preset effects
+  activeEffects: Map<string, EffectInstance[]>; // elementId -> effects
+  effectChains: Map<string, EffectChain[]>;   // elementId -> chains
+  selectedCategory: EffectCategory | "all";
+  selectedEffect: EffectInstance | null;
+}
+```
 
-### PreviewPanel (PV)
-- Renders preview with applied effects
-- Queries and applies CSS/canvas effects
-- Handles real-time transformations
+**Actions:**
+| Action | Description |
+|--------|-------------|
+| `applyEffect` | Apply preset to element |
+| `removeEffect` | Remove effect from element |
+| `updateEffectParameters` | Update effect parameters |
+| `toggleEffect` | Enable/disable effect |
+| `clearEffects` | Remove all effects from element |
+| `duplicateEffect` | Clone an effect |
+| `reorderEffects` | Change effect order |
+| `resetEffectToDefaults` | Reset to preset defaults |
+| `updateEffectAnimations` | Add/update keyframe animations |
+| `createChain` | Create effect chain |
+| `removeChain` | Delete effect chain |
+| `updateChainBlendMode` | Change chain blend mode |
+| `getProcessedEffects` | Get merged parameters for time |
+| `getFFmpegFilterChain` | Get FFmpeg filter string |
 
-### ExportEngine (EX)
-- Processes final video export
-- Applies effects to canvas
-- Generates video Blob output
+### Effect Types (46+)
+```typescript
+type EffectType =
+  // Basic (9)
+  | "blur" | "brightness" | "contrast" | "saturation"
+  | "hue" | "gamma" | "sepia" | "grayscale" | "invert"
+  // Style (11)
+  | "vintage" | "dramatic" | "warm" | "cool" | "cinematic"
+  | "vignette" | "grain" | "sharpen" | "emboss" | "edge" | "pixelate"
+  // Distortion (4)
+  | "wave" | "twist" | "bulge" | "fisheye"
+  // Artistic (4)
+  | "oil-painting" | "watercolor" | "pencil-sketch" | "halftone"
+  // Transition (4)
+  | "fade-in" | "fade-out" | "dissolve" | "wipe"
+  // Composite (4)
+  | "overlay" | "multiply" | "screen" | "color-dodge";
+```
+
+### Effect Categories (8)
+| Category | Description |
+|----------|-------------|
+| `basic` | Brightness, contrast, blur, sharpen |
+| `color` | Saturation, warm, cool, vibrant |
+| `artistic` | Grayscale, sketch, halftone, emboss |
+| `vintage` | Sepia, film grain, vintage film |
+| `cinematic` | Dramatic, cinematic, vignette |
+| `distortion` | Wave, twist, bulge, fisheye, pixelate |
+| `transition` | Fade in/out, dissolve, wipe |
+| `composite` | Overlay, multiply, screen, color dodge |
+
+### Preset Effects (34)
+**Implemented (9):**
+- Brighten, Darken, High Contrast
+- Vibrant, Muted, Sepia
+- Black & White, Soft Blur, Invert
+
+**Not Yet Implemented (25):**
+- Vintage Film, Dramatic, Warm, Cool
+- Chromatic, Radiance, Cinematic
+- Sharpen, Emboss, Edge Detection, Pixelate
+- Vignette, Film Grain
+- Wave, Twist, Bulge, Fisheye
+- Oil Painting, Watercolor, Pencil Sketch, Halftone
+- Dissolve, Wipe
+- Overlay, Multiply, Screen, Color Dodge
+
+### Effect Chaining (EC)
+Located in `lib/effects-chaining.ts`.
+
+**Chain Processing:**
+```typescript
+interface EffectChain {
+  id: string;
+  name: string;
+  effects: EffectInstance[];
+  blendMode?: "normal" | "overlay" | "multiply" | "screen";
+}
+
+function processEffectChain(
+  effects: EffectInstance[],
+  currentTime?: number
+): EffectParameters;
+
+function layerEffectChains(
+  chains: EffectChain[],
+  currentTime?: number
+): EffectParameters;
+```
+
+**Parameter Merging:**
+- **Additive parameters**: brightness, contrast, saturation, hue (values are summed)
+- **Override parameters**: blur, grayscale, invert (last value wins)
+- Values are clamped to valid ranges after merging
+
+### Animation System
+**Keyframe Structure:**
+```typescript
+interface EffectKeyframe {
+  time: number;    // Seconds relative to element start
+  value: number;
+  easing?: "linear" | "ease-in" | "ease-out" | "ease-in-out" | "cubic-bezier";
+  controlPoints?: [number, number, number, number];
+}
+
+interface AnimatedParameter {
+  parameter: keyof EffectParameters;
+  keyframes: EffectKeyframe[];
+  interpolation?: "linear" | "step" | "smooth";
+}
+```
+
+### FFmpeg Filter Chain (FF)
+Converts effect parameters to FFmpeg filter syntax.
+
+**Example Output:**
+```
+eq=brightness=0.2:contrast=1.3,hue=s=1.4,gblur=sigma=2
+```
+
+**Supported Filters:**
+| Effect | FFmpeg Filter |
+|--------|---------------|
+| brightness | `eq=brightness=X` |
+| contrast | `eq=contrast=X` |
+| saturation | `hue=s=X` |
+| hue | `hue=h=X` |
+| blur | `gblur=sigma=X` |
+| grayscale | `hue=s=0` |
+| invert | `negate` |
 
 ## Workflow Steps
 
-1. **User Interaction**: User applies presets, drag-drops effects, edits parameters, or saves templates
-2. **Effect Management**: Editor UI updates the effects store with new effects or parameter changes
-3. **State Update**: Effects store returns updated active effects and chains to UI
-4. **Preview Request**: UI requests preview render or element selection/transformation
-5. **Timeline Update**: Preview panel updates timeline store with position/size/rotation changes
-6. **State Confirmation**: Timeline store confirms state updates
-7. **Effect Processing**: Preview panel queries processed effects for specific element and time
-8. **Parameter Merge**: Effects store returns merged effect parameters
-9. **Preview Rendering**: Preview panel applies CSS filters or canvas effects for real-time preview
-10. **Export Initiation**: User triggers export process
-11. **Export Processing**: Export engine queries element effects and parameters
-12. **Canvas Application**: Export engine applies effects to canvas
-13. **Video Generation**: Final video Blob is produced and returned to user
+### 1. Effect Application
+1. User selects effect from presets panel or drags effect onto element
+2. `applyEffect()` creates new `EffectInstance` with unique ID
+3. Effect is added to `activeEffects` Map for the element
+4. Toast notification confirms application
+5. Preview panel re-renders with new effect
+
+### 2. Parameter Adjustment
+1. User adjusts sliders/inputs in properties panel
+2. `updateEffectParameters()` merges new parameters
+3. Real-time preview updates via CSS filters or canvas
+
+### 3. Effect Chaining
+1. User creates chain from multiple effects
+2. Chain stores effect references and blend mode
+3. `getProcessedEffects()` processes chain sequentially
+4. Parameters are merged according to additive/override rules
+
+### 4. Animation
+1. User adds keyframes to effect parameters
+2. `updateEffectAnimations()` stores keyframe data
+3. During playback, `processEffectChain()` interpolates values
+4. Preview shows animated effects at current time
+
+### 5. Export
+1. User triggers export
+2. Export engine queries `getFFmpegFilterChain()` for each element
+3. Store converts effect parameters to FFmpeg filter syntax
+4. FFmpeg applies filters during video encoding
+5. Final video contains baked-in effects
+
+## Component Integration
+
+### PreviewPanel
+```typescript
+// Query processed effects for current time
+const effects = useEffectsStore(
+  (state) => state.getProcessedEffects(elementId, currentTime)
+);
+
+// Apply as CSS filter
+const filterStyle = effectsToCssFilter(effects);
+```
+
+### EffectChainManager
+- Displays current effects on selected element
+- Drag-drop reordering
+- Enable/disable toggles
+- Parameter sliders
+
+### EffectTemplatesPanel
+- Browse preset effects by category
+- Save custom effect combinations as templates
+- Quick-apply frequently used effects
+
+## Feature Flag
+
+Effects system is controlled by `EFFECTS_ENABLED` in `config/features.ts`:
+```typescript
+export const EFFECTS_ENABLED = true;
+```
+
+When disabled:
+- `applyEffect()` shows error toast
+- Effects UI components are hidden
+- Export skips effect processing
+
+---
+
+*This document describes the effects workflow as implemented in the QCut video editor.*

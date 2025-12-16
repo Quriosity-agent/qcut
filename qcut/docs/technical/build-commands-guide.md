@@ -1,6 +1,7 @@
 # QCut Build Commands Guide
 
-**Last Updated:** 2025-01-12
+**Last Updated:** 2025-12-16
+**Current Version:** 0.3.51
 
 ## Prerequisites
 ```bash
@@ -14,7 +15,7 @@ bun run build  # Required before Electron builds
 
 ### Development
 ```bash
-bun dev                 # Start dev servers
+bun dev                 # Start dev servers (Turborepo)
 bun run electron:dev    # Electron with hot reload
 bun run electron        # Electron production mode
 ```
@@ -22,7 +23,7 @@ bun run electron        # Electron production mode
 ### Build Windows EXE
 ```bash
 bun run dist:dir          # Fast - unpacked app (2-3min)
-bun run dist:win:fast     # Fast - installer (5-7min) 
+bun run dist:win:fast     # Fast - installer (5-7min)
 bun run dist:win:release  # Production - installer (10-15min)
 bun run build:exe         # Alternative packaging (5-8min)
 ```
@@ -31,13 +32,45 @@ bun run build:exe         # Alternative packaging (5-8min)
 ```bash
 bun lint:clean    # Clean linting (recommended)
 bun format        # Auto-fix formatting
+bun check-types   # TypeScript type checking
+```
+
+### Testing
+```bash
+# Unit Tests (apps/web)
+cd apps/web
+bun run test              # Run Vitest tests
+bun run test:ui           # Vitest with UI
+bun run test:coverage     # Coverage report
+bun run test:watch        # Watch mode
+
+# E2E Tests (root)
+bun run test:e2e          # Playwright tests
+bun run test:e2e:ui       # Playwright with UI
+bun run test:e2e:headed   # Headed browser mode
+bun run test:e2e:workflow # Project workflow tests
+```
+
+### Electron TypeScript
+```bash
+bun run build:electron        # Compile electron/*.ts to dist/electron/*.js
+bun run build:electron:watch  # Watch mode for development
+```
+
+### Database (apps/web)
+```bash
+cd apps/web
+bun run db:generate     # Generate Drizzle migrations
+bun run db:migrate      # Run migrations
+bun run db:push:local   # Push to local DB (development)
+bun run db:push:prod    # Push to production DB
 ```
 
 ### Release Management
 ```bash
-bun run release:patch    # 0.2.0 → 0.2.1
-bun run release:minor    # 0.2.0 → 0.3.0
-bun run release:major    # 0.2.0 → 1.0.0
+bun run release:patch    # 0.3.51 → 0.3.52
+bun run release:minor    # 0.3.51 → 0.4.0
+bun run release:major    # 0.3.51 → 1.0.0
 ```
 
 ## Build Commands Details
@@ -51,9 +84,59 @@ bun run release:major    # 0.2.0 → 1.0.0
 
 ## Output Locations
 - **Electron-builder**: `d:/AI_play/AI_Code/build_qcut/`
-  - Executable: `win-unpacked/QCut Video Editor.exe`
-  - Installer: `QCut-Video-Editor-Setup-0.2.0.exe`
+  - Executable: `win-unpacked/QCut AI Video Editor.exe`
+  - Installer: `QCut-AI-Video-Editor-Setup-0.3.51.exe`
 - **Alternative**: `dist-packager-new/QCut-win32-x64/QCut.exe`
+
+## All Available Scripts
+
+### Root Level (`qcut/package.json`)
+| Script | Description |
+|--------|-------------|
+| `dev` | Start all apps in development (Turborepo) |
+| `build` | Build all packages and apps |
+| `check-types` | TypeScript type checking across workspace |
+| `lint` | Run Ultracite linting |
+| `lint:clean` | Run Biome linting (skips parse errors) |
+| `format` | Auto-fix formatting with Ultracite |
+| `electron` | Run Electron in production mode |
+| `electron:dev` | Run Electron in development mode |
+| `build:electron` | Compile Electron TypeScript |
+| `build:electron:watch` | Watch mode for Electron TypeScript |
+| `dist` | Build with electron-builder |
+| `dist:dir` | Build unpacked directory |
+| `dist:win` | Build Windows installer |
+| `dist:win:fast` | Fast Windows build (store compression) |
+| `dist:win:release` | Production Windows build |
+| `dist:win:unsigned` | Unsigned Windows build |
+| `build:exe` | Build + package with electron-packager |
+| `setup-ffmpeg` | Copy FFmpeg WASM files to public |
+| `copy-ffmpeg` | Copy FFmpeg for packaged builds |
+| `release:patch/minor/major` | Version bump + release |
+| `test:e2e` | Run Playwright E2E tests |
+| `test:e2e:ui` | Playwright with interactive UI |
+| `test:e2e:headed` | Playwright in headed mode |
+| `test:e2e:workflow` | Run project workflow tests |
+
+### Web App (`apps/web/package.json`)
+| Script | Description |
+|--------|-------------|
+| `dev` | Start Vite dev server |
+| `build` | Build for production |
+| `build:electron` | Build for Electron |
+| `preview` | Preview production build |
+| `lint` | Biome check |
+| `lint:fix` | Biome check with auto-fix |
+| `format` | Biome format |
+| `test` | Run Vitest |
+| `test:ui` | Vitest with UI |
+| `test:coverage` | Coverage report |
+| `test:watch` | Watch mode tests |
+| `test:ui:dev` | UI + watch mode |
+| `db:generate` | Generate Drizzle migrations |
+| `db:migrate` | Run migrations |
+| `db:push:local` | Push to local database |
+| `db:push:prod` | Push to production database |
 
 ## Common Issues
 
@@ -65,15 +148,38 @@ bun run release:major    # 0.2.0 → 1.0.0
 
 **FFmpeg errors**: Known issue in packaged builds, most features still work
 
+**TypeScript errors in Electron**: Run `bun run build:electron` to compile
+
 ## Recommended Workflow
-1. **Development**: `bun run electron:dev`
-2. **Test packaging**: `bun run dist:dir` 
-3. **Test installer**: `bun run dist:win:fast`
-4. **Production**: `bun run dist:win:release`
+
+### Development
+1. `bun install` - Install dependencies
+2. `bun run build:electron` - Compile Electron TypeScript
+3. `bun run electron:dev` - Start development
+
+### Testing
+1. `cd apps/web && bun run test` - Run unit tests
+2. `bun run test:e2e` - Run E2E tests
+3. `bun run dist:dir` - Test packaging
+
+### Production Release
+1. `bun run test:e2e` - Verify E2E tests pass
+2. `bun run release:patch` - Bump version
+3. `bun run dist:win:release` - Build production installer
 
 ## Environment Variables (Optional)
 ```env
 ELECTRON_BUILDER_OUTPUT_DIR=custom/path    # Custom output directory
 DISABLE_AUTO_UPDATER=true                  # Disable auto-updater
 DEBUG=electron-builder                     # Debug builds
+NODE_ENV=development                       # Development mode
 ```
+
+## Tech Stack Versions
+- **Bun**: 1.2.18
+- **Electron**: 37.4.0
+- **Turbo**: 2.6.3
+- **Vite**: 7.1.3
+- **TypeScript**: 5.9.2
+- **Vitest**: 3.2.4
+- **Playwright**: 1.40.0
