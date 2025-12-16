@@ -63,6 +63,14 @@ export {
   validateKlingAvatarV2Audio,
   isFastLTXV2TextModel,
   isHailuo23TextToVideo,
+  // WAN v2.6 validators
+  validateWAN26Prompt,
+  validateWAN26NegativePrompt,
+  validateWAN26Duration,
+  validateWAN26Resolution,
+  validateWAN26T2VResolution,
+  validateWAN26AspectRatio,
+  isWAN26Model,
   // Sync Lipsync React-1 validators
   validateSyncLipsyncReact1Inputs,
   validateSyncLipsyncReact1VideoDuration,
@@ -121,6 +129,7 @@ export {
   generateVideo,
   generateVideoFromText,
   generateLTXV2Video,
+  generateWAN26TextVideo,
 } from "./generators/text-to-video";
 
 // ============================================
@@ -136,6 +145,7 @@ export {
   generateKlingO1Video,
   generateKlingO1RefVideo,
   generateWAN25ImageVideo,
+  generateWAN26ImageVideo,
 } from "./generators/image-to-video";
 
 // ============================================

@@ -250,6 +250,26 @@ export function calculateWan25Cost(
 }
 
 /**
+ * Calculate WAN v2.6 cost based on resolution and duration
+ * @param resolution - 480p, 720p, or 1080p (I2V) or 720p, 1080p (T2V)
+ * @param duration - Duration in seconds (5, 10, or 15)
+ * @returns Estimated cost in dollars
+ */
+export function calculateWan26Cost(
+  resolution: string,
+  duration: number
+): number {
+  const perSecondPricing: Record<string, number> = {
+    "480p": 0.05,
+    "720p": 0.1,
+    "1080p": 0.15,
+  };
+
+  const perSecondRate = perSecondPricing[resolution] ?? 0.15;
+  return duration * perSecondRate;
+}
+
+/**
  * Calculate Veo 3.1 extend-video cost
  * @param variant - "fast" or "standard"
  * @param generateAudio - Whether audio is generated

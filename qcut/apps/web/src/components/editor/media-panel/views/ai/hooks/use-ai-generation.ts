@@ -157,6 +157,21 @@ export function useAIGeneration(props: UseAIGenerationProps) {
     wan25AudioFile = null,
     wan25NegativePrompt,
     wan25EnablePromptExpansion = true,
+    // WAN v2.6 T2V props
+    wan26T2VDuration = 5,
+    wan26T2VResolution = "1080p",
+    wan26T2VAspectRatio = "16:9",
+    wan26T2VNegativePrompt,
+    wan26T2VEnablePromptExpansion = true,
+    wan26T2VMultiShots = false,
+    // WAN v2.6 I2V props
+    wan26Duration = 5,
+    wan26Resolution = "1080p",
+    wan26AspectRatio = "16:9",
+    wan26AudioUrl,
+    wan26AudioFile = null,
+    wan26NegativePrompt,
+    wan26EnablePromptExpansion = true,
     // Kling Avatar v2 props
     klingAvatarV2Prompt = "",
     audioDuration = null,
@@ -1054,6 +1069,13 @@ export function useAIGeneration(props: UseAIGenerationProps) {
             duration,
             aspectRatio,
             resolution,
+            // WAN v2.6 T2V settings
+            wan26T2VDuration,
+            wan26T2VResolution,
+            wan26T2VAspectRatio,
+            wan26T2VNegativePrompt: wan26T2VNegativePrompt ?? "",
+            wan26T2VEnablePromptExpansion,
+            wan26T2VMultiShots,
           };
 
           handlerResult = await routeTextToVideoHandler(
@@ -1102,6 +1124,14 @@ export function useAIGeneration(props: UseAIGenerationProps) {
             wan25AudioFile,
             wan25NegativePrompt: wan25NegativePrompt ?? "",
             wan25EnablePromptExpansion,
+            // WAN v2.6 I2V settings
+            wan26Duration,
+            wan26Resolution,
+            wan26AspectRatio,
+            wan26AudioUrl: wan26AudioUrl ?? null,
+            wan26AudioFile,
+            wan26NegativePrompt: wan26NegativePrompt ?? "",
+            wan26EnablePromptExpansion,
             imageSeed: imageSeed ?? null,
             duration,
             aspectRatio,

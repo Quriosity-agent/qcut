@@ -245,6 +245,22 @@ export interface UseAIGenerationProps {
   wan25NegativePrompt?: string;
   wan25EnablePromptExpansion?: boolean;
 
+  // WAN v2.6 T2V options
+  wan26T2VDuration?: 5 | 10 | 15;
+  wan26T2VResolution?: "720p" | "1080p";
+  wan26T2VAspectRatio?: "16:9" | "9:16" | "1:1" | "4:3" | "3:4";
+  wan26T2VNegativePrompt?: string;
+  wan26T2VEnablePromptExpansion?: boolean;
+  wan26T2VMultiShots?: boolean;
+  // WAN v2.6 I2V options
+  wan26Duration?: 5 | 10 | 15;
+  wan26Resolution?: "480p" | "720p" | "1080p";
+  wan26AspectRatio?: "16:9" | "9:16" | "1:1" | "4:3" | "3:4";
+  wan26AudioUrl?: string;
+  wan26AudioFile?: File | null;
+  wan26NegativePrompt?: string;
+  wan26EnablePromptExpansion?: boolean;
+
   // Kling Avatar v2 options
   /** Optional prompt for animation guidance (Kling Avatar v2) */
   klingAvatarV2Prompt?: string;
@@ -666,6 +682,38 @@ export interface WAN25I2VRequest {
   image_url: string;
   duration?: 5 | 10;
   resolution?: "480p" | "720p" | "1080p";
+  audio_url?: string;
+  negative_prompt?: string;
+  enable_prompt_expansion?: boolean;
+  seed?: number;
+}
+
+/**
+ * WAN v2.6 text-to-video request parameters
+ */
+export interface WAN26T2VRequest {
+  model: string;
+  prompt: string;
+  duration?: 5 | 10 | 15;
+  resolution?: "720p" | "1080p";
+  aspect_ratio?: "16:9" | "9:16" | "1:1" | "4:3" | "3:4";
+  audio_url?: string;
+  negative_prompt?: string;
+  enable_prompt_expansion?: boolean;
+  multi_shots?: boolean;
+  seed?: number;
+}
+
+/**
+ * WAN v2.6 image-to-video request parameters
+ */
+export interface WAN26I2VRequest {
+  model: string;
+  prompt: string;
+  image_url: string;
+  duration?: 5 | 10 | 15;
+  resolution?: "480p" | "720p" | "1080p";
+  aspect_ratio?: "16:9" | "9:16" | "1:1" | "4:3" | "3:4";
   audio_url?: string;
   negative_prompt?: string;
   enable_prompt_expansion?: boolean;

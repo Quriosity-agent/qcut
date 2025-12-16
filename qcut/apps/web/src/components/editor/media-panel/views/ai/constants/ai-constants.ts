@@ -105,6 +105,34 @@ export const AI_MODELS: AIModel[] = [
       style_preset: "cinematic",
     },
   },
+  // WAN v2.6 Text-to-Video
+  {
+    id: "wan_26_t2v",
+    name: "WAN v2.6 T2V",
+    description:
+      "Latest WAN model with 15s duration, multi-shot support, and audio sync",
+    price: "0.75", // 5s @ $0.15/s
+    resolution: "720p / 1080p",
+    max_duration: 15,
+    category: "text",
+    endpoints: {
+      text_to_video: "fal-ai/wan/v2.6/text-to-video",
+    },
+    default_params: {
+      duration: 5,
+      resolution: "1080p",
+      aspect_ratio: "16:9",
+      enable_prompt_expansion: true,
+      multi_shots: false,
+    },
+    supportedResolutions: ["720p", "1080p"],
+    supportedDurations: [5, 10, 15],
+    supportedAspectRatios: ["16:9", "9:16", "1:1", "4:3", "3:4"],
+    perSecondPricing: {
+      "720p": 0.1,
+      "1080p": 0.15,
+    },
+  },
   // LTX Video 2.0 Pro Text-to-Video
   {
     id: "ltxv2_pro_t2v",
@@ -400,6 +428,34 @@ export const AI_MODELS: AIModel[] = [
     },
     supportedResolutions: ["480p", "720p", "1080p"],
     supportedDurations: [5, 10],
+    perSecondPricing: {
+      "480p": 0.05,
+      "720p": 0.1,
+      "1080p": 0.15,
+    },
+  },
+  // WAN v2.6 Image-to-Video
+  {
+    id: "wan_26_i2v",
+    name: "WAN v2.6 I2V",
+    description:
+      "Animate images with WAN 2.6 - 15s duration, audio sync, multi-shot support",
+    price: "0.05-0.15/s",
+    resolution: "480p / 720p / 1080p",
+    max_duration: 15,
+    category: "image",
+    endpoints: {
+      image_to_video: "fal-ai/wan/v2.6/image-to-video",
+    },
+    default_params: {
+      duration: 5,
+      resolution: "1080p",
+      aspect_ratio: "16:9",
+      enable_prompt_expansion: true,
+    },
+    supportedResolutions: ["480p", "720p", "1080p"],
+    supportedDurations: [5, 10, 15],
+    supportedAspectRatios: ["16:9", "9:16", "1:1", "4:3", "3:4"],
     perSecondPricing: {
       "480p": 0.05,
       "720p": 0.1,
@@ -1310,6 +1366,23 @@ export const ERROR_MESSAGES = {
   EXTEND_VIDEO_MISSING: "Please upload a source video to extend",
   EXTEND_VIDEO_INVALID_FORMAT:
     "Video format must be MP4, MOV, WebM, M4V, or GIF for Veo 3.1 extend-video",
+
+  // WAN v2.6 specific errors
+  WAN26_EMPTY_PROMPT: "Please enter a prompt for WAN v2.6 video generation",
+  WAN26_PROMPT_TOO_LONG:
+    "Prompt exceeds maximum length of 2000 characters for WAN v2.6",
+  WAN26_NEGATIVE_PROMPT_TOO_LONG:
+    "Negative prompt exceeds maximum length of 1000 characters for WAN v2.6",
+  WAN26_INVALID_DURATION:
+    "Duration must be 5, 10, or 15 seconds for WAN v2.6",
+  WAN26_INVALID_RESOLUTION:
+    "Resolution must be 480p, 720p, or 1080p for WAN v2.6",
+  WAN26_T2V_INVALID_RESOLUTION:
+    "Resolution must be 720p or 1080p for WAN v2.6 text-to-video",
+  WAN26_INVALID_ASPECT_RATIO:
+    "Aspect ratio must be 16:9, 9:16, 1:1, 4:3, or 3:4 for WAN v2.6",
+  WAN26_I2V_MISSING_IMAGE:
+    "Image is required for WAN v2.6 image-to-video generation",
 } as const;
 
 // LTX Video 2.0 Fast Configuration

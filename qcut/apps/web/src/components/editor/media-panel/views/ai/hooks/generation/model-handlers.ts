@@ -20,6 +20,8 @@ import {
   generateKlingImageVideo,
   generateKling26ImageVideo,
   generateWAN25ImageVideo,
+  generateWAN26ImageVideo,
+  generateWAN26TextVideo,
   generateKlingO1Video,
   upscaleByteDanceVideo,
   upscaleFlashVSRVideo,
@@ -57,6 +59,10 @@ type KlingDuration = 5 | 10;
 type KlingAspectRatio = "16:9" | "9:16" | "1:1" | "4:3" | "3:4";
 type WAN25Duration = 5 | 10;
 type WAN25Resolution = "480p" | "720p" | "1080p";
+type WAN26Duration = 5 | 10 | 15;
+type WAN26Resolution = "480p" | "720p" | "1080p";
+type WAN26T2VResolution = "720p" | "1080p"; // T2V doesn't support 480p
+type WAN26AspectRatio = "16:9" | "9:16" | "1:1" | "4:3" | "3:4";
 type ByteDanceResolution = "1080p" | "2k" | "4k";
 type ByteDanceFPS = "30fps" | "60fps";
 type FlashVSRAcceleration = "regular" | "high" | "full";
@@ -99,6 +105,13 @@ export interface TextToVideoSettings {
   duration?: number;
   aspectRatio?: "16:9" | "9:16" | "1:1" | "4:3" | "3:4" | "21:9";
   resolution?: "720p" | "1080p" | "auto";
+  // WAN v2.6 T2V settings
+  wan26T2VDuration: number;
+  wan26T2VResolution: string;
+  wan26T2VAspectRatio: string;
+  wan26T2VNegativePrompt: string;
+  wan26T2VEnablePromptExpansion: boolean;
+  wan26T2VMultiShots: boolean;
 }
 
 /**
@@ -148,6 +161,14 @@ export interface ImageToVideoSettings {
   wan25AudioFile: File | null;
   wan25NegativePrompt: string;
   wan25EnablePromptExpansion: boolean;
+  // WAN v2.6 I2V settings
+  wan26Duration: number;
+  wan26Resolution: string;
+  wan26AspectRatio: string;
+  wan26AudioUrl: string | null;
+  wan26AudioFile: File | null;
+  wan26NegativePrompt: string;
+  wan26EnablePromptExpansion: boolean;
   imageSeed: number | null;
   duration?: number;
   aspectRatio?: "16:9" | "9:16" | "1:1" | "4:3" | "3:4" | "21:9";
@@ -882,6 +903,87 @@ export async function handleWAN25I2V(
 }
 
 /**
+ * Handle WAN v2.6 image-to-video generation
+ */
+export async function handleWAN26I2V(
+  ctx: ModelHandlerContext,
+  settings: ImageToVideoSettings
+): Promise<ModelHandlerResult> {
+  if (!settings.selectedImage) {
+    return {
+      response: undefined,
+      shouldSkip: true,
+      skipReason: "WAN v2.6 requires a selected image",
+    };
+  }
+
+  const imageUrl = await settings.uploadImageToFal(settings.selectedImage);
+  const audioUrl = settings.wan26AudioFile
+    ? await settings.uploadAudioToFal(settings.wan26AudioFile)
+    : settings.wan26AudioUrl;
+
+  ctx.progressCallback({
+    status: "processing",
+    progress: 10,
+    message: `Submitting ${ctx.modelName} request...`,
+  });
+
+  const response = await generateWAN26ImageVideo({
+    model: ctx.modelId,
+    prompt: ctx.prompt,
+    image_url: imageUrl,
+    duration: settings.wan26Duration as WAN26Duration,
+    resolution: settings.wan26Resolution as WAN26Resolution,
+    aspect_ratio: settings.wan26AspectRatio as WAN26AspectRatio,
+    audio_url: audioUrl ?? undefined,
+    negative_prompt: settings.wan26NegativePrompt,
+    enable_prompt_expansion: settings.wan26EnablePromptExpansion,
+    seed: settings.imageSeed ?? undefined,
+  });
+
+  ctx.progressCallback({
+    status: "completed",
+    progress: 100,
+    message: `Video generated with ${ctx.modelName}`,
+  });
+
+  return { response };
+}
+
+/**
+ * Handle WAN v2.6 text-to-video generation
+ */
+export async function handleWAN26T2V(
+  ctx: ModelHandlerContext,
+  settings: TextToVideoSettings
+): Promise<ModelHandlerResult> {
+  ctx.progressCallback({
+    status: "processing",
+    progress: 10,
+    message: `Submitting ${ctx.modelName} request...`,
+  });
+
+  const response = await generateWAN26TextVideo({
+    model: ctx.modelId,
+    prompt: ctx.prompt,
+    duration: settings.wan26T2VDuration as WAN26Duration,
+    resolution: settings.wan26T2VResolution as WAN26T2VResolution,
+    aspect_ratio: settings.wan26T2VAspectRatio as WAN26AspectRatio,
+    negative_prompt: settings.wan26T2VNegativePrompt || undefined,
+    enable_prompt_expansion: settings.wan26T2VEnablePromptExpansion,
+    multi_shots: settings.wan26T2VMultiShots,
+  });
+
+  ctx.progressCallback({
+    status: "completed",
+    progress: 100,
+    message: `Video generated with ${ctx.modelName}`,
+  });
+
+  return { response };
+}
+
+/**
  * Handle generic image-to-video generation (fallback)
  */
 export async function handleGenericI2V(
@@ -1370,6 +1472,8 @@ export async function routeTextToVideoHandler(
       return handleLTXV2ProT2V(ctx, settings);
     case "ltxv2_fast_t2v":
       return handleLTXV2FastT2V(ctx, settings);
+    case "wan_26_t2v":
+      return handleWAN26T2V(ctx, settings);
     default:
       return handleGenericT2V(ctx, settings);
   }
@@ -1407,6 +1511,8 @@ export async function routeImageToVideoHandler(
       return handleKlingV26I2V(ctx, settings);
     case "wan_25_preview_i2v":
       return handleWAN25I2V(ctx, settings);
+    case "wan_26_i2v":
+      return handleWAN26I2V(ctx, settings);
     default:
       if (
         VEO31_FRAME_MODELS.has(ctx.modelId) &&

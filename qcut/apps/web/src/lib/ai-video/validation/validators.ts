@@ -350,6 +350,92 @@ export function validateWAN25NegativePrompt(negativePrompt: string): void {
 }
 
 // ============================================
+// WAN v2.6 Validators
+// ============================================
+
+/**
+ * Validates prompt length for WAN v2.6 models (2000 char max)
+ *
+ * @param prompt - Text prompt to validate
+ * @throws Error if prompt exceeds 2000 characters
+ */
+export function validateWAN26Prompt(prompt: string): void {
+  if (prompt.length > 2000) {
+    throw new Error(ERROR_MESSAGES.WAN26_PROMPT_TOO_LONG);
+  }
+}
+
+/**
+ * Validates negative prompt length for WAN v2.6 models (1000 char max)
+ *
+ * @param negativePrompt - Negative prompt to validate
+ * @throws Error if negative prompt exceeds 1000 characters
+ */
+export function validateWAN26NegativePrompt(negativePrompt: string): void {
+  if (negativePrompt.length > 1000) {
+    throw new Error(ERROR_MESSAGES.WAN26_NEGATIVE_PROMPT_TOO_LONG);
+  }
+}
+
+/**
+ * Validates duration for WAN v2.6 models
+ *
+ * @param duration - Duration in seconds
+ * @throws Error if duration is not 5, 10, or 15 seconds
+ */
+export function validateWAN26Duration(duration: number): void {
+  if (![5, 10, 15].includes(duration)) {
+    throw new Error(ERROR_MESSAGES.WAN26_INVALID_DURATION);
+  }
+}
+
+/**
+ * Validates resolution for WAN v2.6 I2V models (480p, 720p, 1080p)
+ *
+ * @param resolution - Resolution string
+ * @throws Error if resolution is not supported
+ */
+export function validateWAN26Resolution(resolution: string): void {
+  if (!["480p", "720p", "1080p"].includes(resolution)) {
+    throw new Error(ERROR_MESSAGES.WAN26_INVALID_RESOLUTION);
+  }
+}
+
+/**
+ * Validates resolution for WAN v2.6 T2V models (720p, 1080p only)
+ *
+ * @param resolution - Resolution string
+ * @throws Error if resolution is not supported for T2V
+ */
+export function validateWAN26T2VResolution(resolution: string): void {
+  if (!["720p", "1080p"].includes(resolution)) {
+    throw new Error(ERROR_MESSAGES.WAN26_T2V_INVALID_RESOLUTION);
+  }
+}
+
+/**
+ * Validates aspect ratio for WAN v2.6 models
+ *
+ * @param aspectRatio - Aspect ratio string
+ * @throws Error if aspect ratio is not supported
+ */
+export function validateWAN26AspectRatio(aspectRatio: string): void {
+  if (!["16:9", "9:16", "1:1", "4:3", "3:4"].includes(aspectRatio)) {
+    throw new Error(ERROR_MESSAGES.WAN26_INVALID_ASPECT_RATIO);
+  }
+}
+
+/**
+ * Checks if model is a WAN v2.6 model
+ *
+ * @param modelId - Model identifier to check
+ * @returns true if model is WAN v2.6
+ */
+export function isWAN26Model(modelId: string): boolean {
+  return modelId === "wan_26_t2v" || modelId === "wan_26_i2v";
+}
+
+// ============================================
 // Image Generation Constants
 // ============================================
 

@@ -7,6 +7,7 @@ export type T2VModelId =
   | "sora2_text_to_video"
   | "sora2_text_to_video_pro"
   | "wan_25_preview"
+  | "wan_26_t2v"
   | "ltxv2_pro_t2v"
   | "ltxv2_fast_t2v"
   | "veo31_fast"
@@ -94,6 +95,22 @@ export const T2V_MODEL_CAPABILITIES: Record<T2VModelId, T2VModelCapabilities> =
       supportsPromptExpansion: false,
       supportsSeed: true,
       supportsSafetyChecker: true,
+      defaultResolution: "1080p",
+      defaultDuration: 5,
+    },
+
+    wan_26_t2v: {
+      supportsAspectRatio: true,
+      supportedAspectRatios: ["16:9", "9:16", "1:1", "4:3", "3:4"],
+      supportsResolution: true,
+      supportedResolutions: ["720p", "1080p"], // T2V doesn't support 480p
+      supportsDuration: true,
+      supportedDurations: [5, 10, 15],
+      supportsNegativePrompt: true,
+      supportsPromptExpansion: true,
+      supportsSeed: true,
+      supportsSafetyChecker: false,
+      defaultAspectRatio: "16:9",
       defaultResolution: "1080p",
       defaultDuration: 5,
     },
