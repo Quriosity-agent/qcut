@@ -157,15 +157,24 @@ export function MultiImageUpload({
             {/* Add More Button in Grid */}
             {canAddMore && (
               <div
-                className={`aspect-square rounded border-2 border-dashed cursor-pointer transition-colors flex flex-col items-center justify-center ${
+                role="button"
+                tabIndex={0}
+                className={`aspect-square rounded border-2 border-dashed cursor-pointer transition-colors flex flex-col items-center justify-center focus:outline-none focus:ring-2 focus:ring-primary ${
                   dragOver
                     ? "border-primary bg-primary/5"
                     : "border-muted-foreground/25 hover:border-primary/50"
                 }`}
                 onClick={openFileDialog}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    openFileDialog();
+                  }
+                }}
                 onDragOver={handleDragOver}
                 onDragLeave={handleDragLeave}
                 onDrop={handleDrop}
+                aria-label={`Add up to ${remainingSlots} more images`}
               >
                 <Plus className="w-5 h-5 text-muted-foreground" />
                 <span className="text-[10px] text-muted-foreground mt-0.5">

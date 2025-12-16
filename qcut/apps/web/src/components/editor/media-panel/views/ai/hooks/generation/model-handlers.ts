@@ -1299,7 +1299,9 @@ export async function handleVeo31ExtendVideo(
     };
   }
 
-  console.log(`  🎬 Calling Veo 3.1 Standard Extend-Video for ${ctx.modelId}...`);
+  console.log(
+    `  🎬 Calling Veo 3.1 Standard Extend-Video for ${ctx.modelId}...`
+  );
   console.log("  📤 Uploading video to FAL storage...");
 
   ctx.progressCallback({

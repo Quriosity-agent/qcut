@@ -195,8 +195,8 @@ export function AIAvatarTab({
     "sync_lipsync_react1"
   );
 
-  const extendVideoSelected = selectedModels.some(
-    (m) => m.includes("extend_video")
+  const extendVideoSelected = selectedModels.some((m) =>
+    m.includes("extend_video")
   );
 
   return (

@@ -100,9 +100,7 @@ export function AdjustmentPanel() {
       // Upload images based on model capabilities
       if (capabilities.supportsMultiple && multipleImageFiles.length > 0) {
         // Upload multiple images
-        debugLog(
-          `🔄 Uploading ${multipleImageFiles.length} images to FAL...`
-        );
+        debugLog(`🔄 Uploading ${multipleImageFiles.length} images to FAL...`);
         uploadedImageUrls = await uploadImagesToFAL(
           multipleImageFiles,
           (completed, total) => {

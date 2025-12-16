@@ -370,7 +370,10 @@ export const useAdjustmentStore = create<AdjustmentStore>()(
           selectedModel: model,
           parameters: getDefaultParameters(model),
           multipleImages: multipleImages.slice(0, capabilities.maxImages),
-          multipleImageFiles: multipleImageFiles.slice(0, capabilities.maxImages),
+          multipleImageFiles: multipleImageFiles.slice(
+            0,
+            capabilities.maxImages
+          ),
         });
         return;
       }
@@ -428,7 +431,9 @@ export const useAdjustmentStore = create<AdjustmentStore>()(
       const { editHistory } = get();
       if (index >= 0 && index < editHistory.length) {
         const item = editHistory[index];
-        const currentParams = getDefaultParameters(item.model as ImageEditModelId);
+        const currentParams = getDefaultParameters(
+          item.model as ImageEditModelId
+        );
         set({
           currentHistoryIndex: index,
           currentEditedUrl: item.editedUrl,

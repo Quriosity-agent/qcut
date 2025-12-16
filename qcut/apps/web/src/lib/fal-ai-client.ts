@@ -1064,9 +1064,7 @@ class FalAIClient {
       });
 
       const errorMessage =
-        error instanceof Error
-          ? error.message
-          : "Veo 3.1 Fast extend failed";
+        error instanceof Error ? error.message : "Veo 3.1 Fast extend failed";
       return {
         job_id: `veo31_fast_extend_error_${Date.now()}`,
         status: "failed",
@@ -1086,9 +1084,13 @@ class FalAIClient {
     try {
       const endpoint = "https://fal.run/fal-ai/veo3.1/extend-video";
 
-      debugLogger.log(FAL_LOG_COMPONENT, "VEO31_STANDARD_EXTEND_VIDEO_REQUEST", {
-        params,
-      });
+      debugLogger.log(
+        FAL_LOG_COMPONENT,
+        "VEO31_STANDARD_EXTEND_VIDEO_REQUEST",
+        {
+          params,
+        }
+      );
 
       const response = await this.makeRequest<Veo31Response>(
         endpoint,

@@ -504,7 +504,7 @@ test.describe("AI Enhancement & Export Integration", () => {
       '[data-testid="upscale-result-preview"]'
     );
     const hasResult = await upscaleResult
-      .isVisible({ timeout: 15000 })
+      .isVisible({ timeout: 15_000 })
       .catch(() => false);
     if (!hasResult) {
       test.skip(

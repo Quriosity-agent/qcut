@@ -990,8 +990,7 @@ export const AI_MODELS: AIModel[] = [
   {
     id: "veo31_extend_video",
     name: "Veo 3.1 Extend",
-    description:
-      "Extend videos by 7s with premium quality motion continuation",
+    description: "Extend videos by 7s with premium quality motion continuation",
     price: "0.40/s", // $0.40/second with audio, $0.20/s without
     resolution: "720p",
     max_duration: 7,
@@ -1308,8 +1307,7 @@ export const ERROR_MESSAGES = {
     "Video must be 720p or 1080p for Veo 3.1 extend-video",
   EXTEND_VIDEO_INVALID_ASPECT_RATIO:
     "Video must be 16:9 or 9:16 for Veo 3.1 extend-video",
-  EXTEND_VIDEO_MISSING:
-    "Please upload a source video to extend",
+  EXTEND_VIDEO_MISSING: "Please upload a source video to extend",
   EXTEND_VIDEO_INVALID_FORMAT:
     "Video format must be MP4, MOV, WebM, M4V, or GIF for Veo 3.1 extend-video",
 } as const;
