@@ -10,6 +10,7 @@ import type {
   Veo31TextToVideoInput,
   Veo31ImageToVideoInput,
   Veo31FrameToVideoInput,
+  Veo31ExtendVideoInput,
   Veo31Response,
   ReveTextToImageInput,
   ReveTextToImageOutput,

@@ -964,6 +964,51 @@ export const AI_MODELS: AIModel[] = [
       resolution: "1080p",
     },
   },
+  // Veo 3.1 Extend-Video Models - Extend videos by 7 seconds
+  {
+    id: "veo31_fast_extend_video",
+    name: "Veo 3.1 Fast Extend",
+    description:
+      "Extend videos by 7s with motion continuation (faster, budget-friendly)",
+    price: "0.15/s", // $0.15/second with audio, $0.10/s without
+    resolution: "720p",
+    max_duration: 7,
+    category: "avatar", // Avatar tab has Source Video upload
+    requiredInputs: ["sourceVideo"],
+    endpoints: {
+      image_to_video: "fal-ai/veo3.1/fast/extend-video",
+    },
+    default_params: {
+      duration: "7s",
+      resolution: "720p",
+      aspect_ratio: "auto",
+      generate_audio: true,
+      auto_fix: false,
+    },
+    supportedAspectRatios: ["auto", "16:9", "9:16"],
+  },
+  {
+    id: "veo31_extend_video",
+    name: "Veo 3.1 Extend",
+    description:
+      "Extend videos by 7s with premium quality motion continuation",
+    price: "0.40/s", // $0.40/second with audio, $0.20/s without
+    resolution: "720p",
+    max_duration: 7,
+    category: "avatar",
+    requiredInputs: ["sourceVideo"],
+    endpoints: {
+      image_to_video: "fal-ai/veo3.1/extend-video",
+    },
+    default_params: {
+      duration: "7s",
+      resolution: "720p",
+      aspect_ratio: "auto",
+      generate_audio: true,
+      auto_fix: false,
+    },
+    supportedAspectRatios: ["auto", "16:9", "9:16"],
+  },
   // Kling Avatar v1 Models (Legacy)
   {
     id: "kling_avatar_pro",

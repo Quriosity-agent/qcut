@@ -2,12 +2,14 @@
 
 **Created:** 2025-12-16
 **Priority:** Medium
-**Estimated Time:** 3-4 hours
-**Panel Location:** Image Tab (Video-to-Video section)
+**Estimated Time:** 2-3 hours
+**Panel Location:** Avatar Tab (uses existing Source Video upload)
 
 ## Overview
 
 Integrate Google's Veo 3.1 extend-video API to allow users to extend existing videos up to 30 seconds total length. This feature takes an existing video (up to 8 seconds) and extends it by 7 seconds based on a text prompt.
+
+The models will be added to the **Avatar panel** alongside other video-based models like "Kling O1 Video Reference" and "Kling O1 Video Edit", reusing the existing "Source Video" upload component.
 
 ## API Details
 
@@ -58,20 +60,20 @@ Integrate Google's Veo 3.1 extend-video API to allow users to extend existing vi
 - `apps/web/src/types/ai-generation.ts`
 
 **Changes:**
-```typescript
-// Add after Veo31FrameToVideoInput interface (~line 48)
+Add after `Veo31FrameToVideoInput` interface (~line 48):
 
+```typescript
 /**
  * Veo 3.1 Extend-Video Input Parameters
  */
 export interface Veo31ExtendVideoInput {
-  prompt: string;                        // Required: How video should continue
-  video_url: string;                     // Required: Video to extend (720p+, 16:9/9:16)
+  prompt: string;                          // Required: How video should continue
+  video_url: string;                       // Required: Video to extend (720p+, 16:9/9:16)
   aspect_ratio?: "auto" | "16:9" | "9:16"; // Default: "auto"
-  duration?: "7s";                       // Currently only "7s"
-  resolution?: "720p";                   // Currently only "720p"
-  generate_audio?: boolean;              // Default: true
-  auto_fix?: boolean;                    // Default: false
+  duration?: "7s";                         // Currently only "7s"
+  resolution?: "720p";                     // Currently only "720p"
+  generate_audio?: boolean;                // Default: true
+  auto_fix?: boolean;                      // Default: false
 }
 ```
 
@@ -83,18 +85,18 @@ export interface Veo31ExtendVideoInput {
 - `apps/web/src/components/editor/media-panel/views/ai/constants/ai-constants.ts`
 
 **Changes:**
-Add two new model entries in the `AI_MODELS` array after the existing Veo 3.1 image-to-video models (~line 490):
+Add two new model entries in the `AI_MODELS` array in the avatar models section (~line 600+):
 
 ```typescript
-// Veo 3.1 Extend-Video Models
+// Veo 3.1 Extend-Video Models (Avatar tab - uses Source Video)
 {
   id: "veo31_fast_extend_video",
-  name: "Veo 3.1 Fast Extend-Video",
-  description: "Extend existing videos by 7s with motion continuation (faster, budget-friendly)",
+  name: "Veo 3.1 Fast Extend",
+  description: "Extend videos by 7s with motion continuation (faster)",
   price: "0.15/s",  // $0.15/second with audio, $0.10/s without
   resolution: "720p",
   max_duration: 7,
-  category: "image",  // Use image tab since it handles video input
+  category: "avatar",  // Avatar tab has Source Video upload
   endpoints: {
     image_to_video: "fal-ai/veo3.1/fast/extend-video",
   },
@@ -105,17 +107,17 @@ Add two new model entries in the `AI_MODELS` array after the existing Veo 3.1 im
     generate_audio: true,
     auto_fix: false,
   },
-  requiredInputs: ["video"],  // Requires video input
+  requiredInputs: ["video"],
   supportedAspectRatios: ["auto", "16:9", "9:16"],
 },
 {
   id: "veo31_extend_video",
-  name: "Veo 3.1 Extend-Video",
-  description: "Extend existing videos by 7s with premium motion continuation",
+  name: "Veo 3.1 Extend",
+  description: "Extend videos by 7s with premium quality continuation",
   price: "0.40/s",  // $0.40/second with audio, $0.20/s without
   resolution: "720p",
   max_duration: 7,
-  category: "image",
+  category: "avatar",
   endpoints: {
     image_to_video: "fal-ai/veo3.1/extend-video",
   },
@@ -267,18 +269,18 @@ Add handler case for the new extend-video models in the model handler switch sta
 ```typescript
 case "veo31_fast_extend_video":
 case "veo31_extend_video": {
-  // Validate video input
+  // Validate video input (uses Avatar tab's sourceVideo)
   if (!sourceVideoUrl) {
-    throw new Error("Video is required for Veo 3.1 extend-video");
+    throw new Error("Source video is required for Veo 3.1 extend-video");
   }
 
   const extendParams: Veo31ExtendVideoInput = {
     prompt: prompt,
     video_url: sourceVideoUrl,
-    aspect_ratio: aspectRatio === "auto" ? "auto" : aspectRatio as "16:9" | "9:16",
+    aspect_ratio: extendVideoAspectRatio ?? "auto",
     duration: "7s",
     resolution: "720p",
-    generate_audio: generateAudio ?? true,
+    generate_audio: extendVideoGenerateAudio ?? true,
     auto_fix: false,
   };
 
@@ -296,51 +298,92 @@ case "veo31_extend_video": {
 
 **Also modify:**
 - `apps/web/src/components/editor/media-panel/views/ai/hooks/use-ai-generation.ts`
-  - Add the new model IDs to the model ID type union if needed
-  - Ensure the handler routing includes the new models
+  - Add video upload flow for extend-video models using existing `sourceVideo` from Avatar state
 
 ---
 
-### Subtask 5: Update Image Tab UI for Extend-Video Section (40 min)
+### Subtask 5: Add Extend-Video Settings to Avatar Tab State (20 min)
 
 **Files to Modify:**
-- `apps/web/src/components/editor/media-panel/views/ai/tabs/ai-image-tab.tsx`
+- `apps/web/src/components/editor/media-panel/views/ai/hooks/use-ai-avatar-tab-state.ts`
+
+**Changes:**
+Add state for extend-video specific settings:
+
+```typescript
+// Add to AvatarTabState interface (~line 32)
+// Veo 3.1 Extend-Video settings
+extendVideoAspectRatio: "auto" | "16:9" | "9:16";
+extendVideoGenerateAudio: boolean;
+
+// Add to AvatarTabSetters interface (~line 67)
+setExtendVideoAspectRatio: (value: "auto" | "16:9" | "9:16") => void;
+setExtendVideoGenerateAudio: (value: boolean) => void;
+
+// Add state in hook (~line 172)
+const [extendVideoAspectRatio, setExtendVideoAspectRatio] =
+  useState<"auto" | "16:9" | "9:16">("auto");
+const [extendVideoGenerateAudio, setExtendVideoGenerateAudio] = useState(true);
+
+// Add to state return object (~line 209)
+extendVideoAspectRatio,
+extendVideoGenerateAudio,
+
+// Add to setters return object (~line 231)
+setExtendVideoAspectRatio,
+setExtendVideoGenerateAudio,
+
+// Add to resetAll function (~line 186)
+setExtendVideoAspectRatio("auto");
+setExtendVideoGenerateAudio(true);
+```
+
+---
+
+### Subtask 6: Update Avatar Tab UI for Extend-Video Settings (25 min)
+
+**Files to Modify:**
+- `apps/web/src/components/editor/media-panel/views/ai/tabs/ai-avatar-tab.tsx`
 
 **Changes:**
 
-1. Add a new section for "Extend Video" after the Frame Upload section:
+1. Add new props to `AIAvatarTabProps` interface (~line 52):
+```typescript
+// Veo 3.1 Extend-Video settings
+extendVideoAspectRatio: "auto" | "16:9" | "9:16";
+onExtendVideoAspectRatioChange: (value: "auto" | "16:9" | "9:16") => void;
+extendVideoGenerateAudio: boolean;
+onExtendVideoGenerateAudioChange: (value: boolean) => void;
+```
 
+2. Add detection for extend-video models (~line 178):
+```typescript
+const extendVideoSelected = selectedModels.some(m => m.includes("extend_video"));
+```
+
+3. Add Veo 3.1 Extend-Video Options section after Sync Lipsync section (~line 584):
 ```tsx
-{/* Extend Video Section - Show when extend-video models are selected */}
-{selectedModels.some(m => m.includes("extend_video")) && (
-  <div className="space-y-3">
-    <Label className="text-xs font-medium">Source Video</Label>
-    <div className="text-xs text-muted-foreground mb-2">
+{/* Veo 3.1 Extend-Video Options */}
+{extendVideoSelected && (
+  <div className="space-y-3 text-left border-t pt-3">
+    <Label className="text-sm font-semibold">
+      Veo 3.1 Extend-Video Options
+    </Label>
+    <p className="text-xs text-muted-foreground">
       Upload a video (up to 8s, 720p/1080p, 16:9 or 9:16) to extend by 7 seconds
-    </div>
-    <FileUpload
-      accept="video/mp4,video/quicktime,video/webm,video/x-m4v,image/gif"
-      maxSize={UPLOAD_CONSTANTS.MAX_VIDEO_SIZE_BYTES}
-      value={imageTabSourceVideo}
-      onChange={onSourceVideoChange}
-      placeholder="Upload video to extend"
-      className="w-full"
-    />
-    {imageTabSourceVideo && (
-      <div className="text-xs text-muted-foreground">
-        {imageTabSourceVideo.name} ({(imageTabSourceVideo.size / (1024 * 1024)).toFixed(2)} MB)
-      </div>
-    )}
+    </p>
 
-    {/* Extend Video Settings */}
-    <div className="grid grid-cols-2 gap-2">
-      <div>
-        <Label className="text-xs">Aspect Ratio</Label>
+    <div className="grid grid-cols-2 gap-3">
+      {/* Aspect Ratio */}
+      <div className="space-y-2">
+        <Label htmlFor="extend-video-aspect-ratio" className="text-xs">
+          Aspect Ratio
+        </Label>
         <Select
           value={extendVideoAspectRatio}
           onValueChange={onExtendVideoAspectRatioChange}
         >
-          <SelectTrigger className="h-8 text-xs">
+          <SelectTrigger id="extend-video-aspect-ratio" className="h-8 text-xs">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -350,76 +393,41 @@ case "veo31_extend_video": {
           </SelectContent>
         </Select>
       </div>
-      <div>
+
+      {/* Generate Audio */}
+      <div className="space-y-2">
         <Label className="text-xs">Generate Audio</Label>
-        <div className="flex items-center gap-2 mt-1">
+        <div className="flex items-center gap-2 h-8">
           <Checkbox
+            id="extend-video-audio"
             checked={extendVideoGenerateAudio}
-            onCheckedChange={onExtendVideoGenerateAudioChange}
+            onCheckedChange={(checked) =>
+              onExtendVideoGenerateAudioChange(checked === true)
+            }
           />
-          <span className="text-xs text-muted-foreground">
-            {extendVideoGenerateAudio ? "$0.15-0.40/s" : "$0.10-0.20/s"}
-          </span>
+          <label htmlFor="extend-video-audio" className="text-xs text-muted-foreground cursor-pointer">
+            {extendVideoGenerateAudio ? "On ($0.15-0.40/s)" : "Off ($0.10-0.20/s)"}
+          </label>
         </div>
       </div>
+    </div>
+
+    {/* Cost estimate */}
+    <div className="text-xs text-muted-foreground">
+      Extends video by 7 seconds · Est. cost: {extendVideoGenerateAudio ? "$1.05-2.80" : "$0.70-1.40"}
     </div>
   </div>
 )}
 ```
 
-2. Add new props to `AIImageTabProps` interface:
+4. Add import for Checkbox if not already imported:
 ```typescript
-// Extend Video settings
-extendVideoAspectRatio: "auto" | "16:9" | "9:16";
-onExtendVideoAspectRatioChange: (value: "auto" | "16:9" | "9:16") => void;
-extendVideoGenerateAudio: boolean;
-onExtendVideoGenerateAudioChange: (value: boolean) => void;
+import { Checkbox } from "@/components/ui/checkbox";
 ```
 
 ---
 
-### Subtask 6: Add State Management for Extend-Video (25 min)
-
-**Files to Modify:**
-- `apps/web/src/components/editor/media-panel/views/ai/hooks/use-ai-image-tab-state.ts`
-
-**Changes:**
-Add state and handlers for extend-video settings:
-
-```typescript
-// Add to state
-const [extendVideoAspectRatio, setExtendVideoAspectRatio] = useState<"auto" | "16:9" | "9:16">("auto");
-const [extendVideoGenerateAudio, setExtendVideoGenerateAudio] = useState(true);
-
-// Add to return object
-extendVideoAspectRatio,
-setExtendVideoAspectRatio,
-extendVideoGenerateAudio,
-setExtendVideoGenerateAudio,
-```
-
----
-
-### Subtask 7: Add Video Upload Handler (20 min)
-
-**Files to Modify:**
-- `apps/web/src/components/editor/media-panel/views/ai/hooks/use-ai-generation.ts`
-
-**Changes:**
-Add video upload logic in the generation flow:
-
-```typescript
-// Before calling the extend-video model handler
-if (modelId.includes("extend_video") && sourceVideo) {
-  // Upload video to FAL storage
-  const videoUrl = await falAIClient.uploadVideoToFal(sourceVideo);
-  sourceVideoUrl = videoUrl;
-}
-```
-
----
-
-### Subtask 8: Add Cost Calculator (10 min)
+### Subtask 7: Add Cost Calculator (10 min)
 
 **Files to Modify:**
 - `apps/web/src/components/editor/media-panel/views/ai/utils/ai-cost-calculators.ts`
@@ -449,40 +457,40 @@ export function calculateVeo31ExtendCost(
 
 ---
 
-### Subtask 9: Update Validation Constants (10 min)
+### Subtask 8: Update Validation Constants (10 min)
 
 **Files to Modify:**
 - `apps/web/src/components/editor/media-panel/views/ai/constants/ai-constants.ts`
 
 **Changes:**
-Add constants for extend-video validation (~line 1100 in UPLOAD_CONSTANTS):
+Add to `UPLOAD_CONSTANTS` (~line 1100):
 
 ```typescript
 // Veo 3.1 extend-video constraints
-MAX_EXTEND_VIDEO_DURATION_SECONDS: 8,  // Max input video duration
-MAX_EXTEND_VIDEO_SIZE_BYTES: 100 * 1024 * 1024, // 100MB
+MAX_EXTEND_VIDEO_DURATION_SECONDS: 8,
 EXTEND_VIDEO_SUPPORTED_FORMATS: ["mp4", "mov", "webm", "m4v", "gif"],
 EXTEND_VIDEO_SUPPORTED_RESOLUTIONS: ["720p", "1080p"],
 EXTEND_VIDEO_SUPPORTED_ASPECT_RATIOS: ["16:9", "9:16"],
 ```
 
-Add error messages (~line 1140 in ERROR_MESSAGES):
+Add to `ERROR_MESSAGES` (~line 1140):
 ```typescript
 EXTEND_VIDEO_TOO_LONG: "Input video must be 8 seconds or less for extend-video",
 EXTEND_VIDEO_INVALID_RESOLUTION: "Video must be 720p or 1080p for extend-video",
 EXTEND_VIDEO_INVALID_ASPECT_RATIO: "Video must be 16:9 or 9:16 for extend-video",
+EXTEND_VIDEO_MISSING: "Please upload a source video to extend",
 ```
 
 ---
 
-### Subtask 10: Add Tests (30 min)
+### Subtask 9: Add Tests (20 min)
 
 **Files to Create:**
 - `apps/web/src/components/editor/media-panel/views/ai/__tests__/extend-video.test.ts`
 
 **Test Cases:**
-1. Test model definition exists and has correct properties
-2. Test cost calculator returns correct values
+1. Test model definition exists with correct category ("avatar")
+2. Test cost calculator returns correct values for fast/standard with/without audio
 3. Test validation rejects videos longer than 8 seconds
 4. Test aspect ratio validation
 
@@ -494,12 +502,12 @@ EXTEND_VIDEO_INVALID_ASPECT_RATIO: "Video must be 16:9 or 9:16 for extend-video"
 | File | Changes |
 |------|---------|
 | `apps/web/src/types/ai-generation.ts` | Add `Veo31ExtendVideoInput` interface |
-| `apps/web/src/components/editor/media-panel/views/ai/constants/ai-constants.ts` | Add 2 model definitions, validation constants, error messages |
+| `apps/web/src/components/editor/media-panel/views/ai/constants/ai-constants.ts` | Add 2 model definitions (category: "avatar"), validation constants, error messages |
 | `apps/web/src/lib/fal-ai-client.ts` | Add 2 client methods for extend-video |
 | `apps/web/src/components/editor/media-panel/views/ai/hooks/generation/model-handlers.ts` | Add handler case for extend-video |
-| `apps/web/src/components/editor/media-panel/views/ai/hooks/use-ai-generation.ts` | Add video upload flow |
-| `apps/web/src/components/editor/media-panel/views/ai/hooks/use-ai-image-tab-state.ts` | Add state for extend-video settings |
-| `apps/web/src/components/editor/media-panel/views/ai/tabs/ai-image-tab.tsx` | Add UI section for extend-video |
+| `apps/web/src/components/editor/media-panel/views/ai/hooks/use-ai-generation.ts` | Add video upload flow for extend-video |
+| `apps/web/src/components/editor/media-panel/views/ai/hooks/use-ai-avatar-tab-state.ts` | Add state for extend-video settings |
+| `apps/web/src/components/editor/media-panel/views/ai/tabs/ai-avatar-tab.tsx` | Add UI section for extend-video options |
 | `apps/web/src/components/editor/media-panel/views/ai/utils/ai-cost-calculators.ts` | Add cost calculator function |
 
 ### Files to Create
@@ -509,17 +517,28 @@ EXTEND_VIDEO_INVALID_ASPECT_RATIO: "Video must be 16:9 or 9:16 for extend-video"
 
 ---
 
+## Reused Components
+
+The Avatar tab already provides:
+- **Source Video upload** - Reuse existing `sourceVideo` file state
+- **Additional Prompt** - Reuse existing prompt for extension description
+- **Audio duration extraction** - Available via `useVideoFileWithDuration` hook
+
+No new upload components needed - just add the model-specific settings panel.
+
+---
+
 ## Long-Term Support Considerations
 
 ### 1. Extensibility
-- Model definition follows existing pattern for easy addition of future extend-video variants
-- Type definitions are reusable for other video extension APIs
-- Cost calculator pattern matches existing calculators
+- Model definition follows existing avatar models pattern
+- Type definitions are reusable for future extend-video variants
+- Settings integrate with existing Avatar tab state management
 
 ### 2. Maintainability
-- Code follows existing patterns in the codebase
+- Code follows existing patterns (Kling Avatar, Sync Lipsync sections)
 - Uses established error handling and logging
-- Integrates with existing state management
+- Integrates with existing video upload flow
 
 ### 3. Testing
 - Unit tests for cost calculation
@@ -528,19 +547,31 @@ EXTEND_VIDEO_INVALID_ASPECT_RATIO: "Video must be 16:9 or 9:16 for extend-video"
 
 ### 4. Future Enhancements
 - Support for longer extensions when API allows
-- Support for higher resolutions when available
+- Support for higher resolutions (1080p output) when available
 - Chain multiple extensions for videos up to 30s total
-- Add preview of source video before extending
+- Add video preview before extending
 
 ---
 
 ## Implementation Order
 
 1. **Phase 1 - Core (Subtasks 1-3):** Types, constants, client methods
-2. **Phase 2 - Integration (Subtasks 4, 6-7):** Handlers, state, upload flow
-3. **Phase 3 - UI (Subtask 5):** Image tab UI updates
-4. **Phase 4 - Polish (Subtasks 8-10):** Cost calculator, validation, tests
+2. **Phase 2 - Integration (Subtasks 4-5):** Handlers, Avatar tab state
+3. **Phase 3 - UI (Subtask 6):** Avatar tab options section
+4. **Phase 4 - Polish (Subtasks 7-9):** Cost calculator, validation, tests
 
 ---
 
-*This integration follows the established patterns in the QCut codebase for long-term maintainability.*
+*This integration follows the established patterns in the QCut codebase for long-term maintainability. The models are placed in the Avatar panel to leverage the existing Source Video upload component.*
+
+## Review Status (2025-12-16)
+
+- **Subtask 1 — Types:** Not started. `apps/web/src/types/ai-generation.ts` does not define `Veo31ExtendVideoInput` and no new import targets exist for extend-video params.
+- **Subtask 2 — AI constants:** Not started. `AI_MODELS` in `apps/web/src/components/editor/media-panel/views/ai/constants/ai-constants.ts` has no `veo31_fast_extend_video` or `veo31_extend_video` entries in the avatar section; no extend-video defaults, required inputs, or supported aspect ratios are present.
+- **Subtask 3 — FAL client:** Not started. `apps/web/src/lib/fal-ai-client.ts` only imports Veo text/image/frame types and exposes generation methods for those; there are no extend-video endpoints or methods.
+- **Subtask 4 — Model handlers:** Not started. `apps/web/src/components/editor/media-panel/views/ai/hooks/generation/model-handlers.ts` lacks a switch case for extend-video, and `use-ai-generation.ts` has no extend-video flow wired to sourceVideo.
+- **Subtask 5 — Avatar tab state:** Not started. `apps/web/src/components/editor/media-panel/views/ai/hooks/use-ai-avatar-tab-state.ts` contains no `extendVideoAspectRatio` / `extendVideoGenerateAudio` state or setters, and reset logic does not cover them.
+- **Subtask 6 — Avatar tab UI:** Not started. `apps/web/src/components/editor/media-panel/views/ai/tabs/ai-avatar-tab.tsx` props omit extend-video fields and the UI has no extend-video options section (aspect ratio/audio toggle).
+- **Subtask 7 — Cost calculator:** Not started. `apps/web/src/components/editor/media-panel/views/ai/utils/ai-cost-calculators.ts` has no helper for Veo 3.1 extend-video pricing.
+- **Subtask 8 — Validation constants:** Not started. `UPLOAD_CONSTANTS` / `ERROR_MESSAGES` in `ai-constants.ts` lack extend-video duration/format/aspect-ratio rules and related error strings.
+- **Subtask 9 — Tests:** Not started. No `extend-video.test.ts` exists under `apps/web/src/components/editor/media-panel/views/ai/__tests__`; only `ai-constants.test.ts` is present.
