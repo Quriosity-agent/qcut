@@ -500,10 +500,17 @@ test.describe("AI Enhancement & Export Integration", () => {
     await page.click('[data-testid="upscale-image-button"]');
 
     // Wait for upscale result - skip if API unavailable
-    const upscaleResult = page.locator('[data-testid="upscale-result-preview"]');
-    const hasResult = await upscaleResult.isVisible({ timeout: 15000 }).catch(() => false);
+    const upscaleResult = page.locator(
+      '[data-testid="upscale-result-preview"]'
+    );
+    const hasResult = await upscaleResult
+      .isVisible({ timeout: 15000 })
+      .catch(() => false);
     if (!hasResult) {
-      test.skip(true, "Skipping: Upscale API unavailable or returned error (requires FAL.ai API key)");
+      test.skip(
+        true,
+        "Skipping: Upscale API unavailable or returned error (requires FAL.ai API key)"
+      );
       return;
     }
     await expect(upscaleResult).toBeVisible();

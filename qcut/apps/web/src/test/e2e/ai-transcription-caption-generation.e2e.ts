@@ -275,9 +275,15 @@ test.describe("AI Transcription & Caption Generation", () => {
 
     // Ensure timeline has content - skip test if captions couldn't be applied
     const timelineElements = page.locator('[data-testid="timeline-element"]');
-    const hasTimelineContent = await timelineElements.first().isVisible().catch(() => false);
+    const hasTimelineContent = await timelineElements
+      .first()
+      .isVisible()
+      .catch(() => false);
     if (!hasTimelineContent) {
-      test.skip(true, "Skipping: Captions could not be applied to timeline (requires media file or transcription service)");
+      test.skip(
+        true,
+        "Skipping: Captions could not be applied to timeline (requires media file or transcription service)"
+      );
       return;
     }
 
@@ -386,9 +392,15 @@ test.describe("AI Transcription & Caption Generation", () => {
 
     // Verify timeline has elements before export - skip test if captions couldn't be applied
     const timelineElements = page.locator('[data-testid="timeline-element"]');
-    const hasTimelineContent = await timelineElements.first().isVisible().catch(() => false);
+    const hasTimelineContent = await timelineElements
+      .first()
+      .isVisible()
+      .catch(() => false);
     if (!hasTimelineContent) {
-      test.skip(true, "Skipping: Captions could not be applied to timeline (requires media file or transcription service)");
+      test.skip(
+        true,
+        "Skipping: Captions could not be applied to timeline (requires media file or transcription service)"
+      );
       return;
     }
 

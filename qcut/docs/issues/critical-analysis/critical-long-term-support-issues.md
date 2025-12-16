@@ -545,7 +545,7 @@ const result = await safeAsync(
 **Current State (Updated 2025-08-29):**
 - ✅ **Event listener cleanup**: All 261 patterns audited and verified proper cleanup
 - ✅ **Blob URL management**: Centralized BlobManager with automatic revocation implemented
-- ✅ **FFmpeg WebAssembly disposal**: Lifecycle management with auto-termination after 5min inactivity
+- ✅ **FFmpeg WebAssembly disposal**: Lifecycle management with auto-termination after 5 min inactivity
 - ✅ **DOM node cleanup**: Fixed orphaned input elements and download links
 - ✅ **Memory profiling**: Development workflow with monitoring hooks added
 

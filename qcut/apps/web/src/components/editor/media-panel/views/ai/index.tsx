@@ -562,19 +562,35 @@ export function AiView() {
             }
           >
             <TabsList className="grid w-full grid-cols-4">
-              <TabsTrigger value="text" className="text-xs" data-testid="ai-tab-text">
+              <TabsTrigger
+                value="text"
+                className="text-xs"
+                data-testid="ai-tab-text"
+              >
                 <TypeIcon className="size-3 mr-1" />
                 {!isCompact && "Text"}
               </TabsTrigger>
-              <TabsTrigger value="image" className="text-xs" data-testid="ai-tab-image">
+              <TabsTrigger
+                value="image"
+                className="text-xs"
+                data-testid="ai-tab-image"
+              >
                 <ImageIcon className="size-3 mr-1" />
                 {!isCompact && "Image"}
               </TabsTrigger>
-              <TabsTrigger value="avatar" className="text-xs" data-testid="ai-tab-avatar">
+              <TabsTrigger
+                value="avatar"
+                className="text-xs"
+                data-testid="ai-tab-avatar"
+              >
                 <UserIcon className="size-3 mr-1" />
                 {!isCompact && "Avatar"}
               </TabsTrigger>
-              <TabsTrigger value="upscale" className="text-xs" data-testid="ai-tab-upscale">
+              <TabsTrigger
+                value="upscale"
+                className="text-xs"
+                data-testid="ai-tab-upscale"
+              >
                 <Upload className="size-3 mr-1" />
                 {!isCompact && "Upscale"}
               </TabsTrigger>
@@ -946,11 +962,13 @@ export function AiView() {
                   size="sm"
                   variant={isModelSelected(model.id) ? "default" : "outline"}
                   onClick={() => toggleModel(model.id)}
-                  className={`h-auto py-2 px-2 text-xs justify-start ${isCompact ? "flex-col items-start" : ""}`}
+                  className={`h-auto min-h-[44px] py-2 px-2 text-xs justify-start items-start ${isCompact ? "flex-col" : "flex-row"}`}
                 >
-                  <span className="truncate">{model.name}</span>
+                  <span className="text-left leading-tight flex-1">
+                    {model.name}
+                  </span>
                   {!isCompact && (
-                    <span className="ml-auto text-muted-foreground">
+                    <span className="ml-2 text-muted-foreground whitespace-nowrap shrink-0">
                       ${model.price}
                     </span>
                   )}

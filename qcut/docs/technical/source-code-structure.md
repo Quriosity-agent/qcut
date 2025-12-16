@@ -131,7 +131,7 @@ Core video editor interface:
 - Modular AI generation interface with components, hooks, settings, tabs
 
 *Text-to-Image & Video:*
-- `text2image.tsx` - Text to image generation
+- `text2image.tsx` - Text-to-image generation
 - `model-type-selector.tsx` - AI model selection
 
 *Video Editing:*
