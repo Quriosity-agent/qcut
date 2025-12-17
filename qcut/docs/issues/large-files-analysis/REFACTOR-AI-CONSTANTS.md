@@ -10,16 +10,16 @@
 ## Implementation Status
 
 **Started**: 2025-12-17
-**Status**: 🟡 In Progress (Phases 1-4 Complete)
+**Status**: ✅ **COMPLETE** (All 5 Phases Done)
 **Last Updated**: 2025-12-17
-**Current File Size**: 1,477 lines (Phase 5 will reduce significantly)
+**Final File Size**: 382 lines (74% reduction from 1,477 lines)
 
 ### Progress Summary
 - [x] Phase 1: Extract Error Messages ✅ **COMPLETED**
 - [x] Phase 2: Enhance T2V Config ✅ **COMPLETED**
 - [x] Phase 3: Create I2V Config ✅ **COMPLETED**
 - [x] Phase 4: Create Avatar Config ✅ **COMPLETED**
-- [ ] Phase 5: Finalize Main File (In Progress)
+- [x] Phase 5: Finalize Main File ✅ **COMPLETED**
 
 ### Implementation Log
 <!-- Add entries as work progresses, newest first -->
@@ -84,6 +84,38 @@
 - `apps/web/src/components/editor/media-panel/views/ai/constants/avatar-models-config.ts` (330 lines)
 
 **Note**: Models remain in ai-constants.ts for now; removal happens in Phase 5
+
+#### 2025-12-17 - Phase 5 Complete
+- ✅ Reduced `ai-constants.ts` from 1,477 to 382 lines (-1,095 lines, 74% reduction)
+- ✅ Removed 1,160 lines of inline model definitions (lines 38-1196)
+- ✅ Added comprehensive re-exports for backward compatibility:
+  - T2V_MODELS, T2V_MODEL_ORDER, T2V_MODEL_CAPABILITIES, getT2VModelsInOrder, T2VModelId
+  - I2V_MODELS, I2V_MODEL_ORDER, getI2VModelsInOrder, I2VModelId
+  - AVATAR_MODELS, AVATAR_MODEL_ORDER, getAvatarModelsInOrder, AvatarModelId
+  - UPSCALE_MODELS, UPSCALE_MODEL_ORDER, UpscaleModelId
+  - ERROR_MESSAGES
+- ✅ Created consolidated AI_MODELS array from T2V + I2V + AVATAR models
+- ✅ Documented UPSCALE_MODELS exclusion from AI_MODELS (different type structure)
+- ✅ Fixed type errors: removed non-existent I2V_MODEL_CAPABILITIES export
+- ✅ Resolved lint warnings with biome-ignore for dual-purpose ERROR_MESSAGES import
+- ✅ TypeScript compilation passes cleanly
+- ✅ All exports maintained for zero breaking changes
+- 📝 Commit: `c9dd85af` - "refactor: reduce ai-constants.ts with modular re-exports (Phase 5)"
+- 📝 Commit: `057c1c7a` - "fix: correct Phase 5 type errors and re-exports"
+
+**Final Line Count:**
+- ai-constants.ts: 1,477 → 382 lines
+- error-messages.ts: 159 lines (Phase 1)
+- text2video-models-config.ts: 693 lines (Phase 2)
+- image2video-models-config.ts: 446 lines (Phase 3)
+- avatar-models-config.ts: 330 lines (Phase 4)
+- **Total: 2,010 lines across 5 well-organized files (vs 1,621 lines in original monolithic file)**
+
+**Key Architectural Decisions:**
+- UPSCALE_MODELS excluded from AI_MODELS array due to UpscaleModel interface incompatibility with AIModel
+- Category-specific imports provide clean module boundaries
+- Re-exports maintain backward compatibility with zero breaking changes
+- Each category file is self-contained with its own types, order arrays, and helper functions
 
 ---
 
