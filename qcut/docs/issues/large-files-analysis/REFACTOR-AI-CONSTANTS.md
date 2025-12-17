@@ -7,6 +7,26 @@
 
 ---
 
+## Implementation Status
+
+**Started**: 2025-12-17
+**Status**: 🔴 Not Started
+**Last Updated**: 2025-12-17
+
+### Progress Summary
+- [ ] Phase 1: Extract Error Messages
+- [ ] Phase 2: Enhance T2V Config
+- [ ] Phase 3: Create I2V Config
+- [ ] Phase 4: Create Avatar Config
+- [ ] Phase 5: Finalize Main File
+
+### Implementation Log
+<!-- Add entries as work progresses, newest first -->
+
+---
+
+---
+
 ## Existing Patterns Analysis
 
 Before splitting, review existing patterns in the codebase for consistency:
@@ -568,14 +588,30 @@ export const MODEL_HELPERS = {
 
 ## Validation Checklist
 
+### Code Quality
 - [ ] All model IDs preserved exactly
 - [ ] Endpoint paths unchanged
 - [ ] Default params unchanged
+- [ ] No duplicate model IDs across categories
+- [ ] All `*_MODEL_ORDER` arrays cover corresponding `*_MODELS` keys
+- [ ] All legacy exports maintained in `ai-constants.ts`
+
+### Build & Tests
 - [ ] TypeScript compiles (`bun run check-types`)
 - [ ] Lint passes (`bun lint:clean`)
 - [ ] Tests pass (`bun run test`)
+- [ ] Build completes successfully (`bun run build`)
+
+### Functional Testing
 - [ ] UI shows all models correctly
-- [ ] Generation works for each category
+- [ ] Text-to-Video generation works
+- [ ] Image-to-Video generation works
+- [ ] Avatar generation works
+- [ ] Upscale generation works
+- [ ] Model selection and switching works correctly
+
+### Implementation Notes
+<!-- Add notes about any deviations from the plan, issues encountered, or important decisions -->
 
 #### Review
 - Add invariants that scale: no duplicate IDs, `*_MODEL_ORDER` covers `*_MODELS` keys (or document intentional omissions), and alias maps don't point to missing IDs.
