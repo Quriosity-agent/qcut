@@ -2,7 +2,7 @@
 
 Current analysis of the largest source code files in the QCut codebase.
 
-**Generated**: 2025-12-12
+**Generated**: 2025-12-17
 **Threshold**: 800+ lines
 
 ---
@@ -11,14 +11,14 @@ Current analysis of the largest source code files in the QCut codebase.
 
 | # | File | Lines | Category | Status |
 |---|------|-------|----------|--------|
-| 1 | `stores/timeline-store.ts` | 1,842 | State Management | ✅ Refactored (6 modules) |
-| 2 | `ai/hooks/use-ai-generation.ts` | 1,806 | React Hook | ✅ Partially Refactored |
-| 3 | `timeline/index.tsx` | 1,538 | UI Component | Pending |
-| 4 | `ai/constants/ai-constants.ts` | 1,461 | Configuration | Pending |
-| 5 | `lib/export-engine.ts` | 1,365 | Export Logic | Pending |
-| 6 | `ai/hooks/generation/model-handlers.ts` | 1,352 | AI Generation | New (extracted) |
-| 7 | `lib/text2image-models.ts` | 1,329 | Configuration | Pending |
-| 8 | `lib/fal-ai-client.ts` | 1,304 | API Client | ✅ Partially Refactored |
+| 1 | `ai/hooks/use-ai-generation.ts` | 1,860 | React Hook | ✅ Partially Refactored |
+| 2 | `stores/timeline-store.ts` | 1,842 | State Management | ✅ Refactored (6 modules) |
+| 3 | `ai/constants/ai-constants.ts` | 1,594 | Configuration | Pending |
+| 4 | `ai/hooks/generation/model-handlers.ts` | 1,579 | AI Generation | New (extracted) |
+| 5 | `timeline/index.tsx` | 1,538 | UI Component | Pending |
+| 6 | `lib/text2image-models.ts` | 1,417 | Configuration | Pending |
+| 7 | `lib/fal-ai-client.ts` | 1,405 | API Client | ✅ Partially Refactored |
+| 8 | `lib/export-engine.ts` | 1,365 | Export Logic | Pending |
 | 9 | `ai/tabs/ai-image-tab.tsx` | 1,283 | UI Component | Pending |
 | 10 | `electron/main.ts` | 1,282 | Electron Main | Pending |
 
@@ -51,7 +51,7 @@ The timeline store has been split into 6 focused modules:
 
 ---
 
-## 2. use-ai-generation.ts (1,806 lines)
+## 2. use-ai-generation.ts (1,860 lines)
 
 **Path**: `apps/web/src/components/editor/media-panel/views/ai/hooks/use-ai-generation.ts`
 **Category**: React Hook
@@ -59,11 +59,11 @@ The timeline store has been split into 6 focused modules:
 ### Status: ✅ PARTIALLY REFACTORED
 
 Extracted modules:
-- `generation/model-handlers.ts` (1,352 lines) - Model-specific handlers
+- `generation/model-handlers.ts` (1,579 lines) - Model-specific handlers
 - `generation/media-integration.ts` (~316 lines) - Download + media store
 
 ### Remaining Concerns
-- Main hook still large at 1,806 lines
+- Main hook still large at 1,860 lines
 - State management logic could be further extracted
 - Progress tracking could be isolated
 
@@ -95,7 +95,7 @@ Extracted modules:
 
 ---
 
-## 4. ai-constants.ts (1,461 lines)
+## 4. ai-constants.ts (1,594 lines)
 
 **Path**: `apps/web/src/components/editor/media-panel/views/ai/constants/ai-constants.ts`
 **Category**: Configuration
@@ -142,7 +142,7 @@ Extracted modules:
 
 ---
 
-## 6. model-handlers.ts (1,352 lines)
+## 6. model-handlers.ts (1,579 lines)
 
 **Path**: `apps/web/src/components/editor/media-panel/views/ai/hooks/generation/model-handlers.ts`
 **Category**: AI Generation
@@ -159,7 +159,7 @@ This file was recently extracted. Consider further splitting by model category i
 
 ---
 
-## 7. text2image-models.ts (1,329 lines)
+## 7. text2image-models.ts (1,417 lines)
 
 **Path**: `apps/web/src/lib/text2image-models.ts`
 **Category**: Configuration
@@ -175,7 +175,7 @@ Model definitions for text-to-image generation. Contains model configurations, p
 
 ---
 
-## 8. fal-ai-client.ts (1,304 lines)
+## 8. fal-ai-client.ts (1,405 lines)
 
 **Path**: `apps/web/src/lib/fal-ai-client.ts`
 **Category**: API Client
@@ -189,7 +189,7 @@ Previously extracted:
 - `fal-ai/model-handlers/` - Parameter conversion
 
 ### Remaining
-Main client class still at 1,304 lines. Consider extracting:
+Main client class still at 1,405 lines. Consider extracting:
 - Image generation methods
 - Model-specific logic
 
@@ -239,14 +239,14 @@ These files are approaching the threshold:
 
 | File | Lines |
 |------|-------|
+| `ai/index.tsx` | 1,244 |
+| `image-edit-client.ts` | 1,233 |
 | `timeline-track.tsx` | 1,226 |
-| `ai/index.tsx` | 1,214 |
 | `ffmpeg-handler.ts` | 1,194 |
 | `drawing-canvas.tsx` | 1,132 |
-| `image-edit-client.ts` | 1,101 |
 | `preview-panel.tsx` | 1,041 |
+| `image-to-video.ts` | 1,019 |
 | `ffmpeg-utils.ts` | 903 |
-| `image-to-video.ts` | 899 |
 | `export-engine-cli.ts` | 894 |
 | `effects-store.ts` | 852 |
 
@@ -266,5 +266,5 @@ These files are approaching the threshold:
 
 ---
 
-*Document generated: 2025-12-12*
+*Document generated: 2025-12-17*
 *Source: Line count analysis of QCut codebase*

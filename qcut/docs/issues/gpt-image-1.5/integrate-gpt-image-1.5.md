@@ -394,9 +394,11 @@ If the component uses static parameter mapping, add handling for:
 
 ---
 
-### Subtask 6: Update Adjustment Store Default Parameters
+### Subtask 6: Update Adjustment Store Default Parameters - DONE
 
 **File**: `apps/web/src/stores/adjustment-store.ts`
+
+**Status**: Implemented - Added parameter types and getDefaultParameters case
 
 **Action**: VERIFY/ADD default parameter handling
 
@@ -440,18 +442,22 @@ If not present, add to the initial state and reset functions.
 
 ## File Summary
 
-| File | Action | Purpose |
-|------|--------|---------|
-| `text2image-models.ts` | ADD | T2I model config (single source of truth) |
-| `image-edit-capabilities.ts` | MODIFY | Add edit model to capability registry |
-| `image-edit-client.ts` | MODIFY | Add edit endpoint, interface, model info |
-| `parameter-controls.tsx` | VERIFY | Ensure UI renders new parameters |
-| `adjustment-store.ts` | VERIFY | Ensure defaults include new params |
+| File | Action | Status |
+|------|--------|--------|
+| `text2image-models.ts` | ADD T2I model config | DONE |
+| `image-edit-capabilities.ts` | ADD model to registry | DONE |
+| `image-edit-client.ts` | ADD endpoint + interface + model info | DONE |
+| `parameter-controls.tsx` | ADD GPT Image 1.5 Edit controls block | DONE |
+| `adjustment-store.ts` | ADD parameter types + defaults | DONE |
 
 **Files NOT modified** (avoiding duplication):
 - `ai-constants.ts` - Not needed; T2I config lives in `text2image-models.ts`
 - `generators/image.ts` - Not needed; uses existing FAL request flow
 - `ai-types.ts` - Not needed; types inferred from model config
+
+## Implementation Status: COMPLETE
+
+All 6 subtasks have been implemented and TypeScript compilation passes.
 
 ---
 
