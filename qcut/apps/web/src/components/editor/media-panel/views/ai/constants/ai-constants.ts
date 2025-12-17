@@ -7,13 +7,14 @@
 
 import type { AIModel, APIConfiguration } from "../types/ai-types";
 import { UPSCALE_MODEL_ENDPOINTS as UPSCALE_MODEL_ENDPOINT_MAP } from "@/lib/upscale-models";
-import { ERROR_MESSAGES } from "./error-messages";
 
 // Import model configurations from category-specific files
 import { T2V_MODELS } from "./text2video-models-config";
 import { I2V_MODELS } from "./image2video-models-config";
 import { AVATAR_MODELS } from "./avatar-models-config";
 import { UPSCALE_MODELS } from "@/lib/upscale-models";
+// biome-ignore lint/style/noExportedImports: ERROR_MESSAGES is used both for re-export and in local AI_CONFIG object
+import { ERROR_MESSAGES } from "./error-messages";
 
 // FAL API Configuration
 /** FAL.ai API key from environment variables */
@@ -53,7 +54,6 @@ export {
 export {
   I2V_MODELS,
   I2V_MODEL_ORDER,
-  I2V_MODEL_CAPABILITIES,
   getI2VModelsInOrder,
   type I2VModelId,
 } from "./image2video-models-config";
@@ -77,20 +77,22 @@ export {
 // Backward Compatibility: Consolidated AI_MODELS Array
 // ============================================================================
 /**
- * Legacy AI_MODELS array combining all model categories.
+ * Legacy AI_MODELS array combining all video generation model categories.
  * Maintained for backward compatibility with existing code.
+ *
+ * Note: UPSCALE_MODELS are not included here as they use a different type structure.
+ * Access them separately via the UPSCALE_MODELS export from @/lib/upscale-models.
  *
  * For new code, prefer using category-specific imports:
  * - T2V_MODELS for text-to-video models
  * - I2V_MODELS for image-to-video models
  * - AVATAR_MODELS for avatar/talking-head models
- * - UPSCALE_MODELS for upscaling models
+ * - UPSCALE_MODELS for upscaling models (separate type)
  */
 export const AI_MODELS: AIModel[] = [
   ...Object.values(T2V_MODELS),
   ...Object.values(I2V_MODELS),
   ...Object.values(AVATAR_MODELS),
-  ...Object.values(UPSCALE_MODELS),
 ];
 
 // UI Constants
